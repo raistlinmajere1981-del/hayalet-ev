@@ -13,8 +13,10 @@ import type {
   MailTransportAccountBinding,
   MailTransportProviderType,
   MailTransportAuthType,
+  ThemeAppearanceSettings,
 } from "@shared/settings.js";
 import { ASSISTANT_ACCOUNTS_SETTINGS_KEY, ASSISTANT_SLOT_SETTINGS_KEY } from "@shared/settings.js";
+import { DEFAULT_THEME_APPEARANCE_SETTINGS, isThemeId } from "@shared/settings.js";
 import {
   buildRemoteEmailAccountId,
   extractUs1RemoteIdentityIdFromAccountId,
@@ -32,6 +34,62 @@ import {
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && v !== undefined && typeof v === "object" && !Array.isArray(v);
+}
+
+function isTimeString(value: unknown): value is string {
+  return typeof value === "string" && /^\d{2}:\d{2}$/.test(value);
+}
+
+function normalizeThemeAppearanceSettings(
+  raw: unknown,
+  legacyTheme?: unknown
+): Required<ThemeAppearanceSettings> {
+  const defaults = { ...DEFAULT_THEME_APPEARANCE_SETTINGS };
+  const next = isPlainObject(raw) ? { ...defaults, ...raw } : defaults;
+
+  if (legacyTheme === "system") {
+    next.mode = "system";
+  } else if (legacyTheme === "light") {
+    next.mode = "manual";
+    next.manualTheme = "ivory-lab";
+    next.lightTheme = "ivory-lab";
+  } else if (legacyTheme === "dark") {
+    next.mode = "manual";
+    next.manualTheme = "obsidian";
+    next.darkTheme = "obsidian";
+  }
+
+  const mode: unknown = next.mode;
+  next.mode = mode === "manual" || mode === "system" || mode === "schedule" ? mode : defaults.mode;
+
+  const manualTheme: unknown = next.manualTheme;
+  const lightTheme: unknown = next.lightTheme;
+  const darkTheme: unknown = next.darkTheme;
+  next.manualTheme =
+    typeof manualTheme === "string" && isThemeId(manualTheme) ? manualTheme : defaults.manualTheme;
+  next.lightTheme =
+    typeof lightTheme === "string" && isThemeId(lightTheme) ? lightTheme : defaults.lightTheme;
+  next.darkTheme =
+    typeof darkTheme === "string" && isThemeId(darkTheme) ? darkTheme : defaults.darkTheme;
+  next.dayStart = isTimeString(next.dayStart) ? next.dayStart : defaults.dayStart;
+  next.nightStart = isTimeString(next.nightStart) ? next.nightStart : defaults.nightStart;
+
+  const motion: unknown = next.motion;
+  next.motion =
+    motion === "full" || motion === "reduced" || motion === "off" ? motion : defaults.motion;
+
+  const textScale: unknown = next.textScale;
+  next.textScale =
+    textScale === "sm" || textScale === "md" || textScale === "lg" ? textScale : defaults.textScale;
+
+  const surface: unknown = next.surface;
+  next.surface =
+    surface === "glass" || surface === "soft" || surface === "solid" ? surface : defaults.surface;
+
+  const contrast: unknown = next.contrast;
+  next.contrast = contrast === "normal" || contrast === "high" ? contrast : defaults.contrast;
+
+  return next;
 }
 
 export function defaultSettings(): AppSettings {
@@ -844,7 +902,13 @@ export function normalizeSettings(raw: unknown): AppSettings {
   if (!isPlainObject(merged.general)) {
     merged.general = defaults.general ?? { language: "tr" };
   }
+  const legacyTheme = (merged.general as Record<string, unknown>)["theme"];
   merged.general.language = normalizeAppLanguage(merged.general.language);
+  merged.general.appearance = normalizeThemeAppearanceSettings(
+    merged.general.appearance,
+    legacyTheme
+  );
+  delete (merged.general as Record<string, unknown>)["theme"];
 
   if (!Array.isArray(merged.assistantAccounts)) {
     merged.assistantAccounts = [createDefaultAssistantAccount(), createDefaultOpencodeUiAccount()];

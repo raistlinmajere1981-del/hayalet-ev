@@ -2,7 +2,7 @@ import { buildRemoteEmailAccountId } from "@shared/archive.js";
 import { getRemoteEmailAccounts, isAiProviderAccount } from "@shared/settings.js";
 import type { Account } from "@shared/settings.js";
 import { AppState } from "../../../modules/app-state.js";
-import { getSceneCharacterRoleConfig } from "../../../scene/scene-config.js";
+import { getSceneCharacterRoleConfig } from "../../../scene/theme-pack.js";
 
 import type { SceneCharacterKind, SceneCharacterRole } from "./scene-character-role.js";
 import {

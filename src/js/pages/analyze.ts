@@ -16,8 +16,12 @@ import { shellT } from "../app/shell-i18n.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import type { Us1RoomPackageCandidate, Us1SessionEvent } from "@shared/us1-mail.js";
 import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
-import { SCENE_THEME_CONFIG } from "../scene/scene-config.js";
+import { bindSceneBackZones } from "../scene/back-zone.js";
+import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
+import { getCoverSceneProjectionFromElement } from "../scene/projection.js";
 import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../scene/scene-debug-rooms.js";
+import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../scene/theme-pack.js";
+import { syncSceneViewRuntime } from "../scene/runtime.js";
 
 import { renderMessages, resetMessageRenderState } from "./analyze/message-renderer.js";
 import type { RenderCallbacks } from "./analyze/message-renderer.js";
@@ -46,15 +50,15 @@ import {
   type SceneCharacterDescriptor,
 } from "./entrance/scene/scene-character-roster.js";
 import {
-  clearAnalyzeSceneMapDraft,
-  cloneEntranceSceneMap,
-  DEFAULT_ANALYZE_SCENE_MAP,
-  loadAnalyzeSceneMapDraft,
-  saveAnalyzeSceneMapDraft,
-  serializeEntranceSceneMap,
+  getSceneHotspotLabelId,
+  getSceneNodeKindForHotspot,
+  hasSceneHotspotLabel,
+  isSceneDebugSelectionForCharacter,
+  isSceneDebugSelectionForHotspot,
   type EntranceSceneHotspotConfig,
   type EntranceSceneMap,
 } from "./entrance/scene/scene-map.js";
+import { createSceneDebugStore } from "../scene/debug-store.js";
 
 interface ConversationSelectedDetail {
   provider?: "ai1" | "ai2" | "us1";
@@ -68,6 +72,7 @@ interface DraftState {
 }
 
 type AnalyzeParticipant = "ai1" | "ai2" | "us1";
+const ANALYZE_SCENE_DEBUG_STORE = createSceneDebugStore("analyze");
 
 function analyzeT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.analyze.${key}`, params);
@@ -153,7 +158,7 @@ export class AnalyzeController {
     this._analyzeSceneTableOpen = false;
     this._analyzeSceneDebugEnabled = false;
     this._analyzeSceneBindingsReady = false;
-    this._analyzeSceneMap = cloneEntranceSceneMap(DEFAULT_ANALYZE_SCENE_MAP);
+    this._analyzeSceneMap = ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
     this._analyzeSceneEditor = null;
     this._analyzeSceneSelection = null;
     this._analyzeSceneResizeObserver = null;
@@ -165,8 +170,8 @@ export class AnalyzeController {
     await this.loadSettings();
     this._analyzeSceneDebugEnabled = applySceneDebugFlag();
     this._analyzeSceneMap =
-      (this._analyzeSceneDebugEnabled ? loadAnalyzeSceneMapDraft() : null) ??
-      cloneEntranceSceneMap(DEFAULT_ANALYZE_SCENE_MAP);
+      (this._analyzeSceneDebugEnabled ? ANALYZE_SCENE_DEBUG_STORE.loadDraft() : null) ??
+      ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
     this.applyAvatars();
     this.applyNames();
 
@@ -302,17 +307,17 @@ export class AnalyzeController {
     ) as HTMLImageElement | null;
 
     if (background !== null) {
-      background.src = SCENE_THEME_CONFIG.analyze.backgroundSrc;
+      background.src = getSceneRoomBackgroundSrc("analyze");
       background.alt = "";
     }
 
     if (tableArt !== null) {
-      tableArt.src = SCENE_THEME_CONFIG.analyze.panels.table;
+      tableArt.src = getSceneRoomPanelSrc("analyze", "table") ?? "";
       tableArt.alt = "";
     }
 
     if (archiveArt !== null) {
-      archiveArt.src = SCENE_THEME_CONFIG.analyze.panels.archive;
+      archiveArt.src = getSceneRoomPanelSrc("analyze", "archive") ?? "";
       archiveArt.alt = "";
     }
 
@@ -350,10 +355,17 @@ export class AnalyzeController {
       navigateToRoom: (roomId: string): void => {
         this._navigateToAnalyzeSceneDebugRoom(roomId);
       },
-      supportsHotspotLabels: (): boolean => false,
       updateHotspot: (id, updater): void => {
         this._analyzeSceneMap.hotspots = this._analyzeSceneMap.hotspots.map((hotspot) =>
           hotspot.id === id ? updater(hotspot) : hotspot
+        );
+        this._persistAnalyzeSceneMapDraft();
+        this._renderAnalyzeScene();
+        this._analyzeSceneEditor?.refresh();
+      },
+      updateLabelNode: (id, updater): void => {
+        this._analyzeSceneMap.hotspots = this._analyzeSceneMap.hotspots.map((hotspot) =>
+          getSceneHotspotLabelId(hotspot.id) === id ? updater(hotspot) : hotspot
         );
         this._persistAnalyzeSceneMapDraft();
         this._renderAnalyzeScene();
@@ -368,15 +380,15 @@ export class AnalyzeController {
         this._analyzeSceneEditor?.refresh();
       },
       resetDraft: (): void => {
-        this._analyzeSceneMap = cloneEntranceSceneMap(DEFAULT_ANALYZE_SCENE_MAP);
-        clearAnalyzeSceneMapDraft();
+        this._analyzeSceneMap = ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
+        ANALYZE_SCENE_DEBUG_STORE.clearDraft();
         this._analyzeSceneSelection = null;
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();
       },
       copySceneMap: async (): Promise<void> => {
         try {
-          await navigator.clipboard.writeText(serializeEntranceSceneMap(this._analyzeSceneMap));
+          await ANALYZE_SCENE_DEBUG_STORE.copyToClipboard(this._analyzeSceneMap);
         } catch {
           console.info("Analyze scene map copy failed.");
         }
@@ -418,9 +430,8 @@ export class AnalyzeController {
 
     this._analyzeSceneMap.hotspots.forEach((hotspot) => {
       const labelText = this._resolveAnalyzeSceneHotspotLabel(hotspot);
-      const selected =
-        this._analyzeSceneSelection?.kind === "hotspot" &&
-        this._analyzeSceneSelection.id === hotspot.id;
+      const shouldRenderLabel = hasSceneHotspotLabel(hotspot);
+      const selected = isSceneDebugSelectionForHotspot(this._analyzeSceneSelection, hotspot);
       const wrapper = document.createElement("div");
       wrapper.className = "analyze-scene__hotspot-item";
 
@@ -464,51 +475,56 @@ export class AnalyzeController {
       );
       button.ariaLabel = labelText;
       button.addEventListener("click", () => {
-        this._handleAnalyzeSceneHotspotInteraction(hotspot);
+        this._handleAnalyzeSceneHotspotInteraction(hotspot, getSceneNodeKindForHotspot(hotspot));
       });
 
-      const label = document.createElement("span");
-      label.className = "analyze-scene__hotspot-label";
-      label.classList.toggle("is-selected", selected);
-      label.textContent = labelText;
-      label.ariaHidden = "true";
-      label.style.setProperty(
-        "--analyze-scene-hotspot-label-left",
-        `${projection.offsetX + hotspot.labelCenterXPx * projection.scale}px`
-      );
-      label.style.setProperty(
-        "--analyze-scene-hotspot-label-top",
-        `${projection.offsetY + hotspot.labelTopPx * projection.scale}px`
-      );
-      label.style.setProperty(
-        "--analyze-scene-hotspot-label-width",
-        `${hotspot.labelWidthPx * projection.scale}px`
-      );
-      label.style.setProperty(
-        "--analyze-scene-hotspot-label-height",
-        `${hotspot.labelHeightPx * projection.scale}px`
-      );
-      label.style.setProperty(
-        "--analyze-scene-hotspot-label-rotate",
-        `${hotspot.labelRotateDeg}deg`
-      );
-      label.style.setProperty(
-        "--analyze-scene-hotspot-label-frame-perspective",
-        `${hotspot.labelFramePerspectiveDeg}deg`
-      );
-      label.style.setProperty(
-        "--analyze-scene-hotspot-label-font-size",
-        `${hotspot.labelFontSizePx * projection.scale}px`
-      );
-      label.style.setProperty(
-        "--analyze-scene-hotspot-label-letter-spacing",
-        `${hotspot.labelLetterSpacingPx * projection.scale}px`
-      );
-      label.addEventListener("click", () => {
-        this._handleAnalyzeSceneHotspotInteraction(hotspot);
-      });
+      if (shouldRenderLabel) {
+        const label = document.createElement("span");
+        label.className = "analyze-scene__hotspot-label";
+        label.classList.toggle("is-selected", selected);
+        label.textContent = labelText;
+        label.ariaHidden = "true";
+        label.style.setProperty(
+          "--analyze-scene-hotspot-label-left",
+          `${projection.offsetX + hotspot.labelCenterXPx * projection.scale}px`
+        );
+        label.style.setProperty(
+          "--analyze-scene-hotspot-label-top",
+          `${projection.offsetY + hotspot.labelTopPx * projection.scale}px`
+        );
+        label.style.setProperty(
+          "--analyze-scene-hotspot-label-width",
+          `${hotspot.labelWidthPx * projection.scale}px`
+        );
+        label.style.setProperty(
+          "--analyze-scene-hotspot-label-height",
+          `${hotspot.labelHeightPx * projection.scale}px`
+        );
+        label.style.setProperty(
+          "--analyze-scene-hotspot-label-rotate",
+          `${hotspot.labelRotateDeg}deg`
+        );
+        label.style.setProperty(
+          "--analyze-scene-hotspot-label-frame-perspective",
+          `${hotspot.labelFramePerspectiveDeg}deg`
+        );
+        label.style.setProperty(
+          "--analyze-scene-hotspot-label-font-size",
+          `${hotspot.labelFontSizePx * projection.scale}px`
+        );
+        label.style.setProperty(
+          "--analyze-scene-hotspot-label-letter-spacing",
+          `${hotspot.labelLetterSpacingPx * projection.scale}px`
+        );
+        label.addEventListener("click", () => {
+          this._handleAnalyzeSceneHotspotInteraction(hotspot, "label");
+        });
 
-      wrapper.append(button, label);
+        wrapper.append(button, label);
+      } else {
+        wrapper.append(button);
+      }
+
       fragment.appendChild(wrapper);
     });
 
@@ -579,8 +595,9 @@ export class AnalyzeController {
       characterNode.dataset["anchorId"] = character.anchorId;
       characterNode.classList.toggle(
         "is-selected",
-        this._analyzeSceneSelection?.kind === "character" &&
-          this._analyzeSceneSelection.id === character.anchorId
+        isSceneDebugSelectionForCharacter(this._analyzeSceneSelection, {
+          id: character.anchorId,
+        })
       );
       characterNode.style.setProperty(
         "--scene-character-left",
@@ -683,26 +700,10 @@ export class AnalyzeController {
 
   _getAnalyzeSceneProjection(): { offsetX: number; offsetY: number; scale: number } {
     const sceneRoot = document.getElementById("analyze-scene-root");
-    if (!(sceneRoot instanceof HTMLElement)) {
-      return { offsetX: 0, offsetY: 0, scale: 1 };
-    }
-
-    const surfaceWidth = sceneRoot.clientWidth;
-    const surfaceHeight = sceneRoot.clientHeight;
-    if (surfaceWidth <= 0 || surfaceHeight <= 0) {
-      return { offsetX: 0, offsetY: 0, scale: 1 };
-    }
-
-    const scale = Math.max(
-      surfaceWidth / this._analyzeSceneMap.referenceSize.width,
-      surfaceHeight / this._analyzeSceneMap.referenceSize.height
+    return getCoverSceneProjectionFromElement(
+      sceneRoot instanceof HTMLElement ? sceneRoot : null,
+      this._analyzeSceneMap.referenceSize
     );
-
-    return {
-      offsetX: (surfaceWidth - this._analyzeSceneMap.referenceSize.width * scale) / 2,
-      offsetY: (surfaceHeight - this._analyzeSceneMap.referenceSize.height * scale) / 2,
-      scale,
-    };
   }
 
   _getAnalyzeSceneDepthScale(depth: number): number {
@@ -728,7 +729,7 @@ export class AnalyzeController {
   }
 
   _persistAnalyzeSceneMapDraft(): void {
-    saveAnalyzeSceneMapDraft(this._analyzeSceneMap);
+    ANALYZE_SCENE_DEBUG_STORE.saveDraft(this._analyzeSceneMap);
   }
 
   _isAnalyzeSceneDebugActive(): boolean {
@@ -744,33 +745,33 @@ export class AnalyzeController {
       return;
     }
 
-    const exitLeft = document.getElementById("analyze-scene-exit-left");
-    const exitRight = document.getElementById("analyze-scene-exit-right");
-    const archiveExitLeft = document.getElementById("analyze-archive-exit-left");
-    const archiveExitRight = document.getElementById("analyze-archive-exit-right");
+    const sceneRoot = document.getElementById("analyze-scene-root");
+    const archiveOverlay = document.getElementById("analyze-archive-overlay");
 
-    exitLeft?.addEventListener("click", () => {
-      this._setAnalyzeSceneTableOpen(false);
-    });
+    if (sceneRoot !== null) {
+      bindSceneBackZones(sceneRoot, () => {
+        this._setAnalyzeSceneTableOpen(false);
+      });
+    }
 
-    exitRight?.addEventListener("click", () => {
-      this._setAnalyzeSceneTableOpen(false);
-    });
-
-    archiveExitLeft?.addEventListener("click", () => {
-      this.archiveOverlay.close();
-    });
-
-    archiveExitRight?.addEventListener("click", () => {
-      this.archiveOverlay.close();
-    });
+    if (archiveOverlay !== null) {
+      bindSceneBackZones(archiveOverlay, () => {
+        this.archiveOverlay.close();
+      });
+    }
 
     this._analyzeSceneBindingsReady = true;
   }
 
-  _handleAnalyzeSceneHotspotInteraction(hotspot: EntranceSceneHotspotConfig): void {
+  _handleAnalyzeSceneHotspotInteraction(
+    hotspot: EntranceSceneHotspotConfig,
+    selectionKind: "door" | "object" | "label"
+  ): void {
     if (this._analyzeSceneEditor !== null) {
-      this._analyzeSceneSelection = { kind: "hotspot", id: hotspot.id };
+      this._analyzeSceneSelection = {
+        kind: selectionKind,
+        id: selectionKind === "label" ? getSceneHotspotLabelId(hotspot.id) : hotspot.id,
+      };
       this._analyzeSceneEditor.refresh();
       this._renderAnalyzeScene();
       return;
@@ -811,21 +812,18 @@ export class AnalyzeController {
     const room = document.querySelector(".analyze-room");
     const sceneActive = isSceneUiMode();
 
-    if (sceneRoot instanceof HTMLElement) {
-      sceneRoot.hidden = !sceneActive;
-      sceneRoot.setAttribute("aria-hidden", String(!sceneActive));
-    }
-
-    if (tableView instanceof HTMLElement) {
-      tableView.setAttribute(
-        "aria-hidden",
-        String(!sceneActive || this._analyzeSceneTableOpen === false)
-      );
-    }
-
-    if (room instanceof HTMLElement) {
-      room.classList.toggle("is-scene-table-open", sceneActive && this._analyzeSceneTableOpen);
-    }
+    syncSceneViewRuntime({
+      elements: {
+        root: sceneRoot instanceof HTMLElement ? sceneRoot : null,
+        view: tableView instanceof HTMLElement ? tableView : null,
+        room: room instanceof HTMLElement ? room : null,
+      },
+      state: {
+        sceneActive,
+        viewOpen: this._analyzeSceneTableOpen,
+        roomOpenClass: "is-scene-table-open",
+      },
+    });
 
     if (!sceneActive) {
       return;
@@ -838,22 +836,14 @@ export class AnalyzeController {
   }
 
   _navigateToPage(page: string): void {
-    document.dispatchEvent(
-      new CustomEvent<{ page: string }>("navigate-page", {
-        detail: { page },
-      })
-    );
+    navigateToScenePage(page);
   }
 
   _navigateToAnalyzeSceneDebugRoom(roomId: string): void {
     this.archiveOverlay.close();
     this._setAnalyzeSceneTableOpen(false);
     if (roomId === "settings") {
-      document.dispatchEvent(
-        new CustomEvent("settings-hub:open", {
-          detail: { panel: null },
-        })
-      );
+      openSceneSettingsPanel(null);
       return;
     }
 

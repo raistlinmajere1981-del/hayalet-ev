@@ -1,7 +1,6 @@
 import { getErrorMessage } from "@shared/index.js";
-import { Logger, LogCategory, LogVisibility } from "../modules/logger/index.js";
+import { Logger, LogCategory } from "../modules/logger/index.js";
 import { WindowManager } from "../modules/window-manager.js";
-import { ThemeManager } from "../ui/theme-manager.js";
 import { Modal } from "../ui/modal-manager.js";
 import { createGhostHandoffRuntimePatch } from "../pages/assistant/ghost-handoff.js";
 import {
@@ -89,6 +88,17 @@ function setUiModeDropdownExpanded(dropdown: HTMLElement, expanded: boolean): vo
   if (trigger !== null) {
     trigger.setAttribute("aria-expanded", String(expanded));
   }
+  syncTopBarUiModeLayer();
+}
+
+function syncTopBarUiModeLayer(): void {
+  const topBar = document.querySelector<HTMLElement>(".top-bar");
+  if (topBar === null) {
+    return;
+  }
+
+  const hasExpandedDropdown = topBar.querySelector<HTMLElement>(".ui-mode-dropdown.is-expanded") !== null;
+  topBar.classList.toggle("is-ui-mode-expanded", hasExpandedDropdown);
 }
 
 let currentPage: string | null = null;
@@ -219,29 +229,6 @@ export function setupWindowControls(): void {
 
 export function setupTopBarButtons(): void {
   try {
-    const themeToggle = document.getElementById("theme-toggle");
-
-    if (themeToggle !== null) {
-      themeToggle.textContent = ThemeManager.getIcon();
-
-      themeToggle.addEventListener("click", () => {
-        ThemeManager.next();
-        themeToggle.textContent = ThemeManager.getIcon();
-
-        Logger.debug(
-          LogCategory.UI_THEME,
-          shellT("logs.themeChanged", { theme: ThemeManager.current }),
-          {
-            visibility: LogVisibility.VERBOSE,
-          }
-        );
-      });
-
-      ThemeManager.onChange(() => {
-        themeToggle.textContent = ThemeManager.getIcon();
-      });
-    }
-
     const uiModeDropdowns = Array.from(
       document.querySelectorAll<HTMLElement>(UI_MODE_DROPDOWN_SELECTOR)
     );

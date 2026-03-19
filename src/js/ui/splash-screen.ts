@@ -2,7 +2,7 @@ import { LogCategory } from "@shared/logging-core";
 import { Logger } from "../modules/logger/index.js";
 import { MINIMUM_DISPLAY_TIME, HIDE_ANIMATION_DURATION } from "@ui-constants";
 import { AppI18n } from "../modules/i18n/index.js";
-import { SCENE_THEME_CONFIG } from "../scene/scene-config.js";
+import { getSceneLoadingTheme } from "../scene/theme-pack.js";
 import { getCurrentUiMode, isSceneUiMode, type UiMode } from "./ui-mode.js";
 
 interface SplashElements {
@@ -61,7 +61,8 @@ function createClassicSplashMarkup(): string {
 }
 
 function createSceneSplashMarkup(): string {
-  const frameMarkup = SCENE_THEME_CONFIG.loading.frames
+  const loadingTheme = getSceneLoadingTheme();
+  const frameMarkup = loadingTheme.frames
     .map(
       (frameSrc, index) => `
         <img
@@ -120,7 +121,8 @@ function startSceneAnimation(): void {
     return;
   }
 
-  const frameCount = Number(SCENE_THEME_CONFIG.loading.frames.length);
+  const loadingTheme = getSceneLoadingTheme();
+  const frameCount = Number(loadingTheme.frames.length);
   if (frameCount <= 1) {
     setSceneFrame(0);
     sceneAnimationCompleted = true;
@@ -146,7 +148,7 @@ function startSceneAnimation(): void {
       sceneAnimationCompleted = true;
       stopSceneAnimation();
     }
-  }, SCENE_THEME_CONFIG.loading.frameDurationMs);
+  }, loadingTheme.frameDurationMs);
 }
 
 function shuffleSceneLines(lines: string[]): string[] {
@@ -210,7 +212,8 @@ function syncSplashVariant(): void {
   }
 
   const uiMode = getCurrentUiMode();
-  if (container.dataset["uiMode"] === uiMode) {
+  const hasSceneFrames = container.querySelector(".splash-scene-frame") !== null;
+  if (container.dataset["uiMode"] === uiMode && (uiMode !== "scene" || hasSceneFrames)) {
     return;
   }
 

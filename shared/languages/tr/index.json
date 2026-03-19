@@ -794,7 +794,55 @@
       "openButton": "📊 Canlı Log"
     },
     "theme": {
-      "selectTitle": "Tema seç"
+      "selectTitle": "Tema seç",
+      "presetsTitle": "Hızlı presetler",
+      "presetsHint": "Bir preset seçmek temayı anında uygular ve davranışı manuele alır.",
+      "behaviorTitle": "Davranış",
+      "tuningTitle": "İnce ayar",
+      "tuningHint": "Hareket, okunabilirlik ve yüzey yoğunluğunu buradan dengele.",
+      "mode": {
+        "label": "Tema davranışı",
+        "options": {
+          "manual": "Manual",
+          "system": "System",
+          "schedule": "Schedule"
+        },
+        "hints": {
+          "manual": "Seçtiğin preset sabit kalır.",
+          "system": "Açık ve koyu preset sistem görünümüne göre otomatik seçilir.",
+          "schedule": "Gündüz ve gece başlangıç saatlerine göre tema otomatik değişir."
+        }
+      },
+      "lightThemeLabel": "Gündüz / açık preset",
+      "darkThemeLabel": "Gece / koyu preset",
+      "dayStartLabel": "Gündüz başlangıcı",
+      "nightStartLabel": "Gece başlangıcı",
+      "motionLabel": "Hareket seviyesi",
+      "motion": {
+        "options": {
+          "full": "Tam",
+          "reduced": "Azaltılmış",
+          "off": "Kapalı"
+        }
+      },
+      "textScaleLabel": "Metin ölçeği",
+      "textScale": {
+        "options": {
+          "sm": "Küçük",
+          "md": "Varsayılan",
+          "lg": "Büyük"
+        }
+      },
+      "surfaceLabel": "Yüzey stili",
+      "surface": {
+        "options": {
+          "glass": "Cam",
+          "soft": "Yumuşak",
+          "solid": "Dolu"
+        }
+      },
+      "contrastLabel": "Yüksek kontrast",
+      "contrastHint": "Yazı ve sınır ayrımını güçlendirir."
     },
     "themes": {
       "obsidian": {
@@ -870,13 +918,17 @@
       "openTitle": "Backup merkezini aç",
       "title": "Backup Merkezi",
       "createButton": "Backup Oluştur",
-      "selectButton": "Bundle Seç",
-      "openFolderButton": "Klasörü Aç",
+      "selectButton": "Yedek Dosyası Seç",
+      "openFolderButton": "Yedek Klasörünü Aç",
       "restoreButton": "Geri Yükle",
       "scopeSectionTitle": "Scope Seçimi",
       "scopeSectionNote": "Kategori, checkbox ve preset seçimi",
-      "historySectionTitle": "Bundle'lar",
+      "historySectionTitle": "Yedek Dosyaları",
       "historySectionNote": "Yerel backup listesi ve restore önizlemesi",
+      "listSectionTitle": "Yedek Dosyaları",
+      "listSectionNote": "Yerel backup listesi ve geri yükleme için yedek dosyası seçimi",
+      "previewSectionTitle": "Restore Önizleme",
+      "previewSectionNote": "Seçilen yedek dosyasının geri yükleme etkisi",
       "summary": {
         "selectedScopes": "Seçili scope",
         "requiresColdRestore": "Cold restore",
@@ -932,15 +984,15 @@
         "full-snapshot": "Tam Snapshot"
       },
       "list": {
-        "empty": "Backup bundle bulunamadı.",
-        "untitled": "İsimsiz bundle",
+        "empty": "Yedek dosyası bulunamadı.",
+        "untitled": "İsimsiz yedek",
         "invalid": "Geçersiz",
         "ready": "Hazır",
         "scopeUnknown": "Scope bilgisi yok",
-        "externalBundle": "Seçilen harici bundle"
+        "externalBundle": "Seçilen harici yedek dosyası"
       },
       "preview": {
-        "empty": "Restore etkisini görmek için bir bundle seçin.",
+        "empty": "Restore etkisini görmek için bir yedek dosyası seçin.",
         "loading": "Restore önizlemesi yükleniyor...",
         "fileCount": "Dosyalar",
         "overwrites": "Üzerine yazma",
@@ -951,19 +1003,19 @@
       },
       "confirm": {
         "title": "Restore Onayı",
-        "message": "Seçilen bundle geri yüklensin mi?",
+        "message": "Seçilen yedek dosyası geri yüklensin mi?",
         "scopeLine": "Scope'lar: {{scopes}}",
         "fileLine": "Dosyalar: {{count}}",
         "restartLine": "Restart hedefi: {{target}}"
       },
       "dialog": {
-        "bundleTitle": "Backup bundle seç",
-        "bundleButton": "Bundle Kullan",
-        "bundleFilterName": "Backup Bundle'ları"
+        "bundleTitle": "Yedek dosyası seç",
+        "bundleButton": "Bu Dosyayı Kullan",
+        "bundleFilterName": "Yedek Dosyaları"
       },
       "toasts": {
         "scopeRequired": "Önce en az bir scope seçin",
-        "bundleRequired": "Önce bir backup bundle seçin",
+        "bundleRequired": "Önce bir yedek dosyası seçin",
         "filePickerUnavailable": "Dosya seçici hazır değil",
         "createSuccess": "Backup oluşturuldu",
         "createError": "Backup oluşturulamadı",
@@ -1391,7 +1443,6 @@
       },
       "navigationSetupError": "Gezinme kurulumu hatası: {{message}}",
       "topBarSetupError": "Üst bar kurulumu hatası: {{message}}",
-      "themeChanged": "Tema değiştirildi: {{theme}}",
       "mcpSyncFailed": "MCP devre dışı sunucu senkronu başarısız",
       "manualSyncFailed": "Manuel eşitleme başarısız: {{message}}",
       "conversationRefreshSetupFailed": "Konuşma yenileme işleyicisi kurulamadı: {{message}}",
@@ -5047,8 +5098,8 @@
     },
     "panels": {
       "settings": "Ayarlar",
-      "user": "KULLANICI & DRIVE",
-      "accounts": "HESAP YÖNETİMİ",
+      "user": "Kullanıcı - Mail Yönetimi",
+      "accounts": "Hesap Yönetimi",
       "us1": "US1 SLOT",
       "whisper": "BEKLEYEN KOMUTLAR",
       "report": "CANLI RAPOR"
@@ -5113,7 +5164,7 @@
           "delete": "Hesabı Sil"
         },
         "verifiedLabel": "Doğrulanmış kullanıcı emaili",
-        "verifiedEmpty": "Henüz doğrulanmış kullanıcı emaili yok.",
+        "verifiedEmpty": "Doğrulanmış email hesabı yok",
         "gmailHelperTitle": "Gmail uygulama şifresi ile bağlan",
         "gmailHelperStep1": "Gmail uygulama şifresi al",
         "gmailEmailLabel": "Gmail email",

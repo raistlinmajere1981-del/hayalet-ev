@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-18T17:23:31.639Z",
+  "generatedAt": "2026-03-19T12:27:36.733Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 455,
+    "filesScanned": 466,
     "filesWithComments": 106,
-    "commentsIndexed": 260,
-    "fileLevelComments": 200,
+    "commentsIndexed": 259,
+    "fileLevelComments": 199,
     "symbolLevelComments": 60,
     "prefixCounts": {
       "none": 23,
       "AI": 0,
-      "NOTE": 233,
+      "NOTE": 232,
       "WARNING": 4,
       "TODO": 0
     }
@@ -989,8 +989,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 70,
-          "endLine": 70,
+          "startLine": 71,
+          "endLine": 71,
           "text": "NOTE: Inject ServerCommands into CoreEngine to break the circular dependency.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -998,8 +998,8 @@
         },
         {
           "kind": "note",
-          "startLine": 222,
-          "endLine": 222,
+          "startLine": 224,
+          "endLine": 224,
           "text": "NOTE: --auto-connect clicks the assistant connect button on the assistant page.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1054,8 +1054,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 407,
-          "endLine": 407,
+          "startLine": 394,
+          "endLine": 394,
           "text": "NOTE: Kept for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -1631,8 +1631,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1177,
-          "endLine": 1177,
+          "startLine": 1190,
+          "endLine": 1190,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1640,8 +1640,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1196,
-          "endLine": 1196,
+          "startLine": 1209,
+          "endLine": 1209,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1728,8 +1728,8 @@
         },
         {
           "kind": "note",
-          "startLine": 349,
-          "endLine": 349,
+          "startLine": 376,
+          "endLine": 376,
           "text": "NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1737,8 +1737,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2466,
-          "endLine": 2466,
+          "startLine": 2481,
+          "endLine": 2481,
           "text": "NOTE: Ignore if the webview is not ready yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1746,8 +1746,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2522,
-          "endLine": 2522,
+          "startLine": 2543,
+          "endLine": 2543,
           "text": "NOTE: Ignore if the webview has not finished loading yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1976,44 +1976,6 @@
       ]
     },
     {
-      "path": "src/js/pages/entrance/scene/scene-map.ts",
-      "totalComments": 2,
-      "byKind": {
-        "note": 2
-      },
-      "byPrefix": {
-        "none": 2,
-        "AI": 0,
-        "NOTE": 0,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [
-        "saveEntranceSceneMapDraft",
-        "clearEntranceSceneMapDraft"
-      ],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 781,
-          "endLine": 781,
-          "text": "Ignore draft persistence failures in constrained environments.",
-          "prefix": null,
-          "scopeType": "function",
-          "scopeName": "saveEntranceSceneMapDraft"
-        },
-        {
-          "kind": "note",
-          "startLine": 805,
-          "endLine": 805,
-          "text": "Ignore draft persistence failures in constrained environments.",
-          "prefix": null,
-          "scopeType": "function",
-          "scopeName": "clearEntranceSceneMapDraft"
-        }
-      ]
-    },
-    {
       "path": "src/js/pages/entrance/webview-panel.ts",
       "totalComments": 2,
       "byKind": {
@@ -2094,6 +2056,70 @@
           "startLine": 284,
           "endLine": 284,
           "text": "NOTE: Auto-resize relies on runtime scrollHeight; keep inline height reset.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "src/js/scene/debug-store.ts",
+      "totalComments": 2,
+      "byKind": {
+        "note": 2
+      },
+      "byPrefix": {
+        "none": 2,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [
+        "clearSceneDebugDraft",
+        "createSceneDebugStore"
+      ],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 82,
+          "endLine": 82,
+          "text": "Ignore draft persistence failures in constrained environments.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "clearSceneDebugDraft"
+        },
+        {
+          "kind": "note",
+          "startLine": 90,
+          "endLine": 90,
+          "text": "Ignore draft persistence failures in constrained environments.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "createSceneDebugStore"
+        }
+      ]
+    },
+    {
+      "path": "src/js/scene/scene-config.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 3,
+          "endLine": 3,
+          "text": "NOTE: Compatibility shim for modules that have not yet switched to the theme-pack helpers.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -2264,8 +2290,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 266,
-          "endLine": 266,
+          "startLine": 268,
+          "endLine": 268,
           "text": "NOTE: Force re-fetch after injecting DOM.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2273,44 +2299,9 @@
         },
         {
           "kind": "note",
-          "startLine": 316,
-          "endLine": 316,
+          "startLine": 318,
+          "endLine": 318,
           "text": "NOTE: Progress is runtime-driven via CSS var to avoid width injection.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "src/js/ui/theme-manager.ts",
-      "totalComments": 2,
-      "byKind": {
-        "note": 2
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 2,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 296,
-          "endLine": 296,
-          "text": "NOTE: Avoid Logger.debug() here to prevent init issues during startup.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 354,
-          "endLine": 354,
-          "text": "NOTE: Expose to window for consistent access across Vite HMR reloads.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -4251,8 +4242,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 246,
-          "endLine": 246,
+          "startLine": 285,
+          "endLine": 285,
           "text": "NOTE: Empty or null uses the PATH \"opencode\" binary.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4583,7 +4574,7 @@
       "name": "setupReportPanel",
       "comments": [
         {
-          "startLine": 407,
+          "startLine": 394,
           "kind": "note",
           "text": "NOTE: Kept for backward compatibility."
         }
@@ -4650,24 +4641,24 @@
       ]
     },
     {
-      "file": "src/js/pages/entrance/scene/scene-map.ts",
+      "file": "src/js/scene/debug-store.ts",
       "type": "function",
-      "name": "clearEntranceSceneMapDraft",
+      "name": "clearSceneDebugDraft",
       "comments": [
         {
-          "startLine": 805,
+          "startLine": 82,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }
       ]
     },
     {
-      "file": "src/js/pages/entrance/scene/scene-map.ts",
+      "file": "src/js/scene/debug-store.ts",
       "type": "function",
-      "name": "saveEntranceSceneMapDraft",
+      "name": "createSceneDebugStore",
       "comments": [
         {
-          "startLine": 781,
+          "startLine": 90,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }

@@ -76,12 +76,11 @@ import {
 import { resolveSceneAvatarSource } from "../entrance/scene/scene-avatar.js";
 import { applySceneDebugFlag } from "../entrance/scene/scene-debug.js";
 import {
-  clearAssistantSceneMapDraft,
-  cloneEntranceSceneMap,
-  DEFAULT_ASSISTANT_SCENE_MAP,
-  loadAssistantSceneMapDraft,
-  saveAssistantSceneMapDraft,
-  serializeEntranceSceneMap,
+  getSceneHotspotLabelId,
+  getSceneNodeKindForHotspot,
+  hasSceneHotspotLabel,
+  isSceneDebugSelectionForCharacter,
+  isSceneDebugSelectionForHotspot,
   type EntranceSceneHotspotConfig,
   type EntranceSceneMap,
 } from "../entrance/scene/scene-map.js";
@@ -92,17 +91,23 @@ import {
   updateTrafficStatusView,
 } from "./view-helpers.js";
 import { SceneAlphaWindowFrameController } from "../../scene/alpha-window.js";
-import { getSceneCharacterRoleConfig } from "../../scene/scene-config.js";
+import { createSceneDebugStore } from "../../scene/debug-store.js";
 import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../../scene/scene-debug-rooms.js";
+import { bindSceneBackZones } from "../../scene/back-zone.js";
+import { navigateToScenePage, openSceneSettingsPanel } from "../../scene/navigation.js";
+import { getCoverSceneProjectionFromElement } from "../../scene/projection.js";
+import { syncSceneViewRuntime } from "../../scene/runtime.js";
+import {
+  getSceneCharacterRoleConfig,
+  getSceneRoomBackgroundSrc,
+  getSceneRoomViewPanelArtSrc,
+} from "../../scene/theme-pack.js";
 import type {
   ProviderScenarioCommandReport,
   ProviderScenarioProgressEvent,
   ProviderTestProgressEvent,
   ProviderTestSuite,
 } from "@shared/provider.js";
-import assistantSceneBackground from "../../../assets/themes/castle/assistant/assistant_bg_main.webp";
-import assistantSceneScreen from "../../../assets/themes/castle/assistant/assistant_screen.webp";
-
 interface ScenarioPanelState {
   scenarioId: string;
   providerName: string;
@@ -116,6 +121,7 @@ interface ScenarioPanelState {
 
 const ASSISTANT_CUSTOM_AVATAR_RELATIVE_PATH = "data/shared/assistant.png";
 const ASSISTANT_DEFAULT_AVATAR_PATH = "src/assets/opencode.png";
+const ASSISTANT_SCENE_DEBUG_STORE = createSceneDebugStore("assistant");
 
 function getAssistantCustomAvatarPath(): string {
   const dataDir = FileManager.getPath("data");
@@ -292,7 +298,7 @@ export class AssistantController {
     this.providerTestProgressHandler = null;
     this._assistantSceneScreenOpen = false;
     this._assistantSceneDebugEnabled = false;
-    this._assistantSceneMap = cloneEntranceSceneMap(DEFAULT_ASSISTANT_SCENE_MAP);
+    this._assistantSceneMap = ASSISTANT_SCENE_DEBUG_STORE.cloneDefault();
     this._assistantSceneEditor = null;
     this._assistantSceneSelection = null;
     this._assistantSceneResizeObserver = null;
@@ -334,8 +340,8 @@ export class AssistantController {
     ) as HTMLButtonElement | null;
     this._assistantSceneDebugEnabled = applySceneDebugFlag();
     this._assistantSceneMap =
-      (this._assistantSceneDebugEnabled ? loadAssistantSceneMapDraft() : null) ??
-      cloneEntranceSceneMap(DEFAULT_ASSISTANT_SCENE_MAP);
+      (this._assistantSceneDebugEnabled ? ASSISTANT_SCENE_DEBUG_STORE.loadDraft() : null) ??
+      ASSISTANT_SCENE_DEBUG_STORE.cloneDefault();
     const assistantContainer = document.querySelector(".assistant-container");
     const assistantSceneScreenView = document.getElementById("assistant-scene-screen-view");
     const assistantSceneScreenArt = document.getElementById(
@@ -501,12 +507,12 @@ export class AssistantController {
     ) as HTMLImageElement | null;
 
     if (background !== null) {
-      background.src = assistantSceneBackground;
+      background.src = getSceneRoomBackgroundSrc("assistant");
       background.alt = "";
     }
 
     if (screenArt !== null) {
-      screenArt.src = assistantSceneScreen;
+      screenArt.src = getSceneRoomViewPanelArtSrc("assistant", "primary") ?? "";
       screenArt.alt = "";
     }
 
@@ -544,10 +550,17 @@ export class AssistantController {
       navigateToRoom: (roomId: string): void => {
         this._navigateToSceneDebugRoom(roomId);
       },
-      supportsHotspotLabels: (): boolean => false,
       updateHotspot: (id, updater): void => {
         this._assistantSceneMap.hotspots = this._assistantSceneMap.hotspots.map((hotspot) =>
           hotspot.id === id ? updater(hotspot) : hotspot
+        );
+        this._persistAssistantSceneMapDraft();
+        this._renderAssistantScene();
+        this._assistantSceneEditor?.refresh();
+      },
+      updateLabelNode: (id, updater): void => {
+        this._assistantSceneMap.hotspots = this._assistantSceneMap.hotspots.map((hotspot) =>
+          getSceneHotspotLabelId(hotspot.id) === id ? updater(hotspot) : hotspot
         );
         this._persistAssistantSceneMapDraft();
         this._renderAssistantScene();
@@ -562,15 +575,15 @@ export class AssistantController {
         this._assistantSceneEditor?.refresh();
       },
       resetDraft: (): void => {
-        this._assistantSceneMap = cloneEntranceSceneMap(DEFAULT_ASSISTANT_SCENE_MAP);
-        clearAssistantSceneMapDraft();
+        this._assistantSceneMap = ASSISTANT_SCENE_DEBUG_STORE.cloneDefault();
+        ASSISTANT_SCENE_DEBUG_STORE.clearDraft();
         this._assistantSceneSelection = null;
         this._renderAssistantScene();
         this._assistantSceneEditor?.refresh();
       },
       copySceneMap: async (): Promise<void> => {
         try {
-          await navigator.clipboard.writeText(serializeEntranceSceneMap(this._assistantSceneMap));
+          await ASSISTANT_SCENE_DEBUG_STORE.copyToClipboard(this._assistantSceneMap);
         } catch {
           console.info("Assistant scene map copy failed.");
         }
@@ -622,9 +635,8 @@ export class AssistantController {
       }
 
       const labelText = this._resolveAssistantSceneHotspotLabel(hotspot);
-      const selected =
-        this._assistantSceneSelection?.kind === "hotspot" &&
-        this._assistantSceneSelection.id === hotspot.id;
+      const showLabel = hasSceneHotspotLabel(hotspot);
+      const selected = isSceneDebugSelectionForHotspot(this._assistantSceneSelection, hotspot);
       const label = button.querySelector<HTMLElement>(".assistant-scene__hotspot-label");
 
       button.dataset["hotspotId"] = hotspot.id;
@@ -665,7 +677,8 @@ export class AssistantController {
       button.ariaLabel = labelText;
 
       if (label !== null) {
-        label.textContent = labelText;
+        label.textContent = showLabel ? labelText : "";
+        label.hidden = !showLabel;
         label.classList.toggle("is-selected", selected);
       }
     });
@@ -727,8 +740,7 @@ export class AssistantController {
     );
     sceneCharacter.classList.toggle(
       "is-selected",
-      this._assistantSceneSelection?.kind === "character" &&
-        this._assistantSceneSelection.id === anchor.id
+      isSceneDebugSelectionForCharacter(this._assistantSceneSelection, anchor)
     );
 
     if (this._assistantSceneEditor !== null) {
@@ -826,26 +838,10 @@ export class AssistantController {
     scale: number;
   } {
     const sceneRoot = document.getElementById("assistant-scene-root");
-    if (!(sceneRoot instanceof HTMLElement)) {
-      return { offsetX: 0, offsetY: 0, scale: 1 };
-    }
-
-    const surfaceWidth = sceneRoot.clientWidth;
-    const surfaceHeight = sceneRoot.clientHeight;
-    if (surfaceWidth <= 0 || surfaceHeight <= 0) {
-      return { offsetX: 0, offsetY: 0, scale: 1 };
-    }
-
-    const scale = Math.max(
-      surfaceWidth / this._assistantSceneMap.referenceSize.width,
-      surfaceHeight / this._assistantSceneMap.referenceSize.height
+    return getCoverSceneProjectionFromElement(
+      sceneRoot instanceof HTMLElement ? sceneRoot : null,
+      this._assistantSceneMap.referenceSize
     );
-
-    return {
-      offsetX: (surfaceWidth - this._assistantSceneMap.referenceSize.width * scale) / 2,
-      offsetY: (surfaceHeight - this._assistantSceneMap.referenceSize.height * scale) / 2,
-      scale,
-    };
   }
 
   _getAssistantSceneDepthScale(depth: number): number {
@@ -871,7 +867,7 @@ export class AssistantController {
   }
 
   _persistAssistantSceneMapDraft(): void {
-    saveAssistantSceneMapDraft(this._assistantSceneMap);
+    ASSISTANT_SCENE_DEBUG_STORE.saveDraft(this._assistantSceneMap);
   }
 
   _isAssistantSceneDebugActive(): boolean {
@@ -893,24 +889,18 @@ export class AssistantController {
     const container = document.querySelector(".assistant-container");
     const sceneActive = isSceneUiMode();
 
-    if (sceneRoot instanceof HTMLElement) {
-      sceneRoot.hidden = !sceneActive;
-      sceneRoot.setAttribute("aria-hidden", String(!sceneActive));
-    }
-
-    if (screenView instanceof HTMLElement) {
-      screenView.setAttribute(
-        "aria-hidden",
-        String(!sceneActive || this._assistantSceneScreenOpen === false)
-      );
-    }
-
-    if (container instanceof HTMLElement) {
-      container.classList.toggle(
-        "is-scene-screen-open",
-        sceneActive && this._assistantSceneScreenOpen
-      );
-    }
+    syncSceneViewRuntime({
+      elements: {
+        root: sceneRoot instanceof HTMLElement ? sceneRoot : null,
+        view: screenView instanceof HTMLElement ? screenView : null,
+        room: container instanceof HTMLElement ? container : null,
+      },
+      state: {
+        sceneActive,
+        viewOpen: this._assistantSceneScreenOpen,
+        roomOpenClass: "is-scene-screen-open",
+      },
+    });
 
     if (sceneActive) {
       this._assistantSceneFrameController?.refresh();
@@ -920,21 +910,13 @@ export class AssistantController {
   }
 
   _navigateToPage(page: string): void {
-    document.dispatchEvent(
-      new CustomEvent<{ page: string }>("navigate-page", {
-        detail: { page },
-      })
-    );
+    navigateToScenePage(page);
   }
 
   _navigateToSceneDebugRoom(roomId: string): void {
     if (roomId === "settings") {
       this._setAssistantSceneScreenOpen(false);
-      document.dispatchEvent(
-        new CustomEvent("settings-hub:open", {
-          detail: { panel: null },
-        })
-      );
+      openSceneSettingsPanel(null);
       return;
     }
 
@@ -1579,12 +1561,18 @@ export class AssistantController {
   _setupAssistantSceneEvents(): void {
     const doorHotspot = document.getElementById("assistant-scene-door-hotspot");
     const screenHotspot = document.getElementById("assistant-scene-screen-hotspot");
-    const exitLeft = document.getElementById("assistant-scene-exit-left");
-    const exitRight = document.getElementById("assistant-scene-exit-right");
+    const sceneRoot = document.getElementById("assistant-scene-root");
 
     doorHotspot?.addEventListener("click", () => {
       if (this._assistantSceneEditor !== null) {
-        this._assistantSceneSelection = { kind: "hotspot", id: "door-entrance" };
+        const hotspot = this._resolveAssistantSceneHotspot("door-entrance");
+        if (hotspot === null) {
+          return;
+        }
+        this._assistantSceneSelection = {
+          kind: getSceneNodeKindForHotspot(hotspot),
+          id: hotspot.id,
+        };
         this._assistantSceneEditor.refresh();
         this._renderAssistantScene();
         return;
@@ -1595,7 +1583,14 @@ export class AssistantController {
 
     screenHotspot?.addEventListener("click", () => {
       if (this._assistantSceneEditor !== null) {
-        this._assistantSceneSelection = { kind: "hotspot", id: "screen-primary" };
+        const hotspot = this._resolveAssistantSceneHotspot("screen-primary");
+        if (hotspot === null) {
+          return;
+        }
+        this._assistantSceneSelection = {
+          kind: getSceneNodeKindForHotspot(hotspot),
+          id: hotspot.id,
+        };
         this._assistantSceneEditor.refresh();
         this._renderAssistantScene();
         return;
@@ -1603,13 +1598,11 @@ export class AssistantController {
       this._setAssistantSceneScreenOpen(true);
     });
 
-    exitLeft?.addEventListener("click", () => {
-      this._setAssistantSceneScreenOpen(false);
-    });
-
-    exitRight?.addEventListener("click", () => {
-      this._setAssistantSceneScreenOpen(false);
-    });
+    if (sceneRoot !== null) {
+      bindSceneBackZones(sceneRoot, () => {
+        this._setAssistantSceneScreenOpen(false);
+      });
+    }
   }
 
   _isConnected(): boolean {
@@ -2528,14 +2521,20 @@ export class AssistantController {
         `(function() {
           try {
             const nextTheme = ${JSON.stringify(theme)};
+            const nextAppearance = ${JSON.stringify(ThemeManager.getAppearance())};
             if (window.__ThemeManager && typeof window.__ThemeManager.set === "function") {
-              window.__ThemeManager.set(nextTheme, true);
+              window.__ThemeManager.set(nextTheme, false);
               return true;
             }
 
             document.documentElement.setAttribute("data-theme", nextTheme);
+            document.documentElement.setAttribute("data-theme-mode", nextAppearance.mode);
+            document.documentElement.setAttribute("data-theme-motion", nextAppearance.motion);
+            document.documentElement.setAttribute("data-theme-scale", nextAppearance.textScale);
+            document.documentElement.setAttribute("data-theme-surface", nextAppearance.surface);
+            document.documentElement.setAttribute("data-theme-contrast", nextAppearance.contrast);
             try {
-              localStorage.setItem("app-theme", nextTheme);
+              localStorage.setItem("app-theme-appearance", JSON.stringify(nextAppearance));
             } catch (_) {}
             return true;
           } catch (_) {

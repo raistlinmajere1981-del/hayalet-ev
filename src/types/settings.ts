@@ -110,8 +110,47 @@ export type UploadMethod = "catbox" | "uguu" | "tmpfile" | "googledrive" | "drag
 
 export type MessageMethod = "injection" | "xdotools";
 
+export const THEME_IDS = ["obsidian", "ivory-lab", "ember-console"] as const;
+export type ThemeId = (typeof THEME_IDS)[number];
+
+export function isThemeId(value: unknown): value is ThemeId {
+  return typeof value === "string" && THEME_IDS.includes(value as ThemeId);
+}
+
+export type ThemeAppearanceMode = "manual" | "system" | "schedule";
+export type ThemeAppearanceMotion = "full" | "reduced" | "off";
+export type ThemeAppearanceTextScale = "sm" | "md" | "lg";
+export type ThemeAppearanceSurface = "glass" | "soft" | "solid";
+export type ThemeAppearanceContrast = "normal" | "high";
+
+export interface ThemeAppearanceSettings {
+  mode?: ThemeAppearanceMode;
+  manualTheme?: ThemeId;
+  lightTheme?: ThemeId;
+  darkTheme?: ThemeId;
+  dayStart?: string;
+  nightStart?: string;
+  motion?: ThemeAppearanceMotion;
+  textScale?: ThemeAppearanceTextScale;
+  surface?: ThemeAppearanceSurface;
+  contrast?: ThemeAppearanceContrast;
+}
+
+export const DEFAULT_THEME_APPEARANCE_SETTINGS: Readonly<Required<ThemeAppearanceSettings>> = {
+  mode: "manual",
+  manualTheme: "obsidian",
+  lightTheme: "ivory-lab",
+  darkTheme: "obsidian",
+  dayStart: "07:00",
+  nightStart: "19:00",
+  motion: "full",
+  textScale: "md",
+  surface: "glass",
+  contrast: "normal",
+};
+
 export interface GeneralSettings {
-  theme?: "light" | "dark" | "system";
+  appearance?: ThemeAppearanceSettings;
   language?: AppLanguage;
   startMinimized?: boolean;
   closeToTray?: boolean;

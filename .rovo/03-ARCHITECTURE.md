@@ -128,6 +128,27 @@ hev_validate_provider_selectors{ provider_name: "chatgpt" };
 
 ---
 
+### 6. Scene Runtime ve Theme-Pack
+
+**Ana Dosyalar:**
+
+- `src/assets/themes/castle/scene/manifest.ts`
+- `src/js/scene/theme-pack.ts`
+- `src/js/scene/debug-store.ts`
+- `src/js/scene/back-zone.ts`
+- `src/js/pages/entrance/scene/scene-map.ts`
+
+**Rol:** Scene art, object-view art, back-zone policy ve debug draft anahtarlarını tek theme-pack sözleşmesinde toplar.
+
+**Kurallar:**
+
+- Scene asset ve policy okumaları `theme-pack.ts` üstünden yapılır.
+- `scene-map.ts` yalnızca room geometry/node default kaynağıdır; draft load/save işi burada tutulmaz.
+- `debug-store.ts` local draft persistence için tek generic katmandır.
+- Scene runtime tarafında `scene-config.ts` benzeri ikinci bir asset adapter katmanı tutulmaz.
+
+---
+
 ## 🔐 IPC — Inter-Process Communication
 
 ### Güvenlik Kuralı: `contextIsolation = true`

@@ -281,3 +281,84 @@
   --dot-send: var(--cyan-400);
   --dot-thinking: var(--emerald-400);
 }
+
+:root[data-theme-scale="sm"] {
+  --text-2xs: 9px;
+  --text-caption: 12px;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 19px;
+  --text-2xl: 22px;
+  --text-3xl: 30px;
+  --text-4xl: 34px;
+}
+
+:root[data-theme-scale="lg"] {
+  --text-2xs: 11px;
+  --text-caption: 14px;
+  --text-xs: 13px;
+  --text-sm: 15px;
+  --text-base: 17px;
+  --text-lg: 19px;
+  --text-xl: 22px;
+  --text-2xl: 26px;
+  --text-3xl: 34px;
+  --text-4xl: 40px;
+}
+
+:root[data-theme-surface="soft"] {
+  --glass-blur: blur(12px);
+  --surface-card-blur: blur(12px);
+  --toolbar-surface-blur: blur(12px);
+  --app-shell-surface-blur: blur(10px);
+  --bg-glass: color-mix(in srgb, var(--bg-surface-2) 82%, transparent);
+  --bg-input: color-mix(in srgb, var(--bg-surface-2) 74%, transparent);
+}
+
+:root[data-theme-surface="solid"] {
+  --glass-blur: none;
+  --surface-card-blur: none;
+  --toolbar-surface-blur: none;
+  --app-shell-surface-blur: none;
+  --bg-glass: color-mix(in srgb, var(--bg-surface-2) 96%, transparent);
+  --bg-input: color-mix(in srgb, var(--bg-surface-2) 94%, transparent);
+  --surface-card-bg: color-mix(in srgb, var(--bg-surface-2) 96%, transparent);
+  --toolbar-surface-bg: color-mix(in srgb, var(--bg-surface-2) 96%, transparent);
+}
+
+:root[data-theme-contrast="high"] {
+  --text-secondary: color-mix(in srgb, var(--text-primary) 84%, transparent);
+  --text-muted: color-mix(in srgb, var(--text-primary) 70%, transparent);
+  --text-tertiary: color-mix(in srgb, var(--text-primary) 58%, transparent);
+  --border-default: color-mix(in srgb, var(--text-primary) 20%, transparent);
+  --border-strong: color-mix(in srgb, var(--text-primary) 34%, transparent);
+  --hover-overlay: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --focus-ring:
+    0 0 0 2px var(--bg-app), 0 0 0 4px color-mix(in srgb, var(--color-accent) 92%, white 8%);
+}
+
+:root[data-theme-motion="reduced"] {
+  --duration-fast: 110ms;
+  --duration-normal: 180ms;
+  --duration-slow: 260ms;
+  --duration-theme-transition: 120ms;
+}
+
+:root[data-theme-motion="reduced"] *,
+:root[data-theme-motion="reduced"] *::before,
+:root[data-theme-motion="reduced"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+
+:root[data-theme-motion="off"] *,
+:root[data-theme-motion="off"] *::before,
+:root[data-theme-motion="off"] *::after {
+  animation: none !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}

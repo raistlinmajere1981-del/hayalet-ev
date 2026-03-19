@@ -1,0 +1,51 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { SCENE_NODE_KINDS, SCENE_ROOM_IDS } from "../../src/js/scene/schema.ts";
+import {
+  buildSceneNodesFromMap,
+  buildSceneRoomDefinition,
+  DEFAULT_ASSISTANT_SCENE_MAP,
+  DEFAULT_ENTRANCE_SCENE_MAP,
+  DEFAULT_SERVER_SCENE_MAP,
+} from "../../src/js/pages/entrance/scene/scene-map.ts";
+
+test("scene schema exposes the canonical room and node registries", () => {
+  assert.deepEqual(SCENE_ROOM_IDS, ["entrance", "analyze", "assistant", "server", "settings"]);
+  assert.deepEqual(SCENE_NODE_KINDS, ["object", "door", "label", "character"]);
+});
+
+test("entrance scene map can be represented through the shared node schema", () => {
+  const nodes = buildSceneNodesFromMap(DEFAULT_ENTRANCE_SCENE_MAP);
+
+  assert.ok(nodes.some((node) => node.kind === "door" && node.id === "door-analyze"));
+  assert.ok(nodes.some((node) => node.kind === "door" && node.id === "door-settings"));
+  assert.ok(nodes.some((node) => node.kind === "label" && node.id === "door-settings-label"));
+  assert.ok(nodes.some((node) => node.kind === "character" && node.id === "anchor-assistant"));
+});
+
+test("assistant room definition keeps room metadata alongside shared scene nodes", () => {
+  const room = buildSceneRoomDefinition("assistant", DEFAULT_ASSISTANT_SCENE_MAP);
+
+  assert.equal(room.referenceSize.width, 1920);
+  assert.equal(room.referenceSize.height, 1080);
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "door-entrance"));
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "screen-primary"));
+  assert.ok(room.nodes.some((node) => node.kind === "character" && node.id === "anchor-ai0"));
+  assert.ok(room.nodes.every((node) => node.kind !== "door"));
+  assert.ok(room.nodes.every((node) => node.kind !== "label"));
+});
+
+test("server room definition participates in the shared node schema without legacy door nodes", () => {
+  const room = buildSceneRoomDefinition("server", DEFAULT_SERVER_SCENE_MAP);
+
+  assert.equal(room.referenceSize.width, 1920);
+  assert.equal(room.referenceSize.height, 1080);
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "door-entrance"));
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "screen-primary"));
+  assert.ok(
+    room.nodes.some((node) => node.kind === "character" && node.id === "anchor-ai1-primary")
+  );
+  assert.ok(room.nodes.every((node) => node.kind !== "door"));
+  assert.ok(room.nodes.every((node) => node.kind !== "label"));
+});

@@ -8,16 +8,15 @@ import {
 import { resolveSceneAvatarSource } from "../pages/entrance/scene/scene-avatar.js";
 import { applySceneDebugFlag } from "../pages/entrance/scene/scene-debug.js";
 import {
-  clearSettingsSceneMapDraft,
-  cloneEntranceSceneMap,
-  DEFAULT_SETTINGS_SCENE_MAP,
-  loadSettingsSceneMapDraft,
-  saveSettingsSceneMapDraft,
-  serializeEntranceSceneMap,
+  getSceneHotspotLabelId,
+  getSceneNodeKindForHotspot,
+  hasSceneHotspotLabel,
+  isSceneDebugSelectionForCharacter,
+  isSceneDebugSelectionForHotspot,
   type EntranceSceneHotspotConfig,
   type EntranceSceneMap,
 } from "../pages/entrance/scene/scene-map.js";
-import { getSceneCharacterRoleConfig, SCENE_THEME_CONFIG } from "../scene/scene-config.js";
+import { createSceneDebugStore } from "../scene/debug-store.js";
 import {
   getActiveSceneDebugRoomId,
   isSceneDebugRoomId,
@@ -25,7 +24,16 @@ import {
   setActiveSceneDebugRoomId,
 } from "../scene/scene-debug-rooms.js";
 import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
+import { bindSceneBackZones } from "../scene/back-zone.js";
+import { getCoverSceneProjection } from "../scene/projection.js";
+import { syncSceneViewRuntime } from "../scene/runtime.js";
+import {
+  getSceneCharacterRoleConfig,
+  getSceneRoomBackgroundSrc,
+  getSceneRoomPanelSrc,
+} from "../scene/theme-pack.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
+import { syncOverlayScrollLock } from "./overlay-scroll-lock.js";
 
 const SETTINGS_PANELS = ["theme", "accounts", "backup", "rooms", "live-log"] as const;
 const SETTINGS_SCENE_HOTSPOT_SELECTORS = {
@@ -109,6 +117,8 @@ function dispatchSettingsHubState(state: SettingsHubState): void {
   );
 }
 
+const SETTINGS_SCENE_DEBUG_STORE = createSceneDebugStore("settings");
+
 class SettingsSceneController {
   private overlay: HTMLElement;
   private root: HTMLElement;
@@ -127,7 +137,7 @@ class SettingsSceneController {
   private onReturnToRoom: () => void;
   private state: SettingsSceneState = { open: false, activePanel: null };
   private panelsPlaceholder: Comment | null = null;
-  private sceneMap: EntranceSceneMap = cloneEntranceSceneMap(DEFAULT_SETTINGS_SCENE_MAP);
+  private sceneMap: EntranceSceneMap = SETTINGS_SCENE_DEBUG_STORE.cloneDefault();
   private sceneDebugEnabled = false;
   private editorSelection: EntranceSceneEditorSelection = null;
   private editor: EntranceSceneEditor | null = null;
@@ -159,9 +169,9 @@ class SettingsSceneController {
   init(): void {
     this.sceneDebugEnabled = applySceneDebugFlag();
     this.sceneMap =
-      (this.sceneDebugEnabled ? loadSettingsSceneMapDraft() : null) ??
-      cloneEntranceSceneMap(DEFAULT_SETTINGS_SCENE_MAP);
-    this.background.src = SCENE_THEME_CONFIG.settings.backgroundSrc;
+      (this.sceneDebugEnabled ? SETTINGS_SCENE_DEBUG_STORE.loadDraft() : null) ??
+      SETTINGS_SCENE_DEBUG_STORE.cloneDefault();
+    this.background.src = getSceneRoomBackgroundSrc("settings");
     this.background.alt = "";
     this.bindSceneEvents();
     this.setupEditor();
@@ -182,15 +192,23 @@ class SettingsSceneController {
     const sceneActive = nextState.open && isSceneUiMode();
     const panelOpen = sceneActive && nextState.activePanel !== null;
 
-    this.overlay.classList.toggle("is-scene-mode", sceneActive);
-    this.root.hidden = !sceneActive;
-    this.root.setAttribute("aria-hidden", String(!sceneActive));
-    this.classicLayout.classList.toggle("is-hidden", sceneActive);
-    this.roomView.hidden = !sceneActive || panelOpen;
-    this.roomView.setAttribute("aria-hidden", String(!sceneActive || panelOpen));
-    this.panelView.classList.toggle("is-active", panelOpen);
-    this.panelView.setAttribute("aria-hidden", String(!panelOpen));
-    this.panelSlot.toggleAttribute("hidden", !panelOpen);
+    syncSceneViewRuntime({
+      elements: {
+        root: this.root,
+        roomView: this.roomView,
+        view: this.panelView,
+        overlay: this.overlay,
+        classicLayout: this.classicLayout,
+        viewSlot: this.panelSlot,
+      },
+      state: {
+        sceneActive,
+        viewOpen: panelOpen,
+        viewActiveClass: "is-active",
+        overlayActiveClass: "is-scene-mode",
+        classicLayoutHiddenClass: "is-hidden",
+      },
+    });
 
     if (!sceneActive) {
       this.restorePanelsContainer();
@@ -221,17 +239,9 @@ class SettingsSceneController {
       });
     });
 
-    this.root
-      .querySelector<HTMLElement>("#settings-scene-exit-left")
-      ?.addEventListener("click", () => {
-        this.onReturnToRoom();
-      });
-
-    this.root
-      .querySelector<HTMLElement>("#settings-scene-exit-right")
-      ?.addEventListener("click", () => {
-        this.onReturnToRoom();
-      });
+    bindSceneBackZones(this.root, () => {
+      this.onReturnToRoom();
+    });
   }
 
   private setupEditor(): void {
@@ -270,10 +280,17 @@ class SettingsSceneController {
           })
         );
       },
-      supportsHotspotLabels: (): boolean => false,
       updateHotspot: (id, updater): void => {
         this.sceneMap.hotspots = this.sceneMap.hotspots.map((hotspot) =>
           hotspot.id === id ? updater(hotspot) : hotspot
+        );
+        this.persistSceneMapDraft();
+        this.renderHotspots();
+        this.editor?.refresh();
+      },
+      updateLabelNode: (id, updater): void => {
+        this.sceneMap.hotspots = this.sceneMap.hotspots.map((hotspot) =>
+          getSceneHotspotLabelId(hotspot.id) === id ? updater(hotspot) : hotspot
         );
         this.persistSceneMapDraft();
         this.renderHotspots();
@@ -288,8 +305,8 @@ class SettingsSceneController {
         this.editor?.refresh();
       },
       resetDraft: (): void => {
-        this.sceneMap = cloneEntranceSceneMap(DEFAULT_SETTINGS_SCENE_MAP);
-        clearSettingsSceneMapDraft();
+        this.sceneMap = SETTINGS_SCENE_DEBUG_STORE.cloneDefault();
+        SETTINGS_SCENE_DEBUG_STORE.clearDraft();
         this.editorSelection = null;
         this.renderHotspots();
         void this.renderCharacter();
@@ -297,7 +314,7 @@ class SettingsSceneController {
       },
       copySceneMap: async (): Promise<void> => {
         try {
-          await navigator.clipboard.writeText(serializeEntranceSceneMap(this.sceneMap));
+          await SETTINGS_SCENE_DEBUG_STORE.copyToClipboard(this.sceneMap);
         } catch {
           console.info("Settings scene map copy failed.");
         }
@@ -342,7 +359,7 @@ class SettingsSceneController {
       return;
     }
 
-    this.panelArt.src = SCENE_THEME_CONFIG.settings.panels[panelId];
+    this.panelArt.src = getSceneRoomPanelSrc("settings", panelId) ?? "";
     this.panelArt.alt = "";
     this.panelSlot.dataset["settingsPanel"] = panelId;
     this.alphaFrameController.refresh();
@@ -384,20 +401,12 @@ class SettingsSceneController {
   } {
     const surfaceWidth = this.root.clientWidth;
     const surfaceHeight = this.root.clientHeight;
-    if (surfaceWidth <= 0 || surfaceHeight <= 0) {
-      return { offsetX: 0, offsetY: 0, scale: 1 };
-    }
-
-    const scale = Math.max(
-      surfaceWidth / this.sceneMap.referenceSize.width,
-      surfaceHeight / this.sceneMap.referenceSize.height
-    );
-
-    return {
-      offsetX: (surfaceWidth - this.sceneMap.referenceSize.width * scale) / 2,
-      offsetY: (surfaceHeight - this.sceneMap.referenceSize.height * scale) / 2,
-      scale,
-    };
+    return getCoverSceneProjection({
+      surfaceWidth,
+      surfaceHeight,
+      referenceWidth: this.sceneMap.referenceSize.width,
+      referenceHeight: this.sceneMap.referenceSize.height,
+    });
   }
 
   private getDepthScale(depth: number): number {
@@ -443,8 +452,8 @@ class SettingsSceneController {
       }
 
       const labelText = this.resolveHotspotLabel(hotspot);
-      const selected =
-        this.editorSelection?.kind === "hotspot" && this.editorSelection.id === hotspot.id;
+      const showLabel = hasSceneHotspotLabel(hotspot);
+      const selected = isSceneDebugSelectionForHotspot(this.editorSelection, hotspot);
       const label = button.querySelector<HTMLElement>(".settings-scene__hotspot-label");
 
       button.dataset["hotspotId"] = hotspot.id;
@@ -456,7 +465,8 @@ class SettingsSceneController {
       button.ariaLabel = labelText;
 
       if (label !== null) {
-        label.textContent = labelText;
+        label.textContent = showLabel ? labelText : "";
+        label.hidden = !showLabel;
         label.classList.toggle("is-selected", selected);
       }
     });
@@ -469,7 +479,10 @@ class SettingsSceneController {
     }
 
     if (this.isEditorActive()) {
-      this.editorSelection = { kind: "hotspot", id: hotspot.id };
+      this.editorSelection = {
+        kind: getSceneNodeKindForHotspot(hotspot),
+        id: hotspot.id,
+      };
       this.editor?.refresh();
       this.renderHotspots();
       return;
@@ -496,7 +509,7 @@ class SettingsSceneController {
   }
 
   private persistSceneMapDraft(): void {
-    saveSettingsSceneMapDraft(this.sceneMap);
+    SETTINGS_SCENE_DEBUG_STORE.saveDraft(this.sceneMap);
   }
 
   private async renderCharacter(): Promise<void> {
@@ -531,7 +544,7 @@ class SettingsSceneController {
     sceneCharacter.dataset["role"] = "user";
     sceneCharacter.classList.toggle(
       "is-selected",
-      this.editorSelection?.kind === "character" && this.editorSelection.id === anchor.id
+      isSceneDebugSelectionForCharacter(this.editorSelection, anchor)
     );
     sceneCharacter.style.setProperty(
       "--scene-character-left",
@@ -747,7 +760,7 @@ export function setupSettingsHub(): void {
 
     overlay.classList.remove("is-hidden");
     overlay.setAttribute("aria-hidden", "false");
-    document.body.classList.add("is-scroll-locked");
+    syncOverlayScrollLock();
     syncActivePanelUi();
     syncSceneUi();
     emitState();
@@ -762,7 +775,7 @@ export function setupSettingsHub(): void {
     visiblePanel = null;
     overlay.classList.add("is-hidden");
     overlay.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("is-scroll-locked");
+    syncOverlayScrollLock();
     syncActivePanelUi();
     syncSceneUi();
     emitState();
@@ -785,6 +798,11 @@ export function setupSettingsHub(): void {
   sceneController.init();
 
   openButton.addEventListener("click", () => {
+    if (isOpen) {
+      close();
+      return;
+    }
+
     open(isSceneUiMode() ? null : activePanel);
   });
 

@@ -77,6 +77,11 @@
   --assistant-scene-exit-width-min: 4.75rem;
   --assistant-scene-exit-width-max: 12rem;
   --assistant-scene-exit-text-size: 0.76rem;
+  --scene-back-zone-width-min: var(--assistant-scene-exit-width-min);
+  --scene-back-zone-width-max: var(--assistant-scene-exit-width-max);
+  --scene-back-zone-text-size: var(--assistant-scene-exit-text-size);
+  --scene-back-zone-letter-spacing: var(--assistant-scene-character-label-letter-spacing);
+  --scene-back-zone-shift: 0.2rem;
   --assistant-scene-selected-head-ring: 3px;
   --assistant-scene-selected-head-halo: 10px;
   --assistant-scene-panel-shift-y: 1.5rem;
@@ -416,86 +421,6 @@
     linear-gradient(90deg, rgb(7 5 5 / 0.58), transparent 18%, transparent 82%, rgb(7 5 5 / 0.58)),
     radial-gradient(circle at center, transparent 44%, rgb(0 0 0 / 0.22) 100%);
   pointer-events: none;
-}
-
-.assistant-scene__exit {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: clamp(var(--assistant-scene-exit-width-min), 12vw, var(--assistant-scene-exit-width-max));
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-3);
-  border: 0;
-  background: transparent;
-  color: rgb(255 231 196 / 0.9);
-  cursor: pointer;
-  outline: none;
-  opacity: 0.72;
-  transition:
-    opacity var(--duration-normal) var(--ease-out),
-    background var(--duration-normal) var(--ease-out);
-}
-
-.assistant-scene__exit--left {
-  left: 0;
-  justify-content: flex-start;
-  background: linear-gradient(90deg, rgb(10 7 7 / 0.22), transparent);
-}
-
-.assistant-scene__exit--right {
-  right: 0;
-  justify-content: flex-end;
-  background: linear-gradient(-90deg, rgb(10 7 7 / 0.22), transparent);
-}
-
-.assistant-scene__exit-arrow,
-.assistant-scene__exit-copy {
-  opacity: 0;
-  transform: translateX(0);
-  transition:
-    opacity var(--duration-normal) var(--ease-out),
-    transform var(--duration-normal) var(--ease-out);
-}
-
-.assistant-scene__exit-copy {
-  font-family: var(--font-scene-sans);
-  font-size: var(--assistant-scene-exit-text-size);
-  font-weight: var(--font-semibold);
-  letter-spacing: var(--assistant-scene-character-label-letter-spacing);
-  text-transform: uppercase;
-}
-
-.assistant-scene__exit:hover,
-.assistant-scene__exit:focus-visible {
-  opacity: 1;
-  outline: none;
-}
-
-.assistant-scene__exit--left:hover .assistant-scene__exit-arrow,
-.assistant-scene__exit--left:focus-visible .assistant-scene__exit-arrow,
-.assistant-scene__exit--left:hover .assistant-scene__exit-copy,
-.assistant-scene__exit--left:focus-visible .assistant-scene__exit-copy,
-.assistant-scene__exit--right:hover .assistant-scene__exit-arrow,
-.assistant-scene__exit--right:focus-visible .assistant-scene__exit-arrow,
-.assistant-scene__exit--right:hover .assistant-scene__exit-copy,
-.assistant-scene__exit--right:focus-visible .assistant-scene__exit-copy {
-  opacity: 1;
-}
-
-.assistant-scene__exit--left:hover .assistant-scene__exit-arrow,
-.assistant-scene__exit--left:focus-visible .assistant-scene__exit-arrow,
-.assistant-scene__exit--left:hover .assistant-scene__exit-copy,
-.assistant-scene__exit--left:focus-visible .assistant-scene__exit-copy {
-  transform: translateX(0.2rem);
-}
-
-.assistant-scene__exit--right:hover .assistant-scene__exit-arrow,
-.assistant-scene__exit--right:focus-visible .assistant-scene__exit-arrow,
-.assistant-scene__exit--right:hover .assistant-scene__exit-copy,
-.assistant-scene__exit--right:focus-visible .assistant-scene__exit-copy {
-  transform: translateX(-0.2rem);
 }
 
 [data-scene-debug="true"] .assistant-scene__character {
@@ -853,13 +778,6 @@
   color: var(--text-muted);
 }
 
-.assistant-eyebrow,
-.assistant-panel-kicker,
-.assistant-provider-label,
-.assistant-runtime-label {
-  display: none;
-}
-
 .assistant-identity-row {
   display: flex;
   align-items: center;
@@ -1088,9 +1006,19 @@
 }
 
 .assistant-opencode-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   min-width: 0;
   max-width: none;
   width: 100%;
+}
+
+.assistant-opencode-indicator.is-success,
+.assistant-opencode-indicator.is-warning,
+.assistant-opencode-indicator.is-error {
+  background: transparent;
+  color: inherit;
 }
 
 .assistant-opencode-indicator .status-dot {
@@ -1098,16 +1026,27 @@
   height: var(--size-dot-control);
 }
 
-.assistant-opencode-indicator-text {
+.assistant-opencode-indicator .status-info {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   flex: 1 1 auto;
-  min-width: 14ch;
+}
+
+.assistant-opencode-indicator .status-info span {
   color: var(--text-primary);
-  line-height: 1;
+  font-weight: 600;
+  font-size: var(--assistant-status-font-size);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.assistant-opencode-indicator-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1;
   display: block;
-  font-size: var(--assistant-status-inline-font-size);
 }
 
 .assistant-opencode-action-btn {
@@ -1115,13 +1054,14 @@
   min-width: var(--size-control-compact);
   height: var(--size-control-compact);
   padding: 0;
-  border: var(--border-1) solid var(--assistant-pill-accent-border);
+  border: var(--border-1) solid var(--assistant-pill-border);
   border-radius: var(--radius-full);
-  background: var(--assistant-pill-accent-bg);
-  color: var(--color-accent);
+  background: transparent;
+  color: var(--text-secondary);
   flex: 0 0 auto;
   justify-content: center;
   margin-left: auto;
+  box-shadow: none;
 }
 
 .assistant-opencode-action-btn.is-busy {
@@ -1130,7 +1070,8 @@
 }
 
 .assistant-opencode-action-btn:hover:not(:disabled) {
-  background: var(--assistant-pill-accent-bg-hover);
+  border-color: var(--assistant-pill-border-strong);
+  background: transparent;
   color: var(--text-primary);
 }
 
@@ -1153,18 +1094,6 @@
 .assistant-opencode-actions .btn-icon:hover:not(:disabled) {
   border-color: var(--assistant-pill-border-strong);
   background: var(--assistant-pill-bg-hover);
-}
-
-.assistant-opencode-indicator.is-success {
-  color: var(--text-primary);
-}
-
-.assistant-opencode-indicator.is-warning {
-  color: var(--text-primary);
-}
-
-.assistant-opencode-indicator.is-error {
-  color: var(--text-primary);
 }
 
 .assistant-opencode-indicator-dot.is-success {

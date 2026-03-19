@@ -143,14 +143,14 @@
           </button>
         </div>
 
-        <div class="assistant-scene__room-layer">
+        <div class="assistant-scene__room-layer scene-shell__room-layer">
           <button
             class="assistant-scene__hotspot assistant-scene__hotspot--door"
             id="assistant-scene-door-hotspot"
             type="button"
             aria-label="Go to entrance"
           >
-            <span class="assistant-scene__hotspot-label">Entrance</span>
+            <span class="assistant-scene__hotspot-label" hidden>Entrance</span>
           </button>
 
           <button
@@ -159,7 +159,7 @@
             type="button"
             aria-label="Open assistant screen"
           >
-            <span class="assistant-scene__hotspot-label">Open screen</span>
+            <span class="assistant-scene__hotspot-label" hidden>Open screen</span>
           </button>
 
           <div
@@ -171,29 +171,39 @@
         <div class="entrance-scene__editor-host" id="assistant-scene-editor-host"></div>
 
         <div
-          class="assistant-scene__screen-view"
+          class="assistant-scene__screen-view scene-shell__view"
           id="assistant-scene-screen-view"
           aria-hidden="true"
         >
           <img class="assistant-scene__screen-art" id="assistant-scene-screen-art" alt="" />
           <div class="assistant-scene__screen-shade"></div>
           <button
-            class="assistant-scene__exit assistant-scene__exit--left"
+            class="assistant-scene__exit assistant-scene__exit--left scene-back-zone"
             id="assistant-scene-exit-left"
             type="button"
+            data-scene-back-zone="left"
             aria-label="Return to room"
           >
-            <span class="assistant-scene__exit-arrow" aria-hidden="true">←</span>
-            <span class="assistant-scene__exit-copy" aria-hidden="true">Back</span>
+            <span class="assistant-scene__exit-arrow scene-back-zone__arrow" aria-hidden="true"
+              >←</span
+            >
+            <span class="assistant-scene__exit-copy scene-back-zone__copy" aria-hidden="true"
+              >Back</span
+            >
           </button>
           <button
-            class="assistant-scene__exit assistant-scene__exit--right"
+            class="assistant-scene__exit assistant-scene__exit--right scene-back-zone"
             id="assistant-scene-exit-right"
             type="button"
+            data-scene-back-zone="right"
             aria-label="Return to room"
           >
-            <span class="assistant-scene__exit-copy" aria-hidden="true">Back</span>
-            <span class="assistant-scene__exit-arrow" aria-hidden="true">→</span>
+            <span class="assistant-scene__exit-copy scene-back-zone__copy" aria-hidden="true"
+              >Back</span
+            >
+            <span class="assistant-scene__exit-arrow scene-back-zone__arrow" aria-hidden="true"
+              >→</span
+            >
           </button>
         </div>
       </div>
@@ -342,13 +352,15 @@
                 class="status-dot assistant-opencode-indicator-dot is-loading"
                 id="assistant-opencode-indicator-dot"
               ></span>
-              <span
-                class="assistant-opencode-indicator-text"
-                id="assistant-opencode-indicator-text"
-                role="status"
-                aria-live="polite"
-                data-shell-i18n-text="assistant.opencodeDoctor.loading.checkingUpdates"
-              ></span>
+              <div class="status-info assistant-opencode-indicator-info">
+                <span
+                  class="assistant-opencode-indicator-text"
+                  id="assistant-opencode-indicator-text"
+                  role="status"
+                  aria-live="polite"
+                  data-shell-i18n-text="assistant.opencodeDoctor.loading.checkingUpdates"
+                ></span>
+              </div>
               <button
                 class="btn btn-ghost btn-icon btn-sm assistant-opencode-action-btn"
                 id="assistant-opencode-action-btn"

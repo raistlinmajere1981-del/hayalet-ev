@@ -9,9 +9,20 @@ import { SlotController } from "../modules/slot-controller.js";
 import { ServerCommands } from "../modules/server-commands.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { ButtonStates } from "../ui/button-states.js";
-import { SCENE_THEME_CONFIG, getSceneCharacterRoleConfig } from "../scene/scene-config.js";
 import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
+import { bindSceneBackZones } from "../scene/back-zone.js";
+import { createSceneDebugStore } from "../scene/debug-store.js";
+import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
+import { getCoverSceneProjectionFromElement } from "../scene/projection.js";
+import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../scene/scene-debug-rooms.js";
+import { syncSceneViewRuntime } from "../scene/runtime.js";
+import {
+  getSceneCharacterRoleConfig,
+  getSceneRoomBackgroundSrc,
+  getSceneRoomViewPanelArtSrc,
+} from "../scene/theme-pack.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
+import { shellT } from "../app/shell-i18n.js";
 import {
   buildCommandTestMessage,
   buildInlineCommandSnippet,
@@ -42,6 +53,20 @@ import {
 } from "./server/timeline-controller.js";
 import { resolveSceneAvatarSource } from "./entrance/scene/scene-avatar.js";
 import { getSceneCharacterState } from "./entrance/scene/scene-character-state.js";
+import { applySceneDebugFlag } from "./entrance/scene/scene-debug.js";
+import {
+  EntranceSceneEditor,
+  type EntranceSceneEditorSelection,
+} from "./entrance/scene/scene-editor.js";
+import {
+  getSceneHotspotLabelId,
+  getSceneNodeKindForHotspot,
+  hasSceneHotspotLabel,
+  isSceneDebugSelectionForCharacter,
+  isSceneDebugSelectionForHotspot,
+  type EntranceSceneHotspotConfig,
+  type EntranceSceneMap,
+} from "./entrance/scene/scene-map.js";
 import { initServerControllerPage } from "./server/init-controller.js";
 import type { ServerInitContext } from "./server/init-controller.js";
 import type { TimelineEvent } from "./server-timeline.js";
@@ -49,14 +74,7 @@ import type { TimelineEvent } from "./server-timeline.js";
 const TIMELINE_SESSION_BATCH = 3;
 const TIMELINE_TOP_THRESHOLD = 52;
 const SERVER_SCENE_SLOTS = ["ai1", "ai2"] as const;
-
-const SERVER_SCENE_CHARACTER_LAYOUT: Record<
-  (typeof SERVER_SCENE_SLOTS)[number],
-  { left: string; bottom: string; scale: number; depth: number }
-> = {
-  ai1: { left: "35%", bottom: "11.5%", scale: 0.86, depth: 3 },
-  ai2: { left: "63%", bottom: "10.5%", scale: 0.84, depth: 5 },
-};
+const SERVER_SCENE_DEBUG_STORE = createSceneDebugStore("server");
 
 function getFirstNonEmpty(...values: Array<string | null | undefined>): string | null {
   for (const value of values) {
@@ -107,9 +125,15 @@ export class ServerController {
   timelineLoadedSessionIds: Set<string>;
   timelineLoading: boolean;
   timelineInitialized: boolean;
+  _serverSceneDebugEnabled: boolean;
   _serverSceneScreenOpen: boolean;
   _serverSceneBindingsReady: boolean;
   _serverSceneFrameController: SceneAlphaWindowFrameController | null;
+  _serverSceneMap: EntranceSceneMap;
+  _serverSceneEditor: EntranceSceneEditor | null;
+  _serverSceneSelection: EntranceSceneEditorSelection;
+  _serverSceneResizeObserver: ResizeObserver | null;
+  _serverSceneCharacterRenderToken: number;
 
   constructor() {
     this.isDelegated = false;
@@ -139,9 +163,15 @@ export class ServerController {
     this.timelineLoadedSessionIds = new Set();
     this.timelineLoading = false;
     this.timelineInitialized = false;
+    this._serverSceneDebugEnabled = false;
     this._serverSceneScreenOpen = false;
     this._serverSceneBindingsReady = false;
     this._serverSceneFrameController = null;
+    this._serverSceneMap = SERVER_SCENE_DEBUG_STORE.cloneDefault();
+    this._serverSceneEditor = null;
+    this._serverSceneSelection = null;
+    this._serverSceneResizeObserver = null;
+    this._serverSceneCharacterRenderToken = 0;
   }
 
   private getServerCommandsApi(): ServerCommandsApi {
@@ -250,25 +280,220 @@ export class ServerController {
     ) as HTMLImageElement | null;
     const screenView = document.getElementById("server-scene-screen-view");
     const screenArt = document.getElementById("server-scene-screen-art") as HTMLImageElement | null;
+    const panelArtSrc = getSceneRoomViewPanelArtSrc("server", "primary") ?? "";
 
     if (background !== null) {
-      background.src = SCENE_THEME_CONFIG.server.backgroundSrc;
+      background.src = getSceneRoomBackgroundSrc("server");
       background.alt = "";
     }
 
     if (screenView !== null) {
-      screenView.style.setProperty(
-        "--server-scene-screen-art-url",
-        `url("${SCENE_THEME_CONFIG.server.panelArtSrc}")`
-      );
+      screenView.style.setProperty("--server-scene-screen-art-url", `url("${panelArtSrc}")`);
     }
 
     if (screenArt !== null) {
-      screenArt.src = SCENE_THEME_CONFIG.server.panelArtSrc;
+      screenArt.src = panelArtSrc;
       screenArt.alt = "";
     }
 
     this._serverSceneFrameController?.refresh();
+  }
+
+  private setupServerSceneDebug(): void {
+    const editorHost = document.getElementById("server-scene-editor-host");
+    if (!(editorHost instanceof HTMLElement)) {
+      this._serverSceneEditor = null;
+      return;
+    }
+
+    if (!this._serverSceneDebugEnabled) {
+      editorHost.replaceChildren();
+      this._serverSceneEditor = null;
+      return;
+    }
+
+    this._serverSceneEditor = new EntranceSceneEditor(editorHost, {
+      isActive: (): boolean => this.isServerSceneDebugActive(),
+      getSceneMap: (): EntranceSceneMap => this._serverSceneMap,
+      getSelection: (): EntranceSceneEditorSelection => this._serverSceneSelection,
+      getRoomOptions: (): Array<{ id: string; label: string }> =>
+        SCENE_DEBUG_ROOMS.map((room) => ({
+          id: room.id,
+          label: shellT(room.labelKey),
+        })),
+      getActiveRoomId: (): string => "server",
+      setSelection: (selection): void => {
+        this._serverSceneSelection = selection;
+        this._serverSceneEditor?.refresh();
+        this.renderServerScene();
+      },
+      navigateToRoom: (roomId: string): void => {
+        this.setServerSceneScreenOpen(false);
+        if (roomId === "settings") {
+          openSceneSettingsPanel(null);
+          return;
+        }
+
+        this._navigateToPage(roomId);
+      },
+      updateHotspot: (id, updater): void => {
+        this._serverSceneMap.hotspots = this._serverSceneMap.hotspots.map((hotspot) =>
+          hotspot.id === id ? updater(hotspot) : hotspot
+        );
+        this.persistServerSceneMapDraft();
+        this.renderServerScene();
+        this._serverSceneEditor?.refresh();
+      },
+      updateLabelNode: (id, updater): void => {
+        this._serverSceneMap.hotspots = this._serverSceneMap.hotspots.map((hotspot) =>
+          getSceneHotspotLabelId(hotspot.id) === id ? updater(hotspot) : hotspot
+        );
+        this.persistServerSceneMapDraft();
+        this.renderServerScene();
+        this._serverSceneEditor?.refresh();
+      },
+      updateCharacterAnchor: (id, updater): void => {
+        this._serverSceneMap.characterAnchors = this._serverSceneMap.characterAnchors.map(
+          (anchor) => (anchor.id === id ? updater(anchor) : anchor)
+        );
+        this.persistServerSceneMapDraft();
+        void this.renderServerSceneCharacters();
+        this._serverSceneEditor?.refresh();
+      },
+      resetDraft: (): void => {
+        this._serverSceneMap = SERVER_SCENE_DEBUG_STORE.cloneDefault();
+        SERVER_SCENE_DEBUG_STORE.clearDraft();
+        this._serverSceneSelection = null;
+        this.renderServerScene();
+        this._serverSceneEditor?.refresh();
+      },
+      copySceneMap: async (): Promise<void> => {
+        try {
+          await SERVER_SCENE_DEBUG_STORE.copyToClipboard(this._serverSceneMap);
+        } catch {
+          console.info("Server scene map copy failed.");
+        }
+      },
+    });
+    this._serverSceneEditor.refresh();
+  }
+
+  private observeServerSceneLayout(): void {
+    const sceneRoot = document.getElementById("server-scene-root");
+    if (!(sceneRoot instanceof HTMLElement) || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    this._serverSceneResizeObserver?.disconnect();
+    this._serverSceneResizeObserver = new ResizeObserver(() => {
+      if (!isSceneUiMode()) {
+        return;
+      }
+      this.renderServerScene();
+      this._serverSceneEditor?.refresh();
+    });
+    this._serverSceneResizeObserver.observe(sceneRoot);
+  }
+
+  private renderServerScene(): void {
+    this.renderServerSceneHotspots();
+    void this.renderServerSceneCharacters();
+  }
+
+  private renderServerSceneHotspots(): void {
+    const projection = this.getServerSceneProjection();
+    const hotspotBindings = [
+      {
+        elementId: "server-scene-terminal-hotspot",
+        hotspotId: "screen-primary",
+      },
+      {
+        elementId: "server-scene-door-hotspot",
+        hotspotId: "door-entrance",
+      },
+    ] as const;
+
+    hotspotBindings.forEach(({ elementId, hotspotId }) => {
+      const hotspot = this.resolveServerSceneHotspot(hotspotId);
+      const button = document.getElementById(elementId);
+      if (hotspot === null || !(button instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      const labelText = this.resolveServerSceneHotspotLabel(hotspot);
+      const showLabel = hasSceneHotspotLabel(hotspot);
+      const selected = isSceneDebugSelectionForHotspot(this._serverSceneSelection, hotspot);
+      const label = button.querySelector<HTMLElement>(".server-scene__hotspot-label");
+
+      button.dataset["hotspotId"] = hotspot.id;
+      button.dataset["frameVariant"] = hotspot.frameVariant;
+      button.classList.toggle("is-selected", selected);
+      button.style.left = `${projection.offsetX + hotspot.leftPx * projection.scale}px`;
+      button.style.top = `${projection.offsetY + hotspot.topPx * projection.scale}px`;
+      button.style.width = `${hotspot.widthPx * projection.scale}px`;
+      button.style.height = `${hotspot.heightPx * projection.scale}px`;
+      button.style.setProperty(
+        "--server-scene-hotspot-frame-rotate",
+        `${hotspot.frameRotateDeg}deg`
+      );
+      button.style.setProperty(
+        "--server-scene-hotspot-frame-perspective",
+        `${hotspot.framePerspectiveDeg}deg`
+      );
+      button.style.setProperty(
+        "--server-scene-hotspot-hover-glow-hue",
+        `${hotspot.frameHoverGlowHueDeg}deg`
+      );
+      button.style.setProperty(
+        "--server-scene-hotspot-hover-glow-alpha",
+        `${hotspot.frameHoverGlowAlpha}`
+      );
+      button.ariaLabel = labelText;
+
+      if (label !== null) {
+        label.textContent = showLabel ? labelText : "";
+        label.hidden = !showLabel;
+        label.classList.toggle("is-selected", selected);
+      }
+    });
+  }
+
+  private getServerSceneProjection(): { offsetX: number; offsetY: number; scale: number } {
+    const sceneRoot = document.getElementById("server-scene-root");
+    return getCoverSceneProjectionFromElement(
+      sceneRoot instanceof HTMLElement ? sceneRoot : null,
+      this._serverSceneMap.referenceSize
+    );
+  }
+
+  private resolveServerSceneHotspot(hotspotId: string): EntranceSceneHotspotConfig | null {
+    return this._serverSceneMap.hotspots.find((hotspot) => hotspot.id === hotspotId) ?? null;
+  }
+
+  private resolveServerSceneHotspotLabel(hotspot: EntranceSceneHotspotConfig): string {
+    const customLabel =
+      typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText.trim() : "";
+    if (customLabel !== "") {
+      return customLabel;
+    }
+
+    if (hotspot.labelKey !== "") {
+      return shellT(hotspot.labelKey);
+    }
+
+    return hotspot.id;
+  }
+
+  private persistServerSceneMapDraft(): void {
+    SERVER_SCENE_DEBUG_STORE.saveDraft(this._serverSceneMap);
+  }
+
+  private isServerSceneDebugActive(): boolean {
+    return (
+      isSceneUiMode() &&
+      (getActiveSceneDebugRoomId() ?? document.documentElement.getAttribute("data-active-page")) ===
+        "server"
+    );
   }
 
   private bindServerSceneInteractions(): void {
@@ -278,25 +503,50 @@ export class ServerController {
 
     const terminalHotspot = document.getElementById("server-scene-terminal-hotspot");
     const doorHotspot = document.getElementById("server-scene-door-hotspot");
-    const exitLeft = document.getElementById("server-scene-exit-left");
-    const exitRight = document.getElementById("server-scene-exit-right");
+    const sceneRoot = document.getElementById("server-scene-root");
 
     terminalHotspot?.addEventListener("click", () => {
+      if (this._serverSceneEditor !== null) {
+        const hotspot = this.resolveServerSceneHotspot("screen-primary");
+        if (hotspot === null) {
+          return;
+        }
+        this._serverSceneSelection = {
+          kind: getSceneNodeKindForHotspot(hotspot),
+          id: hotspot.id,
+        };
+        this._serverSceneEditor.refresh();
+        this.renderServerScene();
+        return;
+      }
+
       this.setServerSceneScreenOpen(true);
     });
 
     doorHotspot?.addEventListener("click", () => {
+      if (this._serverSceneEditor !== null) {
+        const hotspot = this.resolveServerSceneHotspot("door-entrance");
+        if (hotspot === null) {
+          return;
+        }
+        this._serverSceneSelection = {
+          kind: getSceneNodeKindForHotspot(hotspot),
+          id: hotspot.id,
+        };
+        this._serverSceneEditor.refresh();
+        this.renderServerScene();
+        return;
+      }
+
       this.setServerSceneScreenOpen(false);
       this._navigateToPage("entrance");
     });
 
-    exitLeft?.addEventListener("click", () => {
-      this.setServerSceneScreenOpen(false);
-    });
-
-    exitRight?.addEventListener("click", () => {
-      this.setServerSceneScreenOpen(false);
-    });
+    if (sceneRoot !== null) {
+      bindSceneBackZones(sceneRoot, () => {
+        this.setServerSceneScreenOpen(false);
+      });
+    }
 
     this._serverSceneBindingsReady = true;
   }
@@ -312,21 +562,18 @@ export class ServerController {
     const room = document.querySelector(".server-room");
     const sceneActive = isSceneUiMode();
 
-    if (sceneRoot instanceof HTMLElement) {
-      sceneRoot.hidden = !sceneActive;
-      sceneRoot.setAttribute("aria-hidden", String(!sceneActive));
-    }
-
-    if (screenView instanceof HTMLElement) {
-      screenView.setAttribute(
-        "aria-hidden",
-        String(!sceneActive || this._serverSceneScreenOpen === false)
-      );
-    }
-
-    if (room instanceof HTMLElement) {
-      room.classList.toggle("is-scene-screen-open", sceneActive && this._serverSceneScreenOpen);
-    }
+    syncSceneViewRuntime({
+      elements: {
+        root: sceneRoot instanceof HTMLElement ? sceneRoot : null,
+        view: screenView instanceof HTMLElement ? screenView : null,
+        room: room instanceof HTMLElement ? room : null,
+      },
+      state: {
+        sceneActive,
+        viewOpen: this._serverSceneScreenOpen,
+        roomOpenClass: "is-scene-screen-open",
+      },
+    });
 
     if (!sceneActive) {
       return;
@@ -334,15 +581,12 @@ export class ServerController {
 
     this.syncServerSceneAssets();
     this._serverSceneFrameController?.refresh();
-    void this.renderServerSceneCharacters();
+    this.renderServerScene();
+    this._serverSceneEditor?.refresh();
   }
 
   private _navigateToPage(page: string): void {
-    document.dispatchEvent(
-      new CustomEvent<{ page: string }>("navigate-page", {
-        detail: { page },
-      })
-    );
+    navigateToScenePage(page);
   }
 
   private getServerSceneAvatarSource(slot: (typeof SERVER_SCENE_SLOTS)[number]): string | null {
@@ -366,11 +610,17 @@ export class ServerController {
       return;
     }
 
+    const projection = this.getServerSceneProjection();
+    const renderToken = ++this._serverSceneCharacterRenderToken;
     const avatarSources = await Promise.all(
       visibleSlots.map(
         async (slot) => await resolveSceneAvatarSource(this.getServerSceneAvatarSource(slot))
       )
     );
+
+    if (renderToken !== this._serverSceneCharacterRenderToken) {
+      return;
+    }
 
     const fragment = document.createDocumentFragment();
 
@@ -379,20 +629,32 @@ export class ServerController {
         return;
       }
 
-      const layout = SERVER_SCENE_CHARACTER_LAYOUT[slot];
+      const anchor =
+        this._serverSceneMap.characterAnchors.find((item) => item.preferredSlot === slot) ?? null;
+      if (anchor === null) {
+        return;
+      }
+
       const label = AppState.getNickname(slot);
       const avatarSource = avatarSources[index] ?? null;
       const characterNode = document.createElement("div");
       characterNode.className = `entrance-scene__character is-${getSceneCharacterState(slot)}`;
       characterNode.dataset["slot"] = slot;
       characterNode.dataset["characterId"] = `server-scene-${slot}`;
-      characterNode.dataset["kind"] = "ai";
+      characterNode.dataset["kind"] = anchor.kind;
       characterNode.dataset["role"] = "ai";
       characterNode.dataset["variant"] = "account";
-      characterNode.style.setProperty("--scene-character-left", layout.left);
-      characterNode.style.setProperty("--scene-character-bottom", layout.bottom);
-      characterNode.style.setProperty("--scene-character-scale", String(layout.scale));
-      characterNode.style.setProperty("--scene-character-depth", String(layout.depth));
+      characterNode.dataset["anchorId"] = anchor.id;
+      characterNode.style.setProperty(
+        "--scene-character-left",
+        `${projection.offsetX + anchor.leftPx * projection.scale}px`
+      );
+      characterNode.style.setProperty(
+        "--scene-character-bottom",
+        `${projection.offsetY + anchor.bottomPx * projection.scale}px`
+      );
+      characterNode.style.setProperty("--scene-character-scale", String(anchor.scale));
+      characterNode.style.setProperty("--scene-character-depth", String(anchor.depth));
       characterNode.style.setProperty("--scene-character-depth-scale", "1");
       characterNode.style.setProperty("--scene-character-body-scale", String(roleConfig.bodyScale));
       characterNode.style.setProperty("--scene-character-head-top", `${roleConfig.headTopPct}%`);
@@ -402,7 +664,22 @@ export class ServerController {
         "--scene-character-avatar-scale",
         String(roleConfig.avatarScale)
       );
-      characterNode.setAttribute("aria-hidden", "true");
+      characterNode.classList.toggle(
+        "is-selected",
+        isSceneDebugSelectionForCharacter(this._serverSceneSelection, anchor)
+      );
+
+      if (this._serverSceneEditor !== null) {
+        characterNode.tabIndex = 0;
+        characterNode.role = "button";
+        characterNode.setAttribute("aria-label", label);
+        characterNode.removeAttribute("aria-hidden");
+      } else {
+        characterNode.tabIndex = -1;
+        characterNode.removeAttribute("role");
+        characterNode.removeAttribute("aria-label");
+        characterNode.setAttribute("aria-hidden", "true");
+      }
 
       const stage = document.createElement("div");
       stage.className = "entrance-scene__character-stage";
@@ -438,6 +715,26 @@ export class ServerController {
       characterLabel.textContent = label;
 
       characterNode.append(stage, characterLabel);
+      characterNode.addEventListener("click", () => {
+        if (this._serverSceneEditor === null) {
+          return;
+        }
+        this._serverSceneSelection = { kind: "character", id: anchor.id };
+        this._serverSceneEditor.refresh();
+        this.renderServerScene();
+      });
+      characterNode.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (this._serverSceneEditor === null) {
+          return;
+        }
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        this._serverSceneSelection = { kind: "character", id: anchor.id };
+        this._serverSceneEditor.refresh();
+        this.renderServerScene();
+      });
       fragment.appendChild(characterNode);
     });
 
@@ -666,6 +963,11 @@ export class ServerController {
 
   async init(): Promise<void> {
     await initServerControllerPage(this as unknown as ServerInitContext);
+    this._serverSceneDebugEnabled = applySceneDebugFlag();
+    this._serverSceneMap =
+      (this._serverSceneDebugEnabled ? SERVER_SCENE_DEBUG_STORE.loadDraft() : null) ??
+      SERVER_SCENE_DEBUG_STORE.cloneDefault();
+
     const room = document.querySelector(".server-room");
     const screenView = document.getElementById("server-scene-screen-view");
     const screenArt = document.getElementById("server-scene-screen-art") as HTMLImageElement | null;
@@ -684,6 +986,8 @@ export class ServerController {
       });
     }
 
+    this.setupServerSceneDebug();
+    this.observeServerSceneLayout();
     this.bindServerSceneInteractions();
     this.syncServerSceneVisibility();
   }

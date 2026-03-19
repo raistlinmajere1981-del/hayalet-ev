@@ -1,50 +1,40 @@
 import type { SceneCharacterKind } from "./scene-character-role.js";
 import type { SceneCharacterSlot } from "./scene-character-state.js";
+import type {
+  SceneCharacterNodeDefinition,
+  SceneDoorNodeDefinition,
+  SceneLabelNodeDefinition,
+  SceneNavigateAction,
+  SceneNodeAction,
+  SceneNodeDefinition,
+  SceneNodeKind,
+  SceneObjectNodeDefinition,
+  SceneRoomDefinition,
+  SceneRoomId,
+  SceneScreenAction,
+  SceneSettingsAction,
+  SceneSettingsSceneCloseAction,
+  SceneWhisperAction,
+} from "../../../scene/schema.js";
+import { SCENE_LABEL_FONT_PRESETS } from "../../../scene/schema.js";
 
-export const ENTRANCE_SCENE_LABEL_FONT_PRESETS = [
-  "display",
-  "inscription",
-  "classic",
-  "sans",
-  "rounded",
-  "condensed",
-  "mono",
-] as const;
+export const ENTRANCE_SCENE_LABEL_FONT_PRESETS = SCENE_LABEL_FONT_PRESETS;
 
 export type EntranceSceneLabelFontPreset = (typeof ENTRANCE_SCENE_LABEL_FONT_PRESETS)[number];
-
-export interface EntranceSceneHotspotActionNavigate {
-  type: "navigate";
-  page: "analyze" | "server" | "assistant" | "entrance";
-}
-
-export interface EntranceSceneHotspotActionSettings {
-  type: "settings";
-  panel: "theme" | "accounts" | "backup" | "rooms" | "live-log" | null;
-}
-
-export interface EntranceSceneHotspotActionSettingsSceneClose {
-  type: "settings-scene-close";
-}
-
-export interface EntranceSceneHotspotActionScreen {
-  type: "screen";
-  screen: "primary" | "archive";
-}
-
-export interface EntranceSceneHotspotActionWhisper {
-  type: "whisper";
-}
-
-export type EntranceSceneHotspotAction =
-  | EntranceSceneHotspotActionNavigate
-  | EntranceSceneHotspotActionSettings
-  | EntranceSceneHotspotActionSettingsSceneClose
-  | EntranceSceneHotspotActionScreen
-  | EntranceSceneHotspotActionWhisper;
+export type EntranceSceneHotspotActionNavigate = SceneNavigateAction;
+export type EntranceSceneHotspotActionSettings = SceneSettingsAction;
+export type EntranceSceneHotspotActionSettingsSceneClose = SceneSettingsSceneCloseAction;
+export type EntranceSceneHotspotActionScreen = SceneScreenAction;
+export type EntranceSceneHotspotActionWhisper = SceneWhisperAction;
+export type EntranceSceneHotspotAction = SceneNodeAction;
+export type SceneHotspotNodeKind =
+  | SceneDoorNodeDefinition["kind"]
+  | SceneObjectNodeDefinition["kind"];
 
 export interface EntranceSceneHotspotConfig {
   id: string;
+  nodeKind: SceneHotspotNodeKind;
+  showLabel: boolean;
   labelKey: string;
   labelCustomText?: string;
   leftPx: number;
@@ -88,10 +78,19 @@ export interface EntranceSceneMap {
   characterAnchors: EntranceSceneCharacterAnchorConfig[];
 }
 
-const ENTRANCE_STORAGE_KEY = "entrance-scene-map-draft-v1";
-const ANALYZE_STORAGE_KEY = "analyze-scene-map-draft-v1";
-const ASSISTANT_STORAGE_KEY = "assistant-scene-map-draft-v1";
-const SETTINGS_STORAGE_KEY = "settings-scene-map-draft-v1";
+export type SceneDebugSelectableNodeKind = SceneNodeKind;
+
+export type SceneDebugNodeSelection = {
+  kind: SceneDebugSelectableNodeKind;
+  id: string;
+} | null;
+
+export interface SceneDebugNodeListEntry {
+  kind: SceneDebugSelectableNodeKind;
+  id: string;
+  label: string;
+  targetHotspotId?: string;
+}
 
 export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
   referenceSize: {
@@ -101,6 +100,8 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
   hotspots: [
     {
       id: "door-analyze",
+      nodeKind: "door",
+      showLabel: true,
       labelKey: "sideNav.analyzeLabel",
       leftPx: 171,
       topPx: 480,
@@ -125,6 +126,8 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
     },
     {
       id: "door-assistant",
+      nodeKind: "door",
+      showLabel: true,
       labelKey: "sideNav.assistantLabel",
       leftPx: 1296,
       topPx: 162,
@@ -149,6 +152,8 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
     },
     {
       id: "door-server",
+      nodeKind: "door",
+      showLabel: true,
       labelKey: "sideNav.serverLabel",
       leftPx: 1302,
       topPx: 570,
@@ -172,30 +177,9 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
       action: { type: "navigate", page: "server" },
     },
     {
-      id: "whisper-panel",
-      labelKey: "entrance.panels.whisper",
-      leftPx: 918,
-      topPx: 350,
-      widthPx: 248,
-      heightPx: 184,
-      labelCenterXPx: 1042,
-      labelTopPx: 311,
-      labelWidthPx: 310,
-      labelHeightPx: 44,
-      labelRotateDeg: 0,
-      labelFontSizePx: 22,
-      labelLetterSpacingPx: 1,
-      labelFontPreset: "display",
-      frameVariant: "flat",
-      frameRotateDeg: 0,
-      framePerspectiveDeg: 0,
-      frameHoverGlowHueDeg: 33,
-      frameHoverGlowAlpha: 0.34,
-      labelFramePerspectiveDeg: 0,
-      action: { type: "whisper" },
-    },
-    {
       id: "door-settings",
+      nodeKind: "door",
+      showLabel: true,
       labelKey: "settingsHub.openButton",
       leftPx: 1613,
       topPx: 518,
@@ -291,6 +275,8 @@ export const DEFAULT_ASSISTANT_SCENE_MAP: EntranceSceneMap = {
   hotspots: [
     {
       id: "door-entrance",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "sideNav.entranceLabel",
       labelCustomText: "Entrance",
       leftPx: 134,
@@ -315,6 +301,8 @@ export const DEFAULT_ASSISTANT_SCENE_MAP: EntranceSceneMap = {
     },
     {
       id: "screen-primary",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "",
       labelCustomText: "Open screen",
       leftPx: 845,
@@ -359,6 +347,8 @@ export const DEFAULT_ANALYZE_SCENE_MAP: EntranceSceneMap = {
   hotspots: [
     {
       id: "door-entrance",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "",
       labelCustomText: "Entrance",
       leftPx: 132,
@@ -383,6 +373,8 @@ export const DEFAULT_ANALYZE_SCENE_MAP: EntranceSceneMap = {
     },
     {
       id: "screen-primary",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "",
       labelCustomText: "Analyze",
       leftPx: 760,
@@ -407,14 +399,16 @@ export const DEFAULT_ANALYZE_SCENE_MAP: EntranceSceneMap = {
     },
     {
       id: "screen-archive",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "",
-      labelCustomText: "Archives",
-      leftPx: 1332,
-      topPx: 302,
-      widthPx: 236,
-      heightPx: 282,
-      labelCenterXPx: 1450,
-      labelTopPx: 594,
+      labelCustomText: "Archive",
+      leftPx: 1234,
+      topPx: 246,
+      widthPx: 284,
+      heightPx: 306,
+      labelCenterXPx: 1376,
+      labelTopPx: 208,
       labelWidthPx: 240,
       labelHeightPx: 40,
       labelRotateDeg: 0,
@@ -477,6 +471,8 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
   hotspots: [
     {
       id: "door-close",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "common.close",
       leftPx: 173,
       topPx: 194,
@@ -500,6 +496,8 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
     },
     {
       id: "panel-theme",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "settingsHub.nav.theme",
       leftPx: 1190,
       topPx: 216,
@@ -523,6 +521,8 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
     },
     {
       id: "panel-accounts",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "settingsHub.nav.accounts",
       leftPx: 576,
       topPx: 302,
@@ -546,6 +546,8 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
     },
     {
       id: "panel-backup",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "settingsHub.nav.backup",
       leftPx: 1402,
       topPx: 486,
@@ -569,6 +571,8 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
     },
     {
       id: "panel-rooms",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "settingsHub.nav.rooms",
       leftPx: 384,
       topPx: 529,
@@ -592,6 +596,8 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
     },
     {
       id: "panel-live-log",
+      nodeKind: "object",
+      showLabel: false,
       labelKey: "settingsHub.nav.liveLog",
       leftPx: 1037,
       topPx: 605,
@@ -625,6 +631,306 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
     },
   ],
 };
+
+export const DEFAULT_SERVER_SCENE_MAP: EntranceSceneMap = {
+  referenceSize: {
+    width: 1920,
+    height: 1080,
+  },
+  hotspots: [
+    {
+      id: "door-entrance",
+      nodeKind: "object",
+      showLabel: false,
+      labelKey: "sideNav.entranceLabel",
+      labelCustomText: "Entrance",
+      leftPx: 77,
+      topPx: 194,
+      widthPx: 307,
+      heightPx: 605,
+      labelCenterXPx: 228,
+      labelTopPx: 156,
+      labelWidthPx: 220,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 22,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "left-angled",
+      frameRotateDeg: -1.5,
+      framePerspectiveDeg: 10,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "navigate", page: "entrance" },
+    },
+    {
+      id: "screen-primary",
+      nodeKind: "object",
+      showLabel: false,
+      labelKey: "",
+      labelCustomText: "Open terminal",
+      leftPx: 864,
+      topPx: 324,
+      widthPx: 346,
+      heightPx: 259,
+      labelCenterXPx: 1037,
+      labelTopPx: 588,
+      labelWidthPx: 240,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 22,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "flat",
+      frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "screen", screen: "primary" },
+    },
+  ],
+  characterAnchors: [
+    {
+      id: "anchor-ai1-primary",
+      kind: "ai",
+      preferredSlot: "ai1",
+      leftPx: 672,
+      bottomPx: 124,
+      scale: 0.86,
+      depth: 3,
+    },
+    {
+      id: "anchor-ai2-primary",
+      kind: "ai",
+      preferredSlot: "ai2",
+      leftPx: 1210,
+      bottomPx: 113,
+      scale: 0.84,
+      depth: 5,
+    },
+  ],
+};
+
+export function getSceneNodeKindForHotspot(
+  hotspot: EntranceSceneHotspotConfig
+): SceneDoorNodeDefinition["kind"] | SceneObjectNodeDefinition["kind"] {
+  return hotspot.nodeKind;
+}
+
+export function getSceneHotspotLabelId(hotspotId: string): string {
+  return `${hotspotId}-label`;
+}
+
+export function hasSceneHotspotLabel(hotspot: EntranceSceneHotspotConfig): boolean {
+  return (
+    hotspot.showLabel && (hotspot.labelKey !== "" || (hotspot.labelCustomText?.trim() ?? "") !== "")
+  );
+}
+
+function getSceneDebugNodeLabel(hotspot: EntranceSceneHotspotConfig): string {
+  const customLabel = hotspot.labelCustomText?.trim() ?? "";
+  if (customLabel !== "") {
+    return customLabel;
+  }
+
+  if (hotspot.labelKey !== "") {
+    return hotspot.labelKey;
+  }
+
+  return hotspot.id;
+}
+
+function toSceneHotspotNode(
+  hotspot: EntranceSceneHotspotConfig
+): SceneDoorNodeDefinition | SceneObjectNodeDefinition {
+  const node = {
+    id: hotspot.id,
+    kind: getSceneNodeKindForHotspot(hotspot),
+    action: hotspot.action,
+    rect: {
+      leftPx: hotspot.leftPx,
+      topPx: hotspot.topPx,
+      widthPx: hotspot.widthPx,
+      heightPx: hotspot.heightPx,
+    },
+    frame: {
+      variant: hotspot.frameVariant,
+      rotateDeg: hotspot.frameRotateDeg,
+      perspectiveDeg: hotspot.framePerspectiveDeg,
+      hoverGlowHueDeg: hotspot.frameHoverGlowHueDeg,
+      hoverGlowAlpha: hotspot.frameHoverGlowAlpha,
+    },
+    labelId: hasSceneHotspotLabel(hotspot) ? getSceneHotspotLabelId(hotspot.id) : null,
+  };
+
+  return node.kind === "door"
+    ? (node as SceneDoorNodeDefinition)
+    : (node as SceneObjectNodeDefinition);
+}
+
+function toSceneLabelNode(hotspot: EntranceSceneHotspotConfig): SceneLabelNodeDefinition | null {
+  if (!hasSceneHotspotLabel(hotspot)) {
+    return null;
+  }
+
+  return {
+    id: getSceneHotspotLabelId(hotspot.id),
+    kind: "label",
+    targetNodeId: hotspot.id,
+    textKey: hotspot.labelKey,
+    ...(hotspot.labelCustomText !== undefined ? { customText: hotspot.labelCustomText } : {}),
+    centerXPx: hotspot.labelCenterXPx,
+    topPx: hotspot.labelTopPx,
+    widthPx: hotspot.labelWidthPx,
+    heightPx: hotspot.labelHeightPx,
+    rotateDeg: hotspot.labelRotateDeg,
+    fontSizePx: hotspot.labelFontSizePx,
+    letterSpacingPx: hotspot.labelLetterSpacingPx,
+    fontPreset: hotspot.labelFontPreset,
+    framePerspectiveDeg: hotspot.labelFramePerspectiveDeg,
+  };
+}
+
+function toSceneCharacterNode(
+  anchor: EntranceSceneCharacterAnchorConfig
+): SceneCharacterNodeDefinition {
+  return {
+    id: anchor.id,
+    kind: "character",
+    characterKind: anchor.kind,
+    ...(anchor.preferredSlot !== undefined ? { preferredSlot: anchor.preferredSlot } : {}),
+    leftPx: anchor.leftPx,
+    bottomPx: anchor.bottomPx,
+    scale: anchor.scale,
+    depth: anchor.depth,
+  };
+}
+
+export function buildSceneNodesFromMap(sceneMap: EntranceSceneMap): SceneNodeDefinition[] {
+  const nodes: SceneNodeDefinition[] = [];
+
+  sceneMap.hotspots.forEach((hotspot) => {
+    nodes.push(toSceneHotspotNode(hotspot));
+    const labelNode = toSceneLabelNode(hotspot);
+    if (labelNode !== null) {
+      nodes.push(labelNode);
+    }
+  });
+
+  sceneMap.characterAnchors.forEach((anchor) => {
+    nodes.push(toSceneCharacterNode(anchor));
+  });
+
+  return nodes;
+}
+
+export function listSceneDebugNodes(sceneMap: EntranceSceneMap): SceneDebugNodeListEntry[] {
+  const nodes: SceneDebugNodeListEntry[] = [];
+
+  sceneMap.hotspots.forEach((hotspot) => {
+    nodes.push({
+      kind: getSceneNodeKindForHotspot(hotspot),
+      id: hotspot.id,
+      label: hotspot.id,
+    });
+
+    if (hasSceneHotspotLabel(hotspot)) {
+      nodes.push({
+        kind: "label",
+        id: getSceneHotspotLabelId(hotspot.id),
+        label: `${getSceneHotspotLabelId(hotspot.id)} · ${getSceneDebugNodeLabel(hotspot)}`,
+        targetHotspotId: hotspot.id,
+      });
+    }
+  });
+
+  sceneMap.characterAnchors.forEach((anchor) => {
+    nodes.push({
+      kind: "character",
+      id: anchor.id,
+      label: anchor.id,
+    });
+  });
+
+  return nodes;
+}
+
+export function resolveSceneHotspotForSelection(
+  sceneMap: EntranceSceneMap,
+  selection: SceneDebugNodeSelection
+): EntranceSceneHotspotConfig | null {
+  if (selection === null || selection.kind === "character") {
+    return null;
+  }
+
+  if (selection.kind === "label") {
+    return (
+      sceneMap.hotspots.find((hotspot) => getSceneHotspotLabelId(hotspot.id) === selection.id) ??
+      null
+    );
+  }
+
+  return (
+    sceneMap.hotspots.find(
+      (hotspot) =>
+        hotspot.id === selection.id && getSceneNodeKindForHotspot(hotspot) === selection.kind
+    ) ?? null
+  );
+}
+
+export function resolveSceneCharacterForSelection(
+  sceneMap: EntranceSceneMap,
+  selection: SceneDebugNodeSelection
+): EntranceSceneCharacterAnchorConfig | null {
+  if (selection?.kind !== "character") {
+    return null;
+  }
+
+  return sceneMap.characterAnchors.find((anchor) => anchor.id === selection.id) ?? null;
+}
+
+export function isSceneDebugSelectionForHotspot(
+  selection: SceneDebugNodeSelection,
+  hotspot: EntranceSceneHotspotConfig
+): boolean {
+  if (selection === null) {
+    return false;
+  }
+
+  if (selection.kind === "label") {
+    return selection.id === getSceneHotspotLabelId(hotspot.id);
+  }
+
+  if (selection.kind === "character") {
+    return false;
+  }
+
+  return selection.id === hotspot.id && selection.kind === getSceneNodeKindForHotspot(hotspot);
+}
+
+export function isSceneDebugSelectionForCharacter(
+  selection: SceneDebugNodeSelection,
+  anchor: { id: string }
+): boolean {
+  return selection?.kind === "character" && selection.id === anchor.id;
+}
+
+export function buildSceneRoomDefinition(
+  roomId: SceneRoomId,
+  sceneMap: EntranceSceneMap
+): SceneRoomDefinition {
+  return {
+    id: roomId,
+    page: roomId,
+    referenceSize: {
+      width: sceneMap.referenceSize.width,
+      height: sceneMap.referenceSize.height,
+    },
+    nodes: buildSceneNodesFromMap(sceneMap),
+  };
+}
 
 export function cloneEntranceSceneMap(
   source: EntranceSceneMap = DEFAULT_ENTRANCE_SCENE_MAP
@@ -731,93 +1037,10 @@ export function normalizeSettingsSceneMap(source: Partial<EntranceSceneMap>): En
   return normalizeSceneMap(source, DEFAULT_SETTINGS_SCENE_MAP);
 }
 
+export function normalizeServerSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
+  return normalizeSceneMap(source, DEFAULT_SERVER_SCENE_MAP);
+}
+
 export function serializeEntranceSceneMap(sceneMap: EntranceSceneMap): string {
   return JSON.stringify(sceneMap, null, 2);
-}
-
-function loadSceneMapDraft(
-  storageKey: string,
-  normalizer: (source: Partial<EntranceSceneMap>) => EntranceSceneMap
-): EntranceSceneMap | null {
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    if (raw === null || raw.trim() === "") {
-      return null;
-    }
-    const parsed = JSON.parse(raw) as Partial<EntranceSceneMap>;
-    if (
-      parsed.referenceSize === undefined ||
-      !Array.isArray(parsed.hotspots) ||
-      !Array.isArray(parsed.characterAnchors)
-    ) {
-      return null;
-    }
-    return normalizer(parsed);
-  } catch {
-    return null;
-  }
-}
-
-export function loadEntranceSceneMapDraft(): EntranceSceneMap | null {
-  return loadSceneMapDraft(ENTRANCE_STORAGE_KEY, normalizeEntranceSceneMap);
-}
-
-export function loadAnalyzeSceneMapDraft(): EntranceSceneMap | null {
-  return loadSceneMapDraft(ANALYZE_STORAGE_KEY, normalizeAnalyzeSceneMap);
-}
-
-export function loadAssistantSceneMapDraft(): EntranceSceneMap | null {
-  return loadSceneMapDraft(ASSISTANT_STORAGE_KEY, normalizeAssistantSceneMap);
-}
-
-export function loadSettingsSceneMapDraft(): EntranceSceneMap | null {
-  return loadSceneMapDraft(SETTINGS_STORAGE_KEY, normalizeSettingsSceneMap);
-}
-
-function saveSceneMapDraft(storageKey: string, sceneMap: EntranceSceneMap): void {
-  try {
-    window.localStorage.setItem(storageKey, serializeEntranceSceneMap(sceneMap));
-  } catch {
-    // Ignore draft persistence failures in constrained environments.
-  }
-}
-
-export function saveEntranceSceneMapDraft(sceneMap: EntranceSceneMap): void {
-  saveSceneMapDraft(ENTRANCE_STORAGE_KEY, sceneMap);
-}
-
-export function saveAnalyzeSceneMapDraft(sceneMap: EntranceSceneMap): void {
-  saveSceneMapDraft(ANALYZE_STORAGE_KEY, sceneMap);
-}
-
-export function saveAssistantSceneMapDraft(sceneMap: EntranceSceneMap): void {
-  saveSceneMapDraft(ASSISTANT_STORAGE_KEY, sceneMap);
-}
-
-export function saveSettingsSceneMapDraft(sceneMap: EntranceSceneMap): void {
-  saveSceneMapDraft(SETTINGS_STORAGE_KEY, sceneMap);
-}
-
-function clearSceneMapDraft(storageKey: string): void {
-  try {
-    window.localStorage.removeItem(storageKey);
-  } catch {
-    // Ignore draft persistence failures in constrained environments.
-  }
-}
-
-export function clearEntranceSceneMapDraft(): void {
-  clearSceneMapDraft(ENTRANCE_STORAGE_KEY);
-}
-
-export function clearAnalyzeSceneMapDraft(): void {
-  clearSceneMapDraft(ANALYZE_STORAGE_KEY);
-}
-
-export function clearAssistantSceneMapDraft(): void {
-  clearSceneMapDraft(ASSISTANT_STORAGE_KEY);
-}
-
-export function clearSettingsSceneMapDraft(): void {
-  clearSceneMapDraft(SETTINGS_STORAGE_KEY);
 }

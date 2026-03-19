@@ -3,14 +3,19 @@ import type {
   EntranceSceneCharacterAnchorConfig,
   EntranceSceneHotspotConfig,
   EntranceSceneMap,
+  SceneDebugNodeListEntry,
+  SceneDebugNodeSelection,
 } from "./scene-map.js";
-import { ENTRANCE_SCENE_LABEL_FONT_PRESETS } from "./scene-map.js";
+import {
+  ENTRANCE_SCENE_LABEL_FONT_PRESETS,
+  getSceneHotspotLabelId,
+  listSceneDebugNodes,
+  resolveSceneCharacterForSelection,
+  resolveSceneHotspotForSelection,
+} from "./scene-map.js";
 import { t as entranceT } from "../i18n.js";
 
-export type EntranceSceneEditorSelection =
-  | { kind: "hotspot"; id: string }
-  | { kind: "character"; id: string }
-  | null;
+export type EntranceSceneEditorSelection = SceneDebugNodeSelection;
 
 export interface EntranceSceneEditorRoomOption {
   id: string;
@@ -25,8 +30,11 @@ interface EntranceSceneEditorCallbacks {
   getActiveRoomId(): string;
   setSelection(selection: EntranceSceneEditorSelection): void;
   navigateToRoom(roomId: string): void;
-  supportsHotspotLabels(hotspot: EntranceSceneHotspotConfig): boolean;
   updateHotspot(
+    id: string,
+    updater: (hotspot: EntranceSceneHotspotConfig) => EntranceSceneHotspotConfig
+  ): void;
+  updateLabelNode(
     id: string,
     updater: (hotspot: EntranceSceneHotspotConfig) => EntranceSceneHotspotConfig
   ): void;
@@ -68,6 +76,15 @@ const CHARACTER_FIELDS = [
   ["depth", "Depth"],
 ] as const;
 
+const DEBUG_NODE_SECTIONS = [
+  { kind: "door", title: "Doors" },
+  { kind: "object", title: "Objects" },
+  { kind: "label", title: "Labels" },
+  { kind: "character", title: "Characters" },
+] as const;
+
+type SceneEditorNodeKind = (typeof DEBUG_NODE_SECTIONS)[number]["kind"];
+
 export class EntranceSceneEditor {
   host: HTMLElement;
   callbacks: EntranceSceneEditorCallbacks;
@@ -92,6 +109,7 @@ export class EntranceSceneEditor {
     const selection = this.callbacks.getSelection();
     const roomOptions = this.callbacks.getRoomOptions();
     const activeRoomId = this.callbacks.getActiveRoomId();
+    const debugNodes = listSceneDebugNodes(sceneMap);
     const previousPanel = this.host.querySelector<HTMLElement>(".entrance-scene__editor-panel");
     if (previousPanel !== null) {
       this.panelScroll = {
@@ -102,14 +120,8 @@ export class EntranceSceneEditor {
     const panel = document.createElement("aside");
     panel.className = "entrance-scene__editor-panel";
 
-    const selectedHotspot =
-      selection?.kind === "hotspot"
-        ? (sceneMap.hotspots.find((item) => item.id === selection.id) ?? null)
-        : null;
-    const selectedCharacter =
-      selection?.kind === "character"
-        ? (sceneMap.characterAnchors.find((item) => item.id === selection.id) ?? null)
-        : null;
+    const selectedHotspot = resolveSceneHotspotForSelection(sceneMap, selection);
+    const selectedCharacter = resolveSceneCharacterForSelection(sceneMap, selection);
 
     panel.innerHTML = `
       <div class="entrance-scene__editor-room-list" role="tablist" aria-label="Scene rooms">
@@ -156,7 +168,7 @@ export class EntranceSceneEditor {
           .join("")}
       </div>
       <div class="entrance-scene__editor-selected">
-        ${this.renderSelectedBlock(selectedHotspot, selectedCharacter)}
+        ${this.renderSelectedBlock(selection, selectedHotspot, selectedCharacter)}
       </div>
       <div class="entrance-scene__editor-help">
         <span>Arrow: move</span>
@@ -164,20 +176,13 @@ export class EntranceSceneEditor {
         <span>[ ]: rotate/scale</span>
       </div>
       <div class="entrance-scene__editor-list-wrap">
-        <div class="entrance-scene__editor-section">
-          <div class="entrance-scene__editor-section-title">Hotspots</div>
-          <div class="entrance-scene__editor-list">
-            ${sceneMap.hotspots.map((item) => this.renderListItem("hotspot", item.id, item.id, selection)).join("")}
-          </div>
-        </div>
-        <div class="entrance-scene__editor-section">
-          <div class="entrance-scene__editor-section-title">Characters</div>
-          <div class="entrance-scene__editor-list">
-            ${sceneMap.characterAnchors
-              .map((item) => this.renderListItem("character", item.id, item.id, selection))
-              .join("")}
-          </div>
-        </div>
+        ${DEBUG_NODE_SECTIONS.map(({ kind, title }) =>
+          this.renderNodeSection(
+            title,
+            debugNodes.filter((node) => node.kind === kind),
+            selection
+          )
+        ).join("")}
       </div>
     `;
 
@@ -188,45 +193,53 @@ export class EntranceSceneEditor {
   }
 
   private renderSelectedBlock(
+    selection: EntranceSceneEditorSelection,
     hotspot: EntranceSceneHotspotConfig | null,
     character: EntranceSceneCharacterAnchorConfig | null
   ): string {
-    if (hotspot === null && character === null) {
-      return `<p class="entrance-scene__editor-empty">Select a hotspot or character anchor from the scene.</p>`;
+    if (selection === null || (hotspot === null && character === null)) {
+      return `<p class="entrance-scene__editor-empty">Select a door, object, label, or character node from the scene.</p>`;
     }
 
-    if (hotspot !== null) {
-      const showLabels = this.callbacks.supportsHotspotLabels(hotspot);
+    if (hotspot !== null && (selection.kind === "door" || selection.kind === "object")) {
+      const title = selection.kind === "door" ? "Door" : "Object";
       return `
-        <div class="entrance-scene__editor-selected-title">Hotspot: ${hotspot.id}</div>
+        <div class="entrance-scene__editor-selected-title">${title}: ${hotspot.id}</div>
         <div class="entrance-scene__editor-section">
-          <div class="entrance-scene__editor-section-title">Door</div>
+          <div class="entrance-scene__editor-section-title">Frame</div>
           <div class="entrance-scene__editor-grid">
-            ${HOTSPOT_DOOR_FIELDS.map(([field, label]) => this.renderControlRow("hotspot", hotspot.id, field, label, hotspot[field])).join("")}
+            ${HOTSPOT_DOOR_FIELDS.map(([field, label]) =>
+              this.renderControlRow(selection.kind, hotspot.id, field, label, hotspot[field])
+            ).join("")}
           </div>
         </div>
-        ${
-          showLabels
-            ? `
-              <div class="entrance-scene__editor-section">
-                <div class="entrance-scene__editor-section-title">Label</div>
-                <div class="entrance-scene__editor-grid">
-                  ${HOTSPOT_LABEL_FIELDS.map(([field, label]) => this.renderControlRow("hotspot", hotspot.id, field, label, hotspot[field])).join("")}
-                </div>
-                ${this.renderLabelTextRow(hotspot)}
-                ${this.renderFontPresetRow(hotspot)}
-              </div>
-            `
-            : ""
-        }
       `;
     }
 
-    if (character !== null) {
+    if (hotspot !== null && selection.kind === "label") {
+      const labelId = getSceneHotspotLabelId(hotspot.id);
+      return `
+        <div class="entrance-scene__editor-selected-title">Label: ${labelId}</div>
+        <div class="entrance-scene__editor-section">
+          <div class="entrance-scene__editor-section-title">Layout</div>
+          <div class="entrance-scene__editor-grid">
+            ${HOTSPOT_LABEL_FIELDS.map(([field, label]) =>
+              this.renderControlRow("label", labelId, field, label, hotspot[field])
+            ).join("")}
+          </div>
+          ${this.renderLabelTextRow(labelId, hotspot)}
+          ${this.renderFontPresetRow(labelId, hotspot)}
+        </div>
+      `;
+    }
+
+    if (character !== null && selection.kind === "character") {
       return `
         <div class="entrance-scene__editor-selected-title">Character: ${character.id}</div>
         <div class="entrance-scene__editor-grid">
-          ${CHARACTER_FIELDS.map(([field, label]) => this.renderControlRow("character", character.id, field, label, character[field])).join("")}
+          ${CHARACTER_FIELDS.map(([field, label]) =>
+            this.renderControlRow("character", character.id, field, label, character[field])
+          ).join("")}
         </div>
       `;
     }
@@ -235,7 +248,7 @@ export class EntranceSceneEditor {
   }
 
   private renderControlRow(
-    kind: "hotspot" | "character",
+    kind: SceneEditorNodeKind,
     id: string,
     field: string,
     label: string,
@@ -253,8 +266,28 @@ export class EntranceSceneEditor {
     `;
   }
 
+  private renderNodeSection(
+    title: string,
+    nodes: SceneDebugNodeListEntry[],
+    selection: EntranceSceneEditorSelection
+  ): string {
+    const content =
+      nodes.length > 0
+        ? nodes
+            .map((node) => this.renderListItem(node.kind, node.id, node.label, selection))
+            .join("")
+        : `<p class="entrance-scene__editor-empty">No ${title.toLowerCase()}.</p>`;
+
+    return `
+      <div class="entrance-scene__editor-section">
+        <div class="entrance-scene__editor-section-title">${title}</div>
+        <div class="entrance-scene__editor-list">${content}</div>
+      </div>
+    `;
+  }
+
   private renderListItem(
-    kind: "hotspot" | "character",
+    kind: SceneEditorNodeKind,
     id: string,
     label: string,
     selection: EntranceSceneEditorSelection
@@ -273,7 +306,7 @@ export class EntranceSceneEditor {
     `;
   }
 
-  private renderLabelTextRow(hotspot: EntranceSceneHotspotConfig): string {
+  private renderLabelTextRow(id: string, hotspot: EntranceSceneHotspotConfig): string {
     const value = typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText : "";
     const placeholder = this.escapeAttribute(entranceT("scene.editor.customLabelPlaceholder"));
     return `
@@ -285,21 +318,21 @@ export class EntranceSceneEditor {
           value="${this.escapeAttribute(value)}"
           placeholder="${placeholder}"
           data-editor-action="text"
-          data-id="${hotspot.id}"
+          data-id="${id}"
           data-field="labelCustomText"
         />
       </label>
     `;
   }
 
-  private renderFontPresetRow(hotspot: EntranceSceneHotspotConfig): string {
+  private renderFontPresetRow(id: string, hotspot: EntranceSceneHotspotConfig): string {
     return `
       <div class="entrance-scene__editor-row">
         <span class="entrance-scene__editor-row-label">Font</span>
         <div class="entrance-scene__editor-row-controls">
-          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="cycle-font" data-id="${hotspot.id}" data-direction="-1">-</button>
+          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="cycle-font" data-id="${id}" data-direction="-1">-</button>
           <span class="entrance-scene__editor-row-value entrance-scene__editor-row-value--wide">${this.formatFontPreset(hotspot.labelFontPreset)}</span>
-          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="cycle-font" data-id="${hotspot.id}" data-direction="1">+</button>
+          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="cycle-font" data-id="${id}" data-direction="1">+</button>
         </div>
       </div>
     `;
@@ -341,7 +374,10 @@ export class EntranceSceneEditor {
     if (action === "select") {
       const kind = actionButton.dataset["kind"];
       const id = actionButton.dataset["id"];
-      if ((kind === "hotspot" || kind === "character") && id !== undefined) {
+      if (
+        (kind === "door" || kind === "object" || kind === "label" || kind === "character") &&
+        id !== undefined
+      ) {
         this.callbacks.setSelection({ kind, id });
       }
       return;
@@ -350,7 +386,7 @@ export class EntranceSceneEditor {
     if (action === "cycle-font") {
       const id = actionButton.dataset["id"] ?? "";
       const direction = Number(actionButton.dataset["direction"] ?? "0");
-      this.callbacks.updateHotspot(id, (hotspot) => ({
+      this.callbacks.updateLabelNode(id, (hotspot) => ({
         ...hotspot,
         labelFontPreset: this.shiftFontPreset(hotspot.labelFontPreset, direction),
       }));
@@ -380,7 +416,7 @@ export class EntranceSceneEditor {
       return;
     }
     const nextValue = target.value.trim();
-    this.callbacks.updateHotspot(id, (hotspot) => {
+    this.callbacks.updateLabelNode(id, (hotspot) => {
       if (nextValue === "") {
         const { labelCustomText: _labelCustomText, ...nextHotspot } = hotspot;
         return nextHotspot;
@@ -408,23 +444,23 @@ export class EntranceSceneEditor {
 
     const step = event.shiftKey ? this.step * 10 : this.step;
 
-    if (selection.kind === "hotspot") {
+    if (selection.kind === "door" || selection.kind === "object") {
       if (event.key === "ArrowLeft") {
         event.preventDefault();
-        this.adjustField("hotspot", selection.id, "leftPx", -step);
+        this.adjustField(selection.kind, selection.id, "leftPx", -step);
       } else if (event.key === "ArrowRight") {
         event.preventDefault();
-        this.adjustField("hotspot", selection.id, "leftPx", step);
+        this.adjustField(selection.kind, selection.id, "leftPx", step);
       } else if (event.key === "ArrowUp") {
         event.preventDefault();
-        this.adjustField("hotspot", selection.id, "topPx", -step);
+        this.adjustField(selection.kind, selection.id, "topPx", -step);
       } else if (event.key === "ArrowDown") {
         event.preventDefault();
-        this.adjustField("hotspot", selection.id, "topPx", step);
+        this.adjustField(selection.kind, selection.id, "topPx", step);
       } else if (event.key === "[") {
         event.preventDefault();
         this.adjustField(
-          "hotspot",
+          selection.kind,
           selection.id,
           "frameRotateDeg",
           this.getAdjustDelta("frameRotateDeg", -1)
@@ -432,10 +468,43 @@ export class EntranceSceneEditor {
       } else if (event.key === "]") {
         event.preventDefault();
         this.adjustField(
-          "hotspot",
+          selection.kind,
           selection.id,
           "frameRotateDeg",
           this.getAdjustDelta("frameRotateDeg", 1)
+        );
+      }
+      return;
+    }
+
+    if (selection.kind === "label") {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        this.adjustField("label", selection.id, "labelCenterXPx", -step);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        this.adjustField("label", selection.id, "labelCenterXPx", step);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        this.adjustField("label", selection.id, "labelTopPx", -step);
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        this.adjustField("label", selection.id, "labelTopPx", step);
+      } else if (event.key === "[") {
+        event.preventDefault();
+        this.adjustField(
+          "label",
+          selection.id,
+          "labelRotateDeg",
+          this.getAdjustDelta("labelRotateDeg", -1)
+        );
+      } else if (event.key === "]") {
+        event.preventDefault();
+        this.adjustField(
+          "label",
+          selection.id,
+          "labelRotateDeg",
+          this.getAdjustDelta("labelRotateDeg", 1)
         );
       }
       return;
@@ -531,8 +600,20 @@ export class EntranceSceneEditor {
   };
 
   private adjustField(kind: string | undefined, id: string, field: string, delta: number): void {
-    if (kind === "hotspot") {
+    if (kind === "door" || kind === "object") {
       this.callbacks.updateHotspot(id, (hotspot) => ({
+        ...hotspot,
+        [field]: this.roundField(
+          field,
+          hotspot[field as keyof EntranceSceneHotspotConfig] as number,
+          delta
+        ),
+      }));
+      return;
+    }
+
+    if (kind === "label") {
+      this.callbacks.updateLabelNode(id, (hotspot) => ({
         ...hotspot,
         [field]: this.roundField(
           field,
@@ -581,7 +662,7 @@ export class EntranceSceneEditor {
     if (field === "scale") {
       return direction * this.getScaleStep();
     }
-    if (field === "frameRotateDeg") {
+    if (field.endsWith("RotateDeg")) {
       return direction * (this.step / 10);
     }
     if (field.endsWith("Alpha")) {

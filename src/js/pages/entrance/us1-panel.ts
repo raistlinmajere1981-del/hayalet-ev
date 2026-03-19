@@ -668,15 +668,18 @@ export class Us1Panel {
     editableMailAccount: MailTransportAccountConfig | null,
     verifiedLocalMailAccount: MailTransportAccountConfig | null
   ): void {
+    const accountState = this.getMailAccountStatusText(editableMailAccount);
     const verifiedEmailEl = document.getElementById("us1-mail-verified-email");
     if (verifiedEmailEl) {
-      verifiedEmailEl.textContent =
-        verifiedLocalMailAccount?.email ?? entranceT("us1.mailAccount.verifiedEmpty");
+      verifiedEmailEl.textContent = verifiedLocalMailAccount
+        ? `${entranceT("us1.mailAccount.verifiedLabel")}: ${verifiedLocalMailAccount.email}`
+        : entranceT("us1.mailAccount.verifiedEmpty");
     }
 
     const statusEl = document.getElementById("us1-mail-account-status");
     if (statusEl) {
-      statusEl.textContent = this.getMailAccountStatusText(editableMailAccount);
+      statusEl.textContent = accountState;
+      statusEl.toggleAttribute("hidden", true);
     }
   }
 

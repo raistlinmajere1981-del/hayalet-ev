@@ -139,14 +139,14 @@
           </button>
         </div>
 
-        <div class="server-scene__room-layer">
+        <div class="server-scene__room-layer scene-shell__room-layer">
           <button
             class="server-scene__hotspot server-scene__hotspot--terminal"
             id="server-scene-terminal-hotspot"
             type="button"
             aria-label="Open server terminal"
           >
-            <span class="server-scene__hotspot-label">Open terminal</span>
+            <span class="server-scene__hotspot-label" hidden>Open terminal</span>
           </button>
           <button
             class="server-scene__hotspot server-scene__hotspot--door"
@@ -154,7 +154,7 @@
             type="button"
             aria-label="Go to entrance"
           >
-            <span class="server-scene__hotspot-label">Entrance</span>
+            <span class="server-scene__hotspot-label" hidden>Entrance</span>
           </button>
           <div
             class="server-scene__characters entrance-scene__characters"
@@ -162,26 +162,42 @@
           ></div>
         </div>
 
-        <div class="server-scene__screen-view" id="server-scene-screen-view" aria-hidden="true">
+        <div class="entrance-scene__editor-host" id="server-scene-editor-host"></div>
+
+        <div
+          class="server-scene__screen-view scene-shell__view"
+          id="server-scene-screen-view"
+          aria-hidden="true"
+        >
           <img class="server-scene__screen-art" id="server-scene-screen-art" alt="" />
           <div class="server-scene__screen-shade"></div>
           <button
-            class="server-scene__exit server-scene__exit--left"
+            class="server-scene__exit server-scene__exit--left scene-back-zone"
             id="server-scene-exit-left"
             type="button"
+            data-scene-back-zone="left"
             aria-label="Return to room"
           >
-            <span class="server-scene__exit-arrow" aria-hidden="true">←</span>
-            <span class="server-scene__exit-copy" aria-hidden="true">Back</span>
+            <span class="server-scene__exit-arrow scene-back-zone__arrow" aria-hidden="true"
+              >←</span
+            >
+            <span class="server-scene__exit-copy scene-back-zone__copy" aria-hidden="true"
+              >Back</span
+            >
           </button>
           <button
-            class="server-scene__exit server-scene__exit--right"
+            class="server-scene__exit server-scene__exit--right scene-back-zone"
             id="server-scene-exit-right"
             type="button"
+            data-scene-back-zone="right"
             aria-label="Return to room"
           >
-            <span class="server-scene__exit-copy" aria-hidden="true">Back</span>
-            <span class="server-scene__exit-arrow" aria-hidden="true">→</span>
+            <span class="server-scene__exit-copy scene-back-zone__copy" aria-hidden="true"
+              >Back</span
+            >
+            <span class="server-scene__exit-arrow scene-back-zone__arrow" aria-hidden="true"
+              >→</span
+            >
           </button>
         </div>
       </div>

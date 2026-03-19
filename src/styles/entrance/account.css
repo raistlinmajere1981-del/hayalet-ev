@@ -10,6 +10,25 @@
   gap: var(--space-3);
 }
 
+.user-profile-inline {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(12rem, 15rem);
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.user-profile-inline__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.user-profile-inline__field--nickname .input,
+.user-profile-inline__field--language .select {
+  width: 100%;
+}
+
 .user-avatar-wrapper {
   width: var(--size-avatar-md);
   height: var(--size-avatar-md);
@@ -302,30 +321,47 @@
 }
 
 [data-ui-mode="classic"][data-active-page="entrance"] .slot-grid {
-  padding-bottom: calc(var(--space-4) + var(--size-control-3xl));
+  padding-bottom: var(--space-4);
 }
 
 [data-ui-mode="classic"][data-active-page="entrance"] .entrance-classic__whisper {
-  position: absolute;
+  position: sticky;
   inset-inline: 0;
   bottom: 0;
   z-index: 18;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .whisper-dock {
   position: relative;
   margin: 0 var(--space-4) var(--space-4);
   overflow: hidden;
-  border-color: color-mix(in srgb, var(--color-accent) 22%, var(--border-default));
+  border-color: color-mix(in srgb, var(--color-accent) 18%, var(--border-default));
   background:
-    radial-gradient(circle at top left, rgb(233 169 89 / 0.14), transparent 30%),
-    linear-gradient(180deg, rgb(26 18 15 / 0.96), rgb(16 12 10 / 0.98));
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--color-accent) 12%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 96%, transparent),
+      color-mix(in srgb, var(--bg-surface-2) 96%, transparent)
+    );
   box-shadow: var(--floating-shadow);
 }
 
 [data-ui-mode="classic"][data-active-page="entrance"] .entrance-classic__whisper .whisper-dock {
   margin: 0 var(--space-4) var(--space-4);
+  overflow: visible;
+  pointer-events: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.whisper-management-overlay__body .whisper-dock {
+  margin: 0;
   overflow: visible;
   pointer-events: auto;
   background: transparent;
@@ -339,16 +375,26 @@
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgb(255 211 150 / 0.08), transparent 28%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.03), transparent 48%);
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-accent) 12%, transparent),
+      transparent 28%
+    ),
+    var(--effect-gradient-surface-subtle);
 }
 
-[data-ui-mode="classic"][data-active-page="entrance"] .entrance-classic__whisper .whisper-dock::before {
+[data-ui-mode="classic"][data-active-page="entrance"]
+  .entrance-classic__whisper
+  .whisper-dock::before {
+  display: none;
+}
+
+.whisper-management-overlay__body .whisper-dock::before {
   display: none;
 }
 
 .whisper-dock.has-ready-items {
-  border-color: color-mix(in srgb, var(--color-accent) 48%, var(--border-default));
+  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--border-default));
 }
 
 .whisper-dock__toggle {
@@ -357,10 +403,27 @@
   justify-content: space-between;
   gap: var(--space-3);
   background:
-    linear-gradient(180deg, rgb(42 29 24 / 0.92), rgb(21 15 13 / 0.94)), var(--bg-elevated);
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--color-accent) 10%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-elevated) 96%, transparent),
+      color-mix(in srgb, var(--bg-surface-2) 98%, transparent)
+    );
 }
 
-[data-ui-mode="classic"][data-active-page="entrance"] .entrance-classic__whisper .whisper-dock__toggle {
+[data-ui-mode="classic"][data-active-page="entrance"]
+  .entrance-classic__whisper
+  .whisper-dock__toggle {
+  border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 22%, var(--border-default));
+  border-radius: var(--radius-card);
+  box-shadow: var(--floating-shadow);
+}
+
+.whisper-management-overlay__body .whisper-dock__toggle {
   border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 22%, var(--border-default));
   border-radius: var(--radius-card);
   box-shadow: var(--floating-shadow);
@@ -379,7 +442,7 @@
   font-weight: var(--font-semibold);
   letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-accent) 88%, white);
+  color: color-mix(in srgb, var(--color-accent) 70%, var(--text-primary));
 }
 
 .whisper-dock__title,
@@ -406,7 +469,7 @@
   padding: 0 var(--space-2);
   border-radius: var(--radius-full);
   border: var(--border-1) solid color-mix(in srgb, var(--border-default) 80%, transparent);
-  background: rgb(255 255 255 / 0.06);
+  background: color-mix(in srgb, var(--bg-muted) 92%, var(--bg-surface-2));
   color: var(--text-secondary);
   font-size: var(--text-2xs);
   font-weight: var(--font-semibold);
@@ -416,8 +479,8 @@
 
 .whisper-dock__summary-chip--accent {
   border-color: color-mix(in srgb, var(--color-accent) 38%, transparent);
-  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-  color: color-mix(in srgb, var(--color-accent) 92%, white);
+  background: color-mix(in srgb, var(--color-accent-soft) 72%, var(--bg-surface-2));
+  color: var(--color-accent);
 }
 
 .whisper-dock__summary-chip--accent.is-empty {
@@ -429,20 +492,58 @@
   z-index: 1;
 }
 
-[data-ui-mode="classic"][data-active-page="entrance"] .entrance-classic__whisper .whisper-dock__content {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(100% + var(--space-2));
+[data-ui-mode="classic"][data-active-page="entrance"]
+  .entrance-classic__whisper
+  .whisper-dock__content {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  margin-top: 0;
   overflow: hidden;
-  border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 22%, var(--border-default));
+  border: 0 solid transparent;
   border-radius: var(--radius-card);
+  box-shadow: none;
+}
+
+.whisper-management-overlay__body .whisper-dock__content {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  margin-top: 0;
+  overflow: hidden;
+  border: 0 solid transparent;
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+
+[data-ui-mode="classic"][data-active-page="entrance"]
+  .entrance-classic__whisper
+  .whisper-dock__content.is-expanded,
+[data-ui-mode="classic"][data-active-page="entrance"]
+  .entrance-classic__whisper
+  .whisper-dock__toggle[aria-expanded="true"]
+  + .whisper-dock__content {
+  margin-top: var(--space-2);
+  border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 22%, var(--border-default));
+  box-shadow: var(--floating-shadow);
+}
+
+.whisper-management-overlay__body .whisper-dock__content.is-expanded,
+.whisper-management-overlay__body .whisper-dock__toggle[aria-expanded="true"] + .whisper-dock__content {
+  margin-top: var(--space-2);
+  border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 22%, var(--border-default));
   box-shadow: var(--floating-shadow);
 }
 
 [data-ui-mode="classic"][data-active-page="entrance"]
   .entrance-classic__whisper
   .whisper-dock__content:not(.is-expanded) {
+  pointer-events: none;
+}
+
+.whisper-management-overlay__body .whisper-dock__content:not(.is-expanded) {
   pointer-events: none;
 }
 
@@ -454,23 +555,40 @@
   gap: var(--space-3);
   padding: var(--space-3);
   min-height: 0;
-  background: linear-gradient(180deg, rgb(20 15 13 / 0.94), rgb(12 10 10 / 0.98)), var(--bg-panel);
+  background:
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--color-accent-soft) 38%, transparent),
+      transparent 34%
+    ),
+    var(--bg-panel);
 }
 
-[data-ui-mode="classic"][data-active-page="entrance"] .entrance-classic__whisper .whisper-dock__body {
-  max-height: min(56vh, 32rem);
+[data-ui-mode="classic"][data-active-page="entrance"]
+  .entrance-classic__whisper
+  .whisper-dock__body {
+  max-height: min(60vh, var(--layout-whisper-dock-classic-max-h));
   overflow: auto;
+}
+
+.whisper-management-overlay__body .whisper-dock__body {
+  max-height: none;
 }
 
 .whisper-dock__composer,
 .whisper-dock__viewer {
   min-height: 0;
   overflow: hidden;
-  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 92%, transparent);
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent 18%),
-    color-mix(in srgb, var(--bg-panel-strong) 90%, rgb(18 14 12 / 1));
-  backdrop-filter: var(--blur-surface-sm);
+  border: var(--border-1) solid
+    color-mix(in srgb, var(--color-accent) 10%, var(--surface-card-border, var(--border-default)));
+  background-image:
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--color-accent) 6%, transparent),
+      transparent 44%
+    ),
+    var(--effect-gradient-surface-raised);
+  backdrop-filter: var(--surface-card-blur, var(--glass-blur));
 }
 
 .whisper-dock__section-head {
@@ -478,8 +596,14 @@
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-3);
-  border-bottom: var(--border-1) solid var(--border-default);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.03), transparent), var(--bg-surface-2);
+  border-bottom: var(--border-1) solid var(--surface-card-header-border, var(--border-default));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-accent-soft) 22%, transparent),
+      transparent
+    ),
+    var(--surface-card-header-bg, var(--bg-surface-2));
 }
 
 .whisper-dock__section-copy {
@@ -541,8 +665,14 @@
   flex-wrap: wrap;
   gap: var(--space-2);
   padding: var(--space-3);
-  border-bottom: var(--border-1) solid var(--border-default);
-  background: color-mix(in srgb, var(--bg-surface-2) 84%, transparent);
+  border-bottom: var(--border-1) solid var(--surface-card-header-border, var(--border-default));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-accent-soft) 16%, transparent),
+      transparent
+    ),
+    color-mix(in srgb, var(--bg-surface-2) 90%, transparent);
 }
 
 .whisper-slot-chip {
@@ -551,7 +681,7 @@
   min-height: auto;
   padding: var(--space-2) var(--space-3);
   white-space: normal;
-  background: color-mix(in srgb, var(--bg-muted) 88%, rgb(20 16 14 / 1));
+  background: color-mix(in srgb, var(--bg-muted) 92%, var(--bg-surface-2));
 }
 
 .whisper-slot-chip__slot {
@@ -560,7 +690,7 @@
   font-weight: var(--font-semibold);
   letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--color-accent) 92%, white);
+  color: color-mix(in srgb, var(--color-accent) 76%, var(--text-primary));
 }
 
 .whisper-slot-chip__copy {
@@ -599,8 +729,16 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.03), transparent),
-    color-mix(in srgb, var(--bg-surface-3) 85%, rgb(15 12 12 / 1));
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-accent-soft) 18%, transparent),
+      transparent
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 96%, transparent),
+      color-mix(in srgb, var(--bg-surface-2) 96%, transparent)
+    );
 }
 
 .whisper-dock__lane-head {
@@ -644,8 +782,16 @@
   border-radius: var(--radius-lg);
   border: var(--border-1) solid color-mix(in srgb, var(--border-default) 88%, transparent);
   background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent),
-    color-mix(in srgb, var(--bg-elevated) 78%, rgb(18 14 13 / 1));
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-accent-soft) 16%, transparent),
+      transparent
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-elevated) 94%, transparent),
+      color-mix(in srgb, var(--bg-surface-2) 96%, transparent)
+    );
 }
 
 .whisper-dock__record-head,
@@ -668,8 +814,8 @@
 }
 
 .whisper-dock__badge--slot {
-  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
-  color: color-mix(in srgb, var(--color-accent) 92%, white);
+  background: color-mix(in srgb, var(--color-accent-soft) 70%, transparent);
+  color: var(--color-accent);
 }
 
 .whisper-dock__record-time,
@@ -731,6 +877,14 @@
     grid-template-columns: 1fr;
   }
 
+  .user-profile-inline {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .user-profile-inline__field--language {
+    grid-column: 1 / -1;
+  }
+
   .whisper-dock__body,
   .whisper-dock__columns {
     grid-template-columns: 1fr;
@@ -758,7 +912,7 @@
   }
 
   [data-ui-mode="classic"][data-active-page="entrance"] .slot-grid {
-    padding-bottom: calc(var(--space-2) + var(--size-control-3xl));
+    padding-bottom: var(--space-2);
   }
 
   [data-ui-mode="classic"][data-active-page="entrance"] .entrance-classic__whisper .whisper-dock {

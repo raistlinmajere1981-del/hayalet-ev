@@ -1,4 +1,6 @@
-export type SceneDebugRoomId = "entrance" | "analyze" | "assistant" | "server" | "settings";
+import { isSceneRoomId, SCENE_ROOM_IDS, type SceneRoomId } from "./schema.js";
+
+export type SceneDebugRoomId = SceneRoomId;
 
 const SCENE_DEBUG_ROOM_ATTRIBUTE = "data-scene-debug-room";
 
@@ -9,13 +11,7 @@ export interface SceneDebugRoomDefinition {
 }
 
 export function isSceneDebugRoomId(value: string | null | undefined): value is SceneDebugRoomId {
-  return (
-    value === "entrance" ||
-    value === "analyze" ||
-    value === "assistant" ||
-    value === "server" ||
-    value === "settings"
-  );
+  return isSceneRoomId(value);
 }
 
 export function getActiveSceneDebugRoomId(): SceneDebugRoomId | null {
@@ -41,29 +37,18 @@ export function setActiveSceneDebugRoomId(roomId: SceneDebugRoomId | null): void
 }
 
 export const SCENE_DEBUG_ROOMS: readonly SceneDebugRoomDefinition[] = [
-  {
-    id: "entrance",
-    page: "entrance",
-    labelKey: "sideNav.entranceLabel",
-  },
-  {
-    id: "analyze",
-    page: "analyze",
-    labelKey: "sideNav.analyzeLabel",
-  },
-  {
-    id: "assistant",
-    page: "assistant",
-    labelKey: "sideNav.assistantLabel",
-  },
-  {
-    id: "server",
-    page: "server",
-    labelKey: "sideNav.serverLabel",
-  },
-  {
-    id: "settings",
-    page: "settings",
-    labelKey: "settingsHub.openButton",
-  },
+  ...SCENE_ROOM_IDS.map((roomId) => ({
+    id: roomId,
+    page: roomId,
+    labelKey:
+      roomId === "entrance"
+        ? "sideNav.entranceLabel"
+        : roomId === "analyze"
+          ? "sideNav.analyzeLabel"
+          : roomId === "assistant"
+            ? "sideNav.assistantLabel"
+            : roomId === "server"
+              ? "sideNav.serverLabel"
+              : "settingsHub.openButton",
+  })),
 ];

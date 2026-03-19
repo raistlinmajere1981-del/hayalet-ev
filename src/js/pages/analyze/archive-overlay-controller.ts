@@ -31,11 +31,22 @@ import {
   isArchiveProviderKey,
   type ArchiveProviderKey,
 } from "@shared/archive.js";
+import { syncOverlayScrollLock } from "../../app/overlay-scroll-lock.js";
 
 export const ANALYZE_ARCHIVE_OPEN_EVENT = "analyze:open-archive-overlay";
+export const ANALYZE_ARCHIVE_CLOSE_EVENT = "analyze:close-archive-overlay";
+export const ANALYZE_ARCHIVE_STATE_EVENT = "analyze:archive-overlay-state-change";
 
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
+}
+
+function dispatchArchiveOverlayState(open: boolean): void {
+  document.dispatchEvent(
+    new CustomEvent<{ open: boolean }>(ANALYZE_ARCHIVE_STATE_EVENT, {
+      detail: { open },
+    })
+  );
 }
 
 export class AnalyzeArchiveOverlayController {
@@ -55,6 +66,7 @@ export class AnalyzeArchiveOverlayController {
   _isOpen: boolean;
   _handleKeydown: (event: KeyboardEvent) => void;
   _handleOpenRequest: () => void;
+  _handleCloseRequest: () => void;
 
   overlayEl: HTMLElement | null;
   openButtonEl: HTMLButtonElement | null;
@@ -107,6 +119,9 @@ export class AnalyzeArchiveOverlayController {
     this._handleOpenRequest = (): void => {
       void this.open();
     };
+    this._handleCloseRequest = (): void => {
+      this.close();
+    };
 
     this.overlayEl = null;
     this.openButtonEl = null;
@@ -143,6 +158,12 @@ export class AnalyzeArchiveOverlayController {
     this.ensureSubscriptions();
     window.addEventListener("keydown", this._handleKeydown);
     window.addEventListener(ANALYZE_ARCHIVE_OPEN_EVENT, this._handleOpenRequest);
+    document.addEventListener(ANALYZE_ARCHIVE_CLOSE_EVENT, this._handleCloseRequest);
+    document.addEventListener("settings-hub:state-change", ((event: CustomEvent<{ open?: boolean }>) => {
+      if (event.detail.open === true) {
+        this.close();
+      }
+    }) as EventListener);
 
     await this.loadSettings();
     this.applyNames();
@@ -188,6 +209,11 @@ export class AnalyzeArchiveOverlayController {
 
   bindEvents(): void {
     this.openButtonEl?.addEventListener("click", () => {
+      if (this._isOpen) {
+        this.close();
+        return;
+      }
+
       void this.open();
     });
     this.closeButtonEl?.addEventListener("click", () => {
@@ -314,9 +340,12 @@ export class AnalyzeArchiveOverlayController {
       return;
     }
 
+    document.dispatchEvent(new CustomEvent("settings-hub:close"));
     this.overlayEl.classList.remove("is-hidden");
     this.overlayEl.setAttribute("aria-hidden", "false");
     this._isOpen = true;
+    syncOverlayScrollLock();
+    dispatchArchiveOverlayState(true);
     this.clearStatus();
     this.setProtocolStatus("");
     await this.refreshOverlayState();
@@ -333,6 +362,8 @@ export class AnalyzeArchiveOverlayController {
     this.overlayEl.classList.add("is-hidden");
     this.overlayEl.setAttribute("aria-hidden", "true");
     this._isOpen = false;
+    syncOverlayScrollLock();
+    dispatchArchiveOverlayState(false);
     this.clearStatus();
     this.setProtocolStatus("");
   }

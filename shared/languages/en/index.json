@@ -794,7 +794,55 @@
       "openButton": "📊 Live Log"
     },
     "theme": {
-      "selectTitle": "Select theme"
+      "selectTitle": "Select theme",
+      "presetsTitle": "Quick presets",
+      "presetsHint": "Choosing a preset applies it immediately and switches behavior to manual.",
+      "behaviorTitle": "Behavior",
+      "tuningTitle": "Fine tuning",
+      "tuningHint": "Balance motion, readability and surface density here.",
+      "mode": {
+        "label": "Theme behavior",
+        "options": {
+          "manual": "Manual",
+          "system": "System",
+          "schedule": "Schedule"
+        },
+        "hints": {
+          "manual": "Your selected preset stays fixed.",
+          "system": "Light and dark presets follow the system appearance automatically.",
+          "schedule": "The theme switches automatically based on your day and night start times."
+        }
+      },
+      "lightThemeLabel": "Day / light preset",
+      "darkThemeLabel": "Night / dark preset",
+      "dayStartLabel": "Day starts",
+      "nightStartLabel": "Night starts",
+      "motionLabel": "Motion level",
+      "motion": {
+        "options": {
+          "full": "Full",
+          "reduced": "Reduced",
+          "off": "Off"
+        }
+      },
+      "textScaleLabel": "Text scale",
+      "textScale": {
+        "options": {
+          "sm": "Small",
+          "md": "Default",
+          "lg": "Large"
+        }
+      },
+      "surfaceLabel": "Surface style",
+      "surface": {
+        "options": {
+          "glass": "Glass",
+          "soft": "Soft",
+          "solid": "Solid"
+        }
+      },
+      "contrastLabel": "High contrast",
+      "contrastHint": "Boosts separation between text and borders."
     },
     "themes": {
       "obsidian": {
@@ -870,13 +918,17 @@
       "openTitle": "Open the backup center",
       "title": "Backup Center",
       "createButton": "Create Backup",
-      "selectButton": "Select Bundle",
-      "openFolderButton": "Open Folder",
+      "selectButton": "Select Backup File",
+      "openFolderButton": "Open Backup Folder",
       "restoreButton": "Restore",
       "scopeSectionTitle": "Scope Selection",
       "scopeSectionNote": "Categories, checkboxes and presets",
-      "historySectionTitle": "Bundles",
+      "historySectionTitle": "Backup Files",
       "historySectionNote": "Local backups and restore preview",
+      "listSectionTitle": "Backup Files",
+      "listSectionNote": "Local backups and backup file selection for restore",
+      "previewSectionTitle": "Restore Preview",
+      "previewSectionNote": "Restore impact for the selected backup file",
       "summary": {
         "selectedScopes": "Selected scopes",
         "requiresColdRestore": "Cold restore",
@@ -932,15 +984,15 @@
         "full-snapshot": "Full Snapshot"
       },
       "list": {
-        "empty": "No backup bundles were found.",
-        "untitled": "Untitled bundle",
+        "empty": "No backup files were found.",
+        "untitled": "Untitled backup",
         "invalid": "Invalid",
         "ready": "Ready",
         "scopeUnknown": "Scope info unavailable",
-        "externalBundle": "Selected external bundle"
+        "externalBundle": "Selected external backup file"
       },
       "preview": {
-        "empty": "Select a bundle to inspect its restore impact.",
+        "empty": "Select a backup file to inspect its restore impact.",
         "loading": "Loading restore preview...",
         "fileCount": "Files",
         "overwrites": "Overwrites",
@@ -951,19 +1003,19 @@
       },
       "confirm": {
         "title": "Confirm Restore",
-        "message": "Restore the selected bundle?",
+        "message": "Restore the selected backup file?",
         "scopeLine": "Scopes: {{scopes}}",
         "fileLine": "Files: {{count}}",
         "restartLine": "Restart target: {{target}}"
       },
       "dialog": {
-        "bundleTitle": "Select a backup bundle",
-        "bundleButton": "Use Bundle",
-        "bundleFilterName": "Backup Bundles"
+        "bundleTitle": "Select a backup file",
+        "bundleButton": "Use This File",
+        "bundleFilterName": "Backup Files"
       },
       "toasts": {
         "scopeRequired": "Select at least one scope first",
-        "bundleRequired": "Select a backup bundle first",
+        "bundleRequired": "Select a backup file first",
         "filePickerUnavailable": "The file picker is unavailable",
         "createSuccess": "Backup created",
         "createError": "Backup creation failed",
@@ -1391,7 +1443,6 @@
       },
       "navigationSetupError": "Navigation setup error: {{message}}",
       "topBarSetupError": "Top bar setup error: {{message}}",
-      "themeChanged": "Theme changed: {{theme}}",
       "mcpSyncFailed": "MCP disabled-server sync failed",
       "manualSyncFailed": "Manual sync failed: {{message}}",
       "conversationRefreshSetupFailed": "Failed to set up the conversation refresh handler: {{message}}",
@@ -5047,8 +5098,8 @@
     },
     "panels": {
       "settings": "Settings",
-      "user": "USER & DRIVE",
-      "accounts": "ACCOUNT MANAGEMENT",
+      "user": "User - Mail Management",
+      "accounts": "Account Management",
       "us1": "US1 SLOT",
       "whisper": "PENDING COMMANDS",
       "report": "LIVE REPORT"
@@ -5113,7 +5164,7 @@
           "delete": "Delete Account"
         },
         "verifiedLabel": "Verified user email",
-        "verifiedEmpty": "No verified user email yet.",
+        "verifiedEmpty": "No verified email account",
         "gmailHelperTitle": "Connect with a Gmail app password",
         "gmailHelperStep1": "Get Gmail app password",
         "gmailEmailLabel": "Gmail email",

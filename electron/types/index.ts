@@ -194,7 +194,6 @@ export interface AppSettings {
     enabled: boolean;
     syncInterval?: number;
   };
-  theme?: "light" | "dark" | "system";
   [key: string]: unknown;
 }
 

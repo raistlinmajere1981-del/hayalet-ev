@@ -139,7 +139,7 @@
           </button>
         </div>
 
-        <div class="analyze-scene__room-layer">
+        <div class="analyze-scene__room-layer scene-shell__room-layer">
           <div class="analyze-scene__hotspots" id="analyze-scene-hotspots"></div>
           <div
             class="analyze-scene__characters entrance-scene__characters"
@@ -149,36 +149,46 @@
 
         <div class="entrance-scene__editor-host" id="analyze-scene-editor-host"></div>
 
-        <div class="analyze-scene__table-view" id="analyze-scene-table-view" aria-hidden="true">
+        <div
+          class="analyze-scene__table-view scene-shell__view"
+          id="analyze-scene-table-view"
+          aria-hidden="true"
+        >
           <img class="analyze-scene__panel-art" id="analyze-scene-table-art" alt="" />
           <div class="analyze-scene__panel-shade"></div>
           <button
-            class="analyze-scene__exit analyze-scene__exit--left"
+            class="analyze-scene__exit analyze-scene__exit--left scene-back-zone"
             id="analyze-scene-exit-left"
             type="button"
+            data-scene-back-zone="left"
             aria-label=""
             data-shell-i18n-aria-label="settingsHub.scene.returnRoomTitle"
           >
-            <span class="analyze-scene__exit-arrow" aria-hidden="true">←</span>
+            <span class="analyze-scene__exit-arrow scene-back-zone__arrow" aria-hidden="true"
+              >←</span
+            >
             <span
-              class="analyze-scene__exit-copy"
+              class="analyze-scene__exit-copy scene-back-zone__copy"
               aria-hidden="true"
               data-shell-i18n-text="settingsHub.scene.returnRoom"
             ></span>
           </button>
           <button
-            class="analyze-scene__exit analyze-scene__exit--right"
+            class="analyze-scene__exit analyze-scene__exit--right scene-back-zone"
             id="analyze-scene-exit-right"
             type="button"
+            data-scene-back-zone="right"
             aria-label=""
             data-shell-i18n-aria-label="settingsHub.scene.returnRoomTitle"
           >
             <span
-              class="analyze-scene__exit-copy"
+              class="analyze-scene__exit-copy scene-back-zone__copy"
               aria-hidden="true"
               data-shell-i18n-text="settingsHub.scene.returnRoom"
             ></span>
-            <span class="analyze-scene__exit-arrow" aria-hidden="true">→</span>
+            <span class="analyze-scene__exit-arrow scene-back-zone__arrow" aria-hidden="true"
+              >→</span
+            >
           </button>
         </div>
       </div>
@@ -337,20 +347,6 @@
               id="upload-add-btn"
               data-shell-i18n-text="app.analyze.page.addFileButton"
             ></button>
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm analyze-archive-trigger"
-              id="analyze-archive-open-btn"
-            >
-              <span
-                class="analyze-archive-trigger__eyebrow"
-                data-shell-i18n-text="app.analyze.page.archiveOverlayEyebrow"
-              ></span>
-              <span
-                class="analyze-archive-trigger__title"
-                data-shell-i18n-text="app.analyze.page.archiveOverlayButton"
-              ></span>
-            </button>
           </div>
         </div>
 
@@ -369,32 +365,38 @@
       <img class="analyze-archive-overlay__scene-art" id="analyze-archive-scene-art" alt="" />
       <div class="analyze-archive-overlay__scene-shade"></div>
       <button
-        class="analyze-archive-overlay__exit analyze-archive-overlay__exit--left"
+        class="analyze-archive-overlay__exit analyze-archive-overlay__exit--left scene-back-zone"
         id="analyze-archive-exit-left"
         type="button"
+        data-scene-back-zone="left"
         aria-label=""
         data-shell-i18n-aria-label="settingsHub.scene.returnRoomTitle"
       >
-        <span class="analyze-archive-overlay__exit-arrow" aria-hidden="true">←</span>
+        <span class="analyze-archive-overlay__exit-arrow scene-back-zone__arrow" aria-hidden="true"
+          >←</span
+        >
         <span
-          class="analyze-archive-overlay__exit-copy"
+          class="analyze-archive-overlay__exit-copy scene-back-zone__copy"
           aria-hidden="true"
           data-shell-i18n-text="settingsHub.scene.returnRoom"
         ></span>
       </button>
       <button
-        class="analyze-archive-overlay__exit analyze-archive-overlay__exit--right"
+        class="analyze-archive-overlay__exit analyze-archive-overlay__exit--right scene-back-zone"
         id="analyze-archive-exit-right"
         type="button"
+        data-scene-back-zone="right"
         aria-label=""
         data-shell-i18n-aria-label="settingsHub.scene.returnRoomTitle"
       >
         <span
-          class="analyze-archive-overlay__exit-copy"
+          class="analyze-archive-overlay__exit-copy scene-back-zone__copy"
           aria-hidden="true"
           data-shell-i18n-text="settingsHub.scene.returnRoom"
         ></span>
-        <span class="analyze-archive-overlay__exit-arrow" aria-hidden="true">→</span>
+        <span class="analyze-archive-overlay__exit-arrow scene-back-zone__arrow" aria-hidden="true"
+          >→</span
+        >
       </button>
       <div
         class="analyze-archive-overlay__panel"
@@ -404,19 +406,11 @@
       >
         <div class="analyze-archive-overlay__header">
           <div class="analyze-archive-overlay__heading">
-            <p
-              class="analyze-archive-overlay__eyebrow"
-              data-shell-i18n-text="app.analyze.page.archiveOverlayEyebrow"
-            ></p>
             <h3
               class="analyze-archive-overlay__title"
               id="analyze-archive-overlay-title"
               data-shell-i18n-text="app.analyze.page.archiveOverlayTitle"
             ></h3>
-            <p
-              class="analyze-archive-overlay__subtitle"
-              data-shell-i18n-text="app.analyze.page.archiveOverlaySubtitle"
-            ></p>
           </div>
           <button
             type="button"

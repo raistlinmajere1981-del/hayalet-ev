@@ -65,6 +65,33 @@ interface BackupOverlayState {
   isOpen: boolean;
 }
 
+function getContainingDirectoryPath(targetPath: string | null): string | null {
+  if (typeof targetPath !== "string") {
+    return null;
+  }
+
+  const normalizedPath = targetPath.trim();
+  if (normalizedPath === "") {
+    return null;
+  }
+
+  const lastSeparatorIndex = Math.max(
+    normalizedPath.lastIndexOf("/"),
+    normalizedPath.lastIndexOf("\\")
+  );
+  if (lastSeparatorIndex < 0) {
+    return null;
+  }
+  if (lastSeparatorIndex === 0) {
+    return normalizedPath.slice(0, 1);
+  }
+  if (lastSeparatorIndex === 2 && /^[A-Za-z]:[\\/]/.test(normalizedPath)) {
+    return normalizedPath.slice(0, 3);
+  }
+
+  return normalizedPath.slice(0, lastSeparatorIndex);
+}
+
 function getRefs(): BackupOverlayRefs {
   return {
     createButton: document.getElementById("backup-overlay-create") as HTMLButtonElement | null,
@@ -261,8 +288,8 @@ export function setupBackupOverlay(): void {
   refs.openFolderButton.addEventListener("click", () => {
     const fallbackPath = state.backups[0]?.filePath;
     const candidatePath =
-      state.selectedFilePath ??
-      (typeof fallbackPath === "string" ? fallbackPath.replace(/[/\\][^/\\]+$/, "") : null);
+      getContainingDirectoryPath(state.selectedFilePath) ??
+      getContainingDirectoryPath(typeof fallbackPath === "string" ? fallbackPath : null);
     if (typeof candidatePath === "string" && candidatePath !== "") {
       const api = window.electronAPI;
       if (api !== undefined) {
