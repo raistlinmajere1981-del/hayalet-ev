@@ -1,0 +1,26 @@
+.page-rooms {
+  height: var(--layout-page-height);
+  overflow-y: auto;
+}
+
+.rooms-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--bg-app);
+}
+
+.rooms-page .room-shell {
+  flex: 1 1 auto;
+}
+
+[data-ui-mode="scene"][data-active-page="rooms"] .page-rooms {
+  height: 100%;
+  overflow: hidden;
+}
+
+[data-ui-mode="scene"][data-active-page="rooms"] .rooms-page {
+  min-height: 100%;
+  overflow: hidden;
+}

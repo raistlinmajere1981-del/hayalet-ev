@@ -40,7 +40,6 @@ import {
 import { setupRoomOverlay } from "./room-overlay.js";
 import { setupBackupOverlay } from "./backup-overlay.js";
 import { setupTopbarToolOverlays } from "./topbar-tool-overlays.js";
-import { setupSettingsHub } from "./topbar-settings-overlay.js";
 
 declare global {
   interface Window {
@@ -191,7 +190,6 @@ async function initApp(): Promise<void> {
     setupRoomOverlay(controllers);
     setupBackupOverlay();
     setupTopbarToolOverlays();
-    setupSettingsHub();
     setupTopBarRelayButtons();
     setupReportPanel();
 

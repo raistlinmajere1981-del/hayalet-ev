@@ -4,6 +4,7 @@ import { LogCategory } from "@shared/logging-core";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { AppI18n } from "../../modules/i18n/index.js";
+import { closeSpecialPage, getCurrentPage } from "../../app/navigation.js";
 import { ButtonStates } from "../../ui/button-states.js";
 import type { ArchiveEntry, FileResult, MessageResult } from "./archive-overlay/types.js";
 import {
@@ -31,25 +32,27 @@ import {
   isArchiveProviderKey,
   type ArchiveProviderKey,
 } from "@shared/archive.js";
-import { syncOverlayScrollLock } from "../../app/overlay-scroll-lock.js";
 
-export const ANALYZE_ARCHIVE_OPEN_EVENT = "analyze:open-archive-overlay";
-export const ANALYZE_ARCHIVE_CLOSE_EVENT = "analyze:close-archive-overlay";
-export const ANALYZE_ARCHIVE_STATE_EVENT = "analyze:archive-overlay-state-change";
+export const ARCHIVES_PAGE_OPEN_EVENT = "analyze:open-archive-overlay";
+export const ARCHIVES_PAGE_CLOSE_EVENT = "analyze:close-archive-overlay";
+export const ARCHIVES_PAGE_STATE_EVENT = "analyze:archive-overlay-state-change";
+export const ANALYZE_ARCHIVE_OPEN_EVENT = ARCHIVES_PAGE_OPEN_EVENT;
+export const ANALYZE_ARCHIVE_CLOSE_EVENT = ARCHIVES_PAGE_CLOSE_EVENT;
+export const ANALYZE_ARCHIVE_STATE_EVENT = ARCHIVES_PAGE_STATE_EVENT;
 
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
 }
 
-function dispatchArchiveOverlayState(open: boolean): void {
+function dispatchArchivesPageState(open: boolean): void {
   document.dispatchEvent(
-    new CustomEvent<{ open: boolean }>(ANALYZE_ARCHIVE_STATE_EVENT, {
+    new CustomEvent<{ open: boolean }>(ARCHIVES_PAGE_STATE_EVENT, {
       detail: { open },
     })
   );
 }
 
-export class AnalyzeArchiveOverlayController {
+class ArchivesPageController {
   entries: ArchiveEntry[];
   activeProvider: ArchiveProviderKey;
   selectedId: string | null;
@@ -64,14 +67,10 @@ export class AnalyzeArchiveOverlayController {
   _protocols: Record<string, string>;
   _selectedProtocolKey: string | null;
   _isOpen: boolean;
-  _handleKeydown: (event: KeyboardEvent) => void;
   _handleOpenRequest: () => void;
   _handleCloseRequest: () => void;
-
   overlayEl: HTMLElement | null;
-  openButtonEl: HTMLButtonElement | null;
   closeButtonEl: HTMLButtonElement | null;
-  backdropEl: HTMLElement | null;
   listEl: HTMLElement | null;
   titleEl: HTMLInputElement | null;
   summaryEl: HTMLTextAreaElement | null;
@@ -111,11 +110,6 @@ export class AnalyzeArchiveOverlayController {
     this._protocols = {};
     this._selectedProtocolKey = null;
     this._isOpen = false;
-    this._handleKeydown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape" && this._isOpen) {
-        this.close();
-      }
-    };
     this._handleOpenRequest = (): void => {
       void this.open();
     };
@@ -124,9 +118,7 @@ export class AnalyzeArchiveOverlayController {
     };
 
     this.overlayEl = null;
-    this.openButtonEl = null;
     this.closeButtonEl = null;
-    this.backdropEl = null;
     this.listEl = null;
     this.titleEl = null;
     this.summaryEl = null;
@@ -156,7 +148,6 @@ export class AnalyzeArchiveOverlayController {
     this.cacheElements();
     this.bindEvents();
     this.ensureSubscriptions();
-    window.addEventListener("keydown", this._handleKeydown);
     window.addEventListener(ANALYZE_ARCHIVE_OPEN_EVENT, this._handleOpenRequest);
     document.addEventListener(ANALYZE_ARCHIVE_CLOSE_EVENT, this._handleCloseRequest);
     document.addEventListener("settings-hub:state-change", ((event: CustomEvent<{ open?: boolean }>) => {
@@ -171,14 +162,10 @@ export class AnalyzeArchiveOverlayController {
   }
 
   cacheElements(): void {
-    this.overlayEl = document.getElementById("analyze-archive-overlay");
-    this.openButtonEl = document.getElementById(
-      "analyze-archive-open-btn"
-    ) as HTMLButtonElement | null;
+    this.overlayEl = document.getElementById("page-archives");
     this.closeButtonEl = document.getElementById(
       "analyze-archive-close-btn"
     ) as HTMLButtonElement | null;
-    this.backdropEl = document.getElementById("analyze-archive-backdrop");
     this.listEl = document.getElementById("archives-list");
 
     this.titleEl = document.getElementById("archive-title") as HTMLInputElement | null;
@@ -208,18 +195,7 @@ export class AnalyzeArchiveOverlayController {
   }
 
   bindEvents(): void {
-    this.openButtonEl?.addEventListener("click", () => {
-      if (this._isOpen) {
-        this.close();
-        return;
-      }
-
-      void this.open();
-    });
     this.closeButtonEl?.addEventListener("click", () => {
-      this.close();
-    });
-    this.backdropEl?.addEventListener("click", () => {
       this.close();
     });
 
@@ -340,44 +316,51 @@ export class AnalyzeArchiveOverlayController {
       return;
     }
 
-    document.dispatchEvent(new CustomEvent("settings-hub:close"));
-    this.overlayEl.classList.remove("is-hidden");
-    this.overlayEl.setAttribute("aria-hidden", "false");
+    if (getCurrentPage() !== "archives") {
+      document.dispatchEvent(
+        new CustomEvent<{ page: string }>("navigate-page", {
+          detail: { page: "archives" },
+        })
+      );
+      return;
+    }
+
     this._isOpen = true;
-    syncOverlayScrollLock();
-    dispatchArchiveOverlayState(true);
+    dispatchArchivesPageState(true);
     this.clearStatus();
     this.setProtocolStatus("");
-    await this.refreshOverlayState();
+    await this.refreshPageState();
     window.requestAnimationFrame(() => {
       this.searchInputEl?.focus();
     });
   }
 
   close(): void {
-    if (!(this.overlayEl instanceof HTMLElement)) {
+    if (getCurrentPage() !== "archives" && !this._isOpen) {
       return;
     }
 
-    this.overlayEl.classList.add("is-hidden");
-    this.overlayEl.setAttribute("aria-hidden", "true");
-    this._isOpen = false;
-    syncOverlayScrollLock();
-    dispatchArchiveOverlayState(false);
-    this.clearStatus();
-    this.setProtocolStatus("");
+    closeSpecialPage("archives");
   }
 
   onHostShow(): void {
+    this._isOpen = true;
+    dispatchArchivesPageState(true);
+    this.clearStatus();
+    this.setProtocolStatus("");
     this.applyNames();
     this.applyTranslations();
-    if (this._isOpen) {
-      void this.refreshOverlayState();
-    }
+    void this.refreshPageState();
+    window.requestAnimationFrame(() => {
+      this.searchInputEl?.focus();
+    });
   }
 
   onHostHide(): void {
-    this.close();
+    this._isOpen = false;
+    dispatchArchivesPageState(false);
+    this.clearStatus();
+    this.setProtocolStatus("");
     if (this._searchTimeout) {
       clearTimeout(this._searchTimeout);
       this._searchTimeout = null;
@@ -759,7 +742,7 @@ export class AnalyzeArchiveOverlayController {
     setProtocolStatusView(this.protocolStatusEl, text, type);
   }
 
-  private async refreshOverlayState(): Promise<void> {
+  private async refreshPageState(): Promise<void> {
     await this.loadSettings();
     this.applyNames();
     this.applyTranslations();
@@ -844,3 +827,5 @@ export class AnalyzeArchiveOverlayController {
     this.renderSearchResults();
   }
 }
+
+export { ArchivesPageController, ArchivesPageController as AnalyzeArchiveOverlayController };

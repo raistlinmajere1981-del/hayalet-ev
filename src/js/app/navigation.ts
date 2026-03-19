@@ -12,7 +12,7 @@ import { isSceneDebugRoomId, setActiveSceneDebugRoomId } from "../scene/scene-de
 import type { PageController } from "./types.js";
 import { shellT } from "./shell-i18n.js";
 
-const SPECIAL_PAGES = ["settings", "webview"];
+const SPECIAL_PAGES = ["settings", "whisper", "archives", "webview"];
 
 type UiModeToggleState = "classic" | "scene" | "scene-debug";
 
@@ -102,7 +102,13 @@ function syncTopBarUiModeLayer(): void {
 }
 
 let currentPage: string | null = null;
+let lastPrimaryPage = "entrance";
+const specialPageReturnTargets: Record<string, string> = {};
 let controllers: Record<string, PageController> = {};
+
+function isSpecialPage(pageName: string): boolean {
+  return SPECIAL_PAGES.includes(pageName);
+}
 
 function resolvePageDomNames(pageName: string): string[] {
   return [pageName];
@@ -136,7 +142,7 @@ function syncActiveSceneDebugRoom(pageName: string): void {
     return;
   }
 
-  if (pageName !== "settings" && isSceneDebugRoomId(pageName)) {
+  if (isSceneDebugRoomId(pageName)) {
     setActiveSceneDebugRoomId(pageName);
     return;
   }
@@ -171,9 +177,17 @@ export function setupNavigation(): void {
   }
 }
 
-export function showPage(pageName: string): void {
+export function showPage(pageName: string, rememberSpecialReturn = true): void {
   const normalizedPageName = pageName;
   const previousPage = currentPage;
+  if (
+    rememberSpecialReturn &&
+    isSpecialPage(normalizedPageName) &&
+    previousPage !== null &&
+    previousPage !== normalizedPageName
+  ) {
+    specialPageReturnTargets[normalizedPageName] = previousPage;
+  }
   if (
     previousPage !== null &&
     previousPage !== normalizedPageName &&
@@ -192,6 +206,9 @@ export function showPage(pageName: string): void {
   if (pageElement !== null) {
     pageElement.classList.remove("is-hidden");
     currentPage = normalizedPageName;
+    if (!isSpecialPage(normalizedPageName)) {
+      lastPrimaryPage = normalizedPageName;
+    }
     syncShellLayoutState(normalizedPageName);
     syncActiveSceneDebugRoom(normalizedPageName);
 
@@ -369,7 +386,7 @@ export function setActiveNavigation(pageName: string): void {
   menuItems.forEach((mi) => {
     mi.classList.remove("is-active");
   });
-  if (SPECIAL_PAGES.includes(normalizedPageName) === false) {
+  if (!isSpecialPage(normalizedPageName)) {
     menuItems.forEach((mi) => {
       if (matchesPageDataset((mi as HTMLElement).dataset["page"], normalizedPageName)) {
         mi.classList.add("is-active");
@@ -381,7 +398,7 @@ export function setActiveNavigation(pageName: string): void {
   sideNavBtns.forEach((btn) => {
     btn.classList.remove("is-active");
   });
-  if (SPECIAL_PAGES.includes(normalizedPageName) === false) {
+  if (!isSpecialPage(normalizedPageName)) {
     sideNavBtns.forEach((btn) => {
       if (matchesPageDataset((btn as HTMLElement).dataset["page"], normalizedPageName)) {
         btn.classList.add("is-active");
@@ -392,4 +409,22 @@ export function setActiveNavigation(pageName: string): void {
 
 export function setupReportPanel(): void {
   // NOTE: Kept for backward compatibility.
+}
+
+export function getLastPrimaryPage(): string {
+  return lastPrimaryPage;
+}
+
+export function closeSpecialPage(pageName: string): void {
+  const fallbackPage = specialPageReturnTargets[pageName] ?? lastPrimaryPage;
+  showPage(fallbackPage === pageName ? lastPrimaryPage : fallbackPage, false);
+}
+
+export function toggleSpecialPage(pageName: string): void {
+  if (currentPage === pageName) {
+    closeSpecialPage(pageName);
+    return;
+  }
+
+  showPage(pageName);
 }

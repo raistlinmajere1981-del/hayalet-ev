@@ -2,18 +2,17 @@ import { AppState } from "../../../modules/app-state.js";
 import { AppI18n } from "../../../modules/i18n/index.js";
 import { TrafficManager } from "../../../modules/traffic-manager.js";
 import { shellT } from "../../../app/shell-i18n.js";
+import { dispatchSceneAction } from "../../../scene/action-dispatcher.js";
 import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../../../scene/scene-debug-rooms.js";
 import {
-  closeSceneSettingsPanel,
   navigateToScenePage,
   openSceneSettingsPanel,
 } from "../../../scene/navigation.js";
 import { createSceneDebugStore } from "../../../scene/debug-store.js";
 import { getCoverSceneProjection } from "../../../scene/projection.js";
-import {
-  getSceneRoomBackgroundSrc,
-  getSceneRoomViewBackgroundSrc,
-} from "../../../scene/theme-pack.js";
+import { renderSceneCharacterLayer } from "../../../scene/renderers/character-layer.js";
+import { renderSceneInteractiveLayer } from "../../../scene/renderers/interactive-layer.js";
+import { getSceneRoomBackgroundSrc } from "../../../scene/theme-pack.js";
 import { isSceneUiMode } from "../../../ui/ui-mode.js";
 
 import { resolveSceneAvatarSource } from "./scene-avatar.js";
@@ -21,14 +20,9 @@ import { EntranceSceneEditor, type EntranceSceneEditorSelection } from "./scene-
 import { SceneCharacterMenu } from "./scene-character-menu.js";
 import { applySceneDebugFlag, isSceneDebugEnabled } from "./scene-debug.js";
 import {
-  getSceneHotspotLabelId,
-  getSceneNodeKindForHotspot,
-  hasSceneHotspotLabel,
-  isSceneDebugSelectionForCharacter,
-  isSceneDebugSelectionForHotspot,
-  type EntranceSceneLabelFontPreset,
+  getSceneInteractiveNodesForView,
+  resolveSceneNodeLabelText,
   type EntranceSceneMap,
-  type EntranceSceneHotspotConfig,
 } from "./scene-map.js";
 import {
   buildSceneCharacterRoster,
@@ -43,21 +37,7 @@ const ELEMENT_IDS = {
   characterLayer: "entrance-scene-characters",
   editorHost: "entrance-scene-editor-host",
   menuHost: "entrance-scene-menu-host",
-  whisperView: "entrance-scene-whisper-view",
-  whisperClose: "entrance-scene-whisper-close",
-  classicWhisperDockHost: "entrance-classic-whisper-dock-host",
-  whisperDock: "whisper-dock",
 } as const;
-
-const HOTSPOT_LABEL_FONT_FAMILIES: Record<EntranceSceneLabelFontPreset, string> = {
-  display: "var(--font-scene-display)",
-  inscription: "var(--font-scene-inscription)",
-  classic: "var(--font-scene-classic)",
-  sans: "var(--font-scene-sans)",
-  rounded: "var(--font-scene-rounded)",
-  condensed: "var(--font-scene-condensed)",
-  mono: "var(--font-scene-mono)",
-};
 
 const ENTRANCE_SCENE_DEBUG_STORE = createSceneDebugStore("entrance");
 
@@ -69,10 +49,6 @@ export class EntranceSceneController {
   characterLayer: HTMLElement | null = null;
   editorHost: HTMLElement | null = null;
   menuHost: HTMLElement | null = null;
-  whisperView: HTMLElement | null = null;
-  whisperClose: HTMLButtonElement | null = null;
-  classicWhisperDockHost: HTMLElement | null = null;
-  whisperDock: HTMLElement | null = null;
   menu: SceneCharacterMenu | null = null;
   editor: EntranceSceneEditor | null = null;
   resizeObserver: ResizeObserver | null = null;
@@ -85,7 +61,6 @@ export class EntranceSceneController {
   sceneMap = ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
   sceneDebugEnabled = false;
   editorSelection: EntranceSceneEditorSelection = null;
-  whisperViewOpen = false;
 
   constructor(bridge: SceneEntranceBridge) {
     this.bridge = bridge;
@@ -99,16 +74,9 @@ export class EntranceSceneController {
     this.characterLayer = document.getElementById(ELEMENT_IDS.characterLayer);
     this.editorHost = document.getElementById(ELEMENT_IDS.editorHost);
     this.menuHost = document.getElementById(ELEMENT_IDS.menuHost);
-    this.whisperView = document.getElementById(ELEMENT_IDS.whisperView);
-    this.whisperClose = document.getElementById(
-      ELEMENT_IDS.whisperClose
-    ) as HTMLButtonElement | null;
-    this.classicWhisperDockHost = document.getElementById(ELEMENT_IDS.classicWhisperDockHost);
-    this.whisperDock = document.getElementById(ELEMENT_IDS.whisperDock);
     this.sceneMap =
       (this.sceneDebugEnabled ? ENTRANCE_SCENE_DEBUG_STORE.loadDraft() : null) ??
       ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
-    this.bindWhisperControls();
     if (this.menuHost !== null) {
       this.menu = new SceneCharacterMenu(this.menuHost, this.bridge, {
         onClose: (): void => {
@@ -145,25 +113,23 @@ export class EntranceSceneController {
 
           navigateToScenePage(roomId);
         },
-        updateHotspot: (id, updater): void => {
-          this.sceneMap.hotspots = this.sceneMap.hotspots.map((hotspot) =>
-            hotspot.id === id ? updater(hotspot) : hotspot
+        updateInteractive: (id, updater): void => {
+          this.sceneMap.interactives = this.sceneMap.interactives.map((interactive) =>
+            interactive.id === id ? updater(interactive) : interactive
           );
           this.persistSceneMapDraft();
           this.renderHotspots();
           this.editor?.refresh();
         },
-        updateLabelNode: (id, updater): void => {
-          this.sceneMap.hotspots = this.sceneMap.hotspots.map((hotspot) =>
-            getSceneHotspotLabelId(hotspot.id) === id ? updater(hotspot) : hotspot
-          );
+        updateBack: (id, updater): void => {
+          this.sceneMap.backs = this.sceneMap.backs.map((back) => (back.id === id ? updater(back) : back));
           this.persistSceneMapDraft();
           this.renderHotspots();
           this.editor?.refresh();
         },
-        updateCharacterAnchor: (id, updater): void => {
-          this.sceneMap.characterAnchors = this.sceneMap.characterAnchors.map((anchor) =>
-            anchor.id === id ? updater(anchor) : anchor
+        updateCharacter: (id, updater): void => {
+          this.sceneMap.characters = this.sceneMap.characters.map((character) =>
+            character.id === id ? updater(character) : character
           );
           this.persistSceneMapDraft();
           void this.renderCharacters();
@@ -199,8 +165,6 @@ export class EntranceSceneController {
   }
 
   onHide(): void {
-    this.whisperViewOpen = false;
-    this.syncWhisperView();
     this.menu?.close(false);
     this.openCharacterId = null;
   }
@@ -213,27 +177,21 @@ export class EntranceSceneController {
     const sceneActive = isSceneUiMode();
     this.root.hidden = !sceneActive;
     this.root.setAttribute("aria-hidden", String(!sceneActive));
-    this.syncWhisperDockHost(sceneActive);
 
     if (!sceneActive) {
-      this.whisperViewOpen = false;
-      this.syncWhisperView();
       this.menu?.close(false);
       this.openCharacterId = null;
       return;
     }
 
     this.renderBackground();
-    this.syncWhisperView();
     this.renderHotspots();
     void this.renderCharacters();
     this.editor?.refresh();
   }
 
   private renderStatic(): void {
-    this.syncWhisperDockHost(isSceneUiMode());
     this.renderBackground();
-    this.syncWhisperView();
     this.renderHotspots();
     void this.renderCharacters();
     this.editor?.refresh();
@@ -256,102 +214,10 @@ export class EntranceSceneController {
   }
 
   private renderBackground(): void {
-    if (this.background === null) {
-      return;
+    if (this.background !== null) {
+      this.background.src = getSceneRoomBackgroundSrc("entrance");
+      this.background.alt = "";
     }
-
-    this.background.src = this.whisperViewOpen
-      ? (getSceneRoomViewBackgroundSrc("entrance", "whisper") ??
-        getSceneRoomBackgroundSrc("entrance"))
-      : getSceneRoomBackgroundSrc("entrance");
-    this.background.alt = "";
-  }
-
-  private bindWhisperControls(): void {
-    this.whisperClose?.addEventListener("click", () => {
-      this.closeWhisperView();
-    });
-
-    document.addEventListener("keydown", this.handleDocumentKeydown);
-  }
-
-  private syncWhisperDockHost(sceneActive: boolean): void {
-    const nextHost = sceneActive ? this.whisperView : this.classicWhisperDockHost;
-    if (
-      nextHost === null ||
-      this.whisperDock === null ||
-      nextHost.isConnected === false ||
-      this.whisperDock.closest("#whisper-management-overlay") !== null
-    ) {
-      return;
-    }
-
-    if (this.whisperDock.parentElement === nextHost) {
-      return;
-    }
-
-    nextHost.appendChild(this.whisperDock);
-  }
-
-  private handleDocumentKeydown = (event: KeyboardEvent): void => {
-    if (
-      event.key !== "Escape" ||
-      !this.whisperViewOpen ||
-      document.documentElement.getAttribute("data-active-page") !== "entrance"
-    ) {
-      return;
-    }
-
-    this.closeWhisperView();
-  };
-
-  private openWhisperView(): void {
-    if (!isSceneUiMode()) {
-      return;
-    }
-
-    this.whisperViewOpen = true;
-    this.menu?.close(false);
-    this.openCharacterId = null;
-    this.renderBackground();
-    this.syncWhisperView();
-    document.dispatchEvent(new CustomEvent("entrance-whisper:open"));
-  }
-
-  private closeWhisperView(): void {
-    if (!this.whisperViewOpen) {
-      return;
-    }
-
-    this.whisperViewOpen = false;
-    this.renderBackground();
-    this.syncWhisperView();
-  }
-
-  private syncWhisperView(): void {
-    const whisperOpen = this.whisperViewOpen && isSceneUiMode();
-
-    this.whisperView?.toggleAttribute("hidden", !whisperOpen);
-    this.whisperView?.setAttribute("aria-hidden", String(!whisperOpen));
-    this.hotspotLayer?.toggleAttribute("hidden", whisperOpen);
-    this.hotspotLayer?.setAttribute("aria-hidden", String(whisperOpen));
-    this.characterLayer?.toggleAttribute("hidden", whisperOpen);
-    this.characterLayer?.setAttribute("aria-hidden", String(whisperOpen));
-    this.menuHost?.toggleAttribute("hidden", whisperOpen);
-    this.menuHost?.setAttribute("aria-hidden", String(whisperOpen));
-  }
-
-  private resolveHotspotLabel(hotspot: EntranceSceneHotspotConfig): string {
-    const customLabel =
-      typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText.trim() : "";
-    if (customLabel !== "") {
-      return customLabel;
-    }
-    return shellT(hotspot.labelKey);
-  }
-
-  private resolveHotspotLabelFont(hotspot: EntranceSceneHotspotConfig): string {
-    return HOTSPOT_LABEL_FONT_FAMILIES[hotspot.labelFontPreset];
   }
 
   private renderHotspots(): void {
@@ -359,107 +225,22 @@ export class EntranceSceneController {
       return;
     }
 
-    const projection = this.getSceneProjection();
-    const fragment = document.createDocumentFragment();
-
-    this.sceneMap.hotspots.forEach((hotspot) => {
-      const labelText = this.resolveHotspotLabel(hotspot);
-      const showLabel = hasSceneHotspotLabel(hotspot);
-      const hotspotSelected = isSceneDebugSelectionForHotspot(this.editorSelection, hotspot);
-      const wrapper = document.createElement("div");
-      wrapper.className = "entrance-scene__hotspot-item";
-
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "entrance-scene__hotspot";
-      button.dataset["hotspotId"] = hotspot.id;
-      button.dataset["debugLabel"] = labelText;
-      button.dataset["frameVariant"] = hotspot.frameVariant;
-      button.classList.toggle("is-selected", hotspotSelected);
-      button.style.setProperty("--scene-hotspot-frame-rotate", `${hotspot.frameRotateDeg}deg`);
-      button.style.setProperty(
-        "--scene-hotspot-frame-perspective",
-        `${hotspot.framePerspectiveDeg}deg`
-      );
-      button.style.setProperty(
-        "--scene-hotspot-hover-glow-hue",
-        `${hotspot.frameHoverGlowHueDeg}deg`
-      );
-      button.style.setProperty(
-        "--scene-hotspot-hover-glow-alpha",
-        `${hotspot.frameHoverGlowAlpha}`
-      );
-
-      button.style.setProperty(
-        "--scene-hotspot-left",
-        `${projection.offsetX + hotspot.leftPx * projection.scale}px`
-      );
-      button.style.setProperty(
-        "--scene-hotspot-top",
-        `${projection.offsetY + hotspot.topPx * projection.scale}px`
-      );
-      button.style.setProperty("--scene-hotspot-width", `${hotspot.widthPx * projection.scale}px`);
-      button.style.setProperty(
-        "--scene-hotspot-height",
-        `${hotspot.heightPx * projection.scale}px`
-      );
-      button.ariaLabel = labelText;
-      button.addEventListener("click", () => {
-        this.handleHotspotInteraction(hotspot, getSceneNodeKindForHotspot(hotspot));
-      });
-
-      if (showLabel) {
-        const label = document.createElement("span");
-        label.className = "entrance-scene__hotspot-label";
-        label.classList.toggle("is-selected", hotspotSelected);
-        label.textContent = labelText;
-        label.ariaHidden = "true";
-        label.dataset["hotspotId"] = hotspot.id;
-        label.style.setProperty(
-          "--scene-hotspot-label-left",
-          `${projection.offsetX + hotspot.labelCenterXPx * projection.scale}px`
-        );
-        label.style.setProperty(
-          "--scene-hotspot-label-top",
-          `${projection.offsetY + hotspot.labelTopPx * projection.scale}px`
-        );
-        label.style.setProperty(
-          "--scene-hotspot-label-width",
-          `${hotspot.labelWidthPx * projection.scale}px`
-        );
-        label.style.setProperty(
-          "--scene-hotspot-label-height",
-          `${hotspot.labelHeightPx * projection.scale}px`
-        );
-        label.style.setProperty("--scene-hotspot-label-rotate", `${hotspot.labelRotateDeg}deg`);
-        label.style.setProperty(
-          "--scene-hotspot-label-frame-perspective",
-          `${hotspot.labelFramePerspectiveDeg}deg`
-        );
-        label.style.setProperty(
-          "--scene-hotspot-label-font-size",
-          `${hotspot.labelFontSizePx * projection.scale}px`
-        );
-        label.style.setProperty(
-          "--scene-hotspot-label-letter-spacing",
-          `${hotspot.labelLetterSpacingPx * projection.scale}px`
-        );
-        label.style.setProperty(
-          "--scene-hotspot-label-font-family",
-          this.resolveHotspotLabelFont(hotspot)
-        );
-        label.addEventListener("click", () => {
-          this.handleHotspotInteraction(hotspot, "label");
-        });
-
-        wrapper.append(button, label);
-      } else {
-        wrapper.append(button);
-      }
-      fragment.appendChild(wrapper);
+    renderSceneInteractiveLayer({
+      layer: this.hotspotLayer,
+      nodes: getSceneInteractiveNodesForView(this.sceneMap),
+      projection: this.getSceneProjection(),
+      cssVarPrefix: "scene-hotspot",
+      classNames: {
+        item: "entrance-scene__hotspot-item",
+        button: "entrance-scene__hotspot",
+        label: "entrance-scene__hotspot-label",
+      },
+      selection: this.editorSelection,
+      resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
+      onActivate: (node) => {
+        this.handleInteractive(node.id);
+      },
     });
-
-    this.hotspotLayer.replaceChildren(fragment);
   }
 
   private observeLayout(): void {
@@ -500,44 +281,33 @@ export class EntranceSceneController {
     return Number(Math.max(0.75, scaled).toFixed(3));
   }
 
-  private handleHotspotAction(hotspot: EntranceSceneHotspotConfig): void {
-    if (hotspot.action.type === "settings-scene-close") {
-      closeSceneSettingsPanel();
+  private handleInteractive(id: string): void {
+    const interactive = this.sceneMap.interactives.find((node) => node.id === id) ?? null;
+    if (interactive === null) {
       return;
     }
 
-    if (hotspot.action.type === "settings") {
-      openSceneSettingsPanel(hotspot.action.panel);
-      return;
-    }
-
-    if (hotspot.action.type === "screen") {
-      return;
-    }
-
-    if (hotspot.action.type === "whisper") {
-      this.openWhisperView();
-      return;
-    }
-
-    navigateToScenePage(hotspot.action.page);
-  }
-
-  private handleHotspotInteraction(
-    hotspot: EntranceSceneHotspotConfig,
-    selectionKind: "door" | "object" | "label"
-  ): void {
     if (this.editor !== null) {
-      this.editorSelection = {
-        kind: selectionKind,
-        id: selectionKind === "label" ? getSceneHotspotLabelId(hotspot.id) : hotspot.id,
-      };
+      this.editorSelection = { kind: "interactive", id: interactive.id };
       this.editor.refresh();
       this.renderHotspots();
       return;
     }
 
-    this.handleHotspotAction(hotspot);
+    dispatchSceneAction(interactive.action, {
+      onNavigate: (page) => {
+        navigateToScenePage(page);
+      },
+      onSettings: (action) => {
+        openSceneSettingsPanel(action.panel);
+      },
+      onSettingsSceneClose: () => {},
+      onScreen: () => {},
+      onWhisper: () => {
+        navigateToScenePage("whisper");
+      },
+      onBack: () => {},
+    });
   }
 
   private async renderCharacters(): Promise<void> {
@@ -546,135 +316,34 @@ export class EntranceSceneController {
     }
 
     const renderToken = ++this.characterRenderToken;
-    const characters = buildSceneCharacterRoster(this.sceneMap.characterAnchors);
-    const fragment = document.createDocumentFragment();
-    const sceneDebug = isSceneDebugEnabled();
-    const projection = this.getSceneProjection();
-
-    const avatarSources = await Promise.all(
-      characters.map(async (character) => await resolveSceneAvatarSource(character.avatarSource))
-    );
-
-    if (renderToken !== this.characterRenderToken) {
-      return;
-    }
-
+    const characters = buildSceneCharacterRoster(this.sceneMap.characters, this.sceneMap.characterRosterPreset);
     this.characters = new Map(characters.map((character) => [character.id, character]));
-
-    characters.forEach((character, index) => {
-      const avatarSource = avatarSources[index] ?? null;
-      const characterNode = document.createElement("div");
-      const menuOpen = this.openCharacterId === character.id;
-      characterNode.className = `entrance-scene__character ${`is-${character.state}`}`;
-      if (menuOpen) {
-        characterNode.classList.add("is-menu-open");
-      }
-      if (character.slot !== null) {
-        characterNode.dataset["slot"] = character.slot;
-      }
-      characterNode.dataset["characterId"] = character.id;
-      characterNode.dataset["kind"] = character.kind;
-      characterNode.dataset["role"] = character.role;
-      characterNode.dataset["variant"] = character.variant;
-      characterNode.dataset["anchorId"] = character.anchorId;
-      characterNode.classList.toggle(
-        "is-selected",
-        isSceneDebugSelectionForCharacter(this.editorSelection, { id: character.anchorId })
-      );
-
-      const depthScale = this.getDepthScale(character.depth);
-      const depthZ = Number.isFinite(character.depth) ? Math.max(1, character.depth) : 1;
-
-      characterNode.style.setProperty(
-        "--scene-character-left",
-        `${projection.offsetX + character.leftPx * projection.scale}px`
-      );
-      characterNode.style.setProperty(
-        "--scene-character-bottom",
-        `${projection.offsetY + character.bottomPx * projection.scale}px`
-      );
-      characterNode.style.setProperty("--scene-character-scale", String(character.scale));
-      characterNode.style.setProperty("--scene-character-depth", String(depthZ));
-      characterNode.style.setProperty("--scene-character-depth-scale", String(depthScale));
-
-      characterNode.style.setProperty("--scene-character-body-scale", String(character.bodyScale));
-      characterNode.style.setProperty("--scene-character-head-top", `${character.headTopPct}%`);
-      characterNode.style.setProperty("--scene-character-head-left", `${character.headLeftPct}%`);
-      characterNode.style.setProperty("--scene-character-head-size", `${character.headSizePct}%`);
-      characterNode.style.setProperty(
-        "--scene-character-avatar-scale",
-        String(character.avatarScale)
-      );
-      characterNode.tabIndex = 0;
-      characterNode.role = "button";
-      characterNode.setAttribute("aria-haspopup", "dialog");
-      characterNode.setAttribute("aria-expanded", String(menuOpen));
-
-      const stage = document.createElement("div");
-      stage.className = "entrance-scene__character-stage";
-
-      const body = document.createElement("img");
-      body.className = "entrance-scene__character-body";
-      body.src = character.bodySrc;
-      body.alt = "";
-      body.ariaHidden = "true";
-      stage.appendChild(body);
-
-      const head = document.createElement("span");
-      head.className = "entrance-scene__character-head";
-      head.ariaHidden = "true";
-      if (avatarSource !== null) {
-        const avatar = document.createElement("img");
-        avatar.className = "entrance-scene__character-avatar";
-        avatar.src = avatarSource;
-        avatar.alt = "";
-        avatar.ariaHidden = "true";
-        head.appendChild(avatar);
-      } else {
-        const fallback = document.createElement("span");
-        fallback.className = "entrance-scene__character-head-fallback";
-        fallback.ariaHidden = "true";
-        fallback.textContent = character.headLabel ?? "?";
-        head.appendChild(fallback);
-      }
-      stage.appendChild(head);
-
-      const label = document.createElement("span");
-      label.className = "entrance-scene__character-label";
-      label.textContent = character.label;
-
-      const anchorMarker = document.createElement("span");
-      anchorMarker.className = "entrance-scene__character-anchor-marker";
-      anchorMarker.ariaHidden = String(!sceneDebug);
-      anchorMarker.textContent = character.anchorId;
-
-      characterNode.append(stage, label, anchorMarker);
-      characterNode.addEventListener("click", () => {
+    await renderSceneCharacterLayer({
+      layer: this.characterLayer,
+      characters,
+      projection: this.getSceneProjection(),
+      sceneDebugEnabled: isSceneDebugEnabled(),
+      interactive: true,
+      selectedCharacterId:
+        this.editorSelection?.kind === "character" ? this.editorSelection.id : null,
+      menuOpenCharacterId: this.openCharacterId,
+      isStale: () => renderToken !== this.characterRenderToken,
+      getDepthScale: (depth) => this.getDepthScale(depth),
+      resolveAvatarSource: async (character) => {
+        return await resolveSceneAvatarSource(character.avatarSource);
+      },
+      getNodeClassName: (character) => `entrance-scene__character is-${character.state}`,
+      getFallbackHeadLabel: (character) => character.headLabel ?? "?",
+      onActivate: (character, anchorElement) => {
         if (this.editor !== null) {
           this.editorSelection = { kind: "character", id: character.anchorId };
           this.editor.refresh();
           void this.renderCharacters();
           return;
         }
-        this.toggleCharacterMenu(character, characterNode);
-      });
-      characterNode.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter" && event.key !== " ") {
-          return;
-        }
-        event.preventDefault();
-        if (this.editor !== null) {
-          this.editorSelection = { kind: "character", id: character.anchorId };
-          this.editor.refresh();
-          void this.renderCharacters();
-          return;
-        }
-        this.toggleCharacterMenu(character, characterNode);
-      });
-      fragment.appendChild(characterNode);
+        this.toggleCharacterMenu(character, anchorElement);
+      },
     });
-
-    this.characterLayer.replaceChildren(fragment);
     this.syncOpenMenuAnchor();
   }
 
