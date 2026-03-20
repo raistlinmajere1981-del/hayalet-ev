@@ -1,4 +1,4 @@
-import { CASTLE_SCENE_THEME_PACK } from "../../../assets/themes/castle/scene/manifest.js";
+import { CASTLE_SCENE_THEME_PACK } from "./castle-scene-theme-pack.js";
 
 import type { SceneThemePack } from "../schema.js";
 

@@ -95,8 +95,8 @@ import {
 } from "../../scene/characters/index.js";
 import type { EntranceSceneMap } from "../../scene/layout/index.js";
 import {
-  getSceneBackNodeForView,
-  getSceneInteractiveNodesForView,
+  getSceneBackObjectForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../../scene/layout/index.js";
 import {
@@ -608,17 +608,9 @@ export class AssistantController {
       navigateToRoom: (roomId: string): void => {
         this._navigateToSceneDebugRoom(roomId);
       },
-      updateInteractive: (id, updater): void => {
-        this._assistantSceneMap.interactives = this._assistantSceneMap.interactives.map(
-          (interactive) => (interactive.id === id ? updater(interactive) : interactive)
-        );
-        this._persistAssistantSceneMapDraft();
-        this._renderAssistantScene();
-        this._assistantSceneEditor?.refresh();
-      },
-      updateBack: (id, updater): void => {
-        this._assistantSceneMap.backs = this._assistantSceneMap.backs.map((back) =>
-          back.id === id ? updater(back) : back
+      updateObject: (id, updater): void => {
+        this._assistantSceneMap.objects = this._assistantSceneMap.objects.map((object) =>
+          object.id === id ? updater(object) : object
         );
         this._persistAssistantSceneMapDraft();
         this._syncAssistantSceneVisibility();
@@ -681,7 +673,7 @@ export class AssistantController {
 
     renderSceneInteractiveLayer({
       layer: hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this._assistantSceneMap),
+      nodes: getSceneObjectNodesForView(this._assistantSceneMap),
       projection: this._getAssistantSceneProjection(),
       cssVarPrefix: "assistant-scene-hotspot",
       classNames: {
@@ -692,7 +684,7 @@ export class AssistantController {
       selection: this._assistantSceneSelection,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this._handleAssistantSceneInteractive(node.id);
+        this._handleAssistantSceneObject(node.id);
       },
     });
   }
@@ -822,15 +814,15 @@ export class AssistantController {
         host: screenView,
         node:
           sceneActive && this._assistantSceneScreenOpen
-            ? getSceneBackNodeForView(this._assistantSceneMap, "primary")
+            ? getSceneBackObjectForView(this._assistantSceneMap, "primary")
             : null,
         projection: this._getAssistantSceneProjection(),
         resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
         onActivate: () => {
           if (this._assistantSceneEditor !== null) {
-            const back = getSceneBackNodeForView(this._assistantSceneMap, "primary");
+            const back = getSceneBackObjectForView(this._assistantSceneMap, "primary");
             if (back !== null) {
-              this._assistantSceneSelection = { kind: "back", id: back.id };
+              this._assistantSceneSelection = { kind: "object", id: back.id };
               this._assistantSceneEditor.refresh();
             }
             return;
@@ -1500,20 +1492,20 @@ export class AssistantController {
     return;
   }
 
-  _handleAssistantSceneInteractive(id: string): void {
-    const interactive = this._assistantSceneMap.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  _handleAssistantSceneObject(id: string): void {
+    const object = this._assistantSceneMap.objects.find((node) => node.id === id) ?? null;
+    if (object === null) {
       return;
     }
 
     if (this._assistantSceneEditor !== null) {
-      this._assistantSceneSelection = { kind: "interactive", id: interactive.id };
+      this._assistantSceneSelection = { kind: "object", id: object.id };
       this._assistantSceneEditor.refresh();
       this._renderAssistantScene();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(object.action, {
       onNavigate: (page) => {
         this._setAssistantSceneScreenOpen(false);
         this._navigateToPage(page);

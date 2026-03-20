@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 test("classic theme normalization is centralized and reused by settings schema", () => {
@@ -9,7 +9,6 @@ test("classic theme normalization is centralized and reused by settings schema",
     "src/js/ui/theme/classic-theme-manager.ts",
     "utf8"
   );
-  const themeManagerFacadeSource = readFileSync("src/js/ui/theme-manager.ts", "utf8");
   const themeIndexSource = readFileSync("src/js/ui/theme/index.ts", "utf8");
 
   assert.match(normalizerSource, /export function normalizeThemeAppearance/);
@@ -23,17 +22,9 @@ test("classic theme normalization is centralized and reused by settings schema",
   assert.match(classicThemeManagerSource, /from "\.\/theme-persistence\.js"/);
   assert.match(classicThemeManagerSource, /from "\.\/theme-settings-ui\.js"/);
   assert.match(classicThemeManagerSource, /from "\.\/theme-settings-bindings\.js"/);
-  assert.match(
-    themeManagerFacadeSource,
-    /export \{ THEMES, ThemeManager \} from "\.\/theme\/classic-theme-manager\.js"/
-  );
-  assert.match(
-    themeManagerFacadeSource,
-    /export type \{ ThemeId \} from "\.\/theme\/classic-theme-manager\.js"/
-  );
   assert.match(themeIndexSource, /export \{ ThemeManager \} from "\.\/classic-theme-manager\.js"/);
   assert.match(themeIndexSource, /export type \{ ThemeId \} from "\.\/classic-theme-manager\.js"/);
-  assert.doesNotMatch(themeManagerFacadeSource, /appearance-normalizer/);
+  assert.equal(existsSync("src/js/ui/theme-manager.ts"), false);
 });
 
 test("classic theme host propagation uses dedicated host sync helpers", () => {

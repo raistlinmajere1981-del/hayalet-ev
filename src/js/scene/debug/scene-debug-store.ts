@@ -77,8 +77,7 @@ function loadSceneDebugDraft(config: SceneDebugStoreConfig): EntranceSceneMap | 
     const parsed = JSON.parse(raw) as Partial<EntranceSceneMap>;
     if (
       parsed.referenceSize === undefined ||
-      !Array.isArray(parsed.interactives) ||
-      !Array.isArray(parsed.backs) ||
+      !Array.isArray(parsed.objects) ||
       !Array.isArray(parsed.characters)
     ) {
       return null;

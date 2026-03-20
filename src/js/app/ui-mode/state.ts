@@ -77,7 +77,7 @@ export function getUiModeToggleState(
     return "classic";
   }
 
-  const sceneDebug = root.getAttribute("data-scene-debug");
+  const sceneDebug = root?.getAttribute("data-scene-debug");
   return sceneDebug === "true" ? "scene-debug" : "scene";
 }
 

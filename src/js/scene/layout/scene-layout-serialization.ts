@@ -1,9 +1,7 @@
 import type {
-  EntranceSceneBackAction,
-  EntranceSceneBackConfig,
   EntranceSceneCharacterConfig,
-  EntranceSceneInteractiveAction,
-  EntranceSceneInteractiveConfig,
+  SceneObjectConfig,
+  SceneObjectConfigAction,
   EntranceSceneMap,
 } from "./scene-layout-state.js";
 import {
@@ -22,18 +20,12 @@ export function cloneEntranceSceneMap(
   return {
     characterRosterPreset: source.characterRosterPreset,
     referenceSize: { ...source.referenceSize },
-    interactives: source.interactives.map((interactive) => ({
-      ...interactive,
-      action: { ...interactive.action },
-      rect: { ...interactive.rect },
-      frame: { ...interactive.frame },
-      label: { ...interactive.label },
-    })),
-    backs: source.backs.map((back) => ({
-      ...back,
-      action: { ...back.action },
-      rect: { ...back.rect },
-      label: { ...back.label },
+    objects: source.objects.map((object) => ({
+      ...object,
+      action: { ...object.action },
+      rect: { ...object.rect },
+      frame: { ...object.frame },
+      label: { ...object.label },
     })),
     characters: source.characters.map((character) => ({ ...character })),
   };
@@ -66,35 +58,16 @@ function normalizeFrame(
   };
 }
 
-function normalizeInteractive(
-  partial: Partial<EntranceSceneInteractiveConfig>,
-  fallback: EntranceSceneInteractiveConfig
-): EntranceSceneInteractiveConfig {
+function normalizeObject(partial: Partial<SceneObjectConfig>, fallback: SceneObjectConfig): SceneObjectConfig {
   return {
     ...fallback,
     ...partial,
     action: {
       ...fallback.action,
       ...(partial.action ?? {}),
-    } as EntranceSceneInteractiveAction,
+    } as SceneObjectConfigAction,
     rect: normalizeRect(partial.rect ?? {}, fallback.rect),
     frame: normalizeFrame(partial.frame ?? {}, fallback.frame),
-    label: normalizeLabel(partial.label ?? {}, fallback.label),
-  };
-}
-
-function normalizeBack(
-  partial: Partial<EntranceSceneBackConfig>,
-  fallback: EntranceSceneBackConfig
-): EntranceSceneBackConfig {
-  return {
-    ...fallback,
-    ...partial,
-    action: {
-      ...fallback.action,
-      ...(partial.action ?? {}),
-    } as EntranceSceneBackAction,
-    rect: normalizeRect(partial.rect ?? {}, fallback.rect),
     label: normalizeLabel(partial.label ?? {}, fallback.label),
   };
 }
@@ -113,16 +86,8 @@ function normalizeSceneMap(
   source: Partial<EntranceSceneMap>,
   defaultMap: EntranceSceneMap
 ): EntranceSceneMap {
-  const interactiveById = new Map<string, Partial<EntranceSceneInteractiveConfig>>(
-    (Array.isArray(source.interactives)
-      ? (source.interactives as Array<Partial<EntranceSceneInteractiveConfig>>)
-      : []
-    )
-      .filter((item) => typeof item.id === "string")
-      .map((item) => [item.id as string, item])
-  );
-  const backById = new Map<string, Partial<EntranceSceneBackConfig>>(
-    (Array.isArray(source.backs) ? (source.backs as Array<Partial<EntranceSceneBackConfig>>) : [])
+  const objectById = new Map<string, Partial<SceneObjectConfig>>(
+    (Array.isArray(source.objects) ? (source.objects as Array<Partial<SceneObjectConfig>>) : [])
       .filter((item) => typeof item.id === "string")
       .map((item) => [item.id as string, item])
   );
@@ -141,10 +106,7 @@ function normalizeSceneMap(
       width: source.referenceSize?.width ?? defaultMap.referenceSize.width,
       height: source.referenceSize?.height ?? defaultMap.referenceSize.height,
     },
-    interactives: defaultMap.interactives.map((fallback) =>
-      normalizeInteractive(interactiveById.get(fallback.id) ?? {}, fallback)
-    ),
-    backs: defaultMap.backs.map((fallback) => normalizeBack(backById.get(fallback.id) ?? {}, fallback)),
+    objects: defaultMap.objects.map((fallback) => normalizeObject(objectById.get(fallback.id) ?? {}, fallback)),
     characters: defaultMap.characters.map((fallback) =>
       normalizeCharacter(characterById.get(fallback.id) ?? {}, fallback)
     ),

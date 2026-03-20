@@ -3,14 +3,13 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 test("castle scene theme pack centralizes room art and unified debug defaults", () => {
-  const manifestSource = readFileSync("src/assets/themes/castle/scene/manifest.ts", "utf8");
-  const debugThemeSource = readFileSync("src/assets/themes/castle/scene/debug.ts", "utf8");
+  const manifestSource = readFileSync("src/js/scene/theme/castle-scene-theme-pack.ts", "utf8");
+  const debugThemeSource = readFileSync("src/js/scene/debug/castle-scene-debug-theme.ts", "utf8");
   const assetsSource = readFileSync("src/js/scene/theme/scene-theme-assets.ts", "utf8");
   const loadingSource = readFileSync("src/js/scene/theme/scene-loading-theme.ts", "utf8");
   const characterSource = readFileSync("src/js/scene/theme/scene-character-theme.ts", "utf8");
   const registrySource = readFileSync("src/js/scene/theme/scene-theme-registry.ts", "utf8");
   const themePackSource = readFileSync("src/js/scene/theme/scene-theme-pack.ts", "utf8");
-  const themePackFacadeSource = readFileSync("src/js/scene/theme-pack.ts", "utf8");
 
   assert.match(manifestSource, /themeId:\s*"castle"/);
   assert.match(manifestSource, /loading:\s*\{[\s\S]*frames:\s*\[/);
@@ -37,7 +36,9 @@ test("castle scene theme pack centralizes room art and unified debug defaults", 
   assert.match(themePackSource, /scene-loading-theme\.js/);
   assert.match(themePackSource, /scene-theme-assets\.js/);
   assert.doesNotMatch(themePackSource, /getSceneDebugDraftStorageKey/);
-  assert.match(themePackFacadeSource, /export \* from "\.\/theme\/scene-theme-pack\.js"/);
+  assert.equal(existsSync("src/js/scene/theme-pack.ts"), false);
+  assert.equal(existsSync("src/assets/themes/castle/scene/manifest.ts"), false);
+  assert.equal(existsSync("src/assets/themes/castle/scene/debug.ts"), false);
 });
 
 test("scene runtime files resolve theme assets and use generated back layers instead of the legacy helper", () => {

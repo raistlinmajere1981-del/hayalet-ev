@@ -1,4 +1,4 @@
-import { CASTLE_SCENE_DEBUG_THEME } from "../../../assets/themes/castle/scene/debug.js";
+import { CASTLE_SCENE_DEBUG_THEME } from "./castle-scene-debug-theme.js";
 
 import type { SceneDebugEditableRoomId, SceneDebugThemeDefinition } from "../schema.js";
 

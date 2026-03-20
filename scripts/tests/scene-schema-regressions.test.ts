@@ -13,24 +13,23 @@ import {
 
 test("scene schema exposes the canonical room and node registries", () => {
   assert.deepEqual(SCENE_ROOM_IDS, ["entrance", "analyze", "assistant", "server", "rooms", "settings"]);
-  assert.deepEqual(SCENE_NODE_KINDS, ["interactive", "back", "character"]);
+  assert.deepEqual(SCENE_NODE_KINDS, ["object", "character"]);
 });
 
 test("entrance scene map can be represented through the shared node schema", () => {
   const nodes = buildSceneNodesFromMap(DEFAULT_ENTRANCE_SCENE_MAP);
 
-  assert.ok(nodes.some((node) => node.kind === "interactive" && node.id === "door-analyze"));
-  assert.ok(nodes.some((node) => node.kind === "interactive" && node.id === "door-settings"));
-  assert.ok(nodes.some((node) => node.kind === "interactive" && node.id === "hatch-rooms"));
+  assert.ok(nodes.some((node) => node.kind === "object" && node.id === "door-analyze"));
+  assert.ok(nodes.some((node) => node.kind === "object" && node.id === "door-settings"));
+  assert.ok(nodes.some((node) => node.kind === "object" && node.id === "hatch-rooms"));
   assert.ok(
     nodes.some(
-      (node) =>
-        node.kind === "interactive" &&
-        node.id === "board-whisper" &&
-        node.action.type === "whisper"
+      (node) => node.kind === "object" && node.id === "board-whisper" && node.action.type === "whisper"
     )
   );
-  assert.ok(nodes.some((node) => node.kind === "back" && node.id === "back-whisper"));
+  assert.ok(
+    nodes.some((node) => node.kind === "object" && node.id === "back-whisper" && node.action.type === "back")
+  );
   assert.ok(nodes.some((node) => node.kind === "character" && node.id === "anchor-assistant"));
 });
 
@@ -39,9 +38,9 @@ test("assistant room definition keeps room metadata alongside shared scene nodes
 
   assert.equal(room.referenceSize.width, 1920);
   assert.equal(room.referenceSize.height, 1080);
-  assert.ok(room.nodes.some((node) => node.kind === "interactive" && node.id === "door-entrance"));
-  assert.ok(room.nodes.some((node) => node.kind === "interactive" && node.id === "screen-primary"));
-  assert.ok(room.nodes.some((node) => node.kind === "back" && node.id === "back-primary"));
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "door-entrance"));
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "screen-primary"));
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "back-primary"));
   assert.ok(room.nodes.some((node) => node.kind === "character" && node.id === "anchor-ai0"));
   assert.ok(room.nodes.every((node) => SCENE_NODE_KINDS.includes(node.kind)));
 });
@@ -51,20 +50,18 @@ test("server room definition participates in the shared scene schema", () => {
 
   assert.equal(room.referenceSize.width, 1920);
   assert.equal(room.referenceSize.height, 1080);
-  assert.ok(room.nodes.some((node) => node.kind === "interactive" && node.id === "door-entrance"));
-  assert.ok(room.nodes.some((node) => node.kind === "interactive" && node.id === "screen-primary"));
-  assert.ok(room.nodes.some((node) => node.kind === "back" && node.id === "back-primary"));
-  assert.ok(
-    room.nodes.some((node) => node.kind === "character" && node.id === "anchor-ai1-primary")
-  );
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "door-entrance"));
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "screen-primary"));
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "back-primary"));
+  assert.ok(room.nodes.some((node) => node.kind === "character" && node.id === "anchor-ai1-primary"));
   assert.ok(room.nodes.every((node) => SCENE_NODE_KINDS.includes(node.kind)));
 });
 
-test("rooms room definition keeps a single interactive entrance link", () => {
+test("rooms room definition keeps a single object-based entrance link", () => {
   const room = buildSceneRoomDefinition("rooms", DEFAULT_ROOMS_SCENE_MAP);
 
   assert.equal(room.referenceSize.width, 1920);
   assert.equal(room.referenceSize.height, 1080);
-  assert.deepEqual(room.nodes.map((node) => node.kind), ["interactive"]);
-  assert.ok(room.nodes.some((node) => node.kind === "interactive" && node.id === "door-entrance"));
+  assert.deepEqual(room.nodes.map((node) => node.kind), ["object"]);
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "door-entrance"));
 });

@@ -1,3 +1,10 @@
+import { isSceneUiMode } from "../../ui/ui-mode.js";
+import {
+  getSceneToolHostPage,
+  isSceneToolPageName,
+  openSceneTool,
+} from "../../scene/tool-pages.js";
+
 export type ExternalToolPageName = "archives" | "settings" | "whisper";
 
 const DEFAULT_RETURN_PAGE = "entrance";
@@ -60,6 +67,12 @@ export function openExternalToolPage(
   } = {}
 ): void {
   if (isHostedInMainShell()) {
+    if (page !== "settings" && isSceneUiMode() && isSceneToolPageName(page)) {
+      dispatchHostPageNavigation(getSceneToolHostPage(page));
+      openSceneTool(page);
+      return;
+    }
+
     dispatchHostPageNavigation(page);
     if (page === "settings") {
       document.dispatchEvent(

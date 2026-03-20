@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 test("ui mode orchestration centralizes option definitions and shared dropdown rendering", () => {
@@ -20,18 +20,18 @@ test("ui mode orchestration centralizes option definitions and shared dropdown r
   assert.match(windowControlsSource, /buildUiModeOptionsMarkup/);
 });
 
-test("scene and debug legacy entry files remain compatibility facades to canonical roots", () => {
-  const themePackSource = readFileSync("src/js/scene/theme-pack.ts", "utf8");
-  const debugStoreSource = readFileSync("src/js/scene/debug-store.ts", "utf8");
-  const debugRoomsSource = readFileSync("src/js/scene/scene-debug-rooms.ts", "utf8");
-  const debugFlagSource = readFileSync("src/js/pages/entrance/scene/scene-debug.ts", "utf8");
-  const sceneMapFacadeSource = readFileSync("src/js/pages/entrance/scene/scene-map.ts", "utf8");
+test("scene cleanup removes legacy facades and keeps canonical roots only", () => {
+  const debugIndexSource = readFileSync("src/js/scene/debug/index.ts", "utf8");
+  const themeIndexSource = readFileSync("src/js/scene/theme/index.ts", "utf8");
   const uiIndexSource = readFileSync("src/js/ui/index.ts", "utf8");
 
-  assert.match(themePackSource, /export \* from "\.\/theme\/scene-theme-pack\.js"/);
-  assert.match(debugStoreSource, /export \* from "\.\/debug\/scene-debug-store\.js"/);
-  assert.match(debugRoomsSource, /export \* from "\.\/debug\/scene-debug-room-registry\.js"/);
-  assert.match(debugFlagSource, /export \* from "\.\.\/\.\.\/\.\.\/scene\/debug\/scene-debug-flag\.js"/);
-  assert.match(sceneMapFacadeSource, /export \* from "\.\.\/\.\.\/\.\.\/scene\/layout\/index\.js"/);
+  assert.equal(existsSync("src/js/scene/theme-pack.ts"), false);
+  assert.equal(existsSync("src/js/scene/debug-store.ts"), false);
+  assert.equal(existsSync("src/js/scene/scene-debug-rooms.ts"), false);
+  assert.equal(existsSync("src/js/pages/entrance/scene/scene-debug.ts"), false);
+  assert.equal(existsSync("src/js/pages/entrance/scene/scene-map.ts"), false);
+  assert.match(debugIndexSource, /scene-debug-store\.js/);
+  assert.match(debugIndexSource, /scene-debug-room-registry\.js/);
+  assert.match(themeIndexSource, /scene-theme-pack\.js/);
   assert.match(uiIndexSource, /export \{ ThemeManager \} from "\.\/theme\/index"/);
 });

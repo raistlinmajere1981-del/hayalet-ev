@@ -36,11 +36,18 @@ import {
 } from "../scene/characters/index.js";
 import type { EntranceSceneMap } from "../scene/layout/index.js";
 import {
-  getSceneBackNodeForView,
-  getSceneInteractiveNodesForView,
+  getSceneBackObjectForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
 import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../scene/theme/scene-theme-assets.js";
+import {
+  SCENE_TOOL_CLOSE_EVENT,
+  SCENE_TOOL_HOST_HIDE_EVENT,
+  SCENE_TOOL_HOST_SHOW_EVENT,
+  SCENE_TOOL_OPEN_EVENT,
+  type SceneToolEventDetail,
+} from "../scene/tool-pages.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
 
 import { renderMessages, resetMessageRenderState } from "./analyze/message-renderer.js";
@@ -70,6 +77,7 @@ interface DraftState {
 }
 
 type AnalyzeParticipant = "ai1" | "ai2" | "us1";
+type AnalyzeSceneViewId = "table" | "archive";
 const ANALYZE_SCENE_DEBUG_STORE = createSceneDebugStore("analyze");
 
 function analyzeT(key: string, params?: TranslationParams): string {
@@ -123,7 +131,7 @@ export class AnalyzeController {
   _us1SendBusy: boolean;
   _us1AwaitingReply: boolean;
   _syncingUs1Indicators: boolean;
-  _analyzeSceneTableOpen: boolean;
+  _analyzeSceneActiveView: AnalyzeSceneViewId | null;
   _analyzeSceneDebugEnabled: boolean;
   _analyzeSceneMap: EntranceSceneMap;
   _analyzeSceneEditor: EntranceSceneEditor | null;
@@ -131,6 +139,7 @@ export class AnalyzeController {
   _analyzeSceneResizeObserver: ResizeObserver | null;
   _analyzeSceneCharacterRenderToken: number;
   _analyzeSceneFrameController: SceneAlphaWindowFrameController | null;
+  _analyzeSceneArchivesPlaceholder: Comment | null;
 
   constructor() {
     this.stagedFiles = [];
@@ -150,7 +159,7 @@ export class AnalyzeController {
     this._us1SendBusy = false;
     this._us1AwaitingReply = false;
     this._syncingUs1Indicators = false;
-    this._analyzeSceneTableOpen = false;
+    this._analyzeSceneActiveView = null;
     this._analyzeSceneDebugEnabled = false;
     this._analyzeSceneMap = ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
     this._analyzeSceneEditor = null;
@@ -158,6 +167,7 @@ export class AnalyzeController {
     this._analyzeSceneResizeObserver = null;
     this._analyzeSceneCharacterRenderToken = 0;
     this._analyzeSceneFrameController = null;
+    this._analyzeSceneArchivesPlaceholder = null;
   }
 
   async init(): Promise<void> {
@@ -283,6 +293,7 @@ export class AnalyzeController {
     }
 
     this._setupAnalyzeSceneDebug();
+    this._bindAnalyzeSceneToolEvents();
     this._syncAnalyzeSceneAssets();
     this._renderAnalyzeScene();
     this._syncAnalyzeSceneVisibility();
@@ -301,7 +312,8 @@ export class AnalyzeController {
     }
 
     if (tableArt !== null) {
-      tableArt.src = getSceneRoomPanelSrc("analyze", "table") ?? "";
+      const panelId = this._analyzeSceneActiveView === "archive" ? "archive" : "table";
+      tableArt.src = getSceneRoomPanelSrc("analyze", panelId) ?? "";
       tableArt.alt = "";
     }
 
@@ -339,17 +351,9 @@ export class AnalyzeController {
       navigateToRoom: (roomId: string): void => {
         this._navigateToAnalyzeSceneDebugRoom(roomId);
       },
-      updateInteractive: (id, updater): void => {
-        this._analyzeSceneMap.interactives = this._analyzeSceneMap.interactives.map(
-          (interactive) => (interactive.id === id ? updater(interactive) : interactive)
-        );
-        this._persistAnalyzeSceneMapDraft();
-        this._renderAnalyzeScene();
-        this._analyzeSceneEditor?.refresh();
-      },
-      updateBack: (id, updater): void => {
-        this._analyzeSceneMap.backs = this._analyzeSceneMap.backs.map((back) =>
-          back.id === id ? updater(back) : back
+      updateObject: (id, updater): void => {
+        this._analyzeSceneMap.objects = this._analyzeSceneMap.objects.map((object) =>
+          object.id === id ? updater(object) : object
         );
         this._persistAnalyzeSceneMapDraft();
         this._syncAnalyzeSceneVisibility();
@@ -393,10 +397,23 @@ export class AnalyzeController {
       if (!isSceneUiMode()) {
         return;
       }
-      this._renderAnalyzeScene();
-      this._analyzeSceneEditor?.refresh();
+      this._syncAnalyzeSceneVisibility();
     });
     this._analyzeSceneResizeObserver.observe(sceneRoot);
+  }
+
+  _bindAnalyzeSceneToolEvents(): void {
+    document.addEventListener(SCENE_TOOL_OPEN_EVENT, ((event: CustomEvent<SceneToolEventDetail>) => {
+      if (event.detail.tool === "archives") {
+        this._setAnalyzeSceneActiveView("archive");
+      }
+    }) as EventListener);
+
+    document.addEventListener(SCENE_TOOL_CLOSE_EVENT, ((event: CustomEvent<SceneToolEventDetail>) => {
+      if (event.detail.tool === "archives") {
+        this._setAnalyzeSceneActiveView(null);
+      }
+    }) as EventListener);
   }
 
   _renderAnalyzeScene(): void {
@@ -412,7 +429,7 @@ export class AnalyzeController {
 
     renderSceneInteractiveLayer({
       layer: hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this._analyzeSceneMap),
+      nodes: getSceneObjectNodesForView(this._analyzeSceneMap),
       projection: this._getAnalyzeSceneProjection(),
       cssVarPrefix: "analyze-scene-hotspot",
       classNames: {
@@ -423,7 +440,7 @@ export class AnalyzeController {
       selection: this._analyzeSceneSelection,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this._handleAnalyzeSceneInteractive(node.id);
+        this._handleAnalyzeSceneObject(node.id);
       },
     });
   }
@@ -497,96 +514,108 @@ export class AnalyzeController {
     );
   }
 
-  _handleAnalyzeSceneInteractive(id: string): void {
-    const interactive = this._analyzeSceneMap.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  _handleAnalyzeSceneObject(id: string): void {
+    const object = this._analyzeSceneMap.objects.find((node) => node.id === id) ?? null;
+    if (object === null) {
       return;
     }
 
     if (this._analyzeSceneEditor !== null) {
-      this._analyzeSceneSelection = { kind: "interactive", id: interactive.id };
+      this._analyzeSceneSelection = { kind: "object", id: object.id };
       this._analyzeSceneEditor.refresh();
       this._renderAnalyzeScene();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(object.action, {
       onNavigate: (page) => {
-        this._setAnalyzeSceneTableOpen(false);
+        this._setAnalyzeSceneActiveView(null);
         this._navigateToPage(page);
       },
       onSettings: (action) => {
-        this._setAnalyzeSceneTableOpen(false);
+        this._setAnalyzeSceneActiveView(null);
         openSceneSettingsPanel(action.panel);
       },
       onSettingsSceneClose: () => {
-        this._setAnalyzeSceneTableOpen(false);
+        this._setAnalyzeSceneActiveView(null);
       },
       onScreen: (action) => {
         if (action.screen === "archive") {
-          this._setAnalyzeSceneTableOpen(false);
-          this._navigateToPage("archives");
+          this._setAnalyzeSceneActiveView("archive");
           return;
         }
 
-        this._setAnalyzeSceneTableOpen(true);
+        this._setAnalyzeSceneActiveView("table");
       },
       onWhisper: () => {},
       onBack: () => {
-        this._setAnalyzeSceneTableOpen(false);
+        this._setAnalyzeSceneActiveView(null);
       },
     });
   }
 
-  _setAnalyzeSceneTableOpen(open: boolean): void {
-    this._analyzeSceneTableOpen = open;
+  _setAnalyzeSceneActiveView(viewId: AnalyzeSceneViewId | null): void {
+    this._analyzeSceneActiveView = viewId;
     this._syncAnalyzeSceneVisibility();
   }
 
   _syncAnalyzeSceneVisibility(): void {
     const sceneRoot = document.getElementById("analyze-scene-root");
     const tableView = document.getElementById("analyze-scene-table-view");
+    const panelSlot = document.getElementById("analyze-scene-panel-slot");
     const room = document.querySelector(".analyze-room");
     const sceneActive = isSceneUiMode();
+    const viewOpen = this._analyzeSceneActiveView !== null;
 
     syncSceneViewRuntime({
       elements: {
         root: sceneRoot instanceof HTMLElement ? sceneRoot : null,
         view: tableView instanceof HTMLElement ? tableView : null,
         room: room instanceof HTMLElement ? room : null,
+        viewSlot: panelSlot instanceof HTMLElement ? panelSlot : null,
       },
       state: {
         sceneActive,
-        viewOpen: this._analyzeSceneTableOpen,
+        viewOpen,
         roomOpenClass: "is-scene-table-open",
       },
     });
+
+    if (this._analyzeSceneActiveView === "archive") {
+      this._mountAnalyzeArchivesPage(panelSlot instanceof HTMLElement ? panelSlot : null);
+    } else {
+      this._restoreAnalyzeArchivesPage();
+    }
 
     if (tableView instanceof HTMLElement) {
       renderSceneBackLayer({
         host: tableView,
         node:
-          sceneActive && this._analyzeSceneTableOpen
-            ? getSceneBackNodeForView(this._analyzeSceneMap, "table")
+          sceneActive && this._analyzeSceneActiveView !== null
+            ? getSceneBackObjectForView(this._analyzeSceneMap, this._analyzeSceneActiveView)
             : null,
         projection: this._getAnalyzeSceneProjection(),
         resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
         onActivate: () => {
           if (this._analyzeSceneEditor !== null) {
-            const back = getSceneBackNodeForView(this._analyzeSceneMap, "table");
+            const back =
+              this._analyzeSceneActiveView === null
+                ? null
+                : getSceneBackObjectForView(this._analyzeSceneMap, this._analyzeSceneActiveView);
             if (back !== null) {
-              this._analyzeSceneSelection = { kind: "back", id: back.id };
+              this._analyzeSceneSelection = { kind: "object", id: back.id };
               this._analyzeSceneEditor.refresh();
             }
             return;
           }
 
-          this._setAnalyzeSceneTableOpen(false);
+          this._setAnalyzeSceneActiveView(null);
         },
       });
     }
 
     if (!sceneActive) {
+      this._restoreAnalyzeArchivesPage();
       return;
     }
 
@@ -596,12 +625,68 @@ export class AnalyzeController {
     this._analyzeSceneEditor?.refresh();
   }
 
+  _mountAnalyzeArchivesPage(slot: HTMLElement | null): void {
+    const page = document.getElementById("page-archives");
+    if (!(slot instanceof HTMLElement) || !(page instanceof HTMLElement)) {
+      return;
+    }
+
+    const wasEmbedded = page.dataset["sceneEmbedded"] === "true";
+    if (page.parentElement !== slot) {
+      if (this._analyzeSceneArchivesPlaceholder === null && page.parentNode !== null) {
+        this._analyzeSceneArchivesPlaceholder = document.createComment("analyze-scene-archives-placeholder");
+        page.parentNode.insertBefore(this._analyzeSceneArchivesPlaceholder, page);
+      }
+      slot.appendChild(page);
+    }
+
+    page.dataset["sceneEmbedded"] = "true";
+    page.classList.remove("is-hidden");
+    page.hidden = false;
+    if (!wasEmbedded) {
+      document.dispatchEvent(
+        new CustomEvent<SceneToolEventDetail>(SCENE_TOOL_HOST_SHOW_EVENT, {
+          detail: { tool: "archives" },
+        })
+      );
+    }
+  }
+
+  _restoreAnalyzeArchivesPage(): void {
+    const page = document.getElementById("page-archives");
+    if (!(page instanceof HTMLElement)) {
+      return;
+    }
+
+    if (
+      this._analyzeSceneArchivesPlaceholder?.parentNode !== null &&
+      this._analyzeSceneArchivesPlaceholder?.parentNode !== undefined
+    ) {
+      this._analyzeSceneArchivesPlaceholder.parentNode.insertBefore(
+        page,
+        this._analyzeSceneArchivesPlaceholder.nextSibling
+      );
+    }
+
+    if (page.dataset["sceneEmbedded"] === "true") {
+      delete page.dataset["sceneEmbedded"];
+      document.dispatchEvent(
+        new CustomEvent<SceneToolEventDetail>(SCENE_TOOL_HOST_HIDE_EVENT, {
+          detail: { tool: "archives" },
+        })
+      );
+    }
+
+    page.classList.add("is-hidden");
+    page.hidden = true;
+  }
+
   _navigateToPage(page: string): void {
     navigateToScenePage(page);
   }
 
   _navigateToAnalyzeSceneDebugRoom(roomId: string): void {
-    this._setAnalyzeSceneTableOpen(false);
+    this._setAnalyzeSceneActiveView(null);
     if (roomId === "settings") {
       openSceneSettingsPanel(null);
       return;
@@ -1651,7 +1736,7 @@ export class AnalyzeController {
   }
 
   onHide(): void {
-    this._setAnalyzeSceneTableOpen(false);
+    this._setAnalyzeSceneActiveView(null);
     this._analyzeSceneSelection = null;
     this._stopUs1Polling();
 

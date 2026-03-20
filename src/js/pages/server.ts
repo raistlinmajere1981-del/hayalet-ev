@@ -25,8 +25,8 @@ import {
 } from "../scene/characters/index.js";
 import type { EntranceSceneMap } from "../scene/layout/index.js";
 import {
-  getSceneBackNodeForView,
-  getSceneInteractiveNodesForView,
+  getSceneBackObjectForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
@@ -326,17 +326,9 @@ export class ServerController {
 
         this._navigateToPage(roomId);
       },
-      updateInteractive: (id, updater): void => {
-        this._serverSceneMap.interactives = this._serverSceneMap.interactives.map((interactive) =>
-          interactive.id === id ? updater(interactive) : interactive
-        );
-        this.persistServerSceneMapDraft();
-        this.renderServerScene();
-        this._serverSceneEditor?.refresh();
-      },
-      updateBack: (id, updater): void => {
-        this._serverSceneMap.backs = this._serverSceneMap.backs.map((back) =>
-          back.id === id ? updater(back) : back
+      updateObject: (id, updater): void => {
+        this._serverSceneMap.objects = this._serverSceneMap.objects.map((object) =>
+          object.id === id ? updater(object) : object
         );
         this.persistServerSceneMapDraft();
         this.syncServerSceneVisibility();
@@ -398,7 +390,7 @@ export class ServerController {
 
     renderSceneInteractiveLayer({
       layer: hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this._serverSceneMap),
+      nodes: getSceneObjectNodesForView(this._serverSceneMap),
       projection: this.getServerSceneProjection(),
       cssVarPrefix: "server-scene-hotspot",
       classNames: {
@@ -409,7 +401,7 @@ export class ServerController {
       selection: this._serverSceneSelection,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleServerSceneInteractive(node.id);
+        this.handleServerSceneObject(node.id);
       },
     });
   }
@@ -438,20 +430,20 @@ export class ServerController {
     this._serverSceneBindingsReady = true;
   }
 
-  private handleServerSceneInteractive(id: string): void {
-    const interactive = this._serverSceneMap.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  private handleServerSceneObject(id: string): void {
+    const object = this._serverSceneMap.objects.find((node) => node.id === id) ?? null;
+    if (object === null) {
       return;
     }
 
     if (this._serverSceneEditor !== null) {
-      this._serverSceneSelection = { kind: "interactive", id: interactive.id };
+      this._serverSceneSelection = { kind: "object", id: object.id };
       this._serverSceneEditor.refresh();
       this.renderServerScene();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(object.action, {
       onNavigate: (page) => {
         this.setServerSceneScreenOpen(false);
         this._navigateToPage(page);
@@ -500,7 +492,7 @@ export class ServerController {
         host: screenView,
         node:
           sceneActive && this._serverSceneScreenOpen
-            ? getSceneBackNodeForView(this._serverSceneMap, "primary")
+            ? getSceneBackObjectForView(this._serverSceneMap, "primary")
             : null,
         projection: this.getServerSceneProjection(),
         resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),

@@ -1,4 +1,4 @@
-import type { SceneDebugThemeDefinition } from "../../../../js/scene/schema.js";
+import type { SceneDebugThemeDefinition } from "../schema.js";
 
 export const CASTLE_SCENE_DEBUG_THEME = {
   defaultRoomId: "entrance",

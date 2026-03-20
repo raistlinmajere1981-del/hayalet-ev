@@ -40,14 +40,14 @@ test("scene controllers render the shared generated back layer", () => {
     "src/js/pages/assistant/assistant.ts",
     "src/js/pages/server.ts",
     "src/js/pages/analyze.ts",
-    "src/js/app/topbar-settings-overlay.ts",
+    "src/js/pages/settings/controller.ts",
     "src/js/pages/entrance/scene/scene-controller.ts",
   ];
 
   targets.forEach((target) => {
     const source = read(target);
     assert.match(source, /renderSceneBackLayer/);
-    assert.match(source, /getSceneBackNodeForView|syncSceneViewRuntime|scene-shell__view/);
+    assert.match(source, /getSceneBackObjectForView|syncSceneViewRuntime|scene-shell__view/);
     assert.doesNotMatch(source, /bindSceneBackZones/);
   });
 });

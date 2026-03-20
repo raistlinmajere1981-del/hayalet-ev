@@ -1,5 +1,5 @@
 import { getSceneHotspotLabelFontFamily } from "../label-font.js";
-import type { EntranceSceneBackConfig } from "../layout/index.js";
+import type { SceneObjectConfig } from "../layout/index.js";
 import { hasSceneNodeLabel } from "../layout/index.js";
 
 interface SceneProjection {
@@ -10,10 +10,10 @@ interface SceneProjection {
 
 export interface RenderSceneBackLayerOptions {
   host: HTMLElement;
-  node: EntranceSceneBackConfig | null;
+  node: SceneObjectConfig | null;
   projection: SceneProjection;
-  resolveLabel(node: EntranceSceneBackConfig): string;
-  onActivate(node: EntranceSceneBackConfig): void;
+  resolveLabel(node: SceneObjectConfig): string;
+  onActivate(node: SceneObjectConfig): void;
 }
 
 export function renderSceneBackLayer(options: RenderSceneBackLayerOptions): void {

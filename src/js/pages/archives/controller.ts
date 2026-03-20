@@ -28,6 +28,12 @@ import {
   isArchiveProviderKey,
   type ArchiveProviderKey,
 } from "@shared/archive.js";
+import {
+  SCENE_TOOL_HOST_HIDE_EVENT,
+  SCENE_TOOL_HOST_SHOW_EVENT,
+  closeSceneTool,
+  type SceneToolEventDetail,
+} from "../../scene/tool-pages.js";
 
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
@@ -165,6 +171,24 @@ export class ArchivesPageController {
       this.close();
     });
 
+    document.addEventListener(
+      SCENE_TOOL_HOST_SHOW_EVENT,
+      ((event: CustomEvent<SceneToolEventDetail>) => {
+        if (event.detail.tool === "archives") {
+          this.onHostShow();
+        }
+      }) as EventListener
+    );
+
+    document.addEventListener(
+      SCENE_TOOL_HOST_HIDE_EVENT,
+      ((event: CustomEvent<SceneToolEventDetail>) => {
+        if (event.detail.tool === "archives") {
+          this.onHostHide();
+        }
+      }) as EventListener
+    );
+
     document.getElementsByName("archives-provider").forEach((el) => {
       el.addEventListener("change", (e) => {
         const target = e.target as HTMLInputElement;
@@ -292,6 +316,11 @@ export class ArchivesPageController {
   }
 
   close(): void {
+    if (this.isSceneEmbedded()) {
+      closeSceneTool("archives");
+      return;
+    }
+
     closeExternalPage();
   }
 
@@ -323,6 +352,10 @@ export class ArchivesPageController {
       clearTimeout(this._searchTimeout);
       this._searchTimeout = null;
     }
+  }
+
+  private isSceneEmbedded(): boolean {
+    return this.overlayEl?.dataset["sceneEmbedded"] === "true";
   }
 
   async loadSettings(): Promise<void> {

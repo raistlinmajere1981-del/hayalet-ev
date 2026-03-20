@@ -1,12 +1,12 @@
 import { getSceneHotspotLabelFontFamily } from "../label-font.js";
 
 import type {
-  EntranceSceneInteractiveConfig,
+  SceneObjectConfig,
   SceneDebugNodeSelection,
 } from "../layout/index.js";
 import {
   hasSceneNodeLabel,
-  isSceneDebugSelectionForInteractive,
+  isSceneDebugSelectionForObject,
 } from "../layout/index.js";
 
 interface SceneProjection {
@@ -23,13 +23,13 @@ interface SceneInteractiveLayerClassNames {
 
 export interface RenderSceneInteractiveLayerOptions {
   layer: HTMLElement;
-  nodes: readonly EntranceSceneInteractiveConfig[];
+  nodes: readonly SceneObjectConfig[];
   projection: SceneProjection;
   cssVarPrefix: string;
   classNames: SceneInteractiveLayerClassNames;
   selection: SceneDebugNodeSelection;
-  resolveLabel(node: EntranceSceneInteractiveConfig): string;
-  onActivate(node: EntranceSceneInteractiveConfig): void;
+  resolveLabel(node: SceneObjectConfig): string;
+  onActivate(node: SceneObjectConfig): void;
 }
 
 function setVar(
@@ -56,7 +56,7 @@ export function renderSceneInteractiveLayer(options: RenderSceneInteractiveLayer
 
   nodes.forEach((node) => {
     const labelText = resolveLabel(node);
-    const selected = isSceneDebugSelectionForInteractive(selection, node);
+    const selected = isSceneDebugSelectionForObject(selection, node);
     const wrapper = document.createElement("div");
     wrapper.className = classNames.item;
 

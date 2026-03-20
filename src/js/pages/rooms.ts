@@ -17,7 +17,7 @@ import {
 } from "../scene/characters/index.js";
 import type { EntranceSceneMap } from "../scene/layout/index.js";
 import {
-  getSceneInteractiveNodesForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
@@ -112,17 +112,9 @@ export class RoomsController implements PageController {
 
         navigateToScenePage(roomId);
       },
-      updateInteractive: (id, updater): void => {
-        this.sceneMap.interactives = this.sceneMap.interactives.map((interactive) =>
-          interactive.id === id ? updater(interactive) : interactive
-        );
-        this.persistSceneMapDraft();
-        this.renderHotspots();
-        this.editor?.refresh();
-      },
-      updateBack: (id, updater): void => {
-        this.sceneMap.backs = this.sceneMap.backs.map((back) =>
-          back.id === id ? updater(back) : back
+      updateObject: (id, updater): void => {
+        this.sceneMap.objects = this.sceneMap.objects.map((object) =>
+          object.id === id ? updater(object) : object
         );
         this.persistSceneMapDraft();
         this.renderHotspots();
@@ -197,7 +189,7 @@ export class RoomsController implements PageController {
 
     renderSceneInteractiveLayer({
       layer: hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this.sceneMap),
+      nodes: getSceneObjectNodesForView(this.sceneMap),
       projection: this.getSceneProjection(),
       cssVarPrefix: "scene-hotspot",
       classNames: {
@@ -208,7 +200,7 @@ export class RoomsController implements PageController {
       selection: this.editorSelection,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleInteractive(node.id);
+        this.handleObject(node.id);
       },
     });
   }
@@ -255,20 +247,20 @@ export class RoomsController implements PageController {
     });
   }
 
-  private handleInteractive(id: string): void {
-    const interactive = this.sceneMap.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  private handleObject(id: string): void {
+    const object = this.sceneMap.objects.find((node) => node.id === id) ?? null;
+    if (object === null) {
       return;
     }
 
     if (this.editor !== null) {
-      this.editorSelection = { kind: "interactive", id: interactive.id };
+      this.editorSelection = { kind: "object", id: object.id };
       this.editor.refresh();
       this.renderHotspots();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(object.action, {
       onNavigate: (page) => {
         navigateToScenePage(page);
       },

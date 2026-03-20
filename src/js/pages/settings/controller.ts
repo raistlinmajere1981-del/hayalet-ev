@@ -19,8 +19,8 @@ import {
 } from "../../scene/characters/index.js";
 import type { EntranceSceneMap } from "../../scene/layout/index.js";
 import {
-  getSceneBackNodeForView,
-  getSceneInteractiveNodesForView,
+  getSceneBackObjectForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../../scene/layout/index.js";
 import { SceneAlphaWindowFrameController } from "../../scene/alpha-window.js";
@@ -194,14 +194,14 @@ class SettingsSceneController {
     this.syncPanelArt(nextState.activePanel);
     renderSceneBackLayer({
       host: this.panelView,
-      node: panelOpen ? getSceneBackNodeForView(this.sceneMap, "panel") : null,
+      node: panelOpen ? getSceneBackObjectForView(this.sceneMap, "panel") : null,
       projection: this.getSceneProjection(),
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: () => {
         if (this.isEditorActive()) {
-          const back = getSceneBackNodeForView(this.sceneMap, "panel");
+          const back = getSceneBackObjectForView(this.sceneMap, "panel");
           if (back !== null) {
-            this.editorSelection = { kind: "back", id: back.id };
+            this.editorSelection = { kind: "object", id: back.id };
             this.editor?.refresh();
           }
           return;
@@ -255,17 +255,9 @@ class SettingsSceneController {
         this.onClose();
         navigateMainShellPage(roomId);
       },
-      updateInteractive: (id, updater): void => {
-        this.sceneMap.interactives = this.sceneMap.interactives.map((interactive) =>
-          interactive.id === id ? updater(interactive) : interactive
-        );
-        this.persistSceneMapDraft();
-        this.renderHotspots();
-        this.editor?.refresh();
-      },
-      updateBack: (id, updater): void => {
-        this.sceneMap.backs = this.sceneMap.backs.map((back) =>
-          back.id === id ? updater(back) : back
+      updateObject: (id, updater): void => {
+        this.sceneMap.objects = this.sceneMap.objects.map((object) =>
+          object.id === id ? updater(object) : object
         );
         this.persistSceneMapDraft();
         this.sync(this.state);
@@ -394,7 +386,7 @@ class SettingsSceneController {
   private renderHotspots(): void {
     renderSceneInteractiveLayer({
       layer: this.hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this.sceneMap),
+      nodes: getSceneObjectNodesForView(this.sceneMap),
       projection: this.getSceneProjection(),
       cssVarPrefix: "settings-scene-hotspot",
       classNames: {
@@ -405,25 +397,25 @@ class SettingsSceneController {
       selection: this.editorSelection,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleInteractive(node.id);
+        this.handleObject(node.id);
       },
     });
   }
 
-  private handleInteractive(id: string): void {
-    const interactive = this.sceneMap.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  private handleObject(id: string): void {
+    const object = this.sceneMap.objects.find((node) => node.id === id) ?? null;
+    if (object === null) {
       return;
     }
 
     if (this.isEditorActive()) {
-      this.editorSelection = { kind: "interactive", id: interactive.id };
+      this.editorSelection = { kind: "object", id: object.id };
       this.editor?.refresh();
       this.renderHotspots();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(object.action, {
       onNavigate: (page) => {
         this.onClose();
         navigateMainShellPage(page);

@@ -14,7 +14,7 @@ export function isSceneRoomId(value: string | null | undefined): value is SceneR
   return value !== null && value !== undefined && SCENE_ROOM_IDS.includes(value as SceneRoomId);
 }
 
-export const SCENE_NODE_KINDS = ["interactive", "back", "character"] as const;
+export const SCENE_NODE_KINDS = ["object", "character"] as const;
 export type SceneNodeKind = (typeof SCENE_NODE_KINDS)[number];
 
 export function isSceneNodeKind(value: string | null | undefined): value is SceneNodeKind {
@@ -81,7 +81,8 @@ export type SceneInteractiveAction =
   | SceneScreenAction
   | SceneWhisperAction;
 
-export type SceneNodeAction = SceneInteractiveAction | SceneBackAction;
+export type SceneObjectAction = SceneInteractiveAction | SceneBackAction;
+export type SceneNodeAction = SceneObjectAction;
 
 export interface SceneNodeRect {
   leftPx: number;
@@ -113,22 +114,16 @@ export interface SceneNodeLabelDefinition {
   framePerspectiveDeg: number;
 }
 
-export interface SceneInteractiveNodeDefinition {
+export type SceneObjectRole = "hotspot" | "back";
+
+export interface SceneObjectNodeDefinition {
   id: string;
-  kind: "interactive";
+  kind: "object";
+  role: SceneObjectRole;
   viewId: string | null;
-  action: SceneInteractiveAction;
+  action: SceneObjectAction;
   rect: SceneNodeRect;
   frame: SceneNodeFrameDefinition;
-  label: SceneNodeLabelDefinition;
-}
-
-export interface SceneBackNodeDefinition {
-  id: string;
-  kind: "back";
-  viewId: string;
-  action: SceneBackAction;
-  rect: SceneNodeRect;
   label: SceneNodeLabelDefinition;
 }
 
@@ -143,10 +138,7 @@ export interface SceneCharacterNodeDefinition {
   depth: number;
 }
 
-export type SceneNodeDefinition =
-  | SceneInteractiveNodeDefinition
-  | SceneBackNodeDefinition
-  | SceneCharacterNodeDefinition;
+export type SceneNodeDefinition = SceneObjectNodeDefinition | SceneCharacterNodeDefinition;
 
 export interface SceneRoomDefinition {
   id: SceneRoomId;

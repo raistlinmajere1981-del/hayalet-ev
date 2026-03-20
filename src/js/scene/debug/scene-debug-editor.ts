@@ -1,18 +1,16 @@
 import type {
-  EntranceSceneBackConfig,
   EntranceSceneCharacterConfig,
-  EntranceSceneInteractiveConfig,
   EntranceSceneLabelFontPreset,
   EntranceSceneMap,
+  SceneObjectConfig,
   SceneDebugNodeListEntry,
   SceneDebugNodeSelection,
 } from "../layout/index.js";
 import {
   ENTRANCE_SCENE_LABEL_FONT_PRESETS,
   listSceneDebugNodes,
-  resolveSceneBackForSelection,
   resolveSceneCharacterForSelection,
-  resolveSceneInteractiveForSelection,
+  resolveSceneObjectForSelection,
 } from "../layout/index.js";
 import { t as entranceT } from "../../pages/entrance/i18n.js";
 
@@ -31,11 +29,7 @@ interface EntranceSceneEditorCallbacks {
   getActiveRoomId(): string;
   setSelection(selection: EntranceSceneEditorSelection): void;
   navigateToRoom(roomId: string): void;
-  updateInteractive(
-    id: string,
-    updater: (node: EntranceSceneInteractiveConfig) => EntranceSceneInteractiveConfig
-  ): void;
-  updateBack(id: string, updater: (node: EntranceSceneBackConfig) => EntranceSceneBackConfig): void;
+  updateObject(id: string, updater: (node: SceneObjectConfig) => SceneObjectConfig): void;
   updateCharacter(
     id: string,
     updater: (node: EntranceSceneCharacterConfig) => EntranceSceneCharacterConfig
@@ -44,7 +38,7 @@ interface EntranceSceneEditorCallbacks {
   copySceneMap(): Promise<void>;
 }
 
-const INTERACTIVE_FIELDS = [
+const OBJECT_FIELDS = [
   ["rect.leftPx", "X"],
   ["rect.topPx", "Y"],
   ["rect.widthPx", "W"],
@@ -53,13 +47,6 @@ const INTERACTIVE_FIELDS = [
   ["frame.perspectiveDeg", "Frame P"],
   ["frame.hoverGlowHueDeg", "Glow H"],
   ["frame.hoverGlowAlpha", "Glow A"],
-] as const;
-
-const BACK_FIELDS = [
-  ["rect.leftPx", "X"],
-  ["rect.topPx", "Y"],
-  ["rect.widthPx", "W"],
-  ["rect.heightPx", "H"],
 ] as const;
 
 const LABEL_FIELDS = [
@@ -81,8 +68,7 @@ const CHARACTER_FIELDS = [
 ] as const;
 
 const DEBUG_NODE_SECTIONS = [
-  { kind: "interactive", title: "Interactives" },
-  { kind: "back", title: "Back Areas" },
+  { kind: "object", title: "Objects" },
   { kind: "character", title: "Characters" },
 ] as const;
 
@@ -124,8 +110,7 @@ export class EntranceSceneEditor {
     const panel = document.createElement("aside");
     panel.className = "entrance-scene__editor-panel";
 
-    const selectedInteractive = resolveSceneInteractiveForSelection(sceneMap, selection);
-    const selectedBack = resolveSceneBackForSelection(sceneMap, selection);
+    const selectedObject = resolveSceneObjectForSelection(sceneMap, selection);
     const selectedCharacter = resolveSceneCharacterForSelection(sceneMap, selection);
 
     panel.innerHTML = `
@@ -173,7 +158,7 @@ export class EntranceSceneEditor {
           .join("")}
       </div>
       <div class="entrance-scene__editor-selected">
-        ${this.renderSelectedBlock(selection, selectedInteractive, selectedBack, selectedCharacter)}
+        ${this.renderSelectedBlock(selection, selectedObject, selectedCharacter)}
       </div>
       <div class="entrance-scene__editor-help">
         <span>Arrow: move</span>
@@ -199,27 +184,19 @@ export class EntranceSceneEditor {
 
   private renderSelectedBlock(
     selection: EntranceSceneEditorSelection,
-    interactive: EntranceSceneInteractiveConfig | null,
-    back: EntranceSceneBackConfig | null,
+    object: SceneObjectConfig | null,
     character: EntranceSceneCharacterConfig | null
   ): string {
-    if (selection === null || (interactive === null && back === null && character === null)) {
-      return `<p class="entrance-scene__editor-empty">Select an interactive area, back area, or character node from the scene.</p>`;
+    if (selection === null || (object === null && character === null)) {
+      return `<p class="entrance-scene__editor-empty">Select an object or character node from the scene.</p>`;
     }
 
-    if (interactive !== null) {
+    if (object !== null) {
+      const objectType = object.role === "back" ? "Back Object" : "Object";
       return `
-        <div class="entrance-scene__editor-selected-title">Interactive: ${interactive.id}</div>
-        ${this.renderNumericSection("Frame", "interactive", interactive.id, INTERACTIVE_FIELDS, interactive)}
-        ${this.renderLabelSection("interactive", interactive.id, interactive)}
-      `;
-    }
-
-    if (back !== null) {
-      return `
-        <div class="entrance-scene__editor-selected-title">Back: ${back.id}</div>
-        ${this.renderNumericSection("Placement", "back", back.id, BACK_FIELDS, back)}
-        ${this.renderLabelSection("back", back.id, back)}
+        <div class="entrance-scene__editor-selected-title">${objectType}: ${object.id}</div>
+        ${this.renderNumericSection("Placement", "object", object.id, OBJECT_FIELDS, object)}
+        ${this.renderLabelSection("object", object.id, object)}
       `;
     }
 
@@ -245,10 +222,10 @@ export class EntranceSceneEditor {
 
   private renderNumericSection(
     title: string,
-    kind: "interactive" | "back",
+    kind: "object",
     id: string,
     fields: readonly (readonly [string, string])[],
-    node: EntranceSceneInteractiveConfig | EntranceSceneBackConfig
+    node: SceneObjectConfig
   ): string {
     return `
       <div class="entrance-scene__editor-section">
@@ -265,9 +242,9 @@ export class EntranceSceneEditor {
   }
 
   private renderLabelSection(
-    kind: "interactive" | "back",
+    kind: "object",
     id: string,
-    node: EntranceSceneInteractiveConfig | EntranceSceneBackConfig
+    node: SceneObjectConfig
   ): string {
     const value = typeof node.label.customText === "string" ? node.label.customText : "";
     const placeholder = this.escapeAttribute(entranceT("scene.editor.customLabelPlaceholder"));
@@ -366,7 +343,7 @@ export class EntranceSceneEditor {
   }
 
   private renderFontPresetRow(
-    kind: "interactive" | "back",
+    kind: "object",
     id: string,
     fontPreset: EntranceSceneLabelFontPreset
   ): string {
@@ -418,7 +395,7 @@ export class EntranceSceneEditor {
     if (action === "select") {
       const kind = actionButton.dataset["kind"];
       const id = actionButton.dataset["id"];
-      if ((kind === "interactive" || kind === "back" || kind === "character") && id !== undefined) {
+      if ((kind === "object" || kind === "character") && id !== undefined) {
         this.callbacks.setSelection({ kind, id });
       }
       return;
@@ -428,16 +405,8 @@ export class EntranceSceneEditor {
       const kind = actionButton.dataset["kind"];
       const id = actionButton.dataset["id"] ?? "";
       const direction = Number(actionButton.dataset["direction"] ?? "0");
-      if (kind === "interactive") {
-        this.callbacks.updateInteractive(id, (node) => ({
-          ...node,
-          label: {
-            ...node.label,
-            fontPreset: this.shiftFontPreset(node.label.fontPreset, direction),
-          },
-        }));
-      } else if (kind === "back") {
-        this.callbacks.updateBack(id, (node) => ({
+      if (kind === "object") {
+        this.callbacks.updateObject(id, (node) => ({
           ...node,
           label: {
             ...node.label,
@@ -497,7 +466,7 @@ export class EntranceSceneEditor {
 
     const step = event.shiftKey ? this.step * 10 : this.step;
 
-    if (selection.kind === "interactive" || selection.kind === "back") {
+    if (selection.kind === "object") {
       if (event.key === "ArrowLeft") {
         event.preventDefault();
         this.adjustField(selection.kind, selection.id, "rect.leftPx", -step);
@@ -510,18 +479,18 @@ export class EntranceSceneEditor {
       } else if (event.key === "ArrowDown") {
         event.preventDefault();
         this.adjustField(selection.kind, selection.id, "rect.topPx", step);
-      } else if (selection.kind === "interactive" && event.key === "[") {
+      } else if (event.key === "[") {
         event.preventDefault();
         this.adjustField(
-          "interactive",
+          "object",
           selection.id,
           "frame.rotateDeg",
           this.getAdjustDelta("frame.rotateDeg", -1)
         );
-      } else if (selection.kind === "interactive" && event.key === "]") {
+      } else if (event.key === "]") {
         event.preventDefault();
         this.adjustField(
-          "interactive",
+          "object",
           selection.id,
           "frame.rotateDeg",
           this.getAdjustDelta("frame.rotateDeg", 1)
@@ -608,13 +577,8 @@ export class EntranceSceneEditor {
   };
 
   private adjustField(kind: string | undefined, id: string, field: string, delta: number): void {
-    if (kind === "interactive") {
-      this.callbacks.updateInteractive(id, (node) => this.patchNumericField(node, field, delta));
-      return;
-    }
-
-    if (kind === "back") {
-      this.callbacks.updateBack(id, (node) => this.patchNumericField(node, field, delta));
+    if (kind === "object") {
+      this.callbacks.updateObject(id, (node) => this.patchNumericField(node, field, delta));
       return;
     }
 
@@ -624,24 +588,8 @@ export class EntranceSceneEditor {
   }
 
   private updateLabelText(kind: string, id: string, nextValue: string): void {
-    if (kind === "interactive") {
-      this.callbacks.updateInteractive(id, (node) => {
-        const label = { ...node.label };
-        if (nextValue === "") {
-          delete label.customText;
-        } else {
-          label.customText = nextValue;
-        }
-        return {
-          ...node,
-          label,
-        };
-      });
-      return;
-    }
-
-    if (kind === "back") {
-      this.callbacks.updateBack(id, (node) => {
+    if (kind === "object") {
+      this.callbacks.updateObject(id, (node) => {
         const label = { ...node.label };
         if (nextValue === "") {
           delete label.customText;
@@ -657,19 +605,8 @@ export class EntranceSceneEditor {
   }
 
   private updateLabelVisible(kind: string, id: string, visible: boolean): void {
-    if (kind === "interactive") {
-      this.callbacks.updateInteractive(id, (node) => ({
-        ...node,
-        label: {
-          ...node.label,
-          visible,
-        },
-      }));
-      return;
-    }
-
-    if (kind === "back") {
-      this.callbacks.updateBack(id, (node) => ({
+    if (kind === "object") {
+      this.callbacks.updateObject(id, (node) => ({
         ...node,
         label: {
           ...node.label,

@@ -138,6 +138,11 @@
 }
 
 .entrance-scene__surface {
+  --scene-back-zone-width-min: clamp(var(--scene-rem-4-5), 7vw, var(--scene-rem-7));
+  --scene-back-zone-width-max: clamp(var(--scene-rem-7), 9vw, var(--scene-rem-10));
+  --scene-back-zone-text-size: clamp(var(--scene-rem-0-76), 0.95vw, var(--scene-rem-0-95));
+  --scene-back-zone-letter-spacing: calc(var(--scene-em-0-04) + var(--scene-em-0-05));
+  --scene-back-zone-shift: var(--scene-rem-0-2);
   border-radius: 0;
   border: 0;
   box-shadow: none;
@@ -146,6 +151,112 @@
 
 .entrance-scene__background {
   object-position: center 50%;
+}
+
+.entrance-scene__view {
+  z-index: 5;
+}
+
+.entrance-scene__view-background {
+  object-position: center;
+  filter: saturate(1.03) contrast(1.04);
+}
+
+.entrance-scene__view-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgb(7 5 5 / 0.58), transparent 18%, transparent 82%, rgb(7 5 5 / 0.58)),
+    radial-gradient(circle at center, transparent 44%, rgb(0 0 0 / 0.22) 100%);
+  pointer-events: none;
+}
+
+.entrance-scene__view-slot {
+  position: absolute;
+  inset: clamp(var(--scene-rem-2), 11.5vh, var(--scene-rem-7))
+    clamp(var(--scene-rem-1-8), 8.5vw, var(--scene-rem-10))
+    clamp(var(--scene-rem-2), 10vh, var(--scene-rem-7))
+    clamp(var(--scene-rem-1-8), 8.5vw, var(--scene-rem-10));
+  z-index: 2;
+  display: flex;
+  min-height: 0;
+  pointer-events: auto;
+}
+
+.entrance-scene__view-slot > .page-whisper {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.entrance-scene__view-slot .whisper-page {
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-3);
+  padding: clamp(var(--space-3), 1.6vw, var(--space-5));
+  border: var(--border-1) solid rgb(255 223 188 / 0.12);
+  border-radius: calc(var(--radius-modal) + var(--space-1));
+  background:
+    linear-gradient(180deg, rgb(18 11 9 / 0.62), rgb(10 7 6 / 0.76)),
+    radial-gradient(circle at top left, rgb(232 180 97 / 0.08), transparent 36%);
+  box-shadow:
+    0 var(--scene-rem-1-8) var(--scene-rem-2-8) rgb(0 0 0 / 0.32),
+    inset 0 0 0 var(--scene-px-1) rgb(255 255 255 / 0.03);
+  backdrop-filter: blur(var(--scene-px-10));
+  overflow: hidden;
+}
+
+.entrance-scene__view-slot .whisper-page__header {
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-1);
+}
+
+.entrance-scene__view-slot .room-shell-hero {
+  gap: var(--space-1-5);
+}
+
+.entrance-scene__view-slot .room-shell-title {
+  font-size: clamp(var(--text-xl), 2.1vw, var(--text-2xl));
+}
+
+.entrance-scene__view-slot .room-shell-subtitle {
+  max-width: 48ch;
+  font-size: var(--text-sm);
+}
+
+.entrance-scene__view-slot #whisper-page-close {
+  display: none;
+}
+
+.entrance-scene__view-slot .whisper-dock {
+  flex: 1;
+  min-height: 0;
+}
+
+.entrance-scene__view-slot .whisper-dock__content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.entrance-scene__view-slot .whisper-dock__content.is-expanded,
+.entrance-scene__view-slot .whisper-dock__toggle[aria-expanded="true"] + .whisper-dock__content {
+  margin-top: var(--space-2);
+}
+
+.entrance-scene__view-slot .whisper-dock__body,
+.entrance-scene__view-slot .whisper-dock__viewer,
+.entrance-scene__view-slot .whisper-dock__composer,
+.entrance-scene__view-slot .whisper-dock__columns {
+  min-height: 0;
+}
+
+.entrance-scene__view-slot .whisper-dock__list {
+  min-height: 0;
+  max-height: none;
+  flex: 1;
 }
 
 .entrance-scene__hotspots,

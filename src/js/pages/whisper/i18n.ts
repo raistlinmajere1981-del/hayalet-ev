@@ -3,16 +3,25 @@ import { AppI18n } from "../../modules/i18n/index.js";
 import { resolveIntlLocale } from "../../../../shared/i18n/locale.js";
 
 const WHISPER_KEY_PREFIX = "whisper";
+const WHISPER_SCENE_PREFIX = "entrance.whisper";
 
 function resolveScopedKey(key: string): string {
   const normalized = key.trim();
   if (normalized === "") {
-    return WHISPER_KEY_PREFIX;
+    return WHISPER_SCENE_PREFIX;
+  }
+
+  if (normalized.startsWith("panels.")) {
+    return normalized;
+  }
+
+  if (normalized.startsWith(`${WHISPER_SCENE_PREFIX}.`)) {
+    return normalized;
   }
 
   return normalized.startsWith(`${WHISPER_KEY_PREFIX}.`)
-    ? normalized
-    : `${WHISPER_KEY_PREFIX}.${normalized}`;
+    ? `entrance.${normalized}`
+    : `${WHISPER_SCENE_PREFIX}.${normalized}`;
 }
 
 export function t(key: string, params?: TranslationParams): string {

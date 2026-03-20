@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 test("scene debug store defines assistant, server, rooms, and settings defaults through one generic config map", () => {
   const debugStoreSource = readFileSync("src/js/scene/debug/scene-debug-store.ts", "utf8");
-  const debugStoreFacadeSource = readFileSync("src/js/scene/debug-store.ts", "utf8");
 
   assert.match(
     debugStoreSource,
@@ -24,14 +23,13 @@ test("scene debug store defines assistant, server, rooms, and settings defaults 
   );
   assert.match(debugStoreSource, /cloneDefault\(\): EntranceSceneMap/);
   assert.match(debugStoreSource, /serialize\(sceneMap: EntranceSceneMap\): string/);
-  assert.match(debugStoreFacadeSource, /export \* from "\.\/debug\/scene-debug-store\.js"/);
+  assert.equal(existsSync("src/js/scene/debug-store.ts"), false);
 });
 
 test("scene debug store owns draft persistence and reads storage keys from dedicated debug theme config", () => {
   const debugStoreSource = readFileSync("src/js/scene/debug/scene-debug-store.ts", "utf8");
-  const sceneMapSource = readFileSync("src/js/pages/entrance/scene/scene-map.ts", "utf8");
   const layoutSource = readFileSync("src/js/scene/layout/index.ts", "utf8");
-  const debugThemeSource = readFileSync("src/assets/themes/castle/scene/debug.ts", "utf8");
+  const debugThemeSource = readFileSync("src/js/scene/debug/castle-scene-debug-theme.ts", "utf8");
   const debugThemeModuleSource = readFileSync("src/js/scene/debug/scene-debug-theme.ts", "utf8");
 
   assert.match(debugStoreSource, /getSceneDebugDraftStorageKey/);
@@ -45,10 +43,12 @@ test("scene debug store owns draft persistence and reads storage keys from dedic
     debugThemeSource,
     /draftStorageKeys:\s*\{[\s\S]*entrance:[\s\S]*server:[\s\S]*rooms:[\s\S]*settings:/
   );
-  assert.match(sceneMapSource, /export \* from "\.\.\/\.\.\/\.\.\/scene\/layout\/index\.js"/);
   assert.match(layoutSource, /scene-layout-state\.js/);
   assert.match(layoutSource, /scene-layout-serialization\.js/);
-  assert.match(debugStoreSource, /Array\.isArray\(parsed\.interactives\)/);
-  assert.match(debugStoreSource, /Array\.isArray\(parsed\.backs\)/);
+  assert.match(debugStoreSource, /Array\.isArray\(parsed\.objects\)/);
+  assert.doesNotMatch(debugStoreSource, /Array\.isArray\(parsed\.interactives\)/);
+  assert.doesNotMatch(debugStoreSource, /Array\.isArray\(parsed\.backs\)/);
   assert.match(debugStoreSource, /Array\.isArray\(parsed\.characters\)/);
+  assert.equal(existsSync("src/js/pages/entrance/scene/scene-map.ts"), false);
+  assert.equal(existsSync("src/assets/themes/castle/scene/debug.ts"), false);
 });
