@@ -1,10 +1,3 @@
-import analyzeMap from "./maps/analyze.scene.json";
-import assistantMap from "./maps/assistant.scene.json";
-import entranceMap from "./maps/entrance.scene.json";
-import roomsMap from "./maps/rooms.scene.json";
-import serverMap from "./maps/server.scene.json";
-import settingsMap from "./maps/settings.scene.json";
-
 import analyzeArchivePanel from "./assets/analyze/analyze_archive.webp";
 import analyzeBackground from "./assets/analyze/analyze_main_bg.webp";
 import analyzeTablePanel from "./assets/analyze/analyze_table.webp";
@@ -29,9 +22,11 @@ import settingsBackground from "./assets/settings/settings_bg_main.webp";
 import settingsLogViewPanel from "./assets/settings/settings_log_view.webp";
 import settingsRoomsPanel from "./assets/settings/settings_rooms.webp";
 import settingsThemePanel from "./assets/settings/settings_theme.webp";
+import { SCENE_CLICKABLE_DEFAULTS } from "./scene-clickable-defaults.js";
+import { CASTLE_SCENE_LAYOUTS, CASTLE_SCENE_THEME_ID } from "./scene-layouts.js";
 
 export const CASTLE_THEME_SOURCE = {
-  themeId: "castle",
+  themeId: CASTLE_SCENE_THEME_ID,
   loading: {
     frameDurationMs: 180,
     frames: [loadingDoor01, loadingDoor02, loadingDoor03, loadingDoor04],
@@ -73,6 +68,7 @@ export const CASTLE_THEME_SOURCE = {
     },
     fallbackRole: "ai",
   },
+  clickableDefaults: SCENE_CLICKABLE_DEFAULTS,
   rooms: {
     entrance: {
       backgroundSrc: entranceBackground,
@@ -119,12 +115,5 @@ export const CASTLE_THEME_SOURCE = {
       },
     },
   },
-  maps: {
-    entrance: entranceMap,
-    analyze: analyzeMap,
-    assistant: assistantMap,
-    server: serverMap,
-    rooms: roomsMap,
-    settings: settingsMap,
-  },
+  maps: CASTLE_SCENE_LAYOUTS,
 } as const;

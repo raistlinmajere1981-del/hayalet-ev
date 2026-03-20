@@ -9,10 +9,7 @@ import type {
   SceneCharacterRosterPreset,
   SceneCharacterSlot,
 } from "../schema.js";
-import {
-  DEFAULT_ENTRANCE_SCENE_LAYOUT,
-  type SceneCharacterPlacementConfig,
-} from "../layout/index.js";
+import type { SceneCharacterPlacementConfig } from "../layout/index.js";
 import { getSceneCharacterRoleConfig } from "../../scene-system/index.js";
 import {
   getSceneCharacterState,
@@ -406,8 +403,8 @@ export function filterSceneCharacterRosterByPreset(
 }
 
 export function buildSceneCharacterRoster(
-  anchors: readonly SceneCharacterAnchor[] = DEFAULT_ENTRANCE_SCENE_LAYOUT.characters,
-  preset: SceneCharacterRosterPreset = DEFAULT_ENTRANCE_SCENE_LAYOUT.characterRosterPreset
+  anchors: readonly SceneCharacterAnchor[],
+  preset: SceneCharacterRosterPreset
 ): SceneCharacterDescriptor[] {
   const roster: SceneCharacterDescriptor[] = [];
 

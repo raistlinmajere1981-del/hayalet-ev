@@ -33,7 +33,7 @@ test("scene cleanup removes legacy facades and keeps canonical roots only", () =
   assert.equal(existsSync("src/js/scene/debug"), false);
   assert.equal(existsSync("src/js/scene/theme"), false);
   assert.match(sceneEditorIndexSource, /scene-editor-store\.js/);
-  assert.match(sceneEditorIndexSource, /scene-map-editor\.js/);
+  assert.match(sceneEditorIndexSource, /scene-layout-editor\.js/);
   assert.match(sceneSystemIndexSource, /scene-theme-registry\.js/);
   assert.match(sceneSystemIndexSource, /scene-theme-assets\.js/);
   assert.match(uiIndexSource, /export \{ ThemeManager \} from "\.\/theme\/index"/);

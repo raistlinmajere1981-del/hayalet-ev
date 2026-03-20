@@ -1,4 +1,6 @@
 export * from "./scene-character-theme.js";
+export * from "./scene-clickable-theme.js";
+export * from "./scene-layout-registry.js";
 export * from "./scene-loading-theme.js";
 export * from "./scene-theme-assets.js";
 export * from "./scene-theme-registry.js";

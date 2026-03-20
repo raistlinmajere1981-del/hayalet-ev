@@ -4,10 +4,10 @@
     "width": 1920,
     "height": 1080
   },
-  "interactives": [
+  "objects": [
     {
       "id": "door-close",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "settings-scene-close"
@@ -41,7 +41,7 @@
     },
     {
       "id": "panel-theme",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "settings",
@@ -76,7 +76,7 @@
     },
     {
       "id": "panel-accounts",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "settings",
@@ -111,7 +111,7 @@
     },
     {
       "id": "panel-backup",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "settings",
@@ -146,7 +146,7 @@
     },
     {
       "id": "panel-rooms",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "settings",
@@ -181,7 +181,7 @@
     },
     {
       "id": "panel-live-log",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "settings",

@@ -1,5 +1,6 @@
 import type {
   SceneCharacterThemeDefinition,
+  SceneClickableThemeDefinition,
   SceneLoadingThemeDefinition,
   SceneRoomId,
   SceneRoomThemeDefinition,
@@ -11,5 +12,6 @@ export interface SceneThemeSourceDefinition {
   loading: SceneLoadingThemeDefinition;
   characters: SceneCharacterThemeDefinition;
   rooms: Record<SceneRoomId, SceneRoomThemeDefinition>;
+  clickableDefaults: SceneClickableThemeDefinition;
   maps: Record<SceneRoomId, SceneLayoutConfig>;
 }

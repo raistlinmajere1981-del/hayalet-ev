@@ -14,7 +14,7 @@ export function isSceneRoomId(value: string | null | undefined): value is SceneR
   return value !== null && value !== undefined && SCENE_ROOM_IDS.includes(value as SceneRoomId);
 }
 
-export const SCENE_NODE_KINDS = ["interactive", "back", "character"] as const;
+export const SCENE_NODE_KINDS = ["object", "back", "character"] as const;
 export type SceneNodeKind = (typeof SCENE_NODE_KINDS)[number];
 
 export function isSceneNodeKind(value: string | null | undefined): value is SceneNodeKind {
@@ -74,14 +74,14 @@ export interface SceneBackAction {
   target: "room";
 }
 
-export type SceneInteractiveAction =
+export type SceneObjectAction =
   | SceneNavigateAction
   | SceneSettingsAction
   | SceneSettingsSceneCloseAction
   | SceneScreenAction
   | SceneWhisperAction;
 
-export type SceneNodeAction = SceneInteractiveAction | SceneBackAction;
+export type SceneNodeAction = SceneObjectAction | SceneBackAction;
 
 export interface SceneNodeRect {
   leftPx: number;
@@ -95,7 +95,7 @@ export interface SceneNodeGlowDefinition {
   alpha: number;
 }
 
-export interface SceneInteractiveFrameDefinition extends SceneNodeGlowDefinition {
+export interface SceneObjectFrameDefinition extends SceneNodeGlowDefinition {
   variant: "flat" | "upper" | "left-angled" | "right-angled";
   rotateDeg: number;
   perspectiveDeg: number;
@@ -116,13 +116,55 @@ export interface SceneNodeLabelDefinition {
   framePerspectiveDeg: number;
 }
 
-export interface SceneInteractiveNodeDefinition {
+export interface SceneClickableLabelThemeDefinition {
+  visible: boolean;
+  fontPresetOverride: SceneLabelFontPreset | null;
+  fontScale: number;
+  trackingScale: number;
+  padYRem: number;
+  padXRem: number;
+  borderAlpha: number;
+  backgroundAlpha: number;
+  activeBackgroundAlpha: number;
+  activeRingAlpha: number;
+}
+
+export interface SceneClickableFrameThemeDefinition {
+  depthRem: number;
+  insetRem: number;
+  borderAlpha: number;
+  innerRingAlpha: number;
+  liftPx: number;
+  shadowYPx: number;
+  shadowBlurPx: number;
+}
+
+export interface SceneObjectClickableThemeDefinition {
+  glowHueShiftDeg: number;
+  glowAlphaScale: number;
+  frame: SceneClickableFrameThemeDefinition;
+  label: SceneClickableLabelThemeDefinition;
+}
+
+export interface SceneBackClickableThemeDefinition {
+  glowHueShiftDeg: number;
+  glowAlphaScale: number;
+  arrowShiftRem: number;
+  label: SceneClickableLabelThemeDefinition;
+}
+
+export interface SceneClickableThemeDefinition {
+  object: SceneObjectClickableThemeDefinition;
+  back: SceneBackClickableThemeDefinition;
+}
+
+export interface SceneObjectNodeDefinition {
   id: string;
-  kind: "interactive";
+  kind: "object";
   viewId: string | null;
-  action: SceneInteractiveAction;
+  action: SceneObjectAction;
   rect: SceneNodeRect;
-  frame: SceneInteractiveFrameDefinition;
+  frame: SceneObjectFrameDefinition;
   label: SceneNodeLabelDefinition;
 }
 
@@ -148,7 +190,7 @@ export interface SceneCharacterPlacementNodeDefinition {
 }
 
 export type SceneNodeDefinition =
-  | SceneInteractiveNodeDefinition
+  | SceneObjectNodeDefinition
   | SceneBackNodeDefinition
   | SceneCharacterPlacementNodeDefinition;
 
@@ -168,7 +210,7 @@ export interface SceneLayoutDefinition {
     width: number;
     height: number;
   };
-  interactives: SceneInteractiveNodeDefinition[];
+  objects: SceneObjectNodeDefinition[];
   backs: SceneBackNodeDefinition[];
   characters: SceneCharacterPlacementNodeDefinition[];
 }
@@ -216,4 +258,5 @@ export interface SceneThemePack {
   loading: SceneLoadingThemeDefinition;
   characters: SceneCharacterThemeDefinition;
   rooms: Record<SceneRoomId, SceneRoomThemeDefinition>;
+  clickableDefaults: SceneClickableThemeDefinition;
 }

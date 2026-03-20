@@ -25,12 +25,13 @@ import {
 import { getCoverSceneProjectionFromElement } from "../scene/projection.js";
 import { renderSceneBackLayer } from "../scene/renderers/back-layer.js";
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
-import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
+import { renderSceneObjectLayer } from "../scene/renderers/object-layer.js";
 import {
   applySceneDebugFlag,
   createSceneDebugStore,
-  EntranceSceneEditor,
-  type EntranceSceneEditorSelection,
+  createSceneDebugThemeStore,
+  SceneLayoutEditor,
+  type SceneLayoutEditorSelection,
   getSceneDebugRoomOptions,
   isSceneDebugRoomActive,
   openSceneDebugRoom,
@@ -39,10 +40,11 @@ import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
 } from "../scene/characters/index.js";
+import type { SceneClickableThemeDefinition } from "../scene/schema.js";
 import type { SceneLayoutConfig } from "../scene/layout/index.js";
 import {
   getSceneBackNodeForView,
-  getSceneInteractiveNodesForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
 import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../scene-system/index.js";
@@ -77,6 +79,7 @@ interface DraftState {
 type AnalyzeParticipant = "ai1" | "ai2" | "us1";
 type AnalyzeSceneViewId = "table";
 const ANALYZE_SCENE_DEBUG_STORE = createSceneDebugStore("analyze");
+const ANALYZE_SCENE_DEBUG_THEME_STORE = createSceneDebugThemeStore();
 
 function analyzeT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.analyze.${key}`, params);
@@ -132,8 +135,9 @@ export class AnalyzeController {
   _analyzeSceneActiveView: AnalyzeSceneViewId | null;
   _analyzeSceneDebugEnabled: boolean;
   _analyzeSceneLayout: SceneLayoutConfig;
-  _analyzeSceneEditor: EntranceSceneEditor | null;
-  _analyzeSceneSelection: EntranceSceneEditorSelection;
+  _analyzeSceneClickableTheme: SceneClickableThemeDefinition;
+  _analyzeSceneEditor: SceneLayoutEditor | null;
+  _analyzeSceneSelection: SceneLayoutEditorSelection;
   _analyzeSceneResizeObserver: ResizeObserver | null;
   _analyzeSceneCharacterRenderToken: number;
   _analyzeSceneFrameController: SceneAlphaWindowFrameController | null;
@@ -159,6 +163,7 @@ export class AnalyzeController {
     this._analyzeSceneActiveView = null;
     this._analyzeSceneDebugEnabled = false;
     this._analyzeSceneLayout = ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
+    this._analyzeSceneClickableTheme = ANALYZE_SCENE_DEBUG_THEME_STORE.cloneDefault();
     this._analyzeSceneEditor = null;
     this._analyzeSceneSelection = null;
     this._analyzeSceneResizeObserver = null;
@@ -172,6 +177,9 @@ export class AnalyzeController {
     this._analyzeSceneLayout =
       (this._analyzeSceneDebugEnabled ? ANALYZE_SCENE_DEBUG_STORE.loadDraft() : null) ??
       ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
+    this._analyzeSceneClickableTheme =
+      (this._analyzeSceneDebugEnabled ? ANALYZE_SCENE_DEBUG_THEME_STORE.loadDraft() : null) ??
+      ANALYZE_SCENE_DEBUG_THEME_STORE.cloneDefault();
     this.applyAvatars();
     this.applyNames();
 
@@ -327,10 +335,11 @@ export class AnalyzeController {
       return;
     }
 
-    this._analyzeSceneEditor = new EntranceSceneEditor(editorHost, {
+    this._analyzeSceneEditor = new SceneLayoutEditor(editorHost, {
       isActive: (): boolean => this._isAnalyzeSceneDebugActive(),
       getSceneLayout: (): SceneLayoutConfig => this._analyzeSceneLayout,
-      getSelection: (): EntranceSceneEditorSelection => this._analyzeSceneSelection,
+      getSceneClickableTheme: (): SceneClickableThemeDefinition => this._analyzeSceneClickableTheme,
+      getSelection: (): SceneLayoutEditorSelection => this._analyzeSceneSelection,
       getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "analyze",
       setSelection: (selection): void => {
@@ -341,9 +350,9 @@ export class AnalyzeController {
       navigateToRoom: (roomId: string): void => {
         this._navigateToAnalyzeSceneDebugRoom(roomId);
       },
-      updateInteractive: (id, updater): void => {
-        this._analyzeSceneLayout.interactives = this._analyzeSceneLayout.interactives.map((interactive) =>
-          interactive.id === id ? updater(interactive) : interactive
+      updateObject: (id, updater): void => {
+        this._analyzeSceneLayout.objects = this._analyzeSceneLayout.objects.map((sceneObject) =>
+          sceneObject.id === id ? updater(sceneObject) : sceneObject
         );
         this._persistAnalyzeSceneLayoutDraft();
         this._syncAnalyzeSceneVisibility();
@@ -383,6 +392,30 @@ export class AnalyzeController {
       saveSceneLayoutToSource: async (): Promise<void> => {
         await ANALYZE_SCENE_DEBUG_STORE.saveSource(this._analyzeSceneLayout);
       },
+      updateSceneClickableTheme: (updater): void => {
+        this._analyzeSceneClickableTheme = updater(this._analyzeSceneClickableTheme);
+        ANALYZE_SCENE_DEBUG_THEME_STORE.saveDraft(this._analyzeSceneClickableTheme);
+        this._syncAnalyzeSceneVisibility();
+        this._renderAnalyzeScene();
+        this._analyzeSceneEditor?.refresh();
+      },
+      resetSceneClickableThemeDraft: (): void => {
+        this._analyzeSceneClickableTheme = ANALYZE_SCENE_DEBUG_THEME_STORE.cloneDefault();
+        ANALYZE_SCENE_DEBUG_THEME_STORE.clearDraft();
+        this._syncAnalyzeSceneVisibility();
+        this._renderAnalyzeScene();
+        this._analyzeSceneEditor?.refresh();
+      },
+      copySceneClickableTheme: async (): Promise<void> => {
+        try {
+          await ANALYZE_SCENE_DEBUG_THEME_STORE.copyToClipboard(this._analyzeSceneClickableTheme);
+        } catch {
+          console.info("Analyze scene clickable theme copy failed.");
+        }
+      },
+      saveSceneClickableThemeToSource: async (): Promise<void> => {
+        await ANALYZE_SCENE_DEBUG_THEME_STORE.saveSource(this._analyzeSceneClickableTheme);
+      },
     });
     this._analyzeSceneEditor.refresh();
   }
@@ -414,9 +447,10 @@ export class AnalyzeController {
       return;
     }
 
-    renderSceneInteractiveLayer({
+    renderSceneObjectLayer({
       layer: hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this._analyzeSceneLayout),
+      nodes: getSceneObjectNodesForView(this._analyzeSceneLayout),
+      themeDefaults: this._analyzeSceneClickableTheme.object,
       projection: this._getAnalyzeSceneProjection(),
       cssVarPrefix: "analyze-scene-hotspot",
       classNames: {
@@ -425,9 +459,10 @@ export class AnalyzeController {
         label: "analyze-scene__hotspot-label",
       },
       selection: this._analyzeSceneSelection,
+      clickableLabels: true,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this._handleAnalyzeSceneInteractive(node.id);
+        this._handleAnalyzeSceneObject(node.id);
       },
     });
   }
@@ -497,20 +532,20 @@ export class AnalyzeController {
     return isSceneDebugRoomActive("analyze");
   }
 
-  _handleAnalyzeSceneInteractive(id: string): void {
-    const interactive = this._analyzeSceneLayout.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  _handleAnalyzeSceneObject(id: string): void {
+    const sceneObject = this._analyzeSceneLayout.objects.find((node) => node.id === id) ?? null;
+    if (sceneObject === null) {
       return;
     }
 
     if (this._analyzeSceneEditor !== null) {
-      this._analyzeSceneSelection = { kind: "interactive", id: interactive.id };
+      this._analyzeSceneSelection = { kind: "object", id: sceneObject.id };
       this._analyzeSceneEditor.refresh();
       this._renderAnalyzeScene();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(sceneObject.action, {
       onNavigate: (page) => {
         this._setAnalyzeSceneActiveView(null);
         this._navigateToPage(page);
@@ -572,6 +607,7 @@ export class AnalyzeController {
           sceneActive && this._analyzeSceneActiveView !== null
             ? getSceneBackNodeForView(this._analyzeSceneLayout, this._analyzeSceneActiveView)
             : null,
+        themeDefaults: this._analyzeSceneClickableTheme.back,
         projection: this._getAnalyzeSceneProjection(),
         resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
         onActivate: (node) => {

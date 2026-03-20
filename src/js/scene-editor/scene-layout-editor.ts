@@ -3,35 +3,37 @@ import type {
   SceneCharacterPlacementConfig,
   SceneDebugNodeListEntry,
   SceneDebugNodeSelection,
-  SceneInteractiveConfig,
+  SceneObjectConfig,
   SceneLayoutConfig,
   SceneLayoutLabelFontPreset,
 } from "../scene/layout/index.js";
+import type { SceneClickableThemeDefinition } from "../scene/schema.js";
 import {
   SCENE_LAYOUT_LABEL_FONT_PRESETS,
   listSceneDebugNodes,
   resolveSceneBackForSelection,
   resolveSceneCharacterForSelection,
-  resolveSceneInteractiveForSelection,
+  resolveSceneObjectForSelection,
 } from "../scene/layout/index.js";
 import { AppI18n } from "../modules/i18n/index.js";
 
-export type EntranceSceneEditorSelection = SceneDebugNodeSelection;
+export type SceneLayoutEditorSelection = SceneDebugNodeSelection;
 
-export interface EntranceSceneEditorRoomOption {
+export interface SceneLayoutEditorRoomOption {
   id: string;
   label: string;
 }
 
-interface EntranceSceneEditorCallbacks {
+interface SceneLayoutEditorCallbacks {
   isActive(): boolean;
   getSceneLayout(): SceneLayoutConfig;
-  getSelection(): EntranceSceneEditorSelection;
-  getRoomOptions(): EntranceSceneEditorRoomOption[];
+  getSceneClickableTheme(): SceneClickableThemeDefinition;
+  getSelection(): SceneLayoutEditorSelection;
+  getRoomOptions(): SceneLayoutEditorRoomOption[];
   getActiveRoomId(): string;
-  setSelection(selection: EntranceSceneEditorSelection): void;
+  setSelection(selection: SceneLayoutEditorSelection): void;
   navigateToRoom(roomId: string): void;
-  updateInteractive(id: string, updater: (node: SceneInteractiveConfig) => SceneInteractiveConfig): void;
+  updateObject(id: string, updater: (node: SceneObjectConfig) => SceneObjectConfig): void;
   updateBack(id: string, updater: (node: SceneBackConfig) => SceneBackConfig): void;
   updateCharacter(
     id: string,
@@ -40,6 +42,12 @@ interface EntranceSceneEditorCallbacks {
   resetDraft(): void;
   copySceneLayout(): Promise<void>;
   saveSceneLayoutToSource(): Promise<void>;
+  updateSceneClickableTheme(
+    updater: (theme: SceneClickableThemeDefinition) => SceneClickableThemeDefinition
+  ): void;
+  resetSceneClickableThemeDraft(): void;
+  copySceneClickableTheme(): Promise<void>;
+  saveSceneClickableThemeToSource(): Promise<void>;
 }
 
 const INTERACTIVE_FIELDS = [
@@ -80,25 +88,55 @@ const CHARACTER_FIELDS = [
   ["depth", "Depth"],
 ] as const;
 
+const OBJECT_THEME_FIELDS = [
+  ["glowHueShiftDeg", "Glow H"],
+  ["glowAlphaScale", "Glow A"],
+  ["frame.depthRem", "Depth"],
+  ["frame.insetRem", "Inset"],
+  ["frame.borderAlpha", "Border"],
+  ["frame.innerRingAlpha", "Inner"],
+  ["frame.liftPx", "Lift"],
+  ["frame.shadowYPx", "Shadow Y"],
+  ["frame.shadowBlurPx", "Shadow B"],
+] as const;
+
+const BACK_THEME_FIELDS = [
+  ["glowHueShiftDeg", "Glow H"],
+  ["glowAlphaScale", "Glow A"],
+  ["arrowShiftRem", "Arrow"],
+] as const;
+
+const THEME_LABEL_FIELDS = [
+  ["label.fontScale", "Text"],
+  ["label.trackingScale", "Track"],
+  ["label.padYRem", "Pad Y"],
+  ["label.padXRem", "Pad X"],
+  ["label.borderAlpha", "Border"],
+  ["label.backgroundAlpha", "BG"],
+  ["label.activeBackgroundAlpha", "BG+"],
+  ["label.activeRingAlpha", "Ring"],
+] as const;
+
 const DEBUG_NODE_SECTIONS = [
-  { kind: "interactive", title: "Interactives" },
+  { kind: "object", title: "Objects" },
   { kind: "back", title: "Backs" },
   { kind: "character", title: "Characters" },
 ] as const;
 
 type SceneEditorNodeKind = (typeof DEBUG_NODE_SECTIONS)[number]["kind"];
-type SceneClickableNodeKind = "interactive" | "back";
-type SceneClickableNode = SceneInteractiveConfig | SceneBackConfig;
+type SceneClickableNodeKind = "object" | "back";
+type SceneClickableNode = SceneObjectConfig | SceneBackConfig;
+type SceneThemeClickableKind = "object" | "back";
 
-export class EntranceSceneEditor {
+export class SceneLayoutEditor {
   host: HTMLElement;
-  callbacks: EntranceSceneEditorCallbacks;
+  callbacks: SceneLayoutEditorCallbacks;
   step = 1;
   panelPosition: { left: number; top: number } | null = null;
   dragState: { pointerId: number; offsetX: number; offsetY: number } | null = null;
   panelScroll = { top: 0, left: 0 };
 
-  constructor(host: HTMLElement, callbacks: EntranceSceneEditorCallbacks) {
+  constructor(host: HTMLElement, callbacks: SceneLayoutEditorCallbacks) {
     this.host = host;
     this.callbacks = callbacks;
     this.host.addEventListener("click", this.handleClick);
@@ -111,6 +149,7 @@ export class EntranceSceneEditor {
 
   refresh(): void {
     const sceneLayout = this.callbacks.getSceneLayout();
+    const sceneClickableTheme = this.callbacks.getSceneClickableTheme();
     const selection = this.callbacks.getSelection();
     const roomOptions = this.callbacks.getRoomOptions();
     const activeRoomId = this.callbacks.getActiveRoomId();
@@ -126,7 +165,7 @@ export class EntranceSceneEditor {
     const panel = document.createElement("aside");
     panel.className = "entrance-scene__editor-panel";
 
-    const selectedInteractive = resolveSceneInteractiveForSelection(sceneLayout, selection);
+    const selectedObject = resolveSceneObjectForSelection(sceneLayout, selection);
     const selectedBack = resolveSceneBackForSelection(sceneLayout, selection);
     const selectedCharacter = resolveSceneCharacterForSelection(sceneLayout, selection);
 
@@ -151,12 +190,12 @@ export class EntranceSceneEditor {
       <div class="entrance-scene__editor-header">
         <div class="entrance-scene__editor-drag-handle" data-editor-drag-handle="true">
           <h3 class="entrance-scene__editor-title">Scene Editor</h3>
-          <p class="entrance-scene__editor-subtitle">Drafts stay local until you save the theme map.</p>
+          <p class="entrance-scene__editor-subtitle">Drafts stay local until you save the room layout or theme defaults.</p>
         </div>
         <div class="entrance-scene__editor-toolbar">
-          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="save-source">Save Map</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="copy">Copy JSON</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="reset">Reset</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="save-source">Save Layout</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="copy">Copy Layout</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="reset">Reset Layout</button>
         </div>
       </div>
       <div class="entrance-scene__editor-stepper" role="group" aria-label="Editor step size">
@@ -176,8 +215,9 @@ export class EntranceSceneEditor {
           .join("")}
       </div>
       <div class="entrance-scene__editor-selected">
-        ${this.renderSelectedBlock(selection, selectedInteractive, selectedBack, selectedCharacter)}
+        ${this.renderSelectedBlock(selection, selectedObject, selectedBack, selectedCharacter)}
       </div>
+      ${this.renderThemeDefaultsBlock(sceneClickableTheme)}
       <div class="entrance-scene__editor-help">
         <span>Arrow: move</span>
         <span>Shift: x10</span>
@@ -201,20 +241,20 @@ export class EntranceSceneEditor {
   }
 
   private renderSelectedBlock(
-    selection: EntranceSceneEditorSelection,
-    interactive: SceneInteractiveConfig | null,
+    selection: SceneLayoutEditorSelection,
+    sceneObject: SceneObjectConfig | null,
     back: SceneBackConfig | null,
     character: SceneCharacterPlacementConfig | null
   ): string {
-    if (selection === null || (interactive === null && back === null && character === null)) {
-      return `<p class="entrance-scene__editor-empty">Select an interactive, back, or character node from the scene.</p>`;
+    if (selection === null || (sceneObject === null && back === null && character === null)) {
+      return `<p class="entrance-scene__editor-empty">Select an object, back, or character node from the scene.</p>`;
     }
 
-    if (interactive !== null) {
+    if (sceneObject !== null) {
       return `
-        <div class="entrance-scene__editor-selected-title">Interactive: ${interactive.id}</div>
-        ${this.renderNumericSection("Placement", "interactive", interactive.id, INTERACTIVE_FIELDS, interactive)}
-        ${this.renderLabelSection("interactive", interactive.id, interactive)}
+        <div class="entrance-scene__editor-selected-title">Object: ${sceneObject.id}</div>
+        ${this.renderNumericSection("Placement", "object", sceneObject.id, INTERACTIVE_FIELDS, sceneObject)}
+        ${this.renderLabelSection("object", sceneObject.id, sceneObject)}
       `;
     }
 
@@ -244,6 +284,58 @@ export class EntranceSceneEditor {
     }
 
     return "";
+  }
+
+  private renderThemeDefaultsBlock(sceneClickableTheme: SceneClickableThemeDefinition): string {
+    return `
+      <div class="entrance-scene__editor-section">
+        <div class="entrance-scene__editor-section-title">Theme Defaults</div>
+        <div class="entrance-scene__editor-toolbar">
+          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="save-theme">Save Theme</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="copy-theme">Copy Theme</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="reset-theme">Reset Theme</button>
+        </div>
+        ${this.renderThemeDefaultsSection("object", "Object Defaults", sceneClickableTheme)}
+        ${this.renderThemeDefaultsSection("back", "Back Defaults", sceneClickableTheme)}
+      </div>
+    `;
+  }
+
+  private renderThemeDefaultsSection(
+    kind: SceneThemeClickableKind,
+    title: string,
+    sceneClickableTheme: SceneClickableThemeDefinition
+  ): string {
+    const themeNode = sceneClickableTheme[kind];
+    const numericFields = kind === "object" ? OBJECT_THEME_FIELDS : BACK_THEME_FIELDS;
+    return `
+      <div class="entrance-scene__editor-section">
+        <div class="entrance-scene__editor-section-title">${title}</div>
+        <div class="entrance-scene__editor-grid">
+          ${numericFields
+            .map(([field, label]) =>
+              this.renderThemeControlRow(kind, field, label, this.readNumericField(themeNode, field))
+            )
+            .join("")}
+        </div>
+        <div class="entrance-scene__editor-section-title">Label Defaults</div>
+        <div class="entrance-scene__editor-grid">
+          ${THEME_LABEL_FIELDS.map(([field, label]) =>
+            this.renderThemeControlRow(kind, field, label, this.readNumericField(themeNode, field))
+          ).join("")}
+        </div>
+        <label class="entrance-scene__editor-row">
+          <span class="entrance-scene__editor-row-label">Visible</span>
+          <input
+            type="checkbox"
+            ${themeNode.label.visible ? "checked" : ""}
+            data-editor-action="toggle-theme-label"
+            data-kind="${kind}"
+          />
+        </label>
+        ${this.renderThemeFontPresetRow(kind, themeNode.label.fontPresetOverride)}
+      </div>
+    `;
   }
 
   private renderNumericSection(
@@ -330,10 +422,28 @@ export class EntranceSceneEditor {
     `;
   }
 
+  private renderThemeControlRow(
+    kind: SceneThemeClickableKind,
+    field: string,
+    label: string,
+    value: number
+  ): string {
+    return `
+      <div class="entrance-scene__editor-row">
+        <span class="entrance-scene__editor-row-label">${label}</span>
+        <div class="entrance-scene__editor-row-controls">
+          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="adjust-theme" data-kind="${kind}" data-field="${field}" data-direction="-1">-</button>
+          <span class="entrance-scene__editor-row-value">${value}</span>
+          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="adjust-theme" data-kind="${kind}" data-field="${field}" data-direction="1">+</button>
+        </div>
+      </div>
+    `;
+  }
+
   private renderNodeSection(
     title: string,
     nodes: SceneDebugNodeListEntry[],
-    selection: EntranceSceneEditorSelection
+    selection: SceneLayoutEditorSelection
   ): string {
     const content =
       nodes.length > 0
@@ -354,7 +464,7 @@ export class EntranceSceneEditor {
     kind: SceneEditorNodeKind,
     id: string,
     label: string,
-    selection: EntranceSceneEditorSelection
+    selection: SceneLayoutEditorSelection
   ): string {
     const selected = selection?.kind === kind && selection.id === id;
     return `
@@ -387,6 +497,22 @@ export class EntranceSceneEditor {
     `;
   }
 
+  private renderThemeFontPresetRow(
+    kind: SceneThemeClickableKind,
+    fontPresetOverride: SceneLayoutLabelFontPreset | null
+  ): string {
+    return `
+      <div class="entrance-scene__editor-row">
+        <span class="entrance-scene__editor-row-label">Font</span>
+        <div class="entrance-scene__editor-row-controls">
+          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="cycle-theme-font" data-kind="${kind}" data-direction="-1">-</button>
+          <span class="entrance-scene__editor-row-value entrance-scene__editor-row-value--wide">${this.formatThemeFontPreset(fontPresetOverride)}</span>
+          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="cycle-theme-font" data-kind="${kind}" data-direction="1">+</button>
+        </div>
+      </div>
+    `;
+  }
+
   private handleClick = (event: Event): void => {
     const target = event.target as HTMLElement | null;
     const actionButton = target?.closest<HTMLElement>("[data-editor-action]") ?? null;
@@ -412,6 +538,16 @@ export class EntranceSceneEditor {
       return;
     }
 
+    if (action === "copy-theme") {
+      void this.callbacks.copySceneClickableTheme();
+      return;
+    }
+
+    if (action === "save-theme") {
+      void this.callbacks.saveSceneClickableThemeToSource();
+      return;
+    }
+
     if (action === "room") {
       const roomId = actionButton.dataset["roomId"] ?? "";
       if (roomId !== "") {
@@ -425,10 +561,15 @@ export class EntranceSceneEditor {
       return;
     }
 
+    if (action === "reset-theme") {
+      this.callbacks.resetSceneClickableThemeDraft();
+      return;
+    }
+
     if (action === "select") {
       const kind = actionButton.dataset["kind"];
       const id = actionButton.dataset["id"];
-      if ((kind === "interactive" || kind === "back" || kind === "character") && id !== undefined) {
+      if ((kind === "object" || kind === "back" || kind === "character") && id !== undefined) {
         this.callbacks.setSelection({ kind, id });
       }
       return;
@@ -438,12 +579,27 @@ export class EntranceSceneEditor {
       const kind = actionButton.dataset["kind"];
       const id = actionButton.dataset["id"] ?? "";
       const direction = Number(actionButton.dataset["direction"] ?? "0");
-      if (kind === "interactive" || kind === "back") {
+      if (kind === "object" || kind === "back") {
         this.updateClickableNode(kind, id, (node) => ({
           ...node,
           label: {
             ...node.label,
             fontPreset: this.shiftFontPreset(node.label.fontPreset, direction),
+          },
+        }));
+      }
+      return;
+    }
+
+    if (action === "cycle-theme-font") {
+      const kind = actionButton.dataset["kind"];
+      const direction = Number(actionButton.dataset["direction"] ?? "0");
+      if (kind === "object" || kind === "back") {
+        this.updateThemeClickable(kind, (themeNode) => ({
+          ...themeNode,
+          label: {
+            ...themeNode.label,
+            fontPresetOverride: this.shiftThemeFontPreset(themeNode.label.fontPresetOverride, direction),
           },
         }));
       }
@@ -456,6 +612,16 @@ export class EntranceSceneEditor {
       const field = actionButton.dataset["field"] ?? "";
       const direction = Number(actionButton.dataset["direction"] ?? "0");
       this.adjustField(kind, id, field, this.getAdjustDelta(field, direction));
+      return;
+    }
+
+    if (action === "adjust-theme") {
+      const kind = actionButton.dataset["kind"];
+      const field = actionButton.dataset["field"] ?? "";
+      const direction = Number(actionButton.dataset["direction"] ?? "0");
+      if (kind === "object" || kind === "back") {
+        this.adjustThemeField(kind, field, this.getAdjustDelta(field, direction));
+      }
     }
   };
 
@@ -468,17 +634,24 @@ export class EntranceSceneEditor {
     const action = target.dataset["editorAction"] ?? "";
     const kind = target.dataset["kind"] ?? "";
     const id = target.dataset["id"] ?? "";
-    if (id === "") {
-      return;
-    }
-
     if (action === "text") {
+      if (id === "") {
+        return;
+      }
       this.updateLabelText(kind, id, target.value.trim());
       return;
     }
 
     if (action === "toggle-label") {
+      if (id === "") {
+        return;
+      }
       this.updateLabelVisible(kind, id, target.checked);
+      return;
+    }
+
+    if (action === "toggle-theme-label" && (kind === "object" || kind === "back")) {
+      this.updateThemeLabelVisible(kind, target.checked);
     }
   };
 
@@ -498,7 +671,7 @@ export class EntranceSceneEditor {
 
     const step = event.shiftKey ? this.step * 10 : this.step;
 
-    if (selection.kind === "interactive" || selection.kind === "back") {
+    if (selection.kind === "object" || selection.kind === "back") {
       if (event.key === "ArrowLeft") {
         event.preventDefault();
         this.adjustField(selection.kind, selection.id, "rect.leftPx", -step);
@@ -511,7 +684,7 @@ export class EntranceSceneEditor {
       } else if (event.key === "ArrowDown") {
         event.preventDefault();
         this.adjustField(selection.kind, selection.id, "rect.topPx", step);
-      } else if (selection.kind === "interactive" && event.key === "[") {
+      } else if (selection.kind === "object" && event.key === "[") {
         event.preventDefault();
         this.adjustField(
           selection.kind,
@@ -519,7 +692,7 @@ export class EntranceSceneEditor {
           "frame.rotateDeg",
           this.getAdjustDelta("frame.rotateDeg", -1)
         );
-      } else if (selection.kind === "interactive" && event.key === "]") {
+      } else if (selection.kind === "object" && event.key === "]") {
         event.preventDefault();
         this.adjustField(
           selection.kind,
@@ -613,16 +786,28 @@ export class EntranceSceneEditor {
     id: string,
     updater: (node: SceneClickableNode) => SceneClickableNode
   ): void {
-    if (kind === "interactive") {
-      this.callbacks.updateInteractive(id, (node) => updater(node) as SceneInteractiveConfig);
+    if (kind === "object") {
+      this.callbacks.updateObject(id, (node) => updater(node) as SceneObjectConfig);
       return;
     }
 
     this.callbacks.updateBack(id, (node) => updater(node) as SceneBackConfig);
   }
 
+  private updateThemeClickable(
+    kind: SceneThemeClickableKind,
+    updater: (
+      node: SceneClickableThemeDefinition[SceneThemeClickableKind]
+    ) => SceneClickableThemeDefinition[SceneThemeClickableKind]
+  ): void {
+    this.callbacks.updateSceneClickableTheme((theme) => ({
+      ...theme,
+      [kind]: updater(theme[kind]),
+    }));
+  }
+
   private adjustField(kind: string | undefined, id: string, field: string, delta: number): void {
-    if (kind === "interactive" || kind === "back") {
+    if (kind === "object" || kind === "back") {
       this.updateClickableNode(kind, id, (node) => this.patchNumericField(node, field, delta));
       return;
     }
@@ -632,8 +817,12 @@ export class EntranceSceneEditor {
     }
   }
 
+  private adjustThemeField(kind: SceneThemeClickableKind, field: string, delta: number): void {
+    this.updateThemeClickable(kind, (themeNode) => this.patchNumericField(themeNode, field, delta));
+  }
+
   private updateLabelText(kind: string, id: string, nextValue: string): void {
-    if (kind === "interactive" || kind === "back") {
+    if (kind === "object" || kind === "back") {
       this.updateClickableNode(kind, id, (node) => {
         const label = { ...node.label };
         if (nextValue === "") {
@@ -650,7 +839,7 @@ export class EntranceSceneEditor {
   }
 
   private updateLabelVisible(kind: string, id: string, visible: boolean): void {
-    if (kind === "interactive" || kind === "back") {
+    if (kind === "object" || kind === "back") {
       this.updateClickableNode(kind, id, (node) => ({
         ...node,
         label: {
@@ -659,6 +848,16 @@ export class EntranceSceneEditor {
         },
       }));
     }
+  }
+
+  private updateThemeLabelVisible(kind: SceneThemeClickableKind, visible: boolean): void {
+    this.updateThemeClickable(kind, (themeNode) => ({
+      ...themeNode,
+      label: {
+        ...themeNode.label,
+        visible,
+      },
+    }));
   }
 
   private patchNumericField<T extends object>(node: T, fieldPath: string, delta: number): T {
@@ -699,8 +898,14 @@ export class EntranceSceneEditor {
     if (field.endsWith("scale")) {
       return Number(Math.max(0.2, next).toFixed(2));
     }
+    if (field.endsWith("Scale")) {
+      return Number(Math.max(0.2, next).toFixed(2));
+    }
     if (field.endsWith("alpha") || field.endsWith("Alpha")) {
       return Number(Math.min(1, Math.max(0, next)).toFixed(2));
+    }
+    if (field.endsWith("Rem")) {
+      return Number(Math.max(0, next).toFixed(2));
     }
     if (field.endsWith("hueDeg") || field.endsWith("HueDeg")) {
       const wrapped = ((next % 360) + 360) % 360;
@@ -720,10 +925,16 @@ export class EntranceSceneEditor {
     if (field.endsWith("scale")) {
       return direction * this.getScaleStep();
     }
+    if (field.endsWith("Scale")) {
+      return direction * this.getScaleStep();
+    }
     if (field.endsWith("rotateDeg")) {
       return direction * (this.step / 10);
     }
     if (field.endsWith("alpha") || field.endsWith("Alpha")) {
+      return direction * this.getScaleStep();
+    }
+    if (field.endsWith("Rem")) {
       return direction * this.getScaleStep();
     }
     if (field.endsWith("hueDeg") || field.endsWith("HueDeg")) {
@@ -741,6 +952,17 @@ export class EntranceSceneEditor {
       (currentIndex + direction + SCENE_LAYOUT_LABEL_FONT_PRESETS.length) %
       SCENE_LAYOUT_LABEL_FONT_PRESETS.length;
     return SCENE_LAYOUT_LABEL_FONT_PRESETS[nextIndex] ?? "display";
+  }
+
+  private shiftThemeFontPreset(
+    current: SceneLayoutLabelFontPreset | null,
+    direction: number
+  ): SceneLayoutLabelFontPreset | null {
+    const presets: Array<SceneLayoutLabelFontPreset | null> = [null, ...SCENE_LAYOUT_LABEL_FONT_PRESETS];
+    const currentIndex = presets.indexOf(current);
+    const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+    const nextIndex = (safeIndex + direction + presets.length) % presets.length;
+    return presets[nextIndex] ?? null;
   }
 
   private formatFontPreset(preset: SceneLayoutLabelFontPreset): string {
@@ -763,6 +985,13 @@ export class EntranceSceneEditor {
       return "Mono";
     }
     return "Display";
+  }
+
+  private formatThemeFontPreset(preset: SceneLayoutLabelFontPreset | null): string {
+    if (preset === null) {
+      return "Inherit";
+    }
+    return this.formatFontPreset(preset);
   }
 
   private escapeAttribute(value: string): string {

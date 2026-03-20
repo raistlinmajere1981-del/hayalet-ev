@@ -4,10 +4,10 @@
     "width": 1920,
     "height": 1080
   },
-  "interactives": [
+  "objects": [
     {
       "id": "door-analyze",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "navigate",
@@ -42,7 +42,7 @@
     },
     {
       "id": "door-assistant",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "navigate",
@@ -77,7 +77,7 @@
     },
     {
       "id": "door-server",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "navigate",
@@ -112,7 +112,7 @@
     },
     {
       "id": "door-settings",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "settings",
@@ -147,7 +147,7 @@
     },
     {
       "id": "hatch-rooms",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "navigate",
@@ -182,7 +182,7 @@
     },
     {
       "id": "board-whisper",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "whisper"

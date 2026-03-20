@@ -1,17 +1,10 @@
-import analyzeSceneMap from "@theme-source/castle/maps/analyze.scene.json";
-import assistantSceneMap from "@theme-source/castle/maps/assistant.scene.json";
-import entranceSceneMap from "@theme-source/castle/maps/entrance.scene.json";
-import roomsSceneMap from "@theme-source/castle/maps/rooms.scene.json";
-import serverSceneMap from "@theme-source/castle/maps/server.scene.json";
-import settingsSceneMap from "@theme-source/castle/maps/settings.scene.json";
-
 import type {
   SceneBackNodeDefinition,
   SceneCharacterKind,
   SceneCharacterPlacementNodeDefinition,
   SceneCharacterSlot,
-  SceneInteractiveNodeDefinition,
-  SceneInteractiveAction,
+  SceneObjectNodeDefinition,
+  SceneObjectAction,
   SceneLayoutDefinition,
   SceneNodeDefinition,
   SceneNodeKind,
@@ -19,13 +12,14 @@ import type {
   SceneRoomId,
 } from "../schema.js";
 import { SCENE_LABEL_FONT_PRESETS } from "../schema.js";
+import { getSceneRoomLayout } from "../../scene-system/scene-layout-registry.js";
 
 export const SCENE_LAYOUT_LABEL_FONT_PRESETS = SCENE_LABEL_FONT_PRESETS;
 
 export type SceneLayoutLabelFontPreset = (typeof SCENE_LAYOUT_LABEL_FONT_PRESETS)[number];
-export type SceneInteractiveConfigAction = SceneInteractiveAction;
+export type SceneObjectConfigAction = SceneObjectAction;
 
-export type SceneInteractiveConfig = SceneInteractiveNodeDefinition;
+export type SceneObjectConfig = SceneObjectNodeDefinition;
 
 export type SceneBackConfig = SceneBackNodeDefinition;
 
@@ -35,7 +29,7 @@ export interface SceneCharacterPlacementConfig extends SceneCharacterPlacementNo
 }
 
 export interface SceneLayoutConfig extends SceneLayoutDefinition {
-  interactives: SceneInteractiveConfig[];
+  objects: SceneObjectConfig[];
   backs: SceneBackConfig[];
   characters: SceneCharacterPlacementConfig[];
 }
@@ -54,31 +48,15 @@ export interface SceneDebugNodeListEntry {
   viewId?: string | null;
 }
 
-function asSceneLayoutConfig(source: unknown): SceneLayoutConfig {
-  return source as SceneLayoutConfig;
+export function getSceneRoomLayoutConfig(roomId: SceneRoomId): SceneLayoutConfig {
+  return getSceneRoomLayout(roomId);
 }
 
-export const DEFAULT_ENTRANCE_SCENE_LAYOUT = asSceneLayoutConfig(entranceSceneMap);
-export const DEFAULT_ANALYZE_SCENE_LAYOUT = asSceneLayoutConfig(analyzeSceneMap);
-export const DEFAULT_ASSISTANT_SCENE_LAYOUT = asSceneLayoutConfig(assistantSceneMap);
-export const DEFAULT_SERVER_SCENE_LAYOUT = asSceneLayoutConfig(serverSceneMap);
-export const DEFAULT_ROOMS_SCENE_LAYOUT = asSceneLayoutConfig(roomsSceneMap);
-export const DEFAULT_SETTINGS_SCENE_LAYOUT = asSceneLayoutConfig(settingsSceneMap);
-
-export const DEFAULT_SCENE_LAYOUTS: Record<SceneRoomId, SceneLayoutConfig> = {
-  entrance: DEFAULT_ENTRANCE_SCENE_LAYOUT,
-  analyze: DEFAULT_ANALYZE_SCENE_LAYOUT,
-  assistant: DEFAULT_ASSISTANT_SCENE_LAYOUT,
-  server: DEFAULT_SERVER_SCENE_LAYOUT,
-  rooms: DEFAULT_ROOMS_SCENE_LAYOUT,
-  settings: DEFAULT_SETTINGS_SCENE_LAYOUT,
-};
-
-export function getSceneInteractiveNodesForView(
+export function getSceneObjectNodesForView(
   sceneLayout: SceneLayoutConfig,
   viewId: string | null = null
-): SceneInteractiveConfig[] {
-  return sceneLayout.interactives.filter((interactive) => interactive.viewId === viewId);
+): SceneObjectConfig[] {
+  return sceneLayout.objects.filter((sceneObject) => sceneObject.viewId === viewId);
 }
 
 export function getSceneBackNodeForView(
@@ -88,7 +66,7 @@ export function getSceneBackNodeForView(
   return sceneLayout.backs.find((back) => back.viewId === viewId) ?? null;
 }
 
-export function hasSceneNodeLabel(node: SceneInteractiveConfig | SceneBackConfig): boolean {
+export function hasSceneNodeLabel(node: SceneObjectConfig | SceneBackConfig): boolean {
   if (!node.label.visible) {
     return false;
   }
@@ -97,7 +75,7 @@ export function hasSceneNodeLabel(node: SceneInteractiveConfig | SceneBackConfig
 }
 
 function getSceneDebugNodeLabel(
-  node: SceneInteractiveConfig | SceneBackConfig | SceneCharacterPlacementConfig
+  node: SceneObjectConfig | SceneBackConfig | SceneCharacterPlacementConfig
 ): string {
   if (node.kind === "character") {
     return node.id;
@@ -116,7 +94,7 @@ function getSceneDebugNodeLabel(
 }
 
 export function resolveSceneNodeLabelText(
-  node: SceneInteractiveConfig | SceneBackConfig,
+  node: SceneObjectConfig | SceneBackConfig,
   translate: (key: string) => string
 ): string {
   const customLabel = node.label.customText?.trim() ?? "";
@@ -132,7 +110,7 @@ export function resolveSceneNodeLabelText(
 }
 
 export function buildSceneNodesFromLayout(sceneLayout: SceneLayoutConfig): SceneNodeDefinition[] {
-  return [...sceneLayout.interactives, ...sceneLayout.backs, ...sceneLayout.characters];
+  return [...sceneLayout.objects, ...sceneLayout.backs, ...sceneLayout.characters];
 }
 
 export function listSceneDebugNodes(sceneLayout: SceneLayoutConfig): SceneDebugNodeListEntry[] {
@@ -140,21 +118,21 @@ export function listSceneDebugNodes(sceneLayout: SceneLayoutConfig): SceneDebugN
     kind: node.kind,
     id: node.id,
     label: getSceneDebugNodeLabel(
-      node as SceneInteractiveConfig | SceneBackConfig | SceneCharacterPlacementConfig
+      node as SceneObjectConfig | SceneBackConfig | SceneCharacterPlacementConfig
     ),
     ...("viewId" in node ? { viewId: node.viewId } : {}),
   }));
 }
 
-export function resolveSceneInteractiveForSelection(
+export function resolveSceneObjectForSelection(
   sceneLayout: SceneLayoutConfig,
   selection: SceneDebugNodeSelection
-): SceneInteractiveConfig | null {
-  if (selection?.kind !== "interactive") {
+): SceneObjectConfig | null {
+  if (selection?.kind !== "object") {
     return null;
   }
 
-  return sceneLayout.interactives.find((interactive) => interactive.id === selection.id) ?? null;
+  return sceneLayout.objects.find((sceneObject) => sceneObject.id === selection.id) ?? null;
 }
 
 export function resolveSceneBackForSelection(
@@ -179,11 +157,11 @@ export function resolveSceneCharacterForSelection(
   return sceneLayout.characters.find((character) => character.id === selection.id) ?? null;
 }
 
-export function isSceneDebugSelectionForInteractive(
+export function isSceneDebugSelectionForObject(
   selection: SceneDebugNodeSelection,
-  interactive: SceneInteractiveConfig
+  sceneObject: SceneObjectConfig
 ): boolean {
-  return selection?.kind === "interactive" && selection.id === interactive.id;
+  return selection?.kind === "object" && selection.id === sceneObject.id;
 }
 
 export function isSceneDebugSelectionForBack(

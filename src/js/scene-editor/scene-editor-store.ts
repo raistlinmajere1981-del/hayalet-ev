@@ -5,10 +5,26 @@ import {
   serializeSceneLayout,
   type SceneLayoutConfig,
 } from "../scene/layout/index.js";
-import type { SceneDebugEditableRoomId } from "../scene/schema.js";
-import { getSceneRoomLayout, getSceneRoomSourcePath, getSceneThemeId } from "../scene-system/index.js";
+import type { SceneClickableThemeDefinition, SceneDebugEditableRoomId } from "../scene/schema.js";
+import {
+  getSceneClickableTheme,
+  parseSceneClickableThemeDraft,
+  serializeSceneClickableThemeDraft,
+  serializeSceneClickableThemeSource,
+} from "../scene-system/index.js";
+import {
+  getSceneClickableDefaultsSourcePath,
+  getSceneRoomLayout,
+  getSceneRoomSourcePath,
+  getSceneThemeId,
+} from "../scene-system/scene-layout-registry.js";
 
 interface SceneDebugStoreConfig {
+  storageKey: string;
+  sourcePath: string;
+}
+
+interface SceneDebugThemeStoreConfig {
   storageKey: string;
   sourcePath: string;
 }
@@ -25,7 +41,19 @@ export interface SceneDebugStore {
   saveSource(sceneLayout: SceneLayoutConfig): Promise<boolean>;
 }
 
+export interface SceneDebugThemeStore {
+  getSourcePath(): string;
+  cloneDefault(): SceneClickableThemeDefinition;
+  loadDraft(): SceneClickableThemeDefinition | null;
+  saveDraft(sceneClickableTheme: SceneClickableThemeDefinition): void;
+  clearDraft(): void;
+  serialize(sceneClickableTheme: SceneClickableThemeDefinition): string;
+  copyToClipboard(sceneClickableTheme: SceneClickableThemeDefinition): Promise<void>;
+  saveSource(sceneClickableTheme: SceneClickableThemeDefinition): Promise<boolean>;
+}
+
 const SCENE_EDITOR_DRAFT_VERSION = "v2";
+const SCENE_CLICKABLE_THEME_DRAFT_VERSION = "v1";
 
 function getSceneDebugDraftStorageKey(roomId: SceneDebugEditableRoomId): string {
   return `scene-editor:${getSceneThemeId()}:${roomId}:draft:${SCENE_EDITOR_DRAFT_VERSION}`;
@@ -35,6 +63,17 @@ function getSceneDebugStoreConfig(roomId: SceneDebugEditableRoomId): SceneDebugS
   return {
     storageKey: getSceneDebugDraftStorageKey(roomId),
     sourcePath: getSceneRoomSourcePath(roomId),
+  };
+}
+
+function getSceneDebugThemeDraftStorageKey(): string {
+  return `scene-editor:${getSceneThemeId()}:clickable-defaults:draft:${SCENE_CLICKABLE_THEME_DRAFT_VERSION}`;
+}
+
+function getSceneDebugThemeStoreConfig(): SceneDebugThemeStoreConfig {
+  return {
+    storageKey: getSceneDebugThemeDraftStorageKey(),
+    sourcePath: getSceneClickableDefaultsSourcePath(),
   };
 }
 
@@ -60,6 +99,40 @@ function saveSceneDebugDraft(config: SceneDebugStoreConfig, sceneLayout: SceneLa
 }
 
 function clearSceneDebugDraft(config: SceneDebugStoreConfig): void {
+  try {
+    window.localStorage.removeItem(config.storageKey);
+  } catch {
+    // Ignore draft persistence failures in constrained environments.
+  }
+}
+
+function loadSceneDebugThemeDraft(
+  config: SceneDebugThemeStoreConfig
+): SceneClickableThemeDefinition | null {
+  try {
+    const raw = window.localStorage.getItem(config.storageKey);
+    if (raw === null || raw.trim() === "") {
+      return null;
+    }
+
+    return parseSceneClickableThemeDraft(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveSceneDebugThemeDraft(
+  config: SceneDebugThemeStoreConfig,
+  sceneClickableTheme: SceneClickableThemeDefinition
+): void {
+  try {
+    window.localStorage.setItem(config.storageKey, serializeSceneClickableThemeDraft(sceneClickableTheme));
+  } catch {
+    // Ignore draft persistence failures in constrained environments.
+  }
+}
+
+function clearSceneDebugThemeDraft(config: SceneDebugThemeStoreConfig): void {
   try {
     window.localStorage.removeItem(config.storageKey);
   } catch {
@@ -97,6 +170,42 @@ export function createSceneDebugStore(roomId: SceneDebugEditableRoomId): SceneDe
       const savedPath = await FileManager.writeFileAtomic(
         config.sourcePath,
         `${serializeSceneLayout(sceneLayout)}\n`,
+        "utf-8"
+      );
+      return savedPath !== "";
+    },
+  };
+}
+
+export function createSceneDebugThemeStore(): SceneDebugThemeStore {
+  const config = getSceneDebugThemeStoreConfig();
+
+  return {
+    getSourcePath(): string {
+      return config.sourcePath;
+    },
+    cloneDefault(): SceneClickableThemeDefinition {
+      return getSceneClickableTheme();
+    },
+    loadDraft(): SceneClickableThemeDefinition | null {
+      return loadSceneDebugThemeDraft(config);
+    },
+    saveDraft(sceneClickableTheme: SceneClickableThemeDefinition): void {
+      saveSceneDebugThemeDraft(config, sceneClickableTheme);
+    },
+    clearDraft(): void {
+      clearSceneDebugThemeDraft(config);
+    },
+    serialize(sceneClickableTheme: SceneClickableThemeDefinition): string {
+      return serializeSceneClickableThemeDraft(sceneClickableTheme);
+    },
+    async copyToClipboard(sceneClickableTheme: SceneClickableThemeDefinition): Promise<void> {
+      await navigator.clipboard.writeText(serializeSceneClickableThemeDraft(sceneClickableTheme));
+    },
+    async saveSource(sceneClickableTheme: SceneClickableThemeDefinition): Promise<boolean> {
+      const savedPath = await FileManager.writeFileAtomic(
+        config.sourcePath,
+        serializeSceneClickableThemeSource(sceneClickableTheme),
         "utf-8"
       );
       return savedPath !== "";

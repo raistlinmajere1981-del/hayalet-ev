@@ -4,10 +4,10 @@
     "width": 1920,
     "height": 1080
   },
-  "interactives": [
+  "objects": [
     {
       "id": "door-entrance",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "navigate",
@@ -43,7 +43,7 @@
     },
     {
       "id": "screen-primary",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "screen",
@@ -79,7 +79,7 @@
     },
     {
       "id": "screen-archive",
-      "kind": "interactive",
+      "kind": "object",
       "viewId": null,
       "action": {
         "type": "screen",

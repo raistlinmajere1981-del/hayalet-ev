@@ -6,8 +6,9 @@ import { dispatchSceneAction } from "../../../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
   createSceneDebugStore,
-  EntranceSceneEditor,
-  type EntranceSceneEditorSelection,
+  createSceneDebugThemeStore,
+  SceneLayoutEditor,
+  type SceneLayoutEditorSelection,
   getSceneDebugRoomOptions,
   isSceneDebugRoomActive,
   isSceneDebugEnabled,
@@ -18,9 +19,10 @@ import {
   resolveSceneAvatarSource,
   type SceneCharacterDescriptor,
 } from "../../../scene/characters/index.js";
+import type { SceneClickableThemeDefinition } from "../../../scene/schema.js";
 import type { SceneLayoutConfig } from "../../../scene/layout/index.js";
 import {
-  getSceneInteractiveNodesForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../../../scene/layout/index.js";
 import {
@@ -31,7 +33,7 @@ import {
 import { getCoverSceneProjection } from "../../../scene/projection.js";
 import { renderSceneBackLayer } from "../../../scene/renderers/back-layer.js";
 import { renderSceneCharacterLayer } from "../../../scene/renderers/character-layer.js";
-import { renderSceneInteractiveLayer } from "../../../scene/renderers/interactive-layer.js";
+import { renderSceneObjectLayer } from "../../../scene/renderers/object-layer.js";
 import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewBackgroundSrc,
@@ -55,6 +57,7 @@ const ELEMENT_IDS = {
 } as const;
 
 const ENTRANCE_SCENE_DEBUG_STORE = createSceneDebugStore("entrance");
+const ENTRANCE_SCENE_DEBUG_THEME_STORE = createSceneDebugThemeStore();
 
 export class EntranceSceneController {
   bridge: SceneEntranceBridge;
@@ -68,7 +71,7 @@ export class EntranceSceneController {
   viewBackground: HTMLImageElement | null = null;
   viewSlot: HTMLElement | null = null;
   menu: SceneCharacterMenu | null = null;
-  editor: EntranceSceneEditor | null = null;
+  editor: SceneLayoutEditor | null = null;
   resizeObserver: ResizeObserver | null = null;
   trafficUnsub: (() => void) | null = null;
   appStateUnsub: (() => void) | null = null;
@@ -77,8 +80,9 @@ export class EntranceSceneController {
   openCharacterId: string | null = null;
   characters = new Map<string, SceneCharacterDescriptor>();
   sceneLayout = ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
+  sceneClickableTheme = ENTRANCE_SCENE_DEBUG_THEME_STORE.cloneDefault();
   sceneDebugEnabled = false;
-  editorSelection: EntranceSceneEditorSelection = null;
+  editorSelection: SceneLayoutEditorSelection = null;
 
   constructor(bridge: SceneEntranceBridge) {
     this.bridge = bridge;
@@ -98,6 +102,9 @@ export class EntranceSceneController {
     this.sceneLayout =
       (this.sceneDebugEnabled ? ENTRANCE_SCENE_DEBUG_STORE.loadDraft() : null) ??
       ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
+    this.sceneClickableTheme =
+      (this.sceneDebugEnabled ? ENTRANCE_SCENE_DEBUG_THEME_STORE.loadDraft() : null) ??
+      ENTRANCE_SCENE_DEBUG_THEME_STORE.cloneDefault();
     if (this.menuHost !== null) {
       this.menu = new SceneCharacterMenu(this.menuHost, this.bridge, {
         onClose: (): void => {
@@ -107,11 +114,12 @@ export class EntranceSceneController {
       });
     }
     if (this.sceneDebugEnabled && this.editorHost !== null) {
-      this.editor = new EntranceSceneEditor(this.editorHost, {
+      this.editor = new SceneLayoutEditor(this.editorHost, {
         isActive: (): boolean =>
           isSceneDebugRoomActive("entrance"),
         getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
-        getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
+        getSceneClickableTheme: (): SceneClickableThemeDefinition => this.sceneClickableTheme,
+        getSelection: (): SceneLayoutEditorSelection => this.editorSelection,
         getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
         getActiveRoomId: (): string => "entrance",
         setSelection: (selection): void => {
@@ -123,9 +131,9 @@ export class EntranceSceneController {
         navigateToRoom: (roomId: string): void => {
           openSceneDebugRoom(roomId as never);
         },
-        updateInteractive: (id, updater): void => {
-          this.sceneLayout.interactives = this.sceneLayout.interactives.map((interactive) =>
-            interactive.id === id ? updater(interactive) : interactive
+        updateObject: (id, updater): void => {
+          this.sceneLayout.objects = this.sceneLayout.objects.map((sceneObject) =>
+            sceneObject.id === id ? updater(sceneObject) : sceneObject
           );
           this.persistSceneLayoutDraft();
           this.renderHotspots();
@@ -165,6 +173,30 @@ export class EntranceSceneController {
         },
         saveSceneLayoutToSource: async (): Promise<void> => {
           await ENTRANCE_SCENE_DEBUG_STORE.saveSource(this.sceneLayout);
+        },
+        updateSceneClickableTheme: (updater): void => {
+          this.sceneClickableTheme = updater(this.sceneClickableTheme);
+          ENTRANCE_SCENE_DEBUG_THEME_STORE.saveDraft(this.sceneClickableTheme);
+          this.renderHotspots();
+          this.syncViewState();
+          this.editor?.refresh();
+        },
+        resetSceneClickableThemeDraft: (): void => {
+          this.sceneClickableTheme = ENTRANCE_SCENE_DEBUG_THEME_STORE.cloneDefault();
+          ENTRANCE_SCENE_DEBUG_THEME_STORE.clearDraft();
+          this.renderHotspots();
+          this.syncViewState();
+          this.editor?.refresh();
+        },
+        copySceneClickableTheme: async (): Promise<void> => {
+          try {
+            await ENTRANCE_SCENE_DEBUG_THEME_STORE.copyToClipboard(this.sceneClickableTheme);
+          } catch {
+            console.info("Scene clickable theme copy failed.");
+          }
+        },
+        saveSceneClickableThemeToSource: async (): Promise<void> => {
+          await ENTRANCE_SCENE_DEBUG_THEME_STORE.saveSource(this.sceneClickableTheme);
         },
       });
       this.editor.refresh();
@@ -258,9 +290,10 @@ export class EntranceSceneController {
       return;
     }
 
-    renderSceneInteractiveLayer({
+    renderSceneObjectLayer({
       layer: this.hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this.sceneLayout),
+      nodes: getSceneObjectNodesForView(this.sceneLayout),
+      themeDefaults: this.sceneClickableTheme.object,
       projection: this.getSceneProjection(),
       cssVarPrefix: "scene-hotspot",
       classNames: {
@@ -269,10 +302,10 @@ export class EntranceSceneController {
         label: "entrance-scene__hotspot-label",
       },
       selection: this.editorSelection,
-      interactiveLabels: true,
+      clickableLabels: true,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleInteractive(node.id);
+        this.handleObject(node.id);
       },
     });
   }
@@ -316,20 +349,20 @@ export class EntranceSceneController {
     return Number(Math.max(0.75, scaled).toFixed(3));
   }
 
-  private handleInteractive(id: string): void {
-    const interactive = this.sceneLayout.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  private handleObject(id: string): void {
+    const sceneObject = this.sceneLayout.objects.find((node) => node.id === id) ?? null;
+    if (sceneObject === null) {
       return;
     }
 
     if (this.editor !== null) {
-      this.editorSelection = { kind: "interactive", id: interactive.id };
+      this.editorSelection = { kind: "object", id: sceneObject.id };
       this.editor.refresh();
       this.renderHotspots();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(sceneObject.action, {
       onNavigate: (page) => {
         navigateToScenePage(page);
       },
@@ -399,6 +432,7 @@ export class EntranceSceneController {
     renderSceneBackLayer({
       host: this.viewRoot,
       node: null,
+      themeDefaults: this.sceneClickableTheme.back,
       projection: this.getSceneProjection(),
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {

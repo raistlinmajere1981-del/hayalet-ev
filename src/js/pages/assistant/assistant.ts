@@ -85,8 +85,9 @@ import {
 import {
   applySceneDebugFlag,
   createSceneDebugStore,
-  EntranceSceneEditor,
-  type EntranceSceneEditorSelection,
+  createSceneDebugThemeStore,
+  SceneLayoutEditor,
+  type SceneLayoutEditorSelection,
   getSceneDebugRoomOptions,
   isSceneDebugRoomActive,
   openSceneDebugRoom,
@@ -95,10 +96,11 @@ import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
 } from "../../scene/characters/index.js";
+import type { SceneClickableThemeDefinition } from "../../scene/schema.js";
 import type { SceneLayoutConfig } from "../../scene/layout/index.js";
 import {
   getSceneBackNodeForView,
-  getSceneInteractiveNodesForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../../scene/layout/index.js";
 import {
@@ -112,7 +114,7 @@ import { navigateToScenePage, openSceneSettingsPanel } from "../../scene/navigat
 import { getCoverSceneProjectionFromElement } from "../../scene/projection.js";
 import { renderSceneBackLayer } from "../../scene/renderers/back-layer.js";
 import { renderSceneCharacterLayer } from "../../scene/renderers/character-layer.js";
-import { renderSceneInteractiveLayer } from "../../scene/renderers/interactive-layer.js";
+import { renderSceneObjectLayer } from "../../scene/renderers/object-layer.js";
 import { syncSceneViewRuntime } from "../../scene/runtime.js";
 import {
   getSceneRoomBackgroundSrc,
@@ -138,6 +140,7 @@ interface ScenarioPanelState {
 const ASSISTANT_CUSTOM_AVATAR_RELATIVE_PATH = "data/shared/assistant.png";
 const ASSISTANT_DEFAULT_AVATAR_PATH = "src/assets/opencode.png";
 const ASSISTANT_SCENE_DEBUG_STORE = createSceneDebugStore("assistant");
+const ASSISTANT_SCENE_DEBUG_THEME_STORE = createSceneDebugThemeStore();
 
 function getAssistantCustomAvatarPath(): string {
   const dataDir = FileManager.getPath("data");
@@ -262,8 +265,9 @@ export class AssistantController {
   _assistantSceneScreenOpen: boolean;
   _assistantSceneDebugEnabled: boolean;
   _assistantSceneLayout: SceneLayoutConfig;
-  _assistantSceneEditor: EntranceSceneEditor | null;
-  _assistantSceneSelection: EntranceSceneEditorSelection;
+  _assistantSceneClickableTheme: SceneClickableThemeDefinition;
+  _assistantSceneEditor: SceneLayoutEditor | null;
+  _assistantSceneSelection: SceneLayoutEditorSelection;
   _assistantSceneResizeObserver: ResizeObserver | null;
   _assistantSceneCharacterRenderToken: number;
   _assistantSceneFrameController: SceneAlphaWindowFrameController | null;
@@ -323,6 +327,7 @@ export class AssistantController {
     this._assistantSceneScreenOpen = false;
     this._assistantSceneDebugEnabled = false;
     this._assistantSceneLayout = ASSISTANT_SCENE_DEBUG_STORE.cloneDefault();
+    this._assistantSceneClickableTheme = ASSISTANT_SCENE_DEBUG_THEME_STORE.cloneDefault();
     this._assistantSceneEditor = null;
     this._assistantSceneSelection = null;
     this._assistantSceneResizeObserver = null;
@@ -366,6 +371,9 @@ export class AssistantController {
     this._assistantSceneLayout =
       (this._assistantSceneDebugEnabled ? ASSISTANT_SCENE_DEBUG_STORE.loadDraft() : null) ??
       ASSISTANT_SCENE_DEBUG_STORE.cloneDefault();
+    this._assistantSceneClickableTheme =
+      (this._assistantSceneDebugEnabled ? ASSISTANT_SCENE_DEBUG_THEME_STORE.loadDraft() : null) ??
+      ASSISTANT_SCENE_DEBUG_THEME_STORE.cloneDefault();
     const assistantContainer = document.querySelector(".assistant-container");
     const assistantSceneScreenView = document.getElementById("assistant-scene-screen-view");
     const assistantSceneScreenArt = document.getElementById(
@@ -598,10 +606,11 @@ export class AssistantController {
       return;
     }
 
-    this._assistantSceneEditor = new EntranceSceneEditor(editorHost, {
+    this._assistantSceneEditor = new SceneLayoutEditor(editorHost, {
       isActive: (): boolean => this._isAssistantSceneDebugActive(),
       getSceneLayout: (): SceneLayoutConfig => this._assistantSceneLayout,
-      getSelection: (): EntranceSceneEditorSelection => this._assistantSceneSelection,
+      getSceneClickableTheme: (): SceneClickableThemeDefinition => this._assistantSceneClickableTheme,
+      getSelection: (): SceneLayoutEditorSelection => this._assistantSceneSelection,
       getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "assistant",
       setSelection: (selection): void => {
@@ -612,9 +621,9 @@ export class AssistantController {
       navigateToRoom: (roomId: string): void => {
         this._navigateToSceneDebugRoom(roomId);
       },
-      updateInteractive: (id, updater): void => {
-        this._assistantSceneLayout.interactives = this._assistantSceneLayout.interactives.map((interactive) =>
-          interactive.id === id ? updater(interactive) : interactive
+      updateObject: (id, updater): void => {
+        this._assistantSceneLayout.objects = this._assistantSceneLayout.objects.map((sceneObject) =>
+          sceneObject.id === id ? updater(sceneObject) : sceneObject
         );
         this._persistAssistantSceneLayoutDraft();
         this._syncAssistantSceneVisibility();
@@ -654,6 +663,32 @@ export class AssistantController {
       saveSceneLayoutToSource: async (): Promise<void> => {
         await ASSISTANT_SCENE_DEBUG_STORE.saveSource(this._assistantSceneLayout);
       },
+      updateSceneClickableTheme: (updater): void => {
+        this._assistantSceneClickableTheme = updater(this._assistantSceneClickableTheme);
+        ASSISTANT_SCENE_DEBUG_THEME_STORE.saveDraft(this._assistantSceneClickableTheme);
+        this._syncAssistantSceneVisibility();
+        this._renderAssistantScene();
+        this._assistantSceneEditor?.refresh();
+      },
+      resetSceneClickableThemeDraft: (): void => {
+        this._assistantSceneClickableTheme = ASSISTANT_SCENE_DEBUG_THEME_STORE.cloneDefault();
+        ASSISTANT_SCENE_DEBUG_THEME_STORE.clearDraft();
+        this._syncAssistantSceneVisibility();
+        this._renderAssistantScene();
+        this._assistantSceneEditor?.refresh();
+      },
+      copySceneClickableTheme: async (): Promise<void> => {
+        try {
+          await ASSISTANT_SCENE_DEBUG_THEME_STORE.copyToClipboard(
+            this._assistantSceneClickableTheme
+          );
+        } catch {
+          console.info("Assistant scene clickable theme copy failed.");
+        }
+      },
+      saveSceneClickableThemeToSource: async (): Promise<void> => {
+        await ASSISTANT_SCENE_DEBUG_THEME_STORE.saveSource(this._assistantSceneClickableTheme);
+      },
     });
     this._assistantSceneEditor.refresh();
   }
@@ -686,9 +721,10 @@ export class AssistantController {
       return;
     }
 
-    renderSceneInteractiveLayer({
+    renderSceneObjectLayer({
       layer: hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this._assistantSceneLayout),
+      nodes: getSceneObjectNodesForView(this._assistantSceneLayout),
+      themeDefaults: this._assistantSceneClickableTheme.object,
       projection: this._getAssistantSceneProjection(),
       cssVarPrefix: "assistant-scene-hotspot",
       classNames: {
@@ -697,9 +733,10 @@ export class AssistantController {
         label: "assistant-scene__hotspot-label",
       },
       selection: this._assistantSceneSelection,
+      clickableLabels: true,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this._handleAssistantSceneInteractive(node.id);
+        this._handleAssistantSceneObject(node.id);
       },
     });
   }
@@ -827,6 +864,7 @@ export class AssistantController {
           sceneActive && this._assistantSceneScreenOpen
             ? getSceneBackNodeForView(this._assistantSceneLayout, "primary")
             : null,
+        themeDefaults: this._assistantSceneClickableTheme.back,
         projection: this._getAssistantSceneProjection(),
         resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
         onActivate: (node) => {
@@ -1503,20 +1541,20 @@ export class AssistantController {
     return;
   }
 
-  _handleAssistantSceneInteractive(id: string): void {
-    const interactive = this._assistantSceneLayout.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  _handleAssistantSceneObject(id: string): void {
+    const sceneObject = this._assistantSceneLayout.objects.find((node) => node.id === id) ?? null;
+    if (sceneObject === null) {
       return;
     }
 
     if (this._assistantSceneEditor !== null) {
-      this._assistantSceneSelection = { kind: "interactive", id: interactive.id };
+      this._assistantSceneSelection = { kind: "object", id: sceneObject.id };
       this._assistantSceneEditor.refresh();
       this._renderAssistantScene();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(sceneObject.action, {
       onNavigate: (page) => {
         this._setAssistantSceneScreenOpen(false);
         this._navigateToPage(page);

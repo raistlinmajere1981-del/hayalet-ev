@@ -6,8 +6,9 @@ import { dispatchSceneAction } from "../../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
   createSceneDebugStore,
-  EntranceSceneEditor,
-  type EntranceSceneEditorSelection,
+  createSceneDebugThemeStore,
+  SceneLayoutEditor,
+  type SceneLayoutEditorSelection,
   getSceneDebugRoomOptions,
   isSceneDebugRoomActive,
   isSceneDebugRoomId,
@@ -17,17 +18,18 @@ import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
 } from "../../scene/characters/index.js";
+import type { SceneClickableThemeDefinition } from "../../scene/schema.js";
 import type { SceneLayoutConfig } from "../../scene/layout/index.js";
 import {
   getSceneBackNodeForView,
-  getSceneInteractiveNodesForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../../scene/layout/index.js";
 import { SceneAlphaWindowFrameController } from "../../scene/alpha-window.js";
 import { getCoverSceneProjection } from "../../scene/projection.js";
 import { renderSceneBackLayer } from "../../scene/renderers/back-layer.js";
 import { renderSceneCharacterLayer } from "../../scene/renderers/character-layer.js";
-import { renderSceneInteractiveLayer } from "../../scene/renderers/interactive-layer.js";
+import { renderSceneObjectLayer } from "../../scene/renderers/object-layer.js";
 import { syncSceneViewRuntime } from "../../scene/runtime.js";
 import {
   getSceneRoomBackgroundSrc,
@@ -53,6 +55,8 @@ import {
 const SETTINGS_PANELS = ["theme", "accounts", "backup", "rooms", "live-log"] as const;
 
 export type SettingsPanelId = (typeof SETTINGS_PANELS)[number];
+const SETTINGS_SCENE_DEBUG_STORE = createSceneDebugStore("settings");
+const SETTINGS_SCENE_DEBUG_THEME_STORE = createSceneDebugThemeStore();
 
 interface SettingsPanelLifecycleState {
   open: boolean;
@@ -181,8 +185,6 @@ export function registerSettingsPanelLifecycle(
   };
 }
 
-const SETTINGS_SCENE_DEBUG_STORE = createSceneDebugStore("settings");
-
 class SettingsSceneController {
   private overlay: HTMLElement;
   private root: HTMLElement;
@@ -203,9 +205,11 @@ class SettingsSceneController {
   private state: SettingsSceneState = { open: false, activePanel: null };
   private panelsPlaceholder: Comment | null = null;
   private sceneLayout: SceneLayoutConfig = SETTINGS_SCENE_DEBUG_STORE.cloneDefault();
+  private sceneClickableTheme: SceneClickableThemeDefinition =
+    SETTINGS_SCENE_DEBUG_THEME_STORE.cloneDefault();
   private sceneDebugEnabled = false;
-  private editorSelection: EntranceSceneEditorSelection = null;
-  private editor: EntranceSceneEditor | null = null;
+  private editorSelection: SceneLayoutEditorSelection = null;
+  private editor: SceneLayoutEditor | null = null;
   private characterRenderToken = 0;
 
   constructor(deps: SettingsSceneControllerDeps) {
@@ -237,6 +241,9 @@ class SettingsSceneController {
     this.sceneLayout =
       (this.sceneDebugEnabled ? SETTINGS_SCENE_DEBUG_STORE.loadDraft() : null) ??
       SETTINGS_SCENE_DEBUG_STORE.cloneDefault();
+    this.sceneClickableTheme =
+      (this.sceneDebugEnabled ? SETTINGS_SCENE_DEBUG_THEME_STORE.loadDraft() : null) ??
+      SETTINGS_SCENE_DEBUG_THEME_STORE.cloneDefault();
     this.background.src = getSceneRoomBackgroundSrc("settings");
     this.background.alt = "";
     this.bindSceneEvents();
@@ -287,6 +294,7 @@ class SettingsSceneController {
     renderSceneBackLayer({
       host: this.panelView,
       node: panelOpen ? getSceneBackNodeForView(this.sceneLayout, "panel") : null,
+      themeDefaults: this.sceneClickableTheme.back,
       projection: this.getSceneProjection(),
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
@@ -328,10 +336,11 @@ class SettingsSceneController {
       return;
     }
 
-    this.editor = new EntranceSceneEditor(this.editorHost, {
+    this.editor = new SceneLayoutEditor(this.editorHost, {
       isActive: (): boolean => this.isEditorActive(),
       getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
-      getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
+      getSceneClickableTheme: (): SceneClickableThemeDefinition => this.sceneClickableTheme,
+      getSelection: (): SceneLayoutEditorSelection => this.editorSelection,
       getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "settings",
       setSelection: (selection): void => {
@@ -349,9 +358,9 @@ class SettingsSceneController {
         this.onClose();
         navigateMainShellPage(roomId);
       },
-      updateInteractive: (id, updater): void => {
-        this.sceneLayout.interactives = this.sceneLayout.interactives.map((interactive) =>
-          interactive.id === id ? updater(interactive) : interactive
+      updateObject: (id, updater): void => {
+        this.sceneLayout.objects = this.sceneLayout.objects.map((sceneObject) =>
+          sceneObject.id === id ? updater(sceneObject) : sceneObject
         );
         this.persistSceneLayoutDraft();
         this.sync(this.state);
@@ -391,6 +400,30 @@ class SettingsSceneController {
       },
       saveSceneLayoutToSource: async (): Promise<void> => {
         await SETTINGS_SCENE_DEBUG_STORE.saveSource(this.sceneLayout);
+      },
+      updateSceneClickableTheme: (updater): void => {
+        this.sceneClickableTheme = updater(this.sceneClickableTheme);
+        SETTINGS_SCENE_DEBUG_THEME_STORE.saveDraft(this.sceneClickableTheme);
+        this.sync(this.state);
+        this.renderHotspots();
+        this.editor?.refresh();
+      },
+      resetSceneClickableThemeDraft: (): void => {
+        this.sceneClickableTheme = SETTINGS_SCENE_DEBUG_THEME_STORE.cloneDefault();
+        SETTINGS_SCENE_DEBUG_THEME_STORE.clearDraft();
+        this.sync(this.state);
+        this.renderHotspots();
+        this.editor?.refresh();
+      },
+      copySceneClickableTheme: async (): Promise<void> => {
+        try {
+          await SETTINGS_SCENE_DEBUG_THEME_STORE.copyToClipboard(this.sceneClickableTheme);
+        } catch {
+          console.info("Settings scene clickable theme copy failed.");
+        }
+      },
+      saveSceneClickableThemeToSource: async (): Promise<void> => {
+        await SETTINGS_SCENE_DEBUG_THEME_STORE.saveSource(this.sceneClickableTheme);
       },
     });
     this.editor.refresh();
@@ -488,9 +521,10 @@ class SettingsSceneController {
   }
 
   private renderHotspots(): void {
-    renderSceneInteractiveLayer({
+    renderSceneObjectLayer({
       layer: this.hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this.sceneLayout),
+      nodes: getSceneObjectNodesForView(this.sceneLayout),
+      themeDefaults: this.sceneClickableTheme.object,
       projection: this.getSceneProjection(),
       cssVarPrefix: "settings-scene-hotspot",
       classNames: {
@@ -499,27 +533,28 @@ class SettingsSceneController {
         label: "settings-scene__hotspot-label",
       },
       selection: this.editorSelection,
+      clickableLabels: true,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleInteractive(node.id);
+        this.handleObject(node.id);
       },
     });
   }
 
-  private handleInteractive(id: string): void {
-    const interactive = this.sceneLayout.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  private handleObject(id: string): void {
+    const sceneObject = this.sceneLayout.objects.find((node) => node.id === id) ?? null;
+    if (sceneObject === null) {
       return;
     }
 
     if (this.isEditorActive()) {
-      this.editorSelection = { kind: "interactive", id: interactive.id };
+      this.editorSelection = { kind: "object", id: sceneObject.id };
       this.editor?.refresh();
       this.renderHotspots();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(sceneObject.action, {
       onNavigate: (page) => {
         this.onClose();
         navigateMainShellPage(page);

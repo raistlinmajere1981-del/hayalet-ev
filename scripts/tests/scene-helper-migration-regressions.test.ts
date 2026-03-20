@@ -44,6 +44,6 @@ test("legacy entrance scene helper files are removed after migration", () => {
   assert.match(charactersIndex, /export \* from "\.\/scene-avatar\.js"/);
   assert.match(charactersIndex, /export \* from "\.\/scene-character-roster\.js"/);
   assert.match(charactersIndex, /export \* from "\.\/scene-character-state\.js"/);
-  assert.match(sceneEditorIndex, /export \* from "\.\/scene-map-editor\.js"/);
+  assert.match(sceneEditorIndex, /export \* from "\.\/scene-layout-editor\.js"/);
   assert.match(sceneSystemIndex, /export \* from "\.\/scene-loading-theme\.js"/);
 });

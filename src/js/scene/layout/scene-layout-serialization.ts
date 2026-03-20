@@ -3,7 +3,7 @@ import {
   SCENE_LABEL_FONT_PRESETS,
 } from "../schema.js";
 import type {
-  SceneInteractiveFrameDefinition,
+  SceneObjectFrameDefinition,
   SceneNodeGlowDefinition,
   SceneNodeLabelDefinition,
   SceneNodeRect,
@@ -11,10 +11,9 @@ import type {
 import type {
   SceneBackConfig,
   SceneCharacterPlacementConfig,
-  SceneInteractiveConfig,
+  SceneObjectConfig,
   SceneLayoutConfig,
 } from "./scene-layout-state.js";
-import { DEFAULT_ENTRANCE_SCENE_LAYOUT } from "./scene-layout-state.js";
 
 function cloneRect(source: SceneNodeRect): SceneNodeRect {
   return { ...source };
@@ -24,7 +23,7 @@ function cloneGlow(source: SceneNodeGlowDefinition): SceneNodeGlowDefinition {
   return { ...source };
 }
 
-function cloneFrame(source: SceneInteractiveFrameDefinition): SceneInteractiveFrameDefinition {
+function cloneFrame(source: SceneObjectFrameDefinition): SceneObjectFrameDefinition {
   return { ...source };
 }
 
@@ -32,7 +31,7 @@ function cloneLabel(source: SceneNodeLabelDefinition): SceneNodeLabelDefinition 
   return { ...source };
 }
 
-function cloneInteractive(source: SceneInteractiveConfig): SceneInteractiveConfig {
+function cloneObject(source: SceneObjectConfig): SceneObjectConfig {
   return {
     ...source,
     action: { ...source.action },
@@ -58,13 +57,11 @@ function cloneCharacter(source: SceneCharacterPlacementConfig): SceneCharacterPl
   };
 }
 
-export function cloneSceneLayout(
-  source: SceneLayoutConfig = DEFAULT_ENTRANCE_SCENE_LAYOUT
-): SceneLayoutConfig {
+export function cloneSceneLayout(source: SceneLayoutConfig): SceneLayoutConfig {
   return {
     characterRosterPreset: source.characterRosterPreset,
     referenceSize: { ...source.referenceSize },
-    interactives: source.interactives.map(cloneInteractive),
+    objects: source.objects.map(cloneObject),
     backs: source.backs.map(cloneBack),
     characters: source.characters.map(cloneCharacter),
   };
@@ -122,7 +119,7 @@ function isLabel(value: unknown): value is SceneNodeLabelDefinition {
   );
 }
 
-function isInteractiveFrame(value: unknown): value is SceneInteractiveFrameDefinition {
+function isObjectFrame(value: unknown): value is SceneObjectFrameDefinition {
   if (!isRecord(value) || !isGlow(value)) {
     return false;
   }
@@ -137,18 +134,18 @@ function isInteractiveFrame(value: unknown): value is SceneInteractiveFrameDefin
   );
 }
 
-function isInteractive(value: unknown): value is SceneInteractiveConfig {
+function isObject(value: unknown): value is SceneObjectConfig {
   if (!isRecord(value)) {
     return false;
   }
 
   return (
-    value["kind"] === "interactive" &&
+    value["kind"] === "object" &&
     typeof value["id"] === "string" &&
     (value["viewId"] === null || typeof value["viewId"] === "string") &&
     isRecord(value["action"]) &&
     isNodeRect(value["rect"]) &&
-    isInteractiveFrame(value["frame"]) &&
+    isObjectFrame(value["frame"]) &&
     isLabel(value["label"])
   );
 }
@@ -201,8 +198,8 @@ export function isSceneLayoutConfig(value: unknown): value is SceneLayoutConfig 
     isRecord(value["referenceSize"]) &&
     isFiniteNumber(value["referenceSize"]["width"]) &&
     isFiniteNumber(value["referenceSize"]["height"]) &&
-    Array.isArray(value["interactives"]) &&
-    value["interactives"].every(isInteractive) &&
+    Array.isArray(value["objects"]) &&
+    value["objects"].every(isObject) &&
     Array.isArray(value["backs"]) &&
     value["backs"].every(isBack) &&
     Array.isArray(value["characters"]) &&

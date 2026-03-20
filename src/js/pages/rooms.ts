@@ -5,8 +5,9 @@ import { dispatchSceneAction } from "../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
   createSceneDebugStore,
-  EntranceSceneEditor,
-  type EntranceSceneEditorSelection,
+  createSceneDebugThemeStore,
+  SceneLayoutEditor,
+  type SceneLayoutEditorSelection,
   getSceneDebugRoomOptions,
   isSceneDebugRoomActive,
   isSceneDebugEnabled,
@@ -16,20 +17,22 @@ import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
 } from "../scene/characters/index.js";
+import type { SceneClickableThemeDefinition } from "../scene/schema.js";
 import type { SceneLayoutConfig } from "../scene/layout/index.js";
 import {
-  getSceneInteractiveNodesForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
 import { getCoverSceneProjectionFromElement, type SceneProjection } from "../scene/projection.js";
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
-import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
+import { renderSceneObjectLayer } from "../scene/renderers/object-layer.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
 import { getSceneRoomBackgroundSrc } from "../scene-system/index.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 
 const ROOMS_SCENE_DEBUG_STORE = createSceneDebugStore("rooms");
+const ROOMS_SCENE_DEBUG_THEME_STORE = createSceneDebugThemeStore();
 
 const ELEMENT_IDS = {
   root: "rooms-scene-root",
@@ -43,8 +46,10 @@ const ELEMENT_IDS = {
 export class RoomsController implements PageController {
   private sceneDebugEnabled = false;
   private sceneLayout: SceneLayoutConfig = ROOMS_SCENE_DEBUG_STORE.cloneDefault();
-  private editor: EntranceSceneEditor | null = null;
-  private editorSelection: EntranceSceneEditorSelection = null;
+  private sceneClickableTheme: SceneClickableThemeDefinition =
+    ROOMS_SCENE_DEBUG_THEME_STORE.cloneDefault();
+  private editor: SceneLayoutEditor | null = null;
+  private editorSelection: SceneLayoutEditorSelection = null;
   private resizeObserver: ResizeObserver | null = null;
   private characterRenderToken = 0;
   private localeUnsub: (() => void) | null = null;
@@ -54,6 +59,9 @@ export class RoomsController implements PageController {
     this.sceneLayout =
       (this.sceneDebugEnabled ? ROOMS_SCENE_DEBUG_STORE.loadDraft() : null) ??
       ROOMS_SCENE_DEBUG_STORE.cloneDefault();
+    this.sceneClickableTheme =
+      (this.sceneDebugEnabled ? ROOMS_SCENE_DEBUG_THEME_STORE.loadDraft() : null) ??
+      ROOMS_SCENE_DEBUG_THEME_STORE.cloneDefault();
     this.setupSceneDebug();
     this.renderBackground();
     this.observeLayout();
@@ -89,10 +97,11 @@ export class RoomsController implements PageController {
       return;
     }
 
-    this.editor = new EntranceSceneEditor(editorHost, {
+    this.editor = new SceneLayoutEditor(editorHost, {
       isActive: (): boolean => this.isSceneDebugActive(),
       getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
-      getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
+      getSceneClickableTheme: (): SceneClickableThemeDefinition => this.sceneClickableTheme,
+      getSelection: (): SceneLayoutEditorSelection => this.editorSelection,
       getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "rooms",
       setSelection: (selection): void => {
@@ -104,9 +113,9 @@ export class RoomsController implements PageController {
       navigateToRoom: (roomId: string): void => {
         openSceneDebugRoom(roomId as never);
       },
-      updateInteractive: (id, updater): void => {
-        this.sceneLayout.interactives = this.sceneLayout.interactives.map((interactive) =>
-          interactive.id === id ? updater(interactive) : interactive
+      updateObject: (id, updater): void => {
+        this.sceneLayout.objects = this.sceneLayout.objects.map((sceneObject) =>
+          sceneObject.id === id ? updater(sceneObject) : sceneObject
         );
         this.persistSceneLayoutDraft();
         this.renderHotspots();
@@ -140,6 +149,28 @@ export class RoomsController implements PageController {
       },
       saveSceneLayoutToSource: async (): Promise<void> => {
         await ROOMS_SCENE_DEBUG_STORE.saveSource(this.sceneLayout);
+      },
+      updateSceneClickableTheme: (updater): void => {
+        this.sceneClickableTheme = updater(this.sceneClickableTheme);
+        ROOMS_SCENE_DEBUG_THEME_STORE.saveDraft(this.sceneClickableTheme);
+        this.renderHotspots();
+        this.editor?.refresh();
+      },
+      resetSceneClickableThemeDraft: (): void => {
+        this.sceneClickableTheme = ROOMS_SCENE_DEBUG_THEME_STORE.cloneDefault();
+        ROOMS_SCENE_DEBUG_THEME_STORE.clearDraft();
+        this.renderHotspots();
+        this.editor?.refresh();
+      },
+      copySceneClickableTheme: async (): Promise<void> => {
+        try {
+          await ROOMS_SCENE_DEBUG_THEME_STORE.copyToClipboard(this.sceneClickableTheme);
+        } catch {
+          console.info("Rooms scene clickable theme copy failed.");
+        }
+      },
+      saveSceneClickableThemeToSource: async (): Promise<void> => {
+        await ROOMS_SCENE_DEBUG_THEME_STORE.saveSource(this.sceneClickableTheme);
       },
     });
     this.editor.refresh();
@@ -185,9 +216,10 @@ export class RoomsController implements PageController {
       return;
     }
 
-    renderSceneInteractiveLayer({
+    renderSceneObjectLayer({
       layer: hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this.sceneLayout),
+      nodes: getSceneObjectNodesForView(this.sceneLayout),
+      themeDefaults: this.sceneClickableTheme.object,
       projection: this.getSceneProjection(),
       cssVarPrefix: "scene-hotspot",
       classNames: {
@@ -196,9 +228,10 @@ export class RoomsController implements PageController {
         label: "entrance-scene__hotspot-label",
       },
       selection: this.editorSelection,
+      clickableLabels: true,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleInteractive(node.id);
+        this.handleObject(node.id);
       },
     });
   }
@@ -245,20 +278,20 @@ export class RoomsController implements PageController {
     });
   }
 
-  private handleInteractive(id: string): void {
-    const interactive = this.sceneLayout.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  private handleObject(id: string): void {
+    const sceneObject = this.sceneLayout.objects.find((node) => node.id === id) ?? null;
+    if (sceneObject === null) {
       return;
     }
 
     if (this.editor !== null) {
-      this.editorSelection = { kind: "interactive", id: interactive.id };
+      this.editorSelection = { kind: "object", id: sceneObject.id };
       this.editor.refresh();
       this.renderHotspots();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(sceneObject.action, {
       onNavigate: (page) => {
         navigateToScenePage(page);
       },

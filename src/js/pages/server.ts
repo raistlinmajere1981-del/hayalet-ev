@@ -14,8 +14,9 @@ import { dispatchSceneAction } from "../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
   createSceneDebugStore,
-  EntranceSceneEditor,
-  type EntranceSceneEditorSelection,
+  createSceneDebugThemeStore,
+  SceneLayoutEditor,
+  type SceneLayoutEditorSelection,
   getSceneDebugRoomOptions,
   isSceneDebugRoomActive,
   openSceneDebugRoom,
@@ -24,17 +25,18 @@ import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
 } from "../scene/characters/index.js";
+import type { SceneClickableThemeDefinition } from "../scene/schema.js";
 import type { SceneLayoutConfig } from "../scene/layout/index.js";
 import {
   getSceneBackNodeForView,
-  getSceneInteractiveNodesForView,
+  getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
 import { getCoverSceneProjectionFromElement } from "../scene/projection.js";
 import { renderSceneBackLayer } from "../scene/renderers/back-layer.js";
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
-import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
+import { renderSceneObjectLayer } from "../scene/renderers/object-layer.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
 import {
   getSceneRoomBackgroundSrc,
@@ -77,6 +79,7 @@ import type { TimelineEvent } from "./server-timeline.js";
 const TIMELINE_SESSION_BATCH = 3;
 const TIMELINE_TOP_THRESHOLD = 52;
 const SERVER_SCENE_DEBUG_STORE = createSceneDebugStore("server");
+const SERVER_SCENE_DEBUG_THEME_STORE = createSceneDebugThemeStore();
 
 function toHeadLabel(label: string): string {
   const compact = label.replace(/\s+/g, "").trim().toUpperCase();
@@ -121,8 +124,9 @@ export class ServerController {
   _serverSceneBindingsReady: boolean;
   _serverSceneFrameController: SceneAlphaWindowFrameController | null;
   _serverSceneLayout: SceneLayoutConfig;
-  _serverSceneEditor: EntranceSceneEditor | null;
-  _serverSceneSelection: EntranceSceneEditorSelection;
+  _serverSceneClickableTheme: SceneClickableThemeDefinition;
+  _serverSceneEditor: SceneLayoutEditor | null;
+  _serverSceneSelection: SceneLayoutEditorSelection;
   _serverSceneResizeObserver: ResizeObserver | null;
   _serverSceneCharacterRenderToken: number;
 
@@ -159,6 +163,7 @@ export class ServerController {
     this._serverSceneBindingsReady = false;
     this._serverSceneFrameController = null;
     this._serverSceneLayout = SERVER_SCENE_DEBUG_STORE.cloneDefault();
+    this._serverSceneClickableTheme = SERVER_SCENE_DEBUG_THEME_STORE.cloneDefault();
     this._serverSceneEditor = null;
     this._serverSceneSelection = null;
     this._serverSceneResizeObserver = null;
@@ -303,10 +308,11 @@ export class ServerController {
       return;
     }
 
-    this._serverSceneEditor = new EntranceSceneEditor(editorHost, {
+    this._serverSceneEditor = new SceneLayoutEditor(editorHost, {
       isActive: (): boolean => this.isServerSceneDebugActive(),
       getSceneLayout: (): SceneLayoutConfig => this._serverSceneLayout,
-      getSelection: (): EntranceSceneEditorSelection => this._serverSceneSelection,
+      getSceneClickableTheme: (): SceneClickableThemeDefinition => this._serverSceneClickableTheme,
+      getSelection: (): SceneLayoutEditorSelection => this._serverSceneSelection,
       getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "server",
       setSelection: (selection): void => {
@@ -318,9 +324,9 @@ export class ServerController {
         this.setServerSceneScreenOpen(false);
         openSceneDebugRoom(roomId as never);
       },
-      updateInteractive: (id, updater): void => {
-        this._serverSceneLayout.interactives = this._serverSceneLayout.interactives.map((interactive) =>
-          interactive.id === id ? updater(interactive) : interactive
+      updateObject: (id, updater): void => {
+        this._serverSceneLayout.objects = this._serverSceneLayout.objects.map((sceneObject) =>
+          sceneObject.id === id ? updater(sceneObject) : sceneObject
         );
         this.persistServerSceneLayoutDraft();
         this.syncServerSceneVisibility();
@@ -359,6 +365,30 @@ export class ServerController {
       saveSceneLayoutToSource: async (): Promise<void> => {
         await SERVER_SCENE_DEBUG_STORE.saveSource(this._serverSceneLayout);
       },
+      updateSceneClickableTheme: (updater): void => {
+        this._serverSceneClickableTheme = updater(this._serverSceneClickableTheme);
+        SERVER_SCENE_DEBUG_THEME_STORE.saveDraft(this._serverSceneClickableTheme);
+        this.syncServerSceneVisibility();
+        this.renderServerScene();
+        this._serverSceneEditor?.refresh();
+      },
+      resetSceneClickableThemeDraft: (): void => {
+        this._serverSceneClickableTheme = SERVER_SCENE_DEBUG_THEME_STORE.cloneDefault();
+        SERVER_SCENE_DEBUG_THEME_STORE.clearDraft();
+        this.syncServerSceneVisibility();
+        this.renderServerScene();
+        this._serverSceneEditor?.refresh();
+      },
+      copySceneClickableTheme: async (): Promise<void> => {
+        try {
+          await SERVER_SCENE_DEBUG_THEME_STORE.copyToClipboard(this._serverSceneClickableTheme);
+        } catch {
+          console.info("Server scene clickable theme copy failed.");
+        }
+      },
+      saveSceneClickableThemeToSource: async (): Promise<void> => {
+        await SERVER_SCENE_DEBUG_THEME_STORE.saveSource(this._serverSceneClickableTheme);
+      },
     });
     this._serverSceneEditor.refresh();
   }
@@ -391,9 +421,10 @@ export class ServerController {
       return;
     }
 
-    renderSceneInteractiveLayer({
+    renderSceneObjectLayer({
       layer: hotspotLayer,
-      nodes: getSceneInteractiveNodesForView(this._serverSceneLayout),
+      nodes: getSceneObjectNodesForView(this._serverSceneLayout),
+      themeDefaults: this._serverSceneClickableTheme.object,
       projection: this.getServerSceneProjection(),
       cssVarPrefix: "server-scene-hotspot",
       classNames: {
@@ -402,9 +433,10 @@ export class ServerController {
         label: "server-scene__hotspot-label",
       },
       selection: this._serverSceneSelection,
+      clickableLabels: true,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleServerSceneInteractive(node.id);
+        this.handleServerSceneObject(node.id);
       },
     });
   }
@@ -429,20 +461,20 @@ export class ServerController {
     this._serverSceneBindingsReady = true;
   }
 
-  private handleServerSceneInteractive(id: string): void {
-    const interactive = this._serverSceneLayout.interactives.find((node) => node.id === id) ?? null;
-    if (interactive === null) {
+  private handleServerSceneObject(id: string): void {
+    const sceneObject = this._serverSceneLayout.objects.find((node) => node.id === id) ?? null;
+    if (sceneObject === null) {
       return;
     }
 
     if (this._serverSceneEditor !== null) {
-      this._serverSceneSelection = { kind: "interactive", id: interactive.id };
+      this._serverSceneSelection = { kind: "object", id: sceneObject.id };
       this._serverSceneEditor.refresh();
       this.renderServerScene();
       return;
     }
 
-    dispatchSceneAction(interactive.action, {
+    dispatchSceneAction(sceneObject.action, {
       onNavigate: (page) => {
         this.setServerSceneScreenOpen(false);
         this._navigateToPage(page);
@@ -493,6 +525,7 @@ export class ServerController {
           sceneActive && this._serverSceneScreenOpen
             ? getSceneBackNodeForView(this._serverSceneLayout, "primary")
             : null,
+        themeDefaults: this._serverSceneClickableTheme.back,
         projection: this.getServerSceneProjection(),
         resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
         onActivate: (node) => {
@@ -799,6 +832,9 @@ export class ServerController {
     this._serverSceneLayout =
       (this._serverSceneDebugEnabled ? SERVER_SCENE_DEBUG_STORE.loadDraft() : null) ??
       SERVER_SCENE_DEBUG_STORE.cloneDefault();
+    this._serverSceneClickableTheme =
+      (this._serverSceneDebugEnabled ? SERVER_SCENE_DEBUG_THEME_STORE.loadDraft() : null) ??
+      SERVER_SCENE_DEBUG_THEME_STORE.cloneDefault();
 
     const room = document.querySelector(".server-room");
     const screenView = document.getElementById("server-scene-screen-view");

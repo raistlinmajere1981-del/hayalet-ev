@@ -15,18 +15,28 @@ test("scene shell css is wired into the design system", () => {
   const sceneSystemIndex = read("src/styles/scene-system/index.css");
   const sceneEditorIndex = read("src/styles/scene-editor/index.css");
   const sceneShellCss = read("src/styles/scene-system/shell.css");
+  const sceneClickableCss = read("src/styles/scene-system/clickable.css");
   const debugOverridesCss = read("src/styles/scene-editor/debug-overrides.css");
 
   assert.match(mainCss, /@import "\.\/scene-system\/index\.css";/);
   assert.match(mainCss, /@import "\.\/scene-editor\/index\.css";/);
   assert.doesNotMatch(designSystemIndex, /scene-shell\.css/);
   assert.match(sceneSystemIndex, /@import "\.\/shell\.css";/);
+  assert.match(sceneSystemIndex, /@import "\.\/clickable\.css";/);
   assert.match(sceneEditorIndex, /editor-panel\.css/);
   assert.match(sceneEditorIndex, /debug-overrides\.css/);
-  assert.match(sceneShellCss, /\.scene-back-zone/);
-  assert.match(sceneShellCss, /\.scene-back-zone--single/);
   assert.match(sceneShellCss, /\.scene-shell__view/);
+  assert.match(sceneClickableCss, /\.scene-clickable__button/);
+  assert.match(sceneClickableCss, /\.scene-clickable__label/);
+  assert.match(sceneClickableCss, /scene-clickable-back-arrow-shift/);
+  assert.match(debugOverridesCss, /\[data-scene-debug="true"\] \.scene-clickable__label/);
   assert.match(debugOverridesCss, /\[data-scene-debug="true"\] \.assistant-scene__character/);
+  assert.doesNotMatch(sceneShellCss, /scene-back-zone/);
+  assert.doesNotMatch(debugOverridesCss, /entrance-scene__hotspot-label/);
+  assert.doesNotMatch(debugOverridesCss, /analyze-scene__hotspot-label/);
+  assert.doesNotMatch(debugOverridesCss, /assistant-scene__hotspot-label/);
+  assert.doesNotMatch(debugOverridesCss, /server-scene__hotspot-label/);
+  assert.doesNotMatch(debugOverridesCss, /settings-scene__hotspot-label/);
   assert.doesNotMatch(sceneShellCss, /\[data-scene-back-zone="left"\]/);
   assert.doesNotMatch(sceneShellCss, /\[data-scene-back-zone="right"\]/);
   assert.equal(fs.existsSync(path.join(REPO_ROOT, "src/styles/design-system/components/scene-shell.css")), false);
@@ -60,6 +70,7 @@ test("scene controllers render the shared generated back layer", () => {
   targets.forEach((target) => {
     const source = read(target);
     assert.match(source, /renderSceneBackLayer/);
+    assert.match(source, /themeDefaults:/);
     assert.match(source, /getSceneBackNodeForView|syncSceneViewRuntime|scene-shell__view/);
     assert.doesNotMatch(source, /bindSceneBackZones/);
   });

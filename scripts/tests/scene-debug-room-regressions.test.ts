@@ -5,15 +5,17 @@ import test from "node:test";
 import {
   buildSceneRoomDefinition,
   cloneSceneLayout,
-  DEFAULT_ANALYZE_SCENE_LAYOUT,
-  DEFAULT_ASSISTANT_SCENE_LAYOUT,
-  DEFAULT_ENTRANCE_SCENE_LAYOUT,
-  DEFAULT_ROOMS_SCENE_LAYOUT,
-  DEFAULT_SERVER_SCENE_LAYOUT,
-  DEFAULT_SETTINGS_SCENE_LAYOUT,
   getSceneBackNodeForView,
   listSceneDebugNodes,
 } from "../../src/js/scene/layout/index.ts";
+import { getSceneRoomLayout } from "../../src/js/scene-system/scene-layout-registry.ts";
+
+const entranceSceneLayout = getSceneRoomLayout("entrance");
+const assistantSceneLayout = getSceneRoomLayout("assistant");
+const analyzeSceneLayout = getSceneRoomLayout("analyze");
+const settingsSceneLayout = getSceneRoomLayout("settings");
+const serverSceneLayout = getSceneRoomLayout("server");
+const roomsSceneLayout = getSceneRoomLayout("rooms");
 
 test("scene debug room registry includes all unified scene rooms", () => {
   const roomRegistrySource = readFileSync("src/js/scene-editor/scene-debug-room-registry.ts", "utf8");
@@ -32,126 +34,154 @@ test("scene debug room registry includes all unified scene rooms", () => {
 
 test("entrance scene layout keeps room targets and whisper return in one layout registry", () => {
   assert.deepEqual(
-    DEFAULT_ENTRANCE_SCENE_LAYOUT.interactives.map((node) => node.id),
+    entranceSceneLayout.objects.map((node) => node.id),
     ["door-analyze", "door-assistant", "door-server", "door-settings", "hatch-rooms", "board-whisper"]
   );
-  assert.equal(getSceneBackNodeForView(DEFAULT_ENTRANCE_SCENE_LAYOUT, "whisper")?.id, "back-whisper");
+  assert.equal(getSceneBackNodeForView(entranceSceneLayout, "whisper")?.id, "back-whisper");
   assert.equal(
-    DEFAULT_ENTRANCE_SCENE_LAYOUT.interactives.find((node) => node.id === "board-whisper")?.action.type,
+    entranceSceneLayout.objects.find((node) => node.id === "board-whisper")?.action.type,
     "whisper"
   );
 
-  const cloned = cloneSceneLayout(DEFAULT_ENTRANCE_SCENE_LAYOUT);
-  cloned.interactives.find((node) => node.id === "board-whisper")!.rect.leftPx = 408;
+  const cloned = cloneSceneLayout(entranceSceneLayout);
+  cloned.objects.find((node) => node.id === "board-whisper")!.rect.leftPx = 408;
   cloned.backs.find((node) => node.id === "back-whisper")!.rect.widthPx = 140;
 
   assert.equal(
-    DEFAULT_ENTRANCE_SCENE_LAYOUT.interactives.find((node) => node.id === "board-whisper")?.rect.leftPx,
+    entranceSceneLayout.objects.find((node) => node.id === "board-whisper")?.rect.leftPx,
     362
   );
-  assert.equal(cloned.interactives.find((node) => node.id === "board-whisper")?.rect.leftPx, 408);
+  assert.equal(cloned.objects.find((node) => node.id === "board-whisper")?.rect.leftPx, 408);
   assert.equal(cloned.backs.find((node) => node.id === "back-whisper")?.rect.widthPx, 140);
 });
 
-test("assistant scene layout uses interactives plus one view-scoped back node", () => {
+test("assistant scene layout uses objects plus one view-scoped back node", () => {
   assert.deepEqual(
-    DEFAULT_ASSISTANT_SCENE_LAYOUT.interactives.map((node) => node.id),
+    assistantSceneLayout.objects.map((node) => node.id),
     ["door-entrance", "screen-primary"]
   );
-  assert.equal(getSceneBackNodeForView(DEFAULT_ASSISTANT_SCENE_LAYOUT, "primary")?.id, "back-primary");
-  assert.deepEqual(DEFAULT_ASSISTANT_SCENE_LAYOUT.characters.map((node) => node.id), ["anchor-ai0"]);
+  assert.equal(getSceneBackNodeForView(assistantSceneLayout, "primary")?.id, "back-primary");
+  assert.deepEqual(assistantSceneLayout.characters.map((node) => node.id), ["anchor-ai0"]);
 });
 
 test("analyze scene layout keeps table and archive returns on the shared contract", () => {
   assert.deepEqual(
-    DEFAULT_ANALYZE_SCENE_LAYOUT.interactives.map((node) => node.id),
+    analyzeSceneLayout.objects.map((node) => node.id),
     ["door-entrance", "screen-primary", "screen-archive"]
   );
-  assert.equal(getSceneBackNodeForView(DEFAULT_ANALYZE_SCENE_LAYOUT, "table")?.id, "back-table");
-  assert.equal(getSceneBackNodeForView(DEFAULT_ANALYZE_SCENE_LAYOUT, "archive")?.id, "back-archive");
+  assert.equal(getSceneBackNodeForView(analyzeSceneLayout, "table")?.id, "back-table");
+  assert.equal(getSceneBackNodeForView(analyzeSceneLayout, "archive")?.id, "back-archive");
 
-  const room = buildSceneRoomDefinition("analyze", DEFAULT_ANALYZE_SCENE_LAYOUT);
+  const room = buildSceneRoomDefinition("analyze", analyzeSceneLayout);
   assert.equal(room.id, "analyze");
-  assert.ok(room.nodes.some((node) => node.kind === "interactive" && node.id === "screen-primary"));
+  assert.ok(room.nodes.some((node) => node.kind === "object" && node.id === "screen-primary"));
   assert.ok(room.nodes.some((node) => node.kind === "back" && node.id === "back-table"));
   assert.ok(room.nodes.some((node) => node.kind === "character" && node.id === "anchor-ai1-primary"));
 });
 
 test("settings scene layout defines close, panels, one back, and one user character", () => {
   assert.deepEqual(
-    DEFAULT_SETTINGS_SCENE_LAYOUT.interactives.map((node) => node.id),
+    settingsSceneLayout.objects.map((node) => node.id),
     ["door-close", "panel-theme", "panel-accounts", "panel-backup", "panel-rooms", "panel-live-log"]
   );
-  assert.equal(DEFAULT_SETTINGS_SCENE_LAYOUT.interactives[0]?.action.type, "settings-scene-close");
-  assert.equal(getSceneBackNodeForView(DEFAULT_SETTINGS_SCENE_LAYOUT, "panel")?.id, "back-panel");
-  assert.deepEqual(DEFAULT_SETTINGS_SCENE_LAYOUT.characters.map((node) => node.id), ["anchor-user"]);
+  assert.equal(settingsSceneLayout.objects[0]?.action.type, "settings-scene-close");
+  assert.equal(getSceneBackNodeForView(settingsSceneLayout, "panel")?.id, "back-panel");
+  assert.deepEqual(settingsSceneLayout.characters.map((node) => node.id), ["anchor-user"]);
 });
 
 test("server scene layout stays on the same contract with one back node", () => {
   assert.deepEqual(
-    DEFAULT_SERVER_SCENE_LAYOUT.interactives.map((node) => node.id),
+    serverSceneLayout.objects.map((node) => node.id),
     ["door-entrance", "screen-primary"]
   );
-  assert.equal(getSceneBackNodeForView(DEFAULT_SERVER_SCENE_LAYOUT, "primary")?.id, "back-primary");
+  assert.equal(getSceneBackNodeForView(serverSceneLayout, "primary")?.id, "back-primary");
   assert.deepEqual(
-    DEFAULT_SERVER_SCENE_LAYOUT.characters.map((node) => node.id),
+    serverSceneLayout.characters.map((node) => node.id),
     ["anchor-ai1-primary", "anchor-ai2-primary"]
   );
 });
 
-test("rooms scene layout ships with one interactive entrance and no extra nodes", () => {
-  assert.deepEqual(DEFAULT_ROOMS_SCENE_LAYOUT.interactives.map((node) => node.id), ["door-entrance"]);
-  assert.deepEqual(DEFAULT_ROOMS_SCENE_LAYOUT.backs, []);
-  assert.deepEqual(DEFAULT_ROOMS_SCENE_LAYOUT.characters, []);
+test("rooms scene layout ships with one object entrance and no extra nodes", () => {
+  assert.deepEqual(roomsSceneLayout.objects.map((node) => node.id), ["door-entrance"]);
+  assert.deepEqual(roomsSceneLayout.backs, []);
+  assert.deepEqual(roomsSceneLayout.characters, []);
 
-  const room = buildSceneRoomDefinition("rooms", DEFAULT_ROOMS_SCENE_LAYOUT);
+  const room = buildSceneRoomDefinition("rooms", roomsSceneLayout);
   assert.equal(room.id, "rooms");
-  assert.deepEqual(room.nodes.map((node) => node.kind), ["interactive"]);
+  assert.deepEqual(room.nodes.map((node) => node.kind), ["object"]);
 });
 
 test("scene editor renders unified section labels", () => {
-  const editorSource = readFileSync("src/js/scene-editor/scene-map-editor.ts", "utf8");
+  const editorSource = readFileSync("src/js/scene-editor/scene-layout-editor.ts", "utf8");
   assert.match(editorSource, /data-editor-action="room"/);
   assert.match(editorSource, /data-editor-action="save-source"/);
+  assert.match(editorSource, /data-editor-action="save-theme"/);
   assert.match(editorSource, /entrance-scene__editor-room-list/);
-  assert.match(editorSource, /Drafts stay local until you save the theme map\./);
-  assert.match(editorSource, /Interactives/);
+  assert.match(editorSource, /Drafts stay local until you save the room layout or theme defaults\./);
+  assert.match(editorSource, /Save Layout/);
+  assert.match(editorSource, /Save Theme/);
+  assert.match(editorSource, /Objects/);
   assert.match(editorSource, /Backs/);
   assert.match(editorSource, /Characters/);
-  assert.doesNotMatch(editorSource, /Objects/);
-  assert.doesNotMatch(editorSource, /Interactives\/Backs/);
+  assert.match(editorSource, /Theme Defaults/);
+  assert.doesNotMatch(editorSource, /Interactives/);
+  assert.doesNotMatch(editorSource, /Objects\/Backs/);
   assert.equal(existsSync("src/js/pages/entrance/scene/scene-editor.ts"), false);
   assert.equal(existsSync("src/js/scene/debug"), false);
 });
 
-test("entrance scene enables clickable labels and narrows character hit areas", () => {
-  const entranceControllerSource = readFileSync(
+test("scene pages enable clickable labels and shared clickable classes", () => {
+  const controllerTargets = [
     "src/js/pages/entrance/scene/scene-controller.ts",
-    "utf8"
-  );
-  const interactiveLayerSource = readFileSync("src/js/scene/renderers/interactive-layer.ts", "utf8");
+    "src/js/pages/analyze.ts",
+    "src/js/pages/assistant/assistant.ts",
+    "src/js/pages/server.ts",
+    "src/js/pages/settings/controller.ts",
+    "src/js/pages/rooms.ts",
+  ];
+  const objectLayerSource = readFileSync("src/js/scene/renderers/object-layer.ts", "utf8");
+  const backLayerSource = readFileSync("src/js/scene/renderers/back-layer.ts", "utf8");
+  const clickableCssSource = readFileSync("src/styles/scene-system/clickable.css", "utf8");
   const entranceCssSource = readFileSync("src/styles/entrance/scene.css", "utf8");
 
-  assert.match(entranceControllerSource, /interactiveLabels:\s*true/);
-  assert.match(interactiveLayerSource, /interactiveLabels\?: boolean/);
-  assert.match(interactiveLayerSource, /label\.dataset\["clickable"\]\s*=\s*"true"/);
-  assert.match(interactiveLayerSource, /label\.tabIndex = 0/);
-  assert.match(entranceCssSource, /\.entrance-scene__hotspot-label\[data-clickable="true"\]/);
+  controllerTargets.forEach((target) => {
+    const source = readFileSync(target, "utf8");
+    assert.match(source, /clickableLabels:\s*true/);
+    assert.match(source, /getSceneClickableTheme:/);
+    assert.match(source, /themeDefaults:/);
+  });
+  assert.match(objectLayerSource, /clickableLabels\?: boolean/);
+  assert.match(objectLayerSource, /themeDefaults:\s*SceneObjectClickableThemeDefinition/);
+  assert.match(objectLayerSource, /resolveSceneObjectGlow/);
+  assert.match(objectLayerSource, /scene-clickable__button--object/);
+  assert.match(objectLayerSource, /scene-clickable__label--object/);
+  assert.match(backLayerSource, /themeDefaults:\s*SceneBackClickableThemeDefinition/);
+  assert.match(backLayerSource, /resolveSceneBackGlow/);
+  assert.match(backLayerSource, /scene-clickable__button--back/);
+  assert.match(backLayerSource, /scene-clickable__label--back/);
+  assert.doesNotMatch(backLayerSource, /scene-back-zone/);
+  assert.match(objectLayerSource, /label\.dataset\["clickable"\]\s*=\s*"true"/);
+  assert.match(objectLayerSource, /label\.tabIndex = 0/);
+  assert.match(clickableCssSource, /\.scene-clickable__button/);
+  assert.match(clickableCssSource, /\.scene-clickable__label/);
+  assert.match(clickableCssSource, /\.scene-clickable__button--back/);
+  assert.match(clickableCssSource, /scene-clickable-back-arrow-shift/);
+  assert.match(clickableCssSource, /\.scene-clickable__label\[data-clickable="true"\]/);
   assert.match(entranceCssSource, /\.entrance-scene \.entrance-scene__character \{\s*pointer-events: none;/s);
   assert.match(entranceCssSource, /\.entrance-scene \.entrance-scene__character-head,[\s\S]*pointer-events: auto;/);
 });
 
-test("scene debug node list exposes interactive, back, and character nodes", () => {
-  const entranceNodes = listSceneDebugNodes(DEFAULT_ENTRANCE_SCENE_LAYOUT);
-  const analyzeNodes = listSceneDebugNodes(DEFAULT_ANALYZE_SCENE_LAYOUT);
-  const roomsNodes = listSceneDebugNodes(DEFAULT_ROOMS_SCENE_LAYOUT);
+test("scene debug node list exposes object, back, and character nodes", () => {
+  const entranceNodes = listSceneDebugNodes(entranceSceneLayout);
+  const analyzeNodes = listSceneDebugNodes(analyzeSceneLayout);
+  const roomsNodes = listSceneDebugNodes(roomsSceneLayout);
 
-  assert.ok(entranceNodes.some((node) => node.kind === "interactive" && node.id === "door-analyze"));
+  assert.ok(entranceNodes.some((node) => node.kind === "object" && node.id === "door-analyze"));
   assert.ok(entranceNodes.some((node) => node.kind === "back" && node.id === "back-whisper"));
   assert.ok(entranceNodes.some((node) => node.kind === "character" && node.id === "anchor-assistant"));
-  assert.ok(analyzeNodes.some((node) => node.kind === "interactive" && node.id === "screen-archive"));
+  assert.ok(analyzeNodes.some((node) => node.kind === "object" && node.id === "screen-archive"));
   assert.ok(analyzeNodes.some((node) => node.kind === "back" && node.id === "back-archive"));
   assert.ok(analyzeNodes.some((node) => node.kind === "character" && node.id === "anchor-ai1-primary"));
-  assert.ok(roomsNodes.some((node) => node.kind === "interactive" && node.id === "door-entrance"));
+  assert.ok(roomsNodes.some((node) => node.kind === "object" && node.id === "door-entrance"));
   assert.ok(roomsNodes.every((node) => node.kind !== "character"));
 });
