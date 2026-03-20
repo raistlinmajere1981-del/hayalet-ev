@@ -7,6 +7,18 @@ export const OVERLAY_KINDS = {
   modal: "modal",
 } as const;
 
+// NOTE: These families define the shell-owned overlay lanes that Sprint 1 centralizes.
+// Page-specific controllers may still own their DOM for now, but new overlay work should
+// attach to one of these families instead of inventing new page-level overlay semantics.
+export const OVERLAY_SURFACE_FAMILIES = {
+  workspaceTool: "workspace-tool",
+  assistantTool: "assistant-tool",
+  modal: "modal",
+  status: "status",
+  scenario: "scenario",
+  loading: "loading",
+} as const;
+
 export const OVERLAY_GROUPS = {
   workspace: "workspace-overlays",
   assistantTools: "assistant-tool-overlays",
@@ -17,12 +29,30 @@ export const OVERLAY_GROUPS = {
 } as const;
 
 export type OverlayKind = (typeof OVERLAY_KINDS)[keyof typeof OVERLAY_KINDS];
+export type OverlaySurfaceFamily =
+  (typeof OVERLAY_SURFACE_FAMILIES)[keyof typeof OVERLAY_SURFACE_FAMILIES];
 type OverlayGroup = string;
+
+export const APP_OVERLAY_HOST_ID = "app-overlay-host";
+
+const OVERLAY_SURFACE_FAMILY_VALUES = Object.values(
+  OVERLAY_SURFACE_FAMILIES
+) as OverlaySurfaceFamily[];
+
+const OVERLAY_KIND_TO_SURFACE_FAMILY: Record<OverlayKind, OverlaySurfaceFamily> = {
+  [OVERLAY_KINDS.workspace]: OVERLAY_SURFACE_FAMILIES.workspaceTool,
+  [OVERLAY_KINDS.assistant]: OVERLAY_SURFACE_FAMILIES.assistantTool,
+  [OVERLAY_KINDS.modal]: OVERLAY_SURFACE_FAMILIES.modal,
+  [OVERLAY_KINDS.status]: OVERLAY_SURFACE_FAMILIES.status,
+  [OVERLAY_KINDS.scenario]: OVERLAY_SURFACE_FAMILIES.scenario,
+  [OVERLAY_KINDS.loading]: OVERLAY_SURFACE_FAMILIES.loading,
+};
 
 interface ManagedOverlayDefinition {
   id: string;
   element: HTMLElement;
   kind: OverlayKind;
+  surfaceFamily?: OverlaySurfaceFamily | undefined;
   isOpen: () => boolean;
   setOpen: (open: boolean) => void;
   exclusiveGroup?: OverlayGroup | undefined;
@@ -36,6 +66,7 @@ interface ManagedOverlay {
   id: string;
   element: HTMLElement;
   kind: OverlayKind;
+  surfaceFamily: OverlaySurfaceFamily;
   isOpen: () => boolean;
   setOpen: (open: boolean) => void;
   exclusiveGroup: OverlayGroup | null;
@@ -69,6 +100,7 @@ interface CreateHiddenClassOverlayControllerOptions {
   id: string;
   element: HTMLElement;
   kind: OverlayKind;
+  surfaceFamily?: OverlaySurfaceFamily;
   hiddenClass?: string;
   syncAriaHidden?: boolean;
   exclusiveGroup?: OverlayGroup;
@@ -82,6 +114,7 @@ interface CreateInlineStatusOverlayControllerOptions {
   id: string;
   element: HTMLElement;
   kind?: OverlayKind;
+  surfaceFamily?: OverlaySurfaceFamily;
   hiddenClass?: string;
   syncAriaHidden?: boolean;
   baseClasses?: string[];
@@ -103,8 +136,77 @@ const overlayStack: string[] = [];
 
 let escapeHandlerBound = false;
 
+interface OverlayHostState {
+  root: HTMLElement | null;
+  layers: Map<OverlaySurfaceFamily, HTMLElement>;
+}
+
+const overlayHostState: OverlayHostState = {
+  root: null,
+  layers: new Map(),
+};
+
+export function getDefaultOverlaySurfaceFamily(kind: OverlayKind): OverlaySurfaceFamily {
+  return OVERLAY_KIND_TO_SURFACE_FAMILY[kind];
+}
+
+export function initAppOverlayHost(root?: HTMLElement | null): void {
+  if (typeof document === "undefined") {
+    overlayHostState.root = null;
+    overlayHostState.layers.clear();
+    return;
+  }
+
+  const resolvedRoot =
+    root ??
+    ((document.getElementById(APP_OVERLAY_HOST_ID) as HTMLElement | null | undefined) ?? null);
+
+  overlayHostState.root = resolvedRoot instanceof HTMLElement ? resolvedRoot : null;
+  overlayHostState.layers.clear();
+
+  if (overlayHostState.root === null) {
+    return;
+  }
+
+  OVERLAY_SURFACE_FAMILY_VALUES.forEach((family) => {
+    const layer = overlayHostState.root?.querySelector<HTMLElement>(
+      `[data-overlay-layer="${family}"]`
+    );
+    if (layer instanceof HTMLElement) {
+      overlayHostState.layers.set(family, layer);
+    }
+  });
+
+  syncManagedOverlayHostState();
+}
+
+export function resolveOverlayHostLayer(surfaceFamily: OverlaySurfaceFamily): HTMLElement | null {
+  return overlayHostState.layers.get(surfaceFamily) ?? null;
+}
+
+export function mountElementInOverlayHostLayer(
+  element: HTMLElement,
+  surfaceFamily: OverlaySurfaceFamily
+): boolean {
+  const layer = resolveOverlayHostLayer(surfaceFamily);
+  if (!(layer instanceof HTMLElement)) {
+    delete element.dataset["overlayHostMounted"];
+    delete element.dataset["overlayHostFamily"];
+    return false;
+  }
+
+  if (element.parentElement !== layer) {
+    layer.appendChild(element);
+  }
+
+  element.dataset["overlayHostMounted"] = "true";
+  element.dataset["overlayHostFamily"] = surfaceFamily;
+  return true;
+}
+
 function markOverlayElementState(overlay: ManagedOverlay): void {
   overlay.element.dataset["overlayKind"] = overlay.kind;
+  overlay.element.dataset["overlaySurfaceFamily"] = overlay.surfaceFamily;
   overlay.element.dataset["overlayOpen"] = String(overlay.isOpen());
 
   if (overlay.exclusiveGroup === null) {
@@ -117,16 +219,76 @@ function markOverlayElementState(overlay: ManagedOverlay): void {
 
 function removeOverlayElementState(overlay: ManagedOverlay): void {
   delete overlay.element.dataset["overlayKind"];
+  delete overlay.element.dataset["overlaySurfaceFamily"];
   delete overlay.element.dataset["overlayOpen"];
   delete overlay.element.dataset["overlayGroup"];
 }
 
 function syncManagedOverlayScrollLock(): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
   const shouldLock = Array.from(overlays.values()).some(
     (overlay) => overlay.lockScroll && overlay.isOpen()
   );
 
   document.body.classList.toggle("is-scroll-locked", shouldLock);
+}
+
+function syncManagedOverlayHostState(): void {
+  const hostRoot = overlayHostState.root;
+  if (!(hostRoot instanceof HTMLElement)) {
+    return;
+  }
+
+  const openCounts = new Map<OverlaySurfaceFamily, number>();
+  OVERLAY_SURFACE_FAMILY_VALUES.forEach((family) => {
+    openCounts.set(family, 0);
+  });
+
+  overlays.forEach((overlay) => {
+    if (!overlay.isOpen()) {
+      return;
+    }
+
+    const nextCount = (openCounts.get(overlay.surfaceFamily) ?? 0) + 1;
+    openCounts.set(overlay.surfaceFamily, nextCount);
+  });
+
+  const activeFamilies: OverlaySurfaceFamily[] = [];
+  let openCount = 0;
+
+  OVERLAY_SURFACE_FAMILY_VALUES.forEach((family) => {
+    const isOpen = (openCounts.get(family) ?? 0) > 0;
+    const layer = overlayHostState.layers.get(family);
+    layer?.classList.toggle("is-active", isOpen);
+    if (layer instanceof HTMLElement) {
+      layer.dataset["overlayLayerOpen"] = String(isOpen);
+      layer.setAttribute("aria-hidden", String(!isOpen));
+    }
+
+    if (isOpen) {
+      activeFamilies.push(family);
+      openCount += openCounts.get(family) ?? 0;
+    }
+  });
+
+  hostRoot.classList.toggle("is-active", openCount > 0);
+  hostRoot.setAttribute("aria-hidden", String(openCount === 0));
+  hostRoot.dataset["overlayOpenCount"] = String(openCount);
+
+  if (activeFamilies.length === 0) {
+    delete hostRoot.dataset["overlayActiveFamilies"];
+    return;
+  }
+
+  hostRoot.dataset["overlayActiveFamilies"] = activeFamilies.join(" ");
+}
+
+function syncManagedOverlayRuntimeState(): void {
+  syncManagedOverlayScrollLock();
+  syncManagedOverlayHostState();
 }
 
 function removeFromStack(id: string): void {
@@ -145,14 +307,14 @@ function closeManagedOverlay(overlay: ManagedOverlay): void {
   if (!overlay.isOpen()) {
     removeFromStack(overlay.id);
     markOverlayElementState(overlay);
-    syncManagedOverlayScrollLock();
+    syncManagedOverlayRuntimeState();
     return;
   }
 
   overlay.setOpen(false);
   removeFromStack(overlay.id);
   markOverlayElementState(overlay);
-  syncManagedOverlayScrollLock();
+  syncManagedOverlayRuntimeState();
   overlay.onAfterClose?.();
 }
 
@@ -174,14 +336,14 @@ function openManagedOverlay(overlay: ManagedOverlay): void {
   if (overlay.isOpen()) {
     pushToStack(overlay.id);
     markOverlayElementState(overlay);
-    syncManagedOverlayScrollLock();
+    syncManagedOverlayRuntimeState();
     return;
   }
 
   overlay.setOpen(true);
   pushToStack(overlay.id);
   markOverlayElementState(overlay);
-  syncManagedOverlayScrollLock();
+  syncManagedOverlayRuntimeState();
   overlay.onAfterOpen?.();
 }
 
@@ -239,6 +401,7 @@ export function createManagedOverlayController(
 ): ManagedOverlayController {
   const managedOverlay: ManagedOverlay = {
     ...definition,
+    surfaceFamily: definition.surfaceFamily ?? getDefaultOverlaySurfaceFamily(definition.kind),
     exclusiveGroup: definition.exclusiveGroup ?? null,
     lockScroll: definition.lockScroll !== false,
     closeOnEscape: definition.closeOnEscape !== false,
@@ -247,7 +410,7 @@ export function createManagedOverlayController(
   overlays.set(managedOverlay.id, managedOverlay);
   markOverlayElementState(managedOverlay);
   ensureEscapeHandler();
-  syncManagedOverlayScrollLock();
+  syncManagedOverlayRuntimeState();
 
   return {
     open(): void {
@@ -275,13 +438,13 @@ export function createManagedOverlayController(
       }
 
       markOverlayElementState(managedOverlay);
-      syncManagedOverlayScrollLock();
+      syncManagedOverlayRuntimeState();
     },
     destroy(): void {
       removeFromStack(managedOverlay.id);
       overlays.delete(managedOverlay.id);
       removeOverlayElementState(managedOverlay);
-      syncManagedOverlayScrollLock();
+      syncManagedOverlayRuntimeState();
       maybeRemoveEscapeHandler();
     },
   };
@@ -297,6 +460,7 @@ export function createHiddenClassOverlayController(
     id: options.id,
     element: options.element,
     kind: options.kind,
+    surfaceFamily: options.surfaceFamily,
     exclusiveGroup: options.exclusiveGroup,
     lockScroll: options.lockScroll,
     closeOnEscape: options.closeOnEscape,
@@ -356,6 +520,7 @@ export function createInlineStatusOverlayController(
     id: options.id,
     element: options.element,
     kind: options.kind ?? OVERLAY_KINDS.status,
+    surfaceFamily: options.surfaceFamily,
     exclusiveGroup: options.exclusiveGroup,
     lockScroll: options.lockScroll ?? false,
     closeOnEscape: options.closeOnEscape ?? false,

@@ -7,7 +7,7 @@ import { AppI18n } from "../../modules/i18n/index.js";
 import { Logger } from "../../modules/logger/index.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
-import { OVERLAY_GROUPS, OVERLAY_KINDS } from "../../ui/overlay-system.js";
+import { openSharedAssistantToolModal } from "../../ui/overlay-presets.js";
 import { Toast } from "../../ui/toast-manager.js";
 import { getOpencodePreferences, normalizeOpencodePort } from "./opencode-preferences.js";
 
@@ -309,7 +309,6 @@ export async function openOpencodeSettingsModal(
   options: { onSaved?: () => void } = {}
 ): Promise<void> {
   const prefs = getOpencodePreferences(SettingsManager.getSnapshot() as AppSettings | null);
-  const modalModule = await import("../../ui/modal-manager.js");
   const electronApi = window.electronAPI;
 
   const content = document.createElement("div");
@@ -468,12 +467,12 @@ export async function openOpencodeSettingsModal(
     void runDoctorCheck();
   });
 
-  modalModule.ModalManager.open({
+  let modalHandle: { close: () => void } | null = null;
+
+  modalHandle = await openSharedAssistantToolModal({
     title: assistantT("opencodeDoctor.settingsModal.title"),
     content,
     size: "medium",
-    overlayKind: OVERLAY_KINDS.assistant,
-    overlayGroup: OVERLAY_GROUPS.assistantTools,
     buttons: [
       { label: AppI18n.t("shell.common.cancel"), variant: "secondary" },
       {
@@ -518,7 +517,7 @@ export async function openOpencodeSettingsModal(
             });
 
             options.onSaved?.();
-            modalModule.ModalManager.close();
+            modalHandle?.close();
           })();
         },
       },

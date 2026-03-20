@@ -1111,20 +1111,16 @@
     var(--surface-shadow);
 }
 
-.assistant-test-panel {
-  width: min(var(--size-panel-wide), var(--layout-panel-test-ratio));
-  min-width: var(--layout-panel-test-min);
-  border-right: var(--border-1) solid var(--border-default);
-  background: var(--bg-surface-2);
-  padding: var(--space-4);
+.assistant-test-modal {
+  --modal-max-w: min(54rem, calc(100vw - var(--space-8)));
+}
+
+.assistant-test-modal__body {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  overflow: hidden;
-}
-
-.assistant-test-panel.is-hidden {
-  display: none;
+  min-height: 0;
+  max-height: min(72vh, 44rem);
 }
 
 .assistant-test-panel__header {
@@ -1145,6 +1141,23 @@
   font-size: var(--text-sm);
   color: var(--text-secondary);
   margin-top: var(--space-1);
+}
+
+.assistant-test-panel__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding-right: var(--space-1);
+}
+
+.assistant-test-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .assistant-webview-panel .webview-wrapper {
@@ -1196,11 +1209,8 @@
     flex-direction: column;
   }
 
-  .assistant-test-panel {
-    width: 100%;
-    min-width: 0;
-    border-right: 0;
-    border-bottom: var(--border-1) solid var(--border-glass);
+  .assistant-test-modal {
+    --modal-max-w: calc(100vw - var(--space-6));
   }
 
   .assistant-topbar-primary {

@@ -3,9 +3,12 @@ import { LogCategory } from "@shared/logging-core";
 import { AppI18n } from "../modules/i18n/index.js";
 import {
   createManagedOverlayController,
+  getDefaultOverlaySurfaceFamily,
   OVERLAY_KINDS,
+  resolveOverlayHostLayer,
   type ManagedOverlayController,
   type OverlayKind,
+  type OverlaySurfaceFamily,
 } from "./overlay-system.js";
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
@@ -23,11 +26,14 @@ interface ModalOptions {
   title?: string;
   content: string | HTMLElement;
   size?: "sm" | "small" | "md" | "medium" | "lg" | "large" | "xl" | "xlarge";
+  containerClassName?: string;
   closable?: boolean;
   closeOnOverlay?: boolean;
   closeOnEscape?: boolean;
   overlayKind?: OverlayKind;
   overlayGroup?: string;
+  surfaceFamily?: OverlaySurfaceFamily;
+  mountTarget?: HTMLElement;
   lockScroll?: boolean;
   buttons?: ModalButton[];
   onClose?: () => void;
@@ -60,7 +66,9 @@ function generateId(): string {
 
 function createModalElement(id: string, options: ModalOptions): HTMLDivElement {
   const modalContainer = document.createElement("div");
-  modalContainer.className = "modal";
+  modalContainer.className = ["modal", options.containerClassName]
+    .filter((className): className is string => typeof className === "string" && className.trim() !== "")
+    .join(" ");
   modalContainer.setAttribute("data-modal-id", id);
   modalContainer.setAttribute("role", "dialog");
   modalContainer.setAttribute("aria-modal", "true");
@@ -155,16 +163,29 @@ function createModalElement(id: string, options: ModalOptions): HTMLDivElement {
   return modalContainer;
 }
 
+function resolveModalSurfaceFamily(options: ModalOptions): OverlaySurfaceFamily {
+  return options.surfaceFamily ?? getDefaultOverlaySurfaceFamily(options.overlayKind ?? OVERLAY_KINDS.modal);
+}
+
+function resolveModalMountTarget(options: ModalOptions): HTMLElement {
+  if (options.mountTarget instanceof HTMLElement) {
+    return options.mountTarget;
+  }
+
+  return resolveOverlayHostLayer(resolveModalSurfaceFamily(options)) ?? document.body;
+}
+
 const modalApi = {
   open(options: ModalOptions): ModalInstance {
     const id = generateId();
     const element = createModalElement(id, options);
-
-    document.body.appendChild(element);
+    const surfaceFamily = resolveModalSurfaceFamily(options);
+    resolveModalMountTarget(options).appendChild(element);
     const overlayController = createManagedOverlayController({
       id,
       element,
       kind: options.overlayKind ?? OVERLAY_KINDS.modal,
+      surfaceFamily,
       exclusiveGroup: options.overlayGroup,
       lockScroll: options.lockScroll,
       closeOnEscape: options.closeOnEscape !== false && options.closable !== false,

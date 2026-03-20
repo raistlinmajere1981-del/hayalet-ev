@@ -9,6 +9,7 @@ import {
   buildWorkspaceRoomListMarkup,
 } from "../../../modules/rooms/room-overlay-markup.js";
 import { shellT } from "../../../app/shell-i18n.js";
+import { registerSettingsPanelLifecycle } from "../controller.js";
 
 interface RoomOverlayRefs {
   importButton: HTMLButtonElement | null;
@@ -254,14 +255,18 @@ export function setupSettingsRoomsPanel(): void {
 
   render(refs, state);
 
-  document.addEventListener("settings-hub:state-change", ((
-    event: CustomEvent<{ open?: boolean; activePanel?: string | null }>
-  ) => {
-    if (event.detail.open === true && event.detail.activePanel === "rooms") {
+  registerSettingsPanelLifecycle("rooms", {
+    onEnter: () => {
       void activate();
-      return;
-    }
-
-    deactivate();
-  }) as EventListener);
+    },
+    onActivate: () => {
+      void activate();
+    },
+    onDeactivate: () => {
+      deactivate();
+    },
+    onExit: () => {
+      deactivate();
+    },
+  });
 }

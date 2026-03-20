@@ -1,10 +1,5 @@
 import { AppState } from "../../modules/app-state.js";
-import {
-  createHiddenClassOverlayController,
-  OVERLAY_GROUPS,
-  OVERLAY_KINDS,
-  type ManagedOverlayController,
-} from "../../ui/overlay-system.js";
+import { ModalManager } from "../../ui/modal-manager.js";
 
 export interface MessageActionPayload {
   provider: string;
@@ -14,22 +9,7 @@ export interface MessageActionPayload {
 export type MessageAction = "read" | "prepend" | "append";
 type ActionCallback = () => void;
 
-let readModalController: ManagedOverlayController | null = null;
-
-export function initReadModal(): void {
-  const readModalEl = document.getElementById("read-modal");
-  if (readModalEl instanceof HTMLElement && readModalController === null) {
-    readModalController = createHiddenClassOverlayController({
-      id: "analyze-read-modal",
-      element: readModalEl,
-      kind: OVERLAY_KINDS.workspace,
-      exclusiveGroup: OVERLAY_GROUPS.workspace,
-      syncAriaHidden: false,
-    });
-  }
-  const closeBtn = document.getElementById("read-modal-close");
-  closeBtn?.addEventListener("click", hideReadModal);
-}
+let readModalController: { close: () => void } | null = null;
 
 export function applyMessageAction(
   action: MessageAction,
@@ -62,17 +42,21 @@ export function applyMessageAction(
 }
 
 export function showReadModal(payload: MessageActionPayload): void {
-  if (readModalController === null) return;
-
-  const body = document.getElementById("read-modal-body");
-  if (body) {
-    body.textContent = payload.text ?? "";
-    body.scrollTop = 0;
-  }
-
-  readModalController.open();
-}
-
-function hideReadModal(): void {
   readModalController?.close();
+
+  const content = document.createElement("div");
+  content.textContent = payload.text ?? "";
+
+  readModalController = ModalManager.open({
+    content,
+    size: "large",
+    containerClassName: "modal-document modal-read",
+    onClose: () => {
+      readModalController = null;
+    },
+  });
+
+  queueMicrotask(() => {
+    content.scrollTop = 0;
+  });
 }

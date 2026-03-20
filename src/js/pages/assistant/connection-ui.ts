@@ -2,6 +2,7 @@ import type { ConnectButtonState, SlotStateInfo, WebviewElement } from "@shared/
 
 import { AppI18n } from "../../modules/i18n/index.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
+import type { InlineStatusOverlayState } from "../../ui/overlay-system.js";
 import { formatConnectionIndicatorText } from "./connection-indicator.js";
 import { resolveAssistantConnectButtonState } from "./connect-flow.js";
 import { resolveOverlayStage, shouldKeepOverlayVisibleForToolsReady } from "./overlay-stage.js";
@@ -22,14 +23,7 @@ export interface AssistantConnectionUiController {
   _systemServerPort: number | null;
   _setupWebviewEvents: (webviewEl: WebviewElement) => void;
   _setButtonState: (state: ConnectButtonState, errorMsg?: string) => void;
-  _updateOverlay: (
-    overlayEl: HTMLElement | null,
-    stateClass: string,
-    icon: string,
-    title: string,
-    subtitle: string
-  ) => void;
-  _hideOverlay: (overlayEl: HTMLElement | null) => void;
+  setWebviewStatusOverlayState: (state: InlineStatusOverlayState | null) => void;
   _syncSystemServerStatus: (options?: { refreshUi?: boolean }) => Promise<void>;
 }
 
@@ -71,29 +65,27 @@ export function updateAssistantConnectionUI(
   }
 
   if (overlayEl != null) {
-    overlayEl.classList.remove(
-      "is-hidden",
-      "is-empty",
-      "is-disconnected",
-      "is-connecting",
-      "is-error"
-    );
+    let overlayState: InlineStatusOverlayState | null = null;
 
     if (!hasAccount) {
-      controller._updateOverlay(
-        overlayEl,
-        "is-empty",
-        "🤖",
-        assistantConnectionT("noAccountTitle"),
-        assistantConnectionT("noAccountSubtitle")
-      );
+      overlayState = {
+        stateClass: "is-empty",
+        icon: "🤖",
+        title: assistantConnectionT("noAccountTitle"),
+        subtitle: assistantConnectionT("noAccountSubtitle"),
+      };
     } else if (isConnectingUi) {
       const stage = resolveOverlayStage({
         ...(typeof providerId === "string" && providerId !== "" ? { providerId } : {}),
         connectFlowActive: controller._connectFlowActive,
         stage: controller._connectOverlayStage,
       });
-      controller._updateOverlay(overlayEl, "is-connecting", "🔄", stage.title, stage.subtitle);
+      overlayState = {
+        stateClass: "is-connecting",
+        icon: "🔄",
+        title: stage.title,
+        subtitle: stage.subtitle,
+      };
     } else if (shouldHoldToolsReadyOverlay) {
       const holdTitle =
         typeof controller._connectOverlayStage?.title === "string" &&
@@ -106,28 +98,31 @@ export function updateAssistantConnectionUI(
           ? controller._connectOverlayStage.subtitle
           : assistantConnectionT("toolsLoadingSubtitle");
 
-      controller._updateOverlay(overlayEl, "is-connecting", "🔄", holdTitle, holdSubtitle);
+      overlayState = {
+        stateClass: "is-connecting",
+        icon: "🔄",
+        title: holdTitle,
+        subtitle: holdSubtitle,
+      };
     } else if (isError) {
-      controller._updateOverlay(
-        overlayEl,
-        "is-error",
-        "❌",
-        assistantConnectionT("connectionErrorTitle"),
-        slotState.error ?? assistantConnectionT("connectionErrorRetry")
-      );
+      overlayState = {
+        stateClass: "is-error",
+        icon: "❌",
+        title: assistantConnectionT("connectionErrorTitle"),
+        subtitle: slotState.error ?? assistantConnectionT("connectionErrorRetry"),
+      };
     } else if (!isConnected) {
-      controller._updateOverlay(
-        overlayEl,
-        "is-disconnected",
-        "⚡",
-        assistantConnectionT("disconnectedTitle"),
-        assistantConnectionT("disconnectedSubtitle")
-      );
-    } else {
-      controller._hideOverlay(overlayEl);
-      if (webviewEl != null) {
-        SlotController.ensureWebviewAttached("ai0");
-      }
+      overlayState = {
+        stateClass: "is-disconnected",
+        icon: "⚡",
+        title: assistantConnectionT("disconnectedTitle"),
+        subtitle: assistantConnectionT("disconnectedSubtitle"),
+      };
+    }
+
+    controller.setWebviewStatusOverlayState(overlayState);
+    if (overlayState === null && webviewEl != null) {
+      SlotController.ensureWebviewAttached("ai0");
     }
   }
 

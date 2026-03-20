@@ -19,13 +19,14 @@ import {
   isOpencodeUiThemeHost,
 } from "../../ui/theme/theme-host-sync.js";
 import {
-  createHiddenClassOverlayController,
-  createInlineStatusOverlayController,
-  OVERLAY_GROUPS,
-  OVERLAY_KINDS,
+  type InlineStatusOverlayState,
   type InlineStatusOverlayController,
   type ManagedOverlayController,
 } from "../../ui/overlay-system.js";
+import {
+  createSharedAssistantToolOverlayController,
+  createSharedWebviewStatusOverlayController,
+} from "../../ui/overlay-presets.js";
 import { isSceneUiMode } from "../../ui/ui-mode.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
 import { shellT } from "../../app/shell-i18n.js";
@@ -253,6 +254,7 @@ export class AssistantController {
   webviewStatusOverlayController: InlineStatusOverlayController | null;
   identityModalController: ManagedOverlayController | null;
   memoryBtn: HTMLButtonElement | null;
+  testPanelOverlay: HTMLElement | null;
   testPanel: HTMLElement | null;
   testPanelController: ManagedOverlayController | null;
   scenarioPanelState: ScenarioPanelState | null;
@@ -313,6 +315,7 @@ export class AssistantController {
     this.webviewStatusOverlayController = null;
     this.identityModalController = null;
     this.memoryBtn = null;
+    this.testPanelOverlay = null;
     this.testPanel = null;
     this.testPanelController = null;
     this.scenarioPanelState = null;
@@ -409,7 +412,8 @@ export class AssistantController {
     }
 
     this.memoryBtn = document.getElementById("assistant-memory-btn") as HTMLButtonElement | null;
-    this.testPanel = document.getElementById("ai0-test-side-panel");
+    this.testPanelOverlay = document.getElementById("ai0-test-side-panel");
+    this.testPanel = document.getElementById("ai0-test-panel-body");
     const ai0WebviewOverlay = document.getElementById("ai0-webview-overlay");
     const ai0WebviewMount = document.getElementById("ai0-webview-mount");
     const identityOverlay = document.getElementById("assistant-identity-modal");
@@ -418,35 +422,38 @@ export class AssistantController {
       ai0WebviewMount instanceof HTMLElement &&
       this.webviewStatusOverlayController === null
     ) {
-      this.webviewStatusOverlayController = createInlineStatusOverlayController({
+      this.webviewStatusOverlayController = createSharedWebviewStatusOverlayController({
         id: "ai0-webview-overlay",
         element: ai0WebviewOverlay,
-        kind: OVERLAY_KINDS.status,
         blockedTarget: ai0WebviewMount,
-        stateClasses: ["is-empty", "is-disconnected", "is-connecting", "is-error"],
       });
     }
     if (identityOverlay instanceof HTMLElement && this.identityModalController === null) {
-      this.identityModalController = createHiddenClassOverlayController({
+      this.identityModalController = createSharedAssistantToolOverlayController({
         id: "assistant-identity-modal",
         element: identityOverlay,
-        kind: OVERLAY_KINDS.assistant,
-        exclusiveGroup: OVERLAY_GROUPS.assistantTools,
       });
     }
-    if (this.testPanel instanceof HTMLElement && this.testPanelController === null) {
-      this.testPanelController = createHiddenClassOverlayController({
+    if (this.testPanelOverlay instanceof HTMLElement && this.testPanelController === null) {
+      this.testPanelController = createSharedAssistantToolOverlayController({
         id: "ai0-test-side-panel",
-        element: this.testPanel,
-        kind: OVERLAY_KINDS.scenario,
-        exclusiveGroup: OVERLAY_GROUPS.assistantScenario,
-        lockScroll: false,
-        closeOnEscape: true,
+        element: this.testPanelOverlay,
         onAfterClose: () => {
           this.scenarioPanelState = null;
           this.testPanel?.replaceChildren();
         },
       });
+    }
+    if (
+      this.testPanelOverlay instanceof HTMLElement &&
+      this.testPanelOverlay.dataset["assistantTestOverlayBound"] !== "true"
+    ) {
+      this.testPanelOverlay.addEventListener("click", (event) => {
+        if (event.target === this.testPanelOverlay) {
+          this._closeTestPanel();
+        }
+      });
+      this.testPanelOverlay.dataset["assistantTestOverlayBound"] = "true";
     }
     this.characterOverlay.init();
     this.memoryOverlay.init();
@@ -2260,18 +2267,8 @@ export class AssistantController {
     this._syncAssistantSceneCharacterState();
   }
 
-  _updateOverlay(
-    _overlayEl: HTMLElement | null,
-    stateClass: string,
-    icon: string,
-    title: string,
-    subtitle: string
-  ): void {
-    this.webviewStatusOverlayController?.setState({ stateClass, icon, title, subtitle });
-  }
-
-  _hideOverlay(_overlayEl: HTMLElement | null): void {
-    this.webviewStatusOverlayController?.setState(null);
+  setWebviewStatusOverlayState(state: InlineStatusOverlayState | null): void {
+    this.webviewStatusOverlayController?.setState(state);
   }
 
   _updateTrafficUI(trafficState: AssistantTrafficState | null): void {
@@ -2497,6 +2494,8 @@ export class AssistantController {
     this.identityModalController = null;
     this.testPanelController?.destroy();
     this.testPanelController = null;
+    this.testPanelOverlay = null;
+    this.testPanel = null;
     this.characterOverlay.destroy();
     this.memoryOverlay.destroy();
   }

@@ -5,7 +5,21 @@ import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { ButtonStates } from "../../ui/button-states.js";
-import { closeExternalPage } from "../shared/external-page.js";
+import {
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  createManagedOverlayController,
+  mountElementInOverlayHostLayer,
+  OVERLAY_SURFACE_FAMILIES,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
+import {
+  WORKSPACE_TOOL_CLOSE_EVENT,
+  WORKSPACE_TOOL_OPEN_EVENT,
+  syncWorkspaceToolState,
+  type WorkspaceToolCloseDetail,
+  type WorkspaceToolOpenDetail,
+} from "../../ui/workspace-tool-overlay.js";
 import type { ArchiveEntry, FileResult, MessageResult } from "./types.js";
 import {
   deleteArchiveEntry,
@@ -28,15 +42,24 @@ import {
   isArchiveProviderKey,
   type ArchiveProviderKey,
 } from "@shared/archive.js";
-import {
-  SCENE_TOOL_HOST_HIDE_EVENT,
-  SCENE_TOOL_HOST_SHOW_EVENT,
-  closeSceneTool,
-  type SceneToolEventDetail,
-} from "../../scene/tool-pages.js";
-
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
+}
+
+function isHostedInMainShell(): boolean {
+  return document.getElementById("pages-container") instanceof HTMLElement;
+}
+
+function applyWorkspaceToolPageVisibility(page: HTMLElement, open: boolean): void {
+  page.classList.toggle("is-hidden", !open);
+  page.toggleAttribute("hidden", !open);
+  page.setAttribute("aria-hidden", String(!open));
+  if (open) {
+    page.dataset["workspaceToolMode"] = "overlay";
+    return;
+  }
+
+  delete page.dataset["workspaceToolMode"];
 }
 
 export class ArchivesPageController {
@@ -54,6 +77,7 @@ export class ArchivesPageController {
   _protocols: Record<string, string>;
   _selectedProtocolKey: string | null;
   _isOpen: boolean;
+  _overlayController: ManagedOverlayController | null;
   overlayEl: HTMLElement | null;
   closeButtonEl: HTMLButtonElement | null;
   listEl: HTMLElement | null;
@@ -95,6 +119,7 @@ export class ArchivesPageController {
     this._protocols = {};
     this._selectedProtocolKey = null;
     this._isOpen = false;
+    this._overlayController = null;
 
     this.overlayEl = null;
     this.closeButtonEl = null;
@@ -131,6 +156,9 @@ export class ArchivesPageController {
     await this.loadSettings();
     this.applyNames();
     this.applyTranslations();
+    if (this.overlayEl instanceof HTMLElement && isHostedInMainShell()) {
+      applyWorkspaceToolPageVisibility(this.overlayEl, false);
+    }
   }
 
   cacheElements(): void {
@@ -167,25 +195,55 @@ export class ArchivesPageController {
   }
 
   bindEvents(): void {
+    if (this.overlayEl instanceof HTMLElement) {
+      if (isHostedInMainShell()) {
+        mountElementInOverlayHostLayer(this.overlayEl, OVERLAY_SURFACE_FAMILIES.workspaceTool);
+      }
+
+      this._overlayController = createManagedOverlayController({
+        id: "workspace-tool-archives",
+        element: this.overlayEl,
+        kind: OVERLAY_KINDS.workspace,
+        exclusiveGroup: OVERLAY_GROUPS.workspace,
+        isOpen: () => this._isOpen,
+        setOpen: (open: boolean) => {
+          this._isOpen = open;
+          if (this.overlayEl instanceof HTMLElement) {
+            applyWorkspaceToolPageVisibility(this.overlayEl, open);
+          }
+        },
+        onAfterOpen: () => {
+          this.handleWorkspaceOpen();
+        },
+        onAfterClose: () => {
+          this.handleWorkspaceClose();
+        },
+      });
+    }
+
     this.closeButtonEl?.addEventListener("click", () => {
       this.close();
     });
 
     document.addEventListener(
-      SCENE_TOOL_HOST_SHOW_EVENT,
-      ((event: CustomEvent<SceneToolEventDetail>) => {
-        if (event.detail.tool === "archives") {
-          this.onHostShow();
+      WORKSPACE_TOOL_OPEN_EVENT,
+      ((event: CustomEvent<WorkspaceToolOpenDetail>) => {
+        if (event.detail.tool !== "archives") {
+          return;
         }
+
+        this._overlayController?.open();
       }) as EventListener
     );
 
     document.addEventListener(
-      SCENE_TOOL_HOST_HIDE_EVENT,
-      ((event: CustomEvent<SceneToolEventDetail>) => {
-        if (event.detail.tool === "archives") {
-          this.onHostHide();
+      WORKSPACE_TOOL_CLOSE_EVENT,
+      ((event: CustomEvent<WorkspaceToolCloseDetail>) => {
+        if (event.detail.tool !== "archives") {
+          return;
         }
+
+        this._overlayController?.close();
       }) as EventListener
     );
 
@@ -306,22 +364,17 @@ export class ArchivesPageController {
       return;
     }
 
-    this._isOpen = true;
-    this.clearStatus();
-    this.setProtocolStatus("");
-    await this.refreshPageState();
-    window.requestAnimationFrame(() => {
-      this.searchInputEl?.focus();
-    });
-  }
-
-  close(): void {
-    if (this.isSceneEmbedded()) {
-      closeSceneTool("archives");
+    if (this._overlayController !== null) {
+      this._overlayController.open();
       return;
     }
 
-    closeExternalPage();
+    this._isOpen = true;
+    await this.handlePageOpened();
+  }
+
+  close(): void {
+    this._overlayController?.close();
   }
 
   onShow(): void {
@@ -330,14 +383,7 @@ export class ArchivesPageController {
 
   onHostShow(): void {
     this._isOpen = true;
-    this.clearStatus();
-    this.setProtocolStatus("");
-    this.applyNames();
-    this.applyTranslations();
-    void this.refreshPageState();
-    window.requestAnimationFrame(() => {
-      this.searchInputEl?.focus();
-    });
+    void this.handlePageOpened();
   }
 
   onHide(): void {
@@ -346,16 +392,45 @@ export class ArchivesPageController {
 
   onHostHide(): void {
     this._isOpen = false;
+    this.handlePageClosed();
+  }
+
+  private handleWorkspaceOpen(): void {
+    void this.handlePageOpened();
+    syncWorkspaceToolState({
+      tool: "archives",
+      open: true,
+      panel: null,
+    });
+  }
+
+  private handleWorkspaceClose(): void {
+    this.handlePageClosed();
+    syncWorkspaceToolState({
+      tool: "archives",
+      open: false,
+      panel: null,
+    });
+  }
+
+  private async handlePageOpened(): Promise<void> {
+    this.clearStatus();
+    this.setProtocolStatus("");
+    this.applyNames();
+    this.applyTranslations();
+    await this.refreshPageState();
+    window.requestAnimationFrame(() => {
+      this.searchInputEl?.focus();
+    });
+  }
+
+  private handlePageClosed(): void {
     this.clearStatus();
     this.setProtocolStatus("");
     if (this._searchTimeout) {
       clearTimeout(this._searchTimeout);
       this._searchTimeout = null;
     }
-  }
-
-  private isSceneEmbedded(): boolean {
-    return this.overlayEl?.dataset["sceneEmbedded"] === "true";
   }
 
   async loadSettings(): Promise<void> {

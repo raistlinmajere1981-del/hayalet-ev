@@ -2,6 +2,7 @@ import { LogCategory, Logger } from "../../../modules/logger/index.js";
 import { AppI18n } from "../../../modules/i18n/index.js";
 import { Toast } from "../../../ui/toast-manager.js";
 import { shellT } from "../../../app/shell-i18n.js";
+import { registerSettingsPanelLifecycle } from "../controller.js";
 import {
   buildBackupListMarkup,
   buildBackupPreviewMarkup,
@@ -410,14 +411,18 @@ export function setupSettingsBackupPanel(): void {
     }
   });
 
-  document.addEventListener("settings-hub:state-change", ((
-    event: CustomEvent<{ open?: boolean; activePanel?: string | null }>
-  ) => {
-    if (event.detail.open === true && event.detail.activePanel === "backup") {
+  registerSettingsPanelLifecycle("backup", {
+    onEnter: () => {
       void activate();
-      return;
-    }
-
-    deactivate();
-  }) as EventListener);
+    },
+    onActivate: () => {
+      void activate();
+    },
+    onDeactivate: () => {
+      deactivate();
+    },
+    onExit: () => {
+      deactivate();
+    },
+  });
 }

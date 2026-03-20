@@ -1,19 +1,45 @@
 import { AppI18n } from "../../modules/i18n/index.js";
-import { closeExternalPage } from "../shared/external-page.js";
 import {
-  SCENE_TOOL_HOST_HIDE_EVENT,
-  SCENE_TOOL_HOST_SHOW_EVENT,
-  closeSceneTool,
-  type SceneToolEventDetail,
-} from "../../scene/tool-pages.js";
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  createManagedOverlayController,
+  mountElementInOverlayHostLayer,
+  OVERLAY_SURFACE_FAMILIES,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
+import {
+  WORKSPACE_TOOL_CLOSE_EVENT,
+  WORKSPACE_TOOL_OPEN_EVENT,
+  syncWorkspaceToolState,
+  type WorkspaceToolCloseDetail,
+  type WorkspaceToolOpenDetail,
+} from "../../ui/workspace-tool-overlay.js";
 import { WhisperDockController } from "./controller.js";
 import { applyWhisperStaticTranslations } from "./i18n.js";
+
+function isHostedInMainShell(): boolean {
+  return document.getElementById("pages-container") instanceof HTMLElement;
+}
+
+function applyWorkspaceToolPageVisibility(page: HTMLElement, open: boolean): void {
+  page.classList.toggle("is-hidden", !open);
+  page.toggleAttribute("hidden", !open);
+  page.setAttribute("aria-hidden", String(!open));
+  if (open) {
+    page.dataset["workspaceToolMode"] = "overlay";
+    return;
+  }
+
+  delete page.dataset["workspaceToolMode"];
+}
 
 export class WhisperPageController {
   private dockController = new WhisperDockController();
   private closeButton: HTMLButtonElement | null = null;
   private pageRoot: HTMLElement | null = null;
+  private overlayController: ManagedOverlayController | null = null;
   private initialized = false;
+  private isOverlayOpen = false;
   private unsubscribeI18n: (() => void) | null = null;
 
   init(): void {
@@ -23,30 +49,55 @@ export class WhisperPageController {
 
     this.pageRoot = document.getElementById("page-whisper");
     this.closeButton = document.getElementById("whisper-page-close") as HTMLButtonElement | null;
-    this.closeButton?.addEventListener("click", () => {
-      if (this.isSceneEmbedded()) {
-        closeSceneTool("whisper");
-        return;
-      }
+    if (!(this.pageRoot instanceof HTMLElement)) {
+      return;
+    }
 
-      closeExternalPage();
+    if (isHostedInMainShell()) {
+      mountElementInOverlayHostLayer(this.pageRoot, OVERLAY_SURFACE_FAMILIES.workspaceTool);
+    }
+
+    this.overlayController = createManagedOverlayController({
+      id: "workspace-tool-whisper",
+      element: this.pageRoot,
+      kind: OVERLAY_KINDS.workspace,
+      exclusiveGroup: OVERLAY_GROUPS.workspace,
+      isOpen: () => this.isOverlayOpen,
+      setOpen: (open: boolean) => {
+        this.isOverlayOpen = open;
+        applyWorkspaceToolPageVisibility(this.pageRoot as HTMLElement, open);
+      },
+      onAfterOpen: () => {
+        this.handleWorkspaceOpen();
+      },
+      onAfterClose: () => {
+        this.handleWorkspaceClose();
+      },
+    });
+
+    this.closeButton?.addEventListener("click", () => {
+      this.overlayController?.close();
     });
 
     document.addEventListener(
-      SCENE_TOOL_HOST_SHOW_EVENT,
-      ((event: CustomEvent<SceneToolEventDetail>) => {
-        if (event.detail.tool === "whisper") {
-          this.onShow();
+      WORKSPACE_TOOL_OPEN_EVENT,
+      ((event: CustomEvent<WorkspaceToolOpenDetail>) => {
+        if (event.detail.tool !== "whisper") {
+          return;
         }
+
+        this.overlayController?.open();
       }) as EventListener
     );
 
     document.addEventListener(
-      SCENE_TOOL_HOST_HIDE_EVENT,
-      ((event: CustomEvent<SceneToolEventDetail>) => {
-        if (event.detail.tool === "whisper") {
-          this.onHide();
+      WORKSPACE_TOOL_CLOSE_EVENT,
+      ((event: CustomEvent<WorkspaceToolCloseDetail>) => {
+        if (event.detail.tool !== "whisper") {
+          return;
         }
+
+        this.overlayController?.close();
       }) as EventListener
     );
 
@@ -55,18 +106,16 @@ export class WhisperPageController {
     this.unsubscribeI18n = AppI18n.subscribe(() => {
       this.applyStaticTranslations();
     });
+    if (isHostedInMainShell()) {
+      applyWorkspaceToolPageVisibility(this.pageRoot, false);
+    }
     this.initialized = true;
   }
 
   onShow(): void {
     this.dockController.setExpanded(true);
     void this.dockController.render();
-    window.requestAnimationFrame(() => {
-      const addTextInput = document.getElementById("whisper-add-text");
-      if (addTextInput instanceof HTMLTextAreaElement) {
-        addTextInput.focus();
-      }
-    });
+    this.focusComposer();
   }
 
   onHide(): void {
@@ -78,11 +127,34 @@ export class WhisperPageController {
     this.unsubscribeI18n = null;
   }
 
-  private applyStaticTranslations(): void {
-    applyWhisperStaticTranslations(this.pageRoot ?? document);
+  private handleWorkspaceOpen(): void {
+    this.onShow();
+    syncWorkspaceToolState({
+      tool: "whisper",
+      open: true,
+      panel: null,
+    });
   }
 
-  private isSceneEmbedded(): boolean {
-    return this.pageRoot?.dataset["sceneEmbedded"] === "true";
+  private handleWorkspaceClose(): void {
+    this.onHide();
+    syncWorkspaceToolState({
+      tool: "whisper",
+      open: false,
+      panel: null,
+    });
+  }
+
+  private focusComposer(): void {
+    window.requestAnimationFrame(() => {
+      const addTextInput = document.getElementById("whisper-add-text");
+      if (addTextInput instanceof HTMLTextAreaElement) {
+        addTextInput.focus();
+      }
+    });
+  }
+
+  private applyStaticTranslations(): void {
+    applyWhisperStaticTranslations(this.pageRoot ?? document);
   }
 }

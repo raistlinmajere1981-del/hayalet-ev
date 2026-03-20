@@ -21,7 +21,19 @@
   height: var(--layout-app-height);
 }
 
-[data-ui-mode="scene"] .settings-hub-overlay {
+[data-ui-mode="scene"] .app-overlay-host__layer[data-overlay-layer="workspace-tool"],
+[data-ui-mode="scene"] .app-overlay-host__layer[data-overlay-layer="assistant-tool"] {
+  padding: var(--space-4);
+}
+
+[data-ui-mode="scene"] .app-overlay-host__layer[data-overlay-layer="status"],
+[data-ui-mode="scene"] .app-overlay-host__layer[data-overlay-layer="scenario"] {
+  inset: 0;
+}
+
+[data-ui-mode="scene"] .page-settings[data-workspace-tool-mode="overlay"],
+[data-ui-mode="scene"] .page-archives[data-workspace-tool-mode="overlay"],
+[data-ui-mode="scene"] .page-whisper[data-workspace-tool-mode="overlay"] {
   inset: 0;
 }
 

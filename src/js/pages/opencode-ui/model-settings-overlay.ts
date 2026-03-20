@@ -2,12 +2,8 @@ import { escapeHtml } from "./chat-utils.js";
 import type { ByIdFn } from "./host-helpers.js";
 import { getIntlLocale, t } from "./i18n.js";
 import type { OpencodeUiModelPreferences, RuntimeState, SelectItem } from "./types.js";
-import {
-  createManagedOverlayController,
-  OVERLAY_GROUPS,
-  OVERLAY_KINDS,
-  type ManagedOverlayController,
-} from "../../ui/overlay-system.js";
+import { OVERLAY_GROUPS, OVERLAY_KINDS, type ManagedOverlayController } from "../../ui/overlay-system.js";
+import { createSharedActiveClassOverlayController } from "../../ui/overlay-presets.js";
 
 interface ModelSettingsOverlayOptions {
   runtime: RuntimeState;
@@ -191,18 +187,12 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
       return null;
     }
 
-    overlayController = createManagedOverlayController({
+    overlayController = createSharedActiveClassOverlayController({
       id: "opencode-ui-model-settings-modal",
       element: modal,
       kind: OVERLAY_KINDS.modal,
-      exclusiveGroup: OVERLAY_GROUPS.opencodeUi,
-      isOpen: () => modal.classList.contains("is-active"),
-      setOpen: (open: boolean) => {
-        modal.classList.toggle("is-active", open);
-        modal.setAttribute("aria-hidden", String(!open));
-      },
+      group: OVERLAY_GROUPS.opencodeUi,
     });
-    modal.setAttribute("aria-hidden", String(!modal.classList.contains("is-active")));
 
     return overlayController;
   };

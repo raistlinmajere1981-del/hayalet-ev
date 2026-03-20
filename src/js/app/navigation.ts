@@ -24,7 +24,7 @@ import {
 import type { PageController } from "./types.js";
 import { shellT } from "./shell-i18n.js";
 
-const SPECIAL_PAGES = ["webview", "settings", "archives", "whisper"];
+const SPECIAL_PAGES = ["webview"];
 
 function getUiModeLabel(state: UiModeToggleState): string {
   return shellT(getUiModeLabelKey(state));

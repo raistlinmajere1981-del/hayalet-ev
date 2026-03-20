@@ -12,13 +12,15 @@ import { deliverToAssistant } from "../../modules/assistant-delivery.js";
 import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
 import {
-  createHiddenClassOverlayController,
-  createInlineStatusOverlayController,
   OVERLAY_GROUPS,
   OVERLAY_KINDS,
   type InlineStatusOverlayController,
   type ManagedOverlayController,
 } from "../../ui/overlay-system.js";
+import {
+  createSharedScenarioOverlayController,
+  createSharedWebviewStatusOverlayController,
+} from "../../ui/overlay-presets.js";
 import {
   buildScenarioCompletionMessage,
   buildScenarioProgressSummary,
@@ -135,12 +137,10 @@ export class WebviewPanel {
         return;
       }
 
-      this.webviewStatusOverlayControllers[slot] = createInlineStatusOverlayController({
+      this.webviewStatusOverlayControllers[slot] = createSharedWebviewStatusOverlayController({
         id: `${slot}-webview-overlay`,
         element: overlayEl,
-        kind: OVERLAY_KINDS.status,
         blockedTarget: mountEl,
-        stateClasses: ["is-empty", "is-disconnected", "is-connecting", "is-error"],
       });
     });
   }
@@ -156,12 +156,11 @@ export class WebviewPanel {
         return;
       }
 
-      this.scenarioOverlayControllers[slot] = createHiddenClassOverlayController({
+      this.scenarioOverlayControllers[slot] = createSharedScenarioOverlayController({
         id: `${slot}-scenario-overlay`,
         element: overlayEl,
+        group: OVERLAY_GROUPS.entranceScenario,
         kind: OVERLAY_KINDS.scenario,
-        exclusiveGroup: OVERLAY_GROUPS.entranceScenario,
-        lockScroll: false,
         onAfterClose: () => {
           overlayEl.innerHTML = "";
           overlayEl.className = "webview-overlay is-hidden scenario-slot-overlay";

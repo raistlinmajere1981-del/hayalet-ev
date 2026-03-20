@@ -1,5 +1,8 @@
-import { getCurrentPage, getLastPrimaryPage } from "../app/navigation.js";
-import { closeExternalPage, openExternalToolPage } from "../pages/shared/external-page.js";
+import {
+  closeWorkspaceToolPage,
+  openWorkspaceToolPage,
+  type WorkspaceToolName,
+} from "../ui/workspace-tool-overlay.js";
 
 export function navigateToScenePage(page: string): void {
   document.dispatchEvent(
@@ -10,12 +13,20 @@ export function navigateToScenePage(page: string): void {
 }
 
 export function openSceneSettingsPanel(panel: string | null): void {
-  openExternalToolPage("settings", {
-    panel,
-    returnPage: getCurrentPage() ?? getLastPrimaryPage(),
-  });
+  openSceneWorkspaceTool("settings", { panel });
 }
 
 export function closeSceneSettingsPanel(): void {
-  closeExternalPage();
+  closeSceneWorkspaceTool("settings");
+}
+
+export function openSceneWorkspaceTool(
+  tool: WorkspaceToolName,
+  options: { panel?: string | null } = {}
+): void {
+  openWorkspaceToolPage(tool, options);
+}
+
+export function closeSceneWorkspaceTool(tool?: WorkspaceToolName | null): void {
+  closeWorkspaceToolPage(tool);
 }

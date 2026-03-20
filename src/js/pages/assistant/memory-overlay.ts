@@ -1,11 +1,7 @@
 // NOTE: Opened from the Assistant page; uses memory-* IPC channels for shared memory.
 import { AppI18n } from "../../modules/i18n/index.js";
-import {
-  createHiddenClassOverlayController,
-  OVERLAY_GROUPS,
-  OVERLAY_KINDS,
-  type ManagedOverlayController,
-} from "../../ui/overlay-system.js";
+import type { ManagedOverlayController } from "../../ui/overlay-system.js";
+import { createSharedAssistantToolOverlayController } from "../../ui/overlay-presets.js";
 
 interface MemoryItem {
   id: string;
@@ -122,11 +118,9 @@ export class MemoryOverlay {
   init(): void {
     this.overlay = document.getElementById("memory-overlay");
     if (this.overlay instanceof HTMLElement && this.overlayController === null) {
-      this.overlayController = createHiddenClassOverlayController({
+      this.overlayController = createSharedAssistantToolOverlayController({
         id: "memory-overlay",
         element: this.overlay,
-        kind: OVERLAY_KINDS.assistant,
-        exclusiveGroup: OVERLAY_GROUPS.assistantTools,
       });
     }
     this.closeBtn = document.getElementById("memory-overlay-close");

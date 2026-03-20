@@ -20,6 +20,7 @@ import {
   setPauseButtonUI,
   syncSessionSelect,
 } from "./overlay-render.js";
+import { registerSettingsPanelLifecycle } from "../controller.js";
 
 interface SetupLiveLogOverlayOptions {
   formatLogCategory: (category: string) => string;
@@ -350,14 +351,18 @@ export function setupLiveLogOverlay({
   render();
   Logger.debug(LogCategory.ENTRANCE, entranceT("logs.liveOverlayReady"));
 
-  document.addEventListener("settings-hub:state-change", ((
-    event: CustomEvent<{ open?: boolean; activePanel?: string | null }>
-  ) => {
-    if (event.detail.open === true && event.detail.activePanel === "live-log") {
+  registerSettingsPanelLifecycle("live-log", {
+    onEnter: () => {
       activate();
-      return;
-    }
-
-    deactivate();
-  }) as EventListener);
+    },
+    onActivate: () => {
+      activate();
+    },
+    onDeactivate: () => {
+      deactivate();
+    },
+    onExit: () => {
+      deactivate();
+    },
+  });
 }

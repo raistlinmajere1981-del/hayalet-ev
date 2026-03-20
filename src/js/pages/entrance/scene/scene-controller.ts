@@ -20,11 +20,14 @@ import {
 } from "../../../scene/characters/index.js";
 import type { SceneLayoutConfig } from "../../../scene/layout/index.js";
 import {
-  getSceneBackNodeForView,
   getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
 } from "../../../scene/layout/index.js";
-import { navigateToScenePage, openSceneSettingsPanel } from "../../../scene/navigation.js";
+import {
+  navigateToScenePage,
+  openSceneSettingsPanel,
+  openSceneWorkspaceTool,
+} from "../../../scene/navigation.js";
 import { getCoverSceneProjection } from "../../../scene/projection.js";
 import { renderSceneBackLayer } from "../../../scene/renderers/back-layer.js";
 import { renderSceneCharacterLayer } from "../../../scene/renderers/character-layer.js";
@@ -33,13 +36,6 @@ import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewBackgroundSrc,
 } from "../../../scene-system/index.js";
-import {
-  SCENE_TOOL_CLOSE_EVENT,
-  SCENE_TOOL_HOST_HIDE_EVENT,
-  SCENE_TOOL_HOST_SHOW_EVENT,
-  SCENE_TOOL_OPEN_EVENT,
-  type SceneToolEventDetail,
-} from "../../../scene/tool-pages.js";
 import { syncSceneViewRuntime } from "../../../scene/runtime.js";
 import { isSceneUiMode } from "../../../ui/ui-mode.js";
 
@@ -83,8 +79,6 @@ export class EntranceSceneController {
   sceneLayout = ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
   sceneDebugEnabled = false;
   editorSelection: EntranceSceneEditorSelection = null;
-  activeViewId: "whisper" | null = null;
-  whisperPlaceholder: Comment | null = null;
 
   constructor(bridge: SceneEntranceBridge) {
     this.bridge = bridge;
@@ -178,7 +172,6 @@ export class EntranceSceneController {
 
     this.renderStatic();
     this.subscribeRuntimeSignals();
-    this.bindSceneToolEvents();
     this.observeLayout();
     this.syncScene();
   }
@@ -188,7 +181,6 @@ export class EntranceSceneController {
   }
 
   onHide(): void {
-    this.setActiveView(null);
     this.menu?.close(false);
     this.openCharacterId = null;
   }
@@ -207,12 +199,11 @@ export class EntranceSceneController {
       },
       state: {
         sceneActive,
-        viewOpen: this.activeViewId !== null,
+        viewOpen: false,
       },
     });
 
     if (!sceneActive) {
-      this.restoreWhisperPage();
       this.menu?.close(false);
       this.openCharacterId = null;
       return;
@@ -248,20 +239,6 @@ export class EntranceSceneController {
       this.syncOpenMenuAnchor();
       this.editor?.refresh();
     });
-  }
-
-  private bindSceneToolEvents(): void {
-    document.addEventListener(SCENE_TOOL_OPEN_EVENT, ((event: CustomEvent<SceneToolEventDetail>) => {
-      if (event.detail.tool === "whisper") {
-        this.setActiveView("whisper");
-      }
-    }) as EventListener);
-
-    document.addEventListener(SCENE_TOOL_CLOSE_EVENT, ((event: CustomEvent<SceneToolEventDetail>) => {
-      if (event.detail.tool === "whisper") {
-        this.setActiveView(null);
-      }
-    }) as EventListener);
   }
 
   private renderBackground(): void {
@@ -362,11 +339,11 @@ export class EntranceSceneController {
       onSettingsSceneClose: () => {},
       onScreen: () => {},
       onWhisper: () => {
-        this.setActiveView("whisper");
+        this.menu?.close(false);
+        this.openCharacterId = null;
+        openSceneWorkspaceTool("whisper");
       },
-      onBack: () => {
-        this.setActiveView(null);
-      },
+      onBack: () => {},
     });
   }
 
@@ -414,28 +391,14 @@ export class EntranceSceneController {
     ENTRANCE_SCENE_DEBUG_STORE.saveDraft(this.sceneLayout);
   }
 
-  private setActiveView(viewId: "whisper" | null): void {
-    this.activeViewId = viewId;
-    this.syncScene();
-  }
-
   private syncViewState(): void {
     if (!(this.viewRoot instanceof HTMLElement)) {
       return;
     }
 
-    if (this.activeViewId === "whisper") {
-      this.mountWhisperPage();
-    } else {
-      this.restoreWhisperPage();
-    }
-
     renderSceneBackLayer({
       host: this.viewRoot,
-      node:
-        isSceneUiMode() && this.activeViewId !== null
-          ? getSceneBackNodeForView(this.sceneLayout, this.activeViewId)
-          : null,
+      node: null,
       projection: this.getSceneProjection(),
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
@@ -451,66 +414,10 @@ export class EntranceSceneController {
           onSettingsSceneClose: () => {},
           onScreen: () => {},
           onWhisper: () => {},
-          onBack: () => {
-            this.setActiveView(null);
-          },
+          onBack: () => {},
         });
       },
     });
-  }
-
-  private mountWhisperPage(): void {
-    const page = document.getElementById("page-whisper");
-    if (!(this.viewSlot instanceof HTMLElement) || !(page instanceof HTMLElement)) {
-      return;
-    }
-
-    const wasEmbedded = page.dataset["sceneEmbedded"] === "true";
-    if (page.parentElement !== this.viewSlot) {
-      if (this.whisperPlaceholder === null && page.parentNode !== null) {
-        this.whisperPlaceholder = document.createComment("entrance-scene-whisper-placeholder");
-        page.parentNode.insertBefore(this.whisperPlaceholder, page);
-      }
-      this.viewSlot.appendChild(page);
-    }
-
-    page.dataset["sceneEmbedded"] = "true";
-    page.classList.remove("is-hidden");
-    page.hidden = false;
-    if (!wasEmbedded) {
-      document.dispatchEvent(
-        new CustomEvent<SceneToolEventDetail>(SCENE_TOOL_HOST_SHOW_EVENT, {
-          detail: { tool: "whisper" },
-        })
-      );
-    }
-  }
-
-  private restoreWhisperPage(): void {
-    const page = document.getElementById("page-whisper");
-    if (!(page instanceof HTMLElement)) {
-      return;
-    }
-
-    const wasEmbedded = page.dataset["sceneEmbedded"] === "true";
-    if (
-      this.whisperPlaceholder?.parentNode !== null &&
-      this.whisperPlaceholder?.parentNode !== undefined
-    ) {
-      this.whisperPlaceholder.parentNode.insertBefore(page, this.whisperPlaceholder.nextSibling);
-    }
-
-    if (wasEmbedded) {
-      delete page.dataset["sceneEmbedded"];
-      document.dispatchEvent(
-        new CustomEvent<SceneToolEventDetail>(SCENE_TOOL_HOST_HIDE_EVENT, {
-          detail: { tool: "whisper" },
-        })
-      );
-    }
-
-    page.classList.add("is-hidden");
-    page.hidden = true;
   }
 
   private toggleCharacterMenu(

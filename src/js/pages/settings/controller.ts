@@ -1,7 +1,7 @@
 import { AppState } from "../../modules/app-state.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { shellT } from "../../app/shell-i18n.js";
-import { closeExternalPage, navigateMainShellPage } from "../shared/external-page.js";
+import { navigateMainShellPage } from "../shared/external-page.js";
 import { dispatchSceneAction } from "../../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
@@ -33,13 +33,28 @@ import {
   getSceneRoomBackgroundSrc,
   getSceneRoomPanelSrc,
 } from "../../scene-system/index.js";
+import {
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  createManagedOverlayController,
+  mountElementInOverlayHostLayer,
+  OVERLAY_SURFACE_FAMILIES,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
 import { isSceneUiMode } from "../../ui/ui-mode.js";
+import {
+  WORKSPACE_TOOL_CLOSE_EVENT,
+  WORKSPACE_TOOL_OPEN_EVENT,
+  syncWorkspaceToolState,
+  type WorkspaceToolCloseDetail,
+  type WorkspaceToolOpenDetail,
+} from "../../ui/workspace-tool-overlay.js";
 
 const SETTINGS_PANELS = ["theme", "accounts", "backup", "rooms", "live-log"] as const;
 
-type SettingsPanelId = (typeof SETTINGS_PANELS)[number];
+export type SettingsPanelId = (typeof SETTINGS_PANELS)[number];
 
-interface SettingsHubState {
+interface SettingsPanelLifecycleState {
   open: boolean;
   activePanel: SettingsPanelId | null;
 }
@@ -67,6 +82,13 @@ interface SettingsSceneControllerDeps {
   onReturnToRoom: () => void;
 }
 
+export interface SettingsPanelLifecycleHandler {
+  onEnter?: () => void | Promise<void>;
+  onExit?: () => void;
+  onActivate?: () => void | Promise<void>;
+  onDeactivate?: () => void;
+}
+
 function isSettingsPanelId(value: string): value is SettingsPanelId {
   return SETTINGS_PANELS.includes(value as SettingsPanelId);
 }
@@ -75,18 +97,88 @@ export function resolveSettingsPanelId(value: string | null | undefined): Settin
   return value !== null && value !== undefined && isSettingsPanelId(value) ? value : null;
 }
 
+function isHostedInMainShell(): boolean {
+  return document.getElementById("pages-container") instanceof HTMLElement;
+}
+
 function toHeadLabel(label: string): string {
   const compact = label.replace(/\s+/g, "").trim().toUpperCase();
   const head = compact.slice(0, 2);
   return head === "" ? "?" : head;
 }
 
-function dispatchSettingsHubState(state: SettingsHubState): void {
-  document.dispatchEvent(
-    new CustomEvent<SettingsHubState>("settings-hub:state-change", {
-      detail: state,
-    })
-  );
+function applyWorkspaceToolPageVisibility(page: HTMLElement, open: boolean): void {
+  page.classList.toggle("is-hidden", !open);
+  page.toggleAttribute("hidden", !open);
+  page.setAttribute("aria-hidden", String(!open));
+  if (open) {
+    page.dataset["workspaceToolMode"] = "overlay";
+    return;
+  }
+
+  delete page.dataset["workspaceToolMode"];
+}
+
+const settingsPanelLifecycleHandlers = new Map<
+  SettingsPanelId,
+  Set<SettingsPanelLifecycleHandler>
+>();
+
+function runSettingsPanelLifecycleHook(
+  panelId: SettingsPanelId,
+  hookName: keyof SettingsPanelLifecycleHandler
+): void {
+  settingsPanelLifecycleHandlers.get(panelId)?.forEach((handler) => {
+    void handler[hookName]?.();
+  });
+}
+
+function emitSettingsPanelLifecycle(
+  previousState: SettingsPanelLifecycleState,
+  nextState: SettingsPanelLifecycleState
+): void {
+  const previousPanel = previousState.open ? previousState.activePanel : null;
+  const nextPanel = nextState.open ? nextState.activePanel : null;
+
+  if (previousState.open === false && nextState.open === true && nextPanel !== null) {
+    runSettingsPanelLifecycleHook(nextPanel, "onEnter");
+    runSettingsPanelLifecycleHook(nextPanel, "onActivate");
+    return;
+  }
+
+  if (previousState.open === true && nextState.open === false && previousPanel !== null) {
+    runSettingsPanelLifecycleHook(previousPanel, "onDeactivate");
+    runSettingsPanelLifecycleHook(previousPanel, "onExit");
+    return;
+  }
+
+  if (previousPanel === nextPanel) {
+    return;
+  }
+
+  if (previousPanel !== null) {
+    runSettingsPanelLifecycleHook(previousPanel, "onDeactivate");
+  }
+
+  if (nextPanel !== null) {
+    runSettingsPanelLifecycleHook(nextPanel, "onActivate");
+  }
+}
+
+export function registerSettingsPanelLifecycle(
+  panelId: SettingsPanelId,
+  handler: SettingsPanelLifecycleHandler
+): () => void {
+  const handlers = settingsPanelLifecycleHandlers.get(panelId) ?? new Set<SettingsPanelLifecycleHandler>();
+  handlers.add(handler);
+  settingsPanelLifecycleHandlers.set(panelId, handlers);
+
+  return () => {
+    handlers.delete(handler);
+    if (handlers.size === 0) {
+      settingsPanelLifecycleHandlers.delete(panelId);
+    }
+  };
 }
 
 const SETTINGS_SCENE_DEBUG_STORE = createSceneDebugStore("settings");
@@ -504,12 +596,14 @@ export class SettingsPageController {
   private closeButton: HTMLButtonElement | null = null;
   private classicLayout: HTMLElement | null = null;
   private panelsContainer: HTMLElement | null = null;
+  private overlayController: ManagedOverlayController | null = null;
   private tabButtons: HTMLButtonElement[] = [];
   private panels: HTMLElement[] = [];
   private sceneController: SettingsSceneController | null = null;
   private isOpen = false;
   private activePanel: SettingsPanelId = "theme";
   private visiblePanel: SettingsPanelId | null = null;
+  private transitionState: SettingsPanelLifecycleState | null = null;
   private initialized = false;
 
   init(): void {
@@ -519,6 +613,9 @@ export class SettingsPageController {
 
     this.page = document.getElementById("page-settings");
     this.closeButton = document.getElementById("settings-hub-close") as HTMLButtonElement | null;
+    if (this.page instanceof HTMLElement && isHostedInMainShell()) {
+      mountElementInOverlayHostLayer(this.page, OVERLAY_SURFACE_FAMILIES.workspaceTool);
+    }
     this.classicLayout = this.page?.querySelector<HTMLElement>(".settings-hub-layout") ?? null;
     this.panelsContainer = this.page?.querySelector<HTMLElement>(".settings-hub-panels") ?? null;
     this.tabButtons = Array.from(
@@ -584,6 +681,28 @@ export class SettingsPageController {
     });
     this.sceneController.init();
 
+    this.overlayController = createManagedOverlayController({
+      id: "workspace-tool-settings",
+      element: this.page,
+      kind: OVERLAY_KINDS.workspace,
+      exclusiveGroup: OVERLAY_GROUPS.workspace,
+      isOpen: () => this.isOpen,
+      setOpen: (open: boolean) => {
+        if (!(this.page instanceof HTMLElement)) {
+          return;
+        }
+
+        this.isOpen = open;
+        applyWorkspaceToolPageVisibility(this.page, open);
+      },
+      onAfterOpen: () => {
+        this.handleOverlayOpened();
+      },
+      onAfterClose: () => {
+        this.handleOverlayClosed();
+      },
+    });
+
     this.closeButton.addEventListener("click", () => {
       this.close();
     });
@@ -597,32 +716,59 @@ export class SettingsPageController {
       });
     });
 
-    document.addEventListener("settings-hub:open", ((
-      event: CustomEvent<{ panel?: string | null } | undefined>
-    ) => {
-      const requestedPanel = resolveSettingsPanelId(event.detail?.panel);
-      this.open(isSceneUiMode() ? requestedPanel : (requestedPanel ?? this.activePanel));
+    document.addEventListener(WORKSPACE_TOOL_OPEN_EVENT, ((event: CustomEvent<WorkspaceToolOpenDetail>) => {
+      if (event.detail.tool !== "settings") {
+        return;
+      }
+
+      const requestedPanel = resolveSettingsPanelId(event.detail.panel);
+      this.show(isSceneUiMode() ? requestedPanel : (requestedPanel ?? this.activePanel));
     }) as EventListener);
 
-    document.addEventListener("settings-hub:close", () => {
-      this.close();
-    });
+    document.addEventListener(
+      WORKSPACE_TOOL_CLOSE_EVENT,
+      ((event: CustomEvent<WorkspaceToolCloseDetail>) => {
+        if (event.detail.tool !== "settings") {
+          return;
+        }
+
+        this.overlayController?.close();
+      }) as EventListener
+    );
 
     this.initialized = true;
-    this.syncActivePanelUi();
-    this.syncSceneUi();
+    if (isHostedInMainShell()) {
+      applyWorkspaceToolPageVisibility(this.page, false);
+    }
+    this.syncViewState({ open: false, activePanel: null });
   }
 
   show(requestedPanel: SettingsPanelId | null = null): void {
-    this.isOpen = true;
+    const previousState = this.getLifecycleState();
     this.visiblePanel = isSceneUiMode() ? requestedPanel : (requestedPanel ?? this.activePanel);
     if (this.visiblePanel !== null) {
       this.activePanel = this.visiblePanel;
     }
-    document.documentElement.setAttribute("data-active-page", "settings");
-    this.syncActivePanelUi();
-    this.syncSceneUi();
-    this.emitState();
+
+    if (this.overlayController !== null) {
+      if (this.overlayController.isOpen()) {
+        this.syncViewState(previousState);
+        syncWorkspaceToolState({
+          tool: "settings",
+          open: true,
+          panel: this.visiblePanel,
+        });
+        return;
+      }
+
+      this.transitionState = previousState;
+      this.overlayController.open();
+      return;
+    }
+
+    this.transitionState = previousState;
+    this.isOpen = true;
+    this.handleOverlayOpened();
   }
 
   onShow(): void {
@@ -630,12 +776,15 @@ export class SettingsPageController {
   }
 
   hide(): void {
+    if (this.overlayController !== null) {
+      this.transitionState = this.getLifecycleState();
+      this.overlayController.close();
+      return;
+    }
+
+    this.transitionState = this.getLifecycleState();
     this.isOpen = false;
-    this.visiblePanel = null;
-    document.documentElement.removeAttribute("data-active-page");
-    this.syncActivePanelUi();
-    this.syncSceneUi();
-    this.emitState();
+    this.handleOverlayClosed();
   }
 
   onHide(): void {
@@ -661,41 +810,73 @@ export class SettingsPageController {
     });
   }
 
-  private syncSceneUi(): void {
-    this.sceneController?.sync({ open: this.isOpen, activePanel: this.visiblePanel });
-  }
-
-  private emitState(): void {
-    dispatchSettingsHubState({ open: this.isOpen, activePanel: this.visiblePanel });
-  }
-
   private showRoom(): void {
+    const previousState = this.getLifecycleState();
     this.visiblePanel = null;
-    this.syncActivePanelUi();
-    this.syncSceneUi();
-    if (this.isOpen) {
-      this.emitState();
-    }
-  }
-
-  private open(requestedPanel: SettingsPanelId | null): void {
-    this.show(requestedPanel);
+    this.syncViewState(previousState);
   }
 
   private close(): void {
-    closeExternalPage();
+    this.overlayController?.close();
   }
 
   private selectPanel(panelId: SettingsPanelId): void {
+    const previousState = this.getLifecycleState();
     this.activePanel = panelId;
     this.visiblePanel = panelId;
-    this.syncActivePanelUi();
-    this.syncSceneUi();
+    this.syncViewState(previousState);
     if (this.isOpen) {
-      this.emitState();
       return;
     }
 
-    this.open(panelId);
+    this.show(panelId);
+  }
+
+  private handleOverlayOpened(): void {
+    const previousState = this.consumeTransitionState();
+    this.visiblePanel = isSceneUiMode() ? this.visiblePanel : (this.visiblePanel ?? this.activePanel);
+    if (this.visiblePanel !== null) {
+      this.activePanel = this.visiblePanel;
+    }
+    this.syncViewState(previousState);
+    syncWorkspaceToolState({
+      tool: "settings",
+      open: true,
+      panel: this.visiblePanel,
+    });
+  }
+
+  private handleOverlayClosed(): void {
+    const previousState = this.consumeTransitionState();
+    this.visiblePanel = null;
+    this.syncViewState(previousState);
+    syncWorkspaceToolState({
+      tool: "settings",
+      open: false,
+      panel: null,
+    });
+  }
+
+  private getLifecycleState(): SettingsPanelLifecycleState {
+    return {
+      open: this.isOpen,
+      activePanel: this.visiblePanel,
+    };
+  }
+
+  private consumeTransitionState(): SettingsPanelLifecycleState {
+    const previousState =
+      this.transitionState ?? {
+        open: false,
+        activePanel: null,
+      };
+    this.transitionState = null;
+    return previousState;
+  }
+
+  private syncViewState(previousState: SettingsPanelLifecycleState): void {
+    this.syncActivePanelUi();
+    this.sceneController?.sync({ open: this.isOpen, activePanel: this.visiblePanel });
+    emitSettingsPanelLifecycle(previousState, this.getLifecycleState());
   }
 }

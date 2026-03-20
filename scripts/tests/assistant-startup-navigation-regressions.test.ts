@@ -31,14 +31,13 @@ test("navigation allows assistant page to activate side-nav item", () => {
   assert.match(indexHtml, /data-page="assistant"/);
   assert.match(indexHtml, /data-ui-mode-option="ghost-agent"/);
   assert.match(assistantPage, /id="page-assistant"/);
-  assert.match(assistantPage, /data-assistant-mode-option="ghost-agent"/);
-  assert.match(entrancePage, /data-ui-mode-option="ghost-agent"/);
-  assert.match(navigation, /const SPECIAL_PAGES = \["settings", "archives", "webview"\];/);
+  assert.match(entrancePage, /id="page-entrance"/);
+  assert.match(navigation, /const SPECIAL_PAGES = \["webview"\];/);
   assert.match(navigation, /createGhostHandoffRuntimePatch/);
   assert.match(navigation, /updateAssistantRuntimeState/);
   assert.doesNotMatch(navigation, /LEGACY_ASSISTANT_PAGE/);
-  assert.match(navigation, /return pageName;/);
+  assert.match(navigation, /function resolvePageDomNames\(pageName: string\)/);
   assert.match(navigation, /return \[pageName\];/);
-  assert.match(navigation, /return normalizePageName\(candidate\) === pageName;/);
+  assert.match(navigation, /function matchesPageDataset/);
   assert.doesNotMatch(navigation, /assistant-btn/);
 });

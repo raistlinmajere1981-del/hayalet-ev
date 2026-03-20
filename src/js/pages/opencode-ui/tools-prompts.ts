@@ -1,12 +1,8 @@
 import { apiCall } from "./api.js";
 import { formatDetailedErrorMessage, t } from "./i18n.js";
 import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
-import {
-  createManagedOverlayController,
-  OVERLAY_GROUPS,
-  OVERLAY_KINDS,
-  type ManagedOverlayController,
-} from "../../ui/overlay-system.js";
+import { OVERLAY_GROUPS, OVERLAY_KINDS, type ManagedOverlayController } from "../../ui/overlay-system.js";
+import { createSharedActiveClassOverlayController } from "../../ui/overlay-presets.js";
 
 export type ToolSnapshotStatus = "loaded" | "empty" | "error";
 
@@ -373,18 +369,12 @@ export function initQuickPromptPanel(options: QuickPromptPanelOptions): void {
   ) as HTMLTextAreaElement | null;
 
   if (modal instanceof HTMLElement && promptModalController === null) {
-    promptModalController = createManagedOverlayController({
+    promptModalController = createSharedActiveClassOverlayController({
       id: "opencode-ui-prompt-modal",
       element: modal,
       kind: OVERLAY_KINDS.modal,
-      exclusiveGroup: OVERLAY_GROUPS.opencodeUi,
-      isOpen: () => modal.classList.contains("is-active"),
-      setOpen: (open: boolean) => {
-        modal.classList.toggle("is-active", open);
-        modal.setAttribute("aria-hidden", String(!open));
-      },
+      group: OVERLAY_GROUPS.opencodeUi,
     });
-    modal.setAttribute("aria-hidden", String(!modal.classList.contains("is-active")));
   }
 
   void refreshQuickPromptList(options);

@@ -3,12 +3,8 @@ import type { AppLanguage } from "@shared/i18n.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { translateCatalog } from "../../../../shared/i18n/catalog.js";
 import { getBuiltInLanguagePack } from "../../../../shared/i18n/bundled-languages.js";
-import {
-  createHiddenClassOverlayController,
-  OVERLAY_GROUPS,
-  OVERLAY_KINDS,
-  type ManagedOverlayController,
-} from "../../ui/overlay-system.js";
+import type { ManagedOverlayController } from "../../ui/overlay-system.js";
+import { createSharedAssistantToolOverlayController } from "../../ui/overlay-presets.js";
 
 interface CharacterFeature {
   id: string;
@@ -272,11 +268,9 @@ export class CharacterOverlay {
   init(): void {
     this.overlay = document.getElementById("character-overlay");
     if (this.overlay instanceof HTMLElement && this.overlayController === null) {
-      this.overlayController = createHiddenClassOverlayController({
+      this.overlayController = createSharedAssistantToolOverlayController({
         id: "character-overlay",
         element: this.overlay,
-        kind: OVERLAY_KINDS.assistant,
-        exclusiveGroup: OVERLAY_GROUPS.assistantTools,
         onAfterClose: () => {
           this.selected = new Set(this.savedSelected);
         },

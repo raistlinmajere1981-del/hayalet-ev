@@ -17,7 +17,11 @@ import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@s
 import type { Us1RoomPackageCandidate, Us1SessionEvent } from "@shared/us1-mail.js";
 import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
 import { dispatchSceneAction } from "../scene/action-dispatcher.js";
-import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
+import {
+  navigateToScenePage,
+  openSceneSettingsPanel,
+  openSceneWorkspaceTool,
+} from "../scene/navigation.js";
 import { getCoverSceneProjectionFromElement } from "../scene/projection.js";
 import { renderSceneBackLayer } from "../scene/renderers/back-layer.js";
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
@@ -42,13 +46,6 @@ import {
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
 import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../scene-system/index.js";
-import {
-  SCENE_TOOL_CLOSE_EVENT,
-  SCENE_TOOL_HOST_HIDE_EVENT,
-  SCENE_TOOL_HOST_SHOW_EVENT,
-  SCENE_TOOL_OPEN_EVENT,
-  type SceneToolEventDetail,
-} from "../scene/tool-pages.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
 
 import { renderMessages, resetMessageRenderState } from "./analyze/message-renderer.js";
@@ -64,7 +61,7 @@ import {
 } from "./analyze/message-renderer-types.js";
 import { renderUploadList, addUploadFiles, removeUploadFile } from "./analyze/upload-handler.js";
 import type { StagedFile } from "./analyze/upload-handler.js";
-import { applyMessageAction, initReadModal } from "./analyze/context-menu.js";
+import { applyMessageAction } from "./analyze/context-menu.js";
 import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
 interface ConversationSelectedDetail {
   provider?: "ai1" | "ai2" | "us1";
@@ -78,7 +75,7 @@ interface DraftState {
 }
 
 type AnalyzeParticipant = "ai1" | "ai2" | "us1";
-type AnalyzeSceneViewId = "table" | "archive";
+type AnalyzeSceneViewId = "table";
 const ANALYZE_SCENE_DEBUG_STORE = createSceneDebugStore("analyze");
 
 function analyzeT(key: string, params?: TranslationParams): string {
@@ -140,7 +137,6 @@ export class AnalyzeController {
   _analyzeSceneResizeObserver: ResizeObserver | null;
   _analyzeSceneCharacterRenderToken: number;
   _analyzeSceneFrameController: SceneAlphaWindowFrameController | null;
-  _analyzeSceneArchivesPlaceholder: Comment | null;
 
   constructor() {
     this.stagedFiles = [];
@@ -168,7 +164,6 @@ export class AnalyzeController {
     this._analyzeSceneResizeObserver = null;
     this._analyzeSceneCharacterRenderToken = 0;
     this._analyzeSceneFrameController = null;
-    this._analyzeSceneArchivesPlaceholder = null;
   }
 
   async init(): Promise<void> {
@@ -239,7 +234,6 @@ export class AnalyzeController {
     this.refreshUploads();
     this._initializeAnalyzeScene();
 
-    initReadModal();
     void this._initDraftSystem();
 
     window.addEventListener("conversation-selected", (e) => {
@@ -294,7 +288,6 @@ export class AnalyzeController {
     }
 
     this._setupAnalyzeSceneDebug();
-    this._bindAnalyzeSceneToolEvents();
     this._syncAnalyzeSceneAssets();
     this._renderAnalyzeScene();
     this._syncAnalyzeSceneVisibility();
@@ -313,7 +306,7 @@ export class AnalyzeController {
     }
 
     if (tableArt !== null) {
-      const panelId = this._analyzeSceneActiveView === "archive" ? "archive" : "table";
+      const panelId = this._analyzeSceneActiveView ?? "table";
       tableArt.src = getSceneRoomPanelSrc("analyze", panelId) ?? "";
       tableArt.alt = "";
     }
@@ -408,20 +401,6 @@ export class AnalyzeController {
       this._syncAnalyzeSceneVisibility();
     });
     this._analyzeSceneResizeObserver.observe(sceneRoot);
-  }
-
-  _bindAnalyzeSceneToolEvents(): void {
-    document.addEventListener(SCENE_TOOL_OPEN_EVENT, ((event: CustomEvent<SceneToolEventDetail>) => {
-      if (event.detail.tool === "archives") {
-        this._setAnalyzeSceneActiveView("archive");
-      }
-    }) as EventListener);
-
-    document.addEventListener(SCENE_TOOL_CLOSE_EVENT, ((event: CustomEvent<SceneToolEventDetail>) => {
-      if (event.detail.tool === "archives") {
-        this._setAnalyzeSceneActiveView(null);
-      }
-    }) as EventListener);
   }
 
   _renderAnalyzeScene(): void {
@@ -545,7 +524,8 @@ export class AnalyzeController {
       },
       onScreen: (action) => {
         if (action.screen === "archive") {
-          this._setAnalyzeSceneActiveView("archive");
+          this._setAnalyzeSceneActiveView(null);
+          openSceneWorkspaceTool("archives");
           return;
         }
 
@@ -585,12 +565,6 @@ export class AnalyzeController {
       },
     });
 
-    if (this._analyzeSceneActiveView === "archive") {
-      this._mountAnalyzeArchivesPage(panelSlot instanceof HTMLElement ? panelSlot : null);
-    } else {
-      this._restoreAnalyzeArchivesPage();
-    }
-
     if (tableView instanceof HTMLElement) {
       renderSceneBackLayer({
         host: tableView,
@@ -622,7 +596,6 @@ export class AnalyzeController {
     }
 
     if (!sceneActive) {
-      this._restoreAnalyzeArchivesPage();
       return;
     }
 
@@ -630,62 +603,6 @@ export class AnalyzeController {
     this._analyzeSceneFrameController?.refresh();
     this._renderAnalyzeScene();
     this._analyzeSceneEditor?.refresh();
-  }
-
-  _mountAnalyzeArchivesPage(slot: HTMLElement | null): void {
-    const page = document.getElementById("page-archives");
-    if (!(slot instanceof HTMLElement) || !(page instanceof HTMLElement)) {
-      return;
-    }
-
-    const wasEmbedded = page.dataset["sceneEmbedded"] === "true";
-    if (page.parentElement !== slot) {
-      if (this._analyzeSceneArchivesPlaceholder === null && page.parentNode !== null) {
-        this._analyzeSceneArchivesPlaceholder = document.createComment("analyze-scene-archives-placeholder");
-        page.parentNode.insertBefore(this._analyzeSceneArchivesPlaceholder, page);
-      }
-      slot.appendChild(page);
-    }
-
-    page.dataset["sceneEmbedded"] = "true";
-    page.classList.remove("is-hidden");
-    page.hidden = false;
-    if (!wasEmbedded) {
-      document.dispatchEvent(
-        new CustomEvent<SceneToolEventDetail>(SCENE_TOOL_HOST_SHOW_EVENT, {
-          detail: { tool: "archives" },
-        })
-      );
-    }
-  }
-
-  _restoreAnalyzeArchivesPage(): void {
-    const page = document.getElementById("page-archives");
-    if (!(page instanceof HTMLElement)) {
-      return;
-    }
-
-    if (
-      this._analyzeSceneArchivesPlaceholder?.parentNode !== null &&
-      this._analyzeSceneArchivesPlaceholder?.parentNode !== undefined
-    ) {
-      this._analyzeSceneArchivesPlaceholder.parentNode.insertBefore(
-        page,
-        this._analyzeSceneArchivesPlaceholder.nextSibling
-      );
-    }
-
-    if (page.dataset["sceneEmbedded"] === "true") {
-      delete page.dataset["sceneEmbedded"];
-      document.dispatchEvent(
-        new CustomEvent<SceneToolEventDetail>(SCENE_TOOL_HOST_HIDE_EVENT, {
-          detail: { tool: "archives" },
-        })
-      );
-    }
-
-    page.classList.add("is-hidden");
-    page.hidden = true;
   }
 
   _navigateToPage(page: string): void {

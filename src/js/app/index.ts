@@ -12,6 +12,7 @@ import { RoomRegistry } from "../modules/rooms/room-registry.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { SplashScreen } from "../ui/splash-screen.js";
 import { applyUiMode } from "../ui/ui-mode.js";
+import { initAppOverlayHost } from "../ui/overlay-system.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 
 import type { PageController } from "./types.js";
@@ -37,7 +38,7 @@ import {
   initControllers,
   registerWebviews,
 } from "./page-init.js";
-import { setupTopbarToolOverlays } from "./topbar-tool-overlays.js";
+import { setupTopbarWorkspaceTools } from "./topbar-tool-overlays.js";
 
 declare global {
   interface Window {
@@ -97,6 +98,7 @@ async function initApp(): Promise<void> {
     SplashScreen.setProgress(12);
     const startupFlags = window.electronAPI?.getStartupFlags();
     applyUiMode(startupFlags?.uiMode);
+    initAppOverlayHost();
 
     SplashScreen.update(18, AppI18n.t("app.startup.startingCore"));
 
@@ -185,7 +187,7 @@ async function initApp(): Promise<void> {
     setupNavigation();
     setupWindowControls();
     setupTopBarButtons();
-    setupTopbarToolOverlays();
+    setupTopbarWorkspaceTools();
     setupTopBarRelayButtons();
     setupReportPanel();
 

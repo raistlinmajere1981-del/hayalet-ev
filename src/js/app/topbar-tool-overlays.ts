@@ -1,20 +1,20 @@
-import { getCurrentPage, getLastPrimaryPage } from "./navigation.js";
-import { openExternalToolPage, type ExternalToolPageName } from "../pages/shared/external-page.js";
+import {
+  toggleWorkspaceToolPage,
+  type WorkspaceToolName,
+} from "../ui/workspace-tool-overlay.js";
 
-function bindTopbarToolButton(buttonId: string, pageName: ExternalToolPageName): void {
+function bindTopbarToolButton(buttonId: string, toolName: WorkspaceToolName): void {
   const button = document.getElementById(buttonId);
   if (!(button instanceof HTMLButtonElement)) {
     return;
   }
 
   button.addEventListener("click", () => {
-    openExternalToolPage(pageName, {
-      returnPage: getCurrentPage() ?? getLastPrimaryPage(),
-    });
+    toggleWorkspaceToolPage(toolName);
   });
 }
 
-export function setupTopbarToolOverlays(): void {
+export function setupTopbarWorkspaceTools(): void {
   bindTopbarToolButton("topbar-whisper-open", "whisper");
   bindTopbarToolButton("archives-page-open-btn", "archives");
   bindTopbarToolButton("topbar-settings-open", "settings");

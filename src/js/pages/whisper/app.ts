@@ -1,7 +1,7 @@
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { WhisperManager } from "../../modules/whisper-manager.js";
 import { bootstrapExternalToolPage } from "../shared/bootstrap-external-tool-page.js";
-import { closeExternalPage } from "../shared/external-page.js";
+import { navigateMainShellPage, resolveExternalReturnPage } from "../shared/external-page.js";
 import { WhisperDockController } from "./controller.js";
 import { applyWhisperStaticTranslations } from "./i18n.js";
 
@@ -18,7 +18,7 @@ async function bootstrapWhisperPage(): Promise<void> {
 
   const closeButton = document.getElementById("whisper-page-close") as HTMLButtonElement | null;
   closeButton?.addEventListener("click", () => {
-    closeExternalPage();
+    navigateMainShellPage(resolveExternalReturnPage());
   });
 
   const controller = new WhisperDockController();
