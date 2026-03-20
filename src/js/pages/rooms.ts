@@ -7,10 +7,11 @@ import {
   createSceneDebugStore,
   EntranceSceneEditor,
   type EntranceSceneEditorSelection,
-  getActiveSceneDebugRoomId,
+  getSceneDebugRoomOptions,
+  isSceneDebugRoomActive,
   isSceneDebugEnabled,
-  SCENE_DEBUG_ROOMS,
-} from "../scene/debug/index.js";
+  openSceneDebugRoom,
+} from "../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
@@ -25,7 +26,7 @@ import { getCoverSceneProjectionFromElement, type SceneProjection } from "../sce
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
 import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
-import { getSceneRoomBackgroundSrc } from "../scene/theme/scene-theme-assets.js";
+import { getSceneRoomBackgroundSrc } from "../scene-system/index.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 
 const ROOMS_SCENE_DEBUG_STORE = createSceneDebugStore("rooms");
@@ -92,11 +93,7 @@ export class RoomsController implements PageController {
       isActive: (): boolean => this.isSceneDebugActive(),
       getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
       getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
-      getRoomOptions: (): Array<{ id: string; label: string }> =>
-        SCENE_DEBUG_ROOMS.map((room) => ({
-          id: room.id,
-          label: shellT(room.labelKey),
-        })),
+      getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "rooms",
       setSelection: (selection): void => {
         this.editorSelection = selection;
@@ -105,12 +102,7 @@ export class RoomsController implements PageController {
         void this.renderCharacters();
       },
       navigateToRoom: (roomId: string): void => {
-        if (roomId === "settings") {
-          openSceneSettingsPanel(null);
-          return;
-        }
-
-        navigateToScenePage(roomId);
+        openSceneDebugRoom(roomId as never);
       },
       updateInteractive: (id, updater): void => {
         this.sceneLayout.interactives = this.sceneLayout.interactives.map((interactive) =>
@@ -145,6 +137,9 @@ export class RoomsController implements PageController {
         } catch {
           console.info("Rooms scene layout copy failed.");
         }
+      },
+      saveSceneLayoutToSource: async (): Promise<void> => {
+        await ROOMS_SCENE_DEBUG_STORE.saveSource(this.sceneLayout);
       },
     });
     this.editor.refresh();
@@ -300,11 +295,7 @@ export class RoomsController implements PageController {
   }
 
   private isSceneDebugActive(): boolean {
-    return (
-      isSceneUiMode() &&
-      (getActiveSceneDebugRoomId() ?? document.documentElement.getAttribute("data-active-page")) ===
-        "rooms"
-    );
+    return isSceneDebugRoomActive("rooms");
   }
 
   private getDepthScale(depth: number): number {

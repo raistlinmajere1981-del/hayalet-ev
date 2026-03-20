@@ -2,12 +2,12 @@ import type {
   SceneCharacterRole,
   SceneCharacterRoleConfig,
   SceneCharacterThemeDefinition,
-} from "../schema.js";
+} from "../scene/schema.js";
 
-import { getSceneThemePack } from "./scene-theme-registry.js";
+import { getActiveSceneTheme } from "./scene-theme-registry.js";
 
 export function getSceneCharacterTheme(): SceneCharacterThemeDefinition {
-  return getSceneThemePack().characters;
+  return getActiveSceneTheme().characters;
 }
 
 export function getSceneCharacterRoleConfig(role: SceneCharacterRole): SceneCharacterRoleConfig {

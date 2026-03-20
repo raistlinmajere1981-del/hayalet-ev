@@ -1,4 +1,6 @@
 @import "./design-system/index.css";
+@import "./scene-system/index.css";
+@import "./scene-editor/index.css";
 
 *,
 *::before,
@@ -1077,11 +1079,6 @@ body.is-scroll-locked {
 .settings-scene__hotspot-label.is-selected {
   background: rgb(24 14 11 / 0.92);
   box-shadow: 0 0 0 var(--border-1) rgb(126 201 255 / 0.32);
-}
-
-[data-scene-debug="true"] .settings-scene__hotspot-label {
-  pointer-events: auto;
-  cursor: pointer;
 }
 
 .settings-scene__hotspot:hover + .settings-scene__hotspot-label,

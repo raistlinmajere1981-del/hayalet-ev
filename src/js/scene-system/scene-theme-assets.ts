@@ -1,9 +1,9 @@
-import type { SceneRoomThemeDefinition, SceneRoomId, SceneThemeViewDefinition } from "../schema.js";
+import type { SceneRoomId, SceneRoomThemeDefinition, SceneThemeViewDefinition } from "../scene/schema.js";
 
-import { getSceneThemePack } from "./scene-theme-registry.js";
+import { getActiveSceneTheme } from "./scene-theme-registry.js";
 
 export function getSceneRoomTheme(roomId: SceneRoomId): SceneRoomThemeDefinition {
-  return getSceneThemePack().rooms[roomId];
+  return getActiveSceneTheme().rooms[roomId];
 }
 
 export function getSceneRoomBackgroundSrc(roomId: SceneRoomId): string {

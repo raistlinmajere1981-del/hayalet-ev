@@ -128,24 +128,25 @@ hev_validate_provider_selectors{ provider_name: "chatgpt" };
 
 ---
 
-### 6. Scene Runtime ve Theme-Pack
+### 6. Scene Runtime, Theme Source ve Scene Editor
 
 **Ana Dosyalar:**
 
-- `src/assets/themes/castle/scene/manifest.ts`
-- `src/js/scene/theme-pack.ts`
-- `src/js/scene/debug-store.ts`
-- `src/js/scene/back-zone.ts`
-- `src/js/pages/entrance/scene/scene-map.ts`
+- `shared/themes/castle/manifest.ts`
+- `shared/themes/castle/maps/*.scene.json`
+- `src/js/scene-system/index.ts`
+- `src/js/scene-editor/index.ts`
+- `src/styles/scene-system/index.css`
+- `src/styles/scene-editor/index.css`
 
-**Rol:** Scene art, object-view art, back-zone policy ve debug draft anahtarlarını tek theme-pack sözleşmesinde toplar.
+**Rol:** Theme source tek kaynaktır. Scene runtime bu kaynağı player gibi okur ve uygular. Scene editor aynı map dosyalarını draft + save-to-source akışıyla düzenler.
 
 **Kurallar:**
 
-- Scene asset ve policy okumaları `theme-pack.ts` üstünden yapılır.
-- `scene-map.ts` yalnızca room geometry/node default kaynağıdır; draft load/save işi burada tutulmaz.
-- `debug-store.ts` local draft persistence için tek generic katmandır.
-- Scene runtime tarafında `scene-config.ts` benzeri ikinci bir asset adapter katmanı tutulmaz.
+- Theme asset, loading frame, character config ve room map verileri `shared/themes/<themeId>` altında tutulur.
+- Scene runtime yalnızca `src/js/scene-system/*` üstünden theme okur; room geometry için ikinci bir kaynak tutulmaz.
+- Scene editor yalnızca `src/js/scene-editor/*` üstünden çalışır; local draft ayrı, source save ayrı aksiyondur.
+- `src/styles/design-system/*` classic theme alanıdır; scene shell `src/styles/scene-system`, debug/editor UI `src/styles/scene-editor` altında yaşar.
 
 ---
 

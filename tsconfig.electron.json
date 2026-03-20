@@ -34,6 +34,7 @@
       "@electron/*": ["electron/*"],
       "@electron/types": ["electron/types/index.ts"],
       "@shared/*": ["src/types/*"],
+      "@theme-source/*": ["shared/themes/*"],
       "@mcp/*": ["src/mcp-server/*"],
       "@timeouts": ["shared/timeouts.ts"],
       "@limits": ["shared/limits.ts"],

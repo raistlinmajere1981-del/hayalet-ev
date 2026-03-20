@@ -1,0 +1,263 @@
+{
+  "characterRosterPreset": "user-only",
+  "referenceSize": {
+    "width": 1920,
+    "height": 1080
+  },
+  "interactives": [
+    {
+      "id": "door-close",
+      "kind": "interactive",
+      "viewId": null,
+      "action": {
+        "type": "settings-scene-close"
+      },
+      "rect": {
+        "leftPx": 173,
+        "topPx": 194,
+        "widthPx": 221,
+        "heightPx": 626
+      },
+      "frame": {
+        "variant": "left-angled",
+        "rotateDeg": -1.5,
+        "perspectiveDeg": 10,
+        "hueDeg": 33,
+        "alpha": 0.34
+      },
+      "label": {
+        "visible": true,
+        "textKey": "common.close",
+        "centerXPx": 284,
+        "topPx": 154,
+        "widthPx": 220,
+        "heightPx": 40,
+        "rotateDeg": 0,
+        "fontSizePx": 22,
+        "letterSpacingPx": 1,
+        "fontPreset": "display",
+        "framePerspectiveDeg": 0
+      }
+    },
+    {
+      "id": "panel-theme",
+      "kind": "interactive",
+      "viewId": null,
+      "action": {
+        "type": "settings",
+        "panel": "theme"
+      },
+      "rect": {
+        "leftPx": 1190,
+        "topPx": 216,
+        "widthPx": 202,
+        "heightPx": 184
+      },
+      "frame": {
+        "variant": "flat",
+        "rotateDeg": 0,
+        "perspectiveDeg": 0,
+        "hueDeg": 33,
+        "alpha": 0.34
+      },
+      "label": {
+        "visible": true,
+        "textKey": "settingsHub.nav.theme",
+        "centerXPx": 1291,
+        "topPx": 176,
+        "widthPx": 220,
+        "heightPx": 40,
+        "rotateDeg": 0,
+        "fontSizePx": 18,
+        "letterSpacingPx": 1,
+        "fontPreset": "display",
+        "framePerspectiveDeg": 0
+      }
+    },
+    {
+      "id": "panel-accounts",
+      "kind": "interactive",
+      "viewId": null,
+      "action": {
+        "type": "settings",
+        "panel": "accounts"
+      },
+      "rect": {
+        "leftPx": 576,
+        "topPx": 302,
+        "widthPx": 240,
+        "heightPx": 194
+      },
+      "frame": {
+        "variant": "flat",
+        "rotateDeg": 0,
+        "perspectiveDeg": 0,
+        "hueDeg": 33,
+        "alpha": 0.34
+      },
+      "label": {
+        "visible": true,
+        "textKey": "settingsHub.nav.accounts",
+        "centerXPx": 696,
+        "topPx": 262,
+        "widthPx": 220,
+        "heightPx": 40,
+        "rotateDeg": 0,
+        "fontSizePx": 18,
+        "letterSpacingPx": 1,
+        "fontPreset": "display",
+        "framePerspectiveDeg": 0
+      }
+    },
+    {
+      "id": "panel-backup",
+      "kind": "interactive",
+      "viewId": null,
+      "action": {
+        "type": "settings",
+        "panel": "backup"
+      },
+      "rect": {
+        "leftPx": 1402,
+        "topPx": 486,
+        "widthPx": 192,
+        "heightPx": 216
+      },
+      "frame": {
+        "variant": "flat",
+        "rotateDeg": 0,
+        "perspectiveDeg": 0,
+        "hueDeg": 33,
+        "alpha": 0.34
+      },
+      "label": {
+        "visible": true,
+        "textKey": "settingsHub.nav.backup",
+        "centerXPx": 1498,
+        "topPx": 446,
+        "widthPx": 220,
+        "heightPx": 40,
+        "rotateDeg": 0,
+        "fontSizePx": 18,
+        "letterSpacingPx": 1,
+        "fontPreset": "display",
+        "framePerspectiveDeg": 0
+      }
+    },
+    {
+      "id": "panel-rooms",
+      "kind": "interactive",
+      "viewId": null,
+      "action": {
+        "type": "settings",
+        "panel": "rooms"
+      },
+      "rect": {
+        "leftPx": 384,
+        "topPx": 529,
+        "widthPx": 250,
+        "heightPx": 227
+      },
+      "frame": {
+        "variant": "flat",
+        "rotateDeg": 0,
+        "perspectiveDeg": 0,
+        "hueDeg": 33,
+        "alpha": 0.34
+      },
+      "label": {
+        "visible": true,
+        "textKey": "settingsHub.nav.rooms",
+        "centerXPx": 509,
+        "topPx": 489,
+        "widthPx": 220,
+        "heightPx": 40,
+        "rotateDeg": 0,
+        "fontSizePx": 18,
+        "letterSpacingPx": 1,
+        "fontPreset": "display",
+        "framePerspectiveDeg": 0
+      }
+    },
+    {
+      "id": "panel-live-log",
+      "kind": "interactive",
+      "viewId": null,
+      "action": {
+        "type": "settings",
+        "panel": "live-log"
+      },
+      "rect": {
+        "leftPx": 1037,
+        "topPx": 605,
+        "widthPx": 269,
+        "heightPx": 194
+      },
+      "frame": {
+        "variant": "flat",
+        "rotateDeg": 0,
+        "perspectiveDeg": 0,
+        "hueDeg": 33,
+        "alpha": 0.34
+      },
+      "label": {
+        "visible": true,
+        "textKey": "settingsHub.nav.liveLog",
+        "centerXPx": 1172,
+        "topPx": 565,
+        "widthPx": 240,
+        "heightPx": 40,
+        "rotateDeg": 0,
+        "fontSizePx": 18,
+        "letterSpacingPx": 1,
+        "fontPreset": "display",
+        "framePerspectiveDeg": 0
+      }
+    }
+  ],
+  "backs": [
+    {
+      "id": "back-panel",
+      "kind": "back",
+      "viewId": "panel",
+      "action": {
+        "type": "back",
+        "target": "room"
+      },
+      "rect": {
+        "leftPx": 0,
+        "topPx": 0,
+        "widthPx": 116,
+        "heightPx": 1080
+      },
+      "glow": {
+        "hueDeg": 33,
+        "alpha": 0.34
+      },
+      "label": {
+        "visible": true,
+        "textKey": "settingsHub.scene.returnRoom",
+        "centerXPx": 58,
+        "topPx": 490,
+        "widthPx": 180,
+        "heightPx": 40,
+        "rotateDeg": 0,
+        "fontSizePx": 18,
+        "letterSpacingPx": 1,
+        "fontPreset": "display",
+        "framePerspectiveDeg": 0
+      }
+    }
+  ],
+  "characters": [
+    {
+      "id": "anchor-user",
+      "kind": "character",
+      "characterKind": "user",
+      "leftPx": 937,
+      "bottomPx": 113,
+      "scale": 0.92,
+      "depth": 4
+    }
+  ]
+}

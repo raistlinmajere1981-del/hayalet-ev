@@ -186,7 +186,7 @@ export type SceneCharacterRoleConfig = SceneCharacterVisualConfig;
 
 export interface SceneLoadingThemeDefinition {
   frameDurationMs: number;
-  frames: string[];
+  frames: readonly string[];
 }
 
 export interface SceneCharacterThemeDefinition {

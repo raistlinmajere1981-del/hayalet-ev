@@ -7,10 +7,7 @@ test("rooms scene page registers nav, template, controller, and scene background
   const pageInitSource = readFileSync("src/js/app/page-init.ts", "utf8");
   const pageSource = readFileSync("src/pages/rooms.html", "utf8");
   const controllerSource = readFileSync("src/js/pages/rooms.ts", "utf8");
-  const sceneShellSource = readFileSync(
-    "src/styles/design-system/components/scene-shell.css",
-    "utf8"
-  );
+  const sceneShellSource = readFileSync("src/styles/scene-system/shell.css", "utf8");
 
   assert.match(appShellSource, /data-page="rooms"/);
   assert.match(appShellSource, /data-shell-i18n-text="sideNav\.roomsLabel"/);
@@ -23,7 +20,7 @@ test("rooms scene page registers nav, template, controller, and scene background
   assert.match(pageSource, /id="rooms-classic-shell"/);
   assert.match(controllerSource, /createSceneDebugStore\("rooms"\)/);
   assert.match(controllerSource, /getSceneRoomBackgroundSrc\("rooms"\)/);
-  assert.match(controllerSource, /getActiveSceneDebugRoomId\(\).*\=\=\=\s*"rooms"/s);
+  assert.match(controllerSource, /isSceneDebugRoomActive\("rooms"\)/);
   assert.match(sceneShellSource, /\[data-ui-mode="scene"\] \.top-bar/);
   assert.match(sceneShellSource, /\[data-ui-mode="scene"\] \.main-content/);
 });

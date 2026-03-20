@@ -8,11 +8,11 @@ import {
   createSceneDebugStore,
   EntranceSceneEditor,
   type EntranceSceneEditorSelection,
-  getActiveSceneDebugRoomId,
+  getSceneDebugRoomOptions,
+  isSceneDebugRoomActive,
   isSceneDebugRoomId,
-  SCENE_DEBUG_ROOMS,
   setActiveSceneDebugRoomId,
-} from "../../scene/debug/index.js";
+} from "../../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
@@ -32,7 +32,7 @@ import { syncSceneViewRuntime } from "../../scene/runtime.js";
 import {
   getSceneRoomBackgroundSrc,
   getSceneRoomPanelSrc,
-} from "../../scene/theme/scene-theme-assets.js";
+} from "../../scene-system/index.js";
 import { isSceneUiMode } from "../../ui/ui-mode.js";
 
 const SETTINGS_PANELS = ["theme", "accounts", "backup", "rooms", "live-log"] as const;
@@ -240,11 +240,7 @@ class SettingsSceneController {
       isActive: (): boolean => this.isEditorActive(),
       getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
       getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
-      getRoomOptions: (): Array<{ id: string; label: string }> =>
-        SCENE_DEBUG_ROOMS.map((room) => ({
-          id: room.id,
-          label: shellT(room.labelKey),
-        })),
+      getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "settings",
       setSelection: (selection): void => {
         this.editorSelection = selection;
@@ -300,6 +296,9 @@ class SettingsSceneController {
         } catch {
           console.info("Settings scene layout copy failed.");
         }
+      },
+      saveSceneLayoutToSource: async (): Promise<void> => {
+        await SETTINGS_SCENE_DEBUG_STORE.saveSource(this.sceneLayout);
       },
     });
     this.editor.refresh();
@@ -371,8 +370,7 @@ class SettingsSceneController {
       this.sceneDebugEnabled &&
       this.state.open &&
       isSceneUiMode() &&
-      (getActiveSceneDebugRoomId() ?? document.documentElement.getAttribute("data-active-page")) ===
-        "settings"
+      isSceneDebugRoomActive("settings")
     );
   }
 

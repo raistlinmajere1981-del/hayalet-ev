@@ -1,59 +1,42 @@
-import { getSceneDebugDraftStorageKey } from "./scene-debug-theme.js";
-import type { SceneDebugEditableRoomId } from "../schema.js";
+import { FileManager } from "../modules/file-manager.js";
 import {
   cloneSceneLayout,
-  DEFAULT_ANALYZE_SCENE_LAYOUT,
-  DEFAULT_ASSISTANT_SCENE_LAYOUT,
-  DEFAULT_ENTRANCE_SCENE_LAYOUT,
-  DEFAULT_ROOMS_SCENE_LAYOUT,
-  DEFAULT_SERVER_SCENE_LAYOUT,
-  DEFAULT_SETTINGS_SCENE_LAYOUT,
   parseSceneLayoutDraft,
   serializeSceneLayout,
   type SceneLayoutConfig,
-} from "../layout/index.js";
+} from "../scene/layout/index.js";
+import type { SceneDebugEditableRoomId } from "../scene/schema.js";
+import { getSceneRoomLayout, getSceneRoomSourcePath, getSceneThemeId } from "../scene-system/index.js";
 
 interface SceneDebugStoreConfig {
-  defaultLayout: SceneLayoutConfig;
   storageKey: string;
+  sourcePath: string;
 }
 
 export interface SceneDebugStore {
   roomId: SceneDebugEditableRoomId;
+  getSourcePath(): string;
   cloneDefault(): SceneLayoutConfig;
   loadDraft(): SceneLayoutConfig | null;
   saveDraft(sceneLayout: SceneLayoutConfig): void;
   clearDraft(): void;
   serialize(sceneLayout: SceneLayoutConfig): string;
   copyToClipboard(sceneLayout: SceneLayoutConfig): Promise<void>;
+  saveSource(sceneLayout: SceneLayoutConfig): Promise<boolean>;
 }
 
-const SCENE_DEBUG_STORE_CONFIG: Record<SceneDebugEditableRoomId, SceneDebugStoreConfig> = {
-  entrance: {
-    defaultLayout: DEFAULT_ENTRANCE_SCENE_LAYOUT,
-    storageKey: getSceneDebugDraftStorageKey("entrance"),
-  },
-  analyze: {
-    defaultLayout: DEFAULT_ANALYZE_SCENE_LAYOUT,
-    storageKey: getSceneDebugDraftStorageKey("analyze"),
-  },
-  assistant: {
-    defaultLayout: DEFAULT_ASSISTANT_SCENE_LAYOUT,
-    storageKey: getSceneDebugDraftStorageKey("assistant"),
-  },
-  server: {
-    defaultLayout: DEFAULT_SERVER_SCENE_LAYOUT,
-    storageKey: getSceneDebugDraftStorageKey("server"),
-  },
-  rooms: {
-    defaultLayout: DEFAULT_ROOMS_SCENE_LAYOUT,
-    storageKey: getSceneDebugDraftStorageKey("rooms"),
-  },
-  settings: {
-    defaultLayout: DEFAULT_SETTINGS_SCENE_LAYOUT,
-    storageKey: getSceneDebugDraftStorageKey("settings"),
-  },
-};
+const SCENE_EDITOR_DRAFT_VERSION = "v2";
+
+function getSceneDebugDraftStorageKey(roomId: SceneDebugEditableRoomId): string {
+  return `scene-editor:${getSceneThemeId()}:${roomId}:draft:${SCENE_EDITOR_DRAFT_VERSION}`;
+}
+
+function getSceneDebugStoreConfig(roomId: SceneDebugEditableRoomId): SceneDebugStoreConfig {
+  return {
+    storageKey: getSceneDebugDraftStorageKey(roomId),
+    sourcePath: getSceneRoomSourcePath(roomId),
+  };
+}
 
 function loadSceneDebugDraft(config: SceneDebugStoreConfig): SceneLayoutConfig | null {
   try {
@@ -85,12 +68,15 @@ function clearSceneDebugDraft(config: SceneDebugStoreConfig): void {
 }
 
 export function createSceneDebugStore(roomId: SceneDebugEditableRoomId): SceneDebugStore {
-  const config = SCENE_DEBUG_STORE_CONFIG[roomId];
+  const config = getSceneDebugStoreConfig(roomId);
 
   return {
     roomId,
+    getSourcePath(): string {
+      return config.sourcePath;
+    },
     cloneDefault(): SceneLayoutConfig {
-      return cloneSceneLayout(config.defaultLayout);
+      return cloneSceneLayout(getSceneRoomLayout(roomId));
     },
     loadDraft(): SceneLayoutConfig | null {
       return loadSceneDebugDraft(config);
@@ -106,6 +92,14 @@ export function createSceneDebugStore(roomId: SceneDebugEditableRoomId): SceneDe
     },
     async copyToClipboard(sceneLayout: SceneLayoutConfig): Promise<void> {
       await navigator.clipboard.writeText(serializeSceneLayout(sceneLayout));
+    },
+    async saveSource(sceneLayout: SceneLayoutConfig): Promise<boolean> {
+      const savedPath = await FileManager.writeFileAtomic(
+        config.sourcePath,
+        `${serializeSceneLayout(sceneLayout)}\n`,
+        "utf-8"
+      );
+      return savedPath !== "";
     },
   };
 }

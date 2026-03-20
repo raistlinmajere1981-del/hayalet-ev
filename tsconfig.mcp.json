@@ -6,6 +6,7 @@
       "@electron/*": ["electron/*"],
       "@mcp/*": ["src/mcp-server/*"],
       "@shared/*": ["src/types/*"],
+      "@theme-source/*": ["shared/themes/*"],
       "@timeouts": ["shared/timeouts.ts"],
       "@limits": ["shared/limits.ts"],
       "@slots": ["shared/slots.ts"],

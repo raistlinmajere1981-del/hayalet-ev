@@ -58,6 +58,7 @@ export default defineConfig({
     alias: {
       "@": resolve(__dirname, "src"),
       "@shared": resolve(__dirname, "src/types"),
+      "@theme-source": resolve(__dirname, "shared/themes"),
       "@electron": resolve(__dirname, "electron"),
       "@timeouts": resolve(__dirname, "shared/timeouts.ts"),
       "@limits": resolve(__dirname, "shared/limits.ts"),

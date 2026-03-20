@@ -16,9 +16,10 @@ import {
   createSceneDebugStore,
   EntranceSceneEditor,
   type EntranceSceneEditorSelection,
-  getActiveSceneDebugRoomId,
-  SCENE_DEBUG_ROOMS,
-} from "../scene/debug/index.js";
+  getSceneDebugRoomOptions,
+  isSceneDebugRoomActive,
+  openSceneDebugRoom,
+} from "../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
@@ -38,7 +39,7 @@ import { syncSceneViewRuntime } from "../scene/runtime.js";
 import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewPanelArtSrc,
-} from "../scene/theme/scene-theme-assets.js";
+} from "../scene-system/index.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 import { shellT } from "../app/shell-i18n.js";
 import {
@@ -306,11 +307,7 @@ export class ServerController {
       isActive: (): boolean => this.isServerSceneDebugActive(),
       getSceneLayout: (): SceneLayoutConfig => this._serverSceneLayout,
       getSelection: (): EntranceSceneEditorSelection => this._serverSceneSelection,
-      getRoomOptions: (): Array<{ id: string; label: string }> =>
-        SCENE_DEBUG_ROOMS.map((room) => ({
-          id: room.id,
-          label: shellT(room.labelKey),
-        })),
+      getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "server",
       setSelection: (selection): void => {
         this._serverSceneSelection = selection;
@@ -319,12 +316,7 @@ export class ServerController {
       },
       navigateToRoom: (roomId: string): void => {
         this.setServerSceneScreenOpen(false);
-        if (roomId === "settings") {
-          openSceneSettingsPanel(null);
-          return;
-        }
-
-        this._navigateToPage(roomId);
+        openSceneDebugRoom(roomId as never);
       },
       updateInteractive: (id, updater): void => {
         this._serverSceneLayout.interactives = this._serverSceneLayout.interactives.map((interactive) =>
@@ -363,6 +355,9 @@ export class ServerController {
         } catch {
           console.info("Server scene layout copy failed.");
         }
+      },
+      saveSceneLayoutToSource: async (): Promise<void> => {
+        await SERVER_SCENE_DEBUG_STORE.saveSource(this._serverSceneLayout);
       },
     });
     this._serverSceneEditor.refresh();
@@ -427,11 +422,7 @@ export class ServerController {
   }
 
   private isServerSceneDebugActive(): boolean {
-    return (
-      isSceneUiMode() &&
-      (getActiveSceneDebugRoomId() ?? document.documentElement.getAttribute("data-active-page")) ===
-        "server"
-    );
+    return isSceneDebugRoomActive("server");
   }
 
   private bindServerSceneInteractions(): void {

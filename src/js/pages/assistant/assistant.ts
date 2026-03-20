@@ -86,9 +86,10 @@ import {
   createSceneDebugStore,
   EntranceSceneEditor,
   type EntranceSceneEditorSelection,
-  getActiveSceneDebugRoomId,
-  SCENE_DEBUG_ROOMS,
-} from "../../scene/debug/index.js";
+  getSceneDebugRoomOptions,
+  isSceneDebugRoomActive,
+  openSceneDebugRoom,
+} from "../../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
@@ -115,7 +116,7 @@ import { syncSceneViewRuntime } from "../../scene/runtime.js";
 import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewPanelArtSrc,
-} from "../../scene/theme/scene-theme-assets.js";
+} from "../../scene-system/index.js";
 import type {
   ProviderScenarioCommandReport,
   ProviderScenarioProgressEvent,
@@ -594,11 +595,7 @@ export class AssistantController {
       isActive: (): boolean => this._isAssistantSceneDebugActive(),
       getSceneLayout: (): SceneLayoutConfig => this._assistantSceneLayout,
       getSelection: (): EntranceSceneEditorSelection => this._assistantSceneSelection,
-      getRoomOptions: (): Array<{ id: string; label: string }> =>
-        SCENE_DEBUG_ROOMS.map((room) => ({
-          id: room.id,
-          label: shellT(room.labelKey),
-        })),
+      getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "assistant",
       setSelection: (selection): void => {
         this._assistantSceneSelection = selection;
@@ -646,6 +643,9 @@ export class AssistantController {
         } catch {
           console.info("Assistant scene layout copy failed.");
         }
+      },
+      saveSceneLayoutToSource: async (): Promise<void> => {
+        await ASSISTANT_SCENE_DEBUG_STORE.saveSource(this._assistantSceneLayout);
       },
     });
     this._assistantSceneEditor.refresh();
@@ -786,11 +786,7 @@ export class AssistantController {
   }
 
   _isAssistantSceneDebugActive(): boolean {
-    return (
-      isSceneUiMode() &&
-      (getActiveSceneDebugRoomId() ?? document.documentElement.getAttribute("data-active-page")) ===
-        "assistant"
-    );
+    return isSceneDebugRoomActive("assistant");
   }
 
   _setAssistantSceneScreenOpen(open: boolean): void {
@@ -859,14 +855,8 @@ export class AssistantController {
   }
 
   _navigateToSceneDebugRoom(roomId: string): void {
-    if (roomId === "settings") {
-      this._setAssistantSceneScreenOpen(false);
-      openSceneSettingsPanel(null);
-      return;
-    }
-
     this._setAssistantSceneScreenOpen(false);
-    this._navigateToPage(roomId);
+    openSceneDebugRoom(roomId as never);
   }
 
   _syncAssistantSceneCharacterState(): void {

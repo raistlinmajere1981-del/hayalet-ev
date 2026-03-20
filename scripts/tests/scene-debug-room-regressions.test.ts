@@ -14,13 +14,20 @@ import {
   getSceneBackNodeForView,
   listSceneDebugNodes,
 } from "../../src/js/scene/layout/index.ts";
-import { SCENE_DEBUG_ROOMS } from "../../src/js/scene/debug/index.ts";
 
 test("scene debug room registry includes all unified scene rooms", () => {
-  assert.deepEqual(
-    SCENE_DEBUG_ROOMS.map((room) => room.id),
-    ["entrance", "analyze", "assistant", "server", "rooms", "settings"]
-  );
+  const roomRegistrySource = readFileSync("src/js/scene-editor/scene-debug-room-registry.ts", "utf8");
+
+  assert.match(roomRegistrySource, /const SCENE_DEBUG_ROOM_LABEL_KEYS/);
+  assert.match(roomRegistrySource, /entrance:\s*"sideNav\.entranceLabel"/);
+  assert.match(roomRegistrySource, /analyze:\s*"sideNav\.analyzeLabel"/);
+  assert.match(roomRegistrySource, /assistant:\s*"sideNav\.assistantLabel"/);
+  assert.match(roomRegistrySource, /server:\s*"sideNav\.serverLabel"/);
+  assert.match(roomRegistrySource, /rooms:\s*"sideNav\.roomsLabel"/);
+  assert.match(roomRegistrySource, /settings:\s*"settingsHub\.openButton"/);
+  assert.match(roomRegistrySource, /export const SCENE_DEBUG_ROOMS/);
+  assert.match(roomRegistrySource, /SCENE_ROOM_IDS\.map/);
+  assert.match(roomRegistrySource, /export function getSceneDebugRoomOptions/);
 });
 
 test("entrance scene layout keeps room targets and whisper return in one layout registry", () => {
@@ -103,15 +110,35 @@ test("rooms scene layout ships with one interactive entrance and no extra nodes"
 });
 
 test("scene editor renders unified section labels", () => {
-  const editorSource = readFileSync("src/js/scene/debug/scene-debug-editor.ts", "utf8");
+  const editorSource = readFileSync("src/js/scene-editor/scene-map-editor.ts", "utf8");
   assert.match(editorSource, /data-editor-action="room"/);
+  assert.match(editorSource, /data-editor-action="save-source"/);
   assert.match(editorSource, /entrance-scene__editor-room-list/);
+  assert.match(editorSource, /Drafts stay local until you save the theme map\./);
   assert.match(editorSource, /Interactives/);
   assert.match(editorSource, /Backs/);
   assert.match(editorSource, /Characters/);
   assert.doesNotMatch(editorSource, /Objects/);
   assert.doesNotMatch(editorSource, /Interactives\/Backs/);
   assert.equal(existsSync("src/js/pages/entrance/scene/scene-editor.ts"), false);
+  assert.equal(existsSync("src/js/scene/debug"), false);
+});
+
+test("entrance scene enables clickable labels and narrows character hit areas", () => {
+  const entranceControllerSource = readFileSync(
+    "src/js/pages/entrance/scene/scene-controller.ts",
+    "utf8"
+  );
+  const interactiveLayerSource = readFileSync("src/js/scene/renderers/interactive-layer.ts", "utf8");
+  const entranceCssSource = readFileSync("src/styles/entrance/scene.css", "utf8");
+
+  assert.match(entranceControllerSource, /interactiveLabels:\s*true/);
+  assert.match(interactiveLayerSource, /interactiveLabels\?: boolean/);
+  assert.match(interactiveLayerSource, /label\.dataset\["clickable"\]\s*=\s*"true"/);
+  assert.match(interactiveLayerSource, /label\.tabIndex = 0/);
+  assert.match(entranceCssSource, /\.entrance-scene__hotspot-label\[data-clickable="true"\]/);
+  assert.match(entranceCssSource, /\.entrance-scene \.entrance-scene__character \{\s*pointer-events: none;/s);
+  assert.match(entranceCssSource, /\.entrance-scene \.entrance-scene__character-head,[\s\S]*pointer-events: auto;/);
 });
 
 test("scene debug node list exposes interactive, back, and character nodes", () => {

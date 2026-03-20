@@ -161,10 +161,6 @@
   display: inline-flex;
 }
 
-[data-scene-debug="true"] .assistant-scene__characters .entrance-scene__character {
-  cursor: pointer;
-}
-
 .assistant-scene__character {
   position: absolute;
   left: var(--assistant-scene-character-left);
@@ -440,34 +436,6 @@
     linear-gradient(90deg, rgb(7 5 5 / 0.58), transparent 18%, transparent 82%, rgb(7 5 5 / 0.58)),
     radial-gradient(circle at center, transparent 44%, rgb(0 0 0 / 0.22) 100%);
   pointer-events: none;
-}
-
-[data-scene-debug="true"] .assistant-scene__character {
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-[data-scene-debug="true"] .assistant-scene__hotspot-label {
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-[data-scene-debug="true"] .assistant-scene__characters .entrance-scene__character-head {
-  pointer-events: auto;
-}
-
-[data-scene-debug="true"] .assistant-scene__characters {
-  pointer-events: auto;
-}
-
-[data-scene-debug="true"] .assistant-scene__character.is-selected .assistant-scene__character-head {
-  box-shadow:
-    0 0 0 var(--assistant-scene-selected-head-ring) rgb(126 201 255 / 0.2),
-    0 0 0 var(--assistant-scene-selected-head-halo) rgb(83 149 221 / 0.16);
-}
-
-[data-scene-debug="true"] .assistant-scene__character-anchor-marker {
-  display: inline-flex;
 }
 
 [data-ui-mode="scene"][data-active-page="assistant"] .page-assistant {

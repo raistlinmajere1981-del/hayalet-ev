@@ -21,8 +21,8 @@ test("ui mode orchestration centralizes option definitions and shared dropdown r
 });
 
 test("scene cleanup removes legacy facades and keeps canonical roots only", () => {
-  const debugIndexSource = readFileSync("src/js/scene/debug/index.ts", "utf8");
-  const themeIndexSource = readFileSync("src/js/scene/theme/index.ts", "utf8");
+  const sceneEditorIndexSource = readFileSync("src/js/scene-editor/index.ts", "utf8");
+  const sceneSystemIndexSource = readFileSync("src/js/scene-system/index.ts", "utf8");
   const uiIndexSource = readFileSync("src/js/ui/index.ts", "utf8");
 
   assert.equal(existsSync("src/js/scene/theme-pack.ts"), false);
@@ -30,8 +30,11 @@ test("scene cleanup removes legacy facades and keeps canonical roots only", () =
   assert.equal(existsSync("src/js/scene/scene-debug-rooms.ts"), false);
   assert.equal(existsSync("src/js/pages/entrance/scene/scene-debug.ts"), false);
   assert.equal(existsSync("src/js/pages/entrance/scene/scene-map.ts"), false);
-  assert.match(debugIndexSource, /scene-debug-store\.js/);
-  assert.match(debugIndexSource, /scene-debug-room-registry\.js/);
-  assert.match(themeIndexSource, /scene-theme-pack\.js/);
+  assert.equal(existsSync("src/js/scene/debug"), false);
+  assert.equal(existsSync("src/js/scene/theme"), false);
+  assert.match(sceneEditorIndexSource, /scene-editor-store\.js/);
+  assert.match(sceneEditorIndexSource, /scene-map-editor\.js/);
+  assert.match(sceneSystemIndexSource, /scene-theme-registry\.js/);
+  assert.match(sceneSystemIndexSource, /scene-theme-assets\.js/);
   assert.match(uiIndexSource, /export \{ ThemeManager \} from "\.\/theme\/index"/);
 });

@@ -8,10 +8,11 @@ import {
   createSceneDebugStore,
   EntranceSceneEditor,
   type EntranceSceneEditorSelection,
-  getActiveSceneDebugRoomId,
+  getSceneDebugRoomOptions,
+  isSceneDebugRoomActive,
   isSceneDebugEnabled,
-  SCENE_DEBUG_ROOMS,
-} from "../../../scene/debug/index.js";
+  openSceneDebugRoom,
+} from "../../../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
@@ -31,7 +32,7 @@ import { renderSceneInteractiveLayer } from "../../../scene/renderers/interactiv
 import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewBackgroundSrc,
-} from "../../../scene/theme/scene-theme-assets.js";
+} from "../../../scene-system/index.js";
 import {
   SCENE_TOOL_CLOSE_EVENT,
   SCENE_TOOL_HOST_HIDE_EVENT,
@@ -114,16 +115,10 @@ export class EntranceSceneController {
     if (this.sceneDebugEnabled && this.editorHost !== null) {
       this.editor = new EntranceSceneEditor(this.editorHost, {
         isActive: (): boolean =>
-          isSceneUiMode() &&
-          (getActiveSceneDebugRoomId() ??
-            document.documentElement.getAttribute("data-active-page")) === "entrance",
+          isSceneDebugRoomActive("entrance"),
         getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
         getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
-        getRoomOptions: (): Array<{ id: string; label: string }> =>
-          SCENE_DEBUG_ROOMS.map((room) => ({
-            id: room.id,
-            label: shellT(room.labelKey),
-          })),
+        getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
         getActiveRoomId: (): string => "entrance",
         setSelection: (selection): void => {
           this.editorSelection = selection;
@@ -132,12 +127,7 @@ export class EntranceSceneController {
           void this.renderCharacters();
         },
         navigateToRoom: (roomId: string): void => {
-          if (roomId === "settings") {
-            openSceneSettingsPanel(null);
-            return;
-          }
-
-          navigateToScenePage(roomId);
+          openSceneDebugRoom(roomId as never);
         },
         updateInteractive: (id, updater): void => {
           this.sceneLayout.interactives = this.sceneLayout.interactives.map((interactive) =>
@@ -178,6 +168,9 @@ export class EntranceSceneController {
           } catch {
             console.info("Scene layout copy failed.");
           }
+        },
+        saveSceneLayoutToSource: async (): Promise<void> => {
+          await ENTRANCE_SCENE_DEBUG_STORE.saveSource(this.sceneLayout);
         },
       });
       this.editor.refresh();
@@ -299,6 +292,7 @@ export class EntranceSceneController {
         label: "entrance-scene__hotspot-label",
       },
       selection: this.editorSelection,
+      interactiveLabels: true,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
         this.handleInteractive(node.id);

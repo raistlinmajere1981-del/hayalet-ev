@@ -47,7 +47,9 @@ function toProjectPath(filePath) {
 function isTokenOrThemeFile(projectPath) {
   return (
     projectPath.startsWith("src/styles/design-system/tokens/") ||
-    projectPath.startsWith("src/styles/design-system/themes/")
+    projectPath.startsWith("src/styles/design-system/themes/") ||
+    projectPath.startsWith("src/styles/scene-system/") ||
+    projectPath.startsWith("src/styles/scene-editor/")
   );
 }
 
@@ -111,6 +113,9 @@ function collectDefinedCustomMedia(cssFiles) {
 
 function collectUndefinedVarIssues(cssFiles, definedVars) {
   for (const filePath of cssFiles) {
+    const projectPath = toProjectPath(filePath);
+    if (isTokenOrThemeFile(projectPath)) continue;
+
     const content = readFileSync(filePath, "utf8");
     CSS_VAR_USE_RE.lastIndex = 0;
     let match = CSS_VAR_USE_RE.exec(content);
@@ -131,6 +136,9 @@ function collectUndefinedVarIssues(cssFiles, definedVars) {
 
 function collectUndefinedCustomMediaIssues(cssFiles, definedMedia) {
   for (const filePath of cssFiles) {
+    const projectPath = toProjectPath(filePath);
+    if (isTokenOrThemeFile(projectPath)) continue;
+
     const content = readFileSync(filePath, "utf8");
     CUSTOM_MEDIA_USE_RE.lastIndex = 0;
     let match = CUSTOM_MEDIA_USE_RE.exec(content);

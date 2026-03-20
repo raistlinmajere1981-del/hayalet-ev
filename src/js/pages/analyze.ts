@@ -27,9 +27,10 @@ import {
   createSceneDebugStore,
   EntranceSceneEditor,
   type EntranceSceneEditorSelection,
-  getActiveSceneDebugRoomId,
-  SCENE_DEBUG_ROOMS,
-} from "../scene/debug/index.js";
+  getSceneDebugRoomOptions,
+  isSceneDebugRoomActive,
+  openSceneDebugRoom,
+} from "../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
@@ -40,7 +41,7 @@ import {
   getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
-import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../scene/theme/scene-theme-assets.js";
+import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../scene-system/index.js";
 import {
   SCENE_TOOL_CLOSE_EVENT,
   SCENE_TOOL_HOST_HIDE_EVENT,
@@ -337,11 +338,7 @@ export class AnalyzeController {
       isActive: (): boolean => this._isAnalyzeSceneDebugActive(),
       getSceneLayout: (): SceneLayoutConfig => this._analyzeSceneLayout,
       getSelection: (): EntranceSceneEditorSelection => this._analyzeSceneSelection,
-      getRoomOptions: (): Array<{ id: string; label: string }> =>
-        SCENE_DEBUG_ROOMS.map((room) => ({
-          id: room.id,
-          label: shellT(room.labelKey),
-        })),
+      getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "analyze",
       setSelection: (selection): void => {
         this._analyzeSceneSelection = selection;
@@ -389,6 +386,9 @@ export class AnalyzeController {
         } catch {
           console.info("Analyze scene layout copy failed.");
         }
+      },
+      saveSceneLayoutToSource: async (): Promise<void> => {
+        await ANALYZE_SCENE_DEBUG_STORE.saveSource(this._analyzeSceneLayout);
       },
     });
     this._analyzeSceneEditor.refresh();
@@ -515,11 +515,7 @@ export class AnalyzeController {
   }
 
   _isAnalyzeSceneDebugActive(): boolean {
-    return (
-      isSceneUiMode() &&
-      (getActiveSceneDebugRoomId() ?? document.documentElement.getAttribute("data-active-page")) ===
-        "analyze"
-    );
+    return isSceneDebugRoomActive("analyze");
   }
 
   _handleAnalyzeSceneInteractive(id: string): void {
@@ -698,12 +694,7 @@ export class AnalyzeController {
 
   _navigateToAnalyzeSceneDebugRoom(roomId: string): void {
     this._setAnalyzeSceneActiveView(null);
-    if (roomId === "settings") {
-      openSceneSettingsPanel(null);
-      return;
-    }
-
-    this._navigateToPage(roomId);
+    openSceneDebugRoom(roomId as never);
   }
 
   async loadSettings(): Promise<void> {

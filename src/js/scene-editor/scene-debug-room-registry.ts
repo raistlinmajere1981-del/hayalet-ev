@@ -1,4 +1,6 @@
-import { isSceneRoomId, SCENE_ROOM_IDS, type SceneRoomId } from "../schema.js";
+import { isSceneRoomId, SCENE_ROOM_IDS, type SceneRoomId } from "../scene/schema.js";
+import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
+import { isSceneUiMode } from "../ui/ui-mode.js";
 
 export type SceneDebugRoomId = SceneRoomId;
 
@@ -51,3 +53,31 @@ export const SCENE_DEBUG_ROOMS: readonly SceneDebugRoomDefinition[] = [
     labelKey: SCENE_DEBUG_ROOM_LABEL_KEYS[roomId],
   })),
 ];
+
+export function getSceneDebugRoomOptions(
+  translate: (key: string) => string
+): Array<{ id: SceneDebugRoomId; label: string }> {
+  return SCENE_DEBUG_ROOMS.map((room) => ({
+    id: room.id,
+    label: translate(room.labelKey),
+  }));
+}
+
+export function isSceneDebugRoomActive(roomId: SceneDebugRoomId): boolean {
+  if (!isSceneUiMode()) {
+    return false;
+  }
+
+  const activeRoomId = getActiveSceneDebugRoomId();
+  const fallbackRoomId = document.documentElement.getAttribute("data-active-page");
+  return (activeRoomId ?? fallbackRoomId) === roomId;
+}
+
+export function openSceneDebugRoom(roomId: SceneDebugRoomId): void {
+  if (roomId === "settings") {
+    openSceneSettingsPanel(null);
+    return;
+  }
+
+  navigateToScenePage(roomId);
+}

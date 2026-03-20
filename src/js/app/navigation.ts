@@ -7,7 +7,7 @@ import {
   generateWorkflowSessionId,
   updateAssistantRuntimeState,
 } from "../pages/assistant/assistant-runtime.js";
-import { isSceneDebugRoomId, setActiveSceneDebugRoomId } from "../scene/debug/index.js";
+import { isSceneDebugRoomId, setActiveSceneDebugRoomId } from "../scene-editor/index.js";
 import {
   getUiModeLabelKey,
   getUiModeRestartOptions,

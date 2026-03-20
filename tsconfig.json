@@ -47,6 +47,7 @@
       "@electron/*": ["electron/*"],
       "@mcp/*": ["src/mcp-server/*"],
       "@shared/*": ["src/types/*"],
+      "@theme-source/*": ["shared/themes/*"],
       "@timeouts": ["shared/timeouts.ts"],
       "@limits": ["shared/limits.ts"],
       "@slots": ["shared/slots.ts"],
@@ -65,7 +66,13 @@
   },
 
   // === Renderer Process (src/js) + Shared Types ===
-  "include": ["src/js/**/*.js", "src/js/**/*.ts", "src/js/**/*.d.ts", "src/types/**/*.ts"],
+  "include": [
+    "src/js/**/*.js",
+    "src/js/**/*.ts",
+    "src/js/**/*.d.ts",
+    "src/types/**/*.ts",
+    "shared/**/*.ts"
+  ],
 
   "exclude": [
     "node_modules",

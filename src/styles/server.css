@@ -84,11 +84,6 @@
   cursor: default;
 }
 
-[data-scene-debug="true"] .server-scene__hotspot-label {
-  pointer-events: auto;
-  cursor: pointer;
-}
-
 .server-scene__hotspot {
   position: absolute;
   left: var(--server-scene-hotspot-left);

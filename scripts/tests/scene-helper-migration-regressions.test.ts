@@ -16,17 +16,22 @@ test("shared scene consumers import canonical character and debug helpers", () =
     assert.doesNotMatch(source, /entrance\/scene\/scene-avatar\.js/);
     assert.doesNotMatch(source, /entrance\/scene\/scene-character-roster\.js/);
     assert.doesNotMatch(source, /entrance\/scene\/scene-editor\.js/);
+    assert.doesNotMatch(source, /scene\/debug\/index\.js/);
+    assert.doesNotMatch(source, /scene\/theme\/scene-theme-assets\.js/);
   }
 
   assert.match(sources[0]!, /from "\.\.\/\.\.\/scene\/characters\/index\.js"/);
-  assert.match(sources[0]!, /from "\.\.\/\.\.\/scene\/debug\/index\.js"/);
+  assert.match(sources[0]!, /from "\.\.\/\.\.\/scene-editor\/index\.js"/);
+  assert.match(sources[0]!, /from "\.\.\/\.\.\/scene-system\/index\.js"/);
   assert.match(sources[1]!, /from "\.\.\/scene\/characters\/index\.js"/);
-  assert.match(sources[1]!, /from "\.\.\/scene\/debug\/index\.js"/);
+  assert.match(sources[1]!, /from "\.\.\/scene-editor\/index\.js"/);
+  assert.match(sources[1]!, /from "\.\.\/scene-system\/index\.js"/);
 });
 
 test("legacy entrance scene helper files are removed after migration", () => {
   const charactersIndex = readFileSync("src/js/scene/characters/index.ts", "utf8");
-  const debugIndex = readFileSync("src/js/scene/debug/index.ts", "utf8");
+  const sceneEditorIndex = readFileSync("src/js/scene-editor/index.ts", "utf8");
+  const sceneSystemIndex = readFileSync("src/js/scene-system/index.ts", "utf8");
 
   assert.equal(existsSync("src/js/pages/entrance/scene/scene-avatar.ts"), false);
   assert.equal(existsSync("src/js/pages/entrance/scene/scene-character-roster.ts"), false);
@@ -39,5 +44,6 @@ test("legacy entrance scene helper files are removed after migration", () => {
   assert.match(charactersIndex, /export \* from "\.\/scene-avatar\.js"/);
   assert.match(charactersIndex, /export \* from "\.\/scene-character-roster\.js"/);
   assert.match(charactersIndex, /export \* from "\.\/scene-character-state\.js"/);
-  assert.match(debugIndex, /export \* from "\.\/scene-debug-editor\.js"/);
+  assert.match(sceneEditorIndex, /export \* from "\.\/scene-map-editor\.js"/);
+  assert.match(sceneSystemIndex, /export \* from "\.\/scene-loading-theme\.js"/);
 });

@@ -10,15 +10,26 @@ function read(relativePath: string): string {
 }
 
 test("scene shell css is wired into the design system", () => {
+  const mainCss = read("src/styles/main.css");
   const designSystemIndex = read("src/styles/design-system/index.css");
-  const sceneShellCss = read("src/styles/design-system/components/scene-shell.css");
+  const sceneSystemIndex = read("src/styles/scene-system/index.css");
+  const sceneEditorIndex = read("src/styles/scene-editor/index.css");
+  const sceneShellCss = read("src/styles/scene-system/shell.css");
+  const debugOverridesCss = read("src/styles/scene-editor/debug-overrides.css");
 
-  assert.match(designSystemIndex, /@import "\.\/components\/scene-shell\.css";/);
+  assert.match(mainCss, /@import "\.\/scene-system\/index\.css";/);
+  assert.match(mainCss, /@import "\.\/scene-editor\/index\.css";/);
+  assert.doesNotMatch(designSystemIndex, /scene-shell\.css/);
+  assert.match(sceneSystemIndex, /@import "\.\/shell\.css";/);
+  assert.match(sceneEditorIndex, /editor-panel\.css/);
+  assert.match(sceneEditorIndex, /debug-overrides\.css/);
   assert.match(sceneShellCss, /\.scene-back-zone/);
   assert.match(sceneShellCss, /\.scene-back-zone--single/);
   assert.match(sceneShellCss, /\.scene-shell__view/);
+  assert.match(debugOverridesCss, /\[data-scene-debug="true"\] \.assistant-scene__character/);
   assert.doesNotMatch(sceneShellCss, /\[data-scene-back-zone="left"\]/);
   assert.doesNotMatch(sceneShellCss, /\[data-scene-back-zone="right"\]/);
+  assert.equal(fs.existsSync(path.join(REPO_ROOT, "src/styles/design-system/components/scene-shell.css")), false);
 });
 
 test("scene pages no longer ship static back-zone markup", () => {

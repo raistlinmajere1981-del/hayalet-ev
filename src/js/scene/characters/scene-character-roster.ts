@@ -13,7 +13,7 @@ import {
   DEFAULT_ENTRANCE_SCENE_LAYOUT,
   type SceneCharacterPlacementConfig,
 } from "../layout/index.js";
-import { getSceneCharacterRoleConfig } from "../theme/scene-character-theme.js";
+import { getSceneCharacterRoleConfig } from "../../scene-system/index.js";
 import {
   getSceneCharacterState,
   type SceneCharacterState,

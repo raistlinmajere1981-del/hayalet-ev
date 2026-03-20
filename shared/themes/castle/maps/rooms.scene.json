@@ -1,0 +1,46 @@
+{
+  "characterRosterPreset": "user-only",
+  "referenceSize": {
+    "width": 1920,
+    "height": 1080
+  },
+  "interactives": [
+    {
+      "id": "door-entrance",
+      "kind": "interactive",
+      "viewId": null,
+      "action": {
+        "type": "navigate",
+        "page": "entrance"
+      },
+      "rect": {
+        "leftPx": 848,
+        "topPx": 202,
+        "widthPx": 228,
+        "heightPx": 270
+      },
+      "frame": {
+        "variant": "flat",
+        "rotateDeg": 0,
+        "perspectiveDeg": 0,
+        "hueDeg": 33,
+        "alpha": 0.34
+      },
+      "label": {
+        "visible": true,
+        "textKey": "sideNav.entranceLabel",
+        "centerXPx": 962,
+        "topPx": 154,
+        "widthPx": 284,
+        "heightPx": 42,
+        "rotateDeg": 0,
+        "fontSizePx": 22,
+        "letterSpacingPx": 1,
+        "fontPreset": "display",
+        "framePerspectiveDeg": 0
+      }
+    }
+  ],
+  "backs": [],
+  "characters": []
+}

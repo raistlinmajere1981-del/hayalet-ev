@@ -6,15 +6,15 @@ import type {
   SceneInteractiveConfig,
   SceneLayoutConfig,
   SceneLayoutLabelFontPreset,
-} from "../layout/index.js";
+} from "../scene/layout/index.js";
 import {
   SCENE_LAYOUT_LABEL_FONT_PRESETS,
   listSceneDebugNodes,
   resolveSceneBackForSelection,
   resolveSceneCharacterForSelection,
   resolveSceneInteractiveForSelection,
-} from "../layout/index.js";
-import { t as entranceT } from "../../pages/entrance/i18n.js";
+} from "../scene/layout/index.js";
+import { AppI18n } from "../modules/i18n/index.js";
 
 export type EntranceSceneEditorSelection = SceneDebugNodeSelection;
 
@@ -39,6 +39,7 @@ interface EntranceSceneEditorCallbacks {
   ): void;
   resetDraft(): void;
   copySceneLayout(): Promise<void>;
+  saveSceneLayoutToSource(): Promise<void>;
 }
 
 const INTERACTIVE_FIELDS = [
@@ -150,9 +151,10 @@ export class EntranceSceneEditor {
       <div class="entrance-scene__editor-header">
         <div class="entrance-scene__editor-drag-handle" data-editor-drag-handle="true">
           <h3 class="entrance-scene__editor-title">Scene Editor</h3>
-          <p class="entrance-scene__editor-subtitle">Drafts save locally while debug mode is open.</p>
+          <p class="entrance-scene__editor-subtitle">Drafts stay local until you save the theme map.</p>
         </div>
         <div class="entrance-scene__editor-toolbar">
+          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="save-source">Save Map</button>
           <button type="button" class="btn btn-ghost btn-sm" data-editor-action="copy">Copy JSON</button>
           <button type="button" class="btn btn-ghost btn-sm" data-editor-action="reset">Reset</button>
         </div>
@@ -271,7 +273,9 @@ export class EntranceSceneEditor {
     node: SceneClickableNode
   ): string {
     const value = typeof node.label.customText === "string" ? node.label.customText : "";
-    const placeholder = this.escapeAttribute(entranceT("scene.editor.customLabelPlaceholder"));
+    const placeholder = this.escapeAttribute(
+      AppI18n.t("entrance.scene.editor.customLabelPlaceholder")
+    );
     return `
       <div class="entrance-scene__editor-section">
         <div class="entrance-scene__editor-section-title">Label</div>
@@ -400,6 +404,11 @@ export class EntranceSceneEditor {
 
     if (action === "copy") {
       void this.callbacks.copySceneLayout();
+      return;
+    }
+
+    if (action === "save-source") {
+      void this.callbacks.saveSceneLayoutToSource();
       return;
     }
 

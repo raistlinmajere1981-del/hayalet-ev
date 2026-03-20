@@ -28,6 +28,7 @@ export interface RenderSceneInteractiveLayerOptions {
   cssVarPrefix: string;
   classNames: SceneInteractiveLayerClassNames;
   selection: SceneDebugNodeSelection;
+  interactiveLabels?: boolean;
   resolveLabel(node: SceneInteractiveConfig): string;
   onActivate(node: SceneInteractiveConfig): void;
 }
@@ -49,6 +50,7 @@ export function renderSceneInteractiveLayer(options: RenderSceneInteractiveLayer
     cssVarPrefix,
     classNames,
     selection,
+    interactiveLabels = false,
     resolveLabel,
     onActivate,
   } = options;
@@ -96,7 +98,6 @@ export function renderSceneInteractiveLayer(options: RenderSceneInteractiveLayer
       label.className = classNames.label;
       label.classList.toggle("is-selected", selected);
       label.textContent = labelText;
-      label.ariaHidden = "true";
       setVar(
         label.style,
         cssVarPrefix,
@@ -146,6 +147,21 @@ export function renderSceneInteractiveLayer(options: RenderSceneInteractiveLayer
         "label-font-family",
         getSceneHotspotLabelFontFamily(node.label.fontPreset)
       );
+      if (interactiveLabels) {
+        label.dataset["clickable"] = "true";
+        label.tabIndex = 0;
+        label.role = "button";
+        label.ariaLabel = labelText;
+        label.addEventListener("keydown", (event: KeyboardEvent) => {
+          if (event.key !== "Enter" && event.key !== " ") {
+            return;
+          }
+          event.preventDefault();
+          onActivate(node);
+        });
+      } else {
+        label.ariaHidden = "true";
+      }
       label.addEventListener("click", () => {
         onActivate(node);
       });
