@@ -1,142 +1,224 @@
-import type {
-  EntranceSceneCharacterConfig,
-  SceneObjectConfig,
-  SceneObjectConfigAction,
-  EntranceSceneMap,
-} from "./scene-layout-state.js";
 import {
-  DEFAULT_ANALYZE_SCENE_MAP,
-  DEFAULT_ASSISTANT_SCENE_MAP,
-  DEFAULT_ENTRANCE_SCENE_MAP,
-  DEFAULT_ROOMS_SCENE_MAP,
-  DEFAULT_SERVER_SCENE_MAP,
-  DEFAULT_SETTINGS_SCENE_MAP,
+  SCENE_CHARACTER_ROSTER_PRESETS,
+  SCENE_LABEL_FONT_PRESETS,
+} from "../schema.js";
+import type {
+  SceneInteractiveFrameDefinition,
+  SceneNodeGlowDefinition,
+  SceneNodeLabelDefinition,
+  SceneNodeRect,
+} from "../schema.js";
+import type {
+  SceneBackConfig,
+  SceneCharacterPlacementConfig,
+  SceneInteractiveConfig,
+  SceneLayoutConfig,
 } from "./scene-layout-state.js";
-import type { SceneNodeFrameDefinition, SceneNodeLabelDefinition, SceneNodeRect } from "../schema.js";
+import { DEFAULT_ENTRANCE_SCENE_LAYOUT } from "./scene-layout-state.js";
 
-export function cloneEntranceSceneMap(
-  source: EntranceSceneMap = DEFAULT_ENTRANCE_SCENE_MAP
-): EntranceSceneMap {
+function cloneRect(source: SceneNodeRect): SceneNodeRect {
+  return { ...source };
+}
+
+function cloneGlow(source: SceneNodeGlowDefinition): SceneNodeGlowDefinition {
+  return { ...source };
+}
+
+function cloneFrame(source: SceneInteractiveFrameDefinition): SceneInteractiveFrameDefinition {
+  return { ...source };
+}
+
+function cloneLabel(source: SceneNodeLabelDefinition): SceneNodeLabelDefinition {
+  return { ...source };
+}
+
+function cloneInteractive(source: SceneInteractiveConfig): SceneInteractiveConfig {
+  return {
+    ...source,
+    action: { ...source.action },
+    rect: cloneRect(source.rect),
+    frame: cloneFrame(source.frame),
+    label: cloneLabel(source.label),
+  };
+}
+
+function cloneBack(source: SceneBackConfig): SceneBackConfig {
+  return {
+    ...source,
+    action: { ...source.action },
+    rect: cloneRect(source.rect),
+    glow: cloneGlow(source.glow),
+    label: cloneLabel(source.label),
+  };
+}
+
+function cloneCharacter(source: SceneCharacterPlacementConfig): SceneCharacterPlacementConfig {
+  return {
+    ...source,
+  };
+}
+
+export function cloneSceneLayout(
+  source: SceneLayoutConfig = DEFAULT_ENTRANCE_SCENE_LAYOUT
+): SceneLayoutConfig {
   return {
     characterRosterPreset: source.characterRosterPreset,
     referenceSize: { ...source.referenceSize },
-    objects: source.objects.map((object) => ({
-      ...object,
-      action: { ...object.action },
-      rect: { ...object.rect },
-      frame: { ...object.frame },
-      label: { ...object.label },
-    })),
-    characters: source.characters.map((character) => ({ ...character })),
+    interactives: source.interactives.map(cloneInteractive),
+    backs: source.backs.map(cloneBack),
+    characters: source.characters.map(cloneCharacter),
   };
 }
 
-function normalizeLabel(
-  partial: Partial<SceneNodeLabelDefinition>,
-  fallback: SceneNodeLabelDefinition
-): SceneNodeLabelDefinition {
-  return {
-    ...fallback,
-    ...partial,
-  };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object";
 }
 
-function normalizeRect(partial: Partial<SceneNodeRect>, fallback: SceneNodeRect): SceneNodeRect {
-  return {
-    ...fallback,
-    ...partial,
-  };
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
-function normalizeFrame(
-  partial: Partial<SceneNodeFrameDefinition>,
-  fallback: SceneNodeFrameDefinition
-): SceneNodeFrameDefinition {
-  return {
-    ...fallback,
-    ...partial,
-  };
-}
+function isNodeRect(value: unknown): value is SceneNodeRect {
+  if (!isRecord(value)) {
+    return false;
+  }
 
-function normalizeObject(partial: Partial<SceneObjectConfig>, fallback: SceneObjectConfig): SceneObjectConfig {
-  return {
-    ...fallback,
-    ...partial,
-    action: {
-      ...fallback.action,
-      ...(partial.action ?? {}),
-    } as SceneObjectConfigAction,
-    rect: normalizeRect(partial.rect ?? {}, fallback.rect),
-    frame: normalizeFrame(partial.frame ?? {}, fallback.frame),
-    label: normalizeLabel(partial.label ?? {}, fallback.label),
-  };
-}
-
-function normalizeCharacter(
-  partial: Partial<EntranceSceneCharacterConfig>,
-  fallback: EntranceSceneCharacterConfig
-): EntranceSceneCharacterConfig {
-  return {
-    ...fallback,
-    ...partial,
-  };
-}
-
-function normalizeSceneMap(
-  source: Partial<EntranceSceneMap>,
-  defaultMap: EntranceSceneMap
-): EntranceSceneMap {
-  const objectById = new Map<string, Partial<SceneObjectConfig>>(
-    (Array.isArray(source.objects) ? (source.objects as Array<Partial<SceneObjectConfig>>) : [])
-      .filter((item) => typeof item.id === "string")
-      .map((item) => [item.id as string, item])
+  return (
+    isFiniteNumber(value["leftPx"]) &&
+    isFiniteNumber(value["topPx"]) &&
+    isFiniteNumber(value["widthPx"]) &&
+    isFiniteNumber(value["heightPx"])
   );
-  const characterById = new Map<string, Partial<EntranceSceneCharacterConfig>>(
-    (Array.isArray(source.characters)
-      ? (source.characters as Array<Partial<EntranceSceneCharacterConfig>>)
-      : []
-    )
-      .filter((item) => typeof item.id === "string")
-      .map((item) => [item.id as string, item])
+}
+
+function isGlow(value: unknown): value is SceneNodeGlowDefinition {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return isFiniteNumber(value["hueDeg"]) && isFiniteNumber(value["alpha"]);
+}
+
+function isLabel(value: unknown): value is SceneNodeLabelDefinition {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const fontPreset = value["fontPreset"];
+  return (
+    typeof value["visible"] === "boolean" &&
+    typeof value["textKey"] === "string" &&
+    (value["customText"] === undefined || typeof value["customText"] === "string") &&
+    isFiniteNumber(value["centerXPx"]) &&
+    isFiniteNumber(value["topPx"]) &&
+    isFiniteNumber(value["widthPx"]) &&
+    isFiniteNumber(value["heightPx"]) &&
+    isFiniteNumber(value["rotateDeg"]) &&
+    isFiniteNumber(value["fontSizePx"]) &&
+    isFiniteNumber(value["letterSpacingPx"]) &&
+    typeof fontPreset === "string" &&
+    SCENE_LABEL_FONT_PRESETS.includes(fontPreset as (typeof SCENE_LABEL_FONT_PRESETS)[number]) &&
+    isFiniteNumber(value["framePerspectiveDeg"])
   );
-
-  return {
-    characterRosterPreset: source.characterRosterPreset ?? defaultMap.characterRosterPreset,
-    referenceSize: {
-      width: source.referenceSize?.width ?? defaultMap.referenceSize.width,
-      height: source.referenceSize?.height ?? defaultMap.referenceSize.height,
-    },
-    objects: defaultMap.objects.map((fallback) => normalizeObject(objectById.get(fallback.id) ?? {}, fallback)),
-    characters: defaultMap.characters.map((fallback) =>
-      normalizeCharacter(characterById.get(fallback.id) ?? {}, fallback)
-    ),
-  };
 }
 
-export function normalizeEntranceSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
-  return normalizeSceneMap(source, DEFAULT_ENTRANCE_SCENE_MAP);
+function isInteractiveFrame(value: unknown): value is SceneInteractiveFrameDefinition {
+  if (!isRecord(value) || !isGlow(value)) {
+    return false;
+  }
+
+  return (
+    (value["variant"] === "flat" ||
+      value["variant"] === "upper" ||
+      value["variant"] === "left-angled" ||
+      value["variant"] === "right-angled") &&
+    isFiniteNumber(value["rotateDeg"]) &&
+    isFiniteNumber(value["perspectiveDeg"])
+  );
 }
 
-export function normalizeAssistantSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
-  return normalizeSceneMap(source, DEFAULT_ASSISTANT_SCENE_MAP);
+function isInteractive(value: unknown): value is SceneInteractiveConfig {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    value["kind"] === "interactive" &&
+    typeof value["id"] === "string" &&
+    (value["viewId"] === null || typeof value["viewId"] === "string") &&
+    isRecord(value["action"]) &&
+    isNodeRect(value["rect"]) &&
+    isInteractiveFrame(value["frame"]) &&
+    isLabel(value["label"])
+  );
 }
 
-export function normalizeAnalyzeSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
-  return normalizeSceneMap(source, DEFAULT_ANALYZE_SCENE_MAP);
+function isBack(value: unknown): value is SceneBackConfig {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    value["kind"] === "back" &&
+    typeof value["id"] === "string" &&
+    typeof value["viewId"] === "string" &&
+    isRecord(value["action"]) &&
+    value["action"]["type"] === "back" &&
+    isNodeRect(value["rect"]) &&
+    isGlow(value["glow"]) &&
+    isLabel(value["label"])
+  );
 }
 
-export function normalizeRoomsSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
-  return normalizeSceneMap(source, DEFAULT_ROOMS_SCENE_MAP);
+function isCharacterPlacement(value: unknown): value is SceneCharacterPlacementConfig {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    value["kind"] === "character" &&
+    typeof value["id"] === "string" &&
+    typeof value["characterKind"] === "string" &&
+    (value["preferredSlot"] === undefined || typeof value["preferredSlot"] === "string") &&
+    isFiniteNumber(value["leftPx"]) &&
+    isFiniteNumber(value["bottomPx"]) &&
+    isFiniteNumber(value["scale"]) &&
+    isFiniteNumber(value["depth"])
+  );
 }
 
-export function normalizeSettingsSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
-  return normalizeSceneMap(source, DEFAULT_SETTINGS_SCENE_MAP);
+export function isSceneLayoutConfig(value: unknown): value is SceneLayoutConfig {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const preset = value["characterRosterPreset"];
+  return (
+    typeof preset === "string" &&
+    SCENE_CHARACTER_ROSTER_PRESETS.includes(
+      preset as (typeof SCENE_CHARACTER_ROSTER_PRESETS)[number]
+    ) &&
+    isRecord(value["referenceSize"]) &&
+    isFiniteNumber(value["referenceSize"]["width"]) &&
+    isFiniteNumber(value["referenceSize"]["height"]) &&
+    Array.isArray(value["interactives"]) &&
+    value["interactives"].every(isInteractive) &&
+    Array.isArray(value["backs"]) &&
+    value["backs"].every(isBack) &&
+    Array.isArray(value["characters"]) &&
+    value["characters"].every(isCharacterPlacement)
+  );
 }
 
-export function normalizeServerSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
-  return normalizeSceneMap(source, DEFAULT_SERVER_SCENE_MAP);
+export function parseSceneLayoutDraft(raw: string): SceneLayoutConfig | null {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return isSceneLayoutConfig(parsed) ? cloneSceneLayout(parsed) : null;
+  } catch {
+    return null;
+  }
 }
 
-export function serializeEntranceSceneMap(sceneMap: EntranceSceneMap): string {
-  return JSON.stringify(sceneMap, null, 2);
+export function serializeSceneLayout(sceneLayout: SceneLayoutConfig): string {
+  return JSON.stringify(sceneLayout, null, 2);
 }

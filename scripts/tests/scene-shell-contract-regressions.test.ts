@@ -17,6 +17,8 @@ test("scene shell css is wired into the design system", () => {
   assert.match(sceneShellCss, /\.scene-back-zone/);
   assert.match(sceneShellCss, /\.scene-back-zone--single/);
   assert.match(sceneShellCss, /\.scene-shell__view/);
+  assert.doesNotMatch(sceneShellCss, /\[data-scene-back-zone="left"\]/);
+  assert.doesNotMatch(sceneShellCss, /\[data-scene-back-zone="right"\]/);
 });
 
 test("scene pages no longer ship static back-zone markup", () => {
@@ -47,7 +49,7 @@ test("scene controllers render the shared generated back layer", () => {
   targets.forEach((target) => {
     const source = read(target);
     assert.match(source, /renderSceneBackLayer/);
-    assert.match(source, /getSceneBackObjectForView|syncSceneViewRuntime|scene-shell__view/);
+    assert.match(source, /getSceneBackNodeForView|syncSceneViewRuntime|scene-shell__view/);
     assert.doesNotMatch(source, /bindSceneBackZones/);
   });
 });

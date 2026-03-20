@@ -1,12 +1,12 @@
 import { getSceneHotspotLabelFontFamily } from "../label-font.js";
 
 import type {
-  SceneObjectConfig,
+  SceneInteractiveConfig,
   SceneDebugNodeSelection,
 } from "../layout/index.js";
 import {
   hasSceneNodeLabel,
-  isSceneDebugSelectionForObject,
+  isSceneDebugSelectionForInteractive,
 } from "../layout/index.js";
 
 interface SceneProjection {
@@ -23,13 +23,13 @@ interface SceneInteractiveLayerClassNames {
 
 export interface RenderSceneInteractiveLayerOptions {
   layer: HTMLElement;
-  nodes: readonly SceneObjectConfig[];
+  nodes: readonly SceneInteractiveConfig[];
   projection: SceneProjection;
   cssVarPrefix: string;
   classNames: SceneInteractiveLayerClassNames;
   selection: SceneDebugNodeSelection;
-  resolveLabel(node: SceneObjectConfig): string;
-  onActivate(node: SceneObjectConfig): void;
+  resolveLabel(node: SceneInteractiveConfig): string;
+  onActivate(node: SceneInteractiveConfig): void;
 }
 
 function setVar(
@@ -56,7 +56,7 @@ export function renderSceneInteractiveLayer(options: RenderSceneInteractiveLayer
 
   nodes.forEach((node) => {
     const labelText = resolveLabel(node);
-    const selected = isSceneDebugSelectionForObject(selection, node);
+    const selected = isSceneDebugSelectionForInteractive(selection, node);
     const wrapper = document.createElement("div");
     wrapper.className = classNames.item;
 
@@ -82,8 +82,8 @@ export function renderSceneInteractiveLayer(options: RenderSceneInteractiveLayer
     setVar(button.style, cssVarPrefix, "height", `${node.rect.heightPx * projection.scale}px`);
     setVar(button.style, cssVarPrefix, "frame-rotate", `${node.frame.rotateDeg}deg`);
     setVar(button.style, cssVarPrefix, "frame-perspective", `${node.frame.perspectiveDeg}deg`);
-    setVar(button.style, cssVarPrefix, "hover-glow-hue", `${node.frame.hoverGlowHueDeg}deg`);
-    setVar(button.style, cssVarPrefix, "hover-glow-alpha", `${node.frame.hoverGlowAlpha}`);
+    setVar(button.style, cssVarPrefix, "hover-glow-hue", `${node.frame.hueDeg}deg`);
+    setVar(button.style, cssVarPrefix, "hover-glow-alpha", `${node.frame.alpha}`);
     button.ariaLabel = labelText;
     button.addEventListener("click", () => {
       onActivate(node);

@@ -17,10 +17,10 @@ import {
   resolveSceneAvatarSource,
   type SceneCharacterDescriptor,
 } from "../../../scene/characters/index.js";
-import type { EntranceSceneMap } from "../../../scene/layout/index.js";
+import type { SceneLayoutConfig } from "../../../scene/layout/index.js";
 import {
-  getSceneBackObjectForView,
-  getSceneObjectNodesForView,
+  getSceneBackNodeForView,
+  getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
 } from "../../../scene/layout/index.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../../../scene/navigation.js";
@@ -79,7 +79,7 @@ export class EntranceSceneController {
   characterRenderToken = 0;
   openCharacterId: string | null = null;
   characters = new Map<string, SceneCharacterDescriptor>();
-  sceneMap = ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
+  sceneLayout = ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
   sceneDebugEnabled = false;
   editorSelection: EntranceSceneEditorSelection = null;
   activeViewId: "whisper" | null = null;
@@ -100,7 +100,7 @@ export class EntranceSceneController {
     this.viewRoot = document.getElementById(ELEMENT_IDS.viewRoot);
     this.viewBackground = document.getElementById(ELEMENT_IDS.viewBackground) as HTMLImageElement | null;
     this.viewSlot = document.getElementById(ELEMENT_IDS.viewSlot);
-    this.sceneMap =
+    this.sceneLayout =
       (this.sceneDebugEnabled ? ENTRANCE_SCENE_DEBUG_STORE.loadDraft() : null) ??
       ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
     if (this.menuHost !== null) {
@@ -117,7 +117,7 @@ export class EntranceSceneController {
           isSceneUiMode() &&
           (getActiveSceneDebugRoomId() ??
             document.documentElement.getAttribute("data-active-page")) === "entrance",
-        getSceneMap: (): EntranceSceneMap => this.sceneMap,
+        getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
         getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
         getRoomOptions: (): Array<{ id: string; label: string }> =>
           SCENE_DEBUG_ROOMS.map((room) => ({
@@ -139,35 +139,44 @@ export class EntranceSceneController {
 
           navigateToScenePage(roomId);
         },
-        updateObject: (id, updater): void => {
-          this.sceneMap.objects = this.sceneMap.objects.map((object) =>
-            object.id === id ? updater(object) : object
+        updateInteractive: (id, updater): void => {
+          this.sceneLayout.interactives = this.sceneLayout.interactives.map((interactive) =>
+            interactive.id === id ? updater(interactive) : interactive
           );
-          this.persistSceneMapDraft();
+          this.persistSceneLayoutDraft();
+          this.renderHotspots();
+          this.editor?.refresh();
+        },
+        updateBack: (id, updater): void => {
+          this.sceneLayout.backs = this.sceneLayout.backs.map((back) =>
+            back.id === id ? updater(back) : back
+          );
+          this.persistSceneLayoutDraft();
+          this.syncViewState();
           this.renderHotspots();
           this.editor?.refresh();
         },
         updateCharacter: (id, updater): void => {
-          this.sceneMap.characters = this.sceneMap.characters.map((character) =>
+          this.sceneLayout.characters = this.sceneLayout.characters.map((character) =>
             character.id === id ? updater(character) : character
           );
-          this.persistSceneMapDraft();
+          this.persistSceneLayoutDraft();
           void this.renderCharacters();
           this.editor?.refresh();
         },
         resetDraft: (): void => {
-          this.sceneMap = ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
+          this.sceneLayout = ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
           ENTRANCE_SCENE_DEBUG_STORE.clearDraft();
           this.editorSelection = null;
           this.renderHotspots();
           void this.renderCharacters();
           this.editor?.refresh();
         },
-        copySceneMap: async (): Promise<void> => {
+        copySceneLayout: async (): Promise<void> => {
           try {
-            await ENTRANCE_SCENE_DEBUG_STORE.copyToClipboard(this.sceneMap);
+            await ENTRANCE_SCENE_DEBUG_STORE.copyToClipboard(this.sceneLayout);
           } catch {
-            console.info("Scene map copy failed.");
+            console.info("Scene layout copy failed.");
           }
         },
       });
@@ -281,7 +290,7 @@ export class EntranceSceneController {
 
     renderSceneInteractiveLayer({
       layer: this.hotspotLayer,
-      nodes: getSceneObjectNodesForView(this.sceneMap),
+      nodes: getSceneInteractiveNodesForView(this.sceneLayout),
       projection: this.getSceneProjection(),
       cssVarPrefix: "scene-hotspot",
       classNames: {
@@ -292,7 +301,7 @@ export class EntranceSceneController {
       selection: this.editorSelection,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleObject(node.id);
+        this.handleInteractive(node.id);
       },
     });
   }
@@ -324,8 +333,8 @@ export class EntranceSceneController {
     return getCoverSceneProjection({
       surfaceWidth: this.root?.clientWidth ?? 0,
       surfaceHeight: this.root?.clientHeight ?? 0,
-      referenceWidth: this.sceneMap.referenceSize.width,
-      referenceHeight: this.sceneMap.referenceSize.height,
+      referenceWidth: this.sceneLayout.referenceSize.width,
+      referenceHeight: this.sceneLayout.referenceSize.height,
     });
   }
 
@@ -336,20 +345,20 @@ export class EntranceSceneController {
     return Number(Math.max(0.75, scaled).toFixed(3));
   }
 
-  private handleObject(id: string): void {
-    const object = this.sceneMap.objects.find((node) => node.id === id) ?? null;
-    if (object === null) {
+  private handleInteractive(id: string): void {
+    const interactive = this.sceneLayout.interactives.find((node) => node.id === id) ?? null;
+    if (interactive === null) {
       return;
     }
 
     if (this.editor !== null) {
-      this.editorSelection = { kind: "object", id: object.id };
+      this.editorSelection = { kind: "interactive", id: interactive.id };
       this.editor.refresh();
       this.renderHotspots();
       return;
     }
 
-    dispatchSceneAction(object.action, {
+    dispatchSceneAction(interactive.action, {
       onNavigate: (page) => {
         navigateToScenePage(page);
       },
@@ -374,8 +383,8 @@ export class EntranceSceneController {
 
     const renderToken = ++this.characterRenderToken;
     const characters = buildSceneCharacterRoster(
-      this.sceneMap.characters,
-      this.sceneMap.characterRosterPreset
+      this.sceneLayout.characters,
+      this.sceneLayout.characterRosterPreset
     );
     this.characters = new Map(characters.map((character) => [character.id, character]));
     await renderSceneCharacterLayer({
@@ -407,8 +416,8 @@ export class EntranceSceneController {
     this.syncOpenMenuAnchor();
   }
 
-  private persistSceneMapDraft(): void {
-    ENTRANCE_SCENE_DEBUG_STORE.saveDraft(this.sceneMap);
+  private persistSceneLayoutDraft(): void {
+    ENTRANCE_SCENE_DEBUG_STORE.saveDraft(this.sceneLayout);
   }
 
   private setActiveView(viewId: "whisper" | null): void {
@@ -431,22 +440,27 @@ export class EntranceSceneController {
       host: this.viewRoot,
       node:
         isSceneUiMode() && this.activeViewId !== null
-          ? getSceneBackObjectForView(this.sceneMap, this.activeViewId)
+          ? getSceneBackNodeForView(this.sceneLayout, this.activeViewId)
           : null,
       projection: this.getSceneProjection(),
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
-      onActivate: () => {
+      onActivate: (node) => {
         if (this.editor !== null) {
-          const back =
-            this.activeViewId === null ? null : getSceneBackObjectForView(this.sceneMap, this.activeViewId);
-          if (back !== null) {
-            this.editorSelection = { kind: "object", id: back.id };
-            this.editor.refresh();
-          }
+          this.editorSelection = { kind: "back", id: node.id };
+          this.editor.refresh();
           return;
         }
 
-        this.setActiveView(null);
+        dispatchSceneAction(node.action, {
+          onNavigate: () => {},
+          onSettings: () => {},
+          onSettingsSceneClose: () => {},
+          onScreen: () => {},
+          onWhisper: () => {},
+          onBack: () => {
+            this.setActiveView(null);
+          },
+        });
       },
     });
   }

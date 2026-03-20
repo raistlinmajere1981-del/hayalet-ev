@@ -14,7 +14,7 @@ export function isSceneRoomId(value: string | null | undefined): value is SceneR
   return value !== null && value !== undefined && SCENE_ROOM_IDS.includes(value as SceneRoomId);
 }
 
-export const SCENE_NODE_KINDS = ["object", "character"] as const;
+export const SCENE_NODE_KINDS = ["interactive", "back", "character"] as const;
 export type SceneNodeKind = (typeof SCENE_NODE_KINDS)[number];
 
 export function isSceneNodeKind(value: string | null | undefined): value is SceneNodeKind {
@@ -81,8 +81,7 @@ export type SceneInteractiveAction =
   | SceneScreenAction
   | SceneWhisperAction;
 
-export type SceneObjectAction = SceneInteractiveAction | SceneBackAction;
-export type SceneNodeAction = SceneObjectAction;
+export type SceneNodeAction = SceneInteractiveAction | SceneBackAction;
 
 export interface SceneNodeRect {
   leftPx: number;
@@ -91,12 +90,15 @@ export interface SceneNodeRect {
   heightPx: number;
 }
 
-export interface SceneNodeFrameDefinition {
+export interface SceneNodeGlowDefinition {
+  hueDeg: number;
+  alpha: number;
+}
+
+export interface SceneInteractiveFrameDefinition extends SceneNodeGlowDefinition {
   variant: "flat" | "upper" | "left-angled" | "right-angled";
   rotateDeg: number;
   perspectiveDeg: number;
-  hoverGlowHueDeg: number;
-  hoverGlowAlpha: number;
 }
 
 export interface SceneNodeLabelDefinition {
@@ -114,20 +116,27 @@ export interface SceneNodeLabelDefinition {
   framePerspectiveDeg: number;
 }
 
-export type SceneObjectRole = "hotspot" | "back";
-
-export interface SceneObjectNodeDefinition {
+export interface SceneInteractiveNodeDefinition {
   id: string;
-  kind: "object";
-  role: SceneObjectRole;
+  kind: "interactive";
   viewId: string | null;
-  action: SceneObjectAction;
+  action: SceneInteractiveAction;
   rect: SceneNodeRect;
-  frame: SceneNodeFrameDefinition;
+  frame: SceneInteractiveFrameDefinition;
   label: SceneNodeLabelDefinition;
 }
 
-export interface SceneCharacterNodeDefinition {
+export interface SceneBackNodeDefinition {
+  id: string;
+  kind: "back";
+  viewId: string;
+  action: SceneBackAction;
+  rect: SceneNodeRect;
+  glow: SceneNodeGlowDefinition;
+  label: SceneNodeLabelDefinition;
+}
+
+export interface SceneCharacterPlacementNodeDefinition {
   id: string;
   kind: "character";
   characterKind: string;
@@ -138,7 +147,10 @@ export interface SceneCharacterNodeDefinition {
   depth: number;
 }
 
-export type SceneNodeDefinition = SceneObjectNodeDefinition | SceneCharacterNodeDefinition;
+export type SceneNodeDefinition =
+  | SceneInteractiveNodeDefinition
+  | SceneBackNodeDefinition
+  | SceneCharacterPlacementNodeDefinition;
 
 export interface SceneRoomDefinition {
   id: SceneRoomId;
@@ -148,6 +160,17 @@ export interface SceneRoomDefinition {
     height: number;
   };
   nodes: SceneNodeDefinition[];
+}
+
+export interface SceneLayoutDefinition {
+  characterRosterPreset: SceneCharacterRosterPreset;
+  referenceSize: {
+    width: number;
+    height: number;
+  };
+  interactives: SceneInteractiveNodeDefinition[];
+  backs: SceneBackNodeDefinition[];
+  characters: SceneCharacterPlacementNodeDefinition[];
 }
 
 export interface SceneCharacterVisualConfig {

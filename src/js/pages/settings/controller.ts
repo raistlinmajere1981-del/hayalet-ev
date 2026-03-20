@@ -17,10 +17,10 @@ import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
 } from "../../scene/characters/index.js";
-import type { EntranceSceneMap } from "../../scene/layout/index.js";
+import type { SceneLayoutConfig } from "../../scene/layout/index.js";
 import {
-  getSceneBackObjectForView,
-  getSceneObjectNodesForView,
+  getSceneBackNodeForView,
+  getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
 } from "../../scene/layout/index.js";
 import { SceneAlphaWindowFrameController } from "../../scene/alpha-window.js";
@@ -110,7 +110,7 @@ class SettingsSceneController {
   private onReturnToRoom: () => void;
   private state: SettingsSceneState = { open: false, activePanel: null };
   private panelsPlaceholder: Comment | null = null;
-  private sceneMap: EntranceSceneMap = SETTINGS_SCENE_DEBUG_STORE.cloneDefault();
+  private sceneLayout: SceneLayoutConfig = SETTINGS_SCENE_DEBUG_STORE.cloneDefault();
   private sceneDebugEnabled = false;
   private editorSelection: EntranceSceneEditorSelection = null;
   private editor: EntranceSceneEditor | null = null;
@@ -142,7 +142,7 @@ class SettingsSceneController {
 
   init(): void {
     this.sceneDebugEnabled = applySceneDebugFlag();
-    this.sceneMap =
+    this.sceneLayout =
       (this.sceneDebugEnabled ? SETTINGS_SCENE_DEBUG_STORE.loadDraft() : null) ??
       SETTINGS_SCENE_DEBUG_STORE.cloneDefault();
     this.background.src = getSceneRoomBackgroundSrc("settings");
@@ -194,20 +194,26 @@ class SettingsSceneController {
     this.syncPanelArt(nextState.activePanel);
     renderSceneBackLayer({
       host: this.panelView,
-      node: panelOpen ? getSceneBackObjectForView(this.sceneMap, "panel") : null,
+      node: panelOpen ? getSceneBackNodeForView(this.sceneLayout, "panel") : null,
       projection: this.getSceneProjection(),
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
-      onActivate: () => {
+      onActivate: (node) => {
         if (this.isEditorActive()) {
-          const back = getSceneBackObjectForView(this.sceneMap, "panel");
-          if (back !== null) {
-            this.editorSelection = { kind: "object", id: back.id };
-            this.editor?.refresh();
-          }
+          this.editorSelection = { kind: "back", id: node.id };
+          this.editor?.refresh();
           return;
         }
 
-        this.onReturnToRoom();
+        dispatchSceneAction(node.action, {
+          onNavigate: () => {},
+          onSettings: () => {},
+          onSettingsSceneClose: () => {},
+          onScreen: () => {},
+          onWhisper: () => {},
+          onBack: () => {
+            this.onReturnToRoom();
+          },
+        });
       },
     });
     if (panelOpen) {
@@ -232,7 +238,7 @@ class SettingsSceneController {
 
     this.editor = new EntranceSceneEditor(this.editorHost, {
       isActive: (): boolean => this.isEditorActive(),
-      getSceneMap: (): EntranceSceneMap => this.sceneMap,
+      getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
       getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
       getRoomOptions: (): Array<{ id: string; label: string }> =>
         SCENE_DEBUG_ROOMS.map((room) => ({
@@ -255,36 +261,44 @@ class SettingsSceneController {
         this.onClose();
         navigateMainShellPage(roomId);
       },
-      updateObject: (id, updater): void => {
-        this.sceneMap.objects = this.sceneMap.objects.map((object) =>
-          object.id === id ? updater(object) : object
+      updateInteractive: (id, updater): void => {
+        this.sceneLayout.interactives = this.sceneLayout.interactives.map((interactive) =>
+          interactive.id === id ? updater(interactive) : interactive
         );
-        this.persistSceneMapDraft();
+        this.persistSceneLayoutDraft();
         this.sync(this.state);
         this.renderHotspots();
         this.editor?.refresh();
       },
+      updateBack: (id, updater): void => {
+        this.sceneLayout.backs = this.sceneLayout.backs.map((back) =>
+          back.id === id ? updater(back) : back
+        );
+        this.persistSceneLayoutDraft();
+        this.sync(this.state);
+        this.editor?.refresh();
+      },
       updateCharacter: (id, updater): void => {
-        this.sceneMap.characters = this.sceneMap.characters.map((character) =>
+        this.sceneLayout.characters = this.sceneLayout.characters.map((character) =>
           character.id === id ? updater(character) : character
         );
-        this.persistSceneMapDraft();
+        this.persistSceneLayoutDraft();
         void this.renderCharacter();
         this.editor?.refresh();
       },
       resetDraft: (): void => {
-        this.sceneMap = SETTINGS_SCENE_DEBUG_STORE.cloneDefault();
+        this.sceneLayout = SETTINGS_SCENE_DEBUG_STORE.cloneDefault();
         SETTINGS_SCENE_DEBUG_STORE.clearDraft();
         this.editorSelection = null;
         this.renderHotspots();
         void this.renderCharacter();
         this.editor?.refresh();
       },
-      copySceneMap: async (): Promise<void> => {
+      copySceneLayout: async (): Promise<void> => {
         try {
-          await SETTINGS_SCENE_DEBUG_STORE.copyToClipboard(this.sceneMap);
+          await SETTINGS_SCENE_DEBUG_STORE.copyToClipboard(this.sceneLayout);
         } catch {
-          console.info("Settings scene map copy failed.");
+          console.info("Settings scene layout copy failed.");
         }
       },
     });
@@ -372,8 +386,8 @@ class SettingsSceneController {
     return getCoverSceneProjection({
       surfaceWidth,
       surfaceHeight,
-      referenceWidth: this.sceneMap.referenceSize.width,
-      referenceHeight: this.sceneMap.referenceSize.height,
+      referenceWidth: this.sceneLayout.referenceSize.width,
+      referenceHeight: this.sceneLayout.referenceSize.height,
     });
   }
 
@@ -386,7 +400,7 @@ class SettingsSceneController {
   private renderHotspots(): void {
     renderSceneInteractiveLayer({
       layer: this.hotspotLayer,
-      nodes: getSceneObjectNodesForView(this.sceneMap),
+      nodes: getSceneInteractiveNodesForView(this.sceneLayout),
       projection: this.getSceneProjection(),
       cssVarPrefix: "settings-scene-hotspot",
       classNames: {
@@ -397,25 +411,25 @@ class SettingsSceneController {
       selection: this.editorSelection,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleObject(node.id);
+        this.handleInteractive(node.id);
       },
     });
   }
 
-  private handleObject(id: string): void {
-    const object = this.sceneMap.objects.find((node) => node.id === id) ?? null;
-    if (object === null) {
+  private handleInteractive(id: string): void {
+    const interactive = this.sceneLayout.interactives.find((node) => node.id === id) ?? null;
+    if (interactive === null) {
       return;
     }
 
     if (this.isEditorActive()) {
-      this.editorSelection = { kind: "object", id: object.id };
+      this.editorSelection = { kind: "interactive", id: interactive.id };
       this.editor?.refresh();
       this.renderHotspots();
       return;
     }
 
-    dispatchSceneAction(object.action, {
+    dispatchSceneAction(interactive.action, {
       onNavigate: (page) => {
         this.onClose();
         navigateMainShellPage(page);
@@ -439,8 +453,8 @@ class SettingsSceneController {
     });
   }
 
-  private persistSceneMapDraft(): void {
-    SETTINGS_SCENE_DEBUG_STORE.saveDraft(this.sceneMap);
+  private persistSceneLayoutDraft(): void {
+    SETTINGS_SCENE_DEBUG_STORE.saveDraft(this.sceneLayout);
   }
 
   private async renderCharacter(): Promise<void> {
@@ -449,8 +463,8 @@ class SettingsSceneController {
     }
 
     const characters = buildSceneCharacterRoster(
-      this.sceneMap.characters,
-      this.sceneMap.characterRosterPreset
+      this.sceneLayout.characters,
+      this.sceneLayout.characterRosterPreset
     );
     if (characters.length === 0) {
       this.characterLayer.replaceChildren();

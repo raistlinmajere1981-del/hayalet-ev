@@ -23,10 +23,10 @@ import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
 } from "../scene/characters/index.js";
-import type { EntranceSceneMap } from "../scene/layout/index.js";
+import type { SceneLayoutConfig } from "../scene/layout/index.js";
 import {
-  getSceneBackObjectForView,
-  getSceneObjectNodesForView,
+  getSceneBackNodeForView,
+  getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
@@ -119,7 +119,7 @@ export class ServerController {
   _serverSceneScreenOpen: boolean;
   _serverSceneBindingsReady: boolean;
   _serverSceneFrameController: SceneAlphaWindowFrameController | null;
-  _serverSceneMap: EntranceSceneMap;
+  _serverSceneLayout: SceneLayoutConfig;
   _serverSceneEditor: EntranceSceneEditor | null;
   _serverSceneSelection: EntranceSceneEditorSelection;
   _serverSceneResizeObserver: ResizeObserver | null;
@@ -157,7 +157,7 @@ export class ServerController {
     this._serverSceneScreenOpen = false;
     this._serverSceneBindingsReady = false;
     this._serverSceneFrameController = null;
-    this._serverSceneMap = SERVER_SCENE_DEBUG_STORE.cloneDefault();
+    this._serverSceneLayout = SERVER_SCENE_DEBUG_STORE.cloneDefault();
     this._serverSceneEditor = null;
     this._serverSceneSelection = null;
     this._serverSceneResizeObserver = null;
@@ -304,7 +304,7 @@ export class ServerController {
 
     this._serverSceneEditor = new EntranceSceneEditor(editorHost, {
       isActive: (): boolean => this.isServerSceneDebugActive(),
-      getSceneMap: (): EntranceSceneMap => this._serverSceneMap,
+      getSceneLayout: (): SceneLayoutConfig => this._serverSceneLayout,
       getSelection: (): EntranceSceneEditorSelection => this._serverSceneSelection,
       getRoomOptions: (): Array<{ id: string; label: string }> =>
         SCENE_DEBUG_ROOMS.map((room) => ({
@@ -326,34 +326,42 @@ export class ServerController {
 
         this._navigateToPage(roomId);
       },
-      updateObject: (id, updater): void => {
-        this._serverSceneMap.objects = this._serverSceneMap.objects.map((object) =>
-          object.id === id ? updater(object) : object
+      updateInteractive: (id, updater): void => {
+        this._serverSceneLayout.interactives = this._serverSceneLayout.interactives.map((interactive) =>
+          interactive.id === id ? updater(interactive) : interactive
         );
-        this.persistServerSceneMapDraft();
+        this.persistServerSceneLayoutDraft();
+        this.syncServerSceneVisibility();
+        this._serverSceneEditor?.refresh();
+      },
+      updateBack: (id, updater): void => {
+        this._serverSceneLayout.backs = this._serverSceneLayout.backs.map((back) =>
+          back.id === id ? updater(back) : back
+        );
+        this.persistServerSceneLayoutDraft();
         this.syncServerSceneVisibility();
         this._serverSceneEditor?.refresh();
       },
       updateCharacter: (id, updater): void => {
-        this._serverSceneMap.characters = this._serverSceneMap.characters.map((character) =>
+        this._serverSceneLayout.characters = this._serverSceneLayout.characters.map((character) =>
           character.id === id ? updater(character) : character
         );
-        this.persistServerSceneMapDraft();
+        this.persistServerSceneLayoutDraft();
         void this.renderServerSceneCharacters();
         this._serverSceneEditor?.refresh();
       },
       resetDraft: (): void => {
-        this._serverSceneMap = SERVER_SCENE_DEBUG_STORE.cloneDefault();
+        this._serverSceneLayout = SERVER_SCENE_DEBUG_STORE.cloneDefault();
         SERVER_SCENE_DEBUG_STORE.clearDraft();
         this._serverSceneSelection = null;
         this.renderServerScene();
         this._serverSceneEditor?.refresh();
       },
-      copySceneMap: async (): Promise<void> => {
+      copySceneLayout: async (): Promise<void> => {
         try {
-          await SERVER_SCENE_DEBUG_STORE.copyToClipboard(this._serverSceneMap);
+          await SERVER_SCENE_DEBUG_STORE.copyToClipboard(this._serverSceneLayout);
         } catch {
-          console.info("Server scene map copy failed.");
+          console.info("Server scene layout copy failed.");
         }
       },
     });
@@ -390,7 +398,7 @@ export class ServerController {
 
     renderSceneInteractiveLayer({
       layer: hotspotLayer,
-      nodes: getSceneObjectNodesForView(this._serverSceneMap),
+      nodes: getSceneInteractiveNodesForView(this._serverSceneLayout),
       projection: this.getServerSceneProjection(),
       cssVarPrefix: "server-scene-hotspot",
       classNames: {
@@ -401,7 +409,7 @@ export class ServerController {
       selection: this._serverSceneSelection,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleServerSceneObject(node.id);
+        this.handleServerSceneInteractive(node.id);
       },
     });
   }
@@ -410,12 +418,12 @@ export class ServerController {
     const sceneRoot = document.getElementById("server-scene-root");
     return getCoverSceneProjectionFromElement(
       sceneRoot instanceof HTMLElement ? sceneRoot : null,
-      this._serverSceneMap.referenceSize
+      this._serverSceneLayout.referenceSize
     );
   }
 
-  private persistServerSceneMapDraft(): void {
-    SERVER_SCENE_DEBUG_STORE.saveDraft(this._serverSceneMap);
+  private persistServerSceneLayoutDraft(): void {
+    SERVER_SCENE_DEBUG_STORE.saveDraft(this._serverSceneLayout);
   }
 
   private isServerSceneDebugActive(): boolean {
@@ -430,20 +438,20 @@ export class ServerController {
     this._serverSceneBindingsReady = true;
   }
 
-  private handleServerSceneObject(id: string): void {
-    const object = this._serverSceneMap.objects.find((node) => node.id === id) ?? null;
-    if (object === null) {
+  private handleServerSceneInteractive(id: string): void {
+    const interactive = this._serverSceneLayout.interactives.find((node) => node.id === id) ?? null;
+    if (interactive === null) {
       return;
     }
 
     if (this._serverSceneEditor !== null) {
-      this._serverSceneSelection = { kind: "object", id: object.id };
+      this._serverSceneSelection = { kind: "interactive", id: interactive.id };
       this._serverSceneEditor.refresh();
       this.renderServerScene();
       return;
     }
 
-    dispatchSceneAction(object.action, {
+    dispatchSceneAction(interactive.action, {
       onNavigate: (page) => {
         this.setServerSceneScreenOpen(false);
         this._navigateToPage(page);
@@ -492,12 +500,27 @@ export class ServerController {
         host: screenView,
         node:
           sceneActive && this._serverSceneScreenOpen
-            ? getSceneBackObjectForView(this._serverSceneMap, "primary")
+            ? getSceneBackNodeForView(this._serverSceneLayout, "primary")
             : null,
         projection: this.getServerSceneProjection(),
         resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
-        onActivate: () => {
-          this.setServerSceneScreenOpen(false);
+        onActivate: (node) => {
+          if (this._serverSceneEditor !== null) {
+            this._serverSceneSelection = { kind: "back", id: node.id };
+            this._serverSceneEditor.refresh();
+            return;
+          }
+
+          dispatchSceneAction(node.action, {
+            onNavigate: () => {},
+            onSettings: () => {},
+            onSettingsSceneClose: () => {},
+            onScreen: () => {},
+            onWhisper: () => {},
+            onBack: () => {
+              this.setServerSceneScreenOpen(false);
+            },
+          });
         },
       });
     }
@@ -523,8 +546,8 @@ export class ServerController {
     }
 
     const characters = buildSceneCharacterRoster(
-      this._serverSceneMap.characters,
-      this._serverSceneMap.characterRosterPreset
+      this._serverSceneLayout.characters,
+      this._serverSceneLayout.characterRosterPreset
     );
     if (characters.length === 0) {
       layer.replaceChildren();
@@ -782,7 +805,7 @@ export class ServerController {
   async init(): Promise<void> {
     await initServerControllerPage(this as unknown as ServerInitContext);
     this._serverSceneDebugEnabled = applySceneDebugFlag();
-    this._serverSceneMap =
+    this._serverSceneLayout =
       (this._serverSceneDebugEnabled ? SERVER_SCENE_DEBUG_STORE.loadDraft() : null) ??
       SERVER_SCENE_DEBUG_STORE.cloneDefault();
 

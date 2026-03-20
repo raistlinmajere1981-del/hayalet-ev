@@ -1,16 +1,18 @@
 import type {
-  EntranceSceneCharacterConfig,
-  EntranceSceneLabelFontPreset,
-  EntranceSceneMap,
-  SceneObjectConfig,
+  SceneBackConfig,
+  SceneCharacterPlacementConfig,
   SceneDebugNodeListEntry,
   SceneDebugNodeSelection,
+  SceneInteractiveConfig,
+  SceneLayoutConfig,
+  SceneLayoutLabelFontPreset,
 } from "../layout/index.js";
 import {
-  ENTRANCE_SCENE_LABEL_FONT_PRESETS,
+  SCENE_LAYOUT_LABEL_FONT_PRESETS,
   listSceneDebugNodes,
+  resolveSceneBackForSelection,
   resolveSceneCharacterForSelection,
-  resolveSceneObjectForSelection,
+  resolveSceneInteractiveForSelection,
 } from "../layout/index.js";
 import { t as entranceT } from "../../pages/entrance/i18n.js";
 
@@ -23,30 +25,40 @@ export interface EntranceSceneEditorRoomOption {
 
 interface EntranceSceneEditorCallbacks {
   isActive(): boolean;
-  getSceneMap(): EntranceSceneMap;
+  getSceneLayout(): SceneLayoutConfig;
   getSelection(): EntranceSceneEditorSelection;
   getRoomOptions(): EntranceSceneEditorRoomOption[];
   getActiveRoomId(): string;
   setSelection(selection: EntranceSceneEditorSelection): void;
   navigateToRoom(roomId: string): void;
-  updateObject(id: string, updater: (node: SceneObjectConfig) => SceneObjectConfig): void;
+  updateInteractive(id: string, updater: (node: SceneInteractiveConfig) => SceneInteractiveConfig): void;
+  updateBack(id: string, updater: (node: SceneBackConfig) => SceneBackConfig): void;
   updateCharacter(
     id: string,
-    updater: (node: EntranceSceneCharacterConfig) => EntranceSceneCharacterConfig
+    updater: (node: SceneCharacterPlacementConfig) => SceneCharacterPlacementConfig
   ): void;
   resetDraft(): void;
-  copySceneMap(): Promise<void>;
+  copySceneLayout(): Promise<void>;
 }
 
-const OBJECT_FIELDS = [
+const INTERACTIVE_FIELDS = [
   ["rect.leftPx", "X"],
   ["rect.topPx", "Y"],
   ["rect.widthPx", "W"],
   ["rect.heightPx", "H"],
   ["frame.rotateDeg", "Frame R"],
   ["frame.perspectiveDeg", "Frame P"],
-  ["frame.hoverGlowHueDeg", "Glow H"],
-  ["frame.hoverGlowAlpha", "Glow A"],
+  ["frame.hueDeg", "Glow H"],
+  ["frame.alpha", "Glow A"],
+] as const;
+
+const BACK_FIELDS = [
+  ["rect.leftPx", "X"],
+  ["rect.topPx", "Y"],
+  ["rect.widthPx", "W"],
+  ["rect.heightPx", "H"],
+  ["glow.hueDeg", "Glow H"],
+  ["glow.alpha", "Glow A"],
 ] as const;
 
 const LABEL_FIELDS = [
@@ -68,11 +80,14 @@ const CHARACTER_FIELDS = [
 ] as const;
 
 const DEBUG_NODE_SECTIONS = [
-  { kind: "object", title: "Objects" },
+  { kind: "interactive", title: "Interactives" },
+  { kind: "back", title: "Backs" },
   { kind: "character", title: "Characters" },
 ] as const;
 
 type SceneEditorNodeKind = (typeof DEBUG_NODE_SECTIONS)[number]["kind"];
+type SceneClickableNodeKind = "interactive" | "back";
+type SceneClickableNode = SceneInteractiveConfig | SceneBackConfig;
 
 export class EntranceSceneEditor {
   host: HTMLElement;
@@ -94,11 +109,11 @@ export class EntranceSceneEditor {
   }
 
   refresh(): void {
-    const sceneMap = this.callbacks.getSceneMap();
+    const sceneLayout = this.callbacks.getSceneLayout();
     const selection = this.callbacks.getSelection();
     const roomOptions = this.callbacks.getRoomOptions();
     const activeRoomId = this.callbacks.getActiveRoomId();
-    const debugNodes = listSceneDebugNodes(sceneMap);
+    const debugNodes = listSceneDebugNodes(sceneLayout);
     const previousPanel = this.host.querySelector<HTMLElement>(".entrance-scene__editor-panel");
     if (previousPanel !== null) {
       this.panelScroll = {
@@ -110,8 +125,9 @@ export class EntranceSceneEditor {
     const panel = document.createElement("aside");
     panel.className = "entrance-scene__editor-panel";
 
-    const selectedObject = resolveSceneObjectForSelection(sceneMap, selection);
-    const selectedCharacter = resolveSceneCharacterForSelection(sceneMap, selection);
+    const selectedInteractive = resolveSceneInteractiveForSelection(sceneLayout, selection);
+    const selectedBack = resolveSceneBackForSelection(sceneLayout, selection);
+    const selectedCharacter = resolveSceneCharacterForSelection(sceneLayout, selection);
 
     panel.innerHTML = `
       <div class="entrance-scene__editor-room-list" role="tablist" aria-label="Scene rooms">
@@ -158,7 +174,7 @@ export class EntranceSceneEditor {
           .join("")}
       </div>
       <div class="entrance-scene__editor-selected">
-        ${this.renderSelectedBlock(selection, selectedObject, selectedCharacter)}
+        ${this.renderSelectedBlock(selection, selectedInteractive, selectedBack, selectedCharacter)}
       </div>
       <div class="entrance-scene__editor-help">
         <span>Arrow: move</span>
@@ -184,19 +200,27 @@ export class EntranceSceneEditor {
 
   private renderSelectedBlock(
     selection: EntranceSceneEditorSelection,
-    object: SceneObjectConfig | null,
-    character: EntranceSceneCharacterConfig | null
+    interactive: SceneInteractiveConfig | null,
+    back: SceneBackConfig | null,
+    character: SceneCharacterPlacementConfig | null
   ): string {
-    if (selection === null || (object === null && character === null)) {
-      return `<p class="entrance-scene__editor-empty">Select an object or character node from the scene.</p>`;
+    if (selection === null || (interactive === null && back === null && character === null)) {
+      return `<p class="entrance-scene__editor-empty">Select an interactive, back, or character node from the scene.</p>`;
     }
 
-    if (object !== null) {
-      const objectType = object.role === "back" ? "Back Object" : "Object";
+    if (interactive !== null) {
       return `
-        <div class="entrance-scene__editor-selected-title">${objectType}: ${object.id}</div>
-        ${this.renderNumericSection("Placement", "object", object.id, OBJECT_FIELDS, object)}
-        ${this.renderLabelSection("object", object.id, object)}
+        <div class="entrance-scene__editor-selected-title">Interactive: ${interactive.id}</div>
+        ${this.renderNumericSection("Placement", "interactive", interactive.id, INTERACTIVE_FIELDS, interactive)}
+        ${this.renderLabelSection("interactive", interactive.id, interactive)}
+      `;
+    }
+
+    if (back !== null) {
+      return `
+        <div class="entrance-scene__editor-selected-title">Back: ${back.id}</div>
+        ${this.renderNumericSection("Placement", "back", back.id, BACK_FIELDS, back)}
+        ${this.renderLabelSection("back", back.id, back)}
       `;
     }
 
@@ -222,10 +246,10 @@ export class EntranceSceneEditor {
 
   private renderNumericSection(
     title: string,
-    kind: "object",
+    kind: SceneClickableNodeKind,
     id: string,
     fields: readonly (readonly [string, string])[],
-    node: SceneObjectConfig
+    node: SceneClickableNode
   ): string {
     return `
       <div class="entrance-scene__editor-section">
@@ -242,9 +266,9 @@ export class EntranceSceneEditor {
   }
 
   private renderLabelSection(
-    kind: "object",
+    kind: SceneClickableNodeKind,
     id: string,
-    node: SceneObjectConfig
+    node: SceneClickableNode
   ): string {
     const value = typeof node.label.customText === "string" ? node.label.customText : "";
     const placeholder = this.escapeAttribute(entranceT("scene.editor.customLabelPlaceholder"));
@@ -343,9 +367,9 @@ export class EntranceSceneEditor {
   }
 
   private renderFontPresetRow(
-    kind: "object",
+    kind: SceneClickableNodeKind,
     id: string,
-    fontPreset: EntranceSceneLabelFontPreset
+    fontPreset: SceneLayoutLabelFontPreset
   ): string {
     return `
       <div class="entrance-scene__editor-row">
@@ -375,7 +399,7 @@ export class EntranceSceneEditor {
     }
 
     if (action === "copy") {
-      void this.callbacks.copySceneMap();
+      void this.callbacks.copySceneLayout();
       return;
     }
 
@@ -395,7 +419,7 @@ export class EntranceSceneEditor {
     if (action === "select") {
       const kind = actionButton.dataset["kind"];
       const id = actionButton.dataset["id"];
-      if ((kind === "object" || kind === "character") && id !== undefined) {
+      if ((kind === "interactive" || kind === "back" || kind === "character") && id !== undefined) {
         this.callbacks.setSelection({ kind, id });
       }
       return;
@@ -405,8 +429,8 @@ export class EntranceSceneEditor {
       const kind = actionButton.dataset["kind"];
       const id = actionButton.dataset["id"] ?? "";
       const direction = Number(actionButton.dataset["direction"] ?? "0");
-      if (kind === "object") {
-        this.callbacks.updateObject(id, (node) => ({
+      if (kind === "interactive" || kind === "back") {
+        this.updateClickableNode(kind, id, (node) => ({
           ...node,
           label: {
             ...node.label,
@@ -440,8 +464,7 @@ export class EntranceSceneEditor {
     }
 
     if (action === "text") {
-      const nextValue = target.value.trim();
-      this.updateLabelText(kind, id, nextValue);
+      this.updateLabelText(kind, id, target.value.trim());
       return;
     }
 
@@ -466,7 +489,7 @@ export class EntranceSceneEditor {
 
     const step = event.shiftKey ? this.step * 10 : this.step;
 
-    if (selection.kind === "object") {
+    if (selection.kind === "interactive" || selection.kind === "back") {
       if (event.key === "ArrowLeft") {
         event.preventDefault();
         this.adjustField(selection.kind, selection.id, "rect.leftPx", -step);
@@ -479,18 +502,18 @@ export class EntranceSceneEditor {
       } else if (event.key === "ArrowDown") {
         event.preventDefault();
         this.adjustField(selection.kind, selection.id, "rect.topPx", step);
-      } else if (event.key === "[") {
+      } else if (selection.kind === "interactive" && event.key === "[") {
         event.preventDefault();
         this.adjustField(
-          "object",
+          selection.kind,
           selection.id,
           "frame.rotateDeg",
           this.getAdjustDelta("frame.rotateDeg", -1)
         );
-      } else if (event.key === "]") {
+      } else if (selection.kind === "interactive" && event.key === "]") {
         event.preventDefault();
         this.adjustField(
-          "object",
+          selection.kind,
           selection.id,
           "frame.rotateDeg",
           this.getAdjustDelta("frame.rotateDeg", 1)
@@ -576,9 +599,22 @@ export class EntranceSceneEditor {
     this.dragState = null;
   };
 
+  private updateClickableNode(
+    kind: SceneClickableNodeKind,
+    id: string,
+    updater: (node: SceneClickableNode) => SceneClickableNode
+  ): void {
+    if (kind === "interactive") {
+      this.callbacks.updateInteractive(id, (node) => updater(node) as SceneInteractiveConfig);
+      return;
+    }
+
+    this.callbacks.updateBack(id, (node) => updater(node) as SceneBackConfig);
+  }
+
   private adjustField(kind: string | undefined, id: string, field: string, delta: number): void {
-    if (kind === "object") {
-      this.callbacks.updateObject(id, (node) => this.patchNumericField(node, field, delta));
+    if (kind === "interactive" || kind === "back") {
+      this.updateClickableNode(kind, id, (node) => this.patchNumericField(node, field, delta));
       return;
     }
 
@@ -588,8 +624,8 @@ export class EntranceSceneEditor {
   }
 
   private updateLabelText(kind: string, id: string, nextValue: string): void {
-    if (kind === "object") {
-      this.callbacks.updateObject(id, (node) => {
+    if (kind === "interactive" || kind === "back") {
+      this.updateClickableNode(kind, id, (node) => {
         const label = { ...node.label };
         if (nextValue === "") {
           delete label.customText;
@@ -605,8 +641,8 @@ export class EntranceSceneEditor {
   }
 
   private updateLabelVisible(kind: string, id: string, visible: boolean): void {
-    if (kind === "object") {
-      this.callbacks.updateObject(id, (node) => ({
+    if (kind === "interactive" || kind === "back") {
+      this.updateClickableNode(kind, id, (node) => ({
         ...node,
         label: {
           ...node.label,
@@ -654,10 +690,10 @@ export class EntranceSceneEditor {
     if (field.endsWith("scale")) {
       return Number(Math.max(0.2, next).toFixed(2));
     }
-    if (field.endsWith("Alpha")) {
+    if (field.endsWith("alpha") || field.endsWith("Alpha")) {
       return Number(Math.min(1, Math.max(0, next)).toFixed(2));
     }
-    if (field.endsWith("HueDeg")) {
+    if (field.endsWith("hueDeg") || field.endsWith("HueDeg")) {
       const wrapped = ((next % 360) + 360) % 360;
       return Math.round(wrapped);
     }
@@ -678,27 +714,27 @@ export class EntranceSceneEditor {
     if (field.endsWith("rotateDeg")) {
       return direction * (this.step / 10);
     }
-    if (field.endsWith("Alpha")) {
+    if (field.endsWith("alpha") || field.endsWith("Alpha")) {
       return direction * this.getScaleStep();
     }
-    if (field.endsWith("HueDeg")) {
+    if (field.endsWith("hueDeg") || field.endsWith("HueDeg")) {
       return direction * this.step;
     }
     return direction * this.step;
   }
 
   private shiftFontPreset(
-    current: EntranceSceneLabelFontPreset,
+    current: SceneLayoutLabelFontPreset,
     direction: number
-  ): EntranceSceneLabelFontPreset {
-    const currentIndex = ENTRANCE_SCENE_LABEL_FONT_PRESETS.indexOf(current);
+  ): SceneLayoutLabelFontPreset {
+    const currentIndex = SCENE_LAYOUT_LABEL_FONT_PRESETS.indexOf(current);
     const nextIndex =
-      (currentIndex + direction + ENTRANCE_SCENE_LABEL_FONT_PRESETS.length) %
-      ENTRANCE_SCENE_LABEL_FONT_PRESETS.length;
-    return ENTRANCE_SCENE_LABEL_FONT_PRESETS[nextIndex] ?? "display";
+      (currentIndex + direction + SCENE_LAYOUT_LABEL_FONT_PRESETS.length) %
+      SCENE_LAYOUT_LABEL_FONT_PRESETS.length;
+    return SCENE_LAYOUT_LABEL_FONT_PRESETS[nextIndex] ?? "display";
   }
 
-  private formatFontPreset(preset: EntranceSceneLabelFontPreset): string {
+  private formatFontPreset(preset: SceneLayoutLabelFontPreset): string {
     if (preset === "inscription") {
       return "Inscription";
     }

@@ -1,43 +1,40 @@
 import type {
+  SceneBackNodeDefinition,
   SceneCharacterKind,
-  SceneCharacterRosterPreset,
+  SceneCharacterPlacementNodeDefinition,
   SceneCharacterSlot,
-  SceneCharacterNodeDefinition,
-  SceneObjectAction,
-  SceneObjectNodeDefinition,
-  SceneObjectRole,
+  SceneInteractiveAction,
+  SceneInteractiveFrameDefinition,
+  SceneInteractiveNodeDefinition,
+  SceneLayoutDefinition,
   SceneNodeDefinition,
+  SceneNodeGlowDefinition,
   SceneNodeKind,
   SceneNodeLabelDefinition,
   SceneNodeRect,
-  SceneNodeFrameDefinition,
   SceneRoomDefinition,
   SceneRoomId,
 } from "../schema.js";
 import { SCENE_LABEL_FONT_PRESETS } from "../schema.js";
 
-export const ENTRANCE_SCENE_LABEL_FONT_PRESETS = SCENE_LABEL_FONT_PRESETS;
+export const SCENE_LAYOUT_LABEL_FONT_PRESETS = SCENE_LABEL_FONT_PRESETS;
 
-export type EntranceSceneLabelFontPreset = (typeof ENTRANCE_SCENE_LABEL_FONT_PRESETS)[number];
-export type SceneObjectConfigAction = SceneObjectAction;
+export type SceneLayoutLabelFontPreset = (typeof SCENE_LAYOUT_LABEL_FONT_PRESETS)[number];
+export type SceneInteractiveConfigAction = SceneInteractiveAction;
 
-export interface SceneObjectConfig extends SceneObjectNodeDefinition {
-  viewId: string | null;
-}
+export interface SceneInteractiveConfig extends SceneInteractiveNodeDefinition {}
 
-export interface EntranceSceneCharacterConfig extends SceneCharacterNodeDefinition {
+export interface SceneBackConfig extends SceneBackNodeDefinition {}
+
+export interface SceneCharacterPlacementConfig extends SceneCharacterPlacementNodeDefinition {
   characterKind: SceneCharacterKind;
   preferredSlot?: SceneCharacterSlot;
 }
 
-export interface EntranceSceneMap {
-  characterRosterPreset: SceneCharacterRosterPreset;
-  referenceSize: {
-    width: number;
-    height: number;
-  };
-  objects: SceneObjectConfig[];
-  characters: EntranceSceneCharacterConfig[];
+export interface SceneLayoutConfig extends SceneLayoutDefinition {
+  interactives: SceneInteractiveConfig[];
+  backs: SceneBackConfig[];
+  characters: SceneCharacterPlacementConfig[];
 }
 
 export type SceneDebugSelectableNodeKind = SceneNodeKind;
@@ -68,19 +65,25 @@ function createRect(
   };
 }
 
-function createFrame(
-  variant: SceneNodeFrameDefinition["variant"],
+function createGlow(hueDeg: number, alpha: number): SceneNodeGlowDefinition {
+  return {
+    hueDeg,
+    alpha,
+  };
+}
+
+function createInteractiveFrame(
+  variant: SceneInteractiveFrameDefinition["variant"],
   rotateDeg: number,
   perspectiveDeg: number,
-  hoverGlowHueDeg: number,
-  hoverGlowAlpha: number
-): SceneNodeFrameDefinition {
+  hueDeg: number,
+  alpha: number
+): SceneInteractiveFrameDefinition {
   return {
     variant,
     rotateDeg,
     perspectiveDeg,
-    hoverGlowHueDeg,
-    hoverGlowAlpha,
+    ...createGlow(hueDeg, alpha),
   };
 }
 
@@ -95,7 +98,7 @@ function createLabel(options: {
   rotateDeg?: number;
   fontSizePx: number;
   letterSpacingPx: number;
-  fontPreset?: EntranceSceneLabelFontPreset;
+  fontPreset?: SceneLayoutLabelFontPreset;
   framePerspectiveDeg?: number;
 }): SceneNodeLabelDefinition {
   return {
@@ -114,25 +117,39 @@ function createLabel(options: {
   };
 }
 
-function createObject(
+function createInteractive(
   id: string,
-  action: SceneObjectConfigAction,
+  action: SceneInteractiveConfigAction,
   rect: SceneNodeRect,
-  frame: SceneNodeFrameDefinition,
+  frame: SceneInteractiveFrameDefinition,
   label: SceneNodeLabelDefinition,
-  options: {
-    role?: SceneObjectRole;
-    viewId?: string | null;
-  } = {}
-): SceneObjectConfig {
+  viewId: string | null = null
+): SceneInteractiveConfig {
   return {
     id,
-    kind: "object",
-    role: options.role ?? (action.type === "back" ? "back" : "hotspot"),
-    viewId: options.viewId ?? null,
+    kind: "interactive",
+    viewId,
     action,
     rect,
     frame,
+    label,
+  };
+}
+
+function createBack(
+  id: string,
+  viewId: string,
+  rect: SceneNodeRect,
+  glow: SceneNodeGlowDefinition,
+  label: SceneNodeLabelDefinition
+): SceneBackConfig {
+  return {
+    id,
+    kind: "back",
+    viewId,
+    action: { type: "back", target: "room" },
+    rect,
+    glow,
     label,
   };
 }
@@ -145,7 +162,7 @@ function createCharacter(
   scale: number,
   depth: number,
   preferredSlot?: SceneCharacterSlot
-): EntranceSceneCharacterConfig {
+): SceneCharacterPlacementConfig {
   return {
     id,
     kind: "character",
@@ -158,7 +175,7 @@ function createCharacter(
   };
 }
 
-function createEdgeBackLabel(topPx: number = 490): SceneNodeLabelDefinition {
+function createBackLabel(topPx: number = 490): SceneNodeLabelDefinition {
   return createLabel({
     textKey: "settingsHub.scene.returnRoom",
     centerXPx: 58,
@@ -170,22 +187,22 @@ function createEdgeBackLabel(topPx: number = 490): SceneNodeLabelDefinition {
   });
 }
 
-function createEdgeBackRect(widthPx: number = 116, heightPx: number = 1080): SceneNodeRect {
+function createBackRect(widthPx: number = 116, heightPx: number = 1080): SceneNodeRect {
   return createRect(0, 0, widthPx, heightPx);
 }
 
-export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
+export const DEFAULT_ENTRANCE_SCENE_LAYOUT: SceneLayoutConfig = {
   characterRosterPreset: "all-characters",
   referenceSize: {
     width: 1920,
     height: 1080,
   },
-  objects: [
-    createObject(
+  interactives: [
+    createInteractive(
       "door-analyze",
       { type: "navigate", page: "analyze" },
       createRect(171, 480, 169, 279),
-      createFrame("left-angled", -2.5, 14, 33, 0.34),
+      createInteractiveFrame("left-angled", -2.5, 14, 33, 0.34),
       createLabel({
         textKey: "sideNav.analyzeLabel",
         centerXPx: 223,
@@ -197,11 +214,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "door-assistant",
       { type: "navigate", page: "assistant" },
       createRect(1296, 162, 146, 227),
-      createFrame("upper", 0.8, 0, 33, 0.34),
+      createInteractiveFrame("upper", 0.8, 0, 33, 0.34),
       createLabel({
         textKey: "sideNav.assistantLabel",
         centerXPx: 1382,
@@ -212,11 +229,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "door-server",
       { type: "navigate", page: "server" },
       createRect(1302, 570, 144, 238),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "sideNav.serverLabel",
         centerXPx: 1367,
@@ -227,11 +244,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "door-settings",
       { type: "settings", panel: null },
       createRect(1613, 518, 169, 279),
-      createFrame("right-angled", 2.5, -14, 33, 0.34),
+      createInteractiveFrame("right-angled", 2.5, -14, 33, 0.34),
       createLabel({
         textKey: "settingsHub.openButton",
         centerXPx: 1695,
@@ -243,11 +260,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "hatch-rooms",
       { type: "navigate", page: "rooms" },
       createRect(224, 646, 428, 304),
-      createFrame("left-angled", -5, 14, 33, 0.34),
+      createInteractiveFrame("left-angled", -5, 14, 33, 0.34),
       createLabel({
         textKey: "sideNav.roomsLabel",
         centerXPx: 436,
@@ -260,11 +277,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
         framePerspectiveDeg: -8,
       })
     ),
-    createObject(
+    createInteractive(
       "board-whisper",
       { type: "whisper" },
       createRect(362, 512, 396, 246),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "panels.whisper",
         centerXPx: 560,
@@ -275,15 +292,14 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+  ],
+  backs: [
+    createBack(
       "back-whisper",
-      { type: "back", target: "room" },
-      createEdgeBackRect(116),
-      createFrame("flat", 0, 0, 33, 0.34),
-      createEdgeBackLabel(502),
-      {
-        viewId: "whisper",
-      }
+      "whisper",
+      createBackRect(116),
+      createGlow(33, 0.34),
+      createBackLabel(502)
     ),
   ],
   characters: [
@@ -297,18 +313,18 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
   ],
 };
 
-export const DEFAULT_ASSISTANT_SCENE_MAP: EntranceSceneMap = {
+export const DEFAULT_ASSISTANT_SCENE_LAYOUT: SceneLayoutConfig = {
   characterRosterPreset: "assistant-only",
   referenceSize: {
     width: 1920,
     height: 1080,
   },
-  objects: [
-    createObject(
+  interactives: [
+    createInteractive(
       "door-entrance",
       { type: "navigate", page: "entrance" },
       createRect(134, 238, 250, 518),
-      createFrame("left-angled", -1.5, 10, 33, 0.34),
+      createInteractiveFrame("left-angled", -1.5, 10, 33, 0.34),
       createLabel({
         textKey: "sideNav.entranceLabel",
         customText: "Entrance",
@@ -320,11 +336,11 @@ export const DEFAULT_ASSISTANT_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "screen-primary",
       { type: "screen", screen: "primary" },
       createRect(845, 346, 346, 194),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "",
         customText: "Open screen",
@@ -336,32 +352,31 @@ export const DEFAULT_ASSISTANT_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+  ],
+  backs: [
+    createBack(
       "back-primary",
-      { type: "back", target: "room" },
-      createEdgeBackRect(116),
-      createFrame("flat", 0, 0, 33, 0.34),
-      createEdgeBackLabel(),
-      {
-        viewId: "primary",
-      }
+      "primary",
+      createBackRect(116),
+      createGlow(33, 0.34),
+      createBackLabel()
     ),
   ],
   characters: [createCharacter("anchor-ai0", "assistant", 691, 108, 0.66, 4, "ai0")],
 };
 
-export const DEFAULT_ANALYZE_SCENE_MAP: EntranceSceneMap = {
+export const DEFAULT_ANALYZE_SCENE_LAYOUT: SceneLayoutConfig = {
   characterRosterPreset: "connected-plus-user",
   referenceSize: {
     width: 1920,
     height: 1080,
   },
-  objects: [
-    createObject(
+  interactives: [
+    createInteractive(
       "door-entrance",
       { type: "navigate", page: "entrance" },
       createRect(842, 286, 240, 328),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "sideNav.entranceLabel",
         customText: "Entrance",
@@ -373,11 +388,11 @@ export const DEFAULT_ANALYZE_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "screen-primary",
       { type: "screen", screen: "primary" },
       createRect(644, 654, 632, 246),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "",
         customText: "Open table",
@@ -389,11 +404,11 @@ export const DEFAULT_ANALYZE_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "screen-archive",
       { type: "screen", screen: "archive" },
       createRect(1540, 206, 308, 440),
-      createFrame("right-angled", 1.5, -12, 33, 0.34),
+      createInteractiveFrame("right-angled", 1.5, -12, 33, 0.34),
       createLabel({
         textKey: "",
         customText: "Open archive",
@@ -406,25 +421,21 @@ export const DEFAULT_ANALYZE_SCENE_MAP: EntranceSceneMap = {
         framePerspectiveDeg: -8,
       })
     ),
-    createObject(
+  ],
+  backs: [
+    createBack(
       "back-table",
-      { type: "back", target: "room" },
-      createEdgeBackRect(116),
-      createFrame("flat", 0, 0, 33, 0.34),
-      createEdgeBackLabel(),
-      {
-        viewId: "table",
-      }
+      "table",
+      createBackRect(116),
+      createGlow(33, 0.34),
+      createBackLabel()
     ),
-    createObject(
+    createBack(
       "back-archive",
-      { type: "back", target: "room" },
-      createEdgeBackRect(116),
-      createFrame("flat", 0, 0, 33, 0.34),
-      createEdgeBackLabel(),
-      {
-        viewId: "archive",
-      }
+      "archive",
+      createBackRect(116),
+      createGlow(33, 0.34),
+      createBackLabel()
     ),
   ],
   characters: [
@@ -435,18 +446,18 @@ export const DEFAULT_ANALYZE_SCENE_MAP: EntranceSceneMap = {
   ],
 };
 
-export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
+export const DEFAULT_SETTINGS_SCENE_LAYOUT: SceneLayoutConfig = {
   characterRosterPreset: "user-only",
   referenceSize: {
     width: 1920,
     height: 1080,
   },
-  objects: [
-    createObject(
+  interactives: [
+    createInteractive(
       "door-close",
       { type: "settings-scene-close" },
       createRect(173, 194, 221, 626),
-      createFrame("left-angled", -1.5, 10, 33, 0.34),
+      createInteractiveFrame("left-angled", -1.5, 10, 33, 0.34),
       createLabel({
         textKey: "common.close",
         centerXPx: 284,
@@ -457,11 +468,11 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "panel-theme",
       { type: "settings", panel: "theme" },
       createRect(1190, 216, 202, 184),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "settingsHub.nav.theme",
         centerXPx: 1291,
@@ -472,11 +483,11 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "panel-accounts",
       { type: "settings", panel: "accounts" },
       createRect(576, 302, 240, 194),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "settingsHub.nav.accounts",
         centerXPx: 696,
@@ -487,11 +498,11 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "panel-backup",
       { type: "settings", panel: "backup" },
       createRect(1402, 486, 192, 216),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "settingsHub.nav.backup",
         centerXPx: 1498,
@@ -502,11 +513,11 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "panel-rooms",
       { type: "settings", panel: "rooms" },
       createRect(384, 529, 250, 227),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "settingsHub.nav.rooms",
         centerXPx: 509,
@@ -517,11 +528,11 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "panel-live-log",
       { type: "settings", panel: "live-log" },
       createRect(1037, 605, 269, 194),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "settingsHub.nav.liveLog",
         centerXPx: 1172,
@@ -532,32 +543,31 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+  ],
+  backs: [
+    createBack(
       "back-panel",
-      { type: "back", target: "room" },
-      createEdgeBackRect(116),
-      createFrame("flat", 0, 0, 33, 0.34),
-      createEdgeBackLabel(),
-      {
-        viewId: "panel",
-      }
+      "panel",
+      createBackRect(116),
+      createGlow(33, 0.34),
+      createBackLabel()
     ),
   ],
   characters: [createCharacter("anchor-user", "user", 937, 113, 0.92, 4)],
 };
 
-export const DEFAULT_ROOMS_SCENE_MAP: EntranceSceneMap = {
+export const DEFAULT_ROOMS_SCENE_LAYOUT: SceneLayoutConfig = {
   characterRosterPreset: "user-only",
   referenceSize: {
     width: 1920,
     height: 1080,
   },
-  objects: [
-    createObject(
+  interactives: [
+    createInteractive(
       "door-entrance",
       { type: "navigate", page: "entrance" },
       createRect(848, 202, 228, 270),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "sideNav.entranceLabel",
         centerXPx: 962,
@@ -569,21 +579,22 @@ export const DEFAULT_ROOMS_SCENE_MAP: EntranceSceneMap = {
       })
     ),
   ],
+  backs: [],
   characters: [],
 };
 
-export const DEFAULT_SERVER_SCENE_MAP: EntranceSceneMap = {
+export const DEFAULT_SERVER_SCENE_LAYOUT: SceneLayoutConfig = {
   characterRosterPreset: "connected-plus-user",
   referenceSize: {
     width: 1920,
     height: 1080,
   },
-  objects: [
-    createObject(
+  interactives: [
+    createInteractive(
       "door-entrance",
       { type: "navigate", page: "entrance" },
       createRect(77, 194, 307, 605),
-      createFrame("left-angled", -1.5, 10, 33, 0.34),
+      createInteractiveFrame("left-angled", -1.5, 10, 33, 0.34),
       createLabel({
         textKey: "sideNav.entranceLabel",
         customText: "Entrance",
@@ -595,11 +606,11 @@ export const DEFAULT_SERVER_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+    createInteractive(
       "screen-primary",
       { type: "screen", screen: "primary" },
       createRect(864, 324, 346, 259),
-      createFrame("flat", 0, 0, 33, 0.34),
+      createInteractiveFrame("flat", 0, 0, 33, 0.34),
       createLabel({
         textKey: "",
         customText: "Open terminal",
@@ -611,15 +622,14 @@ export const DEFAULT_SERVER_SCENE_MAP: EntranceSceneMap = {
         letterSpacingPx: 1,
       })
     ),
-    createObject(
+  ],
+  backs: [
+    createBack(
       "back-primary",
-      { type: "back", target: "room" },
-      createEdgeBackRect(116),
-      createFrame("flat", 0, 0, 33, 0.34),
-      createEdgeBackLabel(),
-      {
-        viewId: "primary",
-      }
+      "primary",
+      createBackRect(116),
+      createGlow(33, 0.34),
+      createBackLabel()
     ),
   ],
   characters: [
@@ -628,25 +638,21 @@ export const DEFAULT_SERVER_SCENE_MAP: EntranceSceneMap = {
   ],
 };
 
-export function getSceneObjectNodesForView(
-  sceneMap: EntranceSceneMap,
+export function getSceneInteractiveNodesForView(
+  sceneLayout: SceneLayoutConfig,
   viewId: string | null = null
-): SceneObjectConfig[] {
-  return sceneMap.objects.filter((object) => object.viewId === viewId);
+): SceneInteractiveConfig[] {
+  return sceneLayout.interactives.filter((interactive) => interactive.viewId === viewId);
 }
 
-export function getSceneBackObjectForView(
-  sceneMap: EntranceSceneMap,
+export function getSceneBackNodeForView(
+  sceneLayout: SceneLayoutConfig,
   viewId: string
-): SceneObjectConfig | null {
-  return (
-    sceneMap.objects.find(
-      (object) => object.viewId === viewId && (object.role === "back" || object.action.type === "back")
-    ) ?? null
-  );
+): SceneBackConfig | null {
+  return sceneLayout.backs.find((back) => back.viewId === viewId) ?? null;
 }
 
-export function hasSceneNodeLabel(node: SceneObjectConfig): boolean {
+export function hasSceneNodeLabel(node: SceneInteractiveConfig | SceneBackConfig): boolean {
   if (!node.label.visible) {
     return false;
   }
@@ -654,7 +660,9 @@ export function hasSceneNodeLabel(node: SceneObjectConfig): boolean {
   return node.label.textKey !== "" || (node.label.customText?.trim() ?? "") !== "";
 }
 
-function getSceneDebugNodeLabel(node: SceneObjectConfig | EntranceSceneCharacterConfig): string {
+function getSceneDebugNodeLabel(
+  node: SceneInteractiveConfig | SceneBackConfig | SceneCharacterPlacementConfig
+): string {
   if (node.kind === "character") {
     return node.id;
   }
@@ -672,7 +680,7 @@ function getSceneDebugNodeLabel(node: SceneObjectConfig | EntranceSceneCharacter
 }
 
 export function resolveSceneNodeLabelText(
-  node: SceneObjectConfig,
+  node: SceneInteractiveConfig | SceneBackConfig,
   translate: (key: string) => string
 ): string {
   const customLabel = node.label.customText?.trim() ?? "";
@@ -687,66 +695,86 @@ export function resolveSceneNodeLabelText(
   return node.id;
 }
 
-export function buildSceneNodesFromMap(sceneMap: EntranceSceneMap): SceneNodeDefinition[] {
-  return [...sceneMap.objects, ...sceneMap.characters];
+export function buildSceneNodesFromLayout(sceneLayout: SceneLayoutConfig): SceneNodeDefinition[] {
+  return [...sceneLayout.interactives, ...sceneLayout.backs, ...sceneLayout.characters];
 }
 
-export function listSceneDebugNodes(sceneMap: EntranceSceneMap): SceneDebugNodeListEntry[] {
-  return buildSceneNodesFromMap(sceneMap).map((node) => ({
+export function listSceneDebugNodes(sceneLayout: SceneLayoutConfig): SceneDebugNodeListEntry[] {
+  return buildSceneNodesFromLayout(sceneLayout).map((node) => ({
     kind: node.kind,
     id: node.id,
-    label: getSceneDebugNodeLabel(node as SceneObjectConfig | EntranceSceneCharacterConfig),
+    label: getSceneDebugNodeLabel(
+      node as SceneInteractiveConfig | SceneBackConfig | SceneCharacterPlacementConfig
+    ),
     ...("viewId" in node ? { viewId: node.viewId } : {}),
   }));
 }
 
-export function resolveSceneObjectForSelection(
-  sceneMap: EntranceSceneMap,
+export function resolveSceneInteractiveForSelection(
+  sceneLayout: SceneLayoutConfig,
   selection: SceneDebugNodeSelection
-): SceneObjectConfig | null {
-  if (selection?.kind !== "object") {
+): SceneInteractiveConfig | null {
+  if (selection?.kind !== "interactive") {
     return null;
   }
 
-  return sceneMap.objects.find((object) => object.id === selection.id) ?? null;
+  return sceneLayout.interactives.find((interactive) => interactive.id === selection.id) ?? null;
+}
+
+export function resolveSceneBackForSelection(
+  sceneLayout: SceneLayoutConfig,
+  selection: SceneDebugNodeSelection
+): SceneBackConfig | null {
+  if (selection?.kind !== "back") {
+    return null;
+  }
+
+  return sceneLayout.backs.find((back) => back.id === selection.id) ?? null;
 }
 
 export function resolveSceneCharacterForSelection(
-  sceneMap: EntranceSceneMap,
+  sceneLayout: SceneLayoutConfig,
   selection: SceneDebugNodeSelection
-): EntranceSceneCharacterConfig | null {
+): SceneCharacterPlacementConfig | null {
   if (selection?.kind !== "character") {
     return null;
   }
 
-  return sceneMap.characters.find((character) => character.id === selection.id) ?? null;
+  return sceneLayout.characters.find((character) => character.id === selection.id) ?? null;
 }
 
-export function isSceneDebugSelectionForObject(
+export function isSceneDebugSelectionForInteractive(
   selection: SceneDebugNodeSelection,
-  object: SceneObjectConfig
+  interactive: SceneInteractiveConfig
 ): boolean {
-  return selection?.kind === "object" && selection.id === object.id;
+  return selection?.kind === "interactive" && selection.id === interactive.id;
+}
+
+export function isSceneDebugSelectionForBack(
+  selection: SceneDebugNodeSelection,
+  back: SceneBackConfig
+): boolean {
+  return selection?.kind === "back" && selection.id === back.id;
 }
 
 export function isSceneDebugSelectionForCharacter(
   selection: SceneDebugNodeSelection,
-  character: Pick<EntranceSceneCharacterConfig, "id">
+  character: Pick<SceneCharacterPlacementConfig, "id">
 ): boolean {
   return selection?.kind === "character" && selection.id === character.id;
 }
 
 export function buildSceneRoomDefinition(
   roomId: SceneRoomId,
-  sceneMap: EntranceSceneMap
+  sceneLayout: SceneLayoutConfig
 ): SceneRoomDefinition {
   return {
     id: roomId,
     page: roomId,
     referenceSize: {
-      width: sceneMap.referenceSize.width,
-      height: sceneMap.referenceSize.height,
+      width: sceneLayout.referenceSize.width,
+      height: sceneLayout.referenceSize.height,
     },
-    nodes: buildSceneNodesFromMap(sceneMap),
+    nodes: buildSceneNodesFromLayout(sceneLayout),
   };
 }

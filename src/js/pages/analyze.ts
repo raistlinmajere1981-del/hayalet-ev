@@ -34,10 +34,10 @@ import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
 } from "../scene/characters/index.js";
-import type { EntranceSceneMap } from "../scene/layout/index.js";
+import type { SceneLayoutConfig } from "../scene/layout/index.js";
 import {
-  getSceneBackObjectForView,
-  getSceneObjectNodesForView,
+  getSceneBackNodeForView,
+  getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
 import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../scene/theme/scene-theme-assets.js";
@@ -133,7 +133,7 @@ export class AnalyzeController {
   _syncingUs1Indicators: boolean;
   _analyzeSceneActiveView: AnalyzeSceneViewId | null;
   _analyzeSceneDebugEnabled: boolean;
-  _analyzeSceneMap: EntranceSceneMap;
+  _analyzeSceneLayout: SceneLayoutConfig;
   _analyzeSceneEditor: EntranceSceneEditor | null;
   _analyzeSceneSelection: EntranceSceneEditorSelection;
   _analyzeSceneResizeObserver: ResizeObserver | null;
@@ -161,7 +161,7 @@ export class AnalyzeController {
     this._syncingUs1Indicators = false;
     this._analyzeSceneActiveView = null;
     this._analyzeSceneDebugEnabled = false;
-    this._analyzeSceneMap = ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
+    this._analyzeSceneLayout = ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
     this._analyzeSceneEditor = null;
     this._analyzeSceneSelection = null;
     this._analyzeSceneResizeObserver = null;
@@ -173,7 +173,7 @@ export class AnalyzeController {
   async init(): Promise<void> {
     await this.loadSettings();
     this._analyzeSceneDebugEnabled = applySceneDebugFlag();
-    this._analyzeSceneMap =
+    this._analyzeSceneLayout =
       (this._analyzeSceneDebugEnabled ? ANALYZE_SCENE_DEBUG_STORE.loadDraft() : null) ??
       ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
     this.applyAvatars();
@@ -335,7 +335,7 @@ export class AnalyzeController {
 
     this._analyzeSceneEditor = new EntranceSceneEditor(editorHost, {
       isActive: (): boolean => this._isAnalyzeSceneDebugActive(),
-      getSceneMap: (): EntranceSceneMap => this._analyzeSceneMap,
+      getSceneLayout: (): SceneLayoutConfig => this._analyzeSceneLayout,
       getSelection: (): EntranceSceneEditorSelection => this._analyzeSceneSelection,
       getRoomOptions: (): Array<{ id: string; label: string }> =>
         SCENE_DEBUG_ROOMS.map((room) => ({
@@ -351,35 +351,43 @@ export class AnalyzeController {
       navigateToRoom: (roomId: string): void => {
         this._navigateToAnalyzeSceneDebugRoom(roomId);
       },
-      updateObject: (id, updater): void => {
-        this._analyzeSceneMap.objects = this._analyzeSceneMap.objects.map((object) =>
-          object.id === id ? updater(object) : object
+      updateInteractive: (id, updater): void => {
+        this._analyzeSceneLayout.interactives = this._analyzeSceneLayout.interactives.map((interactive) =>
+          interactive.id === id ? updater(interactive) : interactive
         );
-        this._persistAnalyzeSceneMapDraft();
+        this._persistAnalyzeSceneLayoutDraft();
         this._syncAnalyzeSceneVisibility();
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();
       },
+      updateBack: (id, updater): void => {
+        this._analyzeSceneLayout.backs = this._analyzeSceneLayout.backs.map((back) =>
+          back.id === id ? updater(back) : back
+        );
+        this._persistAnalyzeSceneLayoutDraft();
+        this._syncAnalyzeSceneVisibility();
+        this._analyzeSceneEditor?.refresh();
+      },
       updateCharacter: (id, updater): void => {
-        this._analyzeSceneMap.characters = this._analyzeSceneMap.characters.map((character) =>
+        this._analyzeSceneLayout.characters = this._analyzeSceneLayout.characters.map((character) =>
           character.id === id ? updater(character) : character
         );
-        this._persistAnalyzeSceneMapDraft();
+        this._persistAnalyzeSceneLayoutDraft();
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();
       },
       resetDraft: (): void => {
-        this._analyzeSceneMap = ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
+        this._analyzeSceneLayout = ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
         ANALYZE_SCENE_DEBUG_STORE.clearDraft();
         this._analyzeSceneSelection = null;
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();
       },
-      copySceneMap: async (): Promise<void> => {
+      copySceneLayout: async (): Promise<void> => {
         try {
-          await ANALYZE_SCENE_DEBUG_STORE.copyToClipboard(this._analyzeSceneMap);
+          await ANALYZE_SCENE_DEBUG_STORE.copyToClipboard(this._analyzeSceneLayout);
         } catch {
-          console.info("Analyze scene map copy failed.");
+          console.info("Analyze scene layout copy failed.");
         }
       },
     });
@@ -429,7 +437,7 @@ export class AnalyzeController {
 
     renderSceneInteractiveLayer({
       layer: hotspotLayer,
-      nodes: getSceneObjectNodesForView(this._analyzeSceneMap),
+      nodes: getSceneInteractiveNodesForView(this._analyzeSceneLayout),
       projection: this._getAnalyzeSceneProjection(),
       cssVarPrefix: "analyze-scene-hotspot",
       classNames: {
@@ -440,7 +448,7 @@ export class AnalyzeController {
       selection: this._analyzeSceneSelection,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this._handleAnalyzeSceneObject(node.id);
+        this._handleAnalyzeSceneInteractive(node.id);
       },
     });
   }
@@ -457,8 +465,8 @@ export class AnalyzeController {
     }
 
     const characters = buildSceneCharacterRoster(
-      this._analyzeSceneMap.characters,
-      this._analyzeSceneMap.characterRosterPreset
+      this._analyzeSceneLayout.characters,
+      this._analyzeSceneLayout.characterRosterPreset
     );
     const renderToken = ++this._analyzeSceneCharacterRenderToken;
     await renderSceneCharacterLayer({
@@ -492,7 +500,7 @@ export class AnalyzeController {
     const sceneRoot = document.getElementById("analyze-scene-root");
     return getCoverSceneProjectionFromElement(
       sceneRoot instanceof HTMLElement ? sceneRoot : null,
-      this._analyzeSceneMap.referenceSize
+      this._analyzeSceneLayout.referenceSize
     );
   }
 
@@ -502,8 +510,8 @@ export class AnalyzeController {
     return Number(Math.max(0.75, scaled).toFixed(3));
   }
 
-  _persistAnalyzeSceneMapDraft(): void {
-    ANALYZE_SCENE_DEBUG_STORE.saveDraft(this._analyzeSceneMap);
+  _persistAnalyzeSceneLayoutDraft(): void {
+    ANALYZE_SCENE_DEBUG_STORE.saveDraft(this._analyzeSceneLayout);
   }
 
   _isAnalyzeSceneDebugActive(): boolean {
@@ -514,20 +522,20 @@ export class AnalyzeController {
     );
   }
 
-  _handleAnalyzeSceneObject(id: string): void {
-    const object = this._analyzeSceneMap.objects.find((node) => node.id === id) ?? null;
-    if (object === null) {
+  _handleAnalyzeSceneInteractive(id: string): void {
+    const interactive = this._analyzeSceneLayout.interactives.find((node) => node.id === id) ?? null;
+    if (interactive === null) {
       return;
     }
 
     if (this._analyzeSceneEditor !== null) {
-      this._analyzeSceneSelection = { kind: "object", id: object.id };
+      this._analyzeSceneSelection = { kind: "interactive", id: interactive.id };
       this._analyzeSceneEditor.refresh();
       this._renderAnalyzeScene();
       return;
     }
 
-    dispatchSceneAction(object.action, {
+    dispatchSceneAction(interactive.action, {
       onNavigate: (page) => {
         this._setAnalyzeSceneActiveView(null);
         this._navigateToPage(page);
@@ -592,24 +600,27 @@ export class AnalyzeController {
         host: tableView,
         node:
           sceneActive && this._analyzeSceneActiveView !== null
-            ? getSceneBackObjectForView(this._analyzeSceneMap, this._analyzeSceneActiveView)
+            ? getSceneBackNodeForView(this._analyzeSceneLayout, this._analyzeSceneActiveView)
             : null,
         projection: this._getAnalyzeSceneProjection(),
         resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
-        onActivate: () => {
+        onActivate: (node) => {
           if (this._analyzeSceneEditor !== null) {
-            const back =
-              this._analyzeSceneActiveView === null
-                ? null
-                : getSceneBackObjectForView(this._analyzeSceneMap, this._analyzeSceneActiveView);
-            if (back !== null) {
-              this._analyzeSceneSelection = { kind: "object", id: back.id };
-              this._analyzeSceneEditor.refresh();
-            }
+            this._analyzeSceneSelection = { kind: "back", id: node.id };
+            this._analyzeSceneEditor.refresh();
             return;
           }
 
-          this._setAnalyzeSceneActiveView(null);
+          dispatchSceneAction(node.action, {
+            onNavigate: () => {},
+            onSettings: () => {},
+            onSettingsSceneClose: () => {},
+            onScreen: () => {},
+            onWhisper: () => {},
+            onBack: () => {
+              this._setAnalyzeSceneActiveView(null);
+            },
+          });
         },
       });
     }

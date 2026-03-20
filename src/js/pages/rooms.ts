@@ -15,9 +15,9 @@ import {
   buildSceneCharacterRoster,
   resolveSceneAvatarSource,
 } from "../scene/characters/index.js";
-import type { EntranceSceneMap } from "../scene/layout/index.js";
+import type { SceneLayoutConfig } from "../scene/layout/index.js";
 import {
-  getSceneObjectNodesForView,
+  getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
@@ -41,7 +41,7 @@ const ELEMENT_IDS = {
 
 export class RoomsController implements PageController {
   private sceneDebugEnabled = false;
-  private sceneMap: EntranceSceneMap = ROOMS_SCENE_DEBUG_STORE.cloneDefault();
+  private sceneLayout: SceneLayoutConfig = ROOMS_SCENE_DEBUG_STORE.cloneDefault();
   private editor: EntranceSceneEditor | null = null;
   private editorSelection: EntranceSceneEditorSelection = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -50,7 +50,7 @@ export class RoomsController implements PageController {
 
   init(): void {
     this.sceneDebugEnabled = applySceneDebugFlag();
-    this.sceneMap =
+    this.sceneLayout =
       (this.sceneDebugEnabled ? ROOMS_SCENE_DEBUG_STORE.loadDraft() : null) ??
       ROOMS_SCENE_DEBUG_STORE.cloneDefault();
     this.setupSceneDebug();
@@ -90,7 +90,7 @@ export class RoomsController implements PageController {
 
     this.editor = new EntranceSceneEditor(editorHost, {
       isActive: (): boolean => this.isSceneDebugActive(),
-      getSceneMap: (): EntranceSceneMap => this.sceneMap,
+      getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
       getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
       getRoomOptions: (): Array<{ id: string; label: string }> =>
         SCENE_DEBUG_ROOMS.map((room) => ({
@@ -112,35 +112,38 @@ export class RoomsController implements PageController {
 
         navigateToScenePage(roomId);
       },
-      updateObject: (id, updater): void => {
-        this.sceneMap.objects = this.sceneMap.objects.map((object) =>
-          object.id === id ? updater(object) : object
+      updateInteractive: (id, updater): void => {
+        this.sceneLayout.interactives = this.sceneLayout.interactives.map((interactive) =>
+          interactive.id === id ? updater(interactive) : interactive
         );
-        this.persistSceneMapDraft();
+        this.persistSceneLayoutDraft();
         this.renderHotspots();
         this.editor?.refresh();
       },
+      updateBack: (): void => {
+        return;
+      },
       updateCharacter: (id, updater): void => {
-        this.sceneMap.characters = this.sceneMap.characters.map((character) =>
+        this.sceneLayout.characters = this.sceneLayout.characters.map((character) =>
           character.id === id ? updater(character) : character
         );
-        this.persistSceneMapDraft();
+        this.persistSceneLayoutDraft();
         void this.renderCharacters();
         this.editor?.refresh();
       },
       resetDraft: (): void => {
-        this.sceneMap = ROOMS_SCENE_DEBUG_STORE.cloneDefault();
+        this.sceneLayout = ROOMS_SCENE_DEBUG_STORE.cloneDefault();
         ROOMS_SCENE_DEBUG_STORE.clearDraft();
         this.editorSelection = null;
         this.renderHotspots();
         void this.renderCharacters();
         this.editor?.refresh();
       },
-      copySceneMap: async (): Promise<void> => {
+      copySceneLayout: async (): Promise<void> => {
         try {
-          await ROOMS_SCENE_DEBUG_STORE.copyToClipboard(this.sceneMap);
+          await ROOMS_SCENE_DEBUG_STORE.copyToClipboard(this.sceneLayout);
         } catch {
-          console.info("Rooms scene map copy failed.");
+          console.info("Rooms scene layout copy failed.");
         }
       },
     });
@@ -189,7 +192,7 @@ export class RoomsController implements PageController {
 
     renderSceneInteractiveLayer({
       layer: hotspotLayer,
-      nodes: getSceneObjectNodesForView(this.sceneMap),
+      nodes: getSceneInteractiveNodesForView(this.sceneLayout),
       projection: this.getSceneProjection(),
       cssVarPrefix: "scene-hotspot",
       classNames: {
@@ -200,7 +203,7 @@ export class RoomsController implements PageController {
       selection: this.editorSelection,
       resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
       onActivate: (node) => {
-        this.handleObject(node.id);
+        this.handleInteractive(node.id);
       },
     });
   }
@@ -212,8 +215,8 @@ export class RoomsController implements PageController {
     }
 
     const characters = buildSceneCharacterRoster(
-      this.sceneMap.characters,
-      this.sceneMap.characterRosterPreset
+      this.sceneLayout.characters,
+      this.sceneLayout.characterRosterPreset
     );
     if (characters.length === 0) {
       characterLayer.replaceChildren();
@@ -247,20 +250,20 @@ export class RoomsController implements PageController {
     });
   }
 
-  private handleObject(id: string): void {
-    const object = this.sceneMap.objects.find((node) => node.id === id) ?? null;
-    if (object === null) {
+  private handleInteractive(id: string): void {
+    const interactive = this.sceneLayout.interactives.find((node) => node.id === id) ?? null;
+    if (interactive === null) {
       return;
     }
 
     if (this.editor !== null) {
-      this.editorSelection = { kind: "object", id: object.id };
+      this.editorSelection = { kind: "interactive", id: interactive.id };
       this.editor.refresh();
       this.renderHotspots();
       return;
     }
 
-    dispatchSceneAction(object.action, {
+    dispatchSceneAction(interactive.action, {
       onNavigate: (page) => {
         navigateToScenePage(page);
       },
@@ -292,8 +295,8 @@ export class RoomsController implements PageController {
     this.resizeObserver.observe(root);
   }
 
-  private persistSceneMapDraft(): void {
-    ROOMS_SCENE_DEBUG_STORE.saveDraft(this.sceneMap);
+  private persistSceneLayoutDraft(): void {
+    ROOMS_SCENE_DEBUG_STORE.saveDraft(this.sceneLayout);
   }
 
   private isSceneDebugActive(): boolean {
@@ -311,7 +314,7 @@ export class RoomsController implements PageController {
   }
 
   private getSceneProjection(): SceneProjection {
-    return getCoverSceneProjectionFromElement(this.getRoot(), this.sceneMap.referenceSize);
+    return getCoverSceneProjectionFromElement(this.getRoot(), this.sceneLayout.referenceSize);
   }
 
   private getRoot(): HTMLElement | null {

@@ -10,8 +10,8 @@ import type {
   SceneCharacterSlot,
 } from "../schema.js";
 import {
-  DEFAULT_ENTRANCE_SCENE_MAP,
-  type EntranceSceneCharacterConfig,
+  DEFAULT_ENTRANCE_SCENE_LAYOUT,
+  type SceneCharacterPlacementConfig,
 } from "../layout/index.js";
 import { getSceneCharacterRoleConfig } from "../theme/scene-character-theme.js";
 import {
@@ -19,7 +19,7 @@ import {
   type SceneCharacterState,
 } from "./scene-character-state.js";
 
-type SceneCharacterAnchor = EntranceSceneCharacterConfig;
+type SceneCharacterAnchor = SceneCharacterPlacementConfig;
 
 interface Us1SceneBinding {
   accountId: string;
@@ -406,8 +406,8 @@ export function filterSceneCharacterRosterByPreset(
 }
 
 export function buildSceneCharacterRoster(
-  anchors: readonly SceneCharacterAnchor[] = DEFAULT_ENTRANCE_SCENE_MAP.characters,
-  preset: SceneCharacterRosterPreset = DEFAULT_ENTRANCE_SCENE_MAP.characterRosterPreset
+  anchors: readonly SceneCharacterAnchor[] = DEFAULT_ENTRANCE_SCENE_LAYOUT.characters,
+  preset: SceneCharacterRosterPreset = DEFAULT_ENTRANCE_SCENE_LAYOUT.characterRosterPreset
 ): SceneCharacterDescriptor[] {
   const roster: SceneCharacterDescriptor[] = [];
 

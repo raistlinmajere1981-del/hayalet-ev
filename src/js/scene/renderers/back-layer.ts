@@ -1,5 +1,5 @@
 import { getSceneHotspotLabelFontFamily } from "../label-font.js";
-import type { SceneObjectConfig } from "../layout/index.js";
+import type { SceneBackConfig } from "../layout/index.js";
 import { hasSceneNodeLabel } from "../layout/index.js";
 
 interface SceneProjection {
@@ -10,10 +10,10 @@ interface SceneProjection {
 
 export interface RenderSceneBackLayerOptions {
   host: HTMLElement;
-  node: SceneObjectConfig | null;
+  node: SceneBackConfig | null;
   projection: SceneProjection;
-  resolveLabel(node: SceneObjectConfig): string;
-  onActivate(node: SceneObjectConfig): void;
+  resolveLabel(node: SceneBackConfig): string;
+  onActivate(node: SceneBackConfig): void;
 }
 
 export function renderSceneBackLayer(options: RenderSceneBackLayerOptions): void {
@@ -30,13 +30,14 @@ export function renderSceneBackLayer(options: RenderSceneBackLayerOptions): void
   button.type = "button";
   button.className = "scene-back-zone scene-back-zone--single";
   button.dataset["sceneGeneratedBack"] = "true";
-  button.dataset["sceneBackZone"] = "left";
   button.style.left = `${projection.offsetX + node.rect.leftPx * projection.scale}px`;
   button.style.top = `${projection.offsetY + node.rect.topPx * projection.scale}px`;
   button.style.width = `${node.rect.widthPx * projection.scale}px`;
   button.style.height = `${node.rect.heightPx * projection.scale}px`;
   button.style.right = "auto";
   button.style.bottom = "auto";
+  button.style.setProperty("--scene-back-zone-glow-hue", `${node.glow.hueDeg}deg`);
+  button.style.setProperty("--scene-back-zone-glow-alpha", `${node.glow.alpha}`);
   button.ariaLabel = resolveLabel(node);
   button.addEventListener("click", () => {
     onActivate(node);

@@ -1,97 +1,76 @@
 import { getSceneDebugDraftStorageKey } from "./scene-debug-theme.js";
 import type { SceneDebugEditableRoomId } from "../schema.js";
 import {
-  cloneEntranceSceneMap,
-  DEFAULT_ANALYZE_SCENE_MAP,
-  DEFAULT_ASSISTANT_SCENE_MAP,
-  DEFAULT_ENTRANCE_SCENE_MAP,
-  DEFAULT_ROOMS_SCENE_MAP,
-  DEFAULT_SERVER_SCENE_MAP,
-  DEFAULT_SETTINGS_SCENE_MAP,
-  normalizeAnalyzeSceneMap,
-  normalizeAssistantSceneMap,
-  normalizeEntranceSceneMap,
-  normalizeRoomsSceneMap,
-  normalizeServerSceneMap,
-  normalizeSettingsSceneMap,
-  serializeEntranceSceneMap,
-  type EntranceSceneMap,
+  cloneSceneLayout,
+  DEFAULT_ANALYZE_SCENE_LAYOUT,
+  DEFAULT_ASSISTANT_SCENE_LAYOUT,
+  DEFAULT_ENTRANCE_SCENE_LAYOUT,
+  DEFAULT_ROOMS_SCENE_LAYOUT,
+  DEFAULT_SERVER_SCENE_LAYOUT,
+  DEFAULT_SETTINGS_SCENE_LAYOUT,
+  parseSceneLayoutDraft,
+  serializeSceneLayout,
+  type SceneLayoutConfig,
 } from "../layout/index.js";
 
 interface SceneDebugStoreConfig {
-  defaultMap: EntranceSceneMap;
+  defaultLayout: SceneLayoutConfig;
   storageKey: string;
-  normalizer: (source: Partial<EntranceSceneMap>) => EntranceSceneMap;
 }
 
 export interface SceneDebugStore {
   roomId: SceneDebugEditableRoomId;
-  cloneDefault(): EntranceSceneMap;
-  loadDraft(): EntranceSceneMap | null;
-  saveDraft(sceneMap: EntranceSceneMap): void;
+  cloneDefault(): SceneLayoutConfig;
+  loadDraft(): SceneLayoutConfig | null;
+  saveDraft(sceneLayout: SceneLayoutConfig): void;
   clearDraft(): void;
-  serialize(sceneMap: EntranceSceneMap): string;
-  copyToClipboard(sceneMap: EntranceSceneMap): Promise<void>;
+  serialize(sceneLayout: SceneLayoutConfig): string;
+  copyToClipboard(sceneLayout: SceneLayoutConfig): Promise<void>;
 }
 
 const SCENE_DEBUG_STORE_CONFIG: Record<SceneDebugEditableRoomId, SceneDebugStoreConfig> = {
   entrance: {
-    defaultMap: DEFAULT_ENTRANCE_SCENE_MAP,
+    defaultLayout: DEFAULT_ENTRANCE_SCENE_LAYOUT,
     storageKey: getSceneDebugDraftStorageKey("entrance"),
-    normalizer: normalizeEntranceSceneMap,
   },
   analyze: {
-    defaultMap: DEFAULT_ANALYZE_SCENE_MAP,
+    defaultLayout: DEFAULT_ANALYZE_SCENE_LAYOUT,
     storageKey: getSceneDebugDraftStorageKey("analyze"),
-    normalizer: normalizeAnalyzeSceneMap,
   },
   assistant: {
-    defaultMap: DEFAULT_ASSISTANT_SCENE_MAP,
+    defaultLayout: DEFAULT_ASSISTANT_SCENE_LAYOUT,
     storageKey: getSceneDebugDraftStorageKey("assistant"),
-    normalizer: normalizeAssistantSceneMap,
   },
   server: {
-    defaultMap: DEFAULT_SERVER_SCENE_MAP,
+    defaultLayout: DEFAULT_SERVER_SCENE_LAYOUT,
     storageKey: getSceneDebugDraftStorageKey("server"),
-    normalizer: normalizeServerSceneMap,
   },
   rooms: {
-    defaultMap: DEFAULT_ROOMS_SCENE_MAP,
+    defaultLayout: DEFAULT_ROOMS_SCENE_LAYOUT,
     storageKey: getSceneDebugDraftStorageKey("rooms"),
-    normalizer: normalizeRoomsSceneMap,
   },
   settings: {
-    defaultMap: DEFAULT_SETTINGS_SCENE_MAP,
+    defaultLayout: DEFAULT_SETTINGS_SCENE_LAYOUT,
     storageKey: getSceneDebugDraftStorageKey("settings"),
-    normalizer: normalizeSettingsSceneMap,
   },
 };
 
-function loadSceneDebugDraft(config: SceneDebugStoreConfig): EntranceSceneMap | null {
+function loadSceneDebugDraft(config: SceneDebugStoreConfig): SceneLayoutConfig | null {
   try {
     const raw = window.localStorage.getItem(config.storageKey);
     if (raw === null || raw.trim() === "") {
       return null;
     }
 
-    const parsed = JSON.parse(raw) as Partial<EntranceSceneMap>;
-    if (
-      parsed.referenceSize === undefined ||
-      !Array.isArray(parsed.objects) ||
-      !Array.isArray(parsed.characters)
-    ) {
-      return null;
-    }
-
-    return config.normalizer(parsed);
+    return parseSceneLayoutDraft(raw);
   } catch {
     return null;
   }
 }
 
-function saveSceneDebugDraft(config: SceneDebugStoreConfig, sceneMap: EntranceSceneMap): void {
+function saveSceneDebugDraft(config: SceneDebugStoreConfig, sceneLayout: SceneLayoutConfig): void {
   try {
-    window.localStorage.setItem(config.storageKey, serializeEntranceSceneMap(sceneMap));
+    window.localStorage.setItem(config.storageKey, serializeSceneLayout(sceneLayout));
   } catch {
     // Ignore draft persistence failures in constrained environments.
   }
@@ -110,23 +89,23 @@ export function createSceneDebugStore(roomId: SceneDebugEditableRoomId): SceneDe
 
   return {
     roomId,
-    cloneDefault(): EntranceSceneMap {
-      return cloneEntranceSceneMap(config.defaultMap);
+    cloneDefault(): SceneLayoutConfig {
+      return cloneSceneLayout(config.defaultLayout);
     },
-    loadDraft(): EntranceSceneMap | null {
+    loadDraft(): SceneLayoutConfig | null {
       return loadSceneDebugDraft(config);
     },
-    saveDraft(sceneMap: EntranceSceneMap): void {
-      saveSceneDebugDraft(config, sceneMap);
+    saveDraft(sceneLayout: SceneLayoutConfig): void {
+      saveSceneDebugDraft(config, sceneLayout);
     },
     clearDraft(): void {
       clearSceneDebugDraft(config);
     },
-    serialize(sceneMap: EntranceSceneMap): string {
-      return serializeEntranceSceneMap(sceneMap);
+    serialize(sceneLayout: SceneLayoutConfig): string {
+      return serializeSceneLayout(sceneLayout);
     },
-    async copyToClipboard(sceneMap: EntranceSceneMap): Promise<void> {
-      await navigator.clipboard.writeText(serializeEntranceSceneMap(sceneMap));
+    async copyToClipboard(sceneLayout: SceneLayoutConfig): Promise<void> {
+      await navigator.clipboard.writeText(serializeSceneLayout(sceneLayout));
     },
   };
 }
