@@ -343,12 +343,16 @@ export function setupWindowHandlers(): void {
   registerHandler("app-restart", async (_event, options?: { [key: string]: unknown }) => {
     const uiModeRaw = options?.["uiMode"];
     const uiMode = uiModeRaw === "classic" || uiModeRaw === "scene" ? uiModeRaw : undefined;
+    const sceneEditorRaw = options?.["sceneEditor"];
+    const sceneEditor =
+      sceneEditorRaw === true ? true : sceneEditorRaw === false ? false : undefined;
     const sceneDebugRaw = options?.["sceneDebug"];
     const sceneDebug = sceneDebugRaw === true ? true : sceneDebugRaw === false ? false : undefined;
 
     return await appRestart({
       forceFullRestart: options?.["forceFullRestart"] === true,
       ...(uiMode !== undefined ? { uiMode } : {}),
+      ...(sceneEditor !== undefined ? { sceneEditor } : {}),
       ...(sceneDebug !== undefined ? { sceneDebug } : {}),
     });
   });

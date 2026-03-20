@@ -96,7 +96,7 @@ function syncShellLayoutState(pageName: string): void {
 }
 
 function syncActiveSceneDebugRoom(pageName: string): void {
-  if (getUiModeToggleState() !== "scene-debug") {
+  if (getUiModeToggleState() !== "scene-editor") {
     setActiveSceneDebugRoomId(null);
     return;
   }
@@ -283,6 +283,7 @@ export function setupTopBarButtons(): void {
               await electronApi.appRestart({
                 forceFullRestart: true,
                 uiMode: restartOptions.uiMode,
+                sceneEditor: restartOptions.sceneEditor,
                 sceneDebug: restartOptions.sceneDebug,
               });
             } catch {

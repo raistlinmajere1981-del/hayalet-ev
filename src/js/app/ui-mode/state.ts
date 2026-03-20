@@ -1,8 +1,9 @@
-export type UiModeToggleState = "classic" | "scene" | "scene-debug";
+export type UiModeToggleState = "classic" | "scene" | "scene-editor";
 export type UiModeOptionState = UiModeToggleState | "ghost-agent";
 
 export interface UiModeRestartOptions {
   uiMode: "classic" | "scene";
+  sceneEditor: boolean;
   sceneDebug: boolean;
 }
 
@@ -22,6 +23,7 @@ const UI_MODE_OPTION_DEFINITIONS = [
     behavior: "restart",
     restartOptions: {
       uiMode: "classic",
+      sceneEditor: false,
       sceneDebug: false,
     },
   },
@@ -32,16 +34,18 @@ const UI_MODE_OPTION_DEFINITIONS = [
     behavior: "restart",
     restartOptions: {
       uiMode: "scene",
+      sceneEditor: false,
       sceneDebug: false,
     },
   },
   {
-    state: "scene-debug",
+    state: "scene-editor",
     icon: "D",
-    labelKey: "uiMode.options.sceneDebug",
+    labelKey: "uiMode.options.sceneEditor",
     behavior: "restart",
     restartOptions: {
       uiMode: "scene",
+      sceneEditor: true,
       sceneDebug: true,
     },
   },
@@ -77,8 +81,9 @@ export function getUiModeToggleState(
     return "classic";
   }
 
-  const sceneDebug = root?.getAttribute("data-scene-debug");
-  return sceneDebug === "true" ? "scene-debug" : "scene";
+  const sceneEditor =
+    root?.getAttribute("data-scene-editor") ?? root?.getAttribute("data-scene-debug");
+  return sceneEditor === "true" ? "scene-editor" : "scene";
 }
 
 export function getUiModeLabelKey(state: UiModeToggleState): string {
@@ -89,6 +94,7 @@ export function getUiModeRestartOptions(state: UiModeToggleState): UiModeRestart
   return (
     getUiModeOptionDefinition(state)?.restartOptions ?? {
       uiMode: "classic",
+      sceneEditor: false,
       sceneDebug: false,
     }
   );

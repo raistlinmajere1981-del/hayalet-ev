@@ -84,6 +84,7 @@ import {
 } from "./webview-bindings.js";
 import {
   applySceneDebugFlag,
+  createSceneLayoutEditorAssetBindings,
   createSceneDebugRuntimeSession,
   SceneLayoutEditor,
   type SceneLayoutEditorSelection,
@@ -107,7 +108,10 @@ import {
   updateServerStatusView,
   updateTrafficStatusView,
 } from "./view-helpers.js";
-import { SceneAlphaWindowFrameController } from "../../scene/alpha-window.js";
+import {
+  applySceneAlphaWindowBoundsToTarget,
+  clearSceneAlphaWindowFrameVariables,
+} from "../../scene/alpha-window.js";
 import { dispatchSceneAction } from "../../scene/action-dispatcher.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../../scene/navigation.js";
 import { getCoverSceneProjectionFromElement } from "../../scene/projection.js";
@@ -118,6 +122,7 @@ import { syncSceneViewRuntime } from "../../scene/runtime.js";
 import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewPanelArtSrc,
+  getSceneRoomViewPanelTransparentWindow,
 } from "../../scene-system/index.js";
 import type {
   ProviderScenarioCommandReport,
@@ -265,7 +270,6 @@ export class AssistantController {
   _assistantSceneSelection: SceneLayoutEditorSelection;
   _assistantSceneResizeObserver: ResizeObserver | null;
   _assistantSceneCharacterRenderToken: number;
-  _assistantSceneFrameController: SceneAlphaWindowFrameController | null;
 
   get _assistantSceneLayout(): SceneLayoutConfig {
     return this._assistantSceneSession.getSceneLayout();
@@ -341,7 +345,6 @@ export class AssistantController {
     this._assistantSceneSelection = null;
     this._assistantSceneResizeObserver = null;
     this._assistantSceneCharacterRenderToken = 0;
-    this._assistantSceneFrameController = null;
   }
 
   async init(): Promise<void> {
@@ -378,25 +381,6 @@ export class AssistantController {
     ) as HTMLButtonElement | null;
     this._assistantSceneDebugEnabled = applySceneDebugFlag();
     this._assistantSceneSession.load(this._assistantSceneDebugEnabled);
-    const assistantContainer = document.querySelector(".assistant-container");
-    const assistantSceneScreenView = document.getElementById("assistant-scene-screen-view");
-    const assistantSceneScreenArt = document.getElementById(
-      "assistant-scene-screen-art"
-    ) as HTMLImageElement | null;
-
-    if (
-      assistantContainer instanceof HTMLElement &&
-      assistantSceneScreenView instanceof HTMLElement &&
-      assistantSceneScreenArt instanceof HTMLImageElement
-    ) {
-      this._assistantSceneFrameController?.disconnect();
-      this._assistantSceneFrameController = new SceneAlphaWindowFrameController({
-        image: assistantSceneScreenArt,
-        container: assistantSceneScreenView,
-        target: assistantContainer,
-        variablePrefix: "assistant-scene",
-      });
-    }
 
     this._populateProviderSelect();
     this._initActiveAdapter();
@@ -593,8 +577,26 @@ export class AssistantController {
       screenArt.src = getSceneRoomViewPanelArtSrc("assistant", "primary") ?? "";
       screenArt.alt = "";
     }
+  }
 
-    this._assistantSceneFrameController?.refresh();
+  _syncAssistantSceneTransparentWindow(): void {
+    const screenView = document.getElementById("assistant-scene-screen-view");
+    const container = document.querySelector(".assistant-container");
+    if (!(screenView instanceof HTMLElement) || !(container instanceof HTMLElement)) {
+      return;
+    }
+
+    if (!isSceneUiMode() || !this._assistantSceneScreenOpen) {
+      clearSceneAlphaWindowFrameVariables(container, "assistant-scene");
+      return;
+    }
+
+    applySceneAlphaWindowBoundsToTarget({
+      bounds: getSceneRoomViewPanelTransparentWindow("assistant", "primary"),
+      container: screenView,
+      target: container,
+      variablePrefix: "assistant-scene",
+    });
   }
 
   _setupAssistantSceneDebug(): void {
@@ -609,6 +611,16 @@ export class AssistantController {
       this._assistantSceneEditor = null;
       return;
     }
+
+    const assetBindings = createSceneLayoutEditorAssetBindings({
+      roomId: "assistant",
+      getSceneLayout: (): SceneLayoutConfig => this._assistantSceneLayout,
+      getSelection: (): SceneLayoutEditorSelection => this._assistantSceneSelection,
+      onAfterChange: (): void => {
+        this._syncAssistantSceneAssets();
+        this._syncAssistantSceneVisibility();
+      },
+    });
 
     this._assistantSceneEditor = new SceneLayoutEditor(editorHost, {
       isActive: (): boolean => this._isAssistantSceneDebugActive(),
@@ -679,6 +691,7 @@ export class AssistantController {
       saveSceneClickableThemeToSource: async (): Promise<void> => {
         await this._assistantSceneSession.saveSceneClickableThemeToSource();
       },
+      ...assetBindings,
     });
     this._assistantSceneEditor.refresh();
   }
@@ -878,11 +891,17 @@ export class AssistantController {
       });
     }
 
-    if (sceneActive) {
-      this._assistantSceneFrameController?.refresh();
-      this._renderAssistantScene();
-      this._assistantSceneEditor?.refresh();
+    if (!sceneActive) {
+      if (container instanceof HTMLElement) {
+        clearSceneAlphaWindowFrameVariables(container, "assistant-scene");
+      }
+      return;
     }
+
+    this._syncAssistantSceneAssets();
+    this._syncAssistantSceneTransparentWindow();
+    this._renderAssistantScene();
+    this._assistantSceneEditor?.refresh();
   }
 
   _navigateToPage(page: string): void {
@@ -2513,8 +2532,6 @@ export class AssistantController {
     this._unsubTheme?.();
     this._assistantSceneResizeObserver?.disconnect();
     this._assistantSceneResizeObserver = null;
-    this._assistantSceneFrameController?.disconnect();
-    this._assistantSceneFrameController = null;
     this.webviewStatusOverlayController?.setState(null);
     this.webviewStatusOverlayController?.destroy();
     this.webviewStatusOverlayController = null;

@@ -15,7 +15,10 @@ import { isSceneUiMode } from "../ui/ui-mode.js";
 import { shellT } from "../app/shell-i18n.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import type { Us1RoomPackageCandidate, Us1SessionEvent } from "@shared/us1-mail.js";
-import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
+import {
+  applySceneAlphaWindowBoundsToTarget,
+  clearSceneAlphaWindowFrameVariables,
+} from "../scene/alpha-window.js";
 import { dispatchSceneAction } from "../scene/action-dispatcher.js";
 import {
   navigateToScenePage,
@@ -28,6 +31,7 @@ import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js
 import { renderSceneObjectLayer } from "../scene/renderers/object-layer.js";
 import {
   applySceneDebugFlag,
+  createSceneLayoutEditorAssetBindings,
   createSceneDebugRuntimeSession,
   SceneLayoutEditor,
   type SceneLayoutEditorSelection,
@@ -46,7 +50,11 @@ import {
   getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../scene/layout/index.js";
-import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../scene-system/index.js";
+import {
+  getSceneRoomBackgroundSrc,
+  getSceneRoomPanelSrc,
+  getSceneRoomPanelTransparentWindow,
+} from "../scene-system/index.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
 
 import { renderMessages, resetMessageRenderState } from "./analyze/message-renderer.js";
@@ -136,7 +144,6 @@ export class AnalyzeController {
   _analyzeSceneSelection: SceneLayoutEditorSelection;
   _analyzeSceneResizeObserver: ResizeObserver | null;
   _analyzeSceneCharacterRenderToken: number;
-  _analyzeSceneFrameController: SceneAlphaWindowFrameController | null;
 
   get _analyzeSceneLayout(): SceneLayoutConfig {
     return this._analyzeSceneSession.getSceneLayout();
@@ -178,7 +185,6 @@ export class AnalyzeController {
     this._analyzeSceneSelection = null;
     this._analyzeSceneResizeObserver = null;
     this._analyzeSceneCharacterRenderToken = 0;
-    this._analyzeSceneFrameController = null;
   }
 
   async init(): Promise<void> {
@@ -282,24 +288,6 @@ export class AnalyzeController {
   }
 
   _initializeAnalyzeScene(): void {
-    const room = document.querySelector(".analyze-room");
-    const tableView = document.getElementById("analyze-scene-table-view");
-    const tableArt = document.getElementById("analyze-scene-table-art") as HTMLImageElement | null;
-
-    if (
-      room instanceof HTMLElement &&
-      tableView instanceof HTMLElement &&
-      tableArt instanceof HTMLImageElement
-    ) {
-      this._analyzeSceneFrameController?.disconnect();
-      this._analyzeSceneFrameController = new SceneAlphaWindowFrameController({
-        image: tableArt,
-        container: tableView,
-        target: room,
-        variablePrefix: "analyze-scene",
-      });
-    }
-
     this._setupAnalyzeSceneDebug();
     this._syncAnalyzeSceneAssets();
     this._renderAnalyzeScene();
@@ -323,8 +311,27 @@ export class AnalyzeController {
       tableArt.src = getSceneRoomPanelSrc("analyze", panelId) ?? "";
       tableArt.alt = "";
     }
+  }
 
-    this._analyzeSceneFrameController?.refresh();
+  _syncAnalyzeSceneTransparentWindow(): void {
+    const tableView = document.getElementById("analyze-scene-table-view");
+    const room = document.querySelector(".analyze-room");
+    if (!(tableView instanceof HTMLElement) || !(room instanceof HTMLElement)) {
+      return;
+    }
+
+    const panelId = this._analyzeSceneActiveView ?? "table";
+    if (!isSceneUiMode() || this._analyzeSceneActiveView === null) {
+      clearSceneAlphaWindowFrameVariables(room, "analyze-scene");
+      return;
+    }
+
+    applySceneAlphaWindowBoundsToTarget({
+      bounds: getSceneRoomPanelTransparentWindow("analyze", panelId),
+      container: tableView,
+      target: room,
+      variablePrefix: "analyze-scene",
+    });
   }
 
   _setupAnalyzeSceneDebug(): void {
@@ -339,6 +346,16 @@ export class AnalyzeController {
       this._analyzeSceneEditor = null;
       return;
     }
+
+    const assetBindings = createSceneLayoutEditorAssetBindings({
+      roomId: "analyze",
+      getSceneLayout: (): SceneLayoutConfig => this._analyzeSceneLayout,
+      getSelection: (): SceneLayoutEditorSelection => this._analyzeSceneSelection,
+      onAfterChange: (): void => {
+        this._syncAnalyzeSceneAssets();
+        this._syncAnalyzeSceneVisibility();
+      },
+    });
 
     this._analyzeSceneEditor = new SceneLayoutEditor(editorHost, {
       isActive: (): boolean => this._isAnalyzeSceneDebugActive(),
@@ -409,6 +426,7 @@ export class AnalyzeController {
       saveSceneClickableThemeToSource: async (): Promise<void> => {
         await this._analyzeSceneSession.saveSceneClickableThemeToSource();
       },
+      ...assetBindings,
     });
     this._analyzeSceneEditor.refresh();
   }
@@ -625,11 +643,14 @@ export class AnalyzeController {
     }
 
     if (!sceneActive) {
+      if (room instanceof HTMLElement) {
+        clearSceneAlphaWindowFrameVariables(room, "analyze-scene");
+      }
       return;
     }
 
     this._syncAnalyzeSceneAssets();
-    this._analyzeSceneFrameController?.refresh();
+    this._syncAnalyzeSceneTransparentWindow();
     this._renderAnalyzeScene();
     this._analyzeSceneEditor?.refresh();
   }

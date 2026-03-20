@@ -504,6 +504,7 @@ declare global {
       startPage: string | null;
       autoConnect: boolean;
       uiMode: "classic" | "scene";
+      sceneEditor: boolean;
       sceneDebug: boolean;
       roomsSnapshot: StartupRoomsSnapshot | null;
     };
@@ -789,6 +790,7 @@ declare global {
     appRestart: (options?: {
       forceFullRestart?: boolean;
       uiMode?: "classic" | "scene";
+      sceneEditor?: boolean;
       sceneDebug?: boolean;
     }) => Promise<{ success: boolean; message?: string }>;
 

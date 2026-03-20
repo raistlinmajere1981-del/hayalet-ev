@@ -4,6 +4,7 @@ import { AppI18n } from "../modules/i18n/index.js";
 import { dispatchSceneAction } from "../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
+  createSceneLayoutEditorAssetBindings,
   createSceneDebugRuntimeSession,
   SceneLayoutEditor,
   type SceneLayoutEditorSelection,
@@ -102,6 +103,18 @@ export class RoomsController implements PageController {
       return;
     }
 
+    const assetBindings = createSceneLayoutEditorAssetBindings({
+      roomId: "rooms",
+      getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
+      getSelection: (): SceneLayoutEditorSelection => this.editorSelection,
+      onAfterChange: (): void => {
+        this.renderBackground();
+        this.renderHotspots();
+        void this.renderCharacters();
+        this.editor?.refresh();
+      },
+    });
+
     this.editor = new SceneLayoutEditor(editorHost, {
       isActive: (): boolean => this.isSceneDebugActive(),
       getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
@@ -168,6 +181,7 @@ export class RoomsController implements PageController {
       saveSceneClickableThemeToSource: async (): Promise<void> => {
         await this.sceneDebugSession.saveSceneClickableThemeToSource();
       },
+      ...assetBindings,
     });
     this.editor.refresh();
   }

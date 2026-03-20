@@ -39,10 +39,14 @@ export interface SceneDebugRuntimeSession {
   saveSceneClickableThemeToSource(): Promise<boolean>;
 }
 
+export type SceneEditorRuntimeSession = SceneDebugRuntimeSession;
+
 export interface SceneDebugRuntimeSessionDependencies {
   createLayoutStore?: (roomId: SceneDebugEditableRoomId) => SceneDebugStore;
   createThemeStore?: () => SceneDebugThemeStore;
 }
+
+export type SceneEditorRuntimeSessionDependencies = SceneDebugRuntimeSessionDependencies;
 
 function loadSceneLayout(
   sceneDebugStore: SceneDebugStore,
@@ -151,4 +155,11 @@ export function createSceneDebugRuntimeSession(
       return sceneDebugThemeStore.saveSource(sceneClickableTheme);
     },
   };
+}
+
+export function createSceneEditorRuntimeSession(
+  roomId: SceneDebugEditableRoomId,
+  dependencies: SceneEditorRuntimeSessionDependencies = {}
+): SceneEditorRuntimeSession {
+  return createSceneDebugRuntimeSession(roomId, dependencies);
 }

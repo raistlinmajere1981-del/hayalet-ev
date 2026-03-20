@@ -82,6 +82,7 @@ test("scene editor store keys drafts by active theme and writes back to canonica
     "src/js/scene-editor/scene-debug-runtime-session.ts",
     "utf8"
   );
+  const assetStateSource = readFileSync("src/js/scene-editor/scene-theme-asset-state.ts", "utf8");
   const layoutRegistrySource = readFileSync("src/js/scene-system/scene-layout-registry.ts", "utf8");
   const serializationSource = readFileSync("src/js/scene/layout/scene-layout-serialization.ts", "utf8");
   const clickableThemeSource = readFileSync(
@@ -113,8 +114,10 @@ test("scene editor store keys drafts by active theme and writes back to canonica
   assert.match(serializationSource, /export function parseSceneLayoutDraft/);
   assert.match(clickableThemeSource, /export function parseSceneClickableThemeDraft/);
   assert.match(runtimeSessionSource, /export function createSceneDebugRuntimeSession/);
+  assert.match(runtimeSessionSource, /export function createSceneEditorRuntimeSession/);
   assert.match(runtimeSessionSource, /updateSceneClickableTheme/);
   assert.match(runtimeSessionSource, /resetSceneLayoutDraft/);
+  assert.match(assetStateSource, /invalidateSceneAlphaWindowBoundsCache/);
   assert.doesNotMatch(debugStoreSource, /draftStorageKeys/);
   assert.equal(existsSync("src/js/scene/debug-store.ts"), false);
   assert.equal(existsSync("src/js/scene/debug"), false);

@@ -5,6 +5,7 @@ import { navigateMainShellPage } from "../shared/external-page.js";
 import { dispatchSceneAction } from "../../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
+  createSceneLayoutEditorAssetBindings,
   createSceneDebugRuntimeSession,
   SceneLayoutEditor,
   type SceneLayoutEditorSelection,
@@ -24,7 +25,10 @@ import {
   getSceneObjectNodesForView,
   resolveSceneNodeLabelText,
 } from "../../scene/layout/index.js";
-import { SceneAlphaWindowFrameController } from "../../scene/alpha-window.js";
+import {
+  applySceneAlphaWindowBoundsToTarget,
+  clearSceneAlphaWindowFrameVariables,
+} from "../../scene/alpha-window.js";
 import { getCoverSceneProjection } from "../../scene/projection.js";
 import { renderSceneBackLayer } from "../../scene/renderers/back-layer.js";
 import { renderSceneCharacterLayer } from "../../scene/renderers/character-layer.js";
@@ -33,6 +37,7 @@ import { syncSceneViewRuntime } from "../../scene/runtime.js";
 import {
   getSceneRoomBackgroundSrc,
   getSceneRoomPanelSrc,
+  getSceneRoomPanelTransparentWindow,
 } from "../../scene-system/index.js";
 import {
   OVERLAY_GROUPS,
@@ -195,7 +200,6 @@ class SettingsSceneController {
   private background: HTMLImageElement;
   private panelArt: HTMLImageElement;
   private characterLayer: HTMLElement;
-  private alphaFrameController: SceneAlphaWindowFrameController;
   private onClose: () => void;
   private onOpenPanel: (panelId: SettingsPanelId) => void;
   private onReturnToRoom: () => void;
@@ -236,12 +240,6 @@ class SettingsSceneController {
     this.background = deps.background;
     this.panelArt = deps.panelArt;
     this.characterLayer = deps.characterLayer;
-    this.alphaFrameController = new SceneAlphaWindowFrameController({
-      image: deps.panelArt,
-      container: deps.panelView,
-      target: deps.panelView,
-      variablePrefix: "settings-scene",
-    });
     this.onClose = deps.onClose;
     this.onOpenPanel = deps.onOpenPanel;
     this.onReturnToRoom = deps.onReturnToRoom;
@@ -291,6 +289,7 @@ class SettingsSceneController {
 
     if (!sceneActive) {
       this.restorePanelsContainer();
+      clearSceneAlphaWindowFrameVariables(this.panelView, "settings-scene");
       this.syncActiveDebugRoom(false);
       return;
     }
@@ -322,9 +321,7 @@ class SettingsSceneController {
         });
       },
     });
-    if (panelOpen) {
-      this.alphaFrameController.refresh();
-    }
+    this.syncPanelTransparentWindow(panelOpen ? nextState.activePanel : null);
     this.syncActiveDebugRoom(true);
     this.renderHotspots();
     void this.renderCharacter();
@@ -341,6 +338,17 @@ class SettingsSceneController {
       this.editor = null;
       return;
     }
+
+    const assetBindings = createSceneLayoutEditorAssetBindings({
+      roomId: "settings",
+      getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
+      getSelection: (): SceneLayoutEditorSelection => this.editorSelection,
+      onAfterChange: (): void => {
+        this.background.src = getSceneRoomBackgroundSrc("settings");
+        this.background.alt = "";
+        this.sync(this.state);
+      },
+    });
 
     this.editor = new SceneLayoutEditor(this.editorHost, {
       isActive: (): boolean => this.isEditorActive(),
@@ -419,6 +427,7 @@ class SettingsSceneController {
       saveSceneClickableThemeToSource: async (): Promise<void> => {
         await this.sceneDebugSession.saveSceneClickableThemeToSource();
       },
+      ...assetBindings,
     });
     this.editor.refresh();
   }
@@ -455,14 +464,26 @@ class SettingsSceneController {
       this.panelArt.removeAttribute("src");
       this.panelArt.alt = "";
       delete this.panelSlot.dataset["settingsPanel"];
-      this.alphaFrameController.clear();
       return;
     }
 
     this.panelArt.src = getSceneRoomPanelSrc("settings", panelId) ?? "";
     this.panelArt.alt = "";
     this.panelSlot.dataset["settingsPanel"] = panelId;
-    this.alphaFrameController.refresh();
+  }
+
+  private syncPanelTransparentWindow(panelId: SettingsPanelId | null): void {
+    if (panelId === null || !this.state.open || !isSceneUiMode()) {
+      clearSceneAlphaWindowFrameVariables(this.panelView, "settings-scene");
+      return;
+    }
+
+    applySceneAlphaWindowBoundsToTarget({
+      bounds: getSceneRoomPanelTransparentWindow("settings", panelId),
+      container: this.panelView,
+      target: this.panelView,
+      variablePrefix: "settings-scene",
+    });
   }
 
   private syncActiveDebugRoom(sceneActive: boolean): void {

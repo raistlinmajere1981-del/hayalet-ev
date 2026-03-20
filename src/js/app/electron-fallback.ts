@@ -236,6 +236,7 @@ export function ensureElectronApiFallback(): void {
     appRestart: async (_options?: {
       forceFullRestart?: boolean;
       uiMode?: "classic" | "scene";
+      sceneEditor?: boolean;
       sceneDebug?: boolean;
     }): Promise<{ success: boolean; message?: string }> =>
       await Promise.resolve({ success: true, message: "fallback" }),

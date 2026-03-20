@@ -769,7 +769,8 @@
       "options": {
         "classic": "Klasik",
         "scene": "Sahne",
-        "sceneDebug": "Sahne Debug"
+        "sceneDebug": "Sahne Debug",
+        "sceneEditor": "Sahne Editör"
       },
       "confirmTitle": "Yeniden başlatma gerekli",
       "confirmMessage": "{{mode}} moduna geçmek için uygulama yeniden başlatılsın mı?"

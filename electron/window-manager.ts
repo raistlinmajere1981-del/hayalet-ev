@@ -465,10 +465,12 @@ type RestartUiMode = "classic" | "scene";
 interface AppRestartOptions {
   forceFullRestart?: boolean;
   uiMode?: RestartUiMode;
+  sceneEditor?: boolean;
   sceneDebug?: boolean;
 }
 
 const UI_MODE_ARG_PREFIXES = ["--app-ui-mode", "--ui-mode"];
+const SCENE_EDITOR_ARG_PREFIXES = ["--app-scene-editor", "--scene-editor"];
 const SCENE_DEBUG_ARG_PREFIXES = ["--app-scene-debug", "--scene-debug"];
 const WRAPPER_RESTART_REQUEST_FILE = "assistant-wrapper-restart.json";
 
@@ -479,9 +481,11 @@ function shouldStripArg(arg: string, prefixes: string[]): boolean {
 function buildRelaunchArgs(options: AppRestartOptions): string[] {
   const baseArgs = process.argv.slice(1);
   const overrideUiMode = options.uiMode !== undefined;
+  const overrideSceneEditor = options.sceneEditor !== undefined;
   const overrideSceneDebug = options.sceneDebug !== undefined;
+  const overrideSceneFlag = overrideSceneEditor || overrideSceneDebug;
 
-  if (!overrideUiMode && !overrideSceneDebug) {
+  if (!overrideUiMode && !overrideSceneFlag) {
     return baseArgs;
   }
 
@@ -489,7 +493,11 @@ function buildRelaunchArgs(options: AppRestartOptions): string[] {
     if (overrideUiMode && shouldStripArg(arg, UI_MODE_ARG_PREFIXES)) {
       return false;
     }
-    if (overrideSceneDebug && shouldStripArg(arg, SCENE_DEBUG_ARG_PREFIXES)) {
+    if (
+      overrideSceneFlag &&
+      (shouldStripArg(arg, SCENE_EDITOR_ARG_PREFIXES) ||
+        shouldStripArg(arg, SCENE_DEBUG_ARG_PREFIXES))
+    ) {
       return false;
     }
     return true;
@@ -499,7 +507,8 @@ function buildRelaunchArgs(options: AppRestartOptions): string[] {
     nextArgs.push("--app-ui-mode=scene");
   }
 
-  if (overrideSceneDebug && options.sceneDebug === true) {
+  if (overrideSceneFlag && resolveRestartSceneEditor(options) === true) {
+    nextArgs.push("--app-scene-editor=1");
     nextArgs.push("--app-scene-debug=1");
   }
 
@@ -529,11 +538,22 @@ function resolveRestartUiMode(options: AppRestartOptions): RestartUiMode {
   return raw === "scene" ? "scene" : "classic";
 }
 
-function resolveRestartSceneDebug(options: AppRestartOptions): boolean {
+function resolveRestartSceneEditor(options: AppRestartOptions): boolean {
+  if (options.sceneEditor !== undefined) {
+    return options.sceneEditor;
+  }
   if (options.sceneDebug !== undefined) {
     return options.sceneDebug;
   }
-  return process.argv.some((arg) => shouldStripArg(arg, SCENE_DEBUG_ARG_PREFIXES));
+  return process.argv.some(
+    (arg) =>
+      shouldStripArg(arg, SCENE_EDITOR_ARG_PREFIXES) ||
+      shouldStripArg(arg, SCENE_DEBUG_ARG_PREFIXES)
+  );
+}
+
+function resolveRestartSceneDebug(options: AppRestartOptions): boolean {
+  return resolveRestartSceneEditor(options);
 }
 
 function resolveDevRestartScript(options: AppRestartOptions): string {
@@ -606,6 +626,7 @@ export async function appRestart(options: AppRestartOptions = {}): Promise<{
     const shouldRelaunch =
       options.forceFullRestart === true ||
       options.uiMode !== undefined ||
+      options.sceneEditor !== undefined ||
       options.sceneDebug !== undefined;
 
     if (!app.isPackaged) {

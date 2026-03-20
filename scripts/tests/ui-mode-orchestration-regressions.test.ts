@@ -10,7 +10,7 @@ test("ui mode orchestration centralizes option definitions and shared dropdown r
 
   assert.match(stateSource, /state:\s*"classic"/);
   assert.match(stateSource, /state:\s*"scene"/);
-  assert.match(stateSource, /state:\s*"scene-debug"/);
+  assert.match(stateSource, /state:\s*"scene-editor"/);
   assert.match(stateSource, /state:\s*"ghost-agent"/);
   assert.match(stateSource, /function getUiModeRestartOptions/);
   assert.match(dropdownSource, /function buildUiModeOptionMarkup/);

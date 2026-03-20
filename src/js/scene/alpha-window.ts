@@ -1,4 +1,4 @@
-interface AlphaWindowBounds {
+export interface SceneAlphaWindowBounds {
   sourceWidth: number;
   sourceHeight: number;
   left: number;
@@ -7,7 +7,7 @@ interface AlphaWindowBounds {
   bottom: number;
 }
 
-interface FrameInsets {
+export interface SceneAlphaWindowFrameInsets {
   left: number;
   top: number;
   right: number;
@@ -28,7 +28,7 @@ const MIN_HEIGHT_COVERAGE = 0.14;
 const MAX_COVERAGE = 0.98;
 const MIN_DENSITY = 0.68;
 
-const alphaWindowBoundsCache = new Map<string, Promise<AlphaWindowBounds | null>>();
+const alphaWindowBoundsCache = new Map<string, Promise<SceneAlphaWindowBounds | null>>();
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -48,24 +48,28 @@ function getImageSource(image: HTMLImageElement): string {
   return image.getAttribute("src")?.trim() ?? "";
 }
 
-function clearFrameVariables(target: HTMLElement, prefix: string): void {
+export function clearSceneAlphaWindowFrameVariables(target: HTMLElement, prefix: string): void {
   target.style.removeProperty(`--${prefix}-frame-left`);
   target.style.removeProperty(`--${prefix}-frame-top`);
   target.style.removeProperty(`--${prefix}-frame-right`);
   target.style.removeProperty(`--${prefix}-frame-bottom`);
 }
 
-function applyFrameVariables(target: HTMLElement, prefix: string, frame: FrameInsets): void {
+function applyFrameVariables(
+  target: HTMLElement,
+  prefix: string,
+  frame: SceneAlphaWindowFrameInsets
+): void {
   target.style.setProperty(`--${prefix}-frame-left`, `${frame.left}%`);
   target.style.setProperty(`--${prefix}-frame-top`, `${frame.top}%`);
   target.style.setProperty(`--${prefix}-frame-right`, `${frame.right}%`);
   target.style.setProperty(`--${prefix}-frame-bottom`, `${frame.bottom}%`);
 }
 
-function projectBoundsToCoverFrame(
+export function projectSceneAlphaWindowBoundsToCoverFrame(
   container: HTMLElement,
-  bounds: AlphaWindowBounds
-): FrameInsets | null {
+  bounds: SceneAlphaWindowBounds
+): SceneAlphaWindowFrameInsets | null {
   const containerWidth = container.clientWidth;
   const containerHeight = container.clientHeight;
   if (containerWidth <= 0 || containerHeight <= 0) {
@@ -103,7 +107,7 @@ function scanTransparentBounds(
   sourceWidth: number,
   sourceHeight: number,
   alphaThreshold: number
-): AlphaWindowBounds | null {
+): SceneAlphaWindowBounds | null {
   let left = sourceWidth;
   let top = sourceHeight;
   let right = -1;
@@ -163,8 +167,8 @@ function scanTransparentBounds(
 async function loadAlphaWindowBounds(
   src: string,
   alphaThreshold: number
-): Promise<AlphaWindowBounds | null> {
-  const bounds = await new Promise<AlphaWindowBounds | null>((resolve) => {
+): Promise<SceneAlphaWindowBounds | null> {
+  const bounds = await new Promise<SceneAlphaWindowBounds | null>((resolve) => {
     const image = new Image();
     image.decoding = "async";
     image.onload = (): void => {
@@ -201,10 +205,10 @@ async function loadAlphaWindowBounds(
   return bounds;
 }
 
-async function resolveAlphaWindowBounds(
+export async function detectSceneAlphaWindowBounds(
   src: string,
   alphaThreshold: number
-): Promise<AlphaWindowBounds | null> {
+): Promise<SceneAlphaWindowBounds | null> {
   const cacheKey = `${alphaThreshold}:${src}`;
   const cached = alphaWindowBoundsCache.get(cacheKey);
   if (cached !== undefined) {
@@ -216,6 +220,41 @@ async function resolveAlphaWindowBounds(
   alphaWindowBoundsCache.set(cacheKey, promise);
   const bounds = await promise;
   return bounds;
+}
+
+export function invalidateSceneAlphaWindowBoundsCache(src?: string): void {
+  if (src === undefined || src.trim() === "") {
+    alphaWindowBoundsCache.clear();
+    return;
+  }
+
+  const normalizedSrc = src.trim();
+  for (const key of [...alphaWindowBoundsCache.keys()]) {
+    if (key.endsWith(`:${normalizedSrc}`)) {
+      alphaWindowBoundsCache.delete(key);
+    }
+  }
+}
+
+export function applySceneAlphaWindowBoundsToTarget(options: {
+  bounds: SceneAlphaWindowBounds | null;
+  container: HTMLElement;
+  target: HTMLElement;
+  variablePrefix: string;
+}): void {
+  const { bounds, container, target, variablePrefix } = options;
+  if (bounds === null) {
+    clearSceneAlphaWindowFrameVariables(target, variablePrefix);
+    return;
+  }
+
+  const frame = projectSceneAlphaWindowBoundsToCoverFrame(container, bounds);
+  if (frame === null) {
+    clearSceneAlphaWindowFrameVariables(target, variablePrefix);
+    return;
+  }
+
+  applyFrameVariables(target, variablePrefix, frame);
 }
 
 export class SceneAlphaWindowFrameController {
@@ -260,7 +299,7 @@ export class SceneAlphaWindowFrameController {
   }
 
   clear(): void {
-    clearFrameVariables(this.target, this.variablePrefix);
+    clearSceneAlphaWindowFrameVariables(this.target, this.variablePrefix);
   }
 
   disconnect(): void {
@@ -285,21 +324,16 @@ export class SceneAlphaWindowFrameController {
     }
 
     const token = ++this.refreshToken;
-    const bounds = await resolveAlphaWindowBounds(src, this.alphaThreshold);
+    const bounds = await detectSceneAlphaWindowBounds(src, this.alphaThreshold);
     if (token !== this.refreshToken) {
       return;
     }
 
-    if (bounds === null) {
-      this.clear();
-      return;
-    }
-
-    const frame = projectBoundsToCoverFrame(this.container, bounds);
-    if (frame === null) {
-      return;
-    }
-
-    applyFrameVariables(this.target, this.variablePrefix, frame);
+    applySceneAlphaWindowBoundsToTarget({
+      bounds,
+      container: this.container,
+      target: this.target,
+      variablePrefix: this.variablePrefix,
+    });
   }
 }

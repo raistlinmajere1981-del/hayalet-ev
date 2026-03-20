@@ -28,8 +28,11 @@ test("scene debug room registry includes all unified scene rooms", () => {
   assert.match(roomRegistrySource, /rooms:\s*"sideNav\.roomsLabel"/);
   assert.match(roomRegistrySource, /settings:\s*"settingsHub\.openButton"/);
   assert.match(roomRegistrySource, /export const SCENE_DEBUG_ROOMS/);
+  assert.match(roomRegistrySource, /export const SCENE_EDITOR_ROOMS/);
   assert.match(roomRegistrySource, /SCENE_ROOM_IDS\.map/);
   assert.match(roomRegistrySource, /export function getSceneDebugRoomOptions/);
+  assert.match(roomRegistrySource, /export function getSceneEditorRoomOptions/);
+  assert.match(roomRegistrySource, /export function openSceneEditorRoom/);
 });
 
 test("entrance scene layout keeps room targets and whisper return in one layout registry", () => {
@@ -195,11 +198,11 @@ test("entrance and analyze scene layers keep hidden views passive in debug mode"
   );
   assert.match(
     debugOverridesSource,
-    /\[data-scene-debug="true"\] \.entrance-scene \.entrance-scene__character,[\s\S]*pointer-events:\s*none;/
+    /\[data-scene-editor="true"\][\s\S]*\.entrance-scene \.entrance-scene__character,[\s\S]*pointer-events:\s*none;/
   );
   assert.match(
     debugOverridesSource,
-    /\[data-scene-debug="true"\] \.analyze-scene \.entrance-scene__character-head,[\s\S]*pointer-events:\s*auto;/
+    /\[data-scene-editor="true"\][\s\S]*\.analyze-scene \.entrance-scene__character-head,[\s\S]*pointer-events:\s*auto;/
   );
 });
 

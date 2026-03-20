@@ -8,6 +8,8 @@ import type {
   SceneLayoutLabelFontPreset,
 } from "../scene/layout/index.js";
 import type { SceneClickableThemeDefinition } from "../scene/schema.js";
+import type { SceneAlphaWindowBounds } from "../scene/alpha-window.js";
+import type { SceneEditorAssetTargetDescriptor } from "./scene-theme-asset-state.js";
 import {
   SCENE_LAYOUT_LABEL_FONT_PRESETS,
   listSceneDebugNodes,
@@ -16,6 +18,10 @@ import {
   resolveSceneObjectForSelection,
 } from "../scene/layout/index.js";
 import { AppI18n } from "../modules/i18n/index.js";
+import {
+  SCENE_LAYOUT_EDITOR_CAPABILITIES,
+  type SceneLayoutEditorCapabilityContext,
+} from "./scene-editor-capabilities.js";
 
 export type SceneLayoutEditorSelection = SceneDebugNodeSelection;
 
@@ -48,6 +54,18 @@ interface SceneLayoutEditorCallbacks {
   resetSceneClickableThemeDraft(): void;
   copySceneClickableTheme(): Promise<void>;
   saveSceneClickableThemeToSource(): Promise<void>;
+  getSceneAssetTargets?(): SceneEditorAssetTargetDescriptor[];
+  getSuggestedSceneAssetTargetId?(): string | null;
+  pickSceneAsset?(targetId: string): Promise<void>;
+  clearSceneAsset?(targetId: string): void;
+  resetSceneAssetDraft?(): void;
+  saveSceneAssetDraftToSource?(): Promise<void>;
+  detectSceneAssetTransparentWindow?(targetId: string): Promise<void>;
+  clearSceneAssetTransparentWindow?(targetId: string): void;
+  updateSceneAssetTransparentWindow?(
+    targetId: string,
+    nextBounds: SceneAlphaWindowBounds | null
+  ): void;
 }
 
 const INTERACTIVE_FIELDS = [
@@ -135,6 +153,8 @@ export class SceneLayoutEditor {
   panelPosition: { left: number; top: number } | null = null;
   dragState: { pointerId: number; offsetX: number; offsetY: number } | null = null;
   panelScroll = { top: 0, left: 0 };
+  openSections = new Set<string>();
+  activeAssetTargetId: string | null = null;
 
   constructor(host: HTMLElement, callbacks: SceneLayoutEditorCallbacks) {
     this.host = host;
@@ -154,12 +174,23 @@ export class SceneLayoutEditor {
     const roomOptions = this.callbacks.getRoomOptions();
     const activeRoomId = this.callbacks.getActiveRoomId();
     const debugNodes = listSceneDebugNodes(sceneLayout);
+    const assetTargets = this.callbacks.getSceneAssetTargets?.() ?? [];
+    const suggestedAssetTargetId = this.callbacks.getSuggestedSceneAssetTargetId?.() ?? null;
     const previousPanel = this.host.querySelector<HTMLElement>(".entrance-scene__editor-panel");
     if (previousPanel !== null) {
       this.panelScroll = {
         top: previousPanel.scrollTop,
         left: previousPanel.scrollLeft,
       };
+    }
+    const previousOpenSections = Array.from(
+      this.host.querySelectorAll<HTMLDetailsElement>("details[data-editor-section]")
+    )
+      .filter((section) => section.open)
+      .map((section) => section.dataset["editorSection"] ?? "")
+      .filter((sectionId) => sectionId !== "");
+    if (previousOpenSections.length > 0) {
+      this.openSections = new Set(previousOpenSections);
     }
 
     const panel = document.createElement("aside");
@@ -168,69 +199,158 @@ export class SceneLayoutEditor {
     const selectedObject = resolveSceneObjectForSelection(sceneLayout, selection);
     const selectedBack = resolveSceneBackForSelection(sceneLayout, selection);
     const selectedCharacter = resolveSceneCharacterForSelection(sceneLayout, selection);
+    this.syncActiveAssetTargetId(assetTargets, suggestedAssetTargetId);
+    const activeAssetTarget =
+      assetTargets.find((target) => target.id === this.activeAssetTargetId) ?? null;
+    const capabilityContext = this.buildCapabilityContext(assetTargets, activeAssetTarget);
+    const capabilityMarkup = SCENE_LAYOUT_EDITOR_CAPABILITIES.map((capability) =>
+      capability.render(capabilityContext)
+    )
+      .filter((section): section is string => section !== null && section.trim() !== "")
+      .join("");
+    const activeRoomLabel = this.escapeHtml(
+      roomOptions.find((room) => room.id === activeRoomId)?.label ?? activeRoomId
+    );
+    const selectionSummary = this.escapeHtml(
+      this.formatSelectionSummary(selection, selectedObject, selectedBack, selectedCharacter)
+    );
 
     panel.innerHTML = `
-      <div class="entrance-scene__editor-room-list" role="tablist" aria-label="Scene rooms">
-        ${roomOptions
-          .map(
-            (room) => `
-            <button
-              type="button"
-              class="entrance-scene__editor-room-btn${room.id === activeRoomId ? " is-active" : ""}"
-              data-editor-action="room"
-              data-room-id="${room.id}"
-              aria-pressed="${String(room.id === activeRoomId)}"
-            >
-              ${room.label}
-            </button>
-          `
-          )
-          .join("")}
-      </div>
-      <div class="entrance-scene__editor-header">
-        <div class="entrance-scene__editor-drag-handle" data-editor-drag-handle="true">
-          <h3 class="entrance-scene__editor-title">Scene Editor</h3>
-          <p class="entrance-scene__editor-subtitle">Drafts stay local until you save the room layout or theme defaults.</p>
+      <div class="entrance-scene__editor-shell">
+        <div class="entrance-scene__editor-header" data-editor-drag-handle="true">
+          <div class="entrance-scene__editor-heading">
+            <span class="entrance-scene__editor-eyebrow">Scene Workbench</span>
+            <div>
+              <h3 class="entrance-scene__editor-title">Scene Editor</h3>
+              <p class="entrance-scene__editor-subtitle">
+                Edit layout, theme, assets, and screen placement from a guided scene editor surface.
+              </p>
+            </div>
+          </div>
+          <div class="entrance-scene__editor-toolbar">
+            <button type="button" class="btn btn-ghost btn-sm" data-editor-action="copy">Copy Layout</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-editor-action="reset">Reset Layout</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-editor-action="save-source">Save Layout</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-editor-action="save-theme">Save Theme</button>
+            ${
+              assetTargets.length > 0 && this.callbacks.saveSceneAssetDraftToSource !== undefined
+                ? `<button type="button" class="btn btn-ghost btn-sm" data-editor-action="save-assets">Save Assets</button>`
+                : ""
+            }
+          </div>
         </div>
-        <div class="entrance-scene__editor-toolbar">
-          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="save-source">Save Layout</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="copy">Copy Layout</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="reset">Reset Layout</button>
+        <div class="entrance-scene__editor-status" aria-label="Scene workbench status">
+          <span class="entrance-scene__editor-status-pill is-active">Room ${activeRoomLabel}</span>
+          <span class="entrance-scene__editor-status-pill">${selectionSummary}</span>
+          <span class="entrance-scene__editor-status-pill">${debugNodes.length} Nodes</span>
+          ${
+            assetTargets.length > 0
+              ? `<span class="entrance-scene__editor-status-pill">${assetTargets.length} Assets</span>`
+              : ""
+          }
         </div>
-      </div>
-      <div class="entrance-scene__editor-stepper" role="group" aria-label="Editor step size">
-        ${[1, 5, 10]
-          .map(
-            (step) => `
-            <button
-              type="button"
-              class="entrance-scene__editor-chip${step === this.step ? " is-active" : ""}"
-              data-editor-action="step"
-              data-step="${step}"
-            >
-              ${step}px
-            </button>
-          `
-          )
-          .join("")}
-      </div>
-      <div class="entrance-scene__editor-selected">
-        ${this.renderSelectedBlock(selection, selectedObject, selectedBack, selectedCharacter)}
-      </div>
-      ${this.renderThemeDefaultsBlock(sceneClickableTheme)}
-      <div class="entrance-scene__editor-help">
-        <span>Arrow: move</span>
-        <span>Shift: x10</span>
-        <span>[ ]: rotate/scale</span>
-      </div>
-      <div class="entrance-scene__editor-list-wrap">
-        ${DEBUG_NODE_SECTIONS.map(({ kind, title }) =>
-          this.renderNodeSection(
-            title,
-            debugNodes.filter((node) => node.kind === kind),
-            selection
-          )
-        ).join("")}
+        <div class="entrance-scene__editor-controlbar">
+          <div class="entrance-scene__editor-cluster">
+            <span class="entrance-scene__editor-cluster-label">Rooms</span>
+            <div class="entrance-scene__editor-room-list" role="tablist" aria-label="Scene rooms">
+              ${roomOptions
+                .map(
+                  (room) => `
+                  <button
+                    type="button"
+                    class="entrance-scene__editor-room-btn${room.id === activeRoomId ? " is-active" : ""}"
+                    data-editor-action="room"
+                    data-room-id="${room.id}"
+                    aria-pressed="${String(room.id === activeRoomId)}"
+                  >
+                    ${room.label}
+                  </button>
+                `
+                )
+                .join("")}
+            </div>
+          </div>
+          <div class="entrance-scene__editor-cluster">
+            <span class="entrance-scene__editor-cluster-label">Step</span>
+            <div class="entrance-scene__editor-stepper" role="group" aria-label="Editor step size">
+              ${[1, 5, 10]
+                .map(
+                  (step) => `
+                  <button
+                    type="button"
+                    class="entrance-scene__editor-chip${step === this.step ? " is-active" : ""}"
+                    data-editor-action="step"
+                    data-step="${step}"
+                  >
+                    ${step}px
+                  </button>
+                `
+                )
+                .join("")}
+            </div>
+          </div>
+        </div>
+        <div class="entrance-scene__editor-workspace">
+          <div class="entrance-scene__editor-main">
+            ${
+              assetTargets.length > 0
+                ? this.renderAccordionSection(
+                    "assets",
+                    "Assets",
+                    this.renderAssetSection(assetTargets, activeAssetTarget),
+                    true
+                  )
+                : ""
+            }
+            ${this.renderAccordionSection(
+              "theme-defaults",
+              "Theme Defaults",
+              this.renderThemeDefaultsBlock(sceneClickableTheme),
+              false
+            )}
+            ${this.renderAccordionSection(
+              "scene-nodes",
+              "Scene Nodes",
+              `<div class="entrance-scene__editor-list-wrap entrance-scene__editor-list-wrap--sections">
+                ${DEBUG_NODE_SECTIONS.map(({ kind, title }) =>
+                  this.renderNodeSection(
+                    title,
+                    debugNodes.filter((node) => node.kind === kind),
+                    selection
+                  )
+                ).join("")}
+              </div>`,
+              false
+            )}
+          </div>
+          <div class="entrance-scene__editor-sidebar">
+            <section class="entrance-scene__editor-sidecard entrance-scene__editor-sidecard--selected">
+              <div class="entrance-scene__editor-sidecard-header">
+                <span class="entrance-scene__editor-sidecard-kicker">Inspector</span>
+                <div class="entrance-scene__editor-sidecard-title">Selected Item</div>
+              </div>
+              <div class="entrance-scene__editor-selected">${this.renderSelectedBlock(
+                selection,
+                selectedObject,
+                selectedBack,
+                selectedCharacter
+              )}</div>
+            </section>
+            ${capabilityMarkup}
+            ${this.renderAccordionSection(
+              "scene-notes",
+              "Scene Notes",
+              `<div class="entrance-scene__editor-help">
+                <span>Arrow keys move selected nodes</span>
+                <span>Shift multiplies the current step</span>
+                <span>Drafts stay local until you save the room layout or theme defaults.</span>
+                <span>Asset drafts stay local until you save assets.</span>
+                <span>Run transparent detection manually from the asset tools</span>
+              </div>`,
+              false
+            )}
+          </div>
+        </div>
       </div>
     `;
 
@@ -286,17 +406,125 @@ export class SceneLayoutEditor {
     return "";
   }
 
+  private renderAccordionSection(
+    id: string,
+    title: string,
+    content: string,
+    defaultOpen: boolean
+  ): string {
+    const open = this.openSections.has(id) || (this.openSections.size === 0 && defaultOpen);
+    return `
+      <details class="entrance-scene__editor-accordion" data-editor-section="${id}" ${open ? "open" : ""}>
+        <summary class="entrance-scene__editor-accordion-summary">${title}</summary>
+        <div class="entrance-scene__editor-accordion-body">${content}</div>
+      </details>
+    `;
+  }
+
+  private renderAssetSection(
+    assetTargets: SceneEditorAssetTargetDescriptor[],
+    activeAssetTarget: SceneEditorAssetTargetDescriptor | null
+  ): string {
+    return `
+      <div class="entrance-scene__editor-section">
+        <div class="entrance-scene__editor-section-head">
+          <div>
+            <div class="entrance-scene__editor-section-title">Asset Slots</div>
+            <p class="entrance-scene__editor-section-copy">
+              Focus a surface, swap its preview, then keep transparent-window tuning next to the active asset.
+            </p>
+          </div>
+          <div class="entrance-scene__editor-toolbar">
+          ${
+            this.callbacks.resetSceneAssetDraft !== undefined
+              ? `<button type="button" class="btn btn-ghost btn-sm" data-editor-action="reset-assets">Reset Assets</button>`
+              : ""
+          }
+        </div>
+        </div>
+        <div class="entrance-scene__editor-asset-list">
+          ${assetTargets
+            .map((target) => this.renderAssetCard(target, activeAssetTarget?.id === target.id))
+            .join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderAssetCard(target: SceneEditorAssetTargetDescriptor, active: boolean): string {
+    const label = this.escapeHtml(target.label);
+    const sourceHint = this.escapeHtml(target.sourceHint);
+    const previewMarkup =
+      target.runtimeSrc.trim() === ""
+        ? `<div class="entrance-scene__editor-asset-preview entrance-scene__editor-asset-preview--empty">No Preview</div>`
+        : `<div class="entrance-scene__editor-asset-preview">
+            <img
+              src="${this.escapeAttribute(target.runtimeSrc)}"
+              alt=""
+              loading="lazy"
+              class="entrance-scene__editor-asset-preview-image"
+            />
+          </div>`;
+
+    return `
+      <div class="entrance-scene__editor-asset-card${active ? " is-selected" : ""}">
+        ${previewMarkup}
+        <button
+          type="button"
+          class="entrance-scene__editor-asset-focus"
+          data-editor-action="focus-asset"
+          data-target-id="${target.id}"
+        >
+          <span class="entrance-scene__editor-asset-title">${label}</span>
+          <span class="entrance-scene__editor-asset-meta">${sourceHint}</span>
+        </button>
+        <div class="entrance-scene__editor-row-controls">
+          ${
+            target.hasSourceOverride
+              ? `<span class="entrance-scene__editor-chip is-active">Draft Asset</span>`
+              : `<span class="entrance-scene__editor-chip">Theme Default</span>`
+          }
+          ${
+            this.callbacks.pickSceneAsset !== undefined
+              ? `<button type="button" class="entrance-scene__editor-adjust" data-editor-action="pick-asset" data-target-id="${target.id}">Pick</button>`
+              : ""
+          }
+          ${
+            this.callbacks.clearSceneAsset !== undefined && target.hasSourceOverride
+              ? `<button type="button" class="entrance-scene__editor-adjust" data-editor-action="clear-asset" data-target-id="${target.id}">Reset</button>`
+              : ""
+          }
+          ${
+            target.supportsTransparentWindow
+              ? `<span class="entrance-scene__editor-chip${target.transparentWindow !== null ? " is-active" : ""}">${
+                  target.transparentWindow !== null ? "Window Saved" : "Window Empty"
+                }</span>`
+              : ""
+          }
+        </div>
+      </div>
+    `;
+  }
+
   private renderThemeDefaultsBlock(sceneClickableTheme: SceneClickableThemeDefinition): string {
     return `
       <div class="entrance-scene__editor-section">
-        <div class="entrance-scene__editor-section-title">Theme Defaults</div>
-        <div class="entrance-scene__editor-toolbar">
-          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="save-theme">Save Theme</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="copy-theme">Copy Theme</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-editor-action="reset-theme">Reset Theme</button>
+        <div class="entrance-scene__editor-section-head">
+          <div>
+            <div class="entrance-scene__editor-section-title">Theme Defaults</div>
+            <p class="entrance-scene__editor-section-copy">
+              Tune the shared frame, glow, and label behavior before saving a new default theme.
+            </p>
+          </div>
+          <div class="entrance-scene__editor-toolbar">
+            <button type="button" class="btn btn-ghost btn-sm" data-editor-action="copy-theme">Copy Theme</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-editor-action="reset-theme">Reset Theme</button>
+          </div>
         </div>
-        ${this.renderThemeDefaultsSection("object", "Object Defaults", sceneClickableTheme)}
-        ${this.renderThemeDefaultsSection("back", "Back Defaults", sceneClickableTheme)}
+        <div class="entrance-scene__editor-list-wrap entrance-scene__editor-list-wrap--sections">
+          ${this.renderThemeDefaultsSection("object", "Object Defaults", sceneClickableTheme)}
+          ${this.renderThemeDefaultsSection("back", "Back Defaults", sceneClickableTheme)}
+        </div>
       </div>
     `;
   }
@@ -314,7 +542,12 @@ export class SceneLayoutEditor {
         <div class="entrance-scene__editor-grid">
           ${numericFields
             .map(([field, label]) =>
-              this.renderThemeControlRow(kind, field, label, this.readNumericField(themeNode, field))
+              this.renderThemeControlRow(
+                kind,
+                field,
+                label,
+                this.readNumericField(themeNode, field)
+              )
             )
             .join("")}
         </div>
@@ -475,7 +708,7 @@ export class SceneLayoutEditor {
         data-kind="${kind}"
         data-id="${id}"
       >
-        ${label}
+        ${this.escapeHtml(label)}
       </button>
     `;
   }
@@ -548,6 +781,11 @@ export class SceneLayoutEditor {
       return;
     }
 
+    if (action === "save-assets") {
+      void this.callbacks.saveSceneAssetDraftToSource?.();
+      return;
+    }
+
     if (action === "room") {
       const roomId = actionButton.dataset["roomId"] ?? "";
       if (roomId !== "") {
@@ -563,6 +801,11 @@ export class SceneLayoutEditor {
 
     if (action === "reset-theme") {
       this.callbacks.resetSceneClickableThemeDraft();
+      return;
+    }
+
+    if (action === "reset-assets") {
+      this.callbacks.resetSceneAssetDraft?.();
       return;
     }
 
@@ -599,9 +842,37 @@ export class SceneLayoutEditor {
           ...themeNode,
           label: {
             ...themeNode.label,
-            fontPresetOverride: this.shiftThemeFontPreset(themeNode.label.fontPresetOverride, direction),
+            fontPresetOverride: this.shiftThemeFontPreset(
+              themeNode.label.fontPresetOverride,
+              direction
+            ),
           },
         }));
+      }
+      return;
+    }
+
+    if (action === "focus-asset") {
+      const targetId = actionButton.dataset["targetId"] ?? "";
+      if (targetId !== "") {
+        this.activeAssetTargetId = targetId;
+        this.refresh();
+      }
+      return;
+    }
+
+    if (action === "pick-asset") {
+      const targetId = actionButton.dataset["targetId"] ?? "";
+      if (targetId !== "") {
+        void this.callbacks.pickSceneAsset?.(targetId);
+      }
+      return;
+    }
+
+    if (action === "clear-asset") {
+      const targetId = actionButton.dataset["targetId"] ?? "";
+      if (targetId !== "") {
+        this.callbacks.clearSceneAsset?.(targetId);
       }
       return;
     }
@@ -622,6 +893,14 @@ export class SceneLayoutEditor {
       if (kind === "object" || kind === "back") {
         this.adjustThemeField(kind, field, this.getAdjustDelta(field, direction));
       }
+      return;
+    }
+
+    const capabilityContext = this.getCapabilityContext();
+    for (const capability of SCENE_LAYOUT_EDITOR_CAPABILITIES) {
+      if (capability.handleAction?.(capabilityContext, actionButton) === true) {
+        return;
+      }
     }
   };
 
@@ -629,6 +908,13 @@ export class SceneLayoutEditor {
     const target = event.target as HTMLElement | null;
     if (!(target instanceof HTMLInputElement)) {
       return;
+    }
+
+    const capabilityContext = this.getCapabilityContext();
+    for (const capability of SCENE_LAYOUT_EDITOR_CAPABILITIES) {
+      if (capability.handleChange?.(capabilityContext, target) === true) {
+        return;
+      }
     }
 
     const action = target.dataset["editorAction"] ?? "";
@@ -958,7 +1244,10 @@ export class SceneLayoutEditor {
     current: SceneLayoutLabelFontPreset | null,
     direction: number
   ): SceneLayoutLabelFontPreset | null {
-    const presets: Array<SceneLayoutLabelFontPreset | null> = [null, ...SCENE_LAYOUT_LABEL_FONT_PRESETS];
+    const presets: Array<SceneLayoutLabelFontPreset | null> = [
+      null,
+      ...SCENE_LAYOUT_LABEL_FONT_PRESETS,
+    ];
     const currentIndex = presets.indexOf(current);
     const safeIndex = currentIndex === -1 ? 0 : currentIndex;
     const nextIndex = (safeIndex + direction + presets.length) % presets.length;
@@ -994,6 +1283,101 @@ export class SceneLayoutEditor {
     return this.formatFontPreset(preset);
   }
 
+  private formatSelectionSummary(
+    selection: SceneLayoutEditorSelection,
+    sceneObject: SceneObjectConfig | null,
+    back: SceneBackConfig | null,
+    character: SceneCharacterPlacementConfig | null
+  ): string {
+    if (sceneObject !== null) {
+      return `Object · ${sceneObject.id}`;
+    }
+    if (back !== null) {
+      return `Back · ${back.id}`;
+    }
+    if (character !== null) {
+      return `Character · ${character.id}`;
+    }
+    if (selection !== null) {
+      return `${this.formatSelectionKind(selection.kind)} · ${selection.id}`;
+    }
+    return "No item selected";
+  }
+
+  private formatSelectionKind(kind: SceneEditorNodeKind): string {
+    if (kind === "object") {
+      return "Object";
+    }
+    if (kind === "back") {
+      return "Back";
+    }
+    return "Character";
+  }
+
+  private syncActiveAssetTargetId(
+    assetTargets: SceneEditorAssetTargetDescriptor[],
+    suggestedAssetTargetId: string | null
+  ): void {
+    if (assetTargets.length === 0) {
+      this.activeAssetTargetId = null;
+      return;
+    }
+
+    if (
+      this.activeAssetTargetId !== null &&
+      assetTargets.some((target) => target.id === this.activeAssetTargetId)
+    ) {
+      return;
+    }
+
+    if (
+      suggestedAssetTargetId !== null &&
+      assetTargets.some((target) => target.id === suggestedAssetTargetId)
+    ) {
+      this.activeAssetTargetId = suggestedAssetTargetId;
+      return;
+    }
+
+    this.activeAssetTargetId = assetTargets[0]?.id ?? null;
+  }
+
+  private buildCapabilityContext(
+    assetTargets: SceneEditorAssetTargetDescriptor[],
+    activeAssetTarget: SceneEditorAssetTargetDescriptor | null
+  ): SceneLayoutEditorCapabilityContext {
+    const callbacks: SceneLayoutEditorCapabilityContext["callbacks"] = {};
+    if (this.callbacks.detectSceneAssetTransparentWindow !== undefined) {
+      callbacks.detectSceneAssetTransparentWindow =
+        this.callbacks.detectSceneAssetTransparentWindow;
+    }
+    if (this.callbacks.clearSceneAssetTransparentWindow !== undefined) {
+      callbacks.clearSceneAssetTransparentWindow = this.callbacks.clearSceneAssetTransparentWindow;
+    }
+    if (this.callbacks.updateSceneAssetTransparentWindow !== undefined) {
+      callbacks.updateSceneAssetTransparentWindow =
+        this.callbacks.updateSceneAssetTransparentWindow;
+    }
+
+    return {
+      assetTargets,
+      activeAssetTarget,
+      callbacks,
+    };
+  }
+
+  private getCapabilityContext(): SceneLayoutEditorCapabilityContext {
+    const assetTargets = this.callbacks.getSceneAssetTargets?.() ?? [];
+    const suggestedAssetTargetId = this.callbacks.getSuggestedSceneAssetTargetId?.() ?? null;
+    this.syncActiveAssetTargetId(assetTargets, suggestedAssetTargetId);
+    const activeAssetTarget =
+      assetTargets.find((target) => target.id === this.activeAssetTargetId) ?? null;
+    return this.buildCapabilityContext(assetTargets, activeAssetTarget);
+  }
+
+  private escapeHtml(value: string): string {
+    return this.escapeAttribute(value);
+  }
+
   private escapeAttribute(value: string): string {
     return value
       .replace(/&/g, "&amp;")
@@ -1005,21 +1389,22 @@ export class SceneLayoutEditor {
 
   private applyPanelPosition(panel: HTMLElement): void {
     if (this.panelPosition === null) {
-      this.panelPosition = this.clampPanelPosition(
-        16,
-        this.host.clientHeight - panel.offsetHeight - 16,
-        panel
-      );
-    } else {
-      this.panelPosition = this.clampPanelPosition(
-        this.panelPosition.left,
-        this.panelPosition.top,
-        panel
-      );
+      panel.style.removeProperty("left");
+      panel.style.removeProperty("top");
+      panel.style.removeProperty("right");
+      panel.style.removeProperty("bottom");
+      return;
     }
 
-    panel.style.left = `${this.panelPosition.left}px`;
-    panel.style.top = `${this.panelPosition.top}px`;
+    const clampedPosition = this.clampPanelPosition(
+      this.panelPosition.left,
+      this.panelPosition.top,
+      panel
+    );
+    this.panelPosition = clampedPosition;
+    panel.style.left = `${clampedPosition.left}px`;
+    panel.style.top = `${clampedPosition.top}px`;
+    panel.style.right = "auto";
     panel.style.bottom = "auto";
   }
 

@@ -14,6 +14,7 @@ import { SplashScreen } from "../ui/splash-screen.js";
 import { applyUiMode } from "../ui/ui-mode.js";
 import { initAppOverlayHost } from "../ui/overlay-system.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
+import { loadSceneThemeAssetDraft } from "../scene-editor/scene-theme-asset-state.js";
 
 import type { PageController } from "./types.js";
 import { ensureElectronApiFallback } from "./electron-fallback.js";
@@ -98,6 +99,7 @@ async function initApp(): Promise<void> {
     SplashScreen.setProgress(12);
     const startupFlags = window.electronAPI?.getStartupFlags();
     applyUiMode(startupFlags?.uiMode);
+    await loadSceneThemeAssetDraft();
     initAppOverlayHost();
 
     SplashScreen.update(18, AppI18n.t("app.startup.startingCore"));

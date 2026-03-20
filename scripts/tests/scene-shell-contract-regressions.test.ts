@@ -29,8 +29,9 @@ test("scene shell css is wired into the design system", () => {
   assert.match(sceneClickableCss, /\.scene-clickable__button/);
   assert.match(sceneClickableCss, /\.scene-clickable__label/);
   assert.match(sceneClickableCss, /scene-clickable-back-arrow-shift/);
-  assert.match(debugOverridesCss, /\[data-scene-debug="true"\] \.scene-clickable__label/);
-  assert.match(debugOverridesCss, /\[data-scene-debug="true"\] \.assistant-scene__character/);
+  assert.match(debugOverridesCss, /\[data-scene-editor="true"\]/);
+  assert.match(debugOverridesCss, /\.scene-clickable__label/);
+  assert.match(debugOverridesCss, /\.assistant-scene__character/);
   assert.doesNotMatch(sceneShellCss, /scene-back-zone/);
   assert.doesNotMatch(debugOverridesCss, /entrance-scene__hotspot-label/);
   assert.doesNotMatch(debugOverridesCss, /analyze-scene__hotspot-label/);

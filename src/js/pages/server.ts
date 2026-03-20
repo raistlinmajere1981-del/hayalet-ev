@@ -9,10 +9,14 @@ import { SlotController } from "../modules/slot-controller.js";
 import { ServerCommands } from "../modules/server-commands.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { ButtonStates } from "../ui/button-states.js";
-import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
+import {
+  applySceneAlphaWindowBoundsToTarget,
+  clearSceneAlphaWindowFrameVariables,
+} from "../scene/alpha-window.js";
 import { dispatchSceneAction } from "../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
+  createSceneLayoutEditorAssetBindings,
   createSceneDebugRuntimeSession,
   SceneLayoutEditor,
   type SceneLayoutEditorSelection,
@@ -40,6 +44,7 @@ import { syncSceneViewRuntime } from "../scene/runtime.js";
 import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewPanelArtSrc,
+  getSceneRoomViewPanelTransparentWindow,
 } from "../scene-system/index.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 import { shellT } from "../app/shell-i18n.js";
@@ -119,7 +124,6 @@ export class ServerController {
   _serverSceneDebugEnabled: boolean;
   _serverSceneScreenOpen: boolean;
   _serverSceneBindingsReady: boolean;
-  _serverSceneFrameController: SceneAlphaWindowFrameController | null;
   private readonly _serverSceneSession = createSceneDebugRuntimeSession("server");
   _serverSceneEditor: SceneLayoutEditor | null;
   _serverSceneSelection: SceneLayoutEditorSelection;
@@ -173,7 +177,6 @@ export class ServerController {
     this._serverSceneDebugEnabled = false;
     this._serverSceneScreenOpen = false;
     this._serverSceneBindingsReady = false;
-    this._serverSceneFrameController = null;
     this._serverSceneEditor = null;
     this._serverSceneSelection = null;
     this._serverSceneResizeObserver = null;
@@ -301,8 +304,26 @@ export class ServerController {
       screenArt.src = panelArtSrc;
       screenArt.alt = "";
     }
+  }
 
-    this._serverSceneFrameController?.refresh();
+  private syncServerSceneTransparentWindow(): void {
+    const screenView = document.getElementById("server-scene-screen-view");
+    const room = document.querySelector(".server-room");
+    if (!(screenView instanceof HTMLElement) || !(room instanceof HTMLElement)) {
+      return;
+    }
+
+    if (!isSceneUiMode() || !this._serverSceneScreenOpen) {
+      clearSceneAlphaWindowFrameVariables(room, "server-scene");
+      return;
+    }
+
+    applySceneAlphaWindowBoundsToTarget({
+      bounds: getSceneRoomViewPanelTransparentWindow("server", "primary"),
+      container: screenView,
+      target: room,
+      variablePrefix: "server-scene",
+    });
   }
 
   private setupServerSceneDebug(): void {
@@ -317,6 +338,16 @@ export class ServerController {
       this._serverSceneEditor = null;
       return;
     }
+
+    const assetBindings = createSceneLayoutEditorAssetBindings({
+      roomId: "server",
+      getSceneLayout: (): SceneLayoutConfig => this._serverSceneLayout,
+      getSelection: (): SceneLayoutEditorSelection => this._serverSceneSelection,
+      onAfterChange: (): void => {
+        this.syncServerSceneAssets();
+        this.syncServerSceneVisibility();
+      },
+    });
 
     this._serverSceneEditor = new SceneLayoutEditor(editorHost, {
       isActive: (): boolean => this.isServerSceneDebugActive(),
@@ -387,6 +418,7 @@ export class ServerController {
       saveSceneClickableThemeToSource: async (): Promise<void> => {
         await this._serverSceneSession.saveSceneClickableThemeToSource();
       },
+      ...assetBindings,
     });
     this._serverSceneEditor.refresh();
   }
@@ -544,11 +576,14 @@ export class ServerController {
     }
 
     if (!sceneActive) {
+      if (room instanceof HTMLElement) {
+        clearSceneAlphaWindowFrameVariables(room, "server-scene");
+      }
       return;
     }
 
     this.syncServerSceneAssets();
-    this._serverSceneFrameController?.refresh();
+    this.syncServerSceneTransparentWindow();
     this.renderServerScene();
     this._serverSceneEditor?.refresh();
   }
@@ -824,24 +859,6 @@ export class ServerController {
     await initServerControllerPage(this as unknown as ServerInitContext);
     this._serverSceneDebugEnabled = applySceneDebugFlag();
     this._serverSceneSession.load(this._serverSceneDebugEnabled);
-
-    const room = document.querySelector(".server-room");
-    const screenView = document.getElementById("server-scene-screen-view");
-    const screenArt = document.getElementById("server-scene-screen-art") as HTMLImageElement | null;
-
-    if (
-      room instanceof HTMLElement &&
-      screenView instanceof HTMLElement &&
-      screenArt instanceof HTMLImageElement
-    ) {
-      this._serverSceneFrameController?.disconnect();
-      this._serverSceneFrameController = new SceneAlphaWindowFrameController({
-        image: screenArt,
-        container: screenView,
-        target: room,
-        variablePrefix: "server-scene",
-      });
-    }
 
     this.setupServerSceneDebug();
     this.observeServerSceneLayout();

@@ -122,7 +122,15 @@ hev_dev_typescript_dashboard;
 
 Hata veya önemli bulgu varsa `NOTEBOOK.md`'ye otomatik kayıt.
 
----
+
+## Sadece Sprintlere Bölünmüş Plan Uygulamalarında 
+
+- Uygulama planını hazırla
+- Bir sub-agent ile planı review et
+- Plan onayı sun
+- Onay sonrası başarılı sprintler arasında tekrar onay istemeden sıradaki sprinte geç, Sadece hata olduğunda, soru sorman gerektiğinde yada kritik bir plan değişikliği durumunda ara ver.
+- Bir sub-agent'a planda hedeflenen ve mevcut durumun uyumluluğunu kontrol ettirir
+
 
 ## 📓 Otomatik Not Defteri Sistemi
 

@@ -435,6 +435,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
       argv.includes("--app-auto-connect") ||
       argv.includes("--auto-connect");
     const sceneDebug =
+      argv.includes("--app-scene-editor=1") ||
+      argv.includes("--app-scene-editor=true") ||
+      argv.includes("--app-scene-editor") ||
+      argv.includes("--scene-editor") ||
       argv.includes("--app-scene-debug=1") ||
       argv.includes("--app-scene-debug=true") ||
       argv.includes("--app-scene-debug") ||
@@ -444,6 +448,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
       startPage,
       autoConnect,
       uiMode,
+      sceneEditor: sceneDebug,
       sceneDebug,
       roomsSnapshot: STARTUP_ROOMS_SNAPSHOT,
     };

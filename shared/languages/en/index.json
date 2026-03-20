@@ -769,7 +769,8 @@
       "options": {
         "classic": "Classic",
         "scene": "Scene",
-        "sceneDebug": "Scene Debug"
+        "sceneDebug": "Scene Debug",
+        "sceneEditor": "Scene Editor"
       },
       "confirmTitle": "Restart required",
       "confirmMessage": "Switch to {{mode}} mode and restart the app?"

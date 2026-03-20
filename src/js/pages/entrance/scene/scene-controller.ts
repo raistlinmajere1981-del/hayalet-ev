@@ -5,6 +5,7 @@ import { shellT } from "../../../app/shell-i18n.js";
 import { dispatchSceneAction } from "../../../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
+  createSceneLayoutEditorAssetBindings,
   createSceneDebugRuntimeSession,
   SceneLayoutEditor,
   type SceneLayoutEditorSelection,
@@ -120,6 +121,19 @@ export class EntranceSceneController {
       });
     }
     if (this.sceneDebugEnabled && this.editorHost !== null) {
+      const assetBindings = createSceneLayoutEditorAssetBindings({
+        roomId: "entrance",
+        getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
+        getSelection: (): SceneLayoutEditorSelection => this.editorSelection,
+        onAfterChange: (): void => {
+          this.renderBackground();
+          this.renderHotspots();
+          this.syncViewState();
+          void this.renderCharacters();
+          this.editor?.refresh();
+        },
+      });
+
       this.editor = new SceneLayoutEditor(this.editorHost, {
         isActive: (): boolean =>
           isSceneDebugRoomActive("entrance"),
@@ -192,6 +206,7 @@ export class EntranceSceneController {
         saveSceneClickableThemeToSource: async (): Promise<void> => {
           await this.sceneDebugSession.saveSceneClickableThemeToSource();
         },
+        ...assetBindings,
       });
       this.editor.refresh();
     }
