@@ -13,6 +13,7 @@ import {
   isSceneDebugRoomActive,
   isSceneDebugRoomId,
   setActiveSceneDebugRoomId,
+  subscribeSceneThemeAssetDraft,
 } from "../../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
@@ -38,6 +39,7 @@ import {
   getSceneRoomBackgroundSrc,
   getSceneRoomPanelSrc,
   getSceneRoomPanelTransparentWindow,
+  SceneThemeManager,
 } from "../../scene-system/index.js";
 import {
   OVERLAY_GROUPS,
@@ -210,6 +212,8 @@ class SettingsSceneController {
   private editorSelection: SceneLayoutEditorSelection = null;
   private editor: SceneLayoutEditor | null = null;
   private characterRenderToken = 0;
+  private sceneThemeUnsub: (() => void) | null = null;
+  private sceneThemeAssetDraftUnsub: (() => void) | null = null;
 
   private get sceneLayout(): SceneLayoutConfig {
     return this.sceneDebugSession.getSceneLayout();
@@ -261,10 +265,22 @@ class SettingsSceneController {
       this.editor?.refresh();
       void this.renderCharacter();
     });
+
+    this.sceneThemeUnsub ??= SceneThemeManager.onChange(() => {
+      this.sceneDebugSession.reloadFromActiveTheme(this.sceneDebugEnabled);
+      this.editorSelection = null;
+      this.sync(this.state);
+    });
+
+    this.sceneThemeAssetDraftUnsub ??= subscribeSceneThemeAssetDraft(() => {
+      this.sync(this.state);
+    });
   }
 
   sync(nextState: SettingsSceneState): void {
     this.state = nextState;
+    this.background.src = getSceneRoomBackgroundSrc("settings");
+    this.background.alt = "";
 
     const sceneActive = nextState.open && isSceneUiMode();
     const panelOpen = sceneActive && nextState.activePanel !== null;

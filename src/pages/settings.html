@@ -389,6 +389,97 @@
                         </div>
                       </section>
                     </div>
+
+                    <section
+                      class="glass-panel ds-surface-card ds-surface-card--stack settings-appearance-card"
+                    >
+                      <div class="ds-surface-card__header settings-theme-card-head">
+                        <div>
+                          <h4
+                            class="settings-theme-section-title"
+                            data-shell-i18n-text="theme.scene.title"
+                          ></h4>
+                          <p
+                            class="settings-theme-section-hint"
+                            data-shell-i18n-text="theme.scene.hint"
+                          ></p>
+                        </div>
+                        <span class="settings-theme-mode-badge" id="scene-theme-source-badge"></span>
+                      </div>
+                      <div class="ds-surface-card__body settings-appearance-card__body">
+                        <div class="settings-theme-current">
+                          <span class="settings-theme-current__icon" aria-hidden="true">🎭</span>
+                          <div class="settings-theme-current__copy">
+                            <span
+                              class="settings-theme-current__label"
+                              data-shell-i18n-text="theme.scene.activeLabel"
+                            ></span>
+                            <strong id="scene-theme-current-name"></strong>
+                            <small id="scene-theme-current-meta"></small>
+                          </div>
+                        </div>
+
+                        <div class="settings-theme-form-grid">
+                          <div class="settings-theme-field">
+                            <label
+                              class="form-label"
+                              for="scene-theme-conflict-select"
+                              data-shell-i18n-text="theme.scene.importBehaviorLabel"
+                            ></label>
+                            <select id="scene-theme-conflict-select" class="select select-sm">
+                              <option
+                                value="rename"
+                                data-shell-i18n-text="theme.scene.importBehavior.options.rename"
+                              ></option>
+                              <option
+                                value="reject"
+                                data-shell-i18n-text="theme.scene.importBehavior.options.reject"
+                              ></option>
+                              <option
+                                value="replace"
+                                data-shell-i18n-text="theme.scene.importBehavior.options.replace"
+                              ></option>
+                            </select>
+                          </div>
+                          <div class="settings-theme-field settings-theme-field--wide">
+                            <div class="settings-scene-theme-actions">
+                              <button
+                                class="btn btn-secondary btn-sm"
+                                id="scene-theme-import"
+                                data-shell-i18n-text="theme.scene.actions.import"
+                              ></button>
+                              <button
+                                class="btn btn-ghost btn-sm"
+                                id="scene-theme-refresh"
+                                data-shell-i18n-text="theme.scene.actions.refresh"
+                              ></button>
+                              <button
+                                class="btn btn-ghost btn-sm"
+                                id="scene-theme-export"
+                                data-shell-i18n-text="theme.scene.actions.export"
+                              ></button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="settings-theme-toggle-row settings-theme-field--wide">
+                          <div class="settings-theme-toggle-copy">
+                            <span
+                              class="form-label"
+                              data-shell-i18n-text="theme.scene.selectedLabel"
+                            ></span>
+                            <p class="settings-theme-section-hint" id="scene-theme-selection-hint"></p>
+                          </div>
+                          <button
+                            class="btn btn-primary btn-sm"
+                            id="scene-theme-apply"
+                            data-shell-i18n-text="theme.scene.actions.apply"
+                          ></button>
+                        </div>
+
+                        <div class="settings-theme-grid" id="scene-theme-settings-list"></div>
+                      </div>
+                    </section>
                   </div>
                 </div>
               </section>

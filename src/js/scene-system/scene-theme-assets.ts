@@ -2,6 +2,7 @@ import type { SceneRoomId, SceneRoomThemeDefinition, SceneThemeViewDefinition } 
 
 import {
   getSceneThemeAssetEntryRuntimeSource,
+  getSceneThemeRuntimeSource,
   getSceneThemeAssetTransparentWindow,
 } from "../scene-editor/scene-theme-asset-state.js";
 import { getActiveSceneTheme } from "./scene-theme-registry.js";
@@ -11,7 +12,10 @@ export function getSceneRoomTheme(roomId: SceneRoomId): SceneRoomThemeDefinition
 }
 
 export function getSceneRoomBackgroundSrc(roomId: SceneRoomId): string {
-  return getSceneThemeAssetEntryRuntimeSource(roomId, "background") ?? getSceneRoomTheme(roomId).backgroundSrc;
+  return (
+    getSceneThemeAssetEntryRuntimeSource(roomId, "background") ??
+    getSceneThemeRuntimeSource(getSceneRoomTheme(roomId).backgroundSrc)
+  );
 }
 
 export function getSceneRoomViewDefinition(
@@ -26,27 +30,41 @@ export function getSceneRoomViewBackgroundSrc(
   viewId: string,
   fallbackToRoomBackground = true
 ): string | null {
-  const backgroundSrc =
-    getSceneThemeAssetEntryRuntimeSource(roomId, "view-background", viewId) ??
-    getSceneRoomViewDefinition(roomId, viewId)?.backgroundSrc ??
-    null;
-  if (backgroundSrc !== null) {
-    return backgroundSrc;
+  const overrideBackgroundSrc = getSceneThemeAssetEntryRuntimeSource(
+    roomId,
+    "view-background",
+    viewId
+  );
+  if (overrideBackgroundSrc !== null) {
+    return overrideBackgroundSrc;
   }
 
-  return fallbackToRoomBackground ? getSceneRoomBackgroundSrc(roomId) : null;
+  const themeBackgroundSrc = getSceneThemeRuntimeSource(
+    getSceneRoomViewDefinition(roomId, viewId)?.backgroundSrc ?? ""
+  );
+  if (themeBackgroundSrc !== "") {
+    return themeBackgroundSrc;
+  }
+
+  if (fallbackToRoomBackground) {
+    return getSceneRoomBackgroundSrc(roomId);
+  }
+
+  return null;
 }
 
 export function getSceneRoomViewPanelArtSrc(roomId: SceneRoomId, viewId: string): string | null {
-  return (
+  const runtimeSource =
     getSceneThemeAssetEntryRuntimeSource(roomId, "view-panel-art", viewId) ??
-    getSceneRoomViewDefinition(roomId, viewId)?.panelArtSrc ??
-    null
-  );
+    getSceneThemeRuntimeSource(getSceneRoomViewDefinition(roomId, viewId)?.panelArtSrc ?? "");
+  return runtimeSource !== "" ? runtimeSource : null;
 }
 
 export function getSceneRoomPanelSrc(roomId: SceneRoomId, panelId: string): string | null {
-  return getSceneThemeAssetEntryRuntimeSource(roomId, "panel", panelId) ?? getSceneRoomTheme(roomId).panels?.[panelId] ?? null;
+  const runtimeSource =
+    getSceneThemeAssetEntryRuntimeSource(roomId, "panel", panelId) ??
+    getSceneThemeRuntimeSource(getSceneRoomTheme(roomId).panels?.[panelId] ?? "");
+  return runtimeSource !== "" ? runtimeSource : null;
 }
 
 export function getSceneRoomViewPanelTransparentWindow(

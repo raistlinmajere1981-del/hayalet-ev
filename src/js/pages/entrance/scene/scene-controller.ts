@@ -13,6 +13,7 @@ import {
   isSceneDebugRoomActive,
   isSceneDebugEnabled,
   openSceneDebugRoom,
+  subscribeSceneThemeAssetDraft,
 } from "../../../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
@@ -37,6 +38,7 @@ import { renderSceneObjectLayer } from "../../../scene/renderers/object-layer.js
 import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewBackgroundSrc,
+  SceneThemeManager,
 } from "../../../scene-system/index.js";
 import { syncSceneViewRuntime } from "../../../scene/runtime.js";
 import { isSceneUiMode } from "../../../ui/ui-mode.js";
@@ -73,6 +75,8 @@ export class EntranceSceneController {
   trafficUnsub: (() => void) | null = null;
   appStateUnsub: (() => void) | null = null;
   localeUnsub: (() => void) | null = null;
+  sceneThemeUnsub: (() => void) | null = null;
+  sceneThemeAssetDraftUnsub: (() => void) | null = null;
   characterRenderToken = 0;
   openCharacterId: string | null = null;
   characters = new Map<string, SceneCharacterDescriptor>();
@@ -279,6 +283,19 @@ export class EntranceSceneController {
       this.syncViewState();
       this.syncOpenMenuAnchor();
       this.editor?.refresh();
+    });
+
+    this.sceneThemeUnsub ??= SceneThemeManager.onChange(() => {
+      this.sceneDebugSession.reloadFromActiveTheme(this.sceneDebugEnabled);
+      this.editorSelection = null;
+      this.menu?.close(false);
+      this.openCharacterId = null;
+      this.syncScene();
+    });
+
+    this.sceneThemeAssetDraftUnsub ??= subscribeSceneThemeAssetDraft(() => {
+      this.syncScene();
+      this.syncOpenMenuAnchor();
     });
   }
 

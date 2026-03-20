@@ -264,6 +264,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   roomsPackageFromWorkspace: (payload) =>
     ipcRenderer.invoke("rooms-package-from-workspace", payload),
   roomsImportBundle: (payload) => ipcRenderer.invoke("rooms-import-bundle", payload),
+  sceneThemesListInstalled: () => ipcRenderer.invoke("scene-themes-list-installed"),
+  sceneThemesPackageInstalled: (payload) =>
+    ipcRenderer.invoke("scene-themes-package-installed", payload),
+  sceneThemesImportBundle: (payload) => ipcRenderer.invoke("scene-themes-import-bundle", payload),
   commandInit: () => ipcRenderer.invoke("command-init"),
   commandWrite: (item) => ipcRenderer.invoke("command-write", item),
   commandMove: (id, status, reason) => ipcRenderer.invoke("command-move", id, status, reason),

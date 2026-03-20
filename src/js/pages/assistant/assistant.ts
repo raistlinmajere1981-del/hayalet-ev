@@ -91,6 +91,7 @@ import {
   getSceneDebugRoomOptions,
   isSceneDebugRoomActive,
   openSceneDebugRoom,
+  subscribeSceneThemeAssetDraft,
 } from "../../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
@@ -123,6 +124,7 @@ import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewPanelArtSrc,
   getSceneRoomViewPanelTransparentWindow,
+  SceneThemeManager,
 } from "../../scene-system/index.js";
 import type {
   ProviderScenarioCommandReport,
@@ -270,6 +272,8 @@ export class AssistantController {
   _assistantSceneSelection: SceneLayoutEditorSelection;
   _assistantSceneResizeObserver: ResizeObserver | null;
   _assistantSceneCharacterRenderToken: number;
+  _assistantSceneThemeUnsub: (() => void) | null;
+  _assistantSceneAssetDraftUnsub: (() => void) | null;
 
   get _assistantSceneLayout(): SceneLayoutConfig {
     return this._assistantSceneSession.getSceneLayout();
@@ -345,6 +349,8 @@ export class AssistantController {
     this._assistantSceneSelection = null;
     this._assistantSceneResizeObserver = null;
     this._assistantSceneCharacterRenderToken = 0;
+    this._assistantSceneThemeUnsub = null;
+    this._assistantSceneAssetDraftUnsub = null;
   }
 
   async init(): Promise<void> {
@@ -393,6 +399,14 @@ export class AssistantController {
     this._renderAssistantScene();
     this._syncAssistantSceneVisibility();
     this._observeAssistantSceneLayout();
+    this._assistantSceneThemeUnsub ??= SceneThemeManager.onChange(() => {
+      this._assistantSceneSession.reloadFromActiveTheme(this._assistantSceneDebugEnabled);
+      this._assistantSceneSelection = null;
+      this._syncAssistantSceneVisibility();
+    });
+    this._assistantSceneAssetDraftUnsub ??= subscribeSceneThemeAssetDraft(() => {
+      this._syncAssistantSceneVisibility();
+    });
 
     // NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.
     const ai0Wv = document.getElementById("ai0-webview");
@@ -2530,8 +2544,12 @@ export class AssistantController {
     this._unsubAppState?.();
     this._unsubI18n?.();
     this._unsubTheme?.();
+    this._assistantSceneThemeUnsub?.();
+    this._assistantSceneAssetDraftUnsub?.();
     this._assistantSceneResizeObserver?.disconnect();
     this._assistantSceneResizeObserver = null;
+    this._assistantSceneThemeUnsub = null;
+    this._assistantSceneAssetDraftUnsub = null;
     this.webviewStatusOverlayController?.setState(null);
     this.webviewStatusOverlayController?.destroy();
     this.webviewStatusOverlayController = null;

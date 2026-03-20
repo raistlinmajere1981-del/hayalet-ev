@@ -12,6 +12,7 @@ import {
   isSceneDebugRoomActive,
   isSceneDebugEnabled,
   openSceneDebugRoom,
+  subscribeSceneThemeAssetDraft,
 } from "../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
@@ -28,7 +29,7 @@ import { getCoverSceneProjectionFromElement, type SceneProjection } from "../sce
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
 import { renderSceneObjectLayer } from "../scene/renderers/object-layer.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
-import { getSceneRoomBackgroundSrc } from "../scene-system/index.js";
+import { getSceneRoomBackgroundSrc, SceneThemeManager } from "../scene-system/index.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 
 const ELEMENT_IDS = {
@@ -48,6 +49,8 @@ export class RoomsController implements PageController {
   private resizeObserver: ResizeObserver | null = null;
   private characterRenderToken = 0;
   private localeUnsub: (() => void) | null = null;
+  private sceneThemeUnsub: (() => void) | null = null;
+  private sceneThemeAssetDraftUnsub: (() => void) | null = null;
 
   private get sceneLayout(): SceneLayoutConfig {
     return this.sceneDebugSession.getSceneLayout();
@@ -76,6 +79,14 @@ export class RoomsController implements PageController {
       void this.renderCharacters();
       this.editor?.refresh();
     });
+    this.sceneThemeUnsub ??= SceneThemeManager.onChange(() => {
+      this.sceneDebugSession.reloadFromActiveTheme(this.sceneDebugEnabled);
+      this.editorSelection = null;
+      this.syncScene();
+    });
+    this.sceneThemeAssetDraftUnsub ??= subscribeSceneThemeAssetDraft(() => {
+      this.syncScene();
+    });
     this.syncScene();
   }
 
@@ -88,6 +99,10 @@ export class RoomsController implements PageController {
     this.resizeObserver = null;
     this.localeUnsub?.();
     this.localeUnsub = null;
+    this.sceneThemeUnsub?.();
+    this.sceneThemeUnsub = null;
+    this.sceneThemeAssetDraftUnsub?.();
+    this.sceneThemeAssetDraftUnsub = null;
   }
 
   private setupSceneDebug(): void {

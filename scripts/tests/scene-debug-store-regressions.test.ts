@@ -101,16 +101,14 @@ test("scene editor store keys drafts by active theme and writes back to canonica
   assert.match(debugStoreSource, /serializeSceneClickableThemeSource/);
   assert.match(debugStoreSource, /getSceneDefaultClickableTheme/);
   assert.match(debugStoreSource, /FileManager\.writeFileAtomic/);
+  assert.match(debugStoreSource, /const getConfig = \(\): SceneDebugStoreConfig =>/);
+  assert.match(debugStoreSource, /const getConfig = \(\): SceneDebugThemeStoreConfig =>/);
   assert.match(debugStoreSource, /from "\.\.\/scene\/layout\/index\.js"/);
   assert.match(debugStoreSource, /from "\.\.\/scene-system\/scene-layout-registry\.js"/);
-  assert.match(
-    layoutRegistrySource,
-    /shared\/themes\/\$\{getSceneThemeId\(\)\}\/maps\/\$\{roomId\}\.scene\.json/
-  );
-  assert.match(
-    layoutRegistrySource,
-    /shared\/themes\/\$\{getSceneThemeId\(\)\}\/scene-clickable-defaults\.ts/
-  );
+  assert.match(layoutRegistrySource, /SceneThemeManager\.getThemeRegistration/);
+  assert.match(layoutRegistrySource, /getSceneThemeSourceRoot/);
+  assert.match(layoutRegistrySource, /return `\$\{getSceneThemeSourceRoot\(\)\}\/maps\/\$\{roomId\}\.scene\.json`;/);
+  assert.match(layoutRegistrySource, /return `\$\{getSceneThemeSourceRoot\(\)\}\/scene-clickable-defaults\.ts`;/);
   assert.match(serializationSource, /export function parseSceneLayoutDraft/);
   assert.match(clickableThemeSource, /export function parseSceneClickableThemeDraft/);
   assert.match(runtimeSessionSource, /export function createSceneDebugRuntimeSession/);
@@ -135,8 +133,7 @@ test("scene layout defaults now resolve from shared theme json maps instead of i
   assert.doesNotMatch(layoutStateSource, /draftStorageKeys/);
   assert.match(layoutSource, /scene-layout-model\.js/);
   assert.match(layoutSource, /scene-layout-serialization\.js/);
-  assert.match(layoutRegistrySource, /CASTLE_SCENE_LAYOUTS/);
-  assert.match(layoutRegistrySource, /return ACTIVE_SCENE_LAYOUTS\[roomId\];/);
+  assert.match(layoutRegistrySource, /SceneThemeManager\.getThemeRegistration\(\)\.maps\[roomId\]/);
   assert.equal(existsSync("src/js/pages/entrance/scene/scene-map.ts"), false);
   assert.equal(existsSync("src/js/scene/layout/scene-layout-state.ts"), false);
   assert.equal(existsSync("src/assets/themes/castle/scene/debug.ts"), false);

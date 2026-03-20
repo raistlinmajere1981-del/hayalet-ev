@@ -18,8 +18,10 @@ export interface PathResolver {
   getAssetsDir(): string;
   getRoomsWorkspaceDir(): string;
   getInstalledRoomsDir(): string;
+  getInstalledSceneThemesDir(): string;
   getRoomsRegistryPath(): string;
   getInstalledRoomDir(roomId: string): string;
+  getInstalledSceneThemeDir(themeId: string): string;
 
   getAccountDir(accountId: string): string;
   getAccountDbPath(accountId: string): string;

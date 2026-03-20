@@ -16,6 +16,7 @@ import {
 export interface SceneDebugRuntimeSession {
   roomId: SceneDebugEditableRoomId;
   load(debugEnabled: boolean): void;
+  reloadFromActiveTheme(debugEnabled: boolean): void;
   getSceneLayout(): SceneLayoutConfig;
   setSceneLayout(sceneLayout: SceneLayoutConfig): void;
   updateObject(id: string, updater: (node: SceneObjectConfig) => SceneObjectConfig): SceneLayoutConfig;
@@ -78,6 +79,10 @@ export function createSceneDebugRuntimeSession(
   return {
     roomId,
     load(debugEnabled: boolean): void {
+      sceneLayout = loadSceneLayout(sceneDebugStore, debugEnabled);
+      sceneClickableTheme = loadSceneClickableTheme(sceneDebugThemeStore, debugEnabled);
+    },
+    reloadFromActiveTheme(debugEnabled: boolean): void {
       sceneLayout = loadSceneLayout(sceneDebugStore, debugEnabled);
       sceneClickableTheme = loadSceneClickableTheme(sceneDebugThemeStore, debugEnabled);
     },

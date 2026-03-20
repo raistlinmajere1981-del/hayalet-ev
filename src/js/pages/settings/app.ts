@@ -6,6 +6,7 @@ import { setupSettingsAccountsPanel } from "./panels/accounts.js";
 import { setupSettingsBackupPanel } from "./panels/backup.js";
 import { setupSettingsLiveLogPanel } from "./panels/live-log.js";
 import { setupSettingsRoomsPanel } from "./panels/rooms.js";
+import { setupSettingsThemePanel } from "./panels/theme.js";
 
 async function bootstrapSettingsPage(): Promise<void> {
   await bootstrapExternalToolPage({
@@ -20,6 +21,7 @@ async function bootstrapSettingsPage(): Promise<void> {
   setupSettingsBackupPanel();
   setupSettingsRoomsPanel();
   setupSettingsLiveLogPanel();
+  setupSettingsThemePanel();
 
   const controller = new SettingsPageController();
   controller.init();

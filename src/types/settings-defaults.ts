@@ -1,4 +1,9 @@
-import { DEFAULT_THEME_APPEARANCE_SETTINGS, type Account, type AppSettings } from "./settings.js";
+import {
+  DEFAULT_SCENE_APPEARANCE_SETTINGS,
+  DEFAULT_THEME_APPEARANCE_SETTINGS,
+  type Account,
+  type AppSettings,
+} from "./settings.js";
 import { DEFAULT_APP_LANGUAGE } from "./i18n.js";
 
 export const DEFAULT_ASSISTANT_ACCOUNT_ID = "opencode_opencode_at_opencode_com";
@@ -57,6 +62,9 @@ export function createDefaultSettings(): AppSettings {
     general: {
       appearance: { ...DEFAULT_THEME_APPEARANCE_SETTINGS },
       language: DEFAULT_APP_LANGUAGE,
+    },
+    scene: {
+      appearance: { ...DEFAULT_SCENE_APPEARANCE_SETTINGS },
     },
     user: { nickname: "User", email: "", avatarPath: "src/assets/default.png" },
     integrations: {

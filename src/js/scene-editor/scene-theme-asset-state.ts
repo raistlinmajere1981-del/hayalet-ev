@@ -7,7 +7,7 @@ import {
   type SceneAlphaWindowBounds,
 } from "../scene/alpha-window.js";
 import type { SceneObjectAction, SceneRoomId, SceneThemeViewDefinition } from "../scene/schema.js";
-import { getSceneThemeId } from "../scene-system/scene-layout-registry.js";
+import { getSceneThemeId, getSceneThemeSourceRoot } from "../scene-system/scene-layout-registry.js";
 import { getActiveSceneTheme } from "../scene-system/scene-theme-registry.js";
 
 export interface SceneThemeAssetEntryDraft {
@@ -79,11 +79,24 @@ function getSceneThemeAssetDraftStorageKey(): string {
 }
 
 export function getSceneThemeAssetDraftSourcePath(themeId = getSceneThemeId()): string {
-  return `shared/themes/${themeId}/${SCENE_THEME_ASSET_SOURCE_FILE}`;
+  return `${getSceneThemeSourceRoot(themeId)}/${SCENE_THEME_ASSET_SOURCE_FILE}`;
 }
 
 function normalizeAssetSourcePath(sourcePath: string): string {
-  return sourcePath.replace(/\\/g, "/").replace(/^\/+/, "").trim();
+  const normalizedPath = sourcePath.replace(/\\/g, "/").trim();
+  if (
+    normalizedPath.startsWith("/") ||
+    /^[a-zA-Z]:\//.test(normalizedPath) ||
+    normalizedPath.startsWith("data:") ||
+    normalizedPath.startsWith("http://") ||
+    normalizedPath.startsWith("https://") ||
+    normalizedPath.startsWith("blob:") ||
+    normalizedPath.startsWith("file://")
+  ) {
+    return normalizedPath;
+  }
+
+  return normalizedPath.replace(/^\/+/, "");
 }
 
 async function resolveSceneThemeAssetRuntimeSource(sourcePath: string): Promise<string> {
@@ -121,9 +134,41 @@ async function resolveSceneThemeAssetRuntimeSource(sourcePath: string): Promise<
     }
   }
 
-  const fallback = normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`;
+  const fallback =
+    normalizedPath.startsWith("/") ||
+    /^[a-zA-Z]:\//.test(normalizedPath) ||
+    normalizedPath.startsWith("file://")
+      ? normalizedPath
+      : `/${normalizedPath}`;
   sceneThemeAssetSourceCache.set(normalizedPath, fallback);
   return fallback;
+}
+
+export function getSceneThemeRuntimeSource(sourcePath: string): string {
+  const normalizedPath = normalizeAssetSourcePath(sourcePath);
+  if (normalizedPath === "") {
+    return "";
+  }
+
+  const cached = sceneThemeAssetSourceCache.get(normalizedPath);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  if (
+    normalizedPath.startsWith("data:") ||
+    normalizedPath.startsWith("http://") ||
+    normalizedPath.startsWith("https://") ||
+    normalizedPath.startsWith("blob:") ||
+    normalizedPath.startsWith("/assets/") ||
+    normalizedPath.startsWith("/") ||
+    /^[a-zA-Z]:\//.test(normalizedPath) ||
+    normalizedPath.startsWith("file://")
+  ) {
+    return normalizedPath;
+  }
+
+  return `/${normalizedPath}`;
 }
 
 async function warmSceneThemeAssetRuntimeSource(sourcePath: string | undefined): Promise<void> {
@@ -132,6 +177,40 @@ async function warmSceneThemeAssetRuntimeSource(sourcePath: string | undefined):
   }
 
   await resolveSceneThemeAssetRuntimeSource(sourcePath);
+}
+
+function listSceneThemeDefaultAssetSources(): string[] {
+  const activeTheme = getActiveSceneTheme();
+  const assetSources: string[] = [];
+
+  assetSources.push(...activeTheme.loading.frames);
+  Object.values(activeTheme.characters.roles).forEach((roleConfig) => {
+    assetSources.push(roleConfig.bodySrc);
+  });
+  Object.values(activeTheme.rooms).forEach((roomTheme) => {
+    assetSources.push(roomTheme.backgroundSrc);
+    Object.values(roomTheme.panels ?? {}).forEach((panelSrc) => {
+      assetSources.push(panelSrc);
+    });
+    Object.values(roomTheme.views ?? {}).forEach((viewTheme) => {
+      if (typeof viewTheme.backgroundSrc === "string") {
+        assetSources.push(viewTheme.backgroundSrc);
+      }
+      if (typeof viewTheme.panelArtSrc === "string") {
+        assetSources.push(viewTheme.panelArtSrc);
+      }
+    });
+  });
+
+  return assetSources;
+}
+
+async function warmSceneThemeDefaultSources(): Promise<void> {
+  await Promise.all(
+    listSceneThemeDefaultAssetSources().map(async (sourcePath) => {
+      await warmSceneThemeAssetRuntimeSource(sourcePath);
+    })
+  );
 }
 
 async function warmSceneThemeAssetDraftSources(draft: SceneThemeAssetDraftDocument): Promise<void> {
@@ -501,23 +580,27 @@ function getSceneThemeViewAssetDefault(
 function getSceneEditorAssetTargetDefaultSource(target: ParsedSceneEditorAssetTarget): string {
   const roomTheme = getActiveSceneTheme().rooms[target.roomId];
   if (target.kind === "background") {
-    return roomTheme.backgroundSrc;
+    return getSceneThemeRuntimeSource(roomTheme.backgroundSrc);
   }
   if (target.kind === "panel") {
-    return target.panelId === null ? "" : (roomTheme.panels?.[target.panelId] ?? "");
+    return target.panelId === null
+      ? ""
+      : getSceneThemeRuntimeSource(roomTheme.panels?.[target.panelId] ?? "");
   }
 
   const viewDefinition = target.viewId === null ? null : (roomTheme.views?.[target.viewId] ?? null);
-  return getSceneThemeViewAssetDefault(
+  return getSceneThemeRuntimeSource(
+    getSceneThemeViewAssetDefault(
     viewDefinition,
     target.kind === "view-background" ? "background" : "panelArt"
+    )
   );
 }
 
 function getSceneEditorAssetTargetRuntimeSource(target: ParsedSceneEditorAssetTarget): string {
   const entry = readSceneThemeAssetTargetEntry(target);
   if (entry?.sourcePath !== undefined) {
-    return sceneThemeAssetSourceCache.get(entry.sourcePath) ?? `/${entry.sourcePath}`;
+    return getSceneThemeRuntimeSource(entry.sourcePath);
   }
 
   return getSceneEditorAssetTargetDefaultSource(target);
@@ -553,6 +636,7 @@ export async function loadSceneThemeAssetDraft(): Promise<void> {
   savedSceneThemeAssetDraft = nextSavedDraft;
   currentSceneThemeAssetDraft =
     readSceneThemeAssetDraftFromLocalStorage() ?? cloneSceneThemeAssetDraft(nextSavedDraft);
+  await warmSceneThemeDefaultSources();
   await warmSceneThemeAssetDraftSources(currentSceneThemeAssetDraft);
   notifySceneThemeAssetDraftListeners();
 }
@@ -640,14 +724,14 @@ export function listSceneEditorAssetTargets(roomId: SceneRoomId): SceneEditorAss
 }
 
 function buildSceneThemeAssetCopyDestination(target: ParsedSceneEditorAssetTarget): string {
-  const themeId = getSceneThemeId();
+  const themeRoot = getSceneThemeSourceRoot();
   if (target.kind === "background") {
-    return `shared/themes/${themeId}/assets/${target.roomId}/background`;
+    return `${themeRoot}/assets/${target.roomId}/background`;
   }
   if (target.kind === "panel") {
-    return `shared/themes/${themeId}/assets/${target.roomId}/panels`;
+    return `${themeRoot}/assets/${target.roomId}/panels`;
   }
-  return `shared/themes/${themeId}/assets/${target.roomId}/views/${target.viewId ?? "default"}`;
+  return `${themeRoot}/assets/${target.roomId}/views/${target.viewId ?? "default"}`;
 }
 
 export async function pickSceneEditorAssetTarget(targetId: string): Promise<boolean> {
@@ -688,10 +772,10 @@ export async function pickSceneEditorAssetTarget(targetId: string): Promise<bool
   if (typeof previousDescriptor?.runtimeSrc === "string" && previousDescriptor.runtimeSrc.trim() !== "") {
     invalidateSceneAlphaWindowBoundsCache(previousDescriptor.runtimeSrc);
   }
-  invalidateSceneAlphaWindowBoundsCache(`/${copiedPath}`);
+  invalidateSceneAlphaWindowBoundsCache(getSceneThemeRuntimeSource(copiedPath));
   sceneThemeAssetSourceCache.delete(copiedPath);
   await warmSceneThemeAssetRuntimeSource(copiedPath);
-  const nextRuntimeSrc = sceneThemeAssetSourceCache.get(copiedPath) ?? `/${copiedPath}`;
+  const nextRuntimeSrc = getSceneThemeRuntimeSource(copiedPath);
   invalidateSceneAlphaWindowBoundsCache(nextRuntimeSrc);
   mutateSceneThemeAssetDraft(() => {
     writeSceneThemeAssetTargetEntry(target, {
@@ -869,7 +953,8 @@ export function getSceneThemeAssetEntryRuntimeSource(
     return null;
   }
 
-  return getSceneEditorAssetTargetRuntimeSource(target);
+  const runtimeSource = getSceneEditorAssetTargetRuntimeSource(target);
+  return runtimeSource !== "" ? runtimeSource : null;
 }
 
 export function getSceneThemeAssetTransparentWindow(

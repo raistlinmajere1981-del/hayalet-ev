@@ -106,12 +106,20 @@ const paths: PathResolver = {
     return join(getConfig().dataDir, "rooms");
   },
 
+  getInstalledSceneThemesDir(): string {
+    return join(getConfig().dataDir, "scene-themes");
+  },
+
   getRoomsRegistryPath(): string {
     return join(getConfig().configDir, "rooms.json");
   },
 
   getInstalledRoomDir(roomId: string): string {
     return join(this.getInstalledRoomsDir(), roomId);
+  },
+
+  getInstalledSceneThemeDir(themeId: string): string {
+    return join(this.getInstalledSceneThemesDir(), themeId);
   },
 
   sanitizeAccountId(accountId: string): string {

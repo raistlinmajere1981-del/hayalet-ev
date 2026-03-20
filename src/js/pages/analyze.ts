@@ -38,6 +38,7 @@ import {
   getSceneDebugRoomOptions,
   isSceneDebugRoomActive,
   openSceneDebugRoom,
+  subscribeSceneThemeAssetDraft,
 } from "../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
@@ -54,6 +55,7 @@ import {
   getSceneRoomBackgroundSrc,
   getSceneRoomPanelSrc,
   getSceneRoomPanelTransparentWindow,
+  SceneThemeManager,
 } from "../scene-system/index.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
 
@@ -144,6 +146,8 @@ export class AnalyzeController {
   _analyzeSceneSelection: SceneLayoutEditorSelection;
   _analyzeSceneResizeObserver: ResizeObserver | null;
   _analyzeSceneCharacterRenderToken: number;
+  _unsubSceneTheme: (() => void) | null;
+  _unsubSceneThemeAssets: (() => void) | null;
 
   get _analyzeSceneLayout(): SceneLayoutConfig {
     return this._analyzeSceneSession.getSceneLayout();
@@ -185,6 +189,8 @@ export class AnalyzeController {
     this._analyzeSceneSelection = null;
     this._analyzeSceneResizeObserver = null;
     this._analyzeSceneCharacterRenderToken = 0;
+    this._unsubSceneTheme = null;
+    this._unsubSceneThemeAssets = null;
   }
 
   async init(): Promise<void> {
@@ -252,6 +258,14 @@ export class AnalyzeController {
     this.updateConnectionStates();
     this.refreshUploads();
     this._initializeAnalyzeScene();
+    this._unsubSceneTheme ??= SceneThemeManager.onChange(() => {
+      this._analyzeSceneSession.reloadFromActiveTheme(this._analyzeSceneDebugEnabled);
+      this._analyzeSceneSelection = null;
+      this._syncAnalyzeSceneVisibility();
+    });
+    this._unsubSceneThemeAssets ??= subscribeSceneThemeAssetDraft(() => {
+      this._syncAnalyzeSceneVisibility();
+    });
 
     void this._initDraftSystem();
 

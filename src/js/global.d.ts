@@ -26,6 +26,7 @@ import type {
   StartupRoomsSnapshot,
 } from "../types/rooms.js";
 import type { LanguageDescriptor, LoadedLanguagePack, TranslationParams } from "../types/i18n.js";
+import type { SceneThemeRegistration } from "./scene-system/scene-theme-registry-contract.js";
 
 export {};
 
@@ -577,6 +578,31 @@ declare global {
       success: boolean;
       room?: InstalledRoomRecord;
       path?: string;
+      error?: string;
+    }>;
+    sceneThemesListInstalled: () => Promise<{
+      success: boolean;
+      themes?: SceneThemeRegistration[];
+      error?: string;
+    }>;
+    sceneThemesPackageInstalled: (payload: {
+      themeId: string;
+      outputFile?: string;
+    }) => Promise<{
+      success: boolean;
+      path?: string;
+      themeId?: string;
+      theme?: SceneThemeRegistration;
+      error?: string;
+    }>;
+    sceneThemesImportBundle: (payload: {
+      bundleFile: string;
+      onConflict?: "reject" | "replace" | "rename";
+    }) => Promise<{
+      success: boolean;
+      path?: string;
+      themeId?: string;
+      theme?: SceneThemeRegistration;
       error?: string;
     }>;
     readDirectoryFiles: (

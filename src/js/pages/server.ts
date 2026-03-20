@@ -23,6 +23,7 @@ import {
   getSceneDebugRoomOptions,
   isSceneDebugRoomActive,
   openSceneDebugRoom,
+  subscribeSceneThemeAssetDraft,
 } from "../scene-editor/index.js";
 import {
   buildSceneCharacterRoster,
@@ -45,6 +46,7 @@ import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewPanelArtSrc,
   getSceneRoomViewPanelTransparentWindow,
+  SceneThemeManager,
 } from "../scene-system/index.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 import { shellT } from "../app/shell-i18n.js";
@@ -129,6 +131,8 @@ export class ServerController {
   _serverSceneSelection: SceneLayoutEditorSelection;
   _serverSceneResizeObserver: ResizeObserver | null;
   _serverSceneCharacterRenderToken: number;
+  _unsubSceneTheme: (() => void) | null;
+  _unsubSceneThemeAssets: (() => void) | null;
 
   get _serverSceneLayout(): SceneLayoutConfig {
     return this._serverSceneSession.getSceneLayout();
@@ -181,6 +185,8 @@ export class ServerController {
     this._serverSceneSelection = null;
     this._serverSceneResizeObserver = null;
     this._serverSceneCharacterRenderToken = 0;
+    this._unsubSceneTheme = null;
+    this._unsubSceneThemeAssets = null;
   }
 
   private getServerCommandsApi(): ServerCommandsApi {
@@ -864,6 +870,14 @@ export class ServerController {
     this.observeServerSceneLayout();
     this.bindServerSceneInteractions();
     this.syncServerSceneVisibility();
+    this._unsubSceneTheme ??= SceneThemeManager.onChange(() => {
+      this._serverSceneSession.reloadFromActiveTheme(this._serverSceneDebugEnabled);
+      this._serverSceneSelection = null;
+      this.syncServerSceneVisibility();
+    });
+    this._unsubSceneThemeAssets ??= subscribeSceneThemeAssetDraft(() => {
+      this.syncServerSceneVisibility();
+    });
   }
 
   renderControllerOptions(): void {

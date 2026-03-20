@@ -122,6 +122,7 @@ export type ThemeAppearanceMotion = "full" | "reduced" | "off";
 export type ThemeAppearanceTextScale = "sm" | "md" | "lg";
 export type ThemeAppearanceSurface = "glass" | "soft" | "solid";
 export type ThemeAppearanceContrast = "normal" | "high";
+export const DEFAULT_SCENE_THEME_ID = "castle";
 
 export interface ThemeAppearanceSettings {
   mode?: ThemeAppearanceMode;
@@ -148,6 +149,18 @@ export const DEFAULT_THEME_APPEARANCE_SETTINGS: Readonly<Required<ThemeAppearanc
   surface: "glass",
   contrast: "normal",
 };
+
+export interface SceneAppearanceSettings {
+  activeThemeId?: string;
+}
+
+export const DEFAULT_SCENE_APPEARANCE_SETTINGS: Readonly<Required<SceneAppearanceSettings>> = {
+  activeThemeId: DEFAULT_SCENE_THEME_ID,
+};
+
+export interface SceneSettings {
+  appearance?: SceneAppearanceSettings;
+}
 
 export interface GeneralSettings {
   appearance?: ThemeAppearanceSettings;
@@ -251,6 +264,7 @@ export interface OpencodeUiModelPreferences {
 export interface AppSettings {
   version?: string;
   general?: GeneralSettings;
+  scene?: SceneSettings;
   user?: {
     nickname?: string;
     email?: string;

@@ -31,6 +31,11 @@ test("shared castle theme source centralizes scene assets, theme metadata, and r
   );
   const loadingSource = readFileSync("src/js/scene-system/scene-loading-theme.ts", "utf8");
   const characterSource = readFileSync("src/js/scene-system/scene-character-theme.ts", "utf8");
+  const builtinRegistrySource = readFileSync(
+    "src/js/scene-system/scene-theme-builtin-registry.ts",
+    "utf8"
+  );
+  const managerSource = readFileSync("src/js/scene-system/scene-theme-manager.ts", "utf8");
   const registrySource = readFileSync("src/js/scene-system/scene-theme-registry.ts", "utf8");
   const layoutRegistrySource = readFileSync("src/js/scene-system/scene-layout-registry.ts", "utf8");
   const contractSource = readFileSync("src/js/scene-system/theme-source-contract.ts", "utf8");
@@ -52,9 +57,17 @@ test("shared castle theme source centralizes scene assets, theme metadata, and r
   assert.match(contractSource, /maps:\s*Record<SceneRoomId,\s*SceneLayoutConfig>/);
   assert.match(clickableThemeSource, /export function getSceneClickableTheme/);
   assert.match(clickableThemeCoreSource, /export function serializeSceneClickableThemeSource/);
-  assert.match(registrySource, /export const ACTIVE_SCENE_THEME/);
+  assert.match(builtinRegistrySource, /sourceKind:\s*"built-in"/);
+  assert.match(builtinRegistrySource, /shared\/themes\/\$\{CASTLE_SCENE_THEME_ID\}/);
+  assert.match(managerSource, /class SceneThemeManagerClass/);
+  assert.match(managerSource, /Built-in themes keep precedence/);
+  assert.match(managerSource, /scene\.appearance\.activeThemeId/);
+  assert.match(registrySource, /SceneThemeManager\.getThemeRegistration/);
+  assert.match(registrySource, /getAvailableSceneThemes/);
   assert.match(layoutRegistrySource, /getSceneClickableDefaultsSourcePath/);
   assert.match(layoutRegistrySource, /getSceneRoomSourcePath/);
+  assert.match(layoutRegistrySource, /getSceneThemeSourceRoot/);
+  assert.match(layoutRegistrySource, /SceneThemeManager\.getThemeRegistration\(\)\.maps\[roomId\]/);
   assert.match(loadingSource, /export function getSceneLoadingTheme/);
   assert.match(characterSource, /export function getSceneCharacterRoleConfig/);
   assert.match(assetsSource, /export function getSceneRoomBackgroundSrc/);
@@ -88,7 +101,7 @@ test("scene runtime files resolve theme assets through scene-system and avoid le
   assert.match(entranceSource, /scene-system\/index\.js/);
   assert.match(splashSource, /scene-system\/index\.js/);
   assert.match(layoutStateSource, /scene-layout-registry\.js/);
-  assert.match(layoutRegistrySource, /@theme-source\/castle\/scene-layouts\.js/);
+  assert.match(layoutRegistrySource, /SceneThemeManager/);
   assert.match(layoutRegistrySource, /scene-clickable-defaults\.ts/);
   assert.equal(existsSync("src/js/scene/layout/scene-layout-state.ts"), false);
   assert.doesNotMatch(backLayerSource, /scene-back-zone/);

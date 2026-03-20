@@ -15,6 +15,8 @@ import { applyUiMode } from "../ui/ui-mode.js";
 import { initAppOverlayHost } from "../ui/overlay-system.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import { loadSceneThemeAssetDraft } from "../scene-editor/scene-theme-asset-state.js";
+import { SceneThemeManager } from "../scene-system/index.js";
+import { syncInstalledSceneThemeRegistrationsFromElectron } from "../scene-system/scene-theme-installed-registry.js";
 
 import type { PageController } from "./types.js";
 import { ensureElectronApiFallback } from "./electron-fallback.js";
@@ -57,6 +59,7 @@ if (!window.electronAPI) {
 
 let isInitializing = false;
 let isInitialized = false;
+let sceneThemeUnsubscribe: (() => void) | null = null;
 
 async function initApp(): Promise<void> {
   if (isInitializing || isInitialized) {
@@ -94,11 +97,17 @@ async function initApp(): Promise<void> {
     Logger.debugT(LogCategory.SYSTEM, "app.logs.uiLogListenerReady");
 
     await SettingsManager.load();
+    await syncInstalledSceneThemeRegistrationsFromElectron();
+    SceneThemeManager.connectSettingsManager(SettingsManager);
+    SceneThemeManager.init();
     await AppI18n.bootstrap(SettingsManager);
     bootstrapShellI18n();
     SplashScreen.setProgress(12);
     const startupFlags = window.electronAPI?.getStartupFlags();
     applyUiMode(startupFlags?.uiMode);
+    sceneThemeUnsubscribe ??= SceneThemeManager.onChange(() => {
+      void loadSceneThemeAssetDraft();
+    });
     await loadSceneThemeAssetDraft();
     initAppOverlayHost();
 

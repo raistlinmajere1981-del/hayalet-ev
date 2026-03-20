@@ -224,6 +224,25 @@ export function ensureElectronApiFallback(): void {
       }),
     roomsImportBundle: async (): Promise<{ success: boolean; error?: string }> =>
       await Promise.resolve({ success: false, error: "fallback" }),
+    sceneThemesListInstalled: async (): Promise<{
+      success: boolean;
+      themes: unknown[];
+      error?: string;
+    }> => await Promise.resolve({ success: true, themes: [] }),
+    sceneThemesPackageInstalled: async (): Promise<{
+      success: boolean;
+      path?: string;
+      themeId?: string;
+      theme?: unknown;
+      error?: string;
+    }> => await Promise.resolve({ success: false, error: "fallback" }),
+    sceneThemesImportBundle: async (): Promise<{
+      success: boolean;
+      path?: string;
+      themeId?: string;
+      theme?: unknown;
+      error?: string;
+    }> => await Promise.resolve({ success: false, error: "fallback" }),
     copyToAssets: async (p: string): Promise<{ success: boolean; path: string }> =>
       await Promise.resolve({ success: true, path: String(p) }),
     capturePage: async (): Promise<{ success: boolean }> =>

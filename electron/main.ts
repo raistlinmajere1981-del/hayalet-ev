@@ -125,6 +125,7 @@ import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
 import { setupMemoryHandlers } from "./handlers/ipc-memory.ts";
 import { setupOpencodeUiToolsHandlers } from "./handlers/ipc-opencode-ui-tools.ts";
 import { setupRoomHandlers } from "./handlers/ipc-rooms.ts";
+import { setupSceneThemeHandlers } from "./handlers/ipc-scene-themes.ts";
 import { setupBackupHandlers } from "./handlers/ipc-backup.ts";
 import { setupUs1MailHandlers } from "./handlers/ipc-us1-mail.ts";
 
@@ -331,6 +332,7 @@ void app.whenReady().then(async () => {
     setupMemoryHandlers();
     setupOpencodeUiToolsHandlers();
     setupRoomHandlers(null);
+    setupSceneThemeHandlers();
     setupBackupHandlers();
     setupUs1MailHandlers();
 

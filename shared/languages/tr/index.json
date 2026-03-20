@@ -855,7 +855,59 @@
         }
       },
       "contrastLabel": "Yüksek kontrast",
-      "contrastHint": "Yazı ve sınır ayrımını güçlendirir."
+      "contrastHint": "Yazı ve sınır ayrımını güçlendirir.",
+      "scene": {
+        "title": "Sahne temaları",
+        "hint": "Oda sahne tema paketini uygulama chrome temasından bağımsız olarak yönetin.",
+        "activeLabel": "Aktif sahne teması",
+        "selectedLabel": "Seçili sahne teması",
+        "empty": "Henüz kullanılabilir sahne teması yok.",
+        "source": {
+          "built-in": "Yerleşik",
+          "installed": "Yüklü",
+          "unavailable": "Kullanılamıyor"
+        },
+        "meta": {
+          "active": "{{source}} aktif"
+        },
+        "selection": {
+          "active": "Seçili sahne teması zaten aktif. Kaynak: {{source}}.",
+          "inactive": "Seçili sahne teması etkinleştirilmeye hazır. Şu anki aktif tema: {{active}}.",
+          "builtIn": "Paketle gelen sahne temaları buradan etkinleştirilebilir. Şu anki aktif tema: {{active}}."
+        },
+        "importBehaviorLabel": "İçe aktarılan tema kimliği zaten varsa",
+        "importBehavior": {
+          "options": {
+            "rename": "Yeni kimlikle yükle",
+            "reject": "İçe aktarmayı iptal et",
+            "replace": "Yüklü temanın yerine yaz"
+          }
+        },
+        "actions": {
+          "import": "Paketi içe aktar",
+          "refresh": "Kütüphaneyi yenile",
+          "export": "Paketi dışa aktar",
+          "apply": "Seçileni etkinleştir"
+        },
+        "dialog": {
+          "bundleTitle": "Bir sahne tema paketi seç",
+          "bundleButton": "İçe aktar",
+          "bundleFilterName": "Sahne Tema Paketleri"
+        },
+        "toasts": {
+          "refreshError": "Sahne tema kütüphanesi yenilenemedi",
+          "activateSuccess": "Sahne teması etkinleştirildi",
+          "activateError": "Sahne teması etkinleştirilemedi",
+          "importUnavailable": "Sahne teması içe aktarma şu anda kullanılamıyor",
+          "invalidBundleExtension": "Bir .hevtheme.json paket dosyası seçin",
+          "importSuccess": "Sahne tema paketi içe aktarıldı",
+          "importError": "Sahne tema paketi içe aktarılamadı",
+          "exportUnavailable": "Sahne teması dışa aktarma şu anda kullanılamıyor",
+          "exportBuiltInUnavailable": "Yerleşik sahne temaları bu panelden henüz dışa aktarılamaz",
+          "exportSuccess": "Sahne tema paketi dışa aktarıldı",
+          "exportError": "Sahne tema paketi dışa aktarılamadı"
+        }
+      }
     },
     "themes": {
       "obsidian": {

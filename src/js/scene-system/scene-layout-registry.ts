@@ -1,24 +1,24 @@
-import { CASTLE_SCENE_LAYOUTS, CASTLE_SCENE_THEME_ID } from "@theme-source/castle/scene-layouts.js";
-
 import type { SceneRoomId } from "../scene/schema.js";
 import type { SceneLayoutConfig } from "../scene/layout/index.js";
 
-export const ACTIVE_SCENE_THEME_ID = CASTLE_SCENE_THEME_ID;
-export const ACTIVE_SCENE_LAYOUTS =
-  CASTLE_SCENE_LAYOUTS as unknown as Record<SceneRoomId, SceneLayoutConfig>;
+import { SceneThemeManager } from "./scene-theme-manager.js";
 
 export function getSceneThemeId(): string {
-  return ACTIVE_SCENE_THEME_ID;
+  return SceneThemeManager.getCurrentThemeId();
+}
+
+export function getSceneThemeSourceRoot(themeId = getSceneThemeId()): string {
+  return SceneThemeManager.getThemeRegistration(themeId).sourceRoot;
 }
 
 export function getSceneRoomLayout(roomId: SceneRoomId): SceneLayoutConfig {
-  return ACTIVE_SCENE_LAYOUTS[roomId];
+  return SceneThemeManager.getThemeRegistration().maps[roomId];
 }
 
 export function getSceneRoomSourcePath(roomId: SceneRoomId): string {
-  return `shared/themes/${getSceneThemeId()}/maps/${roomId}.scene.json`;
+  return `${getSceneThemeSourceRoot()}/maps/${roomId}.scene.json`;
 }
 
 export function getSceneClickableDefaultsSourcePath(): string {
-  return `shared/themes/${getSceneThemeId()}/scene-clickable-defaults.ts`;
+  return `${getSceneThemeSourceRoot()}/scene-clickable-defaults.ts`;
 }

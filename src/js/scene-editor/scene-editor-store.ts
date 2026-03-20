@@ -205,7 +205,7 @@ export function createSceneDebugStore(
   roomId: SceneDebugEditableRoomId,
   dependencies: SceneDebugStoreDependencies = {}
 ): SceneDebugStore {
-  const config = getSceneDebugStoreConfig(roomId, dependencies);
+  const getConfig = (): SceneDebugStoreConfig => getSceneDebugStoreConfig(roomId, dependencies);
   const resolveRoomLayout = dependencies.getRoomLayout ?? getSceneRoomLayout;
   const clipboard = resolveSceneDebugClipboard(dependencies.clipboard);
   const writeFileAtomic = resolveSceneDebugWriteFileAtomic(dependencies.writeFileAtomic);
@@ -213,19 +213,19 @@ export function createSceneDebugStore(
   return {
     roomId,
     getSourcePath(): string {
-      return config.sourcePath;
+      return getConfig().sourcePath;
     },
     cloneDefault(): SceneLayoutConfig {
       return cloneSceneLayout(resolveRoomLayout(roomId));
     },
     loadDraft(): SceneLayoutConfig | null {
-      return loadSceneDebugDraft(config, dependencies.localStorage);
+      return loadSceneDebugDraft(getConfig(), dependencies.localStorage);
     },
     saveDraft(sceneLayout: SceneLayoutConfig): void {
-      saveSceneDebugDraft(config, sceneLayout, dependencies.localStorage);
+      saveSceneDebugDraft(getConfig(), sceneLayout, dependencies.localStorage);
     },
     clearDraft(): void {
-      clearSceneDebugDraft(config, dependencies.localStorage);
+      clearSceneDebugDraft(getConfig(), dependencies.localStorage);
     },
     serialize(sceneLayout: SceneLayoutConfig): string {
       return serializeSceneLayout(sceneLayout);
@@ -234,6 +234,7 @@ export function createSceneDebugStore(
       await clipboard.writeText(serializeSceneLayout(sceneLayout));
     },
     async saveSource(sceneLayout: SceneLayoutConfig): Promise<boolean> {
+      const config = getConfig();
       const savedPath = await writeFileAtomic(
         config.sourcePath,
         `${serializeSceneLayout(sceneLayout)}\n`,
@@ -247,26 +248,26 @@ export function createSceneDebugStore(
 export function createSceneDebugThemeStore(
   dependencies: SceneDebugThemeStoreDependencies = {}
 ): SceneDebugThemeStore {
-  const config = getSceneDebugThemeStoreConfig(dependencies);
+  const getConfig = (): SceneDebugThemeStoreConfig => getSceneDebugThemeStoreConfig(dependencies);
   const cloneDefaultTheme = dependencies.cloneDefaultTheme ?? getSceneDefaultClickableTheme;
   const clipboard = resolveSceneDebugClipboard(dependencies.clipboard);
   const writeFileAtomic = resolveSceneDebugWriteFileAtomic(dependencies.writeFileAtomic);
 
   return {
     getSourcePath(): string {
-      return config.sourcePath;
+      return getConfig().sourcePath;
     },
     cloneDefault(): SceneClickableThemeDefinition {
       return cloneDefaultTheme();
     },
     loadDraft(): SceneClickableThemeDefinition | null {
-      return loadSceneDebugThemeDraft(config, dependencies.localStorage);
+      return loadSceneDebugThemeDraft(getConfig(), dependencies.localStorage);
     },
     saveDraft(sceneClickableTheme: SceneClickableThemeDefinition): void {
-      saveSceneDebugThemeDraft(config, sceneClickableTheme, dependencies.localStorage);
+      saveSceneDebugThemeDraft(getConfig(), sceneClickableTheme, dependencies.localStorage);
     },
     clearDraft(): void {
-      clearSceneDebugThemeDraft(config, dependencies.localStorage);
+      clearSceneDebugThemeDraft(getConfig(), dependencies.localStorage);
     },
     serialize(sceneClickableTheme: SceneClickableThemeDefinition): string {
       return serializeSceneClickableThemeDraft(sceneClickableTheme);
@@ -275,6 +276,7 @@ export function createSceneDebugThemeStore(
       await clipboard.writeText(serializeSceneClickableThemeDraft(sceneClickableTheme));
     },
     async saveSource(sceneClickableTheme: SceneClickableThemeDefinition): Promise<boolean> {
+      const config = getConfig();
       const savedPath = await writeFileAtomic(
         config.sourcePath,
         serializeSceneClickableThemeSource(sceneClickableTheme),

@@ -1,6 +1,7 @@
 import type {
   Account,
   AppSettings,
+  SceneAppearanceSettings,
   SlotSettings,
   RemoteUserIdentity,
   Us1SlotSettings,
@@ -31,6 +32,7 @@ import {
   createDefaultRemoteUsers,
   createDefaultSettings,
 } from "@shared/settings-defaults.js";
+import { DEFAULT_SCENE_APPEARANCE_SETTINGS } from "@shared/settings.js";
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && v !== undefined && typeof v === "object" && !Array.isArray(v);
@@ -41,6 +43,21 @@ function normalizeThemeAppearanceSettings(
   legacyTheme?: unknown
 ): Required<ThemeAppearanceSettings> {
   return normalizeThemeAppearance(raw, legacyTheme);
+}
+
+function normalizeSceneAppearanceSettings(raw: unknown): Required<SceneAppearanceSettings> {
+  if (!isPlainObject(raw)) {
+    return { ...DEFAULT_SCENE_APPEARANCE_SETTINGS };
+  }
+
+  const activeThemeId =
+    typeof raw.activeThemeId === "string" && raw.activeThemeId.trim() !== ""
+      ? raw.activeThemeId.trim()
+      : DEFAULT_SCENE_APPEARANCE_SETTINGS.activeThemeId;
+
+  return {
+    activeThemeId,
+  };
 }
 
 export function defaultSettings(): AppSettings {
@@ -823,6 +840,10 @@ function normalizeKnownSettings(raw: unknown): Record<string, unknown> {
     out.assistants = r.assistants;
   }
 
+  if (isPlainObject(r.scene)) {
+    out.scene = r.scene;
+  }
+
   if (isPlainObject(r.logging)) {
     out.logging = r.logging;
   }
@@ -860,6 +881,13 @@ export function normalizeSettings(raw: unknown): AppSettings {
     legacyTheme
   );
   delete (merged.general as Record<string, unknown>)["theme"];
+
+  if (!isPlainObject(merged.scene)) {
+    merged.scene = defaults.scene ?? {
+      appearance: { ...DEFAULT_SCENE_APPEARANCE_SETTINGS },
+    };
+  }
+  merged.scene.appearance = normalizeSceneAppearanceSettings(merged.scene.appearance);
 
   if (!Array.isArray(merged.assistantAccounts)) {
     merged.assistantAccounts = [createDefaultAssistantAccount(), createDefaultOpencodeUiAccount()];
