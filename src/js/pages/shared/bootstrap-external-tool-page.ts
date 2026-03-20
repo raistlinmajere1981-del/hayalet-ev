@@ -7,7 +7,7 @@ import { Logger } from "../../modules/logger/index.js";
 import { RoomRegistry } from "../../modules/rooms/room-registry.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
-import { ThemeManager } from "../../ui/theme-manager.js";
+import { ThemeManager } from "../../ui/theme/index.js";
 
 interface BootstrapExternalToolPageOptions {
   applyStaticTranslations?: () => void;

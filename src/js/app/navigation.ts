@@ -7,55 +7,27 @@ import {
   generateWorkflowSessionId,
   updateAssistantRuntimeState,
 } from "../pages/assistant/assistant-runtime.js";
-import { isSceneDebugRoomId, setActiveSceneDebugRoomId } from "../scene/scene-debug-rooms.js";
+import { isSceneDebugRoomId, setActiveSceneDebugRoomId } from "../scene/debug/index.js";
+import {
+  getUiModeLabelKey,
+  getUiModeRestartOptions,
+  getUiModeToggleState,
+  isUiModeOptionState,
+  renderUiModeDropdowns,
+  syncUiModeDropdownOptions,
+  UI_MODE_DROPDOWN_SELECTOR,
+  UI_MODE_OPTION_SELECTOR,
+  UI_MODE_TRIGGER_SELECTOR,
+  type UiModeToggleState,
+} from "./ui-mode/index.js";
 
 import type { PageController } from "./types.js";
 import { shellT } from "./shell-i18n.js";
 
 const SPECIAL_PAGES = ["webview", "settings", "archives", "whisper"];
 
-type UiModeToggleState = "classic" | "scene" | "scene-debug";
-
-const UI_MODE_DROPDOWN_SELECTOR = "[data-ui-mode-dropdown]";
-const UI_MODE_TRIGGER_SELECTOR = "[data-ui-mode-trigger]";
-const UI_MODE_OPTION_SELECTOR = "[data-ui-mode-option]";
-const UI_MODE_OPTIONS: UiModeToggleState[] = ["classic", "scene", "scene-debug"];
-
-function isUiModeToggleState(value: string): value is UiModeToggleState {
-  return UI_MODE_OPTIONS.includes(value as UiModeToggleState);
-}
-
-function getUiModeToggleState(): UiModeToggleState {
-  const uiMode = document.documentElement.getAttribute("data-ui-mode");
-  if (uiMode !== "scene") {
-    return "classic";
-  }
-
-  const sceneDebug = document.documentElement.getAttribute("data-scene-debug");
-  return sceneDebug === "true" ? "scene-debug" : "scene";
-}
-
 function getUiModeLabel(state: UiModeToggleState): string {
-  if (state === "scene-debug") {
-    return shellT("uiMode.options.sceneDebug");
-  }
-  if (state === "scene") {
-    return shellT("uiMode.options.scene");
-  }
-  return shellT("uiMode.options.classic");
-}
-
-function getUiModeRestartOptions(state: UiModeToggleState): {
-  uiMode: "classic" | "scene";
-  sceneDebug: boolean;
-} {
-  if (state === "scene-debug") {
-    return { uiMode: "scene", sceneDebug: true };
-  }
-  if (state === "scene") {
-    return { uiMode: "scene", sceneDebug: false };
-  }
-  return { uiMode: "classic", sceneDebug: false };
+  return shellT(getUiModeLabelKey(state));
 }
 
 async function triggerGhostAgentHandoff(): Promise<void> {
@@ -67,19 +39,6 @@ async function triggerGhostAgentHandoff(): Promise<void> {
   }
 
   electronApi.windowClose();
-}
-
-function syncUiModeDropdownOptions(dropdown: HTMLElement): void {
-  const state = getUiModeToggleState();
-  dropdown.dataset["uiModeState"] = state;
-
-  const options = Array.from(dropdown.querySelectorAll<HTMLButtonElement>(UI_MODE_OPTION_SELECTOR));
-  options.forEach((option) => {
-    const optionState = option.dataset["uiModeOption"] ?? "";
-    const isActive = optionState === state;
-    option.hidden = isActive;
-    option.setAttribute("aria-hidden", String(isActive));
-  });
 }
 
 function setUiModeDropdownExpanded(dropdown: HTMLElement, expanded: boolean): void {
@@ -137,8 +96,7 @@ function syncShellLayoutState(pageName: string): void {
 }
 
 function syncActiveSceneDebugRoom(pageName: string): void {
-  const sceneDebugEnabled = document.documentElement.getAttribute("data-scene-debug") === "true";
-  if (!sceneDebugEnabled) {
+  if (getUiModeToggleState() !== "scene-debug") {
     setActiveSceneDebugRoomId(null);
     return;
   }
@@ -254,6 +212,8 @@ export function setupWindowControls(): void {
 
 export function setupTopBarButtons(): void {
   try {
+    renderUiModeDropdowns();
+
     const uiModeDropdowns = Array.from(
       document.querySelectorAll<HTMLElement>(UI_MODE_DROPDOWN_SELECTOR)
     );
@@ -294,7 +254,7 @@ export function setupTopBarButtons(): void {
             return;
           }
 
-          if (!isUiModeToggleState(optionState)) {
+          if (!isUiModeOptionState(optionState) || optionState === "ghost-agent") {
             return;
           }
 

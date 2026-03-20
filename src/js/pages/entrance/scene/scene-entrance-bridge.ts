@@ -9,9 +9,9 @@ import type { AppSettings } from "@shared/settings.js";
 import type { SlotPanel } from "../slot-panel.js";
 import type { Us1Panel } from "../../settings/accounts/us1-panel.js";
 import type { WebviewPanel } from "../webview-panel.js";
+import type { SceneCharacterDescriptor } from "../../../scene/characters/index.js";
 
 import { resolveSceneAiConnectSlot } from "./scene-connect-actions.js";
-import type { SceneCharacterDescriptor } from "./scene-character-roster.js";
 
 type AiSlotId = "ai1" | "ai2";
 type ScenePreferenceKey = "catchCommands" | "resumeLastSession" | "rememberConnectionStatus";

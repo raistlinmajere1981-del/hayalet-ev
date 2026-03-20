@@ -1,5 +1,5 @@
-export { ThemeManager } from "./theme-manager";
-export type { ThemeId } from "./theme-manager";
+export { ThemeManager } from "./theme/index";
+export type { ThemeId } from "./theme/index";
 
 export { Toast, ToastManager } from "./toast-manager";
 export type { ToastType, ToastOptions, ToastAction } from "./toast-manager";

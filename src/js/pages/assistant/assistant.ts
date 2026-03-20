@@ -13,7 +13,11 @@ import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
-import { ThemeManager, type ThemeId } from "../../ui/theme-manager.js";
+import { ThemeManager, type ThemeId } from "../../ui/theme/index.js";
+import {
+  buildInlineThemeSyncScript,
+  isOpencodeUiThemeHost,
+} from "../../ui/theme/theme-host-sync.js";
 import {
   createHiddenClassOverlayController,
   createInlineStatusOverlayController,
@@ -78,18 +82,23 @@ import {
   bindAssistantWebviewIpcEvents,
 } from "./webview-bindings.js";
 import {
+  applySceneDebugFlag,
+  createSceneDebugStore,
   EntranceSceneEditor,
   type EntranceSceneEditorSelection,
-} from "../entrance/scene/scene-editor.js";
-import { resolveSceneAvatarSource } from "../entrance/scene/scene-avatar.js";
-import { applySceneDebugFlag } from "../entrance/scene/scene-debug.js";
-import { buildSceneCharacterRoster } from "../entrance/scene/scene-character-roster.js";
+  getActiveSceneDebugRoomId,
+  SCENE_DEBUG_ROOMS,
+} from "../../scene/debug/index.js";
+import {
+  buildSceneCharacterRoster,
+  resolveSceneAvatarSource,
+} from "../../scene/characters/index.js";
+import type { EntranceSceneMap } from "../../scene/layout/index.js";
 import {
   getSceneBackNodeForView,
   getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
-  type EntranceSceneMap,
-} from "../entrance/scene/scene-map.js";
+} from "../../scene/layout/index.js";
 import {
   applyConnectButtonState,
   updateServerStatusView,
@@ -97,8 +106,6 @@ import {
 } from "./view-helpers.js";
 import { SceneAlphaWindowFrameController } from "../../scene/alpha-window.js";
 import { dispatchSceneAction } from "../../scene/action-dispatcher.js";
-import { createSceneDebugStore } from "../../scene/debug-store.js";
-import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../../scene/scene-debug-rooms.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../../scene/navigation.js";
 import { getCoverSceneProjectionFromElement } from "../../scene/projection.js";
 import { renderSceneBackLayer } from "../../scene/renderers/back-layer.js";
@@ -108,7 +115,7 @@ import { syncSceneViewRuntime } from "../../scene/runtime.js";
 import {
   getSceneRoomBackgroundSrc,
   getSceneRoomViewPanelArtSrc,
-} from "../../scene/theme-pack.js";
+} from "../../scene/theme/scene-theme-assets.js";
 import type {
   ProviderScenarioCommandReport,
   ProviderScenarioProgressEvent,
@@ -2435,8 +2442,7 @@ export class AssistantController {
 
     const activeProviderId = this.providerSelect?.value ?? this._activeAdapter?.id ?? "";
     const currentUrl = slotState?.currentUrl ?? "";
-    const shouldSyncTheme =
-      activeProviderId === "opencode-ui" || currentUrl.includes("/pages/opencode-ui.html");
+    const shouldSyncTheme = isOpencodeUiThemeHost(activeProviderId, currentUrl);
 
     if (!shouldSyncTheme) {
       return;
@@ -2444,29 +2450,7 @@ export class AssistantController {
 
     try {
       void ai0Webview.executeJavaScript(
-        `(function() {
-          try {
-            const nextTheme = ${JSON.stringify(theme)};
-            const nextAppearance = ${JSON.stringify(ThemeManager.getAppearance())};
-            if (window.__ThemeManager && typeof window.__ThemeManager.set === "function") {
-              window.__ThemeManager.set(nextTheme, false);
-              return true;
-            }
-
-            document.documentElement.setAttribute("data-theme", nextTheme);
-            document.documentElement.setAttribute("data-theme-mode", nextAppearance.mode);
-            document.documentElement.setAttribute("data-theme-motion", nextAppearance.motion);
-            document.documentElement.setAttribute("data-theme-scale", nextAppearance.textScale);
-            document.documentElement.setAttribute("data-theme-surface", nextAppearance.surface);
-            document.documentElement.setAttribute("data-theme-contrast", nextAppearance.contrast);
-            try {
-              localStorage.setItem("app-theme-appearance", JSON.stringify(nextAppearance));
-            } catch (_) {}
-            return true;
-          } catch (_) {
-            return false;
-          }
-        })();`
+        buildInlineThemeSyncScript(theme, ThemeManager.getAppearance())
       );
     } catch (_) {
       // NOTE: Ignore if the webview has not finished loading yet.

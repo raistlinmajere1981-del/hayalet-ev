@@ -3,11 +3,11 @@ import { getSceneHotspotLabelFontFamily } from "../label-font.js";
 import type {
   EntranceSceneInteractiveConfig,
   SceneDebugNodeSelection,
-} from "../../pages/entrance/scene/scene-map.js";
+} from "../layout/index.js";
 import {
   hasSceneNodeLabel,
   isSceneDebugSelectionForInteractive,
-} from "../../pages/entrance/scene/scene-map.js";
+} from "../layout/index.js";
 
 interface SceneProjection {
   offsetX: number;

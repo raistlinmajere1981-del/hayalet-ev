@@ -2,28 +2,31 @@ import type { PageController } from "../app/types.js";
 import { shellT } from "../app/shell-i18n.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { dispatchSceneAction } from "../scene/action-dispatcher.js";
+import {
+  applySceneDebugFlag,
+  createSceneDebugStore,
+  EntranceSceneEditor,
+  type EntranceSceneEditorSelection,
+  getActiveSceneDebugRoomId,
+  isSceneDebugEnabled,
+  SCENE_DEBUG_ROOMS,
+} from "../scene/debug/index.js";
+import {
+  buildSceneCharacterRoster,
+  resolveSceneAvatarSource,
+} from "../scene/characters/index.js";
+import type { EntranceSceneMap } from "../scene/layout/index.js";
+import {
+  getSceneInteractiveNodesForView,
+  resolveSceneNodeLabelText,
+} from "../scene/layout/index.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
 import { getCoverSceneProjectionFromElement, type SceneProjection } from "../scene/projection.js";
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
 import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
-import { createSceneDebugStore } from "../scene/debug-store.js";
-import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../scene/scene-debug-rooms.js";
-import { getSceneRoomBackgroundSrc } from "../scene/theme-pack.js";
+import { getSceneRoomBackgroundSrc } from "../scene/theme/scene-theme-assets.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
-
-import { resolveSceneAvatarSource } from "./entrance/scene/scene-avatar.js";
-import { applySceneDebugFlag, isSceneDebugEnabled } from "./entrance/scene/scene-debug.js";
-import { buildSceneCharacterRoster } from "./entrance/scene/scene-character-roster.js";
-import {
-  EntranceSceneEditor,
-  type EntranceSceneEditorSelection,
-} from "./entrance/scene/scene-editor.js";
-import {
-  getSceneInteractiveNodesForView,
-  resolveSceneNodeLabelText,
-  type EntranceSceneMap,
-} from "./entrance/scene/scene-map.js";
 
 const ROOMS_SCENE_DEBUG_STORE = createSceneDebugStore("rooms");
 

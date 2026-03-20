@@ -42,6 +42,10 @@ export const SCENE_CHARACTER_ROSTER_PRESETS = [
 
 export type SceneCharacterRosterPreset = (typeof SCENE_CHARACTER_ROSTER_PRESETS)[number];
 
+export type SceneCharacterRole = "ai" | "assistant" | "human" | "user";
+export type SceneCharacterKind = "ai" | "assistant" | "us1" | "user";
+export type SceneCharacterSlot = "ai0" | "ai1" | "ai2" | "us1";
+
 export interface SceneNavigateAction {
   type: "navigate";
   page: Exclude<SceneRoomId, "settings">;
@@ -163,6 +167,18 @@ export interface SceneCharacterVisualConfig {
   avatarScale: number;
 }
 
+export type SceneCharacterRoleConfig = SceneCharacterVisualConfig;
+
+export interface SceneLoadingThemeDefinition {
+  frameDurationMs: number;
+  frames: string[];
+}
+
+export interface SceneCharacterThemeDefinition {
+  roles: Record<string, SceneCharacterVisualConfig>;
+  fallbackRole: string;
+}
+
 export interface SceneThemeViewDefinition {
   backgroundSrc?: string;
   panelArtSrc?: string;
@@ -182,14 +198,7 @@ export interface SceneDebugThemeDefinition {
 
 export interface SceneThemePack {
   themeId: string;
-  loading: {
-    frameDurationMs: number;
-    frames: string[];
-  };
-  characters: {
-    roles: Record<string, SceneCharacterVisualConfig>;
-    fallbackRole: string;
-  };
-  debug: SceneDebugThemeDefinition;
+  loading: SceneLoadingThemeDefinition;
+  characters: SceneCharacterThemeDefinition;
   rooms: Record<SceneRoomId, SceneRoomThemeDefinition>;
 }

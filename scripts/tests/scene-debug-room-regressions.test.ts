@@ -17,8 +17,8 @@ import {
   normalizeRoomsSceneMap,
   normalizeServerSceneMap,
   normalizeSettingsSceneMap,
-} from "../../src/js/pages/entrance/scene/scene-map.ts";
-import { SCENE_DEBUG_ROOMS } from "../../src/js/scene/scene-debug-rooms.ts";
+} from "../../src/js/scene/layout/index.ts";
+import { SCENE_DEBUG_ROOMS } from "../../src/js/scene/debug/index.ts";
 
 test("scene debug room registry includes all unified scene rooms", () => {
   assert.deepEqual(
@@ -164,7 +164,8 @@ test("rooms scene map ships with one interactive entrance and no back or charact
 });
 
 test("scene editor renders unified section labels", () => {
-  const editorSource = readFileSync("src/js/pages/entrance/scene/scene-editor.ts", "utf8");
+  const editorSource = readFileSync("src/js/scene/debug/scene-debug-editor.ts", "utf8");
+  const editorFacadeSource = readFileSync("src/js/pages/entrance/scene/scene-editor.ts", "utf8");
   assert.match(editorSource, /data-editor-action="room"/);
   assert.match(editorSource, /entrance-scene__editor-room-list/);
   assert.match(editorSource, /Interactives/);
@@ -172,6 +173,10 @@ test("scene editor renders unified section labels", () => {
   assert.match(editorSource, /Characters/);
   assert.doesNotMatch(editorSource, /Doors/);
   assert.doesNotMatch(editorSource, /Labels/);
+  assert.match(
+    editorFacadeSource,
+    /export \* from "\.\.\/\.\.\/\.\.\/scene\/debug\/scene-debug-editor\.js"/
+  );
 });
 
 test("scene debug node list exposes only interactive, back, and character nodes", () => {

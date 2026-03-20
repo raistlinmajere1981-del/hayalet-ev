@@ -3,28 +3,33 @@ import { AppI18n } from "../../../modules/i18n/index.js";
 import { TrafficManager } from "../../../modules/traffic-manager.js";
 import { shellT } from "../../../app/shell-i18n.js";
 import { dispatchSceneAction } from "../../../scene/action-dispatcher.js";
-import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../../../scene/scene-debug-rooms.js";
-import { navigateToScenePage, openSceneSettingsPanel } from "../../../scene/navigation.js";
-import { createSceneDebugStore } from "../../../scene/debug-store.js";
-import { getCoverSceneProjection } from "../../../scene/projection.js";
-import { renderSceneCharacterLayer } from "../../../scene/renderers/character-layer.js";
-import { renderSceneInteractiveLayer } from "../../../scene/renderers/interactive-layer.js";
-import { getSceneRoomBackgroundSrc } from "../../../scene/theme-pack.js";
-import { isSceneUiMode } from "../../../ui/ui-mode.js";
-
-import { resolveSceneAvatarSource } from "./scene-avatar.js";
-import { EntranceSceneEditor, type EntranceSceneEditorSelection } from "./scene-editor.js";
-import { SceneCharacterMenu } from "./scene-character-menu.js";
-import { applySceneDebugFlag, isSceneDebugEnabled } from "./scene-debug.js";
+import {
+  applySceneDebugFlag,
+  createSceneDebugStore,
+  EntranceSceneEditor,
+  type EntranceSceneEditorSelection,
+  getActiveSceneDebugRoomId,
+  isSceneDebugEnabled,
+  SCENE_DEBUG_ROOMS,
+} from "../../../scene/debug/index.js";
+import {
+  buildSceneCharacterRoster,
+  resolveSceneAvatarSource,
+  type SceneCharacterDescriptor,
+} from "../../../scene/characters/index.js";
+import type { EntranceSceneMap } from "../../../scene/layout/index.js";
 import {
   getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
-  type EntranceSceneMap,
-} from "./scene-map.js";
-import {
-  buildSceneCharacterRoster,
-  type SceneCharacterDescriptor,
-} from "./scene-character-roster.js";
+} from "../../../scene/layout/index.js";
+import { navigateToScenePage, openSceneSettingsPanel } from "../../../scene/navigation.js";
+import { getCoverSceneProjection } from "../../../scene/projection.js";
+import { renderSceneCharacterLayer } from "../../../scene/renderers/character-layer.js";
+import { renderSceneInteractiveLayer } from "../../../scene/renderers/interactive-layer.js";
+import { getSceneRoomBackgroundSrc } from "../../../scene/theme/scene-theme-assets.js";
+import { isSceneUiMode } from "../../../ui/ui-mode.js";
+
+import { SceneCharacterMenu } from "./scene-character-menu.js";
 import type { SceneEntranceBridge } from "./scene-entrance-bridge.js";
 
 const ELEMENT_IDS = {

@@ -1,4 +1,7 @@
-const SCENE_WINDOW_CONTROLS_MARKUP = `
+import { buildUiModeOptionsMarkup } from "../app/ui-mode/index.js";
+
+function buildSceneWindowControlsMarkup(): string {
+  return `
   <div
     class="scene-shell__window-controls"
     aria-label="Scene window controls"
@@ -19,52 +22,7 @@ const SCENE_WINDOW_CONTROLS_MARKUP = `
           <path d="M2.5 2.5h6v6h-6zM7.5 7.5h6v6h-6z" />
         </svg>
       </button>
-      <div class="ui-mode-dropdown-menu theme-dropdown-menu scene-shell__ui-mode-menu" role="menu">
-        <button
-          class="theme-dropdown-item ui-mode-option"
-          type="button"
-          role="menuitem"
-          data-ui-mode-option="classic"
-        >
-          <span class="theme-dropdown-icon">C</span>
-          <span class="theme-dropdown-copy">
-            <strong data-shell-i18n-text="uiMode.options.classic"></strong>
-          </span>
-        </button>
-        <button
-          class="theme-dropdown-item ui-mode-option"
-          type="button"
-          role="menuitem"
-          data-ui-mode-option="scene"
-        >
-          <span class="theme-dropdown-icon">S</span>
-          <span class="theme-dropdown-copy">
-            <strong data-shell-i18n-text="uiMode.options.scene"></strong>
-          </span>
-        </button>
-        <button
-          class="theme-dropdown-item ui-mode-option"
-          type="button"
-          role="menuitem"
-          data-ui-mode-option="scene-debug"
-        >
-          <span class="theme-dropdown-icon">D</span>
-          <span class="theme-dropdown-copy">
-            <strong data-shell-i18n-text="uiMode.options.sceneDebug"></strong>
-          </span>
-        </button>
-        <button
-          class="theme-dropdown-item ui-mode-option"
-          type="button"
-          role="menuitem"
-          data-ui-mode-option="ghost-agent"
-        >
-          <span class="theme-dropdown-icon">G</span>
-          <span class="theme-dropdown-copy">
-            <strong data-shell-i18n-text="assistant.page.ghostAgentButton"></strong>
-          </span>
-        </button>
-      </div>
+      <div class="ui-mode-dropdown-menu theme-dropdown-menu scene-shell__ui-mode-menu" role="menu">${buildUiModeOptionsMarkup()}</div>
     </div>
     <button
       class="scene-shell__window-control"
@@ -122,6 +80,7 @@ const SCENE_WINDOW_CONTROLS_MARKUP = `
     </button>
   </div>
 `.trim();
+}
 
 export function mountSceneWindowControls(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>(".scene-shell__surface").forEach((surface) => {
@@ -131,10 +90,10 @@ export function mountSceneWindowControls(root: ParentNode = document): void {
 
     const anchor = surface.querySelector<HTMLElement>(".scene-shell__cover-image");
     if (anchor !== null) {
-      anchor.insertAdjacentHTML("afterend", SCENE_WINDOW_CONTROLS_MARKUP);
+      anchor.insertAdjacentHTML("afterend", buildSceneWindowControlsMarkup());
       return;
     }
 
-    surface.insertAdjacentHTML("afterbegin", SCENE_WINDOW_CONTROLS_MARKUP);
+    surface.insertAdjacentHTML("afterbegin", buildSceneWindowControlsMarkup());
   });
 }

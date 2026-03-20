@@ -1,6 +1,6 @@
 import { getSceneHotspotLabelFontFamily } from "../label-font.js";
-import type { EntranceSceneBackConfig } from "../../pages/entrance/scene/scene-map.js";
-import { hasSceneNodeLabel } from "../../pages/entrance/scene/scene-map.js";
+import type { EntranceSceneBackConfig } from "../layout/index.js";
+import { hasSceneNodeLabel } from "../layout/index.js";
 
 interface SceneProjection {
   offsetX: number;

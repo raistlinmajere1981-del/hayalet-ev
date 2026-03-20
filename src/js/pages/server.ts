@@ -11,15 +11,34 @@ import { AppI18n } from "../modules/i18n/index.js";
 import { ButtonStates } from "../ui/button-states.js";
 import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
 import { dispatchSceneAction } from "../scene/action-dispatcher.js";
-import { createSceneDebugStore } from "../scene/debug-store.js";
+import {
+  applySceneDebugFlag,
+  createSceneDebugStore,
+  EntranceSceneEditor,
+  type EntranceSceneEditorSelection,
+  getActiveSceneDebugRoomId,
+  SCENE_DEBUG_ROOMS,
+} from "../scene/debug/index.js";
+import {
+  buildSceneCharacterRoster,
+  resolveSceneAvatarSource,
+} from "../scene/characters/index.js";
+import type { EntranceSceneMap } from "../scene/layout/index.js";
+import {
+  getSceneBackNodeForView,
+  getSceneInteractiveNodesForView,
+  resolveSceneNodeLabelText,
+} from "../scene/layout/index.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
 import { getCoverSceneProjectionFromElement } from "../scene/projection.js";
 import { renderSceneBackLayer } from "../scene/renderers/back-layer.js";
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
 import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
-import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../scene/scene-debug-rooms.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
-import { getSceneRoomBackgroundSrc, getSceneRoomViewPanelArtSrc } from "../scene/theme-pack.js";
+import {
+  getSceneRoomBackgroundSrc,
+  getSceneRoomViewPanelArtSrc,
+} from "../scene/theme/scene-theme-assets.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 import { shellT } from "../app/shell-i18n.js";
 import {
@@ -50,19 +69,6 @@ import {
   rebuildTimelineView,
   type TimelineState,
 } from "./server/timeline-controller.js";
-import { resolveSceneAvatarSource } from "./entrance/scene/scene-avatar.js";
-import { applySceneDebugFlag } from "./entrance/scene/scene-debug.js";
-import { buildSceneCharacterRoster } from "./entrance/scene/scene-character-roster.js";
-import {
-  EntranceSceneEditor,
-  type EntranceSceneEditorSelection,
-} from "./entrance/scene/scene-editor.js";
-import {
-  getSceneBackNodeForView,
-  getSceneInteractiveNodesForView,
-  resolveSceneNodeLabelText,
-  type EntranceSceneMap,
-} from "./entrance/scene/scene-map.js";
 import { initServerControllerPage } from "./server/init-controller.js";
 import type { ServerInitContext } from "./server/init-controller.js";
 import type { TimelineEvent } from "./server-timeline.js";

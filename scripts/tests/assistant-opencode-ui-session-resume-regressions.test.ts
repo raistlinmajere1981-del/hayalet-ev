@@ -39,5 +39,6 @@ test("opencode-ui connect url resolver injects active theme and assistant syncs 
 
   assert.match(content, /parsed\.searchParams\.set\("theme", ThemeManager\.current\)/);
   assert.match(content, /ThemeManager\.onChange\(\(theme\) =>/);
-  assert.match(content, /window\.__ThemeManager && typeof window\.__ThemeManager\.set === "function"/);
+  assert.match(content, /buildInlineThemeSyncScript/);
+  assert.match(content, /isOpencodeUiThemeHost/);
 });

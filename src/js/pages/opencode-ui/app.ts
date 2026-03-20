@@ -84,7 +84,8 @@ import type {
 } from "./types.js";
 import { config as opencodeUiConfig } from "../../modules/webview/providers/opencode-ui/config.js";
 import { bootstrapOpencodeUiI18n, t } from "./i18n.js";
-import { ThemeManager } from "../../ui/theme-manager.js";
+import { ThemeManager } from "../../ui/theme/index.js";
+import { resolveThemeFromSearchParams } from "../../ui/theme/theme-host-sync.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 type SessionListContext = Parameters<typeof loadSessionListAndRenderFromModule>[0];
 type HistoryContext = Parameters<typeof loadActiveSessionHistoryFromModule>[0];
@@ -630,17 +631,15 @@ async function bootstrapOpencodeUiApp(): Promise<void> {
 }
 
 function syncThemeFromQuery(): void {
-  const themeParam = new URLSearchParams(window.location.search).get("theme");
-  if (themeParam == null || themeParam === "") {
-    return;
-  }
-
-  const theme = ThemeManager.getAvailableThemes().find((item) => item.id === themeParam);
+  const theme = resolveThemeFromSearchParams(
+    window.location.search,
+    ThemeManager.getAvailableThemes()
+  );
   if (theme == null) {
     return;
   }
 
-  ThemeManager.set(theme.id, false);
+  ThemeManager.set(theme, false);
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {

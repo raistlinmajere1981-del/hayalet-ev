@@ -1,6 +1,6 @@
 import { AppI18n } from "../../../modules/i18n/index.js";
 
-import type { SceneCharacterDescriptor } from "./scene-character-roster.js";
+import type { SceneCharacterDescriptor } from "../../../scene/characters/index.js";
 import type {
   SceneCharacterMenuActionState,
   SceneCharacterMenuAdvancedState,

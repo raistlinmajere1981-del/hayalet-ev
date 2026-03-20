@@ -22,8 +22,25 @@ import { getCoverSceneProjectionFromElement } from "../scene/projection.js";
 import { renderSceneBackLayer } from "../scene/renderers/back-layer.js";
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
 import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
-import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../scene/scene-debug-rooms.js";
-import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../scene/theme-pack.js";
+import {
+  applySceneDebugFlag,
+  createSceneDebugStore,
+  EntranceSceneEditor,
+  type EntranceSceneEditorSelection,
+  getActiveSceneDebugRoomId,
+  SCENE_DEBUG_ROOMS,
+} from "../scene/debug/index.js";
+import {
+  buildSceneCharacterRoster,
+  resolveSceneAvatarSource,
+} from "../scene/characters/index.js";
+import type { EntranceSceneMap } from "../scene/layout/index.js";
+import {
+  getSceneBackNodeForView,
+  getSceneInteractiveNodesForView,
+  resolveSceneNodeLabelText,
+} from "../scene/layout/index.js";
+import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../scene/theme/scene-theme-assets.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
 
 import { renderMessages, resetMessageRenderState } from "./analyze/message-renderer.js";
@@ -41,21 +58,6 @@ import { renderUploadList, addUploadFiles, removeUploadFile } from "./analyze/up
 import type { StagedFile } from "./analyze/upload-handler.js";
 import { applyMessageAction, initReadModal } from "./analyze/context-menu.js";
 import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
-import {
-  EntranceSceneEditor,
-  type EntranceSceneEditorSelection,
-} from "./entrance/scene/scene-editor.js";
-import { resolveSceneAvatarSource } from "./entrance/scene/scene-avatar.js";
-import { applySceneDebugFlag } from "./entrance/scene/scene-debug.js";
-import { buildSceneCharacterRoster } from "./entrance/scene/scene-character-roster.js";
-import {
-  getSceneBackNodeForView,
-  getSceneInteractiveNodesForView,
-  resolveSceneNodeLabelText,
-  type EntranceSceneMap,
-} from "./entrance/scene/scene-map.js";
-import { createSceneDebugStore } from "../scene/debug-store.js";
-
 interface ConversationSelectedDetail {
   provider?: "ai1" | "ai2" | "us1";
   isNew?: boolean;

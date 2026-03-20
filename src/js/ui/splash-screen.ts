@@ -2,7 +2,7 @@ import { LogCategory } from "@shared/logging-core";
 import { Logger } from "../modules/logger/index.js";
 import { MINIMUM_DISPLAY_TIME, HIDE_ANIMATION_DURATION } from "@ui-constants";
 import { AppI18n } from "../modules/i18n/index.js";
-import { getSceneLoadingTheme } from "../scene/theme-pack.js";
+import { getSceneLoadingTheme } from "../scene/theme/scene-loading-theme.js";
 import {
   createManagedOverlayController,
   OVERLAY_GROUPS,

@@ -9,7 +9,7 @@ import {
   DEFAULT_ENTRANCE_SCENE_MAP,
   DEFAULT_ROOMS_SCENE_MAP,
   DEFAULT_SERVER_SCENE_MAP,
-} from "../../src/js/pages/entrance/scene/scene-map.ts";
+} from "../../src/js/scene/layout/index.ts";
 
 test("scene schema exposes the canonical room and node registries", () => {
   assert.deepEqual(SCENE_ROOM_IDS, ["entrance", "analyze", "assistant", "server", "rooms", "settings"]);

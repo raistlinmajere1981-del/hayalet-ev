@@ -1,4 +1,4 @@
-import type { SceneCharacterDescriptor } from "../../pages/entrance/scene/scene-character-roster.js";
+import type { SceneCharacterDescriptor } from "../characters/index.js";
 
 interface SceneProjection {
   offsetX: number;
