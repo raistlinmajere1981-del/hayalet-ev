@@ -5,8 +5,7 @@ import { shellT } from "../../../app/shell-i18n.js";
 import { dispatchSceneAction } from "../../../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
-  createSceneDebugStore,
-  createSceneDebugThemeStore,
+  createSceneDebugRuntimeSession,
   SceneLayoutEditor,
   type SceneLayoutEditorSelection,
   getSceneDebugRoomOptions,
@@ -56,9 +55,6 @@ const ELEMENT_IDS = {
   viewSlot: "entrance-scene-view-slot",
 } as const;
 
-const ENTRANCE_SCENE_DEBUG_STORE = createSceneDebugStore("entrance");
-const ENTRANCE_SCENE_DEBUG_THEME_STORE = createSceneDebugThemeStore();
-
 export class EntranceSceneController {
   bridge: SceneEntranceBridge;
   root: HTMLElement | null = null;
@@ -79,10 +75,25 @@ export class EntranceSceneController {
   characterRenderToken = 0;
   openCharacterId: string | null = null;
   characters = new Map<string, SceneCharacterDescriptor>();
-  sceneLayout = ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
-  sceneClickableTheme = ENTRANCE_SCENE_DEBUG_THEME_STORE.cloneDefault();
+  private readonly sceneDebugSession = createSceneDebugRuntimeSession("entrance");
   sceneDebugEnabled = false;
   editorSelection: SceneLayoutEditorSelection = null;
+
+  get sceneLayout(): SceneLayoutConfig {
+    return this.sceneDebugSession.getSceneLayout();
+  }
+
+  set sceneLayout(sceneLayout: SceneLayoutConfig) {
+    this.sceneDebugSession.setSceneLayout(sceneLayout);
+  }
+
+  get sceneClickableTheme(): SceneClickableThemeDefinition {
+    return this.sceneDebugSession.getSceneClickableTheme();
+  }
+
+  set sceneClickableTheme(sceneClickableTheme: SceneClickableThemeDefinition) {
+    this.sceneDebugSession.setSceneClickableTheme(sceneClickableTheme);
+  }
 
   constructor(bridge: SceneEntranceBridge) {
     this.bridge = bridge;
@@ -99,12 +110,7 @@ export class EntranceSceneController {
     this.viewRoot = document.getElementById(ELEMENT_IDS.viewRoot);
     this.viewBackground = document.getElementById(ELEMENT_IDS.viewBackground) as HTMLImageElement | null;
     this.viewSlot = document.getElementById(ELEMENT_IDS.viewSlot);
-    this.sceneLayout =
-      (this.sceneDebugEnabled ? ENTRANCE_SCENE_DEBUG_STORE.loadDraft() : null) ??
-      ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
-    this.sceneClickableTheme =
-      (this.sceneDebugEnabled ? ENTRANCE_SCENE_DEBUG_THEME_STORE.loadDraft() : null) ??
-      ENTRANCE_SCENE_DEBUG_THEME_STORE.cloneDefault();
+    this.sceneDebugSession.load(this.sceneDebugEnabled);
     if (this.menuHost !== null) {
       this.menu = new SceneCharacterMenu(this.menuHost, this.bridge, {
         onClose: (): void => {
@@ -132,33 +138,23 @@ export class EntranceSceneController {
           openSceneDebugRoom(roomId as never);
         },
         updateObject: (id, updater): void => {
-          this.sceneLayout.objects = this.sceneLayout.objects.map((sceneObject) =>
-            sceneObject.id === id ? updater(sceneObject) : sceneObject
-          );
-          this.persistSceneLayoutDraft();
+          this.sceneDebugSession.updateObject(id, updater);
           this.renderHotspots();
           this.editor?.refresh();
         },
         updateBack: (id, updater): void => {
-          this.sceneLayout.backs = this.sceneLayout.backs.map((back) =>
-            back.id === id ? updater(back) : back
-          );
-          this.persistSceneLayoutDraft();
+          this.sceneDebugSession.updateBack(id, updater);
           this.syncViewState();
           this.renderHotspots();
           this.editor?.refresh();
         },
         updateCharacter: (id, updater): void => {
-          this.sceneLayout.characters = this.sceneLayout.characters.map((character) =>
-            character.id === id ? updater(character) : character
-          );
-          this.persistSceneLayoutDraft();
+          this.sceneDebugSession.updateCharacter(id, updater);
           void this.renderCharacters();
           this.editor?.refresh();
         },
         resetDraft: (): void => {
-          this.sceneLayout = ENTRANCE_SCENE_DEBUG_STORE.cloneDefault();
-          ENTRANCE_SCENE_DEBUG_STORE.clearDraft();
+          this.sceneLayout = this.sceneDebugSession.resetSceneLayoutDraft();
           this.editorSelection = null;
           this.renderHotspots();
           void this.renderCharacters();
@@ -166,37 +162,35 @@ export class EntranceSceneController {
         },
         copySceneLayout: async (): Promise<void> => {
           try {
-            await ENTRANCE_SCENE_DEBUG_STORE.copyToClipboard(this.sceneLayout);
+            await this.sceneDebugSession.copySceneLayout();
           } catch {
             console.info("Scene layout copy failed.");
           }
         },
         saveSceneLayoutToSource: async (): Promise<void> => {
-          await ENTRANCE_SCENE_DEBUG_STORE.saveSource(this.sceneLayout);
+          await this.sceneDebugSession.saveSceneLayoutToSource();
         },
         updateSceneClickableTheme: (updater): void => {
-          this.sceneClickableTheme = updater(this.sceneClickableTheme);
-          ENTRANCE_SCENE_DEBUG_THEME_STORE.saveDraft(this.sceneClickableTheme);
+          this.sceneClickableTheme = this.sceneDebugSession.updateSceneClickableTheme(updater);
           this.renderHotspots();
           this.syncViewState();
           this.editor?.refresh();
         },
         resetSceneClickableThemeDraft: (): void => {
-          this.sceneClickableTheme = ENTRANCE_SCENE_DEBUG_THEME_STORE.cloneDefault();
-          ENTRANCE_SCENE_DEBUG_THEME_STORE.clearDraft();
+          this.sceneClickableTheme = this.sceneDebugSession.resetSceneClickableThemeDraft();
           this.renderHotspots();
           this.syncViewState();
           this.editor?.refresh();
         },
         copySceneClickableTheme: async (): Promise<void> => {
           try {
-            await ENTRANCE_SCENE_DEBUG_THEME_STORE.copyToClipboard(this.sceneClickableTheme);
+            await this.sceneDebugSession.copySceneClickableTheme();
           } catch {
             console.info("Scene clickable theme copy failed.");
           }
         },
         saveSceneClickableThemeToSource: async (): Promise<void> => {
-          await ENTRANCE_SCENE_DEBUG_THEME_STORE.saveSource(this.sceneClickableTheme);
+          await this.sceneDebugSession.saveSceneClickableThemeToSource();
         },
       });
       this.editor.refresh();
@@ -418,10 +412,6 @@ export class EntranceSceneController {
       },
     });
     this.syncOpenMenuAnchor();
-  }
-
-  private persistSceneLayoutDraft(): void {
-    ENTRANCE_SCENE_DEBUG_STORE.saveDraft(this.sceneLayout);
   }
 
   private syncViewState(): void {

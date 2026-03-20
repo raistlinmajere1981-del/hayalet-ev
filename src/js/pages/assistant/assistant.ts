@@ -84,8 +84,7 @@ import {
 } from "./webview-bindings.js";
 import {
   applySceneDebugFlag,
-  createSceneDebugStore,
-  createSceneDebugThemeStore,
+  createSceneDebugRuntimeSession,
   SceneLayoutEditor,
   type SceneLayoutEditorSelection,
   getSceneDebugRoomOptions,
@@ -139,9 +138,6 @@ interface ScenarioPanelState {
 
 const ASSISTANT_CUSTOM_AVATAR_RELATIVE_PATH = "data/shared/assistant.png";
 const ASSISTANT_DEFAULT_AVATAR_PATH = "src/assets/opencode.png";
-const ASSISTANT_SCENE_DEBUG_STORE = createSceneDebugStore("assistant");
-const ASSISTANT_SCENE_DEBUG_THEME_STORE = createSceneDebugThemeStore();
-
 function getAssistantCustomAvatarPath(): string {
   const dataDir = FileManager.getPath("data");
   if (dataDir === "") {
@@ -264,13 +260,28 @@ export class AssistantController {
   providerTestProgressHandler: ((event: ProviderTestProgressEvent) => void) | null;
   _assistantSceneScreenOpen: boolean;
   _assistantSceneDebugEnabled: boolean;
-  _assistantSceneLayout: SceneLayoutConfig;
-  _assistantSceneClickableTheme: SceneClickableThemeDefinition;
+  private readonly _assistantSceneSession = createSceneDebugRuntimeSession("assistant");
   _assistantSceneEditor: SceneLayoutEditor | null;
   _assistantSceneSelection: SceneLayoutEditorSelection;
   _assistantSceneResizeObserver: ResizeObserver | null;
   _assistantSceneCharacterRenderToken: number;
   _assistantSceneFrameController: SceneAlphaWindowFrameController | null;
+
+  get _assistantSceneLayout(): SceneLayoutConfig {
+    return this._assistantSceneSession.getSceneLayout();
+  }
+
+  set _assistantSceneLayout(sceneLayout: SceneLayoutConfig) {
+    this._assistantSceneSession.setSceneLayout(sceneLayout);
+  }
+
+  get _assistantSceneClickableTheme(): SceneClickableThemeDefinition {
+    return this._assistantSceneSession.getSceneClickableTheme();
+  }
+
+  set _assistantSceneClickableTheme(sceneClickableTheme: SceneClickableThemeDefinition) {
+    this._assistantSceneSession.setSceneClickableTheme(sceneClickableTheme);
+  }
 
   _isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -326,8 +337,6 @@ export class AssistantController {
     this.providerTestProgressHandler = null;
     this._assistantSceneScreenOpen = false;
     this._assistantSceneDebugEnabled = false;
-    this._assistantSceneLayout = ASSISTANT_SCENE_DEBUG_STORE.cloneDefault();
-    this._assistantSceneClickableTheme = ASSISTANT_SCENE_DEBUG_THEME_STORE.cloneDefault();
     this._assistantSceneEditor = null;
     this._assistantSceneSelection = null;
     this._assistantSceneResizeObserver = null;
@@ -368,12 +377,7 @@ export class AssistantController {
       "assistant-opencode-settings-btn"
     ) as HTMLButtonElement | null;
     this._assistantSceneDebugEnabled = applySceneDebugFlag();
-    this._assistantSceneLayout =
-      (this._assistantSceneDebugEnabled ? ASSISTANT_SCENE_DEBUG_STORE.loadDraft() : null) ??
-      ASSISTANT_SCENE_DEBUG_STORE.cloneDefault();
-    this._assistantSceneClickableTheme =
-      (this._assistantSceneDebugEnabled ? ASSISTANT_SCENE_DEBUG_THEME_STORE.loadDraft() : null) ??
-      ASSISTANT_SCENE_DEBUG_THEME_STORE.cloneDefault();
+    this._assistantSceneSession.load(this._assistantSceneDebugEnabled);
     const assistantContainer = document.querySelector(".assistant-container");
     const assistantSceneScreenView = document.getElementById("assistant-scene-screen-view");
     const assistantSceneScreenArt = document.getElementById(
@@ -622,72 +626,58 @@ export class AssistantController {
         this._navigateToSceneDebugRoom(roomId);
       },
       updateObject: (id, updater): void => {
-        this._assistantSceneLayout.objects = this._assistantSceneLayout.objects.map((sceneObject) =>
-          sceneObject.id === id ? updater(sceneObject) : sceneObject
-        );
-        this._persistAssistantSceneLayoutDraft();
+        this._assistantSceneSession.updateObject(id, updater);
         this._syncAssistantSceneVisibility();
         this._renderAssistantScene();
         this._assistantSceneEditor?.refresh();
       },
       updateBack: (id, updater): void => {
-        this._assistantSceneLayout.backs = this._assistantSceneLayout.backs.map((back) =>
-          back.id === id ? updater(back) : back
-        );
-        this._persistAssistantSceneLayoutDraft();
+        this._assistantSceneSession.updateBack(id, updater);
         this._syncAssistantSceneVisibility();
         this._assistantSceneEditor?.refresh();
       },
       updateCharacter: (id, updater): void => {
-        this._assistantSceneLayout.characters = this._assistantSceneLayout.characters.map((character) =>
-          character.id === id ? updater(character) : character
-        );
-        this._persistAssistantSceneLayoutDraft();
+        this._assistantSceneSession.updateCharacter(id, updater);
         this._renderAssistantScene();
         this._assistantSceneEditor?.refresh();
       },
       resetDraft: (): void => {
-        this._assistantSceneLayout = ASSISTANT_SCENE_DEBUG_STORE.cloneDefault();
-        ASSISTANT_SCENE_DEBUG_STORE.clearDraft();
+        this._assistantSceneLayout = this._assistantSceneSession.resetSceneLayoutDraft();
         this._assistantSceneSelection = null;
         this._renderAssistantScene();
         this._assistantSceneEditor?.refresh();
       },
       copySceneLayout: async (): Promise<void> => {
         try {
-          await ASSISTANT_SCENE_DEBUG_STORE.copyToClipboard(this._assistantSceneLayout);
+          await this._assistantSceneSession.copySceneLayout();
         } catch {
           console.info("Assistant scene layout copy failed.");
         }
       },
       saveSceneLayoutToSource: async (): Promise<void> => {
-        await ASSISTANT_SCENE_DEBUG_STORE.saveSource(this._assistantSceneLayout);
+        await this._assistantSceneSession.saveSceneLayoutToSource();
       },
       updateSceneClickableTheme: (updater): void => {
-        this._assistantSceneClickableTheme = updater(this._assistantSceneClickableTheme);
-        ASSISTANT_SCENE_DEBUG_THEME_STORE.saveDraft(this._assistantSceneClickableTheme);
+        this._assistantSceneClickableTheme = this._assistantSceneSession.updateSceneClickableTheme(updater);
         this._syncAssistantSceneVisibility();
         this._renderAssistantScene();
         this._assistantSceneEditor?.refresh();
       },
       resetSceneClickableThemeDraft: (): void => {
-        this._assistantSceneClickableTheme = ASSISTANT_SCENE_DEBUG_THEME_STORE.cloneDefault();
-        ASSISTANT_SCENE_DEBUG_THEME_STORE.clearDraft();
+        this._assistantSceneClickableTheme = this._assistantSceneSession.resetSceneClickableThemeDraft();
         this._syncAssistantSceneVisibility();
         this._renderAssistantScene();
         this._assistantSceneEditor?.refresh();
       },
       copySceneClickableTheme: async (): Promise<void> => {
         try {
-          await ASSISTANT_SCENE_DEBUG_THEME_STORE.copyToClipboard(
-            this._assistantSceneClickableTheme
-          );
+          await this._assistantSceneSession.copySceneClickableTheme();
         } catch {
           console.info("Assistant scene clickable theme copy failed.");
         }
       },
       saveSceneClickableThemeToSource: async (): Promise<void> => {
-        await ASSISTANT_SCENE_DEBUG_THEME_STORE.saveSource(this._assistantSceneClickableTheme);
+        await this._assistantSceneSession.saveSceneClickableThemeToSource();
       },
     });
     this._assistantSceneEditor.refresh();
@@ -826,7 +816,7 @@ export class AssistantController {
   }
 
   _persistAssistantSceneLayoutDraft(): void {
-    ASSISTANT_SCENE_DEBUG_STORE.saveDraft(this._assistantSceneLayout);
+    this._assistantSceneSession.saveSceneLayoutDraft();
   }
 
   _isAssistantSceneDebugActive(): boolean {

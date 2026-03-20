@@ -189,6 +189,10 @@
   z-index: 2;
   display: flex;
   min-height: 0;
+  pointer-events: none;
+}
+
+.analyze-scene__table-view.is-active .analyze-scene__panel-slot {
   pointer-events: auto;
 }
 

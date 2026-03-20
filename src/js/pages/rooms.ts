@@ -4,8 +4,7 @@ import { AppI18n } from "../modules/i18n/index.js";
 import { dispatchSceneAction } from "../scene/action-dispatcher.js";
 import {
   applySceneDebugFlag,
-  createSceneDebugStore,
-  createSceneDebugThemeStore,
+  createSceneDebugRuntimeSession,
   SceneLayoutEditor,
   type SceneLayoutEditorSelection,
   getSceneDebugRoomOptions,
@@ -31,9 +30,6 @@ import { syncSceneViewRuntime } from "../scene/runtime.js";
 import { getSceneRoomBackgroundSrc } from "../scene-system/index.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 
-const ROOMS_SCENE_DEBUG_STORE = createSceneDebugStore("rooms");
-const ROOMS_SCENE_DEBUG_THEME_STORE = createSceneDebugThemeStore();
-
 const ELEMENT_IDS = {
   root: "rooms-scene-root",
   background: "rooms-scene-background",
@@ -44,24 +40,33 @@ const ELEMENT_IDS = {
 } as const;
 
 export class RoomsController implements PageController {
+  private readonly sceneDebugSession = createSceneDebugRuntimeSession("rooms");
   private sceneDebugEnabled = false;
-  private sceneLayout: SceneLayoutConfig = ROOMS_SCENE_DEBUG_STORE.cloneDefault();
-  private sceneClickableTheme: SceneClickableThemeDefinition =
-    ROOMS_SCENE_DEBUG_THEME_STORE.cloneDefault();
   private editor: SceneLayoutEditor | null = null;
   private editorSelection: SceneLayoutEditorSelection = null;
   private resizeObserver: ResizeObserver | null = null;
   private characterRenderToken = 0;
   private localeUnsub: (() => void) | null = null;
 
+  private get sceneLayout(): SceneLayoutConfig {
+    return this.sceneDebugSession.getSceneLayout();
+  }
+
+  private set sceneLayout(sceneLayout: SceneLayoutConfig) {
+    this.sceneDebugSession.setSceneLayout(sceneLayout);
+  }
+
+  private get sceneClickableTheme(): SceneClickableThemeDefinition {
+    return this.sceneDebugSession.getSceneClickableTheme();
+  }
+
+  private set sceneClickableTheme(sceneClickableTheme: SceneClickableThemeDefinition) {
+    this.sceneDebugSession.setSceneClickableTheme(sceneClickableTheme);
+  }
+
   init(): void {
     this.sceneDebugEnabled = applySceneDebugFlag();
-    this.sceneLayout =
-      (this.sceneDebugEnabled ? ROOMS_SCENE_DEBUG_STORE.loadDraft() : null) ??
-      ROOMS_SCENE_DEBUG_STORE.cloneDefault();
-    this.sceneClickableTheme =
-      (this.sceneDebugEnabled ? ROOMS_SCENE_DEBUG_THEME_STORE.loadDraft() : null) ??
-      ROOMS_SCENE_DEBUG_THEME_STORE.cloneDefault();
+    this.sceneDebugSession.load(this.sceneDebugEnabled);
     this.setupSceneDebug();
     this.renderBackground();
     this.observeLayout();
@@ -114,10 +119,7 @@ export class RoomsController implements PageController {
         openSceneDebugRoom(roomId as never);
       },
       updateObject: (id, updater): void => {
-        this.sceneLayout.objects = this.sceneLayout.objects.map((sceneObject) =>
-          sceneObject.id === id ? updater(sceneObject) : sceneObject
-        );
-        this.persistSceneLayoutDraft();
+        this.sceneDebugSession.updateObject(id, updater);
         this.renderHotspots();
         this.editor?.refresh();
       },
@@ -125,16 +127,12 @@ export class RoomsController implements PageController {
         return;
       },
       updateCharacter: (id, updater): void => {
-        this.sceneLayout.characters = this.sceneLayout.characters.map((character) =>
-          character.id === id ? updater(character) : character
-        );
-        this.persistSceneLayoutDraft();
+        this.sceneDebugSession.updateCharacter(id, updater);
         void this.renderCharacters();
         this.editor?.refresh();
       },
       resetDraft: (): void => {
-        this.sceneLayout = ROOMS_SCENE_DEBUG_STORE.cloneDefault();
-        ROOMS_SCENE_DEBUG_STORE.clearDraft();
+        this.sceneLayout = this.sceneDebugSession.resetSceneLayoutDraft();
         this.editorSelection = null;
         this.renderHotspots();
         void this.renderCharacters();
@@ -142,35 +140,33 @@ export class RoomsController implements PageController {
       },
       copySceneLayout: async (): Promise<void> => {
         try {
-          await ROOMS_SCENE_DEBUG_STORE.copyToClipboard(this.sceneLayout);
+          await this.sceneDebugSession.copySceneLayout();
         } catch {
           console.info("Rooms scene layout copy failed.");
         }
       },
       saveSceneLayoutToSource: async (): Promise<void> => {
-        await ROOMS_SCENE_DEBUG_STORE.saveSource(this.sceneLayout);
+        await this.sceneDebugSession.saveSceneLayoutToSource();
       },
       updateSceneClickableTheme: (updater): void => {
-        this.sceneClickableTheme = updater(this.sceneClickableTheme);
-        ROOMS_SCENE_DEBUG_THEME_STORE.saveDraft(this.sceneClickableTheme);
+        this.sceneClickableTheme = this.sceneDebugSession.updateSceneClickableTheme(updater);
         this.renderHotspots();
         this.editor?.refresh();
       },
       resetSceneClickableThemeDraft: (): void => {
-        this.sceneClickableTheme = ROOMS_SCENE_DEBUG_THEME_STORE.cloneDefault();
-        ROOMS_SCENE_DEBUG_THEME_STORE.clearDraft();
+        this.sceneClickableTheme = this.sceneDebugSession.resetSceneClickableThemeDraft();
         this.renderHotspots();
         this.editor?.refresh();
       },
       copySceneClickableTheme: async (): Promise<void> => {
         try {
-          await ROOMS_SCENE_DEBUG_THEME_STORE.copyToClipboard(this.sceneClickableTheme);
+          await this.sceneDebugSession.copySceneClickableTheme();
         } catch {
           console.info("Rooms scene clickable theme copy failed.");
         }
       },
       saveSceneClickableThemeToSource: async (): Promise<void> => {
-        await ROOMS_SCENE_DEBUG_THEME_STORE.saveSource(this.sceneClickableTheme);
+        await this.sceneDebugSession.saveSceneClickableThemeToSource();
       },
     });
     this.editor.refresh();
@@ -321,10 +317,6 @@ export class RoomsController implements PageController {
       this.editor?.refresh();
     });
     this.resizeObserver.observe(root);
-  }
-
-  private persistSceneLayoutDraft(): void {
-    ROOMS_SCENE_DEBUG_STORE.saveDraft(this.sceneLayout);
   }
 
   private isSceneDebugActive(): boolean {

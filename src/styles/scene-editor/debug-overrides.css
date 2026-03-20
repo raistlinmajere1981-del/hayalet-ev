@@ -26,12 +26,26 @@
   display: inline-flex;
 }
 
+[data-scene-debug="true"] .entrance-scene .entrance-scene__character,
+[data-scene-debug="true"] .analyze-scene .analyze-scene__character {
+  pointer-events: none;
+}
+
+[data-scene-debug="true"] .entrance-scene .entrance-scene__character-head,
+[data-scene-debug="true"] .entrance-scene .entrance-scene__character-label,
+[data-scene-debug="true"] .entrance-scene .entrance-scene__character-anchor-marker,
+[data-scene-debug="true"] .analyze-scene .entrance-scene__character-head,
+[data-scene-debug="true"] .analyze-scene .entrance-scene__character-label,
+[data-scene-debug="true"] .analyze-scene .entrance-scene__character-anchor-marker {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 [data-scene-debug="true"] .analyze-scene__characters {
   pointer-events: none;
 }
 
 [data-scene-debug="true"] .analyze-scene__character {
-  pointer-events: auto;
   cursor: pointer;
 }
 

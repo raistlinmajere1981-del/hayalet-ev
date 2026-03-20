@@ -28,8 +28,7 @@ import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js
 import { renderSceneObjectLayer } from "../scene/renderers/object-layer.js";
 import {
   applySceneDebugFlag,
-  createSceneDebugStore,
-  createSceneDebugThemeStore,
+  createSceneDebugRuntimeSession,
   SceneLayoutEditor,
   type SceneLayoutEditorSelection,
   getSceneDebugRoomOptions,
@@ -78,8 +77,6 @@ interface DraftState {
 
 type AnalyzeParticipant = "ai1" | "ai2" | "us1";
 type AnalyzeSceneViewId = "table";
-const ANALYZE_SCENE_DEBUG_STORE = createSceneDebugStore("analyze");
-const ANALYZE_SCENE_DEBUG_THEME_STORE = createSceneDebugThemeStore();
 
 function analyzeT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.analyze.${key}`, params);
@@ -134,13 +131,28 @@ export class AnalyzeController {
   _syncingUs1Indicators: boolean;
   _analyzeSceneActiveView: AnalyzeSceneViewId | null;
   _analyzeSceneDebugEnabled: boolean;
-  _analyzeSceneLayout: SceneLayoutConfig;
-  _analyzeSceneClickableTheme: SceneClickableThemeDefinition;
+  private readonly _analyzeSceneSession = createSceneDebugRuntimeSession("analyze");
   _analyzeSceneEditor: SceneLayoutEditor | null;
   _analyzeSceneSelection: SceneLayoutEditorSelection;
   _analyzeSceneResizeObserver: ResizeObserver | null;
   _analyzeSceneCharacterRenderToken: number;
   _analyzeSceneFrameController: SceneAlphaWindowFrameController | null;
+
+  get _analyzeSceneLayout(): SceneLayoutConfig {
+    return this._analyzeSceneSession.getSceneLayout();
+  }
+
+  set _analyzeSceneLayout(sceneLayout: SceneLayoutConfig) {
+    this._analyzeSceneSession.setSceneLayout(sceneLayout);
+  }
+
+  get _analyzeSceneClickableTheme(): SceneClickableThemeDefinition {
+    return this._analyzeSceneSession.getSceneClickableTheme();
+  }
+
+  set _analyzeSceneClickableTheme(sceneClickableTheme: SceneClickableThemeDefinition) {
+    this._analyzeSceneSession.setSceneClickableTheme(sceneClickableTheme);
+  }
 
   constructor() {
     this.stagedFiles = [];
@@ -162,8 +174,6 @@ export class AnalyzeController {
     this._syncingUs1Indicators = false;
     this._analyzeSceneActiveView = null;
     this._analyzeSceneDebugEnabled = false;
-    this._analyzeSceneLayout = ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
-    this._analyzeSceneClickableTheme = ANALYZE_SCENE_DEBUG_THEME_STORE.cloneDefault();
     this._analyzeSceneEditor = null;
     this._analyzeSceneSelection = null;
     this._analyzeSceneResizeObserver = null;
@@ -174,12 +184,7 @@ export class AnalyzeController {
   async init(): Promise<void> {
     await this.loadSettings();
     this._analyzeSceneDebugEnabled = applySceneDebugFlag();
-    this._analyzeSceneLayout =
-      (this._analyzeSceneDebugEnabled ? ANALYZE_SCENE_DEBUG_STORE.loadDraft() : null) ??
-      ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
-    this._analyzeSceneClickableTheme =
-      (this._analyzeSceneDebugEnabled ? ANALYZE_SCENE_DEBUG_THEME_STORE.loadDraft() : null) ??
-      ANALYZE_SCENE_DEBUG_THEME_STORE.cloneDefault();
+    this._analyzeSceneSession.load(this._analyzeSceneDebugEnabled);
     this.applyAvatars();
     this.applyNames();
 
@@ -351,70 +356,58 @@ export class AnalyzeController {
         this._navigateToAnalyzeSceneDebugRoom(roomId);
       },
       updateObject: (id, updater): void => {
-        this._analyzeSceneLayout.objects = this._analyzeSceneLayout.objects.map((sceneObject) =>
-          sceneObject.id === id ? updater(sceneObject) : sceneObject
-        );
-        this._persistAnalyzeSceneLayoutDraft();
+        this._analyzeSceneSession.updateObject(id, updater);
         this._syncAnalyzeSceneVisibility();
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();
       },
       updateBack: (id, updater): void => {
-        this._analyzeSceneLayout.backs = this._analyzeSceneLayout.backs.map((back) =>
-          back.id === id ? updater(back) : back
-        );
-        this._persistAnalyzeSceneLayoutDraft();
+        this._analyzeSceneSession.updateBack(id, updater);
         this._syncAnalyzeSceneVisibility();
         this._analyzeSceneEditor?.refresh();
       },
       updateCharacter: (id, updater): void => {
-        this._analyzeSceneLayout.characters = this._analyzeSceneLayout.characters.map((character) =>
-          character.id === id ? updater(character) : character
-        );
-        this._persistAnalyzeSceneLayoutDraft();
+        this._analyzeSceneSession.updateCharacter(id, updater);
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();
       },
       resetDraft: (): void => {
-        this._analyzeSceneLayout = ANALYZE_SCENE_DEBUG_STORE.cloneDefault();
-        ANALYZE_SCENE_DEBUG_STORE.clearDraft();
+        this._analyzeSceneLayout = this._analyzeSceneSession.resetSceneLayoutDraft();
         this._analyzeSceneSelection = null;
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();
       },
       copySceneLayout: async (): Promise<void> => {
         try {
-          await ANALYZE_SCENE_DEBUG_STORE.copyToClipboard(this._analyzeSceneLayout);
+          await this._analyzeSceneSession.copySceneLayout();
         } catch {
           console.info("Analyze scene layout copy failed.");
         }
       },
       saveSceneLayoutToSource: async (): Promise<void> => {
-        await ANALYZE_SCENE_DEBUG_STORE.saveSource(this._analyzeSceneLayout);
+        await this._analyzeSceneSession.saveSceneLayoutToSource();
       },
       updateSceneClickableTheme: (updater): void => {
-        this._analyzeSceneClickableTheme = updater(this._analyzeSceneClickableTheme);
-        ANALYZE_SCENE_DEBUG_THEME_STORE.saveDraft(this._analyzeSceneClickableTheme);
+        this._analyzeSceneClickableTheme = this._analyzeSceneSession.updateSceneClickableTheme(updater);
         this._syncAnalyzeSceneVisibility();
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();
       },
       resetSceneClickableThemeDraft: (): void => {
-        this._analyzeSceneClickableTheme = ANALYZE_SCENE_DEBUG_THEME_STORE.cloneDefault();
-        ANALYZE_SCENE_DEBUG_THEME_STORE.clearDraft();
+        this._analyzeSceneClickableTheme = this._analyzeSceneSession.resetSceneClickableThemeDraft();
         this._syncAnalyzeSceneVisibility();
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();
       },
       copySceneClickableTheme: async (): Promise<void> => {
         try {
-          await ANALYZE_SCENE_DEBUG_THEME_STORE.copyToClipboard(this._analyzeSceneClickableTheme);
+          await this._analyzeSceneSession.copySceneClickableTheme();
         } catch {
           console.info("Analyze scene clickable theme copy failed.");
         }
       },
       saveSceneClickableThemeToSource: async (): Promise<void> => {
-        await ANALYZE_SCENE_DEBUG_THEME_STORE.saveSource(this._analyzeSceneClickableTheme);
+        await this._analyzeSceneSession.saveSceneClickableThemeToSource();
       },
     });
     this._analyzeSceneEditor.refresh();
@@ -525,7 +518,7 @@ export class AnalyzeController {
   }
 
   _persistAnalyzeSceneLayoutDraft(): void {
-    ANALYZE_SCENE_DEBUG_STORE.saveDraft(this._analyzeSceneLayout);
+    this._analyzeSceneSession.saveSceneLayoutDraft();
   }
 
   _isAnalyzeSceneDebugActive(): boolean {

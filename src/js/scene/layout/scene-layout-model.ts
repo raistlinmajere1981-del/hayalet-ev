@@ -48,7 +48,7 @@ export interface SceneDebugNodeListEntry {
   viewId?: string | null;
 }
 
-export function getSceneRoomLayoutConfig(roomId: SceneRoomId): SceneLayoutConfig {
+export function getSceneLayoutForRoom(roomId: SceneRoomId): SceneLayoutConfig {
   return getSceneRoomLayout(roomId);
 }
 

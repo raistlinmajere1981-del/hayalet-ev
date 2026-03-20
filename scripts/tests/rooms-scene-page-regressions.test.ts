@@ -18,7 +18,8 @@ test("rooms scene page registers nav, template, controller, and scene background
   assert.match(pageSource, /id="page-rooms"/);
   assert.match(pageSource, /id="rooms-scene-root"/);
   assert.match(pageSource, /id="rooms-classic-shell"/);
-  assert.match(controllerSource, /createSceneDebugStore\("rooms"\)/);
+  assert.match(controllerSource, /createSceneDebugRuntimeSession\("rooms"\)/);
+  assert.doesNotMatch(controllerSource, /createSceneDebugStore\("rooms"\)/);
   assert.match(controllerSource, /getSceneRoomBackgroundSrc\("rooms"\)/);
   assert.match(controllerSource, /isSceneDebugRoomActive\("rooms"\)/);
   assert.match(sceneShellSource, /\[data-ui-mode="scene"\] \.top-bar/);

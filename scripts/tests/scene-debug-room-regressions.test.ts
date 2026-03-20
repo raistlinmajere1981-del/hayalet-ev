@@ -147,8 +147,11 @@ test("scene pages enable clickable labels and shared clickable classes", () => {
   controllerTargets.forEach((target) => {
     const source = readFileSync(target, "utf8");
     assert.match(source, /clickableLabels:\s*true/);
+    assert.match(source, /createSceneDebugRuntimeSession\(/);
     assert.match(source, /getSceneClickableTheme:/);
     assert.match(source, /themeDefaults:/);
+    assert.doesNotMatch(source, /createSceneDebugStore\(/);
+    assert.doesNotMatch(source, /createSceneDebugThemeStore\(/);
   });
   assert.match(objectLayerSource, /clickableLabels\?: boolean/);
   assert.match(objectLayerSource, /themeDefaults:\s*SceneObjectClickableThemeDefinition/);
@@ -169,6 +172,35 @@ test("scene pages enable clickable labels and shared clickable classes", () => {
   assert.match(clickableCssSource, /\.scene-clickable__label\[data-clickable="true"\]/);
   assert.match(entranceCssSource, /\.entrance-scene \.entrance-scene__character \{\s*pointer-events: none;/s);
   assert.match(entranceCssSource, /\.entrance-scene \.entrance-scene__character-head,[\s\S]*pointer-events: auto;/);
+});
+
+test("entrance and analyze scene layers keep hidden views passive in debug mode", () => {
+  const entranceHtmlSource = readFileSync("src/pages/entrance.html", "utf8");
+  const analyzeCssSource = readFileSync("src/styles/analyze.css", "utf8");
+  const entranceCssSource = readFileSync("src/styles/entrance/scene.css", "utf8");
+  const debugOverridesSource = readFileSync("src/styles/scene-editor/debug-overrides.css", "utf8");
+
+  assert.match(entranceHtmlSource, /entrance-scene__room-layer scene-shell__room-layer/);
+  assert.match(entranceCssSource, /\.entrance-scene__room-layer\s*\{/);
+  assert.match(entranceCssSource, /\.entrance-scene__hotspots\s*\{\s*z-index:\s*2;[\s\S]*pointer-events:\s*none;/);
+  assert.match(entranceCssSource, /\.entrance-scene__view-slot\s*\{[\s\S]*pointer-events:\s*none;/);
+  assert.match(
+    entranceCssSource,
+    /\.entrance-scene__view\.is-active \.entrance-scene__view-slot\s*\{[\s\S]*pointer-events:\s*auto;/
+  );
+  assert.match(analyzeCssSource, /\.analyze-scene__panel-slot\s*\{[\s\S]*pointer-events:\s*none;/);
+  assert.match(
+    analyzeCssSource,
+    /\.analyze-scene__table-view\.is-active \.analyze-scene__panel-slot\s*\{[\s\S]*pointer-events:\s*auto;/
+  );
+  assert.match(
+    debugOverridesSource,
+    /\[data-scene-debug="true"\] \.entrance-scene \.entrance-scene__character,[\s\S]*pointer-events:\s*none;/
+  );
+  assert.match(
+    debugOverridesSource,
+    /\[data-scene-debug="true"\] \.analyze-scene \.entrance-scene__character-head,[\s\S]*pointer-events:\s*auto;/
+  );
 });
 
 test("scene debug node list exposes object, back, and character nodes", () => {

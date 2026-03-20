@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
+
+import {
+  cloneSceneClickableTheme,
+  parseSceneClickableThemeDraft,
+  resolveSceneBackGlow,
+  resolveSceneLabelFontPreset,
+  resolveSceneObjectGlow,
+  serializeSceneClickableThemeDraft,
+  serializeSceneClickableThemeSource,
+} from "../../src/js/scene-system/scene-clickable-theme-core.ts";
+import { SCENE_CLICKABLE_DEFAULTS } from "../../shared/themes/castle/scene-clickable-defaults.ts";
 
 test("shared castle theme source centralizes scene assets, theme metadata, and room maps", () => {
   const manifestSource = readFileSync("shared/themes/castle/manifest.ts", "utf8");
@@ -11,6 +25,10 @@ test("shared castle theme source centralizes scene assets, theme metadata, and r
   const sceneLayoutsSource = readFileSync("shared/themes/castle/scene-layouts.ts", "utf8");
   const assetsSource = readFileSync("src/js/scene-system/scene-theme-assets.ts", "utf8");
   const clickableThemeSource = readFileSync("src/js/scene-system/scene-clickable-theme.ts", "utf8");
+  const clickableThemeCoreSource = readFileSync(
+    "src/js/scene-system/scene-clickable-theme-core.ts",
+    "utf8"
+  );
   const loadingSource = readFileSync("src/js/scene-system/scene-loading-theme.ts", "utf8");
   const characterSource = readFileSync("src/js/scene-system/scene-character-theme.ts", "utf8");
   const registrySource = readFileSync("src/js/scene-system/scene-theme-registry.ts", "utf8");
@@ -33,7 +51,7 @@ test("shared castle theme source centralizes scene assets, theme metadata, and r
   assert.match(contractSource, /clickableDefaults:\s*SceneClickableThemeDefinition/);
   assert.match(contractSource, /maps:\s*Record<SceneRoomId,\s*SceneLayoutConfig>/);
   assert.match(clickableThemeSource, /export function getSceneClickableTheme/);
-  assert.match(clickableThemeSource, /export function serializeSceneClickableThemeSource/);
+  assert.match(clickableThemeCoreSource, /export function serializeSceneClickableThemeSource/);
   assert.match(registrySource, /export const ACTIVE_SCENE_THEME/);
   assert.match(layoutRegistrySource, /getSceneClickableDefaultsSourcePath/);
   assert.match(layoutRegistrySource, /getSceneRoomSourcePath/);
@@ -56,7 +74,7 @@ test("scene runtime files resolve theme assets through scene-system and avoid le
   const entranceSource = readFileSync("src/js/pages/entrance/scene/scene-controller.ts", "utf8");
   const splashSource = readFileSync("src/js/ui/splash-screen.ts", "utf8");
   const htmlSource = readFileSync("src/index.html", "utf8");
-  const layoutStateSource = readFileSync("src/js/scene/layout/scene-layout-state.ts", "utf8");
+  const layoutStateSource = readFileSync("src/js/scene/layout/scene-layout-model.ts", "utf8");
   const layoutRegistrySource = readFileSync("src/js/scene-system/scene-layout-registry.ts", "utf8");
 
   assert.match(backLayerSource, /scene-clickable__button--back/);
@@ -72,6 +90,7 @@ test("scene runtime files resolve theme assets through scene-system and avoid le
   assert.match(layoutStateSource, /scene-layout-registry\.js/);
   assert.match(layoutRegistrySource, /@theme-source\/castle\/scene-layouts\.js/);
   assert.match(layoutRegistrySource, /scene-clickable-defaults\.ts/);
+  assert.equal(existsSync("src/js/scene/layout/scene-layout-state.ts"), false);
   assert.doesNotMatch(backLayerSource, /scene-back-zone/);
   assert.doesNotMatch(layoutStateSource, /@theme-source\/castle\/maps\/entrance\.scene\.json/);
   assert.doesNotMatch(assistantSource, /scene\/theme\/scene-theme-assets\.js/);
@@ -81,4 +100,42 @@ test("scene runtime files resolve theme assets through scene-system and avoid le
   assert.doesNotMatch(entranceSource, /scene\/theme\/scene-theme-assets\.js/);
   assert.doesNotMatch(splashSource, /scene\/theme\/scene-loading-theme\.js/);
   assert.doesNotMatch(htmlSource, /loading_door_0[1-4]\.webp/);
+});
+
+test("clickable theme resolvers honor theme precedence and survive draft/source round-trips", async () => {
+  const sceneClickableTheme = cloneSceneClickableTheme(SCENE_CLICKABLE_DEFAULTS);
+  sceneClickableTheme.object.glowHueShiftDeg = 25.5;
+  sceneClickableTheme.object.glowAlphaScale = 1.4;
+  sceneClickableTheme.object.label.fontPresetOverride = "mono";
+  sceneClickableTheme.object.label.visible = false;
+  sceneClickableTheme.back.glowHueShiftDeg = -45;
+  sceneClickableTheme.back.glowAlphaScale = 0.5;
+  sceneClickableTheme.back.label.padXRem = 1.1;
+
+  assert.deepEqual(resolveSceneObjectGlow({ hueDeg: 350, alpha: 0.8 }, sceneClickableTheme.object), {
+    hueDeg: 15.5,
+    alpha: 1,
+  });
+  assert.deepEqual(resolveSceneBackGlow({ hueDeg: 10, alpha: 0.6 }, sceneClickableTheme.back), {
+    hueDeg: 325,
+    alpha: 0.3,
+  });
+  assert.equal(resolveSceneLabelFontPreset("display", sceneClickableTheme.object.label), "mono");
+
+  const draftRaw = serializeSceneClickableThemeDraft(sceneClickableTheme);
+  assert.deepEqual(parseSceneClickableThemeDraft(draftRaw), sceneClickableTheme);
+
+  const tempDir = mkdtempSync(join(tmpdir(), "scene-clickable-theme-"));
+  const themeSourcePath = join(tempDir, "scene-clickable-defaults.ts");
+
+  try {
+    writeFileSync(themeSourcePath, serializeSceneClickableThemeSource(sceneClickableTheme), "utf8");
+    const importedThemeModule = await import(
+      `${pathToFileURL(themeSourcePath).href}?t=${Date.now()}`
+    );
+
+    assert.deepEqual(importedThemeModule.SCENE_CLICKABLE_DEFAULTS, sceneClickableTheme);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 });

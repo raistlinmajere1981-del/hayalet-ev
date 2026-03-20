@@ -13,7 +13,7 @@ import type {
   SceneCharacterPlacementConfig,
   SceneObjectConfig,
   SceneLayoutConfig,
-} from "./scene-layout-state.js";
+} from "./scene-layout-model.js";
 
 function cloneRect(source: SceneNodeRect): SceneNodeRect {
   return { ...source };
