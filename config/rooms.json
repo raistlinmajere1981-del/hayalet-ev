@@ -1,5 +1,160 @@
 {
-  "version": 1,
-  "updatedAt": "2026-03-21T11:34:10.825Z",
-  "rooms": []
+  "version": 2,
+  "updatedAt": "2026-03-21T21:47:35.735Z",
+  "rooms": [
+    {
+      "id": "game-room",
+      "name": "Game Room",
+      "version": "2.1.0",
+      "description": "A focused board-game room that now starts with a polished XOX duel against AI slot opponents.",
+      "sourceDir": "/home/raistlin/hayalet-ev/rooms/game-room",
+      "installedDir": "/home/raistlin/hayalet-ev/data/rooms/game-room",
+      "manifestPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/manifest.json",
+      "runtimeEntryPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/ui/index.html",
+      "hostEntryPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/host/index.js",
+      "defaultFeatureId": "xox",
+      "features": [
+        {
+          "id": "xox",
+          "name": "XOX",
+          "description": "Three-in-a-row matches against the connected AI1 or AI2 slot.",
+          "icon": "XO",
+          "commandSpecs": [
+            {
+              "name": "GameRoomXoxStart",
+              "description": "Start a new XOX match from the room UI.",
+              "scope": "room-ui"
+            },
+            {
+              "name": "GameRoomXoxReset",
+              "description": "Reset the active XOX match state.",
+              "scope": "room-ui"
+            },
+            {
+              "name": "GameRoomXoxUserMove",
+              "description": "Apply the user's XOX move from the room UI.",
+              "scope": "room-ui"
+            },
+            {
+              "name": "GameRoomXoxAiMove",
+              "description": "Apply the AI move returned by the selected opponent slot.",
+              "scope": "ai-slots"
+            }
+          ],
+          "protocolSpecs": [
+            {
+              "key": "game-room-xox-user-start",
+              "room": "game-room",
+              "scenario": "xox-user-start",
+              "title": "[START][GAME-ROOM][XOX][USER-FIRST]",
+              "editable": true
+            },
+            {
+              "key": "game-room-xox-ai-start",
+              "room": "game-room",
+              "scenario": "xox-ai-start",
+              "title": "[START][GAME-ROOM][XOX][AI-FIRST]",
+              "editable": true
+            }
+          ],
+          "scene": {
+            "hotspot": {
+              "id": "game-room-xox",
+              "rect": {
+                "leftPx": 188,
+                "topPx": 362,
+                "widthPx": 446,
+                "heightPx": 258
+              },
+              "label": {
+                "text": "XOX"
+              }
+            },
+            "view": {
+              "id": "xox-closeup",
+              "backgroundPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/assets/xox-view.webp",
+              "transparentWindow": {
+                "leftPct": 28.28,
+                "topPct": 18.8,
+                "widthPct": 43.59,
+                "heightPct": 54.17
+              }
+            }
+          }
+        }
+      ],
+      "scene": {
+        "referenceSize": {
+          "width": 1600,
+          "height": 900
+        },
+        "roomBackgroundPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/assets/room-background.webp",
+        "roomsHotspot": {
+          "id": "game-room-door",
+          "rect": {
+            "leftPx": 726,
+            "topPx": 244,
+            "widthPx": 154,
+            "heightPx": 318
+          },
+          "label": {
+            "text": "Game Room"
+          }
+        },
+        "backHotspot": {
+          "id": "game-room-back",
+          "rect": {
+            "leftPx": 52,
+            "topPx": 152,
+            "widthPx": 156,
+            "heightPx": 248
+          },
+          "label": {
+            "text": "Corridor"
+          }
+        }
+      },
+      "i18nBaseDir": "/home/raistlin/hayalet-ev/data/rooms/game-room/i18n",
+      "commandSpecs": [
+        {
+          "name": "GameRoomXoxStart",
+          "description": "Start a new XOX match from the room UI.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomXoxReset",
+          "description": "Reset the active XOX match state.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomXoxUserMove",
+          "description": "Apply the user's XOX move from the room UI.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomXoxAiMove",
+          "description": "Apply the AI move returned by the selected opponent slot.",
+          "scope": "ai-slots"
+        }
+      ],
+      "protocolSpecs": [
+        {
+          "key": "game-room-xox-user-start",
+          "room": "game-room",
+          "scenario": "xox-user-start",
+          "title": "[START][GAME-ROOM][XOX][USER-FIRST]",
+          "editable": true
+        },
+        {
+          "key": "game-room-xox-ai-start",
+          "room": "game-room",
+          "scenario": "xox-ai-start",
+          "title": "[START][GAME-ROOM][XOX][AI-FIRST]",
+          "editable": true
+        }
+      ],
+      "installedAt": "2026-03-21T21:47:35.735Z",
+      "updatedAt": "2026-03-21T21:47:35.735Z"
+    }
+  ]
 }

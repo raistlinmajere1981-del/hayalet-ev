@@ -22,6 +22,7 @@ import settingsBackground from "./assets/settings/settings_bg_main.webp";
 import settingsLogViewPanel from "./assets/settings/settings_log_view.webp";
 import settingsRoomsPanel from "./assets/settings/settings_rooms.webp";
 import settingsThemePanel from "./assets/settings/settings_theme.webp";
+import settingsTranslatePanel from "./assets/settings/settings_translate.webp";
 import { SCENE_CLICKABLE_DEFAULTS } from "./scene-clickable-defaults.js";
 import { CASTLE_SCENE_LAYOUTS, CASTLE_SCENE_THEME_ID } from "./scene-layouts.js";
 
@@ -112,6 +113,7 @@ export const CASTLE_THEME_SOURCE = {
         backup: settingsBackupPanel,
         rooms: settingsRoomsPanel,
         "live-log": settingsLogViewPanel,
+        languages: settingsTranslatePanel,
       },
     },
   },

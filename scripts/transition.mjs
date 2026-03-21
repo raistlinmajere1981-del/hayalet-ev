@@ -165,9 +165,10 @@ async function runStatus(options) {
     success: true,
     mode: status.resolved.mode,
     shouldStop: status.resolved.shouldStop,
-
     reason: status.resolved.reason,
     confidence: status.resolved.confidence,
+    appOpen: status.resolved.appOpen,
+    electronConnectionAvailable: status.resolved.electronConnectionAvailable,
     control: status.control,
     snapshot: status.snapshot,
     observedSignals: status.resolved.observedSignals,
@@ -210,6 +211,8 @@ async function runWait(mode, options) {
     mode: waited.status.resolved.mode,
     shouldStop: waited.status.resolved.shouldStop,
     reason: waited.status.resolved.reason,
+    appOpen: waited.status.resolved.appOpen,
+    electronConnectionAvailable: waited.status.resolved.electronConnectionAvailable,
     control: waited.status.control,
     snapshot: waited.status.snapshot,
   });

@@ -6,14 +6,25 @@ import type {
   AppLanguage,
   LanguageDescriptor,
   LoadedLanguagePack,
+  TranslationCatalog,
   TranslationParams,
 } from "../../src/types/i18n.js";
 import { DEFAULT_APP_LANGUAGE } from "../../src/types/i18n.js";
-import { translateCatalog } from "../../shared/i18n/catalog.js";
+import {
+  mergeTranslationCatalogs,
+  normalizeLogNamespaceCatalog,
+  translateCatalog,
+} from "../../shared/i18n/catalog.js";
 import { getBuiltInLanguagePack } from "../../shared/i18n/bundled-languages.js";
 import { normalizeAppLanguage } from "../../shared/i18n/locale.js";
-import { listInstalledLanguages, loadInstalledLanguage } from "../../shared/i18n/node-loader.js";
+import {
+  listInstalledLanguages,
+  loadInstalledLanguage,
+  loadRoomScopedCatalogs,
+  type RoomLanguageSource,
+} from "../../shared/i18n/node-loader.js";
 import { resolveConfigDir, resolveDataDir } from "../path-roots.ts";
+import type { RoomRegistryState } from "@shared/index.js";
 
 function getLanguageRootDir(): string {
   return join(resolveDataDir(), "shared", "languages");
@@ -21,6 +32,58 @@ function getLanguageRootDir(): string {
 
 function getSettingsPath(): string {
   return join(resolveConfigDir(), "settings.json");
+}
+
+function getRoomsRegistryPath(): string {
+  return join(resolveConfigDir(), "rooms.json");
+}
+
+async function listInstalledRoomI18nSources(): Promise<RoomLanguageSource[]> {
+  try {
+    const raw = await readFile(getRoomsRegistryPath(), "utf8");
+    const parsed = JSON.parse(raw) as Partial<RoomRegistryState>;
+    if (parsed.version !== 2 || Array.isArray(parsed.rooms) === false) {
+      return [];
+    }
+
+    return parsed.rooms
+      .map((room) => ({
+        roomId: room.id,
+        baseDir: room.i18nBaseDir ?? "",
+      }))
+      .filter(
+        (room): room is RoomLanguageSource =>
+          room.roomId.trim() !== "" && room.baseDir.trim() !== ""
+      );
+  } catch {
+    return [];
+  }
+}
+
+function mergeLanguageCatalogs(
+  activePack: LoadedLanguagePack | null,
+  roomCatalog: TranslationCatalog,
+  locale: AppLanguage
+): LoadedLanguagePack | null {
+  if (Object.keys(roomCatalog).length === 0) {
+    return activePack;
+  }
+
+  if (activePack === null) {
+    return {
+      locale,
+      nativeName: locale,
+      source: "external",
+      catalog: normalizeLogNamespaceCatalog(roomCatalog),
+    };
+  }
+
+  return {
+    ...activePack,
+    catalog: normalizeLogNamespaceCatalog(
+      mergeTranslationCatalogs([activePack.catalog, roomCatalog])
+    ),
+  };
 }
 
 type SettingsSnapshot = {
@@ -34,7 +97,18 @@ export async function listAvailableLanguages(): Promise<LanguageDescriptor[]> {
 }
 
 export async function loadAvailableLanguage(locale: unknown): Promise<LoadedLanguagePack | null> {
-  return await loadInstalledLanguage(getLanguageRootDir(), locale);
+  const normalized = normalizeAppLanguage(locale);
+  const [activePack, roomSources] = await Promise.all([
+    loadInstalledLanguage(getLanguageRootDir(), normalized),
+    listInstalledRoomI18nSources(),
+  ]);
+
+  if (roomSources.length === 0) {
+    return activePack;
+  }
+
+  const roomCatalog = await loadRoomScopedCatalogs(roomSources, normalized);
+  return mergeLanguageCatalogs(activePack, roomCatalog, normalized);
 }
 
 export async function readElectronAppLanguage(): Promise<AppLanguage> {

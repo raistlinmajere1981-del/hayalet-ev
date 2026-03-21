@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-21T13:31:08.862Z",
+  "generatedAt": "2026-03-21T23:44:59.631Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 517,
-    "filesWithComments": 109,
-    "commentsIndexed": 270,
-    "fileLevelComments": 205,
+    "filesScanned": 521,
+    "filesWithComments": 111,
+    "commentsIndexed": 272,
+    "fileLevelComments": 207,
     "symbolLevelComments": 65,
     "prefixCounts": {
-      "none": 32,
+      "none": 33,
       "AI": 0,
-      "NOTE": 234,
+      "NOTE": 235,
       "WARNING": 4,
       "TODO": 0
     }
@@ -1288,6 +1288,32 @@
       ]
     },
     {
+      "path": "src/js/modules/rooms/room-runtime-url.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 1,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 94,
+          "endLine": 94,
+          "text": "Fall through to non-preload fallbacks for browser-only flows.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
       "path": "src/js/modules/slot-controller.ts",
       "totalComments": 7,
       "byKind": {
@@ -2046,6 +2072,32 @@
       ]
     },
     {
+      "path": "src/js/pages/settings/panels/languages.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 1951,
+          "endLine": 1951,
+          "text": "NOTE: The panel should open from startup cache; forcing room hydration here can stall the overlay.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
       "path": "src/js/scene-editor/scene-debug-flag.ts",
       "totalComments": 1,
       "byKind": {
@@ -2093,8 +2145,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 147,
-          "endLine": 147,
+          "startLine": 159,
+          "endLine": 159,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
@@ -2102,8 +2154,8 @@
         },
         {
           "kind": "note",
-          "startLine": 158,
-          "endLine": 158,
+          "startLine": 170,
+          "endLine": 170,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
@@ -2111,8 +2163,8 @@
         },
         {
           "kind": "note",
-          "startLine": 189,
-          "endLine": 189,
+          "startLine": 201,
+          "endLine": 201,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
@@ -2120,8 +2172,8 @@
         },
         {
           "kind": "note",
-          "startLine": 200,
-          "endLine": 200,
+          "startLine": 212,
+          "endLine": 212,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
@@ -3089,8 +3141,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 74,
-          "endLine": 74,
+          "startLine": 132,
+          "endLine": 132,
           "text": "NOTE: Ignore the probe error and continue with the explicit start attempt.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4254,8 +4306,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 57,
-          "endLine": 57,
+          "startLine": 59,
+          "endLine": 59,
           "text": "NOTE: To add a provider, create an adapter under src/js/pages/assistant,",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -4263,8 +4315,8 @@
         },
         {
           "kind": "note",
-          "startLine": 58,
-          "endLine": 58,
+          "startLine": 60,
+          "endLine": 60,
           "text": "NOTE: implement AssistantProviderAdapter, and register it in provider-registry.ts.",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -4438,12 +4490,12 @@
       "name": "AssistantProviderAdapter",
       "comments": [
         {
-          "startLine": 57,
+          "startLine": 59,
           "kind": "note",
           "text": "NOTE: To add a provider, create an adapter under src/js/pages/assistant,"
         },
         {
-          "startLine": 58,
+          "startLine": 60,
           "kind": "note",
           "text": "NOTE: implement AssistantProviderAdapter, and register it in provider-registry.ts."
         }
@@ -4803,7 +4855,7 @@
       "name": "clearSceneDebugDraft",
       "comments": [
         {
-          "startLine": 147,
+          "startLine": 159,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }
@@ -4815,7 +4867,7 @@
       "name": "clearSceneDebugThemeDraft",
       "comments": [
         {
-          "startLine": 189,
+          "startLine": 201,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }
@@ -4827,7 +4879,7 @@
       "name": "createSceneDebugStore",
       "comments": [
         {
-          "startLine": 200,
+          "startLine": 212,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }
@@ -4839,7 +4891,7 @@
       "name": "loadSceneDebugThemeDraft",
       "comments": [
         {
-          "startLine": 158,
+          "startLine": 170,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }

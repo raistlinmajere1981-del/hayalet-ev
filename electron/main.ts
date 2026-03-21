@@ -6,6 +6,7 @@ import { initPaths, Paths } from "./paths.ts";
 import { deviceActionHandler } from "./device-manager.ts";
 import { capturePageHandler, screenshotCaptureHandler } from "./screenshot-manager.ts";
 import { whisperLoad, whisperSave } from "./whisper-manager.ts";
+import { buildInstalledRoomRecord } from "./room-package-manager.ts";
 import {
   commandInit,
   commandWrite,
@@ -67,6 +68,56 @@ import type { LogQueryParams } from "./types/index.ts";
 function cloneInstalledRoomRecord(record: InstalledRoomRecord): InstalledRoomRecord {
   return {
     ...record,
+    features: record.features.map((feature) => ({
+      ...feature,
+      ...(Array.isArray(feature.commandSpecs)
+        ? { commandSpecs: feature.commandSpecs.map((spec) => ({ ...spec })) }
+        : {}),
+      ...(Array.isArray(feature.protocolSpecs)
+        ? { protocolSpecs: feature.protocolSpecs.map((spec) => ({ ...spec })) }
+        : {}),
+      ...(feature.scene !== undefined
+        ? {
+            scene: {
+              hotspot: {
+                ...feature.scene.hotspot,
+                rect: { ...feature.scene.hotspot.rect },
+                ...(feature.scene.hotspot.label !== undefined
+                  ? { label: { ...feature.scene.hotspot.label } }
+                  : {}),
+              },
+              view: {
+                ...feature.scene.view,
+                ...(feature.scene.view.transparentWindow !== undefined
+                  ? { transparentWindow: { ...feature.scene.view.transparentWindow } }
+                  : {}),
+              },
+            },
+          }
+        : {}),
+    })),
+    ...(record.scene !== undefined
+      ? {
+          scene: {
+            referenceSize: { ...record.scene.referenceSize },
+            roomBackgroundPath: record.scene.roomBackgroundPath,
+            roomsHotspot: {
+              ...record.scene.roomsHotspot,
+              rect: { ...record.scene.roomsHotspot.rect },
+              ...(record.scene.roomsHotspot.label !== undefined
+                ? { label: { ...record.scene.roomsHotspot.label } }
+                : {}),
+            },
+            backHotspot: {
+              ...record.scene.backHotspot,
+              rect: { ...record.scene.backHotspot.rect },
+              ...(record.scene.backHotspot.label !== undefined
+                ? { label: { ...record.scene.backHotspot.label } }
+                : {}),
+            },
+          },
+        }
+      : {}),
     ...(Array.isArray(record.commandSpecs)
       ? { commandSpecs: record.commandSpecs.map((spec) => ({ ...spec })) }
       : {}),
@@ -83,9 +134,38 @@ function readStartupRoomsSnapshot(): StartupRoomsSnapshot | null {
   }
 
   try {
-    const parsed = JSON.parse(readFileSync(registryPath, "utf8")) as RoomRegistryState;
+    const parsed = JSON.parse(readFileSync(registryPath, "utf8")) as Partial<RoomRegistryState>;
+    if (parsed.version !== 2 || Array.isArray(parsed.rooms) === false) {
+      return null;
+    }
     const rooms = Array.isArray(parsed.rooms)
-      ? parsed.rooms.map((room) => cloneInstalledRoomRecord(room))
+      ? parsed.rooms
+          .map((room) => {
+            try {
+              if (existsSync(room.manifestPath) === false) {
+                return null;
+              }
+
+              const validation = validateRoomManifest(
+                JSON.parse(readFileSync(room.manifestPath, "utf8"))
+              );
+              if (validation.valid !== true || validation.manifest === undefined) {
+                return null;
+              }
+
+              return cloneInstalledRoomRecord(
+                buildInstalledRoomRecord(validation.manifest, {
+                  sourceDir: room.sourceDir,
+                  installedDir: room.installedDir,
+                  installedAt: room.installedAt,
+                  updatedAt: room.updatedAt,
+                })
+              );
+            } catch {
+              return null;
+            }
+          })
+          .filter((room): room is InstalledRoomRecord => room !== null)
       : [];
     const protocols: StartupRoomProtocolSnapshot[] = [];
 
@@ -131,7 +211,7 @@ import { setupUs1MailHandlers } from "./handlers/ipc-us1-mail.ts";
 
 import { registerHandler, handleLoggerAppendBatch } from "./handlers/ipc-helpers.ts";
 import { initLogger, shutdownLogger, getLoggerCore } from "./logger/index.js";
-import { LogCategory, LogLevel } from "@shared/index.js";
+import { LogCategory, LogLevel, validateRoomManifest } from "@shared/index.js";
 import type {
   InstalledRoomRecord,
   RoomRegistryState,

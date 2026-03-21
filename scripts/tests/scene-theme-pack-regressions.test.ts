@@ -41,12 +41,17 @@ test("shared castle theme source centralizes scene assets, theme metadata, and r
   const contractSource = readFileSync("src/js/scene-system/theme-source-contract.ts", "utf8");
 
   assert.match(manifestSource, /themeId:\s*CASTLE_SCENE_THEME_ID/);
+  assert.match(
+    manifestSource,
+    /import settingsTranslatePanel from "\.\/assets\/settings\/settings_translate\.webp";/
+  );
   assert.match(manifestSource, /loading:\s*\{[\s\S]*frames:\s*\[/);
   assert.match(manifestSource, /clickableDefaults:\s*SCENE_CLICKABLE_DEFAULTS/);
   assert.match(manifestSource, /rooms:\s*\{[\s\S]*entrance:[\s\S]*settings:/);
+  assert.match(manifestSource, /languages:\s*settingsTranslatePanel/);
   assert.match(manifestSource, /maps:\s*CASTLE_SCENE_LAYOUTS/);
-  assert.match(clickableDefaultsSource, /export const SCENE_CLICKABLE_DEFAULTS = \{/);
-  assert.match(clickableDefaultsSource, /fontPresetOverride:\s*null/);
+  assert.match(clickableDefaultsSource, /export const SCENE_CLICKABLE_DEFAULTS\s*=\s*\{/);
+  assert.match(clickableDefaultsSource, /"?fontPresetOverride"?:\s*null/);
   assert.match(sceneLayoutsSource, /export const CASTLE_SCENE_THEME_ID = "castle"/);
   assert.match(
     sceneLayoutsSource,

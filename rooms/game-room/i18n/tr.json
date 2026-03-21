@@ -1,0 +1,68 @@
+{
+  "title": "Oyun Odasi",
+  "subtitle": "Canli AI slotlari ile dogrudan maclar icin odakli masa oyunu odasi.",
+  "features": {
+    "xox": "XOX"
+  },
+  "xox": {
+    "heroBadge": "Oyun Odasi",
+    "heroTitle": "XOX Mac Masasi",
+    "heroSubtitle": "AI1 veya AI2'yi sec, kimin baslayacagini belirle ve room-scoped komutlarla temiz bir XOX duellosu oyna.",
+    "topbar": {
+      "featureLabel": "Ana Fonksiyon",
+      "opponentLabel": "Rakip AI",
+      "starterLabel": "Baslangic",
+      "starterUser": "Kullanici Baslar",
+      "starterAi": "AI Baslar",
+      "start": "Maci Baslat",
+      "reset": "Maci Sifirla"
+    },
+    "board": {
+      "title": "Tahta",
+      "statusLabel": "Mac Durumu",
+      "turnLabel": "Sira",
+      "resultLabel": "Sonuc",
+      "symbolsLabel": "Semboller",
+      "cellsLabel": "Acik Hucreler",
+      "asciiLabel": "Metin Tahtasi"
+    },
+    "side": {
+      "title": "Canli Rakipler",
+      "protocolTitle": "Protokol Kurallari",
+      "controlsTitle": "Nasil Isler",
+      "commandHint": "AI cevap formati: ++cmd:GameRoomXoxAiMove({\"cell\":4})",
+      "latestMessageHint": "Komutlar yalnizca son assistant mesajindan yakalanir.",
+      "help1": "1. Bagli bir AI slotu sec ve kimin acilis yapacagini belirle.",
+      "help2": "2. Sira sendeyken bos bir hucreye tikla.",
+      "help3": "3. Her AI turunda guncel tahta ve protokol metin olarak iletilir."
+    },
+    "status": {
+      "roomApiUnavailable": "Room API koprusu bagli degil.",
+      "commandSendFailed": "Komut oda host'una gonderilemedi.",
+      "idle": "Hazir bir AI rakibi sec ve maci baslat."
+    },
+    "results": {
+      "idle": "Hazir",
+      "pending": "Devam Ediyor",
+      "blocked": "Bloke",
+      "user-win": "Kullanici Kazandi",
+      "ai-win": "AI Kazandi",
+      "draw": "Berabere"
+    },
+    "turns": {
+      "user": "Kullanici",
+      "ai": "Rakip AI",
+      "idle": "Bekliyor"
+    },
+    "slotState": {
+      "ready": "Hazir",
+      "disconnected": "Bagli Degil",
+      "assigned": "Atanmis",
+      "empty": "Hesap Yok"
+    },
+    "slotNote": {
+      "current": "Secili",
+      "unavailable": "Kullanilamaz"
+    }
+  }
+}

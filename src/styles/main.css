@@ -271,6 +271,11 @@ body.is-scroll-locked {
 }
 
 .room-nav-icon {
+  font-size: var(--nav-icon-size);
+  letter-spacing: normal;
+}
+
+.room-nav-icon[data-room-icon-display="compact"] {
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-wide);
 }

@@ -175,6 +175,43 @@
   color: var(--scene-shell-window-control-close-color);
 }
 
+.workspace-tool-scene-chrome {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  display: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+[data-ui-mode="scene"]
+  .page-archives[data-workspace-tool-mode="overlay"]
+  .workspace-tool-scene-chrome,
+[data-ui-mode="scene"]
+  .page-whisper[data-workspace-tool-mode="overlay"]
+  .workspace-tool-scene-chrome {
+  display: block;
+}
+
+.workspace-tool-scene-chrome__back {
+  z-index: 18;
+  pointer-events: auto;
+  --scene-clickable-left: clamp(var(--scene-rem-0-45), 1vw, var(--scene-rem-0-85));
+  --scene-clickable-top: calc(50% - clamp(var(--scene-rem-1-5), 4vh, var(--scene-rem-2)));
+  --scene-clickable-width: clamp(var(--scene-rem-4-5), 9vw, var(--scene-rem-7));
+  --scene-clickable-height: clamp(var(--scene-rem-3), 8vh, var(--scene-rem-4-5));
+  --scene-clickable-frame-rotate: 0deg;
+  --scene-clickable-frame-perspective: 0deg;
+  --scene-clickable-hover-glow-hue: 33deg;
+  --scene-clickable-hover-glow-alpha: 0.34;
+  --scene-clickable-label-left: clamp(var(--scene-rem-3), 5.2vw, var(--scene-rem-4-5));
+  --scene-clickable-label-top: clamp(var(--scene-rem-0-7), 1vh, var(--scene-rem-0-95));
+  --scene-clickable-label-width: clamp(var(--scene-rem-4-5), 8vw, var(--scene-rem-7));
+  --scene-clickable-label-height: clamp(var(--scene-rem-2), 4vh, var(--scene-rem-2-6));
+  --scene-clickable-label-font-size: clamp(var(--scene-rem-0-72), 0.92vw, var(--scene-rem-0-95));
+  --scene-clickable-label-letter-spacing: 0.08em;
+}
+
 .scene-shell__ui-mode {
   position: relative;
   display: inline-flex;

@@ -43,6 +43,7 @@ import {
   type ArchiveProviderKey,
 } from "@shared/archive.js";
 import { ensureRuntimePageStyles } from "../../app/runtime-page-styles.js";
+import { mountWorkspaceToolSceneChrome } from "../../scene/workspace-tool-scene-chrome.js";
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
 }
@@ -225,6 +226,15 @@ export class ArchivesPageController {
     this.closeButtonEl?.addEventListener("click", () => {
       this.close();
     });
+
+    if (this.overlayEl instanceof HTMLElement) {
+      mountWorkspaceToolSceneChrome({
+        root: this.overlayEl,
+        onBack: () => {
+          this.close();
+        },
+      });
+    }
 
     document.addEventListener(
       WORKSPACE_TOOL_OPEN_EVENT,

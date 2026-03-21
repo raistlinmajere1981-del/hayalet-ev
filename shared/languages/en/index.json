@@ -60,7 +60,7 @@
         "title": "Rooms Corridor",
         "subtitle": "This corridor will become the fixed scene hub for installed Ghost House rooms.",
         "panelTitle": "Current Stage",
-        "panelDescription": "The background and scene-debug wiring are ready. Door assignment and per-room routing will be attached in the next step."
+        "panelDescription": "Installed rooms are projected here as door targets in scene mode and as launch cards in classic mode."
       }
     },
     "analyze": {
@@ -425,14 +425,18 @@
     "roomPage": {
       "page": {
         "badge": "Room",
+        "featuresTitle": "Main Functions",
         "runtimeTitle": "Runtime",
         "entryPointsTitle": "Entry Points",
         "runtimeSceneAriaLabel": "Room runtime scene",
         "subtitleNamed": "{{name}} loaded as an isolated room runtime.",
         "subtitleDefault": "Installed room runtime is ready.",
+        "backToRooms": "Return to the corridor",
         "labels": {
           "id": "ID",
           "version": "Version",
+          "feature": "Active Feature",
+          "features": "Features",
           "installed": "Installed",
           "runtime": "Runtime",
           "host": "Host",
@@ -784,14 +788,15 @@
       "ariaLabel": "Settings deck",
       "kicker": "Topbar settings",
       "title": "Control Deck",
-      "subtitle": "Manage backup, room management, live log and theme selection on one surface.",
+      "subtitle": "Manage theme, room packages, live log and language packs on one surface.",
       "currentThemeLabel": "Active theme",
       "nav": {
         "theme": "Theme",
         "accounts": "Accounts",
         "backup": "Backup",
         "rooms": "Rooms",
-        "liveLog": "Live Log"
+        "liveLog": "Live Log",
+        "languages": "Languages"
       },
       "accounts": {
         "title": "Account Settings",
@@ -803,6 +808,143 @@
         "returnRoom": "Back",
         "returnRoomTitle": "Return to the settings room",
         "closeTitle": "Close the settings room"
+      }
+    },
+    "languagesEditor": {
+      "title": "Language Editor",
+      "toolbar": {
+        "scopeLabel": "Scope",
+        "localeLabel": "Locale",
+        "roomLabel": "Room",
+        "localePlaceholder": "Select pack",
+        "roomPlaceholder": "Select room"
+      },
+      "scope": {
+        "app": "Application",
+        "rooms": "Rooms"
+      },
+      "actions": {
+        "refresh": "Refresh",
+        "save": "Save"
+      },
+      "status": {
+        "saving": "Saving",
+        "dirty": "Unsaved changes",
+        "clean": "Saved"
+      },
+      "summary": {
+        "total": "Total keys",
+        "translated": "Filled values",
+        "missing": "Empty values",
+        "visible": "Visible",
+        "warnings": "Warnings"
+      },
+      "filters": {
+        "title": "Filters",
+        "searchLabel": "Search",
+        "searchPlaceholder": "Search in key, source or target",
+        "onlyMissing": "Empty only",
+        "onlyDifferent": "Different from TR"
+      },
+      "categories": {
+        "title": "Categories",
+        "all": "All fields",
+        "missingShort": "{{count}} empty"
+      },
+      "main": {
+        "scope": {
+          "app": "Application pack",
+          "room": "Room pack: {{room}}"
+        },
+        "idleTitle": "Select a language pack",
+        "pendingCategoryTitle": "Select a category for {{locale}}",
+        "title": "{{locale}} editing surface",
+        "visibleCount": "{{visible}} / {{total}} fields"
+      },
+      "entry": {
+        "source": "TR source",
+        "target": "Selected locale value",
+        "noSource": "No TR source exists for this key.",
+        "badges": {
+          "missing": "Empty",
+          "extra": "Extra key",
+          "placeholders": "Token warning",
+          "newlines": "Line breaks"
+        }
+      },
+      "meta": {
+        "currentTitle": "Current workspace",
+        "localeLabel": "Selected locale",
+        "scopeLabel": "Active scope",
+        "runtimeKeyLabel": "Runtime key root",
+        "sourceKindLabel": "Source kind",
+        "sourceKinds": {
+          "builtin": "Built-in + override",
+          "external": "External override"
+        },
+        "savePathLabel": "Save directory",
+        "roomLabel": "Selected room",
+        "sourcePathLabel": "TR source path",
+        "appSettingsTitle": "Locale metadata",
+        "roomSettingsTitle": "Room package note",
+        "roomHint": "Room packages do not use a manifest; only locale JSON files are edited here.",
+        "nativeNameLabel": "Native name",
+        "englishNameLabel": "English name",
+        "directionLabel": "Text direction",
+        "selectorLanguageLabel": "Selector language"
+      },
+      "create": {
+        "title": "Create blank locale template",
+        "appHint": "All keys from the TR template are created and the selected locale values are left blank.",
+        "roomHint": "Generates a blank locale file from the selected room's TR source file.",
+        "localeLabel": "New locale",
+        "localePlaceholder": "for example de or az-AZ",
+        "nativeNameLabel": "Native name",
+        "englishNameLabel": "English name",
+        "directionLabel": "Text direction",
+        "selectorLanguageLabel": "Selector language",
+        "button": "Create template"
+      },
+      "direction": {
+        "ltr": "Left to right",
+        "rtl": "Right to left"
+      },
+      "selector": {
+        "tr": "Turkish selector",
+        "en": "English selector"
+      },
+      "empty": {
+        "selectPackageTitle": "No pack selected yet",
+        "selectPackageBody": "Select the pack you want to edit first to populate the editor.",
+        "selectCategoryTitle": "Waiting for a category",
+        "selectCategoryBody": "The pack is ready. Choose a category on the left to open the editor.",
+        "loadingTitle": "Loading language pack",
+        "loadingBody": "The editor may stay empty for a moment while sources are being read.",
+        "sourceMissingTitle": "TR source is missing",
+        "sourceMissingBody": "Without a TR source file, this scope cannot build a blank template or a safe category map.",
+        "noneTitle": "No editable fields found",
+        "noneBody": "There are no readable translation keys in the selected scope.",
+        "filteredTitle": "No results for current filter",
+        "filteredBody": "Relax the search or filters to reveal more fields."
+      },
+      "toasts": {
+        "loadError": "Language editor data could not be loaded",
+        "saveSuccess": "Language pack saved",
+        "saveError": "Language pack could not be saved",
+        "createSuccess": "Blank locale template created",
+        "createError": "Blank locale template could not be created"
+      },
+      "errors": {
+        "savePathMissing": "A valid save path could not be resolved.",
+        "saveFailed": "The filesystem write operation failed.",
+        "localeRequired": "Locale is required for a new language.",
+        "localeExists": "This locale already exists.",
+        "createFailed": "Template files could not be written.",
+        "roomRequired": "Select a room first.",
+        "sourceMissing": "The TR source file is missing."
+      },
+      "confirm": {
+        "discard": "There are unsaved changes. Continuing will discard them. Do you want to continue?"
       }
     },
     "liveLog": {
@@ -965,6 +1107,14 @@
         "bundleButton": "Import",
         "bundleFilterName": "Room Bundles"
       },
+      "confirm": {
+        "installTitle": "Add this room?",
+        "installMessage": "{{room}} will be added to the menu.",
+        "updateTitle": "Update this room?",
+        "updateMessage": "{{room}} will be updated from the workspace version.",
+        "removeTitle": "Remove this room?",
+        "removeMessage": "{{room}} will be removed from the menu."
+      },
       "toasts": {
         "filePickerUnavailable": "The file picker is unavailable",
         "invalidBundleExtension": "The selected file must end with .hevroom.json",
@@ -980,7 +1130,8 @@
         "exportError": "Workspace export failed",
         "removeUnavailable": "Room removal is unavailable",
         "removeSuccess": "Room removed",
-        "removeError": "Room removal failed"
+        "removeError": "Room removal failed",
+        "restartRequired": "A restart is required to apply the new room registry."
       }
     },
     "backup": {

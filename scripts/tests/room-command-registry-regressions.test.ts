@@ -4,22 +4,24 @@ import type { InstalledRoomRecord } from "../../src/types/rooms.ts";
 import { RoomCommandRegistry } from "../../src/js/modules/rooms/room-command-registry.ts";
 
 const room: InstalledRoomRecord = {
-  id: "xox",
-  name: "XOX Room",
-  version: "1.0.0",
-  installedDir: "/workspace/data/rooms/xox",
-  sourceDir: "/workspace/rooms/xox",
-  manifestPath: "/workspace/data/rooms/xox/manifest.json",
-  runtimeEntryPath: "/workspace/data/rooms/xox/ui/index.html",
-  hostEntryPath: "/workspace/data/rooms/xox/host/index.js",
+  id: "game-room",
+  name: "Game Room",
+  version: "2.1.0",
+  installedDir: "/workspace/data/rooms/game-room",
+  sourceDir: "/workspace/rooms/game-room",
+  manifestPath: "/workspace/data/rooms/game-room/manifest.json",
+  runtimeEntryPath: "/workspace/data/rooms/game-room/ui/index.html",
+  hostEntryPath: "/workspace/data/rooms/game-room/host/index.js",
+  defaultFeatureId: "xox",
+  features: [{ id: "xox", name: "XOX" }],
   commandSpecs: [
     {
-      name: "XOXUserMove",
-      description: "Apply user move from room UI",
+      name: "GameRoomXoxUserMove",
+      description: "Apply the user move from room UI",
       scope: "room-ui",
     },
     {
-      name: "XOXAIMove",
+      name: "GameRoomXoxAiMove",
       description: "Apply AI move from slot response",
       scope: "ai-slots",
     },
@@ -32,18 +34,21 @@ test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
 
-  assert.equal(RoomCommandRegistry.has("XOXUserMove"), true);
-  assert.equal(RoomCommandRegistry.getMetadata("XOXUserMove")?.roomId, "xox");
-  assert.deepEqual(RoomCommandRegistry.listCommands("ai1-ai2"), ["XOXAIMove", "XOXUserMove"]);
+  assert.equal(RoomCommandRegistry.has("GameRoomXoxUserMove"), true);
+  assert.equal(RoomCommandRegistry.getMetadata("GameRoomXoxUserMove")?.roomId, "game-room");
+  assert.deepEqual(RoomCommandRegistry.listCommands("ai1-ai2"), [
+    "GameRoomXoxAiMove",
+    "GameRoomXoxUserMove",
+  ]);
 });
 
 test("RoomCommandRegistry runs room-ui commands with structured payloads", async () => {
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
 
-  RoomCommandRegistry.registerHandler("xox", "XOXUserMove", async (payload) => payload.roomArgs);
+  RoomCommandRegistry.registerHandler("game-room", "GameRoomXoxUserMove", async (payload) => payload.roomArgs);
 
-  const result = await RoomCommandRegistry.run("XOXUserMove", {
+  const result = await RoomCommandRegistry.run("GameRoomXoxUserMove", {
     provider: "room-ui",
     roomPayload: { cell: 4, symbol: "X" },
   });
@@ -55,14 +60,14 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
   RoomCommandRegistry.reset();
   RoomCommandRegistry.syncInstalledRooms([room]);
 
-  RoomCommandRegistry.registerHandler("xox", "XOXAIMove", async (payload) => payload.roomArgs);
-  RoomCommandRegistry.registerHandler("xox", "XOXUserMove", async (payload) => payload.roomArgs);
+  RoomCommandRegistry.registerHandler("game-room", "GameRoomXoxAiMove", async (payload) => payload.roomArgs);
+  RoomCommandRegistry.registerHandler("game-room", "GameRoomXoxUserMove", async (payload) => payload.roomArgs);
 
-  const allowed = await RoomCommandRegistry.run("XOXAIMove", {
+  const allowed = await RoomCommandRegistry.run("GameRoomXoxAiMove", {
     provider: "ai1",
     args: '{"cell":8,"symbol":"O"}',
   });
-  const blocked = (await RoomCommandRegistry.run("XOXUserMove", {
+  const blocked = (await RoomCommandRegistry.run("GameRoomXoxUserMove", {
     provider: "ai1",
     args: '{"cell":2}',
   })) as { success?: boolean; message?: string };

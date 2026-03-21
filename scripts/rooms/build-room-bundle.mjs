@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOM_SCHEMA_VERSION = 1;
+const ROOM_SCHEMA_VERSION = 2;
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && Array.isArray(value) === false;
@@ -32,6 +32,66 @@ function normalizeRelativePath(value) {
   return parts.join("/");
 }
 
+function collectRequiredPaths(manifest) {
+  const paths = new Set();
+  paths.add(manifest.runtime.uiEntry);
+  paths.add(manifest.runtime.hostEntry);
+
+  if (manifest.scene?.roomBackgroundSrc) {
+    paths.add(manifest.scene.roomBackgroundSrc);
+  }
+
+  for (const feature of manifest.features) {
+    if (!feature.scene) {
+      continue;
+    }
+    paths.add(feature.scene.view.backgroundSrc);
+    if (feature.scene.view.panelArtSrc) {
+      paths.add(feature.scene.view.panelArtSrc);
+    }
+  }
+
+  return [...paths].sort((left, right) => left.localeCompare(right));
+}
+
+function validateFeature(feature, index, errors) {
+  if (!isRecord(feature)) {
+    errors.push(`features[${index}] must be an object`);
+    return null;
+  }
+
+  if (typeof feature.id !== "string" || feature.id.trim() === "") {
+    errors.push(`features[${index}].id is required`);
+  }
+  if (typeof feature.name !== "string" || feature.name.trim() === "") {
+    errors.push(`features[${index}].name is required`);
+  }
+
+  const next = { ...feature, id: feature.id?.trim?.() ?? "", name: feature.name?.trim?.() ?? "" };
+  if (isRecord(feature.scene)) {
+    const backgroundSrc = normalizeRelativePath(feature.scene?.view?.backgroundSrc);
+    if (backgroundSrc === null) {
+      errors.push(`features[${index}].scene.view.backgroundSrc must be a safe relative path`);
+    }
+    const panelArtSrcRaw = feature.scene?.view?.panelArtSrc;
+    const panelArtSrc =
+      panelArtSrcRaw === undefined ? undefined : normalizeRelativePath(panelArtSrcRaw);
+    if (panelArtSrcRaw !== undefined && panelArtSrc === null) {
+      errors.push(`features[${index}].scene.view.panelArtSrc must be a safe relative path`);
+    }
+    next.scene = {
+      ...feature.scene,
+      view: {
+        ...feature.scene.view,
+        backgroundSrc,
+        ...(panelArtSrc !== undefined ? { panelArtSrc } : {}),
+      },
+    };
+  }
+
+  return next;
+}
+
 function validateManifest(candidate) {
   const errors = [];
 
@@ -40,7 +100,7 @@ function validateManifest(candidate) {
   }
 
   if (candidate.schemaVersion !== ROOM_SCHEMA_VERSION) {
-    errors.push("schemaVersion must be 1");
+    errors.push(`schemaVersion must be ${ROOM_SCHEMA_VERSION}`);
   }
   if (typeof candidate.id !== "string" || candidate.id.trim() === "") {
     errors.push("id is required");
@@ -54,14 +114,50 @@ function validateManifest(candidate) {
   if (!isRecord(candidate.menu) || typeof candidate.menu.label !== "string" || candidate.menu.label.trim() === "") {
     errors.push("menu.label is required");
   }
+  if (!isRecord(candidate.runtime)) {
+    errors.push("runtime is required");
+  }
 
-  const uiEntry = normalizeRelativePath(candidate.uiEntry);
-  const hostEntry = normalizeRelativePath(candidate.hostEntry);
+  const uiEntry = normalizeRelativePath(candidate.runtime?.uiEntry);
+  const hostEntry = normalizeRelativePath(candidate.runtime?.hostEntry);
   if (uiEntry === null) {
-    errors.push("uiEntry must be a safe relative path");
+    errors.push("runtime.uiEntry must be a safe relative path");
   }
   if (hostEntry === null) {
-    errors.push("hostEntry must be a safe relative path");
+    errors.push("runtime.hostEntry must be a safe relative path");
+  }
+
+  if (typeof candidate.defaultFeatureId !== "string" || candidate.defaultFeatureId.trim() === "") {
+    errors.push("defaultFeatureId is required");
+  }
+
+  if (!Array.isArray(candidate.features) || candidate.features.length === 0) {
+    errors.push("features must contain at least one item");
+  }
+
+  const features = Array.isArray(candidate.features)
+    ? candidate.features.map((feature, index) => validateFeature(feature, index, errors)).filter(Boolean)
+    : [];
+  if (
+    typeof candidate.defaultFeatureId === "string" &&
+    features.some((feature) => feature.id === candidate.defaultFeatureId.trim()) === false
+  ) {
+    errors.push("defaultFeatureId must match one of the feature ids");
+  }
+
+  let scene = undefined;
+  if (candidate.scene !== undefined) {
+    const roomBackgroundSrc = normalizeRelativePath(candidate.scene?.roomBackgroundSrc);
+    if (roomBackgroundSrc === null) {
+      errors.push("scene.roomBackgroundSrc must be a safe relative path");
+    }
+    if (features.some((feature) => !feature.scene)) {
+      errors.push("scene requires every feature to define scene metadata");
+    }
+    scene = {
+      ...candidate.scene,
+      roomBackgroundSrc,
+    };
   }
 
   return {
@@ -71,8 +167,16 @@ function validateManifest(candidate) {
       errors.length === 0
         ? {
             ...candidate,
-            uiEntry,
-            hostEntry,
+            id: candidate.id.trim(),
+            name: candidate.name.trim(),
+            version: candidate.version.trim(),
+            defaultFeatureId: candidate.defaultFeatureId.trim(),
+            runtime: {
+              uiEntry,
+              hostEntry,
+            },
+            features,
+            ...(scene !== undefined ? { scene } : {}),
           }
         : null,
   };
@@ -124,20 +228,12 @@ export async function buildRoomBundle(roomId, options = {}) {
     throw new Error(validation.errors.join("; "));
   }
 
-  const runtimePath = join(roomDir, validation.manifest.uiEntry);
-  const hostPath = join(roomDir, validation.manifest.hostEntry);
-  const runtimeStat = await stat(runtimePath).catch(function () {
-    return null;
-  });
-  const hostStat = await stat(hostPath).catch(function () {
-    return null;
-  });
-
-  if (runtimeStat?.isFile() !== true) {
-    throw new Error(`uiEntry missing: ${validation.manifest.uiEntry}`);
-  }
-  if (hostStat?.isFile() !== true) {
-    throw new Error(`hostEntry missing: ${validation.manifest.hostEntry}`);
+  for (const requiredPath of collectRequiredPaths(validation.manifest)) {
+    const absolutePath = join(roomDir, requiredPath);
+    const fileStat = await stat(absolutePath).catch(() => null);
+    if (fileStat?.isFile() !== true) {
+      throw new Error(`required asset missing: ${requiredPath}`);
+    }
   }
 
   const files = await collectFiles(roomDir);
@@ -200,7 +296,9 @@ function parseArgs(argv) {
 async function runCli() {
   const { roomId, options } = parseArgs(process.argv.slice(2));
   if (roomId === "") {
-    console.error("Usage: node scripts/rooms/build-room-bundle.mjs <roomId> [--output <file>] [--workspace-root <dir>]");
+    console.error(
+      "Usage: node scripts/rooms/build-room-bundle.mjs <roomId> [--output <file>] [--workspace-root <dir>]"
+    );
     process.exitCode = 1;
     return;
   }

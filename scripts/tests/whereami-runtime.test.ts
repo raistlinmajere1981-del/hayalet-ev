@@ -3,10 +3,34 @@ import test from "node:test";
 
 import { resolveWhereAmI } from "../lib/whereami-runtime.mjs";
 
-test("returns app when main process is alive in soft idle", () => {
+test("returns app when main process is alive in soft idle and OpenCode serve is active", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-1",
+      desiredMode: "soft",
+      phase: "idle",
+      updatedAt: "2026-03-02T10:00:00.000Z",
+    },
+    probes: {
+      mainProcess: true,
+      ghostProcess: false,
+      wrapperProcess: true,
+      opencodeServerRunning: true,
+    },
+    nowIso: "2026-03-02T10:00:10.000Z",
+  });
+
+  assert.equal(result.mode, "app");
+  assert.equal(result.shouldStop, false);
+  assert.equal(result.appOpen, true);
+  assert.equal(result.electronConnectionAvailable, true);
+  assert.equal(result.observedSignals.opencodeServerRunning, true);
+});
+
+test("returns terminal with app-open signal when main process is alive without OpenCode serve", () => {
+  const result = resolveWhereAmI({
+    control: {
+      workflowSessionId: "wf-1b",
       desiredMode: "soft",
       phase: "idle",
       updatedAt: "2026-03-02T10:00:00.000Z",
@@ -20,9 +44,11 @@ test("returns app when main process is alive in soft idle", () => {
     nowIso: "2026-03-02T10:00:10.000Z",
   });
 
-  assert.equal(result.mode, "app");
+  assert.equal(result.mode, "terminal");
   assert.equal(result.shouldStop, false);
-  assert.equal(result.observedSignals.opencodeServerRunning, false);
+  assert.equal(result.appOpen, true);
+  assert.equal(result.electronConnectionAvailable, true);
+  assert.match(result.reason, /OpenCode serve is not active/i);
 });
 
 test("returns ghost-agent when ghost process is alive in in-ghost phase", () => {
@@ -65,6 +91,8 @@ test("returns terminal when no runtime signal and no app processes", () => {
 
   assert.equal(result.mode, "terminal");
   assert.equal(result.shouldStop, false);
+  assert.equal(result.appOpen, false);
+  assert.equal(result.electronConnectionAvailable, false);
 });
 
 test("returns transitioning during preparing-handoff", () => {

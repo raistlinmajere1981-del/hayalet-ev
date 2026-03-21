@@ -557,11 +557,13 @@ declare global {
       success: boolean;
       room?: InstalledRoomRecord;
       error?: string;
+      restartRequired?: boolean;
     }>;
     roomsRemoveInstalled: (roomId: string) => Promise<{
       success: boolean;
       room?: InstalledRoomRecord;
       error?: string;
+      restartRequired?: boolean;
     }>;
     roomsExportToWorkspace: (payload: { roomId: string; overwrite?: boolean }) => Promise<{
       success: boolean;
@@ -579,6 +581,7 @@ declare global {
       room?: InstalledRoomRecord;
       path?: string;
       error?: string;
+      restartRequired?: boolean;
     }>;
     sceneThemesListInstalled: () => Promise<{
       success: boolean;

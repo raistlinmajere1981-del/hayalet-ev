@@ -8,10 +8,7 @@ import { ServerController } from "../pages/server.js";
 import { RoomsController } from "../pages/rooms.js";
 import { AssistantController } from "../pages/assistant/assistant.js";
 import { SettingsPageController } from "../pages/settings/controller.js";
-import { setupSettingsAccountsPanel } from "../pages/settings/panels/accounts.js";
-import { setupSettingsBackupPanel } from "../pages/settings/panels/backup.js";
-import { setupSettingsLiveLogPanel } from "../pages/settings/panels/live-log.js";
-import { setupSettingsRoomsPanel } from "../pages/settings/panels/rooms.js";
+import { setupSettingsPanels } from "../pages/settings/panels/init.js";
 import { ArchivesPageController } from "../pages/archives/controller.js";
 import { WhisperPageController } from "../pages/whisper/page-controller.js";
 
@@ -64,10 +61,7 @@ export async function initControllers(controllers: Record<string, PageController
   controllers["server"] = new ServerController();
   controllers["rooms"] = new RoomsController();
   controllers["assistant"] = new AssistantController();
-  setupSettingsAccountsPanel();
-  setupSettingsBackupPanel();
-  setupSettingsRoomsPanel();
-  setupSettingsLiveLogPanel();
+  setupSettingsPanels();
   controllers["settings"] = new SettingsPageController();
   controllers["archives"] = new ArchivesPageController();
   controllers["whisper"] = new WhisperPageController();

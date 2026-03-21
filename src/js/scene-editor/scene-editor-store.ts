@@ -5,7 +5,11 @@ import {
   serializeSceneLayout,
   type SceneLayoutConfig,
 } from "../scene/layout/index.js";
-import type { SceneClickableThemeDefinition, SceneDebugEditableRoomId } from "../scene/schema.js";
+import {
+  isSceneRoomId,
+  type SceneClickableThemeDefinition,
+  type SceneDebugEditableRoomId,
+} from "../scene/schema.js";
 import {
   parseSceneClickableThemeDraft,
   serializeSceneClickableThemeDraft,
@@ -77,12 +81,20 @@ export interface SceneDebugThemeStore {
 const SCENE_EDITOR_DRAFT_VERSION = "v2";
 const SCENE_CLICKABLE_THEME_DRAFT_VERSION = "v1";
 
+function resolveBuiltInRoomSourcePath(roomId: SceneDebugEditableRoomId): string {
+  return isSceneRoomId(roomId) ? getSceneRoomSourcePath(roomId) : "";
+}
+
+function resolveBuiltInRoomLayout(roomId: SceneDebugEditableRoomId): SceneLayoutConfig {
+  return cloneSceneLayout(getSceneRoomLayout(isSceneRoomId(roomId) ? roomId : "rooms"));
+}
+
 function getSceneDebugStoreConfig(
   roomId: SceneDebugEditableRoomId,
   dependencies: SceneDebugStoreDependencies = {}
 ): SceneDebugStoreConfig {
   const resolveThemeId = dependencies.getThemeId ?? getSceneThemeId;
-  const resolveRoomSourcePath = dependencies.getRoomSourcePath ?? getSceneRoomSourcePath;
+  const resolveRoomSourcePath = dependencies.getRoomSourcePath ?? resolveBuiltInRoomSourcePath;
   return {
     storageKey: `scene-editor:${resolveThemeId()}:${roomId}:draft:${SCENE_EDITOR_DRAFT_VERSION}`,
     sourcePath: resolveRoomSourcePath(roomId),
@@ -206,7 +218,7 @@ export function createSceneDebugStore(
   dependencies: SceneDebugStoreDependencies = {}
 ): SceneDebugStore {
   const getConfig = (): SceneDebugStoreConfig => getSceneDebugStoreConfig(roomId, dependencies);
-  const resolveRoomLayout = dependencies.getRoomLayout ?? getSceneRoomLayout;
+  const resolveRoomLayout = dependencies.getRoomLayout ?? resolveBuiltInRoomLayout;
   const clipboard = resolveSceneDebugClipboard(dependencies.clipboard);
   const writeFileAtomic = resolveSceneDebugWriteFileAtomic(dependencies.writeFileAtomic);
 

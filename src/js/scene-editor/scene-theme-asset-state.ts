@@ -36,7 +36,7 @@ type SceneThemeAssetDraftListener = (draft: SceneThemeAssetDraftDocument) => voi
 
 export interface SceneEditorAssetTargetDescriptor {
   id: string;
-  roomId: SceneRoomId;
+  roomId: string;
   label: string;
   sourceHint: string;
   runtimeSrc: string;

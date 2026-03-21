@@ -2,11 +2,7 @@ import { bootstrapExternalToolPage } from "../shared/bootstrap-external-tool-pag
 import { resolveExternalPanel } from "../shared/external-page.js";
 import { applySettingsPanelStaticTranslations } from "./panel-i18n.js";
 import { SettingsPageController, resolveSettingsPanelId } from "./controller.js";
-import { setupSettingsAccountsPanel } from "./panels/accounts.js";
-import { setupSettingsBackupPanel } from "./panels/backup.js";
-import { setupSettingsLiveLogPanel } from "./panels/live-log.js";
-import { setupSettingsRoomsPanel } from "./panels/rooms.js";
-import { setupSettingsThemePanel } from "./panels/theme.js";
+import { setupSettingsPanels } from "./panels/init.js";
 
 async function bootstrapSettingsPage(): Promise<void> {
   await bootstrapExternalToolPage({
@@ -17,11 +13,7 @@ async function bootstrapSettingsPage(): Promise<void> {
     initializeTraffic: true,
   });
 
-  setupSettingsAccountsPanel();
-  setupSettingsBackupPanel();
-  setupSettingsRoomsPanel();
-  setupSettingsLiveLogPanel();
-  setupSettingsThemePanel();
+  setupSettingsPanels();
 
   const controller = new SettingsPageController();
   controller.init();

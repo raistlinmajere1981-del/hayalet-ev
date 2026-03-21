@@ -155,6 +155,21 @@
                     data-shell-i18n-text="settingsHub.nav.liveLog"
                   ></span>
                 </button>
+                <button
+                  class="settings-hub-tab"
+                  id="settings-tab-languages"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="settings-panel-languages"
+                  data-settings-panel="languages"
+                >
+                  <span class="settings-hub-tab__index">06</span>
+                  <span
+                    class="settings-hub-tab__label"
+                    data-shell-i18n-text="settingsHub.nav.languages"
+                  ></span>
+                </button>
               </div>
               <div class="workspace-tool-bar__end">
                 <button
@@ -1267,6 +1282,71 @@
                           <div class="live-log-detail-meta" id="live-log-meta"></div>
                           <pre class="live-log-detail-context" id="live-log-context"></pre>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                class="settings-hub-panel settings-hub-panel--languages is-hidden"
+                id="settings-panel-languages"
+                role="tabpanel"
+                aria-labelledby="settings-tab-languages"
+                data-settings-panel="languages"
+                aria-hidden="true"
+                hidden
+              >
+                <div
+                  class="settings-panel-shell scene-shell__framed-shell settings-panel-shell--languages"
+                >
+                  <div
+                    class="settings-panel-head scene-shell__framed-shell-head settings-panel-head--workbench"
+                  >
+                    <div class="settings-panel-copy">
+                      <span
+                        class="settings-panel-kicker"
+                        data-shell-i18n-text="settingsHub.nav.languages"
+                      ></span>
+                      <h3
+                        class="settings-panel-title"
+                        data-shell-i18n-text="languagesEditor.title"
+                      ></h3>
+                    </div>
+                  </div>
+
+                  <div class="settings-panel-scroll settings-panel-scroll--languages">
+                    <div class="language-editor-shell" id="language-editor-shell">
+                      <section
+                        class="language-editor-toolbar"
+                        id="language-editor-toolbar"
+                      ></section>
+                      <section
+                        class="language-editor-summary"
+                        id="language-editor-summary"
+                      ></section>
+                      <div class="language-editor-workbench">
+                        <aside class="language-editor-sidebar">
+                          <section
+                            class="language-editor-filters"
+                            id="language-editor-filters"
+                          ></section>
+                          <section
+                            class="language-editor-categories"
+                            id="language-editor-categories"
+                          ></section>
+                        </aside>
+                        <section class="language-editor-main">
+                          <div
+                            class="language-editor-main-head"
+                            id="language-editor-main-head"
+                          ></div>
+                          <div
+                            class="language-editor-entry-list"
+                            id="language-editor-entry-list"
+                          ></div>
+                        </section>
+                        <aside class="language-editor-meta" id="language-editor-meta"></aside>
                       </div>
                     </div>
                   </div>

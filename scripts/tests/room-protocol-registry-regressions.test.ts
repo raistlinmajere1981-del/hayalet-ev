@@ -4,20 +4,22 @@ import type { InstalledRoomRecord } from "../../src/types/rooms.ts";
 import { RoomProtocolRegistry } from "../../src/js/modules/rooms/room-protocol-registry.ts";
 
 const room: InstalledRoomRecord = {
-  id: "xox",
-  name: "XOX Room",
-  version: "1.0.0",
-  installedDir: "/workspace/data/rooms/xox",
-  sourceDir: "/workspace/rooms/xox",
-  manifestPath: "/workspace/data/rooms/xox/manifest.json",
-  runtimeEntryPath: "/workspace/data/rooms/xox/ui/index.html",
-  hostEntryPath: "/workspace/data/rooms/xox/host/index.js",
+  id: "game-room",
+  name: "Game Room",
+  version: "2.1.0",
+  installedDir: "/workspace/data/rooms/game-room",
+  sourceDir: "/workspace/rooms/game-room",
+  manifestPath: "/workspace/data/rooms/game-room/manifest.json",
+  runtimeEntryPath: "/workspace/data/rooms/game-room/ui/index.html",
+  hostEntryPath: "/workspace/data/rooms/game-room/host/index.js",
+  defaultFeatureId: "xox",
+  features: [{ id: "xox", name: "XOX" }],
   protocolSpecs: [
     {
-      key: "xox-start",
-      room: "xox",
-      scenario: "start",
-      title: "[START][XOX]",
+      key: "game-room-xox-user-start",
+      room: "game-room",
+      scenario: "xox-user-start",
+      title: "[START][GAME-ROOM][XOX][USER-FIRST]",
       editable: true,
     },
   ],
@@ -29,23 +31,23 @@ test("RoomProtocolRegistry resolves manifest protocol metadata", async () => {
   RoomProtocolRegistry.reset();
   await RoomProtocolRegistry.syncInstalledRooms([room]);
 
-  const resolved = RoomProtocolRegistry.resolve("xox", "start");
+  const resolved = RoomProtocolRegistry.resolve("game-room", "xox-user-start");
 
-  assert.equal(resolved?.key, "xox-start");
-  assert.equal(resolved?.title, "[START][XOX]");
-  assert.deepEqual(RoomProtocolRegistry.listKnownKeys(), ["xox-start"]);
+  assert.equal(resolved?.key, "game-room-xox-user-start");
+  assert.equal(resolved?.title, "[START][GAME-ROOM][XOX][USER-FIRST]");
+  assert.deepEqual(RoomProtocolRegistry.listKnownKeys(), ["game-room-xox-user-start"]);
 });
 
 test("RoomProtocolRegistry merges runtime and saved protocol bodies", async () => {
   RoomProtocolRegistry.reset();
   await RoomProtocolRegistry.syncInstalledRooms([room]);
-  RoomProtocolRegistry.registerRuntimeProtocols("xox", {
-    "xox-start": "You are playing XOX against the user.",
+  RoomProtocolRegistry.registerRuntimeProtocols("game-room", {
+    "game-room-xox-user-start": "Prepare the XOX board for the user-first match.",
   });
 
   const merged = RoomProtocolRegistry.mergeProtocolMap({
-    "xox-start": "Saved override body",
+    "game-room-xox-user-start": "Saved override body",
   });
 
-  assert.equal(merged["xox-start"], "Saved override body");
+  assert.equal(merged["game-room-xox-user-start"], "Saved override body");
 });

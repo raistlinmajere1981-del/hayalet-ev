@@ -18,10 +18,16 @@ test("rooms scene page registers nav, template, controller, and scene background
   assert.match(pageSource, /id="page-rooms"/);
   assert.match(pageSource, /id="rooms-scene-root"/);
   assert.match(pageSource, /id="rooms-classic-shell"/);
-  assert.match(controllerSource, /createSceneDebugRuntimeSession\("rooms"\)/);
+  assert.match(controllerSource, /createSceneDebugRuntimeSession\("rooms",\s*\{/);
+  assert.match(controllerSource, /createRoomsCorridorSceneDebugStore\(\{/);
   assert.doesNotMatch(controllerSource, /createSceneDebugStore\("rooms"\)/);
   assert.match(controllerSource, /getSceneRoomBackgroundSrc\("rooms"\)/);
   assert.match(controllerSource, /isSceneDebugRoomActive\("rooms"\)/);
+  assert.match(controllerSource, /RoomRegistry\.subscribe\(\(rooms\)\s*=>/);
+  assert.match(controllerSource, /const installedRoom = this\.installedRooms\.find\(\(entry\) => entry\.scene\?\.roomsHotspot\.id === id\) \?\? null;/);
+  assert.match(controllerSource, /navigateToScenePage\(getRoomPageName\(roomId\)\)/);
+  assert.match(controllerSource, /if \(installedRoom !== null && this\.editor === null\) \{/);
+  assert.match(controllerSource, /navigateToScenePage\(getRoomPageName\(installedRoom\.id\)\)/);
   assert.match(sceneShellSource, /\[data-ui-mode="scene"\] \.top-bar/);
   assert.match(sceneShellSource, /\[data-ui-mode="scene"\] \.main-content/);
 });

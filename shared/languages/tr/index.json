@@ -60,7 +60,7 @@
         "title": "Odalar Koridoru",
         "subtitle": "Bu koridor, Hayalet Ev'e eklenen odalar için sabit scene merkezi olacak.",
         "panelTitle": "Mevcut Aşama",
-        "panelDescription": "Arka plan ve scene-debug bağlantısı hazır. Kapı atamaları ile oda yönlendirmeleri bir sonraki adımda bağlanacak."
+        "panelDescription": "Kurulu odalar burada scene modda kapı hedefi, classic modda ise açılış kartı olarak gösterilir."
       }
     },
     "analyze": {
@@ -425,14 +425,18 @@
     "roomPage": {
       "page": {
         "badge": "Oda",
+        "featuresTitle": "Ana Fonksiyonlar",
         "runtimeTitle": "Runtime",
         "entryPointsTitle": "Entry Points",
         "runtimeSceneAriaLabel": "Oda runtime sahnesi",
         "subtitleNamed": "{{name}} izole room runtime olarak yüklendi.",
         "subtitleDefault": "Installed room runtime hazır.",
+        "backToRooms": "Koridora dön",
         "labels": {
           "id": "ID",
           "version": "Version",
+          "feature": "Aktif Fonksiyon",
+          "features": "Fonksiyon Sayısı",
           "installed": "Installed",
           "runtime": "Runtime",
           "host": "Host",
@@ -784,14 +788,15 @@
       "ariaLabel": "Ayar güvertesi",
       "kicker": "Topbar ayarları",
       "title": "Kontrol Güvertesi",
-      "subtitle": "Backup, oda yönetimi, canlı log ve temayı tek yüzeyde yönet.",
+      "subtitle": "Tema, oda yönetimi, canlı log ve dil paketlerini tek yüzeyde yönet.",
       "currentThemeLabel": "Aktif tema",
       "nav": {
         "theme": "Tema",
         "accounts": "Hesaplar",
         "backup": "Backup",
         "rooms": "Odalar",
-        "liveLog": "Canlı Log"
+        "liveLog": "Canlı Log",
+        "languages": "Diller"
       },
       "accounts": {
         "title": "Hesap Ayarları",
@@ -803,6 +808,143 @@
         "returnRoom": "Geri",
         "returnRoomTitle": "Ayar odasına dön",
         "closeTitle": "Ayar odasını kapat"
+      }
+    },
+    "languagesEditor": {
+      "title": "Dil Editörü",
+      "toolbar": {
+        "scopeLabel": "Kapsam",
+        "localeLabel": "Dil",
+        "roomLabel": "Oda",
+        "localePlaceholder": "Paket seç",
+        "roomPlaceholder": "Oda seç"
+      },
+      "scope": {
+        "app": "Uygulama",
+        "rooms": "Odalar"
+      },
+      "actions": {
+        "refresh": "Yenile",
+        "save": "Kaydet"
+      },
+      "status": {
+        "saving": "Kaydediliyor",
+        "dirty": "Kaydedilmemiş değişiklik var",
+        "clean": "Kaydedildi"
+      },
+      "summary": {
+        "total": "Toplam anahtar",
+        "translated": "Dolu alan",
+        "missing": "Boş alan",
+        "visible": "Listelenen",
+        "warnings": "Uyarı"
+      },
+      "filters": {
+        "title": "Filtreler",
+        "searchLabel": "Ara",
+        "searchPlaceholder": "Anahtar, kaynak ya da karşılık içinde ara",
+        "onlyMissing": "Sadece boşlar",
+        "onlyDifferent": "TR'den farklılar"
+      },
+      "categories": {
+        "title": "Kategoriler",
+        "all": "Tüm alanlar",
+        "missingShort": "{{count}} boş"
+      },
+      "main": {
+        "scope": {
+          "app": "Uygulama paketi",
+          "room": "Oda paketi: {{room}}"
+        },
+        "idleTitle": "Bir dil paketi seç",
+        "pendingCategoryTitle": "{{locale}} için kategori seç",
+        "title": "{{locale}} düzenleme yüzeyi",
+        "visibleCount": "{{visible}} / {{total}} alan"
+      },
+      "entry": {
+        "source": "TR kaynak",
+        "target": "Seçili dil karşılığı",
+        "noSource": "Bu anahtar için TR kaynak bulunamadı.",
+        "badges": {
+          "missing": "Boş",
+          "extra": "Ek anahtar",
+          "placeholders": "Token uyarısı",
+          "newlines": "Satır kırılımı"
+        }
+      },
+      "meta": {
+        "currentTitle": "Aktif çalışma bilgisi",
+        "localeLabel": "Seçili locale",
+        "scopeLabel": "Aktif kapsam",
+        "runtimeKeyLabel": "Runtime anahtar kökü",
+        "sourceKindLabel": "Kaynak tipi",
+        "sourceKinds": {
+          "builtin": "Yerleşik + override",
+          "external": "Harici override"
+        },
+        "savePathLabel": "Kaydetme dizini",
+        "roomLabel": "Seçili oda",
+        "sourcePathLabel": "TR kaynak yolu",
+        "appSettingsTitle": "Dil meta bilgileri",
+        "roomSettingsTitle": "Oda paket notu",
+        "roomHint": "Oda paketlerinde meta manifest yoktur; burada yalnızca locale dosyaları düzenlenir.",
+        "nativeNameLabel": "Yerel ad",
+        "englishNameLabel": "İngilizce ad",
+        "directionLabel": "Yazım yönü",
+        "selectorLanguageLabel": "Seçici dili"
+      },
+      "create": {
+        "title": "Boş dil şablonu oluştur",
+        "appHint": "TR şablonundaki tüm anahtarlar oluşturulur, seçili dil karşılıkları boş bırakılır.",
+        "roomHint": "Seçili odanın TR dosyasını baz alarak boş bir locale dosyası üretir.",
+        "localeLabel": "Yeni locale",
+        "localePlaceholder": "örn: de veya az-AZ",
+        "nativeNameLabel": "Yerel ad",
+        "englishNameLabel": "İngilizce ad",
+        "directionLabel": "Yazım yönü",
+        "selectorLanguageLabel": "Seçici dili",
+        "button": "Şablon oluştur"
+      },
+      "direction": {
+        "ltr": "Soldan sağa",
+        "rtl": "Sağdan sola"
+      },
+      "selector": {
+        "tr": "Türkçe seçici",
+        "en": "İngilizce seçici"
+      },
+      "empty": {
+        "selectPackageTitle": "Henüz paket seçilmedi",
+        "selectPackageBody": "Düzenleme alanını doldurmak için önce düzenleyeceğin paketi seç.",
+        "selectCategoryTitle": "Kategori seçimi bekleniyor",
+        "selectCategoryBody": "Paket hazır. Düzenleme alanını açmak için soldan bir kategori seç.",
+        "loadingTitle": "Dil paketi yükleniyor",
+        "loadingBody": "Kaynaklar okunurken editör birkaç saniye boş görünebilir.",
+        "sourceMissingTitle": "TR kaynak bulunamadı",
+        "sourceMissingBody": "Bu kapsam için TR kaynak dosyası olmadan boş şablon ya da güvenli kategori görünümü üretilemiyor.",
+        "noneTitle": "Düzenlenecek alan bulunamadı",
+        "noneBody": "Seçili kapsam için okunabilir çeviri anahtarı bulunamadı.",
+        "filteredTitle": "Filtre sonucu boş",
+        "filteredBody": "Arama ya da filtreleri gevşeterek daha fazla alan gösterebilirsin."
+      },
+      "toasts": {
+        "loadError": "Dil editörü verileri yüklenemedi",
+        "saveSuccess": "Dil paketi kaydedildi",
+        "saveError": "Dil paketi kaydedilemedi",
+        "createSuccess": "Boş dil şablonu oluşturuldu",
+        "createError": "Boş dil şablonu oluşturulamadı"
+      },
+      "errors": {
+        "savePathMissing": "Geçerli bir kaydetme yolu çözümlenemedi.",
+        "saveFailed": "Dosya sistemi yazma işlemi başarısız oldu.",
+        "localeRequired": "Yeni dil için locale alanı zorunlu.",
+        "localeExists": "Bu locale zaten mevcut.",
+        "createFailed": "Şablon dosyaları yazılamadı.",
+        "roomRequired": "Önce bir oda seçmelisin.",
+        "sourceMissing": "TR kaynak dosyası bulunamadı."
+      },
+      "confirm": {
+        "discard": "Kaydedilmemiş değişiklikler var. Devam edersen bu düzenlemeler kaybolacak. Yine de devam etmek istiyor musun?"
       }
     },
     "liveLog": {
@@ -965,6 +1107,14 @@
         "bundleButton": "İçe aktar",
         "bundleFilterName": "Oda Paketleri"
       },
+      "confirm": {
+        "installTitle": "Oda eklensin mi?",
+        "installMessage": "{{room}} menüye eklenecek.",
+        "updateTitle": "Oda güncellensin mi?",
+        "updateMessage": "{{room}} workspace sürümüyle güncellenecek.",
+        "removeTitle": "Oda kaldırılsın mı?",
+        "removeMessage": "{{room}} menüden kaldırılacak."
+      },
       "toasts": {
         "filePickerUnavailable": "Dosya seçici hazır değil",
         "invalidBundleExtension": "Seçilen dosya .hevroom.json olmalı",
@@ -980,7 +1130,8 @@
         "exportError": "Workspace export başarısız",
         "removeUnavailable": "Oda kaldırma hazır değil",
         "removeSuccess": "Oda kaldırıldı",
-        "removeError": "Oda kaldırılamadı"
+        "removeError": "Oda kaldırılamadı",
+        "restartRequired": "Yeni oda kayıtlarını uygulamak için restart gerekiyor."
       }
     },
     "backup": {

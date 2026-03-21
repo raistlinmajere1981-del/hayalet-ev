@@ -1,4 +1,4 @@
-export const ROOM_SCHEMA_VERSION = 1 as const;
+export const ROOM_SCHEMA_VERSION = 2 as const;
 
 export type RoomCommandScope = "room-ui" | "ai-slots" | "assistant" | "system";
 
@@ -8,6 +8,11 @@ export interface RoomMenuConfig {
   label: string;
   icon?: string;
   order?: number;
+}
+
+export interface RoomRuntimeConfig {
+  uiEntry: string;
+  hostEntry: string;
 }
 
 export interface RoomCommandSpec {
@@ -24,6 +29,67 @@ export interface RoomProtocolSpec {
   editable?: boolean;
 }
 
+export interface RoomSceneRect {
+  leftPx: number;
+  topPx: number;
+  widthPx: number;
+  heightPx: number;
+}
+
+export interface RoomSceneTextConfig {
+  text?: string;
+  textKey?: string;
+}
+
+export interface RoomSceneHotspotConfig {
+  id: string;
+  rect: RoomSceneRect;
+  label?: RoomSceneTextConfig;
+}
+
+export interface RoomSceneTransparentWindowConfig {
+  leftPct: number;
+  topPct: number;
+  widthPct: number;
+  heightPct: number;
+}
+
+export interface RoomFeatureSceneViewConfig {
+  id: string;
+  backgroundSrc: string;
+  panelArtSrc?: string;
+  transparentWindow?: RoomSceneTransparentWindowConfig;
+}
+
+export interface RoomFeatureSceneConfig {
+  hotspot: RoomSceneHotspotConfig;
+  view: RoomFeatureSceneViewConfig;
+}
+
+export interface RoomSceneConfig {
+  referenceSize: {
+    width: number;
+    height: number;
+  };
+  roomBackgroundSrc: string;
+  roomsHotspot: RoomSceneHotspotConfig;
+  backHotspot: RoomSceneHotspotConfig;
+}
+
+export interface RoomI18nConfig {
+  baseDir: string;
+}
+
+export interface RoomFeatureManifest {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  commandSpecs?: RoomCommandSpec[];
+  protocolSpecs?: RoomProtocolSpec[];
+  scene?: RoomFeatureSceneConfig;
+}
+
 export interface RoomManifest {
   schemaVersion: typeof ROOM_SCHEMA_VERSION;
   id: string;
@@ -31,8 +97,11 @@ export interface RoomManifest {
   version: string;
   description?: string;
   menu: RoomMenuConfig;
-  uiEntry: string;
-  hostEntry: string;
+  runtime: RoomRuntimeConfig;
+  defaultFeatureId: string;
+  features: RoomFeatureManifest[];
+  scene?: RoomSceneConfig;
+  i18n?: RoomI18nConfig;
   storageNamespace?: string;
   engineRange?: string;
   permissions?: string[];
@@ -66,16 +135,53 @@ export interface RoomWorkspaceEntry {
   manifest?: RoomManifest;
 }
 
+export interface InstalledRoomFeatureSceneViewRecord {
+  id: string;
+  backgroundPath: string;
+  panelArtPath?: string;
+  transparentWindow?: RoomSceneTransparentWindowConfig;
+}
+
+export interface InstalledRoomFeatureSceneRecord {
+  hotspot: RoomSceneHotspotConfig;
+  view: InstalledRoomFeatureSceneViewRecord;
+}
+
+export interface InstalledRoomFeatureRecord {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  commandSpecs?: RoomCommandSpec[];
+  protocolSpecs?: RoomProtocolSpec[];
+  scene?: InstalledRoomFeatureSceneRecord;
+}
+
+export interface InstalledRoomSceneRecord {
+  referenceSize: {
+    width: number;
+    height: number;
+  };
+  roomBackgroundPath: string;
+  roomsHotspot: RoomSceneHotspotConfig;
+  backHotspot: RoomSceneHotspotConfig;
+}
+
 export interface InstalledRoomRecord {
   id: string;
   name: string;
   version: string;
   description?: string;
+  icon?: string;
   sourceDir: string;
   installedDir: string;
   manifestPath: string;
   runtimeEntryPath: string;
   hostEntryPath: string;
+  defaultFeatureId: string;
+  features: InstalledRoomFeatureRecord[];
+  scene?: InstalledRoomSceneRecord;
+  i18nBaseDir?: string;
   commandSpecs?: RoomCommandSpec[];
   protocolSpecs?: RoomProtocolSpec[];
   installedAt: string;
@@ -136,12 +242,42 @@ function readRequiredString(
   return value;
 }
 
+function readFiniteNumber(
+  record: Record<string, unknown>,
+  key: string,
+  errors: string[]
+): number | undefined {
+  const value = record[key];
+  if (typeof value !== "number" || Number.isFinite(value) === false) {
+    errors.push(`${key} must be a finite number`);
+    return undefined;
+  }
+  return value;
+}
+
+function readPositiveNumber(
+  record: Record<string, unknown>,
+  key: string,
+  errors: string[]
+): number | undefined {
+  const value = readFiniteNumber(record, key, errors);
+  if (value !== undefined && value <= 0) {
+    errors.push(`${key} must be greater than 0`);
+    return undefined;
+  }
+  return value;
+}
+
 function hasDuplicateValues(values: string[]): boolean {
   return new Set(values).size !== values.length;
 }
 
 export function isValidRoomId(value: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+}
+
+export function isValidRoomFeatureId(value: string): boolean {
+  return isValidRoomId(value);
 }
 
 export function isValidRoomCommandName(value: string): boolean {
@@ -161,6 +297,532 @@ export function normalizeRoomRelativePath(value: string): string | null {
     return null;
   }
   return parts.join("/");
+}
+
+function readMenuConfig(
+  record: Record<string, unknown>,
+  errors: string[]
+): RoomMenuConfig | undefined {
+  const menuRaw = record["menu"];
+  if (!isRecord(menuRaw)) {
+    errors.push("menu is required");
+    return undefined;
+  }
+
+  const label = readRequiredString(menuRaw, "label", errors);
+  const icon = readOptionalString(menuRaw, "icon", errors);
+  const orderRaw = menuRaw["order"];
+  let order: number | undefined;
+  if (orderRaw !== undefined) {
+    if (typeof orderRaw !== "number" || Number.isFinite(orderRaw) === false) {
+      errors.push("menu.order must be a number");
+    } else {
+      order = orderRaw;
+    }
+  }
+
+  if (label === undefined) {
+    return undefined;
+  }
+
+  return {
+    label,
+    ...(icon !== undefined ? { icon } : {}),
+    ...(order !== undefined ? { order } : {}),
+  };
+}
+
+function readRuntimeConfig(
+  record: Record<string, unknown>,
+  errors: string[]
+): RoomRuntimeConfig | undefined {
+  const runtimeRaw = record["runtime"];
+  if (!isRecord(runtimeRaw)) {
+    errors.push("runtime is required");
+    return undefined;
+  }
+
+  const uiEntryRaw = readRequiredString(runtimeRaw, "uiEntry", errors);
+  const hostEntryRaw = readRequiredString(runtimeRaw, "hostEntry", errors);
+  const uiEntry = uiEntryRaw !== undefined ? normalizeRoomRelativePath(uiEntryRaw) : null;
+  const hostEntry = hostEntryRaw !== undefined ? normalizeRoomRelativePath(hostEntryRaw) : null;
+  if (uiEntryRaw !== undefined && uiEntry === null) {
+    errors.push("runtime.uiEntry must be a safe relative path");
+  }
+  if (hostEntryRaw !== undefined && hostEntry === null) {
+    errors.push("runtime.hostEntry must be a safe relative path");
+  }
+
+  if (uiEntry === null || hostEntry === null) {
+    return undefined;
+  }
+
+  return {
+    uiEntry,
+    hostEntry,
+  };
+}
+
+function readCommandSpecs(
+  rawValue: unknown,
+  path: string,
+  errors: string[]
+): RoomCommandSpec[] | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(rawValue)) {
+    errors.push(`${path} must be an array`);
+    return undefined;
+  }
+
+  const parsed: RoomCommandSpec[] = [];
+  rawValue.forEach((item, index) => {
+    if (!isRecord(item)) {
+      errors.push(`${path}[${String(index)}] must be an object`);
+      return;
+    }
+    const commandName = readRequiredString(item, "name", errors);
+    if (commandName !== undefined && isValidRoomCommandName(commandName) === false) {
+      errors.push(`${path}[${String(index)}].name must match /^[A-Za-z0-9_]+$/`);
+    }
+    const descriptionValue = readOptionalString(item, "description", errors);
+    const scopeRaw = item["scope"];
+    let scope: RoomCommandScope | undefined;
+    if (scopeRaw !== undefined) {
+      if (typeof scopeRaw !== "string") {
+        errors.push(`${path}[${String(index)}].scope is invalid`);
+      } else if (
+        scopeRaw !== "room-ui" &&
+        scopeRaw !== "ai-slots" &&
+        scopeRaw !== "assistant" &&
+        scopeRaw !== "system" &&
+        scopeRaw !== LEGACY_ASSISTANT_SCOPE
+      ) {
+        errors.push(`${path}[${String(index)}].scope is invalid`);
+      } else {
+        scope = scopeRaw === LEGACY_ASSISTANT_SCOPE ? "assistant" : (scopeRaw as RoomCommandScope);
+      }
+    }
+    if (commandName !== undefined) {
+      parsed.push({
+        name: commandName,
+        ...(descriptionValue !== undefined ? { description: descriptionValue } : {}),
+        ...(scope !== undefined ? { scope } : {}),
+      });
+    }
+  });
+
+  if (hasDuplicateValues(parsed.map((item) => item.name))) {
+    errors.push(`${path} names must be unique`);
+  }
+
+  return parsed;
+}
+
+function readProtocolSpecs(
+  rawValue: unknown,
+  path: string,
+  errors: string[]
+): RoomProtocolSpec[] | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(rawValue)) {
+    errors.push(`${path} must be an array`);
+    return undefined;
+  }
+
+  const parsed: RoomProtocolSpec[] = [];
+  rawValue.forEach((item, index) => {
+    if (!isRecord(item)) {
+      errors.push(`${path}[${String(index)}] must be an object`);
+      return;
+    }
+    const key = readRequiredString(item, "key", errors);
+    const room = readRequiredString(item, "room", errors);
+    const scenario = readRequiredString(item, "scenario", errors);
+    const title = readRequiredString(item, "title", errors);
+    const editableRaw = item["editable"];
+    let editable: boolean | undefined;
+    if (editableRaw !== undefined) {
+      if (typeof editableRaw !== "boolean") {
+        errors.push(`${path}[${String(index)}].editable must be boolean`);
+      } else {
+        editable = editableRaw;
+      }
+    }
+    if (key !== undefined && room !== undefined && scenario !== undefined && title !== undefined) {
+      parsed.push({
+        key,
+        room,
+        scenario,
+        title,
+        ...(editable !== undefined ? { editable } : {}),
+      });
+    }
+  });
+
+  if (hasDuplicateValues(parsed.map((item) => item.key))) {
+    errors.push(`${path} keys must be unique`);
+  }
+
+  return parsed;
+}
+
+function readSceneRect(
+  rawValue: unknown,
+  path: string,
+  errors: string[]
+): RoomSceneRect | undefined {
+  if (!isRecord(rawValue)) {
+    errors.push(`${path} must be an object`);
+    return undefined;
+  }
+
+  const leftPx = readFiniteNumber(rawValue, "leftPx", errors);
+  const topPx = readFiniteNumber(rawValue, "topPx", errors);
+  const widthPx = readPositiveNumber(rawValue, "widthPx", errors);
+  const heightPx = readPositiveNumber(rawValue, "heightPx", errors);
+
+  if (
+    leftPx === undefined ||
+    topPx === undefined ||
+    widthPx === undefined ||
+    heightPx === undefined
+  ) {
+    return undefined;
+  }
+
+  return {
+    leftPx,
+    topPx,
+    widthPx,
+    heightPx,
+  };
+}
+
+function readSceneTextConfig(
+  rawValue: unknown,
+  path: string,
+  errors: string[]
+): RoomSceneTextConfig | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(rawValue)) {
+    errors.push(`${path} must be an object`);
+    return undefined;
+  }
+
+  const text = readOptionalString(rawValue, "text", errors);
+  const textKey = readOptionalString(rawValue, "textKey", errors);
+  if (text === undefined && textKey === undefined) {
+    errors.push(`${path} requires text or textKey`);
+    return undefined;
+  }
+
+  return {
+    ...(text !== undefined ? { text } : {}),
+    ...(textKey !== undefined ? { textKey } : {}),
+  };
+}
+
+function readSceneHotspotConfig(
+  rawValue: unknown,
+  path: string,
+  fallbackId: string,
+  errors: string[]
+): RoomSceneHotspotConfig | undefined {
+  if (!isRecord(rawValue)) {
+    errors.push(`${path} must be an object`);
+    return undefined;
+  }
+
+  const id = readOptionalString(rawValue, "id", errors) ?? fallbackId;
+  const rect = readSceneRect(rawValue["rect"], `${path}.rect`, errors);
+  const label = readSceneTextConfig(rawValue["label"], `${path}.label`, errors);
+  if (rect === undefined) {
+    return undefined;
+  }
+
+  return {
+    id,
+    rect,
+    ...(label !== undefined ? { label } : {}),
+  };
+}
+
+function readTransparentWindowConfig(
+  rawValue: unknown,
+  path: string,
+  errors: string[]
+): RoomSceneTransparentWindowConfig | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(rawValue)) {
+    errors.push(`${path} must be an object`);
+    return undefined;
+  }
+
+  const leftPct = readPositiveNumber(rawValue, "leftPct", errors);
+  const topPct = readPositiveNumber(rawValue, "topPct", errors);
+  const widthPct = readPositiveNumber(rawValue, "widthPct", errors);
+  const heightPct = readPositiveNumber(rawValue, "heightPct", errors);
+
+  if (
+    leftPct === undefined ||
+    topPct === undefined ||
+    widthPct === undefined ||
+    heightPct === undefined
+  ) {
+    return undefined;
+  }
+
+  return {
+    leftPct,
+    topPct,
+    widthPct,
+    heightPct,
+  };
+}
+
+function readFeatureSceneConfig(
+  rawValue: unknown,
+  featureId: string,
+  errors: string[]
+): RoomFeatureSceneConfig | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(rawValue)) {
+    errors.push(`features.${featureId}.scene must be an object`);
+    return undefined;
+  }
+
+  const hotspot = readSceneHotspotConfig(
+    rawValue["hotspot"],
+    `features.${featureId}.scene.hotspot`,
+    `${featureId}-hotspot`,
+    errors
+  );
+
+  const viewRaw = rawValue["view"];
+  if (!isRecord(viewRaw)) {
+    errors.push(`features.${featureId}.scene.view must be an object`);
+    return undefined;
+  }
+
+  const viewId = readRequiredString(viewRaw, "id", errors);
+  const backgroundSrcRaw = readRequiredString(viewRaw, "backgroundSrc", errors);
+  const backgroundSrc =
+    backgroundSrcRaw !== undefined ? normalizeRoomRelativePath(backgroundSrcRaw) : null;
+  if (backgroundSrcRaw !== undefined && backgroundSrc === null) {
+    errors.push(`features.${featureId}.scene.view.backgroundSrc must be a safe relative path`);
+  }
+
+  const panelArtSrcRaw = readOptionalString(viewRaw, "panelArtSrc", errors);
+  const panelArtSrc =
+    panelArtSrcRaw !== undefined ? normalizeRoomRelativePath(panelArtSrcRaw) : null;
+  if (panelArtSrcRaw !== undefined && panelArtSrc === null) {
+    errors.push(`features.${featureId}.scene.view.panelArtSrc must be a safe relative path`);
+  }
+
+  const transparentWindow = readTransparentWindowConfig(
+    viewRaw["transparentWindow"],
+    `features.${featureId}.scene.view.transparentWindow`,
+    errors
+  );
+
+  if (hotspot === undefined || viewId === undefined || backgroundSrc === null) {
+    return undefined;
+  }
+
+  return {
+    hotspot,
+    view: {
+      id: viewId,
+      backgroundSrc,
+      ...(panelArtSrc !== null ? { panelArtSrc } : {}),
+      ...(transparentWindow !== undefined ? { transparentWindow } : {}),
+    },
+  };
+}
+
+function readFeatureManifest(
+  rawValue: unknown,
+  index: number,
+  errors: string[]
+): RoomFeatureManifest | undefined {
+  if (!isRecord(rawValue)) {
+    errors.push(`features[${String(index)}] must be an object`);
+    return undefined;
+  }
+
+  const id = readRequiredString(rawValue, "id", errors);
+  if (id !== undefined && isValidRoomFeatureId(id) === false) {
+    errors.push(`features[${String(index)}].id must match /^[a-z0-9]+(?:-[a-z0-9]+)*$/`);
+  }
+  const name = readRequiredString(rawValue, "name", errors);
+  const description = readOptionalString(rawValue, "description", errors);
+  const icon = readOptionalString(rawValue, "icon", errors);
+  const commandSpecs = readCommandSpecs(
+    rawValue["commandSpecs"],
+    `features[${String(index)}].commandSpecs`,
+    errors
+  );
+  const protocolSpecs = readProtocolSpecs(
+    rawValue["protocolSpecs"],
+    `features[${String(index)}].protocolSpecs`,
+    errors
+  );
+  const scene = readFeatureSceneConfig(rawValue["scene"], id ?? `feature-${String(index)}`, errors);
+
+  if (id === undefined || name === undefined) {
+    return undefined;
+  }
+
+  return {
+    id,
+    name,
+    ...(description !== undefined ? { description } : {}),
+    ...(icon !== undefined ? { icon } : {}),
+    ...(commandSpecs !== undefined ? { commandSpecs } : {}),
+    ...(protocolSpecs !== undefined ? { protocolSpecs } : {}),
+    ...(scene !== undefined ? { scene } : {}),
+  };
+}
+
+function readSceneConfig(
+  rawValue: unknown,
+  features: RoomFeatureManifest[],
+  errors: string[]
+): RoomSceneConfig | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(rawValue)) {
+    errors.push("scene must be an object");
+    return undefined;
+  }
+
+  const referenceSizeRaw = rawValue["referenceSize"];
+  if (!isRecord(referenceSizeRaw)) {
+    errors.push("scene.referenceSize must be an object");
+    return undefined;
+  }
+
+  const width = readPositiveNumber(referenceSizeRaw, "width", errors);
+  const height = readPositiveNumber(referenceSizeRaw, "height", errors);
+  const roomBackgroundSrcRaw = readRequiredString(rawValue, "roomBackgroundSrc", errors);
+  const roomBackgroundSrc =
+    roomBackgroundSrcRaw !== undefined ? normalizeRoomRelativePath(roomBackgroundSrcRaw) : null;
+  if (roomBackgroundSrcRaw !== undefined && roomBackgroundSrc === null) {
+    errors.push("scene.roomBackgroundSrc must be a safe relative path");
+  }
+
+  const roomsHotspot = readSceneHotspotConfig(
+    rawValue["roomsHotspot"],
+    "scene.roomsHotspot",
+    "room-entry",
+    errors
+  );
+  const backHotspot = readSceneHotspotConfig(
+    rawValue["backHotspot"],
+    "scene.backHotspot",
+    "room-back",
+    errors
+  );
+
+  const missingFeatureScene = features
+    .filter((feature) => feature.scene === undefined)
+    .map((feature) => feature.id);
+  if (missingFeatureScene.length > 0) {
+    errors.push(`scene requires feature.scene for: ${missingFeatureScene.join(", ")}`);
+  }
+
+  if (
+    width === undefined ||
+    height === undefined ||
+    roomBackgroundSrc === null ||
+    roomsHotspot === undefined ||
+    backHotspot === undefined
+  ) {
+    return undefined;
+  }
+
+  return {
+    referenceSize: {
+      width,
+      height,
+    },
+    roomBackgroundSrc,
+    roomsHotspot,
+    backHotspot,
+  };
+}
+
+function readI18nConfig(rawValue: unknown, errors: string[]): RoomI18nConfig | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(rawValue)) {
+    errors.push("i18n must be an object");
+    return undefined;
+  }
+
+  const baseDirRaw = readRequiredString(rawValue, "baseDir", errors);
+  const baseDir = baseDirRaw !== undefined ? normalizeRoomRelativePath(baseDirRaw) : null;
+  if (baseDirRaw !== undefined && baseDir === null) {
+    errors.push("i18n.baseDir must be a safe relative path");
+  }
+
+  if (baseDir === null) {
+    return undefined;
+  }
+
+  return { baseDir };
+}
+
+export function flattenRoomCommandSpecs(manifest: RoomManifest): RoomCommandSpec[] {
+  return [
+    ...(manifest.commandSpecs ?? []),
+    ...manifest.features.flatMap((feature) => feature.commandSpecs ?? []),
+  ];
+}
+
+export function flattenRoomProtocolSpecs(manifest: RoomManifest): RoomProtocolSpec[] {
+  return [
+    ...(manifest.protocolSpecs ?? []),
+    ...manifest.features.flatMap((feature) => feature.protocolSpecs ?? []),
+  ];
+}
+
+export function collectRoomManifestRequiredFilePaths(manifest: RoomManifest): string[] {
+  const paths = new Set<string>();
+  paths.add(manifest.runtime.uiEntry);
+  paths.add(manifest.runtime.hostEntry);
+  if (manifest.scene !== undefined) {
+    paths.add(manifest.scene.roomBackgroundSrc);
+  }
+  manifest.features.forEach((feature) => {
+    if (feature.scene === undefined) {
+      return;
+    }
+    paths.add(feature.scene.view.backgroundSrc);
+    if (feature.scene.view.panelArtSrc !== undefined) {
+      paths.add(feature.scene.view.panelArtSrc);
+    }
+  });
+  return Array.from(paths.values()).sort((left, right) => left.localeCompare(right));
 }
 
 export function validateRoomManifest(candidate: unknown): RoomManifestValidationResult {
@@ -190,45 +852,12 @@ export function validateRoomManifest(candidate: unknown): RoomManifestValidation
   }
 
   const description = readOptionalString(candidate, "description", errors);
-
-  const menuRaw = candidate["menu"];
-  let menu: RoomMenuConfig | undefined;
-  if (!isRecord(menuRaw)) {
-    errors.push("menu is required");
-  } else {
-    const label = readRequiredString(menuRaw, "label", errors);
-    const icon = readOptionalString(menuRaw, "icon", errors);
-    const orderRaw = menuRaw["order"];
-    let order: number | undefined;
-    if (orderRaw !== undefined) {
-      if (typeof orderRaw !== "number" || Number.isFinite(orderRaw) === false) {
-        errors.push("menu.order must be a number");
-      } else {
-        order = orderRaw;
-      }
-    }
-    if (label !== undefined) {
-      menu = {
-        label,
-        ...(icon !== undefined ? { icon } : {}),
-        ...(order !== undefined ? { order } : {}),
-      };
-    }
-  }
-
-  const uiEntryRaw = readRequiredString(candidate, "uiEntry", errors);
-  const hostEntryRaw = readRequiredString(candidate, "hostEntry", errors);
-  const uiEntry = uiEntryRaw !== undefined ? normalizeRoomRelativePath(uiEntryRaw) : null;
-  const hostEntry = hostEntryRaw !== undefined ? normalizeRoomRelativePath(hostEntryRaw) : null;
-  if (uiEntryRaw !== undefined && uiEntry === null) {
-    errors.push("uiEntry must be a safe relative path");
-  }
-  if (hostEntryRaw !== undefined && hostEntry === null) {
-    errors.push("hostEntry must be a safe relative path");
-  }
-
+  const menu = readMenuConfig(candidate, errors);
+  const runtime = readRuntimeConfig(candidate, errors);
+  const defaultFeatureId = readRequiredString(candidate, "defaultFeatureId", errors);
   const storageNamespace = readOptionalString(candidate, "storageNamespace", errors);
   const engineRange = readOptionalString(candidate, "engineRange", errors);
+  const i18n = readI18nConfig(candidate["i18n"], errors);
 
   const permissionsRaw = candidate["permissions"];
   let permissions: string[] | undefined;
@@ -245,111 +874,63 @@ export function validateRoomManifest(candidate: unknown): RoomManifestValidation
     }
   }
 
-  const commandSpecsRaw = candidate["commandSpecs"];
-  let commandSpecs: RoomCommandSpec[] | undefined;
-  if (commandSpecsRaw !== undefined) {
-    if (!Array.isArray(commandSpecsRaw)) {
-      errors.push("commandSpecs must be an array");
-    } else {
-      const parsed: RoomCommandSpec[] = [];
-      commandSpecsRaw.forEach((item, index) => {
-        if (!isRecord(item)) {
-          errors.push(`commandSpecs[${String(index)}] must be an object`);
-          return;
-        }
-        const commandName = readRequiredString(item, "name", errors);
-        if (commandName !== undefined && isValidRoomCommandName(commandName) === false) {
-          errors.push(`commandSpecs[${String(index)}].name must match /^[A-Za-z0-9_]+$/`);
-        }
-        const descriptionValue = readOptionalString(item, "description", errors);
-        const scopeRaw = item["scope"];
-        let scope: RoomCommandScope | undefined;
-        if (scopeRaw !== undefined) {
-          if (typeof scopeRaw !== "string") {
-            errors.push(`commandSpecs[${String(index)}].scope is invalid`);
-          } else if (
-            scopeRaw !== "room-ui" &&
-            scopeRaw !== "ai-slots" &&
-            scopeRaw !== "assistant" &&
-            scopeRaw !== "system" &&
-            scopeRaw !== LEGACY_ASSISTANT_SCOPE
-          ) {
-            errors.push(`commandSpecs[${String(index)}].scope is invalid`);
-          } else {
-            scope =
-              scopeRaw === LEGACY_ASSISTANT_SCOPE ? "assistant" : (scopeRaw as RoomCommandScope);
-          }
-        }
-        if (commandName !== undefined) {
-          parsed.push({
-            name: commandName,
-            ...(descriptionValue !== undefined ? { description: descriptionValue } : {}),
-            ...(scope !== undefined ? { scope } : {}),
-          });
-        }
-      });
-      if (hasDuplicateValues(parsed.map((item) => item.name))) {
-        errors.push("commandSpecs names must be unique");
-      }
-      commandSpecs = parsed;
+  const commandSpecs = readCommandSpecs(candidate["commandSpecs"], "commandSpecs", errors);
+  const protocolSpecs = readProtocolSpecs(candidate["protocolSpecs"], "protocolSpecs", errors);
+
+  const featuresRaw = candidate["features"];
+  let features: RoomFeatureManifest[] | undefined;
+  if (!Array.isArray(featuresRaw)) {
+    errors.push("features must be an array");
+  } else if (featuresRaw.length === 0) {
+    errors.push("features must contain at least one item");
+  } else {
+    const parsed = featuresRaw
+      .map((item, index) => readFeatureManifest(item, index, errors))
+      .filter((feature): feature is RoomFeatureManifest => feature !== undefined);
+    if (hasDuplicateValues(parsed.map((feature) => feature.id))) {
+      errors.push("features ids must be unique");
+    }
+    features = parsed;
+  }
+
+  if (
+    defaultFeatureId !== undefined &&
+    features?.some((feature) => feature.id === defaultFeatureId) === false
+  ) {
+    errors.push("defaultFeatureId must match one of the feature ids");
+  }
+
+  const scene =
+    features !== undefined ? readSceneConfig(candidate["scene"], features, errors) : undefined;
+
+  if (features !== undefined) {
+    const commandNames = [
+      ...(commandSpecs ?? []).map((item) => item.name),
+      ...features.flatMap((feature) => (feature.commandSpecs ?? []).map((item) => item.name)),
+    ];
+    if (hasDuplicateValues(commandNames)) {
+      errors.push("commandSpecs names must be unique across room and features");
+    }
+
+    const protocolKeys = [
+      ...(protocolSpecs ?? []).map((item) => item.key),
+      ...features.flatMap((feature) => (feature.protocolSpecs ?? []).map((item) => item.key)),
+    ];
+    if (hasDuplicateValues(protocolKeys)) {
+      errors.push("protocolSpecs keys must be unique across room and features");
     }
   }
 
-  const protocolSpecsRaw = candidate["protocolSpecs"];
-  let protocolSpecs: RoomProtocolSpec[] | undefined;
-  if (protocolSpecsRaw !== undefined) {
-    if (!Array.isArray(protocolSpecsRaw)) {
-      errors.push("protocolSpecs must be an array");
-    } else {
-      const parsed: RoomProtocolSpec[] = [];
-      protocolSpecsRaw.forEach((item, index) => {
-        if (!isRecord(item)) {
-          errors.push(`protocolSpecs[${String(index)}] must be an object`);
-          return;
-        }
-        const key = readRequiredString(item, "key", errors);
-        const room = readRequiredString(item, "room", errors);
-        const scenario = readRequiredString(item, "scenario", errors);
-        const title = readRequiredString(item, "title", errors);
-        const editableRaw = item["editable"];
-        let editable: boolean | undefined;
-        if (editableRaw !== undefined) {
-          if (typeof editableRaw !== "boolean") {
-            errors.push(`protocolSpecs[${String(index)}].editable must be boolean`);
-          } else {
-            editable = editableRaw;
-          }
-        }
-        if (
-          key !== undefined &&
-          room !== undefined &&
-          scenario !== undefined &&
-          title !== undefined
-        ) {
-          parsed.push({
-            key,
-            room,
-            scenario,
-            title,
-            ...(editable !== undefined ? { editable } : {}),
-          });
-        }
-      });
-      if (hasDuplicateValues(parsed.map((item) => item.key))) {
-        errors.push("protocolSpecs keys must be unique");
-      }
-      protocolSpecs = parsed;
-    }
-  }
-
-  if (errors.length > 0 || id === undefined || name === undefined || version === undefined) {
-    return {
-      valid: false,
-      errors,
-    };
-  }
-
-  if (menu === undefined || uiEntry === null || hostEntry === null) {
+  if (
+    errors.length > 0 ||
+    id === undefined ||
+    name === undefined ||
+    version === undefined ||
+    menu === undefined ||
+    runtime === undefined ||
+    defaultFeatureId === undefined ||
+    features === undefined
+  ) {
     return {
       valid: false,
       errors,
@@ -362,9 +943,12 @@ export function validateRoomManifest(candidate: unknown): RoomManifestValidation
     name,
     version,
     menu,
-    uiEntry,
-    hostEntry,
+    runtime,
+    defaultFeatureId,
+    features,
     ...(description !== undefined ? { description } : {}),
+    ...(scene !== undefined ? { scene } : {}),
+    ...(i18n !== undefined ? { i18n } : {}),
     ...(storageNamespace !== undefined ? { storageNamespace } : {}),
     ...(engineRange !== undefined ? { engineRange } : {}),
     ...(permissions !== undefined ? { permissions } : {}),

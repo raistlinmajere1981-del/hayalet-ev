@@ -108,7 +108,7 @@ function getVisibleAiAccounts(): Account[] {
     .filter((account) => !assignedAccountIds.has(account.id))
     .sort(compareAccounts);
 
-  return [ai1Account, ...remaining, ai2Account].filter(
+  return [ai1Account, ai2Account, ...remaining].filter(
     (account): account is Account => account !== null
   );
 }
@@ -411,14 +411,39 @@ export function buildSceneCharacterRoster(
   }
 
   const aiAnchorQueue = getAiAnchorQueue(anchors);
-  const aiAccounts = getVisibleAiAccounts().slice(0, aiAnchorQueue.length);
-  aiAccounts.forEach((account, index) => {
-    const anchor = aiAnchorQueue[index];
-    if (anchor === undefined) {
-      return;
-    }
+  const aiAccounts = getVisibleAiAccounts();
+  const usedAiAnchorIds = new Set<string>();
+  const usedAiAccountIds = new Set<string>();
+  let aiIndex = 0;
 
-    roster.push(createAiCharacterDescriptor(account, anchor, index));
+  const pushAiCharacter = (account: Account, anchor: SceneCharacterAnchor): void => {
+    roster.push(createAiCharacterDescriptor(account, anchor, aiIndex));
+    usedAiAnchorIds.add(anchor.id);
+    usedAiAccountIds.add(account.id);
+    aiIndex += 1;
+  };
+
+  (["ai1", "ai2"] as const).forEach((slot) => {
+    const anchor = aiAnchorQueue.find(
+      (candidate) => candidate.preferredSlot === slot && !usedAiAnchorIds.has(candidate.id)
+    );
+    const account = aiAccounts.find(
+      (candidate) => getSlotForAccount(candidate.id) === slot && !usedAiAccountIds.has(candidate.id)
+    );
+
+    if (anchor !== undefined && account !== undefined) {
+      pushAiCharacter(account, anchor);
+    }
+  });
+
+  const remainingAiAnchors = aiAnchorQueue.filter((anchor) => !usedAiAnchorIds.has(anchor.id));
+  const remainingAiAccounts = aiAccounts.filter((account) => !usedAiAccountIds.has(account.id));
+
+  remainingAiAccounts.slice(0, remainingAiAnchors.length).forEach((account, index) => {
+    const anchor = remainingAiAnchors[index];
+    if (anchor !== undefined) {
+      pushAiCharacter(account, anchor);
+    }
   });
 
   const assistantAnchor = anchors.find((anchor) => anchor.characterKind === "assistant");

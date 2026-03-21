@@ -23,6 +23,30 @@ function getCatalogString(
   return typeof current === "string" ? current : undefined;
 }
 
+function listCatalogLeafPaths(
+  catalog: TranslationCatalog | null | undefined,
+  prefix: string[] = []
+): string[] {
+  if (catalog === null || catalog === undefined) {
+    return [];
+  }
+
+  return Object.entries(catalog).flatMap(([key, value]) => {
+    const path = [...prefix, key];
+    if (typeof value === "string") {
+      return [path.join(".")];
+    }
+    if (value && typeof value === "object" && Array.isArray(value) === false) {
+      return listCatalogLeafPaths(value, path);
+    }
+    return [];
+  });
+}
+
+function readRoomCatalog(locale: "en" | "tr"): TranslationCatalog {
+  return JSON.parse(readFileSync(`rooms/game-room/i18n/${locale}.json`, "utf8")) as TranslationCatalog;
+}
+
 test("whisper shell bindings resolve through the entrance namespace", () => {
   const indexHtml = readFileSync("src/index.html", "utf8");
   const whisperHtml = readFileSync("src/pages/whisper.html", "utf8");
@@ -82,23 +106,34 @@ test("catalog cleanup removes stale built-in keys and preserves translated repla
   }
 });
 
-test("room runtime locale bridge refreshes xox UI and host copy", () => {
+test("game-room room catalogs stay structurally aligned across EN and TR", () => {
+  const enCatalog = readRoomCatalog("en");
+  const trCatalog = readRoomCatalog("tr");
+
+  assert.deepEqual(listCatalogLeafPaths(trCatalog).sort(), listCatalogLeafPaths(enCatalog).sort());
+});
+
+test("room runtime locale bridge refreshes game-room UI and host copy", () => {
   const roomPageSource = readFileSync("src/js/pages/room-page.ts", "utf8");
   const roomHostRuntimeSource = readFileSync("src/js/modules/rooms/room-host-runtime.ts", "utf8");
-  const xoxUiSource = readFileSync("rooms/xox/ui/index.js", "utf8");
-  const xoxHostSource = readFileSync("rooms/xox/host/index.js", "utf8");
+  const gameRoomUiSource = readFileSync("rooms/game-room/ui/index.js", "utf8");
+  const gameRoomHostSource = readFileSync("rooms/game-room/host/index.js", "utf8");
 
-  assert.match(roomPageSource, /syncRuntimeLocale\("locale-change"\)/);
-  assert.match(roomPageSource, /locale:\s*AppI18n\.getLocale\(\)/);
-  assert.match(
-    roomPageSource,
-    /RoomHostRuntime\.handleRuntimeMessage\(this\.room\.id,\s*"room-event",\s*\{/
-  );
+  assert.match(roomPageSource, /syncRuntimeContext\("locale-change"\)/);
+  assert.match(roomPageSource, /buildRuntimeContextPayload\(reason: string\)/);
+  assert.match(roomPageSource, /nickname:\s*AppState\.getNickname\("user"\)/);
+  assert.match(roomPageSource, /ai1:\s*this\.buildSlotContext\("ai1"\)/);
+  assert.match(roomPageSource, /SlotController\.on\(eventName/);
   assert.match(roomHostRuntimeSource, /getLocale:\s*\(\): string => AppI18n\.getLocale\(\)/);
-  assert.match(xoxUiSource, /message\.type === "host-context"/);
-  assert.match(xoxUiSource, /document\.documentElement\.lang = activeLocale/);
-  assert.match(xoxHostSource, /onRoomEvent:\s*function \(payload\)/);
-  assert.match(xoxHostSource, /syncLocalizedState\(api,\s*payload\.locale\)/);
+  assert.match(gameRoomUiSource, /message\.type === "host-context"/);
+  assert.match(gameRoomUiSource, /state\.translations = message\.translations/);
+  assert.match(gameRoomUiSource, /if \(!state\.translations\) \{\s*renderBootstrap\(root\);/);
+  assert.match(gameRoomUiSource, /function renderBootstrap\(root\)/);
+  assert.match(gameRoomUiSource, /message\.type === "xox-state"/);
+  assert.match(gameRoomUiSource, /GameRoomXoxStart/);
+  assert.match(gameRoomHostSource, /onRoomEvent: function onRoomEvent\(payload\)/);
+  assert.match(gameRoomHostSource, /payload\.type === "host-context"/);
+  assert.match(gameRoomHostSource, /GameRoomXoxAiMove/);
 });
 
 class FakeElement {
@@ -112,9 +147,7 @@ class FakeElement {
   innerHTML = "";
   type = "";
   id = "";
-  value = "";
-  disabled = false;
-  htmlFor = "";
+  style = {};
   eventListeners = new Map<string, Array<(...args: unknown[]) => void>>();
 
   constructor(tagName: string, ownerDocument: FakeDocument) {
@@ -190,11 +223,7 @@ function findAll(root: FakeElement, predicate: (element: FakeElement) => boolean
   return matches;
 }
 
-function hasClass(element: FakeElement, className: string): boolean {
-  return element.className.split(/\s+/).includes(className);
-}
-
-function createXoxUiRuntime(initialLanguage = "en-US"): {
+function createGameRoomUiRuntime(initialLanguage = "en-US"): {
   document: FakeDocument;
   emitHostMessage: (message: Record<string, unknown>) => void;
   readyPayload: Record<string, unknown> | null;
@@ -216,7 +245,7 @@ function createXoxUiRuntime(initialLanguage = "en-US"): {
     },
   };
 
-  const source = readFileSync("rooms/xox/ui/index.js", "utf8");
+  const source = readFileSync("rooms/game-room/ui/index.js", "utf8");
   vm.runInNewContext(source, {
     window: { roomAPI },
     document,
@@ -233,66 +262,85 @@ function createXoxUiRuntime(initialLanguage = "en-US"): {
   };
 }
 
-test("xox room UI smoke test reflects runtime locale updates", () => {
-  const runtime = createXoxUiRuntime("en-US");
+test("game-room UI smoke test reflects runtime locale updates", () => {
+  const runtime = createGameRoomUiRuntime("en-US");
   const root = runtime.document.body;
+  const trCatalog = readRoomCatalog("tr");
 
   assert.equal(runtime.readyPayload?.["stage"], "ui-ready");
-  assert.equal(runtime.readyPayload?.["room"], "xox");
-  assert.equal(runtime.document.title, "XOX Room");
-  assert.equal(findFirst(root, (element) => element.tagName === "h1")?.textContent, "XOX Room");
-  assert.deepEqual(
-    findAll(root, (element) => element.tagName === "h2").map((element) => element.textContent),
-    ["Board", "Controls"]
-  );
-  assert.equal(
-    findFirst(root, (element) => hasClass(element, "xox-status"))?.textContent,
-    "Open the game with Start and pick the AI slot."
-  );
-  assert.deepEqual(
-    findAll(root, (element) => hasClass(element, "xox-button"))
-      .filter((element) => hasClass(element, "xox-button--ghost") === false)
-      .map((element) => element.textContent),
-    ["Start"]
-  );
+  assert.equal(runtime.readyPayload?.["room"], "game-room");
+  assert.equal(runtime.readyPayload?.["feature"], "xox");
+  assert.equal(findFirst(root, (element) => element.tagName === "h1")?.textContent, "Loading Game Room");
+  assert.equal(runtime.document.documentElement.lang, "en");
 
-  runtime.emitHostMessage({ type: "host-context", locale: "tr" });
   runtime.emitHostMessage({
-    type: "game-state",
+    type: "host-context",
+    locale: "tr",
+    translations: trCatalog,
+    room: {
+      id: "game-room",
+      name: "Oyun Odasi",
+    },
+    user: {
+      nickname: "Kullanici",
+    },
+    slots: {
+      ai1: {
+        slotId: "ai1",
+        nickname: "Atlas",
+        assigned: true,
+        connected: true,
+        ready: true,
+        state: "connected",
+      },
+      ai2: {
+        slotId: "ai2",
+        nickname: "Nova",
+        assigned: false,
+        connected: false,
+        ready: false,
+        state: "empty",
+      },
+    },
+  });
+  runtime.emitHostMessage({
+    type: "xox-state",
     payload: {
       state: {
-        locale: "tr",
-        board: ["X", "", "", "", "O", "", "", "", ""],
-        target: "ai2",
-        active: false,
-        awaitingAI: false,
-        currentTurn: "X",
+        board: ["X", "", "O", "", "X", "", "", "", ""],
+        boardAscii: "X | 1 | O\n---------\n3 | X | 5\n---------\n6 | 7 | 8",
+        availableCells: [1, 3, 5, 6, 7, 8],
+        active: true,
+        awaitingMoveFrom: "ai",
         result: "pending",
-        winner: "",
-        status: "Baslat ile oyunu ac ve AI slotunu sec.",
+        selectedTarget: "ai1",
+        starter: "user",
+        userSymbol: "X",
+        aiSymbol: "O",
+        status: "AI cevabi bekleniyor.",
+        blockedReason: "",
+        protocolDelivered: true,
+        opponentReady: true,
+        opponent: {
+          slotId: "ai1",
+          nickname: "Atlas",
+          assigned: true,
+          connected: true,
+          ready: true,
+          state: "connected",
+        },
+        user: {
+          nickname: "Kullanici",
+        },
       },
     },
   });
 
   assert.equal(runtime.document.documentElement.lang, "tr");
-  assert.equal(runtime.document.title, "XOX Odasi");
-  assert.equal(findFirst(root, (element) => element.tagName === "h1")?.textContent, "XOX Odasi");
-  assert.deepEqual(
-    findAll(root, (element) => element.tagName === "h2").map((element) => element.textContent),
-    ["Tahta", "Kontroller"]
-  );
-  assert.equal(
-    findFirst(root, (element) => hasClass(element, "xox-status"))?.textContent,
-    "Baslat ile oyunu ac ve AI slotunu sec."
-  );
-  assert.deepEqual(
-    findAll(root, (element) => hasClass(element, "xox-stat-label")).map(
-      (element) => element.textContent
-    ),
-    ["Sira", "Sonuc", "AI Slot"]
-  );
-  assert.deepEqual(
-    findAll(root, (element) => hasClass(element, "xox-button")).map((element) => element.textContent),
-    ["Baslat", "Sifirla"]
-  );
+  assert.equal(findFirst(root, (element) => element.textContent === "XOX Mac Masasi"), null);
+  assert.equal(runtime.document.title, "Oyun Odasi - XOX");
+  assert.equal(findAll(root, (element) => element.dataset.index !== undefined).length, 9);
+  assert.ok(findAll(root, (element) => element.textContent === "Atlas").length > 0);
+  assert.ok(findAll(root, (element) => element.textContent === "Devam Ediyor").length > 0);
+  assert.ok(findAll(root, (element) => element.textContent === "AI cevabi bekleniyor.").length > 0);
 });

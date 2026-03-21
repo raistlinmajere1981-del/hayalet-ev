@@ -88,7 +88,11 @@ export function mountSceneWindowControls(root: ParentNode = document): void {
       return;
     }
 
-    const anchor = surface.querySelector<HTMLElement>(".scene-shell__cover-image");
+    const anchor =
+      Array.from(surface.children).find(
+        (child): child is HTMLElement =>
+          child instanceof HTMLElement && child.classList.contains("scene-shell__cover-image")
+      ) ?? null;
     if (anchor !== null) {
       anchor.insertAdjacentHTML("afterend", buildSceneWindowControlsMarkup());
       return;

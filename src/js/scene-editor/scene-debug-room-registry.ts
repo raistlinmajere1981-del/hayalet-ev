@@ -1,8 +1,10 @@
-import { isSceneRoomId, SCENE_ROOM_IDS, type SceneRoomId } from "../scene/schema.js";
+import { isSceneRoomId, SCENE_ROOM_IDS } from "../scene/schema.js";
+import { RoomRegistry } from "../modules/rooms/room-registry.js";
+import { getRoomPageName } from "../modules/rooms/room-markup.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 
-export type SceneDebugRoomId = SceneRoomId;
+export type SceneDebugRoomId = string;
 export type SceneEditorRoomId = SceneDebugRoomId;
 
 const SCENE_EDITOR_ROOM_ATTRIBUTE = "data-scene-editor-room";
@@ -18,14 +20,32 @@ const SCENE_DEBUG_ROOM_LABEL_KEYS: Record<SceneDebugRoomId, string> = {
 
 export interface SceneDebugRoomDefinition {
   id: SceneDebugRoomId;
-  page: SceneDebugRoomId;
-  labelKey: string;
+  page: string;
+  labelKey?: string;
+  label?: string;
 }
 
 export type SceneEditorRoomDefinition = SceneDebugRoomDefinition;
 
+function getInstalledSceneDebugRooms(): SceneDebugRoomDefinition[] {
+  return RoomRegistry.getInstalledRooms()
+    .filter((room) => room.scene !== undefined)
+    .map((room) => {
+      const page = getRoomPageName(room.id);
+      return {
+        id: page,
+        page,
+        label: room.name,
+      };
+    });
+}
+
 export function isSceneDebugRoomId(value: string | null | undefined): value is SceneDebugRoomId {
-  return isSceneRoomId(value);
+  if (value === null || value === undefined || value.trim() === "") {
+    return false;
+  }
+
+  return isSceneRoomId(value) || getInstalledSceneDebugRooms().some((room) => room.id === value);
 }
 
 export function getActiveSceneDebugRoomId(): SceneDebugRoomId | null {
@@ -58,16 +78,18 @@ export const SCENE_DEBUG_ROOMS: readonly SceneDebugRoomDefinition[] = [
   ...SCENE_ROOM_IDS.map((roomId) => ({
     id: roomId,
     page: roomId,
-    labelKey: SCENE_DEBUG_ROOM_LABEL_KEYS[roomId],
+    ...(SCENE_DEBUG_ROOM_LABEL_KEYS[roomId] !== undefined
+      ? { labelKey: SCENE_DEBUG_ROOM_LABEL_KEYS[roomId] }
+      : {}),
   })),
 ];
 
 export function getSceneDebugRoomOptions(
   translate: (key: string) => string
 ): Array<{ id: SceneDebugRoomId; label: string }> {
-  return SCENE_DEBUG_ROOMS.map((room) => ({
+  return [...SCENE_DEBUG_ROOMS, ...getInstalledSceneDebugRooms()].map((room) => ({
     id: room.id,
-    label: translate(room.labelKey),
+    label: room.labelKey !== undefined ? translate(room.labelKey) : (room.label ?? room.id),
   }));
 }
 

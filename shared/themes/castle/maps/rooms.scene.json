@@ -14,10 +14,10 @@
         "page": "entrance"
       },
       "rect": {
-        "leftPx": 848,
-        "topPx": 202,
-        "widthPx": 228,
-        "heightPx": 270
+        "leftPx": 884,
+        "topPx": 406,
+        "widthPx": 152,
+        "heightPx": 160
       },
       "frame": {
         "variant": "flat",
@@ -30,8 +30,8 @@
         "visible": true,
         "textKey": "sideNav.entranceLabel",
         "centerXPx": 962,
-        "topPx": 154,
-        "widthPx": 284,
+        "topPx": 344,
+        "widthPx": 154,
         "heightPx": 42,
         "rotateDeg": 0,
         "fontSizePx": 22,

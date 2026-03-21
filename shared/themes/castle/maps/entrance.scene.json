@@ -202,7 +202,7 @@
       },
       "label": {
         "visible": true,
-        "textKey": "panels.whisper",
+        "textKey": "entrance.panels.whisper",
         "centerXPx": 470,
         "topPx": 578,
         "widthPx": 272,

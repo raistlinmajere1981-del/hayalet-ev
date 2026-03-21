@@ -35,6 +35,28 @@ test("scene debug room registry includes all unified scene rooms", () => {
   assert.match(roomRegistrySource, /export function openSceneEditorRoom/);
 });
 
+test("scene debug room registry derives installed room options from room metadata", () => {
+  const roomRegistrySource = readFileSync("src/js/scene-editor/scene-debug-room-registry.ts", "utf8");
+
+  assert.match(roomRegistrySource, /function getInstalledSceneDebugRooms\(\)/);
+  assert.match(roomRegistrySource, /RoomRegistry\.getInstalledRooms\(\)/);
+  assert.match(roomRegistrySource, /\.filter\(\(room\) => room\.scene !== undefined\)/);
+  assert.match(roomRegistrySource, /const page = getRoomPageName\(room\.id\)/);
+  assert.match(roomRegistrySource, /label:\s*room\.name/);
+  assert.match(roomRegistrySource, /return \[\.\.\.SCENE_DEBUG_ROOMS, \.\.\.getInstalledSceneDebugRooms\(\)\]\.map/);
+});
+
+test("room scene debug helpers merge installed room hotspots into the corridor layout", () => {
+  const source = readFileSync("src/js/modules/rooms/room-scene-debug.ts", "utf8");
+
+  assert.match(source, /function mergeRoomsCorridorLayout/);
+  assert.match(source, /buildInstalledRoomCorridorNode\(room\)/);
+  assert.match(source, /const installedNodes = normalizeInstalledRooms\(rooms\)/);
+  assert.match(source, /createRoomsCorridorSceneDebugStore/);
+  assert.match(source, /type:\s*"screen"/);
+  assert.match(source, /screen:\s*"primary"/);
+});
+
 test("entrance scene layout keeps room targets and whisper return in one layout registry", () => {
   assert.deepEqual(
     entranceSceneLayout.objects.map((node) => node.id),
@@ -52,7 +74,7 @@ test("entrance scene layout keeps room targets and whisper return in one layout 
 
   assert.equal(
     entranceSceneLayout.objects.find((node) => node.id === "board-whisper")?.rect.leftPx,
-    362
+    322
   );
   assert.equal(cloned.objects.find((node) => node.id === "board-whisper")?.rect.leftPx, 408);
   assert.equal(cloned.backs.find((node) => node.id === "back-whisper")?.rect.widthPx, 140);
@@ -85,7 +107,15 @@ test("analyze scene layout keeps table and archive returns on the shared contrac
 test("settings scene layout defines close, panels, one back, and one user character", () => {
   assert.deepEqual(
     settingsSceneLayout.objects.map((node) => node.id),
-    ["door-close", "panel-theme", "panel-accounts", "panel-backup", "panel-rooms", "panel-live-log"]
+    [
+      "door-close",
+      "panel-theme",
+      "panel-accounts",
+      "panel-backup",
+      "panel-rooms",
+      "panel-live-log",
+      "panel-languages",
+    ]
   );
   assert.equal(settingsSceneLayout.objects[0]?.action.type, "settings-scene-close");
   assert.equal(getSceneBackNodeForView(settingsSceneLayout, "panel")?.id, "back-panel");
@@ -198,11 +228,11 @@ test("entrance and analyze scene layers keep hidden views passive in debug mode"
   );
   assert.match(
     debugOverridesSource,
-    /\[data-scene-editor="true"\][\s\S]*\.entrance-scene \.entrance-scene__character,[\s\S]*pointer-events:\s*none;/
+    /:is\(\[data-scene-editor="true"\], \[data-scene-debug="true"\]\)[\s\S]*\.entrance-scene[\s\S]*\.entrance-scene__character,[\s\S]*pointer-events:\s*none;/
   );
   assert.match(
     debugOverridesSource,
-    /\[data-scene-editor="true"\][\s\S]*\.analyze-scene \.entrance-scene__character-head,[\s\S]*pointer-events:\s*auto;/
+    /:is\(\[data-scene-editor="true"\], \[data-scene-debug="true"\]\)[\s\S]*\.analyze-scene[\s\S]*\.entrance-scene__character-head,[\s\S]*pointer-events:\s*auto;/
   );
 });
 

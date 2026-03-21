@@ -4,17 +4,26 @@ import { dirname, join, resolve } from "path";
 import { formatErrorWithDetail } from "../shared/i18n/error-detail.ts";
 import { Paths } from "./paths.ts";
 import type {
+  InstalledRoomFeatureRecord,
+  InstalledRoomFeatureSceneRecord,
   InstalledRoomRecord,
+  InstalledRoomSceneRecord,
   RoomBundle,
   RoomBundleFile,
   RoomCommandSpec,
   RoomManifest,
   RoomProtocolSpec,
   RoomRegistryState,
+  RoomSceneHotspotConfig,
+  RoomSceneTextConfig,
+  RoomSceneTransparentWindowConfig,
   RoomWorkspaceEntry,
 } from "@shared/index.js";
 import {
   ROOM_SCHEMA_VERSION,
+  collectRoomManifestRequiredFilePaths,
+  flattenRoomCommandSpecs,
+  flattenRoomProtocolSpecs,
   normalizeRoomRelativePath,
   validateRoomManifest,
 } from "@shared/index.js";
@@ -31,6 +40,7 @@ interface RoomOperationResult {
   error?: string;
   room?: InstalledRoomRecord;
   path?: string;
+  restartRequired?: boolean;
 }
 
 interface RoomBundleValidationResult {
@@ -66,24 +76,114 @@ function cloneProtocolSpecs(
   return protocolSpecs?.map((item) => ({ ...item }));
 }
 
-function optionalDescription(
-  description: string | undefined
-): { description: string } | Record<string, never> {
-  return typeof description === "string" ? { description } : {};
+function cloneSceneText(value: RoomSceneTextConfig): RoomSceneTextConfig {
+  return { ...value };
 }
 
-function optionalCommandSpecs(
-  commandSpecs: RoomCommandSpec[] | undefined
-): { commandSpecs: RoomCommandSpec[] } | Record<string, never> {
-  const cloned = cloneCommandSpecs(commandSpecs);
-  return Array.isArray(cloned) ? { commandSpecs: cloned } : {};
+function cloneSceneHotspot(hotspot: RoomSceneHotspotConfig): RoomSceneHotspotConfig {
+  return {
+    id: hotspot.id,
+    rect: { ...hotspot.rect },
+    ...(hotspot.label !== undefined ? { label: cloneSceneText(hotspot.label) } : {}),
+  };
 }
 
-function optionalProtocolSpecs(
-  protocolSpecs: RoomProtocolSpec[] | undefined
-): { protocolSpecs: RoomProtocolSpec[] } | Record<string, never> {
-  const cloned = cloneProtocolSpecs(protocolSpecs);
-  return Array.isArray(cloned) ? { protocolSpecs: cloned } : {};
+function cloneTransparentWindow(
+  value: RoomSceneTransparentWindowConfig
+): RoomSceneTransparentWindowConfig {
+  return { ...value };
+}
+
+function buildInstalledFeatureRecord(
+  feature: InstalledRoomFeatureRecord
+): InstalledRoomFeatureRecord {
+  return {
+    id: feature.id,
+    name: feature.name,
+    ...(feature.description !== undefined ? { description: feature.description } : {}),
+    ...(feature.icon !== undefined ? { icon: feature.icon } : {}),
+    ...optionalCommandSpecs(feature.commandSpecs),
+    ...optionalProtocolSpecs(feature.protocolSpecs),
+    ...optionalInstalledFeatureScene(feature.scene),
+  };
+}
+
+function cloneInstalledFeatureScene(
+  value: InstalledRoomFeatureSceneRecord | undefined
+): InstalledRoomFeatureSceneRecord | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return {
+    hotspot: cloneSceneHotspot(value.hotspot),
+    view: {
+      id: value.view.id,
+      backgroundPath: value.view.backgroundPath,
+      ...(value.view.panelArtPath !== undefined ? { panelArtPath: value.view.panelArtPath } : {}),
+      ...(value.view.transparentWindow !== undefined
+        ? { transparentWindow: cloneTransparentWindow(value.view.transparentWindow) }
+        : {}),
+    },
+  };
+}
+
+function resolveInstalledFeatureScene(
+  value: InstalledRoomFeatureSceneRecord | undefined
+): InstalledRoomFeatureSceneRecord | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return {
+    hotspot: cloneSceneHotspot(value.hotspot),
+    view: {
+      id: value.view.id,
+      backgroundPath: resolve(value.view.backgroundPath),
+      ...(value.view.panelArtPath !== undefined
+        ? { panelArtPath: resolve(value.view.panelArtPath) }
+        : {}),
+      ...(value.view.transparentWindow !== undefined
+        ? { transparentWindow: cloneTransparentWindow(value.view.transparentWindow) }
+        : {}),
+    },
+  };
+}
+
+function cloneInstalledFeatures(
+  features: InstalledRoomFeatureRecord[]
+): InstalledRoomFeatureRecord[] {
+  return features.map((feature) => buildInstalledFeatureRecord(feature));
+}
+
+function cloneInstalledScene(
+  scene: InstalledRoomSceneRecord | undefined
+): InstalledRoomSceneRecord | undefined {
+  if (scene === undefined) {
+    return undefined;
+  }
+
+  return {
+    referenceSize: { ...scene.referenceSize },
+    roomBackgroundPath: scene.roomBackgroundPath,
+    roomsHotspot: cloneSceneHotspot(scene.roomsHotspot),
+    backHotspot: cloneSceneHotspot(scene.backHotspot),
+  };
+}
+
+function resolveInstalledScene(
+  scene: InstalledRoomSceneRecord | undefined
+): InstalledRoomSceneRecord | undefined {
+  if (scene === undefined) {
+    return undefined;
+  }
+
+  return {
+    referenceSize: { ...scene.referenceSize },
+    roomBackgroundPath: resolve(scene.roomBackgroundPath),
+    roomsHotspot: cloneSceneHotspot(scene.roomsHotspot),
+    backHotspot: cloneSceneHotspot(scene.backHotspot),
+  };
 }
 
 function normalizeRoomId(rawValue: string): string {
@@ -101,6 +201,46 @@ async function readJsonFile<T>(filePath: string): Promise<T> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && Array.isArray(value) === false;
+}
+
+function optionalDescription(
+  description: string | undefined
+): { description: string } | Record<string, never> {
+  return typeof description === "string" ? { description } : {};
+}
+
+function optionalCommandSpecs(
+  commandSpecs: RoomCommandSpec[] | undefined
+): { commandSpecs: RoomCommandSpec[] } | Record<string, never> {
+  const cloned = cloneCommandSpecs(commandSpecs);
+  return Array.isArray(cloned) && cloned.length > 0 ? { commandSpecs: cloned } : {};
+}
+
+function optionalProtocolSpecs(
+  protocolSpecs: RoomProtocolSpec[] | undefined
+): { protocolSpecs: RoomProtocolSpec[] } | Record<string, never> {
+  const cloned = cloneProtocolSpecs(protocolSpecs);
+  return Array.isArray(cloned) && cloned.length > 0 ? { protocolSpecs: cloned } : {};
+}
+
+function optionalScene(
+  scene: InstalledRoomSceneRecord | undefined
+): { scene: InstalledRoomSceneRecord } | Record<string, never> {
+  const cloned = cloneInstalledScene(scene);
+  return cloned === undefined ? {} : { scene: cloned };
+}
+
+function optionalInstalledFeatureScene(
+  scene: InstalledRoomFeatureSceneRecord | undefined
+): { scene: InstalledRoomFeatureSceneRecord } | Record<string, never> {
+  const cloned = cloneInstalledFeatureScene(scene);
+  return cloned === undefined ? {} : { scene: cloned };
+}
+
+function optionalI18nBaseDir(
+  i18nBaseDir: string | undefined
+): { i18nBaseDir: string } | Record<string, never> {
+  return typeof i18nBaseDir === "string" ? { i18nBaseDir } : {};
 }
 
 function validateRoomBundle(candidate: unknown): RoomBundleValidationResult {
@@ -175,12 +315,11 @@ function validateRoomBundle(candidate: unknown): RoomBundleValidationResult {
   }
 
   const { manifest } = manifestValidation;
-  if (files[manifest.uiEntry] === undefined) {
-    errors.push(`files missing uiEntry: ${manifest.uiEntry}`);
-  }
-  if (files[manifest.hostEntry] === undefined) {
-    errors.push(`files missing hostEntry: ${manifest.hostEntry}`);
-  }
+  collectRoomManifestRequiredFilePaths(manifest).forEach((requiredPath) => {
+    if (files[requiredPath] === undefined) {
+      errors.push(`files missing required asset: ${requiredPath}`);
+    }
+  });
 
   if (errors.length > 0) {
     return {
@@ -209,23 +348,81 @@ function createEmptyRegistry(): RoomRegistryState {
   };
 }
 
-function withManifestMetadata(
-  record: InstalledRoomRecord,
-  manifest: RoomManifest | undefined
-): InstalledRoomRecord {
-  if (manifest === undefined) {
-    return {
-      ...record,
-      ...optionalCommandSpecs(record.commandSpecs),
-      ...optionalProtocolSpecs(record.protocolSpecs),
-    };
+export function buildInstalledRoomRecord(
+  manifest: RoomManifest,
+  options: {
+    sourceDir: string;
+    installedDir: string;
+    installedAt: string;
+    updatedAt: string;
   }
+): InstalledRoomRecord {
+  const { sourceDir, installedDir, installedAt, updatedAt } = options;
+  const features: InstalledRoomFeatureRecord[] = manifest.features.map((feature) => {
+    const scene =
+      feature.scene === undefined
+        ? undefined
+        : {
+            hotspot: cloneSceneHotspot(feature.scene.hotspot),
+            view: {
+              id: feature.scene.view.id,
+              backgroundPath: join(installedDir, feature.scene.view.backgroundSrc),
+              ...(feature.scene.view.panelArtSrc !== undefined
+                ? { panelArtPath: join(installedDir, feature.scene.view.panelArtSrc) }
+                : {}),
+              ...(feature.scene.view.transparentWindow !== undefined
+                ? {
+                    transparentWindow: cloneTransparentWindow(feature.scene.view.transparentWindow),
+                  }
+                : {}),
+            },
+          };
+
+    return {
+      id: feature.id,
+      name: feature.name,
+      ...(feature.description !== undefined ? { description: feature.description } : {}),
+      ...(feature.icon !== undefined ? { icon: feature.icon } : {}),
+      ...optionalCommandSpecs(feature.commandSpecs),
+      ...optionalProtocolSpecs(feature.protocolSpecs),
+      ...optionalInstalledFeatureScene(scene),
+    };
+  });
+
+  const scene: InstalledRoomSceneRecord | undefined =
+    manifest.scene === undefined
+      ? undefined
+      : {
+          referenceSize: { ...manifest.scene.referenceSize },
+          roomBackgroundPath: join(installedDir, manifest.scene.roomBackgroundSrc),
+          roomsHotspot: cloneSceneHotspot(manifest.scene.roomsHotspot),
+          backHotspot: cloneSceneHotspot(manifest.scene.backHotspot),
+        };
+
+  const commandSpecs = flattenRoomCommandSpecs(manifest);
+  const protocolSpecs = flattenRoomProtocolSpecs(manifest);
 
   return {
-    ...record,
+    id: manifest.id,
+    name: manifest.name,
+    version: manifest.version,
     ...optionalDescription(manifest.description),
-    ...optionalCommandSpecs(manifest.commandSpecs),
-    ...optionalProtocolSpecs(manifest.protocolSpecs),
+    ...(manifest.menu.icon !== undefined ? { icon: manifest.menu.icon } : {}),
+    sourceDir,
+    installedDir,
+    manifestPath: join(installedDir, "manifest.json"),
+    runtimeEntryPath: join(installedDir, manifest.runtime.uiEntry),
+    hostEntryPath: join(installedDir, manifest.runtime.hostEntry),
+    defaultFeatureId: manifest.defaultFeatureId,
+    features: cloneInstalledFeatures(features),
+    ...optionalScene(scene),
+    ...optionalI18nBaseDir(
+      manifest.i18n !== undefined ? join(installedDir, manifest.i18n.baseDir) : undefined
+    ),
+    ...optionalCommandSpecs(commandSpecs),
+    ...optionalProtocolSpecs(protocolSpecs),
+    installedAt,
+    updatedAt,
   };
 }
 
@@ -312,13 +509,17 @@ export class RoomPackageManager {
             manifest = validation.manifest;
 
             if (validation.valid && validation.manifest !== undefined) {
-              const uiEntryPath = join(dirPath, validation.manifest.uiEntry);
-              const hostEntryPath = join(dirPath, validation.manifest.hostEntry);
-              if (!existsSync(uiEntryPath)) {
-                errors.push(`uiEntry missing: ${validation.manifest.uiEntry}`);
-              }
-              if (!existsSync(hostEntryPath)) {
-                errors.push(`hostEntry missing: ${validation.manifest.hostEntry}`);
+              collectRoomManifestRequiredFilePaths(validation.manifest).forEach((requiredPath) => {
+                if (!existsSync(join(dirPath, requiredPath))) {
+                  errors.push(`required asset missing: ${requiredPath}`);
+                }
+              });
+
+              if (
+                validation.manifest.i18n !== undefined &&
+                !existsSync(join(dirPath, validation.manifest.i18n.baseDir))
+              ) {
+                errors.push(`i18n.baseDir missing: ${validation.manifest.i18n.baseDir}`);
               }
             }
           } catch (error) {
@@ -348,7 +549,9 @@ export class RoomPackageManager {
     const hydrated = await Promise.all(
       registry.rooms.map(async (record) => await this.hydrateInstalledRoomRecord(record))
     );
-    return hydrated.sort((left, right) => left.id.localeCompare(right.id));
+    return hydrated
+      .filter((record): record is InstalledRoomRecord => record !== null)
+      .sort((left, right) => left.id.localeCompare(right.id));
   }
 
   async installFromWorkspace(roomId: string): Promise<RoomOperationResult> {
@@ -383,21 +586,12 @@ export class RoomPackageManager {
     await cp(target.dirPath, roomInstalledDir, { recursive: true, force: true });
 
     const now = new Date().toISOString();
-    const record: InstalledRoomRecord = {
-      id: target.manifest.id,
-      name: target.manifest.name,
-      version: target.manifest.version,
-      ...optionalDescription(target.manifest.description),
+    const record = buildInstalledRoomRecord(target.manifest, {
       sourceDir: target.dirPath,
       installedDir: roomInstalledDir,
-      manifestPath: join(roomInstalledDir, "manifest.json"),
-      runtimeEntryPath: join(roomInstalledDir, target.manifest.uiEntry),
-      hostEntryPath: join(roomInstalledDir, target.manifest.hostEntry),
-      ...optionalCommandSpecs(target.manifest.commandSpecs),
-      ...optionalProtocolSpecs(target.manifest.protocolSpecs),
       installedAt: now,
       updatedAt: now,
-    };
+    });
 
     const runtimeStat = await stat(record.runtimeEntryPath).catch(() => null);
     const hostStat = await stat(record.hostEntryPath).catch(() => null);
@@ -425,6 +619,7 @@ export class RoomPackageManager {
     return {
       success: true,
       room: record,
+      restartRequired: true,
     };
   }
 
@@ -448,7 +643,11 @@ export class RoomPackageManager {
     registry.updatedAt = new Date().toISOString();
     await this.writeRegistry(registry);
 
-    return { success: true, room: current };
+    return {
+      success: true,
+      room: current,
+      restartRequired: true,
+    };
   }
 
   async exportInstalledRoomToWorkspace(
@@ -617,6 +816,7 @@ export class RoomPackageManager {
       success: true,
       ...(installResult.room !== undefined ? { room: installResult.room } : {}),
       path: workspaceDir,
+      restartRequired: true,
     };
   }
 
@@ -628,14 +828,17 @@ export class RoomPackageManager {
     }
 
     try {
-      const parsed = await readJsonFile<RoomRegistryState>(registryPath);
+      const parsed = await readJsonFile<Partial<RoomRegistryState>>(registryPath);
+      if (parsed.version !== ROOM_SCHEMA_VERSION || !Array.isArray(parsed.rooms)) {
+        return createEmptyRegistry();
+      }
       return {
         version: ROOM_SCHEMA_VERSION,
         updatedAt:
           typeof parsed.updatedAt === "string" && parsed.updatedAt.trim() !== ""
             ? parsed.updatedAt
             : new Date().toISOString(),
-        rooms: Array.isArray(parsed.rooms) ? parsed.rooms : [],
+        rooms: parsed.rooms,
       };
     } catch {
       return createEmptyRegistry();
@@ -655,6 +858,14 @@ export class RoomPackageManager {
         manifestPath: resolve(item.manifestPath),
         runtimeEntryPath: resolve(item.runtimeEntryPath),
         hostEntryPath: resolve(item.hostEntryPath),
+        features: item.features.map((feature) => ({
+          ...buildInstalledFeatureRecord(feature),
+          ...optionalInstalledFeatureScene(resolveInstalledFeatureScene(feature.scene)),
+        })),
+        ...optionalScene(resolveInstalledScene(item.scene)),
+        ...optionalI18nBaseDir(
+          item.i18nBaseDir !== undefined ? resolve(item.i18nBaseDir) : undefined
+        ),
         ...optionalCommandSpecs(item.commandSpecs),
         ...optionalProtocolSpecs(item.protocolSpecs),
       })),
@@ -664,24 +875,25 @@ export class RoomPackageManager {
 
   private async hydrateInstalledRoomRecord(
     record: InstalledRoomRecord
-  ): Promise<InstalledRoomRecord> {
+  ): Promise<InstalledRoomRecord | null> {
     if (existsSync(record.manifestPath) === false) {
-      return {
-        ...record,
-        ...optionalCommandSpecs(record.commandSpecs),
-        ...optionalProtocolSpecs(record.protocolSpecs),
-      };
+      return null;
     }
 
     try {
       const validation = validateRoomManifest(await readJsonFile<unknown>(record.manifestPath));
-      return withManifestMetadata(record, validation.valid ? validation.manifest : undefined);
+      if (validation.valid !== true || validation.manifest === undefined) {
+        return null;
+      }
+
+      return buildInstalledRoomRecord(validation.manifest, {
+        sourceDir: resolve(record.sourceDir),
+        installedDir: resolve(record.installedDir),
+        installedAt: record.installedAt,
+        updatedAt: record.updatedAt,
+      });
     } catch {
-      return {
-        ...record,
-        ...optionalCommandSpecs(record.commandSpecs),
-        ...optionalProtocolSpecs(record.protocolSpecs),
-      };
+      return null;
     }
   }
 }

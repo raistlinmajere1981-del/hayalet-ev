@@ -213,6 +213,41 @@
         "fontPreset": "display",
         "framePerspectiveDeg": 0
       }
+    },
+    {
+      "id": "panel-languages",
+      "kind": "object",
+      "viewId": null,
+      "action": {
+        "type": "settings",
+        "panel": "languages"
+      },
+      "rect": {
+        "leftPx": 966,
+        "topPx": 584,
+        "widthPx": 186,
+        "heightPx": 124
+      },
+      "frame": {
+        "variant": "flat",
+        "rotateDeg": -3,
+        "perspectiveDeg": 8,
+        "hueDeg": 33,
+        "alpha": 0.34
+      },
+      "label": {
+        "visible": true,
+        "textKey": "settingsHub.nav.languages",
+        "centerXPx": 1058,
+        "topPx": 628,
+        "widthPx": 180,
+        "heightPx": 40,
+        "rotateDeg": 0,
+        "fontSizePx": 18,
+        "letterSpacingPx": 1,
+        "fontPreset": "display",
+        "framePerspectiveDeg": 0
+      }
     }
   ],
   "backs": [

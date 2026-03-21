@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-21T13:31:09.657Z",
+  "generatedAt": "2026-03-21T23:45:00.404Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 537,
-    "ids": 550,
+    "filesScanned": 541,
+    "ids": 561,
     "testIds": 15,
-    "querySelectors": 133,
-    "totalSelectors": 698
+    "querySelectors": 136,
+    "totalSelectors": 712
   },
   "lookup": {
     "id": {
@@ -245,6 +245,14 @@
       "indicator-avatar-ai1": "#indicator-avatar-ai1",
       "indicator-avatar-ai2": "#indicator-avatar-ai2",
       "indicator-avatar-us1": "#indicator-avatar-us1",
+      "language-editor-categories": "#language-editor-categories",
+      "language-editor-entry-list": "#language-editor-entry-list",
+      "language-editor-filters": "#language-editor-filters",
+      "language-editor-main-head": "#language-editor-main-head",
+      "language-editor-meta": "#language-editor-meta",
+      "language-editor-shell": "#language-editor-shell",
+      "language-editor-summary": "#language-editor-summary",
+      "language-editor-toolbar": "#language-editor-toolbar",
       "last-check": "#last-check",
       "live-log-app-tabs": "#live-log-app-tabs",
       "live-log-clear": "#live-log-clear",
@@ -370,6 +378,7 @@
       "remote-account-mail-status": "#remote-account-mail-status",
       "results-files": "#results-files",
       "results-messages": "#results-messages",
+      "rooms-classic-list": "#rooms-classic-list",
       "rooms-classic-shell": "#rooms-classic-shell",
       "rooms-installed-list": "#rooms-installed-list",
       "rooms-overlay": "#rooms-overlay",
@@ -441,6 +450,7 @@
       "settings-create-account": "#settings-create-account",
       "settings-hub-close": "#settings-hub-close",
       "settings-panel-accounts": "#settings-panel-accounts",
+      "settings-panel-languages": "#settings-panel-languages",
       "settings-panel-theme": "#settings-panel-theme",
       "settings-scene-background": "#settings-scene-background",
       "settings-scene-characters": "#settings-scene-characters",
@@ -454,6 +464,7 @@
       "settings-sync-remote-accounts": "#settings-sync-remote-accounts",
       "settings-tab-accounts": "#settings-tab-accounts",
       "settings-tab-backup": "#settings-tab-backup",
+      "settings-tab-languages": "#settings-tab-languages",
       "settings-tab-live-log": "#settings-tab-live-log",
       "settings-tab-rooms": "#settings-tab-rooms",
       "settings-tab-theme": "#settings-tab-theme",
@@ -612,6 +623,7 @@
       "ds_toast": ".ds-toast",
       "edit_btn": ".edit-btn",
       "files_header_div": ".files-header div",
+      "language_editor_side_card_head": ".language-editor-side-card__head",
       "load_more_btn": ".load-more-btn",
       "markdown_main_panel": ".markdown-main-panel",
       "memory_card": ".memory-card",
@@ -669,6 +681,8 @@
       "data_ui_mode_dropdown": "[data-ui-mode-dropdown]",
       "data_ui_mode_option": "[data-ui-mode-option]",
       "data_ui_mode_trigger": "[data-ui-mode-trigger]",
+      "data_workspace_tool_scene_back": "[data-workspace-tool-scene-back=",
+      "data_workspace_tool_scene_chrome": "[data-workspace-tool-scene-chrome=",
       "id_composer_submit_button_data_testid": "], #composer-submit-button[data-testid=",
       "button_data_testid": "], button[data-testid=",
       "selector": "*",

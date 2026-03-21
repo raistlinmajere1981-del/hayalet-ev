@@ -11,53 +11,94 @@ import {
 test("validateRoomManifest accepts a minimal valid room manifest", () => {
   const result = validateRoomManifest({
     schemaVersion: ROOM_SCHEMA_VERSION,
-    id: "xox-room",
-    name: "XOX Room",
-    version: "1.0.0",
+    id: "game-room",
+    name: "Game Room",
+    version: "2.1.0",
     menu: {
-      label: "XOX",
-      icon: "XO",
+      label: "Game Room",
+      icon: "GM",
     },
-    uiEntry: "ui/index.html",
-    hostEntry: "host/index.js",
-    commandSpecs: [{ name: "XOXStartGame", scope: "ai-slots" }],
-    protocolSpecs: [
+    runtime: {
+      uiEntry: "ui/index.html",
+      hostEntry: "host/index.js",
+    },
+    defaultFeatureId: "xox",
+    features: [
       {
-        key: "xox-start",
-        room: "xox",
-        scenario: "start",
-        title: "Start XOX",
-        editable: true,
+        id: "xox",
+        name: "XOX",
+        commandSpecs: [{ name: "GameRoomXoxAiMove", scope: "ai-slots" }],
+        protocolSpecs: [
+          {
+            key: "game-room-xox-user-start",
+            room: "game-room",
+            scenario: "xox-user-start",
+            title: "[START][GAME-ROOM][XOX][USER-FIRST]",
+            editable: true,
+          },
+        ],
+        scene: {
+          hotspot: {
+            id: "game-room-xox",
+            rect: { leftPx: 100, topPx: 200, widthPx: 180, heightPx: 120 },
+            label: { text: "XOX" },
+          },
+          view: {
+            id: "xox-closeup",
+            backgroundSrc: "assets/xox-view.webp",
+          },
+        },
       },
     ],
+    scene: {
+      referenceSize: { width: 1600, height: 900 },
+      roomBackgroundSrc: "assets/room-background.webp",
+      roomsHotspot: {
+        id: "game-room-door",
+        rect: { leftPx: 700, topPx: 240, widthPx: 160, heightPx: 300 },
+      },
+      backHotspot: {
+        id: "game-room-back",
+        rect: { leftPx: 70, topPx: 180, widthPx: 120, heightPx: 240 },
+      },
+    },
   });
 
   assert.equal(result.valid, true);
   assert.deepEqual(result.errors, []);
-  assert.equal(result.manifest?.id, "xox-room");
-  assert.equal(result.manifest?.uiEntry, "ui/index.html");
-  assert.equal(result.manifest?.hostEntry, "host/index.js");
+  assert.equal(result.manifest?.id, "game-room");
+  assert.equal(result.manifest?.runtime.uiEntry, "ui/index.html");
+  assert.equal(result.manifest?.defaultFeatureId, "xox");
 });
 
 test("validateRoomManifest rejects invalid ids, commands, and unsafe paths", () => {
   const result = validateRoomManifest({
     schemaVersion: ROOM_SCHEMA_VERSION,
-    id: "XOX Room",
+    id: "Game Room",
     name: "Bad Room",
     version: "1.0",
     menu: {
       label: "Bad",
     },
-    uiEntry: "../ui/index.html",
-    hostEntry: "/host/index.js",
-    commandSpecs: [{ name: "XOX.Start" }],
+    runtime: {
+      uiEntry: "../ui/index.html",
+      hostEntry: "/host/index.js",
+    },
+    defaultFeatureId: "broken",
+    features: [
+      {
+        id: "broken",
+        name: "Broken",
+        commandSpecs: [{ name: "Game.Room" }],
+      },
+    ],
   });
 
   assert.equal(result.valid, false);
   assert.match(result.errors.join("\n"), /id must match/);
   assert.match(result.errors.join("\n"), /version must look like semver/);
-  assert.match(result.errors.join("\n"), /uiEntry must be a safe relative path/);
-  assert.match(result.errors.join("\n"), /hostEntry must be a safe relative path/);
+  assert.match(result.errors.join("\n"), /runtime\.uiEntry must be a safe relative path/);
+  assert.match(result.errors.join("\n"), /runtime\.hostEntry must be a safe relative path/);
   assert.match(result.errors.join("\n"), /commandSpecs\[0\]\.name must match/);
 });
 
@@ -69,8 +110,8 @@ test("normalizeRoomRelativePath blocks traversal and preserves safe paths", () =
 });
 
 test("room id and command validators match project rules", () => {
-  assert.equal(isValidRoomId("xox-room"), true);
-  assert.equal(isValidRoomId("xox_room"), false);
-  assert.equal(isValidRoomCommandName("XOXStartGame"), true);
-  assert.equal(isValidRoomCommandName("XOX.Start"), false);
+  assert.equal(isValidRoomId("game-room"), true);
+  assert.equal(isValidRoomId("game_room"), false);
+  assert.equal(isValidRoomCommandName("GameRoomStartMatch"), true);
+  assert.equal(isValidRoomCommandName("Game.Room"), false);
 });

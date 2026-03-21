@@ -9,17 +9,18 @@ import {
 
 const workspaceRooms: RoomWorkspaceEntry[] = [
   {
-    dirName: "xox",
-    dirPath: "/workspace/rooms/xox",
+    dirName: "game-room",
+    dirPath: "/workspace/rooms/game-room",
     valid: true,
     manifest: {
-      schemaVersion: 1,
-      id: "xox",
-      name: "XOX Room",
-      version: "1.0.0",
-      menu: { label: "XOX" },
-      uiEntry: "ui/index.html",
-      hostEntry: "host/index.js",
+      schemaVersion: 2,
+      id: "game-room",
+      name: "Game Room",
+      version: "2.0.0",
+      menu: { label: "Game Room" },
+      runtime: { uiEntry: "ui/index.html", hostEntry: "host/index.js" },
+      defaultFeatureId: "chess",
+      features: [{ id: "chess", name: "Chess" }],
     },
     errors: [],
   },
@@ -33,14 +34,16 @@ const workspaceRooms: RoomWorkspaceEntry[] = [
 
 const installedRooms: InstalledRoomRecord[] = [
   {
-    id: "xox",
-    name: "XOX Room",
-    version: "1.0.0",
-    sourceDir: "/workspace/rooms/xox",
-    installedDir: "/workspace/data/rooms/xox",
-    manifestPath: "/workspace/data/rooms/xox/manifest.json",
-    runtimeEntryPath: "/workspace/data/rooms/xox/ui/index.html",
-    hostEntryPath: "/workspace/data/rooms/xox/host/index.js",
+    id: "game-room",
+    name: "Game Room",
+    version: "2.0.0",
+    sourceDir: "/workspace/rooms/game-room",
+    installedDir: "/workspace/data/rooms/game-room",
+    manifestPath: "/workspace/data/rooms/game-room/manifest.json",
+    runtimeEntryPath: "/workspace/data/rooms/game-room/ui/index.html",
+    hostEntryPath: "/workspace/data/rooms/game-room/host/index.js",
+    defaultFeatureId: "chess",
+    features: [{ id: "chess", name: "Chess" }],
     installedAt: "2026-03-08T00:00:00.000Z",
     updatedAt: "2026-03-08T00:00:00.000Z",
   },
@@ -50,8 +53,8 @@ test("room overlay summary reports workspace and installed counts", () => {
   const markup = buildRoomOverlaySummary(workspaceRooms, installedRooms);
 
   assert.match(markup, /Workspace: <strong>2<\/strong>/);
-  assert.match(markup, /Hazir: <strong>1<\/strong>/);
-  assert.match(markup, /Yuklu: <strong>1<\/strong>/);
+  assert.match(markup, /Hazır: <strong>1<\/strong>/);
+  assert.match(markup, /Yüklü: <strong>1<\/strong>/);
 });
 
 test("workspace room list renders install and package actions", () => {
@@ -59,15 +62,14 @@ test("workspace room list renders install and package actions", () => {
 
   assert.match(markup, /data-room-action="install"/);
   assert.match(markup, /data-room-action="package"/);
-  assert.match(markup, /Guncelle/);
+  assert.match(markup, /Güncelle/);
   assert.match(markup, /manifest\.json missing/);
 });
 
-test("installed room list renders open, export, and remove actions", () => {
+test("installed room list renders export and remove actions", () => {
   const markup = buildInstalledRoomListMarkup(installedRooms, workspaceRooms);
 
-  assert.match(markup, /data-room-action="open"/);
   assert.match(markup, /data-room-action="export"/);
   assert.match(markup, /data-room-action="remove"/);
-  assert.match(markup, /Workspace bagli/);
+  assert.match(markup, /Workspace bağlı/);
 });

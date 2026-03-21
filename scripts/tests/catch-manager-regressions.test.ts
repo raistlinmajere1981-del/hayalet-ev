@@ -40,3 +40,19 @@ test("catch manager respects prevCount window before latest assistant selection"
   assert.equal(commands[0]?.command, "new");
   assert.equal(commands[0]?.args, "run");
 });
+
+test("catch manager ignores malformed single-plus commands", () => {
+  const commands = CatchManager.catchCommands({
+    provider: "ai2",
+    webUrl: "https://example.com/room",
+    messages: [
+      {
+        index: 0,
+        role: "assistant",
+        text: '+cmd:GameRoomXoxAiMove({"cell":4})',
+      },
+    ],
+  });
+
+  assert.equal(commands.length, 0);
+});

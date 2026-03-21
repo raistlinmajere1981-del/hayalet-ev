@@ -25,7 +25,7 @@ The implementation should prioritize user-visible runtime correctness first, the
 **Demo/Validation**:
 - Whisper trigger button and Whisper page title render correctly in both `tr` and `en`.
 - Scene containers expose localized `aria-label` values instead of hardcoded English.
-- `rooms/xox` renders without hardcoded Turkish-only strings.
+- The legacy sample room renders without hardcoded Turkish-only strings.
 
 ### Task 1.1: Fix Whisper panel key resolution
 - **Location**: `src/index.html`, `src/pages/whisper.html`, optionally `src/js/app/shell-i18n.ts`
@@ -53,13 +53,13 @@ The implementation should prioritize user-visible runtime correctness first, the
   - HTML-level grep shows no literal `aria-label="... scene"` values in the affected pages.
   - A regression test asserts the new keys exist and the templates reference them.
 
-### Task 1.3: Add a minimal i18n layer for `rooms/xox`
-- **Location**: `rooms/xox/ui/index.html`, `rooms/xox/ui/index.js`, optionally new `rooms/xox/ui/i18n.js`, plus any room host/runtime file that can pass locale state into the room
+### Task 1.3: Add a minimal i18n layer for the legacy sample room
+- **Location**: room runtime UI/host files for the sample room surface
 - **Description**: First define the room locale source of truth, preferring the app-selected language if the room host/runtime can already pass it through. Then replace hardcoded room title, hero copy, board labels, note text, and control labels with a small room-local translation helper keyed by `tr`/`en`. Fall back to a documented browser-locale strategy only if room/runtime locale sync does not exist and is intentionally out of scope.
 - **Complexity**: 6
 - **Dependencies**: None
 - **Acceptance Criteria**:
-  - `rooms/xox` no longer hardcodes visible Turkish-only content.
+- The sample room no longer hardcodes visible Turkish-only content.
   - The room title and main UI labels switch based on an explicit, documented locale source.
   - The chosen locale source does not silently diverge from app language without that limitation being documented.
   - Room runtime behavior is unchanged aside from displayed text.
@@ -70,7 +70,7 @@ The implementation should prioritize user-visible runtime correctness first, the
 
 ### Task 1.4: Add runtime regressions for the fixed surfaces
 - **Location**: `scripts/tests/i18n-ui-regressions.test.ts`, optionally a new room-specific test under `scripts/tests/`
-- **Description**: Add explicit coverage for Whisper key resolution, scene `aria-label` localization, and `rooms/xox` text ownership so the same issues cannot silently regress.
+- **Description**: Add explicit coverage for Whisper key resolution, scene `aria-label` localization, and sample-room text ownership so the same issues cannot silently regress.
 - **Complexity**: 4
 - **Dependencies**: Tasks 1.1-1.3
 - **Acceptance Criteria**:
@@ -207,7 +207,7 @@ The implementation should prioritize user-visible runtime correctness first, the
 
 ### Task 4.2: Perform manual locale smoke checks
 - **Location**: Renderer pages and room surfaces touched by the fix
-- **Description**: Manually verify the affected pages in both Turkish and English: Whisper button/title, settings language selector area, scene containers, and `rooms/xox`.
+- **Description**: Manually verify the affected pages in both Turkish and English: Whisper button/title, settings language selector area, scene containers, and the sample room surface.
 - **Complexity**: 3
 - **Dependencies**: Sprints 1-3
 - **Acceptance Criteria**:
@@ -243,8 +243,8 @@ The implementation should prioritize user-visible runtime correctness first, the
 - Changing `resolveShellKey` globally could break existing shell-relative keys that currently depend on `shell.*` defaulting. Favor explicit template fixes unless repeated evidence justifies a shared resolver change.
 - Many identical EN/TR values are legitimate technical terms, brand names, command syntax, or placeholders. Do not bulk-translate by script without a reviewed allowlist.
 - Restoring `restartHint` or `loadingSettings` just to satisfy stale tests would reintroduce dead UI copy. Update product behavior only if the UX still needs those messages.
-- `rooms/xox` may not share the main renderer i18n bootstrap. Pulling in `AppI18n` could create unnecessary coupling or bundle complexity.
-- If `rooms/xox` cannot receive app language from its host/runtime, a browser-locale fallback may hide a real cross-surface inconsistency. Decide that tradeoff explicitly before implementation starts.
+- The sample room may not share the main renderer i18n bootstrap. Pulling in `AppI18n` could create unnecessary coupling or bundle complexity.
+- If the sample room cannot receive app language from its host/runtime, a browser-locale fallback may hide a real cross-surface inconsistency. Decide that tradeoff explicitly before implementation starts.
 - The current sandbox previously showed `tsx` IPC/pipe permission issues in some invocation styles. Validation commands may need to avoid redirected output or use an alternate runner path.
 - Test hardening should not overfit the current markup structure. Prefer assertions about translation ownership and resolved keys rather than fragile exact HTML ordering.
 - The identical-value guardrail will become noise unless its allowlist is versioned, reviewed, and updated from the same shortlist process used in catalog cleanup.

@@ -17,6 +17,7 @@ import {
   type WorkspaceToolOpenDetail,
 } from "../../ui/workspace-tool-overlay.js";
 import { ensureRuntimePageStyles } from "../../app/runtime-page-styles.js";
+import { mountWorkspaceToolSceneChrome } from "../../scene/workspace-tool-scene-chrome.js";
 import { WhisperDockController } from "./controller.js";
 import { applyWhisperStaticTranslations } from "./i18n.js";
 
@@ -80,6 +81,13 @@ export class WhisperPageController {
 
     this.closeButton?.addEventListener("click", () => {
       this.overlayController?.close();
+    });
+
+    mountWorkspaceToolSceneChrome({
+      root: this.pageRoot,
+      onBack: () => {
+        this.overlayController?.close();
+      },
     });
 
     document.addEventListener(WORKSPACE_TOOL_OPEN_EVENT, ((

@@ -106,7 +106,7 @@ class AppI18nManager {
     return this.availableLanguages;
   }
 
-  async setLocale(locale: unknown): Promise<void> {
+  async setLocale(locale: unknown, options: { forceEmit?: boolean } = {}): Promise<void> {
     const normalized = normalizeAppLanguage(locale);
     const api = window.electronAPI;
     const previousLocale = this.currentLocale;
@@ -128,9 +128,13 @@ class AppI18nManager {
     this.activeCatalog = this.activePack.catalog;
     this.applyDocumentLocale(this.activePack);
 
-    if (previousLocale !== this.currentLocale) {
+    if (options.forceEmit === true || previousLocale !== this.currentLocale) {
       this.emitChange(this.activePack);
     }
+  }
+
+  async reload(): Promise<void> {
+    await this.setLocale(this.currentLocale, { forceEmit: true });
   }
 
   getLocale(): AppLanguage {
@@ -146,6 +150,20 @@ class AppI18nManager {
 
   t(key: string, params?: TranslationParams): string {
     return translateCatalog(this.activeCatalog, key, params, this.fallbackCatalog);
+  }
+
+  getNamespaceCatalog(path: string[]): TranslationCatalog {
+    let current: string | TranslationCatalog = this.activeCatalog;
+
+    for (const segment of path) {
+      if (typeof current === "string") {
+        return {};
+      }
+
+      current = current[segment] ?? {};
+    }
+
+    return typeof current === "string" ? {} : structuredClone(current);
   }
 }
 

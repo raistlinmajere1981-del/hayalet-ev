@@ -9,6 +9,7 @@ import {
   buildWorkspaceRoomListMarkup,
 } from "../../../modules/rooms/room-overlay-markup.js";
 import { shellT } from "../../../app/shell-i18n.js";
+import { Modal } from "../../../ui/modal-manager.js";
 import { registerSettingsPanelLifecycle } from "../controller.js";
 
 interface RoomOverlayRefs {
@@ -25,8 +26,35 @@ interface RoomOverlayState {
   isOpen: boolean;
 }
 
-function roomText(key: string): string {
-  return shellT(`rooms.${key}`);
+function roomText(key: string, params?: Parameters<typeof shellT>[1]): string {
+  return shellT(`rooms.${key}`, params);
+}
+
+function buildRoomLabel(name: string, roomId: string): string {
+  const trimmedName = name.trim();
+  return trimmedName === "" || trimmedName === roomId ? roomId : `${trimmedName} (${roomId})`;
+}
+
+function getWorkspaceRoomLabel(state: RoomOverlayState, roomId: string): string {
+  const room = state.workspaceRooms.find(
+    (entry) => (entry.manifest?.id ?? entry.dirName) === roomId
+  );
+  return buildRoomLabel(room?.manifest?.name ?? room?.dirName ?? roomId, roomId);
+}
+
+function getInstalledRoomLabel(state: RoomOverlayState, roomId: string): string {
+  const room = state.installedRooms.find((entry) => entry.id === roomId);
+  return buildRoomLabel(room?.name ?? roomId, roomId);
+}
+
+async function restartAfterRoomMutation(): Promise<boolean> {
+  const api = window.electronAPI;
+  if (api === undefined || typeof api.appRestart !== "function") {
+    return false;
+  }
+
+  const result = await api.appRestart({ forceFullRestart: true });
+  return result.success === true;
 }
 
 function getRefs(): RoomOverlayRefs {
@@ -79,7 +107,7 @@ export function setupSettingsRoomsPanel(): void {
   }
 
   const refresh = async (): Promise<void> => {
-    state.installedRooms = await RoomRegistry.refreshInstalledRooms();
+    state.installedRooms = RoomRegistry.getInstalledRooms();
     state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
     render(refs, state);
   };
@@ -139,6 +167,14 @@ export function setupSettingsRoomsPanel(): void {
       state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
       render(refs, state);
       if (result.success === true) {
+        if (result.restartRequired === true) {
+          const restarted = await restartAfterRoomMutation();
+          if (restarted !== true) {
+            Toast.info(roomText("toasts.importSuccess"), roomText("toasts.restartRequired"));
+          }
+          return;
+        }
+
         Toast.success(
           roomText("toasts.importSuccess"),
           result.room?.id ?? result.path ?? selectedPath
@@ -167,13 +203,33 @@ export function setupSettingsRoomsPanel(): void {
 
     if (action === "install") {
       void (async (): Promise<void> => {
-        const ok = await RoomRegistry.installFromWorkspace(roomId);
+        const isUpdate = state.installedRooms.some((room) => room.id === roomId);
+        const confirmed = await Modal.confirm({
+          title: roomText(isUpdate ? "confirm.updateTitle" : "confirm.installTitle"),
+          message: roomText(isUpdate ? "confirm.updateMessage" : "confirm.installMessage", {
+            room: getWorkspaceRoomLabel(state, roomId),
+          }),
+          confirmVariant: "primary",
+        });
+        if (!confirmed) {
+          return;
+        }
+
+        const result = await RoomRegistry.installFromWorkspace(roomId);
         state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
         render(refs, state);
-        if (ok) {
+        if (result.success === true) {
+          if (result.restartRequired === true) {
+            const restarted = await restartAfterRoomMutation();
+            if (restarted !== true) {
+              Toast.info(roomText("toasts.installSuccess"), roomText("toasts.restartRequired"));
+            }
+            return;
+          }
+
           Toast.success(roomText("toasts.installSuccess"), roomId);
         } else {
-          Toast.error(roomText("toasts.installError"), roomId);
+          Toast.error(roomText("toasts.installError"), resolveIpcErrorMessage(result) ?? roomId);
         }
       })();
       return;
@@ -235,16 +291,28 @@ export function setupSettingsRoomsPanel(): void {
 
     if (action === "remove") {
       void (async (): Promise<void> => {
-        const api = window.electronAPI;
-        if (api === undefined || typeof api.roomsRemoveInstalled !== "function") {
-          Toast.error(roomText("toasts.removeUnavailable"));
+        const confirmed = await Modal.confirm({
+          title: roomText("confirm.removeTitle"),
+          message: roomText("confirm.removeMessage", {
+            room: getInstalledRoomLabel(state, roomId),
+          }),
+          confirmVariant: "danger",
+        });
+        if (!confirmed) {
           return;
         }
 
-        const result = await api.roomsRemoveInstalled(roomId);
-        await RoomRegistry.refreshInstalledRooms();
+        const result = await RoomRegistry.removeInstalled(roomId);
         render(refs, state);
         if (result.success === true) {
+          if (result.restartRequired === true) {
+            const restarted = await restartAfterRoomMutation();
+            if (restarted !== true) {
+              Toast.info(roomText("toasts.removeSuccess"), roomText("toasts.restartRequired"));
+            }
+            return;
+          }
+
           Toast.success(roomText("toasts.removeSuccess"), roomId);
         } else {
           Toast.error(roomText("toasts.removeError"), resolveIpcErrorMessage(result) ?? roomId);

@@ -203,6 +203,42 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
   4. Bu iki koşul da yoksa varsayılan muhatap `Kullanıcı` seçilir
   5. Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend` eklenir
 
+- `workflow:room-addition`:
+  1. İstenen hedef önce `oda` ve `ana fonksiyon` olarak ayrıştırılır
+  2. Oda seviyesi kapsam netleştirilir: room id, menü adı, scene ihtiyacı, runtime host/ui entry, i18n, command/protocol yüzeyi
+  3. Kod yazmadan önce oda kontrat zinciri metin olarak çıkarılır: manifest alanları -> installed room record -> room page/runtime payload -> scene/debug yüzeyi
+  4. Bu zincirde yeni alan gerekiyorsa önce ilgili type yüzeyleri güncellenir ve doğrulanır: `src/types/rooms.ts`, shared room tipleri, loader/registry etkileri
+  5. Kullanıcı ile kritik soru-cevap tamamlanır: odanın amacı, ilk sürüm sınırı, hangi slotlar/roller kullanılacak, restart veya install beklentisi
+  6. Gerekli asset listesi kullanıcıdan istenir veya mevcut klasörlerden doğrulanır: ana arka plan, yakın görünüm, varsa panel art, i18n içerikleri
+  7. Room manifest ve oda paket yapısı hazırlanır, scene/debug, classic görünüm, room-page ve install lifecycle entegrasyonu birlikte planlanır
+  8. Room dışında shared seam gerekiyorsa gerekçe açık yazılır; seam küçük tutulur ve ayrı regresyonlarla doğrulanır
+  9. Room paketi uygulanır, ilgili manifest/scene/page/debug regresyonları + `npm run typecheck` zorunlu çalıştırılır
+  10. Gerekirse oda workspace'ten install edilerek `config/rooms.json` ve installed copy güncellenir
+
+- `workflow:room-feature-addition`:
+  1. Özellik `oda altyapısı`ndan ayrı ele alınır: feature id, oyuncular, state akışı, UI kontrolleri, AI command/protocol kontratı
+  2. Kod öncesi feature payload matrisi yazılır: UI -> host komutları, host -> UI event isimleri, AI `++cmd` formatı, slot kopma/hata davranışı, game-over davranışı
+  3. Kullanıcı ile önemli kararlar baştan netleştirilir: kimler oynar, kim başlar, hangi `++cmd` komutları yakalanır, hata/slot kopma davranışı ne olur
+  4. Feature için gerekli asset ve içerikler kullanıcıdan yönlendirilir: hotspot hedefi, yakın görünüm, metinler, kurallar, locale farkları
+  5. Feature room-local i18n ile tasarlanır; görünür metinlerin ana kaynağı room katalogları olur, runtime UI içinde sadece minimal bootstrap fallback bırakılır
+  6. Mevcut room altyapısı yeterli değilse önce minimum gerekli room kontratı geliştirilir; geniş rewrite varsayılmaz
+  7. Feature command/protocol listesi manifest'e eklenir, gerekli type güncellemeleri aynı turda yapılır; manifest/runtime/UI shape drift bırakılmaz
+  8. AI'ye gidecek protocol metni ve tur bazlı board snapshot akışı room içinde dosyalanır; catcher kuralı ve son assistant mesajı şartı açık yazılır
+  9. Catch, room-page, scene/debug, i18n ve regresyon testleri feature ile birlikte tamamlanır; stale test beklentileri ancak bilinçli kontrat kararıyla güncellenir
+  10. Özellik tamamlandı denmeden önce hedefli suite'ler + `npm run typecheck` + kısa smoke checklist zorunludur
+
+### D. Room / Main Function Ayrımı — Canonical
+
+- `oda`: navigasyon, manifest, scene entry, base runtime shell, i18n namespace ve install/package lifecycle yüzeyidir
+- `ana fonksiyon`: odanın içindeki tekil deneyimdir; kendi state, komut, protocol, hotspot, topbar kontrolü ve test kapsamı olur
+- Oda işi istenirken asistan önce bu ayrımı yazarak netleştirir; oda boş kalabilir ama ana fonksiyon odasız tanımlanmaz
+- Kullanıcı gerekli görselleri henüz vermediyse asistan eksik asset listesini açıkça çıkarır ve implementasyona başlamadan önce doğrular
+- Room/feature işlerinde payload ve type zinciri tek parça düşünülür: manifest -> installed record -> runtime payload -> UI state -> tests
+- Room-local i18n varken görünür copy'nin ana kaynağı UI içi hardcoded bloklar olamaz; sadece bootstrap fallback kabul edilir
+- Scene/debug veya room-page yüzeyi değişiyorsa ilgili regresyonlar aynı turda güncellenir; sadece feature host testi yeterli sayılmaz
+- Turn-based veya AI slotlu ana fonksiyonlarda en az bir smoke matrisi bırakılır: slot seçimi, başlangıç sırası, kopma ve malformed command senaryoları
+- Bu iki süreçte de kaynak akış `workflow:room-addition` ve `workflow:room-feature-addition` üzerinden işletilir; adımlar atlanmaz
+
 ### 🌐 Çalışma Modu Tespiti — Her İşlem Öncesi ZORUNLU
 
 Agent mod kararını `workflow:terminal-mode`, `workflow:app-mode` ve `workflow:ghost-agent-mode` akışlarına göre verir:

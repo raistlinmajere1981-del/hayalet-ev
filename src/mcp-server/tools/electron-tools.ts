@@ -21,6 +21,12 @@ interface TestElectronArgs {
   _runCommand?: CommandRunner;
 }
 
+interface ModeStatusProbe {
+  mode: string | null;
+  appOpen: boolean;
+  electronConnectionAvailable: boolean;
+}
+
 function getElectronToolsTranslator(): McpTranslator {
   return createMcpTranslatorSync();
 }
@@ -29,19 +35,62 @@ function electronToolsT(t: McpTranslator, key: string, params?: TranslationParam
   return t(`mcpServer.electronTools.${key}`, params);
 }
 
-function parseModeStatusOutput(stdout: string): string | null {
+function parseModeStatusOutput(stdout: string): ModeStatusProbe {
   const firstBrace = stdout.indexOf("{");
   const lastBrace = stdout.lastIndexOf("}");
   if (firstBrace === -1 || lastBrace < firstBrace) {
-    return null;
+    return {
+      mode: null,
+      appOpen: false,
+      electronConnectionAvailable: false,
+    };
   }
 
   try {
-    const parsed = JSON.parse(stdout.slice(firstBrace, lastBrace + 1)) as { mode?: unknown };
+    const parsed = JSON.parse(stdout.slice(firstBrace, lastBrace + 1)) as {
+      mode?: unknown;
+      appOpen?: unknown;
+      electronConnectionAvailable?: unknown;
+      observedSignals?: {
+        appOpen?: unknown;
+        electronConnectionAvailable?: unknown;
+        mainProcess?: unknown;
+      };
+      snapshot?: {
+        main?: {
+          alive?: unknown;
+        };
+      };
+    };
     const mode = typeof parsed.mode === "string" ? parsed.mode.trim().toLowerCase() : null;
-    return mode;
+    const appOpen =
+      typeof parsed.appOpen === "boolean"
+        ? parsed.appOpen
+        : typeof parsed.observedSignals?.appOpen === "boolean"
+          ? parsed.observedSignals.appOpen
+          : typeof parsed.snapshot?.main?.alive === "boolean"
+            ? parsed.snapshot.main.alive
+            : typeof parsed.observedSignals?.mainProcess === "boolean"
+              ? parsed.observedSignals.mainProcess
+              : false;
+    const electronConnectionAvailable =
+      typeof parsed.electronConnectionAvailable === "boolean"
+        ? parsed.electronConnectionAvailable
+        : typeof parsed.observedSignals?.electronConnectionAvailable === "boolean"
+          ? parsed.observedSignals.electronConnectionAvailable
+          : appOpen;
+
+    return {
+      mode,
+      appOpen,
+      electronConnectionAvailable,
+    };
   } catch {
-    return null;
+    return {
+      mode: null,
+      appOpen: false,
+      electronConnectionAvailable: false,
+    };
   }
 }
 
@@ -58,14 +107,23 @@ export async function testElectron(
       cwd: projectRoot,
       timeout: Math.min(5000, timeout * 1000),
     });
-    const mode = parseModeStatusOutput(probe.stdout);
+    const probeInfo = parseModeStatusOutput(probe.stdout);
 
-    if (mode === "app" || mode === "ghost-agent") {
+    if (
+      probeInfo.mode === "app" ||
+      probeInfo.mode === "ghost-agent" ||
+      probeInfo.appOpen === true ||
+      probeInfo.electronConnectionAvailable === true
+    ) {
+      const modeLabel =
+        probeInfo.mode === "terminal" && probeInfo.appOpen === true
+          ? "terminal/app-open"
+          : (probeInfo.mode ?? "unknown");
       return {
         content: [
           {
             type: "text",
-            text: electronToolsT(t, "testElectron.alreadyActive", { mode }),
+            text: electronToolsT(t, "testElectron.alreadyActive", { mode: modeLabel }),
           },
         ],
       };

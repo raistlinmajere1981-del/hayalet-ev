@@ -8,6 +8,18 @@ export const WHEREAMI_MODES = Object.freeze([
   "conflict",
 ]);
 
+function isAppOpen(probes) {
+  return probes.mainProcess === true;
+}
+
+function isElectronConnectionAvailable(probes) {
+  return isAppOpen(probes);
+}
+
+function canReportAppMode(probes) {
+  return isAppOpen(probes) && probes.opencodeServerRunning === true;
+}
+
 function toTimestampMs(value) {
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
@@ -22,6 +34,8 @@ function withObserved(control, probes, runtimeAgeMs, staleRuntime) {
     mainProcess: probes.mainProcess,
     ghostProcess: probes.ghostProcess,
     wrapperProcess: probes.wrapperProcess,
+    appOpen: isAppOpen(probes),
+    electronConnectionAvailable: isElectronConnectionAvailable(probes),
     opencodeServerRunning: probes.opencodeServerRunning === true,
   };
 }
@@ -32,6 +46,8 @@ function result(mode, shouldStop, reason, confidence, observedSignals) {
     shouldStop,
     reason,
     confidence,
+    appOpen: observedSignals.appOpen === true,
+    electronConnectionAvailable: observedSignals.electronConnectionAvailable === true,
     observedSignals,
   };
 }
@@ -43,7 +59,7 @@ function processInferredMode(probes) {
   if (probes.ghostProcess) {
     return "ghost-agent";
   }
-  if (probes.mainProcess) {
+  if (canReportAppMode(probes)) {
     return "app";
   }
   return "terminal";
@@ -78,6 +94,7 @@ export function resolveWhereAmI({
 
   const expected = runtimeExpectedMode(normalizedControl);
   const inferred = processInferredMode(probes);
+  const appOpenWithoutServe = observedSignals.appOpen === true && observedSignals.opencodeServerRunning !== true;
 
   if (inferred === "conflict") {
     return result(
@@ -113,13 +130,25 @@ export function resolveWhereAmI({
     return result(
       inferred,
       false,
-      "Runtime and process probes agree.",
+      appOpenWithoutServe
+        ? "Main app is open, but OpenCode serve is not active; reporting terminal mode."
+        : "Runtime and process probes agree.",
       staleRuntime ? 0.8 : 0.97,
       observedSignals
     );
   }
 
   if (expected === "app" && inferred === "terminal") {
+    if (appOpenWithoutServe) {
+      return result(
+        "terminal",
+        false,
+        "Main app is open, but OpenCode serve is not active; reporting terminal mode.",
+        staleRuntime ? 0.9 : 0.72,
+        observedSignals
+      );
+    }
+
     if (probes.wrapperProcess && !staleRuntime) {
       return result(
         "transitioning",

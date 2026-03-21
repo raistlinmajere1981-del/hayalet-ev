@@ -19,6 +19,11 @@ import {
 } from "./bundled-languages.js";
 import { normalizeAppLanguage, resolveSelectorLanguage } from "./locale.js";
 
+export interface RoomLanguageSource {
+  roomId: string;
+  baseDir: string;
+}
+
 async function pathExists(filePath: string): Promise<boolean> {
   try {
     await access(filePath);
@@ -108,6 +113,21 @@ async function loadExternalCatalog(baseDir: string, localeFolder: string): Promi
   return normalizeLogNamespaceCatalog(mergeTranslationCatalogs(catalogs));
 }
 
+async function loadLooseCatalog(baseDir: string, localeFolder: string): Promise<TranslationCatalog | null> {
+  const filePath = join(baseDir, `${localeFolder}.json`);
+  if (await pathExists(filePath)) {
+    const raw = await readJsonFile(filePath);
+    return normalizeLogNamespaceCatalog(isTranslationCatalog(raw) ? raw : {});
+  }
+
+  const localeDir = join(baseDir, localeFolder);
+  if (await pathExists(localeDir)) {
+    return await loadExternalCatalog(baseDir, localeFolder);
+  }
+
+  return null;
+}
+
 async function listExternalLanguages(baseDir: string): Promise<LanguageDescriptor[]> {
   try {
     const entries = await readdir(baseDir, { withFileTypes: true });
@@ -187,4 +207,39 @@ export async function loadInstalledLanguage(
   } catch {
     return builtIn;
   }
+}
+
+export async function loadRoomScopedCatalogs(
+  sources: RoomLanguageSource[],
+  locale: unknown
+): Promise<TranslationCatalog> {
+  const normalized = normalizeAppLanguage(locale);
+  const fallbackLocale = resolveSelectorLanguage(normalized);
+  const localeCandidates = [normalized, fallbackLocale, "en"].filter(
+    (value, index, array) => array.indexOf(value) === index && value.trim() !== ""
+  );
+
+  const catalogs = await Promise.all(
+    sources.map(async (source) => {
+      for (const candidate of localeCandidates) {
+        const catalog = await loadLooseCatalog(source.baseDir, candidate);
+        if (catalog !== null) {
+          return {
+            rooms: {
+              [source.roomId]: catalog,
+            },
+          } as TranslationCatalog;
+        }
+      }
+
+      return null;
+    })
+  );
+
+  const mergedCatalogs: TranslationCatalog[] = catalogs.filter(
+    (catalog): catalog is TranslationCatalog => catalog !== null
+  );
+  return normalizeLogNamespaceCatalog(
+    mergeTranslationCatalogs(mergedCatalogs)
+  );
 }

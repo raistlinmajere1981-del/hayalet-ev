@@ -27,6 +27,8 @@ export interface SlotStateInfo {
   state?: string;
   accountId?: string | null;
   currentUrl?: string;
+  providerId?: string | null;
+  urlExcluded?: boolean;
   error?: string;
 }
 

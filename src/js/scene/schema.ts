@@ -8,7 +8,7 @@ export const SCENE_ROOM_IDS = [
 ] as const;
 
 export type SceneRoomId = (typeof SCENE_ROOM_IDS)[number];
-export type SceneDebugEditableRoomId = SceneRoomId;
+export type SceneDebugEditableRoomId = string;
 
 export function isSceneRoomId(value: string | null | undefined): value is SceneRoomId {
   return value !== null && value !== undefined && SCENE_ROOM_IDS.includes(value as SceneRoomId);
@@ -53,7 +53,7 @@ export interface SceneNavigateAction {
 
 export interface SceneSettingsAction {
   type: "settings";
-  panel: "theme" | "accounts" | "backup" | "rooms" | "live-log" | null;
+  panel: "theme" | "accounts" | "backup" | "rooms" | "live-log" | "languages" | null;
 }
 
 export interface SceneSettingsSceneCloseAction {
