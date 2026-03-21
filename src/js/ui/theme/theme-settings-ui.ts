@@ -73,11 +73,10 @@ export function renderThemeSettingsPanel(options: ThemeSettingsUiOptions): void 
 }
 
 export function updateThemePanelUI(
-  theme: ThemeId,
+  _theme: ThemeId,
   appearance: Required<ThemeAppearanceSettings>,
   options: ThemeSettingsUiOptions
 ): void {
-  const themeInfo = options.themes[theme];
   const modeHint = document.getElementById("theme-mode-hint");
   const modeSelect = document.getElementById("theme-behavior-select") as HTMLSelectElement | null;
   const lightSelect = document.getElementById("theme-light-select") as HTMLSelectElement | null;

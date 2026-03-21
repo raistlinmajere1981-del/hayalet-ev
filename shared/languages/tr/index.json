@@ -987,6 +987,7 @@
       "openTitle": "Backup merkezini aç",
       "title": "Backup Merkezi",
       "createButton": "Backup Oluştur",
+      "createProcessing": "İşleniyor...",
       "selectButton": "Yedek Dosyası Seç",
       "openFolderButton": "Yedek Klasörünü Aç",
       "restoreButton": "Geri Yükle",
@@ -1058,7 +1059,9 @@
         "invalid": "Geçersiz",
         "ready": "Hazır",
         "scopeUnknown": "Scope bilgisi yok",
-        "externalBundle": "Seçilen harici yedek dosyası"
+        "externalBundle": "Seçilen harici yedek dosyası",
+        "deleteButton": "Sil",
+        "deleteProcessing": "Siliniyor..."
       },
       "preview": {
         "empty": "Restore etkisini görmek için bir yedek dosyası seçin.",
@@ -1077,6 +1080,11 @@
         "fileLine": "Dosyalar: {{count}}",
         "restartLine": "Restart hedefi: {{target}}"
       },
+      "deleteConfirm": {
+        "title": "Yedeği Sil",
+        "message": "Seçilen yedek dosyası silinsin mi?",
+        "fileLine": "Dosya: {{path}}"
+      },
       "dialog": {
         "bundleTitle": "Yedek dosyası seç",
         "bundleButton": "Bu Dosyayı Kullan",
@@ -1088,6 +1096,9 @@
         "filePickerUnavailable": "Dosya seçici hazır değil",
         "createSuccess": "Backup oluşturuldu",
         "createError": "Backup oluşturulamadı",
+        "refreshError": "Backup listesi yenilenemedi",
+        "deleteSuccess": "Backup silindi",
+        "deleteError": "Backup silinemedi",
         "restoreSuccess": "Restore tamamlandı",
         "restoreError": "Restore başarısız"
       },
@@ -1543,9 +1554,12 @@
       "backup": {
         "overlayOpened": "Backup overlay açıldı",
         "listRefreshed": "Backup listesi yenilendi",
+        "listRefreshFailed": "Backup listesi yenilenemedi: {{message}}",
         "previewFailed": "Backup önizlemesi başarısız: {{message}}",
         "createSucceeded": "Backup oluşturuldu: {{path}}",
         "createFailed": "Backup oluşturma başarısız: {{message}}",
+        "deleteSucceeded": "Backup silindi: {{path}}",
+        "deleteFailed": "Backup silme başarısız: {{message}}",
         "restoreSucceeded": "Backup geri yüklendi: {{path}}",
         "restoreFailed": "Backup geri yükleme başarısız: {{message}}"
       },
@@ -2228,6 +2242,7 @@
       "fileRequired": "Backup bundle dosyası gerekli",
       "logs": {
         "createCompleted": "Backup bundle oluşturuldu: {{path}}",
+        "deleteCompleted": "Backup bundle silindi: {{path}}",
         "restoreCompleted": "Backup bundle geri yüklendi: {{path}}"
       }
     },

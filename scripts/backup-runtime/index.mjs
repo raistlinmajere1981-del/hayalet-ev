@@ -2,7 +2,7 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -259,6 +259,28 @@ function deriveOutputPath(options = {}) {
   return join(backupDir, `${formatTimestamp()}-${labelPart || "backup"}.hevbak`);
 }
 
+function resolveStoredBackupPath(filePath) {
+  if (typeof filePath !== "string" || filePath.trim() === "") {
+    throw createError("BACKUP_FILE_REQUIRED", "Backup file is required");
+  }
+
+  const resolvedFilePath = resolve(projectRoot, filePath);
+  const normalizedBackupDir = toPosix(resolve(backupDir)).toLowerCase();
+  const normalizedFilePath = toPosix(resolvedFilePath).toLowerCase();
+  if (normalizedFilePath.startsWith(`${normalizedBackupDir}/`) === false) {
+    throw createError("BACKUP_FILE_FORBIDDEN", "Only stored backup files can be deleted", {
+      filePath: resolvedFilePath,
+    });
+  }
+  if (resolvedFilePath.endsWith(".hevbak") === false) {
+    throw createError("BACKUP_FILE_EXTENSION", "Backup file must end with .hevbak", {
+      filePath: resolvedFilePath,
+    });
+  }
+
+  return resolvedFilePath;
+}
+
 export async function listScopes() {
   const manifest = await readScopeManifest();
   return manifest.scopes;
@@ -408,6 +430,17 @@ export async function listBackups(options = {}) {
   }
 
   return items;
+}
+
+export async function deleteBackup(filePath) {
+  await ensureDir(backupDir);
+  const resolvedFilePath = resolveStoredBackupPath(filePath);
+  await unlink(resolvedFilePath);
+
+  return {
+    success: true,
+    filePath: resolvedFilePath,
+  };
 }
 
 export async function previewBackupRestore(options = {}) {

@@ -248,6 +248,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   showMessageBox: (options) => ipcRenderer.invoke("show-message-box", options),
   backupCreate: (payload) => ipcRenderer.invoke("backup-create", payload),
   backupList: (payload) => ipcRenderer.invoke("backup-list", payload),
+  backupDelete: (payload) => ipcRenderer.invoke("backup-delete", payload),
   backupScopes: () => ipcRenderer.invoke("backup-scopes"),
   backupPresets: () => ipcRenderer.invoke("backup-presets"),
   backupInspect: (payload) => ipcRenderer.invoke("backup-inspect", payload),

@@ -5,6 +5,7 @@ import { translateElectronMessage } from "../i18n/language-service.ts";
 import { registerHandler } from "./ipc-helpers.ts";
 import {
   createBackup,
+  deleteBackup,
   inspectBackup,
   listBackups,
   listPresets,
@@ -57,6 +58,22 @@ export function setupBackupHandlers(): void {
     "backup-list",
     async (_event, payload?: { limit?: number }) => await listBackups({ limit: payload?.limit })
   );
+
+  registerHandler("backup-delete", async (_event, payload: { filePath: string }) => {
+    if (typeof payload.filePath !== "string" || payload.filePath.trim() === "") {
+      throw new Error(await backupT("fileRequired"));
+    }
+
+    const result = await deleteBackup(payload.filePath);
+    await logger.logInternalT(
+      LogCategory.IPC,
+      LogLevel.SUCCESS,
+      "electron.backup.logs.deleteCompleted",
+      { path: result.filePath }
+    );
+
+    return result;
+  });
 
   registerHandler("backup-scopes", async () => {
     const result = (await listScopes()) as unknown;

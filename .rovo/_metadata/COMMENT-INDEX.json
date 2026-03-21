@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-21T01:04:58.894Z",
+  "generatedAt": "2026-03-21T13:31:08.862Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -716,8 +716,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 427,
-          "endLine": 427,
+          "startLine": 428,
+          "endLine": 428,
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -725,8 +725,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 461,
-          "endLine": 461,
+          "startLine": 462,
+          "endLine": 462,
           "text": "WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -734,8 +734,8 @@
         },
         {
           "kind": "note",
-          "startLine": 519,
-          "endLine": 519,
+          "startLine": 520,
+          "endLine": 520,
           "text": "NOTE: External tool pages share this preload, but only the main shell should boot /js/app.js.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -998,8 +998,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 73,
-          "endLine": 73,
+          "startLine": 74,
+          "endLine": 74,
           "text": "NOTE: Inject ServerCommands into CoreEngine to break the circular dependency.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1007,8 +1007,8 @@
         },
         {
           "kind": "note",
-          "startLine": 243,
-          "endLine": 243,
+          "startLine": 245,
+          "endLine": 245,
           "text": "NOTE: --auto-connect clicks the assistant connect button on the assistant page.",
           "prefix": "NOTE",
           "scopeType": "file",

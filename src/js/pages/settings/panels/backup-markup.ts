@@ -157,6 +157,7 @@ export function buildBackupListMarkup(
   importedFilePath: string | null
 ): string {
   const rows = [...backups];
+  const existingPaths = new Set(backups.map((item) => item.filePath));
   if (
     importedFilePath !== null &&
     rows.some((item) => item.filePath === importedFilePath) === false
@@ -178,27 +179,36 @@ export function buildBackupListMarkup(
   return rows
     .map((item) => {
       const isSelected = item.filePath === selectedFilePath;
+      const isExternalOnly =
+        item.filePath === importedFilePath && existingPaths.has(item.filePath) === false;
       return [
-        `<button class="backup-bundle-row${isSelected ? " is-selected" : ""}" type="button" data-backup-file="${escapeHtml(
+        '<div class="backup-bundle-item">',
+        `  <button class="backup-bundle-row${isSelected ? " is-selected" : ""}" type="button" data-backup-file="${escapeHtml(
           item.filePath
         )}">`,
-        '  <span class="backup-bundle-row-head">',
-        `    <span class="backup-bundle-title">${escapeHtml(item.label ?? backupText("list.untitled"))}</span>`,
-        `    <span class="room-manager-state-badge" data-state="${escapeHtml(
+        '    <span class="backup-bundle-row-head">',
+        `      <span class="backup-bundle-title">${escapeHtml(item.label ?? backupText("list.untitled"))}</span>`,
+        `      <span class="room-manager-state-badge" data-state="${escapeHtml(
           item.invalid === true ? "invalid" : "ready"
         )}">${escapeHtml(
           item.invalid === true ? backupText("list.invalid") : backupText("list.ready")
         )}</span>`,
-        "  </span>",
-        `  <span class="backup-bundle-meta">${escapeHtml(formatDate(item.createdAt))}</span>`,
-        `  <span class="backup-bundle-meta">${escapeHtml(
+        "    </span>",
+        `    <span class="backup-bundle-meta">${escapeHtml(formatDate(item.createdAt))}</span>`,
+        `    <span class="backup-bundle-meta">${escapeHtml(
           item.selectedScopes.length > 0
             ? item.selectedScopes.join(", ")
             : backupText("list.scopeUnknown")
         )}</span>`,
-        `  <span class="backup-bundle-meta">${escapeHtml(formatBytes(item.totalBytes))}</span>`,
-        `  <span class="backup-bundle-path">${escapeHtml(item.filePath)}</span>`,
-        "</button>",
+        `    <span class="backup-bundle-meta">${escapeHtml(formatBytes(item.totalBytes))}</span>`,
+        `    <span class="backup-bundle-path">${escapeHtml(item.filePath)}</span>`,
+        "  </button>",
+        isExternalOnly
+          ? ""
+          : `  <button class="btn btn-danger btn-xs backup-bundle-delete" type="button" data-backup-delete="${escapeHtml(
+              item.filePath
+            )}">${escapeHtml(backupText("list.deleteButton"))}</button>`,
+        "</div>",
       ].join("");
     })
     .join("");

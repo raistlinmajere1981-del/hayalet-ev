@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-21T01:04:59.669Z",
+  "generatedAt": "2026-03-21T13:31:09.657Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -10,10 +10,10 @@
   ],
   "stats": {
     "filesScanned": 537,
-    "ids": 557,
+    "ids": 550,
     "testIds": 15,
     "querySelectors": 133,
-    "totalSelectors": 705
+    "totalSelectors": 698
   },
   "lookup": {
     "id": {
@@ -112,8 +112,6 @@
       "archives-scope-all": "#archives-scope-all",
       "archives-scope-current": "#archives-scope-current",
       "archives-search-empty-text": "#archives-search-empty-text",
-      "archives-search-title": "#archives-search-title",
-      "archives-sidebar-title": "#archives-sidebar-title",
       "archives-summary-label": "#archives-summary-label",
       "archives-title-label": "#archives-title-label",
       "archives-weburl-label": "#archives-weburl-label",
@@ -402,7 +400,6 @@
       "scene-theme-refresh": "#scene-theme-refresh",
       "scene-theme-selection-hint": "#scene-theme-selection-hint",
       "scene-theme-settings-list": "#scene-theme-settings-list",
-      "scene-theme-source-badge": "#scene-theme-source-badge",
       "search-empty": "#search-empty",
       "search-input": "#search-input",
       "search-results": "#search-results",
@@ -474,16 +471,12 @@
       "status-us1": "#status-us1",
       "theme-behavior-select": "#theme-behavior-select",
       "theme-contrast-toggle": "#theme-contrast-toggle",
-      "theme-current-icon": "#theme-current-icon",
-      "theme-current-meta": "#theme-current-meta",
-      "theme-current-name": "#theme-current-name",
       "theme-dark-select": "#theme-dark-select",
       "theme-day-start": "#theme-day-start",
       "theme-dropdown": "#theme-dropdown",
       "theme-dropdown-btn": "#theme-dropdown-btn",
       "theme-dropdown-menu": "#theme-dropdown-menu",
       "theme-light-select": "#theme-light-select",
-      "theme-mode-badge": "#theme-mode-badge",
       "theme-mode-hint": "#theme-mode-hint",
       "theme-motion-select": "#theme-motion-select",
       "theme-night-start": "#theme-night-start",

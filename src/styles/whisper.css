@@ -12,9 +12,8 @@
 
 .whisper-page__header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
+  align-items: center;
+  min-height: var(--input-height);
 }
 
 .whisper-dock {

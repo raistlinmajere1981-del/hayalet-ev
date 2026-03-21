@@ -633,6 +633,10 @@ declare global {
         invalid?: boolean;
       }>
     >;
+    backupDelete: (payload: { filePath: string }) => Promise<{
+      success: boolean;
+      filePath: string;
+    }>;
     backupScopes: () => Promise<
       Array<{
         id: string;

@@ -46,10 +46,10 @@ export class UserPanel {
     const nickInput = document.getElementById("user-nickname-input") as HTMLInputElement | null;
     const avatarEditBtn = document.getElementById("user-avatar-edit-btn");
     if (nickInput) {
-      nickInput.addEventListener("blur", () => {
+      nickInput.addEventListener("blur", (): void => {
         void this.saveNickname();
       });
-      nickInput.addEventListener("keydown", (e) => {
+      nickInput.addEventListener("keydown", (e): void => {
         if (e.key === "Enter") {
           nickInput.blur();
         }
@@ -61,10 +61,10 @@ export class UserPanel {
     };
 
     if (avatarEditBtn instanceof HTMLElement) {
-      avatarEditBtn.onclick = () => {
+      avatarEditBtn.onclick = (): void => {
         handleAvatarEdit();
       };
-      avatarEditBtn.onkeydown = (event: KeyboardEvent) => {
+      avatarEditBtn.onkeydown = (event: KeyboardEvent): void => {
         if (event.key !== "Enter" && event.key !== " ") {
           return;
         }
@@ -76,32 +76,32 @@ export class UserPanel {
 
     const gdriveStartAuthBtn = document.getElementById("gdrive-start-auth");
     if (gdriveStartAuthBtn instanceof HTMLElement) {
-      gdriveStartAuthBtn.onclick = () => {
+      gdriveStartAuthBtn.onclick = (): void => {
         void this.startGDriveAuth();
       };
     }
 
     const gdriveConnectBtn = document.getElementById("gdrive-connect-btn");
     if (gdriveConnectBtn instanceof HTMLElement) {
-      gdriveConnectBtn.onclick = () => {
+      gdriveConnectBtn.onclick = (): void => {
         void this.toggleGDriveConnection();
       };
     }
 
-    const gdriveAuthCodeInput = document.getElementById("gdrive-auth-code") as
-      | HTMLInputElement
-      | null;
+    const gdriveAuthCodeInput = document.getElementById(
+      "gdrive-auth-code"
+    ) as HTMLInputElement | null;
     if (gdriveAuthCodeInput !== null) {
-      gdriveAuthCodeInput.onchange = (event) => {
+      gdriveAuthCodeInput.onchange = (event): void => {
         void this.saveGDriveCode((event.target as HTMLInputElement).value);
       };
     }
 
-    const appLanguageSelect = document.getElementById("app-language-select") as
-      | HTMLSelectElement
-      | null;
+    const appLanguageSelect = document.getElementById(
+      "app-language-select"
+    ) as HTMLSelectElement | null;
     if (appLanguageSelect !== null) {
-      appLanguageSelect.onchange = (event) => {
+      appLanguageSelect.onchange = (event): void => {
         void this.saveAppLanguage((event.target as HTMLSelectElement).value);
       };
     }

@@ -61,7 +61,7 @@ export class Us1Panel {
       "us1-mail-provider-select"
     ) as HTMLSelectElement | null;
     if (providerSelect !== null) {
-      providerSelect.onchange = () => {
+      providerSelect.onchange = (): void => {
         this.renderMailAccountFormState();
       };
     }
@@ -70,14 +70,14 @@ export class Us1Panel {
       "us1-mail-auth-type-select"
     ) as HTMLSelectElement | null;
     if (authTypeSelect !== null) {
-      authTypeSelect.onchange = () => {
+      authTypeSelect.onchange = (): void => {
         this.renderMailAccountFormState();
       };
     }
 
     const verifyBtn = document.getElementById("us1-mail-verify-btn");
     if (verifyBtn instanceof HTMLElement) {
-      verifyBtn.onclick = (event) => {
+      verifyBtn.onclick = (event): void => {
         event.preventDefault();
         void this.handleSaveMailAccount(true);
       };
@@ -85,14 +85,14 @@ export class Us1Panel {
 
     const deleteBtn = document.getElementById("us1-mail-delete-btn");
     if (deleteBtn instanceof HTMLElement) {
-      deleteBtn.onclick = () => {
+      deleteBtn.onclick = (): void => {
         void this.handleDeleteMailAccount();
       };
     }
 
     const gmailSecurityBtn = document.getElementById("us1-mail-gmail-open-security");
     if (gmailSecurityBtn instanceof HTMLElement) {
-      gmailSecurityBtn.onclick = (event) => {
+      gmailSecurityBtn.onclick = (event): void => {
         event.preventDefault();
         const electronApi = window.electronAPI;
         if (electronApi) {
@@ -105,7 +105,7 @@ export class Us1Panel {
       "us1-identity-select"
     ) as HTMLSelectElement | null;
     if (slotUserSelect !== null) {
-      slotUserSelect.onchange = (event) => {
+      slotUserSelect.onchange = (event): void => {
         const selectedAccountId = this.readSelectValue(event.target as HTMLSelectElement);
         void this.handleSlotSelectionChange(selectedAccountId);
       };
@@ -113,7 +113,7 @@ export class Us1Panel {
 
     const catchCheck = document.getElementById("us1-catch-check") as HTMLInputElement | null;
     if (catchCheck !== null) {
-      catchCheck.onchange = (event) => {
+      catchCheck.onchange = (event): void => {
         void this.updateUs1Slot({
           catchCommands: (event.target as HTMLInputElement).checked,
         });
@@ -124,7 +124,7 @@ export class Us1Panel {
       "us1-resume-last-session-check"
     ) as HTMLInputElement | null;
     if (resumeCheck !== null) {
-      resumeCheck.onchange = (event) => {
+      resumeCheck.onchange = (event): void => {
         void this.updateUs1Slot({
           resumeLastSession: (event.target as HTMLInputElement).checked,
         });
@@ -135,7 +135,7 @@ export class Us1Panel {
       "us1-remember-connection-check"
     ) as HTMLInputElement | null;
     if (rememberConnectionCheck !== null) {
-      rememberConnectionCheck.onchange = (event) => {
+      rememberConnectionCheck.onchange = (event): void => {
         const checked = (event.target as HTMLInputElement).checked;
         void this.updateUs1Slot({
           rememberConnectionStatus: checked,
@@ -146,7 +146,7 @@ export class Us1Panel {
 
     const toggleBtn = document.getElementById("us1-toggle-btn");
     if (toggleBtn instanceof HTMLElement) {
-      toggleBtn.onclick = () => {
+      toggleBtn.onclick = (): void => {
         if (AppState.isUs1Connected() === true) {
           void this.handleDisconnect();
         } else {
@@ -157,7 +157,7 @@ export class Us1Panel {
 
     const syncMessagesBtn = document.getElementById("us1-sync-messages-btn");
     if (syncMessagesBtn instanceof HTMLElement) {
-      syncMessagesBtn.onclick = () => {
+      syncMessagesBtn.onclick = (): void => {
         void this.handleManualMailCheck();
       };
     }

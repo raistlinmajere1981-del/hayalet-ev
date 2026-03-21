@@ -17,24 +17,22 @@
         ></h2>
 
         <div class="archives-page scene-shell__embedded-page">
-          <div class="archives-page__header">
-            <div class="room-shell-hero">
-              <div
-                class="room-shell-badge"
-                data-shell-i18n-text="app.archives.page.sidebarTitle"
-              ></div>
-              <h1 class="room-shell-title" data-shell-i18n-text="app.archives.page.pageTitle"></h1>
-              <p
-                class="room-shell-subtitle"
-                data-shell-i18n-text="app.archives.page.searchTitle"
-              ></p>
+          <div class="archives-page__header workspace-tool-bar">
+            <div class="workspace-tool-bar__start">
+              <h1
+                class="workspace-tool-bar__title"
+                data-shell-i18n-text="app.archives.page.pageTitle"
+              ></h1>
             </div>
-            <button
-              type="button"
-              class="btn btn-ghost btn-sm"
-              id="archives-page-close-btn"
-              data-shell-i18n-text="common.close"
-            ></button>
+            <div class="workspace-tool-bar__center" aria-hidden="true"></div>
+            <div class="workspace-tool-bar__end">
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                id="archives-page-close-btn"
+                data-shell-i18n-text="common.close"
+              ></button>
+            </div>
           </div>
 
           <div class="archives-page__content">
@@ -42,10 +40,6 @@
               <div class="archives-top">
                 <div class="archives-sidebar ds-surface-card ds-surface-card--stack">
                   <div class="sidebar-header ds-surface-card__header">
-                    <h3
-                      id="archives-sidebar-title"
-                      data-shell-i18n-text="app.archives.page.sidebarTitle"
-                    ></h3>
                     <div class="provider-toggle">
                       <label class="ds-choice-chip ds-choice-chip--segmented">
                         <input
@@ -176,10 +170,6 @@
 
                 <div class="archives-search ds-surface-card ds-surface-card--stack">
                   <div class="search-header ds-surface-card__header">
-                    <h3
-                      id="archives-search-title"
-                      data-shell-i18n-text="app.archives.page.searchTitle"
-                    ></h3>
                     <div class="search-scope">
                       <label class="ds-choice-chip ds-choice-chip--segmented">
                         <input type="radio" name="search-scope" value="current" checked />

@@ -44,28 +44,28 @@ export class AccountPanel {
   setupListeners(): void {
     const createBtn = document.getElementById("settings-create-account");
     if (createBtn instanceof HTMLElement) {
-      createBtn.onclick = () => {
+      createBtn.onclick = (): void => {
         void this.handlePrimaryAction();
       };
     }
 
     const cancelBtn = document.getElementById("settings-cancel-edit");
     if (cancelBtn instanceof HTMLElement) {
-      cancelBtn.onclick = () => {
+      cancelBtn.onclick = (): void => {
         this.cancelEdit();
       };
     }
 
     const avatarBrowseBtn = document.getElementById("new-account-avatar-browse");
     if (avatarBrowseBtn instanceof HTMLElement) {
-      avatarBrowseBtn.onclick = () => {
+      avatarBrowseBtn.onclick = (): void => {
         void this.browseNewAccountAvatar();
       };
     }
 
     const kindSelect = document.getElementById("new-account-kind") as HTMLSelectElement | null;
     if (kindSelect !== null) {
-      kindSelect.onchange = () => {
+      kindSelect.onchange = (): void => {
         this._editingAccountId = null;
         this.renderFormMeta();
       };
@@ -73,7 +73,7 @@ export class AccountPanel {
 
     const syncRemoteAccountsBtn = document.getElementById("settings-sync-remote-accounts");
     if (syncRemoteAccountsBtn instanceof HTMLElement) {
-      syncRemoteAccountsBtn.onclick = () => {
+      syncRemoteAccountsBtn.onclick = (): void => {
         void this.handleSyncRemoteAccounts();
       };
     }
