@@ -4,10 +4,63 @@ import test from "node:test";
 import { splitLines } from "../lib/wrapper-supervisor.mjs";
 import { createUserMessage, formatCommand, isNoiseLogLine } from "../lib/wrapper-events.mjs";
 
+function createTranslator(dictionary) {
+  return (key, params = {}) => {
+    const template = dictionary[key] ?? key;
+    return String(template).replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, token) => {
+      const value = params[token];
+      return value === null || value === undefined ? "" : String(value);
+    });
+  };
+}
+
 test("wrapper event helpers keep user lane terse", () => {
-  assert.equal(createUserMessage("vite.reset"), "Vite yeniden baslatiliyor.");
-  assert.equal(createUserMessage("cycle.to-ghost"), "Gecis ghost moda yonlendirildi.");
+  const t = createTranslator({
+    "shell.wrapper.events.viteReset": "Vite yeniden başlatılıyor.",
+    "shell.wrapper.events.transitionRouted": "Geçiş {{surface}} yönüne yönlendirildi.",
+    "shell.wrapper.surfaces.ghost": "hayalet-ajan modu",
+  });
+
+  assert.equal(createUserMessage("vite.reset", {}, t), "Vite yeniden başlatılıyor.");
+  assert.equal(
+    createUserMessage("cycle.to-ghost", { uiMode: "ghost-agent", sceneDebug: false }, t),
+    "Geçiş hayalet-ajan modu yönüne yönlendirildi."
+  );
   assert.equal(formatCommand("npm", ["run", "electron:build"]), "npm run electron:build");
+});
+
+test("wrapper event helpers resolve surface labels from ui mode", () => {
+  const t = createTranslator({
+    "shell.wrapper.events.surfacePreparing": "{{surface}} hazırlanıyor.",
+    "shell.wrapper.events.transitionRouted": "Geçiş {{surface}} yönüne yönlendirildi.",
+    "shell.wrapper.events.ghostCrashRecovery":
+      "Hata: {{surface}} {{code}} kodu ile kapandı. {{recoverySurface}} yeniden açılmaya çalışılacak.",
+    "shell.wrapper.surfaces.main": "hayalet-ev",
+    "shell.wrapper.surfaces.scene": "sahne modu",
+    "shell.wrapper.surfaces.sceneDebug": "sahne:editör modu",
+    "shell.wrapper.surfaces.ghost": "hayalet-ajan modu",
+  });
+
+  assert.equal(
+    createUserMessage("main.prepare", { uiMode: "scene", sceneDebug: true }, t),
+    "sahne:editör modu hazırlanıyor."
+  );
+  assert.equal(
+    createUserMessage("cycle.to-app", { uiMode: "scene", sceneDebug: false }, t),
+    "Geçiş sahne modu yönüne yönlendirildi."
+  );
+  assert.equal(
+    createUserMessage(
+      "ghost.crash",
+      {
+        code: 9,
+        recoveryUiMode: "classic",
+        recoverySceneDebug: false,
+      },
+      t
+    ),
+    "Hata: hayalet-ajan modu 9 kodu ile kapandı. hayalet-ev yeniden açılmaya çalışılacak."
+  );
 });
 
 test("wrapper event helpers filter known noisy log lines", () => {

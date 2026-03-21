@@ -1114,6 +1114,44 @@
       "save": "Kaydet",
       "translationMissing": "Çeviri şu anda kullanılamıyor"
     },
+    "wrapper": {
+      "dashboard": {
+        "userLabel": "KULLANICI",
+        "phases": {
+          "idle": "boşta",
+          "preparing-app": "hazırlık",
+          "resetting-vite": "vite sıfırlanıyor",
+          "running-app": "çalışıyor",
+          "preparing-ghost": "ajan hazırlanıyor",
+          "running-ghost": "ajan çalışıyor",
+          "cleanup": "temizlik"
+        }
+      },
+      "surfaces": {
+        "main": "hayalet-ev",
+        "scene": "sahne modu",
+        "sceneDebug": "sahne:editör modu",
+        "ghost": "hayalet-ajan modu"
+      },
+      "events": {
+        "wrapperStart": "Wrapper başladı. Geçişler bu terminalden yönetilecek.",
+        "wrapperStop": "Wrapper durdu.",
+        "surfacePreparing": "{{surface}} hazırlanıyor.",
+        "surfacePreparingAssistant": "{{surface}} hazırlanıyor. Asistan sayfası açılacak.",
+        "surfaceBuilding": "{{surface}} derleniyor.",
+        "viteReset": "Vite yeniden başlatılıyor.",
+        "viteReady": "Vite hazır.",
+        "surfaceOpening": "{{surface}} açılıyor.",
+        "surfaceClosed": "{{surface}} kapandı.",
+        "transitionRouted": "Geçiş {{surface}} yönüne yönlendirildi.",
+        "cycleStop": "Wrapper döngüsü sonlandı.",
+        "cleanup": "Arka plan süreçleri kapatılıyor.",
+        "surfaceCrash": "Hata: {{surface}} {{code}} kodu ile kapandı.",
+        "ghostCrashRecovery": "Hata: {{surface}} {{code}} kodu ile kapandı. {{recoverySurface}} yeniden açılmaya çalışılacak.",
+        "error": "Hata: {{message}}",
+        "unexpectedError": "Beklenmeyen bir hata oluştu."
+      }
+    },
     "commandQueue": {
       "initSkipped": "CommandManager init atlandı: electronAPI.commandInit mevcut değil",
       "initFailed": "CommandManager init hatası: {{message}}",

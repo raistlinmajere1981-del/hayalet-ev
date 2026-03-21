@@ -52,7 +52,14 @@ async function waitForHttpReady(urls, timeoutMs = 30000, intervalMs = 250) {
   throw new Error(`Timed out while waiting for Vite readiness after ${timeoutMs}ms.`);
 }
 
-export function createWrapperSupervisor({ root, env, dashboard, sessionId, onEvent = () => {} }) {
+export function createWrapperSupervisor({
+  root,
+  env,
+  dashboard,
+  sessionId,
+  translator = undefined,
+  onEvent = () => {},
+}) {
   const children = new Map();
   const npmCommand = resolveExecutable("npm");
   const viteCommand = resolveExecutable("vite");
@@ -61,7 +68,7 @@ export function createWrapperSupervisor({ root, env, dashboard, sessionId, onEve
   const ghostEntry = join(root, "dist", "ghost-agent", "electron", "main.js");
 
   function emit(event, details = {}) {
-    dashboard.user(createUserMessage(event, details));
+    dashboard.user(createUserMessage(event, details, translator));
     onEvent(event, details);
   }
 
@@ -135,9 +142,9 @@ export function createWrapperSupervisor({ root, env, dashboard, sessionId, onEve
     return registerChild(role, child, command, args);
   }
 
-  async function runShortCommand(role, command, args, { eventName = null } = {}) {
+  async function runShortCommand(role, command, args, { eventName = null, eventDetails = {} } = {}) {
     if (eventName !== null) {
-      emit(eventName);
+      emit(eventName, eventDetails);
     }
 
     const record = spawnManaged(role, command, args);
@@ -184,14 +191,21 @@ export function createWrapperSupervisor({ root, env, dashboard, sessionId, onEve
   }
 
   async function runMainAppCycle({ assistantStartup = false, uiMode = "classic", sceneDebug = false } = {}) {
+    const mainSurfaceDetails = {
+      assistantStartup,
+      uiMode: normalizeMainAppUiMode(uiMode),
+      sceneDebug,
+    };
+
     dashboard.setPhase("preparing-app");
-    emit("main.prepare", { assistantStartup });
+    emit("main.prepare", mainSurfaceDetails);
     await runShortCommand("build-main", npmCommand, ["run", "electron:build"], {
       eventName: "main.build",
+      eventDetails: mainSurfaceDetails,
     });
     await resetVite();
     dashboard.setPhase("running-app");
-    emit("main.launch");
+    emit("main.launch", mainSurfaceDetails);
     const record = spawnManaged("main-app", electronCommand, buildMainArgs({
       assistantStartup,
       uiMode: normalizeMainAppUiMode(uiMode),
@@ -204,26 +218,32 @@ export function createWrapperSupervisor({ root, env, dashboard, sessionId, onEve
       },
     });
     const code = await record.closed;
-    emit("main.closed");
+    emit("main.closed", mainSurfaceDetails);
     await stopRole("vite");
     return code;
   }
 
   async function runGhostAppCycle() {
+    const ghostSurfaceDetails = {
+      uiMode: "ghost-agent",
+      sceneDebug: false,
+    };
+
     dashboard.setPhase("preparing-ghost");
-    emit("ghost.prepare");
+    emit("ghost.prepare", ghostSurfaceDetails);
     await runShortCommand("build-ghost", npmCommand, ["run", "ghost:build:all"], {
       eventName: "ghost.build",
+      eventDetails: ghostSurfaceDetails,
     });
     dashboard.setPhase("running-ghost");
-    emit("ghost.launch");
+    emit("ghost.launch", ghostSurfaceDetails);
     const record = spawnManaged("ghost-app", electronCommand, buildGhostArgs(), {
       env: {
         LIBVA_DRIVER_NAME: env.LIBVA_DRIVER_NAME ?? "i965",
       },
     });
     const code = await record.closed;
-    emit("ghost.closed");
+    emit("ghost.closed", ghostSurfaceDetails);
     return code;
   }
 

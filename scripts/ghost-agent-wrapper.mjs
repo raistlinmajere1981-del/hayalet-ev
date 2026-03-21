@@ -14,8 +14,9 @@ import {
   toMainRunningControl,
   toPostGhostControl,
 } from "./lib/ghost-wrapper-runtime.mjs";
+import { createWrapperTranslatorSync } from "./lib/wrapper-i18n.mjs";
 import { createWrapperDashboard } from "./lib/wrapper-dashboard.mjs";
-import { createWrapperSessionId } from "./lib/wrapper-events.mjs";
+import { createUserMessage, createWrapperSessionId } from "./lib/wrapper-events.mjs";
 import { createWrapperSupervisor } from "./lib/wrapper-supervisor.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -86,7 +87,14 @@ async function consumeWrapperRestartRequest() {
 }
 
 function createRuntimeTools(sessionId) {
-  const dashboard = createWrapperDashboard({ sessionId });
+  const i18n = createWrapperTranslatorSync({ root });
+  const dashboard = createWrapperDashboard({
+    sessionId,
+    userLabel: i18n.t("shell.wrapper.dashboard.userLabel"),
+    formatPhaseLabel(phase) {
+      return i18n.t(`shell.wrapper.dashboard.phases.${phase}`);
+    },
+  });
   dashboard.attach();
 
   const supervisor = createWrapperSupervisor({
@@ -94,6 +102,7 @@ function createRuntimeTools(sessionId) {
     env,
     dashboard,
     sessionId,
+    translator: i18n.t,
     onEvent(event, details) {
       void logWrapperEvent(`supervisor.${event}`, { sessionId, ...details });
     },
@@ -103,6 +112,7 @@ function createRuntimeTools(sessionId) {
     dashboard,
     sessionId,
     supervisor,
+    t: i18n.t,
   };
 }
 
@@ -135,7 +145,7 @@ async function runGhost(supervisor) {
 async function runGhostOnly() {
   await ensureControlFile();
   await clearWrapperRestartRequest();
-  const { dashboard, sessionId, supervisor } = createRuntimeTools(createWrapperSessionId());
+  const { dashboard, sessionId, supervisor, t } = createRuntimeTools(createWrapperSessionId());
   await logWrapperEvent("wrapper.start", { runtimeControlPath, mode: "ghost-only", sessionId });
 
   try {
@@ -161,7 +171,10 @@ async function runGhostOnly() {
     });
 
     if (shouldReopenMainAfterGhost(idleControl)) {
-      supervisor.emit("cycle.to-app");
+      supervisor.emit("cycle.to-app", {
+        uiMode: normalizeMainAppUiMode(env.APP_UI_MODE),
+        sceneDebug: isSceneDebugEnabled(),
+      });
       await logWrapperEvent("cycle.main.start", { nextTarget: "app", assistantStartup: true, sessionId });
       const mainCode = await runMain(supervisor, {
         assistantStartup: true,
@@ -181,8 +194,9 @@ async function runGhostOnly() {
     });
     process.exitCode = code !== 0 ? code : 0;
   } catch (error) {
-    dashboard.user(`Hata: ${error instanceof Error ? error.message : String(error)}`);
-    await logWrapperEvent("wrapper.error", { sessionId, message: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    dashboard.user(createUserMessage("error", { message }, t));
+    await logWrapperEvent("wrapper.error", { sessionId, message });
     process.exitCode = 1;
   } finally {
     await supervisor.cleanup();
@@ -198,7 +212,7 @@ async function main() {
 
   await ensureControlFile();
   await clearWrapperRestartRequest();
-  const { dashboard, sessionId, supervisor } = createRuntimeTools(createWrapperSessionId());
+  const { dashboard, sessionId, supervisor, t } = createRuntimeTools(createWrapperSessionId());
   await logWrapperEvent("wrapper.start", { runtimeControlPath, sessionId });
 
   let nextTarget = "app";
@@ -225,7 +239,7 @@ async function main() {
           assistantStartup: false,
         };
         if (code !== 0) {
-          dashboard.user(`Hata: ana uygulama ${code} kodu ile kapandi.`);
+          dashboard.user(createUserMessage("main.crash", { code, ...launchOptions }, t));
           await logWrapperEvent("cycle.main.crash", { code, sessionId });
           process.exitCode = code;
           return;
@@ -238,7 +252,10 @@ async function main() {
             ...restartRequest,
             assistantStartup: launchOptions.assistantStartup,
           };
-          supervisor.emit("cycle.to-app");
+          supervisor.emit("cycle.to-app", {
+            uiMode: nextMainLaunchOptions.uiMode,
+            sceneDebug: nextMainLaunchOptions.sceneDebug,
+          });
           await logWrapperEvent("cycle.main.restart", {
             sessionId,
             uiMode: nextMainLaunchOptions.uiMode,
@@ -269,7 +286,10 @@ async function main() {
 
         const inGhostControl = toGhostRunningControl(control, nowIso());
         await writeControl(inGhostControl);
-        supervisor.emit("cycle.to-ghost");
+        supervisor.emit("cycle.to-ghost", {
+          uiMode: "ghost-agent",
+          sceneDebug: false,
+        });
         await logWrapperEvent("cycle.ghost.prepare", {
           desiredMode: inGhostControl.desiredMode,
           phase: inGhostControl.phase,
@@ -282,7 +302,17 @@ async function main() {
       await logWrapperEvent("cycle.ghost.start", { nextTarget, sessionId });
       const ghostCode = await runGhost(supervisor);
       if (ghostCode !== 0) {
-        dashboard.user(`Hata: Ghost Agent ${ghostCode} kodu ile kapandi. Ana uygulamaya donus denenecek.`);
+        dashboard.user(
+          createUserMessage(
+            "ghost.crash",
+            {
+              code: ghostCode,
+              recoveryUiMode: nextMainLaunchOptions.uiMode,
+              recoverySceneDebug: nextMainLaunchOptions.sceneDebug,
+            },
+            t
+          )
+        );
       }
 
       const control = await readControl();
@@ -312,11 +342,15 @@ async function main() {
         assistantStartup: true,
       };
       nextTarget = "app";
-      supervisor.emit("cycle.to-app");
+      supervisor.emit("cycle.to-app", {
+        uiMode: nextMainLaunchOptions.uiMode,
+        sceneDebug: nextMainLaunchOptions.sceneDebug,
+      });
     }
   } catch (error) {
-    dashboard.user(`Hata: ${error instanceof Error ? error.message : String(error)}`);
-    await logWrapperEvent("wrapper.error", { sessionId, message: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    dashboard.user(createUserMessage("error", { message }, t));
+    await logWrapperEvent("wrapper.error", { sessionId, message });
     process.exitCode = 1;
   } finally {
     await supervisor.cleanup();

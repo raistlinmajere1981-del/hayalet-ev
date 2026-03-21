@@ -44,14 +44,24 @@ function normalizeLines(lines, width, height) {
   return output;
 }
 
-export function renderDashboardFrame({ sessionId, phase, userLines, developerLines, width = 120, height = 30 }) {
+export function renderDashboardFrame({
+  sessionId,
+  phase,
+  phaseLabel = phase,
+  userLabel = "USER",
+  developerLabel = "DEV",
+  userLines,
+  developerLines,
+  width = 120,
+  height = 30,
+}) {
   const safeWidth = Math.max(60, width);
   const safeHeight = Math.max(12, height);
   const gutter = 3;
   const paneWidth = Math.floor((safeWidth - gutter) / 2);
   const bodyHeight = safeHeight - 5;
-  const leftHeader = pad(`USER ${phase}`, paneWidth);
-  const rightHeader = pad(`DEV ${sessionId}`, paneWidth);
+  const leftHeader = pad(`${userLabel} ${phaseLabel}`, paneWidth);
+  const rightHeader = pad(`${developerLabel} ${sessionId}`, paneWidth);
   const leftLines = normalizeLines(userLines, paneWidth, bodyHeight).map((line) => pad(line, paneWidth));
   const rightLines = normalizeLines(developerLines, paneWidth, bodyHeight).map((line) => pad(line, paneWidth));
   const totalRows = Math.max(leftLines.length, rightLines.length, bodyHeight);
@@ -68,7 +78,14 @@ export function renderDashboardFrame({ sessionId, phase, userLines, developerLin
   return rows.join("\n");
 }
 
-export function createWrapperDashboard({ stdout = process.stdout, sessionId = "wrapper", enabled = true } = {}) {
+export function createWrapperDashboard({
+  stdout = process.stdout,
+  sessionId = "wrapper",
+  enabled = true,
+  userLabel = "USER",
+  developerLabel = "DEV",
+  formatPhaseLabel = undefined,
+} = {}) {
   const tty = enabled === true && stdout.isTTY === true;
   const userLines = [];
   const developerLines = [];
@@ -87,6 +104,9 @@ export function createWrapperDashboard({ stdout = process.stdout, sessionId = "w
     const frame = renderDashboardFrame({
       sessionId,
       phase,
+      phaseLabel: typeof formatPhaseLabel === "function" ? formatPhaseLabel(phase) : phase,
+      userLabel,
+      developerLabel,
       userLines,
       developerLines,
       width: stdout.columns ?? 120,

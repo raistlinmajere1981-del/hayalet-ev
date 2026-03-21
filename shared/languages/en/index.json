@@ -1114,6 +1114,44 @@
       "save": "Save",
       "translationMissing": "Translation unavailable"
     },
+    "wrapper": {
+      "dashboard": {
+        "userLabel": "USER",
+        "phases": {
+          "idle": "idle",
+          "preparing-app": "preparing",
+          "resetting-vite": "resetting vite",
+          "running-app": "running",
+          "preparing-ghost": "preparing ghost",
+          "running-ghost": "ghost running",
+          "cleanup": "cleanup"
+        }
+      },
+      "surfaces": {
+        "main": "ghost-house",
+        "scene": "scene mode",
+        "sceneDebug": "scene:debug mode",
+        "ghost": "ghost-agent mode"
+      },
+      "events": {
+        "wrapperStart": "Wrapper started. Transitions will be managed from this terminal.",
+        "wrapperStop": "Wrapper stopped.",
+        "surfacePreparing": "{{surface}} is preparing.",
+        "surfacePreparingAssistant": "{{surface}} is preparing. The assistant page will open.",
+        "surfaceBuilding": "{{surface}} is building.",
+        "viteReset": "Vite is restarting.",
+        "viteReady": "Vite is ready.",
+        "surfaceOpening": "{{surface}} is opening.",
+        "surfaceClosed": "{{surface}} closed.",
+        "transitionRouted": "Transition routed to {{surface}}.",
+        "cycleStop": "Wrapper cycle finished.",
+        "cleanup": "Background processes are shutting down.",
+        "surfaceCrash": "Error: {{surface}} closed with code {{code}}.",
+        "ghostCrashRecovery": "Error: {{surface}} closed with code {{code}}. {{recoverySurface}} will be reopened.",
+        "error": "Error: {{message}}",
+        "unexpectedError": "An unexpected error occurred."
+      }
+    },
     "commandQueue": {
       "initSkipped": "CommandManager init skipped: electronAPI.commandInit is unavailable",
       "initFailed": "CommandManager init error: {{message}}",
