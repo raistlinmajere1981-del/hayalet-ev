@@ -334,7 +334,9 @@ export class RoomPageController implements PageController {
   }
 
   private async syncRuntimeLocale(reason: string): Promise<void> {
-    const webview = this.getPage()?.querySelector<RoomWebviewElement>("webview[data-room-runtime='true']");
+    const webview =
+      this.getPage()?.querySelector<RoomWebviewElement>("webview[data-room-runtime='true']") ??
+      null;
     if (webview !== null) {
       this.sendHostContext(webview, reason);
     }

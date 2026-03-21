@@ -75,7 +75,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function stringifyJson(value: unknown): string {
-  return JSON.stringify(value, null, 2) ?? "null";
+  return JSON.stringify(value, null, 2);
 }
 
 export async function checkElectronConnection(): Promise<ToolResult> {
@@ -131,8 +131,8 @@ export async function listCdpTargets(): Promise<ToolResult> {
       index: index + 1,
       id: target.id,
       type: target.type,
-      title: target.title || cdpT("common.empty"),
-      url: target.url || cdpT("common.notAvailable"),
+      title: target.title === "" ? cdpT("common.empty") : target.title,
+      url: target.url === "" ? cdpT("common.notAvailable") : target.url,
       connectable: target.webSocketDebuggerUrl !== "",
       isDefault: preferredTarget?.id === target.id,
     }));
@@ -179,9 +179,10 @@ export async function getCdpTargetInfo(args: Record<string, unknown> = {}): Prom
           text: cdpT("getCdpTargetInfo.success", {
             targetId: target.id,
             targetType: target.type,
-            title: target.title || cdpT("common.empty"),
-            url: target.url || cdpT("common.notAvailable"),
-            connectable: target.webSocketDebuggerUrl !== "" ? cdpT("common.yes") : cdpT("common.no"),
+            title: target.title === "" ? cdpT("common.empty") : target.title,
+            url: target.url === "" ? cdpT("common.notAvailable") : target.url,
+            connectable:
+              target.webSocketDebuggerUrl !== "" ? cdpT("common.yes") : cdpT("common.no"),
             domains: COMMON_CDP_DOMAINS.join(", "),
           }),
         },
@@ -193,13 +194,7 @@ export async function getCdpTargetInfo(args: Record<string, unknown> = {}): Prom
 }
 
 export async function sendCdpCommand(args: Record<string, unknown> = {}): Promise<ToolResult> {
-  const {
-    targetId,
-    domain,
-    method,
-    params,
-    timeout,
-  } = args as {
+  const { targetId, domain, method, params, timeout } = args as {
     targetId?: string;
     domain?: string;
     method?: string;

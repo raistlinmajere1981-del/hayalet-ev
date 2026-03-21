@@ -178,14 +178,18 @@ export class WhisperPageController {
 
   private handleHostedStylesLoadFailure(error: unknown): void {
     const resolvedError = error instanceof Error ? error : new Error(String(error));
-    Logger.error(LogCategory.WHISPER, `Whisper page styles failed to load: ${resolvedError.message}`, {
-      source: "runtime-page-styles",
-      styleKey: "whisper",
-      error: {
-        name: resolvedError.name,
-        message: resolvedError.message,
-        stack: resolvedError.stack,
-      },
-    });
+    Logger.error(
+      LogCategory.WHISPER,
+      `Whisper page styles failed to load: ${resolvedError.message}`,
+      {
+        source: "runtime-page-styles",
+        styleKey: "whisper",
+        error: {
+          name: resolvedError.name,
+          message: resolvedError.message,
+          stack: resolvedError.stack,
+        },
+      }
+    );
   }
 }

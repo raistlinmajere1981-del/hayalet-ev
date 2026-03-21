@@ -182,18 +182,12 @@
       transparent 56%,
       color-mix(in srgb, var(--bg-overlay) 76%, transparent) 100%
     ),
-    linear-gradient(
-      180deg,
-      transparent,
-      color-mix(in srgb, var(--bg-overlay) 36%, transparent)
-    );
-  --assistant-scene-character-shadow:
-    drop-shadow(
-      0 var(--assistant-scene-character-shadow-y) var(--assistant-scene-character-shadow-blur)
-        color-mix(in srgb, var(--bg-overlay) 78%, transparent)
-    );
-  --assistant-scene-character-filter-loading:
-    drop-shadow(
+    linear-gradient(180deg, transparent, color-mix(in srgb, var(--bg-overlay) 36%, transparent));
+  --assistant-scene-character-shadow: drop-shadow(
+    0 var(--assistant-scene-character-shadow-y) var(--assistant-scene-character-shadow-blur)
+      color-mix(in srgb, var(--bg-overlay) 78%, transparent)
+  );
+  --assistant-scene-character-filter-loading: drop-shadow(
       0 0 var(--assistant-scene-character-loading-glow)
         color-mix(in srgb, var(--color-warning) 26%, transparent)
     )
@@ -202,8 +196,7 @@
         var(--assistant-scene-character-loading-shadow-blur)
         color-mix(in srgb, var(--bg-overlay) 84%, transparent)
     );
-  --assistant-scene-character-filter-connected:
-    drop-shadow(
+  --assistant-scene-character-filter-connected: drop-shadow(
       0 0 var(--assistant-scene-character-connected-glow)
         color-mix(in srgb, var(--color-info, var(--color-accent)) 20%, transparent)
     )
@@ -225,14 +218,26 @@
     0 0 0 var(--assistant-scene-character-head-halo)
       color-mix(in srgb, var(--color-warning) 12%, transparent);
   --assistant-scene-character-label-bg: color-mix(in srgb, var(--bg-panel-strong) 82%, transparent);
-  --assistant-scene-character-label-border: color-mix(in srgb, var(--text-inverse) 14%, transparent);
+  --assistant-scene-character-label-border: color-mix(
+    in srgb,
+    var(--text-inverse) 14%,
+    transparent
+  );
   --assistant-scene-character-label-color: color-mix(
     in srgb,
     var(--text-inverse) 90%,
     var(--color-warning) 10%
   );
-  --assistant-scene-character-anchor-bg: color-mix(in srgb, var(--bg-panel-strong) 86%, transparent);
-  --assistant-scene-character-anchor-border: color-mix(in srgb, var(--text-inverse) 10%, transparent);
+  --assistant-scene-character-anchor-bg: color-mix(
+    in srgb,
+    var(--bg-panel-strong) 86%,
+    transparent
+  );
+  --assistant-scene-character-anchor-border: color-mix(
+    in srgb,
+    var(--text-inverse) 10%,
+    transparent
+  );
   --assistant-scene-character-anchor-color: color-mix(
     in srgb,
     var(--text-inverse) 76%,
@@ -265,15 +270,18 @@
       color-mix(in srgb, var(--bg-panel) 96%, transparent),
       color-mix(in srgb, var(--bg-panel-strong) 98%, transparent)
     );
-  --splash-scene-shell-bg:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-panel) 88%, transparent),
-      color-mix(in srgb, var(--bg-panel-strong) 94%, transparent)
-    );
+  --splash-scene-shell-bg: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-panel) 88%, transparent),
+    color-mix(in srgb, var(--bg-panel-strong) 94%, transparent)
+  );
   --splash-scene-shell-border: color-mix(in srgb, var(--color-warning) 24%, transparent);
   --splash-scene-door-border: color-mix(in srgb, var(--color-warning) 16%, transparent);
-  --splash-scene-kicker-color: color-mix(in srgb, var(--text-inverse) 72%, var(--color-warning) 28%);
+  --splash-scene-kicker-color: color-mix(
+    in srgb,
+    var(--text-inverse) 72%,
+    var(--color-warning) 28%
+  );
   --settings-scene-shell-bg: color-mix(in srgb, var(--bg-panel-strong) 98%, transparent);
   --settings-scene-surface-bg:
     radial-gradient(
@@ -292,11 +300,7 @@
       transparent 54%,
       color-mix(in srgb, var(--bg-overlay) 76%, transparent) 100%
     ),
-    linear-gradient(
-      180deg,
-      transparent,
-      color-mix(in srgb, var(--bg-overlay) 40%, transparent)
-    );
+    linear-gradient(180deg, transparent, color-mix(in srgb, var(--bg-overlay) 40%, transparent));
   --assistant-title-size: var(--text-base);
   --assistant-role-font-size: var(--text-2xs);
   --assistant-status-font-size: var(--text-caption);
@@ -473,11 +477,7 @@
   --archives-surface-card-border: var(--border-default);
   --archives-surface-card-shadow: var(--surface-shadow);
   --archives-surface-card-header-bg: var(--bg-surface-3);
-  --archives-surface-card-header-border: color-mix(
-    in srgb,
-    var(--border-default) 92%,
-    transparent
-  );
+  --archives-surface-card-header-border: color-mix(in srgb, var(--border-default) 92%, transparent);
   --archives-field-bg: var(--bg-input);
   --archives-field-border-color: var(--border-default);
   --archives-field-focus-border: var(--color-accent-strong);
@@ -598,11 +598,7 @@
       color-mix(in srgb, var(--bg-overlay) 0%, transparent),
       color-mix(in srgb, var(--bg-overlay) 28%, transparent)
     );
-  --analyze-scene-archives-frame-border: color-mix(
-    in srgb,
-    var(--border-default) 84%,
-    transparent
-  );
+  --analyze-scene-archives-frame-border: color-mix(in srgb, var(--border-default) 84%, transparent);
   --analyze-scene-archives-frame-bg:
     linear-gradient(
       180deg,
@@ -655,15 +651,18 @@
       color-mix(in srgb, var(--bg-panel-strong) 96%, transparent),
       var(--scene-shell-screen-bg)
     );
-  --entrance-scene-surface-bg: color-mix(in srgb, var(--bg-panel-strong) 94%, var(--color-warning) 6%);
+  --entrance-scene-surface-bg: color-mix(
+    in srgb,
+    var(--bg-panel-strong) 94%,
+    var(--color-warning) 6%
+  );
   --entrance-scene-whisper-shadow:
-    0 var(--scene-rem-1-8) var(--scene-rem-2-8) color-mix(in srgb, var(--bg-overlay) 72%, transparent),
+    0 var(--scene-rem-1-8) var(--scene-rem-2-8)
+      color-mix(in srgb, var(--bg-overlay) 72%, transparent),
     inset 0 0 0 var(--scene-px-1) color-mix(in srgb, var(--text-inverse) 3%, transparent);
-  --entrance-scene-character-filter:
-    drop-shadow(
-      0 var(--scene-rem-1) var(--scene-rem-1-5)
-        color-mix(in srgb, var(--bg-overlay) 78%, transparent)
-    );
+  --entrance-scene-character-filter: drop-shadow(
+    0 var(--scene-rem-1) var(--scene-rem-1-5) color-mix(in srgb, var(--bg-overlay) 78%, transparent)
+  );
   --entrance-scene-character-head-shadow-menu-open:
     0 0 0 var(--scene-rem-0-18) color-mix(in srgb, var(--color-warning) 44%, transparent),
     0 0 0 var(--scene-rem-0-5) color-mix(in srgb, var(--color-warning) 22%, transparent);
@@ -672,23 +671,18 @@
       color-mix(in srgb, var(--color-info, var(--color-accent)) 48%, transparent),
     0 0 0 var(--scene-rem-0-52)
       color-mix(in srgb, var(--color-info, var(--color-accent)) 20%, transparent);
-  --entrance-scene-character-filter-inactive:
-    saturate(0.75) brightness(0.82)
+  --entrance-scene-character-filter-inactive: saturate(0.75) brightness(0.82)
     drop-shadow(
       0 var(--scene-rem-0-8) var(--scene-rem-1-2)
         color-mix(in srgb, var(--bg-overlay) 62%, transparent)
     );
-  --entrance-scene-character-filter-connected:
-    saturate(1.04) brightness(1.02)
+  --entrance-scene-character-filter-connected: saturate(1.04) brightness(1.02)
     drop-shadow(
       0 var(--scene-rem-1-1) var(--scene-rem-1-7)
         color-mix(in srgb, var(--bg-overlay) 84%, transparent)
     );
-  --entrance-scene-character-filter-loading:
-    saturate(1.08) brightness(1.05)
-    drop-shadow(
-      0 0 var(--scene-rem-1) color-mix(in srgb, var(--color-warning) 26%, transparent)
-    )
+  --entrance-scene-character-filter-loading: saturate(1.08) brightness(1.05)
+    drop-shadow(0 0 var(--scene-rem-1) color-mix(in srgb, var(--color-warning) 26%, transparent))
     drop-shadow(
       0 var(--scene-rem-1-2) var(--scene-rem-1-8)
         color-mix(in srgb, var(--bg-overlay) 88%, transparent)
@@ -701,8 +695,7 @@
   --entrance-scene-character-head-shadow-loading:
     0 0 0 var(--scene-rem-0-18) color-mix(in srgb, var(--color-warning) 40%, transparent),
     0 0 0 var(--scene-rem-0-48) color-mix(in srgb, var(--color-warning) 20%, transparent);
-  --entrance-scene-character-filter-thinking:
-    saturate(1.08) brightness(1.06)
+  --entrance-scene-character-filter-thinking: saturate(1.08) brightness(1.06)
     drop-shadow(
       0 0 var(--scene-rem-1)
         color-mix(in srgb, var(--color-info, var(--color-accent)) 22%, transparent)
@@ -711,11 +704,8 @@
       0 var(--scene-rem-1-2) var(--scene-rem-1-8)
         color-mix(in srgb, var(--bg-overlay) 88%, transparent)
     );
-  --entrance-scene-character-filter-hover:
-    saturate(1.08) brightness(1.05)
-    drop-shadow(
-      0 0 var(--scene-rem-1) color-mix(in srgb, var(--color-warning) 20%, transparent)
-    )
+  --entrance-scene-character-filter-hover: saturate(1.08) brightness(1.05)
+    drop-shadow(0 0 var(--scene-rem-1) color-mix(in srgb, var(--color-warning) 20%, transparent))
     drop-shadow(
       0 var(--scene-rem-1-15) var(--scene-rem-1-8)
         color-mix(in srgb, var(--bg-overlay) 84%, transparent)

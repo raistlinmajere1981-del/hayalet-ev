@@ -3,8 +3,8 @@ export type RuntimePageStyleLoader = () => Promise<unknown>;
 export type RuntimePageStyleLoaders = Record<RuntimePageStyleKey, RuntimePageStyleLoader>;
 
 export const runtimePageStyleLoaders: Readonly<RuntimePageStyleLoaders> = {
-  archives: () => import("../../styles/archives.css"),
-  whisper: () => import("../../styles/whisper.css"),
+  archives: async () => await import("../../styles/archives.css"),
+  whisper: async () => await import("../../styles/whisper.css"),
 };
 
 export interface RuntimePageStyleRegistry {
@@ -17,10 +17,11 @@ export function createRuntimePageStyleRegistry(
   const runtimePageStyleRequests = new Map<RuntimePageStyleKey, Promise<void>>();
 
   return {
-    ensureStyles(styleKey: RuntimePageStyleKey): Promise<void> {
+    async ensureStyles(styleKey: RuntimePageStyleKey): Promise<void> {
       const existingRequest = runtimePageStyleRequests.get(styleKey);
       if (existingRequest !== undefined) {
-        return existingRequest;
+        await existingRequest;
+        return;
       }
 
       const request = loaders[styleKey]()
@@ -31,13 +32,13 @@ export function createRuntimePageStyleRegistry(
         });
 
       runtimePageStyleRequests.set(styleKey, request);
-      return request;
+      await request;
     },
   };
 }
 
 const runtimePageStyleRegistry = createRuntimePageStyleRegistry(runtimePageStyleLoaders);
 
-export function ensureRuntimePageStyles(styleKey: RuntimePageStyleKey): Promise<void> {
-  return runtimePageStyleRegistry.ensureStyles(styleKey);
+export async function ensureRuntimePageStyles(styleKey: RuntimePageStyleKey): Promise<void> {
+  await runtimePageStyleRegistry.ensureStyles(styleKey);
 }
