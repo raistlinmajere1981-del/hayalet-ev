@@ -4,7 +4,6 @@
     "startup": {
       "starting": "Başlatılıyor...",
       "ready": "Hazır!",
-      "loadingSettings": "Ayarlar yükleniyor...",
       "loadingLanguage": "Dil paketi hazırlanıyor...",
       "startingCore": "Çekirdek servisler başlatılıyor...",
       "preparingFiles": "Dosya dizinleri hazırlanıyor...",
@@ -24,6 +23,7 @@
     },
     "server": {
       "page": {
+        "sceneAriaLabel": "Sunucu sahnesi",
         "delegateButton": "Kontrolü Devret",
         "reclaimButton": "Kontrolü Devral",
         "timelineTitle": "Komut Akışı (Komut → Sonuç)",
@@ -55,6 +55,7 @@
     },
     "rooms": {
       "page": {
+        "sceneAriaLabel": "Odalar sahnesi",
         "badge": "Scene Merkezi",
         "title": "Odalar Koridoru",
         "subtitle": "Bu koridor, Hayalet Ev'e eklenen odalar için sabit scene merkezi olacak.",
@@ -64,6 +65,7 @@
     },
     "analyze": {
       "page": {
+        "sceneAriaLabel": "Analiz sahnesi",
         "connectedStatus": "Bağlı",
         "disconnectedStatus": "Bağlı değil",
         "slotEmptyStatus": "Slot boş",
@@ -425,6 +427,7 @@
         "badge": "Oda",
         "runtimeTitle": "Runtime",
         "entryPointsTitle": "Entry Points",
+        "runtimeSceneAriaLabel": "Oda runtime sahnesi",
         "subtitleNamed": "{{name}} izole room runtime olarak yüklendi.",
         "subtitleDefault": "Installed room runtime hazır.",
         "labels": {
@@ -1153,6 +1156,7 @@
       "page": {
         "avatarUpdateTitle": "AI0 avatarını güncelle",
         "nicknameUpdateTitle": "AI0 takma adını güncelle",
+        "sceneAriaLabel": "Asistan sahnesi",
         "modeMenuTitle": "Mod",
         "ghostAgentButton": "Ghost Agent",
         "resumeLastSessionTitle": "Bağlanınca son oturuma dön",
@@ -1198,7 +1202,7 @@
         "scenarioStopRequested": "Durdurma isteği gönderildi"
       },
       "memoryOverlay": {
-        "title": "Memory Viewer",
+        "title": "Bellek Görüntüleyici",
         "filterSectionTitle": "Filtreler",
         "namespaceLabel": "Namespace",
         "allOption": "Tümü",
@@ -5102,8 +5106,7 @@
       "nicknamePlaceholder": "Takma ad",
       "changeAvatarTitle": "Avatarı değiştir",
       "language": {
-        "label": "Uygulama Dili",
-        "restartHint": "Dil değişikliği uygulamayı yeniden başlattıktan sonra uygulanır."
+        "label": "Uygulama Dili"
       },
       "dialog": {
         "avatarTitle": "Avatar seç",
@@ -5119,7 +5122,7 @@
         "disconnect": "Bağlantıyı kes",
         "clientIdPlaceholder": "Client ID",
         "clientSecretPlaceholder": "Client Secret",
-        "authCodePlaceholder": "Auth code",
+        "authCodePlaceholder": "Yetki kodu",
         "startAuth": "Auth URL"
       }
     },
@@ -5170,6 +5173,7 @@
       "report": "CANLI RAPOR"
     },
     "scene": {
+      "ariaLabel": "Giriş sahnesi",
       "editor": {
         "customLabelPlaceholder": "Varsayılan isim için boş bırakın."
       }
@@ -5238,7 +5242,7 @@
         "gmailPasswordPlaceholder": "16 haneli uygulama şifresi"
       },
       "remote": {
-        "sectionTitle": "Remote user handshake",
+        "sectionTitle": "Uzak kullanıcı el sıkışması",
         "sectionNote": "Seçili mail hesabı üzerinden uzak Hayalet Ev kullanıcısını davet edin, sonra handshake durumunu senkronize edin veya kabul edin.",
         "selectLabel": "Remote user",
         "selectPlaceholder": "-- Remote user seç --",
@@ -5570,7 +5574,7 @@
       "pruneTitle": "Son mesaj çiftini kaldır",
       "pruneLabel": "✂ Prune",
       "clearTitle": "Tüm sohbeti temizle",
-      "clearLabel": "🗑 Clear",
+      "clearLabel": "🗑 Temizle",
       "attachFileLabel": "📎 Dosya",
       "attachClipboardTitle": "Panodaki görseli yapıştır (Ctrl+V)",
       "attachClipboardLabel": "📋 Yapıştır",
@@ -5613,7 +5617,7 @@
       "filesEmpty": "Değişen dosya yok",
       "serverTab": "Sunucu",
       "serverEyebrow": "Sunucu Durumu",
-      "serverTitle": "OpenCode Serve",
+      "serverTitle": "OpenCode Sunucusu",
       "serverWaiting": "Bekleniyor",
       "providersTitle": "Providers",
       "providersEyebrow": "Runtime",

@@ -12,17 +12,24 @@ async function loadProviderConfig(providerId: string): Promise<Record<string, un
   return mod.config;
 }
 
-test("provider configs declare ui language strategies", async () => {
-  const providers = ["chatgpt", "gemini", "grok", "opencode", "opencode-ui"];
+test("opencode-based provider configs expose ui language signals", async () => {
+  const opencodeProviders = ["opencode", "opencode-ui"];
 
-  for (const providerId of providers) {
+  for (const providerId of opencodeProviders) {
     const config = await loadProviderConfig(providerId);
     const strategy = config["uiLanguage"] as Record<string, unknown> | undefined;
+    const signals = strategy?.["signals"] as Record<string, unknown> | undefined;
 
     assert.ok(strategy, `${providerId} should expose uiLanguage metadata`);
-    assert.match(String(strategy?.["support"] ?? ""), /^(supported|partial|unsupported)$/);
-    assert.match(String(strategy?.["syncMode"] ?? ""), /^(automatic|manual|not-applicable)$/);
-    assert.ok(Array.isArray(strategy?.["supportedLocales"]));
+    assert.ok(signals, `${providerId} should expose ui language signal metadata`);
+    assert.ok(Array.isArray(signals?.["localStorageKeys"]));
+    assert.ok((signals?.["localStorageKeys"] as unknown[]).length > 0);
+  }
+
+  const otherProviders = ["chatgpt", "gemini", "grok"];
+  for (const providerId of otherProviders) {
+    const config = await loadProviderConfig(providerId);
+    assert.equal(config["uiLanguage"], undefined, `${providerId} should not require uiLanguage metadata`);
   }
 });
 
@@ -42,7 +49,12 @@ test("selector locale consumers use shared resolveSelectorLanguage helper", () =
 
 test("app bootstrap initializes renderer i18n from settings", () => {
   const source = readFileSync("src/js/app/index.ts", "utf8");
+  const loadIndex = source.indexOf("await SettingsManager.load();");
+  const bootstrapIndex = source.indexOf("await AppI18n.bootstrap(SettingsManager);");
 
+  assert.notEqual(loadIndex, -1);
   assert.match(source, /await AppI18n\.bootstrap\(SettingsManager\)/);
-  assert.match(source, /AppI18n\.t\("app\.startup\.loadingSettings"\)/);
+  assert.notEqual(bootstrapIndex, -1);
+  assert.ok(loadIndex < bootstrapIndex, "settings should load before AppI18n bootstrap");
+  assert.doesNotMatch(source, /AppI18n\.t\("app\.startup\.loadingSettings"\)/);
 });

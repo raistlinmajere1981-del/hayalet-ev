@@ -45,6 +45,7 @@ export class RoomPageController implements PageController {
   async init(): Promise<void> {
     this.unsubscribeI18n ??= AppI18n.subscribe(() => {
       this.render();
+      void this.syncRuntimeLocale("locale-change");
     });
     this.render();
     await this.ensureRuntimeHost();
@@ -217,6 +218,8 @@ export class RoomPageController implements PageController {
       this.resetPendingHostMessages(webview);
     }
 
+    webview.setAttribute("aria-label", roomPageT("page.runtimeSceneAriaLabel"));
+
     await RoomHostRuntime.ensureRoomHost(this.room, {
       sendToRoom: (payload) => {
         this.sendRuntimeMessage(webview, payload);
@@ -319,6 +322,7 @@ export class RoomPageController implements PageController {
     this.sendRuntimeMessage(webview, {
       type: "host-context",
       reason,
+      locale: AppI18n.getLocale(),
       room: {
         id: this.room.id,
         name: this.room.name,
@@ -326,6 +330,19 @@ export class RoomPageController implements PageController {
         runtimeEntryPath: this.room.runtimeEntryPath,
         hostEntryPath: this.room.hostEntryPath,
       },
+    });
+  }
+
+  private async syncRuntimeLocale(reason: string): Promise<void> {
+    const webview = this.getPage()?.querySelector<RoomWebviewElement>("webview[data-room-runtime='true']");
+    if (webview !== null) {
+      this.sendHostContext(webview, reason);
+    }
+
+    await RoomHostRuntime.handleRuntimeMessage(this.room.id, "room-event", {
+      type: "host-context",
+      reason,
+      locale: AppI18n.getLocale(),
     });
   }
 

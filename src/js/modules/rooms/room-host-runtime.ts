@@ -43,6 +43,7 @@ interface RoomHostApi {
   sendProtocol: typeof CoreEngine.sendProtocol;
   sendMessage: typeof CoreEngine.sendMessage;
   sendToTargets: typeof CoreEngine.sendToTargets;
+  getLocale: () => string;
   getState: (key: string) => unknown;
   setState: (key: string, value: unknown) => unknown;
   deleteState: (key: string) => boolean;
@@ -357,6 +358,7 @@ class RoomHostRuntimeClass {
       sendProtocol: CoreEngine.sendProtocol.bind(CoreEngine),
       sendMessage: CoreEngine.sendMessage.bind(CoreEngine),
       sendToTargets: CoreEngine.sendToTargets.bind(CoreEngine),
+      getLocale: (): string => AppI18n.getLocale(),
       getState: (key): unknown => registration.state.get(key),
       setState: (key, value): unknown => {
         registration.state.set(key, value);

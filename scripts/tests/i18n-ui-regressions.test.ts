@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { load } from "cheerio";
 
 import { getBuiltInLanguagePack } from "../../shared/i18n/bundled-languages.ts";
 import type { TranslationCatalog } from "../../src/types/i18n.ts";
@@ -66,14 +67,29 @@ function collectSourceFiles(dir: string): string[] {
 
 function findHtmlTextFallbacks(file: string, html: string): string[] {
   const issues: string[] = [];
-  const regex = /<[^>]*data-(?:shell-)?i18n-text="[^"]+"[^>]*>([^<]*)/g;
+  const $ = load(html);
 
-  for (const match of html.matchAll(regex)) {
-    const rawText = normalizeText(match[1] ?? "");
-    if (rawText === "") continue;
-    if (isAllowlisted(HTML_ALLOWLIST.text, file, rawText)) continue;
-    issues.push(`${file}: data-i18n-text fallback "${rawText}"`);
-  }
+  $("[data-i18n-text], [data-shell-i18n-text]").each((_index, element) => {
+    const attrName =
+      element.attribs["data-shell-i18n-text"] !== undefined
+        ? "data-shell-i18n-text"
+        : "data-i18n-text";
+    const rawText = normalizeText(
+      $(element)
+        .contents()
+        .toArray()
+        .filter((node) => node.type === "text")
+        .map((node) => ("data" in node && typeof node.data === "string" ? node.data : ""))
+        .join(" ")
+    );
+    if (rawText === "") {
+      return;
+    }
+    if (isAllowlisted(HTML_ALLOWLIST.text, file, rawText)) {
+      return;
+    }
+    issues.push(`${file}: ${attrName} fallback "${rawText}"`);
+  });
 
   return issues;
 }
@@ -81,23 +97,29 @@ function findHtmlTextFallbacks(file: string, html: string): string[] {
 function findHtmlAttributeFallbacks(
   file: string,
   html: string,
-  dataAttr: string,
+  dataAttrs: string[],
   attrName: string,
   allowlist: AllowlistEntry[]
 ): string[] {
   const issues: string[] = [];
-  const tagRegex = new RegExp(`<[^>]*${dataAttr}="[^"]+"[^>]*>`, "g");
-  const attrRegex = new RegExp(`${attrName}="([^"]*)"`, "i");
+  const $ = load(html);
+  const selector = dataAttrs.map((dataAttr) => `[${dataAttr}]`).join(", ");
 
-  for (const match of html.matchAll(tagRegex)) {
-    const tag = match[0];
-    const attrMatch = tag.match(attrRegex);
-    if (!attrMatch) continue;
-    const value = normalizeText(attrMatch[1] ?? "");
-    if (value === "") continue;
-    if (isAllowlisted(allowlist, file, value)) continue;
-    issues.push(`${file}: ${dataAttr} fallback ${attrName}="${value}"`);
-  }
+  $(selector).each((_index, element) => {
+    const matchedDataAttr = dataAttrs.find((dataAttr) => element.attribs[dataAttr] !== undefined);
+    if (matchedDataAttr === undefined) {
+      return;
+    }
+
+    const value = normalizeText($(element).attr(attrName) ?? "");
+    if (value === "") {
+      return;
+    }
+    if (isAllowlisted(allowlist, file, value)) {
+      return;
+    }
+    issues.push(`${file}: ${matchedDataAttr} fallback ${attrName}="${value}"`);
+  });
 
   return issues;
 }
@@ -129,24 +151,63 @@ test("hardcoded user-facing strings are blocked (allowlist-aware)", () => {
     const html = readFileSync(file, "utf8");
     htmlIssues.push(...findHtmlTextFallbacks(file, html));
     htmlIssues.push(
-      ...findHtmlAttributeFallbacks(file, html, "data-(?:shell-)?i18n-title", "title", HTML_ALLOWLIST.title)
+      ...findHtmlAttributeFallbacks(
+        file,
+        html,
+        ["data-i18n-title", "data-shell-i18n-title"],
+        "title",
+        HTML_ALLOWLIST.title
+      )
     );
     htmlIssues.push(
       ...findHtmlAttributeFallbacks(
         file,
         html,
-        "data-(?:shell-)?i18n-placeholder",
+        ["data-i18n-placeholder", "data-shell-i18n-placeholder"],
         "placeholder",
         HTML_ALLOWLIST.placeholder
       )
     );
     htmlIssues.push(
-      ...findHtmlAttributeFallbacks(file, html, "data-(?:shell-)?i18n-aria", "aria-label", HTML_ALLOWLIST.aria)
+      ...findHtmlAttributeFallbacks(
+        file,
+        html,
+        ["data-i18n-aria-label", "data-shell-i18n-aria-label"],
+        "aria-label",
+        HTML_ALLOWLIST.aria
+      )
     );
     htmlIssues.push(
-      ...findHtmlAttributeFallbacks(file, html, "data-(?:shell-)?i18n-alt", "alt", HTML_ALLOWLIST.alt)
+      ...findHtmlAttributeFallbacks(
+        file,
+        html,
+        ["data-i18n-alt", "data-shell-i18n-alt"],
+        "alt",
+        HTML_ALLOWLIST.alt
+      )
     );
   }
+
+  const fixturePlaceholderIssues = findHtmlAttributeFallbacks(
+    "fixture.html",
+    '<input data-i18n-placeholder="demo.placeholder" placeholder=""><input data-shell-i18n-placeholder="demo.placeholder" placeholder="">',
+    ["data-i18n-placeholder", "data-shell-i18n-placeholder"],
+    "placeholder",
+    []
+  );
+  const fixtureLiteralIssues = findHtmlAttributeFallbacks(
+    "fixture.html",
+    '<input data-i18n-placeholder="demo.placeholder" placeholder="Literal fallback">',
+    ["data-i18n-placeholder", "data-shell-i18n-placeholder"],
+    "placeholder",
+    []
+  );
+
+  assert.deepEqual(fixturePlaceholderIssues, []);
+  assert.deepEqual(
+    fixtureLiteralIssues,
+    ['fixture.html: data-i18n-placeholder fallback placeholder="Literal fallback"']
+  );
 
   const toastIssues: string[] = [];
   const toastRegex = /Toast\.(success|error|warning|info|loading)\(\s*(["'])(.*?)\2/g;

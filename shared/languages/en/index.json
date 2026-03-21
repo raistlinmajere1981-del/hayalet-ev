@@ -4,7 +4,6 @@
     "startup": {
       "starting": "Starting...",
       "ready": "Ready!",
-      "loadingSettings": "Loading settings...",
       "loadingLanguage": "Loading language pack...",
       "startingCore": "Starting core services...",
       "preparingFiles": "Preparing file directories...",
@@ -24,6 +23,7 @@
     },
     "server": {
       "page": {
+        "sceneAriaLabel": "Server scene",
         "delegateButton": "Delegate Control",
         "reclaimButton": "Reclaim Control",
         "timelineTitle": "Command Flow (Command → Result)",
@@ -55,6 +55,7 @@
     },
     "rooms": {
       "page": {
+        "sceneAriaLabel": "Rooms scene",
         "badge": "Scene Hub",
         "title": "Rooms Corridor",
         "subtitle": "This corridor will become the fixed scene hub for installed Ghost House rooms.",
@@ -64,6 +65,7 @@
     },
     "analyze": {
       "page": {
+        "sceneAriaLabel": "Analyze scene",
         "connectedStatus": "Connected",
         "disconnectedStatus": "Disconnected",
         "slotEmptyStatus": "Empty slot",
@@ -425,6 +427,7 @@
         "badge": "Room",
         "runtimeTitle": "Runtime",
         "entryPointsTitle": "Entry Points",
+        "runtimeSceneAriaLabel": "Room runtime scene",
         "subtitleNamed": "{{name}} loaded as an isolated room runtime.",
         "subtitleDefault": "Installed room runtime is ready.",
         "labels": {
@@ -1153,6 +1156,7 @@
       "page": {
         "avatarUpdateTitle": "Update AI0 avatar",
         "nicknameUpdateTitle": "Update AI0 nickname",
+        "sceneAriaLabel": "Assistant scene",
         "modeMenuTitle": "Mode",
         "ghostAgentButton": "Ghost Agent",
         "resumeLastSessionTitle": "Resume the last session after connecting",
@@ -5102,8 +5106,7 @@
       "nicknamePlaceholder": "Nickname",
       "changeAvatarTitle": "Change avatar",
       "language": {
-        "label": "Application Language",
-        "restartHint": "Language changes apply after restarting the application."
+        "label": "Application Language"
       },
       "dialog": {
         "avatarTitle": "Choose avatar",
@@ -5170,6 +5173,7 @@
       "report": "LIVE REPORT"
     },
     "scene": {
+      "ariaLabel": "Entrance scene",
       "editor": {
         "customLabelPlaceholder": "Leave blank for the default label."
       }
