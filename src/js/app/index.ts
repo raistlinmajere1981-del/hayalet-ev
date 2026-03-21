@@ -13,6 +13,7 @@ import { AppI18n } from "../modules/i18n/index.js";
 import { SplashScreen } from "../ui/splash-screen.js";
 import { applyUiMode } from "../ui/ui-mode.js";
 import { initAppOverlayHost } from "../ui/overlay-system.js";
+import { ThemeManager } from "../ui/theme/index.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import { loadSceneThemeAssetDraft } from "../scene-editor/scene-theme-asset-state.js";
 import { SceneThemeManager } from "../scene-system/index.js";
@@ -138,6 +139,7 @@ async function initApp(): Promise<void> {
       );
     }
     injectPageTemplates();
+    ThemeManager.init();
     registerWebviews();
     applyShellStaticTranslations();
     SplashScreen.update(80, AppI18n.t("app.startup.startingModules"));

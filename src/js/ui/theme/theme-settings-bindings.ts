@@ -12,6 +12,9 @@ export function setupThemeDropdownListeners(bindings: ThemeSettingsBindings): vo
   const menu = document.getElementById("theme-dropdown-menu");
 
   if (!dropdown || !btn || !menu) return;
+  if (dropdown.dataset["themeBindingsBound"] === "true") {
+    return;
+  }
 
   btn.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -34,9 +37,16 @@ export function setupThemeDropdownListeners(bindings: ThemeSettingsBindings): vo
       }
     }
   });
+
+  dropdown.dataset["themeBindingsBound"] = "true";
 }
 
 export function setupThemeSettingsPanelListeners(bindings: ThemeSettingsBindings): void {
+  const panel = document.getElementById("settings-panel-theme");
+  if (panel?.dataset["themeBindingsBound"] === "true") {
+    return;
+  }
+
   const list = document.getElementById("theme-settings-list");
   const modeSelect = document.getElementById("theme-behavior-select") as HTMLSelectElement | null;
   const lightSelect = document.getElementById("theme-light-select") as HTMLSelectElement | null;
@@ -117,4 +127,8 @@ export function setupThemeSettingsPanelListeners(bindings: ThemeSettingsBindings
       contrast: contrastToggle.checked ? "high" : "normal",
     });
   });
+
+  if (panel != null) {
+    panel.dataset["themeBindingsBound"] = "true";
+  }
 }

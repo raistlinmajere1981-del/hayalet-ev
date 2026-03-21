@@ -2,6 +2,18 @@
   gap: var(--space-4);
 }
 
+.settings-theme-workbench {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: stretch;
+  min-height: 0;
+}
+
+.settings-theme-column {
+  min-height: 0;
+}
+
 .settings-appearance-card {
   overflow: hidden;
   border-color: color-mix(
@@ -22,6 +34,23 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.settings-theme-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 82%, transparent);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 72%, transparent), transparent),
+    color-mix(in srgb, var(--bg-surface-2) 82%, transparent);
+}
+
+.settings-theme-divider {
+  height: var(--border-1);
+  background: color-mix(in srgb, var(--border-default) 82%, transparent);
 }
 
 .settings-appearance-card--gallery .settings-appearance-card__body {
@@ -144,6 +173,10 @@
   gap: var(--space-2-5);
 }
 
+.settings-theme-grid--compact {
+  --settings-theme-grid-min-column-w: 9.75rem;
+}
+
 .settings-theme-layout {
   --settings-theme-layout-min-column-w: 18rem;
   display: grid;
@@ -175,8 +208,8 @@
 }
 
 .settings-theme-option {
-  min-height: var(--space-24);
-  padding: var(--space-2-5) var(--space-3);
+  min-height: var(--space-16);
+  padding: var(--space-2) var(--space-2-5);
   border: var(--border-1) solid color-mix(in srgb, var(--border-default) 86%, transparent);
   border-radius: var(--radius-lg);
   background:
@@ -185,18 +218,31 @@
   box-shadow: var(--surface-shadow);
 }
 
-.settings-theme-option:hover {
-  transform: translateY(var(--size-motion-lift-sm));
-  box-shadow: var(--surface-shadow-hover);
-}
-
 .settings-theme-option.is-active {
   border-color: color-mix(in srgb, var(--color-accent) 38%, var(--border-default));
   box-shadow: var(--surface-shadow-hover), var(--glow-accent);
 }
 
+.settings-theme-option:hover {
+  transform: translateY(var(--size-motion-lift-sm));
+  box-shadow: var(--surface-shadow-hover);
+}
+
+#theme-settings-list .settings-theme-option:hover {
+  transform: none;
+  box-shadow: var(--surface-shadow);
+}
+
+#theme-settings-list .settings-theme-option.is-active {
+  border-color: color-mix(in srgb, var(--color-accent) 56%, var(--border-default));
+  box-shadow:
+    inset 0 0 0 var(--border-1) color-mix(in srgb, var(--color-accent) 48%, transparent),
+    var(--surface-shadow-hover),
+    var(--glow-accent);
+}
+
 .settings-theme-option .theme-dropdown-icon {
-  font-size: var(--text-xl);
+  font-size: var(--text-base);
 }
 
 .settings-theme-option .theme-dropdown-copy {
@@ -250,11 +296,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--space-10);
-  height: var(--space-10);
+  width: var(--space-8);
+  height: var(--space-8);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--color-accent-soft) 66%, transparent);
-  font-size: var(--text-xl);
+  font-size: var(--text-base);
 }
 
 .settings-scene-theme-option__copy {
@@ -286,6 +332,10 @@
 }
 
 @media (--breakpoint-max-1200) {
+  .settings-theme-workbench {
+    grid-template-columns: 1fr;
+  }
+
   .settings-panel-shell--theme .settings-theme-current {
     align-self: stretch;
     max-width: none;

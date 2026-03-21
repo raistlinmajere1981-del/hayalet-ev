@@ -67,9 +67,15 @@
             </div>
           </div>
           <div class="settings-hub-layout">
-            <aside class="settings-hub-nav">
+            <div class="settings-hub-nav workspace-tool-bar">
+              <div class="workspace-tool-bar__start">
+                <h1
+                  class="workspace-tool-bar__title"
+                  data-shell-i18n-text="settingsHub.openButton"
+                ></h1>
+              </div>
               <div
-                class="settings-hub-tabs"
+                class="settings-hub-tabs workspace-tool-bar__center"
                 role="tablist"
                 aria-label=""
                 data-shell-i18n-aria-label="settingsHub.ariaLabel"
@@ -150,12 +156,14 @@
                   ></span>
                 </button>
               </div>
-              <button
-                class="btn btn-ghost btn-sm settings-hub-close"
-                id="settings-hub-close"
-                data-shell-i18n-text="common.close"
-              ></button>
-            </aside>
+              <div class="workspace-tool-bar__end">
+                <button
+                  class="btn btn-ghost btn-sm settings-hub-close"
+                  id="settings-hub-close"
+                  data-shell-i18n-text="common.close"
+                ></button>
+              </div>
+            </div>
 
             <div class="settings-hub-panels">
               <section
@@ -179,315 +187,304 @@
                         data-shell-i18n-text="theme.selectTitle"
                       ></h3>
                     </div>
-                    <div class="settings-theme-current">
-                      <span
-                        class="theme-dropdown-icon settings-theme-current__icon"
-                        id="theme-current-icon"
-                        >🌑</span
-                      >
-                      <div class="settings-theme-current__copy">
-                        <span
-                          class="settings-theme-current__label"
-                          data-shell-i18n-text="settingsHub.currentThemeLabel"
-                        ></span>
-                        <strong id="theme-current-name"></strong>
-                        <small id="theme-current-meta"></small>
-                      </div>
-                    </div>
                   </div>
                   <div class="settings-panel-scroll settings-panel-scroll--theme">
-                    <section
-                      class="glass-panel ds-surface-card ds-surface-card--stack settings-appearance-card settings-appearance-card--gallery"
-                    >
-                      <div class="ds-surface-card__body settings-appearance-card__body">
-                        <div class="settings-theme-grid" id="theme-settings-list"></div>
-                      </div>
-                    </section>
-
-                    <div class="settings-theme-layout">
+                    <div class="settings-theme-workbench">
                       <section
-                        class="glass-panel ds-surface-card ds-surface-card--stack settings-appearance-card"
+                        class="glass-panel ds-surface-card ds-surface-card--stack settings-appearance-card settings-theme-column"
                       >
                         <div class="ds-surface-card__header settings-theme-card-head">
                           <div>
                             <h4
                               class="settings-theme-section-title"
-                              data-shell-i18n-text="theme.behaviorTitle"
+                              data-shell-i18n-text="theme.classicSettingsTitle"
                             ></h4>
                             <p class="settings-theme-section-hint" id="theme-mode-hint"></p>
                           </div>
-                          <span class="settings-theme-mode-badge" id="theme-mode-badge"></span>
+                          <span
+                            class="settings-theme-mode-badge"
+                            id="theme-mode-badge"
+                            hidden
+                            aria-hidden="true"
+                          ></span>
                         </div>
                         <div class="ds-surface-card__body settings-appearance-card__body">
-                          <div class="settings-theme-form-grid">
-                            <div class="settings-theme-field settings-theme-field--wide">
-                              <label
-                                class="form-label"
-                                for="theme-behavior-select"
-                                data-shell-i18n-text="theme.mode.label"
-                              ></label>
-                              <select id="theme-behavior-select" class="select select-sm">
-                                <option
-                                  value="manual"
-                                  data-shell-i18n-text="theme.mode.options.manual"
-                                ></option>
-                                <option
-                                  value="system"
-                                  data-shell-i18n-text="theme.mode.options.system"
-                                ></option>
-                                <option
-                                  value="schedule"
-                                  data-shell-i18n-text="theme.mode.options.schedule"
-                                ></option>
-                              </select>
+                          <div class="settings-theme-current" hidden aria-hidden="true">
+                            <span
+                              class="theme-dropdown-icon settings-theme-current__icon"
+                              id="theme-current-icon"
+                              >🌑</span
+                            >
+                            <div class="settings-theme-current__copy">
+                              <span
+                                class="settings-theme-current__label"
+                                data-shell-i18n-text="settingsHub.currentThemeLabel"
+                              ></span>
+                              <strong id="theme-current-name"></strong>
+                              <small id="theme-current-meta"></small>
                             </div>
-                            <div class="settings-theme-field">
-                              <label
-                                class="form-label"
-                                for="theme-light-select"
-                                data-shell-i18n-text="theme.lightThemeLabel"
-                              ></label>
-                              <select id="theme-light-select" class="select select-sm"></select>
+                          </div>
+
+                          <div class="settings-theme-grid settings-theme-grid--compact" id="theme-settings-list"></div>
+
+                          <div class="settings-theme-stack">
+                            <div class="settings-theme-form-grid">
+                              <div class="settings-theme-field settings-theme-field--wide">
+                                <label
+                                  class="form-label"
+                                  for="theme-behavior-select"
+                                  data-shell-i18n-text="theme.mode.label"
+                                ></label>
+                                <select id="theme-behavior-select" class="select select-sm">
+                                  <option
+                                    value="manual"
+                                    data-shell-i18n-text="theme.mode.options.manual"
+                                  ></option>
+                                  <option
+                                    value="system"
+                                    data-shell-i18n-text="theme.mode.options.system"
+                                  ></option>
+                                  <option
+                                    value="schedule"
+                                    data-shell-i18n-text="theme.mode.options.schedule"
+                                  ></option>
+                                </select>
+                              </div>
+                              <div class="settings-theme-field">
+                                <label
+                                  class="form-label"
+                                  for="theme-light-select"
+                                  data-shell-i18n-text="theme.lightThemeLabel"
+                                ></label>
+                                <select id="theme-light-select" class="select select-sm"></select>
+                              </div>
+                              <div class="settings-theme-field">
+                                <label
+                                  class="form-label"
+                                  for="theme-dark-select"
+                                  data-shell-i18n-text="theme.darkThemeLabel"
+                                ></label>
+                                <select id="theme-dark-select" class="select select-sm"></select>
+                              </div>
+                              <div class="settings-theme-field" data-theme-schedule-field hidden>
+                                <label
+                                  class="form-label"
+                                  for="theme-day-start"
+                                  data-shell-i18n-text="theme.dayStartLabel"
+                                ></label>
+                                <input
+                                  id="theme-day-start"
+                                  class="input input-sm"
+                                  type="time"
+                                  value="07:00"
+                                />
+                              </div>
+                              <div class="settings-theme-field" data-theme-schedule-field hidden>
+                                <label
+                                  class="form-label"
+                                  for="theme-night-start"
+                                  data-shell-i18n-text="theme.nightStartLabel"
+                                ></label>
+                                <input
+                                  id="theme-night-start"
+                                  class="input input-sm"
+                                  type="time"
+                                  value="19:00"
+                                />
+                              </div>
                             </div>
-                            <div class="settings-theme-field">
-                              <label
-                                class="form-label"
-                                for="theme-dark-select"
-                                data-shell-i18n-text="theme.darkThemeLabel"
-                              ></label>
-                              <select id="theme-dark-select" class="select select-sm"></select>
-                            </div>
-                            <div class="settings-theme-field" data-theme-schedule-field hidden>
-                              <label
-                                class="form-label"
-                                for="theme-day-start"
-                                data-shell-i18n-text="theme.dayStartLabel"
-                              ></label>
-                              <input
-                                id="theme-day-start"
-                                class="input input-sm"
-                                type="time"
-                                value="07:00"
-                              />
-                            </div>
-                            <div class="settings-theme-field" data-theme-schedule-field hidden>
-                              <label
-                                class="form-label"
-                                for="theme-night-start"
-                                data-shell-i18n-text="theme.nightStartLabel"
-                              ></label>
-                              <input
-                                id="theme-night-start"
-                                class="input input-sm"
-                                type="time"
-                                value="19:00"
-                              />
+
+                            <div class="settings-theme-divider"></div>
+
+                            <div class="settings-theme-form-grid">
+                              <div class="settings-theme-field">
+                                <label
+                                  class="form-label"
+                                  for="theme-motion-select"
+                                  data-shell-i18n-text="theme.motionLabel"
+                                ></label>
+                                <select id="theme-motion-select" class="select select-sm">
+                                  <option
+                                    value="full"
+                                    data-shell-i18n-text="theme.motion.options.full"
+                                  ></option>
+                                  <option
+                                    value="reduced"
+                                    data-shell-i18n-text="theme.motion.options.reduced"
+                                  ></option>
+                                  <option
+                                    value="off"
+                                    data-shell-i18n-text="theme.motion.options.off"
+                                  ></option>
+                                </select>
+                              </div>
+                              <div class="settings-theme-field">
+                                <label
+                                  class="form-label"
+                                  for="theme-text-scale-select"
+                                  data-shell-i18n-text="theme.textScaleLabel"
+                                ></label>
+                                <select id="theme-text-scale-select" class="select select-sm">
+                                  <option
+                                    value="sm"
+                                    data-shell-i18n-text="theme.textScale.options.sm"
+                                  ></option>
+                                  <option
+                                    value="md"
+                                    data-shell-i18n-text="theme.textScale.options.md"
+                                  ></option>
+                                  <option
+                                    value="lg"
+                                    data-shell-i18n-text="theme.textScale.options.lg"
+                                  ></option>
+                                </select>
+                              </div>
+                              <div class="settings-theme-field settings-theme-field--wide">
+                                <label
+                                  class="form-label"
+                                  for="theme-surface-select"
+                                  data-shell-i18n-text="theme.surfaceLabel"
+                                ></label>
+                                <select id="theme-surface-select" class="select select-sm">
+                                  <option
+                                    value="glass"
+                                    data-shell-i18n-text="theme.surface.options.glass"
+                                  ></option>
+                                  <option
+                                    value="soft"
+                                    data-shell-i18n-text="theme.surface.options.soft"
+                                  ></option>
+                                  <option
+                                    value="solid"
+                                    data-shell-i18n-text="theme.surface.options.solid"
+                                  ></option>
+                                </select>
+                              </div>
+                              <div class="settings-theme-toggle-row settings-theme-field--wide">
+                                <div class="settings-theme-toggle-copy">
+                                  <span
+                                    class="form-label"
+                                    data-shell-i18n-text="theme.contrastLabel"
+                                  ></span>
+                                </div>
+                                <label class="ds-mcp-switch">
+                                  <input
+                                    id="theme-contrast-toggle"
+                                    type="checkbox"
+                                    class="ds-mcp-switch__input"
+                                  />
+                                  <span class="ds-mcp-switch__slider"></span>
+                                </label>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </section>
 
                       <section
-                        class="glass-panel ds-surface-card ds-surface-card--stack settings-appearance-card"
+                        class="glass-panel ds-surface-card ds-surface-card--stack settings-appearance-card settings-theme-column"
                       >
                         <div class="ds-surface-card__header settings-theme-card-head">
                           <div>
                             <h4
                               class="settings-theme-section-title"
-                              data-shell-i18n-text="theme.tuningTitle"
+                              data-shell-i18n-text="theme.scene.title"
                             ></h4>
                             <p
                               class="settings-theme-section-hint"
-                              data-shell-i18n-text="theme.tuningHint"
+                              data-shell-i18n-text="theme.scene.hint"
                             ></p>
                           </div>
+                          <span
+                            class="settings-theme-mode-badge"
+                            id="scene-theme-source-badge"
+                            hidden
+                            aria-hidden="true"
+                          ></span>
                         </div>
                         <div class="ds-surface-card__body settings-appearance-card__body">
-                          <div class="settings-theme-form-grid">
-                            <div class="settings-theme-field">
-                              <label
-                                class="form-label"
-                                for="theme-motion-select"
-                                data-shell-i18n-text="theme.motionLabel"
-                              ></label>
-                              <select id="theme-motion-select" class="select select-sm">
-                                <option
-                                  value="full"
-                                  data-shell-i18n-text="theme.motion.options.full"
-                                ></option>
-                                <option
-                                  value="reduced"
-                                  data-shell-i18n-text="theme.motion.options.reduced"
-                                ></option>
-                                <option
-                                  value="off"
-                                  data-shell-i18n-text="theme.motion.options.off"
-                                ></option>
-                              </select>
+                          <div class="settings-theme-current">
+                            <span class="settings-theme-current__icon" aria-hidden="true">🎭</span>
+                            <div class="settings-theme-current__copy">
+                              <span
+                                class="settings-theme-current__label"
+                                data-shell-i18n-text="theme.scene.activeLabel"
+                              ></span>
+                              <strong id="scene-theme-current-name"></strong>
+                              <small id="scene-theme-current-meta"></small>
                             </div>
-                            <div class="settings-theme-field">
-                              <label
-                                class="form-label"
-                                for="theme-text-scale-select"
-                                data-shell-i18n-text="theme.textScaleLabel"
-                              ></label>
-                              <select id="theme-text-scale-select" class="select select-sm">
-                                <option
-                                  value="sm"
-                                  data-shell-i18n-text="theme.textScale.options.sm"
-                                ></option>
-                                <option
-                                  value="md"
-                                  data-shell-i18n-text="theme.textScale.options.md"
-                                ></option>
-                                <option
-                                  value="lg"
-                                  data-shell-i18n-text="theme.textScale.options.lg"
-                                ></option>
-                              </select>
+                          </div>
+
+                          <div class="settings-theme-stack">
+                            <div class="settings-theme-form-grid">
+                              <div class="settings-theme-field">
+                                <label
+                                  class="form-label"
+                                  for="scene-theme-conflict-select"
+                                  data-shell-i18n-text="theme.scene.importBehaviorLabel"
+                                ></label>
+                                <select id="scene-theme-conflict-select" class="select select-sm">
+                                  <option
+                                    value="rename"
+                                    data-shell-i18n-text="theme.scene.importBehavior.options.rename"
+                                  ></option>
+                                  <option
+                                    value="reject"
+                                    data-shell-i18n-text="theme.scene.importBehavior.options.reject"
+                                  ></option>
+                                  <option
+                                    value="replace"
+                                    data-shell-i18n-text="theme.scene.importBehavior.options.replace"
+                                  ></option>
+                                </select>
+                              </div>
+                              <div class="settings-theme-field settings-theme-field--wide">
+                                <div class="settings-scene-theme-actions">
+                                  <button
+                                    class="btn btn-secondary btn-sm"
+                                    id="scene-theme-import"
+                                    data-shell-i18n-text="theme.scene.actions.import"
+                                  ></button>
+                                  <button
+                                    class="btn btn-ghost btn-sm"
+                                    id="scene-theme-refresh"
+                                    data-shell-i18n-text="theme.scene.actions.refresh"
+                                  ></button>
+                                  <button
+                                    class="btn btn-ghost btn-sm"
+                                    id="scene-theme-export"
+                                    data-shell-i18n-text="theme.scene.actions.export"
+                                  ></button>
+                                </div>
+                              </div>
                             </div>
-                            <div class="settings-theme-field settings-theme-field--wide">
-                              <label
-                                class="form-label"
-                                for="theme-surface-select"
-                                data-shell-i18n-text="theme.surfaceLabel"
-                              ></label>
-                              <select id="theme-surface-select" class="select select-sm">
-                                <option
-                                  value="glass"
-                                  data-shell-i18n-text="theme.surface.options.glass"
-                                ></option>
-                                <option
-                                  value="soft"
-                                  data-shell-i18n-text="theme.surface.options.soft"
-                                ></option>
-                                <option
-                                  value="solid"
-                                  data-shell-i18n-text="theme.surface.options.solid"
-                                ></option>
-                              </select>
-                            </div>
+
                             <div class="settings-theme-toggle-row settings-theme-field--wide">
                               <div class="settings-theme-toggle-copy">
                                 <span
                                   class="form-label"
-                                  data-shell-i18n-text="theme.contrastLabel"
+                                  data-shell-i18n-text="theme.scene.selectedLabel"
                                 ></span>
                                 <p
                                   class="settings-theme-section-hint"
-                                  data-shell-i18n-text="theme.contrastHint"
+                                  id="scene-theme-selection-hint"
                                 ></p>
                               </div>
-                              <label class="ds-mcp-switch">
-                                <input
-                                  id="theme-contrast-toggle"
-                                  type="checkbox"
-                                  class="ds-mcp-switch__input"
-                                />
-                                <span class="ds-mcp-switch__slider"></span>
-                              </label>
+                              <button
+                                class="btn btn-primary btn-sm"
+                                id="scene-theme-apply"
+                                data-shell-i18n-text="theme.scene.actions.apply"
+                              ></button>
                             </div>
+
+                            <div
+                              class="settings-theme-grid settings-theme-grid--compact"
+                              id="scene-theme-settings-list"
+                            ></div>
                           </div>
                         </div>
                       </section>
                     </div>
-
-                    <section
-                      class="glass-panel ds-surface-card ds-surface-card--stack settings-appearance-card"
-                    >
-                      <div class="ds-surface-card__header settings-theme-card-head">
-                        <div>
-                          <h4
-                            class="settings-theme-section-title"
-                            data-shell-i18n-text="theme.scene.title"
-                          ></h4>
-                          <p
-                            class="settings-theme-section-hint"
-                            data-shell-i18n-text="theme.scene.hint"
-                          ></p>
-                        </div>
-                        <span
-                          class="settings-theme-mode-badge"
-                          id="scene-theme-source-badge"
-                        ></span>
-                      </div>
-                      <div class="ds-surface-card__body settings-appearance-card__body">
-                        <div class="settings-theme-current">
-                          <span class="settings-theme-current__icon" aria-hidden="true">🎭</span>
-                          <div class="settings-theme-current__copy">
-                            <span
-                              class="settings-theme-current__label"
-                              data-shell-i18n-text="theme.scene.activeLabel"
-                            ></span>
-                            <strong id="scene-theme-current-name"></strong>
-                            <small id="scene-theme-current-meta"></small>
-                          </div>
-                        </div>
-
-                        <div class="settings-theme-form-grid">
-                          <div class="settings-theme-field">
-                            <label
-                              class="form-label"
-                              for="scene-theme-conflict-select"
-                              data-shell-i18n-text="theme.scene.importBehaviorLabel"
-                            ></label>
-                            <select id="scene-theme-conflict-select" class="select select-sm">
-                              <option
-                                value="rename"
-                                data-shell-i18n-text="theme.scene.importBehavior.options.rename"
-                              ></option>
-                              <option
-                                value="reject"
-                                data-shell-i18n-text="theme.scene.importBehavior.options.reject"
-                              ></option>
-                              <option
-                                value="replace"
-                                data-shell-i18n-text="theme.scene.importBehavior.options.replace"
-                              ></option>
-                            </select>
-                          </div>
-                          <div class="settings-theme-field settings-theme-field--wide">
-                            <div class="settings-scene-theme-actions">
-                              <button
-                                class="btn btn-secondary btn-sm"
-                                id="scene-theme-import"
-                                data-shell-i18n-text="theme.scene.actions.import"
-                              ></button>
-                              <button
-                                class="btn btn-ghost btn-sm"
-                                id="scene-theme-refresh"
-                                data-shell-i18n-text="theme.scene.actions.refresh"
-                              ></button>
-                              <button
-                                class="btn btn-ghost btn-sm"
-                                id="scene-theme-export"
-                                data-shell-i18n-text="theme.scene.actions.export"
-                              ></button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div class="settings-theme-toggle-row settings-theme-field--wide">
-                          <div class="settings-theme-toggle-copy">
-                            <span
-                              class="form-label"
-                              data-shell-i18n-text="theme.scene.selectedLabel"
-                            ></span>
-                            <p
-                              class="settings-theme-section-hint"
-                              id="scene-theme-selection-hint"
-                            ></p>
-                          </div>
-                          <button
-                            class="btn btn-primary btn-sm"
-                            id="scene-theme-apply"
-                            data-shell-i18n-text="theme.scene.actions.apply"
-                          ></button>
-                        </div>
-
-                        <div class="settings-theme-grid" id="scene-theme-settings-list"></div>
-                      </div>
-                    </section>
                   </div>
                 </div>
               </section>

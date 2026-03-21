@@ -811,6 +811,7 @@
     },
     "theme": {
       "selectTitle": "Select theme",
+      "classicSettingsTitle": "Classic theme settings",
       "presetsTitle": "Quick presets",
       "presetsHint": "Choosing a preset applies it immediately and switches behavior to manual.",
       "behaviorTitle": "Behavior",

@@ -396,6 +396,19 @@ function bindThemeSettingsUi(): void {
   setupThemeSettingsPanelListeners(bindings);
 }
 
+function syncThemeSettingsUi(): void {
+  const hasThemePanel =
+    document.getElementById("settings-panel-theme") != null ||
+    document.getElementById("theme-settings-list") != null;
+  if (!hasThemePanel) {
+    return;
+  }
+
+  renderThemeSettingsUi();
+  bindThemeSettingsUi();
+  updateThemePanelUI(currentTheme, currentAppearance, getThemeUiOptions());
+}
+
 const themeManager = {
   get current(): ThemeId {
     return currentTheme;
@@ -415,6 +428,7 @@ const themeManager = {
 
   init(): void {
     if (isInitialized) {
+      syncThemeSettingsUi();
       return;
     }
 
@@ -440,21 +454,17 @@ const themeManager = {
 
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", () => {
-        renderThemeSettingsUi();
-        bindThemeSettingsUi();
-        updateThemePanelUI(currentTheme, currentAppearance, getThemeUiOptions());
+        syncThemeSettingsUi();
       });
     } else {
-      renderThemeSettingsUi();
-      bindThemeSettingsUi();
-      updateThemePanelUI(currentTheme, currentAppearance, getThemeUiOptions());
+      syncThemeSettingsUi();
     }
 
     setupSyncListeners();
     setupAppearanceWatchers();
     setupSettingsSync();
     i18nUnsubscribe ??= AppI18n.subscribe(() => {
-      renderThemeSettingsUi();
+      syncThemeSettingsUi();
       updateThemeDropdownUI(currentTheme);
     });
     isInitialized = true;

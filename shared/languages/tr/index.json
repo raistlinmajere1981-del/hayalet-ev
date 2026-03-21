@@ -811,6 +811,7 @@
     },
     "theme": {
       "selectTitle": "Tema seç",
+      "classicSettingsTitle": "Klasik tema ayarları",
       "presetsTitle": "Hızlı presetler",
       "presetsHint": "Bir preset seçmek temayı anında uygular ve davranışı manuele alır.",
       "behaviorTitle": "Davranış",
