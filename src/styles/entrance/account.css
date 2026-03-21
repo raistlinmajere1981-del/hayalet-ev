@@ -293,6 +293,10 @@
   color: var(--text-muted);
 }
 
+.account-kind-note:empty {
+  display: none;
+}
+
 .account-form-avatar-row {
   display: flex;
   align-items: center;

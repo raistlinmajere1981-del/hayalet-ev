@@ -867,15 +867,16 @@ body.is-scroll-locked {
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: var(--space-2-5);
+  gap: var(--space-3);
   padding: var(--space-3);
 }
 
+.workspace-tool-bar,
 .settings-hub-nav {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1-5) var(--space-2);
+  padding: var(--space-1-5) var(--space-3);
   border: var(--border-1) solid var(--toolbar-surface-border, var(--border-default));
   border-radius: calc(var(--toolbar-surface-radius, var(--radius-card)) + var(--space-0-5));
   background:
@@ -889,19 +890,48 @@ body.is-scroll-locked {
   box-shadow: var(--toolbar-surface-shadow, var(--surface-shadow));
 }
 
+.workspace-tool-bar__start,
+.workspace-tool-bar__end {
+  flex: 0 0 12rem;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.workspace-tool-bar__end {
+  justify-content: flex-end;
+}
+
+.workspace-tool-bar__center,
 .settings-hub-tabs {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
   flex: 1;
+  justify-content: center;
   min-width: 0;
+}
+
+.settings-hub-tabs {
+  gap: var(--space-2);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
 }
 
+.workspace-tool-bar__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(var(--text-lg), 1vw + 1rem, var(--text-2xl));
+  font-weight: var(--font-semibold);
+  line-height: 1.05;
+  letter-spacing: var(--tracking-title);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .settings-hub-close {
-  margin-left: auto;
   flex-shrink: 0;
 }
 
@@ -1050,7 +1080,7 @@ body.is-scroll-locked {
 
 .settings-accounts-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: var(--space-5);
   align-items: start;
 }
@@ -1324,6 +1354,10 @@ body.is-scroll-locked {
   background: color-mix(in srgb, var(--bg-surface-2) 76%, transparent);
 }
 
+.settings-hub-panel[data-settings-panel="accounts"] .account-kind-note:empty {
+  display: none;
+}
+
 .settings-hub-panel:is([data-settings-panel="backup"], [data-settings-panel="rooms"])
   .room-manager-toolbar {
   margin-left: auto;
@@ -1471,6 +1505,11 @@ body.is-scroll-locked {
     padding: var(--space-2) var(--space-3);
   }
 
+  .workspace-tool-bar__start,
+  .workspace-tool-bar__end {
+    flex-basis: 9.5rem;
+  }
+
   .settings-hub-tab {
     min-height: var(--btn-height-sm);
     padding: 0 var(--space-3);
@@ -1541,6 +1580,26 @@ body.is-scroll-locked {
     gap: var(--space-1-5);
     padding: var(--space-2);
     border-radius: var(--radius-lg);
+    flex-wrap: wrap;
+  }
+
+  .workspace-tool-bar__start,
+  .workspace-tool-bar__end,
+  .workspace-tool-bar__center {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .workspace-tool-bar__start {
+    order: 1;
+  }
+
+  .workspace-tool-bar__center {
+    order: 2;
+  }
+
+  .workspace-tool-bar__end {
+    order: 3;
   }
 
   .settings-hub-tab {

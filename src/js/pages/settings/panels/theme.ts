@@ -14,7 +14,6 @@ import { syncInstalledSceneThemeRegistrationsFromElectron } from "../../../scene
 import { registerSettingsPanelLifecycle } from "../controller.js";
 
 interface SceneThemePanelRefs {
-  sourceBadge: HTMLElement | null;
   currentName: HTMLElement | null;
   currentMeta: HTMLElement | null;
   selectionHint: HTMLElement | null;
@@ -42,7 +41,6 @@ function sceneThemeT(key: string, params?: Record<string, string | number>): str
 
 function getRefs(): SceneThemePanelRefs {
   return {
-    sourceBadge: document.getElementById("scene-theme-source-badge"),
     currentName: document.getElementById("scene-theme-current-name"),
     currentMeta: document.getElementById("scene-theme-current-meta"),
     selectionHint: document.getElementById("scene-theme-selection-hint"),
@@ -171,12 +169,6 @@ function render(refs: SceneThemePanelRefs, state: SceneThemePanelState): void {
     refs.currentMeta.textContent =
       activeRegistration !== null ? getSourceLabel(activeRegistration.sourceKind) : "";
   }
-  if (refs.sourceBadge !== null) {
-    refs.sourceBadge.textContent =
-      selectedRegistration !== null
-        ? getSourceLabel(selectedRegistration.sourceKind)
-        : sceneThemeT("source.unavailable");
-  }
   if (refs.selectionHint !== null) {
     if (selectedRegistration === null) {
       refs.selectionHint.textContent = sceneThemeT("empty");
@@ -239,7 +231,6 @@ export function setupSettingsThemePanel(): void {
 
   const refs = getRefs();
   if (
-    refs.sourceBadge === null ||
     refs.currentName === null ||
     refs.currentMeta === null ||
     refs.selectionHint === null ||

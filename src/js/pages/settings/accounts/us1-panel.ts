@@ -45,6 +45,7 @@ export class Us1Panel {
   settingsManager: SettingsManagerLike;
   reportEntries: ReportEntry[] = [];
   loadingBusy = false;
+  mailVerifyBusy = false;
 
   constructor(settingsManager: SettingsManagerLike) {
     this.settingsManager = settingsManager;
@@ -59,78 +60,107 @@ export class Us1Panel {
     const providerSelect = document.getElementById(
       "us1-mail-provider-select"
     ) as HTMLSelectElement | null;
-    providerSelect?.addEventListener("change", () => {
-      this.renderMailAccountFormState();
-    });
+    if (providerSelect !== null) {
+      providerSelect.onchange = () => {
+        this.renderMailAccountFormState();
+      };
+    }
 
     const authTypeSelect = document.getElementById(
       "us1-mail-auth-type-select"
     ) as HTMLSelectElement | null;
-    authTypeSelect?.addEventListener("change", () => {
-      this.renderMailAccountFormState();
-    });
+    if (authTypeSelect !== null) {
+      authTypeSelect.onchange = () => {
+        this.renderMailAccountFormState();
+      };
+    }
 
-    document.getElementById("us1-mail-verify-btn")?.addEventListener("click", () => {
-      void this.handleSaveMailAccount(true);
-    });
+    const verifyBtn = document.getElementById("us1-mail-verify-btn");
+    if (verifyBtn instanceof HTMLElement) {
+      verifyBtn.onclick = (event) => {
+        event.preventDefault();
+        void this.handleSaveMailAccount(true);
+      };
+    }
 
-    document.getElementById("us1-mail-delete-btn")?.addEventListener("click", () => {
-      void this.handleDeleteMailAccount();
-    });
+    const deleteBtn = document.getElementById("us1-mail-delete-btn");
+    if (deleteBtn instanceof HTMLElement) {
+      deleteBtn.onclick = () => {
+        void this.handleDeleteMailAccount();
+      };
+    }
 
-    document.getElementById("us1-mail-gmail-open-security")?.addEventListener("click", () => {
-      const electronApi = window.electronAPI;
-      if (electronApi) {
-        void electronApi.openPath("https://myaccount.google.com/apppasswords");
-      }
-    });
+    const gmailSecurityBtn = document.getElementById("us1-mail-gmail-open-security");
+    if (gmailSecurityBtn instanceof HTMLElement) {
+      gmailSecurityBtn.onclick = (event) => {
+        event.preventDefault();
+        const electronApi = window.electronAPI;
+        if (electronApi) {
+          void electronApi.openPath("https://myaccount.google.com/apppasswords");
+        }
+      };
+    }
 
     const slotUserSelect = document.getElementById(
       "us1-identity-select"
     ) as HTMLSelectElement | null;
-    slotUserSelect?.addEventListener("change", (event) => {
-      const selectedAccountId = this.readSelectValue(event.target as HTMLSelectElement);
-      void this.handleSlotSelectionChange(selectedAccountId);
-    });
+    if (slotUserSelect !== null) {
+      slotUserSelect.onchange = (event) => {
+        const selectedAccountId = this.readSelectValue(event.target as HTMLSelectElement);
+        void this.handleSlotSelectionChange(selectedAccountId);
+      };
+    }
 
     const catchCheck = document.getElementById("us1-catch-check") as HTMLInputElement | null;
-    catchCheck?.addEventListener("change", (event) => {
-      void this.updateUs1Slot({
-        catchCommands: (event.target as HTMLInputElement).checked,
-      });
-    });
+    if (catchCheck !== null) {
+      catchCheck.onchange = (event) => {
+        void this.updateUs1Slot({
+          catchCommands: (event.target as HTMLInputElement).checked,
+        });
+      };
+    }
 
     const resumeCheck = document.getElementById(
       "us1-resume-last-session-check"
     ) as HTMLInputElement | null;
-    resumeCheck?.addEventListener("change", (event) => {
-      void this.updateUs1Slot({
-        resumeLastSession: (event.target as HTMLInputElement).checked,
-      });
-    });
+    if (resumeCheck !== null) {
+      resumeCheck.onchange = (event) => {
+        void this.updateUs1Slot({
+          resumeLastSession: (event.target as HTMLInputElement).checked,
+        });
+      };
+    }
 
     const rememberConnectionCheck = document.getElementById(
       "us1-remember-connection-check"
     ) as HTMLInputElement | null;
-    rememberConnectionCheck?.addEventListener("change", (event) => {
-      const checked = (event.target as HTMLInputElement).checked;
-      void this.updateUs1Slot({
-        rememberConnectionStatus: checked,
-        lastConnectionState: AppState.isUs1Connected() === true ? "connected" : "disconnected",
-      });
-    });
+    if (rememberConnectionCheck !== null) {
+      rememberConnectionCheck.onchange = (event) => {
+        const checked = (event.target as HTMLInputElement).checked;
+        void this.updateUs1Slot({
+          rememberConnectionStatus: checked,
+          lastConnectionState: AppState.isUs1Connected() === true ? "connected" : "disconnected",
+        });
+      };
+    }
 
-    document.getElementById("us1-toggle-btn")?.addEventListener("click", () => {
-      if (AppState.isUs1Connected() === true) {
-        void this.handleDisconnect();
-      } else {
-        void this.handleConnect();
-      }
-    });
+    const toggleBtn = document.getElementById("us1-toggle-btn");
+    if (toggleBtn instanceof HTMLElement) {
+      toggleBtn.onclick = () => {
+        if (AppState.isUs1Connected() === true) {
+          void this.handleDisconnect();
+        } else {
+          void this.handleConnect();
+        }
+      };
+    }
 
-    document.getElementById("us1-sync-messages-btn")?.addEventListener("click", () => {
-      void this.handleManualMailCheck();
-    });
+    const syncMessagesBtn = document.getElementById("us1-sync-messages-btn");
+    if (syncMessagesBtn instanceof HTMLElement) {
+      syncMessagesBtn.onclick = () => {
+        void this.handleManualMailCheck();
+      };
+    }
   }
 
   private getMailAccounts(settings: AppSettings): MailTransportAccountConfig[] {
@@ -222,6 +252,10 @@ export class Us1Panel {
   }
 
   private async handleSaveMailAccount(verifyAfterSave: boolean): Promise<void> {
+    if (this.mailVerifyBusy) {
+      return;
+    }
+
     const electronApi = window.electronAPI;
     if (electronApi === undefined) {
       this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
@@ -236,22 +270,39 @@ export class Us1Panel {
       return;
     }
 
-    const result = await electronApi.us1UpsertMailAccount(draft, { verifyAfterSave });
-    await this.reloadSettings();
-    this.render();
+    this.mailVerifyBusy = verifyAfterSave;
+    this.renderMailVerifyButton();
 
-    if (result.success) {
-      const message = verifyAfterSave
-        ? entranceT("us1.feedback.mailVerifySuccess")
-        : entranceT("us1.feedback.mailSaveSuccess");
-      this.addReport(message, "success");
-      this.showFeedback(message, "success");
-      return;
+    try {
+      const result = await electronApi.us1UpsertMailAccount(draft, { verifyAfterSave });
+      await this.reloadSettings();
+      this.render();
+
+      if (result.success) {
+        if (verifyAfterSave) {
+          const gmailEmailInput = document.getElementById(
+            "us1-mail-gmail-email-easy"
+          ) as HTMLInputElement | null;
+          if (gmailEmailInput !== null) {
+            gmailEmailInput.value = "";
+          }
+        }
+
+        const message = verifyAfterSave
+          ? entranceT("us1.feedback.mailVerifySuccess")
+          : entranceT("us1.feedback.mailSaveSuccess");
+        this.addReport(message, "success");
+        this.showFeedback(message, "success");
+        return;
+      }
+
+      const errorMessage = result.error ?? entranceT("us1.feedback.operationFailed");
+      this.addReport(errorMessage, "error");
+      this.showFeedback(errorMessage, "error");
+    } finally {
+      this.mailVerifyBusy = false;
+      this.renderMailVerifyButton();
     }
-
-    const errorMessage = result.error ?? entranceT("us1.feedback.operationFailed");
-    this.addReport(errorMessage, "error");
-    this.showFeedback(errorMessage, "error");
   }
 
   private async handleDeleteMailAccount(): Promise<void> {
@@ -760,6 +811,22 @@ export class Us1Panel {
     if (deleteBtn) {
       deleteBtn.disabled = selectedMailAccount === null;
     }
+
+    this.renderMailVerifyButton();
+  }
+
+  private renderMailVerifyButton(): void {
+    const verifyBtn = document.getElementById("us1-mail-verify-btn") as HTMLButtonElement | null;
+    if (verifyBtn === null) {
+      return;
+    }
+
+    verifyBtn.disabled = this.mailVerifyBusy;
+    verifyBtn.textContent = this.mailVerifyBusy
+      ? entranceT("slot.connecting")
+      : entranceT("us1.mailAccount.actions.connect");
+    verifyBtn.classList.toggle("is-busy", this.mailVerifyBusy);
+    verifyBtn.setAttribute("aria-busy", String(this.mailVerifyBusy));
   }
 
   private renderMailAccountFormState(): void {

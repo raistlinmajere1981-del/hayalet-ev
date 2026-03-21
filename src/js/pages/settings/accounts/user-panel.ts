@@ -60,29 +60,51 @@ export class UserPanel {
       void this.browseAvatar();
     };
 
-    avatarEditBtn?.addEventListener("click", handleAvatarEdit);
-    avatarEditBtn?.addEventListener("keydown", (event: KeyboardEvent) => {
-      if (event.key !== "Enter" && event.key !== " ") {
-        return;
-      }
+    if (avatarEditBtn instanceof HTMLElement) {
+      avatarEditBtn.onclick = () => {
+        handleAvatarEdit();
+      };
+      avatarEditBtn.onkeydown = (event: KeyboardEvent) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
 
-      event.preventDefault();
-      handleAvatarEdit();
-    });
+        event.preventDefault();
+        handleAvatarEdit();
+      };
+    }
 
-    document.getElementById("gdrive-start-auth")?.addEventListener("click", () => {
-      void this.startGDriveAuth();
-    });
-    document.getElementById("gdrive-connect-btn")?.addEventListener("click", () => {
-      void this.toggleGDriveConnection();
-    });
-    document.getElementById("gdrive-auth-code")?.addEventListener("change", (e) => {
-      void this.saveGDriveCode((e.target as HTMLInputElement).value);
-    });
+    const gdriveStartAuthBtn = document.getElementById("gdrive-start-auth");
+    if (gdriveStartAuthBtn instanceof HTMLElement) {
+      gdriveStartAuthBtn.onclick = () => {
+        void this.startGDriveAuth();
+      };
+    }
 
-    document.getElementById("app-language-select")?.addEventListener("change", (e) => {
-      void this.saveAppLanguage((e.target as HTMLSelectElement).value);
-    });
+    const gdriveConnectBtn = document.getElementById("gdrive-connect-btn");
+    if (gdriveConnectBtn instanceof HTMLElement) {
+      gdriveConnectBtn.onclick = () => {
+        void this.toggleGDriveConnection();
+      };
+    }
+
+    const gdriveAuthCodeInput = document.getElementById("gdrive-auth-code") as
+      | HTMLInputElement
+      | null;
+    if (gdriveAuthCodeInput !== null) {
+      gdriveAuthCodeInput.onchange = (event) => {
+        void this.saveGDriveCode((event.target as HTMLInputElement).value);
+      };
+    }
+
+    const appLanguageSelect = document.getElementById("app-language-select") as
+      | HTMLSelectElement
+      | null;
+    if (appLanguageSelect !== null) {
+      appLanguageSelect.onchange = (event) => {
+        void this.saveAppLanguage((event.target as HTMLSelectElement).value);
+      };
+    }
   }
 
   render(): void {

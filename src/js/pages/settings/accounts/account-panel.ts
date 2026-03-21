@@ -42,26 +42,41 @@ export class AccountPanel {
   }
 
   setupListeners(): void {
-    document.getElementById("settings-create-account")?.addEventListener("click", () => {
-      void this.handlePrimaryAction();
-    });
+    const createBtn = document.getElementById("settings-create-account");
+    if (createBtn instanceof HTMLElement) {
+      createBtn.onclick = () => {
+        void this.handlePrimaryAction();
+      };
+    }
 
-    document.getElementById("settings-cancel-edit")?.addEventListener("click", () => {
-      this.cancelEdit();
-    });
+    const cancelBtn = document.getElementById("settings-cancel-edit");
+    if (cancelBtn instanceof HTMLElement) {
+      cancelBtn.onclick = () => {
+        this.cancelEdit();
+      };
+    }
 
-    document.getElementById("new-account-avatar-browse")?.addEventListener("click", () => {
-      void this.browseNewAccountAvatar();
-    });
+    const avatarBrowseBtn = document.getElementById("new-account-avatar-browse");
+    if (avatarBrowseBtn instanceof HTMLElement) {
+      avatarBrowseBtn.onclick = () => {
+        void this.browseNewAccountAvatar();
+      };
+    }
 
-    document.getElementById("new-account-kind")?.addEventListener("change", () => {
-      this._editingAccountId = null;
-      this.renderFormMeta();
-    });
+    const kindSelect = document.getElementById("new-account-kind") as HTMLSelectElement | null;
+    if (kindSelect !== null) {
+      kindSelect.onchange = () => {
+        this._editingAccountId = null;
+        this.renderFormMeta();
+      };
+    }
 
-    document.getElementById("settings-sync-remote-accounts")?.addEventListener("click", () => {
-      void this.handleSyncRemoteAccounts();
-    });
+    const syncRemoteAccountsBtn = document.getElementById("settings-sync-remote-accounts");
+    if (syncRemoteAccountsBtn instanceof HTMLElement) {
+      syncRemoteAccountsBtn.onclick = () => {
+        void this.handleSyncRemoteAccounts();
+      };
+    }
   }
 
   render(): void {
@@ -456,10 +471,7 @@ export class AccountPanel {
     }
 
     if (noteEl) {
-      noteEl.textContent =
-        kind === "remote-email"
-          ? entranceT("accounts.form.remoteNote")
-          : entranceT("accounts.form.aiNote");
+      noteEl.textContent = "";
     }
 
     if (remoteMailStatusEl) {
@@ -551,6 +563,7 @@ export class AccountPanel {
       if (emailEl) {
         emailEl.value = "";
       }
+      this.clearNewAccountAvatarPreview();
       this.showFeedback(entranceT("us1.feedback.inviteSent"), "success");
       return;
     }

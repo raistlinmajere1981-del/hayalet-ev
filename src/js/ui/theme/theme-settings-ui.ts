@@ -78,10 +78,6 @@ export function updateThemePanelUI(
   options: ThemeSettingsUiOptions
 ): void {
   const themeInfo = options.themes[theme];
-  const currentIcon = document.getElementById("theme-current-icon");
-  const currentName = document.getElementById("theme-current-name");
-  const currentMeta = document.getElementById("theme-current-meta");
-  const modeBadge = document.getElementById("theme-mode-badge");
   const modeHint = document.getElementById("theme-mode-hint");
   const modeSelect = document.getElementById("theme-behavior-select") as HTMLSelectElement | null;
   const lightSelect = document.getElementById("theme-light-select") as HTMLSelectElement | null;
@@ -98,10 +94,6 @@ export function updateThemePanelUI(
   ) as HTMLInputElement | null;
   const scheduleFields = document.querySelectorAll<HTMLElement>("[data-theme-schedule-field]");
 
-  if (currentIcon) currentIcon.textContent = themeInfo.icon;
-  if (currentName) currentName.textContent = options.getThemeName(theme);
-  if (currentMeta) currentMeta.textContent = options.getModeLabel(appearance.mode);
-  if (modeBadge) modeBadge.textContent = options.getModeLabel(appearance.mode);
   if (modeHint) modeHint.textContent = options.getModeHint(appearance.mode);
 
   if (modeSelect) modeSelect.value = appearance.mode;

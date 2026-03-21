@@ -201,30 +201,8 @@
                             ></h4>
                             <p class="settings-theme-section-hint" id="theme-mode-hint"></p>
                           </div>
-                          <span
-                            class="settings-theme-mode-badge"
-                            id="theme-mode-badge"
-                            hidden
-                            aria-hidden="true"
-                          ></span>
                         </div>
                         <div class="ds-surface-card__body settings-appearance-card__body">
-                          <div class="settings-theme-current" hidden aria-hidden="true">
-                            <span
-                              class="theme-dropdown-icon settings-theme-current__icon"
-                              id="theme-current-icon"
-                              >🌑</span
-                            >
-                            <div class="settings-theme-current__copy">
-                              <span
-                                class="settings-theme-current__label"
-                                data-shell-i18n-text="settingsHub.currentThemeLabel"
-                              ></span>
-                              <strong id="theme-current-name"></strong>
-                              <small id="theme-current-meta"></small>
-                            </div>
-                          </div>
-
                           <div class="settings-theme-grid settings-theme-grid--compact" id="theme-settings-list"></div>
 
                           <div class="settings-theme-stack">
@@ -395,12 +373,6 @@
                               data-shell-i18n-text="theme.scene.hint"
                             ></p>
                           </div>
-                          <span
-                            class="settings-theme-mode-badge"
-                            id="scene-theme-source-badge"
-                            hidden
-                            aria-hidden="true"
-                          ></span>
                         </div>
                         <div class="ds-surface-card__body settings-appearance-card__body">
                           <div class="settings-theme-current">
@@ -616,6 +588,7 @@
                                     <button
                                       class="btn btn-secondary btn-sm us1-slot-panel__gmail-action us1-slot-panel__mail-meta-control us1-slot-panel__mail-meta-control--helper"
                                       id="us1-mail-gmail-open-security"
+                                      type="button"
                                       data-us1-mail-gmail-helper
                                       data-i18n-text="us1.mailAccount.gmailHelperStep1"
                                     ></button>
@@ -814,6 +787,7 @@
                                   <button
                                     class="btn btn-primary btn-sm"
                                     id="us1-mail-verify-btn"
+                                    type="button"
                                     data-i18n-text="us1.mailAccount.actions.connect"
                                   ></button>
                                   <button
@@ -892,10 +866,6 @@
                                     class="account-list-title"
                                     data-i18n-text="accounts.listTitle"
                                   ></span>
-                                  <span
-                                    class="account-list-note"
-                                    data-i18n-text="accounts.listNote"
-                                  ></span>
                                 </div>
                                 <div class="account-list" id="account-list"></div>
                               </div>
@@ -939,7 +909,7 @@
                                       </select>
                                     </div>
                                   </div>
-                                  <div class="account-kind-note" id="account-kind-note"></div>
+                                  <div class="account-kind-note is-hidden" id="account-kind-note"></div>
                                   <input
                                     type="text"
                                     id="new-account-email"
