@@ -1,4 +1,6 @@
+import { LogCategory } from "@shared/logging-core";
 import { AppI18n } from "../../modules/i18n/index.js";
+import { Logger } from "../../modules/logger/index.js";
 import {
   OVERLAY_GROUPS,
   OVERLAY_KINDS,
@@ -14,6 +16,7 @@ import {
   type WorkspaceToolCloseDetail,
   type WorkspaceToolOpenDetail,
 } from "../../ui/workspace-tool-overlay.js";
+import { ensureRuntimePageStyles } from "../../app/runtime-page-styles.js";
 import { WhisperDockController } from "./controller.js";
 import { applyWhisperStaticTranslations } from "./i18n.js";
 
@@ -79,27 +82,25 @@ export class WhisperPageController {
       this.overlayController?.close();
     });
 
-    document.addEventListener(
-      WORKSPACE_TOOL_OPEN_EVENT,
-      ((event: CustomEvent<WorkspaceToolOpenDetail>) => {
-        if (event.detail.tool !== "whisper") {
-          return;
-        }
+    document.addEventListener(WORKSPACE_TOOL_OPEN_EVENT, ((
+      event: CustomEvent<WorkspaceToolOpenDetail>
+    ) => {
+      if (event.detail.tool !== "whisper") {
+        return;
+      }
 
-        this.overlayController?.open();
-      }) as EventListener
-    );
+      void this.handleWorkspaceToolOpenRequest();
+    }) as EventListener);
 
-    document.addEventListener(
-      WORKSPACE_TOOL_CLOSE_EVENT,
-      ((event: CustomEvent<WorkspaceToolCloseDetail>) => {
-        if (event.detail.tool !== "whisper") {
-          return;
-        }
+    document.addEventListener(WORKSPACE_TOOL_CLOSE_EVENT, ((
+      event: CustomEvent<WorkspaceToolCloseDetail>
+    ) => {
+      if (event.detail.tool !== "whisper") {
+        return;
+      }
 
-        this.overlayController?.close();
-      }) as EventListener
-    );
+      this.overlayController?.close();
+    }) as EventListener);
 
     this.dockController.init();
     this.applyStaticTranslations();
@@ -125,6 +126,15 @@ export class WhisperPageController {
   dispose(): void {
     this.unsubscribeI18n?.();
     this.unsubscribeI18n = null;
+  }
+
+  private async handleWorkspaceToolOpenRequest(): Promise<void> {
+    try {
+      await this.ensureHostedStyles();
+      this.overlayController?.open();
+    } catch (error) {
+      this.handleHostedStylesLoadFailure(error);
+    }
   }
 
   private handleWorkspaceOpen(): void {
@@ -156,5 +166,26 @@ export class WhisperPageController {
 
   private applyStaticTranslations(): void {
     applyWhisperStaticTranslations(this.pageRoot ?? document);
+  }
+
+  private async ensureHostedStyles(): Promise<void> {
+    if (!isHostedInMainShell()) {
+      return;
+    }
+
+    await ensureRuntimePageStyles("whisper");
+  }
+
+  private handleHostedStylesLoadFailure(error: unknown): void {
+    const resolvedError = error instanceof Error ? error : new Error(String(error));
+    Logger.error(LogCategory.WHISPER, `Whisper page styles failed to load: ${resolvedError.message}`, {
+      source: "runtime-page-styles",
+      styleKey: "whisper",
+      error: {
+        name: resolvedError.name,
+        message: resolvedError.message,
+        stack: resolvedError.stack,
+      },
+    });
   }
 }

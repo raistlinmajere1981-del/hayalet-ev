@@ -2,7 +2,14 @@
 
 import type { ToolResult } from "@shared/index-mcp.js";
 
-import { checkConnection, discoverTargets as _discoverTargets } from "../utils/cdp-connection.js";
+import {
+  checkConnection,
+  discoverTargets as _discoverTargets,
+  findTargetById,
+  pickPreferredTarget,
+  sendCDPCommand as dispatchCdpCommand,
+  withTargetConnection,
+} from "../utils/cdp-connection.js";
 import { createMcpTranslatorSync } from "../utils/i18n/index.js";
 
 import {
@@ -20,6 +27,19 @@ import {
 } from "../utils/cdp-commands.js";
 
 import { logToolError } from "../utils/mcp-logger.js";
+
+const COMMON_CDP_DOMAINS = [
+  "Page",
+  "Runtime",
+  "Debugger",
+  "DOM",
+  "Network",
+  "Console",
+  "Memory",
+  "Profiler",
+  "Performance",
+  "HeapProfiler",
+];
 
 function cdpT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.cdpTools.${key}`, params);
@@ -48,6 +68,14 @@ function cdpError(
 
 function isNonEmptyString(value: string | undefined): value is string {
   return value !== undefined && value.length > 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+function stringifyJson(value: unknown): string {
+  return JSON.stringify(value, null, 2) ?? "null";
 }
 
 export async function checkElectronConnection(): Promise<ToolResult> {
@@ -85,6 +113,139 @@ export async function checkElectronConnection(): Promise<ToolResult> {
     }
   } catch (err) {
     return cdpError("hev_check_electron_connection", err as Error, "errors.connectionCheck");
+  }
+}
+
+export async function listCdpTargets(): Promise<ToolResult> {
+  try {
+    const targets = await _discoverTargets();
+
+    if (targets.length === 0) {
+      return {
+        content: [{ type: "text", text: cdpT("listCdpTargets.noneFound") }],
+      };
+    }
+
+    const preferredTarget = pickPreferredTarget(targets);
+    const summary = targets.map((target, index) => ({
+      index: index + 1,
+      id: target.id,
+      type: target.type,
+      title: target.title || cdpT("common.empty"),
+      url: target.url || cdpT("common.notAvailable"),
+      connectable: target.webSocketDebuggerUrl !== "",
+      isDefault: preferredTarget?.id === target.id,
+    }));
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: cdpT("listCdpTargets.success", {
+            count: summary.length,
+            targets: stringifyJson(summary),
+          }),
+        },
+      ],
+    };
+  } catch (err) {
+    return cdpError("hev_list_cdp_targets", err as Error, "errors.listTargets");
+  }
+}
+
+export async function getCdpTargetInfo(args: Record<string, unknown> = {}): Promise<ToolResult> {
+  const { targetId } = args as { targetId?: string };
+
+  if (isNonEmptyString(targetId) === false) {
+    return {
+      content: [{ type: "text", text: cdpT("getCdpTargetInfo.missingTargetId") }],
+      isError: true,
+    };
+  }
+
+  try {
+    const target = await findTargetById(targetId);
+    if (target === null) {
+      return {
+        content: [{ type: "text", text: cdpT("getCdpTargetInfo.notFound", { targetId }) }],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: cdpT("getCdpTargetInfo.success", {
+            targetId: target.id,
+            targetType: target.type,
+            title: target.title || cdpT("common.empty"),
+            url: target.url || cdpT("common.notAvailable"),
+            connectable: target.webSocketDebuggerUrl !== "" ? cdpT("common.yes") : cdpT("common.no"),
+            domains: COMMON_CDP_DOMAINS.join(", "),
+          }),
+        },
+      ],
+    };
+  } catch (err) {
+    return cdpError("hev_get_cdp_target_info", err as Error, "errors.targetInfo");
+  }
+}
+
+export async function sendCdpCommand(args: Record<string, unknown> = {}): Promise<ToolResult> {
+  const {
+    targetId,
+    domain,
+    method,
+    params,
+    timeout,
+  } = args as {
+    targetId?: string;
+    domain?: string;
+    method?: string;
+    params?: unknown;
+    timeout?: number;
+  };
+
+  if (isNonEmptyString(domain) === false || isNonEmptyString(method) === false) {
+    return {
+      content: [{ type: "text", text: cdpT("sendCdpCommand.missingDomainMethod") }],
+      isError: true,
+    };
+  }
+
+  if (params !== undefined && isRecord(params) === false) {
+    return {
+      content: [{ type: "text", text: cdpT("sendCdpCommand.invalidParams") }],
+      isError: true,
+    };
+  }
+
+  const timeoutMs =
+    typeof timeout === "number" && Number.isFinite(timeout)
+      ? Math.max(1_000, Math.min(120_000, Math.round(timeout)))
+      : undefined;
+
+  try {
+    const result = await withTargetConnection(targetId, async (ws, target) => ({
+      commandResult: await dispatchCdpCommand(ws, `${domain}.${method}`, params ?? {}, timeoutMs),
+      resolvedTargetId: target.id,
+    }));
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: cdpT("sendCdpCommand.success", {
+            targetId: result.resolvedTargetId,
+            command: `${domain}.${method}`,
+            result: stringifyJson(result.commandResult),
+          }),
+        },
+      ],
+    };
+  } catch (err) {
+    return cdpError("hev_send_cdp_command", err as Error, "errors.cdpCommand");
   }
 }
 

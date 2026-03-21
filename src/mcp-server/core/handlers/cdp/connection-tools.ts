@@ -1,5 +1,7 @@
 import {
   checkElectronConnection,
+  listCdpTargets,
+  sendCdpCommand,
   sendCommandToElectron,
   takeCdpScreenshot,
   getElectronWindowInfo,
@@ -41,6 +43,30 @@ export function createCdpConnectionTools(): ToolEntry[] {
     },
     {
       definition: {
+        name: "hev_list_cdp_targets",
+        description: cdpToolT("listCdpTargets.description"),
+        inputSchema: { type: "object", properties: {} },
+        metadata: {
+          category: "electron",
+          subcategory: "cdp",
+          priority: "medium",
+          complexity: "simple",
+          useCases: [
+            cdpToolT("listCdpTargets.useCases.targetDiscovery"),
+            cdpToolT("listCdpTargets.useCases.targetSelection"),
+            cdpToolT("listCdpTargets.useCases.multiTargetDebugging"),
+          ],
+          relatedTools: ["hev_get_cdp_target_info", "hev_send_cdp_command"],
+          agentGuidance: cdpToolT("listCdpTargets.agentGuidance"),
+          requiresConfirmation: false,
+          riskLevel: "low",
+          tags: ["cdp", "targets", "inspection", "debugging"],
+        },
+      },
+      handler: async () => await listCdpTargets(),
+    },
+    {
+      definition: {
         name: "hev_send_command_to_electron",
         description: cdpToolT("sendCommandToElectron.description"),
         inputSchema: {
@@ -72,6 +98,59 @@ export function createCdpConnectionTools(): ToolEntry[] {
         },
       },
       handler: async (args) => await sendCommandToElectron(args ?? {}),
+    },
+    {
+      definition: {
+        name: "hev_send_cdp_command",
+        description: cdpToolT("sendCdpCommand.description"),
+        inputSchema: {
+          type: "object",
+          properties: {
+            targetId: {
+              type: "string",
+              description: cdpToolT("sendCdpCommand.targetId"),
+            },
+            domain: {
+              type: "string",
+              description: cdpToolT("sendCdpCommand.domain"),
+            },
+            method: {
+              type: "string",
+              description: cdpToolT("sendCdpCommand.method"),
+            },
+            params: {
+              type: "object",
+              description: cdpToolT("sendCdpCommand.params"),
+            },
+            timeout: {
+              type: "number",
+              description: cdpToolT("sendCdpCommand.timeout"),
+            },
+          },
+          required: ["domain", "method"],
+        },
+        metadata: {
+          category: "electron",
+          subcategory: "cdp",
+          priority: "medium",
+          complexity: "advanced",
+          useCases: [
+            cdpToolT("sendCdpCommand.useCases.rawCdpDebugging"),
+            cdpToolT("sendCdpCommand.useCases.targetedReload"),
+            cdpToolT("sendCdpCommand.useCases.runtimeEvaluation"),
+          ],
+          relatedTools: [
+            "hev_list_cdp_targets",
+            "hev_get_cdp_target_info",
+            "hev_send_command_to_electron",
+          ],
+          agentGuidance: cdpToolT("sendCdpCommand.agentGuidance"),
+          requiresConfirmation: false,
+          riskLevel: "medium",
+          tags: ["cdp", "target", "command", "advanced"],
+        },
+      },
+      handler: async (args) => await sendCdpCommand(args ?? {}),
     },
     {
       definition: {

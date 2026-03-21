@@ -14,16 +14,10 @@ import {
   openSceneDebugRoom,
   subscribeSceneThemeAssetDraft,
 } from "../scene-editor/index.js";
-import {
-  buildSceneCharacterRoster,
-  resolveSceneAvatarSource,
-} from "../scene/characters/index.js";
+import { buildSceneCharacterRoster, resolveSceneAvatarSource } from "../scene/characters/index.js";
 import type { SceneClickableThemeDefinition } from "../scene/schema.js";
 import type { SceneLayoutConfig } from "../scene/layout/index.js";
-import {
-  getSceneObjectNodesForView,
-  resolveSceneNodeLabelText,
-} from "../scene/layout/index.js";
+import { getSceneObjectNodesForView, resolveSceneNodeLabelText } from "../scene/layout/index.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
 import { getCoverSceneProjectionFromElement, type SceneProjection } from "../scene/projection.js";
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";

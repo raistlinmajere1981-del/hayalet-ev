@@ -24,6 +24,9 @@ module.exports = {
           "src/js/modules/webview/providers/shared/scraper-helpers\.ts$", // intentionally not imported (reference copy pattern)
           "src/types/us1-mail\.ts$", // type-only shared contract (depcruise treats as orphan)
           "src/js/pages/entrance/scene/scene-character-role\.ts$", // type-only scene contract imported via `import type`
+          "src/js/ui/theme/theme-contract\.ts$", // type-only theme contract imported via `import type`
+          "src/js/scene-system/theme-source-contract\.ts$", // scene theme source contract consumed as type-only API
+          "src/js/scene-system/scene-theme-registry-contract\.ts$", // scene theme registry contract consumed as type-only API
           "ghost-agent/src/shared/", // shared types for ghost-agent (imported via @shared alias, not resolvable by depcruise)
         ],
       },

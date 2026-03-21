@@ -2812,6 +2812,7 @@
         "typescript": "TypeScript",
         "fileEditing": "File Editing",
         "refactoring": "Refactoring",
+        "cdpAdvanced": "Advanced CDP",
         "debugging": "Debugging",
         "eslint": "ESLint",
         "git": "Git",
@@ -2834,6 +2835,9 @@
         "batchRefactorRollback": "Batch refactoring with auto-rollback",
         "impactAnalysisFirst": "Run impact analysis first",
         "gitAndTestingOps": "For git operations and testing",
+        "inspectAvailableTargets": "Inspect the available CDP targets first",
+        "inspectSpecificTarget": "Inspect the chosen target before sending low-level commands",
+        "runRawCdpCommand": "Run a raw CDP command only after target selection",
         "checkLogsFirst": "Check the logs first",
         "debugHints": "Get AI-assisted debugging hints",
         "verifyCdpConnection": "Verify the CDP connection",
@@ -4179,7 +4183,10 @@
         "inspectElement": "❌ Inspect error: {{message}}",
         "queryElements": "❌ Query error: {{message}}",
         "keyPress": "❌ Key error: {{message}}",
-        "scroll": "❌ Scroll error: {{message}}"
+        "scroll": "❌ Scroll error: {{message}}",
+        "listTargets": "❌ CDP target listing error: {{message}}",
+        "targetInfo": "❌ CDP target info error: {{message}}",
+        "cdpCommand": "❌ CDP command error: {{message}}"
       },
       "connectionErrors": {
         "httpStatus": "HTTP {{status}}: {{statusText}}",
@@ -4193,16 +4200,32 @@
         "websocketSendError": "WebSocket send error: {{message}}",
         "javascriptError": "JavaScript error: {{message}}",
         "windowNotFound": "Electron window not found. Is the app running?",
+        "targetNotFound": "CDP target not found: {{targetId}}",
+        "targetMissingWebSocket": "The selected CDP target does not expose a websocket endpoint: {{targetId}}",
         "unknown": "unknown"
       },
       "checkConnection": {
         "connected": "✅ Electron connection is active\n\n📡 **Connection Details:**\n- Port: {{port}}\n- Targets: {{targetsCount}}\n\n🪟 **Main Window:**\n- Title: {{title}}\n- URL: {{url}}\n- Type: {{windowType}}",
         "disconnected": "❌ Electron connection is unavailable\n\n**Error:** {{error}}\n\n**Fix:**\n1. Start the app: `npm start`\n2. The app starts in debug mode on port {{port}}\n3. Try again"
       },
+      "listCdpTargets": {
+        "noneFound": "❌ No CDP targets found.",
+        "success": "✅ {{count}} CDP targets found\n\n```json\n{{targets}}\n```"
+      },
+      "getCdpTargetInfo": {
+        "missingTargetId": "❌ 'targetId' is required",
+        "notFound": "❌ CDP target not found: `{{targetId}}`",
+        "success": "✅ CDP target found\n\n**Target ID:** `{{targetId}}`\n**Type:** {{targetType}}\n**Title:** {{title}}\n**URL:** {{url}}\n**Connectable:** {{connectable}}\n**Common Domains:** {{domains}}"
+      },
       "sendCommand": {
         "missingCommand": "❌ 'command' is required",
         "descriptionSuffix": " ({{description}})",
         "success": "✅ Command executed{{suffix}}\n\n**Result:**\n```json\n{{result}}\n```"
+      },
+      "sendCdpCommand": {
+        "missingDomainMethod": "❌ 'domain' and 'method' are required",
+        "invalidParams": "❌ 'params' must be an object when provided",
+        "success": "✅ CDP command executed\n\n**Target:** `{{targetId}}`\n**Command:** `{{command}}`\n\n```json\n{{result}}\n```"
       },
       "takeScreenshot": {
         "saved": "✅ Screenshot saved: {{savePath}}\n\nSize: {{sizeBytes}} bytes",
@@ -5000,6 +5023,15 @@
             },
             "agentGuidance": "Use this before CDP-based actions to confirm that the connection is really available."
           },
+          "listCdpTargets": {
+            "description": "List all visible CDP targets for the current Electron session.",
+            "useCases": {
+              "targetDiscovery": "Discovering available CDP targets",
+              "targetSelection": "Choosing the right target before running advanced commands",
+              "multiTargetDebugging": "Debugging multi-target Electron sessions"
+            },
+            "agentGuidance": "Use this before low-level target-specific commands so you can pick the correct target id."
+          },
           "sendCommandToElectron": {
             "description": "Run JavaScript inside the Electron application. Can execute any JS expression.",
             "command": "JavaScript code to execute",
@@ -5010,6 +5042,20 @@
               "customJsExecution": "Custom JavaScript execution"
             },
             "agentGuidance": "A powerful tool for controlled JS execution during state inspection and custom debugging."
+          },
+          "sendCdpCommand": {
+            "description": "Send a raw Chrome DevTools Protocol command to a specific Electron target.",
+            "targetId": "CDP target id (optional; defaults to the preferred page target)",
+            "domain": "CDP domain name (for example: Page, Runtime, Debugger)",
+            "method": "CDP method name inside the domain (for example: reload, evaluate, pause)",
+            "params": "CDP params object to send with the command",
+            "timeout": "Optional timeout in milliseconds",
+            "useCases": {
+              "rawCdpDebugging": "Running advanced raw CDP commands",
+              "targetedReload": "Reloading a specific page target",
+              "runtimeEvaluation": "Evaluating commands against a selected target"
+            },
+            "agentGuidance": "Use this only when the higher-level CDP tools are not enough. Prefer listing targets first."
           },
           "takeScreenshot": {
             "description": "Capture a screenshot of the Electron window through CDP (full page).",
@@ -5041,6 +5087,16 @@
               "structureDebugging": "Debugging page structure"
             },
             "agentGuidance": "Inspect the DOM structure to find selectors; use maxDepth to limit the scope."
+          },
+          "getCdpTargetInfo": {
+            "description": "Get details about a specific CDP target, including its type, URL, and common command domains.",
+            "targetId": "CDP target id",
+            "useCases": {
+              "targetInspection": "Inspecting a specific CDP target",
+              "domainReference": "Reviewing common command domains before sending a raw CDP command",
+              "targetVerification": "Verifying the selected target before debugging"
+            },
+            "agentGuidance": "Use this after listing targets when you want to confirm which target should receive a raw CDP command."
           },
           "inspectElement": {
             "description": "Get detailed information about an element (size, position, visibility, content).",

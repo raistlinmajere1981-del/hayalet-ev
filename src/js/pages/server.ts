@@ -25,10 +25,7 @@ import {
   openSceneDebugRoom,
   subscribeSceneThemeAssetDraft,
 } from "../scene-editor/index.js";
-import {
-  buildSceneCharacterRoster,
-  resolveSceneAvatarSource,
-} from "../scene/characters/index.js";
+import { buildSceneCharacterRoster, resolveSceneAvatarSource } from "../scene/characters/index.js";
 import type { SceneClickableThemeDefinition } from "../scene/schema.js";
 import type { SceneLayoutConfig } from "../scene/layout/index.js";
 import {
@@ -403,7 +400,8 @@ export class ServerController {
         await this._serverSceneSession.saveSceneLayoutToSource();
       },
       updateSceneClickableTheme: (updater): void => {
-        this._serverSceneClickableTheme = this._serverSceneSession.updateSceneClickableTheme(updater);
+        this._serverSceneClickableTheme =
+          this._serverSceneSession.updateSceneClickableTheme(updater);
         this.syncServerSceneVisibility();
         this.renderServerScene();
         this._serverSceneEditor?.refresh();

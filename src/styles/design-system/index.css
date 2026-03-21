@@ -9,8 +9,10 @@
 @import "./tokens/animations.css";
 @import "./tokens/z-index.css";
 @import "./tokens/sizes.css";
+@import "./tokens/scene-scale.css";
 
 @import "./themes/theme-base.css";
+@import "./themes/theme-classic-aliases.css";
 @import "./themes/theme-obsidian.css";
 @import "./themes/theme-ivory-lab.css";
 @import "./themes/theme-ember-console.css";
@@ -31,6 +33,7 @@
 @import "./components/chat.css";
 @import "./components/progress.css";
 @import "./components/workspace.css";
+@import "./components/page-shells.css";
 @import "./components/opencode-ui-tabs.css";
 @import "./components/toggle.css";
 @import "./components/status-badge.css";

@@ -13,18 +13,37 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function renderTransparentWindowPreview(bounds: SceneAlphaWindowBounds): string {
+function renderTransparentWindowPreview(
+  sourceSrc: string,
+  targetLabel: string,
+  bounds: SceneAlphaWindowBounds
+): string {
   const widthPct = ((bounds.right - bounds.left) / bounds.sourceWidth) * 100;
   const heightPct = ((bounds.bottom - bounds.top) / bounds.sourceHeight) * 100;
   const leftPct = (bounds.left / bounds.sourceWidth) * 100;
   const topPct = (bounds.top / bounds.sourceHeight) * 100;
+  const previewRatio = `${bounds.sourceWidth} / ${bounds.sourceHeight}`;
+  const safeSourceSrc = escapeHtml(sourceSrc);
+  const safeTargetLabel = escapeHtml(targetLabel);
 
   return `
-    <div class="entrance-scene__editor-window-preview" aria-hidden="true">
+    <div
+      class="entrance-scene__editor-window-preview"
+      aria-hidden="true"
+      style="aspect-ratio:${previewRatio};"
+    >
+      <img
+        src="${safeSourceSrc}"
+        alt="${safeTargetLabel} transparent window preview"
+        loading="lazy"
+        class="entrance-scene__editor-window-preview-image"
+      />
       <div
         class="entrance-scene__editor-window-preview-box"
         style="left:${leftPct.toFixed(2)}%;top:${topPct.toFixed(2)}%;width:${widthPct.toFixed(2)}%;height:${heightPct.toFixed(2)}%;"
-      ></div>
+      >
+        <span class="entrance-scene__editor-window-preview-label">Active Window</span>
+      </div>
     </div>
   `;
 }
@@ -131,7 +150,8 @@ export const sceneTransparentWindowCapability: SceneLayoutEditorCapability = {
     }
 
     const targetId = escapeHtml(activeAssetTarget.id);
-    const targetLabel = escapeHtml(activeAssetTarget.label);
+    const targetLabelText = activeAssetTarget.label;
+    const targetLabel = escapeHtml(targetLabelText);
     const bounds = activeAssetTarget.transparentWindow;
 
     return `
@@ -159,7 +179,7 @@ export const sceneTransparentWindowCapability: SceneLayoutEditorCapability = {
             bounds === null
               ? `<p class="entrance-scene__editor-empty">Run detection to capture the transparent area for this surface.</p>`
               : `
-                ${renderTransparentWindowPreview(bounds)}
+                ${renderTransparentWindowPreview(activeAssetTarget.runtimeSrc, targetLabelText, bounds)}
                 <div class="entrance-scene__editor-help">
                   <span>Source ${bounds.sourceWidth} × ${bounds.sourceHeight}</span>
                   <span>Width ${bounds.right - bounds.left}px</span>

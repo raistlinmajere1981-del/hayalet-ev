@@ -14,7 +14,7 @@
         "page": "entrance"
       },
       "rect": {
-        "leftPx": 134,
+        "leftPx": 1474,
         "topPx": 238,
         "widthPx": 250,
         "heightPx": 518
@@ -50,8 +50,8 @@
         "screen": "primary"
       },
       "rect": {
-        "leftPx": 845,
-        "topPx": 346,
+        "leftPx": 685,
+        "topPx": 386,
         "widthPx": 346,
         "heightPx": 194
       },
@@ -118,7 +118,7 @@
       "kind": "character",
       "characterKind": "assistant",
       "preferredSlot": "ai0",
-      "leftPx": 691,
+      "leftPx": 704,
       "bottomPx": 108,
       "scale": 0.66,
       "depth": 4

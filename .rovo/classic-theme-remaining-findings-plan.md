@@ -23,8 +23,8 @@ Status as of 2026-03-21:
 - Sprint 1 is implemented and validated.
 - Sprint 2 is implemented and validated.
 - Sprint 3 is implemented and validated, and the design-system audit baseline is now `0`.
-- Sprint 4 remains open only for manual theme/page verification evidence.
-- Electron/manual verification was intentionally skipped during this execution at the user's request, so the remaining open item is documentation-grade visual proof rather than code remediation.
+- Sprint 4 is closed with scoped manual verification evidence recorded in `.rovo/classic-theme-manual-verification.md`.
+- Closure is based on a user-approved Archives page screenshot spot-check rather than the broader Electron/manual sweep originally planned.
 
 In scope:
 - `src/styles/**` classic renderer styles

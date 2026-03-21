@@ -113,7 +113,9 @@ export class EntranceSceneController {
     this.editorHost = document.getElementById(ELEMENT_IDS.editorHost);
     this.menuHost = document.getElementById(ELEMENT_IDS.menuHost);
     this.viewRoot = document.getElementById(ELEMENT_IDS.viewRoot);
-    this.viewBackground = document.getElementById(ELEMENT_IDS.viewBackground) as HTMLImageElement | null;
+    this.viewBackground = document.getElementById(
+      ELEMENT_IDS.viewBackground
+    ) as HTMLImageElement | null;
     this.viewSlot = document.getElementById(ELEMENT_IDS.viewSlot);
     this.sceneDebugSession.load(this.sceneDebugEnabled);
     if (this.menuHost !== null) {
@@ -139,12 +141,12 @@ export class EntranceSceneController {
       });
 
       this.editor = new SceneLayoutEditor(this.editorHost, {
-        isActive: (): boolean =>
-          isSceneDebugRoomActive("entrance"),
+        isActive: (): boolean => isSceneDebugRoomActive("entrance"),
         getSceneLayout: (): SceneLayoutConfig => this.sceneLayout,
         getSceneClickableTheme: (): SceneClickableThemeDefinition => this.sceneClickableTheme,
         getSelection: (): SceneLayoutEditorSelection => this.editorSelection,
-        getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
+        getRoomOptions: (): Array<{ id: string; label: string }> =>
+          getSceneDebugRoomOptions(shellT),
         getActiveRoomId: (): string => "entrance",
         setSelection: (selection): void => {
           this.editorSelection = selection;

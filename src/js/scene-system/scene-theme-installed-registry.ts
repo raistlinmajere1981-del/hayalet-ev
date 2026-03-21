@@ -31,19 +31,17 @@ function normalizeInstalledSceneThemeRegistrations(
 ): SceneThemeRegistration[] {
   const seenThemeIds = new Set<string>();
 
-  return registrations
-    .map(cloneInstalledSceneThemeRegistration)
-    .filter((registration) => {
-      const themeId = registration.themeId.trim();
-      if (themeId === "" || seenThemeIds.has(themeId)) {
-        return false;
-      }
+  return registrations.map(cloneInstalledSceneThemeRegistration).filter((registration) => {
+    const themeId = registration.themeId.trim();
+    if (themeId === "" || seenThemeIds.has(themeId)) {
+      return false;
+    }
 
-      seenThemeIds.add(themeId);
-      registration.themeId = themeId;
-      registration.sourceKind = "installed";
-      return true;
-    });
+    seenThemeIds.add(themeId);
+    registration.themeId = themeId;
+    registration.sourceKind = "installed";
+    return true;
+  });
 }
 
 export async function syncInstalledSceneThemeRegistrationsFromElectron(): Promise<
@@ -54,7 +52,16 @@ export async function syncInstalledSceneThemeRegistrationsFromElectron(): Promis
     return [];
   }
 
-  const listInstalledThemes = window.electronAPI?.sceneThemesListInstalled;
+  const electronApi = window as typeof window & {
+    electronAPI?: {
+      sceneThemesListInstalled?: () => Promise<{
+        success: boolean;
+        themes?: SceneThemeRegistration[];
+        error?: string;
+      }>;
+    };
+  };
+  const listInstalledThemes = electronApi.electronAPI?.sceneThemesListInstalled;
   if (typeof listInstalledThemes !== "function") {
     clearInstalledSceneThemeRegistrations();
     return [];

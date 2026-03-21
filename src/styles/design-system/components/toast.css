@@ -1,5 +1,4 @@
 .toast-container {
-  --toast-max-w: 400px;
   --toast-duration: 0ms;
 
   position: fixed;
@@ -10,7 +9,7 @@
   flex-direction: column;
   gap: var(--space-2);
   pointer-events: none;
-  max-width: var(--toast-max-w);
+  max-width: var(--layout-toast-max-w);
 }
 
 .toast {

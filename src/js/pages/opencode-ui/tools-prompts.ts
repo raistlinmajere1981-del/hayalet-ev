@@ -1,7 +1,11 @@
 import { apiCall } from "./api.js";
 import { formatDetailedErrorMessage, t } from "./i18n.js";
 import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
-import { OVERLAY_GROUPS, OVERLAY_KINDS, type ManagedOverlayController } from "../../ui/overlay-system.js";
+import {
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
 import { createSharedActiveClassOverlayController } from "../../ui/overlay-presets.js";
 
 export type ToolSnapshotStatus = "loaded" | "empty" | "error";

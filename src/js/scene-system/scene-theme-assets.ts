@@ -1,4 +1,8 @@
-import type { SceneRoomId, SceneRoomThemeDefinition, SceneThemeViewDefinition } from "../scene/schema.js";
+import type {
+  SceneRoomId,
+  SceneRoomThemeDefinition,
+  SceneThemeViewDefinition,
+} from "../scene/schema.js";
 
 import {
   getSceneThemeAssetEntryRuntimeSource,
@@ -70,10 +74,13 @@ export function getSceneRoomPanelSrc(roomId: SceneRoomId, panelId: string): stri
 export function getSceneRoomViewPanelTransparentWindow(
   roomId: SceneRoomId,
   viewId: string
-) {
+): ReturnType<typeof getSceneThemeAssetTransparentWindow> {
   return getSceneThemeAssetTransparentWindow(roomId, "view-panel-art", viewId);
 }
 
-export function getSceneRoomPanelTransparentWindow(roomId: SceneRoomId, panelId: string) {
+export function getSceneRoomPanelTransparentWindow(
+  roomId: SceneRoomId,
+  panelId: string
+): ReturnType<typeof getSceneThemeAssetTransparentWindow> {
   return getSceneThemeAssetTransparentWindow(roomId, "panel", panelId);
 }

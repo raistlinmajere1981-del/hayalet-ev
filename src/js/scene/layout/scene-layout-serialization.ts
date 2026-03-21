@@ -1,7 +1,4 @@
-import {
-  SCENE_CHARACTER_ROSTER_PRESETS,
-  SCENE_LABEL_FONT_PRESETS,
-} from "../schema.js";
+import { SCENE_CHARACTER_ROSTER_PRESETS, SCENE_LABEL_FONT_PRESETS } from "../schema.js";
 import type {
   SceneObjectFrameDefinition,
   SceneNodeGlowDefinition,

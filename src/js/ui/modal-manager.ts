@@ -67,7 +67,9 @@ function generateId(): string {
 function createModalElement(id: string, options: ModalOptions): HTMLDivElement {
   const modalContainer = document.createElement("div");
   modalContainer.className = ["modal", options.containerClassName]
-    .filter((className): className is string => typeof className === "string" && className.trim() !== "")
+    .filter(
+      (className): className is string => typeof className === "string" && className.trim() !== ""
+    )
     .join(" ");
   modalContainer.setAttribute("data-modal-id", id);
   modalContainer.setAttribute("role", "dialog");
@@ -164,7 +166,10 @@ function createModalElement(id: string, options: ModalOptions): HTMLDivElement {
 }
 
 function resolveModalSurfaceFamily(options: ModalOptions): OverlaySurfaceFamily {
-  return options.surfaceFamily ?? getDefaultOverlaySurfaceFamily(options.overlayKind ?? OVERLAY_KINDS.modal);
+  return (
+    options.surfaceFamily ??
+    getDefaultOverlaySurfaceFamily(options.overlayKind ?? OVERLAY_KINDS.modal)
+  );
 }
 
 function resolveModalMountTarget(options: ModalOptions): HTMLElement {

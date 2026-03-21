@@ -16,7 +16,7 @@
         "leftPx": 173,
         "topPx": 194,
         "widthPx": 221,
-        "heightPx": 626
+        "heightPx": 356
       },
       "frame": {
         "variant": "left-angled",
@@ -48,9 +48,9 @@
         "panel": "theme"
       },
       "rect": {
-        "leftPx": 1190,
-        "topPx": 216,
-        "widthPx": 202,
+        "leftPx": 500,
+        "topPx": 316,
+        "widthPx": 142,
         "heightPx": 184
       },
       "frame": {
@@ -63,10 +63,10 @@
       "label": {
         "visible": true,
         "textKey": "settingsHub.nav.theme",
-        "centerXPx": 1291,
-        "topPx": 176,
-        "widthPx": 220,
-        "heightPx": 40,
+        "centerXPx": 571,
+        "topPx": 356,
+        "widthPx": 120,
+        "heightPx": 30,
         "rotateDeg": 0,
         "fontSizePx": 18,
         "letterSpacingPx": 1,
@@ -83,8 +83,8 @@
         "panel": "accounts"
       },
       "rect": {
-        "leftPx": 576,
-        "topPx": 302,
+        "leftPx": 276,
+        "topPx": 592,
         "widthPx": 240,
         "heightPx": 194
       },
@@ -98,8 +98,8 @@
       "label": {
         "visible": true,
         "textKey": "settingsHub.nav.accounts",
-        "centerXPx": 696,
-        "topPx": 262,
+        "centerXPx": 446,
+        "topPx": 662,
         "widthPx": 220,
         "heightPx": 40,
         "rotateDeg": 0,
@@ -118,10 +118,10 @@
         "panel": "backup"
       },
       "rect": {
-        "leftPx": 1402,
-        "topPx": 486,
-        "widthPx": 192,
-        "heightPx": 216
+        "leftPx": 682,
+        "topPx": 456,
+        "widthPx": 112,
+        "heightPx": 126
       },
       "frame": {
         "variant": "flat",
@@ -133,9 +133,9 @@
       "label": {
         "visible": true,
         "textKey": "settingsHub.nav.backup",
-        "centerXPx": 1498,
-        "topPx": 446,
-        "widthPx": 220,
+        "centerXPx": 748,
+        "topPx": 496,
+        "widthPx": 120,
         "heightPx": 40,
         "rotateDeg": 0,
         "fontSizePx": 18,
@@ -153,23 +153,23 @@
         "panel": "rooms"
       },
       "rect": {
-        "leftPx": 384,
-        "topPx": 529,
-        "widthPx": 250,
-        "heightPx": 227
+        "leftPx": 1237,
+        "topPx": 559,
+        "widthPx": 410,
+        "heightPx": 167
       },
       "frame": {
         "variant": "flat",
-        "rotateDeg": 0,
-        "perspectiveDeg": 0,
+        "rotateDeg": -8,
+        "perspectiveDeg": 20,
         "hueDeg": 33,
         "alpha": 0.34
       },
       "label": {
         "visible": true,
         "textKey": "settingsHub.nav.rooms",
-        "centerXPx": 509,
-        "topPx": 489,
+        "centerXPx": 1429,
+        "topPx": 629,
         "widthPx": 220,
         "heightPx": 40,
         "rotateDeg": 0,
@@ -188,8 +188,8 @@
         "panel": "live-log"
       },
       "rect": {
-        "leftPx": 1037,
-        "topPx": 605,
+        "leftPx": 877,
+        "topPx": 285,
         "widthPx": 269,
         "heightPx": 194
       },
@@ -203,8 +203,8 @@
       "label": {
         "visible": true,
         "textKey": "settingsHub.nav.liveLog",
-        "centerXPx": 1172,
-        "topPx": 565,
+        "centerXPx": 1080,
+        "topPx": 345,
         "widthPx": 240,
         "heightPx": 40,
         "rotateDeg": 0,
@@ -254,8 +254,8 @@
       "id": "anchor-user",
       "kind": "character",
       "characterKind": "user",
-      "leftPx": 937,
-      "bottomPx": 113,
+      "leftPx": 887,
+      "bottomPx": -87,
       "scale": 0.92,
       "depth": 4
     }

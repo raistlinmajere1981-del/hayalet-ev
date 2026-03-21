@@ -11,7 +11,7 @@ function cdpConnectionT(key: string, params?: Record<string, string | number | b
   return createMcpTranslatorSync()(`mcpServer.cdpTools.connectionErrors.${key}`, params);
 }
 
-interface CDPTarget {
+export interface CDPTarget {
   id: string;
   type: string;
   title: string;
@@ -89,15 +89,35 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
   }
 }
 
-async function findMainWindow(): Promise<CDPTarget | null> {
-  const targets = await discoverTargets();
-
+export function pickPreferredTarget(targets: CDPTarget[]): CDPTarget | null {
   // NOTE: Prefer a "page" target first.
   const pageTarget = targets.find((t) => t.type === "page");
   if (pageTarget) return pageTarget;
 
   // NOTE: Fall back to the first target if no "page" target is available.
   return targets[0] ?? null;
+}
+
+async function findMainWindow(): Promise<CDPTarget | null> {
+  const targets = await discoverTargets();
+  return pickPreferredTarget(targets);
+}
+
+export async function findTargetById(targetId: string): Promise<CDPTarget | null> {
+  const targets = await discoverTargets();
+  return targets.find((target) => target.id === targetId) ?? null;
+}
+
+export async function resolveTarget(targetId?: string): Promise<CDPTarget> {
+  if (targetId !== undefined && targetId !== "") {
+    const target = await findTargetById(targetId);
+    if (target !== null) return target;
+    throw new Error(cdpConnectionT("targetNotFound", { targetId }));
+  }
+
+  const target = await findMainWindow();
+  if (target !== null) return target;
+  throw new Error(cdpConnectionT("windowNotFound"));
 }
 
 async function connectToTarget(wsUrl: string): Promise<WebSocket> {
@@ -218,16 +238,27 @@ export async function evaluateJS(
 }
 
 export async function withConnection<T>(action: (ws: WebSocket) => Promise<T>): Promise<T> {
-  const target = await findMainWindow();
-  if (!target) {
-    throw new Error(cdpConnectionT("windowNotFound"));
+  return await withTargetConnection(undefined, async (ws) => await action(ws));
+}
+
+export async function withTargetConnection<T>(
+  targetId: string | undefined,
+  action: (ws: WebSocket, target: CDPTarget) => Promise<T>,
+  options: { enableRuntime?: boolean } = {}
+): Promise<T> {
+  const target = await resolveTarget(targetId);
+
+  if (target.webSocketDebuggerUrl === "") {
+    throw new Error(cdpConnectionT("targetMissingWebSocket", { targetId: target.id }));
   }
 
   const ws = await connectToTarget(target.webSocketDebuggerUrl);
 
   try {
-    await sendCDPCommand(ws, "Runtime.enable");
-    return await action(ws);
+    if (options.enableRuntime !== false) {
+      await sendCDPCommand(ws, "Runtime.enable");
+    }
+    return await action(ws, target);
   } finally {
     ws.close();
   }

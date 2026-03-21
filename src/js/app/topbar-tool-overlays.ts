@@ -1,7 +1,4 @@
-import {
-  toggleWorkspaceToolPage,
-  type WorkspaceToolName,
-} from "../ui/workspace-tool-overlay.js";
+import { toggleWorkspaceToolPage, type WorkspaceToolName } from "../ui/workspace-tool-overlay.js";
 
 function bindTopbarToolButton(buttonId: string, toolName: WorkspaceToolName): void {
   const button = document.getElementById(buttonId);

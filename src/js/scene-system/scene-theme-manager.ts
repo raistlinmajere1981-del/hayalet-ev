@@ -5,10 +5,7 @@ import {
   getInstalledSceneThemeRegistrations,
   subscribeInstalledSceneThemeRegistry,
 } from "./scene-theme-installed-registry.js";
-import type {
-  SceneThemeRegistration,
-  SceneThemeSummary,
-} from "./scene-theme-registry-contract.js";
+import type { SceneThemeRegistration, SceneThemeSummary } from "./scene-theme-registry-contract.js";
 
 type SceneThemeChangeReason = "init" | "manual" | "settings" | "registry";
 type SceneThemeChangeListener = (event: SceneThemeChangeEvent) => void;
@@ -42,9 +39,7 @@ export class SceneThemeManagerClass {
   private readonly fallbackThemeId: string;
   private readonly getBuiltInThemes: () => SceneThemeRegistration[];
   private readonly getInstalledThemes: () => SceneThemeRegistration[];
-  private readonly subscribeInstalledThemes: (
-    listener: SceneThemeRegistryListener
-  ) => () => void;
+  private readonly subscribeInstalledThemes: (listener: SceneThemeRegistryListener) => () => void;
 
   private readonly listeners = new Set<SceneThemeChangeListener>();
   private availableThemes = new Map<string, SceneThemeRegistration>();
@@ -55,7 +50,8 @@ export class SceneThemeManagerClass {
   private initialized = false;
 
   constructor(dependencies: SceneThemeManagerDependencies = {}) {
-    this.fallbackThemeId = trimSceneThemeId(dependencies.fallbackThemeId) || DEFAULT_SCENE_THEME_ID;
+    const fallbackThemeId = trimSceneThemeId(dependencies.fallbackThemeId);
+    this.fallbackThemeId = fallbackThemeId !== "" ? fallbackThemeId : DEFAULT_SCENE_THEME_ID;
     this.getBuiltInThemes = dependencies.getBuiltInThemes ?? getBuiltInSceneThemeRegistrations;
     this.getInstalledThemes =
       dependencies.getInstalledThemes ?? getInstalledSceneThemeRegistrations;
@@ -235,15 +231,15 @@ export class SceneThemeManagerClass {
   }
 
   private applyCurrentTheme(themeId: string, reason: SceneThemeChangeReason): void {
-    const nextRegistration = this.availableThemes.get(themeId) ?? this.resolveFallbackRegistration();
-    const registrationChanged =
-      this.currentThemeRegistration === null ||
-      this.currentThemeRegistration.themeId !== nextRegistration.themeId ||
-      this.currentThemeRegistration.source !== nextRegistration.source ||
-      this.currentThemeRegistration.sourceRoot !== nextRegistration.sourceRoot ||
-      this.currentThemeRegistration.sourceKind !== nextRegistration.sourceKind;
-
-    if (!registrationChanged) {
+    const nextRegistration =
+      this.availableThemes.get(themeId) ?? this.resolveFallbackRegistration();
+    const currentThemeRegistration = this.currentThemeRegistration;
+    if (
+      currentThemeRegistration?.themeId === nextRegistration.themeId &&
+      currentThemeRegistration.source === nextRegistration.source &&
+      currentThemeRegistration.sourceRoot === nextRegistration.sourceRoot &&
+      currentThemeRegistration.sourceKind === nextRegistration.sourceKind
+    ) {
       return;
     }
 

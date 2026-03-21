@@ -42,6 +42,7 @@ import {
   isArchiveProviderKey,
   type ArchiveProviderKey,
 } from "@shared/archive.js";
+import { ensureRuntimePageStyles } from "../../app/runtime-page-styles.js";
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
 }
@@ -232,7 +233,7 @@ export class ArchivesPageController {
           return;
         }
 
-        this._overlayController?.open();
+        void this.handleWorkspaceToolOpenRequest();
       }) as EventListener
     );
 
@@ -364,6 +365,8 @@ export class ArchivesPageController {
       return;
     }
 
+    await this.ensureHostedStyles();
+
     if (this._overlayController !== null) {
       this._overlayController.open();
       return;
@@ -393,6 +396,15 @@ export class ArchivesPageController {
   onHostHide(): void {
     this._isOpen = false;
     this.handlePageClosed();
+  }
+
+  private async handleWorkspaceToolOpenRequest(): Promise<void> {
+    try {
+      await this.ensureHostedStyles();
+      this._overlayController?.open();
+    } catch (error) {
+      this.handleHostedStylesLoadFailure(error);
+    }
   }
 
   private handleWorkspaceOpen(): void {
@@ -431,6 +443,27 @@ export class ArchivesPageController {
       clearTimeout(this._searchTimeout);
       this._searchTimeout = null;
     }
+  }
+
+  private async ensureHostedStyles(): Promise<void> {
+    if (!isHostedInMainShell()) {
+      return;
+    }
+
+    await ensureRuntimePageStyles("archives");
+  }
+
+  private handleHostedStylesLoadFailure(error: unknown): void {
+    const resolvedError = error instanceof Error ? error : new Error(String(error));
+    Logger.error(LogCategory.ARCHIVES, `Archives page styles failed to load: ${resolvedError.message}`, {
+      source: "runtime-page-styles",
+      styleKey: "archives",
+      error: {
+        name: resolvedError.name,
+        message: resolvedError.message,
+        stack: resolvedError.stack,
+      },
+    });
   }
 
   async loadSettings(): Promise<void> {

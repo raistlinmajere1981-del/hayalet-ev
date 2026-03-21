@@ -51,7 +51,9 @@ function getRefs(): SceneThemePanelRefs {
     refreshButton: document.getElementById("scene-theme-refresh") as HTMLButtonElement | null,
     exportButton: document.getElementById("scene-theme-export") as HTMLButtonElement | null,
     applyButton: document.getElementById("scene-theme-apply") as HTMLButtonElement | null,
-    conflictSelect: document.getElementById("scene-theme-conflict-select") as HTMLSelectElement | null,
+    conflictSelect: document.getElementById(
+      "scene-theme-conflict-select"
+    ) as HTMLSelectElement | null,
   };
 }
 
@@ -67,10 +69,7 @@ function getRegistrationIfAvailable(
   themeId: string | null,
   availableThemes: SceneThemeSummary[]
 ): SceneThemeRegistration | null {
-  if (
-    themeId === null ||
-    availableThemes.some((theme) => theme.themeId === themeId) === false
-  ) {
+  if (themeId === null || availableThemes.some((theme) => theme.themeId === themeId) === false) {
     return null;
   }
 

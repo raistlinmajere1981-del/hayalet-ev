@@ -1,4 +1,9 @@
-import { getPageDomStructure, inspectElement, queryElements } from "../../../tools/cdp-tools.js";
+import {
+  getCdpTargetInfo,
+  getPageDomStructure,
+  inspectElement,
+  queryElements,
+} from "../../../tools/cdp-tools.js";
 import { createMcpTranslatorSync } from "../../../utils/i18n/index.js";
 import type { ToolEntry } from "../../registry.js";
 
@@ -10,6 +15,36 @@ function cdpToolT(key: string): string {
 
 export function createCdpInspectionTools(): ToolEntry[] {
   return [
+    {
+      definition: {
+        name: "hev_get_cdp_target_info",
+        description: cdpToolT("getCdpTargetInfo.description"),
+        inputSchema: {
+          type: "object",
+          properties: {
+            targetId: { type: "string", description: cdpToolT("getCdpTargetInfo.targetId") },
+          },
+          required: ["targetId"],
+        },
+        metadata: {
+          category: "electron",
+          subcategory: "cdp-inspection",
+          priority: "medium",
+          complexity: "simple",
+          useCases: [
+            cdpToolT("getCdpTargetInfo.useCases.targetInspection"),
+            cdpToolT("getCdpTargetInfo.useCases.domainReference"),
+            cdpToolT("getCdpTargetInfo.useCases.targetVerification"),
+          ],
+          relatedTools: ["hev_list_cdp_targets", "hev_send_cdp_command"],
+          agentGuidance: cdpToolT("getCdpTargetInfo.agentGuidance"),
+          requiresConfirmation: false,
+          riskLevel: "low",
+          tags: ["cdp", "target", "inspection", "reference"],
+        },
+      },
+      handler: async (args) => await getCdpTargetInfo(args ?? {}),
+    },
     {
       definition: {
         name: "hev_get_page_dom_structure",

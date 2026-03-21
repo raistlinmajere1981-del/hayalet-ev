@@ -2,7 +2,10 @@ import { existsSync } from "fs";
 import { mkdir, readFile, readdir, rm, writeFile } from "fs/promises";
 import { dirname, isAbsolute, join, resolve, sep } from "path";
 
-import { cloneSceneLayout, isSceneLayoutConfig } from "../src/js/scene/layout/scene-layout-serialization.ts";
+import {
+  cloneSceneLayout,
+  isSceneLayoutConfig,
+} from "../src/js/scene/layout/scene-layout-serialization.ts";
 import type { SceneLayoutConfig } from "../src/js/scene/layout/index.js";
 import {
   SCENE_ROOM_IDS,
@@ -91,11 +94,7 @@ function normalizeSceneThemeBundlePath(value: string): string | null {
   }
 
   const segments = normalizedPath.split("/");
-  if (
-    segments.some(
-      (segment) => segment.trim() === "" || segment === "." || segment === ".."
-    )
-  ) {
+  if (segments.some((segment) => segment.trim() === "" || segment === "." || segment === "..")) {
     return null;
   }
 
@@ -158,9 +157,7 @@ async function collectFilesRecursive(
         return await collectFilesRecursive(baseDir, absolutePath);
       }
 
-      const relativePath = normalizeSceneThemePath(
-        absolutePath.slice(baseDir.length + 1)
-      );
+      const relativePath = normalizeSceneThemePath(absolutePath.slice(baseDir.length + 1));
       return [{ relativePath, absolutePath }];
     })
   );
@@ -203,10 +200,7 @@ function cloneCharacterVisualConfig(
   };
 }
 
-function cloneLoadingTheme(
-  value: unknown,
-  themeRoot: string
-): SceneLoadingThemeDefinition | null {
+function cloneLoadingTheme(value: unknown, themeRoot: string): SceneLoadingThemeDefinition | null {
   if (isRecord(value) === false || isFiniteNumber(value["frameDurationMs"]) === false) {
     return null;
   }
@@ -285,8 +279,8 @@ function cloneSceneThemeViewDefinition(
   }
 
   return {
-    ...(backgroundSrc !== undefined ? { backgroundSrc } : {}),
-    ...(panelArtSrc !== undefined ? { panelArtSrc } : {}),
+    ...(typeof backgroundSrc === "string" ? { backgroundSrc } : {}),
+    ...(typeof panelArtSrc === "string" ? { panelArtSrc } : {}),
   };
 }
 
@@ -307,30 +301,39 @@ function cloneSceneRoomThemeDefinition(
   if (panelsRaw !== undefined && isRecord(panelsRaw) === false) {
     return null;
   }
+  const panelEntries = panelsRaw === undefined ? undefined : Object.entries(panelsRaw);
   const panels =
-    panelsRaw === undefined
+    panelEntries === undefined
       ? undefined
       : Object.fromEntries(
-          Object.entries(panelsRaw)
-            .map(([panelId, panelSrc]) => [panelId, resolveSceneThemeAssetPath(themeRoot, panelSrc)])
+          panelEntries
+            .map(([panelId, panelSrc]) => [
+              panelId,
+              resolveSceneThemeAssetPath(themeRoot, panelSrc),
+            ])
             .filter((entry): entry is [string, string] => entry[1] !== null)
         );
   const viewsRaw = value["views"];
   if (viewsRaw !== undefined && isRecord(viewsRaw) === false) {
     return null;
   }
+  const viewEntries = viewsRaw === undefined ? undefined : Object.entries(viewsRaw);
   const views =
-    viewsRaw === undefined
+    viewEntries === undefined
       ? undefined
       : Object.fromEntries(
-          Object.entries(viewsRaw)
+          viewEntries
             .map(([viewId, view]) => [viewId, cloneSceneThemeViewDefinition(view, themeRoot)])
             .filter((entry): entry is [string, SceneThemeViewDefinition] => entry[1] !== null)
         );
 
   if (
-    (panelsRaw !== undefined && panels !== undefined && Object.keys(panels).length !== Object.keys(panelsRaw as Record<string, unknown>).length) ||
-    (viewsRaw !== undefined && views !== undefined && Object.keys(views).length !== Object.keys(viewsRaw as Record<string, unknown>).length)
+    (panelEntries !== undefined &&
+      panels !== undefined &&
+      Object.keys(panels).length !== panelEntries.length) ||
+    (viewEntries !== undefined &&
+      views !== undefined &&
+      Object.keys(views).length !== viewEntries.length)
   ) {
     return null;
   }
@@ -356,11 +359,14 @@ function cloneSceneThemeMaps(value: unknown): Record<SceneRoomId, SceneLayoutCon
     return [roomId, cloneSceneLayout(sceneLayout)] as const;
   });
 
-  if (entries.some((entry) => entry === null)) {
+  const validEntries = entries.filter(
+    (entry): entry is readonly [SceneRoomId, SceneLayoutConfig] => entry !== null
+  );
+  if (validEntries.length !== SCENE_ROOM_IDS.length) {
     return null;
   }
 
-  return Object.fromEntries(entries) as Record<SceneRoomId, SceneLayoutConfig>;
+  return Object.fromEntries(validEntries) as Record<SceneRoomId, SceneLayoutConfig>;
 }
 
 function cloneSceneThemeRooms(
@@ -380,11 +386,14 @@ function cloneSceneThemeRooms(
     return [roomId, roomTheme] as const;
   });
 
-  if (entries.some((entry) => entry === null)) {
+  const validEntries = entries.filter(
+    (entry): entry is readonly [SceneRoomId, SceneRoomThemeDefinition] => entry !== null
+  );
+  if (validEntries.length !== SCENE_ROOM_IDS.length) {
     return null;
   }
 
-  return Object.fromEntries(entries) as Record<SceneRoomId, SceneRoomThemeDefinition>;
+  return Object.fromEntries(validEntries) as Record<SceneRoomId, SceneRoomThemeDefinition>;
 }
 
 function cloneSceneThemeSource(
@@ -480,9 +489,7 @@ function validateInstalledSceneThemeBundle(
   const themeId =
     isRecord(manifestRaw) === true ? normalizeSceneThemeId(manifestRaw["themeId"]) : "";
   const label =
-    isRecord(manifestRaw) === true
-      ? normalizeSceneThemeLabel(manifestRaw["label"], themeId)
-      : "";
+    isRecord(manifestRaw) === true ? normalizeSceneThemeLabel(manifestRaw["label"], themeId) : "";
   const entryFile =
     isRecord(manifestRaw) === true &&
     manifestRaw["entryFile"] === INSTALLED_SCENE_THEME_DOCUMENT_FILE
@@ -593,7 +600,9 @@ export class SceneThemePackageManager {
     }
   }
 
-  private async getInstalledThemeRegistration(themeId: string): Promise<SceneThemeRegistration | null> {
+  private async getInstalledThemeRegistration(
+    themeId: string
+  ): Promise<SceneThemeRegistration | null> {
     const normalizedThemeId = normalizeSceneThemeId(themeId);
     if (normalizedThemeId === "") {
       return null;
@@ -604,7 +613,11 @@ export class SceneThemePackageManager {
   }
 
   private createImportedThemeId(baseThemeId: string): string {
-    const normalizedThemeId = normalizeSceneThemeId(baseThemeId) || "scene-theme";
+    const normalizedThemeId = normalizeSceneThemeId(baseThemeId);
+    if (normalizedThemeId === "") {
+      return "scene-theme";
+    }
+
     return normalizedThemeId;
   }
 
@@ -619,10 +632,10 @@ export class SceneThemePackageManager {
     };
   }
 
-  private async resolveImportTargetThemeId(
+  private resolveImportTargetThemeId(
     requestedThemeId: string,
     strategy: SceneThemeImportConflictStrategy
-  ): Promise<string | null> {
+  ): string | null {
     const normalizedThemeId = this.createImportedThemeId(requestedThemeId);
     const preferredThemeRoot = this.getInstalledThemeRoot(normalizedThemeId);
 
@@ -651,7 +664,7 @@ export class SceneThemePackageManager {
     await mkdir(installedRoot, { recursive: true });
 
     const entries = await readdir(installedRoot, { withFileTypes: true });
-    const registrations = await Promise.all(
+    const registrations: Array<SceneThemeRegistration | null> = await Promise.all(
       entries
         .filter((entry) => entry.isDirectory())
         .sort((left, right) => left.name.localeCompare(right.name))
@@ -741,11 +754,12 @@ export class SceneThemePackageManager {
     await mkdir(dirname(outputFile), { recursive: true });
     await writeFile(outputFile, `${JSON.stringify(bundle, null, 2)}\n`, "utf-8");
 
+    const packagedTheme = await this.getInstalledThemeRegistration(themeDocument.themeId);
     return {
       success: true,
       path: outputFile,
       themeId: themeDocument.themeId,
-      theme: await this.getInstalledThemeRegistration(themeDocument.themeId),
+      ...(packagedTheme !== null ? { theme: packagedTheme } : {}),
     };
   }
 
@@ -760,7 +774,9 @@ export class SceneThemePackageManager {
 
     let bundleCandidate: unknown;
     try {
-      bundleCandidate = JSON.parse(await readFile(resolve(normalizedBundleFile), "utf-8")) as unknown;
+      bundleCandidate = JSON.parse(
+        await readFile(resolve(normalizedBundleFile), "utf-8")
+      ) as unknown;
     } catch (error) {
       return {
         success: false,
@@ -777,7 +793,7 @@ export class SceneThemePackageManager {
     }
 
     const strategy = options.onConflict ?? "reject";
-    const targetThemeId = await this.resolveImportTargetThemeId(
+    const targetThemeId = this.resolveImportTargetThemeId(
       validation.bundle.manifest.themeId,
       strategy
     );
@@ -812,7 +828,8 @@ export class SceneThemePackageManager {
           throw new Error("Imported theme document is invalid after extraction.");
         }
 
-        const rewrittenThemeDocument = this.createInstalledThemeDocumentSnapshot(importedThemeDocument);
+        const rewrittenThemeDocument =
+          this.createInstalledThemeDocumentSnapshot(importedThemeDocument);
         rewrittenThemeDocument.themeId = targetThemeId;
         rewrittenThemeDocument.source.themeId = targetThemeId;
         await writeFile(

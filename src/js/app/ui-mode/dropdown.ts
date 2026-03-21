@@ -42,7 +42,9 @@ export function buildUiModeOptionsMarkup(): string {
 
 export function renderUiModeDropdowns(root: ParentNode = document): void {
   root
-    .querySelectorAll<HTMLElement>(`${UI_MODE_DROPDOWN_SELECTOR} .ui-mode-dropdown-menu[role="menu"]`)
+    .querySelectorAll<HTMLElement>(
+      `${UI_MODE_DROPDOWN_SELECTOR} .ui-mode-dropdown-menu[role="menu"]`
+    )
     .forEach((menu) => {
       menu.innerHTML = buildUiModeOptionsMarkup();
     });

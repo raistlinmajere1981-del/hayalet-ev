@@ -2812,6 +2812,7 @@
         "typescript": "TypeScript",
         "fileEditing": "Dosya Düzenleme",
         "refactoring": "Refactoring",
+        "cdpAdvanced": "İleri CDP",
         "debugging": "Debug",
         "eslint": "ESLint",
         "git": "Git",
@@ -2834,6 +2835,9 @@
         "batchRefactorRollback": "Auto-rollback destekli toplu refactor",
         "impactAnalysisFirst": "Önce etki analizi",
         "gitAndTestingOps": "Git işlemleri ve testler için",
+        "inspectAvailableTargets": "Önce mevcut CDP hedeflerini incele",
+        "inspectSpecificTarget": "Düşük seviyeli komuttan önce seçilen hedefi doğrula",
+        "runRawCdpCommand": "Hedef seçildikten sonra ham CDP komutu çalıştır",
         "checkLogsFirst": "Önce logları kontrol et",
         "debugHints": "AI destekli debug ipuçları al",
         "verifyCdpConnection": "CDP bağlantısını doğrula",
@@ -4179,7 +4183,10 @@
         "inspectElement": "❌ Element inceleme hatası: {{message}}",
         "queryElements": "❌ Element sorgu hatası: {{message}}",
         "keyPress": "❌ Tuş hatası: {{message}}",
-        "scroll": "❌ Scroll hatası: {{message}}"
+        "scroll": "❌ Scroll hatası: {{message}}",
+        "listTargets": "❌ CDP hedef listeleme hatası: {{message}}",
+        "targetInfo": "❌ CDP hedef bilgisi hatası: {{message}}",
+        "cdpCommand": "❌ CDP komut hatası: {{message}}"
       },
       "connectionErrors": {
         "httpStatus": "HTTP {{status}}: {{statusText}}",
@@ -4193,16 +4200,32 @@
         "websocketSendError": "WebSocket gönderim hatası: {{message}}",
         "javascriptError": "JavaScript hatası: {{message}}",
         "windowNotFound": "Electron penceresi bulunamadı. Uygulama çalışıyor mu?",
+        "targetNotFound": "CDP hedefi bulunamadı: {{targetId}}",
+        "targetMissingWebSocket": "Seçilen CDP hedefi websocket endpoint sağlamıyor: {{targetId}}",
         "unknown": "bilinmiyor"
       },
       "checkConnection": {
         "connected": "✅ Electron bağlantısı aktif\n\n📡 **Bağlantı Bilgileri:**\n- Port: {{port}}\n- Hedef sayısı: {{targetsCount}}\n\n🪟 **Ana Pencere:**\n- Başlık: {{title}}\n- URL: {{url}}\n- Tip: {{windowType}}",
         "disconnected": "❌ Electron bağlantısı yok\n\n**Hata:** {{error}}\n\n**Çözüm:**\n1. Uygulamayı başlatın: `npm start`\n2. Uygulama debug modunda {{port}} portunda açılır\n3. Tekrar deneyin"
       },
+      "listCdpTargets": {
+        "noneFound": "❌ CDP hedefi bulunamadı.",
+        "success": "✅ {{count}} CDP hedefi bulundu\n\n```json\n{{targets}}\n```"
+      },
+      "getCdpTargetInfo": {
+        "missingTargetId": "❌ 'targetId' parametresi gerekli",
+        "notFound": "❌ CDP hedefi bulunamadı: `{{targetId}}`",
+        "success": "✅ CDP hedefi bulundu\n\n**Hedef ID:** `{{targetId}}`\n**Tip:** {{targetType}}\n**Başlık:** {{title}}\n**URL:** {{url}}\n**Bağlanılabilir:** {{connectable}}\n**Yaygın Domain'ler:** {{domains}}"
+      },
       "sendCommand": {
         "missingCommand": "❌ 'command' parametresi gerekli",
         "descriptionSuffix": " ({{description}})",
         "success": "✅ Komut çalıştırıldı{{suffix}}\n\n**Sonuç:**\n```json\n{{result}}\n```"
+      },
+      "sendCdpCommand": {
+        "missingDomainMethod": "❌ 'domain' ve 'method' parametreleri gerekli",
+        "invalidParams": "❌ 'params' verildiğinde object olmalı",
+        "success": "✅ CDP komutu çalıştırıldı\n\n**Hedef:** `{{targetId}}`\n**Komut:** `{{command}}`\n\n```json\n{{result}}\n```"
       },
       "takeScreenshot": {
         "saved": "✅ Screenshot kaydedildi: {{savePath}}\n\nBoyut: {{sizeBytes}} bytes",
@@ -5000,6 +5023,15 @@
             },
             "agentGuidance": "CDP tabanlı işlemlerden önce bağlantının gerçekten açık olduğunu doğrulamak için kullan."
           },
+          "listCdpTargets": {
+            "description": "Mevcut Electron oturumundaki görünür tüm CDP hedeflerini listele.",
+            "useCases": {
+              "targetDiscovery": "Mevcut CDP hedeflerini keşfetme",
+              "targetSelection": "İleri seviye komutlardan önce doğru hedefi seçme",
+              "multiTargetDebugging": "Çok hedefli Electron oturumlarını debug etme"
+            },
+            "agentGuidance": "Düşük seviyeli hedef bazlı komutlardan önce doğru target id seçmek için bunu kullan."
+          },
           "sendCommandToElectron": {
             "description": "Electron uygulamasında JavaScript kodu çalıştır. Herhangi bir JS expression çalıştırabilir.",
             "command": "Çalıştırılacak JavaScript kodu",
@@ -5010,6 +5042,20 @@
               "customJsExecution": "Özel JavaScript çalıştırma"
             },
             "agentGuidance": "Kontrollü JS çalıştırma için güçlü bir araçtır; state inspection ve özel debug adımlarında kullan."
+          },
+          "sendCdpCommand": {
+            "description": "Belirli bir Electron hedefine ham Chrome DevTools Protocol komutu gönder.",
+            "targetId": "CDP hedef id'si (opsiyonel; verilmezse tercih edilen page target kullanılır)",
+            "domain": "CDP domain adı (örn: Page, Runtime, Debugger)",
+            "method": "Domain içindeki CDP method adı (örn: reload, evaluate, pause)",
+            "params": "Komutla birlikte gönderilecek CDP params object'i",
+            "timeout": "Opsiyonel zaman aşımı süresi (ms)",
+            "useCases": {
+              "rawCdpDebugging": "İleri seviye ham CDP komutları çalıştırma",
+              "targetedReload": "Belirli bir page target'ı yeniden yükleme",
+              "runtimeEvaluation": "Seçili hedef üzerinde değerlendirme çalıştırma"
+            },
+            "agentGuidance": "Yüksek seviyeli CDP tool'ları yetmediğinde kullan. Tercihen önce hedefleri listele."
           },
           "takeScreenshot": {
             "description": "Electron penceresinin ekran görüntüsünü al (CDP üzerinden, tam sayfa).",
@@ -5041,6 +5087,16 @@
               "structureDebugging": "Yapısal debug"
             },
             "agentGuidance": "Element selector'ı bulmak için DOM yapısını incele; maxDepth ile kapsamı sınırlayabilirsin."
+          },
+          "getCdpTargetInfo": {
+            "description": "Belirli bir CDP hedefinin tip, URL ve yaygın komut domain'leri dahil detaylarını getir.",
+            "targetId": "CDP hedef id'si",
+            "useCases": {
+              "targetInspection": "Belirli bir CDP hedefini inceleme",
+              "domainReference": "Ham CDP komutu göndermeden önce yaygın domain'leri gözden geçirme",
+              "targetVerification": "Debug öncesi seçilen hedefi doğrulama"
+            },
+            "agentGuidance": "Hedefleri listeledikten sonra ham CDP komutunu hangi target'ın alması gerektiğini doğrulamak için kullan."
           },
           "inspectElement": {
             "description": "Bir elementin detaylı bilgilerini al (boyut, pozisyon, görünürlük, içerik).",

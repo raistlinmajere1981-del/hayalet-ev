@@ -91,6 +91,21 @@
     rgba(244, 63, 94, 0.18) 0%,
     rgba(255, 252, 246, 0.96) 100%
   );
+  --archives-shell-bg:
+    radial-gradient(circle at top right, rgba(244, 63, 94, 0.1), transparent 24%),
+    radial-gradient(circle at 18% 18%, rgba(139, 107, 76, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.24), transparent 22%);
+  --archives-surface-card-header-bg: linear-gradient(
+    180deg,
+    rgba(255, 247, 236, 0.98) 0%,
+    rgba(241, 232, 219, 0.96) 100%
+  );
+  --archives-item-bg-active: linear-gradient(
+    180deg,
+    rgba(244, 63, 94, 0.14) 0%,
+    rgba(255, 252, 246, 0.98) 100%
+  );
+  --archives-item-border-active: rgba(244, 63, 94, 0.28);
   --opencode-shell-session-bg: linear-gradient(
     180deg,
     rgba(255, 252, 246, 0.76) 0%,

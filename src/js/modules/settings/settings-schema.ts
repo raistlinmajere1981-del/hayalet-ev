@@ -50,9 +50,10 @@ function normalizeSceneAppearanceSettings(raw: unknown): Required<SceneAppearanc
     return { ...DEFAULT_SCENE_APPEARANCE_SETTINGS };
   }
 
+  const activeThemeIdValue = raw["activeThemeId"];
   const activeThemeId =
-    typeof raw.activeThemeId === "string" && raw.activeThemeId.trim() !== ""
-      ? raw.activeThemeId.trim()
+    typeof activeThemeIdValue === "string" && activeThemeIdValue.trim() !== ""
+      ? activeThemeIdValue.trim()
       : DEFAULT_SCENE_APPEARANCE_SETTINGS.activeThemeId;
 
   return {

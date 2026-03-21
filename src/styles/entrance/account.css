@@ -11,8 +11,12 @@
 }
 
 .user-profile-inline {
+  --user-profile-inline-language-min-w: var(--layout-toolbar-item-flex-min);
+  --user-profile-inline-language-max-w: 15rem;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(12rem, 15rem);
+  grid-template-columns:
+    auto minmax(0, 1fr)
+    minmax(var(--user-profile-inline-language-min-w), var(--user-profile-inline-language-max-w));
   align-items: end;
   gap: var(--space-3);
 }

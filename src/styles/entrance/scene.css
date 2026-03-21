@@ -1,77 +1,5 @@
 :root {
-  --scene-rem-neg-0-28: -0.28rem;
-  --scene-rem-0-14: 0.14rem;
-  --scene-rem-0-15: 0.15rem;
-  --scene-rem-0-18: 0.18rem;
-  --scene-rem-0-2: 0.2rem;
-  --scene-rem-0-22: 0.22rem;
-  --scene-rem-0-25: 0.25rem;
-  --scene-rem-0-28: 0.28rem;
-  --scene-rem-0-3: 0.3rem;
-  --scene-rem-0-34: 0.34rem;
-  --scene-rem-0-35: 0.35rem;
-  --scene-rem-0-38: 0.38rem;
-  --scene-rem-0-4: 0.4rem;
-  --scene-rem-0-42: 0.42rem;
-  --scene-rem-0-45: 0.45rem;
-  --scene-rem-0-48: 0.48rem;
-  --scene-rem-0-5: 0.5rem;
-  --scene-rem-0-52: 0.52rem;
-  --scene-rem-0-55: 0.55rem;
-  --scene-rem-0-6: 0.6rem;
-  --scene-rem-0-625: 0.625rem;
-  --scene-rem-0-65: 0.65rem;
-  --scene-rem-0-6875: 0.6875rem;
-  --scene-rem-0-7: 0.7rem;
-  --scene-rem-0-72: 0.72rem;
-  --scene-rem-0-75: 0.75rem;
-  --scene-rem-0-76: 0.76rem;
-  --scene-rem-0-8: 0.8rem;
-  --scene-rem-0-85: 0.85rem;
-  --scene-rem-0-9: 0.9rem;
-  --scene-rem-0-95: 0.95rem;
-  --scene-rem-1: 1rem;
-  --scene-rem-1-1: 1.1rem;
-  --scene-rem-1-15: 1.15rem;
-  --scene-rem-1-2: 1.2rem;
-  --scene-rem-1-4: 1.4rem;
-  --scene-rem-1-45: 1.45rem;
-  --scene-rem-1-5: 1.5rem;
-  --scene-rem-1-6: 1.6rem;
-  --scene-rem-1-7: 1.7rem;
-  --scene-rem-1-8: 1.8rem;
-  --scene-rem-2: 2rem;
-  --scene-rem-2-2: 2.2rem;
-  --scene-rem-2-6: 2.6rem;
-  --scene-rem-2-8: 2.8rem;
-  --scene-rem-3: 3rem;
-  --scene-rem-4-5: 4.5rem;
-  --scene-rem-7: 7rem;
-  --scene-rem-10: 10rem;
-  --scene-rem-10-25: 10.25rem;
-  --scene-rem-13-2: 13.2rem;
-  --scene-rem-15: 15rem;
-  --scene-rem-18: 18rem;
-  --scene-rem-19: 19rem;
-  --scene-rem-20: 20rem;
-  --scene-rem-21: 21rem;
-  --scene-rem-25: 25rem;
-  --scene-rem-26: 26rem;
-  --scene-rem-44: 44rem;
-
-  --scene-em-0-02: 0.02em;
-  --scene-em-0-04: 0.04em;
-  --scene-em-0-05: 0.05em;
-  --scene-em-0-08: 0.08em;
-
-  --scene-px-neg-1: -1px;
-  --scene-px-0-55: 0.55px;
-  --scene-px-1: 1px;
-  --scene-px-2: 2px;
-  --scene-px-8: 8px;
-  --scene-px-10: 10px;
-  --scene-px-999: 999px;
-
+  /* AI: Shared scene scale tokens now live in the design-system token layer so scene pages stop depending on this file's import order. */
   --scene-hotspot-left: auto;
   --scene-hotspot-top: auto;
   --scene-hotspot-width: auto;
@@ -121,9 +49,7 @@
 
 [data-ui-mode="scene"] .entrance-page {
   overflow: hidden;
-  background:
-    radial-gradient(circle at center, rgb(242 160 88 / 0.16), transparent 38%),
-    linear-gradient(180deg, rgb(17 11 9 / 0.98), rgb(10 7 6 / 1));
+  background: var(--entrance-scene-page-bg);
 }
 
 [data-ui-mode="scene"] .entrance-scene {
@@ -141,7 +67,7 @@
   border-radius: 0;
   border: 0;
   box-shadow: none;
-  background: rgb(20 12 10 / 1);
+  background: var(--entrance-scene-surface-bg);
 }
 
 .entrance-scene__background {
@@ -171,15 +97,6 @@
   filter: saturate(1.03) contrast(1.04);
 }
 
-.entrance-scene__view-shade {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, rgb(7 5 5 / 0.58), transparent 18%, transparent 82%, rgb(7 5 5 / 0.58)),
-    radial-gradient(circle at center, transparent 44%, rgb(0 0 0 / 0.22) 100%);
-  pointer-events: none;
-}
-
 .entrance-scene__view-slot {
   position: absolute;
   inset: clamp(var(--scene-rem-2), 11.5vh, var(--scene-rem-7))
@@ -206,17 +123,7 @@
 .entrance-scene__view-slot .whisper-page {
   flex: 1;
   min-height: 0;
-  gap: var(--space-3);
-  padding: clamp(var(--space-3), 1.6vw, var(--space-5));
-  border: var(--border-1) solid rgb(255 223 188 / 0.12);
-  border-radius: calc(var(--radius-modal) + var(--space-1));
-  background:
-    linear-gradient(180deg, rgb(18 11 9 / 0.62), rgb(10 7 6 / 0.76)),
-    radial-gradient(circle at top left, rgb(232 180 97 / 0.08), transparent 36%);
-  box-shadow:
-    0 var(--scene-rem-1-8) var(--scene-rem-2-8) rgb(0 0 0 / 0.32),
-    inset 0 0 0 var(--scene-px-1) rgb(255 255 255 / 0.03);
-  backdrop-filter: blur(var(--scene-px-10));
+  --scene-shell-embedded-shadow-override: var(--entrance-scene-whisper-shadow);
   overflow: hidden;
 }
 
@@ -317,7 +224,7 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-2);
-  filter: drop-shadow(0 var(--scene-rem-1) var(--scene-rem-1-5) rgb(0 0 0 / 0.35));
+  filter: var(--entrance-scene-character-filter);
   transition:
     transform var(--duration-normal) var(--ease-out),
     opacity var(--duration-normal) var(--ease-out),
@@ -359,53 +266,41 @@
 }
 
 .entrance-scene__character.is-menu-open .entrance-scene__character-head {
-  box-shadow:
-    0 0 0 var(--scene-rem-0-18) rgb(255 231 184 / 0.38),
-    0 0 0 var(--scene-rem-0-5) rgb(255 186 94 / 0.16);
+  box-shadow: var(--entrance-scene-character-head-shadow-menu-open);
 }
 
 .entrance-scene__character.is-selected .entrance-scene__character-head {
-  box-shadow:
-    0 0 0 var(--scene-rem-0-18) rgb(126 201 255 / 0.38),
-    0 0 0 var(--scene-rem-0-52) rgb(91 169 255 / 0.16);
+  box-shadow: var(--entrance-scene-character-head-shadow-selected);
 }
 
 .entrance-scene__character.is-inactive {
   opacity: 0.48;
-  filter: saturate(0.75) brightness(0.82)
-    drop-shadow(0 var(--scene-rem-0-8) var(--scene-rem-1-2) rgb(0 0 0 / 0.28));
+  filter: var(--entrance-scene-character-filter-inactive);
 }
 
 .entrance-scene__character.is-connected {
   opacity: 1;
   background: transparent;
   box-shadow: none;
-  filter: saturate(1.04) brightness(1.02)
-    drop-shadow(0 var(--scene-rem-1-1) var(--scene-rem-1-7) rgb(0 0 0 / 0.4));
+  filter: var(--entrance-scene-character-filter-connected);
 }
 
 .entrance-scene__character.is-loading {
   opacity: 1;
-  filter: saturate(1.08) brightness(1.05) drop-shadow(0 0 var(--scene-rem-1) rgb(255 195 96 / 0.2))
-    drop-shadow(0 var(--scene-rem-1-2) var(--scene-rem-1-8) rgb(0 0 0 / 0.44));
+  filter: var(--entrance-scene-character-filter-loading);
 }
 
 .entrance-scene__character.is-thinking .entrance-scene__character-head {
-  box-shadow:
-    0 0 0 var(--scene-rem-0-18) rgb(94 152 255 / 0.3),
-    0 0 0 var(--scene-rem-0-5) rgb(94 152 255 / 0.14);
+  box-shadow: var(--entrance-scene-character-head-shadow-thinking);
 }
 
 .entrance-scene__character.is-loading .entrance-scene__character-head {
-  box-shadow:
-    0 0 0 var(--scene-rem-0-18) rgb(255 188 91 / 0.34),
-    0 0 0 var(--scene-rem-0-48) rgb(255 188 91 / 0.16);
+  box-shadow: var(--entrance-scene-character-head-shadow-loading);
 }
 
 .entrance-scene__character.is-thinking {
   opacity: 1;
-  filter: saturate(1.08) brightness(1.06) drop-shadow(0 0 var(--scene-rem-1) rgb(94 152 255 / 0.16))
-    drop-shadow(0 var(--scene-rem-1-2) var(--scene-rem-1-8) rgb(0 0 0 / 0.44));
+  filter: var(--entrance-scene-character-filter-thinking);
 }
 
 .entrance-scene__character:hover,
@@ -419,9 +314,7 @@
 .entrance-scene__character.is-loading:focus-visible,
 .entrance-scene__character.is-thinking:hover,
 .entrance-scene__character.is-thinking:focus-visible {
-  filter: saturate(1.08) brightness(1.05)
-    drop-shadow(0 0 var(--scene-rem-1) rgb(255 210 140 / 0.16))
-    drop-shadow(0 var(--scene-rem-1-15) var(--scene-rem-1-8) rgb(0 0 0 / 0.42));
+  filter: var(--entrance-scene-character-filter-hover);
 }
 
 .entrance-scene__character-stage {
@@ -452,9 +345,8 @@
   transform: translate(-50%, -50%);
   border-radius: var(--scene-px-999);
   overflow: hidden;
-  background:
-    radial-gradient(circle at top, rgb(255 238 216 / 1), rgb(231 167 117 / 1)), rgb(231 167 117 / 1);
-  color: rgb(74 33 12 / 1);
+  background: var(--entrance-scene-character-head-bg);
+  color: var(--entrance-scene-character-head-color);
   font-size: var(--scene-rem-0-6);
   font-weight: var(--font-bold);
   letter-spacing: var(--scene-em-0-08);
@@ -483,8 +375,8 @@
 .entrance-scene__character-label {
   padding: var(--scene-rem-0-25) var(--scene-rem-0-5);
   border-radius: var(--radius-full);
-  background: rgb(17 10 8 / 0.76);
-  color: rgb(255 234 212 / 0.94);
+  background: var(--entrance-scene-character-label-bg);
+  color: var(--entrance-scene-character-label-color);
   font-size: var(--scene-rem-0-6875);
   font-weight: var(--font-semibold);
   white-space: nowrap;
@@ -496,8 +388,8 @@
   margin-top: calc(var(--space-1) * -1);
   padding: var(--scene-rem-0-15) var(--scene-rem-0-35);
   border-radius: var(--radius-full);
-  background: rgb(15 9 7 / 0.74);
-  color: rgb(255 227 190 / 0.9);
+  background: var(--entrance-scene-character-anchor-bg);
+  color: var(--entrance-scene-character-anchor-color);
   font-size: var(--scene-rem-0-625);
   font-weight: var(--font-semibold);
   letter-spacing: var(--scene-em-0-04);
@@ -519,14 +411,11 @@
   flex-direction: column;
   gap: var(--scene-rem-0-8);
   padding: var(--scene-rem-0-95);
-  border: var(--scene-px-1) solid rgb(255 211 162 / 0.18);
+  border: var(--scene-px-1) solid var(--entrance-scene-menu-border);
   border-radius: var(--scene-rem-1);
-  background:
-    linear-gradient(180deg, rgb(29 18 15 / 0.96), rgb(16 10 8 / 0.96)), rgb(16 10 8 / 0.96);
-  box-shadow:
-    0 var(--scene-rem-1-4) var(--scene-rem-3) rgb(0 0 0 / 0.42),
-    inset 0 0 0 var(--scene-px-1) rgb(255 255 255 / 0.03);
-  color: rgb(255 237 214 / 0.95);
+  background: var(--entrance-scene-menu-bg);
+  box-shadow: var(--entrance-scene-menu-shadow);
+  color: var(--entrance-scene-menu-color);
   pointer-events: auto;
   z-index: 20;
 }
@@ -545,7 +434,7 @@
 
 .entrance-scene__menu-subtitle {
   margin: 0;
-  color: rgb(236 197 154 / 0.78);
+  color: var(--entrance-scene-menu-text-muted);
   font-size: var(--scene-rem-0-76);
 }
 
@@ -557,7 +446,7 @@
 
 .entrance-scene__menu-section-title {
   margin: 0;
-  color: rgb(243 205 162 / 0.76);
+  color: var(--entrance-scene-menu-text-strong);
   font-size: var(--scene-rem-0-7);
   font-weight: var(--font-semibold);
   letter-spacing: var(--scene-em-0-08);
@@ -597,9 +486,9 @@
   justify-content: space-between;
   gap: var(--scene-rem-0-8);
   padding: var(--scene-rem-0-55) var(--scene-rem-0-65);
-  border: var(--scene-px-1) solid rgb(255 222 186 / 0.08);
+  border: var(--scene-px-1) solid var(--entrance-scene-menu-field-border);
   border-radius: var(--scene-rem-0-75);
-  background: rgb(255 255 255 / 0.025);
+  background: var(--entrance-scene-menu-field-bg);
 }
 
 .entrance-scene__menu-field-label {
@@ -619,19 +508,19 @@
 
 .entrance-scene__menu-reason {
   margin: 0;
-  color: rgb(232 176 127 / 0.78);
+  color: var(--entrance-scene-menu-text-muted);
   font-size: var(--scene-rem-0-7);
   line-height: 1.35;
 }
 
 .entrance-scene__menu-advanced {
-  border-top: var(--scene-px-1) solid rgb(255 219 181 / 0.08);
+  border-top: var(--scene-px-1) solid var(--entrance-scene-menu-divider-border);
   padding-top: var(--scene-rem-0-7);
 }
 
 .entrance-scene__menu-advanced-summary {
   cursor: pointer;
-  color: rgb(243 205 162 / 0.78);
+  color: var(--entrance-scene-menu-text-strong);
   font-size: var(--scene-rem-0-76);
   font-weight: var(--font-semibold);
   list-style: none;

@@ -19,7 +19,10 @@ export interface SceneDebugRuntimeSession {
   reloadFromActiveTheme(debugEnabled: boolean): void;
   getSceneLayout(): SceneLayoutConfig;
   setSceneLayout(sceneLayout: SceneLayoutConfig): void;
-  updateObject(id: string, updater: (node: SceneObjectConfig) => SceneObjectConfig): SceneLayoutConfig;
+  updateObject(
+    id: string,
+    updater: (node: SceneObjectConfig) => SceneObjectConfig
+  ): SceneLayoutConfig;
   updateBack(id: string, updater: (node: SceneBackConfig) => SceneBackConfig): SceneLayoutConfig;
   updateCharacter(
     id: string,
@@ -61,18 +64,16 @@ function loadSceneClickableTheme(
   debugEnabled: boolean
 ): SceneClickableThemeDefinition {
   return (
-    debugEnabled ? sceneDebugThemeStore.loadDraft() : null
-  ) ?? sceneDebugThemeStore.cloneDefault();
+    (debugEnabled ? sceneDebugThemeStore.loadDraft() : null) ?? sceneDebugThemeStore.cloneDefault()
+  );
 }
 
 export function createSceneDebugRuntimeSession(
   roomId: SceneDebugEditableRoomId,
   dependencies: SceneDebugRuntimeSessionDependencies = {}
 ): SceneDebugRuntimeSession {
-  const sceneDebugStore =
-    dependencies.createLayoutStore?.(roomId) ?? createSceneDebugStore(roomId);
-  const sceneDebugThemeStore =
-    dependencies.createThemeStore?.() ?? createSceneDebugThemeStore();
+  const sceneDebugStore = dependencies.createLayoutStore?.(roomId) ?? createSceneDebugStore(roomId);
+  const sceneDebugThemeStore = dependencies.createThemeStore?.() ?? createSceneDebugThemeStore();
   let sceneLayout = sceneDebugStore.cloneDefault();
   let sceneClickableTheme = sceneDebugThemeStore.cloneDefault();
 
@@ -128,11 +129,11 @@ export function createSceneDebugRuntimeSession(
       sceneDebugStore.clearDraft();
       return sceneLayout;
     },
-    copySceneLayout(): Promise<void> {
-      return sceneDebugStore.copyToClipboard(sceneLayout);
+    async copySceneLayout(): Promise<void> {
+      await sceneDebugStore.copyToClipboard(sceneLayout);
     },
-    saveSceneLayoutToSource(): Promise<boolean> {
-      return sceneDebugStore.saveSource(sceneLayout);
+    async saveSceneLayoutToSource(): Promise<boolean> {
+      return await sceneDebugStore.saveSource(sceneLayout);
     },
     getSceneClickableTheme(): SceneClickableThemeDefinition {
       return sceneClickableTheme;
@@ -153,11 +154,11 @@ export function createSceneDebugRuntimeSession(
       sceneDebugThemeStore.clearDraft();
       return sceneClickableTheme;
     },
-    copySceneClickableTheme(): Promise<void> {
-      return sceneDebugThemeStore.copyToClipboard(sceneClickableTheme);
+    async copySceneClickableTheme(): Promise<void> {
+      await sceneDebugThemeStore.copyToClipboard(sceneClickableTheme);
     },
-    saveSceneClickableThemeToSource(): Promise<boolean> {
-      return sceneDebugThemeStore.saveSource(sceneClickableTheme);
+    async saveSceneClickableThemeToSource(): Promise<boolean> {
+      return await sceneDebugThemeStore.saveSource(sceneClickableTheme);
     },
   };
 }

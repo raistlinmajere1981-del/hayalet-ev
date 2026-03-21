@@ -585,10 +585,7 @@ declare global {
       themes?: SceneThemeRegistration[];
       error?: string;
     }>;
-    sceneThemesPackageInstalled: (payload: {
-      themeId: string;
-      outputFile?: string;
-    }) => Promise<{
+    sceneThemesPackageInstalled: (payload: { themeId: string; outputFile?: string }) => Promise<{
       success: boolean;
       path?: string;
       themeId?: string;

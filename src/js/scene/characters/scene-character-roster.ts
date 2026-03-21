@@ -11,10 +11,7 @@ import type {
 } from "../schema.js";
 import type { SceneCharacterPlacementConfig } from "../layout/index.js";
 import { getSceneCharacterRoleConfig } from "../../scene-system/index.js";
-import {
-  getSceneCharacterState,
-  type SceneCharacterState,
-} from "./scene-character-state.js";
+import { getSceneCharacterState, type SceneCharacterState } from "./scene-character-state.js";
 
 type SceneCharacterAnchor = SceneCharacterPlacementConfig;
 

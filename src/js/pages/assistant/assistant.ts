@@ -639,7 +639,8 @@ export class AssistantController {
     this._assistantSceneEditor = new SceneLayoutEditor(editorHost, {
       isActive: (): boolean => this._isAssistantSceneDebugActive(),
       getSceneLayout: (): SceneLayoutConfig => this._assistantSceneLayout,
-      getSceneClickableTheme: (): SceneClickableThemeDefinition => this._assistantSceneClickableTheme,
+      getSceneClickableTheme: (): SceneClickableThemeDefinition =>
+        this._assistantSceneClickableTheme,
       getSelection: (): SceneLayoutEditorSelection => this._assistantSceneSelection,
       getRoomOptions: (): Array<{ id: string; label: string }> => getSceneDebugRoomOptions(shellT),
       getActiveRoomId: (): string => "assistant",
@@ -684,13 +685,15 @@ export class AssistantController {
         await this._assistantSceneSession.saveSceneLayoutToSource();
       },
       updateSceneClickableTheme: (updater): void => {
-        this._assistantSceneClickableTheme = this._assistantSceneSession.updateSceneClickableTheme(updater);
+        this._assistantSceneClickableTheme =
+          this._assistantSceneSession.updateSceneClickableTheme(updater);
         this._syncAssistantSceneVisibility();
         this._renderAssistantScene();
         this._assistantSceneEditor?.refresh();
       },
       resetSceneClickableThemeDraft: (): void => {
-        this._assistantSceneClickableTheme = this._assistantSceneSession.resetSceneClickableThemeDraft();
+        this._assistantSceneClickableTheme =
+          this._assistantSceneSession.resetSceneClickableThemeDraft();
         this._syncAssistantSceneVisibility();
         this._renderAssistantScene();
         this._assistantSceneEditor?.refresh();

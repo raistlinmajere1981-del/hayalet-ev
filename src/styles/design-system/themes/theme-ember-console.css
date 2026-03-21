@@ -87,6 +87,19 @@
     rgba(251, 191, 36, 0.22) 0%,
     rgba(61, 38, 30, 0.94) 100%
   );
+  --archives-shell-bg:
+    radial-gradient(circle at top right, rgba(251, 191, 36, 0.12), transparent 24%),
+    radial-gradient(circle at 18% 16%, rgba(244, 63, 94, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(255, 244, 214, 0.02), transparent 18%);
+  --archives-surface-card-header-bg:
+    linear-gradient(180deg, rgba(74, 45, 34, 0.94) 0%, rgba(35, 22, 18, 0.96) 100%),
+    linear-gradient(90deg, rgba(251, 191, 36, 0.08), transparent 56%);
+  --archives-item-bg-active: linear-gradient(
+    180deg,
+    rgba(251, 191, 36, 0.18) 0%,
+    rgba(61, 38, 30, 0.98) 100%
+  );
+  --archives-item-border-active: rgba(251, 191, 36, 0.42);
   --opencode-shell-session-bg: linear-gradient(
     180deg,
     rgba(50, 31, 24, 0.58) 0%,

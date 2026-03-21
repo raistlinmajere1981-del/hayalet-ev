@@ -2,7 +2,11 @@ import { escapeHtml } from "./chat-utils.js";
 import type { ByIdFn } from "./host-helpers.js";
 import { getIntlLocale, t } from "./i18n.js";
 import type { OpencodeUiModelPreferences, RuntimeState, SelectItem } from "./types.js";
-import { OVERLAY_GROUPS, OVERLAY_KINDS, type ManagedOverlayController } from "../../ui/overlay-system.js";
+import {
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
 import { createSharedActiveClassOverlayController } from "../../ui/overlay-presets.js";
 
 interface ModelSettingsOverlayOptions {

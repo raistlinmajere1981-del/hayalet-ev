@@ -1,12 +1,6 @@
-import type {
-  SceneObjectConfig,
-  SceneDebugNodeSelection,
-} from "../layout/index.js";
+import type { SceneObjectConfig, SceneDebugNodeSelection } from "../layout/index.js";
 import type { SceneObjectClickableThemeDefinition } from "../schema.js";
-import {
-  hasSceneNodeLabel,
-  isSceneDebugSelectionForObject,
-} from "../layout/index.js";
+import { hasSceneNodeLabel, isSceneDebugSelectionForObject } from "../layout/index.js";
 import {
   resolveSceneLabelFontFamily,
   resolveSceneObjectGlow,
@@ -194,11 +188,7 @@ export function renderSceneObjectLayer(options: RenderSceneObjectLayerOptions): 
         `${projection.offsetY + node.label.topPx * projection.scale}px`
       );
       setClickableVar(label.style, "label-width", `${node.label.widthPx * projection.scale}px`);
-      setClickableVar(
-        label.style,
-        "label-height",
-        `${node.label.heightPx * projection.scale}px`
-      );
+      setClickableVar(label.style, "label-height", `${node.label.heightPx * projection.scale}px`);
       setClickableVar(label.style, "label-rotate", `${node.label.rotateDeg}deg`);
       setClickableVar(
         label.style,

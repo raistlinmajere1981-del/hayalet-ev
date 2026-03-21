@@ -14,8 +14,8 @@
         "page": "analyze"
       },
       "rect": {
-        "leftPx": 171,
-        "topPx": 480,
+        "leftPx": 41,
+        "topPx": 530,
         "widthPx": 169,
         "heightPx": 279
       },
@@ -29,11 +29,11 @@
       "label": {
         "visible": true,
         "textKey": "sideNav.analyzeLabel",
-        "centerXPx": 223,
+        "centerXPx": 113,
         "topPx": 476,
-        "widthPx": 323,
+        "widthPx": 193,
         "heightPx": 46,
-        "rotateDeg": 13,
+        "rotateDeg": 9,
         "fontSizePx": 24,
         "letterSpacingPx": 1,
         "fontPreset": "display",
@@ -49,8 +49,8 @@
         "page": "assistant"
       },
       "rect": {
-        "leftPx": 1296,
-        "topPx": 162,
+        "leftPx": 1366,
+        "topPx": 172,
         "widthPx": 146,
         "heightPx": 227
       },
@@ -64,9 +64,9 @@
       "label": {
         "visible": true,
         "textKey": "sideNav.assistantLabel",
-        "centerXPx": 1382,
-        "topPx": 108,
-        "widthPx": 307,
+        "centerXPx": 1452,
+        "topPx": 118,
+        "widthPx": 197,
         "heightPx": 45,
         "rotateDeg": 0,
         "fontSizePx": 24,
@@ -84,8 +84,8 @@
         "page": "server"
       },
       "rect": {
-        "leftPx": 1302,
-        "topPx": 570,
+        "leftPx": 1362,
+        "topPx": 550,
         "widthPx": 144,
         "heightPx": 238
       },
@@ -99,9 +99,9 @@
       "label": {
         "visible": true,
         "textKey": "sideNav.serverLabel",
-        "centerXPx": 1367,
-        "topPx": 509,
-        "widthPx": 307,
+        "centerXPx": 1437,
+        "topPx": 499,
+        "widthPx": 187,
         "heightPx": 44,
         "rotateDeg": 0,
         "fontSizePx": 24,
@@ -119,8 +119,8 @@
         "panel": null
       },
       "rect": {
-        "leftPx": 1613,
-        "topPx": 518,
+        "leftPx": 1713,
+        "topPx": 528,
         "widthPx": 169,
         "heightPx": 279
       },
@@ -134,11 +134,11 @@
       "label": {
         "visible": true,
         "textKey": "settingsHub.openButton",
-        "centerXPx": 1695,
+        "centerXPx": 1815,
         "topPx": 476,
-        "widthPx": 323,
+        "widthPx": 203,
         "heightPx": 46,
-        "rotateDeg": -14,
+        "rotateDeg": -7,
         "fontSizePx": 24,
         "letterSpacingPx": 1,
         "fontPreset": "display",
@@ -154,30 +154,30 @@
         "page": "rooms"
       },
       "rect": {
-        "leftPx": 224,
-        "topPx": 646,
-        "widthPx": 428,
-        "heightPx": 304
+        "leftPx": 384,
+        "topPx": 846,
+        "widthPx": 108,
+        "heightPx": 134
       },
       "frame": {
         "variant": "left-angled",
-        "rotateDeg": -5,
-        "perspectiveDeg": 14,
-        "hueDeg": 33,
-        "alpha": 0.34
+        "rotateDeg": 0,
+        "perspectiveDeg": 0,
+        "hueDeg": 151,
+        "alpha": 1
       },
       "label": {
         "visible": true,
         "textKey": "sideNav.roomsLabel",
         "centerXPx": 436,
-        "topPx": 598,
+        "topPx": 894,
         "widthPx": 300,
-        "heightPx": 44,
-        "rotateDeg": -10,
+        "heightPx": 41,
+        "rotateDeg": 0,
         "fontSizePx": 22,
         "letterSpacingPx": 1,
         "fontPreset": "display",
-        "framePerspectiveDeg": -8
+        "framePerspectiveDeg": 2
       }
     },
     {
@@ -188,10 +188,10 @@
         "type": "whisper"
       },
       "rect": {
-        "leftPx": 362,
+        "leftPx": 322,
         "topPx": 512,
-        "widthPx": 396,
-        "heightPx": 246
+        "widthPx": 296,
+        "heightPx": 166
       },
       "frame": {
         "variant": "flat",
@@ -203,8 +203,8 @@
       "label": {
         "visible": true,
         "textKey": "panels.whisper",
-        "centerXPx": 560,
-        "topPx": 468,
+        "centerXPx": 470,
+        "topPx": 578,
         "widthPx": 272,
         "heightPx": 42,
         "rotateDeg": 0,
@@ -254,7 +254,7 @@
       "id": "anchor-user",
       "kind": "character",
       "characterKind": "user",
-      "leftPx": 154,
+      "leftPx": 774,
       "bottomPx": 108,
       "scale": 0.9,
       "depth": 1

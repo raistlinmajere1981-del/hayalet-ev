@@ -40,10 +40,7 @@ import {
   openSceneDebugRoom,
   subscribeSceneThemeAssetDraft,
 } from "../scene-editor/index.js";
-import {
-  buildSceneCharacterRoster,
-  resolveSceneAvatarSource,
-} from "../scene/characters/index.js";
+import { buildSceneCharacterRoster, resolveSceneAvatarSource } from "../scene/characters/index.js";
 import type { SceneClickableThemeDefinition } from "../scene/schema.js";
 import type { SceneLayoutConfig } from "../scene/layout/index.js";
 import {
@@ -419,13 +416,15 @@ export class AnalyzeController {
         await this._analyzeSceneSession.saveSceneLayoutToSource();
       },
       updateSceneClickableTheme: (updater): void => {
-        this._analyzeSceneClickableTheme = this._analyzeSceneSession.updateSceneClickableTheme(updater);
+        this._analyzeSceneClickableTheme =
+          this._analyzeSceneSession.updateSceneClickableTheme(updater);
         this._syncAnalyzeSceneVisibility();
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();
       },
       resetSceneClickableThemeDraft: (): void => {
-        this._analyzeSceneClickableTheme = this._analyzeSceneSession.resetSceneClickableThemeDraft();
+        this._analyzeSceneClickableTheme =
+          this._analyzeSceneSession.resetSceneClickableThemeDraft();
         this._syncAnalyzeSceneVisibility();
         this._renderAnalyzeScene();
         this._analyzeSceneEditor?.refresh();

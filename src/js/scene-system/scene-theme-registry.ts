@@ -1,9 +1,6 @@
 import { CASTLE_THEME_SOURCE } from "@theme-source/castle/manifest.js";
 
-import type {
-  SceneThemeRegistration,
-  SceneThemeSummary,
-} from "./scene-theme-registry-contract.js";
+import type { SceneThemeRegistration, SceneThemeSummary } from "./scene-theme-registry-contract.js";
 import { SceneThemeManager } from "./scene-theme-manager.js";
 import type { SceneThemeSourceDefinition } from "./theme-source-contract.js";
 

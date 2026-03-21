@@ -177,7 +177,8 @@ export function registerSettingsPanelLifecycle(
   panelId: SettingsPanelId,
   handler: SettingsPanelLifecycleHandler
 ): () => void {
-  const handlers = settingsPanelLifecycleHandlers.get(panelId) ?? new Set<SettingsPanelLifecycleHandler>();
+  const handlers =
+    settingsPanelLifecycleHandlers.get(panelId) ?? new Set<SettingsPanelLifecycleHandler>();
   handlers.add(handler);
   settingsPanelLifecycleHandlers.set(panelId, handlers);
 
@@ -778,7 +779,9 @@ export class SettingsPageController {
       });
     });
 
-    document.addEventListener(WORKSPACE_TOOL_OPEN_EVENT, ((event: CustomEvent<WorkspaceToolOpenDetail>) => {
+    document.addEventListener(WORKSPACE_TOOL_OPEN_EVENT, ((
+      event: CustomEvent<WorkspaceToolOpenDetail>
+    ) => {
       if (event.detail.tool !== "settings") {
         return;
       }
@@ -787,16 +790,15 @@ export class SettingsPageController {
       this.show(isSceneUiMode() ? requestedPanel : (requestedPanel ?? this.activePanel));
     }) as EventListener);
 
-    document.addEventListener(
-      WORKSPACE_TOOL_CLOSE_EVENT,
-      ((event: CustomEvent<WorkspaceToolCloseDetail>) => {
-        if (event.detail.tool !== "settings") {
-          return;
-        }
+    document.addEventListener(WORKSPACE_TOOL_CLOSE_EVENT, ((
+      event: CustomEvent<WorkspaceToolCloseDetail>
+    ) => {
+      if (event.detail.tool !== "settings") {
+        return;
+      }
 
-        this.overlayController?.close();
-      }) as EventListener
-    );
+      this.overlayController?.close();
+    }) as EventListener);
 
     this.initialized = true;
     if (isHostedInMainShell()) {
@@ -896,7 +898,9 @@ export class SettingsPageController {
 
   private handleOverlayOpened(): void {
     const previousState = this.consumeTransitionState();
-    this.visiblePanel = isSceneUiMode() ? this.visiblePanel : (this.visiblePanel ?? this.activePanel);
+    this.visiblePanel = isSceneUiMode()
+      ? this.visiblePanel
+      : (this.visiblePanel ?? this.activePanel);
     if (this.visiblePanel !== null) {
       this.activePanel = this.visiblePanel;
     }
@@ -927,11 +931,10 @@ export class SettingsPageController {
   }
 
   private consumeTransitionState(): SettingsPanelLifecycleState {
-    const previousState =
-      this.transitionState ?? {
-        open: false,
-        activePanel: null,
-      };
+    const previousState = this.transitionState ?? {
+      open: false,
+      activePanel: null,
+    };
     this.transitionState = null;
     return previousState;
   }

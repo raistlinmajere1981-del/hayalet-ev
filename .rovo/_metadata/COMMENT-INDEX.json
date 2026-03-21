@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-19T21:59:15.080Z",
+  "generatedAt": "2026-03-21T00:37:23.184Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 479,
-    "filesWithComments": 105,
-    "commentsIndexed": 258,
-    "fileLevelComments": 199,
-    "symbolLevelComments": 59,
+    "filesScanned": 517,
+    "filesWithComments": 109,
+    "commentsIndexed": 270,
+    "fileLevelComments": 205,
+    "symbolLevelComments": 65,
     "prefixCounts": {
-      "none": 23,
+      "none": 32,
       "AI": 0,
-      "NOTE": 231,
+      "NOTE": 234,
       "WARNING": 4,
       "TODO": 0
     }
@@ -700,15 +700,15 @@
     },
     {
       "path": "electron/preload.cjs",
-      "totalComments": 2,
+      "totalComments": 3,
       "byKind": {
-        "note": 1,
+        "note": 2,
         "warning": 1
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 1,
+        "NOTE": 2,
         "WARNING": 1,
         "TODO": 0
       },
@@ -716,8 +716,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 423,
-          "endLine": 423,
+          "startLine": 427,
+          "endLine": 427,
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -725,10 +725,19 @@
         },
         {
           "kind": "warning",
-          "startLine": 452,
-          "endLine": 452,
+          "startLine": 461,
+          "endLine": 461,
           "text": "WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.",
           "prefix": "WARNING",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 519,
+          "endLine": 519,
+          "text": "NOTE: External tool pages share this preload, but only the main shell should boot /js/app.js.",
+          "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
         }
@@ -875,8 +884,8 @@
         },
         {
           "kind": "note",
-          "startLine": 654,
-          "endLine": 654,
+          "startLine": 675,
+          "endLine": 675,
           "text": "NOTE: Ignore malformed targets instead of blocking navigation entirely.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -884,8 +893,8 @@
         },
         {
           "kind": "note",
-          "startLine": 658,
-          "endLine": 658,
+          "startLine": 679,
+          "endLine": 679,
           "text": "NOTE: Non-http(s) schemes stay allowed so built-in Electron pages are not blocked.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -893,8 +902,8 @@
         },
         {
           "kind": "note",
-          "startLine": 667,
-          "endLine": 667,
+          "startLine": 688,
+          "endLine": 688,
           "text": "NOTE: Skip enforcement when the current provider URL is unavailable.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -902,8 +911,8 @@
         },
         {
           "kind": "note",
-          "startLine": 673,
-          "endLine": 673,
+          "startLine": 694,
+          "endLine": 694,
           "text": "NOTE: Unknown providers fall back to permissive navigation.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -989,8 +998,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 68,
-          "endLine": 68,
+          "startLine": 73,
+          "endLine": 73,
           "text": "NOTE: Inject ServerCommands into CoreEngine to break the circular dependency.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -998,8 +1007,8 @@
         },
         {
           "kind": "note",
-          "startLine": 230,
-          "endLine": 230,
+          "startLine": 243,
+          "endLine": 243,
           "text": "NOTE: --auto-connect clicks the assistant connect button on the assistant page.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1054,8 +1063,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 412,
-          "endLine": 412,
+          "startLine": 380,
+          "endLine": 380,
           "text": "NOTE: Kept for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -1082,8 +1091,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 160,
-          "endLine": 160,
+          "startLine": 161,
+          "endLine": 161,
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs).",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -1631,8 +1640,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 949,
-          "endLine": 949,
+          "startLine": 1018,
+          "endLine": 1018,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1640,8 +1649,8 @@
         },
         {
           "kind": "note",
-          "startLine": 968,
-          "endLine": 968,
+          "startLine": 1037,
+          "endLine": 1037,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1728,8 +1737,8 @@
         },
         {
           "kind": "note",
-          "startLine": 387,
-          "endLine": 387,
+          "startLine": 411,
+          "endLine": 411,
           "text": "NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1737,8 +1746,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2407,
-          "endLine": 2407,
+          "startLine": 2474,
+          "endLine": 2474,
           "text": "NOTE: Ignore if the webview is not ready yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1746,8 +1755,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2469,
-          "endLine": 2469,
+          "startLine": 2513,
+          "endLine": 2513,
           "text": "NOTE: Ignore if the webview has not finished loading yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1781,8 +1790,8 @@
         },
         {
           "kind": "note",
-          "startLine": 259,
-          "endLine": 259,
+          "startLine": 255,
+          "endLine": 255,
           "text": "NOTE: Snapshot the persisted selection so close() can discard local edits.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1790,8 +1799,8 @@
         },
         {
           "kind": "note",
-          "startLine": 376,
-          "endLine": 376,
+          "startLine": 370,
+          "endLine": 370,
           "text": "NOTE: Each line uses the \"- Label\" format.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1799,8 +1808,8 @@
         },
         {
           "kind": "note",
-          "startLine": 536,
-          "endLine": 536,
+          "startLine": 530,
+          "endLine": 530,
           "text": "NOTE: Clear only the groups first to preserve the empty state.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1821,7 +1830,9 @@
         "WARNING": 0,
         "TODO": 0
       },
-      "symbols": [],
+      "symbols": [
+        "MemoryItem"
+      ],
       "comments": [
         {
           "kind": "note",
@@ -1829,8 +1840,8 @@
           "endLine": 1,
           "text": "NOTE: Opened from the Assistant page; uses memory-* IPC channels for shared memory.",
           "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
+          "scopeType": "interface",
+          "scopeName": "MemoryItem"
         }
       ]
     },
@@ -1948,32 +1959,6 @@
       ]
     },
     {
-      "path": "src/js/pages/entrance/scene/scene-debug.ts",
-      "totalComments": 1,
-      "byKind": {
-        "note": 1
-      },
-      "byPrefix": {
-        "none": 1,
-        "AI": 0,
-        "NOTE": 0,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 12,
-          "endLine": 12,
-          "text": "Ignore URL parsing failures and fall back to startup flags.",
-          "prefix": null,
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
       "path": "src/js/pages/entrance/webview-panel.ts",
       "totalComments": 2,
       "byKind": {
@@ -1990,8 +1975,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 273,
-          "endLine": 273,
+          "startLine": 272,
+          "endLine": 272,
           "text": "NOTE: app.ts owns webview registration to avoid duplicate lifecycle hooks.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1999,8 +1984,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1379,
-          "endLine": 1379,
+          "startLine": 1378,
+          "endLine": 1378,
           "text": "NOTE: Level mapping: 0=log, 1=warn, 2=error, 3=debug.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2061,13 +2046,39 @@
       ]
     },
     {
-      "path": "src/js/scene/debug-store.ts",
-      "totalComments": 2,
+      "path": "src/js/scene-editor/scene-debug-flag.ts",
+      "totalComments": 1,
       "byKind": {
-        "note": 2
+        "note": 1
       },
       "byPrefix": {
-        "none": 2,
+        "none": 1,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 24,
+          "endLine": 24,
+          "text": "Ignore URL parsing failures and fall back to startup flags.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "src/js/scene-editor/scene-editor-store.ts",
+      "totalComments": 4,
+      "byKind": {
+        "note": 4
+      },
+      "byPrefix": {
+        "none": 4,
         "AI": 0,
         "NOTE": 0,
         "WARNING": 0,
@@ -2075,13 +2086,15 @@
       },
       "symbols": [
         "clearSceneDebugDraft",
+        "loadSceneDebugThemeDraft",
+        "clearSceneDebugThemeDraft",
         "createSceneDebugStore"
       ],
       "comments": [
         {
           "kind": "note",
-          "startLine": 97,
-          "endLine": 97,
+          "startLine": 147,
+          "endLine": 147,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
@@ -2089,12 +2102,140 @@
         },
         {
           "kind": "note",
-          "startLine": 105,
-          "endLine": 105,
+          "startLine": 158,
+          "endLine": 158,
+          "text": "Ignore draft persistence failures in constrained environments.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "loadSceneDebugThemeDraft"
+        },
+        {
+          "kind": "note",
+          "startLine": 189,
+          "endLine": 189,
+          "text": "Ignore draft persistence failures in constrained environments.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "clearSceneDebugThemeDraft"
+        },
+        {
+          "kind": "note",
+          "startLine": 200,
+          "endLine": 200,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
           "scopeName": "createSceneDebugStore"
+        }
+      ]
+    },
+    {
+      "path": "src/js/scene-editor/scene-theme-asset-state.ts",
+      "totalComments": 3,
+      "byKind": {
+        "note": 3
+      },
+      "byPrefix": {
+        "none": 3,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [
+        "clearSceneThemeAssetDraftFromLocalStorage",
+        "notifySceneThemeAssetDraftListeners"
+      ],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 133,
+          "endLine": 133,
+          "text": "Fall back to a root-relative path for dev/browser environments.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 387,
+          "endLine": 387,
+          "text": "Ignore local draft persistence failures.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "clearSceneThemeAssetDraftFromLocalStorage"
+        },
+        {
+          "kind": "note",
+          "startLine": 395,
+          "endLine": 395,
+          "text": "Ignore local draft persistence failures.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "notifySceneThemeAssetDraftListeners"
+        }
+      ]
+    },
+    {
+      "path": "src/js/scene-system/scene-theme-installed-registry.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 1,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [
+        "cloneInstalledSceneThemeRegistration"
+      ],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 14,
+          "endLine": 14,
+          "text": "Ignore listener failures so registry updates stay best-effort.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "cloneInstalledSceneThemeRegistration"
+        }
+      ]
+    },
+    {
+      "path": "src/js/scene-system/scene-theme-manager.ts",
+      "totalComments": 2,
+      "byKind": {
+        "note": 2
+      },
+      "byPrefix": {
+        "none": 1,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 176,
+          "endLine": 176,
+          "text": "NOTE: Built-in themes keep precedence so stale installed packs cannot shadow them.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 260,
+          "endLine": 260,
+          "text": "Ignore listener failures so theme changes keep flowing.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
         }
       ]
     },
@@ -2209,8 +2350,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 14,
-          "endLine": 14,
+          "startLine": 17,
+          "endLine": 17,
           "text": "NOTE: New API preferred; keep for backward compatibility with legacy text.",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -2218,8 +2359,8 @@
         },
         {
           "kind": "note",
-          "startLine": 15,
-          "endLine": 15,
+          "startLine": 18,
+          "endLine": 18,
           "text": "NOTE: Legacy API; keep for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -2227,8 +2368,8 @@
         },
         {
           "kind": "note",
-          "startLine": 16,
-          "endLine": 16,
+          "startLine": 19,
+          "endLine": 19,
           "text": "NOTE: New API preferred; keep for backward compatibility with class.",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -2236,12 +2377,56 @@
         },
         {
           "kind": "note",
-          "startLine": 17,
-          "endLine": 17,
+          "startLine": 20,
+          "endLine": 20,
           "text": "NOTE: Legacy API; kept for backward compatibility (e.g., 'btn-primary').",
           "prefix": "NOTE",
           "scopeType": "interface",
           "scopeName": "ModalOptions"
+        }
+      ]
+    },
+    {
+      "path": "src/js/ui/overlay-system.ts",
+      "totalComments": 3,
+      "byKind": {
+        "note": 3
+      },
+      "byPrefix": {
+        "none": 2,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 10,
+          "endLine": 10,
+          "text": "NOTE: These families define the shell-owned overlay lanes that Sprint 1 centralizes.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 11,
+          "endLine": 11,
+          "text": "Page-specific controllers may still own their DOM for now, but new overlay work should",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 12,
+          "endLine": 12,
+          "text": "attach to one of these families instead of inventing new page-level overlay semantics.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
         }
       ]
     },
@@ -3537,8 +3722,8 @@
         "TODO": 0
       },
       "symbols": [
-        "findMainWindow",
-        "connectToTarget"
+        "pickPreferredTarget",
+        "findMainWindow"
       ],
       "comments": [
         {
@@ -3552,26 +3737,26 @@
         },
         {
           "kind": "note",
-          "startLine": 95,
-          "endLine": 95,
+          "startLine": 93,
+          "endLine": 93,
           "text": "NOTE: Prefer a \"page\" target first.",
+          "prefix": "NOTE",
+          "scopeType": "function",
+          "scopeName": "pickPreferredTarget"
+        },
+        {
+          "kind": "note",
+          "startLine": 97,
+          "endLine": 97,
+          "text": "NOTE: Fall back to the first target if no \"page\" target is available.",
           "prefix": "NOTE",
           "scopeType": "function",
           "scopeName": "findMainWindow"
         },
         {
           "kind": "note",
-          "startLine": 99,
-          "endLine": 99,
-          "text": "NOTE: Fall back to the first target if no \"page\" target is available.",
-          "prefix": "NOTE",
-          "scopeType": "function",
-          "scopeName": "connectToTarget"
-        },
-        {
-          "kind": "note",
-          "startLine": 167,
-          "endLine": 167,
+          "startLine": 187,
+          "endLine": 187,
           "text": "NOTE: Ignore JSON parse errors and keep listening.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4214,8 +4399,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 285,
-          "endLine": 285,
+          "startLine": 299,
+          "endLine": 299,
           "text": "NOTE: Empty or null uses the PATH \"opencode\" binary.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4231,17 +4416,17 @@
       "name": "ModalButton",
       "comments": [
         {
-          "startLine": 14,
+          "startLine": 17,
           "kind": "note",
           "text": "NOTE: New API preferred; keep for backward compatibility with legacy text."
         },
         {
-          "startLine": 15,
+          "startLine": 18,
           "kind": "note",
           "text": "NOTE: Legacy API; keep for backward compatibility."
         },
         {
-          "startLine": 16,
+          "startLine": 19,
           "kind": "note",
           "text": "NOTE: New API preferred; keep for backward compatibility with class."
         }
@@ -4546,7 +4731,7 @@
       "name": "getLastPrimaryPage",
       "comments": [
         {
-          "startLine": 412,
+          "startLine": 380,
           "kind": "note",
           "text": "NOTE: Kept for backward compatibility."
         }
@@ -4558,7 +4743,7 @@
       "name": "Window",
       "comments": [
         {
-          "startLine": 160,
+          "startLine": 161,
           "kind": "note",
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs)."
         }
@@ -4601,26 +4786,98 @@
       ]
     },
     {
-      "file": "src/js/scene/debug-store.ts",
+      "file": "src/js/pages/assistant/memory-overlay.ts",
+      "type": "interface",
+      "name": "MemoryItem",
+      "comments": [
+        {
+          "startLine": 1,
+          "kind": "note",
+          "text": "NOTE: Opened from the Assistant page; uses memory-* IPC channels for shared memory."
+        }
+      ]
+    },
+    {
+      "file": "src/js/scene-editor/scene-editor-store.ts",
       "type": "function",
       "name": "clearSceneDebugDraft",
       "comments": [
         {
-          "startLine": 97,
+          "startLine": 147,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }
       ]
     },
     {
-      "file": "src/js/scene/debug-store.ts",
+      "file": "src/js/scene-editor/scene-editor-store.ts",
+      "type": "function",
+      "name": "clearSceneDebugThemeDraft",
+      "comments": [
+        {
+          "startLine": 189,
+          "kind": "note",
+          "text": "Ignore draft persistence failures in constrained environments."
+        }
+      ]
+    },
+    {
+      "file": "src/js/scene-editor/scene-editor-store.ts",
       "type": "function",
       "name": "createSceneDebugStore",
       "comments": [
         {
-          "startLine": 105,
+          "startLine": 200,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
+        }
+      ]
+    },
+    {
+      "file": "src/js/scene-editor/scene-editor-store.ts",
+      "type": "function",
+      "name": "loadSceneDebugThemeDraft",
+      "comments": [
+        {
+          "startLine": 158,
+          "kind": "note",
+          "text": "Ignore draft persistence failures in constrained environments."
+        }
+      ]
+    },
+    {
+      "file": "src/js/scene-editor/scene-theme-asset-state.ts",
+      "type": "function",
+      "name": "clearSceneThemeAssetDraftFromLocalStorage",
+      "comments": [
+        {
+          "startLine": 387,
+          "kind": "note",
+          "text": "Ignore local draft persistence failures."
+        }
+      ]
+    },
+    {
+      "file": "src/js/scene-editor/scene-theme-asset-state.ts",
+      "type": "function",
+      "name": "notifySceneThemeAssetDraftListeners",
+      "comments": [
+        {
+          "startLine": 395,
+          "kind": "note",
+          "text": "Ignore local draft persistence failures."
+        }
+      ]
+    },
+    {
+      "file": "src/js/scene-system/scene-theme-installed-registry.ts",
+      "type": "function",
+      "name": "cloneInstalledSceneThemeRegistration",
+      "comments": [
+        {
+          "startLine": 14,
+          "kind": "note",
+          "text": "Ignore listener failures so registry updates stay best-effort."
         }
       ]
     },
@@ -4654,7 +4911,7 @@
       "name": "ModalOptions",
       "comments": [
         {
-          "startLine": 17,
+          "startLine": 20,
           "kind": "note",
           "text": "NOTE: Legacy API; kept for backward compatibility (e.g., 'btn-primary')."
         }
@@ -4771,10 +5028,10 @@
     {
       "file": "src/mcp-server/utils/cdp-connection.ts",
       "type": "function",
-      "name": "connectToTarget",
+      "name": "findMainWindow",
       "comments": [
         {
-          "startLine": 99,
+          "startLine": 97,
           "kind": "note",
           "text": "NOTE: Fall back to the first target if no \"page\" target is available."
         }
@@ -4783,10 +5040,10 @@
     {
       "file": "src/mcp-server/utils/cdp-connection.ts",
       "type": "function",
-      "name": "findMainWindow",
+      "name": "pickPreferredTarget",
       "comments": [
         {
-          "startLine": 95,
+          "startLine": 93,
           "kind": "note",
           "text": "NOTE: Prefer a \"page\" target first."
         }

@@ -23,6 +23,8 @@
   --space-128: 512px;
 
   --topbar-height: 100px;
+  --topbar-height-compact: 84px;
+  --topbar-height-mobile: 76px;
   --side-nav-trigger-width: 8px;
 
   --panel-min-height: 200px;
@@ -39,4 +41,16 @@
 
   --nav-btn-size: 72px;
   --nav-icon-size: 28px;
+}
+
+@media (--breakpoint-max-1024) {
+  :root {
+    --topbar-height: var(--topbar-height-compact);
+  }
+}
+
+@media (--breakpoint-max-768) {
+  :root {
+    --topbar-height: var(--topbar-height-mobile);
+  }
 }

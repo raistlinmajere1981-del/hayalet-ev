@@ -1,8 +1,4 @@
-import type {
-  ThemeAppearanceMode,
-  ThemeAppearanceSettings,
-  ThemeId,
-} from "@shared/settings.js";
+import type { ThemeAppearanceMode, ThemeAppearanceSettings, ThemeId } from "@shared/settings.js";
 
 import type { ThemeInfo } from "./theme-contract.js";
 

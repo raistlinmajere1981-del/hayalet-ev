@@ -25,7 +25,9 @@ function cloneObjectTheme(
   };
 }
 
-function cloneBackTheme(source: SceneBackClickableThemeDefinition): SceneBackClickableThemeDefinition {
+function cloneBackTheme(
+  source: SceneBackClickableThemeDefinition
+): SceneBackClickableThemeDefinition {
   return {
     ...source,
     label: cloneLabelTheme(source.label),
@@ -137,7 +139,7 @@ export function serializeSceneClickableThemeSource(
   sceneClickableTheme: SceneClickableThemeDefinition
 ): string {
   return [
-    'export const SCENE_CLICKABLE_DEFAULTS =',
+    "export const SCENE_CLICKABLE_DEFAULTS =",
     `${JSON.stringify(sceneClickableTheme, null, 2)} as const;`,
     "",
   ].join("\n");

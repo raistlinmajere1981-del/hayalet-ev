@@ -96,9 +96,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 24% 18%, rgb(255 190 115 / 0.14), transparent 26%),
-    linear-gradient(180deg, rgb(22 13 11 / 0.98), rgb(10 7 7 / 1));
+  background: var(--assistant-scene-surface-bg);
   pointer-events: auto;
   isolation: isolate;
 }
@@ -107,9 +105,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at center, transparent 56%, rgb(5 4 4 / 0.34) 100%),
-    linear-gradient(180deg, rgb(0 0 0 / 0), rgb(0 0 0 / 0.2));
+  background: var(--assistant-scene-surface-overlay);
   pointer-events: none;
 }
 
@@ -166,10 +162,7 @@
   gap: var(--space-2);
   pointer-events: none;
   z-index: calc(var(--assistant-scene-character-depth) * 10);
-  filter: drop-shadow(
-    0 var(--assistant-scene-character-shadow-y) var(--assistant-scene-character-shadow-blur)
-      rgb(0 0 0 / 0.34)
-  );
+  filter: var(--assistant-scene-character-shadow);
   transform: translateX(-50%) scale(var(--assistant-scene-character-scale))
     scale(var(--assistant-scene-character-depth-scale));
   transition:
@@ -184,21 +177,13 @@
 
 .assistant-scene__character.is-loading {
   opacity: 1;
-  filter: drop-shadow(0 0 var(--assistant-scene-character-loading-glow) rgb(255 195 96 / 0.26))
-    drop-shadow(
-      0 var(--assistant-scene-character-loading-shadow-y)
-        var(--assistant-scene-character-loading-shadow-blur) rgb(0 0 0 / 0.42)
-    );
+  filter: var(--assistant-scene-character-filter-loading);
 }
 
 .assistant-scene__character.is-connected,
 .assistant-scene__character.is-thinking {
   opacity: 1;
-  filter: drop-shadow(0 0 var(--assistant-scene-character-connected-glow) rgb(115 186 255 / 0.16))
-    drop-shadow(
-      0 var(--assistant-scene-character-connected-shadow-y)
-        var(--assistant-scene-character-connected-shadow-blur) rgb(0 0 0 / 0.44)
-    );
+  filter: var(--assistant-scene-character-filter-connected);
 }
 
 .assistant-scene__character-stage {
@@ -234,11 +219,8 @@
   transform: translate(-50%, -50%);
   border-radius: var(--radius-full);
   overflow: hidden;
-  background:
-    radial-gradient(circle at top, rgb(255 239 220 / 1), rgb(226 164 114 / 1)), rgb(226 164 114 / 1);
-  box-shadow:
-    0 0 0 var(--assistant-scene-character-head-ring) rgb(255 231 196 / 0.18),
-    0 0 0 var(--assistant-scene-character-head-halo) rgb(255 186 102 / 0.08);
+  background: var(--assistant-scene-character-head-bg);
+  box-shadow: var(--assistant-scene-character-head-shadow);
 }
 
 .assistant-scene__character-avatar {
@@ -253,9 +235,9 @@
 .assistant-scene__character-label {
   padding: var(--assistant-scene-character-label-pad-y) var(--assistant-scene-character-label-pad-x);
   border-radius: var(--radius-full);
-  background: rgb(22 12 10 / 0.74);
-  border: var(--border-1) solid rgb(255 225 191 / 0.16);
-  color: rgb(255 235 212 / 0.94);
+  background: var(--assistant-scene-character-label-bg);
+  border: var(--border-1) solid var(--assistant-scene-character-label-border);
+  color: var(--assistant-scene-character-label-color);
   font-family: var(--font-scene-sans);
   font-size: var(--assistant-scene-character-label-text-size);
   font-weight: var(--font-semibold);
@@ -268,9 +250,9 @@
   padding: var(--assistant-scene-character-marker-pad-y)
     var(--assistant-scene-character-marker-pad-x);
   border-radius: var(--radius-full);
-  background: rgb(16 9 8 / 0.72);
-  border: var(--border-1) solid rgb(255 225 191 / 0.12);
-  color: rgb(243 205 162 / 0.78);
+  background: var(--assistant-scene-character-anchor-bg);
+  border: var(--border-1) solid var(--assistant-scene-character-anchor-border);
+  color: var(--assistant-scene-character-anchor-color);
   font-family: var(--font-scene-mono);
   font-size: var(--assistant-scene-character-marker-text-size);
   letter-spacing: var(--assistant-scene-character-marker-letter-spacing);
@@ -291,15 +273,6 @@
   filter: saturate(1.02) contrast(1.04);
 }
 
-.assistant-scene__screen-shade {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, rgb(7 5 5 / 0.58), transparent 18%, transparent 82%, rgb(7 5 5 / 0.58)),
-    radial-gradient(circle at center, transparent 44%, rgb(0 0 0 / 0.22) 100%);
-  pointer-events: none;
-}
-
 [data-ui-mode="scene"][data-active-page="assistant"] .page-assistant {
   height: 100%;
   overflow: hidden;
@@ -307,9 +280,7 @@
 
 [data-ui-mode="scene"][data-active-page="assistant"] .assistant-container {
   min-height: 100%;
-  background:
-    radial-gradient(circle at 34% 18%, rgb(255 186 114 / 0.14), transparent 28%),
-    linear-gradient(180deg, rgb(16 10 9 / 0.98), rgb(8 6 6 / 1));
+  background: var(--assistant-scene-container-bg);
   --assistant-scene-frame-left: clamp(8.25%, 9.25vw, 12.25%);
   --assistant-scene-frame-right: clamp(8.25%, 9.25vw, 12.25%);
   --assistant-scene-frame-top: clamp(9.25%, 8.5vh, 12%);
@@ -339,13 +310,6 @@
   top: var(--assistant-scene-frame-top);
   z-index: 8;
   display: none;
-  background:
-    linear-gradient(180deg, rgb(47 29 24 / 0.9), rgb(20 12 10 / 0.88)), rgb(20 12 10 / 0.88);
-  border-color: rgb(255 217 166 / 0.16);
-  box-shadow:
-    0 var(--assistant-scene-topbar-shadow-y) var(--assistant-scene-topbar-shadow-blur)
-      rgb(0 0 0 / 0.24),
-    inset 0 0 0 var(--border-1) rgb(255 255 255 / 0.04);
 }
 
 [data-ui-mode="scene"][data-active-page="assistant"] .assistant-webview-panel {
@@ -354,18 +318,10 @@
   bottom: var(--assistant-scene-frame-bottom);
   z-index: 7;
   display: none;
-  border-color: rgb(255 221 186 / 0.14);
-  background: linear-gradient(180deg, rgb(28 18 15 / 0.74), rgb(13 9 8 / 0.92)), rgb(10 7 7 / 0.78);
-  box-shadow:
-    0 var(--assistant-scene-panel-shadow-y) var(--assistant-scene-panel-shadow-blur)
-      rgb(0 0 0 / 0.32),
-    inset 0 0 0 var(--border-1) rgb(255 255 255 / 0.03);
 }
 
 [data-ui-mode="scene"][data-active-page="assistant"] .assistant-webview-panel .webview-wrapper {
-  background:
-    radial-gradient(circle at top, rgb(255 196 115 / 0.08), transparent 30%),
-    linear-gradient(180deg, rgb(15 11 10 / 0.88), rgb(7 6 6 / 1));
+  background: var(--scene-shell-panel-viewport-bg);
 }
 
 [data-ui-mode="scene"][data-active-page="assistant"]
@@ -975,6 +931,7 @@
 
 .assistant-test-modal {
   --modal-max-w: min(54rem, calc(100vw - var(--space-8)));
+  --assistant-test-modal-body-max-h: 44rem;
 }
 
 .assistant-test-modal__body {
@@ -982,7 +939,7 @@
   flex-direction: column;
   gap: var(--space-3);
   min-height: 0;
-  max-height: min(72vh, 44rem);
+  max-height: min(72vh, var(--assistant-test-modal-body-max-h));
 }
 
 .assistant-test-panel__header {

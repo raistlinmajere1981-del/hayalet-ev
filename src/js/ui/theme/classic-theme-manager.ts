@@ -199,7 +199,7 @@ function notifyListeners(theme: ThemeId): void {
 
 function persistAppearanceSettings(appearance: Required<ThemeAppearanceSettings>): void {
   void SettingsManager.patch((settings) => {
-    const typedSettings = settings as Record<string, unknown>;
+    const typedSettings = settings;
     const generalCandidate = typedSettings["general"];
     if (
       generalCandidate === null ||

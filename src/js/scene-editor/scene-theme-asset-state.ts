@@ -216,10 +216,6 @@ async function warmSceneThemeDefaultSources(): Promise<void> {
 async function warmSceneThemeAssetDraftSources(draft: SceneThemeAssetDraftDocument): Promise<void> {
   const tasks: Promise<void>[] = [];
   for (const roomDraft of Object.values(draft.rooms)) {
-    if (roomDraft === undefined) {
-      continue;
-    }
-
     tasks.push(warmSceneThemeAssetRuntimeSource(roomDraft.background?.sourcePath));
     Object.values(roomDraft.panels ?? {}).forEach((entry) => {
       tasks.push(warmSceneThemeAssetRuntimeSource(entry.sourcePath));
@@ -246,19 +242,19 @@ function normalizeTransparentWindow(value: unknown): SceneAlphaWindowBounds | nu
   }
 
   const record = value as Record<string, unknown>;
-  const numbers = ["sourceWidth", "sourceHeight", "left", "top", "right", "bottom"].map((key) =>
-    Number(record[key] ?? NaN)
-  );
-  if (numbers.some((entry) => Number.isFinite(entry) === false)) {
+  const sourceWidth = Number(record["sourceWidth"] ?? NaN);
+  const sourceHeight = Number(record["sourceHeight"] ?? NaN);
+  const left = Number(record["left"] ?? NaN);
+  const top = Number(record["top"] ?? NaN);
+  const right = Number(record["right"] ?? NaN);
+  const bottom = Number(record["bottom"] ?? NaN);
+  if (
+    [sourceWidth, sourceHeight, left, top, right, bottom].some(
+      (entry) => Number.isFinite(entry) === false
+    )
+  ) {
     return null;
   }
-
-  const sourceWidth = numbers[0]!;
-  const sourceHeight = numbers[1]!;
-  const left = numbers[2]!;
-  const top = numbers[3]!;
-  const right = numbers[4]!;
-  const bottom = numbers[5]!;
   if (sourceWidth <= 0 || sourceHeight <= 0 || right <= left || bottom <= top) {
     return null;
   }
@@ -331,7 +327,11 @@ function normalizeSceneThemeRoomAssetDraft(value: unknown): SceneThemeRoomAssetD
       .filter((entry): entry is [string, SceneThemeViewAssetDraft] => entry[1] !== undefined)
   );
 
-  if (background === undefined && Object.keys(panels).length === 0 && Object.keys(views).length === 0) {
+  if (
+    background === undefined &&
+    Object.keys(panels).length === 0 &&
+    Object.keys(views).length === 0
+  ) {
     return undefined;
   }
 
@@ -480,7 +480,11 @@ function writeSceneThemeAssetTargetEntry(
     }
   }
 
-  if (roomDraft.background === undefined && roomDraft.panels === undefined && roomDraft.views === undefined) {
+  if (
+    roomDraft.background === undefined &&
+    roomDraft.panels === undefined &&
+    roomDraft.views === undefined
+  ) {
     delete currentSceneThemeAssetDraft.rooms[target.roomId];
   } else {
     currentSceneThemeAssetDraft.rooms[target.roomId] = roomDraft;
@@ -574,7 +578,9 @@ function getSceneThemeViewAssetDefault(
     return "";
   }
 
-  return kind === "background" ? (viewDefinition.backgroundSrc ?? "") : (viewDefinition.panelArtSrc ?? "");
+  return kind === "background"
+    ? (viewDefinition.backgroundSrc ?? "")
+    : (viewDefinition.panelArtSrc ?? "");
 }
 
 function getSceneEditorAssetTargetDefaultSource(target: ParsedSceneEditorAssetTarget): string {
@@ -591,8 +597,8 @@ function getSceneEditorAssetTargetDefaultSource(target: ParsedSceneEditorAssetTa
   const viewDefinition = target.viewId === null ? null : (roomTheme.views?.[target.viewId] ?? null);
   return getSceneThemeRuntimeSource(
     getSceneThemeViewAssetDefault(
-    viewDefinition,
-    target.kind === "view-background" ? "background" : "panelArt"
+      viewDefinition,
+      target.kind === "view-background" ? "background" : "panelArt"
     )
   );
 }
@@ -610,9 +616,7 @@ export function getCurrentSceneThemeAssetDraft(): SceneThemeAssetDraftDocument {
   return cloneSceneThemeAssetDraft(currentSceneThemeAssetDraft);
 }
 
-export function subscribeSceneThemeAssetDraft(
-  listener: SceneThemeAssetDraftListener
-): () => void {
+export function subscribeSceneThemeAssetDraft(listener: SceneThemeAssetDraftListener): () => void {
   sceneThemeAssetDraftListeners.add(listener);
   return () => {
     sceneThemeAssetDraftListeners.delete(listener);
@@ -647,7 +651,9 @@ function mutateSceneThemeAssetDraft(mutator: () => void): void {
   notifySceneThemeAssetDraftListeners();
 }
 
-export function listSceneEditorAssetTargets(roomId: SceneRoomId): SceneEditorAssetTargetDescriptor[] {
+export function listSceneEditorAssetTargets(
+  roomId: SceneRoomId
+): SceneEditorAssetTargetDescriptor[] {
   const roomTheme = getActiveSceneTheme().rooms[roomId];
   const targets: SceneEditorAssetTargetDescriptor[] = [];
 
@@ -756,7 +762,7 @@ export async function pickSceneEditorAssetTarget(targetId: string): Promise<bool
     properties: ["openFile"],
   });
 
-  const selectedPath = selection.filePaths?.[0]?.trim() ?? "";
+  const selectedPath = selection.filePaths[0]?.trim() ?? "";
   if (selection.canceled || selectedPath === "") {
     return false;
   }
@@ -764,12 +770,17 @@ export async function pickSceneEditorAssetTarget(targetId: string): Promise<bool
   const destinationDir = buildSceneThemeAssetCopyDestination(target);
   const copied = await api.copyFileTo(selectedPath, destinationDir);
   const copiedPath =
-    copied.success === true && typeof copied.path === "string" ? normalizeAssetSourcePath(copied.path) : "";
+    copied.success === true && typeof copied.path === "string"
+      ? normalizeAssetSourcePath(copied.path)
+      : "";
   if (copiedPath === "") {
     return false;
   }
 
-  if (typeof previousDescriptor?.runtimeSrc === "string" && previousDescriptor.runtimeSrc.trim() !== "") {
+  if (
+    typeof previousDescriptor?.runtimeSrc === "string" &&
+    previousDescriptor.runtimeSrc.trim() !== ""
+  ) {
     invalidateSceneAlphaWindowBoundsCache(previousDescriptor.runtimeSrc);
   }
   invalidateSceneAlphaWindowBoundsCache(getSceneThemeRuntimeSource(copiedPath));
@@ -848,8 +859,10 @@ export async function detectSceneEditorTransparentWindow(targetId: string): Prom
     return false;
   }
 
-  const descriptor = listSceneEditorAssetTargets(target.roomId).find((entry) => entry.id === targetId);
-  if (descriptor === undefined || descriptor.supportsTransparentWindow !== true || descriptor.runtimeSrc === "") {
+  const descriptor = listSceneEditorAssetTargets(target.roomId).find(
+    (entry) => entry.id === targetId
+  );
+  if (descriptor?.supportsTransparentWindow !== true || descriptor.runtimeSrc === "") {
     return false;
   }
 
@@ -886,19 +899,26 @@ export function resolveSuggestedSceneEditorAssetTargetId(
   selection: SceneDebugNodeSelection
 ): string | null {
   if (selection === null) {
-    return listSceneEditorAssetTargets(roomId).find((target) => target.supportsTransparentWindow)?.id ?? null;
+    return (
+      listSceneEditorAssetTargets(roomId).find((target) => target.supportsTransparentWindow)?.id ??
+      null
+    );
   }
 
   if (selection.kind === "character") {
     return null;
   }
 
-  const selectedObject = sceneLayout.objects.find((node) => selection.kind === "object" && node.id === selection.id);
+  const selectedObject = sceneLayout.objects.find(
+    (node) => selection.kind === "object" && node.id === selection.id
+  );
   if (selectedObject !== undefined) {
     return resolveSceneEditorAssetTargetIdForAction(roomId, selectedObject.action);
   }
 
-  const selectedBack = sceneLayout.backs.find((node) => selection.kind === "back" && node.id === selection.id);
+  const selectedBack = sceneLayout.backs.find(
+    (node) => selection.kind === "back" && node.id === selection.id
+  );
   if (selectedBack !== undefined) {
     if ((roomId === "assistant" || roomId === "server") && selectedBack.viewId === "primary") {
       return `${roomId}::view::primary::panel-art`;

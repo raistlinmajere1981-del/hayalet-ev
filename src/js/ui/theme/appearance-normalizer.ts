@@ -44,9 +44,7 @@ export function normalizeThemeAppearance(
   const darkTheme: unknown = next.darkTheme;
   next.mode = mode === "manual" || mode === "system" || mode === "schedule" ? mode : defaults.mode;
   next.manualTheme =
-    typeof manualTheme === "string" && isThemeId(manualTheme)
-      ? manualTheme
-      : defaults.manualTheme;
+    typeof manualTheme === "string" && isThemeId(manualTheme) ? manualTheme : defaults.manualTheme;
   next.lightTheme =
     typeof lightTheme === "string" && isThemeId(lightTheme) ? lightTheme : defaults.lightTheme;
   next.darkTheme =

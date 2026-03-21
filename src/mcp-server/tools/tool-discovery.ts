@@ -77,6 +77,24 @@ const INTENT_PATTERNS: IntentPattern[] = [
     workflows: ["batch-refactor"],
   },
   {
+    patterns: [
+      /raw.*cdp/i,
+      /cdp.*command/i,
+      /cdp.*target/i,
+      /devtools.*protocol/i,
+      /runtime\.evaluate/i,
+      /page\.reload/i,
+      /debugger\.pause/i,
+    ],
+    category: "cdpAdvanced",
+    tools: [
+      { name: "hev_list_cdp_targets", priority: 1, reasonKey: "inspectAvailableTargets" },
+      { name: "hev_get_cdp_target_info", priority: 2, reasonKey: "inspectSpecificTarget" },
+      { name: "hev_send_cdp_command", priority: 3, reasonKey: "runRawCdpCommand" },
+    ],
+    workflows: [],
+  },
+  {
     patterns: [/debug/i, /error.*electron/i, /app.*crash/i, /not.*work/i],
     category: "debugging",
     tools: [

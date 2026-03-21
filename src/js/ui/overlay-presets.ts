@@ -114,7 +114,9 @@ export function createSharedAssistantToolOverlayController(
   });
 }
 
-export async function openSharedAssistantToolModal(options: SharedAssistantToolModalOptions): Promise<{
+export async function openSharedAssistantToolModal(
+  options: SharedAssistantToolModalOptions
+): Promise<{
   close: () => void;
 }> {
   const modalModule = await import("./modal-manager.js");

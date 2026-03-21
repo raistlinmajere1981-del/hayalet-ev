@@ -37,17 +37,13 @@
   --scene-clickable-label-border: rgb(255 225 190 / 0.18);
   --scene-clickable-label-color: rgb(255 238 214 / 0.94);
   --scene-clickable-label-bg:
-    linear-gradient(180deg, rgb(50 30 24 / 0.92), rgb(18 10 8 / 0.84)),
-    rgb(18 10 8 / 0.84);
+    linear-gradient(180deg, rgb(50 30 24 / 0.92), rgb(18 10 8 / 0.84)), rgb(18 10 8 / 0.84);
   --scene-clickable-label-bg-active:
-    linear-gradient(180deg, rgb(62 38 30 / 0.96), rgb(24 14 11 / 0.92)),
-    rgb(24 14 11 / 0.92);
+    linear-gradient(180deg, rgb(62 38 30 / 0.96), rgb(24 14 11 / 0.92)), rgb(24 14 11 / 0.92);
   --scene-clickable-label-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.02),
-    0 0.55rem 1.1rem rgb(0 0 0 / 0.24);
+    inset 0 0 0 1px rgb(255 255 255 / 0.02), 0 0.55rem 1.1rem rgb(0 0 0 / 0.24);
   --scene-clickable-label-active-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.05),
-    0 0 0.9rem rgb(255 209 143 / 0.18),
+    inset 0 0 0 1px rgb(255 255 255 / 0.05), 0 0 0.9rem rgb(255 209 143 / 0.18),
     0 0.7rem 1.4rem rgb(0 0 0 / 0.28);
   --scene-clickable-label-active-ring: rgb(126 201 255 / 0.28);
 }
@@ -193,9 +189,11 @@
   cursor: pointer;
 }
 
-.scene-shell__surface .scene-clickable__button:is(:hover, :focus-visible, .is-selected)
+.scene-shell__surface
+  .scene-clickable__button:is(:hover, :focus-visible, .is-selected)
   + .scene-clickable__label,
-.scene-shell__surface .scene-clickable__button:is(:hover, :focus-visible, .is-selected)
+.scene-shell__surface
+  .scene-clickable__button:is(:hover, :focus-visible, .is-selected)
   .scene-clickable__label,
 .scene-shell__surface .scene-clickable__label.is-selected,
 .scene-shell__surface .scene-clickable__label[data-clickable="true"]:is(:hover, :focus-visible) {
@@ -237,7 +235,9 @@
   justify-content: flex-start;
 }
 
-.scene-shell__surface .scene-clickable__button--back:is(:hover, :focus-visible) .scene-clickable__arrow {
+.scene-shell__surface
+  .scene-clickable__button--back:is(:hover, :focus-visible)
+  .scene-clickable__arrow {
   opacity: 1;
   transform: translateX(var(--scene-clickable-back-arrow-shift, 0.2rem));
 }

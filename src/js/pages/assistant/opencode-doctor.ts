@@ -467,9 +467,7 @@ export async function openOpencodeSettingsModal(
     void runDoctorCheck();
   });
 
-  let modalHandle: { close: () => void } | null = null;
-
-  modalHandle = await openSharedAssistantToolModal({
+  const modalHandle = await openSharedAssistantToolModal({
     title: assistantT("opencodeDoctor.settingsModal.title"),
     content,
     size: "medium",
@@ -517,7 +515,7 @@ export async function openOpencodeSettingsModal(
             });
 
             options.onSaved?.();
-            modalHandle?.close();
+            modalHandle.close();
           })();
         },
       },

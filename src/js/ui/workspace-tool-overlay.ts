@@ -86,7 +86,11 @@ export function toggleWorkspaceToolPage(
 }
 
 export function syncWorkspaceToolState(detail: WorkspaceToolStateDetail): void {
-  activeWorkspaceTool = detail.open ? detail.tool : activeWorkspaceTool === detail.tool ? null : activeWorkspaceTool;
+  activeWorkspaceTool = detail.open
+    ? detail.tool
+    : activeWorkspaceTool === detail.tool
+      ? null
+      : activeWorkspaceTool;
   syncWorkspaceToolDocumentState();
 
   document.dispatchEvent(

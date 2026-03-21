@@ -480,7 +480,8 @@ try {
     const href = typeof window?.location?.href === "string" ? window.location.href : "";
     const pathname =
       typeof window?.location?.pathname === "string" ? window.location.pathname.trim() : "";
-    const isLocalRenderer = !href.startsWith("http") || window.location.hostname.includes("localhost");
+    const isLocalRenderer =
+      !href.startsWith("http") || window.location.hostname.includes("localhost");
 
     if (!isLocalRenderer) {
       return false;
