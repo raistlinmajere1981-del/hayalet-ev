@@ -222,6 +222,7 @@ class CoreEngineClass {
     targets = [],
     context = {},
     mode = null,
+    preface = null,
   }: SendProtocolParams = {}): Promise<{ success: boolean; message?: string }> {
     return await sendProtocolWithContext(
       {
@@ -230,6 +231,7 @@ class CoreEngineClass {
         targets,
         context,
         mode,
+        preface,
       },
       {
         ensureReady: this.ensureReady.bind(this),

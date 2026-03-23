@@ -6,6 +6,7 @@ import { buildRemoteEmailAccountId } from "@shared/archive.js";
 import { AppState } from "../../../modules/app-state.js";
 import { ConversationListManager } from "../../../modules/conversation-list-manager.js";
 import { TrafficManager } from "../../../modules/traffic-manager.js";
+import { notifyUser } from "../../../ui/user-notification.js";
 import { getErrorMessage } from "@shared/index.js";
 import { formatTime, t as entranceT } from "../panel-i18n.js";
 
@@ -292,13 +293,13 @@ export class Us1Panel {
           ? entranceT("us1.feedback.mailVerifySuccess")
           : entranceT("us1.feedback.mailSaveSuccess");
         this.addReport(message, "success");
-        this.showFeedback(message, "success");
+        this.notifyFeedback(message, "success", draft.email, "us1:mail-account");
         return;
       }
 
       const errorMessage = result.error ?? entranceT("us1.feedback.operationFailed");
       this.addReport(errorMessage, "error");
-      this.showFeedback(errorMessage, "error");
+      this.notifyFeedback(errorMessage, "error", undefined, "us1:mail-account");
     } finally {
       this.mailVerifyBusy = false;
       this.renderMailVerifyButton();
@@ -323,17 +324,21 @@ export class Us1Panel {
     if (result.success) {
       const message = entranceT("us1.feedback.mailDeleteSuccess");
       this.addReport(message, "success");
-      this.showFeedback(message, "success");
+      this.notifyFeedback(message, "success", selectedMailAccount.email, "us1:mail-account");
       return;
     }
 
     const errorMessage = result.error ?? entranceT("us1.feedback.operationFailed");
     this.addReport(errorMessage, "error");
-    this.showFeedback(errorMessage, "error");
+    this.notifyFeedback(errorMessage, "error", undefined, "us1:mail-account");
   }
 
   private async handleSlotSelectionChange(selectedAccountId: string | null): Promise<void> {
     const settings = this.settingsManager.getSnapshot();
+    const previousBinding = this.resolveSelectedBinding(
+      settings,
+      this.getActiveRemoteBindings(settings)
+    );
     const binding = this.getActiveRemoteBindings(settings).find(
       (candidate) => candidate.accountId === selectedAccountId
     );
@@ -343,6 +348,21 @@ export class Us1Panel {
       selectedRemoteUserId: binding?.remoteUserId ?? null,
       ...this.buildUs1ConnectionStatePatch("disconnected", settings),
     });
+
+    if ((previousBinding?.accountId ?? null) !== (binding?.accountId ?? null)) {
+      const title =
+        binding == null
+          ? entranceT("slot.toasts.accountCleared", { slot: "US1" })
+          : entranceT("slot.toasts.accountAssigned", {
+              slot: "US1",
+              account: this.describeBinding(binding),
+            });
+      notifyUser({
+        kind: binding == null ? "info" : "success",
+        title,
+        dedupeKey: "us1:slot-binding",
+      });
+    }
   }
 
   private buildUs1ConnectionStatePatch(
@@ -407,12 +427,12 @@ export class Us1Panel {
         count: String(processedCount),
       });
       this.addReport(message, "success");
-      this.showFeedback(message, "success");
+      this.notifyFeedback(message, "success", undefined, "us1:connection");
     } catch (error) {
       await this.updateUs1Slot(this.buildUs1ConnectionStatePatch("disconnected"));
       const errorMessage = getErrorMessage(error);
       this.addReport(errorMessage, "error");
-      this.showFeedback(errorMessage, "error");
+      this.notifyFeedback(errorMessage, "error", undefined, "us1:connection");
     } finally {
       this.loadingBusy = false;
       this.render();
@@ -427,7 +447,7 @@ export class Us1Panel {
     await this.updateUs1Slot(this.buildUs1ConnectionStatePatch("disconnected"));
     const message = entranceT("us1.feedback.disconnectSuccess");
     this.addReport(message, "info");
-    this.showFeedback(message, "info");
+    this.notifyFeedback(message, "info", undefined, "us1:connection");
   }
 
   private async handleManualMailCheck(): Promise<void> {
@@ -464,12 +484,12 @@ export class Us1Panel {
       const message = entranceT("us1.feedback.syncSuccess", {
         count: String(processedCount),
       });
-      this.addReport(message, "success");
-      this.showFeedback(message, "success");
+      this.addReport(message, processedCount > 0 ? "success" : "info");
+      this.notifyFeedback(message, processedCount > 0 ? "success" : "info", undefined, "us1:sync");
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       this.addReport(errorMessage, "error");
-      this.showFeedback(errorMessage, "error");
+      this.notifyFeedback(errorMessage, "error", undefined, "us1:sync");
     } finally {
       this.loadingBusy = false;
       this.render();
@@ -968,6 +988,25 @@ export class Us1Panel {
       },
       ...this.reportEntries,
     ].slice(0, 16);
+  }
+
+  private describeBinding(binding: ActiveRemoteBinding): string {
+    return `${binding.nickname} (${binding.email})`;
+  }
+
+  private notifyFeedback(
+    title: string,
+    kind: FeedbackKind,
+    message?: string,
+    dedupeKey?: string
+  ): void {
+    notifyUser({
+      kind,
+      title,
+      ...(message != null && message !== "" ? { message } : {}),
+      ...(dedupeKey != null && dedupeKey !== "" ? { dedupeKey } : {}),
+      inlineTargetId: "us1-feedback-msg",
+    });
   }
 
   private renderReportLog(): void {

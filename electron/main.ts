@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, shell, ipcMain } from "electron";
 import { fileURLToPath } from "url";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync } from "fs";
 import { basename, dirname, join } from "path";
 import { initPaths, Paths } from "./paths.ts";
 import { deviceActionHandler } from "./device-manager.ts";
@@ -56,7 +56,12 @@ import {
 import { OpencodeUiSessionWatcherRegistry } from "./opencode-ui-session-watcher.ts";
 
 import { readConsoleLogs, readErrorLogs, readAllLogs, queryLogs } from "./logger/log-reader.ts";
-import { listSessions, updateAppState, getAppState } from "./logger/session-manager.ts";
+import {
+  deleteInactiveLogSessions,
+  listSessions,
+  updateAppState,
+  getAppState,
+} from "./logger/session-manager.ts";
 import { writeStateSnapshot } from "./logger/log-writer.ts";
 import { SessionManager } from "./session-manager.ts";
 
@@ -205,6 +210,7 @@ import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
 import { setupMemoryHandlers } from "./handlers/ipc-memory.ts";
 import { setupOpencodeUiToolsHandlers } from "./handlers/ipc-opencode-ui-tools.ts";
 import { setupRoomHandlers } from "./handlers/ipc-rooms.ts";
+import { setupLaboratoryVideoAnalysisHandlers } from "./handlers/ipc-laboratory-video-analysis.ts";
 import { setupSceneThemeHandlers } from "./handlers/ipc-scene-themes.ts";
 import { setupBackupHandlers } from "./handlers/ipc-backup.ts";
 import { setupUs1MailHandlers } from "./handlers/ipc-us1-mail.ts";
@@ -227,9 +233,12 @@ const moduleDirname = dirname(moduleFilename);
 
 initPaths(moduleDirname);
 
-const appInstanceLabel = basename(Paths.getProjectRoot());
+const appInstanceLabel = app.isPackaged ? app.getName() : basename(Paths.getProjectRoot());
+const userDataDir = join(Paths.getDataDir(), "electron-user-data");
+
 app.setName(appInstanceLabel);
-app.setPath("userData", join(Paths.getDataDir(), "electron-user-data"));
+mkdirSync(userDataDir, { recursive: true });
+app.setPath("userData", userDataDir);
 
 const CDP_PORT = process.env["CDP_PORT"] ?? 9222;
 app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
@@ -412,6 +421,7 @@ void app.whenReady().then(async () => {
     setupMemoryHandlers();
     setupOpencodeUiToolsHandlers();
     setupRoomHandlers(null);
+    setupLaboratoryVideoAnalysisHandlers();
     setupSceneThemeHandlers();
     setupBackupHandlers();
     setupUs1MailHandlers();
@@ -711,6 +721,7 @@ registerHandler(
 );
 registerHandler("query-logs", async (_event, query: LogQueryParams = {}) => await queryLogs(query));
 registerHandler("list-sessions", async () => await listSessions());
+registerHandler("delete-inactive-log-sessions", async () => await deleteInactiveLogSessions());
 
 registerHandler("get-app-state", () => getAppState());
 

@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 2,
+  "id": "laboratory",
+  "name": "Laboratory",
+  "version": "1.0.0",
+  "description": "A room for offline-first video forensics, with guided analysis flow and detailed local reporting.",
+  "menu": {
+    "label": "Laboratory",
+    "icon": "⚗️",
+    "order": 86
+  },
+  "runtime": {
+    "uiEntry": "ui/index.html",
+    "hostEntry": "host/index.js"
+  },
+  "defaultFeatureId": "video-analysis",
+  "storageNamespace": "laboratory",
+  "i18n": {
+    "baseDir": "i18n"
+  },
+  "scene": {
+    "referenceSize": {
+      "width": 1600,
+      "height": 900
+    },
+    "roomBackgroundSrc": "assets/room-background.webp",
+    "roomsHotspot": {
+      "id": "laboratory-door",
+      "rect": {
+        "leftPx": 726,
+        "topPx": 244,
+        "widthPx": 154,
+        "heightPx": 318
+      },
+      "label": {
+        "text": "Laboratory"
+      }
+    },
+    "backHotspot": {
+      "id": "laboratory-back",
+      "rect": {
+        "leftPx": 52,
+        "topPx": 152,
+        "widthPx": 156,
+        "heightPx": 248
+      },
+      "label": {
+        "text": "Corridor"
+      }
+    }
+  },
+  "features": [
+    {
+      "id": "video-analysis",
+      "name": "Video Analysis",
+      "description": "Inspect local or downloaded videos for editing, compositing, and AI intervention signals.",
+      "icon": "VA",
+      "scene": {
+        "hotspot": {
+          "id": "laboratory-video-analysis",
+          "rect": {
+            "leftPx": 188,
+            "topPx": 362,
+            "widthPx": 446,
+            "heightPx": 258
+          },
+          "label": {
+            "text": "Video Analysis"
+          }
+        },
+        "view": {
+          "id": "laboratory-video-analysis-view",
+          "backgroundSrc": "assets/video-analysis-view.webp",
+          "transparentWindow": {
+            "leftPct": 17.5,
+            "topPct": 14.5,
+            "widthPct": 66,
+            "heightPct": 68
+          }
+        }
+      },
+      "commandSpecs": [
+        {
+          "name": "LaboratoryVideoAnalysisOpen",
+          "description": "Open or focus the Laboratory video analysis feature shell.",
+          "scope": "room-ui"
+        }
+      ]
+    }
+  ]
+}

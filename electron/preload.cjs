@@ -260,11 +260,33 @@ contextBridge.exposeInMainWorld("electronAPI", {
   roomsListWorkspace: () => ipcRenderer.invoke("rooms-list-workspace"),
   roomsListInstalled: () => ipcRenderer.invoke("rooms-list-installed"),
   roomsInstallFromWorkspace: (roomId) => ipcRenderer.invoke("rooms-install-from-workspace", roomId),
-  roomsRemoveInstalled: (roomId) => ipcRenderer.invoke("rooms-remove-installed", roomId),
+  roomsRemoveInstalled: (payload) => ipcRenderer.invoke("rooms-remove-installed", payload),
+  roomsDeleteWorkspace: (payload) => ipcRenderer.invoke("rooms-delete-workspace", payload),
   roomsExportToWorkspace: (payload) => ipcRenderer.invoke("rooms-export-to-workspace", payload),
   roomsPackageFromWorkspace: (payload) =>
     ipcRenderer.invoke("rooms-package-from-workspace", payload),
   roomsImportBundle: (payload) => ipcRenderer.invoke("rooms-import-bundle", payload),
+  laboratoryResolveSource: (payload) => ipcRenderer.invoke("laboratory-resolve-source", payload),
+  laboratoryStartSourcePreparation: (payload) =>
+    ipcRenderer.invoke("laboratory-start-source-preparation", payload),
+  laboratoryGetSourcePreparationJob: (jobId) =>
+    ipcRenderer.invoke("laboratory-get-source-preparation-job", jobId),
+  laboratoryCancelSourcePreparationJob: (jobId) =>
+    ipcRenderer.invoke("laboratory-cancel-source-preparation-job", jobId),
+  laboratoryStartAnalysis: (payload) => ipcRenderer.invoke("laboratory-start-analysis", payload),
+  laboratoryGetJob: (jobId) => ipcRenderer.invoke("laboratory-get-job", jobId),
+  laboratoryCancelJob: (jobId) => ipcRenderer.invoke("laboratory-cancel-job", jobId),
+  laboratoryListHistory: () => ipcRenderer.invoke("laboratory-list-history"),
+  laboratoryListProjects: () => ipcRenderer.invoke("laboratory-list-projects"),
+  laboratoryReadHistoryEntry: (entryId) =>
+    ipcRenderer.invoke("laboratory-read-history-entry", entryId),
+  laboratoryReadProject: (projectId) => ipcRenderer.invoke("laboratory-read-project", projectId),
+  laboratoryCleanupWorkspaceMedia: (entryId) =>
+    ipcRenderer.invoke("laboratory-cleanup-workspace-media", entryId),
+  laboratoryDeleteProject: (projectId) =>
+    ipcRenderer.invoke("laboratory-delete-project", projectId),
+  laboratoryDiscardWorkspace: (workspaceId) =>
+    ipcRenderer.invoke("laboratory-discard-workspace", workspaceId),
   sceneThemesListInstalled: () => ipcRenderer.invoke("scene-themes-list-installed"),
   sceneThemesPackageInstalled: (payload) =>
     ipcRenderer.invoke("scene-themes-package-installed", payload),
@@ -344,6 +366,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     readAllLogs: (sessionId) => ipcRenderer.invoke("read-all-logs", sessionId),
     queryLogs: (query) => ipcRenderer.invoke("query-logs", query),
     listSessions: () => ipcRenderer.invoke("list-sessions"),
+    deleteInactiveSessions: () => ipcRenderer.invoke("delete-inactive-log-sessions"),
     getAppState: () => ipcRenderer.invoke("get-app-state"),
     writeStateSnapshot: () => ipcRenderer.invoke("write-state-snapshot"),
     setupWebviewLogger: (webviewId, slot, provider) =>

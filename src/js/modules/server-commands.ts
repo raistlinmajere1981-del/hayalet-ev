@@ -28,7 +28,7 @@ import {
 } from "./commands/command-descriptions.js";
 import type { CommandDescriptionInfo } from "./commands/command-descriptions.js";
 
-type CommandCategory = "ai1-ai2" | "ai0";
+type CommandCategory = "ai1-ai2" | "ai0" | "us1";
 
 interface CommandDefinition {
   name: string;
@@ -80,6 +80,9 @@ function normalizeProvider(value: unknown): string {
 function resolveProviderCategory(provider: string): CommandCategory | null {
   if (provider === "ai0") {
     return "ai0";
+  }
+  if (provider === "us1") {
+    return "us1";
   }
   if (provider === "ai1" || provider === "ai2") {
     return "ai1-ai2";
@@ -150,6 +153,13 @@ function checkCommandAccess(
       return {
         allowed: false,
         message: AppI18n.t("app.commands.access.assistantSlotOnly"),
+      };
+    }
+
+    if (providerCategory === "us1" && commandDefinition.category !== "us1") {
+      return {
+        allowed: false,
+        message: AppI18n.t("app.commands.access.us1SlotOnly"),
       };
     }
   }

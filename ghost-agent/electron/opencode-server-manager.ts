@@ -123,9 +123,9 @@ export class OpenCodeServerManager {
     void logGhost("info", "Starting OpenCode serve", { port, args });
 
     const childEnv = { ...process.env };
-    delete childEnv.CDP_PORT;
-    delete childEnv.NODE_OPTIONS;
-    delete childEnv.NODE_INSPECT_RESUME_ON_START;
+    delete childEnv["CDP_PORT"];
+    delete childEnv["NODE_OPTIONS"];
+    delete childEnv["NODE_INSPECT_RESUME_ON_START"];
 
     this.process = spawn("opencode", args, {
       stdio: ["ignore", "pipe", "pipe"],

@@ -54,13 +54,33 @@ function isPackagedMode(): boolean {
   return getElectronApp()?.isPackaged === true;
 }
 
+function resolvePackagedProjectRoot(
+  app: { isPackaged?: boolean; getPath?: (name: string) => string } | null
+): string {
+  const portableDir =
+    typeof process.env["PORTABLE_EXECUTABLE_DIR"] === "string"
+      ? process.env["PORTABLE_EXECUTABLE_DIR"].trim()
+      : "";
+  if (portableDir !== "") {
+    return portableDir;
+  }
+
+  const appImagePath =
+    typeof process.env["APPIMAGE"] === "string" ? process.env["APPIMAGE"].trim() : "";
+  if (appImagePath !== "") {
+    return dirname(appImagePath);
+  }
+
+  const executablePath = app?.getPath?.("exe");
+  return typeof executablePath === "string" && executablePath !== ""
+    ? dirname(executablePath)
+    : dirname(process.execPath);
+}
+
 export function resolveProjectRoot(): string {
   const app = getElectronApp();
   if (isPackagedMode()) {
-    const executablePath = app?.getPath?.("exe");
-    return typeof executablePath === "string" && executablePath !== ""
-      ? dirname(executablePath)
-      : dirname(process.execPath);
+    return resolvePackagedProjectRoot(app);
   }
 
   return defaultProjectRoot;

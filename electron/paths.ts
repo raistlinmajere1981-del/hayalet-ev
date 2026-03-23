@@ -102,12 +102,23 @@ const paths: PathResolver = {
     return join(getConfig().projectRoot, "rooms");
   },
 
+  getBundledRoomsDir(): string {
+    const cfg = getConfig();
+    return cfg.isPackaged
+      ? join(process.resourcesPath, "app.asar", "rooms")
+      : join(cfg.projectRoot, "rooms");
+  },
+
   getInstalledRoomsDir(): string {
     return join(getConfig().dataDir, "rooms");
   },
 
   getInstalledSceneThemesDir(): string {
     return join(getConfig().dataDir, "scene-themes");
+  },
+
+  getRoomStorageDir(roomId: string): string {
+    return join(getConfig().dataDir, "room-storage", roomId);
   },
 
   getRoomsRegistryPath(): string {
@@ -188,7 +199,7 @@ const paths: PathResolver = {
   getHtmlEntryPath(): string {
     const cfg = getConfig();
     if (cfg.isPackaged) {
-      return join(process.resourcesPath, "app.asar", "dist/index.html");
+      return join(process.resourcesPath, "app.asar", "dist", "renderer", "index.html");
     } else {
       return join(cfg.projectRoot, "dist", "renderer", "index.html");
     }

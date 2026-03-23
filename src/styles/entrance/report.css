@@ -100,6 +100,8 @@
 
 .live-log-control-search {
   min-width: var(--layout-live-log-search-min);
+  max-width: var(--layout-live-log-search-max);
+  width: 100%;
 }
 
 .live-log-metrics {

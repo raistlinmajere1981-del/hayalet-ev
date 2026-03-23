@@ -465,6 +465,7 @@
       "access": {
         "assistantCannotUse": "Asistan bu komutu kullanamaz",
         "assistantSlotOnly": "Bu komut sadece asistan slotunda kullanılabilir",
+        "us1SlotOnly": "Bu komut sadece US1 oda aktarimi uzerinden kullanilabilir",
         "disabledForSlot": "Bu komut bu slot için pasif"
       },
       "aiChat": {
@@ -1098,6 +1099,7 @@
         "update": "Güncelle",
         "install": "Yükle",
         "package": "Paketle",
+        "delete": "Sil",
         "open": "Aç",
         "export": "Workspace'e Aktar",
         "remove": "Kaldır"
@@ -1105,13 +1107,20 @@
       "dialog": {
         "bundleTitle": "Oda paketi seç",
         "bundleButton": "İçe aktar",
-        "bundleFilterName": "Oda Paketleri"
+        "bundleFilterName": "Oda Paketleri",
+        "packageTitle": "Oda paket klasörünü seç",
+        "packageButton": "Bu klasöre paketle"
       },
       "confirm": {
         "installTitle": "Oda eklensin mi?",
         "installMessage": "{{room}} menüye eklenecek.",
         "updateTitle": "Oda güncellensin mi?",
         "updateMessage": "{{room}} workspace sürümüyle güncellenecek.",
+        "deleteTitle": "Oda silinsin mi?",
+        "deleteMessage": "{{room}} workspace'ten silinecek.",
+        "deleteDataLabel": "Odanın verilerini sil",
+        "deleteDataHint": "Seçilirse rooms ve data klasörlerindeki oda klasörleri de silinir.",
+        "deleteAction": "Sil",
         "removeTitle": "Oda kaldırılsın mı?",
         "removeMessage": "{{room}} menüden kaldırılacak."
       },
@@ -1128,6 +1137,8 @@
         "exportUnavailable": "Export hazır değil",
         "exportSuccess": "Workspace export tamamlandı",
         "exportError": "Workspace export başarısız",
+        "deleteSuccess": "Oda silindi",
+        "deleteError": "Oda silinemedi",
         "removeUnavailable": "Oda kaldırma hazır değil",
         "removeSuccess": "Oda kaldırıldı",
         "removeError": "Oda kaldırılamadı",
@@ -2386,6 +2397,7 @@
       "installedHostEntryMissing": "Kurulu host girişi eksik: {{path}}",
       "installedRoomNotFound": "Kurulu oda bulunamadı: {{roomId}}",
       "workspaceRoomExists": "Workspace oda zaten mevcut: {{path}}",
+      "workspaceReadOnly": "Salt okunur bundled oda silinemez: {{path}}",
       "bundleReadFailed": "Bundle okunamadı",
       "bundleInvalid": "Bundle geçersiz"
     },
@@ -5411,6 +5423,10 @@
       "providerTestTitle": "Provider testi",
       "providerSyncTitle": "Provider eşitleme",
       "devtoolsTitle": "DevTools",
+      "toasts": {
+        "accountAssigned": "{{slot}} hesabı atandı: {{account}}",
+        "accountCleared": "{{slot}} hesabı kaldırıldı."
+      },
       "methods": {
         "injection": "Enjeksiyon",
         "xdotools": "XdoTools",
@@ -5686,6 +5702,20 @@
       "levelLabel": "Seviye",
       "searchLabel": "Ara",
       "searchPlaceholder": "mesaj/kategori/kaynak",
+      "deleteInactive": "Eski Sessionları Sil",
+      "deleteInactiveTitle": "Aktif veya en yeni session dışındaki logları sil",
+      "deleteInactiveBusy": "Siliniyor...",
+      "deleteInactiveBusyTitle": "Eski session logları siliniyor",
+      "deleteInactiveConfirmTitle": "Eski session logları silinsin mi?",
+      "deleteInactiveConfirmMessage": "Aktif veya korunacak log sessionları dışındaki klasörler silinecek.",
+      "deleteInactiveConfirmDetail": "Uygulama, MCP ve Ghost Agent için aktif veya en yeni görünen sessionlar korunur.",
+      "deleteInactiveConfirmAction": "Sil",
+      "cancelAction": "Vazgeç",
+      "deleteInactiveSuccess": "{{count}} session logu silindi",
+      "deleteInactiveSuccessDetail": "Aktif veya en yeni sessionlar korundu.",
+      "deleteInactiveEmpty": "Silinecek eski session bulunamadı",
+      "deleteInactiveEmptyDetail": "Sadece korunacak sessionlar kaldı.",
+      "deleteInactiveError": "Eski session logları silinemedi",
       "metrics": "{{visible}} / {{total}} kayıt",
       "detailTitle": "Kayıt Detayı",
       "noEntrySelected": "Kayıt seçilmedi",

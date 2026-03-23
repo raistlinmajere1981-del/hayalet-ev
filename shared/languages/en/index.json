@@ -465,6 +465,7 @@
       "access": {
         "assistantCannotUse": "The assistant cannot use this command",
         "assistantSlotOnly": "This command can only be used in the assistant slot",
+        "us1SlotOnly": "This command can only be used over US1 room transport",
         "disabledForSlot": "This command is disabled for this slot"
       },
       "aiChat": {
@@ -1098,6 +1099,7 @@
         "update": "Update",
         "install": "Install",
         "package": "Package",
+        "delete": "Delete",
         "open": "Open",
         "export": "Export to Workspace",
         "remove": "Remove"
@@ -1105,13 +1107,20 @@
       "dialog": {
         "bundleTitle": "Select a room bundle",
         "bundleButton": "Import",
-        "bundleFilterName": "Room Bundles"
+        "bundleFilterName": "Room Bundles",
+        "packageTitle": "Select a room package folder",
+        "packageButton": "Package to this folder"
       },
       "confirm": {
         "installTitle": "Add this room?",
         "installMessage": "{{room}} will be added to the menu.",
         "updateTitle": "Update this room?",
         "updateMessage": "{{room}} will be updated from the workspace version.",
+        "deleteTitle": "Delete this room?",
+        "deleteMessage": "{{room}} will be deleted from the workspace.",
+        "deleteDataLabel": "Delete room data",
+        "deleteDataHint": "When selected, the room folders under rooms and data will also be deleted.",
+        "deleteAction": "Delete",
         "removeTitle": "Remove this room?",
         "removeMessage": "{{room}} will be removed from the menu."
       },
@@ -1128,6 +1137,8 @@
         "exportUnavailable": "Export is unavailable",
         "exportSuccess": "Workspace export completed",
         "exportError": "Workspace export failed",
+        "deleteSuccess": "Room deleted",
+        "deleteError": "Room deletion failed",
         "removeUnavailable": "Room removal is unavailable",
         "removeSuccess": "Room removed",
         "removeError": "Room removal failed",
@@ -2386,6 +2397,7 @@
       "installedHostEntryMissing": "Installed host entry is missing: {{path}}",
       "installedRoomNotFound": "Installed room not found: {{roomId}}",
       "workspaceRoomExists": "Workspace room already exists: {{path}}",
+      "workspaceReadOnly": "Read-only bundled room cannot be deleted: {{path}}",
       "bundleReadFailed": "Bundle could not be read",
       "bundleInvalid": "Bundle is invalid"
     },
@@ -5411,6 +5423,10 @@
       "providerTestTitle": "Provider test",
       "providerSyncTitle": "Provider sync",
       "devtoolsTitle": "DevTools",
+      "toasts": {
+        "accountAssigned": "{{slot}} account assigned: {{account}}",
+        "accountCleared": "{{slot}} account cleared."
+      },
       "methods": {
         "injection": "Injection",
         "xdotools": "XdoTools",
@@ -5686,6 +5702,20 @@
       "levelLabel": "Level",
       "searchLabel": "Search",
       "searchPlaceholder": "message/category/source",
+      "deleteInactive": "Delete Old Sessions",
+      "deleteInactiveTitle": "Delete log sessions outside the active or newest set",
+      "deleteInactiveBusy": "Deleting...",
+      "deleteInactiveBusyTitle": "Old session logs are being deleted",
+      "deleteInactiveConfirmTitle": "Delete old session logs?",
+      "deleteInactiveConfirmMessage": "Log folders outside the active or protected sessions will be removed.",
+      "deleteInactiveConfirmDetail": "The currently active or newest sessions for App, MCP, and Ghost Agent are preserved.",
+      "deleteInactiveConfirmAction": "Delete",
+      "cancelAction": "Cancel",
+      "deleteInactiveSuccess": "{{count}} session logs deleted",
+      "deleteInactiveSuccessDetail": "Active or newest sessions were preserved.",
+      "deleteInactiveEmpty": "No old sessions to delete",
+      "deleteInactiveEmptyDetail": "Only protected sessions remain.",
+      "deleteInactiveError": "Old session logs could not be deleted",
       "metrics": "{{visible}} / {{total}} entries",
       "detailTitle": "Entry Detail",
       "noEntrySelected": "No entry selected",

@@ -6,7 +6,7 @@ import { RoomCommandRegistry } from "../../src/js/modules/rooms/room-command-reg
 const room: InstalledRoomRecord = {
   id: "game-room",
   name: "Game Room",
-  version: "2.1.0",
+  version: "2.2.0",
   installedDir: "/workspace/data/rooms/game-room",
   sourceDir: "/workspace/rooms/game-room",
   manifestPath: "/workspace/data/rooms/game-room/manifest.json",
@@ -25,6 +25,11 @@ const room: InstalledRoomRecord = {
       description: "Apply AI move from slot response",
       scope: "ai-slots",
     },
+    {
+      name: "GameRoomXoxRemoteMove",
+      description: "Apply remote user move from US1",
+      scope: "us1",
+    },
   ],
   installedAt: "2026-03-08T00:00:00.000Z",
   updatedAt: "2026-03-08T00:00:00.000Z",
@@ -40,6 +45,7 @@ test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
     "GameRoomXoxAiMove",
     "GameRoomXoxUserMove",
   ]);
+  assert.deepEqual(RoomCommandRegistry.listCommands("us1"), ["GameRoomXoxRemoteMove"]);
 });
 
 test("RoomCommandRegistry runs room-ui commands with structured payloads", async () => {
@@ -62,6 +68,11 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
 
   RoomCommandRegistry.registerHandler("game-room", "GameRoomXoxAiMove", async (payload) => payload.roomArgs);
   RoomCommandRegistry.registerHandler("game-room", "GameRoomXoxUserMove", async (payload) => payload.roomArgs);
+  RoomCommandRegistry.registerHandler(
+    "game-room",
+    "GameRoomXoxRemoteMove",
+    async (payload) => payload.roomArgs
+  );
 
   const allowed = await RoomCommandRegistry.run("GameRoomXoxAiMove", {
     provider: "ai1",
@@ -71,8 +82,19 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
     provider: "ai1",
     args: '{"cell":2}',
   })) as { success?: boolean; message?: string };
+  const us1Allowed = await RoomCommandRegistry.run("GameRoomXoxRemoteMove", {
+    provider: "us1",
+    args: '{"inviteId":"invite-1","cell":4}',
+  });
+  const us1Blocked = (await RoomCommandRegistry.run("GameRoomXoxUserMove", {
+    provider: "us1",
+    args: '{"cell":2}',
+  })) as { success?: boolean; message?: string };
 
   assert.deepEqual(allowed, { cell: 8, symbol: "O" });
   assert.equal(blocked.success, false);
-  assert.match(blocked.message ?? "", /kapsam/i);
+  assert.match(blocked.message ?? "", /scope|kapsam/i);
+  assert.deepEqual(us1Allowed, { inviteId: "invite-1", cell: 4 });
+  assert.equal(us1Blocked.success, false);
+  assert.match(us1Blocked.message ?? "", /scope|kapsam/i);
 });

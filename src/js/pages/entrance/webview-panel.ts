@@ -1,5 +1,5 @@
 import type { WebviewTag } from "electron";
-import { LogCategory } from "@shared/logging-core";
+import { LogCategory, LogLevel } from "@shared/logging-core";
 import { Logger } from "../../modules/logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
@@ -1375,23 +1375,19 @@ export class WebviewPanel {
         message,
       });
 
-      // NOTE: Level mapping: 0=log, 1=warn, 2=error, 3=debug.
-      const logLevel = level === 2 ? "error" : level === 1 ? "warn" : "debug";
-      if (logLevel === "error") {
-        Logger.error(LogCategory.WEBVIEW, new Error(consoleMessage), {
-          source: `${type}-webview`,
-          slotId: type,
-        });
-      } else if (logLevel === "warn") {
-        Logger.warn(LogCategory.WEBVIEW, consoleMessage, {
-          source: `${type}-webview`,
-          slotId: type,
-        });
+      // NOTE: Provider console output is diagnostic-only; keep it out of toast notifications.
+      const logLevel =
+        level === 2 ? LogLevel.ERROR : level === 1 ? LogLevel.WARNING : LogLevel.DEBUG;
+      const logContext = {
+        source: `${type}-webview`,
+        slotId: type,
+        consoleMessageLevel: level,
+      };
+
+      if (logLevel === LogLevel.DEBUG) {
+        Logger.debug(LogCategory.WEBVIEW, consoleMessage, logContext);
       } else {
-        Logger.debug(LogCategory.WEBVIEW, consoleMessage, {
-          source: `${type}-webview`,
-          slotId: type,
-        });
+        Logger.panel(LogCategory.WEBVIEW, logLevel, consoleMessage, logContext);
       }
     });
 

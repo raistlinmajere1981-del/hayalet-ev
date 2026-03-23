@@ -64,6 +64,8 @@ export function buildWorkspaceRoomListMarkup(
       const roomName = room.manifest?.name ?? room.dirName;
       const roomVersion = room.manifest?.version ?? "-";
       const stateLabel = buildWorkspaceStateLabel(room, installedIds);
+      const isLinked = installedIds.has(roomId);
+      const isDeleteDisabled = isLinked || room.readOnly === true;
       const actionLabel = installedIds.has(roomId)
         ? roomOverlayText("actions.update")
         : roomOverlayText("actions.install");
@@ -97,6 +99,9 @@ export function buildWorkspaceRoomListMarkup(
         )}" ${room.valid === true ? "" : "disabled"}>${escapeHtml(
           roomOverlayText("actions.package")
         )}</button>`,
+        `    <button class="btn btn-danger btn-sm" data-room-action="delete" data-room-id="${escapeHtml(
+          roomId
+        )}" ${isDeleteDisabled ? "disabled" : ""}>${escapeHtml(roomOverlayText("actions.delete"))}</button>`,
         "  </div>",
         "</article>",
       ].join("");

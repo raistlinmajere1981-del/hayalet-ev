@@ -23,3 +23,14 @@ test("composeProtocolMessage keeps spacing for non-bracket legacy headers", () =
 
   assert.equal(message, `${PROTOCOL_HEADER_TAG} Kontrol Devredildi`);
 });
+
+test("composeProtocolMessage inserts protocol preface before the loaded body", () => {
+  const message = composeProtocolMessage("[START][GAME-ROOM][XOX]", "Protocol body", {
+    preface: "Use only one command line.",
+  });
+
+  assert.equal(
+    message,
+    `${PROTOCOL_HEADER_TAG}[START][GAME-ROOM][XOX]\n\nUse only one command line.\n\nProtocol body`
+  );
+});

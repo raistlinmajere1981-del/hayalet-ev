@@ -1,6 +1,6 @@
-import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "fs/promises";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "fs/promises";
 import { existsSync } from "fs";
-import { dirname, join, resolve } from "path";
+import { dirname, join, relative, resolve } from "path";
 import { formatErrorWithDetail } from "../shared/i18n/error-detail.ts";
 import { Paths } from "./paths.ts";
 import type {
@@ -13,6 +13,8 @@ import type {
   RoomCommandSpec,
   RoomManifest,
   RoomProtocolSpec,
+  RoomSceneChromeConfig,
+  RoomSceneCharacterConfig,
   RoomRegistryState,
   RoomSceneHotspotConfig,
   RoomSceneTextConfig,
@@ -31,6 +33,7 @@ import { translateElectronMessage } from "./i18n/language-service.ts";
 
 interface RoomManagerOptions {
   workspaceRoot?: string;
+  bundledWorkspaceRoot?: string;
   installedRoot?: string;
   registryPath?: string;
 }
@@ -47,6 +50,14 @@ interface RoomBundleValidationResult {
   valid: boolean;
   errors: string[];
   bundle?: RoomBundle;
+}
+
+const INSTALLED_ROOM_FILE_SNAPSHOT = ".room-install-files.json";
+
+interface RoomWorkspaceRoot {
+  root: string;
+  sourceKind: "workspace" | "bundle";
+  readOnly: boolean;
 }
 
 async function roomPackageT(
@@ -86,6 +97,18 @@ function cloneSceneHotspot(hotspot: RoomSceneHotspotConfig): RoomSceneHotspotCon
     rect: { ...hotspot.rect },
     ...(hotspot.label !== undefined ? { label: cloneSceneText(hotspot.label) } : {}),
   };
+}
+
+function cloneSceneCharacter(value: RoomSceneCharacterConfig): RoomSceneCharacterConfig {
+  return { ...value };
+}
+
+function cloneSceneCharacters(value: RoomSceneCharacterConfig[]): RoomSceneCharacterConfig[] {
+  return value.map((character) => cloneSceneCharacter(character));
+}
+
+function cloneSceneChrome(value: RoomSceneChromeConfig): RoomSceneChromeConfig {
+  return { ...value };
 }
 
 function cloneTransparentWindow(
@@ -168,6 +191,13 @@ function cloneInstalledScene(
     roomBackgroundPath: scene.roomBackgroundPath,
     roomsHotspot: cloneSceneHotspot(scene.roomsHotspot),
     backHotspot: cloneSceneHotspot(scene.backHotspot),
+    ...(scene.characterRosterPreset !== undefined
+      ? { characterRosterPreset: scene.characterRosterPreset }
+      : {}),
+    ...(scene.characters !== undefined
+      ? { characters: cloneSceneCharacters(scene.characters) }
+      : {}),
+    ...(scene.chrome !== undefined ? { chrome: cloneSceneChrome(scene.chrome) } : {}),
   };
 }
 
@@ -183,6 +213,13 @@ function resolveInstalledScene(
     roomBackgroundPath: resolve(scene.roomBackgroundPath),
     roomsHotspot: cloneSceneHotspot(scene.roomsHotspot),
     backHotspot: cloneSceneHotspot(scene.backHotspot),
+    ...(scene.characterRosterPreset !== undefined
+      ? { characterRosterPreset: scene.characterRosterPreset }
+      : {}),
+    ...(scene.characters !== undefined
+      ? { characters: cloneSceneCharacters(scene.characters) }
+      : {}),
+    ...(scene.chrome !== undefined ? { chrome: cloneSceneChrome(scene.chrome) } : {}),
   };
 }
 
@@ -197,6 +234,22 @@ async function ensureDir(dirPath: string): Promise<void> {
 async function readJsonFile<T>(filePath: string): Promise<T> {
   const raw = await readFile(filePath, "utf-8");
   return JSON.parse(raw) as T;
+}
+
+async function copyDirectoryContents(sourceDir: string, targetDir: string): Promise<string[]> {
+  const files = await collectFilesRecursive(sourceDir);
+  await rm(targetDir, { recursive: true, force: true });
+  await ensureDir(targetDir);
+
+  await Promise.all(
+    files.map(async (file): Promise<void> => {
+      const targetPath = join(targetDir, file.relativePath);
+      await ensureDir(dirname(targetPath));
+      await writeFile(targetPath, await readFile(file.absolutePath));
+    })
+  );
+
+  return files.map((file) => file.relativePath);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -397,6 +450,15 @@ export function buildInstalledRoomRecord(
           roomBackgroundPath: join(installedDir, manifest.scene.roomBackgroundSrc),
           roomsHotspot: cloneSceneHotspot(manifest.scene.roomsHotspot),
           backHotspot: cloneSceneHotspot(manifest.scene.backHotspot),
+          ...(manifest.scene.characterRosterPreset !== undefined
+            ? { characterRosterPreset: manifest.scene.characterRosterPreset }
+            : {}),
+          ...(manifest.scene.characters !== undefined
+            ? { characters: cloneSceneCharacters(manifest.scene.characters) }
+            : {}),
+          ...(manifest.scene.chrome !== undefined
+            ? { chrome: cloneSceneChrome(manifest.scene.chrome) }
+            : {}),
         };
 
   const commandSpecs = flattenRoomCommandSpecs(manifest);
@@ -450,52 +512,209 @@ async function collectFilesRecursive(
     .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
 }
 
+function getInstalledRoomFileSnapshotPath(installedDir: string): string {
+  return join(installedDir, INSTALLED_ROOM_FILE_SNAPSHOT);
+}
+
+async function writeInstalledRoomFileSnapshot(
+  installedDir: string,
+  relativePaths: string[]
+): Promise<void> {
+  const normalizedPaths = Array.from(
+    new Set(relativePaths.map((path) => path.trim()).filter((path) => path !== ""))
+  ).sort((left, right) => left.localeCompare(right));
+
+  await writeFile(
+    getInstalledRoomFileSnapshotPath(installedDir),
+    JSON.stringify({ files: normalizedPaths }, null, 2),
+    "utf8"
+  );
+}
+
+async function readInstalledRoomFileSnapshot(installedDir: string): Promise<string[] | null> {
+  const snapshotPath = getInstalledRoomFileSnapshotPath(installedDir);
+  if (existsSync(snapshotPath) !== true) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(await readFile(snapshotPath, "utf8")) as { files?: unknown };
+    if (Array.isArray(parsed.files) !== true) {
+      return null;
+    }
+
+    return parsed.files.filter(
+      (value): value is string => typeof value === "string" && value.trim() !== ""
+    );
+  } catch {
+    return null;
+  }
+}
+
+function collectParentDirectories(relativePath: string): string[] {
+  const directories: string[] = [];
+  let current = dirname(relativePath);
+
+  while (current !== "." && current !== "") {
+    directories.push(current);
+    const next = dirname(current);
+    if (next === current) {
+      break;
+    }
+    current = next;
+  }
+
+  return directories;
+}
+
+async function deleteInstalledRoomCopies(
+  installedDir: string,
+  relativePaths: string[]
+): Promise<void> {
+  const normalizedPaths = Array.from(
+    new Set(
+      [...relativePaths, INSTALLED_ROOM_FILE_SNAPSHOT]
+        .map((path) => path.trim())
+        .filter((path) => path !== "")
+    )
+  ).sort((left, right) => right.length - left.length);
+
+  const parentDirectories = new Set<string>();
+  // NOTE: Deletes are ordered to remove deepest paths first.
+  /* eslint-disable no-await-in-loop */
+  for (const relativePath of normalizedPaths) {
+    await rm(join(installedDir, relativePath), { force: true });
+    collectParentDirectories(relativePath).forEach((directory) => {
+      parentDirectories.add(directory);
+    });
+  }
+
+  for (const directory of Array.from(parentDirectories).sort(
+    (left, right) => right.length - left.length
+  )) {
+    try {
+      await rm(join(installedDir, directory), { force: true });
+    } catch {
+      // Ignore non-empty directories so user-created files remain in place.
+    }
+  }
+  /* eslint-enable no-await-in-loop */
+
+  try {
+    await rm(installedDir, { force: true });
+  } catch {
+    // Ignore non-empty roots so user-created files remain in place.
+  }
+}
+
+async function resolveInstalledRoomTrackedFiles(room: InstalledRoomRecord): Promise<string[]> {
+  const snapshotFiles = await readInstalledRoomFileSnapshot(room.installedDir);
+  if (snapshotFiles !== null) {
+    return snapshotFiles;
+  }
+
+  if (existsSync(room.sourceDir) !== true) {
+    return [];
+  }
+
+  return (await collectFilesRecursive(room.sourceDir)).map((file) => file.relativePath);
+}
+
 export class RoomPackageManager {
   private readonly workspaceRootOption: string | undefined;
+  private readonly bundledWorkspaceRootOption: string | undefined;
   private readonly installedRootOption: string | undefined;
   private readonly registryPathOption: string | undefined;
 
   constructor(options: RoomManagerOptions = {}) {
     this.workspaceRootOption = options.workspaceRoot;
+    this.bundledWorkspaceRootOption = options.bundledWorkspaceRoot;
     this.installedRootOption = options.installedRoot;
     this.registryPathOption = options.registryPath;
   }
 
   private getWorkspaceRoot(): string {
-    return this.workspaceRootOption ?? join(Paths.getProjectRoot(), "rooms");
+    return this.workspaceRootOption ?? Paths.getRoomsWorkspaceDir();
+  }
+
+  private getBundledWorkspaceRoot(): string {
+    if (this.bundledWorkspaceRootOption !== undefined) {
+      return this.bundledWorkspaceRootOption;
+    }
+
+    if (this.workspaceRootOption !== undefined) {
+      return this.workspaceRootOption;
+    }
+
+    return Paths.getBundledRoomsDir();
   }
 
   private getInstalledRoot(): string {
     return this.installedRootOption ?? Paths.getInstalledRoomsDir();
   }
 
+  private getDataRoot(): string {
+    return dirname(this.getInstalledRoot());
+  }
+
+  private getRoomStorageRoot(roomId: string): string {
+    return join(this.getDataRoot(), "room-storage", roomId);
+  }
+
+  private getRoomPartitionRoot(roomId: string): string {
+    return join(this.getDataRoot(), "electron-user-data", "Partitions", `room-${roomId}`);
+  }
+
+  private async deletePersistentRoomData(roomId: string): Promise<void> {
+    // NOTE: Full room cleanup is opt-in so reconnecting a workspace room can reuse prior state.
+    await Promise.all([
+      rm(this.getRoomStorageRoot(roomId), { recursive: true, force: true }),
+      rm(this.getRoomPartitionRoot(roomId), { recursive: true, force: true }),
+    ]);
+  }
+
   private getRegistryPath(): string {
     return this.registryPathOption ?? Paths.getRoomsRegistryPath();
   }
 
-  async ensureRoots(): Promise<void> {
-    const workspaceRoot = this.getWorkspaceRoot();
-    const installedRoot = this.getInstalledRoot();
-    const registryPath = this.getRegistryPath();
+  private getWorkspaceRoots(): RoomWorkspaceRoot[] {
+    const writableRoot = this.getWorkspaceRoot();
+    const bundledRoot = this.getBundledWorkspaceRoot();
+    const dedupedRoots = new Map<string, RoomWorkspaceRoot>();
 
-    await Promise.all([
-      ensureDir(workspaceRoot),
-      ensureDir(installedRoot),
-      ensureDir(dirname(registryPath)),
-    ]);
+    dedupedRoots.set(resolve(writableRoot), {
+      root: writableRoot,
+      sourceKind: "workspace",
+      readOnly: false,
+    });
+
+    const bundledKey = resolve(bundledRoot);
+    if (!dedupedRoots.has(bundledKey)) {
+      dedupedRoots.set(bundledKey, {
+        root: bundledRoot,
+        sourceKind: "bundle",
+        readOnly: true,
+      });
+    }
+
+    return Array.from(dedupedRoots.values());
   }
 
-  async listWorkspaceRooms(): Promise<RoomWorkspaceEntry[]> {
-    const workspaceRoot = this.getWorkspaceRoot();
-    await this.ensureRoots();
-    const entries = await readdir(workspaceRoot, { withFileTypes: true });
+  private async readWorkspaceRoomsFromRoot(
+    rootConfig: RoomWorkspaceRoot
+  ): Promise<RoomWorkspaceEntry[]> {
+    if (existsSync(rootConfig.root) !== true) {
+      return [];
+    }
+
+    const entries = await readdir(rootConfig.root, { withFileTypes: true });
     const rooms = await Promise.all(
       entries.map(async (entry): Promise<RoomWorkspaceEntry | null> => {
         if (!entry.isDirectory() || entry.name.startsWith(".")) {
           return null;
         }
 
-        const dirPath = join(workspaceRoot, entry.name);
+        const dirPath = join(rootConfig.root, entry.name);
         const manifestPath = join(dirPath, "manifest.json");
         const errors: string[] = [];
         let manifest: RoomManifest | undefined;
@@ -535,13 +754,74 @@ export class RoomPackageManager {
           valid: errors.length === 0 && manifest !== undefined,
           errors,
           ...(manifest !== undefined ? { manifest } : {}),
+          sourceKind: rootConfig.sourceKind,
+          readOnly: rootConfig.readOnly,
         };
       })
     );
 
-    return rooms
-      .filter((room): room is RoomWorkspaceEntry => room !== null)
-      .sort((left, right) => left.dirName.localeCompare(right.dirName));
+    return rooms.filter((room): room is RoomWorkspaceEntry => room !== null);
+  }
+
+  private pickPreferredWorkspaceRoom(
+    current: RoomWorkspaceEntry,
+    candidate: RoomWorkspaceEntry
+  ): RoomWorkspaceEntry {
+    const getPriority = (room: RoomWorkspaceEntry): number => {
+      let score = room.valid === true ? 100 : 0;
+      score += room.readOnly === true ? 0 : 10;
+      score += room.sourceKind === "workspace" ? 1 : 0;
+      return score;
+    };
+
+    return getPriority(candidate) > getPriority(current) ? candidate : current;
+  }
+
+  private isWritableWorkspaceRoomDir(dirPath: string): boolean {
+    const workspaceRoot = resolve(this.getWorkspaceRoot());
+    const normalizedDirPath = resolve(dirPath);
+    const relativePath = relative(workspaceRoot, normalizedDirPath);
+
+    return (
+      relativePath === "" || (!relativePath.startsWith("..") && !relativePath.startsWith("../"))
+    );
+  }
+
+  async ensureRoots(): Promise<void> {
+    const workspaceRoot = this.getWorkspaceRoot();
+    const installedRoot = this.getInstalledRoot();
+    const registryPath = this.getRegistryPath();
+
+    await Promise.all([
+      ensureDir(workspaceRoot),
+      ensureDir(installedRoot),
+      ensureDir(dirname(registryPath)),
+    ]);
+  }
+
+  async listWorkspaceRooms(): Promise<RoomWorkspaceEntry[]> {
+    await this.ensureRoots();
+    const rooms = (
+      await Promise.all(
+        this.getWorkspaceRoots().map(
+          async (rootConfig) => await this.readWorkspaceRoomsFromRoot(rootConfig)
+        )
+      )
+    ).flat();
+
+    const dedupedRooms = new Map<string, RoomWorkspaceEntry>();
+    for (const room of rooms) {
+      const roomKey = room.manifest?.id ?? room.dirName;
+      const current = dedupedRooms.get(roomKey);
+      dedupedRooms.set(
+        roomKey,
+        current === undefined ? room : this.pickPreferredWorkspaceRoom(current, room)
+      );
+    }
+
+    return Array.from(dedupedRooms.values()).sort((left, right) =>
+      left.dirName.localeCompare(right.dirName)
+    );
   }
 
   async listInstalledRooms(): Promise<InstalledRoomRecord[]> {
@@ -582,8 +862,8 @@ export class RoomPackageManager {
 
     const roomInstalledDir = join(installedRoot, target.manifest.id);
     await this.ensureRoots();
-    await rm(roomInstalledDir, { recursive: true, force: true });
-    await cp(target.dirPath, roomInstalledDir, { recursive: true, force: true });
+    const trackedFiles = await copyDirectoryContents(target.dirPath, roomInstalledDir);
+    await writeInstalledRoomFileSnapshot(roomInstalledDir, trackedFiles);
 
     const now = new Date().toISOString();
     const record = buildInstalledRoomRecord(target.manifest, {
@@ -623,7 +903,10 @@ export class RoomPackageManager {
     };
   }
 
-  async removeInstalledRoom(roomId: string): Promise<RoomOperationResult> {
+  async removeInstalledRoom(
+    roomId: string,
+    options: { deleteData?: boolean } = {}
+  ): Promise<RoomOperationResult> {
     const normalizedRoomId = normalizeRoomId(roomId);
     if (normalizedRoomId === "") {
       return { success: false, error: await roomPackageT("roomIdRequired") };
@@ -638,7 +921,22 @@ export class RoomPackageManager {
       };
     }
 
-    await rm(current.installedDir, { recursive: true, force: true });
+    if (options.deleteData === true) {
+      const deleteTasks: Promise<void>[] = [
+        rm(current.installedDir, { recursive: true, force: true }),
+        this.deletePersistentRoomData(current.id),
+      ];
+
+      if (this.isWritableWorkspaceRoomDir(current.sourceDir)) {
+        deleteTasks.push(rm(current.sourceDir, { recursive: true, force: true }));
+      }
+
+      await Promise.all(deleteTasks);
+    } else {
+      const trackedFiles = await resolveInstalledRoomTrackedFiles(current);
+      await deleteInstalledRoomCopies(current.installedDir, trackedFiles);
+    }
+
     registry.rooms = registry.rooms.filter((item) => item.id !== normalizedRoomId);
     registry.updatedAt = new Date().toISOString();
     await this.writeRegistry(registry);
@@ -647,6 +945,60 @@ export class RoomPackageManager {
       success: true,
       room: current,
       restartRequired: true,
+    };
+  }
+
+  async deleteWorkspaceRoom(
+    roomId: string,
+    options: { deleteData?: boolean } = {}
+  ): Promise<RoomOperationResult> {
+    const normalizedRoomId = normalizeRoomId(roomId);
+    if (normalizedRoomId === "") {
+      return { success: false, error: await roomPackageT("roomIdRequired") };
+    }
+
+    const workspaceRooms = await this.listWorkspaceRooms();
+    const target = workspaceRooms.find(
+      (entry) => entry.dirName === normalizedRoomId || entry.manifest?.id === normalizedRoomId
+    );
+    if (target === undefined) {
+      return {
+        success: false,
+        error: await roomPackageT("roomNotFoundInWorkspace", { roomId: normalizedRoomId }),
+      };
+    }
+
+    if (target.readOnly === true) {
+      return {
+        success: false,
+        error: await roomPackageT("workspaceReadOnly", { path: target.dirPath }),
+      };
+    }
+
+    await rm(target.dirPath, { recursive: true, force: true });
+
+    let restartRequired = false;
+    if (options.deleteData === true) {
+      const installedRoomId = target.manifest?.id ?? target.dirName;
+      await Promise.all([
+        rm(join(this.getInstalledRoot(), installedRoomId), { recursive: true, force: true }),
+        this.deletePersistentRoomData(installedRoomId),
+      ]);
+
+      const registry = await this.readRegistry();
+      const nextRooms = registry.rooms.filter((item) => item.id !== installedRoomId);
+      if (nextRooms.length !== registry.rooms.length) {
+        registry.rooms = nextRooms;
+        registry.updatedAt = new Date().toISOString();
+        await this.writeRegistry(registry);
+        restartRequired = true;
+      }
+    }
+
+    return {
+      success: true,
+      path: target.dirPath,
+      restartRequired,
     };
   }
 
@@ -681,7 +1033,7 @@ export class RoomPackageManager {
     if (options.overwrite === true) {
       await rm(exportDir, { recursive: true, force: true });
     }
-    await cp(current.installedDir, exportDir, { recursive: true, force: true });
+    await copyDirectoryContents(current.installedDir, exportDir);
 
     return { success: true, room: current, path: exportDir };
   }

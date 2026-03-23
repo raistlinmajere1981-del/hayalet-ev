@@ -8,6 +8,7 @@ package-lock.json
 # Build outputs
 dist/
 out/
+release/
 
 # Logs
 logs/
@@ -67,6 +68,7 @@ screenshots/
 !src/assets/icon.png
 !src/assets/logo.jpg
 !src/assets/opencode.png
+!src/public/logo.jpg
 
 # Ghost agent workspace
 .hayalet-ghost-agent/

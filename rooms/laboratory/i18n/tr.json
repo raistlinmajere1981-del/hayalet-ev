@@ -1,0 +1,41 @@
+{
+  "title": "Laboratuvar",
+  "subtitle": "Videolari offline-oncelikli adli analiz akisiyla incele ve okunabilir teknik raporlar al.",
+  "features": {
+    "video-analysis": "Video Analizi"
+  },
+  "videoAnalysis": {
+    "heroBadge": "Laboratuvar",
+    "heroTitle": "Video Analizi",
+    "heroSubtitle": "Bir klip yukle, supheli ani sec ve sade kullanici raporu ile teknik yerel raporu birlikte incele.",
+    "projects": {
+      "title": "Projeler",
+      "empty": "Hazirlanan ve tamamlanan analizler burada devam edilebilir projeler olarak gorunur."
+    },
+    "activity": {
+      "title": "Kosular ve revizyonlar",
+      "empty": "Analiz basladiktan sonra proje kosulari burada gorunur."
+    },
+    "reader": {
+      "title": "Rapor okuyucu",
+      "hint": "Raporu rahat okumak ve kopyalamak icin odakli bir overlay ac.",
+      "open": "Okuyucuyu ac",
+      "close": "Kapat"
+    },
+    "controls": {
+      "title": "Kontroller",
+      "basic": "Temel",
+      "advanced": "Gelismis",
+      "reportLocale": "Rapor dili",
+      "reportLocaleEnglish": "English",
+      "reportLocaleTurkish": "Turkce"
+    },
+    "source": {
+      "youtubeLabel": "YouTube URL",
+      "youtubePlaceholder": "https://www.youtube.com/watch?v=...",
+      "prepareYoutube": "YouTube hazirla",
+      "cancelPreparation": "Hazirlamayi iptal et",
+      "kindYouTube": "YouTube"
+    }
+  }
+}

@@ -1,8 +1,18 @@
 import type { InstalledRoomRecord, RoomCommandScope } from "@shared/index.js";
+import { buildRemoteEmailAccountId } from "@shared/archive.js";
 import { getErrorMessage } from "@shared/index.js";
+import type { RemoteUserIdentity } from "@shared/settings.js";
+import type {
+  Us1SendMessageParams,
+  Us1SendMessageResult,
+  Us1SyncMessagesParams,
+  Us1SyncMessagesResult,
+} from "@shared/us1-mail.js";
+import { AppState } from "../app-state.js";
 import { CoreEngine } from "../core-engine.js";
 import { AppI18n } from "../i18n/index.js";
-import { Logger, LogCategory } from "../logger/index.js";
+import { Logger, LogCategory, LogLevel } from "../logger/index.js";
+import { SettingsManager } from "../settings-manager.js";
 import { ServerCommands } from "../server-commands.js";
 import { RoomCommandRegistry, type RoomCommandHandler } from "./room-command-registry.js";
 import { RoomProtocolRegistry } from "./room-protocol-registry.js";
@@ -43,6 +53,16 @@ interface RoomHostApi {
   sendProtocol: typeof CoreEngine.sendProtocol;
   sendMessage: typeof CoreEngine.sendMessage;
   sendToTargets: typeof CoreEngine.sendToTargets;
+  sendUs1Message: (params: Us1SendMessageParams) => Promise<Us1SendMessageResult>;
+  syncUs1Messages: (params?: Us1SyncMessagesParams) => Promise<Us1SyncMessagesResult>;
+  dispatchRoomCommand: (commandName: string, payload?: Record<string, unknown>) => Promise<unknown>;
+  getUs1Identity: () => RemoteUserIdentity | null;
+  isUs1Connected: () => boolean;
+  selectUs1RemoteUser: (remoteUserId: string | null) => Promise<boolean>;
+  showToast: (payload: {
+    type?: "success" | "error" | "info" | "warning";
+    message: string;
+  }) => void;
   getLocale: () => string;
   getState: (key: string) => unknown;
   setState: (key: string, value: unknown) => unknown;
@@ -358,6 +378,72 @@ class RoomHostRuntimeClass {
       sendProtocol: CoreEngine.sendProtocol.bind(CoreEngine),
       sendMessage: CoreEngine.sendMessage.bind(CoreEngine),
       sendToTargets: CoreEngine.sendToTargets.bind(CoreEngine),
+      sendUs1Message: async (params): Promise<Us1SendMessageResult> => {
+        const electronApi = window.electronAPI;
+        if (electronApi === undefined || typeof electronApi.us1SendMessage !== "function") {
+          return { success: false, error: "Electron API is unavailable." };
+        }
+        return await electronApi.us1SendMessage(params);
+      },
+      syncUs1Messages: async (params): Promise<Us1SyncMessagesResult> => {
+        const electronApi = window.electronAPI;
+        if (electronApi === undefined || typeof electronApi.us1SyncMessages !== "function") {
+          return { success: false, error: "Electron API is unavailable." };
+        }
+        return await electronApi.us1SyncMessages(params);
+      },
+      dispatchRoomCommand: async (commandName, payload = {}): Promise<unknown> => {
+        return await ServerCommands.run(commandName, {
+          provider: "us1",
+          source: "us1",
+          roomId: registration.room.id,
+          ...payload,
+          message: `++cmd:${commandName}`,
+        });
+      },
+      getUs1Identity: (): RemoteUserIdentity | null => AppState.getUs1Identity(),
+      isUs1Connected: (): boolean => AppState.isUs1Connected(),
+      selectUs1RemoteUser: async (remoteUserId): Promise<boolean> => {
+        const normalizedRemoteUserId =
+          typeof remoteUserId === "string" && remoteUserId.trim() !== ""
+            ? remoteUserId.trim()
+            : null;
+        const selectedAccountId =
+          normalizedRemoteUserId !== null
+            ? buildRemoteEmailAccountId(normalizedRemoteUserId)
+            : null;
+        return await SettingsManager.patch((settings) => {
+          const nextUs1Slot =
+            settings["us1Slot"] !== null &&
+            typeof settings["us1Slot"] === "object" &&
+            Array.isArray(settings["us1Slot"]) === false
+              ? (settings["us1Slot"] as Record<string, unknown>)
+              : {};
+          settings["us1Slot"] = {
+            ...nextUs1Slot,
+            selectedRemoteUserId: normalizedRemoteUserId,
+            selectedAccountId,
+          };
+        });
+      },
+      showToast: ({ type = "info", message }): void => {
+        const normalizedMessage = message.trim();
+        if (normalizedMessage === "") {
+          return;
+        }
+
+        const level =
+          type === "success"
+            ? LogLevel.SUCCESS
+            : type === "warning"
+              ? LogLevel.WARNING
+              : type === "error"
+                ? LogLevel.ERROR
+                : LogLevel.INFO;
+        Logger.toast(LogCategory.SYSTEM, level, normalizedMessage, {
+          roomId: registration.room.id,
+        });
+      },
       getLocale: (): string => AppI18n.getLocale(),
       getState: (key): unknown => registration.state.get(key),
       setState: (key, value): unknown => {

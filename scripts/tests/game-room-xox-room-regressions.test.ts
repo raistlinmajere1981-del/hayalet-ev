@@ -35,3 +35,16 @@ test("game-room manifest validates with the XOX-first room contract", () => {
   assert.equal(validation.manifest?.runtime.uiEntry, "ui/index.html");
   assert.equal(validation.manifest?.runtime.hostEntry, "host/index.js");
 });
+
+test("game-room XOX UI forwards remote identity with invite actions", () => {
+  const uiSource = readFileSync("rooms/game-room/ui/index.js", "utf8");
+
+  assert.match(
+    uiSource,
+    /sendRoomCommand\("GameRoomXoxAcceptInvite",\s*\{\s*inviteId:\s*inviteId,\s*remoteUserId:\s*remoteUserId,\s*\}\s*\)/
+  );
+  assert.match(
+    uiSource,
+    /sendRoomCommand\("GameRoomXoxRejectInvite",\s*\{\s*inviteId:\s*inviteId,\s*remoteUserId:\s*remoteUserId,\s*\}\s*\)/
+  );
+});

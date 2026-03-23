@@ -26,6 +26,11 @@ interface RoomOverlayState {
   isOpen: boolean;
 }
 
+interface RoomDeleteConfirmResult {
+  confirmed: boolean;
+  deleteData: boolean;
+}
+
 function roomText(key: string, params?: Parameters<typeof shellT>[1]): string {
   return shellT(`rooms.${key}`, params);
 }
@@ -45,6 +50,73 @@ function getWorkspaceRoomLabel(state: RoomOverlayState, roomId: string): string 
 function getInstalledRoomLabel(state: RoomOverlayState, roomId: string): string {
   const room = state.installedRooms.find((entry) => entry.id === roomId);
   return buildRoomLabel(room?.name ?? roomId, roomId);
+}
+
+function buildRoomPackageOutputPath(directoryPath: string, roomId: string): string {
+  const normalizedDir = directoryPath.trim().replace(/[\\/]+$/, "");
+  return `${normalizedDir}/${roomId}.hevroom.json`;
+}
+
+async function confirmRoomDeletion(options: {
+  title: string;
+  message: string;
+}): Promise<RoomDeleteConfirmResult> {
+  return await new Promise((resolve) => {
+    const content = document.createElement("div");
+    content.className = "modal-confirm room-manager-delete-confirm";
+
+    const messageEl = document.createElement("div");
+    messageEl.className = "modal-confirm-message room-manager-delete-confirm__message";
+    messageEl.textContent = options.message;
+    content.appendChild(messageEl);
+
+    const checkboxLabel = document.createElement("label");
+    checkboxLabel.className = "room-manager-delete-confirm__checkbox";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkboxLabel.appendChild(checkbox);
+
+    const checkboxCopy = document.createElement("span");
+    checkboxCopy.className = "room-manager-delete-confirm__checkbox-copy";
+
+    const checkboxTitle = document.createElement("span");
+    checkboxTitle.className = "room-manager-delete-confirm__checkbox-label";
+    checkboxTitle.textContent = roomText("confirm.deleteDataLabel");
+    checkboxCopy.appendChild(checkboxTitle);
+
+    const checkboxHint = document.createElement("span");
+    checkboxHint.className = "room-manager-delete-confirm__hint";
+    checkboxHint.textContent = roomText("confirm.deleteDataHint");
+    checkboxCopy.appendChild(checkboxHint);
+
+    checkboxLabel.appendChild(checkboxCopy);
+    content.appendChild(checkboxLabel);
+
+    Modal.open({
+      title: options.title,
+      content,
+      size: "sm",
+      closable: false,
+      closeOnOverlay: false,
+      buttons: [
+        {
+          label: shellT("common.cancel"),
+          variant: "secondary",
+          onClick: (): void => {
+            resolve({ confirmed: false, deleteData: checkbox.checked });
+          },
+        },
+        {
+          label: roomText("confirm.deleteAction"),
+          variant: "danger",
+          onClick: (): void => {
+            resolve({ confirmed: true, deleteData: checkbox.checked });
+          },
+        },
+      ],
+    });
+  });
 }
 
 async function restartAfterRoomMutation(): Promise<boolean> {
@@ -238,16 +310,75 @@ export function setupSettingsRoomsPanel(): void {
     if (action === "package") {
       void (async (): Promise<void> => {
         const api = window.electronAPI;
-        if (api === undefined || typeof api.roomsPackageFromWorkspace !== "function") {
+        if (
+          api === undefined ||
+          typeof api.roomsPackageFromWorkspace !== "function" ||
+          typeof api.showOpenDialog !== "function"
+        ) {
           Toast.error(roomText("toasts.packageUnavailable"));
           return;
         }
 
-        const result = await api.roomsPackageFromWorkspace({ roomId });
+        const selection = await api.showOpenDialog({
+          title: roomText("dialog.packageTitle"),
+          buttonLabel: roomText("dialog.packageButton"),
+          properties: ["openDirectory", "createDirectory"],
+        });
+        if (selection.canceled === true || selection.filePaths.length === 0) {
+          return;
+        }
+
+        const selectedDir = String(selection.filePaths[0] ?? "").trim();
+        if (selectedDir === "") {
+          return;
+        }
+
+        const result = await api.roomsPackageFromWorkspace({
+          roomId,
+          outputFile: buildRoomPackageOutputPath(selectedDir, roomId),
+        });
         if (result.success === true) {
           Toast.success(roomText("toasts.packageSuccess"), result.path ?? roomId);
         } else {
           Toast.error(roomText("toasts.packageError"), resolveIpcErrorMessage(result) ?? roomId);
+        }
+      })();
+      return;
+    }
+
+    if (action === "delete") {
+      void (async (): Promise<void> => {
+        const confirmation = await confirmRoomDeletion({
+          title: roomText("confirm.deleteTitle"),
+          message: roomText("confirm.deleteMessage", {
+            room: getWorkspaceRoomLabel(state, roomId),
+          }),
+        });
+        if (confirmation.confirmed !== true) {
+          return;
+        }
+
+        const result = await RoomRegistry.deleteWorkspace({
+          roomId,
+          deleteData: confirmation.deleteData,
+        });
+        state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
+        if (result.success === true && confirmation.deleteData === true) {
+          state.installedRooms = state.installedRooms.filter((room) => room.id !== roomId);
+        }
+        render(refs, state);
+        if (result.success === true) {
+          if (result.restartRequired === true) {
+            const restarted = await restartAfterRoomMutation();
+            if (restarted !== true) {
+              Toast.info(roomText("toasts.deleteSuccess"), roomText("toasts.restartRequired"));
+            }
+            return;
+          }
+
+          Toast.success(roomText("toasts.deleteSuccess"), result.path ?? roomId);
+        } else {
+          Toast.error(roomText("toasts.deleteError"), resolveIpcErrorMessage(result) ?? roomId);
         }
       })();
     }
@@ -291,18 +422,24 @@ export function setupSettingsRoomsPanel(): void {
 
     if (action === "remove") {
       void (async (): Promise<void> => {
-        const confirmed = await Modal.confirm({
+        const confirmation = await confirmRoomDeletion({
           title: roomText("confirm.removeTitle"),
           message: roomText("confirm.removeMessage", {
             room: getInstalledRoomLabel(state, roomId),
           }),
-          confirmVariant: "danger",
         });
-        if (!confirmed) {
+        if (confirmation.confirmed !== true) {
           return;
         }
 
-        const result = await RoomRegistry.removeInstalled(roomId);
+        const result = await RoomRegistry.removeInstalledWithOptions({
+          roomId,
+          deleteData: confirmation.deleteData,
+        });
+        if (result.success === true) {
+          state.installedRooms = state.installedRooms.filter((room) => room.id !== roomId);
+        }
+        state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
         render(refs, state);
         if (result.success === true) {
           if (result.restartRequired === true) {

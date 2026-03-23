@@ -53,6 +53,22 @@ app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
 let mainWindow: BrowserWindow | null = null;
 
 function getProjectRoot(): string {
+  if (app.isPackaged) {
+    const portableDir =
+      typeof process.env["PORTABLE_EXECUTABLE_DIR"] === "string"
+        ? process.env["PORTABLE_EXECUTABLE_DIR"].trim()
+        : "";
+    if (portableDir !== "") {
+      return portableDir;
+    }
+
+    const appImagePath =
+      typeof process.env["APPIMAGE"] === "string" ? process.env["APPIMAGE"].trim() : "";
+    if (appImagePath !== "") {
+      return dirname(appImagePath);
+    }
+  }
+
   return process.cwd();
 }
 
@@ -61,7 +77,26 @@ function getAssistantRuntimePath(): string {
 }
 
 function getRendererPath(fileName: string): string {
+  if (app.isPackaged) {
+    return join(process.resourcesPath, "app.asar", "dist", "ghost-agent", "renderer", fileName);
+  }
+
   return join(getProjectRoot(), "dist", "ghost-agent", "renderer", fileName);
+}
+
+function getPreloadPath(): string {
+  if (app.isPackaged) {
+    return join(
+      process.resourcesPath,
+      "app.asar",
+      "dist",
+      "ghost-agent",
+      "electron",
+      "preload.cjs"
+    );
+  }
+
+  return join(moduleDirname, "preload.cjs");
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -485,7 +520,7 @@ function createWindow(): BrowserWindow {
     autoHideMenuBar: true,
     title: "Ghost Agent Handoff",
     webPreferences: {
-      preload: join(moduleDirname, "preload.cjs"),
+      preload: getPreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -517,10 +552,18 @@ if (!hasLock) {
     setupIpcHandlers();
     mainWindow = createWindow();
 
-    if (GHOST_DEV_SERVER_URL !== undefined && GHOST_DEV_SERVER_URL !== "") {
-      await mainWindow.loadURL(`${GHOST_DEV_SERVER_URL.replace(/\/$/, "")}/renderer/index.html`);
-    } else {
-      await mainWindow.loadFile(getRendererPath("index.html"));
+    try {
+      if (GHOST_DEV_SERVER_URL !== undefined && GHOST_DEV_SERVER_URL !== "") {
+        await mainWindow.loadURL(`${GHOST_DEV_SERVER_URL.replace(/\/$/, "")}/renderer/index.html`);
+      } else {
+        await mainWindow.loadFile(getRendererPath("index.html"));
+      }
+    } catch (error) {
+      await logGhost("error", "ghost-renderer-load failed", {
+        rendererPath: getRendererPath("index.html"),
+        error: (error as Error).message,
+      });
+      app.quit();
     }
   });
 }

@@ -49,7 +49,7 @@ import { getCoverSceneProjectionFromElement, type SceneProjection } from "../sce
 import { navigateToScenePage } from "../scene/navigation.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
 import type { SceneClickableThemeDefinition } from "../scene/schema.js";
-import { mountSceneWindowControls } from "../scene/window-controls.js";
+import { mountSceneWindowControls, unmountSceneWindowControls } from "../scene/window-controls.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 
 type RoomRuntimeState = "idle" | "loading" | "ready" | "error";
@@ -225,6 +225,29 @@ function buildRoomSceneViewBackNode(room: InstalledRoomRecord): SceneBackConfig 
   };
 }
 
+function buildStandardSceneViewBackButton(label: string): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className =
+    "scene-clickable__button scene-clickable__button--back workspace-tool-scene-chrome__back room-scene-view__standard-back-button";
+  button.dataset["frameVariant"] = "flat";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+
+  const arrow = document.createElement("span");
+  arrow.className = "scene-clickable__arrow";
+  arrow.ariaHidden = "true";
+  arrow.textContent = "←";
+
+  const text = document.createElement("span");
+  text.className = "scene-clickable__label scene-clickable__label--back";
+  text.ariaHidden = "true";
+  text.textContent = label;
+
+  button.append(arrow, text);
+  return button;
+}
+
 export class RoomPageController implements PageController {
   private room: InstalledRoomRecord;
   private readonly pageName: string;
@@ -310,7 +333,7 @@ export class RoomPageController implements PageController {
     }
 
     this.ensureShell(page);
-    mountSceneWindowControls(page);
+    this.syncSceneWindowControls(page);
     this.setupSceneDebug(page);
     this.syncShell(page);
     this.syncScene(page);
@@ -365,7 +388,7 @@ export class RoomPageController implements PageController {
   }
 
   private isImmersiveGameRoom(): boolean {
-    return this.room.id === "game-room";
+    return this.room.id === "game-room" || this.room.id === "laboratory";
   }
 
   private getPage(): HTMLElement | null {
@@ -405,6 +428,7 @@ export class RoomPageController implements PageController {
 
     this.slotSubscriptions.push(
       AppState.subscribe(() => {
+        syncContext();
         syncSceneCharacters();
       })
     );
@@ -441,6 +465,10 @@ export class RoomPageController implements PageController {
 
   private getSceneView(page: HTMLElement | null = this.getPage()): HTMLElement | null {
     return page?.querySelector<HTMLElement>("[data-room-role='scene-view']") ?? null;
+  }
+
+  private getPageShell(page: HTMLElement | null = this.getPage()): HTMLElement | null {
+    return page?.querySelector<HTMLElement>("[data-room-role='page-shell']") ?? null;
   }
 
   private getMountHost(page: HTMLElement | null = this.getPage()): HTMLElement | null {
@@ -489,60 +517,21 @@ export class RoomPageController implements PageController {
             <div class="room-feature-strip" data-room-role="feature-strip"></div>
           </section>
 
-          <div class="room-shell-grid">
-            <section class="glass-panel ds-surface-card ds-surface-card--stack room-shell-panel room-shell-panel--runtime">
-              <div class="panel-title ds-surface-card__header ds-panel-title">${roomPageT("page.runtimeTitle")}</div>
-              <div class="room-runtime-status" data-room-role="runtime-status" data-state="idle">
-                ${roomPageT("status.preparing")}
-              </div>
-              <div class="room-runtime-event" data-room-role="runtime-event">
-                ${roomPageT("status.handshakeWaiting")}
-              </div>
-              <div class="room-runtime-mount" data-room-role="runtime-mount"></div>
-            </section>
-            <section class="glass-panel ds-surface-card ds-surface-card--stack room-shell-panel">
-              <div class="panel-title ds-surface-card__header ds-panel-title">${roomPageT("page.entryPointsTitle")}</div>
-              <div class="room-meta-list">
-                <div class="room-meta-row">
-                  <span class="room-meta-label">${roomPageT("page.labels.id")}</span>
-                  <span class="room-meta-value" data-room-role="id"></span>
-                </div>
-                <div class="room-meta-row">
-                  <span class="room-meta-label">${roomPageT("page.labels.version")}</span>
-                  <span class="room-meta-value" data-room-role="version"></span>
-                </div>
-                <div class="room-meta-row">
-                  <span class="room-meta-label">${roomPageT("page.labels.feature")}</span>
-                  <span class="room-meta-value" data-room-role="active-feature"></span>
-                </div>
-                <div class="room-meta-row">
-                  <span class="room-meta-label">${roomPageT("page.labels.features")}</span>
-                  <span class="room-meta-value" data-room-role="feature-count"></span>
-                </div>
-                <div class="room-meta-row">
-                  <span class="room-meta-label">${roomPageT("page.labels.installed")}</span>
-                  <span class="room-meta-value" data-room-role="installed"></span>
-                </div>
-                <div class="room-meta-row">
-                  <span class="room-meta-label">${roomPageT("page.labels.runtime")}</span>
-                  <span class="room-meta-value" data-room-role="runtime-path"></span>
-                </div>
-                <div class="room-meta-row">
-                  <span class="room-meta-label">${roomPageT("page.labels.host")}</span>
-                  <span class="room-meta-value" data-room-role="host-path"></span>
-                </div>
-                <div class="room-meta-row">
-                  <span class="room-meta-label">${roomPageT("page.labels.source")}</span>
-                  <span class="room-meta-value" data-room-role="source-path"></span>
-                </div>
-              </div>
-            </section>
-          </div>
+          <section class="glass-panel ds-surface-card ds-surface-card--stack room-shell-panel room-shell-panel--runtime">
+            <div class="panel-title ds-surface-card__header ds-panel-title">${roomPageT("page.runtimeTitle")}</div>
+            <div class="room-runtime-status" data-room-role="runtime-status" data-state="idle">
+              ${roomPageT("status.preparing")}
+            </div>
+            <div class="room-runtime-event" data-room-role="runtime-event">
+              ${roomPageT("status.handshakeWaiting")}
+            </div>
+            <div class="room-runtime-mount" data-room-role="runtime-mount"></div>
+          </section>
         </div>
       `;
 
     page.innerHTML = `
-      <div class="room-page-shell${this.isImmersiveGameRoom() ? " room-page-shell--game" : ""}">
+      <div class="room-page-shell${this.isImmersiveGameRoom() ? " room-page-shell--game" : ""}" data-room-role="page-shell">
         <div class="room-scene-root scene-shell__surface" data-room-role="scene-root" hidden>
           <div class="room-scene-room scene-shell__room-layer" data-room-role="scene-room">
             <img class="room-scene-room__background scene-shell__cover-image" data-room-role="scene-room-background" alt="" />
@@ -580,6 +569,64 @@ export class RoomPageController implements PageController {
 
   private isSceneDebugActive(): boolean {
     return isSceneUiMode();
+  }
+
+  private resolveSceneWindowControlsVisibility(): "scene-only" | "all-pages" | "hidden" {
+    return this.room.scene?.chrome?.windowControlsVisibility ?? "scene-only";
+  }
+
+  private resolveSceneViewBackButtonVariant(): "scene-back-layer" | "standard-button" {
+    return this.room.scene?.chrome?.viewBackButtonVariant ?? "scene-back-layer";
+  }
+
+  private syncSceneWindowControls(page: HTMLElement): void {
+    unmountSceneWindowControls(page);
+
+    const visibility = this.resolveSceneWindowControlsVisibility();
+    if (visibility === "hidden") {
+      return;
+    }
+
+    if (visibility === "all-pages") {
+      if (this.getPageShell(page) !== null) {
+        mountSceneWindowControls(page, {
+          surfaceSelector: "[data-room-role='page-shell']",
+        });
+      }
+      return;
+    }
+
+    if (this.room.scene === undefined) {
+      return;
+    }
+
+    mountSceneWindowControls(page, {
+      surfaceSelector: "[data-room-role='scene-root']",
+    });
+  }
+
+  private getSceneStandardBackHost(page: HTMLElement): HTMLElement | null {
+    return page.querySelector<HTMLElement>("[data-room-role='scene-standard-back']");
+  }
+
+  private ensureSceneStandardBackHost(page: HTMLElement, view: HTMLElement): HTMLElement {
+    const existing = this.getSceneStandardBackHost(page);
+    if (existing !== null) {
+      return existing;
+    }
+
+    const host = document.createElement("div");
+    host.className = "room-scene-view__standard-back";
+    host.dataset["roomRole"] = "scene-standard-back";
+
+    const runtimeSlot = view.querySelector<HTMLElement>("[data-room-role='scene-runtime-slot']");
+    if (runtimeSlot !== null) {
+      runtimeSlot.insertAdjacentElement("beforebegin", host);
+    } else {
+      view.insertAdjacentElement("beforeend", host);
+    }
+
+    return host;
   }
 
   private buildSceneAssetTargets(): SceneEditorAssetTargetDescriptor[] {
@@ -1094,7 +1141,21 @@ export class RoomPageController implements PageController {
     }
 
     this.applySceneRuntimeFrame(runtimeSlot, feature);
+    const backButtonVariant = this.resolveSceneViewBackButtonVariant();
 
+    if (backButtonVariant === "standard-button") {
+      const standardBackHost = this.ensureSceneStandardBackHost(page, view);
+      backHost.replaceChildren();
+      const label = shellT("settingsHub.scene.returnRoom");
+      const button = buildStandardSceneViewBackButton(label);
+      button.addEventListener("click", () => {
+        this.closeSceneFeatureView();
+      });
+      standardBackHost.replaceChildren(button);
+      return;
+    }
+
+    this.getSceneStandardBackHost(page)?.remove();
     renderSceneBackLayer({
       host: backHost,
       node: buildRoomSceneViewBackNode(this.room),
@@ -1341,7 +1402,26 @@ export class RoomPageController implements PageController {
     });
   }
 
-  private buildSlotContext(slotId: "ai1" | "ai2"): Record<string, unknown> {
+  private buildSlotContext(slotId: "ai1" | "ai2" | "us1"): Record<string, unknown> {
+    if (slotId === "us1") {
+      const identity = AppState.getUs1Identity();
+      const connected = AppState.isUs1Connected();
+
+      return {
+        slotId,
+        label: slotId.toUpperCase(),
+        nickname: AppState.getNickname(slotId),
+        assigned: identity !== null,
+        connected,
+        ready: identity !== null && connected,
+        state: connected ? "connected" : identity !== null ? "assigned" : "empty",
+        urlExcluded: false,
+        providerId: "us1",
+        accountId: AppState.getUs1ArchiveAccountId(),
+        remoteUserId: identity?.remoteUserId ?? null,
+      };
+    }
+
     const slotState = SlotController.getState(slotId) as SlotStateInfo | null;
     const account = AppState.getAccountForSlot(slotId);
     const connected = slotState?.state === "connected";
@@ -1388,6 +1468,7 @@ export class RoomPageController implements PageController {
       slots: {
         ai1: this.buildSlotContext("ai1"),
         ai2: this.buildSlotContext("ai2"),
+        us1: this.buildSlotContext("us1"),
       },
       features: this.room.features.map((feature) => ({
         id: feature.id,

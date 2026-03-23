@@ -1,5 +1,6 @@
 import { getAiProviderAccounts } from "@shared/settings.js";
 import type { AppSettings, Account } from "@shared/settings.js";
+import { notifyUser } from "../../ui/user-notification.js";
 import { t as entranceT } from "./i18n.js";
 
 interface SettingsManager {
@@ -144,9 +145,29 @@ export class SlotPanel {
       rememberConnectionCheck.checked = slotSettings.rememberConnectionStatus ?? false;
   }
 
+  private getSlotLabel(): string {
+    return this.slotId.toUpperCase();
+  }
+
+  private describeAccount(
+    accountId: string,
+    accounts: Account[] = getAiProviderAccounts(this.settingsManager.getSnapshot().accounts)
+  ): string | null {
+    const account = accounts.find((entry) => entry.id === accountId);
+    if (account == null) {
+      return null;
+    }
+
+    return `${account.nickname ?? account.email} (${account.provider})`;
+  }
+
   async updateSetting(key: string, value: unknown): Promise<void> {
     const settings = this.settingsManager.getSnapshot();
     const slots = settings.slots;
+    const previousAccountId =
+      key === "accountId" && typeof slots[this.slotId as "ai1" | "ai2"].accountId === "string"
+        ? (slots[this.slotId as "ai1" | "ai2"].accountId?.trim() ?? "")
+        : "";
 
     const updated = {
       ...settings,
@@ -162,6 +183,25 @@ export class SlotPanel {
     await this.settingsManager.save(updated);
 
     if (key === "accountId") {
+      const nextAccountId = typeof value === "string" ? value.trim() : "";
+      if (nextAccountId !== previousAccountId) {
+        const title =
+          nextAccountId === ""
+            ? entranceT("slot.toasts.accountCleared", {
+                slot: this.getSlotLabel(),
+              })
+            : entranceT("slot.toasts.accountAssigned", {
+                slot: this.getSlotLabel(),
+                account: this.describeAccount(nextAccountId, updated.accounts) ?? nextAccountId,
+              });
+
+        notifyUser({
+          kind: nextAccountId === "" ? "info" : "success",
+          title,
+          dedupeKey: `slot:${this.slotId}:account`,
+        });
+      }
+
       window.dispatchEvent(
         new CustomEvent("slot-account-changed", {
           detail: { slot: this.slotId, accountId: value },

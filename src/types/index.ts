@@ -8,6 +8,7 @@ export * from "./traffic.js";
 export * from "./relay.js";
 export * from "./ipc-channels.js";
 export * from "./rooms.js";
+export * from "./laboratory.js";
 
 export * from "./logging-core.js";
 

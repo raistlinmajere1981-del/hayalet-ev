@@ -1,5 +1,9 @@
 import { buildUiModeOptionsMarkup } from "../app/ui-mode/index.js";
 
+interface SceneWindowControlsMountOptions {
+  surfaceSelector?: string;
+}
+
 function buildSceneWindowControlsMarkup(): string {
   return `
   <div
@@ -82,8 +86,29 @@ function buildSceneWindowControlsMarkup(): string {
 `.trim();
 }
 
-export function mountSceneWindowControls(root: ParentNode = document): void {
-  root.querySelectorAll<HTMLElement>(".scene-shell__surface").forEach((surface) => {
+function resolveTargetSurfaces(
+  root: ParentNode,
+  options: SceneWindowControlsMountOptions = {}
+): HTMLElement[] {
+  const selector = options.surfaceSelector ?? ".scene-shell__surface";
+  const surfaces = root.querySelectorAll<HTMLElement>(selector);
+  if (root instanceof HTMLElement && root.matches(selector)) {
+    return [root, ...Array.from(surfaces)];
+  }
+  return Array.from(surfaces);
+}
+
+export function unmountSceneWindowControls(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLElement>("[data-scene-window-controls='true']").forEach((node) => {
+    node.remove();
+  });
+}
+
+export function mountSceneWindowControls(
+  root: ParentNode = document,
+  options: SceneWindowControlsMountOptions = {}
+): void {
+  resolveTargetSurfaces(root, options).forEach((surface) => {
     if (surface.querySelector("[data-scene-window-controls='true']") !== null) {
       return;
     }

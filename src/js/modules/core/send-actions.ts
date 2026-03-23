@@ -30,6 +30,7 @@ export interface SendProtocolParams {
   targets?: string[];
   context?: Record<string, unknown>;
   mode?: string | null;
+  preface?: string | null;
 }
 
 interface RelayRef {
@@ -213,7 +214,14 @@ export async function sendToTargetsWithContext(
 }
 
 export async function sendProtocolWithContext(
-  { room = "", scenario = "", targets = [], context = {}, mode = null }: SendProtocolParams = {},
+  {
+    room = "",
+    scenario = "",
+    targets = [],
+    context = {},
+    mode = null,
+    preface = null,
+  }: SendProtocolParams = {},
   sendContext: SendProtocolContext
 ): Promise<{ success: boolean; message?: string }> {
   await sendContext.ensureReady();
@@ -245,7 +253,9 @@ export async function sendProtocolWithContext(
       ? payload.protocolKey
       : undefined;
   const resolveOptions =
-    protocolKey !== undefined ? { fallbackTitle, protocolKey } : { fallbackTitle };
+    protocolKey !== undefined
+      ? { fallbackTitle, protocolKey, preface }
+      : { fallbackTitle, preface };
   const resolvedMessage = await resolveComposedProtocolMessage(resolveOptions);
 
   payload.message = replaceProtocolTags(resolvedMessage.message);

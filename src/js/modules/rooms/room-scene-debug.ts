@@ -1,4 +1,9 @@
-import type { InstalledRoomRecord, RoomManifest, RoomSceneHotspotConfig } from "@shared/index.js";
+import type {
+  InstalledRoomRecord,
+  RoomManifest,
+  RoomSceneCharacterConfig,
+  RoomSceneHotspotConfig,
+} from "@shared/index.js";
 import { validateRoomManifest } from "@shared/index.js";
 import { FileManager } from "../file-manager.js";
 import type {
@@ -213,7 +218,7 @@ function buildRoomInteriorBackNode(room: InstalledRoomRecord): SceneBackConfig |
   };
 }
 
-function buildRoomInteriorCharacterNodes(
+function buildLegacyRoomInteriorCharacterNodes(
   room: InstalledRoomRecord
 ): SceneCharacterPlacementConfig[] {
   if (room.id !== "game-room") {
@@ -253,9 +258,55 @@ function buildRoomInteriorCharacterNodes(
   ];
 }
 
+function cloneRoomSceneCharacter(character: RoomSceneCharacterConfig): RoomSceneCharacterConfig {
+  return { ...character };
+}
+
+function toSceneCharacterPlacement(
+  character: RoomSceneCharacterConfig
+): SceneCharacterPlacementConfig {
+  return {
+    kind: "character",
+    ...cloneRoomSceneCharacter(character),
+  };
+}
+
+function toRoomSceneCharacterConfig(
+  character: SceneCharacterPlacementConfig
+): RoomSceneCharacterConfig {
+  return {
+    id: character.id,
+    characterKind: character.characterKind,
+    ...(character.preferredSlot !== undefined ? { preferredSlot: character.preferredSlot } : {}),
+    leftPx: character.leftPx,
+    bottomPx: character.bottomPx,
+    scale: character.scale,
+    depth: character.depth,
+  };
+}
+
+function buildRoomInteriorCharacterNodes(
+  room: InstalledRoomRecord
+): SceneCharacterPlacementConfig[] {
+  if (room.scene?.characters !== undefined) {
+    return room.scene.characters.map((character) => toSceneCharacterPlacement(character));
+  }
+
+  return buildLegacyRoomInteriorCharacterNodes(room);
+}
+
+function resolveRoomInteriorCharacterRosterPreset(
+  room: InstalledRoomRecord
+): SceneLayoutConfig["characterRosterPreset"] {
+  return (
+    room.scene?.characterRosterPreset ??
+    (room.id === "game-room" ? "connected-plus-user" : "all-characters")
+  );
+}
+
 export function buildRoomInteriorSceneLayout(room: InstalledRoomRecord): SceneLayoutConfig {
   return {
-    characterRosterPreset: room.id === "game-room" ? "connected-plus-user" : "all-characters",
+    characterRosterPreset: resolveRoomInteriorCharacterRosterPreset(room),
     referenceSize: room.scene?.referenceSize ?? DEFAULT_SCENE_REFERENCE_SIZE,
     objects: room.features
       .map((feature) => buildRoomInteriorNode(room, feature.id))
@@ -455,6 +506,10 @@ async function saveRoomInteriorSceneLayout(
   }
 
   nextManifest.scene.referenceSize = { ...sceneLayout.referenceSize };
+  nextManifest.scene.characterRosterPreset = sceneLayout.characterRosterPreset;
+  nextManifest.scene.characters = sceneLayout.characters.map((character) =>
+    toRoomSceneCharacterConfig(character)
+  );
 
   nextManifest.features = nextManifest.features.map((feature) => {
     const featureScene = feature.scene;

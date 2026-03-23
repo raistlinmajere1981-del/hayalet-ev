@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { defaultControl, normalizeControl } from "./lib/ghost-wrapper-runtime.mjs";
+import { readAssistantSlotSettingsReport } from "./lib/settings-status.mjs";
 import { resolveWhereamiProviderContext } from "./lib/whereami-provider-context.mjs";
 import { resolveWhereAmI } from "./lib/whereami-runtime.mjs";
 
@@ -99,7 +100,11 @@ function parseModeOnlyFlag(argv) {
 async function main() {
   const modeOnly = parseModeOnlyFlag(process.argv.slice(2));
 
-  const [control, processEntries] = await Promise.all([readRuntimeControl(), readProcessEntries()]);
+  const [control, processEntries, assistantSlotSettings] = await Promise.all([
+    readRuntimeControl(),
+    readProcessEntries(),
+    readAssistantSlotSettingsReport(root),
+  ]);
   const probes = buildProcessProbes(processEntries);
 
   const resolved = resolveWhereAmI({
@@ -126,6 +131,7 @@ async function main() {
     appMode: resolved.mode,
     effectiveMode,
     providerContext: providerContextOutput,
+    assistantSlotSettings,
     timestamp: nowIso(),
     runtimeControlPath,
   };

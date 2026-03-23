@@ -759,12 +759,20 @@
 
 .live-log-toolbar {
   display: grid;
-  grid-template-columns: auto auto auto minmax(var(--layout-live-log-search-min), 1fr) auto;
+  grid-template-columns:
+    auto auto auto minmax(var(--layout-live-log-search-min), var(--layout-live-log-search-max))
+    auto;
   gap: var(--space-3);
   align-items: end;
   padding: var(--space-3) var(--space-4);
   border-bottom: var(--border-1) solid var(--border-default);
   background: var(--bg-surface-2);
+}
+
+.live-log-control-search {
+  min-width: var(--layout-live-log-search-min);
+  max-width: var(--layout-live-log-search-max);
+  width: 100%;
 }
 
 .live-log-body {

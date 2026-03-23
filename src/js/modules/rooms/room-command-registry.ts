@@ -2,7 +2,7 @@ import type { InstalledRoomRecord, RoomCommandScope } from "@shared/index.js";
 import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory } from "../logger/index.js";
 
-export type RoomCommandCategory = "ai1-ai2" | "ai0";
+export type RoomCommandCategory = "ai1-ai2" | "ai0" | "us1";
 
 export interface RoomCommandMetadata {
   roomId: string;
@@ -32,7 +32,13 @@ function normalizeCommandName(commandName: string): string {
 }
 
 function scopeToCategory(scope: RoomCommandScope): RoomCommandCategory {
-  return scope === "assistant" ? "ai0" : "ai1-ai2";
+  if (scope === "assistant") {
+    return "ai0";
+  }
+  if (scope === "us1") {
+    return "us1";
+  }
+  return "ai1-ai2";
 }
 
 function normalizeScope(scope: RoomCommandScope | undefined): RoomCommandScope {
@@ -85,7 +91,11 @@ function isScopeAllowed(scope: RoomCommandScope, provider: string): boolean {
     return scope === "ai-slots" || scope === "system";
   }
 
-  return true;
+  if (provider === "us1") {
+    return scope === "us1" || scope === "system";
+  }
+
+  return false;
 }
 
 class RoomCommandRegistryClass {

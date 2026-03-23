@@ -227,6 +227,43 @@ button {
   gap: 0.65rem;
 }
 
+.xox-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.xox-field__label {
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.xox-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 5.5rem;
+  padding: 0.78rem 0.82rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--ink);
+  font: inherit;
+}
+
+.xox-textarea:focus {
+  outline: none;
+  border-color: rgb(121 209 194 / 0.36);
+  box-shadow: 0 0 0 1px rgb(121 209 194 / 0.1);
+}
+
+.xox-panel__hint,
+.xox-panel__empty {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .xox-button {
   min-height: 2.7rem;
   padding: 0 1rem;
@@ -437,6 +474,48 @@ button {
 .xox-stage-footer__meta {
   font-family: "SFMono-Regular", "Consolas", monospace;
   font-size: 0.84rem;
+}
+
+.xox-invite-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.xox-invite-card {
+  padding: 0.82rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.03);
+  display: grid;
+  gap: 0.42rem;
+}
+
+.xox-invite-card--pending {
+  border-color: rgb(223 184 102 / 0.22);
+  background:
+    linear-gradient(135deg, rgb(223 184 102 / 0.1), rgb(255 255 255 / 0.03)),
+    rgb(255 255 255 / 0.03);
+}
+
+.xox-invite-card__title,
+.xox-invite-card__meta,
+.xox-invite-card__message {
+  margin: 0;
+}
+
+.xox-invite-card__meta {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.xox-invite-card__message {
+  line-height: 1.5;
+}
+
+.xox-invite-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 
 @media (max-width: 1180px) {

@@ -2,7 +2,7 @@
   --toast-duration: 0ms;
 
   position: fixed;
-  top: var(--space-4);
+  top: calc(var(--topbar-height) + var(--space-3));
   right: var(--space-4);
   z-index: var(--z-toast);
   display: flex;

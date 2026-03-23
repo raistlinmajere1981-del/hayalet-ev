@@ -230,6 +230,15 @@ class RoomRegistryClass {
     error?: string;
     restartRequired?: boolean;
   }> {
+    return await this.removeInstalledWithOptions({ roomId });
+  }
+
+  async removeInstalledWithOptions(payload: { roomId: string; deleteData?: boolean }): Promise<{
+    success: boolean;
+    room?: InstalledRoomRecord;
+    error?: string;
+    restartRequired?: boolean;
+  }> {
     const api = window.electronAPI;
     if (api === undefined || typeof api.roomsRemoveInstalled !== "function") {
       return {
@@ -238,7 +247,24 @@ class RoomRegistryClass {
       };
     }
 
-    return await api.roomsRemoveInstalled(roomId);
+    return await api.roomsRemoveInstalled(payload);
+  }
+
+  async deleteWorkspace(payload: { roomId: string; deleteData?: boolean }): Promise<{
+    success: boolean;
+    path?: string;
+    error?: string;
+    restartRequired?: boolean;
+  }> {
+    const api = window.electronAPI;
+    if (api === undefined || typeof api.roomsDeleteWorkspace !== "function") {
+      return {
+        success: false,
+        error: "roomsDeleteWorkspace missing",
+      };
+    }
+
+    return await api.roomsDeleteWorkspace(payload);
   }
 }
 

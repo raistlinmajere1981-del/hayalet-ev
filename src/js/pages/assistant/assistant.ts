@@ -1,7 +1,7 @@
 // NOTE: Server lifecycle is delegated to provider adapters.
 // NOTE: To add a provider, implement AssistantProviderAdapter and register in provider-registry.ts.
 import type { TranslationParams } from "@shared/i18n.js";
-import { LogCategory } from "@shared/logging-core";
+import { LogCategory, LogLevel } from "@shared/logging-core";
 import { ASSISTANT_TIMEOUTS } from "@timeouts";
 import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { getMimeTypeFromPath } from "../../constants/index.js";
@@ -14,6 +14,7 @@ import { AppState } from "../../modules/app-state.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
 import { ThemeManager, type ThemeId } from "../../ui/theme/index.js";
+import { notifyUser } from "../../ui/user-notification.js";
 import {
   buildInlineThemeSyncScript,
   isOpencodeUiThemeHost,
@@ -1121,12 +1122,29 @@ export class AssistantController {
         Logger.info(LogCategory.ASSISTANT_CORE, assistantT("logs.nicknameUpdated"), {
           nickname: nextNickname,
         });
+        notifyUser({
+          kind: "success",
+          title: assistantT("logs.nicknameUpdated"),
+          dedupeKey: "assistant:identity:nickname",
+        });
       }
 
       this._closeIdentityNicknameModal();
     } catch (error) {
-      Logger.error(LogCategory.ASSISTANT_CORE, assistantT("logs.nicknameUpdateFailed"), {
-        error: error instanceof Error ? error.message : String(error),
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      Logger.panel(
+        LogCategory.ASSISTANT_CORE,
+        LogLevel.ERROR,
+        assistantT("logs.nicknameUpdateFailed"),
+        {
+          error: errorMessage,
+        }
+      );
+      notifyUser({
+        kind: "error",
+        title: assistantT("logs.nicknameUpdateFailed"),
+        message: errorMessage,
+        dedupeKey: "assistant:identity:nickname",
       });
     }
   }
@@ -1231,10 +1249,27 @@ export class AssistantController {
         Logger.info(LogCategory.ASSISTANT_CORE, assistantT("logs.avatarUpdated"), {
           avatarPath: savedPath,
         });
+        notifyUser({
+          kind: "success",
+          title: assistantT("logs.avatarUpdated"),
+          dedupeKey: "assistant:identity:avatar",
+        });
       }
     } catch (error) {
-      Logger.error(LogCategory.ASSISTANT_CORE, assistantT("logs.avatarUpdateFailed"), {
-        error: error instanceof Error ? error.message : String(error),
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      Logger.panel(
+        LogCategory.ASSISTANT_CORE,
+        LogLevel.ERROR,
+        assistantT("logs.avatarUpdateFailed"),
+        {
+          error: errorMessage,
+        }
+      );
+      notifyUser({
+        kind: "error",
+        title: assistantT("logs.avatarUpdateFailed"),
+        message: errorMessage,
+        dedupeKey: "assistant:identity:avatar",
       });
     }
   }

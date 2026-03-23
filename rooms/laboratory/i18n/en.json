@@ -1,0 +1,41 @@
+{
+  "title": "Laboratory",
+  "subtitle": "Inspect local videos with an offline-first forensic workflow and readable technical reporting.",
+  "features": {
+    "video-analysis": "Video Analysis"
+  },
+  "videoAnalysis": {
+    "heroBadge": "Laboratory",
+    "heroTitle": "Video Analysis",
+    "heroSubtitle": "Load a clip, isolate the suspicious moment, and review user-friendly and technical local reports.",
+    "projects": {
+      "title": "Projects",
+      "empty": "Prepared and completed analyses appear here as resumable projects."
+    },
+    "activity": {
+      "title": "Runs and revisions",
+      "empty": "Project runs will appear here after analysis starts."
+    },
+    "reader": {
+      "title": "Report reader",
+      "hint": "Open the report in a focused overlay for comfortable reading and copying.",
+      "open": "Open reader",
+      "close": "Close reader"
+    },
+    "controls": {
+      "title": "Controls",
+      "basic": "Basic",
+      "advanced": "Advanced",
+      "reportLocale": "Report language",
+      "reportLocaleEnglish": "English",
+      "reportLocaleTurkish": "Turkish"
+    },
+    "source": {
+      "youtubeLabel": "YouTube URL",
+      "youtubePlaceholder": "https://www.youtube.com/watch?v=...",
+      "prepareYoutube": "Prepare YouTube",
+      "cancelPreparation": "Cancel preparation",
+      "kindYouTube": "YouTube"
+    }
+  }
+}

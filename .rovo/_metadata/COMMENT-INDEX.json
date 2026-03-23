@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-21T23:44:59.631Z",
+  "generatedAt": "2026-03-23T09:53:27.599Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 521,
-    "filesWithComments": 111,
-    "commentsIndexed": 272,
-    "fileLevelComments": 207,
-    "symbolLevelComments": 65,
+    "filesScanned": 532,
+    "filesWithComments": 118,
+    "commentsIndexed": 287,
+    "fileLevelComments": 219,
+    "symbolLevelComments": 68,
     "prefixCounts": {
-      "none": 33,
+      "none": 41,
       "AI": 0,
-      "NOTE": 235,
+      "NOTE": 242,
       "WARNING": 4,
       "TODO": 0
     }
@@ -207,6 +207,102 @@
       ]
     },
     {
+      "path": "electron/laboratory/analysis-worker.cjs",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 1,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 23,
+          "endLine": 23,
+          "text": "Ignore child teardown failures during cancellation.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "electron/laboratory/job-runner.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 1,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 293,
+          "endLine": 293,
+          "text": "Ignore postMessage failures during teardown.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "electron/laboratory/source-resolver.ts",
+      "totalComments": 3,
+      "byKind": {
+        "note": 3
+      },
+      "byPrefix": {
+        "none": 3,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 297,
+          "endLine": 297,
+          "text": "Ignore teardown failures during cancellation.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 591,
+          "endLine": 591,
+          "text": "Ignore teardown failures during cancellation.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 723,
+          "endLine": 723,
+          "text": "Ignore teardown failures during cancellation.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
       "path": "electron/logger/core/LoggerCore.ts",
       "totalComments": 3,
       "byKind": {
@@ -309,6 +405,43 @@
       ]
     },
     {
+      "path": "electron/logger/session-manager.ts",
+      "totalComments": 2,
+      "byKind": {
+        "note": 2
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 2,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [
+        "loggerT"
+      ],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 34,
+          "endLine": 34,
+          "text": "NOTE: Some log producers do not emit summary.json, so a recent write window is treated as potentially active.",
+          "prefix": "NOTE",
+          "scopeType": "function",
+          "scopeName": "loggerT"
+        },
+        {
+          "kind": "note",
+          "startLine": 295,
+          "endLine": 295,
+          "text": "NOTE: Cleanup runs per-app in order so the latest-session calculation stays deterministic.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
       "path": "electron/mail-identity-service.ts",
       "totalComments": 2,
       "byKind": {
@@ -346,13 +479,13 @@
     },
     {
       "path": "electron/native/better-sqlite3-runtime.js",
-      "totalComments": 17,
+      "totalComments": 18,
       "byKind": {
-        "note": 2,
+        "note": 3,
         "jsdoc": 15
       },
       "byPrefix": {
-        "none": 17,
+        "none": 18,
         "AI": 0,
         "NOTE": 0,
         "WARNING": 0,
@@ -391,8 +524,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 33,
-          "endLine": 36,
+          "startLine": 72,
+          "endLine": 75,
           "text": "@param {unknown} target\n@returns {BetterSqlite3RuntimeTarget}",
           "prefix": null,
           "scopeType": "function",
@@ -400,8 +533,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 45,
-          "endLine": 47,
+          "startLine": 84,
+          "endLine": 86,
           "text": "@returns {string}",
           "prefix": null,
           "scopeType": "function",
@@ -409,8 +542,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 56,
-          "endLine": 59,
+          "startLine": 95,
+          "endLine": 98,
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {string}",
           "prefix": null,
           "scopeType": "function",
@@ -418,8 +551,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 64,
-          "endLine": 67,
+          "startLine": 103,
+          "endLine": 106,
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {string}",
           "prefix": null,
           "scopeType": "function",
@@ -427,8 +560,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 74,
-          "endLine": 77,
+          "startLine": 113,
+          "endLine": 116,
           "text": "@param {unknown} target\n@returns {BetterSqlite3RuntimeInfo}",
           "prefix": null,
           "scopeType": "function",
@@ -436,8 +569,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 93,
-          "endLine": 96,
+          "startLine": 132,
+          "endLine": 135,
           "text": "@param {string} filePath\n@returns {string | null}",
           "prefix": null,
           "scopeType": "function",
@@ -445,8 +578,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 125,
-          "endLine": 129,
+          "startLine": 164,
+          "endLine": 168,
           "text": "@param {string[]} args\n@param {string} label\n@returns {void}",
           "prefix": null,
           "scopeType": "function",
@@ -454,8 +587,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 147,
-          "endLine": 151,
+          "startLine": 186,
+          "endLine": 190,
           "text": "@param {string[]} args\n@param {string} label\n@returns {void}",
           "prefix": null,
           "scopeType": "function",
@@ -463,8 +596,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 175,
-          "endLine": 178,
+          "startLine": 214,
+          "endLine": 217,
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {BetterSqlite3RuntimeInfo}",
           "prefix": null,
           "scopeType": "function",
@@ -472,8 +605,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 196,
-          "endLine": 199,
+          "startLine": 235,
+          "endLine": 238,
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {BetterSqlite3RuntimeInfo}",
           "prefix": null,
           "scopeType": "function",
@@ -481,8 +614,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 215,
-          "endLine": 218,
+          "startLine": 254,
+          "endLine": 257,
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}",
           "prefix": null,
           "scopeType": "function",
@@ -490,8 +623,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 246,
-          "endLine": 249,
+          "startLine": 285,
+          "endLine": 288,
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}",
           "prefix": null,
           "scopeType": "function",
@@ -499,17 +632,26 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 259,
-          "endLine": 262,
+          "startLine": 298,
+          "endLine": 301,
           "text": "@param {BetterSqlite3RuntimeTarget} [target=detectBetterSqlite3RuntimeTarget()]\n@returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}",
           "prefix": null,
           "scopeType": "function",
           "scopeName": "ensureBetterSqlite3Runtime"
         },
         {
+          "kind": "note",
+          "startLine": 305,
+          "endLine": 305,
+          "text": "Packaged builds already ship the Electron ABI binary under app.asar.unpacked.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "ensureBetterSqlite3Runtime"
+        },
+        {
           "kind": "jsdoc",
-          "startLine": 267,
-          "endLine": 279,
+          "startLine": 320,
+          "endLine": 332,
           "text": "@returns {{\n  projectRoot: string\n  activeBinaryPath: string\n  activeHash: string | null\n  detectedTarget: BetterSqlite3RuntimeTarget\n  runtimes: Array<BetterSqlite3RuntimeInfo & {\n    cacheExists: boolean\n    cacheHash: string | null\n    activeMatchesCache: boolean\n  }>\n}}",
           "prefix": null,
           "scopeType": "function",
@@ -517,8 +659,8 @@
         },
         {
           "kind": "jsdoc",
-          "startLine": 303,
-          "endLine": 306,
+          "startLine": 357,
+          "endLine": 360,
           "text": "@param {string[]} [argv=process.argv.slice(2)]\n@returns {void}",
           "prefix": null,
           "scopeType": "function",
@@ -653,6 +795,41 @@
       ]
     },
     {
+      "path": "electron/packaged-wrapper-main.ts",
+      "totalComments": 2,
+      "byKind": {
+        "note": 2
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 2,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 527,
+          "endLine": 527,
+          "text": "NOTE: Launcher fallback order matters, so probes remain sequential.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 745,
+          "endLine": 745,
+          "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
       "path": "electron/paths.ts",
       "totalComments": 3,
       "byKind": {
@@ -716,8 +893,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 428,
-          "endLine": 428,
+          "startLine": 451,
+          "endLine": 451,
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -725,8 +902,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 462,
-          "endLine": 462,
+          "startLine": 485,
+          "endLine": 485,
           "text": "WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -734,8 +911,8 @@
         },
         {
           "kind": "note",
-          "startLine": 520,
-          "endLine": 520,
+          "startLine": 543,
+          "endLine": 543,
           "text": "NOTE: External tool pages share this preload, but only the main shell should boot /js/app.js.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -763,6 +940,61 @@
           "startLine": 203,
           "endLine": 203,
           "text": "NOTE: Scenario commands are intentionally serialized because later steps depend on earlier output.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "electron/room-package-manager.ts",
+      "totalComments": 4,
+      "byKind": {
+        "note": 4
+      },
+      "byPrefix": {
+        "none": 2,
+        "AI": 0,
+        "NOTE": 2,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [
+        "resolveInstalledRoomTrackedFiles"
+      ],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 583,
+          "endLine": 583,
+          "text": "NOTE: Deletes are ordered to remove deepest paths first.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 598,
+          "endLine": 598,
+          "text": "Ignore non-empty directories so user-created files remain in place.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 606,
+          "endLine": 606,
+          "text": "Ignore non-empty roots so user-created files remain in place.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "resolveInstalledRoomTrackedFiles"
+        },
+        {
+          "kind": "note",
+          "startLine": 669,
+          "endLine": 669,
+          "text": "NOTE: Full room cleanup is opt-in so reconnecting a workspace room can reuse prior state.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -815,6 +1047,32 @@
           "startLine": 61,
           "endLine": 61,
           "text": "NOTE: Sender nickname preserves the real sender in relay/++cmd scenarios.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "electron/us1-conversation-service.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 970,
+          "endLine": 970,
+          "text": "NOTE: Inbox sync intentionally runs account-by-account to keep sidecar writes ordered.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -875,8 +1133,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 346,
-          "endLine": 346,
+          "startLine": 348,
+          "endLine": 348,
           "text": "WARNING: Install the webview navigation guard before any provider content starts navigating.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -884,8 +1142,8 @@
         },
         {
           "kind": "note",
-          "startLine": 675,
-          "endLine": 675,
+          "startLine": 677,
+          "endLine": 677,
           "text": "NOTE: Ignore malformed targets instead of blocking navigation entirely.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -893,8 +1151,8 @@
         },
         {
           "kind": "note",
-          "startLine": 679,
-          "endLine": 679,
+          "startLine": 681,
+          "endLine": 681,
           "text": "NOTE: Non-http(s) schemes stay allowed so built-in Electron pages are not blocked.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -902,8 +1160,8 @@
         },
         {
           "kind": "note",
-          "startLine": 688,
-          "endLine": 688,
+          "startLine": 690,
+          "endLine": 690,
           "text": "NOTE: Skip enforcement when the current provider URL is unavailable.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -911,8 +1169,8 @@
         },
         {
           "kind": "note",
-          "startLine": 694,
-          "endLine": 694,
+          "startLine": 696,
+          "endLine": 696,
           "text": "NOTE: Unknown providers fall back to permissive navigation.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1091,8 +1349,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 161,
-          "endLine": 161,
+          "startLine": 172,
+          "endLine": 172,
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs).",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -1763,8 +2021,8 @@
         },
         {
           "kind": "note",
-          "startLine": 411,
-          "endLine": 411,
+          "startLine": 412,
+          "endLine": 412,
           "text": "NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1772,8 +2030,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2474,
-          "endLine": 2474,
+          "startLine": 2509,
+          "endLine": 2509,
           "text": "NOTE: Ignore if the webview is not ready yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1781,8 +2039,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2513,
-          "endLine": 2513,
+          "startLine": 2548,
+          "endLine": 2548,
           "text": "NOTE: Ignore if the webview has not finished loading yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1975,8 +2233,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 637,
-          "endLine": 637,
+          "startLine": 670,
+          "endLine": 670,
           "text": "NOTE: Escape HTML to prevent XSS.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2012,7 +2270,7 @@
           "kind": "note",
           "startLine": 1378,
           "endLine": 1378,
-          "text": "NOTE: Level mapping: 0=log, 1=warn, 2=error, 3=debug.",
+          "text": "NOTE: Provider console output is diagnostic-only; keep it out of toast notifications.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -2499,8 +2757,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 307,
-          "endLine": 307,
+          "startLine": 308,
+          "endLine": 308,
           "text": "NOTE: Force re-fetch after injecting DOM.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2508,8 +2766,8 @@
         },
         {
           "kind": "note",
-          "startLine": 359,
-          "endLine": 359,
+          "startLine": 360,
+          "endLine": 360,
           "text": "NOTE: Progress is runtime-driven via CSS var to avoid width injection.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4425,8 +4683,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 16,
-          "endLine": 16,
+          "startLine": 17,
+          "endLine": 17,
           "text": "NOTE: Explicit type re-exports keep IDE type hints stable.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4481,6 +4739,23 @@
           "startLine": 19,
           "kind": "note",
           "text": "NOTE: New API preferred; keep for backward compatibility with class."
+        }
+      ]
+    },
+    {
+      "file": "electron/native/better-sqlite3-runtime.js",
+      "type": "function",
+      "name": "ensureBetterSqlite3Runtime",
+      "comments": [
+        {
+          "startLine": 298,
+          "kind": "jsdoc",
+          "text": "@param {BetterSqlite3RuntimeTarget} [target=detectBetterSqlite3RuntimeTarget()]\n@returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}"
+        },
+        {
+          "startLine": 305,
+          "kind": "note",
+          "text": "Packaged builds already ship the Electron ABI binary under app.asar.unpacked."
         }
       ]
     },
@@ -4562,12 +4837,24 @@
       ]
     },
     {
+      "file": "electron/logger/session-manager.ts",
+      "type": "function",
+      "name": "loggerT",
+      "comments": [
+        {
+          "startLine": 34,
+          "kind": "note",
+          "text": "NOTE: Some log producers do not emit summary.json, so a recent write window is treated as potentially active."
+        }
+      ]
+    },
+    {
       "file": "electron/native/better-sqlite3-runtime.js",
       "type": "function",
       "name": "activateBetterSqlite3Runtime",
       "comments": [
         {
-          "startLine": 215,
+          "startLine": 254,
           "kind": "jsdoc",
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}"
         }
@@ -4579,21 +4866,9 @@
       "name": "captureRuntimeBinary",
       "comments": [
         {
-          "startLine": 175,
+          "startLine": 214,
           "kind": "jsdoc",
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {BetterSqlite3RuntimeInfo}"
-        }
-      ]
-    },
-    {
-      "file": "electron/native/better-sqlite3-runtime.js",
-      "type": "function",
-      "name": "ensureBetterSqlite3Runtime",
-      "comments": [
-        {
-          "startLine": 259,
-          "kind": "jsdoc",
-          "text": "@param {BetterSqlite3RuntimeTarget} [target=detectBetterSqlite3RuntimeTarget()]\n@returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}"
         }
       ]
     },
@@ -4603,7 +4878,7 @@
       "name": "getBetterSqlite3RuntimeStatus",
       "comments": [
         {
-          "startLine": 267,
+          "startLine": 320,
           "kind": "jsdoc",
           "text": "@returns {{\n  projectRoot: string\n  activeBinaryPath: string\n  activeHash: string | null\n  detectedTarget: BetterSqlite3RuntimeTarget\n  runtimes: Array<BetterSqlite3RuntimeInfo & {\n    cacheExists: boolean\n    cacheHash: string | null\n    activeMatchesCache: boolean\n  }>\n}}"
         }
@@ -4615,7 +4890,7 @@
       "name": "getRuntimeInfo",
       "comments": [
         {
-          "startLine": 74,
+          "startLine": 113,
           "kind": "jsdoc",
           "text": "@param {unknown} target\n@returns {BetterSqlite3RuntimeInfo}"
         }
@@ -4627,7 +4902,7 @@
       "name": "hashFile",
       "comments": [
         {
-          "startLine": 93,
+          "startLine": 132,
           "kind": "jsdoc",
           "text": "@param {string} filePath\n@returns {string | null}"
         }
@@ -4639,7 +4914,7 @@
       "name": "normalizeTarget",
       "comments": [
         {
-          "startLine": 33,
+          "startLine": 72,
           "kind": "jsdoc",
           "text": "@param {unknown} target\n@returns {BetterSqlite3RuntimeTarget}"
         }
@@ -4651,7 +4926,7 @@
       "name": "prepareBetterSqlite3Runtime",
       "comments": [
         {
-          "startLine": 246,
+          "startLine": 285,
           "kind": "jsdoc",
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}"
         }
@@ -4663,7 +4938,7 @@
       "name": "rebuildBetterSqlite3Runtime",
       "comments": [
         {
-          "startLine": 196,
+          "startLine": 235,
           "kind": "jsdoc",
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {BetterSqlite3RuntimeInfo}"
         }
@@ -4675,7 +4950,7 @@
       "name": "resolveElectronVersion",
       "comments": [
         {
-          "startLine": 45,
+          "startLine": 84,
           "kind": "jsdoc",
           "text": "@returns {string}"
         }
@@ -4687,7 +4962,7 @@
       "name": "resolveTargetAbi",
       "comments": [
         {
-          "startLine": 64,
+          "startLine": 103,
           "kind": "jsdoc",
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {string}"
         }
@@ -4699,7 +4974,7 @@
       "name": "resolveTargetVersion",
       "comments": [
         {
-          "startLine": 56,
+          "startLine": 95,
           "kind": "jsdoc",
           "text": "@param {BetterSqlite3RuntimeTarget} target\n@returns {string}"
         }
@@ -4711,7 +4986,7 @@
       "name": "runBetterSqlite3RuntimeCli",
       "comments": [
         {
-          "startLine": 303,
+          "startLine": 357,
           "kind": "jsdoc",
           "text": "@param {string[]} [argv=process.argv.slice(2)]\n@returns {void}"
         }
@@ -4723,7 +4998,7 @@
       "name": "runLocalNodeCommand",
       "comments": [
         {
-          "startLine": 125,
+          "startLine": 164,
           "kind": "jsdoc",
           "text": "@param {string[]} args\n@param {string} label\n@returns {void}"
         }
@@ -4735,7 +5010,7 @@
       "name": "runLocalNpmCommand",
       "comments": [
         {
-          "startLine": 147,
+          "startLine": 186,
           "kind": "jsdoc",
           "text": "@param {string[]} args\n@param {string} label\n@returns {void}"
         }
@@ -4762,6 +5037,18 @@
           "startLine": 43,
           "kind": "note",
           "text": "NOTE: Call after app.whenReady() in main.ts."
+        }
+      ]
+    },
+    {
+      "file": "electron/room-package-manager.ts",
+      "type": "function",
+      "name": "resolveInstalledRoomTrackedFiles",
+      "comments": [
+        {
+          "startLine": 606,
+          "kind": "note",
+          "text": "Ignore non-empty roots so user-created files remain in place."
         }
       ]
     },
@@ -4795,7 +5082,7 @@
       "name": "Window",
       "comments": [
         {
-          "startLine": 161,
+          "startLine": 172,
           "kind": "note",
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs)."
         }

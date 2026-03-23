@@ -118,7 +118,7 @@ async function ensureProviderTesterCtor(): Promise<typeof ProviderTesterType> {
     "provider-tester",
     "index.js"
   );
-  const testerPath = existsSync(testerPathTs) ? testerPathTs : testerPathJs;
+  const testerPath = existsSync(testerPathJs) ? testerPathJs : testerPathTs;
 
   if (!existsSync(testerPath)) {
     throw new Error(

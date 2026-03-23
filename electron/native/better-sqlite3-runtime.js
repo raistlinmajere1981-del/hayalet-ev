@@ -27,8 +27,47 @@ const projectRoot = resolve(currentDir, "..", "..")
 const betterSqlite3PackagePath = require.resolve("better-sqlite3/package.json")
 const betterSqlite3Root = dirname(betterSqlite3PackagePath)
 const betterSqlite3Version = require(betterSqlite3PackagePath).version
-const activeBinaryPath = join(betterSqlite3Root, "build", "Release", "better_sqlite3.node")
+const defaultActiveBinaryPath = join(betterSqlite3Root, "build", "Release", "better_sqlite3.node")
 const cacheDir = join(projectRoot, "node_modules", ".cache", "better-sqlite3-runtimes")
+
+function getElectronApp() {
+  try {
+    const electronModule = require("electron")
+    if (electronModule === null || typeof electronModule !== "object") {
+      return null
+    }
+
+    const { app } = electronModule
+    return app !== undefined && typeof app === "object" ? app : null
+  } catch {
+    return null
+  }
+}
+
+function isPackagedElectronApp() {
+  return getElectronApp()?.isPackaged === true
+}
+
+function resolveActiveBinaryPath() {
+  if (!isPackagedElectronApp()) {
+    return defaultActiveBinaryPath
+  }
+
+  const resourcesPath = typeof process.resourcesPath === "string" ? process.resourcesPath.trim() : ""
+  if (resourcesPath === "") {
+    return defaultActiveBinaryPath
+  }
+
+  return join(
+    resourcesPath,
+    "app.asar.unpacked",
+    "node_modules",
+    "better-sqlite3",
+    "build",
+    "Release",
+    "better_sqlite3.node"
+  )
+}
 
 /**
  * @param {unknown} target
@@ -85,7 +124,7 @@ function getRuntimeInfo(target) {
     target: normalizedTarget,
     version,
     abi,
-    activeBinaryPath,
+    activeBinaryPath: resolveActiveBinaryPath(),
     cacheBinaryPath: join(cacheDir, fileName),
   }
 }
@@ -261,6 +300,20 @@ export function prepareBetterSqlite3Runtime(target) {
  * @returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}
  */
 export function ensureBetterSqlite3Runtime(target = detectBetterSqlite3RuntimeTarget()) {
+  const runtime = getRuntimeInfo(target)
+  if (isPackagedElectronApp()) {
+    // Packaged builds already ship the Electron ABI binary under app.asar.unpacked.
+    if (!existsSync(runtime.activeBinaryPath)) {
+      throw new Error(`Packaged better-sqlite3 binary not found at ${runtime.activeBinaryPath}`)
+    }
+
+    return {
+      ...runtime,
+      activeHash: hashFile(runtime.activeBinaryPath),
+      cacheHash: hashFile(runtime.cacheBinaryPath) ?? "",
+    }
+  }
+
   return prepareBetterSqlite3Runtime(target)
 }
 
@@ -278,6 +331,7 @@ export function ensureBetterSqlite3Runtime(target = detectBetterSqlite3RuntimeTa
  * }}
  */
 export function getBetterSqlite3RuntimeStatus() {
+  const activeBinaryPath = resolveActiveBinaryPath()
   const activeHash = hashFile(activeBinaryPath)
   const runtimes = ["node", "electron"].map((target) => {
     const runtime = getRuntimeInfo(target)

@@ -107,6 +107,47 @@ function createSettings(accountId: string): AppSettings {
   return normalizeSettings(settings);
 }
 
+function createMultiRemoteSettings(
+  selectedRemoteUserId: string,
+  bindings: Array<{
+    accountId: string;
+    remoteUserId: string;
+    nickname: string;
+  }>
+): AppSettings {
+  const settings = createDefaultSettings();
+  settings.user = {
+    nickname: "Local Ghost",
+    avatarPath: "",
+  };
+  settings.integrations = {
+    ...(settings.integrations ?? {}),
+    mailTransport: {
+      accounts: bindings.map((binding) => createAccount(binding.accountId)),
+      retryBaseMs: 1,
+      maxRetries: 0,
+    },
+  };
+  settings.remoteUsers = bindings.map((binding, index) => ({
+    remoteUserId: binding.remoteUserId,
+    email: binding.remoteUserId,
+    nickname: binding.nickname,
+    avatar: "",
+    handshakeState: "active" as const,
+    profileRevision: index + 1,
+    linkedMailAccountId: binding.accountId,
+    threadMessageId: null,
+    lastTransportMessageId: null,
+    lastError: null,
+  }));
+  settings.us1Slot = {
+    selectedRemoteUserId,
+    connectionState: "connected",
+    catchCommands: false,
+  };
+  return normalizeSettings(settings);
+}
+
 function createTransportStub() {
   const sentMessages: SendMailRequest[] = [];
   const fetchQueue: FetchInboxResult[] = [];
@@ -160,9 +201,27 @@ function buildConversationPayload(
     localSessionId?: string | null;
     mode?: "new" | "reply";
     title?: string | null;
+    sentAt?: number;
+    profile?: {
+      remoteUserId?: string;
+      email?: string;
+      nickname?: string;
+      avatar?: string;
+      profileRevision?: number;
+    };
+    roomEvent?: Record<string, unknown> | null;
+    roomCommand?: Record<string, unknown> | null;
   } = {}
 ): string {
   const localSessionId = options.localSessionId ?? null;
+  const sentAt = options.sentAt ?? FIXED_NOW + 1;
+  const profile = {
+    remoteUserId: options.profile?.remoteUserId ?? "remote@example.com",
+    email: options.profile?.email ?? options.profile?.remoteUserId ?? "remote@example.com",
+    nickname: options.profile?.nickname ?? nickname,
+    avatar: options.profile?.avatar ?? "https://example.com/avatar.png",
+    profileRevision: options.profile?.profileRevision ?? profileRevision,
+  };
   return [
     text,
     "",
@@ -172,7 +231,7 @@ function buildConversationPayload(
         protocol: MESSAGE_PROTOCOL,
         version: 1,
         messageType: "conversation",
-        sentAt: FIXED_NOW + 1,
+        sentAt,
         localSessionId,
         session:
           localSessionId !== null
@@ -180,17 +239,17 @@ function buildConversationPayload(
                 id: localSessionId,
                 mode: options.mode ?? "reply",
                 title: options.title ?? null,
-                createdAt: FIXED_NOW + 1,
+                createdAt: sentAt,
                 openHint: options.mode === "new" ? "auto_if_idle" : "list_only",
               }
             : null,
-        profile: {
-          remoteUserId: "remote@example.com",
-          email: "remote@example.com",
-          nickname,
-          avatar: "https://example.com/avatar.png",
-          profileRevision,
-        },
+        profile,
+        ...(options.roomEvent !== undefined && options.roomEvent !== null
+          ? { roomEvent: options.roomEvent }
+          : {}),
+        ...(options.roomCommand !== undefined && options.roomCommand !== null
+          ? { roomCommand: options.roomCommand }
+          : {}),
       },
       null,
       2
@@ -207,6 +266,82 @@ function extractConversationEnvelope(message: SendMailRequest): Record<string, u
   );
   assert.ok(match?.[1]);
   return JSON.parse(match[1]) as Record<string, unknown>;
+}
+
+function buildFetchedConversationMessage(options: {
+  accountId: string;
+  uid: number;
+  transportMessageId: string;
+  localMessageId: string;
+  remoteUserId?: string;
+  nickname?: string;
+  profileRevision?: number;
+  localSessionId?: string | null;
+  text: string;
+  subject?: string;
+  threadMessageId?: string | null;
+  sentAt?: number;
+  mode?: "new" | "reply";
+  title?: string | null;
+  roomEvent?: Record<string, unknown> | null;
+  roomCommand?: Record<string, unknown> | null;
+}) {
+  const remoteUserId = options.remoteUserId ?? "remote@example.com";
+  const nickname = options.nickname ?? "Remote Ghost";
+  const sentAt = options.sentAt ?? FIXED_NOW + options.uid;
+  const localSessionId = options.localSessionId ?? null;
+  const threadMessageId = options.threadMessageId ?? options.transportMessageId;
+
+  return {
+    status: "processed",
+    duplicate: false,
+    accountId: options.accountId,
+    mailbox: "INBOX",
+    uid: options.uid,
+    threadId: null,
+    transportMessageId: options.transportMessageId,
+    localMessageId: options.localMessageId,
+    fingerprint: `fingerprint-${options.uid}`,
+    headersHash: `headers-${options.uid}`,
+    deliveryState: "received",
+    remoteUserId,
+    localSessionId,
+    threadMessageId,
+    parsed: {
+      transportMessageId: options.transportMessageId,
+      inReplyTo: null,
+      references: [],
+      subject: options.subject ?? "Remote conversation",
+      text: buildConversationPayload(nickname, options.profileRevision ?? 1, options.text, {
+        localSessionId,
+        mode: options.mode,
+        title: options.title,
+        sentAt,
+        profile: {
+          remoteUserId,
+          email: remoteUserId,
+          nickname,
+          profileRevision: options.profileRevision ?? 1,
+        },
+        roomEvent: options.roomEvent,
+        roomCommand: options.roomCommand,
+      }),
+      html: null,
+      headersHash: `headers-${options.uid}`,
+      headerLines: [
+        `X-Hayalet-Ev-Protocol: ${MESSAGE_PROTOCOL}`,
+        ...(localSessionId !== null ? [`X-Hayalet-Ev-Session-Id: ${localSessionId}`] : []),
+      ],
+      from: [{ name: nickname, address: remoteUserId }],
+      to: [],
+      cc: [],
+      bcc: [],
+      replyTo: [],
+      attachments: [],
+      receivedAt: sentAt,
+      rawSize: 256,
+    },
+  };
 }
 
 function cleanupAccount(accountId: string): void {
@@ -861,5 +996,354 @@ test("US1 conversation sync does not activate unknown remote users from normal c
     cleanupAccount(accountId);
     cleanupAccount(activeRemoteAccountId);
     cleanupAccount(strangerRemoteAccountId);
+  }
+});
+
+test("US1 conversation service includes room event and room command metadata in outbound mail", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_room_meta`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    const inviteResult = await service.sendMessage({
+      text: "XOX invite from Game Room",
+      roomEvent: {
+        roomId: "game-room",
+        featureId: "xox",
+        inviteId: "invite-1",
+        matchId: "invite-1",
+        eventType: "invite",
+        starter: "user",
+        note: "Ready?",
+      },
+    });
+    const commandResult = await service.sendMessage({
+      localSessionId: inviteResult.localSessionId,
+      text:
+        '++cmd:GameRoomXoxRemoteMove({"matchId":"invite-1","inviteId":"invite-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4})',
+      roomCommand: {
+        roomId: "game-room",
+        featureId: "xox",
+        commandName: "GameRoomXoxRemoteMove",
+        matchId: "invite-1",
+        turnIndex: 0,
+        boardHashBeforeMove: ".........",
+        rawArgs:
+          '{"matchId":"invite-1","inviteId":"invite-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}',
+      },
+    });
+
+    assert.equal(inviteResult.success, true);
+    assert.equal(commandResult.success, true);
+    assert.equal(transportStub.sentMessages.length, 2);
+
+    const inviteEnvelope = extractConversationEnvelope(transportStub.sentMessages[0] as SendMailRequest);
+    const commandEnvelope = extractConversationEnvelope(transportStub.sentMessages[1] as SendMailRequest);
+
+    assert.deepEqual(inviteEnvelope["roomEvent"], {
+      roomId: "game-room",
+      featureId: "xox",
+      inviteId: "invite-1",
+      matchId: "invite-1",
+      eventType: "invite",
+      starter: "user",
+      note: "Ready?",
+    });
+    assert.deepEqual(commandEnvelope["roomCommand"], {
+      roomId: "game-room",
+      featureId: "xox",
+      commandName: "GameRoomXoxRemoteMove",
+      matchId: "invite-1",
+      turnIndex: 0,
+      boardHashBeforeMove: ".........",
+      rawArgs:
+        '{"matchId":"invite-1","inviteId":"invite-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}',
+    });
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
+test("US1 conversation sync projects room events, commands, and invite inbox entries", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_room_sync`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    transportStub.enqueueFetch({
+      accountId,
+      mailbox: "INBOX",
+      cursor: "uid:31",
+      fetchedCount: 2,
+      processedCount: 2,
+      duplicateCount: 0,
+      messages: [
+        buildFetchedConversationMessage({
+          accountId,
+          uid: 31,
+          transportMessageId: "<invite-room-sync@example.test>",
+          localMessageId: "local-room-sync-invite",
+          localSessionId: "room-sync-session",
+          nickname: "Remote Player",
+          text: "Incoming XOX invite",
+          subject: "XOX invite",
+          roomEvent: {
+            roomId: "game-room",
+            featureId: "xox",
+            inviteId: "invite-sync-1",
+            matchId: "invite-sync-1",
+            eventType: "invite",
+            starter: "user",
+            note: "Your turn first",
+          },
+        }),
+        buildFetchedConversationMessage({
+          accountId,
+          uid: 32,
+          transportMessageId: "<command-room-sync@example.test>",
+          localMessageId: "local-room-sync-command",
+          localSessionId: "room-sync-session",
+          nickname: "Remote Player",
+          text:
+            '++cmd:GameRoomXoxRemoteMove({"matchId":"invite-sync-1","inviteId":"invite-sync-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4})',
+          subject: "XOX move",
+          roomCommand: {
+            roomId: "game-room",
+            featureId: "xox",
+            commandName: "GameRoomXoxRemoteMove",
+            matchId: "invite-sync-1",
+            turnIndex: 0,
+            boardHashBeforeMove: ".........",
+            rawArgs:
+              '{"matchId":"invite-sync-1","inviteId":"invite-sync-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}',
+          },
+        }),
+      ],
+    });
+
+    const result = await service.syncMessages({ localSessionId: "room-sync-session" });
+
+    assert.equal(result.success, true);
+    assert.equal(result.projectedCount, 2);
+    assert.equal(result.roomEvents?.length, 1);
+    assert.equal(result.roomCommands?.length, 1);
+    assert.equal(result.roomInviteInbox?.length, 1);
+    assert.equal(result.roomEvents?.[0]?.inviteId, "invite-sync-1");
+    assert.equal(result.roomEvents?.[0]?.matchId, "invite-sync-1");
+    assert.equal(result.roomEvents?.[0]?.senderNickname, "Remote Player");
+    assert.equal(result.roomCommands?.[0]?.commandName, "GameRoomXoxRemoteMove");
+    assert.deepEqual(result.roomCommands?.[0]?.commandArgs, {
+      matchId: "invite-sync-1",
+      inviteId: "invite-sync-1",
+      turnIndex: 0,
+      boardHashBeforeMove: ".........",
+      cell: 4,
+    });
+    assert.equal(result.roomInviteInbox?.[0]?.remoteUserId, "remote@example.com");
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
+test("US1 conversation sync keeps invite inbox entries from all registered remote accounts", async () => {
+  const accountIdA = `us1_mail_${Date.now().toString(36)}_multi_a`;
+  const accountIdB = `us1_mail_${Date.now().toString(36)}_multi_b`;
+  const store = createSettingsStore(
+    createMultiRemoteSettings("alpha@example.com", [
+      {
+        accountId: accountIdA,
+        remoteUserId: "alpha@example.com",
+        nickname: "Alpha Remote",
+      },
+      {
+        accountId: accountIdB,
+        remoteUserId: "beta@example.com",
+        nickname: "Beta Remote",
+      },
+    ])
+  );
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountIdA = buildRemoteEmailAccountId("alpha@example.com");
+  const remoteAccountIdB = buildRemoteEmailAccountId("beta@example.com");
+
+  try {
+    transportStub.enqueueFetch({
+      accountId: accountIdA,
+      mailbox: "INBOX",
+      cursor: "uid:41",
+      fetchedCount: 1,
+      processedCount: 1,
+      duplicateCount: 0,
+      messages: [
+        buildFetchedConversationMessage({
+          accountId: accountIdA,
+          uid: 41,
+          transportMessageId: "<invite-alpha@example.test>",
+          localMessageId: "local-alpha-invite",
+          remoteUserId: "alpha@example.com",
+          nickname: "Alpha Remote",
+          localSessionId: "alpha-session",
+          text: "Alpha invite",
+          roomEvent: {
+            roomId: "game-room",
+            featureId: "xox",
+            inviteId: "invite-alpha",
+            matchId: "invite-alpha",
+            eventType: "invite",
+            starter: "user",
+            note: "Alpha note",
+          },
+        }),
+      ],
+    });
+    transportStub.enqueueFetch({
+      accountId: accountIdB,
+      mailbox: "INBOX",
+      cursor: "uid:42",
+      fetchedCount: 1,
+      processedCount: 1,
+      duplicateCount: 0,
+      messages: [
+        buildFetchedConversationMessage({
+          accountId: accountIdB,
+          uid: 42,
+          transportMessageId: "<invite-beta@example.test>",
+          localMessageId: "local-beta-invite",
+          remoteUserId: "beta@example.com",
+          nickname: "Beta Remote",
+          localSessionId: "beta-session",
+          text: "Beta invite",
+          roomEvent: {
+            roomId: "game-room",
+            featureId: "xox",
+            inviteId: "invite-beta",
+            matchId: "invite-beta",
+            eventType: "invite",
+            starter: "opponent",
+            note: "Beta note",
+          },
+        }),
+      ],
+    });
+
+    const result = await service.syncMessages();
+
+    assert.equal(result.success, true);
+    assert.equal(result.fetchedCount, 2);
+    assert.equal(result.roomInviteInbox?.length, 2);
+    assert.deepEqual(
+      result.roomInviteInbox?.map((entry) => entry.remoteUserId).sort(),
+      ["alpha@example.com", "beta@example.com"]
+    );
+    assert.equal(result.remoteUserId, "alpha@example.com");
+  } finally {
+    cleanupAccount(accountIdA);
+    cleanupAccount(accountIdB);
+    cleanupAccount(remoteAccountIdA);
+    cleanupAccount(remoteAccountIdB);
+  }
+});
+
+test("US1 conversation service projects reset lifecycle events and clears invite inbox", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_room_reset`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    transportStub.enqueueFetch({
+      accountId,
+      mailbox: "INBOX",
+      cursor: "uid:51",
+      fetchedCount: 2,
+      processedCount: 2,
+      duplicateCount: 0,
+      messages: [
+        buildFetchedConversationMessage({
+          accountId,
+          uid: 51,
+          transportMessageId: "<invite-reset-sync@example.test>",
+          localMessageId: "local-reset-invite",
+          localSessionId: "reset-sync-session",
+          nickname: "Remote Player",
+          text: "Incoming XOX invite",
+          roomEvent: {
+            roomId: "game-room",
+            featureId: "xox",
+            inviteId: "invite-reset-sync",
+            matchId: "invite-reset-sync",
+            eventType: "invite",
+            starter: "user",
+          },
+        }),
+        buildFetchedConversationMessage({
+          accountId,
+          uid: 52,
+          transportMessageId: "<reset-sync@example.test>",
+          localMessageId: "local-reset-event",
+          localSessionId: "reset-sync-session",
+          nickname: "Remote Player",
+          text: "XOX match reset.",
+          roomEvent: {
+            roomId: "game-room",
+            featureId: "xox",
+            inviteId: "invite-reset-sync",
+            matchId: "invite-reset-sync",
+            eventType: "reset",
+          },
+        }),
+      ],
+    });
+
+    const result = await service.syncMessages({ localSessionId: "reset-sync-session" });
+
+    assert.equal(result.success, true);
+    assert.equal(result.roomEvents?.length, 2);
+    assert.equal(result.roomEvents?.[1]?.eventType, "reset");
+    assert.equal(result.roomEvents?.[1]?.matchId, "invite-reset-sync");
+    assert.equal(result.roomInviteInbox?.length, 0);
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
   }
 });

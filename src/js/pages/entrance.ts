@@ -11,6 +11,7 @@ import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { ButtonStates } from "../ui/button-states.js";
+import { notifyUser } from "../ui/user-notification.js";
 
 import { UserPanel } from "./settings/accounts/user-panel.js";
 import { SlotPanel } from "./entrance/slot-panel.js";
@@ -366,6 +367,7 @@ export class EntranceHallController {
 
     const toggleBtn = document.getElementById(`${userType}-toggle-btn`) as HTMLButtonElement | null;
     const nickname = AppState.getNickname(userType);
+    const slotLabel = userType.toUpperCase();
 
     if (toggleBtn) {
       ButtonStates.setLoading(toggleBtn, entranceT("slot.connecting"));
@@ -380,7 +382,12 @@ export class EntranceHallController {
         ButtonStates.setError(toggleBtn, entranceT("slot.missingAccount"), 1500);
       }
       this.updateUserStatus(userType);
-      Logger.warn(LogCategory.ENTRANCE, entranceT("logs.slotConnectBlocked", { slot: userType }));
+      Logger.warn(LogCategory.ENTRANCE, entranceT("logs.slotConnectBlocked", { slot: slotLabel }));
+      notifyUser({
+        kind: "warning",
+        title: entranceT("logs.slotConnectBlocked", { slot: slotLabel }),
+        dedupeKey: `slot:${userType}:connection`,
+      });
       return;
     }
 
@@ -393,7 +400,12 @@ export class EntranceHallController {
       if (toggleBtn) {
         ButtonStates.setSuccess(toggleBtn, entranceT("slot.connected"), 1500);
       }
-      Logger.success(LogCategory.ENTRANCE, entranceT("logs.slotConnected", { name: nickname }));
+      Logger.info(LogCategory.ENTRANCE, entranceT("logs.slotConnected", { name: nickname }));
+      notifyUser({
+        kind: "success",
+        title: entranceT("logs.slotConnected", { name: nickname }),
+        dedupeKey: `slot:${userType}:connection`,
+      });
       await this.updateRememberedConnectionState(userType as "ai1" | "ai2", "connected");
     } else {
       const errorMessage = result.message ?? entranceT("logs.unknownMessage");
@@ -408,6 +420,14 @@ export class EntranceHallController {
           message: errorMessage,
         })
       );
+      notifyUser({
+        kind: "error",
+        title: entranceT("logs.slotConnectError", {
+          name: nickname,
+          message: errorMessage,
+        }),
+        dedupeKey: `slot:${userType}:connection`,
+      });
     }
 
     setTimeout(() => {
@@ -464,6 +484,11 @@ export class EntranceHallController {
         LogLevel.INFO,
         entranceT("logs.slotDisconnected", { name: nickname })
       );
+      notifyUser({
+        kind: "info",
+        title: entranceT("logs.slotDisconnected", { name: nickname }),
+        dedupeKey: `slot:${userType}:connection`,
+      });
       await this.updateRememberedConnectionState(userType as "ai1" | "ai2", "disconnected");
     } else {
       const errorMessage = result.message ?? entranceT("logs.unknownMessage");
@@ -478,6 +503,14 @@ export class EntranceHallController {
           message: errorMessage,
         })
       );
+      notifyUser({
+        kind: "error",
+        title: entranceT("logs.slotDisconnectError", {
+          name: nickname,
+          message: errorMessage,
+        }),
+        dedupeKey: `slot:${userType}:connection`,
+      });
     }
 
     setTimeout(() => {

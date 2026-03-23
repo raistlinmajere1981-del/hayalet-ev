@@ -337,7 +337,9 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   });
 
   const nodeEnv = process.env["NODE_ENV"];
-  if (isDev || nodeEnv === undefined || nodeEnv.length === 0 || nodeEnv === "development") {
+  const shouldUseDevServer =
+    isDev && (nodeEnv === undefined || nodeEnv.length === 0 || nodeEnv === "development");
+  if (shouldUseDevServer) {
     void win.loadURL("http://localhost:5174");
   } else {
     void win.loadFile(Paths.getHtmlEntryPath());
@@ -629,8 +631,8 @@ export async function appRestart(options: AppRestartOptions = {}): Promise<{
       options.sceneEditor !== undefined ||
       options.sceneDebug !== undefined;
 
-    if (!app.isPackaged) {
-      if (!shouldRelaunch && _mainWindow !== null) {
+    if (isWrapperManagedRestart()) {
+      if (!app.isPackaged && !shouldRelaunch && _mainWindow !== null) {
         _mainWindow.reload();
         return {
           success: true,
@@ -638,12 +640,12 @@ export async function appRestart(options: AppRestartOptions = {}): Promise<{
         };
       }
 
-      if (shouldRelaunch && isWrapperManagedRestart()) {
-        await writeWrapperRestartRequest(options);
-        app.quit();
-        return { success: true };
-      }
+      await writeWrapperRestartRequest(options);
+      app.quit();
+      return { success: true };
+    }
 
+    if (!app.isPackaged) {
       const scriptName = resolveDevRestartScript(options);
       spawnDevRestart(scriptName);
       app.quit();

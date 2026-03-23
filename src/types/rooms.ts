@@ -1,8 +1,33 @@
 export const ROOM_SCHEMA_VERSION = 2 as const;
 
-export type RoomCommandScope = "room-ui" | "ai-slots" | "assistant" | "system";
+export type RoomCommandScope = "room-ui" | "ai-slots" | "assistant" | "us1" | "system";
 
 const LEGACY_ASSISTANT_SCOPE = "ai0";
+
+export const ROOM_SCENE_CHARACTER_KINDS = ["ai", "assistant", "us1", "user"] as const;
+export const ROOM_SCENE_CHARACTER_SLOTS = ["ai0", "ai1", "ai2", "us1"] as const;
+export const ROOM_SCENE_CHARACTER_ROSTER_PRESETS = [
+  "all-characters",
+  "connected-plus-user",
+  "assistant-only",
+  "user-only",
+] as const;
+export const ROOM_SCENE_WINDOW_CONTROLS_VISIBILITIES = [
+  "scene-only",
+  "all-pages",
+  "hidden",
+] as const;
+export const ROOM_SCENE_VIEW_BACK_BUTTON_VARIANTS = [
+  "scene-back-layer",
+  "standard-button",
+] as const;
+
+export type RoomSceneCharacterKind = (typeof ROOM_SCENE_CHARACTER_KINDS)[number];
+export type RoomSceneCharacterSlot = (typeof ROOM_SCENE_CHARACTER_SLOTS)[number];
+export type RoomSceneCharacterRosterPreset = (typeof ROOM_SCENE_CHARACTER_ROSTER_PRESETS)[number];
+export type RoomSceneWindowControlsVisibility =
+  (typeof ROOM_SCENE_WINDOW_CONTROLS_VISIBILITIES)[number];
+export type RoomSceneViewBackButtonVariant = (typeof ROOM_SCENE_VIEW_BACK_BUTTON_VARIANTS)[number];
 
 export interface RoomMenuConfig {
   label: string;
@@ -54,6 +79,21 @@ export interface RoomSceneTransparentWindowConfig {
   heightPct: number;
 }
 
+export interface RoomSceneCharacterConfig {
+  id: string;
+  characterKind: RoomSceneCharacterKind;
+  preferredSlot?: RoomSceneCharacterSlot;
+  leftPx: number;
+  bottomPx: number;
+  scale: number;
+  depth: number;
+}
+
+export interface RoomSceneChromeConfig {
+  windowControlsVisibility?: RoomSceneWindowControlsVisibility;
+  viewBackButtonVariant?: RoomSceneViewBackButtonVariant;
+}
+
 export interface RoomFeatureSceneViewConfig {
   id: string;
   backgroundSrc: string;
@@ -74,6 +114,9 @@ export interface RoomSceneConfig {
   roomBackgroundSrc: string;
   roomsHotspot: RoomSceneHotspotConfig;
   backHotspot: RoomSceneHotspotConfig;
+  characterRosterPreset?: RoomSceneCharacterRosterPreset;
+  characters?: RoomSceneCharacterConfig[];
+  chrome?: RoomSceneChromeConfig;
 }
 
 export interface RoomI18nConfig {
@@ -133,6 +176,8 @@ export interface RoomWorkspaceEntry {
   valid: boolean;
   errors: string[];
   manifest?: RoomManifest;
+  sourceKind?: "workspace" | "bundle";
+  readOnly?: boolean;
 }
 
 export interface InstalledRoomFeatureSceneViewRecord {
@@ -165,6 +210,9 @@ export interface InstalledRoomSceneRecord {
   roomBackgroundPath: string;
   roomsHotspot: RoomSceneHotspotConfig;
   backHotspot: RoomSceneHotspotConfig;
+  characterRosterPreset?: RoomSceneCharacterRosterPreset;
+  characters?: RoomSceneCharacterConfig[];
+  chrome?: RoomSceneChromeConfig;
 }
 
 export interface InstalledRoomRecord {
@@ -299,6 +347,30 @@ export function normalizeRoomRelativePath(value: string): string | null {
   return parts.join("/");
 }
 
+function isRoomSceneCharacterKind(value: string): value is RoomSceneCharacterKind {
+  return ROOM_SCENE_CHARACTER_KINDS.includes(value as RoomSceneCharacterKind);
+}
+
+function isRoomSceneCharacterSlot(value: string): value is RoomSceneCharacterSlot {
+  return ROOM_SCENE_CHARACTER_SLOTS.includes(value as RoomSceneCharacterSlot);
+}
+
+function isRoomSceneCharacterRosterPreset(value: string): value is RoomSceneCharacterRosterPreset {
+  return ROOM_SCENE_CHARACTER_ROSTER_PRESETS.includes(value as RoomSceneCharacterRosterPreset);
+}
+
+function isRoomSceneWindowControlsVisibility(
+  value: string
+): value is RoomSceneWindowControlsVisibility {
+  return ROOM_SCENE_WINDOW_CONTROLS_VISIBILITIES.includes(
+    value as RoomSceneWindowControlsVisibility
+  );
+}
+
+function isRoomSceneViewBackButtonVariant(value: string): value is RoomSceneViewBackButtonVariant {
+  return ROOM_SCENE_VIEW_BACK_BUTTON_VARIANTS.includes(value as RoomSceneViewBackButtonVariant);
+}
+
 function readMenuConfig(
   record: Record<string, unknown>,
   errors: string[]
@@ -397,6 +469,7 @@ function readCommandSpecs(
         scopeRaw !== "room-ui" &&
         scopeRaw !== "ai-slots" &&
         scopeRaw !== "assistant" &&
+        scopeRaw !== "us1" &&
         scopeRaw !== "system" &&
         scopeRaw !== LEGACY_ASSISTANT_SCOPE
       ) {
@@ -592,6 +665,138 @@ function readTransparentWindowConfig(
   };
 }
 
+function readSceneCharacterConfig(
+  rawValue: unknown,
+  path: string,
+  errors: string[]
+): RoomSceneCharacterConfig | undefined {
+  if (!isRecord(rawValue)) {
+    errors.push(`${path} must be an object`);
+    return undefined;
+  }
+
+  const id = readRequiredString(rawValue, "id", errors);
+  const characterKindRaw = readRequiredString(rawValue, "characterKind", errors);
+  const preferredSlotRaw = readOptionalString(rawValue, "preferredSlot", errors);
+  const leftPx = readFiniteNumber(rawValue, "leftPx", errors);
+  const bottomPx = readFiniteNumber(rawValue, "bottomPx", errors);
+  const scale = readPositiveNumber(rawValue, "scale", errors);
+  const depth = readFiniteNumber(rawValue, "depth", errors);
+
+  let characterKind: RoomSceneCharacterKind | undefined;
+  if (characterKindRaw !== undefined) {
+    if (isRoomSceneCharacterKind(characterKindRaw) === false) {
+      errors.push(`${path}.characterKind is invalid`);
+    } else {
+      characterKind = characterKindRaw;
+    }
+  }
+
+  let preferredSlot: RoomSceneCharacterSlot | undefined;
+  if (preferredSlotRaw !== undefined) {
+    if (isRoomSceneCharacterSlot(preferredSlotRaw) === false) {
+      errors.push(`${path}.preferredSlot is invalid`);
+    } else {
+      preferredSlot = preferredSlotRaw;
+    }
+  }
+
+  if (
+    id === undefined ||
+    characterKind === undefined ||
+    leftPx === undefined ||
+    bottomPx === undefined ||
+    scale === undefined ||
+    depth === undefined
+  ) {
+    return undefined;
+  }
+
+  return {
+    id,
+    characterKind,
+    ...(preferredSlot !== undefined ? { preferredSlot } : {}),
+    leftPx,
+    bottomPx,
+    scale,
+    depth,
+  };
+}
+
+function readSceneCharacters(
+  rawValue: unknown,
+  path: string,
+  errors: string[]
+): RoomSceneCharacterConfig[] | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(rawValue)) {
+    errors.push(`${path} must be an array`);
+    return undefined;
+  }
+
+  const parsed = rawValue
+    .map((item, index) => readSceneCharacterConfig(item, `${path}[${String(index)}]`, errors))
+    .filter((character): character is RoomSceneCharacterConfig => character !== undefined);
+
+  if (hasDuplicateValues(parsed.map((character) => character.id))) {
+    errors.push(`${path} ids must be unique`);
+  }
+
+  return parsed;
+}
+
+function readSceneChromeConfig(
+  rawValue: unknown,
+  path: string,
+  errors: string[]
+): RoomSceneChromeConfig | undefined {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(rawValue)) {
+    errors.push(`${path} must be an object`);
+    return undefined;
+  }
+
+  const windowControlsVisibilityRaw = readOptionalString(
+    rawValue,
+    "windowControlsVisibility",
+    errors
+  );
+  const viewBackButtonVariantRaw = readOptionalString(rawValue, "viewBackButtonVariant", errors);
+
+  let windowControlsVisibility: RoomSceneWindowControlsVisibility | undefined;
+  if (windowControlsVisibilityRaw !== undefined) {
+    if (isRoomSceneWindowControlsVisibility(windowControlsVisibilityRaw) === false) {
+      errors.push(`${path}.windowControlsVisibility is invalid`);
+    } else {
+      windowControlsVisibility = windowControlsVisibilityRaw;
+    }
+  }
+
+  let viewBackButtonVariant: RoomSceneViewBackButtonVariant | undefined;
+  if (viewBackButtonVariantRaw !== undefined) {
+    if (isRoomSceneViewBackButtonVariant(viewBackButtonVariantRaw) === false) {
+      errors.push(`${path}.viewBackButtonVariant is invalid`);
+    } else {
+      viewBackButtonVariant = viewBackButtonVariantRaw;
+    }
+  }
+
+  if (windowControlsVisibility === undefined && viewBackButtonVariant === undefined) {
+    return {};
+  }
+
+  return {
+    ...(windowControlsVisibility !== undefined ? { windowControlsVisibility } : {}),
+    ...(viewBackButtonVariant !== undefined ? { viewBackButtonVariant } : {}),
+  };
+}
+
 function readFeatureSceneConfig(
   rawValue: unknown,
   featureId: string,
@@ -740,6 +945,18 @@ function readSceneConfig(
     "room-back",
     errors
   );
+  const rosterPresetRaw = readOptionalString(rawValue, "characterRosterPreset", errors);
+  const characters = readSceneCharacters(rawValue["characters"], "scene.characters", errors);
+  const chrome = readSceneChromeConfig(rawValue["chrome"], "scene.chrome", errors);
+
+  let characterRosterPreset: RoomSceneCharacterRosterPreset | undefined;
+  if (rosterPresetRaw !== undefined) {
+    if (isRoomSceneCharacterRosterPreset(rosterPresetRaw) === false) {
+      errors.push("scene.characterRosterPreset is invalid");
+    } else {
+      characterRosterPreset = rosterPresetRaw;
+    }
+  }
 
   const missingFeatureScene = features
     .filter((feature) => feature.scene === undefined)
@@ -766,6 +983,9 @@ function readSceneConfig(
     roomBackgroundSrc,
     roomsHotspot,
     backHotspot,
+    ...(characterRosterPreset !== undefined ? { characterRosterPreset } : {}),
+    ...(characters !== undefined ? { characters } : {}),
+    ...(chrome !== undefined ? { chrome } : {}),
   };
 }
 

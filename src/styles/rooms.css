@@ -130,6 +130,7 @@
 }
 
 .room-page-shell {
+  position: relative;
   min-height: 100%;
 }
 
@@ -270,6 +271,7 @@
 .room-scene-room__characters,
 .room-scene-room__back-layer,
 .room-scene-room__hotspots,
+.room-scene-view__standard-back,
 .room-scene-view__back-layer {
   position: absolute;
   inset: 0;
@@ -281,6 +283,7 @@
 }
 
 .room-scene-room__hotspots,
+.room-scene-view__standard-back,
 .room-scene-view__back-layer {
   z-index: 3;
 }
@@ -318,6 +321,7 @@
 }
 
 .room-scene-room__back-layer .scene-clickable__button,
+.room-scene-view__standard-back .scene-clickable__button,
 .room-scene-view__back-layer .scene-clickable__button {
   pointer-events: auto;
 }

@@ -2,6 +2,7 @@ import { LogCategory } from "@shared/logging-core";
 import { MAX_LOGS_SERVER } from "@limits";
 import { Logger } from "../../../modules/logger/index.js";
 import { AppI18n } from "../../../modules/i18n/index.js";
+import { Toast } from "../../../ui/toast-manager.js";
 import {
   appendEntries,
   asText,
@@ -27,6 +28,16 @@ interface SetupLiveLogOverlayOptions {
   escapeHtml: (text: string) => string;
 }
 
+interface DeleteInactiveSessionsResult {
+  deletedCount: number;
+}
+
+function isDeleteInactiveSessionsResult(value: unknown): value is DeleteInactiveSessionsResult {
+  return isRecord(value) && typeof value["deletedCount"] === "number";
+}
+
+let liveLogOverlayInitialized = false;
+
 export function setupLiveLogOverlay({
   formatLogCategory,
   escapeHtml,
@@ -41,6 +52,9 @@ export function setupLiveLogOverlay({
   const overlayContent = document.getElementById("live-log-content");
   const pauseBtn = document.getElementById("live-log-pause") as HTMLButtonElement | null;
   const clearBtn = document.getElementById("live-log-clear") as HTMLButtonElement | null;
+  const deleteInactiveBtn = document.getElementById(
+    "live-log-delete-inactive"
+  ) as HTMLButtonElement | null;
   const appTabs = document.getElementById("live-log-app-tabs");
   const sessionSelect = document.getElementById(
     "live-log-session-select"
@@ -56,6 +70,7 @@ export function setupLiveLogOverlay({
     !overlayContent ||
     !pauseBtn ||
     !clearBtn ||
+    !deleteInactiveBtn ||
     !appTabs ||
     !sessionSelect ||
     !levelSelect ||
@@ -68,12 +83,28 @@ export function setupLiveLogOverlay({
     return;
   }
 
+  if (liveLogOverlayInitialized) {
+    return;
+  }
+  liveLogOverlayInitialized = true;
+
   const appButtons = Array.from(appTabs.querySelectorAll<HTMLButtonElement>("button[data-app]"));
   const maxLogs = Math.max(MAX_LOGS_SERVER * 20, 500);
   const pollIntervalMs = 2000;
   const state = createInitialOverlayState();
+  let deleteInactiveBusy = false;
 
   const getAppDirCandidates = (app: typeof state.activeApp): string[] => [app];
+
+  const setDeleteInactiveButtonUI = (): void => {
+    deleteInactiveBtn.textContent = deleteInactiveBusy
+      ? entranceT("liveLog.deleteInactiveBusy")
+      : entranceT("liveLog.deleteInactive");
+    deleteInactiveBtn.title = deleteInactiveBusy
+      ? entranceT("liveLog.deleteInactiveBusyTitle")
+      : entranceT("liveLog.deleteInactiveTitle");
+    deleteInactiveBtn.disabled = deleteInactiveBusy;
+  };
 
   const render = (): void => {
     renderEntries({
@@ -337,6 +368,71 @@ export function setupLiveLogOverlay({
     renderDetail(detailMeta, detailContext, null);
   });
 
+  deleteInactiveBtn.addEventListener("click", () => {
+    void (async (): Promise<void> => {
+      if (deleteInactiveBusy) {
+        return;
+      }
+
+      const confirmation = await electronApi.showMessageBox({
+        type: "warning",
+        buttons: [
+          entranceT("liveLog.deleteInactiveConfirmAction"),
+          entranceT("liveLog.cancelAction"),
+        ],
+        defaultId: 1,
+        cancelId: 1,
+        title: entranceT("liveLog.deleteInactiveConfirmTitle"),
+        message: entranceT("liveLog.deleteInactiveConfirmMessage"),
+        detail: entranceT("liveLog.deleteInactiveConfirmDetail"),
+      });
+
+      if (confirmation.response !== 0) {
+        return;
+      }
+
+      deleteInactiveBusy = true;
+      setDeleteInactiveButtonUI();
+
+      try {
+        const resultRaw = await electronApi.logger.deleteInactiveSessions();
+        const result = isDeleteInactiveSessionsResult(resultRaw) ? resultRaw : { deletedCount: 0 };
+
+        state.entriesByApp.app = [];
+        state.entriesByApp["mcp-server"] = [];
+        state.entriesByApp["ghost-agent"] = [];
+        state.sessionsByApp.app = [];
+        state.sessionsByApp["mcp-server"] = [];
+        state.sessionsByApp["ghost-agent"] = [];
+        state.lastFingerprintByApp.app = "";
+        state.lastFingerprintByApp["mcp-server"] = "";
+        state.lastFingerprintByApp["ghost-agent"] = "";
+        state.selectedEntryId = "";
+
+        await refreshActiveApp(true);
+
+        if (result.deletedCount > 0) {
+          Toast.success(
+            entranceT("liveLog.deleteInactiveSuccess", { count: result.deletedCount }),
+            entranceT("liveLog.deleteInactiveSuccessDetail")
+          );
+        } else {
+          Toast.info(
+            entranceT("liveLog.deleteInactiveEmpty"),
+            entranceT("liveLog.deleteInactiveEmptyDetail")
+          );
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        Logger.error(LogCategory.ENTRANCE, `Live log cleanup failed: ${message}`);
+        Toast.error(entranceT("liveLog.deleteInactiveError"), message);
+      } finally {
+        deleteInactiveBusy = false;
+        setDeleteInactiveButtonUI();
+      }
+    })();
+  });
+
   electronApi.ipcRenderer.on("log:ui-notify-batch", (_event: unknown, payload: unknown) => {
     handleIncomingPayload(payload);
   });
@@ -344,10 +440,12 @@ export function setupLiveLogOverlay({
   AppI18n.subscribe(() => {
     syncSessionSelect(state, sessionSelect);
     setPauseButtonUI(state, pauseBtn);
+    setDeleteInactiveButtonUI();
     render();
   });
 
   setPauseButtonUI(state, pauseBtn);
+  setDeleteInactiveButtonUI();
   render();
   Logger.debug(LogCategory.ENTRANCE, entranceT("logs.liveOverlayReady"));
 

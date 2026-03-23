@@ -21,7 +21,8 @@
   --layout-ui-mode-dropdown-min-w: min(11.25rem, calc(100vw - var(--space-6)));
 
   --layout-live-log-max-w: 1500px;
-  --layout-live-log-search-min: min(220px, calc(100vw - var(--space-10)));
+  --layout-live-log-search-min: min(150px, calc(100vw - var(--space-10)));
+  --layout-live-log-search-max: min(190px, calc(100vw - var(--space-10)));
   --layout-live-log-detail-min: min(300px, calc(100vw - var(--space-10)));
   --layout-markdown-code-max-h: 320px;
   --layout-markdown-code-collapsed-max-h: 180px;

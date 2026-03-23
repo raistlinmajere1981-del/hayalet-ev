@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-21T23:45:00.404Z",
+  "generatedAt": "2026-03-23T09:53:29.378Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 541,
-    "ids": 561,
+    "filesScanned": 551,
+    "ids": 562,
     "testIds": 15,
-    "querySelectors": 136,
-    "totalSelectors": 712
+    "querySelectors": 137,
+    "totalSelectors": 714
   },
   "lookup": {
     "id": {
@@ -258,6 +258,7 @@
       "live-log-clear": "#live-log-clear",
       "live-log-content": "#live-log-content",
       "live-log-context": "#live-log-context",
+      "live-log-delete-inactive": "#live-log-delete-inactive",
       "live-log-level-select": "#live-log-level-select",
       "live-log-meta": "#live-log-meta",
       "live-log-metrics": "#live-log-metrics",
@@ -661,6 +662,7 @@
       "data_component_user_message_data_slot_user_message_text": "[data-component=\"user-message\"] [data-slot=\"user-message-text\"]",
       "data_room_nav": "[data-room-nav=",
       "data_room_page": "[data-room-page=",
+      "data_room_role": "[data-room-role=",
       "data_scene_generated_back_true": "[data-scene-generated-back='true']",
       "data_scene_window_controls_true": "[data-scene-window-controls='true']",
       "data_slot_session_turn_message_content": "[data-slot=\"session-turn-message-content\"]",

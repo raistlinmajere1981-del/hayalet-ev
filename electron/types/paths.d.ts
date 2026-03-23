@@ -17,8 +17,10 @@ export interface PathResolver {
   getCommandsDir(): string;
   getAssetsDir(): string;
   getRoomsWorkspaceDir(): string;
+  getBundledRoomsDir(): string;
   getInstalledRoomsDir(): string;
   getInstalledSceneThemesDir(): string;
+  getRoomStorageDir(roomId: string): string;
   getRoomsRegistryPath(): string;
   getInstalledRoomDir(roomId: string): string;
   getInstalledSceneThemeDir(themeId: string): string;

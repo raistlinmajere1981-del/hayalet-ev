@@ -413,6 +413,47 @@ body.is-scroll-locked {
   gap: var(--space-2);
 }
 
+.room-manager-delete-confirm {
+  align-items: stretch;
+  text-align: left;
+}
+
+.room-manager-delete-confirm__message {
+  margin: 0;
+}
+
+.room-manager-delete-confirm__checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-md);
+  background: var(--bg-app);
+}
+
+.room-manager-delete-confirm__checkbox input {
+  margin-top: var(--space-1);
+}
+
+.room-manager-delete-confirm__checkbox-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.room-manager-delete-confirm__checkbox-label {
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.room-manager-delete-confirm__hint {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
+}
+
 .room-manager-state-badge {
   display: inline-flex;
   align-items: center;
@@ -1450,7 +1491,9 @@ body.is-scroll-locked {
 }
 
 .settings-hub-panel--live-log .live-log-toolbar {
-  grid-template-columns: auto auto auto minmax(var(--layout-live-log-search-min), 1fr) auto;
+  grid-template-columns:
+    auto auto auto minmax(var(--layout-live-log-search-min), var(--layout-live-log-search-max))
+    auto;
   gap: var(--space-3);
   align-items: center;
   padding: 0 0 var(--space-4);

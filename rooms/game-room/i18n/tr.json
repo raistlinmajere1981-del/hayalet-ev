@@ -1,21 +1,27 @@
 {
   "title": "Oyun Odasi",
-  "subtitle": "Canli AI slotlari ile dogrudan maclar icin odakli masa oyunu odasi.",
+  "subtitle": "Canli AI slotlari veya bagli US1 uzak kullanicisi ile dogrudan maclar icin odakli masa oyunu odasi.",
   "features": {
     "xox": "XOX"
   },
   "xox": {
     "heroBadge": "Oyun Odasi",
     "heroTitle": "XOX Mac Masasi",
-    "heroSubtitle": "AI1 veya AI2'yi sec, kimin baslayacagini belirle ve room-scoped komutlarla temiz bir XOX duellosu oyna.",
+    "heroSubtitle": "AI1, AI2 veya US1'i sec, kimin baslayacagini belirle ve room-scoped komutlarla temiz bir XOX duellosu oyna.",
     "topbar": {
       "featureLabel": "Ana Fonksiyon",
-      "opponentLabel": "Rakip AI",
+      "opponentLabel": "Rakip",
       "starterLabel": "Baslangic",
       "starterUser": "Kullanici Baslar",
       "starterAi": "AI Baslar",
+      "starterRemote": "Uzak Kullanici Baslar",
       "start": "Maci Baslat",
-      "reset": "Maci Sifirla"
+      "sendInvite": "Davet Gonder",
+      "reset": "Maci Sifirla",
+      "inviteMessageLabel": "Davet Mesaji",
+      "inviteMessagePlaceholder": "Protokol veya uzak davet maili icin opsiyonel bir not ekle.",
+      "inviteMessageHintAi": "AI1 veya AI2 seciliyken bu not yalnizca ilk protokol mesajinin basina eklenir.",
+      "inviteMessageHintUs1": "US1 seciliyken bu not yalnizca davet mailinde gonderilir."
     },
     "board": {
       "title": "Tahta",
@@ -39,7 +45,7 @@
     "status": {
       "roomApiUnavailable": "Room API koprusu bagli degil.",
       "commandSendFailed": "Komut oda host'una gonderilemedi.",
-      "idle": "Hazir bir AI rakibi sec ve maci baslat."
+      "idle": "Hazir bir rakip sec veya gelen bir davete yanit ver."
     },
     "results": {
       "idle": "Hazir",
@@ -51,7 +57,7 @@
     },
     "turns": {
       "user": "Kullanici",
-      "ai": "Rakip AI",
+      "ai": "Rakip",
       "idle": "Bekliyor"
     },
     "slotState": {
@@ -60,9 +66,15 @@
       "assigned": "Atanmis",
       "empty": "Hesap Yok"
     },
-    "slotNote": {
-      "current": "Secili",
-      "unavailable": "Kullanilamaz"
+    "invites": {
+      "title": "Gelen Davetler",
+      "empty": "Su anda aktif uzak davet yok.",
+      "accept": "Kabul Et",
+      "reject": "Reddet",
+      "pendingOutgoing": "Davet gonderildi. Yanit bekleniyor.",
+      "messageFallback": "Davet mesaji eklenmedi.",
+      "starterUser": "Sen baslarsin",
+      "starterRemote": "Uzak kullanici baslar"
     }
   }
 }

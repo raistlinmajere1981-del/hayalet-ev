@@ -1,21 +1,27 @@
 {
   "title": "Game Room",
-  "subtitle": "Focused table game room for direct matches with live AI slots.",
+  "subtitle": "Focused table game room for direct matches with live AI slots or the connected US1 remote user.",
   "features": {
     "xox": "XOX"
   },
   "xox": {
     "heroBadge": "Game Room",
     "heroTitle": "XOX Match Table",
-    "heroSubtitle": "Pick AI1 or AI2, choose who starts, and play a clean XOX duel with room-scoped commands.",
+    "heroSubtitle": "Pick AI1, AI2, or US1, choose who starts, and run a clean XOX duel with room-scoped commands.",
     "topbar": {
       "featureLabel": "Main Function",
-      "opponentLabel": "Opponent AI",
+      "opponentLabel": "Opponent",
       "starterLabel": "Starter",
       "starterUser": "User Starts",
       "starterAi": "AI Starts",
+      "starterRemote": "Remote Starts",
       "start": "Start Match",
-      "reset": "Reset Match"
+      "sendInvite": "Send Invite",
+      "reset": "Reset Match",
+      "inviteMessageLabel": "Invite Message",
+      "inviteMessagePlaceholder": "Add an optional note for the protocol or the remote invite mail.",
+      "inviteMessageHintAi": "When AI1 or AI2 is selected, this note is prepended only to the first protocol message.",
+      "inviteMessageHintUs1": "When US1 is selected, this note is sent only in the invite mail."
     },
     "board": {
       "title": "Board",
@@ -39,7 +45,7 @@
     "status": {
       "roomApiUnavailable": "Room API bridge is not connected.",
       "commandSendFailed": "The command could not be sent to the room host.",
-      "idle": "Choose a ready AI opponent and start the match."
+      "idle": "Choose a ready opponent or respond to an incoming invite."
     },
     "results": {
       "idle": "Ready",
@@ -51,7 +57,7 @@
     },
     "turns": {
       "user": "User",
-      "ai": "Opponent AI",
+      "ai": "Opponent",
       "idle": "Waiting"
     },
     "slotState": {
@@ -60,9 +66,15 @@
       "assigned": "Assigned",
       "empty": "No Account"
     },
-    "slotNote": {
-      "current": "Selected",
-      "unavailable": "Unavailable"
+    "invites": {
+      "title": "Incoming Invites",
+      "empty": "No active remote invites right now.",
+      "accept": "Accept",
+      "reject": "Reject",
+      "pendingOutgoing": "Invite sent. Waiting for a reply.",
+      "messageFallback": "No invite message was included.",
+      "starterUser": "You start",
+      "starterRemote": "Remote starts"
     }
   }
 }

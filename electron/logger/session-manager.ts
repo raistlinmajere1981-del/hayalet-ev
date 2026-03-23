@@ -1,8 +1,16 @@
-import { mkdir, writeFile, readFile, readdir, rm } from "fs/promises";
+import { mkdir, writeFile, readFile, readdir, rm, stat } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { Paths } from "../paths.ts";
-import type { AppState, SessionListItem, SessionMeta, SessionSummary } from "@electron/types";
+import type {
+  AppState,
+  LogSessionAppId,
+  LogSessionCleanupAppResult,
+  LogSessionCleanupResult,
+  SessionListItem,
+  SessionMeta,
+  SessionSummary,
+} from "@electron/types";
 import { translateElectronMessage } from "../i18n/language-service.ts";
 import {
   buildSessionMeta,
@@ -21,6 +29,10 @@ let SESSION_DIR: string | null = null;
 let SESSION_START_TIME: string | null = null;
 
 let appStateSnapshot: AppState = {};
+
+const LOG_SESSION_APP_IDS: LogSessionAppId[] = ["app", "mcp-server", "ghost-agent"];
+// NOTE: Some log producers do not emit summary.json, so a recent write window is treated as potentially active.
+const RECENT_ACTIVE_SESSION_WINDOW_MS = 10 * 60 * 1000;
 
 async function loggerT(key: string, params?: Record<string, string | number>): Promise<string> {
   return await translateElectronMessage(`electron.logger.${key}`, params);
@@ -199,6 +211,136 @@ export async function listSessions(): Promise<SessionListItem[]> {
   } catch (_err) {
     return [];
   }
+}
+
+interface LogSessionCleanupCandidate {
+  sessionId: string;
+  sessionDir: string;
+  mtimeMs: number;
+  hasSummary: boolean;
+  endTime: string | null;
+  endReason: string | null;
+}
+
+async function collectCleanupCandidates(logDir: string): Promise<LogSessionCleanupCandidate[]> {
+  const entries = await readdir(logDir, { withFileTypes: true });
+
+  const candidates = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .map(async (entry) => {
+        const sessionDir = join(logDir, entry.name);
+        const summaryPath = join(sessionDir, SESSION_SUMMARY_FILENAME);
+        const hasSummary = existsSync(summaryPath);
+
+        let summary: SessionSummary | null = null;
+        if (hasSummary) {
+          try {
+            summary = normalizeSessionSummary(
+              parseJsonObject(await readFile(summaryPath, "utf-8"))
+            );
+          } catch {
+            summary = null;
+          }
+        }
+
+        const sessionStat = await stat(sessionDir);
+
+        return {
+          sessionId: entry.name,
+          sessionDir,
+          mtimeMs: sessionStat.mtimeMs,
+          hasSummary,
+          endTime: summary?.endTime ?? null,
+          endReason: summary?.endReason ?? null,
+        } satisfies LogSessionCleanupCandidate;
+      })
+  );
+
+  return candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+}
+
+function shouldPreserveSession(
+  candidate: LogSessionCleanupCandidate,
+  nowMs: number,
+  latestSessionId: string | null,
+  activeSessionId: string | null
+): boolean {
+  if (activeSessionId !== null && candidate.sessionId === activeSessionId) {
+    return true;
+  }
+
+  if (latestSessionId !== null && candidate.sessionId === latestSessionId) {
+    return true;
+  }
+
+  if (candidate.endReason === "active") {
+    return true;
+  }
+
+  if (!candidate.hasSummary && nowMs - candidate.mtimeMs <= RECENT_ACTIVE_SESSION_WINDOW_MS) {
+    return true;
+  }
+
+  return false;
+}
+
+export async function deleteInactiveLogSessions(): Promise<LogSessionCleanupResult> {
+  const baseLogsDir = Paths.getLogsDir();
+  const nowMs = Date.now();
+  const results: LogSessionCleanupAppResult[] = [];
+  let deletedCount = 0;
+  let preservedCount = 0;
+
+  // NOTE: Cleanup runs per-app in order so the latest-session calculation stays deterministic.
+  /* eslint-disable no-await-in-loop */
+  for (const appId of LOG_SESSION_APP_IDS) {
+    const logDir = join(baseLogsDir, appId);
+    const activeSessionId = appId === "app" ? SESSION_ID : null;
+    const deletedSessionIds: string[] = [];
+    const preservedSessionIds: string[] = [];
+
+    if (!existsSync(logDir)) {
+      results.push({
+        app: appId,
+        latestSessionId: null,
+        activeSessionId,
+        deletedSessionIds,
+        preservedSessionIds,
+      });
+      continue;
+    }
+
+    const candidates = await collectCleanupCandidates(logDir);
+    const latestSessionId = candidates[0]?.sessionId ?? null;
+
+    for (const candidate of candidates) {
+      if (shouldPreserveSession(candidate, nowMs, latestSessionId, activeSessionId)) {
+        preservedSessionIds.push(candidate.sessionId);
+        preservedCount += 1;
+        continue;
+      }
+
+      await rm(candidate.sessionDir, { recursive: true, force: true });
+      deletedSessionIds.push(candidate.sessionId);
+      deletedCount += 1;
+    }
+
+    results.push({
+      app: appId,
+      latestSessionId,
+      activeSessionId,
+      deletedSessionIds,
+      preservedSessionIds,
+    });
+  }
+  /* eslint-enable no-await-in-loop */
+
+  return {
+    deletedCount,
+    preservedCount,
+    apps: results,
+  };
 }
 
 export async function clearLogs(targetSessionId: string | null = null): Promise<void> {

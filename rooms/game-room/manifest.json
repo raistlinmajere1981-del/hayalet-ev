@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "id": "game-room",
   "name": "Game Room",
-  "version": "2.1.0",
-  "description": "A focused board-game room that now starts with a polished XOX duel against AI slot opponents.",
+  "version": "2.3.0",
+  "description": "A focused board-game room for XOX duels against AI slots or the connected US1 remote user.",
   "menu": {
     "label": "Game Room",
     "icon": "🎮",
@@ -52,7 +52,7 @@
     {
       "id": "xox",
       "name": "XOX",
-      "description": "Three-in-a-row matches against the connected AI1 or AI2 slot.",
+      "description": "Three-in-a-row matches against AI1, AI2, or the connected US1 remote user.",
       "icon": "XO",
       "commandSpecs": [
         {
@@ -74,6 +74,21 @@
           "name": "GameRoomXoxAiMove",
           "description": "Apply the AI move returned by the selected opponent slot.",
           "scope": "ai-slots"
+        },
+        {
+          "name": "GameRoomXoxRemoteMove",
+          "description": "Apply the remote US1 move delivered over room mail transport.",
+          "scope": "us1"
+        },
+        {
+          "name": "GameRoomXoxAcceptInvite",
+          "description": "Accept an incoming US1 XOX invite from the room UI.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomXoxRejectInvite",
+          "description": "Reject an incoming US1 XOX invite from the room UI.",
+          "scope": "room-ui"
         }
       ],
       "protocolSpecs": [
@@ -90,6 +105,13 @@
           "scenario": "xox-ai-start",
           "title": "[START][GAME-ROOM][XOX][AI-FIRST]",
           "editable": true
+        },
+        {
+          "key": "game-room-xox-us1-transport",
+          "room": "game-room",
+          "scenario": "xox-us1-transport",
+          "title": "[INFO][GAME-ROOM][XOX][US1-TRANSPORT]",
+          "editable": false
         }
       ],
       "scene": {

@@ -21,7 +21,9 @@ function resolveScopedKey(key: string): string {
 
   return normalized.startsWith(`${WHISPER_KEY_PREFIX}.`)
     ? `entrance.${normalized}`
-    : `${WHISPER_SCENE_PREFIX}.${normalized}`;
+    : normalized.includes(".")
+      ? normalized
+      : `${WHISPER_SCENE_PREFIX}.${normalized}`;
 }
 
 export function t(key: string, params?: TranslationParams): string {

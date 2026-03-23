@@ -25,6 +25,17 @@ import type {
   RoomWorkspaceEntry,
   StartupRoomsSnapshot,
 } from "../types/rooms.js";
+import type {
+  LaboratoryAnalysisRequest,
+  LaboratoryHistoryEntryRecord,
+  LaboratoryHistoryEntrySummary,
+  LaboratoryJobSnapshot,
+  LaboratoryProjectRecord,
+  LaboratoryProjectSummary,
+  LaboratorySourcePreparationSnapshot,
+  LaboratorySourceDescriptor,
+  LaboratorySourceResolveInput,
+} from "../types/laboratory.js";
 import type { LanguageDescriptor, LoadedLanguagePack, TranslationParams } from "../types/i18n.js";
 import type { SceneThemeRegistration } from "./scene-system/scene-theme-registry-contract.js";
 
@@ -559,9 +570,15 @@ declare global {
       error?: string;
       restartRequired?: boolean;
     }>;
-    roomsRemoveInstalled: (roomId: string) => Promise<{
+    roomsRemoveInstalled: (payload: { roomId: string; deleteData?: boolean }) => Promise<{
       success: boolean;
       room?: InstalledRoomRecord;
+      error?: string;
+      restartRequired?: boolean;
+    }>;
+    roomsDeleteWorkspace: (payload: { roomId: string; deleteData?: boolean }) => Promise<{
+      success: boolean;
+      path?: string;
       error?: string;
       restartRequired?: boolean;
     }>;
@@ -583,6 +600,40 @@ declare global {
       error?: string;
       restartRequired?: boolean;
     }>;
+    laboratoryResolveSource: (
+      payload: LaboratorySourceResolveInput
+    ) => Promise<IPCResult & { source?: LaboratorySourceDescriptor | null }>;
+    laboratoryStartSourcePreparation: (
+      payload: LaboratorySourceResolveInput
+    ) => Promise<IPCResult & { job?: LaboratorySourcePreparationSnapshot | null }>;
+    laboratoryGetSourcePreparationJob: (
+      jobId: string
+    ) => Promise<IPCResult & { job?: LaboratorySourcePreparationSnapshot | null }>;
+    laboratoryCancelSourcePreparationJob: (
+      jobId: string
+    ) => Promise<IPCResult & { job?: LaboratorySourcePreparationSnapshot | null }>;
+    laboratoryStartAnalysis: (
+      payload: LaboratoryAnalysisRequest
+    ) => Promise<IPCResult & { job?: LaboratoryJobSnapshot | null }>;
+    laboratoryGetJob: (
+      jobId: string
+    ) => Promise<IPCResult & { job?: LaboratoryJobSnapshot | null }>;
+    laboratoryCancelJob: (
+      jobId: string
+    ) => Promise<IPCResult & { job?: LaboratoryJobSnapshot | null }>;
+    laboratoryListHistory: () => Promise<IPCResult & { entries?: LaboratoryHistoryEntrySummary[] }>;
+    laboratoryListProjects: () => Promise<IPCResult & { projects?: LaboratoryProjectSummary[] }>;
+    laboratoryReadHistoryEntry: (
+      entryId: string
+    ) => Promise<IPCResult & { entry?: LaboratoryHistoryEntryRecord | null }>;
+    laboratoryReadProject: (
+      projectId: string
+    ) => Promise<IPCResult & { project?: LaboratoryProjectRecord | null }>;
+    laboratoryCleanupWorkspaceMedia: (
+      entryId: string
+    ) => Promise<IPCResult & { entry?: LaboratoryHistoryEntryRecord | null }>;
+    laboratoryDeleteProject: (projectId: string) => Promise<IPCResult>;
+    laboratoryDiscardWorkspace: (workspaceId: string) => Promise<IPCResult>;
     sceneThemesListInstalled: () => Promise<{
       success: boolean;
       themes?: SceneThemeRegistration[];
@@ -839,6 +890,17 @@ declare global {
       readAllLogs: (sessionId?: string | null) => Promise<unknown>;
       queryLogs: (query: Record<string, unknown>) => Promise<unknown>;
       listSessions: () => Promise<unknown>;
+      deleteInactiveSessions: () => Promise<{
+        deletedCount: number;
+        preservedCount: number;
+        apps: Array<{
+          app: "app" | "mcp-server" | "ghost-agent";
+          latestSessionId: string | null;
+          activeSessionId: string | null;
+          deletedSessionIds: string[];
+          preservedSessionIds: string[];
+        }>;
+      }>;
       getAppState: () => Promise<unknown>;
       writeStateSnapshot: () => Promise<{ success: boolean }>;
       setupWebviewLogger: (

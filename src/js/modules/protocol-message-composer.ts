@@ -15,6 +15,10 @@ type ResolveProtocolMessageResult = {
   error?: Error;
 };
 
+type ComposeProtocolMessageOptions = {
+  preface?: string | null;
+};
+
 export const PROTOCOL_HEADER_TAG = "[PROTOCOL]";
 
 export function buildProtocolHeader(fallbackTitle: string): string {
@@ -28,13 +32,22 @@ export function buildProtocolHeader(fallbackTitle: string): string {
   return `${PROTOCOL_HEADER_TAG} ${title}`;
 }
 
-export function composeProtocolMessage(fallbackTitle: string, protocolBody: string | null): string {
+function normalizeProtocolPreface(value: string | null | undefined): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export function composeProtocolMessage(
+  fallbackTitle: string,
+  protocolBody: string | null,
+  options: ComposeProtocolMessageOptions = {}
+): string {
   const header = buildProtocolHeader(fallbackTitle);
+  const preface = normalizeProtocolPreface(options.preface);
   const body = (protocolBody ?? "").trim();
-  if (body === "") {
+  if (preface === "" && body === "") {
     return header;
   }
-  return `${header}\n\n${body}`;
+  return [header, preface, body].filter((part) => part.trim() !== "").join("\n\n");
 }
 
 async function loadProtocolMap(): Promise<{ protocols: ProtocolMap | null; error?: Error }> {
@@ -58,16 +71,22 @@ async function loadProtocolMap(): Promise<{ protocols: ProtocolMap | null; error
 export async function resolveComposedProtocolMessage({
   fallbackTitle,
   protocolKey,
+  preface,
 }: {
   fallbackTitle: string;
   protocolKey?: string;
+  preface?: string | null;
 }): Promise<ResolveProtocolMessageResult> {
   const { protocols, error } = await loadProtocolMap();
   const normalizedKey = protocolKey?.trim() ?? "";
   const body = normalizedKey === "" ? "" : (protocols?.[normalizedKey] ?? "");
+  const message =
+    preface === undefined
+      ? composeProtocolMessage(fallbackTitle, body)
+      : composeProtocolMessage(fallbackTitle, body, { preface });
 
   return {
-    message: composeProtocolMessage(fallbackTitle, body),
+    message,
     body,
     bodyLoaded: normalizedKey !== "" && body.trim() !== "",
     ...(error !== undefined ? { error } : {}),

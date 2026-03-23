@@ -24,10 +24,26 @@ export function setupRoomHandlers(_mainWindow: BrowserWindow | null): void {
     return await roomPackageManager.installFromWorkspace(roomId);
   });
 
-  registerHandler("rooms-remove-installed", async (_event, roomId: string) => {
-    const roomPackageManager = getRoomPackageManager();
-    return await roomPackageManager.removeInstalledRoom(roomId);
-  });
+  registerHandler(
+    "rooms-remove-installed",
+    async (_event, payload: string | { roomId?: string; deleteData?: boolean }) => {
+      const roomPackageManager = getRoomPackageManager();
+      const roomId = typeof payload === "string" ? payload : (payload.roomId ?? "");
+      return await roomPackageManager.removeInstalledRoom(roomId, {
+        deleteData: typeof payload === "object" && payload.deleteData === true,
+      });
+    }
+  );
+
+  registerHandler(
+    "rooms-delete-workspace",
+    async (_event, payload: { roomId?: string; deleteData?: boolean } = {}) => {
+      const roomPackageManager = getRoomPackageManager();
+      return await roomPackageManager.deleteWorkspaceRoom(payload.roomId ?? "", {
+        deleteData: payload.deleteData === true,
+      });
+    }
+  );
 
   registerHandler(
     "rooms-export-to-workspace",

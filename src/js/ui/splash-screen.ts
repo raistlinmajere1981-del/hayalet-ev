@@ -27,6 +27,7 @@ const ELEMENT_IDS = {
 
 const SCENE_STATUS_KEY = "app.startup.sceneLines";
 const SCENE_STATUS_SEPARATOR = "\n";
+const SPLASH_LOGO_PATH = "./logo.jpg";
 
 let elements: SplashElements = {
   container: null,
@@ -55,7 +56,7 @@ function createClassicSplashMarkup(): string {
   return `
     <div class="splash-content">
       <div class="splash-logo-container">
-        <img src="/assets/logo.jpg" alt="${title}" class="splash-logo" id="${ELEMENT_IDS.logo}" />
+        <img src="${SPLASH_LOGO_PATH}" alt="${title}" class="splash-logo" id="${ELEMENT_IDS.logo}" />
         <div class="splash-logo-glow"></div>
       </div>
       <h1 class="splash-title">${title}</h1>

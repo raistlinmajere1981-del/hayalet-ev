@@ -13,6 +13,12 @@ import {
   extractUs1RemoteIdentityIdFromAccountId,
 } from "@shared/archive.js";
 import type {
+  Us1RoomCommandInput,
+  Us1RoomCommandRecord,
+  Us1RoomEventInput,
+  Us1RoomEventRecord,
+  Us1RoomEventType,
+  Us1RoomInviteStarter,
   Us1RoomPackageCandidate,
   Us1SessionEvent,
   Us1SessionMode,
@@ -78,6 +84,8 @@ interface ConversationEnvelope {
   session: ConversationSessionDescriptor | null;
   thread: ConversationThreadDescriptor | null;
   profile: MessageProfile;
+  roomEvent?: ConversationRoomEvent | null;
+  roomCommand?: ConversationRoomCommand | null;
 }
 
 interface ConversationSessionDescriptor {
@@ -92,6 +100,10 @@ interface ConversationThreadDescriptor {
   threadRootMessageId: string | null;
   replyToMessageId: string | null;
 }
+
+type ConversationRoomEvent = Us1RoomEventInput;
+
+type ConversationRoomCommand = Us1RoomCommandInput;
 
 interface MailTransportFacade {
   sendMail(
@@ -277,6 +289,16 @@ function normalizeSessionMode(value: unknown): Us1SessionMode | null {
 
 function normalizeSessionOpenHint(value: unknown): Us1SessionOpenHint | null {
   return value === "auto_if_idle" || value === "list_only" ? value : null;
+}
+
+function normalizeRoomEventType(value: unknown): Us1RoomEventType | null {
+  return value === "invite" || value === "accept" || value === "reject" || value === "reset"
+    ? value
+    : null;
+}
+
+function normalizeRoomInviteStarter(value: unknown): Us1RoomInviteStarter | null {
+  return value === "user" || value === "opponent" ? value : null;
 }
 
 function parseHeaderValue(headerLines: string[], headerName: string): string | null {
@@ -496,6 +518,64 @@ function normalizeConversationThread(thread: unknown): ConversationThreadDescrip
   };
 }
 
+function normalizeConversationRoomEvent(roomEvent: unknown): ConversationRoomEvent | null {
+  if (roomEvent === null || roomEvent === undefined || typeof roomEvent !== "object") {
+    return null;
+  }
+
+  const source = roomEvent as Record<string, unknown>;
+  const roomId = normalizeOptionalText(source["roomId"]);
+  const featureId = normalizeOptionalText(source["featureId"]);
+  const inviteId = normalizeOptionalText(source["inviteId"]);
+  const matchId = normalizeOptionalText(source["matchId"]);
+  const eventType = normalizeRoomEventType(source["eventType"]);
+  if (roomId === null || featureId === null || inviteId === null || eventType === null) {
+    return null;
+  }
+
+  const starter = normalizeRoomInviteStarter(source["starter"]);
+
+  return {
+    roomId,
+    featureId,
+    inviteId,
+    ...(matchId !== null ? { matchId } : {}),
+    eventType,
+    ...(starter !== null ? { starter } : {}),
+    note: normalizeOptionalText(source["note"]),
+  };
+}
+
+function normalizeConversationRoomCommand(roomCommand: unknown): ConversationRoomCommand | null {
+  if (roomCommand === null || roomCommand === undefined || typeof roomCommand !== "object") {
+    return null;
+  }
+
+  const source = roomCommand as Record<string, unknown>;
+  const roomId = normalizeOptionalText(source["roomId"]);
+  const featureId = normalizeOptionalText(source["featureId"]);
+  const commandName = normalizeOptionalText(source["commandName"]);
+  const matchId = normalizeOptionalText(source["matchId"]);
+  const turnIndex =
+    typeof source["turnIndex"] === "number" && Number.isInteger(source["turnIndex"])
+      ? source["turnIndex"]
+      : null;
+  const boardHashBeforeMove = normalizeOptionalText(source["boardHashBeforeMove"]);
+  if (roomId === null || featureId === null || commandName === null) {
+    return null;
+  }
+
+  return {
+    roomId,
+    featureId,
+    commandName,
+    ...(matchId !== null ? { matchId } : {}),
+    ...(turnIndex !== null ? { turnIndex } : {}),
+    ...(boardHashBeforeMove !== null ? { boardHashBeforeMove } : {}),
+    rawArgs: normalizeOptionalText(source["rawArgs"]),
+  };
+}
+
 function extractConversationEnvelope(text: string): ConversationEnvelope | null {
   const payload = extractJsonBlock(text, MESSAGE_PAYLOAD_START, MESSAGE_PAYLOAD_END);
   if (payload === null) {
@@ -535,6 +615,10 @@ function extractConversationEnvelope(text: string): ConversationEnvelope | null 
       ),
       thread: normalizeConversationThread((parsed as Record<string, unknown>)["thread"]),
       profile,
+      roomEvent: normalizeConversationRoomEvent((parsed as Record<string, unknown>)["roomEvent"]),
+      roomCommand: normalizeConversationRoomCommand(
+        (parsed as Record<string, unknown>)["roomCommand"]
+      ),
     };
   } catch {
     return null;
@@ -642,6 +726,7 @@ export class Us1ConversationService {
   private now: () => number;
   private settingsStore: ConversationSettingsStore;
   private archiveFactory: ArchiveManagerFactory;
+  private roomInviteInbox = new Map<string, Us1RoomEventRecord>();
 
   constructor(
     options: {
@@ -730,6 +815,12 @@ export class Us1ConversationService {
             replyToMessageId: inReplyTo,
           },
           profile: localProfile,
+          ...(params.roomEvent !== undefined && params.roomEvent !== null
+            ? { roomEvent: params.roomEvent }
+            : {}),
+          ...(params.roomCommand !== undefined && params.roomCommand !== null
+            ? { roomCommand: params.roomCommand }
+            : {}),
         }),
         inReplyTo,
         ...(threadMessageId !== null || inReplyTo !== null
@@ -807,6 +898,16 @@ export class Us1ConversationService {
       });
       await this.persistSettings(settings);
 
+      if (
+        params.roomEvent?.eventType === "accept" ||
+        params.roomEvent?.eventType === "reject" ||
+        params.roomEvent?.eventType === "reset"
+      ) {
+        this.roomInviteInbox.delete(
+          this.buildRoomInviteInboxKey(remoteUser.remoteUserId, params.roomEvent.inviteId)
+        );
+      }
+
       return {
         success: true,
         remoteUserId: remoteUser.remoteUserId,
@@ -829,10 +930,12 @@ export class Us1ConversationService {
 
   async syncMessages(params: Us1SyncMessagesParams = {}): Promise<Us1SyncMessagesResult> {
     const settings = await this.loadNormalizedSettings();
-    const binding = this.resolveActiveBinding(settings, true);
-    if (binding === null) {
+    const activeBinding = this.resolveActiveBinding(settings, true);
+    const syncBindings = this.resolveSyncBindings(settings, true);
+    if (syncBindings.length === 0) {
       return {
         success: true,
+        ...(activeBinding !== null ? { remoteUserId: activeBinding.remoteUser.remoteUserId } : {}),
         localSessionId: null,
         conversationId: null,
         fetchedCount: 0,
@@ -842,18 +945,16 @@ export class Us1ConversationService {
         skippedCount: 0,
         unresolvedSessionCount: 0,
         roomPackages: [],
+        roomEvents: [],
+        roomCommands: [],
+        roomInviteInbox: this.listRoomInviteInbox(),
       };
     }
 
-    const { remoteUser: activeRemoteUser, account } = binding;
-    const sidecar = new MailSidecarStoreManager(account.id);
-
     try {
-      const fetchResult = await this.transport.fetchInbox(account, {
-        limit: typeof params.limit === "number" && params.limit > 0 ? Math.trunc(params.limit) : 20,
-        includeAttachmentContent: true,
-      });
-
+      let fetchedCount = 0;
+      let processedCount = 0;
+      let duplicateCount = 0;
       let projectedCount = 0;
       let skippedCount = 0;
       let unresolvedSessionCount = 0;
@@ -861,185 +962,237 @@ export class Us1ConversationService {
       let activeLocalSessionId: string | null = normalizeOptionalText(params.localSessionId);
       const roomPackages: Us1RoomPackageCandidate[] = [];
       const sessionEventsById = new Map<string, Us1SessionEvent>();
+      const roomEvents: Us1RoomEventRecord[] = [];
+      const roomCommands: Us1RoomCommandRecord[] = [];
+      const activeRemoteUserId = activeBinding?.remoteUser.remoteUserId ?? "";
+      const syncedAccountIds = new Set<string>();
 
-      this.applyFetchedHandshakeMessages(settings, account, fetchResult);
-
-      for (const message of fetchResult.messages) {
-        if (message.duplicate === true) {
+      // NOTE: Inbox sync intentionally runs account-by-account to keep sidecar writes ordered.
+      /* eslint-disable no-await-in-loop */
+      for (const binding of syncBindings) {
+        const { account } = binding;
+        if (syncedAccountIds.has(account.id)) {
           continue;
         }
-
-        const protocolHeader = parseHeaderValue(
-          message.parsed.headerLines,
-          "X-Hayalet-Ev-Protocol"
-        );
-        if (protocolHeader === HANDSHAKE_PROTOCOL) {
-          continue;
-        }
-
-        const messageEnvelope = extractConversationEnvelope(message.parsed.text);
-        const remoteUserId = this.resolveRemoteUserId(
-          messageEnvelope,
-          message,
-          activeRemoteUser.remoteUserId
-        );
-        const existingRemoteUser = this.findRemoteUser(settings, remoteUserId);
-        if (remoteUserId === "" || existingRemoteUser?.handshakeState !== "active") {
-          skippedCount += 1;
-          continue;
-        }
-
-        const nextRemoteUser = this.upsertRemoteUser(settings, {
-          remoteUserId,
-          email: remoteUserId,
-          nickname:
-            messageEnvelope?.profile.nickname ?? existingRemoteUser.nickname ?? remoteUserId,
-          avatar: messageEnvelope?.profile.avatar ?? existingRemoteUser.avatar ?? "",
-          avatarPath: existingRemoteUser.avatarPath ?? "",
-          handshakeState: "active",
-          profileRevision:
-            messageEnvelope?.profile.profileRevision ?? existingRemoteUser.profileRevision,
-          linkedMailAccountId: existingRemoteUser.linkedMailAccountId,
-          inviteMessageId: existingRemoteUser.inviteMessageId ?? null,
-          acceptMessageId: existingRemoteUser.acceptMessageId ?? null,
-          threadMessageId:
-            normalizeOptionalText(message.threadMessageId) ??
-            existingRemoteUser.threadMessageId ??
-            normalizeOptionalText(message.transportMessageId),
-          lastTransportMessageId:
-            normalizeOptionalText(message.transportMessageId) ??
-            existingRemoteUser.lastTransportMessageId ??
-            null,
-          lastSyncAt: this.now(),
-          lastError: null,
+        syncedAccountIds.add(account.id);
+        const sidecar = new MailSidecarStoreManager(account.id);
+        const fetchResult = await this.transport.fetchInbox(account, {
+          limit:
+            typeof params.limit === "number" && params.limit > 0 ? Math.trunc(params.limit) : 20,
+          includeAttachmentContent: true,
         });
+        fetchedCount += fetchResult.fetchedCount;
+        processedCount += fetchResult.processedCount;
+        duplicateCount += fetchResult.duplicateCount;
 
-        const sessionDescriptor = messageEnvelope?.session ?? null;
-        const sessionTitle = normalizeOptionalText(sessionDescriptor?.title);
-        const sessionIdFromEnvelope = normalizeOptionalText(sessionDescriptor?.id);
-        const explicitSessionId =
-          sessionIdFromEnvelope ?? normalizeOptionalText(messageEnvelope?.localSessionId);
-        let localSessionId =
-          sessionIdFromEnvelope ??
-          normalizeOptionalText(message.localSessionId) ??
-          normalizeOptionalText(messageEnvelope?.localSessionId) ??
-          sidecar.getLatestSessionMapping(remoteUserId)?.localSessionId ??
-          null;
-        const existingSessionMapping =
-          localSessionId !== null ? sidecar.getSessionMapping(remoteUserId, localSessionId) : null;
-        if (localSessionId === null) {
-          localSessionId = buildSessionId(
-            remoteUserId,
-            normalizeOptionalText(message.threadMessageId) ??
-              normalizeOptionalText(message.transportMessageId),
-            this.now()
+        this.applyFetchedHandshakeMessages(settings, account, fetchResult);
+
+        for (const message of fetchResult.messages) {
+          if (message.duplicate === true) {
+            continue;
+          }
+
+          const protocolHeader = parseHeaderValue(
+            message.parsed.headerLines,
+            "X-Hayalet-Ev-Protocol"
           );
-          unresolvedSessionCount += 1;
-        }
+          if (protocolHeader === HANDSHAKE_PROTOCOL) {
+            continue;
+          }
 
-        const isNewSession = existingSessionMapping === null;
-        const archiveTitle =
-          isNewSession === true
-            ? buildConversationTitle(
-                nextRemoteUser,
-                sessionTitle ??
-                  buildSessionTitle(
-                    toDisplayText(
-                      message.parsed.text,
-                      message.parsed.attachments.length,
-                      INBOUND_ATTACHMENT_ONLY_TEXT
-                    ),
-                    message.parsed.attachments.length
-                  )
-              )
-            : null;
+          const messageEnvelope = extractConversationEnvelope(message.parsed.text);
+          const remoteUserId = this.resolveRemoteUserId(
+            messageEnvelope,
+            message,
+            activeRemoteUserId
+          );
+          const existingRemoteUser = this.findRemoteUser(settings, remoteUserId);
+          if (remoteUserId === "" || existingRemoteUser?.handshakeState !== "active") {
+            skippedCount += 1;
+            continue;
+          }
 
-        // eslint-disable-next-line no-await-in-loop -- NOTE: per-message archive work is sequential.
-        const archiveContext = await this.prepareArchiveContext(
-          nextRemoteUser,
-          localSessionId,
-          archiveTitle
-        );
-        const transportMessageId =
-          normalizeOptionalText(message.transportMessageId) ??
-          buildSyntheticTransportMessageId(message.localMessageId);
-        const displayText = toDisplayText(
-          message.parsed.text,
-          message.parsed.attachments.length,
-          INBOUND_ATTACHMENT_ONLY_TEXT
-        );
-        // eslint-disable-next-line no-await-in-loop -- NOTE: projection order must be preserved.
-        const projectedMessage = await this.appendArchiveMessage(archiveContext, {
-          role: "assistant",
-          author: buildConversationAuthor(nextRemoteUser),
-          text: displayText,
-          domId: transportMessageId,
-        });
-        // eslint-disable-next-line no-await-in-loop -- NOTE: attachment persistence is sequential per message.
-        const inboundAttachments = await this.saveInboundAttachments(
-          archiveContext.manager,
-          projectedMessage.conversationId,
-          projectedMessage.messageId,
-          nextRemoteUser.remoteUserId,
-          localSessionId,
-          message.parsed.attachments
-        );
+          const nextRemoteUser = this.upsertRemoteUser(settings, {
+            remoteUserId,
+            email: remoteUserId,
+            nickname:
+              messageEnvelope?.profile.nickname ?? existingRemoteUser.nickname ?? remoteUserId,
+            avatar: messageEnvelope?.profile.avatar ?? existingRemoteUser.avatar ?? "",
+            avatarPath: existingRemoteUser.avatarPath ?? "",
+            handshakeState: "active",
+            profileRevision:
+              messageEnvelope?.profile.profileRevision ?? existingRemoteUser.profileRevision,
+            linkedMailAccountId: existingRemoteUser.linkedMailAccountId,
+            inviteMessageId: existingRemoteUser.inviteMessageId ?? null,
+            acceptMessageId: existingRemoteUser.acceptMessageId ?? null,
+            threadMessageId:
+              normalizeOptionalText(message.threadMessageId) ??
+              existingRemoteUser.threadMessageId ??
+              normalizeOptionalText(message.transportMessageId),
+            lastTransportMessageId:
+              normalizeOptionalText(message.transportMessageId) ??
+              existingRemoteUser.lastTransportMessageId ??
+              null,
+            lastSyncAt: this.now(),
+            lastError: null,
+          });
 
-        sidecar.upsertSessionMapping({
-          remoteUserId,
-          localSessionId,
-          threadMessageId:
-            normalizeOptionalText(message.threadMessageId) ??
-            nextRemoteUser.threadMessageId ??
+          const sessionDescriptor = messageEnvelope?.session ?? null;
+          const sessionTitle = normalizeOptionalText(sessionDescriptor?.title);
+          const sessionIdFromEnvelope = normalizeOptionalText(sessionDescriptor?.id);
+          const explicitSessionId =
+            sessionIdFromEnvelope ?? normalizeOptionalText(messageEnvelope?.localSessionId);
+          let localSessionId =
+            sessionIdFromEnvelope ??
+            normalizeOptionalText(message.localSessionId) ??
+            normalizeOptionalText(messageEnvelope?.localSessionId) ??
+            sidecar.getLatestSessionMapping(remoteUserId)?.localSessionId ??
+            null;
+          const existingSessionMapping =
+            localSessionId !== null
+              ? sidecar.getSessionMapping(remoteUserId, localSessionId)
+              : null;
+          if (localSessionId === null) {
+            localSessionId = buildSessionId(
+              remoteUserId,
+              normalizeOptionalText(message.threadMessageId) ??
+                normalizeOptionalText(message.transportMessageId),
+              this.now()
+            );
+            unresolvedSessionCount += 1;
+          }
+
+          const isNewSession = existingSessionMapping === null;
+          const archiveTitle =
+            isNewSession === true
+              ? buildConversationTitle(
+                  nextRemoteUser,
+                  sessionTitle ??
+                    buildSessionTitle(
+                      toDisplayText(
+                        message.parsed.text,
+                        message.parsed.attachments.length,
+                        INBOUND_ATTACHMENT_ONLY_TEXT
+                      ),
+                      message.parsed.attachments.length
+                    )
+                )
+              : null;
+
+          const archiveContext = await this.prepareArchiveContext(
+            nextRemoteUser,
+            localSessionId,
+            archiveTitle
+          );
+          const transportMessageId =
+            normalizeOptionalText(message.transportMessageId) ??
+            buildSyntheticTransportMessageId(message.localMessageId);
+          const displayText = toDisplayText(
+            message.parsed.text,
+            message.parsed.attachments.length,
+            INBOUND_ATTACHMENT_ONLY_TEXT
+          );
+          const projectedMessage = await this.appendArchiveMessage(archiveContext, {
+            role: "assistant",
+            author: buildConversationAuthor(nextRemoteUser),
+            text: displayText,
+            domId: transportMessageId,
+          });
+          const inboundAttachments = await this.saveInboundAttachments(
+            archiveContext.manager,
+            projectedMessage.conversationId,
+            projectedMessage.messageId,
+            nextRemoteUser.remoteUserId,
+            localSessionId,
+            message.parsed.attachments
+          );
+
+          sidecar.upsertSessionMapping({
+            remoteUserId,
+            localSessionId,
+            threadMessageId:
+              normalizeOptionalText(message.threadMessageId) ??
+              nextRemoteUser.threadMessageId ??
+              transportMessageId,
+            lastMessageId: transportMessageId,
+          });
+          sidecar.upsertMessageMeta({
             transportMessageId,
-          lastMessageId: transportMessageId,
-        });
-        sidecar.upsertMessageMeta({
-          transportMessageId,
-          localMessageId: message.localMessageId,
-          deliveryState: message.deliveryState,
-          headersHash: message.headersHash,
-          metadata: {
-            direction: "inbound",
+            localMessageId: message.localMessageId,
+            deliveryState: message.deliveryState,
+            headersHash: message.headersHash,
+            metadata: {
+              direction: "inbound",
+              remoteUserId,
+              localSessionId,
+              conversationId: projectedMessage.conversationId,
+              webUrl: archiveContext.webUrl,
+              archiveMessageId: projectedMessage.messageId,
+              attachments: inboundAttachments.attachmentRefs,
+              missingAttachmentCount: inboundAttachments.missingAttachmentCount,
+            },
+          });
+
+          projectedCount += 1;
+          const sessionEvent = sessionEventsById.get(localSessionId);
+          const createdAt = sessionDescriptor?.createdAt ?? messageEnvelope?.sentAt;
+          sessionEventsById.set(localSessionId, {
             remoteUserId,
             localSessionId,
             conversationId: projectedMessage.conversationId,
-            webUrl: archiveContext.webUrl,
-            archiveMessageId: projectedMessage.messageId,
-            attachments: inboundAttachments.attachmentRefs,
-            missingAttachmentCount: inboundAttachments.missingAttachmentCount,
-          },
-        });
+            sessionTitle,
+            mode: sessionDescriptor?.mode ?? (isNewSession ? "new" : "reply"),
+            openHint: sessionDescriptor?.openHint ?? (isNewSession ? "auto_if_idle" : "list_only"),
+            sentAt: messageEnvelope?.sentAt ?? message.parsed.receivedAt,
+            isNewSession:
+              sessionEvent?.isNewSession === true ||
+              (isNewSession === true && explicitSessionId !== null),
+            ...(createdAt !== undefined ? { createdAt } : {}),
+          });
 
-        projectedCount += 1;
-        const sessionEvent = sessionEventsById.get(localSessionId);
-        const createdAt = sessionDescriptor?.createdAt ?? messageEnvelope?.sentAt;
-        sessionEventsById.set(localSessionId, {
-          remoteUserId,
-          localSessionId,
-          conversationId: projectedMessage.conversationId,
-          sessionTitle,
-          mode: sessionDescriptor?.mode ?? (isNewSession ? "new" : "reply"),
-          openHint: sessionDescriptor?.openHint ?? (isNewSession ? "auto_if_idle" : "list_only"),
-          sentAt: messageEnvelope?.sentAt ?? message.parsed.receivedAt,
-          isNewSession:
-            sessionEvent?.isNewSession === true ||
-            (isNewSession === true && explicitSessionId !== null),
-          ...(createdAt !== undefined ? { createdAt } : {}),
-        });
-        if (remoteUserId === activeRemoteUser.remoteUserId) {
-          activeConversationId = projectedMessage.conversationId;
-          activeLocalSessionId = localSessionId;
-          roomPackages.push(...inboundAttachments.roomPackages);
+          const roomEvent = this.buildRoomEventRecord(
+            messageEnvelope?.roomEvent ?? null,
+            nextRemoteUser,
+            localSessionId,
+            projectedMessage.conversationId,
+            transportMessageId,
+            messageEnvelope?.sentAt ?? message.parsed.receivedAt
+          );
+          if (roomEvent !== null) {
+            roomEvents.push(roomEvent);
+            this.applyRoomInviteEvent(roomEvent);
+          }
+
+          const roomCommand = this.buildRoomCommandRecord(
+            messageEnvelope?.roomCommand ?? null,
+            nextRemoteUser,
+            localSessionId,
+            projectedMessage.conversationId,
+            transportMessageId,
+            messageEnvelope?.sentAt ?? message.parsed.receivedAt
+          );
+          if (roomCommand !== null) {
+            roomCommands.push(roomCommand);
+          }
+
+          if (remoteUserId === activeRemoteUserId) {
+            activeConversationId = projectedMessage.conversationId;
+            activeLocalSessionId = localSessionId;
+            roomPackages.push(...inboundAttachments.roomPackages);
+          }
         }
       }
+      /* eslint-enable no-await-in-loop */
 
-      if (activeConversationId === null) {
-        const latestMapping = sidecar.getLatestSessionMapping(activeRemoteUser.remoteUserId);
+      if (activeBinding !== null && activeConversationId === null) {
+        const sidecar = new MailSidecarStoreManager(activeBinding.account.id);
+        const latestMapping = sidecar.getLatestSessionMapping(
+          activeBinding.remoteUser.remoteUserId
+        );
         const fallbackSessionId = activeLocalSessionId ?? latestMapping?.localSessionId ?? null;
         if (fallbackSessionId !== null) {
           const archiveContext = await this.prepareArchiveContext(
-            activeRemoteUser,
+            activeBinding.remoteUser,
             fallbackSessionId
           );
           activeConversationId = archiveContext.conversationId;
@@ -1051,22 +1204,27 @@ export class Us1ConversationService {
 
       return {
         success: true,
-        remoteUserId: activeRemoteUser.remoteUserId,
+        ...(activeBinding !== null ? { remoteUserId: activeBinding.remoteUser.remoteUserId } : {}),
         localSessionId: activeLocalSessionId,
         conversationId: activeConversationId,
-        fetchedCount: fetchResult.fetchedCount,
-        processedCount: fetchResult.processedCount,
-        duplicateCount: fetchResult.duplicateCount,
+        fetchedCount,
+        processedCount,
+        duplicateCount,
         projectedCount,
         skippedCount,
         unresolvedSessionCount,
         roomPackages,
         sessionEvents: Array.from(sessionEventsById.values()),
+        roomEvents,
+        roomCommands,
+        roomInviteInbox: this.listRoomInviteInbox(),
       };
     } catch (error) {
-      this.patchRemoteUserTransportState(settings, activeRemoteUser.remoteUserId, {
-        lastSyncAt: this.now(),
-        lastError: getErrorMessage(error),
+      syncBindings.forEach((binding) => {
+        this.patchRemoteUserTransportState(settings, binding.remoteUser.remoteUserId, {
+          lastSyncAt: this.now(),
+          lastError: getErrorMessage(error),
+        });
       });
       await this.persistSettings(settings);
       return { success: false, error: getErrorMessage(error) };
@@ -1082,6 +1240,151 @@ export class Us1ConversationService {
     if (saved !== true) {
       throw new Error("Failed to persist US1 conversation settings.");
     }
+  }
+
+  private buildRoomInviteInboxKey(remoteUserId: string, inviteId: string): string {
+    return `${remoteUserId}::${inviteId}`;
+  }
+
+  private listRoomInviteInbox(): Us1RoomEventRecord[] {
+    return Array.from(this.roomInviteInbox.values()).sort((left, right) => {
+      const leftSentAt = left.sentAt ?? 0;
+      const rightSentAt = right.sentAt ?? 0;
+      if (leftSentAt !== rightSentAt) {
+        return rightSentAt - leftSentAt;
+      }
+      return left.remoteUserId.localeCompare(right.remoteUserId, "tr");
+    });
+  }
+
+  private applyRoomInviteEvent(roomEvent: Us1RoomEventRecord): void {
+    const key = this.buildRoomInviteInboxKey(roomEvent.remoteUserId, roomEvent.inviteId);
+    if (roomEvent.eventType === "invite") {
+      this.roomInviteInbox.set(key, roomEvent);
+      return;
+    }
+
+    this.roomInviteInbox.delete(key);
+  }
+
+  private buildRoomEventRecord(
+    roomEvent: ConversationRoomEvent | null,
+    remoteUser: Pick<RemoteUserIdentity, "remoteUserId" | "nickname" | "email">,
+    localSessionId: string,
+    conversationId: string,
+    transportMessageId: string,
+    sentAt: number | undefined
+  ): Us1RoomEventRecord | null {
+    if (roomEvent === null) {
+      return null;
+    }
+
+    return {
+      ...roomEvent,
+      remoteUserId: remoteUser.remoteUserId,
+      localSessionId,
+      conversationId,
+      transportMessageId,
+      ...(sentAt !== undefined ? { sentAt } : {}),
+      senderNickname: remoteUser.nickname ?? null,
+      senderEmail: remoteUser.email,
+    };
+  }
+
+  private buildRoomCommandRecord(
+    roomCommand: ConversationRoomCommand | null,
+    remoteUser: Pick<RemoteUserIdentity, "remoteUserId" | "nickname" | "email">,
+    localSessionId: string,
+    conversationId: string,
+    transportMessageId: string,
+    sentAt: number | undefined
+  ): Us1RoomCommandRecord | null {
+    if (roomCommand === null) {
+      return null;
+    }
+
+    let commandArgs: unknown;
+    const rawArgs = normalizeOptionalText(roomCommand.rawArgs) ?? "";
+    if (rawArgs !== "") {
+      try {
+        commandArgs = JSON.parse(rawArgs) as unknown;
+      } catch {
+        commandArgs = rawArgs;
+      }
+    }
+
+    return {
+      ...roomCommand,
+      rawArgs,
+      ...(commandArgs !== undefined ? { commandArgs } : {}),
+      remoteUserId: remoteUser.remoteUserId,
+      localSessionId,
+      conversationId,
+      transportMessageId,
+      ...(sentAt !== undefined ? { sentAt } : {}),
+      senderNickname: remoteUser.nickname ?? null,
+      senderEmail: remoteUser.email,
+    };
+  }
+
+  private resolveSyncBindings(settings: AppSettings, requireConnected: boolean): ResolvedBinding[] {
+    const remoteAccounts = getRemoteEmailAccounts(settings.accounts);
+    const accountsById = new Map(
+      (settings.integrations?.mailTransport?.accounts ?? [])
+        .filter((account) => account.enabled !== false)
+        .map((account) => [account.id, account] as const)
+    );
+    const bindingsByRemoteUserId = new Map<string, ResolvedBinding>();
+
+    const shouldIncludeAccount = (account: MailTransportAccountConfig | undefined): boolean => {
+      if (account === undefined) {
+        return false;
+      }
+      if (requireConnected !== true) {
+        return true;
+      }
+      return (
+        settings.us1Slot?.connectionState === "connected" && account.connectionState === "connected"
+      );
+    };
+
+    remoteAccounts.forEach((remoteAccount) => {
+      const remoteUser = buildRemoteUserFromRemoteAccount(remoteAccount);
+      const accountId = normalizeOptionalText(remoteUser?.linkedMailAccountId ?? null);
+      const account = accountId !== null ? accountsById.get(accountId) : undefined;
+      if (remoteUser?.handshakeState !== "active" || shouldIncludeAccount(account) !== true) {
+        return;
+      }
+
+      bindingsByRemoteUserId.set(remoteUser.remoteUserId, {
+        remoteUser,
+        account: account as MailTransportAccountConfig,
+      });
+    });
+
+    (settings.remoteUsers ?? []).forEach((remoteUser) => {
+      if (
+        remoteUser.handshakeState !== "active" ||
+        bindingsByRemoteUserId.has(remoteUser.remoteUserId)
+      ) {
+        return;
+      }
+
+      const accountId = normalizeOptionalText(remoteUser.linkedMailAccountId);
+      const account = accountId !== null ? accountsById.get(accountId) : undefined;
+      if (shouldIncludeAccount(account) !== true) {
+        return;
+      }
+
+      bindingsByRemoteUserId.set(remoteUser.remoteUserId, {
+        remoteUser,
+        account: account as MailTransportAccountConfig,
+      });
+    });
+
+    return Array.from(bindingsByRemoteUserId.values()).sort((left, right) =>
+      left.remoteUser.remoteUserId.localeCompare(right.remoteUser.remoteUserId, "tr")
+    );
   }
 
   private resolveActiveBinding(

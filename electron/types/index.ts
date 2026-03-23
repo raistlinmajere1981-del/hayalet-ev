@@ -142,6 +142,22 @@ export interface SessionListItem {
   stats: SessionSummary["stats"] | null;
 }
 
+export type LogSessionAppId = "app" | "mcp-server" | "ghost-agent";
+
+export interface LogSessionCleanupAppResult {
+  app: LogSessionAppId;
+  latestSessionId: string | null;
+  activeSessionId: string | null;
+  deletedSessionIds: string[];
+  preservedSessionIds: string[];
+}
+
+export interface LogSessionCleanupResult {
+  deletedCount: number;
+  preservedCount: number;
+  apps: LogSessionCleanupAppResult[];
+}
+
 export interface AppState {
   startTime?: string;
   lastUpdate?: string;

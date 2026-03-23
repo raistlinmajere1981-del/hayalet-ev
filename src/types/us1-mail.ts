@@ -110,6 +110,51 @@ export type Us1SessionMode = "new" | "reply";
 
 export type Us1SessionOpenHint = "auto_if_idle" | "list_only";
 
+export type Us1RoomInviteStarter = "user" | "opponent";
+
+export type Us1RoomEventType = "invite" | "accept" | "reject" | "reset";
+
+export interface Us1RoomEventInput {
+  roomId: string;
+  featureId: string;
+  inviteId: string;
+  matchId?: string | null;
+  eventType: Us1RoomEventType;
+  starter?: Us1RoomInviteStarter;
+  note?: string | null;
+}
+
+export interface Us1RoomCommandInput {
+  roomId: string;
+  featureId: string;
+  commandName: string;
+  matchId?: string | null;
+  turnIndex?: number;
+  boardHashBeforeMove?: string | null;
+  rawArgs?: string | null;
+}
+
+export interface Us1RoomEventRecord extends Us1RoomEventInput {
+  remoteUserId: string;
+  localSessionId: string;
+  conversationId: string;
+  transportMessageId: string;
+  sentAt?: number;
+  senderNickname?: string | null;
+  senderEmail?: string | null;
+}
+
+export interface Us1RoomCommandRecord extends Us1RoomCommandInput {
+  remoteUserId: string;
+  localSessionId: string;
+  conversationId: string;
+  transportMessageId: string;
+  commandArgs?: unknown;
+  sentAt?: number;
+  senderNickname?: string | null;
+  senderEmail?: string | null;
+}
+
 export interface Us1SessionEvent {
   remoteUserId: string;
   localSessionId: string;
@@ -126,6 +171,8 @@ export interface Us1SendMessageParams {
   text?: string;
   localSessionId?: string | null;
   attachments?: Us1MessageAttachmentInput[];
+  roomEvent?: Us1RoomEventInput | null;
+  roomCommand?: Us1RoomCommandInput | null;
 }
 
 export interface Us1SendMessageResult {
@@ -158,5 +205,8 @@ export interface Us1SyncMessagesResult {
   unresolvedSessionCount?: number;
   roomPackages?: Us1RoomPackageCandidate[];
   sessionEvents?: Us1SessionEvent[];
+  roomEvents?: Us1RoomEventRecord[];
+  roomCommands?: Us1RoomCommandRecord[];
+  roomInviteInbox?: Us1RoomEventRecord[];
   error?: string;
 }

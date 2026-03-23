@@ -9,6 +9,7 @@ import { Logger } from "../../modules/logger/index.js";
 import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
+import { notifyUser } from "../../ui/user-notification.js";
 import type { OverlayStage } from "./overlay-stage.js";
 
 function assistantT(key: string, params?: TranslationParams): string {
@@ -102,13 +103,24 @@ export async function toggleAssistantConnection(
 
       controller._setButtonState(ConnectButtonState.SUCCESS_STOP);
       Logger.panel(LogCategory.ASSISTANT_CORE, LogLevel.INFO, assistantT("logs.disconnected"));
+      notifyUser({
+        kind: "info",
+        title: assistantT("logs.disconnected"),
+        dedupeKey: "assistant:connection",
+      });
 
       await new Promise((resolve) => setTimeout(resolve, ASSISTANT_TIMEOUTS.STAGE_TRANSITION_MID));
       controller._updateConnectionUI();
     } catch (err) {
       const error = err as Error;
-      Logger.error(LogCategory.ASSISTANT_CORE, assistantT("logs.disconnectError"), {
+      Logger.panel(LogCategory.ASSISTANT_CORE, LogLevel.ERROR, assistantT("logs.disconnectError"), {
         error: error.message,
+      });
+      notifyUser({
+        kind: "error",
+        title: assistantT("logs.disconnectError"),
+        message: error.message,
+        dedupeKey: "assistant:connection",
       });
 
       controller._isServerRunning = false;
@@ -155,13 +167,19 @@ export async function toggleAssistantConnection(
         if (!serverReady) {
           await controller._stopSystemActiveServers();
 
-          Logger.error(
+          Logger.panel(
             LogCategory.ASSISTANT_CORE,
+            LogLevel.ERROR,
             assistantT("logs.providerServerTimeout", { name: adapter.name }),
             {
               url: result.url,
             }
           );
+          notifyUser({
+            kind: "error",
+            title: assistantT("logs.providerServerTimeout", { name: adapter.name }),
+            dedupeKey: "assistant:connection",
+          });
 
           return;
         }
@@ -186,8 +204,13 @@ export async function toggleAssistantConnection(
           return;
         }
 
-        Logger.success(LogCategory.ASSISTANT_CORE, assistantT("logs.connectionStarted"), {
+        Logger.info(LogCategory.ASSISTANT_CORE, assistantT("logs.connectionStarted"), {
           url: targetUrl,
+        });
+        notifyUser({
+          kind: "success",
+          title: assistantT("logs.connectionStarted"),
+          dedupeKey: "assistant:connection",
         });
       } else {
         const resolvedErrorMessage = resolveIpcErrorMessage(result) ?? result.error;
@@ -195,13 +218,20 @@ export async function toggleAssistantConnection(
           typeof resolvedErrorMessage === "string" && resolvedErrorMessage !== ""
             ? resolvedErrorMessage
             : assistantT("errors.providerServeStartFailed", { name: adapter.name });
-        Logger.error(
+        Logger.panel(
           LogCategory.ASSISTANT_CORE,
+          LogLevel.ERROR,
           assistantT("logs.providerServerStartFailed", { name: adapter.name }),
           {
             error: errorMessage,
           }
         );
+        notifyUser({
+          kind: "error",
+          title: assistantT("logs.providerServerStartFailed", { name: adapter.name }),
+          message: errorMessage,
+          dedupeKey: "assistant:connection",
+        });
       }
     } finally {
       controller._finishConnectFlow();

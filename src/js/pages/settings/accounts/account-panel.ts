@@ -1,5 +1,5 @@
 import { getMimeTypeFromPath, generateAccountId } from "../../../constants/index.js";
-import { LogCategory } from "@shared/logging-core";
+import { LogCategory, LogLevel } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
 import {
   buildRemoteEmailAccountId,
@@ -13,6 +13,7 @@ import {
   type Account,
   type MailTransportAccountConfig,
 } from "@shared/settings.js";
+import { notifyUser } from "../../../ui/user-notification.js";
 import { t as entranceT } from "../panel-i18n.js";
 
 interface SettingsManager {
@@ -564,11 +565,21 @@ export class AccountPanel {
         emailEl.value = "";
       }
       this.clearNewAccountAvatarPreview();
-      this.showFeedback(entranceT("us1.feedback.inviteSent"), "success");
+      this.notifyFeedback(
+        entranceT("us1.feedback.inviteSent"),
+        "success",
+        email,
+        "accounts:remote"
+      );
       return;
     }
 
-    this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
+    this.notifyFeedback(
+      result.error ?? entranceT("us1.feedback.operationFailed"),
+      "error",
+      undefined,
+      "accounts:remote"
+    );
   }
 
   private async handleSyncRemoteAccounts(): Promise<void> {
@@ -594,14 +605,22 @@ export class AccountPanel {
     this.render();
 
     if (result.success) {
-      this.showFeedback(
-        entranceT("us1.feedback.syncSuccess", { count: String(result.processedCount ?? 0) }),
-        "success"
+      const processedCount = result.processedCount ?? 0;
+      this.notifyFeedback(
+        entranceT("us1.feedback.syncSuccess", { count: String(processedCount) }),
+        processedCount > 0 ? "success" : "info",
+        undefined,
+        "accounts:remote-sync"
       );
       return;
     }
 
-    this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
+    this.notifyFeedback(
+      result.error ?? entranceT("us1.feedback.operationFailed"),
+      "error",
+      undefined,
+      "accounts:remote-sync"
+    );
   }
 
   private async acceptRemoteAccount(account: Account): Promise<void> {
@@ -617,11 +636,21 @@ export class AccountPanel {
     this.render();
 
     if (result.success) {
-      this.showFeedback(entranceT("us1.feedback.acceptSent"), "success");
+      this.notifyFeedback(
+        entranceT("us1.feedback.acceptSent"),
+        "success",
+        this.describeRemoteAccount(account),
+        "accounts:remote"
+      );
       return;
     }
 
-    this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
+    this.notifyFeedback(
+      result.error ?? entranceT("us1.feedback.operationFailed"),
+      "error",
+      undefined,
+      "accounts:remote"
+    );
   }
 
   private async rejectRemoteAccount(account: Account): Promise<void> {
@@ -637,11 +666,21 @@ export class AccountPanel {
     this.render();
 
     if (result.success) {
-      this.showFeedback(entranceT("us1.feedback.rejectSent"), "success");
+      this.notifyFeedback(
+        entranceT("us1.feedback.rejectSent"),
+        "success",
+        this.describeRemoteAccount(account),
+        "accounts:remote"
+      );
       return;
     }
 
-    this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
+    this.notifyFeedback(
+      result.error ?? entranceT("us1.feedback.operationFailed"),
+      "error",
+      undefined,
+      "accounts:remote"
+    );
   }
 
   async createAccount(): Promise<void> {
@@ -703,7 +742,12 @@ export class AccountPanel {
       const electronApi = window.electronAPI;
       const dbInitAccount = electronApi?.["dbInitAccount"];
       if (!dbInitAccount) {
-        this.showFeedback(entranceT("accounts.feedback.dbInitMissing"), "error");
+        this.notifyFeedback(
+          entranceT("accounts.feedback.dbInitMissing"),
+          "error",
+          undefined,
+          "accounts:crud"
+        );
         return;
       }
       const dbResult = (await dbInitAccount({ accountId })) as {
@@ -711,11 +755,13 @@ export class AccountPanel {
         error?: string;
       };
       if (dbResult.success !== true) {
-        this.showFeedback(
+        this.notifyFeedback(
           entranceT("accounts.feedback.dbError", {
             message: dbResult.error ?? entranceT("logs.unknownMessage"),
           }),
-          "error"
+          "error",
+          undefined,
+          "accounts:crud"
         );
         return;
       }
@@ -725,15 +771,24 @@ export class AccountPanel {
 
       this.cancelEdit();
       this.dispatchAccountListUpdated();
-      Logger.success(LogCategory.ENTRANCE, entranceT("logs.accountCreateSuccess"));
+      Logger.info(LogCategory.ENTRANCE, entranceT("logs.accountCreateSuccess"));
+      this.notifyFeedback(
+        entranceT("logs.accountCreateSuccess"),
+        "success",
+        this.describeManagedAccount(newAccount),
+        "accounts:crud"
+      );
     } catch (err) {
-      Logger.error(
+      Logger.panel(
         LogCategory.ENTRANCE,
+        LogLevel.ERROR,
         entranceT("logs.accountCreateError", { message: getErrorMessage(err) })
       );
-      this.showFeedback(
+      this.notifyFeedback(
         entranceT("accounts.feedback.createError", { message: getErrorMessage(err) }),
-        "error"
+        "error",
+        undefined,
+        "accounts:crud"
       );
     }
   }
@@ -801,15 +856,24 @@ export class AccountPanel {
 
       this.cancelEdit();
       this.dispatchAccountListUpdated();
-      Logger.success(LogCategory.ENTRANCE, entranceT("logs.accountUpdateSuccess"));
+      Logger.info(LogCategory.ENTRANCE, entranceT("logs.accountUpdateSuccess"));
+      this.notifyFeedback(
+        entranceT("logs.accountUpdateSuccess"),
+        "success",
+        this.describeManagedAccount(updatedAccount),
+        "accounts:crud"
+      );
     } catch (err) {
-      Logger.error(
+      Logger.panel(
         LogCategory.ENTRANCE,
+        LogLevel.ERROR,
         entranceT("logs.accountUpdateError", { message: getErrorMessage(err) })
       );
-      this.showFeedback(
+      this.notifyFeedback(
         entranceT("accounts.feedback.updateError", { message: getErrorMessage(err) }),
-        "error"
+        "error",
+        undefined,
+        "accounts:crud"
       );
     }
   }
@@ -844,6 +908,7 @@ export class AccountPanel {
       const settings = this.settingsManager.getSnapshot();
       const accounts = settings.accounts;
       const updatedAccounts = accounts.filter((entry) => entry.id !== account.id);
+      const clearedSlots: Array<{ label: string; dedupeKey: string }> = [];
 
       try {
         const dbDeleteAccount = electronApi["dbDeleteAccount"];
@@ -860,9 +925,11 @@ export class AccountPanel {
       const slots = { ...settings.slots };
       if (slots.ai1.accountId === account.id) {
         slots.ai1 = { ...slots.ai1, accountId: null };
+        clearedSlots.push({ label: "AI1", dedupeKey: "slot:ai1:account" });
       }
       if (slots.ai2.accountId === account.id) {
         slots.ai2 = { ...slots.ai2, accountId: null };
+        clearedSlots.push({ label: "AI2", dedupeKey: "slot:ai2:account" });
       }
 
       const updated = { ...settings, accounts: updatedAccounts, slots };
@@ -873,11 +940,22 @@ export class AccountPanel {
       }
 
       this.dispatchAccountListUpdated();
-      Logger.success(LogCategory.ENTRANCE, entranceT("logs.accountDeleteSuccess"));
+      Logger.info(LogCategory.ENTRANCE, entranceT("logs.accountDeleteSuccess"));
+      this.notifyFeedback(
+        entranceT("logs.accountDeleteSuccess"),
+        "success",
+        this.describeManagedAccount(account),
+        "accounts:crud"
+      );
+      clearedSlots.forEach(({ label, dedupeKey }) => {
+        this.notifySlotAccountCleared(label, dedupeKey);
+      });
     } catch (err) {
-      this.showFeedback(
-        entranceT("accounts.feedback.createError", { message: getErrorMessage(err) }),
-        "error"
+      this.notifyFeedback(
+        entranceT("accounts.feedback.deleteError", { message: getErrorMessage(err) }),
+        "error",
+        undefined,
+        "accounts:crud"
       );
     }
   }
@@ -934,7 +1012,50 @@ export class AccountPanel {
     });
 
     this.dispatchAccountListUpdated();
-    this.showFeedback(entranceT("logs.accountDeleteSuccess"), "success");
+    this.notifyFeedback(
+      entranceT("logs.accountDeleteSuccess"),
+      "success",
+      this.describeRemoteAccount(account),
+      "accounts:remote"
+    );
+    if (shouldClearUs1Selection) {
+      this.notifySlotAccountCleared("US1", "us1:slot-binding");
+    }
+  }
+
+  private describeManagedAccount(
+    account: Pick<Account, "email" | "nickname" | "provider">
+  ): string {
+    return `${account.nickname ?? account.email} (${account.provider})`;
+  }
+
+  private describeRemoteAccount(account: Account): string {
+    return account.nickname != null && account.nickname !== ""
+      ? `${account.nickname} (${account.email})`
+      : account.email;
+  }
+
+  private notifySlotAccountCleared(slot: string, dedupeKey: string): void {
+    notifyUser({
+      kind: "info",
+      title: entranceT("slot.toasts.accountCleared", { slot }),
+      dedupeKey,
+    });
+  }
+
+  private notifyFeedback(
+    title: string,
+    type: FeedbackKind,
+    message?: string,
+    dedupeKey?: string
+  ): void {
+    notifyUser({
+      kind: type,
+      title,
+      ...(message != null && message !== "" ? { message } : {}),
+      ...(dedupeKey != null && dedupeKey !== "" ? { dedupeKey } : {}),
+      inlineTargetId: "account-status-msg",
+    });
   }
 
   escapeHtml(text: string | null | undefined): string {

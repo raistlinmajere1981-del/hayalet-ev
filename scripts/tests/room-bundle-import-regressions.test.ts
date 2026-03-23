@@ -11,6 +11,64 @@ function encodeBase64(value: string): string {
   return Buffer.from(value, "utf8").toString("base64");
 }
 
+async function writeRoomFixture(baseDir: string, roomId: string, roomName: string): Promise<void> {
+  await mkdir(join(baseDir, roomId, "ui"), { recursive: true });
+  await mkdir(join(baseDir, roomId, "host"), { recursive: true });
+  await mkdir(join(baseDir, roomId, "assets"), { recursive: true });
+
+  await writeFile(
+    join(baseDir, roomId, "manifest.json"),
+    JSON.stringify(
+      {
+        schemaVersion: ROOM_SCHEMA_VERSION,
+        id: roomId,
+        name: roomName,
+        version: "1.0.0",
+        menu: { label: roomName },
+        runtime: {
+          uiEntry: "ui/index.html",
+          hostEntry: "host/index.js",
+        },
+        defaultFeatureId: "primary",
+        features: [
+          {
+            id: "primary",
+            name: "Primary",
+          },
+        ],
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+  await writeFile(
+    join(baseDir, roomId, "ui", "index.html"),
+    `<!doctype html><html><body>${roomName}</body></html>`,
+    "utf8"
+  );
+  await writeFile(join(baseDir, roomId, "host", "index.js"), "export {};\n", "utf8");
+  await writeFile(join(baseDir, roomId, "assets", "readme.txt"), `${roomId} asset`, "utf8");
+}
+
+async function writeRoomRuntimeDataFixture(
+  dataRoot: string,
+  roomId: string
+): Promise<{ roomStorageDir: string; roomPartitionDir: string }> {
+  const roomStorageDir = join(dataRoot, "room-storage", roomId);
+  const roomPartitionDir = join(dataRoot, "electron-user-data", "Partitions", `room-${roomId}`);
+
+  await mkdir(roomStorageDir, { recursive: true });
+  await mkdir(roomPartitionDir, { recursive: true });
+  await writeFile(join(roomStorageDir, "state.json"), JSON.stringify({ roomId }), "utf8");
+  await writeFile(join(roomPartitionDir, "session.json"), JSON.stringify({ roomId }), "utf8");
+
+  return {
+    roomStorageDir,
+    roomPartitionDir,
+  };
+}
+
 test("RoomPackageManager imports a .hevroom bundle into workspace and installed registry", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-bundle-import-"));
   const workspaceRoot = join(tempRoot, "rooms");
@@ -218,6 +276,175 @@ test("RoomPackageManager rejects bundles with missing scene assets", async () =>
     assert.equal(result.success, false);
     assert.match(result.error ?? "", /required asset/i);
     assert.equal(existsSync(join(workspaceRoot, "broken-room")), false);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("RoomPackageManager lists bundled rooms and installs them without deleting the bundle source", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "room-bundle-workspace-"));
+  const workspaceRoot = join(tempRoot, "rooms");
+  const bundledWorkspaceRoot = join(tempRoot, "app.asar", "rooms");
+  const dataRoot = join(tempRoot, "data");
+  const installedRoot = join(dataRoot, "rooms");
+  const registryPath = join(tempRoot, "config", "rooms.json");
+
+  try {
+    await writeRoomFixture(bundledWorkspaceRoot, "game-room", "Game Room");
+    await writeRoomFixture(bundledWorkspaceRoot, "laboratory", "Laboratory");
+
+    const manager = new RoomPackageManager({
+      workspaceRoot,
+      bundledWorkspaceRoot,
+      installedRoot,
+      registryPath,
+    });
+
+    const workspaceRooms = await manager.listWorkspaceRooms();
+    assert.equal(workspaceRooms.length, 2);
+    assert.equal(workspaceRooms[0]?.sourceKind, "bundle");
+    assert.equal(workspaceRooms[0]?.readOnly, true);
+    assert.equal(workspaceRooms[1]?.sourceKind, "bundle");
+    assert.equal(workspaceRooms[1]?.readOnly, true);
+
+    const installResult = await manager.installFromWorkspace("laboratory");
+    assert.equal(installResult.success, true, installResult.error);
+    assert.equal(installResult.room?.sourceDir, join(bundledWorkspaceRoot, "laboratory"));
+    assert.equal(existsSync(join(installedRoot, "laboratory", "ui", "index.html")), true);
+    assert.equal(existsSync(join(workspaceRoot, "laboratory")), false);
+
+    const roomRuntimeData = await writeRoomRuntimeDataFixture(dataRoot, "laboratory");
+    const removeResult = await manager.removeInstalledRoom("laboratory", { deleteData: true });
+    assert.equal(removeResult.success, true, removeResult.error);
+    assert.equal(existsSync(join(bundledWorkspaceRoot, "laboratory", "manifest.json")), true);
+    assert.equal(existsSync(roomRuntimeData.roomStorageDir), false);
+    assert.equal(existsSync(roomRuntimeData.roomPartitionDir), false);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("RoomPackageManager removeInstalledRoom preserves user files inside installed room data", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "room-remove-installed-"));
+  const workspaceRoot = join(tempRoot, "rooms");
+  const dataRoot = join(tempRoot, "data");
+  const installedRoot = join(dataRoot, "rooms");
+  const registryPath = join(tempRoot, "config", "rooms.json");
+  const roomDir = join(workspaceRoot, "game-room");
+
+  try {
+    await mkdir(join(roomDir, "ui"), { recursive: true });
+    await mkdir(join(roomDir, "host"), { recursive: true });
+    await mkdir(join(roomDir, "assets"), { recursive: true });
+
+    await writeFile(
+      join(roomDir, "manifest.json"),
+      JSON.stringify(
+        {
+          schemaVersion: ROOM_SCHEMA_VERSION,
+          id: "game-room",
+          name: "Game Room",
+          version: "1.0.0",
+          menu: { label: "Game Room" },
+          runtime: {
+            uiEntry: "ui/index.html",
+            hostEntry: "host/index.js",
+          },
+          defaultFeatureId: "chess",
+          features: [{ id: "chess", name: "Chess" }],
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+    await writeFile(join(roomDir, "ui", "index.html"), "<html></html>", "utf8");
+    await writeFile(join(roomDir, "host", "index.js"), "export {};\n", "utf8");
+    await writeFile(join(roomDir, "assets", "readme.txt"), "tracked", "utf8");
+
+    const manager = new RoomPackageManager({
+      workspaceRoot,
+      installedRoot,
+      registryPath,
+    });
+
+    const installResult = await manager.installFromWorkspace("game-room");
+    assert.equal(installResult.success, true, installResult.error);
+
+    const installedDir = join(installedRoot, "game-room");
+    const roomRuntimeData = await writeRoomRuntimeDataFixture(dataRoot, "game-room");
+    await mkdir(join(installedDir, "user-notes"), { recursive: true });
+    await writeFile(join(installedDir, "user-notes", "custom.txt"), "keep me", "utf8");
+
+    const removeResult = await manager.removeInstalledRoom("game-room");
+    assert.equal(removeResult.success, true, removeResult.error);
+    assert.equal(existsSync(join(installedDir, "manifest.json")), false);
+    assert.equal(existsSync(join(installedDir, "ui", "index.html")), false);
+    assert.equal(existsSync(join(installedDir, "host", "index.js")), false);
+    assert.equal(existsSync(join(installedDir, "assets", "readme.txt")), false);
+    assert.equal(existsSync(join(installedDir, "user-notes", "custom.txt")), true);
+    assert.equal(existsSync(join(roomRuntimeData.roomStorageDir, "state.json")), true);
+    assert.equal(existsSync(join(roomRuntimeData.roomPartitionDir, "session.json")), true);
+
+    const installedRooms = await manager.listInstalledRooms();
+    assert.equal(installedRooms.length, 0);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("RoomPackageManager deleteWorkspaceRoom can remove workspace and data folders together", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "room-delete-workspace-"));
+  const workspaceRoot = join(tempRoot, "rooms");
+  const dataRoot = join(tempRoot, "data");
+  const installedRoot = join(dataRoot, "rooms");
+  const registryPath = join(tempRoot, "config", "rooms.json");
+  const roomDir = join(workspaceRoot, "game-room");
+  const installedDir = join(installedRoot, "game-room");
+
+  try {
+    await mkdir(join(roomDir, "ui"), { recursive: true });
+    await mkdir(join(roomDir, "host"), { recursive: true });
+    await mkdir(installedDir, { recursive: true });
+
+    await writeFile(
+      join(roomDir, "manifest.json"),
+      JSON.stringify(
+        {
+          schemaVersion: ROOM_SCHEMA_VERSION,
+          id: "game-room",
+          name: "Game Room",
+          version: "1.0.0",
+          menu: { label: "Game Room" },
+          runtime: {
+            uiEntry: "ui/index.html",
+            hostEntry: "host/index.js",
+          },
+          defaultFeatureId: "chess",
+          features: [{ id: "chess", name: "Chess" }],
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+    await writeFile(join(roomDir, "ui", "index.html"), "<html></html>", "utf8");
+    await writeFile(join(roomDir, "host", "index.js"), "export {};\n", "utf8");
+    await writeFile(join(installedDir, "orphan.txt"), "remove me", "utf8");
+    const roomRuntimeData = await writeRoomRuntimeDataFixture(dataRoot, "game-room");
+
+    const manager = new RoomPackageManager({
+      workspaceRoot,
+      installedRoot,
+      registryPath,
+    });
+
+    const deleteResult = await manager.deleteWorkspaceRoom("game-room", { deleteData: true });
+    assert.equal(deleteResult.success, true, deleteResult.error);
+    assert.equal(existsSync(roomDir), false);
+    assert.equal(existsSync(installedDir), false);
+    assert.equal(existsSync(roomRuntimeData.roomStorageDir), false);
+    assert.equal(existsSync(roomRuntimeData.roomPartitionDir), false);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

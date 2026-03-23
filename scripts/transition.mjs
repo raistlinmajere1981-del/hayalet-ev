@@ -1,6 +1,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { readAssistantSlotSettingsReport } from "./lib/settings-status.mjs";
 import {
   appendRuntimeEvent,
   buildControlForAction,
@@ -160,7 +161,10 @@ async function rollbackTransitionIntent(statusBefore, action, transitionId, reas
 }
 
 async function runStatus(options) {
-  const status = await getRuntimeStatus({ runtimeControlPath, maxStaleMs: options.maxStaleMs });
+  const [status, assistantSlotSettings] = await Promise.all([
+    getRuntimeStatus({ runtimeControlPath, maxStaleMs: options.maxStaleMs }),
+    readAssistantSlotSettingsReport(root),
+  ]);
   writeResult({
     success: true,
     mode: status.resolved.mode,
@@ -172,6 +176,7 @@ async function runStatus(options) {
     control: status.control,
     snapshot: status.snapshot,
     observedSignals: status.resolved.observedSignals,
+    assistantSlotSettings,
   });
 }
 
