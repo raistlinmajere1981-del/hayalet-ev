@@ -81,6 +81,23 @@ export default defineConfig({
         whisper: resolve(__dirname, "src/pages/whisper.html"),
         opencodeUi: resolve(__dirname, "src/pages/opencode-ui.html"),
       },
+      output: {
+        manualChunks(id) {
+          if (id.includes("/shared/languages/en/")) {
+            return "i18n-en";
+          }
+
+          if (id.includes("/shared/languages/tr/")) {
+            return "i18n-tr";
+          }
+
+          if (id.includes("/shared/i18n/")) {
+            return "i18n-core";
+          }
+
+          return undefined;
+        },
+      },
     },
   },
   server: {

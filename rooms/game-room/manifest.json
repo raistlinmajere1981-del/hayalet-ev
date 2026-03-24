@@ -23,6 +23,38 @@
       "height": 900
     },
     "roomBackgroundSrc": "assets/room-background.webp",
+    "characterRosterPreset": "connected-plus-user",
+    "characters": [
+      {
+        "id": "anchor-ai1-primary",
+        "characterKind": "ai",
+        "preferredSlot": "ai1",
+        "leftPx": 948,
+        "bottomPx": -12,
+        "scale": 0.74,
+        "depth": 3
+      },
+      {
+        "id": "anchor-user",
+        "characterKind": "user",
+        "leftPx": 1208,
+        "bottomPx": -64,
+        "scale": 0.84,
+        "depth": 4
+      },
+      {
+        "id": "anchor-ai2-primary",
+        "characterKind": "ai",
+        "preferredSlot": "ai2",
+        "leftPx": 1432,
+        "bottomPx": -8,
+        "scale": 0.74,
+        "depth": 5
+      }
+    ],
+    "chrome": {
+      "pageShellVariant": "immersive-stage"
+    },
     "roomsHotspot": {
       "id": "game-room-door",
       "rect": {

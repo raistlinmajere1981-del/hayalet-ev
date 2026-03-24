@@ -5,6 +5,9 @@ import type {
   MailTransportProviderType,
   MailTransportServerConfig,
   RemoteUserIdentity,
+  Us1CommunicationSystem,
+  Us1RelayConnectionState,
+  Us1RelaySettings,
   Us1SlotSettings,
 } from "./settings.js";
 
@@ -24,7 +27,12 @@ export interface Us1StateSnapshot {
   remoteUsers: RemoteUserIdentity[];
   activeRemoteUsers: RemoteUserIdentity[];
   us1Slot: Us1SlotSettings;
+  communicationSystem?: Us1CommunicationSystem;
+  relaySettings?: Us1RelaySettings | null;
+  relayConfigured?: boolean;
+  relayConnectionState?: Us1RelayConnectionState;
   selectedMailAccountId: string | null;
+  selectedIdentityId?: string | null;
   selectedRemoteAccountId?: string | null;
   verifiedLocalMailAccountId?: string | null;
   verifiedUserEmail?: string | null;

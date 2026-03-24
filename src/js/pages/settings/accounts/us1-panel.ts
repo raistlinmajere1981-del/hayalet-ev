@@ -1,4 +1,8 @@
-import type { AppSettings, MailTransportAccountConfig } from "@shared/settings.js";
+import type {
+  AppSettings,
+  MailTransportAccountConfig,
+  Us1CommunicationSystem,
+} from "@shared/settings.js";
 import { getRemoteEmailAccounts } from "@shared/settings.js";
 import type { Us1MailAccountDraft } from "@shared/us1-mail.js";
 import { buildRemoteEmailAccountId } from "@shared/archive.js";
@@ -24,6 +28,7 @@ interface ActiveRemoteBinding {
   remoteUserId: string;
   email: string;
   nickname: string;
+  relayCapable: boolean;
 }
 
 interface ReportEntry {
@@ -37,6 +42,7 @@ export interface Us1SceneState {
   connected: boolean;
   canConnect: boolean;
   connectDisabledReason: string | null;
+  communicationSystem: Us1CommunicationSystem;
   catchCommands: boolean;
   resumeLastSession: boolean;
   rememberConnectionStatus: boolean;
@@ -47,6 +53,7 @@ export class Us1Panel {
   reportEntries: ReportEntry[] = [];
   loadingBusy = false;
   mailVerifyBusy = false;
+  relayHealthBusy = false;
 
   constructor(settingsManager: SettingsManagerLike) {
     this.settingsManager = settingsManager;
@@ -109,6 +116,81 @@ export class Us1Panel {
       slotUserSelect.onchange = (event): void => {
         const selectedAccountId = this.readSelectValue(event.target as HTMLSelectElement);
         void this.handleSlotSelectionChange(selectedAccountId);
+      };
+    }
+
+    const communicationSystemSelect = document.getElementById(
+      "us1-communication-system-select"
+    ) as HTMLSelectElement | null;
+    if (communicationSystemSelect !== null) {
+      communicationSystemSelect.onchange = (event): void => {
+        const value = (event.target as HTMLSelectElement).value;
+        void this.updateCommunicationSystem(value === "relay-e2ee" ? "relay-e2ee" : "mail");
+      };
+    }
+
+    const relayEnabledCheck = document.getElementById(
+      "us1-relay-enabled-check"
+    ) as HTMLInputElement | null;
+    if (relayEnabledCheck !== null) {
+      relayEnabledCheck.onchange = async (event): Promise<void> => {
+        const settings = this.settingsManager.getSnapshot();
+        await this.settingsManager.save({
+          ...settings,
+          integrations: {
+            ...(settings.integrations ?? {}),
+            us1Relay: {
+              ...(settings.integrations?.us1Relay ?? {}),
+              enabled: (event.target as HTMLInputElement).checked,
+              connectionState: "disconnected",
+              lastError: null,
+            },
+          },
+        });
+        await this.reloadSettings();
+        this.render();
+      };
+    }
+
+    const relayBaseUrlInput = document.getElementById(
+      "us1-relay-base-url-input"
+    ) as HTMLInputElement | null;
+    if (relayBaseUrlInput !== null) {
+      relayBaseUrlInput.onchange = async (event): Promise<void> => {
+        const settings = this.settingsManager.getSnapshot();
+        const value = this.normalizeText((event.target as HTMLInputElement).value);
+        await this.settingsManager.save({
+          ...settings,
+          integrations: {
+            ...(settings.integrations ?? {}),
+            us1Relay: {
+              ...(settings.integrations?.us1Relay ?? {}),
+              baseUrl: value,
+              trustedServerFingerprint: null,
+              trustState: "unknown",
+              connectionState: "disconnected",
+              lastError: null,
+            },
+          },
+        });
+        await this.reloadSettings();
+        this.render();
+      };
+    }
+
+    const relayTestBtn = document.getElementById("us1-relay-test-btn");
+    if (relayTestBtn instanceof HTMLElement) {
+      relayTestBtn.onclick = (event): void => {
+        event.preventDefault();
+        void this.handleRelayHealthCheck();
+      };
+    }
+
+    const relayResetTrustBtn = document.getElementById("us1-relay-reset-trust-btn");
+    if (relayResetTrustBtn instanceof HTMLElement) {
+      relayResetTrustBtn.onclick = (event): void => {
+        event.preventDefault();
+        void this.handleRelayTrustReset();
       };
     }
 
@@ -184,7 +266,53 @@ export class Us1Panel {
     return null;
   }
 
+  private getCommunicationSystem(settings: AppSettings): Us1CommunicationSystem {
+    return settings.us1Slot?.communicationSystem === "relay-e2ee" ? "relay-e2ee" : "mail";
+  }
+
+  private isRelayConfigured(settings: AppSettings): boolean {
+    const relaySettings = settings.integrations?.us1Relay ?? null;
+    return relaySettings?.enabled === true && this.normalizeText(relaySettings.baseUrl) !== null;
+  }
+
+  private getRelayStatusText(
+    settings: AppSettings,
+    selectedBinding: ActiveRemoteBinding | null
+  ): string {
+    const relayState = settings.integrations?.us1Relay?.connectionState;
+    if (this.relayHealthBusy || relayState === "connecting") {
+      return entranceT("us1.relay.status.testing");
+    }
+    if (this.isRelayConfigured(settings) !== true) {
+      return entranceT("us1.relay.status.notConfigured");
+    }
+    if (relayState === "error") {
+      return (
+        this.normalizeText(settings.integrations?.us1Relay?.lastError) ??
+        entranceT("us1.relay.status.error")
+      );
+    }
+    if (selectedBinding === null) {
+      return relayState === "connected"
+        ? entranceT("us1.relay.status.reachable")
+        : entranceT("us1.relay.status.noPeer");
+    }
+    if (selectedBinding.relayCapable !== true) {
+      return entranceT("us1.relay.status.peerUnsupported");
+    }
+    if (settings.us1Slot?.relayConnectionState === "connected") {
+      return entranceT("us1.relay.status.connected");
+    }
+    return entranceT("us1.relay.status.ready");
+  }
+
   private getActiveRemoteBindings(settings: AppSettings): ActiveRemoteBinding[] {
+    const remoteUsersById = new Map(
+      (settings.remoteUsers ?? []).map(
+        (remoteUser) => [remoteUser.remoteUserId, remoteUser] as const
+      )
+    );
+
     return getRemoteEmailAccounts(settings.accounts)
       .map((account) => {
         const remoteUserId = this.normalizeText(account.remoteEmail?.remoteUserId);
@@ -203,6 +331,7 @@ export class Us1Panel {
           remoteUserId,
           email,
           nickname,
+          relayCapable: remoteUsersById.get(remoteUserId)?.relayCapability?.supported === true,
         };
       })
       .filter((binding): binding is ActiveRemoteBinding => binding !== null)
@@ -345,6 +474,7 @@ export class Us1Panel {
 
     await this.updateUs1Slot({
       selectedAccountId: binding?.accountId ?? null,
+      selectedIdentityId: binding?.remoteUserId ?? null,
       selectedRemoteUserId: binding?.remoteUserId ?? null,
       ...this.buildUs1ConnectionStatePatch("disconnected", settings),
     });
@@ -369,9 +499,18 @@ export class Us1Panel {
     state: "connected" | "disconnected",
     settings: AppSettings = this.settingsManager.getSnapshot()
   ): Partial<NonNullable<AppSettings["us1Slot"]>> {
+    const relayConnectionState =
+      this.getCommunicationSystem(settings) === "relay-e2ee" ? state : "disconnected";
     return settings.us1Slot?.rememberConnectionStatus === true
-      ? { connectionState: state, lastConnectionState: state }
-      : { connectionState: state };
+      ? {
+          connectionState: state,
+          relayConnectionState,
+          lastConnectionState: state,
+        }
+      : {
+          connectionState: state,
+          relayConnectionState,
+        };
   }
 
   private async handleConnect(): Promise<void> {
@@ -380,6 +519,7 @@ export class Us1Panel {
     const verifiedLocalMailAccount = this.getVerifiedLocalMailAccount(settings);
     const activeBindings = this.getActiveRemoteBindings(settings);
     const selectedBinding = this.resolveSelectedBinding(settings, activeBindings);
+    const communicationSystem = this.getCommunicationSystem(settings);
 
     if (electronApi === undefined || typeof electronApi.us1SyncMessages !== "function") {
       this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
@@ -393,6 +533,14 @@ export class Us1Panel {
       this.showFeedback(entranceT("us1.status.empty"), "warning");
       return;
     }
+    if (communicationSystem === "relay-e2ee" && this.isRelayConfigured(settings) !== true) {
+      this.showFeedback(entranceT("us1.relay.status.notConfigured"), "warning");
+      return;
+    }
+    if (communicationSystem === "relay-e2ee" && selectedBinding.relayCapable !== true) {
+      this.showFeedback(entranceT("us1.relay.status.peerUnsupported"), "warning");
+      return;
+    }
     if (AppState.isUs1Connected() === true) {
       return;
     }
@@ -402,7 +550,9 @@ export class Us1Panel {
 
     try {
       await this.updateUs1Slot({
+        communicationSystem,
         selectedAccountId: selectedBinding.accountId,
+        selectedIdentityId: selectedBinding.remoteUserId,
         selectedRemoteUserId: selectedBinding.remoteUserId,
         ...this.buildUs1ConnectionStatePatch("connected", settings),
       });
@@ -494,6 +644,78 @@ export class Us1Panel {
       this.loadingBusy = false;
       this.render();
     }
+  }
+
+  private async handleRelayHealthCheck(): Promise<void> {
+    const electronApi = window.electronAPI;
+    const settings = this.settingsManager.getSnapshot();
+    if (electronApi === undefined || typeof electronApi.us1RelayHealthCheck !== "function") {
+      this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
+      return;
+    }
+    if (this.isRelayConfigured(settings) !== true) {
+      this.showFeedback(entranceT("us1.relay.status.notConfigured"), "warning");
+      return;
+    }
+    if (this.relayHealthBusy) {
+      return;
+    }
+
+    this.relayHealthBusy = true;
+    this.renderRelayHealthButton();
+    this.render();
+
+    try {
+      const result = await electronApi.us1RelayHealthCheck({
+        baseUrl: this.normalizeText(settings.integrations?.us1Relay?.baseUrl),
+      });
+      await this.reloadSettings();
+      this.render();
+
+      if (result.success !== true || result.reachable !== true) {
+        throw new Error(result.error ?? entranceT("us1.relay.feedback.checkFailed"));
+      }
+
+      const message = entranceT("us1.relay.feedback.checkSuccess");
+      this.addReport(message, "success");
+      this.notifyFeedback(message, "success", undefined, "us1:relay-health");
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      this.addReport(errorMessage, "error");
+      this.notifyFeedback(errorMessage, "error", undefined, "us1:relay-health");
+    } finally {
+      this.relayHealthBusy = false;
+      this.render();
+    }
+  }
+
+  private async handleRelayTrustReset(): Promise<void> {
+    const settings = this.settingsManager.getSnapshot();
+    if (this.normalizeText(settings.integrations?.us1Relay?.trustedServerFingerprint) === null) {
+      this.showFeedback(entranceT("us1.relay.status.noServerFingerprint"), "warning");
+      return;
+    }
+
+    await this.settingsManager.save({
+      ...settings,
+      integrations: {
+        ...(settings.integrations ?? {}),
+        us1Relay: {
+          ...(settings.integrations?.us1Relay ?? {}),
+          trustedServerFingerprint: null,
+          trustState: "unknown",
+          connectionState: "disconnected",
+          lastConnectedAt: null,
+          lastError: null,
+        },
+      },
+    });
+    await this.reloadSettings();
+    this.render();
+
+    const message = entranceT("us1.relay.feedback.trustReset");
+    this.addReport(message, "info");
+    this.notifyFeedback(message, "info", undefined, "us1:relay-trust");
   }
 
   private collectMailAccountDraft(mailAccountId: string | null): Us1MailAccountDraft {
@@ -608,6 +830,7 @@ export class Us1Panel {
     const verifiedLocalMailAccount = this.getVerifiedLocalMailAccount(settings);
     const activeBindings = this.getActiveRemoteBindings(settings);
     const selectedBinding = this.resolveSelectedBinding(settings, activeBindings);
+    const communicationSystem = this.getCommunicationSystem(settings);
     const connected = AppState.isUs1Connected();
 
     let connectDisabledReason: string | null = null;
@@ -617,12 +840,17 @@ export class Us1Panel {
       connectDisabledReason = entranceT("us1.status.noUsers");
     } else if (selectedBinding === null) {
       connectDisabledReason = entranceT("us1.status.empty");
+    } else if (communicationSystem === "relay-e2ee" && this.isRelayConfigured(settings) !== true) {
+      connectDisabledReason = entranceT("us1.relay.status.notConfigured");
+    } else if (communicationSystem === "relay-e2ee" && selectedBinding.relayCapable !== true) {
+      connectDisabledReason = entranceT("us1.relay.status.peerUnsupported");
     }
 
     return {
       connected,
       canConnect: connected || connectDisabledReason === null,
       connectDisabledReason,
+      communicationSystem,
       catchCommands: settings.us1Slot?.catchCommands === true,
       resumeLastSession: settings.us1Slot?.resumeLastSession ?? true,
       rememberConnectionStatus: settings.us1Slot?.rememberConnectionStatus === true,
@@ -640,6 +868,13 @@ export class Us1Panel {
     }
 
     await this.handleConnect();
+  }
+
+  async updateCommunicationSystem(value: Us1CommunicationSystem): Promise<void> {
+    await this.updateUs1Slot({
+      communicationSystem: value,
+      ...this.buildUs1ConnectionStatePatch("disconnected"),
+    });
   }
 
   async updateScenePreferences(
@@ -671,6 +906,8 @@ export class Us1Panel {
     this.renderMailAccountForm(editableMailAccount);
     this.renderMailAccountFormState();
     this.renderSlotSelect(activeBindings, selectedBinding);
+    this.renderCommunicationSystem(settings);
+    this.renderRelaySettings(settings, selectedBinding);
     this.renderReportLog();
 
     const catchCheck = document.getElementById("us1-catch-check") as HTMLInputElement | null;
@@ -706,7 +943,10 @@ export class Us1Panel {
         toggleBtn.classList.add("btn-secondary");
       } else {
         toggleBtn.textContent = entranceT("slot.connect");
-        toggleBtn.disabled = false;
+        toggleBtn.disabled =
+          this.getCommunicationSystem(settings) === "relay-e2ee"
+            ? this.isRelayConfigured(settings) !== true || selectedBinding.relayCapable !== true
+            : false;
         toggleBtn.classList.remove("btn-secondary");
         toggleBtn.classList.add("btn-primary");
       }
@@ -849,6 +1089,34 @@ export class Us1Panel {
     verifyBtn.setAttribute("aria-busy", String(this.mailVerifyBusy));
   }
 
+  private renderRelayHealthButton(): void {
+    const relayTestBtn = document.getElementById("us1-relay-test-btn") as HTMLButtonElement | null;
+    if (relayTestBtn === null) {
+      return;
+    }
+
+    const settings = this.settingsManager.getSnapshot();
+    relayTestBtn.disabled = this.relayHealthBusy || this.isRelayConfigured(settings) !== true;
+    relayTestBtn.textContent = this.relayHealthBusy
+      ? entranceT("us1.relay.actions.testing")
+      : entranceT("us1.relay.actions.test");
+    relayTestBtn.classList.toggle("is-busy", this.relayHealthBusy);
+    relayTestBtn.setAttribute("aria-busy", String(this.relayHealthBusy));
+  }
+
+  private renderRelayTrustResetButton(): void {
+    const relayResetTrustBtn = document.getElementById(
+      "us1-relay-reset-trust-btn"
+    ) as HTMLButtonElement | null;
+    if (relayResetTrustBtn === null) {
+      return;
+    }
+
+    const settings = this.settingsManager.getSnapshot();
+    relayResetTrustBtn.disabled =
+      this.normalizeText(settings.integrations?.us1Relay?.trustedServerFingerprint) === null;
+  }
+
   private renderMailAccountFormState(): void {
     const providerSelect = document.getElementById(
       "us1-mail-provider-select"
@@ -922,6 +1190,56 @@ export class Us1Panel {
     slotUserSelect.disabled = activeBindings.length === 0;
   }
 
+  private renderCommunicationSystem(settings: AppSettings): void {
+    const communicationSystemSelect = document.getElementById(
+      "us1-communication-system-select"
+    ) as HTMLSelectElement | null;
+    if (communicationSystemSelect !== null) {
+      communicationSystemSelect.value = this.getCommunicationSystem(settings);
+    }
+  }
+
+  private renderRelaySettings(
+    settings: AppSettings,
+    selectedBinding: ActiveRemoteBinding | null
+  ): void {
+    const relayEnabledCheck = document.getElementById(
+      "us1-relay-enabled-check"
+    ) as HTMLInputElement | null;
+    if (relayEnabledCheck !== null) {
+      relayEnabledCheck.checked = settings.integrations?.us1Relay?.enabled === true;
+    }
+
+    const relayBaseUrlInput = document.getElementById(
+      "us1-relay-base-url-input"
+    ) as HTMLInputElement | null;
+    if (relayBaseUrlInput !== null) {
+      relayBaseUrlInput.value = settings.integrations?.us1Relay?.baseUrl ?? "";
+    }
+
+    const relayStatus = document.getElementById("us1-relay-status");
+    if (relayStatus !== null) {
+      relayStatus.textContent = this.getRelayStatusText(settings, selectedBinding);
+    }
+
+    const relayFingerprint = document.getElementById("us1-relay-fingerprint");
+    if (relayFingerprint !== null) {
+      relayFingerprint.textContent =
+        this.normalizeText(settings.integrations?.us1Relay?.signingKeyFingerprint) ??
+        entranceT("us1.relay.status.noFingerprint");
+    }
+
+    const relayServerFingerprint = document.getElementById("us1-relay-server-fingerprint");
+    if (relayServerFingerprint !== null) {
+      relayServerFingerprint.textContent =
+        this.normalizeText(settings.integrations?.us1Relay?.trustedServerFingerprint) ??
+        entranceT("us1.relay.status.noServerFingerprint");
+    }
+
+    this.renderRelayHealthButton();
+    this.renderRelayTrustResetButton();
+  }
+
   private getMailAccountStatusText(selectedMailAccount: MailTransportAccountConfig | null): string {
     if (selectedMailAccount === null) {
       return entranceT("us1.mailAccount.status.none");
@@ -938,6 +1256,7 @@ export class Us1Panel {
     selectedBinding: ActiveRemoteBinding | null,
     connected: boolean
   ): string {
+    const settings = this.settingsManager.getSnapshot();
     if (editableMailAccount === null) {
       return entranceT("us1.status.noMailAccount");
     }
@@ -950,6 +1269,18 @@ export class Us1Panel {
     if (selectedBinding === null) {
       return entranceT("us1.status.empty");
     }
+    if (
+      this.getCommunicationSystem(settings) === "relay-e2ee" &&
+      this.isRelayConfigured(settings) !== true
+    ) {
+      return entranceT("us1.relay.status.notConfigured");
+    }
+    if (
+      this.getCommunicationSystem(settings) === "relay-e2ee" &&
+      selectedBinding.relayCapable !== true
+    ) {
+      return entranceT("us1.relay.status.peerUnsupported");
+    }
     if (connected) {
       return entranceT("us1.status.connected");
     }
@@ -961,6 +1292,7 @@ export class Us1Panel {
     verifiedLocalMailAccount: MailTransportAccountConfig | null,
     activeUserCount: number
   ): string {
+    const settings = this.settingsManager.getSnapshot();
     if (editableMailAccount === null) {
       return entranceT("us1.phaseHintNoMailAccount");
     }
@@ -969,6 +1301,9 @@ export class Us1Panel {
     }
     if (activeUserCount === 0) {
       return entranceT("us1.phaseHintHandshake");
+    }
+    if (this.getCommunicationSystem(settings) === "relay-e2ee") {
+      return entranceT("us1.relay.phaseHint");
     }
     return entranceT("us1.phaseHint");
   }

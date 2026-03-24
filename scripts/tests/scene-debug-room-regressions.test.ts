@@ -55,6 +55,10 @@ test("room scene debug helpers merge installed room hotspots into the corridor l
   assert.match(source, /createRoomsCorridorSceneDebugStore/);
   assert.match(source, /type:\s*"screen"/);
   assert.match(source, /screen:\s*"primary"/);
+  assert.match(source, /return room\.scene\?\.characterRosterPreset \?\? "all-characters";/);
+  assert.match(source, /return \[\];/);
+  assert.doesNotMatch(source, /room\.id !== "game-room"/);
+  assert.doesNotMatch(source, /room\.id === "game-room"/);
 });
 
 test("entrance scene layout keeps room targets and whisper return in one layout registry", () => {

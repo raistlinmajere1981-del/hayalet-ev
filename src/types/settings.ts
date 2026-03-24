@@ -62,6 +62,22 @@ export type RemoteUserHandshakeState =
   | "error";
 
 export type Us1SlotConnectionState = "disconnected" | "connected";
+export type Us1CommunicationSystem = "mail" | "relay-e2ee";
+export type Us1RelayConnectionState = "disconnected" | "connecting" | "connected" | "error";
+export type Us1RelayTrustState = "unknown" | "trusted" | "mismatch";
+
+export interface Us1RelayPeerCapability {
+  supported: boolean;
+  endpoint?: string | null;
+  encryptionPublicKey?: string | null;
+  encryptionKeyFingerprint?: string | null;
+  signingPublicKey?: string | null;
+  signingKeyFingerprint?: string | null;
+  protocolVersion?: number | null;
+  advertisedAt?: number | null;
+  trustState?: Us1RelayTrustState;
+  lastError?: string | null;
+}
 
 export interface RemoteUserIdentity {
   remoteUserId: string;
@@ -72,6 +88,7 @@ export interface RemoteUserIdentity {
   handshakeState: RemoteUserHandshakeState;
   profileRevision: number;
   linkedMailAccountId: string;
+  linkedAccountId?: string | null;
   inviteMessageId?: string | null;
   acceptMessageId?: string | null;
   threadMessageId?: string | null;
@@ -79,6 +96,7 @@ export interface RemoteUserIdentity {
   lastSyncAt?: number;
   lastError?: string | null;
   sessionAlias?: string | null;
+  relayCapability?: Us1RelayPeerCapability | null;
 }
 
 export interface RemoteEmailAccountState {
@@ -97,9 +115,12 @@ export interface RemoteEmailAccountState {
 }
 
 export interface Us1SlotSettings {
+  communicationSystem?: Us1CommunicationSystem;
+  selectedIdentityId?: string | null;
   selectedRemoteUserId: string | null;
   selectedAccountId?: string | null;
   connectionState?: Us1SlotConnectionState;
+  relayConnectionState?: Us1RelayConnectionState;
   catchCommands?: boolean;
   resumeLastSession?: boolean;
   rememberConnectionStatus?: boolean;
@@ -253,6 +274,21 @@ export interface MailTransportSettings {
   maxRetries?: number;
 }
 
+export interface Us1RelaySettings {
+  enabled?: boolean;
+  baseUrl?: string | null;
+  trustedServerFingerprint?: string | null;
+  trustState?: Us1RelayTrustState;
+  encryptionPublicKey?: string | null;
+  encryptionKeyFingerprint?: string | null;
+  signingPublicKey?: string | null;
+  signingKeyFingerprint?: string | null;
+  protocolVersion?: number;
+  connectionState?: Us1RelayConnectionState;
+  lastError?: string | null;
+  lastConnectedAt?: number | null;
+}
+
 export interface OpencodeUiModelPreferences {
   hiddenProviders?: string[];
   hiddenModels?: string[];
@@ -273,6 +309,7 @@ export interface AppSettings {
   integrations?: {
     googledrive?: GoogleDriveSettings;
     mailTransport?: MailTransportSettings;
+    us1Relay?: Us1RelaySettings;
   };
   slots: {
     ai1: SlotSettings;
@@ -340,4 +377,33 @@ export function getAiProviderAccounts(accounts: readonly Account[] | null | unde
 export function getRemoteEmailAccounts(accounts: readonly Account[] | null | undefined): Account[] {
   const list: readonly Account[] = Array.isArray(accounts) ? accounts : [];
   return list.filter((account) => isRemoteEmailAccount(account));
+}
+
+export function getUs1SelectedIdentityId(slot: Us1SlotSettings | null | undefined): string | null {
+  if (typeof slot?.selectedIdentityId === "string" && slot.selectedIdentityId.trim() !== "") {
+    return slot.selectedIdentityId.trim();
+  }
+
+  if (typeof slot?.selectedRemoteUserId === "string" && slot.selectedRemoteUserId.trim() !== "") {
+    return slot.selectedRemoteUserId.trim();
+  }
+
+  return null;
+}
+
+export function getRemoteUserLinkedAccountId(
+  remoteUser: RemoteUserIdentity | null | undefined
+): string | null {
+  if (typeof remoteUser?.linkedAccountId === "string" && remoteUser.linkedAccountId.trim() !== "") {
+    return remoteUser.linkedAccountId.trim();
+  }
+
+  if (
+    typeof remoteUser?.linkedMailAccountId === "string" &&
+    remoteUser.linkedMailAccountId.trim() !== ""
+  ) {
+    return remoteUser.linkedMailAccountId.trim();
+  }
+
+  return null;
 }

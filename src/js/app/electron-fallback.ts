@@ -63,6 +63,8 @@ export function ensureElectronApiFallback(): void {
       await Promise.resolve({ success: false, error: "fallback" }),
     us1SyncMessages: async (): Promise<{ success: boolean; error: string }> =>
       await Promise.resolve({ success: false, error: "fallback" }),
+    us1RelayHealthCheck: async (): Promise<{ success: boolean; error: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
     i18nListLanguages: async (): Promise<ReturnType<typeof getBuiltInLanguageDescriptors>> => {
       return await Promise.resolve(getBuiltInLanguageDescriptors());
     },

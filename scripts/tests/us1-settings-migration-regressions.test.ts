@@ -15,6 +15,10 @@ test("default settings scaffold user email, local mail account, and us1 selected
 
   assert.equal(settings.user?.email, "");
   assert.equal(settings.integrations?.mailTransport?.localAccount, null);
+  assert.equal(settings.integrations?.us1Relay?.enabled, false);
+  assert.equal(settings.integrations?.us1Relay?.trustState, "unknown");
+  assert.equal(settings.us1Slot?.communicationSystem, "mail");
+  assert.equal(settings.us1Slot?.selectedIdentityId, null);
   assert.equal(settings.us1Slot?.selectedAccountId, null);
 });
 
@@ -98,6 +102,7 @@ test("normalize settings derives us1 selected account id from legacy selected re
     normalized.us1Slot?.selectedAccountId,
     buildRemoteEmailAccountId("remote@example.com")
   );
+  assert.equal(normalized.us1Slot?.selectedIdentityId, "remote@example.com");
   assert.deepEqual(
     normalized.accounts.map((account) => ({ id: account.id, provider: account.provider })),
     [
@@ -134,6 +139,7 @@ test("normalize settings derives legacy remote identity from selected remote acc
   });
 
   assert.equal(normalized.us1Slot?.selectedRemoteUserId, "remote@example.com");
+  assert.equal(normalized.us1Slot?.selectedIdentityId, "remote@example.com");
   assert.equal(normalized.us1Slot?.selectedAccountId, selectedAccountId);
 });
 

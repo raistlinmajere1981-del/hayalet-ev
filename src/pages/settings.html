@@ -562,6 +562,28 @@
                                 </div>
                               </div>
                               <section class="us1-slot-panel__section">
+                                <div class="us1-slot-panel__grid">
+                                  <div class="us1-slot-panel__field us1-slot-panel__field--wide">
+                                    <label
+                                      class="form-label"
+                                      for="us1-communication-system-select"
+                                      data-i18n-text="us1.communicationSystem.label"
+                                    ></label>
+                                    <select
+                                      id="us1-communication-system-select"
+                                      class="select select-sm"
+                                    >
+                                      <option
+                                        value="mail"
+                                        data-i18n-text="us1.communicationSystem.options.mail"
+                                      ></option>
+                                      <option
+                                        value="relay-e2ee"
+                                        data-i18n-text="us1.communicationSystem.options.relay"
+                                      ></option>
+                                    </select>
+                                  </div>
+                                </div>
                                 <div class="us1-slot-panel__status-block">
                                   <span
                                     class="form-label"
@@ -575,6 +597,67 @@
                                     class="us1-slot-panel__hint"
                                     id="us1-mail-account-status"
                                   ></div>
+                                </div>
+                                <div class="us1-slot-panel__grid">
+                                  <label
+                                    class="us1-slot-panel__checkbox us1-slot-panel__field--wide"
+                                  >
+                                    <input id="us1-relay-enabled-check" type="checkbox" />
+                                    <span data-i18n-text="us1.relay.enabledLabel"></span>
+                                  </label>
+                                  <div class="us1-slot-panel__field us1-slot-panel__field--wide">
+                                    <label
+                                      class="form-label"
+                                      for="us1-relay-base-url-input"
+                                      data-i18n-text="us1.relay.baseUrlLabel"
+                                    ></label>
+                                    <input
+                                      id="us1-relay-base-url-input"
+                                      class="input input-sm"
+                                      type="url"
+                                      placeholder=""
+                                      data-i18n-placeholder="us1.relay.baseUrlPlaceholder"
+                                    />
+                                  </div>
+                                  <div class="us1-slot-panel__actions us1-slot-panel__field--wide">
+                                    <button
+                                      id="us1-relay-test-btn"
+                                      class="btn btn-secondary btn-sm"
+                                      data-i18n-text="us1.relay.actions.test"
+                                    ></button>
+                                    <button
+                                      id="us1-relay-reset-trust-btn"
+                                      class="btn btn-secondary btn-sm"
+                                      data-i18n-text="us1.relay.actions.resetTrust"
+                                    ></button>
+                                  </div>
+                                  <div class="us1-slot-panel__field us1-slot-panel__field--wide">
+                                    <span
+                                      class="form-label"
+                                      data-i18n-text="us1.relay.statusLabel"
+                                    ></span>
+                                    <div class="us1-slot-panel__hint" id="us1-relay-status"></div>
+                                  </div>
+                                  <div class="us1-slot-panel__field us1-slot-panel__field--wide">
+                                    <span
+                                      class="form-label"
+                                      data-i18n-text="us1.relay.fingerprintLabel"
+                                    ></span>
+                                    <div
+                                      class="us1-slot-panel__hint"
+                                      id="us1-relay-fingerprint"
+                                    ></div>
+                                  </div>
+                                  <div class="us1-slot-panel__field us1-slot-panel__field--wide">
+                                    <span
+                                      class="form-label"
+                                      data-i18n-text="us1.relay.serverFingerprintLabel"
+                                    ></span>
+                                    <div
+                                      class="us1-slot-panel__hint"
+                                      id="us1-relay-server-fingerprint"
+                                    ></div>
+                                  </div>
                                 </div>
                                 <div class="us1-slot-panel__grid">
                                   <div

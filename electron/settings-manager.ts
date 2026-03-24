@@ -7,6 +7,7 @@ import { getLoggerCore } from "./logger/index.js";
 import type { AppSettings } from "@shared/settings.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { createDefaultSettings } from "@shared/settings-defaults.js";
+import { us1RelayIdentityService } from "./us1-relay/identity-service.ts";
 
 const logger = getLoggerCore();
 
@@ -41,10 +42,17 @@ export async function loadSettings(): Promise<AppSettings | null> {
     if (existsSync(getSettingsPath())) {
       const data = await readFile(getSettingsPath(), "utf-8");
       const parsed = JSON.parse(data) as AppSettings;
+      if (us1RelayIdentityService.syncSettingsMetadata(parsed) === true) {
+        await writeFile(getSettingsPath(), JSON.stringify(parsed, null, 2), {
+          encoding: "utf-8",
+          mode: 0o644,
+        });
+      }
       return parsed;
     }
 
     const defaults = createDefaultSettings();
+    us1RelayIdentityService.syncSettingsMetadata(defaults);
     const jsonString = JSON.stringify(defaults, null, 2);
     await writeFile(getSettingsPath(), jsonString, { encoding: "utf-8", mode: 0o644 });
     await logger.logInternalT(

@@ -60,6 +60,8 @@ function buildRoomPackageOutputPath(directoryPath: string, roomId: string): stri
 async function confirmRoomDeletion(options: {
   title: string;
   message: string;
+  confirmLabel: string;
+  deleteDataHint: string;
 }): Promise<RoomDeleteConfirmResult> {
   return await new Promise((resolve) => {
     const content = document.createElement("div");
@@ -87,7 +89,7 @@ async function confirmRoomDeletion(options: {
 
     const checkboxHint = document.createElement("span");
     checkboxHint.className = "room-manager-delete-confirm__hint";
-    checkboxHint.textContent = roomText("confirm.deleteDataHint");
+    checkboxHint.textContent = options.deleteDataHint;
     checkboxCopy.appendChild(checkboxHint);
 
     checkboxLabel.appendChild(checkboxCopy);
@@ -108,7 +110,7 @@ async function confirmRoomDeletion(options: {
           },
         },
         {
-          label: roomText("confirm.deleteAction"),
+          label: options.confirmLabel,
           variant: "danger",
           onClick: (): void => {
             resolve({ confirmed: true, deleteData: checkbox.checked });
@@ -353,6 +355,8 @@ export function setupSettingsRoomsPanel(): void {
           message: roomText("confirm.deleteMessage", {
             room: getWorkspaceRoomLabel(state, roomId),
           }),
+          confirmLabel: roomText("confirm.deleteAction"),
+          deleteDataHint: roomText("confirm.deleteDataHint"),
         });
         if (confirmation.confirmed !== true) {
           return;
@@ -397,29 +401,6 @@ export function setupSettingsRoomsPanel(): void {
       return;
     }
 
-    if (action === "export") {
-      void (async (): Promise<void> => {
-        const api = window.electronAPI;
-        if (api === undefined || typeof api.roomsExportToWorkspace !== "function") {
-          Toast.error(roomText("toasts.exportUnavailable"));
-          return;
-        }
-
-        const result = await api.roomsExportToWorkspace({
-          roomId,
-          overwrite: true,
-        });
-        state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
-        render(refs, state);
-        if (result.success === true) {
-          Toast.success(roomText("toasts.exportSuccess"), result.path ?? roomId);
-        } else {
-          Toast.error(roomText("toasts.exportError"), resolveIpcErrorMessage(result) ?? roomId);
-        }
-      })();
-      return;
-    }
-
     if (action === "remove") {
       void (async (): Promise<void> => {
         const confirmation = await confirmRoomDeletion({
@@ -427,6 +408,8 @@ export function setupSettingsRoomsPanel(): void {
           message: roomText("confirm.removeMessage", {
             room: getInstalledRoomLabel(state, roomId),
           }),
+          confirmLabel: roomText("confirm.removeAction"),
+          deleteDataHint: roomText("confirm.removeDataHint"),
         });
         if (confirmation.confirmed !== true) {
           return;

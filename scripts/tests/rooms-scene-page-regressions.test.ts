@@ -24,7 +24,10 @@ test("rooms scene page registers nav, template, controller, and scene background
   assert.match(controllerSource, /getSceneRoomBackgroundSrc\("rooms"\)/);
   assert.match(controllerSource, /isSceneDebugRoomActive\("rooms"\)/);
   assert.match(controllerSource, /RoomRegistry\.subscribe\(\(rooms\)\s*=>/);
-  assert.match(controllerSource, /const installedRoom = this\.installedRooms\.find\(\(entry\) => entry\.scene\?\.roomsHotspot\.id === id\) \?\? null;/);
+  assert.match(
+    controllerSource,
+    /const installedRoom =\s*this\.installedRooms\.find\(\(entry\) => entry\.scene\?\.roomsHotspot\.id === id\)\s*\?\? null;/
+  );
   assert.match(controllerSource, /navigateToScenePage\(getRoomPageName\(roomId\)\)/);
   assert.match(controllerSource, /if \(installedRoom !== null && this\.editor === null\) \{/);
   assert.match(controllerSource, /navigateToScenePage\(getRoomPageName\(installedRoom\.id\)\)/);

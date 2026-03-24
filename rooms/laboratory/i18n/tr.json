@@ -1,41 +1,214 @@
 {
   "title": "Laboratuvar",
-  "subtitle": "Videolari offline-oncelikli adli analiz akisiyla incele ve okunabilir teknik raporlar al.",
+  "subtitle": "Yakalama, temizleme, profil secimi, islem ve raporlama icin obsidian medya analizi odasi.",
   "features": {
-    "video-analysis": "Video Analizi"
+    "media-analysis": "Medya Analizi"
   },
-  "videoAnalysis": {
-    "heroBadge": "Laboratuvar",
-    "heroTitle": "Video Analizi",
-    "heroSubtitle": "Bir klip yukle, supheli ani sec ve sade kullanici raporu ile teknik yerel raporu birlikte incele.",
-    "projects": {
-      "title": "Projeler",
-      "empty": "Hazirlanan ve tamamlanan analizler burada devam edilebilir projeler olarak gorunur."
+  "mediaAnalysis": {
+    "eyebrow": "Obsidian Laboratuvar",
+    "operatorLabel": "Operator",
+    "loading": {
+      "title": "Laboratuvar Yukleniyor",
+      "body": "Oda baglami ve room-local ceviriler bekleniyor."
     },
-    "activity": {
-      "title": "Kosular ve revizyonlar",
-      "empty": "Analiz basladiktan sonra proje kosulari burada gorunur."
+    "stageNav": {
+      "previous": "Onceki",
+      "next": "Sonraki"
     },
-    "reader": {
-      "title": "Rapor okuyucu",
-      "hint": "Raporu rahat okumak ve kopyalamak icin odakli bir overlay ac.",
-      "open": "Okuyucuyu ac",
-      "close": "Kapat"
+    "stages": {
+      "source": "Kaynak",
+      "edit": "Duzenle",
+      "profile": "Test Profili",
+      "process": "Islem",
+      "report": "Rapor"
     },
-    "controls": {
-      "title": "Kontroller",
-      "basic": "Temel",
-      "advanced": "Gelismis",
-      "reportLocale": "Rapor dili",
-      "reportLocaleEnglish": "English",
-      "reportLocaleTurkish": "Turkce"
+    "shared": {
+      "summary": "Ozet",
+      "status": "Durum",
+      "ready": "Hazir",
+      "duration": "Sure",
+      "resolution": "Cozunurluk",
+      "codec": "Codec",
+      "range": "Aralik",
+      "focus": "Odak",
+      "preset": "Preset",
+      "region": "Bolge",
+      "route": "Hat",
+      "localSample": "Yerel ornek",
+      "reportReady": "Rapor gorunumu hazir",
+      "score": "Guven",
+      "risk": "Risk bandi",
+      "elevatedRisk": "Yuksek",
+      "dummyHint": "Bu odadaki tum kontroller dummy calisir ve room paketi disina cikmaz."
     },
     "source": {
-      "youtubeLabel": "YouTube URL",
-      "youtubePlaceholder": "https://www.youtube.com/watch?v=...",
-      "prepareYoutube": "YouTube hazirla",
-      "cancelPreparation": "Hazirlamayi iptal et",
-      "kindYouTube": "YouTube"
+      "title": "Analiz kaynagini hazirla",
+      "subtitle": "Kaynak tipini sec, gelen ornegi incele ve dummy download hattini kur.",
+      "previewTitle": "Kaynak Onizleme",
+      "consoleTitle": "Hazirlik Konsolu",
+      "consoleLines": [
+        "Ornek hat obsidian laboratuvar icin silahlandi.",
+        "Container metadata gorsel kabuk icin indexlendi.",
+        "Fallback capture profili aktif kaynakla hizalandi.",
+        "Dummy aktarim sonraki asama icin hazir."
+      ],
+      "summaryTitle": "Kaynak Ozeti",
+      "summaryHint": "Oda kaynak durumunu yerel tutar ve gercek bir capture pipeline calistirmaz.",
+      "formats": {
+        "video": {
+          "title": "Video",
+          "subtitle": "Yerel klip sec veya asamali bir download rotasi kur."
+        },
+        "audio": {
+          "title": "Ses",
+          "subtitle": "Waveform temizligi ve transcript hazirligini siraya al."
+        },
+        "image": {
+          "title": "Goruntu",
+          "subtitle": "Still-frame incelemesi ve artefact kontrolu kur."
+        }
+      }
+    },
+    "download": {
+      "title": "Video Download Hatti",
+      "subtitle": "Analiz baslamadan once asamali yakalama icin dummy kuyruk.",
+      "presetLabel": "Presetler",
+      "qualityLabel": "Detayli Ayarlar",
+      "captions": "Altyazi yak",
+      "separateAudio": "Ayri ses stem'i",
+      "progressLabel": "Kuyruk Ilerlemesi",
+      "button": "Download Baslat",
+      "statusReady": "Asamali yakalama icin hazir",
+      "statusActive": "Dummy transfer suruyor",
+      "statusDone": "Ornek yakalama tamamlandi",
+      "actionStarted": "Dummy download darbasi baslatildi.",
+      "presetActivated": "{preset} preset'i aktif edildi.",
+      "presets": {
+        "archive": "Arsiv Aynasi",
+        "evidence": "Kanit Cikisi",
+        "share": "Paylasim Kesiti"
+      },
+      "qualities": {
+        "source": "Kaynak sadakati",
+        "balanced": "Dengeli proxy",
+        "expedited": "Hizli ornek"
+      }
+    },
+    "edit": {
+      "title": "Inceleme penceresini sekillendir",
+      "subtitle": "Zaman araligini kirp, odak bolgesini sec ve cleanup seceneklerini aktif et.",
+      "canvasTitle": "Inceleme Penceresi",
+      "canvasHint": "Gercek akista yalnizca isaretli pencere analiz edilirdi.",
+      "timeTitle": "Zaman Araligi",
+      "regionTitle": "Bolge Odagi",
+      "cleanupTitle": "Temizleme ve Hazirlik",
+      "summaryTitle": "Duzenleme Ozeti",
+      "selectedWindow": "Secili pencere",
+      "selectedRegion": "Secili bolge",
+      "cleanup": {
+        "audio": "Ses temizligi",
+        "sharpness": "Kenar netligi",
+        "aiSanitize": "AI izi filtresi"
+      },
+      "regions": {
+        "containment": "Muhafaza alani",
+        "corridor": "Kapi koridoru",
+        "archive": "Arsiv konsolu"
+      }
+    },
+    "profile": {
+      "title": "Test profilini sec",
+      "subtitle": "Bu asamali calisma icin analiz hatti, yogunluk ve rapor ritmini belirle.",
+      "routeTitle": "Analiz Hatti",
+      "consoleTitle": "Profil Konsolu",
+      "consoleLines": [
+        "Dummy profil agirliklari yenilendi.",
+        "Gorsel hat guncel kaynakla hizalandi.",
+        "Rapor iskeleti sonraki gecis icin hazirlandi."
+      ],
+      "summaryTitle": "Profil Ozeti",
+      "summaryHint": "Secili preset yalnizca yerel sunumu ve dummy islem degerlerini degistirir.",
+      "focusTabs": {
+        "video": "Video",
+        "audio": "Ses",
+        "image": "Goruntu"
+      },
+      "presets": {
+        "quick": {
+          "title": "Hizli",
+          "summary": "Kisa intake kontrolleri ve acik kusurlar icin hafif tarama.",
+          "pace": "Hizli"
+        },
+        "balanced": {
+          "title": "Dengeli",
+          "summary": "Gorsel ve ses taramalarinda dengeli orta derinlik.",
+          "pace": "Dengeli"
+        },
+        "deep": {
+          "title": "Yogun",
+          "summary": "Frame jump, kurgu izi ve residue takibi icin uzun gecis.",
+          "pace": "Yogun"
+        }
+      },
+      "routeNodes": [
+        "Kaynak alimi",
+        "Frame temizligi",
+        "Hareket izi",
+        "Ses taramasi",
+        "Rapor haritasi"
+      ]
+    },
+    "process": {
+      "title": "Asamali islemi izle",
+      "subtitle": "Oda her dummy analiz segmentinden gecarken sahte pipeline durumunu takip et.",
+      "summaryTitle": "Islem Ozeti",
+      "summaryHintActive": "Bu asama acik kaldigi surece dummy islem ilerlemeye devam eder.",
+      "summaryHintDone": "Asamali islem son kontrol noktasina ulasti ve rapor gorunumune gecebilir.",
+      "summaryStatusActive": "Dummy calisma aktif",
+      "summaryStatusDone": "Dummy calisma tamam",
+      "controls": {
+        "restart": "Simulasyonu Yeniden Baslat",
+        "jumpReport": "Raporu Ac"
+      },
+      "steps": {
+        "intake": "Kaynak Alimi",
+        "cleanup": "Frame Temizligi",
+        "motion": "Hareket Analizi",
+        "audio": "Ses Taramasi",
+        "report": "Rapor Sentezi"
+      }
+    },
+    "report": {
+      "title": "Asamali raporu incele",
+      "subtitle": "Bu son gorunum dummy sonucu, oncelikli bulgulari ve export aksiyonlarini toplar.",
+      "overviewTitle": "Rapor Ozeti",
+      "signalTitle": "Risk Isaretleri",
+      "findingsTitle": "Oncelikli Bulgular",
+      "sideTitle": "Analiz Detayi",
+      "exportQueued": "Dummy export paketi siraya alindi.",
+      "actions": {
+        "restart": "Yeni Calisma Baslat",
+        "export": "Dummy PDF Cikar"
+      },
+      "signals": {
+        "frameJump": "Frame sicrama",
+        "subcut": "Subcut kaymasi",
+        "audioOffset": "Ses kaymasi"
+      },
+      "findings": {
+        "continuity": {
+          "title": "Sureklilik kaymasi",
+          "detail": "Tekrarlanan parlaklik sicrasi eklenmis frame dizisini isaret ediyor."
+        },
+        "metadata": {
+          "title": "Metadata boslugu",
+          "detail": "Container zamanlamasi asamali onizleme suresiyle hizalanmiyor."
+        },
+        "audio": {
+          "title": "Ses uyumsuzlugu",
+          "detail": "Gecici bosluklar grid disi bir cleanup gecisine isaret ediyor."
+        }
+      }
     }
   }
 }

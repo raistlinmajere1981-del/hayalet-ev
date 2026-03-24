@@ -65,6 +65,66 @@ let currentPage: string | null = null;
 let lastPrimaryPage = "entrance";
 const specialPageReturnTargets: Record<string, string> = {};
 let controllers: Record<string, PageController> = {};
+let windowControlsBound = false;
+let uiModeDropdownsBound = false;
+
+function getUiModeDropdowns(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>(UI_MODE_DROPDOWN_SELECTOR));
+}
+
+function closeAllUiModeDropdowns(except: HTMLElement | null = null): void {
+  getUiModeDropdowns().forEach((dropdown) => {
+    if (dropdown === except) {
+      return;
+    }
+    setUiModeDropdownExpanded(dropdown, false);
+  });
+}
+
+async function handleUiModeOptionSelection(option: HTMLButtonElement): Promise<void> {
+  closeAllUiModeDropdowns();
+
+  const optionState = option.dataset["uiModeOption"] ?? "";
+  if (optionState === "ghost-agent") {
+    await triggerGhostAgentHandoff();
+    return;
+  }
+
+  if (!isUiModeOptionState(optionState) || optionState === "ghost-agent") {
+    return;
+  }
+
+  if (optionState === getUiModeToggleState()) {
+    return;
+  }
+
+  const confirmed = await Modal.confirm({
+    title: shellT("uiMode.confirmTitle"),
+    message: shellT("uiMode.confirmMessage", { mode: getUiModeLabel(optionState) }),
+  });
+
+  if (!confirmed) {
+    return;
+  }
+
+  const electronApi = window.electronAPI;
+  if (!electronApi?.appRestart) {
+    return;
+  }
+
+  const restartOptions = getUiModeRestartOptions(optionState);
+
+  try {
+    await electronApi.appRestart({
+      forceFullRestart: true,
+      uiMode: restartOptions.uiMode,
+      sceneEditor: restartOptions.sceneEditor,
+      sceneDebug: restartOptions.sceneDebug,
+    });
+  } catch {
+    void 0;
+  }
+}
 
 function isSpecialPage(pageName: string): boolean {
   return SPECIAL_PAGES.includes(pageName);
@@ -188,117 +248,77 @@ export function showPage(pageName: string, rememberSpecialReturn = true): void {
 }
 
 export function setupWindowControls(): void {
-  document.querySelectorAll<HTMLElement>("[data-window-action]").forEach((button) => {
-    const action = button.dataset["windowAction"];
+  if (windowControlsBound) {
+    return;
+  }
+
+  document.addEventListener("click", (event) => {
+    const button = (event.target as Element | null)?.closest<HTMLElement>("[data-window-action]");
+    const action = button?.dataset["windowAction"];
     if (action === undefined || action === "") {
       return;
     }
 
-    button.addEventListener("click", () => {
-      if (action === "minimize-to-tray") {
-        WindowManager.minimizeToTray();
-        return;
-      }
+    if (action === "minimize-to-tray") {
+      WindowManager.minimizeToTray();
+      return;
+    }
 
-      if (action === "close") {
-        WindowManager.closeApp();
-        return;
-      }
+    if (action === "close") {
+      WindowManager.closeApp();
+      return;
+    }
 
-      WindowManager.apply(action);
-    });
+    WindowManager.apply(action);
   });
+
+  windowControlsBound = true;
 }
 
 export function setupTopBarButtons(): void {
   try {
     renderUiModeDropdowns();
+    getUiModeDropdowns().forEach((dropdown) => {
+      syncUiModeDropdownOptions(dropdown);
+    });
 
-    const uiModeDropdowns = Array.from(
-      document.querySelectorAll<HTMLElement>(UI_MODE_DROPDOWN_SELECTOR)
-    );
-
-    if (uiModeDropdowns.length > 0) {
-      const closeAll = (): void => {
-        uiModeDropdowns.forEach((dropdown) => {
-          setUiModeDropdownExpanded(dropdown, false);
-        });
-      };
-
-      uiModeDropdowns.forEach((dropdown) => {
-        syncUiModeDropdownOptions(dropdown);
-
-        const trigger = dropdown.querySelector<HTMLButtonElement>(UI_MODE_TRIGGER_SELECTOR);
-        if (trigger !== null) {
-          trigger.addEventListener("click", (event) => {
-            event.stopPropagation();
-            const isExpanded = dropdown.classList.contains("is-expanded");
-            closeAll();
-            setUiModeDropdownExpanded(dropdown, !isExpanded);
-          });
+    if (!uiModeDropdownsBound) {
+      document.addEventListener("click", (event) => {
+        const target = event.target as Element | null;
+        const option = target?.closest<HTMLButtonElement>(UI_MODE_OPTION_SELECTOR);
+        if (option !== null && option !== undefined) {
+          event.stopPropagation();
+          void handleUiModeOptionSelection(option);
+          return;
         }
 
-        dropdown.addEventListener("click", (event) => {
-          const target = event.target as HTMLElement;
-          const option = target.closest<HTMLButtonElement>(UI_MODE_OPTION_SELECTOR);
-          if (option == null) {
-            return;
-          }
-
+        const trigger = target?.closest<HTMLButtonElement>(UI_MODE_TRIGGER_SELECTOR);
+        if (trigger !== null && trigger !== undefined) {
           event.stopPropagation();
-          closeAll();
-
-          const optionState = option.dataset["uiModeOption"] ?? "";
-          if (optionState === "ghost-agent") {
-            void triggerGhostAgentHandoff();
+          const dropdown = trigger.closest<HTMLElement>(UI_MODE_DROPDOWN_SELECTOR);
+          if (dropdown === null) {
             return;
           }
 
-          if (!isUiModeOptionState(optionState) || optionState === "ghost-agent") {
-            return;
-          }
+          syncUiModeDropdownOptions(dropdown);
+          const isExpanded = dropdown.classList.contains("is-expanded");
+          closeAllUiModeDropdowns(dropdown);
+          setUiModeDropdownExpanded(dropdown, !isExpanded);
+          return;
+        }
 
-          if (optionState === getUiModeToggleState()) {
-            return;
-          }
-
-          void (async (): Promise<void> => {
-            const confirmed = await Modal.confirm({
-              title: shellT("uiMode.confirmTitle"),
-              message: shellT("uiMode.confirmMessage", { mode: getUiModeLabel(optionState) }),
-            });
-
-            if (!confirmed) {
-              return;
-            }
-
-            const electronApi = window.electronAPI;
-            if (!electronApi?.appRestart) {
-              return;
-            }
-
-            const restartOptions = getUiModeRestartOptions(optionState);
-
-            try {
-              await electronApi.appRestart({
-                forceFullRestart: true,
-                uiMode: restartOptions.uiMode,
-                sceneEditor: restartOptions.sceneEditor,
-                sceneDebug: restartOptions.sceneDebug,
-              });
-            } catch {
-              void 0;
-            }
-          })();
-        });
+        if (target?.closest(UI_MODE_DROPDOWN_SELECTOR) === null) {
+          closeAllUiModeDropdowns();
+        }
       });
 
-      document.addEventListener("click", closeAll);
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
-          closeAll();
+          closeAllUiModeDropdowns();
         }
       });
+
+      uiModeDropdownsBound = true;
     }
 
     const sideNavOverlay = document.getElementById("side-nav-overlay");

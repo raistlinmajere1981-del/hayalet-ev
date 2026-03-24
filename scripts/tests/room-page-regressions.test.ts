@@ -26,11 +26,19 @@ test("toRoomRuntimeFileUrl encodes reserved url characters", () => {
 
 test("room page syncs slot-aware host context and scene runtime routing", () => {
   const source = readFileSync("src/js/pages/room-page.ts", "utf8");
+  const roomsCssSource = readFileSync("src/styles/rooms.css", "utf8");
+  const mainCssSource = readFileSync("src/styles/main.css", "utf8");
+  const gameRoomUiCssSource = readFileSync("rooms/game-room/ui/style.css", "utf8");
+  const laboratoryUiCssSource = readFileSync("rooms/laboratory/ui/style.css", "utf8");
 
   assert.match(source, /private sceneFeatureId: string \| null = null;/);
   assert.match(
     source,
-    /private isImmersiveGameRoom\(\): boolean \{\s*return this\.room\.id === "game-room" \|\| this\.room\.id === "laboratory";\s*\}/
+    /private getPageShellVariant\(\): "standard" \| "immersive-stage" \{\s*return this\.room\.scene\?\.chrome\?\.pageShellVariant \?\? "standard";\s*\}/
+  );
+  assert.match(
+    source,
+    /private usesImmersivePageShell\(\): boolean \{\s*return this\.getPageShellVariant\(\) === "immersive-stage";\s*\}/
   );
   assert.match(source, /private getSceneFeature\(\): InstalledRoomFeatureRecord \| null/);
   assert.match(source, /private bindRoomContextSubscriptions\(\): void/);
@@ -50,8 +58,29 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(source, /sceneViewId:\s*sceneFeature\?\.scene\?\.view\.id \?\? null/);
   assert.match(source, /const viewOpen = sceneEnabled && this\.getSceneFeature\(\)\?\.scene !== undefined;/);
   assert.match(source, /this\.sceneFeatureId = null;/);
-  assert.match(source, /room-shell room-shell--game/);
+  assert.match(source, /room-shell room-shell--immersive/);
+  assert.match(source, /<div class="room-shell-topline"\$\{showFeatureStrip \? "" : " hidden"\}>/);
   assert.match(source, /room-runtime-mount room-runtime-mount--stage/);
+  assert.match(source, /room-feature-strip room-feature-strip--header/);
   assert.match(source, /if \(this\.isSceneFeatureOpen\(\)\) \{\s*return this\.getSceneRuntimeSlot\(page\);/);
   assert.match(source, /await RoomHostRuntime\.handleRuntimeMessage\(this\.room\.id, "room-event", payload\);/);
+  assert.doesNotMatch(source, /roomPageT\("page\.badge"\)/);
+  assert.doesNotMatch(source, /data-room-role="title"/);
+  assert.doesNotMatch(source, /data-room-role="subtitle"/);
+  assert.doesNotMatch(source, /roomPageT\("page\.featuresTitle"\)/);
+  assert.doesNotMatch(source, /roomPageT\("page\.runtimeTitle"\)/);
+  assert.doesNotMatch(source, /data-room-role="runtime-status"/);
+  assert.doesNotMatch(source, /data-room-role="runtime-event"/);
+  assert.doesNotMatch(source, /room-feature-panel/);
+  assert.doesNotMatch(source, /room-feature-chip__summary/);
+  assert.match(roomsCssSource, /\.rooms-page \{\s*position: relative;[\s\S]*height: 100%;/);
+  assert.match(roomsCssSource, /\.room-page-shell \{\s*position: relative;[\s\S]*flex: 1 1 auto;[\s\S]*height: 100%;/);
+  assert.match(roomsCssSource, /\.room-shell-stage--immersive \{\s*display: flex;[\s\S]*flex: 1 1 auto;[\s\S]*padding: 0;/);
+  assert.match(roomsCssSource, /\.room-shell-panel--runtime \{\s*display: flex;[\s\S]*flex: 1 1 auto;[\s\S]*padding: 0;/);
+  assert.match(roomsCssSource, /\.room-runtime-mount--stage \{\s*border: 0;[\s\S]*border-radius: inherit;/);
+  assert.doesNotMatch(roomsCssSource, /\.room-feature-panel/);
+  assert.doesNotMatch(roomsCssSource, /\.room-feature-chip__summary/);
+  assert.match(mainCssSource, /\.room-runtime-mount \{\s*flex: 1;[\s\S]*min-height: 0;[\s\S]*height: 100%;/);
+  assert.match(gameRoomUiCssSource, /body\[data-presentation-mode="scene-view"\] \.xox-shell \{\s*min-height: 100%;[\s\S]*padding: 0;/);
+  assert.match(laboratoryUiCssSource, /body\[data-presentation-mode="scene-view"\] \.lab-shell \{\s*height: 100%;[\s\S]*padding: 0;/);
 });

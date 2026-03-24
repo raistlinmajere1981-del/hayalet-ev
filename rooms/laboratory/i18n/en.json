@@ -1,41 +1,214 @@
 {
   "title": "Laboratory",
-  "subtitle": "Inspect local videos with an offline-first forensic workflow and readable technical reporting.",
+  "subtitle": "Obsidian media analysis room for staged capture, cleanup, profiling, processing, and reporting.",
   "features": {
-    "video-analysis": "Video Analysis"
+    "media-analysis": "Media Analysis"
   },
-  "videoAnalysis": {
-    "heroBadge": "Laboratory",
-    "heroTitle": "Video Analysis",
-    "heroSubtitle": "Load a clip, isolate the suspicious moment, and review user-friendly and technical local reports.",
-    "projects": {
-      "title": "Projects",
-      "empty": "Prepared and completed analyses appear here as resumable projects."
+  "mediaAnalysis": {
+    "eyebrow": "Obsidian Laboratory",
+    "operatorLabel": "Operator",
+    "loading": {
+      "title": "Loading Laboratory",
+      "body": "Waiting for room context and room-local translations."
     },
-    "activity": {
-      "title": "Runs and revisions",
-      "empty": "Project runs will appear here after analysis starts."
+    "stageNav": {
+      "previous": "Previous",
+      "next": "Next"
     },
-    "reader": {
-      "title": "Report reader",
-      "hint": "Open the report in a focused overlay for comfortable reading and copying.",
-      "open": "Open reader",
-      "close": "Close reader"
+    "stages": {
+      "source": "Source",
+      "edit": "Edit",
+      "profile": "Test Profile",
+      "process": "Process",
+      "report": "Report"
     },
-    "controls": {
-      "title": "Controls",
-      "basic": "Basic",
-      "advanced": "Advanced",
-      "reportLocale": "Report language",
-      "reportLocaleEnglish": "English",
-      "reportLocaleTurkish": "Turkish"
+    "shared": {
+      "summary": "Summary",
+      "status": "Status",
+      "ready": "Ready",
+      "duration": "Duration",
+      "resolution": "Resolution",
+      "codec": "Codec",
+      "range": "Window",
+      "focus": "Focus",
+      "preset": "Preset",
+      "region": "Region",
+      "route": "Route",
+      "localSample": "Local sample",
+      "reportReady": "Report snapshot ready",
+      "score": "Confidence",
+      "risk": "Risk band",
+      "elevatedRisk": "Elevated",
+      "dummyHint": "All controls in this room are dummy and stay inside the room package."
     },
     "source": {
-      "youtubeLabel": "YouTube URL",
-      "youtubePlaceholder": "https://www.youtube.com/watch?v=...",
-      "prepareYoutube": "Prepare YouTube",
-      "cancelPreparation": "Cancel preparation",
-      "kindYouTube": "YouTube"
+      "title": "Prepare the analysis source",
+      "subtitle": "Choose the source format, inspect the incoming sample, and queue a dummy download route.",
+      "previewTitle": "Source Preview",
+      "consoleTitle": "Preparation Console",
+      "consoleLines": [
+        "Sample route armed for the obsidian lab.",
+        "Container metadata indexed for the visual shell.",
+        "Fallback capture profile aligned with the current source.",
+        "Dummy handoff is ready for the next stage."
+      ],
+      "summaryTitle": "Source Summary",
+      "summaryHint": "The room keeps source state locally and does not trigger any real capture pipeline.",
+      "formats": {
+        "video": {
+          "title": "Video",
+          "subtitle": "Use a local clip or route a staged download."
+        },
+        "audio": {
+          "title": "Audio",
+          "subtitle": "Queue waveform cleanup and transcript prep."
+        },
+        "image": {
+          "title": "Image",
+          "subtitle": "Stage still-frame inspection and artifact checks."
+        }
+      }
+    },
+    "download": {
+      "title": "Video Download Relay",
+      "subtitle": "Dummy queue for staged capture before analysis starts.",
+      "presetLabel": "Presets",
+      "qualityLabel": "Detailed Settings",
+      "captions": "Burn captions",
+      "separateAudio": "Separate audio stem",
+      "progressLabel": "Queue Progress",
+      "button": "Start Download",
+      "statusReady": "Ready for staged capture",
+      "statusActive": "Dummy transfer in progress",
+      "statusDone": "Sample capture finished",
+      "actionStarted": "Dummy download pulse started.",
+      "presetActivated": "{preset} preset armed.",
+      "presets": {
+        "archive": "Archive Mirror",
+        "evidence": "Evidence Extract",
+        "share": "Share Cut"
+      },
+      "qualities": {
+        "source": "Source fidelity",
+        "balanced": "Balanced proxy",
+        "expedited": "Expedited sample"
+      }
+    },
+    "edit": {
+      "title": "Shape the inspection window",
+      "subtitle": "Trim the time range, choose the focus region, and arm cleanup toggles.",
+      "canvasTitle": "Inspection Window",
+      "canvasHint": "Only the highlighted window would be inspected in a real pipeline.",
+      "timeTitle": "Time Range",
+      "regionTitle": "Region Focus",
+      "cleanupTitle": "Cleanup and Prep",
+      "summaryTitle": "Edit Summary",
+      "selectedWindow": "Selected window",
+      "selectedRegion": "Selected region",
+      "cleanup": {
+        "audio": "Audio scrub",
+        "sharpness": "Edge clarity",
+        "aiSanitize": "AI residue filter"
+      },
+      "regions": {
+        "containment": "Containment bay",
+        "corridor": "Door corridor",
+        "archive": "Archive console"
+      }
+    },
+    "profile": {
+      "title": "Choose the test profile",
+      "subtitle": "Select the analysis lane, intensity, and reporting rhythm for this staged run.",
+      "routeTitle": "Analysis Route",
+      "consoleTitle": "Profile Console",
+      "consoleLines": [
+        "Dummy profile weights refreshed.",
+        "Visual lane aligned with the current source.",
+        "Report scaffold staged for the next pass."
+      ],
+      "summaryTitle": "Profile Summary",
+      "summaryHint": "The current preset changes only local presentation and staged process values.",
+      "focusTabs": {
+        "video": "Video",
+        "audio": "Audio",
+        "image": "Image"
+      },
+      "presets": {
+        "quick": {
+          "title": "Quick",
+          "summary": "Short scan for intake checks and obvious defects.",
+          "pace": "Fast"
+        },
+        "balanced": {
+          "title": "Balanced",
+          "summary": "Medium depth with steady visual and audio sweeps.",
+          "pace": "Balanced"
+        },
+        "deep": {
+          "title": "Deep",
+          "summary": "Long-form pass for frame jumps, edits, and residue trails.",
+          "pace": "Dense"
+        }
+      },
+      "routeNodes": [
+        "Source intake",
+        "Frame cleanup",
+        "Motion track",
+        "Audio sweep",
+        "Report map"
+      ]
+    },
+    "process": {
+      "title": "Follow the staged process",
+      "subtitle": "Monitor the dummy pipeline as the room advances through each analysis segment.",
+      "summaryTitle": "Process Summary",
+      "summaryHintActive": "The dummy process keeps moving while this stage stays open.",
+      "summaryHintDone": "The staged process reached its final checkpoint and can roll into the report view.",
+      "summaryStatusActive": "Active dummy run",
+      "summaryStatusDone": "Dummy run complete",
+      "controls": {
+        "restart": "Restart Simulation",
+        "jumpReport": "Open Report"
+      },
+      "steps": {
+        "intake": "Source Intake",
+        "cleanup": "Frame Cleanup",
+        "motion": "Motion Analysis",
+        "audio": "Audio Sweep",
+        "report": "Report Synthesis"
+      }
+    },
+    "report": {
+      "title": "Review the staged report",
+      "subtitle": "This final pane captures a dummy verdict, key findings, and reusable export actions.",
+      "overviewTitle": "Report Overview",
+      "signalTitle": "Risk Signals",
+      "findingsTitle": "Priority Findings",
+      "sideTitle": "Analysis Detail",
+      "exportQueued": "Dummy export package queued.",
+      "actions": {
+        "restart": "Start New Run",
+        "export": "Export Dummy PDF"
+      },
+      "signals": {
+        "frameJump": "Frame jump",
+        "subcut": "Subcut drift",
+        "audioOffset": "Audio offset"
+      },
+      "findings": {
+        "continuity": {
+          "title": "Continuity drift",
+          "detail": "Repeated luminance jumps suggest an inserted frame sequence."
+        },
+        "metadata": {
+          "title": "Metadata gap",
+          "detail": "Container timing does not align with the staged preview length."
+        },
+        "audio": {
+          "title": "Audio mismatch",
+          "detail": "Transient spacing indicates an off-grid cleanup pass."
+        }
+      }
     }
   }
 }

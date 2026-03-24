@@ -1,6 +1,6 @@
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "fs/promises";
 import { existsSync } from "fs";
-import { dirname, join, relative, resolve } from "path";
+import { dirname, join, resolve } from "path";
 import { formatErrorWithDetail } from "../shared/i18n/error-detail.ts";
 import { Paths } from "./paths.ts";
 import type {
@@ -777,16 +777,6 @@ export class RoomPackageManager {
     return getPriority(candidate) > getPriority(current) ? candidate : current;
   }
 
-  private isWritableWorkspaceRoomDir(dirPath: string): boolean {
-    const workspaceRoot = resolve(this.getWorkspaceRoot());
-    const normalizedDirPath = resolve(dirPath);
-    const relativePath = relative(workspaceRoot, normalizedDirPath);
-
-    return (
-      relativePath === "" || (!relativePath.startsWith("..") && !relativePath.startsWith("../"))
-    );
-  }
-
   async ensureRoots(): Promise<void> {
     const workspaceRoot = this.getWorkspaceRoot();
     const installedRoot = this.getInstalledRoot();
@@ -926,10 +916,6 @@ export class RoomPackageManager {
         rm(current.installedDir, { recursive: true, force: true }),
         this.deletePersistentRoomData(current.id),
       ];
-
-      if (this.isWritableWorkspaceRoomDir(current.sourceDir)) {
-        deleteTasks.push(rm(current.sourceDir, { recursive: true, force: true }));
-      }
 
       await Promise.all(deleteTasks);
     } else {

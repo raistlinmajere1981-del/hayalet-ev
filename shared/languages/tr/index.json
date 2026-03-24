@@ -1119,10 +1119,12 @@
         "deleteTitle": "Oda silinsin mi?",
         "deleteMessage": "{{room}} workspace'ten silinecek.",
         "deleteDataLabel": "Odanın verilerini sil",
-        "deleteDataHint": "Seçilirse rooms ve data klasörlerindeki oda klasörleri de silinir.",
+        "deleteDataHint": "Seçilirse data klasöründeki oda kopyası ve kalıcı verileri de silinir.",
         "deleteAction": "Sil",
         "removeTitle": "Oda kaldırılsın mı?",
-        "removeMessage": "{{room}} menüden kaldırılacak."
+        "removeMessage": "{{room}} menüden kaldırılacak.",
+        "removeDataHint": "Seçilirse data klasöründeki oda klasörü tamamen silinir. rooms klasörüne dokunulmaz.",
+        "removeAction": "Kaldır"
       },
       "toasts": {
         "filePickerUnavailable": "Dosya seçici hazır değil",
@@ -5553,6 +5555,44 @@
       },
       "slotSectionTitle": "US1 Slotu",
       "slotSectionNote": "Burada sadece handshake tamamlanmış uzak email hesapları görünür. Hesap ekleme ve handshake işlemleri Hesap Yönetimi alanından yapılır.",
+      "communicationSystem": {
+        "label": "İletişim sistemi",
+        "options": {
+          "mail": "Mail ile iletişim",
+          "relay": "Self-hosted relay + E2EE"
+        }
+      },
+      "relay": {
+        "enabledLabel": "Bu Hayalet Ev için relay + E2EE duyur ve kullan",
+        "baseUrlLabel": "Relay base URL",
+        "baseUrlPlaceholder": "https://relay.ornek.com",
+        "statusLabel": "Relay durumu",
+        "fingerprintLabel": "Yerel relay fingerprint",
+        "serverFingerprintLabel": "Pinlenen sunucu sertifika fingerprint",
+        "phaseHint": "Relay modu seçildi. Relay base URL erişilebilir olmalı ve uzak taraf relay capability duyurana kadar beklemelisiniz.",
+        "actions": {
+          "test": "Relay Test Et",
+          "testing": "Relay Test Ediliyor...",
+          "resetTrust": "Güveni Sıfırla"
+        },
+        "feedback": {
+          "checkSuccess": "Relay sağlık kontrolü başarılı oldu.",
+          "checkFailed": "Relay sağlık kontrolü başarısız oldu.",
+          "trustReset": "Pinlenen relay sunucu güveni sıfırlandı."
+        },
+        "status": {
+          "notConfigured": "Relay henüz yapılandırılmadı.",
+          "noPeer": "Önce handshake tamamlanmış bir eş seçin.",
+          "peerUnsupported": "Seçilen eş henüz relay capability duyurmadı.",
+          "reachable": "Relay erişilebilir. Kullanmak için bir eş seçin.",
+          "ready": "Relay yapılandırıldı ve seçilen eş bunu destekliyor.",
+          "connected": "Relay taşıyıcısı aktif.",
+          "testing": "Relay sağlık kontrolü çalışıyor...",
+          "error": "Relay sağlık kontrolü başarısız oldu.",
+          "noFingerprint": "Yerel relay kimliği henüz hazır değil.",
+          "noServerFingerprint": "Henüz pinlenmiş sunucu sertifikası yok."
+        }
+      },
       "selectLabel": "Hesap listesi",
       "selectPlaceholder": "-- Uzak hesap seç --",
       "noReadyUsers": "Henüz handshake tamamlanmış uzak hesap yok",

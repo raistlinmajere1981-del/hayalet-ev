@@ -21,6 +21,7 @@ export const ROOM_SCENE_VIEW_BACK_BUTTON_VARIANTS = [
   "scene-back-layer",
   "standard-button",
 ] as const;
+export const ROOM_SCENE_PAGE_SHELL_VARIANTS = ["standard", "immersive-stage"] as const;
 
 export type RoomSceneCharacterKind = (typeof ROOM_SCENE_CHARACTER_KINDS)[number];
 export type RoomSceneCharacterSlot = (typeof ROOM_SCENE_CHARACTER_SLOTS)[number];
@@ -28,6 +29,7 @@ export type RoomSceneCharacterRosterPreset = (typeof ROOM_SCENE_CHARACTER_ROSTER
 export type RoomSceneWindowControlsVisibility =
   (typeof ROOM_SCENE_WINDOW_CONTROLS_VISIBILITIES)[number];
 export type RoomSceneViewBackButtonVariant = (typeof ROOM_SCENE_VIEW_BACK_BUTTON_VARIANTS)[number];
+export type RoomScenePageShellVariant = (typeof ROOM_SCENE_PAGE_SHELL_VARIANTS)[number];
 
 export interface RoomMenuConfig {
   label: string;
@@ -92,6 +94,7 @@ export interface RoomSceneCharacterConfig {
 export interface RoomSceneChromeConfig {
   windowControlsVisibility?: RoomSceneWindowControlsVisibility;
   viewBackButtonVariant?: RoomSceneViewBackButtonVariant;
+  pageShellVariant?: RoomScenePageShellVariant;
 }
 
 export interface RoomFeatureSceneViewConfig {
@@ -369,6 +372,10 @@ function isRoomSceneWindowControlsVisibility(
 
 function isRoomSceneViewBackButtonVariant(value: string): value is RoomSceneViewBackButtonVariant {
   return ROOM_SCENE_VIEW_BACK_BUTTON_VARIANTS.includes(value as RoomSceneViewBackButtonVariant);
+}
+
+function isRoomScenePageShellVariant(value: string): value is RoomScenePageShellVariant {
+  return ROOM_SCENE_PAGE_SHELL_VARIANTS.includes(value as RoomScenePageShellVariant);
 }
 
 function readMenuConfig(
@@ -768,6 +775,7 @@ function readSceneChromeConfig(
     errors
   );
   const viewBackButtonVariantRaw = readOptionalString(rawValue, "viewBackButtonVariant", errors);
+  const pageShellVariantRaw = readOptionalString(rawValue, "pageShellVariant", errors);
 
   let windowControlsVisibility: RoomSceneWindowControlsVisibility | undefined;
   if (windowControlsVisibilityRaw !== undefined) {
@@ -787,13 +795,27 @@ function readSceneChromeConfig(
     }
   }
 
-  if (windowControlsVisibility === undefined && viewBackButtonVariant === undefined) {
+  let pageShellVariant: RoomScenePageShellVariant | undefined;
+  if (pageShellVariantRaw !== undefined) {
+    if (isRoomScenePageShellVariant(pageShellVariantRaw) === false) {
+      errors.push(`${path}.pageShellVariant is invalid`);
+    } else {
+      pageShellVariant = pageShellVariantRaw;
+    }
+  }
+
+  if (
+    windowControlsVisibility === undefined &&
+    viewBackButtonVariant === undefined &&
+    pageShellVariant === undefined
+  ) {
     return {};
   }
 
   return {
     ...(windowControlsVisibility !== undefined ? { windowControlsVisibility } : {}),
     ...(viewBackButtonVariant !== undefined ? { viewBackButtonVariant } : {}),
+    ...(pageShellVariant !== undefined ? { pageShellVariant } : {}),
   };
 }
 

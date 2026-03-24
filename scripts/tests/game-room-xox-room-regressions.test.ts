@@ -34,6 +34,9 @@ test("game-room manifest validates with the XOX-first room contract", () => {
   assert.equal(validation.manifest?.features[0]?.id, "xox");
   assert.equal(validation.manifest?.runtime.uiEntry, "ui/index.html");
   assert.equal(validation.manifest?.runtime.hostEntry, "host/index.js");
+  assert.equal(validation.manifest?.scene?.characterRosterPreset, "connected-plus-user");
+  assert.equal(validation.manifest?.scene?.characters?.length, 3);
+  assert.equal(validation.manifest?.scene?.chrome?.pageShellVariant, "immersive-stage");
 });
 
 test("game-room XOX UI forwards remote identity with invite actions", () => {

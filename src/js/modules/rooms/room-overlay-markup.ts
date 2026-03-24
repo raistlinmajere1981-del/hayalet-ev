@@ -142,9 +142,6 @@ export function buildInstalledRoomListMarkup(
         "  </div>",
         `  <div class="room-manager-path">${escapeHtml(room.installedDir)}</div>`,
         '  <div class="room-manager-actions">',
-        `    <button class="btn btn-primary btn-sm" data-room-action="export" data-room-id="${escapeHtml(
-          room.id
-        )}">${escapeHtml(roomOverlayText("actions.export"))}</button>`,
         `    <button class="btn btn-danger btn-sm" data-room-action="remove" data-room-id="${escapeHtml(
           room.id
         )}">${escapeHtml(roomOverlayText("actions.remove"))}</button>`,

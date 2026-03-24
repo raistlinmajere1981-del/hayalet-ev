@@ -7,7 +7,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
   background: var(--bg-app);
   --rooms-space-0-2: calc(var(--space-4) * 0.2);
   --rooms-space-0-25: var(--space-1);
@@ -40,6 +42,8 @@
 
 .rooms-page .room-shell {
   flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
 .rooms-classic-list {
@@ -99,52 +103,55 @@
   font-size: var(--rooms-space-0-9);
 }
 
-.room-feature-panel {
-  margin-bottom: var(--rooms-space-1-25);
-}
-
 .room-feature-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--rooms-space-0-85);
+  align-items: center;
+  gap: var(--rooms-space-0-5);
+}
+
+.room-feature-strip--header,
+.room-feature-strip--inline {
+  flex: 1 1 auto;
 }
 
 .room-feature-chip {
-  display: inline-grid;
-  gap: var(--rooms-space-0-25);
-  min-width: min(var(--rooms-width-feature-card), 100%);
-  justify-items: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  min-width: auto;
+  width: fit-content;
+  white-space: nowrap;
 }
 
 .room-feature-chip__title {
   font-weight: 700;
-}
-
-.room-feature-chip__summary {
-  white-space: normal;
-  text-align: left;
-  line-height: 1.35;
-  color: inherit;
-  opacity: 0.82;
-  font-size: var(--rooms-space-0-86);
+  line-height: 1;
 }
 
 .room-page-shell {
   position: relative;
-  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
-.room-page-shell--game,
-.room-page-shell--game .room-shell--game {
-  min-height: 100%;
+.room-page-shell--immersive,
+.room-page-shell--immersive .room-shell--immersive {
+  min-height: 0;
+  height: 100%;
 }
 
-.room-shell--game {
+.room-shell--immersive {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: var(--rooms-space-0-6);
-  min-height: 100%;
-  padding: var(--rooms-space-0-2);
+  min-height: 0;
+  height: 100%;
+  padding: var(--rooms-space-0-55);
 }
 
 .room-shell-topline {
@@ -160,29 +167,30 @@
   align-items: flex-start;
 }
 
-.room-shell--game .room-feature-chip {
+.rooms-page .room-shell:not(.room-shell--immersive) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--rooms-space-0-6);
+  min-height: 0;
+  height: 100%;
+  padding: var(--rooms-space-0-55);
+}
+
+.room-shell--immersive .room-feature-chip {
   min-width: auto;
-}
-
-.room-shell--game .room-feature-chip__summary {
-  display: none;
-}
-
-.room-shell-runtime {
-  display: flex;
-  justify-items: end;
-  justify-content: flex-end;
-  flex: 1 1 var(--rooms-width-runtime);
 }
 
 .room-shell-stage {
   min-height: 0;
 }
 
-.room-shell-stage--game {
+.room-shell-stage--immersive {
   display: flex;
-  min-height: calc(var(--layout-page-height) - var(--rooms-space-5-8));
-  padding: var(--rooms-space-0-55);
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
   border-radius: var(--rooms-space-1-75);
   background:
     radial-gradient(
@@ -202,14 +210,22 @@
     );
 }
 
-.room-shell--game .room-runtime-mount {
+.room-shell--immersive .room-runtime-mount {
   flex: 1 1 auto;
   min-height: 0;
 }
 
+.room-shell-panel--runtime {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+}
+
 .room-runtime-mount--stage {
   border: 0;
-  border-radius: var(--rooms-space-1-35);
+  border-radius: inherit;
   background: color-mix(in srgb, var(--bg-elevated) 80%, black);
   box-shadow:
     0 var(--rooms-shadow-stage-y) var(--rooms-shadow-stage-blur)
@@ -217,16 +233,18 @@
     inset 0 0 0 var(--border-1) color-mix(in srgb, var(--text-inverse) 6%, transparent);
 }
 
-.room-shell--game .room-runtime-webview,
-.room-shell--game .room-runtime-mount {
+.room-shell--immersive .room-runtime-webview,
+.room-shell--immersive .room-runtime-mount {
   width: 100%;
   height: 100%;
   min-height: 100%;
 }
 
-.room-shell--game .room-runtime-event {
-  max-width: min(var(--rooms-width-event-max), 100%);
-  text-align: right;
+.room-shell-panel--runtime .room-runtime-mount,
+.room-shell-panel--runtime .room-runtime-webview {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
 }
 
 .room-scene-root {
@@ -351,16 +369,7 @@
     align-items: stretch;
   }
 
-  .room-shell-runtime {
-    justify-items: start;
-  }
-
-  .room-shell--game .room-runtime-event {
-    max-width: none;
-    text-align: left;
-  }
-
-  .room-shell-stage--game {
-    min-height: calc(var(--layout-page-height) - var(--rooms-space-8-5));
+  .room-shell-stage--immersive {
+    min-height: 0;
   }
 }

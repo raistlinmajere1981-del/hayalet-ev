@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { basename, extname } from "node:path";
 
 import type {
@@ -5,8 +6,13 @@ import type {
   AppSettings,
   MailTransportAccountConfig,
   RemoteUserIdentity,
+  Us1RelayPeerCapability,
 } from "@shared/settings.js";
-import { getRemoteEmailAccounts } from "@shared/settings.js";
+import {
+  getRemoteEmailAccounts,
+  getRemoteUserLinkedAccountId,
+  getUs1SelectedIdentityId,
+} from "@shared/settings.js";
 import {
   buildRemoteEmailAccountId,
   buildUs1SyntheticSessionUri,
@@ -28,6 +34,14 @@ import type {
   Us1SyncMessagesParams,
   Us1SyncMessagesResult,
 } from "@shared/us1-mail.js";
+import type {
+  Us1RelayAttachmentPayload,
+  Us1RelayHealthCheckParams,
+  Us1RelayHealthCheckResult,
+  Us1RelayConversationPayload,
+  Us1RelayProfilePayload,
+} from "@shared/us1-relay.js";
+import { US1_RELAY_MESSAGE_PROTOCOL, US1_RELAY_PROTOCOL_VERSION } from "@shared/us1-relay.js";
 
 import { normalizeSettings } from "../src/js/modules/settings/settings-schema.ts";
 import { MailSidecarStoreManager } from "./database/mail-sidecar-manager.ts";
@@ -39,6 +53,20 @@ import type {
   SendMailRequest,
   SendMailResult,
 } from "./mail-transport/index.js";
+import {
+  decryptRelayBinary,
+  decryptRelayPayload,
+  encryptRelayBinary,
+  encryptRelayPayload,
+} from "./us1-relay/crypto.ts";
+import { us1RelayIdentityService } from "./us1-relay/identity-service.ts";
+import {
+  RelayTlsPinError,
+  normalizeRelayServerFingerprint,
+  us1RelayClient,
+  type Us1RelayRequestOptions,
+  type Us1RelayResponseMeta,
+} from "./us1-relay/client.ts";
 
 const HANDSHAKE_PROTOCOL = "hayalet-ev-us1-handshake";
 const HANDSHAKE_VERSION = 1;
@@ -54,6 +82,8 @@ const ROOM_BUNDLE_SUFFIX = ".hevroom.json";
 const OUTBOUND_ATTACHMENT_ONLY_TEXT = "Attachment-only message.";
 const INBOUND_ATTACHMENT_ONLY_TEXT = "Attachment-only mail message.";
 const SUBJECT_PREFIX = "[Hayalet Ev] US1";
+const RELAY_INLINE_ATTACHMENT_LIMIT_BYTES = 256 * 1024;
+const RELAY_ATTACHMENT_CHUNK_SIZE_BYTES = 256 * 1024;
 
 type HandshakeMessageType = "invite" | "accept" | "reject" | "profile";
 
@@ -73,6 +103,7 @@ interface MessageProfile {
   avatar: string;
   avatarAttachmentName?: string | null;
   profileRevision: number;
+  relayCapability?: Us1RelayPeerCapability | null;
 }
 
 interface ConversationEnvelope {
@@ -219,12 +250,72 @@ function normalizeEmail(value: unknown): string {
   return normalizeOptionalText(value)?.toLowerCase() ?? "";
 }
 
+function normalizeRelayCapability(value: unknown): Us1RelayPeerCapability | null {
+  if (value === null || value === undefined || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (record["supported"] !== true) {
+    return null;
+  }
+
+  return {
+    supported: true,
+    endpoint:
+      typeof record["endpoint"] === "string" && record["endpoint"].trim() !== ""
+        ? record["endpoint"].trim()
+        : null,
+    encryptionPublicKey:
+      typeof record["encryptionPublicKey"] === "string" &&
+      record["encryptionPublicKey"].trim() !== ""
+        ? record["encryptionPublicKey"].trim()
+        : null,
+    encryptionKeyFingerprint:
+      typeof record["encryptionKeyFingerprint"] === "string" &&
+      record["encryptionKeyFingerprint"].trim() !== ""
+        ? record["encryptionKeyFingerprint"].trim()
+        : null,
+    signingPublicKey:
+      typeof record["signingPublicKey"] === "string" && record["signingPublicKey"].trim() !== ""
+        ? record["signingPublicKey"].trim()
+        : null,
+    signingKeyFingerprint:
+      typeof record["signingKeyFingerprint"] === "string" &&
+      record["signingKeyFingerprint"].trim() !== ""
+        ? record["signingKeyFingerprint"].trim()
+        : null,
+    protocolVersion:
+      typeof record["protocolVersion"] === "number" &&
+      Number.isFinite(record["protocolVersion"]) &&
+      record["protocolVersion"] >= 1
+        ? Math.trunc(record["protocolVersion"])
+        : 1,
+    advertisedAt:
+      typeof record["advertisedAt"] === "number" &&
+      Number.isFinite(record["advertisedAt"]) &&
+      record["advertisedAt"] >= 0
+        ? Math.trunc(record["advertisedAt"])
+        : null,
+    trustState:
+      record["trustState"] === "trusted" ||
+      record["trustState"] === "mismatch" ||
+      record["trustState"] === "unknown"
+        ? record["trustState"]
+        : "unknown",
+    lastError:
+      typeof record["lastError"] === "string" && record["lastError"].trim() !== ""
+        ? record["lastError"].trim()
+        : null,
+  };
+}
+
 function resolveSelectedRemoteUserId(settings: AppSettings): string | null {
   const selectedAccountId = normalizeOptionalText(settings.us1Slot?.selectedAccountId);
   const remoteUserIdFromAccountId =
     selectedAccountId !== null ? extractUs1RemoteIdentityIdFromAccountId(selectedAccountId) : null;
 
-  return remoteUserIdFromAccountId ?? normalizeOptionalText(settings.us1Slot?.selectedRemoteUserId);
+  return remoteUserIdFromAccountId ?? getUs1SelectedIdentityId(settings.us1Slot);
 }
 
 function buildRemoteUserFromRemoteAccount(
@@ -246,6 +337,7 @@ function buildRemoteUserFromRemoteAccount(
     handshakeState: remoteState.handshakeState,
     profileRevision: remoteState.profileRevision,
     linkedMailAccountId: remoteState.linkedLocalMailAccountId,
+    linkedAccountId: remoteState.linkedLocalMailAccountId,
     ...(remoteState.inviteMessageId !== undefined
       ? { inviteMessageId: remoteState.inviteMessageId ?? null }
       : {}),
@@ -264,6 +356,68 @@ function buildRemoteUserFromRemoteAccount(
       ? { sessionAlias: remoteState.sessionAlias ?? null }
       : {}),
   };
+}
+
+function getUs1CommunicationSystem(settings: AppSettings): "mail" | "relay-e2ee" {
+  return settings.us1Slot?.communicationSystem === "relay-e2ee" ? "relay-e2ee" : "mail";
+}
+
+function getRelayReceiveBaseUrl(settings: AppSettings): string | null {
+  return normalizeOptionalText(settings.integrations?.us1Relay?.baseUrl);
+}
+
+function getRelaySendBaseUrl(settings: AppSettings, remoteUser: RemoteUserIdentity): string | null {
+  return (
+    normalizeOptionalText(remoteUser.relayCapability?.endpoint) ?? getRelayReceiveBaseUrl(settings)
+  );
+}
+
+function getRelayPinnedServerFingerprint(settings: AppSettings): string | null {
+  return normalizeRelayServerFingerprint(settings.integrations?.us1Relay?.trustedServerFingerprint);
+}
+
+function getRelayClientRequestOptions(settings: AppSettings): Us1RelayRequestOptions {
+  return {
+    pinnedServerFingerprint: getRelayPinnedServerFingerprint(settings),
+  };
+}
+
+function hasRelayCapability(remoteUser: RemoteUserIdentity | null | undefined): boolean {
+  return (
+    remoteUser?.relayCapability?.supported === true &&
+    normalizeOptionalText(remoteUser.relayCapability.encryptionPublicKey) !== null &&
+    normalizeOptionalText(remoteUser.relayCapability.encryptionKeyFingerprint) !== null &&
+    normalizeOptionalText(remoteUser.relayCapability.signingPublicKey) !== null &&
+    normalizeOptionalText(remoteUser.relayCapability.signingKeyFingerprint) !== null
+  );
+}
+
+function toRelayParsedAttachments(
+  attachments: Us1RelayAttachmentPayload[]
+): MailTransportParsedAttachment[] {
+  return attachments.map((attachment) => ({
+    filename: normalizeOptionalText(attachment.name),
+    contentType: normalizeOptionalText(attachment.mimeType ?? null),
+    contentDisposition: "attachment",
+    checksum: null,
+    size:
+      typeof attachment.size === "number" && Number.isFinite(attachment.size)
+        ? Math.max(0, Math.trunc(attachment.size))
+        : Buffer.from(attachment.contentBase64 ?? "", "base64").byteLength,
+    contentId: null,
+    inline: false,
+    content: Buffer.from(attachment.contentBase64 ?? "", "base64"),
+  }));
+}
+
+function isChunkedRelayAttachment(attachment: Us1RelayAttachmentPayload): boolean {
+  return (
+    attachment.transferMode === "chunked" &&
+    normalizeOptionalText(attachment.chunkTransfer?.attachmentId ?? null) !== null &&
+    typeof attachment.chunkTransfer?.chunkCount === "number" &&
+    Number.isFinite(attachment.chunkTransfer.chunkCount) &&
+    attachment.chunkTransfer.chunkCount >= 1
+  );
 }
 
 function buildLocalMessageId(prefix: string, token: string, now: number): string {
@@ -452,6 +606,7 @@ function normalizeMessageProfile(profile: unknown): MessageProfile | null {
       source["profileRevision"] >= 1
         ? Math.trunc(source["profileRevision"])
         : 1,
+    relayCapability: normalizeRelayCapability(source["relayCapability"]),
   };
 }
 
@@ -753,9 +908,17 @@ export class Us1ConversationService {
 
   async sendMessage(params: Us1SendMessageParams): Promise<Us1SendMessageResult> {
     const settings = await this.loadNormalizedSettings();
-    const binding = this.resolveActiveBinding(settings, true);
+    const communicationSystem = getUs1CommunicationSystem(settings);
+    const binding =
+      communicationSystem === "relay-e2ee"
+        ? this.resolveActiveRelayBinding(settings, true)
+        : this.resolveActiveBinding(settings, true);
     if (binding === null) {
       return { success: false, error: "Active US1 binding is not available." };
+    }
+
+    if (communicationSystem === "relay-e2ee") {
+      return await this.sendRelayMessage(settings, binding, params);
     }
 
     const { remoteUser, account } = binding;
@@ -930,8 +1093,15 @@ export class Us1ConversationService {
 
   async syncMessages(params: Us1SyncMessagesParams = {}): Promise<Us1SyncMessagesResult> {
     const settings = await this.loadNormalizedSettings();
-    const activeBinding = this.resolveActiveBinding(settings, true);
-    const syncBindings = this.resolveSyncBindings(settings, true);
+    const communicationSystem = getUs1CommunicationSystem(settings);
+    const activeBinding =
+      communicationSystem === "relay-e2ee"
+        ? this.resolveActiveRelayBinding(settings, true)
+        : this.resolveActiveBinding(settings, true);
+    const syncBindings =
+      communicationSystem === "relay-e2ee"
+        ? this.resolveRelaySyncBindings(settings, true)
+        : this.resolveSyncBindings(settings, true);
     if (syncBindings.length === 0) {
       return {
         success: true,
@@ -949,6 +1119,10 @@ export class Us1ConversationService {
         roomCommands: [],
         roomInviteInbox: this.listRoomInviteInbox(),
       };
+    }
+
+    if (communicationSystem === "relay-e2ee") {
+      return await this.syncRelayMessages(settings, activeBinding, syncBindings, params);
     }
 
     try {
@@ -1231,8 +1405,862 @@ export class Us1ConversationService {
     }
   }
 
+  private async buildRelayAttachmentPayloads(params: {
+    attachments: NonNullable<Us1SendMessageParams["attachments"]>;
+    relayBaseUrl: string;
+    relayRequestOptions?: Us1RelayRequestOptions;
+    remoteUserId: string;
+    senderRemoteUserId: string;
+    remoteEncryptionPublicKey: string;
+    remoteEncryptionKeyFingerprint: string;
+    remoteSigningKeyFingerprint: string;
+    senderEncryptionKeyFingerprint: string;
+    sentAt: number;
+  }): Promise<Us1RelayAttachmentPayload[]> {
+    const localPrivateKey = us1RelayIdentityService.getEncryptionPrivateKey();
+    const relayAttachments = await Promise.all(
+      params.attachments.map(
+        async (attachment, index): Promise<Us1RelayAttachmentPayload | null> => {
+          const attachmentPath = normalizeOptionalText(attachment.path);
+          if (attachmentPath === null) {
+            return null;
+          }
+
+          const content = await readFile(attachmentPath);
+          const name = normalizeOptionalText(attachment.name) ?? basename(attachmentPath);
+          const mimeType = normalizeOptionalText(attachment.mimeType) ?? null;
+
+          if (content.byteLength <= RELAY_INLINE_ATTACHMENT_LIMIT_BYTES) {
+            return {
+              name,
+              mimeType,
+              transferMode: "inline",
+              contentBase64: content.toString("base64"),
+              size: content.byteLength,
+            };
+          }
+
+          const attachmentId = `${buildLocalMessageId(
+            "us1-relay-attachment",
+            `${params.remoteUserId}:${String(index + 1)}`,
+            params.sentAt
+          )}:${hashString(name).slice(0, 8)}`;
+          const chunkCount = Math.max(
+            1,
+            Math.ceil(content.byteLength / RELAY_ATTACHMENT_CHUNK_SIZE_BYTES)
+          );
+
+          const uploadResults = await Promise.all(
+            Array.from({ length: chunkCount }, async (_, chunkIndex) => {
+              const chunkStart = chunkIndex * RELAY_ATTACHMENT_CHUNK_SIZE_BYTES;
+              const chunkEnd = Math.min(
+                chunkStart + RELAY_ATTACHMENT_CHUNK_SIZE_BYTES,
+                content.byteLength
+              );
+              const chunk = content.subarray(chunkStart, chunkEnd);
+              const encryptedChunk = encryptRelayBinary({
+                payload: chunk,
+                localPrivateKey,
+                remotePublicKeyBase64: params.remoteEncryptionPublicKey,
+                senderRemoteUserId: params.senderRemoteUserId,
+                senderEncryptionKeyFingerprint: params.senderEncryptionKeyFingerprint,
+                recipientEncryptionKeyFingerprint: params.remoteEncryptionKeyFingerprint,
+                messageId: `${attachmentId}:${String(chunkIndex).padStart(4, "0")}`,
+                sentAt: params.sentAt,
+              });
+
+              return await us1RelayClient.uploadAttachmentChunk(
+                params.relayBaseUrl,
+                {
+                  recipientSigningKeyFingerprint: params.remoteSigningKeyFingerprint,
+                  attachmentId,
+                  chunkIndex,
+                  chunkCount,
+                  envelope: encryptedChunk,
+                },
+                params.relayRequestOptions
+              );
+            })
+          );
+          const failedUpload = uploadResults.find((uploadResult) => uploadResult.success !== true);
+          if (failedUpload !== undefined) {
+            throw new Error(failedUpload.error ?? "US1 relay attachment upload failed.");
+          }
+
+          return {
+            name,
+            mimeType,
+            size: content.byteLength,
+            transferMode: "chunked",
+            chunkTransfer: {
+              attachmentId,
+              chunkCount,
+              chunkSize: RELAY_ATTACHMENT_CHUNK_SIZE_BYTES,
+            },
+          };
+        }
+      )
+    );
+
+    return relayAttachments.filter(
+      (attachment): attachment is Us1RelayAttachmentPayload => attachment !== null
+    );
+  }
+
+  private async materializeRelayAttachments(
+    relayBaseUrl: string,
+    remoteUser: RemoteUserIdentity,
+    attachments: Us1RelayAttachmentPayload[],
+    relayRequestOptions?: Us1RelayRequestOptions
+  ): Promise<{
+    parsedAttachments: MailTransportParsedAttachment[];
+    downloadedAttachmentIds: string[];
+  }> {
+    const remoteEncryptionPublicKey = normalizeOptionalText(
+      remoteUser.relayCapability?.encryptionPublicKey
+    );
+    const localPrivateKey = us1RelayIdentityService.getEncryptionPrivateKey();
+    const buildFallbackAttachment = (
+      attachment: Us1RelayAttachmentPayload
+    ): MailTransportParsedAttachment => ({
+      filename: normalizeOptionalText(attachment.name),
+      contentType: normalizeOptionalText(attachment.mimeType ?? null),
+      contentDisposition: "attachment",
+      checksum: null,
+      size:
+        typeof attachment.size === "number" && Number.isFinite(attachment.size)
+          ? Math.max(0, Math.trunc(attachment.size))
+          : 0,
+      contentId: null,
+      inline: false,
+    });
+
+    const materializedAttachments = await Promise.all(
+      attachments.map(
+        async (
+          attachment
+        ): Promise<{
+          parsedAttachments: MailTransportParsedAttachment[];
+          downloadedAttachmentIds: string[];
+        }> => {
+          if (isChunkedRelayAttachment(attachment) !== true) {
+            return {
+              parsedAttachments: toRelayParsedAttachments([attachment]),
+              downloadedAttachmentIds: [],
+            };
+          }
+
+          const attachmentId = normalizeOptionalText(
+            attachment.chunkTransfer?.attachmentId ?? null
+          );
+          const expectedChunkCount = attachment.chunkTransfer?.chunkCount;
+          if (attachmentId === null || remoteEncryptionPublicKey === null) {
+            return {
+              parsedAttachments: [buildFallbackAttachment(attachment)],
+              downloadedAttachmentIds: [],
+            };
+          }
+
+          try {
+            const downloadResult = await us1RelayClient.downloadAttachment(
+              relayBaseUrl,
+              {
+                attachmentId,
+              },
+              relayRequestOptions
+            );
+            if (downloadResult.success !== true) {
+              throw new Error(downloadResult.error ?? "US1 relay attachment download failed.");
+            }
+
+            const chunks = [...(downloadResult.chunks ?? [])].sort(
+              (left, right) => left.chunkIndex - right.chunkIndex
+            );
+            if (
+              chunks.length === 0 ||
+              (typeof expectedChunkCount === "number" &&
+                Number.isFinite(expectedChunkCount) &&
+                expectedChunkCount >= 1 &&
+                chunks.length !== expectedChunkCount)
+            ) {
+              throw new Error("US1 relay attachment download is incomplete.");
+            }
+
+            const chunkBuffers = chunks.map((chunk, chunkIndex) => {
+              if (chunk.chunkIndex !== chunkIndex) {
+                throw new Error("US1 relay attachment chunks are out of order.");
+              }
+              return decryptRelayBinary({
+                envelope: chunk.envelope,
+                localPrivateKey,
+                remotePublicKeyBase64: remoteEncryptionPublicKey,
+              });
+            });
+            const content = Buffer.concat(chunkBuffers);
+
+            return {
+              parsedAttachments: [
+                {
+                  filename: normalizeOptionalText(attachment.name),
+                  contentType: normalizeOptionalText(attachment.mimeType ?? null),
+                  contentDisposition: "attachment",
+                  checksum: null,
+                  size: content.byteLength,
+                  contentId: null,
+                  inline: false,
+                  content,
+                },
+              ],
+              downloadedAttachmentIds: [attachmentId],
+            };
+          } catch {
+            return {
+              parsedAttachments: [buildFallbackAttachment(attachment)],
+              downloadedAttachmentIds: [],
+            };
+          }
+        }
+      )
+    );
+
+    return {
+      parsedAttachments: materializedAttachments.flatMap((entry) => entry.parsedAttachments),
+      downloadedAttachmentIds: materializedAttachments.flatMap(
+        (entry) => entry.downloadedAttachmentIds
+      ),
+    };
+  }
+
+  private buildRelayProfilePayload(profile: MessageProfile): Us1RelayProfilePayload {
+    return {
+      remoteUserId: profile.remoteUserId,
+      email: profile.email,
+      nickname: profile.nickname,
+      avatar: profile.avatar,
+      profileRevision: profile.profileRevision,
+    };
+  }
+
+  private async sendRelayMessage(
+    settings: AppSettings,
+    binding: ResolvedBinding,
+    params: Us1SendMessageParams
+  ): Promise<Us1SendMessageResult> {
+    const { remoteUser, account } = binding;
+    const relayBaseUrl = getRelaySendBaseUrl(settings, remoteUser);
+    const remoteEncryptionPublicKey = normalizeOptionalText(
+      remoteUser.relayCapability?.encryptionPublicKey
+    );
+    const remoteEncryptionKeyFingerprint = normalizeOptionalText(
+      remoteUser.relayCapability?.encryptionKeyFingerprint
+    );
+    const remoteSigningKeyFingerprint = normalizeOptionalText(
+      remoteUser.relayCapability?.signingKeyFingerprint
+    );
+
+    if (
+      relayBaseUrl === null ||
+      remoteEncryptionPublicKey === null ||
+      remoteEncryptionKeyFingerprint === null ||
+      remoteSigningKeyFingerprint === null
+    ) {
+      return { success: false, error: "Relay capability is incomplete for the selected US1 user." };
+    }
+
+    const sidecar = new MailSidecarStoreManager(account.id);
+    const text = normalizeText(params.text ?? "");
+    const attachments = (params.attachments ?? []).filter(
+      (attachment) => normalizeOptionalText(attachment.path) !== null
+    );
+
+    if (text === "" && attachments.length === 0) {
+      return { success: false, error: "US1 message content is empty." };
+    }
+
+    const requestedSessionId = normalizeOptionalText(params.localSessionId);
+    const latestMapping =
+      requestedSessionId !== null
+        ? sidecar.getSessionMapping(remoteUser.remoteUserId, requestedSessionId)
+        : sidecar.getLatestSessionMapping(remoteUser.remoteUserId);
+    const isNewSession = latestMapping === null;
+    const localSessionId =
+      requestedSessionId ??
+      latestMapping?.localSessionId ??
+      buildSessionId(remoteUser.remoteUserId, latestMapping?.threadMessageId ?? null, this.now());
+    const sessionTitle = isNewSession ? buildSessionTitle(text, attachments.length) : null;
+    const sessionMode: Us1SessionMode = isNewSession ? "new" : "reply";
+    const sessionOpenHint: Us1SessionOpenHint = isNewSession ? "auto_if_idle" : "list_only";
+    const localProfile = this.buildLocalProfile(settings, account);
+    const relayProfile = this.buildRelayProfilePayload(localProfile);
+    const localMessageId = buildLocalMessageId(
+      "us1-relay-out",
+      remoteUser.remoteUserId,
+      this.now()
+    );
+    const threadMessageId =
+      latestMapping?.threadMessageId ?? normalizeOptionalText(remoteUser.threadMessageId);
+    const inReplyTo =
+      latestMapping?.lastMessageId ?? normalizeOptionalText(remoteUser.lastTransportMessageId);
+    const localRelayIdentity = us1RelayIdentityService.getLocalMetadata();
+    const sentAt = this.now();
+    const relayRequestOptions = getRelayClientRequestOptions(settings);
+    const relayAttachments = await this.buildRelayAttachmentPayloads({
+      attachments,
+      relayBaseUrl,
+      relayRequestOptions,
+      remoteUserId: remoteUser.remoteUserId,
+      senderRemoteUserId: relayProfile.remoteUserId,
+      remoteEncryptionPublicKey,
+      remoteEncryptionKeyFingerprint,
+      remoteSigningKeyFingerprint,
+      senderEncryptionKeyFingerprint: localRelayIdentity.encryptionKeyFingerprint,
+      sentAt,
+    });
+    const transportMessageId = buildLocalMessageId(
+      "us1-relay-msg",
+      remoteUser.remoteUserId,
+      sentAt
+    );
+
+    try {
+      const relayPayload: Us1RelayConversationPayload = {
+        protocol: US1_RELAY_MESSAGE_PROTOCOL,
+        version: US1_RELAY_PROTOCOL_VERSION,
+        messageType: "conversation",
+        sentAt,
+        localSessionId,
+        session: {
+          id: localSessionId,
+          mode: sessionMode,
+          title: sessionTitle,
+          createdAt: sentAt,
+          openHint: sessionOpenHint,
+        },
+        thread: {
+          threadRootMessageId: threadMessageId,
+          replyToMessageId: inReplyTo,
+        },
+        profile: relayProfile,
+        text,
+        attachments: relayAttachments,
+        ...(params.roomEvent !== undefined && params.roomEvent !== null
+          ? { roomEvent: params.roomEvent }
+          : {}),
+        ...(params.roomCommand !== undefined && params.roomCommand !== null
+          ? { roomCommand: params.roomCommand }
+          : {}),
+      };
+
+      const encryptedEnvelope = encryptRelayPayload({
+        payload: relayPayload,
+        localPrivateKey: us1RelayIdentityService.getEncryptionPrivateKey(),
+        remotePublicKeyBase64: remoteEncryptionPublicKey,
+        senderRemoteUserId: relayProfile.remoteUserId,
+        senderEncryptionKeyFingerprint: localRelayIdentity.encryptionKeyFingerprint,
+        recipientEncryptionKeyFingerprint: remoteEncryptionKeyFingerprint,
+        messageId: transportMessageId,
+        sentAt,
+      });
+
+      const relayResult = await us1RelayClient.publish(
+        relayBaseUrl,
+        {
+          recipientSigningKeyFingerprint: remoteSigningKeyFingerprint,
+          envelope: encryptedEnvelope,
+        },
+        relayRequestOptions
+      );
+
+      if (relayResult.success !== true) {
+        throw new Error(relayResult.error ?? "US1 relay publish failed.");
+      }
+      this.applyRelayTransportTrustSuccess(settings, relayBaseUrl, relayResult);
+
+      const archiveContext = await this.prepareArchiveContext(
+        remoteUser,
+        localSessionId,
+        isNewSession ? buildConversationTitle(remoteUser, sessionTitle) : null
+      );
+      const projectedMessage = await this.appendArchiveMessage(archiveContext, {
+        role: "user",
+        author: buildConversationAuthor(localProfile),
+        text: text !== "" ? text : OUTBOUND_ATTACHMENT_ONLY_TEXT,
+        domId: transportMessageId,
+      });
+      const attachmentRefs = await this.saveOutboundAttachments(
+        archiveContext.manager,
+        projectedMessage.conversationId,
+        projectedMessage.messageId,
+        attachments
+      );
+
+      sidecar.upsertSessionMapping({
+        remoteUserId: remoteUser.remoteUserId,
+        localSessionId,
+        threadMessageId: threadMessageId ?? transportMessageId,
+        lastMessageId: transportMessageId,
+      });
+      sidecar.upsertMessageMeta({
+        transportMessageId,
+        localMessageId,
+        deliveryState: "queued",
+        headersHash: hashString(JSON.stringify(encryptedEnvelope)),
+        metadata: {
+          direction: "outbound",
+          remoteUserId: remoteUser.remoteUserId,
+          localSessionId,
+          conversationId: projectedMessage.conversationId,
+          webUrl: archiveContext.webUrl,
+          archiveMessageId: projectedMessage.messageId,
+          attachments: attachmentRefs,
+        },
+      });
+
+      this.patchRemoteUserTransportState(settings, remoteUser.remoteUserId, {
+        threadMessageId: threadMessageId ?? transportMessageId,
+        lastTransportMessageId: transportMessageId,
+        lastSyncAt: this.now(),
+        lastError: null,
+      });
+      await this.persistSettings(settings);
+
+      return {
+        success: true,
+        remoteUserId: remoteUser.remoteUserId,
+        localSessionId,
+        conversationId: projectedMessage.conversationId,
+        transportMessageId,
+        archiveMessageId: projectedMessage.messageId,
+        deliveryState: "queued",
+        attachmentCount: attachmentRefs.length,
+      };
+    } catch (error) {
+      this.applyRelayTransportTrustError(settings, relayBaseUrl, error);
+      this.patchRemoteUserTransportState(settings, remoteUser.remoteUserId, {
+        lastSyncAt: this.now(),
+        lastError: getErrorMessage(error),
+      });
+      await this.persistSettings(settings);
+      return { success: false, error: getErrorMessage(error) };
+    }
+  }
+
+  private async syncRelayMessages(
+    settings: AppSettings,
+    activeBinding: ResolvedBinding | null,
+    syncBindings: ResolvedBinding[],
+    params: Us1SyncMessagesParams
+  ): Promise<Us1SyncMessagesResult> {
+    const relayBaseUrl = getRelayReceiveBaseUrl(settings);
+    if (relayBaseUrl === null) {
+      return { success: false, error: "US1 relay base URL is not configured." };
+    }
+
+    const localRelayIdentity = us1RelayIdentityService.getLocalMetadata();
+    const bindingsByRemoteUserId = new Map(
+      syncBindings.map((binding) => [binding.remoteUser.remoteUserId, binding])
+    );
+    const relayRequestOptions = getRelayClientRequestOptions(settings);
+
+    try {
+      const pollResult = await us1RelayClient.poll(
+        relayBaseUrl,
+        {
+          cursor: null,
+          limit:
+            typeof params.limit === "number" && params.limit > 0 ? Math.trunc(params.limit) : 20,
+        },
+        relayRequestOptions
+      );
+
+      if (pollResult.success !== true) {
+        throw new Error(pollResult.error ?? "US1 relay sync failed.");
+      }
+      this.applyRelayTransportTrustSuccess(settings, relayBaseUrl, pollResult);
+
+      const fetchedCount = pollResult.messages?.length ?? 0;
+      let processedCount = 0;
+      const duplicateCount = 0;
+      let projectedCount = 0;
+      let skippedCount = 0;
+      let unresolvedSessionCount = 0;
+      let activeConversationId: string | null = null;
+      let activeLocalSessionId: string | null = normalizeOptionalText(params.localSessionId);
+      const roomPackages: Us1RoomPackageCandidate[] = [];
+      const sessionEventsById = new Map<string, Us1SessionEvent>();
+      const roomEvents: Us1RoomEventRecord[] = [];
+      const roomCommands: Us1RoomCommandRecord[] = [];
+      const acknowledgedMessageIds: string[] = [];
+      const acknowledgedAttachmentIds = new Set<string>();
+
+      // NOTE: Relay sync mutates archive and session state per message, so processing stays sequential.
+      /* eslint-disable no-await-in-loop */
+      for (const queuedEnvelope of pollResult.messages ?? []) {
+        const binding =
+          bindingsByRemoteUserId.get(queuedEnvelope.envelope.senderRemoteUserId) ?? null;
+        const remoteUser =
+          binding?.remoteUser ??
+          this.findRemoteUser(settings, queuedEnvelope.envelope.senderRemoteUserId);
+        const account = binding?.account ?? null;
+        const remoteEncryptionPublicKey = normalizeOptionalText(
+          remoteUser?.relayCapability?.encryptionPublicKey
+        );
+
+        if (
+          remoteUser === null ||
+          account === null ||
+          remoteUser.handshakeState !== "active" ||
+          remoteEncryptionPublicKey === null ||
+          queuedEnvelope.envelope.recipientEncryptionKeyFingerprint !==
+            localRelayIdentity.encryptionKeyFingerprint
+        ) {
+          skippedCount += 1;
+          continue;
+        }
+
+        let relayPayload: Us1RelayConversationPayload;
+        try {
+          relayPayload = decryptRelayPayload({
+            envelope: queuedEnvelope.envelope,
+            localPrivateKey: us1RelayIdentityService.getEncryptionPrivateKey(),
+            remotePublicKeyBase64: remoteEncryptionPublicKey,
+          });
+        } catch {
+          skippedCount += 1;
+          continue;
+        }
+
+        const sidecar = new MailSidecarStoreManager(account.id);
+        const transportMessageId = queuedEnvelope.envelope.messageId;
+        const localMessageId = buildLocalMessageId(
+          "us1-relay-in",
+          remoteUser.remoteUserId,
+          relayPayload.sentAt
+        );
+        const sessionDescriptor = relayPayload.session ?? null;
+        const sessionTitle = normalizeOptionalText(sessionDescriptor?.title);
+        const sessionIdFromEnvelope = normalizeOptionalText(sessionDescriptor?.id);
+        const explicitSessionId =
+          sessionIdFromEnvelope ?? normalizeOptionalText(relayPayload.localSessionId);
+        let localSessionId =
+          sessionIdFromEnvelope ??
+          normalizeOptionalText(relayPayload.localSessionId) ??
+          sidecar.getLatestSessionMapping(remoteUser.remoteUserId)?.localSessionId ??
+          null;
+        const existingSessionMapping =
+          localSessionId !== null
+            ? sidecar.getSessionMapping(remoteUser.remoteUserId, localSessionId)
+            : null;
+        if (localSessionId === null) {
+          localSessionId = buildSessionId(
+            remoteUser.remoteUserId,
+            normalizeOptionalText(relayPayload.thread?.threadRootMessageId) ?? transportMessageId,
+            this.now()
+          );
+          unresolvedSessionCount += 1;
+        }
+
+        const isNewSession = existingSessionMapping === null;
+        const archiveTitle =
+          isNewSession === true
+            ? buildConversationTitle(
+                remoteUser,
+                sessionTitle ??
+                  buildSessionTitle(
+                    relayPayload.text !== ""
+                      ? relayPayload.text
+                      : relayPayload.attachments.length > 0
+                        ? INBOUND_ATTACHMENT_ONLY_TEXT
+                        : "",
+                    relayPayload.attachments.length
+                  )
+              )
+            : null;
+
+        const archiveContext = await this.prepareArchiveContext(
+          remoteUser,
+          localSessionId,
+          archiveTitle
+        );
+        const projectedMessage = await this.appendArchiveMessage(archiveContext, {
+          role: "assistant",
+          author: buildConversationAuthor(remoteUser),
+          text:
+            relayPayload.text !== ""
+              ? relayPayload.text
+              : relayPayload.attachments.length > 0
+                ? INBOUND_ATTACHMENT_ONLY_TEXT
+                : "",
+          domId: transportMessageId,
+        });
+        const inboundRelayAttachments = await this.materializeRelayAttachments(
+          relayBaseUrl,
+          remoteUser,
+          relayPayload.attachments,
+          getRelayClientRequestOptions(settings)
+        );
+        const inboundAttachments = await this.saveInboundAttachments(
+          archiveContext.manager,
+          projectedMessage.conversationId,
+          projectedMessage.messageId,
+          remoteUser.remoteUserId,
+          localSessionId,
+          inboundRelayAttachments.parsedAttachments
+        );
+
+        sidecar.upsertSessionMapping({
+          remoteUserId: remoteUser.remoteUserId,
+          localSessionId,
+          threadMessageId:
+            normalizeOptionalText(relayPayload.thread?.threadRootMessageId) ??
+            remoteUser.threadMessageId ??
+            transportMessageId,
+          lastMessageId: transportMessageId,
+        });
+        sidecar.upsertMessageMeta({
+          transportMessageId,
+          localMessageId,
+          deliveryState: "received",
+          headersHash: hashString(JSON.stringify(queuedEnvelope.envelope)),
+          metadata: {
+            direction: "inbound",
+            remoteUserId: remoteUser.remoteUserId,
+            localSessionId,
+            conversationId: projectedMessage.conversationId,
+            webUrl: archiveContext.webUrl,
+            archiveMessageId: projectedMessage.messageId,
+            attachments: inboundAttachments.attachmentRefs,
+            missingAttachmentCount: inboundAttachments.missingAttachmentCount,
+          },
+        });
+
+        this.patchRemoteUserTransportState(settings, remoteUser.remoteUserId, {
+          threadMessageId:
+            normalizeOptionalText(relayPayload.thread?.threadRootMessageId) ??
+            remoteUser.threadMessageId ??
+            transportMessageId,
+          lastTransportMessageId: transportMessageId,
+          lastSyncAt: this.now(),
+          lastError: null,
+        });
+
+        processedCount += 1;
+        projectedCount += 1;
+        acknowledgedMessageIds.push(queuedEnvelope.id);
+        inboundRelayAttachments.downloadedAttachmentIds.forEach((attachmentId) => {
+          acknowledgedAttachmentIds.add(attachmentId);
+        });
+
+        const sessionEvent = sessionEventsById.get(localSessionId);
+        sessionEventsById.set(localSessionId, {
+          remoteUserId: remoteUser.remoteUserId,
+          localSessionId,
+          conversationId: projectedMessage.conversationId,
+          sessionTitle,
+          mode: sessionDescriptor?.mode ?? (isNewSession ? "new" : "reply"),
+          openHint: sessionDescriptor?.openHint ?? (isNewSession ? "auto_if_idle" : "list_only"),
+          sentAt: relayPayload.sentAt,
+          isNewSession:
+            sessionEvent?.isNewSession === true ||
+            (isNewSession === true && explicitSessionId !== null),
+          createdAt: sessionDescriptor?.createdAt ?? relayPayload.sentAt,
+        });
+
+        const roomEvent = this.buildRoomEventRecord(
+          relayPayload.roomEvent ?? null,
+          remoteUser,
+          localSessionId,
+          projectedMessage.conversationId,
+          transportMessageId,
+          relayPayload.sentAt
+        );
+        if (roomEvent !== null) {
+          roomEvents.push(roomEvent);
+          this.applyRoomInviteEvent(roomEvent);
+        }
+
+        const roomCommand = this.buildRoomCommandRecord(
+          relayPayload.roomCommand ?? null,
+          remoteUser,
+          localSessionId,
+          projectedMessage.conversationId,
+          transportMessageId,
+          relayPayload.sentAt
+        );
+        if (roomCommand !== null) {
+          roomCommands.push(roomCommand);
+        }
+
+        if (remoteUser.remoteUserId === activeBinding?.remoteUser.remoteUserId) {
+          activeConversationId = projectedMessage.conversationId;
+          activeLocalSessionId = localSessionId;
+          roomPackages.push(...inboundAttachments.roomPackages);
+        }
+      }
+      /* eslint-enable no-await-in-loop */
+
+      if (acknowledgedMessageIds.length > 0) {
+        const ackResult = await us1RelayClient.acknowledge(
+          relayBaseUrl,
+          {
+            messageIds: acknowledgedMessageIds,
+            ...(acknowledgedAttachmentIds.size > 0
+              ? { attachmentIds: Array.from(acknowledgedAttachmentIds) }
+              : {}),
+          },
+          getRelayClientRequestOptions(settings)
+        );
+        this.applyRelayTransportTrustSuccess(settings, relayBaseUrl, ackResult);
+      }
+
+      if (activeBinding !== null && activeConversationId === null) {
+        const sidecar = new MailSidecarStoreManager(activeBinding.account.id);
+        const latestMapping = sidecar.getLatestSessionMapping(
+          activeBinding.remoteUser.remoteUserId
+        );
+        const fallbackSessionId = activeLocalSessionId ?? latestMapping?.localSessionId ?? null;
+        if (fallbackSessionId !== null) {
+          const archiveContext = await this.prepareArchiveContext(
+            activeBinding.remoteUser,
+            fallbackSessionId
+          );
+          activeConversationId = archiveContext.conversationId;
+          activeLocalSessionId = fallbackSessionId;
+        }
+      }
+
+      await this.persistSettings(settings);
+
+      return {
+        success: true,
+        ...(activeBinding !== null ? { remoteUserId: activeBinding.remoteUser.remoteUserId } : {}),
+        localSessionId: activeLocalSessionId,
+        conversationId: activeConversationId,
+        fetchedCount,
+        processedCount,
+        duplicateCount,
+        projectedCount,
+        skippedCount,
+        unresolvedSessionCount,
+        roomPackages,
+        sessionEvents: Array.from(sessionEventsById.values()),
+        roomEvents,
+        roomCommands,
+        roomInviteInbox: this.listRoomInviteInbox(),
+      };
+    } catch (error) {
+      this.applyRelayTransportTrustError(settings, relayBaseUrl, error);
+      syncBindings.forEach((binding) => {
+        this.patchRemoteUserTransportState(settings, binding.remoteUser.remoteUserId, {
+          lastSyncAt: this.now(),
+          lastError: getErrorMessage(error),
+        });
+      });
+      await this.persistSettings(settings);
+      return { success: false, error: getErrorMessage(error) };
+    }
+  }
+
+  private applyRelayTransportTrustSuccess(
+    settings: AppSettings,
+    baseUrl: string,
+    response: Us1RelayResponseMeta
+  ): void {
+    settings.integrations ??= {};
+    const current = settings.integrations.us1Relay ?? {};
+    const normalizedFingerprint = normalizeRelayServerFingerprint(response.serverFingerprint);
+
+    settings.integrations.us1Relay = {
+      ...current,
+      baseUrl,
+      trustedServerFingerprint:
+        response.transportProtocol === "https" && normalizedFingerprint !== null
+          ? (getRelayPinnedServerFingerprint(settings) ?? normalizedFingerprint)
+          : (current.trustedServerFingerprint ?? null),
+      trustState: response.transportProtocol === "https" ? "trusted" : "unknown",
+      lastError: null,
+    };
+  }
+
+  private applyRelayTransportTrustError(
+    settings: AppSettings,
+    baseUrl: string | null,
+    error: unknown
+  ): void {
+    settings.integrations ??= {};
+    const current = settings.integrations.us1Relay ?? {};
+    const trustState =
+      error instanceof RelayTlsPinError ? "mismatch" : (current.trustState ?? "unknown");
+
+    settings.integrations.us1Relay = {
+      ...current,
+      ...(baseUrl !== null ? { baseUrl } : {}),
+      trustState,
+      lastError: getErrorMessage(error),
+    };
+  }
+
+  async checkRelayHealth(
+    params: Us1RelayHealthCheckParams = {}
+  ): Promise<Us1RelayHealthCheckResult> {
+    const settings = await this.loadNormalizedSettings();
+    const baseUrl =
+      normalizeOptionalText(params.baseUrl ?? null) ?? getRelayReceiveBaseUrl(settings);
+    if (baseUrl === null) {
+      return { success: false, reachable: false, error: "US1 relay base URL is not configured." };
+    }
+
+    const checkedAt = this.now();
+    settings.integrations ??= {};
+    settings.integrations.us1Relay = {
+      ...(settings.integrations.us1Relay ?? {}),
+      baseUrl,
+      connectionState: "connecting",
+      lastError: null,
+    };
+    await this.persistSettings(settings);
+
+    try {
+      const result = await us1RelayClient.health(baseUrl, getRelayClientRequestOptions(settings));
+      this.applyRelayTransportTrustSuccess(settings, baseUrl, result);
+      const previousLastConnectedAt = settings.integrations.us1Relay.lastConnectedAt ?? null;
+      settings.integrations.us1Relay = {
+        ...(settings.integrations.us1Relay ?? {}),
+        baseUrl,
+        connectionState: result.reachable === true ? "connected" : "error",
+        lastError: result.reachable === true ? null : "US1 relay health check failed.",
+        lastConnectedAt: result.reachable === true ? checkedAt : previousLastConnectedAt,
+      };
+      await this.persistSettings(settings);
+
+      return {
+        success: result.reachable,
+        reachable: result.reachable,
+        checkedAt,
+        ...(result.reachable === true ? {} : { error: "US1 relay health check failed." }),
+      };
+    } catch (error) {
+      this.applyRelayTransportTrustError(settings, baseUrl, error);
+      settings.integrations.us1Relay = {
+        ...(settings.integrations.us1Relay ?? {}),
+        baseUrl,
+        connectionState: "error",
+        lastError: getErrorMessage(error),
+      };
+      await this.persistSettings(settings);
+      return {
+        success: false,
+        reachable: false,
+        checkedAt,
+        error: getErrorMessage(error),
+      };
+    }
+  }
+
   private async loadNormalizedSettings(): Promise<AppSettings> {
-    return normalizeSettings((await this.settingsStore.loadSettings()) ?? {});
+    const settings = normalizeSettings((await this.settingsStore.loadSettings()) ?? {});
+    us1RelayIdentityService.syncSettingsMetadata(settings);
+    return settings;
   }
 
   private async persistSettings(settings: AppSettings): Promise<void> {
@@ -1387,6 +2415,114 @@ export class Us1ConversationService {
     );
   }
 
+  private resolveRelayRemoteUser(
+    settings: AppSettings,
+    remoteUserId: string
+  ): RemoteUserIdentity | null {
+    const storedRemoteUser =
+      (settings.remoteUsers ?? []).find((candidate) => candidate.remoteUserId === remoteUserId) ??
+      null;
+    const projectedRemoteUser = buildRemoteUserFromRemoteAccount(
+      getRemoteEmailAccounts(settings.accounts).find(
+        (account) => normalizeOptionalText(account.remoteEmail?.remoteUserId) === remoteUserId
+      ) ?? null
+    );
+
+    if (storedRemoteUser !== null && projectedRemoteUser !== null) {
+      return {
+        ...projectedRemoteUser,
+        relayCapability:
+          storedRemoteUser.relayCapability ?? projectedRemoteUser.relayCapability ?? null,
+      };
+    }
+
+    return storedRemoteUser ?? projectedRemoteUser;
+  }
+
+  private resolveRelaySyncBindings(
+    settings: AppSettings,
+    requireConnected: boolean
+  ): ResolvedBinding[] {
+    const remoteUsers = (settings.remoteUsers ?? [])
+      .map((remoteUser) => this.resolveRelayRemoteUser(settings, remoteUser.remoteUserId))
+      .filter((remoteUser): remoteUser is RemoteUserIdentity => remoteUser !== null);
+    const accountsById = new Map(
+      (settings.integrations?.mailTransport?.accounts ?? []).map(
+        (account) => [account.id, account] as const
+      )
+    );
+
+    return remoteUsers
+      .filter((remoteUser) => {
+        if (remoteUser.handshakeState !== "active" || hasRelayCapability(remoteUser) !== true) {
+          return false;
+        }
+
+        if (
+          getRelayReceiveBaseUrl(settings) === null ||
+          getRelaySendBaseUrl(settings, remoteUser) === null
+        ) {
+          return false;
+        }
+
+        if (requireConnected === true && settings.us1Slot?.connectionState !== "connected") {
+          return false;
+        }
+
+        return accountsById.has(getRemoteUserLinkedAccountId(remoteUser) ?? "");
+      })
+      .map((remoteUser) => ({
+        remoteUser,
+        account: accountsById.get(
+          getRemoteUserLinkedAccountId(remoteUser) ?? ""
+        ) as MailTransportAccountConfig,
+      }))
+      .sort((left, right) =>
+        left.remoteUser.remoteUserId.localeCompare(right.remoteUser.remoteUserId, "tr")
+      );
+  }
+
+  private resolveActiveRelayBinding(
+    settings: AppSettings,
+    requireConnected: boolean
+  ): ResolvedBinding | null {
+    const selectedRemoteUserId = resolveSelectedRemoteUserId(settings);
+    if (selectedRemoteUserId === null) {
+      return null;
+    }
+
+    const remoteUser = this.resolveRelayRemoteUser(settings, selectedRemoteUserId);
+    if (remoteUser?.handshakeState !== "active" || hasRelayCapability(remoteUser) !== true) {
+      return null;
+    }
+
+    if (
+      getRelayReceiveBaseUrl(settings) === null ||
+      getRelaySendBaseUrl(settings, remoteUser) === null
+    ) {
+      return null;
+    }
+
+    if (requireConnected === true && settings.us1Slot?.connectionState !== "connected") {
+      return null;
+    }
+
+    const linkedAccountId = getRemoteUserLinkedAccountId(remoteUser);
+    if (linkedAccountId === null) {
+      return null;
+    }
+
+    const account =
+      settings.integrations?.mailTransport?.accounts.find(
+        (candidate) => candidate.id === linkedAccountId
+      ) ?? null;
+    if (account === null) {
+      return null;
+    }
+
+    return { remoteUser, account };
+  }
+
   private resolveActiveBinding(
     settings: AppSettings,
     requireConnected: boolean
@@ -1469,14 +2605,18 @@ export class Us1ConversationService {
         (account) => normalizeOptionalText(account.remoteEmail?.remoteUserId) === remoteUserId
       ) ?? null
     );
+    const storedRemoteUser =
+      (settings.remoteUsers ?? []).find((remoteUser) => remoteUser.remoteUserId === remoteUserId) ??
+      null;
     if (remoteUserFromAccount !== null) {
-      return remoteUserFromAccount;
+      return {
+        ...remoteUserFromAccount,
+        relayCapability:
+          storedRemoteUser?.relayCapability ?? remoteUserFromAccount.relayCapability ?? null,
+      };
     }
 
-    return (
-      (settings.remoteUsers ?? []).find((remoteUser) => remoteUser.remoteUserId === remoteUserId) ??
-      null
-    );
+    return storedRemoteUser;
   }
 
   private buildLocalProfile(
@@ -1606,6 +2746,7 @@ export class Us1ConversationService {
       handshakeState: nextHandshakeState,
       profileRevision: resolvedProfileRevision,
       linkedMailAccountId: candidate.linkedMailAccountId,
+      linkedAccountId: candidate.linkedAccountId ?? candidate.linkedMailAccountId,
       inviteMessageId: candidate.inviteMessageId ?? existingRemoteUser?.inviteMessageId ?? null,
       acceptMessageId: candidate.acceptMessageId ?? existingRemoteUser?.acceptMessageId ?? null,
       threadMessageId: candidate.threadMessageId ?? existingRemoteUser?.threadMessageId ?? null,
@@ -1613,6 +2754,7 @@ export class Us1ConversationService {
         candidate.lastTransportMessageId ?? existingRemoteUser?.lastTransportMessageId ?? null,
       lastError: candidate.lastError ?? null,
       sessionAlias: candidate.sessionAlias ?? existingRemoteUser?.sessionAlias ?? null,
+      relayCapability: candidate.relayCapability ?? existingRemoteUser?.relayCapability ?? null,
       ...(resolvedLastSyncAt !== undefined ? { lastSyncAt: resolvedLastSyncAt } : {}),
     };
 
@@ -1684,6 +2826,8 @@ export class Us1ConversationService {
         lastTransportMessageId: message.transportMessageId,
         lastSyncAt: this.now(),
         lastError: null,
+        relayCapability:
+          envelope.profile.relayCapability ?? existingRemoteUser?.relayCapability ?? null,
       });
     }
   }

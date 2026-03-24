@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { InstalledRoomRecord, RoomWorkspaceEntry } from "../../src/types/rooms.ts";
 import {
   buildInstalledRoomListMarkup,
@@ -25,18 +26,18 @@ const workspaceRooms: RoomWorkspaceEntry[] = [
     errors: [],
   },
   {
-    dirName: "laboratory",
-    dirPath: "/workspace/rooms/laboratory",
+    dirName: "workshop",
+    dirPath: "/workspace/rooms/workshop",
     valid: true,
     manifest: {
       schemaVersion: 2,
-      id: "laboratory",
-      name: "Laboratory",
+      id: "workshop",
+      name: "Workshop",
       version: "1.0.0",
-      menu: { label: "Laboratory" },
+      menu: { label: "Workshop" },
       runtime: { uiEntry: "ui/index.html", hostEntry: "host/index.js" },
-      defaultFeatureId: "video-analysis",
-      features: [{ id: "video-analysis", name: "Video Analysis" }],
+      defaultFeatureId: "assembler",
+      features: [{ id: "assembler", name: "Assembler" }],
     },
     errors: [],
   },
@@ -82,16 +83,16 @@ const installedRooms: InstalledRoomRecord[] = [
     updatedAt: "2026-03-08T00:00:00.000Z",
   },
   {
-    id: "laboratory",
-    name: "Laboratory",
+    id: "workshop",
+    name: "Workshop",
     version: "1.0.0",
-    sourceDir: "/workspace/rooms/laboratory",
-    installedDir: "/workspace/data/rooms/laboratory",
-    manifestPath: "/workspace/data/rooms/laboratory/manifest.json",
-    runtimeEntryPath: "/workspace/data/rooms/laboratory/ui/index.html",
-    hostEntryPath: "/workspace/data/rooms/laboratory/host/index.js",
-    defaultFeatureId: "video-analysis",
-    features: [{ id: "video-analysis", name: "Video Analysis" }],
+    sourceDir: "/workspace/rooms/workshop",
+    installedDir: "/workspace/data/rooms/workshop",
+    manifestPath: "/workspace/data/rooms/workshop/manifest.json",
+    runtimeEntryPath: "/workspace/data/rooms/workshop/ui/index.html",
+    hostEntryPath: "/workspace/data/rooms/workshop/host/index.js",
+    defaultFeatureId: "assembler",
+    features: [{ id: "assembler", name: "Assembler" }],
     installedAt: "2026-03-22T00:00:00.000Z",
     updatedAt: "2026-03-22T00:00:00.000Z",
   },
@@ -114,16 +115,45 @@ test("workspace room list renders install and package actions", () => {
   assert.match(markup, /data-room-action="delete" data-room-id="game-room" disabled/);
   assert.match(markup, /data-room-action="delete" data-room-id="observatory" disabled/);
   assert.match(markup, /Güncelle/);
-  assert.match(markup, /Laboratory/);
+  assert.match(markup, /Workshop/);
   assert.match(markup, /Observatory/);
   assert.match(markup, /manifest\.json missing/);
 });
 
-test("installed room list renders export and remove actions", () => {
+test("installed room list renders remove action without export", () => {
   const markup = buildInstalledRoomListMarkup(installedRooms, workspaceRooms);
 
-  assert.match(markup, /data-room-action="export"/);
   assert.match(markup, /data-room-action="remove"/);
+  assert.doesNotMatch(markup, /data-room-action="export"/);
   assert.match(markup, /Workspace bağlı/);
-  assert.match(markup, /Laboratory/);
+  assert.match(markup, /Workshop/);
+});
+
+test("room confirmation copy keeps remove and delete actions distinct", () => {
+  const tr = JSON.parse(
+    readFileSync(new URL("../../shared/languages/tr/index.json", import.meta.url), "utf8")
+  ) as {
+    shell: {
+      rooms: {
+        confirm: Record<string, string>;
+      };
+    };
+  };
+
+  const en = JSON.parse(
+    readFileSync(new URL("../../shared/languages/en/index.json", import.meta.url), "utf8")
+  ) as {
+    shell: {
+      rooms: {
+        confirm: Record<string, string>;
+      };
+    };
+  };
+
+  assert.equal(tr.shell.rooms.confirm.deleteAction, "Sil");
+  assert.equal(tr.shell.rooms.confirm.removeAction, "Kaldır");
+  assert.match(tr.shell.rooms.confirm.removeDataHint, /rooms klasörüne dokunulmaz/);
+  assert.equal(en.shell.rooms.confirm.deleteAction, "Delete");
+  assert.equal(en.shell.rooms.confirm.removeAction, "Remove");
+  assert.match(en.shell.rooms.confirm.removeDataHint, /rooms folder is untouched/i);
 });

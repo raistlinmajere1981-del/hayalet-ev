@@ -6,7 +6,11 @@ import type {
   RemoteUserIdentity,
   Us1SlotSettings,
 } from "@shared/settings.js";
-import { getRemoteEmailAccounts, isAiProviderAccount } from "@shared/settings.js";
+import {
+  getRemoteEmailAccounts,
+  getUs1SelectedIdentityId,
+  isAiProviderAccount,
+} from "@shared/settings.js";
 import { AppI18n } from "./i18n/index.js";
 import {
   buildRemoteEmailAccountId,
@@ -230,9 +234,12 @@ class AppStateClass {
     const settings = this.getSettings();
     return (
       settings?.us1Slot ?? {
+        communicationSystem: "mail",
+        selectedIdentityId: null,
         selectedRemoteUserId: null,
         selectedAccountId: null,
         connectionState: "disconnected",
+        relayConnectionState: "disconnected",
         catchCommands: false,
         resumeLastSession: true,
         rememberConnectionStatus: false,
@@ -260,10 +267,7 @@ class AppStateClass {
       }
     }
 
-    const selectedRemoteUserId =
-      typeof effectiveSettings.us1Slot?.selectedRemoteUserId === "string"
-        ? effectiveSettings.us1Slot.selectedRemoteUserId.trim()
-        : "";
+    const selectedRemoteUserId = getUs1SelectedIdentityId(effectiveSettings.us1Slot) ?? "";
     if (selectedRemoteUserId === "") {
       return null;
     }
@@ -291,6 +295,7 @@ class AppStateClass {
         handshakeState: remoteState.handshakeState,
         profileRevision: remoteState.profileRevision,
         linkedMailAccountId: remoteState.linkedLocalMailAccountId,
+        linkedAccountId: remoteState.linkedLocalMailAccountId,
         ...(remoteState.inviteMessageId !== undefined
           ? { inviteMessageId: remoteState.inviteMessageId ?? null }
           : {}),
@@ -314,11 +319,10 @@ class AppStateClass {
     }
 
     const selectedRemoteUserId =
-      typeof settings?.us1Slot?.selectedRemoteUserId === "string"
-        ? settings.us1Slot.selectedRemoteUserId.trim()
-        : typeof settings?.us1Slot?.selectedAccountId === "string"
-          ? extractUs1RemoteIdentityIdFromAccountId(settings.us1Slot.selectedAccountId)
-          : null;
+      getUs1SelectedIdentityId(settings?.us1Slot) ??
+      (typeof settings?.us1Slot?.selectedAccountId === "string"
+        ? extractUs1RemoteIdentityIdFromAccountId(settings.us1Slot.selectedAccountId)
+        : null);
     if (selectedRemoteUserId === null || selectedRemoteUserId === "") {
       return null;
     }

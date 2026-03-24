@@ -258,6 +258,17 @@ export interface Us1SyncMessagesResult {
   error?: string;
 }
 
+export interface Us1RelayHealthCheckParams {
+  baseUrl?: string | null;
+}
+
+export interface Us1RelayHealthCheckResult {
+  success: boolean;
+  reachable?: boolean;
+  checkedAt?: number;
+  error?: string;
+}
+
 export interface LoadSettingsResult {
   [key: string]: unknown;
 }
@@ -472,6 +483,10 @@ export interface IPCChannelMap {
   };
   "us1-send-message": { params: Us1SendMessageParams; result: Us1SendMessageResult };
   "us1-sync-messages": { params: Us1SyncMessagesParams; result: Us1SyncMessagesResult };
+  "us1-relay-health-check": {
+    params: Us1RelayHealthCheckParams;
+    result: Us1RelayHealthCheckResult;
+  };
 }
 
 export type IPCChannel = keyof IPCChannelMap;

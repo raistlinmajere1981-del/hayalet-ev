@@ -2,6 +2,15 @@ import { app } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { access, appendFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import {
+  createWindowsWrapperLogViewerLauncher,
+  createVisibleTerminalLaunchers,
+  PACKAGED_SURFACE_FLAG,
+  type PackagedSurface,
+  shouldLaunchVisibleTerminal,
+  WRAPPER_TERMINAL_ENV_KEY,
+} from "./packaged-wrapper-launcher.ts";
+import { isWineRuntime } from "./runtime-environment.ts";
 import { parseStartupFlagsFromArgv, type StartupUiMode } from "./startup-flags.ts";
 
 type RuntimeControl = {
@@ -10,8 +19,6 @@ type RuntimeControl = {
   phase: "idle" | "preparing-handoff" | "in-ghost" | "returning";
   updatedAt: string;
 };
-
-type PackagedSurface = "wrapper" | "main" | "ghost";
 
 type MainLaunchOptions = {
   startPage: string | null;
@@ -25,8 +32,6 @@ type WrapperRestartRequest = {
   sceneDebug: boolean;
 };
 
-const PACKAGED_SURFACE_FLAG = "--packaged-surface";
-const WRAPPER_TERMINAL_ENV_KEY = "HAYALET_WRAPPER_TERMINAL";
 const runtimeControlPath = join(resolvePackagedRoot(), "data", "assistant-runtime.json");
 const runtimeEventLogPath = join(resolvePackagedRoot(), "data", "assistant-runtime-events.log");
 const wrapperRestartRequestPath = join(
@@ -34,11 +39,16 @@ const wrapperRestartRequestPath = join(
   "data",
   "assistant-wrapper-restart.json"
 );
+const wrapperLogViewerScriptPath = join(
+  resolvePackagedRoot(),
+  "data",
+  "assistant-wrapper-viewer.cmd"
+);
 const wrapperSessionId = createWrapperSessionId();
 const dashboard = createWrapperDashboard({
   sessionId: wrapperSessionId,
   userLabel: "KULLANICI",
-  developerLabel: "APPIMAGE",
+  developerLabel: resolvePackagedDashboardLabel(),
   formatPhaseLabel(phase) {
     return (
       {
@@ -81,6 +91,18 @@ function resolvePackagedRoot(): string {
   }
 
   return dirname(resolvePackagedExecutablePath());
+}
+
+function resolvePackagedDashboardLabel(): string {
+  if (process.platform === "win32") {
+    return "PORTABLE";
+  }
+
+  if (process.platform === "linux") {
+    return "APPIMAGE";
+  }
+
+  return "PACKAGED";
 }
 
 function nowIso(): string {
@@ -351,14 +373,6 @@ function renderUserMessage(event: string): string {
   }
 }
 
-function escapeShellSingleQuotes(value: string): string {
-  return value.replace(/'/g, `'\\''`);
-}
-
-function quoteShellArg(value: string): string {
-  return `'${escapeShellSingleQuotes(value)}'`;
-}
-
 function defaultControl(now: string = nowIso()): RuntimeControl {
   return {
     workflowSessionId: "",
@@ -438,38 +452,6 @@ async function appendRuntimeEvent(
   await appendFile(runtimeEventLogPath, `${line}\n`, "utf-8");
 }
 
-function buildVisibleTerminalShellCommand(): string {
-  const relayArgs = process.argv
-    .slice(1)
-    .filter((arg) => arg !== PACKAGED_SURFACE_FLAG && !arg.startsWith(`${PACKAGED_SURFACE_FLAG}=`));
-  const quotedArgs = relayArgs.map((arg) => quoteShellArg(arg)).join(" ");
-  const executable = quoteShellArg(resolvePackagedExecutablePath());
-  const root = quoteShellArg(resolvePackagedRoot());
-  return `cd ${root}; exec ${executable}${quotedArgs !== "" ? ` ${quotedArgs}` : ""}`;
-}
-
-function shouldLaunchVisibleTerminal(surface: PackagedSurface): boolean {
-  if (surface !== "wrapper") {
-    return false;
-  }
-
-  if (process.platform !== "linux") {
-    return false;
-  }
-
-  if (process.stdout.isTTY === true) {
-    return false;
-  }
-
-  if (process.env[WRAPPER_TERMINAL_ENV_KEY] === "1") {
-    return false;
-  }
-
-  return (
-    typeof process.env["DISPLAY"] === "string" || typeof process.env["WAYLAND_DISPLAY"] === "string"
-  );
-}
-
 async function spawnDetachedTerminal(
   command: string,
   args: string[],
@@ -495,34 +477,64 @@ async function spawnDetachedTerminal(
   });
 }
 
-async function launchVisibleTerminalIfNeeded(surface: PackagedSurface): Promise<boolean> {
-  if (!shouldLaunchVisibleTerminal(surface)) {
-    return false;
+async function ensureWineWrapperLogViewerScript(): Promise<string> {
+  await mkdir(dirname(wrapperLogViewerScriptPath), { recursive: true });
+
+  const content = [
+    "@echo off",
+    "title Hayalet Ev Wrapper",
+    `cd /d "${resolvePackagedRoot()}"`,
+    "if not exist data mkdir data",
+    "if not exist data\\assistant-runtime-events.log type nul > data\\assistant-runtime-events.log",
+    ":loop",
+    "cls",
+    "echo Hayalet Ev Wrapper - Wine fallback",
+    "echo.",
+    "echo NOTE: Wrapper events are mirrored here because Wine does not keep the Electron CLI attached to cmd reliably.",
+    "echo.",
+    "type data\\assistant-runtime-events.log",
+    "echo.",
+    "echo Press Ctrl+C to close this viewer after the wrapper exits.",
+    "timeout /t 1 /nobreak >nul",
+    "goto loop",
+    "",
+  ].join("\r\n");
+
+  await writeFile(wrapperLogViewerScriptPath, content, "utf-8");
+  return wrapperLogViewerScriptPath;
+}
+
+async function launchVisibleTerminalIfNeeded(
+  surface: PackagedSurface
+): Promise<{ launched: boolean; keepRunning: boolean }> {
+  if (
+    !shouldLaunchVisibleTerminal({
+      surface,
+      platform: process.platform,
+      stdoutIsTTY: process.stdout.isTTY === true,
+      env: process.env,
+    })
+  ) {
+    return {
+      launched: false,
+      keepRunning: false,
+    };
   }
 
-  const shellCommand = buildVisibleTerminalShellCommand();
-  const launchers: Array<{ command: string; args: string[]; shell?: boolean }> = [
-    {
-      command: "gnome-terminal",
-      args: ["--title=Hayalet Ev Wrapper", "--", "bash", "-lc", shellCommand],
-    },
-    {
-      command: "konsole",
-      args: ["-e", "bash", "-lc", shellCommand],
-    },
-    {
-      command: "x-terminal-emulator",
-      args: ["-e", "bash", "-lc", shellCommand],
-    },
-    {
-      command: "xfce4-terminal",
-      args: [
-        "--title=Hayalet Ev Wrapper",
-        "--command",
-        `bash -lc '${escapeShellSingleQuotes(shellCommand)}'`,
-      ],
-    },
-  ];
+  const useWineLogViewer = process.platform === "win32" && isWineRuntime();
+  const resourcesPath =
+    typeof process.resourcesPath === "string" && process.resourcesPath.trim() !== ""
+      ? process.resourcesPath
+      : null;
+  const launchers = useWineLogViewer
+    ? [createWindowsWrapperLogViewerLauncher(await ensureWineWrapperLogViewerScript())]
+    : createVisibleTerminalLaunchers({
+        platform: process.platform,
+        executablePath: resolvePackagedExecutablePath(),
+        rootDir: resolvePackagedRoot(),
+        ...(resourcesPath !== null ? { resourcesPath } : {}),
+        argv: process.argv,
+      });
 
   // NOTE: Launcher fallback order matters, so probes remain sequential.
   /* eslint-disable no-await-in-loop */
@@ -534,8 +546,12 @@ async function launchVisibleTerminalIfNeeded(surface: PackagedSurface): Promise<
       await appendRuntimeEvent("wrapper.terminal.spawned", {
         sessionId: wrapperSessionId,
         launcher: launcher.command,
+        mode: useWineLogViewer ? "wine-log-viewer" : "direct-cli",
       });
-      return true;
+      return {
+        launched: true,
+        keepRunning: useWineLogViewer,
+      };
     } catch {
       continue;
     }
@@ -545,7 +561,10 @@ async function launchVisibleTerminalIfNeeded(surface: PackagedSurface): Promise<
   await appendRuntimeEvent("wrapper.terminal.spawn-failed", {
     sessionId: wrapperSessionId,
   });
-  return false;
+  return {
+    launched: false,
+    keepRunning: false,
+  };
 }
 
 function parsePackagedSurface(argv: readonly string[] = process.argv): PackagedSurface {
@@ -729,12 +748,21 @@ function createInitialMainLaunchOptions(): MainLaunchOptions {
   };
 }
 
+async function announceWrapperEvent(
+  event: string,
+  details: Record<string, unknown> = {}
+): Promise<void> {
+  dashboard.user(renderUserMessage(event));
+  await appendRuntimeEvent(event, {
+    sessionId: wrapperSessionId,
+    ...details,
+  });
+}
+
 async function runPackagedWrapper(): Promise<void> {
   await ensureControlFile();
   dashboard.attach();
-  dashboard.user(renderUserMessage("wrapper.start"));
-  await appendRuntimeEvent("wrapper.start", {
-    sessionId: wrapperSessionId,
+  await announceWrapperEvent("wrapper.start", {
     root: resolvePackagedRoot(),
   });
 
@@ -747,20 +775,30 @@ async function runPackagedWrapper(): Promise<void> {
     for (;;) {
       if (nextTarget === "main") {
         dashboard.setPhase("preparing-main");
-        dashboard.user(renderUserMessage("main.prepare"));
+        await announceWrapperEvent("main.prepare");
 
         const currentControl = await readControl();
         await writeControl(toMainRunningControl(currentControl));
 
         dashboard.setPhase("running-main");
-        dashboard.user(renderUserMessage("main.launch"));
+        await announceWrapperEvent("main.launch", {
+          uiMode: nextMainLaunchOptions.uiMode,
+          sceneDebug: nextMainLaunchOptions.sceneDebug,
+          startPage: nextMainLaunchOptions.startPage ?? "",
+          autoConnect: nextMainLaunchOptions.autoConnect,
+        });
 
         const code = await spawnSurface("main", buildMainArgs(nextMainLaunchOptions));
-        dashboard.user(renderUserMessage("main.closed"));
+        await announceWrapperEvent("main.closed", {
+          exitCode: code,
+        });
 
         const restartRequest = await consumeWrapperRestartRequest();
         if (restartRequest !== null) {
-          dashboard.user(renderUserMessage("main.restart"));
+          await announceWrapperEvent("main.restart", {
+            uiMode: restartRequest.uiMode,
+            sceneDebug: restartRequest.sceneDebug,
+          });
           nextMainLaunchOptions = {
             ...nextMainLaunchOptions,
             uiMode: restartRequest.uiMode,
@@ -771,7 +809,7 @@ async function runPackagedWrapper(): Promise<void> {
 
         const afterControl = await readControl();
         if (shouldStartGhost(afterControl)) {
-          dashboard.user(renderUserMessage("cycle.to-ghost"));
+          await announceWrapperEvent("cycle.to-ghost");
           nextTarget = "ghost";
           continue;
         }
@@ -781,20 +819,22 @@ async function runPackagedWrapper(): Promise<void> {
       }
 
       dashboard.setPhase("preparing-ghost");
-      dashboard.user(renderUserMessage("ghost.prepare"));
+      await announceWrapperEvent("ghost.prepare");
 
       const currentControl = await readControl();
       await writeControl(toGhostRunningControl(currentControl));
 
       dashboard.setPhase("running-ghost");
-      dashboard.user(renderUserMessage("ghost.launch"));
+      await announceWrapperEvent("ghost.launch");
 
       const code = await spawnSurface("ghost", buildGhostArgs());
-      dashboard.user(renderUserMessage("ghost.closed"));
+      await announceWrapperEvent("ghost.closed", {
+        exitCode: code,
+      });
 
       const afterControl = await readControl();
       if (shouldReopenMainAfterGhost(afterControl)) {
-        dashboard.user(renderUserMessage("cycle.to-app"));
+        await announceWrapperEvent("cycle.to-app");
         nextTarget = "main";
         nextMainLaunchOptions = {
           ...nextMainLaunchOptions,
@@ -810,16 +850,16 @@ async function runPackagedWrapper(): Promise<void> {
     /* eslint-enable no-await-in-loop */
   } catch (error) {
     process.exitCode = 1;
-    dashboard.user(renderUserMessage("error"));
+    await announceWrapperEvent("error", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   } finally {
     dashboard.setPhase("cleanup");
-    dashboard.user(renderUserMessage("cleanup"));
-    await appendRuntimeEvent("wrapper.stop", {
-      sessionId: wrapperSessionId,
+    await announceWrapperEvent("cleanup");
+    await announceWrapperEvent("wrapper.stop", {
       exitCode: process.exitCode ?? 0,
     });
-    dashboard.user(renderUserMessage("wrapper.stop"));
     dashboard.dispose();
   }
 
@@ -833,7 +873,8 @@ async function bootstrap(): Promise<void> {
     return;
   }
 
-  if (await launchVisibleTerminalIfNeeded(surface)) {
+  const terminalLaunch = await launchVisibleTerminalIfNeeded(surface);
+  if (terminalLaunch.launched && !terminalLaunch.keepRunning) {
     app.quit();
     return;
   }

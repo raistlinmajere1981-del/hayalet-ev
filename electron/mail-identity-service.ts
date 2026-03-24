@@ -8,6 +8,7 @@ import type {
   LocalMailAccountConnectionState,
   MailTransportAccountConfig,
   RemoteUserIdentity,
+  Us1RelayPeerCapability,
 } from "@shared/settings.js";
 import { buildRemoteEmailAccountId } from "@shared/archive.js";
 import type {
@@ -37,6 +38,7 @@ import type {
   SendMailResult,
 } from "./mail-transport/index.js";
 import { Paths } from "./paths.ts";
+import { us1RelayIdentityService } from "./us1-relay/identity-service.ts";
 
 const HANDSHAKE_PROTOCOL = "hayalet-ev-us1-handshake";
 const HANDSHAKE_VERSION = 1;
@@ -61,6 +63,7 @@ interface HandshakeEnvelope {
     avatar: string;
     avatarAttachmentName?: string | null;
     profileRevision: number;
+    relayCapability?: Us1RelayPeerCapability | null;
   };
 }
 
@@ -101,6 +104,67 @@ function normalizeOptionalText(value: unknown): string | null {
 
 function normalizeEmail(value: unknown): string {
   return normalizeOptionalText(value)?.toLowerCase() ?? "";
+}
+
+function normalizeRelayCapability(value: unknown): Us1RelayPeerCapability | null {
+  if (value === null || value === undefined || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const supported = record["supported"] === true;
+  if (supported !== true) {
+    return null;
+  }
+
+  const protocolVersion = record["protocolVersion"];
+  const advertisedAt = record["advertisedAt"];
+  const trustState = record["trustState"];
+
+  return {
+    supported: true,
+    endpoint:
+      typeof record["endpoint"] === "string" && record["endpoint"].trim() !== ""
+        ? record["endpoint"].trim()
+        : null,
+    encryptionPublicKey:
+      typeof record["encryptionPublicKey"] === "string" &&
+      record["encryptionPublicKey"].trim() !== ""
+        ? record["encryptionPublicKey"].trim()
+        : null,
+    encryptionKeyFingerprint:
+      typeof record["encryptionKeyFingerprint"] === "string" &&
+      record["encryptionKeyFingerprint"].trim() !== ""
+        ? record["encryptionKeyFingerprint"].trim()
+        : null,
+    signingPublicKey:
+      typeof record["signingPublicKey"] === "string" && record["signingPublicKey"].trim() !== ""
+        ? record["signingPublicKey"].trim()
+        : null,
+    signingKeyFingerprint:
+      typeof record["signingKeyFingerprint"] === "string" &&
+      record["signingKeyFingerprint"].trim() !== ""
+        ? record["signingKeyFingerprint"].trim()
+        : null,
+    protocolVersion:
+      typeof protocolVersion === "number" &&
+      Number.isFinite(protocolVersion) &&
+      protocolVersion >= 1
+        ? Math.trunc(protocolVersion)
+        : 1,
+    advertisedAt:
+      typeof advertisedAt === "number" && Number.isFinite(advertisedAt) && advertisedAt >= 0
+        ? Math.trunc(advertisedAt)
+        : null,
+    trustState:
+      trustState === "trusted" || trustState === "mismatch" || trustState === "unknown"
+        ? trustState
+        : "unknown",
+    lastError:
+      typeof record["lastError"] === "string" && record["lastError"].trim() !== ""
+        ? record["lastError"].trim()
+        : null,
+  };
 }
 
 function buildRemoteUserId(email: string): string {
@@ -292,6 +356,7 @@ function extractHandshakeEnvelope(text: string): HandshakeEnvelope | null {
           profile.profileRevision >= 1
             ? Math.trunc(profile.profileRevision)
             : 1,
+        relayCapability: normalizeRelayCapability(profile?.relayCapability),
       },
     };
   } catch {
@@ -1217,17 +1282,29 @@ export class MailIdentityService {
       (localMailAccount) => localMailAccount.mailAccountId === selectedMailAccountId
     );
     const verifiedLocalMailAccountId = this.getVerifiedLocalMailAccountId(settings);
+    const relaySettings = settings.integrations?.us1Relay ?? null;
 
     return {
       localMailAccounts,
       remoteUsers,
       activeRemoteUsers,
       us1Slot: settings.us1Slot ?? {
+        communicationSystem: "mail",
+        selectedIdentityId: null,
         selectedRemoteUserId: null,
         connectionState: "disconnected",
+        relayConnectionState: "disconnected",
         catchCommands: false,
       },
+      communicationSystem: settings.us1Slot?.communicationSystem ?? "mail",
+      relaySettings,
+      relayConfigured:
+        relaySettings?.enabled === true && normalizeOptionalText(relaySettings.baseUrl) !== null,
+      relayConnectionState: settings.us1Slot?.relayConnectionState ?? "disconnected",
       selectedMailAccountId,
+      selectedIdentityId:
+        normalizeOptionalText(settings.us1Slot?.selectedIdentityId) ??
+        normalizeOptionalText(settings.us1Slot?.selectedRemoteUserId),
       selectedRemoteAccountId: normalizeOptionalText(settings.us1Slot?.selectedAccountId),
       verifiedLocalMailAccountId,
       verifiedUserEmail: normalizeOptionalText(settings.user?.email),
@@ -1334,6 +1411,26 @@ export class MailIdentityService {
     let avatar = "";
     let avatarAttachmentName: string | null = null;
     const attachments: MailTransportSendAttachment[] = [];
+    us1RelayIdentityService.syncSettingsMetadata(settings);
+    const relaySettings = settings.integrations?.us1Relay;
+    const relayCapability =
+      relaySettings?.enabled === true &&
+      normalizeOptionalText(relaySettings.baseUrl) !== null &&
+      normalizeOptionalText(relaySettings.encryptionPublicKey) !== null &&
+      normalizeOptionalText(relaySettings.signingPublicKey) !== null
+        ? {
+            supported: true,
+            endpoint: normalizeOptionalText(relaySettings.baseUrl),
+            encryptionPublicKey: normalizeOptionalText(relaySettings.encryptionPublicKey),
+            encryptionKeyFingerprint: normalizeOptionalText(relaySettings.encryptionKeyFingerprint),
+            signingPublicKey: normalizeOptionalText(relaySettings.signingPublicKey),
+            signingKeyFingerprint: normalizeOptionalText(relaySettings.signingKeyFingerprint),
+            protocolVersion: relaySettings.protocolVersion ?? 1,
+            advertisedAt: this.now(),
+            trustState: "unknown" as const,
+            lastError: null,
+          }
+        : null;
 
     if (isRemoteAvatarUrl(rawAvatar)) {
       avatar = rawAvatar;
@@ -1358,6 +1455,7 @@ export class MailIdentityService {
         avatar,
         ...(avatarAttachmentName !== null ? { avatarAttachmentName } : {}),
         profileRevision: this.now(),
+        ...(relayCapability !== null ? { relayCapability } : {}),
       },
       attachments,
     };
@@ -1598,12 +1696,15 @@ export class MailIdentityService {
       handshakeState: nextState,
       profileRevision: envelope.profile.profileRevision,
       linkedMailAccountId: account.id,
+      linkedAccountId: existingRemoteUser?.linkedAccountId ?? account.id,
       inviteMessageId: transportMessageId,
       acceptMessageId: existingRemoteUser?.acceptMessageId ?? null,
       threadMessageId: existingRemoteUser?.threadMessageId ?? transportMessageId,
       lastTransportMessageId: transportMessageId,
       lastSyncAt: this.now(),
       lastError: null,
+      relayCapability:
+        envelope.profile.relayCapability ?? existingRemoteUser?.relayCapability ?? null,
     });
   }
 
@@ -1627,12 +1728,15 @@ export class MailIdentityService {
         handshakeState: "active",
         profileRevision: envelope.profile.profileRevision,
         linkedMailAccountId: existingRemoteUser?.linkedMailAccountId ?? account.id,
+        linkedAccountId: existingRemoteUser?.linkedAccountId ?? account.id,
         inviteMessageId: existingRemoteUser?.inviteMessageId ?? null,
         acceptMessageId: transportMessageId,
         threadMessageId: existingRemoteUser?.threadMessageId ?? transportMessageId,
         lastTransportMessageId: transportMessageId,
         lastSyncAt: this.now(),
         lastError: null,
+        relayCapability:
+          envelope.profile.relayCapability ?? existingRemoteUser?.relayCapability ?? null,
       })
     );
   }
@@ -1657,12 +1761,15 @@ export class MailIdentityService {
       handshakeState: "rejected",
       profileRevision: existingRemoteUser?.profileRevision ?? envelope.profile.profileRevision,
       linkedMailAccountId: existingRemoteUser?.linkedMailAccountId ?? account.id,
+      linkedAccountId: existingRemoteUser?.linkedAccountId ?? account.id,
       inviteMessageId: existingRemoteUser?.inviteMessageId ?? null,
       acceptMessageId: existingRemoteUser?.acceptMessageId ?? null,
       threadMessageId: existingRemoteUser?.threadMessageId ?? transportMessageId,
       lastTransportMessageId: transportMessageId,
       lastSyncAt: this.now(),
       lastError: null,
+      relayCapability:
+        envelope.profile.relayCapability ?? existingRemoteUser?.relayCapability ?? null,
     });
   }
 
@@ -1683,12 +1790,15 @@ export class MailIdentityService {
       handshakeState: existingRemoteUser?.handshakeState ?? "handshake_pending",
       profileRevision: envelope.profile.profileRevision,
       linkedMailAccountId: existingRemoteUser?.linkedMailAccountId ?? account.id,
+      linkedAccountId: existingRemoteUser?.linkedAccountId ?? account.id,
       inviteMessageId: existingRemoteUser?.inviteMessageId ?? null,
       acceptMessageId: existingRemoteUser?.acceptMessageId ?? null,
       threadMessageId: existingRemoteUser?.threadMessageId ?? transportMessageId,
       lastTransportMessageId: transportMessageId,
       lastSyncAt: this.now(),
       lastError: null,
+      relayCapability:
+        envelope.profile.relayCapability ?? existingRemoteUser?.relayCapability ?? null,
     });
   }
 
@@ -1739,6 +1849,7 @@ export class MailIdentityService {
       handshakeState: nextHandshakeState,
       profileRevision: resolvedProfileRevision,
       linkedMailAccountId: candidate.linkedMailAccountId,
+      linkedAccountId: candidate.linkedAccountId ?? candidate.linkedMailAccountId,
       inviteMessageId: candidate.inviteMessageId ?? existingRemoteUser?.inviteMessageId ?? null,
       acceptMessageId: candidate.acceptMessageId ?? existingRemoteUser?.acceptMessageId ?? null,
       threadMessageId: candidate.threadMessageId ?? existingRemoteUser?.threadMessageId ?? null,
@@ -1746,6 +1857,7 @@ export class MailIdentityService {
         candidate.lastTransportMessageId ?? existingRemoteUser?.lastTransportMessageId ?? null,
       lastError: candidate.lastError ?? null,
       sessionAlias: candidate.sessionAlias ?? existingRemoteUser?.sessionAlias ?? null,
+      relayCapability: candidate.relayCapability ?? existingRemoteUser?.relayCapability ?? null,
       ...(resolvedLastSyncAt !== undefined ? { lastSyncAt: resolvedLastSyncAt } : {}),
     };
 

@@ -8,6 +8,7 @@ import type {
   Us1SyncMessagesParams,
   Us1SyncRemoteUsersParams,
 } from "@shared/us1-mail.js";
+import type { Us1RelayHealthCheckParams } from "@shared/us1-relay.js";
 
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { shell } from "electron";
@@ -58,6 +59,12 @@ export function setupUs1MailHandlers(): void {
 
   registerHandler("us1-sync-messages", async (_event, params: unknown) => {
     return await us1ConversationService.syncMessages((params ?? {}) as Us1SyncMessagesParams);
+  });
+
+  registerHandler("us1-relay-health-check", async (_event, params: unknown) => {
+    return await us1ConversationService.checkRelayHealth(
+      (params ?? {}) as Us1RelayHealthCheckParams
+    );
   });
 
   registerHandler("us1-mail-start-gmail-oauth", async (_event) => {

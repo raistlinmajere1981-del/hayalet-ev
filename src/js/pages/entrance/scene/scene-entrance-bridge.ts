@@ -27,6 +27,7 @@ export type SceneMenuActionId =
 export type SceneMenuSelectId =
   | "session"
   | "binding"
+  | "communicationSystem"
   | "assistantProvider"
   | "messageMethod"
   | "fileMethod";
@@ -389,6 +390,10 @@ export class SceneEntranceBridge {
     if (character.kind === "us1") {
       if (selectId === "binding") {
         await this.us1Panel.selectSceneBinding(value !== "" ? value : null);
+      } else if (selectId === "communicationSystem") {
+        await this.us1Panel.updateCommunicationSystem(
+          value === "relay-e2ee" ? "relay-e2ee" : "mail"
+        );
       } else if (selectId === "session") {
         dispatchNativeChange("conversation-us1", value);
       }
@@ -668,6 +673,7 @@ export class SceneEntranceBridge {
         : null;
     const sessionSnapshot = readSelectSnapshot("conversation-us1");
     const bindingSnapshot = readSelectSnapshot("us1-identity-select");
+    const communicationSystemSnapshot = readSelectSnapshot("us1-communication-system-select");
     const refreshButtonDisabled = readButtonDisabled("conversation-refresh-us1");
     const selectedBindingLabel =
       bindingSnapshot?.options.find((option) => option.value === bindingSnapshot.value)?.label ??
@@ -699,6 +705,15 @@ export class SceneEntranceBridge {
           disabled: false,
           reason: sceneState.connectDisabledReason,
         }),
+        buildSelectState(
+          "communicationSystem",
+          entranceT("us1.communicationSystem.label"),
+          communicationSystemSnapshot,
+          {
+            disabled: false,
+            reason: null,
+          }
+        ),
         buildSelectState("session", getSessionLabel(), sessionSnapshot, {
           disabled: sceneState.connected === false,
           reason: getConnectFirstReason(),

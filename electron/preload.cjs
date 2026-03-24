@@ -239,6 +239,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   us1SyncRemoteUsers: (params) => ipcRenderer.invoke("us1-sync-remote-users", params),
   us1SendMessage: (params) => ipcRenderer.invoke("us1-send-message", params),
   us1SyncMessages: (params) => ipcRenderer.invoke("us1-sync-messages", params),
+  us1RelayHealthCheck: (params) => ipcRenderer.invoke("us1-relay-health-check", params),
   us1MailStartGmailOauth: () => ipcRenderer.invoke("us1-mail-start-gmail-oauth"),
   us1MailExchangeGmailCode: (params) => ipcRenderer.invoke("us1-mail-exchange-gmail-code", params),
   us1MailListenGmailCode: () => ipcRenderer.invoke("us1-mail-listen-gmail-code"),
@@ -266,27 +267,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   roomsPackageFromWorkspace: (payload) =>
     ipcRenderer.invoke("rooms-package-from-workspace", payload),
   roomsImportBundle: (payload) => ipcRenderer.invoke("rooms-import-bundle", payload),
-  laboratoryResolveSource: (payload) => ipcRenderer.invoke("laboratory-resolve-source", payload),
-  laboratoryStartSourcePreparation: (payload) =>
-    ipcRenderer.invoke("laboratory-start-source-preparation", payload),
-  laboratoryGetSourcePreparationJob: (jobId) =>
-    ipcRenderer.invoke("laboratory-get-source-preparation-job", jobId),
-  laboratoryCancelSourcePreparationJob: (jobId) =>
-    ipcRenderer.invoke("laboratory-cancel-source-preparation-job", jobId),
-  laboratoryStartAnalysis: (payload) => ipcRenderer.invoke("laboratory-start-analysis", payload),
-  laboratoryGetJob: (jobId) => ipcRenderer.invoke("laboratory-get-job", jobId),
-  laboratoryCancelJob: (jobId) => ipcRenderer.invoke("laboratory-cancel-job", jobId),
-  laboratoryListHistory: () => ipcRenderer.invoke("laboratory-list-history"),
-  laboratoryListProjects: () => ipcRenderer.invoke("laboratory-list-projects"),
-  laboratoryReadHistoryEntry: (entryId) =>
-    ipcRenderer.invoke("laboratory-read-history-entry", entryId),
-  laboratoryReadProject: (projectId) => ipcRenderer.invoke("laboratory-read-project", projectId),
-  laboratoryCleanupWorkspaceMedia: (entryId) =>
-    ipcRenderer.invoke("laboratory-cleanup-workspace-media", entryId),
-  laboratoryDeleteProject: (projectId) =>
-    ipcRenderer.invoke("laboratory-delete-project", projectId),
-  laboratoryDiscardWorkspace: (workspaceId) =>
-    ipcRenderer.invoke("laboratory-discard-workspace", workspaceId),
   sceneThemesListInstalled: () => ipcRenderer.invoke("scene-themes-list-installed"),
   sceneThemesPackageInstalled: (payload) =>
     ipcRenderer.invoke("scene-themes-package-installed", payload),

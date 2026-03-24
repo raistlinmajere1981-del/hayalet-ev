@@ -20,22 +20,12 @@ import type {
   Us1SyncMessagesResult,
   Us1SyncRemoteUsersParams,
 } from "@shared/us1-mail.js";
+import type { Us1RelayHealthCheckParams, Us1RelayHealthCheckResult } from "@shared/us1-relay.js";
 import type {
   InstalledRoomRecord,
   RoomWorkspaceEntry,
   StartupRoomsSnapshot,
 } from "../types/rooms.js";
-import type {
-  LaboratoryAnalysisRequest,
-  LaboratoryHistoryEntryRecord,
-  LaboratoryHistoryEntrySummary,
-  LaboratoryJobSnapshot,
-  LaboratoryProjectRecord,
-  LaboratoryProjectSummary,
-  LaboratorySourcePreparationSnapshot,
-  LaboratorySourceDescriptor,
-  LaboratorySourceResolveInput,
-} from "../types/laboratory.js";
 import type { LanguageDescriptor, LoadedLanguagePack, TranslationParams } from "../types/i18n.js";
 import type { SceneThemeRegistration } from "./scene-system/scene-theme-registry-contract.js";
 
@@ -544,6 +534,7 @@ declare global {
     us1SyncRemoteUsers: (params?: Us1SyncRemoteUsersParams) => Promise<Us1RemoteUserMutationResult>;
     us1SendMessage: (params: Us1SendMessageParams) => Promise<Us1SendMessageResult>;
     us1SyncMessages: (params?: Us1SyncMessagesParams) => Promise<Us1SyncMessagesResult>;
+    us1RelayHealthCheck: (params?: Us1RelayHealthCheckParams) => Promise<Us1RelayHealthCheckResult>;
     i18nListLanguages: () => Promise<LanguageDescriptor[]>;
     i18nLoadLanguage: (locale: string) => Promise<LoadedLanguagePack | null>;
 
@@ -600,40 +591,6 @@ declare global {
       error?: string;
       restartRequired?: boolean;
     }>;
-    laboratoryResolveSource: (
-      payload: LaboratorySourceResolveInput
-    ) => Promise<IPCResult & { source?: LaboratorySourceDescriptor | null }>;
-    laboratoryStartSourcePreparation: (
-      payload: LaboratorySourceResolveInput
-    ) => Promise<IPCResult & { job?: LaboratorySourcePreparationSnapshot | null }>;
-    laboratoryGetSourcePreparationJob: (
-      jobId: string
-    ) => Promise<IPCResult & { job?: LaboratorySourcePreparationSnapshot | null }>;
-    laboratoryCancelSourcePreparationJob: (
-      jobId: string
-    ) => Promise<IPCResult & { job?: LaboratorySourcePreparationSnapshot | null }>;
-    laboratoryStartAnalysis: (
-      payload: LaboratoryAnalysisRequest
-    ) => Promise<IPCResult & { job?: LaboratoryJobSnapshot | null }>;
-    laboratoryGetJob: (
-      jobId: string
-    ) => Promise<IPCResult & { job?: LaboratoryJobSnapshot | null }>;
-    laboratoryCancelJob: (
-      jobId: string
-    ) => Promise<IPCResult & { job?: LaboratoryJobSnapshot | null }>;
-    laboratoryListHistory: () => Promise<IPCResult & { entries?: LaboratoryHistoryEntrySummary[] }>;
-    laboratoryListProjects: () => Promise<IPCResult & { projects?: LaboratoryProjectSummary[] }>;
-    laboratoryReadHistoryEntry: (
-      entryId: string
-    ) => Promise<IPCResult & { entry?: LaboratoryHistoryEntryRecord | null }>;
-    laboratoryReadProject: (
-      projectId: string
-    ) => Promise<IPCResult & { project?: LaboratoryProjectRecord | null }>;
-    laboratoryCleanupWorkspaceMedia: (
-      entryId: string
-    ) => Promise<IPCResult & { entry?: LaboratoryHistoryEntryRecord | null }>;
-    laboratoryDeleteProject: (projectId: string) => Promise<IPCResult>;
-    laboratoryDiscardWorkspace: (workspaceId: string) => Promise<IPCResult>;
     sceneThemesListInstalled: () => Promise<{
       success: boolean;
       themes?: SceneThemeRegistration[];

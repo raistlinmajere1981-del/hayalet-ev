@@ -1119,10 +1119,12 @@
         "deleteTitle": "Delete this room?",
         "deleteMessage": "{{room}} will be deleted from the workspace.",
         "deleteDataLabel": "Delete room data",
-        "deleteDataHint": "When selected, the room folders under rooms and data will also be deleted.",
+        "deleteDataHint": "When selected, the room copy and persistent data under data will also be deleted.",
         "deleteAction": "Delete",
         "removeTitle": "Remove this room?",
-        "removeMessage": "{{room}} will be removed from the menu."
+        "removeMessage": "{{room}} will be removed from the menu.",
+        "removeDataHint": "When selected, the room folder under data will be deleted completely. The rooms folder is untouched.",
+        "removeAction": "Remove"
       },
       "toasts": {
         "filePickerUnavailable": "The file picker is unavailable",
@@ -5553,6 +5555,44 @@
       },
       "slotSectionTitle": "US1 Slot",
       "slotSectionNote": "Only handshake-complete remote email accounts appear here. Account creation and handshake actions now live in Account Management.",
+      "communicationSystem": {
+        "label": "Communication system",
+        "options": {
+          "mail": "Mail communication",
+          "relay": "Self-hosted relay + E2EE"
+        }
+      },
+      "relay": {
+        "enabledLabel": "Advertise and use relay + E2EE for this Hayalet Ev",
+        "baseUrlLabel": "Relay base URL",
+        "baseUrlPlaceholder": "https://relay.example.com",
+        "statusLabel": "Relay status",
+        "fingerprintLabel": "Local relay fingerprint",
+        "serverFingerprintLabel": "Pinned server certificate fingerprint",
+        "phaseHint": "Relay mode is selected. Keep your relay base URL reachable and wait until the remote peer advertises relay capability.",
+        "actions": {
+          "test": "Test Relay",
+          "testing": "Testing Relay...",
+          "resetTrust": "Reset Trust"
+        },
+        "feedback": {
+          "checkSuccess": "Relay health check succeeded.",
+          "checkFailed": "Relay health check failed.",
+          "trustReset": "Pinned relay server trust was reset."
+        },
+        "status": {
+          "notConfigured": "Relay is not configured yet.",
+          "noPeer": "Select a handshake-complete peer first.",
+          "peerUnsupported": "The selected peer has not advertised relay capability yet.",
+          "reachable": "Relay is reachable. Select a peer to use it.",
+          "ready": "Relay is configured and the selected peer supports it.",
+          "connected": "Relay transport is active.",
+          "testing": "Relay health check is running...",
+          "error": "Relay health check failed.",
+          "noFingerprint": "Local relay identity is not available yet.",
+          "noServerFingerprint": "No pinned server certificate yet."
+        }
+      },
       "selectLabel": "Account list",
       "selectPlaceholder": "-- Select remote account --",
       "noReadyUsers": "No handshake-complete remote account yet",

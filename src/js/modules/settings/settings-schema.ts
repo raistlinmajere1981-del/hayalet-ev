@@ -4,6 +4,11 @@ import type {
   SceneAppearanceSettings,
   SlotSettings,
   RemoteUserIdentity,
+  Us1CommunicationSystem,
+  Us1RelayConnectionState,
+  Us1RelayPeerCapability,
+  Us1RelaySettings,
+  Us1RelayTrustState,
   Us1SlotSettings,
   MessageMethod,
   UploadMethod,
@@ -78,6 +83,82 @@ function mergeDefaults(obj: unknown, defaults: Record<string, unknown>): Record<
   return out;
 }
 
+function normalizeUs1CommunicationSystem(value: unknown): Us1CommunicationSystem {
+  return value === "relay-e2ee" ? "relay-e2ee" : "mail";
+}
+
+function normalizeUs1RelayConnectionState(value: unknown): Us1RelayConnectionState {
+  return value === "connecting" || value === "connected" || value === "error"
+    ? value
+    : "disconnected";
+}
+
+function normalizeUs1RelayTrustState(value: unknown): Us1RelayTrustState {
+  return value === "trusted" || value === "mismatch" ? value : "unknown";
+}
+
+function normalizeUs1RelayPeerCapability(raw: unknown): Us1RelayPeerCapability | null {
+  if (!isPlainObject(raw)) {
+    return null;
+  }
+
+  const supported =
+    raw["supported"] === true ||
+    (typeof raw["endpoint"] === "string" && raw["endpoint"].trim() !== "") ||
+    (typeof raw["encryptionPublicKey"] === "string" && raw["encryptionPublicKey"].trim() !== "");
+
+  if (supported !== true) {
+    return null;
+  }
+
+  const protocolVersion = raw["protocolVersion"];
+  const advertisedAt = raw["advertisedAt"];
+  const trustState = raw["trustState"];
+
+  return {
+    supported: true,
+    endpoint:
+      typeof raw["endpoint"] === "string" && raw["endpoint"].trim() !== ""
+        ? raw["endpoint"].trim()
+        : null,
+    encryptionPublicKey:
+      typeof raw["encryptionPublicKey"] === "string" && raw["encryptionPublicKey"].trim() !== ""
+        ? raw["encryptionPublicKey"].trim()
+        : null,
+    encryptionKeyFingerprint:
+      typeof raw["encryptionKeyFingerprint"] === "string" &&
+      raw["encryptionKeyFingerprint"].trim() !== ""
+        ? raw["encryptionKeyFingerprint"].trim()
+        : null,
+    signingPublicKey:
+      typeof raw["signingPublicKey"] === "string" && raw["signingPublicKey"].trim() !== ""
+        ? raw["signingPublicKey"].trim()
+        : null,
+    signingKeyFingerprint:
+      typeof raw["signingKeyFingerprint"] === "string" && raw["signingKeyFingerprint"].trim() !== ""
+        ? raw["signingKeyFingerprint"].trim()
+        : null,
+    protocolVersion:
+      typeof protocolVersion === "number" &&
+      Number.isFinite(protocolVersion) &&
+      protocolVersion >= 1
+        ? Math.trunc(protocolVersion)
+        : 1,
+    advertisedAt:
+      typeof advertisedAt === "number" && Number.isFinite(advertisedAt) && advertisedAt >= 0
+        ? Math.trunc(advertisedAt)
+        : null,
+    trustState:
+      trustState === "trusted" || trustState === "mismatch" || trustState === "unknown"
+        ? trustState
+        : "unknown",
+    lastError:
+      typeof raw["lastError"] === "string" && raw["lastError"].trim() !== ""
+        ? raw["lastError"].trim()
+        : null,
+  };
+}
+
 type SettingsInput = Partial<AppSettings> & {
   [ASSISTANT_ACCOUNTS_SETTINGS_KEY]?: Account[];
   [ASSISTANT_SLOT_SETTINGS_KEY]?: SlotSettings;
@@ -95,16 +176,23 @@ function normalizeRemoteUsers(raw: unknown): RemoteUserIdentity[] | undefined {
     const avatar = entry["avatar"];
     const avatarPath = entry["avatarPath"];
     const handshakeState = entry["handshakeState"];
+    const linkedAccountId = entry["linkedAccountId"];
     const linkedMailAccountId = entry["linkedMailAccountId"];
     const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
     const normalizedRemoteUserId =
       typeof remoteUserId === "string" && remoteUserId.trim() !== ""
         ? remoteUserId.trim()
         : normalizedEmail;
+    const normalizedLinkedAccountId =
+      typeof linkedAccountId === "string" && linkedAccountId.trim() !== ""
+        ? linkedAccountId.trim()
+        : typeof linkedMailAccountId === "string" && linkedMailAccountId.trim() !== ""
+          ? linkedMailAccountId.trim()
+          : "";
     const normalizedLinkedMailAccountId =
       typeof linkedMailAccountId === "string" && linkedMailAccountId.trim() !== ""
         ? linkedMailAccountId.trim()
-        : "";
+        : normalizedLinkedAccountId;
 
     if (
       normalizedRemoteUserId === "" ||
@@ -147,6 +235,7 @@ function normalizeRemoteUsers(raw: unknown): RemoteUserIdentity[] | undefined {
           ? Math.trunc(profileRevision)
           : 1,
       linkedMailAccountId: normalizedLinkedMailAccountId,
+      linkedAccountId: normalizedLinkedAccountId,
       inviteMessageId:
         typeof entry["inviteMessageId"] === "string" && entry["inviteMessageId"].trim() !== ""
           ? entry["inviteMessageId"].trim()
@@ -172,6 +261,7 @@ function normalizeRemoteUsers(raw: unknown): RemoteUserIdentity[] | undefined {
         typeof entry["sessionAlias"] === "string" && entry["sessionAlias"].trim() !== ""
           ? entry["sessionAlias"].trim()
           : null,
+      relayCapability: normalizeUs1RelayPeerCapability(entry["relayCapability"]),
       ...(normalizedLastSyncAt !== undefined ? { lastSyncAt: normalizedLastSyncAt } : {}),
     };
 
@@ -363,6 +453,7 @@ function buildRemoteUserFromRemoteAccount(account: Account): RemoteUserIdentity 
         ? Math.trunc(remoteState.profileRevision)
         : 1,
     linkedMailAccountId,
+    linkedAccountId: linkedMailAccountId,
     inviteMessageId: remoteState?.inviteMessageId ?? null,
     acceptMessageId: remoteState?.acceptMessageId ?? null,
     threadMessageId: remoteState?.threadMessageId ?? null,
@@ -460,7 +551,7 @@ function buildRemoteAccountFromIdentity(
     remoteEmail: {
       remoteUserId: remoteUser.remoteUserId,
       handshakeState: remoteUser.handshakeState,
-      linkedLocalMailAccountId: remoteUser.linkedMailAccountId,
+      linkedLocalMailAccountId: remoteUser.linkedAccountId ?? remoteUser.linkedMailAccountId,
       profileRevision: remoteUser.profileRevision,
       inviteMessageId: remoteUser.inviteMessageId ?? null,
       acceptMessageId: remoteUser.acceptMessageId ?? null,
@@ -503,20 +594,25 @@ function normalizeUs1Slot(raw: unknown): Us1SlotSettings | undefined {
     return undefined;
   }
 
-  const selectedRemoteUserId = raw["selectedRemoteUserId"] ?? raw["selectedIdentityId"];
+  const selectedIdentityId = raw["selectedIdentityId"] ?? raw["selectedRemoteUserId"];
   const selectedAccountId = raw["selectedAccountId"];
   const connectionState = raw["connectionState"];
   const connected = raw["connected"];
+  const communicationSystem = raw["communicationSystem"];
+  const relayConnectionState = raw["relayConnectionState"];
   const catchCommands = raw["catchCommands"];
   const resumeLastSession = raw["resumeLastSession"];
   const rememberConnectionStatus = raw["rememberConnectionStatus"];
   const lastConnectionState = raw["lastConnectionState"];
+  const normalizedIdentityId =
+    typeof selectedIdentityId === "string" && selectedIdentityId.trim() !== ""
+      ? selectedIdentityId.trim()
+      : null;
 
   return {
-    selectedRemoteUserId:
-      typeof selectedRemoteUserId === "string" && selectedRemoteUserId.trim() !== ""
-        ? selectedRemoteUserId
-        : null,
+    communicationSystem: normalizeUs1CommunicationSystem(communicationSystem),
+    selectedIdentityId: normalizedIdentityId,
+    selectedRemoteUserId: normalizedIdentityId,
     selectedAccountId:
       typeof selectedAccountId === "string" && selectedAccountId.trim() !== ""
         ? selectedAccountId.trim()
@@ -527,6 +623,7 @@ function normalizeUs1Slot(raw: unknown): Us1SlotSettings | undefined {
         : connected === true
           ? "connected"
           : "disconnected",
+    relayConnectionState: normalizeUs1RelayConnectionState(relayConnectionState),
     catchCommands: catchCommands === true,
     resumeLastSession: typeof resumeLastSession === "boolean" ? resumeLastSession : true,
     rememberConnectionStatus:
@@ -540,6 +637,64 @@ function normalizeUs1Slot(raw: unknown): Us1SlotSettings | undefined {
 
 function normalizeMailTransportProviderType(value: unknown): MailTransportProviderType {
   return value === "gmail" ? "gmail" : "custom-imap-smtp";
+}
+
+function normalizeUs1RelaySettings(raw: unknown): Us1RelaySettings | undefined {
+  if (!isPlainObject(raw)) {
+    return undefined;
+  }
+
+  const protocolVersion = raw["protocolVersion"];
+  const lastConnectedAt = raw["lastConnectedAt"];
+  const trustState = raw["trustState"];
+
+  return {
+    enabled: raw["enabled"] === true,
+    baseUrl:
+      typeof raw["baseUrl"] === "string" && raw["baseUrl"].trim() !== ""
+        ? raw["baseUrl"].trim()
+        : null,
+    trustedServerFingerprint:
+      typeof raw["trustedServerFingerprint"] === "string" &&
+      raw["trustedServerFingerprint"].trim() !== ""
+        ? raw["trustedServerFingerprint"].trim()
+        : null,
+    trustState: normalizeUs1RelayTrustState(trustState),
+    encryptionPublicKey:
+      typeof raw["encryptionPublicKey"] === "string" && raw["encryptionPublicKey"].trim() !== ""
+        ? raw["encryptionPublicKey"].trim()
+        : null,
+    encryptionKeyFingerprint:
+      typeof raw["encryptionKeyFingerprint"] === "string" &&
+      raw["encryptionKeyFingerprint"].trim() !== ""
+        ? raw["encryptionKeyFingerprint"].trim()
+        : null,
+    signingPublicKey:
+      typeof raw["signingPublicKey"] === "string" && raw["signingPublicKey"].trim() !== ""
+        ? raw["signingPublicKey"].trim()
+        : null,
+    signingKeyFingerprint:
+      typeof raw["signingKeyFingerprint"] === "string" && raw["signingKeyFingerprint"].trim() !== ""
+        ? raw["signingKeyFingerprint"].trim()
+        : null,
+    protocolVersion:
+      typeof protocolVersion === "number" &&
+      Number.isFinite(protocolVersion) &&
+      protocolVersion >= 1
+        ? Math.trunc(protocolVersion)
+        : 1,
+    connectionState: normalizeUs1RelayConnectionState(raw["connectionState"]),
+    lastError:
+      typeof raw["lastError"] === "string" && raw["lastError"].trim() !== ""
+        ? raw["lastError"].trim()
+        : null,
+    lastConnectedAt:
+      typeof lastConnectedAt === "number" &&
+      Number.isFinite(lastConnectedAt) &&
+      lastConnectedAt >= 0
+        ? Math.trunc(lastConnectedAt)
+        : null,
+  };
 }
 
 function normalizeMailTransportAuthType(value: unknown): MailTransportAuthType {
@@ -768,6 +923,11 @@ function normalizeKnownSettings(raw: unknown): Record<string, unknown> {
     integrations.mailTransport = mailTransport;
   }
 
+  const us1Relay = normalizeUs1RelaySettings(r.integrations?.us1Relay);
+  if (us1Relay !== undefined) {
+    integrations.us1Relay = us1Relay;
+  }
+
   if (Object.keys(integrations).length > 0) {
     out.integrations = integrations;
   }
@@ -943,9 +1103,12 @@ export function normalizeSettings(raw: unknown): AppSettings {
 
   if (!isPlainObject(merged.us1Slot)) {
     merged.us1Slot = defaults.us1Slot ?? {
+      communicationSystem: "mail",
+      selectedIdentityId: null,
       selectedRemoteUserId: null,
       selectedAccountId: null,
       connectionState: "disconnected",
+      relayConnectionState: "disconnected",
       catchCommands: false,
       resumeLastSession: true,
       rememberConnectionStatus: false,
@@ -953,31 +1116,46 @@ export function normalizeSettings(raw: unknown): AppSettings {
     };
   }
   const us1Slot = merged.us1Slot;
+  us1Slot.communicationSystem = normalizeUs1CommunicationSystem(us1Slot.communicationSystem);
+  if (typeof us1Slot.selectedIdentityId !== "string" || us1Slot.selectedIdentityId.trim() === "") {
+    us1Slot.selectedIdentityId =
+      typeof us1Slot.selectedRemoteUserId === "string" && us1Slot.selectedRemoteUserId.trim() !== ""
+        ? us1Slot.selectedRemoteUserId.trim()
+        : null;
+  }
   if (
     typeof us1Slot.selectedRemoteUserId !== "string" ||
     us1Slot.selectedRemoteUserId.trim() === ""
   ) {
-    us1Slot.selectedRemoteUserId = null;
+    us1Slot.selectedRemoteUserId = us1Slot.selectedIdentityId ?? null;
+  }
+  if (
+    us1Slot.selectedIdentityId !== null &&
+    us1Slot.selectedRemoteUserId !== us1Slot.selectedIdentityId
+  ) {
+    us1Slot.selectedRemoteUserId = us1Slot.selectedIdentityId;
   }
   if (typeof us1Slot.selectedAccountId !== "string" || us1Slot.selectedAccountId.trim() === "") {
     us1Slot.selectedAccountId =
-      us1Slot.selectedRemoteUserId !== null
-        ? buildRemoteEmailAccountId(us1Slot.selectedRemoteUserId)
+      us1Slot.selectedIdentityId !== null
+        ? buildRemoteEmailAccountId(us1Slot.selectedIdentityId)
         : null;
   } else if (
-    us1Slot.selectedRemoteUserId !== null &&
+    us1Slot.selectedIdentityId !== null &&
     extractUs1RemoteIdentityIdFromAccountId(us1Slot.selectedAccountId) !==
-      us1Slot.selectedRemoteUserId
+      us1Slot.selectedIdentityId
   ) {
-    us1Slot.selectedAccountId = buildRemoteEmailAccountId(us1Slot.selectedRemoteUserId);
+    us1Slot.selectedAccountId = buildRemoteEmailAccountId(us1Slot.selectedIdentityId);
   }
-  if (us1Slot.selectedRemoteUserId === null && us1Slot.selectedAccountId !== null) {
-    us1Slot.selectedRemoteUserId =
+  if (us1Slot.selectedIdentityId === null && us1Slot.selectedAccountId !== null) {
+    us1Slot.selectedIdentityId =
       extractUs1RemoteIdentityIdFromAccountId(us1Slot.selectedAccountId) ?? null;
+    us1Slot.selectedRemoteUserId = us1Slot.selectedIdentityId;
   }
   if (us1Slot.connectionState !== "connected" && us1Slot.connectionState !== "disconnected") {
     us1Slot.connectionState = "disconnected";
   }
+  us1Slot.relayConnectionState = normalizeUs1RelayConnectionState(us1Slot.relayConnectionState);
   if (typeof us1Slot.catchCommands !== "boolean") {
     us1Slot.catchCommands = false;
   }
@@ -994,11 +1172,10 @@ export function normalizeSettings(raw: unknown): AppSettings {
     us1Slot.lastConnectionState = "disconnected";
   }
   if (
-    us1Slot.selectedRemoteUserId === null ||
+    us1Slot.selectedIdentityId === null ||
     !merged.remoteUsers.some(
       (identity) =>
-        identity.remoteUserId === us1Slot.selectedRemoteUserId &&
-        identity.handshakeState === "active"
+        identity.remoteUserId === us1Slot.selectedIdentityId && identity.handshakeState === "active"
     )
   ) {
     us1Slot.connectionState = "disconnected";
@@ -1045,6 +1222,14 @@ export function normalizeSettings(raw: unknown): AppSettings {
     merged.integrations.mailTransport = defaults.integrations.mailTransport;
   } else {
     delete merged.integrations.mailTransport;
+  }
+  const normalizedUs1Relay = normalizeUs1RelaySettings(merged.integrations.us1Relay);
+  if (normalizedUs1Relay !== undefined) {
+    merged.integrations.us1Relay = normalizedUs1Relay;
+  } else if (defaults.integrations?.us1Relay) {
+    merged.integrations.us1Relay = defaults.integrations.us1Relay;
+  } else {
+    delete merged.integrations.us1Relay;
   }
   const localMailAccount = merged.integrations.mailTransport?.localAccount;
   if (!isPlainObject(merged.user)) {

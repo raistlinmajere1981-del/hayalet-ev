@@ -218,46 +218,6 @@ function buildRoomInteriorBackNode(room: InstalledRoomRecord): SceneBackConfig |
   };
 }
 
-function buildLegacyRoomInteriorCharacterNodes(
-  room: InstalledRoomRecord
-): SceneCharacterPlacementConfig[] {
-  if (room.id !== "game-room") {
-    return [];
-  }
-
-  return [
-    {
-      id: "anchor-ai1-primary",
-      kind: "character",
-      characterKind: "ai",
-      preferredSlot: "ai1",
-      leftPx: 948,
-      bottomPx: -12,
-      scale: 0.74,
-      depth: 3,
-    },
-    {
-      id: "anchor-user",
-      kind: "character",
-      characterKind: "user",
-      leftPx: 1208,
-      bottomPx: -64,
-      scale: 0.84,
-      depth: 4,
-    },
-    {
-      id: "anchor-ai2-primary",
-      kind: "character",
-      characterKind: "ai",
-      preferredSlot: "ai2",
-      leftPx: 1432,
-      bottomPx: -8,
-      scale: 0.74,
-      depth: 5,
-    },
-  ];
-}
-
 function cloneRoomSceneCharacter(character: RoomSceneCharacterConfig): RoomSceneCharacterConfig {
   return { ...character };
 }
@@ -292,16 +252,13 @@ function buildRoomInteriorCharacterNodes(
     return room.scene.characters.map((character) => toSceneCharacterPlacement(character));
   }
 
-  return buildLegacyRoomInteriorCharacterNodes(room);
+  return [];
 }
 
 function resolveRoomInteriorCharacterRosterPreset(
   room: InstalledRoomRecord
 ): SceneLayoutConfig["characterRosterPreset"] {
-  return (
-    room.scene?.characterRosterPreset ??
-    (room.id === "game-room" ? "connected-plus-user" : "all-characters")
-  );
+  return room.scene?.characterRosterPreset ?? "all-characters";
 }
 
 export function buildRoomInteriorSceneLayout(room: InstalledRoomRecord): SceneLayoutConfig {

@@ -20,6 +20,8 @@ files:
 extraMetadata:
   main: dist/electron/packaged-wrapper-main.js
 
+afterPack: scripts/electron-builder-after-pack.mjs
+
 asar: true
 asarUnpack:
   - node_modules/better-sqlite3/**/*

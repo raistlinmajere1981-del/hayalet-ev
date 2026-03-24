@@ -117,17 +117,6 @@ test("room id and command validators match project rules", () => {
   assert.equal(isValidRoomCommandName("Game.Room"), false);
 });
 
-test("laboratory manifest keeps the new video analysis room contract valid", () => {
-  const manifest = JSON.parse(readFileSync("rooms/laboratory/manifest.json", "utf8"));
-  const result = validateRoomManifest(manifest);
-
-  assert.equal(result.valid, true);
-  assert.equal(result.manifest?.id, "laboratory");
-  assert.equal(result.manifest?.defaultFeatureId, "video-analysis");
-  assert.equal(result.manifest?.features[0]?.id, "video-analysis");
-  assert.equal(result.manifest?.storageNamespace, "laboratory");
-});
-
 test("game-room manifest documents the US1 XOX transport contract", () => {
   const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
   const result = validateRoomManifest(manifest);

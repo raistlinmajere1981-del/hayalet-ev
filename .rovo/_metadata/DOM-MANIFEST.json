@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-23T09:53:29.378Z",
+  "generatedAt": "2026-03-24T15:50:12.734Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -10,10 +10,10 @@
   ],
   "stats": {
     "filesScanned": 551,
-    "ids": 562,
+    "ids": 570,
     "testIds": 15,
     "querySelectors": 137,
-    "totalSelectors": 714
+    "totalSelectors": 722
   },
   "lookup": {
     "id": {
@@ -509,6 +509,7 @@
       "upload-list": "#upload-list",
       "us1-avatar": "#us1-avatar",
       "us1-catch-check": "#us1-catch-check",
+      "us1-communication-system-select": "#us1-communication-system-select",
       "us1-feedback-msg": "#us1-feedback-msg",
       "us1-identity-select": "#us1-identity-select",
       "us1-loading-indicator": "#us1-loading-indicator",
@@ -535,6 +536,13 @@
       "us1-mail-verify-btn": "#us1-mail-verify-btn",
       "us1-nickname": "#us1-nickname",
       "us1-phase-hint": "#us1-phase-hint",
+      "us1-relay-base-url-input": "#us1-relay-base-url-input",
+      "us1-relay-enabled-check": "#us1-relay-enabled-check",
+      "us1-relay-fingerprint": "#us1-relay-fingerprint",
+      "us1-relay-reset-trust-btn": "#us1-relay-reset-trust-btn",
+      "us1-relay-server-fingerprint": "#us1-relay-server-fingerprint",
+      "us1-relay-status": "#us1-relay-status",
+      "us1-relay-test-btn": "#us1-relay-test-btn",
       "us1-remember-connection-check": "#us1-remember-connection-check",
       "us1-report-log": "#us1-report-log",
       "us1-resume-last-session-check": "#us1-resume-last-session-check",

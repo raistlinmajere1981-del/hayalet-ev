@@ -291,7 +291,7 @@ test("RoomPackageManager lists bundled rooms and installs them without deleting 
 
   try {
     await writeRoomFixture(bundledWorkspaceRoot, "game-room", "Game Room");
-    await writeRoomFixture(bundledWorkspaceRoot, "laboratory", "Laboratory");
+    await writeRoomFixture(bundledWorkspaceRoot, "workshop", "Workshop");
 
     const manager = new RoomPackageManager({
       workspaceRoot,
@@ -307,16 +307,16 @@ test("RoomPackageManager lists bundled rooms and installs them without deleting 
     assert.equal(workspaceRooms[1]?.sourceKind, "bundle");
     assert.equal(workspaceRooms[1]?.readOnly, true);
 
-    const installResult = await manager.installFromWorkspace("laboratory");
+    const installResult = await manager.installFromWorkspace("workshop");
     assert.equal(installResult.success, true, installResult.error);
-    assert.equal(installResult.room?.sourceDir, join(bundledWorkspaceRoot, "laboratory"));
-    assert.equal(existsSync(join(installedRoot, "laboratory", "ui", "index.html")), true);
-    assert.equal(existsSync(join(workspaceRoot, "laboratory")), false);
+    assert.equal(installResult.room?.sourceDir, join(bundledWorkspaceRoot, "workshop"));
+    assert.equal(existsSync(join(installedRoot, "workshop", "ui", "index.html")), true);
+    assert.equal(existsSync(join(workspaceRoot, "workshop")), false);
 
-    const roomRuntimeData = await writeRoomRuntimeDataFixture(dataRoot, "laboratory");
-    const removeResult = await manager.removeInstalledRoom("laboratory", { deleteData: true });
+    const roomRuntimeData = await writeRoomRuntimeDataFixture(dataRoot, "workshop");
+    const removeResult = await manager.removeInstalledRoom("workshop", { deleteData: true });
     assert.equal(removeResult.success, true, removeResult.error);
-    assert.equal(existsSync(join(bundledWorkspaceRoot, "laboratory", "manifest.json")), true);
+    assert.equal(existsSync(join(bundledWorkspaceRoot, "workshop", "manifest.json")), true);
     assert.equal(existsSync(roomRuntimeData.roomStorageDir), false);
     assert.equal(existsSync(roomRuntimeData.roomPartitionDir), false);
   } finally {
@@ -378,6 +378,7 @@ test("RoomPackageManager removeInstalledRoom preserves user files inside install
 
     const removeResult = await manager.removeInstalledRoom("game-room");
     assert.equal(removeResult.success, true, removeResult.error);
+    assert.equal(existsSync(roomDir), true);
     assert.equal(existsSync(join(installedDir, "manifest.json")), false);
     assert.equal(existsSync(join(installedDir, "ui", "index.html")), false);
     assert.equal(existsSync(join(installedDir, "host", "index.js")), false);
@@ -385,6 +386,42 @@ test("RoomPackageManager removeInstalledRoom preserves user files inside install
     assert.equal(existsSync(join(installedDir, "user-notes", "custom.txt")), true);
     assert.equal(existsSync(join(roomRuntimeData.roomStorageDir, "state.json")), true);
     assert.equal(existsSync(join(roomRuntimeData.roomPartitionDir, "session.json")), true);
+
+    const installedRooms = await manager.listInstalledRooms();
+    assert.equal(installedRooms.length, 0);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("RoomPackageManager removeInstalledRoom deleteData clears data without deleting workspace room", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "room-remove-installed-delete-data-"));
+  const workspaceRoot = join(tempRoot, "rooms");
+  const dataRoot = join(tempRoot, "data");
+  const installedRoot = join(dataRoot, "rooms");
+  const registryPath = join(tempRoot, "config", "rooms.json");
+  const roomDir = join(workspaceRoot, "game-room");
+  const installedDir = join(installedRoot, "game-room");
+
+  try {
+    await writeRoomFixture(workspaceRoot, "game-room", "Game Room");
+
+    const manager = new RoomPackageManager({
+      workspaceRoot,
+      installedRoot,
+      registryPath,
+    });
+
+    const installResult = await manager.installFromWorkspace("game-room");
+    assert.equal(installResult.success, true, installResult.error);
+
+    const roomRuntimeData = await writeRoomRuntimeDataFixture(dataRoot, "game-room");
+    const removeResult = await manager.removeInstalledRoom("game-room", { deleteData: true });
+    assert.equal(removeResult.success, true, removeResult.error);
+    assert.equal(existsSync(join(roomDir, "manifest.json")), true);
+    assert.equal(existsSync(installedDir), false);
+    assert.equal(existsSync(roomRuntimeData.roomStorageDir), false);
+    assert.equal(existsSync(roomRuntimeData.roomPartitionDir), false);
 
     const installedRooms = await manager.listInstalledRooms();
     assert.equal(installedRooms.length, 0);

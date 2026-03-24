@@ -387,8 +387,12 @@ export class RoomPageController implements PageController {
     return this.room.scene?.referenceSize ?? DEFAULT_SCENE_REFERENCE_SIZE;
   }
 
-  private isImmersiveGameRoom(): boolean {
-    return this.room.id === "game-room" || this.room.id === "laboratory";
+  private getPageShellVariant(): "standard" | "immersive-stage" {
+    return this.room.scene?.chrome?.pageShellVariant ?? "standard";
+  }
+
+  private usesImmersivePageShell(): boolean {
+    return this.getPageShellVariant() === "immersive-stage";
   }
 
   private getPage(): HTMLElement | null {
@@ -483,55 +487,47 @@ export class RoomPageController implements PageController {
     return page?.querySelector<HTMLElement>("[data-room-role='scene-editor-host']") ?? null;
   }
 
+  private shouldShowFeatureStrip(): boolean {
+    if (this.usesImmersivePageShell() && this.room.features.length <= 1) {
+      return false;
+    }
+    return true;
+  }
+
   private ensureShell(page: HTMLElement): void {
     if (page.dataset["roomShellReady"] === "true") {
       return;
     }
 
-    const classicShellMarkup = this.isImmersiveGameRoom()
+    const showFeatureStrip = this.shouldShowFeatureStrip();
+
+    const classicShellMarkup = this.usesImmersivePageShell()
       ? `
-        <div class="room-shell room-shell--game" data-room-role="classic-shell">
-          <div class="room-shell-topline">
+        <div class="room-shell room-shell--immersive" data-room-role="classic-shell">
+          <div class="room-shell-topline"${showFeatureStrip ? "" : " hidden"}>
             <div class="room-feature-strip room-feature-strip--inline" data-room-role="feature-strip"></div>
-            <div class="room-shell-runtime">
-              <div class="room-runtime-status" data-room-role="runtime-status" data-state="idle">
-                ${roomPageT("status.preparing")}
-              </div>
-            </div>
           </div>
-          <section class="glass-panel ds-surface-card room-shell-stage room-shell-stage--game">
+          <section class="glass-panel ds-surface-card room-shell-stage room-shell-stage--immersive">
             <div class="room-runtime-mount room-runtime-mount--stage" data-room-role="runtime-mount"></div>
           </section>
         </div>
       `
       : `
         <div class="room-shell" data-room-role="classic-shell">
-          <div class="room-shell-hero">
-            <div class="room-shell-badge">${roomPageT("page.badge")}</div>
-            <h1 class="room-shell-title" data-room-role="title"></h1>
-            <p class="room-shell-subtitle" data-room-role="subtitle"></p>
+          <div class="room-shell-topline"${showFeatureStrip ? "" : " hidden"}>
+            <div class="room-feature-strip room-feature-strip--header" data-room-role="feature-strip"></div>
           </div>
 
-          <section class="glass-panel ds-surface-card ds-surface-card--stack room-feature-panel">
-            <div class="panel-title ds-surface-card__header ds-panel-title">${roomPageT("page.featuresTitle")}</div>
-            <div class="room-feature-strip" data-room-role="feature-strip"></div>
-          </section>
-
           <section class="glass-panel ds-surface-card ds-surface-card--stack room-shell-panel room-shell-panel--runtime">
-            <div class="panel-title ds-surface-card__header ds-panel-title">${roomPageT("page.runtimeTitle")}</div>
-            <div class="room-runtime-status" data-room-role="runtime-status" data-state="idle">
-              ${roomPageT("status.preparing")}
-            </div>
-            <div class="room-runtime-event" data-room-role="runtime-event">
-              ${roomPageT("status.handshakeWaiting")}
-            </div>
             <div class="room-runtime-mount" data-room-role="runtime-mount"></div>
           </section>
         </div>
       `;
 
     page.innerHTML = `
-      <div class="room-page-shell${this.isImmersiveGameRoom() ? " room-page-shell--game" : ""}" data-room-role="page-shell">
+      <div class="room-page-shell${
+        this.usesImmersivePageShell() ? " room-page-shell--immersive" : ""
+      }" data-room-role="page-shell">
         <div class="room-scene-root scene-shell__surface" data-room-role="scene-root" hidden>
           <div class="room-scene-room scene-shell__room-layer" data-room-role="scene-room">
             <img class="room-scene-room__background scene-shell__cover-image" data-room-role="scene-room-background" alt="" />
@@ -891,27 +887,9 @@ export class RoomPageController implements PageController {
   }
 
   private syncShell(page: HTMLElement): void {
-    const descriptionText = this.room.description?.trim();
-    const description =
-      descriptionText !== undefined && descriptionText !== ""
-        ? descriptionText
-        : this.room.name !== this.room.id
-          ? roomPageT("page.subtitleNamed", { name: this.room.name })
-          : roomPageT("page.subtitleDefault");
     const activeFeature = this.getActiveFeature();
 
-    this.updateText(page, "title", this.room.name);
-    this.updateText(page, "subtitle", description);
-    this.updateText(page, "id", this.room.id);
-    this.updateText(page, "version", this.room.version);
-    this.updateText(page, "active-feature", activeFeature?.name ?? "-");
-    this.updateText(page, "feature-count", String(this.room.features.length));
-    this.updateText(page, "installed", this.room.installedAt);
-    this.updateText(page, "runtime-path", this.room.runtimeEntryPath);
-    this.updateText(page, "host-path", this.room.hostEntryPath);
-    this.updateText(page, "source-path", this.room.sourceDir);
     this.renderFeatureButtons(page, activeFeature?.id ?? null);
-    this.updateRuntimeStatus(page);
   }
 
   private renderFeatureButtons(page: HTMLElement, activeFeatureId: string | null): void {
@@ -919,6 +897,14 @@ export class RoomPageController implements PageController {
     if (strip === null) {
       return;
     }
+
+    if (!this.shouldShowFeatureStrip()) {
+      strip.innerHTML = "";
+      strip.hidden = true;
+      return;
+    }
+
+    strip.hidden = false;
 
     strip.innerHTML = this.room.features
       .map((feature) => {
@@ -928,20 +914,10 @@ export class RoomPageController implements PageController {
           ` type="button" data-room-feature-id="${escapeHtml(feature.id)}"`,
           ` aria-pressed="${selected ? "true" : "false"}">`,
           `<span class="room-feature-chip__title">${escapeHtml(feature.name)}</span>`,
-          feature.description !== undefined && feature.description.trim() !== ""
-            ? `<span class="room-feature-chip__summary">${escapeHtml(feature.description)}</span>`
-            : "",
           "</button>",
         ].join("");
       })
       .join("");
-  }
-
-  private updateText(page: HTMLElement, role: string, value: string): void {
-    const target = page.querySelector<HTMLElement>(`[data-room-role='${role}']`);
-    if (target !== null) {
-      target.textContent = value;
-    }
   }
 
   private updateRuntimeStatus(page: HTMLElement): void {

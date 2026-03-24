@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-23T09:53:27.599Z",
+  "generatedAt": "2026-03-24T15:50:12.045Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 532,
-    "filesWithComments": 118,
+    "filesScanned": 531,
+    "filesWithComments": 117,
     "commentsIndexed": 287,
-    "fileLevelComments": 219,
-    "symbolLevelComments": 68,
+    "fileLevelComments": 218,
+    "symbolLevelComments": 69,
     "prefixCounts": {
-      "none": 41,
+      "none": 37,
       "AI": 0,
-      "NOTE": 242,
+      "NOTE": 246,
       "WARNING": 4,
       "TODO": 0
     }
@@ -207,102 +207,6 @@
       ]
     },
     {
-      "path": "electron/laboratory/analysis-worker.cjs",
-      "totalComments": 1,
-      "byKind": {
-        "note": 1
-      },
-      "byPrefix": {
-        "none": 1,
-        "AI": 0,
-        "NOTE": 0,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 23,
-          "endLine": 23,
-          "text": "Ignore child teardown failures during cancellation.",
-          "prefix": null,
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "electron/laboratory/job-runner.ts",
-      "totalComments": 1,
-      "byKind": {
-        "note": 1
-      },
-      "byPrefix": {
-        "none": 1,
-        "AI": 0,
-        "NOTE": 0,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 293,
-          "endLine": 293,
-          "text": "Ignore postMessage failures during teardown.",
-          "prefix": null,
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "electron/laboratory/source-resolver.ts",
-      "totalComments": 3,
-      "byKind": {
-        "note": 3
-      },
-      "byPrefix": {
-        "none": 3,
-        "AI": 0,
-        "NOTE": 0,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 297,
-          "endLine": 297,
-          "text": "Ignore teardown failures during cancellation.",
-          "prefix": null,
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 591,
-          "endLine": 591,
-          "text": "Ignore teardown failures during cancellation.",
-          "prefix": null,
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 723,
-          "endLine": 723,
-          "text": "Ignore teardown failures during cancellation.",
-          "prefix": null,
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
       "path": "electron/logger/core/LoggerCore.ts",
       "totalComments": 3,
       "byKind": {
@@ -459,8 +363,8 @@
       "comments": [
         {
           "kind": "fallback",
-          "startLine": 372,
-          "endLine": 372,
+          "startLine": 437,
+          "endLine": 437,
           "text": "Try loopback first, fallback to oob if requested or failed",
           "prefix": null,
           "scopeType": "file",
@@ -468,9 +372,45 @@
         },
         {
           "kind": "note",
-          "startLine": 410,
-          "endLine": 410,
+          "startLine": 475,
+          "endLine": 475,
           "text": "We use localhost for exchange if it looks like a code from there, otherwise oob",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "electron/main.ts",
+      "totalComments": 2,
+      "byKind": {
+        "note": 1,
+        "fallback": 1
+      },
+      "byPrefix": {
+        "none": 1,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 244,
+          "endLine": 244,
+          "text": "NOTE: Wine can load the renderer successfully but fail to present the window when GPU",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "fallback",
+          "startLine": 245,
+          "endLine": 245,
+          "text": "compositing stays enabled, so keep the fallback local to Wine instead of all Windows builds.",
           "prefix": null,
           "scopeType": "file",
           "scopeName": null
@@ -795,6 +735,43 @@
       ]
     },
     {
+      "path": "electron/packaged-wrapper-cli.ts",
+      "totalComments": 2,
+      "byKind": {
+        "note": 2
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 2,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [
+        "attachPipe"
+      ],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 522,
+          "endLine": 522,
+          "text": "NOTE: The console shim runs under ELECTRON_RUN_AS_NODE, but spawned surfaces must boot the GUI runtime.",
+          "prefix": "NOTE",
+          "scopeType": "function",
+          "scopeName": "attachPipe"
+        },
+        {
+          "kind": "note",
+          "startLine": 603,
+          "endLine": 603,
+          "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
       "path": "electron/packaged-wrapper-main.ts",
       "totalComments": 2,
       "byKind": {
@@ -811,8 +788,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 527,
-          "endLine": 527,
+          "startLine": 539,
+          "endLine": 539,
           "text": "NOTE: Launcher fallback order matters, so probes remain sequential.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -820,8 +797,8 @@
         },
         {
           "kind": "note",
-          "startLine": 745,
-          "endLine": 745,
+          "startLine": 773,
+          "endLine": 773,
           "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -893,8 +870,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 451,
-          "endLine": 451,
+          "startLine": 431,
+          "endLine": 431,
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -902,8 +879,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 485,
-          "endLine": 485,
+          "startLine": 465,
+          "endLine": 465,
           "text": "WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -911,8 +888,8 @@
         },
         {
           "kind": "note",
-          "startLine": 543,
-          "endLine": 543,
+          "startLine": 523,
+          "endLine": 523,
           "text": "NOTE: External tool pages share this preload, but only the main shell should boot /js/app.js.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1055,14 +1032,14 @@
     },
     {
       "path": "electron/us1-conversation-service.ts",
-      "totalComments": 1,
+      "totalComments": 2,
       "byKind": {
-        "note": 1
+        "note": 2
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 1,
+        "NOTE": 2,
         "WARNING": 0,
         "TODO": 0
       },
@@ -1070,9 +1047,18 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 970,
-          "endLine": 970,
+          "startLine": 1144,
+          "endLine": 1144,
           "text": "NOTE: Inbox sync intentionally runs account-by-account to keep sidecar writes ordered.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 1896,
+          "endLine": 1896,
+          "text": "NOTE: Relay sync mutates archive and session state per message, so processing stays sequential.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -1321,8 +1307,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 380,
-          "endLine": 380,
+          "startLine": 400,
+          "endLine": 400,
           "text": "NOTE: Kept for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -1349,8 +1335,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 172,
-          "endLine": 172,
+          "startLine": 162,
+          "endLine": 162,
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs).",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -4683,8 +4669,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 17,
-          "endLine": 17,
+          "startLine": 16,
+          "endLine": 16,
           "text": "NOTE: Explicit type re-exports keep IDE type hints stable.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4709,8 +4695,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 299,
-          "endLine": 299,
+          "startLine": 336,
+          "endLine": 336,
           "text": "NOTE: Empty or null uses the PATH \"opencode\" binary.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -5029,6 +5015,18 @@
       ]
     },
     {
+      "file": "electron/packaged-wrapper-cli.ts",
+      "type": "function",
+      "name": "attachPipe",
+      "comments": [
+        {
+          "startLine": 522,
+          "kind": "note",
+          "text": "NOTE: The console shim runs under ELECTRON_RUN_AS_NODE, but spawned surfaces must boot the GUI runtime."
+        }
+      ]
+    },
+    {
       "file": "electron/paths.ts",
       "type": "function",
       "name": "initPaths",
@@ -5070,7 +5068,7 @@
       "name": "getLastPrimaryPage",
       "comments": [
         {
-          "startLine": 380,
+          "startLine": 400,
           "kind": "note",
           "text": "NOTE: Kept for backward compatibility."
         }
@@ -5082,7 +5080,7 @@
       "name": "Window",
       "comments": [
         {
-          "startLine": 172,
+          "startLine": 162,
           "kind": "note",
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs)."
         }

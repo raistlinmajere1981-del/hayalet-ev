@@ -22,17 +22,17 @@ const room: InstalledRoomRecord = {
   updatedAt: "2026-03-08T00:00:00.000Z",
 };
 
-const laboratoryRoom: InstalledRoomRecord = {
-  id: "laboratory",
-  name: "Laboratory",
+const workshopRoom: InstalledRoomRecord = {
+  id: "workshop",
+  name: "Workshop",
   version: "1.0.0",
-  sourceDir: "/workspace/rooms/laboratory",
-  installedDir: "/workspace/data/rooms/laboratory",
-  manifestPath: "/workspace/data/rooms/laboratory/manifest.json",
-  runtimeEntryPath: "/workspace/data/rooms/laboratory/ui/index.html",
-  hostEntryPath: "/workspace/data/rooms/laboratory/host/index.js",
-  defaultFeatureId: "video-analysis",
-  features: [{ id: "video-analysis", name: "Video Analysis" }],
+  sourceDir: "/workspace/rooms/workshop",
+  installedDir: "/workspace/data/rooms/workshop",
+  manifestPath: "/workspace/data/rooms/workshop/manifest.json",
+  runtimeEntryPath: "/workspace/data/rooms/workshop/ui/index.html",
+  hostEntryPath: "/workspace/data/rooms/workshop/host/index.js",
+  defaultFeatureId: "assembler",
+  features: [{ id: "assembler", name: "Assembler" }],
   installedAt: "2026-03-22T00:00:00.000Z",
   updatedAt: "2026-03-22T00:00:00.000Z",
 };
@@ -55,13 +55,13 @@ test("buildRoomPageMarkup renders room page shell id", () => {
   assert.match(markup, /data-room-id="game-room"/);
 });
 
-test("laboratory room markup renders deterministic nav and page metadata", () => {
-  const navMarkup = buildRoomNavMarkup(laboratoryRoom);
-  const pageMarkup = buildRoomPageMarkup(laboratoryRoom);
+test("secondary room markup renders deterministic nav and page metadata", () => {
+  const navMarkup = buildRoomNavMarkup(workshopRoom);
+  const pageMarkup = buildRoomPageMarkup(workshopRoom);
 
-  assert.equal(getRoomPageName("laboratory"), "room-laboratory");
-  assert.match(navMarkup, /data-page="room-laboratory"/);
-  assert.match(navMarkup, /Laboratory/);
-  assert.match(pageMarkup, /id="page-room-laboratory"/);
-  assert.match(pageMarkup, /data-room-id="laboratory"/);
+  assert.equal(getRoomPageName("workshop"), "room-workshop");
+  assert.match(navMarkup, /data-page="room-workshop"/);
+  assert.match(navMarkup, /Workshop/);
+  assert.match(pageMarkup, /id="page-room-workshop"/);
+  assert.match(pageMarkup, /data-room-id="workshop"/);
 });
