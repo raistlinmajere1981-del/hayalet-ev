@@ -108,6 +108,22 @@ export function ensureElectronApiFallback(): void {
         path: typeof rawPath === "string" ? rawPath : "",
       });
     },
+    roomToolsCall: async (request: Record<string, unknown>): Promise<Record<string, unknown>> =>
+      await Promise.resolve({
+        success: false,
+        operation:
+          typeof request["operation"] === "string" ? request["operation"] : "resolve-paths",
+        error: "fallback",
+      }),
+    roomToolsCancel: async (request: Record<string, unknown>): Promise<Record<string, unknown>> =>
+      await Promise.resolve({
+        success: true,
+        roomId: typeof request["roomId"] === "string" ? request["roomId"] : "",
+        jobId: typeof request["jobId"] === "string" ? request["jobId"] : "",
+        cancelled: false,
+      }),
+    onRoomToolsProgress: (): void => {},
+    offRoomToolsProgress: (): void => {},
 
     commandInit: async (): Promise<{ success: boolean; jobs: unknown[] }> =>
       await Promise.resolve({ success: true, jobs: [] }),

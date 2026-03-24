@@ -25,10 +25,13 @@
     "shared": {
       "summary": "Summary",
       "status": "Status",
+      "idle": "Idle",
       "ready": "Ready",
       "duration": "Duration",
       "resolution": "Resolution",
       "codec": "Codec",
+      "format": "Format",
+      "bitrate": "Bitrate",
       "range": "Window",
       "focus": "Focus",
       "preset": "Preset",
@@ -39,12 +42,76 @@
       "score": "Confidence",
       "risk": "Risk band",
       "elevatedRisk": "Elevated",
-      "dummyHint": "All controls in this room are dummy and stay inside the room package."
+      "dummyHint": "Only the source stage is live in this phase. The remaining stages still use room-local dummy state."
+    },
+    "projects": {
+      "eyebrow": "Project Desk",
+      "title": "Project Management",
+      "newAction": "New Project",
+      "selectLabel": "Continue Project",
+      "deleteAction": "Delete Project",
+      "deleteConfirm": "Delete This Project",
+      "deleteCancel": "Keep Project",
+      "empty": "No active project"
+    },
+    "settings": {
+      "eyebrow": "Tool Room",
+      "title": "Media Analyzer Settings",
+      "subtitle": "Probe, install, update, and review the room-local yt-dlp and ffmpeg toolchain.",
+      "refreshAction": "Refresh Tools",
+      "closeAction": "Close",
+      "installAction": "Install",
+      "updateAction": "Update",
+      "versionLabel": "Installed Version",
+      "latestLabel": "Latest",
+      "pathLabel": "Binary Path",
+      "busyHint": "A room-managed job is running for this tool.",
+      "tools": {
+        "yt-dlp": "yt-dlp",
+        "ffmpeg": "FFmpeg"
+      },
+      "status": {
+        "missing": "Missing",
+        "installed": "Installed",
+        "updateAvailable": "Update available",
+        "ready": "Ready",
+        "idle": "Idle",
+        "error": "Error"
+      }
+    },
+    "messages": {
+      "project-create": "New project created.",
+      "project-select": "Project resumed.",
+      "project-delete": "Project deleted.",
+      "source-set-kind": "Source type updated.",
+      "source-set-mode": "Source route updated.",
+      "source-update-draft": "Source draft saved.",
+      "source-pick-local": "Local source copied into the project.",
+      "source-download-url": "Direct URL source downloaded into the project.",
+      "source-download-youtube": "YouTube source captured into the project.",
+      "tool-install": "Tool installation completed.",
+      "tool-update": "Tool update completed.",
+      "tools-refresh": "Tool status refreshed.",
+      "refresh": "Source state refreshed."
     },
     "source": {
       "title": "Prepare the analysis source",
-      "subtitle": "Choose the source format, inspect the incoming sample, and queue a dummy download route.",
+      "subtitle": "Choose the source format, place it inside a room project, and review it with a real preview surface.",
+      "formatLabel": "Source Type",
+      "modeLabel": "Route",
+      "intakeTitle": "Source Intake",
       "previewTitle": "Source Preview",
+      "previewEmptyTitle": "Project source not prepared yet",
+      "previewEmptyBody": "Pick a local file or pull a remote source into the active project to unlock the live preview.",
+      "previewInfo": {
+        "route": "Route",
+        "file": "Stored File",
+        "status": "State",
+        "source": "Origin"
+      },
+      "jobs": {
+        "title": "Active Transfer"
+      },
       "consoleTitle": "Preparation Console",
       "consoleLines": [
         "Sample route armed for the obsidian lab.",
@@ -53,19 +120,93 @@
         "Dummy handoff is ready for the next stage."
       ],
       "summaryTitle": "Source Summary",
-      "summaryHint": "The room keeps source state locally and does not trigger any real capture pipeline.",
+      "summaryHint": "The room keeps each source inside its own project folder before the next analysis stages.",
+      "modes": {
+        "youtube": "YouTube",
+        "local": "Local",
+        "url": "Direct URL"
+      },
+      "fields": {
+        "youtubeUrl": "YouTube URL",
+        "urlInput": "Direct Media URL",
+        "fileNameHint": "Optional File Name"
+      },
+      "placeholders": {
+        "youtubeUrl": "https://www.youtube.com/watch?v=...",
+        "urlInput": "https://example.com/media.mp4",
+        "fileNameHint": "Leave empty to keep the source file name"
+      },
+      "actions": {
+        "pickLocal": "Copy Local Source",
+        "downloadUrl": "Download URL Source",
+        "downloadYoutube": "Capture from YouTube"
+      },
+      "youtubeDisabled": "YouTube mode stays disabled until the room-local yt-dlp installation is ready.",
+      "youtubePresetLabel": "YouTube Presets",
+      "youtubePresets": {
+        "low": "Lowest",
+        "medium": "Balanced",
+        "best": "Best",
+        "custom": "Custom"
+      },
+      "youtubeForm": {
+        "fields": {
+          "format": "Format Strategy",
+          "mergeOutputFormat": "Merge Container",
+          "recodeVideo": "Recode Video",
+          "audioFormat": "Extract Audio",
+          "writeSubtitles": "Write subtitles",
+          "writeAutoSubtitles": "Write auto subtitles",
+          "subtitlesLang": "Subtitle languages",
+          "playlistItems": "Playlist items",
+          "limitRate": "Rate limit",
+          "retries": "Retries"
+        },
+        "placeholders": {
+          "subtitlesLang": "en.*,tr.* or all",
+          "playlistItems": "1,3,5-8",
+          "limitRate": "2M or 500K"
+        },
+        "options": {
+          "format": {
+            "best": "Best video + audio",
+            "fullHd": "Full HD or lower",
+            "hd": "HD or lower",
+            "lowest": "Lowest resolution"
+          },
+          "container": {
+            "auto": "Auto",
+            "mp4": "MP4",
+            "mkv": "MKV",
+            "webm": "WEBM"
+          },
+          "recode": {
+            "none": "Do not recode",
+            "mp4": "Recode to MP4",
+            "mkv": "Recode to MKV",
+            "webm": "Recode to WEBM"
+          },
+          "audio": {
+            "none": "Keep original",
+            "mp3": "MP3",
+            "m4a": "M4A",
+            "wav": "WAV",
+            "flac": "FLAC"
+          }
+        }
+      },
       "formats": {
         "video": {
           "title": "Video",
-          "subtitle": "Use a local clip or route a staged download."
+          "subtitle": "Switch between YouTube, local files, and direct URLs."
         },
         "audio": {
           "title": "Audio",
-          "subtitle": "Queue waveform cleanup and transcript prep."
+          "subtitle": "Copy local audio or pull it from a direct URL."
         },
         "image": {
           "title": "Image",
-          "subtitle": "Stage still-frame inspection and artifact checks."
+          "subtitle": "Copy still images into the project or download them by URL."
         }
       }
     },

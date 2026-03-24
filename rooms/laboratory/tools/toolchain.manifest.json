@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "roomId": "laboratory",
+  "tools": {
+    "yt-dlp": {
+      "displayName": "yt-dlp",
+      "installDirName": "yt-dlp",
+      "releaseProvider": {
+        "type": "github-release",
+        "owner": "yt-dlp",
+        "repo": "yt-dlp",
+        "releaseUrl": "https://github.com/yt-dlp/yt-dlp/releases/latest"
+      },
+      "probe": {
+        "args": ["--version"],
+        "versionRegex": "(\\d{4}\\.\\d{2}\\.\\d{2}(?:\\.[0-9]+)?)"
+      },
+      "assets": {
+        "linux-x64": {
+          "assetMatch": "^yt-dlp_linux$",
+          "archive": "none",
+          "executableName": "yt-dlp"
+        },
+        "linux-arm64": {
+          "assetMatch": "^yt-dlp_linux_aarch64$",
+          "archive": "none",
+          "executableName": "yt-dlp"
+        },
+        "linux-musl-x64": {
+          "assetMatch": "^yt-dlp_musllinux$",
+          "archive": "none",
+          "executableName": "yt-dlp"
+        },
+        "darwin-x64": {
+          "assetMatch": "^yt-dlp_macos$",
+          "archive": "none",
+          "executableName": "yt-dlp"
+        },
+        "darwin-arm64": {
+          "assetMatch": "^yt-dlp_macos$",
+          "archive": "none",
+          "executableName": "yt-dlp"
+        },
+        "win32-x64": {
+          "assetMatch": "^yt-dlp\\.exe$",
+          "archive": "none",
+          "executableName": "yt-dlp.exe"
+        },
+        "win32-arm64": {
+          "assetMatch": "^yt-dlp_arm64\\.exe$",
+          "archive": "none",
+          "executableName": "yt-dlp.exe"
+        }
+      }
+    },
+    "ffmpeg": {
+      "displayName": "FFmpeg",
+      "installDirName": "ffmpeg",
+      "releaseProvider": {
+        "type": "github-release",
+        "owner": "yt-dlp",
+        "repo": "FFmpeg-Builds",
+        "releaseUrl": "https://github.com/yt-dlp/FFmpeg-Builds/releases/latest"
+      },
+      "probe": {
+        "args": ["-version"],
+        "versionRegex": "ffmpeg version\\s+([^\\s]+)"
+      },
+      "assets": {
+        "linux-x64": {
+          "assetMatch": "^ffmpeg-master-latest-linux64-gpl\\.tar\\.xz$",
+          "archive": "tar.xz",
+          "executableName": "ffmpeg",
+          "companionExecutables": ["ffprobe"]
+        },
+        "linux-arm64": {
+          "assetMatch": "^ffmpeg-master-latest-linuxarm64-gpl\\.tar\\.xz$",
+          "archive": "tar.xz",
+          "executableName": "ffmpeg",
+          "companionExecutables": ["ffprobe"]
+        },
+        "win32-x64": {
+          "assetMatch": "^ffmpeg-master-latest-win64-gpl\\.zip$",
+          "archive": "zip",
+          "executableName": "ffmpeg.exe",
+          "companionExecutables": ["ffprobe.exe"]
+        },
+        "win32-arm64": {
+          "assetMatch": "^ffmpeg-master-latest-winarm64-gpl\\.zip$",
+          "archive": "zip",
+          "executableName": "ffmpeg.exe",
+          "companionExecutables": ["ffprobe.exe"]
+        }
+      }
+    }
+  }
+}

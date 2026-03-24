@@ -1,5 +1,11 @@
 import type { ProviderScenarioResult, ProviderTestSuite } from "./provider.js";
 import type { TranslationParams } from "./i18n.js";
+import type {
+  RoomToolCallRequest,
+  RoomToolCallResult,
+  RoomToolCancelRequest,
+  RoomToolCancelResult,
+} from "./room-tools.js";
 
 type IpcErrorMeta = {
   errorKey?: string;
@@ -487,6 +493,8 @@ export interface IPCChannelMap {
     params: Us1RelayHealthCheckParams;
     result: Us1RelayHealthCheckResult;
   };
+  "room-tools-call": { params: RoomToolCallRequest; result: RoomToolCallResult };
+  "room-tools-cancel": { params: RoomToolCancelRequest; result: RoomToolCancelResult };
 }
 
 export type IPCChannel = keyof IPCChannelMap;

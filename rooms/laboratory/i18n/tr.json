@@ -25,10 +25,13 @@
     "shared": {
       "summary": "Ozet",
       "status": "Durum",
+      "idle": "Bos",
       "ready": "Hazir",
       "duration": "Sure",
       "resolution": "Cozunurluk",
       "codec": "Codec",
+      "format": "Format",
+      "bitrate": "Bit hizi",
       "range": "Aralik",
       "focus": "Odak",
       "preset": "Preset",
@@ -39,12 +42,76 @@
       "score": "Guven",
       "risk": "Risk bandi",
       "elevatedRisk": "Yuksek",
-      "dummyHint": "Bu odadaki tum kontroller dummy calisir ve room paketi disina cikmaz."
+      "dummyHint": "Bu fazda yalnizca kaynak asamasi gercek calisir. Diger asamalar oda-ici dummy durumda kalir."
+    },
+    "projects": {
+      "eyebrow": "Proje Masasi",
+      "title": "Proje Yonetimi",
+      "newAction": "Yeni Proje",
+      "selectLabel": "Projeye Devam Et",
+      "deleteAction": "Projeyi Sil",
+      "deleteConfirm": "Bu Projeyi Sil",
+      "deleteCancel": "Projeyi Koru",
+      "empty": "Aktif proje yok"
+    },
+    "settings": {
+      "eyebrow": "Arac Odasi",
+      "title": "Medya Analizoru Ayarlari",
+      "subtitle": "Oda-yerel yt-dlp ve ffmpeg hattini kontrol et, kur, guncelle ve incele.",
+      "refreshAction": "Araclari Yenile",
+      "closeAction": "Kapat",
+      "installAction": "Kur",
+      "updateAction": "Guncelle",
+      "versionLabel": "Kurulu Surum",
+      "latestLabel": "Guncel",
+      "pathLabel": "Binary Yolu",
+      "busyHint": "Bu arac icin oda-yonetimli bir islem calisiyor.",
+      "tools": {
+        "yt-dlp": "yt-dlp",
+        "ffmpeg": "FFmpeg"
+      },
+      "status": {
+        "missing": "Eksik",
+        "installed": "Kurulu",
+        "updateAvailable": "Guncelleme var",
+        "ready": "Hazir",
+        "idle": "Bos",
+        "error": "Hata"
+      }
+    },
+    "messages": {
+      "project-create": "Yeni proje olusturuldu.",
+      "project-select": "Projeye devam edildi.",
+      "project-delete": "Proje silindi.",
+      "source-set-kind": "Kaynak tipi guncellendi.",
+      "source-set-mode": "Kaynak rotasi guncellendi.",
+      "source-update-draft": "Kaynak taslagi kaydedildi.",
+      "source-pick-local": "Yerel kaynak proje icine kopyalandi.",
+      "source-download-url": "Dogrudan URL kaynagi proje icine indirildi.",
+      "source-download-youtube": "YouTube kaynagi proje icine alindi.",
+      "tool-install": "Arac kurulumu tamamlandi.",
+      "tool-update": "Arac guncellemesi tamamlandi.",
+      "tools-refresh": "Arac durumu yenilendi.",
+      "refresh": "Kaynak durumu yenilendi."
     },
     "source": {
       "title": "Analiz kaynagini hazirla",
-      "subtitle": "Kaynak tipini sec, gelen ornegi incele ve dummy download hattini kur.",
+      "subtitle": "Kaynak tipini sec, oda projesi icine al ve gercek onizleme alaninda incele.",
+      "formatLabel": "Kaynak Tipi",
+      "modeLabel": "Rota",
+      "intakeTitle": "Kaynak Alimi",
       "previewTitle": "Kaynak Onizleme",
+      "previewEmptyTitle": "Proje kaynagi henuz hazir degil",
+      "previewEmptyBody": "Canli onizlemeyi acmak icin yerel bir dosya sec veya uzak bir kaynagi aktif projeye indir.",
+      "previewInfo": {
+        "route": "Rota",
+        "file": "Kayitli Dosya",
+        "status": "Durum",
+        "source": "Koken"
+      },
+      "jobs": {
+        "title": "Aktif Aktarim"
+      },
       "consoleTitle": "Hazirlik Konsolu",
       "consoleLines": [
         "Ornek hat obsidian laboratuvar icin silahlandi.",
@@ -53,19 +120,93 @@
         "Dummy aktarim sonraki asama icin hazir."
       ],
       "summaryTitle": "Kaynak Ozeti",
-      "summaryHint": "Oda kaynak durumunu yerel tutar ve gercek bir capture pipeline calistirmaz.",
+      "summaryHint": "Oda her kaynagi bir proje klasoru icinde tutar ve sonraki analiz asamalarina o dosyayla devam eder.",
+      "modes": {
+        "youtube": "YouTube",
+        "local": "Yerel",
+        "url": "Dogrudan URL"
+      },
+      "fields": {
+        "youtubeUrl": "YouTube URL",
+        "urlInput": "Dogrudan Medya URL",
+        "fileNameHint": "Opsiyonel Dosya Adi"
+      },
+      "placeholders": {
+        "youtubeUrl": "https://www.youtube.com/watch?v=...",
+        "urlInput": "https://example.com/media.mp4",
+        "fileNameHint": "Bos birakirsan kaynak dosya adi korunur"
+      },
+      "actions": {
+        "pickLocal": "Yerel Kaynagi Kopyala",
+        "downloadUrl": "URL Kaynagini Indir",
+        "downloadYoutube": "YouTube'dan Al"
+      },
+      "youtubeDisabled": "Oda-yerel yt-dlp kurulumu hazir olana kadar YouTube modu pasif kalir.",
+      "youtubePresetLabel": "YouTube Presetleri",
+      "youtubePresets": {
+        "low": "En Dusuk",
+        "medium": "Dengeli",
+        "best": "En Iyi",
+        "custom": "Custom"
+      },
+      "youtubeForm": {
+        "fields": {
+          "format": "Format Stratejisi",
+          "mergeOutputFormat": "Birlesim Container",
+          "recodeVideo": "Videoyu Recode Et",
+          "audioFormat": "Sesi Ayir",
+          "writeSubtitles": "Altyazi yaz",
+          "writeAutoSubtitles": "Otomatik altyazi yaz",
+          "subtitlesLang": "Altyazi dilleri",
+          "playlistItems": "Playlist ogeleri",
+          "limitRate": "Hiz limiti",
+          "retries": "Tekrar deneme"
+        },
+        "placeholders": {
+          "subtitlesLang": "en.*,tr.* veya all",
+          "playlistItems": "1,3,5-8",
+          "limitRate": "2M veya 500K"
+        },
+        "options": {
+          "format": {
+            "best": "En iyi video + ses",
+            "fullHd": "Full HD veya alti",
+            "hd": "HD veya alti",
+            "lowest": "En dusuk coznurluk"
+          },
+          "container": {
+            "auto": "Otomatik",
+            "mp4": "MP4",
+            "mkv": "MKV",
+            "webm": "WEBM"
+          },
+          "recode": {
+            "none": "Recode etme",
+            "mp4": "MP4'e recode et",
+            "mkv": "MKV'ye recode et",
+            "webm": "WEBM'e recode et"
+          },
+          "audio": {
+            "none": "Orijinali koru",
+            "mp3": "MP3",
+            "m4a": "M4A",
+            "wav": "WAV",
+            "flac": "FLAC"
+          }
+        }
+      },
       "formats": {
         "video": {
           "title": "Video",
-          "subtitle": "Yerel klip sec veya asamali bir download rotasi kur."
+          "subtitle": "YouTube, yerel dosya ve dogrudan URL arasinda gecis yap."
         },
         "audio": {
           "title": "Ses",
-          "subtitle": "Waveform temizligi ve transcript hazirligini siraya al."
+          "subtitle": "Yerel ses kopyala veya dogrudan URL ile al."
         },
         "image": {
           "title": "Goruntu",
-          "subtitle": "Still-frame incelemesi ve artefact kontrolu kur."
+          "subtitle": "Goruntuleri proje icine kopyala veya URL ile indir."
         }
       }
     },

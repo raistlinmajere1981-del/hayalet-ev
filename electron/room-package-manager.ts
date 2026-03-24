@@ -236,8 +236,17 @@ async function readJsonFile<T>(filePath: string): Promise<T> {
   return JSON.parse(raw) as T;
 }
 
-async function copyDirectoryContents(sourceDir: string, targetDir: string): Promise<string[]> {
-  const files = await collectFilesRecursive(sourceDir);
+async function copyDirectoryContents(
+  sourceDir: string,
+  targetDir: string,
+  options: {
+    includeRelativePath?: (relativePath: string) => boolean;
+  } = {}
+): Promise<string[]> {
+  const includeRelativePath = options.includeRelativePath ?? (() => true);
+  const files = (await collectFilesRecursive(sourceDir)).filter((file) =>
+    includeRelativePath(file.relativePath)
+  );
   await rm(targetDir, { recursive: true, force: true });
   await ensureDir(targetDir);
 
@@ -1019,7 +1028,12 @@ export class RoomPackageManager {
     if (options.overwrite === true) {
       await rm(exportDir, { recursive: true, force: true });
     }
-    await copyDirectoryContents(current.installedDir, exportDir);
+    await copyDirectoryContents(current.installedDir, exportDir, {
+      includeRelativePath: (relativePath) =>
+        relativePath !== INSTALLED_ROOM_FILE_SNAPSHOT &&
+        relativePath !== "tools/runtime" &&
+        relativePath.startsWith("tools/runtime/") === false,
+    });
 
     return { success: true, room: current, path: exportDir };
   }

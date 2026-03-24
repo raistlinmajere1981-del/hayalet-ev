@@ -27,6 +27,13 @@ import type {
   StartupRoomsSnapshot,
 } from "../types/rooms.js";
 import type { LanguageDescriptor, LoadedLanguagePack, TranslationParams } from "../types/i18n.js";
+import type {
+  RoomToolCallRequest,
+  RoomToolCallResult,
+  RoomToolCancelRequest,
+  RoomToolCancelResult,
+  RoomToolProgressEvent,
+} from "../types/room-tools.js";
 import type { SceneThemeRegistration } from "./scene-system/scene-theme-registry-contract.js";
 
 export {};
@@ -727,6 +734,10 @@ declare global {
     fmEnsureDirs: (scope: string) => Promise<IPCResult & { paths: Record<string, string> }>;
     fmTempPath: (prefix: string, ext: string) => Promise<{ path: string }>;
     fmWriteFileAtomic: (payload: Record<string, unknown>) => Promise<IPCResult & { path?: string }>;
+    roomToolsCall: (request: RoomToolCallRequest) => Promise<RoomToolCallResult>;
+    roomToolsCancel: (request: RoomToolCancelRequest) => Promise<RoomToolCancelResult>;
+    onRoomToolsProgress: (callback: (event: RoomToolProgressEvent) => void) => void;
+    offRoomToolsProgress: (callback: (event: RoomToolProgressEvent) => void) => void;
     fmArchiveWrite: (
       meta: Record<string, unknown>,
       files: Array<Record<string, unknown>>

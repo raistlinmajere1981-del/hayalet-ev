@@ -394,6 +394,58 @@ test("RoomPackageManager removeInstalledRoom preserves user files inside install
   }
 });
 
+test("RoomPackageManager exportInstalledRoomToWorkspace skips runtime tool payloads", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "room-export-installed-"));
+  const workspaceRoot = join(tempRoot, "rooms");
+  const dataRoot = join(tempRoot, "data");
+  const installedRoot = join(dataRoot, "rooms");
+  const registryPath = join(tempRoot, "config", "rooms.json");
+
+  try {
+    await writeRoomFixture(workspaceRoot, "game-room", "Game Room");
+
+    const manager = new RoomPackageManager({
+      workspaceRoot,
+      installedRoot,
+      registryPath,
+    });
+
+    const installResult = await manager.installFromWorkspace("game-room");
+    assert.equal(installResult.success, true, installResult.error);
+
+    const installedDir = join(installedRoot, "game-room");
+    await mkdir(join(installedDir, "tools", "runtime", "linux-x64"), { recursive: true });
+    await writeFile(
+      join(installedDir, "tools", "toolchain.manifest.json"),
+      JSON.stringify({ roomId: "game-room", tools: { "yt-dlp": {} } }, null, 2),
+      "utf8"
+    );
+    await writeFile(
+      join(installedDir, "tools", "runtime", "linux-x64", "yt-dlp"),
+      "binary",
+      "utf8"
+    );
+
+    const exportResult = await manager.exportInstalledRoomToWorkspace("game-room", {
+      overwrite: true,
+    });
+
+    assert.equal(exportResult.success, true, exportResult.error);
+    assert.equal(existsSync(join(workspaceRoot, "game-room", "manifest.json")), true);
+    assert.equal(
+      existsSync(join(workspaceRoot, "game-room", "tools", "toolchain.manifest.json")),
+      true
+    );
+    assert.equal(
+      existsSync(join(workspaceRoot, "game-room", "tools", "runtime", "linux-x64", "yt-dlp")),
+      false
+    );
+    assert.equal(existsSync(join(workspaceRoot, "game-room", ".room-install-files.json")), false);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("RoomPackageManager removeInstalledRoom deleteData clears data without deleting workspace room", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-remove-installed-delete-data-"));
   const workspaceRoot = join(tempRoot, "rooms");

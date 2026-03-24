@@ -3,9 +3,11 @@ const { contextBridge, ipcRenderer } = require("electron");
 const ALLOWED_IPC_RENDERER_CHANNELS = new Set(["log:ui-notify-batch"]);
 const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
+const ROOM_TOOLS_PROGRESS_CHANNEL = "room-tools:progress";
 const SETTINGS_BROADCAST_NAME = "app-settings";
 const opencodeUiSessionUpdatedHandlers = new Map();
 const providerScenarioProgressHandlers = new Map();
+const roomToolsProgressHandlers = new Map();
 let __app_preload_locale = "tr";
 let __app_preload_catalog = null;
 let __app_preload_settings_channel = null;
@@ -289,6 +291,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   fmEnsureDirs: (scope) => ipcRenderer.invoke("fm-ensure-dirs", scope),
   fmTempPath: (prefix, ext) => ipcRenderer.invoke("fm-temp-path", prefix, ext),
   fmWriteFileAtomic: (payload) => ipcRenderer.invoke("fm-write-file-atomic", payload),
+  roomToolsCall: (request) => ipcRenderer.invoke("room-tools-call", request),
+  roomToolsCancel: (request) => ipcRenderer.invoke("room-tools-cancel", request),
+  onRoomToolsProgress: (callback) => {
+    if (typeof callback !== "function" || roomToolsProgressHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    roomToolsProgressHandlers.set(callback, handler);
+    ipcRenderer.on(ROOM_TOOLS_PROGRESS_CHANNEL, handler);
+  },
+  offRoomToolsProgress: (callback) => {
+    const handler = roomToolsProgressHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(ROOM_TOOLS_PROGRESS_CHANNEL, handler);
+    roomToolsProgressHandlers.delete(callback);
+  },
   getPreloadPath: (type) => ipcRenderer.invoke("get-preload-path", type),
   getProviderConfig: (providerId) => ipcRenderer.invoke("get-provider-config", providerId),
   runProviderScenario: (params) => ipcRenderer.invoke("run-provider-scenario", params),

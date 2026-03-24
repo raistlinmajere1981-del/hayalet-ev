@@ -1,0 +1,1138 @@
+import { spawn } from "child_process";
+import { createWriteStream, existsSync } from "fs";
+import { chmod, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "fs/promises";
+import { dirname, join, relative, resolve } from "path";
+import { tmpdir } from "os";
+import type { IpcMainInvokeEvent } from "electron";
+import { getLoggerCore } from "./logger/index.js";
+import { Paths } from "./paths.ts";
+import type {
+  RoomFileDownloadResult,
+  RoomToolCallRequest,
+  RoomToolCallResult,
+  RoomToolCancelRequest,
+  RoomToolCancelResult,
+  RoomToolProgressEvent,
+  RoomToolRuntimePaths,
+  RoomToolStatus,
+  RoomToolUpdateCheck,
+} from "../src/types/room-tools.ts";
+import { LogCategory, LogLevel } from "@shared/index.js";
+
+const ROOM_TOOLS_PROGRESS_CHANNEL = "room-tools:progress";
+const logger = getLoggerCore();
+
+type PlatformKey =
+  | "linux-x64"
+  | "linux-arm64"
+  | "linux-musl-x64"
+  | "linux-musl-arm64"
+  | "darwin-x64"
+  | "darwin-arm64"
+  | "win32-x64"
+  | "win32-arm64";
+
+type ToolchainManifest = {
+  version: number;
+  roomId: string;
+  tools: Record<string, ToolManifest>;
+};
+
+type ToolManifest = {
+  displayName: string;
+  installDirName?: string;
+  releaseProvider: GitHubReleaseProvider;
+  assets: Partial<Record<PlatformKey, ToolAssetSpec>>;
+  probe: {
+    args: string[];
+    versionRegex: string;
+  };
+};
+
+type GitHubReleaseProvider = {
+  type: "github-release";
+  owner: string;
+  repo: string;
+  releaseUrl: string;
+};
+
+type ToolAssetSpec = {
+  assetMatch: string;
+  archive: "none" | "tar.xz" | "zip";
+  executableName: string;
+  companionExecutables?: string[];
+};
+
+type GitHubReleaseAsset = {
+  name: string;
+  browser_download_url: string;
+};
+
+type GitHubReleasePayload = {
+  tag_name?: string;
+  name?: string;
+  html_url?: string;
+  assets?: GitHubReleaseAsset[];
+};
+
+type ToolReleaseInfo = {
+  tag: string | null;
+  name: string | null;
+  releaseUrl: string | null;
+  asset: GitHubReleaseAsset;
+};
+
+type ActiveJob =
+  | {
+      roomId: string;
+      jobId: string;
+      cancel: () => void;
+    }
+  | undefined;
+
+function asNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+function ensureAbsolutePath(filePath: string): string {
+  return resolve(filePath);
+}
+
+function normalizeRequestId(value: unknown): string | null {
+  return asNonEmptyString(value);
+}
+
+function normalizeRoomId(value: unknown): string {
+  return asNonEmptyString(value) ?? "";
+}
+
+function normalizeJobId(value: unknown, fallbackPrefix: string): string {
+  return (
+    asNonEmptyString(value) ??
+    `${fallbackPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  );
+}
+
+function detectPlatformKey(): PlatformKey | null {
+  const report = process.report?.getReport?.() as
+    | {
+        header?: {
+          glibcVersionRuntime?: string;
+        };
+      }
+    | undefined;
+  const isMusl =
+    process.platform === "linux" && !Boolean(report?.header?.glibcVersionRuntime);
+
+  if (process.platform === "linux" && process.arch === "x64") {
+    return isMusl ? "linux-musl-x64" : "linux-x64";
+  }
+  if (process.platform === "linux" && process.arch === "arm64") {
+    return isMusl ? "linux-musl-arm64" : "linux-arm64";
+  }
+  if (process.platform === "darwin" && process.arch === "x64") {
+    return "darwin-x64";
+  }
+  if (process.platform === "darwin" && process.arch === "arm64") {
+    return "darwin-arm64";
+  }
+  if (process.platform === "win32" && process.arch === "x64") {
+    return "win32-x64";
+  }
+  if (process.platform === "win32" && process.arch === "arm64") {
+    return "win32-arm64";
+  }
+  return null;
+}
+
+function resolveRuntimePaths(roomId: string): RoomToolRuntimePaths {
+  const installedDir = Paths.getInstalledRoomDir(roomId);
+  const storageDir = Paths.getRoomStorageDir(roomId);
+  const platformKey = detectPlatformKey() ?? `${process.platform}-${process.arch}`;
+  return {
+    roomId,
+    installedDir,
+    storageDir,
+    projectsDir: join(storageDir, "projects"),
+    packageToolsDir: join(installedDir, "tools"),
+    toolRuntimeDir: join(installedDir, "tools", "runtime", platformKey),
+    toolStatePath: join(storageDir, "tool-state.json"),
+  };
+}
+
+function isPathInside(parentPath: string, childPath: string): boolean {
+  const relativePath = relative(ensureAbsolutePath(parentPath), ensureAbsolutePath(childPath));
+  return relativePath === "" || (!relativePath.startsWith("..") && !relativePath.includes(`..${process.platform === "win32" ? "\\" : "/"}`));
+}
+
+function ensureRoomManagedPath(roomId: string, targetPath: string): void {
+  const paths = resolveRuntimePaths(roomId);
+  const absolutePath = ensureAbsolutePath(targetPath);
+  const allowedRoots = [paths.storageDir, paths.toolRuntimeDir, paths.packageToolsDir];
+  if (allowedRoots.some((root) => isPathInside(root, absolutePath))) {
+    return;
+  }
+  throw new Error(`Path is outside the managed room roots: ${absolutePath}`);
+}
+
+function findVersion(output: string, pattern: string): string | null {
+  const regex = new RegExp(pattern);
+  const match = output.trim().match(regex);
+  if (!match) {
+    return null;
+  }
+  return match[1] ?? match[0] ?? null;
+}
+
+function compareLooseVersion(left: string, right: string): number {
+  const tokenize = (value: string): Array<string | number> =>
+    value
+      .split(/[^0-9A-Za-z]+/)
+      .filter((part) => part !== "")
+      .map((part) => (/^\d+$/.test(part) ? Number(part) : part));
+
+  const leftParts = tokenize(left);
+  const rightParts = tokenize(right);
+  const maxLength = Math.max(leftParts.length, rightParts.length);
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftPart = leftParts[index];
+    const rightPart = rightParts[index];
+    if (leftPart === undefined && rightPart === undefined) {
+      return 0;
+    }
+    if (leftPart === undefined) {
+      return -1;
+    }
+    if (rightPart === undefined) {
+      return 1;
+    }
+    if (typeof leftPart === "number" && typeof rightPart === "number") {
+      if (leftPart !== rightPart) {
+        return leftPart > rightPart ? 1 : -1;
+      }
+      continue;
+    }
+    const next = String(leftPart).localeCompare(String(rightPart), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    if (next !== 0) {
+      return next;
+    }
+  }
+
+  return 0;
+}
+
+async function readJsonFile<T>(filePath: string): Promise<T> {
+  return JSON.parse(await readFile(filePath, "utf8")) as T;
+}
+
+async function ensureDir(dirPath: string): Promise<void> {
+  await mkdir(dirPath, { recursive: true });
+}
+
+async function fetchJson(url: string): Promise<unknown> {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "hayalet-ev-room-tools",
+      Accept: "application/vnd.github+json, application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Request failed (${response.status}) for ${url}`);
+  }
+  return await response.json();
+}
+
+async function fetchGitHubRelease(provider: GitHubReleaseProvider): Promise<GitHubReleasePayload> {
+  const url = `https://api.github.com/repos/${provider.owner}/${provider.repo}/releases/latest`;
+  return (await fetchJson(url)) as GitHubReleasePayload;
+}
+
+async function collectFilesRecursive(baseDir: string): Promise<string[]> {
+  const results: string[] = [];
+  const entries = await readdir(baseDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const absolutePath = join(baseDir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...(await collectFilesRecursive(absolutePath)));
+      continue;
+    }
+    results.push(absolutePath);
+  }
+  return results;
+}
+
+function resolveUniquePath(targetPath: string): string {
+  if (!existsSync(targetPath)) {
+    return targetPath;
+  }
+
+  const extIndex = targetPath.lastIndexOf(".");
+  const hasExtension = extIndex > dirname(targetPath).length;
+  const stem = hasExtension ? targetPath.slice(0, extIndex) : targetPath;
+  const ext = hasExtension ? targetPath.slice(extIndex) : "";
+  let counter = 1;
+  while (existsSync(`${stem} (${counter})${ext}`)) {
+    counter += 1;
+  }
+  return `${stem} (${counter})${ext}`;
+}
+
+async function markExecutable(filePath: string): Promise<void> {
+  if (process.platform === "win32") {
+    return;
+  }
+  await chmod(filePath, 0o755);
+}
+
+async function extractArchive(archivePath: string, targetDir: string, archiveType: "tar.xz" | "zip"): Promise<void> {
+  await ensureDir(targetDir);
+
+  if (archiveType === "tar.xz") {
+    await runCommand("tar", ["-xf", archivePath, "-C", targetDir], targetDir, undefined, 60_000);
+    return;
+  }
+
+  if (process.platform === "win32") {
+    await runCommand(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        `Expand-Archive -LiteralPath '${archivePath.replace(/'/g, "''")}' -DestinationPath '${targetDir.replace(/'/g, "''")}' -Force`,
+      ],
+      targetDir,
+      undefined,
+      60_000
+    );
+    return;
+  }
+
+  if (process.platform === "darwin") {
+    await runCommand("ditto", ["-x", "-k", archivePath, targetDir], targetDir, undefined, 60_000);
+    return;
+  }
+
+  await runCommand("python3", ["-m", "zipfile", "-e", archivePath, targetDir], targetDir, undefined, 60_000);
+}
+
+async function runCommand(
+  command: string,
+  args: string[],
+  cwd?: string,
+  env?: Record<string, string | undefined>,
+  timeoutMs = 15_000
+): Promise<{ exitCode: number | null; stdout: string; stderr: string; cancelled: boolean }> {
+  return await new Promise((resolvePromise, rejectPromise) => {
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    let timedOut = false;
+
+    const child = spawn(command, args, {
+      cwd,
+      env: {
+        ...process.env,
+        ...Object.fromEntries(
+          Object.entries(env ?? {}).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+        ),
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+
+    const finish = (payload: { exitCode: number | null; stdout: string; stderr: string; cancelled: boolean }) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      resolvePromise(payload);
+    };
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    child.once("error", rejectPromise);
+    child.once("close", (code) => {
+      finish({ exitCode: code, stdout, stderr, cancelled: timedOut });
+    });
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, timeoutMs);
+  });
+}
+
+function normalizeToolStatus(toolId: string, data: Partial<RoomToolStatus>): RoomToolStatus {
+  return {
+    toolId,
+    installed: data.installed === true,
+    version: data.version ?? null,
+    binaryPath: data.binaryPath ?? null,
+    releaseTag: data.releaseTag ?? null,
+    releaseName: data.releaseName ?? null,
+    installDir: data.installDir ?? null,
+    companionPaths: data.companionPaths ?? {},
+    details: data.details ?? {},
+  };
+}
+
+class RoomToolService {
+  private activeJobs = new Map<string, ActiveJob>();
+
+  async handleCall(event: IpcMainInvokeEvent, request: RoomToolCallRequest): Promise<RoomToolCallResult> {
+    const roomId = normalizeRoomId(request?.roomId);
+    if (roomId === "") {
+      throw new Error("roomId is required for room-tools-call");
+    }
+
+    switch (request.operation) {
+      case "resolve-paths":
+        return await this.resolvePaths(request);
+      case "ensure-dir":
+        return await this.ensureDirPath(request);
+      case "delete-path":
+        return await this.deletePath(request);
+      case "download-file":
+        return await this.downloadFile(event, request);
+      case "tool-probe":
+        return await this.probeTool(request);
+      case "tool-check-for-updates":
+        return await this.checkForUpdates(request);
+      case "tool-install":
+        return await this.installTool(event, request, false);
+      case "tool-update":
+        return await this.installTool(event, request, true);
+      case "tool-run":
+        return await this.runTool(event, request);
+      default:
+        throw new Error(`Unsupported room-tools operation: ${String((request as { operation?: unknown }).operation)}`);
+    }
+  }
+
+  async cancel(request: RoomToolCancelRequest): Promise<RoomToolCancelResult> {
+    const roomId = normalizeRoomId(request?.roomId);
+    const jobId = asNonEmptyString(request?.jobId);
+    if (roomId === "" || jobId === null) {
+      throw new Error("roomId and jobId are required for room-tools-cancel");
+    }
+
+    const active = this.activeJobs.get(jobId);
+    if (active === undefined || active.roomId !== roomId) {
+      return {
+        success: true,
+        roomId,
+        jobId,
+        cancelled: false,
+        requestId: normalizeRequestId(request.requestId),
+      };
+    }
+
+    active.cancel();
+    this.activeJobs.delete(jobId);
+    return {
+      success: true,
+      roomId,
+      jobId,
+      cancelled: true,
+      requestId: normalizeRequestId(request.requestId),
+    };
+  }
+
+  private emitProgress(
+    event: IpcMainInvokeEvent,
+    payload: Omit<RoomToolProgressEvent, "timestamp">
+  ): void {
+    const nextPayload: RoomToolProgressEvent = {
+      ...payload,
+      timestamp: Date.now(),
+    };
+    event.sender.send(ROOM_TOOLS_PROGRESS_CHANNEL, nextPayload);
+  }
+
+  private async resolvePaths(request: Extract<RoomToolCallRequest, { operation: "resolve-paths" }>): Promise<RoomToolCallResult> {
+    const paths = resolveRuntimePaths(request.roomId);
+    await Promise.all([
+      ensureDir(paths.storageDir),
+      ensureDir(paths.projectsDir),
+      ensureDir(paths.packageToolsDir),
+      ensureDir(paths.toolRuntimeDir),
+    ]);
+    return {
+      success: true,
+      operation: request.operation,
+      requestId: normalizeRequestId(request.requestId),
+      paths,
+    };
+  }
+
+  private async ensureDirPath(
+    request: Extract<RoomToolCallRequest, { operation: "ensure-dir" }>
+  ): Promise<RoomToolCallResult> {
+    const targetPath = ensureAbsolutePath(request.targetPath);
+    ensureRoomManagedPath(request.roomId, targetPath);
+    await ensureDir(targetPath);
+    return {
+      success: true,
+      operation: request.operation,
+      requestId: normalizeRequestId(request.requestId),
+      ensuredPath: targetPath,
+    };
+  }
+
+  private async deletePath(request: Extract<RoomToolCallRequest, { operation: "delete-path" }>): Promise<RoomToolCallResult> {
+    const targetPath = ensureAbsolutePath(request.targetPath);
+    ensureRoomManagedPath(request.roomId, targetPath);
+    await rm(targetPath, { recursive: request.recursive === true, force: true });
+    return {
+      success: true,
+      operation: request.operation,
+      requestId: normalizeRequestId(request.requestId),
+      deletedPath: targetPath,
+    };
+  }
+
+  private async downloadFile(
+    event: IpcMainInvokeEvent,
+    request: {
+      operation: RoomToolCallRequest["operation"];
+      roomId: string;
+      requestId?: string | null;
+      jobId?: string | null;
+      url: string;
+      destinationPath: string;
+      overwrite?: boolean;
+      headers?: Record<string, string>;
+    }
+  ): Promise<RoomToolCallResult> {
+    return await this.downloadToPath(event, request, { enforceRoomManagedPath: true });
+  }
+
+  private async downloadToPath(
+    event: IpcMainInvokeEvent,
+    request: {
+      operation: RoomToolCallRequest["operation"];
+      roomId: string;
+      requestId?: string | null;
+      jobId?: string | null;
+      url: string;
+      destinationPath: string;
+      overwrite?: boolean;
+      headers?: Record<string, string>;
+    },
+    options: {
+      enforceRoomManagedPath: boolean;
+    }
+  ): Promise<RoomToolCallResult> {
+    const roomId = request.roomId;
+    const jobId = normalizeJobId(request.jobId, "room-download");
+    const requestId = normalizeRequestId(request.requestId);
+    const destinationPath = ensureAbsolutePath(request.destinationPath);
+    if (options.enforceRoomManagedPath === true) {
+      ensureRoomManagedPath(roomId, destinationPath);
+    }
+
+    const controller = new AbortController();
+    this.activeJobs.set(jobId, {
+      roomId,
+      jobId,
+      cancel: () => controller.abort(),
+    });
+
+    this.emitProgress(event, {
+      roomId,
+      operation: request.operation,
+      requestId,
+      jobId,
+      stage: "queued",
+      message: request.url,
+    });
+
+    try {
+      const response = await fetch(request.url, {
+        signal: controller.signal,
+        ...(request.headers !== undefined ? { headers: request.headers } : {}),
+      });
+      if (!response.ok || response.body === null) {
+        throw new Error(`Download failed (${response.status}) for ${request.url}`);
+      }
+
+      const targetPath = request.overwrite === true ? destinationPath : resolveUniquePath(destinationPath);
+      await ensureDir(dirname(targetPath));
+      const tempPath = `${targetPath}.part-${Date.now()}`;
+      const fileStream = createWriteStream(tempPath);
+      const totalBytes = Number(response.headers.get("content-length") ?? "0") || 0;
+      let writtenBytes = 0;
+      const reader = response.body.getReader();
+
+      this.emitProgress(event, {
+        roomId,
+        operation: request.operation,
+        requestId,
+        jobId,
+        stage: "running",
+        bytesReceived: 0,
+        ...(totalBytes > 0 ? { bytesTotal: totalBytes } : {}),
+        message: targetPath,
+      });
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        if (value !== undefined) {
+          writtenBytes += value.byteLength;
+          if (!fileStream.write(Buffer.from(value))) {
+            await new Promise((resolvePromise) => fileStream.once("drain", resolvePromise));
+          }
+          this.emitProgress(event, {
+            roomId,
+            operation: request.operation,
+            requestId,
+            jobId,
+            stage: "downloading",
+            bytesReceived: writtenBytes,
+            ...(totalBytes > 0 ? { bytesTotal: totalBytes } : {}),
+            ...(totalBytes > 0
+              ? { percent: Math.min(100, Math.round((writtenBytes / totalBytes) * 100)) }
+              : {}),
+          });
+        }
+      }
+
+      await new Promise<void>((resolvePromise, rejectPromise) => {
+        fileStream.end(() => resolvePromise());
+        fileStream.once("error", rejectPromise);
+      });
+
+      await rename(tempPath, targetPath);
+      this.emitProgress(event, {
+        roomId,
+        operation: request.operation,
+        requestId,
+        jobId,
+        stage: "completed",
+        bytesReceived: writtenBytes,
+        ...(totalBytes > 0 ? { bytesTotal: totalBytes } : {}),
+        percent: 100,
+        message: targetPath,
+      });
+
+      return {
+        success: true,
+        operation: request.operation,
+        requestId,
+        jobId,
+        download: {
+          url: request.url,
+          path: targetPath,
+          fileName: targetPath.split(/[\\/]/).pop() ?? "download",
+          bytesWritten: writtenBytes,
+          contentType: response.headers.get("content-type"),
+        },
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.emitProgress(event, {
+        roomId,
+        operation: request.operation,
+        requestId,
+        jobId,
+        stage: controller.signal.aborted ? "cancelled" : "failed",
+        message,
+      });
+      throw error;
+    } finally {
+      this.activeJobs.delete(jobId);
+    }
+  }
+
+  private async probeTool(
+    request: Extract<RoomToolCallRequest, { operation: "tool-probe" }>
+  ): Promise<RoomToolCallResult> {
+    const manifest = await this.loadToolchainManifest(request.roomId);
+    const resolved = this.resolveTool(manifest, request.toolId);
+    const paths = resolveRuntimePaths(request.roomId);
+    const installDir = join(paths.toolRuntimeDir, resolved.installDirName);
+    const binaryPath = join(installDir, resolved.asset.executableName);
+
+    if (!existsSync(binaryPath)) {
+      return {
+        success: true,
+        operation: request.operation,
+        requestId: normalizeRequestId(request.requestId),
+        tool: normalizeToolStatus(request.toolId, {
+          installed: false,
+          installDir,
+        }),
+      };
+    }
+
+    const probe = await runCommand(binaryPath, resolved.manifest.probe.args, installDir, undefined, 12_000);
+    const combinedOutput = `${probe.stdout}\n${probe.stderr}`;
+    const version = probe.exitCode === 0 ? findVersion(combinedOutput, resolved.manifest.probe.versionRegex) : null;
+
+    return {
+      success: true,
+      operation: request.operation,
+      requestId: normalizeRequestId(request.requestId),
+      tool: normalizeToolStatus(request.toolId, {
+        installed: probe.exitCode === 0,
+        version,
+        binaryPath,
+        installDir,
+        companionPaths: Object.fromEntries(
+          (resolved.asset.companionExecutables ?? [])
+            .map((name) => [name, join(installDir, name)] as const)
+            .filter((entry) => existsSync(entry[1]))
+        ),
+      }),
+    };
+  }
+
+  private async checkForUpdates(
+    request: Extract<RoomToolCallRequest, { operation: "tool-check-for-updates" }>
+  ): Promise<RoomToolCallResult> {
+    const manifest = await this.loadToolchainManifest(request.roomId);
+    const resolved = this.resolveTool(manifest, request.toolId);
+    const release = await this.resolveLatestToolRelease(resolved.manifest, resolved.asset);
+    const latestVersion = release.tag ?? release.name;
+    const installedReleaseTag = asNonEmptyString(request.installedReleaseTag);
+    const installedReleaseName = asNonEmptyString(request.installedReleaseName);
+    const installedVersion = asNonEmptyString(request.installedVersion);
+
+    let updateAvailable = true;
+    if (installedReleaseTag !== null && release.tag !== null) {
+      updateAvailable = installedReleaseTag !== release.tag;
+    } else if (installedReleaseName !== null && release.name !== null) {
+      updateAvailable = installedReleaseName !== release.name;
+    } else if (installedVersion !== null && latestVersion !== null) {
+      updateAvailable = compareLooseVersion(latestVersion, installedVersion) > 0;
+    }
+
+    const update: RoomToolUpdateCheck = {
+      toolId: request.toolId,
+      installedVersion,
+      latestVersion,
+      latestReleaseTag: release.tag,
+      latestReleaseName: release.name,
+      updateAvailable,
+      releaseUrl: release.releaseUrl,
+    };
+
+    return {
+      success: true,
+      operation: request.operation,
+      requestId: normalizeRequestId(request.requestId),
+      update,
+    };
+  }
+
+  private async installTool(
+    event: IpcMainInvokeEvent,
+    request: Extract<RoomToolCallRequest, { operation: "tool-install" | "tool-update" }>,
+    isUpdate: boolean
+  ): Promise<RoomToolCallResult> {
+    const requestId = normalizeRequestId(request.requestId);
+    const jobId = normalizeJobId(request.jobId, isUpdate ? "room-tool-update" : "room-tool-install");
+    const manifest = await this.loadToolchainManifest(request.roomId);
+    const resolved = this.resolveTool(manifest, request.toolId);
+    const paths = resolveRuntimePaths(request.roomId);
+    const installDir = join(paths.toolRuntimeDir, resolved.installDirName);
+    const tempRoot = await mkdtemp(join(tmpdir(), `hayalet-room-tool-${request.toolId}-`));
+    const downloadPath = join(tempRoot, resolved.releaseAssetNameHint);
+
+    this.activeJobs.set(jobId, {
+      roomId: request.roomId,
+      jobId,
+      cancel: () => {},
+    });
+
+    try {
+      const release = await this.resolveLatestToolRelease(resolved.manifest, resolved.asset);
+      this.emitProgress(event, {
+        roomId: request.roomId,
+        operation: request.operation,
+        requestId,
+        jobId,
+        toolId: request.toolId,
+        stage: "queued",
+        message: release.asset.name,
+      });
+
+      const downloadResult = await this.downloadReleaseAsset(
+        event,
+        request.roomId,
+        request.operation,
+        requestId,
+        jobId,
+        release.asset.browser_download_url,
+        downloadPath
+      );
+
+      await rm(installDir, { recursive: true, force: true });
+      await ensureDir(installDir);
+
+      if (resolved.asset.archive === "none") {
+        const binaryPath = join(installDir, resolved.asset.executableName);
+        await rename(downloadResult.path, binaryPath);
+        await markExecutable(binaryPath);
+      } else {
+        const extractDir = join(tempRoot, "extract");
+        this.emitProgress(event, {
+          roomId: request.roomId,
+          operation: request.operation,
+          requestId,
+          jobId,
+          toolId: request.toolId,
+          stage: "extracting",
+          message: resolved.asset.archive,
+        });
+        await extractArchive(downloadResult.path, extractDir, resolved.asset.archive);
+        const files = await collectFilesRecursive(extractDir);
+        const executables = [resolved.asset.executableName, ...(resolved.asset.companionExecutables ?? [])];
+
+        for (const executableName of executables) {
+          const sourcePath =
+            files.find((filePath) => filePath.split(/[\\/]/).pop() === executableName) ?? null;
+          if (sourcePath === null) {
+            throw new Error(`Could not find ${executableName} inside ${release.asset.name}`);
+          }
+          const targetPath = join(installDir, executableName);
+          await writeFile(targetPath, await readFile(sourcePath));
+          await markExecutable(targetPath);
+        }
+      }
+
+      const probed = await this.probeTool({
+        operation: "tool-probe",
+        roomId: request.roomId,
+        requestId,
+        toolId: request.toolId,
+      });
+      const nextTool = normalizeToolStatus(request.toolId, {
+        ...(probed.tool ?? {}),
+        releaseTag: release.tag,
+        releaseName: release.name,
+        installDir,
+      });
+
+      this.emitProgress(event, {
+        roomId: request.roomId,
+        operation: request.operation,
+        requestId,
+        jobId,
+        toolId: request.toolId,
+        stage: "completed",
+        percent: 100,
+        message: nextTool.binaryPath ?? installDir,
+      });
+
+      return {
+        success: true,
+        operation: request.operation,
+        requestId,
+        jobId,
+        tool: nextTool,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.emitProgress(event, {
+        roomId: request.roomId,
+        operation: request.operation,
+        requestId,
+        jobId,
+        toolId: request.toolId,
+        stage: "failed",
+        message,
+      });
+      throw error;
+    } finally {
+      this.activeJobs.delete(jobId);
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  }
+
+  private async runTool(
+    event: IpcMainInvokeEvent,
+    request: Extract<RoomToolCallRequest, { operation: "tool-run" }>
+  ): Promise<RoomToolCallResult> {
+    const requestId = normalizeRequestId(request.requestId);
+    const jobId = normalizeJobId(request.jobId, "room-tool-run");
+    const manifest = await this.loadToolchainManifest(request.roomId);
+    const resolved = this.resolveTool(manifest, request.toolId);
+    const paths = resolveRuntimePaths(request.roomId);
+    const installDir = join(paths.toolRuntimeDir, resolved.installDirName);
+    const requestedExecutableName = asNonEmptyString(request.executableName);
+    const allowedExecutableNames = [
+      resolved.asset.executableName,
+      ...(resolved.asset.companionExecutables ?? []),
+    ];
+    const selectedExecutableName =
+      requestedExecutableName && allowedExecutableNames.includes(requestedExecutableName)
+        ? requestedExecutableName
+        : requestedExecutableName === null
+          ? resolved.asset.executableName
+          : null;
+
+    if (selectedExecutableName === null) {
+      throw new Error(
+        `${request.toolId} does not expose companion executable ${String(request.executableName)}`
+      );
+    }
+
+    const binaryPath = join(installDir, selectedExecutableName);
+
+    if (!existsSync(binaryPath)) {
+      throw new Error(
+        `${request.toolId}:${selectedExecutableName} is not installed for room ${request.roomId}`
+      );
+    }
+
+    const cwd = asNonEmptyString(request.cwd) ?? installDir;
+    ensureRoomManagedPath(request.roomId, cwd);
+
+    this.emitProgress(event, {
+      roomId: request.roomId,
+      operation: request.operation,
+      requestId,
+      jobId,
+      toolId: request.toolId,
+      stage: "queued",
+      message: binaryPath,
+    });
+
+    return await new Promise<RoomToolCallResult>((resolvePromise, rejectPromise) => {
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+      let cancelled = false;
+
+      const child = spawn(binaryPath, request.args ?? [], {
+        cwd,
+        env: {
+          ...process.env,
+          ...Object.fromEntries(
+            Object.entries(request.env ?? {}).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+          ),
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      });
+
+      const finish = (error?: Error, exitCode?: number | null): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        this.activeJobs.delete(jobId);
+
+        if (error) {
+          this.emitProgress(event, {
+            roomId: request.roomId,
+            operation: request.operation,
+            requestId,
+            jobId,
+            toolId: request.toolId,
+            stage: cancelled ? "cancelled" : "failed",
+            message: error.message,
+          });
+          rejectPromise(error);
+          return;
+        }
+
+        this.emitProgress(event, {
+          roomId: request.roomId,
+          operation: request.operation,
+          requestId,
+          jobId,
+          toolId: request.toolId,
+          stage: cancelled ? "cancelled" : "completed",
+          message: binaryPath,
+          exitCode: exitCode ?? null,
+        });
+
+        resolvePromise({
+          success: true,
+          operation: request.operation,
+          requestId,
+          jobId,
+          run: {
+            toolId: request.toolId,
+            binaryPath,
+            exitCode: exitCode ?? null,
+            cancelled,
+            stdout,
+            stderr,
+          },
+        });
+      };
+
+      this.activeJobs.set(jobId, {
+        roomId: request.roomId,
+        jobId,
+        cancel: () => {
+          cancelled = true;
+          child.kill("SIGKILL");
+        },
+      });
+
+      this.emitProgress(event, {
+        roomId: request.roomId,
+        operation: request.operation,
+        requestId,
+        jobId,
+        toolId: request.toolId,
+        stage: "running",
+        message: (request.args ?? []).join(" "),
+      });
+
+      child.stdout.on("data", (chunk: Buffer) => {
+        const text = chunk.toString("utf8");
+        stdout += text;
+        this.emitProgress(event, {
+          roomId: request.roomId,
+          operation: request.operation,
+          requestId,
+          jobId,
+          toolId: request.toolId,
+          stage: "stdout",
+          chunk: text,
+        });
+      });
+
+      child.stderr.on("data", (chunk: Buffer) => {
+        const text = chunk.toString("utf8");
+        stderr += text;
+        this.emitProgress(event, {
+          roomId: request.roomId,
+          operation: request.operation,
+          requestId,
+          jobId,
+          toolId: request.toolId,
+          stage: "stderr",
+          chunk: text,
+        });
+      });
+
+      child.once("error", (error) => finish(error));
+      child.once("close", (code) => finish(undefined, code));
+
+      const timer = setTimeout(() => {
+        cancelled = true;
+        child.kill("SIGKILL");
+      }, Math.max(1_000, Number(request.timeoutMs) || 30 * 60_000));
+    });
+  }
+
+  private async loadToolchainManifest(roomId: string): Promise<ToolchainManifest> {
+    const paths = resolveRuntimePaths(roomId);
+    const manifestPath = join(paths.packageToolsDir, "toolchain.manifest.json");
+    if (!existsSync(manifestPath)) {
+      throw new Error(`Room toolchain manifest missing: ${manifestPath}`);
+    }
+    return await readJsonFile<ToolchainManifest>(manifestPath);
+  }
+
+  private resolveTool(manifest: ToolchainManifest, toolId: string): {
+    manifest: ToolManifest;
+    asset: ToolAssetSpec;
+    installDirName: string;
+    releaseAssetNameHint: string;
+  } {
+    const toolManifest = manifest.tools[toolId];
+    if (!toolManifest) {
+      throw new Error(`Tool ${toolId} is not declared in the room manifest`);
+    }
+
+    const platformKey = detectPlatformKey();
+    if (platformKey === null) {
+      throw new Error(`Unsupported platform ${process.platform}/${process.arch}`);
+    }
+
+    const asset = toolManifest.assets[platformKey];
+    if (!asset) {
+      throw new Error(`Tool ${toolId} does not support ${platformKey}`);
+    }
+
+    return {
+      manifest: toolManifest,
+      asset,
+      installDirName: toolManifest.installDirName ?? toolId,
+      releaseAssetNameHint:
+        asset.archive === "none"
+          ? asset.executableName
+          : `${toolId}.${asset.archive === "tar.xz" ? "tar.xz" : "zip"}`,
+    };
+  }
+
+  private async resolveLatestToolRelease(
+    manifest: ToolManifest,
+    asset: ToolAssetSpec
+  ): Promise<ToolReleaseInfo> {
+    const payload = await fetchGitHubRelease(manifest.releaseProvider);
+    const matcher = new RegExp(asset.assetMatch);
+    const releaseAsset = (payload.assets ?? []).find((candidate) => matcher.test(candidate.name));
+
+    if (!releaseAsset) {
+      throw new Error(
+        `No matching release asset found for ${manifest.displayName} (${asset.assetMatch})`
+      );
+    }
+
+    return {
+      tag: asNonEmptyString(payload.tag_name),
+      name: asNonEmptyString(payload.name),
+      releaseUrl: asNonEmptyString(payload.html_url) ?? manifest.releaseProvider.releaseUrl,
+      asset: releaseAsset,
+    };
+  }
+
+  private async downloadReleaseAsset(
+    event: IpcMainInvokeEvent,
+    roomId: string,
+    operation: Extract<RoomToolCallRequest, { operation: "tool-install" | "tool-update" }>["operation"],
+    requestId: string | null,
+    jobId: string,
+    url: string,
+    destinationPath: string
+  ): Promise<RoomFileDownloadResult> {
+    const result = await this.downloadToPath(
+      event,
+      {
+      operation,
+      roomId,
+      requestId,
+      jobId,
+      url,
+      destinationPath,
+      overwrite: true,
+      },
+      { enforceRoomManagedPath: false }
+    );
+    if (!result.download) {
+      throw new Error(`Room tool asset download failed for ${url}`);
+    }
+    return result.download;
+  }
+}
+
+export const roomToolService = new RoomToolService();
+
+void logger.logInternal(
+  LogCategory.SYSTEM,
+  LogLevel.DEBUG,
+  "roomToolService initialized"
+);

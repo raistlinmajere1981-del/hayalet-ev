@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "required": ["schemaVersion", "id", "slug", "name", "createdAt", "updatedAt", "source"],
+    "source": {
+      "required": ["kind", "mode", "status", "drafts"],
+      "optional": [
+        "storedPath",
+        "storedFileName",
+        "sourceUrl",
+        "mimeType",
+        "routeLabel",
+        "lastError",
+        "metadata",
+        "metadataError"
+      ],
+      "kinds": ["video", "audio", "image"],
+      "videoModes": ["youtube", "local", "url"],
+      "audioModes": ["local", "url"],
+      "imageModes": ["local", "url"],
+      "metadata": {
+        "optional": [
+          "durationSeconds",
+          "width",
+          "height",
+          "codec",
+          "videoCodec",
+          "audioCodec",
+          "formatName",
+          "bitRate",
+          "sizeBytes",
+          "streamCount",
+          "mimeType",
+          "extractedBy",
+          "extractedAt"
+        ]
+      }
+    }
+  },
+  "files": {
+    "projectMeta": "project.json",
+    "sourceDir": "source",
+    "derivedDir": "derived"
+  }
+}
