@@ -27,12 +27,44 @@ Each distribution command runs `npm run build:all` first, then invokes `electron
 
 ## Included runtime content
 
-The packaging config currently includes:
+Packaging now has two layers:
 
+- `app.asar` keeps the runtime-focused bundle used by Electron boot paths.
+- The release root also mirrors the GitHub workspace surface that packaged tools resolve against.
+
+## Release root mirror
+
+The release root for Windows and Linux now includes the tracked workspace surface below in
+addition to Electron's platform binaries:
+
+- `.rovo/**/*`
+- `AGENTS.md`
+- `PACKAGING.md`
+- `README.md`
+- `config/backup-scopes.json`
+- `config/rooms.json`
+- `data/protocols.json`
 - `dist/**/*`
+- `electron/**/*`
+- `ghost-agent/**/*`
 - `rooms/**/*`
-- `src/assets/**/*`
-- `.rovo/_metadata/**/*`
+- `scripts/**/*`
+- `shared/**/*`
+- `src/**/*`
+- `package.json`
+- `metadata.json`
+- `electron-builder.yml`
+- `eslint.config.cjs`
+- `knip.config.ts`
+- `tsconfig.electron.json`
+- `tsconfig.json`
+- `tsconfig.mcp.json`
+- `vite.config.js`
+- `.dependency-cruiser.cjs`
+- `.gitignore`
+- `.nvmrc`
+- `.prettierignore`
+- `.prettierrc`
 
 ## Native and external dependencies
 
