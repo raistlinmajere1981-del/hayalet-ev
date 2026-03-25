@@ -64,6 +64,7 @@
 }
 
 .entrance-scene__surface {
+  zoom: var(--scene-ui-relative-scale-factor, 1);
   border-radius: 0;
   border: 0;
   box-shadow: none;

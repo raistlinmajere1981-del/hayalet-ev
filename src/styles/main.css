@@ -27,6 +27,13 @@ body {
   background-attachment: fixed;
 }
 
+#app,
+.side-nav-overlay,
+.toast-container,
+.app-shell {
+  zoom: var(--app-ui-scale-factor, 1);
+}
+
 a {
   color: var(--color-accent);
   text-decoration: none;
@@ -764,6 +771,7 @@ body.is-scroll-locked {
   --settings-scene-hotspot-label-font-size: var(--scene-rem-0-72);
   --settings-scene-hotspot-label-letter-spacing: var(--scene-em-0-08);
   --settings-scene-hotspot-label-font-family: var(--font-scene-sans);
+  zoom: var(--scene-ui-relative-scale-factor, 1);
   position: relative;
   width: 100%;
   height: 100%;

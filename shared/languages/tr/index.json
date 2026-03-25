@@ -993,6 +993,7 @@
           "lg": "Büyük"
         }
       },
+      "appScaleLabel": "Uygulama ölçeği",
       "surfaceLabel": "Yüzey stili",
       "surface": {
         "options": {
@@ -1005,8 +1006,9 @@
       "contrastHint": "Yazı ve sınır ayrımını güçlendirir.",
       "scene": {
         "title": "Sahne temaları",
-        "hint": "Oda sahne tema paketini uygulama chrome temasından bağımsız olarak yönetin.",
+        "hint": "Oda sahne tema paketini ve oda görünüm ölçeğini uygulama chrome temasından bağımsız olarak yönetin.",
         "activeLabel": "Aktif sahne teması",
+        "scaleLabel": "Oda / sahne ölçeği",
         "selectedLabel": "Seçili sahne teması",
         "empty": "Henüz kullanılabilir sahne teması yok.",
         "source": {
@@ -1042,6 +1044,7 @@
           "bundleFilterName": "Sahne Tema Paketleri"
         },
         "toasts": {
+          "scaleError": "Sahne ölçeği güncellenemedi",
           "refreshError": "Sahne tema kütüphanesi yenilenemedi",
           "activateSuccess": "Sahne teması etkinleştirildi",
           "activateError": "Sahne teması etkinleştirilemedi",

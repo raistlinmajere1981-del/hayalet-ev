@@ -44,6 +44,7 @@
 }
 
 .analyze-scene__surface {
+  zoom: var(--scene-ui-relative-scale-factor, 1);
   --analyze-scene-hotspot-left: auto;
   --analyze-scene-hotspot-top: auto;
   --analyze-scene-hotspot-width: auto;

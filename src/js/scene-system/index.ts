@@ -7,6 +7,7 @@ export * from "./scene-loading-theme.js";
 export * from "./scene-theme-manager.js";
 export * from "./scene-theme-assets.js";
 export * from "./scene-theme-registry.js";
+export * from "./scene-ui-scale-manager.js";
 export type {
   SceneThemeRegistration,
   SceneThemeSourceKind,

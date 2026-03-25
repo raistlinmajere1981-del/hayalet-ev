@@ -6,6 +6,7 @@ import {
   getActiveSceneThemeId,
   getAvailableSceneThemes,
   getSceneThemeRegistration,
+  SceneUiScaleManager,
   SceneThemeManager,
   type SceneThemeRegistration,
   type SceneThemeSummary,
@@ -23,6 +24,7 @@ interface SceneThemePanelRefs {
   exportButton: HTMLButtonElement | null;
   applyButton: HTMLButtonElement | null;
   conflictSelect: HTMLSelectElement | null;
+  scaleSelect: HTMLSelectElement | null;
 }
 
 interface SceneThemePanelState {
@@ -31,6 +33,7 @@ interface SceneThemePanelState {
   activeThemeId: string;
   selectedThemeId: string | null;
   availableThemes: SceneThemeSummary[];
+  uiScale: number;
 }
 
 let initialized = false;
@@ -52,6 +55,7 @@ function getRefs(): SceneThemePanelRefs {
     conflictSelect: document.getElementById(
       "scene-theme-conflict-select"
     ) as HTMLSelectElement | null,
+    scaleSelect: document.getElementById("scene-ui-scale-select") as HTMLSelectElement | null,
   };
 }
 
@@ -199,6 +203,10 @@ function render(refs: SceneThemePanelRefs, state: SceneThemePanelState): void {
   refs.importButton?.toggleAttribute("disabled", state.isBusy);
   refs.refreshButton?.toggleAttribute("disabled", state.isBusy);
   refs.conflictSelect?.toggleAttribute("disabled", state.isBusy);
+  if (refs.scaleSelect !== null) {
+    refs.scaleSelect.value = String(state.uiScale);
+    refs.scaleSelect.toggleAttribute("disabled", state.isBusy);
+  }
   refs.exportButton?.toggleAttribute("disabled", !canExport);
   refs.applyButton?.toggleAttribute("disabled", !canApply);
 
@@ -239,7 +247,8 @@ export function setupSettingsThemePanel(): void {
     refs.refreshButton === null ||
     refs.exportButton === null ||
     refs.applyButton === null ||
-    refs.conflictSelect === null
+    refs.conflictSelect === null ||
+    refs.scaleSelect === null
   ) {
     return;
   }
@@ -250,6 +259,7 @@ export function setupSettingsThemePanel(): void {
     activeThemeId: getActiveSceneThemeId(),
     selectedThemeId: getActiveSceneThemeId(),
     availableThemes: getAvailableSceneThemes(),
+    uiScale: SceneUiScaleManager.getUiScale(),
   };
 
   const queueRefresh = async (): Promise<void> => {
@@ -313,6 +323,31 @@ export function setupSettingsThemePanel(): void {
 
   refs.refreshButton.addEventListener("click", () => {
     void queueRefresh();
+  });
+
+  refs.scaleSelect.addEventListener("change", () => {
+    void (async (): Promise<void> => {
+      const uiScale = Number.parseInt(refs.scaleSelect?.value ?? "", 10);
+      if (Number.isFinite(uiScale) !== true) {
+        return;
+      }
+
+      try {
+        const persisted = await SceneUiScaleManager.setUiScale(uiScale);
+        state.uiScale = SceneUiScaleManager.getUiScale();
+        render(refs, state);
+        if (!persisted) {
+          Toast.error(sceneThemeT("toasts.scaleError"));
+        }
+      } catch (error) {
+        state.uiScale = SceneUiScaleManager.getUiScale();
+        render(refs, state);
+        Toast.error(
+          sceneThemeT("toasts.scaleError"),
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    })();
   });
 
   refs.importButton.addEventListener("click", () => {
@@ -429,6 +464,13 @@ export function setupSettingsThemePanel(): void {
     state.activeThemeId = getActiveSceneThemeId();
     state.availableThemes = getAvailableSceneThemes();
     ensureSelectedThemeId(state);
+    if (state.isOpen) {
+      render(refs, state);
+    }
+  });
+
+  SceneUiScaleManager.onChange((uiScale) => {
+    state.uiScale = uiScale;
     if (state.isOpen) {
       render(refs, state);
     }

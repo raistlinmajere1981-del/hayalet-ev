@@ -21,7 +21,12 @@ import type {
   MailTransportAuthType,
   ThemeAppearanceSettings,
 } from "@shared/settings.js";
-import { ASSISTANT_ACCOUNTS_SETTINGS_KEY, ASSISTANT_SLOT_SETTINGS_KEY } from "@shared/settings.js";
+import {
+  ASSISTANT_ACCOUNTS_SETTINGS_KEY,
+  ASSISTANT_SLOT_SETTINGS_KEY,
+  DEFAULT_SCENE_APPEARANCE_SETTINGS,
+  normalizeUiScalePercent,
+} from "@shared/settings.js";
 import {
   buildRemoteEmailAccountId,
   extractUs1RemoteIdentityIdFromAccountId,
@@ -37,8 +42,6 @@ import {
   createDefaultRemoteUsers,
   createDefaultSettings,
 } from "@shared/settings-defaults.js";
-import { DEFAULT_SCENE_APPEARANCE_SETTINGS } from "@shared/settings.js";
-
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && v !== undefined && typeof v === "object" && !Array.isArray(v);
 }
@@ -60,9 +63,14 @@ function normalizeSceneAppearanceSettings(raw: unknown): Required<SceneAppearanc
     typeof activeThemeIdValue === "string" && activeThemeIdValue.trim() !== ""
       ? activeThemeIdValue.trim()
       : DEFAULT_SCENE_APPEARANCE_SETTINGS.activeThemeId;
+  const uiScale = normalizeUiScalePercent(
+    raw["uiScale"],
+    DEFAULT_SCENE_APPEARANCE_SETTINGS.uiScale
+  );
 
   return {
     activeThemeId,
+    uiScale,
   };
 }
 

@@ -38,6 +38,11 @@ export function buildInlineThemeSyncScript(
       document.documentElement.setAttribute("data-theme-scale", nextAppearance.textScale);
       document.documentElement.setAttribute("data-theme-surface", nextAppearance.surface);
       document.documentElement.setAttribute("data-theme-contrast", nextAppearance.contrast);
+      document.documentElement.setAttribute("data-app-ui-scale", String(nextAppearance.uiScale));
+      document.documentElement.style.setProperty(
+        "--app-ui-scale-factor",
+        String(nextAppearance.uiScale / 100)
+      );
       try {
         localStorage.setItem(
           ${JSON.stringify(THEME_CONFIG.appearanceStorageKey)},

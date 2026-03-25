@@ -1,5 +1,6 @@
 import {
   DEFAULT_THEME_APPEARANCE_SETTINGS,
+  normalizeUiScalePercent,
   type ThemeAppearanceSettings,
   type ThemeId,
   isThemeId,
@@ -54,12 +55,14 @@ export function normalizeThemeAppearance(
 
   const motion: unknown = next.motion;
   const textScale: unknown = next.textScale;
+  const uiScale: unknown = next.uiScale;
   const surface: unknown = next.surface;
   const contrast: unknown = next.contrast;
   next.motion =
     motion === "full" || motion === "reduced" || motion === "off" ? motion : defaults.motion;
   next.textScale =
     textScale === "sm" || textScale === "md" || textScale === "lg" ? textScale : defaults.textScale;
+  next.uiScale = normalizeUiScalePercent(uiScale, defaults.uiScale);
   next.surface =
     surface === "glass" || surface === "soft" || surface === "solid" ? surface : defaults.surface;
   next.contrast = contrast === "normal" || contrast === "high" ? contrast : defaults.contrast;
@@ -80,6 +83,7 @@ export function areThemeAppearanceSettingsEqual(
     left.nightStart === right.nightStart &&
     left.motion === right.motion &&
     left.textScale === right.textScale &&
+    left.uiScale === right.uiScale &&
     left.surface === right.surface &&
     left.contrast === right.contrast
   );

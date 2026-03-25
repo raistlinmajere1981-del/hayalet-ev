@@ -87,6 +87,7 @@ export function updateThemePanelUI(
   const textScaleSelect = document.getElementById(
     "theme-text-scale-select"
   ) as HTMLSelectElement | null;
+  const uiScaleSelect = document.getElementById("theme-ui-scale-select") as HTMLSelectElement | null;
   const surfaceSelect = document.getElementById("theme-surface-select") as HTMLSelectElement | null;
   const contrastToggle = document.getElementById(
     "theme-contrast-toggle"
@@ -102,6 +103,7 @@ export function updateThemePanelUI(
   if (nightStartInput) nightStartInput.value = appearance.nightStart;
   if (motionSelect) motionSelect.value = appearance.motion;
   if (textScaleSelect) textScaleSelect.value = appearance.textScale;
+  if (uiScaleSelect) uiScaleSelect.value = String(appearance.uiScale);
   if (surfaceSelect) surfaceSelect.value = appearance.surface;
   if (contrastToggle) contrastToggle.checked = appearance.contrast === "high";
 

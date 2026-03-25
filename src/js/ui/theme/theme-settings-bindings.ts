@@ -1,4 +1,8 @@
-import type { ThemeAppearanceSettings, ThemeId } from "@shared/settings.js";
+import {
+  isUiScalePercent,
+  type ThemeAppearanceSettings,
+  type ThemeId,
+} from "@shared/settings.js";
 
 export interface ThemeSettingsBindings {
   isValidTheme(theme: string): theme is ThemeId;
@@ -57,6 +61,7 @@ export function setupThemeSettingsPanelListeners(bindings: ThemeSettingsBindings
   const textScaleSelect = document.getElementById(
     "theme-text-scale-select"
   ) as HTMLSelectElement | null;
+  const uiScaleSelect = document.getElementById("theme-ui-scale-select") as HTMLSelectElement | null;
   const surfaceSelect = document.getElementById("theme-surface-select") as HTMLSelectElement | null;
   const contrastToggle = document.getElementById(
     "theme-contrast-toggle"
@@ -112,6 +117,13 @@ export function setupThemeSettingsPanelListeners(bindings: ThemeSettingsBindings
     const textScale = textScaleSelect.value;
     if (textScale === "sm" || textScale === "md" || textScale === "lg") {
       bindings.onUpdateAppearance({ textScale });
+    }
+  });
+
+  uiScaleSelect?.addEventListener("change", () => {
+    const uiScale = Number.parseInt(uiScaleSelect.value, 10);
+    if (isUiScalePercent(uiScale)) {
+      bindings.onUpdateAppearance({ uiScale });
     }
   });
 

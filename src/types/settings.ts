@@ -143,7 +143,31 @@ export type ThemeAppearanceMotion = "full" | "reduced" | "off";
 export type ThemeAppearanceTextScale = "sm" | "md" | "lg";
 export type ThemeAppearanceSurface = "glass" | "soft" | "solid";
 export type ThemeAppearanceContrast = "normal" | "high";
+export const UI_SCALE_OPTIONS = [85, 90, 95, 100, 105, 110] as const;
+export type UiScalePercent = (typeof UI_SCALE_OPTIONS)[number];
 export const DEFAULT_SCENE_THEME_ID = "castle";
+
+export function isUiScalePercent(value: unknown): value is UiScalePercent {
+  const numeric =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+
+  return Number.isFinite(numeric) && UI_SCALE_OPTIONS.includes(numeric as UiScalePercent);
+}
+
+export function normalizeUiScalePercent(
+  value: unknown,
+  fallback: UiScalePercent = 100
+): UiScalePercent {
+  if (!isUiScalePercent(value)) {
+    return fallback;
+  }
+
+  return (typeof value === "number" ? value : Number.parseInt(value, 10)) as UiScalePercent;
+}
 
 export interface ThemeAppearanceSettings {
   mode?: ThemeAppearanceMode;
@@ -154,6 +178,7 @@ export interface ThemeAppearanceSettings {
   nightStart?: string;
   motion?: ThemeAppearanceMotion;
   textScale?: ThemeAppearanceTextScale;
+  uiScale?: UiScalePercent;
   surface?: ThemeAppearanceSurface;
   contrast?: ThemeAppearanceContrast;
 }
@@ -167,16 +192,19 @@ export const DEFAULT_THEME_APPEARANCE_SETTINGS: Readonly<Required<ThemeAppearanc
   nightStart: "19:00",
   motion: "full",
   textScale: "md",
+  uiScale: 100,
   surface: "glass",
   contrast: "normal",
 };
 
 export interface SceneAppearanceSettings {
   activeThemeId?: string;
+  uiScale?: UiScalePercent;
 }
 
 export const DEFAULT_SCENE_APPEARANCE_SETTINGS: Readonly<Required<SceneAppearanceSettings>> = {
   activeThemeId: DEFAULT_SCENE_THEME_ID,
+  uiScale: 90,
 };
 
 export interface SceneSettings {

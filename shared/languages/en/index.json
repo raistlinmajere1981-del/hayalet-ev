@@ -993,6 +993,7 @@
           "lg": "Large"
         }
       },
+      "appScaleLabel": "App scale",
       "surfaceLabel": "Surface style",
       "surface": {
         "options": {
@@ -1001,60 +1002,62 @@
           "solid": "Solid"
         }
       },
-    "contrastLabel": "High contrast",
-    "contrastHint": "Boosts separation between text and borders.",
-    "scene": {
-      "title": "Scene themes",
-      "hint": "Manage the room-scene theme pack independently from the app chrome theme.",
-      "activeLabel": "Active scene theme",
-      "selectedLabel": "Selected scene theme",
-      "empty": "No scene themes are available yet.",
-      "source": {
-        "built-in": "Built-in",
-        "installed": "Installed",
-        "unavailable": "Unavailable"
-      },
-      "meta": {
-        "active": "{{source}} active"
-      },
-      "selection": {
-        "active": "The selected scene theme is already active. Source: {{source}}.",
-        "inactive": "The selected scene theme is ready to activate. Current active theme: {{active}}.",
-        "builtIn": "Bundled scene themes can be activated here. Current active theme: {{active}}."
-      },
-      "importBehaviorLabel": "When an imported theme id already exists",
-      "importBehavior": {
-        "options": {
-          "rename": "Install as a new id",
-          "reject": "Cancel import",
-          "replace": "Replace installed theme"
+      "contrastLabel": "High contrast",
+      "contrastHint": "Boosts separation between text and borders.",
+      "scene": {
+        "title": "Scene themes",
+        "hint": "Manage the room-scene theme pack and room/scene scale independently from the app chrome theme.",
+        "activeLabel": "Active scene theme",
+        "scaleLabel": "Room / scene scale",
+        "selectedLabel": "Selected scene theme",
+        "empty": "No scene themes are available yet.",
+        "source": {
+          "built-in": "Built-in",
+          "installed": "Installed",
+          "unavailable": "Unavailable"
+        },
+        "meta": {
+          "active": "{{source}} active"
+        },
+        "selection": {
+          "active": "The selected scene theme is already active. Source: {{source}}.",
+          "inactive": "The selected scene theme is ready to activate. Current active theme: {{active}}.",
+          "builtIn": "Bundled scene themes can be activated here. Current active theme: {{active}}."
+        },
+        "importBehaviorLabel": "When an imported theme id already exists",
+        "importBehavior": {
+          "options": {
+            "rename": "Install as a new id",
+            "reject": "Cancel import",
+            "replace": "Replace installed theme"
+          }
+        },
+        "actions": {
+          "import": "Import bundle",
+          "refresh": "Refresh library",
+          "export": "Export bundle",
+          "apply": "Activate selected"
+        },
+        "dialog": {
+          "bundleTitle": "Select a scene theme bundle",
+          "bundleButton": "Import",
+          "bundleFilterName": "Scene Theme Bundles"
+        },
+        "toasts": {
+          "scaleError": "Scene scale could not be updated",
+          "refreshError": "Scene theme library could not be refreshed",
+          "activateSuccess": "Scene theme activated",
+          "activateError": "Scene theme could not be activated",
+          "importUnavailable": "Scene theme import is unavailable",
+          "invalidBundleExtension": "Select a .hevtheme.json bundle file",
+          "importSuccess": "Scene theme bundle imported",
+          "importError": "Scene theme bundle import failed",
+          "exportUnavailable": "Scene theme export is unavailable",
+          "exportBuiltInUnavailable": "Built-in scene themes cannot be exported from this panel yet",
+          "exportSuccess": "Scene theme bundle exported",
+          "exportError": "Scene theme bundle export failed"
         }
-      },
-      "actions": {
-        "import": "Import bundle",
-        "refresh": "Refresh library",
-        "export": "Export bundle",
-        "apply": "Activate selected"
-      },
-      "dialog": {
-        "bundleTitle": "Select a scene theme bundle",
-        "bundleButton": "Import",
-        "bundleFilterName": "Scene Theme Bundles"
-      },
-      "toasts": {
-        "refreshError": "Scene theme library could not be refreshed",
-        "activateSuccess": "Scene theme activated",
-        "activateError": "Scene theme could not be activated",
-        "importUnavailable": "Scene theme import is unavailable",
-        "invalidBundleExtension": "Select a .hevtheme.json bundle file",
-        "importSuccess": "Scene theme bundle imported",
-        "importError": "Scene theme bundle import failed",
-        "exportUnavailable": "Scene theme export is unavailable",
-        "exportBuiltInUnavailable": "Built-in scene themes cannot be exported from this panel yet",
-        "exportSuccess": "Scene theme bundle exported",
-        "exportError": "Scene theme bundle export failed"
       }
-    }
   },
     "themes": {
       "obsidian": {

@@ -22,6 +22,7 @@
 }
 
 .assistant-scene__surface {
+  zoom: var(--scene-ui-relative-scale-factor, 1);
   --assistant-scene-character-left: 36%;
   --assistant-scene-character-bottom: 10%;
   --assistant-scene-character-depth: 1;

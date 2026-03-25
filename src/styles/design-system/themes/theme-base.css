@@ -55,6 +55,9 @@
   --scrollbar-track: var(--bg-surface);
   --scrollbar-thumb: var(--slate-600);
   --scrollbar-thumb-hover: var(--slate-500);
+  --app-ui-scale-factor: 1;
+  --scene-ui-scale-factor: 0.9;
+  --scene-ui-relative-scale-factor: 0.9;
 }
 
 :root[data-theme-scale="sm"] {

@@ -16,7 +16,7 @@ import { initAppOverlayHost } from "../ui/overlay-system.js";
 import { ThemeManager } from "../ui/theme/index.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import { loadSceneThemeAssetDraft } from "../scene-editor/scene-theme-asset-state.js";
-import { SceneThemeManager } from "../scene-system/index.js";
+import { SceneThemeManager, SceneUiScaleManager } from "../scene-system/index.js";
 import { syncInstalledSceneThemeRegistrationsFromElectron } from "../scene-system/scene-theme-installed-registry.js";
 
 import type { PageController } from "./types.js";
@@ -100,7 +100,9 @@ async function initApp(): Promise<void> {
     await SettingsManager.load();
     await syncInstalledSceneThemeRegistrationsFromElectron();
     SceneThemeManager.connectSettingsManager(SettingsManager);
+    SceneUiScaleManager.connectSettingsManager(SettingsManager);
     SceneThemeManager.init();
+    SceneUiScaleManager.init();
     await AppI18n.bootstrap(SettingsManager);
     bootstrapShellI18n();
     SplashScreen.setProgress(12);

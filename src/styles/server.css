@@ -22,6 +22,7 @@
 }
 
 .server-scene__surface {
+  zoom: var(--scene-ui-relative-scale-factor, 1);
   --server-scene-hotspot-left: auto;
   --server-scene-hotspot-top: auto;
   --server-scene-hotspot-width: auto;

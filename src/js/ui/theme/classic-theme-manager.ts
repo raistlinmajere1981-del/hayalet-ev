@@ -32,6 +32,7 @@ import {
   setupThemeDropdownListeners,
   setupThemeSettingsPanelListeners,
 } from "./theme-settings-bindings.js";
+import { applyAppUiScale } from "./ui-scale-state.js";
 import type {
   ApplyAppearanceOptions,
   ThemeChangeCallback,
@@ -95,6 +96,7 @@ function applyAppearanceAttributes(appearance: Required<ThemeAppearanceSettings>
   root.setAttribute("data-theme-scale", appearance.textScale);
   root.setAttribute("data-theme-surface", appearance.surface);
   root.setAttribute("data-theme-contrast", appearance.contrast);
+  applyAppUiScale(appearance.uiScale);
 }
 
 function parseDurationMs(value: string): number | null {
