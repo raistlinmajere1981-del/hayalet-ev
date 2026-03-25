@@ -105,6 +105,15 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   assert.match(uiSource, /shouldIgnoreCorrelatedPayload/);
   assert.match(uiSource, /getPreferredSourceCodec/);
   assert.match(uiSource, /formatBitRate/);
+  assert.match(uiSource, /scrollPositions:\s*\{\s*surface: 0,\s*overlay: 0,\s*\}/);
+  assert.match(uiSource, /function captureScrollState\(root\)/);
+  assert.match(uiSource, /function restoreScrollState\(root\)/);
+  assert.match(uiSource, /captureScrollState\(root\);/);
+  assert.match(uiSource, /restoreScrollState\(root\);/);
+  assert.match(uiSource, /surface\.scrollTop = state\.ui\.surfaceScrollResetPending \? 0 : state\.ui\.scrollPositions\.surface;/);
+  assert.match(uiSource, /overlayPanel\.scrollTop = state\.ui\.overlayScrollResetPending \? 0 : state\.ui\.scrollPositions\.overlay;/);
+  assert.match(uiSource, /requestSurfaceScrollReset\(\);/);
+  assert.match(uiSource, /requestOverlayScrollReset\(\);/);
 });
 
 test("laboratory host orchestrates projects, source intake, edit rendering, and profile preflight through room tools", () => {

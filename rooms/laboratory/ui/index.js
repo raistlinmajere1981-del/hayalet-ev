@@ -82,6 +82,12 @@
         url: null,
         bars: [],
       },
+      scrollPositions: {
+        surface: 0,
+        overlay: 0,
+      },
+      surfaceScrollResetPending: false,
+      overlayScrollResetPending: false,
     },
   };
 
@@ -376,7 +382,11 @@
     if (STAGE_ORDER.includes(stageId) === false) {
       return;
     }
+    if (state.activeStage === stageId) {
+      return;
+    }
     state.activeStage = stageId;
+    requestSurfaceScrollReset();
     render();
   }
 
@@ -389,6 +399,42 @@
   function setRange(edge, value) {
     void edge;
     void value;
+  }
+
+  function requestSurfaceScrollReset() {
+    state.ui.scrollPositions.surface = 0;
+    state.ui.surfaceScrollResetPending = true;
+  }
+
+  function requestOverlayScrollReset() {
+    state.ui.scrollPositions.overlay = 0;
+    state.ui.overlayScrollResetPending = true;
+  }
+
+  function captureScrollState(root) {
+    const surface = root.querySelector(".lab-surface");
+    if (surface instanceof HTMLElement) {
+      state.ui.scrollPositions.surface = surface.scrollTop;
+    }
+
+    const overlayPanel = root.querySelector(".lab-overlay__panel");
+    if (overlayPanel instanceof HTMLElement) {
+      state.ui.scrollPositions.overlay = overlayPanel.scrollTop;
+    }
+  }
+
+  function restoreScrollState(root) {
+    const surface = root.querySelector(".lab-surface");
+    if (surface instanceof HTMLElement) {
+      surface.scrollTop = state.ui.surfaceScrollResetPending ? 0 : state.ui.scrollPositions.surface;
+    }
+    state.ui.surfaceScrollResetPending = false;
+
+    const overlayPanel = root.querySelector(".lab-overlay__panel");
+    if (overlayPanel instanceof HTMLElement) {
+      overlayPanel.scrollTop = state.ui.overlayScrollResetPending ? 0 : state.ui.scrollPositions.overlay;
+    }
+    state.ui.overlayScrollResetPending = false;
   }
 
   function formatTime(ms) {
@@ -1980,13 +2026,11 @@
   }
 
   function openReport() {
-    state.activeStage = "report";
-    render();
+    setStage("report");
   }
 
   function resetJourney() {
-    state.activeStage = "source";
-    render();
+    setStage("source");
   }
 
   function nextRequestId(action) {
@@ -2084,6 +2128,7 @@
 
   function openSettingsOverlay() {
     state.ui.settingsOpen = true;
+    requestOverlayScrollReset();
     render();
     sendSourceAction("tools-refresh");
   }
@@ -6046,6 +6091,8 @@
       return;
     }
 
+    captureScrollState(root);
+
     if (state.translations === null) {
       root.innerHTML = renderBootstrap();
       return;
@@ -6068,6 +6115,7 @@
       </main>
     `;
 
+    restoreScrollState(root);
     bindPreviewMetrics();
     bindAudioAnalysis();
   }
