@@ -2,7 +2,9 @@
   "title": "Laboratuvar",
   "subtitle": "Yakalama, temizleme, profil secimi, islem ve raporlama icin obsidian medya analizi odasi.",
   "features": {
-    "media-analysis": "Medya Analizi"
+    "media-analysis": "Medya Analizi",
+    "audio-analysis": "Ses Analizi",
+    "subtitle-analysis": "Altyazi Analizi"
   },
   "mediaAnalysis": {
     "eyebrow": "Obsidian Laboratuvar",
@@ -42,7 +44,7 @@
       "score": "Guven",
       "risk": "Risk bandi",
       "elevatedRisk": "Yuksek",
-      "dummyHint": "Kaynak, duzenleme ve profil asamalari gercek calisir. Islem ve rapor hala oda-ici dummy durumda kalir."
+      "dummyHint": "Kaynak, duzenleme, profil, islem ve rapor artik oda-yonetimli durumdan calisir. Ses Analizi tarafinda ise bazi moduller bilincli olarak planli kalir."
     },
     "projects": {
       "eyebrow": "Proje Masasi",
@@ -62,33 +64,45 @@
       "closeAction": "Kapat",
       "installAction": "Kur",
       "updateAction": "Guncelle",
+      "manualCheckAction": "Kontrol Et",
+      "manualRefreshAction": "Probe Yenile",
       "versionLabel": "Kurulu Surum",
       "latestLabel": "Guncel",
       "pathLabel": "Binary Yolu",
       "busyHint": "Bu arac icin oda-yonetimli bir islem calisiyor.",
       "currentStageTitle": "Aktif asama araclari",
+      "noStageTools": "Bu asama icin ayrica yonetilen bir arac gerekmiyor.",
       "otherToolsTitle": "Diger oda araclari",
       "otherToolsSubtitle": "Asamaya komsu kurulumlar ayni overlay icinde acik kalir.",
       "stageSupportLabel": "Asama destegi",
-      "tools": {
-        "yt-dlp": "yt-dlp",
-        "ffmpeg": "FFmpeg",
-        "whisper.cpp": "Whisper.cpp"
-      },
+    "tools": {
+      "yt-dlp": "yt-dlp",
+      "ffmpeg": "FFmpeg",
+      "whisper.cpp": "Whisper.cpp",
+      "opensmile": "openSMILE",
+      "yamnet": "YAMNet",
+      "librosa": "librosa",
+      "demucs": "Demucs",
+      "essentia": "Essentia",
+      "pyaudioanalysis": "pyAudioAnalysis"
+    },
       "support": {
         "required": "Zorunlu",
         "optional": "Opsiyonel",
         "unsupported": "Desteklenmiyor"
       },
-      "status": {
-        "missing": "Eksik",
-        "installed": "Kurulu",
-        "updateAvailable": "Guncelleme var",
-        "ready": "Hazir",
-        "idle": "Bos",
-        "error": "Hata"
-      }
-    },
+    "status": {
+      "missing": "Eksik",
+      "installed": "Kurulu",
+      "updateAvailable": "Guncelleme var",
+      "manualSetup": "Elle kurulum gerekli",
+      "manualReady": "Sistem araci algilandi",
+      "ready": "Hazir",
+      "idle": "Bos",
+      "error": "Hata",
+      "planned": "Planli"
+    }
+  },
     "messages": {
       "project-create": "Yeni proje olusturuldu.",
       "project-select": "Projeye devam edildi.",
@@ -99,11 +113,27 @@
       "source-pick-local": "Yerel kaynak proje icine kopyalandi.",
       "source-download-url": "Dogrudan URL kaynagi proje icine indirildi.",
       "source-download-youtube": "YouTube kaynagi proje icine alindi.",
+      "subtitle-source-set-mode": "Altyazi kaynak modu guncellendi.",
+      "subtitle-source-update-drafts": "Altyazi kaynak filtreleri kaydedildi.",
+      "subtitle-source-pick-local": "Altyazi dosyasi proje icine kopyalandi.",
+      "subtitle-source-pick-folder": "Altyazi klasoru proje icine alindi.",
+      "subtitle-source-download-url": "Altyazi URL'si proje icine indirildi.",
+      "subtitle-source-discover-youtube": "YouTube altyazi adaylari yenilendi.",
+      "subtitle-source-download-youtube": "Secili YouTube altyazilari proje icine indirildi.",
+      "subtitle-source-toggle-discovery": "Altyazi aday secimi guncellendi.",
+      "subtitle-source-select-all-discovery": "Tum altyazi adaylari secildi.",
+      "subtitle-source-clear-discovery-selection": "Altyazi aday secimi temizlendi.",
+      "subtitle-source-select-entry": "Aktif altyazi girdisi guncellendi.",
+      "subtitle-source-toggle-selection": "Altyazi batch secimi guncellendi.",
       "tool-install": "Arac kurulumu tamamlandi.",
       "tool-update": "Arac guncellemesi tamamlandi.",
       "tools-refresh": "Arac durumu yenilendi.",
       "refresh": "Kaynak durumu yenilendi.",
       "edit-set-mode": "Duzenleme modu guncellendi.",
+      "subtitle-edit-apply-preset": "Altyazi temizleme preset'i uygulandi.",
+      "subtitle-edit-update-recipe": "Altyazi temizleme tarifi kaydedildi.",
+      "subtitle-edit-preview": "Altyazi temizleme onizlemesi olusturuldu.",
+      "subtitle-edit-apply": "Altyazi temizleme ciktisi olusturuldu.",
       "edit-apply-preset": "Duzenleme preset'i uygulandi.",
       "edit-update-recipe": "Duzenleme tarifi kaydedildi.",
       "edit-set-output": "Turetilmis cikti secildi.",
@@ -121,7 +151,13 @@
       "profile-run-preflight": "Profil preflight tamamlandi.",
       "profile-cancel-preflight": "Profil preflight iptal edildi.",
       "profile-model-install": "Transkript modeli kuruldu.",
-      "profile-model-remove": "Transkript modeli kaldirildi."
+      "profile-model-remove": "Transkript modeli kaldirildi.",
+      "process-run": "Yonetilen islem kosusu tamamlandi.",
+      "audio-process-run": "Ses analizi kosusu tamamlandi.",
+      "process-cancel": "Islem kosusu iptal edildi.",
+      "audio-process-cancel": "Ses analizi kosusu iptal edildi.",
+      "report-export": "Rapor disa aktarma tamamlandi.",
+      "audio-report-export": "Ses raporu disa aktarma tamamlandi."
     },
     "source": {
       "title": "Analiz kaynagini hazirla",
@@ -590,14 +626,14 @@
     },
     "process": {
       "title": "Asamali islemi izle",
-      "subtitle": "Oda her dummy analiz segmentinden gecarken sahte pipeline durumunu takip et.",
+      "subtitle": "Oda-yonetimli pipeline aktif hedef uzerinde ilerlerken her analiz modulunu takip et.",
       "summaryTitle": "Islem Ozeti",
-      "summaryHintActive": "Bu asama acik kaldigi surece dummy islem ilerlemeye devam eder.",
-      "summaryHintDone": "Asamali islem son kontrol noktasina ulasti ve rapor gorunumune gecebilir.",
-      "summaryStatusActive": "Dummy calisma aktif",
-      "summaryStatusDone": "Dummy calisma tamam",
+      "summaryHintActive": "Aktif kosu surerken moduller gercek artifact ve bulgu uretmeye devam eder.",
+      "summaryHintDone": "Kosunun son snapshot'i hazir; rapor gorunumunden ozet ve export gecmisini inceleyebilirsin.",
+      "summaryStatusActive": "Yonetilen kosu aktif",
+      "summaryStatusDone": "Yonetilen kosu hazir",
       "controls": {
-        "restart": "Simulasyonu Yeniden Baslat",
+        "restart": "Kosuyu Yeniden Baslat",
         "jumpReport": "Raporu Ac"
       },
       "steps": {
@@ -609,21 +645,452 @@
       }
     },
     "report": {
-      "title": "Asamali handoff'u incele",
-      "subtitle": "Bu son gorunum, tam islem asamasi calismis gibi davranmadan guncel profil sonucunu yansitir.",
-      "handoffTitle": "Profil Handoff Ozeti",
-      "stagedHint": "Bu gorunum yalnizca mevcut profil kosusunu yansitir. Nihai analiz ve gercek karar sonraki asamalara aittir.",
+      "title": "Yonetilen raporu incele",
+      "subtitle": "Bu gorunum aktif hedef icin uretilen son islem sonucunu, bulgulari ve disa aktarma gecmisini toplar.",
+      "handoffTitle": "Rapor Handoff Ozeti",
+      "stagedHint": "Bu rapor kanit-odakli kalir: olculen, turetilen ve sezgisel bulgular birbirinden acikca ayrilir.",
       "overviewTitle": "Rapor Ozeti",
       "signalTitle": "Risk Isaretleri",
       "findingsTitle": "Oncelikli Bulgular",
       "sideTitle": "Analiz Detayi",
-      "emptyFindings": "Henuz hazir profil isareti yok.",
-      "emptyBody": "Once profil preflight calistir; sonra bu asamali handoff gorunumu en guclu bulgulari gosterecek.",
-      "exportQueued": "Asamali handoff export'u siraya alindi.",
+      "emptyFindings": "Henuz hazir rapor bulgusu yok.",
+      "emptyBody": "Once islem asamasini calistir; sonra bu rapor gorunumu en guclu bulgulari ve artifact'leri gosterecek.",
+      "exportQueued": "Rapor disa aktarma siraya alindi.",
       "actions": {
         "restart": "Yeni Calisma Baslat",
-        "export": "Handoff Notlarini Disa Aktar"
+        "export": "Raporu Disa Aktar"
       }
+    }
+  },
+  "audioAnalysis": {
+    "stageNav": {
+      "previous": "Onceki",
+      "next": "Sonraki"
+    },
+    "stages": {
+      "source": "Ses Kaynagi",
+      "edit": "Sinyal Hazirligi",
+      "profile": "Ses Profili",
+      "process": "Calistir",
+      "report": "Ses Raporu"
+    },
+    "shared": {
+      "dummyHint": "Ses Analizi, Medya Analizi ile ayni oda-yerel araclari ve settings overlay'i paylasir. Uygulanan moduller canli calisir; daha derin moduller ise acikca planli olarak isaretlenir.",
+      "toolingEyebrow": "Ortak Arac Odasi",
+      "toolingTitle": "Ayni arac akisi, ses odakli yuzey",
+      "toolingBody": "Arac kurulumlari, guncellemeler ve model hazirligi Medya Analizi ile ayni room-local registry uzerinden yonetilir."
+    },
+    "settings": {
+      "eyebrow": "Arac Odasi",
+      "title": "Ses Analizi Ayarlari",
+      "subtitle": "Bu feature, Medya Analizi ile ayni oda-yerel kurulum, guncelleme ve model akislarini kullanir.",
+      "currentStageTitle": "Aktif asama araclari",
+      "providersEyebrow": "Saglayici Hazirligi",
+      "providersTitle": "Ses saglayici paneli",
+      "providersSubtitle": "Descriptor-driven saglayici kartlari ayni room-local kurulum akisi ve gelecekteki v2 placeholder yollarla hizali kalir.",
+      "providerMeta": {
+        "type": "Saglayici tipi",
+        "install": "Kurulum yolu",
+        "modules": "Moduller",
+        "artifacts": "Beklenen artifact'ler",
+        "version": "Surum",
+        "model": "Model",
+        "platform": "Platform",
+        "fallbacks": "Fallback'ler"
+      },
+      "providerMetaValues": {
+        "supported": "Destekleniyor",
+        "limited": "Sinirli"
+      }
+    },
+    "source": {
+      "formatLabel": "Ses Kaynak Tipi",
+      "title": "Ses hedefini hazirla",
+      "subtitle": "Paylasilan laboratuvar arac zinciriyle incelenecek bir ses dosyasi ya da ses izi olan bir video yukle.",
+      "formats": {
+        "video": {
+          "title": "Video",
+          "subtitle": "Yerel dosya ya da URL icindeki ses izini incele."
+        },
+        "audio": {
+          "title": "Ses",
+          "subtitle": "Dogrudan bagimsiz ses dosyalariyla calis."
+        }
+      }
+    },
+    "edit": {
+      "title": "Sinyal yolunu hazirla",
+      "subtitle": "Ses odakli workspace'i trim, normalize ve incelemek icin ayni FFmpeg destekli hazirlik yuzeyini kullan."
+    },
+    "profile": {
+      "title": "Ses profilini ayarla",
+      "subtitle": "Sinyal sagligi, transkript, konusmaci ve planli ses modullerini ayni arac ve model registry ile yonet."
+    },
+    "process": {
+      "title": "Asamali ses masasini calistir",
+      "subtitle": "Aktif hedef uzerinde ilerleyen ortak job pipeline'ini izle; uygulanan ses modulleri canli, planli olanlar ise acikca etiketli kalir.",
+      "summaryTitle": "Ses Kosu Ozeti",
+      "controls": {
+        "restart": "Ses Masasini Calistir",
+        "jumpReport": "Ses Raporunu Ac"
+      }
+    },
+    "report": {
+      "title": "Ses handoff'unu incele",
+      "subtitle": "Laboratuvardan cikmadan guncel ses odakli bulgulari, artifact'leri, disa aktarma kayitlarini ve planli takip modullerini gor.",
+      "stagedHint": "Bu rapor ses odakli gorunumu durust tutar: uygulanan moduller gercektir, daha derin v2 modulleri ise acikca planli kalir.",
+      "overviewTitle": "Ses Raporu Ozeti",
+      "findingsTitle": "Ses Bulgulari",
+      "sideTitle": "Ses Detayi",
+      "emptyFindings": "Henuz hazir ses ozet karti yok.",
+      "emptyBody": "Once ses islem asamasini calistir; sonra bu rapor kayitli ses bulgularini ve modul sonucunu gosterecek.",
+      "moduleRollupEyebrow": "Modul Dagilimi",
+      "moduleRollupTitle": "Katalog sirali modul durumu",
+      "moduleRollupSubtitle": "Uygulanan, kapasiteye bagli ve planli ses aileleri ayni sirali rapor yuzeyinde gorunur kalir.",
+      "moduleMeta": {
+        "phase": "Faz",
+        "confidence": "Guven",
+        "providers": "Saglayicilar",
+        "signals": "Sinyaller",
+        "artifacts": "Artifact'ler",
+        "metrics": "Metrikler",
+        "blockers": "Engeller",
+        "warnings": "Uyarilar"
+      },
+      "actions": {
+        "restart": "Yeni Ses Kosusu Baslat",
+        "export": "Ses Raporunu Disa Aktar"
+      }
+    },
+    "catalog": {
+      "eyebrow": "Analiz Katalogu",
+      "title": "Ses modulu dagilimi",
+      "subtitle": "V1 gercek sinyal, artifact, transkript ve konusmaci yuzeyleri sunar. V2 modulleri de ayni akis icinde yerini simdiden alir.",
+      "status": {
+        "implemented": "Aktif",
+        "gated": "Kapasiteye bagli",
+        "planned": "Planli"
+      },
+      "modules": {
+        "signal-health": {
+          "title": "Sinyal sagligi",
+          "summary": "Paylasilan FFmpeg oda araci ile teknik ses seviyesi, sessizlik ve sureklilik kontrolleri."
+        },
+        "spectral-artifacts": {
+          "title": "Waveform ve spektrogram",
+          "summary": "Ses odakli gorsel artifact'ler ayni room-local kaynak ve arac durumu ile yan yana durur."
+        },
+        "transcription": {
+          "title": "Transkript",
+          "summary": "Opsiyonel transkript yakalama, mevcut Whisper.cpp kurulumunu ve model akisini yeniden kullanir."
+        },
+        "speaker-diarization": {
+          "title": "Konusmaci zaman cizgisi",
+          "summary": "Konusmaci zaman cizgisi artik host paketi hazir oldugunda tamamen local pyAudioAnalysis yolu ile calisir."
+        },
+        "prosody": {
+          "title": "Prosodi",
+          "summary": "Elle kurulan openSMILE araci hazir oldugunda konusma hizi, kontur ve tahmini duraksama metrikleri calisir."
+        },
+        "emotion": {
+          "title": "Duygu heuristikleri",
+          "summary": "Acikca etiketlenmis ve dikkatli heuristik katman artik prosodi sinyallerinden kaba bir arousal etiketi turetir."
+        },
+        "sound-events": {
+          "title": "Ses olaylari",
+          "summary": "Python bagimliliklari hazir oldugunda ortam ve olay siniflandirmasi artik manual YAMNet runtime'i ile calisir."
+        },
+        "source-separation": {
+          "title": "Kaynak ayristirma",
+          "summary": "Manual Demucs araci hazir oldugunda stem ve katman ayirma artik calisir ve izole stem'ler proje klasorune yazilir."
+        },
+        "music-rhythm-tonal": {
+          "title": "Muzik ve ritim",
+          "summary": "Manual librosa araci hazir oldugunda BPM, baskin pitch-class ve soundtrack odakli descriptor'lar artik calisir; Essentia ise daha derin fallback yolu olarak ayrilir."
+        }
+      }
+    },
+    "providers": {
+      "ffmpeg-signal": {
+        "title": "FFmpeg sinyal yuruyucusu",
+        "summary": "Ses seviyesi, sessizlik ve artifact uretimi icin ortak oda-yerel binary."
+      },
+      "whisper-transcript": {
+        "title": "Whisper transkript yuruyucusu",
+        "summary": "Transkript odakli gecisler icin ortak oda-yerel binary ve model yolu."
+      },
+      "speaker-timeline": {
+        "title": "Konusmaci zaman cizgisi adaptoru",
+        "summary": "Hesap gerektirmeyen ve tamamen local calisan manual pyAudioAnalysis tabanli diarization runtime'i."
+      },
+      "prosody-open-smile": {
+        "title": "Prosodi descriptor yuruyucusu",
+        "summary": "Konusma hizi, kontur ve duraksama odakli prosodi ozetleri icin elle kurulan openSMILE tabanli yuruyucu."
+      },
+      "emotion-heuristic": {
+        "title": "Duygu heuristik adaptoru",
+        "summary": "Acik guven ve uyari diliyle calisan, elle kurulan openSMILE tabanli heuristik katman."
+      },
+      "sound-event-classifier": {
+        "title": "Ses olayi siniflandiricisi",
+        "summary": "Desteklenen kurulumlarda genis AudioSet etiketleri icin manual YAMNet tabanli runtime."
+      },
+      "source-separation-runner": {
+        "title": "Kaynak ayristirma yuruyucusu",
+        "summary": "Desteklenen kurulumlarda vokal, ambience ve muzik katmanlari icin manual Demucs tabanli stem ayirma runtime'i."
+      },
+      "music-rhythm-engine": {
+        "title": "Muzik ve ritim motoru",
+        "summary": "BPM, beat yogunlugu ve baskin pitch-class ozetleri icin manual librosa tabanli ritim ve descriptor runtime'i."
+      },
+      "music-rhythm-essentia": {
+        "title": "Muzik ve tonal fallback",
+        "summary": "Daha derin tonal ve muzik descriptor genislemesi icin planli Essentia tabanli fallback yolu."
+      }
+    }
+  },
+  "subtitleAnalysis": {
+    "eyebrow": "Altyazi Tezgahi",
+    "operatorLabel": "Altyazi Operatoru",
+    "labels": {
+      "subtitle": "Altyazi"
+    },
+    "loading": {
+      "title": "Altyazi Analizi Yukleniyor",
+      "body": "Altyazi odakli descriptor dosyalari ve proje durumu hazirlaniyor."
+    },
+    "stages": {
+      "source": {
+        "title": "Altyazi Kaynagi",
+        "subtitle": "Local dosya, klasor, URL ya da YouTube toplu altyazi alim akisini yonet."
+      },
+      "edit": {
+        "title": "Altyazi Edit",
+        "subtitle": "Temizleme ve bicimlendirme presetleriyle altyazi metnini duzenle."
+      },
+      "profile": {
+        "title": "Altyazi Profil",
+        "subtitle": "Bu asama sonraki rollout icin saklandi."
+      },
+      "process": {
+        "title": "Altyazi Analizi",
+        "subtitle": "QC, okunabilirlik, zamanlama ve kelime sinyallerini toplu olarak calistir."
+      },
+      "report": {
+        "title": "Altyazi Raporu",
+        "subtitle": "Temel bulgulari ve batch ozetini rapor ciktilarina dondur."
+      }
+    },
+    "settings": {
+      "eyebrow": "Altyazi Arac Odasi",
+      "title": "Altyazi Analizi Ayarlari",
+      "subtitle": "Aktif asama icin altyazi ice aktarma, temizleme ve rapor araclarini incele."
+    },
+    "source": {
+      "modeLabel": "Altyazi girisi",
+      "intakeTitle": "Altyazilarin projeye nasil alinacagini sec",
+      "sourceKindLabel": "Kaynak ailesi",
+      "youtubeDisabled": "YouTube altyazi yakalama icin once yt-dlp hazir olmali.",
+      "modes": {
+        "localFile": "Tek Altyazi",
+        "localFolder": "Klasor",
+        "youtubeSingle": "YouTube Tek Video",
+        "youtubePlaylist": "YouTube Playlist",
+        "youtubeChannel": "YouTube Kanal"
+      },
+      "summary": {
+        "eyebrow": "Kaynak Ozet",
+        "emptyTitle": "Altyazi secilmedi",
+        "activeSubtitle": "Aktif altyazi girisi ve secili batch durumu.",
+        "prepareHint": "Source asamasindan bir altyazi girisi hazirla.",
+        "labels": {
+          "workspaceMode": "Calisma modu",
+          "selectedEntries": "Secili giris",
+          "discoveryCandidates": "Kesif adayi",
+          "format": "Format",
+          "language": "Dil",
+          "published": "Yayin",
+          "discovery": "Kesif",
+          "status": "Durum"
+        }
+      },
+      "fields": {
+        "subtitleUrl": "Altyazi URL",
+        "youtubeUrl": "YouTube URL",
+        "subtitleMode": "Altyazi modu",
+        "languageFilter": "Dil filtresi",
+        "publishedAfter": "Yayin tarihi baslangic",
+        "publishedBefore": "Yayin tarihi bitis",
+        "weekdays": "Haftanin gunleri",
+        "durationMin": "Min sure sn",
+        "durationMax": "Max sure sn",
+        "shorts": "Shorts",
+        "liveStatus": "Canli durumu",
+        "titleInclude": "Baslik dahil",
+        "titleExclude": "Baslik haric",
+        "playlistItems": "Playlist araligi",
+        "limitCount": "Max video"
+      },
+      "options": {
+        "subtitleMode": {
+          "manual": "Manual",
+          "auto": "Otomatik",
+          "both": "Ikisi de"
+        },
+        "shorts": {
+          "all": "Tum",
+          "only": "Sadece shorts",
+          "exclude": "Shorts haric"
+        },
+        "liveStatus": {
+          "all": "Tum yuklemeler",
+          "excludeLive": "Canli haric",
+          "onlyLive": "Sadece canli"
+        }
+      },
+      "placeholders": {
+        "subtitleUrl": "https://example.com/file.vtt",
+        "youtubeUrl": "Kanal, playlist ya da video linki",
+        "languageFilter": "tr,en ya da all",
+        "weekdays": "mon wed fri",
+        "titleInclude": "roportaj, ozet",
+        "titleExclude": "teaser, shorts",
+        "playlistItems": "1-10 gibi"
+      },
+      "actions": {
+        "pickLocal": "Tek altyazi sec",
+        "pickFolder": "Klasor sec",
+        "downloadUrl": "URL indir",
+        "discoverYoutube": "Adaylari kesfet",
+        "downloadSelected": "Secili altyazilari indir"
+      },
+      "discovery": {
+        "eyebrow": "YouTube Kesfi",
+        "title": "Aday Tablosu",
+        "subtitle": "Filtreye uyan videolari once inceleyip sonra secili altyazilari indirebilirsin.",
+        "selectionHint": "{count} secili aday indirilmeye hazir.",
+        "labels": {
+          "status": "Durum",
+          "totalCandidates": "Toplam aday",
+          "matched": "Eslesen",
+          "selected": "Secili"
+        },
+        "headers": {
+          "select": "Sec",
+          "title": "Baslik",
+          "published": "Yayin",
+          "duration": "Sure",
+          "languages": "Dil",
+          "live": "Canli"
+        },
+        "actions": {
+          "selectAll": "Tumunu sec",
+          "clearSelection": "Secimi temizle",
+          "select": "Sec",
+          "remove": "Cikar"
+        },
+        "empty": "YouTube modunda aday tablosunu doldurmak icin kesif calistir."
+      },
+      "entries": {
+        "eyebrow": "Girisler",
+        "title": "Altyazi Listesi",
+        "empty": "Henuz altyazi girisi yok.",
+        "actions": {
+          "makeActive": "Aktif yap",
+          "removeFromBatch": "Batchten cikar",
+          "addToBatch": "Batche ekle"
+        }
+      }
+    },
+    "edit": {
+      "workspaceTitle": "Altyazi Temizleme Alani",
+      "workspaceHint": "Bir altyazi kaydini incele, temizleme kurallarini onizle ve normalize cikti olustur.",
+      "emptySelection": "Edit asamasi icin once bir altyazi girisi sec.",
+      "jobs": {
+        "preview": "Temizleme Onizlemesi",
+        "apply": "Temizleme Uygula",
+        "default": "Altyazi Duzenleme"
+      },
+      "preset": {
+        "eyebrow": "Preset",
+        "title": "Temizleme Profili"
+      },
+      "workspace": {
+        "emptyTitle": "Altyazi secilmedi",
+        "previewEmpty": "Preview icin bir preset secip onizleme calistir.",
+        "labels": {
+          "cues": "Cue",
+          "lines": "Satir",
+          "maxLine": "Max satir",
+          "output": "Cikti"
+        }
+      },
+      "controls": {
+        "eyebrow": "Temizleme Ayarlari",
+        "title": "Satir ve metin islemleri",
+        "labels": {
+          "maxChars": "Max karakter"
+        },
+        "toggles": {
+          "trimWhitespace": "Bosluk temizle",
+          "collapseBlankLines": "Bos satirlari daralt",
+          "normalizeQuotes": "Tirnak normalize et",
+          "stripHtml": "HTML etiketlerini sil",
+          "removeMusicTags": "Muzik etiketlerini sil",
+          "mergeShortCues": "Kisa satirlari birlestir",
+          "splitLongLines": "Uzun satirlari bol"
+        }
+      },
+      "actions": {
+        "eyebrow": "Aksiyonlar",
+        "title": "Preview ve cikti",
+        "preview": "Onizleme uret",
+        "apply": "Temizlemeyi uygula"
+      },
+      "outputs": {
+        "eyebrow": "Ciktilar",
+        "title": "Temizlenmis dosyalar",
+        "empty": "Henuz cikti yok.",
+        "labels": {
+          "cues": "Cue"
+        }
+      },
+      "summary": {
+        "eyebrow": "Ozet",
+        "labels": {
+          "previewStatus": "Preview durumu",
+          "changed": "Degisti",
+          "sourceCues": "Kaynak cue",
+          "outputCues": "Cikti cue",
+          "maxLine": "Max satir"
+        },
+        "values": {
+          "yes": "Evet",
+          "no": "Hayir"
+        }
+      },
+      "fields": {
+        "outputFormat": "Cikti formati"
+      },
+      "outputFormats": {
+        "source": "Kaynak formati"
+      }
+    },
+    "process": {
+      "subtitle": "Aktif kayit ya da secili workspace uzerinde altyazi QC ve ozet analizlerini calistir.",
+      "catalog": {
+        "eyebrow": "Analiz Plani",
+        "title": "Ilk Modul Seti",
+        "subtitle": "QC, okunabilirlik, zamanlama ve batch ozet modulleri burada gorunur."
+      },
+      "providers": {
+        "eyebrow": "Saglayicilar",
+        "title": "Calisma Katmani",
+        "emptyModules": "Modul bagli degil"
+      }
+    },
+    "report": {
+      "subtitle": "Odadan cikmadan altyazi bulgularini, okunabilirlik metriklerini ve export gecmisini gor."
     }
   }
 }

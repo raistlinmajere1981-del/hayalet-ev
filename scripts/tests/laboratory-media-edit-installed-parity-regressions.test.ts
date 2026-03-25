@@ -15,6 +15,16 @@ const textParityFiles = [
   "tools/toolchain.manifest.json",
   "tools/edit-presets.json",
   "tools/edit-capabilities.json",
+  "tools/audio-analysis-catalog.json",
+  "tools/audio-analysis-capabilities.json",
+  "tools/audio-analysis-presets.json",
+  "tools/audio-analysis-providers.json",
+  "tools/subtitle-source-presets.json",
+  "tools/subtitle-youtube.form.json",
+  "tools/subtitle-edit-presets.json",
+  "tools/subtitle-analysis-catalog.json",
+  "tools/subtitle-analysis-capabilities.json",
+  "tools/subtitle-analysis-providers.json",
   "tools/yt-dlp.form.json",
 ];
 

@@ -211,6 +211,16 @@ test("scene pages enable clickable labels and shared clickable classes", () => {
   assert.match(entranceCssSource, /\.entrance-scene \.entrance-scene__character-head,[\s\S]*pointer-events: auto;/);
 });
 
+test("installed laboratory manifest exposes subtitle-analysis hotspot ids for scene debug visibility", () => {
+  const manifest = JSON.parse(readFileSync("data/rooms/laboratory/manifest.json", "utf8"));
+  const subtitleFeature = Array.isArray(manifest.features)
+    ? manifest.features.find((feature) => feature.id === "subtitle-analysis")
+    : null;
+
+  assert.equal(subtitleFeature?.scene?.hotspot?.id, "laboratory-subtitle-analysis");
+  assert.equal(subtitleFeature?.scene?.view?.id, "subtitle-analysis-console");
+});
+
 test("entrance and analyze scene layers keep hidden views passive in debug mode", () => {
   const entranceHtmlSource = readFileSync("src/pages/entrance.html", "utf8");
   const analyzeCssSource = readFileSync("src/styles/analyze.css", "utf8");

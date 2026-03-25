@@ -1,13 +1,18 @@
 (function () {
   const ROOM_ID = "laboratory";
+  const SUBTITLE_FEATURE_ID = "subtitle-analysis";
+  const AUDIO_FEATURE_ID = "audio-analysis";
   const FEATURE_ID = "media-analysis";
   const STAGE_ORDER = ["source", "edit", "profile", "process", "report"];
   const SOURCE_FORMATS = ["video", "audio", "image"];
   const REGION_OPTIONS = ["containment", "corridor", "archive"];
-  const PROCESS_STEPS = ["intake", "cleanup", "motion", "audio", "report"];
-  const PROCESS_THRESHOLDS = [0, 18, 39, 62, 84, 100];
   const TOTAL_DURATION_MS = 9370;
   const PREVIEW_IMAGE = "../assets/media-analysis-view.webp";
+  const FEATURE_NAMESPACES = {
+    [FEATURE_ID]: "mediaAnalysis",
+    [AUDIO_FEATURE_ID]: "audioAnalysis",
+    [SUBTITLE_FEATURE_ID]: "subtitleAnalysis",
+  };
 
   const BOOTSTRAP_COPY = {
     en: {
@@ -49,6 +54,9 @@
         "profile-run": 0,
         "profile-cancel": 0,
         "profile-model": 0,
+        "process-run": 0,
+        "process-cancel": 0,
+        "report-export": 0,
         tools: 0,
         misc: 0,
       },
@@ -56,9 +64,14 @@
       lastActionMessage: "",
       localDraftProjectId: null,
       localDrafts: createLocalDrafts(),
+      localSubtitleDraftProjectId: null,
+      localSubtitleDrafts: createSubtitleLocalDrafts(),
       localEditProjectId: null,
       localEditUpdatedAt: null,
       localEditDraft: null,
+      localSubtitleEditProjectId: null,
+      localSubtitleEditUpdatedAt: null,
+      localSubtitleEditDraft: null,
       previewMetrics: {
         url: null,
         duration: null,
@@ -69,10 +82,6 @@
         url: null,
         bars: [],
       },
-    },
-    process: {
-      progress: 54,
-      running: false,
     },
   };
 
@@ -86,6 +95,7 @@
         id: ROOM_ID,
         name: "Laboratory",
       },
+      featureId: FEATURE_ID,
       user: {
         nickname: "Operator",
       },
@@ -106,6 +116,16 @@
       profilePresets: {},
       profileCapabilities: {},
       profileModels: {},
+      subtitleSourcePresets: {},
+      subtitleYoutubeForm: {},
+      subtitleEditPresets: {},
+      subtitleAnalysisCatalog: {},
+      subtitleAnalysisCapabilities: {},
+      subtitleAnalysisProviders: {},
+      audioAnalysisCatalog: {},
+      audioAnalysisCapabilities: {},
+      audioAnalysisPresets: {},
+      audioAnalysisProviders: {},
       profileModelState: {
         models: {},
       },
@@ -127,6 +147,26 @@
       fileNameHint: "",
       youtubePreset: null,
       youtubeCustom: {},
+    };
+  }
+
+  function createSubtitleLocalDrafts() {
+    return {
+      urlInput: "",
+      youtubeUrl: "",
+      subtitleMode: "manual",
+      subtitlesLang: "all",
+      publishedAfter: "",
+      publishedBefore: "",
+      weekdays: "",
+      durationMinSeconds: null,
+      durationMaxSeconds: null,
+      shortsMode: "all",
+      liveMode: "all",
+      titleInclude: "",
+      titleExclude: "",
+      playlistItems: "",
+      limitCount: null,
     };
   }
 
@@ -214,6 +254,15 @@
     const room = toRecord(source.room);
     const user = toRecord(source.user);
     const presentation = toRecord(source.presentation);
+    const activeFeature = toRecord(source.activeFeature);
+    const featureId =
+      (typeof activeFeature.id === "string" && activeFeature.id.trim() !== ""
+        ? activeFeature.id.trim()
+        : null) ||
+      (typeof source.featureId === "string" && source.featureId.trim() !== ""
+        ? source.featureId.trim()
+        : null) ||
+      FEATURE_ID;
 
     return {
       room: {
@@ -223,6 +272,7 @@
             ? room.name.trim()
             : "Laboratory",
       },
+      featureId: featureId,
       user: {
         nickname:
           typeof user.nickname === "string" && user.nickname.trim() !== ""
@@ -235,12 +285,87 @@
     };
   }
 
+  function getActiveFeatureId() {
+    return typeof state.context.featureId === "string" && state.context.featureId.trim() !== ""
+      ? state.context.featureId
+      : FEATURE_ID;
+  }
+
+  function isSubtitleAnalysisFeature() {
+    return getActiveFeatureId() === SUBTITLE_FEATURE_ID;
+  }
+
+  function isAudioAnalysisFeature() {
+    return getActiveFeatureId() === AUDIO_FEATURE_ID;
+  }
+
+  function getFeatureNamespace() {
+    return FEATURE_NAMESPACES[getActiveFeatureId()] || FEATURE_NAMESPACES[FEATURE_ID];
+  }
+
+  function featureText(path) {
+    const localized = readValue(state.translations, [getFeatureNamespace()].concat(path));
+    if (typeof localized === "string") {
+      return localized;
+    }
+    return text(["mediaAnalysis"].concat(path));
+  }
+
+  function getAvailableSourceFormats() {
+    if (isAudioAnalysisFeature()) {
+      const presets = getAudioAnalysisPresets();
+      const capabilities = getAudioAnalysisCapabilities();
+      const configuredFormats = Array.isArray(presets.allowedSourceKinds)
+        ? presets.allowedSourceKinds
+        : Array.isArray(capabilities.allowedSourceKinds)
+          ? capabilities.allowedSourceKinds
+          : [];
+      const filteredFormats = configuredFormats.filter(function (entry) {
+        return typeof entry === "string" && SOURCE_FORMATS.includes(entry);
+      });
+      return filteredFormats.length > 0 ? filteredFormats : ["audio", "video"];
+    }
+
+    return SOURCE_FORMATS.slice();
+  }
+
+  function getDefaultSourceKind() {
+    if (isAudioAnalysisFeature()) {
+      const configuredKind = getAudioAnalysisPresets().defaultSourceKind;
+      if (typeof configuredKind === "string" && getAvailableSourceFormats().includes(configuredKind)) {
+        return configuredKind;
+      }
+      return "audio";
+    }
+
+    return "video";
+  }
+
   function bootstrapText(key) {
     return (
       readValue(BOOTSTRAP_COPY[state.locale], [key]) ||
       readValue(BOOTSTRAP_COPY.en, [key]) ||
       key
     );
+  }
+
+  function subtitleCopy(trValue, enValue) {
+    return state.locale === "tr" ? trValue : enValue;
+  }
+
+  function subtitleText(path, trFallback, enFallback) {
+    const localized = readValue(state.translations, ["subtitleAnalysis"].concat(path));
+    if (typeof localized === "string") {
+      return localized;
+    }
+    return subtitleCopy(trFallback, enFallback);
+  }
+
+  function subtitleTemplate(path, replacements, trFallback, enFallback) {
+    const template = subtitleText(path, trFallback, enFallback);
+    return Object.keys(toRecord(replacements)).reduce(function (message, key) {
+      return message.replaceAll(`{${key}}`, String(toRecord(replacements)[key]));
+    }, template);
   }
 
   function getStageIndex(stageId) {
@@ -252,9 +377,6 @@
       return;
     }
     state.activeStage = stageId;
-    if (stageId === "process" && state.process.progress < 100) {
-      state.process.running = true;
-    }
     render();
   }
 
@@ -295,6 +417,28 @@
     return [minutes, remainingSeconds].map((item) => String(item).padStart(2, "0")).join(":");
   }
 
+  function getSubtitleMimeType(fileName) {
+    const normalized = typeof fileName === "string" ? fileName.toLowerCase() : "";
+    if (normalized.endsWith(".vtt")) {
+      return "text/vtt";
+    }
+    if (normalized.endsWith(".ass") || normalized.endsWith(".ssa")) {
+      return "text/x-ass";
+    }
+    return "application/x-subrip";
+  }
+
+  function formatStatusLabel(value) {
+    const token = typeof value === "string" ? value : "idle";
+    return token
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map(function (segment) {
+        return segment.charAt(0).toUpperCase() + segment.slice(1);
+      })
+      .join(" ");
+  }
+
   function getRangeTimes() {
     return { start: formatTime(0), end: formatTime(TOTAL_DURATION_MS) };
   }
@@ -312,21 +456,37 @@
       case "source-set-kind":
       case "source-set-mode":
       case "source-update-draft":
+      case "subtitle-source-set-mode":
+      case "subtitle-source-update-drafts":
       case "refresh":
         return "source-config";
       case "source-pick-local":
       case "source-download-url":
       case "source-download-youtube":
+      case "subtitle-source-pick-local":
+      case "subtitle-source-pick-folder":
+      case "subtitle-source-download-url":
+      case "subtitle-source-discover-youtube":
+      case "subtitle-source-download-youtube":
+      case "subtitle-source-toggle-discovery":
+      case "subtitle-source-select-all-discovery":
+      case "subtitle-source-clear-discovery-selection":
+      case "subtitle-source-select-entry":
+      case "subtitle-source-toggle-selection":
         return "source-acquire";
       case "edit-set-mode":
       case "edit-apply-preset":
       case "edit-update-recipe":
       case "edit-set-output":
       case "edit-set-handoff":
+      case "subtitle-edit-apply-preset":
+      case "subtitle-edit-update-recipe":
         return "edit-config";
       case "edit-preview":
+      case "subtitle-edit-preview":
         return "edit-preview";
       case "edit-apply":
+      case "subtitle-edit-apply":
         return "edit-apply";
       case "edit-cancel-preview":
         return "edit-preview-cancel";
@@ -345,6 +505,15 @@
       case "profile-model-install":
       case "profile-model-remove":
         return "profile-model";
+      case "process-run":
+      case "audio-process-run":
+        return "process-run";
+      case "process-cancel":
+      case "audio-process-cancel":
+        return "process-cancel";
+      case "report-export":
+      case "audio-report-export":
+        return "report-export";
       case "tool-install":
       case "tool-update":
       case "tools-refresh":
@@ -445,6 +614,56 @@
     return toRecord(getSourceSnapshot().profileModelState);
   }
 
+  function getSubtitleSourcePresets() {
+    return toRecord(getSourceSnapshot().subtitleSourcePresets);
+  }
+
+  function getSubtitleYoutubeForm() {
+    return toRecord(getSourceSnapshot().subtitleYoutubeForm);
+  }
+
+  function getSubtitleEditPresets() {
+    return toRecord(getSourceSnapshot().subtitleEditPresets);
+  }
+
+  function getSubtitleAnalysisCatalog() {
+    return toRecord(getSourceSnapshot().subtitleAnalysisCatalog);
+  }
+
+  function getSubtitleAnalysisCapabilities() {
+    return toRecord(getSourceSnapshot().subtitleAnalysisCapabilities);
+  }
+
+  function getSubtitleAnalysisProviders() {
+    return toRecord(getSourceSnapshot().subtitleAnalysisProviders);
+  }
+
+  function getAudioAnalysisCatalog() {
+    return toRecord(getSourceSnapshot().audioAnalysisCatalog);
+  }
+
+  function getAudioAnalysisCapabilities() {
+    return toRecord(getSourceSnapshot().audioAnalysisCapabilities);
+  }
+
+  function getAudioAnalysisPresets() {
+    return toRecord(getSourceSnapshot().audioAnalysisPresets);
+  }
+
+  function getAudioAnalysisProviders() {
+    return toRecord(getSourceSnapshot().audioAnalysisProviders);
+  }
+
+  function getAudioAnalysisModules() {
+    const modules = getAudioAnalysisCatalog().modules;
+    return Array.isArray(modules) ? modules.map(toRecord) : [];
+  }
+
+  function getAudioAnalysisProviderEntries() {
+    const providers = getAudioAnalysisProviders().providers;
+    return Array.isArray(providers) ? providers.map(toRecord) : [];
+  }
+
   function getToolRegistry() {
     const toolRegistry = getSourceSnapshot().toolRegistry;
     return Array.isArray(toolRegistry) ? toolRegistry.map(toRecord) : [];
@@ -463,6 +682,177 @@
   function getProjectProfile() {
     const project = getActiveProject();
     return project ? toRecord(project.profile) : {};
+  }
+
+  function getProjectProcess() {
+    const project = getActiveProject();
+    return project ? toRecord(project.process) : {};
+  }
+
+  function getProjectReport() {
+    const project = getActiveProject();
+    return project ? toRecord(project.report) : {};
+  }
+
+  function getProjectAudioAnalysis() {
+    const project = getActiveProject();
+    return project ? toRecord(project.audioAnalysis) : {};
+  }
+
+  function getProjectSubtitleAnalysis() {
+    const project = getActiveProject();
+    return project ? toRecord(project.subtitleAnalysis) : {};
+  }
+
+  function getSubtitleWorkspace() {
+    return toRecord(getProjectSubtitleAnalysis().workspace);
+  }
+
+  function getSubtitleDiscoveryState() {
+    return toRecord(getProjectSubtitleAnalysis().discovery);
+  }
+
+  function getSubtitleDiscoveryItems() {
+    const items = getSubtitleDiscoveryState().items;
+    return Array.isArray(items) ? items.map(toRecord) : [];
+  }
+
+  function getSubtitleSelectedCandidateIds() {
+    const selectedCandidateIds = getSubtitleDiscoveryState().selectedCandidateIds;
+    return Array.isArray(selectedCandidateIds)
+      ? selectedCandidateIds.filter(function (entry) {
+          return typeof entry === "string" && entry.trim() !== "";
+        })
+      : [];
+  }
+
+  function getSubtitleEntries() {
+    const entries = getProjectSubtitleAnalysis().entries;
+    return Array.isArray(entries) ? entries.map(toRecord) : [];
+  }
+
+  function getActiveSubtitleEntry() {
+    const activeEntryId =
+      typeof getProjectSubtitleAnalysis().activeEntryId === "string"
+        ? getProjectSubtitleAnalysis().activeEntryId
+        : null;
+    return (
+      getSubtitleEntries().find(function (entry) {
+        return activeEntryId !== null && entry.id === activeEntryId;
+      }) || getSubtitleEntries()[0] || null
+    );
+  }
+
+  function getSubtitleSelectedEntryIds() {
+    const selectedEntryIds = toRecord(getSubtitleWorkspace().selection).selectedEntryIds;
+    return Array.isArray(selectedEntryIds)
+      ? selectedEntryIds.filter(function (entry) {
+          return typeof entry === "string" && entry.trim() !== "";
+        })
+      : [];
+  }
+
+  function getSubtitleEditState() {
+    return toRecord(getProjectSubtitleAnalysis().edit);
+  }
+
+  function getSubtitleEditPreview() {
+    return toRecord(getSubtitleEditState().preview);
+  }
+
+  function getSubtitleOutputs() {
+    const outputs = getSubtitleEditState().outputs;
+    return Array.isArray(outputs) ? outputs.map(toRecord) : [];
+  }
+
+  function getAudioAnalysisSourceState() {
+    return toRecord(getProjectAudioAnalysis().source);
+  }
+
+  function getAudioAnalysisCatalogState() {
+    return toRecord(getProjectAudioAnalysis().analysisCatalog);
+  }
+
+  function getAudioAnalysisProviderState() {
+    return toRecord(getProjectAudioAnalysis().providerState);
+  }
+
+  function getAudioAnalysisResultMap() {
+    return toRecord(getProjectAudioAnalysis().results);
+  }
+
+  function getAudioAnalysisOrderedResultEntries() {
+    const catalogModules = getAudioAnalysisModules().reduce(function (accumulator, entry) {
+      const moduleId = typeof entry.id === "string" && entry.id.trim() !== "" ? entry.id : null;
+      if (moduleId !== null) {
+        accumulator[moduleId] = entry;
+      }
+      return accumulator;
+    }, {});
+    const catalogState = getAudioAnalysisCatalogState();
+    const resultMap = getAudioAnalysisResultMap();
+    const orderedIds = Array.isArray(catalogState.orderedIds)
+      ? catalogState.orderedIds.filter(function (entry) {
+          return typeof entry === "string" && entry.trim() !== "";
+        })
+      : getAudioAnalysisModules().map(function (entry) {
+          return entry.id;
+        });
+    const extraIds = Object.keys(resultMap).filter(function (moduleId) {
+      return !orderedIds.includes(moduleId);
+    });
+
+    return orderedIds.concat(extraIds).map(function (moduleId) {
+      const descriptor = toRecord(catalogModules[moduleId]);
+      const result = toRecord(resultMap[moduleId]);
+      return {
+        moduleId: moduleId,
+        phase:
+          typeof result.phase === "string" && result.phase.trim() !== ""
+            ? result.phase
+            : typeof descriptor.phase === "string" && descriptor.phase.trim() !== ""
+              ? descriptor.phase
+              : "v1",
+        status:
+          typeof result.status === "string" && result.status.trim() !== ""
+            ? result.status
+            : typeof descriptor.status === "string" && descriptor.status.trim() !== ""
+              ? descriptor.status
+              : "planned",
+        titleKey:
+          typeof result.titleKey === "string" && result.titleKey.trim() !== ""
+            ? result.titleKey
+            : typeof descriptor.titleKey === "string"
+              ? descriptor.titleKey
+              : null,
+        summaryKey:
+          typeof result.summaryKey === "string" && result.summaryKey.trim() !== ""
+            ? result.summaryKey
+            : typeof descriptor.summaryKey === "string"
+              ? descriptor.summaryKey
+              : null,
+        summary: typeof result.summary === "string" ? result.summary : "",
+        providerIds: Array.isArray(result.providerIds)
+          ? result.providerIds
+          : Array.isArray(descriptor.providerIds)
+            ? descriptor.providerIds
+            : [],
+        blockers: Array.isArray(result.blockers) ? result.blockers : [],
+        warnings: Array.isArray(result.warnings) ? result.warnings : [],
+        metrics: Array.isArray(result.metrics) ? result.metrics.map(toRecord) : [],
+        confidence: typeof result.confidence === "string" ? result.confidence : null,
+        signals: Array.isArray(result.signals) ? result.signals.map(toRecord) : [],
+        artifacts: Array.isArray(result.artifacts) ? result.artifacts.map(toRecord) : [],
+      };
+    });
+  }
+
+  function getCurrentFeatureProcessRecord() {
+    return toRecord(toRecord(getProjectProcess().records)[getActiveFeatureId()]);
+  }
+
+  function getCurrentFeatureReportRecord() {
+    return toRecord(toRecord(getProjectReport().records)[getActiveFeatureId()]);
   }
 
   function getSourceMetadata() {
@@ -500,7 +890,11 @@
     return getToolRegistry()
       .filter(function (entry) {
         const supportLevel = toRecord(entry.stageSupport)[stageId];
-        return typeof supportLevel === "string" && supportLevel.trim() !== "";
+        return (
+          typeof supportLevel === "string" &&
+          supportLevel.trim() !== "" &&
+          supportLevel !== "unsupported"
+        );
       })
       .map(function (entry) {
         return entry.toolId;
@@ -599,7 +993,44 @@
     });
   }
 
+  function collectProcessStageJobs(projectJobs) {
+    return (Array.isArray(projectJobs) ? projectJobs : [])
+      .map(toRecord)
+      .filter(function (entry) {
+        return entry.featureStage === "process" || String(entry.action || "").includes("process");
+      })
+      .sort(function (left, right) {
+        return String(left.jobId || left.requestId || left.action || "").localeCompare(
+          String(right.jobId || right.requestId || right.action || "")
+        );
+      });
+  }
+
+  function collectReportStageJobs(projectJobs) {
+    return (Array.isArray(projectJobs) ? projectJobs : [])
+      .map(toRecord)
+      .filter(function (entry) {
+        return entry.featureStage === "report" || String(entry.action || "").includes("report");
+      })
+      .sort(function (left, right) {
+        return String(left.jobId || left.requestId || left.action || "").localeCompare(
+          String(right.jobId || right.requestId || right.action || "")
+        );
+      });
+  }
+
   function getEditJobLabel(job) {
+    if (isSubtitleAnalysisFeature()) {
+      switch (String(toRecord(job).action || "")) {
+        case "subtitle-edit-preview":
+          return subtitleText(["edit", "jobs", "preview"], "Temizleme Onizlemesi", "Cleanup Preview");
+        case "subtitle-edit-apply":
+          return subtitleText(["edit", "jobs", "apply"], "Temizleme Uygula", "Apply Cleanup");
+        default:
+          return subtitleText(["edit", "jobs", "default"], "Altyazi Duzenleme", "Subtitle Edit");
+      }
+    }
+
     switch (String(toRecord(job).action || "")) {
       case "edit-preview":
         return text(["mediaAnalysis", "edit", "actions", "preview"]);
@@ -611,6 +1042,50 @@
   }
 
   function getCurrentDrafts() {
+    if (isSubtitleAnalysisFeature()) {
+      const drafts = toRecord(getSubtitleWorkspace().drafts);
+
+      if (state.ui.localSubtitleDraftProjectId !== getSourceSnapshot().activeProjectId) {
+        state.ui.localSubtitleDraftProjectId = getSourceSnapshot().activeProjectId;
+        state.ui.localSubtitleDrafts = {
+          urlInput: typeof drafts.urlInput === "string" ? drafts.urlInput : "",
+          youtubeUrl: typeof drafts.youtubeUrl === "string" ? drafts.youtubeUrl : "",
+          subtitleMode:
+            typeof drafts.subtitleMode === "string" && drafts.subtitleMode.trim() !== ""
+              ? drafts.subtitleMode
+              : "manual",
+          subtitlesLang:
+            typeof drafts.subtitlesLang === "string" && drafts.subtitlesLang.trim() !== ""
+              ? drafts.subtitlesLang
+              : "all",
+          publishedAfter: typeof drafts.publishedAfter === "string" ? drafts.publishedAfter : "",
+          publishedBefore: typeof drafts.publishedBefore === "string" ? drafts.publishedBefore : "",
+          weekdays: typeof drafts.weekdays === "string" ? drafts.weekdays : "",
+          durationMinSeconds:
+            typeof drafts.durationMinSeconds === "number" ? drafts.durationMinSeconds : null,
+          durationMaxSeconds:
+            typeof drafts.durationMaxSeconds === "number" ? drafts.durationMaxSeconds : null,
+          shortsMode:
+            typeof drafts.shortsMode === "string" && drafts.shortsMode.trim() !== ""
+              ? drafts.shortsMode
+              : "all",
+          liveMode:
+            typeof drafts.liveMode === "string" && drafts.liveMode.trim() !== ""
+              ? drafts.liveMode
+              : "all",
+          titleInclude: typeof drafts.titleInclude === "string" ? drafts.titleInclude : "",
+          titleExclude: typeof drafts.titleExclude === "string" ? drafts.titleExclude : "",
+          playlistItems: typeof drafts.playlistItems === "string" ? drafts.playlistItems : "",
+          limitCount: typeof drafts.limitCount === "number" ? drafts.limitCount : null,
+        };
+      }
+
+      return {
+        ...drafts,
+        ...state.ui.localSubtitleDrafts,
+      };
+    }
+
     const source = getProjectSource();
     const drafts = toRecord(source.drafts);
 
@@ -639,6 +1114,26 @@
   }
 
   function getCurrentEditDraft() {
+    if (isSubtitleAnalysisFeature()) {
+      const project = getActiveProject();
+      const subtitleEdit = getSubtitleEditState();
+      const projectId = project ? project.id : null;
+      const projectUpdatedAt =
+        project && typeof project.updatedAt === "string" ? project.updatedAt : null;
+
+      if (
+        state.ui.localSubtitleEditProjectId !== projectId ||
+        state.ui.localSubtitleEditUpdatedAt !== projectUpdatedAt ||
+        state.ui.localSubtitleEditDraft === null
+      ) {
+        state.ui.localSubtitleEditProjectId = projectId;
+        state.ui.localSubtitleEditUpdatedAt = projectUpdatedAt;
+        state.ui.localSubtitleEditDraft = deepClone(subtitleEdit);
+      }
+
+      return toRecord(state.ui.localSubtitleEditDraft);
+    }
+
     const project = getActiveProject();
     const projectEdit = getProjectEdit();
     const projectId = project ? project.id : null;
@@ -684,6 +1179,13 @@
   }
 
   function syncLocalEditField(path, value) {
+    if (isSubtitleAnalysisFeature()) {
+      const draft = getCurrentEditDraft();
+      setNestedValue(draft, path, value);
+      state.ui.localSubtitleEditDraft = draft;
+      return;
+    }
+
     const draft = getCurrentEditDraft();
     setNestedValue(draft, path, value);
 
@@ -701,10 +1203,13 @@
   }
 
   function commitEditPatch(patch, action) {
-    return sendMediaAction(action || "edit-update-recipe", {
+    return sendMediaAction(
+      action || (isSubtitleAnalysisFeature() ? "subtitle-edit-update-recipe" : "edit-update-recipe"),
+      {
       patch: patch,
       featureStage: "edit",
-    });
+      }
+    );
   }
 
   function buildCurrentEditRecipePatch() {
@@ -724,7 +1229,7 @@
   function getCurrentSourceKind() {
     const source = getProjectSource();
     const kind = typeof source.kind === "string" ? source.kind : null;
-    return SOURCE_FORMATS.includes(kind) ? kind : "video";
+    return getAvailableSourceFormats().includes(kind) ? kind : getDefaultSourceKind();
   }
 
   function getCurrentSourceMode() {
@@ -736,7 +1241,13 @@
   }
 
   function getCurrentSourceLabel() {
-    return text(["mediaAnalysis", "source", "formats", getCurrentSourceKind(), "title"]);
+    if (isSubtitleAnalysisFeature()) {
+      const activeEntry = getActiveSubtitleEntry();
+      return activeEntry
+        ? activeEntry.fileName || activeEntry.id || "Subtitle"
+        : subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle");
+    }
+    return featureText(["source", "formats", getCurrentSourceKind(), "title"]);
   }
 
   function getCurrentEditMode() {
@@ -798,6 +1309,28 @@
   }
 
   function getEffectiveMediaAsset() {
+    if (isSubtitleAnalysisFeature()) {
+      const preview = getSubtitleEditPreview();
+      const activeEntry = getActiveSubtitleEntry();
+      const latestOutput = getSubtitleOutputs()[0] || null;
+
+      return {
+        kind: latestOutput ? "derived" : "subtitle",
+        label:
+          (latestOutput && (latestOutput.label || latestOutput.fileName || latestOutput.id)) ||
+          (activeEntry && (activeEntry.fileName || activeEntry.id)) ||
+          subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle"),
+        previewUrl: null,
+        path:
+          (latestOutput && (latestOutput.path || latestOutput.fileUrl)) ||
+          (activeEntry && (activeEntry.path || activeEntry.fileUrl)) ||
+          null,
+        mimeType: activeEntry ? getSubtitleMimeType(activeEntry.fileName || "") : null,
+        metadata: preview.summary || {},
+        artifacts: [],
+      };
+    }
+
     const project = getActiveProject();
     if (!project) {
       return {
@@ -975,6 +1508,95 @@
           return job.projectId === project.id;
         })
     );
+  }
+
+  function getProcessJobs() {
+    const project = getActiveProject();
+    if (!project) {
+      return [];
+    }
+    return collectProcessStageJobs(
+      getJobs()
+        .map(toRecord)
+        .filter(function (job) {
+          return job.projectId === project.id;
+        })
+    );
+  }
+
+  function getReportJobs() {
+    const project = getActiveProject();
+    if (!project) {
+      return [];
+    }
+    return collectReportStageJobs(
+      getJobs()
+        .map(toRecord)
+        .filter(function (job) {
+          return job.projectId === project.id;
+        })
+    );
+  }
+
+  function getProcessModules() {
+    const modules = getCurrentFeatureProcessRecord().modules;
+    return Array.isArray(modules) ? modules.map(toRecord) : [];
+  }
+
+  function getProcessFindings() {
+    const findings = getCurrentFeatureProcessRecord().findings;
+    return Array.isArray(findings) ? findings.map(toRecord) : [];
+  }
+
+  function getProcessArtifacts() {
+    const artifacts = getCurrentFeatureProcessRecord().artifacts;
+    return Array.isArray(artifacts) ? artifacts.map(toRecord) : [];
+  }
+
+  function getReportSummaryCards() {
+    const cards = getCurrentFeatureReportRecord().summaryCards;
+    return Array.isArray(cards) ? cards.map(toRecord) : [];
+  }
+
+  function getReportFindings() {
+    const findings = getCurrentFeatureReportRecord().findings;
+    return Array.isArray(findings) ? findings.map(toRecord) : [];
+  }
+
+  function getReportExports() {
+    const exportsList = getCurrentFeatureReportRecord().exports;
+    return Array.isArray(exportsList) ? exportsList.map(toRecord) : [];
+  }
+
+  function getCurrentFeatureTargetLabel() {
+    if (isAudioAnalysisFeature()) {
+      return (
+        (typeof getAudioAnalysisSourceState().targetLabel === "string" && getAudioAnalysisSourceState().targetLabel) ||
+        (typeof toRecord(getCurrentFeatureProcessRecord().targetSummary).label === "string" &&
+          toRecord(getCurrentFeatureProcessRecord().targetSummary).label) ||
+        getCurrentSourceLabel()
+      );
+    }
+    if (isSubtitleAnalysisFeature()) {
+      return (
+        toRecord(getCurrentFeatureProcessRecord().targetSummary).label ||
+        (getActiveSubtitleEntry() && (getActiveSubtitleEntry().fileName || getActiveSubtitleEntry().id)) ||
+        getCurrentSourceLabel()
+      );
+    }
+    return toRecord(getCurrentFeatureProcessRecord().targetSummary).label || getFocusLabel();
+  }
+
+  function getCurrentFeatureArtifactCount() {
+    if (isSubtitleAnalysisFeature()) {
+      return getProcessArtifacts().length;
+    }
+    if (!isAudioAnalysisFeature()) {
+      return getProcessArtifacts().length;
+    }
+    return getAudioAnalysisOrderedResultEntries().reduce(function (sum, entry) {
+      return sum + entry.artifacts.length;
+    }, 0);
   }
 
   function getProfileTargetOutputOptions() {
@@ -1175,7 +1797,7 @@
     if (typeof kind !== "string" || kind.trim() === "") {
       return "--";
     }
-    return text(["mediaAnalysis", "source", "formats", kind, "title"]) || kind;
+    return featureText(["source", "formats", kind, "title"]) || kind;
   }
 
   function getProfileLaneCardState(laneId) {
@@ -1283,23 +1905,18 @@
   }
 
   function restartProcess() {
-    state.process.running = true;
-    state.process.progress = 12;
-    state.activeStage = "process";
-    render();
+    sendMediaAction(isAudioAnalysisFeature() ? "audio-process-run" : "process-run", {
+      featureStage: "process",
+    });
   }
 
   function openReport() {
-    state.process.progress = 100;
-    state.process.running = false;
     state.activeStage = "report";
     render();
   }
 
   function resetJourney() {
     state.activeStage = "source";
-    state.process.progress = 54;
-    state.process.running = false;
     render();
   }
 
@@ -1320,7 +1937,10 @@
     window.roomAPI.sendEvent("media-action", {
       requestId: requestId,
       action: action,
-      payload: payload || {},
+      payload: {
+        featureId: getActiveFeatureId(),
+        ...(payload || {}),
+      },
     });
     return requestId;
   }
@@ -1330,6 +1950,10 @@
   }
 
   function syncDraftField(path, value) {
+    if (isSubtitleAnalysisFeature()) {
+      state.ui.localSubtitleDrafts[path] = value;
+      return;
+    }
     if (path === "youtubePreset") {
       state.ui.localDrafts.youtubePreset = value;
       return;
@@ -1343,6 +1967,26 @@
   }
 
   function buildCurrentDraftPayload() {
+    if (isSubtitleAnalysisFeature()) {
+      return {
+        urlInput: state.ui.localSubtitleDrafts.urlInput,
+        youtubeUrl: state.ui.localSubtitleDrafts.youtubeUrl,
+        subtitleMode: state.ui.localSubtitleDrafts.subtitleMode,
+        subtitlesLang: state.ui.localSubtitleDrafts.subtitlesLang,
+        publishedAfter: state.ui.localSubtitleDrafts.publishedAfter,
+        publishedBefore: state.ui.localSubtitleDrafts.publishedBefore,
+        weekdays: state.ui.localSubtitleDrafts.weekdays,
+        durationMinSeconds: state.ui.localSubtitleDrafts.durationMinSeconds,
+        durationMaxSeconds: state.ui.localSubtitleDrafts.durationMaxSeconds,
+        shortsMode: state.ui.localSubtitleDrafts.shortsMode,
+        liveMode: state.ui.localSubtitleDrafts.liveMode,
+        titleInclude: state.ui.localSubtitleDrafts.titleInclude,
+        titleExclude: state.ui.localSubtitleDrafts.titleExclude,
+        playlistItems: state.ui.localSubtitleDrafts.playlistItems,
+        limitCount: state.ui.localSubtitleDrafts.limitCount,
+      };
+    }
+
     return {
       urlInput: state.ui.localDrafts.urlInput,
       youtubeUrl: state.ui.localDrafts.youtubeUrl,
@@ -1356,10 +2000,15 @@
     const nextFields = {
       ...buildCurrentDraftPayload(),
       ...toRecord(extraFields),
-      youtubeCustom: {
-        ...toRecord(buildCurrentDraftPayload().youtubeCustom),
-        ...toRecord(toRecord(extraFields).youtubeCustom),
-      },
+    };
+    if (isSubtitleAnalysisFeature()) {
+      sendSourceAction("subtitle-source-update-drafts", { fields: nextFields });
+      return;
+    }
+
+    nextFields.youtubeCustom = {
+      ...toRecord(buildCurrentDraftPayload().youtubeCustom),
+      ...toRecord(toRecord(extraFields).youtubeCustom),
     };
     sendSourceAction("source-update-draft", { fields: nextFields });
   }
@@ -1408,7 +2057,7 @@
             data-action="nav-previous"
             ${currentIndex === 0 ? "disabled" : ""}
           >
-            ${escapeHtml(text(["mediaAnalysis", "stageNav", "previous"]))}
+            ${escapeHtml(featureText(["stageNav", "previous"]))}
           </button>
           <div class="lab-stage-rail__track" role="tablist" aria-label="Stages">
             ${STAGE_ORDER.map(function (stageId, index) {
@@ -1429,7 +2078,7 @@
                 >
                   <span class="lab-stage-pill__index">${String(index + 1)}</span>
                   <span class="lab-stage-pill__label">${escapeHtml(
-                    text(["mediaAnalysis", "stages", stageId])
+                    featureText(["stages", stageId])
                   )}</span>
                 </button>
               `;
@@ -1441,14 +2090,14 @@
             data-action="nav-next"
             ${currentIndex === STAGE_ORDER.length - 1 ? "disabled" : ""}
           >
-            ${escapeHtml(text(["mediaAnalysis", "stageNav", "next"]))}
+            ${escapeHtml(featureText(["stageNav", "next"]))}
           </button>
           <button
             class="lab-rail-icon"
             type="button"
             data-action="open-settings"
-            aria-label="${escapeHtml(text(["mediaAnalysis", "settings", "title"]))}"
-            title="${escapeHtml(text(["mediaAnalysis", "settings", "title"]))}"
+            aria-label="${escapeHtml(featureText(["settings", "title"]))}"
+            title="${escapeHtml(featureText(["settings", "title"]))}"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M10.4 2h3.2l.6 2.6a7.8 7.8 0 0 1 1.8.8L18.4 4l2.2 2.2-1.4 2.4c.3.6.6 1.2.8 1.8L22 11.2v3.2l-2.6.6a7.8 7.8 0 0 1-.8 1.8l1.4 2.4-2.2 2.2-2.4-1.4a7.8 7.8 0 0 1-1.8.8L13.6 22h-3.2l-.6-2.6a7.8 7.8 0 0 1-1.8-.8L5.6 20 3.4 17.8l1.4-2.4a7.8 7.8 0 0 1-.8-1.8L2 13.6v-3.2l2.6-.6a7.8 7.8 0 0 1 .8-1.8L4 5.6 6.2 3.4l2.4 1.4a7.8 7.8 0 0 1 1.8-.8L10.4 2Zm1.6 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"></path>
@@ -1460,12 +2109,267 @@
   }
 
   function renderStageIntro(stageId) {
+    if (isSubtitleAnalysisFeature()) {
+      const copy = toRecord(readValue(state.translations, ["subtitleAnalysis", "stages", stageId]));
+      return `
+        <section class="lab-stage-copy">
+          <h1 class="lab-stage-copy__title">${escapeHtml(copy.title || subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle"))}</h1>
+          <p class="lab-stage-copy__subtitle">${escapeHtml(copy.subtitle || "")}</p>
+        </section>
+      `;
+    }
+
     return `
       <section class="lab-stage-copy">
-        <h1 class="lab-stage-copy__title">${escapeHtml(text(["mediaAnalysis", stageId, "title"]))}</h1>
+        <h1 class="lab-stage-copy__title">${escapeHtml(featureText([stageId, "title"]))}</h1>
         <p class="lab-stage-copy__subtitle">${escapeHtml(
-          text(["mediaAnalysis", stageId, "subtitle"])
+          featureText([stageId, "subtitle"])
         )}</p>
+      </section>
+    `;
+  }
+
+  function renderAudioAnalysisCatalogPanel() {
+    const modules = getAudioAnalysisModules();
+    if (modules.length === 0) {
+      return "";
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["catalog", "eyebrow"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["catalog", "title"]))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(featureText(["catalog", "subtitle"]))}</p>
+          </div>
+        </div>
+        <div class="lab-tool-grid">
+          ${modules
+            .map(function (entry) {
+              const status = typeof entry.status === "string" ? entry.status : "planned";
+              const statusLabel =
+                status === "implemented"
+                  ? featureText(["catalog", "status", "implemented"])
+                  : status === "gated"
+                    ? featureText(["catalog", "status", "gated"])
+                    : featureText(["catalog", "status", "planned"]);
+              return `
+                <article class="lab-tool-card">
+                  <div class="lab-tool-card__head">
+                    <div>
+                      <strong>${escapeHtml(textFromKey(entry.titleKey || "") || entry.id || "--")}</strong>
+                      <span>${escapeHtml(statusLabel)}</span>
+                    </div>
+                    <span class="lab-chip">${escapeHtml(String(entry.phase || "--").toUpperCase())}</span>
+                  </div>
+                  <p class="lab-panel__hint">${escapeHtml(textFromKey(entry.summaryKey || "") || "")}</p>
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderAudioAnalysisNoticePanel() {
+    const providerCount = getAudioAnalysisProviderEntries().length;
+    const capabilities = getAudioAnalysisCapabilities();
+    const capabilityNotes = [];
+    if (capabilities.sharedSettingsOverlay === true) {
+      capabilityNotes.push(featureText(["settings", "title"]));
+    }
+    if (capabilities.sharedToolRegistry === true) {
+      capabilityNotes.push(text(["mediaAnalysis", "settings", "otherToolsTitle"]));
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["shared", "toolingEyebrow"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["shared", "toolingTitle"]))}</h2>
+          </div>
+        </div>
+        <p class="lab-panel__hint">${escapeHtml(featureText(["shared", "toolingBody"]))}</p>
+        <ul class="lab-meta-list">
+          <li>
+            <span>${escapeHtml(text(["mediaAnalysis", "shared", "status"]))}</span>
+            <strong>${escapeHtml(
+              capabilityNotes.length > 0 ? capabilityNotes.join(" + ") : featureText(["settings", "title"])
+            )}</strong>
+          </li>
+          <li>
+            <span>${escapeHtml(text(["mediaAnalysis", "report", "findingsTitle"]))}</span>
+            <strong>${escapeHtml(String(providerCount))}</strong>
+          </li>
+        </ul>
+      </section>
+    `;
+  }
+
+  function getAudioAnalysisProviderStatusLabel(status) {
+    const token = typeof status === "string" ? status : "gated";
+    if (token === "ready") {
+      return text(["mediaAnalysis", "settings", "status", "ready"]);
+    }
+    if (token === "planned") {
+      return featureText(["catalog", "status", "planned"]);
+    }
+    if (token === "gated") {
+      return featureText(["catalog", "status", "gated"]);
+    }
+    return formatStatusLabel(token);
+  }
+
+  function renderAudioAnalysisProviderPanel() {
+    const providers = getAudioAnalysisProviderEntries();
+    const providerStateMap = getAudioAnalysisProviderState();
+    if (providers.length === 0) {
+      return "";
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["settings", "providersEyebrow"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["settings", "providersTitle"]))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(featureText(["settings", "providersSubtitle"]))}</p>
+          </div>
+        </div>
+        <div class="lab-tool-grid">
+          ${providers
+            .map(function (entry) {
+              const providerState = toRecord(providerStateMap[entry.id]);
+              const status =
+                (typeof providerState.status === "string" && providerState.status.trim() !== ""
+                  ? providerState.status
+                  : typeof entry.status === "string"
+                    ? entry.status
+                    : "gated");
+              const moduleIds = Array.isArray(providerState.moduleIds)
+                ? providerState.moduleIds
+                : Array.isArray(entry.moduleIds)
+                  ? entry.moduleIds
+                  : [];
+              const moduleLabels = moduleIds
+                .map(function (moduleId) {
+                  return getAudioAnalysisModuleTitle(
+                    getAudioAnalysisOrderedResultEntries().find(function (moduleEntry) {
+                      return moduleEntry.moduleId === moduleId;
+                    }) || { moduleId: moduleId }
+                  );
+                })
+                .filter(Boolean);
+              const expectedArtifacts = Array.isArray(providerState.expectedArtifacts)
+                ? providerState.expectedArtifacts
+                : Array.isArray(entry.expectedArtifacts)
+                  ? entry.expectedArtifacts
+                  : [];
+              const fallbackProviderIds = Array.isArray(providerState.fallbackProviderIds)
+                ? providerState.fallbackProviderIds
+                : Array.isArray(entry.fallbackProviderIds)
+                  ? entry.fallbackProviderIds
+                  : [];
+
+              return `
+                <article class="lab-tool-card">
+                  <div class="lab-tool-card__head">
+                    <div>
+                      <strong>${escapeHtml(textFromKey(entry.titleKey || "") || entry.id || "--")}</strong>
+                      <span>${escapeHtml(getAudioAnalysisProviderStatusLabel(status))}</span>
+                    </div>
+                    <span class="lab-chip">${escapeHtml(getToolDisplayName(providerState.toolId || entry.toolId || "planned"))}</span>
+                  </div>
+                  <p class="lab-panel__hint">${escapeHtml(textFromKey(entry.summaryKey || "") || "")}</p>
+                  ${renderSummaryRows([
+                    [
+                      featureText(["settings", "providerMeta", "type"]),
+                      providerState.providerType || entry.providerType || "--",
+                    ],
+                    [
+                      featureText(["settings", "providerMeta", "install"]),
+                      providerState.installStrategy || entry.installStrategy || "--",
+                    ],
+                    [
+                      featureText(["settings", "providerMeta", "modules"]),
+                      moduleLabels.length > 0 ? moduleLabels.join(", ") : "--",
+                    ],
+                    [
+                      featureText(["settings", "providerMeta", "artifacts"]),
+                      expectedArtifacts.length > 0 ? expectedArtifacts.join(", ") : "--",
+                    ],
+                    [
+                      featureText(["settings", "providerMeta", "version"]),
+                      providerState.version || "--",
+                    ],
+                    [
+                      featureText(["settings", "providerMeta", "model"]),
+                      providerState.modelId || "--",
+                    ],
+                    [
+                      featureText(["settings", "providerMeta", "platform"]),
+                      providerState.platformSupported === false
+                        ? featureText(["settings", "providerMetaValues", "limited"])
+                        : featureText(["settings", "providerMetaValues", "supported"]),
+                    ],
+                    [
+                      featureText(["settings", "providerMeta", "fallbacks"]),
+                      fallbackProviderIds.length > 0
+                        ? fallbackProviderIds
+                            .map(function (providerId) {
+                              return getAudioAnalysisProviderLabel(providerId);
+                            })
+                            .join(", ")
+                        : "--",
+                    ],
+                  ])}
+                  ${
+                    Array.isArray(providerState.blockers) && providerState.blockers.length > 0
+                      ? `
+                        <div class="lab-list-block">
+                          <strong>${escapeHtml(featureText(["report", "moduleMeta", "blockers"]))}</strong>
+                          <ul class="lab-bullet-list">
+                            ${providerState.blockers
+                              .slice(0, 3)
+                              .map(function (item) {
+                                return `<li>${escapeHtml(item)}</li>`;
+                              })
+                              .join("")}
+                          </ul>
+                        </div>
+                      `
+                      : ""
+                  }
+                  ${
+                    Array.isArray(providerState.warnings) && providerState.warnings.length > 0
+                      ? `
+                        <div class="lab-list-block">
+                          <strong>${escapeHtml(featureText(["report", "moduleMeta", "warnings"]))}</strong>
+                          <ul class="lab-bullet-list">
+                            ${providerState.warnings
+                              .slice(0, 3)
+                              .map(function (item) {
+                                return `<li>${escapeHtml(item)}</li>`;
+                              })
+                              .join("")}
+                          </ul>
+                        </div>
+                      `
+                      : ""
+                  }
+                  ${
+                    typeof providerState.lastError === "string" && providerState.lastError.trim() !== ""
+                      ? `<p class="lab-panel__hint lab-panel__hint--danger">${escapeHtml(providerState.lastError)}</p>`
+                      : ""
+                  }
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
       </section>
     `;
   }
@@ -1649,12 +2553,12 @@
       <section class="lab-panel">
         <div class="lab-panel__header">
           <div>
-            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "source", "formatLabel"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "source", "title"]))}</h2>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["source", "formatLabel"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["source", "title"]))}</h2>
           </div>
         </div>
         <div class="lab-source-grid">
-          ${SOURCE_FORMATS.map(function (sourceId) {
+          ${getAvailableSourceFormats().map(function (sourceId) {
             return `
               <button
                 class="lab-source-card"
@@ -1665,10 +2569,10 @@
               >
                 <span class="lab-source-card__icon">${escapeHtml(sourceId.slice(0, 1).toUpperCase())}</span>
                 <span class="lab-source-card__title">${escapeHtml(
-                  text(["mediaAnalysis", "source", "formats", sourceId, "title"])
+                  featureText(["source", "formats", sourceId, "title"])
                 )}</span>
                 <span class="lab-source-card__subtitle">${escapeHtml(
-                  text(["mediaAnalysis", "source", "formats", sourceId, "subtitle"])
+                  featureText(["source", "formats", sourceId, "subtitle"])
                 )}</span>
               </button>
             `;
@@ -1893,26 +2797,71 @@
       getToolRegistry().find(function (entry) {
         return entry.toolId === toolId;
       }) || {};
+    const details = toRecord(tool.details);
     const busy = tool.busy === true;
     const updateAvailable = tool.updateAvailable === true;
     const stageSupport = toRecord(descriptor.stageSupport)[stageId] || "unsupported";
+    const availability =
+      (typeof details.availability === "string" && details.availability.trim() !== ""
+        ? details.availability
+        : typeof descriptor.availability === "string" && descriptor.availability.trim() !== ""
+          ? descriptor.availability
+          : "installable");
+    const planned = availability === "planned";
+    const systemCommand = availability === "system-command";
+    const plannedReason =
+      (typeof details.plannedReason === "string" && details.plannedReason.trim() !== ""
+        ? details.plannedReason
+        : typeof descriptor.plannedReason === "string" && descriptor.plannedReason.trim() !== ""
+          ? descriptor.plannedReason
+          : null);
+    const setupHint =
+      (typeof details.setupHint === "string" && details.setupHint.trim() !== ""
+        ? details.setupHint
+        : typeof descriptor.setupHint === "string" && descriptor.setupHint.trim() !== ""
+          ? descriptor.setupHint
+          : null);
     const statusLabel =
-      tool.installed === true
+      planned
+        ? text(["mediaAnalysis", "settings", "status", "planned"])
+        : systemCommand
+        ? tool.installed === true
+          ? text(["mediaAnalysis", "settings", "status", "manualReady"])
+          : text(["mediaAnalysis", "settings", "status", "manualSetup"])
+        : tool.installed === true
         ? updateAvailable
           ? text(["mediaAnalysis", "settings", "status", "updateAvailable"])
           : text(["mediaAnalysis", "settings", "status", "installed"])
         : text(["mediaAnalysis", "settings", "status", "missing"]);
-
-    return `
-      <article class="lab-tool-card">
-        <div class="lab-tool-card__head">
-          <div>
-            <strong>${escapeHtml(text(["mediaAnalysis", "settings", "tools", toolId]) || descriptor.displayName || toolId)}</strong>
-            <span>${escapeHtml(statusLabel)}</span>
-          </div>
-          ${
-            tool.installed === true
-              ? `
+    const actionMarkup =
+      planned
+        ? `
+                <button
+                  class="lab-button lab-button--ghost lab-button--tight"
+                  type="button"
+                  disabled
+                >
+                  ${escapeHtml(text(["mediaAnalysis", "settings", "status", "planned"]))}
+                </button>
+              `
+        : systemCommand
+        ? `
+                <button
+                  class="lab-button lab-button--ghost lab-button--tight"
+                  type="button"
+                  data-action="${tool.installed === true ? "tool-update" : "tool-install"}"
+                  data-value="${toolId}"
+                  ${busy ? "disabled" : ""}
+                >
+                  ${escapeHtml(
+                    tool.installed === true
+                      ? text(["mediaAnalysis", "settings", "manualRefreshAction"])
+                      : text(["mediaAnalysis", "settings", "manualCheckAction"])
+                  )}
+                </button>
+              `
+        : tool.installed === true
+        ? `
                 <button
                   class="lab-button lab-button--ghost lab-button--tight"
                   type="button"
@@ -1923,7 +2872,7 @@
                   ${escapeHtml(text(["mediaAnalysis", "settings", "updateAction"]))}
                 </button>
               `
-              : `
+        : `
                 <button
                   class="lab-button lab-button--primary lab-button--tight"
                   type="button"
@@ -1933,8 +2882,16 @@
                 >
                   ${escapeHtml(text(["mediaAnalysis", "settings", "installAction"]))}
                 </button>
-              `
-          }
+              `;
+
+    return `
+      <article class="lab-tool-card">
+        <div class="lab-tool-card__head">
+          <div>
+            <strong>${escapeHtml(text(["mediaAnalysis", "settings", "tools", toolId]) || descriptor.displayName || toolId)}</strong>
+            <span>${escapeHtml(statusLabel)}</span>
+          </div>
+          ${actionMarkup}
         </div>
         <ul class="lab-summary-list">
           ${renderPreviewMetaRow(
@@ -1954,6 +2911,16 @@
         ${
           busy
             ? `<p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "settings", "busyHint"]))}</p>`
+            : ""
+        }
+        ${
+          plannedReason
+            ? `<p class="lab-panel__hint">${escapeHtml(plannedReason)}</p>`
+            : ""
+        }
+        ${
+          setupHint
+            ? `<p class="lab-panel__hint">${escapeHtml(setupHint)}</p>`
             : ""
         }
         ${
@@ -2066,26 +3033,23 @@
     const allToolIds = getToolRegistry().map(function (entry) {
       return entry.toolId;
     });
-    const currentStageToolIds = (() => {
-      const stageToolIds = getStageToolIds(stageId);
-      return stageToolIds.length > 0 ? stageToolIds : allToolIds;
-    })();
+    const currentStageToolIds = getStageToolIds(stageId);
     const otherToolIds = allToolIds.filter(function (toolId) {
       return currentStageToolIds.includes(toolId) === false;
     });
 
     return `
       <div class="lab-overlay" role="dialog" aria-modal="true" aria-label="${escapeHtml(
-        text(["mediaAnalysis", "settings", "title"])
+        featureText(["settings", "title"])
       )}">
         <div class="lab-overlay__scrim" data-action="close-settings"></div>
         <section class="lab-overlay__panel">
           <header class="lab-overlay__header">
             <div>
-              <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "settings", "eyebrow"]))}</p>
-              <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "settings", "title"]))}</h2>
+              <p class="lab-panel__eyebrow">${escapeHtml(featureText(["settings", "eyebrow"]))}</p>
+              <h2 class="lab-panel__title">${escapeHtml(featureText(["settings", "title"]))}</h2>
               <p class="lab-panel__subtitle">${escapeHtml(
-                `${text(["mediaAnalysis", "settings", "subtitle"])} ${text(["mediaAnalysis", "stages", stageId])}`
+                `${featureText(["settings", "subtitle"])} ${featureText(["stages", stageId])}`
               )}</p>
             </div>
             <div class="lab-overlay__actions">
@@ -2100,14 +3064,22 @@
           <section class="lab-panel">
             <div class="lab-panel__header">
               <div>
-                <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "settings", "currentStageTitle"]))}</p>
-                <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "stages", stageId]))}</h2>
+                <p class="lab-panel__eyebrow">${escapeHtml(featureText(["settings", "currentStageTitle"]))}</p>
+                <h2 class="lab-panel__title">${escapeHtml(featureText(["stages", stageId]))}</h2>
               </div>
             </div>
             <div class="lab-tool-grid">
-              ${currentStageToolIds.map(function (toolId) {
-                return renderToolCard(toolId, stageId);
-              }).join("")}
+              ${
+                currentStageToolIds.length > 0
+                  ? currentStageToolIds
+                      .map(function (toolId) {
+                        return renderToolCard(toolId, stageId);
+                      })
+                      .join("")
+                  : `<p class="lab-panel__hint">${escapeHtml(
+                      text(["mediaAnalysis", "settings", "noStageTools"])
+                    )}</p>`
+              }
             </div>
           </section>
           ${
@@ -2131,6 +3103,7 @@
               `
               : ""
           }
+          ${isAudioAnalysisFeature() ? renderAudioAnalysisProviderPanel() : ""}
           ${
             stageId === "profile" && getProfileModelEntries().length > 0
               ? `
@@ -2157,7 +3130,816 @@
     `;
   }
 
+  function getSubtitleSourceModeOptions() {
+    const modes = getSubtitleSourcePresets().modes;
+    return Array.isArray(modes)
+      ? modes.filter(function (entry) {
+          return typeof entry === "string" && entry.trim() !== "";
+        })
+      : ["local-file", "local-folder", "url", "youtube-single", "youtube-playlist", "youtube-channel"];
+  }
+
+  function getCurrentSubtitleSourceMode() {
+    const workspace = getSubtitleWorkspace();
+    const currentMode = typeof workspace.mode === "string" ? workspace.mode : null;
+    const modes = getSubtitleSourceModeOptions();
+    return modes.includes(currentMode) ? currentMode : modes[0] || "local-file";
+  }
+
+  function getSubtitleSourceModeLabel(modeId) {
+    switch (modeId) {
+      case "local-folder":
+        return subtitleText(["source", "modes", "localFolder"], "Klasor", "Folder");
+      case "url":
+        return "URL";
+      case "youtube-single":
+        return subtitleText(["source", "modes", "youtubeSingle"], "YouTube Tek Video", "YouTube Single");
+      case "youtube-playlist":
+        return subtitleText(["source", "modes", "youtubePlaylist"], "YouTube Playlist", "YouTube Playlist");
+      case "youtube-channel":
+        return subtitleText(["source", "modes", "youtubeChannel"], "YouTube Kanal", "YouTube Channel");
+      case "local-file":
+      default:
+        return subtitleText(["source", "modes", "localFile"], "Tek Altyazi", "Single Subtitle");
+    }
+  }
+
+  function renderSubtitleDraftSelect(fieldId, value, label, options) {
+    return `
+      <label class="lab-field">
+        <span class="lab-field__label">${escapeHtml(label)}</span>
+        <select class="lab-select" data-draft-field="${escapeHtml(fieldId)}">
+          ${options
+            .map(function (entry) {
+              return `
+                <option value="${escapeHtml(entry.value)}" ${
+                  String(entry.value) === String(value) ? "selected" : ""
+                }>
+                  ${escapeHtml(entry.label)}
+                </option>
+              `;
+            })
+            .join("")}
+        </select>
+      </label>
+    `;
+  }
+
+  function renderSubtitleCatalogPanel() {
+    const modules = Array.isArray(getSubtitleAnalysisCatalog().modules)
+      ? getSubtitleAnalysisCatalog().modules.map(toRecord)
+      : [];
+    if (modules.length === 0) {
+      return "";
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["process", "catalog", "eyebrow"], "Analiz Plani", "Analysis Plan"))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(subtitleText(["process", "catalog", "title"], "Ilk Modul Seti", "Initial Module Set"))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(
+              subtitleText(
+                ["process", "catalog", "subtitle"],
+                "QC, okunabilirlik, zamanlama ve batch ozet modulleri burada gorunur.",
+                "QC, readability, timing, and batch summary modules live here."
+              )
+            )}</p>
+          </div>
+        </div>
+        <div class="lab-tool-grid">
+          ${modules
+            .map(function (entry) {
+              return `
+                <article class="lab-tool-card">
+                  <div class="lab-tool-card__head">
+                    <div>
+                      <strong>${escapeHtml(entry.label || entry.id || "--")}</strong>
+                      <span>${escapeHtml(formatStatusLabel(entry.status || "planned"))}</span>
+                    </div>
+                    <span class="lab-chip">${escapeHtml(String(entry.status || "planned").toUpperCase())}</span>
+                  </div>
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderSubtitleProviderPanel() {
+    const providers = Array.isArray(getSubtitleAnalysisProviders().providers)
+      ? getSubtitleAnalysisProviders().providers.map(toRecord)
+      : [];
+    if (providers.length === 0) {
+      return "";
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["process", "providers", "eyebrow"], "Saglayicilar", "Providers"))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(subtitleText(["process", "providers", "title"], "Calisma Katmani", "Execution Layer"))}</h2>
+          </div>
+        </div>
+        <div class="lab-tool-grid">
+          ${providers
+            .map(function (entry) {
+              return `
+                <article class="lab-tool-card">
+                  <div class="lab-tool-card__head">
+                    <div>
+                      <strong>${escapeHtml(entry.id || "--")}</strong>
+                      <span>${escapeHtml(formatStatusLabel(entry.status || "planned"))}</span>
+                    </div>
+                  </div>
+                  <p class="lab-panel__hint">${escapeHtml(
+                    Array.isArray(entry.moduleIds) && entry.moduleIds.length > 0
+                      ? entry.moduleIds.join(", ")
+                      : subtitleText(["process", "providers", "emptyModules"], "Modul bagli degil", "No linked modules")
+                  )}</p>
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderSubtitleSourceWorkspacePanel() {
+    const workspace = getSubtitleWorkspace();
+    const discovery = getSubtitleDiscoveryState();
+    const activeEntry = getActiveSubtitleEntry();
+    const selectedCount = getSubtitleSelectedEntryIds().length;
+    const candidateCount = getSubtitleDiscoveryItems().length;
+    return `
+      <section class="lab-panel lab-preview-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["source", "summary", "eyebrow"], "Kaynak Ozet", "Source Summary"))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(
+              activeEntry
+                ? activeEntry.fileName || activeEntry.id || "--"
+                : subtitleText(["source", "summary", "emptyTitle"], "Altyazi secilmedi", "No subtitle selected")
+            )}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(
+              activeEntry
+                ? subtitleText(
+                    ["source", "summary", "activeSubtitle"],
+                    "Aktif altyazi girisi ve secili batch durumu.",
+                    "Active subtitle entry and current batch selection."
+                  )
+                : subtitleText(
+                    ["source", "summary", "prepareHint"],
+                    "Source asamasindan bir altyazi girisi hazirla.",
+                    "Prepare a subtitle entry from the source stage."
+                  )
+            )}</p>
+          </div>
+        </div>
+        ${renderSummaryRows([
+          [subtitleText(["source", "summary", "labels", "workspaceMode"], "Calisma modu", "Workspace mode"), getSubtitleSourceModeLabel(getCurrentSubtitleSourceMode())],
+          [subtitleText(["source", "summary", "labels", "selectedEntries"], "Secili giris", "Selected entries"), String(selectedCount || (activeEntry ? 1 : 0))],
+          [subtitleText(["source", "summary", "labels", "discoveryCandidates"], "Kesif adayi", "Discovery candidates"), String(candidateCount)],
+          [subtitleText(["source", "summary", "labels", "format"], "Format", "Format"), activeEntry ? String(activeEntry.format || "--").toUpperCase() : "--"],
+          [subtitleText(["source", "summary", "labels", "language"], "Dil", "Language"), activeEntry ? activeEntry.language || "--" : "--"],
+          [subtitleText(["source", "summary", "labels", "published"], "Yayin", "Published"), activeEntry ? activeEntry.publishedAt || "--" : "--"],
+          [subtitleText(["source", "summary", "labels", "discovery"], "Kesif", "Discovery"), formatStatusLabel(discovery.status || "idle")],
+          [subtitleText(["source", "summary", "labels", "status"], "Durum", "Status"), formatStatusLabel(workspace.lastError ? "error" : "ready")],
+        ])}
+        ${
+          typeof workspace.lastError === "string" && workspace.lastError.trim() !== ""
+            ? `<div class="lab-notice">${escapeHtml(workspace.lastError)}</div>`
+            : ""
+        }
+      </section>
+    `;
+  }
+
+  function renderSubtitleSourceIntakePanel() {
+    const drafts = getCurrentDrafts();
+    const currentMode = getCurrentSubtitleSourceMode();
+    const ytDlpInstalled = getToolEntry("yt-dlp").installed === true;
+    const discoveryItems = getSubtitleDiscoveryItems();
+    const selectedCandidateCount = getSubtitleSelectedCandidateIds().length;
+    let body = "";
+
+    if (currentMode === "local-file") {
+      body = `
+        <button class="lab-button lab-button--primary" type="button" data-action="subtitle-source-pick-local">
+          ${escapeHtml(subtitleText(["source", "actions", "pickLocal"], "Tek altyazi sec", "Pick subtitle file"))}
+        </button>
+      `;
+    } else if (currentMode === "local-folder") {
+      body = `
+        <button class="lab-button lab-button--primary" type="button" data-action="subtitle-source-pick-folder">
+          ${escapeHtml(subtitleText(["source", "actions", "pickFolder"], "Klasor sec", "Pick subtitle folder"))}
+        </button>
+      `;
+    } else if (currentMode === "url") {
+      body = `
+        ${renderTextField(
+          "urlInput",
+          drafts.urlInput,
+          subtitleText(["source", "fields", "subtitleUrl"], "Altyazi URL", "Subtitle URL"),
+          subtitleText(["source", "placeholders", "subtitleUrl"], "https://example.com/file.vtt", "https://example.com/file.vtt")
+        )}
+        <button class="lab-button lab-button--primary" type="button" data-action="subtitle-source-download-url">
+          ${escapeHtml(subtitleText(["source", "actions", "downloadUrl"], "URL indir", "Download URL"))}
+        </button>
+      `;
+    } else {
+      body = `
+        ${
+          ytDlpInstalled !== true
+            ? `<div class="lab-notice">${escapeHtml(featureText(["source", "youtubeDisabled"]))}</div>`
+            : ""
+        }
+        ${renderTextField(
+          "youtubeUrl",
+          drafts.youtubeUrl,
+          subtitleText(["source", "fields", "youtubeUrl"], "YouTube URL", "YouTube URL"),
+          subtitleText(["source", "placeholders", "youtubeUrl"], "Kanal, playlist ya da video linki", "Channel, playlist, or video URL")
+        )}
+        <div class="lab-form-grid">
+          ${renderSubtitleDraftSelect("subtitleMode", drafts.subtitleMode || "manual", subtitleText(["source", "fields", "subtitleMode"], "Altyazi modu", "Subtitle mode"), [
+            { value: "manual", label: subtitleText(["source", "options", "subtitleMode", "manual"], "Manual", "Manual") },
+            { value: "auto", label: subtitleText(["source", "options", "subtitleMode", "auto"], "Otomatik", "Automatic") },
+            { value: "both", label: subtitleText(["source", "options", "subtitleMode", "both"], "Ikisi de", "Both") },
+          ])}
+          ${renderTextField(
+            "subtitlesLang",
+            drafts.subtitlesLang || "all",
+            subtitleText(["source", "fields", "languageFilter"], "Dil filtresi", "Language filter"),
+            subtitleText(["source", "placeholders", "languageFilter"], "tr,en ya da all", "tr,en or all")
+          )}
+          ${renderTextField(
+            "publishedAfter",
+            drafts.publishedAfter || "",
+            subtitleText(["source", "fields", "publishedAfter"], "Yayin tarihi baslangic", "Published after"),
+            "",
+            { type: "date" }
+          )}
+          ${renderTextField(
+            "publishedBefore",
+            drafts.publishedBefore || "",
+            subtitleText(["source", "fields", "publishedBefore"], "Yayin tarihi bitis", "Published before"),
+            "",
+            { type: "date" }
+          )}
+          ${renderTextField(
+            "weekdays",
+            drafts.weekdays || "",
+            subtitleText(["source", "fields", "weekdays"], "Haftanin gunleri", "Weekdays"),
+            subtitleText(["source", "placeholders", "weekdays"], "mon wed fri", "mon wed fri")
+          )}
+          ${renderTextField(
+            "durationMinSeconds",
+            drafts.durationMinSeconds == null ? "" : String(drafts.durationMinSeconds),
+            subtitleText(["source", "fields", "durationMin"], "Min sure sn", "Min duration sec"),
+            "0",
+            { type: "number" }
+          )}
+          ${renderTextField(
+            "durationMaxSeconds",
+            drafts.durationMaxSeconds == null ? "" : String(drafts.durationMaxSeconds),
+            subtitleText(["source", "fields", "durationMax"], "Max sure sn", "Max duration sec"),
+            "0",
+            { type: "number" }
+          )}
+          ${renderSubtitleDraftSelect("shortsMode", drafts.shortsMode || "all", subtitleText(["source", "fields", "shorts"], "Shorts", "Shorts"), [
+            { value: "all", label: subtitleText(["source", "options", "shorts", "all"], "Tum", "All") },
+            { value: "only", label: subtitleText(["source", "options", "shorts", "only"], "Sadece shorts", "Only shorts") },
+            { value: "exclude", label: subtitleText(["source", "options", "shorts", "exclude"], "Shorts haric", "Exclude shorts") },
+          ])}
+          ${renderSubtitleDraftSelect("liveMode", drafts.liveMode || "all", subtitleText(["source", "fields", "liveStatus"], "Canli durumu", "Live status"), [
+            { value: "all", label: subtitleText(["source", "options", "liveStatus", "all"], "Tum yuklemeler", "All uploads") },
+            { value: "exclude-live", label: subtitleText(["source", "options", "liveStatus", "excludeLive"], "Canli haric", "Exclude live") },
+            { value: "only-live", label: subtitleText(["source", "options", "liveStatus", "onlyLive"], "Sadece canli", "Only live") },
+          ])}
+          ${renderTextField(
+            "titleInclude",
+            drafts.titleInclude || "",
+            subtitleText(["source", "fields", "titleInclude"], "Baslik dahil", "Title include"),
+            subtitleText(["source", "placeholders", "titleInclude"], "roportaj, ozet", "interview, summary")
+          )}
+          ${renderTextField(
+            "titleExclude",
+            drafts.titleExclude || "",
+            subtitleText(["source", "fields", "titleExclude"], "Baslik haric", "Title exclude"),
+            subtitleText(["source", "placeholders", "titleExclude"], "teaser, shorts", "teaser, shorts")
+          )}
+          ${renderTextField(
+            "playlistItems",
+            drafts.playlistItems || "",
+            subtitleText(["source", "fields", "playlistItems"], "Playlist araligi", "Playlist items"),
+            subtitleText(["source", "placeholders", "playlistItems"], "1-10 gibi", "for example 1-10")
+          )}
+          ${renderTextField(
+            "limitCount",
+            drafts.limitCount == null ? "" : String(drafts.limitCount),
+            subtitleText(["source", "fields", "limitCount"], "Max video", "Max videos"),
+            "0",
+            { type: "number" }
+          )}
+        </div>
+        <button
+          class="lab-button lab-button--ghost"
+          type="button"
+          data-action="subtitle-source-discover-youtube"
+          ${ytDlpInstalled !== true ? "disabled" : ""}
+        >
+          ${escapeHtml(subtitleText(["source", "actions", "discoverYoutube"], "Adaylari kesfet", "Discover candidates"))}
+        </button>
+        <button
+          class="lab-button lab-button--primary"
+          type="button"
+          data-action="subtitle-source-download-youtube"
+          ${ytDlpInstalled !== true || discoveryItems.length === 0 || selectedCandidateCount === 0 ? "disabled" : ""}
+        >
+          ${escapeHtml(subtitleText(["source", "actions", "downloadSelected"], "Secili altyazilari indir", "Download selected subtitles"))}
+        </button>
+        ${
+          discoveryItems.length > 0
+            ? `<p class="lab-panel__hint">${escapeHtml(
+                subtitleTemplate(
+                  ["source", "discovery", "selectionHint"],
+                  { count: selectedCandidateCount },
+                  `${selectedCandidateCount} secili aday indirilmeye hazir.`,
+                  `${selectedCandidateCount} selected candidate(s) are ready for download.`
+                )
+              )}</p>`
+            : ""
+        }
+      `;
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["source", "modeLabel"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["source", "intakeTitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-segmented lab-segmented--subtitle-source">
+          ${getSubtitleSourceModeOptions()
+            .map(function (modeId) {
+              const disabled = modeId.indexOf("youtube-") === 0 && ytDlpInstalled !== true;
+              return `
+                <button
+                  class="lab-segmented__button"
+                  type="button"
+                  data-action="subtitle-source-mode"
+                  data-value="${escapeHtml(modeId)}"
+                  data-selected="${modeId === currentMode ? "true" : "false"}"
+                  ${disabled ? "disabled" : ""}
+                >
+                  ${escapeHtml(getSubtitleSourceModeLabel(modeId))}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+        <div class="lab-form-stack">${body}</div>
+      </section>
+    `;
+  }
+
+  function renderSubtitleEntryPanel() {
+    const entries = getSubtitleEntries();
+    const activeEntry = getActiveSubtitleEntry();
+    const selectedIds = getSubtitleSelectedEntryIds();
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["source", "entries", "eyebrow"], "Girisler", "Entries"))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(subtitleText(["source", "entries", "title"], "Altyazi Listesi", "Subtitle List"))}</h2>
+          </div>
+        </div>
+        <div class="lab-output-list">
+          ${
+            entries.length > 0
+              ? entries
+                  .map(function (entry) {
+                    return `
+                      <article class="lab-output-card" data-selected="${
+                        activeEntry && activeEntry.id === entry.id ? "true" : "false"
+                      }">
+                        <div>
+                          <strong>${escapeHtml(entry.fileName || entry.id || "--")}</strong>
+                          <span>${escapeHtml(
+                            [String(entry.format || "--").toUpperCase(), entry.language || "--", entry.sourceType || "--"]
+                              .filter(Boolean)
+                              .join(" · ")
+                          )}</span>
+                        </div>
+                        <div class="lab-action-stack">
+                          <button
+                            class="lab-button lab-button--ghost lab-button--tight"
+                            type="button"
+                            data-action="subtitle-source-select-entry"
+                            data-value="${escapeHtml(entry.id || "")}"
+                          >
+                            ${escapeHtml(subtitleText(["source", "entries", "actions", "makeActive"], "Aktif yap", "Make active"))}
+                          </button>
+                          <button
+                            class="lab-button lab-button--ghost lab-button--tight"
+                            type="button"
+                            data-action="subtitle-source-toggle-selection"
+                            data-value="${escapeHtml(entry.id || "")}"
+                          >
+                            ${escapeHtml(
+                              selectedIds.includes(entry.id)
+                                ? subtitleText(["source", "entries", "actions", "removeFromBatch"], "Batchten cikar", "Remove from batch")
+                                : subtitleText(["source", "entries", "actions", "addToBatch"], "Batche ekle", "Add to batch")
+                            )}
+                          </button>
+                        </div>
+                      </article>
+                    `;
+                  })
+                  .join("")
+              : `<p class="lab-panel__hint">${escapeHtml(subtitleText(["source", "entries", "empty"], "Henuz altyazi girisi yok.", "No subtitle entries yet."))}</p>`
+          }
+        </div>
+      </section>
+    `;
+  }
+
+  function renderSubtitleDiscoveryPanel() {
+    const discovery = getSubtitleDiscoveryState();
+    const items = getSubtitleDiscoveryItems();
+    const selectedCandidateIds = getSubtitleSelectedCandidateIds();
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["source", "discovery", "eyebrow"], "YouTube Kesfi", "YouTube Discovery"))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(subtitleText(["source", "discovery", "title"], "Aday Tablosu", "Candidate Table"))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(
+              subtitleText(
+                ["source", "discovery", "subtitle"],
+                "Filtreye uyan videolari once inceleyip sonra secili altyazilari indirebilirsin.",
+                "Inspect matching videos first, then download subtitles only for the selected rows."
+              )
+            )}</p>
+          </div>
+        </div>
+        ${renderSummaryRows([
+          [subtitleText(["source", "discovery", "labels", "status"], "Durum", "Status"), formatStatusLabel(discovery.status || "idle")],
+          [subtitleText(["source", "discovery", "labels", "totalCandidates"], "Toplam aday", "Total candidates"), String(discovery.totalCandidateCount || items.length)],
+          [subtitleText(["source", "discovery", "labels", "matched"], "Eslesen", "Matched"), String(items.length)],
+          [subtitleText(["source", "discovery", "labels", "selected"], "Secili", "Selected"), String(selectedCandidateIds.length)],
+        ])}
+        ${
+          typeof discovery.lastError === "string" && discovery.lastError.trim() !== ""
+            ? `<div class="lab-notice">${escapeHtml(discovery.lastError)}</div>`
+            : ""
+        }
+        ${
+          items.length > 0
+            ? `
+              <div class="lab-action-stack lab-action-stack--inline">
+                <button class="lab-button lab-button--ghost" type="button" data-action="subtitle-source-select-all-discovery">
+                  ${escapeHtml(subtitleText(["source", "discovery", "actions", "selectAll"], "Tumunu sec", "Select all"))}
+                </button>
+                <button class="lab-button lab-button--ghost" type="button" data-action="subtitle-source-clear-discovery-selection">
+                  ${escapeHtml(subtitleText(["source", "discovery", "actions", "clearSelection"], "Secimi temizle", "Clear selection"))}
+                </button>
+              </div>
+              <div class="lab-discovery-table-wrap">
+                <table class="lab-discovery-table">
+                  <thead>
+                    <tr>
+                      <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "select"], "Sec", "Select"))}</th>
+                      <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "title"], "Baslik", "Title"))}</th>
+                      <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "published"], "Yayin", "Published"))}</th>
+                      <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "duration"], "Sure", "Duration"))}</th>
+                      <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "languages"], "Dil", "Languages"))}</th>
+                      <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "live"], "Canli", "Live"))}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${items
+                      .map(function (entry) {
+                        const languageList = Array.isArray(entry.subtitleLanguages) ? entry.subtitleLanguages.slice(0, 4) : [];
+                        return `
+                          <tr data-selected="${selectedCandidateIds.includes(entry.id) ? "true" : "false"}">
+                            <td>
+                              <button
+                                class="lab-button lab-button--ghost lab-button--tight"
+                                type="button"
+                                data-action="subtitle-source-toggle-discovery"
+                                data-value="${escapeHtml(entry.id || "")}"
+                              >
+                                ${escapeHtml(
+                                  selectedCandidateIds.includes(entry.id)
+                                    ? subtitleText(["source", "discovery", "actions", "remove"], "Cikar", "Remove")
+                                    : subtitleText(["source", "discovery", "actions", "select"], "Sec", "Select")
+                                )}
+                              </button>
+                            </td>
+                            <td>
+                              <div class="lab-discovery-table__title">${escapeHtml(entry.title || "--")}</div>
+                              <div class="lab-discovery-table__meta">${escapeHtml(entry.channelTitle || entry.videoId || "--")}</div>
+                            </td>
+                            <td>${escapeHtml(entry.publishedAt || "--")}</td>
+                            <td>${escapeHtml(formatDuration(entry.durationSeconds))}</td>
+                            <td>${escapeHtml(languageList.length > 0 ? languageList.join(", ") : "--")}</td>
+                            <td>${escapeHtml(formatStatusLabel(entry.liveStatus || "offline"))}</td>
+                          </tr>
+                        `;
+                      })
+                      .join("")}
+                  </tbody>
+                </table>
+              </div>
+            `
+            : `<p class="lab-panel__hint">${escapeHtml(
+                subtitleText(
+                  ["source", "discovery", "empty"],
+                  "YouTube modunda aday tablosunu doldurmak icin kesif calistir.",
+                  "Run discovery in a YouTube mode to populate the candidate table."
+                )
+              )}</p>`
+        }
+      </section>
+    `;
+  }
+
+  function renderSubtitlePreviewBody(textValue, emptyLabel) {
+    const nextValue = typeof textValue === "string" ? textValue.trim() : "";
+    return nextValue !== ""
+      ? `<pre class="lab-subtitle-preview">${escapeHtml(nextValue)}</pre>`
+      : `<p class="lab-panel__hint">${escapeHtml(emptyLabel)}</p>`;
+  }
+
+  function renderSubtitlePresetChooser() {
+    const presetState = getSubtitleEditState();
+    const presets = Array.isArray(getSubtitleEditPresets().presets)
+      ? getSubtitleEditPresets().presets.map(toRecord)
+      : [];
+    if (presets.length === 0) {
+      return "";
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["edit", "preset", "eyebrow"], "Preset", "Preset"))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(subtitleText(["edit", "preset", "title"], "Temizleme Profili", "Cleanup Profile"))}</h2>
+          </div>
+        </div>
+        <div class="lab-chip-row">
+          ${presets
+            .map(function (preset) {
+              return `
+                <button
+                  class="lab-choice-chip"
+                  type="button"
+                  data-action="subtitle-edit-preset"
+                  data-value="${escapeHtml(preset.id || "")}"
+                  data-selected="${preset.id === presetState.presetId ? "true" : "false"}"
+                >
+                  ${escapeHtml(preset.label || preset.id || "--")}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderSubtitleEditWorkspacePanel() {
+    const activeEntry = getActiveSubtitleEntry();
+    const preview = getSubtitleEditPreview();
+    const latestOutput = getSubtitleOutputs()[0] || null;
+    const displayText =
+      typeof preview.outputText === "string" && preview.outputText.trim() !== ""
+        ? preview.outputText
+        : "";
+    const summary = toRecord(preview.summary);
+
+    return `
+      <section class="lab-panel lab-preview-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["edit", "workspaceTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(
+              activeEntry
+                ? activeEntry.fileName || activeEntry.id || "--"
+                : subtitleText(["edit", "workspace", "emptyTitle"], "Altyazi secilmedi", "No subtitle selected")
+            )}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(featureText(["edit", "workspaceHint"]))}</p>
+          </div>
+        </div>
+        ${renderSubtitlePreviewBody(
+          displayText,
+          subtitleText(["edit", "workspace", "previewEmpty"], "Preview icin bir preset secip onizleme calistir.", "Choose a preset and run preview to inspect output.")
+        )}
+        ${renderSummaryRows([
+          [subtitleText(["edit", "workspace", "labels", "cues"], "Cue", "Cues"), String(summary.outputCueCount || summary.sourceCueCount || 0)],
+          [subtitleText(["edit", "workspace", "labels", "lines"], "Satir", "Lines"), String(summary.outputLineCount || summary.sourceLineCount || 0)],
+          [subtitleText(["edit", "workspace", "labels", "maxLine"], "Max satir", "Max line"), String(summary.maxLineLength || 0)],
+          [subtitleText(["edit", "workspace", "labels", "output"], "Cikti", "Output"), latestOutput ? latestOutput.label || latestOutput.fileName || latestOutput.id || "--" : "--"],
+        ])}
+      </section>
+    `;
+  }
+
+  function renderSubtitleEditControlsPanel() {
+    const recipe = toRecord(getCurrentEditDraft().recipe);
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["edit", "controls", "eyebrow"], "Temizleme Ayarlari", "Cleanup Controls"))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(subtitleText(["edit", "controls", "title"], "Satir ve metin islemleri", "Line and text operations"))}</h2>
+          </div>
+        </div>
+        <div class="lab-toggle-grid">
+          ${renderEditToggle("trimWhitespace", subtitleText(["edit", "controls", "toggles", "trimWhitespace"], "Bosluk temizle", "Trim whitespace"), recipe.trimWhitespace === true)}
+          ${renderEditToggle("collapseBlankLines", subtitleText(["edit", "controls", "toggles", "collapseBlankLines"], "Bos satirlari daralt", "Collapse blank lines"), recipe.collapseBlankLines === true)}
+          ${renderEditToggle("normalizeQuotes", subtitleText(["edit", "controls", "toggles", "normalizeQuotes"], "Tirnak normalize et", "Normalize quotes"), recipe.normalizeQuotes === true)}
+          ${renderEditToggle("stripHtml", subtitleText(["edit", "controls", "toggles", "stripHtml"], "HTML etiketlerini sil", "Strip HTML"), recipe.stripHtml === true)}
+          ${renderEditToggle("removeMusicTags", subtitleText(["edit", "controls", "toggles", "removeMusicTags"], "Muzik etiketlerini sil", "Remove music tags"), recipe.removeMusicTags === true)}
+          ${renderEditToggle("mergeShortCues", subtitleText(["edit", "controls", "toggles", "mergeShortCues"], "Kisa satirlari birlestir", "Merge short cues"), recipe.mergeShortCues === true)}
+          ${renderEditToggle("splitLongLines", subtitleText(["edit", "controls", "toggles", "splitLongLines"], "Uzun satirlari bol", "Split long lines"), recipe.splitLongLines === true)}
+        </div>
+        <div class="lab-form-grid">
+          ${renderEditSelectField("outputFormat", recipe.outputFormat || "source", subtitleText(["edit", "fields", "outputFormat"], "Cikti formati", "Output format"), [
+            { value: "source", label: subtitleText(["edit", "outputFormats", "source"], "Kaynak formati", "Keep source format") },
+            { value: "srt", label: "SRT" },
+            { value: "vtt", label: "VTT" },
+            { value: "json", label: "JSON" },
+          ])}
+          ${renderEditRangeField("maxCharsPerLine", recipe.maxCharsPerLine || 42, subtitleText(["edit", "controls", "labels", "maxChars"], "Max karakter", "Max chars"), {
+            min: 24,
+            max: 64,
+            step: 1,
+            displayValue: String(recipe.maxCharsPerLine || 42),
+          })}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderSubtitleEditActionsPanel() {
+    const editState = getSubtitleEditState();
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["edit", "actions", "eyebrow"], "Aksiyonlar", "Actions"))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(subtitleText(["edit", "actions", "title"], "Preview ve cikti", "Preview and output"))}</h2>
+          </div>
+        </div>
+        ${
+          typeof editState.lastError === "string" && editState.lastError.trim() !== ""
+            ? `<div class="lab-notice">${escapeHtml(editState.lastError)}</div>`
+            : ""
+        }
+        <div class="lab-action-stack">
+          <button class="lab-button lab-button--ghost" type="button" data-action="subtitle-edit-preview">
+            ${escapeHtml(subtitleText(["edit", "actions", "preview"], "Onizleme uret", "Generate preview"))}
+          </button>
+          <button class="lab-button lab-button--primary" type="button" data-action="subtitle-edit-apply">
+            ${escapeHtml(subtitleText(["edit", "actions", "apply"], "Temizlemeyi uygula", "Apply cleanup"))}
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderSubtitleOutputsPanel() {
+    const outputs = getSubtitleOutputs();
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["edit", "outputs", "eyebrow"], "Ciktilar", "Outputs"))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(subtitleText(["edit", "outputs", "title"], "Temizlenmis dosyalar", "Cleaned files"))}</h2>
+          </div>
+        </div>
+        <div class="lab-output-list">
+          ${
+            outputs.length > 0
+              ? outputs
+                  .map(function (entry) {
+                    const summary = toRecord(entry.summary);
+                    return `
+                      <article class="lab-output-card">
+                        <div>
+                          <strong>${escapeHtml(entry.label || entry.fileName || entry.id || "--")}</strong>
+                          <span>${escapeHtml(entry.path || entry.fileUrl || "--")}</span>
+                        </div>
+                        <span>${escapeHtml(
+                          subtitleText(["edit", "outputs", "labels", "cues"], "Cue", "Cues")
+                        )}: ${escapeHtml(String(summary.outputCueCount || 0))}</span>
+                      </article>
+                    `;
+                  })
+                  .join("")
+              : `<p class="lab-panel__hint">${escapeHtml(subtitleText(["edit", "outputs", "empty"], "Henuz cikti yok.", "No outputs yet."))}</p>`
+          }
+        </div>
+      </section>
+    `;
+  }
+
+  function renderSubtitleEditSummaryPanel() {
+    const preview = getSubtitleEditPreview();
+    const summary = toRecord(preview.summary);
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["edit", "summary", "eyebrow"], "Ozet", "Summary"))}</p>
+        </div>
+        ${renderSummaryRows([
+          [subtitleText(["edit", "summary", "labels", "previewStatus"], "Preview durumu", "Preview status"), formatStatusLabel(preview.status || "idle")],
+          [subtitleText(["edit", "summary", "labels", "changed"], "Degisti", "Changed"), summary.changed === true ? subtitleText(["edit", "summary", "values", "yes"], "Evet", "Yes") : subtitleText(["edit", "summary", "values", "no"], "Hayir", "No")],
+          [subtitleText(["edit", "summary", "labels", "sourceCues"], "Kaynak cue", "Source cues"), String(summary.sourceCueCount || 0)],
+          [subtitleText(["edit", "summary", "labels", "outputCues"], "Cikti cue", "Output cues"), String(summary.outputCueCount || 0)],
+          [subtitleText(["edit", "summary", "labels", "maxLine"], "Max satir", "Max line"), String(summary.maxLineLength || 0)],
+        ])}
+      </section>
+    `;
+  }
+
+  function renderSubtitleEditStage() {
+    const activeEntry = getActiveSubtitleEntry();
+
+    return `
+      <div class="lab-layout">
+        <section class="lab-main-stack">
+          ${renderStageIntro("edit")}
+          ${renderSubtitleEditWorkspacePanel()}
+          ${renderSubtitlePresetChooser()}
+          ${renderSubtitleEditControlsPanel()}
+          ${renderSubtitleEditActionsPanel()}
+          ${
+            activeEntry === null
+              ? `<div class="lab-notice">${escapeHtml(subtitleText(["edit", "emptySelection"], "Edit asamasi icin once bir altyazi girisi sec.", "Select a subtitle entry before using the edit stage."))}</div>`
+              : ""
+          }
+        </section>
+        <aside class="lab-side-stack">
+          ${renderSubtitleEditSummaryPanel()}
+          ${renderSubtitleOutputsPanel()}
+        </aside>
+      </div>
+    `;
+  }
+
   function renderSourceStage() {
+    if (isSubtitleAnalysisFeature()) {
+      return `
+        <div class="lab-layout lab-layout--source">
+          <section class="lab-main-stack">
+            ${renderStageIntro("source")}
+            ${renderSubtitleSourceWorkspacePanel()}
+            ${renderSubtitleDiscoveryPanel()}
+            ${renderSubtitleCatalogPanel()}
+            ${renderSubtitleProviderPanel()}
+          </section>
+          <aside class="lab-side-stack">
+            ${renderProjectPanel()}
+            ${renderSubtitleSourceIntakePanel()}
+            ${renderSubtitleEntryPanel()}
+          </aside>
+        </div>
+      `;
+    }
+
+    if (isAudioAnalysisFeature()) {
+      return `
+        <div class="lab-layout lab-layout--source">
+          <section class="lab-main-stack">
+            ${renderStageIntro("source")}
+            ${renderPreviewSurface()}
+            ${renderAudioAnalysisCatalogPanel()}
+            ${renderAudioAnalysisProviderPanel()}
+          </section>
+          <aside class="lab-side-stack">
+            ${renderProjectPanel()}
+            ${renderSourceKindPanel()}
+            ${renderSourceIntakePanel()}
+            ${renderAudioAnalysisNoticePanel()}
+          </aside>
+        </div>
+      `;
+    }
+
     return `
       <div class="lab-layout lab-layout--source">
         <section class="lab-main-stack">
@@ -2872,6 +4654,10 @@
   }
 
   function renderEditStage() {
+    if (isSubtitleAnalysisFeature()) {
+      return renderSubtitleEditStage();
+    }
+
     const sourceReady = typeof getProjectSource().storedPath === "string" && getProjectSource().storedPath.trim() !== "";
 
     return `
@@ -3514,69 +5300,130 @@
     `;
   }
 
-  function getProcessStepProgress(index) {
-    const start = PROCESS_THRESHOLDS[index];
-    const end = PROCESS_THRESHOLDS[index + 1];
-    if (typeof end !== "number") {
-      return 0;
+  function getProcessModulePercent(module) {
+    const record = toRecord(module);
+    const status = typeof record.status === "string" ? record.status : "idle";
+    if (status === "running" || status === "queued" || status === "idle") {
+      return Math.max(0, Math.min(100, Math.round(Number(record.percent) || 0)));
     }
-    if (state.process.progress <= start) {
-      return 0;
-    }
-    if (state.process.progress >= end) {
-      return 100;
-    }
-    return Math.round(((state.process.progress - start) / (end - start)) * 100);
+    return 100;
+  }
+
+  function getProcessModuleTitle(module) {
+    const record = toRecord(module);
+    return textFromKey(record.labelKey || "") || record.title || record.id || "--";
+  }
+
+  function getRunningProcessJob() {
+    return (
+      getProcessJobs().find(function (job) {
+        return !["completed", "failed", "cancelled"].includes(String(job.stage || ""));
+      }) || null
+    );
+  }
+
+  function getRunningReportJob() {
+    return (
+      getReportJobs().find(function (job) {
+        return !["completed", "failed", "cancelled"].includes(String(job.stage || ""));
+      }) || null
+    );
   }
 
   function renderProcessStage() {
+    const processRecord = getCurrentFeatureProcessRecord();
+    const modules = getProcessModules();
+    const runningJob = getRunningProcessJob();
+    const findings = getProcessFindings();
+    const artifacts = getProcessArtifacts();
+    const completedModules = modules.filter(function (entry) {
+      return !["idle", "queued", "running"].includes(String(toRecord(entry).status || ""));
+    }).length;
+
     return `
       <div class="lab-layout">
         <section class="lab-main-stack">
           ${renderStageIntro("process")}
           <section class="lab-panel lab-process-panel">
-            ${PROCESS_STEPS.map(function (stepId, index) {
-              const progress = getProcessStepProgress(index);
-              return `
-                <article class="lab-process-row">
-                  <div class="lab-process-row__head">
-                    <div>
-                      <p class="lab-process-row__eyebrow">${String(index + 1)}</p>
-                      <h2 class="lab-process-row__title">${escapeHtml(
-                        text(["mediaAnalysis", "process", "steps", stepId])
-                      )}</h2>
-                    </div>
-                    <strong>${String(progress)}%</strong>
-                  </div>
-                  <div class="lab-progress-bar lab-progress-bar--wide">
-                    <span style="width:${progress}%"></span>
-                  </div>
-                </article>
-              `;
-            }).join("")}
+            ${
+              modules.length > 0
+                ? modules
+                    .map(function (moduleEntry, index) {
+                      const progress = getProcessModulePercent(moduleEntry);
+                      return `
+                        <article class="lab-process-row">
+                          <div class="lab-process-row__head">
+                            <div>
+                              <p class="lab-process-row__eyebrow">${String(index + 1)}</p>
+                              <h2 class="lab-process-row__title">${escapeHtml(getProcessModuleTitle(moduleEntry))}</h2>
+                            </div>
+                            <strong>${escapeHtml(formatStatusLabel(moduleEntry.status))} ${String(progress)}%</strong>
+                          </div>
+                          <div class="lab-progress-bar lab-progress-bar--wide">
+                            <span style="width:${progress}%"></span>
+                          </div>
+                          ${
+                            typeof toRecord(moduleEntry).summary === "string" && toRecord(moduleEntry).summary.trim() !== ""
+                              ? `<p class="lab-panel__hint">${escapeHtml(toRecord(moduleEntry).summary)}</p>`
+                              : ""
+                          }
+                        </article>
+                      `;
+                    })
+                    .join("")
+                : `<p class="lab-panel__hint">${escapeHtml(featureText(["process", "subtitle"]))}</p>`
+            }
           </section>
         </section>
         <aside class="lab-side-stack">
           <section class="lab-panel">
             <div class="lab-panel__header">
-              <p class="lab-panel__eyebrow">${escapeHtml(
-                text(["mediaAnalysis", "process", "summaryTitle"])
-              )}</p>
+              <p class="lab-panel__eyebrow">${escapeHtml(featureText(["process", "summaryTitle"]))}</p>
             </div>
             ${renderSummaryRows([
-              [text(["mediaAnalysis", "shared", "status"]), String(Math.round(state.process.progress)) + "%"],
-              [text(["mediaAnalysis", "profile", "summary", "target"]), getFocusLabel()],
-              [text(["mediaAnalysis", "shared", "preset"]), getProfileLabel()],
-              [text(["mediaAnalysis", "profile", "summary", "preflight"]), text(["mediaAnalysis", "profile", "status", getProfilePreflight().status || "idle"])],
+              [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(processRecord.status || "idle")],
+              [text(["mediaAnalysis", "profile", "summary", "target"]), getCurrentFeatureTargetLabel()],
+              [featureText(["report", "findingsTitle"]), String(findings.length)],
+              [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(getCurrentFeatureArtifactCount())],
+              [featureText(["settings", "currentStageTitle"]), `${String(completedModules)} / ${String(modules.length || 0)}`],
             ])}
+            ${
+              Array.isArray(processRecord.warnings) && processRecord.warnings.length > 0
+                ? `
+                  <div class="lab-list-block">
+                    <strong>${escapeHtml(text(["mediaAnalysis", "profile", "warningsTitle"]))}</strong>
+                    <ul class="lab-bullet-list">
+                      ${processRecord.warnings
+                        .slice(0, 4)
+                        .map(function (entry) {
+                          return `<li>${escapeHtml(entry)}</li>`;
+                        })
+                        .join("")}
+                    </ul>
+                  </div>
+                `
+                : ""
+            }
             <div class="lab-action-stack">
               <button class="lab-button lab-button--ghost" type="button" data-action="restart-process">
-                ${escapeHtml(text(["mediaAnalysis", "process", "controls", "restart"]))}
+                ${escapeHtml(featureText(["process", "controls", "restart"]))}
               </button>
-              <button class="lab-button lab-button--primary" type="button" data-action="open-report">
-                ${escapeHtml(text(["mediaAnalysis", "process", "controls", "jumpReport"]))}
+              <button class="lab-button lab-button--ghost" type="button" data-action="process-cancel" ${
+                runningJob ? "" : "disabled"
+              }>
+                ${escapeHtml(text(["mediaAnalysis", "profile", "actions", "cancel"]))}
+              </button>
+              <button class="lab-button lab-button--primary" type="button" data-action="open-report" ${
+                ["ready", "stale"].includes(String(getCurrentFeatureReportRecord().status || "")) ? "" : "disabled"
+              }>
+                ${escapeHtml(featureText(["process", "controls", "jumpReport"]))}
               </button>
             </div>
+            ${
+              runningJob && typeof runningJob.message === "string" && runningJob.message.trim() !== ""
+                ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
+                : ""
+            }
           </section>
         </aside>
       </div>
@@ -3619,12 +5466,165 @@
     `;
   }
 
+  function getAudioAnalysisProviderLabel(providerId) {
+    const descriptor =
+      getAudioAnalysisProviderEntries().find(function (entry) {
+        return entry.id === providerId;
+      }) || null;
+    const providerState = toRecord(getAudioAnalysisProviderState()[providerId]);
+    const title = textFromKey((descriptor && descriptor.titleKey) || "") || providerId || "--";
+    const suffix =
+      typeof providerState.status === "string" && providerState.status.trim() !== ""
+        ? ` (${formatStatusLabel(providerState.status)})`
+        : "";
+    return `${title}${suffix}`;
+  }
+
+  function getAudioAnalysisModuleTitle(moduleEntry) {
+    return textFromKey(moduleEntry.titleKey || "") || moduleEntry.moduleId || "--";
+  }
+
+  function getAudioAnalysisModuleSummary(moduleEntry) {
+    if (typeof moduleEntry.summary === "string" && moduleEntry.summary.trim() !== "") {
+      return moduleEntry.summary;
+    }
+    return textFromKey(moduleEntry.summaryKey || "") || featureText(["report", "emptyBody"]);
+  }
+
+  function renderAudioAnalysisResultCard(moduleEntry) {
+    const metrics = Array.isArray(moduleEntry.metrics) ? moduleEntry.metrics.map(toRecord) : [];
+    const providerLabels = Array.isArray(moduleEntry.providerIds)
+      ? moduleEntry.providerIds
+          .map(function (providerId) {
+            return getAudioAnalysisProviderLabel(providerId);
+          })
+          .filter(Boolean)
+      : [];
+
+    return `
+      <article class="lab-tool-card">
+        <div class="lab-tool-card__head">
+          <div>
+            <strong>${escapeHtml(getAudioAnalysisModuleTitle(moduleEntry))}</strong>
+            <span>${escapeHtml(formatStatusLabel(moduleEntry.status || "planned"))}</span>
+          </div>
+          <span class="lab-chip">${escapeHtml(String(moduleEntry.phase || "v1").toUpperCase())}</span>
+        </div>
+        <p class="lab-panel__hint">${escapeHtml(getAudioAnalysisModuleSummary(moduleEntry))}</p>
+        <ul class="lab-meta-list">
+          <li>
+            <span>${escapeHtml(featureText(["report", "moduleMeta", "phase"]))}</span>
+            <strong>${escapeHtml(String(moduleEntry.phase || "v1").toUpperCase())}</strong>
+          </li>
+          <li>
+            <span>${escapeHtml(featureText(["report", "moduleMeta", "confidence"]))}</span>
+            <strong>${escapeHtml(moduleEntry.confidence ? formatStatusLabel(moduleEntry.confidence) : "--")}</strong>
+          </li>
+          <li>
+            <span>${escapeHtml(featureText(["report", "moduleMeta", "providers"]))}</span>
+            <strong>${escapeHtml(providerLabels.length > 0 ? providerLabels.join(", ") : "--")}</strong>
+          </li>
+          <li>
+            <span>${escapeHtml(featureText(["report", "moduleMeta", "signals"]))}</span>
+            <strong>${escapeHtml(String(moduleEntry.signals.length))}</strong>
+          </li>
+          <li>
+            <span>${escapeHtml(featureText(["report", "moduleMeta", "artifacts"]))}</span>
+            <strong>${escapeHtml(String(moduleEntry.artifacts.length))}</strong>
+          </li>
+        </ul>
+        ${
+          metrics.length > 0
+            ? `
+              <div class="lab-list-block">
+                <strong>${escapeHtml(featureText(["report", "moduleMeta", "metrics"]))}</strong>
+                <ul class="lab-bullet-list">
+                  ${metrics
+                    .slice(0, 4)
+                    .map(function (metric) {
+                      return `<li>${escapeHtml(
+                        `${metric.label || textFromKey(metric.labelKey || "") || metric.id || "--"}: ${
+                          metric.value || "--"
+                        }`
+                      )}</li>`;
+                    })
+                    .join("")}
+                </ul>
+              </div>
+            `
+            : ""
+        }
+        ${
+          Array.isArray(moduleEntry.blockers) && moduleEntry.blockers.length > 0
+            ? `
+              <div class="lab-list-block">
+                <strong>${escapeHtml(featureText(["report", "moduleMeta", "blockers"]))}</strong>
+                <ul class="lab-bullet-list">
+                  ${moduleEntry.blockers
+                    .slice(0, 3)
+                    .map(function (entry) {
+                      return `<li>${escapeHtml(entry)}</li>`;
+                    })
+                    .join("")}
+                </ul>
+              </div>
+            `
+            : ""
+        }
+        ${
+          Array.isArray(moduleEntry.warnings) && moduleEntry.warnings.length > 0
+            ? `
+              <div class="lab-list-block">
+                <strong>${escapeHtml(featureText(["report", "moduleMeta", "warnings"]))}</strong>
+                <ul class="lab-bullet-list">
+                  ${moduleEntry.warnings
+                    .slice(0, 3)
+                    .map(function (entry) {
+                      return `<li>${escapeHtml(entry)}</li>`;
+                    })
+                    .join("")}
+                </ul>
+              </div>
+            `
+            : ""
+        }
+      </article>
+    `;
+  }
+
+  function renderAudioAnalysisModuleGrid() {
+    const moduleEntries = getAudioAnalysisOrderedResultEntries();
+    if (moduleEntries.length === 0) {
+      return "";
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["report", "moduleRollupEyebrow"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["report", "moduleRollupTitle"]))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(featureText(["report", "moduleRollupSubtitle"]))}</p>
+          </div>
+        </div>
+        <div class="lab-tool-grid">
+          ${moduleEntries
+            .map(function (moduleEntry) {
+              return renderAudioAnalysisResultCard(moduleEntry);
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function renderReportStage() {
+    const reportRecord = getCurrentFeatureReportRecord();
     const asset = getEffectiveMediaAsset();
-    const preflight = getProfilePreflight();
-    const artifacts = getProfileArtifacts();
-    const signals = getTopProfileSignals(3);
-    const selectedModel = getProfileSelectedModel();
+    const findings = getReportFindings();
+    const summaryCards = getReportSummaryCards();
+    const exportsList = getReportExports();
+    const runningJob = getRunningReportJob();
     const previewUrl =
       typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== "" ? asset.previewUrl : PREVIEW_IMAGE;
 
@@ -3638,47 +5638,45 @@
             </div>
             <div class="lab-report-hero__copy">
               <div class="lab-panel__header">
-                <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "report", "handoffTitle"]))}</h2>
+                <h2 class="lab-panel__title">${escapeHtml(featureText(["report", "overviewTitle"]))}</h2>
               </div>
               ${renderSummaryRows([
                 [text(["mediaAnalysis", "shared", "summary"]), asset.label || getCurrentSourceLabel()],
                 [text(["mediaAnalysis", "shared", "duration"]), formatDuration(getPreferredAssetDuration(asset))],
-                [text(["mediaAnalysis", "profile", "summary", "preflight"]), text(["mediaAnalysis", "profile", "status", preflight.status || "idle"])],
-                [text(["mediaAnalysis", "profile", "summary", "signals"]), String(getProfileSignals().length)],
-                [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(artifacts.length)],
+                [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(reportRecord.status || "idle")],
+                [featureText(["report", "findingsTitle"]), String(findings.length)],
+                [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(getCurrentFeatureArtifactCount())],
               ])}
-              <p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "report", "stagedHint"]))}</p>
+              <p class="lab-panel__hint">${escapeHtml(featureText(["report", "stagedHint"]))}</p>
             </div>
           </section>
           <section class="lab-signal-grid">
             ${
-              signals.length > 0
-                ? signals
-                    .map(function (signal) {
-                      return renderSignalCard(
-                        getProfileSignalKindLabel(signal.kind),
-                        signal.title || signal.laneId || "--"
-                      );
+              summaryCards.length > 0
+                ? summaryCards
+                    .map(function (card) {
+                      return renderSignalCard(card.value || "--", card.label || textFromKey(card.labelKey || "") || "--");
                     })
                     .join("")
-                : `<p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "report", "emptyFindings"]))}</p>`
+                : `<p class="lab-panel__hint">${escapeHtml(featureText(["report", "emptyFindings"]))}</p>`
             }
           </section>
+          ${isAudioAnalysisFeature() ? renderAudioAnalysisModuleGrid() : ""}
           <section class="lab-panel">
             <div class="lab-panel__header">
               <p class="lab-panel__eyebrow">${escapeHtml(
-                text(["mediaAnalysis", "report", "findingsTitle"])
+                featureText(["report", "findingsTitle"])
               )}</p>
             </div>
             <div class="lab-findings">
               ${
-                signals.length > 0
-                  ? signals
-                      .map(function (signal) {
-                        return renderReportFinding(signal);
+                findings.length > 0
+                  ? findings
+                      .map(function (finding) {
+                        return renderReportFinding(finding);
                       })
                       .join("")
-                  : `<p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "report", "emptyBody"]))}</p>`
+                  : `<p class="lab-panel__hint">${escapeHtml(featureText(["report", "emptyBody"]))}</p>`
               }
             </div>
           </section>
@@ -3686,20 +5684,61 @@
         <aside class="lab-side-stack">
           <section class="lab-panel">
             ${renderSummaryRows([
-              [text(["mediaAnalysis", "shared", "preset"]), getProfileLabel()],
-              [text(["mediaAnalysis", "profile", "summary", "target"]), getFocusLabel()],
-              [text(["mediaAnalysis", "profile", "summary", "preflight"]), text(["mediaAnalysis", "profile", "status", getProfilePreflight().status || "idle"])],
-              [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(artifacts.length)],
-              [text(["mediaAnalysis", "profile", "summary", "model"]), selectedModel ? textFromKey(selectedModel.labelKey || "") : "--"],
+              [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(reportRecord.status || "idle")],
+              [text(["mediaAnalysis", "profile", "summary", "target"]), getCurrentFeatureTargetLabel()],
+              [featureText(["report", "findingsTitle"]), String(findings.length)],
+              [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(getCurrentFeatureArtifactCount())],
+              [featureText(["report", "actions", "export"]), String(exportsList.length)],
             ])}
+            ${
+              Array.isArray(reportRecord.caveats) && reportRecord.caveats.length > 0
+                ? `
+                  <div class="lab-list-block">
+                    <strong>${escapeHtml(featureText(["report", "sideTitle"]))}</strong>
+                    <ul class="lab-bullet-list">
+                      ${reportRecord.caveats
+                        .slice(0, 4)
+                        .map(function (entry) {
+                          return `<li>${escapeHtml(entry)}</li>`;
+                        })
+                        .join("")}
+                    </ul>
+                  </div>
+                `
+                : ""
+            }
+            ${
+              exportsList.length > 0
+                ? `
+                  <div class="lab-list-block">
+                    <strong>${escapeHtml(featureText(["report", "actions", "export"]))}</strong>
+                    <ul class="lab-bullet-list">
+                      ${exportsList
+                        .slice(0, 4)
+                        .map(function (entry) {
+                          return `<li>${escapeHtml(entry.fileName || entry.path || "--")}</li>`;
+                        })
+                        .join("")}
+                    </ul>
+                  </div>
+                `
+                : ""
+            }
             <div class="lab-action-stack">
               <button class="lab-button lab-button--ghost" type="button" data-action="reset-journey">
-                ${escapeHtml(text(["mediaAnalysis", "report", "actions", "restart"]))}
+                ${escapeHtml(featureText(["report", "actions", "restart"]))}
               </button>
-              <button class="lab-button lab-button--primary" type="button" data-action="export-report">
-                ${escapeHtml(text(["mediaAnalysis", "report", "actions", "export"]))}
+              <button class="lab-button lab-button--primary" type="button" data-action="export-report" ${
+                reportRecord.status === "ready" && !runningJob ? "" : "disabled"
+              }>
+                ${escapeHtml(featureText(["report", "actions", "export"]))}
               </button>
             </div>
+            ${
+              runningJob && typeof runningJob.message === "string" && runningJob.message.trim() !== ""
+                ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
+                : ""
+            }
           </section>
         </aside>
       </div>
@@ -3743,7 +5782,7 @@
         </section>
         <footer class="lab-footer">
           <p class="lab-footer__note">${escapeHtml(
-            state.ui.lastActionMessage || text(["mediaAnalysis", "shared", "dummyHint"])
+            state.ui.lastActionMessage || featureText(["shared", "dummyHint"])
           )}</p>
         </footer>
         ${renderSettingsOverlay()}
@@ -4003,6 +6042,15 @@
       case "source-mode":
         sendSourceAction("source-set-mode", { mode: value });
         return;
+      case "subtitle-source-mode":
+        sendSourceAction("subtitle-source-set-mode", { mode: value });
+        return;
+      case "subtitle-source-select-entry":
+        sendSourceAction("subtitle-source-select-entry", { entryId: value });
+        return;
+      case "subtitle-source-toggle-selection":
+        sendSourceAction("subtitle-source-toggle-selection", { entryId: value });
+        return;
       case "youtube-preset":
         syncDraftField("youtubePreset", value);
         persistDrafts({ youtubePreset: value });
@@ -4010,14 +6058,66 @@
       case "source-pick-local":
         sendSourceAction("source-pick-local");
         return;
+      case "subtitle-source-pick-local":
+        sendSourceAction("subtitle-source-pick-local", {
+          fields: buildCurrentDraftPayload(),
+        });
+        return;
+      case "subtitle-source-pick-folder":
+        sendSourceAction("subtitle-source-pick-folder", {
+          fields: buildCurrentDraftPayload(),
+        });
+        return;
       case "source-download-url":
         sendSourceAction("source-download-url", {
+          fields: buildCurrentDraftPayload(),
+        });
+        return;
+      case "subtitle-source-download-url":
+        sendSourceAction("subtitle-source-download-url", {
+          fields: buildCurrentDraftPayload(),
+        });
+        return;
+      case "subtitle-source-discover-youtube":
+        sendSourceAction("subtitle-source-discover-youtube", {
           fields: buildCurrentDraftPayload(),
         });
         return;
       case "source-download-youtube":
         sendSourceAction("source-download-youtube", {
           fields: buildCurrentDraftPayload(),
+        });
+        return;
+      case "subtitle-source-download-youtube":
+        sendSourceAction("subtitle-source-download-youtube", {
+          fields: buildCurrentDraftPayload(),
+        });
+        return;
+      case "subtitle-source-toggle-discovery":
+        sendSourceAction("subtitle-source-toggle-discovery", { candidateId: value });
+        return;
+      case "subtitle-source-select-all-discovery":
+        sendSourceAction("subtitle-source-select-all-discovery");
+        return;
+      case "subtitle-source-clear-discovery-selection":
+        sendSourceAction("subtitle-source-clear-discovery-selection");
+        return;
+      case "subtitle-edit-preset":
+        sendMediaAction("subtitle-edit-apply-preset", {
+          presetId: value,
+          featureStage: "edit",
+        });
+        return;
+      case "subtitle-edit-preview":
+        sendMediaAction("subtitle-edit-preview", {
+          patch: buildCurrentEditRecipePatch(),
+          featureStage: "edit",
+        });
+        return;
+      case "subtitle-edit-apply":
+        sendMediaAction("subtitle-edit-apply", {
+          patch: buildCurrentEditRecipePatch(),
+          featureStage: "edit",
         });
         return;
       case "edit-mode":
@@ -4124,6 +6224,11 @@
       case "restart-process":
         restartProcess();
         return;
+      case "process-cancel":
+        sendMediaAction(isAudioAnalysisFeature() ? "audio-process-cancel" : "process-cancel", {
+          featureStage: "process",
+        });
+        return;
       case "open-report":
         openReport();
         return;
@@ -4131,8 +6236,9 @@
         resetJourney();
         return;
       case "export-report":
-        setLastAction(text(["mediaAnalysis", "report", "exportQueued"]));
-        render();
+        sendMediaAction(isAudioAnalysisFeature() ? "audio-report-export" : "report-export", {
+          featureStage: "report",
+        });
         return;
       default:
         break;
@@ -4319,16 +6425,6 @@
     setLastAction(bootstrapText("roomApiUnavailable"));
   }
 
-  globalThis.setInterval(function () {
-    if (state.activeStage === "process" && state.process.running) {
-      state.process.progress = Math.min(100, state.process.progress + 3);
-      if (state.process.progress >= 100) {
-        state.process.running = false;
-      }
-      render();
-    }
-  }, 480);
-
   applyPresentationMode(state.presentation.mode);
   applyLocale(state.locale);
   render();
@@ -4336,7 +6432,7 @@
   if (window.roomAPI && typeof window.roomAPI.ready === "function") {
     window.roomAPI.ready({
       room: ROOM_ID,
-      feature: FEATURE_ID,
+      feature: getActiveFeatureId(),
       stage: "ui-ready",
     });
   }

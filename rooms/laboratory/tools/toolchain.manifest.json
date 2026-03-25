@@ -8,7 +8,9 @@
       "stageSupport": {
         "source": "required",
         "edit": "unsupported",
-        "profile": "unsupported"
+        "profile": "unsupported",
+        "process": "unsupported",
+        "report": "unsupported"
       },
       "releaseProvider": {
         "type": "github-release",
@@ -64,7 +66,9 @@
       "stageSupport": {
         "source": "required",
         "edit": "required",
-        "profile": "required"
+        "profile": "required",
+        "process": "required",
+        "report": "unsupported"
       },
       "releaseProvider": {
         "type": "github-release",
@@ -109,7 +113,9 @@
       "stageSupport": {
         "source": "unsupported",
         "edit": "unsupported",
-        "profile": "optional"
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
       },
       "releaseProvider": {
         "type": "github-release",
@@ -127,6 +133,141 @@
           "archive": "zip",
           "executableName": "whisper-cli.exe"
         }
+      }
+    },
+    "opensmile": {
+      "displayName": "openSMILE",
+      "installDirName": "opensmile",
+      "availability": "system-command",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": ["-h"],
+        "versionRegex": "(?:openSMILE|SMILExtract)[^\\d]*(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "SMILExtract",
+        "setupHint": "Install openSMILE on the host system so the SMILExtract binary is available on PATH, then refresh this tool from settings."
+      }
+    },
+    "yamnet": {
+      "displayName": "YAMNet",
+      "installDirName": "yamnet",
+      "availability": "system-command",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "import tensorflow as tf, tensorflow_hub as hub, scipy, numpy; print(tf.__version__)"
+        ],
+        "versionRegex": "(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "setupHint": "Install python3 packages tensorflow, tensorflow_hub, numpy, and scipy so the room-local YAMNet helper can run, then refresh this tool from settings."
+      }
+    },
+    "librosa": {
+      "displayName": "librosa",
+      "installDirName": "librosa",
+      "availability": "system-command",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "import librosa, numpy, scipy; print(librosa.__version__)"
+        ],
+        "versionRegex": "(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "setupHint": "Install python3 packages librosa, numpy, and scipy so the room-local music analysis helpers can run, then refresh this tool from settings."
+      }
+    },
+    "demucs": {
+      "displayName": "Demucs",
+      "installDirName": "demucs",
+      "availability": "system-command",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "import demucs, importlib.metadata; print(importlib.metadata.version('demucs'))"
+        ],
+        "versionRegex": "(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "setupHint": "Install the demucs Python package so the prepared source-separation runtime can be enabled, then refresh this tool from settings."
+      }
+    },
+    "essentia": {
+      "displayName": "Essentia",
+      "installDirName": "essentia",
+      "availability": "system-command",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "import essentia, importlib.metadata; print(importlib.metadata.version('essentia'))"
+        ],
+        "versionRegex": "(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "setupHint": "Install the essentia Python package so the prepared tonal fallback can be enabled, then refresh this tool from settings."
+      }
+    },
+    "pyaudioanalysis": {
+      "displayName": "pyAudioAnalysis",
+      "installDirName": "pyaudioanalysis",
+      "availability": "system-command",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "from pyAudioAnalysis import audioSegmentation as aS; import hmmlearn, sklearn, scipy, numpy; print('pyAudioAnalysis')"
+        ],
+        "versionRegex": "(pyAudioAnalysis)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "setupHint": "Install pyAudioAnalysis plus its local runtime dependencies (numpy, scipy, scikit-learn, and hmmlearn) on the host system, then refresh this tool from settings."
       }
     }
   }

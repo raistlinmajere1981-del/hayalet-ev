@@ -21,11 +21,21 @@ const requiredFiles = [
   "rooms/laboratory/tools/profile-presets.json",
   "rooms/laboratory/tools/profile-capabilities.json",
   "rooms/laboratory/tools/profile-models.json",
+  "rooms/laboratory/tools/audio-analysis-catalog.json",
+  "rooms/laboratory/tools/audio-analysis-capabilities.json",
+  "rooms/laboratory/tools/audio-analysis-presets.json",
+  "rooms/laboratory/tools/audio-analysis-providers.json",
+  "rooms/laboratory/tools/subtitle-source-presets.json",
+  "rooms/laboratory/tools/subtitle-youtube.form.json",
+  "rooms/laboratory/tools/subtitle-edit-presets.json",
+  "rooms/laboratory/tools/subtitle-analysis-catalog.json",
+  "rooms/laboratory/tools/subtitle-analysis-capabilities.json",
+  "rooms/laboratory/tools/subtitle-analysis-providers.json",
   "rooms/laboratory/assets/room-background.webp",
   "rooms/laboratory/assets/media-analysis-view.webp",
 ];
 
-test("laboratory workspace keeps the required media-analysis package files", () => {
+test("laboratory workspace keeps the required laboratory package files", () => {
   requiredFiles.forEach((filePath) => {
     assert.equal(existsSync(filePath), true, filePath);
   });

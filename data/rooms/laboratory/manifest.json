@@ -81,6 +81,66 @@
           }
         }
       }
+    },
+    {
+      "id": "audio-analysis",
+      "name": "Audio Analysis",
+      "description": "An audio-first analysis desk that reuses the laboratory tool room for source prep, signal checks, speech tooling, and reporting.",
+      "icon": "AU",
+      "scene": {
+        "hotspot": {
+          "id": "laboratory-audio-analysis",
+          "rect": {
+            "leftPx": 182,
+            "topPx": 172,
+            "widthPx": 468,
+            "heightPx": 318
+          },
+          "label": {
+            "text": "Audio Analysis"
+          }
+        },
+        "view": {
+          "id": "audio-analysis-console",
+          "backgroundSrc": "assets/media-analysis-view.webp",
+          "transparentWindow": {
+            "leftPct": 2.4,
+            "topPct": 10.8,
+            "widthPct": 95.2,
+            "heightPct": 79.4
+          }
+        }
+      }
+    },
+    {
+      "id": "subtitle-analysis",
+      "name": "Subtitle Analysis",
+      "description": "A subtitle-first workbench for local subtitle intake, YouTube subtitle capture, cleanup, QC, and reporting.",
+      "icon": "SB",
+      "scene": {
+        "hotspot": {
+          "id": "laboratory-subtitle-analysis",
+          "rect": {
+            "leftPx": 678,
+            "topPx": 522,
+            "widthPx": 348,
+            "heightPx": 214
+          },
+          "label": {
+            "text": "Subtitle Analysis"
+          }
+        },
+        "view": {
+          "id": "subtitle-analysis-console",
+          "backgroundSrc": "assets/media-analysis-view.webp",
+          "transparentWindow": {
+            "leftPct": 2.4,
+            "topPct": 10.8,
+            "widthPct": 95.2,
+            "heightPct": 79.4
+          }
+        }
+      }
     }
   ]
 }

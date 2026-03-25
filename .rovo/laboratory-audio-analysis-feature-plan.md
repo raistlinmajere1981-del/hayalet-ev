@@ -29,6 +29,7 @@ The core strategy is:
 
 - keep the room local-first and honest about capability limits
 - reuse the existing `laboratory` room tool/runtime patterns where they already work
+- reuse the same room-local tool registration, install/update flow, and settings overlay already used by `media-analysis`
 - turn deferred analysis families into explicit `planned` surfaces in `v1`, not fake results
 - prepare `v2` by locking contracts, storage shapes, result envelopes, and capability states in `v1`
 
@@ -62,6 +63,8 @@ The core strategy is:
 - In scope for `v1`:
   - second `laboratory` feature with its own hotspot and close-up view
   - feature-aware host and UI branching
+  - shared room-local toolchain behavior with `media-analysis`
+  - the same settings overlay workflow for tool probe, install, update, and model readiness
   - audio-first source intake for audio files and video-with-audio files
   - derived analysis target preparation
   - technical signal health analysis
@@ -316,6 +319,7 @@ This avoids a schema reset when `v2` modules arrive.
 - **Complexity**: 7
 - **Dependencies**: Task 1.4, Task 2.3
 - **Acceptance Criteria**:
+  - `audio-analysis` uses the same room-local tool registration, install, update, and model readiness flow as `media-analysis`
   - Real binary tools still use the current room-tool patterns
   - Deferred providers appear only as roadmap/capability summaries, not install buttons
   - Platform limitations are explicit

@@ -2,7 +2,9 @@
   "title": "Laboratory",
   "subtitle": "Obsidian media analysis room for staged capture, cleanup, profiling, processing, and reporting.",
   "features": {
-    "media-analysis": "Media Analysis"
+    "media-analysis": "Media Analysis",
+    "audio-analysis": "Audio Analysis",
+    "subtitle-analysis": "Subtitle Analysis"
   },
   "mediaAnalysis": {
     "eyebrow": "Obsidian Laboratory",
@@ -42,7 +44,7 @@
       "score": "Confidence",
       "risk": "Risk band",
       "elevatedRisk": "Elevated",
-      "dummyHint": "Source, edit, and profile now run live in this phase. Process and report still use room-local dummy state."
+      "dummyHint": "Source, edit, profile, process, and report now run from room-managed state. Audio Analysis still keeps some modules explicitly planned."
     },
     "projects": {
       "eyebrow": "Project Desk",
@@ -62,33 +64,45 @@
       "closeAction": "Close",
       "installAction": "Install",
       "updateAction": "Update",
+      "manualCheckAction": "Check",
+      "manualRefreshAction": "Refresh Probe",
       "versionLabel": "Installed Version",
       "latestLabel": "Latest",
       "pathLabel": "Binary Path",
       "busyHint": "A room-managed job is running for this tool.",
       "currentStageTitle": "Current stage tools",
+      "noStageTools": "This stage does not require a dedicated room-managed tool.",
       "otherToolsTitle": "Other room tools",
       "otherToolsSubtitle": "Stage-adjacent installs stay available from the same overlay.",
       "stageSupportLabel": "Stage support",
-      "tools": {
-        "yt-dlp": "yt-dlp",
-        "ffmpeg": "FFmpeg",
-        "whisper.cpp": "Whisper.cpp"
-      },
+    "tools": {
+      "yt-dlp": "yt-dlp",
+      "ffmpeg": "FFmpeg",
+      "whisper.cpp": "Whisper.cpp",
+      "opensmile": "openSMILE",
+      "yamnet": "YAMNet",
+      "librosa": "librosa",
+      "demucs": "Demucs",
+      "essentia": "Essentia",
+      "pyaudioanalysis": "pyAudioAnalysis"
+    },
       "support": {
         "required": "Required",
         "optional": "Optional",
         "unsupported": "Unsupported"
       },
-      "status": {
-        "missing": "Missing",
-        "installed": "Installed",
-        "updateAvailable": "Update available",
-        "ready": "Ready",
-        "idle": "Idle",
-        "error": "Error"
-      }
-    },
+    "status": {
+      "missing": "Missing",
+      "installed": "Installed",
+      "updateAvailable": "Update available",
+      "manualSetup": "Manual setup needed",
+      "manualReady": "System tool detected",
+      "ready": "Ready",
+      "idle": "Idle",
+      "error": "Error",
+      "planned": "Planned"
+    }
+  },
     "messages": {
       "project-create": "New project created.",
       "project-select": "Project resumed.",
@@ -99,11 +113,27 @@
       "source-pick-local": "Local source copied into the project.",
       "source-download-url": "Direct URL source downloaded into the project.",
       "source-download-youtube": "YouTube source captured into the project.",
+      "subtitle-source-set-mode": "Subtitle source mode updated.",
+      "subtitle-source-update-drafts": "Subtitle source filters saved.",
+      "subtitle-source-pick-local": "Subtitle file copied into the project.",
+      "subtitle-source-pick-folder": "Subtitle folder imported into the project.",
+      "subtitle-source-download-url": "Subtitle URL downloaded into the project.",
+      "subtitle-source-discover-youtube": "YouTube subtitle candidates refreshed.",
+      "subtitle-source-download-youtube": "Selected YouTube subtitles downloaded into the project.",
+      "subtitle-source-toggle-discovery": "Subtitle candidate selection updated.",
+      "subtitle-source-select-all-discovery": "All subtitle candidates selected.",
+      "subtitle-source-clear-discovery-selection": "Subtitle candidate selection cleared.",
+      "subtitle-source-select-entry": "Active subtitle entry updated.",
+      "subtitle-source-toggle-selection": "Subtitle batch selection updated.",
       "tool-install": "Tool installation completed.",
       "tool-update": "Tool update completed.",
       "tools-refresh": "Tool status refreshed.",
       "refresh": "Source state refreshed.",
       "edit-set-mode": "Edit mode updated.",
+      "subtitle-edit-apply-preset": "Subtitle cleanup preset applied.",
+      "subtitle-edit-update-recipe": "Subtitle cleanup recipe saved.",
+      "subtitle-edit-preview": "Subtitle cleanup preview generated.",
+      "subtitle-edit-apply": "Subtitle cleanup output rendered.",
       "edit-apply-preset": "Edit preset applied.",
       "edit-update-recipe": "Edit recipe saved.",
       "edit-set-output": "Derived output selected.",
@@ -121,7 +151,13 @@
       "profile-run-preflight": "Profile preflight completed.",
       "profile-cancel-preflight": "Profile preflight cancelled.",
       "profile-model-install": "Transcript model installed.",
-      "profile-model-remove": "Transcript model removed."
+      "profile-model-remove": "Transcript model removed.",
+      "process-run": "Managed process run completed.",
+      "audio-process-run": "Audio analysis run completed.",
+      "process-cancel": "Process run cancelled.",
+      "audio-process-cancel": "Audio analysis run cancelled.",
+      "report-export": "Report export completed.",
+      "audio-report-export": "Audio report export completed."
     },
     "source": {
       "title": "Prepare the analysis source",
@@ -590,14 +626,14 @@
     },
     "process": {
       "title": "Follow the staged process",
-      "subtitle": "Monitor the dummy pipeline as the room advances through each analysis segment.",
+      "subtitle": "Monitor the room-managed pipeline as each analysis module advances on the active target.",
       "summaryTitle": "Process Summary",
-      "summaryHintActive": "The dummy process keeps moving while this stage stays open.",
-      "summaryHintDone": "The staged process reached its final checkpoint and can roll into the report view.",
-      "summaryStatusActive": "Active dummy run",
-      "summaryStatusDone": "Dummy run complete",
+      "summaryHintActive": "The managed run streams real job progress from the room host.",
+      "summaryHintDone": "The managed run finished and a report-ready snapshot is now available.",
+      "summaryStatusActive": "Managed run active",
+      "summaryStatusDone": "Managed run complete",
       "controls": {
-        "restart": "Restart Simulation",
+        "restart": "Run Process",
         "jumpReport": "Open Report"
       },
       "steps": {
@@ -609,21 +645,452 @@
       }
     },
     "report": {
-      "title": "Review the staged handoff",
-      "subtitle": "This final pane reflects the latest profile results without pretending the full process stage has already run.",
-      "handoffTitle": "Profile Handoff Snapshot",
-      "stagedHint": "This view mirrors the current profile run. Final analysis and a true verdict still belong to later stages.",
+      "title": "Review the final report",
+      "subtitle": "This pane renders the latest managed process results, findings, and export history for the active target.",
+      "handoffTitle": "Managed Report Snapshot",
+      "stagedHint": "The report stays evidence-led: measured, derived, and heuristic findings remain clearly separated.",
       "overviewTitle": "Report Overview",
       "signalTitle": "Risk Signals",
       "findingsTitle": "Priority Findings",
       "sideTitle": "Analysis Detail",
-      "emptyFindings": "No profile signals are ready yet.",
-      "emptyBody": "Run a profile preflight first, then this staged handoff view will surface its strongest findings.",
-      "exportQueued": "Staged handoff export queued.",
+      "emptyFindings": "No managed report findings are ready yet.",
+      "emptyBody": "Run the process stage first, then this final report surface will render its persisted findings and exports.",
+      "exportQueued": "Report export queued.",
       "actions": {
         "restart": "Start New Run",
-        "export": "Export Handoff Notes"
+        "export": "Export Report"
       }
+    }
+  },
+  "audioAnalysis": {
+    "stageNav": {
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "stages": {
+      "source": "Audio Source",
+      "edit": "Signal Prep",
+      "profile": "Audio Profile",
+      "process": "Run",
+      "report": "Audio Report"
+    },
+    "shared": {
+      "dummyHint": "Audio Analysis shares the same room-local tools and settings overlay as Media Analysis. Implemented modules run live while planned modules stay clearly marked.",
+      "toolingEyebrow": "Shared Tool Room",
+      "toolingTitle": "Same tool workflow, audio-first surface",
+      "toolingBody": "Tool installs, updates, and model readiness are managed from the same room-local registry used by Media Analysis."
+    },
+    "settings": {
+      "eyebrow": "Tool Room",
+      "title": "Audio Analysis Settings",
+      "subtitle": "This feature reuses the same room-local install, update, and model workflow as Media Analysis.",
+      "currentStageTitle": "Current stage tools",
+      "providersEyebrow": "Provider Readiness",
+      "providersTitle": "Audio provider dashboard",
+      "providersSubtitle": "Descriptor-driven provider cards stay aligned with the same room-local install workflow and future v2 placeholder paths.",
+      "providerMeta": {
+        "type": "Provider type",
+        "install": "Install path",
+        "modules": "Modules",
+        "artifacts": "Expected artifacts",
+        "version": "Version",
+        "model": "Model",
+        "platform": "Platform",
+        "fallbacks": "Fallbacks"
+      },
+      "providerMetaValues": {
+        "supported": "Supported",
+        "limited": "Limited"
+      }
+    },
+    "source": {
+      "formatLabel": "Audio Source Type",
+      "title": "Prepare an audio target",
+      "subtitle": "Load an audio file or a video whose embedded audio track will be inspected by the shared laboratory toolchain.",
+      "formats": {
+        "video": {
+          "title": "Video",
+          "subtitle": "Inspect the embedded audio path from a local file or URL."
+        },
+        "audio": {
+          "title": "Audio",
+          "subtitle": "Work directly on standalone audio files."
+        }
+      }
+    },
+    "edit": {
+      "title": "Shape the signal path",
+      "subtitle": "Reuse the same FFmpeg-backed prep surface to normalize, trim, and inspect the audio-oriented workspace."
+    },
+    "profile": {
+      "title": "Configure the audio profile",
+      "subtitle": "Tune signal health, transcript, speaker, and planned audio modules with the same tool and model registry."
+    },
+    "process": {
+      "title": "Run the staged audio desk",
+      "subtitle": "Monitor the shared job pipeline while implemented audio modules advance on the active target.",
+      "summaryTitle": "Audio Run Summary",
+      "controls": {
+        "restart": "Run Audio Desk",
+        "jumpReport": "Open Audio Report"
+      }
+    },
+    "report": {
+      "title": "Review the audio handoff",
+      "subtitle": "Inspect the latest audio-oriented findings, artifacts, exports, and clearly marked planned follow-up modules without leaving the laboratory.",
+      "stagedHint": "This report keeps the audio-first view honest: implemented modules are real, while deeper v2 modules remain clearly marked as planned.",
+      "overviewTitle": "Audio Report Overview",
+      "findingsTitle": "Audio Findings",
+      "sideTitle": "Audio Detail",
+      "emptyFindings": "No audio summary cards are ready yet.",
+      "emptyBody": "Run the audio process stage first, then this report will render persisted audio findings and module results.",
+      "moduleRollupEyebrow": "Module Rollup",
+      "moduleRollupTitle": "Catalog-driven module status",
+      "moduleRollupSubtitle": "Implemented, gated, and planned audio families all stay visible in one ordered report surface.",
+      "moduleMeta": {
+        "phase": "Phase",
+        "confidence": "Confidence",
+        "providers": "Providers",
+        "signals": "Signals",
+        "artifacts": "Artifacts",
+        "metrics": "Metrics",
+        "blockers": "Blockers",
+        "warnings": "Warnings"
+      },
+      "actions": {
+        "restart": "Start New Audio Run",
+        "export": "Export Audio Report"
+      }
+    },
+    "catalog": {
+      "eyebrow": "Analysis Catalog",
+      "title": "Audio module rollout",
+      "subtitle": "V1 ships real signal, artifact, transcript, and speaker surfaces. V2 modules already reserve their place in the same workflow.",
+      "status": {
+        "implemented": "Active",
+        "gated": "Capability-gated",
+        "planned": "Planned"
+      },
+      "modules": {
+        "signal-health": {
+          "title": "Signal health",
+          "summary": "Technical loudness, silence, and continuity checks powered by the shared FFmpeg room tooling."
+        },
+        "spectral-artifacts": {
+          "title": "Waveform and spectrogram",
+          "summary": "Audio-first visual artifacts sit beside the same room-local source and tool state."
+        },
+        "transcription": {
+          "title": "Transcript",
+          "summary": "Optional transcript capture reuses the existing Whisper.cpp install and model flow."
+        },
+        "speaker-diarization": {
+          "title": "Speaker timeline",
+          "summary": "The speaker timeline now runs on a fully local pyAudioAnalysis path when the host package is ready."
+        },
+        "prosody": {
+          "title": "Prosody",
+          "summary": "Speech pacing, contour, and estimated pause metrics now run when the manual openSMILE tool is ready."
+        },
+        "emotion": {
+          "title": "Emotion heuristics",
+          "summary": "A cautious, clearly labeled heuristic layer now derives coarse arousal-style labels from prosody signals."
+        },
+        "sound-events": {
+          "title": "Sound events",
+          "summary": "Ambient and event classification now runs through the manual YAMNet runtime when its Python dependencies are available."
+        },
+        "source-separation": {
+          "title": "Source separation",
+          "summary": "Stem and layer extraction now runs when the manual Demucs tool is ready, with isolated stems saved into the project workspace."
+        },
+        "music-rhythm-tonal": {
+          "title": "Music and rhythm",
+          "summary": "BPM, dominant pitch-class, and soundtrack-oriented descriptors now run when the manual librosa tool is ready, with Essentia kept as a deeper fallback path."
+        }
+      }
+    },
+    "providers": {
+      "ffmpeg-signal": {
+        "title": "FFmpeg signal runner",
+        "summary": "Shared room-local binary for loudness, silence, and artifact generation."
+      },
+      "whisper-transcript": {
+        "title": "Whisper transcript runner",
+        "summary": "Shared room-local binary and model path for transcript-aware passes."
+      },
+      "speaker-timeline": {
+        "title": "Speaker timeline adapter",
+        "summary": "Manual pyAudioAnalysis-backed diarization runtime with no account requirement and fully local execution."
+      },
+      "prosody-open-smile": {
+        "title": "Prosody descriptor runner",
+        "summary": "Manual openSMILE-backed runner for pacing, contour, and pause-oriented prosody summaries."
+      },
+      "emotion-heuristic": {
+        "title": "Emotion heuristic adapter",
+        "summary": "Manual openSMILE-backed heuristic layer with explicit confidence and disclaimer handling."
+      },
+      "sound-event-classifier": {
+        "title": "Sound event classifier",
+        "summary": "Manual YAMNet-backed runtime for broad AudioSet event tagging on supported setups."
+      },
+      "source-separation-runner": {
+        "title": "Source separation runner",
+        "summary": "Manual Demucs-backed stem extraction runtime for vocals, ambience, and music beds on supported setups."
+      },
+      "music-rhythm-engine": {
+        "title": "Music and rhythm engine",
+        "summary": "Manual librosa-backed rhythm and descriptor runtime for BPM, beat density, and dominant pitch-class summaries."
+      },
+      "music-rhythm-essentia": {
+        "title": "Music and tonal fallback",
+        "summary": "Planned Essentia-backed fallback path for deeper tonal and music descriptor expansion."
+      }
+    }
+  },
+  "subtitleAnalysis": {
+    "eyebrow": "Subtitle Workbench",
+    "operatorLabel": "Subtitle Operator",
+    "labels": {
+      "subtitle": "Subtitle"
+    },
+    "loading": {
+      "title": "Loading Subtitle Analysis",
+      "body": "Preparing subtitle-local descriptors and project state."
+    },
+    "stages": {
+      "source": {
+        "title": "Subtitle Source",
+        "subtitle": "Manage local files, folders, direct URLs, and YouTube batch subtitle intake."
+      },
+      "edit": {
+        "title": "Subtitle Edit",
+        "subtitle": "Clean and format subtitle text with reusable presets."
+      },
+      "profile": {
+        "title": "Subtitle Profile",
+        "subtitle": "This stage is reserved for the next rollout."
+      },
+      "process": {
+        "title": "Subtitle Analysis",
+        "subtitle": "Run QC, readability, timing, and lexical checks across the active selection."
+      },
+      "report": {
+        "title": "Subtitle Report",
+        "subtitle": "Turn core findings and batch summaries into report outputs."
+      }
+    },
+    "settings": {
+      "eyebrow": "Subtitle Tool Room",
+      "title": "Subtitle Analysis Settings",
+      "subtitle": "Review subtitle import, cleanup, and report tooling for the active stage."
+    },
+    "source": {
+      "modeLabel": "Subtitle intake",
+      "intakeTitle": "Choose how subtitles enter the project",
+      "sourceKindLabel": "Source family",
+      "youtubeDisabled": "yt-dlp must be available before YouTube subtitle capture can run.",
+      "modes": {
+        "localFile": "Single Subtitle",
+        "localFolder": "Folder",
+        "youtubeSingle": "YouTube Single",
+        "youtubePlaylist": "YouTube Playlist",
+        "youtubeChannel": "YouTube Channel"
+      },
+      "summary": {
+        "eyebrow": "Source Summary",
+        "emptyTitle": "No subtitle selected",
+        "activeSubtitle": "Active subtitle entry and current batch selection.",
+        "prepareHint": "Prepare a subtitle entry from the source stage.",
+        "labels": {
+          "workspaceMode": "Workspace mode",
+          "selectedEntries": "Selected entries",
+          "discoveryCandidates": "Discovery candidates",
+          "format": "Format",
+          "language": "Language",
+          "published": "Published",
+          "discovery": "Discovery",
+          "status": "Status"
+        }
+      },
+      "fields": {
+        "subtitleUrl": "Subtitle URL",
+        "youtubeUrl": "YouTube URL",
+        "subtitleMode": "Subtitle mode",
+        "languageFilter": "Language filter",
+        "publishedAfter": "Published after",
+        "publishedBefore": "Published before",
+        "weekdays": "Weekdays",
+        "durationMin": "Min duration sec",
+        "durationMax": "Max duration sec",
+        "shorts": "Shorts",
+        "liveStatus": "Live status",
+        "titleInclude": "Title include",
+        "titleExclude": "Title exclude",
+        "playlistItems": "Playlist items",
+        "limitCount": "Max videos"
+      },
+      "options": {
+        "subtitleMode": {
+          "manual": "Manual",
+          "auto": "Automatic",
+          "both": "Both"
+        },
+        "shorts": {
+          "all": "All",
+          "only": "Only shorts",
+          "exclude": "Exclude shorts"
+        },
+        "liveStatus": {
+          "all": "All uploads",
+          "excludeLive": "Exclude live",
+          "onlyLive": "Only live"
+        }
+      },
+      "placeholders": {
+        "subtitleUrl": "https://example.com/file.vtt",
+        "youtubeUrl": "Channel, playlist, or video URL",
+        "languageFilter": "tr,en or all",
+        "weekdays": "mon wed fri",
+        "titleInclude": "interview, summary",
+        "titleExclude": "teaser, shorts",
+        "playlistItems": "for example 1-10"
+      },
+      "actions": {
+        "pickLocal": "Pick subtitle file",
+        "pickFolder": "Pick subtitle folder",
+        "downloadUrl": "Download URL",
+        "discoverYoutube": "Discover candidates",
+        "downloadSelected": "Download selected subtitles"
+      },
+      "discovery": {
+        "eyebrow": "YouTube Discovery",
+        "title": "Candidate Table",
+        "subtitle": "Inspect matching videos first, then download subtitles only for the selected rows.",
+        "selectionHint": "{count} selected candidate(s) are ready for download.",
+        "labels": {
+          "status": "Status",
+          "totalCandidates": "Total candidates",
+          "matched": "Matched",
+          "selected": "Selected"
+        },
+        "headers": {
+          "select": "Select",
+          "title": "Title",
+          "published": "Published",
+          "duration": "Duration",
+          "languages": "Languages",
+          "live": "Live"
+        },
+        "actions": {
+          "selectAll": "Select all",
+          "clearSelection": "Clear selection",
+          "select": "Select",
+          "remove": "Remove"
+        },
+        "empty": "Run discovery in a YouTube mode to populate the candidate table."
+      },
+      "entries": {
+        "eyebrow": "Entries",
+        "title": "Subtitle List",
+        "empty": "No subtitle entries yet.",
+        "actions": {
+          "makeActive": "Make active",
+          "removeFromBatch": "Remove from batch",
+          "addToBatch": "Add to batch"
+        }
+      }
+    },
+    "edit": {
+      "workspaceTitle": "Subtitle Cleanup Workspace",
+      "workspaceHint": "Review a subtitle entry, preview cleanup rules, then export a normalized output.",
+      "emptySelection": "Select a subtitle entry before using the edit stage.",
+      "jobs": {
+        "preview": "Cleanup Preview",
+        "apply": "Apply Cleanup",
+        "default": "Subtitle Edit"
+      },
+      "preset": {
+        "eyebrow": "Preset",
+        "title": "Cleanup Profile"
+      },
+      "workspace": {
+        "emptyTitle": "No subtitle selected",
+        "previewEmpty": "Choose a preset and run preview to inspect output.",
+        "labels": {
+          "cues": "Cues",
+          "lines": "Lines",
+          "maxLine": "Max line",
+          "output": "Output"
+        }
+      },
+      "controls": {
+        "eyebrow": "Cleanup Controls",
+        "title": "Line and text operations",
+        "labels": {
+          "maxChars": "Max chars"
+        },
+        "toggles": {
+          "trimWhitespace": "Trim whitespace",
+          "collapseBlankLines": "Collapse blank lines",
+          "normalizeQuotes": "Normalize quotes",
+          "stripHtml": "Strip HTML",
+          "removeMusicTags": "Remove music tags",
+          "mergeShortCues": "Merge short cues",
+          "splitLongLines": "Split long lines"
+        }
+      },
+      "actions": {
+        "eyebrow": "Actions",
+        "title": "Preview and output",
+        "preview": "Generate preview",
+        "apply": "Apply cleanup"
+      },
+      "outputs": {
+        "eyebrow": "Outputs",
+        "title": "Cleaned files",
+        "empty": "No outputs yet.",
+        "labels": {
+          "cues": "Cues"
+        }
+      },
+      "summary": {
+        "eyebrow": "Summary",
+        "labels": {
+          "previewStatus": "Preview status",
+          "changed": "Changed",
+          "sourceCues": "Source cues",
+          "outputCues": "Output cues",
+          "maxLine": "Max line"
+        },
+        "values": {
+          "yes": "Yes",
+          "no": "No"
+        }
+      },
+      "fields": {
+        "outputFormat": "Output format"
+      },
+      "outputFormats": {
+        "source": "Keep source format"
+      }
+    },
+    "process": {
+      "subtitle": "Run subtitle QC and summary analyzers over the active entry or selected workspace.",
+      "catalog": {
+        "eyebrow": "Analysis Plan",
+        "title": "Initial Module Set",
+        "subtitle": "QC, readability, timing, and batch summary modules live here."
+      },
+      "providers": {
+        "eyebrow": "Providers",
+        "title": "Execution Layer",
+        "emptyModules": "No linked modules"
+      }
+    },
+    "report": {
+      "subtitle": "Review subtitle findings, readability metrics, and export history without leaving the room."
     }
   }
 }

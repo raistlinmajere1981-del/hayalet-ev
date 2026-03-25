@@ -10,7 +10,11 @@
       "updatedAt",
       "source",
       "edit",
-      "profile"
+      "profile",
+      "audioAnalysis",
+      "subtitleAnalysis",
+      "process",
+      "report"
     ],
     "source": {
       "required": ["kind", "mode", "status", "drafts"],
@@ -203,6 +207,293 @@
           "optional": ["label", "metadata"]
         }
       }
+    },
+    "audioAnalysis": {
+      "required": [
+        "schemaVersion",
+        "source",
+        "analysisCatalog",
+        "capabilityState",
+        "providerState",
+        "runs",
+        "results",
+        "export"
+      ],
+      "source": {
+        "required": [
+          "preferredSourceKind",
+          "requestedMode",
+          "mode",
+          "targetSignature"
+        ],
+        "optional": [
+          "outputId",
+          "targetPath",
+          "targetFileName",
+          "targetMimeType",
+          "targetLabel",
+          "extractedAudioPath",
+          "updatedAt"
+        ]
+      },
+      "analysisCatalog": {
+        "required": [
+          "orderedIds",
+          "implementedIds",
+          "gatedIds",
+          "plannedIds",
+          "visibleIds"
+        ]
+      },
+      "capabilityState": {
+        "item": {
+          "required": [
+            "moduleId",
+            "phase",
+            "status",
+            "providerIds",
+            "toolIds",
+            "blockers",
+            "warnings"
+          ],
+          "optional": ["titleKey", "summaryKey", "requiredToolIds"]
+        }
+      },
+      "providerState": {
+        "item": {
+          "required": [
+            "providerId",
+            "status",
+            "moduleIds",
+            "installed",
+            "ready",
+            "busy",
+            "platformSupported",
+            "blockers",
+            "warnings"
+          ],
+          "optional": [
+            "toolId",
+            "titleKey",
+            "summaryKey",
+            "providerType",
+            "installStrategy",
+            "expectedArtifacts",
+            "fallbackProviderIds",
+            "version",
+            "modelId",
+            "lastError"
+          ]
+        }
+      },
+      "runs": {
+        "item": {
+          "required": [
+            "moduleId",
+            "status",
+            "warnings",
+            "artifactIds",
+            "findingIds"
+          ],
+          "optional": [
+            "runId",
+            "jobId",
+            "requestId",
+            "startedAt",
+            "completedAt",
+            "error"
+          ]
+        }
+      },
+      "results": {
+        "item": {
+          "required": [
+            "moduleId",
+            "phase",
+            "status",
+            "providerIds",
+            "toolIds",
+            "summary",
+            "blockers",
+            "warnings",
+            "signals",
+            "artifacts",
+            "metrics",
+            "timing",
+            "runMeta"
+          ],
+          "optional": [
+            "titleKey",
+            "summaryKey",
+            "requiredToolIds",
+            "confidence",
+            "sourceSignature"
+          ]
+        }
+      },
+      "export": {
+        "required": ["items"],
+        "optional": ["lastGeneratedAt"]
+      }
+    },
+    "subtitleAnalysis": {
+      "required": [
+        "workspace",
+        "discovery",
+        "entries",
+        "activeEntryId",
+        "edit",
+        "analysis",
+        "export"
+      ],
+      "workspace": {
+        "required": ["mode", "drafts", "selection"],
+        "optional": ["lastError", "lastActionAt", "lastImportAt"]
+      },
+      "discovery": {
+        "required": ["status", "scope", "items", "selectedCandidateIds", "totalCandidateCount"],
+        "optional": ["lastError", "lastRunAt", "lastDownloadAt"]
+      },
+      "entries": {
+        "item": {
+          "required": [
+            "id",
+            "sourceType",
+            "status",
+            "fileName",
+            "path",
+            "format",
+            "createdAt"
+          ],
+          "optional": [
+            "sourceUrl",
+            "language",
+            "publishedAt",
+            "durationSeconds",
+            "isShort",
+            "warnings",
+            "metadata"
+          ]
+        }
+      },
+      "edit": {
+        "required": ["presetId", "recipe", "preview", "outputs"],
+        "optional": ["lastError", "lastActionAt"]
+      },
+      "analysis": {
+        "required": ["status", "summaryCards", "findings", "warnings", "moduleResults"],
+        "optional": ["lastRunAt", "sourceSelection"]
+      },
+      "export": {
+        "required": ["items"],
+        "optional": ["lastGeneratedAt"]
+      }
+    },
+    "process": {
+      "required": ["records"],
+      "records": {
+        "media-analysis": {
+          "required": [
+            "featureId",
+            "status",
+            "jobId",
+            "requestId",
+            "runId",
+            "startedAt",
+            "completedAt",
+            "percent",
+            "targetSummary",
+            "modules",
+            "findings",
+            "artifacts",
+            "warnings",
+            "error"
+          ]
+        },
+        "audio-analysis": {
+          "required": [
+            "featureId",
+            "status",
+            "jobId",
+            "requestId",
+            "runId",
+            "startedAt",
+            "completedAt",
+            "percent",
+            "targetSummary",
+            "modules",
+            "findings",
+            "artifacts",
+            "warnings",
+            "error"
+          ]
+        },
+        "subtitle-analysis": {
+          "required": [
+            "featureId",
+            "status",
+            "jobId",
+            "requestId",
+            "runId",
+            "startedAt",
+            "completedAt",
+            "percent",
+            "targetSummary",
+            "modules",
+            "findings",
+            "artifacts",
+            "warnings",
+            "error"
+          ]
+        }
+      }
+    },
+    "report": {
+      "required": ["records"],
+      "records": {
+        "media-analysis": {
+          "required": [
+            "featureId",
+            "status",
+            "sourceRunId",
+            "generatedAt",
+            "summaryCards",
+            "findings",
+            "caveats",
+            "warnings",
+            "exports",
+            "error"
+          ]
+        },
+        "audio-analysis": {
+          "required": [
+            "featureId",
+            "status",
+            "sourceRunId",
+            "generatedAt",
+            "summaryCards",
+            "findings",
+            "caveats",
+            "warnings",
+            "exports",
+            "error"
+          ]
+        },
+        "subtitle-analysis": {
+          "required": [
+            "featureId",
+            "status",
+            "sourceRunId",
+            "generatedAt",
+            "summaryCards",
+            "findings",
+            "caveats",
+            "warnings",
+            "exports",
+            "error"
+          ]
+        }
+      }
     }
   },
   "files": {
@@ -215,6 +506,10 @@
     "editManifest": "derived/edit/manifest.json",
     "profileDir": "derived/profile",
     "profilePreflightDir": "derived/profile/preflight",
-    "profileManifest": "derived/profile/manifest.json"
+    "profileManifest": "derived/profile/manifest.json",
+    "processDir": "derived/process",
+    "processManifest": "derived/process/manifest.json",
+    "reportDir": "reports",
+    "reportManifest": "reports/manifest.json"
   }
 }

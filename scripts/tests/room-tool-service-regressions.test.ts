@@ -8,7 +8,7 @@ test("room tool run request supports companion executable selection", () => {
 
   assert.match(typeSource, /export interface RoomToolRunRequest[\s\S]*executableName\?: string;/);
   assert.match(serviceSource, /const requestedExecutableName = asNonEmptyString\(request\.executableName\);/);
-  assert.match(serviceSource, /const allowedExecutableNames = \[/);
+  assert.match(serviceSource, /let allowedExecutableNames: string\[\] = \[\];/);
   assert.match(serviceSource, /does not expose companion executable/);
 });
 
@@ -26,6 +26,23 @@ test("room tool service stays generic and avoids laboratory-specific branching",
   assert.match(serviceSource, /\{ enforceRoomManagedPath: false \}/);
   assert.doesNotMatch(serviceSource, /ROOM_ID\s*=\s*"laboratory"/);
   assert.doesNotMatch(serviceSource, /yt-dlp command/i);
+});
+
+test("room tool service can describe planned and system-command tools without forcing an installer contract", () => {
+  const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
+
+  assert.match(serviceSource, /type ToolAvailability = "installable" \| "system-command" \| "planned";/);
+  assert.match(serviceSource, /type SystemCommandSpec = \{/);
+  assert.match(serviceSource, /plannedReason\?: string;/);
+  assert.match(serviceSource, /systemCommand\?: SystemCommandSpec;/);
+  assert.match(serviceSource, /availability: "planned"/);
+  assert.match(serviceSource, /availability: "system-command"/);
+  assert.match(serviceSource, /installable: false/);
+  assert.match(serviceSource, /async function resolveSystemCommandBinaryPath\(executableName: string\): Promise<string \| null>/);
+  assert.match(serviceSource, /private isToolInstallable\(toolManifest: ToolManifest\): boolean/);
+  assert.match(serviceSource, /private isSystemCommandTool\(toolManifest: ToolManifest\): boolean/);
+  assert.match(serviceSource, /private resolveSystemCommandTool\(manifest: ToolchainManifest, toolId: string\): \{/);
+  assert.match(serviceSource, /private getPlannedToolMessage\(toolId: string, toolManifest: ToolManifest\): string/);
 });
 
 test("room tool preload and global typings expose the generic room-tools seam", () => {

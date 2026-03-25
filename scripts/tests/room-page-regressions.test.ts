@@ -84,3 +84,13 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(gameRoomUiCssSource, /body\[data-presentation-mode="scene-view"\] \.xox-shell \{\s*min-height: 100%;[\s\S]*padding: 0;/);
   assert.match(laboratoryUiCssSource, /body\[data-presentation-mode="scene-view"\] \.lab-shell \{\s*height: 100%;[\s\S]*padding: 0;/);
 });
+
+test("installed laboratory manifest keeps the subtitle-analysis scene contract for room-page routing", () => {
+  const manifest = JSON.parse(readFileSync("data/rooms/laboratory/manifest.json", "utf8"));
+  const subtitleFeature = Array.isArray(manifest.features)
+    ? manifest.features.find((feature) => feature.id === "subtitle-analysis")
+    : null;
+
+  assert.equal(subtitleFeature?.scene?.hotspot?.id, "laboratory-subtitle-analysis");
+  assert.equal(subtitleFeature?.scene?.view?.id, "subtitle-analysis-console");
+});
