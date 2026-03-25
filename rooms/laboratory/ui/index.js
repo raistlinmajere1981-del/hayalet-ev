@@ -417,6 +417,17 @@
     return [minutes, remainingSeconds].map((item) => String(item).padStart(2, "0")).join(":");
   }
 
+  function formatDateTime(value) {
+    if (typeof value !== "string" || value.trim() === "") {
+      return "--";
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    return date.toLocaleString(state.locale === "tr" ? "tr-TR" : "en-US");
+  }
+
   function getSubtitleMimeType(fileName) {
     const normalized = typeof fileName === "string" ? fileName.toLowerCase() : "";
     if (normalized.endsWith(".vtt")) {
@@ -636,6 +647,64 @@
 
   function getSubtitleAnalysisProviders() {
     return toRecord(getSourceSnapshot().subtitleAnalysisProviders);
+  }
+
+  function getSubtitleProcessStatusLabel(status) {
+    const token = typeof status === "string" && status.trim() !== "" ? status.trim() : "planned";
+    const localized = subtitleText(["process", "catalog", "status", token], "", "");
+    return localized || formatStatusLabel(token);
+  }
+
+  function getSubtitleProviderStatusLabel(status) {
+    const token = typeof status === "string" && status.trim() !== "" ? status.trim() : "planned";
+    const localized = subtitleText(["process", "providers", "status", token], "", "");
+    return localized || formatStatusLabel(token);
+  }
+
+  function getSubtitleProcessModuleLabel(entry) {
+    const moduleId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
+    const localized = moduleId
+      ? subtitleText(["process", "catalog", "modules", moduleId, "label"], "", "")
+      : "";
+    return localized || toRecord(entry).label || moduleId || "--";
+  }
+
+  function getSubtitleProcessModuleSummary(entry) {
+    const moduleId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
+    return moduleId ? subtitleText(["process", "catalog", "modules", moduleId, "summary"], "", "") : "";
+  }
+
+  function getSubtitleProviderLabel(entry) {
+    const providerId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
+    const localized = providerId
+      ? subtitleText(["process", "providers", "items", providerId, "label"], "", "")
+      : "";
+    return localized || providerId || "--";
+  }
+
+  function getSubtitleProviderSummary(entry) {
+    const providerId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
+    return providerId ? subtitleText(["process", "providers", "items", providerId, "summary"], "", "") : "";
+  }
+
+  function getSubtitleProviderModuleLabels(entry) {
+    const moduleIds = Array.isArray(toRecord(entry).moduleIds) ? toRecord(entry).moduleIds : [];
+    const labels = moduleIds
+      .map(function (moduleId) {
+        return getSubtitleProcessModuleLabel({ id: moduleId });
+      })
+      .filter(Boolean);
+
+    if (labels.length === 0) {
+      return subtitleText(["process", "providers", "emptyModules"], "Modul bagli degil", "No linked modules");
+    }
+
+    return subtitleTemplate(
+      ["process", "providers", "labels", "modules"],
+      { value: labels.join(", ") },
+      `Moduller: ${labels.join(", ")}`,
+      `Modules: ${labels.join(", ")}`
+    );
   }
 
   function getAudioAnalysisCatalog() {
@@ -3211,15 +3280,18 @@
         <div class="lab-tool-grid">
           ${modules
             .map(function (entry) {
+              const statusLabel = getSubtitleProcessStatusLabel(entry.status || "planned");
+              const summary = getSubtitleProcessModuleSummary(entry);
               return `
                 <article class="lab-tool-card">
                   <div class="lab-tool-card__head">
                     <div>
-                      <strong>${escapeHtml(entry.label || entry.id || "--")}</strong>
-                      <span>${escapeHtml(formatStatusLabel(entry.status || "planned"))}</span>
+                      <strong>${escapeHtml(getSubtitleProcessModuleLabel(entry))}</strong>
+                      <span>${escapeHtml(statusLabel)}</span>
                     </div>
-                    <span class="lab-chip">${escapeHtml(String(entry.status || "planned").toUpperCase())}</span>
+                    <span class="lab-chip">${escapeHtml(statusLabel)}</span>
                   </div>
+                  ${summary ? `<p class="lab-panel__hint">${escapeHtml(summary)}</p>` : ""}
                 </article>
               `;
             })
@@ -3248,19 +3320,19 @@
         <div class="lab-tool-grid">
           ${providers
             .map(function (entry) {
+              const statusLabel = getSubtitleProviderStatusLabel(entry.status || "planned");
+              const providerSummary = getSubtitleProviderSummary(entry);
+              const moduleSummary = getSubtitleProviderModuleLabels(entry);
               return `
                 <article class="lab-tool-card">
                   <div class="lab-tool-card__head">
                     <div>
-                      <strong>${escapeHtml(entry.id || "--")}</strong>
-                      <span>${escapeHtml(formatStatusLabel(entry.status || "planned"))}</span>
+                      <strong>${escapeHtml(getSubtitleProviderLabel(entry))}</strong>
+                      <span>${escapeHtml(statusLabel)}</span>
                     </div>
                   </div>
-                  <p class="lab-panel__hint">${escapeHtml(
-                    Array.isArray(entry.moduleIds) && entry.moduleIds.length > 0
-                      ? entry.moduleIds.join(", ")
-                      : subtitleText(["process", "providers", "emptyModules"], "Modul bagli degil", "No linked modules")
-                  )}</p>
+                  ${providerSummary ? `<p class="lab-panel__hint">${escapeHtml(providerSummary)}</p>` : ""}
+                  <p class="lab-panel__hint">${escapeHtml(moduleSummary)}</p>
                 </article>
               `;
             })
@@ -5441,6 +5513,44 @@
 
   function renderReportFinding(signal) {
     const record = toRecord(signal);
+    if (isSubtitleAnalysisFeature()) {
+      return `
+        <article class="lab-finding">
+          <h3 class="lab-finding__title">${escapeHtml(record.title || record.moduleId || "--")}</h3>
+          <p class="lab-panel__hint">
+            ${escapeHtml(
+              `${featureText(["report", "findingMeta", "module"])}: ${getSubtitleProcessModuleLabel({
+                id: record.moduleId || record.laneId,
+              })}`
+            )}
+            ·
+            ${escapeHtml(
+              `${featureText(["report", "findingMeta", "severity"])}: ${formatStatusLabel(record.level || "low")}`
+            )}
+            ·
+            ${escapeHtml(
+              `${featureText(["report", "findingMeta", "confidence"])}: ${formatStatusLabel(
+                record.confidence || "low"
+              )}`
+            )}
+            ·
+            ${escapeHtml(
+              `${featureText(["report", "findingMeta", "evidence"])}: ${String(
+                Number(record.evidenceCount) || 0
+              )}`
+            )}
+            ·
+            ${escapeHtml(
+              `${featureText(["report", "findingMeta", "artifacts"])}: ${String(
+                Array.isArray(record.artifactIds) ? record.artifactIds.length : 0
+              )}`
+            )}
+          </p>
+          <p class="lab-finding__detail">${escapeHtml(record.detail || "")}</p>
+        </article>
+      `;
+    }
+
     return `
       <article class="lab-finding">
         <h3 class="lab-finding__title">${escapeHtml(record.title || record.laneId || "--")}</h3>
@@ -5463,6 +5573,124 @@
         </p>
         <p class="lab-finding__detail">${escapeHtml(record.detail || "")}</p>
       </article>
+    `;
+  }
+
+  function getSubtitleReportModuleFindingCount(moduleId) {
+    return getReportFindings().filter(function (entry) {
+      return toRecord(entry).moduleId === moduleId;
+    }).length;
+  }
+
+  function getSubtitleReportModuleArtifactCount(moduleId) {
+    return getProcessArtifacts().filter(function (entry) {
+      return toRecord(entry).moduleId === moduleId;
+    }).length;
+  }
+
+  function renderSubtitleReportModuleGrid() {
+    const modules = getProcessModules();
+    if (modules.length === 0) {
+      return "";
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["report", "moduleRollupEyebrow"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["report", "moduleRollupTitle"]))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(featureText(["report", "moduleRollupSubtitle"]))}</p>
+          </div>
+        </div>
+        <div class="lab-tool-grid">
+          ${modules
+            .map(function (moduleEntry) {
+              const moduleId = String(moduleEntry.id || "");
+              return `
+                <article class="lab-tool-card">
+                  <div class="lab-tool-card__head">
+                    <div>
+                      <strong>${escapeHtml(getSubtitleProcessModuleLabel({ id: moduleId }))}</strong>
+                      <span>${escapeHtml(formatStatusLabel(moduleEntry.status || "idle"))}</span>
+                    </div>
+                    <span class="lab-chip">${escapeHtml(formatStatusLabel(moduleEntry.status || "idle"))}</span>
+                  </div>
+                  <p class="lab-panel__hint">${escapeHtml(
+                    moduleEntry.summary ||
+                      getSubtitleProcessModuleSummary({ id: moduleId }) ||
+                      featureText(["report", "emptyBody"])
+                  )}</p>
+                  <ul class="lab-meta-list">
+                    <li>
+                      <span>${escapeHtml(featureText(["report", "moduleMeta", "status"]))}</span>
+                      <strong>${escapeHtml(formatStatusLabel(moduleEntry.status || "idle"))}</strong>
+                    </li>
+                    <li>
+                      <span>${escapeHtml(featureText(["report", "moduleMeta", "findings"]))}</span>
+                      <strong>${escapeHtml(String(getSubtitleReportModuleFindingCount(moduleId)))}</strong>
+                    </li>
+                    <li>
+                      <span>${escapeHtml(featureText(["report", "moduleMeta", "artifacts"]))}</span>
+                      <strong>${escapeHtml(String(getSubtitleReportModuleArtifactCount(moduleId)))}</strong>
+                    </li>
+                  </ul>
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderSubtitleReportExportHistoryPanel() {
+    const exportsList = getReportExports();
+    if (exportsList.length === 0) {
+      return "";
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["report", "exportHistoryEyebrow"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["report", "exportHistoryTitle"]))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(featureText(["report", "exportHistorySubtitle"]))}</p>
+          </div>
+        </div>
+        <div class="lab-tool-grid">
+          ${exportsList
+            .map(function (entry) {
+              return `
+                <article class="lab-tool-card">
+                  <div class="lab-tool-card__head">
+                    <div>
+                      <strong>${escapeHtml(entry.fileName || entry.path || "--")}</strong>
+                      <span>${escapeHtml(String(entry.format || "md").toUpperCase())}</span>
+                    </div>
+                    <span class="lab-chip">${escapeHtml(formatStatusLabel(entry.status || "ready"))}</span>
+                  </div>
+                  <ul class="lab-meta-list">
+                    <li>
+                      <span>${escapeHtml(featureText(["report", "exportMeta", "format"]))}</span>
+                      <strong>${escapeHtml(String(entry.format || "md").toUpperCase())}</strong>
+                    </li>
+                    <li>
+                      <span>${escapeHtml(featureText(["report", "exportMeta", "created"]))}</span>
+                      <strong>${escapeHtml(formatDateTime(entry.createdAt))}</strong>
+                    </li>
+                    <li>
+                      <span>${escapeHtml(featureText(["report", "exportMeta", "status"]))}</span>
+                      <strong>${escapeHtml(formatStatusLabel(entry.status || "ready"))}</strong>
+                    </li>
+                  </ul>
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
     `;
   }
 
@@ -5618,6 +5846,50 @@
     `;
   }
 
+  function getReportSignalCardLabel(card) {
+    return textFromKey(toRecord(card).labelKey || "") || toRecord(card).label || "--";
+  }
+
+  function getReportOverviewRows(reportRecord, findings, asset) {
+    if (isSubtitleAnalysisFeature()) {
+      return [
+        [featureText(["report", "overviewMeta", "target"]), getCurrentFeatureTargetLabel()],
+        [featureText(["report", "overviewMeta", "status"]), formatStatusLabel(reportRecord.status || "idle")],
+        [featureText(["report", "overviewMeta", "findings"]), String(findings.length)],
+        [featureText(["report", "overviewMeta", "artifacts"]), String(getCurrentFeatureArtifactCount())],
+        [featureText(["report", "overviewMeta", "generated"]), formatDateTime(reportRecord.generatedAt)],
+      ];
+    }
+
+    return [
+      [text(["mediaAnalysis", "shared", "summary"]), asset.label || getCurrentSourceLabel()],
+      [text(["mediaAnalysis", "shared", "duration"]), formatDuration(getPreferredAssetDuration(asset))],
+      [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(reportRecord.status || "idle")],
+      [featureText(["report", "findingsTitle"]), String(findings.length)],
+      [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(getCurrentFeatureArtifactCount())],
+    ];
+  }
+
+  function getReportSideRows(reportRecord, findings, exportsList) {
+    if (isSubtitleAnalysisFeature()) {
+      return [
+        [featureText(["report", "overviewMeta", "status"]), formatStatusLabel(reportRecord.status || "idle")],
+        [featureText(["report", "overviewMeta", "target"]), getCurrentFeatureTargetLabel()],
+        [featureText(["report", "overviewMeta", "findings"]), String(findings.length)],
+        [featureText(["report", "overviewMeta", "exports"]), String(exportsList.length)],
+        [featureText(["report", "overviewMeta", "generated"]), formatDateTime(reportRecord.generatedAt)],
+      ];
+    }
+
+    return [
+      [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(reportRecord.status || "idle")],
+      [text(["mediaAnalysis", "profile", "summary", "target"]), getCurrentFeatureTargetLabel()],
+      [featureText(["report", "findingsTitle"]), String(findings.length)],
+      [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(getCurrentFeatureArtifactCount())],
+      [featureText(["report", "actions", "export"]), String(exportsList.length)],
+    ];
+  }
+
   function renderReportStage() {
     const reportRecord = getCurrentFeatureReportRecord();
     const asset = getEffectiveMediaAsset();
@@ -5640,13 +5912,7 @@
               <div class="lab-panel__header">
                 <h2 class="lab-panel__title">${escapeHtml(featureText(["report", "overviewTitle"]))}</h2>
               </div>
-              ${renderSummaryRows([
-                [text(["mediaAnalysis", "shared", "summary"]), asset.label || getCurrentSourceLabel()],
-                [text(["mediaAnalysis", "shared", "duration"]), formatDuration(getPreferredAssetDuration(asset))],
-                [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(reportRecord.status || "idle")],
-                [featureText(["report", "findingsTitle"]), String(findings.length)],
-                [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(getCurrentFeatureArtifactCount())],
-              ])}
+              ${renderSummaryRows(getReportOverviewRows(reportRecord, findings, asset))}
               <p class="lab-panel__hint">${escapeHtml(featureText(["report", "stagedHint"]))}</p>
             </div>
           </section>
@@ -5655,13 +5921,14 @@
               summaryCards.length > 0
                 ? summaryCards
                     .map(function (card) {
-                      return renderSignalCard(card.value || "--", card.label || textFromKey(card.labelKey || "") || "--");
+                      return renderSignalCard(card.value || "--", getReportSignalCardLabel(card));
                     })
                     .join("")
                 : `<p class="lab-panel__hint">${escapeHtml(featureText(["report", "emptyFindings"]))}</p>`
             }
           </section>
           ${isAudioAnalysisFeature() ? renderAudioAnalysisModuleGrid() : ""}
+          ${isSubtitleAnalysisFeature() ? renderSubtitleReportModuleGrid() : ""}
           <section class="lab-panel">
             <div class="lab-panel__header">
               <p class="lab-panel__eyebrow">${escapeHtml(
@@ -5680,16 +5947,11 @@
               }
             </div>
           </section>
+          ${isSubtitleAnalysisFeature() ? renderSubtitleReportExportHistoryPanel() : ""}
         </section>
         <aside class="lab-side-stack">
           <section class="lab-panel">
-            ${renderSummaryRows([
-              [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(reportRecord.status || "idle")],
-              [text(["mediaAnalysis", "profile", "summary", "target"]), getCurrentFeatureTargetLabel()],
-              [featureText(["report", "findingsTitle"]), String(findings.length)],
-              [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(getCurrentFeatureArtifactCount())],
-              [featureText(["report", "actions", "export"]), String(exportsList.length)],
-            ])}
+            ${renderSummaryRows(getReportSideRows(reportRecord, findings, exportsList))}
             ${
               Array.isArray(reportRecord.caveats) && reportRecord.caveats.length > 0
                 ? `
@@ -5697,6 +5959,23 @@
                     <strong>${escapeHtml(featureText(["report", "sideTitle"]))}</strong>
                     <ul class="lab-bullet-list">
                       ${reportRecord.caveats
+                        .slice(0, 4)
+                        .map(function (entry) {
+                          return `<li>${escapeHtml(entry)}</li>`;
+                        })
+                        .join("")}
+                    </ul>
+                  </div>
+                `
+                : ""
+            }
+            ${
+              Array.isArray(reportRecord.warnings) && reportRecord.warnings.length > 0
+                ? `
+                  <div class="lab-list-block">
+                    <strong>${escapeHtml(featureText(["report", "moduleMeta", "warnings"]))}</strong>
+                    <ul class="lab-bullet-list">
+                      ${reportRecord.warnings
                         .slice(0, 4)
                         .map(function (entry) {
                           return `<li>${escapeHtml(entry)}</li>`;

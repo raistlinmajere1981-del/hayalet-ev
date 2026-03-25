@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "defaultMode": "local-file",
+  "modes": [
+    "local-file",
+    "local-folder",
+    "url",
+    "youtube-single",
+    "youtube-playlist",
+    "youtube-channel"
+  ],
+  "supportedExtensions": ["srt", "vtt", "ass", "ssa"],
+  "fileDialogFilters": [
+    { "name": "Subtitles", "extensions": ["srt", "vtt", "ass", "ssa"] }
+  ],
+  "folderPatterns": ["*.srt", "*.vtt", "*.ass", "*.ssa"],
+  "youtubeScopes": [
+    { "id": "single", "label": "Single video" },
+    { "id": "playlist", "label": "Playlist" },
+    { "id": "channel", "label": "Channel" }
+  ],
+  "youtubeLiveModes": [
+    { "id": "all", "label": "All uploads" },
+    { "id": "exclude-live", "label": "Exclude live" },
+    { "id": "only-live", "label": "Only live" }
+  ],
+  "youtubeActions": [
+    { "id": "discover", "label": "Discover candidates" },
+    { "id": "download-selected", "label": "Download selected subtitles" }
+  ]
+}

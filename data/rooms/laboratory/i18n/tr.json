@@ -1081,16 +1081,123 @@
       "catalog": {
         "eyebrow": "Analiz Plani",
         "title": "Ilk Modul Seti",
-        "subtitle": "QC, okunabilirlik, zamanlama ve batch ozet modulleri burada gorunur."
+        "subtitle": "QC, okunabilirlik, zamanlama ve batch ozet modulleri burada gorunur.",
+        "status": {
+          "implemented": "Hazir",
+          "planned": "Planli"
+        },
+        "modules": {
+          "format-qc": {
+            "label": "Format QC",
+            "summary": "Cue sirasi, overlap, gap ve kapsayici duzeyindeki altyazi butunlugunu dogrular."
+          },
+          "readability-density": {
+            "label": "Okunabilirlik",
+            "summary": "Secili alanda cue yogunlugu, satir baskisi ve okuma rahatligini izler."
+          },
+          "cue-timing-structure": {
+            "label": "Cue zamanlama",
+            "summary": "Cue sureleri, pacing pencereleri ve yapi tutarliligini inceler."
+          },
+          "lexical-frequency": {
+            "label": "Kelime frekansi",
+            "summary": "Tekrarlayan terimleri, kanal kelime haznesini ve temel metin dagilimini ortaya cikarir."
+          },
+          "batch-summary": {
+            "label": "Batch ozeti",
+            "summary": "Aktif giris metriklerini kompakt bir batch seviyesi ozete toplar."
+          },
+          "entities-keyphrases": {
+            "label": "Varlik ve anahtar ifadeler",
+            "summary": "Kisi, marka ve tekrar eden terimler icin planli entity ve glossary cikarma modu."
+          },
+          "semantic-search": {
+            "label": "Anlamsal arama",
+            "summary": "Alinti bulma ve benzer cue kesfi icin planli embedding tabanli arama modu."
+          }
+        }
       },
       "providers": {
         "eyebrow": "Saglayicilar",
         "title": "Calisma Katmani",
-        "emptyModules": "Modul bagli degil"
+        "emptyModules": "Modul bagli degil",
+        "labels": {
+          "modules": "Moduller: {value}"
+        },
+        "status": {
+          "ready": "Hazir",
+          "planned": "Planli"
+        },
+        "items": {
+          "native-subtitle-qc": {
+            "label": "Yerel altyazi QC",
+            "summary": "Yerlesik altyazi dogrulama ve ozet analizlerini oda icinde calistirir."
+          },
+          "planned-entity-provider": {
+            "label": "Planli entity saglayicisi",
+            "summary": "Entity, glossary ve anahtar ifade cikarma icin ayrilan saglayici yuvasi."
+          },
+          "planned-semantic-provider": {
+            "label": "Planli anlamsal saglayici",
+            "summary": "Anlamsal arama ve benzerlik akislari icin ayrilan saglayici yuvasi."
+          }
+        }
       }
     },
     "report": {
-      "subtitle": "Odadan cikmadan altyazi bulgularini, okunabilirlik metriklerini ve export gecmisini gor."
+      "title": "Altyazi handoff'unu incele",
+      "subtitle": "Odadan cikmadan altyazi bulgularini, okunabilirlik metriklerini, modul dagilimini ve export gecmisini gor.",
+      "stagedHint": "Bu rapor altyazi QA gorunumunu somut tutar: dosya sayilari, zamanlama sorunlari, okunabilirlik uyarilari ve export kayitlari aktif secime bagli kalir.",
+      "overviewTitle": "Altyazi Raporu Ozeti",
+      "findingsTitle": "Altyazi Bulgulari",
+      "sideTitle": "Altyazi Detayi",
+      "emptyFindings": "Henuz hazir altyazi ozet karti yok.",
+      "emptyBody": "Once altyazi process asamasini calistir; sonra bu rapor kalici altyazi bulgularini, modul sonucunu ve export'lari gosterecek.",
+      "overviewMeta": {
+        "target": "Hedef",
+        "status": "Durum",
+        "findings": "Bulgular",
+        "artifacts": "Artifact'ler",
+        "exports": "Export'lar",
+        "generated": "Uretildi"
+      },
+      "summaryCards": {
+        "target": "Hedef",
+        "files": "Dosyalar",
+        "cues": "Cue'lar",
+        "findings": "Bulgular",
+        "languages": "Diller",
+        "topTerm": "Ust terim",
+        "modules": "Tamamlanan moduller"
+      },
+      "findingMeta": {
+        "module": "Modul",
+        "severity": "Seviye",
+        "confidence": "Guven",
+        "evidence": "Kanit",
+        "artifacts": "Artifact'ler"
+      },
+      "moduleRollupEyebrow": "Modul Dagilimi",
+      "moduleRollupTitle": "Altyazi modul durumu",
+      "moduleRollupSubtitle": "Her altyazi analizoru durumu, bulgu sayisi ve artifact iziyle birlikte gorunur kalir.",
+      "moduleMeta": {
+        "status": "Durum",
+        "findings": "Bulgular",
+        "artifacts": "Artifact'ler",
+        "warnings": "Uyarilar"
+      },
+      "exportHistoryEyebrow": "Export Gecmisi",
+      "exportHistoryTitle": "Uretilen rapor dosyalari",
+      "exportHistorySubtitle": "Altyazi workspace'inden kalici olarak yazilan son rapor artifact'lerini izle.",
+      "exportMeta": {
+        "format": "Format",
+        "created": "Olusturuldu",
+        "status": "Durum"
+      },
+      "actions": {
+        "restart": "Yeni Altyazi Kosusu Baslat",
+        "export": "Altyazi Raporunu Disa Aktar"
+      }
     }
   }
 }

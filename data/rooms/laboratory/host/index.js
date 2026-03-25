@@ -9671,6 +9671,28 @@ function composeAudioAnalysisReport(runtime, project) {
   );
 }
 
+function getProcessArtifactByKind(processRecord, kind) {
+  return (
+    (Array.isArray(processRecord.artifacts) ? processRecord.artifacts.map(normalizeProcessArtifact) : []).find(
+      function (entry) {
+        return asNonEmptyString(entry.kind) === kind;
+      }
+    ) || null
+  );
+}
+
+function formatReportCardLabel(card) {
+  const label = asNonEmptyString(toRecord(card).label);
+  if (label !== null) {
+    return label;
+  }
+  const labelKey = asNonEmptyString(toRecord(card).labelKey);
+  if (labelKey !== null) {
+    return formatIdentifierLabel(labelKey.split(".").pop() || labelKey);
+  }
+  return "Summary";
+}
+
 function composeSubtitleAnalysisReport(runtime, project) {
   const processRecord = getFeatureProcessRecord(project, SUBTITLE_FEATURE_ID);
   if (processRecord.status !== "ready" && processRecord.status !== "stale") {
@@ -9697,11 +9719,46 @@ function composeSubtitleAnalysisReport(runtime, project) {
     return asNonEmptyString(entry.status) === "planned";
   }).length;
   const targetEntries = getSubtitleSelectedEntries(project);
-  const artifactCount = Array.isArray(processRecord.artifacts) ? processRecord.artifacts.length : 0;
+  const summaryArtifact = getProcessArtifactByKind(processRecord, "subtitle-summary");
+  const lexicalArtifact = getProcessArtifactByKind(processRecord, "subtitle-top-words");
   const lexicalModule =
     modules.find(function (entry) {
       return entry.id === "lexical-frequency";
     }) || null;
+  const totalCues =
+    asNumber(toRecord(summaryArtifact).metadata.totalCues) ||
+    findings.reduce(function (sum, entry) {
+      return sum + Math.max(0, Math.round(asNumber(entry.evidenceCount) || 0));
+    }, 0) ||
+    0;
+  const uniqueLanguages = Array.from(
+    new Set(
+      targetEntries
+        .map(function (entry) {
+          return asNonEmptyString(toRecord(entry).language);
+        })
+        .filter(Boolean)
+    )
+  );
+  const topWord =
+    asNonEmptyString(toRecord(lexicalArtifact).metadata.topWord) ||
+    (typeof toRecord(lexicalModule).summary === "string" &&
+    toRecord(lexicalModule).summary.toLowerCase().includes("top lexical term is")
+      ? asNonEmptyString(
+          toRecord(lexicalModule)
+            .summary.replace(/^.*?"/, "")
+            .replace(/".*$/, "")
+        )
+      : null);
+  const warnings = Array.from(
+    new Set(
+      normalizeStringArray(processRecord.warnings).concat(
+        modules.flatMap(function (entry) {
+          return normalizeStringArray(entry.warnings);
+        })
+      )
+    )
+  );
   const caveats = [];
 
   if (plannedCount > 0) {
@@ -9709,6 +9766,9 @@ function composeSubtitleAnalysisReport(runtime, project) {
   }
   if (targetEntries.length > 1) {
     caveats.push("Batch subtitle selections summarize the currently selected entries only.");
+  }
+  if (uniqueLanguages.length === 0) {
+    caveats.push("Subtitle language tags are missing on the current selection.");
   }
 
   return normalizeFeatureReportRecord(
@@ -9720,33 +9780,43 @@ function composeSubtitleAnalysisReport(runtime, project) {
       summaryCards: [
         {
           id: "subtitle-target",
-          label: "Target",
+          labelKey: "subtitleAnalysis.report.summaryCards.target",
           value: asNonEmptyString(toRecord(processRecord.targetSummary).label) || project.name,
         },
         {
           id: "subtitle-files",
-          label: "Files",
+          labelKey: "subtitleAnalysis.report.summaryCards.files",
           value: String(asNumber(toRecord(processRecord.targetSummary).entryCount) || targetEntries.length || 0),
         },
         {
-          id: "subtitle-modules",
-          label: "Completed modules",
-          value: String(completedCount),
+          id: "subtitle-cues",
+          labelKey: "subtitleAnalysis.report.summaryCards.cues",
+          value: String(totalCues),
         },
         {
           id: "subtitle-findings",
-          label: "Findings",
+          labelKey: "subtitleAnalysis.report.summaryCards.findings",
           value: String(findings.length),
         },
         {
-          id: "subtitle-lexical",
-          label: "Lexical note",
-          value: lexicalModule ? lexicalModule.summary || "--" : "--",
+          id: "subtitle-languages",
+          labelKey: "subtitleAnalysis.report.summaryCards.languages",
+          value: uniqueLanguages.length > 0 ? uniqueLanguages.join(", ") : "--",
+        },
+        {
+          id: "subtitle-top-term",
+          labelKey: "subtitleAnalysis.report.summaryCards.topTerm",
+          value: topWord || "--",
+        },
+        {
+          id: "subtitle-modules",
+          labelKey: "subtitleAnalysis.report.summaryCards.modules",
+          value: String(completedCount),
         },
       ],
       findings: findings,
       caveats: caveats,
-      warnings: Array.isArray(processRecord.warnings) ? processRecord.warnings : [],
+      warnings: warnings,
       exports: getFeatureReportRecord(project, SUBTITLE_FEATURE_ID).exports,
       error: null,
     },
@@ -9847,7 +9917,7 @@ function buildReportMarkdown(runtime, project, featureId, reportRecord) {
   ];
 
   (Array.isArray(reportRecord.summaryCards) ? reportRecord.summaryCards : []).forEach(function (card) {
-    lines.push(`- ${(asNonEmptyString(card.label) || asNonEmptyString(card.labelKey) || "Summary")}: ${card.value || "--"}`);
+    lines.push(`- ${formatReportCardLabel(card)}: ${card.value || "--"}`);
   });
 
   if (featureId === AUDIO_FEATURE_ID) {
@@ -9904,6 +9974,20 @@ function buildReportMarkdown(runtime, project, featureId, reportRecord) {
     lines.push("", "## Caveats");
     reportRecord.caveats.forEach(function (entry) {
       lines.push(`- ${entry}`);
+    });
+  }
+
+  if (Array.isArray(reportRecord.warnings) && reportRecord.warnings.length > 0) {
+    lines.push("", "## Warnings");
+    reportRecord.warnings.forEach(function (entry) {
+      lines.push(`- ${entry}`);
+    });
+  }
+
+  if (Array.isArray(reportRecord.exports) && reportRecord.exports.length > 0) {
+    lines.push("", "## Exports");
+    reportRecord.exports.forEach(function (entry) {
+      lines.push(`- ${entry.fileName || entry.path || "--"} (${entry.format || "md"}, ${entry.status || "ready"})`);
     });
   }
 

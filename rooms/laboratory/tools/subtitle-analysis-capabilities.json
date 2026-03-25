@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "modules": {
+    "format-qc": { "phase": "v1", "status": "ready" },
+    "readability-density": { "phase": "v1", "status": "ready" },
+    "cue-timing-structure": { "phase": "v1", "status": "ready" },
+    "lexical-frequency": { "phase": "v1", "status": "ready" },
+    "batch-summary": { "phase": "v1", "status": "ready" },
+    "entities-keyphrases": { "phase": "v2", "status": "planned" },
+    "semantic-search": { "phase": "v2", "status": "planned" }
+  }
+}

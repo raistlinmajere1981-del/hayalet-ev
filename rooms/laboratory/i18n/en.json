@@ -1081,16 +1081,123 @@
       "catalog": {
         "eyebrow": "Analysis Plan",
         "title": "Initial Module Set",
-        "subtitle": "QC, readability, timing, and batch summary modules live here."
+        "subtitle": "QC, readability, timing, and batch summary modules live here.",
+        "status": {
+          "implemented": "Implemented",
+          "planned": "Planned"
+        },
+        "modules": {
+          "format-qc": {
+            "label": "Format QC",
+            "summary": "Validate ordering, overlaps, gaps, and container-level subtitle integrity."
+          },
+          "readability-density": {
+            "label": "Readability",
+            "summary": "Track cue density, line pressure, and reading comfort across the selection."
+          },
+          "cue-timing-structure": {
+            "label": "Cue timing",
+            "summary": "Inspect cue durations, pacing windows, and structure consistency."
+          },
+          "lexical-frequency": {
+            "label": "Lexical frequency",
+            "summary": "Surface repeated terms, channel vocabulary, and basic text distribution."
+          },
+          "batch-summary": {
+            "label": "Batch summary",
+            "summary": "Roll active-entry metrics into a compact batch-level overview."
+          },
+          "entities-keyphrases": {
+            "label": "Entities and keyphrases",
+            "summary": "Planned entity and glossary extraction for people, brands, and recurring terms."
+          },
+          "semantic-search": {
+            "label": "Semantic search",
+            "summary": "Planned embedding-backed lookup for quote finding and related cue discovery."
+          }
+        }
       },
       "providers": {
         "eyebrow": "Providers",
         "title": "Execution Layer",
-        "emptyModules": "No linked modules"
+        "emptyModules": "No linked modules",
+        "labels": {
+          "modules": "Modules: {value}"
+        },
+        "status": {
+          "ready": "Ready",
+          "planned": "Planned"
+        },
+        "items": {
+          "native-subtitle-qc": {
+            "label": "Native subtitle QC",
+            "summary": "Runs built-in subtitle validation and summary analyzers inside the room."
+          },
+          "planned-entity-provider": {
+            "label": "Planned entity provider",
+            "summary": "Reserved provider slot for entity, glossary, and keyphrase extraction."
+          },
+          "planned-semantic-provider": {
+            "label": "Planned semantic provider",
+            "summary": "Reserved provider slot for semantic search and similarity workflows."
+          }
+        }
       }
     },
     "report": {
-      "subtitle": "Review subtitle findings, readability metrics, and export history without leaving the room."
+      "title": "Review the subtitle handoff",
+      "subtitle": "Review subtitle findings, readability metrics, module rollups, and export history without leaving the room.",
+      "stagedHint": "This report keeps subtitle QA concrete: file-level counts, timing issues, readability warnings, and exports stay tied to the active selection.",
+      "overviewTitle": "Subtitle Report Overview",
+      "findingsTitle": "Subtitle Findings",
+      "sideTitle": "Subtitle Detail",
+      "emptyFindings": "No subtitle summary cards are ready yet.",
+      "emptyBody": "Run the subtitle process stage first, then this report will render persisted subtitle findings, module results, and exports.",
+      "overviewMeta": {
+        "target": "Target",
+        "status": "Status",
+        "findings": "Findings",
+        "artifacts": "Artifacts",
+        "exports": "Exports",
+        "generated": "Generated"
+      },
+      "summaryCards": {
+        "target": "Target",
+        "files": "Files",
+        "cues": "Cues",
+        "findings": "Findings",
+        "languages": "Languages",
+        "topTerm": "Top term",
+        "modules": "Completed modules"
+      },
+      "findingMeta": {
+        "module": "Module",
+        "severity": "Severity",
+        "confidence": "Confidence",
+        "evidence": "Evidence",
+        "artifacts": "Artifacts"
+      },
+      "moduleRollupEyebrow": "Module Rollup",
+      "moduleRollupTitle": "Subtitle module status",
+      "moduleRollupSubtitle": "Each subtitle analyzer stays visible with its status, findings, and artifact footprint.",
+      "moduleMeta": {
+        "status": "Status",
+        "findings": "Findings",
+        "artifacts": "Artifacts",
+        "warnings": "Warnings"
+      },
+      "exportHistoryEyebrow": "Export History",
+      "exportHistoryTitle": "Generated report files",
+      "exportHistorySubtitle": "Track the latest persisted report artifacts from the subtitle workspace.",
+      "exportMeta": {
+        "format": "Format",
+        "created": "Created",
+        "status": "Status"
+      },
+      "actions": {
+        "restart": "Start New Subtitle Run",
+        "export": "Export Subtitle Report"
+      }
     }
   }
 }
