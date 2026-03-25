@@ -16,6 +16,11 @@ const requiredFiles = [
   "rooms/laboratory/tools/source-presets.json",
   "rooms/laboratory/tools/yt-dlp.form.json",
   "rooms/laboratory/tools/toolchain.manifest.json",
+  "rooms/laboratory/tools/edit-presets.json",
+  "rooms/laboratory/tools/edit-capabilities.json",
+  "rooms/laboratory/tools/profile-presets.json",
+  "rooms/laboratory/tools/profile-capabilities.json",
+  "rooms/laboratory/tools/profile-models.json",
   "rooms/laboratory/assets/room-background.webp",
   "rooms/laboratory/assets/media-analysis-view.webp",
 ];
@@ -43,7 +48,7 @@ test("laboratory manifest validates with the media-analysis room contract", () =
   );
 });
 
-test("laboratory UI ships source-stage controls for settings, projects, and real intake modes", () => {
+test("laboratory UI ships source, edit, and profile controls through the shared media envelope", () => {
   const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
 
   assert.match(
@@ -60,25 +65,85 @@ test("laboratory UI ships source-stage controls for settings, projects, and real
   assert.match(uiSource, /data-action="source-download-youtube"/);
   assert.match(uiSource, /data-action="tool-install"/);
   assert.match(uiSource, /data-action="tool-update"/);
+  assert.match(uiSource, /window\.roomAPI\.sendEvent\("media-action"/);
+  assert.match(uiSource, /message\.type === "media-state" \|\| message\.type === "source-state"/);
+  assert.match(uiSource, /data-action="edit-mode"/);
+  assert.match(uiSource, /data-action="edit-preview"/);
+  assert.match(uiSource, /data-action="edit-apply"/);
+  assert.match(uiSource, /data-action="edit-cancel-preview"/);
+  assert.match(uiSource, /data-action="edit-cancel-apply"/);
+  assert.match(uiSource, /data-action="edit-select-output"/);
+  assert.match(uiSource, /data-action="edit-handoff"/);
+  assert.match(uiSource, /data-edit-field="/);
+  assert.match(uiSource, /data-edit-toggle="/);
+  assert.match(uiSource, /data-action="profile-mode"/);
+  assert.match(uiSource, /data-action="profile-preset"/);
+  assert.match(uiSource, /data-action="profile-target-mode"/);
+  assert.match(uiSource, /data-profile-field="/);
+  assert.match(uiSource, /data-profile-toggle="/);
+  assert.match(uiSource, /data-profile-artifact-toggle=/);
+  assert.match(uiSource, /data-profile-field="frameSampleDensity"/);
+  assert.match(uiSource, /data-profile-field="transcriptSampleSeconds"/);
+  assert.match(uiSource, /renderReportFinding/);
+  assert.match(uiSource, /getTopProfileSignals/);
+  assert.doesNotMatch(uiSource, /76 \/ 100/);
+  assert.match(uiSource, /data-action="profile-run"/);
+  assert.match(uiSource, /data-action="profile-cancel"/);
+  assert.match(uiSource, /renderProfileModelCard/);
+  assert.match(uiSource, /collectProfileStageJobs/);
+  assert.match(uiSource, /getEffectiveMediaAsset/);
   assert.match(uiSource, /shouldIgnoreCorrelatedPayload/);
   assert.match(uiSource, /getPreferredSourceCodec/);
   assert.match(uiSource, /formatBitRate/);
 });
 
-test("laboratory host orchestrates projects, source validation, and metadata extraction through room tools", () => {
+test("laboratory host orchestrates projects, source intake, edit rendering, and profile preflight through room tools", () => {
   const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
 
   assert.match(hostSource, /electronApi\.roomToolsCall/);
+  assert.match(hostSource, /notifyRoom\(api, "media-state"/);
+  assert.match(hostSource, /notifyRoom\(api, "media-action-result"/);
+  assert.match(hostSource, /notifyRoom\(api, "media-job"/);
   assert.match(hostSource, /notifyRoom\(api, "source-state"/);
   assert.match(hostSource, /notifyRoom\(api, "source-action-result"/);
   assert.match(hostSource, /notifyRoom\(api, "source-job"/);
-  assert.match(hostSource, /if \(payload\.type === "source-action"\)/);
+  assert.match(hostSource, /if \(payload\.type === "source-action" \|\| payload\.type === "media-action"\)/);
   assert.match(hostSource, /case "project-create":/);
+  assert.match(hostSource, /case "edit-set-mode":/);
+  assert.match(hostSource, /case "edit-apply-preset":/);
+  assert.match(hostSource, /case "edit-update-recipe":/);
+  assert.match(hostSource, /case "edit-preview":/);
+  assert.match(hostSource, /case "edit-apply":/);
+  assert.match(hostSource, /case "edit-cancel-preview":/);
+  assert.match(hostSource, /case "edit-cancel-apply":/);
+  assert.match(hostSource, /case "profile-set-mode":/);
+  assert.match(hostSource, /case "profile-apply-preset":/);
+  assert.match(hostSource, /case "profile-update":/);
+  assert.match(hostSource, /case "profile-set-target":/);
+  assert.match(hostSource, /case "profile-set-model":/);
+  assert.match(hostSource, /case "profile-run-preflight":/);
+  assert.match(hostSource, /case "profile-cancel-preflight":/);
+  assert.match(hostSource, /case "profile-model-install":/);
+  assert.match(hostSource, /case "profile-model-remove":/);
   assert.match(hostSource, /case "tool-install":/);
   assert.match(hostSource, /case "tool-update":/);
   assert.match(hostSource, /validateSourceCandidate/);
   assert.match(hostSource, /collectStoredSourceMetadata/);
+  assert.match(hostSource, /collectDerivedOutputMetadata/);
   assert.match(hostSource, /parseFfprobeMetadata/);
+  assert.match(hostSource, /buildEditManifest/);
+  assert.match(hostSource, /buildEditCommand/);
+  assert.match(hostSource, /findEditPreset/);
+  assert.match(hostSource, /runEditPipeline/);
+  assert.match(hostSource, /buildProfileManifest/);
+  assert.match(hostSource, /runProfilePreflight/);
+  assert.match(hostSource, /normalizeProfileArtifactPreferences/);
+  assert.match(hostSource, /evaluateProfileModelCompatibility/);
+  assert.match(hostSource, /generateProfileFrameStrip/);
+  assert.match(hostSource, /generateProfileSpectrogram/);
+  assert.match(hostSource, /maybeRunWhisperProfileSample/);
+  assert.match(hostSource, /syncProjectProfileProjection/);
+  assert.match(hostSource, /buildProjectedProjects/);
   assert.match(hostSource, /async function ensureProjectDirectories\(runtime, project, requestId\)/);
   assert.match(hostSource, /operation: "ensure-dir"/);
   assert.match(hostSource, /Unsupported room-tools operation: ensure-dir/);

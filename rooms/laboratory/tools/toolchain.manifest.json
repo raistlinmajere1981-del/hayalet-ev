@@ -5,6 +5,11 @@
     "yt-dlp": {
       "displayName": "yt-dlp",
       "installDirName": "yt-dlp",
+      "stageSupport": {
+        "source": "required",
+        "edit": "unsupported",
+        "profile": "unsupported"
+      },
       "releaseProvider": {
         "type": "github-release",
         "owner": "yt-dlp",
@@ -56,6 +61,11 @@
     "ffmpeg": {
       "displayName": "FFmpeg",
       "installDirName": "ffmpeg",
+      "stageSupport": {
+        "source": "required",
+        "edit": "required",
+        "profile": "required"
+      },
       "releaseProvider": {
         "type": "github-release",
         "owner": "yt-dlp",
@@ -90,6 +100,32 @@
           "archive": "zip",
           "executableName": "ffmpeg.exe",
           "companionExecutables": ["ffprobe.exe"]
+        }
+      }
+    },
+    "whisper.cpp": {
+      "displayName": "Whisper.cpp",
+      "installDirName": "whisper-cpp",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional"
+      },
+      "releaseProvider": {
+        "type": "github-release",
+        "owner": "ggml-org",
+        "repo": "whisper.cpp",
+        "releaseUrl": "https://github.com/ggml-org/whisper.cpp/releases/latest"
+      },
+      "probe": {
+        "args": ["--help"],
+        "versionRegex": "v?(\\d+\\.\\d+\\.\\d+)"
+      },
+      "assets": {
+        "win32-x64": {
+          "assetMatch": "^whisper-bin-x64\\.zip$",
+          "archive": "zip",
+          "executableName": "whisper-cli.exe"
         }
       }
     }

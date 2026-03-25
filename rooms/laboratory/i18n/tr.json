@@ -42,7 +42,7 @@
       "score": "Guven",
       "risk": "Risk bandi",
       "elevatedRisk": "Yuksek",
-      "dummyHint": "Bu fazda yalnizca kaynak asamasi gercek calisir. Diger asamalar oda-ici dummy durumda kalir."
+      "dummyHint": "Kaynak, duzenleme ve profil asamalari gercek calisir. Islem ve rapor hala oda-ici dummy durumda kalir."
     },
     "projects": {
       "eyebrow": "Proje Masasi",
@@ -57,7 +57,7 @@
     "settings": {
       "eyebrow": "Arac Odasi",
       "title": "Medya Analizoru Ayarlari",
-      "subtitle": "Oda-yerel yt-dlp ve ffmpeg hattini kontrol et, kur, guncelle ve incele.",
+      "subtitle": "Oda-yerel yakalama, duzenleme ve profil araclarini kontrol et, kur, guncelle ve incele.",
       "refreshAction": "Araclari Yenile",
       "closeAction": "Kapat",
       "installAction": "Kur",
@@ -66,9 +66,19 @@
       "latestLabel": "Guncel",
       "pathLabel": "Binary Yolu",
       "busyHint": "Bu arac icin oda-yonetimli bir islem calisiyor.",
+      "currentStageTitle": "Aktif asama araclari",
+      "otherToolsTitle": "Diger oda araclari",
+      "otherToolsSubtitle": "Asamaya komsu kurulumlar ayni overlay icinde acik kalir.",
+      "stageSupportLabel": "Asama destegi",
       "tools": {
         "yt-dlp": "yt-dlp",
-        "ffmpeg": "FFmpeg"
+        "ffmpeg": "FFmpeg",
+        "whisper.cpp": "Whisper.cpp"
+      },
+      "support": {
+        "required": "Zorunlu",
+        "optional": "Opsiyonel",
+        "unsupported": "Desteklenmiyor"
       },
       "status": {
         "missing": "Eksik",
@@ -92,7 +102,26 @@
       "tool-install": "Arac kurulumu tamamlandi.",
       "tool-update": "Arac guncellemesi tamamlandi.",
       "tools-refresh": "Arac durumu yenilendi.",
-      "refresh": "Kaynak durumu yenilendi."
+      "refresh": "Kaynak durumu yenilendi.",
+      "edit-set-mode": "Duzenleme modu guncellendi.",
+      "edit-apply-preset": "Duzenleme preset'i uygulandi.",
+      "edit-update-recipe": "Duzenleme tarifi kaydedildi.",
+      "edit-set-output": "Turetilmis cikti secildi.",
+      "edit-set-handoff": "Sonraki asama gecisi guncellendi.",
+      "edit-preview": "Onizleme cikti olusturuldu.",
+      "edit-apply": "Turetilmis cikti render edildi.",
+      "edit-cancel": "Aktif duzenleme isi iptal edildi.",
+      "edit-cancel-preview": "Onizleme render'i iptal edildi.",
+      "edit-cancel-apply": "Turetilmis render iptal edildi.",
+      "profile-set-mode": "Profil modu guncellendi.",
+      "profile-apply-preset": "Profil preset'i uygulandi.",
+      "profile-update": "Profil ayarlari kaydedildi.",
+      "profile-set-target": "Profil hedefi guncellendi.",
+      "profile-set-model": "Transkript modeli guncellendi.",
+      "profile-run-preflight": "Profil preflight tamamlandi.",
+      "profile-cancel-preflight": "Profil preflight iptal edildi.",
+      "profile-model-install": "Transkript modeli kuruldu.",
+      "profile-model-remove": "Transkript modeli kaldirildi."
     },
     "source": {
       "title": "Analiz kaynagini hazirla",
@@ -237,67 +266,327 @@
     },
     "edit": {
       "title": "Inceleme penceresini sekillendir",
-      "subtitle": "Zaman araligini kirp, odak bolgesini sec ve cleanup seceneklerini aktif et.",
-      "canvasTitle": "Inceleme Penceresi",
-      "canvasHint": "Gercek akista yalnizca isaretli pencere analiz edilirdi.",
-      "timeTitle": "Zaman Araligi",
-      "regionTitle": "Bolge Odagi",
-      "cleanupTitle": "Temizleme ve Hazirlik",
+      "subtitle": "Orijinali bozmadan duzenleme tarifi kur, guvenli onizleme al ve analiz-hazir turetilmis cikti uret.",
+      "previewEmptyTitle": "Duzenleme onizlemesi proje kaynagini bekliyor",
+      "previewEmptyBody": "Kaynak asamasina don, aktif projeye gercek dosya al ve sonra turetilmis ciktiyi sekillendirmek icin geri gel.",
+      "workspaceTitle": "Duzenleme Calisma Yuzeyi",
+      "workspaceHint": "Calisma yuzeyi her zaman kaynagi, son onizlemeyi veya aktif turetilmis ciktayi gosterir.",
+      "previewStates": {
+        "stale": "Onizleme bayat. Guncel kareye guvenmeden once yeni bir onizleme uret."
+      },
+      "jobsTitle": "Aktif Duzenleme Isi",
+      "modeTitle": "Operator Modu",
+      "modeSubtitle": "Guvenli presetlerle derin dogrudan kontroller arasinda gecis yap.",
+      "modes": {
+        "beginner": "Baslangic",
+        "advanced": "Gelismis"
+      },
+      "presetTitle": "Tarif Presetleri",
+      "presetSubtitle": "Baslangic tarifleri deneyimsiz operatoru guvenli hatta tutar.",
+      "commonTitle": "Ortak Tarif",
+      "commonSubtitle": "Bu alanlar onizleme ve turetilmis render boyunca korunur.",
+      "videoTitle": "Video Kontrolleri",
+      "videoSubtitle": "Orijinale dokunmadan analiz kesitini kirp, yeniden boyutlandir ve odakla.",
+      "audioTitle": "Ses Kontrolleri",
+      "audioSubtitle": "Konusma ya da ortam kaydini guvenli normalizasyon zinciriyle hazirla.",
+      "imageTitle": "Goruntu Kontrolleri",
+      "imageSubtitle": "Sabit kareleri OCR veya delil incelemesi icin kirp, dondur ve ayarla.",
+      "actionsTitle": "Onizleme ve Uygula",
+      "actionsSubtitle": "Once guvenli onizleme uret, sonra proje icinde saklanan turetilmis ciktayi yayinla.",
+      "outputsTitle": "Turetilmis Ciktilar",
+      "outputsSubtitle": "Uygulanan her render proje icinde saklanir ve sonraki asamalara aktarilabilir.",
+      "outputsEmpty": "Henuz turetilmis cikti yok. Tarifi onizledikten sonra bir cikti uret.",
+      "ffmpegMissing": "Duzenleme asamasi icin FFmpeg zorunlu. Ayarlardan kur veya guncelle.",
+      "sourceRequired": "Duzenleme asamasi proje icinde hazir kaynak dosyasi olana kadar salt-okunur kalir.",
+      "sourceAsset": "Kaynak Varlik",
+      "previewAsset": "Onizleme Varligi",
+      "derivedOutput": "Turetilmis Cikti",
+      "fullWindow": "Tum kaynak penceresi",
       "summaryTitle": "Duzenleme Ozeti",
       "selectedWindow": "Secili pencere",
       "selectedRegion": "Secili bolge",
-      "cleanup": {
-        "audio": "Ses temizligi",
-        "sharpness": "Kenar netligi",
-        "aiSanitize": "AI izi filtresi"
+      "selectedResize": "Boyutlandirma hatti",
+      "selectedOutput": "Secili cikti",
+      "handoffLabel": "Sonraki asama gecisi",
+      "handoffModes": {
+        "source": "Kaynagi kullan",
+        "derived": "Turetilmis ciktayi kullan"
       },
-      "regions": {
+      "fields": {
+        "outputNameHint": "Cikti Adi Ipuclari",
+        "notes": "Operator Notlari",
+        "trimEnabled": "Kirpma penceresini ac",
+        "includeAudio": "Ses izini koru",
+        "blurFocusOutside": "Odak disini bulaniklastir",
+        "trimStartSeconds": "Kirpma baslangici",
+        "trimEndSeconds": "Kirpma bitisi",
+        "resizePreset": "Yeniden boyut preset'i",
+        "fpsLimit": "FPS limiti",
+        "customWidth": "Ozel genislik",
+        "customHeight": "Ozel yukseklik",
+        "frameGrabCount": "Kare alma sayisi",
+        "normalize": "Ses duzeyini normalize et",
+        "silenceTrim": "Sessizligi kirp",
+        "mono": "Mono'ya cevir",
+        "spectrogram": "Spektrogram uret",
+        "normalizeTargetDb": "Hedef ses duzeyi",
+        "highpassHz": "High-pass Hz",
+        "lowpassHz": "Low-pass Hz",
+        "brightness": "Parlaklik",
+        "contrast": "Kontrast",
+        "blurStrength": "Bulaniklastirma gucu",
+        "rotateDegrees": "Donus derecesi",
+        "sharpen": "Keskinlestir"
+      },
+      "placeholders": {
+        "outputNameHint": "derived-focus-cut",
+        "notes": "Bu tarif neden var, sonraki asamalar ne beklemeli"
+      },
+      "actions": {
+        "preview": "Onizleme Uret",
+        "apply": "Turetilmis Cikti Uret",
+        "cancel": "Aktif Isi Iptal Et",
+        "cancelPreview": "Onizlemeyi Iptal Et",
+        "cancelApply": "Uygulamayi Iptal Et",
+        "selectOutput": "Bu Ciktiyi Kullan"
+      },
+      "focusRegions": {
         "containment": "Muhafaza alani",
         "corridor": "Kapi koridoru",
-        "archive": "Arsiv konsolu"
+        "archive": "Arsiv konsolu",
+        "full-frame": "Tum kare"
+      },
+      "resizePresets": {
+        "keep": "Orijinal boyutu koru",
+        "analysis": "Analiz 1280",
+        "compact": "Kompakt 854",
+        "custom": "Ozel boyut"
+      },
+      "presets": {
+        "video": {
+          "quick-review": "Hizli inceleme",
+          "focus-window": "Odak penceresi"
+        },
+        "audio": {
+          "speech-cleanup": "Konusma temizligi",
+          "context-preserve": "Ortami koru"
+        },
+        "image": {
+          "ocr-prepare": "OCR hazirligi",
+          "safe-share": "Guvenli paylasim"
+        }
       }
     },
     "profile": {
-      "title": "Test profilini sec",
-      "subtitle": "Bu asamali calisma icin analiz hatti, yogunluk ve rapor ritmini belirle.",
-      "routeTitle": "Analiz Hatti",
-      "consoleTitle": "Profil Konsolu",
-      "consoleLines": [
-        "Dummy profil agirliklari yenilendi.",
-        "Gorsel hat guncel kaynakla hizalandi.",
-        "Rapor iskeleti sonraki gecis icin hazirlandi."
-      ],
-      "summaryTitle": "Profil Ozeti",
-      "summaryHint": "Secili preset yalnizca yerel sunumu ve dummy islem degerlerini degistirir.",
-      "focusTabs": {
-        "video": "Video",
-        "audio": "Ses",
-        "image": "Goruntu"
+      "title": "Analiz profilini sekillendir",
+      "subtitle": "Agir analiz kosusundan once hedef medyayi, inceleme derinligini ve AI destekli yan kontrolleri belirle.",
+      "targetTitle": "Profil Hedefi",
+      "targetSubtitle": "Profilin orijinal kaynagi mi yoksa aktif turetilmis ciktayi mi okuyacagina karar ver.",
+      "targetEmptyTitle": "Henuz kullanilabilir profil hedefi yok",
+      "targetEmptyBody": "Profil yuzeyini acmak icin once kaynak hazirla ya da bir turetilmis cikti sec.",
+      "targetModes": {
+        "source": "Kaynak medya",
+        "derived": "Turetilmis cikti"
       },
-      "presets": {
-        "quick": {
-          "title": "Hizli",
-          "summary": "Kisa intake kontrolleri ve acik kusurlar icin hafif tarama.",
-          "pace": "Hizli"
+      "targetOutputLabel": "Turetilmis cikti",
+      "targetOutputEmpty": "Aktif turetilmis ciktayi kullan",
+      "modeTitle": "Operator Modu",
+      "modeSubtitle": "Yonlendirmeli presetlerle basla ya da tum hat konsolunu ac.",
+      "modes": {
+        "beginner": "Yonlendirmeli",
+        "advanced": "Gelismis"
+      },
+      "presetTitle": "Profil Presetleri",
+      "presetSubtitle": "Her preset ozgunluk, sureklilik ve transkript destekli kontrolleri farkli karisir.",
+      "advancedTitle": "Gelismis Kontroller",
+      "advancedSubtitle": "Tarama derinligini, hassasiyeti, hat karisimini ve opsiyonel transkript modelini ayarla.",
+      "depthLabel": "Tarama Derinligi",
+      "sensitivityLabel": "Suphe Hassasiyeti",
+      "modelLabel": "Transkript Modeli",
+      "modelAuto": "Mumkunse otomatik sec",
+      "laneState": {
+        "ready": "Hazir",
+        "degraded": "Sinirli",
+        "blocked": "Engelli"
+      },
+      "laneMeta": {
+        "requiredTools": "Zorunlu araclar",
+        "optionalTools": "Opsiyonel analizorler",
+        "mediaKinds": "Medya destegi",
+        "incompatible": "Guncel medya tipi icin kullanilamaz.",
+        "speechToolMissing": "Transkript destekli konusma orneklemesini acmak icin Whisper.cpp kur.",
+        "speechModelMissing": "Daha derin konusma hatti icin bir transkript modeli kur."
+      },
+      "artifactControlsTitle": "Artefakt Tercihleri",
+      "artifactControlsSubtitle": "Preflight calismasinin hangi hafif kanit dosyalarini uretecegini sec.",
+      "artifactTypes": {
+        "metadata": "Metadata anlik goruntusu",
+        "frame-strip": "Frame strip",
+        "spectrogram": "Spektrogram",
+        "transcript": "Transkript ornegi"
+      },
+      "frameDensityLabel": "Frame Ornek Yogunlugu",
+      "frameDensity": {
+        "sparse": "Seyrek",
+        "balanced": "Dengeli",
+        "dense": "Yogun"
+      },
+      "transcriptSampleLabel": "Transkript Ornek Penceresi",
+      "signalsTitle": "Preflight Isaretleri",
+      "signalsSubtitle": "Bunlar guncel hafif gecisin ortaya cikardigi en guclu gostergelerdir.",
+      "signalsEmpty": "Henuz preflight bulgusu yok. Isaretleri gormek icin preflight calistir.",
+      "signalMeta": {
+        "kind": "Isaret tipi",
+        "confidence": "Guven",
+        "evidence": "Kanit"
+      },
+      "signalKinds": {
+        "measured": "Olculmus",
+        "heuristic": "Heuristik",
+        "derived": "Turetilmis"
+      },
+      "confidenceLevels": {
+        "low": "Dusuk",
+        "medium": "Orta",
+        "high": "Yuksek"
+      },
+      "artifactsTitle": "Artefaktlar",
+      "artifactsSubtitle": "Her calisma metadata, frame strip ve ses izi gibi ipuclarini projeye birakabilir.",
+      "artifactsEmpty": "Henuz profil artefakti uretilmedi.",
+      "preflightTitle": "Preflight Calismasi",
+      "preflightSubtitle": "Tam islem asamasindan once hafif bir tarama gecisi calistir.",
+      "actions": {
+        "run": "Preflight Calistir",
+        "cancel": "Preflight Iptal Et"
+      },
+      "summaryTitle": "Profil Ozeti",
+      "summary": {
+        "target": "Hedef medya",
+        "preset": "Preset",
+        "sampleWindow": "Ornek pencere",
+        "runtime": "Tahmini sure",
+        "signals": "Isaretler",
+        "artifacts": "Artefaktlar",
+        "lanes": "Acik hatlar",
+        "model": "Transkript modeli",
+        "preflight": "Preflight durumu"
+      },
+      "blockersTitle": "Calisma engelleri",
+      "warningsTitle": "Uyarilar",
+      "sourceRequired": "Profili kurmadan once bir kaynak hazirla.",
+      "status": {
+        "idle": "Bos",
+        "running": "Calisiyor",
+        "ready": "Hazir",
+        "stale": "Yeniden calistirilmali",
+        "error": "Hata"
+      },
+      "levels": {
+        "low": "Dusuk",
+        "medium": "Orta",
+        "high": "Yuksek"
+      },
+      "modelTitle": "Transkript Modelleri",
+      "modelSubtitle": "Opsiyonel Whisper.cpp modelleri, konusma surekliligi ve overdub ipuclarini orneklemeye yardim eder.",
+      "modelUnavailable": "Bu platformda transkript modellerini yonetmek icin once oda-yerel Whisper.cpp binary'sini kur.",
+      "modelActions": {
+        "install": "Modeli Kur",
+        "remove": "Modeli Kaldir"
+      },
+      "modelSummary": {
+        "size": "Model boyutu",
+        "quantization": "Quantization",
+        "language": "Dil",
+        "platforms": "Runtime destegi",
+        "cleanup": "Temizleme politikasi",
+        "integrity": "Butunluk"
+      },
+      "cleanupPolicy": {
+        "checksumMismatch": "Uyusmayan indirmeleri kaldir",
+        "descriptorChange": "Descriptor degisince yenile"
+      },
+      "depth": {
+        "quick": "Hizli tarama",
+        "balanced": "Dengeli gecis",
+        "deep": "Derin gecis"
+      },
+      "pace": {
+        "fast": "Hizli",
+        "balanced": "Dengeli",
+        "deep": "Derin"
+      },
+      "lanes": {
+        "metadata-lineage": {
+          "title": "Metadata soy izi",
+          "summary": "Container zamanlamasi, dosya soyu ve acik metadata ek yerleri tutarli mi diye bak."
         },
-        "balanced": {
-          "title": "Dengeli",
-          "summary": "Gorsel ve ses taramalarinda dengeli orta derinlik.",
-          "pace": "Dengeli"
+        "visual-tamper": {
+          "title": "Gorsel mudahale",
+          "summary": "Gorsel kurgu izlerini gosteren freeze, kararma ve kare penceresi dengesizliklerini tara."
         },
-        "deep": {
-          "title": "Yogun",
-          "summary": "Frame jump, kurgu izi ve residue takibi icin uzun gecis.",
-          "pace": "Yogun"
+        "audio-tamper": {
+          "title": "Ses mudahalesi",
+          "summary": "Temizlik ya da splice izleri icin sessizlik, ses seviyesi kaymasi ve spektral surekliligi tara."
+        },
+        "speech-overlay": {
+          "title": "Konusma bindirmesi",
+          "summary": "Overdub, degistirilmis ifade ve diyalog uyumsuzlugu icin transkript destekli ornekleme yap."
+        },
+        "synthetic-suspicion": {
+          "title": "Sentetik suphe",
+          "summary": "Bir sonraki asama icin en guclu capraz-hat ipuclarini tek bir suphe skorunda birlestir."
         }
       },
-      "routeNodes": [
-        "Kaynak alimi",
-        "Frame temizligi",
-        "Hareket izi",
-        "Ses taramasi",
-        "Rapor haritasi"
-      ]
+      "presets": {
+        "video": {
+          "quick-authenticity": {
+            "title": "Hizli ozgunluk",
+            "summary": "Belirgin video ekleri ve metadata kaymalarina odaklanan hizli kaynak taramasi."
+          },
+          "dialogue-overdub": {
+            "title": "Diyalog overdub",
+            "summary": "Konusma surekliligi, sessizlik kesileri ve overdub izlerine agirlik verir."
+          },
+          "balanced-forensic": {
+            "title": "Dengeli adli gecis",
+            "summary": "Aktif turetilmis ciktayi kullanir ve daha yogun bir gecis icin tum destekli hatlari acar."
+          }
+        },
+        "audio": {
+          "overdub-check": {
+            "title": "Overdub kontrolu",
+            "summary": "Diyalog degisimi ve splice izleri icin ayarlanmis kisa ses-oncelikli gecis."
+          },
+          "continuity-pass": {
+            "title": "Sureklilik gecisi",
+            "summary": "Sureklilik sorunlari icin dengeli waveform ve transkript destekli tarama."
+          }
+        },
+        "image": {
+          "quick-lineage": {
+            "title": "Hizli soy izi",
+            "summary": "Koken ve paylasim ipuclari icin hizli metadata ve yuzey taramasi."
+          },
+          "safe-share-audit": {
+            "title": "Guvenli paylasim denetimi",
+            "summary": "Gorsel mudahale ve aciga cikan izleri hedefleyen turetilmis-cikti profili."
+          }
+        }
+      },
+      "models": {
+        "tiny": {
+          "en": {
+            "title": "Tiny English",
+            "summary": "En kucuk transkript modeli. Hafif konusma kontrolu icin en hizli secenek."
+          }
+        },
+        "base": {
+          "en": {
+            "title": "Base English",
+            "summary": "Zor diyalog ve ortam sesi icin daha iyi geri cagrim saglayan daha agir model."
+          }
+        }
+      }
     },
     "process": {
       "title": "Asamali islemi izle",
@@ -320,35 +609,20 @@
       }
     },
     "report": {
-      "title": "Asamali raporu incele",
-      "subtitle": "Bu son gorunum dummy sonucu, oncelikli bulgulari ve export aksiyonlarini toplar.",
+      "title": "Asamali handoff'u incele",
+      "subtitle": "Bu son gorunum, tam islem asamasi calismis gibi davranmadan guncel profil sonucunu yansitir.",
+      "handoffTitle": "Profil Handoff Ozeti",
+      "stagedHint": "Bu gorunum yalnizca mevcut profil kosusunu yansitir. Nihai analiz ve gercek karar sonraki asamalara aittir.",
       "overviewTitle": "Rapor Ozeti",
       "signalTitle": "Risk Isaretleri",
       "findingsTitle": "Oncelikli Bulgular",
       "sideTitle": "Analiz Detayi",
-      "exportQueued": "Dummy export paketi siraya alindi.",
+      "emptyFindings": "Henuz hazir profil isareti yok.",
+      "emptyBody": "Once profil preflight calistir; sonra bu asamali handoff gorunumu en guclu bulgulari gosterecek.",
+      "exportQueued": "Asamali handoff export'u siraya alindi.",
       "actions": {
         "restart": "Yeni Calisma Baslat",
-        "export": "Dummy PDF Cikar"
-      },
-      "signals": {
-        "frameJump": "Frame sicrama",
-        "subcut": "Subcut kaymasi",
-        "audioOffset": "Ses kaymasi"
-      },
-      "findings": {
-        "continuity": {
-          "title": "Sureklilik kaymasi",
-          "detail": "Tekrarlanan parlaklik sicrasi eklenmis frame dizisini isaret ediyor."
-        },
-        "metadata": {
-          "title": "Metadata boslugu",
-          "detail": "Container zamanlamasi asamali onizleme suresiyle hizalanmiyor."
-        },
-        "audio": {
-          "title": "Ses uyumsuzlugu",
-          "detail": "Gecici bosluklar grid disi bir cleanup gecisine isaret ediyor."
-        }
+        "export": "Handoff Notlarini Disa Aktar"
       }
     }
   }

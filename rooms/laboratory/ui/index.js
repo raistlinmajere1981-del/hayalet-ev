@@ -3,8 +3,6 @@
   const FEATURE_ID = "media-analysis";
   const STAGE_ORDER = ["source", "edit", "profile", "process", "report"];
   const SOURCE_FORMATS = ["video", "audio", "image"];
-  const PROFILE_PRESETS = ["quick", "balanced", "deep"];
-  const PROFILE_FOCUS = ["video", "audio", "image"];
   const REGION_OPTIONS = ["containment", "corridor", "archive"];
   const PROCESS_STEPS = ["intake", "cleanup", "motion", "audio", "report"];
   const PROCESS_THRESHOLDS = [0, 18, 39, 62, 84, 100];
@@ -42,6 +40,15 @@
         project: 0,
         "source-config": 0,
         "source-acquire": 0,
+        "edit-config": 0,
+        "edit-preview": 0,
+        "edit-apply": 0,
+        "edit-preview-cancel": 0,
+        "edit-apply-cancel": 0,
+        "profile-config": 0,
+        "profile-run": 0,
+        "profile-cancel": 0,
+        "profile-model": 0,
         tools: 0,
         misc: 0,
       },
@@ -49,23 +56,20 @@
       lastActionMessage: "",
       localDraftProjectId: null,
       localDrafts: createLocalDrafts(),
+      localEditProjectId: null,
+      localEditUpdatedAt: null,
+      localEditDraft: null,
       previewMetrics: {
         url: null,
         duration: null,
         width: null,
         height: null,
       },
+      audioAnalysis: {
+        url: null,
+        bars: [],
+      },
     },
-    rangeStart: 18,
-    rangeEnd: 72,
-    region: "containment",
-    cleanup: {
-      audio: true,
-      sharpness: true,
-      aiSanitize: false,
-    },
-    profileFocus: "video",
-    profilePreset: "balanced",
     process: {
       progress: 54,
       running: false,
@@ -94,8 +98,18 @@
   function createSourceSnapshot() {
     return {
       ready: false,
+      stages: STAGE_ORDER.slice(),
       sourcePresets: {},
       ytDlpForm: {},
+      editPresets: {},
+      editCapabilities: {},
+      profilePresets: {},
+      profileCapabilities: {},
+      profileModels: {},
+      profileModelState: {
+        models: {},
+      },
+      toolRegistry: [],
       projects: [],
       activeProjectId: null,
       activeProject: null,
@@ -121,6 +135,17 @@
       return value;
     }
     return {};
+  }
+
+  function deepClone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function readFormValue(target) {
+    if (target instanceof HTMLInputElement && target.type === "number") {
+      return target.value === "" ? null : Number(target.value);
+    }
+    return target.value;
   }
 
   function readValue(source, path) {
@@ -240,13 +265,8 @@
   }
 
   function setRange(edge, value) {
-    const numericValue = Math.max(0, Math.min(100, Number(value) || 0));
-    if (edge === "start") {
-      state.rangeStart = Math.min(numericValue, state.rangeEnd - 4);
-    } else {
-      state.rangeEnd = Math.max(numericValue, state.rangeStart + 4);
-    }
-    render();
+    void edge;
+    void value;
   }
 
   function formatTime(ms) {
@@ -276,10 +296,7 @@
   }
 
   function getRangeTimes() {
-    return {
-      start: formatTime((TOTAL_DURATION_MS * state.rangeStart) / 100),
-      end: formatTime((TOTAL_DURATION_MS * state.rangeEnd) / 100),
-    };
+    return { start: formatTime(0), end: formatTime(TOTAL_DURATION_MS) };
   }
 
   function setLastAction(message) {
@@ -301,6 +318,33 @@
       case "source-download-url":
       case "source-download-youtube":
         return "source-acquire";
+      case "edit-set-mode":
+      case "edit-apply-preset":
+      case "edit-update-recipe":
+      case "edit-set-output":
+      case "edit-set-handoff":
+        return "edit-config";
+      case "edit-preview":
+        return "edit-preview";
+      case "edit-apply":
+        return "edit-apply";
+      case "edit-cancel-preview":
+        return "edit-preview-cancel";
+      case "edit-cancel-apply":
+        return "edit-apply-cancel";
+      case "profile-set-mode":
+      case "profile-apply-preset":
+      case "profile-update":
+      case "profile-set-target":
+      case "profile-set-model":
+        return "profile-config";
+      case "profile-run-preflight":
+        return "profile-run";
+      case "profile-cancel-preflight":
+        return "profile-cancel";
+      case "profile-model-install":
+      case "profile-model-remove":
+        return "profile-model";
       case "tool-install":
       case "tool-update":
       case "tools-refresh":
@@ -377,18 +421,94 @@
     return toRecord(getSourceSnapshot().ytDlpForm);
   }
 
+  function getEditPresets() {
+    return toRecord(getSourceSnapshot().editPresets);
+  }
+
+  function getEditCapabilities() {
+    return toRecord(getSourceSnapshot().editCapabilities);
+  }
+
+  function getProfilePresets() {
+    return toRecord(getSourceSnapshot().profilePresets);
+  }
+
+  function getProfileCapabilities() {
+    return toRecord(getSourceSnapshot().profileCapabilities);
+  }
+
+  function getProfileModelsCatalog() {
+    return toRecord(getSourceSnapshot().profileModels);
+  }
+
+  function getProfileModelState() {
+    return toRecord(getSourceSnapshot().profileModelState);
+  }
+
+  function getToolRegistry() {
+    const toolRegistry = getSourceSnapshot().toolRegistry;
+    return Array.isArray(toolRegistry) ? toolRegistry.map(toRecord) : [];
+  }
+
   function getProjectSource() {
     const project = getActiveProject();
     return project ? toRecord(project.source) : {};
+  }
+
+  function getProjectEdit() {
+    const project = getActiveProject();
+    return project ? toRecord(project.edit) : {};
+  }
+
+  function getProjectProfile() {
+    const project = getActiveProject();
+    return project ? toRecord(project.profile) : {};
   }
 
   function getSourceMetadata() {
     return toRecord(getProjectSource().metadata);
   }
 
+  function getEditPreview() {
+    return toRecord(getProjectEdit().preview);
+  }
+
+  function getEditOutputs() {
+    const outputs = getProjectEdit().outputs;
+    return Array.isArray(outputs) ? outputs.map(toRecord) : [];
+  }
+
+  function getActiveEditOutput() {
+    const edit = getProjectEdit();
+    const activeOutputId =
+      typeof edit.activeOutputId === "string" && edit.activeOutputId.trim() !== ""
+        ? edit.activeOutputId
+        : null;
+    return (
+      getEditOutputs().find(function (entry) {
+        return activeOutputId !== null && entry.id === activeOutputId;
+      }) || null
+    );
+  }
+
   function getToolEntry(toolId) {
     const tools = toRecord(toRecord(getSourceSnapshot().toolState).tools);
     return toRecord(tools[toolId]);
+  }
+
+  function getStageToolIds(stageId) {
+    return getToolRegistry()
+      .filter(function (entry) {
+        const supportLevel = toRecord(entry.stageSupport)[stageId];
+        return typeof supportLevel === "string" && supportLevel.trim() !== "";
+      })
+      .map(function (entry) {
+        return entry.toolId;
+      });
+  }
+
+  function getWorkspaceCapabilities(kind) {
+    return toRecord(toRecord(getEditCapabilities().workspace)[kind]);
   }
 
   function getJobs() {
@@ -416,6 +536,78 @@
       project: projectJobs,
       tools: toolJobs,
     };
+  }
+
+  function collectEditStageJobs(projectJobs) {
+    const editJobs = Array.isArray(projectJobs)
+      ? projectJobs
+          .map(toRecord)
+          .filter(function (entry) {
+            return entry.featureStage === "edit" || String(entry.action || "").startsWith("edit-");
+          })
+      : [];
+    const actionOrder = {
+      "edit-preview": 0,
+      "edit-apply": 1,
+    };
+
+    return editJobs.sort(function (left, right) {
+      const leftRank = Object.prototype.hasOwnProperty.call(actionOrder, left.action)
+        ? actionOrder[left.action]
+        : 99;
+      const rightRank = Object.prototype.hasOwnProperty.call(actionOrder, right.action)
+        ? actionOrder[right.action]
+        : 99;
+      if (leftRank !== rightRank) {
+        return leftRank - rightRank;
+      }
+
+      const leftId = String(left.jobId || left.requestId || left.action || "");
+      const rightId = String(right.jobId || right.requestId || right.action || "");
+      return leftId.localeCompare(rightId);
+    });
+  }
+
+  function collectProfileStageJobs(projectJobs) {
+    const profileJobs = Array.isArray(projectJobs)
+      ? projectJobs
+          .map(toRecord)
+          .filter(function (entry) {
+            return entry.featureStage === "profile" || String(entry.action || "").startsWith("profile-");
+          })
+      : [];
+    const actionOrder = {
+      "profile-run-preflight": 0,
+      "profile-model-install": 1,
+      "profile-model-remove": 2,
+    };
+
+    return profileJobs.sort(function (left, right) {
+      const leftRank = Object.prototype.hasOwnProperty.call(actionOrder, left.action)
+        ? actionOrder[left.action]
+        : 99;
+      const rightRank = Object.prototype.hasOwnProperty.call(actionOrder, right.action)
+        ? actionOrder[right.action]
+        : 99;
+      if (leftRank !== rightRank) {
+        return leftRank - rightRank;
+      }
+
+      const leftId = String(left.jobId || left.requestId || left.action || "");
+      const rightId = String(right.jobId || right.requestId || right.action || "");
+      return leftId.localeCompare(rightId);
+    });
+  }
+
+  function getEditJobLabel(job) {
+    switch (String(toRecord(job).action || "")) {
+      case "edit-preview":
+        return text(["mediaAnalysis", "edit", "actions", "preview"]);
+      case "edit-apply":
+        return text(["mediaAnalysis", "edit", "actions", "apply"]);
+      default:
+        return text(["mediaAnalysis", "edit", "jobsTitle"]);
+    }
   }
 
   function getCurrentDrafts() {
@@ -446,6 +638,79 @@
     };
   }
 
+  function getCurrentEditDraft() {
+    const project = getActiveProject();
+    const projectEdit = getProjectEdit();
+    const projectId = project ? project.id : null;
+    const projectUpdatedAt =
+      project && typeof project.updatedAt === "string" ? project.updatedAt : null;
+
+    if (
+      state.ui.localEditProjectId !== projectId ||
+      state.ui.localEditUpdatedAt !== projectUpdatedAt ||
+      state.ui.localEditDraft === null
+    ) {
+      state.ui.localEditProjectId = projectId;
+      state.ui.localEditUpdatedAt = projectUpdatedAt;
+      state.ui.localEditDraft = deepClone(projectEdit);
+    }
+
+    return toRecord(state.ui.localEditDraft);
+  }
+
+  function setNestedValue(target, path, value) {
+    const segments = String(path || "")
+      .split(".")
+      .filter(Boolean);
+    if (segments.length === 0) {
+      return;
+    }
+
+    let current = target;
+    while (segments.length > 1) {
+      const segment = segments.shift();
+      if (!current[segment] || typeof current[segment] !== "object" || Array.isArray(current[segment])) {
+        current[segment] = {};
+      }
+      current = current[segment];
+    }
+    current[segments[0]] = value;
+  }
+
+  function buildNestedPatch(path, value) {
+    const patch = {};
+    setNestedValue(patch, path, value);
+    return patch;
+  }
+
+  function syncLocalEditField(path, value) {
+    const draft = getCurrentEditDraft();
+    setNestedValue(draft, path, value);
+
+    if (path === "recipe.common.focusRegionId") {
+      const focusRegion = toRecord(toRecord(getEditPresets().focusRegions)[String(value || "")]);
+      const cropNormalized = toRecord(focusRegion.cropNormalized);
+      if (Object.keys(cropNormalized).length > 0) {
+        draft.recipe = toRecord(draft.recipe);
+        draft.recipe.common = toRecord(draft.recipe.common);
+        draft.recipe.common.cropNormalized = deepClone(cropNormalized);
+      }
+    }
+
+    state.ui.localEditDraft = draft;
+  }
+
+  function commitEditPatch(patch, action) {
+    return sendMediaAction(action || "edit-update-recipe", {
+      patch: patch,
+      featureStage: "edit",
+    });
+  }
+
+  function buildCurrentEditRecipePatch() {
+    return deepClone(toRecord(getCurrentEditDraft().recipe));
+  }
+
   function getSourceConfig(kind) {
     const sourceTypes = toRecord(getSourcePresets().sourceTypes);
     return toRecord(sourceTypes[kind]);
@@ -474,16 +739,334 @@
     return text(["mediaAnalysis", "source", "formats", getCurrentSourceKind(), "title"]);
   }
 
+  function getCurrentEditMode() {
+    const mode = getCurrentEditDraft().mode;
+    return mode === "advanced" ? "advanced" : "beginner";
+  }
+
+  function getCurrentEditRecipe() {
+    return toRecord(getCurrentEditDraft().recipe);
+  }
+
+  function getCurrentFocusRegionId() {
+    return (
+      (typeof toRecord(getCurrentEditRecipe().common).focusRegionId === "string" &&
+        toRecord(getCurrentEditRecipe().common).focusRegionId) ||
+      "full-frame"
+    );
+  }
+
+  function getCurrentFocusLabel() {
+    const focusRegion = toRecord(toRecord(getEditPresets().focusRegions)[getCurrentFocusRegionId()]);
+    const labelKey = typeof focusRegion.labelKey === "string" ? focusRegion.labelKey : null;
+    return labelKey ? textFromKey(labelKey) : "--";
+  }
+
+  function getCurrentResizeLabel() {
+    const kind = getCurrentSourceKind();
+    const recipe = getCurrentEditRecipe();
+    const branch = toRecord(recipe[kind]);
+    const presetId =
+      typeof branch.resizePreset === "string" && branch.resizePreset.trim() !== ""
+        ? branch.resizePreset
+        : "keep";
+    const preset = toRecord(toRecord(getEditPresets().resizePresets)[presetId]);
+    return preset.labelKey ? textFromKey(preset.labelKey) : presetId;
+  }
+
+  function formatEditWindowLabel() {
+    const kind = getCurrentSourceKind();
+    const recipe = getCurrentEditRecipe();
+    const branch = toRecord(recipe[kind]);
+    const duration = getPreferredSourceDuration(getProjectSource().previewUrl || null);
+
+    if ((kind === "video" || kind === "audio") && branch.trimEnabled === true) {
+      const endSeconds =
+        typeof branch.trimEndSeconds === "number" && branch.trimEndSeconds > 0
+          ? branch.trimEndSeconds
+          : duration;
+      return `${formatDuration(branch.trimStartSeconds)} - ${formatDuration(endSeconds)}`;
+    }
+
+    return text(["mediaAnalysis", "edit", "fullWindow"]);
+  }
+
+  function getCurrentEditPresetOptions() {
+    const presetsByKind = toRecord(toRecord(getEditPresets().presets)[getCurrentSourceKind()]);
+    const presetList = presetsByKind[getCurrentEditMode()];
+    return Array.isArray(presetList) ? presetList.map(toRecord) : [];
+  }
+
+  function getEffectiveMediaAsset() {
+    const project = getActiveProject();
+    if (!project) {
+      return {
+        kind: "source",
+        label: "--",
+        previewUrl: null,
+        path: null,
+        mimeType: null,
+        metadata: {},
+      };
+    }
+
+    const source = getProjectSource();
+    const edit = getProjectEdit();
+    const preview = getEditPreview();
+    const activeOutput = getActiveEditOutput();
+
+    if (
+      typeof edit.handoffMode === "string" &&
+      edit.handoffMode === "derived" &&
+      activeOutput &&
+      typeof activeOutput.previewUrl === "string"
+    ) {
+      return {
+        kind: "derived",
+        label: activeOutput.label || text(["mediaAnalysis", "edit", "derivedOutput"]),
+        previewUrl: activeOutput.previewUrl,
+        path: activeOutput.path || null,
+        mimeType: activeOutput.mimeType || null,
+        metadata: toRecord(activeOutput.metadata),
+        artifacts: Array.isArray(activeOutput.artifacts) ? activeOutput.artifacts.map(toRecord) : [],
+      };
+    }
+
+    if (
+      typeof preview.previewUrl === "string" &&
+      preview.previewUrl.trim() !== "" &&
+      (preview.status === "ready" || preview.status === "stale")
+    ) {
+      return {
+        kind: "preview",
+        label: text(["mediaAnalysis", "edit", "previewAsset"]),
+        previewUrl: preview.previewUrl,
+        path: preview.path || null,
+        mimeType: preview.mimeType || null,
+        metadata: toRecord(preview.metadata),
+        artifacts: Array.isArray(preview.artifacts) ? preview.artifacts.map(toRecord) : [],
+      };
+    }
+
+    return {
+      kind: "source",
+      label: text(["mediaAnalysis", "edit", "sourceAsset"]),
+      previewUrl: source.previewUrl || null,
+      path: source.storedPath || null,
+      mimeType: source.mimeType || null,
+      metadata: getSourceMetadata(),
+      artifacts: [],
+    };
+  }
+
   function getProfileLabel() {
-    return text(["mediaAnalysis", "profile", "presets", state.profilePreset, "title"]);
+    const activePresetId =
+      typeof getProjectProfile().activePresetId === "string" ? getProjectProfile().activePresetId : null;
+    const preset =
+      getProfilePresetOptions().find(function (entry) {
+        return entry.id === activePresetId;
+      }) || null;
+    const labelKey = preset && typeof preset.labelKey === "string" ? preset.labelKey : null;
+    return labelKey ? textFromKey(labelKey) : "--";
   }
 
   function getFocusLabel() {
-    return text(["mediaAnalysis", "profile", "focusTabs", state.profileFocus]);
+    const target = getProfileTargetSummary();
+    if (typeof target.label === "string" && target.label.trim() !== "") {
+      return target.label;
+    }
+    return getCurrentSourceLabel();
   }
 
-  function getRegionLabel() {
-    return text(["mediaAnalysis", "edit", "regions", state.region]);
+  function getCurrentProfileMode() {
+    return getProjectProfile().mode === "advanced" ? "advanced" : "beginner";
+  }
+
+  function getProfileLaneMap() {
+    return toRecord(getProfilePresets().lanes);
+  }
+
+  function getCompatibleProfileLaneIds() {
+    const laneMap = getProfileLaneMap();
+    const sourceKind = getCurrentSourceKind();
+    return Object.keys(laneMap).filter(function (laneId) {
+      const mediaKinds = Array.isArray(toRecord(laneMap[laneId]).mediaKinds)
+        ? toRecord(laneMap[laneId]).mediaKinds
+        : [];
+      return mediaKinds.length === 0 || mediaKinds.includes(sourceKind);
+    });
+  }
+
+  function getProfilePresetOptions() {
+    const presetsByKind = toRecord(toRecord(getProfilePresets().presets)[getCurrentSourceKind()]);
+    const mode = getCurrentProfileMode();
+    const presetList = Array.isArray(presetsByKind[mode])
+      ? presetsByKind[mode]
+      : Array.isArray(presetsByKind.beginner)
+        ? presetsByKind.beginner
+        : [];
+    return presetList.map(toRecord);
+  }
+
+  function getProfileReadiness() {
+    return toRecord(getProjectProfile().readiness);
+  }
+
+  function getProfileEstimate() {
+    return toRecord(getProjectProfile().estimate);
+  }
+
+  function getProfilePreflight() {
+    return toRecord(getProjectProfile().preflight);
+  }
+
+  function getProfileSignals() {
+    const signals = getProjectProfile().signals;
+    return Array.isArray(signals) ? signals.map(toRecord) : [];
+  }
+
+  function getProfileArtifacts() {
+    const artifacts = getProjectProfile().artifacts;
+    return Array.isArray(artifacts) ? artifacts.map(toRecord) : [];
+  }
+
+  function getProfileTargetSummary() {
+    return toRecord(getProfileReadiness().target);
+  }
+
+  function getProfileTargetMode() {
+    const target = getProfileTargetSummary();
+    return target.requestedMode === "derived" ? "derived" : "source";
+  }
+
+  function getProfileModelEntries() {
+    const readinessModels = getProfileReadiness().models;
+    if (Array.isArray(readinessModels)) {
+      return readinessModels.map(toRecord);
+    }
+    const catalog = toRecord(getProfileModelsCatalog().models);
+    const stateMap = toRecord(getProfileModelState().models);
+    return Object.keys(catalog).map(function (modelId) {
+      return {
+        modelId: modelId,
+        ...toRecord(catalog[modelId]),
+        ...toRecord(stateMap[modelId]),
+      };
+    });
+  }
+
+  function getProfileSelectedModel() {
+    return (
+      getProfileModelEntries().find(function (entry) {
+        return entry.selected === true;
+      }) || null
+    );
+  }
+
+  function getProfileJobs() {
+    const project = getActiveProject();
+    if (!project) {
+      return [];
+    }
+    return collectProfileStageJobs(
+      getJobs()
+        .map(toRecord)
+        .filter(function (job) {
+          return job.projectId === project.id;
+        })
+    );
+  }
+
+  function getProfileTargetOutputOptions() {
+    return getEditOutputs().filter(function (entry) {
+      return typeof entry.path === "string" && entry.path.trim() !== "";
+    });
+  }
+
+  function getProfileArtifactPreferenceEntries() {
+    const preferenceMap = toRecord(getProfileCapabilities().artifactPreferences);
+    const currentKind = getCurrentSourceKind();
+    const selected = toRecord(getProjectProfile().artifactPreferences);
+    return Object.keys(preferenceMap)
+      .map(function (artifactId) {
+        const descriptor = toRecord(preferenceMap[artifactId]);
+        const mediaKinds = Array.isArray(descriptor.mediaKinds) ? descriptor.mediaKinds : [];
+        const compatible = mediaKinds.length === 0 || mediaKinds.includes(currentKind);
+        return {
+          artifactId: artifactId,
+          labelKey: descriptor.labelKey,
+          compatible: compatible,
+          enabled: compatible && selected[artifactId] === true,
+        };
+      })
+      .filter(function (entry) {
+        return entry.compatible === true;
+      });
+  }
+
+  function getProfileFrameDensityOptions() {
+    const densityModes = toRecord(toRecord(getProfileCapabilities().sampling).frameDensityModes);
+    return Object.keys(densityModes).map(function (densityId) {
+      return {
+        densityId: densityId,
+        labelKey: toRecord(densityModes[densityId]).labelKey,
+      };
+    });
+  }
+
+  function getProfileTranscriptSampleConfig() {
+    return toRecord(toRecord(getProfileCapabilities().sampling).transcriptSampleSeconds);
+  }
+
+  function sortProfileSignals(signals) {
+    const levelOrder = { high: 0, medium: 1, low: 2 };
+    const kindOrder = { measured: 0, heuristic: 1, derived: 2 };
+    return (Array.isArray(signals) ? signals.map(toRecord) : []).sort(function (left, right) {
+      const levelDelta =
+        (levelOrder[String(left.level || "low")] ?? 99) - (levelOrder[String(right.level || "low")] ?? 99);
+      if (levelDelta !== 0) {
+        return levelDelta;
+      }
+      const kindDelta =
+        (kindOrder[String(left.kind || "derived")] ?? 99) - (kindOrder[String(right.kind || "derived")] ?? 99);
+      if (kindDelta !== 0) {
+        return kindDelta;
+      }
+      return String(left.id || left.title || "").localeCompare(String(right.id || right.title || ""));
+    });
+  }
+
+  function getTopProfileSignals(limit) {
+    return sortProfileSignals(getProfileSignals()).slice(0, Math.max(0, Number(limit) || 0));
+  }
+
+  function getProfileSignalKindLabel(kind) {
+    return text(["mediaAnalysis", "profile", "signalKinds", typeof kind === "string" ? kind : "derived"]);
+  }
+
+  function getProfileConfidenceLabel(confidence) {
+    return text([
+      "mediaAnalysis",
+      "profile",
+      "confidenceLevels",
+      typeof confidence === "string" ? confidence : "low",
+    ]);
+  }
+
+  function formatPlatformList(platforms) {
+    return Array.isArray(platforms) && platforms.length > 0 ? platforms.join(", ") : "--";
+  }
+
+  function formatCleanupPolicy(policy) {
+    const source = toRecord(policy);
+    const labels = [];
+    if (source.removeOnChecksumMismatch === true) {
+      labels.push(text(["mediaAnalysis", "profile", "cleanupPolicy", "checksumMismatch"]));
+    }
+    if (source.removeOnDescriptorChange === true) {
+      labels.push(text(["mediaAnalysis", "profile", "cleanupPolicy", "descriptorChange"]));
+    }
+    return labels.length > 0 ? labels.join(", ") : "--";
   }
 
   function getPreferredSourceDuration(previewUrl) {
@@ -530,6 +1113,109 @@
     );
   }
 
+  function getPreferredAssetDuration(asset) {
+    const metadata = toRecord(toRecord(asset).metadata);
+    if (typeof metadata.durationSeconds === "number" && metadata.durationSeconds > 0) {
+      return metadata.durationSeconds;
+    }
+    const previewUrl = typeof toRecord(asset).previewUrl === "string" ? toRecord(asset).previewUrl : null;
+    return state.ui.previewMetrics.url === previewUrl ? state.ui.previewMetrics.duration : null;
+  }
+
+  function getPreferredAssetResolution(asset) {
+    const metadata = toRecord(toRecord(asset).metadata);
+    const previewUrl = typeof toRecord(asset).previewUrl === "string" ? toRecord(asset).previewUrl : null;
+    const width =
+      typeof metadata.width === "number" && metadata.width > 0
+        ? metadata.width
+        : state.ui.previewMetrics.url === previewUrl
+          ? state.ui.previewMetrics.width
+          : null;
+    const height =
+      typeof metadata.height === "number" && metadata.height > 0
+        ? metadata.height
+        : state.ui.previewMetrics.url === previewUrl
+          ? state.ui.previewMetrics.height
+          : null;
+
+    if (typeof width === "number" && typeof height === "number") {
+      return `${width} x ${height}`;
+    }
+
+    return "--";
+  }
+
+  function getPreferredAssetCodec(asset) {
+    const metadata = toRecord(toRecord(asset).metadata);
+    return (
+      (typeof metadata.codec === "string" && metadata.codec.trim() !== "" && metadata.codec) ||
+      (typeof metadata.videoCodec === "string" &&
+        metadata.videoCodec.trim() !== "" &&
+        metadata.videoCodec) ||
+      (typeof metadata.audioCodec === "string" &&
+        metadata.audioCodec.trim() !== "" &&
+        metadata.audioCodec) ||
+      "--"
+    );
+  }
+
+  function getToolDisplayName(toolId) {
+    const registryEntry =
+      getToolRegistry().find(function (entry) {
+        return entry.toolId === toolId;
+      }) || {};
+    return (
+      (typeof registryEntry.displayName === "string" && registryEntry.displayName.trim() !== "" && registryEntry.displayName) ||
+      text(["mediaAnalysis", "settings", "tools", toolId]) ||
+      toolId
+    );
+  }
+
+  function getMediaKindLabel(kind) {
+    if (typeof kind !== "string" || kind.trim() === "") {
+      return "--";
+    }
+    return text(["mediaAnalysis", "source", "formats", kind, "title"]) || kind;
+  }
+
+  function getProfileLaneCardState(laneId) {
+    const lane = toRecord(getProfileLaneMap()[laneId]);
+    const currentKind = getCurrentSourceKind();
+    const mediaKinds = Array.isArray(lane.mediaKinds) ? lane.mediaKinds : [];
+    const compatible = mediaKinds.length === 0 || mediaKinds.includes(currentKind);
+    const profile = getProjectProfile();
+    const readiness = getProfileReadiness();
+    const laneSummary =
+      (Array.isArray(readiness.lanes) ? readiness.lanes : []).find(function (entry) {
+        return toRecord(entry).laneId === laneId;
+      }) || {};
+    const requiredTools = Array.isArray(lane.requiredTools) ? lane.requiredTools : [];
+    const optionalTools = Array.isArray(lane.optionalTools) ? lane.optionalTools : [];
+    let supportLevel = compatible ? "ready" : "blocked";
+    let note = compatible ? "" : text(["mediaAnalysis", "profile", "laneMeta", "incompatible"]);
+
+    if (compatible) {
+      supportLevel = toRecord(laneSummary).supportLevel || "ready";
+      if (supportLevel === "degraded" && optionalTools.includes("whisper.cpp")) {
+        const whisperReady = getToolEntry("whisper.cpp").ready === true;
+        note = whisperReady
+          ? text(["mediaAnalysis", "profile", "laneMeta", "speechModelMissing"])
+          : text(["mediaAnalysis", "profile", "laneMeta", "speechToolMissing"]);
+      }
+    }
+
+    return {
+      lane: lane,
+      compatible: compatible,
+      enabled: compatible && toRecord(profile.laneSelection)[laneId] === true,
+      supportLevel: supportLevel,
+      note: note,
+      requiredTools: requiredTools.map(getToolDisplayName),
+      optionalTools: optionalTools.map(getToolDisplayName),
+      mediaKinds: mediaKinds.map(getMediaKindLabel),
+    };
+  }
+
   function getPreferredSourceFormat() {
     const metadata = getSourceMetadata();
     const source = getProjectSource();
@@ -558,36 +1244,42 @@
     return `${Math.round(bitsPerSecond / 1000)} kbps`;
   }
 
-  function chooseRegion(regionId) {
-    if (REGION_OPTIONS.includes(regionId) === false) {
-      return;
+  function formatBytes(value) {
+    if (typeof value !== "number" || Number.isFinite(value) !== true || value <= 0) {
+      return "--";
     }
-    state.region = regionId;
-    render();
+    if (value >= 1_000_000_000) {
+      return `${(value / 1_000_000_000).toFixed(1)} GB`;
+    }
+    if (value >= 1_000_000) {
+      return `${(value / 1_000_000).toFixed(1)} MB`;
+    }
+    if (value >= 1_000) {
+      return `${Math.round(value / 1_000)} KB`;
+    }
+    return `${Math.round(value)} B`;
+  }
+
+  function chooseRegion(regionId) {
+    void regionId;
   }
 
   function chooseProfilePreset(profileId) {
-    if (PROFILE_PRESETS.includes(profileId) === false) {
+    if (typeof profileId !== "string" || profileId.trim() === "") {
       return;
     }
-    state.profilePreset = profileId;
-    render();
+    sendMediaAction("profile-apply-preset", {
+      presetId: profileId,
+      featureStage: "profile",
+    });
   }
 
   function chooseProfileFocus(focusId) {
-    if (PROFILE_FOCUS.includes(focusId) === false) {
-      return;
-    }
-    state.profileFocus = focusId;
-    render();
+    void focusId;
   }
 
   function toggleCleanup(key) {
-    if (Object.prototype.hasOwnProperty.call(state.cleanup, key) === false) {
-      return;
-    }
-    state.cleanup[key] = state.cleanup[key] !== true;
-    render();
+    void key;
   }
 
   function restartProcess() {
@@ -606,14 +1298,6 @@
 
   function resetJourney() {
     state.activeStage = "source";
-    state.rangeStart = 18;
-    state.rangeEnd = 72;
-    state.region = "containment";
-    state.cleanup.audio = true;
-    state.cleanup.sharpness = true;
-    state.cleanup.aiSanitize = false;
-    state.profileFocus = "video";
-    state.profilePreset = "balanced";
     state.process.progress = 54;
     state.process.running = false;
     render();
@@ -623,7 +1307,7 @@
     return [action, Date.now(), Math.random().toString(36).slice(2, 8)].join("-");
   }
 
-  function sendSourceAction(action, payload) {
+  function sendMediaAction(action, payload) {
     if (!window.roomAPI || typeof window.roomAPI.sendEvent !== "function") {
       setLastAction(bootstrapText("roomApiUnavailable"));
       render();
@@ -633,12 +1317,16 @@
     const requestId = nextRequestId(action);
     state.ui.lastRequestId = requestId;
     rememberRequest(requestId, action);
-    window.roomAPI.sendEvent("source-action", {
+    window.roomAPI.sendEvent("media-action", {
       requestId: requestId,
       action: action,
       payload: payload || {},
     });
     return requestId;
+  }
+
+  function sendSourceAction(action, payload) {
+    return sendMediaAction(action, payload);
   }
 
   function syncDraftField(path, value) {
@@ -807,7 +1495,10 @@
         : text(["mediaAnalysis", "source", "modes", sourceMode]);
 
     const projectJobs = getRelevantJobs().project;
-    const activeJob = projectJobs.length > 0 ? projectJobs[0] : null;
+    const activeJob =
+      projectJobs.find(function (entry) {
+        return entry.featureStage !== "edit";
+      }) || null;
 
     let mediaMarkup = `
       <div class="lab-empty-preview">
@@ -1196,10 +1887,15 @@
     `;
   }
 
-  function renderToolCard(toolId) {
+  function renderToolCard(toolId, stageId) {
     const tool = getToolEntry(toolId);
+    const descriptor =
+      getToolRegistry().find(function (entry) {
+        return entry.toolId === toolId;
+      }) || {};
     const busy = tool.busy === true;
     const updateAvailable = tool.updateAvailable === true;
+    const stageSupport = toRecord(descriptor.stageSupport)[stageId] || "unsupported";
     const statusLabel =
       tool.installed === true
         ? updateAvailable
@@ -1211,7 +1907,7 @@
       <article class="lab-tool-card">
         <div class="lab-tool-card__head">
           <div>
-            <strong>${escapeHtml(text(["mediaAnalysis", "settings", "tools", toolId]))}</strong>
+            <strong>${escapeHtml(text(["mediaAnalysis", "settings", "tools", toolId]) || descriptor.displayName || toolId)}</strong>
             <span>${escapeHtml(statusLabel)}</span>
           </div>
           ${
@@ -1241,6 +1937,10 @@
           }
         </div>
         <ul class="lab-summary-list">
+          ${renderPreviewMetaRow(
+            text(["mediaAnalysis", "settings", "stageSupportLabel"]),
+            text(["mediaAnalysis", "settings", "support", stageSupport])
+          )}
           ${renderPreviewMetaRow(text(["mediaAnalysis", "settings", "versionLabel"]), tool.version || "--")}
           ${renderPreviewMetaRow(
             text(["mediaAnalysis", "settings", "latestLabel"]),
@@ -1265,10 +1965,114 @@
     `;
   }
 
+  function renderProfileModelCard(entry) {
+    const model = toRecord(entry);
+    const busy = model.busy === true;
+    const canInstall =
+      model.binarySupported === true &&
+      getToolEntry("whisper.cpp").installed === true &&
+      model.runtimeCompatible !== false;
+    const statusLabel =
+      model.ready === true
+        ? text(["mediaAnalysis", "settings", "status", "ready"])
+        : model.installed === true
+          ? text(["mediaAnalysis", "settings", "status", "installed"])
+          : text(["mediaAnalysis", "settings", "status", "missing"]);
+
+    return `
+      <article class="lab-tool-card">
+        <div class="lab-tool-card__head">
+          <div>
+            <strong>${escapeHtml(textFromKey(model.labelKey || "") || model.modelId || "--")}</strong>
+            <span>${escapeHtml(statusLabel)}</span>
+          </div>
+          ${
+            model.installed === true
+              ? `
+                <button
+                  class="lab-button lab-button--ghost lab-button--tight"
+                  type="button"
+                  data-action="profile-model-remove"
+                  data-value="${escapeHtml(model.modelId || "")}"
+                  ${busy ? "disabled" : ""}
+                >
+                  ${escapeHtml(text(["mediaAnalysis", "profile", "modelActions", "remove"]))}
+                </button>
+              `
+              : `
+                <button
+                  class="lab-button lab-button--primary lab-button--tight"
+                  type="button"
+                  data-action="profile-model-install"
+                  data-value="${escapeHtml(model.modelId || "")}"
+                  ${busy || canInstall !== true ? "disabled" : ""}
+                >
+                  ${escapeHtml(text(["mediaAnalysis", "profile", "modelActions", "install"]))}
+                </button>
+              `
+          }
+        </div>
+        <ul class="lab-summary-list">
+          ${renderPreviewMetaRow(text(["mediaAnalysis", "profile", "modelSummary", "size"]), formatBytes(model.sizeBytes || model.expectedBytes))}
+          ${renderPreviewMetaRow(text(["mediaAnalysis", "profile", "modelSummary", "quantization"]), model.quantization || "--")}
+          ${renderPreviewMetaRow(text(["mediaAnalysis", "profile", "modelSummary", "language"]), model.language || "--")}
+          ${renderPreviewMetaRow(
+            text(["mediaAnalysis", "profile", "modelSummary", "platforms"]),
+            formatPlatformList(model.supportedPlatforms)
+          )}
+          ${renderPreviewMetaRow(
+            text(["mediaAnalysis", "profile", "modelSummary", "cleanup"]),
+            formatCleanupPolicy(model.cleanupPolicy)
+          )}
+          ${renderPreviewMetaRow(
+            text(["mediaAnalysis", "profile", "modelSummary", "integrity"]),
+            model.checksumValid === true
+              ? text(["mediaAnalysis", "settings", "status", "ready"])
+              : model.installed === true
+                ? text(["mediaAnalysis", "settings", "status", "installed"])
+                : "--"
+          )}
+        </ul>
+        ${
+          typeof model.summaryKey === "string" && model.summaryKey.trim() !== ""
+            ? `<p class="lab-panel__hint">${escapeHtml(textFromKey(model.summaryKey))}</p>`
+            : ""
+        }
+        ${
+          canInstall !== true
+            ? `<p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "profile", "modelUnavailable"]))}</p>`
+            : ""
+        }
+        ${
+          typeof model.compatibilityReason === "string" && model.compatibilityReason.trim() !== ""
+            ? `<p class="lab-panel__hint">${escapeHtml(model.compatibilityReason)}</p>`
+            : ""
+        }
+        ${
+          typeof model.lastError === "string" && model.lastError.trim() !== ""
+            ? `<p class="lab-panel__hint lab-panel__hint--danger">${escapeHtml(model.lastError)}</p>`
+            : ""
+        }
+      </article>
+    `;
+  }
+
   function renderSettingsOverlay() {
     if (state.ui.settingsOpen !== true) {
       return "";
     }
+
+    const stageId = STAGE_ORDER.includes(state.activeStage) ? state.activeStage : "source";
+    const allToolIds = getToolRegistry().map(function (entry) {
+      return entry.toolId;
+    });
+    const currentStageToolIds = (() => {
+      const stageToolIds = getStageToolIds(stageId);
+      return stageToolIds.length > 0 ? stageToolIds : allToolIds;
+    })();
+    const otherToolIds = allToolIds.filter(function (toolId) {
+      return currentStageToolIds.includes(toolId) === false;
+    });
 
     return `
       <div class="lab-overlay" role="dialog" aria-modal="true" aria-label="${escapeHtml(
@@ -1280,7 +2084,9 @@
             <div>
               <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "settings", "eyebrow"]))}</p>
               <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "settings", "title"]))}</h2>
-              <p class="lab-panel__subtitle">${escapeHtml(text(["mediaAnalysis", "settings", "subtitle"]))}</p>
+              <p class="lab-panel__subtitle">${escapeHtml(
+                `${text(["mediaAnalysis", "settings", "subtitle"])} ${text(["mediaAnalysis", "stages", stageId])}`
+              )}</p>
             </div>
             <div class="lab-overlay__actions">
               <button class="lab-button lab-button--ghost lab-button--tight" type="button" data-action="tools-refresh">
@@ -1291,10 +2097,61 @@
               </button>
             </div>
           </header>
-          <div class="lab-tool-grid">
-            ${renderToolCard("yt-dlp")}
-            ${renderToolCard("ffmpeg")}
-          </div>
+          <section class="lab-panel">
+            <div class="lab-panel__header">
+              <div>
+                <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "settings", "currentStageTitle"]))}</p>
+                <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "stages", stageId]))}</h2>
+              </div>
+            </div>
+            <div class="lab-tool-grid">
+              ${currentStageToolIds.map(function (toolId) {
+                return renderToolCard(toolId, stageId);
+              }).join("")}
+            </div>
+          </section>
+          ${
+            otherToolIds.length > 0
+              ? `
+                <section class="lab-panel">
+                  <div class="lab-panel__header">
+                    <div>
+                      <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "settings", "otherToolsTitle"]))}</p>
+                      <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "settings", "otherToolsSubtitle"]))}</h2>
+                    </div>
+                  </div>
+                  <div class="lab-tool-grid">
+                    ${otherToolIds
+                      .map(function (toolId) {
+                        return renderToolCard(toolId, stageId);
+                      })
+                      .join("")}
+                  </div>
+                </section>
+              `
+              : ""
+          }
+          ${
+            stageId === "profile" && getProfileModelEntries().length > 0
+              ? `
+                <section class="lab-panel">
+                  <div class="lab-panel__header">
+                    <div>
+                      <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "modelTitle"]))}</p>
+                      <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "modelSubtitle"]))}</h2>
+                    </div>
+                  </div>
+                  <div class="lab-tool-grid">
+                    ${getProfileModelEntries()
+                      .map(function (entry) {
+                        return renderProfileModelCard(entry);
+                      })
+                      .join("")}
+                  </div>
+                </section>
+              `
+              : ""
+          }
         </section>
       </div>
     `;
@@ -1347,195 +2204,1311 @@
     `;
   }
 
+  function renderEditToggle(fieldId, label, active) {
+    return `
+      <button
+        class="lab-toggle"
+        type="button"
+        data-edit-toggle="${escapeHtml(fieldId)}"
+        data-active="${active ? "true" : "false"}"
+      >
+        <span class="lab-toggle__track"><span class="lab-toggle__thumb"></span></span>
+        <span class="lab-toggle__label">${escapeHtml(label)}</span>
+      </button>
+    `;
+  }
+
+  function renderEditTextField(fieldId, value, label, extra) {
+    const options = toRecord(extra);
+    return `
+      <label class="lab-field">
+        <span class="lab-field__label">${escapeHtml(label)}</span>
+        <input
+          class="lab-input"
+          type="${escapeHtml(options.type || "text")}"
+          value="${escapeHtml(value == null ? "" : value)}"
+          placeholder="${escapeHtml(options.placeholder || "")}"
+          data-edit-field="${escapeHtml(fieldId)}"
+          data-edit-commit="${escapeHtml(options.commit || "change")}"
+        />
+      </label>
+    `;
+  }
+
+  function renderEditSelectField(fieldId, value, label, optionEntries) {
+    return `
+      <label class="lab-field">
+        <span class="lab-field__label">${escapeHtml(label)}</span>
+        <select class="lab-select" data-edit-field="${escapeHtml(fieldId)}">
+          ${optionEntries
+            .map(function (entry) {
+              return `
+                <option value="${escapeHtml(entry.value)}" ${
+                  String(entry.value) === String(value) ? "selected" : ""
+                }>
+                  ${escapeHtml(entry.label)}
+                </option>
+              `;
+            })
+            .join("")}
+        </select>
+      </label>
+    `;
+  }
+
+  function renderEditRangeField(fieldId, value, label, options) {
+    const config = toRecord(options);
+    return `
+      <label class="lab-range-group">
+        <span>${escapeHtml(label)} <strong>${escapeHtml(String(config.displayValue || value || 0))}</strong></span>
+        <input
+          type="range"
+          min="${escapeHtml(String(config.min ?? 0))}"
+          max="${escapeHtml(String(config.max ?? 100))}"
+          step="${escapeHtml(String(config.step ?? 1))}"
+          value="${escapeHtml(String(value ?? config.min ?? 0))}"
+          data-edit-field="${escapeHtml(fieldId)}"
+          data-edit-commit="change"
+        />
+      </label>
+    `;
+  }
+
+  function renderEditMediaMarkup(asset, cropNormalized) {
+    const previewUrl =
+      typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== "" ? asset.previewUrl : null;
+    if (previewUrl === null) {
+      return `
+        <div class="lab-empty-preview">
+          <strong>${escapeHtml(text(["mediaAnalysis", "edit", "previewEmptyTitle"]))}</strong>
+          <p>${escapeHtml(text(["mediaAnalysis", "edit", "previewEmptyBody"]))}</p>
+        </div>
+      `;
+    }
+
+    const kind = getCurrentSourceKind();
+    const crop = toRecord(cropNormalized);
+    const focusStyle =
+      kind === "audio"
+        ? ""
+        : `style="left:${Math.max(0, Number(crop.x || 0) * 100)}%; top:${Math.max(
+            0,
+            Number(crop.y || 0) * 100
+          )}%; width:${Math.max(2, Number(crop.width || 0) * 100)}%; height:${Math.max(
+            2,
+            Number(crop.height || 0) * 100
+          )}%;"`;
+
+    if (kind === "image") {
+      return `
+        <img class="lab-preview-media lab-preview-media--image" data-preview-media="image" src="${previewUrl}" alt="" />
+        <div class="lab-edit-overlay__focus" ${focusStyle}></div>
+      `;
+    }
+
+    if (kind === "audio") {
+      const bars =
+        state.ui.audioAnalysis.url === previewUrl && state.ui.audioAnalysis.bars.length > 0
+          ? state.ui.audioAnalysis.bars
+          : Array.from({ length: 42 }, function (_, index) {
+              return 16 + ((index * 11) % 36);
+            });
+      const spectrogram =
+        (Array.isArray(asset.artifacts) ? asset.artifacts : []).find(function (entry) {
+          return entry.kind === "spectrogram" && typeof entry.previewUrl === "string";
+        }) || null;
+      return `
+        <div class="lab-audio-workbench">
+          ${
+            spectrogram
+              ? `<img class="lab-audio-spectrogram" src="${spectrogram.previewUrl}" alt="" />`
+              : ""
+          }
+          <div class="lab-audio-bars">
+            ${bars
+              .map(function (height) {
+                return `<span style="height:${height}px"></span>`;
+              })
+              .join("")}
+          </div>
+          <audio class="lab-preview-media lab-preview-media--audio" data-preview-media="audio" src="${previewUrl}" controls preload="metadata"></audio>
+        </div>
+      `;
+    }
+
+    return `
+      <video class="lab-preview-media lab-preview-media--video" data-preview-media="video" src="${previewUrl}" controls preload="metadata"></video>
+      <div class="lab-edit-overlay__focus" ${focusStyle}></div>
+    `;
+  }
+
+  function renderEditPresetChooser() {
+    const presetOptions = getCurrentEditPresetOptions();
+    const activePresetId =
+      typeof getCurrentEditDraft().activePresetId === "string" ? getCurrentEditDraft().activePresetId : null;
+
+    if (presetOptions.length === 0) {
+      return "";
+    }
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "presetTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "presetSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-chip-row">
+          ${presetOptions
+            .map(function (preset) {
+              return `
+                <button
+                  class="lab-choice-chip"
+                  type="button"
+                  data-action="edit-preset"
+                  data-value="${escapeHtml(preset.id)}"
+                  data-selected="${preset.id === activePresetId ? "true" : "false"}"
+                >
+                  ${escapeHtml(textFromKey(preset.labelKey))}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderEditWorkspacePanel() {
+    const source = getProjectSource();
+    const recipe = getCurrentEditRecipe();
+    const common = toRecord(recipe.common);
+    const asset = getEffectiveMediaAsset();
+    const preview = getEditPreview();
+    const projectJobs = getRelevantJobs().project;
+    const activeEditJobs = collectEditStageJobs(projectJobs);
+
+    return `
+      <section class="lab-panel lab-preview-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "workspaceTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(asset.label || text(["mediaAnalysis", "edit", "sourceAsset"]))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(
+              preview.status === "stale"
+                ? text(["mediaAnalysis", "edit", "previewStates", "stale"])
+                : text(["mediaAnalysis", "edit", "workspaceHint"])
+            )}</p>
+          </div>
+          <span class="lab-chip">${escapeHtml(text(["mediaAnalysis", "settings", "status", source.status === "error" ? "error" : "ready"]))}</span>
+        </div>
+        <div class="lab-preview-card">
+          <div class="lab-preview-frame lab-edit-frame">
+            ${renderEditMediaMarkup(asset, common.cropNormalized)}
+          </div>
+          <div class="lab-preview-copy">
+            <ul class="lab-meta-list">
+              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "status"]), preview.status || text(["mediaAnalysis", "shared", "idle"]))}
+              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "duration"]), formatDuration(typeof toRecord(asset.metadata).durationSeconds === "number" ? toRecord(asset.metadata).durationSeconds : getPreferredSourceDuration(asset.previewUrl)))}
+              ${renderPreviewMetaRow(
+                text(["mediaAnalysis", "shared", "resolution"]),
+                typeof toRecord(asset.metadata).width === "number" && typeof toRecord(asset.metadata).height === "number"
+                  ? `${asset.metadata.width} x ${asset.metadata.height}`
+                  : getPreferredSourceResolution(getProjectSource().previewUrl || null)
+              )}
+              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "codec"]), asset.metadata.codec || getPreferredSourceCodec())}
+              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "format"]), asset.metadata.formatName || asset.mimeType || getPreferredSourceFormat())}
+            </ul>
+            ${
+              activeEditJobs.length > 0
+                ? `
+                  <div class="lab-status-stack">
+                    ${activeEditJobs
+                      .map(function (activeEditJob) {
+                        return `
+                          <div class="lab-status-card">
+                            <div class="lab-status-card__head">
+                              <strong>${escapeHtml(getEditJobLabel(activeEditJob))}</strong>
+                              <span>${escapeHtml(
+                                typeof activeEditJob.percent === "number"
+                                  ? `${Math.round(activeEditJob.percent)}%`
+                                  : activeEditJob.stage || "--"
+                              )}</span>
+                            </div>
+                            <div class="lab-progress-bar">
+                              <span style="width:${Math.max(6, Number(activeEditJob.percent) || 8)}%"></span>
+                            </div>
+                            <p class="lab-status-card__body">${escapeHtml(activeEditJob.message || activeEditJob.action || "")}</p>
+                          </div>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                `
+                : ""
+            }
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderEditModePanel() {
+    const mode = getCurrentEditMode();
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "modeTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "modeSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-segmented">
+          ${["beginner", "advanced"]
+            .map(function (modeId) {
+              return `
+                <button
+                  class="lab-segmented__button"
+                  type="button"
+                  data-action="edit-mode"
+                  data-value="${modeId}"
+                  data-selected="${modeId === mode ? "true" : "false"}"
+                >
+                  ${escapeHtml(text(["mediaAnalysis", "edit", "modes", modeId]))}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderEditCommonPanel() {
+    const kind = getCurrentSourceKind();
+    const recipe = getCurrentEditRecipe();
+    const common = toRecord(recipe.common);
+    const focusRegions = toRecord(getEditPresets().focusRegions);
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "commonTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "commonSubtitle"]))}</h2>
+          </div>
+        </div>
+        ${kind !== "audio" ? `
+          <div class="lab-chip-row">
+            ${Object.keys(focusRegions)
+              .map(function (regionId) {
+                return `
+                  <button
+                    class="lab-choice-chip"
+                    type="button"
+                    data-action="edit-focus-region"
+                    data-value="${regionId}"
+                    data-selected="${regionId === getCurrentFocusRegionId() ? "true" : "false"}"
+                  >
+                    ${escapeHtml(textFromKey(toRecord(focusRegions[regionId]).labelKey))}
+                  </button>
+                `;
+              })
+              .join("")}
+          </div>
+        ` : ""}
+        <div class="lab-form-grid">
+          ${renderEditTextField(
+            "recipe.common.outputNameHint",
+            common.outputNameHint || "",
+            text(["mediaAnalysis", "edit", "fields", "outputNameHint"]),
+            { placeholder: text(["mediaAnalysis", "edit", "placeholders", "outputNameHint"]) }
+          )}
+          ${renderEditTextField(
+            "recipe.common.notes",
+            common.notes || "",
+            text(["mediaAnalysis", "edit", "fields", "notes"]),
+            { placeholder: text(["mediaAnalysis", "edit", "placeholders", "notes"]) }
+          )}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderVideoEditPanel() {
+    const recipe = getCurrentEditRecipe();
+    const video = toRecord(recipe.video);
+    const duration = getPreferredSourceDuration(getProjectSource().previewUrl || null) || 60;
+    const resizePresets = toRecord(getEditPresets().resizePresets);
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "videoTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "videoSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-toggle-grid">
+          ${renderEditToggle("recipe.video.trimEnabled", text(["mediaAnalysis", "edit", "fields", "trimEnabled"]), video.trimEnabled === true)}
+          ${renderEditToggle("recipe.video.includeAudio", text(["mediaAnalysis", "edit", "fields", "includeAudio"]), video.includeAudio === true)}
+          ${renderEditToggle("recipe.video.blurFocusOutside", text(["mediaAnalysis", "edit", "fields", "blurFocusOutside"]), video.blurFocusOutside === true)}
+        </div>
+        <div class="lab-form-grid">
+          ${renderEditRangeField("recipe.video.trimStartSeconds", video.trimStartSeconds || 0, text(["mediaAnalysis", "edit", "fields", "trimStartSeconds"]), {
+            min: 0,
+            max: Math.max(1, Math.round(duration)),
+            step: 1,
+            displayValue: formatDuration(video.trimStartSeconds || 0),
+          })}
+          ${renderEditRangeField("recipe.video.trimEndSeconds", video.trimEndSeconds || duration, text(["mediaAnalysis", "edit", "fields", "trimEndSeconds"]), {
+            min: 0,
+            max: Math.max(1, Math.round(duration)),
+            step: 1,
+            displayValue: formatDuration(video.trimEndSeconds || duration),
+          })}
+          ${renderEditSelectField(
+            "recipe.video.resizePreset",
+            video.resizePreset || "keep",
+            text(["mediaAnalysis", "edit", "fields", "resizePreset"]),
+            Object.keys(resizePresets).map(function (presetId) {
+              return {
+                value: presetId,
+                label: textFromKey(toRecord(resizePresets[presetId]).labelKey),
+              };
+            })
+          )}
+          ${renderEditRangeField("recipe.video.fpsLimit", video.fpsLimit || 24, text(["mediaAnalysis", "edit", "fields", "fpsLimit"]), {
+            min: 6,
+            max: 60,
+            step: 1,
+            displayValue: `${video.fpsLimit || 24} fps`,
+          })}
+          ${video.resizePreset === "custom" || getCurrentEditMode() === "advanced"
+            ? renderEditTextField("recipe.video.customWidth", video.customWidth || "", text(["mediaAnalysis", "edit", "fields", "customWidth"]), { type: "number" }) +
+              renderEditTextField("recipe.video.customHeight", video.customHeight || "", text(["mediaAnalysis", "edit", "fields", "customHeight"]), { type: "number" })
+            : ""}
+          ${getCurrentEditMode() === "advanced"
+            ? renderEditTextField("recipe.video.frameGrabCount", video.frameGrabCount || 0, text(["mediaAnalysis", "edit", "fields", "frameGrabCount"]), { type: "number" })
+            : ""}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderAudioEditPanel() {
+    const recipe = getCurrentEditRecipe();
+    const audio = toRecord(recipe.audio);
+    const duration = getPreferredSourceDuration(getProjectSource().previewUrl || null) || 60;
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "audioTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "audioSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-toggle-grid">
+          ${renderEditToggle("recipe.audio.trimEnabled", text(["mediaAnalysis", "edit", "fields", "trimEnabled"]), audio.trimEnabled === true)}
+          ${renderEditToggle("recipe.audio.normalize", text(["mediaAnalysis", "edit", "fields", "normalize"]), audio.normalize === true)}
+          ${renderEditToggle("recipe.audio.silenceTrim", text(["mediaAnalysis", "edit", "fields", "silenceTrim"]), audio.silenceTrim === true)}
+          ${renderEditToggle("recipe.audio.mono", text(["mediaAnalysis", "edit", "fields", "mono"]), audio.mono === true)}
+          ${renderEditToggle("recipe.audio.spectrogram", text(["mediaAnalysis", "edit", "fields", "spectrogram"]), audio.spectrogram === true)}
+        </div>
+        <div class="lab-form-grid">
+          ${renderEditRangeField("recipe.audio.trimStartSeconds", audio.trimStartSeconds || 0, text(["mediaAnalysis", "edit", "fields", "trimStartSeconds"]), {
+            min: 0,
+            max: Math.max(1, Math.round(duration)),
+            step: 1,
+            displayValue: formatDuration(audio.trimStartSeconds || 0),
+          })}
+          ${renderEditRangeField("recipe.audio.trimEndSeconds", audio.trimEndSeconds || duration, text(["mediaAnalysis", "edit", "fields", "trimEndSeconds"]), {
+            min: 0,
+            max: Math.max(1, Math.round(duration)),
+            step: 1,
+            displayValue: formatDuration(audio.trimEndSeconds || duration),
+          })}
+          ${renderEditRangeField("recipe.audio.normalizeTargetDb", audio.normalizeTargetDb || -16, text(["mediaAnalysis", "edit", "fields", "normalizeTargetDb"]), {
+            min: -30,
+            max: -8,
+            step: 1,
+            displayValue: `${audio.normalizeTargetDb || -16} LUFS`,
+          })}
+          ${getCurrentEditMode() === "advanced"
+            ? renderEditTextField("recipe.audio.highpassHz", audio.highpassHz || 0, text(["mediaAnalysis", "edit", "fields", "highpassHz"]), { type: "number" }) +
+              renderEditTextField("recipe.audio.lowpassHz", audio.lowpassHz || 0, text(["mediaAnalysis", "edit", "fields", "lowpassHz"]), { type: "number" })
+            : ""}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderImageEditPanel() {
+    const recipe = getCurrentEditRecipe();
+    const image = toRecord(recipe.image);
+    const resizePresets = toRecord(getEditPresets().resizePresets);
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "imageTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "imageSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-form-grid">
+          ${renderEditSelectField(
+            "recipe.image.resizePreset",
+            image.resizePreset || "keep",
+            text(["mediaAnalysis", "edit", "fields", "resizePreset"]),
+            Object.keys(resizePresets).map(function (presetId) {
+              return {
+                value: presetId,
+                label: textFromKey(toRecord(resizePresets[presetId]).labelKey),
+              };
+            })
+          )}
+          ${renderEditRangeField("recipe.image.brightness", image.brightness || 0, text(["mediaAnalysis", "edit", "fields", "brightness"]), {
+            min: -0.3,
+            max: 0.3,
+            step: 0.01,
+            displayValue: Number(image.brightness || 0).toFixed(2),
+          })}
+          ${renderEditRangeField("recipe.image.contrast", image.contrast || 1, text(["mediaAnalysis", "edit", "fields", "contrast"]), {
+            min: 0.4,
+            max: 2.2,
+            step: 0.05,
+            displayValue: Number(image.contrast || 1).toFixed(2),
+          })}
+          ${renderEditRangeField("recipe.image.blurStrength", image.blurStrength || 0, text(["mediaAnalysis", "edit", "fields", "blurStrength"]), {
+            min: 0,
+            max: 3,
+            step: 0.1,
+            displayValue: Number(image.blurStrength || 0).toFixed(1),
+          })}
+          ${(image.resizePreset === "custom" || getCurrentEditMode() === "advanced")
+            ? renderEditTextField("recipe.image.customWidth", image.customWidth || "", text(["mediaAnalysis", "edit", "fields", "customWidth"]), { type: "number" }) +
+              renderEditTextField("recipe.image.customHeight", image.customHeight || "", text(["mediaAnalysis", "edit", "fields", "customHeight"]), { type: "number" })
+            : ""}
+          ${getCurrentEditMode() === "advanced"
+            ? renderEditTextField("recipe.image.rotateDegrees", image.rotateDegrees || 0, text(["mediaAnalysis", "edit", "fields", "rotateDegrees"]), { type: "number" }) +
+              renderEditRangeField("recipe.image.sharpen", image.sharpen || 0, text(["mediaAnalysis", "edit", "fields", "sharpen"]), {
+                min: 0,
+                max: 2,
+                step: 0.1,
+                displayValue: Number(image.sharpen || 0).toFixed(1),
+              })
+            : ""}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderEditControlsPanel() {
+    switch (getCurrentSourceKind()) {
+      case "audio":
+        return renderAudioEditPanel();
+      case "image":
+        return renderImageEditPanel();
+      case "video":
+      default:
+        return renderVideoEditPanel();
+    }
+  }
+
+  function renderEditActionsPanel() {
+    const source = getProjectSource();
+    const edit = getProjectEdit();
+    const activeOutput = getActiveEditOutput();
+    const ffmpegInstalled = getToolEntry("ffmpeg").installed === true;
+    const previewJob =
+      getRelevantJobs().project.find(function (entry) {
+        return entry.action === "edit-preview";
+      }) || null;
+    const applyJob =
+      getRelevantJobs().project.find(function (entry) {
+        return entry.action === "edit-apply";
+      }) || null;
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "actionsTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "actionsSubtitle"]))}</h2>
+          </div>
+        </div>
+        ${
+          ffmpegInstalled !== true
+            ? `<div class="lab-notice">${escapeHtml(text(["mediaAnalysis", "edit", "ffmpegMissing"]))}</div>`
+            : ""
+        }
+        ${
+          typeof edit.lastError === "string" && edit.lastError.trim() !== ""
+            ? `<div class="lab-notice">${escapeHtml(edit.lastError)}</div>`
+            : ""
+        }
+        <div class="lab-action-stack">
+          <button
+            class="lab-button lab-button--ghost"
+            type="button"
+            data-action="edit-preview"
+            ${ffmpegInstalled !== true || typeof source.storedPath !== "string" || previewJob ? "disabled" : ""}
+          >
+            ${escapeHtml(text(["mediaAnalysis", "edit", "actions", "preview"]))}
+          </button>
+          <button
+            class="lab-button lab-button--ghost"
+            type="button"
+            data-action="edit-cancel-preview"
+            ${previewJob ? "" : "disabled"}
+          >
+            ${escapeHtml(text(["mediaAnalysis", "edit", "actions", "cancelPreview"]))}
+          </button>
+          <button
+            class="lab-button lab-button--primary"
+            type="button"
+            data-action="edit-apply"
+            ${ffmpegInstalled !== true || typeof source.storedPath !== "string" || applyJob ? "disabled" : ""}
+          >
+            ${escapeHtml(text(["mediaAnalysis", "edit", "actions", "apply"]))}
+          </button>
+          <button
+            class="lab-button lab-button--ghost"
+            type="button"
+            data-action="edit-cancel-apply"
+            ${applyJob ? "" : "disabled"}
+          >
+            ${escapeHtml(text(["mediaAnalysis", "edit", "actions", "cancelApply"]))}
+          </button>
+        </div>
+        <div class="lab-segmented">
+          ${["source", "derived"]
+            .map(function (modeId) {
+              const disabled = modeId === "derived" && activeOutput === null;
+              return `
+                <button
+                  class="lab-segmented__button"
+                  type="button"
+                  data-action="edit-handoff"
+                  data-value="${modeId}"
+                  data-selected="${edit.handoffMode === modeId ? "true" : "false"}"
+                  ${disabled ? "disabled" : ""}
+                >
+                  ${escapeHtml(text(["mediaAnalysis", "edit", "handoffModes", modeId]))}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderEditOutputsPanel() {
+    const outputs = getEditOutputs();
+    const activeOutput = getActiveEditOutput();
+
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "outputsTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "outputsSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-output-list">
+          ${
+            outputs.length > 0
+              ? outputs
+                  .map(function (entry) {
+                    return `
+                      <article class="lab-output-card" data-selected="${activeOutput && activeOutput.id === entry.id ? "true" : "false"}">
+                        <div>
+                          <strong>${escapeHtml(entry.label || entry.fileName || entry.id)}</strong>
+                          <span>${escapeHtml(entry.fileName || "--")}</span>
+                        </div>
+                        <button
+                          class="lab-button lab-button--ghost lab-button--tight"
+                          type="button"
+                          data-action="edit-select-output"
+                          data-value="${escapeHtml(entry.id)}"
+                        >
+                          ${escapeHtml(text(["mediaAnalysis", "edit", "actions", "selectOutput"]))}
+                        </button>
+                      </article>
+                    `;
+                  })
+                  .join("")
+              : `<p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "edit", "outputsEmpty"]))}</p>`
+          }
+        </div>
+      </section>
+    `;
+  }
+
+  function renderEditSummaryPanel() {
+    const edit = getProjectEdit();
+    const activeOutput = getActiveEditOutput();
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "summaryTitle"]))}</p>
+        </div>
+        ${renderSummaryRows([
+          [text(["mediaAnalysis", "edit", "selectedWindow"]), formatEditWindowLabel()],
+          [text(["mediaAnalysis", "edit", "selectedRegion"]), getCurrentFocusLabel()],
+          [text(["mediaAnalysis", "edit", "selectedResize"]), getCurrentResizeLabel()],
+          [
+            text(["mediaAnalysis", "edit", "selectedOutput"]),
+            activeOutput ? activeOutput.label || activeOutput.fileName || activeOutput.id : "--",
+          ],
+          [text(["mediaAnalysis", "edit", "handoffLabel"]), text(["mediaAnalysis", "edit", "handoffModes", edit.handoffMode === "derived" ? "derived" : "source"])],
+        ])}
+      </section>
+    `;
+  }
+
   function renderEditStage() {
-    const rangeTimes = getRangeTimes();
+    const sourceReady = typeof getProjectSource().storedPath === "string" && getProjectSource().storedPath.trim() !== "";
 
     return `
       <div class="lab-layout">
         <section class="lab-main-stack">
           ${renderStageIntro("edit")}
-          <section class="lab-panel lab-canvas-panel">
-            <div class="lab-panel__header">
-              <div>
-                <p class="lab-panel__eyebrow">${escapeHtml(
-                  text(["mediaAnalysis", "edit", "canvasTitle"])
-                )}</p>
-                <p class="lab-panel__subtitle">${escapeHtml(
-                  text(["mediaAnalysis", "edit", "canvasHint"])
-                )}</p>
-              </div>
-            </div>
-            <div class="lab-canvas-frame">
-              <img class="lab-canvas-frame__image" src="${PREVIEW_IMAGE}" alt="" />
-              <div class="lab-canvas-frame__outer"></div>
-              <div class="lab-canvas-frame__focus"></div>
-            </div>
-            <div class="lab-timeline">
-              <span>${rangeTimes.start}</span>
-              <div class="lab-timeline__track">
-                <span
-                  class="lab-timeline__window"
-                  style="left:${state.rangeStart}%; width:${Math.max(4, state.rangeEnd - state.rangeStart)}%"
-                ></span>
-              </div>
-              <span>${rangeTimes.end}</span>
-            </div>
-          </section>
-          <div class="lab-subgrid">
-            <section class="lab-panel">
-              <div class="lab-panel__header">
-                <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "timeTitle"]))}</p>
-              </div>
-              <label class="lab-range-group">
-                <span>IN ${rangeTimes.start}</span>
-                <input type="range" min="0" max="96" value="${state.rangeStart}" data-range="start" />
-              </label>
-              <label class="lab-range-group">
-                <span>OUT ${rangeTimes.end}</span>
-                <input type="range" min="4" max="100" value="${state.rangeEnd}" data-range="end" />
-              </label>
-            </section>
-            <section class="lab-panel">
-              <div class="lab-panel__header">
-                <p class="lab-panel__eyebrow">${escapeHtml(
-                  text(["mediaAnalysis", "edit", "regionTitle"])
-                )}</p>
-              </div>
-              <div class="lab-chip-row">
-                ${REGION_OPTIONS.map(function (regionId) {
-                  return `
-                    <button
-                      class="lab-choice-chip"
-                      type="button"
-                      data-region="${regionId}"
-                      data-selected="${regionId === state.region ? "true" : "false"}"
-                    >
-                      ${escapeHtml(text(["mediaAnalysis", "edit", "regions", regionId]))}
-                    </button>
-                  `;
-                }).join("")}
-              </div>
-            </section>
-            <section class="lab-panel">
-              <div class="lab-panel__header">
-                <p class="lab-panel__eyebrow">${escapeHtml(
-                  text(["mediaAnalysis", "edit", "cleanupTitle"])
-                )}</p>
-              </div>
-              <div class="lab-toggle-grid">
-                ${renderToggle(
-                  "cleanup-audio",
-                  text(["mediaAnalysis", "edit", "cleanup", "audio"]),
-                  state.cleanup.audio
-                )}
-                ${renderToggle(
-                  "cleanup-sharpness",
-                  text(["mediaAnalysis", "edit", "cleanup", "sharpness"]),
-                  state.cleanup.sharpness
-                )}
-                ${renderToggle(
-                  "cleanup-aiSanitize",
-                  text(["mediaAnalysis", "edit", "cleanup", "aiSanitize"]),
-                  state.cleanup.aiSanitize
-                )}
-              </div>
-            </section>
+          ${renderEditWorkspacePanel()}
+          ${renderEditModePanel()}
+          ${renderEditPresetChooser()}
+          <div class="lab-subgrid lab-subgrid--edit">
+            ${renderEditCommonPanel()}
+            ${renderEditControlsPanel()}
+            ${renderEditActionsPanel()}
           </div>
+          ${
+            sourceReady !== true
+              ? `<div class="lab-notice">${escapeHtml(text(["mediaAnalysis", "edit", "sourceRequired"]))}</div>`
+              : ""
+          }
         </section>
         <aside class="lab-side-stack">
-          <section class="lab-panel">
-            <div class="lab-panel__header">
-              <p class="lab-panel__eyebrow">${escapeHtml(
-                text(["mediaAnalysis", "edit", "summaryTitle"])
-              )}</p>
-            </div>
-            ${renderSummaryRows([
-              [text(["mediaAnalysis", "edit", "selectedWindow"]), rangeTimes.start + " - " + rangeTimes.end],
-              [text(["mediaAnalysis", "edit", "selectedRegion"]), getRegionLabel()],
-              [text(["mediaAnalysis", "shared", "focus"]), getFocusLabel()],
-            ])}
-          </section>
+          ${renderEditSummaryPanel()}
+          ${renderEditOutputsPanel()}
         </aside>
       </div>
     `;
   }
 
+  function getProfileTargetAsset() {
+    const source = getProjectSource();
+    const target = getProfileTargetSummary();
+    if (target.mode === "derived") {
+      const output = getEditOutputs().find(function (entry) {
+        return entry.id === target.outputId;
+      });
+      if (output) {
+        return {
+          kind: getCurrentSourceKind(),
+          label: output.label || output.fileName || output.id,
+          previewUrl: output.previewUrl || null,
+          path: output.path || null,
+          mimeType: output.mimeType || null,
+          metadata: toRecord(output.metadata),
+        };
+      }
+    }
+
+    return {
+      kind: getCurrentSourceKind(),
+      label: target.label || source.storedFileName || getCurrentSourceLabel(),
+      previewUrl: source.previewUrl || null,
+      path: target.path || source.storedPath || null,
+      mimeType: target.mimeType || source.mimeType || null,
+      metadata: toRecord(target.metadata),
+    };
+  }
+
+  function renderProfileTargetPanel() {
+    const target = getProfileTargetSummary();
+    const asset = getProfileTargetAsset();
+    const targetMode = getProfileTargetMode();
+    const outputOptions = getProfileTargetOutputOptions();
+    let mediaMarkup = `
+      <div class="lab-empty-preview">
+        <strong>${escapeHtml(text(["mediaAnalysis", "profile", "targetEmptyTitle"]))}</strong>
+        <p>${escapeHtml(text(["mediaAnalysis", "profile", "targetEmptyBody"]))}</p>
+      </div>
+    `;
+
+    if (typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== "") {
+      if (asset.kind === "image") {
+        mediaMarkup = `<img class="lab-preview-media lab-preview-media--image" data-preview-media="image" src="${asset.previewUrl}" alt="" />`;
+      } else if (asset.kind === "audio") {
+        mediaMarkup = `
+          <div class="lab-audio-workbench">
+            <div class="lab-audio-bars">
+              ${(state.ui.audioAnalysis.bars.length > 0 ? state.ui.audioAnalysis.bars : new Array(36).fill(20))
+                .map(function (value) {
+                  return `<span style="height:${Math.max(10, Number(value) || 10)}px"></span>`;
+                })
+                .join("")}
+            </div>
+            <audio class="lab-preview-media lab-preview-media--audio" data-preview-media="audio" controls src="${asset.previewUrl}"></audio>
+          </div>
+        `;
+      } else {
+        mediaMarkup = `<video class="lab-preview-media lab-preview-media--video" data-preview-media="video" controls src="${asset.previewUrl}"></video>`;
+      }
+    }
+
+    return `
+      <section class="lab-panel lab-preview-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "targetTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "targetSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-segmented">
+          ${["source", "derived"]
+            .map(function (modeId) {
+              const disabled = modeId === "derived" && outputOptions.length === 0;
+              return `
+                <button
+                  class="lab-segmented__button"
+                  type="button"
+                  data-action="profile-target-mode"
+                  data-value="${modeId}"
+                  data-selected="${modeId === targetMode ? "true" : "false"}"
+                  ${disabled ? "disabled" : ""}
+                >
+                  ${escapeHtml(text(["mediaAnalysis", "profile", "targetModes", modeId]))}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+        ${
+          targetMode === "derived"
+            ? `
+              <label class="lab-field">
+                <span class="lab-field__label">${escapeHtml(
+                  text(["mediaAnalysis", "profile", "targetOutputLabel"])
+                )}</span>
+                <select class="lab-select" data-profile-field="targetOutputId">
+                  <option value="">${escapeHtml(text(["mediaAnalysis", "profile", "targetOutputEmpty"]))}</option>
+                  ${outputOptions
+                    .map(function (entry) {
+                      return `
+                        <option value="${escapeHtml(entry.id)}" ${
+                          entry.id === target.outputId ? "selected" : ""
+                        }>
+                          ${escapeHtml(entry.label || entry.fileName || entry.id)}
+                        </option>
+                      `;
+                    })
+                    .join("")}
+                </select>
+              </label>
+            `
+            : ""
+        }
+        <div class="lab-preview-card">
+          <div class="lab-preview-frame">${mediaMarkup}</div>
+          <section class="lab-panel lab-panel--dense">
+            ${renderSummaryRows([
+              [text(["mediaAnalysis", "profile", "summary", "target"]), asset.label || "--"],
+              [text(["mediaAnalysis", "shared", "duration"]), formatDuration(getPreferredAssetDuration(asset))],
+              [text(["mediaAnalysis", "shared", "resolution"]), getPreferredAssetResolution(asset)],
+              [text(["mediaAnalysis", "shared", "codec"]), getPreferredAssetCodec(asset)],
+            ])}
+            ${
+              target.usingFallback === true && typeof target.reason === "string"
+                ? `<p class="lab-panel__hint lab-panel__hint--danger">${escapeHtml(target.reason)}</p>`
+                : ""
+            }
+          </section>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderProfileModePanel() {
+    const mode = getCurrentProfileMode();
+    const estimate = getProfileEstimate();
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "modeTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "modeSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-segmented">
+          ${["beginner", "advanced"]
+            .map(function (modeId) {
+              return `
+                <button
+                  class="lab-segmented__button"
+                  type="button"
+                  data-action="profile-mode"
+                  data-value="${modeId}"
+                  data-selected="${modeId === mode ? "true" : "false"}"
+                >
+                  ${escapeHtml(text(["mediaAnalysis", "profile", "modes", modeId]))}
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+        ${renderSummaryRows([
+          [text(["mediaAnalysis", "profile", "summary", "preset"]), getProfileLabel()],
+          [text(["mediaAnalysis", "profile", "summary", "sampleWindow"]), formatDuration(estimate.sampleWindowSeconds)],
+          [text(["mediaAnalysis", "profile", "summary", "runtime"]), formatDuration(estimate.runtimeSeconds)],
+        ])}
+      </section>
+    `;
+  }
+
+  function renderProfilePresetPanel() {
+    const profile = getProjectProfile();
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "presetTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "presetSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-profile-grid">
+          ${getProfilePresetOptions()
+            .map(function (preset) {
+              return `
+                <button
+                  class="lab-profile-card"
+                  type="button"
+                  data-action="profile-preset"
+                  data-value="${escapeHtml(preset.id || "")}"
+                  data-selected="${preset.id === profile.activePresetId ? "true" : "false"}"
+                >
+                  <span class="lab-profile-card__title">${escapeHtml(textFromKey(preset.labelKey || ""))}</span>
+                  <span class="lab-profile-card__summary">${escapeHtml(textFromKey(preset.summaryKey || ""))}</span>
+                  <span class="lab-profile-card__pace">${escapeHtml(textFromKey(preset.paceKey || ""))}</span>
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderProfileAdvancedPanel() {
+    const profile = getProjectProfile();
+    const modelEntries = getProfileModelEntries();
+    const selectedModel = getProfileSelectedModel();
+    const laneIds = Object.keys(toRecord(getProfileLaneMap()));
+    const sourceKind = getCurrentSourceKind();
+    const artifactEntries = getProfileArtifactPreferenceEntries();
+    const transcriptConfig = getProfileTranscriptSampleConfig();
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "advancedTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "advancedSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-subgrid lab-subgrid--profile-controls">
+          <label class="lab-field">
+            <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "depthLabel"]))}</span>
+            <select class="lab-select" data-profile-field="depth">
+              ${Object.keys(toRecord(getProfileCapabilities().depthModes))
+                .map(function (depthId) {
+                  return `
+                    <option value="${escapeHtml(depthId)}" ${depthId === profile.depth ? "selected" : ""}>
+                      ${escapeHtml(textFromKey(toRecord(toRecord(getProfileCapabilities().depthModes)[depthId]).labelKey || ""))}
+                    </option>
+                  `;
+                })
+                .join("")}
+            </select>
+          </label>
+          <label class="lab-field">
+            <span class="lab-field__label">${escapeHtml(
+              `${text(["mediaAnalysis", "profile", "sensitivityLabel"])} ${Math.round((Number(profile.sensitivity) || 0.58) * 100)}%`
+            )}</span>
+            <input
+              type="range"
+              min="0.1"
+              max="1"
+              step="0.02"
+              value="${escapeHtml(String(Number(profile.sensitivity) || 0.58))}"
+              data-profile-field="sensitivity"
+            />
+          </label>
+          <label class="lab-field">
+            <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "frameDensityLabel"]))}</span>
+            <select class="lab-select" data-profile-field="frameSampleDensity">
+              ${getProfileFrameDensityOptions()
+                .map(function (entry) {
+                  return `
+                    <option value="${escapeHtml(entry.densityId)}" ${
+                      entry.densityId === profile.frameSampleDensity ? "selected" : ""
+                    }>
+                      ${escapeHtml(textFromKey(entry.labelKey || "") || entry.densityId)}
+                    </option>
+                  `;
+                })
+                .join("")}
+            </select>
+          </label>
+          ${
+            sourceKind === "video" || sourceKind === "audio"
+              ? `
+                <label class="lab-field">
+                  <span class="lab-field__label">${escapeHtml(
+                    `${text(["mediaAnalysis", "profile", "transcriptSampleLabel"])} ${String(
+                      Number(profile.transcriptSampleSeconds) || Number(transcriptConfig.defaultValue) || 45
+                    )}s`
+                  )}</span>
+                  <input
+                    type="range"
+                    min="${escapeHtml(String(Number(transcriptConfig.min) || 15))}"
+                    max="${escapeHtml(String(Number(transcriptConfig.max) || 90))}"
+                    step="${escapeHtml(String(Number(transcriptConfig.step) || 15))}"
+                    value="${escapeHtml(
+                      String(Number(profile.transcriptSampleSeconds) || Number(transcriptConfig.defaultValue) || 45)
+                    )}"
+                    data-profile-field="transcriptSampleSeconds"
+                  />
+                </label>
+              `
+              : ""
+          }
+        </div>
+        ${
+          modelEntries.length > 0
+            ? `
+              <label class="lab-field">
+                <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "modelLabel"]))}</span>
+                <select class="lab-select" data-profile-field="modelId">
+                  <option value="">${escapeHtml(text(["mediaAnalysis", "profile", "modelAuto"]))}</option>
+                  ${modelEntries
+                    .map(function (entry) {
+                      return `
+                        <option value="${escapeHtml(entry.modelId || "")}" ${
+                          selectedModel && selectedModel.modelId === entry.modelId ? "selected" : ""
+                        }>
+                          ${escapeHtml(textFromKey(entry.labelKey || "") || entry.modelId || "")}
+                        </option>
+                      `;
+                    })
+                    .join("")}
+                </select>
+              </label>
+            `
+            : ""
+        }
+        ${
+          artifactEntries.length > 0
+            ? `
+              <section class="lab-panel lab-panel--dense">
+                <div class="lab-panel__header">
+                  <div>
+                    <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "artifactControlsTitle"]))}</p>
+                    <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "artifactControlsSubtitle"]))}</h2>
+                  </div>
+                </div>
+                <div class="lab-toggle-grid">
+                  ${artifactEntries
+                    .map(function (entry) {
+                      return `
+                        <button
+                          class="lab-toggle"
+                          type="button"
+                          data-profile-artifact-toggle="${entry.artifactId}"
+                          data-active="${entry.enabled ? "true" : "false"}"
+                        >
+                          <span class="lab-toggle__track"><span class="lab-toggle__thumb"></span></span>
+                          <span class="lab-toggle__meta">
+                            <strong>${escapeHtml(textFromKey(entry.labelKey || "") || entry.artifactId)}</strong>
+                          </span>
+                        </button>
+                      `;
+                    })
+                    .join("")}
+                </div>
+              </section>
+            `
+            : ""
+        }
+        <div class="lab-toggle-grid">
+          ${laneIds
+            .map(function (laneId) {
+              const laneState = getProfileLaneCardState(laneId);
+              const lane = toRecord(laneState.lane);
+              return `
+                <button
+                  class="lab-toggle lab-profile-lane"
+                  type="button"
+                  data-profile-toggle="${laneId}"
+                  data-active="${laneState.enabled ? "true" : "false"}"
+                  ${laneState.compatible ? "" : "disabled"}
+                >
+                  <span class="lab-toggle__track"><span class="lab-toggle__thumb"></span></span>
+                  <span class="lab-toggle__meta">
+                    <strong>${escapeHtml(textFromKey(lane.labelKey || "") || laneId)}</strong>
+                    <span>${escapeHtml(textFromKey(lane.summaryKey || ""))}</span>
+                    <em>${escapeHtml(text(["mediaAnalysis", "profile", "laneState", laneState.supportLevel || "ready"]))}</em>
+                    <span>${escapeHtml(
+                      `${text(["mediaAnalysis", "profile", "laneMeta", "requiredTools"])}: ${
+                        laneState.requiredTools.join(", ") || "--"
+                      }`
+                    )}</span>
+                    <span>${escapeHtml(
+                      `${text(["mediaAnalysis", "profile", "laneMeta", "mediaKinds"])}: ${
+                        laneState.mediaKinds.join(", ") || "--"
+                      }`
+                    )}</span>
+                    ${
+                      laneState.optionalTools.length > 0
+                        ? `<span>${escapeHtml(
+                            `${text(["mediaAnalysis", "profile", "laneMeta", "optionalTools"])}: ${laneState.optionalTools.join(", ")}`
+                          )}</span>`
+                        : ""
+                    }
+                    ${
+                      laneState.note
+                        ? `<span>${escapeHtml(laneState.note)}</span>`
+                        : ""
+                    }
+                  </span>
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderProfileSignalsPanel() {
+    const signals = sortProfileSignals(getProfileSignals());
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "signalsTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "signalsSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-finding-list">
+          ${
+            signals.length > 0
+              ? signals
+                  .map(function (signal) {
+                    return `
+                      <article class="lab-finding">
+                        <div class="lab-finding__head">
+                          <strong>${escapeHtml(signal.title || signal.laneId || "--")}</strong>
+                          <span class="lab-chip">${escapeHtml(text(["mediaAnalysis", "profile", "levels", signal.level || "low"]))}</span>
+                        </div>
+                        <p class="lab-panel__hint">
+                          ${escapeHtml(
+                            `${text(["mediaAnalysis", "profile", "signalMeta", "kind"])}: ${getProfileSignalKindLabel(signal.kind)}`
+                          )}
+                          ·
+                          ${escapeHtml(
+                            `${text(["mediaAnalysis", "profile", "signalMeta", "confidence"])}: ${getProfileConfidenceLabel(signal.confidence)}`
+                          )}
+                          ·
+                          ${escapeHtml(
+                            `${text(["mediaAnalysis", "profile", "signalMeta", "evidence"])}: ${String(
+                              Number(signal.evidenceCount) || 0
+                            )}`
+                          )}
+                        </p>
+                        <p class="lab-finding__detail">${escapeHtml(signal.detail || "")}</p>
+                      </article>
+                    `;
+                  })
+                  .join("")
+              : `<p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "profile", "signalsEmpty"]))}</p>`
+          }
+        </div>
+      </section>
+    `;
+  }
+
+  function renderProfileArtifactsPanel() {
+    const artifacts = getProfileArtifacts();
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "artifactsTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "artifactsSubtitle"]))}</h2>
+          </div>
+        </div>
+        <div class="lab-artifact-grid">
+          ${
+            artifacts.length > 0
+              ? artifacts
+                  .map(function (artifact) {
+                    const previewable =
+                      typeof artifact.previewUrl === "string" &&
+                      /\.(png|jpe?g|webp|gif)$/i.test(String(artifact.fileName || ""));
+                    return `
+                      <article class="lab-artifact-card">
+                        ${
+                          previewable
+                            ? `<img class="lab-artifact-card__image" src="${artifact.previewUrl}" alt="" />`
+                            : ""
+                        }
+                        <strong>${escapeHtml(artifact.label || artifact.fileName || artifact.kind || "--")}</strong>
+                        <span>${escapeHtml(artifact.fileName || artifact.kind || "--")}</span>
+                      </article>
+                    `;
+                  })
+                  .join("")
+              : `<p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "profile", "artifactsEmpty"]))}</p>`
+          }
+        </div>
+      </section>
+    `;
+  }
+
+  function renderProfileActionsPanel() {
+    const readiness = getProfileReadiness();
+    const preflight = getProfilePreflight();
+    const jobs = getProfileJobs();
+    const runningJob =
+      jobs.find(function (job) {
+        return (
+          job.action === "profile-run-preflight" &&
+          !["completed", "failed", "cancelled"].includes(String(job.stage || ""))
+        );
+      }) || null;
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "preflightTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "preflightSubtitle"]))}</h2>
+          </div>
+        </div>
+        ${renderSummaryRows([
+          [text(["mediaAnalysis", "shared", "status"]), text(["mediaAnalysis", "profile", "status", preflight.status || "idle"])],
+          [text(["mediaAnalysis", "profile", "summary", "signals"]), String(getProfileSignals().length)],
+          [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(getProfileArtifacts().length)],
+          [text(["mediaAnalysis", "profile", "summary", "runtime"]), formatDuration(getProfileEstimate().runtimeSeconds)],
+        ])}
+        <div class="lab-action-stack">
+          <button
+            class="lab-button lab-button--primary"
+            type="button"
+            data-action="profile-run"
+            ${readiness.stageReady !== true || runningJob ? "disabled" : ""}
+          >
+            ${escapeHtml(text(["mediaAnalysis", "profile", "actions", "run"]))}
+          </button>
+          <button
+            class="lab-button lab-button--ghost"
+            type="button"
+            data-action="profile-cancel"
+            ${runningJob ? "" : "disabled"}
+          >
+            ${escapeHtml(text(["mediaAnalysis", "profile", "actions", "cancel"]))}
+          </button>
+        </div>
+        ${
+          runningJob && typeof runningJob.message === "string" && runningJob.message.trim() !== ""
+            ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
+            : ""
+        }
+      </section>
+    `;
+  }
+
+  function renderProfileSummaryPanel() {
+    const readiness = getProfileReadiness();
+    const estimate = getProfileEstimate();
+    const selectedModel = getProfileSelectedModel();
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "summaryTitle"]))}</p>
+        </div>
+        ${renderSummaryRows([
+          [text(["mediaAnalysis", "profile", "summary", "target"]), getFocusLabel()],
+          [text(["mediaAnalysis", "profile", "summary", "preset"]), getProfileLabel()],
+          [text(["mediaAnalysis", "profile", "summary", "lanes"]), String(readiness.enabledLaneCount || 0)],
+          [text(["mediaAnalysis", "profile", "summary", "runtime"]), formatDuration(estimate.runtimeSeconds)],
+          [text(["mediaAnalysis", "profile", "summary", "model"]), selectedModel ? textFromKey(selectedModel.labelKey || "") : "--"],
+        ])}
+        ${
+          Array.isArray(readiness.blockers) && readiness.blockers.length > 0
+            ? `
+              <div class="lab-list-block">
+                <strong>${escapeHtml(text(["mediaAnalysis", "profile", "blockersTitle"]))}</strong>
+                <ul class="lab-bullet-list">
+                  ${readiness.blockers
+                    .map(function (entry) {
+                      return `<li>${escapeHtml(entry)}</li>`;
+                    })
+                    .join("")}
+                </ul>
+              </div>
+            `
+            : ""
+        }
+        ${
+          Array.isArray(readiness.warnings) && readiness.warnings.length > 0
+            ? `
+              <div class="lab-list-block">
+                <strong>${escapeHtml(text(["mediaAnalysis", "profile", "warningsTitle"]))}</strong>
+                <ul class="lab-bullet-list">
+                  ${readiness.warnings
+                    .slice(0, 4)
+                    .map(function (entry) {
+                      return `<li>${escapeHtml(entry)}</li>`;
+                    })
+                    .join("")}
+                </ul>
+              </div>
+            `
+            : ""
+        }
+      </section>
+    `;
+  }
+
   function renderProfileStage() {
+    const sourceReady =
+      typeof getProjectSource().storedPath === "string" && getProjectSource().storedPath.trim() !== "";
     return `
       <div class="lab-layout">
         <section class="lab-main-stack">
           ${renderStageIntro("profile")}
-          <section class="lab-panel">
-            <div class="lab-tab-row">
-              ${PROFILE_FOCUS.map(function (focusId) {
-                return `
-                  <button
-                    class="lab-tab"
-                    type="button"
-                    data-focus-tab="${focusId}"
-                    data-selected="${focusId === state.profileFocus ? "true" : "false"}"
-                  >
-                    ${escapeHtml(text(["mediaAnalysis", "profile", "focusTabs", focusId]))}
-                  </button>
-                `;
-              }).join("")}
-            </div>
-            <div class="lab-profile-grid">
-              ${PROFILE_PRESETS.map(function (presetId) {
-                return `
-                  <button
-                    class="lab-profile-card"
-                    type="button"
-                    data-profile-preset="${presetId}"
-                    data-selected="${presetId === state.profilePreset ? "true" : "false"}"
-                  >
-                    <span class="lab-profile-card__title">${escapeHtml(
-                      text(["mediaAnalysis", "profile", "presets", presetId, "title"])
-                    )}</span>
-                    <span class="lab-profile-card__summary">${escapeHtml(
-                      text(["mediaAnalysis", "profile", "presets", presetId, "summary"])
-                    )}</span>
-                    <span class="lab-profile-card__pace">${escapeHtml(
-                      text(["mediaAnalysis", "profile", "presets", presetId, "pace"])
-                    )}</span>
-                  </button>
-                `;
-              }).join("")}
-            </div>
-          </section>
-          <section class="lab-panel">
-            <div class="lab-panel__header">
-              <p class="lab-panel__eyebrow">${escapeHtml(
-                text(["mediaAnalysis", "profile", "routeTitle"])
-              )}</p>
-            </div>
-            <div class="lab-route-strip">
-              ${list(["mediaAnalysis", "profile", "routeNodes"])
-                .map(function (node, index) {
-                  return `
-                    <div class="lab-route-node">
-                      <span class="lab-route-node__index">${String(index + 1)}</span>
-                      <span class="lab-route-node__label">${escapeHtml(node)}</span>
-                    </div>
-                  `;
-                })
-                .join("")}
-            </div>
-          </section>
+          ${renderProfileTargetPanel()}
+          ${renderProfileModePanel()}
+          ${renderProfilePresetPanel()}
+          ${getCurrentProfileMode() === "advanced" ? renderProfileAdvancedPanel() : ""}
+          <div class="lab-subgrid lab-subgrid--profile">
+            ${renderProfileSignalsPanel()}
+            ${renderProfileArtifactsPanel()}
+            ${renderProfileActionsPanel()}
+          </div>
+          ${
+            sourceReady !== true
+              ? `<div class="lab-notice">${escapeHtml(text(["mediaAnalysis", "profile", "sourceRequired"]))}</div>`
+              : ""
+          }
         </section>
         <aside class="lab-side-stack">
-          <section class="lab-panel">
-            <div class="lab-panel__header">
-              <p class="lab-panel__eyebrow">${escapeHtml(
-                text(["mediaAnalysis", "profile", "summaryTitle"])
-              )}</p>
-            </div>
-            ${renderSummaryRows([
-              [text(["mediaAnalysis", "shared", "focus"]), getFocusLabel()],
-              [text(["mediaAnalysis", "shared", "preset"]), getProfileLabel()],
-              [text(["mediaAnalysis", "shared", "route"]), text(["mediaAnalysis", "stages", "process"])],
-            ])}
-          </section>
+          ${renderProfileSummaryPanel()}
         </aside>
       </div>
     `;
@@ -1592,8 +3565,9 @@
             </div>
             ${renderSummaryRows([
               [text(["mediaAnalysis", "shared", "status"]), String(Math.round(state.process.progress)) + "%"],
-              [text(["mediaAnalysis", "shared", "focus"]), getFocusLabel()],
+              [text(["mediaAnalysis", "profile", "summary", "target"]), getFocusLabel()],
               [text(["mediaAnalysis", "shared", "preset"]), getProfileLabel()],
+              [text(["mediaAnalysis", "profile", "summary", "preflight"]), text(["mediaAnalysis", "profile", "status", getProfilePreflight().status || "idle"])],
             ])}
             <div class="lab-action-stack">
               <button class="lab-button lab-button--ghost" type="button" data-action="restart-process">
@@ -1618,23 +3592,41 @@
     `;
   }
 
-  function renderFinding(key) {
+  function renderReportFinding(signal) {
+    const record = toRecord(signal);
     return `
       <article class="lab-finding">
-        <h3 class="lab-finding__title">${escapeHtml(
-          text(["mediaAnalysis", "report", "findings", key, "title"])
-        )}</h3>
-        <p class="lab-finding__detail">${escapeHtml(
-          text(["mediaAnalysis", "report", "findings", key, "detail"])
-        )}</p>
+        <h3 class="lab-finding__title">${escapeHtml(record.title || record.laneId || "--")}</h3>
+        <p class="lab-panel__hint">
+          ${escapeHtml(
+            `${text(["mediaAnalysis", "profile", "signalMeta", "kind"])}: ${getProfileSignalKindLabel(record.kind)}`
+          )}
+          ·
+          ${escapeHtml(
+            `${text(["mediaAnalysis", "profile", "signalMeta", "confidence"])}: ${getProfileConfidenceLabel(
+              record.confidence
+            )}`
+          )}
+          ·
+          ${escapeHtml(
+            `${text(["mediaAnalysis", "profile", "signalMeta", "evidence"])}: ${String(
+              Number(record.evidenceCount) || 0
+            )}`
+          )}
+        </p>
+        <p class="lab-finding__detail">${escapeHtml(record.detail || "")}</p>
       </article>
     `;
   }
 
   function renderReportStage() {
-    const source = getProjectSource();
+    const asset = getEffectiveMediaAsset();
+    const preflight = getProfilePreflight();
+    const artifacts = getProfileArtifacts();
+    const signals = getTopProfileSignals(3);
+    const selectedModel = getProfileSelectedModel();
     const previewUrl =
-      typeof source.previewUrl === "string" && source.previewUrl.trim() !== "" ? source.previewUrl : PREVIEW_IMAGE;
+      typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== "" ? asset.previewUrl : PREVIEW_IMAGE;
 
     return `
       <div class="lab-layout">
@@ -1646,25 +3638,31 @@
             </div>
             <div class="lab-report-hero__copy">
               <div class="lab-panel__header">
-                <h2 class="lab-panel__title">${escapeHtml(
-                  text(["mediaAnalysis", "shared", "reportReady"])
-                )}</h2>
+                <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "report", "handoffTitle"]))}</h2>
               </div>
               ${renderSummaryRows([
-                [text(["mediaAnalysis", "shared", "summary"]), getCurrentSourceLabel()],
-                [
-                  text(["mediaAnalysis", "shared", "duration"]),
-                  formatDuration(getPreferredSourceDuration(getProjectSource().previewUrl || null)),
-                ],
-                [text(["mediaAnalysis", "shared", "score"]), "76 / 100"],
-                [text(["mediaAnalysis", "shared", "risk"]), text(["mediaAnalysis", "shared", "elevatedRisk"])],
+                [text(["mediaAnalysis", "shared", "summary"]), asset.label || getCurrentSourceLabel()],
+                [text(["mediaAnalysis", "shared", "duration"]), formatDuration(getPreferredAssetDuration(asset))],
+                [text(["mediaAnalysis", "profile", "summary", "preflight"]), text(["mediaAnalysis", "profile", "status", preflight.status || "idle"])],
+                [text(["mediaAnalysis", "profile", "summary", "signals"]), String(getProfileSignals().length)],
+                [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(artifacts.length)],
               ])}
+              <p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "report", "stagedHint"]))}</p>
             </div>
           </section>
           <section class="lab-signal-grid">
-            ${renderSignalCard("00:59", text(["mediaAnalysis", "report", "signals", "frameJump"]))}
-            ${renderSignalCard("31 ms", text(["mediaAnalysis", "report", "signals", "subcut"]))}
-            ${renderSignalCard("2.4 dB", text(["mediaAnalysis", "report", "signals", "audioOffset"]))}
+            ${
+              signals.length > 0
+                ? signals
+                    .map(function (signal) {
+                      return renderSignalCard(
+                        getProfileSignalKindLabel(signal.kind),
+                        signal.title || signal.laneId || "--"
+                      );
+                    })
+                    .join("")
+                : `<p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "report", "emptyFindings"]))}</p>`
+            }
           </section>
           <section class="lab-panel">
             <div class="lab-panel__header">
@@ -1673,19 +3671,26 @@
               )}</p>
             </div>
             <div class="lab-findings">
-              ${renderFinding("continuity")}
-              ${renderFinding("metadata")}
-              ${renderFinding("audio")}
+              ${
+                signals.length > 0
+                  ? signals
+                      .map(function (signal) {
+                        return renderReportFinding(signal);
+                      })
+                      .join("")
+                  : `<p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "report", "emptyBody"]))}</p>`
+              }
             </div>
           </section>
         </section>
         <aside class="lab-side-stack">
           <section class="lab-panel">
             ${renderSummaryRows([
-              [text(["mediaAnalysis", "shared", "score"]), "76 / 100"],
-              [text(["mediaAnalysis", "shared", "risk"]), text(["mediaAnalysis", "shared", "elevatedRisk"])],
               [text(["mediaAnalysis", "shared", "preset"]), getProfileLabel()],
-              [text(["mediaAnalysis", "shared", "focus"]), getFocusLabel()],
+              [text(["mediaAnalysis", "profile", "summary", "target"]), getFocusLabel()],
+              [text(["mediaAnalysis", "profile", "summary", "preflight"]), text(["mediaAnalysis", "profile", "status", getProfilePreflight().status || "idle"])],
+              [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(artifacts.length)],
+              [text(["mediaAnalysis", "profile", "summary", "model"]), selectedModel ? textFromKey(selectedModel.labelKey || "") : "--"],
             ])}
             <div class="lab-action-stack">
               <button class="lab-button lab-button--ghost" type="button" data-action="reset-journey">
@@ -1746,6 +3751,7 @@
     `;
 
     bindPreviewMetrics();
+    bindAudioAnalysis();
   }
 
   function bindPreviewMetrics() {
@@ -1809,6 +3815,87 @@
     }
   }
 
+  async function decodeAudioBars(url) {
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    if (typeof window.fetch !== "function" || typeof AudioContextCtor !== "function") {
+      return [];
+    }
+
+    const response = await window.fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioContext = new AudioContextCtor();
+
+    try {
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+      const samples = audioBuffer.getChannelData(0);
+      const bucketCount = 42;
+      const bucketSize = Math.max(1, Math.floor(samples.length / bucketCount));
+      const bars = [];
+
+      for (let index = 0; index < bucketCount; index += 1) {
+        const start = index * bucketSize;
+        const end = Math.min(samples.length, start + bucketSize);
+        let sum = 0;
+        for (let cursor = start; cursor < end; cursor += 1) {
+          sum += Math.abs(samples[cursor] || 0);
+        }
+        const average = end > start ? sum / (end - start) : 0;
+        bars.push(Math.max(10, Math.min(84, Math.round(average * 240))));
+      }
+
+      return bars;
+    } finally {
+      await audioContext.close();
+    }
+  }
+
+  function bindAudioAnalysis() {
+    const media = document.querySelector('[data-preview-media="audio"]');
+    if (!(media instanceof HTMLAudioElement)) {
+      state.ui.audioAnalysis = {
+        url: null,
+        bars: [],
+      };
+      return;
+    }
+
+    const nextUrl = media.currentSrc || media.src;
+    if (typeof nextUrl !== "string" || nextUrl.trim() === "") {
+      return;
+    }
+
+    if (state.ui.audioAnalysis.url === nextUrl && state.ui.audioAnalysis.bars.length > 0) {
+      return;
+    }
+
+    state.ui.audioAnalysis = {
+      url: nextUrl,
+      bars: [],
+    };
+
+    void decodeAudioBars(nextUrl)
+      .then(function (bars) {
+        if (state.ui.audioAnalysis.url !== nextUrl) {
+          return;
+        }
+        state.ui.audioAnalysis = {
+          url: nextUrl,
+          bars: Array.isArray(bars) ? bars : [],
+        };
+        render();
+      })
+      .catch(function () {
+        if (state.ui.audioAnalysis.url !== nextUrl) {
+          return;
+        }
+        state.ui.audioAnalysis = {
+          url: nextUrl,
+          bars: [],
+        };
+        render();
+      });
+  }
+
   function handleHostMessage(message) {
     if (!message || typeof message !== "object" || Array.isArray(message)) {
       return;
@@ -1837,7 +3924,7 @@
       return;
     }
 
-    if (message.type === "source-state") {
+    if (message.type === "media-state" || message.type === "source-state") {
       if (shouldIgnoreCorrelatedPayload(payload.requestId, payload.action)) {
         return;
       }
@@ -1850,7 +3937,7 @@
       return;
     }
 
-    if (message.type === "source-action-result") {
+    if (message.type === "media-action-result" || message.type === "source-action-result") {
       if (shouldIgnoreCorrelatedPayload(payload.requestId, payload.action)) {
         return;
       }
@@ -1863,7 +3950,7 @@
       return;
     }
 
-    if (message.type === "source-job") {
+    if (message.type === "media-job" || message.type === "source-job") {
       if (shouldIgnoreCorrelatedPayload(payload.requestId, payload.action)) {
         return;
       }
@@ -1933,11 +4020,106 @@
           fields: buildCurrentDraftPayload(),
         });
         return;
+      case "edit-mode":
+        sendMediaAction("edit-set-mode", {
+          mode: value,
+          featureStage: "edit",
+        });
+        return;
+      case "edit-preset":
+        sendMediaAction("edit-apply-preset", {
+          presetId: value,
+          featureStage: "edit",
+        });
+        return;
+      case "edit-focus-region":
+        syncLocalEditField("recipe.common.focusRegionId", value);
+        commitEditPatch(buildNestedPatch("common.focusRegionId", value));
+        render();
+        return;
+      case "edit-preview":
+        sendMediaAction("edit-preview", {
+          patch: buildCurrentEditRecipePatch(),
+          featureStage: "edit",
+        });
+        return;
+      case "edit-apply":
+        sendMediaAction("edit-apply", {
+          patch: buildCurrentEditRecipePatch(),
+          featureStage: "edit",
+        });
+        return;
+      case "edit-cancel-preview":
+        sendMediaAction("edit-cancel-preview", {
+          featureStage: "edit",
+        });
+        return;
+      case "edit-cancel-apply":
+        sendMediaAction("edit-cancel-apply", {
+          featureStage: "edit",
+        });
+        return;
+      case "edit-select-output":
+        sendMediaAction("edit-set-output", {
+          outputId: value,
+          featureStage: "edit",
+        });
+        return;
+      case "edit-handoff":
+        sendMediaAction("edit-set-handoff", {
+          mode: value,
+          featureStage: "edit",
+        });
+        return;
+      case "profile-mode":
+        sendMediaAction("profile-set-mode", {
+          mode: value,
+          featureStage: "profile",
+        });
+        return;
+      case "profile-preset":
+        sendMediaAction("profile-apply-preset", {
+          presetId: value,
+          featureStage: "profile",
+        });
+        return;
+      case "profile-target-mode":
+        sendMediaAction("profile-set-target", {
+          mode: value,
+          outputId:
+            value === "derived"
+              ? getProfileTargetSummary().outputId || (getActiveEditOutput() && getActiveEditOutput().id) || null
+              : null,
+          featureStage: "profile",
+        });
+        return;
+      case "profile-run":
+        sendMediaAction("profile-run-preflight", {
+          featureStage: "profile",
+        });
+        return;
+      case "profile-cancel":
+        sendMediaAction("profile-cancel-preflight", {
+          featureStage: "profile",
+        });
+        return;
+      case "profile-model-install":
+        sendMediaAction("profile-model-install", {
+          modelId: value,
+          featureStage: "profile",
+        });
+        return;
+      case "profile-model-remove":
+        sendMediaAction("profile-model-remove", {
+          modelId: value,
+          featureStage: "profile",
+        });
+        return;
       case "tool-install":
-        sendSourceAction("tool-install", { toolId: value });
+        sendMediaAction("tool-install", { toolId: value, featureStage: state.activeStage });
         return;
       case "tool-update":
-        sendSourceAction("tool-update", { toolId: value });
+        sendMediaAction("tool-update", { toolId: value, featureStage: state.activeStage });
         return;
       case "restart-process":
         restartProcess();
@@ -1975,24 +4157,6 @@
       return;
     }
 
-    const regionButton = target.closest("[data-region]");
-    if (regionButton instanceof HTMLElement) {
-      chooseRegion(regionButton.dataset["region"] || "");
-      return;
-    }
-
-    const profileButton = target.closest("[data-profile-preset]");
-    if (profileButton instanceof HTMLElement) {
-      chooseProfilePreset(profileButton.dataset["profilePreset"] || "");
-      return;
-    }
-
-    const focusButton = target.closest("[data-focus-tab]");
-    if (focusButton instanceof HTMLElement) {
-      chooseProfileFocus(focusButton.dataset["focusTab"] || "");
-      return;
-    }
-
     const toggleButton = target.closest("[data-toggle]");
     if (toggleButton instanceof HTMLElement) {
       const toggleId = toggleButton.dataset["toggle"] || "";
@@ -2000,6 +4164,51 @@
         toggleCleanup(toggleId.replace("cleanup-", ""));
         return;
       }
+    }
+
+    const editToggle = target.closest("[data-edit-toggle]");
+    if (editToggle instanceof HTMLElement) {
+      const fieldId = editToggle.dataset["editToggle"] || "";
+      const path = fieldId.replace(/^recipe\./, "");
+      const currentValue = fieldId
+        .split(".")
+        .reduce(function (accumulator, key) {
+          return accumulator && typeof accumulator === "object" ? accumulator[key] : undefined;
+        }, getCurrentEditDraft()) === true;
+      syncLocalEditField(fieldId, currentValue !== true);
+      commitEditPatch(buildNestedPatch(path, currentValue !== true));
+      render();
+      return;
+    }
+
+    const profileToggle = target.closest("[data-profile-toggle]");
+    if (profileToggle instanceof HTMLElement) {
+      const laneId = profileToggle.dataset["profileToggle"] || "";
+      const currentValue = toRecord(getProjectProfile().laneSelection)[laneId] === true;
+      sendMediaAction("profile-update", {
+        patch: {
+          laneSelection: {
+            [laneId]: currentValue !== true,
+          },
+        },
+        featureStage: "profile",
+      });
+      return;
+    }
+
+    const profileArtifactToggle = target.closest("[data-profile-artifact-toggle]");
+    if (profileArtifactToggle instanceof HTMLElement) {
+      const artifactId = profileArtifactToggle.dataset["profileArtifactToggle"] || "";
+      const currentValue = toRecord(getProjectProfile().artifactPreferences)[artifactId] === true;
+      sendMediaAction("profile-update", {
+        patch: {
+          artifactPreferences: {
+            [artifactId]: currentValue !== true,
+          },
+        },
+        featureStage: "profile",
+      });
+      return;
     }
 
     const draftToggle = target.closest("[data-toggle-field]");
@@ -2018,11 +4227,6 @@
 
   document.addEventListener("input", function (event) {
     const target = event.target;
-    if (target instanceof HTMLInputElement && target.dataset["range"]) {
-      setRange(target.dataset["range"], target.value);
-      return;
-    }
-
     if (target instanceof HTMLInputElement && target.dataset["draftField"]) {
       syncDraftField(target.dataset["draftField"], target.type === "number" ? Number(target.value) : target.value);
       return;
@@ -2031,6 +4235,23 @@
     if (target instanceof HTMLSelectElement && target.dataset["draftField"]) {
       syncDraftField(target.dataset["draftField"], target.value);
       return;
+    }
+
+    if (
+      (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) &&
+      target.dataset["editField"]
+    ) {
+      const fieldId = target.dataset["editField"];
+      const nextValue = readFormValue(target);
+      syncLocalEditField(fieldId, nextValue);
+      render();
+    }
+
+    if (
+      (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) &&
+      ["sensitivity", "transcriptSampleSeconds"].includes(target.dataset["profileField"] || "")
+    ) {
+      render();
     }
   });
 
@@ -2047,6 +4268,48 @@
       target.dataset["draftField"]
     ) {
       persistDrafts();
+      return;
+    }
+
+    if (
+      (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) &&
+      target.dataset["editField"]
+    ) {
+      const fieldId = target.dataset["editField"] || "";
+      const path = fieldId.replace(/^recipe\./, "");
+      const nextValue = readFormValue(target);
+      syncLocalEditField(fieldId, nextValue);
+      commitEditPatch(buildNestedPatch(path, nextValue));
+      return;
+    }
+
+    if (
+      (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) &&
+      target.dataset["profileField"]
+    ) {
+      const fieldId = target.dataset["profileField"] || "";
+      const nextValue = readFormValue(target);
+      if (fieldId === "targetOutputId") {
+        sendMediaAction("profile-set-target", {
+          mode: "derived",
+          outputId: typeof nextValue === "string" && nextValue.trim() !== "" ? nextValue : null,
+          featureStage: "profile",
+        });
+        return;
+      }
+      if (fieldId === "modelId") {
+        sendMediaAction("profile-set-model", {
+          modelId: typeof nextValue === "string" && nextValue.trim() !== "" ? nextValue : null,
+          featureStage: "profile",
+        });
+        return;
+      }
+      sendMediaAction("profile-update", {
+        patch: {
+          [fieldId]: nextValue,
+        },
+        featureStage: "profile",
+      });
     }
   });
 

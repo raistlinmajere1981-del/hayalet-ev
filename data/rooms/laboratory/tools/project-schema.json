@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "required": [
+      "schemaVersion",
+      "id",
+      "slug",
+      "name",
+      "createdAt",
+      "updatedAt",
+      "source",
+      "edit",
+      "profile"
+    ],
+    "source": {
+      "required": ["kind", "mode", "status", "drafts"],
+      "optional": [
+        "storedPath",
+        "storedFileName",
+        "sourceUrl",
+        "mimeType",
+        "routeLabel",
+        "lastError",
+        "metadata",
+        "metadataError"
+      ],
+      "kinds": ["video", "audio", "image"],
+      "videoModes": ["youtube", "local", "url"],
+      "audioModes": ["local", "url"],
+      "imageModes": ["local", "url"],
+      "metadata": {
+        "optional": [
+          "durationSeconds",
+          "width",
+          "height",
+          "codec",
+          "videoCodec",
+          "audioCodec",
+          "formatName",
+          "bitRate",
+          "sizeBytes",
+          "streamCount",
+          "mimeType",
+          "extractedBy",
+          "extractedAt"
+        ]
+      }
+    },
+    "edit": {
+      "required": [
+        "mode",
+        "dirty",
+        "activePresetId",
+        "activeOutputId",
+        "handoffMode",
+        "preview",
+        "recipe",
+        "outputs"
+      ],
+      "optional": ["lastError", "lastActionAt"],
+      "modes": ["beginner", "advanced"],
+      "handoffModes": ["source", "derived"],
+      "preview": {
+        "required": ["status", "outputId"],
+        "optional": [
+          "jobId",
+          "requestId",
+          "path",
+          "fileName",
+          "mimeType",
+          "metadata",
+          "artifacts",
+          "error",
+          "recipeSignature",
+          "updatedAt"
+        ]
+      },
+      "recipe": {
+        "required": ["common", "video", "audio", "image"],
+        "common": {
+          "required": [
+            "focusRegionId",
+            "cropNormalized",
+            "redactionBoxes",
+            "outputNameHint",
+            "notes"
+          ]
+        },
+        "video": {
+          "required": [
+            "trimEnabled",
+            "trimStartSeconds",
+            "trimEndSeconds",
+            "resizePreset",
+            "customWidth",
+            "customHeight",
+            "fpsLimit",
+            "includeAudio",
+            "blurFocusOutside"
+          ],
+          "optional": ["frameGrabCount"]
+        },
+        "audio": {
+          "required": [
+            "trimEnabled",
+            "trimStartSeconds",
+            "trimEndSeconds",
+            "silenceTrim",
+            "normalize",
+            "normalizeTargetDb",
+            "mono",
+            "spectrogram",
+            "highpassHz",
+            "lowpassHz"
+          ]
+        },
+        "image": {
+          "required": [
+            "rotateDegrees",
+            "resizePreset",
+            "customWidth",
+            "customHeight",
+            "brightness",
+            "contrast",
+            "sharpen",
+            "blurStrength"
+          ]
+        }
+      },
+      "outputs": {
+        "item": {
+          "required": [
+            "id",
+            "kind",
+            "path",
+            "fileName",
+            "mimeType",
+            "createdAt",
+            "recipeSignature",
+            "metadata"
+          ],
+          "optional": ["label", "jobId", "sourcePath", "artifacts"]
+        }
+      }
+    },
+    "profile": {
+      "required": [
+        "mode",
+        "dirty",
+        "activePresetId",
+        "targetAssetMode",
+        "targetOutputId",
+        "targetAssetSignature",
+        "depth",
+        "sensitivity",
+        "frameSampleDensity",
+        "transcriptSampleSeconds",
+        "modelId",
+        "artifactPreferences",
+        "laneSelection",
+        "readiness",
+        "estimate",
+        "preflight",
+        "signals",
+        "artifacts"
+      ],
+      "optional": ["lastError", "lastActionAt"],
+      "modes": ["beginner", "advanced"],
+      "targetAssetModes": ["source", "derived"],
+      "depthModes": ["quick", "balanced", "deep"],
+      "frameSampleDensityModes": ["sparse", "balanced", "dense"],
+      "artifactPreferences": {
+        "required": ["metadata", "frame-strip", "spectrogram", "transcript"]
+      },
+      "laneSelection": {
+        "required": [
+          "metadata-lineage",
+          "visual-tamper",
+          "audio-tamper",
+          "speech-overlay",
+          "synthetic-suspicion"
+        ]
+      },
+      "readiness": {
+        "required": ["stageReady", "requiredTools", "optionalTools", "models", "blockers", "warnings"]
+      },
+      "estimate": {
+        "required": ["runtimeSeconds", "artifactCount", "sampleWindowSeconds"]
+      },
+      "preflight": {
+        "required": ["status", "jobId", "requestId", "ranAt", "targetSummary", "warnings"],
+        "optional": ["error"]
+      },
+      "signals": {
+        "item": {
+          "required": ["id", "laneId", "kind", "level", "confidence", "title", "detail", "evidenceCount"],
+          "optional": ["artifactIds"]
+        }
+      },
+      "artifacts": {
+        "item": {
+          "required": ["id", "kind", "path", "fileName", "createdAt"],
+          "optional": ["label", "metadata"]
+        }
+      }
+    }
+  },
+  "files": {
+    "projectMeta": "project.json",
+    "sourceDir": "source",
+    "derivedDir": "derived",
+    "editDir": "derived/edit",
+    "editPreviewDir": "derived/edit/preview",
+    "editOutputDir": "derived/edit/output",
+    "editManifest": "derived/edit/manifest.json",
+    "profileDir": "derived/profile",
+    "profilePreflightDir": "derived/profile/preflight",
+    "profileManifest": "derived/profile/manifest.json"
+  }
+}

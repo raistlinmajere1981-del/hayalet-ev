@@ -52,6 +52,30 @@ function applyPreferredLanguageHeader(targetSession: Electron.Session): void {
   });
 }
 
+function resolveLinuxZoomNormalizationFactor(window: BrowserWindow): number {
+  if (process.platform !== "linux") {
+    return 1;
+  }
+
+  const scaleFactor = screen.getDisplayMatching(window.getBounds()).scaleFactor;
+  if (Number.isFinite(scaleFactor) !== true || scaleFactor <= 1) {
+    return 1;
+  }
+
+  return Math.max(0.5, 1 / scaleFactor);
+}
+
+function applyLinuxZoomNormalization(window: BrowserWindow): void {
+  const zoomFactor = resolveLinuxZoomNormalizationFactor(window);
+  if (zoomFactor === 1) {
+    return;
+  }
+
+  // NOTE: Linux desktop scaling reduces the CSS pixel budget compared with Wine/Windows, so
+  // normalize the renderer zoom to keep the UI density closer across runtimes on the same panel.
+  window.webContents.setZoomFactor(zoomFactor);
+}
+
 export function initTray(iconPath: string): void {
   _trayIconPath = iconPath;
   createTrayInternal();
@@ -345,6 +369,10 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
     void win.loadFile(Paths.getHtmlEntryPath());
   }
 
+  win.webContents.on("did-finish-load", () => {
+    applyLinuxZoomNormalization(win);
+  });
+
   // WARNING: Install the webview navigation guard before any provider content starts navigating.
   setupWebviewNavigationGuard();
 
@@ -427,6 +455,7 @@ export function windowToggleFullscreen(): void {
       _mainWindow.setResizable(false);
       const { workArea } = screen.getDisplayMatching(_mainWindow.getBounds());
       _mainWindow.setBounds(workArea);
+      applyLinuxZoomNormalization(_mainWindow);
       void logger.logInternalT(
         LogCategory.MAIN,
         LogLevel.INFO,

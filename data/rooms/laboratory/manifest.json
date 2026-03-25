@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 2,
+  "id": "laboratory",
+  "name": "Laboratory",
+  "version": "1.0.0",
+  "description": "An obsidian media analysis room with staged dummy controls for capture, cleanup, profiling, processing, and reporting.",
+  "menu": {
+    "label": "Laboratory",
+    "icon": "LB",
+    "order": 90
+  },
+  "runtime": {
+    "uiEntry": "ui/index.html",
+    "hostEntry": "host/index.js"
+  },
+  "defaultFeatureId": "media-analysis",
+  "i18n": {
+    "baseDir": "i18n"
+  },
+  "scene": {
+    "referenceSize": {
+      "width": 1600,
+      "height": 900
+    },
+    "roomBackgroundSrc": "assets/room-background.webp",
+    "chrome": {
+      "pageShellVariant": "immersive-stage"
+    },
+    "roomsHotspot": {
+      "id": "laboratory-door",
+      "rect": {
+        "leftPx": 722,
+        "topPx": 234,
+        "widthPx": 170,
+        "heightPx": 330
+      },
+      "label": {
+        "text": "Laboratory"
+      }
+    },
+    "backHotspot": {
+      "id": "laboratory-back",
+      "rect": {
+        "leftPx": 54,
+        "topPx": 150,
+        "widthPx": 168,
+        "heightPx": 256
+      },
+      "label": {
+        "text": "Corridor"
+      }
+    }
+  },
+  "features": [
+    {
+      "id": "media-analysis",
+      "name": "Media Analysis",
+      "description": "A staged visual shell for source capture, edit setup, profile selection, processing, and reporting.",
+      "icon": "MA",
+      "scene": {
+        "hotspot": {
+          "id": "laboratory-media-analysis",
+          "rect": {
+            "leftPx": 934,
+            "topPx": 176,
+            "widthPx": 508,
+            "heightPx": 320
+          },
+          "label": {
+            "text": "Media Analysis"
+          }
+        },
+        "view": {
+          "id": "media-analysis-console",
+          "backgroundSrc": "assets/media-analysis-view.webp",
+          "transparentWindow": {
+            "leftPct": 2.4,
+            "topPct": 10.8,
+            "widthPct": 95.2,
+            "heightPct": 79.4
+          }
+        }
+      }
+    }
+  ]
+}

@@ -675,6 +675,9 @@ class RoomToolService {
         tool: normalizeToolStatus(request.toolId, {
           installed: false,
           installDir,
+          details: {
+            platformKey: detectPlatformKey() ?? `${process.platform}-${process.arch}`,
+          },
         }),
       };
     }
@@ -697,6 +700,9 @@ class RoomToolService {
             .map((name) => [name, join(installDir, name)] as const)
             .filter((entry) => existsSync(entry[1]))
         ),
+        details: {
+          platformKey: detectPlatformKey() ?? `${process.platform}-${process.arch}`,
+        },
       }),
     };
   }

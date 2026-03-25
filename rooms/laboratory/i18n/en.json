@@ -42,7 +42,7 @@
       "score": "Confidence",
       "risk": "Risk band",
       "elevatedRisk": "Elevated",
-      "dummyHint": "Only the source stage is live in this phase. The remaining stages still use room-local dummy state."
+      "dummyHint": "Source, edit, and profile now run live in this phase. Process and report still use room-local dummy state."
     },
     "projects": {
       "eyebrow": "Project Desk",
@@ -57,7 +57,7 @@
     "settings": {
       "eyebrow": "Tool Room",
       "title": "Media Analyzer Settings",
-      "subtitle": "Probe, install, update, and review the room-local yt-dlp and ffmpeg toolchain.",
+      "subtitle": "Probe, install, update, and review the room-local capture, edit, and profiling tools.",
       "refreshAction": "Refresh Tools",
       "closeAction": "Close",
       "installAction": "Install",
@@ -66,9 +66,19 @@
       "latestLabel": "Latest",
       "pathLabel": "Binary Path",
       "busyHint": "A room-managed job is running for this tool.",
+      "currentStageTitle": "Current stage tools",
+      "otherToolsTitle": "Other room tools",
+      "otherToolsSubtitle": "Stage-adjacent installs stay available from the same overlay.",
+      "stageSupportLabel": "Stage support",
       "tools": {
         "yt-dlp": "yt-dlp",
-        "ffmpeg": "FFmpeg"
+        "ffmpeg": "FFmpeg",
+        "whisper.cpp": "Whisper.cpp"
+      },
+      "support": {
+        "required": "Required",
+        "optional": "Optional",
+        "unsupported": "Unsupported"
       },
       "status": {
         "missing": "Missing",
@@ -92,7 +102,26 @@
       "tool-install": "Tool installation completed.",
       "tool-update": "Tool update completed.",
       "tools-refresh": "Tool status refreshed.",
-      "refresh": "Source state refreshed."
+      "refresh": "Source state refreshed.",
+      "edit-set-mode": "Edit mode updated.",
+      "edit-apply-preset": "Edit preset applied.",
+      "edit-update-recipe": "Edit recipe saved.",
+      "edit-set-output": "Derived output selected.",
+      "edit-set-handoff": "Downstream handoff updated.",
+      "edit-preview": "Preview output generated.",
+      "edit-apply": "Derived output rendered.",
+      "edit-cancel": "Active edit job cancelled.",
+      "edit-cancel-preview": "Preview render cancelled.",
+      "edit-cancel-apply": "Derived render cancelled.",
+      "profile-set-mode": "Profile mode updated.",
+      "profile-apply-preset": "Profile preset applied.",
+      "profile-update": "Profile settings saved.",
+      "profile-set-target": "Profile target updated.",
+      "profile-set-model": "Transcript model updated.",
+      "profile-run-preflight": "Profile preflight completed.",
+      "profile-cancel-preflight": "Profile preflight cancelled.",
+      "profile-model-install": "Transcript model installed.",
+      "profile-model-remove": "Transcript model removed."
     },
     "source": {
       "title": "Prepare the analysis source",
@@ -237,67 +266,327 @@
     },
     "edit": {
       "title": "Shape the inspection window",
-      "subtitle": "Trim the time range, choose the focus region, and arm cleanup toggles.",
-      "canvasTitle": "Inspection Window",
-      "canvasHint": "Only the highlighted window would be inspected in a real pipeline.",
-      "timeTitle": "Time Range",
-      "regionTitle": "Region Focus",
-      "cleanupTitle": "Cleanup and Prep",
+      "subtitle": "Build a non-destructive edit recipe, preview it safely, and commit a derived analysis-ready output.",
+      "previewEmptyTitle": "Edit preview is waiting for a project source",
+      "previewEmptyBody": "Return to the source stage, capture a real file into the active project, then come back to shape the derived output.",
+      "workspaceTitle": "Edit Workspace",
+      "workspaceHint": "The working surface always shows the source, the latest preview, or the active derived output.",
+      "previewStates": {
+        "stale": "Preview is stale. Generate a fresh preview before trusting the current frame."
+      },
+      "jobsTitle": "Active Edit Job",
+      "modeTitle": "Operator Mode",
+      "modeSubtitle": "Switch between guardrailed presets and deeper direct controls.",
+      "modes": {
+        "beginner": "Beginner",
+        "advanced": "Advanced"
+      },
+      "presetTitle": "Recipe Presets",
+      "presetSubtitle": "Starter recipes keep inexperienced operators on a safe path.",
+      "commonTitle": "Shared Recipe",
+      "commonSubtitle": "These fields persist across preview and derived renders.",
+      "videoTitle": "Video Controls",
+      "videoSubtitle": "Trim, resize, and focus the analysis cut without touching the original.",
+      "audioTitle": "Audio Controls",
+      "audioSubtitle": "Prepare speech or ambience with a safe normalization chain.",
+      "imageTitle": "Image Controls",
+      "imageSubtitle": "Crop, rotate, and tune still frames for OCR or evidence review.",
+      "actionsTitle": "Preview and Apply",
+      "actionsSubtitle": "Generate a safe preview first, then publish a project-owned derived output.",
+      "outputsTitle": "Derived Outputs",
+      "outputsSubtitle": "Each applied render is stored under the project and can be handed to later stages.",
+      "outputsEmpty": "No derived outputs yet. Generate one after previewing the recipe.",
+      "ffmpegMissing": "FFmpeg is required for the edit stage. Install or update it from settings.",
+      "sourceRequired": "The edit stage stays read-only until the project has a prepared source file.",
+      "sourceAsset": "Source Asset",
+      "previewAsset": "Preview Asset",
+      "derivedOutput": "Derived Output",
+      "fullWindow": "Full source window",
       "summaryTitle": "Edit Summary",
       "selectedWindow": "Selected window",
       "selectedRegion": "Selected region",
-      "cleanup": {
-        "audio": "Audio scrub",
-        "sharpness": "Edge clarity",
-        "aiSanitize": "AI residue filter"
+      "selectedResize": "Resize path",
+      "selectedOutput": "Selected output",
+      "handoffLabel": "Downstream handoff",
+      "handoffModes": {
+        "source": "Use source",
+        "derived": "Use derived output"
       },
-      "regions": {
+      "fields": {
+        "outputNameHint": "Output Name Hint",
+        "notes": "Operator Notes",
+        "trimEnabled": "Enable trim window",
+        "includeAudio": "Keep audio track",
+        "blurFocusOutside": "Blur outside focus region",
+        "trimStartSeconds": "Trim start",
+        "trimEndSeconds": "Trim end",
+        "resizePreset": "Resize preset",
+        "fpsLimit": "FPS limit",
+        "customWidth": "Custom width",
+        "customHeight": "Custom height",
+        "frameGrabCount": "Frame grab count",
+        "normalize": "Normalize loudness",
+        "silenceTrim": "Trim silence",
+        "mono": "Convert to mono",
+        "spectrogram": "Generate spectrogram",
+        "normalizeTargetDb": "Target loudness",
+        "highpassHz": "High-pass Hz",
+        "lowpassHz": "Low-pass Hz",
+        "brightness": "Brightness",
+        "contrast": "Contrast",
+        "blurStrength": "Blur strength",
+        "rotateDegrees": "Rotate degrees",
+        "sharpen": "Sharpen"
+      },
+      "placeholders": {
+        "outputNameHint": "derived-focus-cut",
+        "notes": "Why this recipe exists, what later stages should expect"
+      },
+      "actions": {
+        "preview": "Generate Preview",
+        "apply": "Render Derived Output",
+        "cancel": "Cancel Current Job",
+        "cancelPreview": "Cancel Preview",
+        "cancelApply": "Cancel Apply",
+        "selectOutput": "Use This Output"
+      },
+      "focusRegions": {
         "containment": "Containment bay",
         "corridor": "Door corridor",
-        "archive": "Archive console"
+        "archive": "Archive console",
+        "full-frame": "Full frame"
+      },
+      "resizePresets": {
+        "keep": "Keep original size",
+        "analysis": "Analysis 1280",
+        "compact": "Compact 854",
+        "custom": "Custom size"
+      },
+      "presets": {
+        "video": {
+          "quick-review": "Quick review",
+          "focus-window": "Focus window"
+        },
+        "audio": {
+          "speech-cleanup": "Speech cleanup",
+          "context-preserve": "Context preserve"
+        },
+        "image": {
+          "ocr-prepare": "OCR prepare",
+          "safe-share": "Safe share"
+        }
       }
     },
     "profile": {
-      "title": "Choose the test profile",
-      "subtitle": "Select the analysis lane, intensity, and reporting rhythm for this staged run.",
-      "routeTitle": "Analysis Route",
-      "consoleTitle": "Profile Console",
-      "consoleLines": [
-        "Dummy profile weights refreshed.",
-        "Visual lane aligned with the current source.",
-        "Report scaffold staged for the next pass."
-      ],
-      "summaryTitle": "Profile Summary",
-      "summaryHint": "The current preset changes only local presentation and staged process values.",
-      "focusTabs": {
-        "video": "Video",
-        "audio": "Audio",
-        "image": "Image"
+      "title": "Shape the analysis profile",
+      "subtitle": "Choose the target asset, inspection depth, and AI-assisted side checks before the heavy analysis run.",
+      "targetTitle": "Profile Target",
+      "targetSubtitle": "Decide whether the profile reads the original source or the active derived output.",
+      "targetEmptyTitle": "No profile target available yet",
+      "targetEmptyBody": "Prepare a source or select a derived output to unlock the profile surface.",
+      "targetModes": {
+        "source": "Source asset",
+        "derived": "Derived output"
       },
-      "presets": {
-        "quick": {
-          "title": "Quick",
-          "summary": "Short scan for intake checks and obvious defects.",
-          "pace": "Fast"
+      "targetOutputLabel": "Derived output",
+      "targetOutputEmpty": "Use the active derived output",
+      "modeTitle": "Operator Mode",
+      "modeSubtitle": "Start with guided presets or open the full lane console.",
+      "modes": {
+        "beginner": "Guided",
+        "advanced": "Advanced"
+      },
+      "presetTitle": "Profile Presets",
+      "presetSubtitle": "Each preset mixes authenticity, continuity, and transcript-aware checks in a different way.",
+      "advancedTitle": "Advanced Controls",
+      "advancedSubtitle": "Tune the probe depth, sensitivity, lane mix, and optional transcript model.",
+      "depthLabel": "Probe Depth",
+      "sensitivityLabel": "Suspicion Sensitivity",
+      "modelLabel": "Transcript Model",
+      "modelAuto": "Auto-select when available",
+      "laneState": {
+        "ready": "Ready",
+        "degraded": "Degraded",
+        "blocked": "Blocked"
+      },
+      "laneMeta": {
+        "requiredTools": "Required tools",
+        "optionalTools": "Optional analyzers",
+        "mediaKinds": "Media support",
+        "incompatible": "Not available for the current media type.",
+        "speechToolMissing": "Install Whisper.cpp to unlock transcript-aware speech sampling.",
+        "speechModelMissing": "Install a transcript model to unlock the deeper speech lane."
+      },
+      "artifactControlsTitle": "Artifact Preferences",
+      "artifactControlsSubtitle": "Choose which lightweight evidence files the preflight should generate.",
+      "artifactTypes": {
+        "metadata": "Metadata snapshot",
+        "frame-strip": "Frame strip",
+        "spectrogram": "Spectrogram",
+        "transcript": "Transcript sample"
+      },
+      "frameDensityLabel": "Frame Sample Density",
+      "frameDensity": {
+        "sparse": "Sparse",
+        "balanced": "Balanced",
+        "dense": "Dense"
+      },
+      "transcriptSampleLabel": "Transcript Sample Window",
+      "signalsTitle": "Preflight Signals",
+      "signalsSubtitle": "These are the strongest indicators surfaced by the current lightweight pass.",
+      "signalsEmpty": "No preflight findings yet. Run the preflight to surface signals.",
+      "signalMeta": {
+        "kind": "Signal type",
+        "confidence": "Confidence",
+        "evidence": "Evidence"
+      },
+      "signalKinds": {
+        "measured": "Measured",
+        "heuristic": "Heuristic",
+        "derived": "Derived"
+      },
+      "confidenceLevels": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "artifactsTitle": "Artifacts",
+      "artifactsSubtitle": "Each run can drop metadata, frame strips, and audio traces into the project.",
+      "artifactsEmpty": "No profile artifacts generated yet.",
+      "preflightTitle": "Preflight Run",
+      "preflightSubtitle": "Run a lightweight screening pass before the full process stage.",
+      "actions": {
+        "run": "Run Preflight",
+        "cancel": "Cancel Preflight"
+      },
+      "summaryTitle": "Profile Summary",
+      "summary": {
+        "target": "Target asset",
+        "preset": "Preset",
+        "sampleWindow": "Sample window",
+        "runtime": "Estimated runtime",
+        "signals": "Signals",
+        "artifacts": "Artifacts",
+        "lanes": "Enabled lanes",
+        "model": "Transcript model",
+        "preflight": "Preflight status"
+      },
+      "blockersTitle": "Run blockers",
+      "warningsTitle": "Warnings",
+      "sourceRequired": "Prepare a source before building the profile.",
+      "status": {
+        "idle": "Idle",
+        "running": "Running",
+        "ready": "Ready",
+        "stale": "Needs rerun",
+        "error": "Error"
+      },
+      "levels": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "modelTitle": "Transcript Models",
+      "modelSubtitle": "Optional Whisper.cpp models help the room sample speech continuity and overdub clues.",
+      "modelUnavailable": "Install the room-local Whisper.cpp binary first to manage transcript models on this platform.",
+      "modelActions": {
+        "install": "Install Model",
+        "remove": "Remove Model"
+      },
+      "modelSummary": {
+        "size": "Model size",
+        "quantization": "Quantization",
+        "language": "Language",
+        "platforms": "Runtime support",
+        "cleanup": "Cleanup policy",
+        "integrity": "Integrity"
+      },
+      "cleanupPolicy": {
+        "checksumMismatch": "Remove mismatched downloads",
+        "descriptorChange": "Replace when descriptor changes"
+      },
+      "depth": {
+        "quick": "Quick sweep",
+        "balanced": "Balanced pass",
+        "deep": "Deep pass"
+      },
+      "pace": {
+        "fast": "Fast",
+        "balanced": "Balanced",
+        "deep": "Deep"
+      },
+      "lanes": {
+        "metadata-lineage": {
+          "title": "Metadata lineage",
+          "summary": "Check whether container timing, file lineage, and obvious metadata seams feel coherent."
         },
-        "balanced": {
-          "title": "Balanced",
-          "summary": "Medium depth with steady visual and audio sweeps.",
-          "pace": "Balanced"
+        "visual-tamper": {
+          "title": "Visual tamper",
+          "summary": "Look for freezes, dark gaps, and frame-window instability that often marks visual edits."
         },
-        "deep": {
-          "title": "Deep",
-          "summary": "Long-form pass for frame jumps, edits, and residue trails.",
-          "pace": "Dense"
+        "audio-tamper": {
+          "title": "Audio tamper",
+          "summary": "Scan silence, loudness drift, and spectral continuity for cleanup or splice fingerprints."
+        },
+        "speech-overlay": {
+          "title": "Speech overlay",
+          "summary": "Use transcript-aware sampling to catch overdubs, replaced phrases, and dialogue mismatch."
+        },
+        "synthetic-suspicion": {
+          "title": "Synthetic suspicion",
+          "summary": "Blend the strongest cross-lane cues into a single suspicion score for the next stage."
         }
       },
-      "routeNodes": [
-        "Source intake",
-        "Frame cleanup",
-        "Motion track",
-        "Audio sweep",
-        "Report map"
-      ]
+      "presets": {
+        "video": {
+          "quick-authenticity": {
+            "title": "Quick authenticity",
+            "summary": "Fast source-first sweep for obvious video seams and metadata drift."
+          },
+          "dialogue-overdub": {
+            "title": "Dialogue overdub",
+            "summary": "Bias the run toward speech continuity, silence cuts, and overdub clues."
+          },
+          "balanced-forensic": {
+            "title": "Balanced forensic",
+            "summary": "Use the active derived output and enable every supported lane for a denser pass."
+          }
+        },
+        "audio": {
+          "overdub-check": {
+            "title": "Overdub check",
+            "summary": "Short audio-first pass tuned for dialogue replacement and splice traces."
+          },
+          "continuity-pass": {
+            "title": "Continuity pass",
+            "summary": "Balanced waveform and transcript-aware sweep for continuity issues."
+          }
+        },
+        "image": {
+          "quick-lineage": {
+            "title": "Quick lineage",
+            "summary": "Fast metadata and frame-surface check for origin and sharing clues."
+          },
+          "safe-share-audit": {
+            "title": "Safe share audit",
+            "summary": "Derived-output profile that focuses on visual tamper and exposure breadcrumbs."
+          }
+        }
+      },
+      "models": {
+        "tiny": {
+          "en": {
+            "title": "Tiny English",
+            "summary": "Smallest transcript model. Fastest option for a lightweight speech sanity check."
+          }
+        },
+        "base": {
+          "en": {
+            "title": "Base English",
+            "summary": "Heavier transcript model with better recall for difficult dialogue and room tone."
+          }
+        }
+      }
     },
     "process": {
       "title": "Follow the staged process",
@@ -320,35 +609,20 @@
       }
     },
     "report": {
-      "title": "Review the staged report",
-      "subtitle": "This final pane captures a dummy verdict, key findings, and reusable export actions.",
+      "title": "Review the staged handoff",
+      "subtitle": "This final pane reflects the latest profile results without pretending the full process stage has already run.",
+      "handoffTitle": "Profile Handoff Snapshot",
+      "stagedHint": "This view mirrors the current profile run. Final analysis and a true verdict still belong to later stages.",
       "overviewTitle": "Report Overview",
       "signalTitle": "Risk Signals",
       "findingsTitle": "Priority Findings",
       "sideTitle": "Analysis Detail",
-      "exportQueued": "Dummy export package queued.",
+      "emptyFindings": "No profile signals are ready yet.",
+      "emptyBody": "Run a profile preflight first, then this staged handoff view will surface its strongest findings.",
+      "exportQueued": "Staged handoff export queued.",
       "actions": {
         "restart": "Start New Run",
-        "export": "Export Dummy PDF"
-      },
-      "signals": {
-        "frameJump": "Frame jump",
-        "subcut": "Subcut drift",
-        "audioOffset": "Audio offset"
-      },
-      "findings": {
-        "continuity": {
-          "title": "Continuity drift",
-          "detail": "Repeated luminance jumps suggest an inserted frame sequence."
-        },
-        "metadata": {
-          "title": "Metadata gap",
-          "detail": "Container timing does not align with the staged preview length."
-        },
-        "audio": {
-          "title": "Audio mismatch",
-          "detail": "Transient spacing indicates an off-grid cleanup pass."
-        }
+        "export": "Export Handoff Notes"
       }
     }
   }
