@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-24T17:25:27.720Z",
+  "generatedAt": "2026-03-25T21:49:24.682Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 531,
-    "filesWithComments": 117,
-    "commentsIndexed": 287,
-    "fileLevelComments": 218,
-    "symbolLevelComments": 69,
+    "filesScanned": 536,
+    "filesWithComments": 118,
+    "commentsIndexed": 290,
+    "fileLevelComments": 219,
+    "symbolLevelComments": 71,
     "prefixCounts": {
-      "none": 37,
+      "none": 39,
       "AI": 0,
-      "NOTE": 246,
+      "NOTE": 247,
       "WARNING": 4,
       "TODO": 0
     }
@@ -399,8 +399,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 244,
-          "endLine": 244,
+          "startLine": 245,
+          "endLine": 245,
           "text": "NOTE: Wine can load the renderer successfully but fail to present the window when GPU",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -408,8 +408,8 @@
         },
         {
           "kind": "fallback",
-          "startLine": 245,
-          "endLine": 245,
+          "startLine": 246,
+          "endLine": 246,
           "text": "compositing stays enabled, so keep the fallback local to Wine instead of all Windows builds.",
           "prefix": null,
           "scopeType": "file",
@@ -870,8 +870,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 431,
-          "endLine": 431,
+          "startLine": 449,
+          "endLine": 449,
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -879,8 +879,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 465,
-          "endLine": 465,
+          "startLine": 483,
+          "endLine": 483,
           "text": "WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -888,8 +888,8 @@
         },
         {
           "kind": "note",
-          "startLine": 523,
-          "endLine": 523,
+          "startLine": 541,
+          "endLine": 541,
           "text": "NOTE: External tool pages share this preload, but only the main shell should boot /js/app.js.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -942,8 +942,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 583,
-          "endLine": 583,
+          "startLine": 593,
+          "endLine": 593,
           "text": "NOTE: Deletes are ordered to remove deepest paths first.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -951,8 +951,8 @@
         },
         {
           "kind": "note",
-          "startLine": 598,
-          "endLine": 598,
+          "startLine": 608,
+          "endLine": 608,
           "text": "Ignore non-empty directories so user-created files remain in place.",
           "prefix": null,
           "scopeType": "file",
@@ -960,8 +960,8 @@
         },
         {
           "kind": "note",
-          "startLine": 606,
-          "endLine": 606,
+          "startLine": 616,
+          "endLine": 616,
           "text": "Ignore non-empty roots so user-created files remain in place.",
           "prefix": null,
           "scopeType": "function",
@@ -969,8 +969,8 @@
         },
         {
           "kind": "note",
-          "startLine": 669,
-          "endLine": 669,
+          "startLine": 679,
+          "endLine": 679,
           "text": "NOTE: Full room cleanup is opt-in so reconnecting a workspace room can reuse prior state.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1047,8 +1047,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1144,
-          "endLine": 1144,
+          "startLine": 1150,
+          "endLine": 1150,
           "text": "NOTE: Inbox sync intentionally runs account-by-account to keep sidecar writes ordered.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1056,8 +1056,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1896,
-          "endLine": 1896,
+          "startLine": 1902,
+          "endLine": 1902,
           "text": "NOTE: Relay sync mutates archive and session state per message, so processing stays sequential.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1067,24 +1067,44 @@
     },
     {
       "path": "electron/window-manager.ts",
-      "totalComments": 9,
+      "totalComments": 11,
       "byKind": {
-        "note": 8,
+        "note": 10,
         "warning": 1
       },
       "byPrefix": {
-        "none": 0,
+        "none": 1,
         "AI": 0,
-        "NOTE": 8,
+        "NOTE": 9,
         "WARNING": 1,
         "TODO": 0
       },
-      "symbols": [],
+      "symbols": [
+        "initTray"
+      ],
       "comments": [
         {
           "kind": "note",
-          "startLine": 120,
-          "endLine": 120,
+          "startLine": 74,
+          "endLine": 74,
+          "text": "NOTE: Linux desktop scaling reduces the CSS pixel budget compared with Wine/Windows, so",
+          "prefix": "NOTE",
+          "scopeType": "function",
+          "scopeName": "initTray"
+        },
+        {
+          "kind": "note",
+          "startLine": 75,
+          "endLine": 75,
+          "text": "normalize the renderer zoom to keep the UI density closer across runtimes on the same panel.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "initTray"
+        },
+        {
+          "kind": "note",
+          "startLine": 144,
+          "endLine": 144,
           "text": "NOTE: Log the resolved tray icon path because packaging issues often surface here first.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1092,8 +1112,8 @@
         },
         {
           "kind": "note",
-          "startLine": 295,
-          "endLine": 295,
+          "startLine": 319,
+          "endLine": 319,
           "text": "NOTE: Local helper services need explicit CORS headers because they are called from isolated webviews.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1101,8 +1121,8 @@
         },
         {
           "kind": "note",
-          "startLine": 313,
-          "endLine": 313,
+          "startLine": 337,
+          "endLine": 337,
           "text": "NOTE: The assistant webview needs broader connect-src rules for OpenCode changelog fetches and local helper services.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1110,8 +1130,8 @@
         },
         {
           "kind": "note",
-          "startLine": 327,
-          "endLine": 327,
+          "startLine": 351,
+          "endLine": 351,
           "text": "NOTE: Mirror the local-service CORS override for the assistant partition.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1119,8 +1139,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 348,
-          "endLine": 348,
+          "startLine": 376,
+          "endLine": 376,
           "text": "WARNING: Install the webview navigation guard before any provider content starts navigating.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -1128,8 +1148,8 @@
         },
         {
           "kind": "note",
-          "startLine": 677,
-          "endLine": 677,
+          "startLine": 706,
+          "endLine": 706,
           "text": "NOTE: Ignore malformed targets instead of blocking navigation entirely.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1137,8 +1157,8 @@
         },
         {
           "kind": "note",
-          "startLine": 681,
-          "endLine": 681,
+          "startLine": 710,
+          "endLine": 710,
           "text": "NOTE: Non-http(s) schemes stay allowed so built-in Electron pages are not blocked.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1146,8 +1166,8 @@
         },
         {
           "kind": "note",
-          "startLine": 690,
-          "endLine": 690,
+          "startLine": 719,
+          "endLine": 719,
           "text": "NOTE: Skip enforcement when the current provider URL is unavailable.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1155,8 +1175,8 @@
         },
         {
           "kind": "note",
-          "startLine": 696,
-          "endLine": 696,
+          "startLine": 725,
+          "endLine": 725,
           "text": "NOTE: Unknown providers fall back to permissive navigation.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1251,8 +1271,8 @@
         },
         {
           "kind": "note",
-          "startLine": 245,
-          "endLine": 245,
+          "startLine": 247,
+          "endLine": 247,
           "text": "NOTE: --auto-connect clicks the assistant connect button on the assistant page.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1335,8 +1355,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 162,
-          "endLine": 162,
+          "startLine": 169,
+          "endLine": 169,
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs).",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -2529,6 +2549,32 @@
           "startLine": 260,
           "endLine": 260,
           "text": "Ignore listener failures so theme changes keep flowing.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "src/js/scene-system/scene-ui-scale-manager.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 1,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 100,
+          "endLine": 100,
+          "text": "Ignore listener failures so other scale updates continue to flow.",
           "prefix": null,
           "scopeType": "file",
           "scopeName": null
@@ -4695,8 +4741,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 336,
-          "endLine": 336,
+          "startLine": 364,
+          "endLine": 364,
           "text": "NOTE: Empty or null uses the PATH \"opencode\" binary.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4742,6 +4788,23 @@
           "startLine": 305,
           "kind": "note",
           "text": "Packaged builds already ship the Electron ABI binary under app.asar.unpacked."
+        }
+      ]
+    },
+    {
+      "file": "electron/window-manager.ts",
+      "type": "function",
+      "name": "initTray",
+      "comments": [
+        {
+          "startLine": 74,
+          "kind": "note",
+          "text": "NOTE: Linux desktop scaling reduces the CSS pixel budget compared with Wine/Windows, so"
+        },
+        {
+          "startLine": 75,
+          "kind": "note",
+          "text": "normalize the renderer zoom to keep the UI density closer across runtimes on the same panel."
         }
       ]
     },
@@ -5044,7 +5107,7 @@
       "name": "resolveInstalledRoomTrackedFiles",
       "comments": [
         {
-          "startLine": 606,
+          "startLine": 616,
           "kind": "note",
           "text": "Ignore non-empty roots so user-created files remain in place."
         }
@@ -5080,7 +5143,7 @@
       "name": "Window",
       "comments": [
         {
-          "startLine": 162,
+          "startLine": 169,
           "kind": "note",
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs)."
         }

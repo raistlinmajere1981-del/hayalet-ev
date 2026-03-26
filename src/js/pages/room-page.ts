@@ -1,10 +1,8 @@
 import type {
   InstalledRoomFeatureRecord,
   InstalledRoomRecord,
-  RoomSceneTextConfig,
   RoomSceneTransparentWindowConfig,
 } from "@shared/index.js";
-import type { SlotStateInfo } from "../../types/assistant.js";
 import type { PageController } from "../app/types.js";
 import { shellT } from "../app/shell-i18n.js";
 import { AppState } from "../modules/app-state.js";
@@ -38,7 +36,6 @@ import {
 } from "../scene/alpha-window.js";
 import { buildSceneCharacterRoster, resolveSceneAvatarSource } from "../scene/characters/index.js";
 import type {
-  SceneBackConfig,
   SceneLayoutConfig,
   SceneObjectConfig,
 } from "../scene/layout/index.js";
@@ -51,202 +48,35 @@ import { syncSceneViewRuntime } from "../scene/runtime.js";
 import type { SceneClickableThemeDefinition } from "../scene/schema.js";
 import { mountSceneWindowControls, unmountSceneWindowControls } from "../scene/window-controls.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
-
-type RoomRuntimeState = "idle" | "loading" | "ready" | "error";
-type RoomHostMessage = Record<string, unknown>;
-
-type RoomWebviewElement = HTMLElement & {
-  src: string;
-  getURL?: () => string;
-  send?: (channel: string, ...args: unknown[]) => void;
-};
-
-type RoomIpcMessageEvent = Event & {
-  channel?: string;
-  args?: unknown[];
-};
-
-type RoomLoadErrorEvent = Event & {
-  errorCode?: number;
-  errorDescription?: string;
-};
-
-const DEFAULT_SCENE_REFERENCE_SIZE = {
-  width: 1600,
-  height: 900,
-} as const;
-
-const DEFAULT_SCENE_TRANSPARENT_WINDOW = {
-  leftPct: 18,
-  topPct: 18,
-  widthPct: 64,
-  heightPct: 58,
-} as const;
-
-function resolveSceneTextValue(value: RoomSceneTextConfig | undefined, fallback: string): string {
-  if (value?.textKey !== undefined) {
-    return AppI18n.t(value.textKey);
-  }
-  if (value?.text !== undefined && value.text.trim() !== "") {
-    return value.text.trim();
-  }
-  return fallback;
-}
-
-function buildRoomSceneObject(feature: InstalledRoomFeatureRecord): SceneObjectConfig | null {
-  if (feature.scene === undefined) {
-    return null;
-  }
-
-  const rect = feature.scene.hotspot.rect;
-  const labelText = resolveSceneTextValue(feature.scene.hotspot.label, feature.name);
-
-  return {
-    id: feature.scene.hotspot.id,
-    kind: "object",
-    viewId: null,
-    action: {
-      type: "screen",
-      screen: "primary",
-    },
-    rect: { ...rect },
-    frame: {
-      variant: "flat",
-      rotateDeg: 0,
-      perspectiveDeg: 0,
-      hueDeg: 34,
-      alpha: 0.62,
-    },
-    label: {
-      visible: true,
-      textKey: "",
-      customText: labelText,
-      centerXPx: rect.leftPx + rect.widthPx / 2,
-      topPx: rect.topPx + rect.heightPx + 18,
-      widthPx: Math.max(rect.widthPx, 220),
-      heightPx: 44,
-      rotateDeg: 0,
-      fontSizePx: 25,
-      letterSpacingPx: 1.2,
-      fontPreset: "display",
-      framePerspectiveDeg: 0,
-    },
-  };
-}
-
-function buildRoomBackNode(
-  room: InstalledRoomRecord,
-  options: { idSuffix?: string; viewId: string }
-): SceneBackConfig | null {
-  if (room.scene === undefined) {
-    return null;
-  }
-
-  const rect = room.scene.backHotspot.rect;
-  const labelText = resolveSceneTextValue(
-    room.scene.backHotspot.label,
-    roomPageT("page.backToRooms")
-  );
-
-  return {
-    id: `${room.scene.backHotspot.id}${options.idSuffix ?? ""}`,
-    kind: "back",
-    viewId: options.viewId,
-    action: {
-      type: "back",
-      target: "room",
-    },
-    rect: { ...rect },
-    glow: {
-      hueDeg: 24,
-      alpha: 0.54,
-    },
-    label: {
-      visible: true,
-      textKey: "",
-      customText: labelText,
-      centerXPx: rect.leftPx + rect.widthPx / 2,
-      topPx: rect.topPx + rect.heightPx + 16,
-      widthPx: Math.max(rect.widthPx, 180),
-      heightPx: 40,
-      rotateDeg: 0,
-      fontSizePx: 24,
-      letterSpacingPx: 1,
-      fontPreset: "display",
-      framePerspectiveDeg: 0,
-    },
-  };
-}
-
-function buildRoomSceneViewBackNode(room: InstalledRoomRecord): SceneBackConfig | null {
-  if (room.scene === undefined) {
-    return null;
-  }
-
-  const referenceSize = room.scene.referenceSize;
-  const widthPx = Math.max(88, Math.round(referenceSize.width * (116 / 1920)));
-  const labelWidthPx = Math.max(150, Math.round(referenceSize.width * (180 / 1920)));
-  const labelHeightPx = Math.max(34, Math.round(referenceSize.height * (40 / 1080)));
-  const labelTopPx = Math.round(referenceSize.height * (490 / 1080));
-  const fontSizePx = Math.max(16, Math.round(referenceSize.height * (18 / 1080)));
-
-  return {
-    id: `${room.scene.backHotspot.id}-feature-view`,
-    kind: "back",
-    viewId: "feature-view",
-    action: {
-      type: "back",
-      target: "room",
-    },
-    rect: {
-      leftPx: 0,
-      topPx: 0,
-      widthPx,
-      heightPx: referenceSize.height,
-    },
-    glow: {
-      hueDeg: 33,
-      alpha: 0.34,
-    },
-    label: {
-      visible: true,
-      textKey: "",
-      customText: shellT("settingsHub.scene.returnRoom"),
-      centerXPx: widthPx / 2,
-      topPx: labelTopPx,
-      widthPx: labelWidthPx,
-      heightPx: labelHeightPx,
-      rotateDeg: 0,
-      fontSizePx,
-      letterSpacingPx: 1,
-      fontPreset: "display",
-      framePerspectiveDeg: 0,
-    },
-  };
-}
-
-function buildStandardSceneViewBackButton(label: string): HTMLButtonElement {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className =
-    "scene-clickable__button scene-clickable__button--back workspace-tool-scene-chrome__back room-scene-view__standard-back-button";
-  button.dataset["frameVariant"] = "flat";
-  button.title = label;
-  button.setAttribute("aria-label", label);
-
-  const arrow = document.createElement("span");
-  arrow.className = "scene-clickable__arrow";
-  arrow.ariaHidden = "true";
-  arrow.textContent = "←";
-
-  const text = document.createElement("span");
-  text.className = "scene-clickable__label scene-clickable__label--back";
-  text.ariaHidden = "true";
-  text.textContent = label;
-
-  button.append(arrow, text);
-  return button;
-}
+import {
+  buildRoomBackNode,
+  buildRoomSceneObject,
+  buildRoomSceneViewBackNode,
+  buildStandardSceneViewBackButton,
+  DEFAULT_SCENE_REFERENCE_SIZE,
+  DEFAULT_SCENE_TRANSPARENT_WINDOW,
+  resolveSceneTextValue,
+} from "./room-page/scene-helpers.js";
+import {
+  ensureRoomPageShell,
+  renderRoomFeatureButtons,
+  shouldShowRoomFeatureStrip,
+} from "./room-page/shell-layout.js";
+import {
+  buildRoomRuntimeContextPayload,
+  type RoomHostMessage,
+} from "./room-page/runtime-context.js";
+import {
+  markRoomRuntimeReady,
+  resetPendingRoomHostMessages,
+  sendRoomRuntimeMessage,
+  type RoomWebviewElement,
+} from "./room-page/runtime-messaging.js";
+import {
+  bindRoomRuntimeEvents,
+  type RoomRuntimeState,
+  updateRoomRuntimeStatus,
+} from "./room-page/runtime-events.js";
 
 export class RoomPageController implements PageController {
   private room: InstalledRoomRecord;
@@ -488,79 +318,17 @@ export class RoomPageController implements PageController {
   }
 
   private shouldShowFeatureStrip(): boolean {
-    if (this.usesImmersivePageShell() && this.room.features.length <= 1) {
-      return false;
-    }
-    return true;
+    return shouldShowRoomFeatureStrip(this.usesImmersivePageShell(), this.room.features.length);
   }
 
   private ensureShell(page: HTMLElement): void {
-    if (page.dataset["roomShellReady"] === "true") {
-      return;
-    }
-
-    const showFeatureStrip = this.shouldShowFeatureStrip();
-
-    const classicShellMarkup = this.usesImmersivePageShell()
-      ? `
-        <div class="room-shell room-shell--immersive" data-room-role="classic-shell">
-          <div class="room-shell-topline"${showFeatureStrip ? "" : " hidden"}>
-            <div class="room-feature-strip room-feature-strip--inline" data-room-role="feature-strip"></div>
-          </div>
-          <section class="glass-panel ds-surface-card room-shell-stage room-shell-stage--immersive">
-            <div class="room-runtime-mount room-runtime-mount--stage" data-room-role="runtime-mount"></div>
-          </section>
-        </div>
-      `
-      : `
-        <div class="room-shell" data-room-role="classic-shell">
-          <div class="room-shell-topline"${showFeatureStrip ? "" : " hidden"}>
-            <div class="room-feature-strip room-feature-strip--header" data-room-role="feature-strip"></div>
-          </div>
-
-          <section class="glass-panel ds-surface-card ds-surface-card--stack room-shell-panel room-shell-panel--runtime">
-            <div class="room-runtime-mount" data-room-role="runtime-mount"></div>
-          </section>
-        </div>
-      `;
-
-    page.innerHTML = `
-      <div class="room-page-shell${
-        this.usesImmersivePageShell() ? " room-page-shell--immersive" : ""
-      }" data-room-role="page-shell">
-        <div class="room-scene-root scene-shell__surface" data-room-role="scene-root" hidden>
-          <div class="room-scene-room scene-shell__room-layer" data-room-role="scene-room">
-            <img class="room-scene-room__background scene-shell__cover-image" data-room-role="scene-room-background" alt="" />
-            <div class="room-scene-room__characters entrance-scene__characters" data-room-role="scene-characters"></div>
-            <div class="room-scene-room__back-layer" data-room-role="scene-room-back-host"></div>
-            <div class="room-scene-room__hotspots" data-room-role="scene-hotspots"></div>
-          </div>
-          <div class="room-scene-view scene-shell__view" data-room-role="scene-view" aria-hidden="true">
-            <img class="room-scene-view__background scene-shell__cover-image" data-room-role="scene-view-background" alt="" />
-            <img class="room-scene-view__panel-art scene-shell__cover-image" data-room-role="scene-view-panel-art" alt="" hidden />
-            <div class="room-scene-view__runtime-frame" data-room-role="scene-runtime-slot"></div>
-            <div class="room-scene-view__back-layer" data-room-role="scene-back-host"></div>
-          </div>
-        </div>
-        <div class="entrance-scene__editor-host" data-room-role="scene-editor-host"></div>
-
-        ${classicShellMarkup}
-      </div>
-    `;
-
-    page
-      .querySelector<HTMLElement>("[data-room-role='feature-strip']")
-      ?.addEventListener("click", (event) => {
-        const button = (event.target as Element | null)?.closest<HTMLButtonElement>(
-          "[data-room-feature-id]"
-        );
-        const featureId = button?.dataset["roomFeatureId"] ?? "";
-        if (featureId !== "") {
-          this.setActiveFeature(featureId, "feature-button");
-        }
-      });
-
-    page.dataset["roomShellReady"] = "true";
+    ensureRoomPageShell(page, {
+      immersive: this.usesImmersivePageShell(),
+      showFeatureStrip: this.shouldShowFeatureStrip(),
+      onSelectFeature: (featureId) => {
+        this.setActiveFeature(featureId, "feature-button");
+      },
+    });
   }
 
   private isSceneDebugActive(): boolean {
@@ -893,50 +661,22 @@ export class RoomPageController implements PageController {
   }
 
   private renderFeatureButtons(page: HTMLElement, activeFeatureId: string | null): void {
-    const strip = page.querySelector<HTMLElement>("[data-room-role='feature-strip']");
-    if (strip === null) {
-      return;
-    }
-
-    if (!this.shouldShowFeatureStrip()) {
-      strip.innerHTML = "";
-      strip.hidden = true;
-      return;
-    }
-
-    strip.hidden = false;
-
-    strip.innerHTML = this.room.features
-      .map((feature) => {
-        const selected = feature.id === activeFeatureId;
-        return [
-          `<button class="btn btn-sm ${selected ? "btn-primary" : "btn-ghost"} room-feature-chip"`,
-          ` type="button" data-room-feature-id="${escapeHtml(feature.id)}"`,
-          ` aria-pressed="${selected ? "true" : "false"}">`,
-          `<span class="room-feature-chip__title">${escapeHtml(feature.name)}</span>`,
-          "</button>",
-        ].join("");
-      })
-      .join("");
+    renderRoomFeatureButtons({
+      page,
+      room: this.room,
+      activeFeatureId,
+      showFeatureStrip: this.shouldShowFeatureStrip(),
+      escapeHtml,
+    });
   }
 
   private updateRuntimeStatus(page: HTMLElement): void {
-    const statusEl = page.querySelector<HTMLElement>("[data-room-role='runtime-status']");
-    const eventEl = page.querySelector<HTMLElement>("[data-room-role='runtime-event']");
-    if (statusEl !== null) {
-      statusEl.dataset["state"] = this.runtimeState;
-      statusEl.textContent =
-        this.runtimeState === "error"
-          ? roomPageT("status.loadFailed")
-          : this.runtimeState === "ready"
-            ? roomPageT("status.ready")
-            : this.runtimeState === "loading"
-              ? roomPageT("status.loading")
-              : roomPageT("status.preparing");
-    }
-    if (eventEl !== null) {
-      eventEl.textContent = this.lastRuntimeEvent;
-    }
+    updateRoomRuntimeStatus({
+      page,
+      runtimeState: this.runtimeState,
+      lastRuntimeEvent: this.lastRuntimeEvent,
+      translate: roomPageT,
+    });
   }
 
   private syncScene(page: HTMLElement): void {
@@ -1068,6 +808,7 @@ export class RoomPageController implements PageController {
       node: buildRoomBackNode(this.room, {
         idSuffix: "-room-return",
         viewId: "room",
+        fallbackLabel: roomPageT("page.backToRooms"),
       }),
       themeDefaults: this.sceneClickableTheme.back,
       projection: this.getProjection(room),
@@ -1272,8 +1013,8 @@ export class RoomPageController implements PageController {
 
     const currentSrc = webview.getAttribute("src") ?? "";
     if (currentSrc !== runtimeUrl) {
-      this.markRuntimeReady(webview, false);
-      this.resetPendingHostMessages(webview);
+      markRoomRuntimeReady(webview, false);
+      resetPendingRoomHostMessages(this.pendingHostMessages, webview);
     }
 
     webview.setAttribute("aria-label", roomPageT("page.runtimeSceneAriaLabel"));
@@ -1296,175 +1037,30 @@ export class RoomPageController implements PageController {
   }
 
   private bindRuntimeEvents(webview: RoomWebviewElement): void {
-    if (webview.dataset["roomRuntimeBound"] === "true") {
-      return;
-    }
-
-    webview.dataset["roomRuntimeBound"] = "true";
-
-    webview.addEventListener("did-start-loading", () => {
-      const page = this.getPage();
-      this.markRuntimeReady(webview, false);
-      this.runtimeState = "loading";
-      this.lastRuntimeEvent =
-        webview.getAttribute("src") ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
-      if (page !== null) {
-        this.updateRuntimeStatus(page);
-      }
+    bindRoomRuntimeEvents({
+      webview,
+      roomId: this.room.id,
+      runtimeEntryPath: this.room.runtimeEntryPath,
+      pendingHostMessages: this.pendingHostMessages,
+      getPage: () => this.getPage(),
+      updateRuntimeStatus: (page) => this.updateRuntimeStatus(page),
+      setRuntimeState: (runtimeState, lastRuntimeEvent) => {
+        this.runtimeState = runtimeState;
+        this.lastRuntimeEvent = lastRuntimeEvent;
+      },
+      sendHostContext: (target, reason) => this.sendHostContext(target, reason),
+      translate: roomPageT,
     });
-
-    webview.addEventListener("dom-ready", () => {
-      this.markRuntimeReady(webview, true);
-      this.flushPendingHostMessages(webview);
-    });
-
-    webview.addEventListener("did-stop-loading", () => {
-      const page = this.getPage();
-      this.runtimeState = "ready";
-      this.lastRuntimeEvent =
-        webview.getAttribute("src") ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
-      if (page !== null) {
-        this.updateRuntimeStatus(page);
-      }
-    });
-
-    webview.addEventListener("did-fail-load", (event) => {
-      const page = this.getPage();
-      const loadEvent = event as RoomLoadErrorEvent;
-      if (loadEvent.errorCode === -3) {
-        return;
-      }
-      this.runtimeState = "error";
-      this.lastRuntimeEvent =
-        loadEvent.errorDescription ?? `Runtime load error (${String(loadEvent.errorCode ?? 0)})`;
-      if (page !== null) {
-        this.updateRuntimeStatus(page);
-      }
-    });
-
-    webview.addEventListener("ipc-message", (event) => {
-      const ipcEvent = event as RoomIpcMessageEvent;
-      if (ipcEvent.channel === "room-ready") {
-        const payload = ipcEvent.args?.[0];
-        this.runtimeState = "ready";
-        this.lastRuntimeEvent = this.describePayload(payload, roomPageT("status.runtimeReady"));
-        const page = this.getPage();
-        if (page !== null) {
-          this.updateRuntimeStatus(page);
-        }
-        this.sendHostContext(webview, "room-ready");
-        void RoomHostRuntime.handleRuntimeMessage(this.room.id, "room-ready", payload);
-      }
-
-      if (ipcEvent.channel === "room-command") {
-        const payload = ipcEvent.args?.[0];
-        this.lastRuntimeEvent = this.describeRoomCommand(payload);
-        const page = this.getPage();
-        if (page !== null) {
-          this.updateRuntimeStatus(page);
-        }
-        void RoomHostRuntime.handleRuntimeMessage(this.room.id, "room-command", payload);
-      }
-
-      if (ipcEvent.channel === "room-event") {
-        const payload = ipcEvent.args?.[0];
-        this.lastRuntimeEvent = this.describePayload(payload, roomPageT("status.roomEvent"));
-        const page = this.getPage();
-        if (page !== null) {
-          this.updateRuntimeStatus(page);
-        }
-        void RoomHostRuntime.handleRuntimeMessage(this.room.id, "room-event", payload);
-      }
-    });
-  }
-
-  private buildSlotContext(slotId: "ai1" | "ai2" | "us1"): Record<string, unknown> {
-    if (slotId === "us1") {
-      const identity = AppState.getUs1Identity();
-      const connected = AppState.isUs1Connected();
-
-      return {
-        slotId,
-        label: slotId.toUpperCase(),
-        nickname: AppState.getNickname(slotId),
-        assigned: identity !== null,
-        connected,
-        ready: identity !== null && connected,
-        state: connected ? "connected" : identity !== null ? "assigned" : "empty",
-        urlExcluded: false,
-        providerId: "us1",
-        accountId: AppState.getUs1ArchiveAccountId(),
-        remoteUserId: identity?.remoteUserId ?? null,
-      };
-    }
-
-    const slotState = SlotController.getState(slotId) as SlotStateInfo | null;
-    const account = AppState.getAccountForSlot(slotId);
-    const connected = slotState?.state === "connected";
-    const ready =
-      slotState !== null &&
-      slotState.state === "connected" &&
-      slotState.urlExcluded !== true &&
-      account !== null;
-
-    return {
-      slotId,
-      label: slotId.toUpperCase(),
-      nickname: AppState.getNickname(slotId),
-      assigned: account !== null,
-      connected,
-      ready,
-      state: slotState?.state ?? "empty",
-      urlExcluded: slotState?.urlExcluded === true,
-      providerId: slotState?.providerId ?? null,
-      accountId: account?.id ?? slotState?.accountId ?? null,
-    };
   }
 
   private buildRuntimeContextPayload(reason: string): RoomHostMessage {
-    const activeFeature = this.getActiveFeature();
-    const sceneFeature = this.getSceneFeature();
-
-    return {
-      type: "host-context",
+    return buildRoomRuntimeContextPayload({
+      activeFeature: this.getActiveFeature(),
       reason,
-      locale: AppI18n.getLocale(),
-      translations: AppI18n.getNamespaceCatalog(["rooms", this.room.id]),
-      room: {
-        id: this.room.id,
-        name: this.room.name,
-        version: this.room.version,
-        runtimeEntryPath: this.room.runtimeEntryPath,
-        hostEntryPath: this.room.hostEntryPath,
-        defaultFeatureId: this.room.defaultFeatureId,
-      },
-      user: {
-        nickname: AppState.getNickname("user"),
-      },
-      slots: {
-        ai1: this.buildSlotContext("ai1"),
-        ai2: this.buildSlotContext("ai2"),
-        us1: this.buildSlotContext("us1"),
-      },
-      features: this.room.features.map((feature) => ({
-        id: feature.id,
-        name: feature.name,
-        description: feature.description ?? "",
-      })),
-      activeFeature:
-        activeFeature === null
-          ? null
-          : {
-              id: activeFeature.id,
-              name: activeFeature.name,
-              description: activeFeature.description ?? "",
-            },
-      presentation: {
-        mode: this.isSceneFeatureOpen() ? "scene-view" : "classic",
-        sceneEnabled: this.room.scene !== undefined,
-        sceneViewId: sceneFeature?.scene?.view.id ?? null,
-      },
-    };
+      room: this.room,
+      sceneFeature: this.getSceneFeature(),
+      sceneFeatureOpen: this.isSceneFeatureOpen(),
+    });
   }
 
   private sendHostContext(webview: RoomWebviewElement, reason: string): void {
@@ -1477,107 +1073,14 @@ export class RoomPageController implements PageController {
       this.getPage()?.querySelector<RoomWebviewElement>("webview[data-room-runtime='true']") ??
       null;
     if (webview !== null) {
-      this.sendRuntimeMessage(webview, payload);
+      sendRoomRuntimeMessage(this.pendingHostMessages, webview, payload);
     }
 
     await RoomHostRuntime.handleRuntimeMessage(this.room.id, "room-event", payload);
   }
 
-  private getPendingHostMessages(webview: RoomWebviewElement): RoomHostMessage[] {
-    const existing = this.pendingHostMessages.get(webview);
-    if (existing !== undefined) {
-      return existing;
-    }
-
-    const next: RoomHostMessage[] = [];
-    this.pendingHostMessages.set(webview, next);
-    return next;
-  }
-
-  private resetPendingHostMessages(webview: RoomWebviewElement): void {
-    this.pendingHostMessages.set(webview, []);
-  }
-
-  private markRuntimeReady(webview: RoomWebviewElement, ready: boolean): void {
-    webview.dataset["roomRuntimeReady"] = ready ? "true" : "false";
-  }
-
-  private isRuntimeReady(webview: RoomWebviewElement): boolean {
-    return webview.dataset["roomRuntimeReady"] === "true";
-  }
-
   private sendRuntimeMessage(webview: RoomWebviewElement, payload: RoomHostMessage): void {
-    if (!this.isRuntimeReady(webview)) {
-      this.getPendingHostMessages(webview).push(payload);
-      return;
-    }
-
-    try {
-      webview.send?.("room-host-message", payload);
-    } catch {
-      this.markRuntimeReady(webview, false);
-      this.getPendingHostMessages(webview).push(payload);
-    }
-  }
-
-  private flushPendingHostMessages(webview: RoomWebviewElement): void {
-    if (!this.isRuntimeReady(webview)) {
-      return;
-    }
-
-    const queue = this.getPendingHostMessages(webview);
-    if (queue.length === 0) {
-      return;
-    }
-
-    const pending = queue.splice(0, queue.length);
-    for (const payload of pending) {
-      try {
-        webview.send?.("room-host-message", payload);
-      } catch {
-        this.markRuntimeReady(webview, false);
-        queue.unshift(payload);
-        break;
-      }
-    }
-  }
-
-  private describeRoomCommand(payload: unknown): string {
-    if (payload !== null && typeof payload === "object") {
-      const command = "command" in payload ? payload.command : undefined;
-      if (typeof command === "string" && command.trim() !== "") {
-        return `++cmd:${command.trim()}`;
-      }
-    }
-    return roomPageT("status.commandSent");
-  }
-
-  private describePayload(payload: unknown, fallback: string): string {
-    if (payload === null || payload === undefined) {
-      return fallback;
-    }
-
-    if (typeof payload === "string" && payload.trim() !== "") {
-      return payload.trim();
-    }
-
-    if (typeof payload === "object") {
-      const stage = "stage" in payload ? payload.stage : undefined;
-      const type = "type" in payload ? payload.type : undefined;
-      if (typeof stage === "string" && stage.trim() !== "") {
-        return stage.trim();
-      }
-      if (typeof type === "string" && type.trim() !== "") {
-        return type.trim();
-      }
-      try {
-        return JSON.stringify(payload);
-      } catch {
-        return fallback;
-      }
-    }
-
-    return fallback;
+    sendRoomRuntimeMessage(this.pendingHostMessages, webview, payload);
   }
 
   private async getRoomPreloadUrl(): Promise<string> {

@@ -117,6 +117,11 @@ test("room runtime locale bridge refreshes game-room UI and host copy", () => {
   const roomPageSource = readFileSync("src/js/pages/room-page.ts", "utf8");
   const roomHostRuntimeSource = readFileSync("src/js/modules/rooms/room-host-runtime.ts", "utf8");
   const gameRoomUiSource = readFileSync("rooms/game-room/ui/index.js", "utf8");
+  const gameRoomXoxUiSource = readFileSync("rooms/game-room/main-functions/xox/ui/module.js", "utf8");
+  const gameRoomTeamTetrisUiSource = readFileSync(
+    "rooms/game-room/main-functions/team-tetris/ui/module.js",
+    "utf8"
+  );
   const gameRoomHostSource = readFileSync("rooms/game-room/host/index.js", "utf8");
 
   assert.match(roomPageSource, /syncRuntimeContext\("locale-change"\)/);
@@ -127,13 +132,16 @@ test("room runtime locale bridge refreshes game-room UI and host copy", () => {
   assert.match(roomHostRuntimeSource, /getLocale:\s*\(\): string => AppI18n\.getLocale\(\)/);
   assert.match(gameRoomUiSource, /message\.type === "host-context"/);
   assert.match(gameRoomUiSource, /state\.translations = message\.translations/);
-  assert.match(gameRoomUiSource, /if \(!state\.translations\) \{\s*renderBootstrap\(root\);/);
-  assert.match(gameRoomUiSource, /function renderBootstrap\(root\)/);
   assert.match(gameRoomUiSource, /message\.type === "xox-state"/);
-  assert.match(gameRoomUiSource, /GameRoomXoxStart/);
+  assert.match(gameRoomUiSource, /message\.type === "team-tetris-state"/);
+  assert.match(gameRoomUiSource, /xoxUi\.renderBootstrap\(root\)/);
+  assert.match(gameRoomXoxUiSource, /function renderBootstrap\(root\)/);
+  assert.match(gameRoomXoxUiSource, /GameRoomXoxStart/);
+  assert.match(gameRoomTeamTetrisUiSource, /GameRoomTeamTetrisStart/);
   assert.match(gameRoomHostSource, /onRoomEvent: function onRoomEvent\(payload\)/);
   assert.match(gameRoomHostSource, /payload\.type === "host-context"/);
   assert.match(gameRoomHostSource, /GameRoomXoxAiMove/);
+  assert.match(gameRoomHostSource, /GameRoomTeamTetrisAiMove/);
 });
 
 class FakeElement {
@@ -245,12 +253,18 @@ function createGameRoomUiRuntime(initialLanguage = "en-US"): {
     },
   };
 
-  const source = readFileSync("rooms/game-room/ui/index.js", "utf8");
-  vm.runInNewContext(source, {
+  const context = {
     window: { roomAPI },
     document,
     navigator: { language: initialLanguage },
     console,
+  };
+  [
+    "rooms/game-room/main-functions/xox/ui/module.js",
+    "rooms/game-room/main-functions/team-tetris/ui/module.js",
+    "rooms/game-room/ui/index.js",
+  ].forEach((filePath) => {
+    vm.runInNewContext(readFileSync(filePath, "utf8"), context);
   });
 
   return {
@@ -343,4 +357,108 @@ test("game-room UI smoke test reflects runtime locale updates", () => {
   assert.ok(findAll(root, (element) => element.textContent === "Atlas").length > 0);
   assert.ok(findAll(root, (element) => element.textContent === "Devam Ediyor").length > 0);
   assert.ok(findAll(root, (element) => element.textContent === "AI cevabi bekleniyor.").length > 0);
+});
+
+test("game-room UI smoke test renders the Team Tetris bootstrap from active feature context", () => {
+  const runtime = createGameRoomUiRuntime("en-US");
+  const root = runtime.document.body;
+  const trCatalog = readRoomCatalog("tr");
+
+  runtime.emitHostMessage({
+    type: "host-context",
+    locale: "tr",
+    translations: trCatalog,
+    room: {
+      id: "game-room",
+      name: "Oyun Odasi",
+      defaultFeatureId: "xox",
+    },
+    features: [
+      {
+        id: "xox",
+        name: "XOX",
+      },
+      {
+        id: "team-tetris",
+        name: "Takim Tetris",
+      },
+    ],
+    activeFeature: {
+      id: "team-tetris",
+      name: "Takim Tetris",
+    },
+    user: {
+      nickname: "Kullanici",
+    },
+    slots: {
+      ai1: {
+        slotId: "ai1",
+        nickname: "Atlas",
+        assigned: true,
+        connected: true,
+        ready: true,
+        state: "connected",
+      },
+      ai2: {
+        slotId: "ai2",
+        nickname: "Nova",
+        assigned: true,
+        connected: true,
+        ready: true,
+        state: "connected",
+      },
+      us1: {
+        slotId: "us1",
+        nickname: "Uzak",
+        assigned: true,
+        connected: false,
+        ready: false,
+        state: "assigned",
+      },
+    },
+  });
+  runtime.emitHostMessage({
+    type: "team-tetris-state",
+    payload: {
+      state: {
+        hiddenPairs: true,
+        canStart: false,
+        requiredSlots: {
+          ai1: true,
+          ai2: true,
+          us1: false,
+        },
+        board: {
+          width: 10,
+          height: 20,
+          seedLabel: "contract-frozen",
+        },
+        boards: [
+          {
+            teamId: "team-a",
+            label: "Takim A",
+            visibility: "private",
+            rows: Array.from({ length: 20 }, () => ".........."),
+          },
+          {
+            teamId: "team-b",
+            label: "Takim B",
+            visibility: "public",
+            rows: Array.from({ length: 20 }, () => ".........."),
+          },
+        ],
+        turnLoop: ["team-a-opener", "team-b-opener", "team-a-followup", "team-b-followup"],
+        status: "Takim Tetris baslamadan once AI1, AI2 ve US1 bekleniyor.",
+      },
+    },
+  });
+
+  assert.equal(runtime.document.title, "Oyun Odasi - Takim Tetris");
+  assert.ok(findAll(root, (element) => element.textContent === "Takim Tetris Masasi").length > 0);
+  assert.ok(findAll(root, (element) => element.textContent === "Atlas").length > 0);
+  assert.ok(
+    findAll(root, (element) => element.textContent === "Takim Tetris baslamadan once AI1, AI2 ve US1 bekleniyor.")
+      .length > 0
+  );
+  assert.equal(findAll(root, (element) => element.className === "tt-board__cell").length, 600);
 });

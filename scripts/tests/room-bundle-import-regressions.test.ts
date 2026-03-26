@@ -198,6 +198,39 @@ test("RoomPackageManager imports a .hevroom bundle into workspace and installed 
   }
 });
 
+test("RoomPackageManager packages workspace rooms into room-storage exports by default", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "room-bundle-package-"));
+  const workspaceRoot = join(tempRoot, "rooms");
+  const installedRoot = join(tempRoot, "data", "rooms");
+  const registryPath = join(tempRoot, "config", "rooms.json");
+
+  try {
+    await writeRoomFixture(workspaceRoot, "package-room", "Package Room");
+
+    const manager = new RoomPackageManager({
+      workspaceRoot,
+      installedRoot,
+      registryPath,
+    });
+
+    const result = await manager.packageWorkspaceRoom("package-room");
+    const expectedOutput = join(
+      tempRoot,
+      "data",
+      "room-storage",
+      "package-room",
+      "exports",
+      "package-room.hevroom.json"
+    );
+
+    assert.equal(result.success, true, result.error);
+    assert.equal(result.path, expectedOutput);
+    assert.equal(existsSync(expectedOutput), true);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("RoomPackageManager rejects bundles with missing scene assets", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-bundle-invalid-"));
   const workspaceRoot = join(tempRoot, "rooms");
@@ -441,6 +474,120 @@ test("RoomPackageManager exportInstalledRoomToWorkspace skips runtime tool paylo
       false
     );
     assert.equal(existsSync(join(workspaceRoot, "game-room", ".room-install-files.json")), false);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("RoomPackageManager install and export keep Team Tetris assets and protocols intact", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "room-team-tetris-export-"));
+  const workspaceRoot = join(tempRoot, "rooms");
+  const dataRoot = join(tempRoot, "data");
+  const installedRoot = join(dataRoot, "rooms");
+  const registryPath = join(tempRoot, "config", "rooms.json");
+  const roomDir = join(workspaceRoot, "game-room");
+
+  try {
+    await mkdir(join(roomDir, "ui"), { recursive: true });
+    await mkdir(join(roomDir, "host"), { recursive: true });
+    await mkdir(join(roomDir, "assets"), { recursive: true });
+    await mkdir(join(roomDir, "protocols"), { recursive: true });
+
+    await writeFile(
+      join(roomDir, "manifest.json"),
+      JSON.stringify(
+        {
+          schemaVersion: ROOM_SCHEMA_VERSION,
+          id: "game-room",
+          name: "Game Room",
+          version: "1.0.0",
+          menu: { label: "Game Room" },
+          runtime: {
+            uiEntry: "ui/index.html",
+            hostEntry: "host/index.js",
+          },
+          defaultFeatureId: "xox",
+          features: [
+            {
+              id: "xox",
+              name: "XOX",
+            },
+            {
+              id: "team-tetris",
+              name: "Team Tetris",
+              protocolSpecs: [
+                {
+                  key: "game-room-team-tetris-ai-opening",
+                  room: "game-room",
+                  scenario: "team-tetris-ai-opening",
+                  title: "[TURN][GAME-ROOM][TEAM-TETRIS][AI][OPENING]",
+                },
+                {
+                  key: "game-room-team-tetris-ai-followup",
+                  room: "game-room",
+                  scenario: "team-tetris-ai-followup",
+                  title: "[TURN][GAME-ROOM][TEAM-TETRIS][AI][FOLLOWUP]",
+                },
+                {
+                  key: "game-room-team-tetris-us1-transport",
+                  room: "game-room",
+                  scenario: "team-tetris-us1-transport",
+                  title: "[INFO][GAME-ROOM][TEAM-TETRIS][US1-TRANSPORT]",
+                },
+              ],
+              scene: {
+                hotspot: {
+                  id: "game-room-team-tetris",
+                  rect: { leftPx: 100, topPx: 120, widthPx: 180, heightPx: 120 },
+                },
+                view: {
+                  id: "team-tetris-closeup",
+                  backgroundSrc: "assets/team-tetris-view.webp",
+                },
+              },
+            },
+          ],
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+    await writeFile(join(roomDir, "ui", "index.html"), "<html></html>", "utf8");
+    await writeFile(join(roomDir, "host", "index.js"), "module.exports = { activate() { return {}; } };\n", "utf8");
+    await writeFile(join(roomDir, "assets", "team-tetris-view.webp"), "placeholder", "utf8");
+    await writeFile(join(roomDir, "protocols", "game-room-team-tetris-ai-opening.md"), "# opening\n", "utf8");
+    await writeFile(join(roomDir, "protocols", "game-room-team-tetris-ai-followup.md"), "# followup\n", "utf8");
+    await writeFile(join(roomDir, "protocols", "game-room-team-tetris-us1-transport.md"), "# transport\n", "utf8");
+
+    const manager = new RoomPackageManager({
+      workspaceRoot,
+      installedRoot,
+      registryPath,
+    });
+
+    const installResult = await manager.installFromWorkspace("game-room");
+    assert.equal(installResult.success, true, installResult.error);
+    assert.equal(existsSync(join(installedRoot, "game-room", "assets", "team-tetris-view.webp")), true);
+    assert.equal(
+      existsSync(join(installedRoot, "game-room", "protocols", "game-room-team-tetris-ai-opening.md")),
+      true
+    );
+
+    await rm(join(roomDir, "assets", "team-tetris-view.webp"), { force: true });
+    await rm(join(roomDir, "protocols", "game-room-team-tetris-ai-opening.md"), { force: true });
+    await rm(join(roomDir, "protocols", "game-room-team-tetris-ai-followup.md"), { force: true });
+    await rm(join(roomDir, "protocols", "game-room-team-tetris-us1-transport.md"), { force: true });
+
+    const exportResult = await manager.exportInstalledRoomToWorkspace("game-room", {
+      overwrite: true,
+    });
+
+    assert.equal(exportResult.success, true, exportResult.error);
+    assert.equal(existsSync(join(roomDir, "assets", "team-tetris-view.webp")), true);
+    assert.equal(existsSync(join(roomDir, "protocols", "game-room-team-tetris-ai-opening.md")), true);
+    assert.equal(existsSync(join(roomDir, "protocols", "game-room-team-tetris-ai-followup.md")), true);
+    assert.equal(existsSync(join(roomDir, "protocols", "game-room-team-tetris-us1-transport.md")), true);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

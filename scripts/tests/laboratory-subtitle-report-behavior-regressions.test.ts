@@ -4,13 +4,15 @@ import { readFileSync } from "node:fs";
 
 test("subtitle host composes richer report summary cards and markdown exports", () => {
   const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const reportingSource = readFileSync("rooms/laboratory/shared/host/reporting.js", "utf8");
 
   assert.match(hostSource, /function composeSubtitleAnalysisReport\(runtime, project\)/);
-  assert.match(hostSource, /subtitleAnalysis\.report\.summaryCards\.target/);
-  assert.match(hostSource, /subtitleAnalysis\.report\.summaryCards\.cues/);
-  assert.match(hostSource, /subtitleAnalysis\.report\.summaryCards\.topTerm/);
-  assert.match(hostSource, /## Warnings/);
-  assert.match(hostSource, /## Exports/);
+  assert.match(hostSource, /shared\/host\/reporting\.js/);
+  assert.match(reportingSource, /subtitleAnalysis\.report\.summaryCards\.target/);
+  assert.match(reportingSource, /subtitleAnalysis\.report\.summaryCards\.cues/);
+  assert.match(reportingSource, /subtitleAnalysis\.report\.summaryCards\.topTerm/);
+  assert.match(reportingSource, /## Warnings/);
+  assert.match(reportingSource, /## Exports/);
 });
 
 test("subtitle UI renders report module rollup and export history panels", () => {

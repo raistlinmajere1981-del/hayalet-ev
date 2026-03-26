@@ -10,12 +10,19 @@ const requiredFiles = [
   "rooms/game-room/ui/index.html",
   "rooms/game-room/ui/index.js",
   "rooms/game-room/ui/style.css",
+  "rooms/game-room/shared/host/feature-meta.js",
+  "rooms/game-room/shared/host/text.js",
+  "rooms/game-room/shared/host/context-state.js",
+  "rooms/game-room/shared/styles/base.css",
   "rooms/game-room/i18n/en.json",
   "rooms/game-room/i18n/tr.json",
-  "rooms/game-room/protocols/game-room-xox-user-start.md",
-  "rooms/game-room/protocols/game-room-xox-ai-start.md",
-  "rooms/game-room/assets/room-background.webp",
-  "rooms/game-room/assets/xox-view.webp",
+  "rooms/game-room/main-functions/xox/protocols/game-room-xox-user-start.md",
+  "rooms/game-room/main-functions/xox/protocols/game-room-xox-ai-start.md",
+  "rooms/game-room/main-functions/xox/host/state.js",
+  "rooms/game-room/main-functions/xox/ui/module.js",
+  "rooms/game-room/main-functions/xox/styles.css",
+  "rooms/game-room/shared/assets/room-background.webp",
+  "rooms/game-room/main-functions/xox/assets/xox-view.webp",
 ];
 
 test("game-room workspace keeps the required XOX package files", () => {
@@ -31,7 +38,10 @@ test("game-room manifest validates with the XOX-first room contract", () => {
   assert.equal(validation.valid, true);
   assert.equal(validation.manifest?.id, "game-room");
   assert.equal(validation.manifest?.defaultFeatureId, "xox");
-  assert.equal(validation.manifest?.features[0]?.id, "xox");
+  assert.deepEqual(
+    validation.manifest?.features.map((feature) => feature.id),
+    ["xox", "team-tetris"]
+  );
   assert.equal(validation.manifest?.runtime.uiEntry, "ui/index.html");
   assert.equal(validation.manifest?.runtime.hostEntry, "host/index.js");
   assert.equal(validation.manifest?.scene?.characterRosterPreset, "connected-plus-user");
@@ -40,7 +50,7 @@ test("game-room manifest validates with the XOX-first room contract", () => {
 });
 
 test("game-room XOX UI forwards remote identity with invite actions", () => {
-  const uiSource = readFileSync("rooms/game-room/ui/index.js", "utf8");
+  const uiSource = readFileSync("rooms/game-room/main-functions/xox/ui/module.js", "utf8");
 
   assert.match(
     uiSource,

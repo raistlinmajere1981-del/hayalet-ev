@@ -51,7 +51,52 @@ function collectRequiredPaths(manifest) {
     }
   }
 
+  for (const protocol of [...(manifest.protocolSpecs ?? []), ...manifest.features.flatMap((feature) => feature.protocolSpecs ?? [])]) {
+    if (typeof protocol.path === "string" && protocol.path.trim() !== "") {
+      paths.add(protocol.path);
+      continue;
+    }
+
+    if (/^[A-Za-z0-9._-]+$/.test(protocol.key)) {
+      paths.add(`protocols/${protocol.key}.md`);
+    }
+  }
+
   return [...paths].sort((left, right) => left.localeCompare(right));
+}
+
+function validateProtocolSpecs(rawValue, path, errors) {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(rawValue)) {
+    errors.push(`${path} must be an array`);
+    return undefined;
+  }
+
+  const parsed = [];
+  for (let index = 0; index < rawValue.length; index += 1) {
+    const item = rawValue[index];
+    if (!isRecord(item)) {
+      errors.push(`${path}[${index}] must be an object`);
+      continue;
+    }
+
+    const protocolPathRaw = item.path;
+    const protocolPath =
+      protocolPathRaw === undefined ? undefined : normalizeRelativePath(protocolPathRaw);
+    if (protocolPathRaw !== undefined && protocolPath === null) {
+      errors.push(`${path}[${index}].path must be a safe relative path`);
+    }
+
+    parsed.push({
+      ...item,
+      ...(protocolPath !== undefined ? { path: protocolPath } : {}),
+    });
+  }
+
+  return parsed;
 }
 
 function validateFeature(feature, index, errors) {
@@ -68,6 +113,11 @@ function validateFeature(feature, index, errors) {
   }
 
   const next = { ...feature, id: feature.id?.trim?.() ?? "", name: feature.name?.trim?.() ?? "" };
+  const protocolSpecs = validateProtocolSpecs(
+    feature.protocolSpecs,
+    `features[${index}].protocolSpecs`,
+    errors
+  );
   if (isRecord(feature.scene)) {
     const backgroundSrc = normalizeRelativePath(feature.scene?.view?.backgroundSrc);
     if (backgroundSrc === null) {
@@ -87,6 +137,10 @@ function validateFeature(feature, index, errors) {
         ...(panelArtSrc !== undefined ? { panelArtSrc } : {}),
       },
     };
+  }
+
+  if (protocolSpecs !== undefined) {
+    next.protocolSpecs = protocolSpecs;
   }
 
   return next;
@@ -138,6 +192,7 @@ function validateManifest(candidate) {
   const features = Array.isArray(candidate.features)
     ? candidate.features.map((feature, index) => validateFeature(feature, index, errors)).filter(Boolean)
     : [];
+  const protocolSpecs = validateProtocolSpecs(candidate.protocolSpecs, "protocolSpecs", errors);
   if (
     typeof candidate.defaultFeatureId === "string" &&
     features.some((feature) => feature.id === candidate.defaultFeatureId.trim()) === false
@@ -170,14 +225,15 @@ function validateManifest(candidate) {
             id: candidate.id.trim(),
             name: candidate.name.trim(),
             version: candidate.version.trim(),
-            defaultFeatureId: candidate.defaultFeatureId.trim(),
-            runtime: {
-              uiEntry,
-              hostEntry,
-            },
-            features,
-            ...(scene !== undefined ? { scene } : {}),
-          }
+        defaultFeatureId: candidate.defaultFeatureId.trim(),
+        runtime: {
+          uiEntry,
+          hostEntry,
+        },
+        features,
+        ...(protocolSpecs !== undefined ? { protocolSpecs } : {}),
+        ...(scene !== undefined ? { scene } : {}),
+      }
         : null,
   };
 }
@@ -255,7 +311,8 @@ export async function buildRoomBundle(roomId, options = {}) {
   };
 
   const outputFile = resolve(
-    options.outputFile ?? join(roomDir, "dist", `${validation.manifest.id}.hevroom.json`)
+    options.outputFile ??
+      join(projectRoot, "data", "room-storage", validation.manifest.id, "exports", `${validation.manifest.id}.hevroom.json`)
   );
   await mkdir(dirname(outputFile), { recursive: true });
   await writeFile(outputFile, JSON.stringify(bundle, null, 2), "utf8");

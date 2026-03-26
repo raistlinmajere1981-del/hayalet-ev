@@ -23,6 +23,7 @@ module.exports = {
           "electron/types/(server|error-patterns)\.ts$", // re-exported via index.ts
           "src/js/modules/webview/providers/shared/scraper-helpers\.ts$", // intentionally not imported (reference copy pattern)
           "src/types/us1-mail\.ts$", // type-only shared contract (depcruise treats as orphan)
+          "src/types/room-tools\.ts$", // shared room-tool IPC contract imported across preload/electron type edges
           "src/js/pages/entrance/scene/scene-character-role\.ts$", // type-only scene contract imported via `import type`
           "src/js/ui/theme/theme-contract\.ts$", // type-only theme contract imported via `import type`
           "src/js/scene-system/theme-source-contract\.ts$", // scene theme source contract consumed as type-only API

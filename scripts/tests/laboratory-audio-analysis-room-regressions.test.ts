@@ -5,16 +5,26 @@ import { existsSync, readFileSync } from "node:fs";
 import { validateRoomManifest } from "../../src/types/rooms.ts";
 
 const requiredAudioFiles = [
-  "rooms/laboratory/tools/audio-analysis-catalog.json",
-  "rooms/laboratory/tools/audio-analysis-capabilities.json",
-  "rooms/laboratory/tools/audio-analysis-presets.json",
-  "rooms/laboratory/tools/audio-analysis-providers.json",
-  "rooms/laboratory/tools/opensmile/prosodyAcf.conf",
-  "rooms/laboratory/tools/shared/standard_wave_input.conf.inc",
-  "rooms/laboratory/tools/shared/standard_data_output_lldonly.conf.inc",
-  "rooms/laboratory/tools/yamnet/yamnet_infer.py",
-  "rooms/laboratory/tools/music/librosa_music_analysis.py",
-  "rooms/laboratory/tools/diarization/pyaudioanalysis_diarize.py",
+  "rooms/laboratory/main-functions/audio-analysis/host/module-projection.js",
+  "rooms/laboratory/main-functions/audio-analysis/host/process-runners.js",
+  "rooms/laboratory/main-functions/audio-analysis/host/state.js",
+  "rooms/laboratory/shared/host/project-lifecycle.js",
+  "rooms/laboratory/shared/host/process-report-state.js",
+  "rooms/laboratory/shared/host/runtime-bootstrap.js",
+  "rooms/laboratory/shared/host/process-runtime.js",
+  "rooms/laboratory/shared/host/room-snapshot.js",
+  "rooms/laboratory/shared/host/reporting.js",
+  "rooms/laboratory/main-functions/audio-analysis/ui/module.js",
+  "rooms/laboratory/shared/data/tools/audio-analysis-catalog.json",
+  "rooms/laboratory/shared/data/tools/audio-analysis-capabilities.json",
+  "rooms/laboratory/shared/data/tools/audio-analysis-presets.json",
+  "rooms/laboratory/shared/data/tools/audio-analysis-providers.json",
+  "rooms/laboratory/shared/data/tools/opensmile/prosodyAcf.conf",
+  "rooms/laboratory/shared/data/tools/shared/standard_wave_input.conf.inc",
+  "rooms/laboratory/shared/data/tools/shared/standard_data_output_lldonly.conf.inc",
+  "rooms/laboratory/shared/data/tools/yamnet/yamnet_infer.py",
+  "rooms/laboratory/shared/data/tools/music/librosa_music_analysis.py",
+  "rooms/laboratory/shared/data/tools/diarization/pyaudioanalysis_diarize.py",
 ];
 
 test("laboratory workspace keeps the required audio-analysis package files", () => {
@@ -34,32 +44,59 @@ test("laboratory manifest exposes the audio-analysis feature beside media-analys
   assert.equal(audioFeature?.name, "Audio Analysis");
   assert.equal(audioFeature?.scene?.hotspot.id, "laboratory-audio-analysis");
   assert.equal(audioFeature?.scene?.view.id, "audio-analysis-console");
-  assert.equal(audioFeature?.scene?.view.backgroundSrc, "assets/media-analysis-view.webp");
+  assert.equal(
+    audioFeature?.scene?.view.backgroundSrc,
+    "main-functions/audio-analysis/assets/sound-analysis.webp"
+  );
   assert.equal(subtitleFeature?.name, "Subtitle Analysis");
 });
 
 test("laboratory host keeps audio-analysis snapshots on the shared room-tool contract", () => {
   const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.js", "utf8");
+  const audioProjectionSource = readFileSync(
+    "rooms/laboratory/main-functions/audio-analysis/host/module-projection.js",
+    "utf8"
+  );
+  const lifecycleSource = readFileSync("rooms/laboratory/shared/host/project-lifecycle.js", "utf8");
+  const runtimeBootstrapSource = readFileSync(
+    "rooms/laboratory/shared/host/runtime-bootstrap.js",
+    "utf8"
+  );
+  const roomSnapshotSource = readFileSync("rooms/laboratory/shared/host/room-snapshot.js", "utf8");
 
   assert.match(hostSource, /const AUDIO_FEATURE_ID = "audio-analysis";/);
-  assert.match(hostSource, /const activeFeature = toRecord\(source\.activeFeature\);/);
-  assert.match(hostSource, /typeof source\.feature === "string"/);
-  assert.match(hostSource, /packageToolsDir: null,/);
-  assert.match(hostSource, /audio-analysis-catalog\.json/);
-  assert.match(hostSource, /audio-analysis-capabilities\.json/);
-  assert.match(hostSource, /audio-analysis-presets\.json/);
-  assert.match(hostSource, /audio-analysis-providers\.json/);
-  assert.match(hostSource, /runtime\.packageToolsDir = baseDir;/);
-  assert.match(hostSource, /audioAnalysisCatalog: clone\(runtime\.audioAnalysisCatalog \|\| \{\}\)/);
-  assert.match(hostSource, /audioAnalysisCapabilities: clone\(runtime\.audioAnalysisCapabilities \|\| \{\}\)/);
-  assert.match(hostSource, /audioAnalysisPresets: clone\(runtime\.audioAnalysisPresets \|\| \{\}\)/);
-  assert.match(hostSource, /audioAnalysisProviders: clone\(runtime\.audioAnalysisProviders \|\| \{\}\)/);
+  assert.match(hostSource, /shared\/host\/project-lifecycle\.js/);
+  assert.match(hostSource, /shared\/host\/process-report-state\.js/);
+  assert.match(hostSource, /shared\/host\/runtime-bootstrap\.js/);
+  assert.match(runtimeBootstrapSource, /const activeFeature = toRecord\(source\.activeFeature\);/);
+  assert.match(runtimeBootstrapSource, /typeof source\.feature === "string"/);
+  assert.match(runtimeBootstrapSource, /packageToolsDir: null,/);
+  assert.match(lifecycleSource, /audio-analysis-catalog\.json/);
+  assert.match(lifecycleSource, /audio-analysis-capabilities\.json/);
+  assert.match(lifecycleSource, /audio-analysis-presets\.json/);
+  assert.match(lifecycleSource, /audio-analysis-providers\.json/);
+  assert.match(lifecycleSource, /runtime\.packageToolsDir = baseDir;/);
+  assert.match(hostSource, /shared\/host\/room-snapshot\.js/);
+  assert.match(hostSource, /main-functions\/audio-analysis\/host\/module-projection\.js/);
+  assert.match(hostSource, /main-functions\/audio-analysis\/host\/state\.js/);
+  assert.match(hostSource, /const audioAnalysisProjectionRuntime = createAudioAnalysisProjectionRuntime\(/);
+  assert.match(roomSnapshotSource, /audioAnalysisCatalog: clone\(runtime\.audioAnalysisCatalog \|\| \{\}\)/);
+  assert.match(roomSnapshotSource, /audioAnalysisCapabilities: clone\(runtime\.audioAnalysisCapabilities \|\| \{\}\)/);
+  assert.match(roomSnapshotSource, /audioAnalysisPresets: clone\(runtime\.audioAnalysisPresets \|\| \{\}\)/);
+  assert.match(roomSnapshotSource, /audioAnalysisProviders: clone\(runtime\.audioAnalysisProviders \|\| \{\}\)/);
+  assert.match(audioProjectionSource, /function buildAudioAnalysisCatalogProjection\(runtime\)/);
   assert.match(hostSource, /function getPreferredFeatureSourceKind\(featureId, sourcePresets\)/);
-  assert.match(hostSource, /await createProject\(runtime, featureId\);/);
+  assert.match(hostSource, /shared\/host\/action-router\.js/);
+  assert.match(actionRouterSource, /case "project-create":/);
 });
 
 test("laboratory UI keeps audio-analysis on the shared settings overlay with feature-aware defaults", () => {
   const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const audioModuleSource = readFileSync(
+    "rooms/laboratory/main-functions/audio-analysis/ui/module.js",
+    "utf8"
+  );
 
   assert.match(uiSource, /const AUDIO_FEATURE_ID = "audio-analysis";/);
   assert.match(uiSource, /featureId: FEATURE_ID,/);
@@ -70,19 +107,23 @@ test("laboratory UI keeps audio-analysis on the shared settings overlay with fea
   assert.match(uiSource, /function getAudioAnalysisPresets\(\)/);
   assert.match(uiSource, /function getAudioAnalysisProviders\(\)/);
   assert.match(uiSource, /function getAudioAnalysisProviderEntries\(\)/);
-  assert.match(uiSource, /featureText\(\["settings", "title"\]\)/);
+  assert.match(audioModuleSource, /featureText\(\["settings", "title"\]\)/);
   assert.match(uiSource, /renderAudioAnalysisCatalogPanel/);
   assert.match(uiSource, /renderAudioAnalysisProviderPanel/);
   assert.match(uiSource, /renderAudioAnalysisNoticePanel/);
   assert.match(uiSource, /return filteredFormats\.length > 0 \? filteredFormats : \["audio", "video"\];/);
   assert.match(uiSource, /featureId: getActiveFeatureId\(\),/);
+  assert.match(
+    uiSource,
+    /\[AUDIO_FEATURE_ID\]: "\.\.\/main-functions\/audio-analysis\/assets\/sound-analysis\.webp"/
+  );
 });
 
 test("laboratory audio-analysis locks a persistent v2-ready contract and planning docs", () => {
-  const schema = JSON.parse(readFileSync("rooms/laboratory/tools/project-schema.json", "utf8"));
-  const catalog = JSON.parse(readFileSync("rooms/laboratory/tools/audio-analysis-catalog.json", "utf8"));
-  const providers = JSON.parse(readFileSync("rooms/laboratory/tools/audio-analysis-providers.json", "utf8"));
-  const toolchain = JSON.parse(readFileSync("rooms/laboratory/tools/toolchain.manifest.json", "utf8"));
+  const schema = JSON.parse(readFileSync("rooms/laboratory/shared/data/tools/project-schema.json", "utf8"));
+  const catalog = JSON.parse(readFileSync("rooms/laboratory/shared/data/tools/audio-analysis-catalog.json", "utf8"));
+  const providers = JSON.parse(readFileSync("rooms/laboratory/shared/data/tools/audio-analysis-providers.json", "utf8"));
+  const toolchain = JSON.parse(readFileSync("rooms/laboratory/shared/data/tools/toolchain.manifest.json", "utf8"));
   const providerMatrix = readFileSync(".rovo/laboratory-audio-analysis-provider-matrix.md", "utf8");
   const smokeMatrix = readFileSync(".rovo/laboratory-audio-analysis-smoke-matrix.md", "utf8");
   const enLocale = readFileSync("rooms/laboratory/i18n/en.json", "utf8");
@@ -211,59 +252,90 @@ test("laboratory audio-analysis locks a persistent v2-ready contract and plannin
 
 test("laboratory host and UI consume the normalized audioAnalysis result envelope for report rendering", () => {
   const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
-  const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
-  const diarizationHelperSource = readFileSync(
-    "rooms/laboratory/tools/diarization/pyaudioanalysis_diarize.py",
+  const reportingSource = readFileSync("rooms/laboratory/shared/host/reporting.js", "utf8");
+  const roomSnapshotSource = readFileSync("rooms/laboratory/shared/host/room-snapshot.js", "utf8");
+  const audioProjectionSource = readFileSync(
+    "rooms/laboratory/main-functions/audio-analysis/host/module-projection.js",
     "utf8"
   );
-  const musicHelperSource = readFileSync("rooms/laboratory/tools/music/librosa_music_analysis.py", "utf8");
+  const audioHostModuleSource = readFileSync(
+    "rooms/laboratory/main-functions/audio-analysis/host/process-runners.js",
+    "utf8"
+  );
+  const audioUtilitySource = readFileSync(
+    "rooms/laboratory/main-functions/audio-analysis/host/analysis-utils.js",
+    "utf8"
+  );
+  const projectPathsSource = readFileSync("rooms/laboratory/shared/host/project-paths.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.js", "utf8");
+  const settingsOverlaySource = readFileSync("rooms/laboratory/shared/ui/settings-overlay.js", "utf8");
+  const audioModuleSource = readFileSync(
+    "rooms/laboratory/main-functions/audio-analysis/ui/module.js",
+    "utf8"
+  );
+  const diarizationHelperSource = readFileSync(
+    "rooms/laboratory/shared/data/tools/diarization/pyaudioanalysis_diarize.py",
+    "utf8"
+  );
+  const musicHelperSource = readFileSync("rooms/laboratory/shared/data/tools/music/librosa_music_analysis.py", "utf8");
 
+  assert.match(hostSource, /shared\/host\/reporting\.js/);
+  assert.match(hostSource, /const laboratoryReportingRuntime = createLaboratoryReportingRuntime\(/);
   assert.match(hostSource, /function buildAudioAnalysisReportProjection\(runtime, project\)/);
   assert.match(hostSource, /function composeAudioAnalysisReport\(runtime, project\)/);
-  assert.match(hostSource, /const orderedResults = orderedIds\.concat\(extraIds\)\.map/);
-  assert.match(hostSource, /composeFeatureReport\(runtime, project, featureId\)/);
-  assert.match(hostSource, /buildReportMarkdown\(runtime, project, featureId, reportRecord\)/);
+  assert.match(reportingSource, /const orderedResults = orderedIds\.concat\(extraIds\)\.map/);
+  assert.match(reportingSource, /function composeFeatureReport\(runtime, project, featureId\)/);
+  assert.match(reportingSource, /function buildReportMarkdown\(runtime, project, featureId, reportRecord\)/);
   assert.match(hostSource, /function buildAudioAnalysisModules\(runtime, project, target\)/);
-  assert.match(hostSource, /const providerState = buildAudioAnalysisProviderState\(runtime, project\);/);
-  assert.match(hostSource, /const capabilityState = buildAudioAnalysisCapabilityState\(runtime, project, target, providerState\);/);
-  assert.match(hostSource, /const missingToolIds = requiredToolIds\.filter/);
+  assert.match(audioProjectionSource, /function resolveAudioFeatureTarget\(project\)/);
+  assert.match(audioProjectionSource, /const providerState = buildAudioAnalysisProviderState\(runtime, project\);/);
+  assert.match(audioProjectionSource, /const capabilityState = buildAudioAnalysisCapabilityState\(runtime, project, target, providerState\);/);
+  assert.match(audioProjectionSource, /const missingToolIds = requiredToolIds\.filter/);
   assert.match(hostSource, /function ensureRuntimeDirectory\(dirPath, requestId\)/);
+  assert.match(audioProjectionSource, /function buildAudioAnalysisCapabilityState\(runtime, project, target, providerState\)/);
+  assert.match(hostSource, /main-functions\/audio-analysis\/host\/process-runners\.js/);
+  assert.match(hostSource, /main-functions\/audio-analysis\/host\/analysis-utils\.js/);
+  assert.match(hostSource, /main-functions\/audio-analysis\/host\/module-projection\.js/);
   assert.match(hostSource, /function getAudioAnalysisModuleProcessDir\(runtime, project, moduleId\)/);
   assert.match(hostSource, /function getAudioAnalysisModuleRunner\(moduleId\)/);
+  assert.match(hostSource, /const audioAnalysisProjectionRuntime = createAudioAnalysisProjectionRuntime\(/);
+  assert.match(hostSource, /const audioAnalysisProcessRuntime = createAudioAnalysisProcessRuntime\(/);
   assert.match(hostSource, /function getAudioAnalysisRequiredToolIds\(catalogEntry\)/);
-  assert.match(hostSource, /function getAudioAnalysisDiarizationDir\(runtime\)/);
-  assert.match(hostSource, /function getAudioAnalysisDiarizationScriptPath\(runtime\)/);
-  assert.match(hostSource, /function getAudioAnalysisMusicDir\(runtime\)/);
-  assert.match(hostSource, /function getAudioAnalysisMusicScriptPath\(runtime\)/);
-  assert.match(hostSource, /function buildProsodySummaryFromCsv\(rawText\)/);
-  assert.match(hostSource, /function buildEmotionHeuristicFromProsody\(prosodySummary\)/);
-  assert.match(hostSource, /async function runSpeakerDiarizationAudioAnalyzer\(/);
-  assert.match(hostSource, /async function runProsodyAudioAnalyzer\(/);
-  assert.match(hostSource, /async function runEmotionHeuristicAudioAnalyzer\(/);
-  assert.match(hostSource, /async function runSoundEventsAudioAnalyzer\(/);
-  assert.match(hostSource, /async function runSourceSeparationAudioAnalyzer\(/);
-  assert.match(hostSource, /async function runMusicRhythmAudioAnalyzer\(/);
-  assert.match(hostSource, /toolId: "opensmile"/);
-  assert.match(hostSource, /toolId: "yamnet"/);
-  assert.match(hostSource, /toolId: "pyaudioanalysis"/);
-  assert.match(hostSource, /toolId: "demucs"/);
-  assert.match(hostSource, /toolId: "librosa"/);
-  assert.match(hostSource, /const fallbackApplied = summaryPayload\.fallbackApplied === true;/);
-  assert.match(hostSource, /pyAudioAnalysis HMM smoothing failed for this clip/);
-  assert.match(hostSource, /"speaker-diarization": runSpeakerDiarizationAudioAnalyzer/);
-  assert.match(hostSource, /prosody: runProsodyAudioAnalyzer/);
-  assert.match(hostSource, /emotion: runEmotionHeuristicAudioAnalyzer/);
-  assert.match(hostSource, /"sound-events": runSoundEventsAudioAnalyzer/);
-  assert.match(hostSource, /"source-separation": runSourceSeparationAudioAnalyzer/);
-  assert.match(hostSource, /"music-rhythm-tonal": runMusicRhythmAudioAnalyzer/);
+  assert.match(hostSource, /shared\/host\/project-paths\.js/);
+  assert.match(projectPathsSource, /function getAudioAnalysisDiarizationDir\(runtime\)/);
+  assert.match(projectPathsSource, /function getAudioAnalysisDiarizationScriptPath\(runtime\)/);
+  assert.match(projectPathsSource, /function getAudioAnalysisMusicDir\(runtime\)/);
+  assert.match(projectPathsSource, /function getAudioAnalysisMusicScriptPath\(runtime\)/);
+  assert.match(audioUtilitySource, /function buildProsodySummaryFromCsv\(rawText\)/);
+  assert.match(audioUtilitySource, /function buildEmotionHeuristicFromProsody\(prosodySummary\)/);
+  assert.match(audioHostModuleSource, /async function runSpeakerDiarizationAudioAnalyzer\(/);
+  assert.match(audioHostModuleSource, /async function runProsodyAudioAnalyzer\(/);
+  assert.match(audioHostModuleSource, /async function runEmotionHeuristicAudioAnalyzer\(/);
+  assert.match(audioHostModuleSource, /async function runSoundEventsAudioAnalyzer\(/);
+  assert.match(audioHostModuleSource, /async function runSourceSeparationAudioAnalyzer\(/);
+  assert.match(audioHostModuleSource, /async function runMusicRhythmAudioAnalyzer\(/);
+  assert.match(audioUtilitySource, /toolId: "opensmile"/);
+  assert.match(audioHostModuleSource, /toolId: "yamnet"/);
+  assert.match(audioHostModuleSource, /toolId: "pyaudioanalysis"/);
+  assert.match(audioHostModuleSource, /toolId: "demucs"/);
+  assert.match(audioHostModuleSource, /toolId: "librosa"/);
+  assert.match(audioHostModuleSource, /const fallbackApplied = summaryPayload\.fallbackApplied === true;/);
+  assert.match(audioHostModuleSource, /pyAudioAnalysis HMM smoothing failed for this clip/);
+  assert.match(audioHostModuleSource, /"speaker-diarization": runSpeakerDiarizationAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /prosody: runProsodyAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /emotion: runEmotionHeuristicAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /"sound-events": runSoundEventsAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /"source-separation": runSourceSeparationAudioAnalyzer/);
+  assert.match(audioHostModuleSource, /"music-rhythm-tonal": runMusicRhythmAudioAnalyzer/);
   assert.match(hostSource, /providerType: asNonEmptyString\(source\.providerType\)/);
   assert.doesNotMatch(hostSource, /ffmpegReady === true/);
-  assert.match(hostSource, /function parseAspectralStatsText\(rawText\)/);
-  assert.match(hostSource, /function generateSpectralDescriptorArtifact\(/);
-  assert.match(hostSource, /aspectralstats=measure=centroid\+rolloff\+flatness\+flux/);
-  assert.match(hostSource, /availability: asNonEmptyString\(toolManifest\.availability\) \|\| "installable"/);
-  assert.match(hostSource, /commandName: asNonEmptyString\(systemCommand\.executableName\)/);
-  assert.match(hostSource, /setupHint: asNonEmptyString\(systemCommand\.setupHint\)/);
+  assert.match(audioUtilitySource, /function parseAspectralStatsText\(rawText\)/);
+  assert.match(audioHostModuleSource, /function generateSpectralDescriptorArtifact\(/);
+  assert.match(audioHostModuleSource, /aspectralstats=measure=centroid\+rolloff\+flatness\+flux/);
+  assert.match(roomSnapshotSource, /availability: asNonEmptyString\(toolManifest\.availability\) \|\| "installable"/);
+  assert.match(roomSnapshotSource, /commandName: asNonEmptyString\(systemCommand\.executableName\)/);
+  assert.match(roomSnapshotSource, /setupHint: asNonEmptyString\(systemCommand\.setupHint\)/);
   assert.match(uiSource, /function getProjectAudioAnalysis\(\)/);
   assert.match(diarizationHelperSource, /def should_retry_with_local_fallback/);
   assert.match(diarizationHelperSource, /def run_local_kmeans_diarization/);
@@ -276,10 +348,10 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
   assert.match(uiSource, /function getCurrentFeatureTargetLabel\(\)/);
   assert.match(uiSource, /function renderAudioAnalysisResultCard\(moduleEntry\)/);
   assert.match(uiSource, /function renderAudioAnalysisModuleGrid\(\)/);
-  assert.match(uiSource, /isAudioAnalysisFeature\(\) \? renderAudioAnalysisModuleGrid\(\) : ""/);
-  assert.match(uiSource, /featureText\(\["settings", "providersTitle"\]\)/);
-  assert.match(uiSource, /isAudioAnalysisFeature\(\) \? renderAudioAnalysisProviderPanel\(\) : ""/);
-  assert.match(uiSource, /const availability =/);
-  assert.match(uiSource, /const systemCommand = availability === "system-command";/);
-  assert.match(uiSource, /manualRefreshAction/);
+  assert.match(reportStageSource, /isAudioAnalysisFeature\(\) \? renderAudioAnalysisModuleGrid\(\) : ""/);
+  assert.match(audioModuleSource, /featureText\(\["settings", "providersTitle"\]\)/);
+  assert.match(settingsOverlaySource, /isAudioAnalysisFeature\(\) \? renderAudioAnalysisProviderPanel\(\) : ""/);
+  assert.match(settingsOverlaySource, /const availability =/);
+  assert.match(settingsOverlaySource, /const systemCommand = availability === "system-command";/);
+  assert.match(settingsOverlaySource, /manualRefreshAction/);
 });

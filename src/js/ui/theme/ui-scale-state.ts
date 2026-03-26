@@ -33,10 +33,7 @@ function applyDocumentScaleState(): void {
 }
 
 export function applyAppUiScale(nextScale: unknown): UiScalePercent {
-  currentAppUiScale = normalizeUiScalePercent(
-    nextScale,
-    DEFAULT_THEME_APPEARANCE_SETTINGS.uiScale
-  );
+  currentAppUiScale = normalizeUiScalePercent(nextScale, DEFAULT_THEME_APPEARANCE_SETTINGS.uiScale);
   applyDocumentScaleState();
   return currentAppUiScale;
 }

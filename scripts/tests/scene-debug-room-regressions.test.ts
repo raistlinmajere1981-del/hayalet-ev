@@ -213,12 +213,39 @@ test("scene pages enable clickable labels and shared clickable classes", () => {
 
 test("installed laboratory manifest exposes subtitle-analysis hotspot ids for scene debug visibility", () => {
   const manifest = JSON.parse(readFileSync("data/rooms/laboratory/manifest.json", "utf8"));
+  const audioFeature = Array.isArray(manifest.features)
+    ? manifest.features.find((feature) => feature.id === "audio-analysis")
+    : null;
   const subtitleFeature = Array.isArray(manifest.features)
     ? manifest.features.find((feature) => feature.id === "subtitle-analysis")
     : null;
 
+  assert.equal(audioFeature?.scene?.hotspot?.id, "laboratory-audio-analysis");
+  assert.equal(audioFeature?.scene?.view?.id, "audio-analysis-console");
+  assert.equal(
+    audioFeature?.scene?.view?.backgroundSrc,
+    "main-functions/audio-analysis/assets/sound-analysis.webp"
+  );
   assert.equal(subtitleFeature?.scene?.hotspot?.id, "laboratory-subtitle-analysis");
   assert.equal(subtitleFeature?.scene?.view?.id, "subtitle-analysis-console");
+  assert.equal(
+    subtitleFeature?.scene?.view?.backgroundSrc,
+    "main-functions/subtitle-analysis/assets/subtitle-analysis.webp"
+  );
+});
+
+test("game-room manifest exposes Team Tetris scene hotspot ids for scene debug visibility", () => {
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
+  const feature = Array.isArray(manifest.features)
+    ? manifest.features.find((entry) => entry.id === "team-tetris")
+    : null;
+
+  assert.equal(feature?.scene?.hotspot?.id, "game-room-team-tetris");
+  assert.equal(feature?.scene?.view?.id, "team-tetris-closeup");
+  assert.equal(
+    feature?.scene?.view?.backgroundSrc,
+    "main-functions/team-tetris/assets/team-tetris-view.webp"
+  );
 });
 
 test("entrance and analyze scene layers keep hidden views passive in debug mode", () => {

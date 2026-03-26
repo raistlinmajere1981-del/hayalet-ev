@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 const projectRoot = process.cwd();
 const roomPackageManagerPath = join(projectRoot, "electron", "room-package-manager.ts");
+const installedRoomBuilderPath = join(projectRoot, "electron", "rooms", "installed-room-builder.ts");
 const ipcRoomsPath = join(projectRoot, "electron", "handlers", "ipc-rooms.ts");
 
 test("room package manager resolves Paths lazily instead of constructor time", async () => {
@@ -27,4 +28,14 @@ test("ipc room handlers resolve the room package manager at handler execution ti
   assert.match(source, /import \{ getRoomPackageManager \} from "\.\.\/room-package-manager\.ts"/);
   assert.doesNotMatch(source, /import \{ roomPackageManager \} from "\.\.\/room-package-manager\.ts"/);
   assert.match(source, /const roomPackageManager = getRoomPackageManager\(\);/);
+});
+
+test("room package manager keeps installed room record building in a dedicated builder module", async () => {
+  const managerSource = await readFile(roomPackageManagerPath, "utf8");
+  const builderSource = await readFile(installedRoomBuilderPath, "utf8");
+
+  assert.match(managerSource, /from "\.\/rooms\/installed-room-builder\.ts"/);
+  assert.match(managerSource, /export \{ buildInstalledRoomRecord \};/);
+  assert.match(builderSource, /export function buildInstalledRoomRecord\(/);
+  assert.match(builderSource, /export function optionalI18nBaseDir\(/);
 });

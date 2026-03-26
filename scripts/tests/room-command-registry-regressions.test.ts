@@ -13,7 +13,10 @@ const room: InstalledRoomRecord = {
   runtimeEntryPath: "/workspace/data/rooms/game-room/ui/index.html",
   hostEntryPath: "/workspace/data/rooms/game-room/host/index.js",
   defaultFeatureId: "xox",
-  features: [{ id: "xox", name: "XOX" }],
+  features: [
+    { id: "xox", name: "XOX" },
+    { id: "team-tetris", name: "Team Tetris" },
+  ],
   commandSpecs: [
     {
       name: "GameRoomXoxUserMove",
@@ -30,6 +33,21 @@ const room: InstalledRoomRecord = {
       description: "Apply remote user move from US1",
       scope: "us1",
     },
+    {
+      name: "GameRoomTeamTetrisStart",
+      description: "Start Team Tetris from room UI",
+      scope: "room-ui",
+    },
+    {
+      name: "GameRoomTeamTetrisAiMove",
+      description: "Apply Team Tetris AI move from slot response",
+      scope: "ai-slots",
+    },
+    {
+      name: "GameRoomTeamTetrisRemoteMove",
+      description: "Apply Team Tetris remote move from US1",
+      scope: "us1",
+    },
   ],
   installedAt: "2026-03-08T00:00:00.000Z",
   updatedAt: "2026-03-08T00:00:00.000Z",
@@ -42,10 +60,15 @@ test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
   assert.equal(RoomCommandRegistry.has("GameRoomXoxUserMove"), true);
   assert.equal(RoomCommandRegistry.getMetadata("GameRoomXoxUserMove")?.roomId, "game-room");
   assert.deepEqual(RoomCommandRegistry.listCommands("ai1-ai2"), [
+    "GameRoomTeamTetrisAiMove",
+    "GameRoomTeamTetrisStart",
     "GameRoomXoxAiMove",
     "GameRoomXoxUserMove",
   ]);
-  assert.deepEqual(RoomCommandRegistry.listCommands("us1"), ["GameRoomXoxRemoteMove"]);
+  assert.deepEqual(RoomCommandRegistry.listCommands("us1"), [
+    "GameRoomTeamTetrisRemoteMove",
+    "GameRoomXoxRemoteMove",
+  ]);
 });
 
 test("RoomCommandRegistry runs room-ui commands with structured payloads", async () => {

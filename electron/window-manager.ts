@@ -301,12 +301,15 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const cspDev = [
       "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      // NOTE: Room hosts fall back to data: module graphs when the renderer cannot import file URLs directly.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:",
       "img-src 'self' data: https:",
       "connect-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:*",
     ].join("; ");
 
     const cspProd = [
       "default-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' data: blob:",
       "img-src 'self' data: https:",
       "connect-src 'self' http://127.0.0.1:*",
     ].join("; ");

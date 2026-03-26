@@ -404,6 +404,46 @@ hev_inspect_element{ selector: "#main-content" };
 
 ---
 
+## 🏠 Room Package Contract
+
+Room sistemi artık portable paket mantığıyla düşünülmelidir:
+
+```text
+rooms/<room-id>/
+  manifest.json
+  host/index.js
+  ui/index.html
+  ui/bootstrap.js
+  ui/style.css
+  shared/
+    assets/
+    data/
+    host/
+    ui/
+    styles/
+  main-functions/
+    <feature-id>/
+      assets/
+      data/
+      host/
+      ui/
+      styles/
+      protocols/
+```
+
+Kurallar:
+
+- `manifest.features[]` oda içindeki canonical `ana fonksiyon` listesidir.
+- Core (`src/**`, `electron/**`) room-specific davranış bilmez; room-specific mantık room paketinde yaşar.
+- `data/rooms/<room-id>` yalnızca kurulu portable room kopyasıdır.
+- `data/room-storage/<room-id>` mutable runtime state, exports, caches, models, tool runtime payloads ve proje çıktıları içindir.
+- Workspace altında üretilmiş artefact (`rooms/*/dist`, tool runtime binary, analysis output) bırakılmaz.
+- Paket içinde kalıcı ama source-of-truth olmayan yardımcı veri ve room-local tooling metadata `shared/data/**` veya ilgili `main-functions/<feature>/data/**` altında tutulur.
+
+Bu ayrım korunmadan yapılan room geliştirmeleri import/export portability ve multi-agent çalışma sınırlarını zayıflatır.
+
+---
+
 ## ⚠️ Dikkat Edilmesi Gerekenler
 
 ### 1. TypeScript Strict Mode

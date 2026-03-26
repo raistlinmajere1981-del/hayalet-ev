@@ -29,6 +29,7 @@ function extractFunctionSource(source: string, functionName: string): string {
 
 test("laboratory UI keeps profile stale-response tracking isolated by action domain", () => {
   const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const draftRuntimeSource = readFileSync("rooms/laboratory/shared/ui/draft-runtime.js", "utf8");
   const context = {
     state: {
       ui: {
@@ -77,11 +78,12 @@ test("laboratory UI keeps profile stale-response tracking isolated by action dom
   vm.createContext(context);
   vm.runInContext(
     [
+      extractFunctionSource(draftRuntimeSource, "sortStageJobs"),
       extractFunctionSource(uiSource, "toRecord"),
       extractFunctionSource(uiSource, "getActionDomain"),
       extractFunctionSource(uiSource, "rememberRequest"),
       extractFunctionSource(uiSource, "shouldIgnoreCorrelatedPayload"),
-      extractFunctionSource(uiSource, "collectProfileStageJobs"),
+      extractFunctionSource(draftRuntimeSource, "collectProfileStageJobs"),
     ].join("\n"),
     context
   );
@@ -222,7 +224,10 @@ test("laboratory UI prefers the active profile target metadata over the source-o
 });
 
 test("laboratory host resolves derived profile targets with safe fallback when the pin is stale", () => {
-  const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const profileProjectionSource = readFileSync(
+    "rooms/laboratory/main-functions/media-analysis/host/profile-projection.js",
+    "utf8"
+  );
   const context = {
     toRecord(value: unknown) {
       return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -254,7 +259,7 @@ test("laboratory host resolves derived profile targets with safe fallback when t
   };
 
   vm.createContext(context);
-  vm.runInContext(extractFunctionSource(hostSource, "resolveProfileTarget"), context);
+  vm.runInContext(extractFunctionSource(profileProjectionSource, "resolveProfileTarget"), context);
 
   assert.equal(
     vm.runInContext(
@@ -291,7 +296,10 @@ test("laboratory host resolves derived profile targets with safe fallback when t
 });
 
 test("laboratory host readiness blocks missing targets and surfaces model-compatibility warnings", () => {
-  const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const profileProjectionSource = readFileSync(
+    "rooms/laboratory/main-functions/media-analysis/host/profile-projection.js",
+    "utf8"
+  );
   const context = {
     toRecord(value: unknown) {
       return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -345,7 +353,7 @@ test("laboratory host readiness blocks missing targets and surfaces model-compat
   };
 
   vm.createContext(context);
-  vm.runInContext(extractFunctionSource(hostSource, "buildProfileReadiness"), context);
+  vm.runInContext(extractFunctionSource(profileProjectionSource, "buildProfileReadiness"), context);
 
   const blockedResult = JSON.parse(
     vm.runInContext(

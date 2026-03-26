@@ -13,13 +13,23 @@ const room: InstalledRoomRecord = {
   runtimeEntryPath: "/workspace/data/rooms/game-room/ui/index.html",
   hostEntryPath: "/workspace/data/rooms/game-room/host/index.js",
   defaultFeatureId: "xox",
-  features: [{ id: "xox", name: "XOX" }],
+  features: [
+    { id: "xox", name: "XOX" },
+    { id: "team-tetris", name: "Team Tetris" },
+  ],
   protocolSpecs: [
     {
       key: "game-room-xox-user-start",
       room: "game-room",
       scenario: "xox-user-start",
       title: "[START][GAME-ROOM][XOX][USER-FIRST]",
+      editable: true,
+    },
+    {
+      key: "game-room-team-tetris-ai-opening",
+      room: "game-room",
+      scenario: "team-tetris-ai-opening",
+      title: "[TURN][GAME-ROOM][TEAM-TETRIS][AI][OPENING]",
       editable: true,
     },
   ],
@@ -32,10 +42,15 @@ test("RoomProtocolRegistry resolves manifest protocol metadata", async () => {
   await RoomProtocolRegistry.syncInstalledRooms([room]);
 
   const resolved = RoomProtocolRegistry.resolve("game-room", "xox-user-start");
+  const teamTetrisResolved = RoomProtocolRegistry.resolve("game-room", "team-tetris-ai-opening");
 
   assert.equal(resolved?.key, "game-room-xox-user-start");
   assert.equal(resolved?.title, "[START][GAME-ROOM][XOX][USER-FIRST]");
-  assert.deepEqual(RoomProtocolRegistry.listKnownKeys(), ["game-room-xox-user-start"]);
+  assert.equal(teamTetrisResolved?.key, "game-room-team-tetris-ai-opening");
+  assert.deepEqual(RoomProtocolRegistry.listKnownKeys(), [
+    "game-room-team-tetris-ai-opening",
+    "game-room-xox-user-start",
+  ]);
 });
 
 test("RoomProtocolRegistry merges runtime and saved protocol bodies", async () => {

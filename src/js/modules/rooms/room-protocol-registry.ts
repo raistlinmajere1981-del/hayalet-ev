@@ -4,6 +4,7 @@ import type {
   StartupRoomProtocolSnapshot,
 } from "@shared/index.js";
 import { decodeBase64 } from "../../constants/index.js";
+import { resolveRoomProtocolFilePath } from "@shared/index.js";
 import { Logger, LogCategory } from "../logger/index.js";
 
 interface RoomProtocolEntry {
@@ -22,10 +23,6 @@ function normalizeProtocolKey(key: string): string {
 
 function buildScenarioKey(room: string, scenario: string): string {
   return `${room.trim().toLowerCase()}::${scenario.trim().toLowerCase()}`;
-}
-
-function isSafeProtocolBasename(key: string): boolean {
-  return /^[A-Za-z0-9._-]+$/.test(key);
 }
 
 function buildStartupProtocolKey(roomId: string, key: string): string {
@@ -203,7 +200,8 @@ class RoomProtocolRegistryClass {
       return "";
     }
 
-    if (isSafeProtocolBasename(spec.key) !== true) {
+    const relativeProtocolPath = resolveRoomProtocolFilePath(spec);
+    if (relativeProtocolPath === null) {
       return "";
     }
 
@@ -212,7 +210,7 @@ class RoomProtocolRegistryClass {
       return "";
     }
 
-    const protocolPath = `${room.installedDir.replace(/\\/g, "/")}/protocols/${spec.key}.md`;
+    const protocolPath = `${room.installedDir.replace(/\\/g, "/")}/${relativeProtocolPath}`;
     try {
       const content = await readFile(protocolPath);
       return typeof content === "string" ? decodeProtocolBody(content) : "";

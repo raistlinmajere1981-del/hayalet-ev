@@ -12,7 +12,7 @@ async function writeWorkspaceRoom(baseDir: string, roomId: string): Promise<void
   await mkdir(join(baseDir, roomId, "ui"), { recursive: true });
   await mkdir(join(baseDir, roomId, "host"), { recursive: true });
   await mkdir(join(baseDir, roomId, "assets"), { recursive: true });
-  await mkdir(join(baseDir, roomId, "tools"), { recursive: true });
+  await mkdir(join(baseDir, roomId, "shared", "data", "tools"), { recursive: true });
 
   await writeFile(
     join(baseDir, roomId, "manifest.json"),
@@ -40,7 +40,7 @@ async function writeWorkspaceRoom(baseDir: string, roomId: string): Promise<void
   await writeFile(join(baseDir, roomId, "host", "index.js"), "export {};\n", "utf8");
   await writeFile(join(baseDir, roomId, "assets", "readme.txt"), "tracked", "utf8");
   await writeFile(
-    join(baseDir, roomId, "tools", "toolchain.manifest.json"),
+    join(baseDir, roomId, "shared", "data", "tools", "toolchain.manifest.json"),
     JSON.stringify(
       {
         roomId,
@@ -55,27 +55,27 @@ async function writeWorkspaceRoom(baseDir: string, roomId: string): Promise<void
     "utf8"
   );
   await writeFile(
-    join(baseDir, roomId, "tools", "edit-presets.json"),
+    join(baseDir, roomId, "shared", "data", "tools", "edit-presets.json"),
     JSON.stringify({ schemaVersion: 1, defaultMode: "beginner" }, null, 2),
     "utf8"
   );
   await writeFile(
-    join(baseDir, roomId, "tools", "edit-capabilities.json"),
+    join(baseDir, roomId, "shared", "data", "tools", "edit-capabilities.json"),
     JSON.stringify({ schemaVersion: 1, stages: { edit: { requiredTools: ["ffmpeg"] } } }, null, 2),
     "utf8"
   );
   await writeFile(
-    join(baseDir, roomId, "tools", "profile-presets.json"),
+    join(baseDir, roomId, "shared", "data", "tools", "profile-presets.json"),
     JSON.stringify({ schemaVersion: 1, defaultMode: "beginner", lanes: {}, presets: {} }, null, 2),
     "utf8"
   );
   await writeFile(
-    join(baseDir, roomId, "tools", "profile-capabilities.json"),
+    join(baseDir, roomId, "shared", "data", "tools", "profile-capabilities.json"),
     JSON.stringify({ schemaVersion: 1, stages: { profile: { requiredTools: ["ffmpeg"] } } }, null, 2),
     "utf8"
   );
   await writeFile(
-    join(baseDir, roomId, "tools", "profile-models.json"),
+    join(baseDir, roomId, "shared", "data", "tools", "profile-models.json"),
     JSON.stringify({ schemaVersion: 1, toolId: "whisper.cpp", models: {} }, null, 2),
     "utf8"
   );
@@ -100,13 +100,13 @@ test("installed room export skips room runtime binaries and install snapshots", 
     assert.equal(installResult.success, true, installResult.error);
 
     const installedDir = join(installedRoot, "laboratory-portable");
-    await mkdir(join(installedDir, "tools", "runtime", "linux-x64"), { recursive: true });
+    await mkdir(join(installedDir, "shared", "data", "tools", "runtime", "linux-x64"), { recursive: true });
     await writeFile(
-      join(installedDir, "tools", "toolchain.manifest.json"),
+      join(installedDir, "shared", "data", "tools", "toolchain.manifest.json"),
       JSON.stringify({ roomId: "laboratory-portable", tools: { ffmpeg: {} } }, null, 2),
       "utf8"
     );
-    await writeFile(join(installedDir, "tools", "runtime", "linux-x64", "ffprobe"), "binary", "utf8");
+    await writeFile(join(installedDir, "shared", "data", "tools", "runtime", "linux-x64", "ffprobe"), "binary", "utf8");
     await writeFile(join(installedDir, ".room-install-files.json"), JSON.stringify({ files: [] }), "utf8");
 
     const exportResult = await manager.exportInstalledRoomToWorkspace("laboratory-portable", {
@@ -115,31 +115,31 @@ test("installed room export skips room runtime binaries and install snapshots", 
 
     assert.equal(exportResult.success, true, exportResult.error);
     assert.equal(
-      existsSync(join(workspaceRoot, "laboratory-portable", "tools", "toolchain.manifest.json")),
+      existsSync(join(workspaceRoot, "laboratory-portable", "shared", "data", "tools", "toolchain.manifest.json")),
       true
     );
     assert.equal(
-      existsSync(join(workspaceRoot, "laboratory-portable", "tools", "edit-presets.json")),
+      existsSync(join(workspaceRoot, "laboratory-portable", "shared", "data", "tools", "edit-presets.json")),
       true
     );
     assert.equal(
-      existsSync(join(workspaceRoot, "laboratory-portable", "tools", "edit-capabilities.json")),
+      existsSync(join(workspaceRoot, "laboratory-portable", "shared", "data", "tools", "edit-capabilities.json")),
       true
     );
     assert.equal(
-      existsSync(join(workspaceRoot, "laboratory-portable", "tools", "profile-presets.json")),
+      existsSync(join(workspaceRoot, "laboratory-portable", "shared", "data", "tools", "profile-presets.json")),
       true
     );
     assert.equal(
-      existsSync(join(workspaceRoot, "laboratory-portable", "tools", "profile-capabilities.json")),
+      existsSync(join(workspaceRoot, "laboratory-portable", "shared", "data", "tools", "profile-capabilities.json")),
       true
     );
     assert.equal(
-      existsSync(join(workspaceRoot, "laboratory-portable", "tools", "profile-models.json")),
+      existsSync(join(workspaceRoot, "laboratory-portable", "shared", "data", "tools", "profile-models.json")),
       true
     );
     assert.equal(
-      existsSync(join(workspaceRoot, "laboratory-portable", "tools", "runtime", "linux-x64", "ffprobe")),
+      existsSync(join(workspaceRoot, "laboratory-portable", "shared", "data", "tools", "runtime", "linux-x64", "ffprobe")),
       false
     );
     assert.equal(

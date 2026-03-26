@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-24T17:25:28.439Z",
+  "generatedAt": "2026-03-25T21:49:25.459Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 551,
-    "ids": 570,
+    "filesScanned": 556,
+    "ids": 572,
     "testIds": 15,
     "querySelectors": 137,
-    "totalSelectors": 722
+    "totalSelectors": 724
   },
   "lookup": {
     "id": {
@@ -410,6 +410,7 @@
       "scene-theme-refresh": "#scene-theme-refresh",
       "scene-theme-selection-hint": "#scene-theme-selection-hint",
       "scene-theme-settings-list": "#scene-theme-settings-list",
+      "scene-ui-scale-select": "#scene-ui-scale-select",
       "search-empty": "#search-empty",
       "search-input": "#search-input",
       "search-results": "#search-results",
@@ -495,6 +496,7 @@
       "theme-settings-list": "#theme-settings-list",
       "theme-surface-select": "#theme-surface-select",
       "theme-text-scale-select": "#theme-text-scale-select",
+      "theme-ui-scale-select": "#theme-ui-scale-select",
       "toast-container": "#toast-container",
       "toggle-left": "#toggle-left",
       "toggle-right": "#toggle-right",

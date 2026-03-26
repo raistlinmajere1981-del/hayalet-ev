@@ -1,3 +1,4 @@
+import { once } from "events";
 import { spawn } from "child_process";
 import { createWriteStream, existsSync } from "fs";
 import { chmod, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "fs/promises";
@@ -143,15 +144,17 @@ function normalizeJobId(value: unknown, fallbackPrefix: string): string {
 }
 
 function detectPlatformKey(): PlatformKey | null {
-  const report = process.report?.getReport?.() as
+  const report = process.report.getReport() as
     | {
         header?: {
           glibcVersionRuntime?: string;
         };
       }
     | undefined;
+  const glibcVersionRuntime = report?.header?.glibcVersionRuntime;
   const isMusl =
-    process.platform === "linux" && !Boolean(report?.header?.glibcVersionRuntime);
+    process.platform === "linux" &&
+    (glibcVersionRuntime === undefined || glibcVersionRuntime === "");
 
   if (process.platform === "linux" && process.arch === "x64") {
     return isMusl ? "linux-musl-x64" : "linux-x64";
@@ -191,7 +194,11 @@ function resolveRuntimePaths(roomId: string): RoomToolRuntimePaths {
 
 function isPathInside(parentPath: string, childPath: string): boolean {
   const relativePath = relative(ensureAbsolutePath(parentPath), ensureAbsolutePath(childPath));
-  return relativePath === "" || (!relativePath.startsWith("..") && !relativePath.includes(`..${process.platform === "win32" ? "\\" : "/"}`));
+  return (
+    relativePath === "" ||
+    (!relativePath.startsWith("..") &&
+      !relativePath.includes(`..${process.platform === "win32" ? "\\" : "/"}`))
+  );
 }
 
 function ensureRoomManagedPath(roomId: string, targetPath: string): void {
@@ -210,7 +217,10 @@ function findVersion(output: string, pattern: string): string | null {
   if (!match) {
     return null;
   }
-  return match[1] ?? match[0] ?? null;
+  if (match[1] !== undefined) {
+    return match[1];
+  }
+  return match[0];
 }
 
 function compareLooseVersion(left: string, right: string): number {
@@ -310,17 +320,17 @@ async function fetchGitHubRelease(provider: GitHubReleaseProvider): Promise<GitH
 }
 
 async function collectFilesRecursive(baseDir: string): Promise<string[]> {
-  const results: string[] = [];
   const entries = await readdir(baseDir, { withFileTypes: true });
-  for (const entry of entries) {
-    const absolutePath = join(baseDir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...(await collectFilesRecursive(absolutePath)));
-      continue;
-    }
-    results.push(absolutePath);
-  }
-  return results;
+  const results = await Promise.all(
+    entries.map(async (entry): Promise<string[]> => {
+      const absolutePath = join(baseDir, entry.name);
+      if (entry.isDirectory()) {
+        return await collectFilesRecursive(absolutePath);
+      }
+      return [absolutePath];
+    })
+  );
+  return results.flat();
 }
 
 function resolveUniquePath(targetPath: string): string {
@@ -346,7 +356,11 @@ async function markExecutable(filePath: string): Promise<void> {
   await chmod(filePath, 0o755);
 }
 
-async function extractArchive(archivePath: string, targetDir: string, archiveType: "tar.xz" | "zip"): Promise<void> {
+async function extractArchive(
+  archivePath: string,
+  targetDir: string,
+  archiveType: "tar.xz" | "zip"
+): Promise<void> {
   await ensureDir(targetDir);
 
   if (archiveType === "tar.xz") {
@@ -376,7 +390,13 @@ async function extractArchive(archivePath: string, targetDir: string, archiveTyp
     return;
   }
 
-  await runCommand("python3", ["-m", "zipfile", "-e", archivePath, targetDir], targetDir, undefined, 60_000);
+  await runCommand(
+    "python3",
+    ["-m", "zipfile", "-e", archivePath, targetDir],
+    targetDir,
+    undefined,
+    60_000
+  );
 }
 
 async function runCommand(
@@ -397,14 +417,21 @@ async function runCommand(
       env: {
         ...process.env,
         ...Object.fromEntries(
-          Object.entries(env ?? {}).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+          Object.entries(env ?? {}).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string"
+          )
         ),
       },
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
 
-    const finish = (payload: { exitCode: number | null; stdout: string; stderr: string; cancelled: boolean }) => {
+    const finish = (payload: {
+      exitCode: number | null;
+      stdout: string;
+      stderr: string;
+      cancelled: boolean;
+    }): void => {
       if (settled) {
         return;
       }
@@ -448,8 +475,11 @@ function normalizeToolStatus(toolId: string, data: Partial<RoomToolStatus>): Roo
 class RoomToolService {
   private activeJobs = new Map<string, ActiveJob>();
 
-  async handleCall(event: IpcMainInvokeEvent, request: RoomToolCallRequest): Promise<RoomToolCallResult> {
-    const roomId = normalizeRoomId(request?.roomId);
+  async handleCall(
+    event: IpcMainInvokeEvent,
+    request: RoomToolCallRequest
+  ): Promise<RoomToolCallResult> {
+    const roomId = normalizeRoomId(request.roomId);
     if (roomId === "") {
       throw new Error("roomId is required for room-tools-call");
     }
@@ -474,19 +504,21 @@ class RoomToolService {
       case "tool-run":
         return await this.runTool(event, request);
       default:
-        throw new Error(`Unsupported room-tools operation: ${String((request as { operation?: unknown }).operation)}`);
+        throw new Error(
+          `Unsupported room-tools operation: ${String((request as { operation?: unknown }).operation)}`
+        );
     }
   }
 
-  async cancel(request: RoomToolCancelRequest): Promise<RoomToolCancelResult> {
-    const roomId = normalizeRoomId(request?.roomId);
-    const jobId = asNonEmptyString(request?.jobId);
+  cancel(request: RoomToolCancelRequest): RoomToolCancelResult {
+    const roomId = normalizeRoomId(request.roomId);
+    const jobId = asNonEmptyString(request.jobId);
     if (roomId === "" || jobId === null) {
       throw new Error("roomId and jobId are required for room-tools-cancel");
     }
 
     const active = this.activeJobs.get(jobId);
-    if (active === undefined || active.roomId !== roomId) {
+    if (active?.roomId !== roomId) {
       return {
         success: true,
         roomId,
@@ -518,7 +550,9 @@ class RoomToolService {
     event.sender.send(ROOM_TOOLS_PROGRESS_CHANNEL, nextPayload);
   }
 
-  private async resolvePaths(request: Extract<RoomToolCallRequest, { operation: "resolve-paths" }>): Promise<RoomToolCallResult> {
+  private async resolvePaths(
+    request: Extract<RoomToolCallRequest, { operation: "resolve-paths" }>
+  ): Promise<RoomToolCallResult> {
     const paths = resolveRuntimePaths(request.roomId);
     await Promise.all([
       ensureDir(paths.storageDir),
@@ -548,7 +582,9 @@ class RoomToolService {
     };
   }
 
-  private async deletePath(request: Extract<RoomToolCallRequest, { operation: "delete-path" }>): Promise<RoomToolCallResult> {
+  private async deletePath(
+    request: Extract<RoomToolCallRequest, { operation: "delete-path" }>
+  ): Promise<RoomToolCallResult> {
     const targetPath = ensureAbsolutePath(request.targetPath);
     ensureRoomManagedPath(request.roomId, targetPath);
     await rm(targetPath, { recursive: request.recursive === true, force: true });
@@ -604,7 +640,9 @@ class RoomToolService {
     this.activeJobs.set(jobId, {
       roomId,
       jobId,
-      cancel: () => controller.abort(),
+      cancel: (): void => {
+        controller.abort();
+      },
     });
 
     this.emitProgress(event, {
@@ -625,11 +663,14 @@ class RoomToolService {
         throw new Error(`Download failed (${response.status}) for ${request.url}`);
       }
 
-      const targetPath = request.overwrite === true ? destinationPath : resolveUniquePath(destinationPath);
+      const targetPath =
+        request.overwrite === true ? destinationPath : resolveUniquePath(destinationPath);
       await ensureDir(dirname(targetPath));
       const tempPath = `${targetPath}.part-${Date.now()}`;
       const fileStream = createWriteStream(tempPath);
-      const totalBytes = Number(response.headers.get("content-length") ?? "0") || 0;
+      const totalBytesHeader = Number(response.headers.get("content-length") ?? "0");
+      const totalBytes =
+        Number.isFinite(totalBytesHeader) && totalBytesHeader > 0 ? totalBytesHeader : 0;
       let writtenBytes = 0;
       const reader = response.body.getReader();
 
@@ -644,33 +685,36 @@ class RoomToolService {
         message: targetPath,
       });
 
-      while (true) {
+      const pumpDownload = async (): Promise<void> => {
         const { done, value } = await reader.read();
         if (done) {
-          break;
+          return;
         }
-        if (value !== undefined) {
-          writtenBytes += value.byteLength;
-          if (!fileStream.write(Buffer.from(value))) {
-            await new Promise((resolvePromise) => fileStream.once("drain", resolvePromise));
-          }
-          this.emitProgress(event, {
-            roomId,
-            operation: request.operation,
-            requestId,
-            jobId,
-            stage: "downloading",
-            bytesReceived: writtenBytes,
-            ...(totalBytes > 0 ? { bytesTotal: totalBytes } : {}),
-            ...(totalBytes > 0
-              ? { percent: Math.min(100, Math.round((writtenBytes / totalBytes) * 100)) }
-              : {}),
-          });
+        writtenBytes += value.byteLength;
+        if (!fileStream.write(Buffer.from(value))) {
+          await once(fileStream, "drain");
         }
-      }
+        this.emitProgress(event, {
+          roomId,
+          operation: request.operation,
+          requestId,
+          jobId,
+          stage: "downloading",
+          bytesReceived: writtenBytes,
+          ...(totalBytes > 0 ? { bytesTotal: totalBytes } : {}),
+          ...(totalBytes > 0
+            ? { percent: Math.min(100, Math.round((writtenBytes / totalBytes) * 100)) }
+            : {}),
+        });
+        await pumpDownload();
+      };
+
+      await pumpDownload();
 
       await new Promise<void>((resolvePromise, rejectPromise) => {
-        fileStream.end(() => resolvePromise());
+        fileStream.end(() => {
+          resolvePromise();
+        });
         fileStream.once("error", rejectPromise);
       });
 
@@ -745,7 +789,9 @@ class RoomToolService {
 
     if (this.isSystemCommandTool(toolManifest) === true) {
       const resolved = this.resolveSystemCommandTool(manifest, request.toolId);
-      const binaryPath = await resolveSystemCommandBinaryPath(resolved.systemCommand.executableName);
+      const binaryPath = await resolveSystemCommandBinaryPath(
+        resolved.systemCommand.executableName
+      );
       const setupHint = this.getSystemCommandSetupHint(request.toolId, resolved.manifest);
 
       if (binaryPath === null) {
@@ -777,15 +823,21 @@ class RoomToolService {
       );
       const combinedOutput = `${probe.stdout}\n${probe.stderr}`;
       const version =
-        probe.exitCode === 0 ? findVersion(combinedOutput, resolved.manifest.probe.versionRegex) : null;
+        probe.exitCode === 0
+          ? findVersion(combinedOutput, resolved.manifest.probe.versionRegex)
+          : null;
       const companionPaths: Record<string, string> = {};
 
-      for (const companionName of resolved.systemCommand.companionExecutables ?? []) {
-        const companionPath = await resolveSystemCommandBinaryPath(companionName);
-        if (companionPath !== null) {
-          companionPaths[companionName] = companionPath;
-        }
-      }
+      await Promise.all(
+        (resolved.systemCommand.companionExecutables ?? []).map(
+          async (companionName): Promise<void> => {
+            const companionPath = await resolveSystemCommandBinaryPath(companionName);
+            if (companionPath !== null) {
+              companionPaths[companionName] = companionPath;
+            }
+          }
+        )
+      );
 
       return {
         success: true,
@@ -830,9 +882,18 @@ class RoomToolService {
       };
     }
 
-    const probe = await runCommand(binaryPath, resolved.manifest.probe.args, installDir, undefined, 12_000);
+    const probe = await runCommand(
+      binaryPath,
+      resolved.manifest.probe.args,
+      installDir,
+      undefined,
+      12_000
+    );
     const combinedOutput = `${probe.stdout}\n${probe.stderr}`;
-    const version = probe.exitCode === 0 ? findVersion(combinedOutput, resolved.manifest.probe.versionRegex) : null;
+    const version =
+      probe.exitCode === 0
+        ? findVersion(combinedOutput, resolved.manifest.probe.versionRegex)
+        : null;
 
     return {
       success: true,
@@ -924,7 +985,10 @@ class RoomToolService {
     isUpdate: boolean
   ): Promise<RoomToolCallResult> {
     const requestId = normalizeRequestId(request.requestId);
-    const jobId = normalizeJobId(request.jobId, isUpdate ? "room-tool-update" : "room-tool-install");
+    const jobId = normalizeJobId(
+      request.jobId,
+      isUpdate ? "room-tool-update" : "room-tool-install"
+    );
     const manifest = await this.loadToolchainManifest(request.roomId);
     const toolManifest = this.getToolManifest(manifest, request.toolId);
     if (this.isSystemCommandTool(toolManifest) === true) {
@@ -987,18 +1051,24 @@ class RoomToolService {
         });
         await extractArchive(downloadResult.path, extractDir, resolved.asset.archive);
         const files = await collectFilesRecursive(extractDir);
-        const executables = [resolved.asset.executableName, ...(resolved.asset.companionExecutables ?? [])];
+        const executables = [
+          resolved.asset.executableName,
+          ...(resolved.asset.companionExecutables ?? []),
+        ];
 
-        for (const executableName of executables) {
-          const sourcePath =
-            files.find((filePath) => filePath.split(/[\\/]/).pop() === executableName) ?? null;
-          if (sourcePath === null) {
-            throw new Error(`Could not find ${executableName} inside ${release.asset.name}`);
-          }
-          const targetPath = join(installDir, executableName);
-          await writeFile(targetPath, await readFile(sourcePath));
-          await markExecutable(targetPath);
-        }
+        await Promise.all(
+          executables.map(async (executableName): Promise<void> => {
+            const sourcePath =
+              files.find((filePath) => filePath.split(/[\\/]/).pop() === executableName) ?? null;
+            if (sourcePath === null) {
+              throw new Error(`Could not find ${executableName} inside ${release.asset.name}`);
+            }
+            const targetPath = join(installDir, executableName);
+            const sourceBuffer = await readFile(sourcePath);
+            await writeFile(targetPath, sourceBuffer);
+            await markExecutable(targetPath);
+          })
+        );
       }
 
       const probed = await this.probeTool({
@@ -1087,7 +1157,7 @@ class RoomToolService {
     }
 
     const selectedExecutableName =
-      requestedExecutableName && allowedExecutableNames.includes(requestedExecutableName)
+      requestedExecutableName !== null && allowedExecutableNames.includes(requestedExecutableName)
         ? requestedExecutableName
         : requestedExecutableName === null
           ? defaultExecutableName
@@ -1140,7 +1210,9 @@ class RoomToolService {
         env: {
           ...process.env,
           ...Object.fromEntries(
-            Object.entries(request.env ?? {}).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+            Object.entries(request.env ?? {}).filter(
+              (entry): entry is [string, string] => typeof entry[1] === "string"
+            )
           ),
         },
         stdio: ["ignore", "pipe", "pipe"],
@@ -1243,13 +1315,20 @@ class RoomToolService {
         });
       });
 
-      child.once("error", (error) => finish(error));
-      child.once("close", (code) => finish(undefined, code));
+      child.once("error", (error) => {
+        finish(error);
+      });
+      child.once("close", (code) => {
+        finish(undefined, code);
+      });
 
-      const timer = setTimeout(() => {
-        cancelled = true;
-        child.kill("SIGKILL");
-      }, Math.max(1_000, Number(request.timeoutMs) || 30 * 60_000));
+      const timer = setTimeout(
+        () => {
+          cancelled = true;
+          child.kill("SIGKILL");
+        },
+        Math.max(1_000, Number(request.timeoutMs) > 0 ? Number(request.timeoutMs) : 30 * 60_000)
+      );
     });
   }
 
@@ -1283,7 +1362,10 @@ class RoomToolService {
   }
 
   private isToolRunnable(toolManifest: ToolManifest): boolean {
-    return this.isToolInstallable(toolManifest) === true || this.isSystemCommandTool(toolManifest) === true;
+    return (
+      this.isToolInstallable(toolManifest) === true ||
+      this.isSystemCommandTool(toolManifest) === true
+    );
   }
 
   private getPlannedToolMessage(toolId: string, toolManifest: ToolManifest): string {
@@ -1322,7 +1404,10 @@ class RoomToolService {
     };
   }
 
-  private resolveTool(manifest: ToolchainManifest, toolId: string): {
+  private resolveTool(
+    manifest: ToolchainManifest,
+    toolId: string
+  ): {
     manifest: InstallableToolManifest;
     asset: ToolAssetSpec;
     installDirName: string;
@@ -1361,7 +1446,10 @@ class RoomToolService {
     };
   }
 
-  private resolveSystemCommandTool(manifest: ToolchainManifest, toolId: string): {
+  private resolveSystemCommandTool(
+    manifest: ToolchainManifest,
+    toolId: string
+  ): {
     manifest: SystemCommandToolManifest;
     systemCommand: SystemCommandSpec;
   } {
@@ -1411,7 +1499,10 @@ class RoomToolService {
   private async downloadReleaseAsset(
     event: IpcMainInvokeEvent,
     roomId: string,
-    operation: Extract<RoomToolCallRequest, { operation: "tool-install" | "tool-update" }>["operation"],
+    operation: Extract<
+      RoomToolCallRequest,
+      { operation: "tool-install" | "tool-update" }
+    >["operation"],
     requestId: string | null,
     jobId: string,
     url: string,
@@ -1420,13 +1511,13 @@ class RoomToolService {
     const result = await this.downloadToPath(
       event,
       {
-      operation,
-      roomId,
-      requestId,
-      jobId,
-      url,
-      destinationPath,
-      overwrite: true,
+        operation,
+        roomId,
+        requestId,
+        jobId,
+        url,
+        destinationPath,
+        overwrite: true,
       },
       { enforceRoomManagedPath: false }
     );
@@ -1439,8 +1530,4 @@ class RoomToolService {
 
 export const roomToolService = new RoomToolService();
 
-void logger.logInternal(
-  LogCategory.SYSTEM,
-  LogLevel.DEBUG,
-  "roomToolService initialized"
-);
+void logger.logInternal(LogCategory.SYSTEM, LogLevel.DEBUG, "roomToolService initialized");

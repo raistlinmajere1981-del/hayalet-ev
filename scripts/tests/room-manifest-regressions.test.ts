@@ -6,6 +6,7 @@ import {
   isValidRoomCommandName,
   isValidRoomId,
   normalizeRoomRelativePath,
+  resolveRoomProtocolFilePath,
   validateRoomManifest,
 } from "../../src/types/rooms.ts";
 
@@ -110,6 +111,53 @@ test("normalizeRoomRelativePath blocks traversal and preserves safe paths", () =
   assert.equal(normalizeRoomRelativePath("/absolute/file.js"), null);
 });
 
+test("protocol specs support explicit safe relative paths", () => {
+  const result = validateRoomManifest({
+    schemaVersion: ROOM_SCHEMA_VERSION,
+    id: "protocol-room",
+    name: "Protocol Room",
+    version: "1.0.0",
+    menu: {
+      label: "Protocol Room",
+    },
+    runtime: {
+      uiEntry: "ui/index.html",
+      hostEntry: "host/index.js",
+    },
+    defaultFeatureId: "primary",
+    features: [
+      {
+        id: "primary",
+        name: "Primary",
+        protocolSpecs: [
+          {
+            key: "primary-start",
+            room: "protocol-room",
+            scenario: "primary-start",
+            title: "[START][PROTOCOL-ROOM][PRIMARY]",
+            path: "main-functions/primary/protocols/primary-start.md",
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(result.valid, true);
+  assert.equal(
+    result.manifest?.features[0]?.protocolSpecs?.[0]?.path,
+    "main-functions/primary/protocols/primary-start.md"
+  );
+  assert.equal(
+    resolveRoomProtocolFilePath(result.manifest?.features[0]?.protocolSpecs?.[0] ?? {
+      key: "",
+      room: "",
+      scenario: "",
+      title: "",
+    }),
+    "main-functions/primary/protocols/primary-start.md"
+  );
+});
+
 test("room id and command validators match project rules", () => {
   assert.equal(isValidRoomId("game-room"), true);
   assert.equal(isValidRoomId("game_room"), false);
@@ -128,4 +176,42 @@ test("game-room manifest documents the US1 XOX transport contract", () => {
     xoxFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-xox-us1-transport"),
     true
   );
+});
+
+test("game-room manifest documents the Team Tetris AI and US1 contracts", () => {
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
+  const result = validateRoomManifest(manifest);
+
+  assert.equal(result.valid, true);
+  const teamTetrisFeature = result.manifest?.features.find((feature) => feature.id === "team-tetris");
+  assert.ok(teamTetrisFeature);
+  assert.equal(
+    teamTetrisFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-team-tetris-ai-opening"),
+    true
+  );
+  assert.equal(
+    teamTetrisFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-team-tetris-ai-followup"),
+    true
+  );
+  assert.equal(
+    teamTetrisFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-team-tetris-us1-transport"),
+    true
+  );
+});
+
+test("room manifest readers stay split from the main room contract module", () => {
+  const roomsSource = readFileSync("src/types/rooms.ts", "utf8");
+  const readersSource = readFileSync("src/types/room-manifest-readers.ts", "utf8");
+  const sceneReadersSource = readFileSync("src/types/room-scene-readers.ts", "utf8");
+
+  assert.match(roomsSource, /from "\.\/room-manifest-readers\.js"/);
+  assert.match(roomsSource, /from "\.\/room-scene-readers\.js"/);
+  assert.match(readersSource, /export function readMenuConfig\(/);
+  assert.match(readersSource, /export function readRuntimeConfig\(/);
+  assert.match(readersSource, /export function readCommandSpecs\(/);
+  assert.match(readersSource, /export function readProtocolSpecs\(/);
+  assert.match(readersSource, /export function readI18nConfig\(/);
+  assert.match(sceneReadersSource, /export function createRoomSceneReaders\(/);
+  assert.match(sceneReadersSource, /function readFeatureManifest\(/);
+  assert.match(sceneReadersSource, /function readSceneConfig\(/);
 });

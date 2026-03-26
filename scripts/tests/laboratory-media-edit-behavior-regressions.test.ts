@@ -29,6 +29,7 @@ function extractFunctionSource(source: string, functionName: string): string {
 
 test("laboratory UI keeps preview/apply stale-response tracking isolated by action domain", () => {
   const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const draftRuntimeSource = readFileSync("rooms/laboratory/shared/ui/draft-runtime.js", "utf8");
   const context = {
     state: {
       ui: {
@@ -73,11 +74,12 @@ test("laboratory UI keeps preview/apply stale-response tracking isolated by acti
   vm.createContext(context);
   vm.runInContext(
     [
+      extractFunctionSource(draftRuntimeSource, "sortStageJobs"),
       extractFunctionSource(uiSource, "toRecord"),
       extractFunctionSource(uiSource, "getActionDomain"),
       extractFunctionSource(uiSource, "rememberRequest"),
       extractFunctionSource(uiSource, "shouldIgnoreCorrelatedPayload"),
-      extractFunctionSource(uiSource, "collectEditStageJobs"),
+      extractFunctionSource(draftRuntimeSource, "collectEditStageJobs"),
     ].join("\n"),
     context
   );

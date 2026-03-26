@@ -120,7 +120,7 @@ export type Us1SessionOpenHint = "auto_if_idle" | "list_only";
 
 export type Us1RoomInviteStarter = "user" | "opponent";
 
-export type Us1RoomEventType = "invite" | "accept" | "reject" | "reset";
+export type Us1RoomEventType = "invite" | "accept" | "reject" | "reset" | "start";
 
 export interface Us1RoomEventInput {
   roomId: string;
@@ -138,6 +138,7 @@ export interface Us1RoomCommandInput {
   commandName: string;
   matchId?: string | null;
   turnIndex?: number;
+  turnToken?: string | null;
   boardHashBeforeMove?: string | null;
   rawArgs?: string | null;
 }

@@ -446,7 +446,11 @@ function normalizeSessionOpenHint(value: unknown): Us1SessionOpenHint | null {
 }
 
 function normalizeRoomEventType(value: unknown): Us1RoomEventType | null {
-  return value === "invite" || value === "accept" || value === "reject" || value === "reset"
+  return value === "invite" ||
+    value === "accept" ||
+    value === "reject" ||
+    value === "reset" ||
+    value === "start"
     ? value
     : null;
 }
@@ -715,6 +719,7 @@ function normalizeConversationRoomCommand(roomCommand: unknown): ConversationRoo
     typeof source["turnIndex"] === "number" && Number.isInteger(source["turnIndex"])
       ? source["turnIndex"]
       : null;
+  const turnToken = normalizeOptionalText(source["turnToken"]);
   const boardHashBeforeMove = normalizeOptionalText(source["boardHashBeforeMove"]);
   if (roomId === null || featureId === null || commandName === null) {
     return null;
@@ -726,6 +731,7 @@ function normalizeConversationRoomCommand(roomCommand: unknown): ConversationRoo
     commandName,
     ...(matchId !== null ? { matchId } : {}),
     ...(turnIndex !== null ? { turnIndex } : {}),
+    ...(turnToken !== null ? { turnToken } : {}),
     ...(boardHashBeforeMove !== null ? { boardHashBeforeMove } : {}),
     rawArgs: normalizeOptionalText(source["rawArgs"]),
   };

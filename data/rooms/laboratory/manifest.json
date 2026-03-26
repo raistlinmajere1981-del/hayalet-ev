@@ -22,7 +22,7 @@
       "width": 1600,
       "height": 900
     },
-    "roomBackgroundSrc": "assets/room-background.webp",
+    "roomBackgroundSrc": "shared/assets/room-background.webp",
     "chrome": {
       "pageShellVariant": "immersive-stage"
     },
@@ -72,7 +72,7 @@
         },
         "view": {
           "id": "media-analysis-console",
-          "backgroundSrc": "assets/media-analysis-view.webp",
+          "backgroundSrc": "main-functions/media-analysis/assets/media-analysis-view.webp",
           "transparentWindow": {
             "leftPct": 2.4,
             "topPct": 10.8,
@@ -102,7 +102,7 @@
         },
         "view": {
           "id": "audio-analysis-console",
-          "backgroundSrc": "assets/media-analysis-view.webp",
+          "backgroundSrc": "main-functions/audio-analysis/assets/sound-analysis.webp",
           "transparentWindow": {
             "leftPct": 2.4,
             "topPct": 10.8,
@@ -132,7 +132,7 @@
         },
         "view": {
           "id": "subtitle-analysis-console",
-          "backgroundSrc": "assets/media-analysis-view.webp",
+          "backgroundSrc": "main-functions/subtitle-analysis/assets/subtitle-analysis.webp",
           "transparentWindow": {
             "leftPct": 2.4,
             "topPct": 10.8,

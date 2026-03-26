@@ -1,32 +1,45 @@
-import { mkdir, readFile, readdir, rm, stat, writeFile } from "fs/promises";
+import { readFile, readdir, rm, stat, writeFile } from "fs/promises";
 import { existsSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { formatErrorWithDetail } from "../shared/i18n/error-detail.ts";
 import { Paths } from "./paths.ts";
+import {
+  copyDirectoryContents,
+  collectFilesRecursive,
+  deleteInstalledRoomCopies,
+  ensureDir,
+  INSTALLED_ROOM_FILE_SNAPSHOT,
+  readJsonFile,
+  resolveInstalledRoomTrackedFiles,
+  writeInstalledRoomFileSnapshot,
+} from "./rooms/room-install-files.ts";
+import {
+  validateRoomBundle,
+} from "./rooms/room-bundle-validation.ts";
+import {
+  buildInstalledFeatureRecord,
+  optionalCommandSpecs,
+  optionalInstalledFeatureScene,
+  optionalProtocolSpecs,
+  optionalScene,
+  resolveInstalledFeatureScene,
+  resolveInstalledScene,
+} from "./rooms/installed-room-record.ts";
+import {
+  buildInstalledRoomRecord,
+  optionalI18nBaseDir,
+} from "./rooms/installed-room-builder.ts";
 import type {
-  InstalledRoomFeatureRecord,
-  InstalledRoomFeatureSceneRecord,
   InstalledRoomRecord,
-  InstalledRoomSceneRecord,
   RoomBundle,
   RoomBundleFile,
-  RoomCommandSpec,
   RoomManifest,
-  RoomProtocolSpec,
-  RoomSceneChromeConfig,
-  RoomSceneCharacterConfig,
   RoomRegistryState,
-  RoomSceneHotspotConfig,
-  RoomSceneTextConfig,
-  RoomSceneTransparentWindowConfig,
   RoomWorkspaceEntry,
 } from "@shared/index.js";
 import {
   ROOM_SCHEMA_VERSION,
   collectRoomManifestRequiredFilePaths,
-  flattenRoomCommandSpecs,
-  flattenRoomProtocolSpecs,
-  normalizeRoomRelativePath,
   validateRoomManifest,
 } from "@shared/index.js";
 import { translateElectronMessage } from "./i18n/language-service.ts";
@@ -46,19 +59,13 @@ interface RoomOperationResult {
   restartRequired?: boolean;
 }
 
-interface RoomBundleValidationResult {
-  valid: boolean;
-  errors: string[];
-  bundle?: RoomBundle;
-}
-
-const INSTALLED_ROOM_FILE_SNAPSHOT = ".room-install-files.json";
-
 interface RoomWorkspaceRoot {
   root: string;
   sourceKind: "workspace" | "bundle";
   readOnly: boolean;
 }
+
+export { buildInstalledRoomRecord };
 
 async function roomPackageT(
   key: string,
@@ -75,331 +82,8 @@ async function roomPackageError(
   return formatErrorWithDetail(await roomPackageT(key, params), detail);
 }
 
-function cloneCommandSpecs(
-  commandSpecs: RoomCommandSpec[] | undefined
-): RoomCommandSpec[] | undefined {
-  return commandSpecs?.map((item) => ({ ...item }));
-}
-
-function cloneProtocolSpecs(
-  protocolSpecs: RoomProtocolSpec[] | undefined
-): RoomProtocolSpec[] | undefined {
-  return protocolSpecs?.map((item) => ({ ...item }));
-}
-
-function cloneSceneText(value: RoomSceneTextConfig): RoomSceneTextConfig {
-  return { ...value };
-}
-
-function cloneSceneHotspot(hotspot: RoomSceneHotspotConfig): RoomSceneHotspotConfig {
-  return {
-    id: hotspot.id,
-    rect: { ...hotspot.rect },
-    ...(hotspot.label !== undefined ? { label: cloneSceneText(hotspot.label) } : {}),
-  };
-}
-
-function cloneSceneCharacter(value: RoomSceneCharacterConfig): RoomSceneCharacterConfig {
-  return { ...value };
-}
-
-function cloneSceneCharacters(value: RoomSceneCharacterConfig[]): RoomSceneCharacterConfig[] {
-  return value.map((character) => cloneSceneCharacter(character));
-}
-
-function cloneSceneChrome(value: RoomSceneChromeConfig): RoomSceneChromeConfig {
-  return { ...value };
-}
-
-function cloneTransparentWindow(
-  value: RoomSceneTransparentWindowConfig
-): RoomSceneTransparentWindowConfig {
-  return { ...value };
-}
-
-function buildInstalledFeatureRecord(
-  feature: InstalledRoomFeatureRecord
-): InstalledRoomFeatureRecord {
-  return {
-    id: feature.id,
-    name: feature.name,
-    ...(feature.description !== undefined ? { description: feature.description } : {}),
-    ...(feature.icon !== undefined ? { icon: feature.icon } : {}),
-    ...optionalCommandSpecs(feature.commandSpecs),
-    ...optionalProtocolSpecs(feature.protocolSpecs),
-    ...optionalInstalledFeatureScene(feature.scene),
-  };
-}
-
-function cloneInstalledFeatureScene(
-  value: InstalledRoomFeatureSceneRecord | undefined
-): InstalledRoomFeatureSceneRecord | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  return {
-    hotspot: cloneSceneHotspot(value.hotspot),
-    view: {
-      id: value.view.id,
-      backgroundPath: value.view.backgroundPath,
-      ...(value.view.panelArtPath !== undefined ? { panelArtPath: value.view.panelArtPath } : {}),
-      ...(value.view.transparentWindow !== undefined
-        ? { transparentWindow: cloneTransparentWindow(value.view.transparentWindow) }
-        : {}),
-    },
-  };
-}
-
-function resolveInstalledFeatureScene(
-  value: InstalledRoomFeatureSceneRecord | undefined
-): InstalledRoomFeatureSceneRecord | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  return {
-    hotspot: cloneSceneHotspot(value.hotspot),
-    view: {
-      id: value.view.id,
-      backgroundPath: resolve(value.view.backgroundPath),
-      ...(value.view.panelArtPath !== undefined
-        ? { panelArtPath: resolve(value.view.panelArtPath) }
-        : {}),
-      ...(value.view.transparentWindow !== undefined
-        ? { transparentWindow: cloneTransparentWindow(value.view.transparentWindow) }
-        : {}),
-    },
-  };
-}
-
-function cloneInstalledFeatures(
-  features: InstalledRoomFeatureRecord[]
-): InstalledRoomFeatureRecord[] {
-  return features.map((feature) => buildInstalledFeatureRecord(feature));
-}
-
-function cloneInstalledScene(
-  scene: InstalledRoomSceneRecord | undefined
-): InstalledRoomSceneRecord | undefined {
-  if (scene === undefined) {
-    return undefined;
-  }
-
-  return {
-    referenceSize: { ...scene.referenceSize },
-    roomBackgroundPath: scene.roomBackgroundPath,
-    roomsHotspot: cloneSceneHotspot(scene.roomsHotspot),
-    backHotspot: cloneSceneHotspot(scene.backHotspot),
-    ...(scene.characterRosterPreset !== undefined
-      ? { characterRosterPreset: scene.characterRosterPreset }
-      : {}),
-    ...(scene.characters !== undefined
-      ? { characters: cloneSceneCharacters(scene.characters) }
-      : {}),
-    ...(scene.chrome !== undefined ? { chrome: cloneSceneChrome(scene.chrome) } : {}),
-  };
-}
-
-function resolveInstalledScene(
-  scene: InstalledRoomSceneRecord | undefined
-): InstalledRoomSceneRecord | undefined {
-  if (scene === undefined) {
-    return undefined;
-  }
-
-  return {
-    referenceSize: { ...scene.referenceSize },
-    roomBackgroundPath: resolve(scene.roomBackgroundPath),
-    roomsHotspot: cloneSceneHotspot(scene.roomsHotspot),
-    backHotspot: cloneSceneHotspot(scene.backHotspot),
-    ...(scene.characterRosterPreset !== undefined
-      ? { characterRosterPreset: scene.characterRosterPreset }
-      : {}),
-    ...(scene.characters !== undefined
-      ? { characters: cloneSceneCharacters(scene.characters) }
-      : {}),
-    ...(scene.chrome !== undefined ? { chrome: cloneSceneChrome(scene.chrome) } : {}),
-  };
-}
-
 function normalizeRoomId(rawValue: string): string {
   return rawValue.trim();
-}
-
-async function ensureDir(dirPath: string): Promise<void> {
-  await mkdir(dirPath, { recursive: true });
-}
-
-async function readJsonFile<T>(filePath: string): Promise<T> {
-  const raw = await readFile(filePath, "utf-8");
-  return JSON.parse(raw) as T;
-}
-
-async function copyDirectoryContents(
-  sourceDir: string,
-  targetDir: string,
-  options: {
-    includeRelativePath?: (relativePath: string) => boolean;
-  } = {}
-): Promise<string[]> {
-  const includeRelativePath = options.includeRelativePath ?? (() => true);
-  const files = (await collectFilesRecursive(sourceDir)).filter((file) =>
-    includeRelativePath(file.relativePath)
-  );
-  await rm(targetDir, { recursive: true, force: true });
-  await ensureDir(targetDir);
-
-  await Promise.all(
-    files.map(async (file): Promise<void> => {
-      const targetPath = join(targetDir, file.relativePath);
-      await ensureDir(dirname(targetPath));
-      await writeFile(targetPath, await readFile(file.absolutePath));
-    })
-  );
-
-  return files.map((file) => file.relativePath);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && Array.isArray(value) === false;
-}
-
-function optionalDescription(
-  description: string | undefined
-): { description: string } | Record<string, never> {
-  return typeof description === "string" ? { description } : {};
-}
-
-function optionalCommandSpecs(
-  commandSpecs: RoomCommandSpec[] | undefined
-): { commandSpecs: RoomCommandSpec[] } | Record<string, never> {
-  const cloned = cloneCommandSpecs(commandSpecs);
-  return Array.isArray(cloned) && cloned.length > 0 ? { commandSpecs: cloned } : {};
-}
-
-function optionalProtocolSpecs(
-  protocolSpecs: RoomProtocolSpec[] | undefined
-): { protocolSpecs: RoomProtocolSpec[] } | Record<string, never> {
-  const cloned = cloneProtocolSpecs(protocolSpecs);
-  return Array.isArray(cloned) && cloned.length > 0 ? { protocolSpecs: cloned } : {};
-}
-
-function optionalScene(
-  scene: InstalledRoomSceneRecord | undefined
-): { scene: InstalledRoomSceneRecord } | Record<string, never> {
-  const cloned = cloneInstalledScene(scene);
-  return cloned === undefined ? {} : { scene: cloned };
-}
-
-function optionalInstalledFeatureScene(
-  scene: InstalledRoomFeatureSceneRecord | undefined
-): { scene: InstalledRoomFeatureSceneRecord } | Record<string, never> {
-  const cloned = cloneInstalledFeatureScene(scene);
-  return cloned === undefined ? {} : { scene: cloned };
-}
-
-function optionalI18nBaseDir(
-  i18nBaseDir: string | undefined
-): { i18nBaseDir: string } | Record<string, never> {
-  return typeof i18nBaseDir === "string" ? { i18nBaseDir } : {};
-}
-
-function validateRoomBundle(candidate: unknown): RoomBundleValidationResult {
-  const errors: string[] = [];
-
-  if (isRecord(candidate) === false) {
-    return {
-      valid: false,
-      errors: ["bundle must be an object"],
-    };
-  }
-
-  if (candidate["schemaVersion"] !== ROOM_SCHEMA_VERSION) {
-    errors.push(`schemaVersion must be ${String(ROOM_SCHEMA_VERSION)}`);
-  }
-
-  const manifestValidation = validateRoomManifest(candidate["manifest"]);
-  if (manifestValidation.valid !== true || manifestValidation.manifest === undefined) {
-    errors.push(...manifestValidation.errors.map((error) => `manifest.${error}`));
-  }
-
-  const filesRaw = candidate["files"];
-  const files: Record<string, RoomBundleFile> = {};
-
-  if (isRecord(filesRaw) === false) {
-    errors.push("files must be an object");
-  } else {
-    for (const [rawPath, rawValue] of Object.entries(filesRaw)) {
-      const relativePath = normalizeRoomRelativePath(rawPath);
-      if (relativePath === null) {
-        errors.push(`files[${rawPath}] has invalid path`);
-        continue;
-      }
-
-      if (isRecord(rawValue) === false) {
-        errors.push(`files[${relativePath}] must be an object`);
-        continue;
-      }
-
-      if (rawValue["encoding"] !== "base64") {
-        errors.push(`files[${relativePath}].encoding must be base64`);
-        continue;
-      }
-
-      if (typeof rawValue["content"] !== "string") {
-        errors.push(`files[${relativePath}].content must be a string`);
-        continue;
-      }
-
-      files[relativePath] = {
-        encoding: "base64",
-        content: rawValue["content"],
-      };
-    }
-  }
-
-  const exportedAtRaw = candidate["exportedAt"];
-  const exportedAt =
-    typeof exportedAtRaw === "string" && exportedAtRaw.trim() !== ""
-      ? exportedAtRaw.trim()
-      : new Date().toISOString();
-
-  if (
-    errors.length > 0 ||
-    manifestValidation.valid !== true ||
-    manifestValidation.manifest === undefined
-  ) {
-    return {
-      valid: false,
-      errors,
-    };
-  }
-
-  const { manifest } = manifestValidation;
-  collectRoomManifestRequiredFilePaths(manifest).forEach((requiredPath) => {
-    if (files[requiredPath] === undefined) {
-      errors.push(`files missing required asset: ${requiredPath}`);
-    }
-  });
-
-  if (errors.length > 0) {
-    return {
-      valid: false,
-      errors,
-    };
-  }
-
-  return {
-    valid: true,
-    errors: [],
-    bundle: {
-      schemaVersion: ROOM_SCHEMA_VERSION,
-      manifest,
-      files,
-      exportedAt,
-    },
-  };
 }
 
 function createEmptyRegistry(): RoomRegistryState {
@@ -408,225 +92,6 @@ function createEmptyRegistry(): RoomRegistryState {
     updatedAt: new Date().toISOString(),
     rooms: [],
   };
-}
-
-export function buildInstalledRoomRecord(
-  manifest: RoomManifest,
-  options: {
-    sourceDir: string;
-    installedDir: string;
-    installedAt: string;
-    updatedAt: string;
-  }
-): InstalledRoomRecord {
-  const { sourceDir, installedDir, installedAt, updatedAt } = options;
-  const features: InstalledRoomFeatureRecord[] = manifest.features.map((feature) => {
-    const scene =
-      feature.scene === undefined
-        ? undefined
-        : {
-            hotspot: cloneSceneHotspot(feature.scene.hotspot),
-            view: {
-              id: feature.scene.view.id,
-              backgroundPath: join(installedDir, feature.scene.view.backgroundSrc),
-              ...(feature.scene.view.panelArtSrc !== undefined
-                ? { panelArtPath: join(installedDir, feature.scene.view.panelArtSrc) }
-                : {}),
-              ...(feature.scene.view.transparentWindow !== undefined
-                ? {
-                    transparentWindow: cloneTransparentWindow(feature.scene.view.transparentWindow),
-                  }
-                : {}),
-            },
-          };
-
-    return {
-      id: feature.id,
-      name: feature.name,
-      ...(feature.description !== undefined ? { description: feature.description } : {}),
-      ...(feature.icon !== undefined ? { icon: feature.icon } : {}),
-      ...optionalCommandSpecs(feature.commandSpecs),
-      ...optionalProtocolSpecs(feature.protocolSpecs),
-      ...optionalInstalledFeatureScene(scene),
-    };
-  });
-
-  const scene: InstalledRoomSceneRecord | undefined =
-    manifest.scene === undefined
-      ? undefined
-      : {
-          referenceSize: { ...manifest.scene.referenceSize },
-          roomBackgroundPath: join(installedDir, manifest.scene.roomBackgroundSrc),
-          roomsHotspot: cloneSceneHotspot(manifest.scene.roomsHotspot),
-          backHotspot: cloneSceneHotspot(manifest.scene.backHotspot),
-          ...(manifest.scene.characterRosterPreset !== undefined
-            ? { characterRosterPreset: manifest.scene.characterRosterPreset }
-            : {}),
-          ...(manifest.scene.characters !== undefined
-            ? { characters: cloneSceneCharacters(manifest.scene.characters) }
-            : {}),
-          ...(manifest.scene.chrome !== undefined
-            ? { chrome: cloneSceneChrome(manifest.scene.chrome) }
-            : {}),
-        };
-
-  const commandSpecs = flattenRoomCommandSpecs(manifest);
-  const protocolSpecs = flattenRoomProtocolSpecs(manifest);
-
-  return {
-    id: manifest.id,
-    name: manifest.name,
-    version: manifest.version,
-    ...optionalDescription(manifest.description),
-    ...(manifest.menu.icon !== undefined ? { icon: manifest.menu.icon } : {}),
-    sourceDir,
-    installedDir,
-    manifestPath: join(installedDir, "manifest.json"),
-    runtimeEntryPath: join(installedDir, manifest.runtime.uiEntry),
-    hostEntryPath: join(installedDir, manifest.runtime.hostEntry),
-    defaultFeatureId: manifest.defaultFeatureId,
-    features: cloneInstalledFeatures(features),
-    ...optionalScene(scene),
-    ...optionalI18nBaseDir(
-      manifest.i18n !== undefined ? join(installedDir, manifest.i18n.baseDir) : undefined
-    ),
-    ...optionalCommandSpecs(commandSpecs),
-    ...optionalProtocolSpecs(protocolSpecs),
-    installedAt,
-    updatedAt,
-  };
-}
-
-async function collectFilesRecursive(
-  baseDir: string,
-  currentDir: string = baseDir
-): Promise<Array<{ relativePath: string; absolutePath: string }>> {
-  const entries = await readdir(currentDir, { withFileTypes: true });
-  const nestedFiles = await Promise.all(
-    entries.map(async (entry): Promise<Array<{ relativePath: string; absolutePath: string }>> => {
-      if (entry.name === "dist" || entry.name === "node_modules") {
-        return [];
-      }
-      const absolutePath = join(currentDir, entry.name);
-      if (entry.isDirectory()) {
-        return await collectFilesRecursive(baseDir, absolutePath);
-      }
-      const relativePath = absolutePath.slice(baseDir.length + 1).replace(/\\/g, "/");
-      return [{ relativePath, absolutePath }];
-    })
-  );
-
-  return nestedFiles
-    .flat()
-    .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
-}
-
-function getInstalledRoomFileSnapshotPath(installedDir: string): string {
-  return join(installedDir, INSTALLED_ROOM_FILE_SNAPSHOT);
-}
-
-async function writeInstalledRoomFileSnapshot(
-  installedDir: string,
-  relativePaths: string[]
-): Promise<void> {
-  const normalizedPaths = Array.from(
-    new Set(relativePaths.map((path) => path.trim()).filter((path) => path !== ""))
-  ).sort((left, right) => left.localeCompare(right));
-
-  await writeFile(
-    getInstalledRoomFileSnapshotPath(installedDir),
-    JSON.stringify({ files: normalizedPaths }, null, 2),
-    "utf8"
-  );
-}
-
-async function readInstalledRoomFileSnapshot(installedDir: string): Promise<string[] | null> {
-  const snapshotPath = getInstalledRoomFileSnapshotPath(installedDir);
-  if (existsSync(snapshotPath) !== true) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(await readFile(snapshotPath, "utf8")) as { files?: unknown };
-    if (Array.isArray(parsed.files) !== true) {
-      return null;
-    }
-
-    return parsed.files.filter(
-      (value): value is string => typeof value === "string" && value.trim() !== ""
-    );
-  } catch {
-    return null;
-  }
-}
-
-function collectParentDirectories(relativePath: string): string[] {
-  const directories: string[] = [];
-  let current = dirname(relativePath);
-
-  while (current !== "." && current !== "") {
-    directories.push(current);
-    const next = dirname(current);
-    if (next === current) {
-      break;
-    }
-    current = next;
-  }
-
-  return directories;
-}
-
-async function deleteInstalledRoomCopies(
-  installedDir: string,
-  relativePaths: string[]
-): Promise<void> {
-  const normalizedPaths = Array.from(
-    new Set(
-      [...relativePaths, INSTALLED_ROOM_FILE_SNAPSHOT]
-        .map((path) => path.trim())
-        .filter((path) => path !== "")
-    )
-  ).sort((left, right) => right.length - left.length);
-
-  const parentDirectories = new Set<string>();
-  // NOTE: Deletes are ordered to remove deepest paths first.
-  /* eslint-disable no-await-in-loop */
-  for (const relativePath of normalizedPaths) {
-    await rm(join(installedDir, relativePath), { force: true });
-    collectParentDirectories(relativePath).forEach((directory) => {
-      parentDirectories.add(directory);
-    });
-  }
-
-  for (const directory of Array.from(parentDirectories).sort(
-    (left, right) => right.length - left.length
-  )) {
-    try {
-      await rm(join(installedDir, directory), { force: true });
-    } catch {
-      // Ignore non-empty directories so user-created files remain in place.
-    }
-  }
-  /* eslint-enable no-await-in-loop */
-
-  try {
-    await rm(installedDir, { force: true });
-  } catch {
-    // Ignore non-empty roots so user-created files remain in place.
-  }
-}
-
-async function resolveInstalledRoomTrackedFiles(room: InstalledRoomRecord): Promise<string[]> {
-  const snapshotFiles = await readInstalledRoomFileSnapshot(room.installedDir);
-  if (snapshotFiles !== null) {
-    return snapshotFiles;
-  }
-
-  if (existsSync(room.sourceDir) !== true) {
-    return [];
-  }
-
-  return (await collectFilesRecursive(room.sourceDir)).map((file) => file.relativePath);
 }
 
 export class RoomPackageManager {
@@ -1032,7 +497,9 @@ export class RoomPackageManager {
       includeRelativePath: (relativePath) =>
         relativePath !== INSTALLED_ROOM_FILE_SNAPSHOT &&
         relativePath !== "tools/runtime" &&
-        relativePath.startsWith("tools/runtime/") === false,
+        relativePath.startsWith("tools/runtime/") === false &&
+        relativePath !== "shared/data/tools/runtime" &&
+        relativePath.startsWith("shared/data/tools/runtime/") === false,
     });
 
     return { success: true, room: current, path: exportDir };
@@ -1093,7 +560,8 @@ export class RoomPackageManager {
     };
 
     const outputFile =
-      options.outputFile ?? join(target.dirPath, "dist", `${targetManifest.id}.hevroom.json`);
+      options.outputFile ??
+      join(this.getRoomStorageRoot(targetManifest.id), "exports", `${targetManifest.id}.hevroom.json`);
     await ensureDir(dirname(outputFile));
     await writeFile(outputFile, JSON.stringify(bundle, null, 2), "utf-8");
 

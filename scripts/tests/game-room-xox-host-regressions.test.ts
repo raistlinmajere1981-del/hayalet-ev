@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { loadGameRoomHostModule } from "./helpers/game-room-host-module.ts";
+
+const gameRoomHostModule = await loadGameRoomHostModule();
 
 type HostRuntime = ReturnType<typeof createRoomHostRuntime>;
 
@@ -16,11 +18,6 @@ function buildBoardHash(board: string[]): string {
 }
 
 function createRoomHostRuntime() {
-  const source = readFileSync("rooms/game-room/host/index.js", "utf8");
-  const module = { exports: {} };
-  const evaluator = new Function("module", "exports", source);
-  evaluator(module, module.exports);
-
   const state = new Map();
   const protocolCalls: Array<Record<string, unknown>> = [];
   const messageCalls: Array<Record<string, unknown>> = [];
@@ -115,10 +112,7 @@ function createRoomHostRuntime() {
     log: () => undefined,
   };
 
-  exported =
-    typeof module.exports === "function"
-      ? module.exports(api)
-      : module.exports.activate(api);
+  exported = gameRoomHostModule.default.activate(api);
 
   const runtime = {
     api,

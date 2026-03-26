@@ -8,7 +8,7 @@ export function setupRoomToolHandlers(): void {
     return await roomToolService.handleCall(event, request as RoomToolCallRequest);
   });
 
-  registerHandler("room-tools-cancel", async (_event: IpcMainInvokeEvent, request: unknown) => {
-    return await roomToolService.cancel(request as RoomToolCancelRequest);
+  registerHandler("room-tools-cancel", (_event: IpcMainInvokeEvent, request: unknown) => {
+    return roomToolService.cancel(request as RoomToolCancelRequest);
   });
 }

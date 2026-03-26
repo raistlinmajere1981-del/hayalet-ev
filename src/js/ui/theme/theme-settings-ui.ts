@@ -87,7 +87,9 @@ export function updateThemePanelUI(
   const textScaleSelect = document.getElementById(
     "theme-text-scale-select"
   ) as HTMLSelectElement | null;
-  const uiScaleSelect = document.getElementById("theme-ui-scale-select") as HTMLSelectElement | null;
+  const uiScaleSelect = document.getElementById(
+    "theme-ui-scale-select"
+  ) as HTMLSelectElement | null;
   const surfaceSelect = document.getElementById("theme-surface-select") as HTMLSelectElement | null;
   const contrastToggle = document.getElementById(
     "theme-contrast-toggle"

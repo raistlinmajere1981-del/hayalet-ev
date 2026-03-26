@@ -16,7 +16,8 @@ import { SettingsManager } from "../settings-manager.js";
 import { ServerCommands } from "../server-commands.js";
 import { RoomCommandRegistry, type RoomCommandHandler } from "./room-command-registry.js";
 import { RoomProtocolRegistry } from "./room-protocol-registry.js";
-import { decodeRoomHostSource } from "./room-host-source.js";
+import { buildRoomHostModuleDataUrl, decodeRoomHostSource } from "./room-host-source.js";
+import { toRoomRuntimeFileUrl } from "./room-runtime-url.js";
 
 interface RoomBridge {
   sendToRoom: (payload: Record<string, unknown>) => void;
@@ -114,16 +115,26 @@ function toHostExports(result: unknown): RoomHostExports {
   return {};
 }
 
-function resolveHostActivator(exported: RoomHostFactory): RoomHostActivator | null {
+function resolveHostActivator(exported: unknown): RoomHostActivator | null {
   if (typeof exported === "function") {
-    return exported;
+    return exported as RoomHostActivator;
   }
-  if (typeof exported.activate === "function") {
-    return exported.activate;
+
+  if (exported !== null && typeof exported === "object" && Array.isArray(exported) === false) {
+    const candidate = exported as {
+      activate?: unknown;
+      default?: unknown;
+    };
+
+    if (typeof candidate.activate === "function") {
+      return candidate.activate as RoomHostActivator;
+    }
+
+    if (candidate.default !== undefined) {
+      return resolveHostActivator(candidate.default);
+    }
   }
-  if (typeof exported.default === "function") {
-    return exported.default;
-  }
+
   return null;
 }
 
@@ -243,26 +254,51 @@ class RoomHostRuntimeClass {
 
   private async loadRoomHost(registration: RoomHostRegistration): Promise<boolean> {
     const readFile = window.electronAPI?.readFile;
-    if (typeof readFile !== "function") {
-      return false;
-    }
 
     try {
-      const source = await readFile(registration.room.hostEntryPath);
-      if (typeof source !== "string" || source.trim() === "") {
-        Logger.warnT(
-          LogCategory.SYSTEM,
-          "app.logs.roomHost.entryMissing",
-          { path: registration.room.hostEntryPath },
-          {
-            context: { roomId: registration.room.id },
-          }
-        );
-        registration.loaded = false;
-        return false;
-      }
+      let exported: RoomHostFactory | null = null;
 
-      const exported = this.evaluateHostFactory(decodeRoomHostSource(source), registration.room.id);
+      try {
+        const moduleUrl = new URL(toRoomRuntimeFileUrl(registration.room.hostEntryPath));
+        moduleUrl.searchParams.set("roomHostId", registration.room.id);
+        moduleUrl.searchParams.set("roomHostUpdatedAt", registration.room.updatedAt);
+        exported = (await import(
+          /* @vite-ignore */ moduleUrl.toString()
+        )) as unknown as RoomHostFactory;
+      } catch {
+        if (typeof readFile !== "function") {
+          return false;
+        }
+
+        try {
+          const moduleUrl = await buildRoomHostModuleDataUrl(
+            registration.room.hostEntryPath,
+            async (filePath) => {
+              const encoded = await readFile(filePath);
+              return decodeRoomHostSource(typeof encoded === "string" ? encoded : "");
+            }
+          );
+          exported = (await import(
+            /* @vite-ignore */ moduleUrl
+          )) as unknown as RoomHostFactory;
+        } catch {
+          const source = await readFile(registration.room.hostEntryPath);
+          if (typeof source !== "string" || source.trim() === "") {
+            Logger.warnT(
+              LogCategory.SYSTEM,
+              "app.logs.roomHost.entryMissing",
+              { path: registration.room.hostEntryPath },
+              {
+                context: { roomId: registration.room.id },
+              }
+            );
+            registration.loaded = false;
+            return false;
+          }
+
+          exported = this.evaluateHostFactory(decodeRoomHostSource(source), registration.room.id);
+        }
+      }
       const activate = resolveHostActivator(exported);
 
       if (activate === null) {

@@ -56,3 +56,22 @@ test("catch manager ignores malformed single-plus commands", () => {
 
   assert.equal(commands.length, 0);
 });
+
+test("catch manager keeps structured Team Tetris AI commands from the latest assistant message", () => {
+  const commands = CatchManager.catchCommands({
+    provider: "ai1",
+    webUrl: "https://chatgpt.com/c/team-tetris",
+    messages: [
+      {
+        index: 0,
+        role: "assistant",
+        text:
+          '++cmd:GameRoomTeamTetrisAiMove({"schemaVersion":1,"matchId":"tt_1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]})',
+      },
+    ],
+  });
+
+  assert.equal(commands.length, 1);
+  assert.equal(commands[0]?.command, "GameRoomTeamTetrisAiMove");
+  assert.match(commands[0]?.args ?? "", /"turnToken":"tt_token"/);
+});

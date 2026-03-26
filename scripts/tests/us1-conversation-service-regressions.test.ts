@@ -1167,6 +1167,81 @@ test("US1 conversation sync projects room events, commands, and invite inbox ent
   }
 });
 
+test("US1 conversation service preserves Team Tetris start events and turnToken metadata", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_team_tetris_meta`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    const startResult = await service.sendMessage({
+      text: "Team Tetris match started.",
+      roomEvent: {
+        roomId: "game-room",
+        featureId: "team-tetris",
+        inviteId: "tt-match-1",
+        matchId: "tt-match-1",
+        eventType: "start",
+        note: '{"seed":"tt-seed","hiddenPairs":true}',
+      },
+    });
+    const commandResult = await service.sendMessage({
+      localSessionId: startResult.localSessionId,
+      text:
+        '++cmd:GameRoomTeamTetrisRemoteMove({"schemaVersion":1,"matchId":"tt-match-1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]})',
+      roomCommand: {
+        roomId: "game-room",
+        featureId: "team-tetris",
+        commandName: "GameRoomTeamTetrisRemoteMove",
+        matchId: "tt-match-1",
+        turnIndex: 2,
+        turnToken: "tt_token",
+        boardHashBeforeMove: "..........|..........",
+        rawArgs:
+          '{"schemaVersion":1,"matchId":"tt-match-1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]}',
+      },
+    });
+
+    assert.equal(startResult.success, true);
+    assert.equal(commandResult.success, true);
+
+    const startEnvelope = extractConversationEnvelope(transportStub.sentMessages[0] as SendMailRequest);
+    const commandEnvelope = extractConversationEnvelope(transportStub.sentMessages[1] as SendMailRequest);
+
+    assert.deepEqual(startEnvelope["roomEvent"], {
+      roomId: "game-room",
+      featureId: "team-tetris",
+      inviteId: "tt-match-1",
+      matchId: "tt-match-1",
+      eventType: "start",
+      note: '{"seed":"tt-seed","hiddenPairs":true}',
+    });
+    assert.deepEqual(commandEnvelope["roomCommand"], {
+      roomId: "game-room",
+      featureId: "team-tetris",
+      commandName: "GameRoomTeamTetrisRemoteMove",
+      matchId: "tt-match-1",
+      turnIndex: 2,
+      turnToken: "tt_token",
+      boardHashBeforeMove: "..........|..........",
+      rawArgs:
+        '{"schemaVersion":1,"matchId":"tt-match-1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]}',
+    });
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
 test("US1 conversation sync keeps invite inbox entries from all registered remote accounts", async () => {
   const accountIdA = `us1_mail_${Date.now().toString(36)}_multi_a`;
   const accountIdB = `us1_mail_${Date.now().toString(36)}_multi_b`;

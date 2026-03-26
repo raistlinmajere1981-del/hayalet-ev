@@ -1,8 +1,25 @@
+import {
+  hasDuplicateValues,
+  isRecord,
+  isValidRoomCommandName,
+  isValidRoomId,
+  normalizeRoomRelativePath,
+  readOptionalString,
+  readRequiredString,
+} from "./room-validation-primitives.js";
+import {
+  readCommandSpecs,
+  readI18nConfig,
+  readMenuConfig,
+  readProtocolSpecs,
+  readRuntimeConfig,
+} from "./room-manifest-readers.js";
+import { createRoomSceneReaders } from "./room-scene-readers.js";
+export { isValidRoomCommandName, isValidRoomId, normalizeRoomRelativePath };
+
 export const ROOM_SCHEMA_VERSION = 2 as const;
 
 export type RoomCommandScope = "room-ui" | "ai-slots" | "assistant" | "us1" | "system";
-
-const LEGACY_ASSISTANT_SCOPE = "ai0";
 
 export const ROOM_SCENE_CHARACTER_KINDS = ["ai", "assistant", "us1", "user"] as const;
 export const ROOM_SCENE_CHARACTER_SLOTS = ["ai0", "ai1", "ai2", "us1"] as const;
@@ -54,6 +71,7 @@ export interface RoomProtocolSpec {
   scenario: string;
   title: string;
   editable?: boolean;
+  path?: string;
 }
 
 export interface RoomSceneRect {
@@ -256,98 +274,8 @@ export interface StartupRoomsSnapshot {
   protocols: StartupRoomProtocolSnapshot[];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && Array.isArray(value) === false;
-}
-
-function readOptionalString(
-  record: Record<string, unknown>,
-  key: string,
-  errors: string[]
-): string | undefined {
-  const value = record[key];
-  if (value === undefined) {
-    return undefined;
-  }
-  if (typeof value !== "string") {
-    errors.push(`${key} must be a string`);
-    return undefined;
-  }
-  const trimmed = value.trim();
-  if (trimmed === "") {
-    errors.push(`${key} cannot be empty`);
-    return undefined;
-  }
-  return trimmed;
-}
-
-function readRequiredString(
-  record: Record<string, unknown>,
-  key: string,
-  errors: string[]
-): string | undefined {
-  const value = readOptionalString(record, key, errors);
-  if (value === undefined) {
-    errors.push(`${key} is required`);
-  }
-  return value;
-}
-
-function readFiniteNumber(
-  record: Record<string, unknown>,
-  key: string,
-  errors: string[]
-): number | undefined {
-  const value = record[key];
-  if (typeof value !== "number" || Number.isFinite(value) === false) {
-    errors.push(`${key} must be a finite number`);
-    return undefined;
-  }
-  return value;
-}
-
-function readPositiveNumber(
-  record: Record<string, unknown>,
-  key: string,
-  errors: string[]
-): number | undefined {
-  const value = readFiniteNumber(record, key, errors);
-  if (value !== undefined && value <= 0) {
-    errors.push(`${key} must be greater than 0`);
-    return undefined;
-  }
-  return value;
-}
-
-function hasDuplicateValues(values: string[]): boolean {
-  return new Set(values).size !== values.length;
-}
-
-export function isValidRoomId(value: string): boolean {
-  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
-}
-
 export function isValidRoomFeatureId(value: string): boolean {
   return isValidRoomId(value);
-}
-
-export function isValidRoomCommandName(value: string): boolean {
-  return /^[A-Za-z0-9_]+$/.test(value);
-}
-
-export function normalizeRoomRelativePath(value: string): string | null {
-  const trimmed = value.replace(/\\/g, "/").trim();
-  if (trimmed === "") {
-    return null;
-  }
-  if (trimmed.startsWith("/") || trimmed.startsWith("../") || trimmed.includes("/../")) {
-    return null;
-  }
-  const parts = trimmed.split("/");
-  if (parts.some((part) => part === "" || part === "." || part === "..")) {
-    return null;
-  }
-  return parts.join("/");
 }
 
 function isRoomSceneCharacterKind(value: string): value is RoomSceneCharacterKind {
@@ -378,661 +306,17 @@ function isRoomScenePageShellVariant(value: string): value is RoomScenePageShell
   return ROOM_SCENE_PAGE_SHELL_VARIANTS.includes(value as RoomScenePageShellVariant);
 }
 
-function readMenuConfig(
-  record: Record<string, unknown>,
-  errors: string[]
-): RoomMenuConfig | undefined {
-  const menuRaw = record["menu"];
-  if (!isRecord(menuRaw)) {
-    errors.push("menu is required");
-    return undefined;
-  }
-
-  const label = readRequiredString(menuRaw, "label", errors);
-  const icon = readOptionalString(menuRaw, "icon", errors);
-  const orderRaw = menuRaw["order"];
-  let order: number | undefined;
-  if (orderRaw !== undefined) {
-    if (typeof orderRaw !== "number" || Number.isFinite(orderRaw) === false) {
-      errors.push("menu.order must be a number");
-    } else {
-      order = orderRaw;
-    }
-  }
-
-  if (label === undefined) {
-    return undefined;
-  }
-
-  return {
-    label,
-    ...(icon !== undefined ? { icon } : {}),
-    ...(order !== undefined ? { order } : {}),
-  };
-}
-
-function readRuntimeConfig(
-  record: Record<string, unknown>,
-  errors: string[]
-): RoomRuntimeConfig | undefined {
-  const runtimeRaw = record["runtime"];
-  if (!isRecord(runtimeRaw)) {
-    errors.push("runtime is required");
-    return undefined;
-  }
-
-  const uiEntryRaw = readRequiredString(runtimeRaw, "uiEntry", errors);
-  const hostEntryRaw = readRequiredString(runtimeRaw, "hostEntry", errors);
-  const uiEntry = uiEntryRaw !== undefined ? normalizeRoomRelativePath(uiEntryRaw) : null;
-  const hostEntry = hostEntryRaw !== undefined ? normalizeRoomRelativePath(hostEntryRaw) : null;
-  if (uiEntryRaw !== undefined && uiEntry === null) {
-    errors.push("runtime.uiEntry must be a safe relative path");
-  }
-  if (hostEntryRaw !== undefined && hostEntry === null) {
-    errors.push("runtime.hostEntry must be a safe relative path");
-  }
-
-  if (uiEntry === null || hostEntry === null) {
-    return undefined;
-  }
-
-  return {
-    uiEntry,
-    hostEntry,
-  };
-}
-
-function readCommandSpecs(
-  rawValue: unknown,
-  path: string,
-  errors: string[]
-): RoomCommandSpec[] | undefined {
-  if (rawValue === undefined) {
-    return undefined;
-  }
-
-  if (!Array.isArray(rawValue)) {
-    errors.push(`${path} must be an array`);
-    return undefined;
-  }
-
-  const parsed: RoomCommandSpec[] = [];
-  rawValue.forEach((item, index) => {
-    if (!isRecord(item)) {
-      errors.push(`${path}[${String(index)}] must be an object`);
-      return;
-    }
-    const commandName = readRequiredString(item, "name", errors);
-    if (commandName !== undefined && isValidRoomCommandName(commandName) === false) {
-      errors.push(`${path}[${String(index)}].name must match /^[A-Za-z0-9_]+$/`);
-    }
-    const descriptionValue = readOptionalString(item, "description", errors);
-    const scopeRaw = item["scope"];
-    let scope: RoomCommandScope | undefined;
-    if (scopeRaw !== undefined) {
-      if (typeof scopeRaw !== "string") {
-        errors.push(`${path}[${String(index)}].scope is invalid`);
-      } else if (
-        scopeRaw !== "room-ui" &&
-        scopeRaw !== "ai-slots" &&
-        scopeRaw !== "assistant" &&
-        scopeRaw !== "us1" &&
-        scopeRaw !== "system" &&
-        scopeRaw !== LEGACY_ASSISTANT_SCOPE
-      ) {
-        errors.push(`${path}[${String(index)}].scope is invalid`);
-      } else {
-        scope = scopeRaw === LEGACY_ASSISTANT_SCOPE ? "assistant" : (scopeRaw as RoomCommandScope);
-      }
-    }
-    if (commandName !== undefined) {
-      parsed.push({
-        name: commandName,
-        ...(descriptionValue !== undefined ? { description: descriptionValue } : {}),
-        ...(scope !== undefined ? { scope } : {}),
-      });
-    }
-  });
-
-  if (hasDuplicateValues(parsed.map((item) => item.name))) {
-    errors.push(`${path} names must be unique`);
-  }
-
-  return parsed;
-}
-
-function readProtocolSpecs(
-  rawValue: unknown,
-  path: string,
-  errors: string[]
-): RoomProtocolSpec[] | undefined {
-  if (rawValue === undefined) {
-    return undefined;
-  }
-
-  if (!Array.isArray(rawValue)) {
-    errors.push(`${path} must be an array`);
-    return undefined;
-  }
-
-  const parsed: RoomProtocolSpec[] = [];
-  rawValue.forEach((item, index) => {
-    if (!isRecord(item)) {
-      errors.push(`${path}[${String(index)}] must be an object`);
-      return;
-    }
-    const key = readRequiredString(item, "key", errors);
-    const room = readRequiredString(item, "room", errors);
-    const scenario = readRequiredString(item, "scenario", errors);
-    const title = readRequiredString(item, "title", errors);
-    const editableRaw = item["editable"];
-    let editable: boolean | undefined;
-    if (editableRaw !== undefined) {
-      if (typeof editableRaw !== "boolean") {
-        errors.push(`${path}[${String(index)}].editable must be boolean`);
-      } else {
-        editable = editableRaw;
-      }
-    }
-    if (key !== undefined && room !== undefined && scenario !== undefined && title !== undefined) {
-      parsed.push({
-        key,
-        room,
-        scenario,
-        title,
-        ...(editable !== undefined ? { editable } : {}),
-      });
-    }
-  });
-
-  if (hasDuplicateValues(parsed.map((item) => item.key))) {
-    errors.push(`${path} keys must be unique`);
-  }
-
-  return parsed;
-}
-
-function readSceneRect(
-  rawValue: unknown,
-  path: string,
-  errors: string[]
-): RoomSceneRect | undefined {
-  if (!isRecord(rawValue)) {
-    errors.push(`${path} must be an object`);
-    return undefined;
-  }
-
-  const leftPx = readFiniteNumber(rawValue, "leftPx", errors);
-  const topPx = readFiniteNumber(rawValue, "topPx", errors);
-  const widthPx = readPositiveNumber(rawValue, "widthPx", errors);
-  const heightPx = readPositiveNumber(rawValue, "heightPx", errors);
-
-  if (
-    leftPx === undefined ||
-    topPx === undefined ||
-    widthPx === undefined ||
-    heightPx === undefined
-  ) {
-    return undefined;
-  }
-
-  return {
-    leftPx,
-    topPx,
-    widthPx,
-    heightPx,
-  };
-}
-
-function readSceneTextConfig(
-  rawValue: unknown,
-  path: string,
-  errors: string[]
-): RoomSceneTextConfig | undefined {
-  if (rawValue === undefined) {
-    return undefined;
-  }
-
-  if (!isRecord(rawValue)) {
-    errors.push(`${path} must be an object`);
-    return undefined;
-  }
-
-  const text = readOptionalString(rawValue, "text", errors);
-  const textKey = readOptionalString(rawValue, "textKey", errors);
-  if (text === undefined && textKey === undefined) {
-    errors.push(`${path} requires text or textKey`);
-    return undefined;
-  }
-
-  return {
-    ...(text !== undefined ? { text } : {}),
-    ...(textKey !== undefined ? { textKey } : {}),
-  };
-}
-
-function readSceneHotspotConfig(
-  rawValue: unknown,
-  path: string,
-  fallbackId: string,
-  errors: string[]
-): RoomSceneHotspotConfig | undefined {
-  if (!isRecord(rawValue)) {
-    errors.push(`${path} must be an object`);
-    return undefined;
-  }
-
-  const id = readOptionalString(rawValue, "id", errors) ?? fallbackId;
-  const rect = readSceneRect(rawValue["rect"], `${path}.rect`, errors);
-  const label = readSceneTextConfig(rawValue["label"], `${path}.label`, errors);
-  if (rect === undefined) {
-    return undefined;
-  }
-
-  return {
-    id,
-    rect,
-    ...(label !== undefined ? { label } : {}),
-  };
-}
-
-function readTransparentWindowConfig(
-  rawValue: unknown,
-  path: string,
-  errors: string[]
-): RoomSceneTransparentWindowConfig | undefined {
-  if (rawValue === undefined) {
-    return undefined;
-  }
-
-  if (!isRecord(rawValue)) {
-    errors.push(`${path} must be an object`);
-    return undefined;
-  }
-
-  const leftPct = readPositiveNumber(rawValue, "leftPct", errors);
-  const topPct = readPositiveNumber(rawValue, "topPct", errors);
-  const widthPct = readPositiveNumber(rawValue, "widthPct", errors);
-  const heightPct = readPositiveNumber(rawValue, "heightPct", errors);
-
-  if (
-    leftPct === undefined ||
-    topPct === undefined ||
-    widthPct === undefined ||
-    heightPct === undefined
-  ) {
-    return undefined;
-  }
-
-  return {
-    leftPct,
-    topPct,
-    widthPct,
-    heightPct,
-  };
-}
-
-function readSceneCharacterConfig(
-  rawValue: unknown,
-  path: string,
-  errors: string[]
-): RoomSceneCharacterConfig | undefined {
-  if (!isRecord(rawValue)) {
-    errors.push(`${path} must be an object`);
-    return undefined;
-  }
-
-  const id = readRequiredString(rawValue, "id", errors);
-  const characterKindRaw = readRequiredString(rawValue, "characterKind", errors);
-  const preferredSlotRaw = readOptionalString(rawValue, "preferredSlot", errors);
-  const leftPx = readFiniteNumber(rawValue, "leftPx", errors);
-  const bottomPx = readFiniteNumber(rawValue, "bottomPx", errors);
-  const scale = readPositiveNumber(rawValue, "scale", errors);
-  const depth = readFiniteNumber(rawValue, "depth", errors);
-
-  let characterKind: RoomSceneCharacterKind | undefined;
-  if (characterKindRaw !== undefined) {
-    if (isRoomSceneCharacterKind(characterKindRaw) === false) {
-      errors.push(`${path}.characterKind is invalid`);
-    } else {
-      characterKind = characterKindRaw;
-    }
-  }
-
-  let preferredSlot: RoomSceneCharacterSlot | undefined;
-  if (preferredSlotRaw !== undefined) {
-    if (isRoomSceneCharacterSlot(preferredSlotRaw) === false) {
-      errors.push(`${path}.preferredSlot is invalid`);
-    } else {
-      preferredSlot = preferredSlotRaw;
-    }
-  }
-
-  if (
-    id === undefined ||
-    characterKind === undefined ||
-    leftPx === undefined ||
-    bottomPx === undefined ||
-    scale === undefined ||
-    depth === undefined
-  ) {
-    return undefined;
-  }
-
-  return {
-    id,
-    characterKind,
-    ...(preferredSlot !== undefined ? { preferredSlot } : {}),
-    leftPx,
-    bottomPx,
-    scale,
-    depth,
-  };
-}
-
-function readSceneCharacters(
-  rawValue: unknown,
-  path: string,
-  errors: string[]
-): RoomSceneCharacterConfig[] | undefined {
-  if (rawValue === undefined) {
-    return undefined;
-  }
-
-  if (!Array.isArray(rawValue)) {
-    errors.push(`${path} must be an array`);
-    return undefined;
-  }
-
-  const parsed = rawValue
-    .map((item, index) => readSceneCharacterConfig(item, `${path}[${String(index)}]`, errors))
-    .filter((character): character is RoomSceneCharacterConfig => character !== undefined);
-
-  if (hasDuplicateValues(parsed.map((character) => character.id))) {
-    errors.push(`${path} ids must be unique`);
-  }
-
-  return parsed;
-}
-
-function readSceneChromeConfig(
-  rawValue: unknown,
-  path: string,
-  errors: string[]
-): RoomSceneChromeConfig | undefined {
-  if (rawValue === undefined) {
-    return undefined;
-  }
-
-  if (!isRecord(rawValue)) {
-    errors.push(`${path} must be an object`);
-    return undefined;
-  }
-
-  const windowControlsVisibilityRaw = readOptionalString(
-    rawValue,
-    "windowControlsVisibility",
-    errors
-  );
-  const viewBackButtonVariantRaw = readOptionalString(rawValue, "viewBackButtonVariant", errors);
-  const pageShellVariantRaw = readOptionalString(rawValue, "pageShellVariant", errors);
-
-  let windowControlsVisibility: RoomSceneWindowControlsVisibility | undefined;
-  if (windowControlsVisibilityRaw !== undefined) {
-    if (isRoomSceneWindowControlsVisibility(windowControlsVisibilityRaw) === false) {
-      errors.push(`${path}.windowControlsVisibility is invalid`);
-    } else {
-      windowControlsVisibility = windowControlsVisibilityRaw;
-    }
-  }
-
-  let viewBackButtonVariant: RoomSceneViewBackButtonVariant | undefined;
-  if (viewBackButtonVariantRaw !== undefined) {
-    if (isRoomSceneViewBackButtonVariant(viewBackButtonVariantRaw) === false) {
-      errors.push(`${path}.viewBackButtonVariant is invalid`);
-    } else {
-      viewBackButtonVariant = viewBackButtonVariantRaw;
-    }
-  }
-
-  let pageShellVariant: RoomScenePageShellVariant | undefined;
-  if (pageShellVariantRaw !== undefined) {
-    if (isRoomScenePageShellVariant(pageShellVariantRaw) === false) {
-      errors.push(`${path}.pageShellVariant is invalid`);
-    } else {
-      pageShellVariant = pageShellVariantRaw;
-    }
-  }
-
-  if (
-    windowControlsVisibility === undefined &&
-    viewBackButtonVariant === undefined &&
-    pageShellVariant === undefined
-  ) {
-    return {};
-  }
-
-  return {
-    ...(windowControlsVisibility !== undefined ? { windowControlsVisibility } : {}),
-    ...(viewBackButtonVariant !== undefined ? { viewBackButtonVariant } : {}),
-    ...(pageShellVariant !== undefined ? { pageShellVariant } : {}),
-  };
-}
-
-function readFeatureSceneConfig(
-  rawValue: unknown,
-  featureId: string,
-  errors: string[]
-): RoomFeatureSceneConfig | undefined {
-  if (rawValue === undefined) {
-    return undefined;
-  }
-
-  if (!isRecord(rawValue)) {
-    errors.push(`features.${featureId}.scene must be an object`);
-    return undefined;
-  }
-
-  const hotspot = readSceneHotspotConfig(
-    rawValue["hotspot"],
-    `features.${featureId}.scene.hotspot`,
-    `${featureId}-hotspot`,
-    errors
-  );
-
-  const viewRaw = rawValue["view"];
-  if (!isRecord(viewRaw)) {
-    errors.push(`features.${featureId}.scene.view must be an object`);
-    return undefined;
-  }
-
-  const viewId = readRequiredString(viewRaw, "id", errors);
-  const backgroundSrcRaw = readRequiredString(viewRaw, "backgroundSrc", errors);
-  const backgroundSrc =
-    backgroundSrcRaw !== undefined ? normalizeRoomRelativePath(backgroundSrcRaw) : null;
-  if (backgroundSrcRaw !== undefined && backgroundSrc === null) {
-    errors.push(`features.${featureId}.scene.view.backgroundSrc must be a safe relative path`);
-  }
-
-  const panelArtSrcRaw = readOptionalString(viewRaw, "panelArtSrc", errors);
-  const panelArtSrc =
-    panelArtSrcRaw !== undefined ? normalizeRoomRelativePath(panelArtSrcRaw) : null;
-  if (panelArtSrcRaw !== undefined && panelArtSrc === null) {
-    errors.push(`features.${featureId}.scene.view.panelArtSrc must be a safe relative path`);
-  }
-
-  const transparentWindow = readTransparentWindowConfig(
-    viewRaw["transparentWindow"],
-    `features.${featureId}.scene.view.transparentWindow`,
-    errors
-  );
-
-  if (hotspot === undefined || viewId === undefined || backgroundSrc === null) {
-    return undefined;
-  }
-
-  return {
-    hotspot,
-    view: {
-      id: viewId,
-      backgroundSrc,
-      ...(panelArtSrc !== null ? { panelArtSrc } : {}),
-      ...(transparentWindow !== undefined ? { transparentWindow } : {}),
-    },
-  };
-}
-
-function readFeatureManifest(
-  rawValue: unknown,
-  index: number,
-  errors: string[]
-): RoomFeatureManifest | undefined {
-  if (!isRecord(rawValue)) {
-    errors.push(`features[${String(index)}] must be an object`);
-    return undefined;
-  }
-
-  const id = readRequiredString(rawValue, "id", errors);
-  if (id !== undefined && isValidRoomFeatureId(id) === false) {
-    errors.push(`features[${String(index)}].id must match /^[a-z0-9]+(?:-[a-z0-9]+)*$/`);
-  }
-  const name = readRequiredString(rawValue, "name", errors);
-  const description = readOptionalString(rawValue, "description", errors);
-  const icon = readOptionalString(rawValue, "icon", errors);
-  const commandSpecs = readCommandSpecs(
-    rawValue["commandSpecs"],
-    `features[${String(index)}].commandSpecs`,
-    errors
-  );
-  const protocolSpecs = readProtocolSpecs(
-    rawValue["protocolSpecs"],
-    `features[${String(index)}].protocolSpecs`,
-    errors
-  );
-  const scene = readFeatureSceneConfig(rawValue["scene"], id ?? `feature-${String(index)}`, errors);
-
-  if (id === undefined || name === undefined) {
-    return undefined;
-  }
-
-  return {
-    id,
-    name,
-    ...(description !== undefined ? { description } : {}),
-    ...(icon !== undefined ? { icon } : {}),
-    ...(commandSpecs !== undefined ? { commandSpecs } : {}),
-    ...(protocolSpecs !== undefined ? { protocolSpecs } : {}),
-    ...(scene !== undefined ? { scene } : {}),
-  };
-}
-
-function readSceneConfig(
-  rawValue: unknown,
-  features: RoomFeatureManifest[],
-  errors: string[]
-): RoomSceneConfig | undefined {
-  if (rawValue === undefined) {
-    return undefined;
-  }
-
-  if (!isRecord(rawValue)) {
-    errors.push("scene must be an object");
-    return undefined;
-  }
-
-  const referenceSizeRaw = rawValue["referenceSize"];
-  if (!isRecord(referenceSizeRaw)) {
-    errors.push("scene.referenceSize must be an object");
-    return undefined;
-  }
-
-  const width = readPositiveNumber(referenceSizeRaw, "width", errors);
-  const height = readPositiveNumber(referenceSizeRaw, "height", errors);
-  const roomBackgroundSrcRaw = readRequiredString(rawValue, "roomBackgroundSrc", errors);
-  const roomBackgroundSrc =
-    roomBackgroundSrcRaw !== undefined ? normalizeRoomRelativePath(roomBackgroundSrcRaw) : null;
-  if (roomBackgroundSrcRaw !== undefined && roomBackgroundSrc === null) {
-    errors.push("scene.roomBackgroundSrc must be a safe relative path");
-  }
-
-  const roomsHotspot = readSceneHotspotConfig(
-    rawValue["roomsHotspot"],
-    "scene.roomsHotspot",
-    "room-entry",
-    errors
-  );
-  const backHotspot = readSceneHotspotConfig(
-    rawValue["backHotspot"],
-    "scene.backHotspot",
-    "room-back",
-    errors
-  );
-  const rosterPresetRaw = readOptionalString(rawValue, "characterRosterPreset", errors);
-  const characters = readSceneCharacters(rawValue["characters"], "scene.characters", errors);
-  const chrome = readSceneChromeConfig(rawValue["chrome"], "scene.chrome", errors);
-
-  let characterRosterPreset: RoomSceneCharacterRosterPreset | undefined;
-  if (rosterPresetRaw !== undefined) {
-    if (isRoomSceneCharacterRosterPreset(rosterPresetRaw) === false) {
-      errors.push("scene.characterRosterPreset is invalid");
-    } else {
-      characterRosterPreset = rosterPresetRaw;
-    }
-  }
-
-  const missingFeatureScene = features
-    .filter((feature) => feature.scene === undefined)
-    .map((feature) => feature.id);
-  if (missingFeatureScene.length > 0) {
-    errors.push(`scene requires feature.scene for: ${missingFeatureScene.join(", ")}`);
-  }
-
-  if (
-    width === undefined ||
-    height === undefined ||
-    roomBackgroundSrc === null ||
-    roomsHotspot === undefined ||
-    backHotspot === undefined
-  ) {
-    return undefined;
-  }
-
-  return {
-    referenceSize: {
-      width,
-      height,
-    },
-    roomBackgroundSrc,
-    roomsHotspot,
-    backHotspot,
-    ...(characterRosterPreset !== undefined ? { characterRosterPreset } : {}),
-    ...(characters !== undefined ? { characters } : {}),
-    ...(chrome !== undefined ? { chrome } : {}),
-  };
-}
-
-function readI18nConfig(rawValue: unknown, errors: string[]): RoomI18nConfig | undefined {
-  if (rawValue === undefined) {
-    return undefined;
-  }
-
-  if (!isRecord(rawValue)) {
-    errors.push("i18n must be an object");
-    return undefined;
-  }
-
-  const baseDirRaw = readRequiredString(rawValue, "baseDir", errors);
-  const baseDir = baseDirRaw !== undefined ? normalizeRoomRelativePath(baseDirRaw) : null;
-  if (baseDirRaw !== undefined && baseDir === null) {
-    errors.push("i18n.baseDir must be a safe relative path");
-  }
-
-  if (baseDir === null) {
-    return undefined;
-  }
-
-  return { baseDir };
-}
+const roomSceneReaders = createRoomSceneReaders({
+  isValidRoomFeatureId,
+  isRoomSceneCharacterKind,
+  isRoomSceneCharacterSlot,
+  isRoomSceneCharacterRosterPreset,
+  isRoomSceneWindowControlsVisibility,
+  isRoomSceneViewBackButtonVariant,
+  isRoomScenePageShellVariant,
+});
+
+const { readFeatureManifest, readSceneConfig } = roomSceneReaders;
 
 export function flattenRoomCommandSpecs(manifest: RoomManifest): RoomCommandSpec[] {
   return [
@@ -1046,6 +330,19 @@ export function flattenRoomProtocolSpecs(manifest: RoomManifest): RoomProtocolSp
     ...(manifest.protocolSpecs ?? []),
     ...manifest.features.flatMap((feature) => feature.protocolSpecs ?? []),
   ];
+}
+
+export function resolveRoomProtocolFilePath(spec: RoomProtocolSpec): string | null {
+  if (spec.path !== undefined) {
+    return spec.path;
+  }
+
+  const normalizedKey = spec.key.trim();
+  if (/^[A-Za-z0-9._-]+$/.test(normalizedKey) !== true) {
+    return null;
+  }
+
+  return `protocols/${normalizedKey}.md`;
 }
 
 export function collectRoomManifestRequiredFilePaths(manifest: RoomManifest): string[] {
@@ -1062,6 +359,12 @@ export function collectRoomManifestRequiredFilePaths(manifest: RoomManifest): st
     paths.add(feature.scene.view.backgroundSrc);
     if (feature.scene.view.panelArtSrc !== undefined) {
       paths.add(feature.scene.view.panelArtSrc);
+    }
+  });
+  flattenRoomProtocolSpecs(manifest).forEach((spec) => {
+    const protocolPath = resolveRoomProtocolFilePath(spec);
+    if (protocolPath !== null) {
+      paths.add(protocolPath);
     }
   });
   return Array.from(paths.values()).sort((left, right) => left.localeCompare(right));

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
 test("subtitle YouTube descriptor exposes discovery-first filters", () => {
-  const form = JSON.parse(readFileSync("rooms/laboratory/tools/subtitle-youtube.form.json", "utf8"));
+  const form = JSON.parse(readFileSync("rooms/laboratory/shared/data/tools/subtitle-youtube.form.json", "utf8"));
   const fields = Array.isArray(form.fields) ? form.fields.map((entry) => entry.id) : [];
 
   assert.deepEqual(
@@ -19,28 +19,48 @@ test("subtitle YouTube descriptor exposes discovery-first filters", () => {
 
 test("subtitle host keeps discovery and explicit export format plumbing", () => {
   const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const subtitleDocumentSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/document-runtime.js",
+    "utf8"
+  );
+  const subtitleStateSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state.js",
+    "utf8"
+  );
+  const subtitleYoutubeHostSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-source.js",
+    "utf8"
+  );
 
   assert.match(hostSource, /function createEmptySubtitleDiscoveryState\(\)/);
-  assert.match(hostSource, /selectedCandidateIds/);
+  assert.match(subtitleStateSource, /selectedCandidateIds/);
   assert.match(hostSource, /function handleSubtitleYoutubeDiscovery\(api, runtime, requestId\)/);
-  assert.match(hostSource, /Run discovery and select at least one video before downloading subtitles\./);
-  assert.match(hostSource, /function resolveSubtitleOutputFormat\(sourceFormat, outputFormatValue\)/);
-  assert.match(hostSource, /function serializeSubtitleCueModel\(cues, format\)/);
-  assert.match(hostSource, /outputFormat: "source"/);
+  assert.match(hostSource, /main-functions\/subtitle-analysis\/host\/document-runtime\.js/);
+  assert.match(hostSource, /main-functions\/subtitle-analysis\/host\/state\.js/);
+  assert.match(hostSource, /main-functions\/subtitle-analysis\/host\/youtube-source\.js/);
+  assert.match(subtitleYoutubeHostSource, /Run discovery and select at least one video before downloading subtitles\./);
+  assert.match(subtitleYoutubeHostSource, /toolId: "yt-dlp"/);
+  assert.match(subtitleDocumentSource, /function resolveSubtitleOutputFormat\(sourceFormat, outputFormatValue\)/);
+  assert.match(subtitleDocumentSource, /function serializeSubtitleCueModel\(cues, format\)/);
+  assert.match(subtitleStateSource, /outputFormat: "source"/);
 });
 
 test("subtitle UI renders discovery table controls and output format selection", () => {
   const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const subtitleModuleSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/module.js",
+    "utf8"
+  );
 
   assert.match(uiSource, /function subtitleText\(path, trFallback, enFallback\)/);
   assert.match(uiSource, /function renderSubtitleDiscoveryPanel\(\)/);
   assert.match(uiSource, /function getSubtitleProcessModuleLabel\(entry\)/);
   assert.match(uiSource, /function getSubtitleProviderLabel\(entry\)/);
-  assert.match(uiSource, /data-action="subtitle-source-select-all-discovery"/);
-  assert.match(uiSource, /data-action="subtitle-source-clear-discovery-selection"/);
-  assert.match(uiSource, /data-action="subtitle-source-toggle-discovery"/);
-  assert.match(uiSource, /Candidate Table/);
-  assert.match(uiSource, /renderEditSelectField\("outputFormat"/);
+  assert.match(subtitleModuleSource, /data-action="subtitle-source-select-all-discovery"/);
+  assert.match(subtitleModuleSource, /data-action="subtitle-source-clear-discovery-selection"/);
+  assert.match(subtitleModuleSource, /data-action="subtitle-source-toggle-discovery"/);
+  assert.match(subtitleModuleSource, /Candidate Table/);
+  assert.match(subtitleModuleSource, /renderEditSelectField\("outputFormat"/);
 });
 
 test("subtitle locale catalogs keep stage, source, and edit copy in room-local i18n", () => {
