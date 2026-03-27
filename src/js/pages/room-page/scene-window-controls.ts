@@ -1,5 +1,8 @@
 import type { InstalledRoomRecord } from "@shared/index.js";
-import { mountSceneWindowControls, unmountSceneWindowControls } from "../../scene/window-controls.js";
+import {
+  mountSceneWindowControls,
+  unmountSceneWindowControls,
+} from "../../scene/window-controls.js";
 
 export function syncRoomPageSceneWindowControls(
   page: HTMLElement,

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900">
+  <rect width="1600" height="900" fill="#14110f"/>
+
+  <!-- Left Selection -->
+  <rect x="50" y="100" width="900" height="700" fill="#211b18" rx="14"/>
+
+  <!-- Avatar Cards -->
+  <rect x="80" y="150" width="160" height="220" fill="#261f1b" stroke="#b58a4a" rx="12"/>
+  <rect x="260" y="150" width="160" height="220" fill="#261f1b" stroke="#b58a4a" rx="12"/>
+  <rect x="440" y="150" width="160" height="220" fill="#261f1b" stroke="#f0b85f" rx="12"/>
+
+  <!-- Class -->
+  <rect x="80" y="420" width="160" height="100" fill="#261f1b" rx="10"/>
+  <rect x="260" y="420" width="160" height="100" fill="#261f1b" rx="10"/>
+
+  <!-- Right Summary -->
+  <rect x="980" y="100" width="550" height="700" fill="#211b18" rx="14"/>
+  <text x="1020" y="150" fill="#e8dcc6">CHARACTER SUMMARY</text>
+
+  <!-- Ready -->
+  <rect x="1200" y="720" width="250" height="60" fill="#3a2d22" rx="12"/>
+  <text x="1270" y="760" fill="#e8dcc6">READY</text>
+</svg>

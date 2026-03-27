@@ -1,8 +1,5 @@
 import { isSceneUiMode } from "../../ui/ui-mode.js";
-import type {
-  InstalledRoomFeatureRecord,
-  InstalledRoomRecord,
-} from "@shared/index.js";
+import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
 import type {
   SceneDebugRuntimeSession,
   SceneLayoutEditor,
@@ -49,7 +46,13 @@ interface RoomPageSceneRuntimeDeps {
   usesImmersivePageShell: () => boolean;
 }
 
-export function createRoomPageSceneRuntime(deps: RoomPageSceneRuntimeDeps) {
+interface RoomPageSceneRuntime {
+  refreshSceneCharacters: () => void;
+  setupSceneDebug: (page: HTMLElement) => SceneLayoutEditor | null;
+  syncPageView: (page: HTMLElement) => void;
+}
+
+export function createRoomPageSceneRuntime(deps: RoomPageSceneRuntimeDeps): RoomPageSceneRuntime {
   function syncPageView(page: HTMLElement): void {
     syncRoomPageView({
       activeFeatureId: deps.getActiveFeature()?.id ?? null,
@@ -79,10 +82,11 @@ export function createRoomPageSceneRuntime(deps: RoomPageSceneRuntimeDeps) {
     });
   }
 
-  function setupSceneDebug(page: HTMLElement) {
+  function setupSceneDebug(page: HTMLElement): SceneLayoutEditor | null {
     return setupRoomPageSceneDebug({
       activeRoomId: deps.getRoom().id,
-      buildSceneAssetTargets: (): SceneEditorAssetTargetDescriptor[] => deps.buildSceneAssetTargets(),
+      buildSceneAssetTargets: (): SceneEditorAssetTargetDescriptor[] =>
+        deps.buildSceneAssetTargets(),
       clearSceneAssetTransparentWindow: (targetId): void => {
         deps.clearSceneAssetTransparentWindow(targetId);
       },

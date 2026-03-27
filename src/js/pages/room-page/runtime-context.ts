@@ -1,7 +1,4 @@
-import type {
-  InstalledRoomFeatureRecord,
-  InstalledRoomRecord,
-} from "@shared/index.js";
+import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
 import type { SlotStateInfo } from "../../../types/assistant.js";
 import { AppState } from "../../modules/app-state.js";
 import { AppI18n } from "../../modules/i18n/index.js";

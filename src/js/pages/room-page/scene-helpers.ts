@@ -32,7 +32,9 @@ export function resolveSceneTextValue(
   return fallback;
 }
 
-export function buildRoomSceneObject(feature: InstalledRoomFeatureRecord): SceneObjectConfig | null {
+export function buildRoomSceneObject(
+  feature: InstalledRoomFeatureRecord
+): SceneObjectConfig | null {
   if (feature.scene === undefined) {
     return null;
   }

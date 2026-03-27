@@ -1,7 +1,4 @@
-import type {
-  InstalledRoomFeatureRecord,
-  InstalledRoomRecord,
-} from "@shared/index.js";
+import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
 import { shellT } from "../../app/shell-i18n.js";
 import { navigateToScenePage } from "../../scene/navigation.js";
 import type { SceneClickableThemeDefinition } from "../../scene/schema.js";
@@ -22,9 +19,7 @@ import {
   ensureRoomSceneStandardBackHost,
   getRoomSceneStandardBackHost,
 } from "./scene-window-controls.js";
-import {
-  resolveRoomSceneViewBackButtonVariant,
-} from "./scene-chrome-runtime.js";
+import { resolveRoomSceneViewBackButtonVariant } from "./scene-chrome-runtime.js";
 import { syncRoomPageScene } from "./scene-sync-runtime.js";
 
 interface SyncRoomPageViewParams {

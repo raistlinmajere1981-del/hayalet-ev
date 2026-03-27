@@ -17,7 +17,13 @@ interface CreateRoomPageRuntimeHostRuntimeParams {
   updateRuntimeStatus: (page: HTMLElement) => void;
 }
 
-export function createRoomPageRuntimeHostRuntime(deps: CreateRoomPageRuntimeHostRuntimeParams) {
+interface RoomPageRuntimeHostRuntime {
+  ensure: (page?: HTMLElement | null) => Promise<void>;
+}
+
+export function createRoomPageRuntimeHostRuntime(
+  deps: CreateRoomPageRuntimeHostRuntimeParams
+): RoomPageRuntimeHostRuntime {
   async function ensure(page: HTMLElement | null = deps.getPage()): Promise<void> {
     if (page === null) {
       return;

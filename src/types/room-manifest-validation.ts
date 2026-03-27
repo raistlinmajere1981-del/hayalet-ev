@@ -1,8 +1,4 @@
-import type {
-  RoomFeatureManifest,
-  RoomManifest,
-  RoomManifestValidationResult,
-} from "./rooms.js";
+import type { RoomFeatureManifest, RoomManifest, RoomManifestValidationResult } from "./rooms.js";
 import {
   hasDuplicateValues,
   isRecord,

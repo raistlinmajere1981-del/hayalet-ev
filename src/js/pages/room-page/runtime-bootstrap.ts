@@ -2,18 +2,9 @@ import type { InstalledRoomRecord } from "@shared/index.js";
 import { RoomHostRuntime } from "../../modules/rooms/room-host-runtime.js";
 import { toRoomRuntimeFileUrl } from "../../modules/rooms/room-runtime-url.js";
 import type { RoomHostMessage } from "./runtime-context.js";
-import {
-  ensureRoomRuntimeWebview,
-  syncRoomRuntimeWebviewSource,
-} from "./runtime-host.js";
-import {
-  sendRoomRuntimeMessage,
-  type RoomWebviewElement,
-} from "./runtime-messaging.js";
-import {
-  createRoomRuntimeEventBinder,
-  type RoomRuntimeState,
-} from "./runtime-events.js";
+import { ensureRoomRuntimeWebview, syncRoomRuntimeWebviewSource } from "./runtime-host.js";
+import { sendRoomRuntimeMessage, type RoomWebviewElement } from "./runtime-messaging.js";
+import { createRoomRuntimeEventBinder, type RoomRuntimeState } from "./runtime-events.js";
 
 interface EnsureRoomPageRuntimeHostParams {
   getPage: () => HTMLElement | null;

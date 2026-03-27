@@ -821,12 +821,52 @@
   background: var(--bg-surface-2);
 }
 
+.live-log-detail-message,
 .live-log-detail-meta,
 .live-log-detail-context {
   padding: var(--space-2);
   border-radius: var(--radius-sm);
   border: var(--border-1) solid var(--border-default);
   background: var(--bg-panel);
+}
+
+.live-log-detail-message {
+  border-color: color-mix(in srgb, var(--color-accent) 24%, var(--border-default));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-accent-soft) 16%, transparent),
+      transparent
+    ),
+    var(--bg-panel);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.live-log-detail-message[data-level="error"] {
+  border-color: color-mix(in srgb, var(--color-error) 38%, var(--border-default));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-error-bg) 92%, transparent),
+      transparent
+    ),
+    var(--bg-panel);
+}
+
+.live-log-detail-message[data-level="warning"] {
+  border-color: color-mix(in srgb, var(--color-warning) 38%, var(--border-default));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-warning-bg) 88%, transparent),
+      transparent
+    ),
+    var(--bg-panel);
 }
 
 .live-log-detail-meta {

@@ -26,19 +26,19 @@ interface SyncRoomRuntimeWebviewSourceParams {
   webview: RoomWebviewElement;
 }
 
-export function resolveRoomPreloadUrl({
+export async function resolveRoomPreloadUrl({
   electronApi,
   existingPromise,
 }: ResolveRoomPreloadUrlParams): Promise<string> {
   if (existingPromise !== null) {
-    return existingPromise;
+    return await existingPromise;
   }
 
   if (electronApi === undefined || typeof electronApi.getPreloadPath !== "function") {
-    return Promise.resolve("");
+    return await Promise.resolve("");
   }
 
-  return electronApi.getPreloadPath("room").catch(() => "");
+  return await electronApi.getPreloadPath("room").catch(() => "");
 }
 
 export function ensureRoomRuntimeWebview({

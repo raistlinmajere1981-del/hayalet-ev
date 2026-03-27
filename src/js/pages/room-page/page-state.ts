@@ -1,7 +1,4 @@
-import type {
-  InstalledRoomFeatureRecord,
-  InstalledRoomRecord,
-} from "@shared/index.js";
+import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
 import { isSceneUiMode } from "../../ui/ui-mode.js";
 import { DEFAULT_SCENE_REFERENCE_SIZE } from "./scene-helpers.js";
 
@@ -54,9 +51,7 @@ export function getRoomSceneReferenceSize(room: InstalledRoomRecord): {
   return room.scene?.referenceSize ?? DEFAULT_SCENE_REFERENCE_SIZE;
 }
 
-export function getRoomPageShellVariant(
-  room: InstalledRoomRecord
-): "standard" | "immersive-stage" {
+export function getRoomPageShellVariant(room: InstalledRoomRecord): "standard" | "immersive-stage" {
   return room.scene?.chrome?.pageShellVariant ?? "standard";
 }
 

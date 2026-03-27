@@ -3,7 +3,6 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
     asNonEmptyString,
     buildProjectName,
     buildProjectSlug,
-    clone,
     createDefaultEditState,
     createDefaultProfileState,
     createEmptyAudioAnalysisState,
@@ -17,6 +16,7 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
     getPreferredFeatureSourceKind,
     getPresetDefaultCustomValues,
     normalizeEditState,
+    normalizeAudioAnalysisState,
     normalizeProfileState,
     normalizeProcessState,
     normalizeReportState,
@@ -77,7 +77,7 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
     profilePresets,
     profileModels,
     profileCapabilities,
-    subtitleRuntime
+    runtime
   ) {
     const source = toRecord(toRecord(rawValue).source);
     const kind = asNonEmptyString(source.kind) || getDefaultSourceType(sourcePresets);
@@ -92,8 +92,14 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
         typeof toRecord(rawValue).schemaVersion === "number"
           ? toRecord(rawValue).schemaVersion
           : projectSchemaVersion,
-      id: asNonEmptyString(toRecord(rawValue).id) || asNonEmptyString(toRecord(rawValue).slug) || buildProjectSlug(currentTimestamp),
-      slug: asNonEmptyString(toRecord(rawValue).slug) || asNonEmptyString(toRecord(rawValue).id) || buildProjectSlug(currentTimestamp),
+      id:
+        asNonEmptyString(toRecord(rawValue).id) ||
+        asNonEmptyString(toRecord(rawValue).slug) ||
+        buildProjectSlug(currentTimestamp),
+      slug:
+        asNonEmptyString(toRecord(rawValue).slug) ||
+        asNonEmptyString(toRecord(rawValue).id) ||
+        buildProjectSlug(currentTimestamp),
       name: asNonEmptyString(toRecord(rawValue).name) || buildProjectName(currentTimestamp),
       createdAt: asNonEmptyString(toRecord(rawValue).createdAt) || currentTimestamp,
       updatedAt: asNonEmptyString(toRecord(rawValue).updatedAt) || currentTimestamp,
@@ -128,8 +134,11 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
         profileCapabilities,
         kind
       ),
-      audioAnalysis: clone(toRecord(rawValue).audioAnalysis),
-      subtitleAnalysis: normalizeSubtitleAnalysisState(toRecord(rawValue).subtitleAnalysis, subtitleRuntime || {}),
+      audioAnalysis: normalizeAudioAnalysisState(toRecord(rawValue).audioAnalysis, runtime || {}),
+      subtitleAnalysis: normalizeSubtitleAnalysisState(
+        toRecord(rawValue).subtitleAnalysis,
+        runtime || {}
+      ),
       process: normalizeProcessState(toRecord(rawValue).process),
       report: normalizeReportState(toRecord(rawValue).report),
     };

@@ -30,6 +30,18 @@ interface CreateRoomPageSceneAssetRuntimeParams {
   renderSceneRoomCharacters: (page: HTMLElement) => Promise<void>;
 }
 
+interface RoomPageSceneAssetRuntime {
+  buildSceneAssetTargets: () => SceneEditorAssetTargetDescriptor[];
+  clearSceneAssetTransparentWindow: (targetId: string) => void;
+  detectSceneAssetTransparentWindow: (targetId: string) => Promise<void>;
+  getSuggestedSceneAssetTargetId: () => string | null;
+  refreshSceneCharacters: () => void;
+  updateSceneAssetTransparentWindow: (
+    targetId: string,
+    nextBounds: SceneAlphaWindowBounds | null
+  ) => void;
+}
+
 export function createRoomPageSceneAssetRuntime({
   getActiveFeature,
   getPage,
@@ -39,7 +51,7 @@ export function createRoomPageSceneAssetRuntime({
   refreshSceneShell,
   renderSceneRoomCharacters,
   setRoom,
-}: CreateRoomPageSceneAssetRuntimeParams) {
+}: CreateRoomPageSceneAssetRuntimeParams): RoomPageSceneAssetRuntime {
   function getActiveSceneAssetTransparentWindowBounds(
     feature: InstalledRoomFeatureRecord
   ): SceneAlphaWindowBounds | null {

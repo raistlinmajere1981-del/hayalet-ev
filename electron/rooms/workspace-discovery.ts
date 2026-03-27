@@ -2,10 +2,7 @@ import { existsSync } from "fs";
 import { readdir } from "fs/promises";
 import { join, resolve } from "path";
 import type { RoomManifest, RoomWorkspaceEntry } from "@shared/index.js";
-import {
-  collectRoomManifestRequiredFilePaths,
-  validateRoomManifest,
-} from "@shared/index.js";
+import { collectRoomManifestRequiredFilePaths, validateRoomManifest } from "@shared/index.js";
 import { readJsonFile } from "./room-install-files.ts";
 
 export interface RoomWorkspaceRoot {

@@ -7,6 +7,7 @@ interface OverlayRenderParams {
   levelSelect: HTMLSelectElement;
   searchInput: HTMLInputElement;
   metrics: HTMLElement;
+  detailMessage: HTMLElement;
   detailMeta: HTMLElement;
   detailContext: HTMLElement;
   formatLogCategory: (category: string) => string;
@@ -48,11 +49,14 @@ function formatLevelLabel(level: string): string {
 }
 
 export function renderDetail(
+  detailMessage: HTMLElement,
   detailMeta: HTMLElement,
   detailContext: HTMLElement,
   entry: OverlayLogEntry | null
 ): void {
   if (entry === null) {
+    detailMessage.textContent = "";
+    delete detailMessage.dataset["level"];
     detailMeta.textContent = entranceT("liveLog.noEntrySelected");
     detailContext.textContent = "";
     return;
@@ -60,6 +64,8 @@ export function renderDetail(
 
   const when = formatDateTime(new Date(entry.timestamp));
   const correlation = entry.correlationId ?? "-";
+  detailMessage.textContent = entry.message;
+  detailMessage.dataset["level"] = entry.level;
   detailMeta.textContent = entranceT("liveLog.detailMeta", {
     app: entry.app,
     sessionId: entry.sessionId,
@@ -112,6 +118,7 @@ export function renderEntries(params: OverlayRenderParams): void {
     levelSelect,
     searchInput,
     metrics,
+    detailMessage,
     detailMeta,
     detailContext,
     formatLogCategory,
@@ -148,7 +155,7 @@ export function renderEntries(params: OverlayRenderParams): void {
     empty.className = "ds-log-empty";
     empty.textContent = entranceT("liveLog.empty");
     overlayContent.appendChild(empty);
-    renderDetail(detailMeta, detailContext, null);
+    renderDetail(detailMessage, detailMeta, detailContext, null);
     return;
   }
 
@@ -178,7 +185,7 @@ export function renderEntries(params: OverlayRenderParams): void {
     row.addEventListener("click", () => {
       state.selectedEntryId = entry.id;
       renderEntries(params);
-      renderDetail(detailMeta, detailContext, entry);
+      renderDetail(detailMessage, detailMeta, detailContext, entry);
     });
 
     fragment.appendChild(row);
@@ -187,5 +194,5 @@ export function renderEntries(params: OverlayRenderParams): void {
   overlayContent.appendChild(fragment);
 
   const selected = filtered.find((entry) => entry.id === state.selectedEntryId) ?? null;
-  renderDetail(detailMeta, detailContext, selected);
+  renderDetail(detailMessage, detailMeta, detailContext, selected);
 }

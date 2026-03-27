@@ -3,7 +3,10 @@ import {
   getRoomRuntimeAssetSource,
   resolveRoomRuntimeAssetSource,
 } from "../../modules/rooms/room-runtime-url.js";
-import { getCoverSceneProjectionFromElement, type SceneProjection } from "../../scene/projection.js";
+import {
+  getCoverSceneProjectionFromElement,
+  type SceneProjection,
+} from "../../scene/projection.js";
 import { DEFAULT_SCENE_TRANSPARENT_WINDOW } from "./scene-helpers.js";
 
 export function applyRoomSceneRuntimeFrame(

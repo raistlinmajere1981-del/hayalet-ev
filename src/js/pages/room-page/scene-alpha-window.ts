@@ -5,9 +5,7 @@ import type {
 import type { SceneAlphaWindowBounds } from "../../scene/alpha-window.js";
 import { toRoomSceneTransparentWindowConfig } from "./scene-assets.js";
 
-export function getRoomSceneViewBackgroundImage(
-  page: HTMLElement | null
-): HTMLImageElement | null {
+export function getRoomSceneViewBackgroundImage(page: HTMLElement | null): HTMLImageElement | null {
   return page?.querySelector<HTMLImageElement>("[data-room-role='scene-view-background']") ?? null;
 }
 

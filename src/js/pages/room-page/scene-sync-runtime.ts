@@ -1,7 +1,4 @@
-import type {
-  InstalledRoomFeatureRecord,
-  InstalledRoomRecord,
-} from "@shared/index.js";
+import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
 import { syncSceneViewRuntime } from "../../scene/runtime.js";
 import type { SceneClickableThemeDefinition } from "../../scene/schema.js";
 import { applyRoomSceneImageSource } from "./scene-render-runtime.js";

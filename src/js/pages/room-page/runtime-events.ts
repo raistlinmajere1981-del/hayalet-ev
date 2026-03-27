@@ -75,7 +75,7 @@ export function bindRoomRuntimeEvents({
 
   webview.dataset["roomRuntimeBound"] = "true";
 
-  const syncStatus = () => {
+  const syncStatus = (): void => {
     const page = getPage();
     if (page !== null) {
       updateRuntimeStatus(page);
@@ -139,7 +139,9 @@ export function bindRoomRuntimeEvents({
   });
 }
 
-export function createRoomRuntimeEventBinder(options: BindRoomRuntimeEventBinderParams) {
+export function createRoomRuntimeEventBinder(
+  options: BindRoomRuntimeEventBinderParams
+): (webview: RoomWebviewElement) => void {
   return function bindRuntimeEvents(webview: RoomWebviewElement): void {
     bindRoomRuntimeEvents({
       ...options,

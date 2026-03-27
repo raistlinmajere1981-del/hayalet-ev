@@ -1,4 +1,3 @@
-import { ROOM_SCHEMA_VERSION } from "./room-schema-version.js";
 import type {
   RoomSceneCharacterKind,
   RoomSceneCharacterRosterPreset,
@@ -7,6 +6,7 @@ import type {
   RoomSceneViewBackButtonVariant,
   RoomSceneWindowControlsVisibility,
 } from "./room-scene-guards.js";
+import type { RoomSchemaVersion } from "./room-schema-version.js";
 
 export type RoomCommandScope = "room-ui" | "ai-slots" | "assistant" | "us1" | "system";
 
@@ -117,7 +117,7 @@ export interface RoomFeatureManifest {
 }
 
 export interface RoomManifest {
-  schemaVersion: typeof ROOM_SCHEMA_VERSION;
+  schemaVersion: RoomSchemaVersion;
   id: string;
   name: string;
   version: string;
@@ -141,7 +141,7 @@ export interface RoomBundleFile {
 }
 
 export interface RoomBundle {
-  schemaVersion: typeof ROOM_SCHEMA_VERSION;
+  schemaVersion: RoomSchemaVersion;
   manifest: RoomManifest;
   files: Record<string, RoomBundleFile>;
   exportedAt: string;

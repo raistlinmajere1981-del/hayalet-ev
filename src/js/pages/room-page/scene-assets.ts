@@ -9,7 +9,9 @@ import type { SceneAlphaWindowBounds } from "../../scene/alpha-window.js";
 
 export function buildRoomSceneAssetTargets(options: {
   activeFeature: InstalledRoomFeatureRecord | null;
-  getTransparentWindowBounds: (feature: InstalledRoomFeatureRecord) => SceneAlphaWindowBounds | null;
+  getTransparentWindowBounds: (
+    feature: InstalledRoomFeatureRecord
+  ) => SceneAlphaWindowBounds | null;
   pageName: string;
 }): SceneEditorAssetTargetDescriptor[] {
   const { activeFeature, getTransparentWindowBounds, pageName } = options;

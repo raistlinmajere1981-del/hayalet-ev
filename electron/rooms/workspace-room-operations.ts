@@ -1,10 +1,7 @@
 import { existsSync } from "fs";
 import { rm, stat } from "fs/promises";
 import { join } from "path";
-import type {
-  RoomRegistryState,
-  RoomWorkspaceEntry,
-} from "@shared/index.js";
+import type { RoomRegistryState, RoomWorkspaceEntry } from "@shared/index.js";
 import { buildInstalledRoomRecord } from "./installed-room-builder.ts";
 import {
   copyDirectoryContents,

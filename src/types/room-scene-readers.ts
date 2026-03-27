@@ -266,7 +266,11 @@ export function createRoomSceneReaders(deps: RoomSceneReaderDeps) {
       return undefined;
     }
 
-    const windowControlsVisibilityRaw = readOptionalString(rawValue, "windowControlsVisibility", errors);
+    const windowControlsVisibilityRaw = readOptionalString(
+      rawValue,
+      "windowControlsVisibility",
+      errors
+    );
     const viewBackButtonVariantRaw = readOptionalString(rawValue, "viewBackButtonVariant", errors);
     const pageShellVariantRaw = readOptionalString(rawValue, "pageShellVariant", errors);
 
@@ -402,7 +406,11 @@ export function createRoomSceneReaders(deps: RoomSceneReaderDeps) {
       `features[${String(index)}].protocolSpecs`,
       errors
     );
-    const scene = readFeatureSceneConfig(rawValue["scene"], id ?? `feature-${String(index)}`, errors);
+    const scene = readFeatureSceneConfig(
+      rawValue["scene"],
+      id ?? `feature-${String(index)}`,
+      errors
+    );
 
     if (id === undefined || name === undefined) {
       return undefined;

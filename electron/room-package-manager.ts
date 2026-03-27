@@ -2,12 +2,8 @@ import { rm } from "fs/promises";
 import { dirname, join } from "path";
 import { formatErrorWithDetail } from "../shared/i18n/error-detail.ts";
 import { Paths } from "./paths.ts";
-import {
-  ensureDir,
-} from "./rooms/room-install-files.ts";
-import {
-  buildInstalledRoomRecord,
-} from "./rooms/installed-room-builder.ts";
+import { ensureDir } from "./rooms/room-install-files.ts";
+import { buildInstalledRoomRecord } from "./rooms/installed-room-builder.ts";
 import type { RoomOperationResult } from "./rooms/room-package-types.ts";
 import {
   importRoomBundleFile,
@@ -29,11 +25,7 @@ import {
   pickPreferredWorkspaceRoom,
   readWorkspaceRoomsFromRoot,
 } from "./rooms/workspace-discovery.ts";
-import type {
-  InstalledRoomRecord,
-  RoomRegistryState,
-  RoomWorkspaceEntry,
-} from "@shared/index.js";
+import type { InstalledRoomRecord, RoomRegistryState, RoomWorkspaceEntry } from "@shared/index.js";
 import { translateElectronMessage } from "./i18n/language-service.ts";
 
 interface RoomManagerOptions {
@@ -259,7 +251,8 @@ export class RoomPackageManager {
         await this.ensureRoots();
       },
       getWorkspaceRoot: () => this.getWorkspaceRoot(),
-      installFromWorkspace: async (roomIdToInstall) => await this.installFromWorkspace(roomIdToInstall),
+      installFromWorkspace: async (roomIdToInstall) =>
+        await this.installFromWorkspace(roomIdToInstall),
       options,
       roomPackageError,
       roomPackageT,

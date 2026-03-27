@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-25T21:49:24.682Z",
+  "generatedAt": "2026-03-27T10:35:25.350Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 536,
-    "filesWithComments": 118,
-    "commentsIndexed": 290,
-    "fileLevelComments": 219,
+    "filesScanned": 582,
+    "filesWithComments": 119,
+    "commentsIndexed": 291,
+    "fileLevelComments": 220,
     "symbolLevelComments": 71,
     "prefixCounts": {
       "none": 39,
       "AI": 0,
-      "NOTE": 247,
+      "NOTE": 248,
       "WARNING": 4,
       "TODO": 0
     }
@@ -925,14 +925,40 @@
     },
     {
       "path": "electron/room-package-manager.ts",
-      "totalComments": 4,
+      "totalComments": 1,
       "byKind": {
-        "note": 4
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 101,
+          "endLine": 101,
+          "text": "NOTE: Full room cleanup is opt-in so reconnecting a workspace room can reuse prior state.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "electron/rooms/room-install-files.ts",
+      "totalComments": 3,
+      "byKind": {
+        "note": 3
       },
       "byPrefix": {
         "none": 2,
         "AI": 0,
-        "NOTE": 2,
+        "NOTE": 1,
         "WARNING": 0,
         "TODO": 0
       },
@@ -942,8 +968,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 593,
-          "endLine": 593,
+          "startLine": 135,
+          "endLine": 135,
           "text": "NOTE: Deletes are ordered to remove deepest paths first.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -951,8 +977,8 @@
         },
         {
           "kind": "note",
-          "startLine": 608,
-          "endLine": 608,
+          "startLine": 150,
+          "endLine": 150,
           "text": "Ignore non-empty directories so user-created files remain in place.",
           "prefix": null,
           "scopeType": "file",
@@ -960,21 +986,12 @@
         },
         {
           "kind": "note",
-          "startLine": 616,
-          "endLine": 616,
+          "startLine": 158,
+          "endLine": 158,
           "text": "Ignore non-empty roots so user-created files remain in place.",
           "prefix": null,
           "scopeType": "function",
           "scopeName": "resolveInstalledRoomTrackedFiles"
-        },
-        {
-          "kind": "note",
-          "startLine": 679,
-          "endLine": 679,
-          "text": "NOTE: Full room cleanup is opt-in so reconnecting a workspace room can reuse prior state.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
         }
       ]
     },
@@ -1067,15 +1084,15 @@
     },
     {
       "path": "electron/window-manager.ts",
-      "totalComments": 11,
+      "totalComments": 12,
       "byKind": {
-        "note": 10,
+        "note": 11,
         "warning": 1
       },
       "byPrefix": {
         "none": 1,
         "AI": 0,
-        "NOTE": 9,
+        "NOTE": 10,
         "WARNING": 1,
         "TODO": 0
       },
@@ -1112,8 +1129,17 @@
         },
         {
           "kind": "note",
-          "startLine": 319,
-          "endLine": 319,
+          "startLine": 304,
+          "endLine": 304,
+          "text": "NOTE: Room hosts fall back to data: module graphs when the renderer cannot import file URLs directly.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 322,
+          "endLine": 322,
           "text": "NOTE: Local helper services need explicit CORS headers because they are called from isolated webviews.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1121,8 +1147,8 @@
         },
         {
           "kind": "note",
-          "startLine": 337,
-          "endLine": 337,
+          "startLine": 340,
+          "endLine": 340,
           "text": "NOTE: The assistant webview needs broader connect-src rules for OpenCode changelog fetches and local helper services.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1130,8 +1156,8 @@
         },
         {
           "kind": "note",
-          "startLine": 351,
-          "endLine": 351,
+          "startLine": 354,
+          "endLine": 354,
           "text": "NOTE: Mirror the local-service CORS override for the assistant partition.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1139,8 +1165,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 376,
-          "endLine": 376,
+          "startLine": 379,
+          "endLine": 379,
           "text": "WARNING: Install the webview navigation guard before any provider content starts navigating.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -1148,8 +1174,8 @@
         },
         {
           "kind": "note",
-          "startLine": 706,
-          "endLine": 706,
+          "startLine": 709,
+          "endLine": 709,
           "text": "NOTE: Ignore malformed targets instead of blocking navigation entirely.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1157,8 +1183,8 @@
         },
         {
           "kind": "note",
-          "startLine": 710,
-          "endLine": 710,
+          "startLine": 713,
+          "endLine": 713,
           "text": "NOTE: Non-http(s) schemes stay allowed so built-in Electron pages are not blocked.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1166,8 +1192,8 @@
         },
         {
           "kind": "note",
-          "startLine": 719,
-          "endLine": 719,
+          "startLine": 722,
+          "endLine": 722,
           "text": "NOTE: Skip enforcement when the current provider URL is unavailable.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1175,8 +1201,8 @@
         },
         {
           "kind": "note",
-          "startLine": 725,
-          "endLine": 725,
+          "startLine": 728,
+          "endLine": 728,
           "text": "NOTE: Unknown providers fall back to permissive navigation.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -5102,12 +5128,12 @@
       ]
     },
     {
-      "file": "electron/room-package-manager.ts",
+      "file": "electron/rooms/room-install-files.ts",
       "type": "function",
       "name": "resolveInstalledRoomTrackedFiles",
       "comments": [
         {
-          "startLine": 616,
+          "startLine": 158,
           "kind": "note",
           "text": "Ignore non-empty roots so user-created files remain in place."
         }

@@ -1,4 +1,3 @@
-import { ROOM_SCHEMA_VERSION } from "./room-schema-version.js";
 import type {
   RoomCommandSpec,
   RoomProtocolSpec,
@@ -7,6 +6,7 @@ import type {
   RoomSceneHotspotConfig,
   RoomSceneTransparentWindowConfig,
 } from "./room-manifest-types.js";
+import type { RoomSchemaVersion } from "./room-schema-version.js";
 import type { RoomSceneCharacterRosterPreset } from "./room-scene-guards.js";
 
 export interface InstalledRoomFeatureSceneViewRecord {
@@ -66,7 +66,7 @@ export interface InstalledRoomRecord {
 }
 
 export interface RoomRegistryState {
-  version: typeof ROOM_SCHEMA_VERSION;
+  version: RoomSchemaVersion;
   updatedAt: string;
   rooms: InstalledRoomRecord[];
 }

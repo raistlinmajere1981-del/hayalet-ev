@@ -278,9 +278,7 @@ class RoomHostRuntimeClass {
               return decodeRoomHostSource(typeof encoded === "string" ? encoded : "");
             }
           );
-          exported = (await import(
-            /* @vite-ignore */ moduleUrl
-          )) as unknown as RoomHostFactory;
+          exported = (await import(/* @vite-ignore */ moduleUrl)) as unknown as RoomHostFactory;
         } catch {
           const source = await readFile(registration.room.hostEntryPath);
           if (typeof source !== "string" || source.trim() === "") {

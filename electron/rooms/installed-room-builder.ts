@@ -5,10 +5,7 @@ import type {
   InstalledRoomSceneRecord,
   RoomManifest,
 } from "@shared/index.js";
-import {
-  flattenRoomCommandSpecs,
-  flattenRoomProtocolSpecs,
-} from "@shared/index.js";
+import { flattenRoomCommandSpecs, flattenRoomProtocolSpecs } from "@shared/index.js";
 import {
   cloneInstalledFeatures,
   cloneSceneCharacters,

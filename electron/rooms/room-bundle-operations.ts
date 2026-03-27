@@ -31,9 +31,12 @@ interface ImportRoomBundleFileParams {
   bundleFile: string;
   ensureRoots: () => Promise<void>;
   getWorkspaceRoot: () => string;
-  installFromWorkspace: (
-    roomId: string
-  ) => Promise<{ success: boolean; error?: string; room?: InstalledRoomRecord; restartRequired?: boolean }>;
+  installFromWorkspace: (roomId: string) => Promise<{
+    success: boolean;
+    error?: string;
+    room?: InstalledRoomRecord;
+    restartRequired?: boolean;
+  }>;
   options?: { overwriteWorkspace?: boolean };
   roomPackageError: (
     key: string,
@@ -209,9 +212,5 @@ export async function importValidatedRoomBundle({
     })
   );
 
-  await writeFile(
-    join(workspaceDir, "manifest.json"),
-    JSON.stringify(manifest, null, 2),
-    "utf-8"
-  );
+  await writeFile(join(workspaceDir, "manifest.json"), JSON.stringify(manifest, null, 2), "utf-8");
 }

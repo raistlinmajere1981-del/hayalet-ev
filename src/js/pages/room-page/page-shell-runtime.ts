@@ -1,5 +1,9 @@
 import type { InstalledRoomRecord } from "@shared/index.js";
-import { ensureRoomPageShell, renderRoomFeatureButtons, shouldShowRoomFeatureStrip } from "./shell-layout.js";
+import {
+  ensureRoomPageShell,
+  renderRoomFeatureButtons,
+  shouldShowRoomFeatureStrip,
+} from "./shell-layout.js";
 import { type RoomRuntimeState, updateRoomRuntimeStatus } from "./runtime-events.js";
 
 interface EnsureRoomPageFeatureShellParams {

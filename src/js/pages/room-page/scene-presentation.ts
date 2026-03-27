@@ -135,7 +135,9 @@ export function renderRoomSceneView({
   refreshEditor,
 }: RenderRoomSceneViewParams): void {
   const view = page.querySelector<HTMLElement>("[data-room-role='scene-view']");
-  const background = page.querySelector<HTMLImageElement>("[data-room-role='scene-view-background']");
+  const background = page.querySelector<HTMLImageElement>(
+    "[data-room-role='scene-view-background']"
+  );
   const panelArt = page.querySelector<HTMLImageElement>("[data-room-role='scene-view-panel-art']");
   const backHost = page.querySelector<HTMLElement>("[data-room-role='scene-back-host']");
   const runtimeSlot = page.querySelector<HTMLElement>("[data-room-role='scene-runtime-slot']");

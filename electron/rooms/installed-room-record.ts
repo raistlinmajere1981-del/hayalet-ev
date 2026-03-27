@@ -40,7 +40,9 @@ function cloneSceneCharacter(value: RoomSceneCharacterConfig): RoomSceneCharacte
   return { ...value };
 }
 
-export function cloneSceneCharacters(value: RoomSceneCharacterConfig[]): RoomSceneCharacterConfig[] {
+export function cloneSceneCharacters(
+  value: RoomSceneCharacterConfig[]
+): RoomSceneCharacterConfig[] {
   return value.map((character) => cloneSceneCharacter(character));
 }
 

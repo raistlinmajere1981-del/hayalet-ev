@@ -1,5 +1,9 @@
 import type { SceneAlphaWindowBounds } from "../../scene/alpha-window.js";
-import type { SceneBackConfig, SceneLayoutConfig, SceneObjectConfig } from "../../scene/layout/index.js";
+import type {
+  SceneBackConfig,
+  SceneLayoutConfig,
+  SceneObjectConfig,
+} from "../../scene/layout/index.js";
 import type { SceneClickableThemeDefinition } from "../../scene/schema.js";
 import {
   SceneLayoutEditor,
@@ -41,8 +45,10 @@ interface CreateRoomSceneEditorCallbacksParams {
   refreshSceneShell: () => void;
 }
 
-interface SetupRoomSceneDebugEditorParams
-  extends Omit<CreateRoomSceneEditorCallbacksParams, "getActiveRoomId" | "refreshEditor"> {
+interface SetupRoomSceneDebugEditorParams extends Omit<
+  CreateRoomSceneEditorCallbacksParams,
+  "getActiveRoomId" | "refreshEditor"
+> {
   activeRoomId: string;
   editor: SceneLayoutEditor | null;
   isActive: () => boolean;

@@ -30,7 +30,7 @@ function encodeUtf8Base64(source: string): string {
   const bytes = new TextEncoder().encode(source);
   let binary = "";
   for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index] || 0);
+    binary += String.fromCharCode(bytes[index] ?? 0);
   }
   return btoa(binary);
 }
@@ -71,7 +71,7 @@ function resolveRoomHostModulePath(modulePath: string, specifier: string): strin
 function collectRoomHostModuleSpecifiers(source: string): string[] {
   const specifiers = new Set<string>();
 
-  const collectMatches = function (pattern: RegExp, specifierIndex: number) {
+  const collectMatches = function (pattern: RegExp, specifierIndex: number): void {
     pattern.lastIndex = 0;
     let match = pattern.exec(source);
     while (match !== null) {
@@ -94,15 +94,32 @@ function rewriteRoomHostModuleSpecifiers(
   resolveSpecifier: (specifier: string) => string
 ): string {
   return source
-    .replace(IMPORT_FROM_PATTERN, function (_, clause, quote, specifier) {
-      return `import ${clause} from ${quote}${resolveSpecifier(specifier)}${quote};`;
-    })
-    .replace(IMPORT_SIDE_EFFECT_PATTERN, function (_, quote, specifier) {
-      return `import ${quote}${resolveSpecifier(specifier)}${quote};`;
-    })
-    .replace(EXPORT_FROM_PATTERN, function (_, clause, quote, specifier) {
-      return `export ${clause} from ${quote}${resolveSpecifier(specifier)}${quote};`;
-    });
+    .replace(
+      IMPORT_FROM_PATTERN,
+      function (_match: string, clause: string, quote: string, specifier: string): string {
+        return `import ${clause} from ${quote}${resolveSpecifier(specifier)}${quote};`;
+      }
+    )
+    .replace(
+      IMPORT_SIDE_EFFECT_PATTERN,
+      function (_match: string, quote: string, specifier: string): string {
+        return `import ${quote}${resolveSpecifier(specifier)}${quote};`;
+      }
+    )
+    .replace(
+      EXPORT_FROM_PATTERN,
+      function (_match: string, clause: string, quote: string, specifier: string): string {
+        return `export ${clause} from ${quote}${resolveSpecifier(specifier)}${quote};`;
+      }
+    );
+}
+
+function resolveRoomHostModuleReplacement(
+  replacements: ReadonlyMap<string, string>,
+  specifier: string
+): string {
+  const replacement = replacements.get(specifier);
+  return replacement ?? specifier;
 }
 
 function transformModuleExportsToEsm(source: string): string {
@@ -110,8 +127,10 @@ function transformModuleExportsToEsm(source: string): string {
     return source;
   }
 
-  return source.replace(MODULE_EXPORTS_PATTERN, "$1$2const __room_module_exports__ = ") +
-    "\nexport default __room_module_exports__;\n";
+  return (
+    source.replace(MODULE_EXPORTS_PATTERN, "$1$2const __room_module_exports__ = ") +
+    "\nexport default __room_module_exports__;\n"
+  );
 }
 
 export async function buildRoomHostModuleDataUrl(
@@ -128,25 +147,27 @@ export async function buildRoomHostModuleDataUrl(
       return await cached;
     }
 
-    const pending = (async function () {
+    const pending = (async function (): Promise<string> {
       const source = await readModuleSource(normalizedPath);
       const specifiers = collectRoomHostModuleSpecifiers(source).filter(function (specifier) {
         return specifier.startsWith("./") || specifier.startsWith("../");
       });
       const replacements = new Map<string, string>();
 
-      for (const specifier of specifiers) {
-        const dependencyPath = assertRoomHostPathWithinRoot(
-          resolveRoomHostModulePath(normalizedPath, specifier),
-          roomRootPath,
-          specifier
-        );
-        replacements.set(specifier, await loadModule(dependencyPath));
-      }
+      await Promise.all(
+        specifiers.map(async (specifier): Promise<void> => {
+          const dependencyPath = assertRoomHostPathWithinRoot(
+            resolveRoomHostModulePath(normalizedPath, specifier),
+            roomRootPath,
+            specifier
+          );
+          replacements.set(specifier, await loadModule(dependencyPath));
+        })
+      );
 
       const rewrittenSource = transformModuleExportsToEsm(
-        rewriteRoomHostModuleSpecifiers(source, function (specifier) {
-          return replacements.get(specifier) || specifier;
+        rewriteRoomHostModuleSpecifiers(source, function (specifier): string {
+          return resolveRoomHostModuleReplacement(replacements, specifier);
         })
       );
       return `data:text/javascript;base64,${encodeUtf8Base64(rewrittenSource)}`;

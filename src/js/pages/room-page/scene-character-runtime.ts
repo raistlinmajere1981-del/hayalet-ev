@@ -1,5 +1,8 @@
 import type { SceneLayoutConfig } from "../../scene/layout/index.js";
-import { buildSceneCharacterRoster, resolveSceneAvatarSource } from "../../scene/characters/index.js";
+import {
+  buildSceneCharacterRoster,
+  resolveSceneAvatarSource,
+} from "../../scene/characters/index.js";
 import { renderSceneCharacterLayer } from "../../scene/renderers/character-layer.js";
 import { getRoomSceneDepthScale, getRoomSceneProjection } from "./scene-render-runtime.js";
 

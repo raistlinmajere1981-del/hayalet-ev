@@ -13,10 +13,7 @@ import {
   resolveInstalledFeatureScene,
   resolveInstalledScene,
 } from "./installed-room-record.ts";
-import {
-  buildInstalledRoomRecord,
-  optionalI18nBaseDir,
-} from "./installed-room-builder.ts";
+import { buildInstalledRoomRecord, optionalI18nBaseDir } from "./installed-room-builder.ts";
 
 export function createEmptyRoomRegistry(): RoomRegistryState {
   return {

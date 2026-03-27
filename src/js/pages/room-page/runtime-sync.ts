@@ -1,9 +1,6 @@
 import { RoomHostRuntime } from "../../modules/rooms/room-host-runtime.js";
 import type { RoomHostMessage } from "./runtime-context.js";
-import {
-  sendRoomRuntimeMessage,
-  type RoomWebviewElement,
-} from "./runtime-messaging.js";
+import { sendRoomRuntimeMessage, type RoomWebviewElement } from "./runtime-messaging.js";
 
 interface SendRoomHostContextParams {
   payload: RoomHostMessage;

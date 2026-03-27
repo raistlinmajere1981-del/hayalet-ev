@@ -62,6 +62,7 @@ export function setupLiveLogOverlay({
   const levelSelect = document.getElementById("live-log-level-select") as HTMLSelectElement | null;
   const searchInput = document.getElementById("live-log-search") as HTMLInputElement | null;
   const metrics = document.getElementById("live-log-metrics");
+  const detailMessage = document.getElementById("live-log-message");
   const detailMeta = document.getElementById("live-log-meta");
   const detailContext = document.getElementById("live-log-context");
 
@@ -76,6 +77,7 @@ export function setupLiveLogOverlay({
     !levelSelect ||
     !searchInput ||
     !metrics ||
+    !detailMessage ||
     !detailMeta ||
     !detailContext
   ) {
@@ -113,6 +115,7 @@ export function setupLiveLogOverlay({
       levelSelect,
       searchInput,
       metrics,
+      detailMessage,
       detailMeta,
       detailContext,
       formatLogCategory,
@@ -332,7 +335,7 @@ export function setupLiveLogOverlay({
       state.activeApp = app;
       state.selectedEntryId = "";
       setActiveTabUI(state, appButtons);
-      renderDetail(detailMeta, detailContext, null);
+      renderDetail(detailMessage, detailMeta, detailContext, null);
       void refreshActiveApp(true);
     });
   });
@@ -365,7 +368,7 @@ export function setupLiveLogOverlay({
     state.selectedEntryId = "";
     state.lastFingerprintByApp[state.activeApp] = "";
     render();
-    renderDetail(detailMeta, detailContext, null);
+    renderDetail(detailMessage, detailMeta, detailContext, null);
   });
 
   deleteInactiveBtn.addEventListener("click", () => {

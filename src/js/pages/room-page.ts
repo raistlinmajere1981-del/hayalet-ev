@@ -1,7 +1,4 @@
-import type {
-  InstalledRoomFeatureRecord,
-  InstalledRoomRecord,
-} from "@shared/index.js";
+import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
 import type { PageController } from "../app/types.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { RoomHostRuntime } from "../modules/rooms/room-host-runtime.js";
@@ -12,8 +9,8 @@ import {
 import {
   applySceneDebugFlag,
   createSceneDebugRuntimeSession,
-  SceneLayoutEditor,
   type SceneDebugRuntimeSession,
+  type SceneLayoutEditor,
   type SceneLayoutEditorSelection,
 } from "../scene-editor/index.js";
 import type { SceneEditorAssetTargetDescriptor } from "../scene-editor/scene-theme-asset-state.js";
@@ -113,7 +110,7 @@ export class RoomPageController implements PageController {
     });
     this.runtimeHostRuntime = createRoomPageRuntimeHostRuntime({
       getPage: () => this.getPage(),
-      getRoomPreloadUrl: () => this.getRoomPreloadUrl(),
+      getRoomPreloadUrl: this.getRoomPreloadUrl.bind(this),
       getRoom: () => this.room,
       getRuntimeMountHost: (page) => {
         if (this.isSceneFeatureOpen()) {
@@ -123,7 +120,9 @@ export class RoomPageController implements PageController {
       },
       pendingHostMessages: this.pendingHostMessages,
       runtimeSceneAriaLabel: roomPageT("page.runtimeSceneAriaLabel"),
-      sendHostContext: (target, reason) => this.runtimeContextRuntime.sendHostContext(target, reason),
+      sendHostContext: (target, reason): void => {
+        this.runtimeContextRuntime.sendHostContext(target, reason);
+      },
       setRuntimeState: (runtimeState, lastRuntimeEvent) => {
         this.runtimeState = runtimeState;
         this.lastRuntimeEvent = lastRuntimeEvent;
