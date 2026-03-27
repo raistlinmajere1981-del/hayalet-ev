@@ -239,18 +239,25 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
     };
   }
 
+  function getRuntimeRecord(runtime) {
+    return runtime && typeof runtime === "object" && Array.isArray(runtime) === false ? runtime : {};
+  }
+
   function buildProjectedProjects(runtime) {
-    return runtime.projects.map(function (project) {
+    const runtimeRecord = getRuntimeRecord(runtime);
+    const projects = Array.isArray(runtimeRecord.projects) ? runtimeRecord.projects : [];
+    return projects.map(function (project) {
       const nextProject = clone(project);
-      syncProjectFeatureProjections(runtime, nextProject);
+      syncProjectFeatureProjections(runtimeRecord, nextProject);
       return nextProject;
     });
   }
 
   function serializeJobs(runtime) {
-    return Object.keys(runtime.jobs)
+    const runtimeRecord = getRuntimeRecord(runtime);
+    return Object.keys(toRecord(runtimeRecord.jobs))
       .map(function (jobId) {
-        const job = runtime.jobs[jobId];
+        const job = toRecord(runtimeRecord.jobs)[jobId];
         if (!job) {
           return null;
         }
@@ -271,8 +278,9 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
   }
 
   function buildToolRegistry(runtime) {
-    return getRuntimeToolIds(runtime).map(function (toolId) {
-      const toolManifest = getToolManifest(runtime, toolId);
+    const runtimeRecord = getRuntimeRecord(runtime);
+    return getRuntimeToolIds(runtimeRecord).map(function (toolId) {
+      const toolManifest = getToolManifest(runtimeRecord, toolId);
       const systemCommand = toRecord(toolManifest.systemCommand);
       const stageSupport = {};
 
@@ -297,41 +305,42 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
   }
 
   function buildMediaSnapshot(runtime, featureId) {
-    const projectedProjects = buildProjectedProjects(runtime);
+    const runtimeRecord = getRuntimeRecord(runtime);
+    const projectedProjects = buildProjectedProjects(runtimeRecord);
     const activeProject =
       projectedProjects.find(function (project) {
-        return project.id === runtime.activeProjectId;
+        return project.id === runtimeRecord.activeProjectId;
       }) || null;
 
     return {
       roomId: roomId,
       featureId: featureId || defaultFeatureId,
-      ready: runtime.hydrated,
+      ready: runtimeRecord.hydrated === true,
       stages: mediaStages.slice(),
-      sourcePresets: clone(runtime.sourcePresets || {}),
-      ytDlpForm: clone(runtime.ytDlpForm || {}),
-      editPresets: clone(runtime.editPresets || {}),
-      editCapabilities: clone(runtime.editCapabilities || {}),
-      profilePresets: clone(runtime.profilePresets || {}),
-      profileCapabilities: clone(runtime.profileCapabilities || {}),
-      profileModels: clone(runtime.profileModels || {}),
-      subtitleSourcePresets: clone(runtime.subtitleSourcePresets || {}),
-      subtitleYoutubeForm: clone(runtime.subtitleYoutubeForm || {}),
-      subtitleEditPresets: clone(runtime.subtitleEditPresets || {}),
-      subtitleAnalysisCatalog: clone(runtime.subtitleAnalysisCatalog || {}),
-      subtitleAnalysisCapabilities: clone(runtime.subtitleAnalysisCapabilities || {}),
-      subtitleAnalysisProviders: clone(runtime.subtitleAnalysisProviders || {}),
-      audioAnalysisCatalog: clone(runtime.audioAnalysisCatalog || {}),
-      audioAnalysisCapabilities: clone(runtime.audioAnalysisCapabilities || {}),
-      audioAnalysisPresets: clone(runtime.audioAnalysisPresets || {}),
-      audioAnalysisProviders: clone(runtime.audioAnalysisProviders || {}),
-      toolRegistry: buildToolRegistry(runtime),
-      profileModelState: clone(runtime.profileModelState || {}),
+      sourcePresets: clone(runtimeRecord.sourcePresets || {}),
+      ytDlpForm: clone(runtimeRecord.ytDlpForm || {}),
+      editPresets: clone(runtimeRecord.editPresets || {}),
+      editCapabilities: clone(runtimeRecord.editCapabilities || {}),
+      profilePresets: clone(runtimeRecord.profilePresets || {}),
+      profileCapabilities: clone(runtimeRecord.profileCapabilities || {}),
+      profileModels: clone(runtimeRecord.profileModels || {}),
+      subtitleSourcePresets: clone(runtimeRecord.subtitleSourcePresets || {}),
+      subtitleYoutubeForm: clone(runtimeRecord.subtitleYoutubeForm || {}),
+      subtitleEditPresets: clone(runtimeRecord.subtitleEditPresets || {}),
+      subtitleAnalysisCatalog: clone(runtimeRecord.subtitleAnalysisCatalog || {}),
+      subtitleAnalysisCapabilities: clone(runtimeRecord.subtitleAnalysisCapabilities || {}),
+      subtitleAnalysisProviders: clone(runtimeRecord.subtitleAnalysisProviders || {}),
+      audioAnalysisCatalog: clone(runtimeRecord.audioAnalysisCatalog || {}),
+      audioAnalysisCapabilities: clone(runtimeRecord.audioAnalysisCapabilities || {}),
+      audioAnalysisPresets: clone(runtimeRecord.audioAnalysisPresets || {}),
+      audioAnalysisProviders: clone(runtimeRecord.audioAnalysisProviders || {}),
+      toolRegistry: buildToolRegistry(runtimeRecord),
+      profileModelState: clone(runtimeRecord.profileModelState || {}),
       projects: projectedProjects.map(serializeProjectSummary),
-      activeProjectId: runtime.activeProjectId,
-      activeProject: serializeProject(activeProject, runtime),
-      toolState: clone(runtime.toolState),
-      jobs: serializeJobs(runtime),
+      activeProjectId: runtimeRecord.activeProjectId,
+      activeProject: serializeProject(activeProject, runtimeRecord),
+      toolState: clone(runtimeRecord.toolState || { tools: {} }),
+      jobs: serializeJobs(runtimeRecord),
     };
   }
 

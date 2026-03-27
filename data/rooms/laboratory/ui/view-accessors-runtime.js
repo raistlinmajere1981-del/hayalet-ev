@@ -47,11 +47,15 @@ export function createLaboratoryViewAccessorsRuntime(deps) {
   }
 
   function getAudioAnalysisProviders() {
-    return audioAnalysisProvidersFn();
+    const providers = audioAnalysisProvidersFn();
+    return providers && typeof providers === "object" && Array.isArray(providers) === false
+      ? providers
+      : {};
   }
 
   function getAudioAnalysisProviderEntries() {
-    return audioAnalysisProvidersFn().providers;
+    const providers = getAudioAnalysisProviders().providers;
+    return Array.isArray(providers) ? providers : [];
   }
 
   function getProfileTargetAsset() {

@@ -54,8 +54,8 @@ export function createLaboratorySnapshotCompositionRuntime(deps) {
     mediaFeatureId: deps.mediaFeatureId,
     normalizeAudioAnalysisModuleResult: deps.normalizeAudioAnalysisModuleResult,
     normalizeAudioAnalysisState: deps.normalizeAudioAnalysisState,
-    normalizeSubtitleAnalysisState(rawValue) {
-      return deps.normalizeSubtitleAnalysisState(rawValue);
+    normalizeSubtitleAnalysisState(rawValue, runtime) {
+      return deps.normalizeSubtitleAnalysisState(rawValue, runtime);
     },
     roomId: deps.roomId,
     syncProjectFeatureProjections(runtime, project) {

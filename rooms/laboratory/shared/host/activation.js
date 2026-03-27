@@ -38,6 +38,7 @@ export function createLaboratoryHostActivation(deps) {
 
           if (payload.type === "host-context") {
             saveContext(api, payload);
+            pushMediaState(api, runtime, null);
             return;
           }
 

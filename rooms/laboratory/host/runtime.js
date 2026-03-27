@@ -305,8 +305,8 @@ const {
     return laboratoryProjectStateDelegatesRuntime.normalizeProjectReportState(rawValue);
   },
   normalizeSourceMetadata,
-  normalizeSubtitleAnalysisState(rawValue) {
-    return laboratorySubtitleStateDelegatesRuntime.normalizeSubtitleAnalysisState(rawValue);
+  normalizeSubtitleAnalysisState(rawValue, runtime) {
+    return laboratorySubtitleStateDelegatesRuntime.normalizeSubtitleAnalysisState(rawValue, runtime);
   },
   projectSchemaVersion: PROJECT_SCHEMA_VERSION,
   roomId: ROOM_ID,

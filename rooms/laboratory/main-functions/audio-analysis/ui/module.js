@@ -182,6 +182,7 @@ export function createAudioAnalysisUi(deps) {
                 : Array.isArray(entry.fallbackProviderIds)
                   ? entry.fallbackProviderIds
                   : [];
+              const toolDisplayName = getToolDisplayName(providerState.toolId || entry.toolId || "planned");
 
               return `
                 <article class="lab-tool-card">
@@ -190,7 +191,7 @@ export function createAudioAnalysisUi(deps) {
                       <strong>${escapeHtml(textFromKey(entry.titleKey || "") || entry.id || "--")}</strong>
                       <span>${escapeHtml(getAudioAnalysisProviderStatusLabel(status))}</span>
                     </div>
-                    <span class="lab-chip">${escapeHtml(getToolDisplayName(providerState.toolId || entry.toolId || "planned"))}</span>
+                    <span class="lab-chip">${escapeHtml(toolDisplayName)}</span>
                   </div>
                   <p class="lab-panel__hint">${escapeHtml(textFromKey(entry.summaryKey || "") || "")}</p>
                   ${renderSummaryRows([

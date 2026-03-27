@@ -841,7 +841,7 @@
     var(--bg-panel);
   color: var(--text-primary);
   font-size: var(--text-sm);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-medium);
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;

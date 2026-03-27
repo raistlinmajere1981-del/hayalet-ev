@@ -45,6 +45,12 @@ export function createLaboratoryHostMessageRuntime(deps) {
         payload.snapshot && typeof payload.snapshot === "object" && Array.isArray(payload.snapshot) === false
           ? payload.snapshot
           : {};
+      if (typeof snapshot.featureId === "string" && snapshot.featureId.trim() !== "") {
+        state.context = {
+          ...toRecord(state.context),
+          featureId: snapshot.featureId.trim(),
+        };
+      }
       state.sourceSnapshot = snapshot;
       render();
       return;

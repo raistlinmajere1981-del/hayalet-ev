@@ -233,7 +233,11 @@ const {
 } = audioAnalysisUtilityRuntime;
 
 function normalizeAudioAnalysisModuleResult(rawValue, moduleId, catalogEntry) {
-  return audioAnalysisStateRuntime.normalizeAudioAnalysisModuleResult(rawValue, moduleId, catalogEntry);
+  return audioAnalysisStateRuntime.normalizeAudioAnalysisModuleResult(
+    rawValue,
+    moduleId,
+    catalogEntry
+  );
 }
 
 function createEmptyAudioAnalysisState() {
@@ -301,8 +305,8 @@ const {
     return laboratoryProjectStateDelegatesRuntime.normalizeProjectReportState(rawValue);
   },
   normalizeSourceMetadata,
-  normalizeSubtitleAnalysisState(rawValue) {
-    return laboratorySubtitleStateDelegatesRuntime.normalizeSubtitleAnalysisState(rawValue);
+  normalizeSubtitleAnalysisState(rawValue, runtime) {
+    return laboratorySubtitleStateDelegatesRuntime.normalizeSubtitleAnalysisState(rawValue, runtime);
   },
   projectSchemaVersion: PROJECT_SCHEMA_VERSION,
   roomId: ROOM_ID,
@@ -519,6 +523,7 @@ const {
   },
   markFeatureProcessStale,
   markFeatureReportStale,
+  normalizeAudioAnalysisState,
   normalizeEditState,
   normalizeProfileArtifact,
   normalizeProfileSignal,
@@ -606,7 +611,8 @@ const laboratoryMediaAnalysisHostRuntime = createLaboratoryMediaAnalysisHostRunt
   ensureProfileJobSlotAvailable: laboratoryJobRuntime.ensureProfileJobSlotAvailable,
   ensureProjectDirectories,
   generateProfileFrameStrip: laboratoryAnalysisArtifactRuntime.generateProfileFrameStrip,
-  generateProfileMetadataArtifact: laboratoryAnalysisArtifactRuntime.generateProfileMetadataArtifact,
+  generateProfileMetadataArtifact:
+    laboratoryAnalysisArtifactRuntime.generateProfileMetadataArtifact,
   generateProfileSpectrogram: laboratoryAnalysisArtifactRuntime.generateProfileSpectrogram,
   getActiveProject(...args) {
     return laboratoryProjectRecordsRuntime.getActiveProject(...args);
@@ -755,34 +761,31 @@ const {
 });
 laboratoryProcessCoordinationRuntime = nextLaboratoryProcessCoordinationRuntime;
 
-const {
-  laboratorySourceDelegatesRuntime,
-  mediaSourceFileRuntime,
-  mediaSourceMetadataRuntime,
-} = createLaboratorySourceCompositionRuntime({
-  asNumber,
-  asNonEmptyString,
-  callRoomTools,
-  cancelJobsForProject,
-  clearJob,
-  ensureProjectDirectories,
-  getActiveProject(...args) {
-    return laboratoryProjectRecordsRuntime.getActiveProject(...args);
-  },
-  getElectronApi,
-  getProjectEditDir,
-  getProjectSourceDir,
-  getPresetDefaultCustomValues,
-  getSourceConfig,
-  normalizeSourceMetadata,
-  patchActiveProject,
-  pushJobState,
-  registerJob,
-  resetEditForCurrentSource,
-  resetProfileForCurrentSource,
-  roomId: ROOM_ID,
-  toRecord,
-});
+const { laboratorySourceDelegatesRuntime, mediaSourceFileRuntime, mediaSourceMetadataRuntime } =
+  createLaboratorySourceCompositionRuntime({
+    asNumber,
+    asNonEmptyString,
+    callRoomTools,
+    cancelJobsForProject,
+    clearJob,
+    ensureProjectDirectories,
+    getActiveProject(...args) {
+      return laboratoryProjectRecordsRuntime.getActiveProject(...args);
+    },
+    getElectronApi,
+    getProjectEditDir,
+    getProjectSourceDir,
+    getPresetDefaultCustomValues,
+    getSourceConfig,
+    normalizeSourceMetadata,
+    patchActiveProject,
+    pushJobState,
+    registerJob,
+    resetEditForCurrentSource,
+    resetProfileForCurrentSource,
+    roomId: ROOM_ID,
+    toRecord,
+  });
 const {
   collectDerivedOutputMetadata,
   collectStoredSourceMetadata,
@@ -799,7 +802,8 @@ const laboratoryRoomToolsProgressRuntime = createLaboratoryRoomToolsProgressRunt
   pushSourceState: pushSourceState,
 });
 const ensureRoomToolsSubscription = laboratoryRoomToolsProgressRuntime.ensureRoomToolsSubscription;
-const tearDownRoomToolsSubscription = laboratoryRoomToolsProgressRuntime.tearDownRoomToolsSubscription;
+const tearDownRoomToolsSubscription =
+  laboratoryRoomToolsProgressRuntime.tearDownRoomToolsSubscription;
 const laboratoryRuntimeStorage = createLaboratoryRuntimeStorage({
   lifecycleRuntime: laboratoryProjectLifecycleRuntime,
   profileModelRuntime: mediaProfileModelRuntime,
@@ -938,13 +942,13 @@ const handleMediaAction = laboratoryActionCompositionRuntime.handleMediaAction;
 
 export default function createLaboratoryHostRuntime() {
   return createLaboratoryHostActivation({
-  createRuntimeState,
-  ensureHydrated,
-  ensureRoomToolsSubscription,
-  handleMediaAction,
-  pushMediaState,
-  saveContext,
-  tearDownRoomToolsSubscription,
-  toRecord,
+    createRuntimeState,
+    ensureHydrated,
+    ensureRoomToolsSubscription,
+    handleMediaAction,
+    pushMediaState,
+    saveContext,
+    tearDownRoomToolsSubscription,
+    toRecord,
   });
 }

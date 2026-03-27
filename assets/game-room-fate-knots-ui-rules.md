@@ -245,3 +245,4 @@ Bu oyunun UI’si şunu hissettirmelidir:
 Kısacası:
 
 scene first, system second, decoration last.
+Not: uygulamanın scene ve scene:debug modu içn ana fonksiyon arka plan "assets/team-fate-knots.webp" kullanılacak.

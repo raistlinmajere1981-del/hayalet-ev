@@ -1,3 +1,4 @@
+/* global console */
 const { contextBridge, ipcRenderer } = require("electron");
 
 const ROOM_HOST_MESSAGE_CHANNEL = "room-host-message";
@@ -70,7 +71,12 @@ ipcRenderer.on(ROOM_HOST_MESSAGE_CHANNEL, (_event, payload) => {
   for (const handler of hostMessageHandlers) {
     try {
       handler(payload);
-    } catch {
+    } catch (error) {
+      console.error("Room host message handler failed.", {
+        type: payload && typeof payload.type === "string" ? payload.type : null,
+        reason: payload && typeof payload.reason === "string" ? payload.reason : null,
+        error: error instanceof Error ? error.stack || error.message : String(error),
+      });
       continue;
     }
   }

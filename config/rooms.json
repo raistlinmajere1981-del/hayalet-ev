@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-27T09:51:43.206Z",
+  "updatedAt": "2026-03-27T12:49:23.078Z",
   "rooms": [
     {
       "id": "laboratory",
@@ -141,8 +141,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/data/rooms/laboratory/i18n",
-      "installedAt": "2026-03-27T09:51:43.128Z",
-      "updatedAt": "2026-03-27T09:51:43.128Z"
+      "installedAt": "2026-03-27T11:08:20.299Z",
+      "updatedAt": "2026-03-27T11:08:20.299Z"
     },
     {
       "id": "game-room",
@@ -510,8 +510,8 @@
           "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
         }
       ],
-      "installedAt": "2026-03-27T09:51:43.206Z",
-      "updatedAt": "2026-03-27T09:51:43.206Z"
+      "installedAt": "2026-03-27T12:49:23.078Z",
+      "updatedAt": "2026-03-27T12:49:23.078Z"
     }
   ]
 }
