@@ -19,6 +19,7 @@ function createRoomHostRuntime() {
   const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const protocolCalls: Array<Record<string, unknown>> = [];
   const messageCalls: Array<Record<string, unknown>> = [];
+  const us1MessageCalls: Array<Record<string, unknown>> = [];
   let exported: Record<string, unknown>;
 
   const api = {
@@ -34,11 +35,14 @@ function createRoomHostRuntime() {
       return { success: true };
     },
     sendToTargets: async () => ({ success: true }),
-    sendUs1Message: async () => ({
-      success: true,
-      remoteUserId: "remote@example.com",
-      localSessionId: "fk-session-1",
-    }),
+    sendUs1Message: async (payload: Record<string, unknown>) => {
+      us1MessageCalls.push(payload);
+      return {
+        success: true,
+        remoteUserId: "remote@example.com",
+        localSessionId: "fk-session-1",
+      };
+    },
     syncUs1Messages: async () => ({
       success: true,
       fetchedCount: 0,
@@ -78,6 +82,7 @@ function createRoomHostRuntime() {
     notifications,
     protocolCalls,
     messageCalls,
+    us1MessageCalls,
     exported,
     async emitHostContext(context: Record<string, unknown>) {
       runtime.exported.onRoomEvent(context);
@@ -273,7 +278,7 @@ test("game-room host blocks Fate Knots start until at least one AI companion is 
   assert.match(String(result?.message ?? ""), /ready|companion/i);
 });
 
-test("game-room host starts Fate Knots with the V1 roster and dispatches the first AI decision prompt", async () => {
+test("game-room host starts Fate Knots with the V2 roster and dispatches the first AI and US1 decision prompts", async () => {
   const runtime = createRoomHostRuntime();
 
   await runtime.emitHostContext(buildHostContext({ ai1Ready: true, ai2Ready: false, us1Ready: true }));
@@ -286,9 +291,10 @@ test("game-room host starts Fate Knots with the V1 roster and dispatches the fir
   let state = runtime.latestFateKnotsState();
   assert.equal(state?.phase, "character-creation");
   assert.equal(state?.active, true);
-  assert.equal((state?.participants as Array<Record<string, unknown>>).length, 2);
+  assert.equal((state?.participants as Array<Record<string, unknown>>).length, 3);
   assert.equal((state?.participants as Array<Record<string, unknown>>)[1]?.seatId, "ai1");
-  assert.deepEqual(state?.excludedSeats, [{ seatId: "us1", reason: "v1-remote-deferred" }]);
+  assert.equal((state?.participants as Array<Record<string, unknown>>)[2]?.seatId, "us1");
+  assert.deepEqual(state?.excludedSeats, []);
 
   await runtime.exported.commands.GameRoomFateKnotsCharacterSelect({
     provider: "room-ui",
@@ -314,6 +320,8 @@ test("game-room host starts Fate Knots with the V1 roster and dispatches the fir
   assert.equal(runtime.protocolCalls[0]?.scenario, "fate-knots-ai-decision");
   assert.equal(runtime.messageCalls[0]?.provider, "ai1");
   assert.match(String(runtime.messageCalls[0]?.text ?? ""), /GameRoomFateKnotsAiChoice/);
+  assert.equal(runtime.us1MessageCalls.length > 0, true);
+  assert.match(String(runtime.us1MessageCalls[0]?.text ?? ""), /GameRoomFateKnotsRemoteChoice/);
 });
 
 test("game-room host resets Fate Knots state when the active feature switches away", async () => {
@@ -428,4 +436,74 @@ test("game-room host rejects stale Fate Knots combat turn payloads without advan
   assert.equal(result?.success, false);
   assert.match(String(result?.message ?? ""), /stale/i);
   assert.equal(runtime.latestFateKnotsState()?.combat?.turnId, turnId);
+});
+
+test("game-room host persists the local build profile and stores additive DM/NPC packets", async () => {
+  const runtime = createRoomHostRuntime();
+  const state = await startRunIntoScenario(runtime);
+
+  const profile = runtime.state.get("fate-knots-profile") as Record<string, unknown> | undefined;
+  assert.equal(profile?.avatarId, "warrior_avatar");
+  assert.equal(profile?.classId, "warrior");
+  assert.equal(profile?.backgroundId, "former_soldier");
+
+  const dmResult = await runtime.exported.commands.GameRoomFateKnotsDmPacket({
+    provider: "ai1",
+    roomArgs: {
+      sessionId: state?.sessionId,
+      phase: "scenario",
+      stepId: state?.currentStep?.id,
+      text: "The square holds its breath as the knot tightens.",
+    },
+  });
+  const npcResult = await runtime.exported.commands.GameRoomFateKnotsNpcBanter({
+    provider: "ai2",
+    roomArgs: {
+      sessionId: state?.sessionId,
+      phase: "scenario",
+      seatId: "ai1",
+      stepId: state?.currentStep?.id,
+      text: "We still have the light. Keep moving.",
+    },
+  });
+
+  assert.equal(dmResult?.success, true);
+  assert.equal(npcResult?.success, true);
+  const nextState = runtime.latestFateKnotsState();
+  assert.equal(nextState?.dmNarration?.text, "The square holds its breath as the knot tightens.");
+  assert.equal(nextState?.npcBanter?.seatId, "ai1");
+  assert.equal(nextState?.npcBanter?.text, "We still have the light. Keep moving.");
+});
+
+test("game-room host stores run history after a combat victory finalizes the slice", async () => {
+  const runtime = createRoomHostRuntime();
+  let currentState = await advanceRunToCombat(runtime);
+  let iterations = 0;
+
+  while (currentState?.phase === "combat" && iterations < 12) {
+    const provider =
+      currentState?.combat?.turn?.seatId === "user"
+        ? "room-ui"
+        : String(currentState?.combat?.turn?.seatId ?? "");
+    const actionId = String(currentState?.combat?.availableActions?.[0]?.id ?? "");
+
+    const result = await runtime.exported.commands.GameRoomFateKnotsCombatAction({
+      provider,
+      roomArgs: {
+        sessionId: currentState?.sessionId,
+        encounterId: currentState?.combat?.encounterId,
+        turnId: currentState?.combat?.turnId,
+        actionId,
+      },
+    });
+
+    assert.equal(result?.success, true);
+    currentState = runtime.latestFateKnotsState();
+    iterations += 1;
+  }
+
+  assert.equal(currentState?.phase, "result");
+  const history = runtime.state.get("fate-knots-history") as Array<Record<string, unknown>> | undefined;
+  assert.equal(Array.isArray(history), true);
+  assert.equal(history?.[0]?.sessionId, currentState?.sessionId);
 });

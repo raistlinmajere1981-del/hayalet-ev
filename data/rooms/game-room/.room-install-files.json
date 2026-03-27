@@ -118,6 +118,8 @@
     "main-functions/fate-knots/host/state.js",
     "main-functions/fate-knots/protocols/game-room-fate-knots-ai-combat.md",
     "main-functions/fate-knots/protocols/game-room-fate-knots-ai-decision.md",
+    "main-functions/fate-knots/protocols/game-room-fate-knots-ai-dm.md",
+    "main-functions/fate-knots/protocols/game-room-fate-knots-ai-npc.md",
     "main-functions/fate-knots/protocols/game-room-fate-knots-us1-transport.md",
     "main-functions/fate-knots/styles.css",
     "main-functions/fate-knots/ui/module.js",

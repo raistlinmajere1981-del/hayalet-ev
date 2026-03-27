@@ -65,3 +65,28 @@ export function readFateKnotsSyncPayload(payload) {
     mode: normalizeText(args.mode) || null,
   };
 }
+
+export function readFateKnotsDmPacketPayload(payload) {
+  const args = readFateKnotsArgs(payload);
+  return {
+    sessionId: normalizeText(args.sessionId) || null,
+    phase: normalizeText(args.phase) || null,
+    stepId: normalizeText(args.stepId) || null,
+    encounterId: normalizeText(args.encounterId) || null,
+    turnId: normalizeText(args.turnId) || null,
+    text: normalizeText(args.text),
+  };
+}
+
+export function readFateKnotsNpcBanterPayload(payload) {
+  const args = readFateKnotsArgs(payload);
+  return {
+    sessionId: normalizeText(args.sessionId) || null,
+    phase: normalizeText(args.phase) || null,
+    seatId: normalizeText(args.seatId) || null,
+    stepId: normalizeText(args.stepId) || null,
+    encounterId: normalizeText(args.encounterId) || null,
+    turnId: normalizeText(args.turnId) || null,
+    text: normalizeText(args.text),
+  };
+}

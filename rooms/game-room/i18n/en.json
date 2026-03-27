@@ -201,12 +201,24 @@
       "incomplete": "Pick an avatar, class, and background.",
       "summaryTitle": "Build Summary"
     },
+    "memory": {
+      "profileTitle": "Remembered Build",
+      "historyTitle": "Recent Knots",
+      "emptyHistory": "No completed runs yet.",
+      "saveSlotTitle": "Save Scaffold",
+      "saveSlotIdle": "Full resume stays deferred for now."
+    },
+    "narration": {
+      "title": "DM Thread",
+      "empty": "Ambient narration will appear here when a packet arrives."
+    },
     "roster": {
       "title": "Participants",
       "locked": "Locked",
       "unlock": "Selecting",
-      "excluded": "US1 stays outside the V1 playable roster and is tracked for later iterations.",
-      "missing": "Seat unavailable"
+      "excluded": "This seat is outside the active roster.",
+      "missing": "Seat unavailable",
+      "remoteUserLabel": "US1: {id}"
     },
     "status": {
       "label": "Run Status",
@@ -262,7 +274,7 @@
       "locked": "Locked",
       "ready": "Ready",
       "selecting": "Selecting",
-      "deferred": "Deferred",
+      "deferred": "Reserved",
       "reserved": "Reserved",
       "standby": "Standby"
     }

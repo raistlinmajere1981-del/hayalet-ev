@@ -215,6 +215,14 @@ test("game-room manifest documents the Fate Knots AI and US1 contracts", () => {
     true
   );
   assert.equal(
+    fateKnotsFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-fate-knots-ai-dm"),
+    true
+  );
+  assert.equal(
+    fateKnotsFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-fate-knots-ai-npc"),
+    true
+  );
+  assert.equal(
     fateKnotsFeature?.protocolSpecs?.some((spec) => spec.key === "game-room-fate-knots-us1-transport"),
     true
   );

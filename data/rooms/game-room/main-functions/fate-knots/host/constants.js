@@ -1,8 +1,13 @@
 export const FATE_KNOTS_SCHEMA_VERSION = 1;
 export const FATE_KNOTS_STATE_KEY = "fate-knots-game";
 export const FATE_KNOTS_CONTENT_STATE_KEY = "fate-knots-content";
+export const FATE_KNOTS_PROFILE_STATE_KEY = "fate-knots-profile";
+export const FATE_KNOTS_HISTORY_STATE_KEY = "fate-knots-history";
+export const FATE_KNOTS_SAVE_SLOT_STATE_KEY = "fate-knots-save-slot";
 export const FATE_KNOTS_WAIT_TIMEOUT_MS = 45000;
 export const FATE_KNOTS_MAX_LOG_ENTRIES = 18;
+export const FATE_KNOTS_MAX_HISTORY_ENTRIES = 6;
+export const FATE_KNOTS_MAX_PACKET_TEXT_LENGTH = 280;
 export const FATE_KNOTS_SUPPORTED_AI_SEATS = ["ai1", "ai2"];
 export const FATE_KNOTS_SUPPORTED_REMOTE_SEATS = ["us1"];
 export const FATE_KNOTS_SELECTION_KEYS = ["avatarId", "classId", "backgroundId"];
@@ -34,6 +39,8 @@ export const FATE_KNOTS_COMMAND_NAMES = {
   aiCombatAction: "GameRoomFateKnotsAiCombatAction",
   remoteChoice: "GameRoomFateKnotsRemoteChoice",
   remoteCombatAction: "GameRoomFateKnotsRemoteCombatAction",
+  dmPacket: "GameRoomFateKnotsDmPacket",
+  npcBanter: "GameRoomFateKnotsNpcBanter",
 };
 
 export const FATE_KNOTS_STATUS_COPY = {
@@ -69,6 +76,10 @@ export const FATE_KNOTS_STATUS_COPY = {
     en: "Waiting for an allied seat to submit its combat action.",
     tr: "Bir ekip koltugunun savas hamlesini gondermesi bekleniyor.",
   },
+  combatTurnRemote: {
+    en: "Waiting for the remote ally to submit its combat action.",
+    tr: "Uzak ekip arkadasinin savas hamlesi bekleniyor.",
+  },
   combatTimeout: {
     en: "A combat reply timed out. Use sync after the delayed seat is ready again.",
     tr: "Bir savas yaniti zaman asimina ugradi. Geciken koltuk hazir olunca sync kullan.",
@@ -84,6 +95,10 @@ export const FATE_KNOTS_STATUS_COPY = {
   resultDefeat: {
     en: "The party breaks first. Reset to rerun the Fate Knots slice.",
     tr: "Ekip once dagildi. Fate Knots dilimini yeniden denemek icin sifirla.",
+  },
+  remotePending: {
+    en: "Waiting for the remote ally to answer from US1 transport.",
+    tr: "US1 tasimasindan gelecek uzak ekip cevabi bekleniyor.",
   },
 };
 
@@ -159,5 +174,17 @@ export const FATE_KNOTS_COMMAND_COPY = {
   desync: {
     en: "The run is waiting in recovery mode. Use sync after the missing seat is ready again.",
     tr: "Kosu toparlanma modunda bekliyor. Eksik koltuk hazir olunca sync kullan.",
+  },
+  invalidPacket: {
+    en: "The additive Fate Knots packet was not valid.",
+    tr: "Ek Fate Knots paketi gecersizdi.",
+  },
+  dmPacketAccepted: {
+    en: "DM narration packet stored.",
+    tr: "DM anlati paketi kaydedildi.",
+  },
+  npcBanterAccepted: {
+    en: "NPC banter packet stored.",
+    tr: "NPC atismasi paketi kaydedildi.",
   },
 };

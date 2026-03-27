@@ -20,6 +20,8 @@ const requiredFiles = [
   "rooms/game-room/main-functions/fate-knots/styles.css",
   "rooms/game-room/main-functions/fate-knots/protocols/game-room-fate-knots-ai-decision.md",
   "rooms/game-room/main-functions/fate-knots/protocols/game-room-fate-knots-ai-combat.md",
+  "rooms/game-room/main-functions/fate-knots/protocols/game-room-fate-knots-ai-dm.md",
+  "rooms/game-room/main-functions/fate-knots/protocols/game-room-fate-knots-ai-npc.md",
   "rooms/game-room/main-functions/fate-knots/protocols/game-room-fate-knots-us1-transport.md",
   "scripts/rooms/sync-game-room-fate-knots-assets.mjs",
 ];
@@ -49,6 +51,8 @@ test("game-room manifest exposes Fate Knots as a scene-ready third feature", () 
     [
       "game-room-fate-knots-ai-decision",
       "game-room-fate-knots-ai-combat",
+      "game-room-fate-knots-ai-dm",
+      "game-room-fate-knots-ai-npc",
       "game-room-fate-knots-us1-transport",
     ]
   );
@@ -67,6 +71,8 @@ test("game-room manifest exposes Fate Knots as a scene-ready third feature", () 
       "GameRoomFateKnotsAiCombatAction",
       "GameRoomFateKnotsRemoteChoice",
       "GameRoomFateKnotsRemoteCombatAction",
+      "GameRoomFateKnotsDmPacket",
+      "GameRoomFateKnotsNpcBanter",
     ]
   );
 });

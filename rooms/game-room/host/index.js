@@ -43,7 +43,9 @@ import {
   handleCharacterSelect as fateKnotsHandleCharacterSelect,
   handleChoice as fateKnotsHandleChoice,
   handleCombatAction as fateKnotsHandleCombatAction,
+  handleDmPacket as fateKnotsHandleDmPacket,
   handleEnd as fateKnotsHandleEnd,
+  handleNpcBanter as fateKnotsHandleNpcBanter,
   handleReady as fateKnotsHandleReady,
   handleReset as fateKnotsHandleReset,
   handleSync as fateKnotsHandleSync,
@@ -136,6 +138,12 @@ const gameRoomHost = {
         },
         [FATE_KNOTS_COMMAND_NAMES.remoteCombatAction]: function (payload) {
           return fateKnotsHandleCombatAction(api, payload || {});
+        },
+        [FATE_KNOTS_COMMAND_NAMES.dmPacket]: function (payload) {
+          return fateKnotsHandleDmPacket(api, payload || {});
+        },
+        [FATE_KNOTS_COMMAND_NAMES.npcBanter]: function (payload) {
+          return fateKnotsHandleNpcBanter(api, payload || {});
         },
       },
       onRoomReady: function onRoomReady() {

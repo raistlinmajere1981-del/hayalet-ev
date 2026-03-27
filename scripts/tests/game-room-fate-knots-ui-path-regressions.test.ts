@@ -368,7 +368,7 @@ function createBaseFateKnotsState() {
         selection: createSelection({ locked: true, autoAssigned: true }),
       }),
     ],
-    excludedSeats: [{ seatId: "us1", reason: "v1-remote-deferred" }],
+    excludedSeats: [],
     waiting: {
       mode: "idle",
       reason: "",
@@ -388,6 +388,34 @@ function createBaseFateKnotsState() {
       title: "",
       summary: "",
       continueHint: "",
+    },
+    dmNarration: null,
+    npcBanter: null,
+    profile: {
+      avatarId: "ranger_avatar",
+      classId: "ranger",
+      backgroundId: "scholar",
+      updatedAt: Date.now(),
+    },
+    history: [
+      {
+        sessionId: "previous-run",
+        outcome: "victory",
+        title: "Well Secured",
+        summary: "The first knot held and the village steadied.",
+        locationId: "village-gate",
+        timestamp: Date.now() - 1000,
+        roster: [
+          { seatId: "user", nickname: "Raistlin", type: "local-user" },
+          { seatId: "ai1", nickname: "Atlas", type: "ai" },
+        ],
+      },
+    ],
+    saveSlot: {
+      hasResumeData: false,
+      lastCompletedSessionId: "previous-run",
+      lastOutcome: "victory",
+      updatedAt: Date.now(),
     },
     scenarioLog: [],
     catalogs: {
@@ -413,6 +441,10 @@ function createBaseFateKnotsState() {
     },
     user: {
       nickname: "Raistlin",
+    },
+    transport: {
+      localSessionId: "fk-session-1",
+      remoteUserId: "remote@example.com",
     },
     uiAssets: {
       featureView: createAssetLink("fate-knots-view", "fate-knots-view.webp"),
@@ -448,6 +480,7 @@ test("Fate Knots UI renders the overview surface and dispatches start and reset 
   assert.ok(findByRole(runtime.document.body, "map-shell"));
   assert.ok(findByRole(runtime.document.body, "right-rail"));
   assert.ok(findByRole(runtime.document.body, "start-zone"));
+  assert.ok(findByRole(runtime.document.body, "history-rail"));
   assert.ok(findBySeat(runtime.document.body, "us1"));
   assert.notEqual(findBySeat(runtime.document.body, "us1")?.tagName, "button");
 
@@ -478,6 +511,73 @@ test("Fate Knots UI renders Turkish overview copy while keeping dummy seats non-
   trigger(dummySeat, "click");
 
   assert.equal(runtime.sentCommands.length, 0);
+});
+
+test("Fate Knots UI renders remembered build and DM/NPC additive packets without breaking landmarks", () => {
+  const runtime = createUiRuntime();
+  const translations = JSON.parse(readFileSync("rooms/game-room/i18n/en.json", "utf8")) as Record<
+    string,
+    unknown
+  >;
+  const state = createBaseFateKnotsState();
+  state.phase = "scenario";
+  state.dmNarration = {
+    kind: "dm",
+    seatId: "ai1",
+    phase: "scenario",
+    text: "The knot shivers, but the lanterns still hold.",
+    stepId: "gate-arrival",
+    encounterId: null,
+    turnId: null,
+    updatedAt: Date.now(),
+  };
+  state.npcBanter = {
+    kind: "npc",
+    seatId: "ai1",
+    phase: "scenario",
+    text: "Stay close. The square is listening.",
+    stepId: "gate-arrival",
+    encounterId: null,
+    turnId: null,
+    updatedAt: Date.now(),
+  };
+  state.currentStep = {
+    id: "gate-arrival",
+    title: "Gate Arrival",
+    body: "Lantern light wavers over the square.",
+    speaker: "Traveling Stranger",
+    location: { id: "village-gate", label: "Village Gate" },
+    sceneAsset: createAssetLink("scene_village_gate", "scene-village-gate.webp"),
+    npcs: [],
+    items: [],
+    creatures: [],
+    choices: [
+      {
+        id: "follow-lantern",
+        label: "Follow the lantern trail",
+        summary: "Move before the glow fades.",
+        nextStepId: "well-approach",
+        encounterId: null,
+      },
+    ],
+  };
+  state.decision = {
+    stepId: "gate-arrival",
+    choiceIds: ["follow-lantern"],
+    votes: {},
+    participantIds: ["user", "ai1"],
+    resolvedChoiceId: null,
+    conflict: false,
+    pendingSeatIds: ["user"],
+    deadlineAt: null,
+  };
+
+  runtime.emitHostMessage(buildHostContext(translations));
+  emitFateKnotsState(runtime, state);
+
+  assert.match(readElementText(runtime.document.body), /The knot shivers, but the lanterns still hold/);
+  assert.match(readElementText(runtime.document.body), /Stay close\. The square is listening/);
+  assert.ok(findByRole(runtime.document.body, "narration-panel"));
 });
 
 test("Fate Knots UI sends character selection updates and a ready command from the creation stage", () => {

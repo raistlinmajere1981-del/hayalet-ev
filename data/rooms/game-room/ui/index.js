@@ -141,6 +141,58 @@
     return !!(window.roomAPI && typeof window.roomAPI.sendCommand === "function");
   }
 
+  function captureScrollState(root) {
+    return {
+      rootTop: root && typeof root.scrollTop === "number" ? root.scrollTop : null,
+      rootLeft: root && typeof root.scrollLeft === "number" ? root.scrollLeft : null,
+      bodyTop: document.body && typeof document.body.scrollTop === "number" ? document.body.scrollTop : null,
+      bodyLeft:
+        document.body && typeof document.body.scrollLeft === "number" ? document.body.scrollLeft : null,
+      documentTop:
+        document.documentElement && typeof document.documentElement.scrollTop === "number"
+          ? document.documentElement.scrollTop
+          : null,
+      documentLeft:
+        document.documentElement && typeof document.documentElement.scrollLeft === "number"
+          ? document.documentElement.scrollLeft
+          : null,
+      windowX: typeof window.scrollX === "number" ? window.scrollX : null,
+      windowY: typeof window.scrollY === "number" ? window.scrollY : null,
+    };
+  }
+
+  function restoreScrollState(root, scrollState) {
+    if (!scrollState || typeof scrollState !== "object") {
+      return;
+    }
+
+    if (root && typeof scrollState.rootTop === "number") {
+      root.scrollTop = scrollState.rootTop;
+    }
+    if (root && typeof scrollState.rootLeft === "number") {
+      root.scrollLeft = scrollState.rootLeft;
+    }
+    if (document.body && typeof scrollState.bodyTop === "number") {
+      document.body.scrollTop = scrollState.bodyTop;
+    }
+    if (document.body && typeof scrollState.bodyLeft === "number") {
+      document.body.scrollLeft = scrollState.bodyLeft;
+    }
+    if (document.documentElement && typeof scrollState.documentTop === "number") {
+      document.documentElement.scrollTop = scrollState.documentTop;
+    }
+    if (document.documentElement && typeof scrollState.documentLeft === "number") {
+      document.documentElement.scrollLeft = scrollState.documentLeft;
+    }
+    if (
+      typeof window.scrollTo === "function" &&
+      typeof scrollState.windowX === "number" &&
+      typeof scrollState.windowY === "number"
+    ) {
+      window.scrollTo(scrollState.windowX, scrollState.windowY);
+    }
+  }
+
   function sendRoomCommand(command, payload) {
     if (!isRoomApiAvailable()) {
       state.lastCommandMessage = statusText("roomApiUnavailable");
@@ -224,24 +276,30 @@
       return;
     }
 
-    if (!state.translations) {
-      xoxUi.renderBootstrap(root);
-      return;
+    const scrollState = captureScrollState(root);
+
+    try {
+      if (!state.translations) {
+        xoxUi.renderBootstrap(root);
+        return;
+      }
+
+      document.title = state.context.room.name + " - " + getFeatureLabel(getActiveFeatureId());
+
+      if (getActiveFeatureId() === TEAM_TETRIS_FEATURE_ID) {
+        teamTetrisUi.renderTeamTetris(root);
+        return;
+      }
+
+      if (getActiveFeatureId() === FATE_KNOTS_FEATURE_ID) {
+        fateKnotsUi.renderFateKnots(root);
+        return;
+      }
+
+      xoxUi.renderXox(root);
+    } finally {
+      restoreScrollState(root, scrollState);
     }
-
-    document.title = state.context.room.name + " - " + getFeatureLabel(getActiveFeatureId());
-
-    if (getActiveFeatureId() === TEAM_TETRIS_FEATURE_ID) {
-      teamTetrisUi.renderTeamTetris(root);
-      return;
-    }
-
-    if (getActiveFeatureId() === FATE_KNOTS_FEATURE_ID) {
-      fateKnotsUi.renderFateKnots(root);
-      return;
-    }
-
-    xoxUi.renderXox(root);
   }
 
   function handleHostMessage(message) {

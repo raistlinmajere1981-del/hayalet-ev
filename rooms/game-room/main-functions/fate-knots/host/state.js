@@ -2,7 +2,11 @@ import { readLocale } from "../../../shared/host/context-state.js";
 import { FATE_KNOTS_FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
 import { normalizeLocale, translate } from "../../../shared/host/text.js";
 import {
+  FATE_KNOTS_HISTORY_STATE_KEY,
+  FATE_KNOTS_MAX_HISTORY_ENTRIES,
+  FATE_KNOTS_PROFILE_STATE_KEY,
   FATE_KNOTS_SCHEMA_VERSION,
+  FATE_KNOTS_SAVE_SLOT_STATE_KEY,
   FATE_KNOTS_STATE_KEY,
   FATE_KNOTS_STATUS_COPY,
 } from "./constants.js";
@@ -14,7 +18,11 @@ import {
 } from "./combat-engine.js";
 import {
   createInitialFateKnotsState,
+  normalizeHistoryEntry,
+  normalizeHistoryState,
   normalizeFateKnotsState,
+  normalizeProfileState,
+  normalizeSaveSlotState,
 } from "./models.js";
 
 function cloneJsonValue(value) {
@@ -48,6 +56,51 @@ export function resetFateKnotsState(api, statusKey = "idle") {
   nextState.statusKey = statusKey;
   nextState.compatibility.mode = statusKey === "idle" ? "fresh" : "reset-safe";
   return saveFateKnotsState(api, nextState);
+}
+
+export function loadFateKnotsProfile(api) {
+  return normalizeProfileState(api.getState(FATE_KNOTS_PROFILE_STATE_KEY));
+}
+
+export function saveFateKnotsProfile(api, profile) {
+  const normalized = normalizeProfileState(profile);
+  api.setState(FATE_KNOTS_PROFILE_STATE_KEY, normalized);
+  return normalized;
+}
+
+export function loadFateKnotsHistory(api) {
+  return normalizeHistoryState(api.getState(FATE_KNOTS_HISTORY_STATE_KEY));
+}
+
+export function saveFateKnotsHistory(api, history) {
+  const normalized = normalizeHistoryState(history);
+  api.setState(FATE_KNOTS_HISTORY_STATE_KEY, normalized);
+  return normalized;
+}
+
+export function appendFateKnotsHistory(api, entry) {
+  const nextEntry = normalizeHistoryEntry(entry);
+  if (nextEntry.timestamp === null) {
+    return loadFateKnotsHistory(api);
+  }
+  const nextHistory = [nextEntry]
+    .concat(
+      loadFateKnotsHistory(api).filter(function (item) {
+        return item.sessionId !== nextEntry.sessionId;
+      })
+    )
+    .slice(0, FATE_KNOTS_MAX_HISTORY_ENTRIES);
+  return saveFateKnotsHistory(api, nextHistory);
+}
+
+export function loadFateKnotsSaveSlot(api) {
+  return normalizeSaveSlotState(api.getState(FATE_KNOTS_SAVE_SLOT_STATE_KEY));
+}
+
+export function saveFateKnotsSaveSlot(api, saveSlot) {
+  const normalized = normalizeSaveSlotState(saveSlot);
+  api.setState(FATE_KNOTS_SAVE_SLOT_STATE_KEY, normalized);
+  return normalized;
 }
 
 function resolveSelectionView(selection, contentRegistry) {
@@ -164,6 +217,13 @@ function resolveCombatView(state, contentRegistry) {
   };
 }
 
+function resolveAmbientPacketView(packet) {
+  if (!packet || typeof packet !== "object") {
+    return null;
+  }
+  return cloneJsonValue(packet);
+}
+
 export function serializeFateKnotsState(api, state, context, contentRegistry) {
   const savedState = saveFateKnotsState(api, state);
   const combat = resolveCombatView(savedState, contentRegistry);
@@ -192,7 +252,12 @@ export function serializeFateKnotsState(api, state, context, contentRegistry) {
     decision: resolveDecisionView(savedState),
     combat,
     result: cloneJsonValue(savedState.result),
+    dmNarration: resolveAmbientPacketView(savedState.dmNarration),
+    npcBanter: resolveAmbientPacketView(savedState.npcBanter),
     scenarioLog: savedState.scenarioLog.slice(-12),
+    profile: loadFateKnotsProfile(api),
+    history: loadFateKnotsHistory(api),
+    saveSlot: loadFateKnotsSaveSlot(api),
     catalogs: {
       avatars: cloneJsonValue(contentRegistry.selections.avatars),
       classes: cloneJsonValue(contentRegistry.selections.classes),
@@ -201,6 +266,7 @@ export function serializeFateKnotsState(api, state, context, contentRegistry) {
     assetCoverage: cloneJsonValue(contentRegistry.assetCoverage),
     contentErrors: contentRegistry.errors.slice(),
     contentSummary: cloneJsonValue(savedState.contentSummary),
+    transport: cloneJsonValue(savedState.transport),
     user: {
       nickname: context?.user?.nickname || "User",
     },

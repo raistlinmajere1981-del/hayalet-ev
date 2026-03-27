@@ -201,12 +201,24 @@
       "incomplete": "Bir avatar, sinif ve gecmis sec.",
       "summaryTitle": "Build Ozeti"
     },
+    "memory": {
+      "profileTitle": "Hatirlanan Build",
+      "historyTitle": "Son Dugumler",
+      "emptyHistory": "Henuz tamamlanan kosu yok.",
+      "saveSlotTitle": "Save Iskeleti",
+      "saveSlotIdle": "Tam devam ettirme simdilik ertelendi."
+    },
+    "narration": {
+      "title": "DM Hatti",
+      "empty": "Bir paket geldiginnde ortam anlatimi burada gorunur."
+    },
     "roster": {
       "title": "Katilimcilar",
       "locked": "Kilitli",
       "unlock": "Seciliyor",
-      "excluded": "US1 V1 oynanabilir roster disinda tutulur ve sonraki iterasyonlar icin izlenir.",
-      "missing": "Koltuk kullanilamaz"
+      "excluded": "Bu koltuk aktif roster disinda.",
+      "missing": "Koltuk kullanilamaz",
+      "remoteUserLabel": "US1: {id}"
     },
     "status": {
       "label": "Kosu Durumu",
@@ -262,7 +274,7 @@
       "locked": "Kilitli",
       "ready": "Hazir",
       "selecting": "Seciyor",
-      "deferred": "V2",
+      "deferred": "Rezerve",
       "reserved": "Rezerve",
       "standby": "Beklemede"
     }

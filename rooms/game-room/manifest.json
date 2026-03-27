@@ -322,6 +322,16 @@
           "name": "GameRoomFateKnotsRemoteCombatAction",
           "description": "Apply a US1 Fate Knots combat action delivered over room transport.",
           "scope": "us1"
+        },
+        {
+          "name": "GameRoomFateKnotsDmPacket",
+          "description": "Store an additive Fate Knots DM narration packet.",
+          "scope": "ai-slots"
+        },
+        {
+          "name": "GameRoomFateKnotsNpcBanter",
+          "description": "Store an additive Fate Knots NPC banter packet.",
+          "scope": "ai-slots"
         }
       ],
       "protocolSpecs": [
@@ -340,6 +350,22 @@
           "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][COMBAT]",
           "editable": true,
           "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-combat.md"
+        },
+        {
+          "key": "game-room-fate-knots-ai-dm",
+          "room": "game-room",
+          "scenario": "fate-knots-ai-dm",
+          "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][DM]",
+          "editable": true,
+          "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-dm.md"
+        },
+        {
+          "key": "game-room-fate-knots-ai-npc",
+          "room": "game-room",
+          "scenario": "fate-knots-ai-npc",
+          "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][NPC]",
+          "editable": true,
+          "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-npc.md"
         },
         {
           "key": "game-room-fate-knots-us1-transport",
