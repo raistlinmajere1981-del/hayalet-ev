@@ -749,6 +749,91 @@
       });
     }
 
+    function getPhaseLabel(phaseId) {
+      const labels = {
+        overview: t(["fateKnots", "phase", "overview"], "Gathering"),
+        "character-creation": t(["fateKnots", "phase", "characterCreation"], "Preparation"),
+        scenario: t(["fateKnots", "phase", "scenario"], "Omen"),
+        combat: t(["fateKnots", "phase", "combat"], "Clash"),
+        result: t(["fateKnots", "phase", "result"], "Aftermath"),
+      };
+      return labels[phaseId] || phaseId.replace(/-/g, " ");
+    }
+
+    function createSigil(className, texture, overlay) {
+      const sigil = createRegion("div", className, null);
+      applyFrameArtwork(sigil, {
+        overlay: overlay || null,
+        overlaySize: "contain",
+        overlayBlend: "screen",
+        texture: texture || null,
+        textureSize: "contain",
+      });
+      return sigil;
+    }
+
+    function createMapPathLayer(nodes, currentLocationId) {
+      const pathLayer = createRegion("div", "fk-map-shell__paths", null);
+      const list = Array.isArray(nodes) ? nodes : [];
+      const nodeById = new Map();
+      list.forEach(function (node) {
+        if (node && node.id && node.marker) {
+          nodeById.set(node.id, node);
+        }
+      });
+      const seenPairs = new Set();
+      list.forEach(function (node) {
+        if (!node || !node.id || !node.marker || !Array.isArray(node.connections)) {
+          return;
+        }
+        node.connections.forEach(function (otherId) {
+          const other = nodeById.get(otherId);
+          if (!other || !other.marker) {
+            return;
+          }
+          const pairKey = [node.id, other.id].sort().join(":");
+          if (seenPairs.has(pairKey)) {
+            return;
+          }
+          seenPairs.add(pairKey);
+          const x1 = (Number(node.marker.xPct) || 0) * 16;
+          const y1 = (Number(node.marker.yPct) || 0) * 9;
+          const x2 = (Number(other.marker.xPct) || 0) * 16;
+          const y2 = (Number(other.marker.yPct) || 0) * 9;
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          if (!Number.isFinite(length) || length <= 0) {
+            return;
+          }
+          const segment = createRegion(
+            "div",
+            "fk-map-shell__path" +
+              (node.id === currentLocationId || other.id === currentLocationId
+                ? " fk-map-shell__path--active"
+                : ""),
+            null
+          );
+          segment.style.left = String(node.marker.xPct || 0) + "%";
+          segment.style.top = String(node.marker.yPct || 0) + "%";
+          segment.style.width = String((length / 1600) * 100) + "%";
+          segment.style.transform =
+            "translateY(-50%) rotate(" + String((Math.atan2(dy, dx) * 180) / Math.PI) + "deg)";
+          applyFrameArtwork(segment, {
+            overlay:
+              node.id === currentLocationId || other.id === currentLocationId
+                ? getUiAsset("selectionGlow")
+                : null,
+            overlaySize: "100% 100%",
+            texture: getUiAsset("pathSegment"),
+            textureSize: "auto 100%",
+          });
+          pathLayer.append(segment);
+        });
+      });
+      return pathLayer;
+    }
+
     const KNOWN_SEAT_IDS = ["user", "ai1", "ai2", "us1"];
     const UI_ASSET_ROOT = "../main-functions/fate-knots/assets/ui/";
 
@@ -872,6 +957,7 @@
       lockedMarker: createStaticUiAsset("locked_marker", UI_ASSET_ROOT + "map/locked_marker.webp"),
       mapMarker: createStaticUiAsset("map_marker", UI_ASSET_ROOT + "map/map_marker.webp"),
       mapCrest: createStaticUiAsset("map_ui_crest", UI_ASSET_ROOT + "map/map_ui_crest.webp"),
+      pathSegment: createStaticUiAsset("path_segment", UI_ASSET_ROOT + "map/path_segment.webp"),
       selectionGlow: createStaticUiAsset(
         "selection_glow",
         UI_ASSET_ROOT + "map/selection_glow.webp"
@@ -1238,6 +1324,14 @@
         summaryLines: summaryLines,
         isDummy: !liveParticipant,
         isLocal: seatId === "user",
+        emblemAsset:
+          seatId === "user"
+            ? getUiAsset("mapCrest")
+            : seatId === "ai1"
+              ? getUiAsset("targetMarker")
+              : seatId === "ai2"
+                ? getUiAsset("diceBadge")
+                : getUiAsset("turnBadge"),
       };
     }
 
@@ -1266,19 +1360,38 @@
         }
       );
       setSeatId(plaque, seatId);
+      plaque.append(
+        createSigil(
+          "fk-seat-plaque__crest",
+          seat.emblemAsset,
+          seat.isDummy ? getUiAsset("fogPatch") : getUiAsset("lightGlowPatch")
+        )
+      );
       const header = createRegion("div", "fk-seat-plaque__header", null);
       header.append(createElement("span", "fk-seat-plaque__eyebrow", seat.eyebrow));
       header.append(
         createTextChip(seat.stateText, seat.isDummy ? "soft" : seat.isLocal ? "accent" : "warm")
       );
       plaque.append(header);
-      plaque.append(createElement("strong", "fk-seat-plaque__title", seat.title));
+      const body = createRegion("div", "fk-seat-plaque__body", null);
       if (seat.portraitAsset) {
-        appendImage(plaque, "fk-seat-plaque__portrait", seat.portraitAsset, seat.title);
+        appendImage(body, "fk-seat-plaque__portrait", seat.portraitAsset, seat.title);
+      } else {
+        body.append(
+          createSigil(
+            "fk-seat-plaque__placeholder",
+            seat.emblemAsset,
+            seat.isDummy ? getUiAsset("fogPatch") : getUiAsset("parchmentStain")
+          )
+        );
       }
+      const copy = createRegion("div", "fk-seat-plaque__copy", null);
+      copy.append(createElement("strong", "fk-seat-plaque__title", seat.title));
       seat.summaryLines.forEach(function (line) {
-        plaque.append(createElement("p", "fk-seat-plaque__summary", line));
+        copy.append(createElement("p", "fk-seat-plaque__summary", line));
       });
+      body.append(copy);
+      plaque.append(body);
       appendNpcBanter(plaque, state, seatId);
       return plaque;
     }
@@ -1306,19 +1419,35 @@
     }
 
     function createTopbar(state, phaseId) {
-      const topbar = createFrame("header", "fk-topbar", "topbar");
+      const topbar = createFrame("header", "fk-topbar fk-topbar--" + phaseId, "ritual-header", {
+        overlay: getUiAsset("lightGlowPatch"),
+        overlaySize: "100% 100%",
+        frame: getUiAsset("topStatusBar"),
+        texture: getUiAsset("darkPanel"),
+      });
+      topbar.append(
+        createSigil(
+          "fk-topbar__sigil fk-topbar__sigil--left",
+          getUiAsset("mapCrest"),
+          getUiAsset("subtleRuneOverlay")
+        )
+      );
       const titleCluster = createRegion("div", "fk-topbar__cluster", null);
       titleCluster.append(
-        createElement("p", "fk-topbar__eyebrow", t(["fateKnots", "heroBadge"], "Game Room"))
+        createElement(
+          "p",
+          "fk-topbar__eyebrow",
+          t(["fateKnots", "heroBadge"], "Game Room") + " • " + getPhaseLabel(phaseId)
+        )
       );
       titleCluster.append(
-        createElement("h1", "fk-topbar__title", t(["fateKnots", "heroTitle"], "Fate Knots Table"))
+        createElement("h1", "fk-topbar__title", t(["fateKnots", "heroTitle"], "Fate Knots"))
       );
       titleCluster.append(createElement("p", "fk-topbar__subtitle", getCurrentStatus(state)));
       topbar.append(titleCluster);
 
       const statusCluster = createRegion("div", "fk-topbar__meta", null);
-      statusCluster.append(createTextChip(phaseId.replace(/-/g, " "), "soft"));
+      statusCluster.append(createTextChip(getPhaseLabel(phaseId), "soft"));
       if (
         state.waiting &&
         Array.isArray(state.waiting.pendingSeatIds) &&
@@ -1347,6 +1476,13 @@
         );
       }
       topbar.append(statusCluster);
+      topbar.append(
+        createSigil(
+          "fk-topbar__sigil fk-topbar__sigil--right",
+          phaseId === "combat" ? getUiAsset("turnBadge") : getUiAsset("targetRing"),
+          getUiAsset("subtleRuneOverlay")
+        )
+      );
       return topbar;
     }
 
@@ -1504,7 +1640,7 @@
         createElement("p", "fk-frame__eyebrow", t(["fateKnots", "map", "title"], "Route Map"))
       );
       header.append(
-        createElement("h2", "fk-frame__title", t(["fateKnots", "heroTitle"], "Fate Knots Table"))
+        createElement("h2", "fk-frame__title", t(["fateKnots", "heroTitle"], "Fate Knots"))
       );
       header.append(
         createElement(
@@ -1527,6 +1663,9 @@
         mapAsset,
         t(["fateKnots", "map", "title"], "Route Map")
       );
+      if (state.map && Array.isArray(state.map.nodes)) {
+        figure.append(createMapPathLayer(state.map.nodes, state.map.currentLocationId));
+      }
       const crest = createRegion("div", "fk-map-shell__crest", null);
       applyFrameArtwork(crest, { texture: getUiAsset("mapCrest") });
       figure.append(crest);
@@ -1548,7 +1687,9 @@
               state.map.currentLocationId === node.id
                 ? getUiAsset("activeMarker")
                 : getUiAsset("mapMarker"),
-            overlay: state.map.currentLocationId === node.id ? getUiAsset("selectionGlow") : null,
+            overlay:
+              state.map.currentLocationId === node.id ? getUiAsset("selectionGlow") : getUiAsset("hoverRing"),
+            overlaySize: "100% 100%",
           });
           marker.append(
             createElement("span", "fk-map-shell__marker-label", node.label || node.id || "Node")
@@ -1695,7 +1836,7 @@
       const summary = createFrame(
         "aside",
         "fk-stage-frame fk-stage-frame--rail fk-summary-rail",
-        "summary-rail",
+        "dossier-rail",
         {
           overlay: getUiAsset("notificationBanner"),
           frame: getUiAsset("sidePanelFrame"),
@@ -1766,7 +1907,7 @@
       }
       hero.append(heroBody);
       summary.append(hero);
-      const actions = createRegion("div", "fk-action-cluster", "selection-actions");
+      const actions = createRegion("div", "fk-action-cluster", "lock-zone");
       const readyLabel = selection.locked
         ? t(["fateKnots", "creation", "locked"], "Build locked")
         : isSelectionComplete(selection)
@@ -2459,9 +2600,7 @@
       const surface = createRegion("section", "fk-surface", "surface-shell");
       applySurfaceBackdrop(surface, state);
       const inner = createRegion("div", "fk-surface__inner", null);
-      if (phaseId !== "overview") {
-        inner.append(createTopbar(state, phaseId));
-      }
+      inner.append(createTopbar(state, phaseId));
       if (phaseId === "character-creation") {
         renderCreationStage(inner, state);
       } else if (phaseId === "scenario") {

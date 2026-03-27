@@ -181,9 +181,9 @@
     }
   },
   "fateKnots": {
-    "heroBadge": "Oyun Odasi",
-    "heroTitle": "Fate Knots Masasi",
-    "heroSubtitle": "Deterministik AI yoldaslari, ortak oy ve tek acilis karsilasmasi olan ortak hikaye-savasi dilimi.",
+    "heroBadge": "Rituel Masasi",
+    "heroTitle": "Fate Knots",
+    "heroSubtitle": "Koltuklari topla, acilis build'ini kilitle ve ilk ugura birlikte adim at.",
     "controls": {
       "start": "Kosuyu Baslat",
       "reset": "Kosuyu Sifirla",
@@ -263,6 +263,13 @@
     "overview": {
       "partyTitle": "Hazir Koltuklar"
     },
+    "phase": {
+      "overview": "Toplanma",
+      "characterCreation": "Hazirlik",
+      "scenario": "Ugur",
+      "combat": "Catisma",
+      "result": "Artci Iz"
+    },
     "seats": {
       "user": "Sen",
       "ai1": "AI1",
@@ -274,9 +281,9 @@
       "locked": "Kilitli",
       "ready": "Hazir",
       "selecting": "Seciyor",
-      "deferred": "Rezerve",
-      "reserved": "Rezerve",
-      "standby": "Beklemede"
+      "deferred": "Uzakta",
+      "reserved": "Cagrildi",
+      "standby": "Bekleyiste"
     }
   }
 }

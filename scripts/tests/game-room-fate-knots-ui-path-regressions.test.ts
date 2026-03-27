@@ -477,6 +477,7 @@ test("Fate Knots UI renders the overview surface and dispatches start and reset 
   assert.match(readElementText(runtime.document.body), /Fate Knots/);
   assert.ok(findByPhase(runtime.document.body, "overview"));
   assert.ok(findByRole(runtime.document.body, "surface-shell"));
+  assert.ok(findByRole(runtime.document.body, "ritual-header"));
   assert.ok(findByRole(runtime.document.body, "map-shell"));
   assert.ok(findByRole(runtime.document.body, "right-rail"));
   assert.ok(findByRole(runtime.document.body, "start-zone"));
@@ -503,7 +504,7 @@ test("Fate Knots UI renders Turkish overview copy while keeping dummy seats non-
   runtime.emitHostMessage(buildHostContext(translations));
   emitFateKnotsState(runtime, state);
 
-  assert.match(readElementText(runtime.document.body), /Fate Knots Masasi/);
+  assert.match(readElementText(runtime.document.body), /Fate Knots/);
   assert.match(readElementText(runtime.document.body), /Hazir Koltuklar/);
   const dummySeat = findBySeat(runtime.document.body, "us1");
   assert.equal(dummySeat?.tagName, "article");
@@ -594,9 +595,10 @@ test("Fate Knots UI sends character selection updates and a ready command from t
   emitFateKnotsState(runtime, state);
 
   assert.ok(findByPhase(runtime.document.body, "character-creation"));
+  assert.ok(findByRole(runtime.document.body, "ritual-header"));
   assert.ok(findByRole(runtime.document.body, "selection-table"));
-  assert.ok(findByRole(runtime.document.body, "summary-rail"));
-  assert.ok(findByRole(runtime.document.body, "selection-actions"));
+  assert.ok(findByRole(runtime.document.body, "dossier-rail"));
+  assert.ok(findByRole(runtime.document.body, "lock-zone"));
   assert.ok(findBySeat(runtime.document.body, "us1"));
 
   trigger(findButtonContainingText(runtime.document.body, "Scout Portrait"), "click");

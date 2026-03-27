@@ -181,9 +181,9 @@
     }
   },
   "fateKnots": {
-    "heroBadge": "Game Room",
-    "heroTitle": "Fate Knots Table",
-    "heroSubtitle": "A co-op story-combat slice with deterministic AI companions, unanimous votes, and one opening encounter.",
+    "heroBadge": "Ritual Table",
+    "heroTitle": "Fate Knots",
+    "heroSubtitle": "Gather the seats, lock the opening build, and step into the first omen together.",
     "controls": {
       "start": "Start Run",
       "reset": "Reset Run",
@@ -263,6 +263,13 @@
     "overview": {
       "partyTitle": "Gathered Seats"
     },
+    "phase": {
+      "overview": "Gathering",
+      "characterCreation": "Preparation",
+      "scenario": "Omen",
+      "combat": "Clash",
+      "result": "Aftermath"
+    },
     "seats": {
       "user": "You",
       "ai1": "AI1",
@@ -274,9 +281,9 @@
       "locked": "Locked",
       "ready": "Ready",
       "selecting": "Selecting",
-      "deferred": "Reserved",
-      "reserved": "Reserved",
-      "standby": "Standby"
+      "deferred": "Distant",
+      "reserved": "Called",
+      "standby": "In Waiting"
     }
   }
 }
