@@ -28,8 +28,12 @@ function extractFunctionSource(source: string, functionName: string): string {
 }
 
 test("laboratory UI keeps preview/apply stale-response tracking isolated by action domain", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
   const draftRuntimeSource = readFileSync("rooms/laboratory/shared/ui/draft-runtime.js", "utf8");
+  const requestRuntimeSource = readFileSync(
+    "rooms/laboratory/shared/ui/request-runtime.js",
+    "utf8"
+  );
   const context = {
     state: {
       ui: {
@@ -76,9 +80,9 @@ test("laboratory UI keeps preview/apply stale-response tracking isolated by acti
     [
       extractFunctionSource(draftRuntimeSource, "sortStageJobs"),
       extractFunctionSource(uiSource, "toRecord"),
-      extractFunctionSource(uiSource, "getActionDomain"),
-      extractFunctionSource(uiSource, "rememberRequest"),
-      extractFunctionSource(uiSource, "shouldIgnoreCorrelatedPayload"),
+      extractFunctionSource(requestRuntimeSource, "getActionDomain"),
+      extractFunctionSource(requestRuntimeSource, "rememberRequest"),
+      extractFunctionSource(requestRuntimeSource, "shouldIgnoreCorrelatedPayload"),
       extractFunctionSource(draftRuntimeSource, "collectEditStageJobs"),
     ].join("\n"),
     context
@@ -115,7 +119,11 @@ test("laboratory UI keeps preview/apply stale-response tracking isolated by acti
 });
 
 test("laboratory host treats preview/apply edit jobs as action-scoped slots", () => {
-  const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const jobRuntimeSource = readFileSync("rooms/laboratory/shared/host/job-runtime.js", "utf8");
+  const runtimePrimitivesSource = readFileSync(
+    "rooms/laboratory/shared/host/runtime-primitives.js",
+    "utf8"
+  );
   const context = {
     runtime: {
       jobs: {
@@ -136,9 +144,13 @@ test("laboratory host treats preview/apply edit jobs as action-scoped slots", ()
   vm.createContext(context);
   vm.runInContext(
     [
-      extractFunctionSource(hostSource, "toRecord"),
-      extractFunctionSource(hostSource, "getActiveEditJobs"),
-      extractFunctionSource(hostSource, "ensureEditJobSlotAvailable"),
+      extractFunctionSource(runtimePrimitivesSource, "toLaboratoryRecord").replace(
+        /function toLaboratoryRecord/,
+        "function toRecord"
+      ),
+      extractFunctionSource(jobRuntimeSource, "collectJobs"),
+      extractFunctionSource(jobRuntimeSource, "getActiveEditJobs"),
+      extractFunctionSource(jobRuntimeSource, "ensureEditJobSlotAvailable"),
     ].join("\n"),
     context
   );

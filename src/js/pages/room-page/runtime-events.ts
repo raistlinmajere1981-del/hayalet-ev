@@ -32,6 +32,8 @@ interface BindRoomRuntimeEventsParams {
   webview: RoomWebviewElement;
 }
 
+type BindRoomRuntimeEventBinderParams = Omit<BindRoomRuntimeEventsParams, "webview">;
+
 export function updateRoomRuntimeStatus({
   lastRuntimeEvent,
   page,
@@ -135,4 +137,13 @@ export function bindRoomRuntimeEvents({
       void RoomHostRuntime.handleRuntimeMessage(roomId, "room-event", payload);
     }
   });
+}
+
+export function createRoomRuntimeEventBinder(options: BindRoomRuntimeEventBinderParams) {
+  return function bindRuntimeEvents(webview: RoomWebviewElement): void {
+    bindRoomRuntimeEvents({
+      ...options,
+      webview,
+    });
+  };
 }

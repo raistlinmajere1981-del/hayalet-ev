@@ -1,0 +1,11 @@
+{
+  "id": "map_scenario_01",
+  "source": "map_scenario_01.png",
+  "outputDir": "assets/processed/maps",
+  "outputFormat": "webp",
+  "target": {
+    "width": 1600,
+    "height": 900,
+    "fit": "cover"
+  }
+}

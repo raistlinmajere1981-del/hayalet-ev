@@ -1,0 +1,31 @@
+{
+  "source": "batch_location_cards_01.png",
+  "outputDir": "assets/processed/cards/locations",
+  "outputFormat": "webp",
+  "target": {
+    "width": 768,
+    "height": 512,
+    "fit": "contain",
+    "padding": 24
+  },
+  "items": [
+    {
+      "id": "location_village_gate",
+      "name": "Village Gate",
+      "tags": ["location", "village", "gate"],
+      "index": 0
+    },
+    {
+      "id": "location_old_well_square",
+      "name": "Old Well Square",
+      "tags": ["location", "village", "well", "square"],
+      "index": 1
+    },
+    {
+      "id": "location_inn_interior",
+      "name": "Inn Interior",
+      "tags": ["location", "inn", "interior"],
+      "index": 2
+    }
+  ]
+}

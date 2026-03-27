@@ -1,0 +1,49 @@
+{
+  "source": "batch_ui_overlays_01.png",
+  "outputDir": "assets/processed/ui/overlays",
+  "outputFormat": "webp",
+  "target": {
+    "width": 512,
+    "height": 512,
+    "fit": "contain",
+    "padding": 16
+  },
+  "items": [
+    {
+      "id": "overlay_vignette_patch",
+      "name": "Vignette Patch",
+      "tags": ["ui", "overlay", "vignette"],
+      "index": 0
+    },
+    {
+      "id": "overlay_parchment_stain",
+      "name": "Parchment Stain",
+      "tags": ["ui", "overlay", "parchment"],
+      "index": 1
+    },
+    {
+      "id": "overlay_rune_subtle",
+      "name": "Subtle Rune Overlay",
+      "tags": ["ui", "overlay", "rune"],
+      "index": 2
+    },
+    {
+      "id": "overlay_corner_ornament",
+      "name": "Corner Ornament",
+      "tags": ["ui", "overlay", "corner"],
+      "index": 3
+    },
+    {
+      "id": "overlay_fog_patch",
+      "name": "Fog Patch",
+      "tags": ["ui", "overlay", "fog"],
+      "index": 4
+    },
+    {
+      "id": "overlay_light_glow_patch",
+      "name": "Light Glow Patch",
+      "tags": ["ui", "overlay", "glow"],
+      "index": 5
+    }
+  ]
+}

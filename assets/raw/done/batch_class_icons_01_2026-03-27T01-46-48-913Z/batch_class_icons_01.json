@@ -1,0 +1,37 @@
+{
+  "source": "batch_class_icons_01.png",
+  "outputDir": "assets/processed/cards/class-icons",
+  "outputFormat": "webp",
+  "target": {
+    "width": 512,
+    "height": 512,
+    "fit": "contain",
+    "padding": 40
+  },
+  "items": [
+    {
+      "id": "class_warrior",
+      "name": "Warrior",
+      "tags": ["class", "warrior", "icon"],
+      "index": 0
+    },
+    {
+      "id": "class_mage",
+      "name": "Mage",
+      "tags": ["class", "mage", "icon"],
+      "index": 1
+    },
+    {
+      "id": "class_ranger",
+      "name": "Ranger",
+      "tags": ["class", "ranger", "icon"],
+      "index": 2
+    },
+    {
+      "id": "class_healer",
+      "name": "Healer",
+      "tags": ["class", "healer", "icon"],
+      "index": 3
+    }
+  ]
+}

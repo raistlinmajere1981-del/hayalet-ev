@@ -1,0 +1,49 @@
+{
+  "source": "batch_combat_icons_01.png",
+  "outputDir": "assets/processed/ui/combat-icons",
+  "outputFormat": "webp",
+  "target": {
+    "width": 256,
+    "height": 256,
+    "fit": "contain",
+    "padding": 24
+  },
+  "items": [
+    {
+      "id": "icon_status_poison",
+      "name": "Poison",
+      "tags": ["combat", "status", "poison", "icon"],
+      "index": 0
+    },
+    {
+      "id": "icon_status_stun",
+      "name": "Stun",
+      "tags": ["combat", "status", "stun", "icon"],
+      "index": 1
+    },
+    {
+      "id": "icon_status_shield",
+      "name": "Shield",
+      "tags": ["combat", "status", "shield", "icon"],
+      "index": 2
+    },
+    {
+      "id": "icon_status_focus",
+      "name": "Focus",
+      "tags": ["combat", "status", "focus", "icon"],
+      "index": 3
+    },
+    {
+      "id": "icon_target_marker",
+      "name": "Target Marker",
+      "tags": ["combat", "target", "icon"],
+      "index": 4
+    },
+    {
+      "id": "icon_dice_badge",
+      "name": "Dice Badge",
+      "tags": ["combat", "dice", "result", "icon"],
+      "index": 5
+    }
+  ]
+}

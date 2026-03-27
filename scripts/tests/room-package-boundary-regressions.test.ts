@@ -48,11 +48,20 @@ test("workspace room packages stay free of generated bundle artifacts", async ()
     const roomDir = join(workspaceRoot, roomId);
     assert.equal(existsSync(join(roomDir, "dist")), false, `${roomId} should not keep dist outputs in workspace`);
 
+    const roomDirectories = await walkDirectories(roomDir);
     const roomFiles = await walkFiles(roomDir);
+    const leakedCaches = roomDirectories.filter(
+      (dirPath) => dirPath.endsWith("/__pycache__") || dirPath.endsWith("\\__pycache__")
+    );
     const leakedBundles = roomFiles.filter((filePath) =>
       filePath.endsWith(".hevroom") || filePath.endsWith(".hevroom.json")
     );
 
+    assert.deepEqual(
+      leakedCaches.map((dirPath) => relative(workspaceRoot, dirPath)),
+      [],
+      `${roomId} should not keep runtime cache directories in workspace`
+    );
     assert.deepEqual(
       leakedBundles.map((filePath) => relative(workspaceRoot, filePath)),
       [],
@@ -71,6 +80,9 @@ test("installed room copies stay package-shaped and runtime bundle exports live 
   const installedDistDirs = installedDirectories
     .filter((dirPath) => dirPath.endsWith("/dist") || dirPath.endsWith("\\dist"))
     .map((dirPath) => relative(installedRoot, dirPath));
+  const installedRuntimeCaches = installedDirectories
+    .filter((dirPath) => dirPath.endsWith("/__pycache__") || dirPath.endsWith("\\__pycache__"))
+    .map((dirPath) => relative(installedRoot, dirPath));
   const installedBundleFiles = installedFiles
     .filter((filePath) => filePath.endsWith(".hevroom") || filePath.endsWith(".hevroom.json"))
     .map((filePath) => relative(installedRoot, filePath));
@@ -79,6 +91,7 @@ test("installed room copies stay package-shaped and runtime bundle exports live 
     .map((filePath) => relative(storageRoot, filePath));
 
   assert.deepEqual(installedDistDirs, [], "installed room copies should not contain dist directories");
+  assert.deepEqual(installedRuntimeCaches, [], "installed room copies should not contain runtime cache directories");
   assert.deepEqual(installedBundleFiles, [], "installed room copies should not contain exported bundles");
   assert.equal(
     storageBundleFiles.every((filePath) => filePath.includes("/exports/") || filePath.includes("\\exports\\")),

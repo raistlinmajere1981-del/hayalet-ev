@@ -3,46 +3,80 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 test("laboratory host composes and exports report artifacts from persisted process state", () => {
-  const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
-  const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.js", "utf8");
-  const processReportStateSource = readFileSync(
-    "rooms/laboratory/shared/host/process-report-state.js",
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
+  const profileProcessReportRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/profile-process-report-runtime.js",
     "utf8"
   );
-  const processRuntimeSource = readFileSync("rooms/laboratory/shared/host/process-runtime.js", "utf8");
-  const reportingSource = readFileSync("rooms/laboratory/shared/host/reporting.js", "utf8");
+  const profileProcessReportCompositionSource = readFileSync(
+    "rooms/laboratory/ui/profile-process-report-composition.js",
+    "utf8"
+  );
+  const profileProcessReportCompositionSharedSource = readFileSync(
+    "rooms/laboratory/shared/ui/profile-process-report-composition.js",
+    "utf8"
+  );
+  const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.js", "utf8");
 
-  assert.match(processReportStateSource, /function createEmptyReportState\(\)/);
-  assert.match(hostSource, /function getProjectReportDir\(runtime, project\)/);
-  assert.match(hostSource, /function buildReportManifest\(project\)/);
-  assert.match(hostSource, /function composeFeatureReport\(runtime, project, featureId\)/);
-  assert.match(hostSource, /function buildReportMarkdown\(runtime, project, featureId, reportRecord\)/);
-  assert.match(hostSource, /function exportFeatureReport\(api, runtime, requestId, featureId\)/);
-  assert.match(hostSource, /shared\/host\/action-router\.js/);
-  assert.match(hostSource, /shared\/host\/process-report-state\.js/);
-  assert.match(hostSource, /shared\/host\/process-runtime\.js/);
-  assert.match(hostSource, /shared\/host\/reporting\.js/);
-  assert.match(hostSource, /const laboratoryReportingRuntime = createLaboratoryReportingRuntime\(/);
-  assert.match(hostSource, /const laboratoryActionRouter = createLaboratoryActionRouter\(/);
-  assert.match(processRuntimeSource, /setFeatureReportRecord\(nextProject, featureId/);
-  assert.match(reportingSource, /function composeFeatureReport\(runtime, project, featureId\)/);
-  assert.match(reportingSource, /function buildReportMarkdown\(runtime, project, featureId, reportRecord\)/);
-  assert.match(reportingSource, /async function exportFeatureReport\(api, runtime, requestId, featureId\)/);
-  assert.match(actionRouterSource, /case "report-export":/);
-  assert.match(actionRouterSource, /case "audio-report-export":/);
-  assert.match(processRuntimeSource, /setFeatureReportRecord\(nextProject, featureId/);
+  assert.match(uiSource, /shared\/ui\/profile-process-report-composition\.js/);
+  assert.match(profileProcessReportRuntimeSource, /export function createLaboratoryProfileProcessReportRuntime\(deps\)/);
+  assert.match(
+    profileProcessReportCompositionSource,
+    /export \{ createLaboratoryProfileProcessReportComposition \} from "\.\.\/shared\/ui\/profile-process-report-composition\.js";/
+  );
+  assert.match(
+    profileProcessReportCompositionSharedSource,
+    /export function createLaboratoryProfileProcessReportComposition\(deps\)/
+  );
+  assert.match(reportStageSource, /data-action="export-report"/);
+  assert.match(reportStageSource, /featureText\(\["report", "actions", "export"\]\)/);
+  assert.match(reportStageSource, /featureText\(\["report", "stagedHint"\]\)/);
 });
 
 test("laboratory UI renders report findings and export history from room-managed snapshots", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
+  const profileProcessReportRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/profile-process-report-runtime.js",
+    "utf8"
+  );
+  const runtimeCompositionSource = readFileSync(
+    "rooms/laboratory/ui/runtime-composition.js",
+    "utf8"
+  );
+  const stageAccessorsRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/stage-accessors-runtime.js",
+    "utf8"
+  );
+  const viewBindingsRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/view-bindings-runtime.js",
+    "utf8"
+  );
+  const shellCompositionSource = readFileSync("rooms/laboratory/ui/shell-composition.js", "utf8");
+  const viewAccessorsRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/view-accessors-runtime.js",
+    "utf8"
+  );
   const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.js", "utf8");
-
-  assert.match(uiSource, /function renderReportStage\(\)/);
   assert.match(uiSource, /shared\/ui\/report-stage\.js/);
-  assert.match(uiSource, /function getCurrentFeatureReportRecord\(\)/);
-  assert.match(uiSource, /function getReportJobs\(\)/);
-  assert.match(uiSource, /function getReportExports\(\)/);
-  assert.match(uiSource, /function renderReportFinding\(signal\)/);
+  assert.match(uiSource, /shared\/ui\/shell-runtime\.js/);
+  assert.match(uiSource, /\.\/shell-composition\.js/);
+  assert.match(uiSource, /\.\/profile-process-report-runtime\.js/);
+  assert.match(uiSource, /\.\/runtime-composition\.js/);
+  assert.match(runtimeCompositionSource, /\.\/stage-accessors-runtime\.js/);
+  assert.match(uiSource, /\.\/view-bindings-runtime\.js/);
+  assert.match(
+    shellCompositionSource,
+    /renderReportStage: laboratoryStageShellDelegates\.renderReportStage,/
+  );
+  assert.match(viewAccessorsRuntimeSource, /function getCurrentFeatureReportRecord\(\)/);
+  assert.match(viewBindingsRuntimeSource, /getCurrentFeatureReportRecord: function \(\)/);
+  assert.match(stageAccessorsRuntimeSource, /function getReportJobs\(\)/);
+  assert.match(stageAccessorsRuntimeSource, /function getReportExports\(\)/);
+  assert.match(
+    profileProcessReportRuntimeSource,
+    /export function createLaboratoryProfileProcessReportRuntime\(deps\)/
+  );
+  assert.match(profileProcessReportRuntimeSource, /function renderReportFinding\(signal\)/);
   assert.match(reportStageSource, /data-action="export-report"/);
   assert.match(reportStageSource, /featureText\(\["report", "actions", "export"\]\)/);
   assert.match(reportStageSource, /featureText\(\["report", "stagedHint"\]\)/);

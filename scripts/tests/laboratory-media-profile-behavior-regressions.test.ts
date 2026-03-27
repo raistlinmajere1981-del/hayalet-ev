@@ -28,8 +28,12 @@ function extractFunctionSource(source: string, functionName: string): string {
 }
 
 test("laboratory UI keeps profile stale-response tracking isolated by action domain", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
   const draftRuntimeSource = readFileSync("rooms/laboratory/shared/ui/draft-runtime.js", "utf8");
+  const requestRuntimeSource = readFileSync(
+    "rooms/laboratory/shared/ui/request-runtime.js",
+    "utf8"
+  );
   const context = {
     state: {
       ui: {
@@ -80,9 +84,9 @@ test("laboratory UI keeps profile stale-response tracking isolated by action dom
     [
       extractFunctionSource(draftRuntimeSource, "sortStageJobs"),
       extractFunctionSource(uiSource, "toRecord"),
-      extractFunctionSource(uiSource, "getActionDomain"),
-      extractFunctionSource(uiSource, "rememberRequest"),
-      extractFunctionSource(uiSource, "shouldIgnoreCorrelatedPayload"),
+      extractFunctionSource(requestRuntimeSource, "getActionDomain"),
+      extractFunctionSource(requestRuntimeSource, "rememberRequest"),
+      extractFunctionSource(requestRuntimeSource, "shouldIgnoreCorrelatedPayload"),
       extractFunctionSource(draftRuntimeSource, "collectProfileStageJobs"),
     ].join("\n"),
     context
@@ -116,7 +120,11 @@ test("laboratory UI keeps profile stale-response tracking isolated by action dom
 });
 
 test("laboratory host treats profile preflight and model jobs as action-scoped slots", () => {
-  const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const jobRuntimeSource = readFileSync("rooms/laboratory/shared/host/job-runtime.js", "utf8");
+  const runtimePrimitivesSource = readFileSync(
+    "rooms/laboratory/shared/host/runtime-primitives.js",
+    "utf8"
+  );
   const context = {
     runtime: {
       jobs: {
@@ -137,9 +145,13 @@ test("laboratory host treats profile preflight and model jobs as action-scoped s
   vm.createContext(context);
   vm.runInContext(
     [
-      extractFunctionSource(hostSource, "toRecord"),
-      extractFunctionSource(hostSource, "getActiveProfileJobs"),
-      extractFunctionSource(hostSource, "ensureProfileJobSlotAvailable"),
+      extractFunctionSource(runtimePrimitivesSource, "toLaboratoryRecord").replace(
+        /function toLaboratoryRecord/,
+        "function toRecord"
+      ),
+      extractFunctionSource(jobRuntimeSource, "collectJobs"),
+      extractFunctionSource(jobRuntimeSource, "getActiveProfileJobs"),
+      extractFunctionSource(jobRuntimeSource, "ensureProfileJobSlotAvailable"),
     ].join("\n"),
     context
   );
@@ -175,48 +187,49 @@ test("laboratory host treats profile preflight and model jobs as action-scoped s
 });
 
 test("laboratory UI prefers the active profile target metadata over the source-only summary helpers", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const helperSource = readFileSync(
+    "rooms/laboratory/main-functions/media-analysis/ui/profile-helpers.js",
+    "utf8"
+  );
   const context = {
-    state: {
-      ui: {
-        previewMetrics: {
-          url: "file:///derived-preview.mp4",
-          duration: 41,
-          width: 1024,
-          height: 576,
-        },
-      },
+    previewMetrics: {
+      url: "file:///derived-preview.mp4",
+      duration: 41,
+      width: 1024,
+      height: 576,
+    },
+    toRecord(value: unknown) {
+      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
     },
   };
 
   vm.createContext(context);
   vm.runInContext(
     [
-      extractFunctionSource(uiSource, "toRecord"),
-      extractFunctionSource(uiSource, "getPreferredAssetDuration"),
-      extractFunctionSource(uiSource, "getPreferredAssetResolution"),
-      extractFunctionSource(uiSource, "getPreferredAssetCodec"),
+      extractFunctionSource(helperSource, "getPreferredAssetDuration"),
+      extractFunctionSource(helperSource, "getPreferredAssetResolution"),
+      extractFunctionSource(helperSource, "getPreferredAssetCodec"),
     ].join("\n"),
     context
   );
 
   assert.equal(
     vm.runInContext(
-      `getPreferredAssetDuration({ previewUrl: "file:///derived-preview.mp4", metadata: { durationSeconds: 58 } })`,
+      `getPreferredAssetDuration({ previewUrl: "file:///derived-preview.mp4", metadata: { durationSeconds: 58 } }, previewMetrics, toRecord)`,
       context
     ),
     58
   );
   assert.equal(
     vm.runInContext(
-      `getPreferredAssetResolution({ previewUrl: "file:///derived-preview.mp4", metadata: { width: 1920, height: 1080 } })`,
+      `getPreferredAssetResolution({ previewUrl: "file:///derived-preview.mp4", metadata: { width: 1920, height: 1080 } }, previewMetrics, toRecord)`,
       context
     ),
     "1920 x 1080"
   );
   assert.equal(
     vm.runInContext(
-      `getPreferredAssetCodec({ previewUrl: "file:///derived-preview.mp4", metadata: { videoCodec: "h264" } })`,
+      `getPreferredAssetCodec({ previewUrl: "file:///derived-preview.mp4", metadata: { videoCodec: "h264" } }, toRecord)`,
       context
     ),
     "h264"

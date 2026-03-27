@@ -1,4 +1,5 @@
 import type { InstalledRoomRecord } from "@shared/index.js";
+import { escapeHtml } from "./page-text-runtime.js";
 
 export function shouldShowRoomFeatureStrip(
   usesImmersivePageShell: boolean,
@@ -87,7 +88,6 @@ export function renderRoomFeatureButtons(options: {
   room: InstalledRoomRecord;
   activeFeatureId: string | null;
   showFeatureStrip: boolean;
-  escapeHtml: (value: string) => string;
 }): void {
   const strip = options.page.querySelector<HTMLElement>("[data-room-role='feature-strip']");
   if (strip === null) {
@@ -106,9 +106,9 @@ export function renderRoomFeatureButtons(options: {
       const selected = feature.id === options.activeFeatureId;
       return [
         `<button class="btn btn-sm ${selected ? "btn-primary" : "btn-ghost"} room-feature-chip"`,
-        ` type="button" data-room-feature-id="${options.escapeHtml(feature.id)}"`,
+        ` type="button" data-room-feature-id="${escapeHtml(feature.id)}"`,
         ` aria-pressed="${selected ? "true" : "false"}">`,
-        `<span class="room-feature-chip__title">${options.escapeHtml(feature.name)}</span>`,
+        `<span class="room-feature-chip__title">${escapeHtml(feature.name)}</span>`,
         "</button>",
       ].join("");
     })

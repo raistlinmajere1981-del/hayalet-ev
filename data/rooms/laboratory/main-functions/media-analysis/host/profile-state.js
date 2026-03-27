@@ -12,6 +12,8 @@ export function createMediaProfileStateRuntime(deps) {
     getDefaultProfilePresetId,
     getProfileArtifactPreferenceMap,
     getProfileLaneMap,
+    markCloseoutAsStale,
+    mediaFeatureId,
     toRecord,
   } = deps;
 
@@ -159,6 +161,35 @@ export function createMediaProfileStateRuntime(deps) {
     return profileState;
   }
 
+  function resetProfileForCurrentSource(runtime, nextProject, reason) {
+    const previousMode = asNonEmptyString(toRecord(nextProject.profile).mode);
+    const previousPresetId = asNonEmptyString(toRecord(nextProject.profile).activePresetId);
+    const nextProfile = createDefaultProfileState(
+      runtime.profilePresets,
+      runtime.profileModels,
+      runtime.profileCapabilities,
+      nextProject.source.kind
+    );
+
+    if (previousMode === "advanced") {
+      nextProfile.mode = "advanced";
+    }
+    if (findProfilePreset(runtime.profilePresets, nextProject.source.kind, previousPresetId) !== null) {
+      nextProfile.activePresetId = previousPresetId;
+    }
+
+    nextProfile.dirty = true;
+    nextProfile.lastError = null;
+    nextProfile.lastActionAt = new Date().toISOString();
+    nextProfile.preflight = {
+      ...createEmptyProfilePreflight(),
+      status: "idle",
+      warnings: reason ? [reason] : [],
+    };
+    nextProject.profile = nextProfile;
+    markCloseoutAsStale(nextProject, reason || "Source media changed.");
+  }
+
   function normalizeProfileArtifact(rawValue) {
     const source = toRecord(rawValue);
     return {
@@ -297,6 +328,34 @@ export function createMediaProfileStateRuntime(deps) {
     };
   }
 
+  function markProfileAsStale(nextProject, reason, options) {
+    const profile = toRecord(nextProject.profile);
+    const preflight = toRecord(profile.preflight);
+    nextProject.profile = {
+      ...profile,
+      dirty: true,
+      targetOutputId:
+        options && options.clearTargetOutput === true ? null : asNonEmptyString(profile.targetOutputId),
+      targetAssetSignature: null,
+      lastError: null,
+      lastActionAt: new Date().toISOString(),
+      preflight: {
+        ...createEmptyProfilePreflight(),
+        ...preflight,
+        status: asNonEmptyString(preflight.ranAt) !== null ? "stale" : "idle",
+        jobId: null,
+        requestId: null,
+        error: null,
+        warnings: Array.from(
+          new Set(
+            (Array.isArray(preflight.warnings) ? preflight.warnings : []).concat(reason ? [reason] : [])
+          )
+        ),
+      },
+    };
+    markCloseoutAsStale(nextProject, reason, [mediaFeatureId]);
+  }
+
   function getProfileDepthConfig(runtime, depthId) {
     const depthModes = toRecord(toRecord(runtime.profileCapabilities).depthModes);
     return toRecord(depthModes[asNonEmptyString(depthId) || "balanced"]);
@@ -327,5 +386,7 @@ export function createMediaProfileStateRuntime(deps) {
     normalizeProfileArtifactPreferences,
     normalizeProfileSignal,
     normalizeProfileState,
+    markProfileAsStale,
+    resetProfileForCurrentSource,
   };
 }

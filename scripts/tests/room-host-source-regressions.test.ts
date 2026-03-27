@@ -42,3 +42,20 @@ test("buildRoomHostModuleDataUrl imports mixed room host module graphs through d
   assert.ok(gameRoomModule.default);
   assert.ok(gameRoomModule.teamTetrisEngine);
 });
+
+test("buildRoomHostModuleDataUrl rejects host imports that escape the room root", async () => {
+  const entryPath = resolve("tmp-room/host/index.js");
+  const loadSource = async (filePath: string) => {
+    if (filePath === entryPath) {
+      return 'import "../../outside.js";\nexport default { activate() {} };';
+    }
+    throw new Error(`Unexpected file read: ${filePath}`);
+  };
+
+  await assert.rejects(
+    async () => {
+      await buildRoomHostModuleDataUrl(entryPath, loadSource);
+    },
+    /escaped room root/i
+  );
+});

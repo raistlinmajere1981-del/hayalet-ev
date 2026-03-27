@@ -1,0 +1,49 @@
+{
+  "source": "batch_items_01.png",
+  "outputDir": "assets/processed/cards/items",
+  "outputFormat": "webp",
+  "target": {
+    "width": 512,
+    "height": 512,
+    "fit": "contain",
+    "padding": 32
+  },
+  "items": [
+    {
+      "id": "item_rusty_key",
+      "name": "Rusty Key",
+      "tags": ["item", "key", "rusty", "metal"],
+      "index": 0
+    },
+    {
+      "id": "item_broken_lantern",
+      "name": "Broken Lantern",
+      "tags": ["item", "lantern", "light", "broken"],
+      "index": 1
+    },
+    {
+      "id": "item_leather_pouch",
+      "name": "Leather Pouch",
+      "tags": ["item", "bag", "leather", "storage"],
+      "index": 2
+    },
+    {
+      "id": "item_old_coin",
+      "name": "Old Coin",
+      "tags": ["item", "coin", "currency", "old"],
+      "index": 3
+    },
+    {
+      "id": "item_iron_dagger",
+      "name": "Iron Dagger",
+      "tags": ["item", "weapon", "dagger", "iron"],
+      "index": 4
+    },
+    {
+      "id": "item_sealed_scroll",
+      "name": "Sealed Scroll",
+      "tags": ["item", "scroll", "paper", "sealed"],
+      "index": 5
+    }
+  ]
+}

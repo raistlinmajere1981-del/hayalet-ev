@@ -201,16 +201,42 @@ test("game-room manifest documents the Team Tetris AI and US1 contracts", () => 
 
 test("room manifest readers stay split from the main room contract module", () => {
   const roomsSource = readFileSync("src/types/rooms.ts", "utf8");
+  const manifestTypesSource = readFileSync("src/types/room-manifest-types.ts", "utf8");
+  const installedTypesSource = readFileSync("src/types/room-installed-types.ts", "utf8");
+  const schemaVersionSource = readFileSync("src/types/room-schema-version.ts", "utf8");
   const readersSource = readFileSync("src/types/room-manifest-readers.ts", "utf8");
+  const helpersSource = readFileSync("src/types/room-manifest-helpers.ts", "utf8");
+  const validationSource = readFileSync("src/types/room-manifest-validation.ts", "utf8");
+  const sceneGuardsSource = readFileSync("src/types/room-scene-guards.ts", "utf8");
   const sceneReadersSource = readFileSync("src/types/room-scene-readers.ts", "utf8");
 
-  assert.match(roomsSource, /from "\.\/room-manifest-readers\.js"/);
-  assert.match(roomsSource, /from "\.\/room-scene-readers\.js"/);
+  assert.match(roomsSource, /from "\.\/room-manifest-helpers\.js"/);
+  assert.match(roomsSource, /from "\.\/room-schema-version\.js"/);
+  assert.match(roomsSource, /from "\.\/room-manifest-types\.js"/);
+  assert.match(roomsSource, /from "\.\/room-installed-types\.js"/);
+  assert.match(roomsSource, /from "\.\/room-manifest-validation\.js"/);
+  assert.match(roomsSource, /from "\.\/room-scene-guards\.js"/);
+  assert.match(schemaVersionSource, /export const ROOM_SCHEMA_VERSION = 2 as const;/);
+  assert.match(manifestTypesSource, /export interface RoomManifest \{/);
+  assert.match(manifestTypesSource, /export interface RoomBundle \{/);
+  assert.match(installedTypesSource, /export interface InstalledRoomRecord \{/);
+  assert.match(installedTypesSource, /export interface RoomRegistryState \{/);
   assert.match(readersSource, /export function readMenuConfig\(/);
   assert.match(readersSource, /export function readRuntimeConfig\(/);
   assert.match(readersSource, /export function readCommandSpecs\(/);
   assert.match(readersSource, /export function readProtocolSpecs\(/);
   assert.match(readersSource, /export function readI18nConfig\(/);
+  assert.match(helpersSource, /export function flattenRoomCommandSpecs\(/);
+  assert.match(helpersSource, /export function flattenRoomProtocolSpecs\(/);
+  assert.match(helpersSource, /export function resolveRoomProtocolFilePath\(/);
+  assert.match(helpersSource, /export function collectRoomManifestRequiredFilePaths\(/);
+  assert.match(validationSource, /export function validateRoomManifest\(/);
+  assert.match(validationSource, /from "\.\/room-manifest-readers\.js"/);
+  assert.match(validationSource, /from "\.\/room-scene-guards\.js"/);
+  assert.match(validationSource, /from "\.\/room-scene-readers\.js"/);
+  assert.match(sceneGuardsSource, /export const ROOM_SCENE_CHARACTER_KINDS/);
+  assert.match(sceneGuardsSource, /export function isRoomSceneCharacterKind\(/);
+  assert.match(sceneGuardsSource, /export function isRoomScenePageShellVariant\(/);
   assert.match(sceneReadersSource, /export function createRoomSceneReaders\(/);
   assert.match(sceneReadersSource, /function readFeatureManifest\(/);
   assert.match(sceneReadersSource, /function readSceneConfig\(/);

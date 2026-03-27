@@ -1,0 +1,43 @@
+{
+  "source": "batch_card_templates_01.png",
+  "outputDir": "assets/processed/ui/cards",
+  "outputFormat": "webp",
+  "target": {
+    "width": 400,
+    "height": 600,
+    "fit": "contain",
+    "padding": 8
+  },
+  "items": [
+    {
+      "id": "card_template_avatar",
+      "name": "Avatar Card Template",
+      "tags": ["card", "template", "avatar"],
+      "index": 0
+    },
+    {
+      "id": "card_template_class",
+      "name": "Class Card Template",
+      "tags": ["card", "template", "class"],
+      "index": 1
+    },
+    {
+      "id": "card_template_item",
+      "name": "Item Card Template",
+      "tags": ["card", "template", "item"],
+      "index": 2
+    },
+    {
+      "id": "card_template_creature",
+      "name": "Creature Card Template",
+      "tags": ["card", "template", "creature"],
+      "index": 3
+    },
+    {
+      "id": "card_template_location",
+      "name": "Location Card Template",
+      "tags": ["card", "template", "location"],
+      "index": 4
+    }
+  ]
+}

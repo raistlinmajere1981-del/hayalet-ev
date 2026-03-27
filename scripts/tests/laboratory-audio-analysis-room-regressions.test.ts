@@ -5,15 +5,24 @@ import { existsSync, readFileSync } from "node:fs";
 import { validateRoomManifest } from "../../src/types/rooms.ts";
 
 const requiredAudioFiles = [
+  "rooms/laboratory/host/runtime.js",
   "rooms/laboratory/main-functions/audio-analysis/host/module-projection.js",
   "rooms/laboratory/main-functions/audio-analysis/host/process-runners.js",
   "rooms/laboratory/main-functions/audio-analysis/host/state.js",
+  "rooms/laboratory/main-functions/audio-analysis/host/runtime.js",
+  "rooms/laboratory/shared/host/audio-process-delegates.js",
+  "rooms/laboratory/shared/host/io-runtime.js",
   "rooms/laboratory/shared/host/project-lifecycle.js",
+  "rooms/laboratory/shared/host/project-records.js",
   "rooms/laboratory/shared/host/process-report-state.js",
+  "rooms/laboratory/shared/host/process-orchestration.js",
   "rooms/laboratory/shared/host/runtime-bootstrap.js",
   "rooms/laboratory/shared/host/process-runtime.js",
   "rooms/laboratory/shared/host/room-snapshot.js",
   "rooms/laboratory/shared/host/reporting.js",
+  "rooms/laboratory/shared/host/snapshot-composition.js",
+  "rooms/laboratory/shared/host/state-composition.js",
+  "rooms/laboratory/shared/host/subtitle-projection.js",
   "rooms/laboratory/main-functions/audio-analysis/ui/module.js",
   "rooms/laboratory/shared/data/tools/audio-analysis-catalog.json",
   "rooms/laboratory/shared/data/tools/audio-analysis-capabilities.json",
@@ -52,8 +61,25 @@ test("laboratory manifest exposes the audio-analysis feature beside media-analys
 });
 
 test("laboratory host keeps audio-analysis snapshots on the shared room-tool contract", () => {
-  const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const hostSource = readFileSync("rooms/laboratory/host/runtime.js", "utf8");
   const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.js", "utf8");
+  const actionCompositionSource = readFileSync("rooms/laboratory/shared/host/action-composition.js", "utf8");
+  const actionRuntimeSource = readFileSync("rooms/laboratory/shared/host/action-runtime.js", "utf8");
+  const hostUtilsSource = readFileSync("rooms/laboratory/shared/host/host-utils.js", "utf8");
+  const ioRuntimeSource = readFileSync("rooms/laboratory/shared/host/io-runtime.js", "utf8");
+  const processDelegatesSource = readFileSync("rooms/laboratory/shared/host/process-delegates.js", "utf8");
+  const processCompositionSource = readFileSync(
+    "rooms/laboratory/shared/host/process-composition.js",
+    "utf8"
+  );
+  const stateCompositionSource = readFileSync(
+    "rooms/laboratory/shared/host/state-composition.js",
+    "utf8"
+  );
+  const audioRuntimeSource = readFileSync(
+    "rooms/laboratory/main-functions/audio-analysis/host/runtime.js",
+    "utf8"
+  );
   const audioProjectionSource = readFileSync(
     "rooms/laboratory/main-functions/audio-analysis/host/module-projection.js",
     "utf8"
@@ -64,35 +90,86 @@ test("laboratory host keeps audio-analysis snapshots on the shared room-tool con
     "utf8"
   );
   const roomSnapshotSource = readFileSync("rooms/laboratory/shared/host/room-snapshot.js", "utf8");
+  const snapshotCompositionSource = readFileSync(
+    "rooms/laboratory/shared/host/snapshot-composition.js",
+    "utf8"
+  );
+  const runtimePrimitivesSource = readFileSync(
+    "rooms/laboratory/shared/host/runtime-primitives.js",
+    "utf8"
+  );
 
-  assert.match(hostSource, /const AUDIO_FEATURE_ID = "audio-analysis";/);
+  assert.match(hostSource, /shared\/host\/runtime-primitives\.js/);
+  assert.match(runtimePrimitivesSource, /export const LABORATORY_AUDIO_FEATURE_ID = "audio-analysis";/);
   assert.match(hostSource, /shared\/host\/project-lifecycle\.js/);
-  assert.match(hostSource, /shared\/host\/process-report-state\.js/);
+  assert.match(hostSource, /shared\/host\/state-composition\.js/);
   assert.match(hostSource, /shared\/host\/runtime-bootstrap\.js/);
   assert.match(runtimeBootstrapSource, /const activeFeature = toRecord\(source\.activeFeature\);/);
   assert.match(runtimeBootstrapSource, /typeof source\.feature === "string"/);
   assert.match(runtimeBootstrapSource, /packageToolsDir: null,/);
+  assert.match(hostSource, /shared\/host\/process-composition\.js/);
+  assert.match(processCompositionSource, /main-functions\/audio-analysis\/host\/runtime\.js/);
   assert.match(lifecycleSource, /audio-analysis-catalog\.json/);
   assert.match(lifecycleSource, /audio-analysis-capabilities\.json/);
   assert.match(lifecycleSource, /audio-analysis-presets\.json/);
   assert.match(lifecycleSource, /audio-analysis-providers\.json/);
   assert.match(lifecycleSource, /runtime\.packageToolsDir = baseDir;/);
-  assert.match(hostSource, /shared\/host\/room-snapshot\.js/);
-  assert.match(hostSource, /main-functions\/audio-analysis\/host\/module-projection\.js/);
-  assert.match(hostSource, /main-functions\/audio-analysis\/host\/state\.js/);
-  assert.match(hostSource, /const audioAnalysisProjectionRuntime = createAudioAnalysisProjectionRuntime\(/);
+  assert.match(hostSource, /shared\/host\/snapshot-composition\.js/);
+  assert.match(snapshotCompositionSource, /from "\.\/project-manifests\.js"/);
+  assert.match(snapshotCompositionSource, /from "\.\/room-snapshot\.js"/);
+  assert.match(snapshotCompositionSource, /from "\.\/runtime-events\.js"/);
+  assert.match(
+    snapshotCompositionSource,
+    /export function createLaboratorySnapshotCompositionRuntime\(deps\)/
+  );
+  assert.match(stateCompositionSource, /from "\.\/project-records\.js"/);
+  assert.match(stateCompositionSource, /from "\.\/process-report-state\.js"/);
+  assert.match(stateCompositionSource, /from "\.\/subtitle-projection\.js"/);
+  assert.match(
+    stateCompositionSource,
+    /export function createLaboratoryHostStateCompositionRuntime\(deps\)/
+  );
+  assert.match(processCompositionSource, /main-functions\/audio-analysis\/host\/runtime\.js/);
+  assert.match(audioRuntimeSource, /import { createLaboratoryAudioProcessDelegatesRuntime }/);
+  assert.match(audioRuntimeSource, /import { createAudioAnalysisProjectionRuntime }/);
+  assert.match(audioRuntimeSource, /import { createAudioAnalysisProcessRuntime }/);
+  assert.match(audioRuntimeSource, /import { createAudioAnalysisStateRuntime }/);
+  assert.match(audioRuntimeSource, /export function createLaboratoryAudioAnalysisHostRuntime\(deps\)/);
   assert.match(roomSnapshotSource, /audioAnalysisCatalog: clone\(runtime\.audioAnalysisCatalog \|\| \{\}\)/);
   assert.match(roomSnapshotSource, /audioAnalysisCapabilities: clone\(runtime\.audioAnalysisCapabilities \|\| \{\}\)/);
   assert.match(roomSnapshotSource, /audioAnalysisPresets: clone\(runtime\.audioAnalysisPresets \|\| \{\}\)/);
   assert.match(roomSnapshotSource, /audioAnalysisProviders: clone\(runtime\.audioAnalysisProviders \|\| \{\}\)/);
   assert.match(audioProjectionSource, /function buildAudioAnalysisCatalogProjection\(runtime\)/);
-  assert.match(hostSource, /function getPreferredFeatureSourceKind\(featureId, sourcePresets\)/);
-  assert.match(hostSource, /shared\/host\/action-router\.js/);
+  assert.match(processDelegatesSource, /function buildAudioAnalysisReportProjection\(runtime, project\)/);
+  assert.match(hostSource, /shared\/host\/host-utils\.js/);
+  assert.match(hostUtilsSource, /function getPreferredFeatureSourceKind\(featureId, sourcePresets\)/);
+  assert.match(hostSource, /shared\/host\/action-composition\.js/);
+  assert.match(actionCompositionSource, /export function createLaboratoryActionCompositionRuntime\(deps\)/);
+  assert.match(actionRuntimeSource, /export function createLaboratoryHostActionRuntime\(deps\)/);
+  assert.match(actionRuntimeSource, /function getActionRouter\(\)/);
+  assert.match(actionRuntimeSource, /from "\.\/action-router\.js"/);
   assert.match(actionRouterSource, /case "project-create":/);
 });
 
 test("laboratory UI keeps audio-analysis on the shared settings overlay with feature-aware defaults", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
+  const viewBindingsRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/view-bindings-runtime.js",
+    "utf8"
+  );
+  const runtimeCompositionSource = readFileSync(
+    "rooms/laboratory/ui/runtime-composition.js",
+    "utf8"
+  );
+  const viewAccessorsRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/view-accessors-runtime.js",
+    "utf8"
+  );
+  const copyRuntimeSource = readFileSync("rooms/laboratory/shared/ui/copy-runtime.js", "utf8");
+  const requestRuntimeSource = readFileSync(
+    "rooms/laboratory/shared/ui/request-runtime.js",
+    "utf8"
+  );
   const audioModuleSource = readFileSync(
     "rooms/laboratory/main-functions/audio-analysis/ui/module.js",
     "utf8"
@@ -103,16 +180,21 @@ test("laboratory UI keeps audio-analysis on the shared settings overlay with fea
   assert.match(uiSource, /const FEATURE_NAMESPACES = \{/);
   assert.match(uiSource, /\[AUDIO_FEATURE_ID\]: "audioAnalysis"/);
   assert.match(uiSource, /\[SUBTITLE_FEATURE_ID\]: "subtitleAnalysis"/);
-  assert.match(uiSource, /function getAudioAnalysisCapabilities\(\)/);
-  assert.match(uiSource, /function getAudioAnalysisPresets\(\)/);
-  assert.match(uiSource, /function getAudioAnalysisProviders\(\)/);
-  assert.match(uiSource, /function getAudioAnalysisProviderEntries\(\)/);
+  assert.match(viewAccessorsRuntimeSource, /function getAudioAnalysisCapabilities\(\)/);
+  assert.match(viewAccessorsRuntimeSource, /function getAudioAnalysisPresets\(\)/);
+  assert.match(viewAccessorsRuntimeSource, /function getAudioAnalysisProviders\(\)/);
+  assert.match(uiSource, /\.\/view-bindings-runtime\.js/);
+  assert.match(viewBindingsRuntimeSource, /export function createLaboratoryViewBindingsRuntime\(deps\)/);
+  assert.match(viewBindingsRuntimeSource, /createLaboratoryViewAccessorsRuntime\(/);
+  assert.match(viewAccessorsRuntimeSource, /function getAudioAnalysisProviderEntries\(\)/);
   assert.match(audioModuleSource, /featureText\(\["settings", "title"\]\)/);
   assert.match(uiSource, /renderAudioAnalysisCatalogPanel/);
   assert.match(uiSource, /renderAudioAnalysisProviderPanel/);
   assert.match(uiSource, /renderAudioAnalysisNoticePanel/);
-  assert.match(uiSource, /return filteredFormats\.length > 0 \? filteredFormats : \["audio", "video"\];/);
-  assert.match(uiSource, /featureId: getActiveFeatureId\(\),/);
+  assert.match(uiSource, /shared\/ui\/copy-runtime\.js/);
+  assert.match(copyRuntimeSource, /return filteredFormats\.length > 0 \? filteredFormats : \["audio", "video"\];/);
+  assert.match(uiSource, /shared\/ui\/request-runtime\.js/);
+  assert.match(requestRuntimeSource, /featureId: getActiveFeatureId\(\),/);
   assert.match(
     uiSource,
     /\[AUDIO_FEATURE_ID\]: "\.\.\/main-functions\/audio-analysis\/assets\/sound-analysis\.webp"/
@@ -251,11 +333,15 @@ test("laboratory audio-analysis locks a persistent v2-ready contract and plannin
 });
 
 test("laboratory host and UI consume the normalized audioAnalysis result envelope for report rendering", () => {
-  const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const hostSource = readFileSync("rooms/laboratory/host/runtime.js", "utf8");
   const reportingSource = readFileSync("rooms/laboratory/shared/host/reporting.js", "utf8");
   const roomSnapshotSource = readFileSync("rooms/laboratory/shared/host/room-snapshot.js", "utf8");
   const audioProjectionSource = readFileSync(
     "rooms/laboratory/main-functions/audio-analysis/host/module-projection.js",
+    "utf8"
+  );
+  const audioStateSource = readFileSync(
+    "rooms/laboratory/main-functions/audio-analysis/host/state.js",
     "utf8"
   );
   const audioHostModuleSource = readFileSync(
@@ -266,8 +352,46 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
     "rooms/laboratory/main-functions/audio-analysis/host/analysis-utils.js",
     "utf8"
   );
+  const audioProcessDelegatesSource = readFileSync(
+    "rooms/laboratory/shared/host/audio-process-delegates.js",
+    "utf8"
+  );
+  const audioRuntimeSource = readFileSync(
+    "rooms/laboratory/main-functions/audio-analysis/host/runtime.js",
+    "utf8"
+  );
+  const processCompositionSource = readFileSync(
+    "rooms/laboratory/shared/host/process-composition.js",
+    "utf8"
+  );
   const projectPathsSource = readFileSync("rooms/laboratory/shared/host/project-paths.js", "utf8");
-  const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const processDelegatesSource = readFileSync("rooms/laboratory/shared/host/process-delegates.js", "utf8");
+  const processOrchestrationSource = readFileSync(
+    "rooms/laboratory/shared/host/process-orchestration.js",
+    "utf8"
+  );
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
+  const viewBindingsRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/view-bindings-runtime.js",
+    "utf8"
+  );
+  const runtimeCompositionSource = readFileSync(
+    "rooms/laboratory/ui/runtime-composition.js",
+    "utf8"
+  );
+  const viewAccessorsRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/view-accessors-runtime.js",
+    "utf8"
+  );
+  const stageAccessorsRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/stage-accessors-runtime.js",
+    "utf8"
+  );
+  const audioUiRuntimeSource = readFileSync(
+    "rooms/laboratory/ui/audio-analysis-runtime.js",
+    "utf8"
+  );
+  const ioRuntimeSource = readFileSync("rooms/laboratory/shared/host/io-runtime.js", "utf8");
   const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.js", "utf8");
   const settingsOverlaySource = readFileSync("rooms/laboratory/shared/ui/settings-overlay.js", "utf8");
   const audioModuleSource = readFileSync(
@@ -280,28 +404,38 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
   );
   const musicHelperSource = readFileSync("rooms/laboratory/shared/data/tools/music/librosa_music_analysis.py", "utf8");
 
-  assert.match(hostSource, /shared\/host\/reporting\.js/);
-  assert.match(hostSource, /const laboratoryReportingRuntime = createLaboratoryReportingRuntime\(/);
-  assert.match(hostSource, /function buildAudioAnalysisReportProjection\(runtime, project\)/);
-  assert.match(hostSource, /function composeAudioAnalysisReport\(runtime, project\)/);
+  assert.match(hostSource, /shared\/host\/process-composition\.js/);
+  assert.match(processCompositionSource, /from "\.\/reporting\.js"/);
+  assert.match(processCompositionSource, /const laboratoryReportingRuntime = createLaboratoryReportingRuntime\(/);
+  assert.match(audioRuntimeSource, /import { createLaboratoryAudioProcessDelegatesRuntime }/);
+  assert.match(audioRuntimeSource, /const laboratoryAudioProcessDelegatesRuntime = createLaboratoryAudioProcessDelegatesRuntime\(/);
+  assert.match(processDelegatesSource, /function buildAudioAnalysisReportProjection\(runtime, project\)/);
+  assert.match(processOrchestrationSource, /export function createLaboratoryProcessOrchestrationRuntime\(deps\)/);
+  assert.match(processOrchestrationSource, /function resolveProcessTarget\(project, featureId\)/);
+  assert.match(processOrchestrationSource, /function buildMediaProcessModules\(runtime, project, target\)/);
+  assert.match(processOrchestrationSource, /function buildAudioAnalysisModules\(runtime, project, target\)/);
+  assert.match(processOrchestrationSource, /function buildProcessSpeechAvailability\(runtime, project\)/);
+  assert.match(processDelegatesSource, /function composeAudioAnalysisReport\(runtime, project\)/);
   assert.match(reportingSource, /const orderedResults = orderedIds\.concat\(extraIds\)\.map/);
   assert.match(reportingSource, /function composeFeatureReport\(runtime, project, featureId\)/);
   assert.match(reportingSource, /function buildReportMarkdown\(runtime, project, featureId, reportRecord\)/);
-  assert.match(hostSource, /function buildAudioAnalysisModules\(runtime, project, target\)/);
   assert.match(audioProjectionSource, /function resolveAudioFeatureTarget\(project\)/);
   assert.match(audioProjectionSource, /const providerState = buildAudioAnalysisProviderState\(runtime, project\);/);
   assert.match(audioProjectionSource, /const capabilityState = buildAudioAnalysisCapabilityState\(runtime, project, target, providerState\);/);
   assert.match(audioProjectionSource, /const missingToolIds = requiredToolIds\.filter/);
-  assert.match(hostSource, /function ensureRuntimeDirectory\(dirPath, requestId\)/);
+  assert.match(hostSource, /shared\/host\/io-runtime\.js/);
+  assert.match(ioRuntimeSource, /export function createLaboratoryHostIoRuntime\(deps\)/);
+  assert.match(ioRuntimeSource, /async function ensureRuntimeDirectory\(dirPath, requestId\)/);
   assert.match(audioProjectionSource, /function buildAudioAnalysisCapabilityState\(runtime, project, target, providerState\)/);
-  assert.match(hostSource, /main-functions\/audio-analysis\/host\/process-runners\.js/);
-  assert.match(hostSource, /main-functions\/audio-analysis\/host\/analysis-utils\.js/);
-  assert.match(hostSource, /main-functions\/audio-analysis\/host\/module-projection\.js/);
-  assert.match(hostSource, /function getAudioAnalysisModuleProcessDir\(runtime, project, moduleId\)/);
-  assert.match(hostSource, /function getAudioAnalysisModuleRunner\(moduleId\)/);
-  assert.match(hostSource, /const audioAnalysisProjectionRuntime = createAudioAnalysisProjectionRuntime\(/);
-  assert.match(hostSource, /const audioAnalysisProcessRuntime = createAudioAnalysisProcessRuntime\(/);
-  assert.match(hostSource, /function getAudioAnalysisRequiredToolIds\(catalogEntry\)/);
+  assert.match(processCompositionSource, /main-functions\/audio-analysis\/host\/runtime\.js/);
+  assert.match(audioRuntimeSource, /const audioAnalysisStateRuntime = createAudioAnalysisStateRuntime\(/);
+  assert.match(audioRuntimeSource, /const audioAnalysisProjectionRuntime = createAudioAnalysisProjectionRuntime\(/);
+  assert.match(audioRuntimeSource, /const audioAnalysisProcessRuntime = createAudioAnalysisProcessRuntime\(/);
+  assert.match(audioRuntimeSource, /const laboratoryAudioProcessDelegatesRuntime = createLaboratoryAudioProcessDelegatesRuntime\(/);
+  assert.match(audioProcessDelegatesSource, /function getAudioAnalysisModuleProcessDir\(runtime, project, moduleId\)/);
+  assert.match(audioProcessDelegatesSource, /function getAudioAnalysisModuleRunner\(moduleId\)/);
+  assert.match(audioProcessDelegatesSource, /async function generateProcessSpectrogram\(/);
+  assert.match(audioRuntimeSource, /function getAudioAnalysisRequiredToolIds\(catalogEntry\)/);
   assert.match(hostSource, /shared\/host\/project-paths\.js/);
   assert.match(projectPathsSource, /function getAudioAnalysisDiarizationDir\(runtime\)/);
   assert.match(projectPathsSource, /function getAudioAnalysisDiarizationScriptPath\(runtime\)/);
@@ -328,7 +462,9 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
   assert.match(audioHostModuleSource, /"sound-events": runSoundEventsAudioAnalyzer/);
   assert.match(audioHostModuleSource, /"source-separation": runSourceSeparationAudioAnalyzer/);
   assert.match(audioHostModuleSource, /"music-rhythm-tonal": runMusicRhythmAudioAnalyzer/);
-  assert.match(hostSource, /providerType: asNonEmptyString\(source\.providerType\)/);
+  assert.match(audioStateSource, /providerType: asNonEmptyString\(source\.providerType\)/);
+  assert.match(audioStateSource, /requiredToolIds: getAudioAnalysisRequiredToolIds\(catalog\)/);
+  assert.match(audioStateSource, /export function createAudioAnalysisStateRuntime/);
   assert.doesNotMatch(hostSource, /ffmpegReady === true/);
   assert.match(audioUtilitySource, /function parseAspectralStatsText\(rawText\)/);
   assert.match(audioHostModuleSource, /function generateSpectralDescriptorArtifact\(/);
@@ -336,7 +472,8 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
   assert.match(roomSnapshotSource, /availability: asNonEmptyString\(toolManifest\.availability\) \|\| "installable"/);
   assert.match(roomSnapshotSource, /commandName: asNonEmptyString\(systemCommand\.executableName\)/);
   assert.match(roomSnapshotSource, /setupHint: asNonEmptyString\(systemCommand\.setupHint\)/);
-  assert.match(uiSource, /function getProjectAudioAnalysis\(\)/);
+  assert.match(viewAccessorsRuntimeSource, /function getProjectAudioAnalysis\(\)/);
+  assert.match(viewBindingsRuntimeSource, /getAudioAnalysisProviderEntries: function \(\)/);
   assert.match(diarizationHelperSource, /def should_retry_with_local_fallback/);
   assert.match(diarizationHelperSource, /def run_local_kmeans_diarization/);
   assert.match(diarizationHelperSource, /"fallbackApplied": fallback_applied/);
@@ -344,10 +481,16 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
   assert.match(musicHelperSource, /def to_scalar_float/);
   assert.match(musicHelperSource, /"tempoBpm": to_scalar_float\(tempo_bpm\)/);
   assert.match(musicHelperSource, /datetime\.now\(dt\.UTC\)/);
-  assert.match(uiSource, /function getAudioAnalysisOrderedResultEntries\(\)/);
-  assert.match(uiSource, /function getCurrentFeatureTargetLabel\(\)/);
-  assert.match(uiSource, /function renderAudioAnalysisResultCard\(moduleEntry\)/);
-  assert.match(uiSource, /function renderAudioAnalysisModuleGrid\(\)/);
+  assert.match(viewAccessorsRuntimeSource, /function getAudioAnalysisOrderedResultEntries\(\)/);
+  assert.match(uiSource, /\.\/runtime-composition\.js/);
+  assert.match(runtimeCompositionSource, /\.\/stage-accessors-runtime\.js/);
+  assert.match(uiSource, /\.\/view-bindings-runtime\.js/);
+  assert.match(stageAccessorsRuntimeSource, /function getCurrentFeatureTargetLabel\(\)/);
+  assert.match(uiSource, /\.\/audio-analysis-runtime\.js/);
+  assert.match(audioUiRuntimeSource, /export function createLaboratoryAudioAnalysisRuntime\(/);
+  assert.match(audioUiRuntimeSource, /function renderAudioAnalysisModuleGrid\(\)/);
+  assert.match(audioModuleSource, /function renderAudioAnalysisResultCard\(moduleEntry\)/);
+  assert.match(audioModuleSource, /function renderAudioAnalysisModuleGrid\(\)/);
   assert.match(reportStageSource, /isAudioAnalysisFeature\(\) \? renderAudioAnalysisModuleGrid\(\) : ""/);
   assert.match(audioModuleSource, /featureText\(\["settings", "providersTitle"\]\)/);
   assert.match(settingsOverlaySource, /isAudioAnalysisFeature\(\) \? renderAudioAnalysisProviderPanel\(\) : ""/);

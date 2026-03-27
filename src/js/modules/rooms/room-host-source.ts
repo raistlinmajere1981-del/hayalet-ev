@@ -40,6 +40,29 @@ function normalizeFileUrlPath(fileUrl: string): string {
   return /^\/[A-Za-z]:\//.test(pathname) ? pathname.slice(1) : pathname;
 }
 
+function normalizeRoomHostBoundaryPath(filePath: string): string {
+  return filePath.replace(/\\/g, "/");
+}
+
+function resolveRoomHostRootPath(entryPath: string): string {
+  const entryUrl = new URL(toRoomRuntimeFileUrl(entryPath));
+  return normalizeFileUrlPath(new URL("../", new URL("./", entryUrl)).toString());
+}
+
+function assertRoomHostPathWithinRoot(
+  filePath: string,
+  roomRootPath: string,
+  specifier: string
+): string {
+  const normalizedPath = normalizeRoomHostBoundaryPath(filePath);
+  const normalizedRoot = normalizeRoomHostBoundaryPath(roomRootPath);
+  const rootPrefix = normalizedRoot.endsWith("/") ? normalizedRoot : `${normalizedRoot}/`;
+  if (!normalizedPath.startsWith(rootPrefix)) {
+    throw new Error(`Room host module import escaped room root: ${specifier}`);
+  }
+  return normalizedPath;
+}
+
 function resolveRoomHostModulePath(modulePath: string, specifier: string): string {
   const moduleUrl = toRoomRuntimeFileUrl(modulePath);
   return normalizeFileUrlPath(new URL(specifier, moduleUrl).toString());
@@ -95,10 +118,11 @@ export async function buildRoomHostModuleDataUrl(
   entryPath: string,
   readModuleSource: (filePath: string) => Promise<string>
 ): Promise<string> {
+  const roomRootPath = resolveRoomHostRootPath(entryPath);
   const moduleUrlCache = new Map<string, Promise<string>>();
 
   const loadModule = async (filePath: string): Promise<string> => {
-    const normalizedPath = filePath.replace(/\\/g, "/");
+    const normalizedPath = assertRoomHostPathWithinRoot(filePath, roomRootPath, filePath);
     const cached = moduleUrlCache.get(normalizedPath);
     if (cached) {
       return await cached;
@@ -112,7 +136,11 @@ export async function buildRoomHostModuleDataUrl(
       const replacements = new Map<string, string>();
 
       for (const specifier of specifiers) {
-        const dependencyPath = resolveRoomHostModulePath(normalizedPath, specifier);
+        const dependencyPath = assertRoomHostPathWithinRoot(
+          resolveRoomHostModulePath(normalizedPath, specifier),
+          roomRootPath,
+          specifier
+        );
         replacements.set(specifier, await loadModule(dependencyPath));
       }
 

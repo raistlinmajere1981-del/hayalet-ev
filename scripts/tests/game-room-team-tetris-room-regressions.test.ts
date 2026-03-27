@@ -8,9 +8,13 @@ const requiredFiles = [
   "rooms/game-room/main-functions/team-tetris/protocols/game-room-team-tetris-ai-opening.md",
   "rooms/game-room/main-functions/team-tetris/protocols/game-room-team-tetris-ai-followup.md",
   "rooms/game-room/main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md",
+  "rooms/game-room/shared/host/command-args.js",
   "rooms/game-room/main-functions/team-tetris/host/state.js",
+  "rooms/game-room/main-functions/team-tetris/host/runtime.js",
   "rooms/game-room/main-functions/team-tetris/ui/module.js",
   "rooms/game-room/main-functions/team-tetris/styles.css",
+  "rooms/game-room/ui/context-runtime.js",
+  "rooms/game-room/main-functions/xox/host/runtime.js",
   "rooms/game-room/main-functions/team-tetris/assets/team-tetris-view.webp",
 ];
 
@@ -56,16 +60,22 @@ test("game-room manifest exposes Team Tetris as a second feature with scene meta
 
 test("game-room Team Tetris UI and host sources expose the new feature shell", () => {
   const uiSource = readFileSync("rooms/game-room/ui/index.js", "utf8");
+  const indexHtmlSource = readFileSync("rooms/game-room/ui/index.html", "utf8");
   const teamTetrisUiSource = readFileSync(
     "rooms/game-room/main-functions/team-tetris/ui/module.js",
     "utf8"
   );
   const hostSource = readFileSync("rooms/game-room/host/index.js", "utf8");
+  const xoxRuntimeSource = readFileSync(
+    "rooms/game-room/main-functions/xox/host/runtime.js",
+    "utf8"
+  );
 
+  assert.match(indexHtmlSource, /<script src="\.\/context-runtime\.js"><\/script>/);
   assert.match(uiSource, /message\.type === "team-tetris-state"/);
   assert.match(uiSource, /getActiveFeatureId\(\) === TEAM_TETRIS_FEATURE_ID/);
   assert.match(teamTetrisUiSource, /GameRoomTeamTetrisStart/);
   assert.match(hostSource, /GameRoomTeamTetrisStart/);
   assert.match(hostSource, /pushActiveFeatureState\(api\)/);
-  assert.match(hostSource, /resetTeamTetrisState\(api, "activeFeatureReset"\)/);
+  assert.match(xoxRuntimeSource, /resetTeamTetrisState\(api, "activeFeatureReset"\)/);
 });

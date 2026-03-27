@@ -8,11 +8,14 @@ const requiredFiles = [
   "rooms/game-room/manifest.json",
   "rooms/game-room/host/index.js",
   "rooms/game-room/ui/index.html",
+  "rooms/game-room/ui/context-runtime.js",
   "rooms/game-room/ui/index.js",
   "rooms/game-room/ui/style.css",
   "rooms/game-room/shared/host/feature-meta.js",
   "rooms/game-room/shared/host/text.js",
   "rooms/game-room/shared/host/context-state.js",
+  "rooms/game-room/shared/host/command-args.js",
+  "rooms/game-room/main-functions/xox/host/runtime.js",
   "rooms/game-room/shared/styles/base.css",
   "rooms/game-room/i18n/en.json",
   "rooms/game-room/i18n/tr.json",
@@ -51,7 +54,10 @@ test("game-room manifest validates with the XOX-first room contract", () => {
 
 test("game-room XOX UI forwards remote identity with invite actions", () => {
   const uiSource = readFileSync("rooms/game-room/main-functions/xox/ui/module.js", "utf8");
+  const indexHtmlSource = readFileSync("rooms/game-room/ui/index.html", "utf8");
+  const runtimeSource = readFileSync("rooms/game-room/main-functions/xox/host/runtime.js", "utf8");
 
+  assert.match(indexHtmlSource, /<script src="\.\/context-runtime\.js"><\/script>/);
   assert.match(
     uiSource,
     /sendRoomCommand\("GameRoomXoxAcceptInvite",\s*\{\s*inviteId:\s*inviteId,\s*remoteUserId:\s*remoteUserId,\s*\}\s*\)/
@@ -60,4 +66,5 @@ test("game-room XOX UI forwards remote identity with invite actions", () => {
     uiSource,
     /sendRoomCommand\("GameRoomXoxRejectInvite",\s*\{\s*inviteId:\s*inviteId,\s*remoteUserId:\s*remoteUserId,\s*\}\s*\)/
   );
+  assert.match(runtimeSource, /GameRoomXoxStart/);
 });

@@ -19,8 +19,21 @@ test("subtitle YouTube descriptor exposes discovery-first filters", () => {
 
 test("subtitle host keeps discovery and explicit export format plumbing", () => {
   const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const hostRuntimeSource = readFileSync("rooms/laboratory/host/runtime.js", "utf8");
+  const stateCompositionSource = readFileSync(
+    "rooms/laboratory/shared/host/state-composition.js",
+    "utf8"
+  );
+  const subtitleRuntimeSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/runtime.js",
+    "utf8"
+  );
   const subtitleDocumentSource = readFileSync(
     "rooms/laboratory/main-functions/subtitle-analysis/host/document-runtime.js",
+    "utf8"
+  );
+  const subtitleStateDelegatesSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state-delegates.js",
     "utf8"
   );
   const subtitleStateSource = readFileSync(
@@ -32,12 +45,21 @@ test("subtitle host keeps discovery and explicit export format plumbing", () => 
     "utf8"
   );
 
-  assert.match(hostSource, /function createEmptySubtitleDiscoveryState\(\)/);
+  assert.match(subtitleStateDelegatesSource, /function createEmptySubtitleDiscoveryState\(\)/);
   assert.match(subtitleStateSource, /selectedCandidateIds/);
-  assert.match(hostSource, /function handleSubtitleYoutubeDiscovery\(api, runtime, requestId\)/);
-  assert.match(hostSource, /main-functions\/subtitle-analysis\/host\/document-runtime\.js/);
-  assert.match(hostSource, /main-functions\/subtitle-analysis\/host\/state\.js/);
-  assert.match(hostSource, /main-functions\/subtitle-analysis\/host\/youtube-source\.js/);
+  assert.match(hostSource, /\.\/runtime\.js/);
+  assert.match(hostRuntimeSource, /main-functions\/subtitle-analysis\/host\/runtime\.js/);
+  assert.match(hostRuntimeSource, /main-functions\/subtitle-analysis\/host\/document-runtime\.js/);
+  assert.match(hostRuntimeSource, /shared\/host\/state-composition\.js/);
+  assert.match(
+    stateCompositionSource,
+    /main-functions\/subtitle-analysis\/host\/state-delegates\.js/
+  );
+  assert.match(stateCompositionSource, /main-functions\/subtitle-analysis\/host\/state\.js/);
+  assert.match(
+    subtitleRuntimeSource,
+    /handleSubtitleYoutubeDiscovery: subtitleYoutubeSourceRuntime\.handleYoutubeDiscovery/
+  );
   assert.match(subtitleYoutubeHostSource, /Run discovery and select at least one video before downloading subtitles\./);
   assert.match(subtitleYoutubeHostSource, /toolId: "yt-dlp"/);
   assert.match(subtitleDocumentSource, /function resolveSubtitleOutputFormat\(sourceFormat, outputFormatValue\)/);
@@ -46,16 +68,24 @@ test("subtitle host keeps discovery and explicit export format plumbing", () => 
 });
 
 test("subtitle UI renders discovery table controls and output format selection", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
+  const copyRuntimeSource = readFileSync("rooms/laboratory/shared/ui/copy-runtime.js", "utf8");
+  const subtitleAnalysisUiRuntimeSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/runtime.js",
+    "utf8"
+  );
   const subtitleModuleSource = readFileSync(
     "rooms/laboratory/main-functions/subtitle-analysis/ui/module.js",
     "utf8"
   );
 
-  assert.match(uiSource, /function subtitleText\(path, trFallback, enFallback\)/);
-  assert.match(uiSource, /function renderSubtitleDiscoveryPanel\(\)/);
-  assert.match(uiSource, /function getSubtitleProcessModuleLabel\(entry\)/);
-  assert.match(uiSource, /function getSubtitleProviderLabel\(entry\)/);
+  assert.match(uiSource, /shared\/ui\/copy-runtime\.js/);
+  assert.match(copyRuntimeSource, /function subtitleText\(path, trFallback, enFallback\)/);
+  assert.match(uiSource, /main-functions\/subtitle-analysis\/ui\/runtime\.js/);
+  assert.match(uiSource, /\.\/view-bindings-runtime\.js/);
+  assert.match(subtitleAnalysisUiRuntimeSource, /\.\.\/\.\.\/\.\.\/ui\/subtitle-panel-runtime\.js/);
+  assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitleDiscoveryPanel\(\)/);
+  assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitleEditStage\(\)/);
   assert.match(subtitleModuleSource, /data-action="subtitle-source-select-all-discovery"/);
   assert.match(subtitleModuleSource, /data-action="subtitle-source-clear-discovery-selection"/);
   assert.match(subtitleModuleSource, /data-action="subtitle-source-toggle-discovery"/);

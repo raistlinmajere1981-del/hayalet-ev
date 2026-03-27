@@ -1,0 +1,43 @@
+{
+  "source": "batch_ui_combat_fx_01.png",
+  "outputDir": "assets/processed/ui/combat-fx",
+  "outputFormat": "webp",
+  "target": {
+    "width": 512,
+    "height": 512,
+    "fit": "contain",
+    "padding": 16
+  },
+  "items": [
+    {
+      "id": "combat_target_ring",
+      "name": "Target Ring",
+      "tags": ["combat", "target"],
+      "index": 0
+    },
+    {
+      "id": "combat_turn_indicator",
+      "name": "Turn Indicator",
+      "tags": ["combat", "turn"],
+      "index": 1
+    },
+    {
+      "id": "combat_damage_flash",
+      "name": "Damage Flash",
+      "tags": ["combat", "damage"],
+      "index": 2
+    },
+    {
+      "id": "combat_hit_marker",
+      "name": "Hit Marker",
+      "tags": ["combat", "hit"],
+      "index": 3
+    },
+    {
+      "id": "combat_order_marker",
+      "name": "Turn Order Marker",
+      "tags": ["combat", "order"],
+      "index": 4
+    }
+  ]
+}

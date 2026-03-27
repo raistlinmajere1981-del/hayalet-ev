@@ -1,0 +1,83 @@
+import { ROOM_SCHEMA_VERSION } from "./room-schema-version.js";
+import type {
+  RoomCommandSpec,
+  RoomProtocolSpec,
+  RoomSceneCharacterConfig,
+  RoomSceneChromeConfig,
+  RoomSceneHotspotConfig,
+  RoomSceneTransparentWindowConfig,
+} from "./room-manifest-types.js";
+import type { RoomSceneCharacterRosterPreset } from "./room-scene-guards.js";
+
+export interface InstalledRoomFeatureSceneViewRecord {
+  id: string;
+  backgroundPath: string;
+  panelArtPath?: string;
+  transparentWindow?: RoomSceneTransparentWindowConfig;
+}
+
+export interface InstalledRoomFeatureSceneRecord {
+  hotspot: RoomSceneHotspotConfig;
+  view: InstalledRoomFeatureSceneViewRecord;
+}
+
+export interface InstalledRoomFeatureRecord {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  commandSpecs?: RoomCommandSpec[];
+  protocolSpecs?: RoomProtocolSpec[];
+  scene?: InstalledRoomFeatureSceneRecord;
+}
+
+export interface InstalledRoomSceneRecord {
+  referenceSize: {
+    width: number;
+    height: number;
+  };
+  roomBackgroundPath: string;
+  roomsHotspot: RoomSceneHotspotConfig;
+  backHotspot: RoomSceneHotspotConfig;
+  characterRosterPreset?: RoomSceneCharacterRosterPreset;
+  characters?: RoomSceneCharacterConfig[];
+  chrome?: RoomSceneChromeConfig;
+}
+
+export interface InstalledRoomRecord {
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  icon?: string;
+  sourceDir: string;
+  installedDir: string;
+  manifestPath: string;
+  runtimeEntryPath: string;
+  hostEntryPath: string;
+  defaultFeatureId: string;
+  features: InstalledRoomFeatureRecord[];
+  scene?: InstalledRoomSceneRecord;
+  i18nBaseDir?: string;
+  commandSpecs?: RoomCommandSpec[];
+  protocolSpecs?: RoomProtocolSpec[];
+  installedAt: string;
+  updatedAt: string;
+}
+
+export interface RoomRegistryState {
+  version: typeof ROOM_SCHEMA_VERSION;
+  updatedAt: string;
+  rooms: InstalledRoomRecord[];
+}
+
+export interface StartupRoomProtocolSnapshot {
+  roomId: string;
+  key: string;
+  body: string;
+}
+
+export interface StartupRoomsSnapshot {
+  rooms: InstalledRoomRecord[];
+  protocols: StartupRoomProtocolSnapshot[];
+}

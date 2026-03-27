@@ -22,103 +22,34 @@
     },
   };
 
-  function resolveLocale(value) {
-    return typeof value === "string" && value.toLowerCase().startsWith("tr") ? "tr" : "en";
-  }
-
-  function createSlot(slotId) {
-    return {
-      slotId: slotId,
-      nickname: slotId.toUpperCase(),
-      assigned: false,
-      connected: false,
-      ready: false,
-      state: "empty",
-      urlExcluded: false,
-      remoteUserId: null,
-    };
-  }
-
-  function createInviteEntry() {
-    return {
-      roomId: ROOM_ID,
-      featureId: FEATURE_ID,
-      inviteId: "",
-      remoteUserId: "",
-      nickname: "US1",
-      senderEmail: "",
-      note: "",
-      starter: "user",
-      localSessionId: "",
-      conversationId: "",
-      sentAt: null,
-    };
-  }
-
-  function createContext() {
-    return {
-      room: {
-        id: ROOM_ID,
-        name: BOOTSTRAP_COPY.en.roomTitle,
-      },
-      features: [
-        {
-          id: FEATURE_ID,
-          name: "XOX",
-          description: "",
-        },
-        {
-          id: TEAM_TETRIS_FEATURE_ID,
-          name: "Team Tetris",
-          description: "",
-        },
-      ],
-      activeFeature: {
-        id: FEATURE_ID,
-        name: "XOX",
-        description: "",
-      },
-      user: {
-        nickname: BOOTSTRAP_COPY.en.userLabel,
-      },
-      slots: {
-        ai1: createSlot("ai1"),
-        ai2: createSlot("ai2"),
-        us1: createSlot("us1"),
-      },
-    };
-  }
-
   let state = null;
 
-  function readPath(source, path) {
-    let current = source;
-    for (let index = 0; index < path.length; index += 1) {
-      const key = path[index];
-      if (!current || typeof current !== "object" || Array.isArray(current)) {
-        return undefined;
-      }
-      current = current[key];
-    }
-    return typeof current === "string" ? current : undefined;
+  const contextFactories = window.GameRoomUiContextRuntime || {};
+  const contextRuntimeFactory = contextFactories.createGameRoomUiContextRuntime;
+  if (typeof contextRuntimeFactory !== "function") {
+    throw new Error("Game Room UI context runtime is unavailable.");
   }
+  const contextRuntime = contextRuntimeFactory({
+    roomId: ROOM_ID,
+    featureId: FEATURE_ID,
+    teamTetrisFeatureId: TEAM_TETRIS_FEATURE_ID,
+    bootstrapCopy: BOOTSTRAP_COPY,
+  });
 
   function text(path) {
-    return readPath(state.translations, path) || path.join(".");
+    return contextRuntime.readPath(state.translations, path) || path.join(".");
   }
 
   function bootstrapText(key) {
     return (
-      readPath(BOOTSTRAP_COPY[state.locale], [key]) || readPath(BOOTSTRAP_COPY.en, [key]) || key
+      contextRuntime.readPath(BOOTSTRAP_COPY[state.locale], [key]) ||
+      contextRuntime.readPath(BOOTSTRAP_COPY.en, [key]) ||
+      key
     );
   }
 
-  function normalizePresentationMode(value) {
-    return value === "scene-view" ? "scene-view" : "classic";
-  }
-
   function applyPresentationMode(mode) {
-    state.presentation.mode = normalizePresentationMode(mode);
+    state.presentation.mode = contextRuntime.normalizePresentationMode(mode);
     if (document.body && document.body.dataset) {
       document.body.dataset.presentationMode = state.presentation.mode;
     }
@@ -129,134 +60,13 @@
 
   function statusText(key) {
     return (
-      readPath(state.translations, ["xox", "status", key]) ||
+      contextRuntime.readPath(state.translations, ["xox", "status", key]) ||
       bootstrapText(key === "roomApiUnavailable" ? "roomApiUnavailable" : "commandSendFailed")
     );
   }
 
-  function createElement(tagName, className, textContent) {
-    const element = document.createElement(tagName);
-    if (className) {
-      element.className = className;
-    }
-    if (textContent !== undefined) {
-      element.textContent = textContent;
-    }
-    return element;
-  }
-
-  function normalizeSlot(candidate, slotId) {
-    const source =
-      candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-        ? candidate
-        : {};
-    return {
-      slotId: slotId,
-      nickname:
-        typeof source.nickname === "string" && source.nickname.trim() !== ""
-          ? source.nickname.trim()
-          : slotId.toUpperCase(),
-      assigned: source.assigned === true,
-      connected: source.connected === true,
-      ready:
-        source.ready === true ||
-        (source.assigned === true && source.connected === true && source.urlExcluded !== true),
-      state:
-        typeof source.state === "string" && source.state.trim() !== ""
-          ? source.state.trim()
-          : "empty",
-      urlExcluded: source.urlExcluded === true,
-      remoteUserId:
-        typeof source.remoteUserId === "string" && source.remoteUserId.trim() !== ""
-          ? source.remoteUserId.trim()
-          : null,
-    };
-  }
-
-  function normalizeContext(payload) {
-    const source =
-      payload && typeof payload === "object" && Array.isArray(payload) === false ? payload : {};
-    const slotsSource =
-      source.slots && typeof source.slots === "object" && Array.isArray(source.slots) === false
-        ? source.slots
-        : {};
-    const roomSource =
-      source.room && typeof source.room === "object" && Array.isArray(source.room) === false
-        ? source.room
-        : {};
-    const userSource =
-      source.user && typeof source.user === "object" && Array.isArray(source.user) === false
-        ? source.user
-        : {};
-    const features = Array.isArray(source.features)
-      ? source.features.map(function (feature) {
-          const featureSource =
-            feature && typeof feature === "object" && Array.isArray(feature) === false
-              ? feature
-              : {};
-          const id =
-            featureSource.id === TEAM_TETRIS_FEATURE_ID ? TEAM_TETRIS_FEATURE_ID : FEATURE_ID;
-          return {
-            id: id,
-            name:
-              typeof featureSource.name === "string" && featureSource.name.trim() !== ""
-                ? featureSource.name.trim()
-                : id === TEAM_TETRIS_FEATURE_ID
-                  ? "Team Tetris"
-                  : "XOX",
-            description:
-              typeof featureSource.description === "string" &&
-              featureSource.description.trim() !== ""
-                ? featureSource.description.trim()
-                : "",
-          };
-        })
-      : createContext().features;
-    const activeFeatureSource =
-      source.activeFeature &&
-      typeof source.activeFeature === "object" &&
-      Array.isArray(source.activeFeature) === false
-        ? source.activeFeature
-        : {};
-    const activeFeatureId =
-      activeFeatureSource.id === TEAM_TETRIS_FEATURE_ID ? TEAM_TETRIS_FEATURE_ID : FEATURE_ID;
-
-    return {
-      room: {
-        id:
-          typeof roomSource.id === "string" && roomSource.id.trim() !== ""
-            ? roomSource.id.trim()
-            : ROOM_ID,
-        name:
-          typeof roomSource.name === "string" && roomSource.name.trim() !== ""
-            ? roomSource.name.trim()
-            : bootstrapText("roomTitle"),
-      },
-      features: features,
-      activeFeature:
-        features.find(function (feature) {
-          return feature.id === activeFeatureId;
-        }) || {
-          id: activeFeatureId,
-          name: activeFeatureId === TEAM_TETRIS_FEATURE_ID ? "Team Tetris" : "XOX",
-          description: "",
-        },
-      user: {
-        nickname:
-          typeof userSource.nickname === "string" && userSource.nickname.trim() !== ""
-            ? userSource.nickname.trim()
-            : bootstrapText("userLabel"),
-      },
-      slots: {
-        ai1: normalizeSlot(slotsSource.ai1, "ai1"),
-        ai2: normalizeSlot(slotsSource.ai2, "ai2"),
-        us1: normalizeSlot(slotsSource.us1, "us1"),
-      },
-    };
-  }
-
   function applyLocale(nextLocale) {
-    state.locale = resolveLocale(nextLocale);
+    state.locale = contextRuntime.resolveLocale(nextLocale);
     document.documentElement.lang = state.locale;
   }
 
@@ -303,13 +113,13 @@
     },
     roomId: ROOM_ID,
     featureId: FEATURE_ID,
-    createSlot: createSlot,
-    createInviteEntry: createInviteEntry,
-    normalizeSlot: normalizeSlot,
+    createSlot: contextRuntime.createSlot,
+    createInviteEntry: contextRuntime.createInviteEntry,
+    normalizeSlot: contextRuntime.normalizeSlot,
     bootstrapText: bootstrapText,
     text: text,
     statusText: statusText,
-    createElement: createElement,
+    createElement: contextRuntime.createElement,
     render: render,
     sendRoomCommand: sendRoomCommand,
     isRoomApiAvailable: isRoomApiAvailable,
@@ -320,8 +130,8 @@
       return state;
     },
     featureId: TEAM_TETRIS_FEATURE_ID,
-    createSlot: createSlot,
-    createElement: createElement,
+    createSlot: contextRuntime.createSlot,
+    createElement: contextRuntime.createElement,
     text: text,
     render: render,
     sendRoomCommand: sendRoomCommand,
@@ -329,9 +139,9 @@
   });
 
   state = {
-    locale: resolveLocale(document.documentElement.lang || navigator.language),
+    locale: contextRuntime.resolveLocale(document.documentElement.lang || navigator.language),
     translations: null,
-    context: createContext(),
+    context: contextRuntime.createContext(),
     game: xoxUi.createGameState(),
     teamTetris: teamTetrisUi.createTeamTetrisState(),
     teamTetrisDraft: teamTetrisUi.createTeamTetrisDraft(),
@@ -390,7 +200,7 @@
         state.translations = message.translations;
       }
       const previousTarget = state.preferences.target;
-      state.context = normalizeContext(message);
+      state.context = contextRuntime.normalizeContext(message);
       state.preferences.target =
         previousTarget === "ai1" || previousTarget === "ai2" || previousTarget === "us1"
           ? previousTarget

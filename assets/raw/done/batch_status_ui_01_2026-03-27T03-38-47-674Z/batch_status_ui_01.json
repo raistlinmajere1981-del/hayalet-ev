@@ -1,0 +1,49 @@
+{
+  "source": "batch_status_ui_01.png",
+  "outputDir": "assets/processed/ui/status",
+  "outputFormat": "webp",
+  "target": {
+    "width": 512,
+    "height": 256,
+    "fit": "contain",
+    "padding": 16
+  },
+  "items": [
+    {
+      "id": "ui_health_bar",
+      "name": "Health Bar",
+      "tags": ["ui", "health"],
+      "index": 0
+    },
+    {
+      "id": "ui_mana_bar",
+      "name": "Mana Bar",
+      "tags": ["ui", "mana"],
+      "index": 1
+    },
+    {
+      "id": "ui_status_slot",
+      "name": "Status Slot",
+      "tags": ["ui", "status"],
+      "index": 2
+    },
+    {
+      "id": "ui_buff_indicator",
+      "name": "Buff Indicator",
+      "tags": ["ui", "buff"],
+      "index": 3
+    },
+    {
+      "id": "ui_debuff_indicator",
+      "name": "Debuff Indicator",
+      "tags": ["ui", "debuff"],
+      "index": 4
+    },
+    {
+      "id": "ui_turn_badge",
+      "name": "Turn Badge",
+      "tags": ["ui", "turn"],
+      "index": 5
+    }
+  ]
+}

@@ -287,6 +287,7 @@ function createUiRuntime() {
     console,
   };
   [
+    "rooms/game-room/ui/context-runtime.js",
     "rooms/game-room/main-functions/xox/ui/module.js",
     "rooms/game-room/main-functions/team-tetris/ui/module.js",
     "rooms/game-room/ui/index.js",

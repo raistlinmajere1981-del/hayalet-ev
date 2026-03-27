@@ -1,0 +1,12 @@
+{
+  "id": "scene_village_gate",
+  "source": "scene_village_gate.png",
+  "outputDir": "assets/processed/scenes",
+  "outputFormat": "webp",
+  "target": {
+    "width": 1600,
+    "height": 900,
+    "fit": "cover"
+  }
+}
+  

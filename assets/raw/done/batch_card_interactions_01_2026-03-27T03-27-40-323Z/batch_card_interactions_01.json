@@ -1,0 +1,43 @@
+{
+  "source": "batch_card_interactions_01.png",
+  "outputDir": "assets/processed/ui/card-effects",
+  "outputFormat": "webp",
+  "target": {
+    "width": 512,
+    "height": 512,
+    "fit": "contain",
+    "padding": 16
+  },
+  "items": [
+    {
+      "id": "card_hover_glow",
+      "name": "Card Hover Glow",
+      "tags": ["card", "hover"],
+      "index": 0
+    },
+    {
+      "id": "card_selected_frame",
+      "name": "Card Selected",
+      "tags": ["card", "selected"],
+      "index": 1
+    },
+    {
+      "id": "card_disabled_overlay",
+      "name": "Card Disabled",
+      "tags": ["card", "disabled"],
+      "index": 2
+    },
+    {
+      "id": "card_drag_highlight",
+      "name": "Card Drag Highlight",
+      "tags": ["card", "drag"],
+      "index": 3
+    },
+    {
+      "id": "card_focus_border",
+      "name": "Card Focus Border",
+      "tags": ["card", "focus"],
+      "index": 4
+    }
+  ]
+}

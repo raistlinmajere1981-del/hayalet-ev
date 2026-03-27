@@ -24,39 +24,120 @@ test("laboratory project schema persists process and report branches", () => {
 
 test("laboratory host keeps process orchestration on the shared room-managed contract", () => {
   const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
+  const hostRuntimeSource = readFileSync("rooms/laboratory/host/runtime.js", "utf8");
   const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.js", "utf8");
+  const actionCompositionSource = readFileSync("rooms/laboratory/shared/host/action-composition.js", "utf8");
+  const actionRuntimeSource = readFileSync("rooms/laboratory/shared/host/action-runtime.js", "utf8");
+  const projectManifestSource = readFileSync(
+    "rooms/laboratory/shared/host/project-manifests.js",
+    "utf8"
+  );
+  const snapshotCompositionSource = readFileSync(
+    "rooms/laboratory/shared/host/snapshot-composition.js",
+    "utf8"
+  );
+  const stateCompositionSource = readFileSync(
+    "rooms/laboratory/shared/host/state-composition.js",
+    "utf8"
+  );
   const processReportStateSource = readFileSync(
     "rooms/laboratory/shared/host/process-report-state.js",
+    "utf8"
+  );
+  const closeoutStalenessSource = readFileSync(
+    "rooms/laboratory/shared/host/closeout-staleness.js",
+    "utf8"
+  );
+  const processCoordinationSource = readFileSync(
+    "rooms/laboratory/shared/host/process-coordination.js",
     "utf8"
   );
   const processRuntimeSource = readFileSync("rooms/laboratory/shared/host/process-runtime.js", "utf8");
   const processTargetingSource = readFileSync("rooms/laboratory/shared/host/process-targeting.js", "utf8");
   const roomToolsProgressSource = readFileSync("rooms/laboratory/shared/host/room-tools-progress.js", "utf8");
+  const processDelegatesSource = readFileSync("rooms/laboratory/shared/host/process-delegates.js", "utf8");
+  const processCompositionSource = readFileSync(
+    "rooms/laboratory/shared/host/process-composition.js",
+    "utf8"
+  );
+  const runtimePrimitivesSource = readFileSync(
+    "rooms/laboratory/shared/host/runtime-primitives.js",
+    "utf8"
+  );
+  const audioAnalysisHostRuntimeSource = readFileSync(
+    "rooms/laboratory/main-functions/audio-analysis/host/runtime.js",
+    "utf8"
+  );
+  const audioProcessDelegatesSource = readFileSync(
+    "rooms/laboratory/shared/host/audio-process-delegates.js",
+    "utf8"
+  );
   const reportingSource = readFileSync("rooms/laboratory/shared/host/reporting.js", "utf8");
 
   assert.match(processReportStateSource, /function createEmptyProcessState\(\)/);
-  assert.match(hostSource, /function getProjectProcessDir\(runtime, project\)/);
-  assert.match(hostSource, /function getFeatureProcessDir\(runtime, project, featureId\)/);
-  assert.match(hostSource, /function getFeatureReportDir\(runtime, project, featureId\)/);
-  assert.match(hostSource, /function buildProcessManifest\(project\)/);
-  assert.match(hostSource, /function runManagedProcess\(runtime, project, requestId, jobId, featureId\)/);
-  assert.match(hostSource, /function runFeatureProcess\(api, runtime, requestId, featureId\)/);
-  assert.match(hostSource, /function cancelFeatureProcess\(api, runtime, requestId, featureId\)/);
-  assert.match(hostSource, /function markCloseoutAsStale\(project, reason, featureIds\)/);
-  assert.match(hostSource, /const outputDir = getFeatureProcessDir\(runtime, project, featureId\);/);
-  assert.match(hostSource, /shared\/host\/action-router\.js/);
-  assert.match(hostSource, /shared\/host\/process-report-state\.js/);
-  assert.match(hostSource, /shared\/host\/process-runtime\.js/);
-  assert.match(hostSource, /shared\/host\/process-targeting\.js/);
-  assert.match(hostSource, /shared\/host\/room-tools-progress\.js/);
-  assert.match(hostSource, /shared\/host\/reporting\.js/);
+  assert.match(hostSource, /\.\/runtime\.js/);
+  assert.match(hostRuntimeSource, /shared\/host\/runtime-primitives\.js/);
+  assert.match(runtimePrimitivesSource, /export function getLaboratoryProjectProcessDir\(runtime, project\)/);
+  assert.match(runtimePrimitivesSource, /export function getLaboratoryFeatureProcessDir\(runtime, project, featureId\)/);
+  assert.match(runtimePrimitivesSource, /export function getLaboratoryFeatureReportDir\(runtime, project, featureId\)/);
+  assert.match(hostRuntimeSource, /shared\/host\/snapshot-composition\.js/);
+  assert.match(projectManifestSource, /function buildProcessManifest\(project\)/);
+  assert.match(snapshotCompositionSource, /from "\.\/project-manifests\.js"/);
+  assert.match(snapshotCompositionSource, /from "\.\/room-snapshot\.js"/);
+  assert.match(snapshotCompositionSource, /from "\.\/runtime-events\.js"/);
+  assert.match(hostRuntimeSource, /shared\/host\/state-composition\.js/);
+  assert.match(hostRuntimeSource, /shared\/host\/action-composition\.js/);
+  assert.match(hostRuntimeSource, /shared\/host\/process-composition\.js/);
+  assert.match(hostRuntimeSource, /shared\/host\/room-tools-progress\.js/);
+  assert.match(stateCompositionSource, /from "\.\/closeout-staleness\.js"/);
+  assert.match(stateCompositionSource, /from "\.\/process-report-state\.js"/);
+  assert.match(
+    stateCompositionSource,
+    /export function createLaboratoryHostStateCompositionRuntime\(deps\)/
+  );
+  assert.match(processCompositionSource, /from "\.\/process-coordination\.js"/);
+  assert.match(processCompositionSource, /from "\.\/process-runtime\.js"/);
+  assert.match(processCompositionSource, /from "\.\/process-targeting\.js"/);
+  assert.match(processCompositionSource, /from "\.\/process-delegates\.js"/);
+  assert.match(processCompositionSource, /from "\.\/reporting\.js"/);
+  assert.match(processCompositionSource, /main-functions\/audio-analysis\/host\/runtime\.js/);
+  assert.match(processCoordinationSource, /export function createLaboratoryProcessCoordinationRuntime/);
+  assert.match(processCoordinationSource, /return processRuntime\.runManagedProcess\(runtime, project, requestId, jobId, featureId\);/);
   assert.match(processRuntimeSource, /export function createLaboratoryProcessRuntime/);
+  assert.match(closeoutStalenessSource, /export function createLaboratoryCloseoutStalenessRuntime\(deps\)/);
+  assert.match(closeoutStalenessSource, /function markFeatureProcessStale\(project, featureId, reason\)/);
+  assert.match(closeoutStalenessSource, /function markFeatureReportStale\(project, featureId, reason\)/);
   assert.match(processTargetingSource, /export function createLaboratoryProcessTargetingRuntime/);
   assert.match(processTargetingSource, /function buildProcessSpeechAvailability\(runtime, project\)/);
   assert.match(roomToolsProgressSource, /export function createLaboratoryRoomToolsProgressRuntime/);
   assert.match(roomToolsProgressSource, /function updateJobFromProgress\(runtime, eventPayload\)/);
   assert.match(processRuntimeSource, /async function runManagedProcess/);
   assert.match(processRuntimeSource, /async function runFeatureProcess/);
+  assert.match(processRuntimeSource, /getFeatureProcessDir\(runtime, project, featureId\)/);
+  assert.match(processDelegatesSource, /export function createLaboratoryProcessDelegatesRuntime/);
+  assert.match(processDelegatesSource, /function runManagedProcess\(runtime, project, requestId, jobId, featureId\)/);
+  assert.match(processDelegatesSource, /function runFeatureProcess\(api, runtime, requestId, featureId\)/);
+  assert.match(processDelegatesSource, /function cancelFeatureProcess\(api, runtime, requestId, featureId\)/);
+  assert.match(processCompositionSource, /composeFeatureReport\(\.\.\.args\) \{/);
+  assert.match(actionCompositionSource, /export function createLaboratoryActionCompositionRuntime\(deps\)/);
+  assert.match(actionCompositionSource, /from "\.\/action-runtime\.js"/);
+  assert.match(actionCompositionSource, /from "\.\/tool-mutations\.js"/);
+  assert.match(actionRuntimeSource, /export function createLaboratoryHostActionRuntime\(deps\)/);
+  assert.match(actionRuntimeSource, /function handleMediaAction\(api, runtime, payload\)/);
+  assert.match(actionRuntimeSource, /from "\.\/action-router\.js"/);
+  assert.match(audioAnalysisHostRuntimeSource, /shared\/host\/audio-process-delegates\.js/);
+  assert.match(
+    audioAnalysisHostRuntimeSource,
+    /export function createLaboratoryAudioAnalysisHostRuntime\(deps\)/
+  );
+  assert.match(
+    audioAnalysisHostRuntimeSource,
+    /const laboratoryAudioProcessDelegatesRuntime = createLaboratoryAudioProcessDelegatesRuntime\(/
+  );
+  assert.match(audioProcessDelegatesSource, /export function createLaboratoryAudioProcessDelegatesRuntime/);
+  assert.match(audioProcessDelegatesSource, /function getAudioAnalysisModuleProcessDir\(runtime, project, moduleId\)/);
+  assert.match(audioProcessDelegatesSource, /function getAudioAnalysisModuleRunner\(moduleId\)/);
+  assert.match(audioProcessDelegatesSource, /async function generateProcessSpectrogram\(/);
   assert.match(reportingSource, /const outputPath = `\$\{getFeatureReportDir\(runtime, project, featureId\)\}\/\$\{fileName\}`;/);
   assert.match(actionRouterSource, /case "process-run":/);
   assert.match(actionRouterSource, /case "audio-process-run":/);
@@ -66,15 +147,19 @@ test("laboratory host keeps process orchestration on the shared room-managed con
 });
 
 test("laboratory UI renders the process stage from host-backed state and honest stage tools", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/index.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
+  const shellCompositionSource = readFileSync("rooms/laboratory/ui/shell-composition.js", "utf8");
   const processStageSource = readFileSync("rooms/laboratory/shared/ui/process-stage.js", "utf8");
   const settingsOverlaySource = readFileSync("rooms/laboratory/shared/ui/settings-overlay.js", "utf8");
   const toolchain = JSON.parse(readFileSync("rooms/laboratory/shared/data/tools/toolchain.manifest.json", "utf8"));
 
-  assert.match(uiSource, /function renderProcessStage\(\)/);
   assert.match(uiSource, /shared\/ui\/process-stage\.js/);
-  assert.match(uiSource, /function getCurrentFeatureProcessRecord\(\)/);
-  assert.match(uiSource, /function getProcessJobs\(\)/);
+  assert.match(uiSource, /shared\/ui\/shell-runtime\.js/);
+  assert.match(uiSource, /\.\/shell-composition\.js/);
+  assert.match(
+    shellCompositionSource,
+    /renderProcessStage: laboratoryStageShellDelegates\.renderProcessStage,/
+  );
   assert.match(processStageSource, /data-action="restart-process"/);
   assert.match(processStageSource, /data-action="process-cancel"/);
   assert.match(processStageSource, /data-action="open-report"/);

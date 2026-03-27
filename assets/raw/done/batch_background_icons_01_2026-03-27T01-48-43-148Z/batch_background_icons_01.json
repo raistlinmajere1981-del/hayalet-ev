@@ -1,0 +1,37 @@
+{
+  "source": "batch_background_icons_01.png",
+  "outputDir": "assets/processed/cards/background-icons",
+  "outputFormat": "webp",
+  "target": {
+    "width": 512,
+    "height": 512,
+    "fit": "contain",
+    "padding": 40
+  },
+  "items": [
+    {
+      "id": "background_traveler",
+      "name": "Traveler",
+      "tags": ["background", "traveler", "icon"],
+      "index": 0
+    },
+    {
+      "id": "background_villager",
+      "name": "Villager",
+      "tags": ["background", "villager", "icon"],
+      "index": 1
+    },
+    {
+      "id": "background_former_soldier",
+      "name": "Former Soldier",
+      "tags": ["background", "soldier", "icon"],
+      "index": 2
+    },
+    {
+      "id": "background_scholar",
+      "name": "Scholar",
+      "tags": ["background", "scholar", "icon"],
+      "index": 3
+    }
+  ]
+}

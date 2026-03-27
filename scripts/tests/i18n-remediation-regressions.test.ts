@@ -115,6 +115,11 @@ test("game-room room catalogs stay structurally aligned across EN and TR", () =>
 
 test("room runtime locale bridge refreshes game-room UI and host copy", () => {
   const roomPageSource = readFileSync("src/js/pages/room-page.ts", "utf8");
+  const runtimeContextSource = readFileSync("src/js/pages/room-page/runtime-context.ts", "utf8");
+  const runtimeSubscriptionsSource = readFileSync(
+    "src/js/pages/room-page/runtime-subscriptions.ts",
+    "utf8"
+  );
   const roomHostRuntimeSource = readFileSync("src/js/modules/rooms/room-host-runtime.ts", "utf8");
   const gameRoomUiSource = readFileSync("rooms/game-room/ui/index.js", "utf8");
   const gameRoomXoxUiSource = readFileSync("rooms/game-room/main-functions/xox/ui/module.js", "utf8");
@@ -124,11 +129,11 @@ test("room runtime locale bridge refreshes game-room UI and host copy", () => {
   );
   const gameRoomHostSource = readFileSync("rooms/game-room/host/index.js", "utf8");
 
-  assert.match(roomPageSource, /syncRuntimeContext\("locale-change"\)/);
-  assert.match(roomPageSource, /buildRuntimeContextPayload\(reason: string\)/);
-  assert.match(roomPageSource, /nickname:\s*AppState\.getNickname\("user"\)/);
-  assert.match(roomPageSource, /ai1:\s*this\.buildSlotContext\("ai1"\)/);
-  assert.match(roomPageSource, /SlotController\.on\(eventName/);
+  assert.match(roomPageSource, /runtimeContextRuntime\.sync\("locale-change"\)/);
+  assert.match(roomPageSource, /\.\/room-page\/runtime-context-runtime\.js/);
+  assert.match(runtimeContextSource, /nickname:\s*AppState\.getNickname\("user"\)/);
+  assert.match(runtimeContextSource, /ai1:\s*buildRoomSlotContext\("ai1"\)/);
+  assert.match(runtimeSubscriptionsSource, /SlotController\.on\(eventName/);
   assert.match(roomHostRuntimeSource, /getLocale:\s*\(\): string => AppI18n\.getLocale\(\)/);
   assert.match(gameRoomUiSource, /message\.type === "host-context"/);
   assert.match(gameRoomUiSource, /state\.translations = message\.translations/);
@@ -140,7 +145,7 @@ test("room runtime locale bridge refreshes game-room UI and host copy", () => {
   assert.match(gameRoomTeamTetrisUiSource, /GameRoomTeamTetrisStart/);
   assert.match(gameRoomHostSource, /onRoomEvent: function onRoomEvent\(payload\)/);
   assert.match(gameRoomHostSource, /payload\.type === "host-context"/);
-  assert.match(gameRoomHostSource, /GameRoomXoxAiMove/);
+  assert.match(gameRoomHostSource, /\[XOX_COMMAND_NAMES\.aiMove\]/);
   assert.match(gameRoomHostSource, /GameRoomTeamTetrisAiMove/);
 });
 
@@ -260,6 +265,7 @@ function createGameRoomUiRuntime(initialLanguage = "en-US"): {
     console,
   };
   [
+    "rooms/game-room/ui/context-runtime.js",
     "rooms/game-room/main-functions/xox/ui/module.js",
     "rooms/game-room/main-functions/team-tetris/ui/module.js",
     "rooms/game-room/ui/index.js",

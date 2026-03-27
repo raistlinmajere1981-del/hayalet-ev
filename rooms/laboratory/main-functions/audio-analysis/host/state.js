@@ -3,20 +3,179 @@ export function createAudioAnalysisStateRuntime(deps) {
     asNonEmptyString,
     asNumber,
     audioAnalysisSchemaVersion,
-    createEmptyAudioAnalysisCatalogState,
-    createEmptyAudioAnalysisModuleResult,
-    createEmptyAudioAnalysisSourceState,
     getAudioAnalysisModulesForRuntime,
-    normalizeAudioAnalysisCapabilityEntry,
-    normalizeAudioAnalysisMetric,
-    normalizeAudioAnalysisProviderStateEntry,
-    normalizeAudioAnalysisRunRecord,
+    getAudioAnalysisRequiredToolIds,
     normalizeProcessArtifact,
     normalizeProcessFinding,
     normalizeReportExport,
     normalizeStringArray,
     toRecord,
   } = deps;
+
+  function createEmptyAudioAnalysisSourceState() {
+    return {
+      preferredSourceKind: "audio",
+      requestedMode: "source",
+      mode: "source",
+      outputId: null,
+      targetSignature: null,
+      targetPath: null,
+      targetFileName: null,
+      targetMimeType: null,
+      targetLabel: null,
+      extractedAudioPath: null,
+      updatedAt: null,
+    };
+  }
+
+  function createEmptyAudioAnalysisCatalogState() {
+    return {
+      orderedIds: [],
+      implementedIds: [],
+      gatedIds: [],
+      plannedIds: [],
+      visibleIds: [],
+    };
+  }
+
+  function normalizeAudioAnalysisMetric(rawValue) {
+    const source = toRecord(rawValue);
+    return {
+      id: asNonEmptyString(source.id) || `audio-analysis-metric-${Date.now()}`,
+      label: asNonEmptyString(source.label),
+      labelKey: asNonEmptyString(source.labelKey),
+      value: asNonEmptyString(source.value) || "--",
+    };
+  }
+
+  function normalizeAudioAnalysisCapabilityEntry(rawValue, moduleId, catalogEntry) {
+    const source = toRecord(rawValue);
+    const catalog = toRecord(catalogEntry);
+    return {
+      moduleId: moduleId,
+      phase: asNonEmptyString(source.phase) || asNonEmptyString(catalog.phase) || "v1",
+      status: asNonEmptyString(source.status) || asNonEmptyString(catalog.status) || "planned",
+      titleKey: asNonEmptyString(source.titleKey) || asNonEmptyString(catalog.titleKey),
+      summaryKey: asNonEmptyString(source.summaryKey) || asNonEmptyString(catalog.summaryKey),
+      providerIds:
+        normalizeStringArray(source.providerIds).length > 0
+          ? normalizeStringArray(source.providerIds)
+          : normalizeStringArray(catalog.providerIds),
+      toolIds:
+        normalizeStringArray(source.toolIds).length > 0
+          ? normalizeStringArray(source.toolIds)
+          : normalizeStringArray(catalog.toolIds),
+      requiredToolIds:
+        normalizeStringArray(source.requiredToolIds).length > 0
+          ? normalizeStringArray(source.requiredToolIds)
+          : getAudioAnalysisRequiredToolIds(catalog),
+      blockers: normalizeStringArray(source.blockers),
+      warnings: normalizeStringArray(source.warnings),
+    };
+  }
+
+  function normalizeAudioAnalysisProviderStateEntry(rawValue, providerId, descriptor) {
+    const source = toRecord(rawValue);
+    const provider = toRecord(descriptor);
+    return {
+      providerId: providerId,
+      status: asNonEmptyString(source.status) || asNonEmptyString(provider.status) || "planned",
+      toolId: asNonEmptyString(source.toolId) || asNonEmptyString(provider.toolId),
+      moduleIds:
+        normalizeStringArray(source.moduleIds).length > 0
+          ? normalizeStringArray(source.moduleIds)
+          : normalizeStringArray(provider.moduleIds),
+      titleKey: asNonEmptyString(source.titleKey) || asNonEmptyString(provider.titleKey),
+      summaryKey: asNonEmptyString(source.summaryKey) || asNonEmptyString(provider.summaryKey),
+      providerType: asNonEmptyString(source.providerType) || asNonEmptyString(provider.providerType),
+      installStrategy: asNonEmptyString(source.installStrategy) || asNonEmptyString(provider.installStrategy),
+      expectedArtifacts:
+        normalizeStringArray(source.expectedArtifacts).length > 0
+          ? normalizeStringArray(source.expectedArtifacts)
+          : normalizeStringArray(provider.expectedArtifacts),
+      fallbackProviderIds:
+        normalizeStringArray(source.fallbackProviderIds).length > 0
+          ? normalizeStringArray(source.fallbackProviderIds)
+          : normalizeStringArray(provider.fallbackProviderIds),
+      installed: source.installed === true,
+      ready: source.ready === true,
+      busy: source.busy === true,
+      version: asNonEmptyString(source.version),
+      modelId: asNonEmptyString(source.modelId),
+      platformSupported: source.platformSupported !== false,
+      blockers: normalizeStringArray(source.blockers),
+      warnings: normalizeStringArray(source.warnings),
+      lastError: asNonEmptyString(source.lastError),
+    };
+  }
+
+  function createEmptyAudioAnalysisRunRecord(moduleId) {
+    return {
+      moduleId: moduleId,
+      status: "idle",
+      runId: null,
+      jobId: null,
+      requestId: null,
+      startedAt: null,
+      completedAt: null,
+      warnings: [],
+      error: null,
+      artifactIds: [],
+      findingIds: [],
+    };
+  }
+
+  function normalizeAudioAnalysisRunRecord(rawValue, moduleId) {
+    const source = toRecord(rawValue);
+    return {
+      ...createEmptyAudioAnalysisRunRecord(moduleId),
+      ...source,
+      moduleId: moduleId,
+      status: asNonEmptyString(source.status) || "idle",
+      runId: asNonEmptyString(source.runId),
+      jobId: asNonEmptyString(source.jobId),
+      requestId: asNonEmptyString(source.requestId),
+      startedAt: asNonEmptyString(source.startedAt),
+      completedAt: asNonEmptyString(source.completedAt),
+      warnings: normalizeStringArray(source.warnings),
+      error: asNonEmptyString(source.error),
+      artifactIds: normalizeStringArray(source.artifactIds),
+      findingIds: normalizeStringArray(source.findingIds),
+    };
+  }
+
+  function createEmptyAudioAnalysisModuleResult(moduleId, catalogEntry) {
+    const catalog = toRecord(catalogEntry);
+    const status = asNonEmptyString(catalog.status) || "planned";
+    return {
+      moduleId: moduleId,
+      phase: asNonEmptyString(catalog.phase) || "v1",
+      status: status === "implemented" ? "idle" : status,
+      titleKey: asNonEmptyString(catalog.titleKey),
+      summaryKey: asNonEmptyString(catalog.summaryKey),
+      providerIds: normalizeStringArray(catalog.providerIds),
+      toolIds: normalizeStringArray(catalog.toolIds),
+      requiredToolIds: getAudioAnalysisRequiredToolIds(catalog),
+      summary: "",
+      blockers: [],
+      warnings: [],
+      signals: [],
+      artifacts: [],
+      metrics: [],
+      confidence: null,
+      timing: {
+        sampleWindowSeconds: null,
+        startedAt: null,
+        completedAt: null,
+      },
+      runMeta: {
+        runId: null,
+        jobId: null,
+        requestId: null,
+      },
+      sourceSignature: null,
+    };
+  }
 
   function normalizeAudioAnalysisModuleResult(rawValue, moduleId, catalogEntry) {
     const source = toRecord(rawValue);
@@ -170,7 +329,11 @@ export function createAudioAnalysisStateRuntime(deps) {
 
   return {
     createEmptyAudioAnalysisState,
+    normalizeAudioAnalysisCapabilityEntry,
+    normalizeAudioAnalysisMetric,
     normalizeAudioAnalysisModuleResult,
+    normalizeAudioAnalysisProviderStateEntry,
+    normalizeAudioAnalysisRunRecord,
     normalizeAudioAnalysisState,
   };
 }
