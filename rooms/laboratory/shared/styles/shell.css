@@ -15,6 +15,7 @@
   --lab-muted: #94a8b1;
   --lab-soft: rgb(118 208 218 / 0.12);
   --lab-shadow: 0 32px 80px rgb(0 0 0 / 0.42);
+  --room-runtime-ui-scale-factor: 1;
   background: transparent;
   font-family: "Avenir Next", "Trebuchet MS", sans-serif;
 }
@@ -39,6 +40,8 @@ body {
 #app {
   min-height: 100%;
   height: 100%;
+  transform: scale(var(--room-runtime-ui-scale-factor, 1));
+  transform-origin: center center;
 }
 
 .lab-shell {

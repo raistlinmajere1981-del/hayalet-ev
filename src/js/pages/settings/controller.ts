@@ -39,6 +39,7 @@ import {
   getSceneRoomBackgroundSrc,
   getSceneRoomPanelSrc,
   getSceneRoomPanelTransparentWindow,
+  SceneUiScaleManager,
   SceneThemeManager,
 } from "../../scene-system/index.js";
 import {
@@ -215,6 +216,7 @@ class SettingsSceneController {
   private characterRenderToken = 0;
   private sceneThemeUnsub: (() => void) | null = null;
   private sceneThemeAssetDraftUnsub: (() => void) | null = null;
+  private sceneUiScaleUnsub: (() => void) | null = null;
 
   private get sceneLayout(): SceneLayoutConfig {
     return this.sceneDebugSession.getSceneLayout();
@@ -274,6 +276,10 @@ class SettingsSceneController {
     });
 
     this.sceneThemeAssetDraftUnsub ??= subscribeSceneThemeAssetDraft(() => {
+      this.sync(this.state);
+    });
+
+    this.sceneUiScaleUnsub ??= SceneUiScaleManager.onChange(() => {
       this.sync(this.state);
     });
   }

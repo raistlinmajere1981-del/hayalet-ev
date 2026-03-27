@@ -123,8 +123,12 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(source, /private getSceneFeature\(\): InstalledRoomFeatureRecord \| null/);
   assert.match(source, /private bindRoomContextSubscriptions\(\): void/);
   assert.match(source, /void this\.runtimeContextRuntime\.sync\("slot-state"\)/);
+  assert.match(source, /ThemeManager\.onChange\(\(\) => \{/);
+  assert.match(source, /SceneUiScaleManager\.onChange\(\(\) => \{/);
   assert.match(source, /\.\/room-page\/runtime-context-runtime\.js/);
   assert.match(source, /this\.runtimeContextRuntime\.sync\("locale-change"\)/);
+  assert.match(source, /this\.runtimeContextRuntime\.sync\("theme-appearance"\)/);
+  assert.match(source, /this\.runtimeContextRuntime\.sync\("scene-scale"\)/);
   assert.match(source, /this\.runtimeContextRuntime\.sync\("scene-close"\)/);
   assert.match(source, /this\.runtimeContextRuntime\.sync\(reason\)/);
   assert.match(runtimeContextSource, /translations:\s*AppI18n\.getNamespaceCatalog\(\["rooms", room\.id\]\)/);
@@ -135,6 +139,10 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(runtimeContextSource, /accountId:\s*AppState\.getUs1ArchiveAccountId\(\)/);
   assert.match(runtimeContextSource, /remoteUserId:\s*identity\?\.remoteUserId \?\? null/);
   assert.match(runtimeContextSource, /mode:\s*sceneFeatureOpen \? "scene-view" : "classic"/);
+  assert.match(
+    runtimeContextSource,
+    /uiScale:\s*sceneFeatureOpen \? getSceneUiScale\(\) : getAppUiScale\(\)/
+  );
   assert.match(runtimeContextSource, /sceneViewId:\s*sceneFeature\?\.scene\?\.view\.id \?\? null/);
   assert.match(source, /\.\/room-page\/page-shell-runtime\.js/);
   assert.match(source, /\.\/room-page\/page-dom\.js/);
@@ -225,7 +233,7 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(sceneWindowControlsSource, /export function syncRoomPageSceneWindowControls\(/);
   assert.match(sceneWindowControlsSource, /export function getRoomSceneStandardBackHost\(/);
   assert.match(sceneWindowControlsSource, /export function ensureRoomSceneStandardBackHost\(/);
-  assert.match(runtimeHostSource, /export function resolveRoomPreloadUrl\(/);
+  assert.match(runtimeHostSource, /export async function resolveRoomPreloadUrl\(/);
   assert.match(runtimeHostSource, /export function ensureRoomRuntimeWebview\(/);
   assert.match(runtimeHostSource, /export function syncRoomRuntimeWebviewSource\(/);
   assert.match(runtimeHostRuntimeSource, /export function createRoomPageRuntimeHostRuntime\(/);
@@ -302,6 +310,7 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(mainCssSource, /\.room-runtime-mount \{\s*flex: 1;[\s\S]*min-height: 0;[\s\S]*height: 100%;/);
   assert.match(gameRoomUiCssSource, /@import "\.\.\/shared\/styles\/base\.css";/);
   assert.match(gameRoomUiCssSource, /@import "\.\.\/main-functions\/xox\/styles\.css";/);
+  assert.match(gameRoomUiCssSource, /@import "\.\.\/main-functions\/fate-knots\/styles\.css";/);
   assert.match(
     gameRoomXoxCssSource,
     /body\[data-presentation-mode="scene-view"\] \.xox-shell \{\s*min-height: 100%;[\s\S]*padding: 0;/

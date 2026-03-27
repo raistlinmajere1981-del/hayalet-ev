@@ -153,6 +153,7 @@ function buildHostContext(translations: Record<string, unknown>) {
     features: [
       { id: "xox", name: "XOX" },
       { id: "team-tetris", name: "Team Tetris" },
+      { id: "fate-knots", name: "Fate Knots" },
     ],
     activeFeature: {
       id: "team-tetris",
@@ -287,11 +288,12 @@ function createUiRuntime() {
     console,
   };
   [
-    "rooms/game-room/ui/context-runtime.js",
-    "rooms/game-room/main-functions/xox/ui/module.js",
-    "rooms/game-room/main-functions/team-tetris/ui/module.js",
-    "rooms/game-room/ui/index.js",
-  ].forEach((filePath) => {
+      "rooms/game-room/ui/context-runtime.js",
+      "rooms/game-room/main-functions/xox/ui/module.js",
+      "rooms/game-room/main-functions/team-tetris/ui/module.js",
+      "rooms/game-room/main-functions/fate-knots/ui/module.js",
+      "rooms/game-room/ui/index.js",
+    ].forEach((filePath) => {
     vm.runInNewContext(readFileSync(filePath, "utf8"), context);
   });
 

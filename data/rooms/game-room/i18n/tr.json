@@ -3,7 +3,8 @@
   "subtitle": "Canli AI slotlari veya bagli US1 uzak kullanicisi ile dogrudan maclar icin odakli masa oyunu odasi.",
   "features": {
     "xox": "XOX",
-    "team-tetris": "Takim Tetris"
+    "team-tetris": "Takim Tetris",
+    "fate-knots": "Fate Knots"
   },
   "xox": {
     "heroBadge": "Oyun Odasi",
@@ -177,6 +178,93 @@
       "horizontalCollision": "Cizilen yol yatay kayarken dolu bir hucreye carpisiyor.",
       "downwardCollision": "Cizilen yol parcayi yasal kilit noktasinin altina zorluyor.",
       "incompletePath": "Parca son kilit konumuna ulasana kadar cizmeye devam et."
+    }
+  },
+  "fateKnots": {
+    "heroBadge": "Oyun Odasi",
+    "heroTitle": "Fate Knots Masasi",
+    "heroSubtitle": "Deterministik AI yoldaslari, ortak oy ve tek acilis karsilasmasi olan ortak hikaye-savasi dilimi.",
+    "controls": {
+      "start": "Kosuyu Baslat",
+      "reset": "Kosuyu Sifirla",
+      "ready": "Build'i Kilitle",
+      "sync": "Senkronize Et",
+      "end": "Kosuyu Bitir"
+    },
+    "creation": {
+      "title": "Karakter Kurulumu",
+      "subtitle": "Yerel karakteri sec, sonra ortak dilim baslasin diye build'i kilitle.",
+      "avatarLabel": "Avatar",
+      "classLabel": "Sinif",
+      "backgroundLabel": "Gecmis",
+      "locked": "Build kilitlendi",
+      "incomplete": "Bir avatar, sinif ve gecmis sec.",
+      "summaryTitle": "Build Ozeti"
+    },
+    "roster": {
+      "title": "Katilimcilar",
+      "locked": "Kilitli",
+      "unlock": "Seciliyor",
+      "excluded": "US1 V1 oynanabilir roster disinda tutulur ve sonraki iterasyonlar icin izlenir.",
+      "missing": "Koltuk kullanilamaz"
+    },
+    "status": {
+      "label": "Kosu Durumu",
+      "idle": "Bir Fate Knots kosusu hazirla.",
+      "pendingSeats": "Bekleyen",
+      "deadline": "Son Saat",
+      "compatibility": "Uyumluluk",
+      "waiting": "Bekleniyor"
+    },
+    "coverage": {
+      "title": "Gorunen Asset Kapsami"
+    },
+    "map": {
+      "title": "Rota Haritasi"
+    },
+    "scenario": {
+      "missing": "Senaryo adimi kullanilabilir degil.",
+      "mapLabel": "Harita",
+      "choicesLabel": "Ortak Karar",
+      "speaker": "Konusan",
+      "conflict": "Oylar caristi. AI koltuklarini yeniden istemek icin senkronize et.",
+      "pending": "Beklenen",
+      "logLabel": "Hikaye Logu"
+    },
+    "combat": {
+      "missing": "Savas durumu kullanilabilir degil.",
+      "enemyLabel": "Karsilasma",
+      "actionsLabel": "Savas Aksiyonlari",
+      "waitingHint": "Siradaki koltugun hamlesi bekleniyor.",
+      "roundLabel": "Tur",
+      "turnLabel": "Sira",
+      "partyTitle": "Saha Ekibi"
+    },
+    "result": {
+      "label": "Sonuc",
+      "titleFallback": "Kosu Tamamlandi",
+      "logLabel": "Kosu Logu"
+    },
+    "turns": {
+      "idle": "Bos"
+    },
+    "overview": {
+      "partyTitle": "Hazir Koltuklar"
+    },
+    "seats": {
+      "user": "Sen",
+      "ai1": "AI1",
+      "ai2": "AI2",
+      "us1": "US1"
+    },
+    "seatState": {
+      "active": "Aktif",
+      "locked": "Kilitli",
+      "ready": "Hazir",
+      "selecting": "Seciyor",
+      "deferred": "V2",
+      "reserved": "Rezerve",
+      "standby": "Beklemede"
     }
   }
 }

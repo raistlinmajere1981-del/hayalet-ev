@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "featureId": "fate-knots",
+  "entries": [
+    {
+      "mode": "file",
+      "kind": "feature-view",
+      "source": "assets/team-fate-knots.webp",
+      "target": "fate-knots-view.webp"
+    },
+    {
+      "mode": "directory",
+      "kind": "avatar",
+      "sourceDir": "assets/processed/cards/avatars",
+      "targetDir": "cards/avatars"
+    },
+    {
+      "mode": "directory",
+      "kind": "background",
+      "sourceDir": "assets/processed/cards/background-icons",
+      "targetDir": "cards/background-icons"
+    },
+    {
+      "mode": "directory",
+      "kind": "class",
+      "sourceDir": "assets/processed/cards/class-icons",
+      "targetDir": "cards/class-icons"
+    },
+    {
+      "mode": "directory",
+      "kind": "creature",
+      "sourceDir": "assets/processed/cards/creatures",
+      "targetDir": "cards/creatures"
+    },
+    {
+      "mode": "directory",
+      "kind": "item",
+      "sourceDir": "assets/processed/cards/items",
+      "targetDir": "cards/items"
+    },
+    {
+      "mode": "directory",
+      "kind": "location-card",
+      "sourceDir": "assets/processed/cards/locations",
+      "targetDir": "cards/locations"
+    },
+    {
+      "mode": "directory",
+      "kind": "npc",
+      "sourceDir": "assets/processed/cards/npcs",
+      "targetDir": "cards/npcs"
+    },
+    {
+      "mode": "directory",
+      "kind": "map",
+      "sourceDir": "assets/processed/maps",
+      "targetDir": "maps"
+    },
+    {
+      "mode": "directory",
+      "kind": "scene",
+      "sourceDir": "assets/processed/scenes",
+      "targetDir": "scenes"
+    },
+    {
+      "mode": "directory",
+      "kind": "ui-button",
+      "sourceDir": "assets/processed/ui/buttons",
+      "targetDir": "ui/buttons"
+    },
+    {
+      "mode": "directory",
+      "kind": "ui-card-effect",
+      "sourceDir": "assets/processed/ui/card-effects",
+      "targetDir": "ui/card-effects"
+    },
+    {
+      "mode": "directory",
+      "kind": "ui-card-template",
+      "sourceDir": "assets/processed/ui/cards",
+      "targetDir": "ui/cards"
+    },
+    {
+      "mode": "directory",
+      "kind": "ui-combat-fx",
+      "sourceDir": "assets/processed/ui/combat-fx",
+      "targetDir": "ui/combat-fx"
+    },
+    {
+      "mode": "directory",
+      "kind": "ui-combat-icon",
+      "sourceDir": "assets/processed/ui/combat-icons",
+      "targetDir": "ui/combat-icons"
+    },
+    {
+      "mode": "directory",
+      "kind": "ui-dialogue",
+      "sourceDir": "assets/processed/ui/dialogue",
+      "targetDir": "ui/dialogue"
+    },
+    {
+      "mode": "directory",
+      "kind": "ui-frame",
+      "sourceDir": "assets/processed/ui/frames",
+      "targetDir": "ui/frames"
+    },
+    {
+      "mode": "directory",
+      "kind": "ui-map",
+      "sourceDir": "assets/processed/ui/map",
+      "targetDir": "ui/map"
+    },
+    {
+      "mode": "directory",
+      "kind": "ui-overlay",
+      "sourceDir": "assets/processed/ui/overlays",
+      "targetDir": "ui/overlays"
+    },
+    {
+      "mode": "directory",
+      "kind": "ui-status",
+      "sourceDir": "assets/processed/ui/status",
+      "targetDir": "ui/status"
+    }
+  ]
+}

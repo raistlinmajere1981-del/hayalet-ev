@@ -1,11 +1,52 @@
+/* global document, window */
+
 (function (global) {
   const registry = global.GameRoomUiContextRuntime || (global.GameRoomUiContextRuntime = {});
 
   registry.createGameRoomUiContextRuntime = function createGameRoomUiContextRuntime(deps) {
     const ROOM_ID = deps.roomId;
     const FEATURE_ID = deps.featureId;
-    const TEAM_TETRIS_FEATURE_ID = deps.teamTetrisFeatureId;
     const bootstrapCopy = deps.bootstrapCopy;
+    const featureRecords = Array.isArray(deps.featureRecords)
+      ? deps.featureRecords
+          .filter(function (entry) {
+            return entry && typeof entry === "object" && Array.isArray(entry) === false;
+          })
+          .map(function (entry) {
+            return {
+              id: typeof entry.id === "string" && entry.id.trim() !== "" ? entry.id.trim() : FEATURE_ID,
+              name:
+                typeof entry.name === "string" && entry.name.trim() !== ""
+                  ? entry.name.trim()
+                  : FEATURE_ID.toUpperCase(),
+              description:
+                typeof entry.description === "string" && entry.description.trim() !== ""
+                  ? entry.description.trim()
+                  : "",
+            };
+          })
+      : [
+          {
+            id: FEATURE_ID,
+            name: "XOX",
+            description: "",
+          },
+        ];
+    const fallbackFeatureRecord = featureRecords[0] || {
+      id: FEATURE_ID,
+      name: "XOX",
+      description: "",
+    };
+    const featureCatalog = new Map(
+      featureRecords.map(function (entry) {
+        return [entry.id, entry];
+      })
+    );
+
+    function normalizeFeatureId(value) {
+      const normalized = typeof value === "string" && value.trim() !== "" ? value.trim() : fallbackFeatureRecord.id;
+      return featureCatalog.has(normalized) ? normalized : fallbackFeatureRecord.id;
+    }
 
     function resolveLocale(value) {
       return typeof value === "string" && value.toLowerCase().startsWith("tr") ? "tr" : "en";
@@ -13,6 +54,19 @@
 
     function normalizePresentationMode(value) {
       return value === "scene-view" ? "scene-view" : "classic";
+    }
+
+    function normalizeUiScale(value) {
+      const numeric =
+        typeof value === "number"
+          ? value
+          : typeof value === "string"
+            ? Number.parseInt(value, 10)
+            : Number.NaN;
+      if (!Number.isFinite(numeric) || numeric <= 0) {
+        return 100;
+      }
+      return Math.max(70, Math.min(130, Math.round(numeric)));
     }
 
     function createSlot(slotId) {
@@ -53,23 +107,8 @@
             (bootstrapCopy.tr && bootstrapCopy.tr.roomTitle) ||
             "Game Room",
         },
-        features: [
-          {
-            id: FEATURE_ID,
-            name: "XOX",
-            description: "",
-          },
-          {
-            id: TEAM_TETRIS_FEATURE_ID,
-            name: "Team Tetris",
-            description: "",
-          },
-        ],
-        activeFeature: {
-          id: FEATURE_ID,
-          name: "XOX",
-          description: "",
-        },
+        features: featureRecords.slice(),
+        activeFeature: { ...fallbackFeatureRecord },
         user: {
           nickname:
             (bootstrapCopy.en && bootstrapCopy.en.userLabel) ||
@@ -156,32 +195,30 @@
               feature && typeof feature === "object" && Array.isArray(feature) === false
                 ? feature
                 : {};
-            const id =
-              featureSource.id === TEAM_TETRIS_FEATURE_ID ? TEAM_TETRIS_FEATURE_ID : FEATURE_ID;
+            const id = normalizeFeatureId(featureSource.id);
+            const fallbackFeature = featureCatalog.get(id) || fallbackFeatureRecord;
             return {
               id: id,
               name:
                 typeof featureSource.name === "string" && featureSource.name.trim() !== ""
                   ? featureSource.name.trim()
-                  : id === TEAM_TETRIS_FEATURE_ID
-                    ? "Team Tetris"
-                    : "XOX",
+                  : fallbackFeature.name,
               description:
                 typeof featureSource.description === "string" &&
                 featureSource.description.trim() !== ""
                   ? featureSource.description.trim()
-                  : "",
+                  : fallbackFeature.description,
             };
           })
-        : createContext().features;
+        : featureRecords.slice();
       const activeFeatureSource =
         source.activeFeature &&
         typeof source.activeFeature === "object" &&
         Array.isArray(source.activeFeature) === false
           ? source.activeFeature
           : {};
-      const activeFeatureId =
-        activeFeatureSource.id === TEAM_TETRIS_FEATURE_ID ? TEAM_TETRIS_FEATURE_ID : FEATURE_ID;
+      const activeFeatureId = normalizeFeatureId(activeFeatureSource.id);
+      const activeFallback = featureCatalog.get(activeFeatureId) || fallbackFeatureRecord;
 
       return {
         room: {
@@ -202,8 +239,8 @@
             return feature.id === activeFeatureId;
           }) || {
             id: activeFeatureId,
-            name: activeFeatureId === TEAM_TETRIS_FEATURE_ID ? "Team Tetris" : "XOX",
-            description: "",
+            name: activeFallback.name,
+            description: activeFallback.description,
           },
         user: {
           nickname:
@@ -228,6 +265,7 @@
       createSlot: createSlot,
       normalizeContext: normalizeContext,
       normalizePresentationMode: normalizePresentationMode,
+      normalizeUiScale: normalizeUiScale,
       normalizeSlot: normalizeSlot,
       readPath: readPath,
       resolveLocale: resolveLocale,

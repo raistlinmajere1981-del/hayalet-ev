@@ -1,7 +1,27 @@
+/* global document, navigator, window */
+
 (function () {
   const ROOM_ID = "game-room";
   const FEATURE_ID = "xox";
   const TEAM_TETRIS_FEATURE_ID = "team-tetris";
+  const FATE_KNOTS_FEATURE_ID = "fate-knots";
+  const FEATURE_RECORDS = [
+    {
+      id: FEATURE_ID,
+      name: "XOX",
+      description: "",
+    },
+    {
+      id: TEAM_TETRIS_FEATURE_ID,
+      name: "Team Tetris",
+      description: "",
+    },
+    {
+      id: FATE_KNOTS_FEATURE_ID,
+      name: "Fate Knots",
+      description: "",
+    },
+  ];
 
   const BOOTSTRAP_COPY = {
     en: {
@@ -32,8 +52,8 @@
   const contextRuntime = contextRuntimeFactory({
     roomId: ROOM_ID,
     featureId: FEATURE_ID,
-    teamTetrisFeatureId: TEAM_TETRIS_FEATURE_ID,
     bootstrapCopy: BOOTSTRAP_COPY,
+    featureRecords: FEATURE_RECORDS,
   });
 
   function text(path) {
@@ -48,13 +68,34 @@
     );
   }
 
-  function applyPresentationMode(mode) {
-    state.presentation.mode = contextRuntime.normalizePresentationMode(mode);
+  function formatScaleFactor(value) {
+    return value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  function applyPresentationMode(nextPresentation) {
+    const presentation =
+      nextPresentation && typeof nextPresentation === "object" && Array.isArray(nextPresentation) === false
+        ? nextPresentation
+        : { mode: nextPresentation };
+    state.presentation.mode = contextRuntime.normalizePresentationMode(presentation.mode);
+    state.presentation.uiScale = contextRuntime.normalizeUiScale(presentation.uiScale);
+    const scaleFactor = formatScaleFactor(state.presentation.uiScale / 100);
     if (document.body && document.body.dataset) {
       document.body.dataset.presentationMode = state.presentation.mode;
+      document.body.dataset.roomUiScale = String(state.presentation.uiScale);
+      if (document.body.style && typeof document.body.style.setProperty === "function") {
+        document.body.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
+      }
     }
     if (document.documentElement && document.documentElement.dataset) {
       document.documentElement.dataset.presentationMode = state.presentation.mode;
+      document.documentElement.dataset.roomUiScale = String(state.presentation.uiScale);
+      if (
+        document.documentElement.style &&
+        typeof document.documentElement.style.setProperty === "function"
+      ) {
+        document.documentElement.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
+      }
     }
   }
 
@@ -71,8 +112,16 @@
   }
 
   function getActiveFeatureId() {
-    return state.context.activeFeature && state.context.activeFeature.id === TEAM_TETRIS_FEATURE_ID
-      ? TEAM_TETRIS_FEATURE_ID
+    const activeFeatureId =
+      state.context &&
+      state.context.activeFeature &&
+      typeof state.context.activeFeature.id === "string"
+        ? state.context.activeFeature.id
+        : FEATURE_ID;
+    return FEATURE_RECORDS.some(function (feature) {
+      return feature.id === activeFeatureId;
+    })
+      ? activeFeatureId
       : FEATURE_ID;
   }
 
@@ -90,6 +139,58 @@
 
   function isRoomApiAvailable() {
     return !!(window.roomAPI && typeof window.roomAPI.sendCommand === "function");
+  }
+
+  function captureScrollState(root) {
+    return {
+      rootTop: root && typeof root.scrollTop === "number" ? root.scrollTop : null,
+      rootLeft: root && typeof root.scrollLeft === "number" ? root.scrollLeft : null,
+      bodyTop: document.body && typeof document.body.scrollTop === "number" ? document.body.scrollTop : null,
+      bodyLeft:
+        document.body && typeof document.body.scrollLeft === "number" ? document.body.scrollLeft : null,
+      documentTop:
+        document.documentElement && typeof document.documentElement.scrollTop === "number"
+          ? document.documentElement.scrollTop
+          : null,
+      documentLeft:
+        document.documentElement && typeof document.documentElement.scrollLeft === "number"
+          ? document.documentElement.scrollLeft
+          : null,
+      windowX: typeof window.scrollX === "number" ? window.scrollX : null,
+      windowY: typeof window.scrollY === "number" ? window.scrollY : null,
+    };
+  }
+
+  function restoreScrollState(root, scrollState) {
+    if (!scrollState || typeof scrollState !== "object") {
+      return;
+    }
+
+    if (root && typeof scrollState.rootTop === "number") {
+      root.scrollTop = scrollState.rootTop;
+    }
+    if (root && typeof scrollState.rootLeft === "number") {
+      root.scrollLeft = scrollState.rootLeft;
+    }
+    if (document.body && typeof scrollState.bodyTop === "number") {
+      document.body.scrollTop = scrollState.bodyTop;
+    }
+    if (document.body && typeof scrollState.bodyLeft === "number") {
+      document.body.scrollLeft = scrollState.bodyLeft;
+    }
+    if (document.documentElement && typeof scrollState.documentTop === "number") {
+      document.documentElement.scrollTop = scrollState.documentTop;
+    }
+    if (document.documentElement && typeof scrollState.documentLeft === "number") {
+      document.documentElement.scrollLeft = scrollState.documentLeft;
+    }
+    if (
+      typeof window.scrollTo === "function" &&
+      typeof scrollState.windowX === "number" &&
+      typeof scrollState.windowY === "number"
+    ) {
+      window.scrollTo(scrollState.windowX, scrollState.windowY);
+    }
   }
 
   function sendRoomCommand(command, payload) {
@@ -137,6 +238,16 @@
     sendRoomCommand: sendRoomCommand,
     getFeatureLabel: getFeatureLabel,
   });
+  const fateKnotsUi = factories.createFateKnotsUiModule({
+    getState: function () {
+      return state;
+    },
+    featureId: FATE_KNOTS_FEATURE_ID,
+    createElement: contextRuntime.createElement,
+    sendRoomCommand: sendRoomCommand,
+    getFeatureLabel: getFeatureLabel,
+    text: text,
+  });
 
   state = {
     locale: contextRuntime.resolveLocale(document.documentElement.lang || navigator.language),
@@ -145,8 +256,10 @@
     game: xoxUi.createGameState(),
     teamTetris: teamTetrisUi.createTeamTetrisState(),
     teamTetrisDraft: teamTetrisUi.createTeamTetrisDraft(),
+    fateKnots: fateKnotsUi.createFateKnotsState(),
     presentation: {
       mode: "scene-view",
+      uiScale: 100,
     },
     preferences: {
       target: "ai1",
@@ -163,17 +276,30 @@
       return;
     }
 
-    if (!state.translations) {
-      xoxUi.renderBootstrap(root);
-      return;
-    }
+    const scrollState = captureScrollState(root);
 
-    if (getActiveFeatureId() === TEAM_TETRIS_FEATURE_ID) {
-      teamTetrisUi.renderTeamTetris(root);
-      return;
-    }
+    try {
+      if (!state.translations) {
+        xoxUi.renderBootstrap(root);
+        return;
+      }
 
-    xoxUi.renderXox(root);
+      document.title = state.context.room.name + " - " + getFeatureLabel(getActiveFeatureId());
+
+      if (getActiveFeatureId() === TEAM_TETRIS_FEATURE_ID) {
+        teamTetrisUi.renderTeamTetris(root);
+        return;
+      }
+
+      if (getActiveFeatureId() === FATE_KNOTS_FEATURE_ID) {
+        fateKnotsUi.renderFateKnots(root);
+        return;
+      }
+
+      xoxUi.renderXox(root);
+    } finally {
+      restoreScrollState(root, scrollState);
+    }
   }
 
   function handleHostMessage(message) {
@@ -188,7 +314,7 @@
         Array.isArray(message.presentation) === false
           ? message.presentation
           : {};
-      applyPresentationMode(presentation.mode);
+      applyPresentationMode(presentation);
       if (typeof message.locale === "string") {
         applyLocale(message.locale);
       }
@@ -238,6 +364,19 @@
       return;
     }
 
+    if (message.type === "fate-knots-state") {
+      const payload =
+        message.payload &&
+        typeof message.payload === "object" &&
+        Array.isArray(message.payload) === false
+          ? message.payload
+          : {};
+      state.fateKnots = fateKnotsUi.sanitizeFateKnotsState(payload.state);
+      state.lastCommandMessage = "";
+      render();
+      return;
+    }
+
     if (message.type === "command-result") {
       const result =
         message.result &&
@@ -262,7 +401,7 @@
     window.__gameRoomTeamTetrisTest__ = teamTetrisUi.getTestBridge();
   }
 
-  applyPresentationMode(state.presentation.mode);
+  applyPresentationMode(state.presentation);
   applyLocale(state.locale);
   render();
 

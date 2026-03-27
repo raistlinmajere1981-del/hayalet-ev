@@ -43,7 +43,7 @@ test("game-room manifest validates with the XOX-first room contract", () => {
   assert.equal(validation.manifest?.defaultFeatureId, "xox");
   assert.deepEqual(
     validation.manifest?.features.map((feature) => feature.id),
-    ["xox", "team-tetris"]
+    ["xox", "team-tetris", "fate-knots"]
   );
   assert.equal(validation.manifest?.runtime.uiEntry, "ui/index.html");
   assert.equal(validation.manifest?.runtime.hostEntry, "host/index.js");

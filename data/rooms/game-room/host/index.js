@@ -1,92 +1,27 @@
+import { teamTetrisEngine } from "../main-functions/team-tetris/host/engine.js";
 import {
-  TEAM_TETRIS_BOARD_HEIGHT,
-  TEAM_TETRIS_BOARD_WIDTH,
-  TEAM_TETRIS_MOVE_SCHEMA,
-  TEAM_TETRIS_PIECE_IDS,
-  TEAM_TETRIS_SCHEMA_VERSION,
-  TEAM_TETRIS_SEAT_IDS,
-  TEAM_TETRIS_TURN_LOOP,
-  applyTeamTetrisMove,
-  buildTeamTetrisBoardHash,
-  buildTeamTetrisSeatView,
-  buildTeamTetrisTurnToken,
-  cloneTeamTetrisMatch,
-  createTeamTetrisMatch,
-  getTeamTetrisLegalRotations,
-  getTeamTetrisSpawnPosition,
-  getTeamTetrisTeamIds,
-  replayTeamTetrisPath,
-  teamTetrisBoardToRows,
-  teamTetrisEngine,
-  validateTeamTetrisMove,
-} from "../main-functions/team-tetris/host/engine.js";
-import {
-  TEAM_TETRIS_COMMAND_COPY,
-  TEAM_TETRIS_STATUS_COPY,
   createInitialTeamTetrisState,
-  loadTeamTetrisState,
   saveTeamTetrisState,
 } from "../main-functions/team-tetris/host/state.js";
 import {
-  COMMAND_COPY,
   DEFAULT_STARTER,
   DEFAULT_TARGET,
-  STATUS_COPY,
-  US1_SYNC_INTERVAL_MS,
-  buildBoardAscii,
-  buildBoardStateHash,
   createInitialState,
-  createPendingInvite,
-  getAvailableCells,
-  getOpponentInfo,
-  getOutcomeForBoard,
-  loadInviteInbox,
-  loadPendingInvite,
-  loadState,
-  normalizeInviteInbox,
-  pushRoomState,
-  refreshRoomState,
-  resolveStatusText,
   saveInviteInbox,
-  savePendingInvite,
   saveState,
   clearPendingInvite,
-  sanitizeStarter,
-  sanitizeTarget,
 } from "../main-functions/xox/host/state.js";
 import {
-  readArgs,
-  readBoardHashBeforeMove,
-  readCell,
-  readInviteId,
-  readInviteNote,
-  readRemoteUserId,
-  readTransportMessageId,
-  readTurnIndex,
-  normalizeTeamTetrisMoveArgs,
-} from "../shared/host/command-args.js";
-import {
-  createSlotState,
   getActiveFeatureId,
   loadContext,
   readLocale,
   saveContext,
 } from "../shared/host/context-state.js";
+import { FATE_KNOTS_FEATURE_ID } from "../shared/host/feature-meta.js";
 import {
-  FEATURE_ID,
-  PAGE_ID,
-  ROOM_ID,
-  TEAM_TETRIS_FEATURE_ID,
-  TEAM_TETRIS_PAGE_ID,
-} from "../shared/host/feature-meta.js";
-import { fillTemplate, normalizeText, translate } from "../shared/host/text.js";
-import {
-  blockTeamTetrisMatch,
-  dispatchNextTeamTetrisTurn,
   handleTeamTetrisMove,
   handleTeamTetrisReset,
   handleTeamTetrisStart,
-  getTeamTetrisReadiness,
   pushActiveFeatureState,
 } from "../main-functions/team-tetris/host/runtime.js";
 import {
@@ -103,15 +38,29 @@ import {
   syncFromContext as xoxSyncFromContext,
   syncUs1Mailbox as xoxSyncUs1Mailbox,
 } from "../main-functions/xox/host/runtime.js";
+import {
+  dispatchPendingWork as dispatchPendingFateKnotsWork,
+  handleCharacterSelect as fateKnotsHandleCharacterSelect,
+  handleChoice as fateKnotsHandleChoice,
+  handleCombatAction as fateKnotsHandleCombatAction,
+  handleEnd as fateKnotsHandleEnd,
+  handleReady as fateKnotsHandleReady,
+  handleReset as fateKnotsHandleReset,
+  handleSync as fateKnotsHandleSync,
+  handleStart as fateKnotsHandleStart,
+} from "../main-functions/fate-knots/host/runtime.js";
+import { resetFateKnotsState } from "../main-functions/fate-knots/host/state.js";
+import { FATE_KNOTS_COMMAND_NAMES } from "../main-functions/fate-knots/host/constants.js";
 
 const gameRoomHost = {
   activate: function activate(api) {
-    api.log("info", "Game Room XOX host activated.");
+    api.log("info", "Game Room host activated.");
     saveContext(api, {});
     saveInviteInbox(api, []);
     clearPendingInvite(api);
     saveState(api, createInitialState(readLocale(api), DEFAULT_TARGET, DEFAULT_STARTER));
     saveTeamTetrisState(api, createInitialTeamTetrisState(readLocale(api)));
+    resetFateKnotsState(api, "idle");
     xoxEnsureUs1SyncLoop(api);
 
     return {
@@ -152,9 +101,48 @@ const gameRoomHost = {
         GameRoomTeamTetrisRemoteMove: function (payload) {
           return handleTeamTetrisMove(api, payload || {});
         },
+        [FATE_KNOTS_COMMAND_NAMES.start]: function (payload) {
+          return fateKnotsHandleStart(api, payload || {});
+        },
+        [FATE_KNOTS_COMMAND_NAMES.reset]: function () {
+          return fateKnotsHandleReset(api);
+        },
+        [FATE_KNOTS_COMMAND_NAMES.ready]: function () {
+          return fateKnotsHandleReady(api);
+        },
+        [FATE_KNOTS_COMMAND_NAMES.characterSelect]: function (payload) {
+          return fateKnotsHandleCharacterSelect(api, payload || {});
+        },
+        [FATE_KNOTS_COMMAND_NAMES.choice]: function (payload) {
+          return fateKnotsHandleChoice(api, payload || {});
+        },
+        [FATE_KNOTS_COMMAND_NAMES.combatAction]: function (payload) {
+          return fateKnotsHandleCombatAction(api, payload || {});
+        },
+        [FATE_KNOTS_COMMAND_NAMES.sync]: function (payload) {
+          return fateKnotsHandleSync(api, payload || {});
+        },
+        [FATE_KNOTS_COMMAND_NAMES.end]: function () {
+          return fateKnotsHandleEnd(api);
+        },
+        [FATE_KNOTS_COMMAND_NAMES.aiChoice]: function (payload) {
+          return fateKnotsHandleChoice(api, payload || {});
+        },
+        [FATE_KNOTS_COMMAND_NAMES.aiCombatAction]: function (payload) {
+          return fateKnotsHandleCombatAction(api, payload || {});
+        },
+        [FATE_KNOTS_COMMAND_NAMES.remoteChoice]: function (payload) {
+          return fateKnotsHandleChoice(api, payload || {});
+        },
+        [FATE_KNOTS_COMMAND_NAMES.remoteCombatAction]: function (payload) {
+          return fateKnotsHandleCombatAction(api, payload || {});
+        },
       },
       onRoomReady: function onRoomReady() {
         pushActiveFeatureState(api);
+        if (getActiveFeatureId(loadContext(api)) === FATE_KNOTS_FEATURE_ID) {
+          void dispatchPendingFateKnotsWork(api);
+        }
         void xoxSyncUs1Mailbox(api, "room-ready");
       },
       onRoomEvent: function onRoomEvent(payload) {
@@ -169,7 +157,7 @@ const gameRoomHost = {
       },
       dispose: function dispose() {
         xoxClearUs1SyncLoop(api);
-        api.log("info", "Game Room XOX host disposed.");
+        api.log("info", "Game Room host disposed.");
       },
     };
   },

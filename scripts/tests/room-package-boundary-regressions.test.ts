@@ -106,6 +106,7 @@ test("generic room core sources do not hardcode room-specific package ids", asyn
   const allowedPathSuffixes = [
     "scripts/rooms/build-room-bundle.mjs",
     "scripts/rooms/migrate-room-layouts.mjs",
+    "scripts/rooms/sync-game-room-fate-knots-assets.mjs",
   ];
   const leaks: string[] = [];
 

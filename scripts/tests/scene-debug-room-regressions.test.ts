@@ -248,6 +248,20 @@ test("game-room manifest exposes Team Tetris scene hotspot ids for scene debug v
   );
 });
 
+test("game-room manifest exposes Fate Knots scene hotspot ids for scene debug visibility", () => {
+  const manifest = JSON.parse(readFileSync("rooms/game-room/manifest.json", "utf8"));
+  const feature = Array.isArray(manifest.features)
+    ? manifest.features.find((entry) => entry.id === "fate-knots")
+    : null;
+
+  assert.equal(feature?.scene?.hotspot?.id, "game-room-fate-knots");
+  assert.equal(feature?.scene?.view?.id, "fate-knots-closeup");
+  assert.equal(
+    feature?.scene?.view?.backgroundSrc,
+    "main-functions/fate-knots/assets/fate-knots-view.webp"
+  );
+});
+
 test("entrance and analyze scene layers keep hidden views passive in debug mode", () => {
   const entranceHtmlSource = readFileSync("src/pages/entrance.html", "utf8");
   const analyzeCssSource = readFileSync("src/styles/analyze.css", "utf8");

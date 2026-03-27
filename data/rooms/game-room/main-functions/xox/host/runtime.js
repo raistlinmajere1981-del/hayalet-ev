@@ -31,7 +31,12 @@ import {
   readTurnIndex,
 } from "../../../shared/host/command-args.js";
 import { getActiveFeatureId, loadContext, readLocale, saveContext } from "../../../shared/host/context-state.js";
-import { FEATURE_ID, ROOM_ID, TEAM_TETRIS_FEATURE_ID } from "../../../shared/host/feature-meta.js";
+import {
+  FATE_KNOTS_FEATURE_ID,
+  FEATURE_ID,
+  ROOM_ID,
+  TEAM_TETRIS_FEATURE_ID,
+} from "../../../shared/host/feature-meta.js";
 import { fillTemplate, normalizeText, translate } from "../../../shared/host/text.js";
 import {
   blockTeamTetrisMatch,
@@ -46,6 +51,7 @@ import {
   loadTeamTetrisState,
   saveTeamTetrisState,
 } from "../../team-tetris/host/state.js";
+import { syncFromContext as fateKnotsSyncFromContext } from "../../fate-knots/host/runtime.js";
 
 const XOX_COMMAND_NAMES = {
   acceptInvite: "GameRoomXoxAcceptInvite",
@@ -515,7 +521,8 @@ function processRoomCommands(api, roomCommands) {
       command.roomId !== ROOM_ID ||
       (command.featureId &&
         command.featureId !== FEATURE_ID &&
-        command.featureId !== TEAM_TETRIS_FEATURE_ID)
+        command.featureId !== TEAM_TETRIS_FEATURE_ID &&
+        command.featureId !== FATE_KNOTS_FEATURE_ID)
     ) {
       continue;
     }
@@ -691,6 +698,11 @@ function syncFromContext(api, payload) {
   const previousActiveFeatureId = getActiveFeatureId(previousContext);
   const context = saveContext(api, payload);
   const activeFeatureId = getActiveFeatureId(context);
+  fateKnotsSyncFromContext(api, {
+    context: context,
+    previousActiveFeatureId: previousActiveFeatureId,
+    activeFeatureId: activeFeatureId,
+  });
   const state = loadState(api);
   const teamTetrisState = loadTeamTetrisState(api);
   if (

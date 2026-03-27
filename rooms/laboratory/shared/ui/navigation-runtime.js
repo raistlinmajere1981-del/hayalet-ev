@@ -15,10 +15,44 @@ export function createLaboratoryUiNavigationRuntime(deps) {
     documentRef.documentElement.lang = state.locale;
   }
 
-  function applyPresentationMode(mode) {
-    state.presentation.mode = mode === "scene-view" ? "scene-view" : "classic";
+  function normalizeUiScale(value) {
+    const numeric =
+      typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Number.parseInt(value, 10)
+          : Number.NaN;
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      return 100;
+    }
+    return Math.max(70, Math.min(130, Math.round(numeric)));
+  }
+
+  function formatScaleFactor(value) {
+    return value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  function applyPresentationMode(nextPresentation) {
+    const presentation =
+      nextPresentation && typeof nextPresentation === "object" && Array.isArray(nextPresentation) === false
+        ? nextPresentation
+        : { mode: nextPresentation };
+    state.presentation.mode = presentation.mode === "scene-view" ? "scene-view" : "classic";
+    state.presentation.uiScale = normalizeUiScale(presentation.uiScale);
+    const scaleFactor = formatScaleFactor(state.presentation.uiScale / 100);
     documentRef.body.dataset.presentationMode = state.presentation.mode;
+    documentRef.body.dataset.roomUiScale = String(state.presentation.uiScale);
+    if (documentRef.body.style && typeof documentRef.body.style.setProperty === "function") {
+      documentRef.body.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
+    }
     documentRef.documentElement.dataset.presentationMode = state.presentation.mode;
+    documentRef.documentElement.dataset.roomUiScale = String(state.presentation.uiScale);
+    if (
+      documentRef.documentElement.style &&
+      typeof documentRef.documentElement.style.setProperty === "function"
+    ) {
+      documentRef.documentElement.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
+    }
   }
 
   function normalizeContext(message) {
@@ -54,6 +88,7 @@ export function createLaboratoryUiNavigationRuntime(deps) {
       },
       presentation: {
         mode: presentation.mode === "scene-view" ? "scene-view" : "classic",
+        uiScale: normalizeUiScale(presentation.uiScale),
       },
     };
   }

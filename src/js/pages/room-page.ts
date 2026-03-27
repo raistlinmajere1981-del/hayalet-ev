@@ -17,7 +17,9 @@ import type { SceneEditorAssetTargetDescriptor } from "../scene-editor/scene-the
 import { type SceneAlphaWindowBounds } from "../scene/alpha-window.js";
 import type { SceneLayoutConfig } from "../scene/layout/index.js";
 import type { SceneClickableThemeDefinition } from "../scene/schema.js";
+import { SceneUiScaleManager } from "../scene-system/index.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
+import { ThemeManager } from "../ui/theme/index.js";
 import { createRoomPageSceneAssetRuntime } from "./room-page/scene-asset-runtime.js";
 import { createRoomPageRuntimeHostRuntime } from "./room-page/runtime-host-runtime.js";
 import {
@@ -69,6 +71,8 @@ export class RoomPageController implements PageController {
   private readonly runtimeContextRuntime: ReturnType<typeof createRoomPageRuntimeContextRuntime>;
   private readonly runtimeHostRuntime: ReturnType<typeof createRoomPageRuntimeHostRuntime>;
   private readonly sceneRuntime: ReturnType<typeof createRoomPageSceneRuntime>;
+  private unsubscribeThemeChange: (() => void) | null = null;
+  private unsubscribeSceneUiScaleChange: (() => void) | null = null;
 
   constructor(room: InstalledRoomRecord, pageName: string) {
     this.room = { ...room };
@@ -231,6 +235,12 @@ export class RoomPageController implements PageController {
       this.render();
       void this.runtimeContextRuntime.sync("locale-change");
     });
+    this.unsubscribeThemeChange ??= ThemeManager.onChange(() => {
+      void this.runtimeContextRuntime.sync("theme-appearance");
+    });
+    this.unsubscribeSceneUiScaleChange ??= SceneUiScaleManager.onChange(() => {
+      void this.runtimeContextRuntime.sync("scene-scale");
+    });
     this.bindRoomContextSubscriptions();
     this.render();
     await this.runtimeHostRuntime.ensure();
@@ -257,6 +267,10 @@ export class RoomPageController implements PageController {
   dispose(): void {
     this.unsubscribeI18n?.();
     this.unsubscribeI18n = null;
+    this.unsubscribeThemeChange?.();
+    this.unsubscribeThemeChange = null;
+    this.unsubscribeSceneUiScaleChange?.();
+    this.unsubscribeSceneUiScaleChange = null;
     this.clearRoomContextSubscriptions();
     void RoomHostRuntime.disposeRoom(this.room.id);
     const classicMount = getRoomPageRuntimeMount(this.getPage());

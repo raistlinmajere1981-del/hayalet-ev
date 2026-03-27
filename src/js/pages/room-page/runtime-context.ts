@@ -3,6 +3,7 @@ import type { SlotStateInfo } from "../../../types/assistant.js";
 import { AppState } from "../../modules/app-state.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { SlotController } from "../../modules/slot-controller.js";
+import { getAppUiScale, getSceneUiScale } from "../../ui/theme/ui-scale-state.js";
 
 export type RoomHostMessage = Record<string, unknown>;
 
@@ -96,6 +97,7 @@ export function buildRoomRuntimeContextPayload(options: {
           },
     presentation: {
       mode: sceneFeatureOpen ? "scene-view" : "classic",
+      uiScale: sceneFeatureOpen ? getSceneUiScale() : getAppUiScale(),
       sceneEnabled: room.scene !== undefined,
       sceneViewId: sceneFeature?.scene?.view.id ?? null,
     },

@@ -16,6 +16,7 @@ const room: InstalledRoomRecord = {
   features: [
     { id: "xox", name: "XOX" },
     { id: "team-tetris", name: "Team Tetris" },
+    { id: "fate-knots", name: "Fate Knots" },
   ],
   commandSpecs: [
     {
@@ -48,6 +49,21 @@ const room: InstalledRoomRecord = {
       description: "Apply Team Tetris remote move from US1",
       scope: "us1",
     },
+    {
+      name: "GameRoomFateKnotsStart",
+      description: "Start Fate Knots from room UI",
+      scope: "room-ui",
+    },
+    {
+      name: "GameRoomFateKnotsAiChoice",
+      description: "Apply Fate Knots AI decision vote",
+      scope: "ai-slots",
+    },
+    {
+      name: "GameRoomFateKnotsRemoteChoice",
+      description: "Apply Fate Knots remote decision vote",
+      scope: "us1",
+    },
   ],
   installedAt: "2026-03-08T00:00:00.000Z",
   updatedAt: "2026-03-08T00:00:00.000Z",
@@ -60,12 +76,15 @@ test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
   assert.equal(RoomCommandRegistry.has("GameRoomXoxUserMove"), true);
   assert.equal(RoomCommandRegistry.getMetadata("GameRoomXoxUserMove")?.roomId, "game-room");
   assert.deepEqual(RoomCommandRegistry.listCommands("ai1-ai2"), [
+    "GameRoomFateKnotsAiChoice",
+    "GameRoomFateKnotsStart",
     "GameRoomTeamTetrisAiMove",
     "GameRoomTeamTetrisStart",
     "GameRoomXoxAiMove",
     "GameRoomXoxUserMove",
   ]);
   assert.deepEqual(RoomCommandRegistry.listCommands("us1"), [
+    "GameRoomFateKnotsRemoteChoice",
     "GameRoomTeamTetrisRemoteMove",
     "GameRoomXoxRemoteMove",
   ]);
@@ -90,6 +109,11 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
   RoomCommandRegistry.syncInstalledRooms([room]);
 
   RoomCommandRegistry.registerHandler("game-room", "GameRoomXoxAiMove", async (payload) => payload.roomArgs);
+  RoomCommandRegistry.registerHandler(
+    "game-room",
+    "GameRoomFateKnotsAiChoice",
+    async (payload) => payload.roomArgs
+  );
   RoomCommandRegistry.registerHandler("game-room", "GameRoomXoxUserMove", async (payload) => payload.roomArgs);
   RoomCommandRegistry.registerHandler(
     "game-room",
@@ -105,6 +129,10 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
     provider: "ai1",
     args: '{"cell":2}',
   })) as { success?: boolean; message?: string };
+  const fateKnotsAllowed = await RoomCommandRegistry.run("GameRoomFateKnotsAiChoice", {
+    provider: "ai1",
+    args: '{"sessionId":"fk-1","stepId":"gate-arrival","choiceId":"follow-lantern"}',
+  });
   const us1Allowed = await RoomCommandRegistry.run("GameRoomXoxRemoteMove", {
     provider: "us1",
     args: '{"inviteId":"invite-1","cell":4}',
@@ -117,6 +145,11 @@ test("RoomCommandRegistry parses AI args and enforces scope rules", async () => 
   assert.deepEqual(allowed, { cell: 8, symbol: "O" });
   assert.equal(blocked.success, false);
   assert.match(blocked.message ?? "", /scope|kapsam/i);
+  assert.deepEqual(fateKnotsAllowed, {
+    sessionId: "fk-1",
+    stepId: "gate-arrival",
+    choiceId: "follow-lantern",
+  });
   assert.deepEqual(us1Allowed, { inviteId: "invite-1", cell: 4 });
   assert.equal(us1Blocked.success, false);
   assert.match(us1Blocked.message ?? "", /scope|kapsam/i);

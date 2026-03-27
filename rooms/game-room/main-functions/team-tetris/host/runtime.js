@@ -21,13 +21,20 @@ import {
   loadContext,
   readLocale,
 } from "../../../shared/host/context-state.js";
-import { ROOM_ID, TEAM_TETRIS_FEATURE_ID, TEAM_TETRIS_PAGE_ID } from "../../../shared/host/feature-meta.js";
+import {
+  FATE_KNOTS_FEATURE_ID,
+  ROOM_ID,
+  TEAM_TETRIS_FEATURE_ID,
+  TEAM_TETRIS_PAGE_ID,
+} from "../../../shared/host/feature-meta.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
 import {
   normalizeTeamTetrisMoveArgs,
   readTransportMessageId,
 } from "../../../shared/host/command-args.js";
 import { loadState, pushRoomState } from "../../xox/host/state.js";
+import { loadFateKnotsState, pushFateKnotsState } from "../../fate-knots/host/state.js";
+import { loadFateKnotsContentRegistry } from "../../fate-knots/host/content-loader.js";
 
 function teamTetrisCommandMessage(locale, key, params) {
   return fillTemplate(translate(locale, TEAM_TETRIS_COMMAND_COPY, key), params || {});
@@ -365,6 +372,9 @@ export function pushActiveFeatureState(api) {
   const context = loadContext(api);
   if (getActiveFeatureId(context) === TEAM_TETRIS_FEATURE_ID) {
     return pushTeamTetrisState(api, loadTeamTetrisState(api));
+  }
+  if (getActiveFeatureId(context) === FATE_KNOTS_FEATURE_ID) {
+    return pushFateKnotsState(api, loadFateKnotsState(api), loadFateKnotsContentRegistry());
   }
   return pushRoomState(api, loadState(api));
 }

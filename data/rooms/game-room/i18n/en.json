@@ -3,7 +3,8 @@
   "subtitle": "Focused table game room for direct matches with live AI slots or the connected US1 remote user.",
   "features": {
     "xox": "XOX",
-    "team-tetris": "Team Tetris"
+    "team-tetris": "Team Tetris",
+    "fate-knots": "Fate Knots"
   },
   "xox": {
     "heroBadge": "Game Room",
@@ -177,6 +178,93 @@
       "horizontalCollision": "The drawn path hits an occupied cell while shifting sideways.",
       "downwardCollision": "The drawn path pushes the piece below its legal lock point.",
       "incompletePath": "Keep drawing until the piece reaches its final lock position."
+    }
+  },
+  "fateKnots": {
+    "heroBadge": "Game Room",
+    "heroTitle": "Fate Knots Table",
+    "heroSubtitle": "A co-op story-combat slice with deterministic AI companions, unanimous votes, and one opening encounter.",
+    "controls": {
+      "start": "Start Run",
+      "reset": "Reset Run",
+      "ready": "Lock Build",
+      "sync": "Sync",
+      "end": "End Run"
+    },
+    "creation": {
+      "title": "Character Creation",
+      "subtitle": "Pick the local build, then lock it so the shared slice can begin.",
+      "avatarLabel": "Avatar",
+      "classLabel": "Class",
+      "backgroundLabel": "Background",
+      "locked": "Build locked",
+      "incomplete": "Pick an avatar, class, and background.",
+      "summaryTitle": "Build Summary"
+    },
+    "roster": {
+      "title": "Participants",
+      "locked": "Locked",
+      "unlock": "Selecting",
+      "excluded": "US1 stays outside the V1 playable roster and is tracked for later iterations.",
+      "missing": "Seat unavailable"
+    },
+    "status": {
+      "label": "Run Status",
+      "idle": "Prepare a Fate Knots run.",
+      "pendingSeats": "Pending",
+      "deadline": "Deadline",
+      "compatibility": "Compatibility",
+      "waiting": "Waiting"
+    },
+    "coverage": {
+      "title": "Visible Asset Coverage"
+    },
+    "map": {
+      "title": "Route Map"
+    },
+    "scenario": {
+      "missing": "Scenario step is not available.",
+      "mapLabel": "Map",
+      "choicesLabel": "Common Decision",
+      "speaker": "Speaker",
+      "conflict": "Votes conflicted. Sync to re-request the AI seats.",
+      "pending": "Awaiting",
+      "logLabel": "Story Log"
+    },
+    "combat": {
+      "missing": "Combat state is not available.",
+      "enemyLabel": "Encounter",
+      "actionsLabel": "Combat Actions",
+      "waitingHint": "Waiting for the next seat to act.",
+      "roundLabel": "Round",
+      "turnLabel": "Turn",
+      "partyTitle": "Field Party"
+    },
+    "result": {
+      "label": "Result",
+      "titleFallback": "Run Complete",
+      "logLabel": "Run Log"
+    },
+    "turns": {
+      "idle": "Idle"
+    },
+    "overview": {
+      "partyTitle": "Gathered Seats"
+    },
+    "seats": {
+      "user": "You",
+      "ai1": "AI1",
+      "ai2": "AI2",
+      "us1": "US1"
+    },
+    "seatState": {
+      "active": "Active",
+      "locked": "Locked",
+      "ready": "Ready",
+      "selecting": "Selecting",
+      "deferred": "Deferred",
+      "reserved": "Reserved",
+      "standby": "Standby"
     }
   }
 }

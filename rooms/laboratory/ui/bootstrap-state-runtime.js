@@ -18,6 +18,7 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       },
       presentation: {
         mode: "classic",
+        uiScale: 100,
       },
     };
   }
@@ -93,6 +94,7 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
     context: createContext(),
     presentation: {
       mode: "scene-view",
+      uiScale: 100,
     },
     activeStage: "source",
     sourceSnapshot: createSourceSnapshot(),

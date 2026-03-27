@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 test("settings theme panel wires scene theme management UI", () => {
   const htmlSource = readFileSync("src/pages/settings.html", "utf8");
   const appSource = readFileSync("src/js/pages/settings/app.ts", "utf8");
+  const controllerSource = readFileSync("src/js/pages/settings/controller.ts", "utf8");
   const initSource = readFileSync("src/js/pages/settings/panels/init.ts", "utf8");
   const panelSource = readFileSync("src/js/pages/settings/panels/theme.ts", "utf8");
 
@@ -27,6 +28,8 @@ test("settings theme panel wires scene theme management UI", () => {
   assert.match(panelSource, /syncInstalledSceneThemeRegistrationsFromElectron/);
   assert.match(panelSource, /sceneThemesImportBundle/);
   assert.match(panelSource, /sceneThemesPackageInstalled/);
+  assert.match(controllerSource, /SceneUiScaleManager\.onChange\(\(\) => \{/);
+  assert.match(controllerSource, /this\.sync\(this\.state\);/);
 });
 
 test("settings language panel wires tab, panel, and renderer bootstrap", () => {

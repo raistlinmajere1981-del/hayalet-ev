@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "id": "game-room",
   "name": "Game Room",
-  "version": "2.4.0",
-  "description": "A focused board-game room for XOX duels and four-seat Team Tetris matches with live AI slots plus the connected US1 remote user.",
+  "version": "2.5.0",
+  "description": "A focused board-game room for XOX duels, four-seat Team Tetris matches, and the co-op Fate Knots story-combat skeleton with live AI slots plus the connected US1 remote user.",
   "menu": {
     "label": "Game Room",
     "icon": "🎮",
@@ -253,6 +253,124 @@
             "topPct": 16.4,
             "widthPct": 75.2,
             "heightPct": 63.8
+          }
+        }
+      }
+    },
+    {
+      "id": "fate-knots",
+      "name": "Fate Knots",
+      "description": "A shared story-combat skeleton with unanimous party decisions, deterministic AI companions, and one opening encounter.",
+      "icon": "FK",
+      "commandSpecs": [
+        {
+          "name": "GameRoomFateKnotsStart",
+          "description": "Start a new Fate Knots run from the room UI.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomFateKnotsReset",
+          "description": "Reset the active Fate Knots run state.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomFateKnotsReady",
+          "description": "Lock the local Fate Knots character build and continue the slice.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomFateKnotsCharacterSelect",
+          "description": "Apply the local Fate Knots avatar, class, or background selection.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomFateKnotsChoice",
+          "description": "Submit the local shared-decision vote for the current Fate Knots step.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomFateKnotsCombatAction",
+          "description": "Submit the local combat action for the current Fate Knots turn.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomFateKnotsSync",
+          "description": "Recalculate waiting state and retry pending Fate Knots dispatch work.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomFateKnotsEnd",
+          "description": "End the current Fate Knots run and return the feature to idle.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "GameRoomFateKnotsAiChoice",
+          "description": "Apply the AI seat vote returned for a Fate Knots decision step.",
+          "scope": "ai-slots"
+        },
+        {
+          "name": "GameRoomFateKnotsAiCombatAction",
+          "description": "Apply the AI seat combat action returned for Fate Knots combat.",
+          "scope": "ai-slots"
+        },
+        {
+          "name": "GameRoomFateKnotsRemoteChoice",
+          "description": "Apply a US1 Fate Knots decision vote delivered over room transport.",
+          "scope": "us1"
+        },
+        {
+          "name": "GameRoomFateKnotsRemoteCombatAction",
+          "description": "Apply a US1 Fate Knots combat action delivered over room transport.",
+          "scope": "us1"
+        }
+      ],
+      "protocolSpecs": [
+        {
+          "key": "game-room-fate-knots-ai-decision",
+          "room": "game-room",
+          "scenario": "fate-knots-ai-decision",
+          "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][DECISION]",
+          "editable": true,
+          "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-decision.md"
+        },
+        {
+          "key": "game-room-fate-knots-ai-combat",
+          "room": "game-room",
+          "scenario": "fate-knots-ai-combat",
+          "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][COMBAT]",
+          "editable": true,
+          "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-combat.md"
+        },
+        {
+          "key": "game-room-fate-knots-us1-transport",
+          "room": "game-room",
+          "scenario": "fate-knots-us1-transport",
+          "title": "[INFO][GAME-ROOM][FATE-KNOTS][US1-TRANSPORT]",
+          "editable": false,
+          "path": "main-functions/fate-knots/protocols/game-room-fate-knots-us1-transport.md"
+        }
+      ],
+      "scene": {
+        "hotspot": {
+          "id": "game-room-fate-knots",
+          "rect": {
+            "leftPx": 632,
+            "topPx": 268,
+            "widthPx": 304,
+            "heightPx": 216
+          },
+          "label": {
+            "text": "Fate Knots"
+          }
+        },
+        "view": {
+          "id": "fate-knots-closeup",
+          "backgroundSrc": "main-functions/fate-knots/assets/fate-knots-view.webp",
+          "transparentWindow": {
+            "leftPct": 17.5,
+            "topPct": 14.2,
+            "widthPct": 65.4,
+            "heightPct": 67.6
           }
         }
       }
