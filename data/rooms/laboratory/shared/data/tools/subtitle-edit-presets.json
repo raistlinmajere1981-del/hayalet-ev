@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "defaultPresetId": "safe-cleanup",
+  "presets": [
+    {
+      "id": "safe-cleanup",
+      "label": "Safe cleanup",
+      "operations": {
+        "trimWhitespace": true,
+        "collapseBlankLines": true,
+        "normalizeQuotes": false,
+        "stripHtml": false,
+        "removeMusicTags": false,
+        "mergeShortCues": false,
+        "splitLongLines": true,
+        "maxCharsPerLine": 42
+      }
+    },
+    {
+      "id": "broadcast-cleanup",
+      "label": "Broadcast cleanup",
+      "operations": {
+        "trimWhitespace": true,
+        "collapseBlankLines": true,
+        "normalizeQuotes": true,
+        "stripHtml": true,
+        "removeMusicTags": true,
+        "mergeShortCues": true,
+        "splitLongLines": true,
+        "maxCharsPerLine": 40
+      }
+    }
+  ]
+}

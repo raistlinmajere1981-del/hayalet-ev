@@ -15,10 +15,10 @@
   position: absolute;
   right: clamp(var(--scene-rem-0-55), 1.6vw, var(--scene-rem-1));
   bottom: clamp(var(--scene-rem-0-55), 2vh, var(--scene-rem-1));
-  width: min(34rem, calc(100vw - 1rem));
-  min-width: min(22rem, calc(100vw - 1rem));
-  min-height: min(24rem, 48vh);
-  max-height: min(74vh, 42rem);
+  width: min(34rem, calc((100vw - 1rem) / var(--scene-ui-relative-scale-factor, 1)));
+  min-width: min(22rem, calc((100vw - 1rem) / var(--scene-ui-relative-scale-factor, 1)));
+  min-height: min(24rem, calc(48vh / var(--scene-ui-relative-scale-factor, 1)));
+  max-height: min(calc(74vh / var(--scene-ui-relative-scale-factor, 1)), 42rem);
   padding: var(--scene-rem-0-95) var(--scene-rem-0-95)
     max(var(--scene-rem-0-95), env(safe-area-inset-bottom));
   border: var(--scene-px-1) solid rgb(255 222 186 / 0.18);

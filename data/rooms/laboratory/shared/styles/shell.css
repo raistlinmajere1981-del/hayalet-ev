@@ -1,0 +1,110 @@
+:root {
+  color-scheme: dark;
+  --lab-bg-0: #05080d;
+  --lab-bg-1: #0a1118;
+  --lab-bg-2: #111b24;
+  --lab-surface: rgb(10 17 24 / 0.88);
+  --lab-surface-strong: rgb(13 22 31 / 0.96);
+  --lab-line: rgb(124 173 182 / 0.17);
+  --lab-line-strong: rgb(149 211 221 / 0.42);
+  --lab-cyan: #79d3e0;
+  --lab-cyan-strong: #2ac6de;
+  --lab-mint: #68d6c0;
+  --lab-ember: #d49a62;
+  --lab-ink: #eef5f8;
+  --lab-muted: #94a8b1;
+  --lab-soft: rgb(118 208 218 / 0.12);
+  --lab-shadow: 0 32px 80px rgb(0 0 0 / 0.42);
+  --room-runtime-ui-scale-factor: 1;
+  background: transparent;
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  overflow: hidden;
+  color: var(--lab-ink);
+  background: transparent;
+}
+
+#app {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  zoom: var(--room-runtime-ui-scale-factor, 1);
+}
+
+.lab-shell {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: clamp(0.75rem, 1.6vw, 1rem);
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.lab-shell__grain,
+.lab-shell__aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lab-shell__grain {
+  opacity: 0.3;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.02) 1px, transparent 1px);
+  background-size: 3px 3px, 3px 3px;
+  mix-blend-mode: soft-light;
+}
+
+.lab-shell__aura {
+  background:
+    radial-gradient(circle at top left, rgb(33 130 144 / 0.18), transparent 30%),
+    radial-gradient(circle at 82% 14%, rgb(119 214 227 / 0.12), transparent 24%),
+    radial-gradient(circle at 70% 82%, rgb(212 154 98 / 0.12), transparent 26%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.03), transparent 18%);
+}
+
+.lab-topbar,
+.lab-surface,
+.lab-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.lab-topbar {
+  margin-bottom: 0.7rem;
+}
+
+body[data-presentation-mode="scene-view"] .lab-shell {
+  height: 100%;
+  padding: 0;
+}
+
+body[data-presentation-mode="scene-view"] .lab-surface {
+  min-height: 0;
+  height: 100%;
+  padding: 0.8rem;
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.025), transparent 24%),
+    linear-gradient(145deg, rgb(7 13 20 / 0.82), rgb(10 18 26 / 0.88));
+}

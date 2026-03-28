@@ -93,7 +93,7 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
     translations: null,
     context: createContext(),
     presentation: {
-      mode: "scene-view",
+      mode: "classic",
       uiScale: 100,
     },
     activeStage: "source",
@@ -147,6 +147,10 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       scrollPositions: {
         surface: 0,
         overlay: 0,
+      },
+      stackScrollPositions: {
+        main: 0,
+        side: 0,
       },
       surfaceScrollResetPending: false,
       overlayScrollResetPending: false,

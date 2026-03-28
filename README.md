@@ -239,6 +239,18 @@ Babel AST
 npm install
 npm run dev
 
+Opsiyonel OpenCV destekli asset işleme:
+
+npm run opencv:install
+npm run assets:process:opencv
+
+Notlar:
+
+- Normal `npm install` hızlı kalır; OpenCV ayrı kurulur.
+- OpenCV build cache'i `tmp/opencv-build/` altında tutulur.
+- Proje runtime'ı bu cache'i otomatik kullanır; `npm run assets:process:opencv` için ek env gerekmez.
+- `node_modules` temizlenirse OpenCV için `npm run opencv:install` yeniden çalıştırılmalıdır.
+
 Production build:
 
 npm run build

@@ -7,7 +7,16 @@
   background: var(--bg-overlay);
   backdrop-filter: var(--glass-blur);
   z-index: var(--z-splash);
+  isolation: isolate;
   animation: backdrop-enter var(--duration-normal) var(--ease-out);
+}
+
+.splash::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: color-mix(in srgb, var(--bg-app) 94%, black);
 }
 
 .splash.is-hidden {
@@ -42,6 +51,8 @@
   animation: modal-enter var(--duration-slow) var(--ease-out);
   min-width: var(--splash-min-w);
   max-width: var(--splash-max-w);
+  position: relative;
+  z-index: 1;
 }
 
 .splash-logo-container {
@@ -132,6 +143,10 @@
 
   background: var(--splash-scene-bg);
   backdrop-filter: var(--blur-surface-sm);
+}
+
+.splash[data-ui-mode="scene"]::before {
+  background: var(--scene-shell-screen-bg, color-mix(in srgb, var(--bg-app) 94%, black));
 }
 
 .splash[data-ui-mode="scene"] .splash-content {

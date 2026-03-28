@@ -1833,6 +1833,7 @@
     function createSelectionSummary(state, selection) {
       const user = getUserParticipant(state);
       const bundle = getSelectionBundle(state, user);
+      const summaryMount = createRegion("div", "fk-summary-rail__mount", "summary-rail");
       const summary = createFrame(
         "aside",
         "fk-stage-frame fk-stage-frame--rail fk-summary-rail",
@@ -1907,6 +1908,7 @@
       }
       hero.append(heroBody);
       summary.append(hero);
+      const selectionActions = createRegion("div", "fk-selection-actions", "selection-actions");
       const actions = createRegion("div", "fk-action-cluster", "lock-zone");
       const readyLabel = selection.locked
         ? t(["fateKnots", "creation", "locked"], "Build locked")
@@ -1933,8 +1935,10 @@
           }
         )
       );
-      summary.append(actions);
-      return summary;
+      selectionActions.append(actions);
+      summary.append(selectionActions);
+      summaryMount.append(summary);
+      return summaryMount;
     }
 
     function renderCreationStage(parent, state) {

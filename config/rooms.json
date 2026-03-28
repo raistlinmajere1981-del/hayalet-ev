@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-03-27T22:58:00.540Z",
+  "updatedAt": "2026-03-28T09:33:14.944Z",
   "rooms": [
     {
       "id": "game-room",
@@ -624,6 +624,148 @@
       ],
       "installedAt": "2026-03-27T22:58:00.540Z",
       "updatedAt": "2026-03-27T22:58:00.540Z"
+    },
+    {
+      "id": "laboratory",
+      "name": "Laboratory",
+      "version": "1.0.0",
+      "description": "An obsidian media analysis room with staged dummy controls for capture, cleanup, profiling, processing, and reporting.",
+      "icon": "LB",
+      "sourceDir": "/home/raistlin/hayalet-ev/rooms/laboratory",
+      "installedDir": "/home/raistlin/hayalet-ev/data/rooms/laboratory",
+      "manifestPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/manifest.json",
+      "runtimeEntryPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/ui/index.html",
+      "hostEntryPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/host/index.js",
+      "defaultFeatureId": "media-analysis",
+      "features": [
+        {
+          "id": "media-analysis",
+          "name": "Media Analysis",
+          "description": "A staged visual shell for source capture, edit setup, profile selection, processing, and reporting.",
+          "icon": "MA",
+          "scene": {
+            "hotspot": {
+              "id": "laboratory-media-analysis",
+              "rect": {
+                "leftPx": 934,
+                "topPx": 176,
+                "widthPx": 508,
+                "heightPx": 320
+              },
+              "label": {
+                "text": "Media Analysis"
+              }
+            },
+            "view": {
+              "id": "media-analysis-console",
+              "backgroundPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/main-functions/media-analysis/assets/media-analysis-view.webp",
+              "transparentWindow": {
+                "leftPct": 2.4,
+                "topPct": 10.8,
+                "widthPct": 95.2,
+                "heightPct": 79.4
+              }
+            }
+          }
+        },
+        {
+          "id": "audio-analysis",
+          "name": "Audio Analysis",
+          "description": "An audio-first analysis desk that reuses the laboratory tool room for source prep, signal checks, speech tooling, and reporting.",
+          "icon": "AU",
+          "scene": {
+            "hotspot": {
+              "id": "laboratory-audio-analysis",
+              "rect": {
+                "leftPx": 182,
+                "topPx": 172,
+                "widthPx": 468,
+                "heightPx": 318
+              },
+              "label": {
+                "text": "Audio Analysis"
+              }
+            },
+            "view": {
+              "id": "audio-analysis-console",
+              "backgroundPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/main-functions/audio-analysis/assets/sound-analysis.webp",
+              "transparentWindow": {
+                "leftPct": 2.4,
+                "topPct": 10.8,
+                "widthPct": 95.2,
+                "heightPct": 79.4
+              }
+            }
+          }
+        },
+        {
+          "id": "subtitle-analysis",
+          "name": "Subtitle Analysis",
+          "description": "A subtitle-first workbench for local subtitle intake, YouTube subtitle capture, cleanup, QC, and reporting.",
+          "icon": "SB",
+          "scene": {
+            "hotspot": {
+              "id": "laboratory-subtitle-analysis",
+              "rect": {
+                "leftPx": 678,
+                "topPx": 522,
+                "widthPx": 348,
+                "heightPx": 214
+              },
+              "label": {
+                "text": "Subtitle Analysis"
+              }
+            },
+            "view": {
+              "id": "subtitle-analysis-console",
+              "backgroundPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/main-functions/subtitle-analysis/assets/subtitle-analysis.webp",
+              "transparentWindow": {
+                "leftPct": 2.4,
+                "topPct": 10.8,
+                "widthPct": 95.2,
+                "heightPct": 79.4
+              }
+            }
+          }
+        }
+      ],
+      "scene": {
+        "referenceSize": {
+          "width": 1600,
+          "height": 900
+        },
+        "roomBackgroundPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/shared/assets/room-background.webp",
+        "roomsHotspot": {
+          "id": "laboratory-door",
+          "rect": {
+            "leftPx": 722,
+            "topPx": 234,
+            "widthPx": 170,
+            "heightPx": 330
+          },
+          "label": {
+            "text": "Laboratory"
+          }
+        },
+        "backHotspot": {
+          "id": "laboratory-back",
+          "rect": {
+            "leftPx": 54,
+            "topPx": 150,
+            "widthPx": 168,
+            "heightPx": 256
+          },
+          "label": {
+            "text": "Corridor"
+          }
+        },
+        "chrome": {
+          "pageShellVariant": "immersive-stage"
+        }
+      },
+      "i18nBaseDir": "/home/raistlin/hayalet-ev/data/rooms/laboratory/i18n",
+      "installedAt": "2026-03-28T09:33:14.944Z",
+      "updatedAt": "2026-03-28T09:33:14.944Z"
     }
   ]
 }

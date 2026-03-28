@@ -20,6 +20,7 @@ import {
   UI_MODE_TRIGGER_SELECTOR,
   type UiModeToggleState,
 } from "./ui-mode/index.js";
+import { closeWorkspaceToolPage, getActiveWorkspaceTool } from "../ui/workspace-tool-overlay.js";
 
 import type { PageController } from "./types.js";
 import { shellT } from "./shell-i18n.js";
@@ -206,6 +207,14 @@ export function setupNavigation(): void {
 export function showPage(pageName: string, rememberSpecialReturn = true): void {
   const normalizedPageName = pageName;
   const previousPage = currentPage;
+
+  if (previousPage !== null && previousPage !== normalizedPageName) {
+    const activeWorkspaceTool = getActiveWorkspaceTool();
+    if (activeWorkspaceTool !== null) {
+      closeWorkspaceToolPage(activeWorkspaceTool);
+    }
+  }
+
   if (
     rememberSpecialReturn &&
     isSpecialPage(normalizedPageName) &&

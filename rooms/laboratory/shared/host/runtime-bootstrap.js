@@ -4,6 +4,19 @@ export function createLaboratoryRuntimeBootstrap(deps) {
   const roomId = deps.roomId;
   const toRecord = deps.toRecord;
 
+  function normalizeUiScale(value) {
+    const numeric =
+      typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Number.parseInt(value, 10)
+          : Number.NaN;
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      return 100;
+    }
+    return Math.max(70, Math.min(130, Math.round(numeric)));
+  }
+
   function sanitizeContext(payload, api) {
     const source = toRecord(payload);
     const room = toRecord(source.room);
@@ -27,6 +40,7 @@ export function createLaboratoryRuntimeBootstrap(deps) {
       },
       presentation: {
         mode: presentation.mode === "scene-view" ? "scene-view" : "classic",
+        uiScale: normalizeUiScale(presentation.uiScale),
       },
       locale:
         typeof source.locale === "string" && source.locale.trim() !== ""

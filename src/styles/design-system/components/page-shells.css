@@ -131,7 +131,7 @@
 }
 
 .room-shell-panel--runtime {
-  min-height: var(--layout-room-runtime-panel-min-h);
+  min-height: 0;
 }
 
 .room-shell-message {

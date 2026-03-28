@@ -30,7 +30,8 @@ body {
 #app,
 .side-nav-overlay,
 .toast-container,
-.app-shell {
+.app-shell,
+.app-overlay-host {
   zoom: var(--app-ui-scale-factor, 1);
 }
 
@@ -736,6 +737,7 @@ body.is-scroll-locked {
 }
 
 .page-settings.is-scene-mode .settings-page__shell {
+  zoom: var(--scene-ui-relative-scale-factor, 1);
   width: 100%;
   max-width: none;
   margin: 0;
@@ -743,6 +745,10 @@ body.is-scroll-locked {
   border-radius: 0;
   background: var(--settings-scene-shell-bg);
   box-shadow: none;
+}
+
+.page-settings.is-scene-mode .settings-scene__surface {
+  zoom: 1;
 }
 
 .settings-scene {
@@ -775,6 +781,8 @@ body.is-scroll-locked {
   position: relative;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
   background: var(--settings-scene-surface-bg);
   isolation: isolate;
@@ -799,10 +807,13 @@ body.is-scroll-locked {
 .settings-scene__characters {
   position: absolute;
   inset: 0;
+  min-width: 0;
+  min-height: 0;
 }
 
 .settings-scene__room-view {
   z-index: 3;
+  overflow: hidden;
 }
 
 .settings-scene__hotspots {
@@ -831,6 +842,7 @@ body.is-scroll-locked {
   z-index: 5;
   opacity: 0;
   pointer-events: none;
+  overflow: hidden;
   transform: scale(1.03);
   transition:
     opacity var(--duration-slow) var(--ease-out),

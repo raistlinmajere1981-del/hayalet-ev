@@ -14,8 +14,10 @@
   --fk-moss: #6d7c67;
   --fk-shadow-deep: 0 28px 72px rgb(0 0 0 / 0.42);
   --fk-shadow-inner: inset 0 1px 0 rgb(255 255 255 / 0.04);
-  min-height: 100%;
+  min-height: 0;
   height: 100%;
+  min-width: 0;
+  overflow: hidden;
   padding: 0;
   color: var(--fk-parchment);
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
@@ -23,9 +25,10 @@
 
 .fk-surface {
   position: relative;
-  min-height: 100%;
+  min-height: 0;
   height: 100%;
-  overflow: auto;
+  min-width: 0;
+  overflow: hidden;
   isolation: isolate;
   background:
     radial-gradient(circle at 50% 0%, rgb(164 108 54 / 0.12), transparent 30%),
@@ -63,10 +66,12 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: clamp(0.9rem, 1.3vw, 1.25rem);
-  min-height: 100%;
-  padding: clamp(0.9rem, 1.4vw, 1.45rem);
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  padding: clamp(0.8rem, 1.2vw, 1.2rem);
 }
 
 .fk-surface__corner {
@@ -898,12 +903,15 @@
 }
 
 body[data-presentation-mode="scene-view"] .fk-shell {
-  min-height: 100%;
+  min-height: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 body[data-presentation-mode="scene-view"] .fk-surface {
-  min-height: 100%;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
   border-radius: 0;
   box-shadow: none;
   background:
@@ -918,6 +926,9 @@ body[data-presentation-mode="scene-view"] .fk-surface::after {
 }
 
 body[data-presentation-mode="scene-view"] .fk-surface__inner {
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
   padding: clamp(0.7rem, 1.25vw, 1.35rem);
 }
 

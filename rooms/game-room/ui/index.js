@@ -141,56 +141,51 @@
     return !!(window.roomAPI && typeof window.roomAPI.sendCommand === "function");
   }
 
+  const FEATURE_SCROLL_SELECTORS = {
+    xoxRail: ".xox-rail",
+    xoxStage: ".xox-stage",
+    teamTetrisRail: ".tt-rail",
+    teamTetrisStage: ".tt-stage",
+    fateKnotsSurface: ".fk-surface__inner",
+  };
+
+  function canQuerySelector(value) {
+    return !!value && typeof value === "object" && typeof value.querySelector === "function";
+  }
+
+  function isScrollableElement(value) {
+    return !!value && typeof value === "object" && typeof value.scrollTop === "number";
+  }
+
   function captureScrollState(root) {
-    return {
-      rootTop: root && typeof root.scrollTop === "number" ? root.scrollTop : null,
-      rootLeft: root && typeof root.scrollLeft === "number" ? root.scrollLeft : null,
-      bodyTop: document.body && typeof document.body.scrollTop === "number" ? document.body.scrollTop : null,
-      bodyLeft:
-        document.body && typeof document.body.scrollLeft === "number" ? document.body.scrollLeft : null,
-      documentTop:
-        document.documentElement && typeof document.documentElement.scrollTop === "number"
-          ? document.documentElement.scrollTop
-          : null,
-      documentLeft:
-        document.documentElement && typeof document.documentElement.scrollLeft === "number"
-          ? document.documentElement.scrollLeft
-          : null,
-      windowX: typeof window.scrollX === "number" ? window.scrollX : null,
-      windowY: typeof window.scrollY === "number" ? window.scrollY : null,
-    };
+    if (!canQuerySelector(root)) {
+      return {};
+    }
+
+    return Object.fromEntries(
+      Object.entries(FEATURE_SCROLL_SELECTORS).map(function ([key, selector]) {
+        const element = root.querySelector(selector);
+        return [key, isScrollableElement(element) ? element.scrollTop : null];
+      })
+    );
   }
 
   function restoreScrollState(root, scrollState) {
-    if (!scrollState || typeof scrollState !== "object") {
+    if (!scrollState || typeof scrollState !== "object" || !canQuerySelector(root)) {
       return;
     }
 
-    if (root && typeof scrollState.rootTop === "number") {
-      root.scrollTop = scrollState.rootTop;
-    }
-    if (root && typeof scrollState.rootLeft === "number") {
-      root.scrollLeft = scrollState.rootLeft;
-    }
-    if (document.body && typeof scrollState.bodyTop === "number") {
-      document.body.scrollTop = scrollState.bodyTop;
-    }
-    if (document.body && typeof scrollState.bodyLeft === "number") {
-      document.body.scrollLeft = scrollState.bodyLeft;
-    }
-    if (document.documentElement && typeof scrollState.documentTop === "number") {
-      document.documentElement.scrollTop = scrollState.documentTop;
-    }
-    if (document.documentElement && typeof scrollState.documentLeft === "number") {
-      document.documentElement.scrollLeft = scrollState.documentLeft;
-    }
-    if (
-      typeof window.scrollTo === "function" &&
-      typeof scrollState.windowX === "number" &&
-      typeof scrollState.windowY === "number"
-    ) {
-      window.scrollTo(scrollState.windowX, scrollState.windowY);
-    }
+    Object.entries(FEATURE_SCROLL_SELECTORS).forEach(function ([key, selector]) {
+      const top = scrollState[key];
+      if (typeof top !== "number") {
+        return;
+      }
+
+      const element = root.querySelector(selector);
+      if (isScrollableElement(element)) {
+        element.scrollTop = top;
+      }
+    });
   }
 
   function sendRoomCommand(command, payload) {
@@ -258,7 +253,7 @@
     teamTetrisDraft: teamTetrisUi.createTeamTetrisDraft(),
     fateKnots: fateKnotsUi.createFateKnotsState(),
     presentation: {
-      mode: "scene-view",
+      mode: "classic",
       uiScale: 100,
     },
     preferences: {

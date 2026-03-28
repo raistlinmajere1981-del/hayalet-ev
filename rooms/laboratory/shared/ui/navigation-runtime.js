@@ -99,6 +99,8 @@ export function createLaboratoryUiNavigationRuntime(deps) {
 
   function requestSurfaceScrollReset() {
     state.ui.scrollPositions.surface = 0;
+    state.ui.stackScrollPositions.main = 0;
+    state.ui.stackScrollPositions.side = 0;
     state.ui.surfaceScrollResetPending = true;
   }
 
@@ -131,6 +133,16 @@ export function createLaboratoryUiNavigationRuntime(deps) {
       state.ui.scrollPositions.surface = surface.scrollTop;
     }
 
+    const mainStack = root.querySelector(".lab-main-stack");
+    if (mainStack instanceof HTMLElement) {
+      state.ui.stackScrollPositions.main = mainStack.scrollTop;
+    }
+
+    const sideStack = root.querySelector(".lab-side-stack");
+    if (sideStack instanceof HTMLElement) {
+      state.ui.stackScrollPositions.side = sideStack.scrollTop;
+    }
+
     const overlayPanel = root.querySelector(".lab-overlay__panel");
     if (overlayPanel instanceof HTMLElement) {
       state.ui.scrollPositions.overlay = overlayPanel.scrollTop;
@@ -142,6 +154,17 @@ export function createLaboratoryUiNavigationRuntime(deps) {
     if (surface instanceof HTMLElement) {
       surface.scrollTop = state.ui.surfaceScrollResetPending ? 0 : state.ui.scrollPositions.surface;
     }
+
+    const mainStack = root.querySelector(".lab-main-stack");
+    if (mainStack instanceof HTMLElement) {
+      mainStack.scrollTop = state.ui.surfaceScrollResetPending ? 0 : state.ui.stackScrollPositions.main;
+    }
+
+    const sideStack = root.querySelector(".lab-side-stack");
+    if (sideStack instanceof HTMLElement) {
+      sideStack.scrollTop = state.ui.surfaceScrollResetPending ? 0 : state.ui.stackScrollPositions.side;
+    }
+
     state.ui.surfaceScrollResetPending = false;
 
     const overlayPanel = root.querySelector(".lab-overlay__panel");

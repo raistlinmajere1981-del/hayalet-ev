@@ -9,20 +9,30 @@ import { Jimp } from "jimp";
 import { removeBackground } from "@imgly/background-removal-node";
 
 const require = createRequire(import.meta.url);
-const ENABLE_OPENCV = process.env.ASSET_ENABLE_OPENCV === "1";
-let cv = null;
-if (ENABLE_OPENCV) {
-  process.env.OPENCV4NODEJS_DISABLE_AUTOBUILD = process.env.OPENCV4NODEJS_DISABLE_AUTOBUILD ?? "1";
-  try {
-    cv = require("@u4/opencv4nodejs");
-  } catch {
-    cv = null;
-  }
-}
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
+const OPENCV_BUILD_ROOT = path.join(ROOT, "tmp", "opencv-build");
+const argv = new Set(process.argv.slice(2));
+const ENABLE_OPENCV = argv.has("--opencv") || process.env.ASSET_ENABLE_OPENCV === "1";
+const REQUIRE_OPENCV = argv.has("--require-opencv") || process.env.ASSET_REQUIRE_OPENCV === "1";
+let cv = null;
+if (ENABLE_OPENCV) {
+  process.env.OPENCV4NODEJS_DISABLE_AUTOBUILD = process.env.OPENCV4NODEJS_DISABLE_AUTOBUILD ?? "1";
+  process.env.OPENCV_BUILD_ROOT = process.env.OPENCV_BUILD_ROOT ?? OPENCV_BUILD_ROOT;
+  try {
+    cv = require("@u4/opencv4nodejs");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (REQUIRE_OPENCV) {
+      throw new Error(`OpenCV support is not available (${message}). Run "npm run opencv:install" and try again.`);
+    }
+    console.warn(
+      `[assets:process] OpenCV unavailable (${message}). Falling back to pixel detection. Run "npm run opencv:install" to enable the optional native package.`
+    );
+  }
+}
+
 const RAW_ROOT = path.join(ROOT, "assets", "raw");
 const BATCH_DIR = path.join(RAW_ROOT, "batch");
 const DONE_DIR = path.join(RAW_ROOT, "done");
