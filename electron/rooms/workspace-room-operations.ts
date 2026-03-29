@@ -12,9 +12,9 @@ import {
 } from "./room-install-files.ts";
 import type {
   RoomOperationResult,
-  RoomPackageErrorTranslator,
   RoomPackageTranslator,
 } from "./room-package-types.ts";
+import type { BuildWorkspaceRoomArtifactResult } from "./workspace-room-build.ts";
 
 function normalizeRoomId(rawValue: string): string {
   return rawValue.trim();
@@ -22,52 +22,34 @@ function normalizeRoomId(rawValue: string): string {
 
 interface InstallRoomFromWorkspaceParams {
   installedRoot: string;
-  roomId: string;
   ensureRoots: () => Promise<void>;
-  listWorkspaceRooms: () => Promise<RoomWorkspaceEntry[]>;
+  prepareWorkspaceRoomBuild: () => Promise<BuildWorkspaceRoomArtifactResult>;
   readRegistry: () => Promise<RoomRegistryState>;
   writeRegistry: (registry: RoomRegistryState) => Promise<void>;
-  roomPackageError: RoomPackageErrorTranslator;
   roomPackageT: RoomPackageTranslator;
 }
 
 export async function installRoomFromWorkspace({
   installedRoot,
-  roomId,
   ensureRoots,
-  listWorkspaceRooms,
+  prepareWorkspaceRoomBuild,
   readRegistry,
   writeRegistry,
-  roomPackageError,
   roomPackageT,
 }: InstallRoomFromWorkspaceParams): Promise<RoomOperationResult> {
-  const normalizedRoomId = normalizeRoomId(roomId);
-  if (normalizedRoomId === "") {
+  const buildResult = await prepareWorkspaceRoomBuild();
+  if (buildResult.success !== true) {
+    return { success: false, error: buildResult.error };
+  }
+
+  const target = buildResult.artifact.workspaceRoom;
+  if (target.manifest === undefined) {
     return { success: false, error: await roomPackageT("roomIdRequired") };
-  }
-
-  const workspaceRooms = await listWorkspaceRooms();
-  const target = workspaceRooms.find(
-    (entry) => entry.dirName === normalizedRoomId || entry.manifest?.id === normalizedRoomId
-  );
-
-  if (target === undefined) {
-    return {
-      success: false,
-      error: await roomPackageT("roomNotFoundInWorkspace", { roomId: normalizedRoomId }),
-    };
-  }
-
-  if (target.valid !== true || target.manifest === undefined) {
-    return {
-      success: false,
-      error: await roomPackageError("workspaceInvalid", target.errors.join("; ")),
-    };
   }
 
   const roomInstalledDir = join(installedRoot, target.manifest.id);
   await ensureRoots();
-  const trackedFiles = await copyDirectoryContents(target.dirPath, roomInstalledDir);
+  const trackedFiles = await copyDirectoryContents(buildResult.artifact.buildDir, roomInstalledDir);
   await writeInstalledRoomFileSnapshot(roomInstalledDir, trackedFiles);
 
   const now = new Date().toISOString();

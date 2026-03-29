@@ -7,7 +7,7 @@ import { join } from "node:path";
 import {
   normalizeRelativePath,
   syncGameRoomFateKnotsAssets,
-} from "../../scripts/rooms/sync-game-room-fate-knots-assets.mjs";
+} from "../../rooms/game-room/main-functions/fate-knots/scripts/sync-assets.mjs";
 
 const tempRoots: string[] = [];
 
@@ -122,6 +122,35 @@ test("Fate Knots asset sync removes stale files and emits portable runtime manif
     join(fixture.featureDataDir, "runtime-content.module.js"),
     "utf8"
   );
+  const runtimeAssetsModule = await readFile(
+    join(fixture.featureDataDir, "runtime-assets.module.js"),
+    "utf8"
+  );
+  const runtimeAssetsWorldModule = await readFile(
+    join(fixture.featureDataDir, "runtime-assets-world.module.js"),
+    "utf8"
+  );
+  const runtimeAssetsUiModule = await readFile(
+    join(fixture.featureDataDir, "runtime-assets-ui.module.js"),
+    "utf8"
+  );
+  const selectionsModule = await readFile(
+    join(fixture.featureDataDir, "selections.module.js"),
+    "utf8"
+  );
+  const mapModule = await readFile(join(fixture.featureDataDir, "map.module.js"), "utf8");
+  const introScenarioModule = await readFile(
+    join(fixture.featureDataDir, "scenarios", "intro.module.js"),
+    "utf8"
+  );
+  const combatCardsModule = await readFile(
+    join(fixture.featureDataDir, "combat", "cards.module.js"),
+    "utf8"
+  );
+  const combatConfigModule = await readFile(
+    join(fixture.featureDataDir, "combat", "config.module.js"),
+    "utf8"
+  );
 
   assert.deepEqual(
     runtimeAssetsManifest.assets.map((asset) => asset.id),
@@ -131,7 +160,62 @@ test("Fate Knots asset sync removes stale files and emits portable runtime manif
     assert.match(asset.src, /^main-functions\/fate-knots\/assets\//);
     assert.match(asset.uiSrc, /^\.\.\/main-functions\/fate-knots\/assets\//);
   });
-  assert.match(runtimeContentModule, /export const fateKnotsRuntimeAssetsManifest/);
-  assert.match(runtimeContentModule, /export const fateKnotsSelectionsManifest/);
+  assert.match(runtimeContentModule, /import \{ fateKnotsRuntimeAssetsManifest \} from "\.\/runtime-assets\.module\.js";/);
+  assert.match(runtimeContentModule, /import \{ fateKnotsSelectionsManifest \} from "\.\/selections\.module\.js";/);
+  assert.match(
+    runtimeAssetsModule,
+    /import \{ fateKnotsRuntimeWorldAssetsManifest \} from "\.\/runtime-assets-world\.module\.js";/
+  );
+  assert.match(
+    runtimeAssetsModule,
+    /import \{ fateKnotsRuntimeUiAssetsManifest \} from "\.\/runtime-assets-ui\.module\.js";/
+  );
+  assert.match(runtimeAssetsModule, /export const fateKnotsRuntimeAssetsManifest/);
+  assert.match(runtimeAssetsWorldModule, /export const fateKnotsRuntimeWorldAssetsManifest/);
+  assert.match(runtimeAssetsUiModule, /export const fateKnotsRuntimeUiAssetsManifest/);
+  assert.match(selectionsModule, /export const fateKnotsSelectionsManifest/);
+  assert.match(mapModule, /export const fateKnotsMapManifest/);
+  assert.match(introScenarioModule, /export const fateKnotsIntroScenarioManifest/);
+  assert.match(combatCardsModule, /export const fateKnotsCombatCardsManifest/);
+  assert.match(combatConfigModule, /export const fateKnotsCombatConfigManifest/);
   await assert.rejects(readFile(join(fixture.featureAssetsDir, "legacy", "stale.png"), "utf8"));
+});
+
+test("Fate Knots asset sync supports room-local feature-view sources without self-copying", async () => {
+  const fixture = await createSyncFixture();
+
+  await writeFile(join(fixture.featureAssetsDir, "fate-knots-view.webp"), "room-local-view", "utf8");
+  await writeFile(
+    join(fixture.featureDataDir, "asset-import.manifest.json"),
+    JSON.stringify(
+      {
+        entries: [
+          {
+            mode: "file",
+            kind: "feature-view",
+            source: "rooms/game-room/main-functions/fate-knots/assets/fate-knots-view.webp",
+            target: "fate-knots-view.webp",
+          },
+        ],
+      },
+      null,
+      2
+    ) + "\n",
+    "utf8"
+  );
+
+  const summary = await syncGameRoomFateKnotsAssets({
+    projectRoot: fixture.projectRoot,
+    featureRoot: fixture.featureRoot,
+  });
+
+  assert.equal(summary.copiedAssets, 1);
+  assert.equal(
+    await readFile(join(fixture.featureAssetsDir, "fate-knots-view.webp"), "utf8"),
+    "room-local-view"
+  );
+  const runtimeAssetsManifest = JSON.parse(
+    await readFile(join(fixture.featureDataDir, "runtime-assets.manifest.json"), "utf8")
+  ) as { assets: Array<{ id: string; src: string; uiSrc: string }> };
+  assert.deepEqual(runtimeAssetsManifest.assets.map((asset) => asset.id), ["fate-knots-view"]);
 });

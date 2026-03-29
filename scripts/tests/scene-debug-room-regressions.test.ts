@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
+import { createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
 import {
   buildSceneRoomDefinition,
@@ -211,27 +212,33 @@ test("scene pages enable clickable labels and shared clickable classes", () => {
   assert.match(entranceCssSource, /\.entrance-scene \.entrance-scene__character-head,[\s\S]*pointer-events: auto;/);
 });
 
-test("installed laboratory manifest exposes subtitle-analysis hotspot ids for scene debug visibility", () => {
-  const manifest = JSON.parse(readFileSync("data/rooms/laboratory/manifest.json", "utf8"));
-  const audioFeature = Array.isArray(manifest.features)
-    ? manifest.features.find((feature) => feature.id === "audio-analysis")
-    : null;
-  const subtitleFeature = Array.isArray(manifest.features)
-    ? manifest.features.find((feature) => feature.id === "subtitle-analysis")
-    : null;
+test("installed laboratory manifest exposes subtitle-analysis hotspot ids for scene debug visibility", async () => {
+  const installedCopy = await createRoomInstalledCopy("laboratory");
 
-  assert.equal(audioFeature?.scene?.hotspot?.id, "laboratory-audio-analysis");
-  assert.equal(audioFeature?.scene?.view?.id, "audio-analysis-console");
-  assert.equal(
-    audioFeature?.scene?.view?.backgroundSrc,
-    "main-functions/audio-analysis/assets/sound-analysis.webp"
-  );
-  assert.equal(subtitleFeature?.scene?.hotspot?.id, "laboratory-subtitle-analysis");
-  assert.equal(subtitleFeature?.scene?.view?.id, "subtitle-analysis-console");
-  assert.equal(
-    subtitleFeature?.scene?.view?.backgroundSrc,
-    "main-functions/subtitle-analysis/assets/subtitle-analysis.webp"
-  );
+  try {
+    const manifest = JSON.parse(readFileSync(`${installedCopy.rootDir}/manifest.json`, "utf8"));
+    const audioFeature = Array.isArray(manifest.features)
+      ? manifest.features.find((feature) => feature.id === "audio-analysis")
+      : null;
+    const subtitleFeature = Array.isArray(manifest.features)
+      ? manifest.features.find((feature) => feature.id === "subtitle-analysis")
+      : null;
+
+    assert.equal(audioFeature?.scene?.hotspot?.id, "laboratory-audio-analysis");
+    assert.equal(audioFeature?.scene?.view?.id, "audio-analysis-console");
+    assert.equal(
+      audioFeature?.scene?.view?.backgroundSrc,
+      "main-functions/audio-analysis/assets/sound-analysis.webp"
+    );
+    assert.equal(subtitleFeature?.scene?.hotspot?.id, "laboratory-subtitle-analysis");
+    assert.equal(subtitleFeature?.scene?.view?.id, "subtitle-analysis-console");
+    assert.equal(
+      subtitleFeature?.scene?.view?.backgroundSrc,
+      "main-functions/subtitle-analysis/assets/subtitle-analysis.webp"
+    );
+  } finally {
+    await installedCopy.cleanup();
+  }
 });
 
 test("game-room manifest exposes Team Tetris scene hotspot ids for scene debug visibility", () => {

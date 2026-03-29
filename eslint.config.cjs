@@ -323,6 +323,85 @@ module.exports = tseslint.config(
     },
   },
 
+  // === Room UI JavaScript Files ===
+  {
+    files: ["rooms/**/ui/**/*.js", "rooms/**/main-functions/**/ui/**/*.js", "rooms/**/shared/ui/**/*.js"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        console: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        window: "readonly",
+        document: "readonly",
+        navigator: "readonly",
+        fetch: "readonly",
+        URL: "readonly",
+        URLSearchParams: "readonly",
+        HTMLElement: "readonly",
+        Element: "readonly",
+        Node: "readonly",
+        NodeList: "readonly",
+        CustomEvent: "readonly",
+        Event: "readonly",
+        requestAnimationFrame: "readonly",
+        cancelAnimationFrame: "readonly",
+        getComputedStyle: "readonly",
+        performance: "readonly",
+        crypto: "readonly",
+      },
+    },
+    rules: {
+      "no-unused-vars": "off",
+      "no-redeclare": "off",
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "prefer-const": "error",
+      "no-undef": "off",
+      "no-await-in-loop": "warn",
+    },
+  },
+
+  // === Room Host + Shared JavaScript Files ===
+  {
+    files: [
+      "rooms/**/host/**/*.js",
+      "rooms/**/shared/host/**/*.js",
+      "rooms/**/shared/types/**/*.js",
+      "rooms/**/main-functions/**/host/**/*.js"
+    ],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        Buffer: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        clearImmediate: "readonly",
+        setImmediate: "readonly",
+        URL: "readonly",
+        URLSearchParams: "readonly",
+        AbortController: "readonly",
+        fetch: "readonly",
+      },
+    },
+    rules: {
+      "no-unused-vars": "off",
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "prefer-const": "error",
+      "no-undef": "off",
+      "no-await-in-loop": "warn",
+    },
+  },
+
   // === TypeScript Config (Renderer - src/js) - WITH TYPE-AWARE RULES ===
   {
     files: ["src/js/**/*.ts"],

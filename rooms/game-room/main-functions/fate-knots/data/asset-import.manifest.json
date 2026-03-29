@@ -5,7 +5,7 @@
     {
       "mode": "file",
       "kind": "feature-view",
-      "source": "assets/team-fate-knots.webp",
+      "source": "rooms/game-room/main-functions/fate-knots/assets/fate-knots-view.webp",
       "target": "fate-knots-view.webp"
     },
     {

@@ -4,11 +4,23 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const projectRoot = process.cwd();
+const packageJsonPath = join(projectRoot, "package.json");
 const roomPackageManagerPath = join(projectRoot, "electron", "room-package-manager.ts");
-const installedRoomBuilderPath = join(projectRoot, "electron", "rooms", "installed-room-builder.ts");
-const roomBundleOperationsPath = join(projectRoot, "electron", "rooms", "room-bundle-operations.ts");
+const installedRoomBuilderPath = join(
+  projectRoot,
+  "electron",
+  "rooms",
+  "installed-room-builder.ts"
+);
+const roomBundleOperationsPath = join(
+  projectRoot,
+  "electron",
+  "rooms",
+  "room-bundle-operations.ts"
+);
 const roomPackageTypesPath = join(projectRoot, "electron", "rooms", "room-package-types.ts");
 const roomRegistryPath = join(projectRoot, "electron", "rooms", "room-registry.ts");
+const mainPath = join(projectRoot, "electron", "main.ts");
 const workspaceRoomOperationsPath = join(
   projectRoot,
   "electron",
@@ -16,6 +28,13 @@ const workspaceRoomOperationsPath = join(
   "workspace-room-operations.ts"
 );
 const workspaceDiscoveryPath = join(projectRoot, "electron", "rooms", "workspace-discovery.ts");
+const workspaceRoomBuildPath = join(projectRoot, "electron", "rooms", "workspace-room-build.ts");
+const workspaceRoomBuildSupportPath = join(
+  projectRoot,
+  "electron",
+  "rooms",
+  "workspace-room-build-support.ts"
+);
 const ipcRoomsPath = join(projectRoot, "electron", "handlers", "ipc-rooms.ts");
 
 test("room package manager resolves Paths lazily instead of constructor time", async () => {
@@ -27,20 +46,33 @@ test("room package manager resolves Paths lazily instead of constructor time", a
   assert.match(source, /export function getRoomPackageManager\(\): RoomPackageManager/);
   assert.doesNotMatch(source, /export const roomPackageManager = new RoomPackageManager\(\)/);
 
-  const constructorMatch = source.match(/constructor\(options: RoomManagerOptions = \{\}\) \{([\s\S]*?)\n  \}/);
+  const constructorMatch = source.match(
+    /constructor\(options: RoomManagerOptions = \{\}\) \{([\s\S]*?)\n  \}/
+  );
   assert.ok(constructorMatch, "constructor should exist");
-  assert.doesNotMatch(constructorMatch?.[1] ?? "", /Paths\.get(ProjectRoot|InstalledRoomsDir|RoomsRegistryPath)/);
+  assert.doesNotMatch(
+    constructorMatch?.[1] ?? "",
+    /Paths\.get(ProjectRoot|InstalledRoomsDir|RoomsRegistryPath)/
+  );
 });
 
 test("ipc room handlers resolve the room package manager at handler execution time", async () => {
   const source = await readFile(ipcRoomsPath, "utf8");
 
   assert.match(source, /import \{ getRoomPackageManager \} from "\.\.\/room-package-manager\.ts"/);
-  assert.doesNotMatch(source, /import \{ roomPackageManager \} from "\.\.\/room-package-manager\.ts"/);
+  assert.doesNotMatch(
+    source,
+    /import \{ roomPackageManager \} from "\.\.\/room-package-manager\.ts"/
+  );
   assert.match(source, /const roomPackageManager = getRoomPackageManager\(\);/);
 });
 
 test("room package manager keeps installed room record building in a dedicated builder module", async () => {
+  const packageJsonSource = await readFile(packageJsonPath, "utf8");
+  const packageJson = JSON.parse(packageJsonSource) as {
+    scripts?: Record<string, string>;
+  };
+  const scripts = packageJson.scripts ?? {};
   const managerSource = await readFile(roomPackageManagerPath, "utf8");
   const builderSource = await readFile(installedRoomBuilderPath, "utf8");
   const bundleOperationsSource = await readFile(roomBundleOperationsPath, "utf8");
@@ -48,17 +80,32 @@ test("room package manager keeps installed room record building in a dedicated b
   const registrySource = await readFile(roomRegistryPath, "utf8");
   const workspaceRoomOperationsSource = await readFile(workspaceRoomOperationsPath, "utf8");
   const workspaceDiscoverySource = await readFile(workspaceDiscoveryPath, "utf8");
+  const workspaceRoomBuildSource = await readFile(workspaceRoomBuildPath, "utf8");
+  const workspaceRoomBuildSupportSource = await readFile(workspaceRoomBuildSupportPath, "utf8");
 
   assert.match(managerSource, /from "\.\/rooms\/installed-room-builder\.ts"/);
   assert.match(managerSource, /from "\.\/rooms\/room-bundle-operations\.ts"/);
   assert.match(managerSource, /from "\.\/rooms\/room-package-types\.ts"/);
   assert.match(managerSource, /from "\.\/rooms\/room-registry\.ts"/);
   assert.match(managerSource, /from "\.\/rooms\/workspace-room-operations\.ts"/);
+  assert.match(managerSource, /from "\.\/rooms\/workspace-room-build\.ts"/);
   assert.match(managerSource, /from "\.\/rooms\/workspace-discovery\.ts"/);
   assert.match(managerSource, /export \{ buildInstalledRoomRecord \};/);
+  assert.match(
+    managerSource,
+    /async buildWorkspaceRoom\(roomId: string\): Promise<RoomOperationResult>/
+  );
+  assert.match(
+    managerSource,
+    /private async buildWorkspaceRoomArtifact\(\s*roomId: string\s*\): Promise<BuildWorkspaceRoomArtifactResult>/
+  );
   assert.match(builderSource, /export function buildInstalledRoomRecord\(/);
   assert.match(builderSource, /export function optionalI18nBaseDir\(/);
   assert.match(bundleOperationsSource, /export async function packageWorkspaceRoomBundle\(/);
+  assert.match(
+    bundleOperationsSource,
+    /prepareWorkspaceRoomBuild: \(\) => Promise<BuildWorkspaceRoomArtifactResult>/
+  );
   assert.match(bundleOperationsSource, /export async function importRoomBundleFile\(/);
   assert.match(bundleOperationsSource, /export async function importValidatedRoomBundle\(/);
   assert.match(roomPackageTypesSource, /export interface RoomOperationResult/);
@@ -67,8 +114,18 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.match(registrySource, /export async function writeRoomRegistry\(/);
   assert.match(registrySource, /export async function hydrateInstalledRoomRecord\(/);
   assert.match(workspaceRoomOperationsSource, /export async function installRoomFromWorkspace\(/);
-  assert.match(workspaceRoomOperationsSource, /export async function removeInstalledRoomOperation\(/);
-  assert.match(workspaceRoomOperationsSource, /export async function deleteWorkspaceRoomOperation\(/);
+  assert.match(
+    workspaceRoomOperationsSource,
+    /prepareWorkspaceRoomBuild: \(\) => Promise<BuildWorkspaceRoomArtifactResult>/
+  );
+  assert.match(
+    workspaceRoomOperationsSource,
+    /export async function removeInstalledRoomOperation\(/
+  );
+  assert.match(
+    workspaceRoomOperationsSource,
+    /export async function deleteWorkspaceRoomOperation\(/
+  );
   assert.match(
     workspaceRoomOperationsSource,
     /export async function exportInstalledRoomToWorkspaceOperation\(/
@@ -76,4 +133,42 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.match(workspaceDiscoverySource, /export function buildRoomWorkspaceRoots\(/);
   assert.match(workspaceDiscoverySource, /export async function readWorkspaceRoomsFromRoot\(/);
   assert.match(workspaceDiscoverySource, /export function pickPreferredWorkspaceRoom\(/);
+  assert.match(workspaceRoomBuildSource, /export async function buildWorkspaceRoomArtifact\(/);
+  assert.match(workspaceRoomBuildSource, /buildWorkspaceRoomOutput\(target\.dirPath, buildDir\)/);
+  assert.match(
+    workspaceRoomBuildSource,
+    /const buildDir = join\(roomStorageRoot, "build", "workspace"\);/
+  );
+  assert.match(
+    workspaceRoomBuildSupportSource,
+    /export async function buildWorkspaceRoomOutput\(/
+  );
+  assert.match(
+    workspaceRoomBuildSupportSource,
+    /export function roomSourceSatisfiesRuntimePath\(/
+  );
+  assert.equal(scripts["rooms:bundle"], "node --import tsx scripts/rooms/build-room-bundle.mjs");
+  assert.equal(scripts["rooms:build"], "node --import tsx scripts/rooms/build-workspace-rooms.ts");
+  assert.ok(scripts["rooms:lint"]?.startsWith("NODE_OPTIONS="));
+  assert.ok(scripts["rooms:lint"]?.includes('"rooms/**/*.{js,ts}"'));
+  assert.equal(scripts.check, "npm run lint && npm run check-types && npm run rooms:test:core");
+  assert.ok(scripts.typecheck?.includes("tsconfig.rooms.json"));
+});
+
+test("dev startup falls back to workspace rooms when installed registry is empty", async () => {
+  const managerSource = await readFile(roomPackageManagerPath, "utf8");
+  const mainSource = await readFile(mainPath, "utf8");
+
+  assert.match(managerSource, /private shouldUseWorkspaceFallbackInstalledRooms\(\): boolean/);
+  assert.match(
+    managerSource,
+    /private async buildWorkspaceInstalledRoomRecord\(\s*room: RoomWorkspaceEntry\s*\)/
+  );
+  assert.match(managerSource, /installedDir: buildResult\.artifact\.buildDir/);
+  assert.match(managerSource, /sourceDir: room\.dirPath/);
+  assert.match(
+    managerSource,
+    /if \(installedRooms\.length > 0 \|\| this\.shouldUseWorkspaceFallbackInstalledRooms\(\) === false\)/
+  );
+  assert.match(mainSource, /if \(rooms\.length === 0\) \{\s*return null;\s*\}/);
 });

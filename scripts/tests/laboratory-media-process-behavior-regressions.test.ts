@@ -23,56 +23,87 @@ test("laboratory project schema persists process and report branches", () => {
 });
 
 test("laboratory host keeps process orchestration on the shared room-managed contract", () => {
-  const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
-  const hostRuntimeSource = readFileSync("rooms/laboratory/host/runtime.js", "utf8");
-  const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.js", "utf8");
-  const actionCompositionSource = readFileSync("rooms/laboratory/shared/host/action-composition.js", "utf8");
-  const actionRuntimeSource = readFileSync("rooms/laboratory/shared/host/action-runtime.js", "utf8");
+  const hostSource = readFileSync("rooms/laboratory/host/index.ts", "utf8");
+  const hostRuntimeSource = readFileSync("rooms/laboratory/host/runtime.ts", "utf8");
+  const hostFoundationSource = readFileSync("rooms/laboratory/host/foundation-runtimes.ts", "utf8");
+  const hostProjectSource = readFileSync("rooms/laboratory/host/project-runtimes.ts", "utf8");
+  const hostFeatureSource = readFileSync("rooms/laboratory/host/feature-runtimes.ts", "utf8");
+  const featureAdaptersSource = readFileSync("rooms/laboratory/host/feature-adapters.ts", "utf8");
+  const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.ts", "utf8");
+  const actionCompositionSource = readFileSync("rooms/laboratory/shared/host/action-composition.ts", "utf8");
+  const actionRuntimeSource = readFileSync("rooms/laboratory/shared/host/action-runtime.ts", "utf8");
   const projectManifestSource = readFileSync(
-    "rooms/laboratory/shared/host/project-manifests.js",
+    "rooms/laboratory/shared/host/project-manifests.ts",
     "utf8"
   );
   const snapshotCompositionSource = readFileSync(
-    "rooms/laboratory/shared/host/snapshot-composition.js",
+    "rooms/laboratory/shared/host/snapshot-composition.ts",
     "utf8"
   );
   const stateCompositionSource = readFileSync(
-    "rooms/laboratory/shared/host/state-composition.js",
+    "rooms/laboratory/shared/host/state-composition.ts",
     "utf8"
   );
   const processReportStateSource = readFileSync(
-    "rooms/laboratory/shared/host/process-report-state.js",
+    "rooms/laboratory/shared/host/process-report-state.ts",
     "utf8"
   );
   const closeoutStalenessSource = readFileSync(
-    "rooms/laboratory/shared/host/closeout-staleness.js",
+    "rooms/laboratory/shared/host/closeout-staleness.ts",
     "utf8"
   );
   const processCoordinationSource = readFileSync(
-    "rooms/laboratory/shared/host/process-coordination.js",
+    "rooms/laboratory/shared/host/process-coordination.ts",
     "utf8"
   );
-  const processRuntimeSource = readFileSync("rooms/laboratory/shared/host/process-runtime.js", "utf8");
-  const processTargetingSource = readFileSync("rooms/laboratory/shared/host/process-targeting.js", "utf8");
-  const roomToolsProgressSource = readFileSync("rooms/laboratory/shared/host/room-tools-progress.js", "utf8");
-  const processDelegatesSource = readFileSync("rooms/laboratory/shared/host/process-delegates.js", "utf8");
+  const processManagedRunnersSource = readFileSync(
+    "rooms/laboratory/shared/host/process-managed-runners.ts",
+    "utf8"
+  );
+  const processManagedAudioRunnerSource = readFileSync(
+    "rooms/laboratory/shared/host/process-managed-audio-runner.ts",
+    "utf8"
+  );
+  const processManagedMediaRunnerSource = readFileSync(
+    "rooms/laboratory/shared/host/process-managed-media-runner.ts",
+    "utf8"
+  );
+  const processManagedSubtitleRunnerSource = readFileSync(
+    "rooms/laboratory/shared/host/process-managed-subtitle-runner.ts",
+    "utf8"
+  );
+  const processRuntimeSource = readFileSync("rooms/laboratory/shared/host/process-runtime.ts", "utf8");
+  const processTargetingSource = readFileSync("rooms/laboratory/shared/host/process-targeting.ts", "utf8");
+  const roomToolsProgressSource = readFileSync("rooms/laboratory/shared/host/room-tools-progress.ts", "utf8");
+  const processDelegatesSource = readFileSync("rooms/laboratory/shared/host/process-delegates.ts", "utf8");
   const processCompositionSource = readFileSync(
-    "rooms/laboratory/shared/host/process-composition.js",
+    "rooms/laboratory/shared/host/process-composition.ts",
     "utf8"
   );
   const runtimePrimitivesSource = readFileSync(
-    "rooms/laboratory/shared/host/runtime-primitives.js",
+    "rooms/laboratory/shared/host/runtime-primitives.ts",
     "utf8"
   );
   const audioAnalysisHostRuntimeSource = readFileSync(
-    "rooms/laboratory/main-functions/audio-analysis/host/runtime.js",
+    "rooms/laboratory/main-functions/audio-analysis/host/runtime.ts",
     "utf8"
   );
   const audioProcessDelegatesSource = readFileSync(
-    "rooms/laboratory/shared/host/audio-process-delegates.js",
+    "rooms/laboratory/shared/host/audio-process-delegates.ts",
     "utf8"
   );
-  const reportingSource = readFileSync("rooms/laboratory/shared/host/reporting.js", "utf8");
+  const reportingSource = readFileSync("rooms/laboratory/shared/host/reporting.ts", "utf8");
+  const reportingExportSource = readFileSync(
+    "rooms/laboratory/shared/host/reporting-export.ts",
+    "utf8"
+  );
+  const hostCompositionSource = [
+    hostRuntimeSource,
+    hostFoundationSource,
+    hostProjectSource,
+    hostFeatureSource,
+    featureAdaptersSource,
+  ].join("\n");
 
   assert.match(processReportStateSource, /function createEmptyProcessState\(\)/);
   assert.match(hostSource, /\.\/runtime\.js/);
@@ -80,15 +111,15 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   assert.match(runtimePrimitivesSource, /export function getLaboratoryProjectProcessDir\(runtime, project\)/);
   assert.match(runtimePrimitivesSource, /export function getLaboratoryFeatureProcessDir\(runtime, project, featureId\)/);
   assert.match(runtimePrimitivesSource, /export function getLaboratoryFeatureReportDir\(runtime, project, featureId\)/);
-  assert.match(hostRuntimeSource, /shared\/host\/snapshot-composition\.js/);
+  assert.match(hostCompositionSource, /shared\/host\/snapshot-composition\.js/);
   assert.match(projectManifestSource, /function buildProcessManifest\(project\)/);
   assert.match(snapshotCompositionSource, /from "\.\/project-manifests\.js"/);
   assert.match(snapshotCompositionSource, /from "\.\/room-snapshot\.js"/);
   assert.match(snapshotCompositionSource, /from "\.\/runtime-events\.js"/);
-  assert.match(hostRuntimeSource, /shared\/host\/state-composition\.js/);
-  assert.match(hostRuntimeSource, /shared\/host\/action-composition\.js/);
-  assert.match(hostRuntimeSource, /shared\/host\/process-composition\.js/);
-  assert.match(hostRuntimeSource, /shared\/host\/room-tools-progress\.js/);
+  assert.match(hostCompositionSource, /shared\/host\/state-composition\.js/);
+  assert.match(hostCompositionSource, /shared\/host\/action-composition\.js/);
+  assert.match(hostCompositionSource, /shared\/host\/process-composition\.js/);
+  assert.match(hostCompositionSource, /shared\/host\/room-tools-progress\.js/);
   assert.match(stateCompositionSource, /from "\.\/closeout-staleness\.js"/);
   assert.match(stateCompositionSource, /from "\.\/process-report-state\.js"/);
   assert.match(
@@ -104,6 +135,33 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   assert.match(processCoordinationSource, /export function createLaboratoryProcessCoordinationRuntime/);
   assert.match(processCoordinationSource, /return processRuntime\.runManagedProcess\(runtime, project, requestId, jobId, featureId\);/);
   assert.match(processRuntimeSource, /export function createLaboratoryProcessRuntime/);
+  assert.match(processRuntimeSource, /from "\.\/process-managed-runners\.js"/);
+  assert.match(
+    processRuntimeSource,
+    /const laboratoryManagedProcessRunnersRuntime = createLaboratoryManagedProcessRunnersRuntime\(/
+  );
+  assert.match(
+    processManagedRunnersSource,
+    /export function createLaboratoryManagedProcessRunnersRuntime\(deps\)/
+  );
+  assert.match(processManagedRunnersSource, /from "\.\/process-managed-audio-runner\.js"/);
+  assert.match(processManagedRunnersSource, /from "\.\/process-managed-media-runner\.js"/);
+  assert.match(processManagedRunnersSource, /from "\.\/process-managed-subtitle-runner\.js"/);
+  assert.match(
+    processManagedAudioRunnerSource,
+    /export function createLaboratoryManagedAudioRunnerRuntime\(deps\)/
+  );
+  assert.match(processManagedAudioRunnerSource, /async function runAudioManagedProcess/);
+  assert.match(
+    processManagedMediaRunnerSource,
+    /export function createLaboratoryManagedMediaRunnerRuntime\(deps\)/
+  );
+  assert.match(processManagedMediaRunnerSource, /async function runMediaManagedProcess/);
+  assert.match(
+    processManagedSubtitleRunnerSource,
+    /export function createLaboratoryManagedSubtitleRunnerRuntime\(deps\)/
+  );
+  assert.match(processManagedSubtitleRunnerSource, /async function runSubtitleManagedProcess/);
   assert.match(closeoutStalenessSource, /export function createLaboratoryCloseoutStalenessRuntime\(deps\)/);
   assert.match(closeoutStalenessSource, /function markFeatureProcessStale\(project, featureId, reason\)/);
   assert.match(closeoutStalenessSource, /function markFeatureReportStale\(project, featureId, reason\)/);
@@ -138,7 +196,10 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   assert.match(audioProcessDelegatesSource, /function getAudioAnalysisModuleProcessDir\(runtime, project, moduleId\)/);
   assert.match(audioProcessDelegatesSource, /function getAudioAnalysisModuleRunner\(moduleId\)/);
   assert.match(audioProcessDelegatesSource, /async function generateProcessSpectrogram\(/);
-  assert.match(reportingSource, /const outputPath = `\$\{getFeatureReportDir\(runtime, project, featureId\)\}\/\$\{fileName\}`;/);
+  assert.match(
+    reportingExportSource,
+    /const outputPath = `\$\{getFeatureReportDir\(runtime, project, featureId\)\}\/\$\{fileName\}`;/
+  );
   assert.match(actionRouterSource, /case "process-run":/);
   assert.match(actionRouterSource, /case "audio-process-run":/);
   assert.match(actionRouterSource, /case "process-cancel":/);
@@ -147,10 +208,10 @@ test("laboratory host keeps process orchestration on the shared room-managed con
 });
 
 test("laboratory UI renders the process stage from host-backed state and honest stage tools", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
-  const shellCompositionSource = readFileSync("rooms/laboratory/ui/shell-composition.js", "utf8");
-  const processStageSource = readFileSync("rooms/laboratory/shared/ui/process-stage.js", "utf8");
-  const settingsOverlaySource = readFileSync("rooms/laboratory/shared/ui/settings-overlay.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.ts", "utf8");
+  const shellCompositionSource = readFileSync("rooms/laboratory/ui/shell-composition.ts", "utf8");
+  const processStageSource = readFileSync("rooms/laboratory/shared/ui/process-stage.ts", "utf8");
+  const settingsOverlaySource = readFileSync("rooms/laboratory/shared/ui/settings-overlay.ts", "utf8");
   const toolchain = JSON.parse(readFileSync("rooms/laboratory/shared/data/tools/toolchain.manifest.json", "utf8"));
 
   assert.match(uiSource, /shared\/ui\/process-stage\.js/);

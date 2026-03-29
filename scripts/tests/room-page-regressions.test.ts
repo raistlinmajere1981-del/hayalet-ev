@@ -112,6 +112,10 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   const mainCssSource = readFileSync("src/styles/main.css", "utf8");
   const gameRoomUiCssSource = readFileSync("rooms/game-room/ui/style.css", "utf8");
   const gameRoomXoxCssSource = readFileSync("rooms/game-room/main-functions/xox/styles.css", "utf8");
+  const gameRoomXoxSceneViewCssSource = readFileSync(
+    "rooms/game-room/main-functions/xox/styles/scene-view.css",
+    "utf8"
+  );
   const laboratoryUiCssSource = readFileSync("rooms/laboratory/ui/style.css", "utf8");
   const laboratoryShellCssSource = readFileSync("rooms/laboratory/shared/styles/shell.css", "utf8");
 
@@ -311,8 +315,12 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(gameRoomUiCssSource, /@import "\.\.\/shared\/styles\/base\.css";/);
   assert.match(gameRoomUiCssSource, /@import "\.\.\/main-functions\/xox\/styles\.css";/);
   assert.match(gameRoomUiCssSource, /@import "\.\.\/main-functions\/fate-knots\/styles\.css";/);
+  assert.match(gameRoomXoxCssSource, /@import "\.\/styles\/layout\.css";/);
+  assert.match(gameRoomXoxCssSource, /@import "\.\/styles\/presentation\.css";/);
+  assert.match(gameRoomXoxCssSource, /@import "\.\/styles\/board\.css";/);
+  assert.match(gameRoomXoxCssSource, /@import "\.\/styles\/scene-view\.css";/);
   assert.match(
-    gameRoomXoxCssSource,
+    gameRoomXoxSceneViewCssSource,
     /body\[data-presentation-mode="scene-view"\] \.xox-shell \{\s*min-height: 100%;[\s\S]*padding: 0;/
   );
   assert.match(laboratoryUiCssSource, /@import "\.\.\/shared\/styles\/shell\.css";/);

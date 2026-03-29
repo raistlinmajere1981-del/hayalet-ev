@@ -21,6 +21,13 @@ export interface PathResolver {
   getInstalledRoomsDir(): string;
   getInstalledSceneThemesDir(): string;
   getRoomStorageDir(roomId: string): string;
+  getRoomPartitionsRoot(): string;
+  getRoomPartitionDir(roomId: string): string;
+  getRoomRuntimeResiduePolicy(): {
+    readonly cleanupTrigger: "deleteData";
+    readonly ownsPackageContent: false;
+    readonly preserveByDefault: true;
+  };
   getRoomsRegistryPath(): string;
   getInstalledRoomDir(roomId: string): string;
   getInstalledSceneThemeDir(themeId: string): string;

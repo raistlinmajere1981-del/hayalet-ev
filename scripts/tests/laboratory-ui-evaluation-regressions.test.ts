@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
 
 class ElementStub {
   innerHTML = "";
@@ -99,10 +100,11 @@ function createMinimalLaboratoryUiEnvironment() {
 
 test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
   const environment = createMinimalLaboratoryUiEnvironment();
+  const buildArtifact = await createRoomBuiltArtifact("laboratory");
 
   try {
     await import(
-      `${pathToFileURL(resolve("rooms/laboratory/ui/index.js")).href}?smoke=${Date.now()}`
+      `${pathToFileURL(resolve(buildArtifact.rootDir, "ui/index.js")).href}?smoke=${Date.now()}`
     );
 
     assert.match(environment.runtimeRoot.innerHTML, /Loading Laboratory|Laboratuvar Yukleniyor/);
@@ -112,13 +114,14 @@ test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
       stage: "ui-ready",
     });
   } finally {
+    await buildArtifact.cleanup();
     environment.restore();
   }
 });
 
 test("laboratory subtitle UI runtime resolves the room-local subtitle panel runtime", async () => {
   const runtimeModule = await import(
-    `${pathToFileURL(resolve("rooms/laboratory/main-functions/subtitle-analysis/ui/runtime.js")).href}?smoke=${Date.now()}`
+    `${pathToFileURL(resolve("rooms/laboratory/main-functions/subtitle-analysis/ui/runtime.ts")).href}?smoke=${Date.now()}`
   );
 
   assert.equal(typeof runtimeModule.createSubtitleAnalysisUiRuntime, "function");

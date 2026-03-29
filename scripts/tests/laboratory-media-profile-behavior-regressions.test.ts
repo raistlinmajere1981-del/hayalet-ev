@@ -28,10 +28,10 @@ function extractFunctionSource(source: string, functionName: string): string {
 }
 
 test("laboratory UI keeps profile stale-response tracking isolated by action domain", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
-  const draftRuntimeSource = readFileSync("rooms/laboratory/shared/ui/draft-runtime.js", "utf8");
+  const coreBootstrapSource = readFileSync("rooms/laboratory/ui/core-bootstrap.ts", "utf8");
+  const draftRuntimeSource = readFileSync("rooms/laboratory/shared/ui/draft-runtime.ts", "utf8");
   const requestRuntimeSource = readFileSync(
-    "rooms/laboratory/shared/ui/request-runtime.js",
+    "rooms/laboratory/shared/ui/request-runtime.ts",
     "utf8"
   );
   const context = {
@@ -83,7 +83,7 @@ test("laboratory UI keeps profile stale-response tracking isolated by action dom
   vm.runInContext(
     [
       extractFunctionSource(draftRuntimeSource, "sortStageJobs"),
-      extractFunctionSource(uiSource, "toRecord"),
+      extractFunctionSource(coreBootstrapSource, "toRecord"),
       extractFunctionSource(requestRuntimeSource, "getActionDomain"),
       extractFunctionSource(requestRuntimeSource, "rememberRequest"),
       extractFunctionSource(requestRuntimeSource, "shouldIgnoreCorrelatedPayload"),
@@ -120,9 +120,9 @@ test("laboratory UI keeps profile stale-response tracking isolated by action dom
 });
 
 test("laboratory host treats profile preflight and model jobs as action-scoped slots", () => {
-  const jobRuntimeSource = readFileSync("rooms/laboratory/shared/host/job-runtime.js", "utf8");
+  const jobRuntimeSource = readFileSync("rooms/laboratory/shared/host/job-runtime.ts", "utf8");
   const runtimePrimitivesSource = readFileSync(
-    "rooms/laboratory/shared/host/runtime-primitives.js",
+    "rooms/laboratory/shared/host/runtime-primitives.ts",
     "utf8"
   );
   const context = {
@@ -188,7 +188,7 @@ test("laboratory host treats profile preflight and model jobs as action-scoped s
 
 test("laboratory UI prefers the active profile target metadata over the source-only summary helpers", () => {
   const helperSource = readFileSync(
-    "rooms/laboratory/main-functions/media-analysis/ui/profile-helpers.js",
+    "rooms/laboratory/main-functions/media-analysis/ui/profile-helpers.ts",
     "utf8"
   );
   const context = {
@@ -238,7 +238,7 @@ test("laboratory UI prefers the active profile target metadata over the source-o
 
 test("laboratory host resolves derived profile targets with safe fallback when the pin is stale", () => {
   const profileProjectionSource = readFileSync(
-    "rooms/laboratory/main-functions/media-analysis/host/profile-projection.js",
+    "rooms/laboratory/main-functions/media-analysis/host/profile-projection.ts",
     "utf8"
   );
   const context = {
@@ -310,7 +310,7 @@ test("laboratory host resolves derived profile targets with safe fallback when t
 
 test("laboratory host readiness blocks missing targets and surfaces model-compatibility warnings", () => {
   const profileProjectionSource = readFileSync(
-    "rooms/laboratory/main-functions/media-analysis/host/profile-projection.js",
+    "rooms/laboratory/main-functions/media-analysis/host/profile-projection.ts",
     "utf8"
   );
   const context = {

@@ -24,6 +24,11 @@ import {
 
 let config: (PathConfig & { electronDir: string }) | null = null;
 const MAIN_APP_LOG_DIR_NAME = "app";
+const ROOM_RUNTIME_RESIDUE_POLICY = Object.freeze({
+  cleanupTrigger: "deleteData",
+  ownsPackageContent: false,
+  preserveByDefault: true,
+} as const);
 
 function pathsT(key: string): string {
   const locale = readElectronAppLanguageSync();
@@ -99,17 +104,20 @@ const paths: PathResolver = {
   },
 
   getRoomsWorkspaceDir(): string {
+    // NOTE: `rooms/` is the single editable room source tree in development.
     return join(getConfig().projectRoot, "rooms");
   },
 
   getBundledRoomsDir(): string {
     const cfg = getConfig();
+    // NOTE: Bundled rooms are read-only package inputs, never a second authoring root.
     return cfg.isPackaged
       ? join(process.resourcesPath, "app.asar", "rooms")
       : join(cfg.projectRoot, "rooms");
   },
 
   getInstalledRoomsDir(): string {
+    // NOTE: `data/rooms` contains generated install copies only.
     return join(getConfig().dataDir, "rooms");
   },
 
@@ -118,7 +126,26 @@ const paths: PathResolver = {
   },
 
   getRoomStorageDir(roomId: string): string {
+    // NOTE: Room runtime state and generated artifacts live outside the package tree.
     return join(getConfig().dataDir, "room-storage", roomId);
+  },
+
+  getRoomPartitionsRoot(): string {
+    return join(getConfig().dataDir, "electron-user-data", "Partitions");
+  },
+
+  getRoomPartitionDir(roomId: string): string {
+    // NOTE: Room webview/session partitions are runtime residue, not package content.
+    // NOTE: Retain them by default so reinstalls can reuse session state; only explicit deleteData cleanup removes them.
+    return join(this.getRoomPartitionsRoot(), `room-${roomId}`);
+  },
+
+  getRoomRuntimeResiduePolicy(): {
+    readonly cleanupTrigger: "deleteData";
+    readonly ownsPackageContent: false;
+    readonly preserveByDefault: true;
+  } {
+    return ROOM_RUNTIME_RESIDUE_POLICY;
   },
 
   getRoomsRegistryPath(): string {

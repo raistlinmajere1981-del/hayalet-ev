@@ -121,13 +121,39 @@ test("room runtime locale bridge refreshes game-room UI and host copy", () => {
     "utf8"
   );
   const roomHostRuntimeSource = readFileSync("src/js/modules/rooms/room-host-runtime.ts", "utf8");
-  const gameRoomUiSource = readFileSync("rooms/game-room/ui/index.js", "utf8");
-  const gameRoomXoxUiSource = readFileSync("rooms/game-room/main-functions/xox/ui/module.js", "utf8");
+  const gameRoomUiEntrySource = readFileSync("rooms/game-room/ui/index.ts", "utf8");
+  const gameRoomUiRuntimeSource = readFileSync("rooms/game-room/ui/game-room-ui-runtime.js", "utf8");
+  const gameRoomXoxUiModuleSource = readFileSync("rooms/game-room/main-functions/xox/ui/module.js", "utf8");
+  const gameRoomXoxUiStateRuntimeSource = readFileSync(
+    "rooms/game-room/main-functions/xox/ui/state-runtime.js",
+    "utf8"
+  );
+  const gameRoomXoxUiRenderRuntimeSource = readFileSync(
+    "rooms/game-room/main-functions/xox/ui/render-runtime.js",
+    "utf8"
+  );
+  const gameRoomTeamTetrisUiStateRuntimeSource = readFileSync(
+    "rooms/game-room/main-functions/team-tetris/ui/state-runtime.js",
+    "utf8"
+  );
   const gameRoomTeamTetrisUiSource = readFileSync(
     "rooms/game-room/main-functions/team-tetris/ui/module.js",
     "utf8"
   );
-  const gameRoomHostSource = readFileSync("rooms/game-room/host/index.js", "utf8");
+  const gameRoomTeamTetrisUiModuleCardRuntimeSource = readFileSync(
+    "rooms/game-room/main-functions/team-tetris/ui/module-card-runtime.js",
+    "utf8"
+  );
+  const gameRoomTeamTetrisUiModuleShellRuntimeSource = readFileSync(
+    "rooms/game-room/main-functions/team-tetris/ui/module-shell-runtime.js",
+    "utf8"
+  );
+  const gameRoomHostEntrySource = readFileSync("rooms/game-room/host/index.ts", "utf8");
+  const gameRoomHostActivationSource = readFileSync(
+    "rooms/game-room/shared/host/activation.ts",
+    "utf8"
+  );
+  const gameRoomHostRuntimeSource = readFileSync("rooms/game-room/host/runtime.js", "utf8");
 
   assert.match(roomPageSource, /runtimeContextRuntime\.sync\("locale-change"\)/);
   assert.match(roomPageSource, /\.\/room-page\/runtime-context-runtime\.js/);
@@ -135,18 +161,27 @@ test("room runtime locale bridge refreshes game-room UI and host copy", () => {
   assert.match(runtimeContextSource, /ai1:\s*buildRoomSlotContext\("ai1"\)/);
   assert.match(runtimeSubscriptionsSource, /SlotController\.on\(eventName/);
   assert.match(roomHostRuntimeSource, /getLocale:\s*\(\): string => AppI18n\.getLocale\(\)/);
-  assert.match(gameRoomUiSource, /message\.type === "host-context"/);
-  assert.match(gameRoomUiSource, /state\.translations = message\.translations/);
-  assert.match(gameRoomUiSource, /message\.type === "xox-state"/);
-  assert.match(gameRoomUiSource, /message\.type === "team-tetris-state"/);
-  assert.match(gameRoomUiSource, /xoxUi\.renderBootstrap\(root\)/);
-  assert.match(gameRoomXoxUiSource, /function renderBootstrap\(root\)/);
-  assert.match(gameRoomXoxUiSource, /GameRoomXoxStart/);
-  assert.match(gameRoomTeamTetrisUiSource, /GameRoomTeamTetrisStart/);
-  assert.match(gameRoomHostSource, /onRoomEvent: function onRoomEvent\(payload\)/);
-  assert.match(gameRoomHostSource, /payload\.type === "host-context"/);
-  assert.match(gameRoomHostSource, /\[XOX_COMMAND_NAMES\.aiMove\]/);
-  assert.match(gameRoomHostSource, /GameRoomTeamTetrisAiMove/);
+  assert.match(gameRoomUiEntrySource, /createGameRoomUiRuntime\(\)\.start\(\)/);
+  assert.match(gameRoomUiRuntimeSource, /message\.type === "host-context"/);
+  assert.match(gameRoomUiRuntimeSource, /state\.translations = message\.translations/);
+  assert.match(gameRoomUiRuntimeSource, /message\.type === "xox-state"/);
+  assert.match(gameRoomUiRuntimeSource, /message\.type === "team-tetris-state"/);
+  assert.match(gameRoomUiRuntimeSource, /xoxUi\.renderBootstrap\(root\)/);
+  assert.match(gameRoomXoxUiModuleSource, /createXoxUiStateRuntime/);
+  assert.match(gameRoomXoxUiModuleSource, /createXoxUiRenderRuntime/);
+  assert.match(gameRoomXoxUiRenderRuntimeSource, /function renderBootstrap\(root\)/);
+  assert.match(gameRoomXoxUiStateRuntimeSource, /GameRoomXoxStart/);
+  assert.match(gameRoomTeamTetrisUiStateRuntimeSource, /GameRoomTeamTetrisStart/);
+  assert.match(gameRoomTeamTetrisUiSource, /createTeamTetrisUiStateRuntime/);
+  assert.match(gameRoomTeamTetrisUiSource, /createTeamTetrisUiModuleCardRuntime/);
+  assert.match(gameRoomTeamTetrisUiSource, /createTeamTetrisUiModuleShellRuntime/);
+  assert.match(gameRoomTeamTetrisUiModuleCardRuntimeSource, /createTeamTetrisUiModuleCardRuntime/);
+  assert.match(gameRoomTeamTetrisUiModuleShellRuntimeSource, /createTeamTetrisUiModuleShellRuntime/);
+  assert.match(gameRoomHostEntrySource, /createGameRoomHostRuntime\(\)/);
+  assert.match(gameRoomHostActivationSource, /onRoomEvent\(payload\)/);
+  assert.match(gameRoomHostActivationSource, /\.type === "host-context"/);
+  assert.match(gameRoomHostRuntimeSource, /xoxCommandNames: XOX_COMMAND_NAMES/);
+  assert.match(gameRoomHostRuntimeSource, /handleTeamTetrisMove/);
 });
 
 class FakeElement {
@@ -266,9 +301,39 @@ function createGameRoomUiRuntime(initialLanguage = "en-US"): {
   };
   [
     "rooms/game-room/ui/context-runtime.js",
+    "rooms/game-room/shared/ui/feature-contract.js",
+    "rooms/game-room/shared/ui/scroll-runtime.js",
+    "rooms/game-room/main-functions/xox/ui/state-runtime.js",
+    "rooms/game-room/main-functions/xox/ui/render-runtime.js",
     "rooms/game-room/main-functions/xox/ui/module.js",
+    "rooms/game-room/main-functions/team-tetris/ui/draft-runtime.js",
+    "rooms/game-room/main-functions/team-tetris/ui/state-shape-runtime.js",
+    "rooms/game-room/main-functions/team-tetris/ui/state-view-runtime.js",
+    "rooms/game-room/main-functions/team-tetris/ui/state-runtime.js",
+    "rooms/game-room/main-functions/team-tetris/ui/module-card-runtime.js",
+    "rooms/game-room/main-functions/team-tetris/ui/module-shell-runtime.js",
     "rooms/game-room/main-functions/team-tetris/ui/module.js",
-    "rooms/game-room/ui/index.js",
+    "rooms/game-room/main-functions/fate-knots/ui/state-defaults-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/state-sanitize-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/state-support-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/state-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-assets-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-primitives-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-map-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/chrome-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/journey-overview-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/journey-creation-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/journey-stage-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-support-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-narrative-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-combat-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-runtime.js",
+    "rooms/game-room/main-functions/fate-knots/ui/module.js",
+    "rooms/game-room/ui/game-room-ui-bootstrap.js",
+    "rooms/game-room/ui/game-room-ui-state-message-runtime.js",
+    "rooms/game-room/ui/game-room-ui-runtime.js",
+    "rooms/game-room/ui/index.ts",
   ].forEach((filePath) => {
     vm.runInNewContext(readFileSync(filePath, "utf8"), context);
   });

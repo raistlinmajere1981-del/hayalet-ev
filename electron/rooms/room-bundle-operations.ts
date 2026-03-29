@@ -6,25 +6,14 @@ import {
   type InstalledRoomRecord,
   type RoomBundle,
   type RoomBundleFile,
-  type RoomWorkspaceEntry,
 } from "@shared/index.js";
 import { collectFilesRecursive, ensureDir, readJsonFile } from "./room-install-files.ts";
+import type { BuildWorkspaceRoomArtifactResult } from "./workspace-room-build.ts";
 import { validateRoomBundle } from "./room-bundle-validation.ts";
 
 interface PackageWorkspaceRoomBundleParams {
-  getRoomStorageRoot: (roomId: string) => string;
   outputFile?: string;
-  roomId: string;
-  roomPackageError: (
-    key: string,
-    detail?: unknown,
-    params?: Record<string, string | number | boolean>
-  ) => Promise<string>;
-  roomPackageT: (
-    key: string,
-    params?: Record<string, string | number | boolean>
-  ) => Promise<string>;
-  workspaceRooms: RoomWorkspaceEntry[];
+  prepareWorkspaceRoomBuild: () => Promise<BuildWorkspaceRoomArtifactResult>;
 }
 
 interface ImportRoomBundleFileParams {
@@ -50,42 +39,25 @@ interface ImportRoomBundleFileParams {
 }
 
 export async function packageWorkspaceRoomBundle({
-  getRoomStorageRoot,
   outputFile,
-  roomId,
-  roomPackageError,
-  roomPackageT,
-  workspaceRooms,
+  prepareWorkspaceRoomBuild,
 }: PackageWorkspaceRoomBundleParams): Promise<{
   success: boolean;
   error?: string;
   path?: string;
 }> {
-  const normalizedRoomId = roomId.trim();
-  if (normalizedRoomId === "") {
-    return { success: false, error: await roomPackageT("roomIdRequired") };
+  const buildResult = await prepareWorkspaceRoomBuild();
+  if (buildResult.success !== true) {
+    return { success: false, error: buildResult.error };
   }
 
-  const target = workspaceRooms.find(
-    (entry) => entry.dirName === normalizedRoomId || entry.manifest?.id === normalizedRoomId
-  );
-
-  if (target?.manifest === undefined) {
-    return {
-      success: false,
-      error: await roomPackageT("roomNotFoundInWorkspace", { roomId: normalizedRoomId }),
-    };
+  const { artifact } = buildResult;
+  const targetManifest = artifact.workspaceRoom.manifest;
+  if (targetManifest === undefined) {
+    return { success: false, error: "workspace manifest missing after build" };
   }
 
-  const targetManifest = target.manifest;
-  if (target.valid !== true) {
-    return {
-      success: false,
-      error: await roomPackageError("workspaceInvalid", target.errors.join("; ")),
-    };
-  }
-
-  const files = await collectFilesRecursive(target.dirPath);
+  const files = await collectFilesRecursive(artifact.buildDir);
   const bundleEntries = await Promise.all(
     files.map(async (file): Promise<[string, RoomBundleFile]> => {
       const content = await readFile(file.absolutePath);
@@ -111,8 +83,7 @@ export async function packageWorkspaceRoomBundle({
   };
 
   const resolvedOutputFile =
-    outputFile ??
-    join(getRoomStorageRoot(targetManifest.id), "exports", `${targetManifest.id}.hevroom.json`);
+    outputFile ?? join(artifact.roomStorageRoot, "exports", `${targetManifest.id}.hevroom.json`);
   await ensureDir(dirname(resolvedOutputFile));
   await writeFile(resolvedOutputFile, JSON.stringify(bundle, null, 2), "utf-8");
 

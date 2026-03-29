@@ -28,10 +28,10 @@ function extractFunctionSource(source: string, functionName: string): string {
 }
 
 test("laboratory UI keeps preview/apply stale-response tracking isolated by action domain", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
-  const draftRuntimeSource = readFileSync("rooms/laboratory/shared/ui/draft-runtime.js", "utf8");
+  const coreBootstrapSource = readFileSync("rooms/laboratory/ui/core-bootstrap.ts", "utf8");
+  const draftRuntimeSource = readFileSync("rooms/laboratory/shared/ui/draft-runtime.ts", "utf8");
   const requestRuntimeSource = readFileSync(
-    "rooms/laboratory/shared/ui/request-runtime.js",
+    "rooms/laboratory/shared/ui/request-runtime.ts",
     "utf8"
   );
   const context = {
@@ -79,7 +79,7 @@ test("laboratory UI keeps preview/apply stale-response tracking isolated by acti
   vm.runInContext(
     [
       extractFunctionSource(draftRuntimeSource, "sortStageJobs"),
-      extractFunctionSource(uiSource, "toRecord"),
+      extractFunctionSource(coreBootstrapSource, "toRecord"),
       extractFunctionSource(requestRuntimeSource, "getActionDomain"),
       extractFunctionSource(requestRuntimeSource, "rememberRequest"),
       extractFunctionSource(requestRuntimeSource, "shouldIgnoreCorrelatedPayload"),
@@ -119,9 +119,9 @@ test("laboratory UI keeps preview/apply stale-response tracking isolated by acti
 });
 
 test("laboratory host treats preview/apply edit jobs as action-scoped slots", () => {
-  const jobRuntimeSource = readFileSync("rooms/laboratory/shared/host/job-runtime.js", "utf8");
+  const jobRuntimeSource = readFileSync("rooms/laboratory/shared/host/job-runtime.ts", "utf8");
   const runtimePrimitivesSource = readFileSync(
-    "rooms/laboratory/shared/host/runtime-primitives.js",
+    "rooms/laboratory/shared/host/runtime-primitives.ts",
     "utf8"
   );
   const context = {

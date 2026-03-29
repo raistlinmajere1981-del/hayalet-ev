@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import vm from "node:vm";
+import { createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
 class FakeElement {
   tagName: string;
@@ -94,7 +95,7 @@ function findByPhase(root: FakeElement, phase: string): FakeElement | null {
   return findFirst(root, (element) => element.dataset.fkPhase === phase);
 }
 
-function createInstalledUiRuntime() {
+function createInstalledUiRuntime(roomRoot: string) {
   const document = new FakeDocument();
   const app = document.createElement("div");
   app.id = "app";
@@ -130,11 +131,40 @@ function createInstalledUiRuntime() {
   };
 
   [
-    "data/rooms/game-room/ui/context-runtime.js",
-    "data/rooms/game-room/main-functions/xox/ui/module.js",
-    "data/rooms/game-room/main-functions/team-tetris/ui/module.js",
-    "data/rooms/game-room/main-functions/fate-knots/ui/module.js",
-    "data/rooms/game-room/ui/index.js",
+    `${roomRoot}/ui/context-runtime.js`,
+    `${roomRoot}/shared/ui/feature-contract.js`,
+    `${roomRoot}/shared/ui/scroll-runtime.js`,
+    `${roomRoot}/main-functions/xox/ui/state-runtime.js`,
+    `${roomRoot}/main-functions/xox/ui/render-runtime.js`,
+    `${roomRoot}/main-functions/xox/ui/module.js`,
+    `${roomRoot}/main-functions/team-tetris/ui/draft-runtime.js`,
+    `${roomRoot}/main-functions/team-tetris/ui/state-shape-runtime.js`,
+    `${roomRoot}/main-functions/team-tetris/ui/state-view-runtime.js`,
+    `${roomRoot}/main-functions/team-tetris/ui/state-runtime.js`,
+    `${roomRoot}/main-functions/team-tetris/ui/module-card-runtime.js`,
+    `${roomRoot}/main-functions/team-tetris/ui/module-shell-runtime.js`,
+    `${roomRoot}/main-functions/team-tetris/ui/module.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/state-defaults-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/state-sanitize-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/state-support-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/state-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/surface-assets-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/surface-primitives-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/surface-map-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/surface-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/chrome-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/journey-overview-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/journey-creation-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/journey-stage-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/stage-support-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/stage-narrative-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/stage-combat-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/stage-runtime.js`,
+    `${roomRoot}/main-functions/fate-knots/ui/module.js`,
+    `${roomRoot}/ui/game-room-ui-bootstrap.js`,
+    `${roomRoot}/ui/game-room-ui-state-message-runtime.js`,
+    `${roomRoot}/ui/game-room-ui-runtime.js`,
+    `${roomRoot}/ui/index.js`,
   ].forEach((filePath) => {
     vm.runInNewContext(readFileSync(filePath, "utf8"), context);
   });
@@ -342,49 +372,104 @@ function emitFateKnotsState(runtime: ReturnType<typeof createInstalledUiRuntime>
   });
 }
 
-test("game-room installed UI renders Fate Knots overview landmarks with portable assets", () => {
-  const runtime = createInstalledUiRuntime();
-  const translations = JSON.parse(readFileSync("data/rooms/game-room/i18n/en.json", "utf8")) as Record<string, unknown>;
-  const state = createBaseState();
+test("game-room installed UI renders Fate Knots overview landmarks with portable assets", async () => {
+  const installedCopy = await createRoomInstalledCopy("game-room");
 
-  runtime.emitHostMessage(buildHostContext(translations));
-  emitFateKnotsState(runtime, state);
+  try {
+    const runtime = createInstalledUiRuntime(installedCopy.rootDir);
+    const translations = JSON.parse(readFileSync(`${installedCopy.rootDir}/i18n/en.json`, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    const state = createBaseState();
 
-  assert.ok(findByPhase(runtime.document.body, "overview"));
-  assert.ok(findByRole(runtime.document.body, "surface-shell"));
-  assert.ok(findByRole(runtime.document.body, "map-shell"));
-  assert.ok(findByRole(runtime.document.body, "right-rail"));
-  assert.ok(findByRole(runtime.document.body, "start-zone"));
-  assert.ok(findBySeat(runtime.document.body, "us1"));
-  assert.notEqual(findBySeat(runtime.document.body, "us1")?.tagName, "button");
-  assert.match(readElementText(runtime.document.body), /Fate Knots/);
+    runtime.emitHostMessage(buildHostContext(translations));
+    emitFateKnotsState(runtime, state);
 
-  [
-    "data/rooms/game-room/ui/index.js",
-    "data/rooms/game-room/main-functions/fate-knots/ui/module.js",
-    "data/rooms/game-room/main-functions/fate-knots/styles.css",
-    "data/rooms/game-room/main-functions/fate-knots/assets/ui/frames/main_scene_frame.webp",
-    "data/rooms/game-room/main-functions/fate-knots/assets/ui/buttons/primary_button.webp",
-    "data/rooms/game-room/main-functions/fate-knots/assets/ui/cards/avatar_card_template.webp",
-  ].forEach((filePath) => {
-    assert.equal(existsSync(filePath), true, filePath);
-  });
+    assert.ok(findByPhase(runtime.document.body, "overview"));
+    assert.ok(findByRole(runtime.document.body, "surface-shell"));
+    assert.ok(findByRole(runtime.document.body, "map-shell"));
+    assert.ok(findByRole(runtime.document.body, "right-rail"));
+    assert.ok(findByRole(runtime.document.body, "start-zone"));
+    assert.ok(findBySeat(runtime.document.body, "us1"));
+    assert.notEqual(findBySeat(runtime.document.body, "us1")?.tagName, "button");
+    assert.match(readElementText(runtime.document.body), /Fate Knots/);
+
+    [
+      `${installedCopy.rootDir}/ui/index.js`,
+      `${installedCopy.rootDir}/ui/game-room-ui-runtime.js`,
+      `${installedCopy.rootDir}/shared/ui/feature-contract.js`,
+      `${installedCopy.rootDir}/shared/ui/scroll-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/xox/ui/state-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/xox/ui/render-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/xox/ui/module.js`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/styles.css`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/styles/layout.css`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/styles/board.css`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/styles/presentation.css`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/ui/draft-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/ui/state-shape-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/ui/state-view-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/ui/state-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/ui/module-card-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/ui/module-shell-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/team-tetris/ui/module.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/state-defaults-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/state-sanitize-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/state-support-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/state-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/surface-assets-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/surface-primitives-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/surface-map-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/surface-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/chrome-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/journey-overview-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/journey-creation-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/journey-stage-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/stage-support-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/stage-narrative-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/stage-combat-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/stage-runtime.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/ui/module.js`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/styles.css`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/styles/shell.css`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/styles/layout.css`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/styles/components.css`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/styles/presentation.css`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/assets/ui/frames/main_scene_frame.webp`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/assets/ui/buttons/primary_button.webp`,
+      `${installedCopy.rootDir}/main-functions/fate-knots/assets/ui/cards/avatar_card_template.webp`,
+    ].forEach((filePath) => {
+      assert.equal(existsSync(filePath), true, filePath);
+    });
+  } finally {
+    await installedCopy.cleanup();
+  }
 });
 
-test("game-room installed UI keeps creation landmarks and renderer-only dummy seats", () => {
-  const runtime = createInstalledUiRuntime();
-  const translations = JSON.parse(readFileSync("data/rooms/game-room/i18n/en.json", "utf8")) as Record<string, unknown>;
-  const state = createBaseState();
-  state.phase = "character-creation";
-  state.active = true;
+test("game-room installed UI keeps creation landmarks and renderer-only dummy seats", async () => {
+  const installedCopy = await createRoomInstalledCopy("game-room");
 
-  runtime.emitHostMessage(buildHostContext(translations));
-  emitFateKnotsState(runtime, state);
+  try {
+    const runtime = createInstalledUiRuntime(installedCopy.rootDir);
+    const translations = JSON.parse(readFileSync(`${installedCopy.rootDir}/i18n/en.json`, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    const state = createBaseState();
+    state.phase = "character-creation";
+    state.active = true;
 
-  assert.ok(findByPhase(runtime.document.body, "character-creation"));
-  assert.ok(findByRole(runtime.document.body, "selection-table"));
-  assert.ok(findByRole(runtime.document.body, "summary-rail"));
-  assert.ok(findByRole(runtime.document.body, "selection-actions"));
-  assert.ok(findBySeat(runtime.document.body, "us1"));
-  assert.match(readElementText(runtime.document.body), /Build Summary/);
+    runtime.emitHostMessage(buildHostContext(translations));
+    emitFateKnotsState(runtime, state);
+
+    assert.ok(findByPhase(runtime.document.body, "character-creation"));
+    assert.ok(findByRole(runtime.document.body, "selection-table"));
+    assert.ok(findByRole(runtime.document.body, "summary-rail"));
+    assert.ok(findByRole(runtime.document.body, "selection-actions"));
+    assert.ok(findBySeat(runtime.document.body, "us1"));
+    assert.match(readElementText(runtime.document.body), /Build Summary/);
+  } finally {
+    await installedCopy.cleanup();
+  }
 });

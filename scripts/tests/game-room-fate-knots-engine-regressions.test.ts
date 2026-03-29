@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   applyFateKnotsCombatAction,
@@ -11,6 +12,28 @@ import {
   settleAutomaticFateKnotsCombatTurns,
 } from "../../rooms/game-room/main-functions/fate-knots/host/combat-engine.js";
 import { loadFateKnotsContentRegistry } from "../../rooms/game-room/main-functions/fate-knots/host/content-loader.js";
+
+test("Fate Knots combat engine public surface stays split across state and turn runtimes", () => {
+  const combatEngineSource = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/combat-engine.js",
+    "utf8"
+  );
+  const combatStateSource = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/combat-state.js",
+    "utf8"
+  );
+  const combatTurnsSource = readFileSync(
+    "rooms/game-room/main-functions/fate-knots/host/combat-turns.js",
+    "utf8"
+  );
+
+  assert.match(combatEngineSource, /\.\/combat-state\.js/);
+  assert.match(combatEngineSource, /\.\/combat-turns\.js/);
+  assert.match(combatStateSource, /export function createFateKnotsCombatState\(options\)/);
+  assert.match(combatStateSource, /export function cloneFateKnotsCombatState\(candidate\)/);
+  assert.match(combatTurnsSource, /export function applyFateKnotsCombatAction\(combat, seatId, actionId, cardsById\)/);
+  assert.match(combatTurnsSource, /export function settleAutomaticFateKnotsCombatTurns\(combat, enemyActionsById\)/);
+});
 
 function createCombatFixture() {
   const content = loadFateKnotsContentRegistry();

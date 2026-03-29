@@ -173,6 +173,11 @@ function readStartupRoomsSnapshot(): StartupRoomsSnapshot | null {
           })
           .filter((room): room is InstalledRoomRecord => room !== null)
       : [];
+
+    if (rooms.length === 0) {
+      return null;
+    }
+
     const protocols: StartupRoomProtocolSnapshot[] = [];
 
     rooms.forEach((room) => {

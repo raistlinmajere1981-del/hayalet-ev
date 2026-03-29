@@ -4,6 +4,7 @@ import { join, resolve } from "path";
 import type { RoomManifest, RoomWorkspaceEntry } from "@shared/index.js";
 import { collectRoomManifestRequiredFilePaths, validateRoomManifest } from "@shared/index.js";
 import { readJsonFile } from "./room-install-files.ts";
+import { roomSourceSatisfiesRuntimePath } from "./workspace-room-build-support.ts";
 
 export interface RoomWorkspaceRoot {
   root: string;
@@ -64,7 +65,7 @@ export async function readWorkspaceRoomsFromRoot(
 
           if (validation.valid && validation.manifest !== undefined) {
             collectRoomManifestRequiredFilePaths(validation.manifest).forEach((requiredPath) => {
-              if (!existsSync(join(dirPath, requiredPath))) {
+              if (!roomSourceSatisfiesRuntimePath(dirPath, requiredPath)) {
                 errors.push(`required asset missing: ${requiredPath}`);
               }
             });

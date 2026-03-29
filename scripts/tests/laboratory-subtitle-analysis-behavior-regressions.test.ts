@@ -18,39 +18,81 @@ test("subtitle YouTube descriptor exposes discovery-first filters", () => {
 });
 
 test("subtitle host keeps discovery and explicit export format plumbing", () => {
-  const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
-  const hostRuntimeSource = readFileSync("rooms/laboratory/host/runtime.js", "utf8");
+  const hostSource = readFileSync("rooms/laboratory/host/index.ts", "utf8");
+  const hostRuntimeSource = readFileSync("rooms/laboratory/host/runtime.ts", "utf8");
+  const hostFoundationSource = readFileSync("rooms/laboratory/host/foundation-runtimes.ts", "utf8");
+  const hostProjectSource = readFileSync("rooms/laboratory/host/project-runtimes.ts", "utf8");
+  const hostFeatureSource = readFileSync("rooms/laboratory/host/feature-runtimes.ts", "utf8");
+  const featureAdaptersSource = readFileSync("rooms/laboratory/host/feature-adapters.ts", "utf8");
   const stateCompositionSource = readFileSync(
-    "rooms/laboratory/shared/host/state-composition.js",
+    "rooms/laboratory/shared/host/state-composition.ts",
     "utf8"
   );
   const subtitleRuntimeSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/host/runtime.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/host/runtime.ts",
     "utf8"
   );
   const subtitleDocumentSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/host/document-runtime.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/host/document-runtime.ts",
     "utf8"
   );
   const subtitleStateDelegatesSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/host/state-delegates.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state-delegates.ts",
     "utf8"
   );
   const subtitleStateSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/host/state.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state.ts",
+    "utf8"
+  );
+  const subtitleStateDefaultsSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state-defaults.ts",
+    "utf8"
+  );
+  const subtitleStateNormalizationSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state-normalization.ts",
+    "utf8"
+  );
+  const subtitleStateProjectsSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state-projects.ts",
     "utf8"
   );
   const subtitleYoutubeHostSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-source.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-source.ts",
     "utf8"
   );
+  const subtitleYoutubeDiscoverySource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-discovery.ts",
+    "utf8"
+  );
+  const subtitleYoutubeFiltersSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-filters.ts",
+    "utf8"
+  );
+  const hostCompositionSource = [
+    hostRuntimeSource,
+    hostFoundationSource,
+    hostProjectSource,
+    hostFeatureSource,
+    featureAdaptersSource,
+  ].join("\n");
 
   assert.match(subtitleStateDelegatesSource, /function createEmptySubtitleDiscoveryState\(\)/);
-  assert.match(subtitleStateSource, /selectedCandidateIds/);
+  assert.match(subtitleStateSource, /from "\.\/state-defaults\.js"/);
+  assert.match(subtitleStateSource, /from "\.\/state-normalization\.js"/);
+  assert.match(subtitleStateSource, /from "\.\/state-projects\.js"/);
+  assert.match(
+    subtitleStateDefaultsSource,
+    /export function createSubtitleStateDefaultsRuntime\(deps\)/
+  );
+  assert.match(subtitleStateNormalizationSource, /selectedCandidateIds/);
+  assert.match(
+    subtitleStateProjectsSource,
+    /function upsertSubtitleEntries\(runtime, project, incomingEntries, options\)/
+  );
   assert.match(hostSource, /\.\/runtime\.js/);
-  assert.match(hostRuntimeSource, /main-functions\/subtitle-analysis\/host\/runtime\.js/);
-  assert.match(hostRuntimeSource, /main-functions\/subtitle-analysis\/host\/document-runtime\.js/);
-  assert.match(hostRuntimeSource, /shared\/host\/state-composition\.js/);
+  assert.match(hostCompositionSource, /main-functions\/subtitle-analysis\/host\/runtime\.js/);
+  assert.match(hostCompositionSource, /main-functions\/subtitle-analysis\/host\/document-runtime\.js/);
+  assert.match(hostCompositionSource, /shared\/host\/state-composition\.js/);
   assert.match(
     stateCompositionSource,
     /main-functions\/subtitle-analysis\/host\/state-delegates\.js/
@@ -60,22 +102,47 @@ test("subtitle host keeps discovery and explicit export format plumbing", () => 
     subtitleRuntimeSource,
     /handleSubtitleYoutubeDiscovery: subtitleYoutubeSourceRuntime\.handleYoutubeDiscovery/
   );
+  assert.match(subtitleYoutubeHostSource, /from "\.\/youtube-discovery\.js"/);
+  assert.match(subtitleYoutubeHostSource, /from "\.\/youtube-filters\.js"/);
   assert.match(subtitleYoutubeHostSource, /Run discovery and select at least one video before downloading subtitles\./);
-  assert.match(subtitleYoutubeHostSource, /toolId: "yt-dlp"/);
+  assert.match(subtitleYoutubeHostSource, /needsMetadataFiltering: needsSubtitleYoutubeMetadataFiltering/);
+  assert.match(subtitleYoutubeDiscoverySource, /toolId: "yt-dlp"/);
+  assert.match(
+    subtitleYoutubeDiscoverySource,
+    /function buildSubtitleYoutubeDownloadArgs\(runtime, drafts, sourceDir, urlValue, scopeId\)/
+  );
+  assert.match(subtitleYoutubeFiltersSource, /function matchesSubtitleLanguageAvailability\(metadata, drafts\)/);
+  assert.match(subtitleYoutubeFiltersSource, /function parseSubtitleWeekdayFilter\(value\)/);
   assert.match(subtitleDocumentSource, /function resolveSubtitleOutputFormat\(sourceFormat, outputFormatValue\)/);
   assert.match(subtitleDocumentSource, /function serializeSubtitleCueModel\(cues, format\)/);
-  assert.match(subtitleStateSource, /outputFormat: "source"/);
+  assert.match(subtitleStateDefaultsSource, /outputFormat: "source"/);
 });
 
 test("subtitle UI renders discovery table controls and output format selection", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
-  const copyRuntimeSource = readFileSync("rooms/laboratory/shared/ui/copy-runtime.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.ts", "utf8");
+  const copyRuntimeSource = readFileSync("rooms/laboratory/shared/ui/copy-runtime.ts", "utf8");
   const subtitleAnalysisUiRuntimeSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/ui/runtime.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/runtime.ts",
     "utf8"
   );
   const subtitleModuleSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/ui/module.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/module.ts",
+    "utf8"
+  );
+  const subtitleSourcePanelsSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panels.ts",
+    "utf8"
+  );
+  const subtitleSourceIntakeSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panel-intake.ts",
+    "utf8"
+  );
+  const subtitleSourceWorkspaceSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panel-workspace.ts",
+    "utf8"
+  );
+  const subtitleEditPanelsSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/edit-panels.ts",
     "utf8"
   );
 
@@ -86,11 +153,16 @@ test("subtitle UI renders discovery table controls and output format selection",
   assert.match(subtitleAnalysisUiRuntimeSource, /\.\.\/\.\.\/\.\.\/ui\/subtitle-panel-runtime\.js/);
   assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitleDiscoveryPanel\(\)/);
   assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitleEditStage\(\)/);
-  assert.match(subtitleModuleSource, /data-action="subtitle-source-select-all-discovery"/);
-  assert.match(subtitleModuleSource, /data-action="subtitle-source-clear-discovery-selection"/);
-  assert.match(subtitleModuleSource, /data-action="subtitle-source-toggle-discovery"/);
-  assert.match(subtitleModuleSource, /Candidate Table/);
-  assert.match(subtitleModuleSource, /renderEditSelectField\("outputFormat"/);
+  assert.match(subtitleModuleSource, /from "\.\/source-panels\.js"/);
+  assert.match(subtitleModuleSource, /from "\.\/edit-panels\.js"/);
+  assert.match(subtitleSourcePanelsSource, /from "\.\/source-panel-intake\.js"/);
+  assert.match(subtitleSourcePanelsSource, /from "\.\/source-panel-workspace\.js"/);
+  assert.match(subtitleSourceWorkspaceSource, /data-action="subtitle-source-select-all-discovery"/);
+  assert.match(subtitleSourceWorkspaceSource, /data-action="subtitle-source-clear-discovery-selection"/);
+  assert.match(subtitleSourceWorkspaceSource, /data-action="subtitle-source-toggle-discovery"/);
+  assert.match(subtitleSourceWorkspaceSource, /Candidate Table/);
+  assert.match(subtitleSourceIntakeSource, /data-action="subtitle-source-download-youtube"/);
+  assert.match(subtitleEditPanelsSource, /renderEditSelectField\("outputFormat"/);
 });
 
 test("subtitle locale catalogs keep stage, source, and edit copy in room-local i18n", () => {

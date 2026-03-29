@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { buildRoomHostModuleDataUrl } from "../../src/js/modules/rooms/room-host-source.ts";
+import { createRoomBuiltArtifact, createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
 async function importRoomHostModule(targetPath: string) {
   const absolutePath = resolve(targetPath);
@@ -12,18 +13,30 @@ async function importRoomHostModule(targetPath: string) {
   return await import(`${moduleUrl}#game-room-smoke-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
-test("game-room workspace host imports cleanly through the room host loader graph", async () => {
-  const moduleNamespace = (await importRoomHostModule("rooms/game-room/host/index.js")) as {
-    default?: { activate?: unknown };
-  };
+test("game-room build artifact host imports cleanly through the room host loader graph", async () => {
+  const buildArtifact = await createRoomBuiltArtifact("game-room");
 
-  assert.equal(typeof moduleNamespace.default?.activate, "function");
+  try {
+    const moduleNamespace = (await importRoomHostModule(`${buildArtifact.rootDir}/host/index.js`)) as {
+      default?: { activate?: unknown };
+    };
+
+    assert.equal(typeof moduleNamespace.default?.activate, "function");
+  } finally {
+    await buildArtifact.cleanup();
+  }
 });
 
 test("game-room installed host imports cleanly through the portable room host loader graph", async () => {
-  const moduleNamespace = (await importRoomHostModule("data/rooms/game-room/host/index.js")) as {
-    default?: { activate?: unknown };
-  };
+  const installedCopy = await createRoomInstalledCopy("game-room");
 
-  assert.equal(typeof moduleNamespace.default?.activate, "function");
+  try {
+    const moduleNamespace = (await importRoomHostModule(`${installedCopy.rootDir}/host/index.js`)) as {
+      default?: { activate?: unknown };
+    };
+
+    assert.equal(typeof moduleNamespace.default?.activate, "function");
+  } finally {
+    await installedCopy.cleanup();
+  }
 });

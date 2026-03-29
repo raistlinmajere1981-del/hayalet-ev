@@ -6,6 +6,7 @@ import {
   buildRoomHostModuleDataUrl,
   decodeRoomHostSource,
 } from "../../src/js/modules/rooms/room-host-source.ts";
+import { createRoomBuiltArtifact } from "./helpers/room-installed-copy.ts";
 
 test("decodeRoomHostSource decodes base64 room host source", () => {
   const rawSource = 'module.exports = function () { return { dispose() {} }; };';
@@ -22,25 +23,35 @@ test("decodeRoomHostSource keeps plain javascript source unchanged", () => {
 
 test("buildRoomHostModuleDataUrl imports mixed room host module graphs through data urls", async () => {
   const loadSource = async (filePath: string) => await readFile(filePath, "utf8");
-  const laboratoryHostPath = resolve("rooms/laboratory/host/index.js");
-  const gameRoomHostPath = resolve("rooms/game-room/host/index.js");
+  const laboratoryBuildArtifact = await createRoomBuiltArtifact("laboratory");
+  const gameRoomBuildArtifact = await createRoomBuiltArtifact("game-room");
 
-  const laboratoryModuleUrl = await buildRoomHostModuleDataUrl(laboratoryHostPath, loadSource);
-  const gameRoomModuleUrl = await buildRoomHostModuleDataUrl(gameRoomHostPath, loadSource);
+  try {
+    const laboratoryModuleUrl = await buildRoomHostModuleDataUrl(
+      `${laboratoryBuildArtifact.rootDir}/host/index.js`,
+      loadSource
+    );
+    const gameRoomModuleUrl = await buildRoomHostModuleDataUrl(
+      `${gameRoomBuildArtifact.rootDir}/host/index.js`,
+      loadSource
+    );
 
-  const laboratoryModule = (await import(laboratoryModuleUrl)) as {
-    default?: { activate?: unknown };
-  };
-  const gameRoomModule = (await import(gameRoomModuleUrl)) as {
-    default?: unknown;
-    teamTetrisEngine?: unknown;
-  };
+    const laboratoryModule = (await import(laboratoryModuleUrl)) as {
+      default?: { activate?: unknown };
+    };
+    const gameRoomModule = (await import(gameRoomModuleUrl)) as {
+      default?: unknown;
+      teamTetrisEngine?: unknown;
+    };
 
-  assert.match(laboratoryModuleUrl, /^data:text\/javascript;base64,/);
-  assert.match(gameRoomModuleUrl, /^data:text\/javascript;base64,/);
-  assert.equal(typeof laboratoryModule.default?.activate, "function");
-  assert.ok(gameRoomModule.default);
-  assert.ok(gameRoomModule.teamTetrisEngine);
+    assert.match(laboratoryModuleUrl, /^data:text\/javascript;base64,/);
+    assert.match(gameRoomModuleUrl, /^data:text\/javascript;base64,/);
+    assert.equal(typeof laboratoryModule.default?.activate, "function");
+    assert.ok(gameRoomModule.default);
+    assert.ok(gameRoomModule.teamTetrisEngine);
+  } finally {
+    await Promise.all([laboratoryBuildArtifact.cleanup(), gameRoomBuildArtifact.cleanup()]);
+  }
 });
 
 test("buildRoomHostModuleDataUrl rejects host imports that escape the room root", async () => {

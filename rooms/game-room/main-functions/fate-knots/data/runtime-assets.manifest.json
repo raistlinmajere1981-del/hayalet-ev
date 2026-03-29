@@ -126,7 +126,7 @@
     {
       "id": "fate-knots-view",
       "kind": "feature-view",
-      "sourcePath": "assets/team-fate-knots.webp",
+      "sourcePath": "rooms/game-room/main-functions/fate-knots/assets/fate-knots-view.webp",
       "sourceSize": 58416,
       "src": "main-functions/fate-knots/assets/fate-knots-view.webp",
       "uiSrc": "../main-functions/fate-knots/assets/fate-knots-view.webp"

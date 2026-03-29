@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 import { buildRoomHostModuleDataUrl } from "../../src/js/modules/rooms/room-host-source.ts";
+import { createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 
 async function importRoomHostModule(targetPath: string) {
   const absolutePath = resolve(targetPath);
@@ -14,16 +15,22 @@ async function importRoomHostModule(targetPath: string) {
 }
 
 type InstalledHostRuntime = ReturnType<typeof createInstalledHostRuntime>;
+type InstalledGameRoomHostModule = {
+  default: {
+    activate: (api: Record<string, unknown>) => Record<string, unknown>;
+  };
+};
 
 const activeRuntimes: InstalledHostRuntime[] = [];
-const installedGameRoomHostModule = await importRoomHostModule("data/rooms/game-room/host/index.js");
+let installedGameRoomHostModulePromise: Promise<Record<string, unknown>> | null = null;
+let installedGameRoomCopyCleanup: (() => Promise<void>) | null = null;
 
 async function flushHostTasks(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function createInstalledHostRuntime() {
+function createInstalledHostRuntime(installedGameRoomHostModule: InstalledGameRoomHostModule) {
   const state = new Map();
   const notifications: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const protocolCalls: Array<Record<string, unknown>> = [];
@@ -103,6 +110,20 @@ function createInstalledHostRuntime() {
   return runtime;
 }
 
+async function loadInstalledGameRoomHostModule() {
+  if (installedGameRoomHostModulePromise !== null) {
+    return await installedGameRoomHostModulePromise;
+  }
+
+  installedGameRoomHostModulePromise = (async function () {
+    const installedCopy = await createRoomInstalledCopy("game-room");
+    installedGameRoomCopyCleanup = installedCopy.cleanup;
+    return await importRoomHostModule(join(installedCopy.rootDir, "host/index.js"));
+  })();
+
+  return await installedGameRoomHostModulePromise;
+}
+
 function buildHostContext() {
   return {
     type: "host-context",
@@ -161,10 +182,16 @@ test.afterEach(async () => {
       await dispose();
     }
   }
+  if (installedGameRoomCopyCleanup) {
+    await installedGameRoomCopyCleanup();
+    installedGameRoomCopyCleanup = null;
+  }
+  installedGameRoomHostModulePromise = null;
 });
 
 test("game-room installed host can start Fate Knots and reach the first scenario prompt", async () => {
-  const runtime = createInstalledHostRuntime();
+  const installedGameRoomHostModule = (await loadInstalledGameRoomHostModule()) as InstalledGameRoomHostModule;
+  const runtime = createInstalledHostRuntime(installedGameRoomHostModule);
 
   await runtime.emitHostContext(buildHostContext());
 

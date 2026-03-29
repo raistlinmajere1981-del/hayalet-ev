@@ -5,28 +5,58 @@ import { existsSync, readFileSync } from "node:fs";
 import { validateRoomManifest } from "../../src/types/rooms.ts";
 
 const requiredSubtitleFiles = [
-  "rooms/laboratory/host/runtime.js",
-  "rooms/laboratory/main-functions/subtitle-analysis/host/action-handlers.js",
-  "rooms/laboratory/main-functions/subtitle-analysis/host/edit-workspace.js",
-  "rooms/laboratory/main-functions/subtitle-analysis/host/process-analysis.js",
-  "rooms/laboratory/main-functions/subtitle-analysis/host/runtime.js",
-  "rooms/laboratory/main-functions/subtitle-analysis/host/state.js",
-  "rooms/laboratory/main-functions/subtitle-analysis/host/source-intake.js",
-  "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-source.js",
-  "rooms/laboratory/shared/host/io-runtime.js",
-  "rooms/laboratory/shared/host/project-lifecycle.js",
-  "rooms/laboratory/shared/host/project-records.js",
-  "rooms/laboratory/shared/host/process-report-state.js",
-  "rooms/laboratory/shared/host/runtime-primitives.js",
-  "rooms/laboratory/shared/host/runtime-bootstrap.js",
-  "rooms/laboratory/shared/host/process-runtime.js",
-  "rooms/laboratory/shared/host/room-snapshot.js",
-  "rooms/laboratory/shared/host/snapshot-composition.js",
-  "rooms/laboratory/shared/host/state-composition.js",
-  "rooms/laboratory/shared/host/subtitle-projection.js",
-  "rooms/laboratory/shared/host/reporting.js",
-  "rooms/laboratory/main-functions/subtitle-analysis/ui/module.js",
-  "rooms/laboratory/main-functions/subtitle-analysis/ui/runtime.js",
+  "rooms/laboratory/host/runtime.ts",
+  "rooms/laboratory/host/foundation-runtimes.ts",
+  "rooms/laboratory/host/project-runtimes.ts",
+  "rooms/laboratory/host/feature-runtimes.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/action-handlers.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/edit-workspace.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/process-analysis.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/runtime.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/state-defaults.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/state-normalization.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/state-projects.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/state.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/source-intake.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-discovery.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-filters.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-source.ts",
+  "rooms/laboratory/shared/host/io-runtime.ts",
+  "rooms/laboratory/shared/host/project-lifecycle.ts",
+  "rooms/laboratory/shared/host/project-config-loader.ts",
+  "rooms/laboratory/shared/host/project-records.ts",
+  "rooms/laboratory/shared/host/project-storage.ts",
+  "rooms/laboratory/shared/host/project-tool-status.ts",
+  "rooms/laboratory/shared/host/process-managed-audio-runner.ts",
+  "rooms/laboratory/shared/host/process-managed-media-runner.ts",
+  "rooms/laboratory/shared/host/process-managed-runners.ts",
+  "rooms/laboratory/shared/host/process-managed-subtitle-runner.ts",
+  "rooms/laboratory/shared/host/process-report-state.ts",
+  "rooms/laboratory/shared/host/runtime-primitives.ts",
+  "rooms/laboratory/shared/host/runtime-bootstrap.ts",
+  "rooms/laboratory/shared/host/process-runtime.ts",
+  "rooms/laboratory/shared/host/preset-runtime.ts",
+  "rooms/laboratory/shared/host/preset-source-runtime.ts",
+  "rooms/laboratory/shared/host/preset-edit-runtime.ts",
+  "rooms/laboratory/shared/host/preset-profile-runtime.ts",
+  "rooms/laboratory/shared/host/room-snapshot.ts",
+  "rooms/laboratory/shared/host/snapshot-composition.ts",
+  "rooms/laboratory/shared/host/state-composition.ts",
+  "rooms/laboratory/shared/host/subtitle-projection.ts",
+  "rooms/laboratory/shared/host/reporting.ts",
+  "rooms/laboratory/shared/host/reporting-feature-report.ts",
+  "rooms/laboratory/shared/host/reporting-export.ts",
+  "rooms/laboratory/shared/host/reporting-audio.ts",
+  "rooms/laboratory/shared/host/reporting-subtitle.ts",
+  "rooms/laboratory/shared/host/reporting-markdown.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/ui/module.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panels.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panel-primitives.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panel-process.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panel-intake.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panel-workspace.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/ui/edit-panels.ts",
+  "rooms/laboratory/main-functions/subtitle-analysis/ui/runtime.ts",
   "rooms/laboratory/shared/data/tools/subtitle-source-presets.json",
   "rooms/laboratory/shared/data/tools/subtitle-youtube.form.json",
   "rooms/laboratory/shared/data/tools/subtitle-edit-presets.json",
@@ -58,53 +88,159 @@ test("laboratory manifest exposes the subtitle-analysis feature beside media and
 });
 
 test("laboratory host wires subtitle source, edit, and process actions into the shared room contract", () => {
-  const hostSource = readFileSync("rooms/laboratory/host/index.js", "utf8");
-  const hostRuntimeSource = readFileSync("rooms/laboratory/host/runtime.js", "utf8");
-  const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.js", "utf8");
+  const hostSource = readFileSync("rooms/laboratory/host/index.ts", "utf8");
+  const hostRuntimeSource = readFileSync("rooms/laboratory/host/runtime.ts", "utf8");
+  const hostFoundationSource = readFileSync("rooms/laboratory/host/foundation-runtimes.ts", "utf8");
+  const hostProjectSource = readFileSync("rooms/laboratory/host/project-runtimes.ts", "utf8");
+  const hostFeatureSource = readFileSync("rooms/laboratory/host/feature-runtimes.ts", "utf8");
+  const actionRouterSource = readFileSync("rooms/laboratory/shared/host/action-router.ts", "utf8");
   const subtitleActionSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/host/action-handlers.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/host/action-handlers.ts",
     "utf8"
   );
-  const actionCompositionSource = readFileSync("rooms/laboratory/shared/host/action-composition.js", "utf8");
-  const actionRuntimeSource = readFileSync("rooms/laboratory/shared/host/action-runtime.js", "utf8");
+  const actionCompositionSource = readFileSync("rooms/laboratory/shared/host/action-composition.ts", "utf8");
+  const actionRuntimeSource = readFileSync("rooms/laboratory/shared/host/action-runtime.ts", "utf8");
   const subtitleProcessSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/host/process-analysis.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/host/process-analysis.ts",
     "utf8"
   );
   const subtitleRuntimeSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/host/runtime.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/host/runtime.ts",
     "utf8"
   );
-  const lifecycleSource = readFileSync("rooms/laboratory/shared/host/project-lifecycle.js", "utf8");
-  const projectRecordsSource = readFileSync("rooms/laboratory/shared/host/project-records.js", "utf8");
-  const subtitleProjectionSource = readFileSync("rooms/laboratory/shared/host/subtitle-projection.js", "utf8");
+  const subtitleYoutubeSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-source.ts",
+    "utf8"
+  );
+  const subtitleYoutubeDiscoverySource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-discovery.ts",
+    "utf8"
+  );
+  const subtitleYoutubeFiltersSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/youtube-filters.ts",
+    "utf8"
+  );
+  const lifecycleSource = readFileSync("rooms/laboratory/shared/host/project-lifecycle.ts", "utf8");
+  const projectConfigLoaderSource = readFileSync(
+    "rooms/laboratory/shared/host/project-config-loader.ts",
+    "utf8"
+  );
+  const projectStorageSource = readFileSync(
+    "rooms/laboratory/shared/host/project-storage.ts",
+    "utf8"
+  );
+  const projectToolStatusSource = readFileSync(
+    "rooms/laboratory/shared/host/project-tool-status.ts",
+    "utf8"
+  );
+  const reportingSource = readFileSync("rooms/laboratory/shared/host/reporting.ts", "utf8");
+  const reportingFeatureSource = readFileSync(
+    "rooms/laboratory/shared/host/reporting-feature-report.ts",
+    "utf8"
+  );
+  const reportingExportSource = readFileSync(
+    "rooms/laboratory/shared/host/reporting-export.ts",
+    "utf8"
+  );
+  const reportingAudioSource = readFileSync(
+    "rooms/laboratory/shared/host/reporting-audio.ts",
+    "utf8"
+  );
+  const reportingSubtitleSource = readFileSync(
+    "rooms/laboratory/shared/host/reporting-subtitle.ts",
+    "utf8"
+  );
+  const reportingMarkdownSource = readFileSync(
+    "rooms/laboratory/shared/host/reporting-markdown.ts",
+    "utf8"
+  );
+  const projectRecordsSource = readFileSync("rooms/laboratory/shared/host/project-records.ts", "utf8");
+  const subtitleProjectionSource = readFileSync("rooms/laboratory/shared/host/subtitle-projection.ts", "utf8");
+  const subtitleStateSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state.ts",
+    "utf8"
+  );
+  const subtitleStateDefaultsSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state-defaults.ts",
+    "utf8"
+  );
+  const subtitleStateNormalizationSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state-normalization.ts",
+    "utf8"
+  );
+  const subtitleStateProjectsSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/host/state-projects.ts",
+    "utf8"
+  );
   const stateCompositionSource = readFileSync(
-    "rooms/laboratory/shared/host/state-composition.js",
+    "rooms/laboratory/shared/host/state-composition.ts",
     "utf8"
   );
-  const processDelegatesSource = readFileSync("rooms/laboratory/shared/host/process-delegates.js", "utf8");
+  const processDelegatesSource = readFileSync("rooms/laboratory/shared/host/process-delegates.ts", "utf8");
   const processCompositionSource = readFileSync(
-    "rooms/laboratory/shared/host/process-composition.js",
+    "rooms/laboratory/shared/host/process-composition.ts",
     "utf8"
   );
+  const featureAdaptersSource = readFileSync("rooms/laboratory/host/feature-adapters.ts", "utf8");
   const runtimePrimitivesSource = readFileSync(
-    "rooms/laboratory/shared/host/runtime-primitives.js",
+    "rooms/laboratory/shared/host/runtime-primitives.ts",
     "utf8"
   );
+  const hostCompositionSource = [
+    hostRuntimeSource,
+    hostFoundationSource,
+    hostProjectSource,
+    hostFeatureSource,
+    featureAdaptersSource,
+  ].join("\n");
 
   assert.match(hostSource, /\.\/runtime\.js/);
   assert.match(hostRuntimeSource, /shared\/host\/runtime-primitives\.js/);
+  assert.match(hostRuntimeSource, /from "\.\/foundation-runtimes\.js"/);
+  assert.match(hostRuntimeSource, /from "\.\/project-runtimes\.js"/);
+  assert.match(hostRuntimeSource, /from "\.\/feature-runtimes\.js"/);
   assert.match(runtimePrimitivesSource, /export const LABORATORY_SUBTITLE_FEATURE_ID = "subtitle-analysis";/);
-  assert.match(hostRuntimeSource, /main-functions\/subtitle-analysis\/host\/runtime\.js/);
-  assert.match(hostRuntimeSource, /shared\/host\/state-composition\.js/);
-  assert.match(hostRuntimeSource, /shared\/host\/project-lifecycle\.js/);
-  assert.match(hostRuntimeSource, /shared\/host\/process-composition\.js/);
+  assert.match(hostCompositionSource, /main-functions\/subtitle-analysis\/host\/runtime\.js/);
+  assert.match(hostCompositionSource, /shared\/host\/state-composition\.js/);
+  assert.match(hostCompositionSource, /shared\/host\/project-lifecycle\.js/);
+  assert.match(hostCompositionSource, /shared\/host\/process-composition\.js/);
   assert.match(processCompositionSource, /from "\.\/process-delegates\.js"/);
-  assert.match(hostRuntimeSource, /shared\/host\/runtime-bootstrap\.js/);
-  assert.match(hostRuntimeSource, /shared\/host\/action-composition\.js/);
+  assert.match(hostCompositionSource, /shared\/host\/runtime-bootstrap\.js/);
+  assert.match(hostCompositionSource, /from "\.\/feature-adapters\.js"/);
+  assert.match(lifecycleSource, /from "\.\/project-config-loader\.js"/);
+  assert.match(lifecycleSource, /from "\.\/project-storage\.js"/);
+  assert.match(lifecycleSource, /from "\.\/project-tool-status\.js"/);
+  assert.match(
+    projectConfigLoaderSource,
+    /export function createLaboratoryProjectConfigLoader\(deps\)/
+  );
+  assert.match(
+    projectStorageSource,
+    /export function createLaboratoryProjectStorageRuntime\(deps\)/
+  );
+  assert.match(
+    projectToolStatusSource,
+    /export function createLaboratoryProjectToolStatusRuntime\(deps\)/
+  );
+  assert.match(featureAdaptersSource, /shared\/host\/action-composition\.js/);
   assert.match(stateCompositionSource, /from "\.\/project-records\.js"/);
   assert.match(stateCompositionSource, /from "\.\/subtitle-projection\.js"/);
   assert.match(stateCompositionSource, /from "\.\/process-report-state\.js"/);
+  assert.match(subtitleStateSource, /from "\.\/state-defaults\.js"/);
+  assert.match(subtitleStateSource, /from "\.\/state-normalization\.js"/);
+  assert.match(subtitleStateSource, /from "\.\/state-projects\.js"/);
+  assert.match(
+    subtitleStateDefaultsSource,
+    /export function createSubtitleStateDefaultsRuntime\(deps\)/
+  );
+  assert.match(
+    subtitleStateNormalizationSource,
+    /export function createSubtitleStateNormalizationRuntime\(deps\)/
+  );
+  assert.match(
+    subtitleStateProjectsSource,
+    /export function createSubtitleStateProjectRuntime\(deps\)/
+  );
   assert.match(
     stateCompositionSource,
     /from "\.\.\/\.\.\/main-functions\/subtitle-analysis\/host\/state\.js"/
@@ -115,12 +251,30 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
     stateCompositionSource,
     /export function createLaboratoryHostStateCompositionRuntime\(deps\)/
   );
-  assert.match(lifecycleSource, /subtitle-source-presets\.json/);
-  assert.match(lifecycleSource, /subtitle-youtube\.form\.json/);
-  assert.match(lifecycleSource, /subtitle-edit-presets\.json/);
-  assert.match(lifecycleSource, /subtitle-analysis-catalog\.json/);
-  assert.match(lifecycleSource, /subtitle-analysis-capabilities\.json/);
-  assert.match(lifecycleSource, /subtitle-analysis-providers\.json/);
+  assert.match(projectConfigLoaderSource, /subtitle-source-presets\.json/);
+  assert.match(projectConfigLoaderSource, /subtitle-youtube\.form\.json/);
+  assert.match(projectConfigLoaderSource, /subtitle-edit-presets\.json/);
+  assert.match(projectConfigLoaderSource, /subtitle-analysis-catalog\.json/);
+  assert.match(projectConfigLoaderSource, /subtitle-analysis-capabilities\.json/);
+  assert.match(projectConfigLoaderSource, /subtitle-analysis-providers\.json/);
+  assert.match(projectStorageSource, /async function loadProjects\(runtime\)/);
+  assert.match(projectToolStatusSource, /operation: "tool-probe"/);
+  assert.match(reportingSource, /from "\.\/reporting-feature-report\.js"/);
+  assert.match(reportingSource, /from "\.\/reporting-export\.js"/);
+  assert.match(reportingFeatureSource, /from "\.\/reporting-subtitle\.js"/);
+  assert.match(reportingFeatureSource, /from "\.\/reporting-markdown\.js"/);
+  assert.match(
+    reportingFeatureSource,
+    /export function createLaboratoryFeatureReportRuntime\(deps\)/
+  );
+  assert.match(
+    reportingExportSource,
+    /export function createLaboratoryReportExportRuntime\(deps\)/
+  );
+  assert.match(reportingAudioSource, /export function createLaboratoryAudioReportRuntime\(deps\)/);
+  assert.match(reportingSubtitleSource, /function composeSubtitleAnalysisReport\(runtime, project\)/);
+  assert.match(reportingSubtitleSource, /subtitleAnalysis\.report\.summaryCards\.target/);
+  assert.match(reportingMarkdownSource, /## Warnings/);
   assert.match(projectRecordsSource, /export function createLaboratoryProjectRecordsRuntime\(deps\)/);
   assert.match(subtitleProjectionSource, /export function createLaboratorySubtitleProjectionRuntime\(deps\)/);
   assert.match(actionCompositionSource, /export function createLaboratoryActionCompositionRuntime\(deps\)/);
@@ -135,8 +289,11 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
   assert.match(actionRouterSource, /case "subtitle-edit-update-recipe":/);
   assert.match(actionRouterSource, /case "subtitle-edit-preview":/);
   assert.match(actionRouterSource, /case "subtitle-edit-apply":/);
-  assert.match(hostRuntimeSource, /laboratorySubtitleAnalysisHostRuntime = createLaboratorySubtitleAnalysisHostRuntime\(/);
-  assert.doesNotMatch(hostRuntimeSource, /const laboratoryActionRouter = createLaboratoryActionRouter\(/);
+  assert.match(
+    hostCompositionSource,
+    /laboratorySubtitleAnalysisHostRuntime = createLaboratorySubtitleAnalysisHostRuntime\(/
+  );
+  assert.doesNotMatch(hostCompositionSource, /const laboratoryActionRouter = createLaboratoryActionRouter\(/);
   assert.match(
     subtitleRuntimeSource,
     /export function createLaboratorySubtitleAnalysisHostRuntime\(deps\)/
@@ -148,6 +305,17 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
     subtitleRuntimeSource,
     /handleSubtitleYoutubeDiscovery: subtitleYoutubeSourceRuntime\.handleYoutubeDiscovery/
   );
+  assert.match(subtitleYoutubeSource, /from "\.\/youtube-discovery\.js"/);
+  assert.match(subtitleYoutubeSource, /from "\.\/youtube-filters\.js"/);
+  assert.match(subtitleYoutubeSource, /const subtitleYoutubeFilterRuntime = createSubtitleYoutubeFilterRuntime\(/);
+  assert.match(
+    subtitleYoutubeSource,
+    /const subtitleYoutubeDiscoveryRuntime = createSubtitleYoutubeDiscoveryRuntime\(/
+  );
+  assert.match(subtitleYoutubeDiscoverySource, /export function createSubtitleYoutubeDiscoveryRuntime\(deps\)/);
+  assert.match(subtitleYoutubeDiscoverySource, /async function collectSubtitleYoutubeDiscovery\(/);
+  assert.match(subtitleYoutubeFiltersSource, /export function createSubtitleYoutubeFilterRuntime\(deps\)/);
+  assert.match(subtitleYoutubeFiltersSource, /function needsSubtitleYoutubeMetadataFiltering\(drafts\)/);
   assert.match(subtitleRuntimeSource, /buildSubtitleProcessModules\(runtime, target\)/);
   assert.match(subtitleRuntimeSource, /buildSubtitleAnalysisStats\(runtime, project, target\)/);
   assert.match(actionRuntimeSource, /export function createLaboratoryHostActionRuntime\(deps\)/);
@@ -155,34 +323,58 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
   assert.match(actionRuntimeSource, /function handleToolMutation\(api, runtime, requestId, action, toolId, featureStage\)/);
   assert.match(subtitleProcessSource, /function buildSubtitleProcessModules\(runtime, target\)/);
   assert.match(subtitleProcessSource, /async function buildSubtitleAnalysisStats\(runtime, project, target\)/);
-  assert.doesNotMatch(hostRuntimeSource, /const laboratoryActionRouter = createLaboratoryActionRouter\(/);
+  assert.doesNotMatch(hostCompositionSource, /const laboratoryActionRouter = createLaboratoryActionRouter\(/);
   assert.match(processDelegatesSource, /function composeSubtitleAnalysisReport\(runtime, project\)/);
 });
 
 test("laboratory UI renders subtitle source and edit workspaces on the shared shell", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.ts", "utf8");
   const bootstrapStateSource = readFileSync(
-    "rooms/laboratory/ui/bootstrap-state-runtime.js",
+    "rooms/laboratory/ui/bootstrap-state-runtime.ts",
     "utf8"
   );
   const viewAccessorsRuntimeSource = readFileSync(
-    "rooms/laboratory/ui/view-accessors-runtime.js",
+    "rooms/laboratory/ui/view-accessors-runtime.ts",
     "utf8"
   );
   const stageShellDelegatesSource = readFileSync(
-    "rooms/laboratory/shared/ui/stage-shell-delegates.js",
+    "rooms/laboratory/shared/ui/stage-shell-delegates.ts",
     "utf8"
   );
   const sourceStageCompositionSource = readFileSync(
-    "rooms/laboratory/ui/source-stage-composition.js",
+    "rooms/laboratory/ui/source-stage-composition.ts",
     "utf8"
   );
   const subtitleAnalysisUiRuntimeSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/ui/runtime.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/runtime.ts",
     "utf8"
   );
   const subtitleModuleSource = readFileSync(
-    "rooms/laboratory/main-functions/subtitle-analysis/ui/module.js",
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/module.ts",
+    "utf8"
+  );
+  const subtitleSourcePanelsSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panels.ts",
+    "utf8"
+  );
+  const subtitleSourcePrimitivesSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panel-primitives.ts",
+    "utf8"
+  );
+  const subtitleSourceProcessSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panel-process.ts",
+    "utf8"
+  );
+  const subtitleSourceIntakeSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panel-intake.ts",
+    "utf8"
+  );
+  const subtitleSourceWorkspaceSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/source-panel-workspace.ts",
+    "utf8"
+  );
+  const subtitleEditPanelsSource = readFileSync(
+    "rooms/laboratory/main-functions/subtitle-analysis/ui/edit-panels.ts",
     "utf8"
   );
 
@@ -203,10 +395,25 @@ test("laboratory UI renders subtitle source and edit workspaces on the shared sh
   assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitleDiscoveryPanel\(\)/);
   assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitleEditStage\(\)/);
   assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitlePreviewBody\(/);
-  assert.match(subtitleModuleSource, /data-action="subtitle-source-discover-youtube"/);
-  assert.match(subtitleModuleSource, /data-action="subtitle-source-download-youtube"/);
-  assert.match(subtitleModuleSource, /data-action="subtitle-edit-preview"/);
-  assert.match(subtitleModuleSource, /data-action="subtitle-edit-apply"/);
+  assert.match(subtitleModuleSource, /from "\.\/source-panels\.js"/);
+  assert.match(subtitleModuleSource, /from "\.\/edit-panels\.js"/);
+  assert.match(subtitleSourcePanelsSource, /from "\.\/source-panel-primitives\.js"/);
+  assert.match(subtitleSourcePanelsSource, /from "\.\/source-panel-process\.js"/);
+  assert.match(subtitleSourcePanelsSource, /from "\.\/source-panel-intake\.js"/);
+  assert.match(subtitleSourcePanelsSource, /from "\.\/source-panel-workspace\.js"/);
+  assert.match(
+    subtitleSourcePrimitivesSource,
+    /export function createSubtitleAnalysisSourcePanelPrimitives\(deps\)/
+  );
+  assert.match(
+    subtitleSourceProcessSource,
+    /export function createSubtitleAnalysisSourceProcessPanels\(deps\)/
+  );
+  assert.match(subtitleSourceIntakeSource, /data-action="subtitle-source-discover-youtube"/);
+  assert.match(subtitleSourceIntakeSource, /data-action="subtitle-source-download-youtube"/);
+  assert.match(subtitleSourceWorkspaceSource, /function renderSubtitleDiscoveryPanel\(\)/);
+  assert.match(subtitleEditPanelsSource, /data-action="subtitle-edit-preview"/);
+  assert.match(subtitleEditPanelsSource, /data-action="subtitle-edit-apply"/);
   assert.match(
     uiSource,
     /\[SUBTITLE_FEATURE_ID\]: "\.\.\/main-functions\/subtitle-analysis\/assets\/subtitle-analysis\.webp"/

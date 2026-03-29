@@ -3,20 +3,20 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 test("laboratory host composes and exports report artifacts from persisted process state", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.ts", "utf8");
   const profileProcessReportRuntimeSource = readFileSync(
-    "rooms/laboratory/ui/profile-process-report-runtime.js",
+    "rooms/laboratory/ui/profile-process-report-runtime.ts",
     "utf8"
   );
   const profileProcessReportCompositionSource = readFileSync(
-    "rooms/laboratory/ui/profile-process-report-composition.js",
+    "rooms/laboratory/ui/profile-process-report-composition.ts",
     "utf8"
   );
   const profileProcessReportCompositionSharedSource = readFileSync(
-    "rooms/laboratory/shared/ui/profile-process-report-composition.js",
+    "rooms/laboratory/shared/ui/profile-process-report-composition.ts",
     "utf8"
   );
-  const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.js", "utf8");
+  const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.ts", "utf8");
 
   assert.match(uiSource, /shared\/ui\/profile-process-report-composition\.js/);
   assert.match(profileProcessReportRuntimeSource, /export function createLaboratoryProfileProcessReportRuntime\(deps\)/);
@@ -34,29 +34,29 @@ test("laboratory host composes and exports report artifacts from persisted proce
 });
 
 test("laboratory UI renders report findings and export history from room-managed snapshots", () => {
-  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.js", "utf8");
+  const uiSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.ts", "utf8");
   const profileProcessReportRuntimeSource = readFileSync(
-    "rooms/laboratory/ui/profile-process-report-runtime.js",
+    "rooms/laboratory/ui/profile-process-report-runtime.ts",
     "utf8"
   );
   const runtimeCompositionSource = readFileSync(
-    "rooms/laboratory/ui/runtime-composition.js",
+    "rooms/laboratory/ui/runtime-composition.ts",
     "utf8"
   );
   const stageAccessorsRuntimeSource = readFileSync(
-    "rooms/laboratory/ui/stage-accessors-runtime.js",
+    "rooms/laboratory/ui/stage-accessors-runtime.ts",
     "utf8"
   );
   const viewBindingsRuntimeSource = readFileSync(
-    "rooms/laboratory/ui/view-bindings-runtime.js",
+    "rooms/laboratory/ui/view-bindings-runtime.ts",
     "utf8"
   );
-  const shellCompositionSource = readFileSync("rooms/laboratory/ui/shell-composition.js", "utf8");
+  const shellCompositionSource = readFileSync("rooms/laboratory/ui/shell-composition.ts", "utf8");
   const viewAccessorsRuntimeSource = readFileSync(
-    "rooms/laboratory/ui/view-accessors-runtime.js",
+    "rooms/laboratory/ui/view-accessors-runtime.ts",
     "utf8"
   );
-  const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.js", "utf8");
+  const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.ts", "utf8");
   assert.match(uiSource, /shared\/ui\/report-stage\.js/);
   assert.match(uiSource, /shared\/ui\/shell-runtime\.js/);
   assert.match(uiSource, /\.\/shell-composition\.js/);
