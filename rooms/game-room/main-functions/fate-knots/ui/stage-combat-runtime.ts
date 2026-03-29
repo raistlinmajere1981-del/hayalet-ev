@@ -4,7 +4,7 @@
   registry.createFateKnotsUiCombatStageRuntime =
     function createFateKnotsUiCombatStageRuntime(deps) {
       function createPartyGrid(state, combat) {
-        const grid = deps.createRegion("div", "fk-party-grid", "combat-status");
+        const grid = deps.createRegion("div", "fk-party-grid", "summary-status");
         combat.party.forEach(function (member) {
           const card = deps.createFrame("article", "fk-party-card", null, {
             overlay: deps.getUiAsset("parchmentStain"),
@@ -52,13 +52,16 @@
         const hand = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--decision fk-combat-hand",
-          "combat-hand",
+          ["action-zone", "selection-zone", "combat-hand"],
           {
             overlay: deps.getUiAsset("notificationBanner"),
             frame: deps.getUiAsset("logPanelFrame"),
             texture: deps.getUiAsset("darkPanel"),
           }
         );
+        hand.dataset.activeTurn = combat.turn && combat.turn.seatId === "user" ? "true" : "false";
+        hand.dataset.turnSeatId =
+          combat.turn && combat.turn.seatId ? String(combat.turn.seatId) : "";
         hand.append(
           deps.createElement(
             "p",
@@ -72,8 +75,8 @@
             const button = deps.createRegion("button", "fk-card-choice fk-card-choice--combat", null);
             button.type = "button";
             button.disabled = action.available !== true;
-            button.dataset.selected =
-              combat.turn && combat.turn.seatId === "user" ? "true" : "false";
+            button.dataset.selected = "false";
+            button.dataset.available = action.available === true ? "true" : "false";
             deps.applyFrameArtwork(button, {
               overlay: button.disabled
                 ? deps.getUiAsset("cardDisabled")
@@ -136,11 +139,16 @@
         const combat = state.combat;
         if (!combat) {
           parent.append(
-            deps.createFrame("section", "fk-stage-frame fk-stage-frame--scene", "combat-arena", {
-              overlay: deps.getUiAsset("systemMessageBox"),
-              frame: deps.getUiAsset("mainSceneFrame"),
-              texture: deps.getUiAsset("darkPanel"),
-            })
+            deps.createFrame(
+              "section",
+              "fk-stage-frame fk-stage-frame--scene",
+              ["main-scene", "combat-arena"],
+              {
+                overlay: deps.getUiAsset("systemMessageBox"),
+                frame: deps.getUiAsset("mainSceneFrame"),
+                texture: deps.getUiAsset("darkPanel"),
+              }
+            )
           );
           return;
         }
@@ -148,13 +156,14 @@
         const arena = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--scene fk-combat-arena",
-          "combat-arena",
+          ["main-scene", "summary-status", "combat-arena"],
           {
             overlay: deps.getUiAsset("targetRing"),
             frame: deps.getUiAsset("mainSceneFrame"),
             texture: deps.getUiAsset("defaultPanel"),
           }
         );
+        arena.dataset.turnSeatId = combat.turn && combat.turn.seatId ? String(combat.turn.seatId) : "";
         arena.append(
           deps.createElement(
             "p",
@@ -207,7 +216,7 @@
         const status = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--rail fk-combat-status-panel",
-          "combat-status",
+          ["support-rail", "summary-status", "narration", "log", "combat-status"],
           {
             overlay: deps.getUiAsset("logPanel"),
             frame: deps.getUiAsset("sidePanelFrame"),
@@ -224,7 +233,7 @@
         );
         status.append(createPartyGrid(state, combat));
         if (combat.recentLog.length > 0) {
-          const combatLog = deps.createRegion("div", "fk-combat-log", null);
+          const combatLog = deps.createRegion("div", "fk-combat-log", "log");
           combat.recentLog.forEach(function (entry) {
             combatLog.append(deps.createElement("p", "fk-log-feed__text", entry));
           });

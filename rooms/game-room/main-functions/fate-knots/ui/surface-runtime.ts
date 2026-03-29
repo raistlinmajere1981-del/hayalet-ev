@@ -20,6 +20,7 @@
 
     const fateKnotsUiSurfaceAssetsRuntime = createFateKnotsUiSurfaceAssetsRuntime({
       createDefaultAsset: deps.createDefaultAsset,
+      getCurrentState: deps.getCurrentState,
       sanitizeAssetLink: deps.sanitizeAssetLink,
     });
     const fateKnotsUiSurfacePrimitivesRuntime = createFateKnotsUiSurfacePrimitivesRuntime({

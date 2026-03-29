@@ -8,12 +8,6 @@
   min-width: 0;
 }
 
-.fk-overview {
-  grid-template-areas:
-    "map rail"
-    "memory rail";
-}
-
 .fk-scenario,
 .fk-combat {
   display: grid;
@@ -33,15 +27,10 @@
 }
 
 .fk-overview__main {
-  display: contents;
-}
-
-.fk-overview__map {
-  grid-area: map;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .fk-overview__rail {
-  grid-area: rail;
   display: grid;
   grid-template-rows: auto 1fr auto;
   align-content: start;
@@ -53,10 +42,6 @@
 .fk-summary-rail,
 .fk-combat-status-panel {
   position: sticky;
-}
-
-.fk-memory-rail {
-  grid-area: memory;
 }
 
 .fk-scenario__lower,

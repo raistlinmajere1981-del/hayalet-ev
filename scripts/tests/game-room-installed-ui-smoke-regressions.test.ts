@@ -84,7 +84,12 @@ function findFirst(root: FakeElement, predicate: (element: FakeElement) => boole
 }
 
 function findByRole(root: FakeElement, role: string): FakeElement | null {
-  return findFirst(root, (element) => element.dataset.fkRole === role);
+  return findFirst(root, (element) =>
+    String(element.dataset.fkRole || "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .includes(role)
+  );
 }
 
 function findBySeat(root: FakeElement, seatId: string): FakeElement | null {
@@ -93,6 +98,10 @@ function findBySeat(root: FakeElement, seatId: string): FakeElement | null {
 
 function findByPhase(root: FakeElement, phase: string): FakeElement | null {
   return findFirst(root, (element) => element.dataset.fkPhase === phase);
+}
+
+function findByScreen(root: FakeElement, screen: string): FakeElement | null {
+  return findFirst(root, (element) => element.dataset.fkScreen === screen);
 }
 
 function createInstalledUiRuntime(roomRoot: string) {
@@ -188,6 +197,71 @@ function createAssetLink(assetId: string, uiSrc: string) {
     },
     uiSrc,
     src: uiSrc,
+  };
+}
+
+function createUiAssetRecord(assetId: string, uiSrc: string) {
+  return {
+    id: assetId,
+    assetId,
+    kind: assetId === "fate-knots-view" ? "feature-view" : "ui-runtime",
+    uiSrc,
+    src: uiSrc,
+  };
+}
+
+const UI_ASSET_IDS = [
+  "fate-knots-view",
+  "active_glow_panel",
+  "choice_button",
+  "dark_panel",
+  "default_panel",
+  "disabled_panel",
+  "primary_button",
+  "secondary_button",
+  "button_plate",
+  "card_slot_frame",
+  "log_panel_frame",
+  "main_scene_frame",
+  "side_panel_frame",
+  "top_status_bar",
+  "avatar_card_template",
+  "class_card_template",
+  "creature_card_template",
+  "item_card_template",
+  "location_card_template",
+  "card_disabled",
+  "card_focus_border",
+  "card_hover_glow",
+  "card_selected",
+  "log_panel",
+  "notification_banner",
+  "system_message_box",
+  "target_ring",
+  "dice_badge",
+  "target_marker",
+  "active_marker",
+  "hover_ring",
+  "map_marker",
+  "map_ui_crest",
+  "path_segment",
+  "selection_glow",
+  "corner_ornament",
+  "fog_patch",
+  "light_glow_patch",
+  "parchment_stain",
+  "subtle_rune_overlay",
+  "vignette_patch",
+  "turn_badge",
+];
+
+function createUiAssetsState() {
+  const byId = Object.fromEntries(
+    UI_ASSET_IDS.map((assetId) => [assetId, createUiAssetRecord(assetId, `ui/${assetId}.webp`)])
+  );
+  return {
+    byId,
+    featureView: byId["fate-knots-view"],
   };
 }
 
@@ -359,9 +433,7 @@ function createBaseState() {
     user: {
       nickname: "Raistlin",
     },
-    uiAssets: {
-      featureView: createAssetLink("fate-knots-view", "fate-knots-view.webp"),
-    },
+    uiAssets: createUiAssetsState(),
   };
 }
 
@@ -386,11 +458,13 @@ test("game-room installed UI renders Fate Knots overview landmarks with portable
     runtime.emitHostMessage(buildHostContext(translations));
     emitFateKnotsState(runtime, state);
 
-    assert.ok(findByPhase(runtime.document.body, "overview"));
+    assert.ok(findByPhase(runtime.document.body, "idle"));
+    assert.ok(findByScreen(runtime.document.body, "overview"));
     assert.ok(findByRole(runtime.document.body, "surface-shell"));
-    assert.ok(findByRole(runtime.document.body, "map-shell"));
-    assert.ok(findByRole(runtime.document.body, "right-rail"));
-    assert.ok(findByRole(runtime.document.body, "start-zone"));
+    assert.ok(findByRole(runtime.document.body, "main-scene"));
+    assert.ok(findByRole(runtime.document.body, "support-rail"));
+    assert.ok(findByRole(runtime.document.body, "action-zone"));
+    assert.ok(findByRole(runtime.document.body, "log"));
     assert.ok(findBySeat(runtime.document.body, "us1"));
     assert.notEqual(findBySeat(runtime.document.body, "us1")?.tagName, "button");
     assert.match(readElementText(runtime.document.body), /Fate Knots/);
@@ -464,9 +538,12 @@ test("game-room installed UI keeps creation landmarks and renderer-only dummy se
     emitFateKnotsState(runtime, state);
 
     assert.ok(findByPhase(runtime.document.body, "character-creation"));
-    assert.ok(findByRole(runtime.document.body, "selection-table"));
-    assert.ok(findByRole(runtime.document.body, "summary-rail"));
-    assert.ok(findByRole(runtime.document.body, "selection-actions"));
+    assert.ok(findByRole(runtime.document.body, "selection-zone"));
+    assert.ok(findByRole(runtime.document.body, "support-rail"));
+    assert.ok(findByRole(runtime.document.body, "summary-status"));
+    assert.ok(findByRole(runtime.document.body, "action-zone"));
+    assert.ok(findByRole(runtime.document.body, "log"));
+    assert.ok(findByRole(runtime.document.body, "narration"));
     assert.ok(findBySeat(runtime.document.body, "us1"));
     assert.match(readElementText(runtime.document.body), /Build Summary/);
   } finally {

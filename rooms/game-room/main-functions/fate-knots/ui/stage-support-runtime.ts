@@ -5,10 +5,15 @@
     deps
   ) {
     function createNarrationPanel(state, role) {
+      const narrationRole = role
+        ? Array.isArray(role)
+          ? role.concat("narration")
+          : [role, "narration"]
+        : ["narration", "narration-panel"];
       const panel = deps.createFrame(
         "section",
         "fk-stage-frame fk-stage-frame--log fk-narration-panel",
-        role || "narration-panel",
+        narrationRole,
         {
           overlay: deps.getUiAsset("notificationBanner"),
           frame: deps.getUiAsset("logPanelFrame"),
@@ -59,7 +64,7 @@
       const feed = deps.createFrame(
         "section",
         "fk-stage-frame fk-stage-frame--log fk-log-feed",
-        "story-feed",
+        ["log", "story-feed"],
         {
           overlay: deps.getUiAsset("logPanel"),
           frame: deps.getUiAsset("logPanelFrame"),

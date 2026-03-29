@@ -3,6 +3,21 @@
 
   registry.createFateKnotsUiJourneyCreationRuntime =
     function createFateKnotsUiJourneyCreationRuntime(deps) {
+      function hasRenderableAssetSource(assetLink) {
+        const source = assetLink && typeof assetLink === "object" ? assetLink : null;
+        if (!source) {
+          return false;
+        }
+        return Boolean(
+          (typeof source.uiSrc === "string" && source.uiSrc.trim()) ||
+            (typeof source.src === "string" && source.src.trim()) ||
+            (source.asset &&
+              typeof source.asset === "object" &&
+              ((typeof source.asset.uiSrc === "string" && source.asset.uiSrc.trim()) ||
+                (typeof source.asset.src === "string" && source.asset.src.trim())))
+        );
+      }
+
       function renderSelectionFamily(
         parent,
         state,
@@ -54,7 +69,7 @@
         const summary = deps.createFrame(
           "aside",
           "fk-stage-frame fk-stage-frame--rail fk-summary-rail",
-          "dossier-rail",
+          ["support-rail", "summary-status", "dossier-rail"],
           {
             overlay: deps.getUiAsset("notificationBanner"),
             frame: deps.getUiAsset("sidePanelFrame"),
@@ -68,7 +83,8 @@
             deps.t(["fateKnots", "creation", "summaryTitle"], "Build Summary")
           )
         );
-        const seatTabs = deps.createRegion("div", "fk-seat-tabs", null);
+        summaryMount.dataset.fkRole = "support-rail summary-status summary-rail";
+        const seatTabs = deps.createRegion("div", "fk-seat-tabs", ["log", "selection-log"]);
         summary.append(seatTabs);
         deps.KNOWN_SEAT_IDS.forEach(function (seatId) {
           const seat = deps.buildSeatDisplay(state, seatId);
@@ -94,13 +110,25 @@
           seatTabs.append(tab);
         });
         const hero = deps.createRegion("div", "fk-summary-hero", null);
-        const portraitAsset = bundle.avatar || deps.createDefaultAsset(null);
-        deps.appendImage(
-          hero,
-          "fk-summary-hero__portrait",
-          portraitAsset,
-          bundle.avatar ? bundle.avatar.label : deps.createSeatLabel(state, "user")
-        );
+        if (bundle.avatar && hasRenderableAssetSource(bundle.avatar)) {
+          deps.appendImage(hero, "fk-summary-hero__portrait", bundle.avatar, bundle.avatar.label);
+        } else if (bundle.avatar) {
+          deps.appendImage(hero, "fk-summary-hero__portrait", bundle.avatar, bundle.avatar.label);
+        } else {
+          const placeholder = deps.createRegion(
+            "div",
+            "fk-summary-hero__portrait fk-summary-hero__portrait--placeholder",
+            null
+          );
+          placeholder.append(
+            deps.createElement(
+              "span",
+              "fk-summary-hero__placeholder-label",
+              "Choose an avatar"
+            )
+          );
+          hero.append(placeholder);
+        }
         const heroBody = deps.createRegion("div", "fk-summary-hero__body", null);
         heroBody.append(
           deps.createElement(
@@ -113,11 +141,13 @@
           deps.createElement(
             "p",
             "fk-summary-hero__meta",
-            [
-              bundle.avatar ? bundle.avatar.label : "-",
-              bundle.classDef ? bundle.classDef.label : "-",
-              bundle.background ? bundle.background.label : "-",
-            ].join(" / ")
+            [bundle.avatar ? bundle.avatar.label : null, bundle.classDef ? bundle.classDef.label : null, bundle.background ? bundle.background.label : null]
+              .filter(Boolean)
+              .join(" / ") ||
+              deps.t(
+                ["fateKnots", "creation", "incomplete"],
+                "Pick an avatar, class, and background."
+              )
           )
         );
         if (bundle.classDef) {
@@ -135,8 +165,12 @@
         }
         hero.append(heroBody);
         summary.append(hero);
-        const selectionActions = deps.createRegion("div", "fk-selection-actions", "selection-actions");
-        const actions = deps.createRegion("div", "fk-action-cluster", "lock-zone");
+        const selectionActions = deps.createRegion(
+          "div",
+          "fk-selection-actions",
+          ["action-zone", "selection-actions"]
+        );
+        const actions = deps.createRegion("div", "fk-action-cluster", ["action-zone", "lock-zone"]);
         const readyLabel = selection.locked
           ? deps.t(["fateKnots", "creation", "locked"], "Build locked")
           : deps.isSelectionComplete(selection)
@@ -175,11 +209,15 @@
         const user = deps.getUserParticipant(state);
         const selection = user.selection || deps.createDefaultSelection();
         const layout = deps.createRegion("section", "fk-creation", "creation-layout");
-        const table = deps.createRegion("div", "fk-selection-table", "selection-table");
+        const table = deps.createRegion(
+          "div",
+          "fk-selection-table",
+          ["main-scene", "selection-zone", "selection-table"]
+        );
         const intro = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--scene fk-creation__intro",
-          null,
+          "narration",
           {
             overlay: deps.getUiAsset("parchmentStain"),
             frame: deps.getUiAsset("mainSceneFrame"),

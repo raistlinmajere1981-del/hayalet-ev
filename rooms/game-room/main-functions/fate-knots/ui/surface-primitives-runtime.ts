@@ -7,12 +7,32 @@
       const sanitizeAssetLink = deps.sanitizeAssetLink;
       const getUiAsset = deps.getUiAsset;
 
-      function createRegion(tagName, className, role) {
-        const element = createElement(tagName, className || "");
-        if (role) {
-          element.dataset.fkRole = role;
+      function normalizeRoleTokens(role) {
+        if (!role) {
+          return [];
+        }
+        const values = Array.isArray(role) ? role : [role];
+        return values
+          .map(function (value) {
+            return typeof value === "string" ? value.trim() : "";
+          })
+          .filter(Boolean)
+          .filter(function (value, index, list) {
+            return list.indexOf(value) === index;
+          });
+      }
+
+      function applyRoles(element, role) {
+        const tokens = normalizeRoleTokens(role);
+        if (tokens.length > 0) {
+          element.dataset.fkRole = tokens.join(" ");
         }
         return element;
+      }
+
+      function createRegion(tagName, className, role) {
+        const element = createElement(tagName, className || "");
+        return applyRoles(element, role);
       }
 
       function setSeatId(element, seatId) {
@@ -27,14 +47,43 @@
         return normalized.uiSrc || normalized.src || "";
       }
 
+      function resolveMissingAssetId(assetLink, fallbackId) {
+        const normalized = sanitizeAssetLink(assetLink);
+        return (
+          normalized.expectedAssetId ||
+          normalized.assetId ||
+          (normalized.asset && normalized.asset.id) ||
+          fallbackId ||
+          "unknown-asset"
+        );
+      }
+
+      function markMissingAssets(element, missingAssetIds) {
+        const ids = Array.isArray(missingAssetIds)
+          ? missingAssetIds.filter(Boolean).filter(function (value, index, list) {
+              return list.indexOf(value) === index;
+            })
+          : [];
+        if (ids.length === 0) {
+          return;
+        }
+        element.dataset.fkAssetStatus = "missing";
+        element.dataset.fkMissingAssetIds = ids.join(" ");
+        element.style.outline = "1px dashed rgb(196 114 86 / 0.72)";
+        element.style.outlineOffset = "2px";
+      }
+
       function applyAssetLayers(element, layers) {
+        const missingAssetIds = [];
         const normalizedLayers = (Array.isArray(layers) ? layers : [])
-          .map(function (layer) {
+          .map(function (layer, index) {
             if (!layer) {
               return null;
             }
-            const source = assetUrl(layer.asset || layer);
+            const assetLink = layer.asset || layer;
+            const source = assetUrl(assetLink);
             if (!source) {
+              missingAssetIds.push(resolveMissingAssetId(assetLink, "layer-" + String(index)));
               return null;
             }
             return {
@@ -46,6 +95,10 @@
             };
           })
           .filter(Boolean);
+
+        if (missingAssetIds.length > 0) {
+          markMissingAssets(element, missingAssetIds);
+        }
 
         if (normalizedLayers.length === 0) {
           return;
@@ -115,11 +168,28 @@
       function appendImage(parent, className, assetLink, altText) {
         const normalized = sanitizeAssetLink(assetLink);
         if (!normalized.uiSrc) {
-          return null;
+          const fallback = createRegion(
+            "div",
+            (className || "") + " fk-missing-asset fk-missing-asset--image",
+            null
+          );
+          const missingAssetId = resolveMissingAssetId(normalized, altText || "missing-asset");
+          markMissingAssets(fallback, [missingAssetId]);
+          fallback.append(
+            createElement(
+              "span",
+              "fk-missing-asset__label",
+              "Missing asset: " + (altText || missingAssetId)
+            )
+          );
+          parent.append(fallback);
+          return fallback;
         }
         const image = createElement("img", className || "");
         image.src = normalized.uiSrc;
         image.alt = altText || "";
+        image.dataset.fkAssetStatus = "ready";
+        image.dataset.fkAssetId = normalized.assetId || normalized.asset.id || "";
         parent.append(image);
         return image;
       }

@@ -68,7 +68,7 @@
       const resultShell = deps.createFrame(
         "section",
         "fk-stage-frame fk-stage-frame--scene fk-result-shell",
-        "result-shell",
+        ["main-scene", "summary-status", "result-shell"],
         {
           overlay: deps.getUiAsset("notificationBanner"),
           frame: deps.getUiAsset("mainSceneFrame"),
@@ -98,8 +98,10 @@
         );
       }
       resultShell.append(deps.createSeatRibbon(state, "result-ribbon", null));
-      resultShell.append(fateKnotsUiStageSupportRuntime.createNarrationPanel(state, "narration-panel"));
-      const actions = deps.createRegion("div", "fk-action-cluster", null);
+      resultShell.append(
+        fateKnotsUiStageSupportRuntime.createNarrationPanel(state, ["narration-panel", "narration"])
+      );
+      const actions = deps.createRegion("div", "fk-action-cluster", "action-zone");
       actions.append(
         deps.createActionButton(
           deps.t(["fateKnots", "controls", "reset"], "Reset Run"),
@@ -122,9 +124,9 @@
       );
       resultShell.append(actions);
       layout.append(resultShell);
-      if (state.scenarioLog.length > 0) {
-        layout.append(fateKnotsUiStageSupportRuntime.createLogFeed(state));
-      }
+      const supportRail = deps.createRegion("aside", "fk-overview__rail", ["support-rail", "log"]);
+      supportRail.append(fateKnotsUiStageSupportRuntime.createLogFeed(state));
+      layout.append(supportRail);
       parent.append(layout);
     }
 

@@ -47,6 +47,7 @@
     }
     const fateKnotsUiSurfaceRuntime = createFateKnotsUiSurfaceRuntime({
       createElement: createElement,
+      getCurrentState: getCurrentState,
       sanitizeAssetLink: sanitizeAssetLink,
       createDefaultAsset: createDefaultAsset,
     });
@@ -163,35 +164,116 @@
     const renderCombatStage = fateKnotsUiStageRuntime.renderCombatStage;
     const renderResultStage = fateKnotsUiStageRuntime.renderResultStage;
 
+    function resolvePhaseIdentity(state) {
+      const phaseId =
+        state && typeof state.phase === "string" && state.phase.trim() ? state.phase.trim() : "unknown";
+      if (phaseId === "idle") {
+        return {
+          phaseId: phaseId,
+          screenId: "overview",
+          known: true,
+        };
+      }
+      if (
+        phaseId === "character-creation" ||
+        phaseId === "scenario" ||
+        phaseId === "combat" ||
+        phaseId === "result"
+      ) {
+        return {
+          phaseId: phaseId,
+          screenId: phaseId,
+          known: true,
+        };
+      }
+      return {
+        phaseId: phaseId,
+        screenId: "unknown",
+        known: false,
+      };
+    }
+
+    function renderUnknownPhaseStage(parent, state, phaseIdentity) {
+      const layout = createRegion("section", "fk-result", "unknown-layout");
+      const warning = createFrame(
+        "section",
+        "fk-stage-frame fk-stage-frame--scene fk-result-shell",
+        ["main-scene", "summary-status", "phase-warning"],
+        {
+          overlay: getUiAsset("systemMessageBox"),
+          frame: getUiAsset("mainSceneFrame"),
+          texture: getUiAsset("darkPanel"),
+        }
+      );
+      warning.append(createElement("p", "fk-frame__eyebrow", "Unknown Phase"));
+      warning.append(createElement("h2", "fk-frame__title", phaseIdentity.phaseId));
+      warning.append(
+        createElement(
+          "p",
+          "fk-scene-shell__body",
+          state && state.status
+            ? state.status
+            : "The current renderer does not have an explicit stage for this phase."
+        )
+      );
+      layout.append(warning);
+
+      const support = createFrame(
+        "aside",
+        "fk-stage-frame fk-stage-frame--rail fk-overview__rail",
+        ["support-rail", "narration", "log"],
+        {
+          frame: getUiAsset("sidePanelFrame"),
+          texture: getUiAsset("darkPanel"),
+        }
+      );
+      support.append(
+        createElement(
+          "p",
+          "fk-frame__hint",
+          "This phase is rendered explicitly so reviews do not mistake it for overview."
+        )
+      );
+      const actions = createRegion("div", "fk-action-cluster", "action-zone");
+      actions.append(
+        createActionButton(
+          t(["fateKnots", "controls", "reset"], "Reset Run"),
+          "secondary",
+          false,
+          function () {
+            sendRoomCommand("GameRoomFateKnotsReset", {});
+          }
+        )
+      );
+      support.append(actions);
+      layout.append(support);
+      parent.append(layout);
+    }
+
     function renderFateKnots(root) {
       ensureUiAssetsPreloaded();
-      const state = getCurrentState();
-      const phaseId =
-        state.phase === "character-creation"
-          ? "character-creation"
-          : state.phase === "scenario"
-            ? "scenario"
-            : state.phase === "combat"
-              ? "combat"
-              : state.phase === "result"
-                ? "result"
-                : "overview";
+      const state = getCurrentState() || createFateKnotsState();
+      const phaseIdentity = resolvePhaseIdentity(state);
       const shell = createRegion("div", "fk-shell", "shell");
-      shell.dataset.fkPhase = phaseId;
+      shell.dataset.fkPhase = phaseIdentity.phaseId;
+      shell.dataset.fkScreen = phaseIdentity.screenId;
+      shell.dataset.fkPhaseKnown = phaseIdentity.known ? "true" : "false";
       const surface = createRegion("section", "fk-surface", "surface-shell");
       applySurfaceBackdrop(surface, state);
       const inner = createRegion("div", "fk-surface__inner", null);
-      inner.append(createTopbar(state, phaseId));
-      if (phaseId === "character-creation") {
+      inner.append(createTopbar(state, phaseIdentity.phaseId));
+      if (phaseIdentity.screenId === "character-creation") {
         renderCreationStage(inner, state);
-      } else if (phaseId === "scenario") {
+      } else if (phaseIdentity.screenId === "scenario") {
         renderNarrativeStage(inner, state);
-      } else if (phaseId === "combat") {
+      } else if (phaseIdentity.screenId === "combat") {
         renderCombatStage(inner, state);
-      } else if (phaseId === "result") {
+      } else if (phaseIdentity.screenId === "result") {
         renderResultStage(inner, state);
-      } else {
+      } else if (phaseIdentity.screenId === "overview") {
         renderOverviewStage(inner, state);
+      } else {
+        renderUnknownPhaseStage(inner, state, phaseIdentity);
       }
       surface.append(createSurfaceCorner("nw", getUiAsset("cornerOrnament")));
       surface.append(createSurfaceCorner("se", getUiAsset("cornerOrnament")));

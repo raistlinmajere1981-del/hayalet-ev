@@ -3,7 +3,6 @@
 
   registry.createFateKnotsUiChromeRuntime = function createFateKnotsUiChromeRuntime(deps) {
     const KNOWN_SEAT_IDS = deps.KNOWN_SEAT_IDS;
-    const createDefaultAsset = deps.createDefaultAsset;
     const createElement = deps.createElement;
     const appendImage = deps.appendImage;
     const applyAssetLayers = deps.applyAssetLayers;
@@ -316,10 +315,7 @@
     }
 
     function applySurfaceBackdrop(surface, state) {
-      const featureView =
-        state.uiAssets && state.uiAssets.featureView
-          ? state.uiAssets.featureView
-          : createDefaultAsset(null);
+      const featureView = getUiAsset("featureView");
       applyAssetLayers(surface, [
         {
           asset: getUiAsset("vignettePatch"),

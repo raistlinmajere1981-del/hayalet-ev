@@ -98,6 +98,13 @@
       };
     }
 
+    function createDefaultUiAssets() {
+      return {
+        byId: {},
+        featureView: createDefaultAsset(null),
+      };
+    }
+
     function createFateKnotsState() {
       return {
         roomId: "game-room",
@@ -135,6 +142,7 @@
         transport: createDefaultTransport(),
         catalogs: createDefaultCatalogs(),
         assetCoverage: {},
+        uiAssets: createDefaultUiAssets(),
       };
     }
 
@@ -145,6 +153,7 @@
       createDefaultResult,
       createDefaultSelection,
       createDefaultTransport,
+      createDefaultUiAssets,
       createFateKnotsState,
     };
   };

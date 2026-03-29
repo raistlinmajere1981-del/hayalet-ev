@@ -7,7 +7,7 @@
         const panel = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--rail fk-memory-rail",
-          "history-rail"
+          ["log", "history-rail"]
         );
         panel.append(
           deps.createElement(
@@ -82,7 +82,7 @@
         const shell = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--scene fk-map-shell",
-          "map-shell",
+          ["main-scene", "map-shell"],
           {
             overlay: deps.getUiAsset("subtleRuneOverlay"),
             frame: deps.getUiAsset("mainSceneFrame"),
@@ -174,7 +174,7 @@
         const rail = deps.createFrame(
           "aside",
           "fk-stage-frame fk-stage-frame--rail fk-overview__rail",
-          "right-rail",
+          ["support-rail", "summary-status", "narration", "right-rail"],
           {
             frame: deps.getUiAsset("sidePanelFrame"),
             texture: deps.getUiAsset("darkPanel"),
@@ -192,7 +192,14 @@
           seatGrid.append(deps.createSeatPlaque(state, seatId, "roster-seat"));
         });
         rail.append(seatGrid);
-        const actionZone = deps.createRegion("div", "fk-action-cluster", "start-zone");
+        rail.append(
+          deps.createElement(
+            "p",
+            "fk-frame__hint",
+            state.status || deps.t(["fateKnots", "status", "idle"], "Prepare a run.")
+          )
+        );
+        const actionZone = deps.createRegion("div", "fk-action-cluster", ["action-zone", "start-zone"]);
         actionZone.append(
           deps.createActionButton(
             deps.t(["fateKnots", "controls", "start"], "Start Run"),

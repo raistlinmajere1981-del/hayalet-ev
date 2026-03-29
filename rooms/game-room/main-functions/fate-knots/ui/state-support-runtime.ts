@@ -61,16 +61,22 @@
       );
     }
 
+    function normalizeSelectionEntry(entry) {
+      return entry && typeof entry.id === "string" && entry.id.trim() ? entry : null;
+    }
+
     function getSelectionBundle(state, participant) {
       const selection = (participant && participant.selection) || {};
       const catalogs = (state && state.catalogs) || {};
       return {
-        avatar: resolveCatalogEntry(catalogs.avatars, selection.avatarId, selection.avatar || null),
-        classDef: resolveCatalogEntry(catalogs.classes, selection.classId, selection.class || null),
-        background: resolveCatalogEntry(
-          catalogs.backgrounds,
-          selection.backgroundId,
-          selection.background || null
+        avatar: normalizeSelectionEntry(
+          resolveCatalogEntry(catalogs.avatars, selection.avatarId, selection.avatar || null)
+        ),
+        classDef: normalizeSelectionEntry(
+          resolveCatalogEntry(catalogs.classes, selection.classId, selection.class || null)
+        ),
+        background: normalizeSelectionEntry(
+          resolveCatalogEntry(catalogs.backgrounds, selection.backgroundId, selection.background || null)
         ),
       };
     }
@@ -168,6 +174,7 @@
 
     function getPhaseLabel(phaseId) {
       const labels = {
+        idle: t(["fateKnots", "phase", "overview"], "Gathering"),
         overview: t(["fateKnots", "phase", "overview"], "Gathering"),
         "character-creation": t(["fateKnots", "phase", "characterCreation"], "Preparation"),
         scenario: t(["fateKnots", "phase", "scenario"], "Omen"),

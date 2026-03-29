@@ -189,6 +189,28 @@
       };
     }
 
+    function sanitizeUiAssets(candidate) {
+      const source = candidate && typeof candidate === "object" ? candidate : {};
+      const fallback = defaultsRuntime.createDefaultUiAssets();
+      const rawById = source.byId && typeof source.byId === "object" ? source.byId : {};
+      const byId = {};
+
+      Object.keys(rawById).forEach(function (assetId) {
+        byId[assetId] = sanitizeAssetLink(rawById[assetId]);
+      });
+
+      return {
+        ...fallback,
+        ...cloneJsonValue(source),
+        byId: byId,
+        featureView: byId["fate-knots-view"]
+          ? byId["fate-knots-view"]
+          : source.featureView
+            ? sanitizeAssetLink(source.featureView)
+            : fallback.featureView,
+      };
+    }
+
     function sanitizeFateKnotsState(candidate) {
       const source = candidate && typeof candidate === "object" ? candidate : {};
       const fallback = defaultsRuntime.createFateKnotsState();
@@ -262,6 +284,7 @@
                   : [],
               }
             : cloneJsonValue(fallback.catalogs),
+        uiAssets: sanitizeUiAssets(source.uiAssets),
       };
     }
 
@@ -273,6 +296,7 @@
       sanitizeCurrentStep,
       sanitizeDecision,
       sanitizeCombat,
+      sanitizeUiAssets,
       sanitizeFateKnotsState,
     };
   };

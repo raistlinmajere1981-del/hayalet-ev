@@ -13,7 +13,7 @@
         const surface = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--decision fk-decision-surface",
-          "decision-surface",
+          ["action-zone", "selection-zone", "summary-status", "decision-surface"],
           {
             overlay: deps.getUiAsset("notificationBanner"),
             frame: deps.getUiAsset("sidePanelFrame"),
@@ -101,7 +101,7 @@
             )
           );
         }
-        const actions = deps.createRegion("div", "fk-action-cluster", null);
+        const actions = deps.createRegion("div", "fk-action-cluster", "action-zone");
         actions.append(
           deps.createActionButton(
             deps.t(["fateKnots", "controls", "sync"], "Sync"),
@@ -130,11 +130,16 @@
         const step = state.currentStep;
         if (!step) {
           parent.append(
-            deps.createFrame("section", "fk-stage-frame fk-stage-frame--scene", "scene-shell", {
-              overlay: deps.getUiAsset("systemMessageBox"),
-              frame: deps.getUiAsset("mainSceneFrame"),
-              texture: deps.getUiAsset("darkPanel"),
-            })
+            deps.createFrame(
+              "section",
+              "fk-stage-frame fk-stage-frame--scene",
+              ["main-scene", "scene-shell"],
+              {
+                overlay: deps.getUiAsset("systemMessageBox"),
+                frame: deps.getUiAsset("mainSceneFrame"),
+                texture: deps.getUiAsset("darkPanel"),
+              }
+            )
           );
           return;
         }
@@ -143,7 +148,7 @@
         const sceneShell = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--scene fk-scene-shell",
-          "scene-shell",
+          ["main-scene", "summary-status", "scene-shell"],
           {
             overlay: deps.getUiAsset("subtleRuneOverlay"),
             frame: deps.getUiAsset("mainSceneFrame"),
@@ -196,7 +201,7 @@
         layout.append(sceneShell);
 
         const lower = deps.createRegion("div", "fk-scenario__lower", null);
-        const narrativeRail = deps.createRegion("div", "fk-scenario__rail", null);
+        const narrativeRail = deps.createRegion("div", "fk-scenario__rail", "support-rail");
         narrativeRail.append(deps.createNarrationPanel(state, "narration-panel"));
         narrativeRail.append(deps.createLogFeed(state));
         lower.append(narrativeRail);

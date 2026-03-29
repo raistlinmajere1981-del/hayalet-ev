@@ -96,7 +96,12 @@ function findFirst(
 }
 
 function findByRole(root: FakeElement, role: string): FakeElement | null {
-  return findFirst(root, (element) => element.dataset.fkRole === role);
+  return findFirst(root, (element) =>
+    String(element.dataset.fkRole || "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .includes(role)
+  );
 }
 
 function findBySeat(root: FakeElement, seatId: string): FakeElement | null {
@@ -105,6 +110,10 @@ function findBySeat(root: FakeElement, seatId: string): FakeElement | null {
 
 function findByPhase(root: FakeElement, phase: string): FakeElement | null {
   return findFirst(root, (element) => element.dataset.fkPhase === phase);
+}
+
+function findByScreen(root: FakeElement, screen: string): FakeElement | null {
+  return findFirst(root, (element) => element.dataset.fkScreen === screen);
 }
 
 function findButtonByText(root: FakeElement, text: string): FakeElement | null {
@@ -231,6 +240,71 @@ function createAssetLink(assetId: string, uiSrc: string) {
     },
     uiSrc,
     src: uiSrc,
+  };
+}
+
+function createUiAssetRecord(assetId: string, uiSrc: string) {
+  return {
+    id: assetId,
+    assetId,
+    kind: assetId === "fate-knots-view" ? "feature-view" : "ui-runtime",
+    uiSrc,
+    src: uiSrc,
+  };
+}
+
+const UI_ASSET_IDS = [
+  "fate-knots-view",
+  "active_glow_panel",
+  "choice_button",
+  "dark_panel",
+  "default_panel",
+  "disabled_panel",
+  "primary_button",
+  "secondary_button",
+  "button_plate",
+  "card_slot_frame",
+  "log_panel_frame",
+  "main_scene_frame",
+  "side_panel_frame",
+  "top_status_bar",
+  "avatar_card_template",
+  "class_card_template",
+  "creature_card_template",
+  "item_card_template",
+  "location_card_template",
+  "card_disabled",
+  "card_focus_border",
+  "card_hover_glow",
+  "card_selected",
+  "log_panel",
+  "notification_banner",
+  "system_message_box",
+  "target_ring",
+  "dice_badge",
+  "target_marker",
+  "active_marker",
+  "hover_ring",
+  "map_marker",
+  "map_ui_crest",
+  "path_segment",
+  "selection_glow",
+  "corner_ornament",
+  "fog_patch",
+  "light_glow_patch",
+  "parchment_stain",
+  "subtle_rune_overlay",
+  "vignette_patch",
+  "turn_badge",
+];
+
+function createUiAssetsState() {
+  const byId = Object.fromEntries(
+    UI_ASSET_IDS.map((assetId) => [assetId, createUiAssetRecord(assetId, `ui/${assetId}.webp`)])
+  );
+  return {
+    byId,
+    featureView: byId["fate-knots-view"],
   };
 }
 
@@ -479,9 +553,7 @@ function createBaseFateKnotsState() {
       localSessionId: "fk-session-1",
       remoteUserId: "remote@example.com",
     },
-    uiAssets: {
-      featureView: createAssetLink("fate-knots-view", "fate-knots-view.webp"),
-    },
+    uiAssets: createUiAssetsState(),
   };
 }
 
@@ -511,13 +583,15 @@ test("Fate Knots UI renders the overview surface and dispatches start and reset 
   emitFateKnotsState(runtime, state);
 
   assert.match(readElementText(runtime.document.body), /Fate Knots/);
-  assert.ok(findByPhase(runtime.document.body, "overview"));
+  assert.ok(findByPhase(runtime.document.body, "idle"));
+  assert.ok(findByScreen(runtime.document.body, "overview"));
   assert.ok(findByRole(runtime.document.body, "surface-shell"));
   assert.ok(findByRole(runtime.document.body, "ritual-header"));
-  assert.ok(findByRole(runtime.document.body, "map-shell"));
-  assert.ok(findByRole(runtime.document.body, "right-rail"));
-  assert.ok(findByRole(runtime.document.body, "start-zone"));
-  assert.ok(findByRole(runtime.document.body, "history-rail"));
+  assert.ok(findByRole(runtime.document.body, "main-scene"));
+  assert.ok(findByRole(runtime.document.body, "support-rail"));
+  assert.ok(findByRole(runtime.document.body, "action-zone"));
+  assert.ok(findByRole(runtime.document.body, "log"));
+  assert.ok(findByRole(runtime.document.body, "summary-status"));
   assert.ok(findBySeat(runtime.document.body, "us1"));
   assert.notEqual(findBySeat(runtime.document.body, "us1")?.tagName, "button");
 
@@ -620,7 +694,10 @@ test("Fate Knots UI renders remembered build and DM/NPC additive packets without
     /The knot shivers, but the lanterns still hold/
   );
   assert.match(readElementText(runtime.document.body), /Stay close\. The square is listening/);
-  assert.ok(findByRole(runtime.document.body, "narration-panel"));
+  assert.ok(findByRole(runtime.document.body, "main-scene"));
+  assert.ok(findByRole(runtime.document.body, "support-rail"));
+  assert.ok(findByRole(runtime.document.body, "narration"));
+  assert.ok(findByRole(runtime.document.body, "log"));
 });
 
 test("Fate Knots UI sends character selection updates and a ready command from the creation stage", () => {
@@ -637,10 +714,14 @@ test("Fate Knots UI sends character selection updates and a ready command from t
   emitFateKnotsState(runtime, state);
 
   assert.ok(findByPhase(runtime.document.body, "character-creation"));
+  assert.ok(findByScreen(runtime.document.body, "character-creation"));
   assert.ok(findByRole(runtime.document.body, "ritual-header"));
-  assert.ok(findByRole(runtime.document.body, "selection-table"));
-  assert.ok(findByRole(runtime.document.body, "dossier-rail"));
-  assert.ok(findByRole(runtime.document.body, "lock-zone"));
+  assert.ok(findByRole(runtime.document.body, "selection-zone"));
+  assert.ok(findByRole(runtime.document.body, "support-rail"));
+  assert.ok(findByRole(runtime.document.body, "summary-status"));
+  assert.ok(findByRole(runtime.document.body, "action-zone"));
+  assert.ok(findByRole(runtime.document.body, "log"));
+  assert.ok(findByRole(runtime.document.body, "narration"));
   assert.ok(findBySeat(runtime.document.body, "us1"));
 
   trigger(findButtonContainingText(runtime.document.body, "Scout Portrait"), "click");
@@ -650,6 +731,47 @@ test("Fate Knots UI sends character selection updates and a ready command from t
   assert.deepEqual(cloneJson(runtime.sentCommands[0]?.payload), { avatarId: "ranger_avatar" });
   assert.equal(runtime.sentCommands[1]?.command, "GameRoomFateKnotsReady");
   assert.deepEqual(cloneJson(runtime.sentCommands[1]?.payload), { sessionId: "fk-session-1" });
+});
+
+test("Fate Knots UI keeps unselected creation summary neutral instead of reporting a missing asset", () => {
+  const runtime = createUiRuntime();
+  const translations = JSON.parse(readFileSync("rooms/game-room/i18n/en.json", "utf8")) as Record<
+    string,
+    unknown
+  >;
+  const state = createBaseFateKnotsState();
+  state.phase = "character-creation";
+  state.active = true;
+  state.participants = [
+    createParticipant({
+      seatId: "user",
+      nickname: "Raistlin",
+      ready: false,
+      selection: createSelection({
+        avatarId: null,
+        classId: null,
+        backgroundId: null,
+        avatar: null,
+        class: null,
+        background: null,
+      }),
+    }),
+    createParticipant({
+      seatId: "ai1",
+      nickname: "Atlas",
+      ready: true,
+      selection: createSelection({ locked: true, autoAssigned: true }),
+    }),
+  ];
+
+  runtime.emitHostMessage(buildHostContext(translations));
+  emitFateKnotsState(runtime, state);
+
+  assert.match(readElementText(runtime.document.body), /Choose an avatar/);
+  assert.equal(
+    findFirst(runtime.document.body, (element) => element.className.includes("fk-missing-asset")),
+    null
+  );
 });
 
 test("Fate Knots UI sends the unanimous story choice payload from the scenario stage", () => {
@@ -707,9 +829,13 @@ test("Fate Knots UI sends the unanimous story choice payload from the scenario s
     "Follow the lantern trail"
   );
   assert.ok(findByPhase(runtime.document.body, "scenario"));
-  assert.ok(findByRole(runtime.document.body, "scene-shell"));
-  assert.ok(findByRole(runtime.document.body, "story-feed"));
-  assert.ok(findByRole(runtime.document.body, "decision-surface"));
+  assert.ok(findByRole(runtime.document.body, "main-scene"));
+  assert.ok(findByRole(runtime.document.body, "support-rail"));
+  assert.ok(findByRole(runtime.document.body, "log"));
+  assert.ok(findByRole(runtime.document.body, "narration"));
+  assert.ok(findByRole(runtime.document.body, "selection-zone"));
+  assert.ok(findByRole(runtime.document.body, "action-zone"));
+  assert.ok(findByRole(runtime.document.body, "summary-status"));
   assert.ok(findBySeat(runtime.document.body, "us1"));
   assert.match(readElementText(decisionButton as FakeElement), /0\/2/);
 
@@ -795,11 +921,18 @@ test("Fate Knots UI sends the current combat action payload from the combat stag
   emitFateKnotsState(runtime, state);
 
   assert.ok(findByPhase(runtime.document.body, "combat"));
-  assert.ok(findByRole(runtime.document.body, "combat-arena"));
-  assert.ok(findByRole(runtime.document.body, "combat-status"));
-  assert.ok(findByRole(runtime.document.body, "combat-hand"));
+  assert.ok(findByRole(runtime.document.body, "main-scene"));
+  assert.ok(findByRole(runtime.document.body, "support-rail"));
+  assert.ok(findByRole(runtime.document.body, "log"));
+  assert.ok(findByRole(runtime.document.body, "narration"));
+  assert.ok(findByRole(runtime.document.body, "selection-zone"));
+  assert.ok(findByRole(runtime.document.body, "action-zone"));
+  assert.ok(findByRole(runtime.document.body, "summary-status"));
+  const actionCard = findButtonContainingText(runtime.document.body, "Quick Strike");
+  assert.equal(actionCard?.dataset.selected, "false");
+  assert.equal(findByRole(runtime.document.body, "combat-hand")?.dataset.activeTurn, "true");
 
-  trigger(findButtonContainingText(runtime.document.body, "Quick Strike"), "click");
+  trigger(actionCard, "click");
 
   assert.equal(runtime.sentCommands.length, 1);
   assert.equal(runtime.sentCommands[0]?.command, "GameRoomFateKnotsCombatAction");
@@ -835,7 +968,12 @@ test("Fate Knots UI sends the end-run command from the result stage", () => {
     findFirst(runtime.document.body, (element) => readElementText(element) === "Well Secured")
   );
   assert.ok(findByPhase(runtime.document.body, "result"));
-  assert.ok(findByRole(runtime.document.body, "result-shell"));
+  assert.ok(findByRole(runtime.document.body, "main-scene"));
+  assert.ok(findByRole(runtime.document.body, "support-rail"));
+  assert.ok(findByRole(runtime.document.body, "log"));
+  assert.ok(findByRole(runtime.document.body, "narration"));
+  assert.ok(findByRole(runtime.document.body, "action-zone"));
+  assert.ok(findByRole(runtime.document.body, "summary-status"));
   trigger(findButtonByText(runtime.document.body, "End Run"), "click");
 
   assert.equal(runtime.sentCommands.length, 1);
@@ -874,4 +1012,24 @@ test("Fate Knots UI preserves room scroll position across host-driven rerenders"
   assert.equal(runtime.document.documentElement.scrollLeft, 18);
   assert.equal(runtime.windowObject.scrollX, 18);
   assert.equal(runtime.windowObject.scrollY, 420);
+});
+
+test("Fate Knots UI preserves unknown phase identity instead of coercing it to overview", () => {
+  const runtime = createUiRuntime();
+  const translations = JSON.parse(readFileSync("rooms/game-room/i18n/en.json", "utf8")) as Record<
+    string,
+    unknown
+  >;
+  const state = createBaseFateKnotsState();
+  state.phase = "phase-drift";
+  state.status = "Unexpected renderer state.";
+
+  runtime.emitHostMessage(buildHostContext(translations));
+  emitFateKnotsState(runtime, state);
+
+  assert.ok(findByPhase(runtime.document.body, "phase-drift"));
+  assert.ok(findByScreen(runtime.document.body, "unknown"));
+  assert.ok(findByRole(runtime.document.body, "phase-warning"));
+  assert.match(readElementText(runtime.document.body), /Unknown Phase/);
+  assert.match(readElementText(runtime.document.body), /phase-drift/);
 });

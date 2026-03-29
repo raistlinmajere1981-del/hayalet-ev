@@ -166,13 +166,6 @@ body[data-presentation-mode="scene-view"] .fk-map-shell__figure {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .fk-overview {
-    grid-template-areas:
-      "map"
-      "rail"
-      "memory";
-  }
-
   .fk-overview__rail,
   .fk-summary-rail,
   .fk-combat-status-panel {

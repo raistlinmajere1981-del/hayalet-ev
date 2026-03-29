@@ -224,9 +224,33 @@ function resolveAmbientPacketView(packet) {
   return cloneJsonValue(packet);
 }
 
+function buildUiAssetView(contentRegistry) {
+  const assetRegistry =
+    contentRegistry && contentRegistry.assetRegistry && typeof contentRegistry.assetRegistry === "object"
+      ? contentRegistry.assetRegistry
+      : null;
+  const assets = Array.isArray(assetRegistry && assetRegistry.assets) ? assetRegistry.assets : [];
+  const byId = {};
+
+  assets.forEach(function (asset) {
+    if (!asset || typeof asset !== "object" || typeof asset.id !== "string") {
+      return;
+    }
+    if (asset.kind === "feature-view" || String(asset.kind || "").startsWith("ui-")) {
+      byId[asset.id] = cloneJsonValue(asset);
+    }
+  });
+
+  return {
+    byId,
+    featureView: byId["fate-knots-view"] || null,
+  };
+}
+
 export function serializeFateKnotsState(api, state, context, contentRegistry) {
   const savedState = saveFateKnotsState(api, state);
   const combat = resolveCombatView(savedState, contentRegistry);
+  const uiAssets = buildUiAssetView(contentRegistry);
   return {
     roomId: ROOM_ID,
     featureId: FATE_KNOTS_FEATURE_ID,
@@ -270,9 +294,7 @@ export function serializeFateKnotsState(api, state, context, contentRegistry) {
     user: {
       nickname: context?.user?.nickname || "User",
     },
-    uiAssets: {
-      featureView: contentRegistry.assetRegistry.assetMap.get("fate-knots-view") || null,
-    },
+    uiAssets,
   };
 }
 
