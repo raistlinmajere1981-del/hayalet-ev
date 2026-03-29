@@ -157,9 +157,12 @@ export async function testUploadTarget(ctx: TestContext): Promise<ProviderTestRe
   }
 }
 
-export async function testCriticalSelectors(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testCriticalSelectors(
+  ctx: TestContext,
+  selectors = ctx.config.criticalSelectors
+): Promise<ProviderTestResult> {
   const start = Date.now();
-  if (ctx.config.criticalSelectors.length === 0) {
+  if (selectors.length === 0) {
     return ctx.createSkipResult(
       "critical-selectors",
       await ctx.t("dom.criticalSelectors.name"),
@@ -170,7 +173,7 @@ export async function testCriticalSelectors(ctx: TestContext): Promise<ProviderT
 
   try {
     const results = await Promise.all(
-      ctx.config.criticalSelectors.map(async (selector: string) => {
+      selectors.map(async (selector: string) => {
         const exists = (await ctx.executeScript(
           `(function() { return !!document.querySelector(${JSON.stringify(selector)}); })()`
         )) as boolean;

@@ -73,6 +73,7 @@ const SCENARIO_TITLE_KEYS: Record<string, string> = {
 
 const SCENARIO_COMMAND_KEYS: Record<string, string> = {
   "reset-default-page": "scenario.commands.resetDefaultPage",
+  "prepare-input": "scenario.commands.prepareInput",
   "disabled-send": "scenario.commands.disabledSend",
   "drag-drop-surface": "scenario.commands.dragDropSurface",
   "inject-message": "scenario.commands.injectMessage",

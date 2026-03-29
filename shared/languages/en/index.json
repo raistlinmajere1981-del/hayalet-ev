@@ -2348,6 +2348,7 @@
         "attachStepCompletedWithWarnings": "Attach step completed with warnings",
         "thinkingIndicatorName": "Thinking Indicator",
         "thinkingIndicatorBusy": "Topbar thinking indicator became busy",
+        "thinkingTransientObserved": "Thinking was inferred from a transient stop button or a fast assistant response",
         "thinkingIndicatorMissing": "Thinking indicator did not become busy",
         "sendThinkingFailed": "Send/thinking step failed",
         "finalBubbleChecksFailed": "Final message bubble checks failed",

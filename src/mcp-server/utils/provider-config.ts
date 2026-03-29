@@ -45,6 +45,7 @@ export interface ProviderConfig {
   criticalSelectors?: string[];
   fileInputSelectors?: string[];
   uploadTargetSelectors?: string[];
+  dragDropCriticalSelectors?: string[];
   scrollerSelectors?: string[];
   inputType?: string;
   messageIdStrategy?: string;
@@ -144,6 +145,7 @@ function extractConfigFromSource(source: string, providerId: string): ProviderCo
   config.criticalSelectors = extractStringArray(source, "criticalSelectors:");
   config.fileInputSelectors = extractStringArray(source, "fileInputSelectors:");
   config.uploadTargetSelectors = extractStringArray(source, "uploadTargetSelectors:");
+  config.dragDropCriticalSelectors = extractStringArray(source, "dragDropCriticalSelectors:");
   config.scrollerSelectors = extractStringArray(source, "scrollerSelectors:");
   config.excludedUrls = extractStringArray(source, "excludedUrls:");
 
@@ -395,6 +397,7 @@ export function flattenSelectors(config: ProviderConfig): FlatSelector[] {
     "criticalSelectors",
     "fileInputSelectors",
     "uploadTargetSelectors",
+    "dragDropCriticalSelectors",
     "scrollerSelectors",
   ] as const;
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-28T12:39:08.753Z",
+  "generatedAt": "2026-03-29T15:14:11.190Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 589,
+    "filesScanned": 591,
     "filesWithComments": 119,
-    "commentsIndexed": 291,
-    "fileLevelComments": 220,
+    "commentsIndexed": 298,
+    "fileLevelComments": 227,
     "symbolLevelComments": 71,
     "prefixCounts": {
       "none": 39,
       "AI": 0,
-      "NOTE": 248,
+      "NOTE": 255,
       "WARNING": 4,
       "TODO": 0
     }
@@ -399,8 +399,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 245,
-          "endLine": 245,
+          "startLine": 250,
+          "endLine": 250,
           "text": "NOTE: Wine can load the renderer successfully but fail to present the window when GPU",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -408,8 +408,8 @@
         },
         {
           "kind": "fallback",
-          "startLine": 246,
-          "endLine": 246,
+          "startLine": 251,
+          "endLine": 251,
           "text": "compositing stays enabled, so keep the fallback local to Wine instead of all Windows builds.",
           "prefix": null,
           "scopeType": "file",
@@ -808,14 +808,14 @@
     },
     {
       "path": "electron/paths.ts",
-      "totalComments": 3,
+      "totalComments": 9,
       "byKind": {
-        "note": 3
+        "note": 9
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 3,
+        "NOTE": 9,
         "WARNING": 0,
         "TODO": 0
       },
@@ -843,12 +843,66 @@
         },
         {
           "kind": "note",
-          "startLine": 43,
-          "endLine": 43,
+          "startLine": 48,
+          "endLine": 48,
           "text": "NOTE: Call after app.whenReady() in main.ts.",
           "prefix": "NOTE",
           "scopeType": "function",
           "scopeName": "initPaths"
+        },
+        {
+          "kind": "note",
+          "startLine": 107,
+          "endLine": 107,
+          "text": "NOTE: `rooms/` is the single editable room source tree in development.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 113,
+          "endLine": 113,
+          "text": "NOTE: Bundled rooms are read-only package inputs, never a second authoring root.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 120,
+          "endLine": 120,
+          "text": "NOTE: `data/rooms` contains generated install copies only.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 129,
+          "endLine": 129,
+          "text": "NOTE: Room runtime state and generated artifacts live outside the package tree.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 138,
+          "endLine": 138,
+          "text": "NOTE: Room webview/session partitions are runtime residue, not package content.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 139,
+          "endLine": 139,
+          "text": "NOTE: Retain them by default so reinstalls can reuse session state; only explicit deleteData cleanup removes them.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
         }
       ]
     },
@@ -925,14 +979,14 @@
     },
     {
       "path": "electron/room-package-manager.ts",
-      "totalComments": 1,
+      "totalComments": 2,
       "byKind": {
-        "note": 1
+        "note": 2
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 1,
+        "NOTE": 2,
         "WARNING": 0,
         "TODO": 0
       },
@@ -940,9 +994,18 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 101,
-          "endLine": 101,
+          "startLine": 135,
+          "endLine": 135,
           "text": "NOTE: Full room cleanup is opt-in so reconnecting a workspace room can reuse prior state.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 136,
+          "endLine": 136,
+          "text": "NOTE: `deleteData` is the only cleanup trigger for room runtime residue such as session partitions.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -1353,8 +1416,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 400,
-          "endLine": 400,
+          "startLine": 409,
+          "endLine": 409,
           "text": "NOTE: Kept for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -5121,7 +5184,7 @@
       "name": "initPaths",
       "comments": [
         {
-          "startLine": 43,
+          "startLine": 48,
           "kind": "note",
           "text": "NOTE: Call after app.whenReady() in main.ts."
         }
@@ -5157,7 +5220,7 @@
       "name": "getLastPrimaryPage",
       "comments": [
         {
-          "startLine": 400,
+          "startLine": 409,
           "kind": "note",
           "text": "NOTE: Kept for backward compatibility."
         }

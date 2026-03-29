@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-28T12:39:09.554Z",
+  "generatedAt": "2026-03-29T15:14:11.963Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 609,
+    "filesScanned": 611,
     "ids": 573,
-    "testIds": 15,
-    "querySelectors": 137,
-    "totalSelectors": 725
+    "testIds": 14,
+    "querySelectors": 144,
+    "totalSelectors": 731
   },
   "lookup": {
     "id": {
@@ -603,7 +603,6 @@
       "drop": "[data-testid=\"drop\"]",
       "file": "[data-testid=\"file\"]",
       "open-sidebar-button": "[data-testid=\"open-sidebar-button\"]",
-      "prompt-textarea": "[data-testid=\"prompt-textarea\"]",
       "send-button": "[data-testid=\"send-button\"]",
       "stop-button": "[data-testid=\"stop-button\"]",
       "upload-drop-target": "[data-testid=\"upload-drop-target\"]"
@@ -688,7 +687,6 @@
       "testid_dmcomposertextinput": "[data-testid=\"dmComposerTextInput\"]",
       "testid_dmcomposertextinput_prosemirror_contenteditable_true": "[data-testid=\"dmComposerTextInput\"] .ProseMirror[contenteditable=\"true\"]",
       "testid_dmcomposertextinput_prosemirror_contenteditable_true_prosemirror_contente": "[data-testid=\"dmComposerTextInput\"] .ProseMirror[contenteditable=\"true\"], .ProseMirror[contenteditable=\"true\"], textarea[aria-label=\"Grok\\",
-      "testid_prompt_textarea": "[data-testid=\"prompt-textarea\"]",
       "testid_stop_button_id_composer_submit_buttontestid_stop_button_button_aria_label": "[data-testid=\"stop-button\"], #composer-submit-button[data-testid=\"stop-button\"], button[aria-label=\"Stop streaming\"], button[aria-label=\"Yanıtlamayı durdur\"]",
       "testid_upload_drop_target": "[data-testid=\"upload-drop-target\"]",
       "data_ui_mode_dropdown": "[data-ui-mode-dropdown]",
@@ -698,6 +696,7 @@
       "data_workspace_tool_scene_chrome": "[data-workspace-tool-scene-chrome=",
       "id_composer_submit_button_data_testid": "], #composer-submit-button[data-testid=",
       "button_data_testid": "], button[data-testid=",
+      "disabled_button_data_testid": "][disabled], button[data-testid=",
       "selector": "*",
       "id_ai0_webview": "#ai0-webview",
       "id_assistant_status_details": "#assistant-status-details",
@@ -708,9 +707,13 @@
       "id_chat_messages": "#chat-messages",
       "id_composer_plus_btn_data_testid": "#composer-plus-btn[data-testid=",
       "id_composer_plus_btntestid_composer_plus_btn": "#composer-plus-btn[data-testid=\"composer-plus-btn\"]",
-      "id_composer_plus_btntestid_composer_plus_btn_buttontestid_composer_plus_btn_aria": "#composer-plus-btn[data-testid=\"composer-plus-btn\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Add files and more\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Dosyaları ve çok daha fazlasını ekle\"]",
+      "id_composer_plus_btntestid_composer_plus_btn_buttonid_composer_plus_btn_aria_has": "#composer-plus-btn[data-testid=\"composer-plus-btn\"], button#composer-plus-btn[aria-haspopup=\"menu\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Add files and more\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Dosyaları ve çok daha fazlasını ekle\"]",
+      "id_composer_submit_button_data_testid_2": "#composer-submit-button[data-testid=",
       "id_composer_submit_buttontestid_send_button": "#composer-submit-button[data-testid=\"send-button\"]",
       "id_composer_submit_buttontestid_send_button_id_composer_submit_button": "#composer-submit-button[data-testid=\"send-button\"], #composer-submit-button",
+      "id_composer_submit_buttontestid_send_button_buttontestid_send_button_aria_label": "#composer-submit-button[data-testid=\"send-button\"], button[data-testid=\"send-button\"][aria-label=\"İstem gönder\"]",
+      "id_composer_submit_buttontestid_send_button_buttontestid_send_button_aria_label_2": "#composer-submit-button[data-testid=\"send-button\"], button[data-testid=\"send-button\"][aria-label=\"Send prompt\"]",
+      "id_composer_submit_buttontestid_send_button_disabled_buttontestid_send_button_ar": "#composer-submit-button[data-testid=\"send-button\"][disabled], button[data-testid=\"send-button\"][aria-label=\"İstem gönder\"][disabled], button[data-testid=\"send-button\"][aria-label=\"Send prompt\"][disabled], #composer-submit-button[disabled]",
       "id_history": "#history",
       "id_history_a_data_sidebar_item": "#history a[data-sidebar-item=",
       "id_mcp_list_ds_item_row": "#mcp-list .ds-item-row",
@@ -727,7 +730,10 @@
       "button_data_testid_2": "button[data-testid=",
       "buttontestid_close_sidebar_button": "button[data-testid=\"close-sidebar-button\"]",
       "buttontestid_open_sidebar_button": "button[data-testid=\"open-sidebar-button\"]",
+      "buttontestid_send_button": "button[data-testid=\"send-button\"]",
       "button_role_tab": "button[role=tab]",
+      "buttonid_composer_plus_btn_aria_haspopup_menu_buttontestid_composer_plus_btn_ari": "button#composer-plus-btn[aria-haspopup=\"menu\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Add files and more\"]",
+      "buttonid_composer_plus_btn_aria_haspopup_menu_buttontestid_composer_plus_btn_ari_2": "button#composer-plus-btn[aria-haspopup=\"menu\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Dosyaları ve çok daha fazlasını ekle\"]",
       "div_block_lg_hidden_div_inline_flex_items_center_gap_1_rounded_full": "div.block.lg\\\\:hidden div.inline-flex.items-center.gap-1.rounded-full",
       "div_flex_h_full_flex_col_overflow_y_auto": "div.flex.h-full.flex-col.overflow-y-auto",
       "div_data_scroll_root": "div[data-scroll-root=",

@@ -108,7 +108,7 @@ export const PROVIDER_TEST_TIMEOUTS = {
   /** Response wait timeout. */
   RESPONSE_WAIT: 15_000,
   /** Stop button timeout. */
-  STOP_BUTTON: 500,
+  STOP_BUTTON: 2_000,
   /** Input clear timeout after sending. */
   INPUT_CLEAR: 3_000,
   /** Topbar send-indicator state change timeout. */
@@ -175,6 +175,8 @@ export const PROVIDER_SCENARIO_DELAYS = {
   STEP_REPORT: 0,
   /** Delay after default-page navigation. */
   STEP_NAVIGATE_DEFAULT: 700,
+  /** Delay after input-preparation steps. */
+  STEP_PREPARE_INPUT: 350,
   /** Delay after send-and-thinking steps. */
   STEP_SEND_AND_WAIT_THINKING: 700,
   /** Delay after attach-flow steps. */

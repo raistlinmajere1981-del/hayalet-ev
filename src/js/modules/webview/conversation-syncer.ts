@@ -41,6 +41,7 @@ interface SyncResult {
   message?: string;
   conversationId?: string | undefined;
   commands?: { command: string; [key: string]: unknown }[] | undefined;
+  transient?: boolean;
   [key: string]: unknown;
 }
 
@@ -102,7 +103,7 @@ class ConversationSyncerClass {
     this._trafficUnsubscribe = null;
     this._coreEngine = null;
     this._resolveWebviewFn = null;
-    this.syncRetryLimit = 2;
+    this.syncRetryLimit = 5;
     this.syncRetryDelayMs = 3000;
   }
 
@@ -111,6 +112,18 @@ class ConversationSyncerClass {
     const last = messages[messages.length - 1];
     const text = (last?.text ?? last?.content ?? "").trim();
     return last?.role === "assistant" && text !== "";
+  }
+
+  _isTransientSyncError(detail: unknown): boolean {
+    const message = getErrorMessage(detail as Error).toLowerCase();
+    return [
+      "guest_view_manager_call",
+      "script failed to execute",
+      "webcontents",
+      "frame was removed",
+      "object has been destroyed",
+      "target closed",
+    ].some((pattern) => message.includes(pattern));
   }
 
   setSettings(settings: AppSettings | null): void {
@@ -185,7 +198,7 @@ class ConversationSyncerClass {
   async syncConversation(
     provider: string,
     webview: Electron.WebviewTag | WebviewElement | null | undefined,
-    options: { catchEnabled?: boolean } = {}
+    options: { catchEnabled?: boolean; source?: string } = {}
   ): Promise<SyncResult> {
     if (provider === "ai0") {
       return await this.syncLatestMessage(provider, webview);
@@ -398,13 +411,23 @@ class ConversationSyncerClass {
       return result;
     } catch (error) {
       const errorMessage = syncError("syncFailed", error, { provider });
-      Logger.errorT(
-        LogCategory.WEBVIEW,
-        syncLogKey("syncFailed"),
-        { provider, message: errorMessage },
-        { provider, error: errorMessage }
-      );
-      return { success: false, message: errorMessage };
+      const transient = this._isTransientSyncError(error);
+      if (transient) {
+        Logger.warnT(
+          LogCategory.WEBVIEW,
+          syncLogKey("syncFailed"),
+          { provider, message: errorMessage },
+          { provider, error: errorMessage, source: options.source ?? "manual", transient: true }
+        );
+      } else {
+        Logger.errorT(
+          LogCategory.WEBVIEW,
+          syncLogKey("syncFailed"),
+          { provider, message: errorMessage },
+          { provider, error: errorMessage, source: options.source ?? "manual" }
+        );
+      }
+      return { success: false, message: errorMessage, transient };
     } finally {
       this._syncInProgress[provider] = false;
     }
@@ -522,34 +545,35 @@ class ConversationSyncerClass {
       );
 
       const webview = this._resolveWebviewFn?.(provider);
-      const res = await this.syncConversation(provider, webview);
+      const from = opts.from ?? "manual";
+      const res = await this.syncConversation(provider, webview, { source: from });
+      const messages = res["messages"] as ScrapedMessage[] | undefined;
+      const stableAfter = this._hasReadableAssistant(messages);
+      const shouldRetryByReadiness =
+        (from === "auto" || from === "retry" || from === "manual") &&
+        ((res.success === true && stableAfter === false) || res.transient === true);
+      const tried = this._syncRetryCounts[provider] ?? 0;
+      const willRetry = shouldRetryByReadiness && tried < this.syncRetryLimit;
 
-      this._setSyncStatus(provider, res.success ? "success" : "error");
+      this._setSyncStatus(
+        provider,
+        willRetry ? "syncing" : res.success ? "success" : "error",
+        willRetry ? undefined : res.message
+      );
 
       this._lastSyncResult[provider] = res;
 
       window.dispatchEvent(
         new CustomEvent("sync-complete", {
-          detail: { provider, result: res, source: opts.from ?? "manual" },
+          detail: { provider, result: res, source: from },
         })
       );
-
-      const messages = res["messages"] as ScrapedMessage[] | undefined;
-      const stableAfter = this._hasReadableAssistant(messages);
 
       if (stableAfter) {
         this._notifyStable(provider, res);
       }
 
-      const from = opts.from ?? "manual";
-      const shouldRetryByReadiness =
-        (from === "auto" || from === "retry") &&
-        res.success === true &&
-        this._hasReadableAssistant(messages) === false;
-
-      if (shouldRetryByReadiness) {
-        const tried = this._syncRetryCounts[provider] ?? 0;
-        if (tried < this.syncRetryLimit) {
+      if (willRetry) {
           Logger.debugT(
             LogCategory.WEBVIEW,
             syncLogKey("assistantRetryScheduled"),
@@ -562,6 +586,7 @@ class ConversationSyncerClass {
               provider,
               tried,
               messageCount: messages?.length ?? 0,
+              transient: res.transient === true,
             }
           );
           this._syncRetryCounts[provider] = tried + 1;
@@ -570,7 +595,6 @@ class ConversationSyncerClass {
               void this.syncProvider(provider, { from: "retry" });
             }
           }, this.syncRetryDelayMs);
-        }
       } else {
         if (this._syncRetryTimers[provider] !== undefined) {
           clearTimeout(this._syncRetryTimers[provider]);

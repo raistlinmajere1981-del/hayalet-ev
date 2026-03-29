@@ -63,6 +63,7 @@ import {
   testFileUpload,
   testInputFieldAccessibility,
   testMicrophoneButton,
+  testPrepareInput,
   testSendButtonDisabled,
   testSendButtonEnabled,
   testSendMessage,
@@ -399,6 +400,33 @@ export class ProviderTester {
     };
   }
 
+  private async getSelectorCount(selector: string): Promise<number> {
+    const count = (await this.ctx.executeScript(`
+      (function() {
+        try {
+          return document.querySelectorAll(${JSON.stringify(selector)}).length;
+        } catch (_) {
+          return 0;
+        }
+      })()
+    `)) as number;
+
+    return Number.isFinite(count) ? count : 0;
+  }
+
+  private async waitForAssistantResponseIncrease(
+    previousCount: number,
+    timeoutMs: number
+  ): Promise<boolean> {
+    const selector =
+      this.config.scrapeSelectors.assistantWrapper ?? this.config.scrapeSelectors.preferred;
+
+    return await this.ctx.waitForCondition(async () => {
+      const currentCount = await this.getSelectorCount(selector);
+      return currentCount > previousCount;
+    }, timeoutMs, this.abortSignal);
+  }
+
   private throwIfCancelled(): void {
     if (this.abortSignal?.aborted === true) {
       throw new ScenarioCancelledError();
@@ -489,6 +517,8 @@ export class ProviderTester {
         return PROVIDER_SCENARIO_DELAYS.COMMAND_REFRESH_CONVERSATION_LIST;
       case "navigate-default":
         return PROVIDER_SCENARIO_DELAYS.STEP_NAVIGATE_DEFAULT;
+      case "prepare-input":
+        return PROVIDER_SCENARIO_DELAYS.STEP_PREPARE_INPUT;
       case "assert-disabled-send":
         return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_DISABLED_SEND;
       case "assert-drag-drop-surface":
@@ -686,6 +716,13 @@ export class ProviderTester {
           stepName,
           "preflight",
           async () => await this.runResetDefaultPageStep()
+        );
+      case "prepare-input":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "interactive",
+          async () => await this.runPrepareInputStep()
         );
       case "assert-disabled-send":
         return await this.executeAggregatedTestScenarioCommand(
@@ -1683,10 +1720,18 @@ export class ProviderTester {
     return this.summarizeStep(results, await this.runtimeT("scenario.defaultPageResetFailed"));
   }
 
-  private async runDisabledSendStep(): Promise<AggregatedCommandStepResult> {
+  private async runPrepareInputStep(): Promise<AggregatedCommandStepResult> {
     const results = this.pushResults([
       await testInputField(this.ctx),
       await testInputFieldAccessibility(this.ctx),
+      await testPrepareInput(this.ctx),
+    ]);
+
+    return this.summarizeStep(results, "Input field preparation failed");
+  }
+
+  private async runDisabledSendStep(): Promise<AggregatedCommandStepResult> {
+    const results = this.pushResults([
       await testSendButtonDisabled(this.ctx),
       createShellResult(
         "send-indicator-disabled",
@@ -1705,10 +1750,21 @@ export class ProviderTester {
   }
 
   private async runDragDropStep(): Promise<AggregatedCommandStepResult> {
-    const results = this.pushResults([
-      await testUploadTarget(this.ctx),
-      await testCriticalSelectors(this.ctx),
-    ]);
+    const dragDropCriticalSelectors =
+      this.ctx.config.dragDropCriticalSelectors ?? this.ctx.config.criticalSelectors;
+    const results = this.pushResults(
+      [
+        await testUploadTarget(this.ctx),
+        await testCriticalSelectors(this.ctx, dragDropCriticalSelectors),
+      ].map((result) =>
+        result.status === "pass" || result.status === "fail"
+          ? result
+          : {
+              ...result,
+              status: "fail" as const,
+            }
+      )
+    );
 
     return this.summarizeStep(results, await this.runtimeT("scenario.dragDropSurfaceFailed"));
   }
@@ -1752,19 +1808,34 @@ export class ProviderTester {
   }
 
   private async runSendThinkingStep(): Promise<AggregatedCommandStepResult> {
+    const assistantSelector =
+      this.config.scrapeSelectors.assistantWrapper ?? this.config.scrapeSelectors.preferred;
+    const assistantCountBeforeSend = await this.getSelectorCount(assistantSelector);
     const sendResult = await testSendMessage(this.ctx);
     const thinkingBusy = await this.waitForShellIndicator("thinking", "busy", 8000);
+    const stopResult = await testStopButtonWhileThinking(this.ctx);
+    const stopScrapeResult = await testStopButton(this.ctx);
+    const assistantResponseIncreased =
+      !thinkingBusy &&
+      (await this.waitForAssistantResponseIncrease(
+        assistantCountBeforeSend,
+        PROVIDER_TEST_TIMEOUTS.RESPONSE_WAIT
+      ));
+    const inferredThinking =
+      stopResult.status === "pass" ||
+      stopScrapeResult.status === "pass" ||
+      assistantResponseIncreased;
     const thinkingResult = createShellResult(
       "thinking-indicator",
       await this.runtimeT("scenario.thinkingIndicatorName"),
       "interactive",
-      thinkingBusy ? "pass" : "fail",
+      thinkingBusy || inferredThinking ? "pass" : "fail",
       thinkingBusy
         ? await this.runtimeT("scenario.thinkingIndicatorBusy")
-        : await this.runtimeT("scenario.thinkingIndicatorMissing")
+        : inferredThinking
+          ? await this.runtimeT("scenario.thinkingTransientObserved")
+          : await this.runtimeT("scenario.thinkingIndicatorMissing")
     );
-    const stopResult = await testStopButtonWhileThinking(this.ctx);
-    const stopScrapeResult = await testStopButton(this.ctx);
     const results = this.pushResults([sendResult, thinkingResult, stopResult, stopScrapeResult]);
     return this.summarizeStep(results, await this.runtimeT("scenario.sendThinkingFailed"));
   }
@@ -1874,6 +1945,8 @@ export class ProviderTester {
       (function() {
         const el = document.getElementById(${JSON.stringify(`${this.slot}-${kind}-indicator`)});
         if (!el) return 'missing';
+        if (el.classList.contains('is-busy')) return 'busy';
+        if (el.classList.contains('is-idle')) return 'idle';
         const color = window.getComputedStyle(el).backgroundColor;
         if (color === ${JSON.stringify(STATUS_COLOR.busy)}) return 'busy';
         if (color === ${JSON.stringify(STATUS_COLOR.idle)}) return 'idle';

@@ -14,6 +14,12 @@ export const WEBVIEW_TEST_SCENARIO: ProviderScenarioDefinition = {
       loading: true,
     },
     {
+      id: "prepare-input",
+      label: "Prepare Input",
+      action: "prepare-input",
+      onFail: "abort",
+    },
+    {
       id: "disabled-send",
       label: "Disabled Send State",
       action: "assert-disabled-send",

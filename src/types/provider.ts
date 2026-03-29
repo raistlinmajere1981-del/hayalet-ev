@@ -56,6 +56,7 @@ export type ProviderScenarioFailureMode = "abort" | "continue" | "warn";
 
 export type ProviderScenarioCommandActionId =
   | "navigate-default"
+  | "prepare-input"
   | "assert-disabled-send"
   | "assert-drag-drop-surface"
   | "inject-prompt"
@@ -133,6 +134,7 @@ export interface BaseProviderConfig {
   scrapeSelectors: ScrapeSelectors;
   fileInputSelectors: string[];
   uploadTargetSelectors: string[];
+  dragDropCriticalSelectors?: string[];
   criticalSelectors: string[];
   contentContainers: string[];
   excludedUrls: string[];

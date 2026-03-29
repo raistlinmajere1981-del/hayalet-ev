@@ -26,9 +26,10 @@ test("webview-test scenario commands keep stable preset actions", () => {
   const scenario = chatgptConfig.scenarios.webviewTest;
 
   assert.deepEqual(
-    scenario.commands.slice(0, 4).map((command) => [command.id, command.action]),
+    scenario.commands.slice(0, 5).map((command) => [command.id, command.action]),
     [
       ["reset-default-page", "navigate-default"],
+      ["prepare-input", "prepare-input"],
       ["disabled-send", "assert-disabled-send"],
       ["drag-drop-surface", "assert-drag-drop-surface"],
       ["inject-message", "inject-prompt"],

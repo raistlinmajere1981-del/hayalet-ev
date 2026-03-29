@@ -14,11 +14,16 @@ async function interactiveT(
   return await ctx.t(`interactive.${key}`, params);
 }
 
+function normalizeComparableText(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
 export async function runInteractiveTests(ctx: TestContext): Promise<InteractiveTestsResult> {
   const results: ProviderTestResult[] = [];
   let aborted = false;
 
   results.push(await testInputFieldAccessibility(ctx));
+  results.push(await testPrepareInput(ctx));
 
   results.push(await testSendButtonDisabled(ctx));
 
@@ -48,6 +53,122 @@ export async function runInteractiveTests(ctx: TestContext): Promise<Interactive
   results.push(await testAIResponseInspect(ctx));
 
   return { results, aborted };
+}
+
+export async function testPrepareInput(ctx: TestContext): Promise<ProviderTestResult> {
+  const start = Date.now();
+  try {
+    const selectorEntry =
+      ctx.config.selectorMatrix?.selectors?.["inputField"] ?? ctx.config.selectors.inputField;
+    const selectorCandidates = resolveSelectorCandidates(selectorEntry, ctx.appLanguage);
+    const candidates =
+      selectorCandidates.length > 0 ? selectorCandidates : [ctx.config.selectors.inputField];
+
+    const result = (await ctx.executeScript(`(function() {
+      const selectorCandidates = ${JSON.stringify(candidates)};
+      const resolveInput = () => {
+        for (const selector of selectorCandidates) {
+          try {
+            const found = document.querySelector(selector);
+            if (found) return { element: found, selector };
+          } catch (_) {
+            void 0;
+          }
+        }
+        return null;
+      };
+
+      const resolvedInput = resolveInput();
+      if (!resolvedInput) {
+        return { exists: false };
+      }
+
+      const input = resolvedInput.element;
+      const readValue = () => {
+        if (typeof input.value === 'string') return input.value;
+        return input.textContent || input.innerText || '';
+      };
+
+      const beforeValue = readValue();
+      const hadContent = beforeValue.trim() !== '';
+      const isEditable =
+        input.isContentEditable ||
+        input.contentEditable === 'true' ||
+        input.classList.contains('ProseMirror') ||
+        input.id === 'prompt-textarea';
+
+      input.focus();
+
+      if (hadContent) {
+        if (isEditable) {
+          input.innerHTML = '<p><br class="ProseMirror-trailingBreak"></p>';
+          input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        } else {
+          if (typeof input.value === 'string') {
+            input.value = '';
+          }
+          if (typeof input.textContent === 'string') {
+            input.textContent = '';
+          }
+          input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+        }
+      }
+
+      const afterValue = readValue();
+
+      return {
+        exists: true,
+        matchedSelector: resolvedInput.selector,
+        hadContent,
+        cleared: afterValue.trim() === '',
+        tagName: input.tagName,
+        beforeValue,
+        afterValue,
+      };
+    })();`)) as {
+      exists?: boolean;
+      matchedSelector?: string;
+      hadContent?: boolean;
+      cleared?: boolean;
+      tagName?: string;
+      beforeValue?: string;
+      afterValue?: string;
+    };
+
+    if (result.exists !== true) {
+      throw new Error("Input field not found");
+    }
+
+    if (result.cleared !== true) {
+      throw new Error("Input field could not be cleared");
+    }
+
+    return {
+      id: "prepare-input",
+      name: "Prepare Input",
+      category: "interactive",
+      status: "pass",
+      message: result.hadContent === true ? "Input field content cleared" : "Input field is ready",
+      details: {
+        selector: result.matchedSelector ?? ctx.config.selectors.inputField,
+        element: result,
+      },
+      duration: Date.now() - start,
+      timestamp: Date.now(),
+    };
+  } catch (error) {
+    return {
+      id: "prepare-input",
+      name: "Prepare Input",
+      category: "interactive",
+      status: "fail",
+      message: "Input field preparation failed",
+      details: { error: (error as Error).message },
+      duration: Date.now() - start,
+      timestamp: Date.now(),
+    };
+  }
 }
 
 export async function testInputFieldAccessibility(ctx: TestContext): Promise<ProviderTestResult> {
@@ -225,104 +346,221 @@ export async function testTextInjection(ctx: TestContext): Promise<ProviderTestR
   try {
     const message = PROVIDER_TEST.TEST_MESSAGE;
     const safeMessage = JSON.stringify(message);
+    const selectorEntry =
+      ctx.config.selectorMatrix?.selectors?.["inputField"] ?? ctx.config.selectors.inputField;
+    const selectorCandidates = resolveSelectorCandidates(selectorEntry, ctx.appLanguage);
+    const candidates =
+      selectorCandidates.length > 0 ? selectorCandidates : [ctx.config.selectors.inputField];
+    const injectedProviderConfig = {
+      id: ctx.config.id,
+      inputType: ctx.config.inputType,
+      selectors: {
+        inputField: ctx.config.selectors.inputField,
+      },
+    };
 
     const injectScript = `(function() {
-      const message = ${safeMessage};
+      try {
+        const message = ${safeMessage};
+        const inputSelectorCandidates = ${JSON.stringify(candidates)};
+        const fallbackConfig = ${JSON.stringify(injectedProviderConfig)};
+        const config =
+          window.__app_provider_config && window.__app_provider_config.selectors
+            ? window.__app_provider_config
+            : fallbackConfig;
 
-      const config = window.__app_provider_config;
-      if (!config || !config.selectors) {
-        throw new Error(${JSON.stringify(await interactiveT(ctx, "textInjection.providerConfigMissing"))});
-      }
-
-      const inputSelector = config.selectors.inputField;
-      if (!inputSelector) {
-        throw new Error(${JSON.stringify(await interactiveT(ctx, "textInjection.inputSelectorMissing"))});
-      }
-
-      const textarea = document.querySelector(inputSelector);
-      if (!textarea) {
-        throw new Error(${JSON.stringify(await interactiveT(ctx, "textInjection.inputElementMissingPrefix"))} + inputSelector);
-      }
-
-      const inputType = config.inputType || 'direct';
-
-      if (inputType === 'character-by-character') {
-        textarea.focus();
-        if (typeof textarea.value !== 'undefined') textarea.value = '';
-        if (typeof textarea.textContent !== 'undefined') textarea.textContent = '';
-        
-        let currentValue = '';
-        for (let i = 0; i < message.length; i++) {
-          currentValue += message[i];
-          
-          // NOTE: Use native setter to bypass React's value tracking.
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLTextAreaElement.prototype, 
-            'value'
-          ).set;
-          nativeInputValueSetter.call(textarea, currentValue);
-          
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        if (!window.__app_provider_config || !window.__app_provider_config.selectors) {
+          window.__app_provider_config = config;
         }
-        
-        textarea.dispatchEvent(new Event('change', { bubbles: true }));
-        
-        return textarea.value;
-      }
 
-      const isProseMirror = textarea.classList.contains('ProseMirror') || 
-                            !!textarea.querySelector('.ProseMirror') ||
-                            !!textarea.querySelector('[class*="ProseMirror"]') ||
-                            textarea.id === 'prompt-textarea';
+        const resolveInput = () => {
+          for (const selector of inputSelectorCandidates) {
+            try {
+              const found = document.querySelector(selector);
+              if (found) {
+                return { element: found, selector };
+              }
+            } catch (_) {
+              void 0;
+            }
+          }
+          return null;
+        };
 
-      if (isProseMirror || textarea.contentEditable === 'true' || textarea.isContentEditable) {
+        const resolvedInput = resolveInput();
+        if (!resolvedInput) {
+          return {
+            success: false,
+            error:
+              ${JSON.stringify(await interactiveT(ctx, "textInjection.inputElementMissingPrefix"))} +
+              inputSelectorCandidates.join(', '),
+          };
+        }
+
+        const textarea = resolvedInput.element;
+        const readValue = () => {
+          if (typeof textarea.value === 'string') return textarea.value;
+          return textarea.textContent || textarea.innerText || '';
+        };
+        const inputType = config.inputType || 'direct';
+
+        if (inputType === 'character-by-character') {
+          textarea.focus();
+          if (typeof textarea.value === 'string') {
+            const nativeSetter = Object.getOwnPropertyDescriptor(
+              window.HTMLTextAreaElement.prototype,
+              'value'
+            )?.set;
+            if (nativeSetter) {
+              nativeSetter.call(textarea, '');
+            } else {
+              textarea.value = '';
+            }
+          }
+          if (typeof textarea.textContent === 'string') {
+            textarea.textContent = '';
+          }
+
+          let currentValue = '';
+          for (let i = 0; i < message.length; i += 1) {
+            currentValue += message[i] ?? '';
+            if (typeof textarea.value === 'string') {
+              const nativeSetter = Object.getOwnPropertyDescriptor(
+                window.HTMLTextAreaElement.prototype,
+                'value'
+              )?.set;
+              if (nativeSetter) {
+                nativeSetter.call(textarea, currentValue);
+              } else {
+                textarea.value = currentValue;
+              }
+            } else {
+              textarea.textContent = currentValue;
+            }
+            textarea.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+          }
+
+          textarea.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+          return {
+            success: true,
+            matchedSelector: resolvedInput.selector,
+            value: readValue(),
+          };
+        }
+
+        const isEditable =
+          textarea.classList.contains('ProseMirror') ||
+          textarea.id === 'prompt-textarea' ||
+          textarea.contentEditable === 'true' ||
+          textarea.isContentEditable;
+
         textarea.focus();
-        textarea.innerHTML = '';
-        
-        const lines = message.split('\\n');
-        const html = lines.map(line => {
-          if (line.trim() === '') return '<p><br></p>';
-          const escaped = line
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-          return '<p>' + escaped + '</p>';
-        }).join('');
-        
-        textarea.innerHTML = html;
+
+        if (isEditable) {
+          let inserted = false;
+          try {
+            inserted = document.execCommand('insertText', false, message);
+          } catch (_) {
+            inserted = false;
+          }
+
+          if (!inserted) {
+            const lines = message.split('\\n');
+            const html = lines
+              .map((line) => {
+                if (line.trim() === '') return '<p><br class="ProseMirror-trailingBreak"></p>';
+                const escaped = line
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;');
+                return '<p>' + escaped + '</p>';
+              })
+              .join('');
+            textarea.innerHTML = html;
+          }
+
+          if (typeof InputEvent === 'function') {
+            textarea.dispatchEvent(
+              new InputEvent('input', {
+                bubbles: true,
+                cancelable: true,
+                data: message,
+                inputType: 'insertText',
+              })
+            );
+          } else {
+            textarea.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+          }
+
+          return {
+            success: true,
+            matchedSelector: resolvedInput.selector,
+            value: readValue(),
+          };
+        }
+
+        if (typeof textarea.value === 'string') {
+          const nativeSetter = Object.getOwnPropertyDescriptor(
+            Object.getPrototypeOf(textarea),
+            'value'
+          )?.set;
+          if (nativeSetter) {
+            nativeSetter.call(textarea, '');
+            nativeSetter.call(textarea, message);
+          } else {
+            textarea.value = '';
+            textarea.value = message;
+          }
+        } else {
+          textarea.textContent = message;
+        }
+
         textarea.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-        
-        return textarea.textContent || textarea.innerText;
+        textarea.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+
+        return {
+          success: true,
+          matchedSelector: resolvedInput.selector,
+          value: readValue(),
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
-
-      textarea.focus();
-      textarea.value = '';
-      textarea.value = message;
-      textarea.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-      textarea.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
-
-      return textarea.value;
     })();`;
 
-    const result = (await ctx.executeScript(injectScript)) as string;
+    const result = (await ctx.executeScript(injectScript)) as {
+      success?: boolean;
+      error?: string;
+      matchedSelector?: string;
+      value?: string;
+    };
 
-    if (result === PROVIDER_TEST.TEST_MESSAGE) {
+    if (result.success === true && result.value === PROVIDER_TEST.TEST_MESSAGE) {
       return {
         id: "text-injection",
         name: await interactiveT(ctx, "textInjection.name"),
         category: "interactive",
         status: "pass",
         message: await interactiveT(ctx, "textInjection.injected"),
-        details: { selector: ctx.config.selectors.inputField },
+        details: {
+          selector: result.matchedSelector ?? ctx.config.selectors.inputField,
+        },
         duration: Date.now() - start,
         timestamp: Date.now(),
       };
     }
 
+    if (result.success !== true) {
+      throw new Error(result.error ?? (await interactiveT(ctx, "textInjection.providerConfigMissing")));
+    }
+
     throw new Error(
       await interactiveT(ctx, "textInjection.mismatch", {
         expected: PROVIDER_TEST.TEST_MESSAGE,
-        actual: result,
+        actual: result.value ?? "",
       })
     );
   } catch (error) {
@@ -487,11 +725,13 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
       };
     }
 
-    await new Promise((resolve) =>
-      setTimeout(resolve, PROVIDER_TEST_DELAYS.STOP_BUTTON_THINKING_OBSERVE)
-    );
-
     const selector = ctx.config.selectors.stopButton;
+    let lastResult: ElementCheckResult = {
+      exists: false,
+      visible: false,
+      enabled: false,
+      tagName: "UNKNOWN",
+    };
     const script = `
       (function() {
         const stopBtn = document.querySelector(${JSON.stringify(selector)});
@@ -507,16 +747,20 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
       })()
     `;
 
-    const result = (await ctx.executeScript(script)) as ElementCheckResult;
+    const visible = await ctx.waitForCondition(async () => {
+      const result = (await ctx.executeScript(script)) as ElementCheckResult;
+      lastResult = result;
+      return result.exists === true && result.visible === true;
+    }, Math.max(PROVIDER_TEST.TIMEOUT_STOP_BUTTON, PROVIDER_TEST_DELAYS.STOP_BUTTON_THINKING_OBSERVE));
 
-    if (result.exists && result.visible) {
+    if (visible) {
       return {
         id: "stop-button-thinking",
         name: await interactiveT(ctx, "stopButtonThinking.name"),
         category: "interactive",
         status: "pass",
         message: await interactiveT(ctx, "stopButtonThinking.visible"),
-        details: { selector: ctx.config.selectors.stopButton, element: result },
+        details: { selector: ctx.config.selectors.stopButton, element: lastResult },
         duration: Date.now() - start,
         timestamp: Date.now(),
       };
@@ -527,7 +771,7 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
         category: "interactive",
         status: "warning",
         message: await interactiveT(ctx, "stopButtonThinking.notVisible"),
-        details: { selector: ctx.config.selectors.stopButton, element: result },
+        details: { selector: ctx.config.selectors.stopButton, element: lastResult },
         duration: Date.now() - start,
         timestamp: Date.now(),
       };
@@ -549,10 +793,6 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
 export async function testUserMessageInspect(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
-    await new Promise((resolve) =>
-      setTimeout(resolve, PROVIDER_TEST_DELAYS.USER_MESSAGE_INSPECT_SETTLE)
-    );
-
     const selector = ctx.config.scrapeSelectors.userWrapper ?? ctx.config.scrapeSelectors.preferred;
     const script = `
       (function() {
@@ -570,7 +810,7 @@ export async function testUserMessageInspect(ctx: TestContext): Promise<Provider
           found: true,
           tagName: lastMessage.tagName,
           classes: lastMessage.className,
-          textContent: text.trim().slice(0, 100),
+          textContent: text.trim(),
           visible: styles.display !== 'none' && styles.visibility !== 'hidden',
           width: rect.width,
           height: rect.height,
@@ -580,18 +820,33 @@ export async function testUserMessageInspect(ctx: TestContext): Promise<Provider
       })()
     `;
 
-    const result = (await ctx.executeScript(script)) as {
+    let result = (await ctx.executeScript(script)) as {
       found: boolean;
       textContent?: string;
       visible: boolean;
       enabled: boolean;
       tagName: string;
     };
+    const expectedText = normalizeComparableText(PROVIDER_TEST.TEST_MESSAGE);
 
-    if (
-      result.found === true &&
-      result.textContent?.includes(PROVIDER_TEST.TEST_MESSAGE) === true
-    ) {
+    const matched = await ctx.waitForCondition(async () => {
+      result = (await ctx.executeScript(script)) as {
+        found: boolean;
+        textContent?: string;
+        visible: boolean;
+        enabled: boolean;
+        tagName: string;
+      };
+
+      if (result.found !== true) {
+        return false;
+      }
+
+      const actualText = normalizeComparableText(result.textContent ?? "");
+      return actualText.includes(expectedText);
+    }, PROVIDER_TEST.TIMEOUT_RESPONSE_WAIT);
+
+    if (matched) {
       return {
         id: "user-message-inspect",
         name: await interactiveT(ctx, "userMessageInspect.name"),

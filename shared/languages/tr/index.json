@@ -2348,6 +2348,7 @@
         "attachStepCompletedWithWarnings": "Ek adımı uyarılarla tamamlandı",
         "thinkingIndicatorName": "Düşünme Göstergesi",
         "thinkingIndicatorBusy": "Üst çubuk düşünme göstergesi busy oldu",
+        "thinkingTransientObserved": "Geçici durdur butonu veya hızlı asistan yanıtı nedeniyle düşünme durumu doğrulandı",
         "thinkingIndicatorMissing": "Düşünme göstergesi busy olmadı",
         "sendThinkingFailed": "Gönderme/düşünme adımı başarısız",
         "finalBubbleChecksFailed": "Son mesaj balonu kontrolleri başarısız",

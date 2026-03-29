@@ -5,26 +5,30 @@ export const config = {
   name: "ChatGPT",
   baseUrl: "https://chatgpt.com",
   loginUrl: "https://chatgpt.com/auth/login",
-  lastVerified: "2026-01-11",
+  lastVerified: "2026-03-29",
   selectors: {
     sendButton: '#composer-submit-button[data-testid="send-button"], #composer-submit-button',
+
+    sendButtonDisabled:
+      '#composer-submit-button[data-testid="send-button"][disabled], button[data-testid="send-button"][aria-label="İstem gönder"][disabled], button[data-testid="send-button"][aria-label="Send prompt"][disabled], #composer-submit-button[disabled]',
 
     stopButton:
       '[data-testid="stop-button"], #composer-submit-button[data-testid="stop-button"], button[aria-label="Stop streaming"], button[aria-label="Yanıtlamayı durdur"]',
 
     voiceButton:
-      'button.composer-btn[aria-label="Dictate button"], button.composer-btn[aria-label="Dikte düğmesi"]',
+      'button.composer-btn[aria-label="Dikteyi başlatma"], button.composer-btn[aria-label="Start dictation"], button.composer-btn[aria-label="Dictate button"], button.composer-btn[aria-label="Dikte düğmesi"], button.composer-btn[aria-label*="Dikte"], button.composer-btn[aria-label*="dictat"]',
 
     dictateButton:
-      'button.composer-btn[aria-label="Dictate button"], button.composer-btn[aria-label="Dikte düğmesi"]',
+      'button.composer-btn[aria-label="Dikteyi başlatma"], button.composer-btn[aria-label="Start dictation"], button.composer-btn[aria-label="Dictate button"], button.composer-btn[aria-label="Dikte düğmesi"], button.composer-btn[aria-label*="Dikte"], button.composer-btn[aria-label*="dictat"]',
 
     attachButton:
-      '#composer-plus-btn[data-testid="composer-plus-btn"], button[data-testid="composer-plus-btn"][aria-label="Add files and more"], button[data-testid="composer-plus-btn"][aria-label="Dosyaları ve çok daha fazlasını ekle"]',
+      '#composer-plus-btn[data-testid="composer-plus-btn"], button#composer-plus-btn[aria-haspopup="menu"], button[data-testid="composer-plus-btn"][aria-label="Add files and more"], button[data-testid="composer-plus-btn"][aria-label="Dosyaları ve çok daha fazlasını ekle"]',
 
     attachMenuItem:
       'div[role="menuitem"].group.__menu-item[data-orientation="vertical"], div[role="menuitem"][data-radix-collection-item]',
 
-    inputField: "#prompt-textarea",
+    inputField:
+      'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"], #prompt-textarea',
 
     messageContainer: "main",
 
@@ -40,9 +44,19 @@ export const config = {
   selectorMatrix: {
     selectors: {
       sendButton: {
-        tr: '#composer-submit-button[data-testid="send-button"]',
-        en: '#composer-submit-button[data-testid="send-button"]',
-        fallbacks: ["#composer-submit-button"],
+        tr: '#composer-submit-button[data-testid="send-button"], button[data-testid="send-button"][aria-label="İstem gönder"]',
+        en: '#composer-submit-button[data-testid="send-button"], button[data-testid="send-button"][aria-label="Send prompt"]',
+        fallbacks: ['button[data-testid="send-button"]', "#composer-submit-button"],
+      },
+      inputField: {
+        tr: 'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"]',
+        en: 'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"]',
+        fallbacks: ["#prompt-textarea"],
+      },
+      attachButton: {
+        tr: 'button#composer-plus-btn[aria-haspopup="menu"], button[data-testid="composer-plus-btn"][aria-label="Dosyaları ve çok daha fazlasını ekle"]',
+        en: 'button#composer-plus-btn[aria-haspopup="menu"], button[data-testid="composer-plus-btn"][aria-label="Add files and more"]',
+        fallbacks: ['#composer-plus-btn[data-testid="composer-plus-btn"]'],
       },
     },
   },
@@ -63,22 +77,29 @@ export const config = {
     preferred: "[data-message-author-role]",
     fallback: ".message-bubble, .markdown.prose",
     messageWrapper: '[data-testid="conversation-turn"]',
-    userWrapper: ".user-message-bubble-color",
-    assistantWrapper: ".agent-turn",
+    userWrapper: '[data-message-author-role="user"], .user-message-bubble-color',
+    assistantWrapper: '[data-message-author-role="assistant"], .agent-turn',
   },
   messageIdStrategy: "content-hash",
   fileInputSelectors: ['input[type="file"][multiple]', 'input[type="file"]'],
   uploadTargetSelectors: [
     '#composer-plus-btn[data-testid="composer-plus-btn"]',
+    'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"]',
     '[data-testid="upload-drop-target"]',
-    '[data-testid="prompt-textarea"]',
+    '#prompt-textarea[contenteditable="true"]',
     "#prompt-textarea",
     "form textarea",
   ],
-  criticalSelectors: [
+  dragDropCriticalSelectors: [
+    '#composer-submit-button[data-testid="send-button"]',
     '#composer-plus-btn[data-testid="composer-plus-btn"]',
-    "#prompt-textarea",
-    '[data-testid="prompt-textarea"]',
+    'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"]',
+  ],
+  criticalSelectors: [
+    '#composer-submit-button[data-testid="send-button"]',
+    '#composer-plus-btn[data-testid="composer-plus-btn"]',
+    'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"]',
+    "#prompt-textarea[contenteditable=\"true\"]",
     '[data-testid="conversation-turn"]',
     "[data-message-author-role]",
   ],
@@ -118,8 +139,16 @@ export const config = {
   webviewSync: {
     readiness: "verified",
     sidebar: {
-      openButtonSelectors: ['button[data-testid="open-sidebar-button"]'],
-      closeButtonSelectors: ['button[data-testid="close-sidebar-button"]'],
+      openButtonSelectors: [
+        'button[data-testid="open-sidebar-button"]',
+        'button[aria-label="Open sidebar"]',
+        'button[aria-label="Kenar çubuğunu aç"]',
+      ],
+      closeButtonSelectors: [
+        'button[data-testid="close-sidebar-button"]',
+        'button[aria-label="Close sidebar"]',
+        'button[aria-label="Kenar çubuğunu kapat"]',
+      ],
     },
     history: {
       containerSelectors: ["#history"],
