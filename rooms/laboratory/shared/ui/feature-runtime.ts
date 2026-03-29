@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryUiFeatureRuntime(deps) {
   const {
     getActiveProject,

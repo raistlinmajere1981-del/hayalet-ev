@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryProjectManifestRuntime } from "./project-manifests.js";
 import { createLaboratoryRoomSnapshotRuntime } from "./room-snapshot.js";
 import { createLaboratoryRuntimeEvents } from "./runtime-events.js";

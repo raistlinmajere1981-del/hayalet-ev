@@ -494,7 +494,10 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   assert.match(sourceStageIntakeSource, /data-action="source-pick-local"/);
   assert.match(sourceStageIntakeSource, /data-action="source-download-url"/);
   assert.match(sourceStageIntakeSource, /data-action="source-download-youtube"/);
-  assert.match(stageShellDelegatesSource, /export function createLaboratoryStageShellDelegates\(deps\)/);
+  assert.match(
+    stageShellDelegatesSource,
+    /export function createLaboratoryStageShellDelegates(?:<[\s\S]+?>)?\s*\(/
+  );
   assert.match(stageShellDelegatesSource, /function renderEditStage\(\)/);
   assert.match(stageShellDelegatesSource, /renderMediaAnalysisEditStage\(mediaAnalysisEditStageDeps\)/);
   assert.match(sourceStageCompositionSource, /export function createLaboratorySourceStageComposition\(deps\)/);
@@ -554,7 +557,10 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   assert.match(editRuntimeSource, /function commitEditPatch\(patch, action\)/);
   assert.match(editRuntimeSource, /function restartProcess\(\)/);
   assert.match(uiSource, /main-functions\/media-analysis\/ui\/edit-stage\.js/);
-  assert.match(mediaEditStageSource, /export function renderMediaAnalysisEditStage\(deps\)/);
+  assert.match(
+    mediaEditStageSource,
+    /export function renderMediaAnalysisEditStage\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(mediaEditStageSource, /text\(\["mediaAnalysis", "edit", "sourceRequired"\]\)/);
   assert.match(uiSource, /main-functions\/media-analysis\/ui\/profile-panels\.js/);
   assert.match(uiSource, /main-functions\/media-analysis\/ui\/runtime\.js/);
@@ -615,7 +621,7 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   );
   assert.match(
     sourceSnapshotSelectorsSource,
-    /export function createSourceSnapshotSelectors\(deps\)/
+    /export function createSourceSnapshotSelectors\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(sourceSnapshotSelectorsSource, /\.\.\.projectSelectors,/);
   assert.match(sourceSnapshotSelectorsSource, /\.\.\.subtitleSelectors,/);
@@ -643,11 +649,20 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   assert.match(sourceSnapshotAudioSelectorsSource, /function getAudioAnalysisOrderedResultEntries\(\)/);
   assert.match(
     sourceSnapshotToolSelectorsSource,
-    /export function createLaboratorySnapshotToolSelectors\(deps\)/
+    /export function createLaboratorySnapshotToolSelectors\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
-  assert.match(sourceSnapshotToolSelectorsSource, /function getToolEntry\(toolId\)/);
-  assert.match(sourceSnapshotToolSelectorsSource, /function getStageToolIds\(stageId\)/);
-  assert.match(sourceSnapshotToolSelectorsSource, /function getWorkspaceCapabilities\(kind\)/);
+  assert.match(
+    sourceSnapshotToolSelectorsSource,
+    /function getToolEntry\(\s*toolId,?\s*\)/
+  );
+  assert.match(
+    sourceSnapshotToolSelectorsSource,
+    /function getStageToolIds\(\s*stageId,?\s*\)/
+  );
+  assert.match(
+    sourceSnapshotToolSelectorsSource,
+    /function getWorkspaceCapabilities\(\s*kind,?\s*\)/
+  );
   assert.match(uiSource, /\.\/view-bindings-runtime\.js/);
   assert.match(viewAccessorsRuntimeSource, /export function createLaboratoryViewAccessorsRuntime\(deps\)/);
   assert.match(viewAccessorsRuntimeSource, /function getCurrentFeatureProcessRecord\(\)/);
@@ -672,14 +687,17 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   assert.match(featureRuntimeSource, /function getCurrentFeatureTargetLabel\(\)/);
   assert.match(
     profileProcessReportRuntimeSource,
-    /export function createLaboratoryProfileProcessReportRuntime\(deps\)/
+    /export function createLaboratoryProfileProcessReportRuntime(?:<[\s\S]+?>)?\s*\(/
   );
   assert.match(
     profileProcessReportCompositionSource,
     /export \{ createLaboratoryProfileProcessReportComposition \} from "\.\.\/shared\/ui\/profile-process-report-composition\.js";/
   );
   assert.match(profileProcessReportRuntimeSource, /function renderProfileSummaryPanel\(\)/);
-  assert.match(profileProcessReportRuntimeSource, /function renderReportFinding\(signal\)/);
+  assert.match(
+    profileProcessReportRuntimeSource,
+    /function renderReportFinding\(signal(?:: [^)]+)?\)/
+  );
   assert.match(subtitleAnalysisUiRuntimeSource, /export function createSubtitleAnalysisUiRuntime\(deps\)/);
   assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitleEditStage\(\)/);
   assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitlePreviewBody\(\)/);
@@ -691,7 +709,10 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   assert.match(mediaProfileUiSource, /data-profile-artifact-toggle=/);
   assert.match(mediaProfileUiSource, /data-profile-field="frameSampleDensity"/);
   assert.match(mediaProfileUiSource, /data-profile-field="transcriptSampleSeconds"/);
-  assert.match(mediaProfileTargetSource, /export function getMediaAnalysisProfileTargetAsset\(deps\)/);
+  assert.match(
+    mediaProfileTargetSource,
+    /export function getMediaAnalysisProfileTargetAsset\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(mediaProfileHelperSource, /export function getTopProfileSignals\(signals, limit, toRecord\)/);
   assert.match(mediaProfileHelperSource, /export function getPreferredSourceCodec\(sourceMetadata\)/);
   assert.match(mediaProfileHelperSource, /export function formatBitRate\(bitsPerSecond\)/);
@@ -719,7 +740,10 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   assert.match(draftAccessRuntimeSource, /createLaboratoryUiDraftAccessRuntime/);
   assert.match(draftAccessRuntimeSource, /function getCurrentDrafts\(\)/);
   assert.match(draftAccessRuntimeSource, /function buildCurrentDraftPayload\(\)/);
-  assert.match(draftAccessRuntimeSource, /function syncLocalEditField\(path, value\)/);
+  assert.match(
+    draftAccessRuntimeSource,
+    /function syncLocalEditField\(path(?:: [^,)]+)?, value(?:: [^)]+)?\)/
+  );
   assert.match(snapshotAccessRuntimeSource, /export function createLaboratorySnapshotAccessRuntime\(deps\)/);
   assert.match(snapshotAccessRuntimeSource, /function getProjectSource\(\)/);
   assert.match(snapshotAccessRuntimeSource, /function getProjectAudioAnalysis\(\)/);
@@ -735,8 +759,14 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   assert.match(shellFrameSource, /function renderBootstrap\(\)/);
   assert.match(shellFrameSource, /function renderStageRail\(\)/);
   assert.match(shellFrameSource, /function renderStageIntro\(stageId\)/);
-  assert.match(shellRenderSource, /export function renderLaboratoryStageContent\(activeStage, renderers\)/);
-  assert.match(shellRenderSource, /export function renderLaboratoryShell\(deps\)/);
+  assert.match(
+    shellRenderSource,
+    /export function renderLaboratoryStageContent\(\s*activeStage(?::[\s\S]+?)?,\s*renderers(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    shellRenderSource,
+    /export function renderLaboratoryShell\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(shellRuntimeSource, /export function createLaboratoryUiShellRuntime\(deps\)/);
   assert.match(shellRuntimeSource, /deps\.captureScrollState\(root\);/);
   assert.match(shellRuntimeSource, /deps\.restoreScrollState\(root\);/);
@@ -1044,12 +1074,24 @@ test("laboratory host orchestrates projects, source intake, edit rendering, and 
   assert.match(runtimeBootstrapSource, /function createRuntimeState\(\)/);
   assert.match(runtimeBootstrapSource, /function sanitizeContext\(payload, api\)/);
   assert.match(processTargetingSource, /function resolveProcessTarget\(project, featureId\)/);
-  assert.match(closeoutStalenessSource, /export function createLaboratoryCloseoutStalenessRuntime\(deps\)/);
-  assert.match(closeoutStalenessSource, /function markCloseoutAsStale\(project, reason, targetFeatureIds\)/);
-  assert.match(hostUtilsSource, /export function createLaboratoryHostUtils\(deps\)/);
+  assert.match(
+    closeoutStalenessSource,
+    /export function createLaboratoryCloseoutStalenessRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    closeoutStalenessSource,
+    /function markCloseoutAsStale\(\s*project\??(?::[\s\S]+?)?,\s*reason\??(?::[\s\S]+?)?,\s*targetFeatureIds\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
+  assert.match(
+    hostUtilsSource,
+    /export function createLaboratoryHostUtils\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(hostUtilsSource, /function getPreferredFeatureSourceKind\(featureId, sourcePresets\)/);
   assert.match(audioProcessDelegatesSource, /export function createLaboratoryAudioProcessDelegatesRuntime/);
-  assert.match(audioProcessDelegatesSource, /function getAudioAnalysisModuleProcessDir\(runtime, project, moduleId\)/);
+  assert.match(
+    audioProcessDelegatesSource,
+    /function getAudioAnalysisModuleProcessDir\(\s*runtime,\s*project,\s*moduleId,?\s*\)/
+  );
   assert.match(processOrchestrationSource, /export function createLaboratoryProcessOrchestrationRuntime\(deps\)/);
   assert.match(processOrchestrationSource, /function buildMediaProcessModules\(runtime, project, target\)/);
   assert.match(processOrchestrationSource, /function buildProcessSpeechAvailability\(runtime, project\)/);
@@ -1109,10 +1151,19 @@ test("laboratory host orchestrates projects, source intake, edit rendering, and 
   );
   assert.match(mediaProjectActionHandlersSource, /async function refresh\(runtime, requestId, checkUpdates\)/);
   assert.match(mediaProjectActionHandlersSource, /async function mutateTool\(api, runtime, requestId, action, actionPayload, featureStage\)/);
-  assert.match(actionRuntimeSource, /export function createLaboratoryHostActionRuntime\(deps\)/);
+  assert.match(
+    actionRuntimeSource,
+    /export function createLaboratoryHostActionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(actionRuntimeSource, /function getActionRouter\(\)/);
-  assert.match(actionRuntimeSource, /function handleToolMutation\(api, runtime, requestId, action, toolId, featureStage\)/);
-  assert.match(actionRuntimeSource, /function handleMediaAction\(api, runtime, payload\)/);
+  assert.match(
+    actionRuntimeSource,
+    /function handleToolMutation\(\s*api\??(?::[\s\S]+?)?,\s*runtime\??(?::[\s\S]+?)?,\s*requestId\??(?::[\s\S]+?)?,\s*action\??(?::[\s\S]+?)?,\s*toolId\??(?::[\s\S]+?)?,\s*featureStage\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
+  assert.match(
+    actionRuntimeSource,
+    /function handleMediaAction\(\s*api\??(?::[\s\S]+?)?,\s*runtime\??(?::[\s\S]+?)?,\s*payload\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
   assert.match(actionRuntimeSource, /from "\.\/action-router\.js"/);
   assert.match(actionRouterSource, /export function createLaboratoryActionRouter\(deps\)/);
   assert.match(audioRuntimeSource, /export function createLaboratoryAudioAnalysisHostRuntime\(deps\)/);
@@ -1120,9 +1171,15 @@ test("laboratory host orchestrates projects, source intake, edit rendering, and 
   assert.match(audioRuntimeSource, /createAudioAnalysisProjectionRuntime\(/);
   assert.match(audioRuntimeSource, /createAudioAnalysisProcessRuntime\(/);
   assert.match(audioRuntimeSource, /createLaboratoryAudioProcessDelegatesRuntime\(/);
-  assert.match(sourceDelegatesSource, /export function createLaboratorySourceDelegatesRuntime\(deps\)/);
+  assert.match(
+    sourceDelegatesSource,
+    /export function createLaboratorySourceDelegatesRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(sourceDelegatesSource, /function handleLocalPick\(api, runtime, requestId\)/);
-  assert.match(sourceDelegatesSource, /function getResolvedYoutubeSettings\(project, sourcePresets\)/);
+  assert.match(
+    sourceDelegatesSource,
+    /function getResolvedYoutubeSettings\(\s*project,\s*sourcePresets,?\s*\)/
+  );
   assert.match(sourceDelegatesSource, /async function handleYoutubeDownload\(api, runtime, requestId\)/);
   assert.match(
     sourceIntakeSource,
@@ -1181,11 +1238,11 @@ test("laboratory host orchestrates projects, source intake, edit rendering, and 
   );
   assert.match(
     readFileSync("rooms/laboratory/shared/host/project-state.ts", "utf8"),
-    /export function createLaboratoryProjectStateRuntime\(deps\)/
+    /export function createLaboratoryProjectStateRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     projectStateDelegatesSource,
-    /export function createLaboratoryProjectStateDelegatesRuntime\(deps\)/
+    /export function createLaboratoryProjectStateDelegatesRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(processReportStateSource, /function setFeatureProcessRecord\(project, featureId, record\)/);
   assert.match(processReportStateSource, /function setFeatureReportRecord\(project, featureId, record\)/);
@@ -1197,17 +1254,32 @@ test("laboratory host orchestrates projects, source intake, edit rendering, and 
   assert.match(runtimeEventsSource, /notifyRoom\(api, "source-state"/);
   assert.match(runtimeEventsSource, /notifyRoom\(api, "source-action-result"/);
   assert.match(runtimeEventsSource, /notifyRoom\(api, "source-job"/);
-  assert.match(runtimeStorageSource, /function getProfileModelDescriptorMap\(runtime\)/);
-  assert.match(runtimeStorageSource, /async function refreshProfileModelState\(runtime\)/);
+  assert.match(
+    runtimeStorageSource,
+    /function getProfileModelDescriptorMap\(\s*runtime\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
+  assert.match(
+    runtimeStorageSource,
+    /async function refreshProfileModelState\(\s*runtime\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
   assert.match(projectRecordsSource, /export function createLaboratoryProjectRecordsRuntime\(deps\)/);
   assert.match(projectRecordsSource, /function createProjectRecord\(/);
-  assert.match(subtitleProjectionSource, /export function createLaboratorySubtitleProjectionRuntime\(deps\)/);
-  assert.match(subtitleProjectionSource, /function syncProjectSubtitleAnalysisProjection\(runtime, project\)/);
+  assert.match(
+    subtitleProjectionSource,
+    /export function createLaboratorySubtitleProjectionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    subtitleProjectionSource,
+    /function syncProjectSubtitleAnalysisProjection\(\s*runtime\??(?::[\s\S]+?)?,\s*project\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
   assert.match(activationSource, /export function createLaboratoryHostActivation\(deps\)/);
   assert.match(activationSource, /onRoomReady: function onRoomReady\(payload\)/);
   assert.match(activationSource, /onRoomEvent: function onRoomEvent\(payload\)/);
   assert.match(processTargetingSource, /function buildMediaProcessModules\(runtime, project, target\)/);
-  assert.match(roomToolsProgressSource, /function ensureRoomToolsSubscription\(api, runtime\)/);
+  assert.match(
+    roomToolsProgressSource,
+    /function ensureRoomToolsSubscription\(\s*api\??(?::[\s\S]+?)?,\s*runtime\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
   assert.match(
     activationSource,
     /if \(payload\.type === "source-action" \|\| payload\.type === "media-action"\)/
@@ -1239,7 +1311,7 @@ test("laboratory host orchestrates projects, source intake, edit rendering, and 
   assert.match(lifecycleSource, /from "\.\/project-tool-status\.js"/);
   assert.match(
     projectConfigLoaderSource,
-    /export function createLaboratoryProjectConfigLoader\(deps\)/
+    /export function createLaboratoryProjectConfigLoader\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     projectStorageSource,
@@ -1247,7 +1319,7 @@ test("laboratory host orchestrates projects, source intake, edit rendering, and 
   );
   assert.match(
     projectToolStatusSource,
-    /export function createLaboratoryProjectToolStatusRuntime\(deps\)/
+    /export function createLaboratoryProjectToolStatusRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(projectStorageSource, /async function loadProjects\(runtime\)/);
   assert.match(projectStorageSource, /async function saveProject\(runtime, project\)/);
@@ -1263,11 +1335,11 @@ test("laboratory host orchestrates projects, source intake, edit rendering, and 
   assert.match(reportingFeatureSource, /from "\.\/reporting-markdown\.js"/);
   assert.match(
     reportingFeatureSource,
-    /export function createLaboratoryFeatureReportRuntime\(deps\)/
+    /export function createLaboratoryFeatureReportRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     reportingExportSource,
-    /export function createLaboratoryReportExportRuntime\(deps\)/
+    /export function createLaboratoryReportExportRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(reportingAudioSource, /export function createLaboratoryAudioReportRuntime\(deps\)/);
   assert.match(reportingSubtitleSource, /export function createLaboratorySubtitleReportRuntime\(deps\)/);
@@ -1306,7 +1378,10 @@ test("laboratory host orchestrates projects, source intake, edit rendering, and 
   assert.match(hostCompositionSource, /syncProjectProfileProjection/);
   assert.match(roomSnapshotSource, /function buildProjectedProjects\(runtime\)/);
   assert.match(hostCompositionSource, /shared\/host\/io-runtime\.js/);
-  assert.match(ioRuntimeSource, /async function ensureProjectDirectories\(runtime, project, requestId\)/);
+  assert.match(
+    ioRuntimeSource,
+    /async function ensureProjectDirectories\(\s*runtime\??(?::[\s\S]+?)?,\s*project\??(?::[\s\S]+?)?,\s*requestId\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
   assert.match(bridgeSource, /operation: "ensure-dir"/);
   assert.match(bridgeSource, /Unsupported room-tools operation: ensure-dir/);
   assert.match(sourceMetadataSource, /executableName: executableName/);

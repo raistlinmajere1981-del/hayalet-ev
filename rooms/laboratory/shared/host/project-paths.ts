@@ -1,4 +1,3 @@
-// @ts-nocheck
 function asNonEmptyString(value) {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }

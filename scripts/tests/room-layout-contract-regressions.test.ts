@@ -1,16 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { loadWorkspaceScriptForVm } from "./helpers/room-workspace-script.ts";
 
 test("rooms expose the shared shell seams expected by the normalized layout contract", () => {
   [
     "rooms/game-room/shared/host/activation.ts",
     "rooms/game-room/shared/host/command-registry.ts",
-    "rooms/game-room/shared/ui/feature-contract.js",
-    "rooms/game-room/shared/ui/scroll-runtime.js",
+    "rooms/game-room/shared/ui/feature-contract.ts",
+    "rooms/game-room/shared/ui/scroll-runtime.ts",
     "rooms/game-room/shared/types/room-shell-contracts.ts",
-    "rooms/game-room/ui/game-room-ui-runtime.js",
-    "rooms/game-room/host/runtime.js",
+    "rooms/game-room/ui/game-room-ui-runtime.ts",
+    "rooms/game-room/host/runtime.ts",
     "rooms/laboratory/shared/ui/shell-runtime.ts",
     "rooms/laboratory/shared/types/room-shell-contracts.ts",
   ].forEach((filePath) => {
@@ -19,16 +20,14 @@ test("rooms expose the shared shell seams expected by the normalized layout cont
 });
 
 test("room root entrypoints stay orchestration-only after layout normalization", () => {
-  const gameRoomHostIndexSource = readFileSync("rooms/game-room/host/index.ts", "utf8");
-  const gameRoomHostRuntimeSource = readFileSync("rooms/game-room/host/runtime.js", "utf8");
-  const gameRoomHostActivationSource = readFileSync(
-    "rooms/game-room/shared/host/activation.ts",
-    "utf8"
+  const gameRoomHostIndexSource = loadWorkspaceScriptForVm("rooms/game-room/host/index.ts");
+  const gameRoomHostRuntimeSource = loadWorkspaceScriptForVm("rooms/game-room/host/runtime.ts");
+  const gameRoomHostActivationSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/shared/host/activation.ts"
   );
-  const gameRoomUiIndexSource = readFileSync("rooms/game-room/ui/index.ts", "utf8");
-  const gameRoomUiRuntimeSource = readFileSync(
-    "rooms/game-room/ui/game-room-ui-runtime.js",
-    "utf8"
+  const gameRoomUiIndexSource = loadWorkspaceScriptForVm("rooms/game-room/ui/index.ts");
+  const gameRoomUiRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/ui/game-room-ui-runtime.ts"
   );
   const gameRoomIndexHtmlSource = readFileSync("rooms/game-room/ui/index.html", "utf8");
   const laboratoryHostIndexSource = readFileSync("rooms/laboratory/host/index.ts", "utf8");
@@ -87,8 +86,8 @@ test("room root entrypoints stay orchestration-only after layout normalization",
   assert.match(gameRoomHostActivationSource, /pushActiveFeatureState\(api\)/);
   assert.match(gameRoomUiIndexSource, /createGameRoomUiRuntime\(\)\.start\(\);/);
   assert.doesNotMatch(gameRoomUiIndexSource, /message\.type === "team-tetris-state"/);
-  assert.match(gameRoomUiRuntimeSource, /message\.type === "team-tetris-state"/);
-  assert.match(gameRoomUiRuntimeSource, /message\.type === "fate-knots-state"/);
+  assert.match(gameRoomUiRuntimeSource, /(messageType|message\.type) === "team-tetris-state"/);
+  assert.match(gameRoomUiRuntimeSource, /(messageType|message\.type) === "fate-knots-state"/);
   assert.match(gameRoomIndexHtmlSource, /shared\/ui\/feature-contract\.js/);
   assert.match(gameRoomIndexHtmlSource, /shared\/ui\/scroll-runtime\.js/);
   assert.match(gameRoomIndexHtmlSource, /game-room-ui-runtime\.js/);

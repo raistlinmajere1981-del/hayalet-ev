@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createAudioAnalysisProviderRuntime(deps) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;

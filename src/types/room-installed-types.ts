@@ -50,6 +50,7 @@ export interface InstalledRoomRecord {
   version: string;
   description?: string;
   icon?: string;
+  isWorkspaceFallback?: boolean;
   sourceDir: string;
   installedDir: string;
   manifestPath: string;

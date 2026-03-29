@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryViewAccessorsRuntime } from "./view-accessors-runtime.js";
 
 export function createLaboratoryViewBindingsRuntime(deps) {

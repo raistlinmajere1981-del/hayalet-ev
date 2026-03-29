@@ -1,8 +1,17 @@
-// @ts-nocheck
 import { createMediaAnalysisUiRuntimeHelpers } from "./runtime-helpers.js";
 import { createMediaAnalysisSourceEditUiRuntime } from "./source-edit-runtime.js";
 
-export function createMediaAnalysisUiRuntime(deps) {
+type MediaAnalysisUiRuntimeDeps =
+  & Parameters<typeof createMediaAnalysisSourceEditUiRuntime>[0]
+  & Parameters<typeof createMediaAnalysisUiRuntimeHelpers>[0];
+
+type MediaAnalysisUiRuntime =
+  & ReturnType<typeof createMediaAnalysisSourceEditUiRuntime>
+  & ReturnType<typeof createMediaAnalysisUiRuntimeHelpers>;
+
+export function createMediaAnalysisUiRuntime(
+  deps: MediaAnalysisUiRuntimeDeps,
+): MediaAnalysisUiRuntime {
   const sourceEditRuntime = createMediaAnalysisSourceEditUiRuntime({
     featureText: deps.featureText,
     subtitleText: deps.subtitleText,

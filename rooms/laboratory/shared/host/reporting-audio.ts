@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryAudioReportRuntime(deps) {
   const {
     asNonEmptyString,

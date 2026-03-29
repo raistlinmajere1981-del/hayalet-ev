@@ -32,6 +32,12 @@ function extractPageTemplate(documentTemplate: string, pageId: string): string {
   return page?.outerHTML ?? "";
 }
 
+function hideInjectedPages(container: HTMLElement): void {
+  container.querySelectorAll<HTMLElement>(".page").forEach((page) => {
+    page.classList.add("is-hidden");
+  });
+}
+
 export function injectPageTemplates(): void {
   const container = document.getElementById("pages-container");
   if (container) {
@@ -43,6 +49,7 @@ export function injectPageTemplates(): void {
       "page-whisper"
     )}`;
     syncInstalledRoomChrome();
+    hideInjectedPages(container);
     mountSceneWindowControls();
   }
 }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryProcessReportStateRuntime(deps) {
   const asNonEmptyString = deps.asNonEmptyString;
   const asNumber = deps.asNumber;

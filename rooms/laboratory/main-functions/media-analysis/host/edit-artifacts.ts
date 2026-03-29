@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createMediaEditArtifactRuntime(deps) {
   const {
     asNonEmptyString,

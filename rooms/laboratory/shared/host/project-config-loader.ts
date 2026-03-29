@@ -1,8 +1,45 @@
-// @ts-nocheck
-export function createLaboratoryProjectConfigLoader(deps) {
+type LaboratoryProjectConfigRuntime = {
+  audioAnalysisCapabilities: unknown;
+  audioAnalysisCatalog: unknown;
+  audioAnalysisPresets: unknown;
+  audioAnalysisProviders: unknown;
+  editCapabilities: unknown;
+  editPresets: unknown;
+  packageToolsDir: string | null;
+  profileCapabilities: unknown;
+  profileModels: unknown;
+  profilePresets: unknown;
+  projectSchema: unknown;
+  sourcePresets: unknown;
+  subtitleAnalysisCapabilities: unknown;
+  subtitleAnalysisCatalog: unknown;
+  subtitleAnalysisProviders: unknown;
+  subtitleEditPresets: unknown;
+  subtitleSourcePresets: unknown;
+  subtitleYoutubeForm: unknown;
+  toolchainManifest: unknown;
+  ytDlpForm: unknown;
+};
+
+type LaboratoryProjectConfigLoaderDeps = {
+  readJsonFile: (filePath: string) => Promise<unknown>;
+};
+
+type LaboratoryRoomApi = {
+  room: {
+    installedDir: string;
+  };
+};
+
+export function createLaboratoryProjectConfigLoader(
+  deps: LaboratoryProjectConfigLoaderDeps,
+) {
   const { readJsonFile } = deps;
 
-  async function loadRuntimeConfigs(api, runtime) {
+  async function loadRuntimeConfigs(
+    api: LaboratoryRoomApi,
+    runtime: LaboratoryProjectConfigRuntime,
+  ): Promise<void> {
     const baseDir = `${api.room.installedDir}/shared/data/tools`;
     const [
       sourcePresets,

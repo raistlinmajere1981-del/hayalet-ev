@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryUiShellComposition(deps) {
   const laboratorySourceStageUi = deps.createLaboratorySourceStageComposition({
     state: deps.state,

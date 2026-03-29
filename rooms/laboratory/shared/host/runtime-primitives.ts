@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   getProjectFeatureProcessDir as getProjectFeatureProcessDirFromPaths,
   getProjectFeatureReportDir as getProjectFeatureReportDirFromPaths,

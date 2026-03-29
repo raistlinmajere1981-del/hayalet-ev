@@ -1,5 +1,37 @@
-// @ts-nocheck
-export function createLaboratoryProjectStateRuntime(deps) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryProjectStateRuntimeDeps = {
+  roomSnapshotRuntime: {
+    serializeProject: (project: LaboratoryRecord, runtime: unknown) => unknown;
+    serializeProjectSummary: (project: LaboratoryRecord) => unknown;
+  };
+  runtimeStorage: {
+    getFeatureProcessRecord: (project: LaboratoryRecord, featureId: string) => unknown;
+    getFeatureReportRecord: (project: LaboratoryRecord, featureId: string) => unknown;
+    getProfileModelDescriptor: (runtime: unknown, modelId: string) => unknown;
+    getProfileModelDescriptorMap: (runtime: unknown) => unknown;
+    persistProfileModelState: (runtime: unknown) => unknown;
+    persistToolState: (runtime: unknown) => unknown;
+    refreshProfileModelState: (runtime: unknown) => unknown;
+  };
+  syncProjectAudioAnalysisProjection: (
+    runtime: unknown,
+    project: LaboratoryRecord,
+  ) => unknown;
+  syncProjectProfileProjection: (
+    runtime: unknown,
+    project: LaboratoryRecord,
+  ) => unknown;
+  syncProjectSubtitleAnalysisProjection: (
+    runtime: unknown,
+    project: LaboratoryRecord,
+  ) => unknown;
+  toFileUrl: (path: string) => string;
+};
+
+export function createLaboratoryProjectStateRuntime(
+  deps: LaboratoryProjectStateRuntimeDeps,
+) {
   const {
     roomSnapshotRuntime,
     runtimeStorage,
@@ -9,46 +41,49 @@ export function createLaboratoryProjectStateRuntime(deps) {
     toFileUrl,
   } = deps;
 
-  function serializeProjectSummary(project) {
+  function serializeProjectSummary(project: LaboratoryRecord) {
     return roomSnapshotRuntime.serializeProjectSummary(project);
   }
 
-  function serializeProject(project, runtime) {
+  function serializeProject(project: LaboratoryRecord, runtime: unknown) {
     return roomSnapshotRuntime.serializeProject(project, runtime);
   }
 
-  function syncProjectFeatureProjections(runtime, project) {
+  function syncProjectFeatureProjections(
+    runtime: unknown,
+    project: LaboratoryRecord,
+  ): LaboratoryRecord {
     syncProjectProfileProjection(runtime, project);
     syncProjectAudioAnalysisProjection(runtime, project);
     syncProjectSubtitleAnalysisProjection(runtime, project);
     return project;
   }
 
-  function readFeatureProcessRecord(project, featureId) {
+  function readFeatureProcessRecord(project: LaboratoryRecord, featureId: string) {
     return runtimeStorage.getFeatureProcessRecord(project, featureId);
   }
 
-  function readFeatureReportRecord(project, featureId) {
+  function readFeatureReportRecord(project: LaboratoryRecord, featureId: string) {
     return runtimeStorage.getFeatureReportRecord(project, featureId);
   }
 
-  function readProfileModelDescriptor(runtime, modelId) {
+  function readProfileModelDescriptor(runtime: unknown, modelId: string) {
     return runtimeStorage.getProfileModelDescriptor(runtime, modelId);
   }
 
-  function readProfileModelDescriptorMap(runtime) {
+  function readProfileModelDescriptorMap(runtime: unknown) {
     return runtimeStorage.getProfileModelDescriptorMap(runtime);
   }
 
-  function saveProfileModelState(runtime) {
+  function saveProfileModelState(runtime: unknown) {
     return runtimeStorage.persistProfileModelState(runtime);
   }
 
-  function saveToolState(runtime) {
+  function saveToolState(runtime: unknown) {
     return runtimeStorage.persistToolState(runtime);
   }
 
-  function reloadProfileModelState(runtime) {
+  function reloadProfileModelState(runtime: unknown) {
     return runtimeStorage.refreshProfileModelState(runtime);
   }
 

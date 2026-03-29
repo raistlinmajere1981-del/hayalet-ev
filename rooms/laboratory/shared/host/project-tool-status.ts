@@ -1,5 +1,34 @@
-// @ts-nocheck
-export function createLaboratoryProjectToolStatusRuntime(deps) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryToolStateEntry = LaboratoryRecord & {
+  details?: unknown;
+  installed?: boolean;
+  lastCheckedAt?: string | null;
+  lastError?: string | null;
+  releaseName?: string | null;
+  releaseTag?: string | null;
+  toolId: string;
+  version?: string | null;
+};
+
+type LaboratoryRuntimeWithToolState = LaboratoryRecord & {
+  toolState: {
+    tools: Record<string, LaboratoryToolStateEntry | undefined>;
+  };
+};
+
+type LaboratoryProjectToolStatusRuntimeDeps = {
+  callRoomTools: (payload: LaboratoryRecord) => Promise<LaboratoryRecord>;
+  createDefaultToolEntry: (toolId: string) => LaboratoryToolStateEntry;
+  getRuntimeToolIds: (runtime: LaboratoryRuntimeWithToolState) => string[];
+  persistToolState: (runtime: LaboratoryRuntimeWithToolState) => Promise<unknown>;
+  roomId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryProjectToolStatusRuntime(
+  deps: LaboratoryProjectToolStatusRuntimeDeps,
+) {
   const {
     callRoomTools,
     createDefaultToolEntry,
@@ -9,7 +38,10 @@ export function createLaboratoryProjectToolStatusRuntime(deps) {
     toRecord,
   } = deps;
 
-  async function refreshToolStatus(runtime, options) {
+  async function refreshToolStatus(
+    runtime: LaboratoryRuntimeWithToolState,
+    options?: { checkUpdates?: boolean } | null,
+  ): Promise<void> {
     const checkUpdates = options && options.checkUpdates === true;
     const toolIds = getRuntimeToolIds(runtime);
 
@@ -22,9 +54,10 @@ export function createLaboratoryProjectToolStatusRuntime(deps) {
           roomId: roomId,
           toolId: toolId,
         });
+        const probeTool = toRecord(probeResult.tool);
         runtime.toolState.tools[toolId] = {
           ...currentEntry,
-          ...toRecord(probeResult.tool),
+          ...probeTool,
           toolId: toolId,
           busy: false,
           lastError: null,
@@ -35,22 +68,25 @@ export function createLaboratoryProjectToolStatusRuntime(deps) {
           checkUpdates &&
           toRecord(toRecord(runtime.toolState.tools[toolId]).details).platformSupported !== false
         ) {
+          const installedEntry = toRecord(runtime.toolState.tools[toolId]);
           const updateResult = await callRoomTools({
             operation: "tool-check-for-updates",
             roomId: roomId,
             toolId: toolId,
-            installedVersion: runtime.toolState.tools[toolId].version,
-            installedReleaseTag: runtime.toolState.tools[toolId].releaseTag,
-            installedReleaseName: runtime.toolState.tools[toolId].releaseName,
+            installedVersion: installedEntry.version,
+            installedReleaseTag: installedEntry.releaseTag,
+            installedReleaseName: installedEntry.releaseName,
           });
+          const update = toRecord(updateResult.update);
 
           runtime.toolState.tools[toolId] = {
             ...runtime.toolState.tools[toolId],
-            latestVersion: updateResult.update ? updateResult.update.latestVersion : null,
-            latestReleaseTag: updateResult.update ? updateResult.update.latestReleaseTag : null,
-            latestReleaseName: updateResult.update ? updateResult.update.latestReleaseName : null,
-            releaseUrl: updateResult.update ? updateResult.update.releaseUrl : null,
-            updateAvailable: updateResult.update ? updateResult.update.updateAvailable === true : false,
+            latestVersion: typeof update.latestVersion === "string" ? update.latestVersion : null,
+            latestReleaseTag: typeof update.latestReleaseTag === "string" ? update.latestReleaseTag : null,
+            latestReleaseName:
+              typeof update.latestReleaseName === "string" ? update.latestReleaseName : null,
+            releaseUrl: typeof update.releaseUrl === "string" ? update.releaseUrl : null,
+            updateAvailable: update.updateAvailable === true,
           };
         }
       } catch (error) {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createSubtitleAnalysisUi } from "./module.js";
 import { createLaboratorySubtitlePanelRuntime } from "../../../ui/subtitle-panel-runtime.js";
 

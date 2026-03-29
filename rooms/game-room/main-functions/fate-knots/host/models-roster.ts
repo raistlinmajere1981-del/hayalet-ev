@@ -6,6 +6,12 @@ import {
   FATE_KNOTS_WAIT_TIMEOUT_MS,
 } from "./constants.js";
 
+function readRecord(candidate: unknown): Record<string, unknown> {
+  return candidate && typeof candidate === "object" && Array.isArray(candidate) === false
+    ? (candidate as Record<string, unknown>)
+    : {};
+}
+
 export function normalizePhase(value) {
   const allowed = Object.values(FATE_KNOTS_PHASES);
   return allowed.includes(value) ? value : FATE_KNOTS_PHASES.idle;
@@ -33,10 +39,7 @@ export function createHeroSelection() {
 }
 
 export function normalizeHeroSelection(candidate) {
-  const source =
-    candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-      ? candidate
-      : {};
+  const source = readRecord(candidate);
   return {
     avatarId: normalizeText(source.avatarId) || null,
     classId: normalizeText(source.classId) || null,
@@ -50,7 +53,19 @@ export function normalizeHeroSelection(candidate) {
   };
 }
 
-export function createParticipant(options = {}) {
+export function createParticipant(
+  options: {
+    seatId?: unknown;
+    type?: unknown;
+    provider?: unknown;
+    nickname?: unknown;
+    ready?: unknown;
+    connected?: unknown;
+    active?: unknown;
+    selection?: unknown;
+    decisionChoiceId?: unknown;
+  } = {}
+) {
   const seatId = normalizeText(options.seatId) || "user";
   const type = normalizeText(options.type) || (seatId === "user" ? "local-user" : "ai");
   return {
@@ -67,10 +82,7 @@ export function createParticipant(options = {}) {
 }
 
 export function normalizeParticipant(candidate) {
-  const source =
-    candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-      ? candidate
-      : {};
+  const source = readRecord(candidate);
   return createParticipant({
     seatId: source.seatId,
     provider: source.provider,
@@ -111,11 +123,13 @@ export function createWaitingState(
 }
 
 export function normalizeWaitingState(candidate) {
-  const source =
-    candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-      ? candidate
-      : {};
-  const waiting = createWaitingState(source.mode, source.reason, source.pendingSeatIds, Date.now());
+  const source = readRecord(candidate);
+  const waiting = createWaitingState(
+    normalizeText(source.mode),
+    normalizeText(source.reason),
+    Array.isArray(source.pendingSeatIds) ? source.pendingSeatIds : [],
+    Date.now()
+  );
   waiting.startedAt =
     typeof source.startedAt === "number" && Number.isFinite(source.startedAt)
       ? Math.trunc(source.startedAt)
@@ -127,7 +141,15 @@ export function normalizeWaitingState(candidate) {
   return waiting;
 }
 
-export function createDecisionState(options = {}) {
+export function createDecisionState(
+  options: {
+    stepId?: unknown;
+    choices?: unknown;
+    participantIds?: unknown;
+    now?: unknown;
+    timeoutMs?: unknown;
+  } = {}
+) {
   const choices = Array.isArray(options.choices) ? options.choices : [];
   const participantIds = Array.isArray(options.participantIds) ? options.participantIds : [];
   const now = typeof options.now === "number" ? options.now : Date.now();
@@ -161,15 +183,16 @@ export function normalizeDecisionState(candidate) {
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
     return null;
   }
+  const source = readRecord(candidate);
   const next = createDecisionState({
-    stepId: candidate.stepId,
-    choices: Array.isArray(candidate.choiceIds) ? candidate.choiceIds : [],
-    participantIds: Array.isArray(candidate.participantIds) ? candidate.participantIds : [],
-    now: typeof candidate.updatedAt === "number" ? candidate.updatedAt : Date.now(),
+    stepId: source.stepId,
+    choices: Array.isArray(source.choiceIds) ? source.choiceIds : [],
+    participantIds: Array.isArray(source.participantIds) ? source.participantIds : [],
+    now: typeof source.updatedAt === "number" ? source.updatedAt : Date.now(),
   });
   const votes =
-    candidate.votes && typeof candidate.votes === "object" && Array.isArray(candidate.votes) === false
-      ? candidate.votes
+    source.votes && typeof source.votes === "object" && Array.isArray(source.votes) === false
+      ? source.votes
       : {};
   Object.keys(votes).forEach(function (seatId) {
     const key = normalizeText(seatId);
@@ -178,15 +201,15 @@ export function normalizeDecisionState(candidate) {
       next.votes[key] = choiceId;
     }
   });
-  next.resolvedChoiceId = normalizeText(candidate.resolvedChoiceId) || null;
-  next.conflict = candidate.conflict === true;
+  next.resolvedChoiceId = normalizeText(source.resolvedChoiceId) || null;
+  next.conflict = source.conflict === true;
   next.updatedAt =
-    typeof candidate.updatedAt === "number" && Number.isFinite(candidate.updatedAt)
-      ? Math.trunc(candidate.updatedAt)
+    typeof source.updatedAt === "number" && Number.isFinite(source.updatedAt)
+      ? Math.trunc(source.updatedAt)
       : next.updatedAt;
   next.deadlineAt =
-    typeof candidate.deadlineAt === "number" && Number.isFinite(candidate.deadlineAt)
-      ? Math.trunc(candidate.deadlineAt)
+    typeof source.deadlineAt === "number" && Number.isFinite(source.deadlineAt)
+      ? Math.trunc(source.deadlineAt)
       : next.deadlineAt;
   return next;
 }

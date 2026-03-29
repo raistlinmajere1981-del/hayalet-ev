@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createMediaSourceFileRuntime } from "../../main-functions/media-analysis/host/source-file-utils.js";
 import { createMediaSourceIntakeRuntime } from "../../main-functions/media-analysis/host/source-intake.js";
 import { createMediaSourceMetadataRuntime } from "../../main-functions/media-analysis/host/source-metadata.js";

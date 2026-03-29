@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getProjectSubtitleSourceDir } from "../../../shared/host/project-paths.js";
 import { createSubtitleYoutubeDiscoveryRuntime } from "./youtube-discovery.js";
 import { createSubtitleYoutubeFilterRuntime } from "./youtube-filters.js";

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryAudioAnalysisHostRuntime } from "../../main-functions/audio-analysis/host/runtime.js";
 import { createLaboratoryAudioAnalysisProjectionRuntime } from "./audio-analysis-projection.js";
 import { createLaboratoryProcessCoordinationRuntime } from "./process-coordination.js";
@@ -51,12 +50,18 @@ export function createLaboratoryHostProcessCompositionRuntime(deps) {
     buildProcessSpeechAvailability,
     createEmptyProcessRun,
     getAudioAnalysisModulesForRuntime,
-    getFeatureProcessJobAction,
-    getFeatureReportExportAction,
+    getFeatureProcessJobAction: getFeatureProcessJobActionForFeature,
+    getFeatureReportExportAction: getFeatureReportExportActionForFeature,
     resolveProcessTarget,
     updateProcessModule,
     updateProcessRecordPercent,
   } = processOrchestrationRuntime;
+  const getFeatureProcessJobAction = function getFeatureProcessJobAction(featureId) {
+    return getFeatureProcessJobActionForFeature(featureId, deps.audioFeatureId);
+  };
+  const getFeatureReportExportAction = function getFeatureReportExportAction(featureId) {
+    return getFeatureReportExportActionForFeature(featureId, deps.audioFeatureId);
+  };
 
   const {
     audioAnalysisProcessRuntime,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createAudioAnalysisProjectionCatalogRuntime(deps) {
   const {
     asNonEmptyString,

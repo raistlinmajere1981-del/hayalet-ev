@@ -215,12 +215,15 @@ export class RoomPackageManager {
     }
 
     const now = new Date().toISOString();
-    return buildInstalledRoomRecord(room.manifest, {
-      sourceDir: room.dirPath,
-      installedDir: buildResult.artifact.buildDir,
-      installedAt: now,
-      updatedAt: now,
-    });
+    return {
+      ...buildInstalledRoomRecord(room.manifest, {
+        sourceDir: room.dirPath,
+        installedDir: buildResult.artifact.buildDir,
+        installedAt: now,
+        updatedAt: now,
+      }),
+      isWorkspaceFallback: true,
+    };
   }
 
   async listInstalledRooms(): Promise<InstalledRoomRecord[]> {

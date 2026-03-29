@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryViewAccessorsRuntime(deps) {
   const currentFeatureProcessRecordFn = deps.getCurrentFeatureProcessRecord;
   const currentFeatureReportRecordFn = deps.getCurrentFeatureReportRecord;

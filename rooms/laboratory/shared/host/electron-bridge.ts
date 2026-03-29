@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function getLaboratoryElectronApi() {
   return typeof window !== "undefined" ? window.electronAPI || null : null;
 }

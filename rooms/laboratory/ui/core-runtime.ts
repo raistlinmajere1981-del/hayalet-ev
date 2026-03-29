@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryUiCoreBootstrapRuntime } from "./core-bootstrap.js";
 import { buildLaboratoryUiCoreApi } from "./core-public-api.js";
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createSubtitleYoutubeDiscoveryRuntime(deps) {
   const {
     asNonEmptyString,

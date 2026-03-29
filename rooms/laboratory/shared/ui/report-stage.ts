@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryReportStageSupportRuntime } from "./report-stage-support.js";
 import { createLaboratorySubtitleReportStageRuntime } from "./report-stage-subtitle.js";
 

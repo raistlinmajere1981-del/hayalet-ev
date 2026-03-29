@@ -1,5 +1,38 @@
-// @ts-nocheck
-export function createLaboratoryProfileProcessReportRuntime(deps) {
+type LaboratoryProcessStageUi<TProcessModule> = {
+  getProcessModulePercent: (module: TProcessModule) => number;
+  getProcessModuleTitle: (module: TProcessModule) => string;
+  getRunningProcessJob: () => unknown;
+};
+
+type LaboratoryReportStageUi<TSignal> = {
+  getRunningReportJob: () => unknown;
+  renderReportFinding: (signal: TSignal) => string;
+};
+
+type MediaAnalysisProfilePanels = {
+  renderProfilePresetPanel: () => string;
+  renderProfileAdvancedPanel: () => string;
+};
+
+type MediaAnalysisProfileStage = {
+  renderProfileTargetPanel: () => string;
+  renderProfileModePanel: () => string;
+  renderProfileSignalsPanel: () => string;
+  renderProfileArtifactsPanel: () => string;
+  renderProfileActionsPanel: () => string;
+  renderProfileSummaryPanel: () => string;
+};
+
+type LaboratoryProfileProcessReportRuntimeDeps<TProcessModule, TSignal> = {
+  laboratoryProcessStageUi: LaboratoryProcessStageUi<TProcessModule>;
+  laboratoryReportStageUi: LaboratoryReportStageUi<TSignal>;
+  mediaAnalysisProfilePanels: MediaAnalysisProfilePanels;
+  mediaAnalysisProfileStage: MediaAnalysisProfileStage;
+};
+
+export function createLaboratoryProfileProcessReportRuntime<TProcessModule, TSignal>(
+  deps: LaboratoryProfileProcessReportRuntimeDeps<TProcessModule, TSignal>,
+) {
   const {
     laboratoryProcessStageUi,
     laboratoryReportStageUi,
@@ -39,11 +72,11 @@ export function createLaboratoryProfileProcessReportRuntime(deps) {
     return mediaAnalysisProfileStage.renderProfileSummaryPanel();
   }
 
-  function getProcessModulePercent(module) {
+  function getProcessModulePercent(module: TProcessModule) {
     return laboratoryProcessStageUi.getProcessModulePercent(module);
   }
 
-  function getProcessModuleTitle(module) {
+  function getProcessModuleTitle(module: TProcessModule) {
     return laboratoryProcessStageUi.getProcessModuleTitle(module);
   }
 
@@ -55,7 +88,7 @@ export function createLaboratoryProfileProcessReportRuntime(deps) {
     return laboratoryReportStageUi.getRunningReportJob();
   }
 
-  function renderReportFinding(signal) {
+  function renderReportFinding(signal: TSignal) {
     return laboratoryReportStageUi.renderReportFinding(signal);
   }
 

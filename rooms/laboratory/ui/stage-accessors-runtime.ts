@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryStageAccessorsRuntime(deps) {
   const laboratoryUiFeatureRuntime = deps.laboratoryUiFeatureRuntime;
   const laboratoryUiDraftRuntime = deps.laboratoryUiDraftRuntime;

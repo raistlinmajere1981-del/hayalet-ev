@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryFeatureStagePanelsRuntime(deps) {
   const laboratoryMediaPreviewUi = deps.createLaboratoryMediaPreviewUi({
     state: deps.state,

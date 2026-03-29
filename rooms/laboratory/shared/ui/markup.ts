@@ -1,8 +1,21 @@
-// @ts-nocheck
-export function createLaboratoryMarkupHelpers(deps) {
+type LaboratorySummaryRow = readonly [string, string];
+
+type LaboratoryTextFieldExtra =
+  | {
+      type?: string | null;
+    }
+  | null
+  | undefined;
+
+type LaboratoryMarkupHelpersDeps = {
+  escapeHtml: (value: string) => string;
+};
+
+export function createLaboratoryMarkupHelpers(deps: LaboratoryMarkupHelpersDeps) {
   const escapeHtml = deps.escapeHtml;
 
-  function renderSummaryRows(rows) {
+  const renderSummaryRows: (rows: readonly LaboratorySummaryRow[]) => string =
+    function renderSummaryRows(rows) {
     return `
       <ul class="lab-summary-list">
         ${rows
@@ -17,9 +30,15 @@ export function createLaboratoryMarkupHelpers(deps) {
           .join("")}
       </ul>
     `;
-  }
+    };
 
-  function renderTextField(fieldId, value, label, placeholder, extra) {
+  const renderTextField: (
+    fieldId: string,
+    value: string | null | undefined,
+    label: string,
+    placeholder: string | null | undefined,
+    extra: LaboratoryTextFieldExtra,
+  ) => string = function renderTextField(fieldId, value, label, placeholder, extra) {
     return `
       <label class="lab-field">
         <span class="lab-field__label">${escapeHtml(label)}</span>
@@ -32,7 +51,7 @@ export function createLaboratoryMarkupHelpers(deps) {
         />
       </label>
     `;
-  }
+  };
 
   return {
     renderSummaryRows: renderSummaryRows,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryProjectManifestRuntime(deps) {
   const {
     asNonEmptyString,

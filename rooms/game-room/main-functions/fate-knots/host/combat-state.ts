@@ -1,6 +1,6 @@
 import { FATE_KNOTS_MAX_LOG_ENTRIES } from "./constants.js";
 
-function cloneStatus(status) {
+function cloneStatus(status = null) {
   const source = status && typeof status === "object" && Array.isArray(status) === false ? status : {};
   return {
     guard: Number.isFinite(source.guard) ? Number(source.guard) : 0,

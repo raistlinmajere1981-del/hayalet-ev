@@ -50,10 +50,19 @@ test("laboratory host action composition is extracted into a shared host boundar
   assert.match(workspaceHostProjectSource, /export function createLaboratoryHostProjectRuntimes\(deps\)/);
   assert.match(workspaceHostFeatureSource, /export function createLaboratoryHostFeatureRuntimes\(deps\)/);
   assert.doesNotMatch(workspaceHostSource, /shared\/host\/action-composition\.js/);
-  assert.match(workspaceActionRuntimeSource, /export function createLaboratoryHostActionRuntime\(deps\)/);
+  assert.match(
+    workspaceActionRuntimeSource,
+    /export function createLaboratoryHostActionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(workspaceActionRuntimeSource, /function getActionRouter\(\)/);
-  assert.match(workspaceActionRuntimeSource, /function handleToolMutation\(api, runtime, requestId, action, toolId, featureStage\)/);
-  assert.match(workspaceActionRuntimeSource, /function handleMediaAction\(api, runtime, payload\)/);
+  assert.match(
+    workspaceActionRuntimeSource,
+    /function handleToolMutation\(\s*api\??(?::[\s\S]+?)?,\s*runtime\??(?::[\s\S]+?)?,\s*requestId\??(?::[\s\S]+?)?,\s*action\??(?::[\s\S]+?)?,\s*toolId\??(?::[\s\S]+?)?,\s*featureStage\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
+  assert.match(
+    workspaceActionRuntimeSource,
+    /function handleMediaAction\(\s*api\??(?::[\s\S]+?)?,\s*runtime\??(?::[\s\S]+?)?,\s*payload\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
   assert.match(workspaceActionRuntimeSource, /from "\.\/action-router\.js"/);
   assert.match(workspaceActionCompositionSource, /export function createLaboratoryActionCompositionRuntime\(deps\)/);
   assert.match(workspaceActionCompositionSource, /from "\.\/action-runtime\.js"/);

@@ -10,7 +10,22 @@ import { syncFromContext as fateKnotsSyncFromContext } from "../../fate-knots/ho
 import { getOpponentInfo, loadState, saveState } from "./state.js";
 import { blockMatch, isBlocked } from "./runtime-match.js";
 
-export function syncFromContext(api, payload) {
+type TeamTetrisSeatReadiness = {
+  ai1: boolean;
+  ai2: boolean;
+  us1: boolean;
+};
+
+function readTeamTetrisSeatReadiness(context): TeamTetrisSeatReadiness {
+  const slots = context && context.slots ? context.slots : {};
+  return {
+    ai1: !!(slots.ai1 && slots.ai1.ready === true),
+    ai2: !!(slots.ai2 && slots.ai2.ready === true),
+    us1: !!(slots.us1 && slots.us1.ready === true),
+  };
+}
+
+export function syncFromContext(api, payload: unknown) {
   const previousContext = loadContext(api);
   const previousActiveFeatureId = getActiveFeatureId(previousContext);
   const context = saveContext(api, payload);
@@ -45,11 +60,7 @@ export function syncFromContext(api, payload) {
 
   saveState(api, state);
   if (teamTetrisState.match && teamTetrisState.result !== "blocked") {
-    const readiness = {
-      ai1: !!(context.slots.ai1 && context.slots.ai1.ready === true),
-      ai2: !!(context.slots.ai2 && context.slots.ai2.ready === true),
-      us1: !!(context.slots.us1 && context.slots.us1.ready === true),
-    };
+    const readiness = readTeamTetrisSeatReadiness(context);
     if (readiness.ai1 !== true || readiness.ai2 !== true || readiness.us1 !== true) {
       blockTeamTetrisMatch(api, teamTetrisState, "blockedOpponent", "required-seat-unavailable");
       return;

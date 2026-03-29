@@ -1,5 +1,19 @@
-// @ts-nocheck
-export function createLaboratoryAudioAnalysisRuntime(deps) {
+type LaboratoryAudioAnalysisUi = {
+  renderAudioAnalysisCatalogPanel: () => string;
+  renderAudioAnalysisNoticePanel: () => string;
+  renderAudioAnalysisProviderPanel: () => string;
+  renderAudioAnalysisModuleGrid: () => string;
+};
+
+type LaboratoryAudioAnalysisRuntimeDeps<TAudioAnalysisUi extends LaboratoryAudioAnalysisUi> = {
+  audioAnalysisUi: TAudioAnalysisUi;
+};
+
+export function createLaboratoryAudioAnalysisRuntime<
+  TAudioAnalysisUi extends LaboratoryAudioAnalysisUi,
+>(
+  deps: LaboratoryAudioAnalysisRuntimeDeps<TAudioAnalysisUi>,
+) {
   const { audioAnalysisUi } = deps;
 
   function renderAudioAnalysisCatalogPanel() {

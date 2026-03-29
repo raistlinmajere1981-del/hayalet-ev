@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createMediaEditArtifactRuntime } from "./edit-artifacts.js";
 import { createMediaEditSupportRuntime } from "./edit-support.js";
 import { createMediaEditPipelineRuntime } from "./edit-pipeline.js";

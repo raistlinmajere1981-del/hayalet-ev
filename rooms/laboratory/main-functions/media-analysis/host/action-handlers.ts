@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createMediaEditActionRuntime } from "./action-handlers-edit.js";
 import { createMediaProfileActionRuntime } from "./action-handlers-profile.js";
 import { createMediaProjectActionRuntime } from "./action-handlers-project.js";

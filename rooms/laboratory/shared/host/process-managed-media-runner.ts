@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryManagedMediaRunnerRuntime(deps) {
   const {
     asNonEmptyString,

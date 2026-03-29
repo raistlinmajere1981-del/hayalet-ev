@@ -1,4 +1,5 @@
-// @ts-nocheck
+type LaboratoryRecord = Record<string, unknown>;
+
 export function createLaboratorySnapshotProjectSelectors(deps) {
   const getState = deps.getState;
   const toRecord = deps.toRecord;
@@ -107,9 +108,13 @@ export function createLaboratorySnapshotProjectSelectors(deps) {
     return toRecord(getProjectEdit().preview);
   }
 
-  function getEditOutputs() {
+  function getEditOutputs(): LaboratoryRecord[] {
     const outputs = getProjectEdit().outputs;
-    return Array.isArray(outputs) ? outputs.map(toRecord) : [];
+    return Array.isArray(outputs)
+      ? outputs.map(function (entry) {
+          return toRecord(entry) as LaboratoryRecord;
+        })
+      : [];
   }
 
   function getActiveEditOutput() {

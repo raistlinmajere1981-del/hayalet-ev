@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryHostActivation } from "../shared/host/activation.js";
 import {
   LABORATORY_AUDIO_FEATURE_ID as AUDIO_FEATURE_ID,

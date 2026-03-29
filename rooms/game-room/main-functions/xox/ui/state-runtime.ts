@@ -1,7 +1,121 @@
 (function (global) {
+  type UnknownRecord = Record<string, unknown>;
+  type XoxTarget = "ai1" | "ai2" | "us1";
+  type XoxStarter = "user" | "ai";
+  type XoxInviteStarter = "user" | "opponent";
+  type XoxAwaitingMove = "user" | "ai" | null;
+  type XoxInviteEntry = {
+    roomId: string;
+    featureId: string;
+    inviteId: string;
+    remoteUserId: string;
+    nickname: string;
+    senderEmail: string;
+    note: string;
+    starter: XoxInviteStarter;
+    localSessionId: string;
+    conversationId: string;
+    sentAt: number | null;
+  };
+  type XoxPendingInvite = {
+    direction: "incoming" | "outgoing";
+    roomId: string;
+    featureId: string;
+    inviteId: string;
+    remoteUserId: string;
+    nickname: string;
+    note: string;
+    starter: XoxInviteStarter;
+    localSessionId: string;
+    conversationId: string;
+  };
+  type XoxSlotState = {
+    slotId: string;
+    nickname: string;
+    assigned?: boolean;
+    connected?: boolean;
+    ready?: boolean;
+  };
+  type XoxGameState = {
+    board: string[];
+    boardAscii: string;
+    availableCells: number[];
+    active: boolean;
+    awaitingMoveFrom: XoxAwaitingMove;
+    result: string;
+    winner: string;
+    selectedTarget: XoxTarget;
+    starter: XoxStarter;
+    userSymbol: "X" | "O";
+    aiSymbol: "X" | "O";
+    status: string;
+    blockedReason: string;
+    protocolDelivered: boolean;
+    opponentReady: boolean;
+    inviteId: string | null;
+    localSessionId: string | null;
+    remoteUserId: string | null;
+    pendingInvite: XoxPendingInvite | null;
+    inviteInbox: XoxInviteEntry[];
+    opponent: XoxSlotState;
+    user: {
+      nickname: string;
+    };
+  };
+  type XoxUiState = {
+    game: XoxGameState;
+    context: {
+      slots: Record<XoxTarget, XoxSlotState>;
+      user: {
+        nickname: string;
+      };
+    };
+    preferences: {
+      target: XoxTarget;
+      starter: XoxStarter;
+      inviteMessage: string;
+    };
+    lastCommandMessage: string;
+    locale: string;
+  };
+  type XoxUiStateRuntimeDeps = {
+    getState: () => XoxUiState;
+    roomId: string;
+    featureId: string;
+    createSlot: (slotId: string) => XoxSlotState;
+    createInviteEntry: () => XoxInviteEntry;
+    normalizeSlot: (candidate: unknown, slotId: string) => XoxSlotState;
+    text: (path: string[]) => string;
+    sendRoomCommand: (command: string, payload: UnknownRecord) => void;
+  };
+
+  function isRecord(value: unknown): value is UnknownRecord {
+    return typeof value === "object" && value !== null && Array.isArray(value) === false;
+  }
+
+  function readString(value: unknown, fallback: string): string {
+    return typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
+  }
+
+  function readOptionalString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+  }
+
+  function readTarget(value: unknown): XoxTarget {
+    return value === "ai2" || value === "us1" ? value : "ai1";
+  }
+
+  function readStarter(value: unknown): XoxStarter {
+    return value === "ai" ? "ai" : "user";
+  }
+
+  function readInviteStarter(value: unknown): XoxInviteStarter {
+    return value === "opponent" ? "opponent" : "user";
+  }
+
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createXoxUiStateRuntime = function createXoxUiStateRuntime(deps) {
+  registry.createXoxUiStateRuntime = function createXoxUiStateRuntime(deps: XoxUiStateRuntimeDeps) {
     const getState = deps.getState;
     const roomId = deps.roomId;
     const featureId = deps.featureId;
@@ -14,7 +128,7 @@
     const EMPTY_BOARD = ["", "", "", "", "", "", "", "", ""];
     const EMPTY_ASCII = "0 | 1 | 2\n---------\n3 | 4 | 5\n---------\n6 | 7 | 8";
 
-    function createGameState() {
+    function createGameState(): XoxGameState {
       return {
         board: EMPTY_BOARD.slice(),
         boardAscii: EMPTY_ASCII,
@@ -43,49 +157,19 @@
       };
     }
 
-    function normalizeInviteEntry(candidate) {
-      const source =
-        candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-          ? candidate
-          : {};
+    function normalizeInviteEntry(candidate: unknown): XoxInviteEntry {
+      const source = isRecord(candidate) ? candidate : {};
       const entry = createInviteEntry();
-      entry.roomId =
-        typeof source.roomId === "string" && source.roomId.trim() !== ""
-          ? source.roomId.trim()
-          : roomId;
-      entry.featureId =
-        typeof source.featureId === "string" && source.featureId.trim() !== ""
-          ? source.featureId.trim()
-          : featureId;
-      entry.inviteId =
-        typeof source.inviteId === "string" && source.inviteId.trim() !== ""
-          ? source.inviteId.trim()
-          : "";
-      entry.remoteUserId =
-        typeof source.remoteUserId === "string" && source.remoteUserId.trim() !== ""
-          ? source.remoteUserId.trim()
-          : "";
-      entry.nickname =
-        typeof source.nickname === "string" && source.nickname.trim() !== ""
-          ? source.nickname.trim()
-          : typeof source.senderNickname === "string" && source.senderNickname.trim() !== ""
-            ? source.senderNickname.trim()
-            : "US1";
-      entry.senderEmail =
-        typeof source.senderEmail === "string" && source.senderEmail.trim() !== ""
-          ? source.senderEmail.trim()
-          : "";
-      entry.note =
-        typeof source.note === "string" && source.note.trim() !== "" ? source.note.trim() : "";
-      entry.starter = source.starter === "opponent" ? "opponent" : "user";
-      entry.localSessionId =
-        typeof source.localSessionId === "string" && source.localSessionId.trim() !== ""
-          ? source.localSessionId.trim()
-          : "";
-      entry.conversationId =
-        typeof source.conversationId === "string" && source.conversationId.trim() !== ""
-          ? source.conversationId.trim()
-          : "";
+      entry.roomId = readString(source.roomId, roomId);
+      entry.featureId = readString(source.featureId, featureId);
+      entry.inviteId = readString(source.inviteId, "");
+      entry.remoteUserId = readString(source.remoteUserId, "");
+      entry.nickname = readString(source.nickname, readString(source.senderNickname, "US1"));
+      entry.senderEmail = readString(source.senderEmail, "");
+      entry.note = readString(source.note, "");
+      entry.starter = readInviteStarter(source.starter);
+      entry.localSessionId = readString(source.localSessionId, "");
+      entry.conversationId = readString(source.conversationId, "");
       entry.sentAt =
         typeof source.sentAt === "number" && Number.isFinite(source.sentAt) && source.sentAt >= 0
           ? Math.trunc(source.sentAt)
@@ -93,7 +177,7 @@
       return entry;
     }
 
-    function normalizeInviteInbox(value) {
+    function normalizeInviteInbox(value: unknown): XoxInviteEntry[] {
       if (!Array.isArray(value)) {
         return [];
       }
@@ -106,8 +190,8 @@
         });
     }
 
-    function normalizePendingInvite(value) {
-      if (!value || typeof value !== "object" || Array.isArray(value)) {
+    function normalizePendingInvite(value: unknown): XoxPendingInvite | null {
+      if (isRecord(value) === false) {
         return null;
       }
       const entry = normalizeInviteEntry(value);
@@ -128,11 +212,8 @@
       };
     }
 
-    function sanitizeGameState(candidate) {
-      const source =
-        candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-          ? candidate
-          : {};
+    function sanitizeGameState(candidate: unknown): XoxGameState {
+      const source = isRecord(candidate) ? candidate : {};
       const next = createGameState();
       if (Array.isArray(source.board) && source.board.length === 9) {
         next.board = source.board.map(function (value) {
@@ -152,58 +233,34 @@
         source.awaitingMoveFrom === "user" || source.awaitingMoveFrom === "ai"
           ? source.awaitingMoveFrom
           : null;
-      next.result =
-        typeof source.result === "string" && source.result.trim() !== ""
-          ? source.result.trim()
-          : "idle";
+      next.result = readString(source.result, "idle");
       next.winner = source.winner === "user" || source.winner === "ai" ? source.winner : "";
-      next.selectedTarget =
-        source.selectedTarget === "ai2" || source.selectedTarget === "us1"
-          ? source.selectedTarget
-          : "ai1";
-      next.starter = source.starter === "ai" ? "ai" : "user";
+      next.selectedTarget = readTarget(source.selectedTarget);
+      next.starter = readStarter(source.starter);
       next.userSymbol = source.userSymbol === "O" ? "O" : "X";
       next.aiSymbol = source.aiSymbol === "X" ? "X" : "O";
-      next.status =
-        typeof source.status === "string" && source.status.trim() !== ""
-          ? source.status.trim()
-          : "";
-      next.blockedReason =
-        typeof source.blockedReason === "string" && source.blockedReason.trim() !== ""
-          ? source.blockedReason.trim()
-          : "";
+      next.status = readString(source.status, "");
+      next.blockedReason = readString(source.blockedReason, "");
       next.protocolDelivered = source.protocolDelivered === true;
       next.opponentReady = source.opponentReady === true;
-      next.inviteId =
-        typeof source.inviteId === "string" && source.inviteId.trim() !== ""
-          ? source.inviteId.trim()
-          : null;
-      next.localSessionId =
-        typeof source.localSessionId === "string" && source.localSessionId.trim() !== ""
-          ? source.localSessionId.trim()
-          : null;
-      next.remoteUserId =
-        typeof source.remoteUserId === "string" && source.remoteUserId.trim() !== ""
-          ? source.remoteUserId.trim()
-          : null;
+      next.inviteId = readOptionalString(source.inviteId);
+      next.localSessionId = readOptionalString(source.localSessionId);
+      next.remoteUserId = readOptionalString(source.remoteUserId);
       next.pendingInvite = normalizePendingInvite(source.pendingInvite);
       next.inviteInbox = normalizeInviteInbox(source.inviteInbox);
       next.opponent = normalizeSlot(source.opponent, next.selectedTarget);
-      if (source.user && typeof source.user === "object" && Array.isArray(source.user) === false) {
-        next.user.nickname =
-          typeof source.user.nickname === "string" && source.user.nickname.trim() !== ""
-            ? source.user.nickname.trim()
-            : next.user.nickname;
+      if (isRecord(source.user)) {
+        next.user.nickname = readString(source.user.nickname, next.user.nickname);
       }
       return next;
     }
 
-    function getSlotOrder() {
+    function getSlotOrder(): XoxSlotState[] {
       const state = getState();
       return [state.context.slots.ai1, state.context.slots.ai2, state.context.slots.us1];
     }
 
-    function getSlotStatusLabel(slot) {
+    function getSlotStatusLabel(slot: XoxSlotState): string {
       if (slot.ready === true) {
         return text(["xox", "slotState", "ready"]);
       }
@@ -216,16 +273,13 @@
       return text(["xox", "slotState", "empty"]);
     }
 
-    function getSelectedTarget() {
+    function getSelectedTarget(): XoxTarget {
       const state = getState();
       const preferred = state.preferences.target;
-      if (preferred === "ai1" || preferred === "ai2" || preferred === "us1") {
-        return preferred;
-      }
-      return "ai1";
+      return readTarget(preferred);
     }
 
-    function getDisplayOpponent() {
+    function getDisplayOpponent(): XoxSlotState {
       const state = getState();
       if (state.game.active === true) {
         return state.game.opponent;
@@ -239,7 +293,7 @@
       return state.context.slots[getSelectedTarget()] || state.context.slots.ai1;
     }
 
-    function getCurrentStatus() {
+    function getCurrentStatus(): string {
       const state = getState();
       if (state.game.status && state.game.status.trim() !== "") {
         return state.game.status.trim();
@@ -250,12 +304,12 @@
       return text(["xox", "status", "idle"]);
     }
 
-    function getResultLabel() {
+    function getResultLabel(): string {
       const state = getState();
       return text(["xox", "results", state.game.result]);
     }
 
-    function getTurnLabel() {
+    function getTurnLabel(): string {
       const state = getState();
       if (state.game.awaitingMoveFrom === "user") {
         return state.game.user.nickname || state.context.user.nickname;
@@ -266,7 +320,7 @@
       return text(["xox", "turns", "idle"]);
     }
 
-    function getSymbolsLabel() {
+    function getSymbolsLabel(): string {
       const state = getState();
       const opponent = getDisplayOpponent();
       return (
@@ -280,12 +334,12 @@
       );
     }
 
-    function getOpenCellsLabel() {
+    function getOpenCellsLabel(): string {
       const state = getState();
       return state.game.availableCells.length > 0 ? state.game.availableCells.join(", ") : "-";
     }
 
-    function getBoardCaption() {
+    function getBoardCaption(): string {
       const state = getState();
       if (state.game.blockedReason && state.game.blockedReason.trim() !== "") {
         return state.game.blockedReason.trim();
@@ -305,7 +359,7 @@
       return getCurrentStatus();
     }
 
-    function getStarterLabelForCurrentTarget(value) {
+    function getStarterLabelForCurrentTarget(value: XoxStarter): string {
       if (getSelectedTarget() === "us1") {
         return value === "ai"
           ? text(["xox", "topbar", "starterRemote"])
@@ -316,7 +370,7 @@
         : text(["xox", "topbar", "starterUser"]);
     }
 
-    function formatInviteMeta(invite) {
+    function formatInviteMeta(invite: XoxInviteEntry): string {
       const state = getState();
       const starterLabel =
         invite.starter === "opponent"
@@ -344,7 +398,7 @@
       sendRoomCommand("GameRoomXoxReset", {});
     }
 
-    function onCellClick(index) {
+    function onCellClick(index: number) {
       const state = getState();
       if (
         state.game.active !== true ||
@@ -362,7 +416,7 @@
       });
     }
 
-    function onAcceptInvite(inviteId, remoteUserId) {
+    function onAcceptInvite(inviteId: string, remoteUserId: string) {
       const state = getState();
       state.lastCommandMessage = "";
       sendRoomCommand("GameRoomXoxAcceptInvite", {
@@ -371,7 +425,7 @@
       });
     }
 
-    function onRejectInvite(inviteId, remoteUserId) {
+    function onRejectInvite(inviteId: string, remoteUserId: string) {
       const state = getState();
       state.lastCommandMessage = "";
       sendRoomCommand("GameRoomXoxRejectInvite", {
@@ -382,11 +436,8 @@
 
     function syncPreferencesFromGame() {
       const state = getState();
-      state.preferences.target =
-        state.game.selectedTarget === "ai2" || state.game.selectedTarget === "us1"
-          ? state.game.selectedTarget
-          : "ai1";
-      state.preferences.starter = state.game.starter === "ai" ? "ai" : "user";
+      state.preferences.target = readTarget(state.game.selectedTarget);
+      state.preferences.starter = readStarter(state.game.starter);
     }
 
     return {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryProjectRecordsRuntime(deps) {
   const {
     asNonEmptyString,

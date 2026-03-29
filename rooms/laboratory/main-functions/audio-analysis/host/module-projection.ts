@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createAudioAnalysisProjectionCatalogRuntime } from "./projection-catalog.js";
 import { createAudioAnalysisProjectionResultsRuntime } from "./projection-results.js";
 

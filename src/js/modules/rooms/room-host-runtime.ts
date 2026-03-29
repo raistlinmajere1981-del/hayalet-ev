@@ -16,7 +16,11 @@ import { SettingsManager } from "../settings-manager.js";
 import { ServerCommands } from "../server-commands.js";
 import { RoomCommandRegistry, type RoomCommandHandler } from "./room-command-registry.js";
 import { RoomProtocolRegistry } from "./room-protocol-registry.js";
-import { buildRoomHostModuleDataUrl, decodeRoomHostSource } from "./room-host-source.js";
+import {
+  buildRoomHostModuleBlobUrl,
+  buildRoomHostModuleDataUrl,
+  decodeRoomHostSource,
+} from "./room-host-source.js";
 import { toRoomRuntimeFileUrl } from "./room-runtime-url.js";
 
 interface RoomBridge {
@@ -38,6 +42,7 @@ interface RoomHostRegistration {
   bridge: RoomBridge | null;
   hooks: RoomHostHooks;
   state: Map<string, unknown>;
+  hostModuleCleanup: (() => void) | null;
   loadPromise: Promise<boolean> | null;
   loaded: boolean;
 }
@@ -153,6 +158,7 @@ class RoomHostRuntimeClass {
           onRoomCommand: undefined,
           dispose: undefined,
         },
+        hostModuleCleanup: null,
         state: new Map<string, unknown>(),
         loadPromise: null,
         loaded: false,
@@ -249,11 +255,14 @@ class RoomHostRuntimeClass {
 
     RoomCommandRegistry.unregisterRoom(roomId);
     RoomProtocolRegistry.clearRuntimeProtocols(roomId);
+    registration.hostModuleCleanup?.();
+    registration.hostModuleCleanup = null;
     this.rooms.delete(roomId);
   }
 
   private async loadRoomHost(registration: RoomHostRegistration): Promise<boolean> {
     const readFile = window.electronAPI?.readFile;
+    let hostModuleCleanup: (() => void) | null = null;
 
     try {
       let exported: RoomHostFactory | null = null;
@@ -271,14 +280,26 @@ class RoomHostRuntimeClass {
         }
 
         try {
-          const moduleUrl = await buildRoomHostModuleDataUrl(
-            registration.room.hostEntryPath,
-            async (filePath) => {
-              const encoded = await readFile(filePath);
-              return decodeRoomHostSource(typeof encoded === "string" ? encoded : "");
-            }
-          );
-          exported = (await import(/* @vite-ignore */ moduleUrl)) as unknown as RoomHostFactory;
+          const readRoomHostModuleSource = async (filePath: string): Promise<string> => {
+            const encoded = await readFile(filePath);
+            return decodeRoomHostSource(typeof encoded === "string" ? encoded : "");
+          };
+
+          try {
+            const blobModule = await buildRoomHostModuleBlobUrl(
+              registration.room.hostEntryPath,
+              readRoomHostModuleSource
+            );
+            hostModuleCleanup = blobModule.dispose;
+            exported = (await import(/* @vite-ignore */ blobModule.moduleUrl)) as unknown as RoomHostFactory;
+          } catch {
+            const moduleUrl = await buildRoomHostModuleDataUrl(
+              registration.room.hostEntryPath,
+              readRoomHostModuleSource,
+              { inlineDependencies: true }
+            );
+            exported = (await import(/* @vite-ignore */ moduleUrl)) as unknown as RoomHostFactory;
+          }
         } catch {
           const source = await readFile(registration.room.hostEntryPath);
           if (typeof source !== "string" || source.trim() === "") {
@@ -315,9 +336,13 @@ class RoomHostRuntimeClass {
       const api = this.createApi(registration);
       const result = await activate(api);
       this.applyHostResult(registration, result);
+      registration.hostModuleCleanup?.();
+      registration.hostModuleCleanup = hostModuleCleanup;
+      hostModuleCleanup = null;
       registration.loaded = true;
       return true;
     } catch (error) {
+      hostModuleCleanup?.();
       Logger.errorT(
         LogCategory.SYSTEM,
         "app.logs.roomHost.loadFailed",

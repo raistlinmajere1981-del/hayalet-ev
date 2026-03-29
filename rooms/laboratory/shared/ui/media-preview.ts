@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryMediaPreviewUi(deps) {
   const state = deps.state;
   const render = deps.render;

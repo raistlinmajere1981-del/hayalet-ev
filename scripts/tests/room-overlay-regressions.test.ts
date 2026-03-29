@@ -129,6 +129,38 @@ test("installed room list renders remove action without export", () => {
   assert.match(markup, /Workshop/);
 });
 
+test("workspace fallback entries stay out of installed summary and list markup", () => {
+  const fallbackInstalledRooms: InstalledRoomRecord[] = [
+    {
+      id: "fallback-room",
+      name: "Fallback Room",
+      version: "1.0.0",
+      isWorkspaceFallback: true,
+      sourceDir: "/workspace/rooms/fallback-room",
+      installedDir: "/workspace/data/room-storage/fallback-room/build/workspace",
+      manifestPath: "/workspace/data/room-storage/fallback-room/build/workspace/manifest.json",
+      runtimeEntryPath: "/workspace/data/room-storage/fallback-room/build/workspace/ui/index.html",
+      hostEntryPath: "/workspace/data/room-storage/fallback-room/build/workspace/host/index.js",
+      defaultFeatureId: "primary",
+      features: [{ id: "primary", name: "Primary" }],
+      installedAt: "2026-03-29T00:00:00.000Z",
+      updatedAt: "2026-03-29T00:00:00.000Z",
+    },
+  ];
+
+  const summaryMarkup = buildRoomOverlaySummary([], fallbackInstalledRooms);
+  const installedMarkup = buildInstalledRoomListMarkup(fallbackInstalledRooms, []);
+  const workspaceMarkup = buildWorkspaceRoomListMarkup(workspaceRooms.slice(0, 1), fallbackInstalledRooms);
+
+  assert.match(summaryMarkup, /Yüklü: <strong>0<\/strong>/);
+  assert.match(installedMarkup, /room-manager-empty/);
+  assert.doesNotMatch(workspaceMarkup, /Güncelle/);
+  assert.doesNotMatch(
+    workspaceMarkup,
+    /data-room-action="delete" data-room-id="game-room" disabled/
+  );
+});
+
 test("room confirmation copy keeps remove and delete actions distinct", () => {
   const tr = JSON.parse(
     readFileSync(new URL("../../shared/languages/tr/index.json", import.meta.url), "utf8")

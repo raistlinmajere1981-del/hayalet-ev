@@ -1,4 +1,5 @@
-// @ts-nocheck
+type LaboratoryRecord = Record<string, unknown>;
+
 export function createLaboratorySnapshotSubtitleSelectors(deps) {
   const toRecord = deps.toRecord;
   const subtitleText = deps.subtitleText;
@@ -111,9 +112,13 @@ export function createLaboratorySnapshotSubtitleSelectors(deps) {
       : [];
   }
 
-  function getSubtitleEntries() {
+  function getSubtitleEntries(): LaboratoryRecord[] {
     const entries = getProjectSubtitleAnalysis().entries;
-    return Array.isArray(entries) ? entries.map(toRecord) : [];
+    return Array.isArray(entries)
+      ? entries.map(function (entry) {
+          return toRecord(entry) as LaboratoryRecord;
+        })
+      : [];
   }
 
   function getActiveSubtitleEntry() {

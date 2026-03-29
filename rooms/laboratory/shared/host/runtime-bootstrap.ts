@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryRuntimeBootstrap(deps) {
   const defaultFeatureId = deps.defaultFeatureId;
   const normalizeLocale = deps.normalizeLocale;

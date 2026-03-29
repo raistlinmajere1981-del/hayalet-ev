@@ -22,6 +22,14 @@ export function decodeRoomHostSource(source: string): string {
   return decoded.trim() !== "" ? decoded : source;
 }
 
+interface BuildRoomHostModuleUrlOptions {
+  inlineDependencies?: boolean;
+}
+
+interface BuildRoomHostModuleResolvedUrlOptions extends BuildRoomHostModuleUrlOptions {
+  createModuleUrl: (source: string, filePath: string) => string;
+}
+
 function encodeUtf8Base64(source: string): string {
   if (typeof Buffer !== "undefined") {
     return Buffer.from(source, "utf8").toString("base64");
@@ -122,6 +130,10 @@ function resolveRoomHostModuleReplacement(
   return replacement ?? specifier;
 }
 
+function toRoomHostModuleFileUrl(modulePath: string): string {
+  return toRoomRuntimeFileUrl(modulePath);
+}
+
 function transformModuleExportsToEsm(source: string): string {
   if (!MODULE_EXPORTS_PATTERN.test(source)) {
     return source;
@@ -133,12 +145,15 @@ function transformModuleExportsToEsm(source: string): string {
   );
 }
 
-export async function buildRoomHostModuleDataUrl(
+async function buildRoomHostResolvedModuleUrl(
   entryPath: string,
-  readModuleSource: (filePath: string) => Promise<string>
+  readModuleSource: (filePath: string) => Promise<string>,
+  options: BuildRoomHostModuleResolvedUrlOptions
 ): Promise<string> {
   const roomRootPath = resolveRoomHostRootPath(entryPath);
   const moduleUrlCache = new Map<string, Promise<string>>();
+  const normalizedEntryPath = assertRoomHostPathWithinRoot(entryPath, roomRootPath, entryPath);
+  const shouldInlineDependencies = options.inlineDependencies === true;
 
   const loadModule = async (filePath: string): Promise<string> => {
     const normalizedPath = assertRoomHostPathWithinRoot(filePath, roomRootPath, filePath);
@@ -161,21 +176,89 @@ export async function buildRoomHostModuleDataUrl(
             roomRootPath,
             specifier
           );
-          replacements.set(specifier, await loadModule(dependencyPath));
+          const dependencyUrl = await loadModule(dependencyPath);
+          replacements.set(specifier, dependencyUrl);
         })
       );
 
-      const rewrittenSource = transformModuleExportsToEsm(
-        rewriteRoomHostModuleSpecifiers(source, function (specifier): string {
-          return resolveRoomHostModuleReplacement(replacements, specifier);
-        })
-      );
-      return `data:text/javascript;base64,${encodeUtf8Base64(rewrittenSource)}`;
+      const needsModuleExportsTransform = MODULE_EXPORTS_PATTERN.test(source);
+      const needsSpecifierRewrite = normalizedPath === normalizedEntryPath;
+      if (
+        shouldInlineDependencies === false &&
+        needsModuleExportsTransform === false &&
+        needsSpecifierRewrite === false
+      ) {
+        return toRoomHostModuleFileUrl(normalizedPath);
+      }
+
+      const rewrittenSource = rewriteRoomHostModuleSpecifiers(source, function (specifier): string {
+        return resolveRoomHostModuleReplacement(replacements, specifier);
+      });
+      const nextSource = needsModuleExportsTransform
+        ? transformModuleExportsToEsm(rewrittenSource)
+        : rewrittenSource;
+      return options.createModuleUrl(nextSource, normalizedPath);
     })();
 
     moduleUrlCache.set(normalizedPath, pending);
     return await pending;
   };
 
-  return await loadModule(entryPath);
+  return await loadModule(normalizedEntryPath);
+}
+
+export async function buildRoomHostModuleDataUrl(
+  entryPath: string,
+  readModuleSource: (filePath: string) => Promise<string>,
+  options: BuildRoomHostModuleUrlOptions = {}
+): Promise<string> {
+  return await buildRoomHostResolvedModuleUrl(entryPath, readModuleSource, {
+    ...options,
+    createModuleUrl: (source) => `data:text/javascript;base64,${encodeUtf8Base64(source)}`,
+  });
+}
+
+export interface BuiltRoomHostModuleBlobUrl {
+  dispose: () => void;
+  moduleUrl: string;
+}
+
+export async function buildRoomHostModuleBlobUrl(
+  entryPath: string,
+  readModuleSource: (filePath: string) => Promise<string>
+): Promise<BuiltRoomHostModuleBlobUrl> {
+  if (
+    typeof Blob === "undefined" ||
+    typeof URL === "undefined" ||
+    typeof URL.createObjectURL !== "function" ||
+    typeof URL.revokeObjectURL !== "function"
+  ) {
+    throw new Error("Blob-backed room host module fallback is unavailable.");
+  }
+
+  const createdObjectUrls: string[] = [];
+  const moduleUrl = await buildRoomHostResolvedModuleUrl(entryPath, readModuleSource, {
+    inlineDependencies: true,
+    createModuleUrl: (source, filePath) => {
+      const objectUrl = URL.createObjectURL(
+        new Blob([source], {
+          type: "text/javascript;charset=utf-8",
+        })
+      );
+      createdObjectUrls.push(objectUrl);
+      return objectUrl;
+    },
+  });
+
+  return {
+    dispose: () => {
+      while (createdObjectUrls.length > 0) {
+        const objectUrl = createdObjectUrls.pop();
+        if (typeof objectUrl === "string") {
+          URL.revokeObjectURL(objectUrl);
+        }
+      }
+    },
+    moduleUrl,
+  };
 }

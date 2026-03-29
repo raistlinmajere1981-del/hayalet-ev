@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createMediaLocalSourceIntakeRuntime } from "./source-intake-local.js";
 import { createMediaUrlSourceIntakeRuntime } from "./source-intake-url.js";
 import { createMediaYoutubeSourceIntakeRuntime } from "./source-intake-youtube.js";

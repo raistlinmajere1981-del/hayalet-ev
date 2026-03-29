@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryProcessDelegatesRuntime(deps) {
   const { processCoordinationRuntime } = deps;
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createSubtitleStateDefaultsRuntime } from "./state-defaults.js";
 
 export function createSubtitleStateNormalizationRuntime(deps) {

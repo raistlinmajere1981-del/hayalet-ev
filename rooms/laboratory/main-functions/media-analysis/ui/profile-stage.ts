@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createMediaAnalysisProfileStage(deps) {
   const state = deps.state;
   const toRecord = deps.toRecord;

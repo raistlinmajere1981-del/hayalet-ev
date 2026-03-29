@@ -1,5 +1,73 @@
-// @ts-nocheck
-export function createLaboratoryRoomToolsProgressRuntime(deps) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryJobRecord = LaboratoryRecord & {
+  action: string | null;
+  featureStage: string | null;
+  message: string | null;
+  percent: number | null;
+  projectId: string | null;
+  requestId: string | null;
+  stage: string | null;
+  toolId: string | null;
+};
+
+type LaboratoryRuntimeWithJobs = LaboratoryRecord & {
+  jobs: Record<string, LaboratoryJobRecord | undefined>;
+  roomToolsProgressHandler: ((eventPayload: unknown) => void) | null;
+  roomToolsSubscribed: boolean;
+};
+
+type LaboratoryRoomToolsEventPayload = LaboratoryRecord & {
+  action?: unknown;
+  bytesReceived?: unknown;
+  bytesTotal?: unknown;
+  chunk?: unknown;
+  featureStage?: unknown;
+  jobId?: unknown;
+  message?: unknown;
+  operation?: unknown;
+  percent?: unknown;
+  projectId?: unknown;
+  requestId?: unknown;
+  roomId?: unknown;
+  stage?: unknown;
+  toolId?: unknown;
+};
+
+type LaboratoryRoomToolsProgressPayload = {
+  action: string | null;
+  featureStage: string | null;
+  jobId: string;
+  message: string | null;
+  percent: number | null;
+  projectId: string | null;
+  requestId: string | null;
+  stage: string | null;
+  toolId: string | null;
+};
+
+type LaboratoryElectronApi = {
+  offRoomToolsProgress?: ((handler: (eventPayload: unknown) => void) => void) | undefined;
+  onRoomToolsProgress?: ((handler: (eventPayload: unknown) => void) => void) | undefined;
+};
+
+type LaboratoryRoomToolsProgressRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  getElectronApi: () => LaboratoryElectronApi | null;
+  pushJobState: (api: unknown, payload: LaboratoryRoomToolsProgressPayload) => void;
+  pushSourceState: (
+    api: unknown,
+    runtime: LaboratoryRuntimeWithJobs,
+    requestId: string | null,
+    action: string | null,
+  ) => void;
+  roomId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryRoomToolsProgressRuntime(
+  deps: LaboratoryRoomToolsProgressRuntimeDeps,
+) {
   const roomId = deps.roomId;
   const asNonEmptyString = deps.asNonEmptyString;
   const toRecord = deps.toRecord;
@@ -7,7 +75,10 @@ export function createLaboratoryRoomToolsProgressRuntime(deps) {
   const pushJobState = deps.pushJobState;
   const pushSourceState = deps.pushSourceState;
 
-  function updateJobFromProgress(runtime, eventPayload) {
+  function updateJobFromProgress(
+    runtime: LaboratoryRuntimeWithJobs,
+    eventPayload: LaboratoryRoomToolsEventPayload,
+  ): LaboratoryRoomToolsProgressPayload | null {
     const jobId = asNonEmptyString(eventPayload.jobId);
     if (!jobId || !runtime.jobs[jobId]) {
       return null;
@@ -52,7 +123,10 @@ export function createLaboratoryRoomToolsProgressRuntime(deps) {
     };
   }
 
-  function ensureRoomToolsSubscription(api, runtime) {
+  function ensureRoomToolsSubscription(
+    api: unknown,
+    runtime: LaboratoryRuntimeWithJobs,
+  ): void {
     const electronApi = getElectronApi();
     if (
       runtime.roomToolsSubscribed === true ||
@@ -62,12 +136,13 @@ export function createLaboratoryRoomToolsProgressRuntime(deps) {
       return;
     }
 
-    runtime.roomToolsProgressHandler = function (eventPayload) {
-      if (!eventPayload || eventPayload.roomId !== roomId) {
+    runtime.roomToolsProgressHandler = function (eventPayload: unknown) {
+      const payload = toRecord(eventPayload) as LaboratoryRoomToolsEventPayload;
+      if (!eventPayload || payload.roomId !== roomId) {
         return;
       }
 
-      const nextJobPayload = updateJobFromProgress(runtime, toRecord(eventPayload));
+      const nextJobPayload = updateJobFromProgress(runtime, payload);
       if (!nextJobPayload) {
         return;
       }
@@ -80,7 +155,7 @@ export function createLaboratoryRoomToolsProgressRuntime(deps) {
     runtime.roomToolsSubscribed = true;
   }
 
-  function tearDownRoomToolsSubscription(runtime) {
+  function tearDownRoomToolsSubscription(runtime: LaboratoryRuntimeWithJobs): void {
     const electronApi = getElectronApi();
     if (
       runtime.roomToolsSubscribed !== true ||

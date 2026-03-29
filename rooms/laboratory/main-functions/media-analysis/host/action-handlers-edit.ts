@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createMediaEditActionRuntime(deps) {
   const {
     applyEditRecipePatch,

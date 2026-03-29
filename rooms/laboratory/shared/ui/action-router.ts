@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryUiActionHandlers } from "./action-router-actions.js";
 import { createLaboratoryUiActionEventRuntime } from "./action-router-events.js";
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { renderLaboratoryStageContent, renderLaboratoryShell } from "./shell-render.js";
 
 export function createLaboratoryUiShellRuntime(deps) {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getAudioAnalysisProcessRootDir } from "../../../shared/host/project-paths.js";
 
 export function createAudioAnalysisSourceSeparationModelRunner(deps) {

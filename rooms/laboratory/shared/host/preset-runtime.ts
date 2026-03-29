@@ -1,9 +1,16 @@
-// @ts-nocheck
 import { createLaboratoryPresetEditRuntime } from "./preset-edit-runtime.js";
 import { createLaboratoryPresetProfileRuntime } from "./preset-profile-runtime.js";
 import { createLaboratoryPresetSourceRuntime } from "./preset-source-runtime.js";
 
-export function createLaboratoryPresetRuntime(deps) {
+type LaboratoryPresetRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  clone: <T>(value: T) => T;
+  toRecord: (value: unknown) => Record<string, unknown>;
+};
+
+export function createLaboratoryPresetRuntime(
+  deps: LaboratoryPresetRuntimeDeps,
+) {
   const presetSource = createLaboratoryPresetSourceRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     clone: deps.clone,
@@ -20,35 +27,8 @@ export function createLaboratoryPresetRuntime(deps) {
   });
 
   return {
-    asNumber: presetSource.asNumber,
-    normalizeStringArray: presetSource.normalizeStringArray,
-    normalizeSourceMetadata: presetSource.normalizeSourceMetadata,
-    buildProjectName: presetSource.buildProjectName,
-    buildProjectSlug: presetSource.buildProjectSlug,
-    getSourceConfig: presetSource.getSourceConfig,
-    getDefaultSourceType: presetSource.getDefaultSourceType,
-    getDefaultMode: presetSource.getDefaultMode,
-    getDefaultYoutubePreset: presetSource.getDefaultYoutubePreset,
-    getPresetDefaultCustomValues: presetSource.getPresetDefaultCustomValues,
-    createEmptySourceDrafts: presetSource.createEmptySourceDrafts,
-    getFocusRegionMap: presetEdit.getFocusRegionMap,
-    getDefaultFocusRegionId: presetEdit.getDefaultFocusRegionId,
-    getFocusRegionCrop: presetEdit.getFocusRegionCrop,
-    getResizePresetMap: presetEdit.getResizePresetMap,
-    getDefaultEditPresetId: presetEdit.getDefaultEditPresetId,
-    mergeObjects: presetEdit.mergeObjects,
-    createDefaultEditState: presetEdit.createDefaultEditState,
-    normalizeCropBox: presetEdit.normalizeCropBox,
-    normalizeEditOutput: presetEdit.normalizeEditOutput,
-    normalizeEditState: presetEdit.normalizeEditState,
-    getProfileLaneMap: presetProfile.getProfileLaneMap,
-    getCompatibleProfileLaneIds: presetProfile.getCompatibleProfileLaneIds,
-    getProfilePresetList: presetProfile.getProfilePresetList,
-    findProfilePreset: presetProfile.findProfilePreset,
-    getDefaultProfilePresetId: presetProfile.getDefaultProfilePresetId,
-    getDefaultProfileModelId: presetProfile.getDefaultProfileModelId,
-    createEmptyProfileReadiness: presetProfile.createEmptyProfileReadiness,
-    createEmptyProfileEstimate: presetProfile.createEmptyProfileEstimate,
-    createEmptyProfilePreflight: presetProfile.createEmptyProfilePreflight,
+    ...presetSource,
+    ...presetEdit,
+    ...presetProfile,
   };
 }

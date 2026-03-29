@@ -31,6 +31,10 @@ interface RoomDeleteConfirmResult {
   deleteData: boolean;
 }
 
+function getManagedInstalledRooms(rooms: InstalledRoomRecord[]): InstalledRoomRecord[] {
+  return rooms.filter((room) => room.isWorkspaceFallback !== true);
+}
+
 function roomText(key: string, params?: Parameters<typeof shellT>[1]): string {
   return shellT(`rooms.${key}`, params);
 }
@@ -166,7 +170,7 @@ export function setupSettingsRoomsPanel(): void {
   const refs = getRefs();
   const state: RoomOverlayState = {
     workspaceRooms: [],
-    installedRooms: RoomRegistry.getInstalledRooms(),
+    installedRooms: getManagedInstalledRooms(RoomRegistry.getInstalledRooms()),
     isOpen: false,
   };
 
@@ -181,7 +185,7 @@ export function setupSettingsRoomsPanel(): void {
   }
 
   const refresh = async (): Promise<void> => {
-    state.installedRooms = RoomRegistry.getInstalledRooms();
+    state.installedRooms = getManagedInstalledRooms(RoomRegistry.getInstalledRooms());
     state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
     render(refs, state);
   };
@@ -196,7 +200,7 @@ export function setupSettingsRoomsPanel(): void {
   };
 
   RoomRegistry.subscribe((rooms) => {
-    state.installedRooms = rooms;
+    state.installedRooms = getManagedInstalledRooms(rooms);
     if (state.isOpen === true) {
       render(refs, state);
     }
@@ -238,6 +242,9 @@ export function setupSettingsRoomsPanel(): void {
       }
 
       const result = await RoomRegistry.importBundle(selectedPath);
+      if (result.success === true) {
+        state.installedRooms = getManagedInstalledRooms(await RoomRegistry.refreshInstalledRooms());
+      }
       state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
       render(refs, state);
       if (result.success === true) {
@@ -290,6 +297,11 @@ export function setupSettingsRoomsPanel(): void {
         }
 
         const result = await RoomRegistry.installFromWorkspace(roomId);
+        if (result.success === true) {
+          state.installedRooms = getManagedInstalledRooms(
+            await RoomRegistry.refreshInstalledRooms()
+          );
+        }
         state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
         render(refs, state);
         if (result.success === true) {
@@ -367,8 +379,10 @@ export function setupSettingsRoomsPanel(): void {
           deleteData: confirmation.deleteData,
         });
         state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
-        if (result.success === true && confirmation.deleteData === true) {
-          state.installedRooms = state.installedRooms.filter((room) => room.id !== roomId);
+        if (result.success === true) {
+          state.installedRooms = getManagedInstalledRooms(
+            await RoomRegistry.refreshInstalledRooms()
+          );
         }
         render(refs, state);
         if (result.success === true) {

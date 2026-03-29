@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryActionCompositionRuntime } from "../shared/host/action-composition.js";
 import { createLaboratorySubtitleAnalysisHostRuntime } from "../main-functions/subtitle-analysis/host/runtime.js";
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createAudioAnalysisCatalogRuntime(deps) {
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;

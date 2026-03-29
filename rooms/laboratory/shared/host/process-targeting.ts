@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryProcessTargetingRuntime(deps) {
   const audioFeatureId = deps.audioFeatureId;
   const subtitleFeatureId = deps.subtitleFeatureId;

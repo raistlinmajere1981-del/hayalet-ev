@@ -1,10 +1,29 @@
-// @ts-nocheck
 import { createLaboratorySnapshotAudioSelectors } from "./source-snapshot-audio-selectors.js";
 import { createLaboratorySnapshotProjectSelectors } from "./source-snapshot-project-selectors.js";
 import { createLaboratorySnapshotSubtitleSelectors } from "./source-snapshot-subtitle-selectors.js";
 import { createLaboratorySnapshotToolSelectors } from "./source-snapshot-tool-selectors.js";
 
-export function createSourceSnapshotSelectors(deps) {
+type LaboratorySourceSnapshotSelectorCompositionDeps = {
+  getState: () => Record<string, unknown>;
+  toRecord: (value: unknown) => Record<string, unknown>;
+  getActiveFeatureId: () => string;
+  subtitleText: (
+    path: string[],
+    trFallback?: string,
+    enFallback?: string,
+  ) => string;
+  subtitleTemplate: (
+    path: string[],
+    replacements: Record<string, string>,
+    trFallback: string,
+    enFallback: string,
+  ) => string;
+  formatStatusLabel: (status: string) => string;
+};
+
+export function createSourceSnapshotSelectors(
+  deps: LaboratorySourceSnapshotSelectorCompositionDeps,
+) {
   const projectSelectors = createLaboratorySnapshotProjectSelectors({
     getState: deps.getState,
     toRecord: deps.toRecord,

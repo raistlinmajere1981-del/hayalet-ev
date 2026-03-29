@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryPresetEditRuntime(deps) {
   const { asNonEmptyString, normalizeSourceMetadata, toRecord } = deps;
 

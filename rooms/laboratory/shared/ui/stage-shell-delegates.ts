@@ -1,5 +1,25 @@
-// @ts-nocheck
-export function createLaboratoryStageShellDelegates(deps) {
+type LaboratoryStageShellDelegatesDeps<TMediaAnalysisEditStageDeps> = {
+  laboratorySourceStageUi: {
+    renderSourceStage: () => string;
+  };
+  isSubtitleAnalysisFeature: () => boolean;
+  renderSubtitleEditStage: () => string;
+  renderMediaAnalysisEditStage: (deps: TMediaAnalysisEditStageDeps) => string;
+  mediaAnalysisEditStageDeps: TMediaAnalysisEditStageDeps;
+  mediaAnalysisProfileStage: {
+    renderProfileStage: () => string;
+  };
+  laboratoryProcessStageUi: {
+    renderProcessStage: () => string;
+  };
+  laboratoryReportStageUi: {
+    renderReportStage: () => string;
+  };
+};
+
+export function createLaboratoryStageShellDelegates<TMediaAnalysisEditStageDeps>(
+  deps: LaboratoryStageShellDelegatesDeps<TMediaAnalysisEditStageDeps>,
+) {
   const laboratorySourceStageUi = deps.laboratorySourceStageUi;
   const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;
   const renderSubtitleEditStage = deps.renderSubtitleEditStage;

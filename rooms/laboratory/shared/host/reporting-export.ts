@@ -1,5 +1,71 @@
-// @ts-nocheck
-export function createLaboratoryReportExportRuntime(deps) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryReportExportEntry = LaboratoryRecord;
+
+type LaboratoryFeatureReportRecord = LaboratoryRecord & {
+  error?: string | null;
+  exports?: LaboratoryReportExportEntry[];
+  status?: string | null;
+};
+
+type LaboratoryReportExportProject = LaboratoryRecord & {
+  id: string;
+  slug: string;
+};
+
+type LaboratoryReportExportRuntimeDeps = {
+  buildReportMarkdown: (
+    runtime: unknown,
+    project: LaboratoryRecord,
+    featureId: string,
+    reportRecord: LaboratoryFeatureReportRecord,
+  ) => string;
+  clearJob: (runtime: unknown, jobId: string) => void;
+  composeFeatureReport: (
+    runtime: unknown,
+    project: LaboratoryRecord,
+    featureId: string,
+  ) => LaboratoryFeatureReportRecord;
+  ensureProjectDirectories: (
+    runtime: unknown,
+    project: LaboratoryRecord,
+    requestId: string,
+  ) => Promise<unknown>;
+  ensureReportJobSlotAvailable: (
+    runtime: unknown,
+    projectId: string,
+    action: string,
+  ) => void;
+  getActiveProject: (runtime: unknown) => LaboratoryReportExportProject | null;
+  getFeatureReportDir: (
+    runtime: unknown,
+    project: LaboratoryRecord,
+    featureId: string,
+  ) => string;
+  getFeatureReportExportAction: (featureId: string) => string;
+  getFeatureReportRecord: (
+    project: LaboratoryRecord,
+    featureId: string,
+  ) => LaboratoryFeatureReportRecord;
+  normalizeReportExport: (value: unknown) => LaboratoryReportExportEntry;
+  patchActiveProject: (
+    runtime: unknown,
+    patcher: (project: LaboratoryReportExportProject) => LaboratoryReportExportProject,
+  ) => Promise<unknown>;
+  pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
+  registerJob: (runtime: unknown, options: LaboratoryRecord) => unknown;
+  sanitizeFileSegment: (value: unknown, fallback: string) => string;
+  setFeatureReportRecord: (
+    project: LaboratoryRecord,
+    featureId: string,
+    record: LaboratoryFeatureReportRecord,
+  ) => void;
+  writeTextFile: (filePath: string, value: string) => Promise<unknown>;
+};
+
+export function createLaboratoryReportExportRuntime(
+  deps: LaboratoryReportExportRuntimeDeps,
+) {
   const {
     getActiveProject,
     ensureProjectDirectories,
@@ -19,7 +85,12 @@ export function createLaboratoryReportExportRuntime(deps) {
     buildReportMarkdown,
   } = deps;
 
-  async function exportFeatureReport(api, runtime, requestId, featureId) {
+  async function exportFeatureReport(
+    api: unknown,
+    runtime: unknown,
+    requestId: string,
+    featureId: string,
+  ): Promise<void> {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");

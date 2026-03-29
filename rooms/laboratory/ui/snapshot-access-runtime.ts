@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratorySnapshotAccessRuntime(deps) {
   const snapshotSelectors = deps.snapshotSelectors;
 

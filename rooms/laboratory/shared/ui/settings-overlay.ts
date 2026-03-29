@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratorySettingsProfileModelRuntime } from "./settings-profile-model.js";
 import { createLaboratorySettingsToolCardRuntime } from "./settings-tool-card.js";
 

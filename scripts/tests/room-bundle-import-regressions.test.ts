@@ -675,6 +675,40 @@ test("RoomPackageManager removeInstalledRoom deleteData clears data without dele
   }
 });
 
+test("RoomPackageManager marks dev fallback installed rooms so settings can avoid uninstall actions", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "room-installed-fallback-"));
+  const dataRoot = join(tempRoot, "data");
+  const workspaceRoot = join(tempRoot, "rooms");
+  const installedRoot = join(dataRoot, "rooms");
+  const registryPath = join(tempRoot, "config", "rooms.json");
+
+  try {
+    await writeRoomFixture(workspaceRoot, "game-room", "Game Room");
+
+    const manager = new RoomPackageManager({
+      workspaceRoot,
+      installedRoot,
+      registryPath,
+    });
+
+    const workspaceRooms = await manager.listWorkspaceRooms();
+    assert.equal(workspaceRooms.length, 1);
+
+    const fallbackRoom = await (
+      manager as RoomPackageManager & {
+        buildWorkspaceInstalledRoomRecord: (
+          room: (typeof workspaceRooms)[number]
+        ) => Promise<{ id: string; isWorkspaceFallback?: boolean } | null>;
+      }
+    ).buildWorkspaceInstalledRoomRecord(workspaceRooms[0]!);
+
+    assert.equal(fallbackRoom?.id, "game-room");
+    assert.equal(fallbackRoom?.isWorkspaceFallback, true);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("RoomPackageManager deleteWorkspaceRoom can remove workspace and data folders together", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-delete-workspace-"));
   const workspaceRoot = join(tempRoot, "rooms");

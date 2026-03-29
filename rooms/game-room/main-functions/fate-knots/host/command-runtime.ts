@@ -61,8 +61,8 @@ import {
   validateSelectionPayload,
 } from "./session-support.js";
 
-function commandMessage(locale, key, params) {
-  return fillTemplate(translate(locale, FATE_KNOTS_COMMAND_COPY, key), params || {});
+function commandMessage(locale, key, params = {}) {
+  return fillTemplate(translate(locale, FATE_KNOTS_COMMAND_COPY, key), params);
 }
 
 const fateKnotsPromptRuntime = createFateKnotsPromptRuntime({

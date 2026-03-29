@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createMediaProfileProjectionRuntime(deps) {
   const {
     asNonEmptyString,

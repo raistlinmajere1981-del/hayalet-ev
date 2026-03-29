@@ -1,12 +1,48 @@
-// @ts-nocheck
-export function createLaboratoryPresetProfileRuntime(deps) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryProfileReadiness = {
+  blockers: string[];
+  models: unknown[];
+  optionalTools: unknown[];
+  requiredTools: unknown[];
+  stageReady: boolean;
+  warnings: string[];
+};
+
+type LaboratoryProfileEstimate = {
+  artifactCount: number;
+  runtimeSeconds: number | null;
+  sampleWindowSeconds: number | null;
+};
+
+type LaboratoryProfilePreflight = {
+  error: string | null;
+  jobId: string | null;
+  ranAt: string | null;
+  requestId: string | null;
+  status: "idle";
+  targetSummary: LaboratoryRecord | null;
+  warnings: string[];
+};
+
+type LaboratoryPresetProfileRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryPresetProfileRuntime(
+  deps: LaboratoryPresetProfileRuntimeDeps,
+) {
   const { asNonEmptyString, toRecord } = deps;
 
-  function getProfileLaneMap(profilePresets) {
+  function getProfileLaneMap(profilePresets: unknown): LaboratoryRecord {
     return toRecord(toRecord(profilePresets).lanes);
   }
 
-  function getCompatibleProfileLaneIds(profilePresets, sourceKind) {
+  function getCompatibleProfileLaneIds(
+    profilePresets: unknown,
+    sourceKind: string,
+  ): string[] {
     return Object.keys(getProfileLaneMap(profilePresets)).filter(function (laneId) {
       const lane = toRecord(getProfileLaneMap(profilePresets)[laneId]);
       const mediaKinds = Array.isArray(lane.mediaKinds) ? lane.mediaKinds : [];
@@ -14,7 +50,11 @@ export function createLaboratoryPresetProfileRuntime(deps) {
     });
   }
 
-  function getProfilePresetList(profilePresets, sourceKind, mode) {
+  function getProfilePresetList(
+    profilePresets: unknown,
+    sourceKind: string,
+    mode: string | null,
+  ): unknown[] {
     const presetsByKind = toRecord(toRecord(profilePresets).presets);
     const branch = toRecord(presetsByKind[sourceKind]);
     const selectedMode =
@@ -22,7 +62,11 @@ export function createLaboratoryPresetProfileRuntime(deps) {
     return Array.isArray(branch[selectedMode]) ? branch[selectedMode] : [];
   }
 
-  function findProfilePreset(profilePresets, sourceKind, presetId) {
+  function findProfilePreset(
+    profilePresets: unknown,
+    sourceKind: string,
+    presetId: unknown,
+  ): unknown | null {
     const targetId = asNonEmptyString(presetId);
     if (targetId === null) {
       return null;
@@ -35,12 +79,18 @@ export function createLaboratoryPresetProfileRuntime(deps) {
     );
   }
 
-  function getDefaultProfilePresetId(profilePresets, sourceKind) {
+  function getDefaultProfilePresetId(
+    profilePresets: unknown,
+    sourceKind: string,
+  ): string | null {
     const preset = toRecord(getProfilePresetList(profilePresets, sourceKind, "beginner")[0]);
     return asNonEmptyString(preset.id);
   }
 
-  function getDefaultProfileModelId(profileModels, sourceKind) {
+  function getDefaultProfileModelId(
+    profileModels: unknown,
+    sourceKind: string,
+  ): string | null {
     const modelMap = toRecord(toRecord(profileModels).models);
     const preferredId = asNonEmptyString(toRecord(profileModels).defaultModelId);
     const preferredModel = toRecord(modelMap[preferredId]);
@@ -59,7 +109,7 @@ export function createLaboratoryPresetProfileRuntime(deps) {
     );
   }
 
-  function createEmptyProfileReadiness() {
+  function createEmptyProfileReadiness(): LaboratoryProfileReadiness {
     return {
       stageReady: false,
       requiredTools: [],
@@ -70,7 +120,7 @@ export function createLaboratoryPresetProfileRuntime(deps) {
     };
   }
 
-  function createEmptyProfileEstimate() {
+  function createEmptyProfileEstimate(): LaboratoryProfileEstimate {
     return {
       runtimeSeconds: null,
       artifactCount: 0,
@@ -78,7 +128,7 @@ export function createLaboratoryPresetProfileRuntime(deps) {
     };
   }
 
-  function createEmptyProfilePreflight() {
+  function createEmptyProfilePreflight(): LaboratoryProfilePreflight {
     return {
       status: "idle",
       jobId: null,

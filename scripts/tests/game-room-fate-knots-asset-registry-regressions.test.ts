@@ -5,15 +5,18 @@ import {
   getFateKnotsAsset,
   listFateKnotsAssetsByKind,
   loadFateKnotsAssetRegistry,
-} from "../../rooms/game-room/main-functions/fate-knots/host/asset-registry.js";
-import { loadFateKnotsContentRegistry } from "../../rooms/game-room/main-functions/fate-knots/host/content-loader.js";
+} from "../../rooms/game-room/main-functions/fate-knots/host/asset-registry.ts";
+import { loadFateKnotsContentRegistry } from "../../rooms/game-room/main-functions/fate-knots/host/content-loader.ts";
 
 test("Fate Knots asset registry exposes normalized portable assets across every V1 category", () => {
   const registry = loadFateKnotsAssetRegistry();
 
   assert.equal(registry.errors.length, 0);
   assert.deepEqual(registry.duplicateIds, []);
-  assert.equal(registry.manifestPath, "main-functions/fate-knots/data/runtime-assets.manifest.json");
+  assert.equal(
+    registry.manifestPath,
+    "main-functions/fate-knots/data/runtime-assets.manifest.json"
+  );
   assert.equal(registry.assets.length >= 90, true);
 
   const featureView = getFateKnotsAsset(registry, "fate-knots-view", "feature-view");

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createSubtitleDocumentRuntime(deps) {
   const { asNonEmptyString, asNumber, toRecord } = deps;
 

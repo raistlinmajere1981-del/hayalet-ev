@@ -5,8 +5,8 @@ import {
 import { TEAM_TETRIS_COMMAND_COPY } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
 
-function teamTetrisCommandMessage(locale, key, params) {
-  return fillTemplate(translate(locale, TEAM_TETRIS_COMMAND_COPY, key), params || {});
+function teamTetrisCommandMessage(locale, key, params = {}) {
+  return fillTemplate(translate(locale, TEAM_TETRIS_COMMAND_COPY, key), params);
 }
 
 function resolveTeamTetrisSeatFromProvider(provider) {

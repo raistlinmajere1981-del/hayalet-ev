@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createSubtitleStateDefaultsRuntime(deps) {
   const { asNonEmptyString, toRecord } = deps;
 

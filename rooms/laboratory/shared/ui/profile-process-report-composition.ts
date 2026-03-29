@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryProfileProcessReportComposition(deps) {
   const laboratoryProcessStageUi = deps.createLaboratoryProcessStageUi({
     toRecord: deps.toRecord,

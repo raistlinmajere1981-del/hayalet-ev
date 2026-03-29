@@ -1,8 +1,75 @@
 (function (global) {
+  type UnknownRecord = Record<string, unknown>;
+  type TeamTetrisOverlayCell = {
+    x: number;
+    y: number;
+  };
+  type TeamTetrisSlotState = {
+    nickname: string;
+  };
+  type TeamTetrisBoardRowsState = {
+    width: number;
+  };
+  type TeamTetrisRootState = {
+    context: {
+      slots: Record<string, TeamTetrisSlotState>;
+    };
+    teamTetris: {
+      board: TeamTetrisBoardRowsState;
+    };
+    teamTetrisDraft: {
+      dragActive: boolean;
+    };
+  };
+  type TeamTetrisBoardOptions = {
+    interactive?: boolean;
+    overlayCells?: TeamTetrisOverlayCell[];
+    overlayTone?: string;
+    overlayPieceId?: string;
+  };
+  type TeamTetrisBoardCardOptions = TeamTetrisBoardOptions & {
+    tone?: string;
+    meta?: string;
+    context?: HTMLElement[];
+  };
+  type TeamTetrisBoardState = {
+    label: string;
+    visibility: string;
+    rows: unknown;
+  };
+  type TeamTetrisPieceBounds = {
+    width: number;
+    height: number;
+  };
+  type TeamTetrisModuleCardDeps = {
+    getState: () => TeamTetrisRootState;
+    createSlot: (slotId: string) => TeamTetrisSlotState;
+    createElement: (tagName: string, className?: string, textContent?: string) => HTMLElement;
+    text: (path: string[]) => string;
+    getTeamTetrisRotationCells: (pieceId: string, rotation: number) => Array<[number, number]>;
+    getTeamTetrisPieceBounds: (pieceId: string, rotation: number) => TeamTetrisPieceBounds;
+    sanitizeTeamTetrisRows: (rows: unknown) => string[];
+    startTeamTetrisDrag: (columnIndex: number, rowIndex: number) => void;
+    updateTeamTetrisDraftTarget: (columnIndex: number, rowIndex: number) => void;
+    finishTeamTetrisDrag: () => void;
+  };
+
+  function isRecord(value: unknown): value is UnknownRecord {
+    return typeof value === "object" && value !== null && Array.isArray(value) === false;
+  }
+
+  function readBoardOptions(options: unknown): TeamTetrisBoardOptions {
+    return isRecord(options) ? (options as TeamTetrisBoardOptions) : {};
+  }
+
+  function readBoardCardOptions(options: unknown): TeamTetrisBoardCardOptions {
+    return isRecord(options) ? (options as TeamTetrisBoardCardOptions) : {};
+  }
+
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
   registry.createTeamTetrisUiModuleCardRuntime =
-    function createTeamTetrisUiModuleCardRuntime(deps) {
+    function createTeamTetrisUiModuleCardRuntime(deps: TeamTetrisModuleCardDeps) {
       const getState = deps.getState;
       const createSlot = deps.createSlot;
       const createElement = deps.createElement;
@@ -14,7 +81,7 @@
       const updateTeamTetrisDraftTarget = deps.updateTeamTetrisDraftTarget;
       const finishTeamTetrisDrag = deps.finishTeamTetrisDrag;
 
-      function createTeamTetrisMiniPiece(pieceId, rotation) {
+      function createTeamTetrisMiniPiece(pieceId: string, rotation: number) {
         const cells = getTeamTetrisRotationCells(pieceId, rotation);
         const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
         const shell = createElement("div", "tt-piece-mini", "");
@@ -36,7 +103,7 @@
         return shell;
       }
 
-      function createTeamTetrisRequirementCard(slotId, ready) {
+      function createTeamTetrisRequirementCard(slotId: string, ready: boolean) {
         const state = getState();
         const slot = state.context.slots[slotId] || createSlot(slotId);
         const card = createElement("div", "tt-requirement", "");
@@ -55,7 +122,7 @@
         return card;
       }
 
-      function createTeamTetrisMetric(label, value) {
+      function createTeamTetrisMetric(label: string, value: string) {
         const item = createElement("div", "tt-scorebar__item", "");
         item.append(
           createElement("span", "tt-scorebar__label", label),
@@ -64,12 +131,11 @@
         return item;
       }
 
-      function createTeamTetrisBoardElement(rows, options) {
+      function createTeamTetrisBoardElement(rows: unknown, options: unknown) {
         const state = getState();
-        const config =
-          options && typeof options === "object" && Array.isArray(options) === false ? options : {};
+        const config = readBoardOptions(options);
         const boardRows = sanitizeTeamTetrisRows(rows);
-        const overlayLookup = {};
+        const overlayLookup: Record<string, boolean> = {};
         (Array.isArray(config.overlayCells) ? config.overlayCells : []).forEach(function (cell) {
           overlayLookup[cell.x + ":" + cell.y] = true;
         });
@@ -86,7 +152,7 @@
               config.interactive === true ? "button" : "div",
               "tt-board__cell",
               ""
-            );
+            ) as HTMLElement & { type?: string };
             if (config.interactive === true) {
               cell.type = "button";
               cell.addEventListener("mousedown", function () {
@@ -119,7 +185,7 @@
         return board;
       }
 
-      function createTeamTetrisPieceCard(title, pieceId, rotation, subtitle) {
+      function createTeamTetrisPieceCard(title: string, pieceId: string, rotation: number, subtitle: string) {
         const card = createElement("section", "tt-context-card", "");
         card.append(createElement("span", "tt-context-card__label", title));
         if (pieceId && pieceId.trim() !== "") {
@@ -150,7 +216,7 @@
         return card;
       }
 
-      function createTeamTetrisSnapshotCard(title, rows) {
+      function createTeamTetrisSnapshotCard(title: string, rows: unknown) {
         const card = createElement("section", "tt-context-card", "");
         card.append(
           createElement("span", "tt-context-card__label", title),
@@ -159,9 +225,8 @@
         return card;
       }
 
-      function renderTeamTetrisBoardCard(boardState, options) {
-        const config =
-          options && typeof options === "object" && Array.isArray(options) === false ? options : {};
+      function renderTeamTetrisBoardCard(boardState: TeamTetrisBoardState, options: unknown) {
+        const config = readBoardCardOptions(options);
         const card = createElement("section", "tt-board-card", "");
         if (config.tone) {
           card.dataset.tone = config.tone;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryUiActionEventRuntime(deps) {
   const {
     buildNestedPatch,

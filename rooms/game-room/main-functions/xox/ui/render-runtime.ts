@@ -1,7 +1,94 @@
 (function (global) {
+  type XoxInviteEntry = {
+    inviteId: string;
+    remoteUserId: string;
+    nickname: string;
+    note: string;
+    starter: "user" | "opponent";
+    sentAt: number | null;
+  };
+  type XoxPendingInvite = {
+    direction: "incoming" | "outgoing";
+    nickname: string;
+    note: string;
+  };
+  type XoxSlotState = {
+    slotId: string;
+    nickname: string;
+    ready?: boolean;
+  };
+  type XoxUiState = {
+    presentation: {
+      mode: string;
+    };
+    lastCommandMessage: string;
+    preferences: {
+      target: string;
+      starter: string;
+      inviteMessage: string;
+    };
+    context: {
+      room: {
+        name: string;
+      };
+      user: {
+        nickname: string;
+      };
+      slots: Record<string, XoxSlotState>;
+    };
+    game: {
+      pendingInvite: XoxPendingInvite | null;
+      inviteInbox: XoxInviteEntry[];
+      active: boolean;
+      blockedReason: string;
+      awaitingMoveFrom: "user" | "ai" | null;
+      user: {
+        nickname: string;
+      };
+      userSymbol: string;
+      aiSymbol: string;
+      board: string[];
+      result: string;
+    };
+  };
+  type XoxUiStateRuntime = {
+    onAcceptInvite: (inviteId: string, remoteUserId: string) => void;
+    onRejectInvite: (inviteId: string, remoteUserId: string) => void;
+    formatInviteMeta: (invite: XoxInviteEntry) => string;
+    getSelectedTarget: () => string;
+    getDisplayOpponent: () => XoxSlotState;
+    getSlotOrder: () => XoxSlotState[];
+    getSlotStatusLabel: (slot: XoxSlotState) => string;
+    getStarterLabelForCurrentTarget: (value: "user" | "ai") => string;
+    onStart: () => void;
+    onReset: () => void;
+    getCurrentStatus: () => string;
+    getTurnLabel: () => string;
+    getResultLabel: () => string;
+    getSymbolsLabel: () => string;
+    onCellClick: (index: number) => void;
+    getBoardCaption: () => string;
+    getOpenCellsLabel: () => string;
+  };
+  type InteractiveElement = HTMLElement & {
+    type?: string;
+    disabled?: boolean;
+  };
+  type XoxUiRenderRuntimeDeps = {
+    getState: () => XoxUiState;
+    featureId: string;
+    bootstrapText: (key: string) => string;
+    text: (path: string[]) => string;
+    createElement: (tagName: string, className?: string, textContent?: string) => InteractiveElement;
+    render: () => void;
+    isRoomApiAvailable: () => boolean;
+    getFeatureLabel: (featureId: string) => string;
+    stateRuntime: XoxUiStateRuntime;
+  };
+
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createXoxUiRenderRuntime = function createXoxUiRenderRuntime(deps) {
+  registry.createXoxUiRenderRuntime = function createXoxUiRenderRuntime(deps: XoxUiRenderRuntimeDeps) {
     const getState = deps.getState;
     const featureId = deps.featureId;
     const bootstrapText = deps.bootstrapText;
@@ -12,7 +99,7 @@
     const getFeatureLabel = deps.getFeatureLabel;
     const stateRuntime = deps.stateRuntime;
 
-    function createStatCard(label, value) {
+    function createStatCard(label: string, value: string) {
       const card = createElement("div", "xox-stat", "");
       card.append(
         createElement("span", "xox-stat__label", label),
@@ -21,7 +108,7 @@
       return card;
     }
 
-    function createChoiceButton(title, meta, selected, disabled) {
+    function createChoiceButton(title: string, meta: string, selected: boolean, disabled: boolean) {
       const button = createElement("button", "xox-choice-button", "");
       button.type = "button";
       button.disabled = disabled;
@@ -33,7 +120,7 @@
       return button;
     }
 
-    function createSeatCard(label, name, symbol, current) {
+    function createSeatCard(label: string, name: string, symbol: string, current: boolean) {
       const card = createElement("div", "xox-seat", "");
       card.dataset.current = current ? "true" : "false";
       card.dataset.tone = symbol === "O" ? "o" : "x";
@@ -45,7 +132,7 @@
       return card;
     }
 
-    function renderBootstrap(root) {
+    function renderBootstrap(root: HTMLElement) {
       const state = getState();
       const app = createElement("main", "xox-shell xox-shell--bootstrap", "");
       app.dataset.presentationMode = state.presentation.mode;
@@ -68,7 +155,7 @@
       root.replaceChildren(app);
     }
 
-    function renderInviteInbox(canRespond) {
+    function renderInviteInbox(canRespond: boolean) {
       const state = getState();
       const panel = createElement("section", "xox-panel xox-panel--invites", "");
       panel.append(createElement("p", "xox-panel__label", text(["xox", "invites", "title"])));
@@ -133,7 +220,7 @@
       return panel;
     }
 
-    function renderXox(root) {
+    function renderXox(root: HTMLElement) {
       const state = getState();
       document.title = state.context.room.name + " - " + getFeatureLabel(featureId);
 
@@ -163,18 +250,18 @@
         createElement("p", "xox-panel__label", text(["xox", "topbar", "opponentLabel"]))
       );
       const opponentChoices = createElement("div", "xox-choice-grid", "");
-      stateRuntime.getSlotOrder().forEach(function (slot) {
-        const button = createChoiceButton(
-          slot.nickname,
+        stateRuntime.getSlotOrder().forEach(function (slot) {
+          const button = createChoiceButton(
+            slot.nickname,
           slot.slotId.toUpperCase() + " / " + stateRuntime.getSlotStatusLabel(slot),
           slot.slotId === selectedTarget,
-          state.game.active === true || hasPendingOutgoingInvite
-        );
-        button.addEventListener("click", function () {
-          state.preferences.target = slot.slotId;
-          render();
-        });
-        opponentChoices.append(button);
+            state.game.active === true || hasPendingOutgoingInvite
+          );
+          button.addEventListener("click", function () {
+            state.preferences.target = slot.slotId;
+            render();
+          });
+          opponentChoices.append(button);
       });
       opponentPanel.append(opponentChoices);
 

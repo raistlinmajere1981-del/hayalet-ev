@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryAudioProcessDelegatesRuntime } from "../../../shared/host/audio-process-delegates.js";
 import { createAudioAnalysisProjectionRuntime } from "./module-projection.js";
 import { createAudioAnalysisProcessRuntime } from "./process-runners.js";

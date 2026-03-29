@@ -203,10 +203,11 @@ async function handleTeamTetrisMove(api, payload) {
   }
   const boardHashBeforeMove = buildTeamTetrisBoardHash(state.match.teams[currentTurn.teamId].board);
   const result = applyTeamTetrisMove(state.match, move);
-  if (result.success !== true) {
+  if (!("match" in result)) {
+    const failureReason = typeof result.reason === "string" && result.reason ? result.reason : "invalid-move";
     if (
       providerSeatId === "us1" &&
-      (result.reason === "turn-token-mismatch" || result.reason === "turn-index-mismatch")
+      (failureReason === "turn-token-mismatch" || failureReason === "turn-index-mismatch")
     ) {
       return {
         success: false,
@@ -218,7 +219,7 @@ async function handleTeamTetrisMove(api, payload) {
       saveTeamTetrisState(api, state);
     }
     if (providerSeatId === "ai1" || providerSeatId === "ai2" || providerSeatId === "us1") {
-      blockTeamTetrisMatch(api, state, "blockedInvalidMove", result.reason || "invalid-move");
+      blockTeamTetrisMatch(api, state, "blockedInvalidMove", failureReason);
       return { success: false, message: teamTetrisCommandMessage(readLocale(api), "invalidMove") };
     }
     pushTeamTetrisState(api, state);

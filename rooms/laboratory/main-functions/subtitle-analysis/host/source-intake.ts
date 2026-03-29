@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getProjectSubtitleSourceDir } from "../../../shared/host/project-paths.js";
 
 export function createSubtitleSourceIntakeRuntime(deps) {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryReportStageSupportRuntime(deps) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;

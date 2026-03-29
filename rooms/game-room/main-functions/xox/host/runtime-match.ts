@@ -19,6 +19,19 @@ import { loadContext } from "../../../shared/host/context-state.js";
 import { FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
 import { buildAiTurnMessage, commandMessage } from "./copy.js";
 
+type XoxCommandResult = {
+  success: boolean;
+  message: string;
+};
+
+function readProviderValue(payload: unknown): string {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return "";
+  }
+  const source = payload as { provider?: unknown };
+  return typeof source.provider === "string" ? source.provider : "";
+}
+
 export function resolveStateMatchId(state) {
   return state.matchId || state.inviteId || null;
 }
@@ -84,10 +97,15 @@ export async function sendAiTurnUpdate(api, state, includeProtocol) {
   return { success: false, message: commandMessage(state.locale, "dispatchFailed") };
 }
 
-export async function applyOpponentMove(api, payload, expectedProvider, requireInviteMatch) {
+export async function applyOpponentMove(
+  api,
+  payload: unknown,
+  expectedProvider: string,
+  requireInviteMatch: boolean
+): Promise<XoxCommandResult> {
   const state = loadState(api);
   const locale = state.locale;
-  const provider = typeof payload.provider === "string" ? payload.provider : "";
+  const provider = readProviderValue(payload);
   const cell = readCell(payload);
   const matchId = readInviteId(payload);
   const turnIndex = readTurnIndex(payload);

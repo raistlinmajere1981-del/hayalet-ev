@@ -1,8 +1,125 @@
 (function (global) {
+  type TeamTetrisOverlayCell = {
+    x: number;
+    y: number;
+  };
+  type TeamTetrisPiecePlacement = {
+    pieceId: string;
+    rotation: number;
+  };
+  type TeamTetrisBoardState = {
+    label: string;
+    visibility: string;
+    rows: unknown;
+    boardBeforePartnerPieceRows?: unknown;
+    partnerLastPiece?: TeamTetrisPiecePlacement | null;
+  };
+  type TeamTetrisView = {
+    seat: {
+      seatId: string;
+      role: string;
+    };
+    hiddenPairs?: boolean;
+    revealedPairs?: boolean;
+  } | null;
+  type TeamTetrisPendingTurn = {
+    pieceId: string;
+    legalRotations: number[];
+  } | null;
+  type TeamTetrisModuleState = {
+    context: {
+      room: {
+        name: string;
+      };
+    };
+    presentation: {
+      mode: string;
+    };
+    preferences: {
+      teamTetrisHiddenPairs: boolean;
+    };
+    teamTetris: {
+      active: boolean;
+      result: string;
+      canStart: boolean;
+      requiredSlots: {
+        ai1: boolean;
+        ai2: boolean;
+        us1: boolean;
+      };
+      teams?: Array<{
+        teamId: string;
+        seatIds?: string[];
+      }> | null;
+      hiddenPairs: boolean;
+      board: {
+        seedLabel: string;
+      };
+    };
+    teamTetrisDraft: {
+      preview?: {
+        cells: TeamTetrisOverlayCell[];
+      } | null;
+      rotation: number;
+      rowShifts: number[];
+    };
+  };
+  type InteractiveElement = HTMLElement & {
+    type?: string;
+    disabled?: boolean;
+  };
+  type TeamTetrisModuleShellDeps = {
+    getState: () => TeamTetrisModuleState;
+    featureId?: string;
+    createElement: (tagName: string, className?: string, textContent?: string) => InteractiveElement;
+    text: (path: string[]) => string;
+    getFeatureLabel: (featureId: string) => string;
+    createTeamTetrisMetric: (label: string, value: string) => HTMLElement;
+    createTeamTetrisPieceCard: (
+      title: string,
+      pieceId: string,
+      rotation: number,
+      subtitle: string,
+    ) => HTMLElement;
+    createTeamTetrisRequirementCard: (slotId: string, ready: boolean) => HTMLElement;
+    createTeamTetrisSnapshotCard: (title: string, rows: unknown) => HTMLElement;
+    renderTeamTetrisBoardCard: (
+      boardState: TeamTetrisBoardState,
+      options: {
+        tone?: string;
+        meta?: string;
+        interactive?: boolean;
+        overlayCells?: TeamTetrisOverlayCell[];
+        overlayTone?: string;
+        overlayPieceId?: string;
+        context?: HTMLElement[];
+      },
+    ) => HTMLElement;
+    getTeamTetrisView: () => TeamTetrisView;
+    getTeamTetrisBoardLabel: (teamId: string) => string;
+    getTeamTetrisSeatDisplayLabel: (seatId: string) => string;
+    getTeamTetrisPendingTurn: () => TeamTetrisPendingTurn;
+    getTeamTetrisOwnBoardState: () => TeamTetrisBoardState;
+    getTeamTetrisOpponentBoardState: () => TeamTetrisBoardState;
+    getTeamTetrisPlacedByLabel: (placement: TeamTetrisPiecePlacement | null | undefined) => string;
+    getTeamTetrisPartnerRoleLabel: () => string;
+    getTeamTetrisTurnLabel: () => string;
+    getTeamTetrisResultLabel: () => string;
+    getTeamTetrisDraftStatusText: () => string;
+    getTeamTetrisStatusText: () => string;
+    onTeamTetrisRotationSelect: (rotation: number) => void;
+    onTeamTetrisRotate: () => void;
+    onTeamTetrisClearDraft: () => void;
+    onTeamTetrisSubmit: () => void;
+    onTeamTetrisStart: () => void;
+    onTeamTetrisReset: () => void;
+    render: () => void;
+  };
+
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
   registry.createTeamTetrisUiModuleShellRuntime =
-    function createTeamTetrisUiModuleShellRuntime(deps) {
+    function createTeamTetrisUiModuleShellRuntime(deps: TeamTetrisModuleShellDeps) {
       const getState = deps.getState;
       const featureId = deps.featureId || "team-tetris";
       const createElement = deps.createElement;
@@ -32,7 +149,7 @@
       const onTeamTetrisStart = deps.onTeamTetrisStart;
       const onTeamTetrisReset = deps.onTeamTetrisReset;
 
-      function renderTeamTetris(root) {
+      function renderTeamTetris(root: HTMLElement) {
         const state = getState();
         document.title = state.context.room.name + " - " + getFeatureLabel(featureId);
 

@@ -14,6 +14,10 @@ function roomOverlayText(key: string): string {
   return AppI18n.t(`shell.rooms.${key}`);
 }
 
+function getVisibleInstalledRooms(installedRooms: InstalledRoomRecord[]): InstalledRoomRecord[] {
+  return installedRooms.filter((room) => room.isWorkspaceFallback !== true);
+}
+
 function buildWorkspaceStateLabel(room: RoomWorkspaceEntry, installedIds: Set<string>): string {
   if (room.valid !== true) {
     return roomOverlayText("states.invalid");
@@ -33,6 +37,7 @@ export function buildRoomOverlaySummary(
   workspaceRooms: RoomWorkspaceEntry[],
   installedRooms: InstalledRoomRecord[]
 ): string {
+  const visibleInstalledRooms = getVisibleInstalledRooms(installedRooms);
   const validWorkspaceCount = workspaceRooms.filter((room) => room.valid === true).length;
 
   return [
@@ -43,7 +48,7 @@ export function buildRoomOverlaySummary(
       validWorkspaceCount
     )}</strong></div>`,
     `<div class="room-manager-chip">${escapeHtml(roomOverlayText("summary.installed"))}: <strong>${String(
-      installedRooms.length
+      visibleInstalledRooms.length
     )}</strong></div>`,
   ].join("");
 }
@@ -56,7 +61,7 @@ export function buildWorkspaceRoomListMarkup(
     return `<div class="room-manager-empty">${escapeHtml(roomOverlayText("emptyWorkspace"))}</div>`;
   }
 
-  const installedIds = new Set(installedRooms.map((room) => room.id));
+  const installedIds = new Set(getVisibleInstalledRooms(installedRooms).map((room) => room.id));
 
   return workspaceRooms
     .map((room) => {
@@ -113,7 +118,8 @@ export function buildInstalledRoomListMarkup(
   installedRooms: InstalledRoomRecord[],
   workspaceRooms: RoomWorkspaceEntry[]
 ): string {
-  if (installedRooms.length === 0) {
+  const visibleInstalledRooms = getVisibleInstalledRooms(installedRooms);
+  if (visibleInstalledRooms.length === 0) {
     return `<div class="room-manager-empty">${escapeHtml(roomOverlayText("emptyInstalled"))}</div>`;
   }
 
@@ -123,7 +129,7 @@ export function buildInstalledRoomListMarkup(
       .map((room) => room.manifest?.id ?? room.dirName)
   );
 
-  return installedRooms
+  return visibleInstalledRooms
     .map((room) => {
       const stateLabel = buildInstalledStateLabel(room.id, workspaceIds);
       const hasWorkspace = workspaceIds.has(room.id);

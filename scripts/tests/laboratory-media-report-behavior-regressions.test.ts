@@ -19,7 +19,10 @@ test("laboratory host composes and exports report artifacts from persisted proce
   const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.ts", "utf8");
 
   assert.match(uiSource, /shared\/ui\/profile-process-report-composition\.js/);
-  assert.match(profileProcessReportRuntimeSource, /export function createLaboratoryProfileProcessReportRuntime\(deps\)/);
+  assert.match(
+    profileProcessReportRuntimeSource,
+    /export function createLaboratoryProfileProcessReportRuntime(?:<[\s\S]+?>)?\s*\(/
+  );
   assert.match(
     profileProcessReportCompositionSource,
     /export \{ createLaboratoryProfileProcessReportComposition \} from "\.\.\/shared\/ui\/profile-process-report-composition\.js";/
@@ -74,9 +77,12 @@ test("laboratory UI renders report findings and export history from room-managed
   assert.match(stageAccessorsRuntimeSource, /function getReportExports\(\)/);
   assert.match(
     profileProcessReportRuntimeSource,
-    /export function createLaboratoryProfileProcessReportRuntime\(deps\)/
+    /export function createLaboratoryProfileProcessReportRuntime(?:<[\s\S]+?>)?\s*\(/
   );
-  assert.match(profileProcessReportRuntimeSource, /function renderReportFinding\(signal\)/);
+  assert.match(
+    profileProcessReportRuntimeSource,
+    /function renderReportFinding\(signal(?:: [^)]+)?\)/
+  );
   assert.match(reportStageSource, /data-action="export-report"/);
   assert.match(reportStageSource, /featureText\(\["report", "actions", "export"\]\)/);
   assert.match(reportStageSource, /featureText\(\["report", "stagedHint"\]\)/);

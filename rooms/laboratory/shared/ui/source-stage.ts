@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratorySourceStageIntakeRuntime } from "./source-stage-intake.js";
 import { createLaboratorySourceStageProjectRuntime } from "./source-stage-project.js";
 

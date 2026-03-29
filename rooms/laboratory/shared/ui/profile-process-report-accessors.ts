@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryProfileProcessReportAccessorsRuntime(deps) {
   const getLaboratoryUiFeatureRuntime = deps.getLaboratoryUiFeatureRuntime;
 

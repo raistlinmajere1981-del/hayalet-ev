@@ -1,12 +1,61 @@
-// @ts-nocheck
-export function createLaboratoryCloseoutStalenessRuntime(deps) {
+type LaboratoryFeatureProcessRecord = Record<string, unknown> & {
+  completedAt?: string | null;
+  runId?: string | null;
+  warnings?: string[] | null;
+};
+
+type LaboratoryFeatureReportRecord = Record<string, unknown> & {
+  generatedAt?: string | null;
+  warnings?: string[] | null;
+};
+
+type LaboratoryCloseoutProjectState = Record<string, unknown> & {
+  process: {
+    lastActionAt: string | null;
+    lastError: string | null;
+  };
+  report: {
+    lastActionAt: string | null;
+    lastError: string | null;
+  };
+};
+
+type LaboratoryCloseoutStalenessRuntimeDeps = {
+  featureIds: string[];
+  getFeatureProcessRecord: (
+    project: LaboratoryCloseoutProjectState,
+    featureId: string,
+  ) => LaboratoryFeatureProcessRecord;
+  setFeatureProcessRecord: (
+    project: LaboratoryCloseoutProjectState,
+    featureId: string,
+    record: LaboratoryFeatureProcessRecord,
+  ) => void;
+  getFeatureReportRecord: (
+    project: LaboratoryCloseoutProjectState,
+    featureId: string,
+  ) => LaboratoryFeatureReportRecord;
+  setFeatureReportRecord: (
+    project: LaboratoryCloseoutProjectState,
+    featureId: string,
+    record: LaboratoryFeatureReportRecord,
+  ) => void;
+};
+
+export function createLaboratoryCloseoutStalenessRuntime(
+  deps: LaboratoryCloseoutStalenessRuntimeDeps,
+) {
   const featureIds = deps.featureIds;
   const getFeatureProcessRecord = deps.getFeatureProcessRecord;
   const setFeatureProcessRecord = deps.setFeatureProcessRecord;
   const getFeatureReportRecord = deps.getFeatureReportRecord;
   const setFeatureReportRecord = deps.setFeatureReportRecord;
 
-  function markFeatureProcessStale(project, featureId, reason) {
+  function markFeatureProcessStale(
+    project: LaboratoryCloseoutProjectState,
+    featureId: string,
+    reason: string | null,
+  ): void {
     const existing = getFeatureProcessRecord(project, featureId);
     setFeatureProcessRecord(project, featureId, {
       ...existing,
@@ -22,7 +71,11 @@ export function createLaboratoryCloseoutStalenessRuntime(deps) {
     project.process.lastActionAt = new Date().toISOString();
   }
 
-  function markFeatureReportStale(project, featureId, reason) {
+  function markFeatureReportStale(
+    project: LaboratoryCloseoutProjectState,
+    featureId: string,
+    reason: string | null,
+  ): void {
     const existing = getFeatureReportRecord(project, featureId);
     setFeatureReportRecord(project, featureId, {
       ...existing,
@@ -34,7 +87,11 @@ export function createLaboratoryCloseoutStalenessRuntime(deps) {
     project.report.lastActionAt = new Date().toISOString();
   }
 
-  function markCloseoutAsStale(project, reason, targetFeatureIds) {
+  function markCloseoutAsStale(
+    project: LaboratoryCloseoutProjectState,
+    reason: string | null,
+    targetFeatureIds?: string[] | null,
+  ): void {
     const resolvedFeatureIds =
       Array.isArray(targetFeatureIds) && targetFeatureIds.length > 0 ? targetFeatureIds : featureIds;
     resolvedFeatureIds.forEach(function (featureId) {

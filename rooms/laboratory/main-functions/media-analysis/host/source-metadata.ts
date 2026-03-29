@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createMediaSourceMetadataRuntime(deps) {
   const {
     asNumber,

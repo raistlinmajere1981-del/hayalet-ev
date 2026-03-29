@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryUiEditRuntime(deps) {
   const deepClone = deps.deepClone;
   const isAudioAnalysisFeature = deps.isAudioAnalysisFeature;

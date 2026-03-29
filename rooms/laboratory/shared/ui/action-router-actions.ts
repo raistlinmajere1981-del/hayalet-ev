@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryUiActionHandlers(deps) {
   const {
     advanceStage,

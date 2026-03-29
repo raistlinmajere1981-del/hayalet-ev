@@ -3,71 +3,72 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 
 import { validateRoomManifest } from "../../src/types/rooms.ts";
+import { loadWorkspaceScriptForVm } from "./helpers/room-workspace-script.ts";
 
 const requiredFiles = [
-  "rooms/game-room/host/runtime.js",
+  "rooms/game-room/host/runtime.ts",
   "rooms/game-room/shared/host/activation.ts",
   "rooms/game-room/shared/host/command-registry.ts",
-  "rooms/game-room/shared/ui/feature-contract.js",
-  "rooms/game-room/shared/ui/scroll-runtime.js",
+  "rooms/game-room/shared/ui/feature-contract.ts",
+  "rooms/game-room/shared/ui/scroll-runtime.ts",
   "rooms/game-room/shared/types/room-shell-contracts.ts",
-  "rooms/game-room/ui/game-room-ui-bootstrap.js",
-  "rooms/game-room/ui/game-room-ui-state-message-runtime.js",
-  "rooms/game-room/ui/game-room-ui-runtime.js",
+  "rooms/game-room/ui/game-room-ui-bootstrap.ts",
+  "rooms/game-room/ui/game-room-ui-state-message-runtime.ts",
+  "rooms/game-room/ui/game-room-ui-runtime.ts",
   "rooms/game-room/main-functions/fate-knots/assets/fate-knots-view.webp",
   "rooms/game-room/main-functions/fate-knots/data/asset-import.manifest.json",
   "rooms/game-room/main-functions/fate-knots/data/runtime-assets.manifest.json",
-  "rooms/game-room/main-functions/fate-knots/data/runtime-assets-world.module.js",
-  "rooms/game-room/main-functions/fate-knots/data/runtime-assets-ui.module.js",
-  "rooms/game-room/main-functions/fate-knots/data/runtime-assets.module.js",
-  "rooms/game-room/main-functions/fate-knots/data/runtime-content.module.js",
-  "rooms/game-room/main-functions/fate-knots/data/selections.module.js",
-  "rooms/game-room/main-functions/fate-knots/data/map.module.js",
+  "rooms/game-room/main-functions/fate-knots/data/runtime-assets-world.module.ts",
+  "rooms/game-room/main-functions/fate-knots/data/runtime-assets-ui.module.ts",
+  "rooms/game-room/main-functions/fate-knots/data/runtime-assets.module.ts",
+  "rooms/game-room/main-functions/fate-knots/data/runtime-content.module.ts",
+  "rooms/game-room/main-functions/fate-knots/data/selections.module.ts",
+  "rooms/game-room/main-functions/fate-knots/data/map.module.ts",
   "rooms/game-room/main-functions/fate-knots/data/selections.manifest.json",
   "rooms/game-room/main-functions/fate-knots/data/map.manifest.json",
-  "rooms/game-room/main-functions/fate-knots/data/scenarios/intro.module.js",
+  "rooms/game-room/main-functions/fate-knots/data/scenarios/intro.module.ts",
   "rooms/game-room/main-functions/fate-knots/data/scenarios/intro.manifest.json",
-  "rooms/game-room/main-functions/fate-knots/data/combat/cards.module.js",
+  "rooms/game-room/main-functions/fate-knots/data/combat/cards.module.ts",
   "rooms/game-room/main-functions/fate-knots/data/combat/cards.manifest.json",
-  "rooms/game-room/main-functions/fate-knots/data/combat/config.module.js",
+  "rooms/game-room/main-functions/fate-knots/data/combat/config.module.ts",
   "rooms/game-room/main-functions/fate-knots/data/combat/config.manifest.json",
-  "rooms/game-room/main-functions/fate-knots/host/runtime.js",
-  "rooms/game-room/main-functions/fate-knots/host/command-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/host/context-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/host/combat-engine.js",
-  "rooms/game-room/main-functions/fate-knots/host/combat-state.js",
-  "rooms/game-room/main-functions/fate-knots/host/combat-turns.js",
-  "rooms/game-room/main-functions/fate-knots/host/phase-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/host/prompt-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/host/session-support.js",
-  "rooms/game-room/main-functions/fate-knots/host/session-participants.js",
-  "rooms/game-room/main-functions/fate-knots/host/session-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/host/models.js",
-  "rooms/game-room/main-functions/fate-knots/host/models-roster.js",
-  "rooms/game-room/main-functions/fate-knots/host/models-memory.js",
-  "rooms/game-room/main-functions/fate-knots/host/models-state.js",
-  "rooms/game-room/main-functions/fate-knots/host/state.js",
-  "rooms/game-room/main-functions/fate-knots/host/content-loader-shared.js",
-  "rooms/game-room/main-functions/fate-knots/host/content-loader-selections.js",
-  "rooms/game-room/main-functions/fate-knots/host/content-loader-world.js",
-  "rooms/game-room/main-functions/fate-knots/host/content-loader-combat.js",
-  "rooms/game-room/main-functions/fate-knots/ui/state-defaults-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/state-sanitize-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/state-support-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/state-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/surface-assets-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/surface-primitives-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/surface-map-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/surface-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/chrome-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/journey-overview-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/journey-creation-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/journey-stage-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/stage-support-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/stage-narrative-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/stage-combat-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/stage-runtime.js",
-  "rooms/game-room/main-functions/fate-knots/ui/module.js",
+  "rooms/game-room/main-functions/fate-knots/host/runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/host/command-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/host/context-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/host/combat-engine.ts",
+  "rooms/game-room/main-functions/fate-knots/host/combat-state.ts",
+  "rooms/game-room/main-functions/fate-knots/host/combat-turns.ts",
+  "rooms/game-room/main-functions/fate-knots/host/phase-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/host/prompt-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/host/session-support.ts",
+  "rooms/game-room/main-functions/fate-knots/host/session-participants.ts",
+  "rooms/game-room/main-functions/fate-knots/host/session-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/host/models.ts",
+  "rooms/game-room/main-functions/fate-knots/host/models-roster.ts",
+  "rooms/game-room/main-functions/fate-knots/host/models-memory.ts",
+  "rooms/game-room/main-functions/fate-knots/host/models-state.ts",
+  "rooms/game-room/main-functions/fate-knots/host/state.ts",
+  "rooms/game-room/main-functions/fate-knots/host/content-loader-shared.ts",
+  "rooms/game-room/main-functions/fate-knots/host/content-loader-selections.ts",
+  "rooms/game-room/main-functions/fate-knots/host/content-loader-world.ts",
+  "rooms/game-room/main-functions/fate-knots/host/content-loader-combat.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/state-defaults-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/state-sanitize-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/state-support-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/state-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/surface-assets-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/surface-primitives-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/surface-map-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/surface-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/chrome-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/journey-overview-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/journey-creation-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/journey-stage-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/stage-support-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/stage-narrative-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/stage-combat-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/stage-runtime.ts",
+  "rooms/game-room/main-functions/fate-knots/ui/module.ts",
   "rooms/game-room/main-functions/fate-knots/styles.css",
   "rooms/game-room/main-functions/fate-knots/styles/shell.css",
   "rooms/game-room/main-functions/fate-knots/styles/layout.css",
@@ -133,178 +134,139 @@ test("game-room manifest exposes Fate Knots as a scene-ready third feature", () 
 });
 
 test("game-room Fate Knots shell wiring is present in UI and host entrypoints", () => {
-  const uiEntrySource = readFileSync("rooms/game-room/ui/index.ts", "utf8");
-  const uiRuntimeSource = readFileSync("rooms/game-room/ui/game-room-ui-runtime.js", "utf8");
+  const uiEntrySource = loadWorkspaceScriptForVm("rooms/game-room/ui/index.ts");
+  const uiRuntimeSource = loadWorkspaceScriptForVm("rooms/game-room/ui/game-room-ui-runtime.ts");
   const indexHtmlSource = readFileSync("rooms/game-room/ui/index.html", "utf8");
   const fateKnotsStylesSource = readFileSync(
     "rooms/game-room/main-functions/fate-knots/styles.css",
     "utf8"
   );
-  const hostRuntimeSource = readFileSync("rooms/game-room/host/runtime.js", "utf8");
-  const fateKnotsHostRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/runtime.js",
-    "utf8"
+  const hostRuntimeSource = loadWorkspaceScriptForVm("rooms/game-room/host/runtime.ts");
+  const fateKnotsHostRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/runtime.ts"
   );
-  const fateKnotsCommandRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/command-runtime.js",
-    "utf8"
+  const fateKnotsCommandRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/command-runtime.ts"
   );
-  const fateKnotsContextRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/context-runtime.js",
-    "utf8"
+  const fateKnotsContextRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/context-runtime.ts"
   );
-  const fateKnotsCombatEngineSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/combat-engine.js",
-    "utf8"
+  const fateKnotsCombatEngineSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/combat-engine.ts"
   );
-  const fateKnotsCombatStateSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/combat-state.js",
-    "utf8"
+  const fateKnotsCombatStateSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/combat-state.ts"
   );
-  const fateKnotsCombatTurnsSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/combat-turns.js",
-    "utf8"
+  const fateKnotsCombatTurnsSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/combat-turns.ts"
   );
-  const fateKnotsModelsSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/models.js",
-    "utf8"
+  const fateKnotsModelsSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/models.ts"
   );
-  const fateKnotsModelsRosterSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/models-roster.js",
-    "utf8"
+  const fateKnotsModelsRosterSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/models-roster.ts"
   );
-  const fateKnotsModelsMemorySource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/models-memory.js",
-    "utf8"
+  const fateKnotsModelsMemorySource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/models-memory.ts"
   );
-  const fateKnotsModelsStateSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/models-state.js",
-    "utf8"
+  const fateKnotsModelsStateSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/models-state.ts"
   );
-  const fateKnotsSessionSupportSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/session-support.js",
-    "utf8"
+  const fateKnotsSessionSupportSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/session-support.ts"
   );
-  const fateKnotsSessionParticipantsSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/session-participants.js",
-    "utf8"
+  const fateKnotsSessionParticipantsSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/session-participants.ts"
   );
-  const fateKnotsSessionRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/session-runtime.js",
-    "utf8"
+  const fateKnotsSessionRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/session-runtime.ts"
   );
-  const teamTetrisRuntimeSyncSource = readFileSync(
-    "rooms/game-room/main-functions/team-tetris/host/runtime-sync.js",
-    "utf8"
+  const teamTetrisRuntimeSyncSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/team-tetris/host/runtime-sync.ts"
   );
-  const xoxRuntimeSource = readFileSync("rooms/game-room/main-functions/xox/host/runtime.js", "utf8");
-  const xoxRuntimeSyncSource = readFileSync(
-    "rooms/game-room/main-functions/xox/host/runtime-sync.js",
-    "utf8"
+  const xoxRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/xox/host/runtime.ts"
   );
-  const fateKnotsUiModuleSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/module.js",
-    "utf8"
+  const xoxRuntimeSyncSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/xox/host/runtime-sync.ts"
   );
-  const fateKnotsUiStateDefaultsRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/state-defaults-runtime.js",
-    "utf8"
+  const fateKnotsUiModuleSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/module.ts"
   );
-  const fateKnotsUiStateSanitizeRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/state-sanitize-runtime.js",
-    "utf8"
+  const fateKnotsUiStateDefaultsRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/state-defaults-runtime.ts"
   );
-  const fateKnotsUiStateSupportRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/state-support-runtime.js",
-    "utf8"
+  const fateKnotsUiStateSanitizeRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/state-sanitize-runtime.ts"
   );
-  const fateKnotsUiStateRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/state-runtime.js",
-    "utf8"
+  const fateKnotsUiStateSupportRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/state-support-runtime.ts"
   );
-  const fateKnotsUiSurfaceAssetsRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/surface-assets-runtime.js",
-    "utf8"
+  const fateKnotsUiStateRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/state-runtime.ts"
   );
-  const fateKnotsUiSurfacePrimitivesRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/surface-primitives-runtime.js",
-    "utf8"
+  const fateKnotsUiSurfaceAssetsRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/surface-assets-runtime.ts"
   );
-  const fateKnotsUiSurfaceMapRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/surface-map-runtime.js",
-    "utf8"
+  const fateKnotsUiSurfacePrimitivesRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/surface-primitives-runtime.ts"
   );
-  const fateKnotsUiSurfaceRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/surface-runtime.js",
-    "utf8"
+  const fateKnotsUiSurfaceMapRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/surface-map-runtime.ts"
   );
-  const fateKnotsUiChromeRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/chrome-runtime.js",
-    "utf8"
+  const fateKnotsUiSurfaceRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/surface-runtime.ts"
   );
-  const fateKnotsUiJourneyOverviewRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/journey-overview-runtime.js",
-    "utf8"
+  const fateKnotsUiChromeRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/chrome-runtime.ts"
   );
-  const fateKnotsUiJourneyCreationRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/journey-creation-runtime.js",
-    "utf8"
+  const fateKnotsUiJourneyOverviewRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/journey-overview-runtime.ts"
   );
-  const fateKnotsUiJourneyStageRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/journey-stage-runtime.js",
-    "utf8"
+  const fateKnotsUiJourneyCreationRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/journey-creation-runtime.ts"
   );
-  const fateKnotsRuntimeAssetsWorldModuleSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/data/runtime-assets-world.module.js",
-    "utf8"
+  const fateKnotsUiJourneyStageRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/journey-stage-runtime.ts"
   );
-  const fateKnotsRuntimeAssetsUiModuleSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/data/runtime-assets-ui.module.js",
-    "utf8"
+  const fateKnotsRuntimeAssetsWorldModuleSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/data/runtime-assets-world.module.ts"
   );
-  const fateKnotsRuntimeAssetsModuleSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/data/runtime-assets.module.js",
-    "utf8"
+  const fateKnotsRuntimeAssetsUiModuleSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/data/runtime-assets-ui.module.ts"
   );
-  const fateKnotsUiStageSupportRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/stage-support-runtime.js",
-    "utf8"
+  const fateKnotsRuntimeAssetsModuleSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/data/runtime-assets.module.ts"
   );
-  const fateKnotsUiStageNarrativeRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/stage-narrative-runtime.js",
-    "utf8"
+  const fateKnotsUiStageSupportRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/stage-support-runtime.ts"
   );
-  const fateKnotsUiStageCombatRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/stage-combat-runtime.js",
-    "utf8"
+  const fateKnotsUiStageNarrativeRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/stage-narrative-runtime.ts"
   );
-  const fateKnotsUiStageRuntimeSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/ui/stage-runtime.js",
-    "utf8"
+  const fateKnotsUiStageCombatRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/stage-combat-runtime.ts"
   );
-  const fateKnotsAssetRegistrySource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/asset-registry.js",
-    "utf8"
+  const fateKnotsUiStageRuntimeSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/ui/stage-runtime.ts"
   );
-  const fateKnotsContentLoaderSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/content-loader.js",
-    "utf8"
+  const fateKnotsAssetRegistrySource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/asset-registry.ts"
   );
-  const fateKnotsContentLoaderSharedSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/content-loader-shared.js",
-    "utf8"
+  const fateKnotsContentLoaderSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/content-loader.ts"
   );
-  const fateKnotsContentLoaderSelectionsSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/content-loader-selections.js",
-    "utf8"
+  const fateKnotsContentLoaderSharedSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/content-loader-shared.ts"
   );
-  const fateKnotsContentLoaderWorldSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/content-loader-world.js",
-    "utf8"
+  const fateKnotsContentLoaderSelectionsSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/content-loader-selections.ts"
   );
-  const fateKnotsContentLoaderCombatSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/content-loader-combat.js",
-    "utf8"
+  const fateKnotsContentLoaderWorldSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/content-loader-world.ts"
+  );
+  const fateKnotsContentLoaderCombatSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/content-loader-combat.ts"
   );
 
   assert.match(indexHtmlSource, /main-functions\/fate-knots\/ui\/module\.js/);
@@ -331,7 +293,7 @@ test("game-room Fate Knots shell wiring is present in UI and host entrypoints", 
   assert.match(fateKnotsStylesSource, /@import "\.\/styles\/presentation\.css"/);
   assert.match(indexHtmlSource, /shared\/ui\/scroll-runtime\.js/);
   assert.match(uiEntrySource, /createGameRoomUiRuntime\(\)\.start\(\)/);
-  assert.match(uiRuntimeSource, /message\.type === "fate-knots-state"/);
+  assert.match(uiRuntimeSource, /(messageType|message\.type) === "fate-knots-state"/);
   assert.match(uiRuntimeSource, /getActiveFeatureId\(\) === fateKnotsFeatureId/);
   assert.match(hostRuntimeSource, /FATE_KNOTS_COMMAND_NAMES/);
   assert.match(fateKnotsHostRuntimeSource, /\.\/command-runtime\.js/);
@@ -346,7 +308,10 @@ test("game-room Fate Knots shell wiring is present in UI and host entrypoints", 
   assert.match(fateKnotsCombatEngineSource, /\.\/combat-state\.js/);
   assert.match(fateKnotsCombatEngineSource, /\.\/combat-turns\.js/);
   assert.match(fateKnotsCombatStateSource, /export function createFateKnotsCombatState\(options\)/);
-  assert.match(fateKnotsCombatStateSource, /export function cloneFateKnotsCombatState\(candidate\)/);
+  assert.match(
+    fateKnotsCombatStateSource,
+    /export function cloneFateKnotsCombatState\(candidate\)/
+  );
   assert.match(
     fateKnotsCombatTurnsSource,
     /export function applyFateKnotsCombatAction\(combat, seatId, actionId, cardsById\)/
@@ -363,7 +328,10 @@ test("game-room Fate Knots shell wiring is present in UI and host entrypoints", 
   assert.match(fateKnotsModelsMemorySource, /export function createPromptDispatchState\(\)/);
   assert.match(fateKnotsModelsMemorySource, /export function normalizeHistoryState\(candidate\)/);
   assert.match(fateKnotsModelsStateSource, /export function createInitialFateKnotsState\(locale\)/);
-  assert.match(fateKnotsModelsStateSource, /export function normalizeFateKnotsState\(candidate, localeFallback\)/);
+  assert.match(
+    fateKnotsModelsStateSource,
+    /export function normalizeFateKnotsState\(candidate, localeFallback\)/
+  );
   assert.match(fateKnotsUiStateDefaultsRuntimeSource, /createFateKnotsUiStateDefaultsRuntime/);
   assert.match(fateKnotsUiStateSanitizeRuntimeSource, /createFateKnotsUiStateSanitizeRuntime/);
   assert.match(fateKnotsUiStateSupportRuntimeSource, /createFateKnotsUiStateSupportRuntime/);
@@ -372,15 +340,21 @@ test("game-room Fate Knots shell wiring is present in UI and host entrypoints", 
   assert.match(fateKnotsUiStateRuntimeSource, /createFateKnotsUiStateSupportRuntime/);
   assert.match(fateKnotsUiModuleSource, /createFateKnotsUiSurfaceRuntime/);
   assert.match(fateKnotsUiModuleSource, /createFateKnotsUiChromeRuntime/);
-  assert.match(fateKnotsUiSurfaceRuntimeSource, /createFateKnotsUiSurfaceAssetsRuntime is unavailable/);
+  assert.match(
+    fateKnotsUiSurfaceRuntimeSource,
+    /createFateKnotsUiSurfaceAssetsRuntime is unavailable/
+  );
   assert.match(
     fateKnotsUiSurfaceRuntimeSource,
     /createFateKnotsUiSurfacePrimitivesRuntime is unavailable/
   );
-  assert.match(fateKnotsUiSurfaceRuntimeSource, /createFateKnotsUiSurfaceMapRuntime is unavailable/);
+  assert.match(
+    fateKnotsUiSurfaceRuntimeSource,
+    /createFateKnotsUiSurfaceMapRuntime is unavailable/
+  );
   assert.match(fateKnotsUiSurfaceRuntimeSource, /\.\.\.fateKnotsUiSurfaceAssetsRuntime,/);
   assert.match(fateKnotsUiSurfaceRuntimeSource, /\.\.\.fateKnotsUiSurfacePrimitivesRuntime,/);
-  assert.match(fateKnotsUiSurfaceRuntimeSource, /\.\.\.fateKnotsUiSurfaceMapRuntime,/);
+  assert.match(fateKnotsUiSurfaceRuntimeSource, /\.\.\.fateKnotsUiSurfaceMapRuntime,?/);
   assert.match(fateKnotsUiSurfaceAssetsRuntimeSource, /createFateKnotsUiSurfaceAssetsRuntime/);
   assert.match(fateKnotsUiSurfaceAssetsRuntimeSource, /function ensureUiAssetsPreloaded\(\)/);
   assert.match(
@@ -406,9 +380,15 @@ test("game-room Fate Knots shell wiring is present in UI and host entrypoints", 
   );
   assert.match(fateKnotsUiChromeRuntimeSource, /function createTopbar\(state, phaseId\)/);
   assert.match(fateKnotsUiJourneyOverviewRuntimeSource, /createFateKnotsUiJourneyOverviewRuntime/);
-  assert.match(fateKnotsUiJourneyOverviewRuntimeSource, /function renderOverviewStage\(parent, state\)/);
+  assert.match(
+    fateKnotsUiJourneyOverviewRuntimeSource,
+    /function renderOverviewStage\(parent, state\)/
+  );
   assert.match(fateKnotsUiJourneyCreationRuntimeSource, /createFateKnotsUiJourneyCreationRuntime/);
-  assert.match(fateKnotsUiJourneyCreationRuntimeSource, /function renderCreationStage\(parent, state\)/);
+  assert.match(
+    fateKnotsUiJourneyCreationRuntimeSource,
+    /function renderCreationStage\(parent, state\)/
+  );
   assert.match(fateKnotsUiJourneyStageRuntimeSource, /createFateKnotsUiJourneyOverviewRuntime/);
   assert.match(fateKnotsUiJourneyStageRuntimeSource, /createFateKnotsUiJourneyCreationRuntime/);
   assert.match(
@@ -419,9 +399,18 @@ test("game-room Fate Knots shell wiring is present in UI and host entrypoints", 
     fateKnotsRuntimeAssetsModuleSource,
     /import \{ fateKnotsRuntimeUiAssetsManifest \} from "\.\/runtime-assets-ui\.module\.js";/
   );
-  assert.match(fateKnotsRuntimeAssetsModuleSource, /export const fateKnotsRuntimeAssetsManifest = \{/);
-  assert.match(fateKnotsRuntimeAssetsModuleSource, /\.\.\.fateKnotsRuntimeWorldAssetsManifest\.assets,/);
-  assert.match(fateKnotsRuntimeAssetsModuleSource, /\.\.\.fateKnotsRuntimeUiAssetsManifest\.assets,/);
+  assert.match(
+    fateKnotsRuntimeAssetsModuleSource,
+    /export const fateKnotsRuntimeAssetsManifest = \{/
+  );
+  assert.match(
+    fateKnotsRuntimeAssetsModuleSource,
+    /\.\.\.fateKnotsRuntimeWorldAssetsManifest\.assets,/
+  );
+  assert.match(
+    fateKnotsRuntimeAssetsModuleSource,
+    /\.\.\.fateKnotsRuntimeUiAssetsManifest\.assets,?/
+  );
   assert.match(
     fateKnotsRuntimeAssetsWorldModuleSource,
     /export const fateKnotsRuntimeWorldAssetsManifest = \{/
@@ -431,9 +420,15 @@ test("game-room Fate Knots shell wiring is present in UI and host entrypoints", 
     /export const fateKnotsRuntimeUiAssetsManifest = \{/
   );
   assert.match(fateKnotsUiStageSupportRuntimeSource, /createFateKnotsUiStageSupportRuntime/);
-  assert.match(fateKnotsUiStageSupportRuntimeSource, /function createNarrationPanel\(state, role\)/);
+  assert.match(
+    fateKnotsUiStageSupportRuntimeSource,
+    /function createNarrationPanel\(state, role\)/
+  );
   assert.match(fateKnotsUiStageNarrativeRuntimeSource, /createFateKnotsUiNarrativeStageRuntime/);
-  assert.match(fateKnotsUiStageNarrativeRuntimeSource, /function renderNarrativeStage\(parent, state\)/);
+  assert.match(
+    fateKnotsUiStageNarrativeRuntimeSource,
+    /function renderNarrativeStage\(parent, state\)/
+  );
   assert.match(fateKnotsUiStageCombatRuntimeSource, /createFateKnotsUiCombatStageRuntime/);
   assert.match(fateKnotsUiStageCombatRuntimeSource, /function renderCombatStage\(parent, state\)/);
   assert.match(fateKnotsUiStageRuntimeSource, /createFateKnotsUiStageSupportRuntime/);

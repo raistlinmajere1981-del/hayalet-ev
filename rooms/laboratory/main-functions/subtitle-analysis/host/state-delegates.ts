@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createSubtitleStateDelegatesRuntime(deps) {
   const { subtitleStateRuntime } = deps;
 

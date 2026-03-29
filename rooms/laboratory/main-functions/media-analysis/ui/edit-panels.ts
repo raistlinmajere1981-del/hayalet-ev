@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createMediaAnalysisEditFieldControls } from "./edit-field-controls.js";
 import { createMediaAnalysisEditModePanels } from "./edit-mode-panels.js";
 import { createMediaAnalysisEditOutputPanels } from "./edit-output-panels.js";

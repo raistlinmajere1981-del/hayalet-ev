@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryUiViewBaseRuntime } from "./view-runtime.js";
 import { createLaboratoryUiFeatureRuntime } from "../shared/ui/feature-runtime.js";
 import { createLaboratoryStageAccessorsRuntime } from "./stage-accessors-runtime.js";

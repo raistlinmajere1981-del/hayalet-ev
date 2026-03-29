@@ -1,7 +1,59 @@
-// @ts-nocheck
+type DetectionLogSummary = {
+  count: number;
+  totalDurationSeconds: number;
+};
+
+type VolumeDetectSummary = {
+  meanVolumeDb: number | null;
+  maxVolumeDb: number | null;
+};
+
+type NumericSummary = {
+  sampleCount: number;
+  mean: number | null;
+  min: number | null;
+  max: number | null;
+};
+
+type CsvTableRow = Record<string, string>;
+
+type CsvTable = {
+  header: string[];
+  rows: CsvTableRow[];
+};
+
+type SpectralMetricId = "centroid" | "rolloff" | "flatness" | "flux";
+
+type SpectralStatsSummary = Record<SpectralMetricId, NumericSummary>;
+
+type ProsodyNumericSummaries = {
+  f0?: NumericSummary;
+  loudness?: NumericSummary;
+  voiceProbability?: NumericSummary;
+};
+
+type ProsodySummary = {
+  columns: string[];
+  frameCount: number;
+  durationSeconds: number;
+  meanF0Hz: number | null;
+  meanLoudness: number | null;
+  voicedRatio: number | null;
+  estimatedPauseCount: number;
+  numericSummaries: ProsodyNumericSummaries;
+};
+
+type EmotionHeuristicSummary = {
+  label: string;
+  score: number;
+  confidence: "low" | "medium";
+  cues: string[];
+  disclaimer: string;
+  prosodySummary: Partial<ProsodySummary>;
+};
+
 export function createAudioAnalysisParserRuntime() {
-  function parseBlackDetectLog(stderrValue) {
-    /** @type {string[]} */
+  function parseBlackDetectLog(stderrValue: unknown): DetectionLogSummary {
     const matches = Array.from(String(stderrValue || "").match(/black_duration:([0-9.]+)/g) || []);
     return {
       count: matches.length,
@@ -12,8 +64,7 @@ export function createAudioAnalysisParserRuntime() {
     };
   }
 
-  function parseFreezeDetectLog(stderrValue) {
-    /** @type {string[]} */
+  function parseFreezeDetectLog(stderrValue: unknown): DetectionLogSummary {
     const matches = Array.from(String(stderrValue || "").match(/freeze_duration:([0-9.]+)/g) || []);
     return {
       count: matches.length,
@@ -24,8 +75,7 @@ export function createAudioAnalysisParserRuntime() {
     };
   }
 
-  function parseSilenceDetectLog(stderrValue) {
-    /** @type {string[]} */
+  function parseSilenceDetectLog(stderrValue: unknown): DetectionLogSummary {
     const matches = Array.from(String(stderrValue || "").match(/silence_duration: ([0-9.]+)/g) || []);
     return {
       count: matches.length,
@@ -36,7 +86,7 @@ export function createAudioAnalysisParserRuntime() {
     };
   }
 
-  function parseVolumeDetectLog(stderrValue) {
+  function parseVolumeDetectLog(stderrValue: unknown): VolumeDetectSummary {
     const meanMatch = String(stderrValue || "").match(/mean_volume:\s*(-?[0-9.]+)\s*dB/i);
     const maxMatch = String(stderrValue || "").match(/max_volume:\s*(-?[0-9.]+)\s*dB/i);
     return {
@@ -45,12 +95,13 @@ export function createAudioAnalysisParserRuntime() {
     };
   }
 
-  function parseAspectralStatsText(rawText) {
+  function parseAspectralStatsText(rawText: unknown): SpectralStatsSummary {
     const rawMetrics = (String(rawText || "").match(/lavfi\.aspectralstats\.[a-zA-Z0-9_.-]+=-?[0-9.]+/g) || []).map(
       function (entry) {
         return entry.trim();
       }
     );
+    const metricSamples: Record<string, number[]> = {};
 
     rawMetrics.forEach(function (entry) {
       const match = entry.match(/lavfi\.aspectralstats\.([a-zA-Z0-9_.-]+)=(-?[0-9.]+)/);
@@ -62,28 +113,36 @@ export function createAudioAnalysisParserRuntime() {
       if (!Number.isFinite(numericValue)) {
         return;
       }
-      if (!rawMetrics[metricId]) {
-        rawMetrics[metricId] = [];
+      if (!metricSamples[metricId]) {
+        metricSamples[metricId] = [];
       }
-      rawMetrics[metricId].push(numericValue);
+      metricSamples[metricId].push(numericValue);
     });
 
-    return ["centroid", "rolloff", "flatness", "flux"].reduce(function (accumulator, metricId) {
-      const samples = Array.isArray(rawMetrics[metricId]) ? rawMetrics[metricId] : [];
-      const total = samples.reduce(function (sum, sample) {
-        return sum + sample;
-      }, 0);
-      accumulator[metricId] = {
-        sampleCount: samples.length,
-        mean: samples.length > 0 ? total / samples.length : null,
-        min: samples.length > 0 ? Math.min.apply(null, samples) : null,
-        max: samples.length > 0 ? Math.max.apply(null, samples) : null,
-      };
-      return accumulator;
-    }, {});
+    return (["centroid", "rolloff", "flatness", "flux"] as const).reduce<SpectralStatsSummary>(
+      function (accumulator, metricId) {
+        const samples = Array.isArray(metricSamples[metricId]) ? metricSamples[metricId] : [];
+        const total = samples.reduce(function (sum, sample) {
+          return sum + sample;
+        }, 0);
+        accumulator[metricId] = {
+          sampleCount: samples.length,
+          mean: samples.length > 0 ? total / samples.length : null,
+          min: samples.length > 0 ? Math.min(...samples) : null,
+          max: samples.length > 0 ? Math.max(...samples) : null,
+        };
+        return accumulator;
+      },
+      {
+        centroid: { sampleCount: 0, mean: null, min: null, max: null },
+        rolloff: { sampleCount: 0, mean: null, min: null, max: null },
+        flatness: { sampleCount: 0, mean: null, min: null, max: null },
+        flux: { sampleCount: 0, mean: null, min: null, max: null },
+      },
+    );
   }
 
-  function parseCsvTable(rawText) {
+  function parseCsvTable(rawText: unknown): CsvTable {
     const lines = String(rawText || "")
       .split(/\r?\n/)
       .map(function (entry) {
@@ -105,7 +164,7 @@ export function createAudioAnalysisParserRuntime() {
       const values = line.split(";").map(function (entry) {
         return entry.trim();
       });
-      return header.reduce(function (record, key, index) {
+      return header.reduce<CsvTableRow>(function (record, key, index) {
         record[key] = values[index] || "";
         return record;
       }, {});
@@ -117,7 +176,7 @@ export function createAudioAnalysisParserRuntime() {
     };
   }
 
-  function buildNumericSummary(values) {
+  function buildNumericSummary(values: number[]): NumericSummary {
     const samples = values.filter(function (entry) {
       return Number.isFinite(entry);
     });
@@ -127,18 +186,18 @@ export function createAudioAnalysisParserRuntime() {
     return {
       sampleCount: samples.length,
       mean: samples.length > 0 ? total / samples.length : null,
-      min: samples.length > 0 ? Math.min.apply(null, samples) : null,
-      max: samples.length > 0 ? Math.max.apply(null, samples) : null,
+      min: samples.length > 0 ? Math.min(...samples) : null,
+      max: samples.length > 0 ? Math.max(...samples) : null,
     };
   }
 
-  function findProsodyColumn(header, pattern) {
+  function findProsodyColumn(header: string[], pattern: RegExp): string | null {
     return header.find(function (column) {
       return pattern.test(column);
     }) || null;
   }
 
-  function buildProsodySummaryFromCsv(rawText) {
+  function buildProsodySummaryFromCsv(rawText: unknown): ProsodySummary {
     const table = parseCsvTable(rawText);
     const header = table.header;
     const rows = table.rows;
@@ -196,7 +255,7 @@ export function createAudioAnalysisParserRuntime() {
     }
 
     const voicedRatio = rows.length > 0 ? voicedFrames / rows.length : null;
-    const numericSummaries = {};
+    const numericSummaries: ProsodyNumericSummaries = {};
 
     if (f0Values.length > 0) {
       const summary = buildNumericSummary(f0Values);
@@ -223,8 +282,13 @@ export function createAudioAnalysisParserRuntime() {
     };
   }
 
-  function buildEmotionHeuristicFromProsody(prosodySummary) {
-    const summary = prosodySummary && typeof prosodySummary === "object" ? prosodySummary : {};
+  function buildEmotionHeuristicFromProsody(
+    prosodySummary: unknown,
+  ): EmotionHeuristicSummary {
+    const summary =
+      prosodySummary && typeof prosodySummary === "object"
+        ? (prosodySummary as Partial<ProsodySummary>)
+        : {};
     const cues = [];
     let score = 0;
 

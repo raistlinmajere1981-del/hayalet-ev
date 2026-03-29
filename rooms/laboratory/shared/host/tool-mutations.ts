@@ -1,5 +1,55 @@
-// @ts-nocheck
-export function createLaboratoryToolMutationRuntime(deps) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryToolEntry = LaboratoryRecord & {
+  busy?: boolean;
+  lastError?: string | null;
+  latestReleaseName?: string | null;
+  latestReleaseTag?: string | null;
+  latestVersion?: string | null;
+  toolId: string;
+  updateAvailable?: boolean;
+};
+
+type LaboratoryRuntimeWithToolState = LaboratoryRecord & {
+  toolState: {
+    tools: Record<string, LaboratoryToolEntry | undefined>;
+  };
+};
+
+type LaboratoryToolMutationResult = {
+  tool?: LaboratoryRecord & {
+    releaseName?: string | null;
+    releaseTag?: string | null;
+    version?: string | null;
+  };
+};
+
+type LaboratoryToolMutationRuntimeDeps = {
+  callRoomTools: (payload: {
+    featureStage?: string | null;
+    jobId: string;
+    operation: string;
+    requestId: string;
+    roomId: string;
+    toolId: string;
+  }) => Promise<LaboratoryToolMutationResult>;
+  clearJob: (runtime: LaboratoryRuntimeWithToolState, jobId: string) => void;
+  createDefaultToolEntry: (toolId: string) => LaboratoryToolEntry;
+  getRuntimeToolIds: (runtime: LaboratoryRuntimeWithToolState) => string[];
+  persistToolState: (runtime: LaboratoryRuntimeWithToolState) => Promise<unknown>;
+  pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
+  refreshProfileModelState: (runtime: LaboratoryRuntimeWithToolState) => Promise<unknown>;
+  registerJob: (
+    runtime: LaboratoryRuntimeWithToolState,
+    options: LaboratoryRecord,
+  ) => unknown;
+  roomId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryToolMutationRuntime(
+  deps: LaboratoryToolMutationRuntimeDeps,
+) {
   const {
     callRoomTools,
     clearJob,
@@ -13,7 +63,12 @@ export function createLaboratoryToolMutationRuntime(deps) {
     toRecord,
   } = deps;
 
-  function updateToolBusy(runtime, toolId, busy, lastError) {
+  function updateToolBusy(
+    runtime: LaboratoryRuntimeWithToolState,
+    toolId: string,
+    busy: boolean,
+    lastError: string | null,
+  ): void {
     runtime.toolState.tools[toolId] = {
       ...createDefaultToolEntry(toolId),
       ...toRecord(runtime.toolState.tools[toolId]),
@@ -23,7 +78,14 @@ export function createLaboratoryToolMutationRuntime(deps) {
     };
   }
 
-  async function handleToolMutation(api, runtime, requestId, action, toolId, featureStage) {
+  async function handleToolMutation(
+    api: unknown,
+    runtime: LaboratoryRuntimeWithToolState,
+    requestId: string,
+    action: string,
+    toolId: string,
+    featureStage: string | null,
+  ) {
     if (getRuntimeToolIds(runtime).includes(toolId) === false) {
       throw new Error(`Unsupported tool: ${toolId}`);
     }
@@ -57,18 +119,19 @@ export function createLaboratoryToolMutationRuntime(deps) {
         jobId: jobId,
         toolId: toolId,
       });
+      const tool = toRecord(result.tool);
 
       runtime.toolState.tools[toolId] = {
         ...createDefaultToolEntry(toolId),
         ...toRecord(runtime.toolState.tools[toolId]),
-        ...toRecord(result.tool),
+        ...tool,
         toolId: toolId,
         busy: false,
         lastError: null,
         updateAvailable: false,
-        latestVersion: result.tool ? result.tool.version : null,
-        latestReleaseTag: result.tool ? result.tool.releaseTag : null,
-        latestReleaseName: result.tool ? result.tool.releaseName : null,
+        latestVersion: typeof tool.version === "string" ? tool.version : null,
+        latestReleaseTag: typeof tool.releaseTag === "string" ? tool.releaseTag : null,
+        latestReleaseName: typeof tool.releaseName === "string" ? tool.releaseName : null,
         lastCheckedAt: new Date().toISOString(),
       };
 

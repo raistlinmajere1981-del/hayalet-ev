@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createSubtitleAnalysisSourcePanelPrimitives(deps) {
   const escapeHtml = deps.escapeHtml;
   const subtitleText = deps.subtitleText;

@@ -1,4 +1,5 @@
-// @ts-nocheck
+type LaboratoryRecord = Record<string, unknown>;
+
 export function getProfileArtifactPreferenceEntries(params) {
   const { currentSourceKind, profileCapabilities, projectProfile, toRecord } = params;
   const preferenceMap = toRecord(profileCapabilities.artifactPreferences);
@@ -41,8 +42,13 @@ export function getProfileTranscriptSampleConfig(params) {
 export function sortProfileSignals(signals, toRecord) {
   const levelOrder = { high: 0, medium: 1, low: 2 };
   const kindOrder = { measured: 0, heuristic: 1, derived: 2 };
+  const normalizedSignals: LaboratoryRecord[] = Array.isArray(signals)
+    ? signals.map(function (entry) {
+        return toRecord(entry) as LaboratoryRecord;
+      })
+    : [];
 
-  return (Array.isArray(signals) ? signals.map(toRecord) : []).sort(function (left, right) {
+  return normalizedSignals.sort(function (left, right) {
     const levelDelta =
       (levelOrder[String(left.level || "low")] ?? 99) - (levelOrder[String(right.level || "low")] ?? 99);
     if (levelDelta !== 0) {

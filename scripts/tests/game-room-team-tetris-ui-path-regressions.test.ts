@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { loadGameRoomHostModule } from "./helpers/game-room-host-module.ts";
+import { loadWorkspaceScriptForVm } from "./helpers/room-workspace-script.ts";
 
 const gameRoomHostModule = await loadGameRoomHostModule();
 
@@ -288,42 +289,42 @@ function createUiRuntime() {
     console,
   };
   [
-    "rooms/game-room/ui/context-runtime.js",
-    "rooms/game-room/shared/ui/feature-contract.js",
-    "rooms/game-room/shared/ui/scroll-runtime.js",
-    "rooms/game-room/main-functions/xox/ui/state-runtime.js",
-    "rooms/game-room/main-functions/xox/ui/render-runtime.js",
-    "rooms/game-room/main-functions/xox/ui/module.js",
-    "rooms/game-room/main-functions/team-tetris/ui/draft-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/state-shape-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/state-view-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/state-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/module-card-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/module-shell-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/module.js",
-    "rooms/game-room/main-functions/fate-knots/ui/state-defaults-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/state-sanitize-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/state-support-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/state-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/surface-assets-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/surface-primitives-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/surface-map-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/surface-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/chrome-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/journey-overview-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/journey-creation-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/journey-stage-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/stage-support-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/stage-narrative-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/stage-combat-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/stage-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/module.js",
-    "rooms/game-room/ui/game-room-ui-bootstrap.js",
-    "rooms/game-room/ui/game-room-ui-state-message-runtime.js",
-    "rooms/game-room/ui/game-room-ui-runtime.js",
+    "rooms/game-room/ui/context-runtime.ts",
+    "rooms/game-room/shared/ui/feature-contract.ts",
+    "rooms/game-room/shared/ui/scroll-runtime.ts",
+    "rooms/game-room/main-functions/xox/ui/state-runtime.ts",
+    "rooms/game-room/main-functions/xox/ui/render-runtime.ts",
+    "rooms/game-room/main-functions/xox/ui/module.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/draft-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/state-shape-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/state-view-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/state-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/module-card-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/module-shell-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/module.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/state-defaults-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/state-sanitize-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/state-support-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/state-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-assets-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-primitives-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-map-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/chrome-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/journey-overview-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/journey-creation-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/journey-stage-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-support-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-narrative-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-combat-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/module.ts",
+    "rooms/game-room/ui/game-room-ui-bootstrap.ts",
+    "rooms/game-room/ui/game-room-ui-state-message-runtime.ts",
+    "rooms/game-room/ui/game-room-ui-runtime.ts",
     "rooms/game-room/ui/index.ts",
   ].forEach((filePath) => {
-    vm.runInNewContext(readFileSync(filePath, "utf8"), context);
+    vm.runInNewContext(loadWorkspaceScriptForVm(filePath), context);
   });
 
   return {

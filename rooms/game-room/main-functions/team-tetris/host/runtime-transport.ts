@@ -3,6 +3,29 @@ import { loadContext } from "../../../shared/host/context-state.js";
 import { ROOM_ID, TEAM_TETRIS_FEATURE_ID } from "../../../shared/host/feature-meta.js";
 import { buildTeamTetrisRemoteMoveText } from "./runtime-protocol.js";
 
+type TeamTetrisRemoteSendResult =
+  | {
+      success?: boolean;
+      localSessionId?: unknown;
+      remoteUserId?: unknown;
+    }
+  | null
+  | undefined;
+
+function readNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
+function isSuccessfulSendResult(
+  result: TeamTetrisRemoteSendResult
+): result is {
+  success: true;
+  localSessionId?: unknown;
+  remoteUserId?: unknown;
+} {
+  return !!result && result.success === true;
+}
+
 async function sendTeamTetrisRemoteStart(api, state) {
   const context = loadContext(api);
   const remoteUserId = context.slots.us1.remoteUserId || state.remoteUserId;
@@ -31,15 +54,9 @@ async function sendTeamTetrisRemoteStart(api, state) {
     },
   });
 
-  if (sendResult && sendResult.success === true) {
-    state.localSessionId =
-      typeof sendResult.localSessionId === "string" && sendResult.localSessionId !== ""
-        ? sendResult.localSessionId
-        : state.localSessionId;
-    state.remoteUserId =
-      typeof sendResult.remoteUserId === "string" && sendResult.remoteUserId !== ""
-        ? sendResult.remoteUserId
-        : remoteUserId;
+  if (isSuccessfulSendResult(sendResult)) {
+    state.localSessionId = readNonEmptyString(sendResult.localSessionId) || state.localSessionId;
+    state.remoteUserId = readNonEmptyString(sendResult.remoteUserId) || remoteUserId;
     saveTeamTetrisState(api, state);
   }
   return sendResult || { success: false };
@@ -89,11 +106,8 @@ async function sendTeamTetrisRemoteMove(api, state, movePayload, boardHashBefore
       rawArgs: rawArgs,
     },
   });
-  if (sendResult && sendResult.success === true) {
-    state.localSessionId =
-      typeof sendResult.localSessionId === "string" && sendResult.localSessionId !== ""
-        ? sendResult.localSessionId
-        : state.localSessionId;
+  if (isSuccessfulSendResult(sendResult)) {
+    state.localSessionId = readNonEmptyString(sendResult.localSessionId) || state.localSessionId;
     saveTeamTetrisState(api, state);
   }
   return sendResult || { success: false };

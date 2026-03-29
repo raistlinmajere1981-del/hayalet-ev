@@ -162,13 +162,25 @@ test("laboratory host keeps process orchestration on the shared room-managed con
     /export function createLaboratoryManagedSubtitleRunnerRuntime\(deps\)/
   );
   assert.match(processManagedSubtitleRunnerSource, /async function runSubtitleManagedProcess/);
-  assert.match(closeoutStalenessSource, /export function createLaboratoryCloseoutStalenessRuntime\(deps\)/);
-  assert.match(closeoutStalenessSource, /function markFeatureProcessStale\(project, featureId, reason\)/);
-  assert.match(closeoutStalenessSource, /function markFeatureReportStale\(project, featureId, reason\)/);
+  assert.match(
+    closeoutStalenessSource,
+    /export function createLaboratoryCloseoutStalenessRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    closeoutStalenessSource,
+    /function markFeatureProcessStale\(\s*project\??(?::[\s\S]+?)?,\s*featureId\??(?::[\s\S]+?)?,\s*reason\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
+  assert.match(
+    closeoutStalenessSource,
+    /function markFeatureReportStale\(\s*project\??(?::[\s\S]+?)?,\s*featureId\??(?::[\s\S]+?)?,\s*reason\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
   assert.match(processTargetingSource, /export function createLaboratoryProcessTargetingRuntime/);
   assert.match(processTargetingSource, /function buildProcessSpeechAvailability\(runtime, project\)/);
   assert.match(roomToolsProgressSource, /export function createLaboratoryRoomToolsProgressRuntime/);
-  assert.match(roomToolsProgressSource, /function updateJobFromProgress\(runtime, eventPayload\)/);
+  assert.match(
+    roomToolsProgressSource,
+    /function updateJobFromProgress\(\s*runtime\??(?::[\s\S]+?)?,\s*eventPayload\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
   assert.match(processRuntimeSource, /async function runManagedProcess/);
   assert.match(processRuntimeSource, /async function runFeatureProcess/);
   assert.match(processRuntimeSource, /getFeatureProcessDir\(runtime, project, featureId\)/);
@@ -180,8 +192,14 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   assert.match(actionCompositionSource, /export function createLaboratoryActionCompositionRuntime\(deps\)/);
   assert.match(actionCompositionSource, /from "\.\/action-runtime\.js"/);
   assert.match(actionCompositionSource, /from "\.\/tool-mutations\.js"/);
-  assert.match(actionRuntimeSource, /export function createLaboratoryHostActionRuntime\(deps\)/);
-  assert.match(actionRuntimeSource, /function handleMediaAction\(api, runtime, payload\)/);
+  assert.match(
+    actionRuntimeSource,
+    /export function createLaboratoryHostActionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    actionRuntimeSource,
+    /function handleMediaAction\(\s*api\??(?::[\s\S]+?)?,\s*runtime\??(?::[\s\S]+?)?,\s*payload\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
   assert.match(actionRuntimeSource, /from "\.\/action-router\.js"/);
   assert.match(audioAnalysisHostRuntimeSource, /shared\/host\/audio-process-delegates\.js/);
   assert.match(
@@ -193,7 +211,10 @@ test("laboratory host keeps process orchestration on the shared room-managed con
     /const laboratoryAudioProcessDelegatesRuntime = createLaboratoryAudioProcessDelegatesRuntime\(/
   );
   assert.match(audioProcessDelegatesSource, /export function createLaboratoryAudioProcessDelegatesRuntime/);
-  assert.match(audioProcessDelegatesSource, /function getAudioAnalysisModuleProcessDir\(runtime, project, moduleId\)/);
+  assert.match(
+    audioProcessDelegatesSource,
+    /function getAudioAnalysisModuleProcessDir\(\s*runtime,\s*project,\s*moduleId,?\s*\)/
+  );
   assert.match(audioProcessDelegatesSource, /function getAudioAnalysisModuleRunner\(moduleId\)/);
   assert.match(audioProcessDelegatesSource, /async function generateProcessSpectrogram\(/);
   assert.match(

@@ -1,11 +1,48 @@
-// @ts-nocheck
 import { createLaboratoryActionRouter } from "./action-router.js";
 
-export function createLaboratoryHostActionRuntime(deps) {
-  let actionRouter = null;
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryActionRouter = {
+  dispatch: (api: unknown, runtime: unknown, payload: unknown) => Promise<unknown>;
+};
+
+type LaboratoryActionRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  createRequestId: () => string;
+  ensureHydrated: (api: unknown, runtime: unknown) => Promise<unknown>;
+  getFeatureIdFromContext: (payload: unknown) => string | null;
+  getSubtitleActionRuntime: () => unknown;
+  loadContext: (payload: unknown) => LaboratoryRecord;
+  mediaActionRuntime: unknown;
+  persistProfileModelState: (runtime: unknown) => Promise<unknown> | unknown;
+  persistToolState: (runtime: unknown) => Promise<unknown> | unknown;
+  pushActionResult: (api: unknown, payload: unknown) => void;
+  pushMediaState: (
+    api: unknown,
+    runtime: unknown,
+    requestId: string | null,
+    action: string | null,
+  ) => void;
+  toRecord: (value: unknown) => LaboratoryRecord;
+  toolMutationRuntime: {
+    handleToolMutation: (
+      api: unknown,
+      runtime: unknown,
+      requestId: string,
+      action: string,
+      toolId: string,
+      featureStage: string | null,
+    ) => Promise<unknown>;
+  };
+};
+
+export function createLaboratoryHostActionRuntime(
+  deps: LaboratoryActionRuntimeDeps,
+) {
+  let actionRouter: LaboratoryActionRouter | null = null;
   const toolMutationRuntime = deps.toolMutationRuntime;
 
-  function getActionRouter() {
+  function getActionRouter(): LaboratoryActionRouter {
     if (actionRouter === null) {
       actionRouter = createLaboratoryActionRouter({
         asNonEmptyString: deps.asNonEmptyString,
@@ -20,13 +57,20 @@ export function createLaboratoryHostActionRuntime(deps) {
         pushMediaState: deps.pushMediaState,
         subtitleActionRuntime: deps.getSubtitleActionRuntime(),
         toRecord: deps.toRecord,
-      });
+      }) as LaboratoryActionRouter;
     }
 
     return actionRouter;
   }
 
-  async function handleToolMutation(api, runtime, requestId, action, toolId, featureStage) {
+  async function handleToolMutation(
+    api: unknown,
+    runtime: unknown,
+    requestId: string,
+    action: string,
+    toolId: string,
+    featureStage: string | null,
+  ) {
     return toolMutationRuntime.handleToolMutation(
       api,
       runtime,
@@ -37,7 +81,7 @@ export function createLaboratoryHostActionRuntime(deps) {
     );
   }
 
-  async function handleMediaAction(api, runtime, payload) {
+  async function handleMediaAction(api: unknown, runtime: unknown, payload: unknown) {
     return getActionRouter().dispatch(api, runtime, payload);
   }
 

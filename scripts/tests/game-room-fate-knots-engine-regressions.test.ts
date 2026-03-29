@@ -10,29 +10,33 @@ import {
   getAvailableFateKnotsCombatActions,
   getCurrentFateKnotsCombatTurn,
   settleAutomaticFateKnotsCombatTurns,
-} from "../../rooms/game-room/main-functions/fate-knots/host/combat-engine.js";
-import { loadFateKnotsContentRegistry } from "../../rooms/game-room/main-functions/fate-knots/host/content-loader.js";
+} from "../../rooms/game-room/main-functions/fate-knots/host/combat-engine.ts";
+import { loadFateKnotsContentRegistry } from "../../rooms/game-room/main-functions/fate-knots/host/content-loader.ts";
+import { loadWorkspaceScriptForVm } from "./helpers/room-workspace-script.ts";
 
 test("Fate Knots combat engine public surface stays split across state and turn runtimes", () => {
-  const combatEngineSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/combat-engine.js",
-    "utf8"
+  const combatEngineSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/combat-engine.ts"
   );
-  const combatStateSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/combat-state.js",
-    "utf8"
+  const combatStateSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/combat-state.ts"
   );
-  const combatTurnsSource = readFileSync(
-    "rooms/game-room/main-functions/fate-knots/host/combat-turns.js",
-    "utf8"
+  const combatTurnsSource = loadWorkspaceScriptForVm(
+    "rooms/game-room/main-functions/fate-knots/host/combat-turns.ts"
   );
 
   assert.match(combatEngineSource, /\.\/combat-state\.js/);
   assert.match(combatEngineSource, /\.\/combat-turns\.js/);
   assert.match(combatStateSource, /export function createFateKnotsCombatState\(options\)/);
   assert.match(combatStateSource, /export function cloneFateKnotsCombatState\(candidate\)/);
-  assert.match(combatTurnsSource, /export function applyFateKnotsCombatAction\(combat, seatId, actionId, cardsById\)/);
-  assert.match(combatTurnsSource, /export function settleAutomaticFateKnotsCombatTurns\(combat, enemyActionsById\)/);
+  assert.match(
+    combatTurnsSource,
+    /export function applyFateKnotsCombatAction\(combat, seatId, actionId, cardsById\)/
+  );
+  assert.match(
+    combatTurnsSource,
+    /export function settleAutomaticFateKnotsCombatTurns\(combat, enemyActionsById\)/
+  );
 });
 
 function createCombatFixture() {
@@ -83,7 +87,10 @@ test("Fate Knots combat engine builds a playable opening turn from generated con
     actions.map((action) => action.id),
     ["quick-strike", "position", "dodge", "risk-strike"]
   );
-  assert.equal(actions.every((action) => action.available === true), true);
+  assert.equal(
+    actions.every((action) => action.available === true),
+    true
+  );
 
   const clone = cloneFateKnotsCombatState(combat);
   assert.ok(clone);
@@ -96,7 +103,12 @@ test("Fate Knots combat engine applies a user card, advances to the enemy, and s
   const { content, combat } = createCombatFixture();
   const enemyHpBefore = combat.enemy.hp;
 
-  const actionResult = applyFateKnotsCombatAction(combat, "user", "quick-strike", content.cardsById);
+  const actionResult = applyFateKnotsCombatAction(
+    combat,
+    "user",
+    "quick-strike",
+    content.cardsById
+  );
   assert.equal(actionResult.success, true);
   assert.equal(combat.enemy.hp < enemyHpBefore, true);
   assert.match(combat.log.at(-1) ?? "", /Quick Strike/i);
@@ -105,7 +117,10 @@ test("Fate Knots combat engine applies a user card, advances to the enemy, and s
   settleAutomaticFateKnotsCombatTurns(combat, content.enemyActionsById);
 
   assert.equal(getCurrentFateKnotsCombatTurn(combat)?.seatId, "ai1");
-  assert.equal(combat.party.some((member) => member.hp < member.maxHp), true);
+  assert.equal(
+    combat.party.some((member) => member.hp < member.maxHp),
+    true
+  );
   assert.equal(
     combat.log.some((entry) => /uses (Lash|Pierce|Shriek)/.test(entry)),
     true
@@ -121,7 +136,12 @@ test("Fate Knots combat engine rejects invalid or out-of-turn actions without mu
   assert.equal(wrongSeatResult.success, false);
   assert.equal(wrongSeatResult.reason, "turn-mismatch");
 
-  const missingCardResult = applyFateKnotsCombatAction(combat, "user", "missing-card", content.cardsById);
+  const missingCardResult = applyFateKnotsCombatAction(
+    combat,
+    "user",
+    "missing-card",
+    content.cardsById
+  );
   assert.equal(missingCardResult.success, false);
   assert.equal(missingCardResult.reason, "invalid-card");
   assert.equal(combat.enemy.hp, enemyHpBefore);

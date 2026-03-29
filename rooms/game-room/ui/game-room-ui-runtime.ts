@@ -1,16 +1,31 @@
 /* global document, navigator, window */
 
 (function (global) {
+  type UnknownRecord = Record<string, unknown>;
+
+  function readRecord(value: unknown): UnknownRecord | null {
+    return value && typeof value === "object" && Array.isArray(value) === false
+      ? (value as UnknownRecord)
+      : null;
+  }
+
+  function readString(value: unknown): string | null {
+    return typeof value === "string" ? value : null;
+  }
+
   const registry = global.GameRoomUiRuntime || (global.GameRoomUiRuntime = {});
 
   registry.createGameRoomUiRuntime = function createGameRoomUiRuntime() {
-    const bootstrapFactories = global.GameRoomUiBootstrapRuntime || {};
+    const registryHost = global as unknown as typeof globalThis & Record<string, unknown>;
+    const bootstrapFactories =
+      (registryHost.GameRoomUiBootstrapRuntime as Record<string, unknown> | undefined) || {};
     const createBootstrapRuntime = bootstrapFactories.createGameRoomUiBootstrapRuntime;
     if (typeof createBootstrapRuntime !== "function") {
       throw new Error("Game Room UI bootstrap runtime is unavailable.");
     }
 
-    const stateMessageFactories = global.GameRoomUiStateMessageRuntime || {};
+    const stateMessageFactories =
+      (registryHost.GameRoomUiStateMessageRuntime as Record<string, unknown> | undefined) || {};
     const createStateMessageRuntime =
       stateMessageFactories.createGameRoomUiStateMessageRuntime;
     if (typeof createStateMessageRuntime !== "function") {
@@ -77,32 +92,30 @@
       }
     }
 
-    function handleHostMessage(message) {
+    function handleHostMessage(message: unknown) {
       const state = getState();
-      if (!message || typeof message !== "object" || Array.isArray(message)) {
+      const messageRecord = readRecord(message);
+      if (messageRecord === null) {
+        return;
+      }
+      const messageType = readString(messageRecord.type);
+      if (messageType === null) {
         return;
       }
 
-      if (message.type === "host-context") {
-        const presentation =
-          message.presentation &&
-          typeof message.presentation === "object" &&
-          Array.isArray(message.presentation) === false
-            ? message.presentation
-            : {};
+      if (messageType === "host-context") {
+        const presentation = readRecord(messageRecord.presentation) || {};
         applyPresentationMode(presentation);
-        if (typeof message.locale === "string") {
-          applyLocale(message.locale);
+        const locale = readString(messageRecord.locale);
+        if (locale !== null) {
+          applyLocale(locale);
         }
-        if (
-          message.translations &&
-          typeof message.translations === "object" &&
-          Array.isArray(message.translations) === false
-        ) {
-          state.translations = message.translations;
+        const translations = readRecord(messageRecord.translations);
+        if (translations !== null) {
+          state.translations = translations;
         }
         const previousTarget = state.preferences.target;
-        state.context = contextRuntime.normalizeContext(message);
+        state.context = contextRuntime.normalizeContext(messageRecord);
         state.preferences.target =
           previousTarget === "ai1" || previousTarget === "ai2" || previousTarget === "us1"
             ? previousTarget
@@ -111,23 +124,23 @@
         return;
       }
 
-      if (message.type === "xox-state") {
-        stateMessageRuntime.handleXoxState(message);
+      if (messageType === "xox-state") {
+        stateMessageRuntime.handleXoxState(messageRecord);
         return;
       }
 
-      if (message.type === "team-tetris-state") {
-        stateMessageRuntime.handleTeamTetrisState(message);
+      if (messageType === "team-tetris-state") {
+        stateMessageRuntime.handleTeamTetrisState(messageRecord);
         return;
       }
 
-      if (message.type === "fate-knots-state") {
-        stateMessageRuntime.handleFateKnotsState(message);
+      if (messageType === "fate-knots-state") {
+        stateMessageRuntime.handleFateKnotsState(messageRecord);
         return;
       }
 
-      if (message.type === "command-result") {
-        stateMessageRuntime.handleCommandResult(message);
+      if (messageType === "command-result") {
+        stateMessageRuntime.handleCommandResult(messageRecord);
       }
     }
 

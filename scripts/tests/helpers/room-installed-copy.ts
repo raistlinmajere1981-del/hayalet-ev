@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { RoomPackageManager } from "../../../electron/room-package-manager.ts";
@@ -6,6 +6,10 @@ import { RoomPackageManager } from "../../../electron/room-package-manager.ts";
 interface RoomTestArtifact {
   rootDir: string;
   cleanup: () => Promise<void>;
+}
+
+async function ensureModulePackage(rootDir: string): Promise<void> {
+  await writeFile(join(rootDir, "package.json"), JSON.stringify({ type: "module" }, null, 2), "utf8");
 }
 
 function createRoomTestPackageManager(roomId: string) {
@@ -39,6 +43,8 @@ export async function createRoomBuiltArtifact(roomId: string): Promise<RoomTestA
     throw new Error(buildResult.error ?? `Failed to build room ${roomId} for test runtime.`);
   }
 
+  await ensureModulePackage(buildResult.path);
+
   return {
     cleanup,
     rootDir: buildResult.path,
@@ -52,6 +58,8 @@ export async function createRoomInstalledCopy(roomId: string): Promise<RoomTestA
     await cleanup();
     throw new Error(installResult.error ?? `Failed to install room ${roomId} for test runtime.`);
   }
+
+  await ensureModulePackage(installResult.room.installedDir);
 
   return {
     rootDir: installResult.room.installedDir,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratorySettingsToolCardRuntime(deps) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryAudioAnalysisProjectionRuntime(deps) {
   const { audioAnalysisProjectionRuntime } = deps;
 

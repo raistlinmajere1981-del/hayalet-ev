@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryProjectConfigLoader } from "./project-config-loader.js";
 import { createLaboratoryProjectStorageRuntime } from "./project-storage.js";
 import { createLaboratoryProjectToolStatusRuntime } from "./project-tool-status.js";

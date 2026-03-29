@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryHostActionRuntime } from "./action-runtime.js";
 import { createLaboratoryToolMutationRuntime } from "./tool-mutations.js";
 import { createMediaActionRuntime } from "../../main-functions/media-analysis/host/action-handlers.js";

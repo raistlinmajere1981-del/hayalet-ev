@@ -1,44 +1,73 @@
-// @ts-nocheck
-export function createLaboratoryProjectStateDelegatesRuntime(deps) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryProjectStateRuntime = {
+  readFeatureProcessRecord: (project: LaboratoryRecord, featureId: string) => unknown;
+  readFeatureReportRecord: (project: LaboratoryRecord, featureId: string) => unknown;
+  serializeProject: (project: LaboratoryRecord, runtime: unknown) => unknown;
+  serializeProjectSummary: (project: LaboratoryRecord) => unknown;
+  syncProjectFeatureProjections: (
+    runtime: unknown,
+    project: LaboratoryRecord,
+  ) => unknown;
+};
+
+type LaboratoryProjectStateDelegatesRuntimeDeps = {
+  getMediaProfileStateRuntime: () => {
+    normalizeProfileArtifact: (rawValue: unknown) => unknown;
+    normalizeProfileSignal: (rawValue: unknown) => unknown;
+  };
+  getProcessReportStateRuntime: () => {
+    normalizeProcessState: (rawValue: unknown) => unknown;
+    normalizeReportState: (rawValue: unknown) => unknown;
+  };
+  getProjectStateRuntime: () => LaboratoryProjectStateRuntime;
+};
+
+export function createLaboratoryProjectStateDelegatesRuntime(
+  deps: LaboratoryProjectStateDelegatesRuntimeDeps,
+) {
   const {
     getMediaProfileStateRuntime,
     getProcessReportStateRuntime,
     getProjectStateRuntime,
   } = deps;
 
-  function serializeProjectSummary(project) {
+  function serializeProjectSummary(project: LaboratoryRecord) {
     return getProjectStateRuntime().serializeProjectSummary(project);
   }
 
-  function serializeProject(project, runtime) {
+  function serializeProject(project: LaboratoryRecord, runtime: unknown) {
     return getProjectStateRuntime().serializeProject(project, runtime);
   }
 
-  function syncProjectFeatureProjections(runtime, project) {
+  function syncProjectFeatureProjections(
+    runtime: unknown,
+    project: LaboratoryRecord,
+  ) {
     return getProjectStateRuntime().syncProjectFeatureProjections(runtime, project);
   }
 
-  function normalizeProjectProfileArtifact(rawValue) {
+  function normalizeProjectProfileArtifact(rawValue: unknown) {
     return getMediaProfileStateRuntime().normalizeProfileArtifact(rawValue);
   }
 
-  function normalizeProjectProfileSignal(rawValue) {
+  function normalizeProjectProfileSignal(rawValue: unknown) {
     return getMediaProfileStateRuntime().normalizeProfileSignal(rawValue);
   }
 
-  function normalizeProjectProcessState(rawValue) {
+  function normalizeProjectProcessState(rawValue: unknown) {
     return getProcessReportStateRuntime().normalizeProcessState(rawValue);
   }
 
-  function normalizeProjectReportState(rawValue) {
+  function normalizeProjectReportState(rawValue: unknown) {
     return getProcessReportStateRuntime().normalizeReportState(rawValue);
   }
 
-  function readFeatureProcessRecord(project, featureId) {
+  function readFeatureProcessRecord(project: LaboratoryRecord, featureId: string) {
     return getProjectStateRuntime().readFeatureProcessRecord(project, featureId);
   }
 
-  function readFeatureReportRecord(project, featureId) {
+  function readFeatureReportRecord(project: LaboratoryRecord, featureId: string) {
     return getProjectStateRuntime().readFeatureReportRecord(project, featureId);
   }
 

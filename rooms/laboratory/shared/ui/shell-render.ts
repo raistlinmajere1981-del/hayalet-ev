@@ -1,5 +1,25 @@
-// @ts-nocheck
-export function renderLaboratoryStageContent(activeStage, renderers) {
+type LaboratoryStageRenderers = {
+  renderEditStage: () => string;
+  renderProfileStage: () => string;
+  renderProcessStage: () => string;
+  renderReportStage: () => string;
+  renderSourceStage: () => string;
+};
+
+type LaboratoryShellRenderDeps = {
+  activeStage: string;
+  escapeHtml: (value: string) => string;
+  featureText: (path: string[]) => string;
+  lastActionMessage: string | null | undefined;
+  renderSettingsOverlay: () => string;
+  renderStageContent: () => string;
+  renderStageRail: () => string;
+};
+
+export function renderLaboratoryStageContent(
+  activeStage: string,
+  renderers: LaboratoryStageRenderers,
+): string {
   switch (activeStage) {
     case "edit":
       return renderers.renderEditStage();
@@ -15,7 +35,7 @@ export function renderLaboratoryStageContent(activeStage, renderers) {
   }
 }
 
-export function renderLaboratoryShell(deps) {
+export function renderLaboratoryShell(deps: LaboratoryShellRenderDeps): string {
   const activeStage = deps.activeStage;
   const escapeHtml = deps.escapeHtml;
   const featureText = deps.featureText;

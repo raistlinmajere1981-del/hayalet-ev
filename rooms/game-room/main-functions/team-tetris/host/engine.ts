@@ -88,7 +88,7 @@ function resolveTeamTetrisResult(match) {
 
 function applyTeamTetrisMove(match, move) {
   const validation = validateTeamTetrisMove(match, move);
-  if (validation.success !== true) {
+  if (!("replay" in validation)) {
     return validation;
   }
 
@@ -96,7 +96,8 @@ function applyTeamTetrisMove(match, move) {
   const currentTurn = nextMatch.currentTurn;
   const team = nextMatch.teams[currentTurn.teamId];
   const boardBefore = cloneTeamTetrisBoard(team.board);
-  validation.replay.cells.forEach(function (cell) {
+  const replay = validation.replay;
+  replay.cells.forEach(function (cell) {
     team.board[cell.y][cell.x] = currentTurn.pieceId;
   });
   const clearResult = clearTeamTetrisLines(team.board);
@@ -104,10 +105,10 @@ function applyTeamTetrisMove(match, move) {
   team.boardBeforeLastLock = boardBefore;
   team.lastLockedPiece = {
     pieceId: currentTurn.pieceId,
-    rotation: validation.replay.rotation,
+    rotation: replay.rotation,
     turnIndex: currentTurn.turnIndex,
     placedBySeatId: currentTurn.seatId,
-    cells: validation.replay.cells,
+    cells: replay.cells,
   };
   team.nextPieceId = drawTeamTetrisPiece(team.bagState);
   const spawn = getTeamTetrisSpawnPosition(
@@ -134,7 +135,7 @@ function applyTeamTetrisMove(match, move) {
     success: true,
     match: nextMatch,
     clearedLines: clearResult.clearedLines,
-    lockedCells: validation.replay.cells,
+    lockedCells: replay.cells,
   };
 }
 

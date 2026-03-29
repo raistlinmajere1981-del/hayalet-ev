@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryRoomSnapshotRuntime(deps) {
   const {
     asNonEmptyString,

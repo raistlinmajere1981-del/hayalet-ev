@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createSubtitleAnalysisSourcePanelPrimitives } from "./source-panel-primitives.js";
 
 export function createSubtitleAnalysisSourceIntakePanels(deps) {

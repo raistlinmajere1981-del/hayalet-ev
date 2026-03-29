@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   formatBitRate as formatMediaAnalysisBitRate,
   formatBytes as formatMediaAnalysisBytes,

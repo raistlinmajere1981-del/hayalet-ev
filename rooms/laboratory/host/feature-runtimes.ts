@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   getProjectEditDir,
   getProjectEditOutputDir,
@@ -202,10 +201,14 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
 
   const projectState = createLaboratoryProjectStateRuntime({
     roomSnapshotRuntime: projectRuntimes.snapshot.laboratoryRoomSnapshotRuntime,
-    runtimeStorage,
+    runtimeStorage: {
+      ...runtimeStorage,
+      getFeatureProcessRecord: projectRuntimes.stateComposition.getFeatureProcessRecord,
+      getFeatureReportRecord: projectRuntimes.stateComposition.getFeatureReportRecord,
+    },
     syncProjectAudioAnalysisProjection: processComposition.syncProjectAudioAnalysisProjection,
     syncProjectProfileProjection: projectRuntimes.profileProjection.syncProjectProfileProjection,
-    syncProjectSubtitleAnalysisProjection: processComposition.syncProjectSubtitleAnalysisProjection,
+    syncProjectSubtitleAnalysisProjection: projectRuntimes.stateComposition.syncProjectSubtitleAnalysisProjection,
     toFileUrl: hostUtils.toFileUrl,
   });
 

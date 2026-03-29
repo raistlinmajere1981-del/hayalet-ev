@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryUiBootstrapRuntime(deps) {
   const actionRouter = deps.actionRouter;
   const applyLocale = deps.applyLocale;

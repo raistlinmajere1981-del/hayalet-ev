@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryReportMarkdownRuntime(deps) {
   const {
     asNonEmptyString,

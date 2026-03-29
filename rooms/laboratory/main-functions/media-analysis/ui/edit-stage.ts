@@ -1,5 +1,23 @@
-// @ts-nocheck
-export function renderMediaAnalysisEditStage(deps) {
+type MediaAnalysisEditStageDeps = {
+  escapeHtml: (value: string) => string;
+  getProjectSource: () => {
+    storedPath?: string | null;
+  };
+  renderEditActionsPanel: () => string;
+  renderEditCommonPanel: () => string;
+  renderEditControlsPanel: () => string;
+  renderEditModePanel: () => string;
+  renderEditOutputsPanel: () => string;
+  renderEditPresetChooser: () => string;
+  renderEditSummaryPanel: () => string;
+  renderEditWorkspacePanel: () => string;
+  renderStageIntro: (stageId: string) => string;
+  text: (path: string[]) => string;
+};
+
+export function renderMediaAnalysisEditStage(
+  deps: MediaAnalysisEditStageDeps,
+): string {
   const escapeHtml = deps.escapeHtml;
   const getProjectSource = deps.getProjectSource;
   const renderEditActionsPanel = deps.renderEditActionsPanel;

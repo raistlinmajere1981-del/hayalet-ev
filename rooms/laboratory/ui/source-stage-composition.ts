@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratorySourceStageUi } from "../shared/ui/source-stage.js";
 
 export function createLaboratorySourceStageComposition(deps) {

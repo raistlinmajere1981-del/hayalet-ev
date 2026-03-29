@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryRequestRuntime(deps) {
   const {
     bootstrapText,
@@ -205,7 +204,7 @@ export function createLaboratoryRequestRuntime(deps) {
     state.ui.settingsOpen = true;
     requestOverlayScrollReset();
     render();
-    sendSourceAction("tools-refresh");
+    sendSourceAction("tools-refresh", {});
   }
 
   function closeSettingsOverlay() {

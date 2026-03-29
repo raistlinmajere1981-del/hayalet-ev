@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {
   callLaboratoryRoomTools,
   cancelLaboratoryRoomTool,
@@ -14,46 +13,59 @@ import {
   writeLaboratoryTextFile,
 } from "./electron-bridge.js";
 
-export function createLaboratoryHostIoRuntime(deps) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryHostIoRuntimeDeps = {
+  getProjectDirectoryFallbackMarkerList: (
+    runtime: unknown,
+    project: unknown,
+  ) => string[];
+  getProjectDirectoryList: (runtime: unknown, project: unknown) => string[];
+  roomId: string;
+};
+
+export function createLaboratoryHostIoRuntime(
+  deps: LaboratoryHostIoRuntimeDeps,
+) {
   const { getProjectDirectoryFallbackMarkerList, getProjectDirectoryList, roomId } = deps;
 
   function getElectronApi() {
     return getLaboratoryElectronApi();
   }
 
-  async function digestSha1(bytes) {
+  async function digestSha1(bytes: unknown) {
     return digestLaboratorySha1(bytes);
   }
 
-  async function readJsonFile(filePath) {
+  async function readJsonFile(filePath: string) {
     return readLaboratoryJsonFile(filePath);
   }
 
-  async function readTextFile(filePath) {
+  async function readTextFile(filePath: string) {
     return readLaboratoryTextFile(filePath);
   }
 
-  async function readBinaryFileBytes(filePath) {
+  async function readBinaryFileBytes(filePath: string) {
     return readLaboratoryBinaryFileBytes(filePath);
   }
 
-  async function writeJsonFile(filePath, value) {
+  async function writeJsonFile(filePath: string, value: unknown) {
     return writeLaboratoryJsonFile(filePath, value);
   }
 
-  async function writeTextFile(filePath, value) {
+  async function writeTextFile(filePath: string, value: string) {
     return writeLaboratoryTextFile(filePath, value);
   }
 
-  async function listDirectory(dirPath) {
+  async function listDirectory(dirPath: string) {
     return listLaboratoryDirectory(dirPath);
   }
 
-  async function callRoomTools(request) {
+  async function callRoomTools(request: LaboratoryRecord) {
     return callLaboratoryRoomTools(request);
   }
 
-  async function ensureRuntimeDirectory(dirPath, requestId) {
+  async function ensureRuntimeDirectory(dirPath: string, requestId?: string | null) {
     return ensureLaboratoryRuntimeDirectory({
       roomId,
       dirPath,
@@ -61,7 +73,11 @@ export function createLaboratoryHostIoRuntime(deps) {
     });
   }
 
-  async function ensureProjectDirectories(runtime, project, requestId) {
+  async function ensureProjectDirectories(
+    runtime: unknown,
+    project: unknown,
+    requestId?: string | null,
+  ) {
     return ensureLaboratoryProjectDirectories({
       roomId,
       dirPaths: getProjectDirectoryList(runtime, project),
@@ -70,7 +86,11 @@ export function createLaboratoryHostIoRuntime(deps) {
     });
   }
 
-  async function cancelRoomTool(cancelRoomId, jobId, requestId) {
+  async function cancelRoomTool(
+    cancelRoomId: string,
+    jobId: string,
+    requestId: string,
+  ) {
     return cancelLaboratoryRoomTool({
       roomId: cancelRoomId,
       jobId,

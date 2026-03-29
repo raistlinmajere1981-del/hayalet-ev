@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createMediaSourceActionRuntime(deps) {
   const {
     asNonEmptyString,

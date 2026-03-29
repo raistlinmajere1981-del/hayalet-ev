@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryJobRuntime(deps) {
   const { roomId, toRecord, cancelRoomTool, clearJob, pushJobState } = deps;
 

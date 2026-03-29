@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratorySubtitlePanelRuntime(deps) {
   const { subtitleAnalysisUi } = deps;
 

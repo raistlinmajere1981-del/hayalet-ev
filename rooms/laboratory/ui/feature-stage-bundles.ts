@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryFeatureStageBundlesRuntime(deps) {
   const laboratorySettingsUi = deps.createLaboratorySettingsUi({
     stageOrder: deps.stageOrder,

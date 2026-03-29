@@ -1,4 +1,5 @@
-// @ts-nocheck
+type LaboratoryRecord = Record<string, unknown>;
+
 export function createLaboratorySnapshotAudioSelectors(deps) {
   const toRecord = deps.toRecord;
   const getSourceSnapshot = deps.getSourceSnapshot;
@@ -20,14 +21,22 @@ export function createLaboratorySnapshotAudioSelectors(deps) {
     return toRecord(getSourceSnapshot().audioAnalysisProviders);
   }
 
-  function getAudioAnalysisModules() {
+  function getAudioAnalysisModules(): LaboratoryRecord[] {
     const modules = getAudioAnalysisCatalog().modules;
-    return Array.isArray(modules) ? modules.map(toRecord) : [];
+    return Array.isArray(modules)
+      ? modules.map(function (entry) {
+          return toRecord(entry) as LaboratoryRecord;
+        })
+      : [];
   }
 
-  function getAudioAnalysisProviderEntries() {
+  function getAudioAnalysisProviderEntries(): LaboratoryRecord[] {
     const providers = getAudioAnalysisProviders().providers;
-    return Array.isArray(providers) ? providers.map(toRecord) : [];
+    return Array.isArray(providers)
+      ? providers.map(function (entry) {
+          return toRecord(entry) as LaboratoryRecord;
+        })
+      : [];
   }
 
   function getAudioAnalysisSourceState() {

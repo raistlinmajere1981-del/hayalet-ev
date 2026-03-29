@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createMediaSourceFileRuntime(deps) {
   const { asNonEmptyString, getSourceConfig, toRecord } = deps;
 

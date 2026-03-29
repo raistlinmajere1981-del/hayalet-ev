@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratorySubtitleReportRuntime(deps) {
   const {
     asNonEmptyString,

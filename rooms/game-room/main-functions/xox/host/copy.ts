@@ -1,7 +1,7 @@
 import { getOpponentInfo } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
 
-export function commandMessage(locale, key, params) {
+export function commandMessage(locale, key, params = {}) {
   const messages = {
     started: {
       en: "XOX match started.",
@@ -108,7 +108,7 @@ export function commandMessage(locale, key, params) {
       tr: "{opponent} yeni bir XOX daveti gonderdi.",
     },
   };
-  return fillTemplate(translate(locale, messages, key), params || {});
+  return fillTemplate(translate(locale, messages, key), params);
 }
 
 export function buildAiTurnMessage(state, context) {

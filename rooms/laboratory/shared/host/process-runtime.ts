@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLaboratoryManagedProcessRunnersRuntime } from "./process-managed-runners.js";
 
 export function createLaboratoryProcessRuntime(deps) {

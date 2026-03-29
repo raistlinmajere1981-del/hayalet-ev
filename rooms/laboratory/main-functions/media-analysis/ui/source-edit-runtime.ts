@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createMediaAnalysisSourceEditUiRuntime(deps) {
   const featureText = deps.featureText;
   const subtitleText = deps.subtitleText;

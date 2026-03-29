@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createSourceSnapshotSelectors } from "../shared/ui/source-snapshot-selectors.js";
 import { createLaboratoryUiActionRouter } from "../shared/ui/action-router.js";
 import {

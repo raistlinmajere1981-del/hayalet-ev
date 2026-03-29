@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryHostActivation(deps) {
   const createRuntimeState = deps.createRuntimeState;
   const ensureHydrated = deps.ensureHydrated;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function buildLaboratoryUiCoreApi(deps) {
   const laboratoryStageAccessorsRuntime = deps.uiRuntimeComposition.laboratoryStageAccessorsRuntime;
 

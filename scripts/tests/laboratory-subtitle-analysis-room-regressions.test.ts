@@ -212,7 +212,7 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
   assert.match(lifecycleSource, /from "\.\/project-tool-status\.js"/);
   assert.match(
     projectConfigLoaderSource,
-    /export function createLaboratoryProjectConfigLoader\(deps\)/
+    /export function createLaboratoryProjectConfigLoader\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     projectStorageSource,
@@ -220,7 +220,7 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
   );
   assert.match(
     projectToolStatusSource,
-    /export function createLaboratoryProjectToolStatusRuntime\(deps\)/
+    /export function createLaboratoryProjectToolStatusRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(featureAdaptersSource, /shared\/host\/action-composition\.js/);
   assert.match(stateCompositionSource, /from "\.\/project-records\.js"/);
@@ -265,18 +265,21 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
   assert.match(reportingFeatureSource, /from "\.\/reporting-markdown\.js"/);
   assert.match(
     reportingFeatureSource,
-    /export function createLaboratoryFeatureReportRuntime\(deps\)/
+    /export function createLaboratoryFeatureReportRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     reportingExportSource,
-    /export function createLaboratoryReportExportRuntime\(deps\)/
+    /export function createLaboratoryReportExportRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(reportingAudioSource, /export function createLaboratoryAudioReportRuntime\(deps\)/);
   assert.match(reportingSubtitleSource, /function composeSubtitleAnalysisReport\(runtime, project\)/);
   assert.match(reportingSubtitleSource, /subtitleAnalysis\.report\.summaryCards\.target/);
   assert.match(reportingMarkdownSource, /## Warnings/);
   assert.match(projectRecordsSource, /export function createLaboratoryProjectRecordsRuntime\(deps\)/);
-  assert.match(subtitleProjectionSource, /export function createLaboratorySubtitleProjectionRuntime\(deps\)/);
+  assert.match(
+    subtitleProjectionSource,
+    /export function createLaboratorySubtitleProjectionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(actionCompositionSource, /export function createLaboratoryActionCompositionRuntime\(deps\)/);
   assert.match(actionRouterSource, /case "subtitle-source-set-mode":/);
   assert.match(actionRouterSource, /case "subtitle-source-pick-local":/);
@@ -318,9 +321,18 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
   assert.match(subtitleYoutubeFiltersSource, /function needsSubtitleYoutubeMetadataFiltering\(drafts\)/);
   assert.match(subtitleRuntimeSource, /buildSubtitleProcessModules\(runtime, target\)/);
   assert.match(subtitleRuntimeSource, /buildSubtitleAnalysisStats\(runtime, project, target\)/);
-  assert.match(actionRuntimeSource, /export function createLaboratoryHostActionRuntime\(deps\)/);
-  assert.match(actionRuntimeSource, /function handleMediaAction\(api, runtime, payload\)/);
-  assert.match(actionRuntimeSource, /function handleToolMutation\(api, runtime, requestId, action, toolId, featureStage\)/);
+  assert.match(
+    actionRuntimeSource,
+    /export function createLaboratoryHostActionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    actionRuntimeSource,
+    /function handleMediaAction\(\s*api\??(?::[\s\S]+?)?,\s*runtime\??(?::[\s\S]+?)?,\s*payload\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
+  assert.match(
+    actionRuntimeSource,
+    /function handleToolMutation\(\s*api\??(?::[\s\S]+?)?,\s*runtime\??(?::[\s\S]+?)?,\s*requestId\??(?::[\s\S]+?)?,\s*action\??(?::[\s\S]+?)?,\s*toolId\??(?::[\s\S]+?)?,\s*featureStage\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
+  );
   assert.match(subtitleProcessSource, /function buildSubtitleProcessModules\(runtime, target\)/);
   assert.match(subtitleProcessSource, /async function buildSubtitleAnalysisStats\(runtime, project, target\)/);
   assert.doesNotMatch(hostCompositionSource, /const laboratoryActionRouter = createLaboratoryActionRouter\(/);

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
+import { loadWorkspaceScriptForVm } from "./helpers/room-workspace-script.ts";
 
 class FakeElement {
   tagName: string;
@@ -107,7 +108,10 @@ function findByPhase(root: FakeElement, phase: string): FakeElement | null {
 }
 
 function findButtonByText(root: FakeElement, text: string): FakeElement | null {
-  return findFirst(root, (element) => element.tagName === "button" && readElementText(element) === text);
+  return findFirst(
+    root,
+    (element) => element.tagName === "button" && readElementText(element) === text
+  );
 }
 
 function findButtonContainingText(root: FakeElement, text: string): FakeElement | null {
@@ -168,42 +172,42 @@ function createUiRuntime() {
   };
 
   [
-    "rooms/game-room/ui/context-runtime.js",
-    "rooms/game-room/shared/ui/feature-contract.js",
-    "rooms/game-room/shared/ui/scroll-runtime.js",
-    "rooms/game-room/main-functions/xox/ui/state-runtime.js",
-    "rooms/game-room/main-functions/xox/ui/render-runtime.js",
-    "rooms/game-room/main-functions/xox/ui/module.js",
-    "rooms/game-room/main-functions/team-tetris/ui/draft-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/state-shape-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/state-view-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/state-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/module-card-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/module-shell-runtime.js",
-    "rooms/game-room/main-functions/team-tetris/ui/module.js",
-    "rooms/game-room/main-functions/fate-knots/ui/state-defaults-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/state-sanitize-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/state-support-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/state-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/surface-assets-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/surface-primitives-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/surface-map-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/surface-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/chrome-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/journey-overview-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/journey-creation-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/journey-stage-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/stage-support-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/stage-narrative-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/stage-combat-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/stage-runtime.js",
-    "rooms/game-room/main-functions/fate-knots/ui/module.js",
-    "rooms/game-room/ui/game-room-ui-bootstrap.js",
-    "rooms/game-room/ui/game-room-ui-state-message-runtime.js",
-    "rooms/game-room/ui/game-room-ui-runtime.js",
+    "rooms/game-room/ui/context-runtime.ts",
+    "rooms/game-room/shared/ui/feature-contract.ts",
+    "rooms/game-room/shared/ui/scroll-runtime.ts",
+    "rooms/game-room/main-functions/xox/ui/state-runtime.ts",
+    "rooms/game-room/main-functions/xox/ui/render-runtime.ts",
+    "rooms/game-room/main-functions/xox/ui/module.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/draft-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/state-shape-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/state-view-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/state-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/module-card-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/module-shell-runtime.ts",
+    "rooms/game-room/main-functions/team-tetris/ui/module.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/state-defaults-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/state-sanitize-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/state-support-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/state-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-assets-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-primitives-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-map-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/surface-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/chrome-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/journey-overview-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/journey-creation-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/journey-stage-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-support-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-narrative-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-combat-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/stage-runtime.ts",
+    "rooms/game-room/main-functions/fate-knots/ui/module.ts",
+    "rooms/game-room/ui/game-room-ui-bootstrap.ts",
+    "rooms/game-room/ui/game-room-ui-state-message-runtime.ts",
+    "rooms/game-room/ui/game-room-ui-runtime.ts",
     "rooms/game-room/ui/index.ts",
   ].forEach((filePath) => {
-    vm.runInNewContext(readFileSync(filePath, "utf8"), context);
+    vm.runInNewContext(loadWorkspaceScriptForVm(filePath), context);
   });
 
   return {
@@ -481,7 +485,10 @@ function createBaseFateKnotsState() {
   };
 }
 
-function emitFateKnotsState(runtime: ReturnType<typeof createUiRuntime>, state: Record<string, unknown>) {
+function emitFateKnotsState(
+  runtime: ReturnType<typeof createUiRuntime>,
+  state: Record<string, unknown>
+) {
   runtime.emitHostMessage({
     type: "fate-knots-state",
     payload: {
@@ -525,7 +532,10 @@ test("Fate Knots UI renders the overview surface and dispatches start and reset 
 
 test("Fate Knots UI renders Turkish overview copy while keeping dummy seats non-interactive", () => {
   const runtime = createUiRuntime();
-  const translations = JSON.parse(readFileSync("rooms/game-room/i18n/tr.json", "utf8")) as Record<string, unknown>;
+  const translations = JSON.parse(readFileSync("rooms/game-room/i18n/tr.json", "utf8")) as Record<
+    string,
+    unknown
+  >;
   const state = createBaseFateKnotsState();
   state.active = false;
   state.phase = "idle";
@@ -605,7 +615,10 @@ test("Fate Knots UI renders remembered build and DM/NPC additive packets without
   runtime.emitHostMessage(buildHostContext(translations));
   emitFateKnotsState(runtime, state);
 
-  assert.match(readElementText(runtime.document.body), /The knot shivers, but the lanterns still hold/);
+  assert.match(
+    readElementText(runtime.document.body),
+    /The knot shivers, but the lanterns still hold/
+  );
   assert.match(readElementText(runtime.document.body), /Stay close\. The square is listening/);
   assert.ok(findByRole(runtime.document.body, "narration-panel"));
 });
@@ -689,7 +702,10 @@ test("Fate Knots UI sends the unanimous story choice payload from the scenario s
   runtime.emitHostMessage(buildHostContext(translations));
   emitFateKnotsState(runtime, state);
 
-  const decisionButton = findButtonContainingText(runtime.document.body, "Follow the lantern trail");
+  const decisionButton = findButtonContainingText(
+    runtime.document.body,
+    "Follow the lantern trail"
+  );
   assert.ok(findByPhase(runtime.document.body, "scenario"));
   assert.ok(findByRole(runtime.document.body, "scene-shell"));
   assert.ok(findByRole(runtime.document.body, "story-feed"));
@@ -815,7 +831,9 @@ test("Fate Knots UI sends the end-run command from the result stage", () => {
   runtime.emitHostMessage(buildHostContext(translations));
   emitFateKnotsState(runtime, state);
 
-  assert.ok(findFirst(runtime.document.body, (element) => readElementText(element) === "Well Secured"));
+  assert.ok(
+    findFirst(runtime.document.body, (element) => readElementText(element) === "Well Secured")
+  );
   assert.ok(findByPhase(runtime.document.body, "result"));
   assert.ok(findByRole(runtime.document.body, "result-shell"));
   trigger(findButtonByText(runtime.document.body, "End Run"), "click");

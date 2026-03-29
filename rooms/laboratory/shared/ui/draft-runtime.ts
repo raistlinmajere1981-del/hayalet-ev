@@ -1,4 +1,5 @@
-// @ts-nocheck
+type LaboratoryRecord = Record<string, unknown>;
+
 export function createLaboratoryUiDraftRuntime(deps) {
   const state = deps.state;
   const toRecord = deps.toRecord;
@@ -11,6 +12,9 @@ export function createLaboratoryUiDraftRuntime(deps) {
   const getProjectEdit = deps.getProjectEdit;
   const getSubtitleEditState = deps.getSubtitleEditState;
   const getEditPresets = deps.getEditPresets;
+  const asRecord = function asRecord(value): LaboratoryRecord {
+    return toRecord(value) as LaboratoryRecord;
+  };
 
   function sortStageJobs(entries, actionOrder) {
     return entries.sort(function (left, right) {
@@ -33,7 +37,7 @@ export function createLaboratoryUiDraftRuntime(deps) {
   function collectEditStageJobs(projectJobs) {
     const editJobs = Array.isArray(projectJobs)
       ? projectJobs
-          .map(toRecord)
+          .map(asRecord)
           .filter(function (entry) {
             return entry.featureStage === "edit" || String(entry.action || "").startsWith("edit-");
           })
@@ -47,7 +51,7 @@ export function createLaboratoryUiDraftRuntime(deps) {
   function collectProfileStageJobs(projectJobs) {
     const profileJobs = Array.isArray(projectJobs)
       ? projectJobs
-          .map(toRecord)
+          .map(asRecord)
           .filter(function (entry) {
             return entry.featureStage === "profile" || String(entry.action || "").startsWith("profile-");
           })
@@ -61,7 +65,7 @@ export function createLaboratoryUiDraftRuntime(deps) {
 
   function collectProcessStageJobs(projectJobs) {
     return (Array.isArray(projectJobs) ? projectJobs : [])
-      .map(toRecord)
+      .map(asRecord)
       .filter(function (entry) {
         return entry.featureStage === "process" || String(entry.action || "").includes("process");
       })
@@ -74,7 +78,7 @@ export function createLaboratoryUiDraftRuntime(deps) {
 
   function collectReportStageJobs(projectJobs) {
     return (Array.isArray(projectJobs) ? projectJobs : [])
-      .map(toRecord)
+      .map(asRecord)
       .filter(function (entry) {
         return entry.featureStage === "report" || String(entry.action || "").includes("report");
       })

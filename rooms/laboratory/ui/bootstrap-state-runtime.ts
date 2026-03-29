@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function createLaboratoryUiBootstrapStateRuntime(deps) {
   const roomId = deps.roomId;
   const featureId = deps.featureId;
