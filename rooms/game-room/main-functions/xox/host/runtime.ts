@@ -55,7 +55,6 @@ import {
 } from "./copy.js";
 import {
   applyOpponentMove,
-  blockMatch,
   isBlocked,
   resolveStateMatchId,
   sendAiTurnUpdate,
@@ -117,7 +116,6 @@ const {
   processRoomCommands,
   processRoomEvents,
   readIncomingInviteStarter,
-  readOutgoingInviteStarter,
   removeInviteFromInbox,
   sendUs1Invite,
   sendUs1Move,

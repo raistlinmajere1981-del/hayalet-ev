@@ -9,7 +9,6 @@ export function createLaboratoryReportStageSupportRuntime(deps) {
   const formatDuration = deps.formatDuration;
   const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;
   const getReportJobs = deps.getReportJobs;
-  const getReportFindings = deps.getReportFindings;
   const getCurrentFeatureArtifactCount = deps.getCurrentFeatureArtifactCount;
   const getCurrentFeatureTargetLabel = deps.getCurrentFeatureTargetLabel;
   const getCurrentSourceLabel = deps.getCurrentSourceLabel;

@@ -6,7 +6,6 @@
     const featureId = deps.featureId || "fate-knots";
     const createElement = deps.createElement;
     const sendRoomCommand = deps.sendRoomCommand;
-    const getFeatureLabel = deps.getFeatureLabel;
     const text = deps.text;
 
     const createFateKnotsUiStateRuntime = registry.createFateKnotsUiStateRuntime;

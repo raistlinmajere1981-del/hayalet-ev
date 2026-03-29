@@ -12,7 +12,6 @@ export function createGameRoomXoxUs1InviteRuntime(deps) {
     getOpponentInfo,
     loadContext,
     loadInviteInbox,
-    loadPendingInvite,
     normalizeInviteInbox,
     pushRoomState,
     readLocale,

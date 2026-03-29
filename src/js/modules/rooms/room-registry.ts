@@ -25,6 +25,10 @@ function cloneRooms(rooms: InstalledRoomRecord[]): InstalledRoomRecord[] {
   }));
 }
 
+function filterManagedInstalledRooms(rooms: InstalledRoomRecord[]): InstalledRoomRecord[] {
+  return rooms.filter((room) => room.isWorkspaceFallback !== true);
+}
+
 async function delay(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -119,7 +123,9 @@ class RoomRegistryClass {
         LIST_INSTALLED_TIMEOUT_MS,
         async () => await api.roomsListInstalled()
       );
-      return result.success === true && Array.isArray(result.rooms) ? result.rooms : [];
+      return result.success === true && Array.isArray(result.rooms)
+        ? filterManagedInstalledRooms(result.rooms)
+        : [];
     } catch (error) {
       Logger.warnT(
         LogCategory.SYSTEM,
@@ -143,7 +149,7 @@ class RoomRegistryClass {
     rooms: InstalledRoomRecord[],
     options: { startupProtocols?: StartupRoomProtocolSnapshot[] | null } = {}
   ): Promise<InstalledRoomRecord[]> {
-    this.installedRooms = cloneRooms(rooms);
+    this.installedRooms = cloneRooms(filterManagedInstalledRooms(rooms));
 
     Logger.info(
       LogCategory.SYSTEM,

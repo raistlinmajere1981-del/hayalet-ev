@@ -1,10 +1,5 @@
 type LaboratorySnapshotRecord = Record<string, unknown>;
 
-type LaboratoryToolRegistryEntry = LaboratorySnapshotRecord & {
-  stageSupport?: unknown;
-  toolId?: string;
-};
-
 type LaboratorySnapshotToolSelectorsDeps = {
   toRecord: (value: unknown) => LaboratorySnapshotRecord;
   getSourceSnapshot: () => LaboratorySnapshotRecord;

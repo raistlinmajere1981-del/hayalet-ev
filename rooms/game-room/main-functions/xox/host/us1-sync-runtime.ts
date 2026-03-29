@@ -5,7 +5,6 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
     FATE_KNOTS_FEATURE_ID,
     ROOM_ID,
     TEAM_TETRIS_FEATURE_ID,
-    blockTeamTetrisMatch,
     commandMessage,
     createInitialState,
     createTeamTetrisMatch,

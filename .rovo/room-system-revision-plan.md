@@ -6,6 +6,22 @@
 ## Overview
 Revise the room system around a single source of truth in `rooms/`, normalize the boundary between room shell and main functions, split god files into modular room-local pieces, separate shared and feature-specific CSS, move non-package runtime data under `data/room-storage/<roomId>`, and bring room code into the project's TypeScript and lint pipeline without breaking room import/export packaging.
 
+## Status
+- Completed on 2026-03-29.
+- The room-system revision is no longer an active implementation backlog. The source/build/install split, TypeScript migration, room verification entrypoints, and installed-room registry contract are in place.
+
+## Final Contract
+- `rooms/<roomId>` is the only editable source tree.
+- `config/rooms.json` is the source of truth for installed room chrome and startup room snapshots.
+- `data/room-storage/<roomId>` is generated build/runtime residue, not authoring space.
+- Settings > Rooms shows workspace sources separately; side navigation and room pages only follow real installed registry entries.
+- `npm run rooms:typecheck`, `npm run rooms:test:core`, and `npm run rooms:lint` are the room closeout quality gates.
+
+## Phase 2 / Backlog
+- Revisit the remaining `rooms:lint` `no-await-in-loop` warnings only when queue semantics or batching behavior changes.
+- If developers still need workspace-only preview flows, add an explicit dev-only entrypoint instead of letting workspace fallback appear as installed room chrome.
+- Re-run the short closeout smoke checklist after future room-manager or registry changes.
+
 ## Current Baseline
 - `rooms/` is now the only authoring source. `data/rooms/` copies were removed from the workspace.
 - `config/rooms.json` is now in an empty bootstrap state with `rooms: []`, so the plan must explicitly define how runtime discovery works when nothing is installed yet.

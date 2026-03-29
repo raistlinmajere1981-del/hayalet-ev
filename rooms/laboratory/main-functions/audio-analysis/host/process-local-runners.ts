@@ -1,6 +1,5 @@
 export function createAudioAnalysisLocalProcessRunners(deps) {
   const {
-    asNonEmptyString,
     buildEmotionHeuristicFromProsody,
     buildProcessSpeechAvailability,
     clone,

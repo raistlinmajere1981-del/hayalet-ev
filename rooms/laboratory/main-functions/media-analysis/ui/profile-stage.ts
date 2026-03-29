@@ -1,14 +1,11 @@
 export function createMediaAnalysisProfileStage(deps) {
   const state = deps.state;
-  const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
   const textFromKey = deps.textFromKey;
   const formatDuration = deps.formatDuration;
   const renderStageIntro = deps.renderStageIntro;
   const renderSummaryRows = deps.renderSummaryRows;
-  const getCurrentSourceKind = deps.getCurrentSourceKind;
-  const getCurrentSourceLabel = deps.getCurrentSourceLabel;
   const getCurrentProfileMode = deps.getCurrentProfileMode;
   const getProfileEstimate = deps.getProfileEstimate;
   const getProfileLabel = deps.getProfileLabel;
@@ -263,7 +260,6 @@ export function createMediaAnalysisProfileStage(deps) {
   }
 
   function renderProfileActionsPanel() {
-    const readiness = getProfileReadiness();
     const preflight = getProfilePreflight();
     const runningJob = getRunningProfileJob();
     return `

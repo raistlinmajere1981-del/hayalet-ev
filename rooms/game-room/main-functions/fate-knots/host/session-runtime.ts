@@ -12,8 +12,6 @@ import {
   saveFateKnotsSaveSlot,
 } from "./state.js";
 import {
-  getUserParticipant,
-  isSelectionComplete,
   listPendingDecisionSeats,
 } from "./session-participants.js";
 

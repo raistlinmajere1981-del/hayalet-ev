@@ -8,7 +8,6 @@ import {
   FATE_KNOTS_COMMAND_NAMES,
   FATE_KNOTS_PHASES,
   FATE_KNOTS_SUPPORTED_AI_SEATS,
-  FATE_KNOTS_WAIT_MODES,
 } from "./constants.js";
 import {
   buildFateKnotsCombatTurnId,

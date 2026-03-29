@@ -20,6 +20,14 @@ const roomBundleOperationsPath = join(
 );
 const roomPackageTypesPath = join(projectRoot, "electron", "rooms", "room-package-types.ts");
 const roomRegistryPath = join(projectRoot, "electron", "rooms", "room-registry.ts");
+const rendererRoomRegistryPath = join(
+  projectRoot,
+  "src",
+  "js",
+  "modules",
+  "rooms",
+  "room-registry.ts"
+);
 const mainPath = join(projectRoot, "electron", "main.ts");
 const workspaceRoomOperationsPath = join(
   projectRoot,
@@ -36,6 +44,7 @@ const workspaceRoomBuildSupportPath = join(
   "workspace-room-build-support.ts"
 );
 const ipcRoomsPath = join(projectRoot, "electron", "handlers", "ipc-rooms.ts");
+const eslintConfigPath = join(projectRoot, "eslint.config.cjs");
 
 test("room package manager resolves Paths lazily instead of constructor time", async () => {
   const source = await readFile(roomPackageManagerPath, "utf8");
@@ -78,10 +87,12 @@ test("room package manager keeps installed room record building in a dedicated b
   const bundleOperationsSource = await readFile(roomBundleOperationsPath, "utf8");
   const roomPackageTypesSource = await readFile(roomPackageTypesPath, "utf8");
   const registrySource = await readFile(roomRegistryPath, "utf8");
+  const rendererRegistrySource = await readFile(rendererRoomRegistryPath, "utf8");
   const workspaceRoomOperationsSource = await readFile(workspaceRoomOperationsPath, "utf8");
   const workspaceDiscoverySource = await readFile(workspaceDiscoveryPath, "utf8");
   const workspaceRoomBuildSource = await readFile(workspaceRoomBuildPath, "utf8");
   const workspaceRoomBuildSupportSource = await readFile(workspaceRoomBuildSupportPath, "utf8");
+  const eslintConfigSource = await readFile(eslintConfigPath, "utf8");
 
   assert.match(managerSource, /from "\.\/rooms\/installed-room-builder\.ts"/);
   assert.match(managerSource, /from "\.\/rooms\/room-bundle-operations\.ts"/);
@@ -113,6 +124,19 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.match(registrySource, /export async function readRoomRegistry\(/);
   assert.match(registrySource, /export async function writeRoomRegistry\(/);
   assert.match(registrySource, /export async function hydrateInstalledRoomRecord\(/);
+  assert.match(
+    rendererRegistrySource,
+    /function filterManagedInstalledRooms\(rooms: InstalledRoomRecord\[\]\): InstalledRoomRecord\[\]/
+  );
+  assert.match(
+    rendererRegistrySource,
+    /return rooms\.filter\(\(room\) => room\.isWorkspaceFallback !== true\);/
+  );
+  assert.match(rendererRegistrySource, /cloneRooms\(filterManagedInstalledRooms\(rooms\)\)/);
+  assert.match(
+    rendererRegistrySource,
+    /Array\.isArray\(result\.rooms\)\s*\?\s*filterManagedInstalledRooms\(result\.rooms\)\s*:\s*\[\]/
+  );
   assert.match(workspaceRoomOperationsSource, /export async function installRoomFromWorkspace\(/);
   assert.match(
     workspaceRoomOperationsSource,
@@ -151,6 +175,9 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.equal(scripts["rooms:build"], "node --import tsx scripts/rooms/build-workspace-rooms.ts");
   assert.ok(scripts["rooms:lint"]?.startsWith("NODE_OPTIONS="));
   assert.ok(scripts["rooms:lint"]?.includes('"rooms/**/*.{js,ts}"'));
+  assert.match(eslintConfigSource, /"rooms\/\*\*\/ui\/\*\*\/\*\.ts"/);
+  assert.match(eslintConfigSource, /"rooms\/\*\*\/main-functions\/\*\*\/host\/\*\*\/\*\.ts"/);
+  assert.match(eslintConfigSource, /project:\s*"\.\/tsconfig\.rooms\.json"/);
   assert.equal(scripts.check, "npm run lint && npm run check-types && npm run rooms:test:core");
   assert.ok(scripts.typecheck?.includes("tsconfig.rooms.json"));
 });

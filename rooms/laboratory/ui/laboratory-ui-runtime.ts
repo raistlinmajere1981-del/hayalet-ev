@@ -54,7 +54,6 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
   const FEATURE_ID = "media-analysis";
   const STAGE_ORDER = ["source", "edit", "profile", "process", "report"];
   const SOURCE_FORMATS = ["video", "audio", "image"];
-  const REGION_OPTIONS = ["containment", "corridor", "archive"];
   const FEATURE_NAMESPACES = {
     [FEATURE_ID]: "mediaAnalysis",
     [AUDIO_FEATURE_ID]: "audioAnalysis",

@@ -11,7 +11,6 @@ export function createMediaAnalysisEditOutputPanels(deps) {
   const formatEditWindowLabel = deps.formatEditWindowLabel;
   const getCurrentFocusLabel = deps.getCurrentFocusLabel;
   const getCurrentResizeLabel = deps.getCurrentResizeLabel;
-  const getEditJobLabel = deps.getEditJobLabel;
 
   function renderEditActionsPanel() {
     const source = getProjectSource();
