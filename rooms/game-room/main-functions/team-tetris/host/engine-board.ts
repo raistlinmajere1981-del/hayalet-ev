@@ -31,8 +31,10 @@ export type TeamTetrisReplayResult = TeamTetrisReplayFailure | TeamTetrisReplayS
 type PieceCell = readonly [number, number];
 type TeamTetrisPieceDefinition = { rotations: PieceCell[][] };
 
-const TEAM_TETRIS_PIECE_MAP =
-  TEAM_TETRIS_PIECES as unknown as Record<PieceId, TeamTetrisPieceDefinition>;
+const TEAM_TETRIS_PIECE_MAP = TEAM_TETRIS_PIECES as unknown as Record<
+  PieceId,
+  TeamTetrisPieceDefinition
+>;
 
 function createEmptyTeamTetrisBoard(): TeamTetrisBoard {
   return Array.from({ length: TEAM_TETRIS_BOARD_HEIGHT }, function () {

@@ -254,7 +254,9 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     toRecord: coreRuntime.toRecord,
   };
   const laboratoryFeatureStageRuntime = createLaboratoryFeatureStageRuntime(
-    laboratoryFeatureStageRuntimeDeps as unknown as Parameters<typeof createLaboratoryFeatureStageRuntime>[0]
+    laboratoryFeatureStageRuntimeDeps as unknown as Parameters<
+      typeof createLaboratoryFeatureStageRuntime
+    >[0]
   );
   const profileProcessBundle = laboratoryFeatureStageRuntime.profileProcessBundle;
   void profileProcessBundle.renderReportFinding;
@@ -359,7 +361,9 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     windowRef: window,
   };
   const laboratoryUiShellComposition = createLaboratoryUiShellComposition(
-    laboratoryUiShellCompositionDeps as unknown as Parameters<typeof createLaboratoryUiShellComposition>[0]
+    laboratoryUiShellCompositionDeps as unknown as Parameters<
+      typeof createLaboratoryUiShellComposition
+    >[0]
   );
 
   const laboratoryUiBootstrapRuntime = laboratoryUiShellComposition.laboratoryUiBootstrapRuntime;

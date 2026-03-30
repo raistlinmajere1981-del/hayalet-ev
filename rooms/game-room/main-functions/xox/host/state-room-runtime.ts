@@ -1,10 +1,11 @@
 import { loadContext, readLocale } from "../../../shared/host/context-state.js";
 import { FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
+import type { GameRoomContextSnapshot } from "../../../shared/host/context-state.js";
 import type {
-  GameRoomContextSnapshot,
-} from "../../../shared/host/context-state.js";
-import type { GameRoomContextState, GameRoomSlotState } from "../../../shared/types/room-shell-contracts.js";
+  GameRoomContextState,
+  GameRoomSlotState,
+} from "../../../shared/types/room-shell-contracts.js";
 import {
   type XoxGameState,
   buildBoardAscii,
@@ -87,10 +88,7 @@ export function loadPendingInvite(api: XoxStateApi): PendingInvite | null {
   return normalizePendingInvite(api.getState("xox-pending-invite"));
 }
 
-export function savePendingInvite(
-  api: XoxStateApi,
-  pendingInvite: unknown
-): PendingInvite | null {
+export function savePendingInvite(api: XoxStateApi, pendingInvite: unknown): PendingInvite | null {
   const normalized = normalizePendingInvite(pendingInvite);
   if (normalized === null) {
     api.deleteState?.("xox-pending-invite");

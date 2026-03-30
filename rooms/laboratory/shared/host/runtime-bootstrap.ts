@@ -1,179 +1,179 @@
-type LaboratoryRecord = Record<string, unknown>
+type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryContextRecord = LaboratoryRecord & {
-  activeFeature?: unknown
-  feature?: unknown
-  featureId?: unknown
-  locale?: unknown
-  presentation?: unknown
-  room?: unknown
-  roomId?: unknown
-  slots?: unknown
-  translations?: unknown
-  user?: unknown
-}
+  activeFeature?: unknown;
+  feature?: unknown;
+  featureId?: unknown;
+  locale?: unknown;
+  presentation?: unknown;
+  room?: unknown;
+  roomId?: unknown;
+  slots?: unknown;
+  translations?: unknown;
+  user?: unknown;
+};
 
 type LaboratoryContextRoomRecord = LaboratoryRecord & {
-  name?: unknown
-}
+  name?: unknown;
+};
 
 type LaboratoryContextUserRecord = LaboratoryRecord & {
-  nickname?: unknown
-}
+  nickname?: unknown;
+};
 
 type LaboratoryContextPresentationRecord = LaboratoryRecord & {
-  mode?: unknown
-  uiScale?: unknown
-}
+  mode?: unknown;
+  uiScale?: unknown;
+};
 
 type LaboratoryActiveFeatureRecord = LaboratoryRecord & {
-  id?: unknown
-}
+  id?: unknown;
+};
 
 type LaboratoryRoomApi = {
-  getLocale: () => string
-  getState: (key: string) => unknown
-  setState: (key: string, value: unknown) => void
-}
+  getLocale: () => string;
+  getState: (key: string) => unknown;
+  setState: (key: string, value: unknown) => void;
+};
 
 type LaboratoryToolEntry = {
-  binaryPath: string | null
-  busy: boolean
-  companionPaths: LaboratoryRecord
-  installDir: string | null
-  installed: boolean
-  lastCheckedAt: string | number | null
-  lastError: string | null
-  latestReleaseName: string | null
-  latestReleaseTag: string | null
-  latestVersion: string | null
-  releaseName: string | null
-  releaseTag: string | null
-  releaseUrl: string | null
-  toolId: string
-  updateAvailable: boolean
-  version: string | null
-}
+  binaryPath: string | null;
+  busy: boolean;
+  companionPaths: LaboratoryRecord;
+  installDir: string | null;
+  installed: boolean;
+  lastCheckedAt: string | number | null;
+  lastError: string | null;
+  latestReleaseName: string | null;
+  latestReleaseTag: string | null;
+  latestVersion: string | null;
+  releaseName: string | null;
+  releaseTag: string | null;
+  releaseUrl: string | null;
+  toolId: string;
+  updateAvailable: boolean;
+  version: string | null;
+};
 
 type LaboratoryToolState = {
-  schemaVersion: number
-  tools: Record<string, LaboratoryToolEntry>
-  updatedAt: string | number | null
-}
+  schemaVersion: number;
+  tools: Record<string, LaboratoryToolEntry>;
+  updatedAt: string | number | null;
+};
 
 type LaboratoryProfileModelEntry = {
-  busy: boolean
-  checksumSha1: string | null
-  checksumValid: boolean
-  expectedBytes: number | null
-  expectedSha1: string | null
-  fileName: string | null
-  installed: boolean
-  lastError: string | null
-  lastVerifiedAt: string | number | null
-  modelId: string
-  path: string | null
-  sizeBytes: number | null
-}
+  busy: boolean;
+  checksumSha1: string | null;
+  checksumValid: boolean;
+  expectedBytes: number | null;
+  expectedSha1: string | null;
+  fileName: string | null;
+  installed: boolean;
+  lastError: string | null;
+  lastVerifiedAt: string | number | null;
+  modelId: string;
+  path: string | null;
+  sizeBytes: number | null;
+};
 
 type LaboratoryProfileModelState = {
-  models: Record<string, LaboratoryProfileModelEntry>
-  schemaVersion: number
-  updatedAt: string | number | null
-}
+  models: Record<string, LaboratoryProfileModelEntry>;
+  schemaVersion: number;
+  updatedAt: string | number | null;
+};
 
 type LaboratoryToolManifestRecord = LaboratoryRecord & {
-  stageSupport?: unknown
-}
+  stageSupport?: unknown;
+};
 
 type LaboratoryRuntimeState = {
-  activeProjectId: string | null
-  audioAnalysisCapabilities: unknown
-  audioAnalysisCatalog: unknown
-  audioAnalysisPresets: unknown
-  audioAnalysisProviders: unknown
-  editCapabilities: unknown
-  editPresets: unknown
-  hydrated: boolean
-  hydrating: Promise<void> | null
-  jobs: Record<string, unknown>
-  packageToolsDir: string | null
-  paths: LaboratoryRecord | null
-  profileCapabilities: unknown
-  profileModelState: LaboratoryProfileModelState
-  profileModels: unknown
-  profilePresets: unknown
-  projectSchema: unknown
-  projects: LaboratoryRecord[]
-  roomToolsProgressHandler: unknown
-  roomToolsSubscribed: boolean
-  sourcePresets: unknown
-  subtitleAnalysisCapabilities: unknown
-  subtitleAnalysisCatalog: unknown
-  subtitleAnalysisProviders: unknown
-  subtitleEditPresets: unknown
-  subtitleSourcePresets: unknown
-  subtitleYoutubeForm: unknown
-  toolState: LaboratoryToolState
-  toolchainManifest: LaboratoryRecord | null
-  ytDlpForm: unknown
-}
+  activeProjectId: string | null;
+  audioAnalysisCapabilities: unknown;
+  audioAnalysisCatalog: unknown;
+  audioAnalysisPresets: unknown;
+  audioAnalysisProviders: unknown;
+  editCapabilities: unknown;
+  editPresets: unknown;
+  hydrated: boolean;
+  hydrating: Promise<void> | null;
+  jobs: Record<string, unknown>;
+  packageToolsDir: string | null;
+  paths: LaboratoryRecord | null;
+  profileCapabilities: unknown;
+  profileModelState: LaboratoryProfileModelState;
+  profileModels: unknown;
+  profilePresets: unknown;
+  projectSchema: unknown;
+  projects: LaboratoryRecord[];
+  roomToolsProgressHandler: unknown;
+  roomToolsSubscribed: boolean;
+  sourcePresets: unknown;
+  subtitleAnalysisCapabilities: unknown;
+  subtitleAnalysisCatalog: unknown;
+  subtitleAnalysisProviders: unknown;
+  subtitleEditPresets: unknown;
+  subtitleSourcePresets: unknown;
+  subtitleYoutubeForm: unknown;
+  toolState: LaboratoryToolState;
+  toolchainManifest: LaboratoryRecord | null;
+  ytDlpForm: unknown;
+};
 
 type LaboratoryContext = {
-  featureId: string
-  locale: string
+  featureId: string;
+  locale: string;
   presentation: {
-    mode: "classic" | "scene-view"
-    uiScale: number
-  }
+    mode: "classic" | "scene-view";
+    uiScale: number;
+  };
   room: {
-    id: string
-    name: string
-  }
-  roomId: string
-  slots: LaboratoryRecord
-  translations: LaboratoryRecord
+    id: string;
+    name: string;
+  };
+  roomId: string;
+  slots: LaboratoryRecord;
+  translations: LaboratoryRecord;
   user: {
-    nickname: string
-  }
-}
+    nickname: string;
+  };
+};
 
 type LaboratoryRuntimeBootstrapDeps = {
-  defaultFeatureId: string
-  normalizeLocale: (value: string) => string
-  roomId: string
-  toRecord: (value: unknown) => LaboratoryRecord
-}
+  defaultFeatureId: string;
+  normalizeLocale: (value: string) => string;
+  roomId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
 
 export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstrapDeps) {
-  const { defaultFeatureId, normalizeLocale, roomId, toRecord } = deps
+  const { defaultFeatureId, normalizeLocale, roomId, toRecord } = deps;
 
   function toContextRecord(value: unknown): LaboratoryContextRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toRoomRecord(value: unknown): LaboratoryContextRoomRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toUserRecord(value: unknown): LaboratoryContextUserRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toPresentationRecord(value: unknown): LaboratoryContextPresentationRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toActiveFeatureRecord(value: unknown): LaboratoryActiveFeatureRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toToolManifestRecord(value: unknown): LaboratoryToolManifestRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function asNonEmptyString(value: unknown): string | null {
-    return typeof value === "string" && value.trim() !== "" ? value.trim() : null
+    return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
   }
 
   function normalizeUiScale(value: unknown): number {
@@ -182,21 +182,21 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
         ? value
         : typeof value === "string"
           ? Number.parseInt(value, 10)
-          : Number.NaN
+          : Number.NaN;
     if (!Number.isFinite(numeric) || numeric <= 0) {
-      return 100
+      return 100;
     }
-    return Math.max(70, Math.min(130, Math.round(numeric)))
+    return Math.max(70, Math.min(130, Math.round(numeric)));
   }
 
   function sanitizeContext(payload: unknown, api: LaboratoryRoomApi): LaboratoryContext {
-    const source = toContextRecord(payload)
-    const room = toRoomRecord(source.room)
-    const user = toUserRecord(source.user)
-    const presentation = toPresentationRecord(source.presentation)
-    const translations = toRecord(source.translations)
-    const slots = toRecord(source.slots)
-    const activeFeature = toActiveFeatureRecord(source.activeFeature)
+    const source = toContextRecord(payload);
+    const room = toRoomRecord(source.room);
+    const user = toUserRecord(source.user);
+    const presentation = toPresentationRecord(source.presentation);
+    const translations = toRecord(source.translations);
+    const slots = toRecord(source.slots);
+    const activeFeature = toActiveFeatureRecord(source.activeFeature);
 
     return {
       room: {
@@ -219,22 +219,22 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
         asNonEmptyString(source.featureId) ||
         asNonEmptyString(source.feature) ||
         defaultFeatureId,
-    }
+    };
   }
 
   function loadContext(api: LaboratoryRoomApi): LaboratoryContext {
-    return sanitizeContext(api.getState("context"), api)
+    return sanitizeContext(api.getState("context"), api);
   }
 
   function saveContext(api: LaboratoryRoomApi, payload: unknown): LaboratoryContext {
-    const nextContext = sanitizeContext(payload, api)
-    api.setState("context", nextContext)
-    return nextContext
+    const nextContext = sanitizeContext(payload, api);
+    api.setState("context", nextContext);
+    return nextContext;
   }
 
   function getFeatureIdFromContext(context: unknown): string {
-    const featureId = asNonEmptyString(toContextRecord(context).featureId)
-    return featureId || defaultFeatureId
+    const featureId = asNonEmptyString(toContextRecord(context).featureId);
+    return featureId || defaultFeatureId;
   }
 
   function createDefaultToolEntry(toolId: string): LaboratoryToolEntry {
@@ -255,24 +255,24 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
       busy: false,
       lastCheckedAt: null,
       lastError: null,
-    }
+    };
   }
 
   function createDefaultToolState(toolIds: unknown): LaboratoryToolState {
-    const ids = Array.isArray(toolIds) ? toolIds : []
-    const tools: Record<string, LaboratoryToolEntry> = {}
+    const ids = Array.isArray(toolIds) ? toolIds : [];
+    const tools: Record<string, LaboratoryToolEntry> = {};
     ids.forEach(function (toolId) {
-      const id = asNonEmptyString(toolId)
+      const id = asNonEmptyString(toolId);
       if (id !== null) {
-        tools[id] = createDefaultToolEntry(id)
+        tools[id] = createDefaultToolEntry(id);
       }
-    })
+    });
 
     return {
       schemaVersion: 1,
       updatedAt: null,
       tools,
-    }
+    };
   }
 
   function createDefaultProfileModelEntry(modelId: string): LaboratoryProfileModelEntry {
@@ -289,34 +289,34 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
       busy: false,
       lastVerifiedAt: null,
       lastError: null,
-    }
+    };
   }
 
   function getToolManifestMap(
     runtime: Pick<LaboratoryRuntimeState, "toolchainManifest">
   ): Record<string, LaboratoryToolManifestRecord> {
-    const tools = toRecord(toRecord(runtime.toolchainManifest)["tools"])
+    const tools = toRecord(toRecord(runtime.toolchainManifest)["tools"]);
     return Object.fromEntries(
       Object.entries(tools).map(function ([toolId, manifest]) {
-        return [toolId, toToolManifestRecord(manifest)]
+        return [toolId, toToolManifestRecord(manifest)];
       })
-    )
+    );
   }
 
   function getRuntimeToolIds(runtime: Pick<LaboratoryRuntimeState, "toolchainManifest">): string[] {
-    return Object.keys(getToolManifestMap(runtime))
+    return Object.keys(getToolManifestMap(runtime));
   }
 
   function getToolManifest(
     runtime: Pick<LaboratoryRuntimeState, "toolchainManifest">,
     toolId: string
   ): LaboratoryToolManifestRecord {
-    return toToolManifestRecord(getToolManifestMap(runtime)[toolId])
+    return toToolManifestRecord(getToolManifestMap(runtime)[toolId]);
   }
 
   function getStageSupport(toolManifest: unknown, stageId: string): string {
-    const stageSupport = toRecord(toToolManifestRecord(toolManifest).stageSupport)
-    return asNonEmptyString(stageSupport[stageId]) || "unsupported"
+    const stageSupport = toRecord(toToolManifestRecord(toolManifest).stageSupport);
+    return asNonEmptyString(stageSupport[stageId]) || "unsupported";
   }
 
   function createRuntimeState(): LaboratoryRuntimeState {
@@ -355,7 +355,7 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
       jobs: {},
       roomToolsSubscribed: false,
       roomToolsProgressHandler: null,
-    }
+    };
   }
 
   return {
@@ -370,5 +370,5 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
     loadContext,
     sanitizeContext,
     saveContext,
-  }
+  };
 }

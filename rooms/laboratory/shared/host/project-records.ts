@@ -201,7 +201,9 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
     const youtubePreset = asNonEmptyString(drafts.youtubePreset) || defaultPreset;
     const currentTimestamp = new Date().toISOString();
     const schemaVersion =
-      typeof rawProject.schemaVersion === "number" ? rawProject.schemaVersion : projectSchemaVersion;
+      typeof rawProject.schemaVersion === "number"
+        ? rawProject.schemaVersion
+        : projectSchemaVersion;
 
     return {
       schemaVersion: schemaVersion,
@@ -248,10 +250,7 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
         kind
       ),
       audioAnalysis: normalizeAudioAnalysisState(rawProject.audioAnalysis, runtime || {}),
-      subtitleAnalysis: normalizeSubtitleAnalysisState(
-        rawProject.subtitleAnalysis,
-        runtime || {}
-      ),
+      subtitleAnalysis: normalizeSubtitleAnalysisState(rawProject.subtitleAnalysis, runtime || {}),
       process: normalizeProcessState(rawProject.process),
       report: normalizeReportState(rawProject.report),
     };

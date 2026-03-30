@@ -109,9 +109,7 @@ type LaboratoryAudioProjectionCatalogRuntime = {
     runtime: LaboratoryAudioAnalysisRuntime,
     project: LaboratoryProjectRecord
   ) => Record<string, LaboratoryAudioProviderStateEntryRecord>;
-  resolveAudioFeatureTarget: (
-    project: LaboratoryProjectRecord
-  ) => LaboratoryAudioTargetRecord;
+  resolveAudioFeatureTarget: (project: LaboratoryProjectRecord) => LaboratoryAudioTargetRecord;
 };
 
 type LaboratoryAudioProjectionResultsRuntime = {
@@ -147,25 +145,13 @@ type AudioAnalysisProjectionDeps = {
     project: LaboratoryProjectRecord
   ) => LaboratoryRecord[];
   buildSourceTargetSignature: (project: LaboratoryProjectRecord) => string | null;
-  findEditOutputById: (
-    project: LaboratoryProjectRecord,
-    outputId: string | null
-  ) => unknown | null;
+  findEditOutputById: (project: LaboratoryProjectRecord, outputId: string | null) => unknown | null;
   getAudioAnalysisModulesForRuntime: (
     runtime: LaboratoryAudioAnalysisRuntime
   ) => LaboratoryAudioCatalogModuleRecord[];
-  getFeatureProcessRecord: (
-    project: LaboratoryProjectRecord,
-    featureId: string
-  ) => unknown;
-  getFeatureReportRecord: (
-    project: LaboratoryProjectRecord,
-    featureId: string
-  ) => unknown;
-  getPreferredFeatureSourceKind: (
-    featureId: string,
-    sourcePresets: unknown
-  ) => string;
+  getFeatureProcessRecord: (project: LaboratoryProjectRecord, featureId: string) => unknown;
+  getFeatureReportRecord: (project: LaboratoryProjectRecord, featureId: string) => unknown;
+  getPreferredFeatureSourceKind: (featureId: string, sourcePresets: unknown) => string;
   normalizeAudioAnalysisCapabilityEntry: (
     rawValue: unknown,
     moduleId: string,
@@ -269,22 +255,21 @@ export function createAudioAnalysisProjectionRuntime(deps: AudioAnalysisProjecti
     return getAudioAnalysisModulesForRuntime(runtime).map(toCatalogModuleRecord);
   }
 
-  const audioAnalysisProjectionCatalogRuntime =
-    createAudioAnalysisProjectionCatalogRuntime({
-      asNonEmptyString,
-      buildDerivedTargetSignature,
-      buildProcessSpeechAvailability,
-      buildProfileModelSummary,
-      buildSourceTargetSignature,
-      findEditOutputById,
-      getAudioAnalysisModulesForRuntime,
-      normalizeAudioAnalysisCapabilityEntry,
-      normalizeAudioAnalysisProviderStateEntry,
-      normalizeEditOutput,
-      normalizeSourceMetadata,
-      normalizeStringArray,
-      toRecord,
-    }) as LaboratoryAudioProjectionCatalogRuntime;
+  const audioAnalysisProjectionCatalogRuntime = createAudioAnalysisProjectionCatalogRuntime({
+    asNonEmptyString,
+    buildDerivedTargetSignature,
+    buildProcessSpeechAvailability,
+    buildProfileModelSummary,
+    buildSourceTargetSignature,
+    findEditOutputById,
+    getAudioAnalysisModulesForRuntime,
+    normalizeAudioAnalysisCapabilityEntry,
+    normalizeAudioAnalysisProviderStateEntry,
+    normalizeEditOutput,
+    normalizeSourceMetadata,
+    normalizeStringArray,
+    toRecord,
+  }) as LaboratoryAudioProjectionCatalogRuntime;
   const {
     buildAudioAnalysisCapabilityState,
     buildAudioAnalysisCatalogProjection,
@@ -468,11 +453,13 @@ export function createAudioAnalysisProjectionRuntime(deps: AudioAnalysisProjecti
             asNonEmptyString(entry["summaryKey"]) || asNonEmptyString(existingResult["summaryKey"]),
           timing: {
             completedAt: asNonEmptyString(toProcessModuleRecord(processModule).completedAt),
-            sampleWindowSeconds:
-              asNumber(toRecord(processRecord.targetSummary)["sampleWindowSeconds"]),
+            sampleWindowSeconds: asNumber(
+              toRecord(processRecord.targetSummary)["sampleWindowSeconds"]
+            ),
             startedAt: asNonEmptyString(toProcessModuleRecord(processModule).startedAt),
           },
-          titleKey: asNonEmptyString(entry["titleKey"]) || asNonEmptyString(existingResult["titleKey"]),
+          titleKey:
+            asNonEmptyString(entry["titleKey"]) || asNonEmptyString(existingResult["titleKey"]),
           toolIds:
             normalizeStringArray(entry.toolIds).length > 0
               ? normalizeStringArray(entry.toolIds)

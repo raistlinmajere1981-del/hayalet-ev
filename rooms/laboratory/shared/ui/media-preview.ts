@@ -89,9 +89,9 @@ export function createLaboratoryMediaPreviewUi(deps: LaboratoryMediaPreviewDeps)
   }
 
   function toJobRecord(value: unknown): LaboratoryJobRecord {
-    return (value && typeof value === "object" && Array.isArray(value) === false
-      ? value
-      : {}) as LaboratoryJobRecord;
+    return (
+      value && typeof value === "object" && Array.isArray(value) === false ? value : {}
+    ) as LaboratoryJobRecord;
   }
 
   function toJobList(value: unknown): LaboratoryJobRecord[] {

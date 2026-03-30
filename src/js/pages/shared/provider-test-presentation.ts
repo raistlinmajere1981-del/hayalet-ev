@@ -73,6 +73,9 @@ const SCENARIO_TITLE_KEYS: Record<string, string> = {
 
 const SCENARIO_COMMAND_KEYS: Record<string, string> = {
   "reset-default-page": "scenario.commands.resetDefaultPage",
+  "sidebar-open": "scenario.commands.sidebarOpen",
+  "session-list": "scenario.commands.sessionList",
+  "sidebar-close": "scenario.commands.sidebarClose",
   "prepare-input": "scenario.commands.prepareInput",
   "disabled-send": "scenario.commands.disabledSend",
   "drag-drop-surface": "scenario.commands.dragDropSurface",
@@ -81,6 +84,7 @@ const SCENARIO_COMMAND_KEYS: Record<string, string> = {
   "attach-file": "scenario.commands.attachFile",
   "send-thinking": "scenario.commands.sendThinking",
   "final-bubbles": "scenario.commands.finalBubbles",
+  "generated-image": "scenario.commands.generatedImage",
   "scroll-behavior": "scenario.commands.scrollBehavior",
   "provider-capabilities": "scenario.commands.providerCapabilities",
   "open-sidebar": "scenario.commands.openSidebar",
@@ -164,6 +168,7 @@ export function buildScenarioProgressSummary(input: {
   providerName: string;
   scenarioTitle?: string;
   commands: Array<Pick<ProviderScenarioCommandReport, "id" | "name" | "status">>;
+  totalSteps?: number;
 }): ScenarioProgressSummary {
   const completedSteps = input.commands.filter((command) => command.status !== "running").length;
   const activeStep = input.commands.find((command) => command.status === "running") ?? null;
@@ -177,7 +182,7 @@ export function buildScenarioProgressSummary(input: {
           : providerTestT("scenario.defaultTitle"),
     }),
     completedSteps,
-    totalSteps: input.commands.length,
+    totalSteps: input.totalSteps ?? input.commands.length,
     activeStepId: activeStep?.id ?? null,
     hasFailures: input.commands.some((command) => command.status === "fail"),
   };

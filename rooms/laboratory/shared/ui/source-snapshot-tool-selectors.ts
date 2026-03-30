@@ -20,9 +20,7 @@ export function createLaboratorySnapshotToolSelectors(deps: LaboratorySnapshotTo
     return toRecord(tools[toolId]);
   };
 
-  const getStageToolIds: (stageId: string) => string[] = function getStageToolIds(
-    stageId: string
-  ) {
+  const getStageToolIds: (stageId: string) => string[] = function getStageToolIds(stageId: string) {
     return getToolRegistry()
       .filter(function (entry: unknown) {
         const toolEntry = toRecord(entry);

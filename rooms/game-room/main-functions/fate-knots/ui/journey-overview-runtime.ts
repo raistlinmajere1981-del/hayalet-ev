@@ -23,13 +23,15 @@
   const registry = getFactoryRegistry(global);
 
   registry.createFateKnotsUiJourneyOverviewRuntime =
-    function createFateKnotsUiJourneyOverviewRuntime(
-      deps: FateKnotsUiJourneyOverviewRuntimeDeps
-    ): { renderOverviewStage(parent: HTMLElement, state: GameRoomFateKnotsState): void } {
+    function createFateKnotsUiJourneyOverviewRuntime(deps: FateKnotsUiJourneyOverviewRuntimeDeps): {
+      renderOverviewStage(parent: HTMLElement, state: GameRoomFateKnotsState): void;
+    } {
       function appendClassName(element: HTMLElement, className: string): void {
-        const classListRef = (element as {
-          classList?: { add?(token: string): void };
-        }).classList;
+        const classListRef = (
+          element as {
+            classList?: { add?(token: string): void };
+          }
+        ).classList;
         if (typeof classListRef?.add === "function") {
           classListRef.add(className);
           return;
@@ -193,7 +195,11 @@
             overlaySize: "100% 100%",
           });
           marker.append(
-            deps.createElement("span", "fk-map-shell__marker-label", node.label || node.id || "Node")
+            deps.createElement(
+              "span",
+              "fk-map-shell__marker-label",
+              node.label || node.id || "Node"
+            )
           );
           figure.append(marker);
         });

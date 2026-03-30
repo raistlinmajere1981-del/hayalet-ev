@@ -54,9 +54,7 @@ type MediaAnalysisUiRuntimeHelpersDeps = {
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createMediaAnalysisUiRuntimeHelpers(
-  deps: MediaAnalysisUiRuntimeHelpersDeps
-) {
+export function createMediaAnalysisUiRuntimeHelpers(deps: MediaAnalysisUiRuntimeHelpersDeps) {
   const state = deps.state;
   const text = deps.text;
   const featureText = deps.featureText;

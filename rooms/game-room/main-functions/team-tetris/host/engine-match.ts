@@ -143,7 +143,10 @@ function normalizeRole(value: unknown, fallback: TeamTetrisRole): TeamTetrisRole
   return isTeamTetrisRole(value) ? value : fallback;
 }
 
-function normalizePieceId(value: unknown, fallback: PieceId = DEFAULT_TEAM_TETRIS_PIECE_ID): PieceId {
+function normalizePieceId(
+  value: unknown,
+  fallback: PieceId = DEFAULT_TEAM_TETRIS_PIECE_ID
+): PieceId {
   return isTeamTetrisPieceId(value) ? value : fallback;
 }
 
@@ -271,8 +274,14 @@ function cloneTeamTetrisSeatMap(
     const entry = seatMap[seatId];
     if (isRecord(entry)) {
       next[seatId] = {
-        teamId: normalizeTeamId(entry["teamId"], seatId === "ai2" || seatId === "us1" ? "team-b" : "team-a"),
-        role: normalizeRole(entry["role"], seatId === "user" || seatId === "ai2" ? "opener" : "followup"),
+        teamId: normalizeTeamId(
+          entry["teamId"],
+          seatId === "ai2" || seatId === "us1" ? "team-b" : "team-a"
+        ),
+        role: normalizeRole(
+          entry["role"],
+          seatId === "user" || seatId === "ai2" ? "opener" : "followup"
+        ),
       };
     }
   });
@@ -285,8 +294,16 @@ function cloneTeamTetrisMatch(match: unknown): TeamTetrisMatch | null {
   }
 
   const seed = normalizeText(match["seed"]) || `seed_${Date.now().toString(36)}`;
-  const teamA = cloneTeamTetrisTeamState(match["teams"] && isRecord(match["teams"]) ? match["teams"]["team-a"] : null, "team-a", seed);
-  const teamB = cloneTeamTetrisTeamState(match["teams"] && isRecord(match["teams"]) ? match["teams"]["team-b"] : null, "team-b", seed);
+  const teamA = cloneTeamTetrisTeamState(
+    match["teams"] && isRecord(match["teams"]) ? match["teams"]["team-a"] : null,
+    "team-a",
+    seed
+  );
+  const teamB = cloneTeamTetrisTeamState(
+    match["teams"] && isRecord(match["teams"]) ? match["teams"]["team-b"] : null,
+    "team-b",
+    seed
+  );
   const fallbackSeatMap = buildTeamTetrisSeatMap(teamA.seatIds, teamB.seatIds);
   const clonedSeatMap = cloneTeamTetrisSeatMap(match["seatMap"]);
   const turnLoopSource = Array.isArray(match["turnLoop"])
@@ -351,7 +368,9 @@ function buildTeamTetrisTurnToken(
 
 function shuffleTeamTetrisBag(seed: string, cursor: number): PieceId[] {
   const rng = createDeterministicRng([seed, cursor].join("|"));
-  const bag: PieceId[] = TEAM_TETRIS_PIECE_IDS.filter(function (pieceId: string): pieceId is PieceId {
+  const bag: PieceId[] = TEAM_TETRIS_PIECE_IDS.filter(function (
+    pieceId: string
+  ): pieceId is PieceId {
     return isTeamTetrisPieceId(pieceId);
   });
   for (let index = bag.length - 1; index > 0; index -= 1) {
@@ -449,7 +468,10 @@ function buildTeamTetrisTurn(match: TeamTetrisMatch, turnIndex: number): TeamTet
   }
 
   const teamAFallbackSeat = match.teams["team-a"].openerSeatId;
-  const seatId = normalizeSeatId(match.turnLoop[turnIndex % match.turnLoop.length], teamAFallbackSeat);
+  const seatId = normalizeSeatId(
+    match.turnLoop[turnIndex % match.turnLoop.length],
+    teamAFallbackSeat
+  );
   const seatInfo = match.seatMap[seatId] || null;
   if (!seatInfo) {
     return null;

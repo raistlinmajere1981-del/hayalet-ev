@@ -49,9 +49,7 @@ type LaboratorySnapshotAudioSelectorsDeps = {
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createLaboratorySnapshotAudioSelectors(
-  deps: LaboratorySnapshotAudioSelectorsDeps
-) {
+export function createLaboratorySnapshotAudioSelectors(deps: LaboratorySnapshotAudioSelectorsDeps) {
   const { getProjectAudioAnalysis, getSourceSnapshot, toRecord } = deps;
 
   function toAudioCatalogRecord(value: unknown): LaboratoryAudioAnalysisCatalogRecord {

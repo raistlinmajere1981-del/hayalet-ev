@@ -10,9 +10,15 @@ type LaboratoryRuntimeRecord = LaboratoryRecord & {
   packageToolsDir?: unknown;
   paths?: unknown;
 };
-type LaboratoryAudioAnalysisMusicScriptRuntime = Parameters<typeof getAudioAnalysisMusicScriptPath>[0];
-type LaboratoryAudioAnalysisProcessRootRuntime = Parameters<typeof getAudioAnalysisProcessRootDir>[0];
-type LaboratoryAudioAnalysisProcessRootProject = Parameters<typeof getAudioAnalysisProcessRootDir>[1];
+type LaboratoryAudioAnalysisMusicScriptRuntime = Parameters<
+  typeof getAudioAnalysisMusicScriptPath
+>[0];
+type LaboratoryAudioAnalysisProcessRootRuntime = Parameters<
+  typeof getAudioAnalysisProcessRootDir
+>[0];
+type LaboratoryAudioAnalysisProcessRootProject = Parameters<
+  typeof getAudioAnalysisProcessRootDir
+>[1];
 
 type LaboratoryProjectRecord = LaboratoryRecord & {
   slug?: unknown;
@@ -178,7 +184,10 @@ export function createAudioAnalysisMusicRhythmModelRunner(
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getAudioAnalysisProcessRootDir(asProcessRootRuntime(runtime), asProcessRootProject(project)),
+      cwd: getAudioAnalysisProcessRootDir(
+        asProcessRootRuntime(runtime),
+        asProcessRootProject(project)
+      ),
       args: ["-y", "-i", targetPath, "-vn", "-ac", "1", "-ar", "22050", preparedInputPath],
       timeoutMs: 4 * 60 * 1000,
     });
@@ -189,7 +198,10 @@ export function createAudioAnalysisMusicRhythmModelRunner(
       toolId: "librosa",
       cwd:
         getAudioAnalysisMusicDir(asMusicScriptRuntime(runtime)) ||
-        getAudioAnalysisProcessRootDir(asProcessRootRuntime(runtime), asProcessRootProject(project)),
+        getAudioAnalysisProcessRootDir(
+          asProcessRootRuntime(runtime),
+          asProcessRootProject(project)
+        ),
       args: [musicScriptPath, "--input", preparedInputPath, "--output", summaryPath],
       timeoutMs: 10 * 60 * 1000,
     });

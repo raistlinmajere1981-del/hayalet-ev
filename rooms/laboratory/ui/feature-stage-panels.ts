@@ -89,9 +89,7 @@ type LaboratoryFeatureStagePanelsDeps = {
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createLaboratoryFeatureStagePanelsRuntime(
-  deps: LaboratoryFeatureStagePanelsDeps
-) {
+export function createLaboratoryFeatureStagePanelsRuntime(deps: LaboratoryFeatureStagePanelsDeps) {
   const {
     createAudioAnalysisUi,
     createLaboratoryAudioAnalysisRuntime,
@@ -306,7 +304,9 @@ export function createLaboratoryFeatureStagePanelsRuntime(
     getSubtitleOutputs,
   };
   const subtitleAnalysisUiRuntime = createSubtitleAnalysisUiRuntime(
-    subtitleAnalysisUiRuntimeDeps as unknown as Parameters<typeof createSubtitleAnalysisUiRuntime>[0]
+    subtitleAnalysisUiRuntimeDeps as unknown as Parameters<
+      typeof createSubtitleAnalysisUiRuntime
+    >[0]
   );
 
   const audioAnalysisUi = createAudioAnalysisUi({

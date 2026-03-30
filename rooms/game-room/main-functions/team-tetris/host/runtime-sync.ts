@@ -99,7 +99,10 @@ function buildEmptyTeamTetrisRows(): string[] {
   });
 }
 
-function resolveTeamTetrisStatusText(state: TeamTetrisHostState, context: TeamTetrisContext): string {
+function resolveTeamTetrisStatusText(
+  state: TeamTetrisHostState,
+  context: TeamTetrisContext
+): string {
   if (state.blockedReason) {
     return state.blockedReason;
   }

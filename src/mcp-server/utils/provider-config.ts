@@ -8,6 +8,7 @@ export interface ProviderSelectors {
   sendButton?: string;
   stopButton?: string;
   voiceButton?: string;
+  generatedImage?: string;
   inputField?: string;
   messageContainer?: string;
   attachButton?: string;

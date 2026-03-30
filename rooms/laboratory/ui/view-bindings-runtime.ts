@@ -46,9 +46,7 @@ type LaboratoryViewBindingsRuntimeDeps = {
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createLaboratoryViewBindingsRuntime(
-  deps: LaboratoryViewBindingsRuntimeDeps
-) {
+export function createLaboratoryViewBindingsRuntime(deps: LaboratoryViewBindingsRuntimeDeps) {
   const laboratorySnapshotAccessRuntime = deps.laboratorySnapshotAccessRuntime;
   const laboratoryProfileProcessReportAccessorsRuntime =
     deps.laboratoryProfileProcessReportAccessorsRuntime;

@@ -1,92 +1,91 @@
-(
-  function (global: GameRoomUiGlobal) {
-    type UnknownRecord = GameRoomUnknownRecord;
-    type FateKnotsAssetInfoInput = Partial<GameRoomFateKnotsAssetInfo>;
-    type FateKnotsAssetLinkInput = Partial<GameRoomFateKnotsAssetLink> & {
-      asset?: FateKnotsAssetInfoInput | null;
-    };
-    type FateKnotsCatalogEntryInput = Partial<GameRoomFateKnotsCatalogEntry> & {
-      asset?: unknown;
-    };
-    type FateKnotsChoiceInput = Partial<GameRoomFateKnotsChoice>;
-    type FateKnotsExcludedSeatInput = Partial<GameRoomFateKnotsExcludedSeatRecord>;
-    type FateKnotsMapNodeInput = Partial<GameRoomFateKnotsMapNode> & {
-      marker?: Partial<GameRoomFateKnotsMapMarker> | null;
-    };
-    type FateKnotsHistoryEntryInput = Partial<GameRoomFateKnotsHistoryEntry>;
-    type FateKnotsSelectionInput = Partial<GameRoomFateKnotsSelection> & {
-      avatar?: unknown;
-      class?: unknown;
-      background?: unknown;
-    };
-    type FateKnotsParticipantInput = Partial<GameRoomFateKnotsParticipant> & {
-      selection?: unknown;
-    };
-    type FateKnotsCurrentStepInput = Partial<GameRoomFateKnotsCurrentStep>;
-    type FateKnotsDecisionInput = Partial<GameRoomFateKnotsDecision>;
-    type FateKnotsCombatPartyMemberInput = Partial<GameRoomFateKnotsCombatPartyMember> & {
-      selection?: unknown;
-    };
-    type FateKnotsCombatEnemyInput = Partial<GameRoomFateKnotsCombatEnemy> & {
-      asset?: unknown;
-    };
-    type FateKnotsCombatInput = Partial<GameRoomFateKnotsCombatState> & {
-      turn?: unknown;
-      enemy?: unknown;
-      party?: unknown[];
-      availableActions?: unknown[];
-    };
-    type FateKnotsUiAssetsInput = Partial<GameRoomFateKnotsUiAssets> & {
-      byId?: UnknownRecord | null;
-      featureView?: unknown;
-    };
-    type FateKnotsMapInput = Partial<GameRoomFateKnotsMapState> & {
-      mapAsset?: unknown;
-      nodes?: unknown[];
-    };
-    type FateKnotsCatalogsInput = Partial<GameRoomFateKnotsCatalogs> & {
-      avatars?: unknown[];
-      classes?: unknown[];
-      backgrounds?: unknown[];
-    };
-    type FateKnotsStateInput = Partial<GameRoomFateKnotsState> & {
-      compatibility?: unknown;
-      waiting?: unknown;
-      map?: unknown;
-      result?: unknown;
-      dmNarration?: unknown;
-      npcBanter?: unknown;
-      profile?: unknown;
-      transport?: unknown;
-      catalogs?: unknown;
-      currentStep?: unknown;
-      decision?: unknown;
-      combat?: unknown;
-      uiAssets?: unknown;
-    };
+(function (global: GameRoomUiGlobal) {
+  type UnknownRecord = GameRoomUnknownRecord;
+  type FateKnotsAssetInfoInput = Partial<GameRoomFateKnotsAssetInfo>;
+  type FateKnotsAssetLinkInput = Partial<GameRoomFateKnotsAssetLink> & {
+    asset?: FateKnotsAssetInfoInput | null;
+  };
+  type FateKnotsCatalogEntryInput = Partial<GameRoomFateKnotsCatalogEntry> & {
+    asset?: unknown;
+  };
+  type FateKnotsChoiceInput = Partial<GameRoomFateKnotsChoice>;
+  type FateKnotsExcludedSeatInput = Partial<GameRoomFateKnotsExcludedSeatRecord>;
+  type FateKnotsMapNodeInput = Partial<GameRoomFateKnotsMapNode> & {
+    marker?: Partial<GameRoomFateKnotsMapMarker> | null;
+  };
+  type FateKnotsHistoryEntryInput = Partial<GameRoomFateKnotsHistoryEntry>;
+  type FateKnotsSelectionInput = Partial<GameRoomFateKnotsSelection> & {
+    avatar?: unknown;
+    class?: unknown;
+    background?: unknown;
+  };
+  type FateKnotsParticipantInput = Partial<GameRoomFateKnotsParticipant> & {
+    selection?: unknown;
+  };
+  type FateKnotsCurrentStepInput = Partial<GameRoomFateKnotsCurrentStep>;
+  type FateKnotsDecisionInput = Partial<GameRoomFateKnotsDecision>;
+  type FateKnotsCombatPartyMemberInput = Partial<GameRoomFateKnotsCombatPartyMember> & {
+    selection?: unknown;
+  };
+  type FateKnotsCombatEnemyInput = Partial<GameRoomFateKnotsCombatEnemy> & {
+    asset?: unknown;
+  };
+  type FateKnotsCombatInput = Partial<GameRoomFateKnotsCombatState> & {
+    turn?: unknown;
+    enemy?: unknown;
+    party?: unknown[];
+    availableActions?: unknown[];
+  };
+  type FateKnotsUiAssetsInput = Partial<GameRoomFateKnotsUiAssets> & {
+    byId?: UnknownRecord | null;
+    featureView?: unknown;
+  };
+  type FateKnotsMapInput = Partial<GameRoomFateKnotsMapState> & {
+    mapAsset?: unknown;
+    nodes?: unknown[];
+  };
+  type FateKnotsCatalogsInput = Partial<GameRoomFateKnotsCatalogs> & {
+    avatars?: unknown[];
+    classes?: unknown[];
+    backgrounds?: unknown[];
+  };
+  type FateKnotsStateInput = Partial<GameRoomFateKnotsState> & {
+    compatibility?: unknown;
+    waiting?: unknown;
+    map?: unknown;
+    result?: unknown;
+    dmNarration?: unknown;
+    npcBanter?: unknown;
+    profile?: unknown;
+    transport?: unknown;
+    catalogs?: unknown;
+    currentStep?: unknown;
+    decision?: unknown;
+    combat?: unknown;
+    uiAssets?: unknown;
+  };
 
-    function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
-      return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
-    }
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
 
-    function readRecord(value: unknown): UnknownRecord | null {
-      return value && typeof value === "object" && Array.isArray(value) === false
-        ? (value as UnknownRecord)
-        : null;
-    }
+  function readRecord(value: unknown): UnknownRecord | null {
+    return value && typeof value === "object" && Array.isArray(value) === false
+      ? (value as UnknownRecord)
+      : null;
+  }
 
-    function readString(value: unknown): string | null {
-      return typeof value === "string" ? value : null;
-    }
+  function readString(value: unknown): string | null {
+    return typeof value === "string" ? value : null;
+  }
 
-    function readShape<T extends object>(value: unknown): Partial<T> | null {
-      return readRecord(value) as Partial<T> | null;
-    }
+  function readShape<T extends object>(value: unknown): Partial<T> | null {
+    return readRecord(value) as Partial<T> | null;
+  }
 
-    const registry = getFactoryRegistry(global);
+  const registry = getFactoryRegistry(global);
 
-    registry.createFateKnotsUiStateSanitizeRuntime =
-      function createFateKnotsUiStateSanitizeRuntime(): GameRoomFateKnotsUiStateSanitizeRuntime {
+  registry.createFateKnotsUiStateSanitizeRuntime =
+    function createFateKnotsUiStateSanitizeRuntime(): GameRoomFateKnotsUiStateSanitizeRuntime {
       const createFateKnotsUiStateDefaultsRuntime = registry.createFateKnotsUiStateDefaultsRuntime;
       if (typeof createFateKnotsUiStateDefaultsRuntime !== "function") {
         throw new Error("Fate Knots state defaults runtime is required.");
@@ -303,7 +302,11 @@
           Object.keys(votes).forEach(function (seatId) {
             const value = votes[seatId];
             sanitizedVotes[seatId] =
-              typeof value === "string" && value.trim() !== "" ? value : value == null ? null : undefined;
+              typeof value === "string" && value.trim() !== ""
+                ? value
+                : value == null
+                  ? null
+                  : undefined;
           });
         }
 
@@ -356,7 +359,9 @@
 
       function sanitizeCombatPartyMember(candidate: unknown): GameRoomFateKnotsCombatPartyMember {
         const source = readShape<FateKnotsCombatPartyMemberInput>(candidate) || {};
-        const fallbackParticipant = defaultsRuntime.createDefaultParticipant(readString(source.seatId));
+        const fallbackParticipant = defaultsRuntime.createDefaultParticipant(
+          readString(source.seatId)
+        );
         const hp = typeof source.hp === "number" ? source.hp : Number(source.hp);
         const maxHp = typeof source.maxHp === "number" ? source.maxHp : Number(source.maxHp);
         const energy = typeof source.energy === "number" ? source.energy : Number(source.energy);
@@ -400,9 +405,7 @@
           round: Number.isFinite(round) ? round : 1,
           turn: source.turn ? sanitizeCombatTurn(source.turn) : null,
           turnId: typeof source.turnId === "string" && source.turnId.trim() ? source.turnId : null,
-          party: Array.isArray(source.party)
-            ? source.party.map(sanitizeCombatPartyMember)
-            : [],
+          party: Array.isArray(source.party) ? source.party.map(sanitizeCombatPartyMember) : [],
           enemy: source.enemy
             ? sanitizeCombatEnemy(source.enemy)
             : { label: "", hp: 0, maxHp: 0, asset: defaultsRuntime.createDefaultAsset(null) },
@@ -627,5 +630,4 @@
         sanitizeFateKnotsState,
       };
     };
-  }
-)((typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal);
+})((typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal);

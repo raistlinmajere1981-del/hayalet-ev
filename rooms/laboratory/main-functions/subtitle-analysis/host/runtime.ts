@@ -9,7 +9,9 @@ type LaboratoryRecord = Record<string, unknown>;
 type SubtitleWorkspaceRuntimeDeps = Parameters<typeof createSubtitleWorkspaceRuntime>[0];
 type SubtitleEditWorkspaceRuntimeDeps = Parameters<typeof createSubtitleEditWorkspaceRuntime>[0];
 type SubtitleYoutubeSourceRuntimeDeps = Parameters<typeof createSubtitleYoutubeSourceRuntime>[0];
-type SubtitleProcessAnalysisRuntimeDeps = Parameters<typeof createSubtitleProcessAnalysisRuntime>[0];
+type SubtitleProcessAnalysisRuntimeDeps = Parameters<
+  typeof createSubtitleProcessAnalysisRuntime
+>[0];
 type SubtitleSourceIntakeRuntimeDeps = Parameters<typeof createSubtitleSourceIntakeRuntime>[0];
 type SubtitleActionRuntimeDeps = Parameters<typeof createSubtitleActionRuntime>[0];
 
@@ -32,17 +34,15 @@ type LaboratorySubtitleAnalysisHostRuntimeDeps = {
   getSubtitleEntries: (project: LaboratoryRecord) => LaboratoryRecord[];
   getSubtitleMimeType: (fileName: string) => string | null;
   isSubtitleFileName: SubtitleSourceIntakeRuntimeDeps["isSubtitleFileName"];
-  listDirectory: (dirPath: string) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;
+  listDirectory: (
+    dirPath: string
+  ) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;
   markFeatureProcessStale: (
     project: LaboratoryRecord,
     featureId: string,
     reason: string
   ) => unknown;
-  markFeatureReportStale: (
-    project: LaboratoryRecord,
-    featureId: string,
-    reason: string
-  ) => unknown;
+  markFeatureReportStale: (project: LaboratoryRecord, featureId: string, reason: string) => unknown;
   mergeObjects: (...args: unknown[]) => LaboratoryRecord;
   normalizeProcessModule: SubtitleProcessAnalysisRuntimeDeps["normalizeProcessModule"];
   normalizeStringArray: SubtitleYoutubeSourceRuntimeDeps["normalizeStringArray"];

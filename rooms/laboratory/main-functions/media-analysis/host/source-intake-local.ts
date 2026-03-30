@@ -50,10 +50,7 @@ type MediaLocalSourceIntakeRuntimeDeps = {
     runtime: LaboratoryMediaLocalRuntime,
     project: LaboratoryProjectRecord
   ) => string;
-  getSourceConfig: (
-    sourcePresets: unknown,
-    sourceKind: unknown
-  ) => LaboratorySourceConfigRecord;
+  getSourceConfig: (sourcePresets: unknown, sourceKind: unknown) => LaboratorySourceConfigRecord;
   normalizeMimeType: (fileName: unknown, kind: string) => string;
   patchActiveProject: (
     runtime: LaboratoryMediaLocalRuntime,
@@ -93,7 +90,9 @@ export function createMediaLocalSourceIntakeRuntime(deps: MediaLocalSourceIntake
     if (!Array.isArray(value)) {
       return [];
     }
-    return value.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
+    return value.filter(
+      (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+    );
   }
 
   function setProjectSource(

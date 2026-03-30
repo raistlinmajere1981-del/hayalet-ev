@@ -106,10 +106,7 @@ type LaboratoryProfilePreflightDeps = {
     artifactIds: string[]
   ) => unknown | null;
   clampNumber: (value: unknown, min: number, max: number, fallback: number) => number;
-  clampProfileTranscriptSampleSeconds: (
-    profileCapabilities: unknown,
-    value: unknown
-  ) => number;
+  clampProfileTranscriptSampleSeconds: (profileCapabilities: unknown, value: unknown) => number;
   clearJob: (runtime: LaboratoryMediaProfilePreflightRuntime, jobId: string) => void;
   clone: (value: unknown) => unknown;
   createEmptyProfilePreflight: () => LaboratoryRecord;
@@ -185,10 +182,7 @@ type LaboratoryProfilePreflightDeps = {
     updater: (project: LaboratoryProjectRecord) => LaboratoryProjectRecord
   ) => Promise<unknown>;
   pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
-  registerJob: (
-    runtime: LaboratoryMediaProfilePreflightRuntime,
-    payload: LaboratoryRecord
-  ) => void;
+  registerJob: (runtime: LaboratoryMediaProfilePreflightRuntime, payload: LaboratoryRecord) => void;
   runAudioStructureProbe: (
     runtime: LaboratoryMediaProfilePreflightRuntime,
     project: LaboratoryProjectRecord,
@@ -377,10 +371,7 @@ export function createMediaProfilePreflightRuntime(deps: LaboratoryProfilePrefli
     const frameDensityConfig = toFrameDensityConfigRecord(
       getProfileFrameDensityRuntimeConfig(runtime, projectedProfile.frameSampleDensity)
     );
-    const frameTileCount = Math.max(
-      2,
-      Math.round(asNumber(frameDensityConfig.tileCount) || 4)
-    );
+    const frameTileCount = Math.max(2, Math.round(asNumber(frameDensityConfig.tileCount) || 4));
     const transcriptSampleSeconds = clampProfileTranscriptSampleSeconds(
       runtime.profileCapabilities,
       projectedProfile.transcriptSampleSeconds

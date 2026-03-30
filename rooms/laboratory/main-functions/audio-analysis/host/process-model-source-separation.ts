@@ -188,8 +188,7 @@ export function createAudioAnalysisSourceSeparationModelRunner(
       .map(toDirectoryEntryRecord)
       .filter(function (entry) {
         return (
-          entry.isDirectory !== true &&
-          /\.(wav|mp3|flac|ogg|m4a)$/i.test(String(entry.name ?? ""))
+          entry.isDirectory !== true && /\.(wav|mp3|flac|ogg|m4a)$/i.test(String(entry.name ?? ""))
         );
       })
       .map<LaboratorySourceSeparationStem>(function (entry) {

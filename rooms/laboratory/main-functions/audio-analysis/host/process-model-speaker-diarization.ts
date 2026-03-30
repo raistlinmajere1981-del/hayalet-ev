@@ -153,7 +153,9 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(
       return {
         findings: [],
         artifacts: [],
-        warnings: ["Speaker diarization requires an audio target path before processing can start."],
+        warnings: [
+          "Speaker diarization requires an audio target path before processing can start.",
+        ],
         status: "blocked",
         summary: "Speaker diarization is waiting for a prepared audio target.",
       };

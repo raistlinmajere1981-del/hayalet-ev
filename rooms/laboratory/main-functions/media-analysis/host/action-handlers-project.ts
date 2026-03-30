@@ -18,7 +18,10 @@ type ProjectDeps = {
     requestId: string,
     featureId: string | null
   ) => Promise<unknown>;
-  ensureProjectExists: (runtime: MediaProjectRuntimeRecord, featureId: string | null) => Promise<unknown>;
+  ensureProjectExists: (
+    runtime: MediaProjectRuntimeRecord,
+    featureId: string | null
+  ) => Promise<unknown>;
   exportFeatureReport: (
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,

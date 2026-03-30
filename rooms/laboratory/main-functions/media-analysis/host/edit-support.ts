@@ -61,7 +61,12 @@ type MediaEditSupportRuntimeRecord = MediaEditSupportRecord & {
 type MediaEditSupportDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   asNumber: (value: unknown) => number | null;
-  clampNumber: (value: unknown, minValue: number, maxValue: number, fallback: number | null) => number | null;
+  clampNumber: (
+    value: unknown,
+    minValue: number,
+    maxValue: number,
+    fallback: number | null
+  ) => number | null;
   createDefaultEditState: (editPresets: unknown, sourceKind: string) => MediaEditSupportRecord;
   getFocusRegionCrop: (editPresets: unknown, regionId: string) => MediaEditSupportRecord;
   getProjectEditOutputDir: (runtime: unknown, project: unknown) => string;
@@ -133,7 +138,7 @@ export function createMediaEditSupportRuntime(deps: MediaEditSupportDeps) {
   }
 
   function getEditRecipeSignature(project: MediaEditSupportProjectRecord) {
-      return JSON.stringify({
+    return JSON.stringify({
       kind: toRecord(project["source"])["kind"],
       recipe: toRecord(project["edit"])["recipe"],
     });
@@ -448,16 +453,13 @@ export function createMediaEditSupportRuntime(deps: MediaEditSupportDeps) {
 
   function buildEditOutputLabel(project: MediaEditSupportProjectRecord, mode: string) {
     const baseName = asNonEmptyString(
-        toRecord(toRecord(toRecord(project["edit"])["recipe"])["common"])["outputNameHint"]
-      );
+      toRecord(toRecord(toRecord(project["edit"])["recipe"])["common"])["outputNameHint"]
+    );
     const route = baseName || project["name"];
     return mode === "preview" ? `${route} Preview` : `${route} Derived Output`;
   }
 
-  function markEditAsDirty(
-    nextProject: MediaEditSupportProjectRecord,
-    recipeSignature: string
-  ) {
+  function markEditAsDirty(nextProject: MediaEditSupportProjectRecord, recipeSignature: string) {
     nextProject["edit"]["dirty"] = true;
     nextProject["edit"]["lastError"] = null;
     nextProject["edit"]["lastActionAt"] = new Date().toISOString();

@@ -243,8 +243,9 @@
       }
 
       function sanitizeTeamRecord(candidate: unknown): GameRoomTeamTetrisTeamRecord {
-        const source: TeamTetrisTeamRecordInput =
-          isRecord(candidate) ? (candidate as TeamTetrisTeamRecordInput) : {};
+        const source: TeamTetrisTeamRecordInput = isRecord(candidate)
+          ? (candidate as TeamTetrisTeamRecordInput)
+          : {};
         return {
           teamId: readTrimmedString(source.teamId, "team-a"),
           seatIds: Array.isArray(source.seatIds)
@@ -278,8 +279,9 @@
         fallbackTeamId: string,
         fallbackVisibility: string
       ): GameRoomTeamTetrisBoardState {
-        const source: TeamTetrisBoardStateInputRecord =
-          isRecord(candidate) ? (candidate as TeamTetrisBoardStateInputRecord) : {};
+        const source: TeamTetrisBoardStateInputRecord = isRecord(candidate)
+          ? (candidate as TeamTetrisBoardStateInputRecord)
+          : {};
 
         return {
           teamId: readTrimmedString(source.teamId, fallbackTeamId),
@@ -331,12 +333,15 @@
         }
         const source = candidate as TeamTetrisSeatViewInputRecord;
 
-        const seatSource: TeamTetrisSeatIdentityInputRecord =
-          isRecord(source.seat) ? (source.seat as TeamTetrisSeatIdentityInputRecord) : {};
-        const ownTeamSource: TeamTetrisSeatTeamViewInputRecord =
-          isRecord(source.ownTeam) ? (source.ownTeam as TeamTetrisSeatTeamViewInputRecord) : {};
-        const opponentTeamSource: TeamTetrisSeatTeamViewInputRecord =
-          isRecord(source.opponentTeam) ? (source.opponentTeam as TeamTetrisSeatTeamViewInputRecord) : {};
+        const seatSource: TeamTetrisSeatIdentityInputRecord = isRecord(source.seat)
+          ? (source.seat as TeamTetrisSeatIdentityInputRecord)
+          : {};
+        const ownTeamSource: TeamTetrisSeatTeamViewInputRecord = isRecord(source.ownTeam)
+          ? (source.ownTeam as TeamTetrisSeatTeamViewInputRecord)
+          : {};
+        const opponentTeamSource: TeamTetrisSeatTeamViewInputRecord = isRecord(source.opponentTeam)
+          ? (source.opponentTeam as TeamTetrisSeatTeamViewInputRecord)
+          : {};
 
         return {
           schemaVersion: readInteger(source.schemaVersion, 1),
@@ -377,8 +382,9 @@
       }
 
       function sanitizeTeamTetrisState(candidate: unknown): GameRoomTeamTetrisState {
-        const source: TeamTetrisStateInputRecord =
-          isRecord(candidate) ? (candidate as TeamTetrisStateInputRecord) : {};
+        const source: TeamTetrisStateInputRecord = isRecord(candidate)
+          ? (candidate as TeamTetrisStateInputRecord)
+          : {};
         const next = createTeamTetrisState();
 
         next.active = source.active === true;
@@ -405,15 +411,11 @@
           const board = source.board as TeamTetrisBoardConfigInputRecord;
           next.board = {
             width:
-              typeof board.width === "number" &&
-              Number.isInteger(board.width) &&
-              board.width > 0
+              typeof board.width === "number" && Number.isInteger(board.width) && board.width > 0
                 ? board.width
                 : BOARD_WIDTH,
             height:
-              typeof board.height === "number" &&
-              Number.isInteger(board.height) &&
-              board.height > 0
+              typeof board.height === "number" && Number.isInteger(board.height) && board.height > 0
                 ? board.height
                 : BOARD_HEIGHT,
             seedLabel: readTrimmedString(board.seedLabel, "contract-frozen"),
@@ -460,6 +462,4 @@
         sanitizeTeamTetrisState: sanitizeTeamTetrisState,
       };
     };
-})(
-  (typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal
-);
+})((typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal);

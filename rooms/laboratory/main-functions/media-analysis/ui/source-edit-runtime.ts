@@ -116,9 +116,7 @@ type MediaAnalysisSourceEditUiRuntimeDeps = {
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createMediaAnalysisSourceEditUiRuntime(
-  deps: MediaAnalysisSourceEditUiRuntimeDeps
-) {
+export function createMediaAnalysisSourceEditUiRuntime(deps: MediaAnalysisSourceEditUiRuntimeDeps) {
   const {
     featureText,
     getActiveEditOutput,
@@ -347,9 +345,7 @@ export function createMediaAnalysisSourceEditUiRuntime(
           activeEntryLabel ||
           subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle"),
         metadata: asRecord(preview.summary),
-        mimeType: activeEntryLabel
-          ? getSubtitleMimeType(activeEntry.fileName)
-          : null,
+        mimeType: activeEntryLabel ? getSubtitleMimeType(activeEntry.fileName) : null,
         path:
           asNonEmptyString(latestOutput.path) ||
           asNonEmptyString(latestOutput.fileUrl) ||
@@ -387,8 +383,7 @@ export function createMediaAnalysisSourceEditUiRuntime(
           : [],
         kind: "derived",
         label:
-          asNonEmptyString(activeOutput.label) ||
-          text(["mediaAnalysis", "edit", "derivedOutput"]),
+          asNonEmptyString(activeOutput.label) || text(["mediaAnalysis", "edit", "derivedOutput"]),
         metadata: asRecord(activeOutput.metadata),
         mimeType: asNonEmptyString(activeOutput.mimeType),
         path: asNonEmptyString(activeOutput.path),

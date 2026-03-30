@@ -38,6 +38,7 @@
 
     // === Path Alias ===
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@shared/*": ["src/shared/*"],
       "@ghost/*": ["src/renderer/*"],

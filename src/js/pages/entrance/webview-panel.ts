@@ -78,6 +78,7 @@ interface ScenarioOverlayState {
   deliveryInFlight: boolean;
   filter: ScenarioStatusFilter;
   runId: string | null;
+  totalCommandCount: number | null;
   commands: ProviderScenarioCommandReport[];
   message: string;
   suite: ProviderTestSuite | null;
@@ -473,6 +474,7 @@ export class WebviewPanel {
       deliveryInFlight: false,
       filter: "all",
       runId: null,
+      totalCommandCount: null,
       commands: [],
       message: providerTestT("scenario.hint"),
       suite: null,
@@ -572,6 +574,9 @@ export class WebviewPanel {
     if (state.runId !== null && event.runId !== state.runId) return;
 
     state.runId ??= event.runId;
+    if (typeof event.scenarioCommandTotal === "number") {
+      state.totalCommandCount = event.scenarioCommandTotal;
+    }
 
     if (event.type === "started") {
       state.phase = "running";
@@ -622,6 +627,7 @@ export class WebviewPanel {
       providerName: state.providerName,
       scenarioTitle: getScenarioTitleLabel(state.scenarioId),
       commands: displayCommands,
+      totalSteps: state.totalCommandCount ?? state.suite?.commands.length,
     });
     const counts = buildScenarioStatusCounts({ commands: displayCommands });
     const rows = filterScenarioDisplayRows({
@@ -949,6 +955,7 @@ export class WebviewPanel {
       state.filter = "all";
       state.commands = [];
       state.runId = null;
+      state.totalCommandCount = null;
       state.suite = null;
       state.message = providerTestT("scenario.startedMessage", {
         providerName: state.providerName,
@@ -982,6 +989,7 @@ export class WebviewPanel {
 
       state.phase = "completed";
       state.runId = results.runId ?? state.runId;
+      state.totalCommandCount = results.commands.length;
       state.commands = results.commands;
       state.suite = results;
       const completionMessage = buildScenarioCompletionMessage({

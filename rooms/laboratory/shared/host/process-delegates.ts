@@ -19,11 +19,17 @@ export function createLaboratoryProcessDelegatesRuntime(deps: Record<string, unk
     runtime: Record<string, unknown>,
     project: Record<string, unknown>
   ) {
-    return (processCoordinationRuntime["composeAudioAnalysisReport"] as UnknownFn)(runtime, project);
+    return (processCoordinationRuntime["composeAudioAnalysisReport"] as UnknownFn)(
+      runtime,
+      project
+    );
   }
 
   function getProcessArtifactByKind(processRecord: Record<string, unknown>, kind: string) {
-    return (processCoordinationRuntime["getProcessArtifactByKind"] as UnknownFn)(processRecord, kind);
+    return (processCoordinationRuntime["getProcessArtifactByKind"] as UnknownFn)(
+      processRecord,
+      kind
+    );
   }
 
   function formatReportCardLabel(card: Record<string, unknown>) {
@@ -34,7 +40,10 @@ export function createLaboratoryProcessDelegatesRuntime(deps: Record<string, unk
     runtime: Record<string, unknown>,
     project: Record<string, unknown>
   ) {
-    return (processCoordinationRuntime["composeSubtitleAnalysisReport"] as UnknownFn)(runtime, project);
+    return (processCoordinationRuntime["composeSubtitleAnalysisReport"] as UnknownFn)(
+      runtime,
+      project
+    );
   }
 
   function composeFeatureReport(

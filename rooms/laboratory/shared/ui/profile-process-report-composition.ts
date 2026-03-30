@@ -108,8 +108,7 @@ export function createLaboratoryProfileProcessReportComposition(
     renderSummaryRows: deps.renderSummaryRows,
     formatStatusLabel: deps.formatStatusLabel,
     formatDateTime: deps.formatDateTime,
-    formatDuration:
-      deps.formatDuration as unknown as LaboratoryReportStageUiDeps["formatDuration"],
+    formatDuration: deps.formatDuration as unknown as LaboratoryReportStageUiDeps["formatDuration"],
     isSubtitleAnalysisFeature: deps.isSubtitleAnalysisFeature,
     isAudioAnalysisFeature: deps.isAudioAnalysisFeature,
     getCurrentFeatureReportRecord: deps.getCurrentFeatureReportRecord,

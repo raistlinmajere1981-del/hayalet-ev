@@ -139,6 +139,7 @@ interface ScenarioPanelState {
   phase: "launcher" | "running" | "completed";
   filter: ScenarioStatusFilter;
   runId: string | null;
+  totalCommandCount: number | null;
   commands: ProviderScenarioCommandReport[];
   message: string;
   suite: ProviderTestSuite | null;
@@ -1983,6 +1984,7 @@ export class AssistantController {
       phase: "launcher",
       filter: "all",
       runId: null,
+      totalCommandCount: null,
       commands: [],
       message: assistantT("runtime.scenarioHint"),
       suite: null,
@@ -2066,6 +2068,9 @@ export class AssistantController {
     if (state.runId !== null && event.runId !== state.runId) return;
 
     state.runId ??= event.runId;
+    if (typeof event.scenarioCommandTotal === "number") {
+      state.totalCommandCount = event.scenarioCommandTotal;
+    }
 
     if (event.type === "started") {
       state.phase = "running";
@@ -2111,6 +2116,7 @@ export class AssistantController {
       providerName: state.providerName,
       scenarioTitle: getScenarioTitleLabel(state.scenarioId),
       commands: displayCommands,
+      totalSteps: state.totalCommandCount ?? state.suite?.commands.length,
     });
     const counts = buildScenarioStatusCounts({ commands: displayCommands });
     const rows = filterScenarioDisplayRows({
@@ -2255,6 +2261,7 @@ export class AssistantController {
       state.phase = "running";
       state.filter = "all";
       state.runId = null;
+      state.totalCommandCount = null;
       state.commands = [];
       state.suite = null;
       state.message = assistantT("runtime.scenarioStarted", {
@@ -2281,6 +2288,7 @@ export class AssistantController {
 
       state.phase = "completed";
       state.runId = results.runId ?? state.runId;
+      state.totalCommandCount = results.commands.length;
       state.commands = results.commands;
       state.suite = results;
       const completionMessage = buildAssistantScenarioCompletionMessage({

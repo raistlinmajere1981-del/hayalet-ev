@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PROVIDER_TEST_PROMPT, runCommandScenario } from "../../electron/provider-tester/scenario-runner.ts";
+import {
+  PROVIDER_TEST_IMAGE_PROMPT,
+  PROVIDER_TEST_PROMPT,
+  runCommandScenario,
+} from "../../electron/provider-tester/scenario-runner.ts";
 
 function createCommand(options: {
   id: string;
@@ -267,7 +271,11 @@ test("command scenario marks the active command as warning when stopped by user"
 test("provider test prompt stays deterministic for scroll and scrape assertions", () => {
   assert.equal(
     PROVIDER_TEST_PROMPT,
-    "Sadece 1'den 20'ye kadar numaralari, her satirda bir tane olacak sekilde yaz. Baska hicbir sey ekleme."
+    "1'den 20'ye kadar numaralari yaz. Her satirda yalnizca bir sayi olsun. Baska aciklama ekleme."
+  );
+  assert.equal(
+    PROVIDER_TEST_IMAGE_PROMPT,
+    "3:2 oranli, beyaz fonda tek bir kirmizi elma gorseli uret. Metin ekleme."
   );
 });
 

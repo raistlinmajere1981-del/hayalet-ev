@@ -162,7 +162,9 @@ export function createAudioAnalysisSoundEventsModelRunner(
       return {
         findings: [],
         artifacts: [],
-        warnings: ["Sound event analysis requires an audio target path before processing can start."],
+        warnings: [
+          "Sound event analysis requires an audio target path before processing can start.",
+        ],
         status: "blocked",
         summary: "Sound event analysis is waiting for a prepared audio target.",
       };

@@ -29,10 +29,7 @@ export function readLaboratoryFormValue(target: LaboratoryFormControl): number |
   return target.value;
 }
 
-export function readLaboratoryValue(
-  source: unknown,
-  path: readonly (string | number)[]
-): unknown {
+export function readLaboratoryValue(source: unknown, path: readonly (string | number)[]): unknown {
   let current: unknown = source;
   for (let index = 0; index < path.length; index += 1) {
     const key = path[index];

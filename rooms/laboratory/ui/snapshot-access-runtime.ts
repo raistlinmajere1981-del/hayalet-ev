@@ -66,9 +66,7 @@ type LaboratorySnapshotAccessRuntimeDeps = {
   snapshotSelectors: LaboratorySnapshotSelectorsApi;
 };
 
-export function createLaboratorySnapshotAccessRuntime(
-  deps: LaboratorySnapshotAccessRuntimeDeps
-) {
+export function createLaboratorySnapshotAccessRuntime(deps: LaboratorySnapshotAccessRuntimeDeps) {
   const { snapshotSelectors } = deps;
 
   function getSourceSnapshot() {

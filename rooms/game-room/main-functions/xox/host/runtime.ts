@@ -27,7 +27,10 @@ import {
   readRemoteUserId,
 } from "../../../shared/host/command-args.js";
 import { loadContext, readLocale } from "../../../shared/host/context-state.js";
-import type { GameRoomContextState, GameRoomSlotState } from "../../../shared/types/room-shell-contracts.js";
+import type {
+  GameRoomContextState,
+  GameRoomSlotState,
+} from "../../../shared/types/room-shell-contracts.js";
 import {
   FATE_KNOTS_FEATURE_ID,
   FEATURE_ID,
@@ -371,9 +374,9 @@ async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<Xox
       return { success: false, message: commandMessage(locale, "dispatchFailed") };
     }
     return {
-          success: true,
-          message:
-            outcome.finished === true
+      success: true,
+      message:
+        outcome.finished === true
           ? resolveStatusText(state, loadContext(api) as GameRoomContextState)
           : commandMessage(locale, "moveSent"),
     };

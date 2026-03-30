@@ -79,7 +79,9 @@ export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
   const activeFeature = sanitizeFeatureRecord(
     source["activeFeature"],
     normalizeFeatureId(
-      typeof roomSource["defaultFeatureId"] === "string" ? roomSource["defaultFeatureId"] : FEATURE_ID
+      typeof roomSource["defaultFeatureId"] === "string"
+        ? roomSource["defaultFeatureId"]
+        : FEATURE_ID
     )
   );
 

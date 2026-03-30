@@ -11,7 +11,10 @@ type LaboratoryComposedFeatureReportRecord = LaboratoryRecord & {
 
 type LaboratoryFeatureReportRuntimeDeps = Parameters<typeof createLaboratoryAudioReportRuntime>[0] &
   Parameters<typeof createLaboratorySubtitleReportRuntime>[0] &
-  Omit<Parameters<typeof createLaboratoryReportMarkdownRuntime>[0], "buildAudioAnalysisReportProjection"> & {
+  Omit<
+    Parameters<typeof createLaboratoryReportMarkdownRuntime>[0],
+    "buildAudioAnalysisReportProjection"
+  > & {
     mediaFeatureId: string;
   };
 
@@ -128,11 +131,12 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         findings: findings,
         caveats: caveats,
         warnings: Array.isArray(processRecord["warnings"]) ? processRecord["warnings"] : [],
-        exports:
-          (getFeatureReportRecord(
+        exports: (
+          getFeatureReportRecord(
             project,
             featureId
-          ) as unknown as LaboratoryComposedFeatureReportRecord)["exports"],
+          ) as unknown as LaboratoryComposedFeatureReportRecord
+        )["exports"],
         error: null,
       },
       featureId

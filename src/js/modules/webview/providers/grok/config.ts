@@ -28,6 +28,9 @@ export const config = {
       '[data-testid="dmComposerTextInput"] .ProseMirror[contenteditable="true"], .ProseMirror[contenteditable="true"], textarea[aria-label="Grok\'a her şeyi sor"], textarea[aria-label="Ask Grok anything"], textarea[aria-label*="Grok"]',
 
     messageContainer: "main",
+
+    generatedImage:
+      '[data-message-author-role="assistant"] img[alt*="generated" i], [data-message-author-role="assistant"] img[alt*="image" i], [data-message-author-role="assistant"] picture img, .response-content-markdown img',
   },
   selectorMatrix: {
     selectors: {

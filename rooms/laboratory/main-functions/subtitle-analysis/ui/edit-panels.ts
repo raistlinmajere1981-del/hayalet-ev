@@ -211,7 +211,10 @@ export function createSubtitleAnalysisEditPanels(deps: LaboratorySubtitlePanelDe
           [
             subtitleText(["edit", "workspace", "labels", "output"], "Cikti", "Output"),
             latestOutput
-              ? toString(latestOutput.label, toString(latestOutput.fileName, toString(latestOutput.id, "--")))
+              ? toString(
+                  latestOutput.label,
+                  toString(latestOutput.fileName, toString(latestOutput.id, "--"))
+                )
               : "--",
           ],
         ])}
@@ -320,7 +323,10 @@ export function createSubtitleAnalysisEditPanels(deps: LaboratorySubtitlePanelDe
                       <article class="lab-output-card">
                         <div>
                           <strong>${escapeHtml(
-                            toString(entry.label, toString(entry.fileName, toString(entry.id, "--")))
+                            toString(
+                              entry.label,
+                              toString(entry.fileName, toString(entry.id, "--"))
+                            )
                           )}</strong>
                           <span>${escapeHtml(
                             toString(entry.path, toString(entry.fileUrl, "--"))

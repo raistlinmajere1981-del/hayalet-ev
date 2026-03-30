@@ -87,8 +87,7 @@ export function buildLaboratoryUiCoreApi(deps: LaboratoryUiCoreApiDeps) {
     getActiveSubtitleEntry: uiRuntimeComposition.getActiveSubtitleEntry,
     getAudioAnalysisCapabilities: uiRuntimeComposition.getAudioAnalysisCapabilities,
     getAudioAnalysisModules: uiRuntimeComposition.getAudioAnalysisModules,
-    getAudioAnalysisOrderedResultEntries:
-      uiRuntimeComposition.getAudioAnalysisOrderedResultEntries,
+    getAudioAnalysisOrderedResultEntries: uiRuntimeComposition.getAudioAnalysisOrderedResultEntries,
     getAudioAnalysisProviderEntries: uiRuntimeComposition.getAudioAnalysisProviderEntries,
     getAudioAnalysisProviderState: uiRuntimeComposition.getAudioAnalysisProviderState,
     getAvailableSourceFormats: deps.getAvailableSourceFormats,
@@ -118,8 +117,7 @@ export function buildLaboratoryUiCoreApi(deps: LaboratoryUiCoreApiDeps) {
     getPreferredSourceDuration: uiRuntimeComposition.getPreferredSourceDuration,
     getPreferredSourceFormat: uiRuntimeComposition.getPreferredSourceFormat,
     getPreferredSourceResolution: uiRuntimeComposition.getPreferredSourceResolution,
-    getProfileArtifactPreferenceEntries:
-      uiRuntimeComposition.getProfileArtifactPreferenceEntries,
+    getProfileArtifactPreferenceEntries: uiRuntimeComposition.getProfileArtifactPreferenceEntries,
     getProfileCapabilities: uiRuntimeComposition.getProfileCapabilities,
     getProfileConfidenceLabel: uiRuntimeComposition.getProfileConfidenceLabel,
     getProfileFrameDensityOptions: uiRuntimeComposition.getProfileFrameDensityOptions,

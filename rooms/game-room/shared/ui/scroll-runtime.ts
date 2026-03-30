@@ -59,15 +59,15 @@
 
         (Object.entries(FEATURE_SCROLL_SELECTORS) as Array<[ScrollSelectorKey, string]>).forEach(
           function ([key, selector]) {
-          const top = scrollState[key];
-          if (typeof top !== "number") {
-            return;
-          }
+            const top = scrollState[key];
+            if (typeof top !== "number") {
+              return;
+            }
 
-          const element = root.querySelector(selector);
-          if (isScrollableElement(element)) {
-            element.scrollTop = top;
-          }
+            const element = root.querySelector(selector);
+            if (isScrollableElement(element)) {
+              element.scrollTop = top;
+            }
           }
         );
       },

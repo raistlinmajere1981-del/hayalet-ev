@@ -26,7 +26,9 @@ type LaboratoryUiNavigationRuntimeDeps = Parameters<typeof createLaboratoryUiNav
 type LaboratoryCopyRuntimeDeps = Parameters<typeof createLaboratoryCopyRuntime>[0];
 type LaboratoryShellFrameUiDeps = Parameters<typeof createLaboratoryShellFrameUi>[0];
 type LaboratorySourceSnapshotSelectorsDeps = Parameters<typeof createSourceSnapshotSelectors>[0];
-type LaboratorySnapshotAccessRuntimeDeps = Parameters<typeof createLaboratorySnapshotAccessRuntime>[0];
+type LaboratorySnapshotAccessRuntimeDeps = Parameters<
+  typeof createLaboratorySnapshotAccessRuntime
+>[0];
 type LaboratoryUiDraftRuntimeDeps = Parameters<typeof createLaboratoryUiDraftRuntime>[0];
 type LaboratoryProfileProcessReportAccessorsRuntimeDeps = Parameters<
   typeof createLaboratoryProfileProcessReportAccessorsRuntime
@@ -49,8 +51,7 @@ type LaboratoryCoreBootstrapDeps = {
   cloneLaboratoryValue: <T>(value: T) => T;
   createLaboratoryCopyRuntime: typeof createLaboratoryCopyRuntime;
   createLaboratoryMarkupHelpers: typeof createLaboratoryMarkupHelpers;
-  createLaboratoryProfileProcessReportAccessorsRuntime:
-    typeof createLaboratoryProfileProcessReportAccessorsRuntime;
+  createLaboratoryProfileProcessReportAccessorsRuntime: typeof createLaboratoryProfileProcessReportAccessorsRuntime;
   createLaboratoryRequestRuntime: typeof createLaboratoryRequestRuntime;
   createLaboratoryShellFrameUi: typeof createLaboratoryShellFrameUi;
   createLaboratorySnapshotAccessRuntime: typeof createLaboratorySnapshotAccessRuntime;
@@ -266,10 +267,10 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps: LaboratoryCoreBoots
     laboratoryUiDraftRuntime,
   });
   const laboratoryProfileProcessReportAccessorsRuntimeDeps = {
-      getLaboratoryUiFeatureRuntime() {
-        return runtimeRefs.laboratoryUiFeatureRuntime;
-      },
-    };
+    getLaboratoryUiFeatureRuntime() {
+      return runtimeRefs.laboratoryUiFeatureRuntime;
+    },
+  };
   const laboratoryProfileProcessReportAccessorsRuntime =
     deps.createLaboratoryProfileProcessReportAccessorsRuntime(
       laboratoryProfileProcessReportAccessorsRuntimeDeps as unknown as LaboratoryProfileProcessReportAccessorsRuntimeDeps

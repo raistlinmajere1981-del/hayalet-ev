@@ -241,8 +241,12 @@ function resolveSelectionView(
   selection: FateKnotsSelectionState,
   contentRegistry: FateKnotsContentRegistry
 ): FateKnotsSelectionView {
-  const avatar = selection.avatarId ? contentRegistry.avatarsById.get(selection.avatarId) || null : null;
-  const classDef = selection.classId ? contentRegistry.classesById.get(selection.classId) || null : null;
+  const avatar = selection.avatarId
+    ? contentRegistry.avatarsById.get(selection.avatarId) || null
+    : null;
+  const classDef = selection.classId
+    ? contentRegistry.classesById.get(selection.classId) || null
+    : null;
   const background = selection.backgroundId
     ? contentRegistry.backgroundsById.get(selection.backgroundId) || null
     : null;
@@ -264,12 +268,11 @@ function resolveParticipantView(
   contentRegistry: FateKnotsContentRegistry,
   combatState: FateKnotsCombatState | null
 ): FateKnotsParticipantView {
-  const combatant =
-    combatState
-      ? combatState.party.find(function (entry: FateKnotsCombatant) {
-          return entry.seatId === participant.seatId;
-        }) || null
-      : null;
+  const combatant = combatState
+    ? combatState.party.find(function (entry: FateKnotsCombatant) {
+        return entry.seatId === participant.seatId;
+      }) || null
+    : null;
 
   return {
     seatId: participant.seatId,
@@ -306,7 +309,9 @@ function resolveStepView(
     return null;
   }
 
-  const location = step.locationId ? contentRegistry.mapNodesById.get(step.locationId) || null : null;
+  const location = step.locationId
+    ? contentRegistry.mapNodesById.get(step.locationId) || null
+    : null;
   return {
     ...cloneJsonValue(step),
     location,
@@ -362,7 +367,9 @@ function resolveCombatView(
 
       return {
         ...member,
-        selection: participant ? resolveSelectionView(participant.selection, contentRegistry) : null,
+        selection: participant
+          ? resolveSelectionView(participant.selection, contentRegistry)
+          : null,
       };
     }),
     enemy: {
@@ -383,7 +390,9 @@ function resolveAmbientPacketView(
 }
 
 function buildUiAssetView(contentRegistry: FateKnotsContentRegistry) {
-  const assetRegistry = isRecord(contentRegistry.assetRegistry) ? contentRegistry.assetRegistry : null;
+  const assetRegistry = isRecord(contentRegistry.assetRegistry)
+    ? contentRegistry.assetRegistry
+    : null;
   const assets = Array.isArray(assetRegistry?.assets) ? assetRegistry.assets : [];
   const byId: Record<string, FateKnotsUiAssetRecord> = {};
 

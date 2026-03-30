@@ -31,9 +31,7 @@ function resolveTeamTetrisSeatFromProvider(provider: unknown): TeamTetrisSeatId 
 
 function buildTeamTetrisProtocolScenario(match: TeamTetrisMatch | null | undefined) {
   const currentTurn = match?.currentTurn ?? null;
-  return currentTurn?.role === "followup"
-    ? "team-tetris-ai-followup"
-    : "team-tetris-ai-opening";
+  return currentTurn?.role === "followup" ? "team-tetris-ai-followup" : "team-tetris-ai-opening";
 }
 
 function buildTeamTetrisAiTurnPacket(

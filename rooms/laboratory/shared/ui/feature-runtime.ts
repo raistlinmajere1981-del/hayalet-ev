@@ -213,9 +213,11 @@ export function createLaboratoryUiFeatureRuntime(deps: LaboratoryUiFeatureRuntim
       return [];
     }
 
-    return readJobs().map(toJobRecord).filter(function (job) {
-      return job.projectId === projectId;
-    });
+    return readJobs()
+      .map(toJobRecord)
+      .filter(function (job) {
+        return job.projectId === projectId;
+      });
   }
 
   function getProjectProfileRecord(): LaboratoryProjectProfileRecord {
@@ -274,7 +276,9 @@ export function createLaboratoryUiFeatureRuntime(deps: LaboratoryUiFeatureRuntim
   }
 
   function getProfilePresetOptions(): LaboratoryProfilePresetOption[] {
-    const presetsByKind = toRecord(toRecord(getProfilePresetsRecord().presets)[getCurrentSourceKind()]);
+    const presetsByKind = toRecord(
+      toRecord(getProfilePresetsRecord().presets)[getCurrentSourceKind()]
+    );
     const mode = getCurrentProfileMode();
     const presetList = Array.isArray(presetsByKind[mode])
       ? presetsByKind[mode]
@@ -435,9 +439,11 @@ export function createLaboratoryUiFeatureRuntime(deps: LaboratoryUiFeatureRuntim
   }
 
   function getProfileTargetOutputOptions() {
-    return readEditOutputs().map(toOutputRecord).filter(function (entry) {
-      return typeof entry.path === "string" && entry.path.trim() !== "";
-    });
+    return readEditOutputs()
+      .map(toOutputRecord)
+      .filter(function (entry) {
+        return typeof entry.path === "string" && entry.path.trim() !== "";
+      });
   }
 
   return {

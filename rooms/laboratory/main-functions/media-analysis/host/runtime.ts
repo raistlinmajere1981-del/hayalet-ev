@@ -140,8 +140,7 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     buildEditCommand: buildEditCommand as MediaEditPipelineRuntimeDeps["buildEditCommand"],
     buildEditOutputLabel:
       buildEditOutputLabel as MediaEditPipelineRuntimeDeps["buildEditOutputLabel"],
-    buildEditTargetPath:
-      buildEditTargetPath as MediaEditPipelineRuntimeDeps["buildEditTargetPath"],
+    buildEditTargetPath: buildEditTargetPath as MediaEditPipelineRuntimeDeps["buildEditTargetPath"],
     callRoomTools,
     clearJob,
     collectDerivedOutputMetadata: getCollectDerivedOutputMetadata,
@@ -167,9 +166,7 @@ export function createLaboratoryMediaAnalysisHostRuntime(
     toRecord,
   });
 
-  function runEditPipeline(
-    ...args: Parameters<MediaEditPipelineRuntimeApi["runEditPipeline"]>
-  ) {
+  function runEditPipeline(...args: Parameters<MediaEditPipelineRuntimeApi["runEditPipeline"]>) {
     return mediaEditPipelineRuntime.runEditPipeline(...args);
   }
 

@@ -91,7 +91,11 @@ type MediaProfileStateRuntimeDeps = {
   createEmptyProfileEstimate: () => MediaProfileEstimate;
   createEmptyProfilePreflight: () => MediaProfilePreflight;
   createEmptyProfileReadiness: () => MediaProfileReadiness;
-  findProfilePreset: (profilePresets: unknown, sourceKind: string, presetId: unknown) => unknown | null;
+  findProfilePreset: (
+    profilePresets: unknown,
+    sourceKind: string,
+    presetId: unknown
+  ) => unknown | null;
   getCompatibleProfileLaneIds: (profilePresets: unknown, sourceKind: string) => string[];
   getDefaultProfileModelId: (profileModels: unknown, sourceKind: string) => string | null;
   getDefaultProfilePresetId: (profilePresets: unknown, sourceKind: string) => string | null;
@@ -204,7 +208,7 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
     laneIds.forEach(function (laneId: string) {
       nextLaneSelection[laneId] = Object.prototype.hasOwnProperty.call(lanePatch, laneId)
         ? lanePatch[laneId] === true
-          : profileState["laneSelection"][laneId] === true;
+        : profileState["laneSelection"][laneId] === true;
     });
 
     const requestedModelId = asNonEmptyString(patch["modelId"]);
@@ -222,11 +226,13 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
     return {
       ...profileState,
       activePresetId: asNonEmptyString(toRecord(preset)["id"]),
-      targetAssetMode: asNonEmptyString(patch["targetAssetMode"]) === "derived" ? "derived" : "source",
+      targetAssetMode:
+        asNonEmptyString(patch["targetAssetMode"]) === "derived" ? "derived" : "source",
       depth: asNonEmptyString(patch["depth"]) || profileState["depth"],
       sensitivity: clampNumber(patch["sensitivity"], 0.1, 1, profileState["sensitivity"]),
       frameSampleDensity:
-        requestedFrameSampleDensity && ["sparse", "balanced", "dense"].includes(requestedFrameSampleDensity)
+        requestedFrameSampleDensity &&
+        ["sparse", "balanced", "dense"].includes(requestedFrameSampleDensity)
           ? requestedFrameSampleDensity
           : profileState["frameSampleDensity"],
       transcriptSampleSeconds: clampProfileTranscriptSampleSeconds(
@@ -320,9 +326,7 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
     if (previousMode === "advanced") {
       nextProfile["mode"] = "advanced";
     }
-    if (
-      findProfilePreset(runtime["profilePresets"], sourceKind, previousPresetId) !== null
-    ) {
+    if (findProfilePreset(runtime["profilePresets"], sourceKind, previousPresetId) !== null) {
       nextProfile["activePresetId"] = previousPresetId;
     }
 
@@ -394,7 +398,8 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
         : defaults["laneSelection"][laneId] === true;
     });
 
-    const requestedPresetId = asNonEmptyString(source["activePresetId"]) || defaults["activePresetId"];
+    const requestedPresetId =
+      asNonEmptyString(source["activePresetId"]) || defaults["activePresetId"];
     const modelId =
       asNonEmptyString(source["modelId"]) || getDefaultProfileModelId(profileModels, sourceKind);
     const requestedDepth = asNonEmptyString(source["depth"]);
@@ -441,10 +446,10 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
       ),
       modelId: modelId,
       artifactPreferences: normalizeProfileArtifactPreferences(
-          toRecord(source["artifactPreferences"]),
-          profileCapabilities,
-          sourceKind
-        ),
+        toRecord(source["artifactPreferences"]),
+        profileCapabilities,
+        sourceKind
+      ),
       laneSelection: laneSelection,
       readiness: {
         ...createEmptyProfileReadiness(),
@@ -490,7 +495,9 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
           : [],
         error: asNonEmptyString(preflight["error"]),
       },
-      signals: Array.isArray(source["signals"]) ? source["signals"].map(normalizeProfileSignal) : [],
+      signals: Array.isArray(source["signals"])
+        ? source["signals"].map(normalizeProfileSignal)
+        : [],
       artifacts: Array.isArray(source["artifacts"])
         ? source["artifacts"].map(normalizeProfileArtifact).filter(function (
             entry: MediaProfileArtifact
@@ -514,9 +521,7 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
       ...profile,
       dirty: true,
       targetOutputId:
-        options["clearTargetOutput"] === true
-          ? null
-          : asNonEmptyString(profile["targetOutputId"]),
+        options["clearTargetOutput"] === true ? null : asNonEmptyString(profile["targetOutputId"]),
       targetAssetSignature: null,
       lastError: null,
       lastActionAt: new Date().toISOString(),
@@ -527,20 +532,25 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
         jobId: null,
         requestId: null,
         error: null,
-        warnings: Array.from(new Set([
-          ...(Array.isArray(preflight["warnings"])
-            ? preflight["warnings"].filter(function (entry): entry is string {
-                return typeof entry === "string" && entry.trim() !== "";
-              })
-            : []),
-          ...(reason ? [reason] : []),
-        ])),
+        warnings: Array.from(
+          new Set([
+            ...(Array.isArray(preflight["warnings"])
+              ? preflight["warnings"].filter(function (entry): entry is string {
+                  return typeof entry === "string" && entry.trim() !== "";
+                })
+              : []),
+            ...(reason ? [reason] : []),
+          ])
+        ),
       },
     };
     markCloseoutAsStale(nextProject, reason, [mediaFeatureId]);
   }
 
-  function getProfileDepthConfig(runtime: MediaProfileRuntimeRecord, depthId: string): MediaProfileRecord {
+  function getProfileDepthConfig(
+    runtime: MediaProfileRuntimeRecord,
+    depthId: string
+  ): MediaProfileRecord {
     const depthModes = toRecord(toRecord(runtime["profileCapabilities"])["depthModes"]);
     return toRecord(depthModes[asNonEmptyString(depthId) || "balanced"]);
   }

@@ -6,7 +6,9 @@ import { createLaboratorySourceDelegatesRuntime } from "./source-delegates.js";
 type MediaSourceFileRuntimeDeps = Parameters<typeof createMediaSourceFileRuntime>[0];
 type MediaSourceMetadataRuntimeDeps = Parameters<typeof createMediaSourceMetadataRuntime>[0];
 type MediaSourceIntakeRuntimeDeps = Parameters<typeof createMediaSourceIntakeRuntime>[0];
-type LaboratorySourceDelegatesRuntimeDeps = Parameters<typeof createLaboratorySourceDelegatesRuntime>[0];
+type LaboratorySourceDelegatesRuntimeDeps = Parameters<
+  typeof createLaboratorySourceDelegatesRuntime
+>[0];
 
 type LaboratorySourceCompositionRuntimeDeps = MediaSourceFileRuntimeDeps &
   Omit<
@@ -49,7 +51,8 @@ export function createLaboratorySourceCompositionRuntime(
     callRoomTools: deps.callRoomTools,
     cancelJobsForProject: deps.cancelJobsForProject,
     clearJob: deps.clearJob,
-    deriveFilename: mediaSourceFileRuntime.deriveFilename as MediaSourceIntakeRuntimeDeps["deriveFilename"],
+    deriveFilename:
+      mediaSourceFileRuntime.deriveFilename as MediaSourceIntakeRuntimeDeps["deriveFilename"],
     getActiveProject: deps.getActiveProject,
     getElectronApi: deps.getElectronApi,
     getPresetDefaultCustomValues: deps.getPresetDefaultCustomValues,

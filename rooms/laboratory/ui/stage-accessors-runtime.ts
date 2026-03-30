@@ -1,14 +1,14 @@
-import type { createLaboratoryProfileProcessReportAccessorsRuntime } from "../shared/ui/profile-process-report-accessors.js"
-import type { LaboratoryUiFeatureRuntimeApi } from "../shared/ui/feature-runtime.js"
-import type { createLaboratoryUiDraftRuntime } from "../shared/ui/draft-runtime.js"
-import type { createLaboratoryUiDraftAccessRuntime } from "./draft-access-runtime.js"
+import type { createLaboratoryProfileProcessReportAccessorsRuntime } from "../shared/ui/profile-process-report-accessors.js";
+import type { LaboratoryUiFeatureRuntimeApi } from "../shared/ui/feature-runtime.js";
+import type { createLaboratoryUiDraftRuntime } from "../shared/ui/draft-runtime.js";
+import type { createLaboratoryUiDraftAccessRuntime } from "./draft-access-runtime.js";
 
 type LaboratoryRecord = Record<string, unknown>;
-type LaboratoryUiDraftRuntimeApi = ReturnType<typeof createLaboratoryUiDraftRuntime>
-type LaboratoryUiDraftAccessRuntimeApi = ReturnType<typeof createLaboratoryUiDraftAccessRuntime>
+type LaboratoryUiDraftRuntimeApi = ReturnType<typeof createLaboratoryUiDraftRuntime>;
+type LaboratoryUiDraftAccessRuntimeApi = ReturnType<typeof createLaboratoryUiDraftAccessRuntime>;
 type LaboratoryProfileProcessReportAccessorsRuntimeApi = ReturnType<
   typeof createLaboratoryProfileProcessReportAccessorsRuntime
->
+>;
 
 type LaboratoryStageAccessorsRuntimeDeps = {
   isSubtitleAnalysisFeature: () => boolean;
@@ -22,9 +22,7 @@ type LaboratoryStageAccessorsRuntimeDeps = {
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createLaboratoryStageAccessorsRuntime(
-  deps: LaboratoryStageAccessorsRuntimeDeps
-) {
+export function createLaboratoryStageAccessorsRuntime(deps: LaboratoryStageAccessorsRuntimeDeps) {
   const {
     isSubtitleAnalysisFeature,
     laboratoryProfileProcessReportAccessorsRuntime,
@@ -66,7 +64,7 @@ export function createLaboratoryStageAccessorsRuntime(
   }
 
   function getEditJobLabel(job: unknown) {
-    const jobRecord = toRecord(job)
+    const jobRecord = toRecord(job);
     const jobAction = typeof jobRecord["action"] === "string" ? jobRecord["action"] : "";
     if (isSubtitleAnalysisFeature()) {
       switch (jobAction) {

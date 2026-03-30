@@ -44,7 +44,7 @@ interface GhostElectronAPI {
   fmWriteFileAtomic?: (payload: {
     path: string;
     data: string;
-    encoding?: BufferEncoding | "base64";
+    encoding?: "utf-8" | "base64";
   }) => Promise<{ success: boolean; message?: string }>;
   ghostLog?: (payload: {
     level: "debug" | "info" | "warn" | "error";

@@ -9,10 +9,7 @@ type LaboratoryRuntimeRecord = LaboratoryRecord;
 type LaboratoryHostActivationDeps = {
   createRuntimeState: () => LaboratoryRuntimeRecord;
   ensureHydrated: (api: LaboratoryHostApi, runtime: LaboratoryRuntimeRecord) => Promise<unknown>;
-  ensureRoomToolsSubscription: (
-    api: LaboratoryHostApi,
-    runtime: LaboratoryRuntimeRecord
-  ) => void;
+  ensureRoomToolsSubscription: (api: LaboratoryHostApi, runtime: LaboratoryRuntimeRecord) => void;
   handleMediaAction: (
     api: LaboratoryHostApi,
     runtime: LaboratoryRuntimeRecord,

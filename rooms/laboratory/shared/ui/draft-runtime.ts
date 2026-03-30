@@ -107,8 +107,7 @@ export function createLaboratoryUiDraftRuntime(deps: LaboratoryUiDraftRuntimeDep
       limitCount: asNumber(drafts["limitCount"]),
       liveMode: asNonEmptyString(drafts["liveMode"]) || "all",
       playlistItems: typeof drafts["playlistItems"] === "string" ? drafts["playlistItems"] : "",
-      publishedAfter:
-        typeof drafts["publishedAfter"] === "string" ? drafts["publishedAfter"] : "",
+      publishedAfter: typeof drafts["publishedAfter"] === "string" ? drafts["publishedAfter"] : "",
       publishedBefore:
         typeof drafts["publishedBefore"] === "string" ? drafts["publishedBefore"] : "",
       shortsMode: asNonEmptyString(drafts["shortsMode"]) || "all",

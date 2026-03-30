@@ -23,11 +23,9 @@ type LaboratoryUiRuntimeCompositionDeps = {
   collectReportStageJobs: LaboratoryUiFeatureRuntimeDeps["collectReportStageJobs"];
   isAudioAnalysisFeature: LaboratoryUiFeatureRuntimeDeps["isAudioAnalysisFeature"];
   isSubtitleAnalysisFeature: LaboratoryUiFeatureRuntimeDeps["isSubtitleAnalysisFeature"];
-  laboratoryProfileProcessReportAccessorsRuntime:
-    LaboratoryStageAccessorsRuntimeDeps["laboratoryProfileProcessReportAccessorsRuntime"];
+  laboratoryProfileProcessReportAccessorsRuntime: LaboratoryStageAccessorsRuntimeDeps["laboratoryProfileProcessReportAccessorsRuntime"];
   laboratorySnapshotAccessRuntime: LaboratorySnapshotAccessRuntime;
-  laboratoryUiDraftAccessRuntime:
-    LaboratoryStageAccessorsRuntimeDeps["laboratoryUiDraftAccessRuntime"];
+  laboratoryUiDraftAccessRuntime: LaboratoryStageAccessorsRuntimeDeps["laboratoryUiDraftAccessRuntime"];
   laboratoryUiDraftRuntime: LaboratoryStageAccessorsRuntimeDeps["laboratoryUiDraftRuntime"];
   laboratoryViewBindingsRuntime: LaboratoryViewBindingsRuntime;
   mediaAnalysisUiRuntime: MediaAnalysisUiRuntime;
@@ -38,9 +36,7 @@ type LaboratoryUiRuntimeCompositionDeps = {
   toRecord: LaboratoryUiFeatureRuntimeDeps["toRecord"];
 };
 
-export function createLaboratoryUiRuntimeComposition(
-  deps: LaboratoryUiRuntimeCompositionDeps
-) {
+export function createLaboratoryUiRuntimeComposition(deps: LaboratoryUiRuntimeCompositionDeps) {
   const laboratoryUiRuntimeBase = createLaboratoryUiViewBaseRuntime({
     laboratorySnapshotAccessRuntime: deps.laboratorySnapshotAccessRuntime,
     laboratoryViewBindingsRuntime: deps.laboratoryViewBindingsRuntime,

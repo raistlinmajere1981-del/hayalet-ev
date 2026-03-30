@@ -10,7 +10,10 @@ import type {
 import { PROVIDER_SCENARIO_DELAYS } from "../../shared/timeouts.ts";
 
 export const PROVIDER_TEST_PROMPT =
-  "Sadece 1'den 20'ye kadar numaralari, her satirda bir tane olacak sekilde yaz. Baska hicbir sey ekleme.";
+  "1'den 20'ye kadar numaralari yaz. Her satirda yalnizca bir sayi olsun. Baska aciklama ekleme.";
+
+export const PROVIDER_TEST_IMAGE_PROMPT =
+  "3:2 oranli, beyaz fonda tek bir kirmizi elma gorseli uret. Metin ekleme.";
 
 export type ScenarioCommandSeverity = "core" | "soft" | "provider";
 type Awaitable<T> = T | Promise<T>;
@@ -84,6 +87,7 @@ function emitCommand(
     scenarioId: options.scenarioId,
     slot: options.slot,
     providerId: options.providerId,
+    scenarioCommandTotal: options.commands.length,
     type,
     timestamp: Date.now(),
     ...payload,

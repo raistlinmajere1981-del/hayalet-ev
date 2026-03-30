@@ -1,90 +1,86 @@
-type LaboratoryRecord = Record<string, unknown>
+type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryProjectRecord = LaboratoryRecord & {
-  edit?: unknown
-  name?: unknown
-  profile?: unknown
-  source?: unknown
-  subtitleAnalysis?: unknown
-}
+  edit?: unknown;
+  name?: unknown;
+  profile?: unknown;
+  source?: unknown;
+  subtitleAnalysis?: unknown;
+};
 
 type LaboratoryProjectProfileRecord = LaboratoryRecord & {
-  readiness?: unknown
-}
+  readiness?: unknown;
+};
 
 type LaboratoryProjectSourceRecord = LaboratoryRecord & {
-  kind?: unknown
-}
+  kind?: unknown;
+};
 
 type LaboratoryProjectEditRecord = LaboratoryRecord & {
-  handoffMode?: unknown
-}
+  handoffMode?: unknown;
+};
 
 type LaboratoryProfileReadinessRecord = LaboratoryRecord & {
-  enabledLaneIds?: unknown
-}
+  enabledLaneIds?: unknown;
+};
 
 type LaboratorySubtitleStateRecord = LaboratoryRecord & {
-  analysis?: unknown
-}
+  analysis?: unknown;
+};
 
 type LaboratorySubtitleAnalysisRecord = LaboratoryRecord & {
-  sourceSelection?: unknown
-}
+  sourceSelection?: unknown;
+};
 
 type LaboratorySubtitleEntryRecord = LaboratoryRecord & {
-  fileName?: unknown
-  id?: unknown
-  language?: unknown
-  metadata?: unknown
-  path?: unknown
-}
+  fileName?: unknown;
+  id?: unknown;
+  language?: unknown;
+  metadata?: unknown;
+  path?: unknown;
+};
 
 type LaboratoryProcessTargetRecord = LaboratoryRecord & {
-  path?: unknown
-}
+  path?: unknown;
+};
 
 type LaboratoryProcessModuleRecord = LaboratoryRecord & {
-  id?: unknown
-  status?: unknown
-}
+  id?: unknown;
+  status?: unknown;
+};
 
 type LaboratoryProfileModelSummaryEntry = LaboratoryRecord & {
-  ready?: unknown
-  selected?: unknown
-}
+  ready?: unknown;
+  selected?: unknown;
+};
 
 type LaboratoryProcessSpeechAvailability = {
-  model: LaboratoryProfileModelSummaryEntry | null
-  ready: boolean
-}
+  model: LaboratoryProfileModelSummaryEntry | null;
+  ready: boolean;
+};
 
 type LaboratoryProcessTargetingRuntimeDeps = {
-  audioFeatureId: string
-  asNonEmptyString: (value: unknown) => string | null
+  audioFeatureId: string;
+  asNonEmptyString: (value: unknown) => string | null;
   buildProfileModelSummary: (
     runtime: LaboratoryRecord,
     project: LaboratoryProjectRecord
-  ) => unknown[]
+  ) => unknown[];
   getActiveSubtitleEntry: (
     project: LaboratoryProjectRecord
-  ) => LaboratorySubtitleEntryRecord | null
-  getSubtitleMimeType: (fileName: string) => string | null
-  getSubtitleSelectedEntries: (
-    project: LaboratoryProjectRecord
-  ) => LaboratorySubtitleEntryRecord[]
-  normalizeProcessModule: (rawValue: unknown) => LaboratoryProcessModuleRecord
+  ) => LaboratorySubtitleEntryRecord | null;
+  getSubtitleMimeType: (fileName: string) => string | null;
+  getSubtitleSelectedEntries: (project: LaboratoryProjectRecord) => LaboratorySubtitleEntryRecord[];
+  normalizeProcessModule: (rawValue: unknown) => LaboratoryProcessModuleRecord;
   normalizeSubtitleAnalysisState: (
     rawValue: unknown,
     runtime: LaboratoryRecord
-  ) => LaboratorySubtitleStateRecord
-  resolveAudioFeatureTarget: (
-    project: LaboratoryProjectRecord
-  ) => LaboratoryProcessTargetRecord
-  resolveProfileTarget: (project: LaboratoryProjectRecord) => LaboratoryProcessTargetRecord
-  subtitleFeatureId: string
-  toRecord: (value: unknown) => LaboratoryRecord
-}
+  ) => LaboratorySubtitleStateRecord;
+  resolveAudioFeatureTarget: (project: LaboratoryProjectRecord) => LaboratoryProcessTargetRecord;
+  resolveProfileTarget: (project: LaboratoryProjectRecord) => LaboratoryProcessTargetRecord;
+  subtitleFeatureId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
 
 export function createLaboratoryProcessTargetingRuntime(
   deps: LaboratoryProcessTargetingRuntimeDeps
@@ -102,61 +98,61 @@ export function createLaboratoryProcessTargetingRuntime(
     resolveAudioFeatureTarget,
     resolveProfileTarget,
     toRecord,
-  } = deps
+  } = deps;
 
   function toProfileRecord(value: unknown): LaboratoryProjectProfileRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toSourceRecord(value: unknown): LaboratoryProjectSourceRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toEditRecord(value: unknown): LaboratoryProjectEditRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toReadinessRecord(value: unknown): LaboratoryProfileReadinessRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toSubtitleAnalysisRecord(value: unknown): LaboratorySubtitleAnalysisRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toSubtitleEntryRecord(value: unknown): LaboratorySubtitleEntryRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toProcessTargetRecord(value: unknown): LaboratoryProcessTargetRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toModelSummaryEntry(value: unknown): LaboratoryProfileModelSummaryEntry {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toStringArray(value: unknown): string[] {
     if (!Array.isArray(value)) {
-      return []
+      return [];
     }
     return value
       .map(function (entry) {
-        return asNonEmptyString(entry)
+        return asNonEmptyString(entry);
       })
-      .filter((entry): entry is string => entry !== null)
+      .filter((entry): entry is string => entry !== null);
   }
 
   function resolveProcessTarget(project: LaboratoryProjectRecord, featureId: string | null) {
     if (featureId === audioFeatureId) {
-      return resolveAudioFeatureTarget(project)
+      return resolveAudioFeatureTarget(project);
     }
 
     if (featureId === subtitleFeatureId) {
-      const subtitleState = normalizeSubtitleAnalysisState(project.subtitleAnalysis, {})
-      const analysis = toSubtitleAnalysisRecord(subtitleState.analysis)
-      const selectedEntries = getSubtitleSelectedEntries(project).map(toSubtitleEntryRecord)
-      const activeEntry = selectedEntries[0] || getActiveSubtitleEntry(project)
+      const subtitleState = normalizeSubtitleAnalysisState(project.subtitleAnalysis, {});
+      const analysis = toSubtitleAnalysisRecord(subtitleState.analysis);
+      const selectedEntries = getSubtitleSelectedEntries(project).map(toSubtitleEntryRecord);
+      const activeEntry = selectedEntries[0] || getActiveSubtitleEntry(project);
 
       return {
         requestedMode: asNonEmptyString(analysis.sourceSelection) || "active-entry",
@@ -171,22 +167,24 @@ export function createLaboratoryProcessTargetingRuntime(
         metadata: activeEntry ? toRecord(activeEntry.metadata) : null,
         signature: selectedEntries
           .map(function (entry) {
-            return `${String(entry.id || "")}:${String(entry.path || entry.fileName || "")}`
+            return `${String(entry.id || "")}:${String(entry.path || entry.fileName || "")}`;
           })
           .join("|"),
         label:
           selectedEntries.length > 1
             ? `${selectedEntries.length} subtitle files`
             : activeEntry
-              ? asNonEmptyString(activeEntry.fileName) || asNonEmptyString(project.name) || "Project"
+              ? asNonEmptyString(activeEntry.fileName) ||
+                asNonEmptyString(project.name) ||
+                "Project"
               : asNonEmptyString(project.name) || "Project",
         entries: selectedEntries,
         usingFallback: false,
         reason: null,
-      }
+      };
     }
 
-    return resolveProfileTarget(project)
+    return resolveProfileTarget(project);
   }
 
   function createQueuedProcessModule(
@@ -205,7 +203,7 @@ export function createLaboratoryProcessTargetingRuntime(
       warnings: [],
       artifactIds: [],
       findingIds: [],
-    })
+    });
   }
 
   function buildMediaProcessModules(
@@ -213,12 +211,12 @@ export function createLaboratoryProcessTargetingRuntime(
     project: LaboratoryProjectRecord,
     target: LaboratoryProcessTargetRecord
   ) {
-    const readiness = toReadinessRecord(toProfileRecord(project.profile).readiness)
-    const enabledLaneIds = toStringArray(readiness.enabledLaneIds)
-    const sourceKind = asNonEmptyString(toSourceRecord(project.source).kind) || "video"
-    const edit = toEditRecord(project.edit)
-    const targetRecord = toProcessTargetRecord(target)
-    const modules: LaboratoryProcessModuleRecord[] = []
+    const readiness = toReadinessRecord(toProfileRecord(project.profile).readiness);
+    const enabledLaneIds = toStringArray(readiness.enabledLaneIds);
+    const sourceKind = asNonEmptyString(toSourceRecord(project.source).kind) || "video";
+    const edit = toEditRecord(project.edit);
+    const targetRecord = toProcessTargetRecord(target);
+    const modules: LaboratoryProcessModuleRecord[] = [];
 
     modules.push(
       createQueuedProcessModule(
@@ -229,7 +227,7 @@ export function createLaboratoryProcessTargetingRuntime(
           ? "Target asset is pinned and ready for the managed run."
           : "Prepare a source before starting."
       )
-    )
+    );
     modules.push(
       createQueuedProcessModule(
         "cleanup",
@@ -239,7 +237,7 @@ export function createLaboratoryProcessTargetingRuntime(
           ? "Using the selected derived output as the active analysis handoff."
           : "Using the original source as the active analysis handoff."
       )
-    )
+    );
     modules.push(
       normalizeProcessModule({
         ...createQueuedProcessModule(
@@ -249,15 +247,13 @@ export function createLaboratoryProcessTargetingRuntime(
           ""
         ),
         status:
-          sourceKind === "video" && enabledLaneIds.includes("visual-tamper")
-            ? "queued"
-            : "skipped",
+          sourceKind === "video" && enabledLaneIds.includes("visual-tamper") ? "queued" : "skipped",
         summary:
           sourceKind === "video" && enabledLaneIds.includes("visual-tamper")
             ? "Visual tamper checks will run on the pinned target."
             : "Motion analysis is not active for this target.",
       })
-    )
+    );
     modules.push(
       normalizeProcessModule({
         ...createQueuedProcessModule(
@@ -276,7 +272,7 @@ export function createLaboratoryProcessTargetingRuntime(
             ? "Audio continuity, loudness, and optional transcript checks will run."
             : "Audio sweep is not applicable to this target.",
       })
-    )
+    );
     modules.push(
       createQueuedProcessModule(
         "report",
@@ -284,35 +280,35 @@ export function createLaboratoryProcessTargetingRuntime(
         "Report Synthesis",
         "The managed run will persist a report-ready summary for the final stage."
       )
-    )
+    );
 
-    return modules
+    return modules;
   }
 
   function buildProcessSpeechAvailability(
     runtime: LaboratoryRecord,
     project: LaboratoryProjectRecord
   ): LaboratoryProcessSpeechAvailability {
-    const summaries = buildProfileModelSummary(runtime, project).map(toModelSummaryEntry)
+    const summaries = buildProfileModelSummary(runtime, project).map(toModelSummaryEntry);
     const selected =
       summaries.find(function (entry) {
-        return entry.selected === true
-      }) || null
+        return entry.selected === true;
+      }) || null;
     const readyModel =
       selected && selected.ready === true
         ? selected
         : summaries.find(function (entry) {
-            return entry.ready === true
-          }) || null
+            return entry.ready === true;
+          }) || null;
     return {
       ready: readyModel !== null,
       model: readyModel,
-    }
+    };
   }
 
   return {
     buildMediaProcessModules,
     buildProcessSpeechAvailability,
     resolveProcessTarget,
-  }
+  };
 }

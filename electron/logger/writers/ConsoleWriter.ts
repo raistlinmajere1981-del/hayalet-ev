@@ -20,16 +20,19 @@ export class ConsoleWriter {
   }
 
   private updateFilePath(): void {
-    this.filePath = join(this.config.sessionDir, "console.log");
+    const sessionDir = this.config.sessionDir.trim();
+    this.filePath = sessionDir === "" ? "" : join(sessionDir, "console.log");
     this.dirReady = false;
   }
 
   public async write(entry: LogEntry): Promise<void> {
     if (!this.config.enableConsoleLog) return;
+    const sessionDir = this.config.sessionDir.trim();
+    if (sessionDir === "" || this.filePath === "") return;
 
     try {
       if (!this.dirReady) {
-        await mkdir(this.config.sessionDir, { recursive: true });
+        await mkdir(sessionDir, { recursive: true });
         this.dirReady = true;
       }
       const line = this.formatEntry(entry);

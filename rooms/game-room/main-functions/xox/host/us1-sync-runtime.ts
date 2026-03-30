@@ -106,10 +106,7 @@ export interface XoxUs1SyncRuntimeDeps {
     hiddenPairs: boolean;
     revealPairsOnFinish: boolean;
   }) => TeamTetrisMatch;
-  dispatchNextTeamTetrisTurn: (
-    api: XoxUs1SyncApi,
-    state: TeamTetrisHostState
-  ) => Promise<unknown>;
+  dispatchNextTeamTetrisTurn: (api: XoxUs1SyncApi, state: TeamTetrisHostState) => Promise<unknown>;
   loadPendingInvite: (api: XoxUs1SyncApi) => XoxPendingInvite | null;
   loadState: (api: XoxUs1SyncApi) => XoxGameState;
   loadTeamTetrisState: (api: XoxUs1SyncApi) => TeamTetrisHostState;

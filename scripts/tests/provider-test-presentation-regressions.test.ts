@@ -6,6 +6,7 @@ import {
   buildScenarioProgressSummary,
   buildScenarioStatusCounts,
   filterScenarioDisplayRows,
+  getScenarioCommandLabel,
   resolveProviderTestSurface,
   resolveScenarioSurface,
 } from "../../src/js/pages/shared/provider-test-presentation.ts";
@@ -59,6 +60,27 @@ test("progress summary counts finished commands and exposes the active command i
   });
 });
 
+test("progress summary honors explicit total step counts while commands stream in", () => {
+  const summary = buildScenarioProgressSummary({
+    slot: "ai1",
+    providerName: "ChatGPT",
+    scenarioTitle: "webview-test",
+    totalSteps: 18,
+    commands: [
+      { id: "reset-default-page", name: "Reset Default Page", status: "pass" },
+      { id: "sidebar-open", name: "Sidebar Open", status: "running" },
+    ],
+  });
+
+  assert.deepEqual(summary, {
+    title: "ChatGPT webview-test çalışıyor",
+    completedSteps: 1,
+    totalSteps: 18,
+    activeStepId: "sidebar-open",
+    hasFailures: false,
+  });
+});
+
 test("status counts are derived from command reports", () => {
   const counts = buildScenarioStatusCounts({
     commands: [
@@ -101,7 +123,7 @@ test("display rows can be filtered by status from command reports", () => {
   assert.deepEqual(rows, [
     {
       id: "attach-file",
-      name: "Attach File",
+      name: getScenarioCommandLabel("attach-file", "Attach File"),
       status: "warning",
       message: "partial",
     },
@@ -133,7 +155,7 @@ test("display rows preserve structured session preview details for sync commands
   assert.deepEqual(rows, [
     {
       id: "collect-session-urls",
-      name: "Collect Session Urls",
+      name: getScenarioCommandLabel("collect-session-urls", "Collect Session Urls"),
       status: "pass",
       message: "Collected 2 visible sessions",
       sessionPreview: {

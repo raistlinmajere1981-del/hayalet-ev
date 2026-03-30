@@ -483,17 +483,29 @@ test("provider tester runs webview-sync sidebar collection actions from provider
   assert.deepEqual(loadingObservations, ["busy", "busy"]);
   assert.match(
     result.results[0]?.message ?? "",
-    /Sidebar open button clicked|Sidebar became visible|Sidebar already open/
+    /Sidebar open button clicked|Sidebar became visible|Sidebar already open|Kenar çubuğu açma butonuna tıklandı|Kenar çubuğu görünür hale geldi|Kenar çubuğu zaten açık/
   );
-  assert.equal(result.results[1]?.message, "Sidebar ready");
-  assert.match(result.results[2]?.message ?? "", /Sidebar is visible|Sidebar ready check passed/);
-  assert.equal(result.results[3]?.message, "Collected 2 visible sessions");
+  assert.match(result.results[1]?.message ?? "", /Sidebar ready|Kenar çubuğu hazır/);
+  assert.match(
+    result.results[2]?.message ?? "",
+    /Sidebar is visible|Sidebar ready check passed|Kenar çubuğu görünür/
+  );
+  assert.match(
+    result.results[3]?.message ?? "",
+    /Collected 2 visible sessions|2 görünür session toplandı/
+  );
   assert.equal(result.results[4]?.message, "soft ok");
   assert.equal(result.results[5]?.message, "soft ok");
-  assert.match(result.results[6]?.message ?? "", /Opened First chat/);
-  assert.match(result.results[6]?.message ?? "", /loading indicator settled as busy/);
+  assert.match(result.results[6]?.message ?? "", /Opened First chat|First chat açıldı/);
+  assert.match(
+    result.results[6]?.message ?? "",
+    /loading indicator settled as busy|loading göstergesi busy durumunda sakinleşti/
+  );
   assert.equal(result.results[8]?.message, "full ok");
-  assert.equal(result.results[10]?.message, "Conversation list refreshed");
+  assert.match(
+    result.results[10]?.message ?? "",
+    /Conversation list refreshed|Konuşma listesi yenilendi/
+  );
   assert.deepEqual(progressMessages, [
     "Navigate Session 1/2 - First chat",
     "Navigate Session 2/2 - Second chat",
@@ -647,7 +659,7 @@ test("provider tester rejects webview-sync for estimated provider configs", asyn
 
   await assert.rejects(
     async () => await tester.runScenario("webview-sync"),
-    /webview-sync is not verified/
+    /webview-sync is not verified|webview-sync doğrulanmamış/
   );
 });
 
@@ -851,9 +863,9 @@ test("provider tester runs the selected sync mode after opening each session URL
     result.results.filter((entry) => entry.message === "clean ok").length,
     2
   );
-  assert.equal(
-    result.results.at(-1)?.message,
-    "Conversation list refreshed"
+  assert.match(
+    result.results.at(-1)?.message ?? "",
+    /Conversation list refreshed|Konuşma listesi yenilendi/
   );
 });
 
@@ -1207,9 +1219,9 @@ test("provider tester refreshes metadata without changing the current page durin
   assert.ok(result.commands);
   assert.equal(result.commands[4]?.status, "pass");
   assert.equal(result.results[4]?.message, "soft ok");
-  assert.equal(
-    result.results[5]?.message,
-    "Conversation list refreshed"
+  assert.match(
+    result.results[5]?.message ?? "",
+    /Conversation list refreshed|Konuşma listesi yenilendi/
   );
 });
 

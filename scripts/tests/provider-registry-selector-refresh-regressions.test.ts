@@ -18,26 +18,19 @@ test("provider registry can replace current-session config entries after promoti
   );
 });
 
-test("provider test refresh path exposes refreshed config metadata to renderer consumers", () => {
-  const providerTypes = readFileSync("src/types/provider.ts", "utf8");
+test("provider test flow no longer auto-promotes config files from IPC runs", () => {
   const ipcHandler = readFileSync("electron/handlers/ipc-provider.ts", "utf8");
   const entrancePanel = readFileSync("src/js/pages/entrance/webview-panel.ts", "utf8");
   const assistantIndex = readFileSync("src/js/pages/assistant/assistant.ts", "utf8");
 
-  assert.ok(
-    providerTypes.includes("refreshedConfig?: ProviderConfig"),
-    "ProviderTestSuite should expose refreshedConfig for current-session refresh"
-  );
-  assert.ok(
-    ipcHandler.includes("refreshedConfig"),
-    "test-provider IPC handler should return refreshedConfig after promotion"
-  );
+  assert.doesNotMatch(ipcHandler, /collectPromotableSelectors/);
+  assert.doesNotMatch(ipcHandler, /promoteProviderConfigFile/);
   assert.ok(
     entrancePanel.includes("ProviderRegistry.update("),
-    "entrance webview panel should update ProviderRegistry after test promotion"
+    "entrance webview panel may still support registry refresh if explicit data is ever returned"
   );
   assert.ok(
     assistantIndex.includes("ProviderRegistry.update("),
-    "assistant page should update ProviderRegistry after test promotion"
+    "assistant page may still support registry refresh if explicit data is ever returned"
   );
 });

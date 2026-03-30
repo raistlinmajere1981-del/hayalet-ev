@@ -188,6 +188,14 @@ declare global {
 
     __app_settings_unsub?: () => void;
     __app_provider_config?: ProviderConfig;
+    __providerScenarioLocks?: Record<
+      string,
+      {
+        runId?: string;
+        scenarioId?: string;
+        updatedAt?: number;
+      }
+    >;
 
     OpenCodeConfig?: {
       serverUrl: string;

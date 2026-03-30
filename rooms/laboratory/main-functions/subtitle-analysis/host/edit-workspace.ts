@@ -52,7 +52,9 @@ type SubtitleEditWorkspaceRuntimeDeps = {
     requestId: string
   ) => Promise<unknown> | unknown;
   getActiveProject: (runtime: LaboratoryRuntimeRecord) => LaboratoryProjectRecord | null;
-  getActiveSubtitleEntry: (project: LaboratoryProjectRecord) => LaboratorySubtitleEntryRecord | null;
+  getActiveSubtitleEntry: (
+    project: LaboratoryProjectRecord
+  ) => LaboratorySubtitleEntryRecord | null;
   getProjectSubtitleEditOutputDir: (
     runtime: LaboratoryRuntimeRecord,
     project: LaboratoryProjectRecord
@@ -151,10 +153,7 @@ export function createSubtitleEditWorkspaceRuntime(deps: SubtitleEditWorkspaceRu
     const editState = toSubtitleEditRecord(subtitleState.edit);
     const recipe = toSubtitleEditRecipeRecord(editState.recipe);
     const sourceText = await readSubtitleText(activeEntryPath);
-    const outputFormat = resolveSubtitleOutputFormat(
-      activeEntry.format,
-      recipe["outputFormat"]
-    );
+    const outputFormat = resolveSubtitleOutputFormat(activeEntry.format, recipe["outputFormat"]);
     const outputText = transformSubtitleDocument(
       sourceText,
       activeEntry.format,
@@ -213,10 +212,7 @@ export function createSubtitleEditWorkspaceRuntime(deps: SubtitleEditWorkspaceRu
     const editState = toSubtitleEditRecord(subtitleState.edit);
     const recipe = toSubtitleEditRecipeRecord(editState.recipe);
     const sourceText = await readSubtitleText(activeEntryPath);
-    const outputFormat = resolveSubtitleOutputFormat(
-      activeEntry.format,
-      recipe["outputFormat"]
-    );
+    const outputFormat = resolveSubtitleOutputFormat(activeEntry.format, recipe["outputFormat"]);
     const outputText = transformSubtitleDocument(
       sourceText,
       activeEntry.format,

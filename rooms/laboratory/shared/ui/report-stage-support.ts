@@ -1,54 +1,54 @@
-type LaboratoryRecord = Record<string, unknown>
+type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryJobRecord = LaboratoryRecord & {
-  stage?: unknown
-}
+  stage?: unknown;
+};
 
 type LaboratorySignalRecord = LaboratoryRecord & {
-  artifactIds?: unknown
-  confidence?: unknown
-  detail?: unknown
-  evidenceCount?: unknown
-  kind?: unknown
-  laneId?: unknown
-  level?: unknown
-  moduleId?: unknown
-  title?: unknown
-}
+  artifactIds?: unknown;
+  confidence?: unknown;
+  detail?: unknown;
+  evidenceCount?: unknown;
+  kind?: unknown;
+  laneId?: unknown;
+  level?: unknown;
+  moduleId?: unknown;
+  title?: unknown;
+};
 
 type LaboratorySummaryCardRecord = LaboratoryRecord & {
-  label?: unknown
-  labelKey?: unknown
-}
+  label?: unknown;
+  labelKey?: unknown;
+};
 
 type LaboratoryFeatureReportRecord = LaboratoryRecord & {
-  generatedAt?: unknown
-  status?: unknown
-}
+  generatedAt?: unknown;
+  status?: unknown;
+};
 
 type LaboratoryAssetRecord = LaboratoryRecord & {
-  label?: unknown
-}
+  label?: unknown;
+};
 
 type LaboratoryReportStageSupportRuntimeDeps = {
-  escapeHtml: (value: string) => string
-  featureText: (path: string[]) => string
-  formatDateTime: (value: unknown) => string
-  formatDuration: (value: unknown) => string
-  formatStatusLabel: (value: unknown) => string
-  getCurrentFeatureArtifactCount: () => number
-  getCurrentFeatureTargetLabel: () => string
-  getCurrentSourceLabel: () => string
-  getPreferredAssetDuration: (asset: LaboratoryAssetRecord) => unknown
-  getProfileConfidenceLabel: (confidence: unknown) => string
-  getProfileSignalKindLabel: (kind: unknown) => string
-  getReportJobs: () => unknown[]
-  getSubtitleProcessModuleLabel: (module: LaboratoryRecord) => string
-  isSubtitleAnalysisFeature: () => boolean
-  text: (path: string[]) => string
-  textFromKey: (key: string) => string
-  toRecord: (value: unknown) => LaboratoryRecord
-}
+  escapeHtml: (value: string) => string;
+  featureText: (path: string[]) => string;
+  formatDateTime: (value: unknown) => string;
+  formatDuration: (value: unknown) => string;
+  formatStatusLabel: (value: unknown) => string;
+  getCurrentFeatureArtifactCount: () => number;
+  getCurrentFeatureTargetLabel: () => string;
+  getCurrentSourceLabel: () => string;
+  getPreferredAssetDuration: (asset: LaboratoryAssetRecord) => unknown;
+  getProfileConfidenceLabel: (confidence: unknown) => string;
+  getProfileSignalKindLabel: (kind: unknown) => string;
+  getReportJobs: () => unknown[];
+  getSubtitleProcessModuleLabel: (module: LaboratoryRecord) => string;
+  isSubtitleAnalysisFeature: () => boolean;
+  text: (path: string[]) => string;
+  textFromKey: (key: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
 
 export function createLaboratoryReportStageSupportRuntime(
   deps: LaboratoryReportStageSupportRuntimeDeps
@@ -71,30 +71,30 @@ export function createLaboratoryReportStageSupportRuntime(
     text,
     textFromKey,
     toRecord,
-  } = deps
+  } = deps;
 
   function toJobRecord(value: unknown): LaboratoryJobRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toSignalRecord(value: unknown): LaboratorySignalRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toSummaryCardRecord(value: unknown): LaboratorySummaryCardRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toFeatureReportRecord(value: unknown): LaboratoryFeatureReportRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toAssetRecord(value: unknown): LaboratoryAssetRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toString(value: unknown, fallback = ""): string {
-    return typeof value === "string" ? value : fallback
+    return typeof value === "string" ? value : fallback;
   }
 
   function getRunningReportJob(): LaboratoryJobRecord | null {
@@ -102,9 +102,9 @@ export function createLaboratoryReportStageSupportRuntime(
       getReportJobs()
         .map(toJobRecord)
         .find(function (job) {
-          return !["completed", "failed", "cancelled"].includes(String(job.stage || ""))
+          return !["completed", "failed", "cancelled"].includes(String(job.stage || ""));
         }) || null
-    )
+    );
   }
 
   function renderSignalCard(value: string, label: string) {
@@ -113,13 +113,13 @@ export function createLaboratoryReportStageSupportRuntime(
         <strong class="lab-signal-card__value">${escapeHtml(value)}</strong>
         <span class="lab-signal-card__label">${escapeHtml(label)}</span>
       </article>
-    `
+    `;
   }
 
   function renderReportFinding(signal: unknown) {
-    const record = toSignalRecord(signal)
+    const record = toSignalRecord(signal);
     if (isSubtitleAnalysisFeature()) {
-      const moduleId = toString(record.moduleId) || toString(record.laneId)
+      const moduleId = toString(record.moduleId) || toString(record.laneId);
       return `
         <article class="lab-finding">
           <h3 class="lab-finding__title">${escapeHtml(toString(record.title) || moduleId || "--")}</h3>
@@ -154,7 +154,7 @@ export function createLaboratoryReportStageSupportRuntime(
           </p>
           <p class="lab-finding__detail">${escapeHtml(toString(record.detail))}</p>
         </article>
-      `
+      `;
     }
 
     return `
@@ -177,17 +177,17 @@ export function createLaboratoryReportStageSupportRuntime(
         </p>
         <p class="lab-finding__detail">${escapeHtml(toString(record.detail))}</p>
       </article>
-    `
+    `;
   }
 
   function getReportSignalCardLabel(card: unknown) {
-    const record = toSummaryCardRecord(card)
-    return textFromKey(toString(record.labelKey)) || toString(record.label) || "--"
+    const record = toSummaryCardRecord(card);
+    return textFromKey(toString(record.labelKey)) || toString(record.label) || "--";
   }
 
   function getReportOverviewRows(reportRecord: unknown, findings: unknown[], asset: unknown) {
-    const report = toFeatureReportRecord(reportRecord)
-    const assetRecord = toAssetRecord(asset)
+    const report = toFeatureReportRecord(reportRecord);
+    const assetRecord = toAssetRecord(asset);
     if (isSubtitleAnalysisFeature()) {
       return [
         [featureText(["report", "overviewMeta", "target"]), getCurrentFeatureTargetLabel()],
@@ -200,15 +200,15 @@ export function createLaboratoryReportStageSupportRuntime(
           featureText(["report", "overviewMeta", "artifacts"]),
           String(getCurrentFeatureArtifactCount()),
         ],
-        [
-          featureText(["report", "overviewMeta", "generated"]),
-          formatDateTime(report.generatedAt),
-        ],
-      ]
+        [featureText(["report", "overviewMeta", "generated"]), formatDateTime(report.generatedAt)],
+      ];
     }
 
     return [
-      [text(["mediaAnalysis", "shared", "summary"]), toString(assetRecord.label) || getCurrentSourceLabel()],
+      [
+        text(["mediaAnalysis", "shared", "summary"]),
+        toString(assetRecord.label) || getCurrentSourceLabel(),
+      ],
       [
         text(["mediaAnalysis", "shared", "duration"]),
         formatDuration(getPreferredAssetDuration(assetRecord)),
@@ -219,11 +219,11 @@ export function createLaboratoryReportStageSupportRuntime(
         text(["mediaAnalysis", "profile", "summary", "artifacts"]),
         String(getCurrentFeatureArtifactCount()),
       ],
-    ]
+    ];
   }
 
   function getReportSideRows(reportRecord: unknown, findings: unknown[], exportsList: unknown[]) {
-    const report = toFeatureReportRecord(reportRecord)
+    const report = toFeatureReportRecord(reportRecord);
     if (isSubtitleAnalysisFeature()) {
       return [
         [
@@ -233,11 +233,8 @@ export function createLaboratoryReportStageSupportRuntime(
         [featureText(["report", "overviewMeta", "target"]), getCurrentFeatureTargetLabel()],
         [featureText(["report", "overviewMeta", "findings"]), String(findings.length)],
         [featureText(["report", "overviewMeta", "exports"]), String(exportsList.length)],
-        [
-          featureText(["report", "overviewMeta", "generated"]),
-          formatDateTime(report.generatedAt),
-        ],
-      ]
+        [featureText(["report", "overviewMeta", "generated"]), formatDateTime(report.generatedAt)],
+      ];
     }
 
     return [
@@ -249,7 +246,7 @@ export function createLaboratoryReportStageSupportRuntime(
         String(getCurrentFeatureArtifactCount()),
       ],
       [featureText(["report", "actions", "export"]), String(exportsList.length)],
-    ]
+    ];
   }
 
   return {
@@ -259,5 +256,5 @@ export function createLaboratoryReportStageSupportRuntime(
     getRunningReportJob,
     renderReportFinding,
     renderSignalCard,
-  }
+  };
 }

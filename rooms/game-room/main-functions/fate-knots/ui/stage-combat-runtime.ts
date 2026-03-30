@@ -106,7 +106,11 @@
       const cards = deps.createRegion("div", "fk-combat-hand__cards", null);
       if (combat.availableActions.length > 0) {
         combat.availableActions.forEach(function (action: GameRoomFateKnotsCombatAction) {
-          const button = deps.createRegion("button", "fk-card-choice fk-card-choice--combat", null) as HTMLButtonElement;
+          const button = deps.createRegion(
+            "button",
+            "fk-card-choice fk-card-choice--combat",
+            null
+          ) as HTMLButtonElement;
           button.type = "button";
           button.disabled = action.available !== true;
           button.dataset["selected"] = "false";
@@ -205,9 +209,7 @@
           deps.t(["fateKnots", "combat", "enemyLabel"], "Encounter")
         )
       );
-      arena.append(
-        deps.createElement("h2", "fk-frame__title", combat.enemy.label || "Enemy")
-      );
+      arena.append(deps.createElement("h2", "fk-frame__title", combat.enemy.label || "Enemy"));
       deps.appendImage(
         arena,
         "fk-combat-arena__image",
@@ -232,9 +234,7 @@
       arenaStats.append(
         deps.createStatBadge(
           deps.t(["fateKnots", "combat", "turnLabel"], "Turn"),
-          combat.turn?.seatId
-            ? combat.turn.seatId
-            : deps.t(["fateKnots", "turns", "idle"], "Idle"),
+          combat.turn?.seatId ? combat.turn.seatId : deps.t(["fateKnots", "turns", "idle"], "Idle"),
           "soft"
         )
       );

@@ -25,9 +25,7 @@ function isLaboratoryRecord(value: unknown): value is LaboratoryRecord {
   return typeof value === "object" && value !== null && Array.isArray(value) === false;
 }
 
-export function createLaboratoryViewAccessorsRuntime(
-  deps: LaboratoryViewAccessorsRuntimeDeps
-) {
+export function createLaboratoryViewAccessorsRuntime(deps: LaboratoryViewAccessorsRuntimeDeps) {
   const currentFeatureProcessRecordFn = deps.getCurrentFeatureProcessRecord;
   const currentFeatureReportRecordFn = deps.getCurrentFeatureReportRecord;
   const projectAudioAnalysisFn = deps.getProjectAudioAnalysis;

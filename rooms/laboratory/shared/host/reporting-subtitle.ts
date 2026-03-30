@@ -1,84 +1,82 @@
-type LaboratoryRecord = Record<string, unknown>
+type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryProjectRecord = LaboratoryRecord & {
-  name?: unknown
-}
+  name?: unknown;
+};
 
 type LaboratoryFeatureProcessRecord = LaboratoryRecord & {
-  artifacts?: unknown
-  findings?: unknown
-  modules?: unknown
-  runId?: unknown
-  status?: unknown
-  targetSummary?: unknown
-  warnings?: unknown
-}
+  artifacts?: unknown;
+  findings?: unknown;
+  modules?: unknown;
+  runId?: unknown;
+  status?: unknown;
+  targetSummary?: unknown;
+  warnings?: unknown;
+};
 
 type LaboratoryFeatureReportRecord = LaboratoryRecord & {
-  exports?: unknown
-}
+  exports?: unknown;
+};
 
 type LaboratoryProcessFindingRecord = LaboratoryRecord & {
-  evidenceCount?: unknown
-  level?: unknown
-}
+  evidenceCount?: unknown;
+  level?: unknown;
+};
 
 type LaboratoryProcessArtifactRecord = LaboratoryRecord & {
-  kind?: unknown
-  metadata?: unknown
-  moduleId?: unknown
-}
+  kind?: unknown;
+  metadata?: unknown;
+  moduleId?: unknown;
+};
 
 type LaboratoryProcessModuleRecord = LaboratoryRecord & {
-  id?: unknown
-  status?: unknown
-  summary?: unknown
-  warnings?: unknown
-}
+  id?: unknown;
+  status?: unknown;
+  summary?: unknown;
+  warnings?: unknown;
+};
 
 type LaboratorySubtitleModuleDescriptor = LaboratoryRecord & {
-  status?: unknown
-}
+  status?: unknown;
+};
 
 type LaboratorySubtitleEntryRecord = LaboratoryRecord & {
-  language?: unknown
-}
+  language?: unknown;
+};
 
 type LaboratorySubtitleMetadataRecord = LaboratoryRecord & {
-  topWord?: unknown
-  totalCues?: unknown
-}
+  topWord?: unknown;
+  totalCues?: unknown;
+};
 
 type LaboratorySubtitleReportRuntimeDeps = {
-  asNonEmptyString: (value: unknown) => string | null
-  asNumber: (value: unknown) => number | null
-  createEmptyFeatureReportRecord: (featureId: string) => LaboratoryRecord
+  asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
+  createEmptyFeatureReportRecord: (featureId: string) => LaboratoryRecord;
   getFeatureProcessRecord: (
     project: LaboratoryProjectRecord,
     featureId: string
-  ) => LaboratoryFeatureProcessRecord
+  ) => LaboratoryFeatureProcessRecord;
   getFeatureReportRecord: (
     project: LaboratoryProjectRecord,
     featureId: string
-  ) => LaboratoryFeatureReportRecord
-  getFindingSeverityRank: (level: unknown) => number
-  getSubtitleAnalysisModuleDescriptors: (runtime: LaboratoryRecord) => unknown[]
-  getSubtitleSelectedEntries: (project: LaboratoryProjectRecord) => unknown[]
+  ) => LaboratoryFeatureReportRecord;
+  getFindingSeverityRank: (level: unknown) => number;
+  getSubtitleAnalysisModuleDescriptors: (runtime: LaboratoryRecord) => unknown[];
+  getSubtitleSelectedEntries: (project: LaboratoryProjectRecord) => unknown[];
   normalizeFeatureReportRecord: (
     rawValue: unknown,
     featureId: string
-  ) => LaboratoryFeatureReportRecord
-  normalizeProcessArtifact: (rawValue: unknown) => LaboratoryProcessArtifactRecord
-  normalizeProcessFinding: (rawValue: unknown) => LaboratoryProcessFindingRecord
-  normalizeProcessModule: (rawValue: unknown) => LaboratoryProcessModuleRecord
-  normalizeStringArray: (value: unknown) => string[]
-  subtitleFeatureId: string
-  toRecord: (value: unknown) => LaboratoryRecord
-}
+  ) => LaboratoryFeatureReportRecord;
+  normalizeProcessArtifact: (rawValue: unknown) => LaboratoryProcessArtifactRecord;
+  normalizeProcessFinding: (rawValue: unknown) => LaboratoryProcessFindingRecord;
+  normalizeProcessModule: (rawValue: unknown) => LaboratoryProcessModuleRecord;
+  normalizeStringArray: (value: unknown) => string[];
+  subtitleFeatureId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
 
-export function createLaboratorySubtitleReportRuntime(
-  deps: LaboratorySubtitleReportRuntimeDeps
-) {
+export function createLaboratorySubtitleReportRuntime(deps: LaboratorySubtitleReportRuntimeDeps) {
   const {
     asNonEmptyString,
     asNumber,
@@ -95,42 +93,42 @@ export function createLaboratorySubtitleReportRuntime(
     normalizeStringArray,
     subtitleFeatureId,
     toRecord,
-  } = deps
+  } = deps;
 
   function toProjectRecord(value: unknown): LaboratoryProjectRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toFeatureProcessRecord(value: unknown): LaboratoryFeatureProcessRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toFeatureReportRecord(value: unknown): LaboratoryFeatureReportRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toProcessArtifactRecord(value: unknown): LaboratoryProcessArtifactRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toProcessModuleRecord(value: unknown): LaboratoryProcessModuleRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toProcessFindingRecord(value: unknown): LaboratoryProcessFindingRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toSubtitleModuleDescriptor(value: unknown): LaboratorySubtitleModuleDescriptor {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toSubtitleEntryRecord(value: unknown): LaboratorySubtitleEntryRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toMetadataRecord(value: unknown): LaboratorySubtitleMetadataRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function getProcessArtifactByKind(
@@ -142,25 +140,29 @@ export function createLaboratorySubtitleReportRuntime(
         ? processRecord.artifacts.map(normalizeProcessArtifact).map(toProcessArtifactRecord)
         : []
       ).find(function (entry) {
-        return asNonEmptyString(entry.kind) === kind
+        return asNonEmptyString(entry.kind) === kind;
       }) || null
-    )
+    );
   }
 
-  function extractTopWordFromLexicalSummary(moduleRecord: LaboratoryProcessModuleRecord): string | null {
-    const summary = asNonEmptyString(moduleRecord.summary)
+  function extractTopWordFromLexicalSummary(
+    moduleRecord: LaboratoryProcessModuleRecord
+  ): string | null {
+    const summary = asNonEmptyString(moduleRecord.summary);
     if (summary === null || summary.toLowerCase().includes("top lexical term is") === false) {
-      return null
+      return null;
     }
-    return asNonEmptyString(summary.replace(/^.*?"/, "").replace(/".*$/, ""))
+    return asNonEmptyString(summary.replace(/^.*?"/, "").replace(/".*$/, ""));
   }
 
   function composeSubtitleAnalysisReport(
     runtime: LaboratoryRecord,
     project: LaboratoryProjectRecord
   ) {
-    const processRecord = toFeatureProcessRecord(getFeatureProcessRecord(project, subtitleFeatureId))
-    const processStatus = asNonEmptyString(processRecord.status) || "idle"
+    const processRecord = toFeatureProcessRecord(
+      getFeatureProcessRecord(project, subtitleFeatureId)
+    );
+    const processStatus = asNonEmptyString(processRecord.status) || "idle";
     if (processStatus !== "ready" && processStatus !== "stale") {
       return normalizeFeatureReportRecord(
         {
@@ -169,78 +171,78 @@ export function createLaboratorySubtitleReportRuntime(
           warnings: normalizeStringArray(processRecord.warnings),
         },
         subtitleFeatureId
-      )
+      );
     }
 
     const findings = (Array.isArray(processRecord.findings) ? processRecord.findings : [])
       .map(normalizeProcessFinding)
       .map(toProcessFindingRecord)
       .sort(function (left, right) {
-        return getFindingSeverityRank(right.level) - getFindingSeverityRank(left.level)
-      })
+        return getFindingSeverityRank(right.level) - getFindingSeverityRank(left.level);
+      });
     const modules = Array.isArray(processRecord.modules)
       ? processRecord.modules.map(normalizeProcessModule).map(toProcessModuleRecord)
-      : []
+      : [];
     const completedCount = modules.filter(function (entry) {
-      return ["ready", "stale", "complete"].includes(asNonEmptyString(entry.status) || "idle")
-    }).length
+      return ["ready", "stale", "complete"].includes(asNonEmptyString(entry.status) || "idle");
+    }).length;
     const plannedCount = getSubtitleAnalysisModuleDescriptors(runtime)
       .map(toSubtitleModuleDescriptor)
       .filter(function (entry) {
-        return asNonEmptyString(entry.status) === "planned"
-      }).length
-    const targetEntries = getSubtitleSelectedEntries(project).map(toSubtitleEntryRecord)
-    const summaryArtifact = getProcessArtifactByKind(processRecord, "subtitle-summary")
-    const lexicalArtifact = getProcessArtifactByKind(processRecord, "subtitle-top-words")
+        return asNonEmptyString(entry.status) === "planned";
+      }).length;
+    const targetEntries = getSubtitleSelectedEntries(project).map(toSubtitleEntryRecord);
+    const summaryArtifact = getProcessArtifactByKind(processRecord, "subtitle-summary");
+    const lexicalArtifact = getProcessArtifactByKind(processRecord, "subtitle-top-words");
     const lexicalModule =
       modules.find(function (entry) {
-        return entry.id === "lexical-frequency"
-      }) || null
-    const summaryMetadata = toMetadataRecord(summaryArtifact?.metadata)
-    const lexicalMetadata = toMetadataRecord(lexicalArtifact?.metadata)
+        return entry.id === "lexical-frequency";
+      }) || null;
+    const summaryMetadata = toMetadataRecord(summaryArtifact?.metadata);
+    const lexicalMetadata = toMetadataRecord(lexicalArtifact?.metadata);
     const totalCues =
       asNumber(summaryMetadata.totalCues) ||
       findings.reduce(function (sum, entry) {
-        return sum + Math.max(0, Math.round(asNumber(entry.evidenceCount) || 0))
-      }, 0)
+        return sum + Math.max(0, Math.round(asNumber(entry.evidenceCount) || 0));
+      }, 0);
     const uniqueLanguages = Array.from(
       new Set(
         targetEntries
           .map(function (entry) {
-            return asNonEmptyString(entry.language)
+            return asNonEmptyString(entry.language);
           })
           .filter((entry): entry is string => entry !== null)
       )
-    )
+    );
     const topWord =
       asNonEmptyString(lexicalMetadata.topWord) ||
-      (lexicalModule ? extractTopWordFromLexicalSummary(lexicalModule) : null)
+      (lexicalModule ? extractTopWordFromLexicalSummary(lexicalModule) : null);
     const warnings = Array.from(
       new Set(
         normalizeStringArray(processRecord.warnings).concat(
           modules.flatMap(function (entry) {
-            return normalizeStringArray(entry.warnings)
+            return normalizeStringArray(entry.warnings);
           })
         )
       )
-    )
-    const caveats: string[] = []
+    );
+    const caveats: string[] = [];
 
     if (plannedCount > 0) {
-      caveats.push(`${plannedCount} subtitle module(s) remain planned for the next rollout.`)
+      caveats.push(`${plannedCount} subtitle module(s) remain planned for the next rollout.`);
     }
     if (targetEntries.length > 1) {
-      caveats.push("Batch subtitle selections summarize the currently selected entries only.")
+      caveats.push("Batch subtitle selections summarize the currently selected entries only.");
     }
     if (uniqueLanguages.length === 0) {
-      caveats.push("Subtitle language tags are missing on the current selection.")
+      caveats.push("Subtitle language tags are missing on the current selection.");
     }
 
-    const projectRecord = toProjectRecord(project)
-    const targetSummary = toRecord(processRecord.targetSummary)
+    const projectRecord = toProjectRecord(project);
+    const targetSummary = toRecord(processRecord.targetSummary);
     const featureReportRecord = toFeatureReportRecord(
       getFeatureReportRecord(project, subtitleFeatureId)
-    )
+    );
 
     return normalizeFeatureReportRecord(
       {
@@ -295,11 +297,11 @@ export function createLaboratorySubtitleReportRuntime(
         error: null,
       },
       subtitleFeatureId
-    )
+    );
   }
 
   return {
     composeSubtitleAnalysisReport,
     getProcessArtifactByKind,
-  }
+  };
 }

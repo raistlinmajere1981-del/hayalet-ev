@@ -177,7 +177,8 @@ export function normalizeTeamTetrisState(
   state.match = cloneTeamTetrisMatch(source["match"]);
   state.localSessionId = normalizeText(source["localSessionId"]) || null;
   state.remoteUserId = normalizeText(source["remoteUserId"]) || null;
-  state.lastRemoteTransportMessageId = normalizeText(source["lastRemoteTransportMessageId"]) || null;
+  state.lastRemoteTransportMessageId =
+    normalizeText(source["lastRemoteTransportMessageId"]) || null;
   state.lastRemoteTurnIndex =
     typeof source["lastRemoteTurnIndex"] === "number" &&
     Number.isInteger(source["lastRemoteTurnIndex"]) &&

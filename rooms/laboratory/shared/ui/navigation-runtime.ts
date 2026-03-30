@@ -43,8 +43,16 @@ type LaboratoryNavigationDeps = {
 };
 
 export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDeps) {
-  const { defaultFeatureId, documentRef, render, resolveLocale, roomId, stageOrder, state, toRecord } =
-    deps;
+  const {
+    defaultFeatureId,
+    documentRef,
+    render,
+    resolveLocale,
+    roomId,
+    stageOrder,
+    state,
+    toRecord,
+  } = deps;
 
   function toContextRecord(value: unknown): LaboratoryNavigationContextRecord {
     return toRecord(value);
@@ -83,8 +91,7 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
       Array.isArray(nextPresentation) === false
         ? toRecord(nextPresentation)
         : { mode: nextPresentation };
-    state.presentation.mode =
-      presentation["mode"] === "scene-view" ? "scene-view" : "classic";
+    state.presentation.mode = presentation["mode"] === "scene-view" ? "scene-view" : "classic";
     state.presentation.uiScale = normalizeUiScale(presentation["uiScale"]);
     const scaleFactor = formatScaleFactor(state.presentation.uiScale / 100);
     documentRef.body.dataset["presentationMode"] = state.presentation.mode;
@@ -95,10 +102,7 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
     documentRef.documentElement.dataset["presentationMode"] = state.presentation.mode;
     documentRef.documentElement.dataset["roomUiScale"] = String(state.presentation.uiScale);
     if (typeof documentRef.documentElement.style.setProperty === "function") {
-      documentRef.documentElement.style.setProperty(
-        "--room-runtime-ui-scale-factor",
-        scaleFactor
-      );
+      documentRef.documentElement.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
     }
   }
 

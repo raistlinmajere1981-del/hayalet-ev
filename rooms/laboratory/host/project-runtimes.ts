@@ -44,11 +44,7 @@ type LaboratoryHostProjectRuntimesDeps = {
     featureId: string,
     reason: string
   ) => unknown;
-  markFeatureReportStale: (
-    project: LaboratoryRecord,
-    featureId: string,
-    reason: string
-  ) => unknown;
+  markFeatureReportStale: (project: LaboratoryRecord, featureId: string, reason: string) => unknown;
   mediaFeatureId: string;
   mediaStages: string[];
   normalizeAudioAnalysisModuleResult: (
@@ -350,7 +346,9 @@ export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectR
     toRecord: deps.toRecord,
   };
   stateComposition = createLaboratoryHostStateCompositionRuntime(
-    stateCompositionDeps as unknown as Parameters<typeof createLaboratoryHostStateCompositionRuntime>[0]
+    stateCompositionDeps as unknown as Parameters<
+      typeof createLaboratoryHostStateCompositionRuntime
+    >[0]
   );
 
   const sc = requireStateComposition();

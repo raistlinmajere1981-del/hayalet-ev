@@ -26,13 +26,26 @@ test("webview-test scenario commands keep stable preset actions", () => {
   const scenario = chatgptConfig.scenarios.webviewTest;
 
   assert.deepEqual(
-    scenario.commands.slice(0, 5).map((command) => [command.id, command.action]),
+    scenario.commands.slice(0, 8).map((command) => [command.id, command.action]),
     [
       ["reset-default-page", "navigate-default"],
+      ["sidebar-open", "assert-sidebar-open"],
+      ["session-list", "assert-session-list"],
+      ["sidebar-close", "assert-sidebar-close"],
       ["prepare-input", "prepare-input"],
       ["disabled-send", "assert-disabled-send"],
       ["drag-drop-surface", "assert-drag-drop-surface"],
-      ["inject-message", "inject-prompt"],
+      ["inject-count-message", "inject-prompt"],
+    ]
+  );
+
+  assert.deepEqual(
+    scenario.commands.slice(-4).map((command) => [command.id, command.action]),
+    [
+      ["image-final-bubbles", "assert-final-bubbles"],
+      ["generated-image", "assert-generated-image"],
+      ["scroll-behavior", "assert-scroll-behavior"],
+      ["provider-capabilities", "assert-provider-capabilities"],
     ]
   );
 });

@@ -117,11 +117,16 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
 
   function renderStageIntro(stageId: string) {
     if (isSubtitleAnalysisFeature()) {
-      const copy = toStageCopyRecord(readValue(getTranslations(), ["subtitleAnalysis", "stages", stageId]));
+      const copy = toStageCopyRecord(
+        readValue(getTranslations(), ["subtitleAnalysis", "stages", stageId])
+      );
       return `
         <section class="lab-stage-copy">
           <h1 class="lab-stage-copy__title">${escapeHtml(
-            readStageCopyText(copy.title, subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle"))
+            readStageCopyText(
+              copy.title,
+              subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle")
+            )
           )}</h1>
           <p class="lab-stage-copy__subtitle">${escapeHtml(readStageCopyText(copy.subtitle, ""))}</p>
         </section>

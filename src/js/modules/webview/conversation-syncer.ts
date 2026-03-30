@@ -11,6 +11,7 @@ import { SlotController } from "../slot-controller.js";
 import { ConversationListManager } from "../conversation-list-manager.js";
 import { AppI18n } from "../i18n/index.js";
 import { getProvider } from "./provider-factory.js";
+import { isProviderScenarioActive } from "./provider-scenario-lock.js";
 import { normalizeUrl, isSlotUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
 import { PendingArchiveHandler } from "./pending-archive-handler.js";
 import type { AppSettings } from "@shared/settings.js";
@@ -150,6 +151,10 @@ class ConversationSyncerClass {
           if (provider === "") return;
 
           if (provider !== "ai1" && provider !== "ai2") {
+            return;
+          }
+
+          if (isProviderScenarioActive(provider)) {
             return;
           }
 
@@ -523,6 +528,14 @@ class ConversationSyncerClass {
 
   async syncProvider(provider: string, opts: { from?: string } = {}): Promise<SyncResult> {
     if (provider === "") return { success: false, message: syncT("providerMissing") };
+
+    if (provider !== "ai0" && isProviderScenarioActive(provider)) {
+      if (this._syncRetryTimers[provider] !== undefined) {
+        clearTimeout(this._syncRetryTimers[provider]);
+      }
+      this._syncRetryCounts[provider] = 0;
+      return { success: false, message: "provider scenario active", transient: true };
+    }
 
     if (opts.from === "manual") {
       if (this._syncRetryTimers[provider] !== undefined) {

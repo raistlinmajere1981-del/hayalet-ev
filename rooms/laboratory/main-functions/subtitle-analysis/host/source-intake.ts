@@ -119,7 +119,9 @@ export function createSubtitleSourceIntakeRuntime(deps: SubtitleSourceIntakeRunt
     if (!Array.isArray(value)) {
       return [];
     }
-    return value.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
+    return value.filter(
+      (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+    );
   }
 
   function getProjectId(project: LaboratoryProjectRecord): string {
@@ -165,7 +167,11 @@ export function createSubtitleSourceIntakeRuntime(deps: SubtitleSourceIntakeRunt
     return `subtitle-${Date.now()}.srt`;
   }
 
-  async function handleLocalPick(api: unknown, runtime: LaboratoryRuntimeRecord, requestId: string) {
+  async function handleLocalPick(
+    api: unknown,
+    runtime: LaboratoryRuntimeRecord,
+    requestId: string
+  ) {
     const project = getActiveProject(runtime);
     const electronApi = getElectronApi();
     if (project === null) {

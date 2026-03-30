@@ -56,7 +56,9 @@ type LaboratoryElectronApi = {
   readDirectoryFiles: (dirPath: string) => Promise<LaboratoryDirectoryEntry[]>;
   readFile: (path: string) => Promise<string | null>;
   roomToolsCall: (request: LaboratoryRoomToolRequest) => Promise<LaboratoryRoomToolResult>;
-  roomToolsCancel: (request: LaboratoryRoomToolCancelRequest) => Promise<LaboratoryRoomToolCancelResult>;
+  roomToolsCancel: (
+    request: LaboratoryRoomToolCancelRequest
+  ) => Promise<LaboratoryRoomToolCancelResult>;
 };
 
 function toApiRecord(value: unknown): LaboratoryMaybeApiRecord | null {
@@ -209,7 +211,9 @@ export async function writeLaboratoryTextFile(filePath: string, value: string): 
   });
 }
 
-export async function listLaboratoryDirectory(dirPath: string): Promise<LaboratoryDirectoryEntry[]> {
+export async function listLaboratoryDirectory(
+  dirPath: string
+): Promise<LaboratoryDirectoryEntry[]> {
   const electronApi = getLaboratoryElectronApi();
   if (electronApi === null) {
     return [];

@@ -12,6 +12,8 @@ export const config = {
     stopButton: ".blue-circle.stop-icon",
     inputField: ".ql-editor.textarea",
     messageContainer: ".response-container-content",
+    generatedImage:
+      '.response-container-content img[alt*="generated image" i], .response-container-content figure img, message-content img[src^="https://lh3.googleusercontent.com/"]',
     attachButton: 'button[data-test-id="local-images-files-uploader-button"]',
   },
   selectorMatrix: {

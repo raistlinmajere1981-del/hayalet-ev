@@ -7,7 +7,9 @@ import type { createLaboratorySourceStageComposition } from "./source-stage-comp
 
 type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
-type LaboratorySourceStageCompositionDeps = Parameters<typeof createLaboratorySourceStageComposition>[0];
+type LaboratorySourceStageCompositionDeps = Parameters<
+  typeof createLaboratorySourceStageComposition
+>[0];
 type LaboratoryStageShellDelegatesDeps = Parameters<typeof createLaboratoryStageShellDelegates>[0];
 type LaboratoryUiShellRuntimeDeps = Parameters<typeof createLaboratoryUiShellRuntime>[0];
 type LaboratoryUiActionRouterDeps = Parameters<typeof createLaboratoryUiActionRouter>[0];

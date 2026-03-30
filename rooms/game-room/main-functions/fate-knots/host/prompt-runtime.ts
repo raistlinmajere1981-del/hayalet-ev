@@ -415,7 +415,11 @@ export function createFateKnotsPromptRuntime(deps: FateKnotsPromptRuntimeDeps) {
 
       const sendResult = await sendUs1MessageSafe(api, {
         localSessionId: state.transport.localSessionId,
-        text: buildCombatPrompt(state, contentRegistry, FATE_KNOTS_COMMAND_NAMES.remoteCombatAction),
+        text: buildCombatPrompt(
+          state,
+          contentRegistry,
+          FATE_KNOTS_COMMAND_NAMES.remoteCombatAction
+        ),
         roomEvent: buildRoomEvent({
           roomId: ROOM_ID,
           featureId: FATE_KNOTS_FEATURE_ID,

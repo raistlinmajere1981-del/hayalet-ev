@@ -152,9 +152,11 @@ function buildNumericSummary(values: number[]): NumericSummary {
 }
 
 function findProsodyColumn(header: string[], pattern: RegExp): string | null {
-  return header.find(function (column) {
-    return pattern.test(column);
-  }) ?? null;
+  return (
+    header.find(function (column) {
+      return pattern.test(column);
+    }) ?? null
+  );
 }
 
 function toPartialProsodySummary(value: unknown): Partial<ProsodySummary> {
@@ -230,9 +232,7 @@ export function createAudioAnalysisParserRuntime() {
       const timestampValue = asFiniteNumber(timestampKey === null ? null : record[timestampKey]);
       const f0Value = asFiniteNumber(f0Key === null ? null : record[f0Key]);
       const loudnessValue = asFiniteNumber(loudnessKey === null ? null : record[loudnessKey]);
-      const voiceProbValue = asFiniteNumber(
-        voiceProbKey === null ? null : record[voiceProbKey]
-      );
+      const voiceProbValue = asFiniteNumber(voiceProbKey === null ? null : record[voiceProbKey]);
 
       if (timestampValue !== null) {
         timestampValues.push(timestampValue);
@@ -247,7 +247,8 @@ export function createAudioAnalysisParserRuntime() {
         voiceProbValues.push(voiceProbValue);
       }
 
-      const voiced = voiceProbValue !== null ? voiceProbValue >= 0.5 : f0Value !== null && f0Value > 0;
+      const voiced =
+        voiceProbValue !== null ? voiceProbValue >= 0.5 : f0Value !== null && f0Value > 0;
       if (voiced) {
         voicedFrames += 1;
       }

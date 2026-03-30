@@ -136,10 +136,7 @@ type MediaProfileModelRuntimeDeps = {
   digestSha1: (bytes: Uint8Array) => Promise<string>;
   ensureRuntimeDirectory: (path: string, requestId: string | null) => Promise<unknown>;
   getActiveProject: (runtime: LaboratoryMediaProfileRuntime) => LaboratoryProjectRecord | null;
-  getProfileModelDescriptor: (
-    runtime: LaboratoryMediaProfileRuntime,
-    modelId: string
-  ) => unknown;
+  getProfileModelDescriptor: (runtime: LaboratoryMediaProfileRuntime, modelId: string) => unknown;
   getProfileModelDescriptorMap: (runtime: LaboratoryMediaProfileRuntime) => LaboratoryRecord;
   getProfileModelsDir: (runtime: LaboratoryMediaProfileRuntime) => string;
   getStageSupport: (manifest: unknown, stageId: string) => string;
@@ -228,14 +225,16 @@ export function createMediaProfileModelRuntime(deps: MediaProfileModelRuntimeDep
     return toRecord(value);
   }
 
-  function getToolMap(runtime: LaboratoryMediaProfileRuntime): Record<string, LaboratoryToolRecord> {
-    return toRecord(toRecord(runtime.toolState)["tools"]) as Record<
-      string,
-      LaboratoryToolRecord
-    >;
+  function getToolMap(
+    runtime: LaboratoryMediaProfileRuntime
+  ): Record<string, LaboratoryToolRecord> {
+    return toRecord(toRecord(runtime.toolState)["tools"]) as Record<string, LaboratoryToolRecord>;
   }
 
-  function getToolRecord(runtime: LaboratoryMediaProfileRuntime, toolId: string): LaboratoryToolRecord {
+  function getToolRecord(
+    runtime: LaboratoryMediaProfileRuntime,
+    toolId: string
+  ): LaboratoryToolRecord {
     return toToolRecord(getToolMap(runtime)[toolId]);
   }
 
@@ -377,7 +376,11 @@ export function createMediaProfileModelRuntime(deps: MediaProfileModelRuntimeDep
         const expectedBytes = asNumber(descriptor.expectedBytes);
         const sizeBytes = asNumber(stored.sizeBytes);
         const checksumValid = stored.installed === true && stored.checksumValid === true;
-        const compatibility = evaluateProfileModelCompatibility(runtime, descriptor, whisperSummary);
+        const compatibility = evaluateProfileModelCompatibility(
+          runtime,
+          descriptor,
+          whisperSummary
+        );
 
         return {
           binaryReady: whisperSummary.ready,
@@ -655,7 +658,11 @@ export function createMediaProfileModelRuntime(deps: MediaProfileModelRuntimeDep
         lastError: fileEntry ? asNonEmptyString(current.lastError) : null,
         lastVerifiedAt: fileEntry ? asNonEmptyString(current.lastVerifiedAt) : null,
         modelId,
-        path: fileEntry ? asNonEmptyString(fileEntry.path) : fileName ? `${modelDir}/${fileName}` : null,
+        path: fileEntry
+          ? asNonEmptyString(fileEntry.path)
+          : fileName
+            ? `${modelDir}/${fileName}`
+            : null,
         sizeBytes: fileEntry ? asNumber(current.sizeBytes) : null,
       };
     });

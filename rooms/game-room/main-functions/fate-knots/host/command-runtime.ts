@@ -143,7 +143,10 @@ function readUs1RemoteUserId(
 }
 
 function persistUserProfile(api: RoomApi, state: FateKnotsCommandState) {
-  persistProfileFromUser(api as Parameters<typeof persistProfileFromUser>[0], asProfileState(state));
+  persistProfileFromUser(
+    api as Parameters<typeof persistProfileFromUser>[0],
+    asProfileState(state)
+  );
 }
 
 function refreshContentSummary(
@@ -344,7 +347,9 @@ export async function handleReady(api: RoomApi) {
   persistUserProfile(api, state);
   const everyoneLocked = state.participants.every(function (participant: Record<string, unknown>) {
     const selection = participant["selection"] as Record<string, unknown>;
-    return selection["locked"] === true && isSelectionComplete(asSelectionState(selection)) === true;
+    return (
+      selection["locked"] === true && isSelectionComplete(asSelectionState(selection)) === true
+    );
   });
   if (everyoneLocked) {
     startScenarioStep(
@@ -353,7 +358,12 @@ export async function handleReady(api: RoomApi) {
       contentRegistry.scenario.entryStepId,
       Date.now()
     );
-    await advancePendingWork(api, asPhaseState(state), asPhaseContentRegistry(contentRegistry), Date.now());
+    await advancePendingWork(
+      api,
+      asPhaseState(state),
+      asPhaseContentRegistry(contentRegistry),
+      Date.now()
+    );
   }
   refreshContentSummary(state, contentRegistry);
   pushFateKnotsState(api, state, contentRegistry);
@@ -408,7 +418,12 @@ export async function handleChoice(api: RoomApi, payload: unknown) {
     asPhaseContentRegistry(contentRegistry),
     Date.now()
   );
-  await advancePendingWork(api, asPhaseState(state), asPhaseContentRegistry(contentRegistry), Date.now());
+  await advancePendingWork(
+    api,
+    asPhaseState(state),
+    asPhaseContentRegistry(contentRegistry),
+    Date.now()
+  );
   pushFateKnotsState(api, state, contentRegistry);
   return { success: true, message: commandMessage(locale, "choiceAccepted") };
 }
@@ -478,7 +493,12 @@ export async function handleCombatAction(api: RoomApi, payload: unknown) {
   } else {
     state.statusKey = getCombatStatusKey(asPhaseState(state));
     setCommandCombatWaiting(state, Date.now());
-    await advancePendingWork(api, asPhaseState(state), asPhaseContentRegistry(contentRegistry), Date.now());
+    await advancePendingWork(
+      api,
+      asPhaseState(state),
+      asPhaseContentRegistry(contentRegistry),
+      Date.now()
+    );
   }
 
   pushFateKnotsState(api, state, contentRegistry);
@@ -615,6 +635,11 @@ export function handleEnd(api: RoomApi) {
 export async function dispatchPendingWork(api: RoomApi) {
   const contentRegistry = loadCommandContentRegistry(api);
   const state = asCommandState(loadFateKnotsState(api));
-  await advancePendingWork(api, asPhaseState(state), asPhaseContentRegistry(contentRegistry), Date.now());
+  await advancePendingWork(
+    api,
+    asPhaseState(state),
+    asPhaseContentRegistry(contentRegistry),
+    Date.now()
+  );
   pushFateKnotsState(api, state, contentRegistry);
 }

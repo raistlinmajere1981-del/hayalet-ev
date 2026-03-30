@@ -76,7 +76,9 @@ export function createSubtitleAnalysisSourceWorkspacePanels(
     if (!Array.isArray(value)) {
       return [];
     }
-    return value.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
+    return value.filter(
+      (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+    );
   }
 
   function renderSubtitleSourceWorkspacePanel() {

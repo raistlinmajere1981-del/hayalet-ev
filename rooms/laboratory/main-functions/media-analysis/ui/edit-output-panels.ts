@@ -204,7 +204,9 @@ export function createMediaAnalysisEditOutputPanels(deps: MediaAnalysisEditOutpu
           [text(["mediaAnalysis", "edit", "selectedResize"]), getCurrentResizeLabel()],
           [
             text(["mediaAnalysis", "edit", "selectedOutput"]),
-            activeOutput ? activeOutput.label || activeOutput.fileName || activeOutput.id || "--" : "--",
+            activeOutput
+              ? activeOutput.label || activeOutput.fileName || activeOutput.id || "--"
+              : "--",
           ],
           [
             text(["mediaAnalysis", "edit", "handoffLabel"]),

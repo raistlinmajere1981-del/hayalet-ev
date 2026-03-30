@@ -384,7 +384,8 @@
       );
 
       state.teamTetrisDraft.rowShifts = normalized.rowShifts;
-      state.teamTetrisDraft.preview = normalized.preview.success === true ? normalized.preview : null;
+      state.teamTetrisDraft.preview =
+        normalized.preview.success === true ? normalized.preview : null;
       state.teamTetrisDraft.errorKey =
         normalized.preview.success === true ? "" : normalized.preview.reason;
     }
@@ -486,7 +487,10 @@
         return;
       }
 
-      const nextTargets: Record<number, number> = Object.assign({}, state.teamTetrisDraft.dragTargets);
+      const nextTargets: Record<number, number> = Object.assign(
+        {},
+        state.teamTetrisDraft.dragTargets
+      );
       const targetRow = clampNumber(cellY, 0, BOARD_HEIGHT - 1);
       nextTargets[targetRow] = getTeamTetrisOriginFromCell(
         pendingTurn.pieceId,
@@ -563,6 +567,4 @@
       onTeamTetrisSubmit: onTeamTetrisSubmit,
     };
   };
-})(
-  (typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal
-);
+})((typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal);

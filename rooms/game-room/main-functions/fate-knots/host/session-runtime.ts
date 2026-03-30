@@ -159,9 +159,10 @@ export function getUs1RemoteUserId(
   state: FateKnotsState,
   context: GameRoomContextState
 ) {
-  const identity =
-    typeof api.getUs1Identity === "function" ? api.getUs1Identity() || null : null;
-  const identityRemoteUserId = isRecord(identity) ? readOptionalString(identity["remoteUserId"]) : null;
+  const identity = typeof api.getUs1Identity === "function" ? api.getUs1Identity() || null : null;
+  const identityRemoteUserId = isRecord(identity)
+    ? readOptionalString(identity["remoteUserId"])
+    : null;
 
   return context.slots.us1.remoteUserId || state.transport.remoteUserId || identityRemoteUserId;
 }
@@ -178,9 +179,7 @@ export function setIdleWaiting(state: FateKnotsState) {
 }
 
 export function setDecisionWaiting(state: FateKnotsState, now: number) {
-  const pendingSeatIds = listPendingDecisionSeats(
-    state as unknown as FateKnotsDecisionSeatState
-  );
+  const pendingSeatIds = listPendingDecisionSeats(state as unknown as FateKnotsDecisionSeatState);
   if (pendingSeatIds.length === 0) {
     setIdleWaiting(state);
     return;
@@ -278,7 +277,13 @@ export function maybeMarkSeatLossOrTimeout(
   ) {
     const statusKey =
       state.waiting.mode === FATE_KNOTS_WAIT_MODES.decision ? "decisionTimeout" : "combatTimeout";
-    markDesync(state, `${state.waiting.mode}-timeout`, state.waiting.pendingSeatIds, statusKey, now);
+    markDesync(
+      state,
+      `${state.waiting.mode}-timeout`,
+      state.waiting.pendingSeatIds,
+      statusKey,
+      now
+    );
   }
 }
 

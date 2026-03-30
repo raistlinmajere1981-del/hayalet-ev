@@ -286,7 +286,9 @@ export function createMediaAnalysisProfilePanels(deps: LaboratoryProfilePanelsDe
                   const densityId = toString(entry.densityId);
                   return `
                     <option value="${escapeHtml(densityId)}" ${
-                      densityId === toString(profile.frameSampleDensity, "balanced") ? "selected" : ""
+                      densityId === toString(profile.frameSampleDensity, "balanced")
+                        ? "selected"
+                        : ""
                     }>
                       ${escapeHtml(textFromKey(toString(entry.labelKey)) || densityId)}
                     </option>

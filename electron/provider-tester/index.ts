@@ -32,6 +32,7 @@ import type {
   TestContext,
   WebviewTag,
 } from "./types.ts";
+import { PROVIDER_TEST } from "./types.ts";
 import {
   createClickElement,
   createExecuteScript,
@@ -73,6 +74,7 @@ import {
 } from "./interactive-tests.ts";
 import {
   testAssistantMessageScraping,
+  testGeneratedImage,
   testMessageContainer,
   testStopButton,
   testVoiceButton,
@@ -431,6 +433,25 @@ export class ProviderTester {
     );
   }
 
+  private async waitForGeneratedImageIncrease(
+    previousCount: number,
+    timeoutMs: number
+  ): Promise<boolean> {
+    const selector = this.config.selectors.generatedImage;
+    if (selector === undefined || selector === "") {
+      return false;
+    }
+
+    return await this.ctx.waitForCondition(
+      async () => {
+        const currentCount = await this.getSelectorCount(selector);
+        return currentCount > previousCount;
+      },
+      timeoutMs,
+      this.abortSignal
+    );
+  }
+
   private throwIfCancelled(): void {
     if (this.abortSignal?.aborted === true) {
       throw new ScenarioCancelledError();
@@ -521,6 +542,12 @@ export class ProviderTester {
         return PROVIDER_SCENARIO_DELAYS.COMMAND_REFRESH_CONVERSATION_LIST;
       case "navigate-default":
         return PROVIDER_SCENARIO_DELAYS.STEP_NAVIGATE_DEFAULT;
+      case "assert-sidebar-open":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_SIDEBAR_OPEN;
+      case "assert-session-list":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_SESSION_LIST;
+      case "assert-sidebar-close":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_SIDEBAR_CLOSE;
       case "prepare-input":
         return PROVIDER_SCENARIO_DELAYS.STEP_PREPARE_INPUT;
       case "assert-disabled-send":
@@ -537,6 +564,8 @@ export class ProviderTester {
         return PROVIDER_SCENARIO_DELAYS.STEP_SEND_AND_WAIT_THINKING;
       case "assert-final-bubbles":
         return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_FINAL_BUBBLES;
+      case "assert-generated-image":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_GENERATED_IMAGE;
       case "assert-scroll-behavior":
         return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_SCROLL_BEHAVIOR;
       case "assert-provider-capabilities":
@@ -721,6 +750,27 @@ export class ProviderTester {
           "preflight",
           async () => await this.runResetDefaultPageStep()
         );
+      case "assert-sidebar-open":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "preflight",
+          async () => await this.runSidebarOpenStep()
+        );
+      case "assert-session-list":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "scraping",
+          async () => await this.runSessionListStep()
+        );
+      case "assert-sidebar-close":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "preflight",
+          async () => await this.runSidebarCloseStep()
+        );
       case "prepare-input":
         return await this.executeAggregatedTestScenarioCommand(
           stepId,
@@ -747,7 +797,7 @@ export class ProviderTester {
           stepId,
           stepName,
           "interactive",
-          async () => await this.runInjectMessageStep()
+          async () => await this.runInjectMessageStep(input.command.params)
         );
       case "assert-enabled-send":
         return await this.executeAggregatedTestScenarioCommand(
@@ -768,14 +818,21 @@ export class ProviderTester {
           stepId,
           stepName,
           "interactive",
-          async () => await this.runSendThinkingStep()
+          async () => await this.runSendThinkingStep(input.command.params)
         );
       case "assert-final-bubbles":
         return await this.executeAggregatedTestScenarioCommand(
           stepId,
           stepName,
           "scraping",
-          async () => await this.runFinalBubblesStep()
+          async () => await this.runFinalBubblesStep(input.command.params)
+        );
+      case "assert-generated-image":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "scraping",
+          async () => await this.runGeneratedImageStep()
         );
       case "assert-scroll-behavior":
         return await this.executeAggregatedTestScenarioCommand(
@@ -943,7 +1000,7 @@ export class ProviderTester {
       );
     }
 
-    const beforeState = await this.probeSyncSidebar(false);
+    const beforeState = await this.probeSyncSidebar("none");
     const alreadyOpen = beforeState.historyVisible || beforeState.closeVisible;
     if (alreadyOpen) {
       const result = createShellResult(
@@ -989,7 +1046,7 @@ export class ProviderTester {
       };
     }
 
-    const afterClickState = await this.probeSyncSidebar(true);
+    const afterClickState = await this.probeSyncSidebar("open");
     const clicked = afterClickState.clickedOpen;
     const becameVisible = afterClickState.historyVisible || afterClickState.closeVisible;
     const status: TestStatus = clicked || becameVisible ? "pass" : "fail";
@@ -1042,13 +1099,13 @@ export class ProviderTester {
     );
     const ready = await waitForCondition(
       async () => {
-        const state = await this.probeSyncSidebar(false);
+        const state = await this.probeSyncSidebar("none");
         return state.historyVisible || state.closeVisible;
       },
       timeoutMs,
       this.abortSignal
     );
-    const state = await this.probeSyncSidebar(false);
+    const state = await this.probeSyncSidebar("none");
     const result = createShellResult(
       stepId,
       stepName,
@@ -1089,7 +1146,7 @@ export class ProviderTester {
       );
     }
 
-    const state = await this.probeSyncSidebar(false);
+    const state = await this.probeSyncSidebar("none");
     const ready = state.historyVisible || state.closeVisible;
     const result = createShellResult(
       stepId,
@@ -1562,12 +1619,15 @@ export class ProviderTester {
     }
   }
 
-  private async probeSyncSidebar(clickOpen: boolean): Promise<{
+  private async probeSyncSidebar(action: "none" | "open" | "close"): Promise<{
     syncSidebarProbe: boolean;
     openFound: boolean;
+    openVisible: boolean;
+    closeFound: boolean;
     closeVisible: boolean;
     historyVisible: boolean;
     clickedOpen: boolean;
+    clickedClose: boolean;
   }> {
     const syncConfig = await this.getWebviewSyncConfig();
 
@@ -1576,7 +1636,7 @@ export class ProviderTester {
         const openSelectors = ${JSON.stringify(syncConfig.sidebar.openButtonSelectors)};
         const closeSelectors = ${JSON.stringify(syncConfig.sidebar.closeButtonSelectors)};
         const historySelectors = ${JSON.stringify(syncConfig.history.containerSelectors)};
-        const shouldClickOpen = ${clickOpen ? "true" : "false"};
+        const action = ${JSON.stringify(action)};
         const isVisible = (el) => {
           if (!(el instanceof Element)) return false;
           const rect = el.getBoundingClientRect();
@@ -1594,26 +1654,39 @@ export class ProviderTester {
         const beforeClose = findVisible(closeSelectors);
         const beforeHistory = findVisible(historySelectors);
         let clickedOpen = false;
-        if (!beforeClose && !beforeHistory && shouldClickOpen && openButton instanceof HTMLElement) {
+        let clickedClose = false;
+        if (!beforeClose && !beforeHistory && action === 'open' && openButton instanceof HTMLElement) {
           openButton.click();
           clickedOpen = true;
         }
+        const closeButton = beforeClose ?? findVisible(closeSelectors);
+        if ((beforeClose || beforeHistory) && action === 'close' && closeButton instanceof HTMLElement) {
+          closeButton.click();
+          clickedClose = true;
+        }
+        const afterOpen = findVisible(openSelectors);
         const afterClose = findVisible(closeSelectors);
         const afterHistory = findVisible(historySelectors);
         return {
           syncSidebarProbe: true,
           openFound: openButton !== null,
+          openVisible: afterOpen !== null,
+          closeFound: closeButton !== null,
           closeVisible: afterClose !== null,
           historyVisible: afterHistory !== null,
           clickedOpen,
+          clickedClose,
         };
       })()
     `)) as {
       syncSidebarProbe: boolean;
       openFound: boolean;
+      openVisible: boolean;
+      closeFound: boolean;
       closeVisible: boolean;
       historyVisible: boolean;
       clickedOpen: boolean;
+      clickedClose: boolean;
     };
   }
 
@@ -1724,6 +1797,154 @@ export class ProviderTester {
     return this.summarizeStep(results, await this.runtimeT("scenario.defaultPageResetFailed"));
   }
 
+  private async runSidebarOpenStep(): Promise<AggregatedCommandStepResult> {
+    const start = Date.now();
+    if (this.config.webviewSync === undefined) {
+      const result = createShellResult(
+        "sidebar-open",
+        await this.runtimeT("scenario.sidebarOpenName"),
+        "preflight",
+        "skip",
+        await this.runtimeT("scenario.webviewSyncConfigMissing", { providerId: this.config.id }),
+        undefined,
+        Date.now() - start
+      );
+      this.pushResult(result);
+      return this.summarizeStep([result], await this.runtimeT("scenario.sidebarOpenSkipped"));
+    }
+
+    const beforeState = await this.probeSyncSidebar("none");
+    const alreadyOpen = beforeState.historyVisible || beforeState.closeVisible;
+    let status: TestStatus = "pass";
+    let message = await this.runtimeT("scenario.sidebarAlreadyOpen");
+
+    if (!alreadyOpen && !beforeState.openFound) {
+      status = "fail";
+      message = await this.runtimeT("scenario.sidebarOpenButtonNotFound");
+    } else if (!alreadyOpen) {
+      const afterState = await this.probeSyncSidebar("open");
+      const becameVisible = afterState.historyVisible || afterState.closeVisible;
+      status = afterState.clickedOpen || becameVisible ? "pass" : "fail";
+      message = afterState.clickedOpen
+        ? await this.runtimeT("scenario.sidebarOpenButtonClicked")
+        : becameVisible
+          ? await this.runtimeT("scenario.sidebarBecameVisible")
+          : await this.runtimeT("scenario.sidebarOpenButtonClickFailed");
+    }
+
+    const result = createShellResult(
+      "sidebar-open",
+      await this.runtimeT("scenario.sidebarOpenName"),
+      "preflight",
+      status,
+      message,
+      undefined,
+      Date.now() - start
+    );
+    this.pushResult(result);
+    return this.summarizeStep([result], await this.runtimeT("scenario.sidebarOpenFailed"));
+  }
+
+  private async runSessionListStep(): Promise<AggregatedCommandStepResult> {
+    const start = Date.now();
+    if (this.config.webviewSync === undefined) {
+      const result = createShellResult(
+        "session-list",
+        await this.runtimeT("scenario.sessionListName"),
+        "scraping",
+        "skip",
+        await this.runtimeT("scenario.webviewSyncConfigMissing", { providerId: this.config.id }),
+        undefined,
+        Date.now() - start
+      );
+      this.pushResult(result);
+      return this.summarizeStep([result], await this.runtimeT("scenario.sessionListChecked"));
+    }
+
+    const sidebarState = await this.probeSyncSidebar("none");
+    if (!sidebarState.historyVisible && !sidebarState.closeVisible) {
+      const result = createShellResult(
+        "session-list",
+        await this.runtimeT("scenario.sessionListName"),
+        "scraping",
+        "warning",
+        await this.runtimeT("scenario.sidebarNotVisible"),
+        undefined,
+        Date.now() - start
+      );
+      this.pushResult(result);
+      return this.summarizeStep([result], await this.runtimeT("scenario.sessionListChecked"));
+    }
+
+    const sessions = await this.collectVisibleSyncSessions();
+    this.syncSessions = sessions;
+    const preview = this.buildSyncSessionPreview();
+    const status: TestStatus = sessions.length > 0 ? "pass" : "warning";
+    const message =
+      sessions.length > 0
+        ? await this.runtimeT("scenario.collectedVisibleSessions", { count: sessions.length })
+        : await this.runtimeT("scenario.noVisibleSessions");
+    const result = createShellResult(
+      "session-list",
+      await this.runtimeT("scenario.sessionListName"),
+      "scraping",
+      status,
+      message,
+      preview.total > 0 ? { selector: `${preview.total} visible sessions` } : undefined,
+      Date.now() - start
+    );
+    this.pushResult(result);
+    return this.summarizeStep([result], await this.runtimeT("scenario.sessionListChecked"));
+  }
+
+  private async runSidebarCloseStep(): Promise<AggregatedCommandStepResult> {
+    const start = Date.now();
+    if (this.config.webviewSync === undefined) {
+      const result = createShellResult(
+        "sidebar-close",
+        await this.runtimeT("scenario.sidebarCloseName"),
+        "preflight",
+        "skip",
+        await this.runtimeT("scenario.webviewSyncConfigMissing", { providerId: this.config.id }),
+        undefined,
+        Date.now() - start
+      );
+      this.pushResult(result);
+      return this.summarizeStep([result], await this.runtimeT("scenario.sidebarCloseSkipped"));
+    }
+
+    const beforeState = await this.probeSyncSidebar("none");
+    const alreadyClosed = !beforeState.historyVisible && !beforeState.closeVisible;
+    let status: TestStatus = "pass";
+    let message = await this.runtimeT("scenario.sidebarAlreadyClosed");
+
+    if (!alreadyClosed && !beforeState.closeFound) {
+      status = "fail";
+      message = await this.runtimeT("scenario.sidebarCloseButtonNotFound");
+    } else if (!alreadyClosed) {
+      const afterState = await this.probeSyncSidebar("close");
+      const becameHidden = !afterState.historyVisible && !afterState.closeVisible;
+      status = afterState.clickedClose || becameHidden ? "pass" : "fail";
+      message = afterState.clickedClose
+        ? await this.runtimeT("scenario.sidebarCloseButtonClicked")
+        : becameHidden
+          ? await this.runtimeT("scenario.sidebarBecameHidden")
+          : await this.runtimeT("scenario.sidebarCloseButtonClickFailed");
+    }
+
+    const result = createShellResult(
+      "sidebar-close",
+      await this.runtimeT("scenario.sidebarCloseName"),
+      "preflight",
+      status,
+      message,
+      undefined,
+      Date.now() - start
+    );
+    this.pushResult(result);
+    return this.summarizeStep([result], await this.runtimeT("scenario.sidebarCloseFailed"));
+  }
+
   private async runPrepareInputStep(): Promise<AggregatedCommandStepResult> {
     const results = this.pushResults([
       await testInputField(this.ctx),
@@ -1773,8 +1994,20 @@ export class ProviderTester {
     return this.summarizeStep(results, await this.runtimeT("scenario.dragDropSurfaceFailed"));
   }
 
-  private async runInjectMessageStep(): Promise<AggregatedCommandStepResult> {
-    const results = this.pushResults([await testTextInjection(this.ctx)]);
+  private resolveScenarioPrompt(params?: Record<string, unknown>): string {
+    if (params?.["promptKind"] === "image") {
+      return PROVIDER_TEST.IMAGE_MESSAGE;
+    }
+
+    return PROVIDER_TEST.TEST_MESSAGE;
+  }
+
+  private async runInjectMessageStep(
+    params?: Record<string, unknown>
+  ): Promise<AggregatedCommandStepResult> {
+    const results = this.pushResults([
+      await testTextInjection(this.ctx, this.resolveScenarioPrompt(params)),
+    ]);
     return this.summarizeStep(results, await this.runtimeT("scenario.messageInjectionFailed"));
   }
 
@@ -1811,24 +2044,39 @@ export class ProviderTester {
     );
   }
 
-  private async runSendThinkingStep(): Promise<AggregatedCommandStepResult> {
+  private async runSendThinkingStep(
+    params?: Record<string, unknown>
+  ): Promise<AggregatedCommandStepResult> {
+    const isImagePrompt = params?.["promptKind"] === "image";
     const assistantSelector =
       this.config.scrapeSelectors.assistantWrapper ?? this.config.scrapeSelectors.preferred;
     const assistantCountBeforeSend = await this.getSelectorCount(assistantSelector);
+    const generatedImageCountBeforeSend =
+      isImagePrompt && this.config.selectors.generatedImage
+        ? await this.getSelectorCount(this.config.selectors.generatedImage)
+        : 0;
     const sendResult = await testSendMessage(this.ctx);
     const thinkingBusy = await this.waitForShellIndicator("thinking", "busy", 8000);
     const stopResult = await testStopButtonWhileThinking(this.ctx);
     const stopScrapeResult = await testStopButton(this.ctx);
     const assistantResponseIncreased =
       !thinkingBusy &&
+      !isImagePrompt &&
       (await this.waitForAssistantResponseIncrease(
         assistantCountBeforeSend,
+        PROVIDER_TEST_TIMEOUTS.RESPONSE_WAIT
+      ));
+    const generatedImageAppeared =
+      isImagePrompt &&
+      (await this.waitForGeneratedImageIncrease(
+        generatedImageCountBeforeSend,
         PROVIDER_TEST_TIMEOUTS.RESPONSE_WAIT
       ));
     const inferredThinking =
       stopResult.status === "pass" ||
       stopScrapeResult.status === "pass" ||
-      assistantResponseIncreased;
+      assistantResponseIncreased ||
+      generatedImageAppeared;
     const thinkingResult = createShellResult(
       "thinking-indicator",
       await this.runtimeT("scenario.thinkingIndicatorName"),
@@ -1836,6 +2084,8 @@ export class ProviderTester {
       thinkingBusy || inferredThinking ? "pass" : "fail",
       thinkingBusy
         ? await this.runtimeT("scenario.thinkingIndicatorBusy")
+        : generatedImageAppeared
+          ? await this.runtimeT("scenario.generatedImageObserved")
         : inferredThinking
           ? await this.runtimeT("scenario.thinkingTransientObserved")
           : await this.runtimeT("scenario.thinkingIndicatorMissing")
@@ -1844,14 +2094,31 @@ export class ProviderTester {
     return this.summarizeStep(results, await this.runtimeT("scenario.sendThinkingFailed"));
   }
 
-  private async runFinalBubblesStep(): Promise<AggregatedCommandStepResult> {
-    const results = this.pushResults([
-      await testUserMessageInspect(this.ctx),
-      await testAIResponseInspect(this.ctx),
-      await testAssistantMessageScraping(this.ctx),
-      await testMessageContainer(this.ctx),
-    ]);
+  private async runFinalBubblesStep(
+    params?: Record<string, unknown>
+  ): Promise<AggregatedCommandStepResult> {
+    const expectedMessage = this.resolveScenarioPrompt(params);
+    const isImagePrompt = params?.["promptKind"] === "image";
+    const results = this.pushResults(
+      isImagePrompt
+        ? [
+            await testUserMessageInspect(this.ctx, expectedMessage),
+            await testGeneratedImage(this.ctx),
+            await testMessageContainer(this.ctx),
+          ]
+        : [
+            await testUserMessageInspect(this.ctx, expectedMessage),
+            await testAIResponseInspect(this.ctx),
+            await testAssistantMessageScraping(this.ctx),
+            await testMessageContainer(this.ctx),
+          ]
+    );
     return this.summarizeStep(results, await this.runtimeT("scenario.finalBubbleChecksFailed"));
+  }
+
+  private async runGeneratedImageStep(): Promise<AggregatedCommandStepResult> {
+    const results = this.pushResults([await testGeneratedImage(this.ctx)]);
+    return this.summarizeStep(results, await this.runtimeT("scenario.generatedImageCheckCompleted"));
   }
 
   private async runScrollStep(): Promise<AggregatedCommandStepResult> {

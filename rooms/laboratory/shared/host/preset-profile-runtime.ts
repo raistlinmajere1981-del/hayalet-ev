@@ -93,10 +93,16 @@ export function createLaboratoryPresetProfileRuntime(deps: LaboratoryPresetProfi
   function getDefaultProfileModelId(profileModels: unknown, sourceKind: string): string | null {
     const modelMap = toRecord(toRecord(profileModels)["models"]);
     const preferredId = asNonEmptyString(toRecord(profileModels)["defaultModelId"]);
-    const preferredModel = preferredId === null ? {} : (toRecord(modelMap[preferredId]) as LaboratoryProfileModelRecord);
-    const preferredKinds = Array.isArray(preferredModel.mediaKinds) ? preferredModel.mediaKinds : [];
+    const preferredModel =
+      preferredId === null ? {} : (toRecord(modelMap[preferredId]) as LaboratoryProfileModelRecord);
+    const preferredKinds = Array.isArray(preferredModel.mediaKinds)
+      ? preferredModel.mediaKinds
+      : [];
 
-    if (preferredId !== null && (preferredKinds.length === 0 || preferredKinds.includes(sourceKind))) {
+    if (
+      preferredId !== null &&
+      (preferredKinds.length === 0 || preferredKinds.includes(sourceKind))
+    ) {
       return preferredId;
     }
 

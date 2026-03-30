@@ -30,7 +30,8 @@ export class PerformanceWriter {
   }
 
   private updateFilePath(): void {
-    this.filePath = join(this.config.sessionDir, "performance.jsonl");
+    const sessionDir = this.config.sessionDir.trim();
+    this.filePath = sessionDir === "" ? "" : join(sessionDir, "performance.jsonl");
     this.dirReady = false;
   }
 
@@ -39,10 +40,12 @@ export class PerformanceWriter {
     const hasDuration = typeof entry.context?.duration === "number";
     const hasMemoryUsage = typeof entry.context?.memoryUsage === "number";
     if (!hasDuration && !hasMemoryUsage) return;
+    const sessionDir = this.config.sessionDir.trim();
+    if (sessionDir === "" || this.filePath === "") return;
 
     try {
       if (!this.dirReady) {
-        await mkdir(this.config.sessionDir, { recursive: true });
+        await mkdir(sessionDir, { recursive: true });
         this.dirReady = true;
       }
       const perfEntry: PerformanceEntry = {

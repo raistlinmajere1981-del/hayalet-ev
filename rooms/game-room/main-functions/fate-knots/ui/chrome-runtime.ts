@@ -350,29 +350,19 @@
       Object.keys(state.assetCoverage).forEach(function (key: string) {
         const item = createRegion("div", "fk-ledger__item", null);
         item.append(createElement("span", "fk-ledger__label", key));
-        item.append(
-          createElement("strong", "fk-ledger__value", String(state.assetCoverage[key]))
-        );
+        item.append(createElement("strong", "fk-ledger__value", String(state.assetCoverage[key])));
         grid.append(item);
       });
       const assetErrors = createRegion("div", "fk-ledger__item", null);
       assetErrors.append(createElement("span", "fk-ledger__label", "assetErrors"));
       assetErrors.append(
-        createElement(
-          "strong",
-          "fk-ledger__value",
-          String(state.contentSummary?.assetErrors || 0)
-        )
+        createElement("strong", "fk-ledger__value", String(state.contentSummary?.assetErrors || 0))
       );
       grid.append(assetErrors);
       const sourceErrors = createRegion("div", "fk-ledger__item", null);
       sourceErrors.append(createElement("span", "fk-ledger__label", "sourceErrors"));
       sourceErrors.append(
-        createElement(
-          "strong",
-          "fk-ledger__value",
-          String(state.contentSummary?.sourceErrors || 0)
-        )
+        createElement("strong", "fk-ledger__value", String(state.contentSummary?.sourceErrors || 0))
       );
       grid.append(sourceErrors);
       ledger.append(grid);

@@ -37,7 +37,12 @@ export function createLaboratoryProcessCoordinationRuntime(deps: Record<string, 
     requestId: string,
     featureId: string
   ) {
-    return (processRuntime["cancelFeatureProcess"] as UnknownFn)(api, runtime, requestId, featureId);
+    return (processRuntime["cancelFeatureProcess"] as UnknownFn)(
+      api,
+      runtime,
+      requestId,
+      featureId
+    );
   }
 
   function exportFeatureReport(
@@ -46,7 +51,12 @@ export function createLaboratoryProcessCoordinationRuntime(deps: Record<string, 
     requestId: string,
     featureId: string
   ) {
-    return (reportingRuntime["exportFeatureReport"] as UnknownFn)(api, runtime, requestId, featureId);
+    return (reportingRuntime["exportFeatureReport"] as UnknownFn)(
+      api,
+      runtime,
+      requestId,
+      featureId
+    );
   }
 
   function buildAudioAnalysisReportProjection(

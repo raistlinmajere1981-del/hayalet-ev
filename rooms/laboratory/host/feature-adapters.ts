@@ -137,7 +137,9 @@ export function createLaboratoryFeatureAdapters(deps: LaboratoryFeatureAdaptersD
     writeTextFile: deps.writeTextFile,
   };
   const laboratorySubtitleAnalysisHostRuntime = createLaboratorySubtitleAnalysisHostRuntime(
-    laboratorySubtitleAnalysisHostRuntimeDeps as unknown as Parameters<typeof createLaboratorySubtitleAnalysisHostRuntime>[0]
+    laboratorySubtitleAnalysisHostRuntimeDeps as unknown as Parameters<
+      typeof createLaboratorySubtitleAnalysisHostRuntime
+    >[0]
   );
   const { buildSubtitleAnalysisStats, buildSubtitleProcessModules, subtitleActionRuntime } =
     laboratorySubtitleAnalysisHostRuntime;
@@ -200,10 +202,12 @@ export function createLaboratoryFeatureAdapters(deps: LaboratoryFeatureAdaptersD
     },
   };
   const laboratoryActionCompositionRuntime = createLaboratoryActionCompositionRuntime(
-    laboratoryActionCompositionRuntimeDeps as unknown as Parameters<typeof createLaboratoryActionCompositionRuntime>[0]
+    laboratoryActionCompositionRuntimeDeps as unknown as Parameters<
+      typeof createLaboratoryActionCompositionRuntime
+    >[0]
   );
-  const laboratoryActionCompositionRuntimeRecord = laboratoryActionCompositionRuntime as
-    LaboratoryRecord & {
+  const laboratoryActionCompositionRuntimeRecord =
+    laboratoryActionCompositionRuntime as LaboratoryRecord & {
       handleMediaAction: UnknownFn;
     };
 

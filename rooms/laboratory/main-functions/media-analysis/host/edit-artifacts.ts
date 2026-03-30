@@ -220,10 +220,7 @@ export function createMediaEditArtifactRuntime(deps: MediaEditArtifactRuntimeDep
           timeoutMs: 60_000,
         });
 
-        const createdFrames = await listArtifactsWithPrefix(
-          artifactDir,
-          `${artifactBase}-frame-`
-        );
+        const createdFrames = await listArtifactsWithPrefix(artifactDir, `${artifactBase}-frame-`);
         return createdFrames
           .map(function (filePath) {
             return buildArtifactEntry(filePath, "frame");

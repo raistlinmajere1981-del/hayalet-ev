@@ -1,28 +1,31 @@
-import { createLaboratoryManagedAudioRunnerRuntime } from "./process-managed-audio-runner.js"
-import { createLaboratoryManagedMediaRunnerRuntime } from "./process-managed-media-runner.js"
-import { createLaboratoryManagedSubtitleRunnerRuntime } from "./process-managed-subtitle-runner.js"
+import { createLaboratoryManagedAudioRunnerRuntime } from "./process-managed-audio-runner.js";
+import { createLaboratoryManagedMediaRunnerRuntime } from "./process-managed-media-runner.js";
+import { createLaboratoryManagedSubtitleRunnerRuntime } from "./process-managed-subtitle-runner.js";
 
-type LaboratoryRecord = Record<string, unknown>
-type LaboratoryManagedSubtitleRunnerDeps =
-  Parameters<typeof createLaboratoryManagedSubtitleRunnerRuntime>[0]
-type LaboratoryManagedAudioRunnerDeps =
-  Parameters<typeof createLaboratoryManagedAudioRunnerRuntime>[0]
-type LaboratoryManagedMediaRunnerDeps =
-  Parameters<typeof createLaboratoryManagedMediaRunnerRuntime>[0]
+type LaboratoryRecord = Record<string, unknown>;
+type LaboratoryManagedSubtitleRunnerDeps = Parameters<
+  typeof createLaboratoryManagedSubtitleRunnerRuntime
+>[0];
+type LaboratoryManagedAudioRunnerDeps = Parameters<
+  typeof createLaboratoryManagedAudioRunnerRuntime
+>[0];
+type LaboratoryManagedMediaRunnerDeps = Parameters<
+  typeof createLaboratoryManagedMediaRunnerRuntime
+>[0];
 
 type LaboratoryManagedProcessRunnersDeps = {
-  asNonEmptyString: (value: unknown) => string | null
-  buildProcessSpeechAvailability: LaboratoryManagedMediaRunnerDeps["buildProcessSpeechAvailability"]
-  buildSubtitleAnalysisStats: LaboratoryManagedSubtitleRunnerDeps["buildSubtitleAnalysisStats"]
-  clampProfileTranscriptSampleSeconds: (value: unknown) => number
-  clone: <T>(value: T) => T
+  asNonEmptyString: (value: unknown) => string | null;
+  buildProcessSpeechAvailability: LaboratoryManagedMediaRunnerDeps["buildProcessSpeechAvailability"];
+  buildSubtitleAnalysisStats: LaboratoryManagedSubtitleRunnerDeps["buildSubtitleAnalysisStats"];
+  clampProfileTranscriptSampleSeconds: (value: unknown) => number;
+  clone: <T>(value: T) => T;
   createProcessArtifact: (
     moduleId: string,
     kind: string,
     path: string,
     title: string,
     metadata: LaboratoryRecord
-  ) => LaboratoryRecord | null
+  ) => LaboratoryRecord | null;
   createProcessFinding: (
     moduleId: string,
     kind: string,
@@ -32,7 +35,7 @@ type LaboratoryManagedProcessRunnersDeps = {
     detail: string,
     evidenceCount: number,
     artifactIds: string[]
-  ) => LaboratoryRecord
+  ) => LaboratoryRecord;
   generateProcessMetadataArtifact: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
@@ -40,7 +43,7 @@ type LaboratoryManagedProcessRunnersDeps = {
     artifactBase: string,
     outputDir: string,
     moduleId: string
-  ) => Promise<unknown>
+  ) => Promise<unknown>;
   generateProcessSpectrogram: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
@@ -49,14 +52,14 @@ type LaboratoryManagedProcessRunnersDeps = {
     target: LaboratoryRecord,
     artifactBase: string,
     outputDir: string
-  ) => Promise<unknown>
+  ) => Promise<unknown>;
   getAudioAnalysisModuleProcessDir: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
     moduleId: string
-  ) => string
-  getAudioAnalysisModuleRunner: LaboratoryManagedAudioRunnerDeps["getAudioAnalysisModuleRunner"]
-  getProjectSubtitleProcessDir: (runtime: LaboratoryRecord, project: LaboratoryRecord) => string
+  ) => string;
+  getAudioAnalysisModuleRunner: LaboratoryManagedAudioRunnerDeps["getAudioAnalysisModuleRunner"];
+  getProjectSubtitleProcessDir: (runtime: LaboratoryRecord, project: LaboratoryRecord) => string;
   maybeRunWhisperProfileSample: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
@@ -64,33 +67,33 @@ type LaboratoryManagedProcessRunnersDeps = {
     jobId: string,
     target: LaboratoryRecord,
     outputDir: string
-  ) => Promise<unknown>
-  normalizeProcessArtifact: (rawValue: unknown) => LaboratoryRecord
-  normalizeProcessFinding: (rawValue: unknown) => LaboratoryRecord
+  ) => Promise<unknown>;
+  normalizeProcessArtifact: (rawValue: unknown) => LaboratoryRecord;
+  normalizeProcessFinding: (rawValue: unknown) => LaboratoryRecord;
   runAudioStructureProbe: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
     requestId: string,
     jobId: string,
     target: LaboratoryRecord
-  ) => Promise<unknown>
+  ) => Promise<unknown>;
   runVideoStructureProbe: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
     requestId: string,
     jobId: string,
     target: LaboratoryRecord
-  ) => Promise<unknown>
-  sanitizeFileSegment: (value: string, fallbackValue: string) => string
-  toRecord: (value: unknown) => LaboratoryRecord
+  ) => Promise<unknown>;
+  sanitizeFileSegment: (value: string, fallbackValue: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
   updateProcessModule: (
     processRecord: LaboratoryRecord,
     moduleId: string,
     patch: LaboratoryRecord
-  ) => LaboratoryRecord
-  writeJsonFile: (filePath: string, payload: unknown) => Promise<unknown> | unknown
-  writeTextFile: (filePath: string, content: string) => Promise<unknown> | unknown
-}
+  ) => LaboratoryRecord;
+  writeJsonFile: (filePath: string, payload: unknown) => Promise<unknown> | unknown;
+  writeTextFile: (filePath: string, content: string) => Promise<unknown> | unknown;
+};
 
 export function createLaboratoryManagedProcessRunnersRuntime(
   deps: LaboratoryManagedProcessRunnersDeps
@@ -107,7 +110,7 @@ export function createLaboratoryManagedProcessRunnersRuntime(
     updateProcessModule: deps.updateProcessModule,
     writeJsonFile: deps.writeJsonFile,
     writeTextFile: deps.writeTextFile,
-  })
+  });
 
   const laboratoryManagedAudioRunnerRuntime = createLaboratoryManagedAudioRunnerRuntime({
     asNonEmptyString: deps.asNonEmptyString,
@@ -118,7 +121,7 @@ export function createLaboratoryManagedProcessRunnersRuntime(
     sanitizeFileSegment: deps.sanitizeFileSegment,
     toRecord: deps.toRecord,
     updateProcessModule: deps.updateProcessModule,
-  })
+  });
 
   const laboratoryManagedMediaRunnerRuntime = createLaboratoryManagedMediaRunnerRuntime({
     asNonEmptyString: deps.asNonEmptyString,
@@ -133,11 +136,11 @@ export function createLaboratoryManagedProcessRunnersRuntime(
     runVideoStructureProbe: deps.runVideoStructureProbe,
     toRecord: deps.toRecord,
     updateProcessModule: deps.updateProcessModule,
-  })
+  });
 
   return {
     runSubtitleManagedProcess: laboratoryManagedSubtitleRunnerRuntime.runSubtitleManagedProcess,
     runAudioManagedProcess: laboratoryManagedAudioRunnerRuntime.runAudioManagedProcess,
     runMediaManagedProcess: laboratoryManagedMediaRunnerRuntime.runMediaManagedProcess,
-  }
+  };
 }

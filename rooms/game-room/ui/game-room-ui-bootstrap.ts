@@ -75,13 +75,14 @@
             { id: fateKnotsFeatureId, name: "Fate Knots", description: "" },
           ];
 
-    const contextRuntimeFactory =
-      (global.GameRoomUiContextRuntime || {}).createGameRoomUiContextRuntime;
+    const contextRuntimeFactory = (global.GameRoomUiContextRuntime || {})
+      .createGameRoomUiContextRuntime;
     if (typeof contextRuntimeFactory !== "function") {
       throw new Error("Game Room UI context runtime is unavailable.");
     }
 
-    const createScrollRuntime = (global.GameRoomUiScrollRuntime || {}).createGameRoomUiScrollRuntime;
+    const createScrollRuntime = (global.GameRoomUiScrollRuntime || {})
+      .createGameRoomUiScrollRuntime;
     if (typeof createScrollRuntime !== "function") {
       throw new Error("Game Room UI scroll runtime is unavailable.");
     }

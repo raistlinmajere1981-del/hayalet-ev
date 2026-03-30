@@ -73,9 +73,7 @@ export function createLaboratoryRoomShellContext(
       : {};
   const overrideSlots = overrides["slots"];
   const slots =
-    overrideSlots &&
-    typeof overrideSlots === "object" &&
-    Array.isArray(overrideSlots) === false
+    overrideSlots && typeof overrideSlots === "object" && Array.isArray(overrideSlots) === false
       ? (overrideSlots as Record<string, unknown>)
       : {};
 

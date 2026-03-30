@@ -14,6 +14,24 @@ export const WEBVIEW_TEST_SCENARIO: ProviderScenarioDefinition = {
       loading: true,
     },
     {
+      id: "sidebar-open",
+      label: "Sidebar Open",
+      action: "assert-sidebar-open",
+      onFail: "warn",
+    },
+    {
+      id: "session-list",
+      label: "Session List",
+      action: "assert-session-list",
+      onFail: "warn",
+    },
+    {
+      id: "sidebar-close",
+      label: "Sidebar Close",
+      action: "assert-sidebar-close",
+      onFail: "warn",
+    },
+    {
       id: "prepare-input",
       label: "Prepare Input",
       action: "prepare-input",
@@ -32,14 +50,17 @@ export const WEBVIEW_TEST_SCENARIO: ProviderScenarioDefinition = {
       onFail: "abort",
     },
     {
-      id: "inject-message",
-      label: "Inject Message",
+      id: "inject-count-message",
+      label: "Inject Count Message",
       action: "inject-prompt",
+      params: {
+        promptKind: "text",
+      },
       onFail: "abort",
     },
     {
-      id: "enabled-send",
-      label: "Enabled Send State",
+      id: "count-enabled-send",
+      label: "Count Enabled Send State",
       action: "assert-enabled-send",
       onFail: "abort",
     },
@@ -50,17 +71,69 @@ export const WEBVIEW_TEST_SCENARIO: ProviderScenarioDefinition = {
       onFail: "warn",
     },
     {
-      id: "send-thinking",
-      label: "Send And Thinking",
+      id: "send-count-message",
+      label: "Send Count Message",
       action: "send-and-wait-thinking",
+      params: {
+        promptKind: "text",
+      },
       onFail: "abort",
       loading: true,
     },
     {
-      id: "final-bubbles",
-      label: "Final Message Bubbles",
+      id: "count-final-bubbles",
+      label: "Count Message Bubbles",
       action: "assert-final-bubbles",
+      params: {
+        promptKind: "text",
+      },
       onFail: "abort",
+    },
+    {
+      id: "prepare-image-input",
+      label: "Prepare Image Input",
+      action: "prepare-input",
+      onFail: "abort",
+    },
+    {
+      id: "inject-image-message",
+      label: "Inject Image Message",
+      action: "inject-prompt",
+      params: {
+        promptKind: "image",
+      },
+      onFail: "abort",
+    },
+    {
+      id: "image-enabled-send",
+      label: "Image Enabled Send State",
+      action: "assert-enabled-send",
+      onFail: "abort",
+    },
+    {
+      id: "send-image-message",
+      label: "Send Image Message",
+      action: "send-and-wait-thinking",
+      params: {
+        promptKind: "image",
+      },
+      onFail: "abort",
+      loading: true,
+    },
+    {
+      id: "image-final-bubbles",
+      label: "Image Message Bubbles",
+      action: "assert-final-bubbles",
+      params: {
+        promptKind: "image",
+      },
+      onFail: "abort",
+    },
+    {
+      id: "generated-image",
+      label: "Generated Image",
+      action: "assert-generated-image",
+      onFail: "warn",
     },
     {
       id: "scroll-behavior",

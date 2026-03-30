@@ -15,10 +15,7 @@ interface FateKnotsSelectionRecord extends Record<string, unknown> {
   backgrounds?: unknown;
 }
 
-export function normalizeSelectionEntry(
-  candidate: unknown,
-  defaults: FateKnotsSelectionRecord
-) {
+export function normalizeSelectionEntry(candidate: unknown, defaults: FateKnotsSelectionRecord) {
   const source: FateKnotsSelectionRecord =
     candidate && typeof candidate === "object" && Array.isArray(candidate) === false
       ? (candidate as FateKnotsSelectionRecord)

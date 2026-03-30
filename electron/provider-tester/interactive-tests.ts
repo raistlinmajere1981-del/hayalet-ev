@@ -355,10 +355,12 @@ export async function testMicrophoneButton(ctx: TestContext): Promise<ProviderTe
   });
 }
 
-export async function testTextInjection(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testTextInjection(
+  ctx: TestContext,
+  message = PROVIDER_TEST.TEST_MESSAGE
+): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
-    const message = PROVIDER_TEST.TEST_MESSAGE;
     const safeMessage = JSON.stringify(message);
     const selectorEntry =
       ctx.config.selectorMatrix?.selectors?.["inputField"] ?? ctx.config.selectors.inputField;
@@ -552,7 +554,7 @@ export async function testTextInjection(ctx: TestContext): Promise<ProviderTestR
       value?: string;
     };
 
-    if (result.success === true && result.value === PROVIDER_TEST.TEST_MESSAGE) {
+    if (result.success === true && result.value === message) {
       return {
         id: "text-injection",
         name: await interactiveT(ctx, "textInjection.name"),
@@ -575,7 +577,7 @@ export async function testTextInjection(ctx: TestContext): Promise<ProviderTestR
 
     throw new Error(
       await interactiveT(ctx, "textInjection.mismatch", {
-        expected: PROVIDER_TEST.TEST_MESSAGE,
+        expected: message,
         actual: result.value ?? "",
       })
     );
@@ -809,7 +811,10 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
   }
 }
 
-export async function testUserMessageInspect(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testUserMessageInspect(
+  ctx: TestContext,
+  expectedMessage = PROVIDER_TEST.TEST_MESSAGE
+): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
     const selector = ctx.config.scrapeSelectors.userWrapper ?? ctx.config.scrapeSelectors.preferred;
@@ -846,7 +851,7 @@ export async function testUserMessageInspect(ctx: TestContext): Promise<Provider
       enabled: boolean;
       tagName: string;
     };
-    const expectedText = normalizeComparableText(PROVIDER_TEST.TEST_MESSAGE);
+    const expectedText = normalizeComparableText(expectedMessage);
 
     const matched = await ctx.waitForCondition(async () => {
       result = (await ctx.executeScript(script)) as {

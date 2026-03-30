@@ -103,8 +103,7 @@ function readTeamTetrisStartArgs(payload: unknown): { hiddenPairs: boolean; seed
   const args = isRecord(payload) && isRecord(payload["roomArgs"]) ? payload["roomArgs"] : {};
   return {
     hiddenPairs: args["hiddenPairs"] !== false,
-    seed:
-      typeof args["seed"] === "string" && args["seed"].trim() !== "" ? args["seed"].trim() : "",
+    seed: typeof args["seed"] === "string" && args["seed"].trim() !== "" ? args["seed"].trim() : "",
   };
 }
 
@@ -268,7 +267,8 @@ async function handleTeamTetrisMove(
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "noActiveGame") };
   }
 
-  const provider = isRecord(payload) && typeof payload["provider"] === "string" ? payload["provider"] : "";
+  const provider =
+    isRecord(payload) && typeof payload["provider"] === "string" ? payload["provider"] : "";
   const providerSeatId = readTeamTetrisProviderSeatId(provider);
   const transportMessageId = readTransportMessageId(payload);
   if (providerSeatId !== currentTurn.seatId) {
@@ -310,7 +310,8 @@ async function handleTeamTetrisMove(
   const boardHashBeforeMove = buildTeamTetrisBoardHash(state.match.teams[currentTurn.teamId].board);
   const result = applyTeamTetrisMove(state.match, move);
   if (result.success !== true) {
-    const failureReason = typeof result.reason === "string" && result.reason ? result.reason : "invalid-move";
+    const failureReason =
+      typeof result.reason === "string" && result.reason ? result.reason : "invalid-move";
     if (
       providerSeatId === "us1" &&
       (failureReason === "turn-token-mismatch" || failureReason === "turn-index-mismatch")

@@ -21,7 +21,9 @@ type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryHostFoundationRuntime = ReturnType<typeof createLaboratoryHostFoundation>;
 type LaboratoryHostProjectRuntimesRuntime = ReturnType<typeof createLaboratoryHostProjectRuntimes>;
-type LaboratorySourceCompositionRuntime = ReturnType<typeof createLaboratorySourceCompositionRuntime>;
+type LaboratorySourceCompositionRuntime = ReturnType<
+  typeof createLaboratorySourceCompositionRuntime
+>;
 type LaboratoryProcessDelegatesRuntime = {
   cancelFeatureProcess: (...args: unknown[]) => unknown;
   exportFeatureReport: (...args: unknown[]) => unknown;
@@ -34,7 +36,9 @@ type LaboratoryProcessCompositionRuntime = ReturnType<
 };
 type LaboratoryProjectStateRuntime = ReturnType<typeof createLaboratoryProjectStateRuntime>;
 type LaboratoryFeatureAdaptersRuntime = ReturnType<typeof createLaboratoryFeatureAdapters>;
-type LaboratoryRoomToolsProgressRuntime = ReturnType<typeof createLaboratoryRoomToolsProgressRuntime>;
+type LaboratoryRoomToolsProgressRuntime = ReturnType<
+  typeof createLaboratoryRoomToolsProgressRuntime
+>;
 type LaboratoryRuntimeStorageRuntime = ReturnType<typeof createLaboratoryRuntimeStorage>;
 type LaboratorySubtitleAnalysisHostRuntime = ReturnType<
   typeof createLaboratorySubtitleAnalysisHostRuntime
@@ -55,11 +59,7 @@ type LaboratoryHostFeatureRuntimesDeps = {
     featureId: string,
     reason: string
   ) => unknown;
-  markFeatureReportStale: (
-    project: LaboratoryRecord,
-    featureId: string,
-    reason: string
-  ) => unknown;
+  markFeatureReportStale: (project: LaboratoryRecord, featureId: string, reason: string) => unknown;
   mediaFeatureId: string;
   normalizeAudioAnalysisModuleResult: (
     rawValue: unknown,

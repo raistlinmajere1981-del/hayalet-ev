@@ -4,11 +4,7 @@ import type {
 } from "../../../shared/types/room-shell-contracts.js";
 import { FATE_KNOTS_SUPPORTED_AI_SEATS, FATE_KNOTS_SUPPORTED_REMOTE_SEATS } from "./constants.js";
 import { normalizeExcludedSeats } from "./models-memory.js";
-import {
-  createHeroSelection,
-  createParticipant,
-  type normalizeFateKnotsState,
-} from "./models.js";
+import { createHeroSelection, createParticipant, type normalizeFateKnotsState } from "./models.js";
 import { loadFateKnotsProfile, saveFateKnotsProfile } from "./state.js";
 
 type FateKnotsState = ReturnType<typeof normalizeFateKnotsState>;
@@ -190,7 +186,10 @@ export function buildRunParticipants(
     selection: profileSelection,
   });
 
-  const aiParticipants = FATE_KNOTS_SUPPORTED_AI_SEATS.map(function (seatId: string, index: number) {
+  const aiParticipants = FATE_KNOTS_SUPPORTED_AI_SEATS.map(function (
+    seatId: string,
+    index: number
+  ) {
     const slot = readContextSlot(context, seatId);
     if (!slot || slot.ready !== true) {
       return null;

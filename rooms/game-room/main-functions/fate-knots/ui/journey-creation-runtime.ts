@@ -36,9 +36,9 @@
   const registry = getFactoryRegistry(global);
 
   registry.createFateKnotsUiJourneyCreationRuntime =
-    function createFateKnotsUiJourneyCreationRuntime(
-      deps: FateKnotsUiJourneyCreationRuntimeDeps
-    ): { renderCreationStage(parent: HTMLElement, state: GameRoomFateKnotsState): void } {
+    function createFateKnotsUiJourneyCreationRuntime(deps: FateKnotsUiJourneyCreationRuntimeDeps): {
+      renderCreationStage(parent: HTMLElement, state: GameRoomFateKnotsState): void;
+    } {
       function renderSelectionFamily(
         parent: HTMLElement,
         title: string,
@@ -184,9 +184,7 @@
           );
         }
         if (bundle.background?.perk) {
-          heroBody.append(
-            deps.createElement("p", "fk-summary-hero__meta", bundle.background.perk)
-          );
+          heroBody.append(deps.createElement("p", "fk-summary-hero__meta", bundle.background.perk));
         }
         hero.append(heroBody);
         summary.append(hero);

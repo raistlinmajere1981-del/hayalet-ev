@@ -19,7 +19,10 @@ import {
 import { loadContext } from "../../../shared/host/context-state.js";
 import { FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
 import { buildAiTurnMessage, commandMessage } from "./copy.js";
-import type { GameRoomContextState, GameRoomSlotState } from "../../../shared/types/room-shell-contracts.js";
+import type {
+  GameRoomContextState,
+  GameRoomSlotState,
+} from "../../../shared/types/room-shell-contracts.js";
 
 export type XoxCommandResult = {
   success: boolean;
@@ -46,7 +49,11 @@ export interface XoxRuntimeMatchApi {
     preface?: string | null;
     context: Record<string, unknown>;
   }): Promise<XoxDispatchResult>;
-  sendMessage?(options: { provider: string; page: string; text: string }): Promise<XoxDispatchResult>;
+  sendMessage?(options: {
+    provider: string;
+    page: string;
+    text: string;
+  }): Promise<XoxDispatchResult>;
 }
 
 function readProviderValue(payload: unknown): string {
@@ -244,5 +251,8 @@ export async function applyOpponentMove(
   }
 
   pushRoomState(api, state);
-  return { success: true, message: resolveStatusText(state, loadContext(api) as GameRoomContextState) };
+  return {
+    success: true,
+    message: resolveStatusText(state, loadContext(api) as GameRoomContextState),
+  };
 }

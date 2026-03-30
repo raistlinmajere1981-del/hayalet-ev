@@ -146,7 +146,11 @@ export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRunt
 
     await cancelJobsForProject(runtime, projectId, requestId);
 
-    const fileName = deriveFilename(urlValue, getProjectSourceKind(project), sourceDrafts.fileNameHint);
+    const fileName = deriveFilename(
+      urlValue,
+      getProjectSourceKind(project),
+      sourceDrafts.fileNameHint
+    );
     const jobId = `room-url-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
       jobId: jobId,

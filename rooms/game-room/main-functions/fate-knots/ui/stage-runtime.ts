@@ -103,9 +103,7 @@
         )
       );
       if (state.result.continueHint) {
-        resultShell.append(
-          deps.createElement("p", "fk-frame__hint", state.result.continueHint)
-        );
+        resultShell.append(deps.createElement("p", "fk-frame__hint", state.result.continueHint));
       }
       resultShell.append(deps.createSeatRibbon(state, "result-ribbon", null));
       resultShell.append(

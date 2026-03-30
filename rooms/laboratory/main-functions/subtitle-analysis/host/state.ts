@@ -11,7 +11,8 @@ type SubtitleStateRuntime = ReturnType<typeof createSubtitleStateDefaultsRuntime
   ReturnType<typeof createSubtitleStateProjectRuntime>;
 
 export function createSubtitleStateRuntime(deps: SubtitleStateRuntimeDeps): SubtitleStateRuntime {
-  const { asNonEmptyString, asNumber, normalizeReportExport, normalizeStringArray, toRecord } = deps;
+  const { asNonEmptyString, asNumber, normalizeReportExport, normalizeStringArray, toRecord } =
+    deps;
   const defaultsRuntime = createSubtitleStateDefaultsRuntime({ asNonEmptyString, toRecord });
   const normalizationRuntime = createSubtitleStateNormalizationRuntime({
     asNonEmptyString,

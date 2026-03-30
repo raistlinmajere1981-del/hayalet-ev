@@ -7,8 +7,14 @@ type LaboratoryUiEditRuntimeDeps = {
   deepClone: <T>(value: T) => T;
   isAudioAnalysisFeature: () => boolean;
   isSubtitleAnalysisFeature: () => boolean;
-  laboratoryRequestRuntime: Pick<ReturnType<typeof createLaboratoryRequestRuntime>, "sendMediaAction">;
-  laboratoryUiDraftRuntime: Pick<ReturnType<typeof createLaboratoryUiDraftRuntime>, "getCurrentEditDraft">;
+  laboratoryRequestRuntime: Pick<
+    ReturnType<typeof createLaboratoryRequestRuntime>,
+    "sendMediaAction"
+  >;
+  laboratoryUiDraftRuntime: Pick<
+    ReturnType<typeof createLaboratoryUiDraftRuntime>,
+    "getCurrentEditDraft"
+  >;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 

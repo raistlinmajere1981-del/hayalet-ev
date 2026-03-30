@@ -7,6 +7,7 @@ export interface BaseSelectors {
   inputField: string;
   messageContainer: string;
   voiceButton?: string;
+  generatedImage?: string;
   filePreview?: string | string[];
   attachButton?: string;
 }
@@ -56,6 +57,9 @@ export type ProviderScenarioFailureMode = "abort" | "continue" | "warn";
 
 export type ProviderScenarioCommandActionId =
   | "navigate-default"
+  | "assert-sidebar-open"
+  | "assert-session-list"
+  | "assert-sidebar-close"
   | "prepare-input"
   | "assert-disabled-send"
   | "assert-drag-drop-surface"
@@ -64,6 +68,7 @@ export type ProviderScenarioCommandActionId =
   | "assert-attach-flow"
   | "send-and-wait-thinking"
   | "assert-final-bubbles"
+  | "assert-generated-image"
   | "assert-scroll-behavior"
   | "assert-provider-capabilities"
   | "click"
@@ -294,6 +299,7 @@ export interface ProviderScenarioProgressEvent {
   scenarioId: ProviderScenarioId;
   slot: ProviderTestSlot;
   providerId: string;
+  scenarioCommandTotal?: number;
   type: ProviderScenarioProgressEventType;
   commandId?: string;
   commandName?: string;

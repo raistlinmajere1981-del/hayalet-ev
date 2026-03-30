@@ -86,9 +86,7 @@ type LaboratoryEditPipelineDeps = {
     project: LaboratoryProjectRecord,
     requestId: unknown
   ) => Promise<unknown>;
-  getActiveProject: (
-    runtime: LaboratoryMediaEditPipelineRuntime
-  ) => LaboratoryProjectRecord | null;
+  getActiveProject: (runtime: LaboratoryMediaEditPipelineRuntime) => LaboratoryProjectRecord | null;
   getDerivedMimeType: (sourceKind: unknown) => string | null;
   getEditRecipeSignature: (project: LaboratoryProjectRecord) => string | null;
   getPreparedSourcePath: (project: LaboratoryProjectRecord) => string | null;

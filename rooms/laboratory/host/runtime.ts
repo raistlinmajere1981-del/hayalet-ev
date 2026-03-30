@@ -85,33 +85,46 @@ function requireCloseoutStaleness(): LaboratoryCloseoutStalenessRuntime {
 function normalizeAudioAnalysisModuleResult(
   ...args: Parameters<LaboratoryAudioAnalysisStateRuntime["normalizeAudioAnalysisModuleResult"]>
 ) {
-  return requireFeatureRuntimes()
-    .processComposition.audioAnalysisStateRuntime.normalizeAudioAnalysisModuleResult(...args);
+  return requireFeatureRuntimes().processComposition.audioAnalysisStateRuntime.normalizeAudioAnalysisModuleResult(
+    ...args
+  );
 }
 
 function createEmptyAudioAnalysisState(): ReturnType<
   LaboratoryAudioAnalysisStateRuntime["createEmptyAudioAnalysisState"]
 > {
-  return requireFeatureRuntimes()
-    .processComposition.audioAnalysisStateRuntime.createEmptyAudioAnalysisState();
+  return requireFeatureRuntimes().processComposition.audioAnalysisStateRuntime.createEmptyAudioAnalysisState();
 }
 
 function normalizeAudioAnalysisState(
   ...args: Parameters<LaboratoryAudioAnalysisStateRuntime["normalizeAudioAnalysisState"]>
 ) {
-  return requireFeatureRuntimes()
-    .processComposition.audioAnalysisStateRuntime.normalizeAudioAnalysisState(...args);
+  return requireFeatureRuntimes().processComposition.audioAnalysisStateRuntime.normalizeAudioAnalysisState(
+    ...args
+  );
 }
 
-function markFeatureProcessStale(project: LaboratoryProjectRecord, featureId: string, reason: string) {
+function markFeatureProcessStale(
+  project: LaboratoryProjectRecord,
+  featureId: string,
+  reason: string
+) {
   return requireCloseoutStaleness().markFeatureProcessStale(project, featureId, reason);
 }
 
-function markFeatureReportStale(project: LaboratoryProjectRecord, featureId: string, reason: string) {
+function markFeatureReportStale(
+  project: LaboratoryProjectRecord,
+  featureId: string,
+  reason: string
+) {
   return requireCloseoutStaleness().markFeatureReportStale(project, featureId, reason);
 }
 
-function markCloseoutAsStale(project: LaboratoryProjectRecord, reason: string, featureIds: string[]) {
+function markCloseoutAsStale(
+  project: LaboratoryProjectRecord,
+  reason: string,
+  featureIds: string[]
+) {
   return requireCloseoutStaleness().markCloseoutAsStale(project, reason, featureIds);
 }
 
@@ -164,7 +177,9 @@ const projectRuntimesDeps = {
   projectSchemaVersion: PROJECT_SCHEMA_VERSION,
   roomId: ROOM_ID,
   setCloseoutStalenessRuntime(
-    value: NonNullable<LaboratoryHostProjectRuntimes["stateComposition"]>["laboratoryCloseoutStalenessRuntime"]
+    value: NonNullable<
+      LaboratoryHostProjectRuntimes["stateComposition"]
+    >["laboratoryCloseoutStalenessRuntime"]
   ) {
     runtimeRefs.closeoutStaleness = value;
   },
@@ -222,7 +237,8 @@ export default function createLaboratoryHostRuntime() {
   const activationDeps = {
     createRuntimeState: foundation.bootstrap.createRuntimeState,
     ensureHydrated: currentProjectRuntimes.lifecycle.ensureHydrated,
-    ensureRoomToolsSubscription: currentFeatureRuntimes.roomToolsProgress.ensureRoomToolsSubscription,
+    ensureRoomToolsSubscription:
+      currentFeatureRuntimes.roomToolsProgress.ensureRoomToolsSubscription,
     handleMediaAction: currentFeatureRuntimes.featureAdapters.handleMediaAction,
     pushMediaState: currentProjectRuntimes.snapshot.pushMediaState,
     saveContext: foundation.bootstrap.saveContext,

@@ -161,10 +161,7 @@ type MediaProfileProjectionRuntimeDeps = {
     sourceKind: string
   ) => unknown;
   createEmptyProfilePreflight: () => LaboratoryRecord;
-  findEditOutputById: (
-    project: LaboratoryProjectRecord,
-    outputId: string | null
-  ) => unknown | null;
+  findEditOutputById: (project: LaboratoryProjectRecord, outputId: string | null) => unknown | null;
   findProfilePreset: (
     profilePresets: unknown,
     sourceKind: string,
@@ -447,7 +444,9 @@ export function createMediaProfileProjectionRuntime(deps: MediaProfileProjection
       if (laneOptional.includes("whisper.cpp")) {
         const whisperSummary = optionalToolMap["whisper.cpp"] || null;
         if (!whisperSummary || whisperSummary.ready !== true) {
-          laneWarnings.push("Speech transcript sampling is unavailable until Whisper.cpp is ready.");
+          laneWarnings.push(
+            "Speech transcript sampling is unavailable until Whisper.cpp is ready."
+          );
         } else if (
           selectedModel &&
           selectedModel.runtimeCompatible === false &&
@@ -480,12 +479,16 @@ export function createMediaProfileProjectionRuntime(deps: MediaProfileProjection
       enabledLaneIds,
       lanes: laneSummaries,
       models: modelSummaries,
-      optionalTools: optionalToolIds.map(function (toolId) {
-        return optionalToolMap[toolId];
-      }).filter((entry): entry is LaboratoryProfileToolSummaryRecord => entry !== undefined),
-      requiredTools: requiredToolIds.map(function (toolId) {
-        return requiredToolMap[toolId];
-      }).filter((entry): entry is LaboratoryProfileToolSummaryRecord => entry !== undefined),
+      optionalTools: optionalToolIds
+        .map(function (toolId) {
+          return optionalToolMap[toolId];
+        })
+        .filter((entry): entry is LaboratoryProfileToolSummaryRecord => entry !== undefined),
+      requiredTools: requiredToolIds
+        .map(function (toolId) {
+          return requiredToolMap[toolId];
+        })
+        .filter((entry): entry is LaboratoryProfileToolSummaryRecord => entry !== undefined),
       stageReady: blockers.length === 0,
       target: {
         ...target,
@@ -503,7 +506,10 @@ export function createMediaProfileProjectionRuntime(deps: MediaProfileProjection
     const profile = getProfile(project);
     const sourceKind = getSourceKind(project);
     const depthConfig = getProfileDepthConfig(runtime, profile.depth);
-    const frameDensityConfig = getProfileFrameDensityRuntimeConfig(runtime, profile.frameSampleDensity);
+    const frameDensityConfig = getProfileFrameDensityRuntimeConfig(
+      runtime,
+      profile.frameSampleDensity
+    );
     const enabledLaneIds =
       readiness.enabledLaneIds.length > 0
         ? readiness.enabledLaneIds
@@ -548,7 +554,8 @@ export function createMediaProfileProjectionRuntime(deps: MediaProfileProjection
           ? 8
           : 16);
 
-    runtimeSeconds += Math.max(0, Math.round(asNumber(frameDensityConfig["tileCount"]) || 4) - 2) * 2;
+    runtimeSeconds +=
+      Math.max(0, Math.round(asNumber(frameDensityConfig["tileCount"]) || 4) - 2) * 2;
 
     if (enabledLaneIds.includes("speech-overlay")) {
       const selectedModel =
@@ -614,7 +621,9 @@ export function createMediaProfileProjectionRuntime(deps: MediaProfileProjection
       asNonEmptyString(profile.targetAssetMode) === "derived" ? "derived" : "source";
     const requestedModelId = asNonEmptyString(profile.modelId);
     const requestedModelDescriptor =
-      requestedModelId !== null ? toRecord(getProfileModelDescriptorMap(runtime)[requestedModelId]) : {};
+      requestedModelId !== null
+        ? toRecord(getProfileModelDescriptorMap(runtime)[requestedModelId])
+        : {};
     const requestedModelKinds = toStringArray(requestedModelDescriptor["mediaKinds"]);
     const fallbackModelId = getDefaultProfileModelId(runtime.profileModels, sourceKind);
     const resolvedProfile: LaboratoryProjectProfileRecord = {
@@ -665,7 +674,8 @@ export function createMediaProfileProjectionRuntime(deps: MediaProfileProjection
         signatureChanged === true ||
         (target.usingFallback === true && asNonEmptyString(existingPreflight.ranAt) !== null)
       ) {
-        existingPreflight.status = asNonEmptyString(existingPreflight.ranAt) !== null ? "stale" : "idle";
+        existingPreflight.status =
+          asNonEmptyString(existingPreflight.ranAt) !== null ? "stale" : "idle";
         existingPreflight.jobId = null;
         existingPreflight.requestId = null;
         existingPreflight.error = null;

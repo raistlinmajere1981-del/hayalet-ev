@@ -39,14 +39,12 @@ export function createGameRoomXoxUs1Runtime(deps: XoxUs1InviteRuntimeDeps & XoxU
       api: XoxUs1Api,
       inviteEntry: Parameters<XoxUs1InviteRuntime["applyInviteAcceptedState"]>[1],
       starter: Parameters<XoxUs1InviteRuntime["applyInviteAcceptedState"]>[2]
-    ) => inviteRuntime.applyInviteAcceptedState(api as unknown as XoxInviteApi, inviteEntry, starter),
+    ) =>
+      inviteRuntime.applyInviteAcceptedState(api as unknown as XoxInviteApi, inviteEntry, starter),
     clearUs1SyncLoop: syncRuntime.clearUs1SyncLoop,
     ensureUs1SyncLoop,
-    findInviteById: (
-      api: XoxUs1Api,
-      inviteId: string,
-      remoteUserId: string
-    ) => inviteRuntime.findInviteById(api as unknown as XoxInviteApi, inviteId, remoteUserId),
+    findInviteById: (api: XoxUs1Api, inviteId: string, remoteUserId: string) =>
+      inviteRuntime.findInviteById(api as unknown as XoxInviteApi, inviteId, remoteUserId),
     processRoomCommands: syncRuntime.processRoomCommands,
     processRoomEvents: syncRuntime.processRoomEvents,
     readIncomingInviteStarter: inviteRuntime.readIncomingInviteStarter,

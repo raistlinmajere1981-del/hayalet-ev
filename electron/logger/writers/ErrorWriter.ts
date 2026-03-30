@@ -21,17 +21,20 @@ export class ErrorWriter {
   }
 
   private updateFilePath(): void {
-    this.filePath = join(this.config.sessionDir, "error.log");
+    const sessionDir = this.config.sessionDir.trim();
+    this.filePath = sessionDir === "" ? "" : join(sessionDir, "error.log");
     this.dirReady = false;
   }
 
   public async write(entry: LogEntry): Promise<void> {
     if (!this.config.enableErrorLog) return;
     if (entry.level !== LogLevel.ERROR) return;
+    const sessionDir = this.config.sessionDir.trim();
+    if (sessionDir === "" || this.filePath === "") return;
 
     try {
       if (!this.dirReady) {
-        await mkdir(this.config.sessionDir, { recursive: true });
+        await mkdir(sessionDir, { recursive: true });
         this.dirReady = true;
       }
       const line = this.formatError(entry);

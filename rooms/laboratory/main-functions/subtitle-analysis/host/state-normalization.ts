@@ -300,7 +300,9 @@ export function createSubtitleStateNormalizationRuntime(
     return toRecord(value) as SubtitleDiscoveryItemInputRecord;
   }
 
-  function toSubtitleWorkspaceDraftsInputRecord(value: unknown): SubtitleWorkspaceDraftsInputRecord {
+  function toSubtitleWorkspaceDraftsInputRecord(
+    value: unknown
+  ): SubtitleWorkspaceDraftsInputRecord {
     return toRecord(value) as SubtitleWorkspaceDraftsInputRecord;
   }
 
@@ -401,8 +403,7 @@ export function createSubtitleStateNormalizationRuntime(
       status: asNonEmptyString(record.status) ?? "ready",
       fileName: asNonEmptyString(record.fileName) ?? `subtitle-${index + 1}.srt`,
       path: asNonEmptyString(record.path),
-      format:
-        asNonEmptyString(record.format) ?? getSubtitleFileExtension(record.fileName) ?? "srt",
+      format: asNonEmptyString(record.format) ?? getSubtitleFileExtension(record.fileName) ?? "srt",
       createdAt: asNonEmptyString(record.createdAt) ?? new Date().toISOString(),
       sourceUrl: asNonEmptyString(record.sourceUrl),
       language:
@@ -482,7 +483,8 @@ export function createSubtitleStateNormalizationRuntime(
           urlInput: asNonEmptyString(workspaceDrafts.urlInput) ?? "",
           youtubeUrl: asNonEmptyString(workspaceDrafts.youtubeUrl) ?? "",
           subtitleMode:
-            asNonEmptyString(workspaceDrafts.subtitleMode) ?? defaults.workspace.drafts.subtitleMode,
+            asNonEmptyString(workspaceDrafts.subtitleMode) ??
+            defaults.workspace.drafts.subtitleMode,
           subtitlesLang:
             asNonEmptyString(workspaceDrafts.subtitlesLang) ??
             defaults.workspace.drafts.subtitlesLang,

@@ -316,8 +316,7 @@ export function normalizeState(candidate: unknown, localeFallback: unknown): Xox
     typeof source["result"] === "string" && source["result"].trim() !== ""
       ? source["result"].trim()
       : "idle";
-  state.winner =
-    source["winner"] === "ai" || source["winner"] === "user" ? source["winner"] : "";
+  state.winner = source["winner"] === "ai" || source["winner"] === "user" ? source["winner"] : "";
   state.statusKey =
     typeof source["statusKey"] === "string" &&
     Object.prototype.hasOwnProperty.call(STATUS_COPY, source["statusKey"])

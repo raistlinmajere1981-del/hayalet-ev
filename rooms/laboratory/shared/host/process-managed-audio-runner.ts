@@ -1,28 +1,28 @@
-type LaboratoryRecord = Record<string, unknown>
+type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryProcessRecord = LaboratoryRecord & {
-  modules?: unknown
-}
+  modules?: unknown;
+};
 
 type LaboratoryProcessModuleRecord = LaboratoryRecord & {
-  id?: unknown
-  status?: unknown
-}
+  id?: unknown;
+  status?: unknown;
+};
 
 type LaboratoryProcessArtifactRecord = LaboratoryRecord & {
-  id?: unknown
-  moduleId?: unknown
-}
+  id?: unknown;
+  moduleId?: unknown;
+};
 
-type LaboratoryProcessFindingRecord = LaboratoryRecord
+type LaboratoryProcessFindingRecord = LaboratoryRecord;
 
 type LaboratoryAudioModuleRunnerResult = LaboratoryRecord & {
-  artifacts?: unknown
-  findings?: unknown
-  status?: unknown
-  summary?: unknown
-  warnings?: unknown
-}
+  artifacts?: unknown;
+  findings?: unknown;
+  status?: unknown;
+  summary?: unknown;
+  warnings?: unknown;
+};
 
 type LaboratoryAudioModuleRunner = (
   runtime: LaboratoryRecord,
@@ -33,36 +33,34 @@ type LaboratoryAudioModuleRunner = (
   artifactBase: string,
   outputDir: string,
   moduleId: string
-) => Promise<LaboratoryAudioModuleRunnerResult>
+) => Promise<LaboratoryAudioModuleRunnerResult>;
 
 type LaboratoryManagedAudioRunnerResult = {
-  artifacts: LaboratoryProcessArtifactRecord[]
-  findings: LaboratoryProcessFindingRecord[]
-  warnings: string[]
-}
+  artifacts: LaboratoryProcessArtifactRecord[];
+  findings: LaboratoryProcessFindingRecord[];
+  warnings: string[];
+};
 
 type LaboratoryManagedAudioRunnerDeps = {
-  asNonEmptyString: (value: unknown) => string | null
+  asNonEmptyString: (value: unknown) => string | null;
   getAudioAnalysisModuleProcessDir: (
     runtime: LaboratoryRecord,
     project: LaboratoryRecord,
     moduleId: string
-  ) => string
-  getAudioAnalysisModuleRunner: (moduleId: string) => LaboratoryAudioModuleRunner | null
-  normalizeProcessArtifact: (rawValue: unknown) => LaboratoryProcessArtifactRecord
-  normalizeProcessFinding: (rawValue: unknown) => LaboratoryProcessFindingRecord
-  sanitizeFileSegment: (value: string, fallbackValue: string) => string
-  toRecord: (value: unknown) => LaboratoryRecord
+  ) => string;
+  getAudioAnalysisModuleRunner: (moduleId: string) => LaboratoryAudioModuleRunner | null;
+  normalizeProcessArtifact: (rawValue: unknown) => LaboratoryProcessArtifactRecord;
+  normalizeProcessFinding: (rawValue: unknown) => LaboratoryProcessFindingRecord;
+  sanitizeFileSegment: (value: string, fallbackValue: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
   updateProcessModule: (
     processRecord: LaboratoryProcessRecord,
     moduleId: string,
     patch: LaboratoryRecord
-  ) => LaboratoryProcessRecord
-}
+  ) => LaboratoryProcessRecord;
+};
 
-export function createLaboratoryManagedAudioRunnerRuntime(
-  deps: LaboratoryManagedAudioRunnerDeps
-) {
+export function createLaboratoryManagedAudioRunnerRuntime(deps: LaboratoryManagedAudioRunnerDeps) {
   const {
     asNonEmptyString,
     getAudioAnalysisModuleProcessDir,
@@ -72,18 +70,18 @@ export function createLaboratoryManagedAudioRunnerRuntime(
     sanitizeFileSegment,
     toRecord,
     updateProcessModule,
-  } = deps
+  } = deps;
 
   function toProcessModuleRecord(value: unknown): LaboratoryProcessModuleRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toRunnerResult(value: unknown): LaboratoryAudioModuleRunnerResult {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toArtifactRecord(value: unknown): LaboratoryProcessArtifactRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   async function runAudioManagedProcess(
@@ -95,42 +93,42 @@ export function createLaboratoryManagedAudioRunnerRuntime(
     artifactBase: string,
     processRecord: LaboratoryProcessRecord
   ): Promise<LaboratoryManagedAudioRunnerResult> {
-    const findings: LaboratoryProcessFindingRecord[] = []
-    const artifacts: LaboratoryProcessArtifactRecord[] = []
-    const warnings: string[] = []
+    const findings: LaboratoryProcessFindingRecord[] = [];
+    const artifacts: LaboratoryProcessArtifactRecord[] = [];
+    const warnings: string[] = [];
     const modules = Array.isArray(processRecord.modules)
       ? processRecord.modules.map(toProcessModuleRecord)
-      : []
+      : [];
 
     for (let index = 0; index < modules.length; index += 1) {
-      const moduleEntry = modules[index]
+      const moduleEntry = modules[index];
       if (!moduleEntry) {
-        continue
+        continue;
       }
-      const moduleId = asNonEmptyString(moduleEntry.id) || `audio-module-${index}`
-      const moduleStatus = asNonEmptyString(moduleEntry.status) || "queued"
+      const moduleId = asNonEmptyString(moduleEntry.id) || `audio-module-${index}`;
+      const moduleStatus = asNonEmptyString(moduleEntry.status) || "queued";
       if (["planned", "gated", "blocked", "skipped"].includes(moduleStatus)) {
-        continue
+        continue;
       }
 
       updateProcessModule(processRecord, moduleId, {
         status: "running",
         percent: 30,
         startedAt: new Date().toISOString(),
-      })
+      });
 
-      const moduleRunner = getAudioAnalysisModuleRunner(moduleId)
+      const moduleRunner = getAudioAnalysisModuleRunner(moduleId);
       if (typeof moduleRunner !== "function") {
         updateProcessModule(processRecord, moduleId, {
           status: "skipped",
           percent: 100,
           completedAt: new Date().toISOString(),
           summary: "A generic audio runner is not registered for this module yet.",
-        })
-        continue
+        });
+        continue;
       }
 
-      const moduleOutputDir = getAudioAnalysisModuleProcessDir(runtime, project, moduleId)
+      const moduleOutputDir = getAudioAnalysisModuleProcessDir(runtime, project, moduleId);
       // eslint-disable-next-line no-await-in-loop -- NOTE: module progress updates are emitted in execution order.
       const runnerOutput = await moduleRunner(
         runtime,
@@ -141,22 +139,22 @@ export function createLaboratoryManagedAudioRunnerRuntime(
         sanitizeFileSegment(`${artifactBase}-${moduleId}`, moduleId),
         moduleOutputDir,
         moduleId
-      )
-      const moduleResult = toRunnerResult(runnerOutput)
-      const moduleFindings = Array.isArray(moduleResult.findings) ? moduleResult.findings : []
+      );
+      const moduleResult = toRunnerResult(runnerOutput);
+      const moduleFindings = Array.isArray(moduleResult.findings) ? moduleResult.findings : [];
       moduleFindings.forEach(function (finding) {
-        findings.push(normalizeProcessFinding(finding))
-      })
+        findings.push(normalizeProcessFinding(finding));
+      });
 
-      const moduleArtifacts = Array.isArray(moduleResult.artifacts) ? moduleResult.artifacts : []
+      const moduleArtifacts = Array.isArray(moduleResult.artifacts) ? moduleResult.artifacts : [];
       moduleArtifacts.forEach(function (artifact) {
-        artifacts.push(normalizeProcessArtifact(artifact))
-      })
+        artifacts.push(normalizeProcessArtifact(artifact));
+      });
 
-      const moduleWarnings = Array.isArray(moduleResult.warnings) ? moduleResult.warnings : []
+      const moduleWarnings = Array.isArray(moduleResult.warnings) ? moduleResult.warnings : [];
       moduleWarnings.forEach(function (warning) {
-        warnings.push(String(warning))
-      })
+        warnings.push(String(warning));
+      });
 
       updateProcessModule(processRecord, moduleId, {
         status: asNonEmptyString(moduleResult.status) || "ready",
@@ -165,20 +163,20 @@ export function createLaboratoryManagedAudioRunnerRuntime(
         summary: asNonEmptyString(moduleResult.summary) || "",
         artifactIds: moduleArtifacts
           .map(function (artifact) {
-            return asNonEmptyString(toArtifactRecord(artifact).id)
+            return asNonEmptyString(toArtifactRecord(artifact).id);
           })
           .filter((artifactId): artifactId is string => artifactId !== null),
-      })
+      });
     }
 
     return {
       findings,
       artifacts,
       warnings,
-    }
+    };
   }
 
   return {
     runAudioManagedProcess,
-  }
+  };
 }

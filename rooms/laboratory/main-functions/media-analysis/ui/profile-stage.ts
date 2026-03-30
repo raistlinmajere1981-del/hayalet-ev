@@ -111,9 +111,7 @@ type MediaAnalysisProfileStageDeps = {
   renderProfilePresetPanel: () => string;
   renderStageIntro: (stageId: string) => string;
   renderSummaryRows: (rows: LaboratorySummaryRow[]) => string;
-  sortProfileSignals: (
-    signals: LaboratoryProfileSignalRecord[]
-  ) => LaboratoryProfileSignalRecord[];
+  sortProfileSignals: (signals: LaboratoryProfileSignalRecord[]) => LaboratoryProfileSignalRecord[];
   state: LaboratoryMediaAnalysisStateRecord;
   text: (path: string[]) => string;
   textFromKey: (key: string) => string;
@@ -309,12 +307,16 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
 
   function getAudioBarsForPreview(): number[] {
     const audioBars = getAudioBars();
-    return audioBars.length > 0 ? audioBars : Array.from({ length: 36 }, function () {
-      return 20;
-    });
+    return audioBars.length > 0
+      ? audioBars
+      : Array.from({ length: 36 }, function () {
+          return 20;
+        });
   }
 
-  function getTargetAssetKind(asset: LaboratoryProfileTargetAssetRecord): LaboratoryTargetAssetKind {
+  function getTargetAssetKind(
+    asset: LaboratoryProfileTargetAssetRecord
+  ): LaboratoryTargetAssetKind {
     const assetKind = asNonEmptyString(asset.kind);
     if (assetKind === "image" || assetKind === "audio") {
       return assetKind;
@@ -416,7 +418,10 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
           <div class="lab-preview-frame">${mediaMarkup}</div>
           <section class="lab-panel lab-panel--dense">
             ${renderSummaryRows([
-              [text(["mediaAnalysis", "profile", "summary", "target"]), asNonEmptyString(asset.label) || "--"],
+              [
+                text(["mediaAnalysis", "profile", "summary", "target"]),
+                asNonEmptyString(asset.label) || "--",
+              ],
               [
                 text(["mediaAnalysis", "shared", "duration"]),
                 formatDuration(asNumber(getPreferredAssetDuration(asset))),
@@ -610,16 +615,15 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
         ${renderSummaryRows([
           [
             text(["mediaAnalysis", "shared", "status"]),
-            text(["mediaAnalysis", "profile", "status", asNonEmptyString(preflight.status) || "idle"]),
+            text([
+              "mediaAnalysis",
+              "profile",
+              "status",
+              asNonEmptyString(preflight.status) || "idle",
+            ]),
           ],
-          [
-            text(["mediaAnalysis", "profile", "summary", "signals"]),
-            String(signals.length),
-          ],
-          [
-            text(["mediaAnalysis", "profile", "summary", "artifacts"]),
-            String(artifacts.length),
-          ],
+          [text(["mediaAnalysis", "profile", "summary", "signals"]), String(signals.length)],
+          [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(artifacts.length)],
           [
             text(["mediaAnalysis", "profile", "summary", "runtime"]),
             formatDuration(asNumber(estimate.runtimeSeconds)),

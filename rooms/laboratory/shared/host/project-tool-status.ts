@@ -71,7 +71,8 @@ export function createLaboratoryProjectToolStatusRuntime(
 
         if (
           checkUpdates &&
-          toRecord(toRecord(runtime.toolState.tools[toolId])["details"])["platformSupported"] !== false
+          toRecord(toRecord(runtime.toolState.tools[toolId])["details"])["platformSupported"] !==
+            false
         ) {
           const installedEntry = toRecord(runtime.toolState.tools[toolId]);
           const updateResult = await callRoomTools({
@@ -86,7 +87,8 @@ export function createLaboratoryProjectToolStatusRuntime(
 
           runtime.toolState.tools[toolId] = {
             ...runtime.toolState.tools[toolId],
-            latestVersion: typeof update["latestVersion"] === "string" ? update["latestVersion"] : null,
+            latestVersion:
+              typeof update["latestVersion"] === "string" ? update["latestVersion"] : null,
             latestReleaseTag:
               typeof update["latestReleaseTag"] === "string" ? update["latestReleaseTag"] : null,
             latestReleaseName:

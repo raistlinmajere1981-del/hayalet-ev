@@ -10,7 +10,9 @@ import { createLaboratoryReportingRuntime } from "./reporting.js";
 type UnknownFn = (...args: unknown[]) => unknown;
 type LaboratoryProcessRuntimeDeps = Parameters<typeof createLaboratoryProcessRuntime>[0];
 type LaboratoryReportingRuntimeDeps = Parameters<typeof createLaboratoryReportingRuntime>[0];
-type LaboratoryAudioAnalysisHostRuntime = ReturnType<typeof createLaboratoryAudioAnalysisHostRuntime>;
+type LaboratoryAudioAnalysisHostRuntime = ReturnType<
+  typeof createLaboratoryAudioAnalysisHostRuntime
+>;
 type LaboratoryAudioAnalysisProjectionRuntime =
   LaboratoryAudioAnalysisHostRuntime["audioAnalysisProjectionRuntime"];
 type LaboratoryProcessDelegatesRuntime = ReturnType<typeof createLaboratoryProcessDelegatesRuntime>;
@@ -81,7 +83,9 @@ export function createLaboratoryHostProcessCompositionRuntime(
     buildProfileModelSummary: deps.buildProfileModelSummary,
   };
   const laboratoryProcessTargetingRuntime = createLaboratoryProcessTargetingRuntime(
-    laboratoryProcessTargetingRuntimeDeps as unknown as Parameters<typeof createLaboratoryProcessTargetingRuntime>[0]
+    laboratoryProcessTargetingRuntimeDeps as unknown as Parameters<
+      typeof createLaboratoryProcessTargetingRuntime
+    >[0]
   );
 
   const processOrchestrationRuntimeDeps = {
@@ -105,7 +109,9 @@ export function createLaboratoryHostProcessCompositionRuntime(
     toRecord: deps.toRecord,
   };
   const processOrchestrationRuntime = createLaboratoryProcessOrchestrationRuntime(
-    processOrchestrationRuntimeDeps as unknown as Parameters<typeof createLaboratoryProcessOrchestrationRuntime>[0]
+    processOrchestrationRuntimeDeps as unknown as Parameters<
+      typeof createLaboratoryProcessOrchestrationRuntime
+    >[0]
   );
 
   const {
@@ -136,7 +142,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
     audioAnalysisProjectionRuntime: nextAudioAnalysisProjectionRuntime,
     audioAnalysisStateRuntime,
     laboratoryAudioProcessDelegatesRuntime,
-  } = createLaboratoryAudioAnalysisHostRuntime(({
+  } = createLaboratoryAudioAnalysisHostRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: deps.asNumber,
     audioAnalysisSchemaVersion: deps.audioAnalysisSchemaVersion,
@@ -179,14 +185,13 @@ export function createLaboratoryHostProcessCompositionRuntime(
     toRecord: deps.toRecord,
     writeJsonFile: deps.writeJsonFile,
     writeTextFile: deps.writeTextFile,
-  }) as unknown as Parameters<typeof createLaboratoryAudioAnalysisHostRuntime>[0]);
+  } as unknown as Parameters<typeof createLaboratoryAudioAnalysisHostRuntime>[0]);
   audioAnalysisProjectionRuntime = nextAudioAnalysisProjectionRuntime;
 
   const laboratoryAudioAnalysisProjectionRuntime = createLaboratoryAudioAnalysisProjectionRuntime({
-    audioAnalysisProjectionRuntime:
-      nextAudioAnalysisProjectionRuntime as Parameters<
-        typeof createLaboratoryAudioAnalysisProjectionRuntime
-      >[0]["audioAnalysisProjectionRuntime"],
+    audioAnalysisProjectionRuntime: nextAudioAnalysisProjectionRuntime as Parameters<
+      typeof createLaboratoryAudioAnalysisProjectionRuntime
+    >[0]["audioAnalysisProjectionRuntime"],
   });
   const { syncProjectAudioAnalysisProjection } = laboratoryAudioAnalysisProjectionRuntime;
 
@@ -229,7 +234,9 @@ export function createLaboratoryHostProcessCompositionRuntime(
     mediaFeatureId: deps.mediaFeatureId,
   };
   const laboratoryReportingRuntime = createLaboratoryReportingRuntime(
-    laboratoryReportingRuntimeDeps as unknown as Parameters<typeof createLaboratoryReportingRuntime>[0]
+    laboratoryReportingRuntimeDeps as unknown as Parameters<
+      typeof createLaboratoryReportingRuntime
+    >[0]
   );
 
   const laboratoryProcessRuntimeDeps = {
@@ -259,7 +266,9 @@ export function createLaboratoryHostProcessCompositionRuntime(
     clampProfileTranscriptSampleSeconds: deps["clampProfileTranscriptSampleSeconds"],
     clearJob: deps.clearJob,
     clone: deps.clone,
-    composeFeatureReport(...args: Parameters<LaboratoryProcessDelegatesRuntime["composeFeatureReport"]>) {
+    composeFeatureReport(
+      ...args: Parameters<LaboratoryProcessDelegatesRuntime["composeFeatureReport"]>
+    ) {
       const delegates = laboratoryProcessDelegatesRuntime;
       if (!delegates) {
         throw new Error("Laboratory process delegates runtime is not initialized");

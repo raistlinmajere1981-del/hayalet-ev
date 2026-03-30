@@ -14,7 +14,10 @@ export function createLaboratoryHostUtils(deps: LaboratoryHostUtilsDeps) {
     sourcePresets: LaboratoryHostUtilsRecord
   ): string {
     const sourceTypes = toRecord(toRecord(sourcePresets)["sourceTypes"]);
-    if (featureId === audioFeatureId && Object.prototype.hasOwnProperty.call(sourceTypes, "audio")) {
+    if (
+      featureId === audioFeatureId &&
+      Object.prototype.hasOwnProperty.call(sourceTypes, "audio")
+    ) {
       return "audio";
     }
     return getDefaultSourceType(sourcePresets);
@@ -32,12 +35,7 @@ export function createLaboratoryHostUtils(deps: LaboratoryHostUtilsDeps) {
     return encodeURI(`file:///${normalized}`);
   }
 
-  function clampNumber(
-    value: unknown,
-    minimum: number,
-    maximum: number,
-    fallback: number
-  ): number {
+  function clampNumber(value: unknown, minimum: number, maximum: number, fallback: number): number {
     const numericValue = Number(value);
     if (Number.isFinite(numericValue) !== true) {
       return fallback;

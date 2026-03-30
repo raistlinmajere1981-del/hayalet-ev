@@ -169,7 +169,10 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
     return toRecord(value);
   }
 
-  function getToolEntry(runtime: LaboratoryRuntimeRecord, toolId: string): LaboratoryToolEntryRecord {
+  function getToolEntry(
+    runtime: LaboratoryRuntimeRecord,
+    toolId: string
+  ): LaboratoryToolEntryRecord {
     return toToolEntryRecord(toRecord(toRecord(runtime.toolState)["tools"])[toolId]);
   }
 
@@ -447,13 +450,7 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
           jobId: `${jobId}-${index}`,
           toolId: "yt-dlp",
           cwd: sourceDir,
-          args: buildSubtitleYoutubeDownloadArgs(
-            runtime,
-            drafts,
-            sourceDir,
-            selectedUrl,
-            "single"
-          ),
+          args: buildSubtitleYoutubeDownloadArgs(runtime, drafts, sourceDir, selectedUrl, "single"),
           timeoutMs: 20 * 60 * 1000,
         });
       }

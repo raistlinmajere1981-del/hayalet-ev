@@ -61,7 +61,9 @@
     function isSelectionComplete(
       selection: GameRoomFateKnotsSelection | null | undefined
     ): boolean {
-      return Boolean(selection && selection.avatarId && selection.classId && selection.backgroundId);
+      return Boolean(
+        selection && selection.avatarId && selection.classId && selection.backgroundId
+      );
     }
 
     function resolveCatalogEntry(

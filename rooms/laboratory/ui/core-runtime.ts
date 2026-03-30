@@ -2,7 +2,9 @@ import { createLaboratoryUiCoreBootstrapRuntime } from "./core-bootstrap.js";
 import { buildLaboratoryUiCoreApi } from "./core-public-api.js";
 import type { createLaboratoryUiRuntimeComposition } from "./runtime-composition.js";
 
-type LaboratoryUiRuntimeCompositionRuntime = ReturnType<typeof createLaboratoryUiRuntimeComposition>;
+type LaboratoryUiRuntimeCompositionRuntime = ReturnType<
+  typeof createLaboratoryUiRuntimeComposition
+>;
 type LaboratoryProjectJobs = Parameters<
   LaboratoryUiRuntimeCompositionRuntime["laboratoryStageAccessorsRuntime"]["collectProfileStageJobs"]
 >[0];

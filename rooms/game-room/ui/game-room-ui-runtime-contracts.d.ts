@@ -32,11 +32,7 @@ type GameRoomApplyFrameArtwork = (
   element: HTMLElement,
   options: GameRoomFateKnotsFrameArtworkOptions | null | undefined
 ) => void;
-type GameRoomCreateSigil = (
-  className: string,
-  texture: unknown,
-  overlay: unknown
-) => HTMLElement;
+type GameRoomCreateSigil = (className: string, texture: unknown, overlay: unknown) => HTMLElement;
 type GameRoomCreateTextChip = (label: string, tone: string) => HTMLElement;
 type GameRoomCreateStatBadge = (label: string, value: string, tone: string) => HTMLElement;
 type GameRoomCreateActionButton = (
@@ -386,10 +382,7 @@ interface GameRoomTeamTetrisUiDraftRuntimeDeps {
 }
 
 interface GameRoomTeamTetrisUiDraftRuntime {
-  getTeamTetrisRotationCells(
-    pieceId: string,
-    rotation: number
-  ): GameRoomTeamTetrisRotationCell[];
+  getTeamTetrisRotationCells(pieceId: string, rotation: number): GameRoomTeamTetrisRotationCell[];
   getTeamTetrisPieceBounds(pieceId: string, rotation: number): GameRoomTeamTetrisPieceBounds;
   getTeamTetrisSpawnPosition(pieceId: string, rotation: number): GameRoomTeamTetrisCell;
   replayTeamTetrisDraft(
@@ -422,7 +415,8 @@ interface GameRoomTeamTetrisUiStateRuntimeDeps {
 }
 
 interface GameRoomTeamTetrisUiStateRuntime
-  extends GameRoomTeamTetrisUiStateShapeRuntime,
+  extends
+    GameRoomTeamTetrisUiStateShapeRuntime,
     GameRoomTeamTetrisUiStateViewRuntime,
     GameRoomTeamTetrisUiDraftRuntime {
   onTeamTetrisStart(): void;
@@ -434,10 +428,7 @@ interface GameRoomTeamTetrisUiModuleCardRuntimeDeps {
   createSlot(...args: unknown[]): unknown;
   createElement: GameRoomCreateElement;
   text: GameRoomTextResolver;
-  getTeamTetrisRotationCells(
-    pieceId: string,
-    rotation: number
-  ): GameRoomTeamTetrisRotationCell[];
+  getTeamTetrisRotationCells(pieceId: string, rotation: number): GameRoomTeamTetrisRotationCell[];
   getTeamTetrisPieceBounds(pieceId: string, rotation: number): GameRoomTeamTetrisPieceBounds;
   sanitizeTeamTetrisRows(rows: unknown): string[];
   startTeamTetrisDrag(columnIndex: number, rowIndex: number): void;
@@ -859,7 +850,10 @@ interface GameRoomFateKnotsUiStateSanitizeRuntime {
 }
 
 interface GameRoomFateKnotsUiStateSupportRuntime {
-  findParticipant(state: GameRoomFateKnotsState | null, seatId: string): GameRoomFateKnotsParticipant | null;
+  findParticipant(
+    state: GameRoomFateKnotsState | null,
+    seatId: string
+  ): GameRoomFateKnotsParticipant | null;
   formatDeck(entry: GameRoomFateKnotsCatalogEntry | null | undefined): string;
   formatDeadline(deadlineAt: unknown): string;
   formatHistoryTimestamp(timestamp: unknown): string;
@@ -882,8 +876,7 @@ interface GameRoomFateKnotsUiStateSupportRuntime {
 }
 
 interface GameRoomFateKnotsUiStateRuntime
-  extends GameRoomFateKnotsUiStateSanitizeRuntime,
-    GameRoomFateKnotsUiStateSupportRuntime {
+  extends GameRoomFateKnotsUiStateSanitizeRuntime, GameRoomFateKnotsUiStateSupportRuntime {
   createDefaultAsset(assetId: string | null): GameRoomFateKnotsAssetLink;
   createDefaultSelection(): GameRoomFateKnotsSelection;
   createFateKnotsState(): GameRoomFateKnotsState;
@@ -927,7 +920,10 @@ interface GameRoomFateKnotsUiSurfaceMapRuntimeDeps {
 }
 
 interface GameRoomFateKnotsUiSurfaceMapRuntime {
-  createMapPathLayer(nodes: GameRoomFateKnotsMapNode[], currentLocationId: string | null): HTMLElement;
+  createMapPathLayer(
+    nodes: GameRoomFateKnotsMapNode[],
+    currentLocationId: string | null
+  ): HTMLElement;
   createSigil: GameRoomCreateSigil;
 }
 
@@ -939,7 +935,8 @@ interface GameRoomFateKnotsUiSurfaceRuntimeDeps {
 }
 
 interface GameRoomFateKnotsUiSurfaceRuntime
-  extends GameRoomFateKnotsUiSurfaceAssetsRuntime,
+  extends
+    GameRoomFateKnotsUiSurfaceAssetsRuntime,
     GameRoomFateKnotsUiSurfacePrimitivesRuntime,
     GameRoomFateKnotsUiSurfaceMapRuntime {}
 
@@ -953,7 +950,10 @@ interface GameRoomFateKnotsUiChromeRuntimeDeps {
   createRegion: GameRoomCreateRegion;
   createSigil: GameRoomCreateSigil;
   createTextChip: GameRoomCreateTextChip;
-  findParticipant(state: GameRoomFateKnotsState | null, seatId: string): GameRoomFateKnotsParticipant | null;
+  findParticipant(
+    state: GameRoomFateKnotsState | null,
+    seatId: string
+  ): GameRoomFateKnotsParticipant | null;
   formatDeadline(deadlineAt: unknown): string;
   getCurrentStatus(state: GameRoomFateKnotsState | null): string;
   getPhaseLabel(phaseId: string): string;
@@ -990,7 +990,10 @@ interface GameRoomFateKnotsUiJourneyOverviewRuntimeDeps {
   createDefaultAsset(assetId: string | null): GameRoomFateKnotsAssetLink;
   createElement: GameRoomCreateElement;
   createFrame: GameRoomCreateFrame;
-  createMapPathLayer(nodes: GameRoomFateKnotsMapNode[], currentLocationId: string | null): HTMLElement;
+  createMapPathLayer(
+    nodes: GameRoomFateKnotsMapNode[],
+    currentLocationId: string | null
+  ): HTMLElement;
   createRegion: GameRoomCreateRegion;
   createSeatPlaque(state: GameRoomFateKnotsState, seatId: string, role: string): HTMLElement;
   formatHistoryTimestamp(timestamp: unknown): string;
@@ -1036,7 +1039,8 @@ interface GameRoomFateKnotsUiJourneyCreationRuntime {
 }
 
 interface GameRoomFateKnotsUiJourneyStageRuntimeDeps
-  extends GameRoomFateKnotsUiJourneyOverviewRuntimeDeps,
+  extends
+    GameRoomFateKnotsUiJourneyOverviewRuntimeDeps,
     GameRoomFateKnotsUiJourneyCreationRuntimeDeps {}
 
 interface GameRoomFateKnotsUiJourneyStageRuntime {
@@ -1122,8 +1126,7 @@ interface GameRoomFateKnotsUiCombatStageRuntime {
 }
 
 interface GameRoomFateKnotsUiStageRuntimeDeps
-  extends GameRoomFateKnotsUiNarrativeStageRuntimeDeps,
-    GameRoomFateKnotsUiCombatStageRuntimeDeps {
+  extends GameRoomFateKnotsUiNarrativeStageRuntimeDeps, GameRoomFateKnotsUiCombatStageRuntimeDeps {
   getCurrentStatus(state: GameRoomFateKnotsState | null): string;
 }
 
@@ -1203,9 +1206,7 @@ interface GameRoomUiRuntimeRegistry {
 }
 
 interface GameRoomUiContextRuntimeRegistry {
-  createGameRoomUiContextRuntime?: (
-    options: GameRoomUnknownRecord
-  ) => GameRoomUiContextRuntimeLike;
+  createGameRoomUiContextRuntime?: (options: GameRoomUnknownRecord) => GameRoomUiContextRuntimeLike;
 }
 
 interface GameRoomUiScrollRuntimeRegistry {
@@ -1230,9 +1231,7 @@ interface GameRoomUiFactoriesRegistry {
   createTeamTetrisUiModuleShellRuntime?: (
     deps: GameRoomTeamTetrisUiModuleShellRuntimeDeps
   ) => GameRoomTeamTetrisUiModuleShellRuntime;
-  createTeamTetrisUiModule?: (
-    deps: GameRoomTeamTetrisUiModuleDeps
-  ) => GameRoomTeamTetrisUiModule;
+  createTeamTetrisUiModule?: (deps: GameRoomTeamTetrisUiModuleDeps) => GameRoomTeamTetrisUiModule;
   createFateKnotsUiStateDefaultsRuntime?: () => GameRoomFateKnotsUiStateDefaultsRuntime;
   createFateKnotsUiStateSanitizeRuntime?: () => GameRoomFateKnotsUiStateSanitizeRuntime;
   createFateKnotsUiStateSupportRuntime?: (

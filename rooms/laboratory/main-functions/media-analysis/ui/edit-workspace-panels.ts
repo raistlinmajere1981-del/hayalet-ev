@@ -78,9 +78,7 @@ type MediaAnalysisEditWorkspacePanelsDeps = {
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createMediaAnalysisEditWorkspacePanels(
-  deps: MediaAnalysisEditWorkspacePanelsDeps
-) {
+export function createMediaAnalysisEditWorkspacePanels(deps: MediaAnalysisEditWorkspacePanelsDeps) {
   const {
     collectEditStageJobs,
     escapeHtml,
@@ -269,7 +267,8 @@ export function createMediaAnalysisEditWorkspacePanels(
     const activeEditJobs = collectEditStageJobs(projectJobs).map(toEditStageJobRecord);
     const assetMetadata = toAssetMetadataRecord(asset.metadata);
     const assetLabel = asset.label || text(["mediaAnalysis", "edit", "sourceAsset"]);
-    const previewStatus = asNonEmptyString(preview.status) || text(["mediaAnalysis", "shared", "idle"]);
+    const previewStatus =
+      asNonEmptyString(preview.status) || text(["mediaAnalysis", "shared", "idle"]);
     const sourceStatus = source.status === "error" ? "error" : "ready";
     const durationValue =
       asNumber(assetMetadata.durationSeconds) ||

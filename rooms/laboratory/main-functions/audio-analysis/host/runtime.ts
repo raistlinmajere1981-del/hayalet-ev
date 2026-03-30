@@ -7,8 +7,9 @@ type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryRuntimeRecord = LaboratoryRecord;
 type LaboratoryProjectRecord = LaboratoryRecord;
 type AudioAnalysisProcessRuntimeDeps = Parameters<typeof createAudioAnalysisProcessRuntime>[0];
-type LaboratoryAudioProcessDelegatesRuntimeDeps =
-  Parameters<typeof createLaboratoryAudioProcessDelegatesRuntime>[0];
+type LaboratoryAudioProcessDelegatesRuntimeDeps = Parameters<
+  typeof createLaboratoryAudioProcessDelegatesRuntime
+>[0];
 
 type LaboratoryAudioCatalogEntryRecord = LaboratoryRecord & {
   requiredToolIds?: unknown;
@@ -50,21 +51,12 @@ type AudioAnalysisHostRuntimeDeps = {
     artifactIds: string[]
   ) => LaboratoryRecord;
   ensureRuntimeDirectory: (path: string, requestId: string | null) => Promise<unknown>;
-  findEditOutputById: (
-    project: LaboratoryProjectRecord,
-    outputId: string | null
-  ) => unknown | null;
+  findEditOutputById: (project: LaboratoryProjectRecord, outputId: string | null) => unknown | null;
   getAudioAnalysisModulesForRuntime: (
     runtime: LaboratoryRuntimeRecord
   ) => LaboratoryAudioCatalogEntryRecord[];
-  getFeatureProcessRecord: (
-    project: LaboratoryProjectRecord,
-    featureId: string
-  ) => unknown;
-  getFeatureReportRecord: (
-    project: LaboratoryProjectRecord,
-    featureId: string
-  ) => unknown;
+  getFeatureProcessRecord: (project: LaboratoryProjectRecord, featureId: string) => unknown;
+  getFeatureReportRecord: (project: LaboratoryProjectRecord, featureId: string) => unknown;
   getPreferredFeatureSourceKind: (featureId: string, sourcePresets: unknown) => string;
   listDirectory: (path: string) => Promise<unknown[]>;
   maybeRunWhisperProfileSample: (
@@ -211,13 +203,11 @@ export function createLaboratoryAudioAnalysisHostRuntime(
     toRecord,
   });
 
-  const audioAnalysisProcessRuntime = createAudioAnalysisProcessRuntime(
-    {
-      ...deps,
-      parseAspectralStatsText:
-        parseAspectralStatsText as AudioAnalysisProcessRuntimeDeps["parseAspectralStatsText"],
-    } as unknown as AudioAnalysisProcessRuntimeDeps
-  );
+  const audioAnalysisProcessRuntime = createAudioAnalysisProcessRuntime({
+    ...deps,
+    parseAspectralStatsText:
+      parseAspectralStatsText as AudioAnalysisProcessRuntimeDeps["parseAspectralStatsText"],
+  } as unknown as AudioAnalysisProcessRuntimeDeps);
 
   const laboratoryAudioProcessDelegatesRuntime = createLaboratoryAudioProcessDelegatesRuntime({
     audioAnalysisProcessRuntime:

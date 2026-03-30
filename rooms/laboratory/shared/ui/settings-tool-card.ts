@@ -1,64 +1,64 @@
-type LaboratoryRecord = Record<string, unknown>
+type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryToolDetailsRecord = LaboratoryRecord & {
-  availability?: unknown
-  plannedReason?: unknown
-  setupHint?: unknown
-}
+  availability?: unknown;
+  plannedReason?: unknown;
+  setupHint?: unknown;
+};
 
 type LaboratoryToolStateRecord = LaboratoryRecord & {
-  binaryPath?: unknown
-  busy?: unknown
-  details?: unknown
-  installed?: unknown
-  lastError?: unknown
-  latestReleaseName?: unknown
-  latestVersion?: unknown
-  updateAvailable?: unknown
-  version?: unknown
-}
+  binaryPath?: unknown;
+  busy?: unknown;
+  details?: unknown;
+  installed?: unknown;
+  lastError?: unknown;
+  latestReleaseName?: unknown;
+  latestVersion?: unknown;
+  updateAvailable?: unknown;
+  version?: unknown;
+};
 
 type LaboratoryToolDescriptorRecord = LaboratoryRecord & {
-  availability?: unknown
-  displayName?: unknown
-  plannedReason?: unknown
-  setupHint?: unknown
-  stageSupport?: unknown
-  toolId?: unknown
-}
+  availability?: unknown;
+  displayName?: unknown;
+  plannedReason?: unknown;
+  setupHint?: unknown;
+  stageSupport?: unknown;
+  toolId?: unknown;
+};
 
 type LaboratorySettingsToolCardRuntimeDeps = {
-  escapeHtml: (value: string) => string
-  getToolEntry: (toolId: string) => LaboratoryToolStateRecord
-  getToolRegistry: () => LaboratoryToolDescriptorRecord[]
-  renderPreviewMetaRow: (label: string, value: unknown) => string
-  text: (path: string[]) => string
-  toRecord: (value: unknown) => LaboratoryRecord
-}
+  escapeHtml: (value: string) => string;
+  getToolEntry: (toolId: string) => LaboratoryToolStateRecord;
+  getToolRegistry: () => LaboratoryToolDescriptorRecord[];
+  renderPreviewMetaRow: (label: string, value: unknown) => string;
+  text: (path: string[]) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
 
 export function createLaboratorySettingsToolCardRuntime(
   deps: LaboratorySettingsToolCardRuntimeDeps
 ) {
-  const { escapeHtml, getToolEntry, getToolRegistry, renderPreviewMetaRow, text, toRecord } = deps
+  const { escapeHtml, getToolEntry, getToolRegistry, renderPreviewMetaRow, text, toRecord } = deps;
 
   function toToolStateRecord(value: unknown): LaboratoryToolStateRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toToolDetailsRecord(value: unknown): LaboratoryToolDetailsRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toString(value: unknown, fallback = ""): string {
-    return typeof value === "string" ? value : fallback
+    return typeof value === "string" ? value : fallback;
   }
 
   function getDescriptor(toolId: string): LaboratoryToolDescriptorRecord | null {
     return (
       getToolRegistry().find(function (entry) {
-        return toString(entry.toolId) === toolId
+        return toString(entry.toolId) === toolId;
       }) || null
-    )
+    );
   }
 
   function getAvailability(
@@ -69,29 +69,30 @@ export function createLaboratorySettingsToolCardRuntime(
       toString(details.availability).trim() ||
       toString(descriptor?.availability).trim() ||
       "installable"
-    )
+    );
   }
 
   function readStageSupport(
     descriptor: LaboratoryToolDescriptorRecord | null,
     stageId: string
   ): string {
-    const stageSupport = toRecord(descriptor?.stageSupport)
-    return toString(stageSupport[stageId], "unsupported")
+    const stageSupport = toRecord(descriptor?.stageSupport);
+    return toString(stageSupport[stageId], "unsupported");
   }
 
   function renderToolCard(toolId: string, stageId: string) {
-    const tool = toToolStateRecord(getToolEntry(toolId))
-    const descriptor = getDescriptor(toolId)
-    const details = toToolDetailsRecord(tool.details)
-    const busy = tool.busy === true
-    const updateAvailable = tool.updateAvailable === true
-    const availability = getAvailability(details, descriptor)
-    const stageSupport = readStageSupport(descriptor, stageId)
-    const planned = availability === "planned"
-    const systemCommand = availability === "system-command"
-    const plannedReason = toString(details.plannedReason).trim() || toString(descriptor?.plannedReason).trim()
-    const setupHint = toString(details.setupHint).trim() || toString(descriptor?.setupHint).trim()
+    const tool = toToolStateRecord(getToolEntry(toolId));
+    const descriptor = getDescriptor(toolId);
+    const details = toToolDetailsRecord(tool.details);
+    const busy = tool.busy === true;
+    const updateAvailable = tool.updateAvailable === true;
+    const availability = getAvailability(details, descriptor);
+    const stageSupport = readStageSupport(descriptor, stageId);
+    const planned = availability === "planned";
+    const systemCommand = availability === "system-command";
+    const plannedReason =
+      toString(details.plannedReason).trim() || toString(descriptor?.plannedReason).trim();
+    const setupHint = toString(details.setupHint).trim() || toString(descriptor?.setupHint).trim();
     const statusLabel = planned
       ? text(["mediaAnalysis", "settings", "status", "planned"])
       : systemCommand
@@ -102,7 +103,7 @@ export function createLaboratorySettingsToolCardRuntime(
           ? updateAvailable
             ? text(["mediaAnalysis", "settings", "status", "updateAvailable"])
             : text(["mediaAnalysis", "settings", "status", "installed"])
-          : text(["mediaAnalysis", "settings", "status", "missing"])
+          : text(["mediaAnalysis", "settings", "status", "missing"]);
     const actionMarkup = planned
       ? `
                 <button
@@ -151,7 +152,7 @@ export function createLaboratorySettingsToolCardRuntime(
                 >
                   ${escapeHtml(text(["mediaAnalysis", "settings", "installAction"]))}
                 </button>
-              `
+              `;
 
     return `
       <article class="lab-tool-card">
@@ -196,10 +197,10 @@ export function createLaboratorySettingsToolCardRuntime(
             : ""
         }
       </article>
-    `
+    `;
   }
 
   return {
     renderToolCard,
-  }
+  };
 }

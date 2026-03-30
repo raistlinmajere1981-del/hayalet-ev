@@ -20,16 +20,19 @@ export class StructuredWriter {
   }
 
   private updateFilePath(): void {
-    this.filePath = join(this.config.sessionDir, "structured.jsonl");
+    const sessionDir = this.config.sessionDir.trim();
+    this.filePath = sessionDir === "" ? "" : join(sessionDir, "structured.jsonl");
     this.dirReady = false;
   }
 
   public async write(entry: LogEntry): Promise<void> {
     if (!this.config.enableStructuredLog) return;
+    const sessionDir = this.config.sessionDir.trim();
+    if (sessionDir === "" || this.filePath === "") return;
 
     try {
       if (!this.dirReady) {
-        await mkdir(this.config.sessionDir, { recursive: true });
+        await mkdir(sessionDir, { recursive: true });
         this.dirReady = true;
       }
       const line = JSON.stringify(entry) + "\n";

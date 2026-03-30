@@ -45,15 +45,13 @@ export function createGameRoomCommandRegistry(
     characterSelect:
       deps.fateKnotsCommandNames["characterSelect"] || "GameRoomFateKnotsCharacterSelect",
     choice: deps.fateKnotsCommandNames["choice"] || "GameRoomFateKnotsChoice",
-    combatAction:
-      deps.fateKnotsCommandNames["combatAction"] || "GameRoomFateKnotsCombatAction",
+    combatAction: deps.fateKnotsCommandNames["combatAction"] || "GameRoomFateKnotsCombatAction",
     sync: deps.fateKnotsCommandNames["sync"] || "GameRoomFateKnotsSync",
     end: deps.fateKnotsCommandNames["end"] || "GameRoomFateKnotsEnd",
     aiChoice: deps.fateKnotsCommandNames["aiChoice"] || "GameRoomFateKnotsAiChoice",
     aiCombatAction:
       deps.fateKnotsCommandNames["aiCombatAction"] || "GameRoomFateKnotsAiCombatAction",
-    remoteChoice:
-      deps.fateKnotsCommandNames["remoteChoice"] || "GameRoomFateKnotsRemoteChoice",
+    remoteChoice: deps.fateKnotsCommandNames["remoteChoice"] || "GameRoomFateKnotsRemoteChoice",
     remoteCombatAction:
       deps.fateKnotsCommandNames["remoteCombatAction"] || "GameRoomFateKnotsRemoteCombatAction",
     dmPacket: deps.fateKnotsCommandNames["dmPacket"] || "GameRoomFateKnotsDmPacket",

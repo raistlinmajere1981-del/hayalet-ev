@@ -127,10 +127,7 @@ export default function createGameRoomHostRuntime() {
         );
       }
 
-      function syncUs1MailboxCompat(
-        handlerApi: GameRoomHostApi,
-        reason: string
-      ): Promise<unknown> {
+      function syncUs1MailboxCompat(handlerApi: GameRoomHostApi, reason: string): Promise<unknown> {
         return xoxSyncUs1Mailbox(
           handlerApi as unknown as Parameters<typeof xoxSyncUs1Mailbox>[0],
           reason
@@ -138,10 +135,7 @@ export default function createGameRoomHostRuntime() {
       }
 
       function syncFromContextCompat(handlerApi: GameRoomHostApi, payload: unknown): void {
-        xoxSyncFromContext(
-          handlerApi as Parameters<typeof xoxSyncFromContext>[0],
-          payload
-        );
+        xoxSyncFromContext(handlerApi as Parameters<typeof xoxSyncFromContext>[0], payload);
       }
 
       function clearUs1SyncLoopCompat(handlerApi: GameRoomHostApi): void {

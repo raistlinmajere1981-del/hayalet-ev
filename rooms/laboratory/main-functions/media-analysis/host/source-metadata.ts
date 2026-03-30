@@ -58,10 +58,7 @@ type LaboratorySourceMetadataDeps = {
     project: LaboratoryProjectRecord,
     requestId: unknown
   ) => Promise<unknown>;
-  findCompanionExecutableName: (
-    toolEntry: LaboratoryToolRecord,
-    baseName: string
-  ) => string | null;
+  findCompanionExecutableName: (toolEntry: LaboratoryToolRecord, baseName: string) => string | null;
   getActiveProject: (runtime: LaboratoryMediaSourceRuntime) => LaboratoryProjectRecord | null;
   getProjectEditDir: (
     runtime: LaboratoryMediaSourceRuntime,
@@ -318,9 +315,7 @@ export function createMediaSourceMetadataRuntime(deps: LaboratorySourceMetadataD
           : 0;
       const stdout = asNonEmptyString(runPayload["stdout"]);
       if (runPayload["cancelled"] === true || exitCode !== 0 || stdout === null) {
-        throw new Error(
-          asNonEmptyString(runPayload["stderr"]) || "ffprobe metadata probe failed."
-        );
+        throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffprobe metadata probe failed.");
       }
 
       return {

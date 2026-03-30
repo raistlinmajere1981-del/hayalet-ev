@@ -175,6 +175,12 @@ export const PROVIDER_SCENARIO_DELAYS = {
   STEP_REPORT: 0,
   /** Delay after default-page navigation. */
   STEP_NAVIGATE_DEFAULT: 700,
+  /** Delay after sidebar-open steps. */
+  STEP_ASSERT_SIDEBAR_OPEN: 250,
+  /** Delay after session-list steps. */
+  STEP_ASSERT_SESSION_LIST: 250,
+  /** Delay after sidebar-close steps. */
+  STEP_ASSERT_SIDEBAR_CLOSE: 250,
   /** Delay after input-preparation steps. */
   STEP_PREPARE_INPUT: 350,
   /** Delay after send-and-thinking steps. */
@@ -191,6 +197,8 @@ export const PROVIDER_SCENARIO_DELAYS = {
   STEP_ASSERT_ENABLED_SEND: 350,
   /** Delay after final-bubbles steps. */
   STEP_ASSERT_FINAL_BUBBLES: 350,
+  /** Delay after generated-image steps. */
+  STEP_ASSERT_GENERATED_IMAGE: 350,
   /** Delay after scroll-behavior steps. */
   STEP_ASSERT_SCROLL_BEHAVIOR: 350,
   /** Delay after provider-capability steps. */

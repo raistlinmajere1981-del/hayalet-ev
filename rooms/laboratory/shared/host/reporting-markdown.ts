@@ -1,87 +1,85 @@
-type LaboratoryRecord = Record<string, unknown>
+type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryProjectRecord = LaboratoryRecord & {
-  name?: unknown
-}
+  name?: unknown;
+};
 
 type LaboratoryReportCardRecord = LaboratoryRecord & {
-  label?: unknown
-  labelKey?: unknown
-  value?: unknown
-}
+  label?: unknown;
+  labelKey?: unknown;
+  value?: unknown;
+};
 
 type LaboratoryReportFindingRecord = LaboratoryRecord & {
-  detail?: unknown
-  moduleId?: unknown
-  title?: unknown
-}
+  detail?: unknown;
+  moduleId?: unknown;
+  title?: unknown;
+};
 
 type LaboratoryReportExportRecord = LaboratoryRecord & {
-  fileName?: unknown
-  format?: unknown
-  path?: unknown
-  status?: unknown
-}
+  fileName?: unknown;
+  format?: unknown;
+  path?: unknown;
+  status?: unknown;
+};
 
 type LaboratoryFeatureReportRecord = LaboratoryRecord & {
-  caveats?: unknown
-  exports?: unknown
-  findings?: unknown
-  generatedAt?: unknown
-  summaryCards?: unknown
-  warnings?: unknown
-}
+  caveats?: unknown;
+  exports?: unknown;
+  findings?: unknown;
+  generatedAt?: unknown;
+  summaryCards?: unknown;
+  warnings?: unknown;
+};
 
 type LaboratoryProcessModuleRecord = LaboratoryRecord & {
-  id?: unknown
-  status?: unknown
-  summary?: unknown
-  title?: unknown
-}
+  id?: unknown;
+  status?: unknown;
+  summary?: unknown;
+  title?: unknown;
+};
 
 type LaboratoryFeatureProcessRecord = LaboratoryRecord & {
-  modules?: unknown
-}
+  modules?: unknown;
+};
 
 type LaboratoryAudioMetricRecord = LaboratoryRecord & {
-  id?: unknown
-  label?: unknown
-  value?: unknown
-}
+  id?: unknown;
+  label?: unknown;
+  value?: unknown;
+};
 
 type LaboratoryAudioModuleResultRecord = LaboratoryRecord & {
-  blockers?: unknown
-  metrics?: unknown
-  moduleId?: unknown
-  status?: unknown
-  summary?: unknown
-  warnings?: unknown
-}
+  blockers?: unknown;
+  metrics?: unknown;
+  moduleId?: unknown;
+  status?: unknown;
+  summary?: unknown;
+  warnings?: unknown;
+};
 
 type LaboratoryAudioReportProjection = {
-  orderedResults: LaboratoryAudioModuleResultRecord[]
-}
+  orderedResults: LaboratoryAudioModuleResultRecord[];
+};
 
 type LaboratoryReportMarkdownRuntimeDeps = {
-  asNonEmptyString: (value: unknown) => string | null
-  audioFeatureId: string
+  asNonEmptyString: (value: unknown) => string | null;
+  audioFeatureId: string;
   buildAudioAnalysisReportProjection: (
     runtime: LaboratoryRecord,
     project: LaboratoryProjectRecord
-  ) => LaboratoryAudioReportProjection
-  formatIdentifierLabel: (value: string) => string
+  ) => LaboratoryAudioReportProjection;
+  formatIdentifierLabel: (value: string) => string;
   getFeatureProcessRecord: (
     project: LaboratoryProjectRecord,
     featureId: string
-  ) => LaboratoryFeatureProcessRecord
-  normalizeProcessModule: (rawValue: unknown) => LaboratoryProcessModuleRecord
-  subtitleFeatureId: string
-  toRecord: (value: unknown) => LaboratoryRecord
-}
+  ) => LaboratoryFeatureProcessRecord;
+  normalizeProcessModule: (rawValue: unknown) => LaboratoryProcessModuleRecord;
+  subtitleFeatureId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
 
-export function createLaboratoryReportMarkdownRuntime(
-  deps: LaboratoryReportMarkdownRuntimeDeps
-) {
+export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMarkdownRuntimeDeps) {
   const {
     asNonEmptyString,
     audioFeatureId,
@@ -91,103 +89,103 @@ export function createLaboratoryReportMarkdownRuntime(
     normalizeProcessModule,
     subtitleFeatureId,
     toRecord,
-  } = deps
+  } = deps;
 
   function toProjectRecord(value: unknown): LaboratoryProjectRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toReportCardRecord(value: unknown): LaboratoryReportCardRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toFeatureReportRecord(value: unknown): LaboratoryFeatureReportRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toFeatureProcessRecord(value: unknown): LaboratoryFeatureProcessRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toProcessModuleRecord(value: unknown): LaboratoryProcessModuleRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toFindingRecord(value: unknown): LaboratoryReportFindingRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toExportRecord(value: unknown): LaboratoryReportExportRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toMetricRecord(value: unknown): LaboratoryAudioMetricRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toAudioModuleResultRecord(value: unknown): LaboratoryAudioModuleResultRecord {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toString(value: unknown, fallback = ""): string {
     if (typeof value === "string") {
-      return value
+      return value;
     }
     if (typeof value === "number" || typeof value === "boolean") {
-      return String(value)
+      return String(value);
     }
-    return fallback
+    return fallback;
   }
 
   function toStringArray(value: unknown): string[] {
     if (!Array.isArray(value)) {
-      return []
+      return [];
     }
     return value
       .map(function (entry) {
-        const stringValue = toString(entry).trim()
-        return stringValue !== "" ? stringValue : null
+        const stringValue = toString(entry).trim();
+        return stringValue !== "" ? stringValue : null;
       })
-      .filter((entry): entry is string => entry !== null)
+      .filter((entry): entry is string => entry !== null);
   }
 
   function formatValue(value: unknown): string {
-    const stringValue = toString(value).trim()
-    return stringValue !== "" ? stringValue : "--"
+    const stringValue = toString(value).trim();
+    return stringValue !== "" ? stringValue : "--";
   }
 
   function formatReportCardLabel(card: LaboratoryReportCardRecord): string {
-    const label = asNonEmptyString(card.label)
+    const label = asNonEmptyString(card.label);
     if (label !== null) {
-      return label
+      return label;
     }
 
-    const labelKey = asNonEmptyString(card.labelKey)
+    const labelKey = asNonEmptyString(card.labelKey);
     if (labelKey !== null) {
-      return formatIdentifierLabel(labelKey.split(".").pop() || labelKey)
+      return formatIdentifierLabel(labelKey.split(".").pop() || labelKey);
     }
 
-    return "Summary"
+    return "Summary";
   }
 
   function getFeatureLabel(featureId: string | null): string {
     if (featureId === audioFeatureId) {
-      return "Audio Analysis"
+      return "Audio Analysis";
     }
     if (featureId === subtitleFeatureId) {
-      return "Subtitle Analysis"
+      return "Subtitle Analysis";
     }
-    return "Media Analysis"
+    return "Media Analysis";
   }
 
   function getSubtitleProcessModules(
     project: LaboratoryProjectRecord,
     featureId: string
   ): LaboratoryProcessModuleRecord[] {
-    const processRecord = toFeatureProcessRecord(getFeatureProcessRecord(project, featureId))
+    const processRecord = toFeatureProcessRecord(getFeatureProcessRecord(project, featureId));
     return Array.isArray(processRecord.modules)
       ? processRecord.modules.map(normalizeProcessModule).map(toProcessModuleRecord)
-      : []
+      : [];
   }
 
   function buildReportMarkdown(
@@ -196,8 +194,8 @@ export function createLaboratoryReportMarkdownRuntime(
     featureId: string | null,
     reportRecord: LaboratoryFeatureReportRecord
   ): string {
-    const projectRecord = toProjectRecord(project)
-    const normalizedReportRecord = toFeatureReportRecord(reportRecord)
+    const projectRecord = toProjectRecord(project);
+    const normalizedReportRecord = toFeatureReportRecord(reportRecord);
     const lines = [
       `# ${getFeatureLabel(featureId)} Report`,
       "",
@@ -205,108 +203,109 @@ export function createLaboratoryReportMarkdownRuntime(
       `Generated: ${asNonEmptyString(normalizedReportRecord.generatedAt) || new Date().toISOString()}`,
       "",
       "## Summary",
-    ]
+    ];
 
     const summaryCards = Array.isArray(normalizedReportRecord.summaryCards)
       ? normalizedReportRecord.summaryCards.map(toReportCardRecord)
-      : []
+      : [];
     summaryCards.forEach(function (card) {
-      lines.push(`- ${formatReportCardLabel(card)}: ${formatValue(card.value)}`)
-    })
+      lines.push(`- ${formatReportCardLabel(card)}: ${formatValue(card.value)}`);
+    });
 
     if (featureId === audioFeatureId) {
-      const projection = buildAudioAnalysisReportProjection(runtime, projectRecord)
-      lines.push("", "## Modules")
+      const projection = buildAudioAnalysisReportProjection(runtime, projectRecord);
+      lines.push("", "## Modules");
       projection.orderedResults.map(toAudioModuleResultRecord).forEach(function (result) {
-        const metrics = Array.isArray(result.metrics) ? result.metrics.map(toMetricRecord) : []
+        const metrics = Array.isArray(result.metrics) ? result.metrics.map(toMetricRecord) : [];
         const metricsSummary = metrics
           .map(function (metric) {
-            const label = asNonEmptyString(metric.label) || formatIdentifierLabel(toString(metric.id))
-            return `${label}: ${formatValue(metric.value)}`
+            const label =
+              asNonEmptyString(metric.label) || formatIdentifierLabel(toString(metric.id));
+            return `${label}: ${formatValue(metric.value)}`;
           })
           .filter(Boolean)
-          .join(", ")
+          .join(", ");
 
         lines.push(
           `- ${formatIdentifierLabel(toString(result.moduleId, "module"))}: ${formatIdentifierLabel(
             toString(result.status, "idle")
           )}${toString(result.summary) !== "" ? ` - ${toString(result.summary)}` : ""}`
-        )
-        const blockers = toStringArray(result.blockers)
-        const warnings = toStringArray(result.warnings)
+        );
+        const blockers = toStringArray(result.blockers);
+        const warnings = toStringArray(result.warnings);
         if (metricsSummary !== "") {
-          lines.push(`  Metrics: ${metricsSummary}`)
+          lines.push(`  Metrics: ${metricsSummary}`);
         }
         if (blockers.length > 0) {
-          lines.push(`  Blockers: ${blockers.join(" | ")}`)
+          lines.push(`  Blockers: ${blockers.join(" | ")}`);
         }
         if (warnings.length > 0) {
-          lines.push(`  Warnings: ${warnings.join(" | ")}`)
+          lines.push(`  Warnings: ${warnings.join(" | ")}`);
         }
-      })
+      });
     } else if (featureId === subtitleFeatureId) {
-      lines.push("", "## Modules")
+      lines.push("", "## Modules");
       getSubtitleProcessModules(projectRecord, subtitleFeatureId).forEach(function (moduleEntry) {
         lines.push(
           `- ${toString(moduleEntry.title) || formatIdentifierLabel(toString(moduleEntry.id, "module"))}: ${formatIdentifierLabel(
             toString(moduleEntry.status, "idle")
           )}${toString(moduleEntry.summary) !== "" ? ` - ${toString(moduleEntry.summary)}` : ""}`
-        )
-      })
+        );
+      });
     }
 
-    lines.push("", "## Findings")
+    lines.push("", "## Findings");
     const findings = Array.isArray(normalizedReportRecord.findings)
       ? normalizedReportRecord.findings.map(toFindingRecord)
-      : []
+      : [];
     if (findings.length > 0) {
       findings.forEach(function (finding) {
         lines.push(
           `- ${toString(finding.title) || toString(finding.moduleId) || "Finding"}: ${toString(
             finding.detail
           )}`
-        )
-      })
+        );
+      });
     } else {
-      lines.push("- No findings were recorded for the active report.")
+      lines.push("- No findings were recorded for the active report.");
     }
 
-    const caveats = toStringArray(normalizedReportRecord.caveats)
+    const caveats = toStringArray(normalizedReportRecord.caveats);
     if (caveats.length > 0) {
-      lines.push("", "## Caveats")
+      lines.push("", "## Caveats");
       caveats.forEach(function (entry) {
-        lines.push(`- ${entry}`)
-      })
+        lines.push(`- ${entry}`);
+      });
     }
 
-    const warnings = toStringArray(normalizedReportRecord.warnings)
+    const warnings = toStringArray(normalizedReportRecord.warnings);
     if (warnings.length > 0) {
-      lines.push("", "## Warnings")
+      lines.push("", "## Warnings");
       warnings.forEach(function (entry) {
-        lines.push(`- ${entry}`)
-      })
+        lines.push(`- ${entry}`);
+      });
     }
 
     const exports = Array.isArray(normalizedReportRecord.exports)
       ? normalizedReportRecord.exports.map(toExportRecord)
-      : []
+      : [];
     if (exports.length > 0) {
-      lines.push("", "## Exports")
+      lines.push("", "## Exports");
       exports.forEach(function (entry) {
         lines.push(
           `- ${toString(entry.fileName) || toString(entry.path) || "--"} (${toString(
             entry.format,
             "md"
           )}, ${toString(entry.status, "ready")})`
-        )
-      })
+        );
+      });
     }
 
-    return lines.join("\n")
+    return lines.join("\n");
   }
 
   return {
     buildReportMarkdown,
     formatReportCardLabel,
-  }
+  };
 }

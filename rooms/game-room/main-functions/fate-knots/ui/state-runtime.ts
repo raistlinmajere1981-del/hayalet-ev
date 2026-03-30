@@ -58,6 +58,4 @@
       t: supportRuntime.t,
     };
   };
-})(
-  (typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal
-);
+})((typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal);

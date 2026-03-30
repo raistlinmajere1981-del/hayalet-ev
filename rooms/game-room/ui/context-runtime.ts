@@ -85,7 +85,9 @@
       description: "",
     };
     const featureRecords: FeatureRecord[] = Array.isArray(runtimeDeps["featureRecords"])
-      ? runtimeDeps["featureRecords"].map((entry) => createFeatureRecord(entry, defaultFeatureRecord))
+      ? runtimeDeps["featureRecords"].map((entry) =>
+          createFeatureRecord(entry, defaultFeatureRecord)
+        )
       : [defaultFeatureRecord];
     const fallbackFeatureRecord = featureRecords[0] || {
       id: FEATURE_ID,
@@ -198,7 +200,11 @@
       return typeof current === "string" ? current : null;
     }
 
-    function createElement(tagName: string, className?: string | null, textContent?: string | null) {
+    function createElement(
+      tagName: string,
+      className?: string | null,
+      textContent?: string | null
+    ) {
       const element = document.createElement(tagName);
       if (className) {
         element.className = className;
@@ -247,14 +253,13 @@
       const activeFeatureSource = isRecord(source["activeFeature"]) ? source["activeFeature"] : {};
       const activeFeatureId = normalizeFeatureId(activeFeatureSource["id"]);
       const activeFallback = featureCatalog.get(activeFeatureId) || fallbackFeatureRecord;
-      const activeFeature =
-        features.find(function (feature) {
-          return feature.id === activeFeatureId;
-        }) || {
-          id: activeFeatureId,
-          name: activeFallback.name,
-          description: activeFallback.description,
-        };
+      const activeFeature = features.find(function (feature) {
+        return feature.id === activeFeatureId;
+      }) || {
+        id: activeFeatureId,
+        name: activeFallback.name,
+        description: activeFallback.description,
+      };
 
       return {
         room: {

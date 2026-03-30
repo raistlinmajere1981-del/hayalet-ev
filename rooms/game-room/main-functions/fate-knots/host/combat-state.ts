@@ -261,8 +261,7 @@ export function createFateKnotsCombatState(options: {
 }): FateKnotsCombatState {
   const participants = Array.isArray(options.participants) ? options.participants : [];
   const encounter: FateKnotsEncounterRecord = isRecord(options.encounter) ? options.encounter : {};
-  const classesById =
-    options.classesById || new Map<string, FateKnotsClassDefinition>();
+  const classesById = options.classesById || new Map<string, FateKnotsClassDefinition>();
   const startingEnergy = Number.isFinite(options.startingEnergy)
     ? Number(options.startingEnergy)
     : 3;

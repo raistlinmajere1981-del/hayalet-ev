@@ -140,9 +140,7 @@ export function normalizeFateKnotsState(candidate: unknown, localeFallback: unkn
   initial.currentStepId = normalizeText(source.currentStepId) || null;
   initial.decision = normalizeDecisionState(source.decision);
   initial.combat =
-    source.combat &&
-    typeof source.combat === "object" &&
-    Array.isArray(source.combat) === false
+    source.combat && typeof source.combat === "object" && Array.isArray(source.combat) === false
       ? (source.combat as FateKnotsStateRecord)
       : null;
   initial.result = normalizeResultState(source.result);

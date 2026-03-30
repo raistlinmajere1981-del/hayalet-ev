@@ -3,6 +3,7 @@ import { LogCategory } from "@shared/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import type { TranslationParams } from "@shared/i18n.js";
 import { AppI18n } from "../i18n/index.js";
+import { isProviderScenarioActive } from "../webview/provider-scenario-lock.js";
 
 interface WebviewElement {
   getWebContentsId?: () => number;
@@ -86,6 +87,10 @@ export function attachWebviewEvents(
   });
 
   const ensureBridge = (): void => {
+    if (isProviderScenarioActive(provider)) {
+      return;
+    }
+
     try {
       if (typeof webviewEl.getWebContentsId !== "function") return;
       webviewEl.getWebContentsId();

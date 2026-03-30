@@ -8,7 +8,9 @@
   type TeamTetrisStateMessageModule = Required<
     Pick<
       GameRoomTeamTetrisUiModule,
-      "sanitizeTeamTetrisState" | "syncTeamTetrisPreferencesFromState" | "syncTeamTetrisDraftFromState"
+      | "sanitizeTeamTetrisState"
+      | "syncTeamTetrisPreferencesFromState"
+      | "syncTeamTetrisDraftFromState"
     >
   >;
   type FateKnotsStateMessageModule = Required<
@@ -34,9 +36,7 @@
     return readRecord(value) ? (value as StateMessageRuntimeOptions) : null;
   }
 
-  function getStateMessageRegistry(
-    host: GameRoomUiGlobal
-  ): GameRoomUiStateMessageRuntimeRegistry {
+  function getStateMessageRegistry(host: GameRoomUiGlobal): GameRoomUiStateMessageRuntimeRegistry {
     return host.GameRoomUiStateMessageRuntime || (host.GameRoomUiStateMessageRuntime = {});
   }
 

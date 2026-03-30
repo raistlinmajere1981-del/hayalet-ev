@@ -153,9 +153,7 @@ type AudioAnalysisLocalProcessRunnerDeps = {
   writeJsonFile: (path: string, content: LaboratoryRecord) => Promise<unknown>;
 };
 
-export function createAudioAnalysisLocalProcessRunners(
-  deps: AudioAnalysisLocalProcessRunnerDeps
-) {
+export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalProcessRunnerDeps) {
   const {
     buildEmotionHeuristicFromProsody,
     buildProcessSpeechAvailability,
@@ -208,10 +206,7 @@ export function createAudioAnalysisLocalProcessRunners(
   }
 
   function compactArtifacts(values: unknown[]): LaboratoryProcessArtifactRecord[] {
-    return values.reduce(function (
-      accumulator: LaboratoryProcessArtifactRecord[],
-      value: unknown
-    ) {
+    return values.reduce(function (accumulator: LaboratoryProcessArtifactRecord[], value: unknown) {
       if (!value) {
         return accumulator;
       }
@@ -378,8 +373,7 @@ export function createAudioAnalysisLocalProcessRunners(
       ? toProcessArtifactRecord(transcriptArtifact)
       : null;
     if (transcriptArtifactRecord) {
-      const transcriptText =
-        typeof transcriptResult.text === "string" ? transcriptResult.text : "";
+      const transcriptText = typeof transcriptResult.text === "string" ? transcriptResult.text : "";
       return {
         artifacts: [transcriptArtifactRecord],
         findings: [
@@ -572,9 +566,7 @@ export function createAudioAnalysisLocalProcessRunners(
       })
       .filter((artifactId): artifactId is string => artifactId !== null);
     const cueText =
-      Array.isArray(heuristic.cues) && heuristic.cues.length > 0
-        ? heuristic.cues.join(" ")
-        : null;
+      Array.isArray(heuristic.cues) && heuristic.cues.length > 0 ? heuristic.cues.join(" ") : null;
     const disclaimer =
       typeof heuristic.disclaimer === "string" ? heuristic.disclaimer : "Heuristic output only.";
     const label = typeof heuristic.label === "string" ? heuristic.label : "Emotion label";

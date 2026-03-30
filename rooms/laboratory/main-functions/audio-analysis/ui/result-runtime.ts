@@ -74,7 +74,9 @@ export function createAudioAnalysisResultRuntime(deps: AudioAnalysisResultRuntim
   }
 
   function renderAudioAnalysisResultCard(moduleEntry: LaboratoryAudioModuleResultRecord) {
-    const metrics = Array.isArray(moduleEntry.metrics) ? moduleEntry.metrics.map(toMetricRecord) : [];
+    const metrics = Array.isArray(moduleEntry.metrics)
+      ? moduleEntry.metrics.map(toMetricRecord)
+      : [];
     const providerLabels = toStringArray(moduleEntry.providerIds)
       .map(function (providerId) {
         return getAudioAnalysisProviderLabel(providerId);

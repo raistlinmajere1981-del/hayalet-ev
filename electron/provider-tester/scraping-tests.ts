@@ -7,6 +7,7 @@ export async function runScrapingTests(ctx: TestContext): Promise<ProviderTestRe
 
   results.push(await testStopButton(ctx));
   results.push(await testAssistantMessageScraping(ctx));
+  results.push(await testGeneratedImage(ctx));
   results.push(await testMessageContainer(ctx));
 
   return results;
@@ -142,6 +143,150 @@ export async function testMessageContainer(ctx: TestContext): Promise<ProviderTe
     category: "scraping",
     checks: ["exists", "visible"],
   });
+}
+
+export async function testGeneratedImage(ctx: TestContext): Promise<ProviderTestResult> {
+  const selector = ctx.config.selectors.generatedImage;
+  if (selector === undefined || selector === "") {
+    return ctx.createSkipResult(
+      "generated-image",
+      await ctx.t("scraping.generatedImage.name"),
+      "scraping",
+      await ctx.t("scraping.generatedImage.selectorMissing")
+    );
+  }
+
+  const start = Date.now();
+
+  try {
+    let result = (await ctx.executeScript(`
+      (function() {
+        const selector = ${JSON.stringify(selector)};
+        const root = document.querySelector(selector);
+        if (!root) return { found: false };
+
+        const image = root instanceof HTMLImageElement ? root : root.querySelector('img');
+        const target = image ?? root;
+        const rect = target.getBoundingClientRect();
+        const styles = window.getComputedStyle(target);
+        const visible =
+          rect.width > 0 &&
+          rect.height > 0 &&
+          styles.display !== 'none' &&
+          styles.visibility !== 'hidden' &&
+          styles.opacity !== '0';
+
+        return {
+          found: true,
+          tagName: target.tagName,
+          classes: target.className ?? '',
+          visible,
+          enabled: true,
+          width: rect.width,
+          height: rect.height,
+          textContent: target.textContent?.trim() ?? '',
+          src: image?.getAttribute('src') ?? '',
+          alt: image?.getAttribute('alt') ?? '',
+        };
+      })()
+    `)) as {
+      found: boolean;
+      tagName?: string;
+      classes?: string;
+      visible?: boolean;
+      enabled?: boolean;
+      width?: number;
+      height?: number;
+      textContent?: string;
+      src?: string;
+      alt?: string;
+    };
+
+    const found = await ctx.waitForCondition(async () => {
+      result = (await ctx.executeScript(`
+        (function() {
+          const selector = ${JSON.stringify(selector)};
+          const root = document.querySelector(selector);
+          if (!root) return { found: false };
+
+          const image = root instanceof HTMLImageElement ? root : root.querySelector('img');
+          const target = image ?? root;
+          const rect = target.getBoundingClientRect();
+          const styles = window.getComputedStyle(target);
+          const visible =
+            rect.width > 0 &&
+            rect.height > 0 &&
+            styles.display !== 'none' &&
+            styles.visibility !== 'hidden' &&
+            styles.opacity !== '0';
+
+          return {
+            found: true,
+            tagName: target.tagName,
+            classes: target.className ?? '',
+            visible,
+            enabled: true,
+            width: rect.width,
+            height: rect.height,
+            textContent: target.textContent?.trim() ?? '',
+            src: image?.getAttribute('src') ?? '',
+            alt: image?.getAttribute('alt') ?? '',
+          };
+        })()
+      `)) as {
+        found: boolean;
+        visible?: boolean;
+      };
+
+      return result.found === true && result.visible === true;
+    }, PROVIDER_TEST.TIMEOUT_RESPONSE_WAIT);
+
+    if (found) {
+      return {
+        id: "generated-image",
+        name: await ctx.t("scraping.generatedImage.name"),
+        category: "scraping",
+        status: "pass",
+        message: await ctx.t("scraping.generatedImage.found"),
+        details: {
+          selector,
+          element: {
+            tagName: result.tagName ?? "unknown",
+            visible: result.visible === true,
+            enabled: result.enabled !== false,
+            ...(typeof result.alt === "string" && result.alt !== "" ? { textContent: result.alt } : {}),
+          },
+        },
+        duration: Date.now() - start,
+        timestamp: Date.now(),
+      };
+    }
+
+    return {
+      id: "generated-image",
+      name: await ctx.t("scraping.generatedImage.name"),
+      category: "scraping",
+      status: "warning",
+      message: await ctx.t("scraping.generatedImage.notFound"),
+      details: { selector },
+      duration: Date.now() - start,
+      timestamp: Date.now(),
+    };
+  } catch (error) {
+    return {
+      id: "generated-image",
+      name: await ctx.t("scraping.generatedImage.name"),
+      category: "scraping",
+      status: "warning",
+      message: await ctx.t("scraping.generatedImage.failed"),
+      details: {
+        selector,
+        error: (error as Error).message,
+      },
+      duration: Date.now() - start,
+      timestamp: Date.now(),
+    };
+  }
 }
 
 export async function testVoiceButton(ctx: TestContext): Promise<ProviderTestResult> {

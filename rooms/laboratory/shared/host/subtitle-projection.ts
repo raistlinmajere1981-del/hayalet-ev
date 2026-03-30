@@ -83,7 +83,10 @@ export function createLaboratorySubtitleProjectionRuntime(
     runtime: unknown,
     project: LaboratorySubtitleProjectionProject
   ): LaboratorySubtitleAnalysisState {
-    const subtitleState = normalizeSubtitleAnalysisState(toRecord(project)["subtitleAnalysis"], runtime);
+    const subtitleState = normalizeSubtitleAnalysisState(
+      toRecord(project)["subtitleAnalysis"],
+      runtime
+    );
     const processRecord = readFeatureProcessRecord(project, subtitleFeatureId);
     const reportRecord = readFeatureReportRecord(project, subtitleFeatureId);
 

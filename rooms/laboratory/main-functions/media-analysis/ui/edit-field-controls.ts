@@ -41,12 +41,7 @@ export function createMediaAnalysisEditFieldControls(deps: MediaAnalysisEditFiel
     `;
   }
 
-  function renderEditTextField(
-    fieldId: string,
-    value: unknown,
-    label: string,
-    extra: unknown
-  ) {
+  function renderEditTextField(fieldId: string, value: unknown, label: string, extra: unknown) {
     const options = toRecord(extra) as LaboratoryEditTextFieldOptions;
     const inputType = typeof options.type === "string" ? options.type : "text";
     const placeholder = typeof options.placeholder === "string" ? options.placeholder : "";

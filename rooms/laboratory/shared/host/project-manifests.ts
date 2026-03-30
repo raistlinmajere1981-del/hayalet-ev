@@ -82,9 +82,7 @@ type LaboratoryProjectManifestRuntimeDeps = {
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createLaboratoryProjectManifestRuntime(
-  deps: LaboratoryProjectManifestRuntimeDeps
-) {
+export function createLaboratoryProjectManifestRuntime(deps: LaboratoryProjectManifestRuntimeDeps) {
   const {
     asNonEmptyString,
     asNumber,

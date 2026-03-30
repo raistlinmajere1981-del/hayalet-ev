@@ -1,91 +1,91 @@
-type LaboratoryRecord = Record<string, unknown>
+type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryDirectoryEntry = {
-  isDirectory: boolean
-  name: string
-  path: string
-}
+  isDirectory: boolean;
+  name: string;
+  path: string;
+};
 
 type LaboratoryProjectRecord = LaboratoryRecord & {
-  id?: unknown
-  updatedAt?: unknown
-}
+  id?: unknown;
+  updatedAt?: unknown;
+};
 
 type LaboratoryRuntimePaths = LaboratoryRecord & {
-  projectsDir?: unknown
-  toolStatePath?: unknown
-}
+  projectsDir?: unknown;
+  toolStatePath?: unknown;
+};
 
 type LaboratoryToolEntry = LaboratoryRecord & {
-  companionPaths?: unknown
-  toolId?: unknown
-}
+  companionPaths?: unknown;
+  toolId?: unknown;
+};
 
 type LaboratoryToolState = {
-  schemaVersion: number
-  tools: Record<string, LaboratoryToolEntry>
-  updatedAt: string | number | null
-}
+  schemaVersion: number;
+  tools: Record<string, LaboratoryToolEntry>;
+  updatedAt: string | number | null;
+};
 
 type LaboratoryProfileModelEntry = LaboratoryRecord & {
-  modelId?: unknown
-}
+  modelId?: unknown;
+};
 
 type LaboratoryProfileModelCatalog = LaboratoryRecord & {
-  models?: unknown
-}
+  models?: unknown;
+};
 
 type LaboratoryProfileModelState = {
-  models: Record<string, LaboratoryProfileModelEntry>
-  schemaVersion: number
-  updatedAt: string | number | null
-}
+  models: Record<string, LaboratoryProfileModelEntry>;
+  schemaVersion: number;
+  updatedAt: string | number | null;
+};
 
 type LaboratoryProjectStorageRuntime = {
-  activeProjectId: string | null
-  editPresets: unknown
-  paths: LaboratoryRuntimePaths
-  profileCapabilities: unknown
-  profileModelState: LaboratoryProfileModelState
-  profileModels: LaboratoryProfileModelCatalog
-  profilePresets: unknown
-  projects: LaboratoryProjectRecord[]
-  sourcePresets: unknown
-  toolState: LaboratoryToolState
-}
+  activeProjectId: string | null;
+  editPresets: unknown;
+  paths: LaboratoryRuntimePaths;
+  profileCapabilities: unknown;
+  profileModelState: LaboratoryProfileModelState;
+  profileModels: LaboratoryProfileModelCatalog;
+  profilePresets: unknown;
+  projects: LaboratoryProjectRecord[];
+  sourcePresets: unknown;
+  toolState: LaboratoryToolState;
+};
 
 type LaboratoryProjectStorageRuntimeDeps = {
-  asNonEmptyString: (value: unknown) => string | null
-  buildEditManifest: (project: LaboratoryProjectRecord) => unknown
-  buildProcessManifest: (project: LaboratoryProjectRecord) => unknown
-  buildProfileManifest: (project: LaboratoryProjectRecord) => unknown
-  buildReportManifest: (project: LaboratoryProjectRecord) => unknown
-  createDefaultProfileModelEntry: (modelId: string) => LaboratoryProfileModelEntry
-  createDefaultToolEntry: (toolId: string) => LaboratoryToolEntry
-  createDefaultToolState: (toolIds: unknown) => LaboratoryToolState
-  getProfileModelStatePath: (runtime: LaboratoryProjectStorageRuntime) => string
+  asNonEmptyString: (value: unknown) => string | null;
+  buildEditManifest: (project: LaboratoryProjectRecord) => unknown;
+  buildProcessManifest: (project: LaboratoryProjectRecord) => unknown;
+  buildProfileManifest: (project: LaboratoryProjectRecord) => unknown;
+  buildReportManifest: (project: LaboratoryProjectRecord) => unknown;
+  createDefaultProfileModelEntry: (modelId: string) => LaboratoryProfileModelEntry;
+  createDefaultToolEntry: (toolId: string) => LaboratoryToolEntry;
+  createDefaultToolState: (toolIds: unknown) => LaboratoryToolState;
+  getProfileModelStatePath: (runtime: LaboratoryProjectStorageRuntime) => string;
   getProjectEditManifestPath: (
     runtime: LaboratoryProjectStorageRuntime,
     project: LaboratoryProjectRecord
-  ) => string
+  ) => string;
   getProjectMetaPath: (
     runtime: LaboratoryProjectStorageRuntime,
     project: LaboratoryProjectRecord
-  ) => string
+  ) => string;
   getProjectProcessManifestPath: (
     runtime: LaboratoryProjectStorageRuntime,
     project: LaboratoryProjectRecord
-  ) => string
+  ) => string;
   getProjectProfileManifestPath: (
     runtime: LaboratoryProjectStorageRuntime,
     project: LaboratoryProjectRecord
-  ) => string
+  ) => string;
   getProjectReportManifestPath: (
     runtime: LaboratoryProjectStorageRuntime,
     project: LaboratoryProjectRecord
-  ) => string
-  getRuntimeToolIds: (runtime: LaboratoryProjectStorageRuntime) => string[]
-  listDirectory: (dirPath: string) => Promise<LaboratoryDirectoryEntry[]>
+  ) => string;
+  getRuntimeToolIds: (runtime: LaboratoryProjectStorageRuntime) => string[];
+  listDirectory: (dirPath: string) => Promise<LaboratoryDirectoryEntry[]>;
   normalizeProject: (
     rawValue: unknown,
     sourcePresets: unknown,
@@ -94,15 +94,15 @@ type LaboratoryProjectStorageRuntimeDeps = {
     profileModels: unknown,
     profileCapabilities: unknown,
     runtime: LaboratoryProjectStorageRuntime
-  ) => LaboratoryProjectRecord
-  readJsonFile: (filePath: string) => Promise<unknown>
+  ) => LaboratoryProjectRecord;
+  readJsonFile: (filePath: string) => Promise<unknown>;
   syncProjectFeatureProjections: (
     runtime: LaboratoryProjectStorageRuntime,
     project: LaboratoryProjectRecord
-  ) => void
-  toRecord: (value: unknown) => LaboratoryRecord
-  writeJsonFile: (filePath: string, payload: unknown) => Promise<unknown> | unknown
-}
+  ) => void;
+  toRecord: (value: unknown) => LaboratoryRecord;
+  writeJsonFile: (filePath: string, payload: unknown) => Promise<unknown> | unknown;
+};
 
 export function createLaboratoryProjectStorageRuntime(deps: LaboratoryProjectStorageRuntimeDeps) {
   const {
@@ -127,44 +127,44 @@ export function createLaboratoryProjectStorageRuntime(deps: LaboratoryProjectSto
     syncProjectFeatureProjections,
     toRecord,
     writeJsonFile,
-  } = deps
+  } = deps;
 
   function toRuntimePaths(value: unknown): LaboratoryRuntimePaths {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toToolEntry(value: unknown): LaboratoryToolEntry {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function toProfileModelCatalog(value: unknown): LaboratoryProfileModelCatalog {
-    return toRecord(value)
+    return toRecord(value);
   }
 
   function sortProjects(entries: LaboratoryProjectRecord[]): LaboratoryProjectRecord[] {
     return entries.sort(function (left, right) {
-      return String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""))
-    })
+      return String(right.updatedAt || "").localeCompare(String(left.updatedAt || ""));
+    });
   }
 
   async function loadProjects(runtime: LaboratoryProjectStorageRuntime) {
-    const projectsDir = asNonEmptyString(toRuntimePaths(runtime.paths).projectsDir)
+    const projectsDir = asNonEmptyString(toRuntimePaths(runtime.paths).projectsDir);
     if (projectsDir === null) {
-      runtime.projects = []
-      return
+      runtime.projects = [];
+      return;
     }
 
-    const entries = await listDirectory(projectsDir)
-    const projects: LaboratoryProjectRecord[] = []
+    const entries = await listDirectory(projectsDir);
+    const projects: LaboratoryProjectRecord[] = [];
 
     for (let index = 0; index < entries.length; index += 1) {
-      const entry = entries[index]
+      const entry = entries[index];
       if (!entry || entry.isDirectory !== true) {
-        continue
+        continue;
       }
 
       // eslint-disable-next-line no-await-in-loop -- NOTE: keep project bootstrap reads sequential to cap disk IO.
-      const project = await readJsonFile(`${entry.path}/project.json`)
+      const project = await readJsonFile(`${entry.path}/project.json`);
       if (project) {
         const normalizedProject = normalizeProject(
           project,
@@ -174,88 +174,91 @@ export function createLaboratoryProjectStorageRuntime(deps: LaboratoryProjectSto
           runtime.profileModels,
           runtime.profileCapabilities,
           runtime
-        )
-        syncProjectFeatureProjections(runtime, normalizedProject)
-        projects.push(normalizedProject)
+        );
+        syncProjectFeatureProjections(runtime, normalizedProject);
+        projects.push(normalizedProject);
       }
     }
 
-    runtime.projects = sortProjects(projects)
+    runtime.projects = sortProjects(projects);
   }
 
   async function saveProject(
     runtime: LaboratoryProjectStorageRuntime,
     project: LaboratoryProjectRecord
   ) {
-    await writeJsonFile(getProjectMetaPath(runtime, project), project)
-    await writeJsonFile(getProjectEditManifestPath(runtime, project), buildEditManifest(project))
+    await writeJsonFile(getProjectMetaPath(runtime, project), project);
+    await writeJsonFile(getProjectEditManifestPath(runtime, project), buildEditManifest(project));
     await writeJsonFile(
       getProjectProfileManifestPath(runtime, project),
       buildProfileManifest(project)
-    )
+    );
     await writeJsonFile(
       getProjectProcessManifestPath(runtime, project),
       buildProcessManifest(project)
-    )
-    await writeJsonFile(getProjectReportManifestPath(runtime, project), buildReportManifest(project))
+    );
+    await writeJsonFile(
+      getProjectReportManifestPath(runtime, project),
+      buildReportManifest(project)
+    );
   }
 
   async function persistToolState(runtime: LaboratoryProjectStorageRuntime) {
-    const toolStatePath = asNonEmptyString(toRuntimePaths(runtime.paths).toolStatePath)
+    const toolStatePath = asNonEmptyString(toRuntimePaths(runtime.paths).toolStatePath);
     if (toolStatePath === null) {
-      return
+      return;
     }
 
-    runtime.toolState.updatedAt = new Date().toISOString()
-    await writeJsonFile(toolStatePath, runtime.toolState)
+    runtime.toolState.updatedAt = new Date().toISOString();
+    await writeJsonFile(toolStatePath, runtime.toolState);
   }
 
   async function persistProfileModelState(runtime: LaboratoryProjectStorageRuntime) {
-    runtime.profileModelState.updatedAt = new Date().toISOString()
-    await writeJsonFile(getProfileModelStatePath(runtime), runtime.profileModelState)
+    runtime.profileModelState.updatedAt = new Date().toISOString();
+    await writeJsonFile(getProfileModelStatePath(runtime), runtime.profileModelState);
   }
 
   async function loadToolState(runtime: LaboratoryProjectStorageRuntime) {
-    const toolStatePath = asNonEmptyString(toRuntimePaths(runtime.paths).toolStatePath)
-    const stored = toolStatePath ? await readJsonFile(toolStatePath) : null
-    const storedRecord = toRecord(stored)
-    const tools = toRecord(storedRecord["tools"])
-    const nextState = createDefaultToolState(getRuntimeToolIds(runtime))
+    const toolStatePath = asNonEmptyString(toRuntimePaths(runtime.paths).toolStatePath);
+    const stored = toolStatePath ? await readJsonFile(toolStatePath) : null;
+    const storedRecord = toRecord(stored);
+    const tools = toRecord(storedRecord["tools"]);
+    const nextState = createDefaultToolState(getRuntimeToolIds(runtime));
 
     getRuntimeToolIds(runtime).forEach(function (toolId) {
-      const storedTool = toToolEntry(tools[toolId])
+      const storedTool = toToolEntry(tools[toolId]);
       nextState.tools[toolId] = {
         ...createDefaultToolEntry(toolId),
         ...storedTool,
         toolId,
         companionPaths: toRecord(storedTool.companionPaths),
-      }
-    })
+      };
+    });
 
-    nextState.updatedAt = asNonEmptyString(storedRecord["updatedAt"])
-    runtime.toolState = nextState
+    nextState.updatedAt = asNonEmptyString(storedRecord["updatedAt"]);
+    runtime.toolState = nextState;
   }
 
   async function loadProfileModelState(runtime: LaboratoryProjectStorageRuntime) {
-    const stored = await readJsonFile(getProfileModelStatePath(runtime))
-    const storedRecord = toRecord(stored)
-    const models = toRecord(storedRecord["models"])
-    const catalogModels = toRecord(toProfileModelCatalog(runtime.profileModels).models)
+    const stored = await readJsonFile(getProfileModelStatePath(runtime));
+    const storedRecord = toRecord(stored);
+    const models = toRecord(storedRecord["models"]);
+    const catalogModels = toRecord(toProfileModelCatalog(runtime.profileModels).models);
     const nextState: LaboratoryProfileModelState = {
       schemaVersion: 1,
       updatedAt: asNonEmptyString(storedRecord["updatedAt"]),
       models: {},
-    }
+    };
 
     Object.keys(catalogModels).forEach(function (modelId) {
       nextState.models[modelId] = {
         ...createDefaultProfileModelEntry(modelId),
         ...toRecord(models[modelId]),
         modelId,
-      }
-    })
+      };
+    });
 
-    runtime.profileModelState = nextState
+    runtime.profileModelState = nextState;
   }
 
   return {
@@ -265,5 +268,5 @@ export function createLaboratoryProjectStorageRuntime(deps: LaboratoryProjectSto
     persistProfileModelState,
     persistToolState,
     saveProject,
-  }
+  };
 }

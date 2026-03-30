@@ -54,10 +54,7 @@ type LaboratoryMediaYoutubeSourceIntakeDeps = {
   ) => Promise<unknown>;
   clearJob: (runtime: LaboratoryMediaYoutubeRuntime, jobId: string) => void;
   getActiveProject: (runtime: LaboratoryMediaYoutubeRuntime) => LaboratoryProjectRecord | null;
-  getPresetDefaultCustomValues: (
-    sourcePresets: unknown,
-    presetId: string
-  ) => LaboratoryRecord;
+  getPresetDefaultCustomValues: (sourcePresets: unknown, presetId: string) => LaboratoryRecord;
   getProjectSourceDir: (
     runtime: LaboratoryMediaYoutubeRuntime,
     project: LaboratoryProjectRecord
@@ -137,7 +134,9 @@ export function createMediaYoutubeSourceIntakeRuntime(
     return toSourceDraftsRecord(getProjectSource(project).drafts);
   }
 
-  function getToolMap(runtime: LaboratoryMediaYoutubeRuntime): Record<string, LaboratoryToolRecord> {
+  function getToolMap(
+    runtime: LaboratoryMediaYoutubeRuntime
+  ): Record<string, LaboratoryToolRecord> {
     return toRecord(toRecord(runtime.toolState)["tools"]) as Record<string, LaboratoryToolRecord>;
   }
 

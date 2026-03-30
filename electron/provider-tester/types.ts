@@ -26,7 +26,8 @@ type ResetConversationMessagesParams = {
 
 export const PROVIDER_TEST = {
   TEST_MESSAGE:
-    "Sadece 1'den 20'ye kadar numaralari, her satirda bir tane olacak sekilde yaz. Baska hicbir sey ekleme.",
+    "1'den 20'ye kadar numaralari yaz. Her satirda yalnizca bir sayi olsun. Baska aciklama ekleme.",
+  IMAGE_MESSAGE: "3:2 oranli, beyaz fonda tek bir kirmizi elma gorseli uret. Metin ekleme.",
   TIMEOUT_DOM_TEST: PROVIDER_TEST_TIMEOUTS.DOM_TEST,
   TIMEOUT_SEND_MESSAGE: PROVIDER_TEST_TIMEOUTS.SEND_MESSAGE,
   TIMEOUT_RESPONSE_WAIT: PROVIDER_TEST_TIMEOUTS.RESPONSE_WAIT,

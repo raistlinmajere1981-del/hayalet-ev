@@ -42,10 +42,7 @@ type EditDeps = {
     requestId: string,
     action: string
   ) => Promise<void>;
-  createDefaultEditState: (
-    presets: unknown,
-    sourceKind: unknown
-  ) => MediaEditProjectRecord["edit"];
+  createDefaultEditState: (presets: unknown, sourceKind: unknown) => MediaEditProjectRecord["edit"];
   findEditPreset: (
     runtime: MediaEditRuntimeRecord,
     project: MediaEditProjectRecord,
@@ -118,8 +115,11 @@ export function createMediaEditActionRuntime(deps: EditDeps) {
       const currentMode = asNonEmptyString(toRecord(nextProject.edit)["mode"]) || "beginner";
       const preservedCommon = {
         outputNameHint:
-          asNonEmptyString(toRecord(toRecord(nextProject.edit.recipe)["common"])["outputNameHint"]) || "",
-        notes: asNonEmptyString(toRecord(toRecord(nextProject.edit.recipe)["common"])["notes"]) || "",
+          asNonEmptyString(
+            toRecord(toRecord(nextProject.edit.recipe)["common"])["outputNameHint"]
+          ) || "",
+        notes:
+          asNonEmptyString(toRecord(toRecord(nextProject.edit.recipe)["common"])["notes"]) || "",
       };
 
       nextProject.edit = createDefaultEditState(runtime.editPresets, nextProject.source.kind);

@@ -9,11 +9,7 @@ import { LogCategory, LogLevel } from "@shared/index.js";
 import { Paths } from "../paths.ts";
 import { loadSettings } from "../settings-manager.ts";
 import { DatabaseManager } from "../database/index.ts";
-import {
-  collectPromotableSelectors,
-  resolvePromotionLocaleFromSettings,
-} from "../provider-tester/selector-evidence.ts";
-import { promoteProviderConfigFile } from "../provider-tester/selector-promotion.ts";
+import { resolvePromotionLocaleFromSettings } from "../provider-tester/selector-evidence.ts";
 import type { ProviderScenarioId, ProviderWebviewSyncMode } from "../../src/types/provider.ts";
 import { translateElectronMessage } from "../i18n/language-service.ts";
 
@@ -41,6 +37,43 @@ function generateProviderScenarioRunId(
 ): string {
   const suffix = Math.random().toString(36).slice(2, 8);
   return `provider-scenario-${scenarioId}-${slot}-${providerId}-${Date.now()}-${suffix}`;
+}
+
+async function setProviderScenarioLock(
+  sender: IpcMainInvokeEvent["sender"],
+  slot: ProviderScenarioRequest["slot"],
+  value: { runId: string; scenarioId: ProviderScenarioId } | null
+): Promise<void> {
+  try {
+    await sender.executeJavaScript(`
+      (function() {
+        const slot = ${JSON.stringify(slot)};
+        const next = ${JSON.stringify(value)};
+        const root = window;
+        const locks = root.__providerScenarioLocks ?? (root.__providerScenarioLocks = {});
+
+        if (next !== null) {
+          locks[slot] = {
+            runId: next.runId,
+            scenarioId: next.scenarioId,
+            updatedAt: Date.now(),
+          };
+          return true;
+        }
+
+        if (locks !== null && typeof locks === "object") {
+          delete locks[slot];
+          if (Object.keys(locks).length === 0) {
+            delete root.__providerScenarioLocks;
+          }
+        }
+
+        return true;
+      })()
+    `);
+  } catch {
+    // NOTE: Scenario lock is best-effort; failed cleanup should not abort the test run.
+  }
 }
 
 async function importModuleByPath(modulePath: string, fresh = false): Promise<unknown> {
@@ -259,6 +292,7 @@ async function runProviderScenario(
         : undefined;
 
     try {
+      await setProviderScenarioLock(event.sender, slot, { runId, scenarioId });
       const testerOptions: ProviderTesterOptions = {
         emitProgress: (
           progressEvent: Parameters<NonNullable<ProviderTesterOptions["emitProgress"]>>[0]
@@ -285,28 +319,6 @@ async function runProviderScenario(
 
       const results = await tester.runScenario(scenarioId);
 
-      let refreshedConfig: Record<string, unknown> | null = null;
-
-      if (scenarioId === "webview-test") {
-        const promotions = collectPromotableSelectors({
-          locale,
-          aborted: results.aborted === true,
-          failed: results.failed,
-          warnings: results.warnings,
-          results: results.results,
-        });
-
-        if (promotions.length > 0) {
-          await promoteProviderConfigFile({
-            configPath: cfgPath,
-            locale,
-            promotions,
-          });
-
-          refreshedConfig = await loadProviderConfigRecord(cfgPath, { fresh: true });
-        }
-      }
-
       await logger.logInternalT(
         LogCategory.IPC,
         LogLevel.INFO,
@@ -325,10 +337,9 @@ async function runProviderScenario(
         }
       );
 
-      return refreshedConfig !== null
-        ? ({ ...results, refreshedConfig } as Record<string, unknown>)
-        : (results as unknown as Record<string, unknown>);
+      return results as unknown as Record<string, unknown>;
     } finally {
+      await setProviderScenarioLock(event.sender, slot, null);
       activeScenarioRuns.delete(runId);
     }
   } catch (err) {

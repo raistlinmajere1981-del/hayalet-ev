@@ -59,7 +59,9 @@ function requireTargetPath(target: LaboratoryProcessTargetRecord): string {
   return targetPath;
 }
 
-export function createAudioAnalysisProcessRunnerSupport(deps: AudioAnalysisProcessRunnerSupportDeps) {
+export function createAudioAnalysisProcessRunnerSupport(
+  deps: AudioAnalysisProcessRunnerSupportDeps
+) {
   const {
     clone,
     createProcessArtifact,

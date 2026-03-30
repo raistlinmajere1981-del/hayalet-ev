@@ -28,9 +28,7 @@ type LaboratorySubtitlePanelRuntimeDeps = {
   subtitleAnalysisUi: LaboratorySubtitleAnalysisUiRuntime;
 };
 
-export function createLaboratorySubtitlePanelRuntime(
-  deps: LaboratorySubtitlePanelRuntimeDeps
-) {
+export function createLaboratorySubtitlePanelRuntime(deps: LaboratorySubtitlePanelRuntimeDeps) {
   const { subtitleAnalysisUi } = deps;
 
   function renderSubtitleDraftSelect(...args: Parameters<RenderSubtitleDraftSelect>) {

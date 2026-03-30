@@ -145,9 +145,7 @@ export function createMediaAnalysisEditModePanels(deps: MediaAnalysisEditModePan
   }
 
   function getSourceDurationFallback() {
-    return (
-      getPreferredSourceDuration(asNonEmptyString(getProjectSource().previewUrl)) || 60
-    );
+    return getPreferredSourceDuration(asNonEmptyString(getProjectSource().previewUrl)) || 60;
   }
 
   function getResizePresetOptions() {

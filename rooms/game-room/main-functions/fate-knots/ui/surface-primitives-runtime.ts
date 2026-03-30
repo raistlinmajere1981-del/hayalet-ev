@@ -309,15 +309,12 @@
           texture: config.template || getUiAsset("itemCardTemplate"),
         });
         const art = createRegion("div", "fk-card-choice__art", null);
-        appendImage(
-          art,
-          "fk-card-choice__image",
-          entry.asset,
-          entry.label || entry.id || ""
-        );
+        appendImage(art, "fk-card-choice__image", entry.asset, entry.label || entry.id || "");
         button.append(art);
         const body = createRegion("div", "fk-card-choice__body", null);
-        body.append(createElement("strong", "fk-card-choice__title", entry.label || entry.id || ""));
+        body.append(
+          createElement("strong", "fk-card-choice__title", entry.label || entry.id || "")
+        );
         (config.metaLines || []).forEach(function (line: string) {
           if (line && line.trim() !== "") {
             body.append(createElement("span", "fk-card-choice__meta", line));

@@ -57,8 +57,7 @@ type LaboratoryFeatureStageBundlesRuntimeDeps = Pick<
   applyLocale: (locale: string) => void;
   applyPresentationMode: (mode: unknown) => void;
   createLaboratoryHostMessageRuntime: typeof createLaboratoryHostMessageRuntime;
-  createLaboratoryProfileProcessReportComposition:
-    typeof createLaboratoryProfileProcessReportComposition;
+  createLaboratoryProfileProcessReportComposition: typeof createLaboratoryProfileProcessReportComposition;
   createLaboratorySettingsUi: typeof createLaboratorySettingsUi;
   formatBytes: (value: unknown) => string;
   formatCleanupPolicy: (value: unknown) => string;

@@ -124,10 +124,7 @@ type AudioAnalysisProjectionCatalogDeps = {
     project: LaboratoryProjectRecord
   ) => LaboratoryProfileModelSummaryRecord[];
   buildSourceTargetSignature: (project: LaboratoryProjectRecord) => string | null;
-  findEditOutputById: (
-    project: LaboratoryProjectRecord,
-    outputId: string | null
-  ) => unknown | null;
+  findEditOutputById: (project: LaboratoryProjectRecord, outputId: string | null) => unknown | null;
   getAudioAnalysisModulesForRuntime: (
     runtime: LaboratoryAudioAnalysisRuntime
   ) => LaboratoryAudioCatalogModuleRecord[];
@@ -288,7 +285,9 @@ export function createAudioAnalysisProjectionCatalogRuntime(
   function getAudioAnalysisProviderDescriptors(
     runtime: LaboratoryAudioAnalysisRuntime
   ): LaboratoryAudioProviderDescriptorRecord[] {
-    const providerCollection = toProviderCollectionRecord(toRuntimeRecord(runtime).audioAnalysisProviders);
+    const providerCollection = toProviderCollectionRecord(
+      toRuntimeRecord(runtime).audioAnalysisProviders
+    );
     return Array.isArray(providerCollection.providers)
       ? providerCollection.providers.map(toProviderDescriptorRecord)
       : [];
@@ -409,84 +408,90 @@ export function createAudioAnalysisProjectionCatalogRuntime(
     const toolState = getToolState(runtime);
     const targetRecord = toTargetRecord(target);
 
-    return getAudioAnalysisModulesForRuntime(runtime).map(toCatalogModuleRecord).reduce<
-      Record<string, LaboratoryAudioCapabilityEntryRecord>
-    >(function (accumulator, entry, index) {
-      const moduleId = asNonEmptyString(entry.id) ?? `audio-module-${index}`;
-      const moduleStatus = asNonEmptyString(entry.status) ?? "planned";
-      const providerIds = resolveAudioAnalysisProviderIdsForModule(runtime, entry);
-      const toolIds = normalizeStringArray(entry.toolIds);
-      const requiredToolIds = getAudioAnalysisRequiredToolIds(entry);
-      const blockers: string[] = [];
-      const warnings: string[] = [];
-      let status = moduleStatus;
+    return getAudioAnalysisModulesForRuntime(runtime)
+      .map(toCatalogModuleRecord)
+      .reduce<Record<string, LaboratoryAudioCapabilityEntryRecord>>(function (
+        accumulator,
+        entry,
+        index
+      ) {
+        const moduleId = asNonEmptyString(entry.id) ?? `audio-module-${index}`;
+        const moduleStatus = asNonEmptyString(entry.status) ?? "planned";
+        const providerIds = resolveAudioAnalysisProviderIdsForModule(runtime, entry);
+        const toolIds = normalizeStringArray(entry.toolIds);
+        const requiredToolIds = getAudioAnalysisRequiredToolIds(entry);
+        const blockers: string[] = [];
+        const warnings: string[] = [];
+        let status = moduleStatus;
 
-      if (moduleStatus === "implemented") {
-        if (asNonEmptyString(targetRecord.path) === null) {
-          status = "blocked";
-          blockers.push("Prepare an audio-ready source before running this module.");
-        } else if (providerIds.length > 0) {
-          const providerEntries = providerIds
-            .map(function (providerId) {
-              return toProviderStateEntryRecord(providerState[providerId]);
-            })
-            .filter(hasRecordValues);
-
-          if (
-            providerEntries.some(function (provider) {
-              return provider.ready === true;
-            })
-          ) {
-            status = "ready";
-          } else {
+        if (moduleStatus === "implemented") {
+          if (asNonEmptyString(targetRecord.path) === null) {
             status = "blocked";
-            providerEntries.forEach(function (provider) {
-              normalizeStringArray(provider.blockers).forEach(function (entryText) {
-                blockers.push(entryText);
+            blockers.push("Prepare an audio-ready source before running this module.");
+          } else if (providerIds.length > 0) {
+            const providerEntries = providerIds
+              .map(function (providerId) {
+                return toProviderStateEntryRecord(providerState[providerId]);
+              })
+              .filter(hasRecordValues);
+
+            if (
+              providerEntries.some(function (provider) {
+                return provider.ready === true;
+              })
+            ) {
+              status = "ready";
+            } else {
+              status = "blocked";
+              providerEntries.forEach(function (provider) {
+                normalizeStringArray(provider.blockers).forEach(function (entryText) {
+                  blockers.push(entryText);
+                });
+                normalizeStringArray(provider.warnings).forEach(function (entryText) {
+                  warnings.push(entryText);
+                });
               });
-              normalizeStringArray(provider.warnings).forEach(function (entryText) {
-                warnings.push(entryText);
-              });
-            });
+            }
           }
+
+          if (status === "ready") {
+            const missingToolIds = requiredToolIds.filter(function (toolId) {
+              return getToolEntry(toolState, toolId).installed !== true;
+            });
+            if (missingToolIds.length > 0) {
+              status = "blocked";
+              missingToolIds.forEach(function (toolId) {
+                blockers.push(`Install ${toolId} to enable this module.`);
+              });
+            }
+          }
+        } else if (moduleStatus === "gated") {
+          warnings.push("This module remains capability-gated on the current runtime.");
         }
 
-        if (status === "ready") {
-          const missingToolIds = requiredToolIds.filter(function (toolId) {
-            return getToolEntry(toolState, toolId).installed !== true;
-          });
-          if (missingToolIds.length > 0) {
-            status = "blocked";
-            missingToolIds.forEach(function (toolId) {
-              blockers.push(`Install ${toolId} to enable this module.`);
-            });
-          }
-        }
-      } else if (moduleStatus === "gated") {
-        warnings.push("This module remains capability-gated on the current runtime.");
-      }
-
-      accumulator[moduleId] = normalizeAudioAnalysisCapabilityEntry(
-        {
+        accumulator[moduleId] = normalizeAudioAnalysisCapabilityEntry(
+          {
+            moduleId,
+            phase: asNonEmptyString(entry.phase),
+            status,
+            titleKey: asNonEmptyString(entry.titleKey),
+            summaryKey: asNonEmptyString(entry.summaryKey),
+            providerIds,
+            toolIds,
+            requiredToolIds,
+            blockers: toUniqueStrings(blockers),
+            warnings: toUniqueStrings(warnings),
+          },
           moduleId,
-          phase: asNonEmptyString(entry.phase),
-          status,
-          titleKey: asNonEmptyString(entry.titleKey),
-          summaryKey: asNonEmptyString(entry.summaryKey),
-          providerIds,
-          toolIds,
-          requiredToolIds,
-          blockers: toUniqueStrings(blockers),
-          warnings: toUniqueStrings(warnings),
-        },
-        moduleId,
-        entry
-      );
-      return accumulator;
-    }, {});
+          entry
+        );
+        return accumulator;
+      }, {});
   }
 
-  function resolveAudioFeatureTarget(project: LaboratoryProjectRecord): LaboratoryAudioTargetRecord {
+  function resolveAudioFeatureTarget(
+    project: LaboratoryProjectRecord
+  ): LaboratoryAudioTargetRecord {
     const projectRecord = toProjectRecord(project);
     const source = toSourceRecord(projectRecord.source);
     const edit = toEditRecord(projectRecord.edit);

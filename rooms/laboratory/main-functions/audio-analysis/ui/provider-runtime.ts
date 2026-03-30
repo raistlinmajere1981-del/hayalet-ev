@@ -171,18 +171,16 @@ export function createAudioAnalysisProviderRuntime(deps: AudioAnalysisProviderRu
             .map(function (entry) {
               const providerId = toString(entry.id);
               const providerState = toProviderStateRecord(providerStateMap[providerId]);
-              const status =
-                toString(providerState.status) || toString(entry.status, "gated");
+              const status = toString(providerState.status) || toString(entry.status, "gated");
               const moduleIds =
                 toStringArray(providerState.moduleIds).length > 0
                   ? toStringArray(providerState.moduleIds)
                   : toStringArray(entry.moduleIds);
               const moduleLabels = moduleIds
                 .map(function (moduleId) {
-                  const moduleEntry =
-                    getOrderedResultEntries().find(function (resultEntry) {
-                      return toString(resultEntry.moduleId) === moduleId;
-                    }) || { moduleId: moduleId };
+                  const moduleEntry = getOrderedResultEntries().find(function (resultEntry) {
+                    return toString(resultEntry.moduleId) === moduleId;
+                  }) || { moduleId: moduleId };
                   return getAudioAnalysisModuleTitle(toModuleResultRecord(moduleEntry));
                 })
                 .filter(Boolean);

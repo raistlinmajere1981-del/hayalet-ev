@@ -273,7 +273,10 @@ export function getPreferredAssetResolution(
   return "--";
 }
 
-export function getPreferredAssetCodec(asset: unknown, toRecord: (v: unknown) => ProfileHelperRecord) {
+export function getPreferredAssetCodec(
+  asset: unknown,
+  toRecord: (v: unknown) => ProfileHelperRecord
+) {
   const metadata = toRecord(toRecord(asset).metadata);
   return (
     (typeof metadata.codec === "string" && metadata.codec.trim() !== "" && metadata.codec) ||
