@@ -1,7 +1,7 @@
 import { createSubtitleStateDefaultsRuntime } from "./state-defaults.js";
 import { createSubtitleStateNormalizationRuntime } from "./state-normalization.js";
 
-export function createSubtitleStateProjectRuntime(deps) {
+export function createSubtitleStateProjectRuntime(deps: any) {
   const {
     asNonEmptyString,
     asNumber,
@@ -13,33 +13,37 @@ export function createSubtitleStateProjectRuntime(deps) {
   const defaultsRuntime = createSubtitleStateDefaultsRuntime(deps);
   const normalizationRuntime = createSubtitleStateNormalizationRuntime(deps);
 
-  function getSubtitleEntries(project) {
+  function getSubtitleEntries(project: any) {
     const entries = toRecord(toRecord(project).subtitleAnalysis).entries;
     return Array.isArray(entries)
-      ? entries.map(function (entry, index) {
+      ? entries.map(function (entry: any, index: any) {
           return normalizationRuntime.normalizeSubtitleEntryRecord(entry, index);
         })
       : [];
   }
 
-  function getSubtitleEntryById(project, entryId) {
+  function getSubtitleEntryById(project: any, entryId: any) {
     const requestedId = asNonEmptyString(entryId);
     return (
-      getSubtitleEntries(project).find(function (entry) {
+      getSubtitleEntries(project).find(function (entry: any) {
         return requestedId !== null && entry.id === requestedId;
       }) || null
     );
   }
 
-  function getActiveSubtitleEntry(project) {
+  function getActiveSubtitleEntry(project: any) {
     const subtitleState = normalizationRuntime.normalizeSubtitleAnalysisState(
       toRecord(project).subtitleAnalysis,
       {}
     );
-    return getSubtitleEntryById(project, subtitleState.activeEntryId) || (getSubtitleEntries(project)[0] || null);
+    return (
+      getSubtitleEntryById(project, subtitleState.activeEntryId) ||
+      getSubtitleEntries(project)[0] ||
+      null
+    );
   }
 
-  function getSubtitleSelectedEntries(project) {
+  function getSubtitleSelectedEntries(project: any) {
     const subtitleState = normalizationRuntime.normalizeSubtitleAnalysisState(
       toRecord(project).subtitleAnalysis,
       {}
@@ -50,7 +54,7 @@ export function createSubtitleStateProjectRuntime(deps) {
     const entries = getSubtitleEntries(project);
 
     if (selectedIds.length > 0) {
-      const selectedEntries = entries.filter(function (entry) {
+      const selectedEntries = entries.filter(function (entry: any) {
         return selectedIds.includes(entry.id);
       });
       if (selectedEntries.length > 0) {
@@ -62,7 +66,7 @@ export function createSubtitleStateProjectRuntime(deps) {
     return activeEntry ? [activeEntry] : [];
   }
 
-  function createSubtitleEntryRecord(filePath, options) {
+  function createSubtitleEntryRecord(filePath: any, options: any) {
     const config = toRecord(options);
     const fileName =
       asNonEmptyString(config.fileName) ||
@@ -77,7 +81,9 @@ export function createSubtitleStateProjectRuntime(deps) {
         fileName: fileName,
         path: asNonEmptyString(filePath),
         format:
-          asNonEmptyString(config.format) || normalizationRuntime.getSubtitleFileExtension(fileName) || "srt",
+          asNonEmptyString(config.format) ||
+          normalizationRuntime.getSubtitleFileExtension(fileName) ||
+          "srt",
         createdAt: new Date().toISOString(),
         sourceUrl: asNonEmptyString(config.sourceUrl),
         language:
@@ -98,7 +104,7 @@ export function createSubtitleStateProjectRuntime(deps) {
     );
   }
 
-  function resetSubtitleFeatureState(runtime, project, reason) {
+  function resetSubtitleFeatureState(runtime: any, project: any, reason: any) {
     const subtitleState = normalizationRuntime.normalizeSubtitleAnalysisState(
       toRecord(project).subtitleAnalysis,
       runtime
@@ -140,7 +146,7 @@ export function createSubtitleStateProjectRuntime(deps) {
     return project.subtitleAnalysis;
   }
 
-  function resetSubtitleDiscovery(runtime, project) {
+  function resetSubtitleDiscovery(runtime: any, project: any) {
     const subtitleState = normalizationRuntime.normalizeSubtitleAnalysisState(
       toRecord(project).subtitleAnalysis,
       runtime
@@ -150,18 +156,18 @@ export function createSubtitleStateProjectRuntime(deps) {
     return project.subtitleAnalysis;
   }
 
-  function upsertSubtitleEntries(runtime, project, incomingEntries, options) {
+  function upsertSubtitleEntries(runtime: any, project: any, incomingEntries: any, options: any) {
     const config = toRecord(options);
     const subtitleState = normalizationRuntime.normalizeSubtitleAnalysisState(
       toRecord(project).subtitleAnalysis,
       runtime
     );
     const existingEntries = Array.isArray(subtitleState.entries)
-      ? subtitleState.entries.map(function (entry, index) {
+      ? subtitleState.entries.map(function (entry: any, index: any) {
           return normalizationRuntime.normalizeSubtitleEntryRecord(entry, index);
         })
       : [];
-    const existingByPath = existingEntries.reduce(function (accumulator, entry) {
+    const existingByPath = existingEntries.reduce(function (accumulator: any, entry: any) {
       if (entry.path !== null) {
         accumulator[entry.path] = entry;
       }
@@ -169,25 +175,25 @@ export function createSubtitleStateProjectRuntime(deps) {
     }, {});
     const normalizedIncoming = Array.isArray(incomingEntries)
       ? incomingEntries
-          .map(function (entry, index) {
+          .map(function (entry: any, index: any) {
             return normalizationRuntime.normalizeSubtitleEntryRecord(entry, index);
           })
-          .filter(function (entry) {
+          .filter(function (entry: any) {
             return entry.path !== null;
           })
       : [];
     const mergedEntries =
       config.replaceExisting === true
         ? []
-        : existingEntries.filter(function (entry) {
+        : existingEntries.filter(function (entry: any) {
             return (
-              normalizedIncoming.some(function (incomingEntry) {
+              normalizedIncoming.some(function (incomingEntry: any) {
                 return incomingEntry.path === entry.path;
               }) === false
             );
           });
 
-    normalizedIncoming.forEach(function (entry) {
+    normalizedIncoming.forEach(function (entry: any) {
       const existingEntry = entry.path !== null ? existingByPath[entry.path] : null;
       mergedEntries.push(
         normalizationRuntime.normalizeSubtitleEntryRecord(
@@ -211,7 +217,7 @@ export function createSubtitleStateProjectRuntime(deps) {
       selectedEntryIds:
         Array.isArray(config.selectedEntryIds) && config.selectedEntryIds.length > 0
           ? deps.normalizeStringArray(config.selectedEntryIds)
-          : normalizedIncoming.map(function (entry) {
+          : normalizedIncoming.map(function (entry: any) {
               return entry.id;
             }),
     };
@@ -219,7 +225,11 @@ export function createSubtitleStateProjectRuntime(deps) {
     subtitleState.workspace.lastActionAt = new Date().toISOString();
     subtitleState.workspace.lastImportAt = new Date().toISOString();
     project.subtitleAnalysis = subtitleState;
-    resetSubtitleFeatureState(runtime, project, "Subtitle sources changed; rerun the subtitle analysis.");
+    resetSubtitleFeatureState(
+      runtime,
+      project,
+      "Subtitle sources changed; rerun the subtitle analysis."
+    );
     return project.subtitleAnalysis;
   }
 

@@ -1,4 +1,4 @@
-(function (global) {
+(function (global: any) {
   type UnknownRecord = Record<string, unknown>;
   type TeamTetrisStateRuntime = {
     createTeamTetrisDraft: () => unknown;
@@ -13,7 +13,10 @@
     getTeamTetrisOwnBoardState: () => unknown;
     getTeamTetrisOpponentBoardState: () => unknown;
     getTeamTetrisRotationCells: (pieceId: string, rotation: number) => Array<[number, number]>;
-    getTeamTetrisPieceBounds: (pieceId: string, rotation: number) => { width: number; height: number };
+    getTeamTetrisPieceBounds: (
+      pieceId: string,
+      rotation: number
+    ) => { width: number; height: number };
     getTeamTetrisPlacedByLabel: (placement: unknown) => string;
     getTeamTetrisPartnerRoleLabel: () => string;
     getTeamTetrisTurnLabel: () => string;
@@ -41,7 +44,7 @@
       title: string,
       pieceId: string,
       rotation: number,
-      subtitle: string,
+      subtitle: string
     ) => HTMLElement;
     createTeamTetrisRequirementCard: (slotId: string, ready: boolean) => HTMLElement;
     createTeamTetrisSnapshotCard: (title: string, rows: unknown) => HTMLElement;
@@ -73,7 +76,9 @@
     createTeamTetrisUiModule?: (deps: TeamTetrisModuleDeps) => unknown;
   };
 
-  registry.createTeamTetrisUiModule = function createTeamTetrisUiModule(deps: TeamTetrisModuleDeps) {
+  registry.createTeamTetrisUiModule = function createTeamTetrisUiModule(
+    deps: TeamTetrisModuleDeps
+  ) {
     const getState = deps.getState;
     const featureId = deps.featureId || "team-tetris";
     const createSlot = deps.createSlot;
@@ -118,8 +123,7 @@
     const getTeamTetrisRotationCells = teamTetrisUiStateRuntime.getTeamTetrisRotationCells;
     const getTeamTetrisPieceBounds = teamTetrisUiStateRuntime.getTeamTetrisPieceBounds;
     const getTeamTetrisPlacedByLabel = teamTetrisUiStateRuntime.getTeamTetrisPlacedByLabel;
-    const getTeamTetrisPartnerRoleLabel =
-      teamTetrisUiStateRuntime.getTeamTetrisPartnerRoleLabel;
+    const getTeamTetrisPartnerRoleLabel = teamTetrisUiStateRuntime.getTeamTetrisPartnerRoleLabel;
     const getTeamTetrisTurnLabel = teamTetrisUiStateRuntime.getTeamTetrisTurnLabel;
     const getTeamTetrisResultLabel = teamTetrisUiStateRuntime.getTeamTetrisResultLabel;
     const getTeamTetrisDraftStatusText = teamTetrisUiStateRuntime.getTeamTetrisDraftStatusText;
@@ -192,14 +196,14 @@
       };
     }
 
-      return {
-        createTeamTetrisDraft: createTeamTetrisDraft,
-        createTeamTetrisState: createTeamTetrisState,
-        sanitizeTeamTetrisState: sanitizeTeamTetrisState,
-        syncTeamTetrisPreferencesFromState: syncTeamTetrisPreferencesFromState,
-        syncTeamTetrisDraftFromState: syncTeamTetrisDraftFromState,
-        renderTeamTetris: moduleShellRuntime.renderTeamTetris,
-        getTestBridge: getTestBridge,
-      };
+    return {
+      createTeamTetrisDraft: createTeamTetrisDraft,
+      createTeamTetrisState: createTeamTetrisState,
+      sanitizeTeamTetrisState: sanitizeTeamTetrisState,
+      syncTeamTetrisPreferencesFromState: syncTeamTetrisPreferencesFromState,
+      syncTeamTetrisDraftFromState: syncTeamTetrisDraftFromState,
+      renderTeamTetris: moduleShellRuntime.renderTeamTetris,
+      getTestBridge: getTestBridge,
     };
+  };
 })(typeof window !== "undefined" ? window : globalThis);

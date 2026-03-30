@@ -1,4 +1,4 @@
-export function createLaboratoryFeatureStageBundlesRuntime(deps) {
+export function createLaboratoryFeatureStageBundlesRuntime(deps: any) {
   const laboratorySettingsUi = deps.createLaboratorySettingsUi({
     stageOrder: deps.stageOrder,
     state: deps.state,
@@ -38,8 +38,7 @@ export function createLaboratoryFeatureStageBundlesRuntime(deps) {
 
   const profileProcessBundle = deps.createLaboratoryProfileProcessReportComposition({
     createLaboratoryProcessStageUi: deps.createLaboratoryProcessStageUi,
-    createLaboratoryProfileProcessReportRuntime:
-      deps.createLaboratoryProfileProcessReportRuntime,
+    createLaboratoryProfileProcessReportRuntime: deps.createLaboratoryProfileProcessReportRuntime,
     createLaboratoryReportStageUi: deps.createLaboratoryReportStageUi,
     createMediaAnalysisProfilePanels: deps.createMediaAnalysisProfilePanels,
     createMediaAnalysisProfileStage: deps.createMediaAnalysisProfileStage,

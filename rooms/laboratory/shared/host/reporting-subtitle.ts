@@ -1,4 +1,4 @@
-export function createLaboratorySubtitleReportRuntime(deps) {
+export function createLaboratorySubtitleReportRuntime(deps: any) {
   const {
     asNonEmptyString,
     asNumber,
@@ -17,17 +17,18 @@ export function createLaboratorySubtitleReportRuntime(deps) {
     subtitleFeatureId,
   } = deps;
 
-  function getProcessArtifactByKind(processRecord, kind) {
+  function getProcessArtifactByKind(processRecord: any, kind: any) {
     return (
-      (Array.isArray(processRecord.artifacts) ? processRecord.artifacts.map(normalizeProcessArtifact) : []).find(
-        function (entry) {
-          return asNonEmptyString(entry.kind) === kind;
-        }
-      ) || null
+      (Array.isArray(processRecord.artifacts)
+        ? processRecord.artifacts.map(normalizeProcessArtifact)
+        : []
+      ).find(function (entry: any) {
+        return asNonEmptyString(entry.kind) === kind;
+      }) || null
     );
   }
 
-  function composeSubtitleAnalysisReport(runtime, project) {
+  function composeSubtitleAnalysisReport(runtime: any, project: any) {
     const processRecord = getFeatureProcessRecord(project, subtitleFeatureId);
     if (processRecord.status !== "ready" && processRecord.status !== "stale") {
       return normalizeFeatureReportRecord(
@@ -42,33 +43,35 @@ export function createLaboratorySubtitleReportRuntime(deps) {
 
     const findings = (Array.isArray(processRecord.findings) ? processRecord.findings : [])
       .map(normalizeProcessFinding)
-      .sort(function (left, right) {
+      .sort(function (left: any, right: any) {
         return getFindingSeverityRank(right.level) - getFindingSeverityRank(left.level);
       });
-    const modules = Array.isArray(processRecord.modules) ? processRecord.modules.map(normalizeProcessModule) : [];
-    const completedCount = modules.filter(function (entry) {
+    const modules = Array.isArray(processRecord.modules)
+      ? processRecord.modules.map(normalizeProcessModule)
+      : [];
+    const completedCount = modules.filter(function (entry: any) {
       return ["ready", "stale", "complete"].includes(asNonEmptyString(entry.status) || "idle");
     }).length;
-    const plannedCount = getSubtitleAnalysisModuleDescriptors(runtime).filter(function (entry) {
+    const plannedCount = getSubtitleAnalysisModuleDescriptors(runtime).filter(function (entry: any) {
       return asNonEmptyString(entry.status) === "planned";
     }).length;
     const targetEntries = getSubtitleSelectedEntries(project);
     const summaryArtifact = getProcessArtifactByKind(processRecord, "subtitle-summary");
     const lexicalArtifact = getProcessArtifactByKind(processRecord, "subtitle-top-words");
     const lexicalModule =
-      modules.find(function (entry) {
+      modules.find(function (entry: any) {
         return entry.id === "lexical-frequency";
       }) || null;
     const totalCues =
       asNumber(toRecord(summaryArtifact).metadata.totalCues) ||
-      findings.reduce(function (sum, entry) {
+      findings.reduce(function (sum: any, entry: any) {
         return sum + Math.max(0, Math.round(asNumber(entry.evidenceCount) || 0));
       }, 0) ||
       0;
     const uniqueLanguages = Array.from(
       new Set(
         targetEntries
-          .map(function (entry) {
+          .map(function (entry: any) {
             return asNonEmptyString(toRecord(entry).language);
           })
           .filter(Boolean)
@@ -78,16 +81,12 @@ export function createLaboratorySubtitleReportRuntime(deps) {
       asNonEmptyString(toRecord(lexicalArtifact).metadata.topWord) ||
       (typeof toRecord(lexicalModule).summary === "string" &&
       toRecord(lexicalModule).summary.toLowerCase().includes("top lexical term is")
-        ? asNonEmptyString(
-            toRecord(lexicalModule)
-              .summary.replace(/^.*?"/, "")
-              .replace(/".*$/, "")
-          )
+        ? asNonEmptyString(toRecord(lexicalModule).summary.replace(/^.*?"/, "").replace(/".*$/, ""))
         : null);
     const warnings = Array.from(
       new Set(
         normalizeStringArray(processRecord.warnings).concat(
-          modules.flatMap(function (entry) {
+          modules.flatMap(function (entry: any) {
             return normalizeStringArray(entry.warnings);
           })
         )
@@ -120,7 +119,11 @@ export function createLaboratorySubtitleReportRuntime(deps) {
           {
             id: "subtitle-files",
             labelKey: "subtitleAnalysis.report.summaryCards.files",
-            value: String(asNumber(toRecord(processRecord.targetSummary).entryCount) || targetEntries.length || 0),
+            value: String(
+              asNumber(toRecord(processRecord.targetSummary).entryCount) ||
+                targetEntries.length ||
+                0
+            ),
           },
           {
             id: "subtitle-cues",

@@ -33,9 +33,7 @@ type MediaAnalysisProfileTargetAssetDeps = {
   toRecord: (value: unknown) => Record<string, unknown>;
 };
 
-export function getMediaAnalysisProfileTargetAsset(
-  deps: MediaAnalysisProfileTargetAssetDeps,
-) {
+export function getMediaAnalysisProfileTargetAsset(deps: MediaAnalysisProfileTargetAssetDeps) {
   const getCurrentSourceKind = deps.getCurrentSourceKind;
   const getCurrentSourceLabel = deps.getCurrentSourceLabel;
   const getEditOutputs = deps.getEditOutputs;
@@ -46,7 +44,7 @@ export function getMediaAnalysisProfileTargetAsset(
   const source = getProjectSource();
   const target = getProfileTargetSummary();
   if (target.mode === "derived") {
-    const output = getEditOutputs().find(function (entry) {
+    const output = getEditOutputs().find(function (entry: any) {
       return entry.id === target.outputId;
     });
     if (output) {

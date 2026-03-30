@@ -1,4 +1,4 @@
-export function createLaboratorySubtitleReportStageRuntime(deps) {
+export function createLaboratorySubtitleReportStageRuntime(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const featureText = deps.featureText;
@@ -11,14 +11,14 @@ export function createLaboratorySubtitleReportStageRuntime(deps) {
   const getSubtitleProcessModuleLabel = deps.getSubtitleProcessModuleLabel;
   const getSubtitleProcessModuleSummary = deps.getSubtitleProcessModuleSummary;
 
-  function getSubtitleReportModuleFindingCount(moduleId) {
-    return getReportFindings().filter(function (entry) {
+  function getSubtitleReportModuleFindingCount(moduleId: any) {
+    return getReportFindings().filter(function (entry: any) {
       return toRecord(entry).moduleId === moduleId;
     }).length;
   }
 
-  function getSubtitleReportModuleArtifactCount(moduleId) {
-    return getProcessArtifacts().filter(function (entry) {
+  function getSubtitleReportModuleArtifactCount(moduleId: any) {
+    return getProcessArtifacts().filter(function (entry: any) {
       return toRecord(entry).moduleId === moduleId;
     }).length;
   }
@@ -40,7 +40,7 @@ export function createLaboratorySubtitleReportStageRuntime(deps) {
         </div>
         <div class="lab-tool-grid">
           ${modules
-            .map(function (moduleEntry) {
+            .map(function (moduleEntry: any) {
               const moduleId = String(moduleEntry.id || "");
               return `
                 <article class="lab-tool-card">
@@ -96,7 +96,7 @@ export function createLaboratorySubtitleReportStageRuntime(deps) {
         </div>
         <div class="lab-tool-grid">
           ${exportsList
-            .map(function (entry) {
+            .map(function (entry: any) {
               return `
                 <article class="lab-tool-card">
                   <div class="lab-tool-card__head">

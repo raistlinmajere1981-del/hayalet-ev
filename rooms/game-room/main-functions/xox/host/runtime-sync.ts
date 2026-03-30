@@ -1,4 +1,9 @@
-import { getActiveFeatureId, loadContext, readLocale, saveContext } from "../../../shared/host/context-state.js";
+import {
+  getActiveFeatureId,
+  loadContext,
+  readLocale,
+  saveContext,
+} from "../../../shared/host/context-state.js";
 import { TEAM_TETRIS_FEATURE_ID } from "../../../shared/host/feature-meta.js";
 import {
   blockTeamTetrisMatch,
@@ -16,7 +21,7 @@ type TeamTetrisSeatReadiness = {
   us1: boolean;
 };
 
-function readTeamTetrisSeatReadiness(context): TeamTetrisSeatReadiness {
+function readTeamTetrisSeatReadiness(context: any): TeamTetrisSeatReadiness {
   const slots = context && context.slots ? context.slots : {};
   return {
     ai1: !!(slots.ai1 && slots.ai1.ready === true),
@@ -25,7 +30,7 @@ function readTeamTetrisSeatReadiness(context): TeamTetrisSeatReadiness {
   };
 }
 
-export function syncFromContext(api, payload: unknown) {
+export function syncFromContext(api: any, payload: unknown) {
   const previousContext = loadContext(api);
   const previousActiveFeatureId = getActiveFeatureId(previousContext);
   const context = saveContext(api, payload);

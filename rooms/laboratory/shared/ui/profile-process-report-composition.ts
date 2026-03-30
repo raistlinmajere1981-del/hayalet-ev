@@ -1,4 +1,4 @@
-export function createLaboratoryProfileProcessReportComposition(deps) {
+export function createLaboratoryProfileProcessReportComposition(deps: any) {
   const laboratoryProcessStageUi = deps.createLaboratoryProcessStageUi({
     toRecord: deps.toRecord,
     escapeHtml: deps.escapeHtml,

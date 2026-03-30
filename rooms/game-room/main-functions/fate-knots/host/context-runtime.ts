@@ -1,32 +1,24 @@
-import {
-  getActiveFeatureId,
-  loadContext,
-  readLocale,
-} from "../../../shared/host/context-state.js";
-import {
-  FATE_KNOTS_FEATURE_ID,
-} from "../../../shared/host/feature-meta.js";
-import {
-  FATE_KNOTS_CONTENT_STATE_KEY,
-} from "./constants.js";
+import { getActiveFeatureId, loadContext, readLocale } from "../../../shared/host/context-state.js";
+import { FATE_KNOTS_FEATURE_ID } from "../../../shared/host/feature-meta.js";
+import { FATE_KNOTS_CONTENT_STATE_KEY } from "./constants.js";
 import {
   ensureFateKnotsContent,
   maybeMarkSeatLossOrTimeout,
   updateContentSummary,
 } from "./session-support.js";
-import {
-  loadFateKnotsState,
-  resetFateKnotsState,
-} from "./state.js";
+import { loadFateKnotsState, resetFateKnotsState } from "./state.js";
 
-export function syncFromContext(api, options) {
+export function syncFromContext(api: any, options: any) {
   const contentRegistry = ensureFateKnotsContent(api);
   const state = loadFateKnotsState(api);
   const context = options?.context || loadContext(api);
   const previousActiveFeatureId = options?.previousActiveFeatureId || null;
   const activeFeatureId = options?.activeFeatureId || getActiveFeatureId(context);
 
-  if (previousActiveFeatureId === FATE_KNOTS_FEATURE_ID && activeFeatureId !== FATE_KNOTS_FEATURE_ID) {
+  if (
+    previousActiveFeatureId === FATE_KNOTS_FEATURE_ID &&
+    activeFeatureId !== FATE_KNOTS_FEATURE_ID
+  ) {
     resetFateKnotsState(api, "activeFeatureReset");
     return;
   }

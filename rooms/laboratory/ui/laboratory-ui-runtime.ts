@@ -1,3 +1,5 @@
+import type { LaboratorySettingsUiApi } from "../shared/ui/settings-overlay.js";
+import type { LaboratoryUiShellRuntimeApi } from "../shared/ui/shell-runtime.js";
 import { createSourceSnapshotSelectors } from "../shared/ui/source-snapshot-selectors.js";
 import { createLaboratoryUiActionRouter } from "../shared/ui/action-router.js";
 import {
@@ -78,13 +80,20 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     },
   };
 
-  const laboratoryUiRefs = {
+  const laboratoryUiRefs: {
+    settingsUi: LaboratorySettingsUiApi | null;
+    shellRuntime: LaboratoryUiShellRuntimeApi | null;
+  } = {
     settingsUi: null,
     shellRuntime: null,
   };
 
   function render() {
-    return laboratoryUiRefs.shellRuntime.render();
+    const shell = laboratoryUiRefs.shellRuntime;
+    if (!shell) {
+      throw new Error("Laboratory shell runtime is not initialized");
+    }
+    return shell.render();
   }
   const coreRuntime = createLaboratoryUiCoreRuntime({
     audioFeatureId: AUDIO_FEATURE_ID,
@@ -139,8 +148,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     createLaboratoryProcessStageUi: createLaboratoryProcessStageUi,
     createLaboratoryProfileProcessReportComposition:
       createLaboratoryProfileProcessReportComposition,
-    createLaboratoryProfileProcessReportRuntime:
-      createLaboratoryProfileProcessReportRuntime,
+    createLaboratoryProfileProcessReportRuntime: createLaboratoryProfileProcessReportRuntime,
     createLaboratoryReportStageUi: createLaboratoryReportStageUi,
     createLaboratorySettingsUi: createLaboratorySettingsUi,
     createMediaAnalysisEditPanels: createMediaAnalysisEditPanels,
@@ -283,7 +291,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     getSourceSnapshot: coreRuntime.getSourceSnapshot,
     getToolEntry: coreRuntime.getToolEntry,
     getYtDlpForm: coreRuntime.getYtDlpForm,
-    handleHostMessage: function (message) {
+    handleHostMessage: function (message: any) {
       return laboratoryFeatureStageRuntime.laboratoryHostMessageRuntime.handleHostMessage(message);
     },
     isAudioAnalysisFeature: coreRuntime.isAudioAnalysisFeature,
@@ -299,7 +307,8 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     renderAudioAnalysisCatalogPanel: laboratoryFeatureStageRuntime.renderAudioAnalysisCatalogPanel,
     renderAudioAnalysisModuleGrid: laboratoryFeatureStageRuntime.renderAudioAnalysisModuleGrid,
     renderAudioAnalysisNoticePanel: laboratoryFeatureStageRuntime.renderAudioAnalysisNoticePanel,
-    renderAudioAnalysisProviderPanel: laboratoryFeatureStageRuntime.renderAudioAnalysisProviderPanel,
+    renderAudioAnalysisProviderPanel:
+      laboratoryFeatureStageRuntime.renderAudioAnalysisProviderPanel,
     renderBootstrap: coreRuntime.renderBootstrap,
     renderEditActionsPanel: laboratoryFeatureStageRuntime.renderEditActionsPanel,
     renderEditCommonPanel: laboratoryFeatureStageRuntime.renderEditCommonPanel,
@@ -322,7 +331,8 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     renderSubtitleEntryPanel: laboratoryFeatureStageRuntime.renderSubtitleEntryPanel,
     renderSubtitleProviderPanel: laboratoryFeatureStageRuntime.renderSubtitleProviderPanel,
     renderSubtitleSourceIntakePanel: laboratoryFeatureStageRuntime.renderSubtitleSourceIntakePanel,
-    renderSubtitleSourceWorkspacePanel: laboratoryFeatureStageRuntime.renderSubtitleSourceWorkspacePanel,
+    renderSubtitleSourceWorkspacePanel:
+      laboratoryFeatureStageRuntime.renderSubtitleSourceWorkspacePanel,
     renderTextField: coreRuntime.renderTextField,
     resetJourney: coreRuntime.resetJourney,
     restartProcess: coreRuntime.restartProcess,
@@ -337,7 +347,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     text: coreRuntime.text,
     textFromKey: coreRuntime.textFromKey,
     toRecord: coreRuntime.toRecord,
-    toggleCleanup(key) {
+    toggleCleanup(key: any) {
       void key;
     },
     windowRef: window,

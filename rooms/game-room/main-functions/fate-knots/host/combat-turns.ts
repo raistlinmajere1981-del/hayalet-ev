@@ -7,15 +7,45 @@ import {
   refreshCombatOutcome,
   resolveCounter,
 } from "./combat-state.js";
+import type {
+  FateKnotsCombatState,
+  FateKnotsCombatant,
+  FateKnotsTurnEntry,
+} from "./combat-state.js";
 
-export function getCurrentFateKnotsCombatTurn(combat) {
-  if (!combat || combat.outcome !== "pending" || !Array.isArray(combat.turnOrder) || combat.turnOrder.length === 0) {
-    return null;
-  }
-  return combat.turnOrder[combat.activeTurnIndex] || null;
+export interface FateKnotsCombatCard {
+  id: string;
+  label: string;
+  type: string;
+  power: number;
+  cost: number;
+  guard: number;
+  counter: number;
+  evasion: number;
+  focus: number;
+  heal: number;
+  poison: number;
+  stun: boolean;
+  selfDamage: number;
 }
 
-function advanceCombatTurn(combat) {
+export interface FateKnotsEnemyAction {
+  id: string;
+  label: string;
+  power: number;
+  stun: boolean;
+}
+
+export function getCurrentFateKnotsCombatTurn(
+  combat: FateKnotsCombatState
+): FateKnotsTurnEntry | null {
+  if (combat.outcome !== "pending" || combat.turnOrder.length === 0) {
+    return null;
+  }
+  return combat.turnOrder[combat.activeTurnIndex] ?? null;
+}
+
+function advanceCombatTurn(combat: FateKnotsCombatState): FateKnotsTurnEntry | null {
   if (!combat.turnOrder.length) {
     return null;
   }
@@ -47,25 +77,38 @@ function advanceCombatTurn(combat) {
   return getCurrentFateKnotsCombatTurn(combat);
 }
 
-function buildEnemyAction(combat, enemyActionsById) {
+function buildEnemyAction(
+  combat: FateKnotsCombatState,
+  enemyActionsById: Map<string, FateKnotsEnemyAction>
+): FateKnotsEnemyAction {
   const enemy = combat.enemy;
-  const actionId = enemy.actionSequence[enemy.actionIndex % Math.max(enemy.actionSequence.length, 1)] || "lash";
-  const action = enemyActionsById.get(actionId) || { id: actionId, label: actionId, power: enemy.attack, stun: false };
+  const actionId =
+    enemy.actionSequence[enemy.actionIndex % Math.max(enemy.actionSequence.length, 1)] || "lash";
+  const action = enemyActionsById.get(actionId) || {
+    id: actionId,
+    label: actionId,
+    power: enemy.attack,
+    stun: false,
+  };
   enemy.actionIndex += 1;
   return action;
 }
 
-export function getAvailableFateKnotsCombatActions(combat, seatId, cardsById) {
+export function getAvailableFateKnotsCombatActions(
+  combat: FateKnotsCombatState,
+  seatId: string,
+  cardsById: Map<string, FateKnotsCombatCard>
+): Array<FateKnotsCombatCard & { available: boolean }> {
   const actor = findCombatant(combat, seatId);
   if (!actor || actor.hp <= 0) {
     return [];
   }
   return actor.deck
-    .map(function (cardId) {
-      return cardsById.get(cardId) || null;
+    .map(function (cardId: string) {
+      return cardsById.get(cardId) ?? null;
     })
-    .filter(Boolean)
-    .map(function (card) {
+    .filter((card): card is FateKnotsCombatCard => card !== null && card !== undefined)
+    .map(function (card: FateKnotsCombatCard) {
       return {
         ...card,
         available: actor.energy >= card.cost,
@@ -73,7 +116,12 @@ export function getAvailableFateKnotsCombatActions(combat, seatId, cardsById) {
     });
 }
 
-export function applyFateKnotsCombatAction(combat, seatId, actionId, cardsById) {
+export function applyFateKnotsCombatAction(
+  combat: FateKnotsCombatState,
+  seatId: string,
+  actionId: string,
+  cardsById: Map<string, FateKnotsCombatCard>
+): { success: boolean; reason?: string; combat?: FateKnotsCombatState } {
   const turn = getCurrentFateKnotsCombatTurn(combat);
   if (!turn || turn.side !== "party" || turn.seatId !== seatId) {
     return { success: false, reason: "turn-mismatch" };
@@ -112,7 +160,10 @@ export function applyFateKnotsCombatAction(combat, seatId, actionId, cardsById) 
     if (damageResult.evaded) {
       pushCombatLog(combat, `${combat.enemy.label} slips away from ${card.label}.`);
     } else {
-      pushCombatLog(combat, `${actor.nickname} uses ${card.label} for ${damageResult.applied} damage.`);
+      pushCombatLog(
+        combat,
+        `${actor.nickname} uses ${card.label} for ${damageResult.applied} damage.`
+      );
     }
     if (card.poison > 0) {
       combat.enemy.status.poison += card.poison;
@@ -145,7 +196,10 @@ export function applyFateKnotsCombatAction(combat, seatId, actionId, cardsById) 
   return { success: true, combat };
 }
 
-export function settleAutomaticFateKnotsCombatTurns(combat, enemyActionsById) {
+export function settleAutomaticFateKnotsCombatTurns(
+  combat: FateKnotsCombatState,
+  enemyActionsById: Map<string, FateKnotsEnemyAction>
+): FateKnotsCombatState {
   while (combat.outcome === "pending") {
     const turn = getCurrentFateKnotsCombatTurn(combat);
     if (!turn) {
@@ -181,7 +235,10 @@ export function settleAutomaticFateKnotsCombatTurns(combat, enemyActionsById) {
       continue;
     }
 
-    const target = getLivingPartyMembers(combat).sort(function (left, right) {
+    const target = getLivingPartyMembers(combat).sort(function (
+      left: FateKnotsCombatant,
+      right: FateKnotsCombatant
+    ) {
       if (left.hp !== right.hp) {
         return left.hp - right.hp;
       }
@@ -197,7 +254,10 @@ export function settleAutomaticFateKnotsCombatTurns(combat, enemyActionsById) {
     if (damageResult.evaded) {
       pushCombatLog(combat, `${target.nickname} evades ${action.label}.`);
     } else {
-      pushCombatLog(combat, `${combat.enemy.label} uses ${action.label} on ${target.nickname} for ${damageResult.applied} damage.`);
+      pushCombatLog(
+        combat,
+        `${combat.enemy.label} uses ${action.label} on ${target.nickname} for ${damageResult.applied} damage.`
+      );
     }
     if (action.stun === true && target.hp > 0) {
       target.status.stunned = true;
@@ -213,7 +273,7 @@ export function settleAutomaticFateKnotsCombatTurns(combat, enemyActionsById) {
   return combat;
 }
 
-export function buildFateKnotsCombatTurnId(combat) {
+export function buildFateKnotsCombatTurnId(combat: FateKnotsCombatState): string | null {
   const turn = getCurrentFateKnotsCombatTurn(combat);
   if (!turn) {
     return null;

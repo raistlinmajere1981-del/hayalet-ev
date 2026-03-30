@@ -1,7 +1,7 @@
-export function createMediaSourceFileRuntime(deps) {
+export function createMediaSourceFileRuntime(deps: any) {
   const { asNonEmptyString, getSourceConfig, toRecord } = deps;
 
-  function normalizeMimeType(fileName, kind) {
+  function normalizeMimeType(fileName: unknown, kind: string) {
     const lowerName = String(fileName || "").toLowerCase();
     if (kind === "audio") {
       if (lowerName.endsWith(".m4a")) return "audio/mp4";
@@ -26,7 +26,7 @@ export function createMediaSourceFileRuntime(deps) {
     return "video/mp4";
   }
 
-  function stripMimeParameters(value) {
+  function stripMimeParameters(value: unknown) {
     const rawValue = asNonEmptyString(value);
     if (rawValue === null) {
       return null;
@@ -36,7 +36,7 @@ export function createMediaSourceFileRuntime(deps) {
     return normalized || null;
   }
 
-  function getFileExtension(fileName) {
+  function getFileExtension(fileName: unknown) {
     const rawValue = asNonEmptyString(fileName);
     if (rawValue === null) {
       return null;
@@ -46,24 +46,26 @@ export function createMediaSourceFileRuntime(deps) {
     return match ? match[1] : null;
   }
 
-  function getSupportedMimeTypes(sourcePresets, kind) {
+  function getSupportedMimeTypes(sourcePresets: any, kind: string) {
     const sourceConfig = getSourceConfig(sourcePresets, kind);
     return toRecord(sourceConfig).supportedMimeTypes instanceof Array
       ? toRecord(sourceConfig).supportedMimeTypes.map(stripMimeParameters).filter(Boolean)
       : [];
   }
 
-  function getSupportedExtensions(sourcePresets, kind) {
+  function getSupportedExtensions(sourcePresets: any, kind: string) {
     const sourceConfig = getSourceConfig(sourcePresets, kind);
-    const filters = Array.isArray(sourceConfig.fileDialogFilters) ? sourceConfig.fileDialogFilters : [];
-    const values = [];
+    const filters = Array.isArray(sourceConfig.fileDialogFilters)
+      ? sourceConfig.fileDialogFilters
+      : [];
+    const values: string[] = [];
 
-    filters.forEach(function (filter) {
-      if (!filter || Array.isArray(filter.extensions) === false) {
+    filters.forEach(function (filter: Record<string, unknown>) {
+      if (!filter || Array.isArray(filter["extensions"]) === false) {
         return;
       }
 
-      filter.extensions.forEach(function (extension) {
+      filter["extensions"].forEach(function (extension: unknown) {
         const normalized = asNonEmptyString(extension);
         if (normalized) {
           values.push(normalized.toLowerCase().replace(/^\./, ""));
@@ -74,7 +76,12 @@ export function createMediaSourceFileRuntime(deps) {
     return Array.from(new Set(values));
   }
 
-  function validateSourceCandidate(runtime, kind, storedFileName, mimeType) {
+  function validateSourceCandidate(
+    runtime: any,
+    kind: string,
+    storedFileName: unknown,
+    mimeType: unknown
+  ) {
     const normalizedMimeType = stripMimeParameters(mimeType);
     const normalizedExtension = getFileExtension(storedFileName);
     const supportedMimeTypes = getSupportedMimeTypes(runtime.sourcePresets, kind);
@@ -83,7 +90,8 @@ export function createMediaSourceFileRuntime(deps) {
       normalizedExtension !== null && supportedExtensions.includes(normalizedExtension);
     const mimeMatches =
       normalizedMimeType !== null &&
-      (supportedMimeTypes.includes(normalizedMimeType) || normalizedMimeType.startsWith(`${kind}/`));
+      (supportedMimeTypes.includes(normalizedMimeType) ||
+        normalizedMimeType.startsWith(`${kind}/`));
 
     if (
       normalizedMimeType === "text/html" ||
@@ -119,10 +127,10 @@ export function createMediaSourceFileRuntime(deps) {
     };
   }
 
-  function findCompanionExecutableName(toolEntry, baseName) {
+  function findCompanionExecutableName(toolEntry: any, baseName: string) {
     const companionPaths = toRecord(toRecord(toolEntry).companionPaths);
     const keys = Object.keys(companionPaths);
-    const match = keys.find(function (key) {
+    const match = keys.find(function (key: string) {
       return (
         key.toLowerCase() === baseName.toLowerCase() ||
         key.toLowerCase().startsWith(`${baseName.toLowerCase()}.`)
@@ -131,7 +139,7 @@ export function createMediaSourceFileRuntime(deps) {
     return match || null;
   }
 
-  function deriveFilename(urlValue, kind, hint) {
+  function deriveFilename(urlValue: string, kind: string, hint: unknown) {
     const hintValue = asNonEmptyString(hint);
     if (hintValue) {
       return hintValue;

@@ -16,9 +16,7 @@ function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
-function isSuccessfulSendResult(
-  result: TeamTetrisRemoteSendResult
-): result is {
+function isSuccessfulSendResult(result: TeamTetrisRemoteSendResult): result is {
   success: true;
   localSessionId?: unknown;
   remoteUserId?: unknown;
@@ -26,7 +24,7 @@ function isSuccessfulSendResult(
   return !!result && result.success === true;
 }
 
-async function sendTeamTetrisRemoteStart(api, state) {
+async function sendTeamTetrisRemoteStart(api: any, state: any) {
   const context = loadContext(api);
   const remoteUserId = context.slots.us1.remoteUserId || state.remoteUserId;
   if (!state.match || !remoteUserId) {
@@ -62,7 +60,7 @@ async function sendTeamTetrisRemoteStart(api, state) {
   return sendResult || { success: false };
 }
 
-async function sendTeamTetrisRemoteReset(api, state) {
+async function sendTeamTetrisRemoteReset(api: any, state: any) {
   if (!state.matchId || !state.remoteUserId) {
     return { success: true };
   }
@@ -83,7 +81,7 @@ async function sendTeamTetrisRemoteReset(api, state) {
   });
 }
 
-async function sendTeamTetrisRemoteMove(api, state, movePayload, boardHashBeforeMove) {
+async function sendTeamTetrisRemoteMove(api: any, state: any, movePayload: any, boardHashBeforeMove: any) {
   if (!state.remoteUserId) {
     return { success: true };
   }
@@ -113,8 +111,4 @@ async function sendTeamTetrisRemoteMove(api, state, movePayload, boardHashBefore
   return sendResult || { success: false };
 }
 
-export {
-  sendTeamTetrisRemoteMove,
-  sendTeamTetrisRemoteReset,
-  sendTeamTetrisRemoteStart,
-};
+export { sendTeamTetrisRemoteMove, sendTeamTetrisRemoteReset, sendTeamTetrisRemoteStart };

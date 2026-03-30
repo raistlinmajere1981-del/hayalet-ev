@@ -1,4 +1,4 @@
-export function createAudioAnalysisResultRuntime(deps) {
+export function createAudioAnalysisResultRuntime(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const textFromKey = deps.textFromKey;
@@ -9,11 +9,11 @@ export function createAudioAnalysisResultRuntime(deps) {
   const getAudioAnalysisModuleTitle = deps.getAudioAnalysisModuleTitle;
   const getAudioAnalysisModuleSummary = deps.getAudioAnalysisModuleSummary;
 
-  function renderAudioAnalysisResultCard(moduleEntry) {
+  function renderAudioAnalysisResultCard(moduleEntry: any) {
     const metrics = Array.isArray(moduleEntry.metrics) ? moduleEntry.metrics.map(toRecord) : [];
     const providerLabels = Array.isArray(moduleEntry.providerIds)
       ? moduleEntry.providerIds
-          .map(function (providerId) {
+          .map(function (providerId: any) {
             return getAudioAnalysisProviderLabel(providerId);
           })
           .filter(Boolean)
@@ -59,7 +59,7 @@ export function createAudioAnalysisResultRuntime(deps) {
                 <ul class="lab-bullet-list">
                   ${metrics
                     .slice(0, 4)
-                    .map(function (metric) {
+                    .map(function (metric: any) {
                       return `<li>${escapeHtml(
                         `${metric.label || textFromKey(metric.labelKey || "") || metric.id || "--"}: ${
                           metric.value || "--"
@@ -80,7 +80,7 @@ export function createAudioAnalysisResultRuntime(deps) {
                 <ul class="lab-bullet-list">
                   ${moduleEntry.blockers
                     .slice(0, 3)
-                    .map(function (entry) {
+                    .map(function (entry: any) {
                       return `<li>${escapeHtml(entry)}</li>`;
                     })
                     .join("")}
@@ -97,7 +97,7 @@ export function createAudioAnalysisResultRuntime(deps) {
                 <ul class="lab-bullet-list">
                   ${moduleEntry.warnings
                     .slice(0, 3)
-                    .map(function (entry) {
+                    .map(function (entry: any) {
                       return `<li>${escapeHtml(entry)}</li>`;
                     })
                     .join("")}
@@ -127,7 +127,7 @@ export function createAudioAnalysisResultRuntime(deps) {
         </div>
         <div class="lab-tool-grid">
           ${moduleEntries
-            .map(function (moduleEntry) {
+            .map(function (moduleEntry: any) {
               return renderAudioAnalysisResultCard(moduleEntry);
             })
             .join("")}

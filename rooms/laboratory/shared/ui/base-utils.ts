@@ -1,26 +1,26 @@
-export function resolveLaboratoryLocale(value) {
+export function resolveLaboratoryLocale(value: any) {
   return typeof value === "string" && value.toLowerCase().startsWith("tr") ? "tr" : "en";
 }
 
-export function toLaboratoryRecord(value) {
+export function toLaboratoryRecord(value: any) {
   if (value !== null && typeof value === "object" && Array.isArray(value) === false) {
     return value;
   }
   return {};
 }
 
-export function cloneLaboratoryValue(value) {
+export function cloneLaboratoryValue(value: any) {
   return JSON.parse(JSON.stringify(value));
 }
 
-export function readLaboratoryFormValue(target) {
+export function readLaboratoryFormValue(target: any) {
   if (target instanceof HTMLInputElement && target.type === "number") {
     return target.value === "" ? null : Number(target.value);
   }
   return target.value;
 }
 
-export function readLaboratoryValue(source, path) {
+export function readLaboratoryValue(source: any, path: any) {
   let current = source;
   for (let index = 0; index < path.length; index += 1) {
     const key = path[index];
@@ -32,7 +32,7 @@ export function readLaboratoryValue(source, path) {
   return current;
 }
 
-export function escapeLaboratoryHtml(value) {
+export function escapeLaboratoryHtml(value: any) {
   return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -41,7 +41,7 @@ export function escapeLaboratoryHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-export function formatLaboratoryTime(ms, totalDurationMs) {
+export function formatLaboratoryTime(ms: any, totalDurationMs: any) {
   const total = Math.max(0, Math.min(totalDurationMs, Math.round(ms)));
   const minutes = Math.floor(total / 60000);
   const seconds = Math.floor((total % 60000) / 1000);
@@ -53,7 +53,7 @@ export function formatLaboratoryTime(ms, totalDurationMs) {
   ].join(":");
 }
 
-export function formatLaboratoryDuration(seconds) {
+export function formatLaboratoryDuration(seconds: any) {
   if (typeof seconds !== "number" || Number.isFinite(seconds) === false || seconds <= 0) {
     return "--";
   }
@@ -62,12 +62,14 @@ export function formatLaboratoryDuration(seconds) {
   const minutes = Math.floor((total % 3600) / 60);
   const remainingSeconds = total % 60;
   if (hours > 0) {
-    return [hours, minutes, remainingSeconds].map((item) => String(item).padStart(2, "0")).join(":");
+    return [hours, minutes, remainingSeconds]
+      .map((item: any) => String(item).padStart(2, "0"))
+      .join(":");
   }
-  return [minutes, remainingSeconds].map((item) => String(item).padStart(2, "0")).join(":");
+  return [minutes, remainingSeconds].map((item: any) => String(item).padStart(2, "0")).join(":");
 }
 
-export function formatLaboratoryDateTime(value, locale) {
+export function formatLaboratoryDateTime(value: any, locale: any) {
   if (typeof value !== "string" || value.trim() === "") {
     return "--";
   }
@@ -78,12 +80,12 @@ export function formatLaboratoryDateTime(value, locale) {
   return date.toLocaleString(locale === "tr" ? "tr-TR" : "en-US");
 }
 
-export function formatLaboratoryStatusLabel(value) {
+export function formatLaboratoryStatusLabel(value: any) {
   const token = typeof value === "string" ? value : "idle";
   return token
     .split(/[-_]/)
     .filter(Boolean)
-    .map(function (segment) {
+    .map(function (segment: any) {
       return segment.charAt(0).toUpperCase() + segment.slice(1);
     })
     .join(" ");

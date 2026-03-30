@@ -1,4 +1,4 @@
-export function createMediaAnalysisEditWorkspacePanels(deps) {
+export function createMediaAnalysisEditWorkspacePanels(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
@@ -24,9 +24,11 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
   const getCurrentFocusRegionId = deps.getCurrentFocusRegionId;
   const renderEditTextField = deps.renderEditTextField;
 
-  function renderEditMediaMarkup(asset, cropNormalized) {
+  function renderEditMediaMarkup(asset: any, cropNormalized: any) {
     const previewUrl =
-      typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== "" ? asset.previewUrl : null;
+      typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== ""
+        ? asset.previewUrl
+        : null;
     if (previewUrl === null) {
       return `
         <div class="lab-empty-preview">
@@ -60,11 +62,11 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
       const bars =
         state.ui.audioAnalysis.url === previewUrl && state.ui.audioAnalysis.bars.length > 0
           ? state.ui.audioAnalysis.bars
-          : Array.from({ length: 42 }, function (_, index) {
+          : Array.from({ length: 42 }, function (_: any, index: any) {
               return 16 + ((index * 11) % 36);
             });
       const spectrogram =
-        (Array.isArray(asset.artifacts) ? asset.artifacts : []).find(function (entry) {
+        (Array.isArray(asset.artifacts) ? asset.artifacts : []).find(function (entry: any) {
           return entry.kind === "spectrogram" && typeof entry.previewUrl === "string";
         }) || null;
       return `
@@ -76,7 +78,7 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
           }
           <div class="lab-audio-bars">
             ${bars
-              .map(function (height) {
+              .map(function (height: any) {
                 return `<span style="height:${height}px"></span>`;
               })
               .join("")}
@@ -95,7 +97,9 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
   function renderEditPresetChooser() {
     const presetOptions = getCurrentEditPresetOptions();
     const activePresetId =
-      typeof getCurrentEditDraft().activePresetId === "string" ? getCurrentEditDraft().activePresetId : null;
+      typeof getCurrentEditDraft().activePresetId === "string"
+        ? getCurrentEditDraft().activePresetId
+        : null;
 
     if (presetOptions.length === 0) {
       return "";
@@ -111,7 +115,7 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
         </div>
         <div class="lab-chip-row">
           ${presetOptions
-            .map(function (preset) {
+            .map(function (preset: any) {
               return `
                 <button
                   class="lab-choice-chip"
@@ -163,7 +167,8 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
               ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "duration"]), formatDuration(typeof toRecord(asset.metadata).durationSeconds === "number" ? toRecord(asset.metadata).durationSeconds : getPreferredSourceDuration(asset.previewUrl)))}
               ${renderPreviewMetaRow(
                 text(["mediaAnalysis", "shared", "resolution"]),
-                typeof toRecord(asset.metadata).width === "number" && typeof toRecord(asset.metadata).height === "number"
+                typeof toRecord(asset.metadata).width === "number" &&
+                  typeof toRecord(asset.metadata).height === "number"
                   ? `${asset.metadata.width} x ${asset.metadata.height}`
                   : getPreferredSourceResolution(getProjectSource().previewUrl || null)
               )}
@@ -175,7 +180,7 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
                 ? `
                   <div class="lab-status-stack">
                     ${activeEditJobs
-                      .map(function (activeEditJob) {
+                      .map(function (activeEditJob: any) {
                         return `
                           <div class="lab-status-card">
                             <div class="lab-status-card__head">
@@ -218,10 +223,12 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
             <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "commonSubtitle"]))}</h2>
           </div>
         </div>
-        ${kind !== "audio" ? `
+        ${
+          kind !== "audio"
+            ? `
           <div class="lab-chip-row">
             ${Object.keys(focusRegions)
-              .map(function (regionId) {
+              .map(function (regionId: any) {
                 return `
                   <button
                     class="lab-choice-chip"
@@ -236,7 +243,9 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
               })
               .join("")}
           </div>
-        ` : ""}
+        `
+            : ""
+        }
         <div class="lab-form-grid">
           ${renderEditTextField(
             "recipe.common.outputNameHint",

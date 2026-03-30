@@ -57,7 +57,7 @@ export function createAudioAnalysisParserRuntime() {
     const matches = Array.from(String(stderrValue || "").match(/black_duration:([0-9.]+)/g) || []);
     return {
       count: matches.length,
-      totalDurationSeconds: matches.reduce(function (total, match) {
+      totalDurationSeconds: matches.reduce(function (total: any, match: any) {
         const value = Number(match.split(":")[1]);
         return total + (Number.isFinite(value) ? value : 0);
       }, 0),
@@ -68,7 +68,7 @@ export function createAudioAnalysisParserRuntime() {
     const matches = Array.from(String(stderrValue || "").match(/freeze_duration:([0-9.]+)/g) || []);
     return {
       count: matches.length,
-      totalDurationSeconds: matches.reduce(function (total, match) {
+      totalDurationSeconds: matches.reduce(function (total: any, match: any) {
         const value = Number(match.split(":")[1]);
         return total + (Number.isFinite(value) ? value : 0);
       }, 0),
@@ -76,10 +76,12 @@ export function createAudioAnalysisParserRuntime() {
   }
 
   function parseSilenceDetectLog(stderrValue: unknown): DetectionLogSummary {
-    const matches = Array.from(String(stderrValue || "").match(/silence_duration: ([0-9.]+)/g) || []);
+    const matches = Array.from(
+      String(stderrValue || "").match(/silence_duration: ([0-9.]+)/g) || []
+    );
     return {
       count: matches.length,
-      totalDurationSeconds: matches.reduce(function (total, match) {
+      totalDurationSeconds: matches.reduce(function (total: any, match: any) {
         const value = Number(match.split(": ")[1]);
         return total + (Number.isFinite(value) ? value : 0);
       }, 0),
@@ -96,14 +98,14 @@ export function createAudioAnalysisParserRuntime() {
   }
 
   function parseAspectralStatsText(rawText: unknown): SpectralStatsSummary {
-    const rawMetrics = (String(rawText || "").match(/lavfi\.aspectralstats\.[a-zA-Z0-9_.-]+=-?[0-9.]+/g) || []).map(
-      function (entry) {
-        return entry.trim();
-      }
-    );
+    const rawMetrics = (
+      String(rawText || "").match(/lavfi\.aspectralstats\.[a-zA-Z0-9_.-]+=-?[0-9.]+/g) || []
+    ).map(function (entry: any) {
+      return entry.trim();
+    });
     const metricSamples: Record<string, number[]> = {};
 
-    rawMetrics.forEach(function (entry) {
+    rawMetrics.forEach(function (entry: any) {
       const match = entry.match(/lavfi\.aspectralstats\.([a-zA-Z0-9_.-]+)=(-?[0-9.]+)/);
       if (!match) {
         return;
@@ -120,9 +122,9 @@ export function createAudioAnalysisParserRuntime() {
     });
 
     return (["centroid", "rolloff", "flatness", "flux"] as const).reduce<SpectralStatsSummary>(
-      function (accumulator, metricId) {
+      function (accumulator: any, metricId: any) {
         const samples = Array.isArray(metricSamples[metricId]) ? metricSamples[metricId] : [];
-        const total = samples.reduce(function (sum, sample) {
+        const total = samples.reduce(function (sum: any, sample: any) {
           return sum + sample;
         }, 0);
         accumulator[metricId] = {
@@ -138,14 +140,14 @@ export function createAudioAnalysisParserRuntime() {
         rolloff: { sampleCount: 0, mean: null, min: null, max: null },
         flatness: { sampleCount: 0, mean: null, min: null, max: null },
         flux: { sampleCount: 0, mean: null, min: null, max: null },
-      },
+      }
     );
   }
 
   function parseCsvTable(rawText: unknown): CsvTable {
     const lines = String(rawText || "")
       .split(/\r?\n/)
-      .map(function (entry) {
+      .map(function (entry: any) {
         return entry.trim();
       })
       .filter(Boolean);
@@ -157,17 +159,17 @@ export function createAudioAnalysisParserRuntime() {
       };
     }
 
-    const header = lines[0].split(";").map(function (entry) {
+    const header = lines[0].split(";").map(function (entry: any) {
       return entry.trim();
     });
-    const rows = lines.slice(1).map(function (line) {
-      const values = line.split(";").map(function (entry) {
+    const rows = lines.slice(1).map(function (line: any) {
+      const values = line.split(";").map(function (entry: any) {
         return entry.trim();
       });
-      return header.reduce<CsvTableRow>(function (record, key, index) {
+      return header.reduce(function (record: CsvTableRow, key: string, index: number): CsvTableRow {
         record[key] = values[index] || "";
         return record;
-      }, {});
+      }, {} as CsvTableRow);
     });
 
     return {
@@ -177,10 +179,10 @@ export function createAudioAnalysisParserRuntime() {
   }
 
   function buildNumericSummary(values: number[]): NumericSummary {
-    const samples = values.filter(function (entry) {
+    const samples = values.filter(function (entry: any) {
       return Number.isFinite(entry);
     });
-    const total = samples.reduce(function (sum, sample) {
+    const total = samples.reduce(function (sum: any, sample: any) {
       return sum + sample;
     }, 0);
     return {
@@ -192,9 +194,11 @@ export function createAudioAnalysisParserRuntime() {
   }
 
   function findProsodyColumn(header: string[], pattern: RegExp): string | null {
-    return header.find(function (column) {
-      return pattern.test(column);
-    }) || null;
+    return (
+      header.find(function (column: any) {
+        return pattern.test(column);
+      }) || null
+    );
   }
 
   function buildProsodySummaryFromCsv(rawText: unknown): ProsodySummary {
@@ -205,17 +209,17 @@ export function createAudioAnalysisParserRuntime() {
     const f0Key = findProsodyColumn(header, /(^|[_-])F0/i);
     const loudnessKey = findProsodyColumn(header, /loudness/i);
     const voiceProbKey = findProsodyColumn(header, /voiceprob/i);
-    const f0Values = [];
-    const loudnessValues = [];
-    const voiceProbValues = [];
+    const f0Values: number[] = [];
+    const loudnessValues: number[] = [];
+    const voiceProbValues: number[] = [];
     let voicedFrames = 0;
     let totalDurationSeconds = 0;
     let estimatedPauseCount = 0;
     let previousVoiced = false;
-    let firstTimestamp = null;
-    let lastTimestamp = null;
+    let firstTimestamp: number | null = null;
+    let lastTimestamp: number | null = null;
 
-    rows.forEach(function (record) {
+    rows.forEach(function (record: any) {
       const timestampValue = Number(timestampKey ? record[timestampKey] : NaN);
       const f0Value = Number(f0Key ? record[f0Key] : NaN);
       const loudnessValue = Number(loudnessKey ? record[loudnessKey] : NaN);
@@ -237,7 +241,9 @@ export function createAudioAnalysisParserRuntime() {
         voiceProbValues.push(voiceProbValue);
       }
 
-      const voiced = Number.isFinite(voiceProbValue) ? voiceProbValue >= 0.5 : Number.isFinite(f0Value) && f0Value > 0;
+      const voiced = Number.isFinite(voiceProbValue)
+        ? voiceProbValue >= 0.5
+        : Number.isFinite(f0Value) && f0Value > 0;
       if (voiced) {
         voicedFrames += 1;
       }
@@ -282,9 +288,7 @@ export function createAudioAnalysisParserRuntime() {
     };
   }
 
-  function buildEmotionHeuristicFromProsody(
-    prosodySummary: unknown,
-  ): EmotionHeuristicSummary {
+  function buildEmotionHeuristicFromProsody(prosodySummary: unknown): EmotionHeuristicSummary {
     const summary =
       prosodySummary && typeof prosodySummary === "object"
         ? (prosodySummary as Partial<ProsodySummary>)
@@ -339,7 +343,8 @@ export function createAudioAnalysisParserRuntime() {
       score: score,
       confidence: Math.abs(score) >= 3 ? "medium" : "low",
       cues: cues,
-      disclaimer: "Heuristic only. This module suggests coarse arousal-style labels and is not a factual emotion classifier.",
+      disclaimer:
+        "Heuristic only. This module suggests coarse arousal-style labels and is not a factual emotion classifier.",
       prosodySummary: summary,
     };
   }

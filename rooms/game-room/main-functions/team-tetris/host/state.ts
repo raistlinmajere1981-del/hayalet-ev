@@ -88,7 +88,7 @@ export const TEAM_TETRIS_COMMAND_COPY = {
   },
 };
 
-export function createInitialTeamTetrisState(locale) {
+export function createInitialTeamTetrisState(locale: any) {
   return {
     locale: normalizeLocale(locale),
     schemaVersion: TEAM_TETRIS_SCHEMA_VERSION,
@@ -98,16 +98,16 @@ export function createInitialTeamTetrisState(locale) {
     hiddenPairs: true,
     revealPairsOnFinish: true,
     blockedReason: "",
-    matchId: null,
-    match: null,
-    localSessionId: null,
-    remoteUserId: null,
-    lastRemoteTransportMessageId: null,
-    lastRemoteTurnIndex: null,
+    matchId: null as string | null,
+    match: null as any,
+    localSessionId: null as string | null,
+    remoteUserId: null as string | null,
+    lastRemoteTransportMessageId: null as string | null,
+    lastRemoteTurnIndex: null as number | null,
   };
 }
 
-export function normalizeTeamTetrisState(candidate, localeFallback) {
+export function normalizeTeamTetrisState(candidate: any, localeFallback: any) {
   const source =
     candidate && typeof candidate === "object" && Array.isArray(candidate) === false
       ? candidate
@@ -150,11 +150,11 @@ export function normalizeTeamTetrisState(candidate, localeFallback) {
   return state;
 }
 
-export function loadTeamTetrisState(api) {
+export function loadTeamTetrisState(api: any) {
   return normalizeTeamTetrisState(api.getState("team-tetris-game"), readLocale(api));
 }
 
-export function saveTeamTetrisState(api, state) {
+export function saveTeamTetrisState(api: any, state: any) {
   const normalized = normalizeTeamTetrisState(state, readLocale(api));
   normalized.locale = readLocale(api);
   api.setState("team-tetris-game", normalized);

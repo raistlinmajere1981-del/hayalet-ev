@@ -1,11 +1,4 @@
-type LaboratoryUiDraftRuntime<
-  TDrafts,
-  TEditDraft,
-  TNestedPatch,
-  TPath,
-  TValue,
-  TDraftPayload,
-> = {
+type LaboratoryUiDraftRuntime<TDrafts, TEditDraft, TNestedPatch, TPath, TValue, TDraftPayload> = {
   getCurrentDrafts: () => TDrafts;
   getCurrentEditDraft: () => TEditDraft;
   buildNestedPatch: (path: TPath, value: TValue) => TNestedPatch;
@@ -46,7 +39,7 @@ export function createLaboratoryUiDraftAccessRuntime<
     TPath,
     TValue,
     TDraftPayload
-  >,
+  >
 ) {
   const laboratoryUiDraftRuntime = deps.laboratoryUiDraftRuntime;
 

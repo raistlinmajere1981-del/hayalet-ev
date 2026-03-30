@@ -6,7 +6,10 @@ import {
   fateKnotsSelectionsManifest,
 } from "../data/runtime-content.module.js";
 import { listFateKnotsAssetsByKind, loadFateKnotsAssetRegistry } from "./asset-registry.js";
-import { normalizeCombatCardsManifest, normalizeCombatConfigManifest } from "./content-loader-combat.js";
+import {
+  normalizeCombatCardsManifest,
+  normalizeCombatConfigManifest,
+} from "./content-loader-combat.js";
 import { dataDir, featureDir, readGeneratedManifest } from "./content-loader-shared.js";
 import { normalizeSelectionsManifest } from "./content-loader-selections.js";
 import { normalizeMapManifest, normalizeScenarioManifest } from "./content-loader-world.js";
@@ -60,27 +63,41 @@ export function loadFateKnotsContentRegistry() {
     combatCards,
     combatConfig,
     cardsById: combatCards.cardMap,
-    classesById: new Map(selections.classes.map(function (entry) {
-      return [entry.id, entry];
-    })),
-    avatarsById: new Map(selections.avatars.map(function (entry) {
-      return [entry.id, entry];
-    })),
-    backgroundsById: new Map(selections.backgrounds.map(function (entry) {
-      return [entry.id, entry];
-    })),
-    scenarioStepsById: new Map(scenario.steps.map(function (entry) {
-      return [entry.id, entry];
-    })),
-    mapNodesById: new Map(map.nodes.map(function (entry) {
-      return [entry.id, entry];
-    })),
-    encountersById: new Map(combatConfig.encounters.map(function (entry) {
-      return [entry.id, entry];
-    })),
-    enemyActionsById: new Map(combatConfig.enemyActions.map(function (entry) {
-      return [entry.id, entry];
-    })),
+    classesById: new Map(
+      selections.classes.map(function (entry: any) {
+        return [entry.id, entry];
+      })
+    ),
+    avatarsById: new Map(
+      selections.avatars.map(function (entry: any) {
+        return [entry.id, entry];
+      })
+    ),
+    backgroundsById: new Map(
+      selections.backgrounds.map(function (entry: any) {
+        return [entry.id, entry];
+      })
+    ),
+    scenarioStepsById: new Map(
+      scenario.steps.map(function (entry: any) {
+        return [entry.id, entry];
+      })
+    ),
+    mapNodesById: new Map(
+      map.nodes.map(function (entry: any) {
+        return [entry.id, entry];
+      })
+    ),
+    encountersById: new Map(
+      combatConfig.encounters.map(function (entry: any) {
+        return [entry.id, entry];
+      })
+    ),
+    enemyActionsById: new Map(
+      combatConfig.enemyActions.map(function (entry: any) {
+        return [entry.id, entry];
+      })
+    ),
     assetCoverage: {
       avatars: selections.avatars.length,
       classes: selections.classes.length,

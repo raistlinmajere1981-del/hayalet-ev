@@ -116,9 +116,16 @@ export async function testPrepareInput(ctx: TestContext): Promise<ProviderTestRe
       }
 
       const afterValue = readValue();
+      const visible =
+        input instanceof HTMLElement
+          ? input.offsetWidth > 0 || input.offsetHeight > 0 || input.getClientRects().length > 0
+          : true;
+      const enabled = input.getAttribute('aria-disabled') !== 'true' && input.disabled !== true;
 
       return {
         exists: true,
+        visible,
+        enabled,
         matchedSelector: resolvedInput.selector,
         hadContent,
         cleared: afterValue.trim() === '',
@@ -128,6 +135,8 @@ export async function testPrepareInput(ctx: TestContext): Promise<ProviderTestRe
       };
     })();`)) as {
       exists?: boolean;
+      visible?: boolean;
+      enabled?: boolean;
       matchedSelector?: string;
       hadContent?: boolean;
       cleared?: boolean;
@@ -152,7 +161,12 @@ export async function testPrepareInput(ctx: TestContext): Promise<ProviderTestRe
       message: result.hadContent === true ? "Input field content cleared" : "Input field is ready",
       details: {
         selector: result.matchedSelector ?? ctx.config.selectors.inputField,
-        element: result,
+        element: {
+          tagName: result.tagName ?? "unknown",
+          visible: result.visible === true,
+          enabled: result.enabled !== false,
+          ...(typeof result.afterValue === "string" ? { textContent: result.afterValue } : {}),
+        },
       },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -554,7 +568,9 @@ export async function testTextInjection(ctx: TestContext): Promise<ProviderTestR
     }
 
     if (result.success !== true) {
-      throw new Error(result.error ?? (await interactiveT(ctx, "textInjection.providerConfigMissing")));
+      throw new Error(
+        result.error ?? (await interactiveT(ctx, "textInjection.providerConfigMissing"))
+      );
     }
 
     throw new Error(
@@ -747,11 +763,14 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
       })()
     `;
 
-    const visible = await ctx.waitForCondition(async () => {
-      const result = (await ctx.executeScript(script)) as ElementCheckResult;
-      lastResult = result;
-      return result.exists === true && result.visible === true;
-    }, Math.max(PROVIDER_TEST.TIMEOUT_STOP_BUTTON, PROVIDER_TEST_DELAYS.STOP_BUTTON_THINKING_OBSERVE));
+    const visible = await ctx.waitForCondition(
+      async () => {
+        const result = (await ctx.executeScript(script)) as ElementCheckResult;
+        lastResult = result;
+        return result.exists === true && result.visible === true;
+      },
+      Math.max(PROVIDER_TEST.TIMEOUT_STOP_BUTTON, PROVIDER_TEST_DELAYS.STOP_BUTTON_THINKING_OBSERVE)
+    );
 
     if (visible) {
       return {

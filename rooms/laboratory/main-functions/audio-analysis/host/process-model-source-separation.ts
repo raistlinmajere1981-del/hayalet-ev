@@ -1,6 +1,6 @@
 import { getAudioAnalysisProcessRootDir } from "../../../shared/host/project-paths.js";
 
-export function createAudioAnalysisSourceSeparationModelRunner(deps) {
+export function createAudioAnalysisSourceSeparationModelRunner(deps: any) {
   const {
     clone,
     createProcessArtifact,
@@ -13,14 +13,14 @@ export function createAudioAnalysisSourceSeparationModelRunner(deps) {
   } = deps;
 
   return async function runSourceSeparationAudioAnalyzer(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    moduleOutputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: any,
+    jobId: any,
+    target: any,
+    artifactBase: any,
+    moduleOutputDir: any,
+    moduleId: any
   ) {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
@@ -50,10 +50,14 @@ export function createAudioAnalysisSourceSeparationModelRunner(deps) {
 
     const stemEntries = await listDirectory(stemDir);
     const stems = stemEntries
-      .filter(function (entry) {
-        return entry && entry.isDirectory !== true && /\.(wav|mp3|flac|ogg|m4a)$/i.test(String(entry.name || ""));
+      .filter(function (entry: any) {
+        return (
+          entry &&
+          entry.isDirectory !== true &&
+          /\.(wav|mp3|flac|ogg|m4a)$/i.test(String(entry.name || ""))
+        );
       })
-      .map(function (entry) {
+      .map(function (entry: any) {
         const fileName = String(entry.name || "");
         return {
           path: entry.path,
@@ -66,7 +70,9 @@ export function createAudioAnalysisSourceSeparationModelRunner(deps) {
       return {
         findings: [],
         artifacts: [],
-        warnings: ["Demucs finished without producing any stem files in the expected output directory."],
+        warnings: [
+          "Demucs finished without producing any stem files in the expected output directory.",
+        ],
         status: "failed",
         summary: "Source separation did not produce any isolated stems for the current target.",
       };
@@ -82,11 +88,17 @@ export function createAudioAnalysisSourceSeparationModelRunner(deps) {
     });
 
     const stemArtifacts = stems
-      .map(function (stem) {
-        return createProcessArtifact(moduleId, "isolated-track", stem.path, `Separated Stem - ${stem.stemName}`, {
-          stemName: stem.stemName,
-          modelName: modelName,
-        });
+      .map(function (stem: any) {
+        return createProcessArtifact(
+          moduleId,
+          "isolated-track",
+          stem.path,
+          `Separated Stem - ${stem.stemName}`,
+          {
+            stemName: stem.stemName,
+            modelName: modelName,
+          }
+        );
       })
       .filter(Boolean);
     const summaryArtifact = createProcessArtifact(
@@ -97,13 +109,13 @@ export function createAudioAnalysisSourceSeparationModelRunner(deps) {
       {
         modelName: modelName,
         stemCount: stems.length,
-        stemNames: stems.map(function (stem) {
+        stemNames: stems.map(function (stem: any) {
           return stem.stemName;
         }),
       }
     );
     const artifacts = [summaryArtifact].concat(stemArtifacts).filter(Boolean);
-    const artifactIds = artifacts.map(function (artifact) {
+    const artifactIds = artifacts.map(function (artifact: any) {
       return artifact.id;
     });
     const warningText =
@@ -118,7 +130,7 @@ export function createAudioAnalysisSourceSeparationModelRunner(deps) {
           "medium",
           "Separated stem bundle generated",
           `Demucs (${modelName}) produced ${stems.length} isolated stem file(s): ${stems
-            .map(function (stem) {
+            .map(function (stem: any) {
               return stem.stemName;
             })
             .join(", ")}. ${warningText}`,

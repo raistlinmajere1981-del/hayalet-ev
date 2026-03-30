@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-29T15:14:11.190Z",
+  "generatedAt": "2026-03-29T16:44:39.702Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -18,13 +18,13 @@
   "stats": {
     "filesScanned": 591,
     "filesWithComments": 119,
-    "commentsIndexed": 298,
-    "fileLevelComments": 227,
+    "commentsIndexed": 297,
+    "fileLevelComments": 226,
     "symbolLevelComments": 71,
     "prefixCounts": {
       "none": 39,
       "AI": 0,
-      "NOTE": 255,
+      "NOTE": 254,
       "WARNING": 4,
       "TODO": 0
     }
@@ -979,14 +979,14 @@
     },
     {
       "path": "electron/room-package-manager.ts",
-      "totalComments": 2,
+      "totalComments": 1,
       "byKind": {
-        "note": 2
+        "note": 1
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 2,
+        "NOTE": 1,
         "WARNING": 0,
         "TODO": 0
       },
@@ -994,18 +994,9 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 135,
-          "endLine": 135,
-          "text": "NOTE: Full room cleanup is opt-in so reconnecting a workspace room can reuse prior state.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 136,
-          "endLine": 136,
-          "text": "NOTE: `deleteData` is the only cleanup trigger for room runtime residue such as session partitions.",
+          "startLine": 133,
+          "endLine": 133,
+          "text": "NOTE: This path only runs for explicit data deletion, so runtime residue is always removed here.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -1880,8 +1871,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 269,
-          "endLine": 269,
+          "startLine": 282,
+          "endLine": 282,
           "text": "NOTE: In relay mode the user-side author actually comes from the peer AI.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1889,8 +1880,8 @@
         },
         {
           "kind": "note",
-          "startLine": 284,
-          "endLine": 284,
+          "startLine": 297,
+          "endLine": 297,
           "text": "NOTE: If the message contains a hev-sender tag (++cmd delivery), override the author.",
           "prefix": "NOTE",
           "scopeType": "file",

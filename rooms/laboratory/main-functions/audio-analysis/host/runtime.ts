@@ -3,7 +3,7 @@ import { createAudioAnalysisProjectionRuntime } from "./module-projection.js";
 import { createAudioAnalysisProcessRuntime } from "./process-runners.js";
 import { createAudioAnalysisStateRuntime } from "./state.js";
 
-export function createLaboratoryAudioAnalysisHostRuntime(deps) {
+export function createLaboratoryAudioAnalysisHostRuntime(deps: any) {
   const {
     asNonEmptyString,
     asNumber,
@@ -47,7 +47,7 @@ export function createLaboratoryAudioAnalysisHostRuntime(deps) {
     writeTextFile,
   } = deps;
 
-  function getAudioAnalysisRequiredToolIds(catalogEntry) {
+  function getAudioAnalysisRequiredToolIds(catalogEntry: any) {
     const source = toRecord(catalogEntry);
     const requiredToolIds = normalizeStringArray(source.requiredToolIds);
     return requiredToolIds.length > 0 ? requiredToolIds : normalizeStringArray(source.toolIds);

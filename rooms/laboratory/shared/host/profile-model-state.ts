@@ -17,44 +17,39 @@ type LaboratoryProfileModelStateRuntime = LaboratoryRecord & {
 type LaboratoryProjectStateRuntime = {
   readProfileModelDescriptor: (
     runtime: LaboratoryProfileModelStateRuntime,
-    modelId: string,
+    modelId: string
   ) => LaboratoryRecord;
   readProfileModelDescriptorMap: (
-    runtime: LaboratoryProfileModelStateRuntime,
+    runtime: LaboratoryProfileModelStateRuntime
   ) => Record<string, LaboratoryRecord | undefined>;
-  saveProfileModelState: (
-    runtime: LaboratoryProfileModelStateRuntime,
-  ) => unknown;
+  saveProfileModelState: (runtime: LaboratoryProfileModelStateRuntime) => unknown;
   saveToolState: (runtime: LaboratoryProfileModelStateRuntime) => unknown;
-  reloadProfileModelState: (
-    runtime: LaboratoryProfileModelStateRuntime,
-  ) => unknown;
+  reloadProfileModelState: (runtime: LaboratoryProfileModelStateRuntime) => unknown;
 };
 
 type LaboratoryProfileModelStateRuntimeDeps = {
-  createDefaultProfileModelEntry: (
-    modelId: string,
-  ) => LaboratoryProfileModelEntry;
+  createDefaultProfileModelEntry: (modelId: string) => LaboratoryProfileModelEntry;
   getProjectStateRuntime: () => LaboratoryProjectStateRuntime;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
 export function createLaboratoryProfileModelStateRuntime(
-  deps: LaboratoryProfileModelStateRuntimeDeps,
+  deps: LaboratoryProfileModelStateRuntimeDeps
 ) {
   const { createDefaultProfileModelEntry, getProjectStateRuntime, toRecord } = deps;
 
   function readProfileModelEntries(
-    runtime: LaboratoryProfileModelStateRuntime,
+    runtime: LaboratoryProfileModelStateRuntime
   ): Record<string, LaboratoryProfileModelEntry | undefined> {
-    return toRecord(
-      toRecord(runtime.profileModelState).models,
-    ) as Record<string, LaboratoryProfileModelEntry | undefined>;
+    return toRecord(toRecord(runtime.profileModelState)["models"]) as Record<
+      string,
+      LaboratoryProfileModelEntry | undefined
+    >;
   }
 
   function readProfileModelDescriptor(
     runtime: LaboratoryProfileModelStateRuntime,
-    modelId: string,
+    modelId: string
   ) {
     return getProjectStateRuntime().readProfileModelDescriptor(runtime, modelId);
   }
@@ -78,7 +73,7 @@ export function createLaboratoryProfileModelStateRuntime(
   function updateProfileModelEntry(
     runtime: LaboratoryProfileModelStateRuntime,
     modelId: string,
-    patch: Partial<LaboratoryProfileModelEntry> | null | undefined,
+    patch: Partial<LaboratoryProfileModelEntry> | null | undefined
   ): LaboratoryProfileModelEntry {
     runtime.profileModelState.models[modelId] = {
       ...createDefaultProfileModelEntry(modelId),
@@ -93,7 +88,7 @@ export function createLaboratoryProfileModelStateRuntime(
     runtime: LaboratoryProfileModelStateRuntime,
     modelId: string,
     busy: boolean,
-    lastError?: string | null,
+    lastError?: string | null
   ): LaboratoryProfileModelEntry {
     return updateProfileModelEntry(runtime, modelId, {
       busy: busy === true,

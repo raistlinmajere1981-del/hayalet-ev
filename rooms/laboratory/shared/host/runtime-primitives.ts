@@ -21,37 +21,37 @@ export const LABORATORY_FEATURE_NAMESPACES = {
   [LABORATORY_SUBTITLE_FEATURE_ID]: "subtitleAnalysis",
 };
 
-export function getLaboratoryProjectProcessDir(runtime, project) {
+export function getLaboratoryProjectProcessDir(runtime: any, project: any) {
   return getProjectProcessDirFromPaths(runtime, project);
 }
 
-export function getLaboratoryProjectReportDir(runtime, project) {
+export function getLaboratoryProjectReportDir(runtime: any, project: any) {
   return getProjectReportDirFromPaths(runtime, project);
 }
 
-export function getLaboratoryFeatureProcessDir(runtime, project, featureId) {
+export function getLaboratoryFeatureProcessDir(runtime: any, project: any, featureId: any) {
   return getProjectFeatureProcessDirFromPaths(runtime, project, featureId);
 }
 
-export function getLaboratoryFeatureReportDir(runtime, project, featureId) {
+export function getLaboratoryFeatureReportDir(runtime: any, project: any, featureId: any) {
   return getProjectFeatureReportDirFromPaths(runtime, project, featureId);
 }
 
-export function toLaboratoryRecord(value) {
+export function toLaboratoryRecord(value: any) {
   if (value !== null && typeof value === "object" && Array.isArray(value) === false) {
     return value;
   }
   return {};
 }
 
-export function cloneLaboratoryValue(value) {
+export function cloneLaboratoryValue(value: any) {
   return JSON.parse(JSON.stringify(value));
 }
 
-export function readNonEmptyString(value) {
+export function readNonEmptyString(value: any) {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
 
-export function normalizeLaboratoryLocale(value) {
+export function normalizeLaboratoryLocale(value: any) {
   return typeof value === "string" && value.toLowerCase().startsWith("tr") ? "tr" : "en";
 }

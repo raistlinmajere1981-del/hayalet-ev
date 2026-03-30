@@ -1,7 +1,7 @@
 import { createSubtitleAnalysisUi } from "./module.js";
 import { createLaboratorySubtitlePanelRuntime } from "../../../ui/subtitle-panel-runtime.js";
 
-export function createSubtitleAnalysisUiRuntime(deps) {
+export function createSubtitleAnalysisUiRuntime(deps: any) {
   const subtitleAnalysisUi = createSubtitleAnalysisUi({
     toRecord: deps.toRecord,
     escapeHtml: deps.escapeHtml,
@@ -41,7 +41,9 @@ export function createSubtitleAnalysisUiRuntime(deps) {
     getSubtitleEditPreview: deps.getSubtitleEditPreview,
     getSubtitleOutputs: deps.getSubtitleOutputs,
   });
-  const subtitlePanelRuntime = createLaboratorySubtitlePanelRuntime({ subtitleAnalysisUi: subtitleAnalysisUi });
+  const subtitlePanelRuntime = createLaboratorySubtitlePanelRuntime({
+    subtitleAnalysisUi: subtitleAnalysisUi,
+  });
 
   function renderSubtitleCatalogPanel() {
     return subtitlePanelRuntime.renderSubtitleCatalogPanel();
@@ -51,8 +53,8 @@ export function createSubtitleAnalysisUiRuntime(deps) {
     return subtitlePanelRuntime.renderSubtitleDiscoveryPanel();
   }
 
-  function renderSubtitleDraftSelect() {
-    return subtitlePanelRuntime.renderSubtitleDraftSelect.apply(subtitlePanelRuntime, arguments);
+  function renderSubtitleDraftSelect(...args: unknown[]) {
+    return subtitlePanelRuntime.renderSubtitleDraftSelect(...args);
   }
 
   function renderSubtitleEditActionsPanel() {
@@ -83,8 +85,8 @@ export function createSubtitleAnalysisUiRuntime(deps) {
     return subtitlePanelRuntime.renderSubtitleOutputsPanel();
   }
 
-  function renderSubtitlePreviewBody() {
-    return subtitlePanelRuntime.renderSubtitlePreviewBody.apply(subtitlePanelRuntime, arguments);
+  function renderSubtitlePreviewBody(...args: unknown[]) {
+    return subtitlePanelRuntime.renderSubtitlePreviewBody(...args);
   }
 
   function renderSubtitlePresetChooser() {

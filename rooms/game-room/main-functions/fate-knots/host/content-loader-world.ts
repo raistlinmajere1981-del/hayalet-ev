@@ -1,7 +1,40 @@
 import { attachAsset, normalizeText } from "./content-loader-shared.js";
+import type { FateKnotsAssetRegistry } from "./asset-registry.js";
 
-export function normalizeMapManifest(assetRegistry, raw) {
-  const source = raw && typeof raw === "object" && Array.isArray(raw) === false ? raw : {};
+interface FateKnotsWorldManifestRecord extends Record<string, unknown> {
+  version?: unknown;
+  mapAssetId?: unknown;
+  startingLocationId?: unknown;
+  nodes?: unknown;
+  scenarioId?: unknown;
+  entryStepId?: unknown;
+  steps?: unknown;
+  id?: unknown;
+  label?: unknown;
+  locationAssetId?: unknown;
+  sceneAssetId?: unknown;
+  marker?: unknown;
+  xPct?: unknown;
+  yPct?: unknown;
+  connections?: unknown;
+  title?: unknown;
+  locationId?: unknown;
+  speaker?: unknown;
+  body?: unknown;
+  choices?: unknown;
+  npcAssetIds?: unknown;
+  itemAssetIds?: unknown;
+  creatureAssetIds?: unknown;
+  summary?: unknown;
+  nextStepId?: unknown;
+  encounterId?: unknown;
+}
+
+export function normalizeMapManifest(assetRegistry: FateKnotsAssetRegistry, raw: unknown) {
+  const source: FateKnotsWorldManifestRecord =
+    raw && typeof raw === "object" && Array.isArray(raw) === false
+      ? (raw as FateKnotsWorldManifestRecord)
+      : {};
   return {
     version:
       typeof source.version === "number" && Number.isInteger(source.version) ? source.version : 1,
@@ -9,9 +42,11 @@ export function normalizeMapManifest(assetRegistry, raw) {
     mapAsset: attachAsset(assetRegistry, source.mapAssetId, "map"),
     startingLocationId: normalizeText(source.startingLocationId),
     nodes: Array.isArray(source.nodes)
-      ? source.nodes.map(function (entry) {
-          const node =
-            entry && typeof entry === "object" && Array.isArray(entry) === false ? entry : {};
+      ? source.nodes.map(function (entry: unknown) {
+          const node: FateKnotsWorldManifestRecord =
+            entry && typeof entry === "object" && Array.isArray(entry) === false
+              ? (entry as FateKnotsWorldManifestRecord)
+              : {};
           return {
             id: normalizeText(node.id),
             label: normalizeText(node.label),
@@ -19,10 +54,13 @@ export function normalizeMapManifest(assetRegistry, raw) {
             sceneAssetId: normalizeText(node.sceneAssetId),
             marker:
               node.marker && typeof node.marker === "object" && Array.isArray(node.marker) === false
-                ? {
-                    xPct: Number.isFinite(node.marker.xPct) ? Number(node.marker.xPct) : 0,
-                    yPct: Number.isFinite(node.marker.yPct) ? Number(node.marker.yPct) : 0,
-                  }
+                ? (function () {
+                    const marker = node.marker as FateKnotsWorldManifestRecord;
+                    return {
+                      xPct: Number.isFinite(marker.xPct) ? Number(marker.xPct) : 0,
+                      yPct: Number.isFinite(marker.yPct) ? Number(marker.yPct) : 0,
+                    };
+                  })()
                 : { xPct: 0, yPct: 0 },
             connections: Array.isArray(node.connections)
               ? node.connections.map(normalizeText).filter(Boolean)
@@ -35,17 +73,22 @@ export function normalizeMapManifest(assetRegistry, raw) {
   };
 }
 
-export function normalizeScenarioManifest(assetRegistry, raw) {
-  const source = raw && typeof raw === "object" && Array.isArray(raw) === false ? raw : {};
+export function normalizeScenarioManifest(assetRegistry: FateKnotsAssetRegistry, raw: unknown) {
+  const source: FateKnotsWorldManifestRecord =
+    raw && typeof raw === "object" && Array.isArray(raw) === false
+      ? (raw as FateKnotsWorldManifestRecord)
+      : {};
   return {
     version:
       typeof source.version === "number" && Number.isInteger(source.version) ? source.version : 1,
     scenarioId: normalizeText(source.scenarioId) || "intro",
     entryStepId: normalizeText(source.entryStepId),
     steps: Array.isArray(source.steps)
-      ? source.steps.map(function (entry) {
-          const step =
-            entry && typeof entry === "object" && Array.isArray(entry) === false ? entry : {};
+      ? source.steps.map(function (entry: unknown) {
+          const step: FateKnotsWorldManifestRecord =
+            entry && typeof entry === "object" && Array.isArray(entry) === false
+              ? (entry as FateKnotsWorldManifestRecord)
+              : {};
           const npcAssetIds = Array.isArray(step.npcAssetIds)
             ? step.npcAssetIds.map(normalizeText).filter(Boolean)
             : [];
@@ -63,10 +106,10 @@ export function normalizeScenarioManifest(assetRegistry, raw) {
             speaker: normalizeText(step.speaker),
             body: normalizeText(step.body),
             choices: Array.isArray(step.choices)
-              ? step.choices.map(function (choice) {
-                  const nextChoice =
+              ? step.choices.map(function (choice: unknown) {
+                  const nextChoice: FateKnotsWorldManifestRecord =
                     choice && typeof choice === "object" && Array.isArray(choice) === false
-                      ? choice
+                      ? (choice as FateKnotsWorldManifestRecord)
                       : {};
                   return {
                     id: normalizeText(nextChoice.id),
@@ -78,13 +121,13 @@ export function normalizeScenarioManifest(assetRegistry, raw) {
                 })
               : [],
             sceneAsset: attachAsset(assetRegistry, step.sceneAssetId, "scene"),
-            npcs: npcAssetIds.map(function (assetId) {
+            npcs: npcAssetIds.map(function (assetId: string) {
               return attachAsset(assetRegistry, assetId, "npc");
             }),
-            items: itemAssetIds.map(function (assetId) {
+            items: itemAssetIds.map(function (assetId: string) {
               return attachAsset(assetRegistry, assetId, "item");
             }),
-            creatures: creatureAssetIds.map(function (assetId) {
+            creatures: creatureAssetIds.map(function (assetId: string) {
               return attachAsset(assetRegistry, assetId, "creature");
             }),
           };

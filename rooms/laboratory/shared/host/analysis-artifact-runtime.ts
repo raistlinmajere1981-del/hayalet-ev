@@ -1,4 +1,39 @@
-export function createLaboratoryAnalysisArtifactRuntime(deps) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type AnalysisArtifactRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
+  callRoomTools: (payload: LaboratoryRecord) => Promise<LaboratoryRecord>;
+  getProjectProfileDir: (
+    runtime: { paths: { projectsDir: string } },
+    project: { slug: string }
+  ) => string;
+  getProjectProfilePreflightDir: (
+    runtime: { paths: { projectsDir: string } },
+    project: { slug: string }
+  ) => string;
+  normalizeProcessArtifact: (rawValue: unknown) => LaboratoryRecord;
+  normalizeProcessFinding: (rawValue: unknown) => LaboratoryRecord;
+  normalizeProfileArtifact: (rawValue: unknown) => LaboratoryRecord;
+  normalizeProfileSignal: (rawValue: unknown) => LaboratoryRecord;
+  readTextFile: (filePath: string) => Promise<string>;
+  roomId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+  writeJsonFile: (filePath: string, value: unknown) => Promise<void>;
+};
+
+type RunProfileToolOptions = {
+  requestId?: string | null;
+  jobId?: string | null;
+  toolId: string;
+  executableName?: string;
+  cwd: string;
+  args: string[];
+  timeoutMs: number;
+  roomId?: string;
+};
+
+export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRuntimeDeps) {
   const {
     asNonEmptyString,
     asNumber,
@@ -15,11 +50,11 @@ export function createLaboratoryAnalysisArtifactRuntime(deps) {
     writeJsonFile,
   } = deps;
 
-  function cloneValue(value) {
+  function cloneValue(value: unknown): LaboratoryRecord {
     return JSON.parse(JSON.stringify(value));
   }
 
-  function createProfileArtifact(kind, path, label, metadata) {
+  function createProfileArtifact(kind: string, path: unknown, label: string, metadata: unknown) {
     const normalizedPath = asNonEmptyString(path);
     if (normalizedPath === null) {
       return null;
@@ -36,7 +71,16 @@ export function createLaboratoryAnalysisArtifactRuntime(deps) {
     });
   }
 
-  function createProfileSignal(laneId, kind, level, confidence, title, detail, evidenceCount, artifactIds) {
+  function createProfileSignal(
+    laneId: string,
+    kind: string,
+    level: string,
+    confidence: string,
+    title: string,
+    detail: string,
+    evidenceCount: number,
+    artifactIds: unknown
+  ) {
     return normalizeProfileSignal({
       id: `${laneId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       laneId: laneId,
@@ -50,7 +94,13 @@ export function createLaboratoryAnalysisArtifactRuntime(deps) {
     });
   }
 
-  function createProcessArtifact(moduleId, kind, path, label, metadata) {
+  function createProcessArtifact(
+    moduleId: string,
+    kind: string,
+    path: unknown,
+    label: string,
+    metadata: unknown
+  ) {
     const artifact = createProfileArtifact(kind, path, label, metadata);
     if (artifact === null) {
       return null;
@@ -62,14 +112,32 @@ export function createLaboratoryAnalysisArtifactRuntime(deps) {
     });
   }
 
-  function createProcessFinding(moduleId, kind, level, confidence, title, detail, evidenceCount, artifactIds) {
+  function createProcessFinding(
+    moduleId: string,
+    kind: string,
+    level: string,
+    confidence: string,
+    title: string,
+    detail: string,
+    evidenceCount: number,
+    artifactIds: unknown
+  ) {
     return normalizeProcessFinding({
-      ...createProfileSignal(moduleId, kind, level, confidence, title, detail, evidenceCount, artifactIds),
+      ...createProfileSignal(
+        moduleId,
+        kind,
+        level,
+        confidence,
+        title,
+        detail,
+        evidenceCount,
+        artifactIds
+      ),
       moduleId: moduleId,
     });
   }
 
-  async function runProfileTool(_runtime, options) {
+  async function runProfileTool(_runtime: unknown, options: RunProfileToolOptions) {
     const runResult = await callRoomTools({
       operation: "tool-run",
       roomId: options.roomId || roomId,
@@ -81,72 +149,90 @@ export function createLaboratoryAnalysisArtifactRuntime(deps) {
       args: options.args,
       timeoutMs: options.timeoutMs,
     });
-    const runPayload = toRecord(runResult.run);
-    const exitCode = typeof runPayload.exitCode === "number" ? runPayload.exitCode : 0;
-    if (runPayload.cancelled === true || exitCode !== 0) {
-      throw new Error(asNonEmptyString(runPayload.stderr) || `${options.toolId} job failed.`);
+    const runPayload = toRecord(runResult["run"]);
+    const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
+    if (runPayload["cancelled"] === true || exitCode !== 0) {
+      throw new Error(asNonEmptyString(runPayload["stderr"]) || `${options.toolId} job failed.`);
     }
     return runPayload;
   }
 
-  async function generateProfileMetadataArtifact(runtime, project, target, artifactBase) {
-    const metadataPath = `${getProjectProfilePreflightDir(runtime, project)}/${artifactBase}-metadata.json`;
+  async function generateProfileMetadataArtifact(
+    runtime: { paths: { projectsDir: string } },
+    project: LaboratoryRecord,
+    target: LaboratoryRecord,
+    artifactBase: string
+  ) {
+    const metadataPath = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-metadata.json`;
     await writeJsonFile(metadataPath, {
       generatedAt: new Date().toISOString(),
       target: {
-        requestedMode: target.requestedMode,
-        mode: target.mode,
-        outputId: target.outputId,
-        label: target.label,
-        fileName: target.fileName,
-        mimeType: target.mimeType,
-        path: target.path,
-        signature: target.signature,
+        requestedMode: target["requestedMode"],
+        mode: target["mode"],
+        outputId: target["outputId"],
+        label: target["label"],
+        fileName: target["fileName"],
+        mimeType: target["mimeType"],
+        path: target["path"],
+        signature: target["signature"],
       },
-      metadata: cloneValue(target.metadata || {}),
+      metadata: cloneValue(target["metadata"] || {}),
     });
     return createProfileArtifact("metadata", metadataPath, "Metadata Snapshot", {
-      requestedMode: target.requestedMode,
-      mode: target.mode,
+      requestedMode: target["requestedMode"],
+      mode: target["mode"],
     });
   }
 
   async function generateProfileFrameStrip(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    sampleWindowSeconds,
-    tileCount
+    runtime: { paths: { projectsDir: string } },
+    project: LaboratoryRecord,
+    requestId: string | null,
+    jobId: string | null,
+    target: LaboratoryRecord,
+    artifactBase: string,
+    sampleWindowSeconds: number,
+    tileCount: unknown
   ) {
-    const sourceKind = asNonEmptyString(project.source.kind) || "video";
-    const outputPath = `${getProjectProfilePreflightDir(runtime, project)}/${artifactBase}-frames.png`;
+    const sourceKind =
+      asNonEmptyString((project["source"] as LaboratoryRecord | undefined)?.["kind"]) || "video";
+    const outputPath = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-frames.png`;
 
     if (sourceKind === "image") {
       await runProfileTool(runtime, {
         requestId: requestId,
         jobId: jobId,
         toolId: "ffmpeg",
-        cwd: getProjectProfileDir(runtime, project),
-        args: ["-y", "-i", target.path, "-vf", "scale=1280:-1:flags=lanczos", "-frames:v", "1", outputPath],
+        cwd: getProjectProfileDir(runtime, project as { slug: string }),
+        args: [
+          "-y",
+          "-i",
+          target["path"] as string,
+          "-vf",
+          "scale=1280:-1:flags=lanczos",
+          "-frames:v",
+          "1",
+          outputPath,
+        ],
         timeoutMs: 90_000,
       });
       return createProfileArtifact("frame-strip", outputPath, "Profile Reference Frame", {});
     }
 
     const normalizedTileCount = Math.max(2, Math.round(asNumber(tileCount) || 4));
-    const intervalSeconds = Math.max(1, Math.round((sampleWindowSeconds || 40) / normalizedTileCount));
+    const intervalSeconds = Math.max(
+      1,
+      Math.round((sampleWindowSeconds || 40) / normalizedTileCount)
+    );
     await runProfileTool(runtime, {
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getProjectProfileDir(runtime, project),
+      cwd: getProjectProfileDir(runtime, project as { slug: string }),
       args: [
         "-y",
         "-i",
-        target.path,
+        target["path"] as string,
         "-vf",
         `fps=1/${intervalSeconds},scale=420:-1:flags=lanczos,tile=${normalizedTileCount}x1`,
         "-frames:v",
@@ -161,17 +247,24 @@ export function createLaboratoryAnalysisArtifactRuntime(deps) {
     });
   }
 
-  async function generateProfileSpectrogram(runtime, project, requestId, jobId, target, artifactBase) {
-    const outputPath = `${getProjectProfilePreflightDir(runtime, project)}/${artifactBase}-spectrogram.png`;
+  async function generateProfileSpectrogram(
+    runtime: { paths: { projectsDir: string } },
+    project: LaboratoryRecord,
+    requestId: string | null,
+    jobId: string | null,
+    target: LaboratoryRecord,
+    artifactBase: string
+  ) {
+    const outputPath = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-spectrogram.png`;
     await runProfileTool(runtime, {
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getProjectProfileDir(runtime, project),
+      cwd: getProjectProfileDir(runtime, project as { slug: string }),
       args: [
         "-y",
         "-i",
-        target.path,
+        target["path"] as string,
         "-lavfi",
         "showspectrumpic=s=1600x440:legend=0",
         "-frames:v",
@@ -184,42 +277,44 @@ export function createLaboratoryAnalysisArtifactRuntime(deps) {
   }
 
   async function maybeRunWhisperProfileSample(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    transcriptSampleSeconds
+    runtime: { paths: { projectsDir: string } },
+    project: LaboratoryRecord,
+    requestId: string | null,
+    jobId: string | null,
+    target: LaboratoryRecord,
+    artifactBase: string,
+    transcriptSampleSeconds: unknown
   ) {
-    const profileReadiness = toRecord(toRecord(project.profile).readiness);
+    const profileReadiness = toRecord(toRecord(project["profile"])["readiness"]);
     const selectedModel =
-      (Array.isArray(profileReadiness.models) ? profileReadiness.models : []).find(function (entry) {
-        return toRecord(entry).selected === true;
+      (Array.isArray(profileReadiness["models"]) ? profileReadiness["models"] : []).find(function (
+        entry: unknown
+      ) {
+        return toRecord(entry)["selected"] === true;
       }) || null;
-    if (!selectedModel || selectedModel.ready !== true) {
+    if (!selectedModel || (selectedModel as LaboratoryRecord)["ready"] !== true) {
       return null;
     }
 
-    const modelPath = asNonEmptyString(selectedModel.path);
+    const modelPath = asNonEmptyString((selectedModel as LaboratoryRecord)["path"]);
     if (modelPath === null) {
       return null;
     }
 
-    const language = asNonEmptyString(selectedModel.language) || "en";
-    const sampleWavPath = `${getProjectProfilePreflightDir(runtime, project)}/${artifactBase}-speech.wav`;
-    const transcriptBase = `${getProjectProfilePreflightDir(runtime, project)}/${artifactBase}-transcript`;
+    const language = asNonEmptyString((selectedModel as LaboratoryRecord)["language"]) || "en";
+    const sampleWavPath = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-speech.wav`;
+    const transcriptBase = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-transcript`;
     const transcriptPath = `${transcriptBase}.txt`;
 
     await runProfileTool(runtime, {
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getProjectProfileDir(runtime, project),
+      cwd: getProjectProfileDir(runtime, project as { slug: string }),
       args: [
         "-y",
         "-i",
-        target.path,
+        target["path"] as string,
         "-vn",
         "-ac",
         "1",
@@ -235,7 +330,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps) {
       requestId: requestId,
       jobId: jobId,
       toolId: "whisper.cpp",
-      cwd: getProjectProfileDir(runtime, project),
+      cwd: getProjectProfileDir(runtime, project as { slug: string }),
       args: ["-m", modelPath, "-f", sampleWavPath, "-l", language, "-otxt", "-of", transcriptBase],
       timeoutMs: 8 * 60 * 1000,
     });
@@ -256,10 +351,14 @@ export function createLaboratoryAnalysisArtifactRuntime(deps) {
     };
   }
 
-  function buildSyntheticProfileSignal(signals, sensitivity, artifactIds) {
-    const score = signals.reduce(function (total, entry) {
+  function buildSyntheticProfileSignal(
+    signals: unknown[],
+    sensitivity: number,
+    artifactIds: unknown
+  ) {
+    const score = signals.reduce<number>(function (total: any, entry: any) {
       const signal = toRecord(entry);
-      const level = asNonEmptyString(signal.level) || "low";
+      const level = asNonEmptyString(signal["level"]) || "low";
       return total + (level === "high" ? 3 : level === "medium" ? 2 : 1);
     }, 0);
     const threshold = sensitivity >= 0.68 ? 4 : sensitivity >= 0.5 ? 5 : 6;
@@ -281,29 +380,36 @@ export function createLaboratoryAnalysisArtifactRuntime(deps) {
     );
   }
 
-  async function generateProcessMetadataArtifact(runtime, project, target, artifactBase, outputDir, moduleId) {
+  async function generateProcessMetadataArtifact(
+    _runtime: unknown,
+    _project: unknown,
+    target: LaboratoryRecord,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string
+  ) {
     const metadataPath = `${outputDir}/${artifactBase}-metadata.json`;
     await writeJsonFile(metadataPath, {
       generatedAt: new Date().toISOString(),
       target: cloneValue(target),
-      metadata: cloneValue(target.metadata || {}),
+      metadata: cloneValue(target["metadata"] || {}),
     });
     return createProcessArtifact(moduleId, "metadata", metadataPath, "Metadata Snapshot", {
-      mode: target.mode,
+      mode: target["mode"],
     });
   }
 
-  function getFindingSeverityRank(level) {
+  function getFindingSeverityRank(level: unknown) {
     const nextLevel = asNonEmptyString(level) || "low";
     return nextLevel === "high" ? 3 : nextLevel === "medium" ? 2 : 1;
   }
 
-  function formatIdentifierLabel(value) {
+  function formatIdentifierLabel(value: unknown) {
     const token = asNonEmptyString(value) || "item";
     return token
       .split(/[-_]/)
       .filter(Boolean)
-      .map(function (segment) {
+      .map(function (segment: string) {
         return segment.charAt(0).toUpperCase() + segment.slice(1);
       })
       .join(" ");

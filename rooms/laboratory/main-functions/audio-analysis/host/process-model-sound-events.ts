@@ -4,7 +4,7 @@ import {
   getAudioAnalysisYamnetScriptPath,
 } from "../../../shared/host/project-paths.js";
 
-export function createAudioAnalysisSoundEventsModelRunner(deps) {
+export function createAudioAnalysisSoundEventsModelRunner(deps: any) {
   const {
     asNonEmptyString,
     createProcessArtifact,
@@ -16,14 +16,14 @@ export function createAudioAnalysisSoundEventsModelRunner(deps) {
   } = deps;
 
   return async function runSoundEventsAudioAnalyzer(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    moduleOutputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: any,
+    jobId: any,
+    target: any,
+    artifactBase: any,
+    moduleOutputDir: any,
+    moduleId: any
   ) {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
@@ -55,12 +55,24 @@ export function createAudioAnalysisSoundEventsModelRunner(deps) {
       jobId: jobId,
       toolId: "yamnet",
       cwd: getAudioAnalysisYamnetDir(runtime) || getAudioAnalysisProcessRootDir(runtime, project),
-      args: [yamnetScriptPath, "--input", wavPath, "--output", summaryPath, "--top-k", "8", "--threshold", "0.15"],
+      args: [
+        yamnetScriptPath,
+        "--input",
+        wavPath,
+        "--output",
+        summaryPath,
+        "--top-k",
+        "8",
+        "--threshold",
+        "0.15",
+      ],
       timeoutMs: 8 * 60 * 1000,
     });
 
     const summaryPayload = toRecord(await readJsonFile(summaryPath));
-    const topClasses = Array.isArray(summaryPayload.topClasses) ? summaryPayload.topClasses.map(toRecord) : [];
+    const topClasses = Array.isArray(summaryPayload.topClasses)
+      ? summaryPayload.topClasses.map(toRecord)
+      : [];
     const headline = topClasses[0] || null;
     const summaryArtifact = createProcessArtifact(
       moduleId,
@@ -74,7 +86,7 @@ export function createAudioAnalysisSoundEventsModelRunner(deps) {
       }
     );
     const artifacts = [summaryArtifact].filter(Boolean);
-    const artifactIds = artifacts.map(function (artifact) {
+    const artifactIds = artifacts.map(function (artifact: any) {
       return artifact.id;
     });
     const warningText =

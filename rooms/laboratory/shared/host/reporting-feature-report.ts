@@ -29,17 +29,17 @@ type LaboratoryFeatureReportRuntimeDeps = LaboratoryRecord & {
   createEmptyFeatureReportRecord: (featureId: string) => LaboratoryRecord;
   getFeatureProcessRecord: (
     project: LaboratoryRecord,
-    featureId: string,
+    featureId: string
   ) => LaboratoryFeatureProcessRecord;
   getFeatureReportRecord: (
     project: LaboratoryRecord,
-    featureId: string,
+    featureId: string
   ) => LaboratoryFeatureReportRecord;
   getFindingSeverityRank: (level: string | null | undefined) => number;
   mediaFeatureId: string;
   normalizeFeatureReportRecord: (
     value: unknown,
-    featureId: string,
+    featureId: string
   ) => LaboratoryFeatureReportRecord;
   normalizeProcessFinding: (value: unknown) => LaboratoryProcessFindingRecord;
   subtitleFeatureId: string;
@@ -47,20 +47,17 @@ type LaboratoryFeatureReportRuntimeDeps = LaboratoryRecord & {
 };
 
 type LaboratoryAudioReportRuntime = {
-  buildAudioAnalysisReportProjection: (
-    runtime: unknown,
-    project: LaboratoryRecord,
-  ) => unknown;
+  buildAudioAnalysisReportProjection: (runtime: unknown, project: LaboratoryRecord) => unknown;
   composeAudioAnalysisReport: (
     runtime: unknown,
-    project: LaboratoryRecord,
+    project: LaboratoryRecord
   ) => LaboratoryFeatureReportRecord;
 };
 
 type LaboratorySubtitleReportRuntime = {
   composeSubtitleAnalysisReport: (
     runtime: unknown,
-    project: LaboratoryRecord,
+    project: LaboratoryRecord
   ) => LaboratoryFeatureReportRecord;
   getProcessArtifactByKind: (...args: unknown[]) => unknown;
 };
@@ -70,14 +67,12 @@ type LaboratoryReportMarkdownRuntime = {
     runtime: unknown,
     project: LaboratoryRecord,
     featureId: string,
-    reportRecord: LaboratoryFeatureReportRecord,
+    reportRecord: LaboratoryFeatureReportRecord
   ) => string;
   formatReportCardLabel: (...args: unknown[]) => string;
 };
 
-export function createLaboratoryFeatureReportRuntime(
-  deps: LaboratoryFeatureReportRuntimeDeps,
-) {
+export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureReportRuntimeDeps) {
   const {
     asNonEmptyString,
     getFindingSeverityRank,
@@ -90,29 +85,28 @@ export function createLaboratoryFeatureReportRuntime(
   } = deps;
 
   const laboratoryAudioReportRuntime = createLaboratoryAudioReportRuntime(
-    deps,
+    deps
   ) as LaboratoryAudioReportRuntime;
   const laboratorySubtitleReportRuntime = createLaboratorySubtitleReportRuntime(
-    deps,
+    deps
   ) as LaboratorySubtitleReportRuntime;
   const laboratoryReportMarkdownRuntime = createLaboratoryReportMarkdownRuntime({
     ...deps,
-    buildAudioAnalysisReportProjection(runtime, project) {
+    buildAudioAnalysisReportProjection(runtime: any, project: any) {
       return laboratoryAudioReportRuntime.buildAudioAnalysisReportProjection(runtime, project);
     },
   }) as LaboratoryReportMarkdownRuntime;
 
-  const {
-    buildAudioAnalysisReportProjection,
-    composeAudioAnalysisReport,
-  } = laboratoryAudioReportRuntime;
-  const { composeSubtitleAnalysisReport, getProcessArtifactByKind } = laboratorySubtitleReportRuntime;
+  const { buildAudioAnalysisReportProjection, composeAudioAnalysisReport } =
+    laboratoryAudioReportRuntime;
+  const { composeSubtitleAnalysisReport, getProcessArtifactByKind } =
+    laboratorySubtitleReportRuntime;
   const { buildReportMarkdown, formatReportCardLabel } = laboratoryReportMarkdownRuntime;
 
   function composeFeatureReport(
     runtime: unknown,
     project: LaboratoryRecord,
-    featureId: string,
+    featureId: string
   ): LaboratoryFeatureReportRecord {
     if (featureId === deps.audioFeatureId) {
       return composeAudioAnalysisReport(runtime, project);
@@ -135,13 +129,15 @@ export function createLaboratoryFeatureReportRuntime(
 
     const findings = (Array.isArray(processRecord.findings) ? processRecord.findings : [])
       .map(normalizeProcessFinding)
-      .sort(function (left, right) {
+      .sort(function (left: any, right: any) {
         return getFindingSeverityRank(right.level) - getFindingSeverityRank(left.level);
       });
     const topLevel = findings[0] ? asNonEmptyString(findings[0].level) || "low" : "low";
     const caveats: string[] = [];
     if (featureId === mediaFeatureId) {
-      caveats.push("Process findings remain evidence-led but still reflect heuristic interpretation where noted.");
+      caveats.push(
+        "Process findings remain evidence-led but still reflect heuristic interpretation where noted."
+      );
     } else {
       caveats.push("Planned audio modules remain visible but do not pretend to be implemented.");
     }
@@ -157,13 +153,15 @@ export function createLaboratoryFeatureReportRuntime(
             id: `${featureId}-target`,
             labelKey: "mediaAnalysis.profile.summary.target",
             value:
-              asNonEmptyString(deps.toRecord(processRecord.targetSummary).label) ||
-              asNonEmptyString(project.name),
+              asNonEmptyString(deps.toRecord(processRecord.targetSummary)["label"]) ||
+              asNonEmptyString(project["name"]),
           },
           {
             id: `${featureId}-modules`,
             label: "Modules",
-            value: String((Array.isArray(processRecord.modules) ? processRecord.modules : []).length),
+            value: String(
+              (Array.isArray(processRecord.modules) ? processRecord.modules : []).length
+            ),
           },
           {
             id: `${featureId}-findings`,
@@ -173,7 +171,9 @@ export function createLaboratoryFeatureReportRuntime(
           {
             id: `${featureId}-artifacts`,
             labelKey: "mediaAnalysis.profile.summary.artifacts",
-            value: String((Array.isArray(processRecord.artifacts) ? processRecord.artifacts : []).length),
+            value: String(
+              (Array.isArray(processRecord.artifacts) ? processRecord.artifacts : []).length
+            ),
           },
           {
             id: `${featureId}-risk`,

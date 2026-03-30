@@ -5,7 +5,7 @@ import { createSubtitleSourceIntakeRuntime } from "./source-intake.js";
 import { createSubtitleWorkspaceRuntime } from "./workspace-runtime.js";
 import { createSubtitleYoutubeSourceRuntime } from "./youtube-source.js";
 
-export function createLaboratorySubtitleAnalysisHostRuntime(deps) {
+export function createLaboratorySubtitleAnalysisHostRuntime(deps: any) {
   const subtitleWorkspaceRuntime = createSubtitleWorkspaceRuntime({
     asNumber: deps.asNumber,
     getActiveProject: deps.getActiveProject,
@@ -110,7 +110,7 @@ export function createLaboratorySubtitleAnalysisHostRuntime(deps) {
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: deps.asNumber,
     formatIdentifierLabel: deps.formatIdentifierLabel,
-    getSubtitleAnalysisModuleDescriptors(runtime) {
+    getSubtitleAnalysisModuleDescriptors(runtime: any) {
       const modules = deps.toRecord(runtime.subtitleAnalysisCatalog).modules;
       return Array.isArray(modules) ? modules.map(deps.toRecord) : [];
     },
@@ -121,10 +121,10 @@ export function createLaboratorySubtitleAnalysisHostRuntime(deps) {
   });
 
   return {
-    buildSubtitleAnalysisStats(runtime, project, target) {
+    buildSubtitleAnalysisStats(runtime: any, project: any, target: any) {
       return subtitleProcessAnalysisRuntime.buildSubtitleAnalysisStats(runtime, project, target);
     },
-    buildSubtitleProcessModules(runtime, target) {
+    buildSubtitleProcessModules(runtime: any, target: any) {
       return subtitleProcessAnalysisRuntime.buildSubtitleProcessModules(runtime, target);
     },
     subtitleActionRuntime,

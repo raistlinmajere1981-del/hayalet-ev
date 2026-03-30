@@ -1,15 +1,15 @@
 import { createGameRoomXoxUs1InviteRuntime } from "./us1-invite-runtime.js";
 import { createGameRoomXoxUs1SyncRuntime } from "./us1-sync-runtime.js";
 
-export function createGameRoomXoxUs1Runtime(deps) {
+export function createGameRoomXoxUs1Runtime(deps: any) {
   const inviteRuntime = createGameRoomXoxUs1InviteRuntime(deps);
   const syncRuntime = createGameRoomXoxUs1SyncRuntime({
     ...deps,
     inviteRuntime: inviteRuntime,
   });
-  const sendUs1Invite = async (api, state, inviteNote) =>
+  const sendUs1Invite = async (api: any, state: any, inviteNote: any) =>
     inviteRuntime.sendUs1Invite(api, state, inviteNote, syncRuntime.syncUs1Mailbox);
-  const ensureUs1SyncLoop = (api) => syncRuntime.ensureUs1SyncLoop(api, syncRuntime.syncUs1Mailbox);
+  const ensureUs1SyncLoop = (api: any) => syncRuntime.ensureUs1SyncLoop(api, syncRuntime.syncUs1Mailbox);
 
   return {
     applyInviteAcceptedState: inviteRuntime.applyInviteAcceptedState,

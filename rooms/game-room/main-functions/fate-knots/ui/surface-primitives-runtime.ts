@@ -1,53 +1,60 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
   registry.createFateKnotsUiSurfacePrimitivesRuntime =
-    function createFateKnotsUiSurfacePrimitivesRuntime(deps) {
+    function createFateKnotsUiSurfacePrimitivesRuntime(deps: any) {
       const createElement = deps.createElement;
       const sanitizeAssetLink = deps.sanitizeAssetLink;
       const getUiAsset = deps.getUiAsset;
 
-      function normalizeRoleTokens(role) {
+      function normalizeRoleTokens(role: string | string[] | null | undefined): string[] {
         if (!role) {
           return [];
         }
         const values = Array.isArray(role) ? role : [role];
         return values
-          .map(function (value) {
+          .map(function (value: string) {
             return typeof value === "string" ? value.trim() : "";
           })
           .filter(Boolean)
-          .filter(function (value, index, list) {
+          .filter(function (value: string, index: number, list: string[]) {
             return list.indexOf(value) === index;
           });
       }
 
-      function applyRoles(element, role) {
+      function applyRoles(
+        element: HTMLElement,
+        role: string | string[] | null | undefined
+      ): HTMLElement {
         const tokens = normalizeRoleTokens(role);
         if (tokens.length > 0) {
-          element.dataset.fkRole = tokens.join(" ");
+          element.dataset["fkRole"] = tokens.join(" ");
         }
         return element;
       }
 
-      function createRegion(tagName, className, role) {
+      function createRegion(
+        tagName: string,
+        className: string,
+        role: string | string[] | null | undefined
+      ): HTMLElement {
         const element = createElement(tagName, className || "");
         return applyRoles(element, role);
       }
 
-      function setSeatId(element, seatId) {
+      function setSeatId(element: HTMLElement, seatId: string): HTMLElement {
         if (element && seatId) {
-          element.dataset.seatId = seatId;
+          element.dataset["seatId"] = seatId;
         }
         return element;
       }
 
-      function assetUrl(assetLink) {
+      function assetUrl(assetLink: any): string {
         const normalized = sanitizeAssetLink(assetLink);
         return normalized.uiSrc || normalized.src || "";
       }
 
-      function resolveMissingAssetId(assetLink, fallbackId) {
+      function resolveMissingAssetId(assetLink: any, fallbackId: string): string {
         const normalized = sanitizeAssetLink(assetLink);
         return (
           normalized.expectedAssetId ||
@@ -58,25 +65,29 @@
         );
       }
 
-      function markMissingAssets(element, missingAssetIds) {
+      function markMissingAssets(element: HTMLElement, missingAssetIds: string[]): void {
         const ids = Array.isArray(missingAssetIds)
-          ? missingAssetIds.filter(Boolean).filter(function (value, index, list) {
+          ? missingAssetIds.filter(Boolean).filter(function (
+              value: string,
+              index: number,
+              list: string[]
+            ) {
               return list.indexOf(value) === index;
             })
           : [];
         if (ids.length === 0) {
           return;
         }
-        element.dataset.fkAssetStatus = "missing";
-        element.dataset.fkMissingAssetIds = ids.join(" ");
+        element.dataset["fkAssetStatus"] = "missing";
+        element.dataset["fkMissingAssetIds"] = ids.join(" ");
         element.style.outline = "1px dashed rgb(196 114 86 / 0.72)";
         element.style.outlineOffset = "2px";
       }
 
-      function applyAssetLayers(element, layers) {
-        const missingAssetIds = [];
+      function applyAssetLayers(element: HTMLElement, layers: any[]): void {
+        const missingAssetIds: string[] = [];
         const normalizedLayers = (Array.isArray(layers) ? layers : [])
-          .map(function (layer, index) {
+          .map(function (layer: any, index: number) {
             if (!layer) {
               return null;
             }
@@ -104,34 +115,43 @@
           return;
         }
 
-        element.style.backgroundImage = normalizedLayers
-          .map(function (layer) {
+        type StyledAssetLayer = {
+          url: string;
+          size: string;
+          position: string;
+          repeat: string;
+          blend: string;
+        };
+        const styledLayers = normalizedLayers as StyledAssetLayer[];
+
+        element.style.backgroundImage = styledLayers
+          .map(function (layer: any) {
             return 'url("' + layer.url + '")';
           })
           .join(", ");
-        element.style.backgroundSize = normalizedLayers
-          .map(function (layer) {
+        element.style.backgroundSize = styledLayers
+          .map(function (layer: any) {
             return layer.size;
           })
           .join(", ");
-        element.style.backgroundPosition = normalizedLayers
-          .map(function (layer) {
+        element.style.backgroundPosition = styledLayers
+          .map(function (layer: any) {
             return layer.position;
           })
           .join(", ");
-        element.style.backgroundRepeat = normalizedLayers
-          .map(function (layer) {
+        element.style.backgroundRepeat = styledLayers
+          .map(function (layer: any) {
             return layer.repeat;
           })
           .join(", ");
-        element.style.backgroundBlendMode = normalizedLayers
-          .map(function (layer) {
+        element.style.backgroundBlendMode = styledLayers
+          .map(function (layer: any) {
             return layer.blend;
           })
           .join(", ");
       }
 
-      function applyFrameArtwork(element, options) {
+      function applyFrameArtwork(element: HTMLElement, options: any): void {
         const config = options || {};
         applyAssetLayers(element, [
           config.overlay
@@ -159,13 +179,23 @@
         ]);
       }
 
-      function createFrame(tagName, className, role, options) {
+      function createFrame(
+        tagName: string,
+        className: string,
+        role: string | string[] | null | undefined,
+        options: any
+      ): HTMLElement {
         const frame = createRegion(tagName, className, role);
         applyFrameArtwork(frame, options);
         return frame;
       }
 
-      function appendImage(parent, className, assetLink, altText) {
+      function appendImage(
+        parent: HTMLElement,
+        className: string,
+        assetLink: any,
+        altText: string
+      ): HTMLElement {
         const normalized = sanitizeAssetLink(assetLink);
         if (!normalized.uiSrc) {
           const fallback = createRegion(
@@ -194,11 +224,11 @@
         return image;
       }
 
-      function createTextChip(label, tone) {
+      function createTextChip(label: string, tone: string): HTMLElement {
         return createElement("span", "fk-chip" + (tone ? " fk-chip--" + tone : ""), label);
       }
 
-      function createStatBadge(label, value, tone) {
+      function createStatBadge(label: string, value: string, tone: string): HTMLElement {
         const item = createRegion(
           "div",
           "fk-stat-badge" + (tone ? " fk-stat-badge--" + tone : ""),
@@ -209,12 +239,17 @@
         return item;
       }
 
-      function createActionButton(label, variant, disabled, onClick) {
+      function createActionButton(
+        label: string,
+        variant: string,
+        disabled: boolean,
+        onClick: (event: Event) => void
+      ): HTMLButtonElement {
         const button = createRegion(
           "button",
           "fk-button fk-button--" + (variant || "secondary"),
           variant === "primary" ? "primary-action" : "secondary-action"
-        );
+        ) as HTMLButtonElement;
         button.type = "button";
         button.disabled = disabled === true;
         button.append(createElement("span", "fk-button__label", label));
@@ -229,7 +264,7 @@
           texture:
             variant === "primary" ? getUiAsset("primaryButton") : getUiAsset("secondaryButton"),
         });
-        button.addEventListener("click", function (event) {
+        button.addEventListener("click", function (event: Event) {
           if (button.disabled !== true && typeof onClick === "function") {
             onClick(event);
           }
@@ -237,18 +272,18 @@
         return button;
       }
 
-      function createCatalogCard(entry, options) {
+      function createCatalogCard(entry: any, options: any): HTMLButtonElement {
         const config = options || {};
         const button = createRegion(
           "button",
           "fk-card-choice fk-card-choice--" + (config.family || "generic"),
           config.role || null
-        );
+        ) as HTMLButtonElement;
         button.type = "button";
         button.disabled = config.disabled === true;
-        button.dataset.selected = config.selected === true ? "true" : "false";
+        button.dataset["selected"] = config.selected === true ? "true" : "false";
         if (config.seatId) {
-          button.dataset.seatId = config.seatId;
+          button.dataset["seatId"] = config.seatId;
         }
         applyFrameArtwork(button, {
           overlay: button.disabled
@@ -268,8 +303,10 @@
         );
         button.append(art);
         const body = createRegion("div", "fk-card-choice__body", null);
-        body.append(createElement("strong", "fk-card-choice__title", entry.label || entry.id || ""));
-        (config.metaLines || []).forEach(function (line) {
+        body.append(
+          createElement("strong", "fk-card-choice__title", entry.label || entry.id || "")
+        );
+        (config.metaLines || []).forEach(function (line: string) {
           if (line && line.trim() !== "") {
             body.append(createElement("span", "fk-card-choice__meta", line));
           }

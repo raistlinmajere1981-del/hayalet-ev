@@ -1,11 +1,175 @@
-export function createLaboratoryPresetEditRuntime(deps) {
+type LaboratoryRecord = Record<string, unknown> & {
+  activeOutputId?: unknown;
+  activePresetId?: unknown;
+  analysis?: unknown;
+  artifacts?: unknown[];
+  audio?: LaboratoryRecord;
+  beginner?: unknown[];
+  common?: LaboratoryRecord;
+  createdAt?: unknown;
+  cropNormalized?: LaboratoryRecord;
+  defaultMode?: unknown;
+  dirty?: unknown;
+  error?: unknown;
+  fileName?: unknown;
+  focusRegionId?: unknown;
+  focusRegions?: LaboratoryRecord;
+  handoffMode?: unknown;
+  height?: unknown;
+  id?: unknown;
+  image?: LaboratoryRecord;
+  jobId?: unknown;
+  kind?: unknown;
+  label?: unknown;
+  lastActionAt?: unknown;
+  lastError?: unknown;
+  metadata?: unknown;
+  mimeType?: unknown;
+  mode?: unknown;
+  notes?: unknown;
+  outputId?: unknown;
+  outputNameHint?: unknown;
+  outputs?: unknown[];
+  patch?: LaboratoryRecord;
+  path?: unknown;
+  presets?: LaboratoryRecord;
+  preview?: LaboratoryRecord;
+  recipe?: LaboratoryRecord;
+  recipeSignature?: unknown;
+  redactionBoxes?: unknown[];
+  requestId?: unknown;
+  resizePresets?: LaboratoryRecord;
+  sourcePath?: unknown;
+  status?: unknown;
+  updatedAt?: unknown;
+  video?: LaboratoryRecord;
+  width?: unknown;
+  x?: unknown;
+  y?: unknown;
+};
+
+type LaboratoryCropBox = {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+};
+
+type LaboratoryEditOutputArtifact = {
+  fileName: string | null;
+  kind: string | null;
+  path: string | null;
+};
+
+type LaboratoryEditOutput = {
+  artifacts: LaboratoryEditOutputArtifact[];
+  createdAt: string;
+  fileName: string | null;
+  id: string;
+  jobId: string | null;
+  kind: string;
+  label: string | null;
+  metadata: LaboratoryRecord | null;
+  mimeType: string | null;
+  path: string | null;
+  recipeSignature: string | null;
+  sourcePath: string | null;
+};
+
+type LaboratoryEditPreview = {
+  artifacts: LaboratoryRecord[];
+  error: string | null;
+  fileName: string | null;
+  jobId: string | null;
+  metadata: LaboratoryRecord | null;
+  mimeType: string | null;
+  outputId: string | null;
+  path: string | null;
+  recipeSignature: string | null;
+  requestId: string | null;
+  status: string;
+  updatedAt: string | null;
+};
+
+type LaboratoryEditRecipeCommon = {
+  cropNormalized: LaboratoryCropBox;
+  focusRegionId: string;
+  notes: string;
+  outputNameHint: string;
+  redactionBoxes: LaboratoryRecord[];
+};
+
+type LaboratoryEditRecipeVideo = LaboratoryRecord & {
+  blurFocusOutside: boolean;
+  customHeight: number | null;
+  customWidth: number | null;
+  fpsLimit: number;
+  frameGrabCount: number;
+  includeAudio: boolean;
+  resizePreset: string;
+  trimEnabled: boolean;
+  trimEndSeconds: number;
+  trimStartSeconds: number;
+};
+
+type LaboratoryEditRecipeAudio = LaboratoryRecord & {
+  highpassHz: number;
+  lowpassHz: number;
+  mono: boolean;
+  normalize: boolean;
+  normalizeTargetDb: number;
+  silenceTrim: boolean;
+  spectrogram: boolean;
+  trimEnabled: boolean;
+  trimEndSeconds: number;
+  trimStartSeconds: number;
+};
+
+type LaboratoryEditRecipeImage = LaboratoryRecord & {
+  blurStrength: number;
+  brightness: number;
+  contrast: number;
+  customHeight: number | null;
+  customWidth: number | null;
+  resizePreset: string;
+  rotateDegrees: number;
+  sharpen: number;
+};
+
+type LaboratoryEditRecipe = {
+  audio: LaboratoryEditRecipeAudio;
+  common: LaboratoryEditRecipeCommon;
+  image: LaboratoryEditRecipeImage;
+  video: LaboratoryEditRecipeVideo;
+};
+
+type LaboratoryEditState = {
+  activeOutputId: string | null;
+  activePresetId: string | null;
+  dirty: boolean;
+  handoffMode: "source" | "derived";
+  lastActionAt: string | null;
+  lastError: string | null;
+  mode: string;
+  outputs: LaboratoryEditOutput[];
+  preview: LaboratoryEditPreview;
+  recipe: LaboratoryEditRecipe;
+};
+
+type LaboratoryPresetEditRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  normalizeSourceMetadata: (rawValue: unknown) => LaboratoryRecord | null;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryPresetEditRuntime(deps: LaboratoryPresetEditRuntimeDeps) {
   const { asNonEmptyString, normalizeSourceMetadata, toRecord } = deps;
 
-  function getFocusRegionMap(editPresets) {
+  function getFocusRegionMap(editPresets: unknown): LaboratoryRecord {
     return toRecord(toRecord(editPresets).focusRegions);
   }
 
-  function getDefaultFocusRegionId(editPresets) {
+  function getDefaultFocusRegionId(editPresets: unknown): string {
     const focusRegions = getFocusRegionMap(editPresets);
     if (focusRegions["full-frame"]) {
       return "full-frame";
@@ -13,7 +177,7 @@ export function createLaboratoryPresetEditRuntime(deps) {
     return Object.keys(focusRegions)[0] || "full-frame";
   }
 
-  function getFocusRegionCrop(editPresets, regionId) {
+  function getFocusRegionCrop(editPresets: unknown, regionId: string): LaboratoryCropBox {
     const focusRegions = getFocusRegionMap(editPresets);
     const region = toRecord(focusRegions[regionId]);
     const crop = toRecord(region.cropNormalized);
@@ -25,26 +189,26 @@ export function createLaboratoryPresetEditRuntime(deps) {
     };
   }
 
-  function getResizePresetMap(editPresets) {
+  function getResizePresetMap(editPresets: unknown): LaboratoryRecord {
     return toRecord(toRecord(editPresets).resizePresets);
   }
 
-  function getDefaultEditPresetId(editPresets, sourceKind) {
+  function getDefaultEditPresetId(editPresets: unknown, sourceKind: string): string | null {
     const presetsByKind = toRecord(toRecord(editPresets).presets);
     const mode = asNonEmptyString(toRecord(editPresets).defaultMode) || "beginner";
-    const presetList = Array.isArray(toRecord(presetsByKind[sourceKind])[mode])
-      ? toRecord(presetsByKind[sourceKind])[mode]
-      : [];
+    const sourcePresets = toRecord(presetsByKind[sourceKind]);
+    const modePresets = sourcePresets[mode];
+    const presetList = Array.isArray(modePresets) ? modePresets : [];
     const first = toRecord(presetList[0]);
     return asNonEmptyString(first.id);
   }
 
-  function mergeObjects(baseValue, patchValue) {
+  function mergeObjects(baseValue: unknown, patchValue: unknown): LaboratoryRecord {
     const baseRecord = toRecord(baseValue);
     const patchRecord = toRecord(patchValue);
     const nextValue = { ...baseRecord };
 
-    Object.keys(patchRecord).forEach(function (key) {
+    Object.keys(patchRecord).forEach(function (key: string) {
       const patchEntry = patchRecord[key];
       if (patchEntry && typeof patchEntry === "object" && Array.isArray(patchEntry) === false) {
         nextValue[key] = mergeObjects(baseRecord[key], patchEntry);
@@ -56,12 +220,12 @@ export function createLaboratoryPresetEditRuntime(deps) {
     return nextValue;
   }
 
-  function createDefaultEditState(editPresets, sourceKind) {
+  function createDefaultEditState(editPresets: unknown, sourceKind: string) {
     const focusRegionId = getDefaultFocusRegionId(editPresets);
     const resizePresets = getResizePresetMap(editPresets);
     const analysisResize = resizePresets.analysis ? "analysis" : "keep";
     const defaultPresetId = getDefaultEditPresetId(editPresets, sourceKind);
-    let editState = {
+    let editState: LaboratoryEditState = {
       mode: asNonEmptyString(toRecord(editPresets).defaultMode) || "beginner",
       dirty: false,
       activePresetId: defaultPresetId,
@@ -135,10 +299,10 @@ export function createLaboratoryPresetEditRuntime(deps) {
     }
 
     const presetsByKind = toRecord(toRecord(editPresets).presets);
-    const presetList = Array.isArray(toRecord(presetsByKind[sourceKind]).beginner)
-      ? toRecord(presetsByKind[sourceKind]).beginner
-      : [];
-    const preset = presetList.find(function (entry) {
+    const sourcePresets = toRecord(presetsByKind[sourceKind]);
+    const beginnerPresets = sourcePresets.beginner;
+    const presetList = Array.isArray(beginnerPresets) ? beginnerPresets : [];
+    const preset = presetList.find(function (entry: unknown) {
       return asNonEmptyString(toRecord(entry).id) === presetId;
     });
     const patch = toRecord(toRecord(preset).patch);
@@ -148,16 +312,21 @@ export function createLaboratoryPresetEditRuntime(deps) {
 
     editState = mergeObjects(editState, {
       recipe: patch,
-    });
+    }) as LaboratoryEditState;
 
-    const patchedFocusRegionId = asNonEmptyString(toRecord(toRecord(editState.recipe).common).focusRegionId);
+    const patchedFocusRegionId = asNonEmptyString(
+      toRecord(toRecord(editState.recipe).common).focusRegionId
+    );
     if (patchedFocusRegionId) {
-      editState.recipe.common.cropNormalized = getFocusRegionCrop(editPresets, patchedFocusRegionId);
+      editState.recipe.common.cropNormalized = getFocusRegionCrop(
+        editPresets,
+        patchedFocusRegionId
+      );
     }
     return editState;
   }
 
-  function normalizeCropBox(value, fallback) {
+  function normalizeCropBox(value: unknown, fallback: unknown): LaboratoryCropBox {
     const source = toRecord(value);
     const nextFallback = toRecord(fallback);
     const x = Number.isFinite(Number(source.x)) ? Number(source.x) : Number(nextFallback.x || 0);
@@ -177,7 +346,7 @@ export function createLaboratoryPresetEditRuntime(deps) {
     };
   }
 
-  function normalizeEditOutput(rawValue) {
+  function normalizeEditOutput(rawValue: unknown) {
     const source = toRecord(rawValue);
     return {
       id: asNonEmptyString(source.id) || `edit-output-${Date.now()}`,
@@ -193,7 +362,7 @@ export function createLaboratoryPresetEditRuntime(deps) {
       sourcePath: asNonEmptyString(source.sourcePath),
       artifacts: Array.isArray(source.artifacts)
         ? source.artifacts
-            .map(function (entry) {
+            .map(function (entry: unknown) {
               const artifact = toRecord(entry);
               return {
                 kind: asNonEmptyString(artifact.kind),
@@ -201,23 +370,25 @@ export function createLaboratoryPresetEditRuntime(deps) {
                 fileName: asNonEmptyString(artifact.fileName),
               };
             })
-            .filter(function (entry) {
+            .filter(function (entry: LaboratoryEditOutputArtifact) {
               return entry.path !== null;
             })
         : [],
     };
   }
 
-  function normalizeEditState(rawValue, editPresets, sourceKind) {
+  function normalizeEditState(rawValue: unknown, editPresets: unknown, sourceKind: string) {
     const defaults = createDefaultEditState(editPresets, sourceKind);
     const source = toRecord(rawValue);
     const recipe = toRecord(source.recipe);
     const common = toRecord(recipe.common);
+    const preview = toRecord(source.preview);
+    const previewArtifacts = preview.artifacts;
     const defaultFocusRegionId = getDefaultFocusRegionId(editPresets);
     const focusRegionId = asNonEmptyString(common.focusRegionId) || defaultFocusRegionId;
     const defaultCrop = getFocusRegionCrop(editPresets, focusRegionId);
     const outputs = Array.isArray(source.outputs)
-      ? source.outputs.map(normalizeEditOutput).filter(function (entry) {
+      ? source.outputs.map(normalizeEditOutput).filter(function (entry: LaboratoryEditOutput) {
           return asNonEmptyString(entry.path) !== null;
         })
       : [];
@@ -230,33 +401,30 @@ export function createLaboratoryPresetEditRuntime(deps) {
       dirty: source.dirty === true,
       activePresetId: asNonEmptyString(source.activePresetId) || defaults.activePresetId,
       activeOutputId: asNonEmptyString(source.activeOutputId),
-      handoffMode:
-        asNonEmptyString(source.handoffMode) === "derived"
-          ? "derived"
-          : "source",
+      handoffMode: asNonEmptyString(source.handoffMode) === "derived" ? "derived" : "source",
       lastError: asNonEmptyString(source.lastError),
       lastActionAt: asNonEmptyString(source.lastActionAt),
       preview: {
-        status: asNonEmptyString(toRecord(source.preview).status) || "idle",
-        outputId: asNonEmptyString(toRecord(source.preview).outputId),
-        jobId: asNonEmptyString(toRecord(source.preview).jobId),
-        requestId: asNonEmptyString(toRecord(source.preview).requestId),
-        path: asNonEmptyString(toRecord(source.preview).path),
-        fileName: asNonEmptyString(toRecord(source.preview).fileName),
-        mimeType: asNonEmptyString(toRecord(source.preview).mimeType),
-        metadata: normalizeSourceMetadata(toRecord(source.preview).metadata),
-        artifacts: Array.isArray(toRecord(source.preview).artifacts)
-          ? toRecord(source.preview).artifacts.map(toRecord)
-          : [],
-        error: asNonEmptyString(toRecord(source.preview).error),
-        recipeSignature: asNonEmptyString(toRecord(source.preview).recipeSignature),
-        updatedAt: asNonEmptyString(toRecord(source.preview).updatedAt),
+        status: asNonEmptyString(preview.status) || "idle",
+        outputId: asNonEmptyString(preview.outputId),
+        jobId: asNonEmptyString(preview.jobId),
+        requestId: asNonEmptyString(preview.requestId),
+        path: asNonEmptyString(preview.path),
+        fileName: asNonEmptyString(preview.fileName),
+        mimeType: asNonEmptyString(preview.mimeType),
+        metadata: normalizeSourceMetadata(preview.metadata),
+        artifacts: Array.isArray(previewArtifacts) ? previewArtifacts.map(toRecord) : [],
+        error: asNonEmptyString(preview.error),
+        recipeSignature: asNonEmptyString(preview.recipeSignature),
+        updatedAt: asNonEmptyString(preview.updatedAt),
       },
       recipe: {
         common: {
           focusRegionId: focusRegionId,
           cropNormalized: normalizeCropBox(common.cropNormalized, defaultCrop),
-          redactionBoxes: Array.isArray(common.redactionBoxes) ? common.redactionBoxes.map(toRecord) : [],
+          redactionBoxes: Array.isArray(common.redactionBoxes)
+            ? common.redactionBoxes.map(toRecord)
+            : [],
           outputNameHint: asNonEmptyString(common.outputNameHint) || "",
           notes: asNonEmptyString(common.notes) || "",
         },

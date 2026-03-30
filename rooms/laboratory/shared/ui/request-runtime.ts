@@ -1,4 +1,4 @@
-export function createLaboratoryRequestRuntime(deps) {
+export function createLaboratoryRequestRuntime(deps: any) {
   const {
     bootstrapText,
     buildCurrentDraftPayload,
@@ -11,11 +11,11 @@ export function createLaboratoryRequestRuntime(deps) {
     toRecord,
   } = deps;
 
-  function setLastAction(message) {
+  function setLastAction(message: any) {
     state.ui.lastActionMessage = message;
   }
 
-  function getActionDomain(action) {
+  function getActionDomain(action: any) {
     switch (action) {
       case "project-create":
       case "project-select":
@@ -91,7 +91,7 @@ export function createLaboratoryRequestRuntime(deps) {
     }
   }
 
-  function rememberRequest(requestId, action) {
+  function rememberRequest(requestId: any, action: any) {
     const domain = getActionDomain(action);
     const nextSequence = state.ui.requestCounter + 1;
     state.ui.requestCounter = nextSequence;
@@ -104,17 +104,17 @@ export function createLaboratoryRequestRuntime(deps) {
     const lookupEntries = Object.entries(state.ui.requestLookup);
     if (lookupEntries.length > 120) {
       lookupEntries
-        .sort(function (left, right) {
+        .sort(function (left: any, right: any) {
           return Number(toRecord(right[1]).sequence) - Number(toRecord(left[1]).sequence);
         })
         .slice(100)
-        .forEach(function (entry) {
+        .forEach(function (entry: any) {
           delete state.ui.requestLookup[entry[0]];
         });
     }
   }
 
-  function shouldIgnoreCorrelatedPayload(requestId, action) {
+  function shouldIgnoreCorrelatedPayload(requestId: any, action: any) {
     if (typeof requestId !== "string" || requestId.trim() === "") {
       return false;
     }
@@ -136,11 +136,11 @@ export function createLaboratoryRequestRuntime(deps) {
     return trackedDomain === domain && trackedSequence < latestSequence;
   }
 
-  function nextRequestId(action) {
+  function nextRequestId(action: any) {
     return [action, Date.now(), Math.random().toString(36).slice(2, 8)].join("-");
   }
 
-  function sendMediaAction(action, payload) {
+  function sendMediaAction(action: any, payload: any) {
     const roomApi = getRoomApi();
     if (!roomApi || typeof roomApi.sendEvent !== "function") {
       setLastAction(bootstrapText("roomApiUnavailable"));
@@ -162,11 +162,11 @@ export function createLaboratoryRequestRuntime(deps) {
     return requestId;
   }
 
-  function sendSourceAction(action, payload) {
+  function sendSourceAction(action: any, payload: any) {
     return sendMediaAction(action, payload);
   }
 
-  function syncDraftField(path, value) {
+  function syncDraftField(path: any, value: any) {
     if (isSubtitleAnalysisFeature()) {
       state.ui.localSubtitleDrafts[path] = value;
       return;
@@ -183,7 +183,7 @@ export function createLaboratoryRequestRuntime(deps) {
     state.ui.localDrafts[path] = value;
   }
 
-  function persistDrafts(extraFields) {
+  function persistDrafts(extraFields: any) {
     const nextFields = {
       ...buildCurrentDraftPayload(),
       ...toRecord(extraFields),

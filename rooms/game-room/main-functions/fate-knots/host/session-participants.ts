@@ -1,42 +1,34 @@
-import {
-  FATE_KNOTS_SUPPORTED_AI_SEATS,
-  FATE_KNOTS_SUPPORTED_REMOTE_SEATS,
-} from "./constants.js";
-import {
-  createHeroSelection,
-  createParticipant,
-} from "./models.js";
-import {
-  loadFateKnotsProfile,
-  saveFateKnotsProfile,
-} from "./state.js";
+import { FATE_KNOTS_SUPPORTED_AI_SEATS, FATE_KNOTS_SUPPORTED_REMOTE_SEATS } from "./constants.js";
+import { normalizeExcludedSeats } from "./models-memory.js";
+import { createHeroSelection, createParticipant } from "./models.js";
+import { loadFateKnotsProfile, saveFateKnotsProfile } from "./state.js";
 
-export function getUserParticipant(state) {
+export function getUserParticipant(state: any) {
   return (
-    state.participants.find(function (participant) {
+    state.participants.find(function (participant: any) {
       return participant.seatId === "user";
     }) || null
   );
 }
 
-export function getParticipant(state, seatId) {
+export function getParticipant(state: any, seatId: string) {
   return (
-    state.participants.find(function (participant) {
+    state.participants.find(function (participant: any) {
       return participant.seatId === seatId;
     }) || null
   );
 }
 
-export function listPendingDecisionSeats(state) {
+export function listPendingDecisionSeats(state: any) {
   if (!state.decision) {
     return [];
   }
-  return state.decision.participantIds.filter(function (seatId) {
+  return state.decision.participantIds.filter(function (seatId: string) {
     return !state.decision.votes[seatId];
   });
 }
 
-function hashString(value) {
+function hashString(value: unknown) {
   const source = String(value || "fate-knots");
   let hash = 0;
   for (let index = 0; index < source.length; index += 1) {
@@ -45,14 +37,14 @@ function hashString(value) {
   return hash;
 }
 
-function pickDeterministicEntry(list, seed, offset) {
+function pickDeterministicEntry(list: any[], seed: string, offset: number) {
   if (!Array.isArray(list) || list.length === 0) {
     return null;
   }
   return list[(hashString(`${seed}:${offset}`) + offset) % list.length] || null;
 }
 
-function isKnownSelectionId(contentRegistry, fieldName, value) {
+function isKnownSelectionId(contentRegistry: any, fieldName: string, value: unknown) {
   if (!value) {
     return false;
   }
@@ -68,7 +60,7 @@ function isKnownSelectionId(contentRegistry, fieldName, value) {
   return false;
 }
 
-function sanitizeStoredProfile(contentRegistry, profile) {
+function sanitizeStoredProfile(contentRegistry: any, profile: any) {
   if (!profile || typeof profile !== "object") {
     return createHeroSelection();
   }
@@ -86,10 +78,18 @@ function sanitizeStoredProfile(contentRegistry, profile) {
   return next;
 }
 
-function buildAutoAssignedSelection(contentRegistry, sessionId, offsetSeed) {
+function buildAutoAssignedSelection(contentRegistry: any, sessionId: string, offsetSeed: number) {
   const avatar = pickDeterministicEntry(contentRegistry.selections.avatars, sessionId, offsetSeed);
-  const classDef = pickDeterministicEntry(contentRegistry.selections.classes, sessionId, offsetSeed + 11);
-  const background = pickDeterministicEntry(contentRegistry.selections.backgrounds, sessionId, offsetSeed + 23);
+  const classDef = pickDeterministicEntry(
+    contentRegistry.selections.classes,
+    sessionId,
+    offsetSeed + 11
+  );
+  const background = pickDeterministicEntry(
+    contentRegistry.selections.backgrounds,
+    sessionId,
+    offsetSeed + 23
+  );
   return {
     avatarId: avatar?.id || null,
     classId: classDef?.id || null,
@@ -100,7 +100,13 @@ function buildAutoAssignedSelection(contentRegistry, sessionId, offsetSeed) {
   };
 }
 
-export function buildRunParticipants(context, contentRegistry, sessionId, profile, remoteUserId) {
+export function buildRunParticipants(
+  context: any,
+  contentRegistry: any,
+  sessionId: string,
+  profile: any,
+  remoteUserId: string
+) {
   const profileSelection = sanitizeStoredProfile(contentRegistry, profile);
   const userParticipant = createParticipant({
     seatId: "user",
@@ -112,9 +118,9 @@ export function buildRunParticipants(context, contentRegistry, sessionId, profil
     selection: profileSelection,
   });
 
-  const aiParticipants = FATE_KNOTS_SUPPORTED_AI_SEATS.filter(function (seatId) {
+  const aiParticipants = FATE_KNOTS_SUPPORTED_AI_SEATS.filter(function (seatId: string) {
     return context?.slots?.[seatId]?.ready === true;
-  }).map(function (seatId, index) {
+  }).map(function (seatId: string, index: number) {
     const slot = context.slots[seatId];
     return createParticipant({
       seatId,
@@ -127,9 +133,9 @@ export function buildRunParticipants(context, contentRegistry, sessionId, profil
     });
   });
 
-  const remoteParticipants = FATE_KNOTS_SUPPORTED_REMOTE_SEATS.filter(function (seatId) {
+  const remoteParticipants = FATE_KNOTS_SUPPORTED_REMOTE_SEATS.filter(function (seatId: string) {
     return context?.slots?.[seatId]?.ready === true;
-  }).map(function (seatId, index) {
+  }).map(function (seatId: string, index: number) {
     const slot = context.slots[seatId];
     return createParticipant({
       seatId,
@@ -144,19 +150,19 @@ export function buildRunParticipants(context, contentRegistry, sessionId, profil
 
   return {
     participants: [userParticipant, ...aiParticipants, ...remoteParticipants],
-    excludedSeats: [],
+    excludedSeats: normalizeExcludedSeats([]),
     transport: {
-      localSessionId: null,
+      localSessionId: null as string | null,
       remoteUserId: remoteUserId || null,
     },
   };
 }
 
-export function isSelectionComplete(selection) {
+export function isSelectionComplete(selection: any) {
   return !!(selection?.avatarId && selection?.classId && selection?.backgroundId);
 }
 
-export function validateSelectionPayload(selectionPayload, contentRegistry) {
+export function validateSelectionPayload(selectionPayload: any, contentRegistry: any) {
   if (
     selectionPayload.avatarId &&
     contentRegistry.avatarsById.has(selectionPayload.avatarId) !== true
@@ -178,7 +184,7 @@ export function validateSelectionPayload(selectionPayload, contentRegistry) {
   return true;
 }
 
-export function applySelectionPayload(participant, selectionPayload, now) {
+export function applySelectionPayload(participant: any, selectionPayload: any, now: number) {
   participant.selection.avatarId = selectionPayload.avatarId || participant.selection.avatarId;
   participant.selection.classId = selectionPayload.classId || participant.selection.classId;
   participant.selection.backgroundId =
@@ -186,7 +192,7 @@ export function applySelectionPayload(participant, selectionPayload, now) {
   participant.selection.updatedAt = now;
 }
 
-export function persistProfileFromUser(api, state) {
+export function persistProfileFromUser(api: any, state: any) {
   const userParticipant = getUserParticipant(state);
   if (!userParticipant || isSelectionComplete(userParticipant.selection) !== true) {
     return loadFateKnotsProfile(api);

@@ -1,4 +1,4 @@
-export function createAudioAnalysisProviderRuntime(deps) {
+export function createAudioAnalysisProviderRuntime(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
@@ -11,7 +11,7 @@ export function createAudioAnalysisProviderRuntime(deps) {
   const getAudioAnalysisProviderState = deps.getAudioAnalysisProviderState;
   const getAudioAnalysisOrderedResultEntries = deps.getAudioAnalysisOrderedResultEntries;
 
-  function getAudioAnalysisProviderStatusLabel(status) {
+  function getAudioAnalysisProviderStatusLabel(status: any) {
     const token = typeof status === "string" ? status : "gated";
     if (token === "ready") {
       return text(["mediaAnalysis", "settings", "status", "ready"]);
@@ -25,9 +25,9 @@ export function createAudioAnalysisProviderRuntime(deps) {
     return formatStatusLabel(token);
   }
 
-  function getAudioAnalysisProviderLabel(providerId) {
+  function getAudioAnalysisProviderLabel(providerId: any) {
     const descriptor =
-      getAudioAnalysisProviderEntries().find(function (entry) {
+      getAudioAnalysisProviderEntries().find(function (entry: any) {
         return entry.id === providerId;
       }) || null;
     const providerState = toRecord(getAudioAnalysisProviderState()[providerId]);
@@ -39,11 +39,11 @@ export function createAudioAnalysisProviderRuntime(deps) {
     return `${title}${suffix}`;
   }
 
-  function getAudioAnalysisModuleTitle(moduleEntry) {
+  function getAudioAnalysisModuleTitle(moduleEntry: any) {
     return textFromKey(moduleEntry.titleKey || "") || moduleEntry.moduleId || "--";
   }
 
-  function getAudioAnalysisModuleSummary(moduleEntry) {
+  function getAudioAnalysisModuleSummary(moduleEntry: any) {
     if (typeof moduleEntry.summary === "string" && moduleEntry.summary.trim() !== "") {
       return moduleEntry.summary;
     }
@@ -68,23 +68,23 @@ export function createAudioAnalysisProviderRuntime(deps) {
         </div>
         <div class="lab-tool-grid">
           ${providers
-            .map(function (entry) {
+            .map(function (entry: any) {
               const providerState = toRecord(providerStateMap[entry.id]);
               const status =
-                (typeof providerState.status === "string" && providerState.status.trim() !== ""
+                typeof providerState.status === "string" && providerState.status.trim() !== ""
                   ? providerState.status
                   : typeof entry.status === "string"
                     ? entry.status
-                    : "gated");
+                    : "gated";
               const moduleIds = Array.isArray(providerState.moduleIds)
                 ? providerState.moduleIds
                 : Array.isArray(entry.moduleIds)
                   ? entry.moduleIds
                   : [];
               const moduleLabels = moduleIds
-                .map(function (moduleId) {
+                .map(function (moduleId: any) {
                   return getAudioAnalysisModuleTitle(
-                    getAudioAnalysisOrderedResultEntries().find(function (moduleEntry) {
+                    getAudioAnalysisOrderedResultEntries().find(function (moduleEntry: any) {
                       return moduleEntry.moduleId === moduleId;
                     }) || { moduleId: moduleId }
                   );
@@ -100,7 +100,9 @@ export function createAudioAnalysisProviderRuntime(deps) {
                 : Array.isArray(entry.fallbackProviderIds)
                   ? entry.fallbackProviderIds
                   : [];
-              const toolDisplayName = getToolDisplayName(providerState.toolId || entry.toolId || "planned");
+              const toolDisplayName = getToolDisplayName(
+                providerState.toolId || entry.toolId || "planned"
+              );
 
               return `
                 <article class="lab-tool-card">
@@ -147,7 +149,7 @@ export function createAudioAnalysisProviderRuntime(deps) {
                       featureText(["settings", "providerMeta", "fallbacks"]),
                       fallbackProviderIds.length > 0
                         ? fallbackProviderIds
-                            .map(function (providerId) {
+                            .map(function (providerId: any) {
                               return getAudioAnalysisProviderLabel(providerId);
                             })
                             .join(", ")
@@ -162,7 +164,7 @@ export function createAudioAnalysisProviderRuntime(deps) {
                           <ul class="lab-bullet-list">
                             ${providerState.blockers
                               .slice(0, 3)
-                              .map(function (item) {
+                              .map(function (item: any) {
                                 return `<li>${escapeHtml(item)}</li>`;
                               })
                               .join("")}
@@ -179,7 +181,7 @@ export function createAudioAnalysisProviderRuntime(deps) {
                           <ul class="lab-bullet-list">
                             ${providerState.warnings
                               .slice(0, 3)
-                              .map(function (item) {
+                              .map(function (item: any) {
                                 return `<li>${escapeHtml(item)}</li>`;
                               })
                               .join("")}
@@ -189,7 +191,8 @@ export function createAudioAnalysisProviderRuntime(deps) {
                       : ""
                   }
                   ${
-                    typeof providerState.lastError === "string" && providerState.lastError.trim() !== ""
+                    typeof providerState.lastError === "string" &&
+                    providerState.lastError.trim() !== ""
                       ? `<p class="lab-panel__hint lab-panel__hint--danger">${escapeHtml(providerState.lastError)}</p>`
                       : ""
                   }

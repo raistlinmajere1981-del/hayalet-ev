@@ -1,4 +1,4 @@
-(function (global) {
+(function (global: any) {
   type UnknownRecord = Record<string, unknown>;
   type XoxUiStateRuntime = {
     createGameState: () => unknown;
@@ -16,7 +16,7 @@
     createXoxUiRenderRuntime: (
       deps: XoxUiModuleDeps & {
         stateRuntime: XoxUiStateRuntime;
-      },
+      }
     ) => XoxUiRenderRuntime;
     createXoxUiModule?: (deps: XoxUiModuleDeps) => unknown;
   };

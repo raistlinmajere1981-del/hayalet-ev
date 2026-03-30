@@ -1,16 +1,14 @@
 import { createMediaAnalysisUiRuntimeHelpers } from "./runtime-helpers.js";
 import { createMediaAnalysisSourceEditUiRuntime } from "./source-edit-runtime.js";
 
-type MediaAnalysisUiRuntimeDeps =
-  & Parameters<typeof createMediaAnalysisSourceEditUiRuntime>[0]
-  & Parameters<typeof createMediaAnalysisUiRuntimeHelpers>[0];
+type MediaAnalysisUiRuntimeDeps = Parameters<typeof createMediaAnalysisSourceEditUiRuntime>[0] &
+  Parameters<typeof createMediaAnalysisUiRuntimeHelpers>[0];
 
-type MediaAnalysisUiRuntime =
-  & ReturnType<typeof createMediaAnalysisSourceEditUiRuntime>
-  & ReturnType<typeof createMediaAnalysisUiRuntimeHelpers>;
+type MediaAnalysisUiRuntime = ReturnType<typeof createMediaAnalysisSourceEditUiRuntime> &
+  ReturnType<typeof createMediaAnalysisUiRuntimeHelpers>;
 
 export function createMediaAnalysisUiRuntime(
-  deps: MediaAnalysisUiRuntimeDeps,
+  deps: MediaAnalysisUiRuntimeDeps
 ): MediaAnalysisUiRuntime {
   const sourceEditRuntime = createMediaAnalysisSourceEditUiRuntime({
     featureText: deps.featureText,

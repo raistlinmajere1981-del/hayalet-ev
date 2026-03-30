@@ -20,29 +20,42 @@ import { createLaboratoryHostFeatureRuntimes } from "./feature-runtimes.js";
 const AUDIO_ANALYSIS_SCHEMA_VERSION = 1;
 const PROJECT_SCHEMA_VERSION = 1;
 
-const runtimeRefs = {
+const runtimeRefs: {
+  closeoutStaleness: any;
+  processCoordination: any;
+  projectState: any;
+  subtitleAnalysisHost: any;
+} = {
   closeoutStaleness: null,
   processCoordination: null,
   projectState: null,
   subtitleAnalysisHost: null,
 };
 
-let projectRuntimes = null;
-let featureRuntimes = null;
+let projectRuntimes: any = null;
+let featureRuntimes: any = null;
 
-function markFeatureProcessStale(project, featureId, reason) {
+function markFeatureProcessStale(project: any, featureId: string, reason: string) {
+  if (!runtimeRefs.closeoutStaleness) throw new Error("closeoutStaleness not initialized");
   return runtimeRefs.closeoutStaleness.markFeatureProcessStale(project, featureId, reason);
 }
 
-function markFeatureReportStale(project, featureId, reason) {
+function markFeatureReportStale(project: any, featureId: string, reason: string) {
+  if (!runtimeRefs.closeoutStaleness) throw new Error("closeoutStaleness not initialized");
   return runtimeRefs.closeoutStaleness.markFeatureReportStale(project, featureId, reason);
 }
 
-function markCloseoutAsStale(project, reason, featureIds) {
+function markCloseoutAsStale(project: any, reason: string, featureIds: string[]) {
+  if (!runtimeRefs.closeoutStaleness) throw new Error("closeoutStaleness not initialized");
   return runtimeRefs.closeoutStaleness.markCloseoutAsStale(project, reason, featureIds);
 }
 
-function normalizeAudioAnalysisModuleResult(rawValue, moduleId, catalogEntry) {
+function normalizeAudioAnalysisModuleResult(
+  rawValue: unknown,
+  moduleId: string,
+  catalogEntry: unknown
+) {
+  if (!featureRuntimes) throw new Error("featureRuntimes not initialized");
   return featureRuntimes.processComposition.audioAnalysisStateRuntime.normalizeAudioAnalysisModuleResult(
     rawValue,
     moduleId,
@@ -51,17 +64,19 @@ function normalizeAudioAnalysisModuleResult(rawValue, moduleId, catalogEntry) {
 }
 
 function createEmptyAudioAnalysisState() {
+  if (!featureRuntimes) throw new Error("featureRuntimes not initialized");
   return featureRuntimes.processComposition.audioAnalysisStateRuntime.createEmptyAudioAnalysisState();
 }
 
-function normalizeAudioAnalysisState(rawValue, runtime) {
+function normalizeAudioAnalysisState(rawValue: unknown, runtime: unknown) {
+  if (!featureRuntimes) throw new Error("featureRuntimes not initialized");
   return featureRuntimes.processComposition.audioAnalysisStateRuntime.normalizeAudioAnalysisState(
     rawValue,
     runtime
   );
 }
 
-function getProfileArtifactPreferenceMap(profileCapabilities) {
+function getProfileArtifactPreferenceMap(profileCapabilities: unknown) {
   return toRecord(toRecord(profileCapabilities).artifactPreferences);
 }
 
@@ -71,6 +86,7 @@ const foundation = createLaboratoryHostFoundation({
   clone,
   defaultFeatureId: FEATURE_ID,
   getAnalysisArtifactRuntime() {
+    if (!projectRuntimes) throw new Error("projectRuntimes not initialized");
     return projectRuntimes.analysisArtifact;
   },
   getProjectStateRuntime() {
@@ -102,7 +118,7 @@ projectRuntimes = createLaboratoryHostProjectRuntimes({
   normalizeAudioAnalysisState,
   projectSchemaVersion: PROJECT_SCHEMA_VERSION,
   roomId: ROOM_ID,
-  setCloseoutStalenessRuntime(value) {
+  setCloseoutStalenessRuntime(value: any) {
     runtimeRefs.closeoutStaleness = value;
   },
   subtitleFeatureId: SUBTITLE_FEATURE_ID,
@@ -128,13 +144,13 @@ featureRuntimes = createLaboratoryHostFeatureRuntimes({
   normalizeAudioAnalysisState,
   projectRuntimes,
   roomId: ROOM_ID,
-  setProcessCoordinationRuntime(value) {
+  setProcessCoordinationRuntime(value: any) {
     runtimeRefs.processCoordination = value;
   },
-  setProjectStateRuntime(value) {
+  setProjectStateRuntime(value: any) {
     runtimeRefs.projectState = value;
   },
-  setSubtitleAnalysisHostRuntime(value) {
+  setSubtitleAnalysisHostRuntime(value: any) {
     runtimeRefs.subtitleAnalysisHost = value;
   },
   subtitleFeatureId: SUBTITLE_FEATURE_ID,
@@ -142,6 +158,8 @@ featureRuntimes = createLaboratoryHostFeatureRuntimes({
 });
 
 export default function createLaboratoryHostRuntime() {
+  if (!projectRuntimes) throw new Error("projectRuntimes not initialized");
+  if (!featureRuntimes) throw new Error("featureRuntimes not initialized");
   return createLaboratoryHostActivation({
     createRuntimeState: foundation.bootstrap.createRuntimeState,
     ensureHydrated: projectRuntimes.lifecycle.ensureHydrated,
@@ -149,8 +167,7 @@ export default function createLaboratoryHostRuntime() {
     handleMediaAction: featureRuntimes.featureAdapters.handleMediaAction,
     pushMediaState: projectRuntimes.snapshot.pushMediaState,
     saveContext: foundation.bootstrap.saveContext,
-    tearDownRoomToolsSubscription:
-      featureRuntimes.roomToolsProgress.tearDownRoomToolsSubscription,
+    tearDownRoomToolsSubscription: featureRuntimes.roomToolsProgress.tearDownRoomToolsSubscription,
     toRecord,
   });
 }

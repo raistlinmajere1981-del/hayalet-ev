@@ -98,10 +98,7 @@ function resolveEsbuildFormat(relativePath: string): Format | undefined {
   return undefined;
 }
 
-export async function buildWorkspaceRoomOutput(
-  sourceDir: string,
-  buildDir: string
-): Promise<void> {
+export async function buildWorkspaceRoomOutput(sourceDir: string, buildDir: string): Promise<void> {
   await copyDirectoryContents(sourceDir, buildDir, {
     includeRelativePath: (relativePath) =>
       isWorkspaceTypeScriptSourcePath(relativePath) === false &&

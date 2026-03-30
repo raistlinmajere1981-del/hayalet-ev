@@ -1,6 +1,6 @@
 type LaboratoryRecord = Record<string, unknown>;
 
-export function createLaboratorySnapshotProjectSelectors(deps) {
+export function createLaboratorySnapshotProjectSelectors(deps: any) {
   const getState = deps.getState;
   const toRecord = deps.toRecord;
   const getActiveFeatureId = deps.getActiveFeatureId;
@@ -12,7 +12,9 @@ export function createLaboratorySnapshotProjectSelectors(deps) {
 
   function getActiveProject() {
     const project = getSourceSnapshot().activeProject;
-    return project && typeof project === "object" && Array.isArray(project) === false ? project : null;
+    return project && typeof project === "object" && Array.isArray(project) === false
+      ? project
+      : null;
   }
 
   function getProjectSummaries() {
@@ -111,7 +113,7 @@ export function createLaboratorySnapshotProjectSelectors(deps) {
   function getEditOutputs(): LaboratoryRecord[] {
     const outputs = getProjectEdit().outputs;
     return Array.isArray(outputs)
-      ? outputs.map(function (entry) {
+      ? outputs.map(function (entry: any) {
           return toRecord(entry) as LaboratoryRecord;
         })
       : [];
@@ -124,7 +126,7 @@ export function createLaboratorySnapshotProjectSelectors(deps) {
         ? edit.activeOutputId
         : null;
     return (
-      getEditOutputs().find(function (entry) {
+      getEditOutputs().find(function (entry: any) {
         return activeOutputId !== null && entry.id === activeOutputId;
       }) || null
     );

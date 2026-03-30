@@ -1,6 +1,6 @@
 /* global window */
 
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiScrollRuntime || (global.GameRoomUiScrollRuntime = {});
 
   const FEATURE_SCROLL_SELECTORS = {
@@ -11,17 +11,17 @@
     fateKnotsSurface: ".fk-surface__inner",
   };
 
-  function canQuerySelector(value) {
+  function canQuerySelector(value: any) {
     return !!value && typeof value === "object" && typeof value.querySelector === "function";
   }
 
-  function isScrollableElement(value) {
+  function isScrollableElement(value: any) {
     return !!value && typeof value === "object" && typeof value.scrollTop === "number";
   }
 
   registry.createGameRoomUiScrollRuntime = function createGameRoomUiScrollRuntime() {
     return {
-      capture(root) {
+      capture(root: any) {
         if (!canQuerySelector(root)) {
           return {};
         }
@@ -33,7 +33,7 @@
           })
         );
       },
-      restore(root, scrollState) {
+      restore(root: any, scrollState: any) {
         if (!scrollState || typeof scrollState !== "object" || !canQuerySelector(root)) {
           return;
         }

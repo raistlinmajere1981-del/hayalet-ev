@@ -46,9 +46,18 @@ test("laboratory host action composition is extracted into a shared host boundar
   assert.match(workspaceHostRuntimeSource, /from "\.\/foundation-runtimes\.js"/);
   assert.match(workspaceHostRuntimeSource, /from "\.\/project-runtimes\.js"/);
   assert.match(workspaceHostRuntimeSource, /from "\.\/feature-runtimes\.js"/);
-  assert.match(workspaceHostFoundationSource, /export function createLaboratoryHostFoundation\(deps\)/);
-  assert.match(workspaceHostProjectSource, /export function createLaboratoryHostProjectRuntimes\(deps\)/);
-  assert.match(workspaceHostFeatureSource, /export function createLaboratoryHostFeatureRuntimes\(deps\)/);
+  assert.match(
+    workspaceHostFoundationSource,
+    /export function createLaboratoryHostFoundation\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    workspaceHostProjectSource,
+    /export function createLaboratoryHostProjectRuntimes\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    workspaceHostFeatureSource,
+    /export function createLaboratoryHostFeatureRuntimes\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.doesNotMatch(workspaceHostSource, /shared\/host\/action-composition\.js/);
   assert.match(
     workspaceActionRuntimeSource,
@@ -64,15 +73,24 @@ test("laboratory host action composition is extracted into a shared host boundar
     /function handleMediaAction\(\s*api\??(?::[\s\S]+?)?,\s*runtime\??(?::[\s\S]+?)?,\s*payload\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
   );
   assert.match(workspaceActionRuntimeSource, /from "\.\/action-router\.js"/);
-  assert.match(workspaceActionCompositionSource, /export function createLaboratoryActionCompositionRuntime\(deps\)/);
+  assert.match(
+    workspaceActionCompositionSource,
+    /export function createLaboratoryActionCompositionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(workspaceActionCompositionSource, /from "\.\/action-runtime\.js"/);
   assert.match(workspaceActionCompositionSource, /from "\.\/tool-mutations\.js"/);
   assert.match(
     workspaceActionCompositionSource,
     /from "\.\.\/\.\.\/main-functions\/media-analysis\/host\/action-handlers\.js"/
   );
-  assert.match(workspaceActionRouterSource, /export function createLaboratoryActionRouter\(deps\)/);
-  assert.match(workspaceFeatureAdaptersSource, /export function createLaboratoryFeatureAdapters\(deps\)/);
+  assert.match(
+    workspaceActionRouterSource,
+    /export function createLaboratoryActionRouter\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    workspaceFeatureAdaptersSource,
+    /export function createLaboratoryFeatureAdapters\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(workspaceFeatureAdaptersSource, /from "\.\.\/shared\/host\/action-composition\.js"/);
   assert.match(
     workspaceFeatureAdaptersSource,

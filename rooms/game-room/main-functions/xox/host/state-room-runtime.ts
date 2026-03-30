@@ -2,6 +2,7 @@ import { createSlotState, loadContext, readLocale } from "../../../shared/host/c
 import { FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
 import {
+  type XoxGameState,
   buildBoardAscii,
   getAvailableCells,
   normalizeState,
@@ -9,11 +10,11 @@ import {
 } from "./state-core.js";
 import { normalizeInviteInbox, normalizePendingInvite } from "./state-invites.js";
 
-export function loadState(api) {
+export function loadState(api: any) {
   return normalizeState(api.getState("xox-game"), readLocale(api));
 }
 
-export function saveState(api, state) {
+export function saveState(api: any, state: XoxGameState) {
   const normalized = normalizeState(state, readLocale(api));
   normalized.locale = readLocale(api);
   api.setState("locale", normalized.locale);
@@ -21,21 +22,21 @@ export function saveState(api, state) {
   return normalized;
 }
 
-export function loadInviteInbox(api) {
+export function loadInviteInbox(api: any) {
   return normalizeInviteInbox(api.getState("xox-invite-inbox"));
 }
 
-export function saveInviteInbox(api, inviteInbox) {
+export function saveInviteInbox(api: any, inviteInbox: unknown) {
   const normalized = normalizeInviteInbox(inviteInbox);
   api.setState("xox-invite-inbox", normalized);
   return normalized;
 }
 
-export function loadPendingInvite(api) {
+export function loadPendingInvite(api: any) {
   return normalizePendingInvite(api.getState("xox-pending-invite"));
 }
 
-export function savePendingInvite(api, pendingInvite) {
+export function savePendingInvite(api: any, pendingInvite: unknown) {
   const normalized = normalizePendingInvite(pendingInvite);
   if (normalized === null) {
     api.deleteState("xox-pending-invite");
@@ -45,11 +46,11 @@ export function savePendingInvite(api, pendingInvite) {
   return normalized;
 }
 
-export function clearPendingInvite(api) {
+export function clearPendingInvite(api: any) {
   api.deleteState("xox-pending-invite");
 }
 
-export function createUs1OpponentFallback(state) {
+export function createUs1OpponentFallback(state: XoxGameState) {
   return {
     slotId: "us1",
     nickname: state.opponentNickname || "US1",
@@ -58,12 +59,12 @@ export function createUs1OpponentFallback(state) {
     ready: false,
     state: "assigned",
     urlExcluded: false,
-    accountId: null,
+    accountId: null as string | null,
     remoteUserId: state.remoteUserId,
   };
 }
 
-export function getOpponentInfo(context, state) {
+export function getOpponentInfo(context: any, state: XoxGameState) {
   if (state.target === "us1") {
     const slot = context && context.slots ? context.slots.us1 : null;
     if (slot && state.remoteUserId !== null && slot.remoteUserId === state.remoteUserId) {
@@ -81,14 +82,14 @@ export function getOpponentInfo(context, state) {
   return createSlotState(state.target);
 }
 
-export function resolveStatusText(state, context) {
+export function resolveStatusText(state: XoxGameState, context: any) {
   const opponent = getOpponentInfo(context, state);
   return fillTemplate(translate(state.locale, STATUS_COPY, state.statusKey), {
     opponent: opponent.nickname,
   });
 }
 
-export function serializeState(api, state, context) {
+export function serializeState(api: any, state: XoxGameState, context: any) {
   const opponent = getOpponentInfo(context, state);
   return {
     roomId: ROOM_ID,
@@ -125,7 +126,7 @@ export function serializeState(api, state, context) {
   };
 }
 
-export function pushRoomState(api, state) {
+export function pushRoomState(api: any, state: XoxGameState) {
   const context = loadContext(api);
   const savedState = saveState(api, state);
   api.notifyRoom("xox-state", {
@@ -134,6 +135,6 @@ export function pushRoomState(api, state) {
   return savedState;
 }
 
-export function refreshRoomState(api) {
+export function refreshRoomState(api: any) {
   return pushRoomState(api, loadState(api));
 }

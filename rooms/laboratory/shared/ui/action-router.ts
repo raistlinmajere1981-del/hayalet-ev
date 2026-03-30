@@ -1,7 +1,7 @@
 import { createLaboratoryUiActionHandlers } from "./action-router-actions.js";
 import { createLaboratoryUiActionEventRuntime } from "./action-router-events.js";
 
-export function createLaboratoryUiActionRouter(deps) {
+export function createLaboratoryUiActionRouter(deps: any) {
   const {
     advanceStage,
     buildCurrentDraftPayload,

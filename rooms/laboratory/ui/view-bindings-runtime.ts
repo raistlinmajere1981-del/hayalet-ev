@@ -1,6 +1,6 @@
 import { createLaboratoryViewAccessorsRuntime } from "./view-accessors-runtime.js";
 
-export function createLaboratoryViewBindingsRuntime(deps) {
+export function createLaboratoryViewBindingsRuntime(deps: any) {
   const laboratorySnapshotAccessRuntime = deps.laboratorySnapshotAccessRuntime;
   const laboratoryProfileProcessReportAccessorsRuntime =
     deps.laboratoryProfileProcessReportAccessorsRuntime;
@@ -39,13 +39,13 @@ export function createLaboratoryViewBindingsRuntime(deps) {
     getSubtitleEntries: laboratorySnapshotAccessRuntime.getSubtitleEntries,
     getSubtitleProcessModuleLabel: laboratorySnapshotAccessRuntime.getSubtitleProcessModuleLabel,
     getSubtitleProviderLabel: laboratorySnapshotAccessRuntime.getSubtitleProviderLabel,
-    renderProfileModelCard: function (entry) {
+    renderProfileModelCard: function (entry: any) {
       return getLaboratorySettingsUi().renderProfileModelCard(entry);
     },
     renderSettingsOverlay: function () {
       return getLaboratorySettingsUi().renderSettingsOverlay();
     },
-    renderToolCard: function (toolId, stageId) {
+    renderToolCard: function (toolId: any, stageId: any) {
       return getLaboratorySettingsUi().renderToolCard(toolId, stageId);
     },
   });
@@ -75,10 +75,10 @@ export function createLaboratoryViewBindingsRuntime(deps) {
     getSubtitleEntries: function () {
       return laboratoryViewAccessorsRuntime.getSubtitleEntries();
     },
-    getSubtitleProcessModuleLabel: function (entry) {
+    getSubtitleProcessModuleLabel: function (entry: any) {
       return laboratoryViewAccessorsRuntime.getSubtitleProcessModuleLabel(entry);
     },
-    getSubtitleProviderLabel: function (entry) {
+    getSubtitleProviderLabel: function (entry: any) {
       return laboratoryViewAccessorsRuntime.getSubtitleProviderLabel(entry);
     },
     renderSettingsOverlay: function renderSettingsOverlay() {

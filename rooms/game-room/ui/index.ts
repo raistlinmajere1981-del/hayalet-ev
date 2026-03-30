@@ -1,4 +1,4 @@
-(function bootstrapGameRoomUi(global) {
+(function bootstrapGameRoomUi(global: any) {
   const runtimeFactories = global.GameRoomUiRuntime || {};
   const createGameRoomUiRuntime = runtimeFactories.createGameRoomUiRuntime;
   if (typeof createGameRoomUiRuntime !== "function") {

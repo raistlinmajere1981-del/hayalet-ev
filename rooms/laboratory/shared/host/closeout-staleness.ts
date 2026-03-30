@@ -24,26 +24,26 @@ type LaboratoryCloseoutStalenessRuntimeDeps = {
   featureIds: string[];
   getFeatureProcessRecord: (
     project: LaboratoryCloseoutProjectState,
-    featureId: string,
+    featureId: string
   ) => LaboratoryFeatureProcessRecord;
   setFeatureProcessRecord: (
     project: LaboratoryCloseoutProjectState,
     featureId: string,
-    record: LaboratoryFeatureProcessRecord,
+    record: LaboratoryFeatureProcessRecord
   ) => void;
   getFeatureReportRecord: (
     project: LaboratoryCloseoutProjectState,
-    featureId: string,
+    featureId: string
   ) => LaboratoryFeatureReportRecord;
   setFeatureReportRecord: (
     project: LaboratoryCloseoutProjectState,
     featureId: string,
-    record: LaboratoryFeatureReportRecord,
+    record: LaboratoryFeatureReportRecord
   ) => void;
 };
 
 export function createLaboratoryCloseoutStalenessRuntime(
-  deps: LaboratoryCloseoutStalenessRuntimeDeps,
+  deps: LaboratoryCloseoutStalenessRuntimeDeps
 ) {
   const featureIds = deps.featureIds;
   const getFeatureProcessRecord = deps.getFeatureProcessRecord;
@@ -54,7 +54,7 @@ export function createLaboratoryCloseoutStalenessRuntime(
   function markFeatureProcessStale(
     project: LaboratoryCloseoutProjectState,
     featureId: string,
-    reason: string | null,
+    reason: string | null
   ): void {
     const existing = getFeatureProcessRecord(project, featureId);
     setFeatureProcessRecord(project, featureId, {
@@ -62,7 +62,7 @@ export function createLaboratoryCloseoutStalenessRuntime(
       status: existing.completedAt ? "stale" : "idle",
       jobId: null,
       requestId: null,
-      runId: existing.runId,
+      runId: existing.runId ?? null,
       percent: 0,
       warnings: Array.from(new Set((existing.warnings || []).concat(reason ? [reason] : []))),
       error: null,
@@ -74,7 +74,7 @@ export function createLaboratoryCloseoutStalenessRuntime(
   function markFeatureReportStale(
     project: LaboratoryCloseoutProjectState,
     featureId: string,
-    reason: string | null,
+    reason: string | null
   ): void {
     const existing = getFeatureReportRecord(project, featureId);
     setFeatureReportRecord(project, featureId, {
@@ -90,11 +90,13 @@ export function createLaboratoryCloseoutStalenessRuntime(
   function markCloseoutAsStale(
     project: LaboratoryCloseoutProjectState,
     reason: string | null,
-    targetFeatureIds?: string[] | null,
+    targetFeatureIds?: string[] | null
   ): void {
     const resolvedFeatureIds =
-      Array.isArray(targetFeatureIds) && targetFeatureIds.length > 0 ? targetFeatureIds : featureIds;
-    resolvedFeatureIds.forEach(function (featureId) {
+      Array.isArray(targetFeatureIds) && targetFeatureIds.length > 0
+        ? targetFeatureIds
+        : featureIds;
+    resolvedFeatureIds.forEach(function (featureId: any) {
       markFeatureProcessStale(project, featureId, reason);
       markFeatureReportStale(project, featureId, reason);
     });

@@ -39,17 +39,12 @@ type LaboratoryToolMutationRuntimeDeps = {
   persistToolState: (runtime: LaboratoryRuntimeWithToolState) => Promise<unknown>;
   pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
   refreshProfileModelState: (runtime: LaboratoryRuntimeWithToolState) => Promise<unknown>;
-  registerJob: (
-    runtime: LaboratoryRuntimeWithToolState,
-    options: LaboratoryRecord,
-  ) => unknown;
+  registerJob: (runtime: LaboratoryRuntimeWithToolState, options: LaboratoryRecord) => unknown;
   roomId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createLaboratoryToolMutationRuntime(
-  deps: LaboratoryToolMutationRuntimeDeps,
-) {
+export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutationRuntimeDeps) {
   const {
     callRoomTools,
     clearJob,
@@ -67,7 +62,7 @@ export function createLaboratoryToolMutationRuntime(
     runtime: LaboratoryRuntimeWithToolState,
     toolId: string,
     busy: boolean,
-    lastError: string | null,
+    lastError: string | null
   ): void {
     runtime.toolState.tools[toolId] = {
       ...createDefaultToolEntry(toolId),
@@ -84,7 +79,7 @@ export function createLaboratoryToolMutationRuntime(
     requestId: string,
     action: string,
     toolId: string,
-    featureStage: string | null,
+    featureStage: string | null
   ) {
     if (getRuntimeToolIds(runtime).includes(toolId) === false) {
       throw new Error(`Unsupported tool: ${toolId}`);
@@ -119,7 +114,7 @@ export function createLaboratoryToolMutationRuntime(
         jobId: jobId,
         toolId: toolId,
       });
-      const tool = toRecord(result.tool);
+      const tool = toRecord(result["tool"]);
 
       runtime.toolState.tools[toolId] = {
         ...createDefaultToolEntry(toolId),
@@ -129,9 +124,9 @@ export function createLaboratoryToolMutationRuntime(
         busy: false,
         lastError: null,
         updateAvailable: false,
-        latestVersion: typeof tool.version === "string" ? tool.version : null,
-        latestReleaseTag: typeof tool.releaseTag === "string" ? tool.releaseTag : null,
-        latestReleaseName: typeof tool.releaseName === "string" ? tool.releaseName : null,
+        latestVersion: typeof tool["version"] === "string" ? tool["version"] : null,
+        latestReleaseTag: typeof tool["releaseTag"] === "string" ? tool["releaseTag"] : null,
+        latestReleaseName: typeof tool["releaseName"] === "string" ? tool["releaseName"] : null,
         lastCheckedAt: new Date().toISOString(),
       };
 
@@ -148,9 +143,14 @@ export function createLaboratoryToolMutationRuntime(
         stage: "completed",
         percent: 100,
       });
-      return result.tool;
+      return result["tool"];
     } catch (error) {
-      updateToolBusy(runtime, toolId, false, error instanceof Error ? error.message : String(error));
+      updateToolBusy(
+        runtime,
+        toolId,
+        false,
+        error instanceof Error ? error.message : String(error)
+      );
       await persistToolState(runtime);
       if (toolId === "whisper.cpp") {
         await refreshProfileModelState(runtime);

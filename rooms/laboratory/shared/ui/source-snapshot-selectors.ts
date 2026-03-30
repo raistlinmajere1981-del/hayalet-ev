@@ -7,22 +7,18 @@ type LaboratorySourceSnapshotSelectorCompositionDeps = {
   getState: () => Record<string, unknown>;
   toRecord: (value: unknown) => Record<string, unknown>;
   getActiveFeatureId: () => string;
-  subtitleText: (
-    path: string[],
-    trFallback?: string,
-    enFallback?: string,
-  ) => string;
+  subtitleText: (path: string[], trFallback?: string, enFallback?: string) => string;
   subtitleTemplate: (
     path: string[],
     replacements: Record<string, string>,
     trFallback: string,
-    enFallback: string,
+    enFallback: string
   ) => string;
   formatStatusLabel: (status: string) => string;
 };
 
 export function createSourceSnapshotSelectors(
-  deps: LaboratorySourceSnapshotSelectorCompositionDeps,
+  deps: LaboratorySourceSnapshotSelectorCompositionDeps
 ) {
   const projectSelectors = createLaboratorySnapshotProjectSelectors({
     getState: deps.getState,
@@ -56,3 +52,5 @@ export function createSourceSnapshotSelectors(
     ...toolSelectors,
   };
 }
+
+export type LaboratorySourceSnapshotSelectorsApi = ReturnType<typeof createSourceSnapshotSelectors>;

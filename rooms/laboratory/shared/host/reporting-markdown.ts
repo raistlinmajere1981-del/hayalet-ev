@@ -1,4 +1,4 @@
-export function createLaboratoryReportMarkdownRuntime(deps) {
+export function createLaboratoryReportMarkdownRuntime(deps: any) {
   const {
     asNonEmptyString,
     formatIdentifierLabel,
@@ -10,7 +10,7 @@ export function createLaboratoryReportMarkdownRuntime(deps) {
     subtitleFeatureId,
   } = deps;
 
-  function formatReportCardLabel(card) {
+  function formatReportCardLabel(card: any) {
     const label = asNonEmptyString(toRecord(card).label);
     if (label !== null) {
       return label;
@@ -22,7 +22,7 @@ export function createLaboratoryReportMarkdownRuntime(deps) {
     return "Summary";
   }
 
-  function getFeatureLabel(featureId) {
+  function getFeatureLabel(featureId: any) {
     if (featureId === audioFeatureId) {
       return "Audio Analysis";
     }
@@ -32,7 +32,7 @@ export function createLaboratoryReportMarkdownRuntime(deps) {
     return "Media Analysis";
   }
 
-  function buildReportMarkdown(runtime, project, featureId, reportRecord) {
+  function buildReportMarkdown(runtime: any, project: any, featureId: any, reportRecord: any) {
     const lines = [
       `# ${getFeatureLabel(featureId)} Report`,
       "",
@@ -42,17 +42,19 @@ export function createLaboratoryReportMarkdownRuntime(deps) {
       "## Summary",
     ];
 
-    (Array.isArray(reportRecord.summaryCards) ? reportRecord.summaryCards : []).forEach(function (card) {
-      lines.push(`- ${formatReportCardLabel(card)}: ${card.value || "--"}`);
-    });
+    (Array.isArray(reportRecord.summaryCards) ? reportRecord.summaryCards : []).forEach(
+      function (card: any) {
+        lines.push(`- ${formatReportCardLabel(card)}: ${card.value || "--"}`);
+      }
+    );
 
     if (featureId === audioFeatureId) {
       const projection = buildAudioAnalysisReportProjection(runtime, project);
       lines.push("", "## Modules");
-      projection.orderedResults.forEach(function (result) {
+      projection.orderedResults.forEach(function (result: any) {
         const metrics = Array.isArray(result.metrics) ? result.metrics : [];
         const metricsSummary = metrics
-          .map(function (metric) {
+          .map(function (metric: any) {
             return `${asNonEmptyString(metric.label) || formatIdentifierLabel(metric.id)}: ${metric.value || "--"}`;
           })
           .join(", ");
@@ -78,18 +80,18 @@ export function createLaboratoryReportMarkdownRuntime(deps) {
         : []
       )
         .map(normalizeProcessModule)
-        .forEach(function (moduleEntry) {
+        .forEach(function (moduleEntry: any) {
           lines.push(
-            `- ${moduleEntry.title || formatIdentifierLabel(moduleEntry.id)}: ${
-              formatIdentifierLabel(moduleEntry.status || "idle")
-            }${moduleEntry.summary ? ` - ${moduleEntry.summary}` : ""}`
+            `- ${moduleEntry.title || formatIdentifierLabel(moduleEntry.id)}: ${formatIdentifierLabel(
+              moduleEntry.status || "idle"
+            )}${moduleEntry.summary ? ` - ${moduleEntry.summary}` : ""}`
           );
         });
     }
 
     lines.push("", "## Findings");
     if (Array.isArray(reportRecord.findings) && reportRecord.findings.length > 0) {
-      reportRecord.findings.forEach(function (finding) {
+      reportRecord.findings.forEach(function (finding: any) {
         lines.push(`- ${finding.title || finding.moduleId || "Finding"}: ${finding.detail || ""}`);
       });
     } else {
@@ -98,22 +100,24 @@ export function createLaboratoryReportMarkdownRuntime(deps) {
 
     if (Array.isArray(reportRecord.caveats) && reportRecord.caveats.length > 0) {
       lines.push("", "## Caveats");
-      reportRecord.caveats.forEach(function (entry) {
+      reportRecord.caveats.forEach(function (entry: any) {
         lines.push(`- ${entry}`);
       });
     }
 
     if (Array.isArray(reportRecord.warnings) && reportRecord.warnings.length > 0) {
       lines.push("", "## Warnings");
-      reportRecord.warnings.forEach(function (entry) {
+      reportRecord.warnings.forEach(function (entry: any) {
         lines.push(`- ${entry}`);
       });
     }
 
     if (Array.isArray(reportRecord.exports) && reportRecord.exports.length > 0) {
       lines.push("", "## Exports");
-      reportRecord.exports.forEach(function (entry) {
-        lines.push(`- ${entry.fileName || entry.path || "--"} (${entry.format || "md"}, ${entry.status || "ready"})`);
+      reportRecord.exports.forEach(function (entry: any) {
+        lines.push(
+          `- ${entry.fileName || entry.path || "--"} (${entry.format || "md"}, ${entry.status || "ready"})`
+        );
       });
     }
 

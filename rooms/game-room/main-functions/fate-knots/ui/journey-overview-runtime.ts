@@ -1,9 +1,9 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
   registry.createFateKnotsUiJourneyOverviewRuntime =
-    function createFateKnotsUiJourneyOverviewRuntime(deps) {
-      function createMemoryRail(state) {
+    function createFateKnotsUiJourneyOverviewRuntime(deps: any) {
+      function createMemoryRail(state: any) {
         const panel = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--rail fk-memory-rail",
@@ -29,10 +29,7 @@
           deps.createElement(
             "p",
             "fk-frame__hint",
-            deps.t(
-              ["fateKnots", "memory", "saveSlotIdle"],
-              "Full resume stays deferred for now."
-            )
+            deps.t(["fateKnots", "memory", "saveSlotIdle"], "Full resume stays deferred for now.")
           )
         );
         panel.append(profileBlock);
@@ -47,7 +44,7 @@
         );
         const historyList = deps.createRegion("div", "fk-history-list", null);
         if (Array.isArray(state.history) && state.history.length > 0) {
-          state.history.slice(0, 3).forEach(function (entry) {
+          state.history.slice(0, 3).forEach(function (entry: any) {
             const item = deps.createRegion("div", "fk-history-list__item", null);
             const title =
               entry && entry.title
@@ -78,7 +75,7 @@
         return panel;
       }
 
-      function createMapShell(state) {
+      function createMapShell(state: any) {
         const shell = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--scene fk-map-shell",
@@ -91,10 +88,18 @@
         );
         const header = deps.createRegion("div", "fk-frame__header", null);
         header.append(
-          deps.createElement("p", "fk-frame__eyebrow", deps.t(["fateKnots", "map", "title"], "Route Map"))
+          deps.createElement(
+            "p",
+            "fk-frame__eyebrow",
+            deps.t(["fateKnots", "map", "title"], "Route Map")
+          )
         );
         header.append(
-          deps.createElement("h2", "fk-frame__title", deps.t(["fateKnots", "heroTitle"], "Fate Knots"))
+          deps.createElement(
+            "h2",
+            "fk-frame__title",
+            deps.t(["fateKnots", "heroTitle"], "Fate Knots")
+          )
         );
         header.append(
           deps.createElement(
@@ -124,7 +129,7 @@
         deps.applyFrameArtwork(crest, { texture: deps.getUiAsset("mapCrest") });
         figure.append(crest);
         if (state.map && Array.isArray(state.map.nodes)) {
-          state.map.nodes.forEach(function (node) {
+          state.map.nodes.forEach(function (node: any) {
             if (!node || !node.marker) {
               return;
             }
@@ -148,7 +153,11 @@
               overlaySize: "100% 100%",
             });
             marker.append(
-              deps.createElement("span", "fk-map-shell__marker-label", node.label || node.id || "Node")
+              deps.createElement(
+                "span",
+                "fk-map-shell__marker-label",
+                node.label || node.id || "Node"
+              )
             );
             figure.append(marker);
           });
@@ -157,7 +166,7 @@
         return shell;
       }
 
-      function renderOverviewStage(parent, state) {
+      function renderOverviewStage(parent: any, state: any) {
         const layout = deps.createRegion("section", "fk-overview", "overview-layout");
         const main = deps.createRegion("div", "fk-overview__main", null);
         const mapShell = createMapShell(state);
@@ -188,7 +197,7 @@
           )
         );
         const seatGrid = deps.createRegion("div", "fk-seat-grid", null);
-        deps.KNOWN_SEAT_IDS.forEach(function (seatId) {
+        deps.KNOWN_SEAT_IDS.forEach(function (seatId: any) {
           seatGrid.append(deps.createSeatPlaque(state, seatId, "roster-seat"));
         });
         rail.append(seatGrid);
@@ -199,7 +208,10 @@
             state.status || deps.t(["fateKnots", "status", "idle"], "Prepare a run.")
           )
         );
-        const actionZone = deps.createRegion("div", "fk-action-cluster", ["action-zone", "start-zone"]);
+        const actionZone = deps.createRegion("div", "fk-action-cluster", [
+          "action-zone",
+          "start-zone",
+        ]);
         actionZone.append(
           deps.createActionButton(
             deps.t(["fateKnots", "controls", "start"], "Start Run"),
@@ -238,10 +250,9 @@
             deps.createElement(
               "p",
               "fk-frame__hint",
-              deps.t(["fateKnots", "roster", "remoteUserLabel"], "US1: {id}").replace(
-                "{id}",
-                state.transport.remoteUserId
-              )
+              deps
+                .t(["fateKnots", "roster", "remoteUserLabel"], "US1: {id}")
+                .replace("{id}", state.transport.remoteUserId)
             )
           );
         }

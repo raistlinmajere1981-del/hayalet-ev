@@ -1,4 +1,4 @@
-export function createAudioAnalysisLocalProcessRunners(deps) {
+export function createAudioAnalysisLocalProcessRunners(deps: any) {
   const {
     buildEmotionHeuristicFromProsody,
     buildProcessSpeechAvailability,
@@ -18,18 +18,18 @@ export function createAudioAnalysisLocalProcessRunners(deps) {
   } = deps;
 
   async function runSignalHealthAudioAnalyzer(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    _artifactBase,
-    _moduleOutputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: string,
+    jobId: string,
+    target: any,
+    _artifactBase: string,
+    _moduleOutputDir: string,
+    moduleId: string
   ) {
     const audioProbe = await runAudioStructureProbe(runtime, project, requestId, jobId, target);
-    const findings = [];
-    const warnings = [];
+    const findings: any[] = [];
+    const warnings: string[] = [];
 
     if (audioProbe.silence.count > 0) {
       findings.push(
@@ -51,7 +51,7 @@ export function createAudioAnalysisLocalProcessRunners(deps) {
 
     return {
       findings: findings,
-      artifacts: [],
+      artifacts: [] as any[],
       warnings: warnings,
       status: "ready",
       summary: "Signal health checks finished on the current target.",
@@ -59,14 +59,14 @@ export function createAudioAnalysisLocalProcessRunners(deps) {
   }
 
   async function runSpectralArtifactsAudioAnalyzer(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    moduleOutputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: string,
+    jobId: string,
+    target: any,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
   ) {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
@@ -118,21 +118,21 @@ export function createAudioAnalysisLocalProcessRunners(deps) {
           ]
         : [],
       artifacts: artifacts,
-      warnings: [],
+      warnings: [] as string[],
       status: "ready",
       summary: "Spectral artifacts and descriptor summaries were generated for the current target.",
     };
   }
 
   async function runTranscriptionAudioAnalyzer(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    _moduleOutputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: string,
+    jobId: string,
+    target: any,
+    artifactBase: string,
+    _moduleOutputDir: string,
+    moduleId: string
   ) {
     const speech = buildProcessSpeechAvailability(runtime, project);
     if (!speech.ready) {
@@ -175,37 +175,37 @@ export function createAudioAnalysisLocalProcessRunners(deps) {
           ),
         ],
         artifacts: [transcriptArtifact],
-        warnings: [],
+        warnings: [] as string[],
         status: "ready",
         summary: "Transcript sampling finished for the active target.",
       };
     }
 
     return {
-      findings: [],
-      artifacts: [],
-      warnings: [],
+      findings: [] as any[],
+      artifacts: [] as any[],
+      warnings: [] as string[],
       status: "ready",
       summary: "Transcript tooling ran without a persisted sample artifact.",
     };
   }
 
   async function runProsodyAudioAnalyzer(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    moduleOutputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: string,
+    jobId: string,
+    target: any,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
   ) {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
     if (resolveOpenSmileProsodyRuntime(runtime) === null) {
       return {
-        findings: [],
-        artifacts: [],
+        findings: [] as any[],
+        artifacts: [] as any[],
         warnings: ["Room-local openSMILE config package is unavailable on this runtime."],
         status: "blocked",
         summary: "Prosody config assets are missing from the room package.",
@@ -251,7 +251,7 @@ export function createAudioAnalysisLocalProcessRunners(deps) {
       }
     );
     const artifacts = [contourArtifact, summaryArtifact].filter(Boolean);
-    const artifactIds = artifacts.map(function (artifact) {
+    const artifactIds = artifacts.map(function (artifact: any) {
       return artifact.id;
     });
     const detailParts = [
@@ -287,14 +287,14 @@ export function createAudioAnalysisLocalProcessRunners(deps) {
   }
 
   async function runEmotionHeuristicAudioAnalyzer(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    moduleOutputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: string,
+    jobId: string,
+    target: any,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
   ) {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
@@ -336,7 +336,7 @@ export function createAudioAnalysisLocalProcessRunners(deps) {
       }
     );
     const artifacts = [summaryArtifact].filter(Boolean);
-    const artifactIds = artifacts.map(function (artifact) {
+    const artifactIds = artifacts.map(function (artifact: any) {
       return artifact.id;
     });
     const cueText =

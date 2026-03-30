@@ -1,4 +1,4 @@
-export function createLaboratoryProjectManifestRuntime(deps) {
+export function createLaboratoryProjectManifestRuntime(deps: any) {
   const {
     asNonEmptyString,
     asNumber,
@@ -13,7 +13,7 @@ export function createLaboratoryProjectManifestRuntime(deps) {
     toRecord,
   } = deps;
 
-  function buildEditManifest(project) {
+  function buildEditManifest(project: any) {
     const edit = toRecord(project.edit);
     const preview = toRecord(edit.preview);
     const outputs = Array.isArray(edit.outputs) ? edit.outputs.map(normalizeEditOutput) : [];
@@ -34,7 +34,7 @@ export function createLaboratoryProjectManifestRuntime(deps) {
         artifacts: Array.isArray(preview.artifacts) ? preview.artifacts.map(toRecord) : [],
         updatedAt: asNonEmptyString(preview.updatedAt),
       },
-      outputs: outputs.map(function (entry) {
+      outputs: outputs.map(function (entry: any) {
         return {
           id: entry.id,
           path: entry.path,
@@ -50,7 +50,7 @@ export function createLaboratoryProjectManifestRuntime(deps) {
     };
   }
 
-  function buildProfileManifest(project) {
+  function buildProfileManifest(project: any) {
     const profile = toRecord(project.profile);
 
     return {
@@ -68,11 +68,13 @@ export function createLaboratoryProjectManifestRuntime(deps) {
       artifactPreferences: clone(toRecord(profile.artifactPreferences)),
       preflight: clone(toRecord(profile.preflight)),
       signals: Array.isArray(profile.signals) ? profile.signals.map(normalizeProfileSignal) : [],
-      artifacts: Array.isArray(profile.artifacts) ? profile.artifacts.map(normalizeProfileArtifact) : [],
+      artifacts: Array.isArray(profile.artifacts)
+        ? profile.artifacts.map(normalizeProfileArtifact)
+        : [],
     };
   }
 
-  function buildProcessManifest(project) {
+  function buildProcessManifest(project: any) {
     return {
       schemaVersion: projectSchemaVersion,
       projectId: project.id,
@@ -81,7 +83,7 @@ export function createLaboratoryProjectManifestRuntime(deps) {
     };
   }
 
-  function buildReportManifest(project) {
+  function buildReportManifest(project: any) {
     return {
       schemaVersion: projectSchemaVersion,
       projectId: project.id,
@@ -90,7 +92,7 @@ export function createLaboratoryProjectManifestRuntime(deps) {
     };
   }
 
-  function buildSourceTargetSignature(project) {
+  function buildSourceTargetSignature(project: any) {
     const source = toRecord(project.source);
     const metadata = normalizeSourceMetadata(source.metadata);
 
@@ -106,7 +108,7 @@ export function createLaboratoryProjectManifestRuntime(deps) {
     });
   }
 
-  function buildDerivedTargetSignature(output) {
+  function buildDerivedTargetSignature(output: any) {
     const entry = normalizeEditOutput(output);
     const metadata = normalizeSourceMetadata(entry.metadata);
 
@@ -123,16 +125,18 @@ export function createLaboratoryProjectManifestRuntime(deps) {
     });
   }
 
-  function findEditOutputById(project, outputId) {
+  function findEditOutputById(project: any, outputId: any) {
     const targetId = asNonEmptyString(outputId);
     if (targetId === null) {
       return null;
     }
 
     return (
-      (Array.isArray(toRecord(project.edit).outputs) ? project.edit.outputs : []).find(function (entry) {
-        return asNonEmptyString(toRecord(entry).id) === targetId;
-      }) || null
+      (Array.isArray(toRecord(project.edit).outputs) ? project.edit.outputs : []).find(
+        function (entry: any) {
+          return asNonEmptyString(toRecord(entry).id) === targetId;
+        }
+      ) || null
     );
   }
 

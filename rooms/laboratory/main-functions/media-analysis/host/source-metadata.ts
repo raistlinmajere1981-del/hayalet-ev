@@ -1,22 +1,20 @@
-export function createMediaSourceMetadataRuntime(deps) {
-  const {
-    asNumber,
-    asNonEmptyString,
-    callRoomTools,
-    ensureProjectDirectories,
-    findCompanionExecutableName,
-    getActiveProject,
-    getProjectEditDir,
-    getProjectSourceDir,
-    normalizeSourceMetadata,
-    patchActiveProject,
-    roomId,
-    stripMimeParameters,
-    toRecord,
-    validateSourceCandidate,
-  } = deps;
+export function createMediaSourceMetadataRuntime(deps: any) {
+  const asNumber = deps["asNumber"];
+  const asNonEmptyString = deps["asNonEmptyString"];
+  const callRoomTools = deps["callRoomTools"];
+  const ensureProjectDirectories = deps["ensureProjectDirectories"];
+  const findCompanionExecutableName = deps["findCompanionExecutableName"];
+  const getActiveProject = deps["getActiveProject"];
+  const getProjectEditDir = deps["getProjectEditDir"];
+  const getProjectSourceDir = deps["getProjectSourceDir"];
+  const normalizeSourceMetadata = deps["normalizeSourceMetadata"];
+  const patchActiveProject = deps["patchActiveProject"];
+  const roomId = deps["roomId"];
+  const stripMimeParameters = deps["stripMimeParameters"];
+  const toRecord = deps["toRecord"];
+  const validateSourceCandidate = deps["validateSourceCandidate"];
 
-  function buildFallbackMetadata(mimeType) {
+  function buildFallbackMetadata(mimeType: unknown) {
     const normalizedMimeType = stripMimeParameters(mimeType);
     return normalizeSourceMetadata({
       mimeType: normalizedMimeType,
@@ -26,26 +24,29 @@ export function createMediaSourceMetadataRuntime(deps) {
     });
   }
 
-  function parseFfprobeMetadata(stdout, kind, mimeType) {
+  function parseFfprobeMetadata(stdout: string, kind: string, mimeType: unknown) {
     const payload = toRecord(JSON.parse(stdout));
-    const format = toRecord(payload.format);
-    const streams = Array.isArray(payload.streams) ? payload.streams.map(toRecord) : [];
+    const format = toRecord(payload["format"]);
+    const streams: Record<string, unknown>[] = Array.isArray(payload["streams"])
+      ? payload["streams"].map(toRecord)
+      : [];
+    const emptyStream: Record<string, unknown> = {};
     const videoStream =
-      streams.find(function (stream) {
-        return asNonEmptyString(stream.codec_type) === "video";
+      streams.find(function (stream: Record<string, unknown>) {
+        return asNonEmptyString(stream["codec_type"]) === "video";
       }) ||
-      streams.find(function (stream) {
-        return asNumber(stream.width) !== null || asNumber(stream.height) !== null;
+      streams.find(function (stream: Record<string, unknown>) {
+        return asNumber(stream["width"]) !== null || asNumber(stream["height"]) !== null;
       }) ||
-      {};
+      emptyStream;
     const audioStream =
-      streams.find(function (stream) {
-        return asNonEmptyString(stream.codec_type) === "audio";
-      }) || {};
+      streams.find(function (stream: Record<string, unknown>) {
+        return asNonEmptyString(stream["codec_type"]) === "audio";
+      }) || emptyStream;
     const durationSeconds =
-      asNumber(format.duration) || asNumber(videoStream.duration) || asNumber(audioStream.duration);
-    const videoCodec = asNonEmptyString(videoStream.codec_name);
-    const audioCodec = asNonEmptyString(audioStream.codec_name);
+      asNumber(format["duration"]) || asNumber(videoStream["duration"]) || asNumber(audioStream["duration"]);
+    const videoCodec = asNonEmptyString(videoStream["codec_name"]);
+    const audioCodec = asNonEmptyString(audioStream["codec_name"]);
     let codec = videoCodec || audioCodec;
 
     if (kind === "audio") {
@@ -56,15 +57,17 @@ export function createMediaSourceMetadataRuntime(deps) {
 
     return normalizeSourceMetadata({
       durationSeconds: durationSeconds,
-      width: asNumber(videoStream.width),
-      height: asNumber(videoStream.height),
+      width: asNumber(videoStream["width"]),
+      height: asNumber(videoStream["height"]),
       codec: codec,
       videoCodec: videoCodec,
       audioCodec: audioCodec,
-      formatName: asNonEmptyString(format.format_long_name) || asNonEmptyString(format.format_name),
+      formatName: asNonEmptyString(format["format_long_name"]) || asNonEmptyString(format["format_name"]),
       bitRate:
-        asNumber(format.bit_rate) || asNumber(audioStream.bit_rate) || asNumber(videoStream.bit_rate),
-      sizeBytes: asNumber(format.size),
+        asNumber(format["bit_rate"]) ||
+        asNumber(audioStream["bit_rate"]) ||
+        asNumber(videoStream["bit_rate"]),
+      sizeBytes: asNumber(format["size"]),
       streamCount: streams.length,
       mimeType: stripMimeParameters(mimeType),
       extractedBy: "ffprobe",
@@ -72,7 +75,7 @@ export function createMediaSourceMetadataRuntime(deps) {
     });
   }
 
-  async function deleteOwnedSourceFile(filePath, requestId) {
+  async function deleteOwnedSourceFile(filePath: unknown, requestId: unknown) {
     const targetPath = asNonEmptyString(filePath);
     if (targetPath === null) {
       return;
@@ -91,12 +94,16 @@ export function createMediaSourceMetadataRuntime(deps) {
     }
   }
 
-  async function collectStoredSourceMetadata(runtime, project, options) {
-    const ffmpegState = toRecord(runtime.toolState.tools.ffmpeg);
+  async function collectStoredSourceMetadata(
+    runtime: any,
+    project: any,
+    options: Record<string, unknown>
+  ) {
+    const ffmpegState = toRecord(runtime["toolState"]["tools"]["ffmpeg"]);
 
-    if (ffmpegState.installed !== true) {
+    if (ffmpegState["installed"] !== true) {
       return {
-        metadata: buildFallbackMetadata(options.mimeType),
+        metadata: buildFallbackMetadata(options["mimeType"]),
         metadataError: null,
       };
     }
@@ -104,53 +111,65 @@ export function createMediaSourceMetadataRuntime(deps) {
     const executableName = findCompanionExecutableName(ffmpegState, "ffprobe");
     if (executableName === null) {
       return {
-        metadata: buildFallbackMetadata(options.mimeType),
+        metadata: buildFallbackMetadata(options["mimeType"]),
         metadataError: null,
       };
     }
 
     try {
-      await ensureProjectDirectories(runtime, project, options.requestId || null);
+      await ensureProjectDirectories(runtime, project, options["requestId"] || null);
       const runResult = await callRoomTools({
         operation: "tool-run",
         roomId: roomId,
-        requestId: options.requestId || null,
-        jobId: options.jobId || null,
+        requestId: options["requestId"] || null,
+        jobId: options["jobId"] || null,
         toolId: "ffmpeg",
         executableName: executableName,
         cwd: getProjectSourceDir(runtime, project),
-        args: ["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", options.storedPath],
+        args: [
+          "-v",
+          "quiet",
+          "-print_format",
+          "json",
+          "-show_format",
+          "-show_streams",
+          options["storedPath"],
+        ],
         timeoutMs: 15_000,
       });
-      const runPayload = toRecord(runResult.run);
-      const exitCode = typeof runPayload.exitCode === "number" ? runPayload.exitCode : 0;
-      const stdout = asNonEmptyString(runPayload.stdout);
+      const runPayload = toRecord(runResult["run"]);
+      const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
+      const stdout = asNonEmptyString(runPayload["stdout"]);
 
-      if (runPayload.cancelled === true || exitCode !== 0 || stdout === null) {
+      if (runPayload["cancelled"] === true || exitCode !== 0 || stdout === null) {
         throw new Error(
-          asNonEmptyString(runPayload.stderr) || "ffprobe did not return structured metadata."
+          asNonEmptyString(runPayload["stderr"]) || "ffprobe did not return structured metadata."
         );
       }
 
       return {
-        metadata: parseFfprobeMetadata(stdout, project.source.kind, options.mimeType),
+        metadata: parseFfprobeMetadata(stdout, project["source"]["kind"], options["mimeType"]),
         metadataError: null,
       };
     } catch (error) {
       return {
-        metadata: buildFallbackMetadata(options.mimeType),
+        metadata: buildFallbackMetadata(options["mimeType"]),
         metadataError: error instanceof Error ? error.message : String(error),
       };
     }
   }
 
-  async function collectDerivedOutputMetadata(runtime, project, options) {
-    const ffmpegState = toRecord(runtime.toolState.tools.ffmpeg);
+  async function collectDerivedOutputMetadata(
+    runtime: any,
+    project: any,
+    options: Record<string, unknown>
+  ) {
+    const ffmpegState = toRecord(runtime["toolState"]["tools"]["ffmpeg"]);
     const executableName = findCompanionExecutableName(ffmpegState, "ffprobe");
 
-    if (ffmpegState.installed !== true || executableName === null) {
+    if (ffmpegState["installed"] !== true || executableName === null) {
       return {
-        metadata: buildFallbackMetadata(options.mimeType),
+        metadata: buildFallbackMetadata(options["mimeType"]),
         metadataError: null,
       };
     }
@@ -159,52 +178,69 @@ export function createMediaSourceMetadataRuntime(deps) {
       const runResult = await callRoomTools({
         operation: "tool-run",
         roomId: roomId,
-        requestId: options.requestId || null,
-        jobId: options.jobId || null,
+        requestId: options["requestId"] || null,
+        jobId: options["jobId"] || null,
         toolId: "ffmpeg",
         executableName: executableName,
         cwd: getProjectEditDir(runtime, project),
-        args: ["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", options.path],
+        args: [
+          "-v",
+          "quiet",
+          "-print_format",
+          "json",
+          "-show_format",
+          "-show_streams",
+          options["path"],
+        ],
         timeoutMs: 15_000,
       });
-      const runPayload = toRecord(runResult.run);
-      const exitCode = typeof runPayload.exitCode === "number" ? runPayload.exitCode : 0;
-      const stdout = asNonEmptyString(runPayload.stdout);
+      const runPayload = toRecord(runResult["run"]);
+      const exitCode = typeof runPayload["exitCode"] === "number" ? runPayload["exitCode"] : 0;
+      const stdout = asNonEmptyString(runPayload["stdout"]);
 
-      if (runPayload.cancelled === true || exitCode !== 0 || stdout === null) {
-        throw new Error(asNonEmptyString(runPayload.stderr) || "ffprobe metadata probe failed.");
+      if (runPayload["cancelled"] === true || exitCode !== 0 || stdout === null) {
+        throw new Error(asNonEmptyString(runPayload["stderr"]) || "ffprobe metadata probe failed.");
       }
 
       return {
-        metadata: parseFfprobeMetadata(stdout, project.source.kind, options.mimeType),
+        metadata: parseFfprobeMetadata(stdout, project["source"]["kind"], options["mimeType"]),
         metadataError: null,
       };
     } catch (error) {
       return {
-        metadata: buildFallbackMetadata(options.mimeType),
+        metadata: buildFallbackMetadata(options["mimeType"]),
         metadataError: error instanceof Error ? error.message : String(error),
       };
     }
   }
 
-  async function resolvePreparedSource(runtime, project, options) {
-    const storedPath = asNonEmptyString(options.storedPath);
-    const storedFileName = asNonEmptyString(options.storedFileName);
-    const sourceKind = project.source.kind;
+  async function resolvePreparedSource(
+    runtime: any,
+    project: any,
+    options: Record<string, unknown>
+  ) {
+    const storedPath = asNonEmptyString(options["storedPath"]);
+    const storedFileName = asNonEmptyString(options["storedFileName"]);
+    const sourceKind = project["source"]["kind"];
 
     if (storedPath === null || storedFileName === null) {
       throw new Error("Saved source file is missing.");
     }
 
-    const validation = validateSourceCandidate(runtime, sourceKind, storedFileName, options.mimeType);
+    const validation = validateSourceCandidate(
+      runtime,
+      sourceKind,
+      storedFileName,
+      options["mimeType"]
+    );
     if (validation.valid !== true) {
-      await deleteOwnedSourceFile(storedPath, options.requestId);
+      await deleteOwnedSourceFile(storedPath, options["requestId"]);
       throw new Error(validation.error);
     }
 
     const metadataResult = await collectStoredSourceMetadata(runtime, project, {
-      requestId: options.requestId,
-      jobId: options.jobId,
+      requestId: options["requestId"],
+      jobId: options["jobId"],
       storedPath: storedPath,
       mimeType: validation.mimeType,
     });
@@ -218,31 +254,31 @@ export function createMediaSourceMetadataRuntime(deps) {
     };
   }
 
-  async function refreshActiveProjectMetadata(runtime, requestId) {
+  async function refreshActiveProjectMetadata(runtime: any, requestId: string) {
     const project = getActiveProject(runtime);
     if (
       project === null ||
-      asNonEmptyString(project.source.storedPath) === null ||
-      asNonEmptyString(project.source.storedFileName) === null
+      asNonEmptyString(project["source"]["storedPath"]) === null ||
+      asNonEmptyString(project["source"]["storedFileName"]) === null
     ) {
       return null;
     }
 
-    const ffmpegState = toRecord(runtime.toolState.tools.ffmpeg);
-    if (ffmpegState.installed !== true) {
+    const ffmpegState = toRecord(runtime["toolState"]["tools"]["ffmpeg"]);
+    if (ffmpegState["installed"] !== true) {
       return null;
     }
 
-    const currentMetadata = normalizeSourceMetadata(project.source.metadata);
-    if (currentMetadata && currentMetadata.extractedBy === "ffprobe") {
+    const currentMetadata = normalizeSourceMetadata(project["source"]["metadata"]);
+    if (currentMetadata && currentMetadata["extractedBy"] === "ffprobe") {
       return currentMetadata;
     }
 
     const validation = validateSourceCandidate(
       runtime,
-      project.source.kind,
-      project.source.storedFileName,
-      project.source.mimeType
+      project["source"]["kind"],
+      project["source"]["storedFileName"],
+      project["source"]["mimeType"]
     );
     if (validation.valid !== true) {
       return null;
@@ -250,17 +286,17 @@ export function createMediaSourceMetadataRuntime(deps) {
 
     const metadataResult = await collectStoredSourceMetadata(runtime, project, {
       requestId: requestId,
-      storedPath: project.source.storedPath,
+      storedPath: project["source"]["storedPath"],
       mimeType: validation.mimeType,
     });
 
-    await patchActiveProject(runtime, function (nextProject) {
+    await patchActiveProject(runtime, function (nextProject: any) {
       if (nextProject.id !== project.id) {
         return nextProject;
       }
-      nextProject.source.mimeType = validation.mimeType;
-      nextProject.source.metadata = metadataResult.metadata;
-      nextProject.source.metadataError = metadataResult.metadataError;
+      nextProject["source"]["mimeType"] = validation.mimeType;
+      nextProject["source"]["metadata"] = metadataResult.metadata;
+      nextProject["source"]["metadataError"] = metadataResult.metadataError;
       return nextProject;
     });
 

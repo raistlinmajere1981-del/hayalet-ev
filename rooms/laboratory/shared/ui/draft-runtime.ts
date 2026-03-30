@@ -1,6 +1,6 @@
 type LaboratoryRecord = Record<string, unknown>;
 
-export function createLaboratoryUiDraftRuntime(deps) {
+export function createLaboratoryUiDraftRuntime(deps: any) {
   const state = deps.state;
   const toRecord = deps.toRecord;
   const deepClone = deps.deepClone;
@@ -12,34 +12,32 @@ export function createLaboratoryUiDraftRuntime(deps) {
   const getProjectEdit = deps.getProjectEdit;
   const getSubtitleEditState = deps.getSubtitleEditState;
   const getEditPresets = deps.getEditPresets;
-  const asRecord = function asRecord(value): LaboratoryRecord {
+  const asRecord = function asRecord(value: unknown): LaboratoryRecord {
     return toRecord(value) as LaboratoryRecord;
   };
 
-  function sortStageJobs(entries, actionOrder) {
-    return entries.sort(function (left, right) {
-      const leftRank = Object.prototype.hasOwnProperty.call(actionOrder, left.action)
-        ? actionOrder[left.action]
-        : 99;
-      const rightRank = Object.prototype.hasOwnProperty.call(actionOrder, right.action)
-        ? actionOrder[right.action]
-        : 99;
+  function sortStageJobs(entries: any[], actionOrder: Record<string, number>) {
+    return entries.sort(function (left: any, right: any) {
+      const leftRankValue = actionOrder[String(left["action"] || "")];
+      const rightRankValue = actionOrder[String(right["action"] || "")];
+      const leftRank = typeof leftRankValue === "number" ? leftRankValue : 99;
+      const rightRank = typeof rightRankValue === "number" ? rightRankValue : 99;
       if (leftRank !== rightRank) {
         return leftRank - rightRank;
       }
 
-      const leftId = String(left.jobId || left.requestId || left.action || "");
-      const rightId = String(right.jobId || right.requestId || right.action || "");
+      const leftId = String(left["jobId"] || left["requestId"] || left["action"] || "");
+      const rightId = String(right["jobId"] || right["requestId"] || right["action"] || "");
       return leftId.localeCompare(rightId);
     });
   }
 
-  function collectEditStageJobs(projectJobs) {
+  function collectEditStageJobs(projectJobs: unknown[]) {
     const editJobs = Array.isArray(projectJobs)
       ? projectJobs
           .map(asRecord)
-          .filter(function (entry) {
-            return entry.featureStage === "edit" || String(entry.action || "").startsWith("edit-");
+          .filter(function (entry: LaboratoryRecord) {
+            return entry["featureStage"] === "edit" || String(entry["action"] || "").startsWith("edit-");
           })
       : [];
     return sortStageJobs(editJobs, {
@@ -48,12 +46,14 @@ export function createLaboratoryUiDraftRuntime(deps) {
     });
   }
 
-  function collectProfileStageJobs(projectJobs) {
+  function collectProfileStageJobs(projectJobs: unknown[]) {
     const profileJobs = Array.isArray(projectJobs)
       ? projectJobs
           .map(asRecord)
-          .filter(function (entry) {
-            return entry.featureStage === "profile" || String(entry.action || "").startsWith("profile-");
+          .filter(function (entry: LaboratoryRecord) {
+            return (
+                entry["featureStage"] === "profile" || String(entry["action"] || "").startsWith("profile-")
+            );
           })
       : [];
     return sortStageJobs(profileJobs, {
@@ -63,28 +63,28 @@ export function createLaboratoryUiDraftRuntime(deps) {
     });
   }
 
-  function collectProcessStageJobs(projectJobs) {
+  function collectProcessStageJobs(projectJobs: unknown[]) {
     return (Array.isArray(projectJobs) ? projectJobs : [])
       .map(asRecord)
-      .filter(function (entry) {
-        return entry.featureStage === "process" || String(entry.action || "").includes("process");
+      .filter(function (entry: LaboratoryRecord) {
+        return entry["featureStage"] === "process" || String(entry["action"] || "").includes("process");
       })
-      .sort(function (left, right) {
-        return String(left.jobId || left.requestId || left.action || "").localeCompare(
-          String(right.jobId || right.requestId || right.action || "")
+      .sort(function (left: LaboratoryRecord, right: LaboratoryRecord) {
+        return String(left["jobId"] || left["requestId"] || left["action"] || "").localeCompare(
+          String(right["jobId"] || right["requestId"] || right["action"] || "")
         );
       });
   }
 
-  function collectReportStageJobs(projectJobs) {
+  function collectReportStageJobs(projectJobs: unknown[]) {
     return (Array.isArray(projectJobs) ? projectJobs : [])
       .map(asRecord)
-      .filter(function (entry) {
-        return entry.featureStage === "report" || String(entry.action || "").includes("report");
+      .filter(function (entry: LaboratoryRecord) {
+        return entry["featureStage"] === "report" || String(entry["action"] || "").includes("report");
       })
-      .sort(function (left, right) {
-        return String(left.jobId || left.requestId || left.action || "").localeCompare(
-          String(right.jobId || right.requestId || right.action || "")
+      .sort(function (left: LaboratoryRecord, right: LaboratoryRecord) {
+        return String(left["jobId"] || left["requestId"] || left["action"] || "").localeCompare(
+          String(right["jobId"] || right["requestId"] || right["action"] || "")
         );
       });
   }
@@ -166,7 +166,8 @@ export function createLaboratoryUiDraftRuntime(deps) {
       const project = getActiveProject();
       const subtitleEdit = getSubtitleEditState();
       const projectId = project ? project.id : null;
-      const projectUpdatedAt = project && typeof project.updatedAt === "string" ? project.updatedAt : null;
+      const projectUpdatedAt =
+        project && typeof project.updatedAt === "string" ? project.updatedAt : null;
 
       if (
         state.ui.localSubtitleEditProjectId !== projectId ||
@@ -184,7 +185,8 @@ export function createLaboratoryUiDraftRuntime(deps) {
     const project = getActiveProject();
     const projectEdit = getProjectEdit();
     const projectId = project ? project.id : null;
-    const projectUpdatedAt = project && typeof project.updatedAt === "string" ? project.updatedAt : null;
+    const projectUpdatedAt =
+      project && typeof project.updatedAt === "string" ? project.updatedAt : null;
 
     if (
       state.ui.localEditProjectId !== projectId ||
@@ -199,7 +201,7 @@ export function createLaboratoryUiDraftRuntime(deps) {
     return toRecord(state.ui.localEditDraft);
   }
 
-  function setNestedValue(target, path, value) {
+  function setNestedValue(target: Record<string, any>, path: string, value: unknown) {
     const segments = String(path || "")
       .split(".")
       .filter(Boolean);
@@ -207,24 +209,35 @@ export function createLaboratoryUiDraftRuntime(deps) {
       return;
     }
 
-    let current = target;
+    let current: Record<string, any> = target;
     while (segments.length > 1) {
       const segment = segments.shift();
-      if (!current[segment] || typeof current[segment] !== "object" || Array.isArray(current[segment])) {
+      if (segment === undefined) {
+        return;
+      }
+      if (
+        !current[segment] ||
+        typeof current[segment] !== "object" ||
+        Array.isArray(current[segment])
+      ) {
         current[segment] = {};
       }
       current = current[segment];
     }
-    current[segments[0]] = value;
+    const finalSegment = segments[0];
+    if (finalSegment === undefined) {
+      return;
+    }
+    current[finalSegment] = value;
   }
 
-  function buildNestedPatch(path, value) {
-    const patch = {};
+  function buildNestedPatch(path: string, value: unknown) {
+    const patch: Record<string, any> = {};
     setNestedValue(patch, path, value);
     return patch;
   }
 
-  function syncLocalEditField(path, value) {
+  function syncLocalEditField(path: string, value: unknown) {
     if (isSubtitleAnalysisFeature()) {
       const draft = getCurrentEditDraft();
       setNestedValue(draft, path, value);

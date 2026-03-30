@@ -3,7 +3,7 @@
 export const fateKnotsCombatConfigManifest = {
   "version": 1,
   "startingEnergy": 3,
-  "startingStatus": [],
+  "startingStatus": [] as string[],
   "enemyActions": [
     {
       "id": "lash",

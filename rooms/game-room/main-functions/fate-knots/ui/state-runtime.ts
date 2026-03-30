@@ -1,7 +1,7 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createFateKnotsUiStateRuntime = function createFateKnotsUiStateRuntime(deps) {
+  registry.createFateKnotsUiStateRuntime = function createFateKnotsUiStateRuntime(deps: any) {
     const createFateKnotsUiStateDefaultsRuntime = registry.createFateKnotsUiStateDefaultsRuntime;
     const createFateKnotsUiStateSanitizeRuntime = registry.createFateKnotsUiStateSanitizeRuntime;
     const createFateKnotsUiStateSupportRuntime = registry.createFateKnotsUiStateSupportRuntime;

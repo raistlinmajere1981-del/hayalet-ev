@@ -2,7 +2,7 @@ import { createLaboratoryUiViewBaseRuntime } from "./view-runtime.js";
 import { createLaboratoryUiFeatureRuntime } from "../shared/ui/feature-runtime.js";
 import { createLaboratoryStageAccessorsRuntime } from "./stage-accessors-runtime.js";
 
-export function createLaboratoryUiRuntimeComposition(deps) {
+export function createLaboratoryUiRuntimeComposition(deps: any) {
   const laboratoryUiRuntimeBase = createLaboratoryUiViewBaseRuntime({
     laboratorySnapshotAccessRuntime: deps.laboratorySnapshotAccessRuntime,
     laboratoryViewBindingsRuntime: deps.laboratoryViewBindingsRuntime,
@@ -56,19 +56,20 @@ export function createLaboratoryUiRuntimeComposition(deps) {
     isSubtitleAnalysisFeature: deps.isSubtitleAnalysisFeature,
     textFromKey: deps.textFromKey,
     toRecord: deps.toRecord,
-    collectProfileStageJobs: function (projectJobs) {
+    collectProfileStageJobs: function (projectJobs: any) {
       return deps.collectProfileStageJobs(projectJobs);
     },
-    collectProcessStageJobs: function (projectJobs) {
+    collectProcessStageJobs: function (projectJobs: any) {
       return deps.collectProcessStageJobs(projectJobs);
     },
-    collectReportStageJobs: function (projectJobs) {
+    collectReportStageJobs: function (projectJobs: any) {
       return deps.collectReportStageJobs(projectJobs);
     },
   });
 
   const laboratoryStageAccessorsRuntime = createLaboratoryStageAccessorsRuntime({
-    laboratoryProfileProcessReportAccessorsRuntime: deps.laboratoryProfileProcessReportAccessorsRuntime,
+    laboratoryProfileProcessReportAccessorsRuntime:
+      deps.laboratoryProfileProcessReportAccessorsRuntime,
     laboratoryUiDraftAccessRuntime: deps.laboratoryUiDraftAccessRuntime,
     laboratoryUiDraftRuntime: deps.laboratoryUiDraftRuntime,
     laboratoryUiFeatureRuntime: laboratoryUiFeatureRuntime,

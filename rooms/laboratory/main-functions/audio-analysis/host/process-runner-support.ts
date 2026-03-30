@@ -1,6 +1,6 @@
 import { getAudioAnalysisProcessRootDir } from "../../../shared/host/project-paths.js";
 
-export function createAudioAnalysisProcessRunnerSupport(deps) {
+export function createAudioAnalysisProcessRunnerSupport(deps: any) {
   const {
     clone,
     createProcessArtifact,
@@ -12,19 +12,19 @@ export function createAudioAnalysisProcessRunnerSupport(deps) {
     writeJsonFile,
   } = deps;
 
-  function getModuleProcessDir(runtime, project, moduleId) {
+  function getModuleProcessDir(runtime: any, project: any, moduleId: string) {
     return `${getAudioAnalysisProcessRootDir(runtime, project)}/${sanitizeFileSegment(moduleId, "audio-module")}`;
   }
 
   async function generateProcessSpectrogram(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    outputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: string,
+    jobId: string,
+    target: any,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string
   ) {
     const outputPath = `${outputDir}/${artifactBase}-spectrogram.png`;
     await runProfileTool(runtime, {
@@ -32,21 +32,30 @@ export function createAudioAnalysisProcessRunnerSupport(deps) {
       jobId: jobId,
       toolId: "ffmpeg",
       cwd: getAudioAnalysisProcessRootDir(runtime, project),
-      args: ["-y", "-i", target.path, "-lavfi", "showspectrumpic=s=1600x440:legend=0", "-frames:v", "1", outputPath],
+      args: [
+        "-y",
+        "-i",
+        target.path,
+        "-lavfi",
+        "showspectrumpic=s=1600x440:legend=0",
+        "-frames:v",
+        "1",
+        outputPath,
+      ],
       timeoutMs: 90_000,
     });
     return createProcessArtifact(moduleId, "spectrogram", outputPath, "Spectrogram", {});
   }
 
   async function generateProcessWaveform(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    outputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: string,
+    jobId: string,
+    target: any,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string
   ) {
     const outputPath = `${outputDir}/${artifactBase}-waveform.png`;
     await runProfileTool(runtime, {
@@ -70,14 +79,14 @@ export function createAudioAnalysisProcessRunnerSupport(deps) {
   }
 
   async function generateSpectralDescriptorArtifact(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    outputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: string,
+    jobId: string,
+    target: any,
+    artifactBase: string,
+    outputDir: string,
+    moduleId: string
   ) {
     const textPath = `${outputDir}/${artifactBase}-spectral.txt`;
     const jsonPath = `${outputDir}/${artifactBase}-spectral.json`;
@@ -105,13 +114,24 @@ export function createAudioAnalysisProcessRunnerSupport(deps) {
       target: clone(target),
       descriptorSummary: descriptorSummary,
     });
-    return createProcessArtifact(moduleId, "spectral-descriptors", jsonPath, "Spectral Descriptor Summary", {
-      descriptorSummary: descriptorSummary,
-    });
+    return createProcessArtifact(
+      moduleId,
+      "spectral-descriptors",
+      jsonPath,
+      "Spectral Descriptor Summary",
+      {
+        descriptorSummary: descriptorSummary,
+      }
+    );
   }
 
   return {
-    ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir) {
+    ensureProcessRuntimeDirectories(
+      runtime: any,
+      project: any,
+      requestId: string,
+      moduleOutputDir: string
+    ) {
       return Promise.all([
         ensureRuntimeDirectory(getAudioAnalysisProcessRootDir(runtime, project), requestId),
         ensureRuntimeDirectory(moduleOutputDir, requestId),

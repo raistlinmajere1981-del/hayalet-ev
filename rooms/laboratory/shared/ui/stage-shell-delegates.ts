@@ -18,7 +18,7 @@ type LaboratoryStageShellDelegatesDeps<TMediaAnalysisEditStageDeps> = {
 };
 
 export function createLaboratoryStageShellDelegates<TMediaAnalysisEditStageDeps>(
-  deps: LaboratoryStageShellDelegatesDeps<TMediaAnalysisEditStageDeps>,
+  deps: LaboratoryStageShellDelegatesDeps<TMediaAnalysisEditStageDeps>
 ) {
   const laboratorySourceStageUi = deps.laboratorySourceStageUi;
   const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;

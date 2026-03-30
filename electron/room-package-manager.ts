@@ -25,9 +25,7 @@ import {
   pickPreferredWorkspaceRoom,
   readWorkspaceRoomsFromRoot,
 } from "./rooms/workspace-discovery.ts";
-import {
-  buildWorkspaceRoomArtifact as buildWorkspaceRoomArtifactOperation,
-} from "./rooms/workspace-room-build.ts";
+import { buildWorkspaceRoomArtifact as buildWorkspaceRoomArtifactOperation } from "./rooms/workspace-room-build.ts";
 import type { BuildWorkspaceRoomArtifactResult } from "./rooms/workspace-room-build.ts";
 import type { InstalledRoomRecord, RoomRegistryState, RoomWorkspaceEntry } from "@shared/index.js";
 import { translateElectronMessage } from "./i18n/language-service.ts";
@@ -132,11 +130,7 @@ export class RoomPackageManager {
 
   private async deletePersistentRoomData(roomId: string): Promise<void> {
     const residue = this.getRoomRuntimeResidue(roomId);
-    // NOTE: Full room cleanup is opt-in so reconnecting a workspace room can reuse prior state.
-    // NOTE: `deleteData` is the only cleanup trigger for room runtime residue such as session partitions.
-    if (residue.policy.cleanupTrigger !== "deleteData") {
-      return;
-    }
+    // NOTE: This path only runs for explicit data deletion, so runtime residue is always removed here.
     await Promise.all([
       rm(residue.storageRoot, { recursive: true, force: true }),
       rm(residue.partitionRoot, { recursive: true, force: true }),

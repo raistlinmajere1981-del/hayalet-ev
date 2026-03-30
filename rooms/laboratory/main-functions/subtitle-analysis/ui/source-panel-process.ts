@@ -1,4 +1,4 @@
-export function createSubtitleAnalysisSourceProcessPanels(deps) {
+export function createSubtitleAnalysisSourceProcessPanels(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const subtitleText = deps.subtitleText;
@@ -37,7 +37,7 @@ export function createSubtitleAnalysisSourceProcessPanels(deps) {
         </div>
         <div class="lab-tool-grid">
           ${modules
-            .map(function (entry) {
+            .map(function (entry: any) {
               const statusLabel = getSubtitleProcessStatusLabel(entry.status || "planned");
               const summary = getSubtitleProcessModuleSummary(entry);
               return `
@@ -77,7 +77,7 @@ export function createSubtitleAnalysisSourceProcessPanels(deps) {
         </div>
         <div class="lab-tool-grid">
           ${providers
-            .map(function (entry) {
+            .map(function (entry: any) {
               const statusLabel = getSubtitleProviderStatusLabel(entry.status || "planned");
               const providerSummary = getSubtitleProviderSummary(entry);
               const moduleSummary = getSubtitleProviderModuleLabels(entry);

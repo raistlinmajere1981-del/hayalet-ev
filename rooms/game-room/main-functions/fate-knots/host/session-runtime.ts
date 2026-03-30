@@ -7,21 +7,27 @@ import {
 import { loadFateKnotsContentRegistry } from "./content-loader.js";
 import { getCurrentFateKnotsCombatTurn } from "./combat-engine.js";
 import { createWaitingState } from "./models.js";
-import {
-  appendFateKnotsHistory,
-  saveFateKnotsSaveSlot,
-} from "./state.js";
-import {
-  listPendingDecisionSeats,
-} from "./session-participants.js";
+import { appendFateKnotsHistory, saveFateKnotsSaveSlot } from "./state.js";
+import { listPendingDecisionSeats } from "./session-participants.js";
+
+type RoomApi = {
+  getState: (key: string) => unknown;
+  setState: (key: string, value: unknown) => void;
+  getUs1Identity?: () => any;
+};
 
 export function buildSessionId() {
   return `fateknot_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function ensureFateKnotsContent(api) {
-  const cached = api.getState(FATE_KNOTS_CONTENT_STATE_KEY);
-  if (cached && typeof cached === "object" && cached.assetRegistry && cached.cardsById instanceof Map) {
+export function ensureFateKnotsContent(api: RoomApi) {
+  const cached = api.getState(FATE_KNOTS_CONTENT_STATE_KEY) as any;
+  if (
+    cached &&
+    typeof cached === "object" &&
+    cached.assetRegistry &&
+    cached.cardsById instanceof Map
+  ) {
     return cached;
   }
   const loaded = loadFateKnotsContentRegistry();
@@ -29,7 +35,7 @@ export function ensureFateKnotsContent(api) {
   return loaded;
 }
 
-export function updateContentSummary(state, contentRegistry) {
+export function updateContentSummary(state: any, contentRegistry: any) {
   state.contentSummary = {
     assetErrors: Array.isArray(contentRegistry.assetRegistry?.errors)
       ? contentRegistry.assetRegistry.errors.length
@@ -39,7 +45,7 @@ export function updateContentSummary(state, contentRegistry) {
   return state;
 }
 
-export function resetPromptDispatchState(state) {
+export function resetPromptDispatchState(state: any) {
   state.dispatch = {
     decisionPromptKeys: {},
     combatPromptKeys: {},
@@ -48,19 +54,19 @@ export function resetPromptDispatchState(state) {
   };
 }
 
-export function clearDecisionPromptKey(state, seatId) {
+export function clearDecisionPromptKey(state: any, seatId: string) {
   if (state.dispatch && state.dispatch.decisionPromptKeys && seatId) {
     delete state.dispatch.decisionPromptKeys[seatId];
   }
 }
 
-export function clearCombatPromptKey(state, seatId) {
+export function clearCombatPromptKey(state: any, seatId: string) {
   if (state.dispatch && state.dispatch.combatPromptKeys && seatId) {
     delete state.dispatch.combatPromptKeys[seatId];
   }
 }
 
-export function clearAmbientPromptKeys(state) {
+export function clearAmbientPromptKeys(state: any) {
   if (!state.dispatch) {
     resetPromptDispatchState(state);
     return;
@@ -69,14 +75,22 @@ export function clearAmbientPromptKeys(state) {
   state.dispatch.npcPromptKey = null;
 }
 
-export function updateTransportFromSendResult(state, sendResult, fallbackRemoteUserId) {
+export function updateTransportFromSendResult(
+  state: any,
+  sendResult: any,
+  fallbackRemoteUserId: string | null | undefined
+) {
   if (!state.transport || typeof state.transport !== "object") {
     state.transport = {
       localSessionId: null,
       remoteUserId: null,
     };
   }
-  if (sendResult && typeof sendResult.localSessionId === "string" && sendResult.localSessionId !== "") {
+  if (
+    sendResult &&
+    typeof sendResult.localSessionId === "string" &&
+    sendResult.localSessionId !== ""
+  ) {
     state.transport.localSessionId = sendResult.localSessionId;
   }
   if (sendResult && typeof sendResult.remoteUserId === "string" && sendResult.remoteUserId !== "") {
@@ -88,11 +102,9 @@ export function updateTransportFromSendResult(state, sendResult, fallbackRemoteU
   }
 }
 
-export function getUs1RemoteUserId(api, state, context) {
+export function getUs1RemoteUserId(api: RoomApi, state: any, context: any) {
   const identity =
-    typeof api.getUs1Identity === "function" && api.getUs1Identity()
-      ? api.getUs1Identity()
-      : null;
+    typeof api.getUs1Identity === "function" && api.getUs1Identity() ? api.getUs1Identity() : null;
   return (
     context?.slots?.us1?.remoteUserId ||
     state.transport?.remoteUserId ||
@@ -101,18 +113,18 @@ export function getUs1RemoteUserId(api, state, context) {
   );
 }
 
-export function sanitizePacketText(text) {
+export function sanitizePacketText(text: unknown) {
   if (typeof text !== "string") {
     return "";
   }
   return text.replace(/\s+/g, " ").trim().slice(0, FATE_KNOTS_MAX_PACKET_TEXT_LENGTH);
 }
 
-export function setIdleWaiting(state) {
+export function setIdleWaiting(state: any) {
   state.waiting = createWaitingState(FATE_KNOTS_WAIT_MODES.idle, "", []);
 }
 
-export function setDecisionWaiting(state, now) {
+export function setDecisionWaiting(state: any, now: number) {
   const pendingSeatIds = listPendingDecisionSeats(state);
   if (pendingSeatIds.length === 0) {
     setIdleWaiting(state);
@@ -130,7 +142,7 @@ export function setDecisionWaiting(state, now) {
   );
 }
 
-export function setCombatWaiting(state, now) {
+export function setCombatWaiting(state: any, now: number) {
   const turn = getCurrentFateKnotsCombatTurn(state.combat);
   if (!turn || state.combat?.outcome !== "pending") {
     setIdleWaiting(state);
@@ -150,13 +162,19 @@ export function setCombatWaiting(state, now) {
   setIdleWaiting(state);
 }
 
-export function markDesync(state, reason, pendingSeatIds, statusKey, now) {
+export function markDesync(
+  state: any,
+  reason: string,
+  pendingSeatIds: string[],
+  statusKey: string,
+  now: number
+) {
   state.waiting = createWaitingState(FATE_KNOTS_WAIT_MODES.desync, reason, pendingSeatIds, now, 0);
   state.statusKey = statusKey;
 }
 
-function syncParticipantSeatStatus(state, context) {
-  state.participants.forEach(function (participant) {
+function syncParticipantSeatStatus(state: any, context: any) {
+  state.participants.forEach(function (participant: any) {
     if (participant.seatId === "user") {
       participant.ready = true;
       participant.connected = true;
@@ -169,17 +187,23 @@ function syncParticipantSeatStatus(state, context) {
   });
 }
 
-export function maybeMarkSeatLossOrTimeout(state, context, now) {
+export function maybeMarkSeatLossOrTimeout(state: any, context: any, now: number) {
   syncParticipantSeatStatus(state, context);
   if (!state.active) {
     return;
   }
 
-  const missingSeat = state.participants.find(function (participant) {
+  const missingSeat = state.participants.find(function (participant: any) {
     return participant.seatId !== "user" && participant.ready !== true;
   });
   if (missingSeat) {
-    markDesync(state, `seat-unavailable:${missingSeat.seatId}`, [missingSeat.seatId], "seatUnavailable", now);
+    markDesync(
+      state,
+      `seat-unavailable:${missingSeat.seatId}`,
+      [missingSeat.seatId],
+      "seatUnavailable",
+      now
+    );
     return;
   }
 
@@ -193,14 +217,24 @@ export function maybeMarkSeatLossOrTimeout(state, context, now) {
     state.waiting.pendingSeatIds.length > 0
   ) {
     const statusKey =
-      state.waiting.mode === FATE_KNOTS_WAIT_MODES.decision
-        ? "decisionTimeout"
-        : "combatTimeout";
-    markDesync(state, `${state.waiting.mode}-timeout`, state.waiting.pendingSeatIds, statusKey, now);
+      state.waiting.mode === FATE_KNOTS_WAIT_MODES.decision ? "decisionTimeout" : "combatTimeout";
+    markDesync(
+      state,
+      `${state.waiting.mode}-timeout`,
+      state.waiting.pendingSeatIds,
+      statusKey,
+      now
+    );
   }
 }
 
-export function persistRunSummary(api, state, outcome, title, summary) {
+export function persistRunSummary(
+  api: RoomApi,
+  state: any,
+  outcome: string,
+  title: string,
+  summary: string
+) {
   appendFateKnotsHistory(api, {
     sessionId: state.sessionId,
     outcome,
@@ -208,7 +242,7 @@ export function persistRunSummary(api, state, outcome, title, summary) {
     summary,
     locationId: state.currentLocationId,
     timestamp: Date.now(),
-    roster: state.participants.map(function (participant) {
+    roster: state.participants.map(function (participant: any) {
       return {
         seatId: participant.seatId,
         nickname: participant.nickname,

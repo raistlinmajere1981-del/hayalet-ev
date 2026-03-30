@@ -1,11 +1,11 @@
-export function createSubtitleStateDelegatesRuntime(deps) {
+export function createSubtitleStateDelegatesRuntime(deps: { subtitleStateRuntime: any }) {
   const { subtitleStateRuntime } = deps;
 
-  function getDefaultSubtitleEditPresetId(runtime) {
+  function getDefaultSubtitleEditPresetId(runtime: any) {
     return subtitleStateRuntime.getDefaultSubtitleEditPresetId(runtime);
   }
 
-  function getDefaultSubtitleEditRecipe(runtime, presetId) {
+  function getDefaultSubtitleEditRecipe(runtime: any, presetId: string) {
     return subtitleStateRuntime.getDefaultSubtitleEditRecipe(runtime, presetId);
   }
 
@@ -13,63 +13,63 @@ export function createSubtitleStateDelegatesRuntime(deps) {
     return subtitleStateRuntime.createEmptySubtitleDiscoveryState();
   }
 
-  function createEmptySubtitleAnalysisState(runtime) {
+  function createEmptySubtitleAnalysisState(runtime: any) {
     return subtitleStateRuntime.createEmptySubtitleAnalysisState(runtime);
   }
 
-  function normalizeSubtitleAnalysisState(rawValue, runtime) {
+  function normalizeSubtitleAnalysisState(rawValue: unknown, runtime: any) {
     return subtitleStateRuntime.normalizeSubtitleAnalysisState(rawValue, runtime);
   }
 
-  function getSubtitleMimeType(fileName) {
+  function getSubtitleMimeType(fileName: string) {
     return subtitleStateRuntime.getSubtitleMimeType(fileName);
   }
 
-  function isSubtitleFileName(runtime, fileName) {
+  function isSubtitleFileName(runtime: any, fileName: string) {
     return subtitleStateRuntime.isSubtitleFileName(runtime, fileName);
   }
 
-  function normalizeSubtitleEntryRecord(rawValue, index) {
+  function normalizeSubtitleEntryRecord(rawValue: unknown, index: number) {
     return subtitleStateRuntime.normalizeSubtitleEntryRecord(rawValue, index);
   }
 
-  function normalizeSubtitleOutputRecord(rawValue, index) {
+  function normalizeSubtitleOutputRecord(rawValue: unknown, index: number) {
     return subtitleStateRuntime.normalizeSubtitleOutputRecord(rawValue, index);
   }
 
-  function normalizeSubtitleDiscoveryItem(rawValue, index) {
+  function normalizeSubtitleDiscoveryItem(rawValue: unknown, index: number) {
     return subtitleStateRuntime.normalizeSubtitleDiscoveryItem(rawValue, index);
   }
 
-  function getSubtitleEntries(project) {
+  function getSubtitleEntries(project: any) {
     return subtitleStateRuntime.getSubtitleEntries(project);
   }
 
-  function getSubtitleEntryById(project, entryId) {
+  function getSubtitleEntryById(project: any, entryId: string) {
     return subtitleStateRuntime.getSubtitleEntryById(project, entryId);
   }
 
-  function getActiveSubtitleEntry(project) {
+  function getActiveSubtitleEntry(project: any) {
     return subtitleStateRuntime.getActiveSubtitleEntry(project);
   }
 
-  function getSubtitleSelectedEntries(project) {
+  function getSubtitleSelectedEntries(project: any) {
     return subtitleStateRuntime.getSubtitleSelectedEntries(project);
   }
 
-  function createSubtitleEntryRecord(filePath, options) {
+  function createSubtitleEntryRecord(filePath: string, options: any) {
     return subtitleStateRuntime.createSubtitleEntryRecord(filePath, options);
   }
 
-  function resetSubtitleFeatureState(runtime, project, reason) {
+  function resetSubtitleFeatureState(runtime: any, project: any, reason: string) {
     return subtitleStateRuntime.resetSubtitleFeatureState(runtime, project, reason);
   }
 
-  function resetSubtitleDiscovery(runtime, project) {
+  function resetSubtitleDiscovery(runtime: any, project: any) {
     return subtitleStateRuntime.resetSubtitleDiscovery(runtime, project);
   }
 
-  function upsertSubtitleEntries(runtime, project, incomingEntries, options) {
+  function upsertSubtitleEntries(runtime: any, project: any, incomingEntries: any[], options: any) {
     return subtitleStateRuntime.upsertSubtitleEntries(runtime, project, incomingEntries, options);
   }
 

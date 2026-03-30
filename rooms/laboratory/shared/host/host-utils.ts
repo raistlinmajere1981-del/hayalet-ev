@@ -13,19 +13,17 @@ export function createLaboratoryHostUtils(deps: LaboratoryHostUtilsDeps) {
 
   const getPreferredFeatureSourceKind: (
     featureId: string,
-    sourcePresets: LaboratoryHostUtilsRecord,
-  ) => string = function getPreferredFeatureSourceKind(featureId, sourcePresets) {
+    sourcePresets: LaboratoryHostUtilsRecord
+  ) => string = function getPreferredFeatureSourceKind(featureId: any, sourcePresets: any) {
     if (featureId === audioFeatureId) {
-      return Object.prototype.hasOwnProperty.call(toRecord(sourcePresets).sourceTypes, "audio")
+      return Object.prototype.hasOwnProperty.call(toRecord(sourcePresets)["sourceTypes"], "audio")
         ? "audio"
         : getDefaultSourceType(sourcePresets);
     }
     return getDefaultSourceType(sourcePresets);
   };
 
-  const toFileUrl: (
-    filePath: string | null | undefined,
-  ) => string | null = function toFileUrl(filePath) {
+  const toFileUrl: (filePath: string | null | undefined) => string | null = function toFileUrl(filePath: any) {
     if (typeof filePath !== "string" || filePath.trim() === "") {
       return null;
     }
@@ -41,8 +39,8 @@ export function createLaboratoryHostUtils(deps: LaboratoryHostUtilsDeps) {
     value: unknown,
     minimum: number,
     maximum: number,
-    fallback: number,
-  ) => number = function clampNumber(value, minimum, maximum, fallback) {
+    fallback: number
+  ) => number = function clampNumber(value: any, minimum: any, maximum: any, fallback: any) {
     const numericValue = Number(value);
     if (Number.isFinite(numericValue) !== true) {
       return fallback;

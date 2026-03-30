@@ -1,12 +1,12 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createFateKnotsUiSurfaceMapRuntime = function createFateKnotsUiSurfaceMapRuntime(deps) {
+  registry.createFateKnotsUiSurfaceMapRuntime = function createFateKnotsUiSurfaceMapRuntime(deps: any) {
     const createRegion = deps.createRegion;
     const applyFrameArtwork = deps.applyFrameArtwork;
     const getUiAsset = deps.getUiAsset;
 
-    function createSigil(className, texture, overlay) {
+    function createSigil(className: any, texture: any, overlay: any) {
       const sigil = createRegion("div", className, null);
       applyFrameArtwork(sigil, {
         overlay: overlay || null,
@@ -18,21 +18,21 @@
       return sigil;
     }
 
-    function createMapPathLayer(nodes, currentLocationId) {
+    function createMapPathLayer(nodes: any, currentLocationId: any) {
       const pathLayer = createRegion("div", "fk-map-shell__paths", null);
       const list = Array.isArray(nodes) ? nodes : [];
       const nodeById = new Map();
-      list.forEach(function (node) {
+      list.forEach(function (node: any) {
         if (node && node.id && node.marker) {
           nodeById.set(node.id, node);
         }
       });
       const seenPairs = new Set();
-      list.forEach(function (node) {
+      list.forEach(function (node: any) {
         if (!node || !node.id || !node.marker || !Array.isArray(node.connections)) {
           return;
         }
-        node.connections.forEach(function (otherId) {
+        node.connections.forEach(function (otherId: any) {
           const other = nodeById.get(otherId);
           if (!other || !other.marker) {
             return;

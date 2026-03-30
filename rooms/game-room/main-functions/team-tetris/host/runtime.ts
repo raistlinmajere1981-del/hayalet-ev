@@ -6,7 +6,11 @@ import {
 } from "./engine.js";
 import { loadTeamTetrisState, saveTeamTetrisState } from "./state.js";
 import { loadContext, readLocale } from "../../../shared/host/context-state.js";
-import { ROOM_ID, TEAM_TETRIS_FEATURE_ID, TEAM_TETRIS_PAGE_ID } from "../../../shared/host/feature-meta.js";
+import {
+  ROOM_ID,
+  TEAM_TETRIS_FEATURE_ID,
+  TEAM_TETRIS_PAGE_ID,
+} from "../../../shared/host/feature-meta.js";
 import {
   normalizeTeamTetrisMoveArgs,
   readTransportMessageId,
@@ -38,7 +42,7 @@ import {
   sendTeamTetrisRemoteStart,
 } from "./runtime-transport.js";
 
-async function dispatchNextTeamTetrisTurn(api, state) {
+async function dispatchNextTeamTetrisTurn(api: any, state: any) {
   if (!state.match || state.match.result !== "pending" || !state.match.currentTurn) {
     pushTeamTetrisState(api, state);
     return { success: true };
@@ -62,7 +66,7 @@ async function dispatchNextTeamTetrisTurn(api, state) {
     return { success: true };
   }
 
-  const slot = context.slots[currentTurn.seatId];
+  const slot = (context.slots as Record<string, { ready?: boolean }>)[String(currentTurn.seatId)];
   if (!slot || slot.ready !== true) {
     blockTeamTetrisMatch(api, state, "blockedOpponent", "ai-unavailable");
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
@@ -99,7 +103,7 @@ async function dispatchNextTeamTetrisTurn(api, state) {
   return messageResult;
 }
 
-async function handleTeamTetrisStart(api, payload) {
+async function handleTeamTetrisStart(api: any, payload: any) {
   const context = loadContext(api);
   const readiness = getTeamTetrisReadiness(context);
   if (readiness.ai1 !== true || readiness.ai2 !== true || readiness.us1 !== true) {
@@ -112,7 +116,7 @@ async function handleTeamTetrisStart(api, payload) {
   state.hiddenPairs = args.hiddenPairs !== false;
   state.revealPairsOnFinish = true;
   state.statusKey = "ready";
-  state.match = createTeamTetrisMatch({
+  const nextMatch = createTeamTetrisMatch({
     seed:
       (typeof args.seed === "string" && args.seed.trim() !== "" ? args.seed.trim() : "") ||
       [
@@ -125,9 +129,10 @@ async function handleTeamTetrisStart(api, payload) {
     hiddenPairs: state.hiddenPairs,
     revealPairsOnFinish: state.revealPairsOnFinish,
   });
-  state.matchId = state.match.matchId;
+  state.match = nextMatch;
+  state.matchId = nextMatch.matchId;
   state.active = true;
-  state.result = state.match.result;
+  state.result = nextMatch.result;
   state.remoteUserId = context.slots.us1.remoteUserId || state.remoteUserId;
   saveTeamTetrisState(api, state);
   pushTeamTetrisState(api, state);
@@ -140,7 +145,7 @@ async function handleTeamTetrisStart(api, payload) {
   return { success: true, message: teamTetrisCommandMessage(readLocale(api), "started") };
 }
 
-function handleTeamTetrisReset(api) {
+function handleTeamTetrisReset(api: any) {
   const state = loadTeamTetrisState(api);
   if (state.matchId) {
     void sendTeamTetrisRemoteReset(api, state);
@@ -149,7 +154,7 @@ function handleTeamTetrisReset(api) {
   return { success: true, message: teamTetrisCommandMessage(readLocale(api), "reset") };
 }
 
-async function handleTeamTetrisMove(api, payload) {
+async function handleTeamTetrisMove(api: any, payload: any) {
   const state = loadTeamTetrisState(api);
   if (!state.match) {
     pushTeamTetrisState(api, state);
@@ -204,7 +209,8 @@ async function handleTeamTetrisMove(api, payload) {
   const boardHashBeforeMove = buildTeamTetrisBoardHash(state.match.teams[currentTurn.teamId].board);
   const result = applyTeamTetrisMove(state.match, move);
   if (!("match" in result)) {
-    const failureReason = typeof result.reason === "string" && result.reason ? result.reason : "invalid-move";
+    const failureReason =
+      typeof result.reason === "string" && result.reason ? result.reason : "invalid-move";
     if (
       providerSeatId === "us1" &&
       (failureReason === "turn-token-mismatch" || failureReason === "turn-index-mismatch")
@@ -226,6 +232,10 @@ async function handleTeamTetrisMove(api, payload) {
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "invalidMove") };
   }
 
+  if (!result.match) {
+    pushTeamTetrisState(api, state);
+    return { success: false, message: teamTetrisCommandMessage(readLocale(api), "invalidMove") };
+  }
   state.match = result.match;
   state.matchId = result.match.matchId;
   state.result = result.match.result;

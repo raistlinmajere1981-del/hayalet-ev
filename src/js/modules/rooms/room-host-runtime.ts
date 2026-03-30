@@ -291,7 +291,9 @@ class RoomHostRuntimeClass {
               readRoomHostModuleSource
             );
             hostModuleCleanup = blobModule.dispose;
-            exported = (await import(/* @vite-ignore */ blobModule.moduleUrl)) as unknown as RoomHostFactory;
+            exported = (await import(
+              /* @vite-ignore */ blobModule.moduleUrl
+            )) as unknown as RoomHostFactory;
           } catch {
             const moduleUrl = await buildRoomHostModuleDataUrl(
               registration.room.hostEntryPath,

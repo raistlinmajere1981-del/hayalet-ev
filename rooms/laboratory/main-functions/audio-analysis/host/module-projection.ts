@@ -1,7 +1,7 @@
 import { createAudioAnalysisProjectionCatalogRuntime } from "./projection-catalog.js";
 import { createAudioAnalysisProjectionResultsRuntime } from "./projection-results.js";
 
-export function createAudioAnalysisProjectionRuntime(deps) {
+export function createAudioAnalysisProjectionRuntime(deps: any) {
   const {
     asNumber,
     asNonEmptyString,
@@ -66,15 +66,21 @@ export function createAudioAnalysisProjectionRuntime(deps) {
     mapAudioAnalysisResultStatus,
   } = audioAnalysisProjectionResultsRuntime;
 
-  function buildAudioAnalysisModules(runtime, project, target) {
+  function buildAudioAnalysisModules(runtime: any, project: any, target: any) {
     const catalogModules = getAudioAnalysisModulesForRuntime(runtime);
     const providerState = buildAudioAnalysisProviderState(runtime, project);
-    const capabilityState = buildAudioAnalysisCapabilityState(runtime, project, target, providerState);
+    const capabilityState = buildAudioAnalysisCapabilityState(
+      runtime,
+      project,
+      target,
+      providerState
+    );
 
-    return catalogModules.map(function (entry) {
+    return catalogModules.map(function (entry: any) {
       const moduleId = asNonEmptyString(entry.id) || "audio-module";
       const capabilityEntry = toRecord(capabilityState[moduleId]);
-      const status = asNonEmptyString(capabilityEntry.status) || asNonEmptyString(entry.status) || "planned";
+      const status =
+        asNonEmptyString(capabilityEntry.status) || asNonEmptyString(entry.status) || "planned";
       const blockers = normalizeStringArray(capabilityEntry.blockers);
       const warnings = normalizeStringArray(capabilityEntry.warnings);
 
@@ -93,8 +99,7 @@ export function createAudioAnalysisProjectionRuntime(deps) {
           labelKey: asNonEmptyString(entry.titleKey),
           title: moduleId,
           status: "gated",
-          summary:
-            warnings[0] || "This module remains capability-gated on the current runtime.",
+          summary: warnings[0] || "This module remains capability-gated on the current runtime.",
         });
       }
       if (status === "blocked") {
@@ -103,8 +108,7 @@ export function createAudioAnalysisProjectionRuntime(deps) {
           labelKey: asNonEmptyString(entry.titleKey),
           title: moduleId,
           status: "blocked",
-          summary:
-            blockers[0] || "Resolve the module blockers before starting the run.",
+          summary: blockers[0] || "Resolve the module blockers before starting the run.",
         });
       }
       return normalizeProcessModule({
@@ -122,17 +126,22 @@ export function createAudioAnalysisProjectionRuntime(deps) {
     });
   }
 
-  function syncProjectAudioAnalysisProjection(runtime, project) {
+  function syncProjectAudioAnalysisProjection(runtime: any, project: any) {
     const normalizedState = normalizeAudioAnalysisState(project.audioAnalysis, runtime);
     const target = resolveAudioFeatureTarget(project);
     const providerState = buildAudioAnalysisProviderState(runtime, project);
-    const capabilityState = buildAudioAnalysisCapabilityState(runtime, project, target, providerState);
+    const capabilityState = buildAudioAnalysisCapabilityState(
+      runtime,
+      project,
+      target,
+      providerState
+    );
     const processRecord = getFeatureProcessRecord(project, audioFeatureId);
     const reportRecord = getFeatureReportRecord(project, audioFeatureId);
-    const nextResults = {};
-    const nextRuns = {};
+    const nextResults: Record<string, any> = {};
+    const nextRuns: Record<string, any> = {};
 
-    getAudioAnalysisModulesForRuntime(runtime).forEach(function (entry) {
+    getAudioAnalysisModulesForRuntime(runtime).forEach(function (entry: any) {
       const moduleId = asNonEmptyString(entry.id) || `audio-module-${Date.now()}`;
       const existingResult = normalizeAudioAnalysisModuleResult(
         toRecord(toRecord(normalizedState.results)[moduleId]),
@@ -145,23 +154,32 @@ export function createAudioAnalysisProjectionRuntime(deps) {
         entry
       );
       const processModule =
-        (Array.isArray(processRecord.modules) ? processRecord.modules : []).find(function (candidate) {
-          return asNonEmptyString(toRecord(candidate).id) === moduleId;
-        }) || {};
+        (Array.isArray(processRecord.modules) ? processRecord.modules : []).find(
+          function (candidate: any) {
+            return asNonEmptyString(toRecord(candidate).id) === moduleId;
+          }
+        ) || {};
       const signals = (Array.isArray(processRecord.findings) ? processRecord.findings : [])
-        .filter(function (candidate) {
+        .filter(function (candidate: any) {
           return asNonEmptyString(toRecord(candidate).moduleId) === moduleId;
         })
         .map(normalizeProcessFinding);
       const artifacts = (Array.isArray(processRecord.artifacts) ? processRecord.artifacts : [])
-        .filter(function (candidate) {
+        .filter(function (candidate: any) {
           return asNonEmptyString(toRecord(candidate).moduleId) === moduleId;
         })
         .map(normalizeProcessArtifact);
-      const resultStatus = mapAudioAnalysisResultStatus(processRecord, processModule, capabilityEntry);
+      const resultStatus = mapAudioAnalysisResultStatus(
+        processRecord,
+        processModule,
+        capabilityEntry
+      );
       const confidence =
-        signals.sort(function (left, right) {
-          return getAudioAnalysisConfidenceRank(right.confidence) - getAudioAnalysisConfidenceRank(left.confidence);
+        signals.sort(function (left: any, right: any) {
+          return (
+            getAudioAnalysisConfidenceRank(right.confidence) -
+            getAudioAnalysisConfidenceRank(left.confidence)
+          );
         })[0]?.confidence || null;
 
       nextResults[moduleId] = normalizeAudioAnalysisModuleResult(
@@ -199,7 +217,9 @@ export function createAudioAnalysisProjectionRuntime(deps) {
           metrics: buildAudioAnalysisModuleMetrics(signals, artifacts),
           confidence: confidence,
           timing: {
-            sampleWindowSeconds: asNumber(toRecord(processRecord.targetSummary).sampleWindowSeconds),
+            sampleWindowSeconds: asNumber(
+              toRecord(processRecord.targetSummary).sampleWindowSeconds
+            ),
             startedAt: asNonEmptyString(toRecord(processModule).startedAt),
             completedAt: asNonEmptyString(toRecord(processModule).completedAt),
           },
@@ -228,11 +248,14 @@ export function createAudioAnalysisProjectionRuntime(deps) {
             asNonEmptyString(toRecord(processModule).completedAt) ||
             asNonEmptyString(processRecord.completedAt),
           warnings: nextResults[moduleId].warnings,
-          error: nextResults[moduleId].status === "failed" ? asNonEmptyString(processRecord.error) : null,
-          artifactIds: nextResults[moduleId].artifacts.map(function (artifact) {
+          error:
+            nextResults[moduleId].status === "failed"
+              ? asNonEmptyString(processRecord.error)
+              : null,
+          artifactIds: nextResults[moduleId].artifacts.map(function (artifact: any) {
             return artifact.id;
           }),
-          findingIds: nextResults[moduleId].signals.map(function (signal) {
+          findingIds: nextResults[moduleId].signals.map(function (signal: any) {
             return signal.id;
           }),
         },
@@ -255,7 +278,9 @@ export function createAudioAnalysisProjectionRuntime(deps) {
           targetMimeType: target.mimeType,
           targetLabel: target.label,
           extractedAudioPath:
-            asNonEmptyString(toRecord(target.metadata).extractedBy) !== null ? asNonEmptyString(target.path) : null,
+            asNonEmptyString(toRecord(target.metadata).extractedBy) !== null
+              ? asNonEmptyString(target.path)
+              : null,
           updatedAt: project.updatedAt,
         },
         analysisCatalog: buildAudioAnalysisCatalogProjection(runtime),
@@ -265,7 +290,9 @@ export function createAudioAnalysisProjectionRuntime(deps) {
         results: nextResults,
         export: {
           lastGeneratedAt: asNonEmptyString(reportRecord.generatedAt),
-          items: Array.isArray(reportRecord.exports) ? reportRecord.exports.map(normalizeReportExport) : [],
+          items: Array.isArray(reportRecord.exports)
+            ? reportRecord.exports.map(normalizeReportExport)
+            : [],
         },
       },
       runtime

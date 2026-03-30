@@ -7,38 +7,32 @@ type LaboratorySnapshotToolSelectorsDeps = {
   getEditCapabilities: () => LaboratorySnapshotRecord;
 };
 
-export function createLaboratorySnapshotToolSelectors(
-  deps: LaboratorySnapshotToolSelectorsDeps,
-) {
+export function createLaboratorySnapshotToolSelectors(deps: LaboratorySnapshotToolSelectorsDeps) {
   const toRecord = deps.toRecord;
   const getSourceSnapshot = deps.getSourceSnapshot;
   const getToolRegistry = deps.getToolRegistry;
   const getEditCapabilities = deps.getEditCapabilities;
 
-  const getToolEntry: (toolId: string) => LaboratorySnapshotRecord = function getToolEntry(
-    toolId,
-  ) {
-    const tools = toRecord(toRecord(getSourceSnapshot().toolState).tools);
+  const getToolEntry: (toolId: string) => LaboratorySnapshotRecord = function getToolEntry(toolId: any) {
+    const tools = toRecord(toRecord(getSourceSnapshot()["toolState"])["tools"]);
     return toRecord(tools[toolId]);
   };
 
-  const getStageToolIds: (stageId: string) => string[] = function getStageToolIds(
-    stageId,
-  ) {
+  const getStageToolIds: (stageId: string) => string[] = function getStageToolIds(stageId: any) {
     return getToolRegistry()
-      .filter(function (entry) {
+      .filter(function (entry: any) {
         const toolEntry = toRecord(entry);
-        const supportLevel = toRecord(toolEntry.stageSupport)[stageId];
+        const supportLevel = toRecord(toolEntry["stageSupport"])[stageId];
         return (
           typeof supportLevel === "string" &&
           supportLevel.trim() !== "" &&
           supportLevel !== "unsupported"
         );
       })
-      .map(function (entry) {
+      .map(function (entry: any) {
         const toolEntry = toRecord(entry);
-        return typeof toolEntry.toolId === "string" && toolEntry.toolId.trim() !== ""
-          ? toolEntry.toolId
+        return typeof toolEntry["toolId"] === "string" && toolEntry["toolId"].trim() !== ""
+          ? toolEntry["toolId"]
           : null;
       })
       .filter(function (entry): entry is string {
@@ -46,11 +40,10 @@ export function createLaboratorySnapshotToolSelectors(
       });
   };
 
-  const getWorkspaceCapabilities: (
-    kind: string,
-  ) => LaboratorySnapshotRecord = function getWorkspaceCapabilities(kind) {
-    return toRecord(toRecord(getEditCapabilities().workspace)[kind]);
-  };
+  const getWorkspaceCapabilities: (kind: string) => LaboratorySnapshotRecord =
+    function getWorkspaceCapabilities(kind: any) {
+      return toRecord(toRecord(getEditCapabilities()["workspace"])[kind]);
+    };
 
   return {
     getToolEntry,

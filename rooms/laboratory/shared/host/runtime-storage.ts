@@ -14,20 +14,18 @@ type LaboratoryRuntimeStorageDeps = {
     persistToolState: (runtime: LaboratoryRuntimeWithProfiles) => Promise<unknown>;
     saveProject: (
       runtime: LaboratoryRuntimeWithProfiles,
-      project: LaboratoryRecord,
+      project: LaboratoryRecord
     ) => Promise<unknown>;
   };
   profileModelRuntime: {
     refreshProfileModelStateWithStorage: (
-      runtime: LaboratoryRuntimeWithProfiles,
+      runtime: LaboratoryRuntimeWithProfiles
     ) => Promise<unknown>;
   };
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createLaboratoryRuntimeStorage(
-  deps: LaboratoryRuntimeStorageDeps,
-) {
+export function createLaboratoryRuntimeStorage(deps: LaboratoryRuntimeStorageDeps) {
   const { lifecycleRuntime, profileModelRuntime, toRecord } = deps;
 
   async function loadRuntimeConfigs(api: unknown, runtime: LaboratoryRuntimeWithProfiles) {
@@ -59,13 +57,10 @@ export function createLaboratoryRuntimeStorage(
   }
 
   function getProfileModelDescriptorMap(runtime: LaboratoryRuntimeWithProfiles) {
-    return toRecord(toRecord(runtime.profileModels).models);
+    return toRecord(toRecord(runtime.profileModels)["models"]);
   }
 
-  function getProfileModelDescriptor(
-    runtime: LaboratoryRuntimeWithProfiles,
-    modelId: string,
-  ) {
+  function getProfileModelDescriptor(runtime: LaboratoryRuntimeWithProfiles, modelId: string) {
     return toRecord(getProfileModelDescriptorMap(runtime)[modelId]);
   }
 

@@ -1,6 +1,10 @@
-export {
-  cloneFateKnotsCombatState,
-  createFateKnotsCombatState,
+export { cloneFateKnotsCombatState, createFateKnotsCombatState } from "./combat-state.js";
+export type {
+  FateKnotsCombatState,
+  FateKnotsCombatant,
+  FateKnotsEnemy,
+  FateKnotsCombatStatus,
+  FateKnotsTurnEntry,
 } from "./combat-state.js";
 export {
   applyFateKnotsCombatAction,
@@ -9,3 +13,4 @@ export {
   getCurrentFateKnotsCombatTurn,
   settleAutomaticFateKnotsCombatTurns,
 } from "./combat-turns.js";
+export type { FateKnotsCombatCard, FateKnotsEnemyAction } from "./combat-turns.js";

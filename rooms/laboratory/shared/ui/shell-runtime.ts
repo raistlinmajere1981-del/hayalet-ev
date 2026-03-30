@@ -1,6 +1,6 @@
 import { renderLaboratoryStageContent, renderLaboratoryShell } from "./shell-render.js";
 
-export function createLaboratoryUiShellRuntime(deps) {
+export function createLaboratoryUiShellRuntime(deps: any) {
   const state = deps.state;
   const documentRef = deps.documentRef;
 
@@ -72,3 +72,5 @@ export function createLaboratoryUiShellRuntime(deps) {
     renderStageContent: renderStageContent,
   };
 }
+
+export type LaboratoryUiShellRuntimeApi = ReturnType<typeof createLaboratoryUiShellRuntime>;

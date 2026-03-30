@@ -6,7 +6,7 @@ import { createLaboratorySubtitleProjectionRuntime } from "./subtitle-projection
 import { createSubtitleStateDelegatesRuntime } from "../../main-functions/subtitle-analysis/host/state-delegates.js";
 import { createSubtitleStateRuntime } from "../../main-functions/subtitle-analysis/host/state.js";
 
-export function createLaboratoryHostStateCompositionRuntime(deps) {
+export function createLaboratoryHostStateCompositionRuntime(deps: any) {
   const laboratoryProcessReportStateRuntime = createLaboratoryProcessReportStateRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: deps.asNumber,

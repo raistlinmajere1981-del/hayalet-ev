@@ -75,34 +75,34 @@
       "otherToolsTitle": "Diger oda araclari",
       "otherToolsSubtitle": "Asamaya komsu kurulumlar ayni overlay icinde acik kalir.",
       "stageSupportLabel": "Asama destegi",
-    "tools": {
-      "yt-dlp": "yt-dlp",
-      "ffmpeg": "FFmpeg",
-      "whisper.cpp": "Whisper.cpp",
-      "opensmile": "openSMILE",
-      "yamnet": "YAMNet",
-      "librosa": "librosa",
-      "demucs": "Demucs",
-      "essentia": "Essentia",
-      "pyaudioanalysis": "pyAudioAnalysis"
-    },
+      "tools": {
+        "yt-dlp": "yt-dlp",
+        "ffmpeg": "FFmpeg",
+        "whisper.cpp": "Whisper.cpp",
+        "opensmile": "openSMILE",
+        "yamnet": "YAMNet",
+        "librosa": "librosa",
+        "demucs": "Demucs",
+        "essentia": "Essentia",
+        "pyaudioanalysis": "pyAudioAnalysis"
+      },
       "support": {
         "required": "Zorunlu",
         "optional": "Opsiyonel",
         "unsupported": "Desteklenmiyor"
       },
-    "status": {
-      "missing": "Eksik",
-      "installed": "Kurulu",
-      "updateAvailable": "Guncelleme var",
-      "manualSetup": "Elle kurulum gerekli",
-      "manualReady": "Sistem araci algilandi",
-      "ready": "Hazir",
-      "idle": "Bos",
-      "error": "Hata",
-      "planned": "Planli"
-    }
-  },
+      "status": {
+        "missing": "Eksik",
+        "installed": "Kurulu",
+        "updateAvailable": "Guncelleme var",
+        "manualSetup": "Elle kurulum gerekli",
+        "manualReady": "Sistem araci algilandi",
+        "ready": "Hazir",
+        "idle": "Bos",
+        "error": "Hata",
+        "planned": "Planli"
+      }
+    },
     "messages": {
       "project-create": "Yeni proje olusturuldu.",
       "project-select": "Projeye devam edildi.",

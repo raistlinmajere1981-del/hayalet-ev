@@ -1,8 +1,8 @@
-export function createLaboratorySubtitlePanelRuntime(deps) {
+export function createLaboratorySubtitlePanelRuntime(deps: any) {
   const { subtitleAnalysisUi } = deps;
 
-  function renderSubtitleDraftSelect() {
-    return subtitleAnalysisUi.renderSubtitleDraftSelect.apply(subtitleAnalysisUi, arguments);
+  function renderSubtitleDraftSelect(...args: unknown[]) {
+    return subtitleAnalysisUi.renderSubtitleDraftSelect(...args);
   }
 
   function renderSubtitleProviderPanel() {
@@ -29,8 +29,8 @@ export function createLaboratorySubtitlePanelRuntime(deps) {
     return subtitleAnalysisUi.renderSubtitleCatalogPanel();
   }
 
-  function renderSubtitlePreviewBody() {
-    return subtitleAnalysisUi.renderSubtitlePreviewBody.apply(subtitleAnalysisUi, arguments);
+  function renderSubtitlePreviewBody(...args: unknown[]) {
+    return subtitleAnalysisUi.renderSubtitlePreviewBody(...args);
   }
 
   function renderSubtitlePresetChooser() {

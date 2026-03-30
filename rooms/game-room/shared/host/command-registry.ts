@@ -29,83 +29,114 @@ export function createGameRoomCommandRegistry(
   api: unknown,
   deps: GameRoomCommandRegistryDependencies
 ): Record<string, (payload?: unknown) => unknown> {
+  const xoxCommands = {
+    start: deps.xoxCommandNames["start"] || "GameRoomXoxStart",
+    reset: deps.xoxCommandNames["reset"] || "GameRoomXoxReset",
+    userMove: deps.xoxCommandNames["userMove"] || "GameRoomXoxUserMove",
+    aiMove: deps.xoxCommandNames["aiMove"] || "GameRoomXoxAiMove",
+    remoteMove: deps.xoxCommandNames["remoteMove"] || "GameRoomXoxRemoteMove",
+    acceptInvite: deps.xoxCommandNames["acceptInvite"] || "GameRoomXoxAcceptInvite",
+    rejectInvite: deps.xoxCommandNames["rejectInvite"] || "GameRoomXoxRejectInvite",
+  };
+  const fateKnotsCommands = {
+    start: deps.fateKnotsCommandNames["start"] || "GameRoomFateKnotsStart",
+    reset: deps.fateKnotsCommandNames["reset"] || "GameRoomFateKnotsReset",
+    ready: deps.fateKnotsCommandNames["ready"] || "GameRoomFateKnotsReady",
+    characterSelect:
+      deps.fateKnotsCommandNames["characterSelect"] || "GameRoomFateKnotsCharacterSelect",
+    choice: deps.fateKnotsCommandNames["choice"] || "GameRoomFateKnotsChoice",
+    combatAction:
+      deps.fateKnotsCommandNames["combatAction"] || "GameRoomFateKnotsCombatAction",
+    sync: deps.fateKnotsCommandNames["sync"] || "GameRoomFateKnotsSync",
+    end: deps.fateKnotsCommandNames["end"] || "GameRoomFateKnotsEnd",
+    aiChoice: deps.fateKnotsCommandNames["aiChoice"] || "GameRoomFateKnotsAiChoice",
+    aiCombatAction:
+      deps.fateKnotsCommandNames["aiCombatAction"] || "GameRoomFateKnotsAiCombatAction",
+    remoteChoice:
+      deps.fateKnotsCommandNames["remoteChoice"] || "GameRoomFateKnotsRemoteChoice",
+    remoteCombatAction:
+      deps.fateKnotsCommandNames["remoteCombatAction"] || "GameRoomFateKnotsRemoteCombatAction",
+    dmPacket: deps.fateKnotsCommandNames["dmPacket"] || "GameRoomFateKnotsDmPacket",
+    npcBanter: deps.fateKnotsCommandNames["npcBanter"] || "GameRoomFateKnotsNpcBanter",
+  };
+
   return {
-    [deps.xoxCommandNames.start](payload) {
+    [xoxCommands.start]: function (payload?: unknown) {
       return deps.handleXoxStart(api, payload || {});
     },
-    [deps.xoxCommandNames.reset]() {
+    [xoxCommands.reset]: function () {
       return deps.handleXoxReset(api);
     },
-    [deps.xoxCommandNames.userMove](payload) {
+    [xoxCommands.userMove]: function (payload?: unknown) {
       return deps.handleXoxUserMove(api, payload || {});
     },
-    [deps.xoxCommandNames.aiMove](payload) {
+    [xoxCommands.aiMove]: function (payload?: unknown) {
       return deps.handleXoxAiMove(api, payload || {});
     },
-    [deps.xoxCommandNames.remoteMove](payload) {
+    [xoxCommands.remoteMove]: function (payload?: unknown) {
       return deps.handleXoxRemoteMove(api, payload || {});
     },
-    [deps.xoxCommandNames.acceptInvite](payload) {
+    [xoxCommands.acceptInvite]: function (payload?: unknown) {
       return deps.handleXoxAcceptInvite(api, payload || {});
     },
-    [deps.xoxCommandNames.rejectInvite](payload) {
+    [xoxCommands.rejectInvite]: function (payload?: unknown) {
       return deps.handleXoxRejectInvite(api, payload || {});
     },
-    GameRoomTeamTetrisStart(payload) {
+    GameRoomTeamTetrisStart: function (payload?: unknown) {
       return deps.handleTeamTetrisStart(api, payload || {});
     },
-    GameRoomTeamTetrisReset() {
+    GameRoomTeamTetrisReset: function () {
       return deps.handleTeamTetrisReset(api);
     },
-    GameRoomTeamTetrisUserMove(payload) {
+    GameRoomTeamTetrisUserMove: function (payload?: unknown) {
       return deps.handleTeamTetrisMove(api, payload || {});
     },
-    GameRoomTeamTetrisAiMove(payload) {
+    GameRoomTeamTetrisAiMove: function (payload?: unknown) {
       return deps.handleTeamTetrisMove(api, payload || {});
     },
-    GameRoomTeamTetrisRemoteMove(payload) {
+    GameRoomTeamTetrisRemoteMove: function (payload?: unknown) {
       return deps.handleTeamTetrisMove(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.start](payload) {
+    [fateKnotsCommands.start]: function (payload?: unknown) {
       return deps.handleFateKnotsStart(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.reset]() {
+    [fateKnotsCommands.reset]: function () {
       return deps.handleFateKnotsReset(api);
     },
-    [deps.fateKnotsCommandNames.ready]() {
+    [fateKnotsCommands.ready]: function () {
       return deps.handleFateKnotsReady(api);
     },
-    [deps.fateKnotsCommandNames.characterSelect](payload) {
+    [fateKnotsCommands.characterSelect]: function (payload?: unknown) {
       return deps.handleFateKnotsCharacterSelect(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.choice](payload) {
+    [fateKnotsCommands.choice]: function (payload?: unknown) {
       return deps.handleFateKnotsChoice(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.combatAction](payload) {
+    [fateKnotsCommands.combatAction]: function (payload?: unknown) {
       return deps.handleFateKnotsCombatAction(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.sync](payload) {
+    [fateKnotsCommands.sync]: function (payload?: unknown) {
       return deps.handleFateKnotsSync(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.end]() {
+    [fateKnotsCommands.end]: function () {
       return deps.handleFateKnotsEnd(api);
     },
-    [deps.fateKnotsCommandNames.aiChoice](payload) {
+    [fateKnotsCommands.aiChoice]: function (payload?: unknown) {
       return deps.handleFateKnotsChoice(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.aiCombatAction](payload) {
+    [fateKnotsCommands.aiCombatAction]: function (payload?: unknown) {
       return deps.handleFateKnotsCombatAction(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.remoteChoice](payload) {
+    [fateKnotsCommands.remoteChoice]: function (payload?: unknown) {
       return deps.handleFateKnotsChoice(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.remoteCombatAction](payload) {
+    [fateKnotsCommands.remoteCombatAction]: function (payload?: unknown) {
       return deps.handleFateKnotsCombatAction(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.dmPacket](payload) {
+    [fateKnotsCommands.dmPacket]: function (payload?: unknown) {
       return deps.handleFateKnotsDmPacket(api, payload || {});
     },
-    [deps.fateKnotsCommandNames.npcBanter](payload) {
+    [fateKnotsCommands.npcBanter]: function (payload?: unknown) {
       return deps.handleFateKnotsNpcBanter(api, payload || {});
     },
   };

@@ -4,7 +4,7 @@ type LaboratoryAudioAnalysisProcessRuntime = {
   getModuleProcessDir: (
     runtime: unknown,
     project: unknown,
-    moduleId: string,
+    moduleId: string
   ) => string | null | undefined;
   getModuleRunner: (moduleId: string) => unknown;
   generateProcessSpectrogram: (
@@ -15,7 +15,7 @@ type LaboratoryAudioAnalysisProcessRuntime = {
     target: LaboratoryAudioProcessTarget,
     artifactBase: string,
     outputDir: string,
-    moduleId: string,
+    moduleId: string
   ) => Promise<unknown>;
 };
 
@@ -24,27 +24,26 @@ type LaboratoryAudioProcessDelegatesRuntimeDeps = {
 };
 
 export function createLaboratoryAudioProcessDelegatesRuntime(
-  deps: LaboratoryAudioProcessDelegatesRuntimeDeps,
+  deps: LaboratoryAudioProcessDelegatesRuntimeDeps
 ) {
   const { audioAnalysisProcessRuntime } = deps;
 
   const getAudioAnalysisModuleProcessDir: (
     runtime: unknown,
     project: unknown,
-    moduleId: string,
+    moduleId: string
   ) => string | null | undefined = function getAudioAnalysisModuleProcessDir(
-    runtime,
-    project,
-    moduleId,
+    runtime: any,
+    project: any,
+    moduleId: any
   ) {
     return audioAnalysisProcessRuntime.getModuleProcessDir(runtime, project, moduleId);
   };
 
-  const getAudioAnalysisModuleRunner: (
-    moduleId: string,
-  ) => unknown = function getAudioAnalysisModuleRunner(moduleId) {
-    return audioAnalysisProcessRuntime.getModuleRunner(moduleId);
-  };
+  const getAudioAnalysisModuleRunner: (moduleId: string) => unknown =
+    function getAudioAnalysisModuleRunner(moduleId: any) {
+      return audioAnalysisProcessRuntime.getModuleRunner(moduleId);
+    };
 
   const generateProcessSpectrogram: (
     runtime: unknown,
@@ -54,16 +53,16 @@ export function createLaboratoryAudioProcessDelegatesRuntime(
     target: LaboratoryAudioProcessTarget,
     artifactBase: string,
     outputDir: string,
-    moduleId: string,
+    moduleId: string
   ) => Promise<unknown> = async function generateProcessSpectrogram(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    outputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: any,
+    jobId: any,
+    target: any,
+    artifactBase: any,
+    outputDir: any,
+    moduleId: any
   ) {
     return audioAnalysisProcessRuntime.generateProcessSpectrogram(
       runtime,

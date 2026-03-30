@@ -1,4 +1,4 @@
-export function createLaboratoryViewAccessorsRuntime(deps) {
+export function createLaboratoryViewAccessorsRuntime(deps: any) {
   const currentFeatureProcessRecordFn = deps.getCurrentFeatureProcessRecord;
   const currentFeatureReportRecordFn = deps.getCurrentFeatureReportRecord;
   const projectAudioAnalysisFn = deps.getProjectAudioAnalysis;
@@ -30,11 +30,11 @@ export function createLaboratoryViewAccessorsRuntime(deps) {
     return subtitleEntriesFn();
   }
 
-  function getSubtitleProcessModuleLabel(entry) {
+  function getSubtitleProcessModuleLabel(entry: any) {
     return subtitleProcessModuleLabelFn(entry);
   }
 
-  function getSubtitleProviderLabel(entry) {
+  function getSubtitleProviderLabel(entry: any) {
     return subtitleProviderLabelFn(entry);
   }
 
@@ -66,11 +66,11 @@ export function createLaboratoryViewAccessorsRuntime(deps) {
     return audioAnalysisOrderedResultEntriesFn();
   }
 
-  function renderToolCard(toolId, stageId) {
+  function renderToolCard(toolId: any, stageId: any) {
     return renderToolCardFn(toolId, stageId);
   }
 
-  function renderProfileModelCard(entry) {
+  function renderProfileModelCard(entry: any) {
     return renderProfileModelCardFn(entry);
   }
 

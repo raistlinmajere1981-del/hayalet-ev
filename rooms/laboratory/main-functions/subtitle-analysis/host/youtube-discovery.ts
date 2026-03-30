@@ -1,4 +1,46 @@
-export function createSubtitleYoutubeDiscoveryRuntime(deps) {
+type SubtitleYoutubeFilterRuntime = {
+  formatYoutubeDateForTool: (value: unknown) => string | null;
+  matchesSubtitleDuration: (
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ) => boolean;
+  matchesSubtitleLanguageAvailability: (
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ) => boolean;
+  matchesSubtitleLiveMode: (
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ) => boolean;
+  matchesSubtitlePublishedRange: (
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ) => boolean;
+  matchesSubtitleShortsMode: (
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ) => boolean;
+  matchesSubtitleTitleFilters: (
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ) => boolean;
+  matchesSubtitleWeekday: (
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ) => boolean;
+};
+
+type SubtitleDiscoveryRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
+  callRoomTools: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  normalizeSubtitleDiscoveryItem: (rawValue: unknown, index: number) => Record<string, unknown>;
+  roomId: string;
+  subtitleYoutubeFilterRuntime: SubtitleYoutubeFilterRuntime;
+  toRecord: (value: unknown) => Record<string, unknown>;
+};
+
+export function createSubtitleYoutubeDiscoveryRuntime(deps: SubtitleDiscoveryRuntimeDeps) {
   const {
     asNonEmptyString,
     asNumber,
@@ -19,20 +61,23 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps) {
     matchesSubtitleWeekday,
   } = subtitleYoutubeFilterRuntime;
 
-  function buildSubtitleYoutubeCandidateUrl(entry, fallbackUrl) {
+  function buildSubtitleYoutubeCandidateUrl(
+    entry: unknown,
+    fallbackUrl: string | null
+  ): string | null {
     const record = toRecord(entry);
     return (
-      asNonEmptyString(record.webpage_url) ||
-      asNonEmptyString(record.original_url) ||
-      (asNonEmptyString(record.url) && String(record.url).startsWith("http")
-        ? asNonEmptyString(record.url)
+      asNonEmptyString(record["webpage_url"]) ||
+      asNonEmptyString(record["original_url"]) ||
+      (asNonEmptyString(record["url"]) && String(record["url"]).startsWith("http")
+        ? asNonEmptyString(record["url"])
         : null) ||
-      (asNonEmptyString(record.id) ? `https://www.youtube.com/watch?v=${record.id}` : null) ||
+      (asNonEmptyString(record["id"]) ? `https://www.youtube.com/watch?v=${record["id"]}` : null) ||
       fallbackUrl
     );
   }
 
-  function parseToolRunJson(stdoutValue) {
+  function parseToolRunJson(stdoutValue: unknown): unknown {
     const trimmed = String(stdoutValue || "").trim();
     if (trimmed === "") {
       return null;
@@ -40,16 +85,20 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps) {
 
     const lines = trimmed
       .split(/\r?\n/)
-      .map(function (line) {
+      .map(function (line: string) {
         return line.trim();
       })
-      .filter(function (line) {
+      .filter(function (line: string) {
         return line.startsWith("{") || line.startsWith("[");
       });
 
     for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const candidate = lines[index];
+      if (!candidate) {
+        continue;
+      }
       try {
-        return JSON.parse(lines[index]);
+        return JSON.parse(candidate);
       } catch (_error) {
         // Keep scanning.
       }
@@ -62,14 +111,20 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps) {
     }
   }
 
-  async function runSubtitleYoutubeMetadata(runtime, requestId, jobId, urlValue, flatPlaylist) {
+  async function runSubtitleYoutubeMetadata(
+    runtime: Record<string, unknown>,
+    requestId: string,
+    jobId: string,
+    urlValue: string,
+    flatPlaylist: boolean
+  ): Promise<unknown> {
     const runResult = await callRoomTools({
       operation: "tool-run",
       roomId: roomId,
       requestId: requestId,
       jobId: `${jobId}-${flatPlaylist ? "flat" : "single"}`,
       toolId: "yt-dlp",
-      cwd: runtime.paths.storageDir,
+        cwd: toRecord(runtime["paths"])["storageDir"],
       args:
         flatPlaylist === true
           ? ["--dump-single-json", "--flat-playlist", "--skip-download", urlValue]
@@ -77,14 +132,20 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps) {
       timeoutMs: 10 * 60 * 1000,
     });
 
-    const payload = parseToolRunJson(toRecord(runResult.run).stdout);
+    const payload = parseToolRunJson(toRecord(runResult["run"])["stdout"]);
     if (!payload || typeof payload !== "object") {
       throw new Error("yt-dlp metadata output could not be parsed.");
     }
     return payload;
   }
 
-  function buildSubtitleYoutubeDownloadArgs(runtime, drafts, sourceDir, urlValue, scopeId) {
+  function buildSubtitleYoutubeDownloadArgs(
+    runtime: Record<string, unknown>,
+    drafts: Record<string, unknown>,
+    sourceDir: string,
+    urlValue: string,
+    scopeId: string
+  ): string[] {
     const args = [
       "--newline",
       "--progress",
@@ -95,12 +156,12 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps) {
       "-o",
       `${sourceDir}/%(title).120B-%(id)s.%(ext)s`,
     ];
-    const subtitleMode = asNonEmptyString(drafts.subtitleMode) || "manual";
-    const subtitlesLang = asNonEmptyString(drafts.subtitlesLang) || "all";
-    const publishedAfter = formatYoutubeDateForTool(drafts.publishedAfter);
-    const publishedBefore = formatYoutubeDateForTool(drafts.publishedBefore);
-    const playlistItems = asNonEmptyString(drafts.playlistItems);
-    const limitCount = asNumber(drafts.limitCount);
+    const subtitleMode = asNonEmptyString(drafts["subtitleMode"]) || "manual";
+    const subtitlesLang = asNonEmptyString(drafts["subtitlesLang"]) || "all";
+    const publishedAfter = formatYoutubeDateForTool(drafts["publishedAfter"]);
+    const publishedBefore = formatYoutubeDateForTool(drafts["publishedBefore"]);
+    const playlistItems = asNonEmptyString(drafts["playlistItems"]);
+    const limitCount = asNumber(drafts["limitCount"]);
 
     if (subtitleMode === "manual" || subtitleMode === "both") {
       args.push("--write-subs");
@@ -110,14 +171,14 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps) {
     }
     args.push("--sub-langs", subtitlesLang);
 
-    if (toRecord(toRecord(runtime.toolState).tools).ffmpeg?.installed === true) {
+    if (toRecord(toRecord(toRecord(runtime["toolState"])["tools"])["ffmpeg"])["installed"] === true) {
       args.push("--convert-subs", "srt");
     }
     if (publishedAfter !== null) {
-      args.push("--dateafter", publishedAfter);
+      args.push("--dateafter", publishedAfter as string);
     }
     if (publishedBefore !== null) {
-      args.push("--datebefore", publishedBefore);
+      args.push("--datebefore", publishedBefore as string);
     }
     if (scopeId === "single") {
       args.push("--no-playlist");
@@ -132,39 +193,44 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps) {
     return args;
   }
 
-  function getSubtitleAvailableLanguages(metadata) {
-    const manualLanguages = Object.keys(toRecord(metadata.subtitles));
-    const autoLanguages = Object.keys(toRecord(metadata.automatic_captions));
+  function getSubtitleAvailableLanguages(metadata: Record<string, unknown>): string[] {
+    const manualLanguages = Object.keys(toRecord(metadata["subtitles"]));
+    const autoLanguages = Object.keys(toRecord(metadata["automatic_captions"]));
     return Array.from(new Set(manualLanguages.concat(autoLanguages))).sort();
   }
 
-  function getSubtitleLiveStatus(metadata) {
+  function getSubtitleLiveStatus(metadata: Record<string, unknown>): string {
     return (
-      asNonEmptyString(metadata.live_status) ||
-      (metadata.is_live === true ? "live" : metadata.was_live === true ? "post_live" : "offline")
+      asNonEmptyString(metadata["live_status"]) ||
+      (metadata["is_live"] === true ? "live" : metadata["was_live"] === true ? "post_live" : "offline")
     );
   }
 
-  function buildSubtitleDiscoveryItem(metadata, candidateUrl, scopeId) {
-    const title = asNonEmptyString(metadata.title);
-    const videoId = asNonEmptyString(metadata.id);
+  function buildSubtitleDiscoveryItem(
+    metadata: Record<string, unknown>,
+    candidateUrl: string,
+    scopeId: string
+  ): Record<string, unknown> {
+    const title = asNonEmptyString(metadata["title"]);
+    const videoId = asNonEmptyString(metadata["id"]);
+    const durationSeconds = asNumber(metadata["duration"]);
     return normalizeSubtitleDiscoveryItem(
       {
         id: videoId || `subtitle-discovery-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         url: candidateUrl,
         videoId: videoId,
         title: title || candidateUrl || `Subtitle candidate ${scopeId}`,
-        channelTitle: asNonEmptyString(metadata.channel) || asNonEmptyString(metadata.uploader),
+        channelTitle: asNonEmptyString(metadata["channel"]) || asNonEmptyString(metadata["uploader"]),
         publishedAt:
-          asNonEmptyString(metadata.upload_date) ||
-          asNonEmptyString(metadata.release_date) ||
-          asNonEmptyString(metadata.timestamp),
-        durationSeconds: asNumber(metadata.duration),
+          asNonEmptyString(metadata["upload_date"]) ||
+          asNonEmptyString(metadata["release_date"]) ||
+          asNonEmptyString(metadata["timestamp"]),
+        durationSeconds: durationSeconds,
         isShort:
-          typeof metadata.is_short === "boolean"
-            ? metadata.is_short
-            : (asNonEmptyString(metadata.webpage_url) || "").includes("/shorts/") ||
-                (asNumber(metadata.duration) !== null && asNumber(metadata.duration) <= 180),
+          typeof metadata["is_short"] === "boolean"
+            ? metadata["is_short"]
+            : (asNonEmptyString(metadata["webpage_url"]) || "").includes("/shorts/") ||
+              (durationSeconds !== null && durationSeconds <= 180),
         liveStatus: getSubtitleLiveStatus(metadata),
         subtitleLanguages: getSubtitleAvailableLanguages(metadata),
         metadata: {
@@ -175,16 +241,30 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps) {
     );
   }
 
-  async function collectSubtitleYoutubeDiscovery(runtime, requestId, jobId, urlValue, scopeId, drafts) {
-    const catalog =
+  async function collectSubtitleYoutubeDiscovery(
+    runtime: Record<string, unknown>,
+    requestId: string,
+    jobId: string,
+    urlValue: string,
+    scopeId: string,
+    drafts: Record<string, unknown>
+  ) {
+    const catalogUnknown: unknown =
       scopeId === "single"
-        ? { entries: [await runSubtitleYoutubeMetadata(runtime, requestId, jobId, urlValue, false)] }
+        ? {
+            entries: [await runSubtitleYoutubeMetadata(runtime, requestId, jobId, urlValue, false)],
+          }
         : await runSubtitleYoutubeMetadata(runtime, requestId, jobId, urlValue, true);
-    const candidateEntries = Array.isArray(toRecord(catalog).entries) ? toRecord(catalog).entries : [];
-    const limitCount = asNumber(drafts.limitCount);
+    const catalog = toRecord(catalogUnknown);
+    const candidateEntries: unknown[] = Array.isArray(catalog["entries"])
+      ? (catalog["entries"] as unknown[])
+      : [];
+    const limitCount = asNumber(drafts["limitCount"]);
     const slicedCandidates =
-      limitCount !== null && limitCount > 0 ? candidateEntries.slice(0, limitCount) : candidateEntries;
-    const matchedItems = [];
+      limitCount !== null && limitCount > 0
+        ? candidateEntries.slice(0, limitCount)
+        : candidateEntries;
+    const matchedItems: Record<string, unknown>[] = [];
 
     for (let index = 0; index < slicedCandidates.length; index += 1) {
       const candidateUrl = buildSubtitleYoutubeCandidateUrl(slicedCandidates[index], urlValue);
@@ -195,20 +275,24 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps) {
       const metadata =
         scopeId === "single"
           ? slicedCandidates[index]
-          : await runSubtitleYoutubeMetadata(runtime, requestId, jobId, candidateUrl, false);
+          : // eslint-disable-next-line no-await-in-loop -- NOTE: yt-dlp metadata calls stay serialized per request.
+            await runSubtitleYoutubeMetadata(runtime, requestId, jobId, candidateUrl, false);
+      const normalizedMetadata = toRecord(metadata);
       if (
-        matchesSubtitlePublishedRange(metadata, drafts) !== true ||
-        matchesSubtitleWeekday(metadata, drafts) !== true ||
-        matchesSubtitleDuration(metadata, drafts) !== true ||
-        matchesSubtitleShortsMode(metadata, drafts) !== true ||
-        matchesSubtitleLanguageAvailability(metadata, drafts) !== true ||
-        matchesSubtitleLiveMode(metadata, drafts) !== true ||
-        matchesSubtitleTitleFilters(metadata, drafts) !== true
+        matchesSubtitlePublishedRange(normalizedMetadata, drafts) !== true ||
+        matchesSubtitleWeekday(normalizedMetadata, drafts) !== true ||
+        matchesSubtitleDuration(normalizedMetadata, drafts) !== true ||
+        matchesSubtitleShortsMode(normalizedMetadata, drafts) !== true ||
+        matchesSubtitleLanguageAvailability(normalizedMetadata, drafts) !== true ||
+        matchesSubtitleLiveMode(normalizedMetadata, drafts) !== true ||
+        matchesSubtitleTitleFilters(normalizedMetadata, drafts) !== true
       ) {
         continue;
       }
 
-      matchedItems.push(buildSubtitleDiscoveryItem(metadata, candidateUrl, scopeId));
+      matchedItems.push(
+        buildSubtitleDiscoveryItem(normalizedMetadata, candidateUrl, scopeId)
+      );
     }
 
     return {

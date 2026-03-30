@@ -1,6 +1,6 @@
 /* global window */
 
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFeatureContract || (global.GameRoomUiFeatureContract = {});
 
   const FEATURE_ID = "xox";
@@ -44,7 +44,7 @@
     },
   };
 
-  function cloneValue(value) {
+  function cloneValue(value: any) {
     return JSON.parse(JSON.stringify(value));
   }
 

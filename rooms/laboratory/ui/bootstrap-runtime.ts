@@ -1,4 +1,4 @@
-export function createLaboratoryUiBootstrapRuntime(deps) {
+export function createLaboratoryUiBootstrapRuntime(deps: any) {
   const actionRouter = deps.actionRouter;
   const applyLocale = deps.applyLocale;
   const applyPresentationMode = deps.applyPresentationMode;

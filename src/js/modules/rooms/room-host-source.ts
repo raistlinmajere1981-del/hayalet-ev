@@ -239,7 +239,7 @@ export async function buildRoomHostModuleBlobUrl(
   const createdObjectUrls: string[] = [];
   const moduleUrl = await buildRoomHostResolvedModuleUrl(entryPath, readModuleSource, {
     inlineDependencies: true,
-    createModuleUrl: (source, filePath) => {
+    createModuleUrl: (source, _filePath) => {
       const objectUrl = URL.createObjectURL(
         new Blob([source], {
           type: "text/javascript;charset=utf-8",
@@ -251,7 +251,7 @@ export async function buildRoomHostModuleBlobUrl(
   });
 
   return {
-    dispose: () => {
+    dispose: (): void => {
       while (createdObjectUrls.length > 0) {
         const objectUrl = createdObjectUrls.pop();
         if (typeof objectUrl === "string") {

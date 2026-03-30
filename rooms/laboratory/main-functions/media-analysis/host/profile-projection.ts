@@ -1,4 +1,4 @@
-export function createMediaProfileProjectionRuntime(deps) {
+export function createMediaProfileProjectionRuntime(deps: any) {
   const {
     asNonEmptyString,
     asNumber,
@@ -28,17 +28,18 @@ export function createMediaProfileProjectionRuntime(deps) {
     toRecord,
   } = deps;
 
-  function resolveProfileTarget(project) {
+  function resolveProfileTarget(project: any) {
     const profile = toRecord(project.profile);
     const source = toRecord(project.source);
-    const requestedMode = asNonEmptyString(profile.targetAssetMode) === "derived" ? "derived" : "source";
+    const requestedMode =
+      asNonEmptyString(profile.targetAssetMode) === "derived" ? "derived" : "source";
     const sourcePath = asNonEmptyString(source.storedPath);
     const sourceFileName = asNonEmptyString(source.storedFileName);
     const sourceMetadata = normalizeSourceMetadata(source.metadata);
     const sourceTarget = {
       requestedMode: requestedMode,
       mode: "source",
-      outputId: null,
+      outputId: null as string | null,
       path: sourcePath,
       fileName: sourceFileName,
       mimeType: asNonEmptyString(source.mimeType),
@@ -46,7 +47,7 @@ export function createMediaProfileProjectionRuntime(deps) {
       signature: sourcePath !== null ? buildSourceTargetSignature(project) : null,
       label: sourceFileName || project.name,
       usingFallback: false,
-      reason: null,
+      reason: null as string | null,
     };
 
     if (requestedMode !== "derived") {
@@ -84,26 +85,26 @@ export function createMediaProfileProjectionRuntime(deps) {
     };
   }
 
-  function buildProfileReadiness(runtime, project) {
+  function buildProfileReadiness(runtime: any, project: any) {
     const sourceKind = asNonEmptyString(toRecord(project.source).kind) || "video";
     const profile = toRecord(project.profile);
-    const enabledLaneIds = getCompatibleProfileLaneIds(runtime.profilePresets, sourceKind).filter(function (
-      laneId
-    ) {
-      return toRecord(profile.laneSelection)[laneId] === true;
-    });
+    const enabledLaneIds = getCompatibleProfileLaneIds(runtime.profilePresets, sourceKind).filter(
+      function (laneId: string) {
+        return toRecord(profile.laneSelection)[laneId] === true;
+      }
+    );
     const target = resolveProfileTarget(project);
     const laneMap = getProfileLaneMap(runtime.profilePresets);
-    const requiredToolIds = [];
-    const optionalToolIds = [];
-    const blockers = [];
-    const warnings = [];
-    const requiredToolMap = {};
-    const optionalToolMap = {};
+    const requiredToolIds: string[] = [];
+    const optionalToolIds: string[] = [];
+    const blockers: string[] = [];
+    const warnings: string[] = [];
+    const requiredToolMap: Record<string, any> = {};
+    const optionalToolMap: Record<string, any> = {};
     const modelSummaries = buildProfileModelSummary(runtime, project);
     const selectedModel =
-      modelSummaries.find(function (entry) {
-        return entry.selected === true;
+      modelSummaries.find(function (entry: Record<string, unknown>) {
+        return entry["selected"] === true;
       }) || null;
 
     if (target.path === null) {
@@ -113,13 +114,13 @@ export function createMediaProfileProjectionRuntime(deps) {
       warnings.push(target.reason);
     }
 
-    const laneSummaries = enabledLaneIds.map(function (laneId) {
+    const laneSummaries = enabledLaneIds.map(function (laneId: string) {
       const lane = toRecord(laneMap[laneId]);
       const laneRequired = Array.isArray(lane.requiredTools) ? lane.requiredTools : [];
       const laneOptional = Array.isArray(lane.optionalTools) ? lane.optionalTools : [];
       const laneWarnings = [];
 
-      laneRequired.forEach(function (toolId) {
+      laneRequired.forEach(function (toolId: string) {
         if (requiredToolIds.includes(toolId) === false) {
           requiredToolIds.push(toolId);
         }
@@ -132,7 +133,7 @@ export function createMediaProfileProjectionRuntime(deps) {
         }
       });
 
-      laneOptional.forEach(function (toolId) {
+      laneOptional.forEach(function (toolId: string) {
         if (optionalToolIds.includes(toolId) === false) {
           optionalToolIds.push(toolId);
         }
@@ -145,14 +146,14 @@ export function createMediaProfileProjectionRuntime(deps) {
         }
       });
 
-      const missingRequired = laneRequired.filter(function (toolId) {
+      const missingRequired = laneRequired.filter(function (toolId: string) {
         return toRecord(requiredToolMap[toolId]).ready !== true;
       });
 
       if (missingRequired.length > 0) {
         blockers.push(
           `${asNonEmptyString(lane.labelKey) || laneId} requires ${missingRequired
-            .map(function (toolId) {
+            .map(function (toolId: string) {
               return asNonEmptyString(toRecord(requiredToolMap[toolId]).displayName) || toolId;
             })
             .join(", ")}.`
@@ -162,7 +163,9 @@ export function createMediaProfileProjectionRuntime(deps) {
       if (laneOptional.includes("whisper.cpp")) {
         const whisperSummary = toRecord(optionalToolMap["whisper.cpp"]);
         if (whisperSummary.ready !== true) {
-          laneWarnings.push("Speech transcript sampling is unavailable until Whisper.cpp is ready.");
+          laneWarnings.push(
+            "Speech transcript sampling is unavailable until Whisper.cpp is ready."
+          );
         } else if (
           selectedModel &&
           selectedModel.runtimeCompatible === false &&
@@ -206,10 +209,10 @@ export function createMediaProfileProjectionRuntime(deps) {
       },
       enabledLaneIds: enabledLaneIds,
       enabledLaneCount: enabledLaneIds.length,
-      requiredTools: requiredToolIds.map(function (toolId) {
+      requiredTools: requiredToolIds.map(function (toolId: any) {
         return requiredToolMap[toolId];
       }),
-      optionalTools: optionalToolIds.map(function (toolId) {
+      optionalTools: optionalToolIds.map(function (toolId: any) {
         return optionalToolMap[toolId];
       }),
       models: modelSummaries,
@@ -219,11 +222,14 @@ export function createMediaProfileProjectionRuntime(deps) {
     };
   }
 
-  function buildProfileEstimate(runtime, project, readiness) {
+  function buildProfileEstimate(runtime: any, project: any, readiness: any) {
     const profile = toRecord(project.profile);
     const sourceKind = asNonEmptyString(toRecord(project.source).kind) || "video";
     const depthConfig = getProfileDepthConfig(runtime, profile.depth);
-    const frameDensityConfig = getProfileFrameDensityRuntimeConfig(runtime, profile.frameSampleDensity);
+    const frameDensityConfig = getProfileFrameDensityRuntimeConfig(
+      runtime,
+      profile.frameSampleDensity
+    );
     const enabledLaneIds = Array.isArray(toRecord(readiness).enabledLaneIds)
       ? readiness.enabledLaneIds
       : getEnabledProfileLaneIds(runtime, project);
@@ -244,11 +250,13 @@ export function createMediaProfileProjectionRuntime(deps) {
       runtime.profileCapabilities,
       sourceKind
     );
-    const artifactKinds = [];
+    const artifactKinds: string[] = [];
 
-    enabledLaneIds.forEach(function (laneId) {
+    enabledLaneIds.forEach(function (laneId: string) {
       const lane = toRecord(laneMap[laneId]);
-      (Array.isArray(lane.artifactKinds) ? lane.artifactKinds : []).forEach(function (artifactKind) {
+      (Array.isArray(lane.artifactKinds) ? lane.artifactKinds : []).forEach(function (
+        artifactKind: string
+      ) {
         if (artifactPreferences[artifactKind] !== true) {
           return;
         }
@@ -261,20 +269,27 @@ export function createMediaProfileProjectionRuntime(deps) {
     let runtimeSeconds =
       (sourceKind === "video" ? 18 : sourceKind === "audio" ? 14 : 10) +
       enabledLaneIds.length * 8 +
-      (asNonEmptyString(profile.depth) === "deep" ? 28 : asNonEmptyString(profile.depth) === "quick" ? 8 : 16);
+      (asNonEmptyString(profile.depth) === "deep"
+        ? 28
+        : asNonEmptyString(profile.depth) === "quick"
+          ? 8
+          : 16);
 
     runtimeSeconds += Math.max(0, Math.round(asNumber(frameDensityConfig.tileCount) || 4) - 2) * 2;
 
     if (enabledLaneIds.includes("speech-overlay")) {
       const selectedModel =
-        (Array.isArray(toRecord(readiness).models) ? readiness.models : []).find(function (entry) {
+        (Array.isArray(toRecord(readiness).models) ? readiness.models : []).find(function (
+          entry: Record<string, unknown>
+        ) {
           return toRecord(entry).selected === true;
         }) || null;
-      runtimeSeconds += artifactPreferences.transcript === true
-        ? selectedModel && selectedModel.ready === true
-          ? Math.max(8, Math.round(transcriptSampleSeconds / 3))
-          : 5
-        : 0;
+      runtimeSeconds +=
+        artifactPreferences.transcript === true
+          ? selectedModel && selectedModel.ready === true
+            ? Math.max(8, Math.round(transcriptSampleSeconds / 3))
+            : 5
+          : 0;
     }
 
     return {
@@ -284,7 +299,7 @@ export function createMediaProfileProjectionRuntime(deps) {
     };
   }
 
-  function syncProjectProfileProjection(runtime, project) {
+  function syncProjectProfileProjection(runtime: any, project: any) {
     const defaults = createDefaultProfileState(
       runtime.profilePresets,
       runtime.profileModels,
@@ -302,22 +317,28 @@ export function createMediaProfileProjectionRuntime(deps) {
       runtime.profilePresets,
       asNonEmptyString(toRecord(project.source).kind) || "video"
     );
-    const laneSelection = {};
+    const laneSelection: Record<string, boolean> = {};
 
-    compatibleLaneIds.forEach(function (laneId) {
+    compatibleLaneIds.forEach(function (laneId: string) {
       laneSelection[laneId] = toRecord(profile.laneSelection)[laneId] === true;
     });
-    if (compatibleLaneIds.length > 0 && compatibleLaneIds.every(function (laneId) {
-      return laneSelection[laneId] !== true;
-    })) {
-      compatibleLaneIds.forEach(function (laneId) {
+    if (
+      compatibleLaneIds.length > 0 &&
+      compatibleLaneIds.every(function (laneId: string) {
+        return laneSelection[laneId] !== true;
+      })
+    ) {
+      compatibleLaneIds.forEach(function (laneId: string) {
         laneSelection[laneId] = toRecord(defaults.laneSelection)[laneId] === true;
       });
     }
 
-    const requestedTargetMode = asNonEmptyString(profile.targetAssetMode) === "derived" ? "derived" : "source";
+    const requestedTargetMode =
+      asNonEmptyString(profile.targetAssetMode) === "derived" ? "derived" : "source";
     const requestedModelId = asNonEmptyString(profile.modelId);
-    const requestedModelDescriptor = toRecord(getProfileModelDescriptorMap(runtime)[requestedModelId]);
+    const requestedModelDescriptor = toRecord(
+      getProfileModelDescriptorMap(runtime)[requestedModelId]
+    );
     const requestedModelKinds = Array.isArray(requestedModelDescriptor.mediaKinds)
       ? requestedModelDescriptor.mediaKinds
       : [];
@@ -325,11 +346,13 @@ export function createMediaProfileProjectionRuntime(deps) {
     const resolvedProfile = {
       ...profile,
       activePresetId:
-        findProfilePreset(runtime.profilePresets, project.source.kind, profile.activePresetId) !== null
+        findProfilePreset(runtime.profilePresets, project.source.kind, profile.activePresetId) !==
+        null
           ? profile.activePresetId
           : defaults.activePresetId,
       targetAssetMode: requestedTargetMode,
-      targetOutputId: requestedTargetMode === "derived" ? asNonEmptyString(profile.targetOutputId) : null,
+      targetOutputId:
+        requestedTargetMode === "derived" ? asNonEmptyString(profile.targetOutputId) : null,
       modelId:
         requestedModelId &&
         (requestedModelKinds.length === 0 || requestedModelKinds.includes(project.source.kind))
@@ -369,7 +392,8 @@ export function createMediaProfileProjectionRuntime(deps) {
         signatureChanged === true ||
         (target.usingFallback === true && asNonEmptyString(existingPreflight.ranAt) !== null)
       ) {
-        existingPreflight.status = asNonEmptyString(existingPreflight.ranAt) !== null ? "stale" : "idle";
+        existingPreflight.status =
+          asNonEmptyString(existingPreflight.ranAt) !== null ? "stale" : "idle";
         existingPreflight.jobId = null;
         existingPreflight.requestId = null;
         existingPreflight.error = null;

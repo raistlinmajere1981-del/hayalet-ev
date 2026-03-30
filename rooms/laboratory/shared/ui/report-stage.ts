@@ -1,7 +1,7 @@
 import { createLaboratoryReportStageSupportRuntime } from "./report-stage-support.js";
 import { createLaboratorySubtitleReportStageRuntime } from "./report-stage-subtitle.js";
 
-export function createLaboratoryReportStageUi(deps) {
+export function createLaboratoryReportStageUi(deps: any) {
   const escapeHtml = deps.escapeHtml;
   const featureText = deps.featureText;
   const renderStageIntro = deps.renderStageIntro;
@@ -22,16 +22,20 @@ export function createLaboratoryReportStageUi(deps) {
     return laboratoryReportStageSupportRuntime.getRunningReportJob();
   }
 
-  function renderReportFinding(signal) {
+  function renderReportFinding(signal: any) {
     return laboratoryReportStageSupportRuntime.renderReportFinding(signal);
   }
 
-  function getReportOverviewRows(reportRecord, findings, asset) {
+  function getReportOverviewRows(reportRecord: any, findings: any, asset: any) {
     return laboratoryReportStageSupportRuntime.getReportOverviewRows(reportRecord, findings, asset);
   }
 
-  function getReportSideRows(reportRecord, findings, exportsList) {
-    return laboratoryReportStageSupportRuntime.getReportSideRows(reportRecord, findings, exportsList);
+  function getReportSideRows(reportRecord: any, findings: any, exportsList: any) {
+    return laboratoryReportStageSupportRuntime.getReportSideRows(
+      reportRecord,
+      findings,
+      exportsList
+    );
   }
 
   function renderSubtitleReportModuleGrid() {
@@ -50,7 +54,9 @@ export function createLaboratoryReportStageUi(deps) {
     const exportsList = getReportExports();
     const runningJob = getRunningReportJob();
     const previewUrl =
-      typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== "" ? asset.previewUrl : getFeaturePreviewImage();
+      typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== ""
+        ? asset.previewUrl
+        : getFeaturePreviewImage();
 
     return `
       <div class="lab-layout">
@@ -72,7 +78,7 @@ export function createLaboratoryReportStageUi(deps) {
             ${
               summaryCards.length > 0
                 ? summaryCards
-                    .map(function (card) {
+                    .map(function (card: any) {
                       return laboratoryReportStageSupportRuntime.renderSignalCard(
                         card.value || "--",
                         laboratoryReportStageSupportRuntime.getReportSignalCardLabel(card)
@@ -92,7 +98,7 @@ export function createLaboratoryReportStageUi(deps) {
               ${
                 findings.length > 0
                   ? findings
-                      .map(function (finding) {
+                      .map(function (finding: any) {
                         return renderReportFinding(finding);
                       })
                       .join("")
@@ -113,7 +119,7 @@ export function createLaboratoryReportStageUi(deps) {
                     <ul class="lab-bullet-list">
                       ${reportRecord.caveats
                         .slice(0, 4)
-                        .map(function (entry) {
+                        .map(function (entry: any) {
                           return `<li>${escapeHtml(entry)}</li>`;
                         })
                         .join("")}
@@ -130,7 +136,7 @@ export function createLaboratoryReportStageUi(deps) {
                     <ul class="lab-bullet-list">
                       ${reportRecord.warnings
                         .slice(0, 4)
-                        .map(function (entry) {
+                        .map(function (entry: any) {
                           return `<li>${escapeHtml(entry)}</li>`;
                         })
                         .join("")}
@@ -147,7 +153,7 @@ export function createLaboratoryReportStageUi(deps) {
                     <ul class="lab-bullet-list">
                       ${exportsList
                         .slice(0, 4)
-                        .map(function (entry) {
+                        .map(function (entry: any) {
                           return `<li>${escapeHtml(entry.fileName || entry.path || "--")}</li>`;
                         })
                         .join("")}
@@ -167,7 +173,9 @@ export function createLaboratoryReportStageUi(deps) {
               </button>
             </div>
             ${
-              runningJob && typeof runningJob.message === "string" && runningJob.message.trim() !== ""
+              runningJob &&
+              typeof runningJob.message === "string" &&
+              runningJob.message.trim() !== ""
                 ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
                 : ""
             }

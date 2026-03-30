@@ -3,6 +3,7 @@
 US1 Fate Knots messages carry room-scoped commands only.
 
 Supported replies:
+
 - `++cmd:GameRoomFateKnotsRemoteChoice({...})`
 - `++cmd:GameRoomFateKnotsRemoteCombatAction({...})`
 

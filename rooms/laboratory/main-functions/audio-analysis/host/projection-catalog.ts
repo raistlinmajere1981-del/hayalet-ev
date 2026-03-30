@@ -1,4 +1,4 @@
-export function createAudioAnalysisProjectionCatalogRuntime(deps) {
+export function createAudioAnalysisProjectionCatalogRuntime(deps: any) {
   const {
     asNonEmptyString,
     buildDerivedTargetSignature,
@@ -15,10 +15,10 @@ export function createAudioAnalysisProjectionCatalogRuntime(deps) {
     toRecord,
   } = deps;
 
-  function buildAudioAnalysisCatalogProjection(runtime) {
+  function buildAudioAnalysisCatalogProjection(runtime: any) {
     const modules = getAudioAnalysisModulesForRuntime(runtime);
     const orderedIds = modules
-      .map(function (entry) {
+      .map(function (entry: any) {
         return asNonEmptyString(entry.id);
       })
       .filter(Boolean);
@@ -26,26 +26,26 @@ export function createAudioAnalysisProjectionCatalogRuntime(deps) {
     return {
       orderedIds: orderedIds,
       implementedIds: modules
-        .filter(function (entry) {
+        .filter(function (entry: any) {
           return asNonEmptyString(entry.status) === "implemented";
         })
-        .map(function (entry) {
+        .map(function (entry: any) {
           return asNonEmptyString(entry.id);
         })
         .filter(Boolean),
       gatedIds: modules
-        .filter(function (entry) {
+        .filter(function (entry: any) {
           return asNonEmptyString(entry.status) === "gated";
         })
-        .map(function (entry) {
+        .map(function (entry: any) {
           return asNonEmptyString(entry.id);
         })
         .filter(Boolean),
       plannedIds: modules
-        .filter(function (entry) {
+        .filter(function (entry: any) {
           return asNonEmptyString(entry.status) === "planned";
         })
-        .map(function (entry) {
+        .map(function (entry: any) {
           return asNonEmptyString(entry.id);
         })
         .filter(Boolean),
@@ -53,13 +53,13 @@ export function createAudioAnalysisProjectionCatalogRuntime(deps) {
     };
   }
 
-  function getAudioAnalysisProviderDescriptors(runtime) {
+  function getAudioAnalysisProviderDescriptors(runtime: any) {
     return Array.isArray(toRecord(runtime.audioAnalysisProviders).providers)
       ? toRecord(runtime.audioAnalysisProviders).providers.map(toRecord)
       : [];
   }
 
-  function resolveAudioAnalysisProviderIdsForModule(runtime, catalogEntry) {
+  function resolveAudioAnalysisProviderIdsForModule(runtime: any, catalogEntry: any) {
     const descriptorProviderIds = normalizeStringArray(toRecord(catalogEntry).providerIds);
     if (descriptorProviderIds.length > 0) {
       return descriptorProviderIds;
@@ -67,43 +67,46 @@ export function createAudioAnalysisProjectionCatalogRuntime(deps) {
 
     const toolIds = normalizeStringArray(toRecord(catalogEntry).toolIds);
     return getAudioAnalysisProviderDescriptors(runtime)
-      .filter(function (entry) {
+      .filter(function (entry: any) {
         const toolId = asNonEmptyString(entry.toolId);
         return toolId !== null && toolIds.includes(toolId);
       })
-      .map(function (entry) {
+      .map(function (entry: any) {
         return asNonEmptyString(entry.id);
       })
       .filter(Boolean);
   }
 
-  function getAudioAnalysisRequiredToolIds(catalogEntry) {
+  function getAudioAnalysisRequiredToolIds(catalogEntry: any) {
     const source = toRecord(catalogEntry);
     const requiredToolIds = normalizeStringArray(source.requiredToolIds);
     return requiredToolIds.length > 0 ? requiredToolIds : normalizeStringArray(source.toolIds);
   }
 
-  function buildAudioAnalysisProviderState(runtime, project) {
+  function buildAudioAnalysisProviderState(runtime: any, project: any) {
     const toolState = toRecord(toRecord(runtime.toolState).tools);
     const speechAvailability = buildProcessSpeechAvailability(runtime, project);
     const modelSummaries = buildProfileModelSummary(runtime, project);
     const selectedModel =
-      modelSummaries.find(function (entry) {
+      modelSummaries.find(function (entry: any) {
         return entry.selected === true;
       }) ||
-      modelSummaries.find(function (entry) {
+      modelSummaries.find(function (entry: any) {
         return entry.ready === true;
       }) ||
       null;
 
-    return getAudioAnalysisProviderDescriptors(runtime).reduce(function (accumulator, entry) {
+    return getAudioAnalysisProviderDescriptors(runtime).reduce(function (
+      accumulator: any,
+      entry: any
+    ) {
       const providerId = asNonEmptyString(entry.id) || `audio-provider-${Date.now()}`;
       const toolId = asNonEmptyString(entry.toolId);
-      const toolEntry = toRecord(toolState[toolId]);
+      const toolEntry = toRecord(toolState[toolId as any]);
       const descriptorStatus = asNonEmptyString(entry.status) || "planned";
       const moduleIds = normalizeStringArray(entry.moduleIds);
-      const blockers = [];
-      const warnings = [];
+      const blockers: string[] = [];
+      const warnings: string[] = [];
       let status = descriptorStatus;
       let ready = false;
 
@@ -151,16 +154,24 @@ export function createAudioAnalysisProjectionCatalogRuntime(deps) {
     }, {});
   }
 
-  function buildAudioAnalysisCapabilityState(runtime, project, target, providerState) {
+  function buildAudioAnalysisCapabilityState(
+    runtime: any,
+    _project: any,
+    target: any,
+    providerState: any
+  ) {
     const toolState = toRecord(toRecord(runtime.toolState).tools);
-    return getAudioAnalysisModulesForRuntime(runtime).reduce(function (accumulator, entry) {
+    return getAudioAnalysisModulesForRuntime(runtime).reduce(function (
+      accumulator: any,
+      entry: any
+    ) {
       const moduleId = asNonEmptyString(entry.id) || `audio-module-${Date.now()}`;
       const moduleStatus = asNonEmptyString(entry.status) || "planned";
       const providerIds = resolveAudioAnalysisProviderIdsForModule(runtime, entry);
       const toolIds = normalizeStringArray(entry.toolIds);
       const requiredToolIds = getAudioAnalysisRequiredToolIds(entry);
-      const blockers = [];
-      const warnings = [];
+      const blockers: string[] = [];
+      const warnings: string[] = [];
       let status = moduleStatus;
 
       if (moduleStatus === "implemented") {
@@ -169,23 +180,25 @@ export function createAudioAnalysisProjectionCatalogRuntime(deps) {
           blockers.push("Prepare an audio-ready source before running this module.");
         } else if (providerIds.length > 0) {
           const providerEntries = providerIds
-            .map(function (providerId) {
+            .map(function (providerId: string) {
               return toRecord(providerState[providerId]);
             })
-            .filter(function (provider) {
+            .filter(function (provider: any) {
               return Object.keys(provider).length > 0;
             });
-          if (providerEntries.some(function (provider) {
-            return provider.ready === true;
-          })) {
+          if (
+            providerEntries.some(function (provider: any) {
+              return provider.ready === true;
+            })
+          ) {
             status = "ready";
           } else {
             status = "blocked";
-            providerEntries.forEach(function (provider) {
-              normalizeStringArray(provider.blockers).forEach(function (entryText) {
+            providerEntries.forEach(function (provider: any) {
+              normalizeStringArray(provider.blockers).forEach(function (entryText: string) {
                 blockers.push(entryText);
               });
-              normalizeStringArray(provider.warnings).forEach(function (entryText) {
+              normalizeStringArray(provider.warnings).forEach(function (entryText: string) {
                 warnings.push(entryText);
               });
             });
@@ -193,12 +206,12 @@ export function createAudioAnalysisProjectionCatalogRuntime(deps) {
         }
 
         if (status === "ready") {
-          const missingToolIds = requiredToolIds.filter(function (toolId) {
+          const missingToolIds = requiredToolIds.filter(function (toolId: string) {
             return toRecord(toolState[toolId]).installed !== true;
           });
           if (missingToolIds.length > 0) {
             status = "blocked";
-            missingToolIds.forEach(function (toolId) {
+            missingToolIds.forEach(function (toolId: string) {
               blockers.push(`Install ${toolId} to enable this module.`);
             });
           }
@@ -227,7 +240,7 @@ export function createAudioAnalysisProjectionCatalogRuntime(deps) {
     }, {});
   }
 
-  function resolveAudioFeatureTarget(project) {
+  function resolveAudioFeatureTarget(project: any) {
     const source = toRecord(project.source);
     const activeOutputId = asNonEmptyString(toRecord(project.edit).activeOutputId);
     const activeOutput = findEditOutputById(project, activeOutputId);
@@ -248,22 +261,23 @@ export function createAudioAnalysisProjectionCatalogRuntime(deps) {
         signature: buildDerivedTargetSignature(output),
         label: output.label || output.fileName || output.id,
         usingFallback: false,
-        reason: null,
+        reason: null as string | null,
       };
     }
 
     return {
       requestedMode: "source",
       mode: "source",
-      outputId: null,
+      outputId: null as string | null,
       path: asNonEmptyString(source.storedPath),
       fileName: asNonEmptyString(source.storedFileName),
       mimeType: asNonEmptyString(source.mimeType),
       metadata: normalizeSourceMetadata(source.metadata),
-      signature: asNonEmptyString(source.storedPath) !== null ? buildSourceTargetSignature(project) : null,
+      signature:
+        asNonEmptyString(source.storedPath) !== null ? buildSourceTargetSignature(project) : null,
       label: asNonEmptyString(source.storedFileName) || project.name,
       usingFallback: false,
-      reason: null,
+      reason: null as string | null,
     };
   }
 

@@ -1,4 +1,4 @@
-export function createLaboratoryUiFeatureRuntime(deps) {
+export function createLaboratoryUiFeatureRuntime(deps: any) {
   const {
     getActiveProject,
     getActiveSubtitleEntry,
@@ -25,10 +25,10 @@ export function createLaboratoryUiFeatureRuntime(deps) {
 
   function getRelevantJobs() {
     const project = getActiveProject();
-    const toolJobs = [];
-    const projectJobs = [];
+    const toolJobs: any[] = [];
+    const projectJobs: any[] = [];
 
-    getJobs().forEach(function (job) {
+    getJobs().forEach(function (job: any) {
       const jobRecord = toRecord(job);
       if (project && jobRecord.projectId === project.id) {
         projectJobs.push(jobRecord);
@@ -64,7 +64,7 @@ export function createLaboratoryUiFeatureRuntime(deps) {
   function getCompatibleProfileLaneIds() {
     const laneMap = getProfileLaneMap();
     const sourceKind = getCurrentSourceKind();
-    return Object.keys(laneMap).filter(function (laneId) {
+    return Object.keys(laneMap).filter(function (laneId: any) {
       const mediaKinds = Array.isArray(toRecord(laneMap[laneId]).mediaKinds)
         ? toRecord(laneMap[laneId]).mediaKinds
         : [];
@@ -85,9 +85,11 @@ export function createLaboratoryUiFeatureRuntime(deps) {
 
   function getProfileLabel() {
     const activePresetId =
-      typeof getProjectProfile().activePresetId === "string" ? getProjectProfile().activePresetId : null;
+      typeof getProjectProfile().activePresetId === "string"
+        ? getProjectProfile().activePresetId
+        : null;
     const preset =
-      getProfilePresetOptions().find(function (entry) {
+      getProfilePresetOptions().find(function (entry: any) {
         return entry.id === activePresetId;
       }) || null;
     const labelKey = preset && typeof preset.labelKey === "string" ? preset.labelKey : null;
@@ -140,7 +142,7 @@ export function createLaboratoryUiFeatureRuntime(deps) {
     }
     const catalog = toRecord(getProfileModelsCatalog().models);
     const stateMap = toRecord(getProfileModelState().models);
-    return Object.keys(catalog).map(function (modelId) {
+    return Object.keys(catalog).map(function (modelId: any) {
       return {
         modelId: modelId,
         ...toRecord(catalog[modelId]),
@@ -151,7 +153,7 @@ export function createLaboratoryUiFeatureRuntime(deps) {
 
   function getProfileSelectedModel() {
     return (
-      getProfileModelEntries().find(function (entry) {
+      getProfileModelEntries().find(function (entry: any) {
         return entry.selected === true;
       }) || null
     );
@@ -165,7 +167,7 @@ export function createLaboratoryUiFeatureRuntime(deps) {
     return collectProfileStageJobs(
       getJobs()
         .map(toRecord)
-        .filter(function (job) {
+        .filter(function (job: any) {
           return job.projectId === project.id;
         })
     );
@@ -179,7 +181,7 @@ export function createLaboratoryUiFeatureRuntime(deps) {
     return collectProcessStageJobs(
       getJobs()
         .map(toRecord)
-        .filter(function (job) {
+        .filter(function (job: any) {
           return job.projectId === project.id;
         })
     );
@@ -193,7 +195,7 @@ export function createLaboratoryUiFeatureRuntime(deps) {
     return collectReportStageJobs(
       getJobs()
         .map(toRecord)
-        .filter(function (job) {
+        .filter(function (job: any) {
           return job.projectId === project.id;
         })
     );
@@ -260,13 +262,13 @@ export function createLaboratoryUiFeatureRuntime(deps) {
     if (!isAudioAnalysisFeature()) {
       return getProcessArtifacts().length;
     }
-    return getAudioAnalysisOrderedResultEntries().reduce(function (sum, entry) {
+    return getAudioAnalysisOrderedResultEntries().reduce(function (sum: any, entry: any) {
       return sum + (Array.isArray(entry.artifacts) ? entry.artifacts.length : 0);
     }, 0);
   }
 
   function getProfileTargetOutputOptions() {
-    return getEditOutputs().filter(function (entry) {
+    return getEditOutputs().filter(function (entry: any) {
       return typeof entry.path === "string" && entry.path.trim() !== "";
     });
   }
@@ -304,3 +306,5 @@ export function createLaboratoryUiFeatureRuntime(deps) {
     getProfileTargetOutputOptions: getProfileTargetOutputOptions,
   };
 }
+
+export type LaboratoryUiFeatureRuntimeApi = ReturnType<typeof createLaboratoryUiFeatureRuntime>;

@@ -1,8 +1,8 @@
-export function createMediaAnalysisEditFieldControls(deps) {
+export function createMediaAnalysisEditFieldControls(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
 
-  function renderEditToggle(fieldId, label, active) {
+  function renderEditToggle(fieldId: any, label: any, active: any) {
     return `
       <button
         class="lab-toggle"
@@ -16,7 +16,7 @@ export function createMediaAnalysisEditFieldControls(deps) {
     `;
   }
 
-  function renderEditTextField(fieldId, value, label, extra) {
+  function renderEditTextField(fieldId: any, value: any, label: any, extra: any) {
     const options = toRecord(extra);
     return `
       <label class="lab-field">
@@ -33,13 +33,13 @@ export function createMediaAnalysisEditFieldControls(deps) {
     `;
   }
 
-  function renderEditSelectField(fieldId, value, label, optionEntries) {
+  function renderEditSelectField(fieldId: any, value: any, label: any, optionEntries: any) {
     return `
       <label class="lab-field">
         <span class="lab-field__label">${escapeHtml(label)}</span>
         <select class="lab-select" data-edit-field="${escapeHtml(fieldId)}">
           ${optionEntries
-            .map(function (entry) {
+            .map(function (entry: any) {
               return `
                 <option value="${escapeHtml(entry.value)}" ${
                   String(entry.value) === String(value) ? "selected" : ""
@@ -54,7 +54,7 @@ export function createMediaAnalysisEditFieldControls(deps) {
     `;
   }
 
-  function renderEditRangeField(fieldId, value, label, options) {
+  function renderEditRangeField(fieldId: any, value: any, label: any, options: any) {
     const config = toRecord(options);
     return `
       <label class="lab-range-group">

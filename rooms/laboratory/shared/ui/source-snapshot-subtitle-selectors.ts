@@ -1,6 +1,6 @@
 type LaboratoryRecord = Record<string, unknown>;
 
-export function createLaboratorySnapshotSubtitleSelectors(deps) {
+export function createLaboratorySnapshotSubtitleSelectors(deps: any) {
   const toRecord = deps.toRecord;
   const subtitleText = deps.subtitleText;
   const subtitleTemplate = deps.subtitleTemplate;
@@ -32,19 +32,19 @@ export function createLaboratorySnapshotSubtitleSelectors(deps) {
     return toRecord(getSourceSnapshot().subtitleAnalysisProviders);
   }
 
-  function getSubtitleProcessStatusLabel(status) {
+  function getSubtitleProcessStatusLabel(status: any) {
     const token = typeof status === "string" && status.trim() !== "" ? status.trim() : "planned";
     const localized = subtitleText(["process", "catalog", "status", token], "", "");
     return localized || formatStatusLabel(token);
   }
 
-  function getSubtitleProviderStatusLabel(status) {
+  function getSubtitleProviderStatusLabel(status: any) {
     const token = typeof status === "string" && status.trim() !== "" ? status.trim() : "planned";
     const localized = subtitleText(["process", "providers", "status", token], "", "");
     return localized || formatStatusLabel(token);
   }
 
-  function getSubtitleProcessModuleLabel(entry) {
+  function getSubtitleProcessModuleLabel(entry: any) {
     const moduleId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
     const localized = moduleId
       ? subtitleText(["process", "catalog", "modules", moduleId, "label"], "", "")
@@ -52,12 +52,14 @@ export function createLaboratorySnapshotSubtitleSelectors(deps) {
     return localized || toRecord(entry).label || moduleId || "--";
   }
 
-  function getSubtitleProcessModuleSummary(entry) {
+  function getSubtitleProcessModuleSummary(entry: any) {
     const moduleId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
-    return moduleId ? subtitleText(["process", "catalog", "modules", moduleId, "summary"], "", "") : "";
+    return moduleId
+      ? subtitleText(["process", "catalog", "modules", moduleId, "summary"], "", "")
+      : "";
   }
 
-  function getSubtitleProviderLabel(entry) {
+  function getSubtitleProviderLabel(entry: any) {
     const providerId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
     const localized = providerId
       ? subtitleText(["process", "providers", "items", providerId, "label"], "", "")
@@ -65,21 +67,27 @@ export function createLaboratorySnapshotSubtitleSelectors(deps) {
     return localized || providerId || "--";
   }
 
-  function getSubtitleProviderSummary(entry) {
+  function getSubtitleProviderSummary(entry: any) {
     const providerId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
-    return providerId ? subtitleText(["process", "providers", "items", providerId, "summary"], "", "") : "";
+    return providerId
+      ? subtitleText(["process", "providers", "items", providerId, "summary"], "", "")
+      : "";
   }
 
-  function getSubtitleProviderModuleLabels(entry) {
+  function getSubtitleProviderModuleLabels(entry: any) {
     const moduleIds = Array.isArray(toRecord(entry).moduleIds) ? toRecord(entry).moduleIds : [];
     const labels = moduleIds
-      .map(function (moduleId) {
+      .map(function (moduleId: any) {
         return getSubtitleProcessModuleLabel({ id: moduleId });
       })
       .filter(Boolean);
 
     if (labels.length === 0) {
-      return subtitleText(["process", "providers", "emptyModules"], "Modul bagli degil", "No linked modules");
+      return subtitleText(
+        ["process", "providers", "emptyModules"],
+        "Modul bagli degil",
+        "No linked modules"
+      );
     }
 
     return subtitleTemplate(
@@ -106,7 +114,7 @@ export function createLaboratorySnapshotSubtitleSelectors(deps) {
   function getSubtitleSelectedCandidateIds() {
     const selectedCandidateIds = getSubtitleDiscoveryState().selectedCandidateIds;
     return Array.isArray(selectedCandidateIds)
-      ? selectedCandidateIds.filter(function (entry) {
+      ? selectedCandidateIds.filter(function (entry: any) {
           return typeof entry === "string" && entry.trim() !== "";
         })
       : [];
@@ -115,7 +123,7 @@ export function createLaboratorySnapshotSubtitleSelectors(deps) {
   function getSubtitleEntries(): LaboratoryRecord[] {
     const entries = getProjectSubtitleAnalysis().entries;
     return Array.isArray(entries)
-      ? entries.map(function (entry) {
+      ? entries.map(function (entry: any) {
           return toRecord(entry) as LaboratoryRecord;
         })
       : [];
@@ -127,16 +135,18 @@ export function createLaboratorySnapshotSubtitleSelectors(deps) {
         ? getProjectSubtitleAnalysis().activeEntryId
         : null;
     return (
-      getSubtitleEntries().find(function (entry) {
+      getSubtitleEntries().find(function (entry: any) {
         return activeEntryId !== null && entry.id === activeEntryId;
-      }) || getSubtitleEntries()[0] || null
+      }) ||
+      getSubtitleEntries()[0] ||
+      null
     );
   }
 
   function getSubtitleSelectedEntryIds() {
     const selectedEntryIds = toRecord(getSubtitleWorkspace().selection).selectedEntryIds;
     return Array.isArray(selectedEntryIds)
-      ? selectedEntryIds.filter(function (entry) {
+      ? selectedEntryIds.filter(function (entry: any) {
           return typeof entry === "string" && entry.trim() !== "";
         })
       : [];

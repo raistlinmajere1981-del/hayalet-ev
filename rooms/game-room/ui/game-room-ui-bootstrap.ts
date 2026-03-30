@@ -1,6 +1,6 @@
 /* global document, navigator, window */
 
-(function (global) {
+(function (global: any) {
   type UnknownRecord = Record<string, unknown>;
   type BootstrapCopy = Record<string, Record<string, string>>;
   type FeatureRecord = { id: string; name: string; description: string };
@@ -89,19 +89,22 @@
   }
 
   function readRoomApi(value: unknown): RoomApi | null {
-    return isRecord(value) && typeof value.sendCommand === "function" ? (value as RoomApi) : null;
+    return isRecord(value) && typeof value["sendCommand"] === "function" ? (value as RoomApi) : null;
   }
 
   const registryHost = global as unknown as typeof globalThis & Record<string, unknown>;
   const registry =
-    (registryHost.GameRoomUiBootstrapRuntime as Record<string, unknown> | undefined) ||
-    ((registryHost.GameRoomUiBootstrapRuntime = {}) as Record<string, unknown>);
+    (registryHost["GameRoomUiBootstrapRuntime"] as Record<string, unknown> | undefined) ||
+    ((registryHost["GameRoomUiBootstrapRuntime"] = {}) as Record<string, unknown>);
 
-  registry.createGameRoomUiBootstrapRuntime = function createGameRoomUiBootstrapRuntime(options: unknown) {
+  registry["createGameRoomUiBootstrapRuntime"] = function createGameRoomUiBootstrapRuntime(
+    options: unknown
+  ) {
     const runtimeOptions = readRuntimeOptions(options);
     const documentRef = runtimeOptions.document || document;
     const navigatorRef = runtimeOptions.navigator || navigator;
-    const render = typeof runtimeOptions.render === "function" ? runtimeOptions.render : function () {};
+    const render =
+      typeof runtimeOptions.render === "function" ? runtimeOptions.render : function () {};
 
     const featureContract = readFeatureContract(global.GameRoomUiFeatureContract);
     const roomId = readString(featureContract.ROOM_ID, "game-room");
@@ -175,7 +178,7 @@
       const state = getState();
       return (
         contextRuntime.readPath(bootstrapCopy[state.locale], [key]) ||
-        contextRuntime.readPath(bootstrapCopy.en, [key]) ||
+        contextRuntime.readPath(bootstrapCopy["en"], [key]) ||
         key
       );
     }
@@ -186,28 +189,30 @@
 
     function applyPresentationMode(nextPresentation: unknown) {
       const state = getState();
-      const presentation =
-        isRecord(nextPresentation)
-          ? nextPresentation
-          : { mode: nextPresentation };
-      state.presentation.mode = contextRuntime.normalizePresentationMode(presentation.mode);
-      state.presentation.uiScale = contextRuntime.normalizeUiScale(presentation.uiScale);
+      const presentation = isRecord(nextPresentation)
+        ? nextPresentation
+        : { mode: nextPresentation };
+      state.presentation.mode = contextRuntime.normalizePresentationMode(presentation["mode"]);
+      state.presentation.uiScale = contextRuntime.normalizeUiScale(presentation["uiScale"]);
       const scaleFactor = formatScaleFactor(state.presentation.uiScale / 100);
       if (documentRef.body && documentRef.body.dataset) {
-        documentRef.body.dataset.presentationMode = state.presentation.mode;
-        documentRef.body.dataset.roomUiScale = String(state.presentation.uiScale);
+        documentRef.body.dataset["presentationMode"] = state.presentation.mode;
+        documentRef.body.dataset["roomUiScale"] = String(state.presentation.uiScale);
         if (documentRef.body.style && typeof documentRef.body.style.setProperty === "function") {
           documentRef.body.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
         }
       }
       if (documentRef.documentElement && documentRef.documentElement.dataset) {
-        documentRef.documentElement.dataset.presentationMode = state.presentation.mode;
-        documentRef.documentElement.dataset.roomUiScale = String(state.presentation.uiScale);
+        documentRef.documentElement.dataset["presentationMode"] = state.presentation.mode;
+        documentRef.documentElement.dataset["roomUiScale"] = String(state.presentation.uiScale);
         if (
           documentRef.documentElement.style &&
           typeof documentRef.documentElement.style.setProperty === "function"
         ) {
-          documentRef.documentElement.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
+          documentRef.documentElement.style.setProperty(
+            "--room-runtime-ui-scale-factor",
+            scaleFactor
+          );
         }
       }
     }
@@ -235,7 +240,7 @@
         typeof state.context.activeFeature.id === "string"
           ? state.context.activeFeature.id
           : featureId;
-      return featureRecords.some(function (feature) {
+      return featureRecords.some(function (feature: any) {
         return feature.id === activeFeatureId;
       })
         ? activeFeatureId
@@ -245,7 +250,7 @@
     function getFeatureLabel(activeFeatureId: string): string {
       const state = getState();
       const feature = Array.isArray(state.context.features)
-        ? state.context.features.find(function (entry) {
+        ? state.context.features.find(function (entry: any) {
             return entry.id === activeFeatureId;
           })
         : null;

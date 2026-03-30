@@ -1,4 +1,4 @@
-export function createLaboratoryActionRouter(deps) {
+export function createLaboratoryActionRouter(deps: any) {
   const {
     asNonEmptyString,
     createRequestId,
@@ -14,7 +14,7 @@ export function createLaboratoryActionRouter(deps) {
     toRecord,
   } = deps;
 
-  async function dispatch(api, runtime, payload) {
+  async function dispatch(api: any, runtime: any, payload: any) {
     const requestId = asNonEmptyString(payload.requestId) || createRequestId();
     const action = asNonEmptyString(payload.action);
     const actionPayload = toRecord(payload.payload);
@@ -184,10 +184,24 @@ export function createLaboratoryActionRouter(deps) {
           await mediaActionRuntime.exportReport(api, runtime, requestId, featureId);
           break;
         case "tool-install":
-          await mediaActionRuntime.mutateTool(api, runtime, requestId, action, actionPayload, featureStage);
+          await mediaActionRuntime.mutateTool(
+            api,
+            runtime,
+            requestId,
+            action,
+            actionPayload,
+            featureStage
+          );
           break;
         case "tool-update":
-          await mediaActionRuntime.mutateTool(api, runtime, requestId, action, actionPayload, featureStage);
+          await mediaActionRuntime.mutateTool(
+            api,
+            runtime,
+            requestId,
+            action,
+            actionPayload,
+            featureStage
+          );
           break;
         default:
           throw new Error(`Unsupported media action: ${action}`);

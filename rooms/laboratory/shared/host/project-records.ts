@@ -1,4 +1,117 @@
-export function createLaboratoryProjectRecordsRuntime(deps) {
+type LaboratoryProjectRecordValue = Record<string, unknown> & {
+  activeProjectId?: unknown;
+  audioAnalysis?: unknown;
+  createdAt?: unknown;
+  drafts?: LaboratoryProjectRecordValue;
+  edit?: unknown;
+  fileNameHint?: unknown;
+  id?: unknown;
+  kind?: unknown;
+  lastError?: unknown;
+  metadata?: unknown;
+  metadataError?: unknown;
+  mimeType?: unknown;
+  mode?: unknown;
+  name?: unknown;
+  process?: unknown;
+  profile?: unknown;
+  projects?: LaboratoryProjectRecord[];
+  report?: unknown;
+  routeLabel?: unknown;
+  schemaVersion?: unknown;
+  slug?: unknown;
+  source?: LaboratoryProjectRecordValue;
+  sourceUrl?: unknown;
+  status?: unknown;
+  storedFileName?: unknown;
+  storedPath?: unknown;
+  subtitleAnalysis?: unknown;
+  updatedAt?: unknown;
+  urlInput?: unknown;
+  youtubeCustom?: LaboratoryProjectRecordValue;
+  youtubePreset?: unknown;
+  youtubeUrl?: unknown;
+};
+
+type LaboratoryProjectSource = {
+  drafts: LaboratoryProjectRecordValue;
+  kind: string;
+  lastError: string | null;
+  metadata: LaboratoryProjectRecordValue | null;
+  metadataError: string | null;
+  mimeType: string | null;
+  mode: string;
+  routeLabel: string | null;
+  sourceUrl: string | null;
+  status: string;
+  storedFileName: string | null;
+  storedPath: string | null;
+};
+
+type LaboratoryProjectRecord = {
+  audioAnalysis: unknown;
+  createdAt: string;
+  edit: unknown;
+  id: string;
+  name: string;
+  process: unknown;
+  profile: unknown;
+  report: unknown;
+  schemaVersion: number;
+  slug: string;
+  source: LaboratoryProjectSource;
+  subtitleAnalysis: unknown;
+  updatedAt: string;
+};
+
+type LaboratoryProjectRuntimeRecord = {
+  activeProjectId: string | null;
+  projects: LaboratoryProjectRecord[];
+};
+
+type LaboratoryProjectRecordsRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  clone: <T>(value: T) => T;
+  buildProjectName: (dateValue: string | number | Date) => string;
+  buildProjectSlug: (dateValue: string | number | Date) => string;
+  createDefaultEditState: (editPresets: unknown, sourceKind: string) => unknown;
+  createDefaultProfileState: (
+    profilePresets: unknown,
+    profileModels: unknown,
+    profileCapabilities: unknown,
+    sourceKind: string
+  ) => unknown;
+  createEmptyAudioAnalysisState: () => unknown;
+  createEmptyProcessState: () => unknown;
+  createEmptyReportState: () => unknown;
+  createEmptySourceDrafts: (sourcePresets: unknown) => LaboratoryProjectRecordValue;
+  createEmptySubtitleAnalysisState: (runtime: unknown) => unknown;
+  getDefaultMode: (sourcePresets: unknown, sourceKind: string) => string;
+  getDefaultSourceType: (sourcePresets: unknown) => string;
+  getDefaultYoutubePreset: (sourcePresets: unknown) => string;
+  getPreferredFeatureSourceKind: (featureId: unknown, sourcePresets: unknown) => string;
+  getPresetDefaultCustomValues: (
+    sourcePresets: unknown,
+    presetId: string
+  ) => LaboratoryProjectRecordValue;
+  normalizeAudioAnalysisState: (rawValue: unknown, runtime: unknown) => unknown;
+  normalizeEditState: (rawValue: unknown, editPresets: unknown, sourceKind: string) => unknown;
+  normalizeProcessState: (rawValue: unknown) => unknown;
+  normalizeProfileState: (
+    rawValue: unknown,
+    profilePresets: unknown,
+    profileModels: unknown,
+    profileCapabilities: unknown,
+    sourceKind: string
+  ) => unknown;
+  normalizeReportState: (rawValue: unknown) => unknown;
+  normalizeSourceMetadata: (rawValue: unknown) => LaboratoryProjectRecordValue | null;
+  normalizeSubtitleAnalysisState: (rawValue: unknown, runtime: unknown) => unknown;
+  projectSchemaVersion: number;
+  toRecord: (value: unknown) => LaboratoryProjectRecordValue;
+};
+
+export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRecordsRuntimeDeps) {
   const {
     asNonEmptyString,
     buildProjectName,
@@ -27,14 +140,14 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
   } = deps;
 
   function createProjectRecord(
-    sourcePresets,
-    editPresets,
-    profilePresets,
-    profileModels,
-    profileCapabilities,
-    subtitleRuntime,
-    featureId
-  ) {
+    sourcePresets: unknown,
+    editPresets: unknown,
+    profilePresets: unknown,
+    profileModels: unknown,
+    profileCapabilities: unknown,
+    subtitleRuntime: unknown,
+    featureId: unknown
+  ): LaboratoryProjectRecord {
     const now = new Date().toISOString();
     const kind = getPreferredFeatureSourceKind(featureId, sourcePresets);
     const mode = getDefaultMode(sourcePresets, kind);
@@ -71,38 +184,38 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
   }
 
   function normalizeProject(
-    rawValue,
-    sourcePresets,
-    editPresets,
-    profilePresets,
-    profileModels,
-    profileCapabilities,
-    runtime
-  ) {
-    const source = toRecord(toRecord(rawValue).source);
+    rawValue: unknown,
+    sourcePresets: unknown,
+    editPresets: unknown,
+    profilePresets: unknown,
+    profileModels: unknown,
+    profileCapabilities: unknown,
+    runtime: unknown
+  ): LaboratoryProjectRecord {
+    const rawProject = toRecord(rawValue);
+    const source = toRecord(rawProject.source);
     const kind = asNonEmptyString(source.kind) || getDefaultSourceType(sourcePresets);
     const mode = asNonEmptyString(source.mode) || getDefaultMode(sourcePresets, kind);
     const drafts = toRecord(source.drafts);
     const defaultPreset = getDefaultYoutubePreset(sourcePresets);
     const youtubePreset = asNonEmptyString(drafts.youtubePreset) || defaultPreset;
     const currentTimestamp = new Date().toISOString();
+    const schemaVersion =
+      typeof rawProject.schemaVersion === "number" ? rawProject.schemaVersion : projectSchemaVersion;
 
     return {
-      schemaVersion:
-        typeof toRecord(rawValue).schemaVersion === "number"
-          ? toRecord(rawValue).schemaVersion
-          : projectSchemaVersion,
+      schemaVersion: schemaVersion,
       id:
-        asNonEmptyString(toRecord(rawValue).id) ||
-        asNonEmptyString(toRecord(rawValue).slug) ||
+        asNonEmptyString(rawProject.id) ||
+        asNonEmptyString(rawProject.slug) ||
         buildProjectSlug(currentTimestamp),
       slug:
-        asNonEmptyString(toRecord(rawValue).slug) ||
-        asNonEmptyString(toRecord(rawValue).id) ||
+        asNonEmptyString(rawProject.slug) ||
+        asNonEmptyString(rawProject.id) ||
         buildProjectSlug(currentTimestamp),
-      name: asNonEmptyString(toRecord(rawValue).name) || buildProjectName(currentTimestamp),
-      createdAt: asNonEmptyString(toRecord(rawValue).createdAt) || currentTimestamp,
-      updatedAt: asNonEmptyString(toRecord(rawValue).updatedAt) || currentTimestamp,
+      name: asNonEmptyString(rawProject.name) || buildProjectName(currentTimestamp),
+      createdAt: asNonEmptyString(rawProject.createdAt) || currentTimestamp,
+      updatedAt: asNonEmptyString(rawProject.updatedAt) || currentTimestamp,
       source: {
         kind: kind,
         mode: mode,
@@ -126,36 +239,36 @@ export function createLaboratoryProjectRecordsRuntime(deps) {
           },
         },
       },
-      edit: normalizeEditState(toRecord(rawValue).edit, editPresets, kind),
+      edit: normalizeEditState(rawProject.edit, editPresets, kind),
       profile: normalizeProfileState(
-        toRecord(rawValue).profile,
+        rawProject.profile,
         profilePresets,
         profileModels,
         profileCapabilities,
         kind
       ),
-      audioAnalysis: normalizeAudioAnalysisState(toRecord(rawValue).audioAnalysis, runtime || {}),
+      audioAnalysis: normalizeAudioAnalysisState(rawProject.audioAnalysis, runtime || {}),
       subtitleAnalysis: normalizeSubtitleAnalysisState(
-        toRecord(rawValue).subtitleAnalysis,
+        rawProject.subtitleAnalysis,
         runtime || {}
       ),
-      process: normalizeProcessState(toRecord(rawValue).process),
-      report: normalizeReportState(toRecord(rawValue).report),
+      process: normalizeProcessState(rawProject.process),
+      report: normalizeReportState(rawProject.report),
     };
   }
 
-  function updateProjectTimestamps(project) {
+  function updateProjectTimestamps(project: LaboratoryProjectRecord) {
     project.updatedAt = new Date().toISOString();
     return project;
   }
 
-  function findProject(runtime, projectId) {
-    return runtime.projects.find(function (project) {
+  function findProject(runtime: LaboratoryProjectRuntimeRecord, projectId: unknown) {
+    return runtime.projects.find(function (project: LaboratoryProjectRecord) {
       return project.id === projectId;
     });
   }
 
-  function getActiveProject(runtime) {
+  function getActiveProject(runtime: LaboratoryProjectRuntimeRecord) {
     return findProject(runtime, runtime.activeProjectId) || null;
   }
 

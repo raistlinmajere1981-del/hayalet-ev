@@ -1,6 +1,6 @@
 import { createSubtitleAnalysisSourcePanelPrimitives } from "./source-panel-primitives.js";
 
-export function createSubtitleAnalysisSourceIntakePanels(deps) {
+export function createSubtitleAnalysisSourceIntakePanels(deps: any) {
   const escapeHtml = deps.escapeHtml;
   const featureText = deps.featureText;
   const subtitleText = deps.subtitleText;
@@ -37,7 +37,11 @@ export function createSubtitleAnalysisSourceIntakePanels(deps) {
           "urlInput",
           drafts.urlInput,
           subtitleText(["source", "fields", "subtitleUrl"], "Altyazi URL", "Subtitle URL"),
-          subtitleText(["source", "placeholders", "subtitleUrl"], "https://example.com/file.vtt", "https://example.com/file.vtt")
+          subtitleText(
+            ["source", "placeholders", "subtitleUrl"],
+            "https://example.com/file.vtt",
+            "https://example.com/file.vtt"
+          )
         )}
         <button class="lab-button lab-button--primary" type="button" data-action="subtitle-source-download-url">
           ${escapeHtml(subtitleText(["source", "actions", "downloadUrl"], "URL indir", "Download URL"))}
@@ -53,31 +57,73 @@ export function createSubtitleAnalysisSourceIntakePanels(deps) {
           "youtubeUrl",
           drafts.youtubeUrl,
           subtitleText(["source", "fields", "youtubeUrl"], "YouTube URL", "YouTube URL"),
-          subtitleText(["source", "placeholders", "youtubeUrl"], "Kanal, playlist ya da video linki", "Channel, playlist, or video URL")
+          subtitleText(
+            ["source", "placeholders", "youtubeUrl"],
+            "Kanal, playlist ya da video linki",
+            "Channel, playlist, or video URL"
+          )
         )}
         <div class="lab-form-grid">
-          ${primitives.renderSubtitleDraftSelect("subtitleMode", drafts.subtitleMode || "manual", subtitleText(["source", "fields", "subtitleMode"], "Altyazi modu", "Subtitle mode"), [
-            { value: "manual", label: subtitleText(["source", "options", "subtitleMode", "manual"], "Manual", "Manual") },
-            { value: "auto", label: subtitleText(["source", "options", "subtitleMode", "auto"], "Otomatik", "Automatic") },
-            { value: "both", label: subtitleText(["source", "options", "subtitleMode", "both"], "Ikisi de", "Both") },
-          ])}
+          ${primitives.renderSubtitleDraftSelect(
+            "subtitleMode",
+            drafts.subtitleMode || "manual",
+            subtitleText(["source", "fields", "subtitleMode"], "Altyazi modu", "Subtitle mode"),
+            [
+              {
+                value: "manual",
+                label: subtitleText(
+                  ["source", "options", "subtitleMode", "manual"],
+                  "Manual",
+                  "Manual"
+                ),
+              },
+              {
+                value: "auto",
+                label: subtitleText(
+                  ["source", "options", "subtitleMode", "auto"],
+                  "Otomatik",
+                  "Automatic"
+                ),
+              },
+              {
+                value: "both",
+                label: subtitleText(
+                  ["source", "options", "subtitleMode", "both"],
+                  "Ikisi de",
+                  "Both"
+                ),
+              },
+            ]
+          )}
           ${renderTextField(
             "subtitlesLang",
             drafts.subtitlesLang || "all",
             subtitleText(["source", "fields", "languageFilter"], "Dil filtresi", "Language filter"),
-            subtitleText(["source", "placeholders", "languageFilter"], "tr,en ya da all", "tr,en or all")
+            subtitleText(
+              ["source", "placeholders", "languageFilter"],
+              "tr,en ya da all",
+              "tr,en or all"
+            )
           )}
           ${renderTextField(
             "publishedAfter",
             drafts.publishedAfter || "",
-            subtitleText(["source", "fields", "publishedAfter"], "Yayin tarihi baslangic", "Published after"),
+            subtitleText(
+              ["source", "fields", "publishedAfter"],
+              "Yayin tarihi baslangic",
+              "Published after"
+            ),
             "",
             { type: "date" }
           )}
           ${renderTextField(
             "publishedBefore",
             drafts.publishedBefore || "",
-            subtitleText(["source", "fields", "publishedBefore"], "Yayin tarihi bitis", "Published before"),
+            subtitleText(
+              ["source", "fields", "publishedBefore"],
+              "Yayin tarihi bitis",
+              "Published before"
+            ),
             "",
             { type: "date" }
           )}
@@ -101,33 +147,97 @@ export function createSubtitleAnalysisSourceIntakePanels(deps) {
             "0",
             { type: "number" }
           )}
-          ${primitives.renderSubtitleDraftSelect("shortsMode", drafts.shortsMode || "all", subtitleText(["source", "fields", "shorts"], "Shorts", "Shorts"), [
-            { value: "all", label: subtitleText(["source", "options", "shorts", "all"], "Tum", "All") },
-            { value: "only", label: subtitleText(["source", "options", "shorts", "only"], "Sadece shorts", "Only shorts") },
-            { value: "exclude", label: subtitleText(["source", "options", "shorts", "exclude"], "Shorts haric", "Exclude shorts") },
-          ])}
-          ${primitives.renderSubtitleDraftSelect("liveMode", drafts.liveMode || "all", subtitleText(["source", "fields", "liveStatus"], "Canli durumu", "Live status"), [
-            { value: "all", label: subtitleText(["source", "options", "liveStatus", "all"], "Tum yuklemeler", "All uploads") },
-            { value: "exclude-live", label: subtitleText(["source", "options", "liveStatus", "excludeLive"], "Canli haric", "Exclude live") },
-            { value: "only-live", label: subtitleText(["source", "options", "liveStatus", "onlyLive"], "Sadece canli", "Only live") },
-          ])}
+          ${primitives.renderSubtitleDraftSelect(
+            "shortsMode",
+            drafts.shortsMode || "all",
+            subtitleText(["source", "fields", "shorts"], "Shorts", "Shorts"),
+            [
+              {
+                value: "all",
+                label: subtitleText(["source", "options", "shorts", "all"], "Tum", "All"),
+              },
+              {
+                value: "only",
+                label: subtitleText(
+                  ["source", "options", "shorts", "only"],
+                  "Sadece shorts",
+                  "Only shorts"
+                ),
+              },
+              {
+                value: "exclude",
+                label: subtitleText(
+                  ["source", "options", "shorts", "exclude"],
+                  "Shorts haric",
+                  "Exclude shorts"
+                ),
+              },
+            ]
+          )}
+          ${primitives.renderSubtitleDraftSelect(
+            "liveMode",
+            drafts.liveMode || "all",
+            subtitleText(["source", "fields", "liveStatus"], "Canli durumu", "Live status"),
+            [
+              {
+                value: "all",
+                label: subtitleText(
+                  ["source", "options", "liveStatus", "all"],
+                  "Tum yuklemeler",
+                  "All uploads"
+                ),
+              },
+              {
+                value: "exclude-live",
+                label: subtitleText(
+                  ["source", "options", "liveStatus", "excludeLive"],
+                  "Canli haric",
+                  "Exclude live"
+                ),
+              },
+              {
+                value: "only-live",
+                label: subtitleText(
+                  ["source", "options", "liveStatus", "onlyLive"],
+                  "Sadece canli",
+                  "Only live"
+                ),
+              },
+            ]
+          )}
           ${renderTextField(
             "titleInclude",
             drafts.titleInclude || "",
             subtitleText(["source", "fields", "titleInclude"], "Baslik dahil", "Title include"),
-            subtitleText(["source", "placeholders", "titleInclude"], "roportaj, ozet", "interview, summary")
+            subtitleText(
+              ["source", "placeholders", "titleInclude"],
+              "roportaj, ozet",
+              "interview, summary"
+            )
           )}
           ${renderTextField(
             "titleExclude",
             drafts.titleExclude || "",
             subtitleText(["source", "fields", "titleExclude"], "Baslik haric", "Title exclude"),
-            subtitleText(["source", "placeholders", "titleExclude"], "teaser, shorts", "teaser, shorts")
+            subtitleText(
+              ["source", "placeholders", "titleExclude"],
+              "teaser, shorts",
+              "teaser, shorts"
+            )
           )}
           ${renderTextField(
             "playlistItems",
             drafts.playlistItems || "",
-            subtitleText(["source", "fields", "playlistItems"], "Playlist araligi", "Playlist items"),
-            subtitleText(["source", "placeholders", "playlistItems"], "1-10 gibi", "for example 1-10")
+            subtitleText(
+              ["source", "fields", "playlistItems"],
+              "Playlist araligi",
+              "Playlist items"
+            ),
+            subtitleText(
+              ["source", "placeholders", "playlistItems"],
+              "1-10 gibi",
+              "for example 1-10"
+            )
           )}
           ${renderTextField(
             "limitCount",
@@ -178,7 +288,7 @@ export function createSubtitleAnalysisSourceIntakePanels(deps) {
         <div class="lab-segmented lab-segmented--subtitle-source">
           ${primitives
             .getSubtitleSourceModeOptions()
-            .map(function (modeId) {
+            .map(function (modeId: any) {
               const disabled = modeId.indexOf("youtube-") === 0 && ytDlpInstalled !== true;
               return `
                 <button

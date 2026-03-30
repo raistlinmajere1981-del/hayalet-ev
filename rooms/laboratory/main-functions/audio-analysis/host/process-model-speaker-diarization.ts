@@ -4,7 +4,7 @@ import {
   getAudioAnalysisProcessRootDir,
 } from "../../../shared/host/project-paths.js";
 
-export function createAudioAnalysisSpeakerDiarizationModelRunner(deps) {
+export function createAudioAnalysisSpeakerDiarizationModelRunner(deps: any) {
   const {
     asNonEmptyString,
     asNumber,
@@ -18,14 +18,14 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps) {
   } = deps;
 
   return async function runSpeakerDiarizationAudioAnalyzer(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    moduleOutputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: any,
+    jobId: any,
+    target: any,
+    artifactBase: any,
+    moduleOutputDir: any,
+    moduleId: any
   ) {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
@@ -64,11 +64,14 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps) {
     });
 
     const summaryPayload = toRecord(await readJsonFile(summaryPath));
-    const segments = Array.isArray(summaryPayload.segments) ? summaryPayload.segments.map(toRecord) : [];
+    const segments = Array.isArray(summaryPayload.segments)
+      ? summaryPayload.segments.map(toRecord)
+      : [];
     const fallbackApplied = summaryPayload.fallbackApplied === true;
     const effectiveNumSpeakers = asNumber(summaryPayload.effectiveNumSpeakers);
     const diarizationSummary = {
-      speakerCount: typeof summaryPayload.speakerCount === "number" ? summaryPayload.speakerCount : null,
+      speakerCount:
+        typeof summaryPayload.speakerCount === "number" ? summaryPayload.speakerCount : null,
       segmentCount: segments.length,
       durationSeconds: asNumber(summaryPayload.durationSeconds),
       purityCluster: asNumber(summaryPayload.purityCluster),
@@ -88,7 +91,7 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps) {
       }
     );
     const artifacts = [summaryArtifact].filter(Boolean);
-    const artifactIds = artifacts.map(function (artifact) {
+    const artifactIds = artifacts.map(function (artifact: any) {
       return artifact.id;
     });
     const detailParts = [
@@ -100,10 +103,9 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps) {
         ? `${Number(diarizationSummary.durationSeconds).toFixed(1)}s analyzed`
         : null,
     ].filter(Boolean);
-    const fallbackWarning =
-      fallbackApplied
-        ? "pyAudioAnalysis HMM smoothing failed for this clip, so the room-local diarization helper fell back to a KMeans-only segmentation path."
-        : null;
+    const fallbackWarning = fallbackApplied
+      ? "pyAudioAnalysis HMM smoothing failed for this clip, so the room-local diarization helper fell back to a KMeans-only segmentation path."
+      : null;
     const reviewWarning =
       "pyAudioAnalysis diarization is a fully local heuristic pipeline; speaker boundaries should be reviewed manually.";
     const warningText = [fallbackWarning, reviewWarning].filter(Boolean).join(" ");
@@ -126,7 +128,8 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps) {
       artifacts: artifacts,
       warnings: [fallbackWarning, reviewWarning].filter(Boolean),
       status: "ready",
-      summary: "Speaker diarization generated a local speaker timeline for the active audio target.",
+      summary:
+        "Speaker diarization generated a local speaker timeline for the active audio target.",
     };
   };
 }

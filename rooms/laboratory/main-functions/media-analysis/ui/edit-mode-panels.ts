@@ -1,4 +1,4 @@
-export function createMediaAnalysisEditModePanels(deps) {
+export function createMediaAnalysisEditModePanels(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
@@ -27,7 +27,7 @@ export function createMediaAnalysisEditModePanels(deps) {
         </div>
         <div class="lab-segmented">
           ${["beginner", "advanced"]
-            .map(function (modeId) {
+            .map(function (modeId: any) {
               return `
                 <button
                   class="lab-segmented__button"
@@ -66,42 +66,76 @@ export function createMediaAnalysisEditModePanels(deps) {
           ${renderEditToggle("recipe.video.blurFocusOutside", text(["mediaAnalysis", "edit", "fields", "blurFocusOutside"]), video.blurFocusOutside === true)}
         </div>
         <div class="lab-form-grid">
-          ${renderEditRangeField("recipe.video.trimStartSeconds", video.trimStartSeconds || 0, text(["mediaAnalysis", "edit", "fields", "trimStartSeconds"]), {
-            min: 0,
-            max: Math.max(1, Math.round(duration)),
-            step: 1,
-            displayValue: formatDuration(video.trimStartSeconds || 0),
-          })}
-          ${renderEditRangeField("recipe.video.trimEndSeconds", video.trimEndSeconds || duration, text(["mediaAnalysis", "edit", "fields", "trimEndSeconds"]), {
-            min: 0,
-            max: Math.max(1, Math.round(duration)),
-            step: 1,
-            displayValue: formatDuration(video.trimEndSeconds || duration),
-          })}
+          ${renderEditRangeField(
+            "recipe.video.trimStartSeconds",
+            video.trimStartSeconds || 0,
+            text(["mediaAnalysis", "edit", "fields", "trimStartSeconds"]),
+            {
+              min: 0,
+              max: Math.max(1, Math.round(duration)),
+              step: 1,
+              displayValue: formatDuration(video.trimStartSeconds || 0),
+            }
+          )}
+          ${renderEditRangeField(
+            "recipe.video.trimEndSeconds",
+            video.trimEndSeconds || duration,
+            text(["mediaAnalysis", "edit", "fields", "trimEndSeconds"]),
+            {
+              min: 0,
+              max: Math.max(1, Math.round(duration)),
+              step: 1,
+              displayValue: formatDuration(video.trimEndSeconds || duration),
+            }
+          )}
           ${renderEditSelectField(
             "recipe.video.resizePreset",
             video.resizePreset || "keep",
             text(["mediaAnalysis", "edit", "fields", "resizePreset"]),
-            Object.keys(resizePresets).map(function (presetId) {
+            Object.keys(resizePresets).map(function (presetId: any) {
               return {
                 value: presetId,
                 label: textFromKey(toRecord(resizePresets[presetId]).labelKey),
               };
             })
           )}
-          ${renderEditRangeField("recipe.video.fpsLimit", video.fpsLimit || 24, text(["mediaAnalysis", "edit", "fields", "fpsLimit"]), {
-            min: 6,
-            max: 60,
-            step: 1,
-            displayValue: `${video.fpsLimit || 24} fps`,
-          })}
-          ${video.resizePreset === "custom" || getCurrentEditMode() === "advanced"
-            ? renderEditTextField("recipe.video.customWidth", video.customWidth || "", text(["mediaAnalysis", "edit", "fields", "customWidth"]), { type: "number" }) +
-              renderEditTextField("recipe.video.customHeight", video.customHeight || "", text(["mediaAnalysis", "edit", "fields", "customHeight"]), { type: "number" })
-            : ""}
-          ${getCurrentEditMode() === "advanced"
-            ? renderEditTextField("recipe.video.frameGrabCount", video.frameGrabCount || 0, text(["mediaAnalysis", "edit", "fields", "frameGrabCount"]), { type: "number" })
-            : ""}
+          ${renderEditRangeField(
+            "recipe.video.fpsLimit",
+            video.fpsLimit || 24,
+            text(["mediaAnalysis", "edit", "fields", "fpsLimit"]),
+            {
+              min: 6,
+              max: 60,
+              step: 1,
+              displayValue: `${video.fpsLimit || 24} fps`,
+            }
+          )}
+          ${
+            video.resizePreset === "custom" || getCurrentEditMode() === "advanced"
+              ? renderEditTextField(
+                  "recipe.video.customWidth",
+                  video.customWidth || "",
+                  text(["mediaAnalysis", "edit", "fields", "customWidth"]),
+                  { type: "number" }
+                ) +
+                renderEditTextField(
+                  "recipe.video.customHeight",
+                  video.customHeight || "",
+                  text(["mediaAnalysis", "edit", "fields", "customHeight"]),
+                  { type: "number" }
+                )
+              : ""
+          }
+          ${
+            getCurrentEditMode() === "advanced"
+              ? renderEditTextField(
+                  "recipe.video.frameGrabCount",
+                  video.frameGrabCount || 0,
+                  text(["mediaAnalysis", "edit", "fields", "frameGrabCount"]),
+                  { type: "number" }
+                )
+              : ""
+          }
         </div>
       </section>
     `;
@@ -128,28 +162,55 @@ export function createMediaAnalysisEditModePanels(deps) {
           ${renderEditToggle("recipe.audio.spectrogram", text(["mediaAnalysis", "edit", "fields", "spectrogram"]), audio.spectrogram === true)}
         </div>
         <div class="lab-form-grid">
-          ${renderEditRangeField("recipe.audio.trimStartSeconds", audio.trimStartSeconds || 0, text(["mediaAnalysis", "edit", "fields", "trimStartSeconds"]), {
-            min: 0,
-            max: Math.max(1, Math.round(duration)),
-            step: 1,
-            displayValue: formatDuration(audio.trimStartSeconds || 0),
-          })}
-          ${renderEditRangeField("recipe.audio.trimEndSeconds", audio.trimEndSeconds || duration, text(["mediaAnalysis", "edit", "fields", "trimEndSeconds"]), {
-            min: 0,
-            max: Math.max(1, Math.round(duration)),
-            step: 1,
-            displayValue: formatDuration(audio.trimEndSeconds || duration),
-          })}
-          ${renderEditRangeField("recipe.audio.normalizeTargetDb", audio.normalizeTargetDb || -16, text(["mediaAnalysis", "edit", "fields", "normalizeTargetDb"]), {
-            min: -30,
-            max: -8,
-            step: 1,
-            displayValue: `${audio.normalizeTargetDb || -16} LUFS`,
-          })}
-          ${getCurrentEditMode() === "advanced"
-            ? renderEditTextField("recipe.audio.highpassHz", audio.highpassHz || 0, text(["mediaAnalysis", "edit", "fields", "highpassHz"]), { type: "number" }) +
-              renderEditTextField("recipe.audio.lowpassHz", audio.lowpassHz || 0, text(["mediaAnalysis", "edit", "fields", "lowpassHz"]), { type: "number" })
-            : ""}
+          ${renderEditRangeField(
+            "recipe.audio.trimStartSeconds",
+            audio.trimStartSeconds || 0,
+            text(["mediaAnalysis", "edit", "fields", "trimStartSeconds"]),
+            {
+              min: 0,
+              max: Math.max(1, Math.round(duration)),
+              step: 1,
+              displayValue: formatDuration(audio.trimStartSeconds || 0),
+            }
+          )}
+          ${renderEditRangeField(
+            "recipe.audio.trimEndSeconds",
+            audio.trimEndSeconds || duration,
+            text(["mediaAnalysis", "edit", "fields", "trimEndSeconds"]),
+            {
+              min: 0,
+              max: Math.max(1, Math.round(duration)),
+              step: 1,
+              displayValue: formatDuration(audio.trimEndSeconds || duration),
+            }
+          )}
+          ${renderEditRangeField(
+            "recipe.audio.normalizeTargetDb",
+            audio.normalizeTargetDb || -16,
+            text(["mediaAnalysis", "edit", "fields", "normalizeTargetDb"]),
+            {
+              min: -30,
+              max: -8,
+              step: 1,
+              displayValue: `${audio.normalizeTargetDb || -16} LUFS`,
+            }
+          )}
+          ${
+            getCurrentEditMode() === "advanced"
+              ? renderEditTextField(
+                  "recipe.audio.highpassHz",
+                  audio.highpassHz || 0,
+                  text(["mediaAnalysis", "edit", "fields", "highpassHz"]),
+                  { type: "number" }
+                ) +
+                renderEditTextField(
+                  "recipe.audio.lowpassHz",
+                  audio.lowpassHz || 0,
+                  text(["mediaAnalysis", "edit", "fields", "lowpassHz"]),
+                  { type: "number" }
+                )
+              : ""
+          }
         </div>
       </section>
     `;
@@ -173,44 +234,83 @@ export function createMediaAnalysisEditModePanels(deps) {
             "recipe.image.resizePreset",
             image.resizePreset || "keep",
             text(["mediaAnalysis", "edit", "fields", "resizePreset"]),
-            Object.keys(resizePresets).map(function (presetId) {
+            Object.keys(resizePresets).map(function (presetId: any) {
               return {
                 value: presetId,
                 label: textFromKey(toRecord(resizePresets[presetId]).labelKey),
               };
             })
           )}
-          ${renderEditRangeField("recipe.image.brightness", image.brightness || 0, text(["mediaAnalysis", "edit", "fields", "brightness"]), {
-            min: -0.3,
-            max: 0.3,
-            step: 0.01,
-            displayValue: Number(image.brightness || 0).toFixed(2),
-          })}
-          ${renderEditRangeField("recipe.image.contrast", image.contrast || 1, text(["mediaAnalysis", "edit", "fields", "contrast"]), {
-            min: 0.4,
-            max: 2.2,
-            step: 0.05,
-            displayValue: Number(image.contrast || 1).toFixed(2),
-          })}
-          ${renderEditRangeField("recipe.image.blurStrength", image.blurStrength || 0, text(["mediaAnalysis", "edit", "fields", "blurStrength"]), {
-            min: 0,
-            max: 3,
-            step: 0.1,
-            displayValue: Number(image.blurStrength || 0).toFixed(1),
-          })}
-          ${(image.resizePreset === "custom" || getCurrentEditMode() === "advanced")
-            ? renderEditTextField("recipe.image.customWidth", image.customWidth || "", text(["mediaAnalysis", "edit", "fields", "customWidth"]), { type: "number" }) +
-              renderEditTextField("recipe.image.customHeight", image.customHeight || "", text(["mediaAnalysis", "edit", "fields", "customHeight"]), { type: "number" })
-            : ""}
-          ${getCurrentEditMode() === "advanced"
-            ? renderEditTextField("recipe.image.rotateDegrees", image.rotateDegrees || 0, text(["mediaAnalysis", "edit", "fields", "rotateDegrees"]), { type: "number" }) +
-              renderEditRangeField("recipe.image.sharpen", image.sharpen || 0, text(["mediaAnalysis", "edit", "fields", "sharpen"]), {
-                min: 0,
-                max: 2,
-                step: 0.1,
-                displayValue: Number(image.sharpen || 0).toFixed(1),
-              })
-            : ""}
+          ${renderEditRangeField(
+            "recipe.image.brightness",
+            image.brightness || 0,
+            text(["mediaAnalysis", "edit", "fields", "brightness"]),
+            {
+              min: -0.3,
+              max: 0.3,
+              step: 0.01,
+              displayValue: Number(image.brightness || 0).toFixed(2),
+            }
+          )}
+          ${renderEditRangeField(
+            "recipe.image.contrast",
+            image.contrast || 1,
+            text(["mediaAnalysis", "edit", "fields", "contrast"]),
+            {
+              min: 0.4,
+              max: 2.2,
+              step: 0.05,
+              displayValue: Number(image.contrast || 1).toFixed(2),
+            }
+          )}
+          ${renderEditRangeField(
+            "recipe.image.blurStrength",
+            image.blurStrength || 0,
+            text(["mediaAnalysis", "edit", "fields", "blurStrength"]),
+            {
+              min: 0,
+              max: 3,
+              step: 0.1,
+              displayValue: Number(image.blurStrength || 0).toFixed(1),
+            }
+          )}
+          ${
+            image.resizePreset === "custom" || getCurrentEditMode() === "advanced"
+              ? renderEditTextField(
+                  "recipe.image.customWidth",
+                  image.customWidth || "",
+                  text(["mediaAnalysis", "edit", "fields", "customWidth"]),
+                  { type: "number" }
+                ) +
+                renderEditTextField(
+                  "recipe.image.customHeight",
+                  image.customHeight || "",
+                  text(["mediaAnalysis", "edit", "fields", "customHeight"]),
+                  { type: "number" }
+                )
+              : ""
+          }
+          ${
+            getCurrentEditMode() === "advanced"
+              ? renderEditTextField(
+                  "recipe.image.rotateDegrees",
+                  image.rotateDegrees || 0,
+                  text(["mediaAnalysis", "edit", "fields", "rotateDegrees"]),
+                  { type: "number" }
+                ) +
+                renderEditRangeField(
+                  "recipe.image.sharpen",
+                  image.sharpen || 0,
+                  text(["mediaAnalysis", "edit", "fields", "sharpen"]),
+                  {
+                    min: 0,
+                    max: 2,
+                    step: 0.1,
+                    displayValue: Number(image.sharpen || 0).toFixed(1),
+                  }
+                )
+              : ""
+          }
         </div>
       </section>
     `;

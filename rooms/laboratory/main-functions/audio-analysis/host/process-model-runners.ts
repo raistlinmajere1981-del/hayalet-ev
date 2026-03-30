@@ -3,19 +3,16 @@ import { createAudioAnalysisSoundEventsModelRunner } from "./process-model-sound
 import { createAudioAnalysisSourceSeparationModelRunner } from "./process-model-source-separation.js";
 import { createAudioAnalysisSpeakerDiarizationModelRunner } from "./process-model-speaker-diarization.js";
 
-type AudioAnalysisModelProcessRunnerDeps =
-  & Parameters<typeof createAudioAnalysisMusicRhythmModelRunner>[0]
-  & Parameters<typeof createAudioAnalysisSoundEventsModelRunner>[0]
-  & Parameters<typeof createAudioAnalysisSourceSeparationModelRunner>[0]
-  & Parameters<typeof createAudioAnalysisSpeakerDiarizationModelRunner>[0];
+type AudioAnalysisModelProcessRunnerDeps = Parameters<
+  typeof createAudioAnalysisMusicRhythmModelRunner
+>[0] &
+  Parameters<typeof createAudioAnalysisSoundEventsModelRunner>[0] &
+  Parameters<typeof createAudioAnalysisSourceSeparationModelRunner>[0] &
+  Parameters<typeof createAudioAnalysisSpeakerDiarizationModelRunner>[0];
 
 type AudioAnalysisModelProcessRunners = {
-  runMusicRhythmAudioAnalyzer: ReturnType<
-    typeof createAudioAnalysisMusicRhythmModelRunner
-  >;
-  runSoundEventsAudioAnalyzer: ReturnType<
-    typeof createAudioAnalysisSoundEventsModelRunner
-  >;
+  runMusicRhythmAudioAnalyzer: ReturnType<typeof createAudioAnalysisMusicRhythmModelRunner>;
+  runSoundEventsAudioAnalyzer: ReturnType<typeof createAudioAnalysisSoundEventsModelRunner>;
   runSourceSeparationAudioAnalyzer: ReturnType<
     typeof createAudioAnalysisSourceSeparationModelRunner
   >;
@@ -25,7 +22,7 @@ type AudioAnalysisModelProcessRunners = {
 };
 
 export function createAudioAnalysisModelProcessRunners(
-  deps: AudioAnalysisModelProcessRunnerDeps,
+  deps: AudioAnalysisModelProcessRunnerDeps
 ): AudioAnalysisModelProcessRunners {
   const runMusicRhythmAudioAnalyzer = createAudioAnalysisMusicRhythmModelRunner(deps);
   const runSoundEventsAudioAnalyzer = createAudioAnalysisSoundEventsModelRunner(deps);

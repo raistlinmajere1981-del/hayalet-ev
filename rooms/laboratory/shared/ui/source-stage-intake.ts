@@ -1,4 +1,4 @@
-export function createLaboratorySourceStageIntakeRuntime(deps) {
+export function createLaboratorySourceStageIntakeRuntime(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
@@ -20,7 +20,7 @@ export function createLaboratorySourceStageIntakeRuntime(deps) {
     return `
       <div class="lab-segmented">
         ${modes
-          .map(function (modeId) {
+          .map(function (modeId: any) {
             const disabled = modeId === "youtube" && ytDlpInstalled !== true;
             return `
               <button
@@ -40,18 +40,18 @@ export function createLaboratorySourceStageIntakeRuntime(deps) {
     `;
   }
 
-  function renderYoutubeCustomForm(drafts) {
+  function renderYoutubeCustomForm(drafts: any) {
     const sections = Array.isArray(getYtDlpForm().sections) ? getYtDlpForm().sections : [];
     return `
       <div class="lab-form-stack">
         ${sections
-          .map(function (section) {
+          .map(function (section: any) {
             const fields = Array.isArray(section.fields) ? section.fields : [];
             return `
               <div class="lab-form-section">
                 <div class="lab-form-grid">
                   ${fields
-                    .map(function (field) {
+                    .map(function (field: any) {
                       const value = toRecord(drafts.youtubeCustom)[field.id];
                       if (field.type === "toggle") {
                         return `
@@ -73,7 +73,7 @@ export function createLaboratorySourceStageIntakeRuntime(deps) {
                             <span class="lab-field__label">${escapeHtml(textFromKey(field.labelKey))}</span>
                             <select class="lab-select" data-draft-field="youtubeCustom.${field.id}">
                               ${(Array.isArray(field.options) ? field.options : [])
-                                .map(function (option) {
+                                .map(function (option: any) {
                                   return `
                                     <option value="${escapeHtml(option.value)}" ${
                                       String(option.value) === String(value) ? "selected" : ""
@@ -164,7 +164,7 @@ export function createLaboratorySourceStageIntakeRuntime(deps) {
           <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "source", "youtubePresetLabel"]))}</span>
           <div class="lab-chip-row">
             ${["low", "medium", "best", "custom"]
-              .map(function (presetId) {
+              .map(function (presetId: any) {
                 return `
                   <button
                     class="lab-choice-chip"

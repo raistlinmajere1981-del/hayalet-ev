@@ -9,20 +9,28 @@ import {
   FATE_KNOTS_PHASES,
   FATE_KNOTS_SUPPORTED_AI_SEATS,
 } from "./constants.js";
-import {
-  buildFateKnotsCombatTurnId,
-  getCurrentFateKnotsCombatTurn,
-} from "./combat-engine.js";
+import { buildFateKnotsCombatTurnId, getCurrentFateKnotsCombatTurn } from "./combat-engine.js";
 
-export function createFateKnotsPromptRuntime(deps) {
+type RoomApi = {
+  getState: (key: string) => unknown;
+  setState: (key: string, value: unknown) => void;
+  getLocale?: () => unknown;
+  notifyRoom?: (eventType: string, data: unknown) => void;
+  sendProtocol?: (options: any) => Promise<any>;
+  sendMessage?: (options: any) => Promise<any>;
+  sendUs1Message?: (options: any) => Promise<any>;
+  selectUs1RemoteUser?: (remoteUserId: string) => Promise<any>;
+};
+
+export function createFateKnotsPromptRuntime(deps: any) {
   const getParticipant = deps.getParticipant;
   const listPendingDecisionSeats = deps.listPendingDecisionSeats;
   const getUs1RemoteUserId = deps.getUs1RemoteUserId;
   const updateTransportFromSendResult = deps.updateTransportFromSendResult;
 
-  function buildDecisionPrompt(state, step, context, commandName) {
+  function buildDecisionPrompt(state: any, step: any, context: any, commandName: string) {
     const choiceLines = step.choices
-      .map(function (choice) {
+      .map(function (choice: any) {
         return `- ${choice.id}: ${choice.label} | ${choice.summary}`;
       })
       .join("\n");
@@ -42,21 +50,21 @@ export function createFateKnotsPromptRuntime(deps) {
     ].join("\n");
   }
 
-  function buildCombatPrompt(state, contentRegistry, commandName) {
+  function buildCombatPrompt(state: any, contentRegistry: any, commandName: string) {
     const turn = getCurrentFateKnotsCombatTurn(state.combat);
     const turnId = buildFateKnotsCombatTurnId(state.combat);
     const actor = getParticipant(state, turn?.seatId || "") || { nickname: turn?.seatId || "Seat" };
     const actions = state.combat
-      ? state.combat.party.find(function (member) {
+      ? state.combat.party.find(function (member: any) {
           return member.seatId === turn?.seatId;
         })?.deck || []
       : [];
     const actionPacket = actions
-      .map(function (actionId) {
+      .map(function (actionId: string) {
         return contentRegistry.cardsById.get(actionId) || null;
       })
       .filter(Boolean)
-      .map(function (card) {
+      .map(function (card: any) {
         return {
           id: card.id,
           label: card.label,
@@ -80,8 +88,9 @@ export function createFateKnotsPromptRuntime(deps) {
           actor: {
             seatId: turn?.seatId,
             nickname: actor.nickname,
-            hp: state.combat.party.find((member) => member.seatId === turn?.seatId)?.hp || 0,
-            energy: state.combat.party.find((member) => member.seatId === turn?.seatId)?.energy || 0,
+            hp: state.combat.party.find((member: any) => member.seatId === turn?.seatId)?.hp || 0,
+            energy:
+              state.combat.party.find((member: any) => member.seatId === turn?.seatId)?.energy || 0,
           },
           enemy: {
             label: state.combat.enemy.label,
@@ -97,7 +106,7 @@ export function createFateKnotsPromptRuntime(deps) {
     ].join("\n");
   }
 
-  function buildDmPrompt(state) {
+  function buildDmPrompt(state: any) {
     const summary = {
       phase: state.phase,
       statusKey: state.statusKey,
@@ -117,7 +126,7 @@ export function createFateKnotsPromptRuntime(deps) {
     ].join("\n");
   }
 
-  function buildNpcPrompt(state, seatId) {
+  function buildNpcPrompt(state: any, seatId: string) {
     const summary = {
       phase: state.phase,
       seatId,
@@ -138,7 +147,28 @@ export function createFateKnotsPromptRuntime(deps) {
     ].join("\n");
   }
 
-  async function dispatchDecisionPrompts(api, state, contentRegistry) {
+  async function sendProtocolSafe(api: RoomApi, options: any) {
+    if (typeof api.sendProtocol !== "function") {
+      return null;
+    }
+    return await api.sendProtocol(options);
+  }
+
+  async function sendMessageSafe(api: RoomApi, options: any) {
+    if (typeof api.sendMessage !== "function") {
+      return null;
+    }
+    return await api.sendMessage(options);
+  }
+
+  async function sendUs1MessageSafe(api: RoomApi, options: any) {
+    if (typeof api.sendUs1Message !== "function") {
+      return null;
+    }
+    return await api.sendUs1Message(options);
+  }
+
+  async function dispatchDecisionPrompts(api: RoomApi, state: any, contentRegistry: any) {
     if (!state.decision || !state.currentStepId) {
       return { success: true };
     }
@@ -147,9 +177,11 @@ export function createFateKnotsPromptRuntime(deps) {
     if (!step) {
       return { success: false };
     }
-    const pendingSeats = listPendingDecisionSeats(state).filter(function (seatId) {
+    const pendingSeats = listPendingDecisionSeats(state).filter(function (seatId: string) {
       return seatId !== "user";
     });
+    // NOTE: Each seat prompt updates shared dispatch and transport state, so delivery stays sequential.
+    /* eslint-disable no-await-in-loop */
     for (const seatId of pendingSeats) {
       const participant = getParticipant(state, seatId);
       if (!participant || participant.ready !== true) {
@@ -167,7 +199,7 @@ export function createFateKnotsPromptRuntime(deps) {
             return { success: false, seatId };
           }
         }
-        const sendResult = await api.sendUs1Message({
+        const sendResult = await sendUs1MessageSafe(api, {
           localSessionId: state.transport?.localSessionId || null,
           text: buildDecisionPrompt(state, step, context, FATE_KNOTS_COMMAND_NAMES.remoteChoice),
           roomEvent: {
@@ -187,7 +219,7 @@ export function createFateKnotsPromptRuntime(deps) {
         state.dispatch.decisionPromptKeys[seatId] = promptKey;
         continue;
       }
-      const protocolResult = await api.sendProtocol({
+      const protocolResult = await sendProtocolSafe(api, {
         room: ROOM_ID,
         scenario: "fate-knots-ai-decision",
         targets: [seatId],
@@ -200,7 +232,7 @@ export function createFateKnotsPromptRuntime(deps) {
       if (!protocolResult || protocolResult.success !== true) {
         return { success: false, seatId };
       }
-      const messageResult = await api.sendMessage({
+      const messageResult = await sendMessageSafe(api, {
         provider: seatId,
         page: FATE_KNOTS_PAGE_ID,
         text: buildDecisionPrompt(state, step, context, FATE_KNOTS_COMMAND_NAMES.aiChoice),
@@ -210,10 +242,11 @@ export function createFateKnotsPromptRuntime(deps) {
       }
       state.dispatch.decisionPromptKeys[seatId] = promptKey;
     }
+    /* eslint-enable no-await-in-loop */
     return { success: true };
   }
 
-  async function dispatchCombatPrompt(api, state, contentRegistry) {
+  async function dispatchCombatPrompt(api: RoomApi, state: any, contentRegistry: any) {
     const turn = getCurrentFateKnotsCombatTurn(state.combat);
     if (!turn || turn.side !== "party" || turn.seatId === "user") {
       return { success: true };
@@ -235,9 +268,13 @@ export function createFateKnotsPromptRuntime(deps) {
           return { success: false, seatId: turn.seatId };
         }
       }
-      const sendResult = await api.sendUs1Message({
+      const sendResult = await sendUs1MessageSafe(api, {
         localSessionId: state.transport?.localSessionId || null,
-        text: buildCombatPrompt(state, contentRegistry, FATE_KNOTS_COMMAND_NAMES.remoteCombatAction),
+        text: buildCombatPrompt(
+          state,
+          contentRegistry,
+          FATE_KNOTS_COMMAND_NAMES.remoteCombatAction
+        ),
         roomEvent: {
           roomId: ROOM_ID,
           featureId: FATE_KNOTS_FEATURE_ID,
@@ -256,7 +293,7 @@ export function createFateKnotsPromptRuntime(deps) {
       state.dispatch.combatPromptKeys[turn.seatId] = promptKey;
       return { success: true };
     }
-    const protocolResult = await api.sendProtocol({
+    const protocolResult = await sendProtocolSafe(api, {
       room: ROOM_ID,
       scenario: "fate-knots-ai-combat",
       targets: [turn.seatId],
@@ -269,7 +306,7 @@ export function createFateKnotsPromptRuntime(deps) {
     if (!protocolResult || protocolResult.success !== true) {
       return { success: false, seatId: turn.seatId };
     }
-    const messageResult = await api.sendMessage({
+    const messageResult = await sendMessageSafe(api, {
       provider: turn.seatId,
       page: FATE_KNOTS_PAGE_ID,
       text: buildCombatPrompt(state, contentRegistry, FATE_KNOTS_COMMAND_NAMES.aiCombatAction),
@@ -281,10 +318,10 @@ export function createFateKnotsPromptRuntime(deps) {
     return { success: true };
   }
 
-  async function dispatchAmbientPrompts(api, state) {
+  async function dispatchAmbientPrompts(api: RoomApi, state: any) {
     const context = loadContext(api);
-    const readyAiSeats = FATE_KNOTS_SUPPORTED_AI_SEATS.filter(function (seatId) {
-      return context?.slots?.[seatId]?.ready === true;
+    const readyAiSeats = FATE_KNOTS_SUPPORTED_AI_SEATS.filter(function (seatId: string) {
+      return context?.slots?.[seatId as keyof typeof context.slots]?.ready === true;
     });
     if (readyAiSeats.length === 0) {
       return;
@@ -292,7 +329,7 @@ export function createFateKnotsPromptRuntime(deps) {
 
     let ambientKey = null;
     if (state.phase === FATE_KNOTS_PHASES.scenario && state.decision) {
-      const blockingAi = listPendingDecisionSeats(state).filter(function (seatId) {
+      const blockingAi = listPendingDecisionSeats(state).filter(function (seatId: string) {
         return seatId !== "user";
       });
       if (blockingAi.length > 0) {
@@ -315,7 +352,7 @@ export function createFateKnotsPromptRuntime(deps) {
 
     const dmSeatId = readyAiSeats[0];
     if (dmSeatId && state.dispatch?.dmPromptKey !== `${ambientKey}:dm:${dmSeatId}`) {
-      const protocolResult = await api.sendProtocol({
+      const protocolResult = await sendProtocolSafe(api, {
         room: ROOM_ID,
         scenario: "fate-knots-ai-dm",
         targets: [dmSeatId],
@@ -326,7 +363,7 @@ export function createFateKnotsPromptRuntime(deps) {
         },
       });
       if (protocolResult && protocolResult.success === true) {
-        const messageResult = await api.sendMessage({
+        const messageResult = await sendMessageSafe(api, {
           provider: dmSeatId,
           page: FATE_KNOTS_PAGE_ID,
           text: buildDmPrompt(state),
@@ -339,7 +376,7 @@ export function createFateKnotsPromptRuntime(deps) {
 
     const npcSeatId = readyAiSeats[1];
     if (npcSeatId && state.dispatch?.npcPromptKey !== `${ambientKey}:npc:${npcSeatId}`) {
-      const protocolResult = await api.sendProtocol({
+      const protocolResult = await sendProtocolSafe(api, {
         room: ROOM_ID,
         scenario: "fate-knots-ai-npc",
         targets: [npcSeatId],
@@ -350,7 +387,7 @@ export function createFateKnotsPromptRuntime(deps) {
         },
       });
       if (protocolResult && protocolResult.success === true) {
-        const messageResult = await api.sendMessage({
+        const messageResult = await sendMessageSafe(api, {
           provider: npcSeatId,
           page: FATE_KNOTS_PAGE_ID,
           text: buildNpcPrompt(state, npcSeatId),

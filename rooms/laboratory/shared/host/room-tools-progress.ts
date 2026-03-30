@@ -59,14 +59,14 @@ type LaboratoryRoomToolsProgressRuntimeDeps = {
     api: unknown,
     runtime: LaboratoryRuntimeWithJobs,
     requestId: string | null,
-    action: string | null,
+    action: string | null
   ) => void;
   roomId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
 export function createLaboratoryRoomToolsProgressRuntime(
-  deps: LaboratoryRoomToolsProgressRuntimeDeps,
+  deps: LaboratoryRoomToolsProgressRuntimeDeps
 ) {
   const roomId = deps.roomId;
   const asNonEmptyString = deps.asNonEmptyString;
@@ -77,7 +77,7 @@ export function createLaboratoryRoomToolsProgressRuntime(
 
   function updateJobFromProgress(
     runtime: LaboratoryRuntimeWithJobs,
-    eventPayload: LaboratoryRoomToolsEventPayload,
+    eventPayload: LaboratoryRoomToolsEventPayload
   ): LaboratoryRoomToolsProgressPayload | null {
     const jobId = asNonEmptyString(eventPayload.jobId);
     if (!jobId || !runtime.jobs[jobId]) {
@@ -123,10 +123,7 @@ export function createLaboratoryRoomToolsProgressRuntime(
     };
   }
 
-  function ensureRoomToolsSubscription(
-    api: unknown,
-    runtime: LaboratoryRuntimeWithJobs,
-  ): void {
+  function ensureRoomToolsSubscription(api: unknown, runtime: LaboratoryRuntimeWithJobs): void {
     const electronApi = getElectronApi();
     if (
       runtime.roomToolsSubscribed === true ||

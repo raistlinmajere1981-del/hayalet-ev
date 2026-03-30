@@ -1,4 +1,4 @@
-export function createLaboratoryUiEditRuntime(deps) {
+export function createLaboratoryUiEditRuntime(deps: any) {
   const deepClone = deps.deepClone;
   const isAudioAnalysisFeature = deps.isAudioAnalysisFeature;
   const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;
@@ -10,9 +10,10 @@ export function createLaboratoryUiEditRuntime(deps) {
     return deepClone(toRecord(laboratoryUiDraftRuntime.getCurrentEditDraft().recipe));
   }
 
-  function commitEditPatch(patch, action) {
+  function commitEditPatch(patch: any, action: any) {
     return laboratoryRequestRuntime.sendMediaAction(
-      action || (isSubtitleAnalysisFeature() ? "subtitle-edit-update-recipe" : "edit-update-recipe"),
+      action ||
+        (isSubtitleAnalysisFeature() ? "subtitle-edit-update-recipe" : "edit-update-recipe"),
       {
         patch: patch,
         featureStage: "edit",
@@ -20,7 +21,7 @@ export function createLaboratoryUiEditRuntime(deps) {
     );
   }
 
-  function chooseProfilePreset(profileId) {
+  function chooseProfilePreset(profileId: any) {
     if (typeof profileId !== "string" || profileId.trim() === "") {
       return;
     }

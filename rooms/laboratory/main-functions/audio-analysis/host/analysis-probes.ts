@@ -4,7 +4,23 @@ import {
   getProjectProfileDir,
 } from "../../../shared/host/project-paths.js";
 
-export function createAudioAnalysisProbeRuntime(deps) {
+interface AnalysisProbesDeps {
+  asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
+  toRecord: (value: unknown) => Record<string, unknown>;
+  readTextFile: (path: string) => Promise<string | null>;
+  runProfileTool: (
+    runtime: Record<string, unknown>,
+    options: Record<string, unknown>
+  ) => Promise<Record<string, unknown>>;
+  buildProsodySummaryFromCsv: (csv: string) => Record<string, unknown>;
+  parseBlackDetectLog: (log: string | null) => unknown;
+  parseFreezeDetectLog: (log: string | null) => unknown;
+  parseSilenceDetectLog: (log: unknown) => unknown;
+  parseVolumeDetectLog: (log: unknown) => unknown;
+}
+
+export function createAudioAnalysisProbeRuntime(deps: AnalysisProbesDeps) {
   const asNonEmptyString = deps.asNonEmptyString;
   const readTextFile = deps.readTextFile;
   const runProfileTool = deps.runProfileTool;
@@ -14,9 +30,9 @@ export function createAudioAnalysisProbeRuntime(deps) {
   const parseSilenceDetectLog = deps.parseSilenceDetectLog;
   const parseVolumeDetectLog = deps.parseVolumeDetectLog;
 
-  function resolveOpenSmileProsodyRuntime(runtime) {
-    const configDir = getAudioAnalysisOpenSmileConfigDir(runtime);
-    const configPath = getAudioAnalysisOpenSmileConfigPath(runtime, "prosodyAcf.conf");
+  function resolveOpenSmileProsodyRuntime(runtime: Record<string, unknown>) {
+    const configDir = getAudioAnalysisOpenSmileConfigDir(runtime as any);
+    const configPath = getAudioAnalysisOpenSmileConfigPath(runtime as any, "prosodyAcf.conf");
     if (configDir === null || configPath === null) {
       return null;
     }
@@ -27,14 +43,14 @@ export function createAudioAnalysisProbeRuntime(deps) {
   }
 
   async function runOpenSmileProsodyExtraction(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    moduleOutputDir,
-    outputLabel
+    runtime: Record<string, unknown>,
+    _project: Record<string, unknown>,
+    requestId: string,
+    jobId: string,
+    target: Record<string, unknown>,
+    artifactBase: string,
+    moduleOutputDir: string,
+    outputLabel: string
   ) {
     const openSmileRuntime = resolveOpenSmileProsodyRuntime(runtime);
     if (openSmileRuntime === null) {
@@ -51,7 +67,7 @@ export function createAudioAnalysisProbeRuntime(deps) {
         "-C",
         openSmileRuntime.configPath,
         "-I",
-        target.path,
+        target["path"] as string,
         "-csvoutput",
         contourPath,
         "-appendcsv",
@@ -70,22 +86,28 @@ export function createAudioAnalysisProbeRuntime(deps) {
     return {
       contourCsv: contourCsv,
       contourPath: contourPath,
-      prosodySummary: buildProsodySummaryFromCsv(contourCsv),
+      prosodySummary: buildProsodySummaryFromCsv(contourCsv as string),
     };
   }
 
-  async function runVideoStructureProbe(runtime, project, requestId, jobId, target) {
+  async function runVideoStructureProbe(
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    requestId: string,
+    jobId: string,
+    target: Record<string, unknown>
+  ) {
     const stderr = asNonEmptyString(
       (
         await runProfileTool(runtime, {
           requestId: requestId,
           jobId: jobId,
           toolId: "ffmpeg",
-          cwd: getProjectProfileDir(runtime, project),
+          cwd: getProjectProfileDir(runtime as any, project as any),
           args: [
             "-hide_banner",
             "-i",
-            target.path,
+            target["path"] as string,
             "-vf",
             "blackdetect=d=0.25:pix_th=0.10,freezedetect=n=-40dB:d=0.4",
             "-an",
@@ -95,7 +117,7 @@ export function createAudioAnalysisProbeRuntime(deps) {
           ],
           timeoutMs: 120_000,
         })
-      ).stderr
+      )["stderr"]
     );
     return {
       black: parseBlackDetectLog(stderr),
@@ -103,27 +125,42 @@ export function createAudioAnalysisProbeRuntime(deps) {
     };
   }
 
-  async function runAudioStructureProbe(runtime, project, requestId, jobId, target) {
+  async function runAudioStructureProbe(
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    requestId: string,
+    jobId: string,
+    target: Record<string, unknown>
+  ) {
     const silencePayload = await runProfileTool(runtime, {
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getProjectProfileDir(runtime, project),
-      args: ["-hide_banner", "-i", target.path, "-af", "silencedetect=n=-38dB:d=0.35", "-f", "null", "-"],
+      cwd: getProjectProfileDir(runtime as any, project as any),
+      args: [
+        "-hide_banner",
+        "-i",
+        target["path"] as string,
+        "-af",
+        "silencedetect=n=-38dB:d=0.35",
+        "-f",
+        "null",
+        "-",
+      ],
       timeoutMs: 120_000,
     });
     const volumePayload = await runProfileTool(runtime, {
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getProjectProfileDir(runtime, project),
-      args: ["-hide_banner", "-i", target.path, "-af", "volumedetect", "-f", "null", "-"],
+      cwd: getProjectProfileDir(runtime as any, project as any),
+      args: ["-hide_banner", "-i", target["path"] as string, "-af", "volumedetect", "-f", "null", "-"],
       timeoutMs: 120_000,
     });
 
     return {
-      silence: parseSilenceDetectLog(silencePayload.stderr),
-      volume: parseVolumeDetectLog(volumePayload.stderr),
+      silence: parseSilenceDetectLog(silencePayload["stderr"]),
+      volume: parseVolumeDetectLog(volumePayload["stderr"]),
     };
   }
 

@@ -1,4 +1,4 @@
-export function createLaboratoryProcessStageUi(deps) {
+export function createLaboratoryProcessStageUi(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
@@ -14,7 +14,7 @@ export function createLaboratoryProcessStageUi(deps) {
   const getCurrentFeatureArtifactCount = deps.getCurrentFeatureArtifactCount;
   const getCurrentFeatureReportRecord = deps.getCurrentFeatureReportRecord;
 
-  function getProcessModulePercent(module) {
+  function getProcessModulePercent(module: any) {
     const record = toRecord(module);
     const status = typeof record.status === "string" ? record.status : "idle";
     if (status === "running" || status === "queued" || status === "idle") {
@@ -23,14 +23,16 @@ export function createLaboratoryProcessStageUi(deps) {
     return 100;
   }
 
-  function getProcessModuleTitle(module) {
+  function getProcessModuleTitle(module: any) {
     const record = toRecord(module);
-    return featureText(["process", "moduleTitles", record.id || ""]) || record.title || record.id || "--";
+    return (
+      featureText(["process", "moduleTitles", record.id || ""]) || record.title || record.id || "--"
+    );
   }
 
   function getRunningProcessJob() {
     return (
-      getProcessJobs().find(function (job) {
+      getProcessJobs().find(function (job: any) {
         return !["completed", "failed", "cancelled"].includes(String(job.stage || ""));
       }) || null
     );
@@ -41,7 +43,7 @@ export function createLaboratoryProcessStageUi(deps) {
     const modules = getProcessModules();
     const runningJob = getRunningProcessJob();
     const findings = getProcessFindings();
-    const completedModules = modules.filter(function (entry) {
+    const completedModules = modules.filter(function (entry: any) {
       return !["idle", "queued", "running"].includes(String(toRecord(entry).status || ""));
     }).length;
 
@@ -53,7 +55,7 @@ export function createLaboratoryProcessStageUi(deps) {
             ${
               modules.length > 0
                 ? modules
-                    .map(function (moduleEntry, index) {
+                    .map(function (moduleEntry: any, index: any) {
                       const progress = getProcessModulePercent(moduleEntry);
                       return `
                         <article class="lab-process-row">
@@ -68,7 +70,8 @@ export function createLaboratoryProcessStageUi(deps) {
                             <span style="width:${progress}%"></span>
                           </div>
                           ${
-                            typeof toRecord(moduleEntry).summary === "string" && toRecord(moduleEntry).summary.trim() !== ""
+                            typeof toRecord(moduleEntry).summary === "string" &&
+                            toRecord(moduleEntry).summary.trim() !== ""
                               ? `<p class="lab-panel__hint">${escapeHtml(toRecord(moduleEntry).summary)}</p>`
                               : ""
                           }
@@ -86,11 +89,23 @@ export function createLaboratoryProcessStageUi(deps) {
               <p class="lab-panel__eyebrow">${escapeHtml(featureText(["process", "summaryTitle"]))}</p>
             </div>
             ${renderSummaryRows([
-              [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(processRecord.status || "idle")],
-              [text(["mediaAnalysis", "profile", "summary", "target"]), getCurrentFeatureTargetLabel()],
+              [
+                text(["mediaAnalysis", "shared", "status"]),
+                formatStatusLabel(processRecord.status || "idle"),
+              ],
+              [
+                text(["mediaAnalysis", "profile", "summary", "target"]),
+                getCurrentFeatureTargetLabel(),
+              ],
               [featureText(["report", "findingsTitle"]), String(findings.length)],
-              [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(getCurrentFeatureArtifactCount())],
-              [featureText(["settings", "currentStageTitle"]), `${String(completedModules)} / ${String(modules.length || 0)}`],
+              [
+                text(["mediaAnalysis", "profile", "summary", "artifacts"]),
+                String(getCurrentFeatureArtifactCount()),
+              ],
+              [
+                featureText(["settings", "currentStageTitle"]),
+                `${String(completedModules)} / ${String(modules.length || 0)}`,
+              ],
             ])}
             ${
               Array.isArray(processRecord.warnings) && processRecord.warnings.length > 0
@@ -100,7 +115,7 @@ export function createLaboratoryProcessStageUi(deps) {
                     <ul class="lab-bullet-list">
                       ${processRecord.warnings
                         .slice(0, 4)
-                        .map(function (entry) {
+                        .map(function (entry: any) {
                           return `<li>${escapeHtml(entry)}</li>`;
                         })
                         .join("")}
@@ -119,13 +134,17 @@ export function createLaboratoryProcessStageUi(deps) {
                 ${escapeHtml(text(["mediaAnalysis", "profile", "actions", "cancel"]))}
               </button>
               <button class="lab-button lab-button--primary" type="button" data-action="open-report" ${
-                ["ready", "stale"].includes(String(getCurrentFeatureReportRecord().status || "")) ? "" : "disabled"
+                ["ready", "stale"].includes(String(getCurrentFeatureReportRecord().status || ""))
+                  ? ""
+                  : "disabled"
               }>
                 ${escapeHtml(featureText(["process", "controls", "jumpReport"]))}
               </button>
             </div>
             ${
-              runningJob && typeof runningJob.message === "string" && runningJob.message.trim() !== ""
+              runningJob &&
+              typeof runningJob.message === "string" &&
+              runningJob.message.trim() !== ""
                 ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
                 : ""
             }

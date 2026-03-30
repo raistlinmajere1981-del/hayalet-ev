@@ -47,55 +47,66 @@ export function createLaboratoryPresentationState(
 export function createLaboratoryRoomShellContext(
   overrides: Record<string, unknown> = {}
 ): LaboratoryRoomShellContext {
+  const overrideRoom = overrides["room"];
   const room =
-    overrides.room && typeof overrides.room === "object" && Array.isArray(overrides.room) === false
-      ? (overrides.room as Record<string, unknown>)
+    overrideRoom && typeof overrideRoom === "object" && Array.isArray(overrideRoom) === false
+      ? (overrideRoom as Record<string, unknown>)
       : {};
+  const overrideUser = overrides["user"];
   const user =
-    overrides.user && typeof overrides.user === "object" && Array.isArray(overrides.user) === false
-      ? (overrides.user as Record<string, unknown>)
+    overrideUser && typeof overrideUser === "object" && Array.isArray(overrideUser) === false
+      ? (overrideUser as Record<string, unknown>)
       : {};
+  const overridePresentation = overrides["presentation"];
   const presentation =
-    overrides.presentation &&
-    typeof overrides.presentation === "object" &&
-    Array.isArray(overrides.presentation) === false
-      ? (overrides.presentation as Record<string, unknown>)
+    overridePresentation &&
+    typeof overridePresentation === "object" &&
+    Array.isArray(overridePresentation) === false
+      ? (overridePresentation as Record<string, unknown>)
       : {};
+  const overrideTranslations = overrides["translations"];
   const translations =
-    overrides.translations &&
-    typeof overrides.translations === "object" &&
-    Array.isArray(overrides.translations) === false
-      ? (overrides.translations as Record<string, unknown>)
+    overrideTranslations &&
+    typeof overrideTranslations === "object" &&
+    Array.isArray(overrideTranslations) === false
+      ? (overrideTranslations as Record<string, unknown>)
       : {};
+  const overrideSlots = overrides["slots"];
   const slots =
-    overrides.slots && typeof overrides.slots === "object" && Array.isArray(overrides.slots) === false
-      ? (overrides.slots as Record<string, unknown>)
+    overrideSlots &&
+    typeof overrideSlots === "object" &&
+    Array.isArray(overrideSlots) === false
+      ? (overrideSlots as Record<string, unknown>)
       : {};
 
   return {
     room: {
       id: LABORATORY_ROOM_ID,
-      name: typeof room.name === "string" && room.name.trim() !== "" ? room.name.trim() : "Laboratory",
+      name:
+        typeof room["name"] === "string" && room["name"].trim() !== ""
+          ? room["name"].trim()
+          : "Laboratory",
     },
     user: {
       nickname:
-        typeof user.nickname === "string" && user.nickname.trim() !== ""
-          ? user.nickname.trim()
+        typeof user["nickname"] === "string" && user["nickname"].trim() !== ""
+          ? user["nickname"].trim()
           : "Operator",
     },
-    locale: normalizeLaboratoryLocale(overrides.locale),
+    locale: normalizeLaboratoryLocale(overrides["locale"]),
     featureId:
-      typeof overrides.featureId === "string" && LABORATORY_FEATURE_IDS.includes(overrides.featureId)
-        ? overrides.featureId
+      typeof overrides["featureId"] === "string" &&
+      LABORATORY_FEATURE_IDS.includes(overrides["featureId"])
+        ? overrides["featureId"]
         : LABORATORY_MEDIA_FEATURE_ID,
     roomId:
-      typeof overrides.roomId === "string" && overrides.roomId.trim() !== ""
-        ? overrides.roomId.trim()
+      typeof overrides["roomId"] === "string" && overrides["roomId"].trim() !== ""
+        ? overrides["roomId"].trim()
         : LABORATORY_ROOM_ID,
     presentation: createLaboratoryPresentationState(
-      typeof presentation.mode === "string" ? presentation.mode : undefined,
-      typeof presentation.uiScale === "number" || typeof presentation.uiScale === "string"
-        ? presentation.uiScale
+      typeof presentation["mode"] === "string" ? presentation["mode"] : undefined,
+      typeof presentation["uiScale"] === "number" || typeof presentation["uiScale"] === "string"
+        ? presentation["uiScale"]
         : undefined
     ),
     translations,

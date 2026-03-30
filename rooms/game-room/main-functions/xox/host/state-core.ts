@@ -1,5 +1,30 @@
 import { normalizeLocale, normalizeText } from "../../../shared/host/text.js";
 
+export interface XoxGameState {
+  locale: "tr" | "en";
+  target: string;
+  starter: "ai" | "user";
+  board: string[];
+  active: boolean;
+  awaitingMoveFrom: "ai" | "user" | null;
+  result: string;
+  winner: "ai" | "user" | "";
+  statusKey: string;
+  protocolDelivered: boolean;
+  blockedReason: string;
+  userSymbol: "X" | "O";
+  aiSymbol: "X" | "O";
+  protocolPreface: string;
+  matchId: string | null;
+  inviteId: string | null;
+  turnIndex: number;
+  localSessionId: string | null;
+  remoteUserId: string | null;
+  opponentNickname: string;
+  lastRemoteTransportMessageId: string | null;
+  lastRemoteTurnIndex: number | null;
+}
+
 export const EMPTY_BOARD = ["", "", "", "", "", "", "", "", ""];
 export const WIN_LINES = [
   [0, 1, 2],
@@ -173,38 +198,38 @@ export const COMMAND_COPY = {
   },
 };
 
-export function sanitizeTarget(value) {
+export function sanitizeTarget(value: string): "ai1" | "ai2" | "us1" {
   if (value === "ai2" || value === "us1") {
     return value;
   }
   return DEFAULT_TARGET;
 }
 
-export function sanitizeStarter(value) {
+export function sanitizeStarter(value: string): "ai" | "user" {
   return value === "ai" ? "ai" : DEFAULT_STARTER;
 }
 
-export function cloneBoard(board) {
+export function cloneBoard(board: unknown): string[] {
   return Array.isArray(board) ? board.slice(0, 9) : EMPTY_BOARD.slice();
 }
 
-export function normalizeBoard(board) {
+export function normalizeBoard(board: unknown): string[] {
   const next = cloneBoard(board);
   while (next.length < 9) {
     next.push("");
   }
-  return next.map(function (value) {
+  return next.map(function (value: any) {
     return value === "X" || value === "O" ? value : "";
   });
 }
 
-export function getSymbols(starter) {
+export function getSymbols(starter: string): { userSymbol: "X" | "O"; aiSymbol: "X" | "O" } {
   return sanitizeStarter(starter) === "ai"
     ? { userSymbol: "O", aiSymbol: "X" }
     : { userSymbol: "X", aiSymbol: "O" };
 }
 
-export function buildBoardAscii(board) {
+export function buildBoardAscii(board: string[]): string {
   const rows = [];
   for (let row = 0; row < 3; row += 1) {
     const values = [];
@@ -217,25 +242,25 @@ export function buildBoardAscii(board) {
   return rows.join("\n---------\n");
 }
 
-export function buildBoardStateHash(board) {
+export function buildBoardStateHash(board: string[]): string {
   return normalizeBoard(board)
-    .map(function (value) {
+    .map(function (value: string) {
       return value === "" ? "." : value;
     })
     .join("");
 }
 
-export function getAvailableCells(board) {
+export function getAvailableCells(board: string[]): number[] {
   return board
-    .map(function (value, index) {
+    .map(function (value: string, index: number) {
       return value === "" ? index : null;
     })
-    .filter(function (value) {
+    .filter(function (value: number | null) {
       return value !== null;
     });
 }
 
-export function createInitialState(locale, target, starter) {
+export function createInitialState(locale: unknown, target: string, starter: string): XoxGameState {
   const normalizedLocale = normalizeLocale(locale);
   const normalizedTarget = sanitizeTarget(target);
   const normalizedStarter = sanitizeStarter(starter);
@@ -267,62 +292,77 @@ export function createInitialState(locale, target, starter) {
   };
 }
 
-export function normalizeState(candidate, localeFallback) {
-  const source =
+export function normalizeState(candidate: unknown, localeFallback: unknown): XoxGameState {
+  const source: Record<string, unknown> =
     candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-      ? candidate
+      ? (candidate as Record<string, unknown>)
       : {};
-  const state = createInitialState(source.locale || localeFallback, source.target, source.starter);
+  const state = createInitialState(
+    source["locale"] || localeFallback,
+    typeof source["target"] === "string" ? source["target"] : "",
+    typeof source["starter"] === "string" ? source["starter"] : ""
+  );
 
-  state.board = normalizeBoard(source.board);
-  state.active = source.active === true;
+  state.board = normalizeBoard(source["board"]);
+  state.active = source["active"] === true;
   state.awaitingMoveFrom =
-    source.awaitingMoveFrom === "ai" || source.awaitingMoveFrom === "user"
-      ? source.awaitingMoveFrom
+    source["awaitingMoveFrom"] === "ai" || source["awaitingMoveFrom"] === "user"
+      ? source["awaitingMoveFrom"]
       : null;
   state.result =
-    typeof source.result === "string" && source.result.trim() !== ""
-      ? source.result.trim()
+    typeof source["result"] === "string" && source["result"].trim() !== ""
+      ? source["result"].trim()
       : "idle";
-  state.winner = source.winner === "ai" || source.winner === "user" ? source.winner : "";
+  state.winner =
+    source["winner"] === "ai" || source["winner"] === "user" ? source["winner"] : "";
   state.statusKey =
-    typeof source.statusKey === "string" &&
-    Object.prototype.hasOwnProperty.call(STATUS_COPY, source.statusKey)
-      ? source.statusKey
+    typeof source["statusKey"] === "string" &&
+    Object.prototype.hasOwnProperty.call(STATUS_COPY, source["statusKey"])
+      ? source["statusKey"]
       : "idle";
-  state.protocolDelivered = source.protocolDelivered === true;
+  state.protocolDelivered = source["protocolDelivered"] === true;
   state.blockedReason =
-    typeof source.blockedReason === "string" && source.blockedReason.trim() !== ""
-      ? source.blockedReason.trim()
+    typeof source["blockedReason"] === "string" && source["blockedReason"].trim() !== ""
+      ? source["blockedReason"].trim()
       : "";
-  state.protocolPreface = normalizeText(source.protocolPreface);
-  state.matchId = normalizeText(source.matchId) || normalizeText(source.inviteId) || null;
-  state.inviteId = normalizeText(source.inviteId) || null;
+  state.protocolPreface = normalizeText(source["protocolPreface"]);
+  state.matchId = normalizeText(source["matchId"]) || normalizeText(source["inviteId"]) || null;
+  state.inviteId = normalizeText(source["inviteId"]) || null;
   state.turnIndex =
-    typeof source.turnIndex === "number" &&
-    Number.isInteger(source.turnIndex) &&
-    source.turnIndex >= 0
-      ? source.turnIndex
+    typeof source["turnIndex"] === "number" &&
+    Number.isInteger(source["turnIndex"]) &&
+    source["turnIndex"] >= 0
+      ? source["turnIndex"]
       : 0;
-  state.localSessionId = normalizeText(source.localSessionId) || null;
-  state.remoteUserId = normalizeText(source.remoteUserId) || null;
-  state.opponentNickname = normalizeText(source.opponentNickname);
-  state.lastRemoteTransportMessageId = normalizeText(source.lastRemoteTransportMessageId) || null;
+  state.localSessionId = normalizeText(source["localSessionId"]) || null;
+  state.remoteUserId = normalizeText(source["remoteUserId"]) || null;
+  state.opponentNickname = normalizeText(source["opponentNickname"]);
+  state.lastRemoteTransportMessageId =
+    normalizeText(source["lastRemoteTransportMessageId"]) || null;
   state.lastRemoteTurnIndex =
-    typeof source.lastRemoteTurnIndex === "number" &&
-    Number.isInteger(source.lastRemoteTurnIndex) &&
-    source.lastRemoteTurnIndex >= 0
-      ? source.lastRemoteTurnIndex
+    typeof source["lastRemoteTurnIndex"] === "number" &&
+    Number.isInteger(source["lastRemoteTurnIndex"]) &&
+    source["lastRemoteTurnIndex"] >= 0
+      ? source["lastRemoteTurnIndex"]
       : null;
   return state;
 }
 
-export function getOutcomeForBoard(board, state) {
+export function getOutcomeForBoard(board: string[], state: XoxGameState) {
   for (let index = 0; index < WIN_LINES.length; index += 1) {
     const line = WIN_LINES[index];
-    const first = board[line[0]];
-    const second = board[line[1]];
-    const third = board[line[2]];
+    if (!line) {
+      continue;
+    }
+    const firstIndex = line[0];
+    const secondIndex = line[1];
+    const thirdIndex = line[2];
+    if (firstIndex === undefined || secondIndex === undefined || thirdIndex === undefined) {
+      continue;
+    }
+    const first = board[firstIndex];
+    const second = board[secondIndex];
+    const third = board[thirdIndex];
 
     if (first !== "" && first === second && second === third) {
       if (first === state.userSymbol) {
@@ -333,7 +373,7 @@ export function getOutcomeForBoard(board, state) {
   }
 
   if (
-    board.every(function (value) {
+    board.every(function (value: string) {
       return value !== "";
     })
   ) {

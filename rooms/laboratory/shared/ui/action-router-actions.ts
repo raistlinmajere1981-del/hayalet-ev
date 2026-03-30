@@ -1,4 +1,4 @@
-export function createLaboratoryUiActionHandlers(deps) {
+export function createLaboratoryUiActionHandlers(deps: any) {
   const {
     advanceStage,
     buildCurrentDraftPayload,
@@ -20,7 +20,7 @@ export function createLaboratoryUiActionHandlers(deps) {
     syncDraftField,
   } = deps;
 
-  function handleAction(action, value) {
+  function handleAction(action: any, value: any) {
     switch (action) {
       case "nav-previous":
         advanceStage(-1);
@@ -203,7 +203,9 @@ export function createLaboratoryUiActionHandlers(deps) {
           mode: value,
           outputId:
             value === "derived"
-              ? getProfileTargetSummary().outputId || (getActiveEditOutput() && getActiveEditOutput().id) || null
+              ? getProfileTargetSummary().outputId ||
+                (getActiveEditOutput() && getActiveEditOutput().id) ||
+                null
               : null,
           featureStage: "profile",
         });

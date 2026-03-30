@@ -1,4 +1,4 @@
-export function createLaboratoryHostActivation(deps) {
+export function createLaboratoryHostActivation(deps: any) {
   const createRuntimeState = deps.createRuntimeState;
   const ensureHydrated = deps.ensureHydrated;
   const ensureRoomToolsSubscription = deps.ensureRoomToolsSubscription;
@@ -9,20 +9,20 @@ export function createLaboratoryHostActivation(deps) {
   const toRecord = deps.toRecord;
 
   return {
-    activate: function activate(api) {
+    activate: function activate(api: any) {
       const runtime = createRuntimeState();
       api.log("info", "Laboratory media analysis host activated.");
       saveContext(api, {});
       ensureRoomToolsSubscription(api, runtime);
 
       return {
-        onRoomReady: function onRoomReady(payload) {
+        onRoomReady: function onRoomReady(payload: any) {
           saveContext(api, payload);
           void ensureHydrated(api, runtime)
             .then(function () {
               pushMediaState(api, runtime, null);
             })
-            .catch(function (error) {
+            .catch(function (error: any) {
               api.log(
                 "warn",
                 `Laboratory media host bootstrap failed: ${
@@ -31,7 +31,7 @@ export function createLaboratoryHostActivation(deps) {
               );
             });
         },
-        onRoomEvent: function onRoomEvent(payload) {
+        onRoomEvent: function onRoomEvent(payload: any) {
           if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
             return;
           }

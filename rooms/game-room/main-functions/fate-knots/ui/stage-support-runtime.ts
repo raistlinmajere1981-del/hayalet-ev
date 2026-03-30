@@ -1,10 +1,8 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createFateKnotsUiStageSupportRuntime = function createFateKnotsUiStageSupportRuntime(
-    deps
-  ) {
-    function createNarrationPanel(state, role) {
+  registry.createFateKnotsUiStageSupportRuntime = function createFateKnotsUiStageSupportRuntime(deps: any) {
+    function createNarrationPanel(state: any, role: any) {
       const narrationRole = role
         ? Array.isArray(role)
           ? role.concat("narration")
@@ -44,7 +42,7 @@
       return panel;
     }
 
-    function createEvidenceCard(assetLink, label, family) {
+    function createEvidenceCard(assetLink: any, label: any, family: any) {
       const card = deps.createFrame("div", "fk-evidence-card", null, {
         overlay: deps.getUiAsset("parchmentStain"),
         frame: deps.getUiAsset("cardSlotFrame"),
@@ -60,7 +58,7 @@
       return card;
     }
 
-    function createLogFeed(state) {
+    function createLogFeed(state: any) {
       const feed = deps.createFrame(
         "section",
         "fk-stage-frame fk-stage-frame--log fk-log-feed",
@@ -85,7 +83,7 @@
       state.scenarioLog
         .slice()
         .reverse()
-        .forEach(function (entry) {
+        .forEach(function (entry: any) {
           const item = deps.createFrame("div", "fk-log-feed__entry", null, {
             overlay: deps.getUiAsset("systemMessageBox"),
             frame: deps.getUiAsset("buttonPlate"),

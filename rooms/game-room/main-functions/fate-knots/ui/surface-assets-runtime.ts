@@ -1,9 +1,7 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createFateKnotsUiSurfaceAssetsRuntime = function createFateKnotsUiSurfaceAssetsRuntime(
-    deps
-  ) {
+  registry.createFateKnotsUiSurfaceAssetsRuntime = function createFateKnotsUiSurfaceAssetsRuntime(deps: any) {
     const sanitizeAssetLink = deps.sanitizeAssetLink;
     const createDefaultAsset = deps.createDefaultAsset;
     const getCurrentState = deps.getCurrentState;
@@ -77,7 +75,7 @@
       );
     }
 
-    function warnMissingUiAsset(key, assetId) {
+    function warnMissingUiAsset(key: any, assetId: any) {
       const warningKey = key + "::" + assetId;
       if (reportedMissingAssets[warningKey]) {
         return;
@@ -85,26 +83,20 @@
       reportedMissingAssets[warningKey] = true;
       if (isDevMode() && global.console && typeof global.console.warn === "function") {
         global.console.warn(
-          '[FateKnotsUI] Missing UI asset "' +
-            assetId +
-            '" for alias "' +
-            key +
-            '".'
+          '[FateKnotsUI] Missing UI asset "' + assetId + '" for alias "' + key + '".'
         );
       }
     }
 
     function getUiAssetRegistry() {
       const state =
-        typeof getCurrentState === "function" && getCurrentState()
-          ? getCurrentState()
-          : null;
+        typeof getCurrentState === "function" && getCurrentState() ? getCurrentState() : null;
       const uiAssets =
         state && state.uiAssets && typeof state.uiAssets === "object" ? state.uiAssets : null;
       return uiAssets && uiAssets.byId && typeof uiAssets.byId === "object" ? uiAssets.byId : {};
     }
 
-    function createMissingUiAsset(key, assetId) {
+    function createMissingUiAsset(key: any, assetId: any) {
       const missingAsset = createDefaultAsset(assetId);
       missingAsset.missingUiAsset = true;
       missingAsset.missingUiAssetKey = key;
@@ -113,8 +105,9 @@
       return missingAsset;
     }
 
-    function getUiAsset(key) {
-      const assetId = UI_ASSET_ALIASES[key] || key;
+    function getUiAsset(key: any) {
+      const aliases = UI_ASSET_ALIASES as Record<string, string>;
+      const assetId = aliases[String(key)] || String(key);
       const candidate = getUiAssetRegistry()[assetId];
       if (!candidate) {
         return createMissingUiAsset(key, assetId);
@@ -126,7 +119,7 @@
       return normalized;
     }
 
-    function assetUrl(assetLink) {
+    function assetUrl(assetLink: any) {
       const normalized = sanitizeAssetLink(assetLink);
       return normalized.uiSrc || normalized.src || "";
     }
@@ -135,7 +128,7 @@
       if (typeof global.Image !== "function") {
         return;
       }
-      Object.keys(getUiAssetRegistry()).forEach(function (assetId) {
+      Object.keys(getUiAssetRegistry()).forEach(function (assetId: any) {
         const source = assetUrl(getUiAsset(assetId));
         if (!source || preloadedUiSources[source]) {
           return;

@@ -49,22 +49,22 @@ type LaboratorySubtitleProjectionRuntimeDeps = {
   normalizeReportSummaryCard: (value: unknown) => unknown;
   normalizeSubtitleAnalysisState: (
     rawValue: unknown,
-    runtime: unknown,
+    runtime: unknown
   ) => LaboratorySubtitleAnalysisState;
   readFeatureProcessRecord: (
     project: LaboratorySubtitleProjectionProject,
-    featureId: string,
+    featureId: string
   ) => LaboratoryFeatureProcessRecord;
   readFeatureReportRecord: (
     project: LaboratorySubtitleProjectionProject,
-    featureId: string,
+    featureId: string
   ) => LaboratoryFeatureReportRecord;
   subtitleFeatureId: string;
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
 export function createLaboratorySubtitleProjectionRuntime(
-  deps: LaboratorySubtitleProjectionRuntimeDeps,
+  deps: LaboratorySubtitleProjectionRuntimeDeps
 ) {
   const {
     asNonEmptyString,
@@ -81,11 +81,11 @@ export function createLaboratorySubtitleProjectionRuntime(
 
   function syncProjectSubtitleAnalysisProjection(
     runtime: unknown,
-    project: LaboratorySubtitleProjectionProject,
+    project: LaboratorySubtitleProjectionProject
   ): LaboratorySubtitleAnalysisState {
     const subtitleState = normalizeSubtitleAnalysisState(
-      toRecord(project).subtitleAnalysis,
-      runtime,
+      toRecord(project)["subtitleAnalysis"],
+      runtime
     );
     const processRecord = readFeatureProcessRecord(project, subtitleFeatureId);
     const reportRecord = readFeatureReportRecord(project, subtitleFeatureId);
@@ -100,19 +100,20 @@ export function createLaboratorySubtitleProjectionRuntime(
         ? reportRecord.findings.map(normalizeProcessFinding)
         : [],
       warnings: Array.isArray(reportRecord.warnings) ? reportRecord.warnings.map(String) : [],
-      moduleResults: (Array.isArray(processRecord.modules) ? processRecord.modules : []).reduce<Record<string, LaboratoryProcessModuleRecord>>(
-        function (accumulator, entry) {
-          const moduleRecord = normalizeProcessModule(entry);
-          accumulator[moduleRecord.id] = moduleRecord;
-          return accumulator;
-        },
-        {}
-      ),
+      moduleResults: (Array.isArray(processRecord.modules) ? processRecord.modules : []).reduce<
+        Record<string, LaboratoryProcessModuleRecord>
+      >(function (accumulator: any, entry: any) {
+        const moduleRecord = normalizeProcessModule(entry);
+        accumulator[moduleRecord.id] = moduleRecord;
+        return accumulator;
+      }, {}),
       lastRunAt: asNonEmptyString(processRecord.completedAt),
     };
     subtitleState.export = {
       lastGeneratedAt: asNonEmptyString(reportRecord.generatedAt),
-      items: Array.isArray(reportRecord.exports) ? reportRecord.exports.map(normalizeReportExport) : [],
+      items: Array.isArray(reportRecord.exports)
+        ? reportRecord.exports.map(normalizeReportExport)
+        : [],
     };
     project.subtitleAnalysis = subtitleState;
     return subtitleState;

@@ -1,6 +1,6 @@
 /* global document, window */
 
-(function (global) {
+(function (global: any) {
   type UnknownRecord = Record<string, unknown>;
   type BootstrapCopy = Record<string, Record<string, string>>;
   type FeatureRecord = {
@@ -66,21 +66,21 @@
 
   registry.createGameRoomUiContextRuntime = function createGameRoomUiContextRuntime(deps: unknown) {
     const runtimeDeps = isRecord(deps) ? (deps as ContextRuntimeDeps) : {};
-    const ROOM_ID = readString(runtimeDeps.roomId, "game-room");
-    const FEATURE_ID = readString(runtimeDeps.featureId, "xox");
-    const bootstrapCopy = isRecord(runtimeDeps.bootstrapCopy)
-      ? (runtimeDeps.bootstrapCopy as BootstrapCopy)
+    const ROOM_ID = readString(runtimeDeps["roomId"], "game-room");
+    const FEATURE_ID = readString(runtimeDeps["featureId"], "xox");
+    const bootstrapCopy = isRecord(runtimeDeps["bootstrapCopy"])
+      ? (runtimeDeps["bootstrapCopy"] as BootstrapCopy)
       : {};
-    const featureRecords: FeatureRecord[] = Array.isArray(runtimeDeps.featureRecords)
-      ? runtimeDeps.featureRecords
-          .filter(function (entry) {
+    const featureRecords: FeatureRecord[] = Array.isArray(runtimeDeps["featureRecords"])
+      ? runtimeDeps["featureRecords"]
+          .filter(function (entry: any) {
             return isRecord(entry);
           })
-          .map(function (entry) {
+          .map(function (entry: any) {
             return {
-              id: readString(entry.id, FEATURE_ID),
-              name: readString(entry.name, FEATURE_ID.toUpperCase()),
-              description: readString(entry.description, ""),
+              id: readString(entry["id"], FEATURE_ID),
+              name: readString(entry["name"], FEATURE_ID.toUpperCase()),
+              description: readString(entry["description"], ""),
             };
           })
       : [
@@ -96,7 +96,7 @@
       description: "",
     };
     const featureCatalog = new Map(
-      featureRecords.map(function (entry) {
+      featureRecords.map(function (entry: any) {
         return [entry.id, entry];
       })
     );
@@ -165,12 +165,20 @@
       return {
         room: {
           id: ROOM_ID,
-          name: readBootstrapText("en", "roomTitle", readBootstrapText("tr", "roomTitle", "Game Room")),
+          name: readBootstrapText(
+            "en",
+            "roomTitle",
+            readBootstrapText("tr", "roomTitle", "Game Room")
+          ),
         },
         features: featureRecords.slice(),
         activeFeature: { ...fallbackFeatureRecord },
         user: {
-          nickname: readBootstrapText("en", "userLabel", readBootstrapText("tr", "userLabel", "User")),
+          nickname: readBootstrapText(
+            "en",
+            "userLabel",
+            readBootstrapText("tr", "userLabel", "User")
+          ),
         },
         slots: {
           ai1: createSlot("ai1"),
@@ -184,6 +192,9 @@
       let current = source;
       for (let index = 0; index < path.length; index += 1) {
         const key = path[index];
+        if (key === undefined) {
+          return undefined;
+        }
         if (isRecord(current) === false) {
           return undefined;
         }
@@ -207,66 +218,67 @@
       const source = isRecord(candidate) ? candidate : {};
       return {
         slotId: slotId,
-        nickname: readString(source.nickname, slotId.toUpperCase()),
-        assigned: source.assigned === true,
-        connected: source.connected === true,
+        nickname: readString(source["nickname"], slotId.toUpperCase()),
+        assigned: source["assigned"] === true,
+        connected: source["connected"] === true,
         ready:
-          source.ready === true ||
-          (source.assigned === true && source.connected === true && source.urlExcluded !== true),
-        state: readString(source.state, "empty"),
-        urlExcluded: source.urlExcluded === true,
-        remoteUserId: readString(source.remoteUserId, "") || null,
+          source["ready"] === true ||
+          (source["assigned"] === true &&
+            source["connected"] === true &&
+            source["urlExcluded"] !== true),
+        state: readString(source["state"], "empty"),
+        urlExcluded: source["urlExcluded"] === true,
+        remoteUserId: readString(source["remoteUserId"], "") || null,
       };
     }
 
     function normalizeContext(payload: unknown): ContextState {
       const source = isRecord(payload) ? payload : {};
-      const slotsSource = isRecord(source.slots) ? source.slots : {};
-      const roomSource = isRecord(source.room) ? source.room : {};
-      const userSource = isRecord(source.user) ? source.user : {};
-      const features: FeatureRecord[] = Array.isArray(source.features)
-        ? source.features.map(function (feature) {
+      const slotsSource = isRecord(source["slots"]) ? source["slots"] : {};
+      const roomSource = isRecord(source["room"]) ? source["room"] : {};
+      const userSource = isRecord(source["user"]) ? source["user"] : {};
+      const features: FeatureRecord[] = Array.isArray(source["features"])
+        ? source["features"].map(function (feature: any) {
             const featureSource = isRecord(feature) ? feature : {};
-            const id = normalizeFeatureId(featureSource.id);
+            const id = normalizeFeatureId(featureSource["id"]);
             const fallbackFeature = featureCatalog.get(id) || fallbackFeatureRecord;
             return {
               id: id,
-              name: readString(featureSource.name, fallbackFeature.name),
-              description: readString(featureSource.description, fallbackFeature.description),
+              name: readString(featureSource["name"], fallbackFeature.name),
+              description: readString(featureSource["description"], fallbackFeature.description),
             };
           })
         : featureRecords.slice();
-      const activeFeatureSource = isRecord(source.activeFeature) ? source.activeFeature : {};
-      const activeFeatureId = normalizeFeatureId(activeFeatureSource.id);
+      const activeFeatureSource = isRecord(source["activeFeature"]) ? source["activeFeature"] : {};
+      const activeFeatureId = normalizeFeatureId(activeFeatureSource["id"]);
       const activeFallback = featureCatalog.get(activeFeatureId) || fallbackFeatureRecord;
 
       return {
         room: {
-          id: readString(roomSource.id, ROOM_ID),
+          id: readString(roomSource["id"], ROOM_ID),
           name: readString(
-            roomSource.name,
-            readBootstrapText("en", "roomTitle", readBootstrapText("tr", "roomTitle", "Game Room")),
+            roomSource["name"],
+            readBootstrapText("en", "roomTitle", readBootstrapText("tr", "roomTitle", "Game Room"))
           ),
         },
         features: features,
-        activeFeature:
-          features.find(function (feature) {
-            return feature.id === activeFeatureId;
-          }) || {
-            id: activeFeatureId,
-            name: activeFallback.name,
-            description: activeFallback.description,
-          },
+        activeFeature: features.find(function (feature: any) {
+          return feature.id === activeFeatureId;
+        }) || {
+          id: activeFeatureId,
+          name: activeFallback.name,
+          description: activeFallback.description,
+        },
         user: {
           nickname: readString(
-            userSource.nickname,
-            readBootstrapText("en", "userLabel", readBootstrapText("tr", "userLabel", "User")),
+            userSource["nickname"],
+            readBootstrapText("en", "userLabel", readBootstrapText("tr", "userLabel", "User"))
           ),
         },
         slots: {
-          ai1: normalizeSlot(slotsSource.ai1, "ai1"),
-          ai2: normalizeSlot(slotsSource.ai2, "ai2"),
-          us1: normalizeSlot(slotsSource.us1, "us1"),
+          ai1: normalizeSlot(slotsSource["ai1"], "ai1"),
+          ai2: normalizeSlot(slotsSource["ai2"], "ai2"),
+          us1: normalizeSlot(slotsSource["us1"], "us1"),
         },
       };
     }

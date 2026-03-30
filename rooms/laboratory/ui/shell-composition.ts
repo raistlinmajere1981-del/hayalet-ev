@@ -1,4 +1,4 @@
-export function createLaboratoryUiShellComposition(deps) {
+export function createLaboratoryUiShellComposition(deps: any) {
   const laboratorySourceStageUi = deps.createLaboratorySourceStageComposition({
     state: deps.state,
     toRecord: deps.toRecord,
@@ -112,7 +112,7 @@ export function createLaboratoryUiShellComposition(deps) {
     bootstrapText: deps.bootstrapText,
     documentRef: deps.documentRef,
     getActiveFeatureId: deps.getActiveFeatureId,
-    handleHostMessage(message) {
+    handleHostMessage(message: any) {
       return deps.handleHostMessage(message);
     },
     render: deps.render,

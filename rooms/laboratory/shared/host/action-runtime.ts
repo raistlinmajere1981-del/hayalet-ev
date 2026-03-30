@@ -21,7 +21,7 @@ type LaboratoryActionRuntimeDeps = {
     api: unknown,
     runtime: unknown,
     requestId: string | null,
-    action: string | null,
+    action: string | null
   ) => void;
   toRecord: (value: unknown) => LaboratoryRecord;
   toolMutationRuntime: {
@@ -31,14 +31,12 @@ type LaboratoryActionRuntimeDeps = {
       requestId: string,
       action: string,
       toolId: string,
-      featureStage: string | null,
+      featureStage: string | null
     ) => Promise<unknown>;
   };
 };
 
-export function createLaboratoryHostActionRuntime(
-  deps: LaboratoryActionRuntimeDeps,
-) {
+export function createLaboratoryHostActionRuntime(deps: LaboratoryActionRuntimeDeps) {
   let actionRouter: LaboratoryActionRouter | null = null;
   const toolMutationRuntime = deps.toolMutationRuntime;
 
@@ -69,7 +67,7 @@ export function createLaboratoryHostActionRuntime(
     requestId: string,
     action: string,
     toolId: string,
-    featureStage: string | null,
+    featureStage: string | null
   ) {
     return toolMutationRuntime.handleToolMutation(
       api,

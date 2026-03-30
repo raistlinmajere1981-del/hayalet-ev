@@ -28,13 +28,13 @@ const FEATURE_CATALOG: FeatureCatalogEntry[] = [
 ];
 
 export function getFeatureName(featureId: string): string {
-  const feature = FEATURE_CATALOG.find((entry) => entry.id === featureId);
+  const feature = FEATURE_CATALOG.find((entry: any) => entry["id"] === featureId);
   return feature ? feature.name : "XOX";
 }
 
 export function normalizeFeatureId(value: unknown): string {
   const normalized = typeof value === "string" ? value.trim() : "";
-  return FEATURE_CATALOG.some((entry) => entry.id === normalized) ? normalized : FEATURE_ID;
+  return FEATURE_CATALOG.some((entry: any) => entry["id"] === normalized) ? normalized : FEATURE_ID;
 }
 
 export function sanitizeFeatureRecord(
@@ -45,12 +45,12 @@ export function sanitizeFeatureRecord(
     candidate && typeof candidate === "object" && Array.isArray(candidate) === false
       ? (candidate as Record<string, unknown>)
       : {};
-  const featureId = normalizeFeatureId(source.id ?? fallbackId);
+  const featureId = normalizeFeatureId(source["id"] ?? fallbackId);
   const name =
-    typeof source.name === "string" && source.name.trim() !== ""
-      ? source.name.trim()
+    typeof source["name"] === "string" && source["name"].trim() !== ""
+      ? source["name"].trim()
       : getFeatureName(featureId);
-  const description = typeof source.description === "string" ? source.description.trim() : "";
+  const description = typeof source["description"] === "string" ? source["description"].trim() : "";
 
   return {
     id: featureId,
@@ -64,5 +64,5 @@ export function getDefaultFeatureRecords(): Array<{
   name: string;
   description: string;
 }> {
-  return FEATURE_CATALOG.map((feature) => sanitizeFeatureRecord(feature, feature.id));
+  return FEATURE_CATALOG.map((feature: any) => sanitizeFeatureRecord(feature, feature.id));
 }

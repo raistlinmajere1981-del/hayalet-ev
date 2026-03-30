@@ -1,4 +1,4 @@
-export function createLaboratoryAudioReportRuntime(deps) {
+export function createLaboratoryAudioReportRuntime(deps: any) {
   const {
     asNonEmptyString,
     clone,
@@ -17,12 +17,15 @@ export function createLaboratoryAudioReportRuntime(deps) {
     audioFeatureId,
   } = deps;
 
-  function buildAudioAnalysisReportProjection(runtime, project) {
+  function buildAudioAnalysisReportProjection(runtime: any, project: any) {
     const projectedProject = clone(project);
     syncProjectAudioAnalysisProjection(runtime, projectedProject);
 
     const audioAnalysis = normalizeAudioAnalysisState(projectedProject.audioAnalysis, runtime);
-    const catalogMap = getAudioAnalysisModulesForRuntime(runtime).reduce(function (accumulator, entry) {
+    const catalogMap = getAudioAnalysisModulesForRuntime(runtime).reduce(function (
+      accumulator: Record<string, unknown>,
+      entry: any
+    ) {
       const moduleId = asNonEmptyString(entry.id);
       if (moduleId !== null) {
         accumulator[moduleId] = entry;
@@ -30,10 +33,10 @@ export function createLaboratoryAudioReportRuntime(deps) {
       return accumulator;
     }, {});
     const orderedIds = normalizeStringArray(toRecord(audioAnalysis.analysisCatalog).orderedIds);
-    const extraIds = Object.keys(toRecord(audioAnalysis.results)).filter(function (moduleId) {
+    const extraIds = Object.keys(toRecord(audioAnalysis.results)).filter(function (moduleId: string) {
       return !orderedIds.includes(moduleId);
     });
-    const orderedResults = orderedIds.concat(extraIds).map(function (moduleId) {
+    const orderedResults = orderedIds.concat(extraIds).map(function (moduleId: string) {
       return normalizeAudioAnalysisModuleResult(
         toRecord(toRecord(audioAnalysis.results)[moduleId]),
         moduleId,
@@ -47,7 +50,7 @@ export function createLaboratoryAudioReportRuntime(deps) {
     };
   }
 
-  function composeAudioAnalysisReport(runtime, project) {
+  function composeAudioAnalysisReport(runtime: any, project: any) {
     const processRecord = getFeatureProcessRecord(project, audioFeatureId);
     if (processRecord.status !== "ready" && processRecord.status !== "stale") {
       return normalizeFeatureReportRecord(
@@ -63,46 +66,50 @@ export function createLaboratoryAudioReportRuntime(deps) {
     const projection = buildAudioAnalysisReportProjection(runtime, project);
     const orderedResults = projection.orderedResults;
     const findings = orderedResults
-      .flatMap(function (entry) {
+      .flatMap(function (entry: any) {
         return Array.isArray(entry.signals) ? entry.signals : [];
       })
       .map(normalizeProcessFinding)
-      .sort(function (left, right) {
+      .sort(function (left: any, right: any) {
         return getFindingSeverityRank(right.level) - getFindingSeverityRank(left.level);
       });
-    const artifactCount = orderedResults.reduce(function (sum, entry) {
+    const artifactCount = orderedResults.reduce(function (sum: number, entry: any) {
       return sum + (Array.isArray(entry.artifacts) ? entry.artifacts.length : 0);
     }, 0);
-    const completedCount = orderedResults.filter(function (entry) {
+    const completedCount = orderedResults.filter(function (entry: any) {
       return ["complete", "stale"].includes(asNonEmptyString(entry.status) || "idle");
     }).length;
-    const gatedCount = orderedResults.filter(function (entry) {
+    const gatedCount = orderedResults.filter(function (entry: any) {
       return asNonEmptyString(entry.status) === "gated";
     }).length;
-    const plannedCount = orderedResults.filter(function (entry) {
+    const plannedCount = orderedResults.filter(function (entry: any) {
       return asNonEmptyString(entry.status) === "planned";
     }).length;
-    const blockedCount = orderedResults.filter(function (entry) {
+    const blockedCount = orderedResults.filter(function (entry: any) {
       return asNonEmptyString(entry.status) === "blocked";
     }).length;
     const warnings = Array.from(
       new Set(
         normalizeStringArray(processRecord.warnings).concat(
-          orderedResults.flatMap(function (entry) {
+          orderedResults.flatMap(function (entry: any) {
             return normalizeStringArray(entry.warnings);
           })
         )
       )
     );
-    const caveats = [];
+    const caveats: string[] = [];
     if (plannedCount > 0) {
-      caveats.push(`${String(plannedCount)} audio module(s) remain planned for the v2 rollout.`);
+      caveats.push("${String(plannedCount)} audio module(s) remain planned for the v2 rollout.");
     }
     if (gatedCount > 0) {
-      caveats.push(`${String(gatedCount)} audio module(s) remain capability-gated on the current runtime.`);
+      caveats.push(
+        "${String(gatedCount)} audio module(s) remain capability-gated on the current runtime."
+      );
     }
     if (blockedCount > 0) {
-      caveats.push("Blocked audio modules keep their slot visible until the target and providers are ready.");
+      caveats.push(
+        "Blocked audio modules keep their slot visible until the target and providers are ready."
+      );
     }
 
     return normalizeFeatureReportRecord(

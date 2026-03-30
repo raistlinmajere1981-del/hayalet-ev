@@ -8,9 +8,7 @@ type LaboratoryPresetRuntimeDeps = {
   toRecord: (value: unknown) => Record<string, unknown>;
 };
 
-export function createLaboratoryPresetRuntime(
-  deps: LaboratoryPresetRuntimeDeps,
-) {
+export function createLaboratoryPresetRuntime(deps: LaboratoryPresetRuntimeDeps) {
   const presetSource = createLaboratoryPresetSourceRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     clone: deps.clone,

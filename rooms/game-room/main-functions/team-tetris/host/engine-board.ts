@@ -4,7 +4,11 @@ import {
   TEAM_TETRIS_PIECES,
 } from "./engine-schema.js";
 
-function createEmptyTeamTetrisBoard() {
+type TeamTetrisBoard = string[][];
+export type PieceId = "I" | "O" | "T" | "S" | "Z" | "J" | "L";
+type PieceCell = number[];
+
+function createEmptyTeamTetrisBoard(): TeamTetrisBoard {
   return Array.from({ length: TEAM_TETRIS_BOARD_HEIGHT }, function () {
     return Array.from({ length: TEAM_TETRIS_BOARD_WIDTH }, function () {
       return "";
@@ -12,9 +16,9 @@ function createEmptyTeamTetrisBoard() {
   });
 }
 
-function cloneTeamTetrisBoard(board) {
+function cloneTeamTetrisBoard(board: TeamTetrisBoard): TeamTetrisBoard {
   return Array.isArray(board)
-    ? board.map(function (row) {
+    ? board.map(function (row: string[]) {
         return Array.isArray(row)
           ? row.slice()
           : Array.from({ length: TEAM_TETRIS_BOARD_WIDTH }, function () {
@@ -24,52 +28,64 @@ function cloneTeamTetrisBoard(board) {
     : createEmptyTeamTetrisBoard();
 }
 
-function teamTetrisBoardToRows(board) {
-  return cloneTeamTetrisBoard(board).map(function (row) {
+function teamTetrisBoardToRows(board: TeamTetrisBoard): string[] {
+  return cloneTeamTetrisBoard(board).map(function (row: string[]) {
     return row
-      .map(function (cell) {
+      .map(function (cell: string) {
         return cell === "" ? "." : String(cell).charAt(0);
       })
       .join("");
   });
 }
 
-function getPieceRotations(pieceId) {
+function getPieceRotations(pieceId: PieceId): PieceCell[][] {
   const piece = TEAM_TETRIS_PIECES[pieceId];
   return piece ? piece.rotations : [];
 }
 
-function getTeamTetrisLegalRotations(pieceId) {
-  return getPieceRotations(pieceId).map(function (_entry, index) {
+function getTeamTetrisLegalRotations(pieceId: PieceId): number[] {
+  return getPieceRotations(pieceId).map(function (_entry: PieceCell[], index: number) {
     return index;
   });
 }
 
-function getNormalizedTeamTetrisRotation(pieceId, rotation) {
+function getNormalizedTeamTetrisRotation(pieceId: PieceId, rotation: number): number | null {
   const legalRotations = getTeamTetrisLegalRotations(pieceId);
   return legalRotations.indexOf(rotation) !== -1 ? rotation : null;
 }
 
-function getTeamTetrisPieceCells(pieceId, rotation, originX, originY) {
+function getTeamTetrisPieceCells(
+  pieceId: PieceId,
+  rotation: number,
+  originX: number,
+  originY: number
+): { x: number; y: number }[] {
   const normalizedRotation = getNormalizedTeamTetrisRotation(pieceId, rotation);
   const shapes = getPieceRotations(pieceId);
   if (normalizedRotation === null || shapes.length === 0) {
     return [];
   }
-  return shapes[normalizedRotation].map(function (cell) {
+  const shape = shapes[normalizedRotation];
+  if (!Array.isArray(shape)) {
+    return [];
+  }
+  return shape.map(function (cell: PieceCell) {
     return {
-      x: originX + cell[0],
-      y: originY + cell[1],
+      x: originX + (cell[0] ?? 0),
+      y: originY + (cell[1] ?? 0),
     };
   });
 }
 
-function getTeamTetrisPieceBounds(pieceId, rotation) {
+function getTeamTetrisPieceBounds(
+  pieceId: PieceId,
+  rotation: number
+): { width: number; height: number } {
   const cells = getTeamTetrisPieceCells(pieceId, rotation, 0, 0);
-  const xs = cells.map(function (cell) {
+  const xs = cells.map(function (cell: { x: number; y: number }) {
     return cell.x;
   });
-  const ys = cells.map(function (cell) {
+  const ys = cells.map(function (cell: { x: number; y: number }) {
     return cell.y;
   });
   return {
@@ -78,7 +94,7 @@ function getTeamTetrisPieceBounds(pieceId, rotation) {
   };
 }
 
-function getTeamTetrisSpawnPosition(pieceId, rotation) {
+function getTeamTetrisSpawnPosition(pieceId: PieceId, rotation: number): { x: number; y: number } {
   const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
   return {
     x: Math.max(0, Math.floor((TEAM_TETRIS_BOARD_WIDTH - bounds.width) / 2)),
@@ -86,35 +102,49 @@ function getTeamTetrisSpawnPosition(pieceId, rotation) {
   };
 }
 
-function isTeamTetrisCellBlocked(board, x, y) {
+function isTeamTetrisCellBlocked(board: TeamTetrisBoard, x: number, y: number): boolean {
   if (x < 0 || x >= TEAM_TETRIS_BOARD_WIDTH || y < 0 || y >= TEAM_TETRIS_BOARD_HEIGHT) {
     return true;
   }
-  return cloneTeamTetrisBoard(board)[y][x] !== "";
+  const row = cloneTeamTetrisBoard(board)[y];
+  return !row || row[x] !== "";
 }
 
-function doesTeamTetrisPieceCollide(board, pieceId, rotation, x, y) {
+function doesTeamTetrisPieceCollide(
+  board: TeamTetrisBoard,
+  pieceId: PieceId,
+  rotation: number,
+  x: number,
+  y: number
+): boolean {
   const cells = getTeamTetrisPieceCells(pieceId, rotation, x, y);
   if (cells.length === 0) {
     return true;
   }
-  return cells.some(function (cell) {
+  return cells.some(function (cell: { x: number; y: number }) {
     return isTeamTetrisCellBlocked(board, cell.x, cell.y);
   });
 }
 
-function buildTeamTetrisBoardHash(board) {
+function buildTeamTetrisBoardHash(board: TeamTetrisBoard): string {
   return teamTetrisBoardToRows(board).join("|");
 }
 
-function replayTeamTetrisPath(board, pieceId, rotation, rowShifts) {
+function replayTeamTetrisPath(
+  board: TeamTetrisBoard,
+  pieceId: PieceId,
+  rotation: number,
+  rowShifts: number[]
+):
+  | { success: false; reason: string; stepIndex?: number }
+  | { success: true; x: number; y: number; rotation: number; cells: { x: number; y: number }[] } {
   const normalizedRotation = getNormalizedTeamTetrisRotation(pieceId, rotation);
   if (normalizedRotation === null) {
     return { success: false, reason: "invalid-rotation" };
   }
   if (
     !Array.isArray(rowShifts) ||
-    rowShifts.some(function (value) {
+    rowShifts.some(function (value: number) {
       return value !== -1 && value !== 0 && value !== 1;
     })
   ) {
@@ -129,7 +159,7 @@ function replayTeamTetrisPath(board, pieceId, rotation, rowShifts) {
   let x = spawn.x;
   let y = spawn.y;
   for (let index = 0; index < rowShifts.length; index += 1) {
-    const shift = rowShifts[index];
+    const shift = rowShifts[index] ?? 0;
     if (shift !== 0) {
       if (doesTeamTetrisPieceCollide(board, pieceId, normalizedRotation, x + shift, y)) {
         return { success: false, reason: "horizontal-collision", stepIndex: index };
@@ -155,10 +185,13 @@ function replayTeamTetrisPath(board, pieceId, rotation, rowShifts) {
   };
 }
 
-function clearTeamTetrisLines(board) {
+function clearTeamTetrisLines(board: TeamTetrisBoard): {
+  board: TeamTetrisBoard;
+  clearedLines: number;
+} {
   const rows = cloneTeamTetrisBoard(board);
-  const keptRows = rows.filter(function (row) {
-    return row.some(function (cell) {
+  const keptRows = rows.filter(function (row: any) {
+    return row.some(function (cell: any) {
       return cell === "";
     });
   });

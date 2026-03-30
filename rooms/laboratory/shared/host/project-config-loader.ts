@@ -31,14 +31,12 @@ type LaboratoryRoomApi = {
   };
 };
 
-export function createLaboratoryProjectConfigLoader(
-  deps: LaboratoryProjectConfigLoaderDeps,
-) {
+export function createLaboratoryProjectConfigLoader(deps: LaboratoryProjectConfigLoaderDeps) {
   const { readJsonFile } = deps;
 
   async function loadRuntimeConfigs(
     api: LaboratoryRoomApi,
-    runtime: LaboratoryProjectConfigRuntime,
+    runtime: LaboratoryProjectConfigRuntime
   ): Promise<void> {
     const baseDir = `${api.room.installedDir}/shared/data/tools`;
     const [

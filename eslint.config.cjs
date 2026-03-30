@@ -174,21 +174,22 @@ const importCycleRules = {
   // ile proje genelinde zaten kontrol ediliyor, harici plugin gerektirmez
 };
 
-// NOTE: Room TypeScript still runs on a non-strict tsconfig and dynamic runtime registries,
-// so keep lint focused on hygiene and async safety instead of strict-null/unsafe rules.
+// NOTE: Room TypeScript — phased strictness alignment with main app.
+// Phase 1a: strictNullChecks + noUnusedLocals/noUnusedParameters (TS side)
+// Phase 1b: no-unsafe-* rules enabled after noImplicitAny is applied (Phase 2)
 const roomTsContractRules = {
   ...sharedTsBaseRules,
   ...sharedTypeAwareRules,
   ...namingConventionRule,
   ...importCycleRules,
-  "@typescript-eslint/no-explicit-any": "off",
-  "@typescript-eslint/no-unsafe-assignment": "off",
-  "@typescript-eslint/no-unsafe-member-access": "off",
-  "@typescript-eslint/no-unsafe-call": "off",
-  "@typescript-eslint/no-unsafe-return": "off",
-  "@typescript-eslint/no-unsafe-argument": "off",
-  "@typescript-eslint/no-unnecessary-type-assertion": "off",
-  "@typescript-eslint/no-unnecessary-condition": "off",
+  "@typescript-eslint/no-explicit-any": "warn",
+  "@typescript-eslint/no-unsafe-assignment": "warn",
+  "@typescript-eslint/no-unsafe-member-access": "warn",
+  "@typescript-eslint/no-unsafe-call": "warn",
+  "@typescript-eslint/no-unsafe-return": "warn",
+  "@typescript-eslint/no-unsafe-argument": "warn",
+  "@typescript-eslint/no-unnecessary-type-assertion": "warn",
+  "@typescript-eslint/no-unnecessary-condition": "warn",
   "@typescript-eslint/prefer-nullish-coalescing": "off",
   "@typescript-eslint/prefer-optional-chain": "off",
   "@typescript-eslint/strict-boolean-expressions": "off",
@@ -198,6 +199,7 @@ const roomTsContractRules = {
   "@typescript-eslint/return-await": "off",
   "@typescript-eslint/no-confusing-void-expression": "off",
   "@typescript-eslint/no-base-to-string": "off",
+  // Enable once factory `deps` params are explicitly typed (Parameters<> stops collapsing to `any`).
   "@typescript-eslint/no-redundant-type-constituents": "off",
   "@typescript-eslint/naming-convention": "off",
   "@typescript-eslint/restrict-template-expressions": "off",
@@ -356,7 +358,11 @@ module.exports = tseslint.config(
 
   // === Room UI JavaScript Files ===
   {
-    files: ["rooms/**/ui/**/*.js", "rooms/**/main-functions/**/ui/**/*.js", "rooms/**/shared/ui/**/*.js"],
+    files: [
+      "rooms/**/ui/**/*.js",
+      "rooms/**/main-functions/**/ui/**/*.js",
+      "rooms/**/shared/ui/**/*.js",
+    ],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
@@ -402,7 +408,7 @@ module.exports = tseslint.config(
       "rooms/**/host/**/*.js",
       "rooms/**/shared/host/**/*.js",
       "rooms/**/shared/types/**/*.js",
-      "rooms/**/main-functions/**/host/**/*.js"
+      "rooms/**/main-functions/**/host/**/*.js",
     ],
     languageOptions: {
       ecmaVersion: "latest",

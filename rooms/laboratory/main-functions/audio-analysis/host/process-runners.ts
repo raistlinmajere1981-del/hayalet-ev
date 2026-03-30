@@ -2,28 +2,23 @@ import { createAudioAnalysisLocalProcessRunners } from "./process-local-runners.
 import { createAudioAnalysisModelProcessRunners } from "./process-model-runners.js";
 import { createAudioAnalysisProcessRunnerSupport } from "./process-runner-support.js";
 
-type AudioAnalysisProcessRuntimeDeps =
-  & Parameters<typeof createAudioAnalysisProcessRunnerSupport>[0]
-  & Parameters<typeof createAudioAnalysisLocalProcessRunners>[0]
-  & Parameters<typeof createAudioAnalysisModelProcessRunners>[0];
+type AudioAnalysisProcessRuntimeDeps = Parameters<
+  typeof createAudioAnalysisProcessRunnerSupport
+>[0] &
+  Parameters<typeof createAudioAnalysisLocalProcessRunners>[0] &
+  Parameters<typeof createAudioAnalysisModelProcessRunners>[0];
 
 type AudioAnalysisProcessRunnerSupportRuntime = ReturnType<
   typeof createAudioAnalysisProcessRunnerSupport
 >;
-type AudioAnalysisLocalProcessRuntime = ReturnType<
-  typeof createAudioAnalysisLocalProcessRunners
->;
-type AudioAnalysisModelProcessRuntime = ReturnType<
-  typeof createAudioAnalysisModelProcessRunners
->;
+type AudioAnalysisLocalProcessRuntime = ReturnType<typeof createAudioAnalysisLocalProcessRunners>;
+type AudioAnalysisModelProcessRuntime = ReturnType<typeof createAudioAnalysisModelProcessRunners>;
 
 type AudioAnalysisProcessRuntime = {
-  generateProcessSpectrogram:
-    AudioAnalysisProcessRunnerSupportRuntime["generateProcessSpectrogram"];
-  getModuleProcessDir:
-    AudioAnalysisProcessRunnerSupportRuntime["getModuleProcessDir"];
+  generateProcessSpectrogram: AudioAnalysisProcessRunnerSupportRuntime["generateProcessSpectrogram"];
+  getModuleProcessDir: AudioAnalysisProcessRunnerSupportRuntime["getModuleProcessDir"];
   getModuleRunner: (
-    moduleId: string,
+    moduleId: string
   ) =>
     | AudioAnalysisLocalProcessRuntime[keyof AudioAnalysisLocalProcessRuntime]
     | AudioAnalysisModelProcessRuntime[keyof AudioAnalysisModelProcessRuntime]
@@ -31,7 +26,7 @@ type AudioAnalysisProcessRuntime = {
 };
 
 export function createAudioAnalysisProcessRuntime(
-  deps: AudioAnalysisProcessRuntimeDeps,
+  deps: AudioAnalysisProcessRuntimeDeps
 ): AudioAnalysisProcessRuntime {
   const processRunnerSupport = createAudioAnalysisProcessRunnerSupport(deps);
   const {

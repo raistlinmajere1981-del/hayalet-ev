@@ -1,4 +1,4 @@
-export function createLaboratoryStageAccessorsRuntime(deps) {
+export function createLaboratoryStageAccessorsRuntime(deps: any) {
   const laboratoryUiFeatureRuntime = deps.laboratoryUiFeatureRuntime;
   const laboratoryUiDraftRuntime = deps.laboratoryUiDraftRuntime;
   const laboratoryUiDraftAccessRuntime = deps.laboratoryUiDraftAccessRuntime;
@@ -14,27 +14,31 @@ export function createLaboratoryStageAccessorsRuntime(deps) {
     return laboratoryUiFeatureRuntime.getRelevantJobs();
   }
 
-  function collectEditStageJobs(projectJobs) {
+  function collectEditStageJobs(projectJobs: any) {
     return laboratoryUiDraftRuntime.collectEditStageJobs(projectJobs);
   }
 
-  function collectProfileStageJobs(projectJobs) {
+  function collectProfileStageJobs(projectJobs: any) {
     return laboratoryUiDraftRuntime.collectProfileStageJobs(projectJobs);
   }
 
-  function collectProcessStageJobs(projectJobs) {
+  function collectProcessStageJobs(projectJobs: any) {
     return laboratoryUiDraftRuntime.collectProcessStageJobs(projectJobs);
   }
 
-  function collectReportStageJobs(projectJobs) {
+  function collectReportStageJobs(projectJobs: any) {
     return laboratoryUiDraftRuntime.collectReportStageJobs(projectJobs);
   }
 
-  function getEditJobLabel(job) {
+  function getEditJobLabel(job: any) {
     if (isSubtitleAnalysisFeature()) {
       switch (String(toRecord(job).action || "")) {
         case "subtitle-edit-preview":
-          return subtitleText(["edit", "jobs", "preview"], "Temizleme Onizlemesi", "Cleanup Preview");
+          return subtitleText(
+            ["edit", "jobs", "preview"],
+            "Temizleme Onizlemesi",
+            "Cleanup Preview"
+          );
         case "subtitle-edit-apply":
           return subtitleText(["edit", "jobs", "apply"], "Temizleme Uygula", "Apply Cleanup");
         default:
@@ -60,11 +64,11 @@ export function createLaboratoryStageAccessorsRuntime(deps) {
     return laboratoryUiDraftAccessRuntime.getCurrentEditDraft();
   }
 
-  function buildNestedPatch(path, value) {
+  function buildNestedPatch(path: any, value: any) {
     return laboratoryUiDraftAccessRuntime.buildNestedPatch(path, value);
   }
 
-  function syncLocalEditField(path, value) {
+  function syncLocalEditField(path: any, value: any) {
     laboratoryUiDraftAccessRuntime.syncLocalEditField(path, value);
   }
 
@@ -231,3 +235,5 @@ export function createLaboratoryStageAccessorsRuntime(deps) {
     syncLocalEditField: syncLocalEditField,
   };
 }
+
+export type LaboratoryStageAccessorsRuntimeApi = ReturnType<typeof createLaboratoryStageAccessorsRuntime>;

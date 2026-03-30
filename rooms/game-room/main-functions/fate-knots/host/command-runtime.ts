@@ -1,8 +1,5 @@
-import {
-  loadContext,
-  readLocale,
-} from "../../../shared/host/context-state.js";
-import { fillTemplate, translate } from "../../../shared/host/text.js";
+import { loadContext, readLocale } from "../../../shared/host/context-state.js";
+import { fillTemplate, normalizeText, translate } from "../../../shared/host/text.js";
 import {
   FATE_KNOTS_COMMAND_COPY,
   FATE_KNOTS_PHASES,
@@ -14,6 +11,7 @@ import {
   getCurrentFateKnotsCombatTurn,
   settleAutomaticFateKnotsCombatTurns,
 } from "./combat-engine.js";
+import type { FateKnotsCombatState } from "./combat-engine.js";
 import {
   readFateKnotsChoicePayload,
   readFateKnotsCombatPayload,
@@ -61,8 +59,19 @@ import {
   validateSelectionPayload,
 } from "./session-support.js";
 
-function commandMessage(locale, key, params = {}) {
+type RoomApi = {
+  getState: (key: string) => unknown;
+  setState: (key: string, value: unknown) => void;
+  getLocale?: () => unknown;
+  notifyRoom?: (eventType: string, data: unknown) => void;
+};
+
+function commandMessage(locale: string, key: string, params: Record<string, string> = {}) {
   return fillTemplate(translate(locale, FATE_KNOTS_COMMAND_COPY, key), params);
+}
+
+function asCombatState(raw: unknown): FateKnotsCombatState {
+  return raw as FateKnotsCombatState;
 }
 
 const fateKnotsPromptRuntime = createFateKnotsPromptRuntime({
@@ -75,14 +84,18 @@ const dispatchDecisionPrompts = fateKnotsPromptRuntime.dispatchDecisionPrompts;
 const dispatchCombatPrompt = fateKnotsPromptRuntime.dispatchCombatPrompt;
 const dispatchAmbientPrompts = fateKnotsPromptRuntime.dispatchAmbientPrompts;
 
-function ensureActiveSession(state, locale) {
+function ensureActiveSession(state: any, locale: string) {
   if (!state.active || !state.sessionId) {
     return { success: false, message: commandMessage(locale, "notActive") };
   }
   return null;
 }
 
-function validateSessionId(expectedSessionId, payloadSessionId, locale) {
+function validateSessionId(
+  expectedSessionId: string | null,
+  payloadSessionId: string | null,
+  locale: string
+) {
   if (payloadSessionId && expectedSessionId && payloadSessionId !== expectedSessionId) {
     return { success: false, message: commandMessage(locale, "stalePayload") };
   }
@@ -112,13 +125,13 @@ export const prepareSync = fateKnotsPhaseRuntime.prepareSync;
 const resolveDecisionProgress = fateKnotsPhaseRuntime.resolveDecisionProgress;
 const startScenarioStep = fateKnotsPhaseRuntime.startScenarioStep;
 
-export async function handleStart(api) {
+export async function handleStart(api: RoomApi) {
   const contentRegistry = ensureFateKnotsContent(api);
   const context = loadContext(api);
   const profile = loadFateKnotsProfile(api);
   const saveSlot = loadFateKnotsSaveSlot(api);
-  const readyAiSeats = FATE_KNOTS_SUPPORTED_AI_SEATS.filter(function (seatId) {
-    return context?.slots?.[seatId]?.ready === true;
+  const readyAiSeats = FATE_KNOTS_SUPPORTED_AI_SEATS.filter(function (seatId: string) {
+    return context?.slots?.[seatId as keyof typeof context.slots]?.ready === true;
   });
   if (readyAiSeats.length === 0) {
     refreshFateKnotsState(api, contentRegistry);
@@ -157,13 +170,13 @@ export async function handleStart(api) {
   return { success: true, message: commandMessage(readLocale(api), "started") };
 }
 
-export function handleReset(api) {
+export function handleReset(api: RoomApi) {
   const contentRegistry = ensureFateKnotsContent(api);
   pushFateKnotsState(api, resetFateKnotsState(api, "idle"), contentRegistry);
   return { success: true, message: commandMessage(readLocale(api), "reset") };
 }
 
-export function handleCharacterSelect(api, payload) {
+export function handleCharacterSelect(api: RoomApi, payload: any) {
   const contentRegistry = ensureFateKnotsContent(api);
   const state = loadFateKnotsState(api);
   const activeSession = ensureActiveSession(state, readLocale(api));
@@ -194,7 +207,7 @@ export function handleCharacterSelect(api, payload) {
   return { success: true, message: commandMessage(readLocale(api), "selectionSaved") };
 }
 
-export async function handleReady(api) {
+export async function handleReady(api: RoomApi) {
   const contentRegistry = ensureFateKnotsContent(api);
   const state = loadFateKnotsState(api);
   const activeSession = ensureActiveSession(state, readLocale(api));
@@ -216,8 +229,10 @@ export async function handleReady(api) {
   userParticipant.selection.locked = true;
   userParticipant.selection.updatedAt = Date.now();
   persistProfileFromUser(api, state);
-  const everyoneLocked = state.participants.every(function (participant) {
-    return participant.selection.locked === true && isSelectionComplete(participant.selection) === true;
+  const everyoneLocked = state.participants.every(function (participant: any) {
+    return (
+      participant.selection.locked === true && isSelectionComplete(participant.selection) === true
+    );
   });
   if (everyoneLocked) {
     startScenarioStep(state, contentRegistry, contentRegistry.scenario.entryStepId, Date.now());
@@ -228,7 +243,7 @@ export async function handleReady(api) {
   return { success: true, message: commandMessage(readLocale(api), "ready") };
 }
 
-export async function handleChoice(api, payload) {
+export async function handleChoice(api: RoomApi, payload: any) {
   const contentRegistry = ensureFateKnotsContent(api);
   const state = loadFateKnotsState(api);
   const locale = readLocale(api);
@@ -259,13 +274,14 @@ export async function handleChoice(api, payload) {
     pushFateKnotsState(api, state, contentRegistry);
     return { success: false, message: commandMessage(locale, "providerMismatch") };
   }
-  if (!state.decision.choiceIds.includes(choicePayload.choiceId || "")) {
+  const choiceId = choicePayload.choiceId || "";
+  if (choiceId === "" || !state.decision.choiceIds.includes(choiceId)) {
     pushFateKnotsState(api, state, contentRegistry);
     return { success: false, message: commandMessage(locale, "invalidChoice") };
   }
 
-  participant.decisionChoiceId = choicePayload.choiceId;
-  state.decision.votes[seatId] = choicePayload.choiceId;
+  participant.decisionChoiceId = choiceId;
+  state.decision.votes[seatId] = choiceId;
   state.decision.updatedAt = Date.now();
   state.decision.conflict = false;
   clearDecisionPromptKey(state, seatId);
@@ -275,7 +291,7 @@ export async function handleChoice(api, payload) {
   return { success: true, message: commandMessage(locale, "choiceAccepted") };
 }
 
-export async function handleCombatAction(api, payload) {
+export async function handleCombatAction(api: RoomApi, payload: any) {
   const contentRegistry = ensureFateKnotsContent(api);
   const state = loadFateKnotsState(api);
   const locale = readLocale(api);
@@ -296,26 +312,32 @@ export async function handleCombatAction(api, payload) {
     return stale;
   }
 
-  const currentTurnId = buildFateKnotsCombatTurnId(state.combat);
+  const combat = asCombatState(state.combat);
+  const currentTurnId = buildFateKnotsCombatTurnId(combat);
   if (combatPayload.turnId && currentTurnId && combatPayload.turnId !== currentTurnId) {
     pushFateKnotsState(api, state, contentRegistry);
     return { success: false, message: commandMessage(locale, "stalePayload") };
   }
   const seatId = resolveFateKnotsSeatId(payload);
-  const currentTurn = getCurrentFateKnotsCombatTurn(state.combat);
+  const currentTurn = getCurrentFateKnotsCombatTurn(combat);
   if (!seatId || !currentTurn || currentTurn.seatId !== seatId) {
     pushFateKnotsState(api, state, contentRegistry);
     return { success: false, message: commandMessage(locale, "providerMismatch") };
   }
-  const result = applyFateKnotsCombatAction(state.combat, seatId, combatPayload.actionId, contentRegistry.cardsById);
+  const actionId = combatPayload.actionId;
+  if (!actionId) {
+    pushFateKnotsState(api, state, contentRegistry);
+    return { success: false, message: commandMessage(locale, "invalidAction") };
+  }
+  const result = applyFateKnotsCombatAction(combat, seatId, actionId, contentRegistry.cardsById);
   if (!result.success) {
     pushFateKnotsState(api, state, contentRegistry);
     return { success: false, message: commandMessage(locale, "invalidAction") };
   }
 
   clearCombatPromptKey(state, seatId);
-  settleAutomaticFateKnotsCombatTurns(state.combat, contentRegistry.enemyActionsById);
-  if (state.combat.outcome === "victory") {
+  settleAutomaticFateKnotsCombatTurns(combat, contentRegistry.enemyActionsById);
+  if (combat.outcome === "victory") {
     finalizeRun(
       api,
       state,
@@ -323,7 +345,7 @@ export async function handleCombatAction(api, payload) {
       "Village Secured",
       "The first Fate Knots combat hook resolves in the party's favor."
     );
-  } else if (state.combat.outcome === "defeat") {
+  } else if (combat.outcome === "defeat") {
     finalizeRun(
       api,
       state,
@@ -341,7 +363,7 @@ export async function handleCombatAction(api, payload) {
   return { success: true, message: commandMessage(locale, "combatActionAccepted") };
 }
 
-export async function handleSync(api, payload) {
+export async function handleSync(api: RoomApi, payload: any) {
   const contentRegistry = ensureFateKnotsContent(api);
   const state = loadFateKnotsState(api);
   const locale = readLocale(api);
@@ -367,7 +389,7 @@ export async function handleSync(api, payload) {
   return { success: true, message: commandMessage(locale, "syncQueued") };
 }
 
-export function handleDmPacket(api, payload) {
+export function handleDmPacket(api: RoomApi, payload: any) {
   const contentRegistry = ensureFateKnotsContent(api);
   const state = loadFateKnotsState(api);
   const locale = readLocale(api);
@@ -399,16 +421,22 @@ export function handleDmPacket(api, payload) {
     seatId,
     phase: packet.phase || state.phase,
     text,
-    stepId: packet.stepId || state.currentStepId || null,
-    encounterId: packet.encounterId || state.combat?.encounterId || null,
-    turnId: packet.turnId || buildFateKnotsCombatTurnId(state.combat) || null,
+    stepId: normalizeText(packet.stepId) || state.currentStepId || null,
+    encounterId:
+      normalizeText(packet.encounterId) ||
+      normalizeText(asCombatState(state.combat).encounterId) ||
+      null,
+    turnId:
+      normalizeText(packet.turnId) ||
+      buildFateKnotsCombatTurnId(asCombatState(state.combat)) ||
+      null,
     updatedAt: Date.now(),
   };
   pushFateKnotsState(api, state, contentRegistry);
   return { success: true, message: commandMessage(locale, "dmPacketAccepted") };
 }
 
-export function handleNpcBanter(api, payload) {
+export function handleNpcBanter(api: RoomApi, payload: any) {
   const contentRegistry = ensureFateKnotsContent(api);
   const state = loadFateKnotsState(api);
   const locale = readLocale(api);
@@ -441,22 +469,28 @@ export function handleNpcBanter(api, payload) {
     seatId: speakerSeatId,
     phase: packet.phase || state.phase,
     text,
-    stepId: packet.stepId || state.currentStepId || null,
-    encounterId: packet.encounterId || state.combat?.encounterId || null,
-    turnId: packet.turnId || buildFateKnotsCombatTurnId(state.combat) || null,
+    stepId: normalizeText(packet.stepId) || state.currentStepId || null,
+    encounterId:
+      normalizeText(packet.encounterId) ||
+      normalizeText(asCombatState(state.combat).encounterId) ||
+      null,
+    turnId:
+      normalizeText(packet.turnId) ||
+      buildFateKnotsCombatTurnId(asCombatState(state.combat)) ||
+      null,
     updatedAt: Date.now(),
   };
   pushFateKnotsState(api, state, contentRegistry);
   return { success: true, message: commandMessage(locale, "npcBanterAccepted") };
 }
 
-export function handleEnd(api) {
+export function handleEnd(api: RoomApi) {
   const contentRegistry = ensureFateKnotsContent(api);
   pushFateKnotsState(api, resetFateKnotsState(api, "idle"), contentRegistry);
   return { success: true, message: commandMessage(readLocale(api), "ended") };
 }
 
-export async function dispatchPendingWork(api) {
+export async function dispatchPendingWork(api: RoomApi) {
   const contentRegistry = ensureFateKnotsContent(api);
   const state = loadFateKnotsState(api);
   await advancePendingWork(api, state, contentRegistry, Date.now());

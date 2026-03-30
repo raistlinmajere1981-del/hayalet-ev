@@ -10,7 +10,7 @@ import { createLaboratoryPresetRuntime } from "../shared/host/preset-runtime.js"
 import { createSubtitleDocumentRuntime } from "../main-functions/subtitle-analysis/host/document-runtime.js";
 import { createAudioAnalysisUtilityRuntime } from "../main-functions/audio-analysis/host/analysis-utils.js";
 
-export function createLaboratoryHostFoundation(deps) {
+export function createLaboratoryHostFoundation(deps: any) {
   const bootstrap = createLaboratoryRuntimeBootstrap({
     defaultFeatureId: deps.defaultFeatureId,
     normalizeLocale: deps.normalizeLocale,
@@ -25,8 +25,18 @@ export function createLaboratoryHostFoundation(deps) {
   });
 
   const io = createLaboratoryHostIoRuntime({
-    getProjectDirectoryFallbackMarkerList,
-    getProjectDirectoryList,
+    getProjectDirectoryFallbackMarkerList(runtime: unknown, project: unknown) {
+      return getProjectDirectoryFallbackMarkerList(
+        runtime as Parameters<typeof getProjectDirectoryFallbackMarkerList>[0],
+        project as Parameters<typeof getProjectDirectoryFallbackMarkerList>[1]
+      );
+    },
+    getProjectDirectoryList(runtime: unknown, project: unknown) {
+      return getProjectDirectoryList(
+        runtime as Parameters<typeof getProjectDirectoryList>[0],
+        project as Parameters<typeof getProjectDirectoryList>[1]
+      );
+    },
     roomId: deps.roomId,
   });
 

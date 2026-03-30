@@ -16,7 +16,7 @@ export const fateKnotsIntroScenarioManifest = {
       "itemAssetIds": [
         "broken_lantern"
       ],
-      "creatureAssetIds": [],
+      "creatureAssetIds": [] as string[],
       "body": "A traveler waits beneath the cracked archway, lantern hooded and voice low. He claims the old well has started answering back.",
       "speaker": "traveling_stranger",
       "choices": [
@@ -45,7 +45,7 @@ export const fateKnotsIntroScenarioManifest = {
       "itemAssetIds": [
         "sealed_scroll"
       ],
-      "creatureAssetIds": [],
+      "creatureAssetIds": [] as string[],
       "body": "The innkeeper slides a sealed scroll across the table. The knot mark on the wax matches the carving said to be hidden beneath the village well.",
       "speaker": "innkeeper",
       "choices": [

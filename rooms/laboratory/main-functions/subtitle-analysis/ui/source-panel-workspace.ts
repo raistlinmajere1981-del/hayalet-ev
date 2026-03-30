@@ -1,6 +1,6 @@
 import { createSubtitleAnalysisSourcePanelPrimitives } from "./source-panel-primitives.js";
 
-export function createSubtitleAnalysisSourceWorkspacePanels(deps) {
+export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
   const escapeHtml = deps.escapeHtml;
   const subtitleText = deps.subtitleText;
   const formatStatusLabel = deps.formatStatusLabel;
@@ -29,7 +29,11 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps) {
             <h2 class="lab-panel__title">${escapeHtml(
               activeEntry
                 ? activeEntry.fileName || activeEntry.id || "--"
-                : subtitleText(["source", "summary", "emptyTitle"], "Altyazi secilmedi", "No subtitle selected")
+                : subtitleText(
+                    ["source", "summary", "emptyTitle"],
+                    "Altyazi secilmedi",
+                    "No subtitle selected"
+                  )
             )}</h2>
             <p class="lab-panel__subtitle">${escapeHtml(
               activeEntry
@@ -47,14 +51,50 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps) {
           </div>
         </div>
         ${renderSummaryRows([
-          [subtitleText(["source", "summary", "labels", "workspaceMode"], "Calisma modu", "Workspace mode"), primitives.getSubtitleSourceModeLabel(primitives.getCurrentSubtitleSourceMode())],
-          [subtitleText(["source", "summary", "labels", "selectedEntries"], "Secili giris", "Selected entries"), String(selectedCount || (activeEntry ? 1 : 0))],
-          [subtitleText(["source", "summary", "labels", "discoveryCandidates"], "Kesif adayi", "Discovery candidates"), String(candidateCount)],
-          [subtitleText(["source", "summary", "labels", "format"], "Format", "Format"), activeEntry ? String(activeEntry.format || "--").toUpperCase() : "--"],
-          [subtitleText(["source", "summary", "labels", "language"], "Dil", "Language"), activeEntry ? activeEntry.language || "--" : "--"],
-          [subtitleText(["source", "summary", "labels", "published"], "Yayin", "Published"), activeEntry ? activeEntry.publishedAt || "--" : "--"],
-          [subtitleText(["source", "summary", "labels", "discovery"], "Kesif", "Discovery"), formatStatusLabel(discovery.status || "idle")],
-          [subtitleText(["source", "summary", "labels", "status"], "Durum", "Status"), formatStatusLabel(workspace.lastError ? "error" : "ready")],
+          [
+            subtitleText(
+              ["source", "summary", "labels", "workspaceMode"],
+              "Calisma modu",
+              "Workspace mode"
+            ),
+            primitives.getSubtitleSourceModeLabel(primitives.getCurrentSubtitleSourceMode()),
+          ],
+          [
+            subtitleText(
+              ["source", "summary", "labels", "selectedEntries"],
+              "Secili giris",
+              "Selected entries"
+            ),
+            String(selectedCount || (activeEntry ? 1 : 0)),
+          ],
+          [
+            subtitleText(
+              ["source", "summary", "labels", "discoveryCandidates"],
+              "Kesif adayi",
+              "Discovery candidates"
+            ),
+            String(candidateCount),
+          ],
+          [
+            subtitleText(["source", "summary", "labels", "format"], "Format", "Format"),
+            activeEntry ? String(activeEntry.format || "--").toUpperCase() : "--",
+          ],
+          [
+            subtitleText(["source", "summary", "labels", "language"], "Dil", "Language"),
+            activeEntry ? activeEntry.language || "--" : "--",
+          ],
+          [
+            subtitleText(["source", "summary", "labels", "published"], "Yayin", "Published"),
+            activeEntry ? activeEntry.publishedAt || "--" : "--",
+          ],
+          [
+            subtitleText(["source", "summary", "labels", "discovery"], "Kesif", "Discovery"),
+            formatStatusLabel(discovery.status || "idle"),
+          ],
+          [
+            subtitleText(["source", "summary", "labels", "status"], "Durum", "Status"),
+            formatStatusLabel(workspace.lastError ? "error" : "ready"),
+          ],
         ])}
         ${
           typeof workspace.lastError === "string" && workspace.lastError.trim() !== ""
@@ -82,7 +122,7 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps) {
           ${
             entries.length > 0
               ? entries
-                  .map(function (entry) {
+                  .map(function (entry: any) {
                     return `
                       <article class="lab-output-card" data-selected="${
                         activeEntry && activeEntry.id === entry.id ? "true" : "false"
@@ -90,7 +130,11 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps) {
                         <div>
                           <strong>${escapeHtml(entry.fileName || entry.id || "--")}</strong>
                           <span>${escapeHtml(
-                            [String(entry.format || "--").toUpperCase(), entry.language || "--", entry.sourceType || "--"]
+                            [
+                              String(entry.format || "--").toUpperCase(),
+                              entry.language || "--",
+                              entry.sourceType || "--",
+                            ]
                               .filter(Boolean)
                               .join(" · ")
                           )}</span>
@@ -112,8 +156,16 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps) {
                           >
                             ${escapeHtml(
                               selectedIds.includes(entry.id)
-                                ? subtitleText(["source", "entries", "actions", "removeFromBatch"], "Batchten cikar", "Remove from batch")
-                                : subtitleText(["source", "entries", "actions", "addToBatch"], "Batche ekle", "Add to batch")
+                                ? subtitleText(
+                                    ["source", "entries", "actions", "removeFromBatch"],
+                                    "Batchten cikar",
+                                    "Remove from batch"
+                                  )
+                                : subtitleText(
+                                    ["source", "entries", "actions", "addToBatch"],
+                                    "Batche ekle",
+                                    "Add to batch"
+                                  )
                             )}
                           </button>
                         </div>
@@ -149,10 +201,26 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps) {
           </div>
         </div>
         ${renderSummaryRows([
-          [subtitleText(["source", "discovery", "labels", "status"], "Durum", "Status"), formatStatusLabel(discovery.status || "idle")],
-          [subtitleText(["source", "discovery", "labels", "totalCandidates"], "Toplam aday", "Total candidates"), String(discovery.totalCandidateCount || items.length)],
-          [subtitleText(["source", "discovery", "labels", "matched"], "Eslesen", "Matched"), String(items.length)],
-          [subtitleText(["source", "discovery", "labels", "selected"], "Secili", "Selected"), String(selectedCandidateIds.length)],
+          [
+            subtitleText(["source", "discovery", "labels", "status"], "Durum", "Status"),
+            formatStatusLabel(discovery.status || "idle"),
+          ],
+          [
+            subtitleText(
+              ["source", "discovery", "labels", "totalCandidates"],
+              "Toplam aday",
+              "Total candidates"
+            ),
+            String(discovery.totalCandidateCount || items.length),
+          ],
+          [
+            subtitleText(["source", "discovery", "labels", "matched"], "Eslesen", "Matched"),
+            String(items.length),
+          ],
+          [
+            subtitleText(["source", "discovery", "labels", "selected"], "Secili", "Selected"),
+            String(selectedCandidateIds.length),
+          ],
         ])}
         ${
           typeof discovery.lastError === "string" && discovery.lastError.trim() !== ""
@@ -184,8 +252,10 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps) {
                   </thead>
                   <tbody>
                     ${items
-                      .map(function (entry) {
-                        const languageList = Array.isArray(entry.subtitleLanguages) ? entry.subtitleLanguages.slice(0, 4) : [];
+                      .map(function (entry: any) {
+                        const languageList = Array.isArray(entry.subtitleLanguages)
+                          ? entry.subtitleLanguages.slice(0, 4)
+                          : [];
                         return `
                           <tr data-selected="${selectedCandidateIds.includes(entry.id) ? "true" : "false"}">
                             <td>
@@ -197,8 +267,16 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps) {
                               >
                                 ${escapeHtml(
                                   selectedCandidateIds.includes(entry.id)
-                                    ? subtitleText(["source", "discovery", "actions", "remove"], "Cikar", "Remove")
-                                    : subtitleText(["source", "discovery", "actions", "select"], "Sec", "Select")
+                                    ? subtitleText(
+                                        ["source", "discovery", "actions", "remove"],
+                                        "Cikar",
+                                        "Remove"
+                                      )
+                                    : subtitleText(
+                                        ["source", "discovery", "actions", "select"],
+                                        "Sec",
+                                        "Select"
+                                      )
                                 )}
                               </button>
                             </td>

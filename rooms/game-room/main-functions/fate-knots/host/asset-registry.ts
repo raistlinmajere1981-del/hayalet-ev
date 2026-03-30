@@ -1,24 +1,57 @@
 import { fateKnotsRuntimeAssetsManifest } from "../data/runtime-content.module.js";
 
+interface FateKnotsAssetRecord {
+  id: string;
+  kind: string;
+  sourcePath: string | null;
+  sourceSize: number;
+  src: string | null;
+  uiSrc: string | null;
+  placeholder: boolean;
+}
+
+export interface FateKnotsAssetRegistry {
+  manifestPath: string;
+  generatedFrom: string | null;
+  version: number;
+  assets: FateKnotsAssetRecord[];
+  assetMap: Map<string, FateKnotsAssetRecord>;
+  byKind: Map<string, FateKnotsAssetRecord[]>;
+  duplicateIds: string[];
+  errors: string[];
+}
+
+interface FateKnotsAssetManifestRecord extends Record<string, unknown> {
+  id?: unknown;
+  kind?: unknown;
+  sourcePath?: unknown;
+  sourceSize?: unknown;
+  src?: unknown;
+  uiSrc?: unknown;
+  assets?: unknown;
+  generatedFrom?: unknown;
+  version?: unknown;
+}
+
 const featureDir = "main-functions/fate-knots";
 const dataDir = `${featureDir}/data`;
 const runtimeAssetManifestPath = `${dataDir}/runtime-assets.manifest.json`;
 
-function normalizeText(value) {
+function normalizeText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function isSafeRelativePath(value) {
+function isSafeRelativePath(value: unknown): boolean {
   const normalized = normalizeText(value).replace(/\\/g, "/");
   if (normalized === "" || normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) {
     return false;
   }
-  return normalized.split("/").every(function (segment) {
+  return normalized.split("/").every(function (segment: any) {
     return segment !== "" && segment !== "." && segment !== "..";
   });
 }
 
-function createFallbackAsset(id, kind) {
+function createFallbackAsset(id: string, kind?: string | null): FateKnotsAssetRecord {
   return {
     id: normalizeText(id) || "unknown-asset",
     kind: normalizeText(kind) || "unknown",
@@ -30,10 +63,10 @@ function createFallbackAsset(id, kind) {
   };
 }
 
-function normalizeAssetRecord(candidate) {
-  const source =
+function normalizeAssetRecord(candidate: unknown): FateKnotsAssetRecord | null {
+  const source: FateKnotsAssetManifestRecord =
     candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-      ? candidate
+      ? (candidate as FateKnotsAssetManifestRecord)
       : {};
   const id = normalizeText(source.id);
   const kind = normalizeText(source.kind) || "unknown";
@@ -47,7 +80,10 @@ function normalizeAssetRecord(candidate) {
     return null;
   }
 
-  if (src === null || (uiSrc !== null && isSafeRelativePath(uiSrc.replace(/^\.\.\//, "")) !== true)) {
+  if (
+    src === null ||
+    (uiSrc !== null && isSafeRelativePath(uiSrc.replace(/^\.\.\//, "")) !== true)
+  ) {
     return null;
   }
 
@@ -56,7 +92,9 @@ function normalizeAssetRecord(candidate) {
     kind,
     sourcePath: normalizeText(source.sourcePath) || null,
     sourceSize:
-      typeof source.sourceSize === "number" && Number.isFinite(source.sourceSize) && source.sourceSize >= 0
+      typeof source.sourceSize === "number" &&
+      Number.isFinite(source.sourceSize) &&
+      source.sourceSize >= 0
         ? Math.trunc(source.sourceSize)
         : 0,
     src,
@@ -73,14 +111,14 @@ export function getFateKnotsRuntimeAssetManifestPath() {
   return runtimeAssetManifestPath;
 }
 
-export function loadFateKnotsAssetRegistry() {
-  const fallback = {
+export function loadFateKnotsAssetRegistry(): FateKnotsAssetRegistry {
+  const fallback: FateKnotsAssetRegistry = {
     manifestPath: runtimeAssetManifestPath,
     generatedFrom: null,
     version: 1,
     assets: [],
-    assetMap: new Map(),
-    byKind: new Map(),
+    assetMap: new Map<string, FateKnotsAssetRecord>(),
+    byKind: new Map<string, FateKnotsAssetRecord[]>(),
     duplicateIds: [],
     errors: [],
   };
@@ -89,7 +127,7 @@ export function loadFateKnotsAssetRegistry() {
     fateKnotsRuntimeAssetsManifest &&
     typeof fateKnotsRuntimeAssetsManifest === "object" &&
     Array.isArray(fateKnotsRuntimeAssetsManifest) === false
-      ? fateKnotsRuntimeAssetsManifest
+      ? (fateKnotsRuntimeAssetsManifest as FateKnotsAssetManifestRecord)
       : null;
 
   if (parsed === null) {
@@ -97,15 +135,15 @@ export function loadFateKnotsAssetRegistry() {
     return fallback;
   }
 
-  const seenIds = new Set();
-  const assets = [];
-  const assetMap = new Map();
-  const byKind = new Map();
-  const duplicateIds = [];
-  const errors = [];
+  const seenIds = new Set<string>();
+  const assets: FateKnotsAssetRecord[] = [];
+  const assetMap = new Map<string, FateKnotsAssetRecord>();
+  const byKind = new Map<string, FateKnotsAssetRecord[]>();
+  const duplicateIds: string[] = [];
+  const errors: string[] = [];
   const sourceAssets = Array.isArray(parsed.assets) ? parsed.assets : [];
 
-  sourceAssets.forEach(function (entry, index) {
+  sourceAssets.forEach(function (entry: any, index: any) {
     const normalized = normalizeAssetRecord(entry);
     if (normalized === null) {
       errors.push(`invalid-asset-entry:${index}`);
@@ -136,7 +174,11 @@ export function loadFateKnotsAssetRegistry() {
   };
 }
 
-export function getFateKnotsAsset(assetRegistry, assetId, expectedKind) {
+export function getFateKnotsAsset(
+  assetRegistry: FateKnotsAssetRegistry | null | undefined,
+  assetId: string,
+  expectedKind?: string
+): FateKnotsAssetRecord {
   if (!assetRegistry || !assetRegistry.assetMap) {
     return createFallbackAsset(assetId, expectedKind);
   }
@@ -153,12 +195,15 @@ export function getFateKnotsAsset(assetRegistry, assetId, expectedKind) {
       ...asset,
       expectedKind,
       kindMismatch: true,
-    };
+    } as FateKnotsAssetRecord;
   }
   return asset;
 }
 
-export function listFateKnotsAssetsByKind(assetRegistry, kind) {
+export function listFateKnotsAssetsByKind(
+  assetRegistry: FateKnotsAssetRegistry | null | undefined,
+  kind: string
+): FateKnotsAssetRecord[] {
   if (!assetRegistry || !assetRegistry.byKind) {
     return [];
   }

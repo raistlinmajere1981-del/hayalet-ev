@@ -1,4 +1,4 @@
-export function createMediaAnalysisEditOutputPanels(deps) {
+export function createMediaAnalysisEditOutputPanels(deps: any) {
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
   const getProjectSource = deps.getProjectSource;
@@ -18,11 +18,11 @@ export function createMediaAnalysisEditOutputPanels(deps) {
     const activeOutput = getActiveEditOutput();
     const ffmpegInstalled = getToolEntry("ffmpeg").installed === true;
     const previewJob =
-      getRelevantJobs().project.find(function (entry) {
+      getRelevantJobs().project.find(function (entry: any) {
         return entry.action === "edit-preview";
       }) || null;
     const applyJob =
-      getRelevantJobs().project.find(function (entry) {
+      getRelevantJobs().project.find(function (entry: any) {
         return entry.action === "edit-apply";
       }) || null;
 
@@ -80,7 +80,7 @@ export function createMediaAnalysisEditOutputPanels(deps) {
         </div>
         <div class="lab-segmented">
           ${["source", "derived"]
-            .map(function (modeId) {
+            .map(function (modeId: any) {
               const disabled = modeId === "derived" && activeOutput === null;
               return `
                 <button
@@ -117,7 +117,7 @@ export function createMediaAnalysisEditOutputPanels(deps) {
           ${
             outputs.length > 0
               ? outputs
-                  .map(function (entry) {
+                  .map(function (entry: any) {
                     return `
                       <article class="lab-output-card" data-selected="${activeOutput && activeOutput.id === entry.id ? "true" : "false"}">
                         <div>
@@ -159,7 +159,15 @@ export function createMediaAnalysisEditOutputPanels(deps) {
             text(["mediaAnalysis", "edit", "selectedOutput"]),
             activeOutput ? activeOutput.label || activeOutput.fileName || activeOutput.id : "--",
           ],
-          [text(["mediaAnalysis", "edit", "handoffLabel"]), text(["mediaAnalysis", "edit", "handoffModes", edit.handoffMode === "derived" ? "derived" : "source"])],
+          [
+            text(["mediaAnalysis", "edit", "handoffLabel"]),
+            text([
+              "mediaAnalysis",
+              "edit",
+              "handoffModes",
+              edit.handoffMode === "derived" ? "derived" : "source",
+            ]),
+          ],
         ])}
       </section>
     `;

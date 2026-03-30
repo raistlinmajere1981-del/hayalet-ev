@@ -1,4 +1,4 @@
-export function createMediaYoutubeSourceIntakeRuntime(deps) {
+export function createMediaYoutubeSourceIntakeRuntime(deps: any) {
   const {
     asNonEmptyString,
     callRoomTools,
@@ -18,7 +18,7 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
     toRecord,
   } = deps;
 
-  function getResolvedYoutubeSettings(project, sourcePresets) {
+  function getResolvedYoutubeSettings(project: any, sourcePresets: any) {
     const presetId = asNonEmptyString(project.source.drafts.youtubePreset) || "medium";
     const presetDefaults = getPresetDefaultCustomValues(sourcePresets, presetId);
     if (presetId === "custom") {
@@ -36,10 +36,10 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
     };
   }
 
-  function findYtDlpFinalPath(stdoutValue) {
+  function findYtDlpFinalPath(stdoutValue: any) {
     const lines = String(stdoutValue || "")
       .split(/\r?\n/)
-      .map(function (line) {
+      .map(function (line: any) {
         return line.trim();
       })
       .filter(Boolean);
@@ -54,7 +54,7 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
     return null;
   }
 
-  function buildYtDlpArgs(project, toolState, sourceDir) {
+  function buildYtDlpArgs(project: any, toolState: any, sourceDir: any) {
     const settings = getResolvedYoutubeSettings(project, toolState.sourcePresets || {});
     const values = settings.values;
     const args = [
@@ -67,7 +67,10 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
     ];
 
     let formatValue = asNonEmptyString(values.format) || "best";
-    if (formatValue.indexOf("+") >= 0 && (!toolState.ffmpeg || toolState.ffmpeg.installed !== true)) {
+    if (
+      formatValue.indexOf("+") >= 0 &&
+      (!toolState.ffmpeg || toolState.ffmpeg.installed !== true)
+    ) {
       formatValue = "best";
     }
 
@@ -135,7 +138,7 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
     return args;
   }
 
-  async function handleYoutubeDownload(api, runtime, requestId) {
+  async function handleYoutubeDownload(api: any, runtime: any, requestId: any) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
@@ -207,7 +210,7 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
         mimeType: normalizeMimeType(storedFileName, project.source.kind),
       });
 
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         if (nextProject.id !== project.id) {
           return nextProject;
         }
@@ -222,7 +225,11 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
         nextProject.source.metadata = preparedSource.metadata;
         nextProject.source.metadataError = preparedSource.metadataError;
         resetEditForCurrentSource(runtime, nextProject);
-        resetProfileForCurrentSource(runtime, nextProject, "Source media changed; rerun the profile preflight.");
+        resetProfileForCurrentSource(
+          runtime,
+          nextProject,
+          "Source media changed; rerun the profile preflight."
+        );
         return nextProject;
       });
 
@@ -241,7 +248,7 @@ export function createMediaYoutubeSourceIntakeRuntime(deps) {
         storedFileName: preparedSource.storedFileName,
       };
     } catch (error) {
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         if (nextProject.id !== project.id) {
           return nextProject;
         }

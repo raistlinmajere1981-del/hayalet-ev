@@ -2,22 +2,22 @@ import { createLaboratoryProjectManifestRuntime } from "./project-manifests.js";
 import { createLaboratoryRoomSnapshotRuntime } from "./room-snapshot.js";
 import { createLaboratoryRuntimeEvents } from "./runtime-events.js";
 
-export function createLaboratorySnapshotCompositionRuntime(deps) {
+export function createLaboratorySnapshotCompositionRuntime(deps: any) {
   const laboratoryProjectManifestRuntime = createLaboratoryProjectManifestRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: deps.asNumber,
     clone: deps.clone,
     normalizeEditOutput: deps.normalizeEditOutput,
-    normalizeProcessState(rawValue) {
+    normalizeProcessState(rawValue: any) {
       return deps.normalizeProcessState(rawValue);
     },
-    normalizeProfileArtifact(rawValue) {
+    normalizeProfileArtifact(rawValue: any) {
       return deps.normalizeProfileArtifact(rawValue);
     },
-    normalizeProfileSignal(rawValue) {
+    normalizeProfileSignal(rawValue: any) {
       return deps.normalizeProfileSignal(rawValue);
     },
-    normalizeReportState(rawValue) {
+    normalizeReportState(rawValue: any) {
       return deps.normalizeReportState(rawValue);
     },
     normalizeSourceMetadata: deps.normalizeSourceMetadata,
@@ -42,10 +42,10 @@ export function createLaboratorySnapshotCompositionRuntime(deps) {
     mediaStages: deps.mediaStages,
     audioFeatureId: deps.audioFeatureId,
     subtitleFeatureId: deps.subtitleFeatureId,
-    getFeatureProcessRecord(...args) {
+    getFeatureProcessRecord(...args: any[]) {
       return deps.getFeatureProcessRecord(...args);
     },
-    getFeatureReportRecord(...args) {
+    getFeatureReportRecord(...args: any[]) {
       return deps.getFeatureReportRecord(...args);
     },
     getRuntimeToolIds: deps.getRuntimeToolIds,
@@ -54,11 +54,11 @@ export function createLaboratorySnapshotCompositionRuntime(deps) {
     mediaFeatureId: deps.mediaFeatureId,
     normalizeAudioAnalysisModuleResult: deps.normalizeAudioAnalysisModuleResult,
     normalizeAudioAnalysisState: deps.normalizeAudioAnalysisState,
-    normalizeSubtitleAnalysisState(rawValue, runtime) {
+    normalizeSubtitleAnalysisState(rawValue: any, runtime: any) {
       return deps.normalizeSubtitleAnalysisState(rawValue, runtime);
     },
     roomId: deps.roomId,
-    syncProjectFeatureProjections(runtime, project) {
+    syncProjectFeatureProjections(runtime: any, project: any) {
       return deps.syncProjectFeatureProjections(runtime, project);
     },
     toFileUrl: deps.toFileUrl,

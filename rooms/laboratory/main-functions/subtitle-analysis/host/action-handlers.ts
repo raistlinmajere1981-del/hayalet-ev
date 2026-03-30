@@ -1,4 +1,4 @@
-export function createSubtitleActionRuntime(deps) {
+export function createSubtitleActionRuntime(deps: any) {
   const {
     applySubtitleEdit,
     applySubtitleEditPatch,
@@ -24,12 +24,16 @@ export function createSubtitleActionRuntime(deps) {
     toRecord,
   } = deps;
 
-  async function setSourceMode(runtime, actionPayload) {
-    return patchActiveProject(runtime, function (nextProject) {
+  async function setSourceMode(
+    runtime: Record<string, unknown>,
+    actionPayload: Record<string, unknown>
+  ) {
+    return patchActiveProject(runtime, function (nextProject: any) {
       const nextMode =
-        asNonEmptyString(actionPayload.mode) ||
+        asNonEmptyString(actionPayload["mode"]) ||
         asNonEmptyString(
-          toRecord(normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime).workspace).mode
+          toRecord(normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime).workspace)
+            .mode
         ) ||
         "local-file";
       const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
@@ -44,42 +48,72 @@ export function createSubtitleActionRuntime(deps) {
     });
   }
 
-  async function updateDrafts(runtime, fields) {
+  async function updateDrafts(runtime: Record<string, unknown>, fields: Record<string, unknown>) {
     return patchActiveSubtitleWorkspaceDrafts(runtime, fields);
   }
 
-  async function pickLocal(api, runtime, requestId, actionPayload) {
-    await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload.fields);
+  async function pickLocal(
+    api: unknown,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload["fields"]);
     return handleSubtitleLocalPick(api, runtime, requestId);
   }
 
-  async function pickFolder(api, runtime, requestId, actionPayload) {
-    await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload.fields);
+  async function pickFolder(
+    api: unknown,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload["fields"]);
     return handleSubtitleFolderPick(api, runtime, requestId);
   }
 
-  async function downloadUrl(api, runtime, requestId, actionPayload) {
-    await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload.fields);
+  async function downloadUrl(
+    api: unknown,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload["fields"]);
     return handleSubtitleUrlDownload(api, runtime, requestId);
   }
 
-  async function discoverYoutube(api, runtime, requestId, actionPayload) {
-    await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload.fields);
+  async function discoverYoutube(
+    api: unknown,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload["fields"]);
     return handleSubtitleYoutubeDiscovery(api, runtime, requestId);
   }
 
-  async function downloadYoutube(api, runtime, requestId, actionPayload) {
-    await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload.fields);
+  async function downloadYoutube(
+    api: unknown,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload["fields"]);
     return handleSubtitleYoutubeDownload(api, runtime, requestId);
   }
 
-  async function toggleDiscovery(runtime, actionPayload) {
-    return patchActiveProject(runtime, function (nextProject) {
-      const candidateId = asNonEmptyString(actionPayload.candidateId);
+  async function toggleDiscovery(
+    runtime: Record<string, unknown>,
+    actionPayload: Record<string, unknown>
+  ) {
+    return patchActiveProject(runtime, function (nextProject: any) {
+      const candidateId = asNonEmptyString(actionPayload["candidateId"]);
       const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
-      const selectedIds = normalizeStringArray(toRecord(subtitleState.discovery).selectedCandidateIds);
+      const selectedIds = normalizeStringArray(
+        toRecord(subtitleState.discovery).selectedCandidateIds
+      );
       const nextSelectedIds = selectedIds.includes(candidateId)
-        ? selectedIds.filter(function (entry) {
+        ? selectedIds.filter(function (entry: string) {
             return entry !== candidateId;
           })
         : selectedIds.concat(candidateId);
@@ -91,12 +125,14 @@ export function createSubtitleActionRuntime(deps) {
     });
   }
 
-  async function selectAllDiscovery(runtime) {
-    return patchActiveProject(runtime, function (nextProject) {
+  async function selectAllDiscovery(runtime: Record<string, unknown>) {
+    return patchActiveProject(runtime, function (nextProject: any) {
       const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
       subtitleState.discovery.selectedCandidateIds = (
-        Array.isArray(toRecord(subtitleState.discovery).items) ? toRecord(subtitleState.discovery).items : []
-      ).map(function (entry, index) {
+        Array.isArray(toRecord(subtitleState.discovery).items)
+          ? toRecord(subtitleState.discovery).items
+          : []
+      ).map(function (entry: any, index: number) {
         return normalizeSubtitleDiscoveryItem(entry, index).id;
       });
       subtitleState.workspace.lastError = null;
@@ -106,8 +142,8 @@ export function createSubtitleActionRuntime(deps) {
     });
   }
 
-  async function clearDiscoverySelection(runtime) {
-    return patchActiveProject(runtime, function (nextProject) {
+  async function clearDiscoverySelection(runtime: Record<string, unknown>) {
+    return patchActiveProject(runtime, function (nextProject: any) {
       const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
       subtitleState.discovery.selectedCandidateIds = [];
       subtitleState.workspace.lastError = null;
@@ -117,13 +153,16 @@ export function createSubtitleActionRuntime(deps) {
     });
   }
 
-  async function selectEntry(runtime, actionPayload) {
-    return patchActiveProject(runtime, function (nextProject) {
-      const entryId = asNonEmptyString(actionPayload.entryId);
+  async function selectEntry(
+    runtime: Record<string, unknown>,
+    actionPayload: Record<string, unknown>
+  ) {
+    return patchActiveProject(runtime, function (nextProject: any) {
+      const entryId = asNonEmptyString(actionPayload["entryId"]);
       const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
       const availableEntries = getSubtitleEntries(nextProject);
       const selectedEntry =
-        availableEntries.find(function (entry) {
+        availableEntries.find(function (entry: any) {
           return entry.id === entryId;
         }) || null;
       subtitleState.activeEntryId = selectedEntry ? selectedEntry.id : subtitleState.activeEntryId;
@@ -139,15 +178,18 @@ export function createSubtitleActionRuntime(deps) {
     });
   }
 
-  async function toggleSelection(runtime, actionPayload) {
-    return patchActiveProject(runtime, function (nextProject) {
-      const entryId = asNonEmptyString(actionPayload.entryId);
+  async function toggleSelection(
+    runtime: Record<string, unknown>,
+    actionPayload: Record<string, unknown>
+  ) {
+    return patchActiveProject(runtime, function (nextProject: any) {
+      const entryId = asNonEmptyString(actionPayload["entryId"]);
       const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
       const selectedIds = normalizeStringArray(
         toRecord(toRecord(subtitleState.workspace).selection).selectedEntryIds
       );
       const nextSelectedIds = selectedIds.includes(entryId)
-        ? selectedIds.filter(function (candidateId) {
+        ? selectedIds.filter(function (candidateId: string) {
             return candidateId !== entryId;
           })
         : selectedIds.concat(entryId);
@@ -164,9 +206,13 @@ export function createSubtitleActionRuntime(deps) {
     });
   }
 
-  async function applyEditPreset(runtime, actionPayload) {
-    return patchActiveProject(runtime, function (nextProject) {
-      const presetId = asNonEmptyString(actionPayload.presetId) || getDefaultSubtitleEditPresetId(runtime);
+  async function applyEditPreset(
+    runtime: Record<string, unknown>,
+    actionPayload: Record<string, unknown>
+  ) {
+    return patchActiveProject(runtime, function (nextProject: any) {
+      const presetId =
+        asNonEmptyString(actionPayload["presetId"]) || getDefaultSubtitleEditPresetId(runtime);
       const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
       subtitleState.edit.presetId = presetId;
       subtitleState.edit.recipe = getDefaultSubtitleEditRecipe(runtime, presetId);
@@ -186,27 +232,38 @@ export function createSubtitleActionRuntime(deps) {
     });
   }
 
-  async function updateEditRecipe(runtime, actionPayload) {
-    return patchActiveProject(runtime, function (nextProject) {
-      applySubtitleEditPatch(runtime, nextProject, actionPayload.patch || actionPayload.fields);
+  async function updateEditRecipe(
+    runtime: Record<string, unknown>,
+    actionPayload: Record<string, unknown>
+  ) {
+    return patchActiveProject(runtime, function (nextProject: any) {
+      applySubtitleEditPatch(runtime, nextProject, actionPayload["patch"] || actionPayload["fields"]);
       return nextProject;
     });
   }
 
-  async function previewEdit(runtime, requestId, actionPayload) {
-    if (Object.keys(toRecord(actionPayload.patch)).length > 0) {
-      await patchActiveProject(runtime, function (nextProject) {
-        applySubtitleEditPatch(runtime, nextProject, actionPayload.patch);
+  async function previewEdit(
+    runtime: Record<string, unknown>,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    if (Object.keys(toRecord(actionPayload["patch"])).length > 0) {
+      await patchActiveProject(runtime, function (nextProject: any) {
+        applySubtitleEditPatch(runtime, nextProject, actionPayload["patch"]);
         return nextProject;
       });
     }
     return previewSubtitleEdit(runtime, requestId);
   }
 
-  async function applyEdit(runtime, requestId, actionPayload) {
-    if (Object.keys(toRecord(actionPayload.patch)).length > 0) {
-      await patchActiveProject(runtime, function (nextProject) {
-        applySubtitleEditPatch(runtime, nextProject, actionPayload.patch);
+  async function applyEdit(
+    runtime: Record<string, unknown>,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    if (Object.keys(toRecord(actionPayload["patch"])).length > 0) {
+      await patchActiveProject(runtime, function (nextProject: any) {
+        applySubtitleEditPatch(runtime, nextProject, actionPayload["patch"]);
         return nextProject;
       });
     }

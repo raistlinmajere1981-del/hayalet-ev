@@ -14,24 +14,17 @@ type AudioAnalysisParserRuntime = ReturnType<typeof createAudioAnalysisParserRun
 type AudioAnalysisProbeRuntime = ReturnType<typeof createAudioAnalysisProbeRuntime>;
 
 type AudioAnalysisUtilityRuntime = {
-  buildEmotionHeuristicFromProsody:
-    AudioAnalysisParserRuntime["buildEmotionHeuristicFromProsody"];
-  buildProsodySummaryFromCsv:
-    AudioAnalysisParserRuntime["buildProsodySummaryFromCsv"];
-  parseAspectralStatsText:
-    AudioAnalysisParserRuntime["parseAspectralStatsText"];
-  resolveOpenSmileProsodyRuntime:
-    AudioAnalysisProbeRuntime["resolveOpenSmileProsodyRuntime"];
-  runAudioStructureProbe:
-    AudioAnalysisProbeRuntime["runAudioStructureProbe"];
-  runOpenSmileProsodyExtraction:
-    AudioAnalysisProbeRuntime["runOpenSmileProsodyExtraction"];
-  runVideoStructureProbe:
-    AudioAnalysisProbeRuntime["runVideoStructureProbe"];
+  buildEmotionHeuristicFromProsody: AudioAnalysisParserRuntime["buildEmotionHeuristicFromProsody"];
+  buildProsodySummaryFromCsv: AudioAnalysisParserRuntime["buildProsodySummaryFromCsv"];
+  parseAspectralStatsText: AudioAnalysisParserRuntime["parseAspectralStatsText"];
+  resolveOpenSmileProsodyRuntime: AudioAnalysisProbeRuntime["resolveOpenSmileProsodyRuntime"];
+  runAudioStructureProbe: AudioAnalysisProbeRuntime["runAudioStructureProbe"];
+  runOpenSmileProsodyExtraction: AudioAnalysisProbeRuntime["runOpenSmileProsodyExtraction"];
+  runVideoStructureProbe: AudioAnalysisProbeRuntime["runVideoStructureProbe"];
 };
 
 export function createAudioAnalysisUtilityRuntime(
-  deps: AudioAnalysisUtilityRuntimeDeps,
+  deps: AudioAnalysisUtilityRuntimeDeps
 ): AudioAnalysisUtilityRuntime {
   const audioAnalysisParserRuntime = createAudioAnalysisParserRuntime();
   const audioAnalysisProbeRuntime = createAudioAnalysisProbeRuntime({
@@ -44,15 +37,12 @@ export function createAudioAnalysisUtilityRuntime(
   });
 
   return {
-    buildEmotionHeuristicFromProsody:
-      audioAnalysisParserRuntime.buildEmotionHeuristicFromProsody,
+    buildEmotionHeuristicFromProsody: audioAnalysisParserRuntime.buildEmotionHeuristicFromProsody,
     buildProsodySummaryFromCsv: audioAnalysisParserRuntime.buildProsodySummaryFromCsv,
     parseAspectralStatsText: audioAnalysisParserRuntime.parseAspectralStatsText,
-    resolveOpenSmileProsodyRuntime:
-      audioAnalysisProbeRuntime.resolveOpenSmileProsodyRuntime,
+    resolveOpenSmileProsodyRuntime: audioAnalysisProbeRuntime.resolveOpenSmileProsodyRuntime,
     runAudioStructureProbe: audioAnalysisProbeRuntime.runAudioStructureProbe,
-    runOpenSmileProsodyExtraction:
-      audioAnalysisProbeRuntime.runOpenSmileProsodyExtraction,
+    runOpenSmileProsodyExtraction: audioAnalysisProbeRuntime.runOpenSmileProsodyExtraction,
     runVideoStructureProbe: audioAnalysisProbeRuntime.runVideoStructureProbe,
   };
 }

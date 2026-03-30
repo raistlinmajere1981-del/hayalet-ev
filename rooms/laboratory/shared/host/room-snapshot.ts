@@ -1,4 +1,75 @@
-export function createLaboratoryRoomSnapshotRuntime(deps) {
+interface SnapshotRecord extends Record<string, unknown> {
+  id?: unknown;
+  slug?: unknown;
+  name?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  source?: unknown;
+  edit?: unknown;
+  profile?: unknown;
+  audioAnalysis?: unknown;
+  subtitleAnalysis?: unknown;
+  process?: unknown;
+  report?: unknown;
+  routeLabel?: unknown;
+  mode?: unknown;
+  kind?: unknown;
+  status?: unknown;
+  storedPath?: unknown;
+  handoffMode?: unknown;
+  outputs?: unknown;
+  path?: unknown;
+  preview?: unknown;
+  artifacts?: unknown;
+  preflight?: unknown;
+  targetAssetMode?: unknown;
+  results?: unknown;
+  entries?: unknown;
+  export?: unknown;
+  items?: unknown;
+  records?: unknown;
+  exports?: unknown;
+  displayName?: unknown;
+  installDirName?: unknown;
+  availability?: unknown;
+  plannedReason?: unknown;
+  systemCommand?: unknown;
+  executableName?: unknown;
+  setupHint?: unknown;
+  activeProjectId?: unknown;
+  hydrated?: unknown;
+  projects?: unknown;
+  jobs?: unknown;
+  sourcePresets?: unknown;
+  ytDlpForm?: unknown;
+  editPresets?: unknown;
+  editCapabilities?: unknown;
+  profilePresets?: unknown;
+  profileCapabilities?: unknown;
+  profileModels?: unknown;
+  subtitleSourcePresets?: unknown;
+  subtitleYoutubeForm?: unknown;
+  subtitleEditPresets?: unknown;
+  subtitleAnalysisCatalog?: unknown;
+  subtitleAnalysisCapabilities?: unknown;
+  subtitleAnalysisProviders?: unknown;
+  audioAnalysisCatalog?: unknown;
+  audioAnalysisCapabilities?: unknown;
+  audioAnalysisPresets?: unknown;
+  audioAnalysisProviders?: unknown;
+  profileModelState?: unknown;
+  toolState?: unknown;
+  requestId?: unknown;
+  action?: unknown;
+  projectId?: unknown;
+  toolId?: unknown;
+  featureStage?: unknown;
+  stage?: unknown;
+  percent?: unknown;
+  message?: unknown;
+}
+
+export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown>) {
   const {
     asNonEmptyString,
     clone,
@@ -20,67 +91,107 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
     syncProjectFeatureProjections,
     toFileUrl,
     toRecord,
-  } = deps;
+  } = deps as {
+    asNonEmptyString: (value: unknown) => string | null;
+    clone: (value: unknown) => unknown;
+    defaultFeatureId: string;
+    featureIds: string[];
+    mediaStages: string[];
+    audioFeatureId: string;
+    subtitleFeatureId: string;
+    getFeatureProcessRecord: (project: SnapshotRecord, featureId: string) => SnapshotRecord;
+    getFeatureReportRecord: (project: SnapshotRecord, featureId: string) => SnapshotRecord;
+    getRuntimeToolIds: (runtime: SnapshotRecord) => string[];
+    getStageSupport: (toolManifest: SnapshotRecord, stageId: string) => string;
+    getToolManifest: (runtime: SnapshotRecord, toolId: string) => SnapshotRecord;
+    mediaFeatureId: string;
+    normalizeAudioAnalysisModuleResult: (
+      rawValue: unknown,
+      moduleId: string,
+      extra: Record<string, unknown>
+    ) => SnapshotRecord;
+    normalizeAudioAnalysisState: (rawValue: unknown, runtime: SnapshotRecord) => SnapshotRecord;
+    normalizeSubtitleAnalysisState: (
+      rawValue: unknown,
+      runtime: SnapshotRecord
+    ) => SnapshotRecord;
+    roomId: string;
+    syncProjectFeatureProjections: (runtime: SnapshotRecord, project: SnapshotRecord) => void;
+    toFileUrl: (path: unknown) => string;
+    toRecord: (value: unknown) => SnapshotRecord;
+  };
 
-  function getSourceRouteLabel(project) {
-    if (project.source.routeLabel) {
-      return project.source.routeLabel;
+  function getSourceRouteLabel(project: SnapshotRecord) {
+    const projectSource = toRecord(project.source);
+    if (projectSource.routeLabel) {
+      return projectSource.routeLabel as string;
     }
-    if (project.source.mode === "youtube") {
+    if (projectSource.mode === "youtube") {
       return "YouTube";
     }
-    if (project.source.mode === "url") {
+    if (projectSource.mode === "url") {
       return "Direct URL";
     }
     return "Local copy";
   }
 
-  function serializeProjectSummary(project) {
+  function serializeProjectSummary(project: SnapshotRecord) {
     const mediaProcess = getFeatureProcessRecord(project, mediaFeatureId);
     const audioProcess = getFeatureProcessRecord(project, audioFeatureId);
     const mediaReport = getFeatureReportRecord(project, mediaFeatureId);
     const audioReport = getFeatureReportRecord(project, audioFeatureId);
     const subtitleProcess = getFeatureProcessRecord(project, subtitleFeatureId);
     const subtitleReport = getFeatureReportRecord(project, subtitleFeatureId);
+    const projectSource = toRecord(project.source);
+    const projectEdit = toRecord(project.edit);
+    const projectProfile = toRecord(project.profile);
+    const profilePreflight = toRecord(projectProfile.preflight);
+    const audioAnalysis = toRecord(project.audioAnalysis);
+    const subtitleAnalysis = toRecord(project.subtitleAnalysis);
 
     return {
       id: project.id,
       slug: project.slug,
       name: project.name,
       updatedAt: project.updatedAt,
-      sourceKind: project.source.kind,
-      sourceMode: project.source.mode,
-      status: project.source.status,
-      hasSource: typeof project.source.storedPath === "string" && project.source.storedPath.trim() !== "",
-      handoffMode: asNonEmptyString(toRecord(project.edit).handoffMode) || "source",
+      sourceKind: projectSource.kind,
+      sourceMode: projectSource.mode,
+      status: projectSource.status,
+      hasSource: typeof projectSource.storedPath === "string" && projectSource.storedPath.trim() !== "",
+      handoffMode: asNonEmptyString(projectEdit.handoffMode) || "source",
       hasDerivedOutput:
-        Array.isArray(toRecord(project.edit).outputs) &&
-        toRecord(project.edit).outputs.some(function (entry) {
+        Array.isArray(projectEdit.outputs) &&
+        (projectEdit.outputs as unknown[]).some(function (entry: unknown) {
           return asNonEmptyString(toRecord(entry).path) !== null;
         }),
-      profileMode: asNonEmptyString(toRecord(project.profile).mode) || "beginner",
-      profilePreflightStatus: asNonEmptyString(toRecord(toRecord(project.profile).preflight).status) || "idle",
-      profileTargetMode: asNonEmptyString(toRecord(project.profile).targetAssetMode) || "source",
+      profileMode: asNonEmptyString(projectProfile.mode) || "beginner",
+      profilePreflightStatus: asNonEmptyString(profilePreflight.status) || "idle",
+      profileTargetMode: asNonEmptyString(projectProfile.targetAssetMode) || "source",
       processStatus: mediaProcess.status,
       reportStatus: mediaReport.status,
       audioProcessStatus: audioProcess.status,
       audioReportStatus: audioReport.status,
-      audioModuleCount: Object.keys(toRecord(toRecord(project.audioAnalysis).results)).length,
+      audioModuleCount: Object.keys(toRecord(audioAnalysis.results)).length,
       subtitleProcessStatus: subtitleProcess.status,
       subtitleReportStatus: subtitleReport.status,
-      subtitleEntryCount: Array.isArray(toRecord(project.subtitleAnalysis).entries)
-        ? toRecord(project.subtitleAnalysis).entries.length
+      subtitleEntryCount: Array.isArray(subtitleAnalysis.entries)
+        ? (subtitleAnalysis.entries as unknown[]).length
         : 0,
     };
   }
 
-  function serializeProject(project, runtime) {
+  function serializeProject(project: SnapshotRecord, runtime: SnapshotRecord) {
     if (project === null) {
       return null;
     }
 
+    const projectSource = toRecord(project.source);
+    const projectEdit = toRecord(project.edit);
+    const projectEditPreview = toRecord(projectEdit.preview);
+    const projectProfile = toRecord(project.profile);
     const audioAnalysis = normalizeAudioAnalysisState(project.audioAnalysis, runtime);
     const subtitleAnalysis = normalizeSubtitleAnalysisState(project.subtitleAnalysis, runtime);
+    const subtitleEdit = toRecord(subtitleAnalysis.edit);
 
     return {
       id: project.id,
@@ -89,175 +200,198 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
       source: {
-        ...clone(project.source),
-        previewUrl: toFileUrl(project.source.storedPath),
+        ...(clone(project.source) as Record<string, unknown>),
+        previewUrl: toFileUrl(projectSource.storedPath),
         routeLabel: getSourceRouteLabel(project),
       },
       edit: {
-        ...clone(project.edit),
+        ...(clone(project.edit) as Record<string, unknown>),
         preview: {
-          ...clone(toRecord(project.edit).preview),
-          previewUrl: toFileUrl(toRecord(toRecord(project.edit).preview).path),
-          artifacts: (Array.isArray(toRecord(toRecord(project.edit).preview).artifacts)
-            ? toRecord(toRecord(project.edit).preview).artifacts
+          ...(clone(projectEditPreview) as Record<string, unknown>),
+          previewUrl: toFileUrl(projectEditPreview.path),
+          artifacts: (Array.isArray(projectEditPreview.artifacts)
+            ? (projectEditPreview.artifacts as unknown[])
             : []
-          ).map(function (entry) {
+          ).map(function (entry: unknown) {
             return {
-              ...clone(entry),
+              ...(clone(entry) as Record<string, unknown>),
               previewUrl: toFileUrl(toRecord(entry).path),
             };
           }),
         },
-        outputs: (Array.isArray(toRecord(project.edit).outputs) ? project.edit.outputs : []).map(
-          function (entry) {
-            return {
-              ...clone(entry),
-              previewUrl: toFileUrl(entry.path),
-              artifacts: (Array.isArray(entry.artifacts) ? entry.artifacts : []).map(function (artifact) {
-                return {
-                  ...clone(artifact),
-                  previewUrl: toFileUrl(toRecord(artifact).path),
-                };
-              }),
-            };
-          }
-        ),
+        outputs: (Array.isArray(projectEdit.outputs)
+          ? (projectEdit.outputs as unknown[])
+          : []
+        ).map(function (entry: unknown) {
+          const entryRecord = toRecord(entry);
+          return {
+            ...(clone(entry) as Record<string, unknown>),
+            previewUrl: toFileUrl(entryRecord.path),
+            artifacts: (Array.isArray(entryRecord.artifacts)
+              ? (entryRecord.artifacts as unknown[])
+              : []
+            ).map(function (artifact: unknown) {
+              return {
+                ...(clone(artifact) as Record<string, unknown>),
+                previewUrl: toFileUrl(toRecord(artifact).path),
+              };
+            }),
+          };
+        }),
       },
       profile: {
-        ...clone(project.profile),
-        artifacts: (Array.isArray(toRecord(project.profile).artifacts) ? project.profile.artifacts : []).map(
-          function (entry) {
-            return {
-              ...clone(entry),
-              previewUrl: toFileUrl(entry.path),
-            };
-          }
-        ),
+        ...(clone(project.profile) as Record<string, unknown>),
+        artifacts: (Array.isArray(projectProfile.artifacts)
+          ? (projectProfile.artifacts as unknown[])
+          : []
+        ).map(function (entry: unknown) {
+          const entryRecord = toRecord(entry);
+          return {
+            ...(clone(entry) as Record<string, unknown>),
+            previewUrl: toFileUrl(entryRecord.path),
+          };
+        }),
       },
       audioAnalysis: {
-        ...clone(audioAnalysis),
+        ...(clone(audioAnalysis) as Record<string, unknown>),
         results: Object.keys(toRecord(audioAnalysis.results)).reduce(
-          function (accumulator, moduleId) {
+          function (accumulator: Record<string, unknown>, moduleId: string) {
             const result = normalizeAudioAnalysisModuleResult(
               toRecord(toRecord(audioAnalysis.results)[moduleId]),
               moduleId,
               {}
             );
             accumulator[moduleId] = {
-              ...clone(result),
-              artifacts: result.artifacts.map(function (entry) {
+              ...(clone(result) as Record<string, unknown>),
+              artifacts: (Array.isArray(result.artifacts) ? result.artifacts : []).map(function (
+                entry: unknown
+              ) {
                 return {
-                  ...clone(entry),
-                  previewUrl: toFileUrl(entry.path),
+                  ...(clone(entry) as Record<string, unknown>),
+                  previewUrl: toFileUrl(toRecord(entry).path),
                 };
               }),
             };
             return accumulator;
           },
-          {}
+          {} as Record<string, unknown>
         ),
         export: {
-          ...clone(toRecord(audioAnalysis.export)),
-          items: (
-            Array.isArray(toRecord(audioAnalysis.export).items)
-              ? toRecord(audioAnalysis.export).items
-              : []
-          ).map(function (entry) {
+          ...(clone(toRecord(audioAnalysis.export)) as Record<string, unknown>),
+          items: (Array.isArray(toRecord(audioAnalysis.export).items)
+            ? (toRecord(audioAnalysis.export).items as unknown[])
+            : []
+          ).map(function (entry: unknown) {
             return {
-              ...clone(entry),
-              fileUrl: toFileUrl(entry.path),
+              ...(clone(entry) as Record<string, unknown>),
+              fileUrl: toFileUrl(toRecord(entry).path),
             };
           }),
         },
       },
       subtitleAnalysis: {
-        ...clone(subtitleAnalysis),
-        entries: subtitleAnalysis.entries.map(function (entry) {
-          return {
-            ...clone(entry),
-            fileUrl: toFileUrl(entry.path),
-          };
-        }),
-        edit: {
-          ...clone(subtitleAnalysis.edit),
-          outputs: (Array.isArray(toRecord(subtitleAnalysis.edit).outputs)
-            ? toRecord(subtitleAnalysis.edit).outputs
-            : []
-          ).map(function (entry) {
+        ...(clone(subtitleAnalysis) as Record<string, unknown>),
+        entries: (Array.isArray(subtitleAnalysis.entries) ? subtitleAnalysis.entries : []).map(
+          function (entry: unknown) {
             return {
-              ...clone(entry),
-              fileUrl: toFileUrl(entry.path),
+              ...(clone(entry) as Record<string, unknown>),
+              fileUrl: toFileUrl(toRecord(entry).path),
+            };
+          }
+        ),
+        edit: {
+          ...(clone(subtitleAnalysis.edit) as Record<string, unknown>),
+          outputs: (Array.isArray(subtitleEdit.outputs)
+            ? (subtitleEdit.outputs as unknown[])
+            : []
+          ).map(function (entry: unknown) {
+            return {
+              ...(clone(entry) as Record<string, unknown>),
+              fileUrl: toFileUrl(toRecord(entry).path),
             };
           }),
         },
         export: {
-          ...clone(toRecord(subtitleAnalysis.export)),
-          items: (
-            Array.isArray(toRecord(subtitleAnalysis.export).items)
-              ? toRecord(subtitleAnalysis.export).items
-              : []
-          ).map(function (entry) {
+          ...(clone(toRecord(subtitleAnalysis.export)) as Record<string, unknown>),
+          items: (Array.isArray(toRecord(subtitleAnalysis.export).items)
+            ? (toRecord(subtitleAnalysis.export).items as unknown[])
+            : []
+          ).map(function (entry: unknown) {
             return {
-              ...clone(entry),
-              fileUrl: toFileUrl(entry.path),
+              ...(clone(entry) as Record<string, unknown>),
+              fileUrl: toFileUrl(toRecord(entry).path),
             };
           }),
         },
       },
       process: {
-        ...clone(project.process),
-        records: featureIds.reduce(function (accumulator, featureId) {
-          const record = getFeatureProcessRecord(project, featureId);
-          accumulator[featureId] = {
-            ...clone(record),
-            artifacts: record.artifacts.map(function (entry) {
-              return {
-                ...clone(entry),
-                previewUrl: toFileUrl(entry.path),
-              };
-            }),
-          };
-          return accumulator;
-        }, {}),
+        ...(clone(project.process) as Record<string, unknown>),
+        records: featureIds.reduce(
+          function (accumulator: Record<string, unknown>, featureId: string) {
+            const record = getFeatureProcessRecord(project, featureId);
+            accumulator[featureId] = {
+              ...(clone(record) as Record<string, unknown>),
+              artifacts: (Array.isArray(record.artifacts) ? record.artifacts : []).map(function (
+                entry: unknown
+              ) {
+                return {
+                  ...(clone(entry) as Record<string, unknown>),
+                  previewUrl: toFileUrl(toRecord(entry).path),
+                };
+              }),
+            };
+            return accumulator;
+          },
+          {} as Record<string, unknown>
+        ),
       },
       report: {
-        ...clone(project.report),
-        records: featureIds.reduce(function (accumulator, featureId) {
-          const record = getFeatureReportRecord(project, featureId);
-          accumulator[featureId] = {
-            ...clone(record),
-            exports: record.exports.map(function (entry) {
-              return {
-                ...clone(entry),
-                fileUrl: toFileUrl(entry.path),
-              };
-            }),
-          };
-          return accumulator;
-        }, {}),
+        ...(clone(project.report) as Record<string, unknown>),
+        records: featureIds.reduce(
+          function (accumulator: Record<string, unknown>, featureId: string) {
+            const record = getFeatureReportRecord(project, featureId);
+            accumulator[featureId] = {
+              ...(clone(record) as Record<string, unknown>),
+              exports: (Array.isArray(record.exports) ? record.exports : []).map(function (
+                entry: unknown
+              ) {
+                return {
+                  ...(clone(entry) as Record<string, unknown>),
+                  fileUrl: toFileUrl(toRecord(entry).path),
+                };
+              }),
+            };
+            return accumulator;
+          },
+          {} as Record<string, unknown>
+        ),
       },
     };
   }
 
-  function getRuntimeRecord(runtime) {
-    return runtime && typeof runtime === "object" && Array.isArray(runtime) === false ? runtime : {};
+  function getRuntimeRecord(runtime: unknown) {
+    return runtime && typeof runtime === "object" && Array.isArray(runtime) === false
+      ? (runtime as SnapshotRecord)
+      : ({} as SnapshotRecord);
   }
 
-  function buildProjectedProjects(runtime) {
+  function buildProjectedProjects(runtime: SnapshotRecord) {
     const runtimeRecord = getRuntimeRecord(runtime);
-    const projects = Array.isArray(runtimeRecord.projects) ? runtimeRecord.projects : [];
-    return projects.map(function (project) {
-      const nextProject = clone(project);
+    const projects = Array.isArray(runtimeRecord.projects)
+      ? (runtimeRecord.projects as unknown[])
+      : [];
+    return projects.map(function (project: unknown) {
+      const nextProject = clone(project) as SnapshotRecord;
       syncProjectFeatureProjections(runtimeRecord, nextProject);
       return nextProject;
     });
   }
 
-  function serializeJobs(runtime) {
+  function serializeJobs(runtime: SnapshotRecord) {
     const runtimeRecord = getRuntimeRecord(runtime);
     return Object.keys(toRecord(runtimeRecord.jobs))
-      .map(function (jobId) {
-        const job = toRecord(runtimeRecord.jobs)[jobId];
+      .map(function (jobId: string) {
+        const job = toRecord(runtimeRecord.jobs)[jobId] as SnapshotRecord | undefined;
         if (!job) {
           return null;
         }
@@ -277,14 +411,14 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
       .filter(Boolean);
   }
 
-  function buildToolRegistry(runtime) {
+  function buildToolRegistry(runtime: SnapshotRecord) {
     const runtimeRecord = getRuntimeRecord(runtime);
-    return getRuntimeToolIds(runtimeRecord).map(function (toolId) {
+    return (getRuntimeToolIds(runtimeRecord) as string[]).map(function (toolId: string) {
       const toolManifest = getToolManifest(runtimeRecord, toolId);
       const systemCommand = toRecord(toolManifest.systemCommand);
-      const stageSupport = {};
+      const stageSupport: Record<string, string> = {};
 
-      mediaStages.forEach(function (stageId) {
+      (mediaStages as string[]).forEach(function (stageId: string) {
         const supportLevel = getStageSupport(toolManifest, stageId);
         if (supportLevel !== "unsupported") {
           stageSupport[stageId] = supportLevel;
@@ -304,11 +438,11 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
     });
   }
 
-  function buildMediaSnapshot(runtime, featureId) {
+  function buildMediaSnapshot(runtime: SnapshotRecord, featureId: string) {
     const runtimeRecord = getRuntimeRecord(runtime);
     const projectedProjects = buildProjectedProjects(runtimeRecord);
     const activeProject =
-      projectedProjects.find(function (project) {
+      projectedProjects.find(function (project: SnapshotRecord) {
         return project.id === runtimeRecord.activeProjectId;
       }) || null;
 
@@ -338,7 +472,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
       profileModelState: clone(runtimeRecord.profileModelState || {}),
       projects: projectedProjects.map(serializeProjectSummary),
       activeProjectId: runtimeRecord.activeProjectId,
-      activeProject: serializeProject(activeProject, runtimeRecord),
+      activeProject: serializeProject(activeProject as SnapshotRecord, runtimeRecord),
       toolState: clone(runtimeRecord.toolState || { tools: {} }),
       jobs: serializeJobs(runtimeRecord),
     };

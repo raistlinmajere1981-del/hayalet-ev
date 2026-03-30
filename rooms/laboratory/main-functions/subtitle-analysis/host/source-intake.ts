@@ -1,6 +1,6 @@
 import { getProjectSubtitleSourceDir } from "../../../shared/host/project-paths.js";
 
-export function createSubtitleSourceIntakeRuntime(deps) {
+export function createSubtitleSourceIntakeRuntime(deps: any) {
   const {
     asNonEmptyString,
     callRoomTools,
@@ -20,7 +20,7 @@ export function createSubtitleSourceIntakeRuntime(deps) {
     upsertSubtitleEntries,
   } = deps;
 
-  function getSubtitleUrlFileName(urlValue, hintValue) {
+  function getSubtitleUrlFileName(urlValue: any, hintValue: any) {
     const hinted = asNonEmptyString(hintValue);
     if (hinted !== null) {
       return getSubtitleMimeType(hinted) !== null ? hinted : `${hinted}.srt`;
@@ -43,7 +43,7 @@ export function createSubtitleSourceIntakeRuntime(deps) {
     return `subtitle-${Date.now()}.srt`;
   }
 
-  async function handleLocalPick(api, runtime, requestId) {
+  async function handleLocalPick(api: any, runtime: any, requestId: any) {
     const project = getActiveProject(runtime);
     const electronApi = getElectronApi();
     if (project === null) {
@@ -85,7 +85,7 @@ export function createSubtitleSourceIntakeRuntime(deps) {
       sourceType: "local-file",
       sourceUrl: selectedPath,
     });
-    await patchActiveProject(runtime, function (nextProject) {
+    await patchActiveProject(runtime, function (nextProject: any) {
       resetSubtitleDiscovery(runtime, nextProject);
       upsertSubtitleEntries(runtime, nextProject, [subtitleEntry], {
         mode: "local-file",
@@ -100,7 +100,7 @@ export function createSubtitleSourceIntakeRuntime(deps) {
     return subtitleEntry;
   }
 
-  async function handleFolderPick(api, runtime, requestId) {
+  async function handleFolderPick(api: any, runtime: any, requestId: any) {
     const project = getActiveProject(runtime);
     const electronApi = getElectronApi();
     if (project === null) {
@@ -128,10 +128,11 @@ export function createSubtitleSourceIntakeRuntime(deps) {
     }
 
     const targetDir = getProjectSubtitleSourceDir(runtime, project);
-    const importedEntries = [];
-    const failedEntries = [];
+    const importedEntries: any[] = [];
+    const failedEntries: string[] = [];
     for (let index = 0; index < directoryEntries.length; index += 1) {
       const entry = directoryEntries[index];
+      // eslint-disable-next-line no-await-in-loop -- NOTE: keep folder imports ordered for stable failure reporting.
       const copyResult = await electronApi.copyFileTo(entry.path, targetDir);
       if (!copyResult || copyResult.success !== true) {
         failedEntries.push(
@@ -154,12 +155,12 @@ export function createSubtitleSourceIntakeRuntime(deps) {
       );
     }
 
-    await patchActiveProject(runtime, function (nextProject) {
+    await patchActiveProject(runtime, function (nextProject: any) {
       resetSubtitleDiscovery(runtime, nextProject);
       upsertSubtitleEntries(runtime, nextProject, importedEntries, {
         mode: "local-folder",
         activeEntryId: importedEntries[0] ? importedEntries[0].id : null,
-        selectedEntryIds: importedEntries.map(function (entry) {
+        selectedEntryIds: importedEntries.map(function (entry: any) {
           return entry.id;
         }),
         replaceExisting: false,
@@ -180,7 +181,7 @@ export function createSubtitleSourceIntakeRuntime(deps) {
     };
   }
 
-  async function handleUrlDownload(api, runtime, requestId) {
+  async function handleUrlDownload(api: any, runtime: any, requestId: any) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
@@ -231,7 +232,7 @@ export function createSubtitleSourceIntakeRuntime(deps) {
           mimeType: asNonEmptyString(downloaded.contentType) || getSubtitleMimeType(fileName),
         },
       });
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         resetSubtitleDiscovery(runtime, nextProject);
         upsertSubtitleEntries(runtime, nextProject, [subtitleEntry], {
           mode: "url",

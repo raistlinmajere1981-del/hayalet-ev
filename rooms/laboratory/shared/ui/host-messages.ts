@@ -1,4 +1,4 @@
-export function createLaboratoryHostMessageRuntime(deps) {
+export function createLaboratoryHostMessageRuntime(deps: any) {
   const state = deps.state;
   const toRecord = deps.toRecord;
   const text = deps.text;
@@ -9,13 +9,15 @@ export function createLaboratoryHostMessageRuntime(deps) {
   const shouldIgnoreCorrelatedPayload = deps.shouldIgnoreCorrelatedPayload;
   const setLastAction = deps.setLastAction;
 
-  function handleHostMessage(message) {
+  function handleHostMessage(message: any) {
     if (!message || typeof message !== "object" || Array.isArray(message)) {
       return;
     }
 
     const payload =
-      message.payload && typeof message.payload === "object" && Array.isArray(message.payload) === false
+      message.payload &&
+      typeof message.payload === "object" &&
+      Array.isArray(message.payload) === false
         ? message.payload
         : message;
 
@@ -42,7 +44,9 @@ export function createLaboratoryHostMessageRuntime(deps) {
         return;
       }
       const snapshot =
-        payload.snapshot && typeof payload.snapshot === "object" && Array.isArray(payload.snapshot) === false
+        payload.snapshot &&
+        typeof payload.snapshot === "object" &&
+        Array.isArray(payload.snapshot) === false
           ? payload.snapshot
           : {};
       if (typeof snapshot.featureId === "string" && snapshot.featureId.trim() !== "") {

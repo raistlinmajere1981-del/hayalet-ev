@@ -421,10 +421,14 @@ export class ProviderTester {
     const selector =
       this.config.scrapeSelectors.assistantWrapper ?? this.config.scrapeSelectors.preferred;
 
-    return await this.ctx.waitForCondition(async () => {
-      const currentCount = await this.getSelectorCount(selector);
-      return currentCount > previousCount;
-    }, timeoutMs, this.abortSignal);
+    return await this.ctx.waitForCondition(
+      async () => {
+        const currentCount = await this.getSelectorCount(selector);
+        return currentCount > previousCount;
+      },
+      timeoutMs,
+      this.abortSignal
+    );
   }
 
   private throwIfCancelled(): void {

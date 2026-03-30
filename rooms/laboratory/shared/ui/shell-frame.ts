@@ -1,4 +1,4 @@
-export function createLaboratoryShellFrameUi(deps) {
+export function createLaboratoryShellFrameUi(deps: any) {
   const {
     bootstrapText,
     escapeHtml,
@@ -41,7 +41,7 @@ export function createLaboratoryShellFrameUi(deps) {
           </button>
           <div class="lab-stage-rail__track" role="tablist" aria-label="Stages">
             ${stageOrder
-              .map(function (stageId, index) {
+              .map(function (stageId: any, index: any) {
                 const stateName =
                   stageId === activeStage ? "active" : index < currentIndex ? "complete" : "idle";
                 return `
@@ -86,7 +86,7 @@ export function createLaboratoryShellFrameUi(deps) {
     `;
   }
 
-  function renderStageIntro(stageId) {
+  function renderStageIntro(stageId: any) {
     if (isSubtitleAnalysisFeature()) {
       const copy = toRecord(readValue(getTranslations(), ["subtitleAnalysis", "stages", stageId]));
       return `
@@ -102,9 +102,7 @@ export function createLaboratoryShellFrameUi(deps) {
     return `
       <section class="lab-stage-copy">
         <h1 class="lab-stage-copy__title">${escapeHtml(featureText([stageId, "title"]))}</h1>
-        <p class="lab-stage-copy__subtitle">${escapeHtml(
-          featureText([stageId, "subtitle"])
-        )}</p>
+        <p class="lab-stage-copy__subtitle">${escapeHtml(featureText([stageId, "subtitle"]))}</p>
       </section>
     `;
   }

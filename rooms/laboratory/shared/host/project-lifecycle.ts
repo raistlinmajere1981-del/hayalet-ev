@@ -2,7 +2,7 @@ import { createLaboratoryProjectConfigLoader } from "./project-config-loader.js"
 import { createLaboratoryProjectStorageRuntime } from "./project-storage.js";
 import { createLaboratoryProjectToolStatusRuntime } from "./project-tool-status.js";
 
-export function createLaboratoryProjectLifecycleRuntime(deps) {
+export function createLaboratoryProjectLifecycleRuntime(deps: any) {
   const {
     asNonEmptyString,
     buildEditManifest,
@@ -85,7 +85,7 @@ export function createLaboratoryProjectLifecycleRuntime(deps) {
     toRecord,
   });
 
-  async function ensureProjectExists(runtime, featureId) {
+  async function ensureProjectExists(runtime: any, featureId: any) {
     if (runtime.projects.length > 0) {
       if (!findProject(runtime, runtime.activeProjectId)) {
         runtime.activeProjectId = runtime.projects[0].id;
@@ -109,7 +109,7 @@ export function createLaboratoryProjectLifecycleRuntime(deps) {
     runtime.activeProjectId = project.id;
   }
 
-  async function ensureHydrated(api, runtime) {
+  async function ensureHydrated(api: any, runtime: any) {
     if (runtime.hydrated === true) {
       return;
     }
@@ -143,16 +143,16 @@ export function createLaboratoryProjectLifecycleRuntime(deps) {
     }
   }
 
-  function updateProjectInMemory(runtime, nextProject) {
-    runtime.projects = runtime.projects.map(function (project) {
+  function updateProjectInMemory(runtime: any, nextProject: any) {
+    runtime.projects = runtime.projects.map(function (project: any) {
       return project.id === nextProject.id ? nextProject : project;
     });
-    runtime.projects.sort(function (left, right) {
+    runtime.projects.sort(function (left: any, right: any) {
       return String(right.updatedAt).localeCompare(String(left.updatedAt));
     });
   }
 
-  async function patchActiveProject(runtime, updater) {
+  async function patchActiveProject(runtime: any, updater: any) {
     const activeProject = getActiveProject(runtime);
     if (activeProject === null) {
       throw new Error("Active project is missing.");
@@ -175,13 +175,13 @@ export function createLaboratoryProjectLifecycleRuntime(deps) {
     return nextProject;
   }
 
-  async function patchActiveProjectDrafts(runtime, fields) {
+  async function patchActiveProjectDrafts(runtime: any, fields: any) {
     const patch = toRecord(fields);
     if (Object.keys(patch).length === 0) {
       return getActiveProject(runtime);
     }
 
-    return await patchActiveProject(runtime, function (nextProject) {
+    return await patchActiveProject(runtime, function (nextProject: any) {
       nextProject.source.drafts = {
         ...toRecord(nextProject.source.drafts),
         ...patch,
@@ -194,7 +194,7 @@ export function createLaboratoryProjectLifecycleRuntime(deps) {
     });
   }
 
-  async function createProject(runtime, featureId) {
+  async function createProject(runtime: any, featureId: any) {
     const project = createProjectRecord(
       runtime.sourcePresets,
       runtime.editPresets,
@@ -212,7 +212,7 @@ export function createLaboratoryProjectLifecycleRuntime(deps) {
     return project;
   }
 
-  async function deleteProject(runtime, projectId, requestId, featureId) {
+  async function deleteProject(runtime: any, projectId: any, requestId: any, featureId: any) {
     const project = findProject(runtime, projectId);
     if (project === null || project === undefined) {
       return null;
@@ -226,7 +226,7 @@ export function createLaboratoryProjectLifecycleRuntime(deps) {
       targetPath: getProjectDir(runtime, project),
       recursive: true,
     });
-    runtime.projects = runtime.projects.filter(function (entry) {
+    runtime.projects = runtime.projects.filter(function (entry: any) {
       return entry.id !== projectId;
     });
     if (runtime.activeProjectId === projectId) {

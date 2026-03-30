@@ -1,4 +1,4 @@
-export function createLaboratoryCopyRuntime(deps) {
+export function createLaboratoryCopyRuntime(deps: any) {
   const {
     bootstrapCopy,
     defaultFeatureId,
@@ -13,7 +13,7 @@ export function createLaboratoryCopyRuntime(deps) {
     audioFeatureId,
   } = deps;
 
-  function text(path) {
+  function text(path: any) {
     const localized = readValue(state.translations, path);
     if (typeof localized === "string") {
       return localized;
@@ -29,16 +29,16 @@ export function createLaboratoryCopyRuntime(deps) {
     return path[path.length - 1] || "";
   }
 
-  function textFromKey(key) {
+  function textFromKey(key: any) {
     if (typeof key !== "string" || key.trim() === "") {
       return "";
     }
     return text(key.split("."));
   }
 
-  function list(path) {
+  function list(path: any) {
     const value = readValue(state.translations, path);
-    return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
+    return Array.isArray(value) ? value.filter((item: any) => typeof item === "string") : [];
   }
 
   function getActiveFeatureId() {
@@ -63,7 +63,7 @@ export function createLaboratoryCopyRuntime(deps) {
     return featurePreviewImages[getActiveFeatureId()] || featurePreviewImages[defaultFeatureId];
   }
 
-  function featureText(path) {
+  function featureText(path: any) {
     const localized = readValue(state.translations, [getFeatureNamespace()].concat(path));
     if (typeof localized === "string") {
       return localized;
@@ -80,7 +80,7 @@ export function createLaboratoryCopyRuntime(deps) {
         : Array.isArray(capabilities.allowedSourceKinds)
           ? capabilities.allowedSourceKinds
           : [];
-      const filteredFormats = configuredFormats.filter(function (entry) {
+      const filteredFormats = configuredFormats.filter(function (entry: any) {
         return typeof entry === "string" && sourceFormats.includes(entry);
       });
       return filteredFormats.length > 0 ? filteredFormats : ["audio", "video"];
@@ -92,7 +92,10 @@ export function createLaboratoryCopyRuntime(deps) {
   function getDefaultSourceKind() {
     if (isAudioAnalysisFeature()) {
       const configuredKind = getAudioAnalysisPresets().defaultSourceKind;
-      if (typeof configuredKind === "string" && getAvailableSourceFormats().includes(configuredKind)) {
+      if (
+        typeof configuredKind === "string" &&
+        getAvailableSourceFormats().includes(configuredKind)
+      ) {
         return configuredKind;
       }
       return "audio";
@@ -101,15 +104,17 @@ export function createLaboratoryCopyRuntime(deps) {
     return "video";
   }
 
-  function bootstrapText(key) {
-    return readValue(bootstrapCopy[state.locale], [key]) || readValue(bootstrapCopy.en, [key]) || key;
+  function bootstrapText(key: any) {
+    return (
+      readValue(bootstrapCopy[state.locale], [key]) || readValue(bootstrapCopy.en, [key]) || key
+    );
   }
 
-  function subtitleCopy(trValue, enValue) {
+  function subtitleCopy(trValue: any, enValue: any) {
     return state.locale === "tr" ? trValue : enValue;
   }
 
-  function subtitleText(path, trFallback, enFallback) {
+  function subtitleText(path: any, trFallback: any, enFallback: any) {
     const localized = readValue(state.translations, ["subtitleAnalysis"].concat(path));
     if (typeof localized === "string") {
       return localized;
@@ -117,10 +122,10 @@ export function createLaboratoryCopyRuntime(deps) {
     return subtitleCopy(trFallback, enFallback);
   }
 
-  function subtitleTemplate(path, replacements, trFallback, enFallback) {
+  function subtitleTemplate(path: any, replacements: any, trFallback: any, enFallback: any) {
     const template = subtitleText(path, trFallback, enFallback);
     return Object.keys(replacements && typeof replacements === "object" ? replacements : {}).reduce(
-      function (message, key) {
+      function (message: any, key: any) {
         return message.replaceAll(`{${key}}`, String(replacements[key]));
       },
       template

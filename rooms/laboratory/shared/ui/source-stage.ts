@@ -1,7 +1,7 @@
 import { createLaboratorySourceStageIntakeRuntime } from "./source-stage-intake.js";
 import { createLaboratorySourceStageProjectRuntime } from "./source-stage-project.js";
 
-export function createLaboratorySourceStageUi(deps) {
+export function createLaboratorySourceStageUi(deps: any) {
   const renderStageIntro = deps.renderStageIntro;
   const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;
   const isAudioAnalysisFeature = deps.isAudioAnalysisFeature;

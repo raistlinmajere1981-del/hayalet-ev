@@ -9,10 +9,7 @@ interface GameRoomBootstrapDependencies {
   saveContext: (api: GameRoomHostApi, payload: unknown) => void;
   saveInviteInbox: (api: GameRoomHostApi, payload: unknown[]) => void;
   clearPendingInvite: (api: GameRoomHostApi) => void;
-  saveXoxState: (
-    api: GameRoomHostApi,
-    value: unknown
-  ) => void;
+  saveXoxState: (api: GameRoomHostApi, value: unknown) => void;
   createInitialXoxState: (locale: string, target: string, starter: string) => unknown;
   readLocale: (api: GameRoomHostApi) => string;
   defaultTarget: string;
@@ -67,7 +64,7 @@ export function createGameRoomHostLifecycle(
       }
       void deps.syncUs1Mailbox(api, "room-ready");
     },
-    onRoomEvent(payload) {
+    onRoomEvent(payload: any) {
       if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
         return;
       }

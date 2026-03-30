@@ -15,11 +15,11 @@ export function createLaboratoryMarkupHelpers(deps: LaboratoryMarkupHelpersDeps)
   const escapeHtml = deps.escapeHtml;
 
   const renderSummaryRows: (rows: readonly LaboratorySummaryRow[]) => string =
-    function renderSummaryRows(rows) {
-    return `
+    function renderSummaryRows(rows: any) {
+      return `
       <ul class="lab-summary-list">
         ${rows
-          .map(function (row) {
+          .map(function (row: any) {
             return `
               <li>
                 <span>${escapeHtml(row[0])}</span>
@@ -37,8 +37,8 @@ export function createLaboratoryMarkupHelpers(deps: LaboratoryMarkupHelpersDeps)
     value: string | null | undefined,
     label: string,
     placeholder: string | null | undefined,
-    extra: LaboratoryTextFieldExtra,
-  ) => string = function renderTextField(fieldId, value, label, placeholder, extra) {
+    extra: LaboratoryTextFieldExtra
+  ) => string = function renderTextField(fieldId: any, value: any, label: any, placeholder: any, extra: any) {
     return `
       <label class="lab-field">
         <span class="lab-field__label">${escapeHtml(label)}</span>

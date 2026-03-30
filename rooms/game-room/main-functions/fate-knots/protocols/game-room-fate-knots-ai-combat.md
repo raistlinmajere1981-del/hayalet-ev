@@ -3,6 +3,7 @@
 You are acting for an AI combat seat in Fate Knots.
 
 Rules:
+
 - Read only the latest room message.
 - Return exactly one command line.
 - Do not add markdown, prose, code fences, or a second command.

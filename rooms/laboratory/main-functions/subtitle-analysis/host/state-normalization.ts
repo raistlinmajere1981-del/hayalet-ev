@@ -1,35 +1,118 @@
 import { createSubtitleStateDefaultsRuntime } from "./state-defaults.js";
 
-export function createSubtitleStateNormalizationRuntime(deps) {
-  const {
-    asNonEmptyString,
-    asNumber,
-    normalizeReportExport,
-    normalizeStringArray,
-    toRecord,
-  } = deps;
+interface SubtitleStateRecord extends Record<string, unknown> {
+  subtitleSourcePresets?: unknown;
+  supportedExtensions?: unknown;
+  id?: unknown;
+  sourceType?: unknown;
+  status?: unknown;
+  fileName?: unknown;
+  path?: unknown;
+  format?: unknown;
+  createdAt?: unknown;
+  sourceUrl?: unknown;
+  language?: unknown;
+  publishedAt?: unknown;
+  durationSeconds?: unknown;
+  isShort?: unknown;
+  warnings?: unknown;
+  metadata?: unknown;
+  entryId?: unknown;
+  label?: unknown;
+  summary?: unknown;
+  url?: unknown;
+  videoId?: unknown;
+  title?: unknown;
+  channelTitle?: unknown;
+  liveStatus?: unknown;
+  subtitleLanguages?: unknown;
+  workspace?: unknown;
+  drafts?: unknown;
+  selection?: unknown;
+  discovery?: unknown;
+  edit?: unknown;
+  preview?: unknown;
+  analysis?: unknown;
+  presetId?: unknown;
+  recipe?: unknown;
+  outputs?: unknown;
+  lastError?: unknown;
+  lastActionAt?: unknown;
+  lastImportAt?: unknown;
+  mode?: unknown;
+  urlInput?: unknown;
+  youtubeUrl?: unknown;
+  subtitleMode?: unknown;
+  subtitlesLang?: unknown;
+  publishedAfter?: unknown;
+  publishedBefore?: unknown;
+  weekdays?: unknown;
+  durationMinSeconds?: unknown;
+  durationMaxSeconds?: unknown;
+  shortsMode?: unknown;
+  liveMode?: unknown;
+  titleInclude?: unknown;
+  titleExclude?: unknown;
+  playlistItems?: unknown;
+  limitCount?: unknown;
+  selectedEntryIds?: unknown;
+  scope?: unknown;
+  items?: unknown;
+  selectedCandidateIds?: unknown;
+  totalCandidateCount?: unknown;
+  lastRunAt?: unknown;
+  lastDownloadAt?: unknown;
+  entries?: unknown;
+  activeEntryId?: unknown;
+  outputText?: unknown;
+  summaryCards?: unknown;
+  findings?: unknown;
+  moduleResults?: unknown;
+  sourceSelection?: unknown;
+  export?: unknown;
+  lastGeneratedAt?: unknown;
+}
+
+interface SubtitleRuntimeRecord extends Record<string, unknown> {
+  subtitleSourcePresets?: unknown;
+}
+
+type SubtitleStateNormalizationRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
+  normalizeReportExport: (rawValue: unknown) => Record<string, unknown>;
+  normalizeStringArray: (value: unknown) => string[];
+  toRecord: (value: unknown) => SubtitleStateRecord;
+};
+
+export function createSubtitleStateNormalizationRuntime(
+  deps: SubtitleStateNormalizationRuntimeDeps
+) {
+  const { asNonEmptyString, asNumber, normalizeReportExport, normalizeStringArray, toRecord } =
+    deps;
   const defaultsRuntime = createSubtitleStateDefaultsRuntime(deps);
 
-  function getSubtitleSupportedExtensions(runtime) {
+  function getSubtitleSupportedExtensions(runtime: SubtitleRuntimeRecord): string[] {
     const configured = Array.isArray(toRecord(runtime.subtitleSourcePresets).supportedExtensions)
-      ? toRecord(runtime.subtitleSourcePresets).supportedExtensions
-          .map(function (entry) {
-            return String(entry || "").toLowerCase().replace(/^\./, "");
+      ? (toRecord(runtime.subtitleSourcePresets).supportedExtensions as unknown[]).map(function (entry: unknown) {
+            return String(entry || "")
+              .toLowerCase()
+              .replace(/^\./, "");
           })
           .filter(Boolean)
       : [];
     return configured.length > 0 ? configured : ["srt", "vtt", "ass", "ssa"];
   }
 
-  function getSubtitleFileExtension(fileName) {
+  function getSubtitleFileExtension(fileName: unknown): string | null {
     const normalized = asNonEmptyString(fileName);
     if (normalized === null || normalized.indexOf(".") === -1) {
       return null;
     }
-    return normalized.split(".").pop().toLowerCase();
+    return normalized.split(".").pop()?.toLowerCase() ?? null;
   }
 
-  function getSubtitleMimeType(fileName) {
+  function getSubtitleMimeType(fileName: unknown): string {
     const extension = getSubtitleFileExtension(fileName);
     if (extension === "vtt") {
       return "text/vtt";
@@ -40,12 +123,12 @@ export function createSubtitleStateNormalizationRuntime(deps) {
     return "application/x-subrip";
   }
 
-  function isSubtitleFileName(runtime, fileName) {
+  function isSubtitleFileName(runtime: Record<string, unknown>, fileName: unknown): boolean {
     const extension = getSubtitleFileExtension(fileName);
     return extension !== null && getSubtitleSupportedExtensions(runtime).includes(extension);
   }
 
-  function inferSubtitleLanguageFromFileName(fileName) {
+  function inferSubtitleLanguageFromFileName(fileName: unknown): string | null {
     const normalized = asNonEmptyString(fileName);
     if (normalized === null) {
       return null;
@@ -55,7 +138,7 @@ export function createSubtitleStateNormalizationRuntime(deps) {
     return match ? String(match[1]).toLowerCase() : null;
   }
 
-  function normalizeSubtitleEntryRecord(rawValue, index) {
+  function normalizeSubtitleEntryRecord(rawValue: unknown, index: number) {
     const record = toRecord(rawValue);
     return {
       id: asNonEmptyString(record.id) || `subtitle-entry-${Date.now()}-${index}`,
@@ -66,7 +149,8 @@ export function createSubtitleStateNormalizationRuntime(deps) {
       format: asNonEmptyString(record.format) || getSubtitleFileExtension(record.fileName) || "srt",
       createdAt: asNonEmptyString(record.createdAt) || new Date().toISOString(),
       sourceUrl: asNonEmptyString(record.sourceUrl),
-      language: asNonEmptyString(record.language) || inferSubtitleLanguageFromFileName(record.fileName),
+      language:
+        asNonEmptyString(record.language) || inferSubtitleLanguageFromFileName(record.fileName),
       publishedAt: asNonEmptyString(record.publishedAt),
       durationSeconds: asNumber(record.durationSeconds),
       isShort: typeof record.isShort === "boolean" ? record.isShort : null,
@@ -75,13 +159,16 @@ export function createSubtitleStateNormalizationRuntime(deps) {
     };
   }
 
-  function normalizeSubtitleOutputRecord(rawValue, index) {
+  function normalizeSubtitleOutputRecord(rawValue: unknown, index: number) {
     const record = toRecord(rawValue);
     return {
       id: asNonEmptyString(record.id) || `subtitle-output-${Date.now()}-${index}`,
       entryId: asNonEmptyString(record.entryId),
       label: asNonEmptyString(record.label),
-      format: asNonEmptyString(record.format) || getSubtitleFileExtension(record.path || record.fileName) || "srt",
+      format:
+        asNonEmptyString(record.format) ||
+        getSubtitleFileExtension(record.path || record.fileName) ||
+        "srt",
       path: asNonEmptyString(record.path),
       createdAt: asNonEmptyString(record.createdAt) || new Date().toISOString(),
       summary:
@@ -91,7 +178,7 @@ export function createSubtitleStateNormalizationRuntime(deps) {
     };
   }
 
-  function normalizeSubtitleDiscoveryItem(rawValue, index) {
+  function normalizeSubtitleDiscoveryItem(rawValue: unknown, index: number) {
     const record = toRecord(rawValue);
     return {
       id: asNonEmptyString(record.id) || `subtitle-discovery-${Date.now()}-${index}`,
@@ -103,13 +190,15 @@ export function createSubtitleStateNormalizationRuntime(deps) {
       durationSeconds: asNumber(record.durationSeconds),
       isShort: typeof record.isShort === "boolean" ? record.isShort : null,
       liveStatus: asNonEmptyString(record.liveStatus),
-      subtitleLanguages: Array.isArray(record.subtitleLanguages) ? record.subtitleLanguages.map(String) : [],
+      subtitleLanguages: Array.isArray(record.subtitleLanguages)
+        ? record.subtitleLanguages.map(String)
+        : [],
       warnings: Array.isArray(record.warnings) ? record.warnings.map(String) : [],
       metadata: toRecord(record.metadata),
     };
   }
 
-  function normalizeSubtitleAnalysisState(rawValue, runtime) {
+  function normalizeSubtitleAnalysisState(rawValue: unknown, runtime: SubtitleRuntimeRecord) {
     const source = toRecord(rawValue);
     const defaults = defaultsRuntime.createEmptySubtitleAnalysisState(runtime);
     const workspace = toRecord(source.workspace);
@@ -129,15 +218,21 @@ export function createSubtitleStateNormalizationRuntime(deps) {
           ...workspaceDrafts,
           urlInput: asNonEmptyString(workspaceDrafts.urlInput) || "",
           youtubeUrl: asNonEmptyString(workspaceDrafts.youtubeUrl) || "",
-          subtitleMode: asNonEmptyString(workspaceDrafts.subtitleMode) || defaults.workspace.drafts.subtitleMode,
-          subtitlesLang: asNonEmptyString(workspaceDrafts.subtitlesLang) || defaults.workspace.drafts.subtitlesLang,
+          subtitleMode:
+            asNonEmptyString(workspaceDrafts.subtitleMode) ||
+            defaults.workspace.drafts.subtitleMode,
+          subtitlesLang:
+            asNonEmptyString(workspaceDrafts.subtitlesLang) ||
+            defaults.workspace.drafts.subtitlesLang,
           publishedAfter: asNonEmptyString(workspaceDrafts.publishedAfter) || "",
           publishedBefore: asNonEmptyString(workspaceDrafts.publishedBefore) || "",
           weekdays: asNonEmptyString(workspaceDrafts.weekdays) || "",
           durationMinSeconds: asNumber(workspaceDrafts.durationMinSeconds),
           durationMaxSeconds: asNumber(workspaceDrafts.durationMaxSeconds),
-          shortsMode: asNonEmptyString(workspaceDrafts.shortsMode) || defaults.workspace.drafts.shortsMode,
-          liveMode: asNonEmptyString(workspaceDrafts.liveMode) || defaults.workspace.drafts.liveMode,
+          shortsMode:
+            asNonEmptyString(workspaceDrafts.shortsMode) || defaults.workspace.drafts.shortsMode,
+          liveMode:
+            asNonEmptyString(workspaceDrafts.liveMode) || defaults.workspace.drafts.liveMode,
           titleInclude: asNonEmptyString(workspaceDrafts.titleInclude) || "",
           titleExclude: asNonEmptyString(workspaceDrafts.titleExclude) || "",
           playlistItems: asNonEmptyString(workspaceDrafts.playlistItems) || "",
@@ -154,7 +249,7 @@ export function createSubtitleStateNormalizationRuntime(deps) {
         status: asNonEmptyString(discovery.status) || defaults.discovery.status,
         scope: asNonEmptyString(discovery.scope) || defaults.discovery.scope,
         items: Array.isArray(discovery.items)
-          ? discovery.items.map(function (entry, index) {
+          ? discovery.items.map(function (entry: unknown, index: number) {
               return normalizeSubtitleDiscoveryItem(entry, index);
             })
           : [],
@@ -168,7 +263,7 @@ export function createSubtitleStateNormalizationRuntime(deps) {
         lastDownloadAt: asNonEmptyString(discovery.lastDownloadAt),
       },
       entries: Array.isArray(source.entries)
-        ? source.entries.map(function (entry, index) {
+        ? source.entries.map(function (entry: unknown, index: number) {
             return normalizeSubtitleEntryRecord(entry, index);
           })
         : [],
@@ -190,7 +285,7 @@ export function createSubtitleStateNormalizationRuntime(deps) {
               : null,
         },
         outputs: Array.isArray(edit.outputs)
-          ? edit.outputs.map(function (entry, index) {
+          ? edit.outputs.map(function (entry: unknown, index: number) {
               return normalizeSubtitleOutputRecord(entry, index);
             })
           : [],
@@ -200,24 +295,25 @@ export function createSubtitleStateNormalizationRuntime(deps) {
       analysis: {
         status: asNonEmptyString(analysis.status) || defaults.analysis.status,
         summaryCards: Array.isArray(analysis.summaryCards)
-          ? analysis.summaryCards.map(function (entry) {
+          ? analysis.summaryCards.map(function (entry: unknown) {
               return toRecord(entry);
             })
           : [],
         findings: Array.isArray(analysis.findings)
-          ? analysis.findings.map(function (entry) {
+          ? analysis.findings.map(function (entry: unknown) {
               return toRecord(entry);
             })
           : [],
         warnings: Array.isArray(analysis.warnings) ? analysis.warnings.map(String) : [],
         moduleResults: toRecord(analysis.moduleResults),
         lastRunAt: asNonEmptyString(analysis.lastRunAt),
-        sourceSelection: asNonEmptyString(analysis.sourceSelection) || defaults.analysis.sourceSelection,
+        sourceSelection:
+          asNonEmptyString(analysis.sourceSelection) || defaults.analysis.sourceSelection,
       },
       export: {
         lastGeneratedAt: asNonEmptyString(toRecord(source.export).lastGeneratedAt),
         items: Array.isArray(toRecord(source.export).items)
-          ? toRecord(source.export).items.map(normalizeReportExport)
+          ? (toRecord(source.export).items as unknown[]).map(normalizeReportExport)
           : [],
       },
     };

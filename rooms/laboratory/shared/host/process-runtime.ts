@@ -1,6 +1,93 @@
 import { createLaboratoryManagedProcessRunnersRuntime } from "./process-managed-runners.js";
 
-export function createLaboratoryProcessRuntime(deps) {
+interface LaboratoryProcessDeps {
+  asNonEmptyString: (value: unknown) => string | null;
+  buildAudioAnalysisModules: (
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    target: Record<string, unknown>
+  ) => unknown[];
+  buildMediaProcessModules: (
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    target: Record<string, unknown>
+  ) => unknown[];
+  buildSubtitleProcessModules: (
+    runtime: Record<string, unknown>,
+    target: Record<string, unknown>
+  ) => unknown[];
+  cancelProcessJobsForProject: (
+    api: Record<string, unknown>,
+    runtime: Record<string, unknown>,
+    projectId: string,
+    requestId: string,
+    action: string
+  ) => Promise<void>;
+  clearJob: (runtime: Record<string, unknown>, jobId: string) => void;
+  clone: <T>(value: T) => T;
+  composeFeatureReport: (
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    featureId: string
+  ) => unknown;
+  createEmptyFeatureProcessRecord: (featureId: string) => Record<string, unknown>;
+  createEmptyProcessRun: (featureId: string) => Record<string, unknown>;
+  ensureEditToolReady: (runtime: Record<string, unknown>) => void;
+  ensureProcessJobSlotAvailable: (
+    runtime: Record<string, unknown>,
+    projectId: string,
+    action: string
+  ) => void;
+  ensureProjectDirectories: (
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    requestId: string
+  ) => Promise<void>;
+  getActiveProject: (runtime: Record<string, unknown>) => Record<string, unknown> | null;
+  getFeatureProcessDir: (
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    featureId: string
+  ) => string;
+  getFeatureProcessJobAction: (featureId: string) => string;
+  getFeatureProcessRecord: (
+    project: Record<string, unknown>,
+    featureId: string
+  ) => Record<string, unknown>;
+  patchActiveProject: (
+    runtime: Record<string, unknown>,
+    fn: (project: Record<string, unknown>) => Record<string, unknown>
+  ) => Promise<void>;
+  pushJobState: (api: Record<string, unknown>, state: Record<string, unknown>) => void;
+  registerJob: (runtime: Record<string, unknown>, job: Record<string, unknown>) => void;
+  resolveProcessTarget: (
+    project: Record<string, unknown>,
+    featureId: string
+  ) => Record<string, unknown>;
+  sanitizeFileSegment: (value: string, kind: string) => string;
+  setFeatureProcessRecord: (
+    project: Record<string, unknown>,
+    featureId: string,
+    record: Record<string, unknown>
+  ) => void;
+  setFeatureReportRecord: (
+    project: Record<string, unknown>,
+    featureId: string,
+    report: unknown
+  ) => void;
+  toRecord: (value: unknown) => Record<string, unknown>;
+  updateProcessRecordPercent: (record: Record<string, unknown>) => void;
+  markFeatureReportStale: (
+    project: Record<string, unknown>,
+    featureId: string,
+    reason: string
+  ) => void;
+  audioFeatureId: string;
+  subtitleFeatureId: string;
+  [key: string]: unknown;
+}
+
+export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
   const {
     asNonEmptyString,
     buildAudioAnalysisModules,
@@ -33,62 +120,69 @@ export function createLaboratoryProcessRuntime(deps) {
     subtitleFeatureId,
   } = deps;
   const laboratoryManagedProcessRunnersRuntime = createLaboratoryManagedProcessRunnersRuntime({
-    asNonEmptyString: deps.asNonEmptyString,
-    buildProcessSpeechAvailability: deps.buildProcessSpeechAvailability,
-    buildSubtitleAnalysisStats: deps.buildSubtitleAnalysisStats,
-    clampProfileTranscriptSampleSeconds: deps.clampProfileTranscriptSampleSeconds,
-    clone: deps.clone,
-    createProcessArtifact: deps.createProcessArtifact,
-    createProcessFinding: deps.createProcessFinding,
-    generateProcessMetadataArtifact: deps.generateProcessMetadataArtifact,
-    generateProcessSpectrogram: deps.generateProcessSpectrogram,
-    getAudioAnalysisModuleProcessDir: deps.getAudioAnalysisModuleProcessDir,
-    getAudioAnalysisModuleRunner: deps.getAudioAnalysisModuleRunner,
-    getProjectSubtitleProcessDir: deps.getProjectSubtitleProcessDir,
-    maybeRunWhisperProfileSample: deps.maybeRunWhisperProfileSample,
-    normalizeProcessArtifact: deps.normalizeProcessArtifact,
-    normalizeProcessFinding: deps.normalizeProcessFinding,
-    runAudioStructureProbe: deps.runAudioStructureProbe,
-    runVideoStructureProbe: deps.runVideoStructureProbe,
-    sanitizeFileSegment: deps.sanitizeFileSegment,
-    toRecord: deps.toRecord,
-    updateProcessModule: deps.updateProcessModule,
-    writeJsonFile: deps.writeJsonFile,
-    writeTextFile: deps.writeTextFile,
+    asNonEmptyString: deps["asNonEmptyString"],
+    buildProcessSpeechAvailability: deps["buildProcessSpeechAvailability"],
+    buildSubtitleAnalysisStats: deps["buildSubtitleAnalysisStats"],
+    clampProfileTranscriptSampleSeconds: deps["clampProfileTranscriptSampleSeconds"],
+    clone: deps["clone"],
+    createProcessArtifact: deps["createProcessArtifact"],
+    createProcessFinding: deps["createProcessFinding"],
+    generateProcessMetadataArtifact: deps["generateProcessMetadataArtifact"],
+    generateProcessSpectrogram: deps["generateProcessSpectrogram"],
+    getAudioAnalysisModuleProcessDir: deps["getAudioAnalysisModuleProcessDir"],
+    getAudioAnalysisModuleRunner: deps["getAudioAnalysisModuleRunner"],
+    getProjectSubtitleProcessDir: deps["getProjectSubtitleProcessDir"],
+    maybeRunWhisperProfileSample: deps["maybeRunWhisperProfileSample"],
+    normalizeProcessArtifact: deps["normalizeProcessArtifact"],
+    normalizeProcessFinding: deps["normalizeProcessFinding"],
+    runAudioStructureProbe: deps["runAudioStructureProbe"],
+    runVideoStructureProbe: deps["runVideoStructureProbe"],
+    sanitizeFileSegment: deps["sanitizeFileSegment"],
+    toRecord: deps["toRecord"],
+    updateProcessModule: deps["updateProcessModule"],
+    writeJsonFile: deps["writeJsonFile"],
+    writeTextFile: deps["writeTextFile"],
   });
 
-  async function runManagedProcess(runtime, project, requestId, jobId, featureId, outputDir) {
+  async function runManagedProcess(
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    requestId: string,
+    jobId: string,
+    featureId: string,
+    outputDir: string
+  ) {
     const target = resolveProcessTarget(project, featureId);
     if (featureId === subtitleFeatureId) {
-      if (!Array.isArray(target.entries) || target.entries.length === 0) {
+      if (!Array.isArray(target["entries"]) || target["entries"].length === 0) {
         throw new Error("Import subtitle files before starting subtitle analysis.");
       }
-    } else if (target.path === null) {
+    } else if (target["path"] === null) {
       throw new Error("Prepare a valid target before starting the process stage.");
     }
 
     const artifactBase = sanitizeFileSegment(
-      `${project.slug}-${featureId}-${Date.now()}`,
+      `${project["slug"]}-${featureId}-${Date.now()}`,
       featureId === audioFeatureId ? "audio-process" : "media-process"
     );
     const processRecord = createEmptyProcessRun(featureId);
-    processRecord.status = "running";
-    processRecord.requestId = requestId;
-    processRecord.jobId = jobId;
-    processRecord.runId = `${featureId}-run-${Date.now()}`;
-    processRecord.startedAt = new Date().toISOString();
-    processRecord.targetSummary = {
-      requestedMode: target.requestedMode,
-      mode: target.mode,
-      outputId: target.outputId,
-      signature: target.signature,
-      label: target.label,
-      fileName: target.fileName,
-      mimeType: target.mimeType,
-      path: target.path,
-      entryCount: Array.isArray(target.entries) ? target.entries.length : null,
+    processRecord["status"] = "running";
+    processRecord["requestId"] = requestId;
+    processRecord["jobId"] = jobId;
+    processRecord["runId"] = `${featureId}-run-${Date.now()}`;
+    processRecord["startedAt"] = new Date().toISOString();
+    processRecord["targetSummary"] = {
+      requestedMode: target["requestedMode"],
+      mode: target["mode"],
+      outputId: target["outputId"],
+      signature: target["signature"],
+      label: target["label"],
+      fileName: target["fileName"],
+      mimeType: target["mimeType"],
+      path: target["path"],
+      entryCount: Array.isArray(target["entries"]) ? target["entries"].length : null,
     };
-    processRecord.modules =
+    processRecord["modules"] =
       featureId === audioFeatureId
         ? buildAudioAnalysisModules(runtime, project, target)
         : featureId === subtitleFeatureId
@@ -125,16 +219,21 @@ export function createLaboratoryProcessRuntime(deps) {
               processRecord
             );
 
-    processRecord.findings = results.findings;
-    processRecord.artifacts = results.artifacts;
-    processRecord.warnings = results.warnings;
-    processRecord.status = "ready";
-    processRecord.completedAt = new Date().toISOString();
+    processRecord["findings"] = results["findings"];
+    processRecord["artifacts"] = results["artifacts"];
+    processRecord["warnings"] = results["warnings"];
+    processRecord["status"] = "ready";
+    processRecord["completedAt"] = new Date().toISOString();
     updateProcessRecordPercent(processRecord);
     return processRecord;
   }
 
-  async function runFeatureProcess(api, runtime, requestId, featureId) {
+  async function runFeatureProcess(
+    api: Record<string, unknown>,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    featureId: string
+  ) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
@@ -143,7 +242,7 @@ export function createLaboratoryProcessRuntime(deps) {
     if (
       featureId !== audioFeatureId &&
       featureId !== subtitleFeatureId &&
-      asNonEmptyString(toRecord(toRecord(project.profile).preflight).status) !== "ready"
+      asNonEmptyString(toRecord(toRecord(project["profile"])["preflight"])["status"]) !== "ready"
     ) {
       throw new Error("Run the profile preflight before starting the process stage.");
     }
@@ -153,14 +252,14 @@ export function createLaboratoryProcessRuntime(deps) {
     }
     await ensureProjectDirectories(runtime, project, requestId);
     const action = getFeatureProcessJobAction(featureId);
-    ensureProcessJobSlotAvailable(runtime, project.id, action);
+    ensureProcessJobSlotAvailable(runtime, project["id"] as string, action);
     const jobId = `room-process-${featureId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     registerJob(runtime, {
       jobId: jobId,
       requestId: requestId,
       action: action,
-      projectId: project.id,
+      projectId: project["id"],
       toolId: "ffmpeg",
       featureStage: "process",
     });
@@ -168,14 +267,14 @@ export function createLaboratoryProcessRuntime(deps) {
       requestId: requestId,
       jobId: jobId,
       action: action,
-      projectId: project.id,
+      projectId: project["id"],
       toolId: "ffmpeg",
       featureStage: "process",
       stage: "queued",
       percent: 0,
     });
 
-    await patchActiveProject(runtime, function (nextProject) {
+    await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
       setFeatureProcessRecord(nextProject, featureId, {
         ...createEmptyFeatureProcessRecord(featureId),
         featureId: featureId,
@@ -197,23 +296,27 @@ export function createLaboratoryProcessRuntime(deps) {
         featureId,
         getFeatureProcessDir(runtime, project, featureId)
       );
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
         setFeatureProcessRecord(nextProject, featureId, nextProcessRecord);
-        setFeatureReportRecord(nextProject, featureId, composeFeatureReport(runtime, nextProject, featureId));
+        setFeatureReportRecord(
+          nextProject,
+          featureId,
+          composeFeatureReport(runtime, nextProject, featureId)
+        );
         return nextProject;
       });
       pushJobState(api, {
         requestId: requestId,
         jobId: jobId,
         action: action,
-        projectId: project.id,
+        projectId: project["id"],
         toolId: "ffmpeg",
         featureStage: "process",
         stage: "completed",
         percent: 100,
       });
     } catch (error) {
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
         setFeatureProcessRecord(nextProject, featureId, {
           ...getFeatureProcessRecord(nextProject, featureId),
           status: "error",
@@ -227,7 +330,7 @@ export function createLaboratoryProcessRuntime(deps) {
         requestId: requestId,
         jobId: jobId,
         action: action,
-        projectId: project.id,
+        projectId: project["id"],
         toolId: "ffmpeg",
         featureStage: "process",
         stage: "failed",
@@ -239,14 +342,19 @@ export function createLaboratoryProcessRuntime(deps) {
     }
   }
 
-  async function cancelFeatureProcess(api, runtime, requestId, featureId) {
+  async function cancelFeatureProcess(
+    api: Record<string, unknown>,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    featureId: string
+  ) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
     }
     const action = getFeatureProcessJobAction(featureId);
-    await cancelProcessJobsForProject(api, runtime, project.id, requestId, action);
-    await patchActiveProject(runtime, function (nextProject) {
+    await cancelProcessJobsForProject(api, runtime, project["id"] as string, requestId, action);
+    await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
       setFeatureProcessRecord(nextProject, featureId, {
         ...getFeatureProcessRecord(nextProject, featureId),
         status: "cancelled",

@@ -1,4 +1,4 @@
-export function createLaboratoryMediaPreviewUi(deps) {
+export function createLaboratoryMediaPreviewUi(deps: any) {
   const state = deps.state;
   const render = deps.render;
   const escapeHtml = deps.escapeHtml;
@@ -18,7 +18,7 @@ export function createLaboratoryMediaPreviewUi(deps) {
   const formatBitRate = deps.formatBitRate;
   const getSourceMetadata = deps.getSourceMetadata;
 
-  function renderPreviewMetaRow(label, value) {
+  function renderPreviewMetaRow(label: any, value: any) {
     return `
       <li>
         <span>${escapeHtml(label)}</span>
@@ -31,7 +31,9 @@ export function createLaboratoryMediaPreviewUi(deps) {
     const project = getActiveProject();
     const source = getProjectSource();
     const previewUrl =
-      typeof source.previewUrl === "string" && source.previewUrl.trim() !== "" ? source.previewUrl : null;
+      typeof source.previewUrl === "string" && source.previewUrl.trim() !== ""
+        ? source.previewUrl
+        : null;
     const fileName =
       typeof source.storedFileName === "string" && source.storedFileName.trim() !== ""
         ? source.storedFileName
@@ -44,7 +46,7 @@ export function createLaboratoryMediaPreviewUi(deps) {
 
     const projectJobs = getRelevantJobs().project;
     const activeJob =
-      projectJobs.find(function (entry) {
+      projectJobs.find(function (entry: any) {
         return entry.featureStage !== "edit";
       }) || null;
 
@@ -68,16 +70,30 @@ export function createLaboratoryMediaPreviewUi(deps) {
     const infoRows = [
       renderPreviewMetaRow(text(["mediaAnalysis", "source", "previewInfo", "route"]), routeLabel),
       renderPreviewMetaRow(text(["mediaAnalysis", "source", "previewInfo", "file"]), fileName),
-      renderPreviewMetaRow(text(["mediaAnalysis", "source", "previewInfo", "status"]), getProjectStatusLabel(source)),
+      renderPreviewMetaRow(
+        text(["mediaAnalysis", "source", "previewInfo", "status"]),
+        getProjectStatusLabel(source)
+      ),
       renderPreviewMetaRow(
         text(["mediaAnalysis", "source", "previewInfo", "source"]),
-        typeof source.sourceUrl === "string" && source.sourceUrl.trim() !== "" ? source.sourceUrl : "--"
+        typeof source.sourceUrl === "string" && source.sourceUrl.trim() !== ""
+          ? source.sourceUrl
+          : "--"
       ),
-      renderPreviewMetaRow(text(["mediaAnalysis", "shared", "duration"]), formatDuration(getPreferredSourceDuration(previewUrl))),
-      renderPreviewMetaRow(text(["mediaAnalysis", "shared", "resolution"]), getPreferredSourceResolution(previewUrl)),
+      renderPreviewMetaRow(
+        text(["mediaAnalysis", "shared", "duration"]),
+        formatDuration(getPreferredSourceDuration(previewUrl))
+      ),
+      renderPreviewMetaRow(
+        text(["mediaAnalysis", "shared", "resolution"]),
+        getPreferredSourceResolution(previewUrl)
+      ),
       renderPreviewMetaRow(text(["mediaAnalysis", "shared", "codec"]), getPreferredSourceCodec()),
       renderPreviewMetaRow(text(["mediaAnalysis", "shared", "format"]), getPreferredSourceFormat()),
-      renderPreviewMetaRow(text(["mediaAnalysis", "shared", "bitrate"]), formatBitRate(getSourceMetadata().bitRate)),
+      renderPreviewMetaRow(
+        text(["mediaAnalysis", "shared", "bitrate"]),
+        formatBitRate(getSourceMetadata().bitRate)
+      ),
     ];
 
     return `
@@ -102,7 +118,9 @@ export function createLaboratoryMediaPreviewUi(deps) {
                     <div class="lab-status-card__head">
                       <strong>${escapeHtml(text(["mediaAnalysis", "source", "jobs", "title"]))}</strong>
                       <span>${escapeHtml(
-                        typeof activeJob.percent === "number" ? `${Math.round(activeJob.percent)}%` : activeJob.stage || "--"
+                        typeof activeJob.percent === "number"
+                          ? `${Math.round(activeJob.percent)}%`
+                          : activeJob.stage || "--"
                       )}</span>
                     </div>
                     <div class="lab-progress-bar">
@@ -121,7 +139,13 @@ export function createLaboratoryMediaPreviewUi(deps) {
 
   function bindPreviewMetrics() {
     const media = document.querySelector("[data-preview-media]");
-    if (!(media instanceof HTMLVideoElement || media instanceof HTMLAudioElement || media instanceof HTMLImageElement)) {
+    if (
+      !(
+        media instanceof HTMLVideoElement ||
+        media instanceof HTMLAudioElement ||
+        media instanceof HTMLImageElement
+      )
+    ) {
       state.ui.previewMetrics = {
         url: null,
         duration: null,
@@ -165,7 +189,9 @@ export function createLaboratoryMediaPreviewUi(deps) {
 
     const applyMediaMetrics = function () {
       state.ui.previewMetrics.duration =
-        typeof media.duration === "number" && Number.isFinite(media.duration) ? media.duration : null;
+        typeof media.duration === "number" && Number.isFinite(media.duration)
+          ? media.duration
+          : null;
       state.ui.previewMetrics.width =
         media instanceof HTMLVideoElement && media.videoWidth > 0 ? media.videoWidth : null;
       state.ui.previewMetrics.height =
@@ -180,7 +206,7 @@ export function createLaboratoryMediaPreviewUi(deps) {
     }
   }
 
-  async function decodeAudioBars(url) {
+  async function decodeAudioBars(url: any) {
     const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
     if (typeof window.fetch !== "function" || typeof AudioContextCtor !== "function") {
       return [];
@@ -239,7 +265,7 @@ export function createLaboratoryMediaPreviewUi(deps) {
     };
 
     void decodeAudioBars(nextUrl)
-      .then(function (bars) {
+      .then(function (bars: any) {
         if (state.ui.audioAnalysis.url !== nextUrl) {
           return;
         }

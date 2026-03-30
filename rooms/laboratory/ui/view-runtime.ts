@@ -17,7 +17,7 @@ export function createLaboratoryUiViewBaseRuntime<
     TSnapshotAccessRuntime,
     TViewBindingsRuntime,
     TMediaAnalysisUiRuntime
-  >,
+  >
 ) {
   return {
     ...deps.laboratorySnapshotAccessRuntime,

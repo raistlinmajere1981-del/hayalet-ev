@@ -2,7 +2,7 @@ import { createLaboratoryManagedAudioRunnerRuntime } from "./process-managed-aud
 import { createLaboratoryManagedMediaRunnerRuntime } from "./process-managed-media-runner.js";
 import { createLaboratoryManagedSubtitleRunnerRuntime } from "./process-managed-subtitle-runner.js";
 
-export function createLaboratoryManagedProcessRunnersRuntime(deps) {
+export function createLaboratoryManagedProcessRunnersRuntime(deps: any) {
   const laboratoryManagedSubtitleRunnerRuntime = createLaboratoryManagedSubtitleRunnerRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     buildSubtitleAnalysisStats: deps.buildSubtitleAnalysisStats,

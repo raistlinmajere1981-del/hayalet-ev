@@ -1,4 +1,4 @@
-export function createSubtitleAnalysisSourcePanelPrimitives(deps) {
+export function createSubtitleAnalysisSourcePanelPrimitives(deps: any) {
   const escapeHtml = deps.escapeHtml;
   const subtitleText = deps.subtitleText;
   const getSubtitleSourcePresets = deps.getSubtitleSourcePresets;
@@ -7,10 +7,17 @@ export function createSubtitleAnalysisSourcePanelPrimitives(deps) {
   function getSubtitleSourceModeOptions() {
     const modes = getSubtitleSourcePresets().modes;
     return Array.isArray(modes)
-      ? modes.filter(function (entry) {
+      ? modes.filter(function (entry: any) {
           return typeof entry === "string" && entry.trim() !== "";
         })
-      : ["local-file", "local-folder", "url", "youtube-single", "youtube-playlist", "youtube-channel"];
+      : [
+          "local-file",
+          "local-folder",
+          "url",
+          "youtube-single",
+          "youtube-playlist",
+          "youtube-channel",
+        ];
   }
 
   function getCurrentSubtitleSourceMode() {
@@ -20,31 +27,43 @@ export function createSubtitleAnalysisSourcePanelPrimitives(deps) {
     return modes.includes(currentMode) ? currentMode : modes[0] || "local-file";
   }
 
-  function getSubtitleSourceModeLabel(modeId) {
+  function getSubtitleSourceModeLabel(modeId: any) {
     switch (modeId) {
       case "local-folder":
         return subtitleText(["source", "modes", "localFolder"], "Klasor", "Folder");
       case "url":
         return "URL";
       case "youtube-single":
-        return subtitleText(["source", "modes", "youtubeSingle"], "YouTube Tek Video", "YouTube Single");
+        return subtitleText(
+          ["source", "modes", "youtubeSingle"],
+          "YouTube Tek Video",
+          "YouTube Single"
+        );
       case "youtube-playlist":
-        return subtitleText(["source", "modes", "youtubePlaylist"], "YouTube Playlist", "YouTube Playlist");
+        return subtitleText(
+          ["source", "modes", "youtubePlaylist"],
+          "YouTube Playlist",
+          "YouTube Playlist"
+        );
       case "youtube-channel":
-        return subtitleText(["source", "modes", "youtubeChannel"], "YouTube Kanal", "YouTube Channel");
+        return subtitleText(
+          ["source", "modes", "youtubeChannel"],
+          "YouTube Kanal",
+          "YouTube Channel"
+        );
       case "local-file":
       default:
         return subtitleText(["source", "modes", "localFile"], "Tek Altyazi", "Single Subtitle");
     }
   }
 
-  function renderSubtitleDraftSelect(fieldId, value, label, options) {
+  function renderSubtitleDraftSelect(fieldId: any, value: any, label: any, options: any) {
     return `
       <label class="lab-field">
         <span class="lab-field__label">${escapeHtml(label)}</span>
         <select class="lab-select" data-draft-field="${escapeHtml(fieldId)}">
           ${options
-            .map(function (entry) {
+            .map(function (entry: any) {
               return `
                 <option value="${escapeHtml(entry.value)}" ${
                   String(entry.value) === String(value) ? "selected" : ""

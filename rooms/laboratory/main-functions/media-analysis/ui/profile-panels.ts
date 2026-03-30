@@ -1,4 +1,4 @@
-export function createMediaAnalysisProfilePanels(deps) {
+export function createMediaAnalysisProfilePanels(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
@@ -27,7 +27,7 @@ export function createMediaAnalysisProfilePanels(deps) {
         </div>
         <div class="lab-profile-grid">
           ${getProfilePresetOptions()
-            .map(function (preset) {
+            .map(function (preset: any) {
               return `
                 <button
                   class="lab-profile-card"
@@ -69,7 +69,7 @@ export function createMediaAnalysisProfilePanels(deps) {
             <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "depthLabel"]))}</span>
             <select class="lab-select" data-profile-field="depth">
               ${Object.keys(toRecord(getProfileCapabilities().depthModes))
-                .map(function (depthId) {
+                .map(function (depthId: any) {
                   return `
                     <option value="${escapeHtml(depthId)}" ${depthId === profile.depth ? "selected" : ""}>
                       ${escapeHtml(textFromKey(toRecord(toRecord(getProfileCapabilities().depthModes)[depthId]).labelKey || ""))}
@@ -96,7 +96,7 @@ export function createMediaAnalysisProfilePanels(deps) {
             <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "frameDensityLabel"]))}</span>
             <select class="lab-select" data-profile-field="frameSampleDensity">
               ${getProfileFrameDensityOptions()
-                .map(function (entry) {
+                .map(function (entry: any) {
                   return `
                     <option value="${escapeHtml(entry.densityId)}" ${
                       entry.densityId === profile.frameSampleDensity ? "selected" : ""
@@ -114,7 +114,9 @@ export function createMediaAnalysisProfilePanels(deps) {
                 <label class="lab-field">
                   <span class="lab-field__label">${escapeHtml(
                     `${text(["mediaAnalysis", "profile", "transcriptSampleLabel"])} ${String(
-                      Number(profile.transcriptSampleSeconds) || Number(transcriptConfig.defaultValue) || 45
+                      Number(profile.transcriptSampleSeconds) ||
+                        Number(transcriptConfig.defaultValue) ||
+                        45
                     )}s`
                   )}</span>
                   <input
@@ -123,7 +125,11 @@ export function createMediaAnalysisProfilePanels(deps) {
                     max="${escapeHtml(String(Number(transcriptConfig.max) || 90))}"
                     step="${escapeHtml(String(Number(transcriptConfig.step) || 15))}"
                     value="${escapeHtml(
-                      String(Number(profile.transcriptSampleSeconds) || Number(transcriptConfig.defaultValue) || 45)
+                      String(
+                        Number(profile.transcriptSampleSeconds) ||
+                          Number(transcriptConfig.defaultValue) ||
+                          45
+                      )
                     )}"
                     data-profile-field="transcriptSampleSeconds"
                   />
@@ -140,7 +146,7 @@ export function createMediaAnalysisProfilePanels(deps) {
                 <select class="lab-select" data-profile-field="modelId">
                   <option value="">${escapeHtml(text(["mediaAnalysis", "profile", "modelAuto"]))}</option>
                   ${modelEntries
-                    .map(function (entry) {
+                    .map(function (entry: any) {
                       return `
                         <option value="${escapeHtml(entry.modelId || "")}" ${
                           selectedModel && selectedModel.modelId === entry.modelId ? "selected" : ""
@@ -167,7 +173,7 @@ export function createMediaAnalysisProfilePanels(deps) {
                 </div>
                 <div class="lab-toggle-grid">
                   ${artifactEntries
-                    .map(function (entry) {
+                    .map(function (entry: any) {
                       return `
                         <button
                           class="lab-toggle"
@@ -190,7 +196,7 @@ export function createMediaAnalysisProfilePanels(deps) {
         }
         <div class="lab-toggle-grid">
           ${laneIds
-            .map(function (laneId) {
+            .map(function (laneId: any) {
               const laneState = getProfileLaneCardState(laneId);
               const lane = toRecord(laneState.lane);
               return `
@@ -223,11 +229,7 @@ export function createMediaAnalysisProfilePanels(deps) {
                           )}</span>`
                         : ""
                     }
-                    ${
-                      laneState.note
-                        ? `<span>${escapeHtml(laneState.note)}</span>`
-                        : ""
-                    }
+                    ${laneState.note ? `<span>${escapeHtml(laneState.note)}</span>` : ""}
                   </span>
                 </button>
               `;

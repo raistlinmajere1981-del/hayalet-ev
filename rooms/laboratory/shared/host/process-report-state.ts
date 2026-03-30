@@ -1,43 +1,91 @@
-export function createLaboratoryProcessReportStateRuntime(deps) {
-  const asNonEmptyString = deps.asNonEmptyString;
-  const asNumber = deps.asNumber;
-  const featureIds = Array.isArray(deps.featureIds) ? deps.featureIds : [];
-  const normalizeProfileArtifact = deps.normalizeProfileArtifact;
-  const normalizeProfileSignal = deps.normalizeProfileSignal;
-  const toRecord = deps.toRecord;
+interface ProcessReportRecord extends Record<string, unknown> {
+  moduleId?: unknown;
+  id?: unknown;
+  label?: unknown;
+  labelKey?: unknown;
+  title?: unknown;
+  status?: unknown;
+  percent?: unknown;
+  summary?: unknown;
+  warnings?: unknown;
+  artifactIds?: unknown;
+  findingIds?: unknown;
+  startedAt?: unknown;
+  completedAt?: unknown;
+  jobId?: unknown;
+  requestId?: unknown;
+  runId?: unknown;
+  targetSummary?: unknown;
+  modules?: unknown;
+  findings?: unknown;
+  artifacts?: unknown;
+  error?: unknown;
+  records?: unknown;
+  lastError?: unknown;
+  lastActionAt?: unknown;
+  sourceRunId?: unknown;
+  generatedAt?: unknown;
+  summaryCards?: unknown;
+  caveats?: unknown;
+  exports?: unknown;
+  value?: unknown;
+  format?: unknown;
+  path?: unknown;
+  fileName?: unknown;
+  createdAt?: unknown;
+  process?: unknown;
+  report?: unknown;
+}
 
-  function createEmptyFeatureProcessRecord(featureId) {
+interface ProcessArtifactRecord extends Record<string, unknown> {
+  path?: unknown;
+  moduleId?: unknown;
+}
+
+export function createLaboratoryProcessReportStateRuntime(deps: Record<string, unknown>) {
+  const asNonEmptyString = deps["asNonEmptyString"] as (value: unknown) => string | null;
+  const asNumber = deps["asNumber"] as (value: unknown) => number;
+  const featureIds = Array.isArray(deps["featureIds"]) ? (deps["featureIds"] as string[]) : [];
+  const normalizeProfileArtifact = deps["normalizeProfileArtifact"] as (
+    rawValue: unknown
+  ) => ProcessArtifactRecord;
+  const normalizeProfileSignal = deps["normalizeProfileSignal"] as (
+    rawValue: unknown
+  ) => ProcessReportRecord;
+  const toRecord = deps["toRecord"] as (value: unknown) => ProcessReportRecord;
+
+  function createEmptyFeatureProcessRecord(featureId: string) {
     return {
       featureId: featureId,
-      status: "idle",
-      jobId: null,
-      requestId: null,
-      runId: null,
-      startedAt: null,
-      completedAt: null,
+      status: "idle" as string,
+      jobId: null as string | null,
+      requestId: null as string | null,
+      runId: null as string | null,
+      startedAt: null as string | null,
+      completedAt: null as string | null,
       percent: 0,
-      targetSummary: null,
-      modules: [],
-      findings: [],
-      artifacts: [],
-      warnings: [],
-      error: null,
+      targetSummary: null as Record<string, unknown> | null,
+      modules: [] as unknown[],
+      findings: [] as unknown[],
+      artifacts: [] as unknown[],
+      warnings: [] as string[],
+      error: null as string | null,
     };
   }
 
   function createEmptyProcessState() {
-    const records = {};
-    featureIds.forEach(function (featureId) {
+    const records: Record<string, unknown> = {};
+    featureIds.forEach(function (featureId: string) {
       records[featureId] = createEmptyFeatureProcessRecord(featureId);
     });
     return {
       records: records,
-      lastError: null,
-      lastActionAt: null,
+      lastError: null as string | null,
+      lastActionAt: null as string | null,
     };
   }
 
-  function normalizeProcessArtifact(rawValue) {
+  function normalizeProcessArtifact(rawValue: unknown) {
     const artifact = normalizeProfileArtifact(rawValue);
     return {
       ...artifact,
@@ -45,7 +93,7 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
     };
   }
 
-  function normalizeProcessFinding(rawValue) {
+  function normalizeProcessFinding(rawValue: unknown) {
     const finding = normalizeProfileSignal(rawValue);
     return {
       ...finding,
@@ -53,7 +101,7 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
     };
   }
 
-  function normalizeProcessModule(rawValue) {
+  function normalizeProcessModule(rawValue: unknown) {
     const source = toRecord(rawValue);
     return {
       id: asNonEmptyString(source.id) || `process-module-${Date.now()}`,
@@ -63,22 +111,22 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
       percent: Math.max(0, Math.min(100, Math.round(asNumber(source.percent) || 0))),
       summary: asNonEmptyString(source.summary) || "",
       warnings: Array.isArray(source.warnings)
-        ? source.warnings.map(function (entry) {
+        ? source.warnings.map(function (entry: unknown) {
             return String(entry);
           })
         : [],
       artifactIds: Array.isArray(source.artifactIds)
-        ? source.artifactIds.map(asNonEmptyString).filter(Boolean)
+        ? (source.artifactIds as unknown[]).map(asNonEmptyString).filter(Boolean)
         : [],
       findingIds: Array.isArray(source.findingIds)
-        ? source.findingIds.map(asNonEmptyString).filter(Boolean)
+        ? (source.findingIds as unknown[]).map(asNonEmptyString).filter(Boolean)
         : [],
       startedAt: asNonEmptyString(source.startedAt),
       completedAt: asNonEmptyString(source.completedAt),
     };
   }
 
-  function normalizeFeatureProcessRecord(rawValue, featureId) {
+  function normalizeFeatureProcessRecord(rawValue: unknown, featureId: string) {
     const source = toRecord(rawValue);
     return {
       ...createEmptyFeatureProcessRecord(featureId),
@@ -92,18 +140,20 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
       completedAt: asNonEmptyString(source.completedAt),
       percent: Math.max(0, Math.min(100, Math.round(asNumber(source.percent) || 0))),
       targetSummary:
-        Object.keys(toRecord(source.targetSummary)).length > 0 ? toRecord(source.targetSummary) : null,
+        Object.keys(toRecord(source.targetSummary)).length > 0
+          ? toRecord(source.targetSummary)
+          : null,
       modules: Array.isArray(source.modules) ? source.modules.map(normalizeProcessModule) : [],
       findings: Array.isArray(source.findings) ? source.findings.map(normalizeProcessFinding) : [],
       artifacts: Array.isArray(source.artifacts)
-        ? source.artifacts
-            .map(normalizeProcessArtifact)
-            .filter(function (entry) {
-              return entry.path !== null;
-            })
+        ? source.artifacts.map(normalizeProcessArtifact).filter(function (
+            entry: ProcessArtifactRecord
+          ) {
+            return entry.path !== null;
+          })
         : [],
       warnings: Array.isArray(source.warnings)
-        ? source.warnings.map(function (entry) {
+        ? source.warnings.map(function (entry: unknown) {
             return String(entry);
           })
         : [],
@@ -111,11 +161,11 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
     };
   }
 
-  function normalizeProcessState(rawValue) {
+  function normalizeProcessState(rawValue: unknown) {
     const source = toRecord(rawValue);
-    const records = {};
+    const records: Record<string, unknown> = {};
 
-    featureIds.forEach(function (featureId) {
+    featureIds.forEach(function (featureId: string) {
       records[featureId] = normalizeFeatureProcessRecord(
         toRecord(toRecord(source.records)[featureId]),
         featureId
@@ -129,34 +179,34 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
     };
   }
 
-  function createEmptyFeatureReportRecord(featureId) {
+  function createEmptyFeatureReportRecord(featureId: string) {
     return {
       featureId: featureId,
-      status: "idle",
-      sourceRunId: null,
-      generatedAt: null,
-      summaryCards: [],
-      findings: [],
-      caveats: [],
-      warnings: [],
-      exports: [],
-      error: null,
+      status: "idle" as string,
+      sourceRunId: null as string | null,
+      generatedAt: null as string | null,
+      summaryCards: [] as unknown[],
+      findings: [] as unknown[],
+      caveats: [] as string[],
+      warnings: [] as string[],
+      exports: [] as unknown[],
+      error: null as string | null,
     };
   }
 
   function createEmptyReportState() {
-    const records = {};
-    featureIds.forEach(function (featureId) {
+    const records: Record<string, unknown> = {};
+    featureIds.forEach(function (featureId: string) {
       records[featureId] = createEmptyFeatureReportRecord(featureId);
     });
     return {
       records: records,
-      lastError: null,
-      lastActionAt: null,
+      lastError: null as string | null,
+      lastActionAt: null as string | null,
     };
   }
 
-  function normalizeReportSummaryCard(rawValue) {
+  function normalizeReportSummaryCard(rawValue: unknown) {
     const source = toRecord(rawValue);
     return {
       id: asNonEmptyString(source.id) || `report-card-${Date.now()}`,
@@ -166,7 +216,7 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
     };
   }
 
-  function normalizeReportExport(rawValue) {
+  function normalizeReportExport(rawValue: unknown) {
     const source = toRecord(rawValue);
     return {
       id: asNonEmptyString(source.id) || `report-export-${Date.now()}`,
@@ -179,7 +229,7 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
     };
   }
 
-  function normalizeFeatureReportRecord(rawValue, featureId) {
+  function normalizeFeatureReportRecord(rawValue: unknown, featureId: string) {
     const source = toRecord(rawValue);
     return {
       ...createEmptyFeatureReportRecord(featureId),
@@ -193,12 +243,12 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
         : [],
       findings: Array.isArray(source.findings) ? source.findings.map(normalizeProcessFinding) : [],
       caveats: Array.isArray(source.caveats)
-        ? source.caveats.map(function (entry) {
+        ? source.caveats.map(function (entry: unknown) {
             return String(entry);
           })
         : [],
       warnings: Array.isArray(source.warnings)
-        ? source.warnings.map(function (entry) {
+        ? source.warnings.map(function (entry: unknown) {
             return String(entry);
           })
         : [],
@@ -207,11 +257,11 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
     };
   }
 
-  function normalizeReportState(rawValue) {
+  function normalizeReportState(rawValue: unknown) {
     const source = toRecord(rawValue);
-    const records = {};
+    const records: Record<string, unknown> = {};
 
-    featureIds.forEach(function (featureId) {
+    featureIds.forEach(function (featureId: string) {
       records[featureId] = normalizeFeatureReportRecord(
         toRecord(toRecord(source.records)[featureId]),
         featureId
@@ -225,32 +275,40 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
     };
   }
 
-  function getFeatureProcessRecord(project, featureId) {
+  function getFeatureProcessRecord(project: ProcessReportRecord, featureId: string) {
     return normalizeFeatureProcessRecord(
       toRecord(toRecord(toRecord(project).process).records)[featureId],
       featureId
     );
   }
 
-  function setFeatureProcessRecord(project, featureId, record) {
+  function setFeatureProcessRecord(
+    project: ProcessReportRecord,
+    featureId: string,
+    record: unknown
+  ) {
     const nextProcess = normalizeProcessState(project.process);
     nextProcess.records[featureId] = normalizeFeatureProcessRecord(record, featureId);
     project.process = nextProcess;
-    return project.process.records[featureId];
+    return (nextProcess.records as Record<string, unknown>)[featureId];
   }
 
-  function getFeatureReportRecord(project, featureId) {
+  function getFeatureReportRecord(project: ProcessReportRecord, featureId: string) {
     return normalizeFeatureReportRecord(
       toRecord(toRecord(toRecord(project).report).records)[featureId],
       featureId
     );
   }
 
-  function setFeatureReportRecord(project, featureId, record) {
+  function setFeatureReportRecord(
+    project: ProcessReportRecord,
+    featureId: string,
+    record: unknown
+  ) {
     const nextReport = normalizeReportState(project.report);
     nextReport.records[featureId] = normalizeFeatureReportRecord(record, featureId);
     project.report = nextReport;
-    return project.report.records[featureId];
+    return (nextReport.records as Record<string, unknown>)[featureId];
   }
 
   return {

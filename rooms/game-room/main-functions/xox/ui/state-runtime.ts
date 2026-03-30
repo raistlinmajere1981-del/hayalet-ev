@@ -1,4 +1,4 @@
-(function (global) {
+(function (global: any) {
   type UnknownRecord = Record<string, unknown>;
   type XoxTarget = "ai1" | "ai2" | "us1";
   type XoxStarter = "user" | "ai";
@@ -160,19 +160,21 @@
     function normalizeInviteEntry(candidate: unknown): XoxInviteEntry {
       const source = isRecord(candidate) ? candidate : {};
       const entry = createInviteEntry();
-      entry.roomId = readString(source.roomId, roomId);
-      entry.featureId = readString(source.featureId, featureId);
-      entry.inviteId = readString(source.inviteId, "");
-      entry.remoteUserId = readString(source.remoteUserId, "");
-      entry.nickname = readString(source.nickname, readString(source.senderNickname, "US1"));
-      entry.senderEmail = readString(source.senderEmail, "");
-      entry.note = readString(source.note, "");
-      entry.starter = readInviteStarter(source.starter);
-      entry.localSessionId = readString(source.localSessionId, "");
-      entry.conversationId = readString(source.conversationId, "");
+      entry.roomId = readString(source["roomId"], roomId);
+      entry.featureId = readString(source["featureId"], featureId);
+      entry.inviteId = readString(source["inviteId"], "");
+      entry.remoteUserId = readString(source["remoteUserId"], "");
+      entry.nickname = readString(source["nickname"], readString(source["senderNickname"], "US1"));
+      entry.senderEmail = readString(source["senderEmail"], "");
+      entry.note = readString(source["note"], "");
+      entry.starter = readInviteStarter(source["starter"]);
+      entry.localSessionId = readString(source["localSessionId"], "");
+      entry.conversationId = readString(source["conversationId"], "");
       entry.sentAt =
-        typeof source.sentAt === "number" && Number.isFinite(source.sentAt) && source.sentAt >= 0
-          ? Math.trunc(source.sentAt)
+        typeof source["sentAt"] === "number" &&
+        Number.isFinite(source["sentAt"]) &&
+        source["sentAt"] >= 0
+          ? Math.trunc(source["sentAt"])
           : null;
       return entry;
     }
@@ -182,10 +184,10 @@
         return [];
       }
       return value
-        .map(function (entry) {
+        .map(function (entry: any) {
           return normalizeInviteEntry(entry);
         })
-        .filter(function (entry) {
+        .filter(function (entry: any) {
           return entry.inviteId !== "" && entry.remoteUserId !== "";
         });
     }
@@ -199,7 +201,7 @@
         return null;
       }
       return {
-        direction: value.direction === "incoming" ? "incoming" : "outgoing",
+        direction: value["direction"] === "incoming" ? "incoming" : "outgoing",
         roomId: entry.roomId,
         featureId: entry.featureId,
         inviteId: entry.inviteId,
@@ -215,42 +217,43 @@
     function sanitizeGameState(candidate: unknown): XoxGameState {
       const source = isRecord(candidate) ? candidate : {};
       const next = createGameState();
-      if (Array.isArray(source.board) && source.board.length === 9) {
-        next.board = source.board.map(function (value) {
+      if (Array.isArray(source["board"]) && source["board"].length === 9) {
+        next.board = source["board"].map(function (value: any) {
           return value === "X" || value === "O" ? value : "";
         });
       }
-      if (typeof source.boardAscii === "string" && source.boardAscii.trim() !== "") {
-        next.boardAscii = source.boardAscii;
+      if (typeof source["boardAscii"] === "string" && source["boardAscii"].trim() !== "") {
+        next.boardAscii = source["boardAscii"];
       }
-      if (Array.isArray(source.availableCells)) {
-        next.availableCells = source.availableCells.filter(function (value) {
+      if (Array.isArray(source["availableCells"])) {
+        next.availableCells = source["availableCells"].filter(function (value: any) {
           return typeof value === "number" && Number.isInteger(value);
         });
       }
-      next.active = source.active === true;
+      next.active = source["active"] === true;
       next.awaitingMoveFrom =
-        source.awaitingMoveFrom === "user" || source.awaitingMoveFrom === "ai"
-          ? source.awaitingMoveFrom
+        source["awaitingMoveFrom"] === "user" || source["awaitingMoveFrom"] === "ai"
+          ? source["awaitingMoveFrom"]
           : null;
-      next.result = readString(source.result, "idle");
-      next.winner = source.winner === "user" || source.winner === "ai" ? source.winner : "";
-      next.selectedTarget = readTarget(source.selectedTarget);
-      next.starter = readStarter(source.starter);
-      next.userSymbol = source.userSymbol === "O" ? "O" : "X";
-      next.aiSymbol = source.aiSymbol === "X" ? "X" : "O";
-      next.status = readString(source.status, "");
-      next.blockedReason = readString(source.blockedReason, "");
-      next.protocolDelivered = source.protocolDelivered === true;
-      next.opponentReady = source.opponentReady === true;
-      next.inviteId = readOptionalString(source.inviteId);
-      next.localSessionId = readOptionalString(source.localSessionId);
-      next.remoteUserId = readOptionalString(source.remoteUserId);
-      next.pendingInvite = normalizePendingInvite(source.pendingInvite);
-      next.inviteInbox = normalizeInviteInbox(source.inviteInbox);
-      next.opponent = normalizeSlot(source.opponent, next.selectedTarget);
-      if (isRecord(source.user)) {
-        next.user.nickname = readString(source.user.nickname, next.user.nickname);
+      next.result = readString(source["result"], "idle");
+      next.winner =
+        source["winner"] === "user" || source["winner"] === "ai" ? source["winner"] : "";
+      next.selectedTarget = readTarget(source["selectedTarget"]);
+      next.starter = readStarter(source["starter"]);
+      next.userSymbol = source["userSymbol"] === "O" ? "O" : "X";
+      next.aiSymbol = source["aiSymbol"] === "X" ? "X" : "O";
+      next.status = readString(source["status"], "");
+      next.blockedReason = readString(source["blockedReason"], "");
+      next.protocolDelivered = source["protocolDelivered"] === true;
+      next.opponentReady = source["opponentReady"] === true;
+      next.inviteId = readOptionalString(source["inviteId"]);
+      next.localSessionId = readOptionalString(source["localSessionId"]);
+      next.remoteUserId = readOptionalString(source["remoteUserId"]);
+      next.pendingInvite = normalizePendingInvite(source["pendingInvite"]);
+      next.inviteInbox = normalizeInviteInbox(source["inviteInbox"]);
+      next.opponent = normalizeSlot(source["opponent"], next.selectedTarget);
+      if (isRecord(source["user"])) {
+        next.user.nickname = readString(source["user"]["nickname"], next.user.nickname);
       }
       return next;
     }

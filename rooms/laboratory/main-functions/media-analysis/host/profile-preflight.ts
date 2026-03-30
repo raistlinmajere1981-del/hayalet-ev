@@ -1,4 +1,4 @@
-export function createMediaProfilePreflightRuntime(deps) {
+export function createMediaProfilePreflightRuntime(deps: any) {
   const {
     asNonEmptyString,
     asNumber,
@@ -30,7 +30,7 @@ export function createMediaProfilePreflightRuntime(deps) {
     toRecord,
   } = deps;
 
-  async function runProfilePreflight(api, runtime, requestId) {
+  async function runProfilePreflight(api: any, runtime: any, requestId: any) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
@@ -56,7 +56,8 @@ export function createMediaProfilePreflightRuntime(deps) {
       "profile-pass"
     );
     const jobId = `room-profile-preflight-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const sampleWindowSeconds = asNumber(toRecord(projectedProject.profile.estimate).sampleWindowSeconds) || 45;
+    const sampleWindowSeconds =
+      asNumber(toRecord(projectedProject.profile.estimate).sampleWindowSeconds) || 45;
     const sourceKind = asNonEmptyString(project.source.kind) || "video";
     const artifactPreferences = normalizeProfileArtifactPreferences(
       toRecord(projectedProject.profile.artifactPreferences),
@@ -67,7 +68,12 @@ export function createMediaProfilePreflightRuntime(deps) {
       2,
       Math.round(
         asNumber(
-          toRecord(getProfileFrameDensityRuntimeConfig(runtime, projectedProject.profile.frameSampleDensity)).tileCount
+          toRecord(
+            getProfileFrameDensityRuntimeConfig(
+              runtime,
+              projectedProject.profile.frameSampleDensity
+            )
+          ).tileCount
         ) || 4
       )
     );
@@ -94,7 +100,7 @@ export function createMediaProfilePreflightRuntime(deps) {
       stage: "queued",
     });
 
-    await patchActiveProject(runtime, function (nextProject) {
+    await patchActiveProject(runtime, function (nextProject: any) {
       nextProject.profile.lastError = null;
       nextProject.profile.lastActionAt = new Date().toISOString();
       nextProject.profile.preflight = {
@@ -110,8 +116,8 @@ export function createMediaProfilePreflightRuntime(deps) {
     });
 
     try {
-      const artifacts = [];
-      const signals = [];
+      const artifacts: any[] = [];
+      const signals: any[] = [];
       const metadataArtifact =
         artifactPreferences.metadata === true
           ? await generateProfileMetadataArtifact(runtime, project, target, artifactBase)
@@ -120,7 +126,10 @@ export function createMediaProfilePreflightRuntime(deps) {
         artifacts.push(metadataArtifact);
       }
 
-      if (artifactPreferences["frame-strip"] === true && (sourceKind === "video" || sourceKind === "image")) {
+      if (
+        artifactPreferences["frame-strip"] === true &&
+        (sourceKind === "video" || sourceKind === "image")
+      ) {
         try {
           const frameArtifact = await generateProfileFrameStrip(
             runtime,
@@ -140,7 +149,10 @@ export function createMediaProfilePreflightRuntime(deps) {
         }
       }
 
-      if (artifactPreferences.spectrogram === true && (sourceKind === "video" || sourceKind === "audio")) {
+      if (
+        artifactPreferences.spectrogram === true &&
+        (sourceKind === "video" || sourceKind === "audio")
+      ) {
         try {
           const spectrogramArtifact = await generateProfileSpectrogram(
             runtime,
@@ -158,13 +170,18 @@ export function createMediaProfilePreflightRuntime(deps) {
         }
       }
 
-      const artifactIds = artifacts.map(function (artifact) {
+      const artifactIds = artifacts.map(function (artifact: any) {
         return artifact.id;
       });
       const metadata = normalizeSourceMetadata(target.metadata);
-      const enabledLaneIds = Array.isArray(readiness.enabledLaneIds) ? readiness.enabledLaneIds : [];
+      const enabledLaneIds = Array.isArray(readiness.enabledLaneIds)
+        ? readiness.enabledLaneIds
+        : [];
 
-      if (enabledLaneIds.includes("metadata-lineage") && (!metadata || asNonEmptyString(toRecord(metadata).formatName) === null)) {
+      if (
+        enabledLaneIds.includes("metadata-lineage") &&
+        (!metadata || asNonEmptyString(toRecord(metadata).formatName) === null)
+      ) {
         signals.push(
           createProfileSignal(
             "metadata-lineage",
@@ -286,7 +303,7 @@ export function createMediaProfilePreflightRuntime(deps) {
       }
 
       const syntheticSignal = buildSyntheticProfileSignal(
-        signals.filter(function (entry) {
+        signals.filter(function (entry: any) {
           return asNonEmptyString(toRecord(entry).laneId) !== "speech-overlay";
         }),
         clampNumber(projectedProject.profile.sensitivity, 0.1, 1, 0.58),
@@ -297,7 +314,7 @@ export function createMediaProfilePreflightRuntime(deps) {
       }
 
       const completedAt = new Date().toISOString();
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         nextProject.profile.dirty = false;
         nextProject.profile.lastError = null;
         nextProject.profile.lastActionAt = completedAt;
@@ -335,7 +352,7 @@ export function createMediaProfilePreflightRuntime(deps) {
         percent: 100,
       });
     } catch (error) {
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         nextProject.profile.lastError = error instanceof Error ? error.message : String(error);
         nextProject.profile.lastActionAt = new Date().toISOString();
         nextProject.profile.preflight = {

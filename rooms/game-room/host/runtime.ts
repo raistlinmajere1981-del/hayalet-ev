@@ -53,14 +53,38 @@ import {
 } from "../main-functions/fate-knots/host/runtime.js";
 import { resetFateKnotsState } from "../main-functions/fate-knots/host/state.js";
 import { FATE_KNOTS_COMMAND_NAMES } from "../main-functions/fate-knots/host/constants.js";
-import { bootstrapGameRoomHostState, createGameRoomHostLifecycle } from "../shared/host/activation.js";
+import {
+  bootstrapGameRoomHostState,
+  createGameRoomHostLifecycle,
+} from "../shared/host/activation.js";
 import { createGameRoomCommandRegistry } from "../shared/host/command-registry.js";
 
 export { teamTetrisEngine };
 
 export default function createGameRoomHostRuntime() {
   return {
-    activate(api) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Bridge layer: command dispatch passes unknown, handlers expect specific types.
+    activate(api: any) {
+      function asCommandHandler(handler: (handlerApi: any, payload: any) => unknown) {
+        return (handlerApi: unknown, payload?: unknown) =>
+          handler(handlerApi as any, payload as any);
+      }
+
+      function asNoPayloadHandler(handler: (handlerApi: any) => unknown) {
+        return (handlerApi: unknown) => handler(handlerApi as any);
+      }
+
+      function saveXoxStateCompat(
+        handlerApi: Parameters<typeof saveState>[0],
+        value: unknown
+      ): void {
+        void saveState(handlerApi, value as Parameters<typeof saveState>[1]);
+      }
+
+      function getActiveFeatureIdCompat(context: unknown): string {
+        return getActiveFeatureId(context as Parameters<typeof getActiveFeatureId>[0]);
+      }
+
       bootstrapGameRoomHostState(api, {
         clearPendingInvite: clearPendingInvite,
         createInitialTeamTetrisState: createInitialTeamTetrisState,
@@ -73,39 +97,39 @@ export default function createGameRoomHostRuntime() {
         saveContext: saveContext,
         saveInviteInbox: saveInviteInbox,
         saveTeamTetrisState: saveTeamTetrisState,
-        saveXoxState: saveState,
+        saveXoxState: saveXoxStateCompat,
       });
 
       return {
         commands: createGameRoomCommandRegistry(api, {
           fateKnotsCommandNames: FATE_KNOTS_COMMAND_NAMES,
-          handleFateKnotsCharacterSelect: fateKnotsHandleCharacterSelect,
-          handleFateKnotsChoice: fateKnotsHandleChoice,
-          handleFateKnotsCombatAction: fateKnotsHandleCombatAction,
-          handleFateKnotsDmPacket: fateKnotsHandleDmPacket,
-          handleFateKnotsEnd: fateKnotsHandleEnd,
-          handleFateKnotsNpcBanter: fateKnotsHandleNpcBanter,
-          handleFateKnotsReady: fateKnotsHandleReady,
-          handleFateKnotsReset: fateKnotsHandleReset,
-          handleFateKnotsStart: fateKnotsHandleStart,
-          handleFateKnotsSync: fateKnotsHandleSync,
-          handleTeamTetrisMove: handleTeamTetrisMove,
-          handleTeamTetrisReset: handleTeamTetrisReset,
-          handleTeamTetrisStart: handleTeamTetrisStart,
-          handleXoxAcceptInvite: xoxHandleAcceptInvite,
-          handleXoxAiMove: xoxHandleAiMove,
-          handleXoxRejectInvite: xoxHandleRejectInvite,
-          handleXoxRemoteMove: xoxHandleRemoteMove,
-          handleXoxReset: xoxHandleReset,
-          handleXoxStart: xoxHandleStart,
-          handleXoxUserMove: xoxHandleUserMove,
+          handleFateKnotsCharacterSelect: asCommandHandler(fateKnotsHandleCharacterSelect),
+          handleFateKnotsChoice: asCommandHandler(fateKnotsHandleChoice),
+          handleFateKnotsCombatAction: asCommandHandler(fateKnotsHandleCombatAction),
+          handleFateKnotsDmPacket: asCommandHandler(fateKnotsHandleDmPacket),
+          handleFateKnotsEnd: asNoPayloadHandler(fateKnotsHandleEnd),
+          handleFateKnotsNpcBanter: asCommandHandler(fateKnotsHandleNpcBanter),
+          handleFateKnotsReady: asNoPayloadHandler(fateKnotsHandleReady),
+          handleFateKnotsReset: asNoPayloadHandler(fateKnotsHandleReset),
+          handleFateKnotsStart: asCommandHandler(fateKnotsHandleStart),
+          handleFateKnotsSync: asCommandHandler(fateKnotsHandleSync),
+          handleTeamTetrisMove: asCommandHandler(handleTeamTetrisMove),
+          handleTeamTetrisReset: asNoPayloadHandler(handleTeamTetrisReset),
+          handleTeamTetrisStart: asCommandHandler(handleTeamTetrisStart),
+          handleXoxAcceptInvite: asCommandHandler(xoxHandleAcceptInvite),
+          handleXoxAiMove: asCommandHandler(xoxHandleAiMove),
+          handleXoxRejectInvite: asCommandHandler(xoxHandleRejectInvite),
+          handleXoxRemoteMove: asCommandHandler(xoxHandleRemoteMove),
+          handleXoxReset: asNoPayloadHandler(xoxHandleReset),
+          handleXoxStart: asCommandHandler(xoxHandleStart),
+          handleXoxUserMove: asCommandHandler(xoxHandleUserMove),
           xoxCommandNames: XOX_COMMAND_NAMES,
         }),
         ...createGameRoomHostLifecycle(api, {
           clearUs1SyncLoop: xoxClearUs1SyncLoop,
           dispatchPendingFateKnotsWork: dispatchPendingFateKnotsWork,
           fateKnotsFeatureId: FATE_KNOTS_FEATURE_ID,
-          getActiveFeatureId: getActiveFeatureId,
+          getActiveFeatureId: getActiveFeatureIdCompat,
           loadContext: loadContext,
           pushActiveFeatureState: pushActiveFeatureState,
           syncFromContext: xoxSyncFromContext,

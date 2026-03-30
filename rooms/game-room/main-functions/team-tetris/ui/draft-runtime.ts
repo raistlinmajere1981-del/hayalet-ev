@@ -1,7 +1,7 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createTeamTetrisUiDraftRuntime = function createTeamTetrisUiDraftRuntime(deps) {
+  registry.createTeamTetrisUiDraftRuntime = function createTeamTetrisUiDraftRuntime(deps: any) {
     const createTeamTetrisDraft = deps.createTeamTetrisDraft;
     const getState = deps.getState;
     const render = deps.render;
@@ -12,7 +12,7 @@
 
     const BOARD_WIDTH = 10;
     const BOARD_HEIGHT = 20;
-    const PIECES = {
+    const PIECES: Record<string, number[][][]> = {
       I: [
         [
           [0, 0],
@@ -27,70 +27,165 @@
           [0, 3],
         ],
       ],
-      O: [[[0, 0], [1, 0], [0, 1], [1, 1]]],
+      O: [
+        [
+          [0, 0],
+          [1, 0],
+          [0, 1],
+          [1, 1],
+        ],
+      ],
       T: [
-        [[1, 0], [0, 1], [1, 1], [2, 1]],
-        [[0, 0], [0, 1], [1, 1], [0, 2]],
-        [[0, 0], [1, 0], [2, 0], [1, 1]],
-        [[1, 0], [0, 1], [1, 1], [1, 2]],
+        [
+          [1, 0],
+          [0, 1],
+          [1, 1],
+          [2, 1],
+        ],
+        [
+          [0, 0],
+          [0, 1],
+          [1, 1],
+          [0, 2],
+        ],
+        [
+          [0, 0],
+          [1, 0],
+          [2, 0],
+          [1, 1],
+        ],
+        [
+          [1, 0],
+          [0, 1],
+          [1, 1],
+          [1, 2],
+        ],
       ],
       S: [
-        [[1, 0], [2, 0], [0, 1], [1, 1]],
-        [[0, 0], [0, 1], [1, 1], [1, 2]],
+        [
+          [1, 0],
+          [2, 0],
+          [0, 1],
+          [1, 1],
+        ],
+        [
+          [0, 0],
+          [0, 1],
+          [1, 1],
+          [1, 2],
+        ],
       ],
       Z: [
-        [[0, 0], [1, 0], [1, 1], [2, 1]],
-        [[1, 0], [0, 1], [1, 1], [0, 2]],
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [2, 1],
+        ],
+        [
+          [1, 0],
+          [0, 1],
+          [1, 1],
+          [0, 2],
+        ],
       ],
       J: [
-        [[0, 0], [0, 1], [1, 1], [2, 1]],
-        [[0, 0], [1, 0], [0, 1], [0, 2]],
-        [[0, 0], [1, 0], [2, 0], [2, 1]],
-        [[1, 0], [1, 1], [0, 2], [1, 2]],
+        [
+          [0, 0],
+          [0, 1],
+          [1, 1],
+          [2, 1],
+        ],
+        [
+          [0, 0],
+          [1, 0],
+          [0, 1],
+          [0, 2],
+        ],
+        [
+          [0, 0],
+          [1, 0],
+          [2, 0],
+          [2, 1],
+        ],
+        [
+          [1, 0],
+          [1, 1],
+          [0, 2],
+          [1, 2],
+        ],
       ],
       L: [
-        [[2, 0], [0, 1], [1, 1], [2, 1]],
-        [[0, 0], [0, 1], [0, 2], [1, 2]],
-        [[0, 0], [1, 0], [2, 0], [0, 1]],
-        [[0, 0], [1, 0], [1, 1], [1, 2]],
+        [
+          [2, 0],
+          [0, 1],
+          [1, 1],
+          [2, 1],
+        ],
+        [
+          [0, 0],
+          [0, 1],
+          [0, 2],
+          [1, 2],
+        ],
+        [
+          [0, 0],
+          [1, 0],
+          [2, 0],
+          [0, 1],
+        ],
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [1, 2],
+        ],
       ],
     };
 
-    function getTeamTetrisRotationCells(pieceId, rotation) {
+    function getTeamTetrisRotationCells(pieceId: string, rotation: number): number[][] {
       const rotations = PIECES[pieceId];
       if (!Array.isArray(rotations) || rotations.length === 0) {
         return [];
       }
-      return Array.isArray(rotations[rotation]) ? rotations[rotation] : rotations[0];
+      const rotationCells = rotations[rotation];
+      return Array.isArray(rotationCells) ? rotationCells : rotations[0] || [];
     }
 
-    function getTeamTetrisLegalRotations(pieceId) {
-      return getTeamTetrisRotationCells(pieceId, 0).length === 0
+    function getTeamTetrisLegalRotations(pieceId: string): number[] {
+      const rotations = PIECES[pieceId];
+      return !Array.isArray(rotations) || rotations.length === 0
         ? [0]
-        : PIECES[pieceId].map(function (_entry, index) {
+        : rotations.map(function (_entry: number[][], index: number) {
             return index;
           });
     }
 
-    function getTeamTetrisPieceBounds(pieceId, rotation) {
+    function getTeamTetrisPieceBounds(
+      pieceId: string,
+      rotation: number
+    ): { width: number; height: number } {
       const cells = getTeamTetrisRotationCells(pieceId, rotation);
       if (cells.length === 0) {
         return { width: 0, height: 0 };
       }
       let maxX = 0;
       let maxY = 0;
-      cells.forEach(function (cell) {
-        maxX = Math.max(maxX, cell[0]);
-        maxY = Math.max(maxY, cell[1]);
+      cells.forEach(function (cell: number[]) {
+        maxX = Math.max(maxX, cell[0] ?? 0);
+        maxY = Math.max(maxY, cell[1] ?? 0);
       });
       return { width: maxX + 1, height: maxY + 1 };
     }
 
-    function clampNumber(value, min, max) {
+    function clampNumber(value: number, min: number, max: number): number {
       return Math.max(min, Math.min(max, value));
     }
 
-    function getTeamTetrisSpawnPosition(pieceId, rotation) {
+    function getTeamTetrisSpawnPosition(
+      pieceId: string,
+      rotation: number
+    ): { x: number; y: number } {
       const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
       return {
         x: Math.max(0, Math.floor((BOARD_WIDTH - bounds.width) / 2)),
@@ -98,39 +193,63 @@
       };
     }
 
-    function buildTeamTetrisMatrix(rows) {
-      return sanitizeTeamTetrisRows(rows).map(function (row) {
-        return row.split("").map(function (value) {
+    function buildTeamTetrisMatrix(rows: string[]): string[][] {
+      return sanitizeTeamTetrisRows(rows).map(function (row: string) {
+        return row.split("").map(function (value: string) {
           return value === "." ? "" : value;
         });
       });
     }
 
-    function getTeamTetrisPlacedCells(pieceId, rotation, originX, originY) {
-      return getTeamTetrisRotationCells(pieceId, rotation).map(function (cell) {
+    function getTeamTetrisPlacedCells(
+      pieceId: string,
+      rotation: number,
+      originX: number,
+      originY: number
+    ): { x: number; y: number }[] {
+      return getTeamTetrisRotationCells(pieceId, rotation).map(function (cell: number[]) {
         return {
-          x: originX + cell[0],
-          y: originY + cell[1],
+          x: originX + (cell[0] ?? 0),
+          y: originY + (cell[1] ?? 0),
         };
       });
     }
 
-    function doesTeamTetrisPieceCollide(rows, pieceId, rotation, originX, originY) {
+    function doesTeamTetrisPieceCollide(
+      rows: string[],
+      pieceId: string,
+      rotation: number,
+      originX: number,
+      originY: number
+    ): boolean {
       const matrix = buildTeamTetrisMatrix(rows);
       const cells = getTeamTetrisPlacedCells(pieceId, rotation, originX, originY);
       if (cells.length === 0) {
         return true;
       }
 
-      return cells.some(function (cell) {
+      return cells.some(function (cell: { x: number; y: number }) {
         if (cell.x < 0 || cell.x >= BOARD_WIDTH || cell.y < 0 || cell.y >= BOARD_HEIGHT) {
           return true;
         }
-        return matrix[cell.y][cell.x] !== "";
+        const row = matrix[cell.y];
+        return !row || row[cell.x] !== "";
       });
     }
 
-    function replayTeamTetrisDraft(rows, pieceId, rotation, rowShifts) {
+    function replayTeamTetrisDraft(
+      rows: string[],
+      pieceId: string,
+      rotation: number,
+      rowShifts: number[]
+    ): {
+      success: boolean;
+      reason?: string;
+      stepIndex?: number;
+      x?: number;
+      y?: number;
+      cells?: { x: number; y: number }[];
+    } {
       const legalRotations = getTeamTetrisLegalRotations(pieceId);
       if (legalRotations.indexOf(rotation) === -1) {
         return { success: false, reason: "invalidRotation" };
@@ -138,7 +257,7 @@
 
       if (
         !Array.isArray(rowShifts) ||
-        rowShifts.some(function (value) {
+        rowShifts.some(function (value: number) {
           return value !== -1 && value !== 0 && value !== 1;
         })
       ) {
@@ -154,7 +273,7 @@
       let y = spawn.y;
 
       for (let index = 0; index < rowShifts.length; index += 1) {
-        const shift = rowShifts[index];
+        const shift = rowShifts[index] ?? 0;
         if (shift !== 0) {
           if (doesTeamTetrisPieceCollide(rows, pieceId, rotation, x + shift, y)) {
             return { success: false, reason: "horizontalCollision", stepIndex: index };
@@ -181,18 +300,22 @@
       };
     }
 
-    function getTeamTetrisOriginFromCell(pieceId, rotation, cellX) {
+    function getTeamTetrisOriginFromCell(pieceId: string, rotation: number, cellX: number): number {
       const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
       const maxOrigin = Math.max(0, BOARD_WIDTH - bounds.width);
       return clampNumber(cellX - Math.floor(bounds.width / 2), 0, maxOrigin);
     }
 
-    function buildTeamTetrisRowShiftsFromTargets(pieceId, rotation, dragTargets) {
+    function buildTeamTetrisRowShiftsFromTargets(
+      pieceId: string,
+      rotation: number,
+      dragTargets: Record<number, number>
+    ): number[] {
       const targetRows = Object.keys(dragTargets)
-        .map(function (key) {
+        .map(function (key: string) {
           return Number.parseInt(key, 10);
         })
-        .filter(function (value) {
+        .filter(function (value: number) {
           return Number.isInteger(value) && value >= 0;
         });
 
@@ -202,13 +325,16 @@
 
       const maxTargetRow = Math.max.apply(null, targetRows);
       const spawn = getTeamTetrisSpawnPosition(pieceId, rotation);
-      const rowShifts = [];
+      const rowShifts: number[] = [];
       let desiredX = spawn.x;
       let currentX = spawn.x;
 
       for (let rowIndex = 1; rowIndex <= maxTargetRow; rowIndex += 1) {
         if (Object.prototype.hasOwnProperty.call(dragTargets, String(rowIndex))) {
-          desiredX = dragTargets[rowIndex];
+          const nextDesiredX = dragTargets[rowIndex];
+          if (typeof nextDesiredX === "number") {
+            desiredX = nextDesiredX;
+          }
         }
         const shift = clampNumber(desiredX - currentX, -1, 1);
         rowShifts.push(shift);
@@ -218,7 +344,11 @@
       return rowShifts;
     }
 
-    function normalizeTeamTetrisPreview(pieceId, rotation, rowShifts) {
+    function normalizeTeamTetrisPreview(
+      pieceId: string,
+      rotation: number,
+      rowShifts: number[]
+    ): { rowShifts: number[]; preview: any } {
       const ownBoard = getTeamTetrisOwnBoardState();
       let nextRowShifts = rowShifts.slice();
       let preview = replayTeamTetrisDraft(ownBoard.rows, pieceId, rotation, nextRowShifts);
@@ -235,7 +365,7 @@
       return { rowShifts: nextRowShifts, preview: preview };
     }
 
-    function refreshTeamTetrisDraftPreview() {
+    function refreshTeamTetrisDraftPreview(): void {
       const state = getState();
       const pendingTurn = getTeamTetrisPendingTurn();
       if (!pendingTurn) {
@@ -249,12 +379,13 @@
         state.teamTetrisDraft.rowShifts
       );
       state.teamTetrisDraft.rowShifts = normalized.rowShifts;
-      state.teamTetrisDraft.preview = normalized.preview.success === true ? normalized.preview : null;
+      state.teamTetrisDraft.preview =
+        normalized.preview.success === true ? normalized.preview : null;
       state.teamTetrisDraft.errorKey =
         normalized.preview.success === true ? "" : normalized.preview.reason || "";
     }
 
-    function syncTeamTetrisDraftFromState() {
+    function syncTeamTetrisDraftFromState(): void {
       const state = getState();
       const pendingTurn = getTeamTetrisPendingTurn();
       if (!pendingTurn) {
@@ -266,6 +397,7 @@
         Array.isArray(pendingTurn.legalRotations) && pendingTurn.legalRotations.length > 0
           ? pendingTurn.legalRotations
           : [0];
+      const initialRotation = legalRotations[0] ?? 0;
 
       if (state.teamTetrisDraft.turnToken !== pendingTurn.turnToken) {
         state.teamTetrisDraft = {
@@ -273,7 +405,7 @@
           turnIndex: pendingTurn.turnIndex,
           turnToken: pendingTurn.turnToken,
           pieceId: pendingTurn.pieceId,
-          rotation: legalRotations[0],
+          rotation: initialRotation,
           rowShifts: [],
           dragTargets: {},
           preview: null,
@@ -285,7 +417,7 @@
       }
 
       if (legalRotations.indexOf(state.teamTetrisDraft.rotation) === -1) {
-        state.teamTetrisDraft.rotation = legalRotations[0];
+        state.teamTetrisDraft.rotation = initialRotation;
         state.teamTetrisDraft.dragTargets = {};
         state.teamTetrisDraft.rowShifts = [];
       }
@@ -293,7 +425,7 @@
       refreshTeamTetrisDraftPreview();
     }
 
-    function clearTeamTetrisDraft() {
+    function clearTeamTetrisDraft(): void {
       const state = getState();
       const pendingTurn = getTeamTetrisPendingTurn();
       if (!pendingTurn) {
@@ -307,7 +439,7 @@
       state.teamTetrisDraft.dragActive = false;
     }
 
-    function onTeamTetrisRotate() {
+    function onTeamTetrisRotate(): void {
       const state = getState();
       const pendingTurn = getTeamTetrisPendingTurn();
       if (!pendingTurn) {
@@ -320,13 +452,13 @@
           : [0];
       const currentIndex = legalRotations.indexOf(state.teamTetrisDraft.rotation);
       const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % legalRotations.length;
-      state.teamTetrisDraft.rotation = legalRotations[nextIndex];
+      state.teamTetrisDraft.rotation = legalRotations[nextIndex] ?? 0;
       clearTeamTetrisDraft();
       refreshTeamTetrisDraftPreview();
       render();
     }
 
-    function onTeamTetrisRotationSelect(rotation) {
+    function onTeamTetrisRotationSelect(rotation: number): void {
       const state = getState();
       const pendingTurn = getTeamTetrisPendingTurn();
       if (!pendingTurn || pendingTurn.legalRotations.indexOf(rotation) === -1) {
@@ -339,7 +471,7 @@
       render();
     }
 
-    function updateTeamTetrisDraftTarget(cellX, cellY) {
+    function updateTeamTetrisDraftTarget(cellX: number, cellY: number): void {
       const state = getState();
       const pendingTurn = getTeamTetrisPendingTurn();
       if (!pendingTurn) {
@@ -363,7 +495,7 @@
       render();
     }
 
-    function startTeamTetrisDrag(cellX, cellY) {
+    function startTeamTetrisDrag(cellX: number, cellY: number): void {
       const state = getState();
       const pendingTurn = getTeamTetrisPendingTurn();
       if (!pendingTurn) {
@@ -373,17 +505,17 @@
       updateTeamTetrisDraftTarget(cellX, cellY);
     }
 
-    function finishTeamTetrisDrag() {
+    function finishTeamTetrisDrag(): void {
       const state = getState();
       state.teamTetrisDraft.dragActive = false;
     }
 
-    function onTeamTetrisClearDraft() {
+    function onTeamTetrisClearDraft(): void {
       clearTeamTetrisDraft();
       render();
     }
 
-    function onTeamTetrisSubmit() {
+    function onTeamTetrisSubmit(): void {
       const state = getState();
       const pendingTurn = getTeamTetrisPendingTurn();
       if (!pendingTurn || !state.teamTetrisDraft.preview) {

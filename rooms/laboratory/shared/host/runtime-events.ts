@@ -1,4 +1,4 @@
-export function createLaboratoryRuntimeEvents(deps) {
+export function createLaboratoryRuntimeEvents(deps: any) {
   const {
     asNonEmptyString,
     defaultFeatureId,
@@ -7,19 +7,19 @@ export function createLaboratoryRuntimeEvents(deps) {
     roomSnapshotRuntime,
   } = deps;
 
-  function buildMediaSnapshot(runtime, featureId) {
+  function buildMediaSnapshot(runtime: any, featureId: any) {
     return roomSnapshotRuntime.buildMediaSnapshot(runtime, featureId);
   }
 
-  function buildSourceSnapshot(runtime) {
+  function buildSourceSnapshot(runtime: any) {
     return roomSnapshotRuntime.buildMediaSnapshot(runtime, defaultFeatureId);
   }
 
-  function notifyRoom(api, type, payload) {
+  function notifyRoom(api: any, type: any, payload: any) {
     api.notifyRoom(type, payload || {});
   }
 
-  function isSourceCompatibleAction(action) {
+  function isSourceCompatibleAction(action: any) {
     const actionId = asNonEmptyString(action);
     if (actionId === null) {
       return true;
@@ -34,7 +34,7 @@ export function createLaboratoryRuntimeEvents(deps) {
     );
   }
 
-  function pushMediaState(api, runtime, requestId, action) {
+  function pushMediaState(api: any, runtime: any, requestId: any, action: any) {
     const featureId = getFeatureIdFromContext(loadContext(api));
     const payload = {
       requestId: requestId || null,
@@ -48,18 +48,18 @@ export function createLaboratoryRuntimeEvents(deps) {
     }
   }
 
-  function pushSourceState(api, runtime, requestId, action) {
+  function pushSourceState(api: any, runtime: any, requestId: any, action: any) {
     pushMediaState(api, runtime, requestId, action);
   }
 
-  function pushActionResult(api, payload) {
+  function pushActionResult(api: any, payload: any) {
     notifyRoom(api, "media-action-result", payload);
     if (isSourceCompatibleAction(payload && payload.action)) {
       notifyRoom(api, "source-action-result", payload);
     }
   }
 
-  function pushJobState(api, payload) {
+  function pushJobState(api: any, payload: any) {
     notifyRoom(api, "media-job", payload);
     if (isSourceCompatibleAction(payload && payload.action)) {
       notifyRoom(api, "source-job", payload);

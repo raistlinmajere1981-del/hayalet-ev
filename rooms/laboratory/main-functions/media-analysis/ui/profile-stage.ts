@@ -1,4 +1,4 @@
-export function createMediaAnalysisProfileStage(deps) {
+export function createMediaAnalysisProfileStage(deps: any) {
   const state = deps.state;
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
@@ -49,8 +49,11 @@ export function createMediaAnalysisProfileStage(deps) {
         mediaMarkup = `
           <div class="lab-audio-workbench">
             <div class="lab-audio-bars">
-              ${(state.ui.audioAnalysis.bars.length > 0 ? state.ui.audioAnalysis.bars : new Array(36).fill(20))
-                .map(function (value) {
+              ${(state.ui.audioAnalysis.bars.length > 0
+                ? state.ui.audioAnalysis.bars
+                : new Array(36).fill(20)
+              )
+                .map(function (value: any) {
                   return `<span style="height:${Math.max(10, Number(value) || 10)}px"></span>`;
                 })
                 .join("")}
@@ -73,7 +76,7 @@ export function createMediaAnalysisProfileStage(deps) {
         </div>
         <div class="lab-segmented">
           ${["source", "derived"]
-            .map(function (modeId) {
+            .map(function (modeId: any) {
               const disabled = modeId === "derived" && outputOptions.length === 0;
               return `
                 <button
@@ -98,7 +101,7 @@ export function createMediaAnalysisProfileStage(deps) {
                 <select class="lab-select" data-profile-field="targetOutputId">
                   <option value="">${escapeHtml(text(["mediaAnalysis", "profile", "targetOutputEmpty"]))}</option>
                   ${outputOptions
-                    .map(function (entry) {
+                    .map(function (entry: any) {
                       return `
                         <option value="${escapeHtml(entry.id)}" ${entry.id === target.outputId ? "selected" : ""}>
                           ${escapeHtml(entry.label || entry.fileName || entry.id)}
@@ -116,7 +119,10 @@ export function createMediaAnalysisProfileStage(deps) {
           <section class="lab-panel lab-panel--dense">
             ${renderSummaryRows([
               [text(["mediaAnalysis", "profile", "summary", "target"]), asset.label || "--"],
-              [text(["mediaAnalysis", "shared", "duration"]), formatDuration(getPreferredAssetDuration(asset))],
+              [
+                text(["mediaAnalysis", "shared", "duration"]),
+                formatDuration(getPreferredAssetDuration(asset)),
+              ],
               [text(["mediaAnalysis", "shared", "resolution"]), getPreferredAssetResolution(asset)],
               [text(["mediaAnalysis", "shared", "codec"]), getPreferredAssetCodec(asset)],
             ])}
@@ -144,7 +150,7 @@ export function createMediaAnalysisProfileStage(deps) {
         </div>
         <div class="lab-segmented">
           ${["beginner", "advanced"]
-            .map(function (modeId) {
+            .map(function (modeId: any) {
               return `
                 <button
                   class="lab-segmented__button"
@@ -161,8 +167,14 @@ export function createMediaAnalysisProfileStage(deps) {
         </div>
         ${renderSummaryRows([
           [text(["mediaAnalysis", "profile", "summary", "preset"]), getProfileLabel()],
-          [text(["mediaAnalysis", "profile", "summary", "sampleWindow"]), formatDuration(estimate.sampleWindowSeconds)],
-          [text(["mediaAnalysis", "profile", "summary", "runtime"]), formatDuration(estimate.runtimeSeconds)],
+          [
+            text(["mediaAnalysis", "profile", "summary", "sampleWindow"]),
+            formatDuration(estimate.sampleWindowSeconds),
+          ],
+          [
+            text(["mediaAnalysis", "profile", "summary", "runtime"]),
+            formatDuration(estimate.runtimeSeconds),
+          ],
         ])}
       </section>
     `;
@@ -182,7 +194,7 @@ export function createMediaAnalysisProfileStage(deps) {
           ${
             signals.length > 0
               ? signals
-                  .map(function (signal) {
+                  .map(function (signal: any) {
                     return `
                       <article class="lab-finding">
                         <div class="lab-finding__head">
@@ -230,7 +242,7 @@ export function createMediaAnalysisProfileStage(deps) {
           ${
             artifacts.length > 0
               ? artifacts
-                  .map(function (artifact) {
+                  .map(function (artifact: any) {
                     const previewable =
                       typeof artifact.previewUrl === "string" &&
                       /\.(png|jpe?g|webp|gif)$/i.test(String(artifact.fileName || ""));
@@ -253,8 +265,11 @@ export function createMediaAnalysisProfileStage(deps) {
   function getRunningProfileJob() {
     const jobs = getProfileJobs();
     return (
-      jobs.find(function (job) {
-        return job.action === "profile-run-preflight" && !["completed", "failed", "cancelled"].includes(String(job.stage || ""));
+      jobs.find(function (job: any) {
+        return (
+          job.action === "profile-run-preflight" &&
+          !["completed", "failed", "cancelled"].includes(String(job.stage || ""))
+        );
       }) || null
     );
   }
@@ -271,10 +286,22 @@ export function createMediaAnalysisProfileStage(deps) {
           </div>
         </div>
         ${renderSummaryRows([
-          [text(["mediaAnalysis", "shared", "status"]), text(["mediaAnalysis", "profile", "status", preflight.status || "idle"])],
-          [text(["mediaAnalysis", "profile", "summary", "signals"]), String(getProfileSignals().length)],
-          [text(["mediaAnalysis", "profile", "summary", "artifacts"]), String(getProfileArtifacts().length)],
-          [text(["mediaAnalysis", "profile", "summary", "runtime"]), formatDuration(getProfileEstimate().runtimeSeconds)],
+          [
+            text(["mediaAnalysis", "shared", "status"]),
+            text(["mediaAnalysis", "profile", "status", preflight.status || "idle"]),
+          ],
+          [
+            text(["mediaAnalysis", "profile", "summary", "signals"]),
+            String(getProfileSignals().length),
+          ],
+          [
+            text(["mediaAnalysis", "profile", "summary", "artifacts"]),
+            String(getProfileArtifacts().length),
+          ],
+          [
+            text(["mediaAnalysis", "profile", "summary", "runtime"]),
+            formatDuration(getProfileEstimate().runtimeSeconds),
+          ],
         ])}
         <div class="lab-action-stack">
           <button
@@ -315,9 +342,18 @@ export function createMediaAnalysisProfileStage(deps) {
         ${renderSummaryRows([
           [text(["mediaAnalysis", "profile", "summary", "target"]), getFocusLabel()],
           [text(["mediaAnalysis", "profile", "summary", "preset"]), getProfileLabel()],
-          [text(["mediaAnalysis", "profile", "summary", "lanes"]), String(readiness.enabledLaneCount || 0)],
-          [text(["mediaAnalysis", "profile", "summary", "runtime"]), formatDuration(estimate.runtimeSeconds)],
-          [text(["mediaAnalysis", "profile", "summary", "model"]), selectedModel ? textFromKey(selectedModel.labelKey || "") : "--"],
+          [
+            text(["mediaAnalysis", "profile", "summary", "lanes"]),
+            String(readiness.enabledLaneCount || 0),
+          ],
+          [
+            text(["mediaAnalysis", "profile", "summary", "runtime"]),
+            formatDuration(estimate.runtimeSeconds),
+          ],
+          [
+            text(["mediaAnalysis", "profile", "summary", "model"]),
+            selectedModel ? textFromKey(selectedModel.labelKey || "") : "--",
+          ],
         ])}
         ${
           Array.isArray(readiness.blockers) && readiness.blockers.length > 0
@@ -326,7 +362,7 @@ export function createMediaAnalysisProfileStage(deps) {
                 <strong>${escapeHtml(text(["mediaAnalysis", "profile", "blockersTitle"]))}</strong>
                 <ul class="lab-bullet-list">
                   ${readiness.blockers
-                    .map(function (entry) {
+                    .map(function (entry: any) {
                       return `<li>${escapeHtml(entry)}</li>`;
                     })
                     .join("")}
@@ -343,7 +379,7 @@ export function createMediaAnalysisProfileStage(deps) {
                 <ul class="lab-bullet-list">
                   ${readiness.warnings
                     .slice(0, 4)
-                    .map(function (entry) {
+                    .map(function (entry: any) {
                       return `<li>${escapeHtml(entry)}</li>`;
                     })
                     .join("")}
@@ -358,7 +394,8 @@ export function createMediaAnalysisProfileStage(deps) {
 
   function renderProfileStage() {
     const sourceReady =
-      typeof getProjectSource().storedPath === "string" && getProjectSource().storedPath.trim() !== "";
+      typeof getProjectSource().storedPath === "string" &&
+      getProjectSource().storedPath.trim() !== "";
     return `
       <div class="lab-layout">
         <section class="lab-main-stack">

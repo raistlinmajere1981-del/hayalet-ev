@@ -6,39 +6,69 @@ import {
   FATE_KNOTS_WAIT_TIMEOUT_MS,
 } from "./constants.js";
 
-function readRecord(candidate: unknown): Record<string, unknown> {
+function readRecord(candidate: unknown): FateKnotsRosterRecord {
   return candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-    ? (candidate as Record<string, unknown>)
+    ? (candidate as FateKnotsRosterRecord)
     : {};
 }
 
-export function normalizePhase(value) {
-  const allowed = Object.values(FATE_KNOTS_PHASES);
-  return allowed.includes(value) ? value : FATE_KNOTS_PHASES.idle;
+interface FateKnotsRosterRecord extends Record<string, unknown> {
+  avatarId?: unknown;
+  classId?: unknown;
+  backgroundId?: unknown;
+  locked?: unknown;
+  autoAssigned?: unknown;
+  updatedAt?: unknown;
+  seatId?: unknown;
+  provider?: unknown;
+  type?: unknown;
+  nickname?: unknown;
+  ready?: unknown;
+  connected?: unknown;
+  active?: unknown;
+  selection?: unknown;
+  decisionChoiceId?: unknown;
+  mode?: unknown;
+  reason?: unknown;
+  pendingSeatIds?: unknown;
+  startedAt?: unknown;
+  deadlineAt?: unknown;
+  id?: unknown;
+  stepId?: unknown;
+  choiceIds?: unknown;
+  participantIds?: unknown;
+  votes?: unknown;
+  resolvedChoiceId?: unknown;
+  conflict?: unknown;
 }
 
-export function normalizeWaitMode(value) {
-  const allowed = Object.values(FATE_KNOTS_WAIT_MODES);
-  return allowed.includes(value) ? value : FATE_KNOTS_WAIT_MODES.idle;
+export function normalizePhase(value: unknown) {
+  const allowed = Object.values(FATE_KNOTS_PHASES) as string[];
+  return typeof value === "string" && allowed.includes(value) ? value : FATE_KNOTS_PHASES.idle;
 }
 
-export function normalizeStatusKey(value) {
+export function normalizeWaitMode(value: unknown) {
+  const allowed = Object.values(FATE_KNOTS_WAIT_MODES) as string[];
+  return typeof value === "string" && allowed.includes(value) ? value : FATE_KNOTS_WAIT_MODES.idle;
+}
+
+export function normalizeStatusKey(value: unknown) {
   const key = normalizeText(value);
   return Object.prototype.hasOwnProperty.call(FATE_KNOTS_STATUS_COPY, key) ? key : "idle";
 }
 
 export function createHeroSelection() {
   return {
-    avatarId: null,
-    classId: null,
-    backgroundId: null,
+    avatarId: null as string | null,
+    classId: null as string | null,
+    backgroundId: null as string | null,
     locked: false,
     autoAssigned: false,
-    updatedAt: null,
+    updatedAt: null as number | null,
   };
 }
 
-export function normalizeHeroSelection(candidate) {
+export function normalizeHeroSelection(candidate: unknown) {
   const source = readRecord(candidate);
   return {
     avatarId: normalizeText(source.avatarId) || null,
@@ -81,7 +111,7 @@ export function createParticipant(
   };
 }
 
-export function normalizeParticipant(candidate) {
+export function normalizeParticipant(candidate: unknown) {
   const source = readRecord(candidate);
   return createParticipant({
     seatId: source.seatId,
@@ -99,7 +129,7 @@ export function normalizeParticipant(candidate) {
 export function createWaitingState(
   mode = FATE_KNOTS_WAIT_MODES.idle,
   reason = "",
-  pendingSeatIds = [],
+  pendingSeatIds: unknown[] = [],
   now = Date.now(),
   timeoutMs = FATE_KNOTS_WAIT_TIMEOUT_MS
 ) {
@@ -122,7 +152,7 @@ export function createWaitingState(
   };
 }
 
-export function normalizeWaitingState(candidate) {
+export function normalizeWaitingState(candidate: unknown) {
   const source = readRecord(candidate);
   const waiting = createWaitingState(
     normalizeText(source.mode),
@@ -158,12 +188,16 @@ export function createDecisionState(
       ? options.timeoutMs
       : FATE_KNOTS_WAIT_TIMEOUT_MS;
   const choiceIds = choices
-    .map(function (choice) {
-      return normalizeText(choice && typeof choice === "object" ? choice.id : choice);
+    .map(function (choice: unknown) {
+        return normalizeText(
+          choice && typeof choice === "object" && !Array.isArray(choice)
+            ? (choice as FateKnotsRosterRecord).id
+          : choice
+        );
     })
     .filter(Boolean);
   const activeParticipantIds = participantIds.map(normalizeText).filter(Boolean);
-  const aiPending = activeParticipantIds.filter(function (seatId) {
+  const aiPending = activeParticipantIds.filter(function (seatId: string) {
     return seatId !== "user";
   });
 
@@ -171,15 +205,15 @@ export function createDecisionState(
     stepId: normalizeText(options.stepId),
     choiceIds,
     participantIds: activeParticipantIds,
-    votes: {},
-    resolvedChoiceId: null,
+    votes: {} as Record<string, string>,
+    resolvedChoiceId: null as string | null,
     conflict: false,
     updatedAt: Math.trunc(now),
     deadlineAt: aiPending.length > 0 ? Math.trunc(now + timeoutMs) : null,
   };
 }
 
-export function normalizeDecisionState(candidate) {
+export function normalizeDecisionState(candidate: unknown) {
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
     return null;
   }
@@ -190,11 +224,11 @@ export function normalizeDecisionState(candidate) {
     participantIds: Array.isArray(source.participantIds) ? source.participantIds : [],
     now: typeof source.updatedAt === "number" ? source.updatedAt : Date.now(),
   });
-  const votes =
+  const votes: Record<string, unknown> =
     source.votes && typeof source.votes === "object" && Array.isArray(source.votes) === false
-      ? source.votes
+      ? (source.votes as FateKnotsRosterRecord)
       : {};
-  Object.keys(votes).forEach(function (seatId) {
+  Object.keys(votes).forEach(function (seatId: any) {
     const key = normalizeText(seatId);
     const choiceId = normalizeText(votes[seatId]);
     if (key !== "" && choiceId !== "") {

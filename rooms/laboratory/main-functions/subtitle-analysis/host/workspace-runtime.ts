@@ -1,4 +1,4 @@
-export function createSubtitleWorkspaceRuntime(deps) {
+export function createSubtitleWorkspaceRuntime(deps: any) {
   const {
     asNumber,
     getActiveProject,
@@ -14,14 +14,17 @@ export function createSubtitleWorkspaceRuntime(deps) {
     toRecord,
   } = deps;
 
-  async function patchActiveSubtitleWorkspaceDrafts(runtime, fields) {
+  async function patchActiveSubtitleWorkspaceDrafts(runtime: any, fields: any) {
     const patch = toRecord(fields);
     if (Object.keys(patch).length === 0) {
       return getActiveProject(runtime);
     }
 
-    return await patchActiveProject(runtime, function (nextProject) {
-      const subtitleState = normalizeSubtitleAnalysisState(toRecord(nextProject).subtitleAnalysis, runtime);
+    return await patchActiveProject(runtime, function (nextProject: any) {
+      const subtitleState = normalizeSubtitleAnalysisState(
+        toRecord(nextProject).subtitleAnalysis,
+        runtime
+      );
       subtitleState.workspace.drafts = {
         ...toRecord(subtitleState.workspace.drafts),
         ...patch,
@@ -42,9 +45,12 @@ export function createSubtitleWorkspaceRuntime(deps) {
     });
   }
 
-  function applySubtitleEditPatch(runtime, project, patchValue) {
+  function applySubtitleEditPatch(runtime: any, project: any, patchValue: any) {
     const patch = toRecord(patchValue);
-    const subtitleState = normalizeSubtitleAnalysisState(toRecord(project).subtitleAnalysis, runtime);
+    const subtitleState = normalizeSubtitleAnalysisState(
+      toRecord(project).subtitleAnalysis,
+      runtime
+    );
     subtitleState.edit.recipe = mergeObjects(toRecord(subtitleState.edit.recipe), patch);
     subtitleState.edit.recipe.maxCharsPerLine = Math.max(
       24,
@@ -58,18 +64,18 @@ export function createSubtitleWorkspaceRuntime(deps) {
     return project.subtitleAnalysis;
   }
 
-  async function listSubtitleFilesInDirectory(runtime, dirPath) {
+  async function listSubtitleFilesInDirectory(runtime: any, dirPath: any) {
     const entries = await listDirectory(dirPath);
     return entries
-      .filter(function (entry) {
+      .filter(function (entry: any) {
         return entry && entry.isDirectory !== true && isSubtitleFileName(runtime, entry.name);
       })
-      .sort(function (left, right) {
+      .sort(function (left: any, right: any) {
         return String(left.name || "").localeCompare(String(right.name || ""));
       });
   }
 
-  async function readSubtitleText(filePath) {
+  async function readSubtitleText(filePath: any) {
     const rawText = await readTextFile(filePath);
     if (typeof rawText !== "string") {
       throw new Error(`Subtitle file could not be read: ${filePath}`);

@@ -16,17 +16,12 @@ import {
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryHostIoRuntimeDeps = {
-  getProjectDirectoryFallbackMarkerList: (
-    runtime: unknown,
-    project: unknown,
-  ) => string[];
+  getProjectDirectoryFallbackMarkerList: (runtime: unknown, project: unknown) => string[];
   getProjectDirectoryList: (runtime: unknown, project: unknown) => string[];
   roomId: string;
 };
 
-export function createLaboratoryHostIoRuntime(
-  deps: LaboratoryHostIoRuntimeDeps,
-) {
+export function createLaboratoryHostIoRuntime(deps: LaboratoryHostIoRuntimeDeps) {
   const { getProjectDirectoryFallbackMarkerList, getProjectDirectoryList, roomId } = deps;
 
   function getElectronApi() {
@@ -34,7 +29,7 @@ export function createLaboratoryHostIoRuntime(
   }
 
   async function digestSha1(bytes: unknown) {
-    return digestLaboratorySha1(bytes);
+    return digestLaboratorySha1(bytes as Uint8Array);
   }
 
   async function readJsonFile(filePath: string) {
@@ -69,28 +64,24 @@ export function createLaboratoryHostIoRuntime(
     return ensureLaboratoryRuntimeDirectory({
       roomId,
       dirPath,
-      requestId: requestId || null,
+      ...(requestId ? { requestId } : {}),
     });
   }
 
   async function ensureProjectDirectories(
     runtime: unknown,
     project: unknown,
-    requestId?: string | null,
+    requestId?: string | null
   ) {
     return ensureLaboratoryProjectDirectories({
       roomId,
       dirPaths: getProjectDirectoryList(runtime, project),
       fallbackMarkerPaths: getProjectDirectoryFallbackMarkerList(runtime, project),
-      requestId: requestId || null,
+      ...(requestId ? { requestId } : {}),
     });
   }
 
-  async function cancelRoomTool(
-    cancelRoomId: string,
-    jobId: string,
-    requestId: string,
-  ) {
+  async function cancelRoomTool(cancelRoomId: string, jobId: string, requestId: string) {
     return cancelLaboratoryRoomTool({
       roomId: cancelRoomId,
       jobId,

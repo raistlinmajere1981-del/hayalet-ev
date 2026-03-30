@@ -1,4 +1,4 @@
-export function createSubtitleAnalysisEditPanels(deps) {
+export function createSubtitleAnalysisEditPanels(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const featureText = deps.featureText;
@@ -16,7 +16,7 @@ export function createSubtitleAnalysisEditPanels(deps) {
   const getSubtitleEditPreview = deps.getSubtitleEditPreview;
   const getSubtitleOutputs = deps.getSubtitleOutputs;
 
-  function renderSubtitlePreviewBody(textValue, emptyLabel) {
+  function renderSubtitlePreviewBody(textValue: any, emptyLabel: any) {
     const nextValue = typeof textValue === "string" ? textValue.trim() : "";
     return nextValue !== ""
       ? `<pre class="lab-subtitle-preview">${escapeHtml(nextValue)}</pre>`
@@ -42,7 +42,7 @@ export function createSubtitleAnalysisEditPanels(deps) {
         </div>
         <div class="lab-chip-row">
           ${presets
-            .map(function (preset) {
+            .map(function (preset: any) {
               return `
                 <button
                   class="lab-choice-chip"
@@ -79,20 +79,42 @@ export function createSubtitleAnalysisEditPanels(deps) {
             <h2 class="lab-panel__title">${escapeHtml(
               activeEntry
                 ? activeEntry.fileName || activeEntry.id || "--"
-                : subtitleText(["edit", "workspace", "emptyTitle"], "Altyazi secilmedi", "No subtitle selected")
+                : subtitleText(
+                    ["edit", "workspace", "emptyTitle"],
+                    "Altyazi secilmedi",
+                    "No subtitle selected"
+                  )
             )}</h2>
             <p class="lab-panel__subtitle">${escapeHtml(featureText(["edit", "workspaceHint"]))}</p>
           </div>
         </div>
         ${renderSubtitlePreviewBody(
           displayText,
-          subtitleText(["edit", "workspace", "previewEmpty"], "Preview icin bir preset secip onizleme calistir.", "Choose a preset and run preview to inspect output.")
+          subtitleText(
+            ["edit", "workspace", "previewEmpty"],
+            "Preview icin bir preset secip onizleme calistir.",
+            "Choose a preset and run preview to inspect output."
+          )
         )}
         ${renderSummaryRows([
-          [subtitleText(["edit", "workspace", "labels", "cues"], "Cue", "Cues"), String(summary.outputCueCount || summary.sourceCueCount || 0)],
-          [subtitleText(["edit", "workspace", "labels", "lines"], "Satir", "Lines"), String(summary.outputLineCount || summary.sourceLineCount || 0)],
-          [subtitleText(["edit", "workspace", "labels", "maxLine"], "Max satir", "Max line"), String(summary.maxLineLength || 0)],
-          [subtitleText(["edit", "workspace", "labels", "output"], "Cikti", "Output"), latestOutput ? latestOutput.label || latestOutput.fileName || latestOutput.id || "--" : "--"],
+          [
+            subtitleText(["edit", "workspace", "labels", "cues"], "Cue", "Cues"),
+            String(summary.outputCueCount || summary.sourceCueCount || 0),
+          ],
+          [
+            subtitleText(["edit", "workspace", "labels", "lines"], "Satir", "Lines"),
+            String(summary.outputLineCount || summary.sourceLineCount || 0),
+          ],
+          [
+            subtitleText(["edit", "workspace", "labels", "maxLine"], "Max satir", "Max line"),
+            String(summary.maxLineLength || 0),
+          ],
+          [
+            subtitleText(["edit", "workspace", "labels", "output"], "Cikti", "Output"),
+            latestOutput
+              ? latestOutput.label || latestOutput.fileName || latestOutput.id || "--"
+              : "--",
+          ],
         ])}
       </section>
     `;
@@ -118,18 +140,35 @@ export function createSubtitleAnalysisEditPanels(deps) {
           ${renderEditToggle("splitLongLines", subtitleText(["edit", "controls", "toggles", "splitLongLines"], "Uzun satirlari bol", "Split long lines"), recipe.splitLongLines === true)}
         </div>
         <div class="lab-form-grid">
-          ${renderEditSelectField("outputFormat", recipe.outputFormat || "source", subtitleText(["edit", "fields", "outputFormat"], "Cikti formati", "Output format"), [
-            { value: "source", label: subtitleText(["edit", "outputFormats", "source"], "Kaynak formati", "Keep source format") },
-            { value: "srt", label: "SRT" },
-            { value: "vtt", label: "VTT" },
-            { value: "json", label: "JSON" },
-          ])}
-          ${renderEditRangeField("maxCharsPerLine", recipe.maxCharsPerLine || 42, subtitleText(["edit", "controls", "labels", "maxChars"], "Max karakter", "Max chars"), {
-            min: 24,
-            max: 64,
-            step: 1,
-            displayValue: String(recipe.maxCharsPerLine || 42),
-          })}
+          ${renderEditSelectField(
+            "outputFormat",
+            recipe.outputFormat || "source",
+            subtitleText(["edit", "fields", "outputFormat"], "Cikti formati", "Output format"),
+            [
+              {
+                value: "source",
+                label: subtitleText(
+                  ["edit", "outputFormats", "source"],
+                  "Kaynak formati",
+                  "Keep source format"
+                ),
+              },
+              { value: "srt", label: "SRT" },
+              { value: "vtt", label: "VTT" },
+              { value: "json", label: "JSON" },
+            ]
+          )}
+          ${renderEditRangeField(
+            "maxCharsPerLine",
+            recipe.maxCharsPerLine || 42,
+            subtitleText(["edit", "controls", "labels", "maxChars"], "Max karakter", "Max chars"),
+            {
+              min: 24,
+              max: 64,
+              step: 1,
+              displayValue: String(recipe.maxCharsPerLine || 42),
+            }
+          )}
         </div>
       </section>
     `;
@@ -176,7 +215,7 @@ export function createSubtitleAnalysisEditPanels(deps) {
           ${
             outputs.length > 0
               ? outputs
-                  .map(function (entry) {
+                  .map(function (entry: any) {
                     const summary = toRecord(entry.summary);
                     return `
                       <article class="lab-output-card">
@@ -207,11 +246,32 @@ export function createSubtitleAnalysisEditPanels(deps) {
           <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["edit", "summary", "eyebrow"], "Ozet", "Summary"))}</p>
         </div>
         ${renderSummaryRows([
-          [subtitleText(["edit", "summary", "labels", "previewStatus"], "Preview durumu", "Preview status"), formatStatusLabel(preview.status || "idle")],
-          [subtitleText(["edit", "summary", "labels", "changed"], "Degisti", "Changed"), summary.changed === true ? subtitleText(["edit", "summary", "values", "yes"], "Evet", "Yes") : subtitleText(["edit", "summary", "values", "no"], "Hayir", "No")],
-          [subtitleText(["edit", "summary", "labels", "sourceCues"], "Kaynak cue", "Source cues"), String(summary.sourceCueCount || 0)],
-          [subtitleText(["edit", "summary", "labels", "outputCues"], "Cikti cue", "Output cues"), String(summary.outputCueCount || 0)],
-          [subtitleText(["edit", "summary", "labels", "maxLine"], "Max satir", "Max line"), String(summary.maxLineLength || 0)],
+          [
+            subtitleText(
+              ["edit", "summary", "labels", "previewStatus"],
+              "Preview durumu",
+              "Preview status"
+            ),
+            formatStatusLabel(preview.status || "idle"),
+          ],
+          [
+            subtitleText(["edit", "summary", "labels", "changed"], "Degisti", "Changed"),
+            summary.changed === true
+              ? subtitleText(["edit", "summary", "values", "yes"], "Evet", "Yes")
+              : subtitleText(["edit", "summary", "values", "no"], "Hayir", "No"),
+          ],
+          [
+            subtitleText(["edit", "summary", "labels", "sourceCues"], "Kaynak cue", "Source cues"),
+            String(summary.sourceCueCount || 0),
+          ],
+          [
+            subtitleText(["edit", "summary", "labels", "outputCues"], "Cikti cue", "Output cues"),
+            String(summary.outputCueCount || 0),
+          ],
+          [
+            subtitleText(["edit", "summary", "labels", "maxLine"], "Max satir", "Max line"),
+            String(summary.maxLineLength || 0),
+          ],
         ])}
       </section>
     `;

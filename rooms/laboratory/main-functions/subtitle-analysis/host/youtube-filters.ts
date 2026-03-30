@@ -1,35 +1,37 @@
-export function createSubtitleYoutubeFilterRuntime(deps) {
-  const {
-    asNonEmptyString,
-    asNumber,
-    toRecord,
-  } = deps;
+type SubtitleFilterRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
+  toRecord: (value: unknown) => Record<string, unknown>;
+};
 
-  function formatYoutubeDateForTool(value) {
+export function createSubtitleYoutubeFilterRuntime(deps: SubtitleFilterRuntimeDeps) {
+  const { asNonEmptyString, asNumber, toRecord } = deps;
+
+  function formatYoutubeDateForTool(value: unknown): string | null {
     const normalized = asNonEmptyString(value);
     return normalized !== null ? normalized.replaceAll("-", "") : null;
   }
 
-  function parseSubtitleLanguageList(value) {
+  function parseSubtitleLanguageList(value: unknown): string[] {
     const normalized = asNonEmptyString(value);
     if (normalized === null || normalized.toLowerCase() === "all") {
       return [];
     }
     return normalized
       .split(/[,\s]+/)
-      .map(function (entry) {
+      .map(function (entry: string) {
         return entry.trim().toLowerCase();
       })
       .filter(Boolean);
   }
 
-  function parseSubtitleWeekdayFilter(value) {
+  function parseSubtitleWeekdayFilter(value: unknown): number[] {
     const normalized = asNonEmptyString(value);
     if (normalized === null) {
       return [];
     }
 
-    const aliasMap = {
+    const aliasMap: Record<string, number> = {
       sun: 0,
       sunday: 0,
       pazar: 0,
@@ -58,27 +60,32 @@ export function createSubtitleYoutubeFilterRuntime(deps) {
 
     return normalized
       .split(/[,\s]+/)
-      .map(function (entry) {
+      .map(function (entry: string): number | null {
         const token = entry.trim().toLowerCase();
-        return Object.prototype.hasOwnProperty.call(aliasMap, token) ? aliasMap[token] : null;
+        return Object.prototype.hasOwnProperty.call(aliasMap, token)
+          ? (aliasMap[token] ?? null)
+          : null;
       })
-      .filter(function (entry) {
+      .filter(function (entry: number | null): entry is number {
         return typeof entry === "number";
       });
   }
 
-  function matchesSubtitlePublishedRange(metadata, drafts) {
+  function matchesSubtitlePublishedRange(
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ): boolean {
     const publishedAt =
-      asNonEmptyString(metadata.upload_date) ||
-      asNonEmptyString(metadata.release_date) ||
-      asNonEmptyString(metadata.timestamp);
+      asNonEmptyString(metadata["upload_date"]) ||
+      asNonEmptyString(metadata["release_date"]) ||
+      asNonEmptyString(metadata["timestamp"]);
     if (publishedAt === null) {
       return true;
     }
 
     const normalizedPublished = publishedAt.replaceAll("-", "").slice(0, 8);
-    const after = formatYoutubeDateForTool(drafts.publishedAfter);
-    const before = formatYoutubeDateForTool(drafts.publishedBefore);
+    const after = formatYoutubeDateForTool(drafts["publishedAfter"]);
+    const before = formatYoutubeDateForTool(drafts["publishedBefore"]);
     if (after !== null && normalizedPublished < after) {
       return false;
     }
@@ -88,13 +95,16 @@ export function createSubtitleYoutubeFilterRuntime(deps) {
     return true;
   }
 
-  function matchesSubtitleWeekday(metadata, drafts) {
-    const filters = parseSubtitleWeekdayFilter(drafts.weekdays);
+  function matchesSubtitleWeekday(
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ): boolean {
+    const filters = parseSubtitleWeekdayFilter(drafts["weekdays"]);
     if (filters.length === 0) {
       return true;
     }
 
-    const uploadDate = asNonEmptyString(metadata.upload_date);
+    const uploadDate = asNonEmptyString(metadata["upload_date"]);
     if (uploadDate === null || uploadDate.length < 8) {
       return false;
     }
@@ -106,10 +116,13 @@ export function createSubtitleYoutubeFilterRuntime(deps) {
     return filters.includes(weekday);
   }
 
-  function matchesSubtitleDuration(metadata, drafts) {
-    const durationSeconds = asNumber(metadata.duration);
-    const minSeconds = asNumber(drafts.durationMinSeconds);
-    const maxSeconds = asNumber(drafts.durationMaxSeconds);
+  function matchesSubtitleDuration(
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ): boolean {
+    const durationSeconds = asNumber(metadata["duration"]);
+    const minSeconds = asNumber(drafts["durationMinSeconds"]);
+    const maxSeconds = asNumber(drafts["durationMaxSeconds"]);
     if (minSeconds === null && maxSeconds === null) {
       return true;
     }
@@ -125,24 +138,30 @@ export function createSubtitleYoutubeFilterRuntime(deps) {
     return true;
   }
 
-  function matchesSubtitleShortsMode(metadata, drafts) {
-    const shortsMode = asNonEmptyString(drafts.shortsMode) || "all";
+  function matchesSubtitleShortsMode(
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ): boolean {
+    const shortsMode = asNonEmptyString(drafts["shortsMode"]) || "all";
     if (shortsMode === "all") {
       return true;
     }
 
-    const webpageUrl = asNonEmptyString(metadata.webpage_url) || "";
-    const durationSeconds = asNumber(metadata.duration);
+    const webpageUrl = asNonEmptyString(metadata["webpage_url"]) || "";
+    const durationSeconds = asNumber(metadata["duration"]);
     const isShort =
       webpageUrl.indexOf("/shorts/") >= 0 || (durationSeconds !== null && durationSeconds <= 180);
     return shortsMode === "only" ? isShort : !isShort;
   }
 
-  function matchesSubtitleLanguageAvailability(metadata, drafts) {
-    const requestedLanguages = parseSubtitleLanguageList(drafts.subtitlesLang);
-    const subtitleMode = asNonEmptyString(drafts.subtitleMode) || "manual";
-    const manualLanguages = Object.keys(toRecord(metadata.subtitles));
-    const autoLanguages = Object.keys(toRecord(metadata.automatic_captions));
+  function matchesSubtitleLanguageAvailability(
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ): boolean {
+    const requestedLanguages = parseSubtitleLanguageList(drafts["subtitlesLang"]);
+    const subtitleMode = asNonEmptyString(drafts["subtitleMode"]) || "manual";
+    const manualLanguages = Object.keys(toRecord(metadata["subtitles"]));
+    const autoLanguages = Object.keys(toRecord(metadata["automatic_captions"]));
     const availableLanguages =
       subtitleMode === "auto"
         ? autoLanguages
@@ -154,8 +173,8 @@ export function createSubtitleYoutubeFilterRuntime(deps) {
       return availableLanguages.length > 0;
     }
 
-    return requestedLanguages.some(function (language) {
-      return availableLanguages.some(function (candidate) {
+    return requestedLanguages.some(function (language: string) {
+      return availableLanguages.some(function (candidate: string) {
         return (
           candidate === language ||
           candidate.startsWith(`${language}-`) ||
@@ -165,29 +184,33 @@ export function createSubtitleYoutubeFilterRuntime(deps) {
     });
   }
 
-  function parseSubtitleTitleFilters(value) {
+  function parseSubtitleTitleFilters(value: unknown): string[] {
     const normalized = asNonEmptyString(value);
     if (normalized === null) {
       return [];
     }
     return normalized
       .split(/[\n,;]+/)
-      .map(function (entry) {
+      .map(function (entry: string) {
         return entry.trim().toLowerCase();
       })
       .filter(Boolean);
   }
 
-  function matchesSubtitleTitleFilters(metadata, drafts) {
-    const title = `${asNonEmptyString(metadata.title) || ""} ${asNonEmptyString(metadata.description) || ""}`
-      .trim()
-      .toLowerCase();
-    const includeTerms = parseSubtitleTitleFilters(drafts.titleInclude);
-    const excludeTerms = parseSubtitleTitleFilters(drafts.titleExclude);
+  function matchesSubtitleTitleFilters(
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ): boolean {
+    const title =
+      `${asNonEmptyString(metadata["title"]) || ""} ${asNonEmptyString(metadata["description"]) || ""}`
+        .trim()
+        .toLowerCase();
+    const includeTerms = parseSubtitleTitleFilters(drafts["titleInclude"]);
+    const excludeTerms = parseSubtitleTitleFilters(drafts["titleExclude"]);
 
     if (
       includeTerms.length > 0 &&
-      includeTerms.some(function (term) {
+      includeTerms.some(function (term: string) {
         return title.includes(term) !== true;
       })
     ) {
@@ -195,21 +218,24 @@ export function createSubtitleYoutubeFilterRuntime(deps) {
     }
 
     return (
-      excludeTerms.some(function (term) {
+      excludeTerms.some(function (term: string) {
         return title.includes(term);
       }) !== true
     );
   }
 
-  function matchesSubtitleLiveMode(metadata, drafts) {
-    const liveMode = asNonEmptyString(drafts.liveMode) || "all";
+  function matchesSubtitleLiveMode(
+    metadata: Record<string, unknown>,
+    drafts: Record<string, unknown>
+  ): boolean {
+    const liveMode = asNonEmptyString(drafts["liveMode"]) || "all";
     if (liveMode === "all") {
       return true;
     }
 
-    const liveStatus = String(asNonEmptyString(metadata.live_status) || "").toLowerCase();
+    const liveStatus = String(asNonEmptyString(metadata["live_status"]) || "").toLowerCase();
     const isLive =
-      metadata.is_live === true ||
+      metadata["is_live"] === true ||
       liveStatus === "is_live" ||
       liveStatus === "is-upcoming" ||
       liveStatus === "is_upcoming";
@@ -222,15 +248,15 @@ export function createSubtitleYoutubeFilterRuntime(deps) {
     return true;
   }
 
-  function needsSubtitleYoutubeMetadataFiltering(drafts) {
+  function needsSubtitleYoutubeMetadataFiltering(drafts: Record<string, unknown>): boolean {
     return (
-      parseSubtitleWeekdayFilter(drafts.weekdays).length > 0 ||
-      asNumber(drafts.durationMinSeconds) !== null ||
-      asNumber(drafts.durationMaxSeconds) !== null ||
-      (asNonEmptyString(drafts.shortsMode) || "all") !== "all" ||
-      (asNonEmptyString(drafts.liveMode) || "all") !== "all" ||
-      parseSubtitleTitleFilters(drafts.titleInclude).length > 0 ||
-      parseSubtitleTitleFilters(drafts.titleExclude).length > 0
+      parseSubtitleWeekdayFilter(drafts["weekdays"]).length > 0 ||
+      asNumber(drafts["durationMinSeconds"]) !== null ||
+      asNumber(drafts["durationMaxSeconds"]) !== null ||
+      (asNonEmptyString(drafts["shortsMode"]) || "all") !== "all" ||
+      (asNonEmptyString(drafts["liveMode"]) || "all") !== "all" ||
+      parseSubtitleTitleFilters(drafts["titleInclude"]).length > 0 ||
+      parseSubtitleTitleFilters(drafts["titleExclude"]).length > 0
     );
   }
 

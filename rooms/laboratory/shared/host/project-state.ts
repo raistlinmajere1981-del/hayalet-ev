@@ -14,24 +14,13 @@ type LaboratoryProjectStateRuntimeDeps = {
     persistToolState: (runtime: unknown) => unknown;
     refreshProfileModelState: (runtime: unknown) => unknown;
   };
-  syncProjectAudioAnalysisProjection: (
-    runtime: unknown,
-    project: LaboratoryRecord,
-  ) => unknown;
-  syncProjectProfileProjection: (
-    runtime: unknown,
-    project: LaboratoryRecord,
-  ) => unknown;
-  syncProjectSubtitleAnalysisProjection: (
-    runtime: unknown,
-    project: LaboratoryRecord,
-  ) => unknown;
+  syncProjectAudioAnalysisProjection: (runtime: unknown, project: LaboratoryRecord) => unknown;
+  syncProjectProfileProjection: (runtime: unknown, project: LaboratoryRecord) => unknown;
+  syncProjectSubtitleAnalysisProjection: (runtime: unknown, project: LaboratoryRecord) => unknown;
   toFileUrl: (path: string) => string;
 };
 
-export function createLaboratoryProjectStateRuntime(
-  deps: LaboratoryProjectStateRuntimeDeps,
-) {
+export function createLaboratoryProjectStateRuntime(deps: LaboratoryProjectStateRuntimeDeps) {
   const {
     roomSnapshotRuntime,
     runtimeStorage,
@@ -51,7 +40,7 @@ export function createLaboratoryProjectStateRuntime(
 
   function syncProjectFeatureProjections(
     runtime: unknown,
-    project: LaboratoryRecord,
+    project: LaboratoryRecord
   ): LaboratoryRecord {
     syncProjectProfileProjection(runtime, project);
     syncProjectAudioAnalysisProjection(runtime, project);

@@ -11,9 +11,7 @@ type LaboratoryAudioAnalysisRuntimeDeps<TAudioAnalysisUi extends LaboratoryAudio
 
 export function createLaboratoryAudioAnalysisRuntime<
   TAudioAnalysisUi extends LaboratoryAudioAnalysisUi,
->(
-  deps: LaboratoryAudioAnalysisRuntimeDeps<TAudioAnalysisUi>,
-) {
+>(deps: LaboratoryAudioAnalysisRuntimeDeps<TAudioAnalysisUi>) {
   const { audioAnalysisUi } = deps;
 
   function renderAudioAnalysisCatalogPanel() {

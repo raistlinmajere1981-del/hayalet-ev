@@ -1,6 +1,6 @@
 type LaboratoryRecord = Record<string, unknown>;
 
-export function createLaboratorySnapshotAudioSelectors(deps) {
+export function createLaboratorySnapshotAudioSelectors(deps: any) {
   const toRecord = deps.toRecord;
   const getSourceSnapshot = deps.getSourceSnapshot;
   const getProjectAudioAnalysis = deps.getProjectAudioAnalysis;
@@ -24,7 +24,7 @@ export function createLaboratorySnapshotAudioSelectors(deps) {
   function getAudioAnalysisModules(): LaboratoryRecord[] {
     const modules = getAudioAnalysisCatalog().modules;
     return Array.isArray(modules)
-      ? modules.map(function (entry) {
+      ? modules.map(function (entry: any) {
           return toRecord(entry) as LaboratoryRecord;
         })
       : [];
@@ -33,7 +33,7 @@ export function createLaboratorySnapshotAudioSelectors(deps) {
   function getAudioAnalysisProviderEntries(): LaboratoryRecord[] {
     const providers = getAudioAnalysisProviders().providers;
     return Array.isArray(providers)
-      ? providers.map(function (entry) {
+      ? providers.map(function (entry: any) {
           return toRecord(entry) as LaboratoryRecord;
         })
       : [];
@@ -56,7 +56,7 @@ export function createLaboratorySnapshotAudioSelectors(deps) {
   }
 
   function getAudioAnalysisOrderedResultEntries() {
-    const catalogModules = getAudioAnalysisModules().reduce(function (accumulator, entry) {
+    const catalogModules = getAudioAnalysisModules().reduce(function (accumulator: any, entry: any) {
       const moduleId = typeof entry.id === "string" && entry.id.trim() !== "" ? entry.id : null;
       if (moduleId !== null) {
         accumulator[moduleId] = entry;
@@ -66,17 +66,17 @@ export function createLaboratorySnapshotAudioSelectors(deps) {
     const catalogState = getAudioAnalysisCatalogState();
     const resultMap = getAudioAnalysisResultMap();
     const orderedIds = Array.isArray(catalogState.orderedIds)
-      ? catalogState.orderedIds.filter(function (entry) {
+      ? catalogState.orderedIds.filter(function (entry: any) {
           return typeof entry === "string" && entry.trim() !== "";
         })
-      : getAudioAnalysisModules().map(function (entry) {
+      : getAudioAnalysisModules().map(function (entry: any) {
           return entry.id;
         });
-    const extraIds = Object.keys(resultMap).filter(function (moduleId) {
+    const extraIds = Object.keys(resultMap).filter(function (moduleId: any) {
       return !orderedIds.includes(moduleId);
     });
 
-    return orderedIds.concat(extraIds).map(function (moduleId) {
+    return orderedIds.concat(extraIds).map(function (moduleId: any) {
       const descriptor = toRecord(catalogModules[moduleId]);
       const result = toRecord(resultMap[moduleId]);
       return {

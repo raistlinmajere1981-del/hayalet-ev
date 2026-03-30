@@ -1,17 +1,59 @@
-export function createAudioAnalysisProjectionResultsRuntime(deps) {
-  const {
-    asNonEmptyString,
-    normalizeAudioAnalysisMetric,
-    normalizeStringArray,
-    toRecord,
-  } = deps;
+interface ProjectionResultsRecord extends Record<string, unknown> {
+  status?: unknown;
+  summary?: unknown;
+  blockers?: unknown;
+  metadata?: unknown;
+  descriptorSummary?: unknown;
+  prosodySummary?: unknown;
+  emotionHeuristic?: unknown;
+  topClasses?: unknown;
+  stemCount?: unknown;
+  modelName?: unknown;
+  musicSummary?: unknown;
+  diarizationSummary?: unknown;
+  centroid?: unknown;
+  rolloff?: unknown;
+  flatness?: unknown;
+  mean?: unknown;
+  meanF0Hz?: unknown;
+  voicedRatio?: unknown;
+  estimatedPauseCount?: unknown;
+  label?: unknown;
+  className?: unknown;
+  tempoBpm?: unknown;
+  dominantPitchClass?: unknown;
+  speakerCount?: unknown;
+  segmentCount?: unknown;
+  titleKey?: unknown;
+  summaryKey?: unknown;
+  warnings?: unknown;
+  signals?: unknown;
+  artifacts?: unknown;
+  confidence?: unknown;
+  id?: unknown;
+  value?: unknown;
+}
 
-  function getAudioAnalysisConfidenceRank(confidence) {
+interface ProjectionResultsDeps {
+  asNonEmptyString: (value: unknown) => string | null;
+  normalizeAudioAnalysisMetric: (rawValue: unknown) => ProjectionResultsRecord;
+  normalizeStringArray: (value: unknown) => string[];
+  toRecord: (value: unknown) => ProjectionResultsRecord;
+}
+
+export function createAudioAnalysisProjectionResultsRuntime(deps: ProjectionResultsDeps) {
+  const { asNonEmptyString, normalizeAudioAnalysisMetric, normalizeStringArray, toRecord } = deps;
+
+  function getAudioAnalysisConfidenceRank(confidence: unknown): number {
     const nextConfidence = asNonEmptyString(confidence) || "low";
     return nextConfidence === "high" ? 3 : nextConfidence === "medium" ? 2 : 1;
   }
 
-  function mapAudioAnalysisResultStatus(processRecord, moduleEntry, capabilityEntry) {
+  function mapAudioAnalysisResultStatus(
+    processRecord: unknown,
+    moduleEntry: unknown,
+    capabilityEntry: unknown
+  ): string {
     const processStatus = asNonEmptyString(toRecord(processRecord).status) || "idle";
     const moduleStatus = asNonEmptyString(toRecord(moduleEntry).status) || "idle";
     const capabilityStatus = asNonEmptyString(toRecord(capabilityEntry).status) || "planned";
@@ -34,8 +76,11 @@ export function createAudioAnalysisProjectionResultsRuntime(deps) {
     return capabilityStatus === "ready" ? "idle" : capabilityStatus;
   }
 
-  function buildAudioAnalysisModuleMetrics(signals, artifacts) {
-    const metrics = [
+  function buildAudioAnalysisModuleMetrics(
+    signals: unknown[],
+    artifacts: unknown[]
+  ): ProjectionResultsRecord[] {
+    const metrics: { id: string; label: string; value: string }[] = [
       {
         id: "signals",
         label: "Signals",
@@ -49,108 +94,111 @@ export function createAudioAnalysisProjectionResultsRuntime(deps) {
     ];
     const descriptorSummary =
       artifacts
-        .map(function (artifact) {
+        .map(function (artifact: unknown) {
           return toRecord(toRecord(artifact).metadata).descriptorSummary;
         })
-        .find(function (entry) {
+        .find(function (entry: unknown) {
           return Object.keys(toRecord(entry)).length > 0;
         }) || {};
     const prosodySummary =
       artifacts
-        .map(function (artifact) {
+        .map(function (artifact: unknown) {
           return toRecord(toRecord(artifact).metadata).prosodySummary;
         })
-        .find(function (entry) {
+        .find(function (entry: unknown) {
           return Object.keys(toRecord(entry)).length > 0;
         }) || {};
     const emotionHeuristic =
       artifacts
-        .map(function (artifact) {
+        .map(function (artifact: unknown) {
           return toRecord(toRecord(artifact).metadata).emotionHeuristic;
         })
-        .find(function (entry) {
+        .find(function (entry: unknown) {
           return Object.keys(toRecord(entry)).length > 0;
         }) || {};
     const soundEventSummary =
       artifacts
-        .map(function (artifact) {
+        .map(function (artifact: unknown) {
           return toRecord(toRecord(artifact).metadata).topClasses;
         })
-        .find(function (entry) {
+        .find(function (entry: unknown) {
           return Array.isArray(entry) && entry.length > 0;
         }) || [];
     const sourceSeparationSummary =
       artifacts
-        .map(function (artifact) {
+        .map(function (artifact: unknown) {
           return toRecord(toRecord(artifact).metadata);
         })
-        .find(function (entry) {
+        .find(function (entry: ProjectionResultsRecord) {
           return typeof toRecord(entry).stemCount === "number";
         }) || {};
     const musicAnalysisSummary =
       artifacts
-        .map(function (artifact) {
+        .map(function (artifact: unknown) {
           return toRecord(toRecord(artifact).metadata).musicSummary;
         })
-        .find(function (entry) {
+        .find(function (entry: unknown) {
           return Object.keys(toRecord(entry)).length > 0;
         }) || {};
     const diarizationSummary =
       artifacts
-        .map(function (artifact) {
+        .map(function (artifact: unknown) {
           return toRecord(toRecord(artifact).metadata).diarizationSummary;
         })
-        .find(function (entry) {
+        .find(function (entry: unknown) {
           return Object.keys(toRecord(entry)).length > 0;
         }) || {};
 
-    if (typeof toRecord(descriptorSummary.centroid).mean === "number") {
+    const desc = descriptorSummary as ProjectionResultsRecord;
+    if (typeof toRecord(desc.centroid).mean === "number") {
       metrics.push({
         id: "spectral-centroid",
         label: "Mean centroid",
-        value: `${Number(toRecord(descriptorSummary.centroid).mean).toFixed(1)} Hz`,
+        value: `${Number(toRecord(desc.centroid).mean).toFixed(1)} Hz`,
       });
     }
-    if (typeof toRecord(descriptorSummary.rolloff).mean === "number") {
+    if (typeof toRecord(desc.rolloff).mean === "number") {
       metrics.push({
         id: "spectral-rolloff",
         label: "Mean rolloff",
-        value: `${Number(toRecord(descriptorSummary.rolloff).mean).toFixed(1)} Hz`,
+        value: `${Number(toRecord(desc.rolloff).mean).toFixed(1)} Hz`,
       });
     }
-    if (typeof toRecord(descriptorSummary.flatness).mean === "number") {
+    if (typeof toRecord(desc.flatness).mean === "number") {
       metrics.push({
         id: "spectral-flatness",
         label: "Flatness",
-        value: Number(toRecord(descriptorSummary.flatness).mean).toFixed(3),
+        value: Number(toRecord(desc.flatness).mean).toFixed(3),
       });
     }
-    if (typeof prosodySummary.meanF0Hz === "number") {
+    const prosody = prosodySummary as ProjectionResultsRecord;
+    if (typeof prosody.meanF0Hz === "number") {
       metrics.push({
         id: "prosody-f0",
         label: "Mean F0",
-        value: `${Number(prosodySummary.meanF0Hz).toFixed(1)} Hz`,
+        value: `${Number(prosody.meanF0Hz).toFixed(1)} Hz`,
       });
     }
-    if (typeof prosodySummary.voicedRatio === "number") {
+    if (typeof prosody.voicedRatio === "number") {
       metrics.push({
         id: "prosody-voiced-ratio",
         label: "Voiced ratio",
-        value: `${Math.round(Number(prosodySummary.voicedRatio) * 100)}%`,
+        value: `${Math.round(Number(prosody.voicedRatio) * 100)}%`,
       });
     }
-    if (typeof prosodySummary.estimatedPauseCount === "number") {
+    if (typeof prosody.estimatedPauseCount === "number") {
       metrics.push({
         id: "prosody-pauses",
         label: "Estimated pauses",
-        value: String(prosodySummary.estimatedPauseCount),
+        value: String(prosody.estimatedPauseCount),
       });
     }
-    if (typeof emotionHeuristic.label === "string" && emotionHeuristic.label.trim() !== "") {
+    const emotion = emotionHeuristic as ProjectionResultsRecord;
+    if (typeof emotion.label === "string" && emotion.label.trim() !== "") {
       metrics.push({
         id: "emotion-label",
         label: "Heuristic label",
-        value: emotionHeuristic.label,
+        value: emotion.label,
       });
     }
     if (Array.isArray(soundEventSummary) && soundEventSummary.length > 0) {
@@ -166,66 +214,67 @@ export function createAudioAnalysisProjectionResultsRuntime(deps) {
               : "Unknown",
       });
     }
-    if (typeof sourceSeparationSummary.stemCount === "number") {
+    const separation = sourceSeparationSummary as ProjectionResultsRecord;
+    if (typeof separation.stemCount === "number") {
       metrics.push({
         id: "source-separation-stems",
         label: "Separated stems",
-        value: String(sourceSeparationSummary.stemCount),
+        value: String(separation.stemCount),
       });
     }
-    if (
-      typeof sourceSeparationSummary.modelName === "string" &&
-      sourceSeparationSummary.modelName.trim() !== ""
-    ) {
+    if (typeof separation.modelName === "string" && separation.modelName.trim() !== "") {
       metrics.push({
         id: "source-separation-model",
         label: "Separation model",
-        value: sourceSeparationSummary.modelName,
+        value: separation.modelName,
       });
     }
-    if (typeof musicAnalysisSummary.tempoBpm === "number") {
+    const music = musicAnalysisSummary as ProjectionResultsRecord;
+    if (typeof music.tempoBpm === "number") {
       metrics.push({
         id: "music-tempo",
         label: "Tempo",
-        value: `${Number(musicAnalysisSummary.tempoBpm).toFixed(1)} BPM`,
+        value: `${Number(music.tempoBpm).toFixed(1)} BPM`,
       });
     }
-    if (
-      typeof musicAnalysisSummary.dominantPitchClass === "string" &&
-      musicAnalysisSummary.dominantPitchClass.trim() !== ""
-    ) {
+    if (typeof music.dominantPitchClass === "string" && music.dominantPitchClass.trim() !== "") {
       metrics.push({
         id: "music-pitch-class",
         label: "Dominant pitch class",
-        value: musicAnalysisSummary.dominantPitchClass,
+        value: music.dominantPitchClass,
       });
     }
-    if (typeof diarizationSummary.speakerCount === "number") {
+    const diarization = diarizationSummary as ProjectionResultsRecord;
+    if (typeof diarization.speakerCount === "number") {
       metrics.push({
         id: "speaker-count",
         label: "Speakers",
-        value: String(diarizationSummary.speakerCount),
+        value: String(diarization.speakerCount),
       });
     }
-    if (typeof diarizationSummary.segmentCount === "number") {
+    if (typeof diarization.segmentCount === "number") {
       metrics.push({
         id: "speaker-segments",
         label: "Speaker segments",
-        value: String(diarizationSummary.segmentCount),
+        value: String(diarization.segmentCount),
       });
     }
 
     return metrics.map(normalizeAudioAnalysisMetric);
   }
 
-  function buildAudioAnalysisModuleSummary(resultStatus, moduleEntry, capabilityEntry) {
+  function buildAudioAnalysisModuleSummary(
+    resultStatus: string,
+    moduleEntry: unknown,
+    capabilityEntry: unknown
+  ): string {
     const summary = asNonEmptyString(toRecord(moduleEntry).summary);
     if (summary !== null) {
       return summary;
     }
     const blockers = normalizeStringArray(toRecord(capabilityEntry).blockers);
     if (blockers.length > 0) {
-      return blockers[0];
+      return blockers[0] || "Blocked by a runtime dependency.";
     }
     switch (resultStatus) {
       case "planned":

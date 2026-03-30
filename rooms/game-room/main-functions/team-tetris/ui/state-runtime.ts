@@ -1,7 +1,7 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createTeamTetrisUiStateRuntime = function createTeamTetrisUiStateRuntime(deps) {
+  registry.createTeamTetrisUiStateRuntime = function createTeamTetrisUiStateRuntime(deps: any) {
     const getState = deps.getState;
     const sendRoomCommand = deps.sendRoomCommand;
     const text = deps.text;
@@ -41,8 +41,7 @@
       teamTetrisUiStateViewRuntime.getTeamTetrisPartnerRoleLabel;
     const getTeamTetrisTurnLabel = teamTetrisUiStateViewRuntime.getTeamTetrisTurnLabel;
     const getTeamTetrisResultLabel = teamTetrisUiStateViewRuntime.getTeamTetrisResultLabel;
-    const getTeamTetrisDraftStatusText =
-      teamTetrisUiStateViewRuntime.getTeamTetrisDraftStatusText;
+    const getTeamTetrisDraftStatusText = teamTetrisUiStateViewRuntime.getTeamTetrisDraftStatusText;
     const getTeamTetrisStatusText = teamTetrisUiStateViewRuntime.getTeamTetrisStatusText;
 
     const createTeamTetrisUiDraftRuntime = registry.createTeamTetrisUiDraftRuntime;

@@ -1,4 +1,4 @@
-export function createMediaLocalSourceIntakeRuntime(deps) {
+export function createMediaLocalSourceIntakeRuntime(deps: any) {
   const {
     asNonEmptyString,
     getActiveProject,
@@ -12,7 +12,7 @@ export function createMediaLocalSourceIntakeRuntime(deps) {
     resolvePreparedSource,
   } = deps;
 
-  async function handleLocalPick(api, runtime, requestId) {
+  async function handleLocalPick(_api: any, runtime: any, requestId: any) {
     const project = getActiveProject(runtime);
     const sourceConfig = getSourceConfig(runtime.sourcePresets, project.source.kind);
     const electronApi = getElectronApi();
@@ -41,7 +41,8 @@ export function createMediaLocalSourceIntakeRuntime(deps) {
     }
 
     const storedPath = asNonEmptyString(copyResult.path);
-    const storedFileName = asNonEmptyString(copyResult.name) || (storedPath ? storedPath.split(/[\\/]/).pop() : null);
+    const storedFileName =
+      asNonEmptyString(copyResult.name) || (storedPath ? storedPath.split(/[\\/]/).pop() : null);
     const preparedSource = await resolvePreparedSource(runtime, project, {
       requestId: requestId,
       storedPath: storedPath,
@@ -49,7 +50,7 @@ export function createMediaLocalSourceIntakeRuntime(deps) {
       mimeType: normalizeMimeType(storedFileName, project.source.kind),
     });
 
-    await patchActiveProject(runtime, function (nextProject) {
+    await patchActiveProject(runtime, function (nextProject: any) {
       nextProject.source.mode = "local";
       nextProject.source.status = "ready";
       nextProject.source.storedPath = preparedSource.storedPath;
@@ -61,7 +62,11 @@ export function createMediaLocalSourceIntakeRuntime(deps) {
       nextProject.source.metadata = preparedSource.metadata;
       nextProject.source.metadataError = preparedSource.metadataError;
       resetEditForCurrentSource(runtime, nextProject);
-      resetProfileForCurrentSource(runtime, nextProject, "Source media changed; rerun the profile preflight.");
+      resetProfileForCurrentSource(
+        runtime,
+        nextProject,
+        "Source media changed; rerun the profile preflight."
+      );
       return nextProject;
     });
 

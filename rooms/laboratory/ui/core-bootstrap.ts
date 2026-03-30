@@ -1,4 +1,14 @@
-export function createLaboratoryUiCoreBootstrapRuntime(deps) {
+import type { LaboratoryUiFeatureRuntimeApi } from "../shared/ui/feature-runtime.js";
+import type { LaboratorySourceSnapshotSelectorsApi } from "../shared/ui/source-snapshot-selectors.js";
+import type { LaboratoryStageAccessorsRuntimeApi } from "./stage-accessors-runtime.js";
+
+export type LaboratoryCoreBootstrapRuntimeRefs = {
+  laboratoryStageAccessorsRuntime: LaboratoryStageAccessorsRuntimeApi | null;
+  laboratoryUiFeatureRuntime: LaboratoryUiFeatureRuntimeApi | null;
+  snapshotSelectors: LaboratorySourceSnapshotSelectorsApi | null;
+};
+
+export function createLaboratoryUiCoreBootstrapRuntime(deps: any) {
   const laboratoryUiStateRuntime = deps.createLaboratoryUiBootstrapStateRuntime({
     roomId: deps.roomId,
     featureId: deps.featureId,
@@ -9,7 +19,7 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
   });
   const state = laboratoryUiStateRuntime.state;
 
-  function toRecord(value) {
+  function toRecord(value: any) {
     if (value !== null && typeof value === "object" && Array.isArray(value) === false) {
       return value;
     }
@@ -45,7 +55,7 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
   const captureScrollState = laboratoryUiNavigationRuntime.captureScrollState;
   const restoreScrollState = laboratoryUiNavigationRuntime.restoreScrollState;
 
-  const runtimeRefs = {
+  const runtimeRefs: LaboratoryCoreBootstrapRuntimeRefs = {
     laboratoryStageAccessorsRuntime: null,
     laboratoryUiFeatureRuntime: null,
     snapshotSelectors: null,
@@ -58,10 +68,18 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
     featureNamespaces: deps.featureNamespaces,
     featurePreviewImages: deps.featurePreviewImages,
     getAudioAnalysisCapabilities() {
-      return runtimeRefs.snapshotSelectors.getAudioAnalysisCapabilities();
+      const selectors = runtimeRefs.snapshotSelectors;
+      if (!selectors) {
+        throw new Error("Laboratory snapshot selectors are not initialized");
+      }
+      return selectors.getAudioAnalysisCapabilities();
     },
     getAudioAnalysisPresets() {
-      return runtimeRefs.snapshotSelectors.getAudioAnalysisPresets();
+      const selectors = runtimeRefs.snapshotSelectors;
+      if (!selectors) {
+        throw new Error("Laboratory snapshot selectors are not initialized");
+      }
+      return selectors.getAudioAnalysisPresets();
     },
     readValue,
     sourceFormats: deps.sourceFormats,
@@ -104,7 +122,7 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
 
   const formatDuration = deps.formatLaboratoryDuration;
 
-  function formatDateTime(value) {
+  function formatDateTime(value: any) {
     return deps.formatLaboratoryDateTime(value, state.locale);
   }
 
@@ -150,7 +168,11 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
   const laboratoryRequestRuntime = deps.createLaboratoryRequestRuntime({
     bootstrapText,
     buildCurrentDraftPayload() {
-      return runtimeRefs.laboratoryStageAccessorsRuntime.buildCurrentDraftPayload();
+      const accessors = runtimeRefs.laboratoryStageAccessorsRuntime;
+      if (!accessors) {
+        throw new Error("Laboratory stage accessors runtime is not initialized");
+      }
+      return accessors.buildCurrentDraftPayload();
     },
     getActiveFeatureId,
     getRoomApi() {
@@ -158,8 +180,7 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
     },
     isSubtitleAnalysisFeature,
     render: deps.render,
-    requestOverlayScrollReset:
-      laboratoryUiNavigationRuntime.requestOverlayScrollReset,
+    requestOverlayScrollReset: laboratoryUiNavigationRuntime.requestOverlayScrollReset,
     state,
     toRecord,
   });
@@ -201,7 +222,7 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
   let getCurrentSourceLabel = function () {
     return "";
   };
-  let getEditOutputs = function () {
+  let getEditOutputs = function (): unknown[] {
     return [];
   };
   let getProjectSource = function () {
@@ -225,7 +246,11 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
       return getEditOutputs();
     },
     getProfileTargetSummary() {
-      return runtimeRefs.laboratoryStageAccessorsRuntime.getProfileTargetSummary();
+      const accessors = runtimeRefs.laboratoryStageAccessorsRuntime;
+      if (!accessors) {
+        throw new Error("Laboratory stage accessors runtime is not initialized");
+      }
+      return accessors.getProfileTargetSummary();
     },
     getProjectSource() {
       return getProjectSource();
@@ -233,7 +258,7 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
     toRecord,
   });
 
-  function bindViewCompositionAccessors(uiRuntimeComposition) {
+  function bindViewCompositionAccessors(uiRuntimeComposition: any) {
     getCurrentSourceKind = uiRuntimeComposition.getCurrentSourceKind;
     getCurrentSourceLabel = uiRuntimeComposition.getCurrentSourceLabel;
     getEditOutputs = uiRuntimeComposition.getEditOutputs;

@@ -1,4 +1,4 @@
-export function createLaboratoryFeatureStagePanelsRuntime(deps) {
+export function createLaboratoryFeatureStagePanelsRuntime(deps: any) {
   const laboratoryMediaPreviewUi = deps.createLaboratoryMediaPreviewUi({
     state: deps.state,
     render: deps.render,
@@ -45,7 +45,7 @@ export function createLaboratoryFeatureStagePanelsRuntime(deps) {
     getRelevantJobs() {
       return deps.laboratoryStageAccessorsRuntime.getRelevantJobs();
     },
-    collectEditStageJobs(projectJobs) {
+    collectEditStageJobs(projectJobs: any) {
       return deps.laboratoryStageAccessorsRuntime.collectEditStageJobs(projectJobs);
     },
     renderPreviewMetaRow,
@@ -53,7 +53,7 @@ export function createLaboratoryFeatureStagePanelsRuntime(deps) {
     getPreferredSourceResolution: deps.getPreferredSourceResolution,
     getPreferredSourceCodec: deps.getPreferredSourceCodec,
     getPreferredSourceFormat: deps.getPreferredSourceFormat,
-    getEditJobLabel(job) {
+    getEditJobLabel(job: any) {
       return deps.laboratoryStageAccessorsRuntime.getEditJobLabel(job);
     },
     getCurrentEditMode: deps.getCurrentEditMode,
@@ -154,30 +154,22 @@ export function createLaboratoryFeatureStagePanelsRuntime(deps) {
     renderSubtitleProviderPanel: subtitleAnalysisUiRuntime.renderSubtitleProviderPanel,
     renderSubtitleSourceWorkspacePanel:
       subtitleAnalysisUiRuntime.renderSubtitleSourceWorkspacePanel,
-    renderSubtitleSourceIntakePanel:
-      subtitleAnalysisUiRuntime.renderSubtitleSourceIntakePanel,
+    renderSubtitleSourceIntakePanel: subtitleAnalysisUiRuntime.renderSubtitleSourceIntakePanel,
     renderSubtitleEntryPanel: subtitleAnalysisUiRuntime.renderSubtitleEntryPanel,
     renderSubtitleDiscoveryPanel: subtitleAnalysisUiRuntime.renderSubtitleDiscoveryPanel,
     renderSubtitleCatalogPanel: subtitleAnalysisUiRuntime.renderSubtitleCatalogPanel,
     renderSubtitlePreviewBody: subtitleAnalysisUiRuntime.renderSubtitlePreviewBody,
     renderSubtitlePresetChooser: subtitleAnalysisUiRuntime.renderSubtitlePresetChooser,
-    renderSubtitleEditWorkspacePanel:
-      subtitleAnalysisUiRuntime.renderSubtitleEditWorkspacePanel,
-    renderSubtitleEditControlsPanel:
-      subtitleAnalysisUiRuntime.renderSubtitleEditControlsPanel,
-    renderSubtitleEditActionsPanel:
-      subtitleAnalysisUiRuntime.renderSubtitleEditActionsPanel,
+    renderSubtitleEditWorkspacePanel: subtitleAnalysisUiRuntime.renderSubtitleEditWorkspacePanel,
+    renderSubtitleEditControlsPanel: subtitleAnalysisUiRuntime.renderSubtitleEditControlsPanel,
+    renderSubtitleEditActionsPanel: subtitleAnalysisUiRuntime.renderSubtitleEditActionsPanel,
     renderSubtitleOutputsPanel: subtitleAnalysisUiRuntime.renderSubtitleOutputsPanel,
-    renderSubtitleEditSummaryPanel:
-      subtitleAnalysisUiRuntime.renderSubtitleEditSummaryPanel,
+    renderSubtitleEditSummaryPanel: subtitleAnalysisUiRuntime.renderSubtitleEditSummaryPanel,
     renderSubtitleEditStage: subtitleAnalysisUiRuntime.renderSubtitleEditStage,
-    renderAudioAnalysisCatalogPanel:
-      laboratoryAudioAnalysisRuntime.renderAudioAnalysisCatalogPanel,
-    renderAudioAnalysisNoticePanel:
-      laboratoryAudioAnalysisRuntime.renderAudioAnalysisNoticePanel,
+    renderAudioAnalysisCatalogPanel: laboratoryAudioAnalysisRuntime.renderAudioAnalysisCatalogPanel,
+    renderAudioAnalysisNoticePanel: laboratoryAudioAnalysisRuntime.renderAudioAnalysisNoticePanel,
     renderAudioAnalysisProviderPanel:
       laboratoryAudioAnalysisRuntime.renderAudioAnalysisProviderPanel,
-    renderAudioAnalysisModuleGrid:
-      laboratoryAudioAnalysisRuntime.renderAudioAnalysisModuleGrid,
+    renderAudioAnalysisModuleGrid: laboratoryAudioAnalysisRuntime.renderAudioAnalysisModuleGrid,
   };
 }

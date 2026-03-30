@@ -1,7 +1,7 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createFateKnotsUiChromeRuntime = function createFateKnotsUiChromeRuntime(deps) {
+  registry.createFateKnotsUiChromeRuntime = function createFateKnotsUiChromeRuntime(deps: any) {
     const KNOWN_SEAT_IDS = deps.KNOWN_SEAT_IDS;
     const createElement = deps.createElement;
     const appendImage = deps.appendImage;
@@ -20,7 +20,7 @@
     const setSeatId = deps.setSeatId;
     const t = deps.t;
 
-    function createSeatStateText(state, seatDisplay) {
+    function createSeatStateText(_state: any, seatDisplay: any) {
       if (seatDisplay.liveParticipant) {
         if (seatDisplay.liveParticipant.selection && seatDisplay.liveParticipant.selection.locked) {
           return t(["fateKnots", "seatState", "locked"], "Locked");
@@ -39,8 +39,8 @@
       return t(["fateKnots", "seatState", "standby"], "Standby");
     }
 
-    function createSeatLabel(state, seatId) {
-      const labelMap = {
+    function createSeatLabel(_state: any, seatId: string) {
+      const labelMap: Record<string, string> = {
         user: t(["fateKnots", "seats", "user"], "You"),
         ai1: t(["fateKnots", "seats", "ai1"], "AI1"),
         ai2: t(["fateKnots", "seats", "ai2"], "AI2"),
@@ -49,23 +49,23 @@
       return labelMap[seatId] || seatId.toUpperCase();
     }
 
-    function getContextSlotRecord(state, seatId) {
+    function getContextSlotRecord(state: any, seatId: string) {
       return state && state.context && state.context.slots && state.context.slots[seatId]
         ? state.context.slots[seatId]
         : null;
     }
 
-    function getExcludedSeatReason(state, seatId) {
+    function getExcludedSeatReason(state: any, seatId: string) {
       if (!Array.isArray(state.excludedSeats)) {
         return null;
       }
-      const match = state.excludedSeats.find(function (entry) {
+      const match = state.excludedSeats.find(function (entry: any) {
         return entry && typeof entry === "object" && entry.seatId === seatId;
       });
       return match && typeof match.reason === "string" ? match.reason : null;
     }
 
-    function buildSeatDisplay(state, seatId) {
+    function buildSeatDisplay(state: any, seatId: string) {
       const liveParticipant = findParticipant(state, seatId);
       const slotRecord = getContextSlotRecord(state, seatId);
       const excludedReason = getExcludedSeatReason(state, seatId);
@@ -76,7 +76,7 @@
           ? slotRecord.nickname
           : createSeatLabel(state, seatId);
       const portraitAsset = bundle && bundle.avatar ? bundle.avatar : null;
-      const summaryLines = [];
+      const summaryLines: string[] = [];
       if (bundle && (bundle.avatar || bundle.classDef || bundle.background)) {
         summaryLines.push(
           [
@@ -124,7 +124,7 @@
       };
     }
 
-    function appendNpcBanter(parent, state, seatId) {
+    function appendNpcBanter(parent: any, state: any, seatId: string) {
       if (!state.npcBanter || state.npcBanter.seatId !== seatId || !state.npcBanter.text) {
         return;
       }
@@ -134,7 +134,7 @@
       parent.append(bubble);
     }
 
-    function createSeatPlaque(state, seatId, role) {
+    function createSeatPlaque(state: any, seatId: string, role: string) {
       const seat = buildSeatDisplay(state, seatId);
       const plaque = createFrame(
         "article",
@@ -176,7 +176,7 @@
       }
       const copy = createRegion("div", "fk-seat-plaque__copy", null);
       copy.append(createElement("strong", "fk-seat-plaque__title", seat.title));
-      seat.summaryLines.forEach(function (line) {
+      seat.summaryLines.forEach(function (line: string) {
         copy.append(createElement("p", "fk-seat-plaque__summary", line));
       });
       body.append(copy);
@@ -185,9 +185,9 @@
       return plaque;
     }
 
-    function createSeatRibbon(state, role, activeSeatId) {
+    function createSeatRibbon(state: any, role: string, activeSeatId: string) {
       const ribbon = createRegion("div", "fk-seat-ribbon", role || "seat-ribbon");
-      KNOWN_SEAT_IDS.forEach(function (seatId) {
+      KNOWN_SEAT_IDS.forEach(function (seatId: string) {
         const seat = buildSeatDisplay(state, seatId);
         const chip = createRegion(
           "div",
@@ -207,7 +207,7 @@
       return ribbon;
     }
 
-    function createTopbar(state, phaseId) {
+    function createTopbar(state: any, phaseId: string) {
       const topbar = createFrame("header", "fk-topbar fk-topbar--" + phaseId, "ritual-header", {
         overlay: getUiAsset("lightGlowPatch"),
         overlaySize: "100% 100%",
@@ -226,7 +226,7 @@
         createElement(
           "p",
           "fk-topbar__eyebrow",
-          t(["fateKnots", "heroBadge"], "Game Room") + " • " + getPhaseLabel(phaseId)
+          t(["fateKnots", "heroBadge"], "Game Room") + " \u2022 " + getPhaseLabel(phaseId)
         )
       );
       titleCluster.append(
@@ -275,7 +275,7 @@
       return topbar;
     }
 
-    function createCoverageLedger(state) {
+    function createCoverageLedger(state: any) {
       const ledger = createFrame(
         "section",
         "fk-stage-frame fk-stage-frame--ledger fk-coverage-ledger",
@@ -289,7 +289,7 @@
         )
       );
       const grid = createRegion("div", "fk-ledger__grid", null);
-      Object.keys(state.assetCoverage || {}).forEach(function (key) {
+      Object.keys(state.assetCoverage || {}).forEach(function (key: string) {
         const item = createRegion("div", "fk-ledger__item", null);
         item.append(createElement("span", "fk-ledger__label", key));
         item.append(createElement("strong", "fk-ledger__value", String(state.assetCoverage[key])));
@@ -314,7 +314,7 @@
       return ledger;
     }
 
-    function applySurfaceBackdrop(surface, state) {
+    function applySurfaceBackdrop(surface: any, _state: any) {
       const featureView = getUiAsset("featureView");
       applyAssetLayers(surface, [
         {
@@ -334,7 +334,7 @@
       ]);
     }
 
-    function createSurfaceCorner(role, asset) {
+    function createSurfaceCorner(role: string, asset: any) {
       const corner = createRegion("div", "fk-surface__corner fk-surface__corner--" + role, null);
       applyFrameArtwork(corner, { texture: asset });
       return corner;

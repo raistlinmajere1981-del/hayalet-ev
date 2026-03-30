@@ -3,7 +3,7 @@ import { createMediaProfileActionRuntime } from "./action-handlers-profile.js";
 import { createMediaProjectActionRuntime } from "./action-handlers-project.js";
 import { createMediaSourceActionRuntime } from "./action-handlers-source.js";
 
-export function createMediaActionRuntime(deps) {
+export function createMediaActionRuntime(deps: any) {
   const mediaSourceActionRuntime = createMediaSourceActionRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     getDefaultMode: deps.getDefaultMode,

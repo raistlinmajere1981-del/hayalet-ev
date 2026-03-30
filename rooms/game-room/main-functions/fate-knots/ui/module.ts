@@ -1,7 +1,7 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createFateKnotsUiModule = function createFateKnotsUiModule(deps) {
+  registry.createFateKnotsUiModule = function createFateKnotsUiModule(deps: any) {
     const getState = deps.getState;
     const featureId = deps.featureId || "fate-knots";
     const createElement = deps.createElement;
@@ -164,9 +164,11 @@
     const renderCombatStage = fateKnotsUiStageRuntime.renderCombatStage;
     const renderResultStage = fateKnotsUiStageRuntime.renderResultStage;
 
-    function resolvePhaseIdentity(state) {
+    function resolvePhaseIdentity(state: any) {
       const phaseId =
-        state && typeof state.phase === "string" && state.phase.trim() ? state.phase.trim() : "unknown";
+        state && typeof state.phase === "string" && state.phase.trim()
+          ? state.phase.trim()
+          : "unknown";
       if (phaseId === "idle") {
         return {
           phaseId: phaseId,
@@ -193,7 +195,7 @@
       };
     }
 
-    function renderUnknownPhaseStage(parent, state, phaseIdentity) {
+    function renderUnknownPhaseStage(parent: any, state: any, phaseIdentity: any) {
       const layout = createRegion("section", "fk-result", "unknown-layout");
       const warning = createFrame(
         "section",
@@ -250,7 +252,7 @@
       parent.append(layout);
     }
 
-    function renderFateKnots(root) {
+    function renderFateKnots(root: any) {
       ensureUiAssetsPreloaded();
       const state = getCurrentState() || createFateKnotsState();
       const phaseIdentity = resolvePhaseIdentity(state);

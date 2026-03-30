@@ -19,11 +19,8 @@ export function translate(
   return entry[normalizedLocale] || entry.en || "";
 }
 
-export function fillTemplate(
-  template: unknown,
-  params: Record<string, unknown> = {}
-): string {
-  return String(template || "").replace(/\{([a-zA-Z0-9_]+)\}/g, (_match, key) => {
+export function fillTemplate(template: unknown, params: Record<string, unknown> = {}): string {
+  return String(template || "").replace(/\{([a-zA-Z0-9_]+)\}/g, (_match: any, key: any) => {
     return Object.prototype.hasOwnProperty.call(params, key) ? String(params[key]) : "";
   });
 }

@@ -1,6 +1,6 @@
 /* global document, navigator, window */
 
-(function (global) {
+(function (global: any) {
   type UnknownRecord = Record<string, unknown>;
 
   function readRecord(value: unknown): UnknownRecord | null {
@@ -18,16 +18,15 @@
   registry.createGameRoomUiRuntime = function createGameRoomUiRuntime() {
     const registryHost = global as unknown as typeof globalThis & Record<string, unknown>;
     const bootstrapFactories =
-      (registryHost.GameRoomUiBootstrapRuntime as Record<string, unknown> | undefined) || {};
-    const createBootstrapRuntime = bootstrapFactories.createGameRoomUiBootstrapRuntime;
+      (registryHost["GameRoomUiBootstrapRuntime"] as Record<string, unknown> | undefined) || {};
+    const createBootstrapRuntime = bootstrapFactories["createGameRoomUiBootstrapRuntime"];
     if (typeof createBootstrapRuntime !== "function") {
       throw new Error("Game Room UI bootstrap runtime is unavailable.");
     }
 
     const stateMessageFactories =
-      (registryHost.GameRoomUiStateMessageRuntime as Record<string, unknown> | undefined) || {};
-    const createStateMessageRuntime =
-      stateMessageFactories.createGameRoomUiStateMessageRuntime;
+      (registryHost["GameRoomUiStateMessageRuntime"] as Record<string, unknown> | undefined) || {};
+    const createStateMessageRuntime = stateMessageFactories["createGameRoomUiStateMessageRuntime"];
     if (typeof createStateMessageRuntime !== "function") {
       throw new Error("Game Room UI state message runtime is unavailable.");
     }
@@ -98,19 +97,19 @@
       if (messageRecord === null) {
         return;
       }
-      const messageType = readString(messageRecord.type);
+      const messageType = readString(messageRecord["type"]);
       if (messageType === null) {
         return;
       }
 
       if (messageType === "host-context") {
-        const presentation = readRecord(messageRecord.presentation) || {};
+        const presentation = readRecord(messageRecord["presentation"]) || {};
         applyPresentationMode(presentation);
-        const locale = readString(messageRecord.locale);
+        const locale = readString(messageRecord["locale"]);
         if (locale !== null) {
           applyLocale(locale);
         }
-        const translations = readRecord(messageRecord.translations);
+        const translations = readRecord(messageRecord["translations"]);
         if (translations !== null) {
           state.translations = translations;
         }

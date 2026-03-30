@@ -1,4 +1,4 @@
-export function createLaboratoryUiNavigationRuntime(deps) {
+export function createLaboratoryUiNavigationRuntime(deps: any) {
   const {
     defaultFeatureId,
     documentRef,
@@ -10,12 +10,12 @@ export function createLaboratoryUiNavigationRuntime(deps) {
     toRecord,
   } = deps;
 
-  function applyLocale(locale) {
+  function applyLocale(locale: any) {
     state.locale = resolveLocale(locale);
     documentRef.documentElement.lang = state.locale;
   }
 
-  function normalizeUiScale(value) {
+  function normalizeUiScale(value: any) {
     const numeric =
       typeof value === "number"
         ? value
@@ -28,13 +28,15 @@ export function createLaboratoryUiNavigationRuntime(deps) {
     return Math.max(70, Math.min(130, Math.round(numeric)));
   }
 
-  function formatScaleFactor(value) {
+  function formatScaleFactor(value: any) {
     return value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
   }
 
-  function applyPresentationMode(nextPresentation) {
+  function applyPresentationMode(nextPresentation: any) {
     const presentation =
-      nextPresentation && typeof nextPresentation === "object" && Array.isArray(nextPresentation) === false
+      nextPresentation &&
+      typeof nextPresentation === "object" &&
+      Array.isArray(nextPresentation) === false
         ? nextPresentation
         : { mode: nextPresentation };
     state.presentation.mode = presentation.mode === "scene-view" ? "scene-view" : "classic";
@@ -55,7 +57,7 @@ export function createLaboratoryUiNavigationRuntime(deps) {
     }
   }
 
-  function normalizeContext(message) {
+  function normalizeContext(message: any) {
     const source =
       message && typeof message === "object" && Array.isArray(message) === false ? message : {};
     const room = toRecord(source.room);
@@ -93,7 +95,7 @@ export function createLaboratoryUiNavigationRuntime(deps) {
     };
   }
 
-  function getStageIndex(stageId) {
+  function getStageIndex(stageId: any) {
     return stageOrder.indexOf(stageId);
   }
 
@@ -109,7 +111,7 @@ export function createLaboratoryUiNavigationRuntime(deps) {
     state.ui.overlayScrollResetPending = true;
   }
 
-  function setStage(stageId) {
+  function setStage(stageId: any) {
     if (stageOrder.includes(stageId) === false) {
       return;
     }
@@ -121,13 +123,13 @@ export function createLaboratoryUiNavigationRuntime(deps) {
     render();
   }
 
-  function advanceStage(direction) {
+  function advanceStage(direction: any) {
     const currentIndex = getStageIndex(state.activeStage);
     const nextIndex = Math.max(0, Math.min(stageOrder.length - 1, currentIndex + direction));
     setStage(stageOrder[nextIndex]);
   }
 
-  function captureScrollState(root) {
+  function captureScrollState(root: any) {
     const surface = root.querySelector(".lab-surface");
     if (surface instanceof HTMLElement) {
       state.ui.scrollPositions.surface = surface.scrollTop;
@@ -149,7 +151,7 @@ export function createLaboratoryUiNavigationRuntime(deps) {
     }
   }
 
-  function restoreScrollState(root) {
+  function restoreScrollState(root: any) {
     const surface = root.querySelector(".lab-surface");
     if (surface instanceof HTMLElement) {
       surface.scrollTop = state.ui.surfaceScrollResetPending ? 0 : state.ui.scrollPositions.surface;
@@ -157,19 +159,25 @@ export function createLaboratoryUiNavigationRuntime(deps) {
 
     const mainStack = root.querySelector(".lab-main-stack");
     if (mainStack instanceof HTMLElement) {
-      mainStack.scrollTop = state.ui.surfaceScrollResetPending ? 0 : state.ui.stackScrollPositions.main;
+      mainStack.scrollTop = state.ui.surfaceScrollResetPending
+        ? 0
+        : state.ui.stackScrollPositions.main;
     }
 
     const sideStack = root.querySelector(".lab-side-stack");
     if (sideStack instanceof HTMLElement) {
-      sideStack.scrollTop = state.ui.surfaceScrollResetPending ? 0 : state.ui.stackScrollPositions.side;
+      sideStack.scrollTop = state.ui.surfaceScrollResetPending
+        ? 0
+        : state.ui.stackScrollPositions.side;
     }
 
     state.ui.surfaceScrollResetPending = false;
 
     const overlayPanel = root.querySelector(".lab-overlay__panel");
     if (overlayPanel instanceof HTMLElement) {
-      overlayPanel.scrollTop = state.ui.overlayScrollResetPending ? 0 : state.ui.scrollPositions.overlay;
+      overlayPanel.scrollTop = state.ui.overlayScrollResetPending
+        ? 0
+        : state.ui.scrollPositions.overlay;
     }
     state.ui.overlayScrollResetPending = false;
   }

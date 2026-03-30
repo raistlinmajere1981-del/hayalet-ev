@@ -1,4 +1,4 @@
-export function createMediaEditPipelineRuntime(deps) {
+export function createMediaEditPipelineRuntime(deps: any) {
   const {
     audioFeatureId,
     buildAuxiliaryArtifacts,
@@ -27,7 +27,7 @@ export function createMediaEditPipelineRuntime(deps) {
     toRecord,
   } = deps;
 
-  async function runEditPipeline(api, runtime, requestId, mode) {
+  async function runEditPipeline(api: any, runtime: any, requestId: any, mode: any) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
@@ -42,7 +42,10 @@ export function createMediaEditPipelineRuntime(deps) {
     const targetPath = buildEditTargetPath(runtime, project, mode);
     const mimeType = getDerivedMimeType(project.source.kind);
     const recipeSignature = getEditRecipeSignature(project);
-    const artifactBaseName = (targetPath.split(/[\\/]/).pop() || "artifact").replace(/\.[^.]+$/, "");
+    const artifactBaseName = (targetPath.split(/[\\/]/).pop() || "artifact").replace(
+      /\.[^.]+$/,
+      ""
+    );
 
     registerJob(runtime, {
       jobId: jobId,
@@ -63,7 +66,7 @@ export function createMediaEditPipelineRuntime(deps) {
       stage: "queued",
     });
 
-    await patchActiveProject(runtime, function (nextProject) {
+    await patchActiveProject(runtime, function (nextProject: any) {
       nextProject.edit.lastError = null;
       nextProject.edit.lastActionAt = new Date().toISOString();
       if (mode === "preview") {
@@ -92,7 +95,11 @@ export function createMediaEditPipelineRuntime(deps) {
       const runPayload = toRecord(runResult.run);
       const exitCode = typeof runPayload.exitCode === "number" ? runPayload.exitCode : 0;
       if (runPayload.cancelled === true || exitCode !== 0) {
-        throw new Error(runPayload.stderr && String(runPayload.stderr).trim() !== "" ? runPayload.stderr : "FFmpeg edit job failed.");
+        throw new Error(
+          runPayload.stderr && String(runPayload.stderr).trim() !== ""
+            ? runPayload.stderr
+            : "FFmpeg edit job failed."
+        );
       }
 
       const targetFileName = targetPath.split(/[\\/]/).pop() || null;
@@ -112,7 +119,7 @@ export function createMediaEditPipelineRuntime(deps) {
       });
 
       const createdAt = new Date().toISOString();
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         nextProject.edit.lastError = null;
         nextProject.edit.lastActionAt = createdAt;
         nextProject.edit.dirty = false;
@@ -157,7 +164,9 @@ export function createMediaEditPipelineRuntime(deps) {
         nextProject.edit.activeOutputId = nextOutput.id;
         nextProject.edit.handoffMode = "derived";
         markProfileAsStale(nextProject, "Edit output changed; rerun the profile preflight.");
-        markCloseoutAsStale(nextProject, "Edit output changed; rerun downstream processing.", [audioFeatureId]);
+        markCloseoutAsStale(nextProject, "Edit output changed; rerun downstream processing.", [
+          audioFeatureId,
+        ]);
         const previousPreview = toRecord(nextProject.edit.preview);
         nextProject.edit.preview = {
           ...previousPreview,
@@ -188,7 +197,7 @@ export function createMediaEditPipelineRuntime(deps) {
         metadata: metadataResult.metadata,
       };
     } catch (error) {
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         nextProject.edit.lastError = error instanceof Error ? error.message : String(error);
         nextProject.edit.lastActionAt = new Date().toISOString();
         if (mode === "preview") {

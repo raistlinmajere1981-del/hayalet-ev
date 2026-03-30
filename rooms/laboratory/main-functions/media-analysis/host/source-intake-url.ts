@@ -1,4 +1,4 @@
-export function createMediaUrlSourceIntakeRuntime(deps) {
+export function createMediaUrlSourceIntakeRuntime(deps: any) {
   const {
     asNonEmptyString,
     callRoomTools,
@@ -18,7 +18,7 @@ export function createMediaUrlSourceIntakeRuntime(deps) {
     toRecord,
   } = deps;
 
-  async function handleUrlDownload(api, runtime, requestId) {
+  async function handleUrlDownload(api: any, runtime: any, requestId: any) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
@@ -31,7 +31,11 @@ export function createMediaUrlSourceIntakeRuntime(deps) {
 
     await cancelJobsForProject(runtime, project.id, requestId);
 
-    const fileName = deriveFilename(urlValue, project.source.kind, project.source.drafts.fileNameHint);
+    const fileName = deriveFilename(
+      urlValue,
+      project.source.kind,
+      project.source.drafts.fileNameHint
+    );
     const jobId = `room-url-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
       jobId: jobId,
@@ -62,16 +66,20 @@ export function createMediaUrlSourceIntakeRuntime(deps) {
 
       const downloaded = toRecord(downloadResult.download);
       const storedPath = asNonEmptyString(downloaded.path);
-      const storedFileName = asNonEmptyString(downloaded.fileName) || (storedPath ? storedPath.split(/[\\/]/).pop() : null);
+      const storedFileName =
+        asNonEmptyString(downloaded.fileName) ||
+        (storedPath ? storedPath.split(/[\\/]/).pop() : null);
       const preparedSource = await resolvePreparedSource(runtime, project, {
         requestId: requestId,
         jobId: jobId,
         storedPath: storedPath,
         storedFileName: storedFileName,
-        mimeType: asNonEmptyString(downloaded.contentType) || normalizeMimeType(storedFileName, project.source.kind),
+        mimeType:
+          asNonEmptyString(downloaded.contentType) ||
+          normalizeMimeType(storedFileName, project.source.kind),
       });
 
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         if (nextProject.id !== project.id) {
           return nextProject;
         }
@@ -86,7 +94,11 @@ export function createMediaUrlSourceIntakeRuntime(deps) {
         nextProject.source.metadata = preparedSource.metadata;
         nextProject.source.metadataError = preparedSource.metadataError;
         resetEditForCurrentSource(runtime, nextProject);
-        resetProfileForCurrentSource(runtime, nextProject, "Source media changed; rerun the profile preflight.");
+        resetProfileForCurrentSource(
+          runtime,
+          nextProject,
+          "Source media changed; rerun the profile preflight."
+        );
         return nextProject;
       });
 
@@ -104,7 +116,7 @@ export function createMediaUrlSourceIntakeRuntime(deps) {
         storedFileName: preparedSource.storedFileName,
       };
     } catch (error) {
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         if (nextProject.id !== project.id) {
           return nextProject;
         }

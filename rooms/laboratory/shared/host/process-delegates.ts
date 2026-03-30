@@ -1,48 +1,124 @@
-export function createLaboratoryProcessDelegatesRuntime(deps) {
-  const { processCoordinationRuntime } = deps;
+type UnknownFn = (...args: unknown[]) => unknown;
 
-  function buildAudioAnalysisReportProjection(runtime, project) {
-    return processCoordinationRuntime.buildAudioAnalysisReportProjection(runtime, project);
+export function createLaboratoryProcessDelegatesRuntime(deps: Record<string, unknown>) {
+  const { processCoordinationRuntime } = deps as {
+    processCoordinationRuntime: Record<string, unknown>;
+  };
+
+  function buildAudioAnalysisReportProjection(
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>
+  ) {
+    return (processCoordinationRuntime["buildAudioAnalysisReportProjection"] as UnknownFn)(
+      runtime,
+      project
+    );
   }
 
-  function composeAudioAnalysisReport(runtime, project) {
-    return processCoordinationRuntime.composeAudioAnalysisReport(runtime, project);
+  function composeAudioAnalysisReport(
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>
+  ) {
+    return (processCoordinationRuntime["composeAudioAnalysisReport"] as UnknownFn)(runtime, project);
   }
 
-  function getProcessArtifactByKind(processRecord, kind) {
-    return processCoordinationRuntime.getProcessArtifactByKind(processRecord, kind);
+  function getProcessArtifactByKind(processRecord: Record<string, unknown>, kind: string) {
+    return (processCoordinationRuntime["getProcessArtifactByKind"] as UnknownFn)(processRecord, kind);
   }
 
-  function formatReportCardLabel(card) {
-    return processCoordinationRuntime.formatReportCardLabel(card);
+  function formatReportCardLabel(card: Record<string, unknown>) {
+    return (processCoordinationRuntime["formatReportCardLabel"] as UnknownFn)(card);
   }
 
-  function composeSubtitleAnalysisReport(runtime, project) {
-    return processCoordinationRuntime.composeSubtitleAnalysisReport(runtime, project);
+  function composeSubtitleAnalysisReport(
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>
+  ) {
+    return (processCoordinationRuntime["composeSubtitleAnalysisReport"] as UnknownFn)(runtime, project);
   }
 
-  function composeFeatureReport(runtime, project, featureId) {
-    return processCoordinationRuntime.composeFeatureReport(runtime, project, featureId);
+  function composeFeatureReport(
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    featureId: string
+  ) {
+    return (processCoordinationRuntime["composeFeatureReport"] as UnknownFn)(
+      runtime,
+      project,
+      featureId
+    );
   }
 
-  function buildReportMarkdown(runtime, project, featureId, reportRecord) {
-    return processCoordinationRuntime.buildReportMarkdown(runtime, project, featureId, reportRecord);
+  function buildReportMarkdown(
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    featureId: string,
+    reportRecord: Record<string, unknown>
+  ) {
+    return (processCoordinationRuntime["buildReportMarkdown"] as UnknownFn)(
+      runtime,
+      project,
+      featureId,
+      reportRecord
+    );
   }
 
-  async function runFeatureProcess(api, runtime, requestId, featureId) {
-    return processCoordinationRuntime.runFeatureProcess(api, runtime, requestId, featureId);
+  async function runFeatureProcess(
+    api: Record<string, unknown>,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    featureId: string
+  ) {
+    return (processCoordinationRuntime["runFeatureProcess"] as UnknownFn)(
+      api,
+      runtime,
+      requestId,
+      featureId
+    );
   }
 
-  async function runManagedProcess(runtime, project, requestId, jobId, featureId) {
-    return processCoordinationRuntime.runManagedProcess(runtime, project, requestId, jobId, featureId);
+  async function runManagedProcess(
+    runtime: Record<string, unknown>,
+    project: Record<string, unknown>,
+    requestId: string,
+    jobId: string,
+    featureId: string
+  ) {
+    return (processCoordinationRuntime["runManagedProcess"] as UnknownFn)(
+      runtime,
+      project,
+      requestId,
+      jobId,
+      featureId
+    );
   }
 
-  async function cancelFeatureProcess(api, runtime, requestId, featureId) {
-    return processCoordinationRuntime.cancelFeatureProcess(api, runtime, requestId, featureId);
+  async function cancelFeatureProcess(
+    api: Record<string, unknown>,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    featureId: string
+  ) {
+    return (processCoordinationRuntime["cancelFeatureProcess"] as UnknownFn)(
+      api,
+      runtime,
+      requestId,
+      featureId
+    );
   }
 
-  async function exportFeatureReport(api, runtime, requestId, featureId) {
-    return processCoordinationRuntime.exportFeatureReport(api, runtime, requestId, featureId);
+  async function exportFeatureReport(
+    api: Record<string, unknown>,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    featureId: string
+  ) {
+    return (processCoordinationRuntime["exportFeatureReport"] as UnknownFn)(
+      api,
+      runtime,
+      requestId,
+      featureId
+    );
   }
 
   return {

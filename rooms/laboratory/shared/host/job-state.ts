@@ -23,17 +23,11 @@ type LaboratoryJobRegistrationOptions = {
 };
 
 type LaboratoryJobStateRuntimeDeps = {
-  cancelRoomTool: (
-    roomId: string,
-    jobId: string,
-    requestId: string,
-  ) => Promise<unknown>;
+  cancelRoomTool: (roomId: string, jobId: string, requestId: string) => Promise<unknown>;
   roomId: string;
 };
 
-export function createLaboratoryJobStateRuntime(
-  deps: LaboratoryJobStateRuntimeDeps,
-) {
+export function createLaboratoryJobStateRuntime(deps: LaboratoryJobStateRuntimeDeps) {
   const { cancelRoomTool, roomId } = deps;
 
   function createRequestId() {
@@ -42,9 +36,9 @@ export function createLaboratoryJobStateRuntime(
 
   function registerJob(
     runtime: LaboratoryRuntimeWithJobs,
-    options: LaboratoryJobRegistrationOptions,
+    options: LaboratoryJobRegistrationOptions
   ): LaboratoryJobStateRecord {
-    runtime.jobs[options.jobId] = {
+    const nextJob: LaboratoryJobStateRecord = {
       requestId: options.requestId || null,
       action: options.action,
       projectId: options.projectId || null,
@@ -54,7 +48,8 @@ export function createLaboratoryJobStateRuntime(
       percent: null,
       message: null,
     };
-    return runtime.jobs[options.jobId];
+    runtime.jobs[options.jobId] = nextJob;
+    return nextJob;
   }
 
   function clearJob(runtime: LaboratoryRuntimeWithJobs, jobId: string): void {
@@ -64,13 +59,17 @@ export function createLaboratoryJobStateRuntime(
   async function cancelJobsForProject(
     runtime: LaboratoryRuntimeWithJobs,
     projectId: string,
-    requestId: string,
+    requestId: string
   ): Promise<void> {
     const jobIds = Object.keys(runtime.jobs);
     for (let index = 0; index < jobIds.length; index += 1) {
       const jobId = jobIds[index];
+      if (!jobId) {
+        continue;
+      }
       const job = runtime.jobs[jobId];
       if (job && job.projectId === projectId) {
+        // eslint-disable-next-line no-await-in-loop -- NOTE: cancel tracked jobs in registration order.
         await cancelRoomTool(roomId, jobId, requestId);
         clearJob(runtime, jobId);
       }

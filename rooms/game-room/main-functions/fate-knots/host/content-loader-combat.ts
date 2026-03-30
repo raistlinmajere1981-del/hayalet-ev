@@ -1,14 +1,49 @@
 import { attachAsset, normalizeText } from "./content-loader-shared.js";
+import type { FateKnotsAssetRegistry } from "./asset-registry.js";
 
-export function normalizeCombatCardsManifest(assetRegistry, raw) {
-  const source = raw && typeof raw === "object" && Array.isArray(raw) === false ? raw : {};
-  const seen = new Set();
-  const cards = [];
+interface CombatManifestRecord extends Record<string, unknown> {
+  cards?: unknown;
+  version?: unknown;
+  startingEnergy?: unknown;
+  startingStatus?: unknown;
+  enemyActions?: unknown;
+  encounters?: unknown;
+  id?: unknown;
+  label?: unknown;
+  type?: unknown;
+  iconAssetId?: unknown;
+  power?: unknown;
+  cost?: unknown;
+  guard?: unknown;
+  heal?: unknown;
+  focus?: unknown;
+  counter?: unknown;
+  evasion?: unknown;
+  poison?: unknown;
+  speedBonus?: unknown;
+  selfDamage?: unknown;
+  stun?: unknown;
+  description?: unknown;
+  assetId?: unknown;
+  stats?: unknown;
+  actionSequence?: unknown;
+  introLog?: unknown;
+}
+
+export function normalizeCombatCardsManifest(assetRegistry: FateKnotsAssetRegistry, raw: unknown) {
+  const source: CombatManifestRecord =
+    raw && typeof raw === "object" && Array.isArray(raw) === false
+      ? (raw as CombatManifestRecord)
+      : {};
+  const seen = new Set<string>();
+  const cards: CombatManifestRecord[] = [];
 
   if (Array.isArray(source.cards)) {
-    source.cards.forEach(function (entry) {
-      const card =
-        entry && typeof entry === "object" && Array.isArray(entry) === false ? entry : {};
+    source.cards.forEach(function (entry: unknown) {
+      const card: CombatManifestRecord =
+        entry && typeof entry === "object" && Array.isArray(entry) === false
+          ? (entry as CombatManifestRecord)
+          : {};
       const id = normalizeText(card.id);
       if (id === "" || seen.has(id)) {
         return;
@@ -41,15 +76,18 @@ export function normalizeCombatCardsManifest(assetRegistry, raw) {
       typeof source.version === "number" && Number.isInteger(source.version) ? source.version : 1,
     cards,
     cardMap: new Map(
-      cards.map(function (card) {
+      cards.map(function (card: CombatManifestRecord) {
         return [card.id, card];
       })
     ),
   };
 }
 
-export function normalizeCombatConfigManifest(assetRegistry, raw) {
-  const source = raw && typeof raw === "object" && Array.isArray(raw) === false ? raw : {};
+export function normalizeCombatConfigManifest(assetRegistry: FateKnotsAssetRegistry, raw: unknown) {
+  const source: CombatManifestRecord =
+    raw && typeof raw === "object" && Array.isArray(raw) === false
+      ? (raw as CombatManifestRecord)
+      : {};
   return {
     version:
       typeof source.version === "number" && Number.isInteger(source.version) ? source.version : 1,
@@ -58,9 +96,11 @@ export function normalizeCombatConfigManifest(assetRegistry, raw) {
       ? source.startingStatus.map(normalizeText).filter(Boolean)
       : [],
     enemyActions: Array.isArray(source.enemyActions)
-      ? source.enemyActions.map(function (entry) {
-          const action =
-            entry && typeof entry === "object" && Array.isArray(entry) === false ? entry : {};
+      ? source.enemyActions.map(function (entry: unknown) {
+          const action: CombatManifestRecord =
+            entry && typeof entry === "object" && Array.isArray(entry) === false
+              ? (entry as CombatManifestRecord)
+              : {};
           return {
             id: normalizeText(action.id),
             label: normalizeText(action.label) || normalizeText(action.id),
@@ -70,15 +110,19 @@ export function normalizeCombatConfigManifest(assetRegistry, raw) {
         })
       : [],
     encounters: Array.isArray(source.encounters)
-      ? source.encounters.map(function (entry) {
-          const encounter =
-            entry && typeof entry === "object" && Array.isArray(entry) === false ? entry : {};
+      ? source.encounters.map(function (entry: unknown) {
+          const encounter: CombatManifestRecord =
+            entry && typeof entry === "object" && Array.isArray(entry) === false
+              ? (entry as CombatManifestRecord)
+              : {};
           return {
             id: normalizeText(encounter.id),
             label: normalizeText(encounter.label) || normalizeText(encounter.id),
             assetId: normalizeText(encounter.assetId),
             stats:
-              encounter.stats && typeof encounter.stats === "object" && Array.isArray(encounter.stats) === false
+              encounter.stats &&
+              typeof encounter.stats === "object" &&
+              Array.isArray(encounter.stats) === false
                 ? encounter.stats
                 : {},
             actionSequence: Array.isArray(encounter.actionSequence)

@@ -1,4 +1,64 @@
-export function createGameRoomXoxUs1InviteRuntime(deps) {
+import type { XoxGameState } from "./state-core.js";
+import type { GameRoomContextState } from "../../../shared/types/room-shell-contracts.js";
+
+interface InviteEntry {
+  inviteId: string;
+  matchId: string;
+  remoteUserId: string;
+  nickname: string;
+  starter: "user" | "opponent";
+  localSessionId: string | null;
+  note: string;
+  conversationId: string;
+  roomId: string;
+  featureId: string;
+}
+
+interface Us1Api {
+  sendUs1Message: (
+    msg: Record<string, unknown>
+  ) => Promise<{ success: boolean; localSessionId?: string; conversationId?: string }>;
+  getState: (key: string) => unknown;
+  setState: (key: string, value: unknown) => void;
+  deleteState: (key: string) => void;
+  getLocale?: () => unknown;
+  notifyRoom: (event: string, payload: Record<string, unknown>) => void;
+}
+
+interface Us1InviteRuntimeDeps {
+  FEATURE_ID: string;
+  ROOM_ID: string;
+  buildInviteId: () => string;
+  buildUs1InviteText: (state: XoxGameState, context: GameRoomContextState, note: string) => string;
+  buildUs1MoveText: (
+    matchId: string,
+    turnIndex: number,
+    boardHashBeforeMove: string,
+    cell: number
+  ) => string;
+  buildUs1ResetText: (matchId: string) => string;
+  commandMessage: (locale: unknown, key: string, params?: Record<string, unknown>) => string;
+  createInitialState: (locale: unknown, target: string, starter: string) => XoxGameState;
+  createPendingInvite: (
+    direction: string,
+    inviteEntry: Record<string, unknown>
+  ) => Record<string, unknown>;
+  getOpponentInfo: (
+    context: GameRoomContextState,
+    state: XoxGameState
+  ) => { remoteUserId?: string | null; nickname: string; ready?: boolean };
+  loadContext: (api: Us1Api) => GameRoomContextState;
+  loadInviteInbox: (api: Us1Api) => InviteEntry[];
+  normalizeInviteInbox: (value: unknown) => InviteEntry[];
+  pushRoomState: (api: Us1Api, state: XoxGameState) => XoxGameState;
+  readLocale: (api: Us1Api) => "tr" | "en";
+  removePendingInvite: (api: Us1Api) => void;
+  resolveStateMatchId: (state: XoxGameState) => string | null;
+  saveInviteInbox: (api: Us1Api, inbox: InviteEntry[]) => void;
+  savePendingInvite: (api: Us1Api, pending: Record<string, unknown>) => void;
+}
+
+export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
   const {
     FEATURE_ID,
     ROOM_ID,
@@ -21,7 +81,11 @@ export function createGameRoomXoxUs1InviteRuntime(deps) {
     savePendingInvite,
   } = deps;
 
-  function matchesInviteEntry(entry, inviteId, remoteUserId) {
+  function matchesInviteEntry(
+    entry: InviteEntry | null,
+    inviteId: string,
+    remoteUserId: string | null
+  ) {
     if (!entry) {
       return false;
     }
@@ -35,16 +99,18 @@ export function createGameRoomXoxUs1InviteRuntime(deps) {
     return entry.remoteUserId === remoteUserId;
   }
 
-  function findInviteById(api, inviteId, remoteUserId) {
+  function findInviteById(api: Us1Api, inviteId: string, remoteUserId: string) {
     return (
-      loadInviteInbox(api).find(function (entry) {
+      loadInviteInbox(api).find(function (entry: InviteEntry) {
         return matchesInviteEntry(entry, inviteId, remoteUserId || null);
       }) || null
     );
   }
 
-  function syncInviteInboxFromSnapshot(api, roomInviteInbox) {
-    const nextInviteInbox = normalizeInviteInbox(roomInviteInbox).filter(function (entry) {
+  function syncInviteInboxFromSnapshot(api: Us1Api, roomInviteInbox: unknown) {
+    const nextInviteInbox = normalizeInviteInbox(roomInviteInbox).filter(function (
+      entry: InviteEntry
+    ) {
       return (
         entry.roomId === ROOM_ID &&
         entry.featureId === FEATURE_ID &&
@@ -55,14 +121,14 @@ export function createGameRoomXoxUs1InviteRuntime(deps) {
     saveInviteInbox(api, nextInviteInbox);
   }
 
-  function removeInviteFromInbox(api, inviteId, remoteUserId) {
-    const nextInviteInbox = loadInviteInbox(api).filter(function (entry) {
+  function removeInviteFromInbox(api: Us1Api, inviteId: string, remoteUserId: string) {
+    const nextInviteInbox = loadInviteInbox(api).filter(function (entry: InviteEntry) {
       return matchesInviteEntry(entry, inviteId, remoteUserId || null) !== true;
     });
     saveInviteInbox(api, nextInviteInbox);
   }
 
-  function applyInviteAcceptedState(api, inviteEntry, starter) {
+  function applyInviteAcceptedState(api: Us1Api, inviteEntry: InviteEntry, starter: "ai" | "user") {
     const state = createInitialState(readLocale(api), "us1", starter);
     state.active = true;
     state.result = "pending";
@@ -76,19 +142,28 @@ export function createGameRoomXoxUs1InviteRuntime(deps) {
     state.opponentNickname = inviteEntry.nickname;
     state.protocolDelivered = true;
     removePendingInvite(api);
-    removeInviteFromInbox(api, inviteEntry.matchId || inviteEntry.inviteId, inviteEntry.remoteUserId);
+    removeInviteFromInbox(
+      api,
+      inviteEntry.matchId || inviteEntry.inviteId,
+      inviteEntry.remoteUserId
+    );
     return pushRoomState(api, state);
   }
 
-  function readIncomingInviteStarter(inviteEntry) {
+  function readIncomingInviteStarter(inviteEntry: InviteEntry): "ai" | "user" {
     return inviteEntry.starter === "opponent" ? "user" : "ai";
   }
 
-  function readOutgoingInviteStarter(inviteEntry) {
+  function readOutgoingInviteStarter(inviteEntry: InviteEntry): "ai" | "user" {
     return inviteEntry.starter === "opponent" ? "ai" : "user";
   }
 
-  async function sendUs1Invite(api, state, inviteNote, syncUs1Mailbox) {
+  async function sendUs1Invite(
+    api: Us1Api,
+    state: XoxGameState,
+    inviteNote: string,
+    syncUs1Mailbox: (api: Us1Api, reason: string) => Promise<void>
+  ) {
     const context = loadContext(api);
     const matchId = buildInviteId();
     const opponent = getOpponentInfo(context, state);
@@ -138,7 +213,11 @@ export function createGameRoomXoxUs1InviteRuntime(deps) {
     return { success: true, message: commandMessage(state.locale, "inviteSent") };
   }
 
-  async function sendUs1Move(api, state, moveContext) {
+  async function sendUs1Move(
+    api: Us1Api,
+    state: XoxGameState,
+    moveContext: { turnIndex: number; boardHashBeforeMove: string; cell: number }
+  ) {
     const context = loadContext(api);
     const opponent = getOpponentInfo(context, state);
 
@@ -189,7 +268,10 @@ export function createGameRoomXoxUs1InviteRuntime(deps) {
     return sendResult;
   }
 
-  async function sendUs1Reset(api, resetContext) {
+  async function sendUs1Reset(
+    api: Us1Api,
+    resetContext: { matchId: string; localSessionId?: string | null } | null
+  ) {
     if (resetContext === null) {
       return { success: true };
     }

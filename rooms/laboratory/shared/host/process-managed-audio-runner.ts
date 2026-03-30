@@ -1,4 +1,4 @@
-export function createLaboratoryManagedAudioRunnerRuntime(deps) {
+export function createLaboratoryManagedAudioRunnerRuntime(deps: any) {
   const {
     asNonEmptyString,
     getAudioAnalysisModuleProcessDir,
@@ -11,17 +11,17 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps) {
   } = deps;
 
   async function runAudioManagedProcess(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    processRecord
+    runtime: any,
+    project: any,
+    requestId: any,
+    jobId: any,
+    target: any,
+    artifactBase: any,
+    processRecord: any
   ) {
-    const findings = [];
-    const artifacts = [];
-    const warnings = [];
+    const findings: any[] = [];
+    const artifacts: any[] = [];
+    const warnings: any[] = [];
 
     for (let index = 0; index < processRecord.modules.length; index += 1) {
       const moduleEntry = toRecord(processRecord.modules[index]);
@@ -49,6 +49,7 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps) {
       }
 
       const moduleOutputDir = getAudioAnalysisModuleProcessDir(runtime, project, moduleId);
+      // eslint-disable-next-line no-await-in-loop -- NOTE: module progress updates are emitted in execution order.
       const moduleResult = await moduleRunner(
         runtime,
         project,
@@ -60,15 +61,21 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps) {
         moduleId
       );
 
-      (Array.isArray(moduleResult.findings) ? moduleResult.findings : []).forEach(function (finding) {
-        findings.push(normalizeProcessFinding(finding));
-      });
-      (Array.isArray(moduleResult.artifacts) ? moduleResult.artifacts : []).forEach(function (artifact) {
-        artifacts.push(normalizeProcessArtifact(artifact));
-      });
-      (Array.isArray(moduleResult.warnings) ? moduleResult.warnings : []).forEach(function (warning) {
-        warnings.push(String(warning));
-      });
+      (Array.isArray(moduleResult.findings) ? moduleResult.findings : []).forEach(
+        function (finding: any) {
+          findings.push(normalizeProcessFinding(finding));
+        }
+      );
+      (Array.isArray(moduleResult.artifacts) ? moduleResult.artifacts : []).forEach(
+        function (artifact: any) {
+          artifacts.push(normalizeProcessArtifact(artifact));
+        }
+      );
+      (Array.isArray(moduleResult.warnings) ? moduleResult.warnings : []).forEach(
+        function (warning: any) {
+          warnings.push(String(warning));
+        }
+      );
 
       updateProcessModule(processRecord, moduleId, {
         status: asNonEmptyString(moduleResult.status) || "ready",
@@ -76,7 +83,7 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps) {
         completedAt: new Date().toISOString(),
         summary: asNonEmptyString(moduleResult.summary) || "",
         artifactIds: (Array.isArray(moduleResult.artifacts) ? moduleResult.artifacts : [])
-          .map(function (artifact) {
+          .map(function (artifact: any) {
             return asNonEmptyString(toRecord(artifact).id);
           })
           .filter(Boolean),

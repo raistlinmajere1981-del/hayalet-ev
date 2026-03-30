@@ -1,9 +1,27 @@
 import { attachAsset, normalizeText } from "./content-loader-shared.js";
+import type { FateKnotsAssetRegistry } from "./asset-registry.js";
 
-export function normalizeSelectionEntry(candidate, defaults) {
-  const source =
+interface FateKnotsSelectionRecord extends Record<string, unknown> {
+  id?: unknown;
+  label?: unknown;
+  assetId?: unknown;
+  summary?: unknown;
+  perk?: unknown;
+  stats?: unknown;
+  startingDeck?: unknown;
+  version?: unknown;
+  avatars?: unknown;
+  classes?: unknown;
+  backgrounds?: unknown;
+}
+
+export function normalizeSelectionEntry(
+  candidate: unknown,
+  defaults: FateKnotsSelectionRecord
+) {
+  const source: FateKnotsSelectionRecord =
     candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-      ? candidate
+      ? (candidate as FateKnotsSelectionRecord)
       : {};
   return {
     id: normalizeText(source.id) || defaults.id,
@@ -21,13 +39,16 @@ export function normalizeSelectionEntry(candidate, defaults) {
   };
 }
 
-export function normalizeSelectionsManifest(assetRegistry, raw) {
-  const source = raw && typeof raw === "object" && Array.isArray(raw) === false ? raw : {};
+export function normalizeSelectionsManifest(assetRegistry: FateKnotsAssetRegistry, raw: unknown) {
+  const source: FateKnotsSelectionRecord =
+    raw && typeof raw === "object" && Array.isArray(raw) === false
+      ? (raw as FateKnotsSelectionRecord)
+      : {};
   return {
     version:
       typeof source.version === "number" && Number.isInteger(source.version) ? source.version : 1,
     avatars: Array.isArray(source.avatars)
-      ? source.avatars.map(function (entry) {
+      ? source.avatars.map(function (entry: unknown) {
           const normalized = normalizeSelectionEntry(entry, {
             id: "avatar",
             label: "Unknown Avatar",
@@ -44,7 +65,7 @@ export function normalizeSelectionsManifest(assetRegistry, raw) {
         })
       : [],
     classes: Array.isArray(source.classes)
-      ? source.classes.map(function (entry) {
+      ? source.classes.map(function (entry: unknown) {
           const normalized = normalizeSelectionEntry(entry, {
             id: "class",
             label: "Unknown Class",
@@ -61,7 +82,7 @@ export function normalizeSelectionsManifest(assetRegistry, raw) {
         })
       : [],
     backgrounds: Array.isArray(source.backgrounds)
-      ? source.backgrounds.map(function (entry) {
+      ? source.backgrounds.map(function (entry: unknown) {
           const normalized = normalizeSelectionEntry(entry, {
             id: "background",
             label: "Unknown Background",

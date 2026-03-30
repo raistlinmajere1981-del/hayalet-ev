@@ -30,9 +30,7 @@ type LaboratoryPresetSourceRuntimeDeps = {
   toRecord: (value: unknown) => LaboratoryRecord;
 };
 
-export function createLaboratoryPresetSourceRuntime(
-  deps: LaboratoryPresetSourceRuntimeDeps,
-) {
+export function createLaboratoryPresetSourceRuntime(deps: LaboratoryPresetSourceRuntimeDeps) {
   const { asNonEmptyString, clone, toRecord } = deps;
 
   function asNumber(value: unknown): number | null {
@@ -43,7 +41,7 @@ export function createLaboratoryPresetSourceRuntime(
   function normalizeStringArray(value: unknown): string[] {
     return Array.isArray(value)
       ? value
-          .map(function (entry) {
+          .map(function (entry: any) {
             return asNonEmptyString(entry);
           })
           .filter(function (entry): entry is string {
@@ -55,22 +53,22 @@ export function createLaboratoryPresetSourceRuntime(
   function normalizeSourceMetadata(rawValue: unknown): LaboratorySourceMetadata | null {
     const source = toRecord(rawValue);
     const normalized: LaboratorySourceMetadata = {
-      durationSeconds: asNumber(source.durationSeconds),
-      width: asNumber(source.width),
-      height: asNumber(source.height),
-      codec: asNonEmptyString(source.codec),
-      videoCodec: asNonEmptyString(source.videoCodec),
-      audioCodec: asNonEmptyString(source.audioCodec),
-      formatName: asNonEmptyString(source.formatName),
-      bitRate: asNumber(source.bitRate),
-      sizeBytes: asNumber(source.sizeBytes),
-      streamCount: asNumber(source.streamCount),
-      mimeType: asNonEmptyString(source.mimeType),
-      extractedBy: asNonEmptyString(source.extractedBy),
-      extractedAt: asNonEmptyString(source.extractedAt),
+      durationSeconds: asNumber(source["durationSeconds"]),
+      width: asNumber(source["width"]),
+      height: asNumber(source["height"]),
+      codec: asNonEmptyString(source["codec"]),
+      videoCodec: asNonEmptyString(source["videoCodec"]),
+      audioCodec: asNonEmptyString(source["audioCodec"]),
+      formatName: asNonEmptyString(source["formatName"]),
+      bitRate: asNumber(source["bitRate"]),
+      sizeBytes: asNumber(source["sizeBytes"]),
+      streamCount: asNumber(source["streamCount"]),
+      mimeType: asNonEmptyString(source["mimeType"]),
+      extractedBy: asNonEmptyString(source["extractedBy"]),
+      extractedAt: asNonEmptyString(source["extractedAt"]),
     };
 
-    const hasValue = Object.values(normalized).some(function (value) {
+    const hasValue = Object.values(normalized).some(function (value: any) {
       return value !== null;
     });
 
@@ -99,35 +97,35 @@ export function createLaboratoryPresetSourceRuntime(
 
   function getSourceConfig(sourcePresets: unknown, kind: string): LaboratoryRecord {
     const presets = toRecord(sourcePresets);
-    const sourceTypes = toRecord(presets.sourceTypes);
+    const sourceTypes = toRecord(presets["sourceTypes"]);
     return toRecord(sourceTypes[kind]);
   }
 
   function getDefaultSourceType(sourcePresets: unknown): string {
     const presets = toRecord(sourcePresets);
-    const sourceType = asNonEmptyString(presets.defaultSourceType);
+    const sourceType = asNonEmptyString(presets["defaultSourceType"]);
     return sourceType || "video";
   }
 
   function getDefaultMode(sourcePresets: unknown, kind: string): string {
     const config = getSourceConfig(sourcePresets, kind);
-    return asNonEmptyString(config.defaultMode) || "local";
+    return asNonEmptyString(config["defaultMode"]) || "local";
   }
 
   function getDefaultYoutubePreset(sourcePresets: unknown): string {
     const presets = toRecord(sourcePresets);
-    const youtubePresets = toRecord(presets.youtubePresets);
-    return youtubePresets.medium ? "medium" : youtubePresets.custom ? "custom" : "low";
+    const youtubePresets = toRecord(presets["youtubePresets"]);
+    return youtubePresets["medium"] ? "medium" : youtubePresets["custom"] ? "custom" : "low";
   }
 
   function getPresetDefaultCustomValues(
     sourcePresets: unknown,
-    presetId: string,
+    presetId: string
   ): LaboratoryRecord {
     const presets = toRecord(sourcePresets);
-    const youtubePresets = toRecord(presets.youtubePresets);
+    const youtubePresets = toRecord(presets["youtubePresets"]);
     const preset = toRecord(youtubePresets[presetId]);
-    return clone(toRecord(preset.defaultCustomValues)) as LaboratoryRecord;
+    return clone(toRecord(preset["defaultCustomValues"])) as LaboratoryRecord;
   }
 
   function createEmptySourceDrafts(sourcePresets: unknown): LaboratorySourceDrafts {

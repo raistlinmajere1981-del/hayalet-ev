@@ -31,7 +31,7 @@ type LaboratoryProfileProcessReportRuntimeDeps<TProcessModule, TSignal> = {
 };
 
 export function createLaboratoryProfileProcessReportRuntime<TProcessModule, TSignal>(
-  deps: LaboratoryProfileProcessReportRuntimeDeps<TProcessModule, TSignal>,
+  deps: LaboratoryProfileProcessReportRuntimeDeps<TProcessModule, TSignal>
 ) {
   const {
     laboratoryProcessStageUi,

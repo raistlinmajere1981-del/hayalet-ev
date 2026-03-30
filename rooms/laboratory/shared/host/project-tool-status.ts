@@ -27,7 +27,7 @@ type LaboratoryProjectToolStatusRuntimeDeps = {
 };
 
 export function createLaboratoryProjectToolStatusRuntime(
-  deps: LaboratoryProjectToolStatusRuntimeDeps,
+  deps: LaboratoryProjectToolStatusRuntimeDeps
 ) {
   const {
     callRoomTools,
@@ -40,13 +40,18 @@ export function createLaboratoryProjectToolStatusRuntime(
 
   async function refreshToolStatus(
     runtime: LaboratoryRuntimeWithToolState,
-    options?: { checkUpdates?: boolean } | null,
+    options?: { checkUpdates?: boolean } | null
   ): Promise<void> {
     const checkUpdates = options && options.checkUpdates === true;
     const toolIds = getRuntimeToolIds(runtime);
 
+    // NOTE: Tool probes stay sequential to avoid overlapping room-tool checks and update lookups.
+    /* eslint-disable no-await-in-loop */
     for (let index = 0; index < toolIds.length; index += 1) {
       const toolId = toolIds[index];
+      if (!toolId) {
+        continue;
+      }
       const currentEntry = runtime.toolState.tools[toolId] || createDefaultToolEntry(toolId);
       try {
         const probeResult = await callRoomTools({
@@ -54,7 +59,7 @@ export function createLaboratoryProjectToolStatusRuntime(
           roomId: roomId,
           toolId: toolId,
         });
-        const probeTool = toRecord(probeResult.tool);
+        const probeTool = toRecord(probeResult["tool"]);
         runtime.toolState.tools[toolId] = {
           ...currentEntry,
           ...probeTool,
@@ -66,27 +71,28 @@ export function createLaboratoryProjectToolStatusRuntime(
 
         if (
           checkUpdates &&
-          toRecord(toRecord(runtime.toolState.tools[toolId]).details).platformSupported !== false
+          toRecord(toRecord(runtime.toolState.tools[toolId])["details"])["platformSupported"] !== false
         ) {
           const installedEntry = toRecord(runtime.toolState.tools[toolId]);
           const updateResult = await callRoomTools({
             operation: "tool-check-for-updates",
             roomId: roomId,
             toolId: toolId,
-            installedVersion: installedEntry.version,
-            installedReleaseTag: installedEntry.releaseTag,
-            installedReleaseName: installedEntry.releaseName,
+            installedVersion: installedEntry["version"],
+            installedReleaseTag: installedEntry["releaseTag"],
+            installedReleaseName: installedEntry["releaseName"],
           });
-          const update = toRecord(updateResult.update);
+          const update = toRecord(updateResult["update"]);
 
           runtime.toolState.tools[toolId] = {
             ...runtime.toolState.tools[toolId],
-            latestVersion: typeof update.latestVersion === "string" ? update.latestVersion : null,
-            latestReleaseTag: typeof update.latestReleaseTag === "string" ? update.latestReleaseTag : null,
+            latestVersion: typeof update["latestVersion"] === "string" ? update["latestVersion"] : null,
+            latestReleaseTag:
+              typeof update["latestReleaseTag"] === "string" ? update["latestReleaseTag"] : null,
             latestReleaseName:
-              typeof update.latestReleaseName === "string" ? update.latestReleaseName : null,
-            releaseUrl: typeof update.releaseUrl === "string" ? update.releaseUrl : null,
-            updateAvailable: update.updateAvailable === true,
+              typeof update["latestReleaseName"] === "string" ? update["latestReleaseName"] : null,
+            releaseUrl: typeof update["releaseUrl"] === "string" ? update["releaseUrl"] : null,
+            updateAvailable: update["updateAvailable"] === true,
           };
         }
       } catch (error) {
@@ -99,13 +105,14 @@ export function createLaboratoryProjectToolStatusRuntime(
           lastError: message,
           lastCheckedAt: new Date().toISOString(),
           details: {
-            ...toRecord(currentEntry.details),
+            ...toRecord(currentEntry["details"]),
             platformSupported: message.indexOf("does not support") === -1 ? true : false,
             supportError: message,
           },
         };
       }
     }
+    /* eslint-enable no-await-in-loop */
 
     await persistToolState(runtime);
   }

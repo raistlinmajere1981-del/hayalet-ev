@@ -18,7 +18,7 @@ type LaboratoryShellRenderDeps = {
 
 export function renderLaboratoryStageContent(
   activeStage: string,
-  renderers: LaboratoryStageRenderers,
+  renderers: LaboratoryStageRenderers
 ): string {
   switch (activeStage) {
     case "edit":

@@ -1,7 +1,7 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createTeamTetrisUiStateViewRuntime = function createTeamTetrisUiStateViewRuntime(deps) {
+  registry.createTeamTetrisUiStateViewRuntime = function createTeamTetrisUiStateViewRuntime(deps: any) {
     const getState = deps.getState;
     const text = deps.text;
     const createTeamTetrisBoard = deps.createTeamTetrisBoard;
@@ -18,13 +18,13 @@
         : null;
     }
 
-    function getTeamTetrisBoardLabel(teamId) {
+    function getTeamTetrisBoardLabel(teamId: any) {
       return teamId === "team-b"
         ? text(["teamTetris", "boards", "teamB"])
         : text(["teamTetris", "boards", "teamA"]);
     }
 
-    function getTeamTetrisSeatDisplayLabel(seatId) {
+    function getTeamTetrisSeatDisplayLabel(seatId: any) {
       const state = getState();
       if (seatId === "user") {
         return text(["teamTetris", "turns", "you"]);
@@ -36,13 +36,13 @@
       return typeof seatId === "string" && seatId.trim() !== "" ? seatId.toUpperCase() : "???";
     }
 
-    function getTeamTetrisAnonymousSeatLabel(role) {
+    function getTeamTetrisAnonymousSeatLabel(role: any) {
       return role === "followup"
         ? text(["teamTetris", "roster", "partnerFollowup"])
         : text(["teamTetris", "roster", "partnerOpener"]);
     }
 
-    function getTeamTetrisPlacedByLabel(pieceSnapshot) {
+    function getTeamTetrisPlacedByLabel(pieceSnapshot: any) {
       if (!pieceSnapshot) {
         return text(["teamTetris", "boards", "noPartnerPiece"]);
       }
@@ -118,11 +118,11 @@
       }
 
       if (view.teams) {
-        const team = view.teams.find(function (entry) {
+        const team = view.teams.find(function (entry: any) {
           return entry.teamId === view.seat.teamId;
         });
         if (team) {
-          const partnerSeatId = team.seatIds.find(function (entry) {
+          const partnerSeatId = team.seatIds.find(function (entry: any) {
             return entry !== view.seat.seatId;
           });
           if (partnerSeatId) {

@@ -1,11 +1,11 @@
-export function createMediaAnalysisSourceEditUiRuntime(deps) {
+export function createMediaAnalysisSourceEditUiRuntime(deps: any) {
   const featureText = deps.featureText;
   const subtitleText = deps.subtitleText;
   const text = deps.text;
   const textFromKey = deps.textFromKey;
   const toRecord = deps.toRecord;
 
-  function getSubtitleMimeType(fileName) {
+  function getSubtitleMimeType(fileName: any) {
     const normalized = typeof fileName === "string" ? fileName.toLowerCase() : "";
     if (normalized.endsWith(".vtt")) {
       return "text/vtt";
@@ -16,12 +16,12 @@ export function createMediaAnalysisSourceEditUiRuntime(deps) {
     return "application/x-subrip";
   }
 
-  function getSourceConfig(kind) {
+  function getSourceConfig(kind: any) {
     const sourceTypes = toRecord(deps.getSourcePresets().sourceTypes);
     return toRecord(sourceTypes[kind]);
   }
 
-  function getSourceModeOptions(kind) {
+  function getSourceModeOptions(kind: any) {
     const config = getSourceConfig(kind);
     return Array.isArray(config.modes) ? config.modes : [];
   }
@@ -66,7 +66,9 @@ export function createMediaAnalysisSourceEditUiRuntime(deps) {
   }
 
   function getCurrentFocusLabel() {
-    const focusRegion = toRecord(toRecord(deps.getEditPresets().focusRegions)[getCurrentFocusRegionId()]);
+    const focusRegion = toRecord(
+      toRecord(deps.getEditPresets().focusRegions)[getCurrentFocusRegionId()]
+    );
     const labelKey = typeof focusRegion.labelKey === "string" ? focusRegion.labelKey : null;
     return labelKey ? textFromKey(labelKey) : "--";
   }
@@ -142,9 +144,9 @@ export function createMediaAnalysisSourceEditUiRuntime(deps) {
       return {
         kind: "source",
         label: "--",
-        previewUrl: null,
-        path: null,
-        mimeType: null,
+        previewUrl: null as string | null,
+        path: null as string | null,
+        mimeType: null as string | null,
         metadata: {},
       };
     }
@@ -167,7 +169,9 @@ export function createMediaAnalysisSourceEditUiRuntime(deps) {
         path: activeOutput.path || null,
         mimeType: activeOutput.mimeType || null,
         metadata: toRecord(activeOutput.metadata),
-        artifacts: Array.isArray(activeOutput.artifacts) ? activeOutput.artifacts.map(toRecord) : [],
+        artifacts: Array.isArray(activeOutput.artifacts)
+          ? activeOutput.artifacts.map(toRecord)
+          : [],
       };
     }
 

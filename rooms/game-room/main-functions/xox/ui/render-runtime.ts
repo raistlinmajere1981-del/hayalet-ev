@@ -1,4 +1,4 @@
-(function (global) {
+(function (global: any) {
   type XoxInviteEntry = {
     inviteId: string;
     remoteUserId: string;
@@ -79,7 +79,11 @@
     featureId: string;
     bootstrapText: (key: string) => string;
     text: (path: string[]) => string;
-    createElement: (tagName: string, className?: string, textContent?: string) => InteractiveElement;
+    createElement: (
+      tagName: string,
+      className?: string,
+      textContent?: string
+    ) => InteractiveElement;
     render: () => void;
     isRoomApiAvailable: () => boolean;
     getFeatureLabel: (featureId: string) => string;
@@ -88,7 +92,9 @@
 
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createXoxUiRenderRuntime = function createXoxUiRenderRuntime(deps: XoxUiRenderRuntimeDeps) {
+  registry.createXoxUiRenderRuntime = function createXoxUiRenderRuntime(
+    deps: XoxUiRenderRuntimeDeps
+  ) {
     const getState = deps.getState;
     const featureId = deps.featureId;
     const bootstrapText = deps.bootstrapText;
@@ -112,7 +118,7 @@
       const button = createElement("button", "xox-choice-button", "");
       button.type = "button";
       button.disabled = disabled;
-      button.dataset.selected = selected ? "true" : "false";
+      button.dataset["selected"] = selected ? "true" : "false";
       button.append(createElement("span", "xox-choice-button__title", title));
       if (meta && meta.trim() !== "") {
         button.append(createElement("span", "xox-choice-button__meta", meta));
@@ -122,8 +128,8 @@
 
     function createSeatCard(label: string, name: string, symbol: string, current: boolean) {
       const card = createElement("div", "xox-seat", "");
-      card.dataset.current = current ? "true" : "false";
-      card.dataset.tone = symbol === "O" ? "o" : "x";
+      card.dataset["current"] = current ? "true" : "false";
+      card.dataset["tone"] = symbol === "O" ? "o" : "x";
       card.append(
         createElement("span", "xox-seat__label", label),
         createElement("strong", "xox-seat__name", name),
@@ -135,7 +141,7 @@
     function renderBootstrap(root: HTMLElement) {
       const state = getState();
       const app = createElement("main", "xox-shell xox-shell--bootstrap", "");
-      app.dataset.presentationMode = state.presentation.mode;
+      app.dataset["presentationMode"] = state.presentation.mode;
       const surface = createElement("section", "xox-surface xox-surface--bootstrap", "");
       const brand = createElement("div", "xox-brand", "");
       brand.append(
@@ -180,7 +186,7 @@
       }
 
       const list = createElement("div", "xox-invite-list", "");
-      state.game.inviteInbox.forEach(function (invite) {
+      state.game.inviteInbox.forEach(function (invite: any) {
         const card = createElement("article", "xox-invite-card", "");
         const actions = createElement("div", "xox-invite-card__actions", "");
         const acceptButton = createElement(
@@ -224,13 +230,14 @@
       const state = getState();
       document.title = state.context.room.name + " - " + getFeatureLabel(featureId);
 
-      const selectedTarget = stateRuntime.getSelectedTarget();
-      const selectedSlot = state.context.slots[selectedTarget] || state.context.slots.ai1;
+      const selectedTarget = stateRuntime.getSelectedTarget() || "ai1";
+      const selectedSlot =
+        state.context.slots[selectedTarget] || state.context.slots["ai1"] || { ready: false };
       const displayOpponent = stateRuntime.getDisplayOpponent();
       const hasPendingOutgoingInvite =
         !!state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing";
       const canStart =
-        selectedSlot.ready === true && state.game.active !== true && !hasPendingOutgoingInvite;
+        selectedSlot["ready"] === true && state.game.active !== true && !hasPendingOutgoingInvite;
       const canReset = isRoomApiAvailable();
       const canUserMove =
         state.game.active === true &&
@@ -239,7 +246,7 @@
       const canRespondToInvites = state.game.active !== true && !hasPendingOutgoingInvite;
 
       const app = createElement("main", "xox-shell", "");
-      app.dataset.presentationMode = state.presentation.mode;
+      app.dataset["presentationMode"] = state.presentation.mode;
       const surface = createElement("section", "xox-surface", "");
 
       const arena = createElement("section", "xox-arena", "");
@@ -250,18 +257,18 @@
         createElement("p", "xox-panel__label", text(["xox", "topbar", "opponentLabel"]))
       );
       const opponentChoices = createElement("div", "xox-choice-grid", "");
-        stateRuntime.getSlotOrder().forEach(function (slot) {
-          const button = createChoiceButton(
-            slot.nickname,
+      stateRuntime.getSlotOrder().forEach(function (slot: any) {
+        const button = createChoiceButton(
+          slot.nickname,
           slot.slotId.toUpperCase() + " / " + stateRuntime.getSlotStatusLabel(slot),
           slot.slotId === selectedTarget,
-            state.game.active === true || hasPendingOutgoingInvite
-          );
-          button.addEventListener("click", function () {
-            state.preferences.target = slot.slotId;
-            render();
-          });
-          opponentChoices.append(button);
+          state.game.active === true || hasPendingOutgoingInvite
+        );
+        button.addEventListener("click", function () {
+          state.preferences.target = slot.slotId;
+          render();
+        });
+        opponentChoices.append(button);
       });
       opponentPanel.append(opponentChoices);
 
@@ -273,7 +280,7 @@
       [
         { value: "user", label: stateRuntime.getStarterLabelForCurrentTarget("user") },
         { value: "ai", label: stateRuntime.getStarterLabelForCurrentTarget("ai") },
-      ].forEach(function (entry) {
+      ].forEach(function (entry: any) {
         const button = createChoiceButton(
           entry.label,
           "",
@@ -359,12 +366,12 @@
 
       const boardShell = createElement("div", "xox-board-shell", "");
       const board = createElement("div", "xox-board", "");
-      state.game.board.forEach(function (symbol, index) {
+      state.game.board.forEach(function (symbol: any, index: any) {
         const cell = createElement("button", "xox-cell", symbol);
         cell.type = "button";
-        cell.dataset.index = String(index);
-        cell.dataset.symbol = symbol;
-        cell.dataset.empty = symbol === "" ? "true" : "false";
+        cell.dataset["index"] = String(index);
+        cell.dataset["symbol"] = symbol;
+        cell.dataset["empty"] = symbol === "" ? "true" : "false";
         cell.disabled = !canUserMove || symbol !== "";
         cell.addEventListener("click", function () {
           stateRuntime.onCellClick(index);

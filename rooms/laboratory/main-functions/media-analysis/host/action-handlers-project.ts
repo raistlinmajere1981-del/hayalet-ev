@@ -1,4 +1,55 @@
-export function createMediaProjectActionRuntime(deps) {
+type MediaProjectActionApi = Record<string, unknown>;
+type MediaProjectRuntimeRecord = {
+  activeProjectId?: string | null;
+} & Record<string, unknown>;
+
+type ProjectDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  cancelFeatureProcess: (
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    featureId: string | null
+  ) => Promise<unknown>;
+  createProject: (runtime: MediaProjectRuntimeRecord, featureId: string | null) => Promise<unknown>;
+  deleteProject: (
+    runtime: MediaProjectRuntimeRecord,
+    projectId: string | null,
+    requestId: string,
+    featureId: string | null
+  ) => Promise<unknown>;
+  ensureProjectExists: (runtime: MediaProjectRuntimeRecord, featureId: string | null) => Promise<unknown>;
+  exportFeatureReport: (
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    featureId: string | null
+  ) => Promise<unknown>;
+  handleToolMutation: (
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    action: string | null,
+    toolId: string,
+    featureStage: string | null
+  ) => Promise<unknown>;
+  refreshActiveProjectMetadata: (
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string
+  ) => Promise<unknown>;
+  refreshToolStatus: (
+    runtime: MediaProjectRuntimeRecord,
+    options: { checkUpdates: boolean }
+  ) => Promise<unknown>;
+  runFeatureProcess: (
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    featureId: string | null
+  ) => Promise<unknown>;
+};
+
+export function createMediaProjectActionRuntime(deps: ProjectDeps) {
   const {
     asNonEmptyString,
     cancelFeatureProcess,
@@ -12,46 +63,87 @@ export function createMediaProjectActionRuntime(deps) {
     runFeatureProcess,
   } = deps;
 
-  async function refresh(runtime, requestId, checkUpdates) {
+  async function refresh(
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    checkUpdates: boolean
+  ) {
     await refreshToolStatus(runtime, {
       checkUpdates: checkUpdates === true,
     });
     return refreshActiveProjectMetadata(runtime, requestId);
   }
 
-  async function createProject(runtime, featureId) {
+  async function createProject(runtime: MediaProjectRuntimeRecord, featureId: string | null) {
     return createProjectRecord(runtime, featureId);
   }
 
-  async function selectProject(runtime, requestId, featureId, actionPayload) {
-    runtime.activeProjectId = asNonEmptyString(actionPayload.projectId);
+  async function selectProject(
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    featureId: string | null,
+    actionPayload: Record<string, unknown>
+  ) {
+    runtime.activeProjectId = asNonEmptyString(actionPayload["projectId"]);
     await ensureProjectExists(runtime, featureId);
     return refreshActiveProjectMetadata(runtime, requestId);
   }
 
-  async function deleteProject(runtime, requestId, featureId, actionPayload) {
-    return deleteProjectRecord(runtime, asNonEmptyString(actionPayload.projectId), requestId, featureId);
+  async function deleteProject(
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    featureId: string | null,
+    actionPayload: Record<string, unknown>
+  ) {
+    return deleteProjectRecord(
+      runtime,
+      asNonEmptyString(actionPayload["projectId"]),
+      requestId,
+      featureId
+    );
   }
 
-  async function runProcess(api, runtime, requestId, featureId) {
+  async function runProcess(
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    featureId: string | null
+  ) {
     return runFeatureProcess(api, runtime, requestId, featureId);
   }
 
-  async function cancelProcess(api, runtime, requestId, featureId) {
+  async function cancelProcess(
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    featureId: string | null
+  ) {
     return cancelFeatureProcess(api, runtime, requestId, featureId);
   }
 
-  async function exportReport(api, runtime, requestId, featureId) {
+  async function exportReport(
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    featureId: string | null
+  ) {
     return exportFeatureReport(api, runtime, requestId, featureId);
   }
 
-  async function mutateTool(api, runtime, requestId, action, actionPayload, featureStage) {
+  async function mutateTool(
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    action: string | null,
+    actionPayload: Record<string, unknown>,
+    featureStage: string
+  ) {
     await handleToolMutation(
       api,
       runtime,
       requestId,
       action,
-      asNonEmptyString(actionPayload.toolId),
+      asNonEmptyString(actionPayload["toolId"]) as string,
       featureStage || "source"
     );
     return refreshActiveProjectMetadata(runtime, requestId);

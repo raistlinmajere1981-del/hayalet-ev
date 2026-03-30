@@ -1,7 +1,7 @@
 import { createLaboratorySettingsProfileModelRuntime } from "./settings-profile-model.js";
 import { createLaboratorySettingsToolCardRuntime } from "./settings-tool-card.js";
 
-export function createLaboratorySettingsUi(deps) {
+export function createLaboratorySettingsUi(deps: any) {
   const stageOrder = Array.isArray(deps.stageOrder) ? deps.stageOrder : [];
   const state = deps.state;
   const escapeHtml = deps.escapeHtml;
@@ -16,11 +16,11 @@ export function createLaboratorySettingsUi(deps) {
   const laboratorySettingsToolCardRuntime = createLaboratorySettingsToolCardRuntime(deps);
   const laboratorySettingsProfileModelRuntime = createLaboratorySettingsProfileModelRuntime(deps);
 
-  function renderToolCard(toolId, stageId) {
+  function renderToolCard(toolId: any, stageId: any) {
     return laboratorySettingsToolCardRuntime.renderToolCard(toolId, stageId);
   }
 
-  function renderProfileModelCard(entry) {
+  function renderProfileModelCard(entry: any) {
     return laboratorySettingsProfileModelRuntime.renderProfileModelCard(entry);
   }
 
@@ -30,11 +30,11 @@ export function createLaboratorySettingsUi(deps) {
     }
 
     const stageId = stageOrder.includes(state.activeStage) ? state.activeStage : "source";
-    const allToolIds = getToolRegistry().map(function (entry) {
+    const allToolIds = getToolRegistry().map(function (entry: any) {
       return entry.toolId;
     });
     const currentStageToolIds = getStageToolIds(stageId);
-    const otherToolIds = allToolIds.filter(function (toolId) {
+    const otherToolIds = allToolIds.filter(function (toolId: any) {
       return currentStageToolIds.includes(toolId) === false;
     });
 
@@ -72,7 +72,7 @@ export function createLaboratorySettingsUi(deps) {
               ${
                 currentStageToolIds.length > 0
                   ? currentStageToolIds
-                      .map(function (toolId) {
+                      .map(function (toolId: any) {
                         return renderToolCard(toolId, stageId);
                       })
                       .join("")
@@ -94,7 +94,7 @@ export function createLaboratorySettingsUi(deps) {
                   </div>
                   <div class="lab-tool-grid">
                     ${otherToolIds
-                      .map(function (toolId) {
+                      .map(function (toolId: any) {
                         return renderToolCard(toolId, stageId);
                       })
                       .join("")}
@@ -116,7 +116,7 @@ export function createLaboratorySettingsUi(deps) {
                   </div>
                   <div class="lab-tool-grid">
                     ${getProfileModelEntries()
-                      .map(function (entry) {
+                      .map(function (entry: any) {
                         return renderProfileModelCard(entry);
                       })
                       .join("")}
@@ -132,7 +132,9 @@ export function createLaboratorySettingsUi(deps) {
 
   function getSelectedProfileModelId() {
     const selectedModel = getProfileSelectedModel();
-    return selectedModel && typeof selectedModel.modelId === "string" ? selectedModel.modelId : null;
+    return selectedModel && typeof selectedModel.modelId === "string"
+      ? selectedModel.modelId
+      : null;
   }
 
   return {
@@ -142,3 +144,5 @@ export function createLaboratorySettingsUi(deps) {
     renderSettingsOverlay: renderSettingsOverlay,
   };
 }
+
+export type LaboratorySettingsUiApi = ReturnType<typeof createLaboratorySettingsUi>;

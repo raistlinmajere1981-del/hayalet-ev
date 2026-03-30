@@ -2,8 +2,8 @@ import { createLaboratoryHostActionRuntime } from "./action-runtime.js";
 import { createLaboratoryToolMutationRuntime } from "./tool-mutations.js";
 import { createMediaActionRuntime } from "../../main-functions/media-analysis/host/action-handlers.js";
 
-export function createLaboratoryActionCompositionRuntime(deps) {
-  let laboratoryHostActionRuntime = null;
+export function createLaboratoryActionCompositionRuntime(deps: any) {
+  let laboratoryHostActionRuntime: any = null;
 
   const laboratoryToolMutationRuntime = createLaboratoryToolMutationRuntime({
     callRoomTools: deps.callRoomTools,
@@ -41,8 +41,12 @@ export function createLaboratoryActionCompositionRuntime(deps) {
     getDefaultMode: deps.getDefaultMode,
     getDefaultSourceType: deps.getDefaultSourceType,
     handleLocalPick: deps.handleLocalPick,
-    handleToolMutation: function (...args) {
-      return laboratoryHostActionRuntime.handleToolMutation(...args);
+    handleToolMutation: function (...args: unknown[]) {
+      const hostAction = laboratoryHostActionRuntime;
+      if (!hostAction) {
+        throw new Error("Laboratory host action runtime is not initialized");
+      }
+      return hostAction.handleToolMutation(...args);
     },
     handleUrlDownload: deps.handleUrlDownload,
     handleYoutubeDownload: deps.handleYoutubeDownload,
@@ -75,14 +79,37 @@ export function createLaboratoryActionCompositionRuntime(deps) {
     pushActionResult: deps.pushActionResult,
     pushMediaState: deps.pushMediaState,
     toRecord: deps.toRecord,
-    toolMutationRuntime: laboratoryToolMutationRuntime,
+    toolMutationRuntime: {
+      handleToolMutation(
+        api: unknown,
+        runtime: unknown,
+        requestId: string,
+        action: string,
+        toolId: string,
+        featureStage: string | null
+      ) {
+        return laboratoryToolMutationRuntime.handleToolMutation(
+          api,
+          runtime as Parameters<typeof laboratoryToolMutationRuntime.handleToolMutation>[1],
+          requestId,
+          action,
+          toolId,
+          featureStage
+        );
+      },
+    },
     getSubtitleActionRuntime: deps.getSubtitleActionRuntime,
   });
 
+  const hostActionRuntime = laboratoryHostActionRuntime;
+  if (!hostActionRuntime) {
+    throw new Error("Laboratory host action runtime is not initialized");
+  }
+
   return {
-    handleMediaAction: laboratoryHostActionRuntime.handleMediaAction,
-    handleToolMutation: laboratoryHostActionRuntime.handleToolMutation,
-    laboratoryHostActionRuntime: laboratoryHostActionRuntime,
+    handleMediaAction: hostActionRuntime.handleMediaAction,
+    handleToolMutation: hostActionRuntime.handleToolMutation,
+    laboratoryHostActionRuntime: hostActionRuntime,
     laboratoryToolMutationRuntime: laboratoryToolMutationRuntime,
     mediaActionRuntime: mediaActionRuntime,
   };

@@ -1,6 +1,6 @@
 import { normalizeText } from "../../../shared/host/text.js";
 
-export function readFateKnotsArgs(payload) {
+export function readFateKnotsArgs(payload: any) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return {};
   }
@@ -14,7 +14,7 @@ export function readFateKnotsArgs(payload) {
   return payload;
 }
 
-export function resolveFateKnotsSeatId(payload) {
+export function resolveFateKnotsSeatId(payload: any) {
   const provider = normalizeText(payload && typeof payload === "object" ? payload.provider : "");
   if (provider === "room-ui") {
     return "user";
@@ -30,7 +30,7 @@ export function resolveFateKnotsSeatId(payload) {
   return null;
 }
 
-export function readFateKnotsSelectionPayload(payload) {
+export function readFateKnotsSelectionPayload(payload: any) {
   const args = readFateKnotsArgs(payload);
   return {
     avatarId: normalizeText(args.avatarId) || null,
@@ -39,7 +39,7 @@ export function readFateKnotsSelectionPayload(payload) {
   };
 }
 
-export function readFateKnotsChoicePayload(payload) {
+export function readFateKnotsChoicePayload(payload: any) {
   const args = readFateKnotsArgs(payload);
   return {
     sessionId: normalizeText(args.sessionId) || null,
@@ -48,7 +48,7 @@ export function readFateKnotsChoicePayload(payload) {
   };
 }
 
-export function readFateKnotsCombatPayload(payload) {
+export function readFateKnotsCombatPayload(payload: any) {
   const args = readFateKnotsArgs(payload);
   return {
     sessionId: normalizeText(args.sessionId) || null,
@@ -58,7 +58,7 @@ export function readFateKnotsCombatPayload(payload) {
   };
 }
 
-export function readFateKnotsSyncPayload(payload) {
+export function readFateKnotsSyncPayload(payload: any) {
   const args = readFateKnotsArgs(payload);
   return {
     sessionId: normalizeText(args.sessionId) || null,
@@ -66,7 +66,7 @@ export function readFateKnotsSyncPayload(payload) {
   };
 }
 
-export function readFateKnotsDmPacketPayload(payload) {
+export function readFateKnotsDmPacketPayload(payload: any) {
   const args = readFateKnotsArgs(payload);
   return {
     sessionId: normalizeText(args.sessionId) || null,
@@ -78,7 +78,7 @@ export function readFateKnotsDmPacketPayload(payload) {
   };
 }
 
-export function readFateKnotsNpcBanterPayload(payload) {
+export function readFateKnotsNpcBanterPayload(payload: any) {
   const args = readFateKnotsArgs(payload);
   return {
     sessionId: normalizeText(args.sessionId) || null,

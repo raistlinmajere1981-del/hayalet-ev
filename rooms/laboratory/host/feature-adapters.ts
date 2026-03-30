@@ -1,7 +1,7 @@
 import { createLaboratoryActionCompositionRuntime } from "../shared/host/action-composition.js";
 import { createLaboratorySubtitleAnalysisHostRuntime } from "../main-functions/subtitle-analysis/host/runtime.js";
 
-export function createLaboratoryFeatureAdapters(deps) {
+export function createLaboratoryFeatureAdapters(deps: any) {
   const laboratorySubtitleAnalysisHostRuntime = createLaboratorySubtitleAnalysisHostRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: deps.asNumber,

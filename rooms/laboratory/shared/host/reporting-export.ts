@@ -18,39 +18,31 @@ type LaboratoryReportExportRuntimeDeps = {
     runtime: unknown,
     project: LaboratoryRecord,
     featureId: string,
-    reportRecord: LaboratoryFeatureReportRecord,
+    reportRecord: LaboratoryFeatureReportRecord
   ) => string;
   clearJob: (runtime: unknown, jobId: string) => void;
   composeFeatureReport: (
     runtime: unknown,
     project: LaboratoryRecord,
-    featureId: string,
+    featureId: string
   ) => LaboratoryFeatureReportRecord;
   ensureProjectDirectories: (
     runtime: unknown,
     project: LaboratoryRecord,
-    requestId: string,
+    requestId: string
   ) => Promise<unknown>;
-  ensureReportJobSlotAvailable: (
-    runtime: unknown,
-    projectId: string,
-    action: string,
-  ) => void;
+  ensureReportJobSlotAvailable: (runtime: unknown, projectId: string, action: string) => void;
   getActiveProject: (runtime: unknown) => LaboratoryReportExportProject | null;
-  getFeatureReportDir: (
-    runtime: unknown,
-    project: LaboratoryRecord,
-    featureId: string,
-  ) => string;
+  getFeatureReportDir: (runtime: unknown, project: LaboratoryRecord, featureId: string) => string;
   getFeatureReportExportAction: (featureId: string) => string;
   getFeatureReportRecord: (
     project: LaboratoryRecord,
-    featureId: string,
+    featureId: string
   ) => LaboratoryFeatureReportRecord;
   normalizeReportExport: (value: unknown) => LaboratoryReportExportEntry;
   patchActiveProject: (
     runtime: unknown,
-    patcher: (project: LaboratoryReportExportProject) => LaboratoryReportExportProject,
+    patcher: (project: LaboratoryReportExportProject) => LaboratoryReportExportProject
   ) => Promise<unknown>;
   pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
   registerJob: (runtime: unknown, options: LaboratoryRecord) => unknown;
@@ -58,14 +50,12 @@ type LaboratoryReportExportRuntimeDeps = {
   setFeatureReportRecord: (
     project: LaboratoryRecord,
     featureId: string,
-    record: LaboratoryFeatureReportRecord,
+    record: LaboratoryFeatureReportRecord
   ) => void;
   writeTextFile: (filePath: string, value: string) => Promise<unknown>;
 };
 
-export function createLaboratoryReportExportRuntime(
-  deps: LaboratoryReportExportRuntimeDeps,
-) {
+export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExportRuntimeDeps) {
   const {
     getActiveProject,
     ensureProjectDirectories,
@@ -89,7 +79,7 @@ export function createLaboratoryReportExportRuntime(
     api: unknown,
     runtime: unknown,
     requestId: string,
-    featureId: string,
+    featureId: string
   ): Promise<void> {
     const project = getActiveProject(runtime);
     if (project === null) {
@@ -126,7 +116,10 @@ export function createLaboratoryReportExportRuntime(
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
       const fileName = `${sanitizeFileSegment(project.slug, "project")}-${featureId}-${stamp}.md`;
       const outputPath = `${getFeatureReportDir(runtime, project, featureId)}/${fileName}`;
-      await writeTextFile(outputPath, buildReportMarkdown(runtime, project, featureId, reportRecord));
+      await writeTextFile(
+        outputPath,
+        buildReportMarkdown(runtime, project, featureId, reportRecord)
+      );
       const exportEntry = normalizeReportExport({
         format: "md",
         path: outputPath,
@@ -134,14 +127,14 @@ export function createLaboratoryReportExportRuntime(
         status: "ready",
       });
 
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         const nextReportRecord = composeFeatureReport(runtime, nextProject, featureId);
-        nextReportRecord.exports = [exportEntry].concat(
-          (Array.isArray(getFeatureReportRecord(nextProject, featureId).exports)
-            ? getFeatureReportRecord(nextProject, featureId).exports
-            : []
-          ).slice(0, 7)
-        );
+        const currentReportRecord = getFeatureReportRecord(nextProject, featureId);
+        const currentExports =
+          currentReportRecord && Array.isArray(currentReportRecord.exports)
+            ? currentReportRecord.exports
+            : [];
+        nextReportRecord.exports = [exportEntry].concat(currentExports.slice(0, 7));
         setFeatureReportRecord(nextProject, featureId, nextReportRecord);
         return nextProject;
       });
@@ -155,7 +148,7 @@ export function createLaboratoryReportExportRuntime(
         percent: 100,
       });
     } catch (error) {
-      await patchActiveProject(runtime, function (nextProject) {
+      await patchActiveProject(runtime, function (nextProject: any) {
         setFeatureReportRecord(nextProject, featureId, {
           ...getFeatureReportRecord(nextProject, featureId),
           status: "error",

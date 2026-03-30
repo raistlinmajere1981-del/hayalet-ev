@@ -1,4 +1,4 @@
-export function createSubtitleEditWorkspaceRuntime(deps) {
+export function createSubtitleEditWorkspaceRuntime(deps: any) {
   const {
     asNonEmptyString,
     buildSubtitleEditSummary,
@@ -20,7 +20,7 @@ export function createSubtitleEditWorkspaceRuntime(deps) {
     writeTextFile,
   } = deps;
 
-  async function previewEdit(runtime, requestId) {
+  async function previewEdit(runtime: any, requestId: any) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
@@ -33,19 +33,36 @@ export function createSubtitleEditWorkspaceRuntime(deps) {
 
     const subtitleState = normalizeSubtitleAnalysisState(project.subtitleAnalysis, runtime);
     const sourceText = await readSubtitleText(activeEntry.path);
-    const outputFormat = resolveSubtitleOutputFormat(activeEntry.format, toRecord(subtitleState.edit.recipe).outputFormat);
-    const outputText = transformSubtitleDocument(sourceText, activeEntry.format, subtitleState.edit.recipe, outputFormat);
-    const summary = buildSubtitleEditSummary(sourceText, outputText, activeEntry.format, outputFormat);
+    const outputFormat = resolveSubtitleOutputFormat(
+      activeEntry.format,
+      toRecord(subtitleState.edit.recipe).outputFormat
+    );
+    const outputText = transformSubtitleDocument(
+      sourceText,
+      activeEntry.format,
+      subtitleState.edit.recipe,
+      outputFormat
+    );
+    const summary = buildSubtitleEditSummary(
+      sourceText,
+      outputText,
+      activeEntry.format,
+      outputFormat
+    );
 
-    await patchActiveProject(runtime, function (nextProject) {
-      const nextSubtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
+    await patchActiveProject(runtime, function (nextProject: any) {
+      const nextSubtitleState = normalizeSubtitleAnalysisState(
+        nextProject.subtitleAnalysis,
+        runtime
+      );
       nextSubtitleState.edit.preview = {
         status: "ready",
         entryId: activeEntry.id,
         outputText: outputText,
-        warnings: summary.maxLineLength > Number(nextSubtitleState.edit.recipe.maxCharsPerLine || 42)
-          ? ["Some output lines are still longer than the configured line budget."]
-          : [],
+        warnings:
+          summary.maxLineLength > Number(nextSubtitleState.edit.recipe.maxCharsPerLine || 42)
+            ? ["Some output lines are still longer than the configured line budget."]
+            : [],
         summary: summary,
       };
       nextSubtitleState.edit.lastError = null;
@@ -58,7 +75,7 @@ export function createSubtitleEditWorkspaceRuntime(deps) {
     return summary;
   }
 
-  async function applyEdit(runtime, requestId) {
+  async function applyEdit(runtime: any, requestId: any) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
@@ -72,12 +89,28 @@ export function createSubtitleEditWorkspaceRuntime(deps) {
     await ensureProjectDirectories(runtime, project, requestId);
     const subtitleState = normalizeSubtitleAnalysisState(project.subtitleAnalysis, runtime);
     const sourceText = await readSubtitleText(activeEntry.path);
-    const outputFormat = resolveSubtitleOutputFormat(activeEntry.format, toRecord(subtitleState.edit.recipe).outputFormat);
-    const outputText = transformSubtitleDocument(sourceText, activeEntry.format, subtitleState.edit.recipe, outputFormat);
-    const summary = buildSubtitleEditSummary(sourceText, outputText, activeEntry.format, outputFormat);
+    const outputFormat = resolveSubtitleOutputFormat(
+      activeEntry.format,
+      toRecord(subtitleState.edit.recipe).outputFormat
+    );
+    const outputText = transformSubtitleDocument(
+      sourceText,
+      activeEntry.format,
+      subtitleState.edit.recipe,
+      outputFormat
+    );
+    const summary = buildSubtitleEditSummary(
+      sourceText,
+      outputText,
+      activeEntry.format,
+      outputFormat
+    );
     const outputNameHint = asNonEmptyString(toRecord(subtitleState.edit.recipe).outputNameHint);
     const sourceStem = String(activeEntry.fileName || "subtitle").replace(/\.[^.]+$/, "");
-    const outputStem = outputNameHint !== null ? sanitizeFileSegment(outputNameHint, sourceStem) : `${sourceStem}-cleaned`;
+    const outputStem =
+      outputNameHint !== null
+        ? sanitizeFileSegment(outputNameHint, sourceStem)
+        : `${sourceStem}-cleaned`;
     const outputPath = `${getProjectSubtitleEditOutputDir(runtime, project)}/${outputStem}.${outputFormat}`;
     const outputLabel = `${activeEntry.fileName} cleanup`;
 
@@ -95,8 +128,11 @@ export function createSubtitleEditWorkspaceRuntime(deps) {
       0
     );
 
-    await patchActiveProject(runtime, function (nextProject) {
-      const nextSubtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
+    await patchActiveProject(runtime, function (nextProject: any) {
+      const nextSubtitleState = normalizeSubtitleAnalysisState(
+        nextProject.subtitleAnalysis,
+        runtime
+      );
       nextSubtitleState.edit.preview = {
         status: "ready",
         entryId: activeEntry.id,
@@ -104,13 +140,16 @@ export function createSubtitleEditWorkspaceRuntime(deps) {
         warnings: [],
         summary: summary,
       };
-      nextSubtitleState.edit.outputs = [outputRecord].concat(
-        nextSubtitleState.edit.outputs.filter(function (entry) {
-          return asNonEmptyString(toRecord(entry).id) !== outputRecord.id;
+      nextSubtitleState.edit.outputs = [outputRecord]
+        .concat(
+          nextSubtitleState.edit.outputs.filter(function (entry: any) {
+            return asNonEmptyString(toRecord(entry).id) !== outputRecord.id;
+          })
+        )
+        .map(function (entry: any, index: any) {
+          return normalizeSubtitleOutputRecord(entry, index);
         })
-      ).map(function (entry, index) {
-        return normalizeSubtitleOutputRecord(entry, index);
-      }).slice(0, 12);
+        .slice(0, 12);
       nextSubtitleState.edit.lastError = null;
       nextSubtitleState.edit.lastActionAt = new Date().toISOString();
       nextProject.subtitleAnalysis = nextSubtitleState;

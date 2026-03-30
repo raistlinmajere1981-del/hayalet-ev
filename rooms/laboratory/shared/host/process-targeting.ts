@@ -1,4 +1,4 @@
-export function createLaboratoryProcessTargetingRuntime(deps) {
+export function createLaboratoryProcessTargetingRuntime(deps: any) {
   const audioFeatureId = deps.audioFeatureId;
   const subtitleFeatureId = deps.subtitleFeatureId;
   const asNonEmptyString = deps.asNonEmptyString;
@@ -12,7 +12,7 @@ export function createLaboratoryProcessTargetingRuntime(deps) {
   const normalizeProcessModule = deps.normalizeProcessModule;
   const buildProfileModelSummary = deps.buildProfileModelSummary;
 
-  function resolveProcessTarget(project, featureId) {
+  function resolveProcessTarget(project: any, featureId: any) {
     if (featureId === audioFeatureId) {
       return resolveAudioFeatureTarget(project);
     }
@@ -31,7 +31,7 @@ export function createLaboratoryProcessTargetingRuntime(deps) {
         mimeType: activeEntry ? getSubtitleMimeType(activeEntry.fileName) : null,
         metadata: activeEntry ? toRecord(activeEntry.metadata) : null,
         signature: selectedEntries
-          .map(function (entry) {
+          .map(function (entry: any) {
             return `${entry.id}:${entry.path || entry.fileName}`;
           })
           .join("|"),
@@ -50,7 +50,7 @@ export function createLaboratoryProcessTargetingRuntime(deps) {
     return resolveProfileTarget(project);
   }
 
-  function createQueuedProcessModule(id, labelKey, title, summary) {
+  function createQueuedProcessModule(id: any, labelKey: any, title: any, summary: any) {
     return normalizeProcessModule({
       id: id,
       labelKey: labelKey,
@@ -64,7 +64,7 @@ export function createLaboratoryProcessTargetingRuntime(deps) {
     });
   }
 
-  function buildMediaProcessModules(runtime, project, target) {
+  function buildMediaProcessModules(_runtime: any, project: any, target: any) {
     const readiness = toRecord(project.profile.readiness);
     const enabledLaneIds = Array.isArray(readiness.enabledLaneIds) ? readiness.enabledLaneIds : [];
     const sourceKind = asNonEmptyString(toRecord(project.source).kind) || "video";
@@ -75,7 +75,9 @@ export function createLaboratoryProcessTargetingRuntime(deps) {
         "intake",
         "mediaAnalysis.process.steps.intake",
         "Source Intake",
-        target.path ? "Target asset is pinned and ready for the managed run." : "Prepare a source before starting."
+        target.path
+          ? "Target asset is pinned and ready for the managed run."
+          : "Prepare a source before starting."
       )
     );
     modules.push(
@@ -90,7 +92,12 @@ export function createLaboratoryProcessTargetingRuntime(deps) {
     );
     modules.push(
       normalizeProcessModule({
-        ...createQueuedProcessModule("motion", "mediaAnalysis.process.steps.motion", "Motion Analysis", ""),
+        ...createQueuedProcessModule(
+          "motion",
+          "mediaAnalysis.process.steps.motion",
+          "Motion Analysis",
+          ""
+        ),
         status:
           sourceKind === "video" && enabledLaneIds.includes("visual-tamper")
             ? "queued"
@@ -105,7 +112,12 @@ export function createLaboratoryProcessTargetingRuntime(deps) {
     );
     modules.push(
       normalizeProcessModule({
-        ...createQueuedProcessModule("audio", "mediaAnalysis.process.steps.audio", "Audio Sweep", ""),
+        ...createQueuedProcessModule(
+          "audio",
+          "mediaAnalysis.process.steps.audio",
+          "Audio Sweep",
+          ""
+        ),
         status:
           (sourceKind === "video" || sourceKind === "audio") &&
           (enabledLaneIds.includes("audio-tamper") || enabledLaneIds.includes("speech-overlay"))
@@ -129,16 +141,16 @@ export function createLaboratoryProcessTargetingRuntime(deps) {
     return modules;
   }
 
-  function buildProcessSpeechAvailability(runtime, project) {
+  function buildProcessSpeechAvailability(runtime: any, project: any) {
     const summaries = buildProfileModelSummary(runtime, project);
     const selected =
-      summaries.find(function (entry) {
+      summaries.find(function (entry: any) {
         return entry.selected === true;
       }) || null;
     const readyModel =
       selected && selected.ready === true
         ? selected
-        : summaries.find(function (entry) {
+        : summaries.find(function (entry: any) {
             return toRecord(entry).ready === true;
           }) || null;
     return {

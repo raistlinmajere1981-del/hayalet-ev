@@ -1,4 +1,4 @@
-export function createLaboratoryUiBootstrapStateRuntime(deps) {
+export function createLaboratoryUiBootstrapStateRuntime(deps: any) {
   const roomId = deps.roomId;
   const featureId = deps.featureId;
   const stageOrder = deps.stageOrder;
@@ -47,14 +47,14 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       profileModelState: {
         models: {},
       },
-      toolRegistry: [],
-      projects: [],
-      activeProjectId: null,
-      activeProject: null,
+      toolRegistry: [] as unknown[],
+      projects: [] as unknown[],
+      activeProjectId: null as string | null,
+      activeProject: null as unknown,
       toolState: {
         tools: {},
       },
-      jobs: [],
+      jobs: [] as unknown[],
     };
   }
 
@@ -63,7 +63,7 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       urlInput: "",
       youtubeUrl: "",
       fileNameHint: "",
-      youtubePreset: null,
+      youtubePreset: null as unknown,
       youtubeCustom: {},
     };
   }
@@ -77,20 +77,20 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       publishedAfter: "",
       publishedBefore: "",
       weekdays: "",
-      durationMinSeconds: null,
-      durationMaxSeconds: null,
+      durationMinSeconds: null as number | null,
+      durationMaxSeconds: null as number | null,
       shortsMode: "all",
       liveMode: "all",
       titleInclude: "",
       titleExclude: "",
       playlistItems: "",
-      limitCount: null,
+      limitCount: null as number | null,
     };
   }
 
   const state = {
     locale: resolveLocale(documentRef.documentElement.lang || navigatorRef.language),
-    translations: null,
+    translations: null as unknown,
     context: createContext(),
     presentation: {
       mode: "classic",
@@ -100,8 +100,8 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
     sourceSnapshot: createSourceSnapshot(),
     ui: {
       settingsOpen: false,
-      pendingDeleteProjectId: null,
-      lastRequestId: null,
+      pendingDeleteProjectId: null as string | null,
+      lastRequestId: null as string | null,
       requestCounter: 0,
       latestRequestByDomain: {
         project: 0,
@@ -124,25 +124,25 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       },
       requestLookup: {},
       lastActionMessage: "",
-      localDraftProjectId: null,
+      localDraftProjectId: null as string | null,
       localDrafts: createLocalDrafts(),
-      localSubtitleDraftProjectId: null,
+      localSubtitleDraftProjectId: null as string | null,
       localSubtitleDrafts: createSubtitleLocalDrafts(),
-      localEditProjectId: null,
-      localEditUpdatedAt: null,
-      localEditDraft: null,
-      localSubtitleEditProjectId: null,
-      localSubtitleEditUpdatedAt: null,
-      localSubtitleEditDraft: null,
+      localEditProjectId: null as string | null,
+      localEditUpdatedAt: null as string | null,
+      localEditDraft: null as unknown,
+      localSubtitleEditProjectId: null as string | null,
+      localSubtitleEditUpdatedAt: null as string | null,
+      localSubtitleEditDraft: null as unknown,
       previewMetrics: {
-        url: null,
-        duration: null,
-        width: null,
-        height: null,
+        url: null as string | null,
+        duration: null as number | null,
+        width: null as number | null,
+        height: null as number | null,
       },
       audioAnalysis: {
-        url: null,
-        bars: [],
+        url: null as string | null,
+        bars: [] as number[],
       },
       scrollPositions: {
         surface: 0,

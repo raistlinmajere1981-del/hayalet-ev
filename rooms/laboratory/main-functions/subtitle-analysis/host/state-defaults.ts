@@ -1,16 +1,34 @@
-export function createSubtitleStateDefaultsRuntime(deps) {
+/** Matches `normalizeSubtitleDiscoveryItem` output in state-normalization. */
+type SubtitleDiscoveryListItem = {
+  id: string;
+  url: string | null;
+  videoId: string | null;
+  title: string;
+  channelTitle: string | null;
+  publishedAt: string | null;
+  durationSeconds: number | null;
+  isShort: boolean | null;
+  liveStatus: string | null;
+  subtitleLanguages: string[];
+  warnings: string[];
+  metadata: Record<string, unknown>;
+};
+
+export function createSubtitleStateDefaultsRuntime(deps: any) {
   const { asNonEmptyString, toRecord } = deps;
 
-  function getDefaultSubtitleEditPresetId(runtime) {
-    return asNonEmptyString(toRecord(runtime.subtitleEditPresets).defaultPresetId) || "safe-cleanup";
+  function getDefaultSubtitleEditPresetId(runtime: any) {
+    return (
+      asNonEmptyString(toRecord(runtime.subtitleEditPresets).defaultPresetId) || "safe-cleanup"
+    );
   }
 
-  function getDefaultSubtitleEditRecipe(runtime, presetId) {
+  function getDefaultSubtitleEditRecipe(runtime: any, presetId: any) {
     const presets = Array.isArray(toRecord(runtime.subtitleEditPresets).presets)
       ? toRecord(runtime.subtitleEditPresets).presets.map(toRecord)
       : [];
     const matchedPreset =
-      presets.find(function (entry) {
+      presets.find(function (entry: any) {
         return asNonEmptyString(entry.id) === presetId;
       }) || {};
 
@@ -32,16 +50,16 @@ export function createSubtitleStateDefaultsRuntime(deps) {
     return {
       status: "idle",
       scope: "single",
-      items: [],
-      selectedCandidateIds: [],
+      items: [] as SubtitleDiscoveryListItem[],
+      selectedCandidateIds: [] as string[],
       totalCandidateCount: 0,
-      lastError: null,
-      lastRunAt: null,
-      lastDownloadAt: null,
+      lastError: null as string | null,
+      lastRunAt: null as string | null,
+      lastDownloadAt: null as string | null,
     };
   }
 
-  function createEmptySubtitleAnalysisState(runtime) {
+  function createEmptySubtitleAnalysisState(runtime: any) {
     const defaultPresetId = getDefaultSubtitleEditPresetId(runtime || {});
     return {
       workspace: {
@@ -54,51 +72,51 @@ export function createSubtitleStateDefaultsRuntime(deps) {
           publishedAfter: "",
           publishedBefore: "",
           weekdays: "",
-          durationMinSeconds: null,
-          durationMaxSeconds: null,
+          durationMinSeconds: null as number | null,
+          durationMaxSeconds: null as number | null,
           shortsMode: "all",
           liveMode: "all",
           titleInclude: "",
           titleExclude: "",
           playlistItems: "",
-          limitCount: null,
+          limitCount: null as number | null,
         },
         selection: {
-          selectedEntryIds: [],
+          selectedEntryIds: [] as string[],
         },
-        lastError: null,
-        lastActionAt: null,
-        lastImportAt: null,
+        lastError: null as string | null,
+        lastActionAt: null as string | null,
+        lastImportAt: null as string | null,
       },
       discovery: createEmptySubtitleDiscoveryState(),
-      entries: [],
-      activeEntryId: null,
+      entries: [] as unknown[],
+      activeEntryId: null as string | null,
       edit: {
         presetId: defaultPresetId,
         recipe: getDefaultSubtitleEditRecipe(runtime || {}, defaultPresetId),
         preview: {
           status: "idle",
-          entryId: null,
+          entryId: null as string | null,
           outputText: "",
-          warnings: [],
-          summary: null,
+          warnings: [] as unknown[],
+          summary: null as unknown,
         },
-        outputs: [],
-        lastError: null,
-        lastActionAt: null,
+        outputs: [] as unknown[],
+        lastError: null as string | null,
+        lastActionAt: null as string | null,
       },
       analysis: {
         status: "idle",
-        summaryCards: [],
-        findings: [],
-        warnings: [],
+        summaryCards: [] as unknown[],
+        findings: [] as unknown[],
+        warnings: [] as unknown[],
         moduleResults: {},
-        lastRunAt: null,
+        lastRunAt: null as string | null,
         sourceSelection: "active-entry",
       },
       export: {
-        lastGeneratedAt: null,
-        items: [],
+        lastGeneratedAt: null as string | null,
+        items: [] as unknown[],
       },
     };
   }

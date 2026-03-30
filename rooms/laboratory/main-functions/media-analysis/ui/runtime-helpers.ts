@@ -22,13 +22,13 @@ import {
   sortProfileSignals as sortMediaAnalysisProfileSignals,
 } from "./profile-helpers.js";
 
-export function createMediaAnalysisUiRuntimeHelpers(deps) {
+export function createMediaAnalysisUiRuntimeHelpers(deps: any) {
   const state = deps.state;
   const text = deps.text;
   const featureText = deps.featureText;
   const toRecord = deps.toRecord;
 
-  function getSubtitleMimeType(fileName) {
+  function getSubtitleMimeType(fileName: string) {
     const normalized = typeof fileName === "string" ? fileName.toLowerCase() : "";
     if (normalized.endsWith(".vtt")) {
       return "text/vtt";
@@ -39,7 +39,7 @@ export function createMediaAnalysisUiRuntimeHelpers(deps) {
     return "application/x-subrip";
   }
 
-  function getProjectStatusLabel(source) {
+  function getProjectStatusLabel(source: { status?: string; storedPath?: string }) {
     if (source.status === "error") {
       return text(["mediaAnalysis", "settings", "status", "error"]);
     }
@@ -72,31 +72,31 @@ export function createMediaAnalysisUiRuntimeHelpers(deps) {
     });
   }
 
-  function sortProfileSignals(signals) {
+  function sortProfileSignals(signals: unknown[]) {
     return sortMediaAnalysisProfileSignals(signals, toRecord);
   }
 
-  function getTopProfileSignals(limit) {
+  function getTopProfileSignals(limit: number) {
     return getMediaAnalysisTopProfileSignals(deps.getProfileSignals(), limit, toRecord);
   }
 
-  function getProfileSignalKindLabel(kind) {
+  function getProfileSignalKindLabel(kind: string) {
     return getMediaAnalysisProfileSignalKindLabel(text, kind);
   }
 
-  function getProfileConfidenceLabel(confidence) {
+  function getProfileConfidenceLabel(confidence: string) {
     return getMediaAnalysisProfileConfidenceLabel(text, confidence);
   }
 
-  function formatPlatformList(platforms) {
+  function formatPlatformList(platforms: string[]) {
     return formatMediaAnalysisPlatformList(platforms);
   }
 
-  function formatCleanupPolicy(policy) {
+  function formatCleanupPolicy(policy: unknown) {
     return formatMediaAnalysisCleanupPolicy(policy, toRecord, text);
   }
 
-  function getPreferredSourceDuration(previewUrl) {
+  function getPreferredSourceDuration(previewUrl: string) {
     return getMediaAnalysisPreferredSourceDuration(
       deps.getSourceMetadata(),
       state.ui.previewMetrics,
@@ -104,7 +104,7 @@ export function createMediaAnalysisUiRuntimeHelpers(deps) {
     );
   }
 
-  function getPreferredSourceResolution(previewUrl) {
+  function getPreferredSourceResolution(previewUrl: string) {
     return getMediaAnalysisPreferredSourceResolution(
       deps.getSourceMetadata(),
       state.ui.previewMetrics,
@@ -116,27 +116,27 @@ export function createMediaAnalysisUiRuntimeHelpers(deps) {
     return getMediaAnalysisPreferredSourceCodec(deps.getSourceMetadata());
   }
 
-  function getPreferredAssetDuration(asset) {
+  function getPreferredAssetDuration(asset: unknown) {
     return getMediaAnalysisPreferredAssetDuration(asset, state.ui.previewMetrics, toRecord);
   }
 
-  function getPreferredAssetResolution(asset) {
+  function getPreferredAssetResolution(asset: unknown) {
     return getMediaAnalysisPreferredAssetResolution(asset, state.ui.previewMetrics, toRecord);
   }
 
-  function getPreferredAssetCodec(asset) {
+  function getPreferredAssetCodec(asset: unknown) {
     return getMediaAnalysisPreferredAssetCodec(asset, toRecord);
   }
 
-  function getToolDisplayName(toolId) {
+  function getToolDisplayName(toolId: string) {
     return getMediaAnalysisToolDisplayName(toolId, deps.getToolRegistry(), text);
   }
 
-  function getMediaKindLabel(kind) {
+  function getMediaKindLabel(kind: string) {
     return getMediaAnalysisKindLabel(kind, featureText);
   }
 
-  function getProfileLaneCardState(laneId) {
+  function getProfileLaneCardState(laneId: string) {
     return getMediaAnalysisProfileLaneCardState({
       currentSourceKind: deps.getCurrentSourceKind(),
       getMediaKindLabel: getMediaKindLabel,
@@ -155,11 +155,11 @@ export function createMediaAnalysisUiRuntimeHelpers(deps) {
     return getMediaAnalysisPreferredSourceFormat(deps.getSourceMetadata(), deps.getProjectSource());
   }
 
-  function formatBitRate(bitsPerSecond) {
+  function formatBitRate(bitsPerSecond: number) {
     return formatMediaAnalysisBitRate(bitsPerSecond);
   }
 
-  function formatBytes(value) {
+  function formatBytes(value: number) {
     return formatMediaAnalysisBytes(value);
   }
 

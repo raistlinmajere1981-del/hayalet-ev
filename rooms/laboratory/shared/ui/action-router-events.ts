@@ -1,4 +1,4 @@
-export function createLaboratoryUiActionEventRuntime(deps) {
+export function createLaboratoryUiActionEventRuntime(deps: any) {
   const {
     buildNestedPatch,
     commitEditPatch,
@@ -18,7 +18,7 @@ export function createLaboratoryUiActionEventRuntime(deps) {
     toggleCleanup,
   } = deps;
 
-  function handleClick(event) {
+  function handleClick(event: any) {
     const target = event.target;
     if (!(target instanceof Element)) {
       return;
@@ -50,11 +50,9 @@ export function createLaboratoryUiActionEventRuntime(deps) {
       const fieldId = editToggle.dataset["editToggle"] || "";
       const path = fieldId.replace(/^recipe\./, "");
       const currentValue =
-        fieldId
-          .split(".")
-          .reduce(function (accumulator, key) {
-            return accumulator && typeof accumulator === "object" ? accumulator[key] : undefined;
-          }, getCurrentEditDraft()) === true;
+        fieldId.split(".").reduce(function (accumulator: any, key: any) {
+          return accumulator && typeof accumulator === "object" ? accumulator[key] : undefined;
+        }, getCurrentEditDraft()) === true;
       syncLocalEditField(fieldId, currentValue !== true);
       commitEditPatch(buildNestedPatch(path, currentValue !== true));
       render();
@@ -94,7 +92,9 @@ export function createLaboratoryUiActionEventRuntime(deps) {
     const draftToggle = target.closest("[data-toggle-field]");
     if (draftToggle instanceof HTMLElement) {
       const fieldId = draftToggle.dataset["toggleField"] || "";
-      const currentValue = toRecord(state.ui.localDrafts.youtubeCustom)[fieldId.replace("youtubeCustom.", "")] === true;
+      const currentValue =
+        toRecord(state.ui.localDrafts.youtubeCustom)[fieldId.replace("youtubeCustom.", "")] ===
+        true;
       syncDraftField(fieldId, currentValue !== true);
       persistDrafts({
         youtubeCustom: {
@@ -105,10 +105,13 @@ export function createLaboratoryUiActionEventRuntime(deps) {
     }
   }
 
-  function handleInput(event) {
+  function handleInput(event: any) {
     const target = event.target;
     if (target instanceof HTMLInputElement && target.dataset["draftField"]) {
-      syncDraftField(target.dataset["draftField"], target.type === "number" ? Number(target.value) : target.value);
+      syncDraftField(
+        target.dataset["draftField"],
+        target.type === "number" ? Number(target.value) : target.value
+      );
       return;
     }
 
@@ -135,7 +138,7 @@ export function createLaboratoryUiActionEventRuntime(deps) {
     }
   }
 
-  function handleChange(event) {
+  function handleChange(event: any) {
     const target = event.target;
 
     if (target instanceof HTMLSelectElement && target.dataset["select"] === "project") {

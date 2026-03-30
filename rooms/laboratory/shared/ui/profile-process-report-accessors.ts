@@ -1,4 +1,4 @@
-export function createLaboratoryProfileProcessReportAccessorsRuntime(deps) {
+export function createLaboratoryProfileProcessReportAccessorsRuntime(deps: any) {
   const getLaboratoryUiFeatureRuntime = deps.getLaboratoryUiFeatureRuntime;
 
   function readLaboratoryUiFeatureRuntime() {

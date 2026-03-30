@@ -1,4 +1,4 @@
-export function buildLaboratoryUiCoreApi(deps) {
+export function buildLaboratoryUiCoreApi(deps: any) {
   const laboratoryStageAccessorsRuntime = deps.uiRuntimeComposition.laboratoryStageAccessorsRuntime;
 
   return {
@@ -68,8 +68,7 @@ export function buildLaboratoryUiCoreApi(deps) {
     getProfileSignalKindLabel: deps.uiRuntimeComposition.getProfileSignalKindLabel,
     getProfileTargetAsset: deps.uiRuntimeComposition.getProfileTargetAsset,
     getProfileTargetSummary: laboratoryStageAccessorsRuntime.getProfileTargetSummary,
-    getProfileTranscriptSampleConfig:
-      deps.uiRuntimeComposition.getProfileTranscriptSampleConfig,
+    getProfileTranscriptSampleConfig: deps.uiRuntimeComposition.getProfileTranscriptSampleConfig,
     getProjectEdit: deps.uiRuntimeComposition.getProjectEdit,
     getProjectProfile: deps.uiRuntimeComposition.getProjectProfile,
     getProjectSource: deps.uiRuntimeComposition.getProjectSource,
@@ -90,17 +89,13 @@ export function buildLaboratoryUiCoreApi(deps) {
     getSubtitleEntries: deps.uiRuntimeComposition.getSubtitleEntries,
     getSubtitleOutputs: deps.uiRuntimeComposition.getSubtitleOutputs,
     getSubtitleProcessModuleLabel: deps.uiRuntimeComposition.getSubtitleProcessModuleLabel,
-    getSubtitleProcessModuleSummary:
-      deps.uiRuntimeComposition.getSubtitleProcessModuleSummary,
+    getSubtitleProcessModuleSummary: deps.uiRuntimeComposition.getSubtitleProcessModuleSummary,
     getSubtitleProcessStatusLabel: deps.uiRuntimeComposition.getSubtitleProcessStatusLabel,
     getSubtitleProviderLabel: deps.uiRuntimeComposition.getSubtitleProviderLabel,
-    getSubtitleProviderModuleLabels:
-      deps.uiRuntimeComposition.getSubtitleProviderModuleLabels,
-    getSubtitleProviderStatusLabel:
-      deps.uiRuntimeComposition.getSubtitleProviderStatusLabel,
+    getSubtitleProviderModuleLabels: deps.uiRuntimeComposition.getSubtitleProviderModuleLabels,
+    getSubtitleProviderStatusLabel: deps.uiRuntimeComposition.getSubtitleProviderStatusLabel,
     getSubtitleProviderSummary: deps.uiRuntimeComposition.getSubtitleProviderSummary,
-    getSubtitleSelectedCandidateIds:
-      deps.uiRuntimeComposition.getSubtitleSelectedCandidateIds,
+    getSubtitleSelectedCandidateIds: deps.uiRuntimeComposition.getSubtitleSelectedCandidateIds,
     getSubtitleSelectedEntryIds: deps.uiRuntimeComposition.getSubtitleSelectedEntryIds,
     getSubtitleSourcePresets: deps.uiRuntimeComposition.getSubtitleSourcePresets,
     getSubtitleWorkspace: deps.uiRuntimeComposition.getSubtitleWorkspace,

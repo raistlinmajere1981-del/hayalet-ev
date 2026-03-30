@@ -1,4 +1,4 @@
-export function createLaboratorySnapshotAccessRuntime(deps) {
+export function createLaboratorySnapshotAccessRuntime(deps: any) {
   const snapshotSelectors = deps.snapshotSelectors;
 
   function getSourceSnapshot() {
@@ -233,11 +233,11 @@ export function createLaboratorySnapshotAccessRuntime(deps) {
     return snapshotSelectors.getSubtitleEntries();
   }
 
-  function getSubtitleProcessModuleLabel(entry) {
+  function getSubtitleProcessModuleLabel(entry: any) {
     return snapshotSelectors.getSubtitleProcessModuleLabel(entry);
   }
 
-  function getSubtitleProviderLabel(entry) {
+  function getSubtitleProviderLabel(entry: any) {
     return snapshotSelectors.getSubtitleProviderLabel(entry);
   }
 

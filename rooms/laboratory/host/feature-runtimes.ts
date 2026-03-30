@@ -14,11 +14,11 @@ import { createLaboratoryHostProcessCompositionRuntime } from "../shared/host/pr
 import { createLaboratoryMediaAnalysisHostRuntime } from "../main-functions/media-analysis/host/runtime.js";
 import { createLaboratoryFeatureAdapters } from "./feature-adapters.js";
 
-export function createLaboratoryHostFeatureRuntimes(deps) {
+export function createLaboratoryHostFeatureRuntimes(deps: any) {
   const { foundation, projectRuntimes } = deps;
   const { bootstrap, hostUtils, io, preset, profileModelState, subtitleDocument } = foundation;
 
-  let sourceComposition = null;
+  let sourceComposition: any = null;
 
   const mediaAnalysis = createLaboratoryMediaAnalysisHostRuntime({
     asNonEmptyString: deps.asNonEmptyString,
@@ -36,13 +36,18 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     ensureProfileJobSlotAvailable: projectRuntimes.jobRuntime.ensureProfileJobSlotAvailable,
     ensureProjectDirectories: io.ensureProjectDirectories,
     generateProfileFrameStrip: projectRuntimes.analysisArtifact.generateProfileFrameStrip,
-    generateProfileMetadataArtifact: projectRuntimes.analysisArtifact.generateProfileMetadataArtifact,
+    generateProfileMetadataArtifact:
+      projectRuntimes.analysisArtifact.generateProfileMetadataArtifact,
     generateProfileSpectrogram: projectRuntimes.analysisArtifact.generateProfileSpectrogram,
-    getActiveProject(...args) {
-      return projectRuntimes.stateComposition.laboratoryProjectRecordsRuntime.getActiveProject(...args);
+    getActiveProject(...args: any[]) {
+      return projectRuntimes.stateComposition.laboratoryProjectRecordsRuntime.getActiveProject(
+        ...args
+      );
     },
     getCollectDerivedOutputMetadata() {
-      return sourceComposition.mediaSourceMetadataRuntime.collectDerivedOutputMetadata;
+      const sc = sourceComposition;
+      if (!sc) throw new Error("sourceComposition not initialized");
+      return sc.mediaSourceMetadataRuntime.collectDerivedOutputMetadata;
     },
     getFocusRegionCrop: preset.getFocusRegionCrop,
     getProfileFrameDensityRuntimeConfig:
@@ -65,7 +70,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     runAudioStructureProbe: foundation.audioAnalysisUtility.runAudioStructureProbe,
     runVideoStructureProbe: foundation.audioAnalysisUtility.runVideoStructureProbe,
     roomId: deps.roomId,
-    syncProjectFeatureProjections(runtime, project) {
+    syncProjectFeatureProjections(runtime: any, project: any) {
       return projectRuntimes.stateComposition.laboratoryProjectStateDelegatesRuntime.syncProjectFeatureProjections(
         runtime,
         project
@@ -88,7 +93,8 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
       projectRuntimes.mediaProfileState.clampProfileTranscriptSampleSeconds,
     clearJob: projectRuntimes.jobState.clearJob,
     clone: deps.clone,
-    createEmptyFeatureProcessRecord: projectRuntimes.stateComposition.createEmptyFeatureProcessRecord,
+    createEmptyFeatureProcessRecord:
+      projectRuntimes.stateComposition.createEmptyFeatureProcessRecord,
     createEmptyFeatureReportRecord: projectRuntimes.stateComposition.createEmptyFeatureReportRecord,
     createProcessArtifact: projectRuntimes.analysisArtifact.createProcessArtifact,
     createProcessFinding: projectRuntimes.analysisArtifact.createProcessFinding,
@@ -99,8 +105,10 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     ensureRuntimeDirectory: io.ensureRuntimeDirectory,
     findEditOutputById: projectRuntimes.snapshot.findEditOutputById,
     formatIdentifierLabel: projectRuntimes.analysisArtifact.formatIdentifierLabel,
-    getActiveProject(...args) {
-      return projectRuntimes.stateComposition.laboratoryProjectRecordsRuntime.getActiveProject(...args);
+    getActiveProject(...args: any[]) {
+      return projectRuntimes.stateComposition.laboratoryProjectRecordsRuntime.getActiveProject(
+        ...args
+      );
     },
     getFeatureProcessDir: deps.getFeatureProcessDir,
     getFeatureProcessRecord: projectRuntimes.stateComposition.getFeatureProcessRecord,
@@ -114,7 +122,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     getSubtitleSelectedEntries: projectRuntimes.stateComposition.getSubtitleSelectedEntries,
     getActiveSubtitleEntry: projectRuntimes.stateComposition.getActiveSubtitleEntry,
     getSubtitleMimeType: projectRuntimes.stateComposition.getSubtitleMimeType,
-    getSubtitleAnalysisModuleDescriptors(runtime) {
+    getSubtitleAnalysisModuleDescriptors(runtime: any) {
       const modules = deps.toRecord(deps.toRecord(runtime).subtitleAnalysisCatalog).modules;
       return Array.isArray(modules) ? modules.map(deps.toRecord) : [];
     },
@@ -140,12 +148,10 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     readJsonFile: io.readJsonFile,
     readTextFile: io.readTextFile,
     registerJob: projectRuntimes.jobState.registerJob,
-    resolveOpenSmileProsodyRuntime:
-      foundation.audioAnalysisUtility.resolveOpenSmileProsodyRuntime,
+    resolveOpenSmileProsodyRuntime: foundation.audioAnalysisUtility.resolveOpenSmileProsodyRuntime,
     resolveProfileTarget: projectRuntimes.profileProjection.resolveProfileTarget,
     runAudioStructureProbe: foundation.audioAnalysisUtility.runAudioStructureProbe,
-    runOpenSmileProsodyExtraction:
-      foundation.audioAnalysisUtility.runOpenSmileProsodyExtraction,
+    runOpenSmileProsodyExtraction: foundation.audioAnalysisUtility.runOpenSmileProsodyExtraction,
     runProfileTool: projectRuntimes.analysisArtifact.runProfileTool,
     runVideoStructureProbe: foundation.audioAnalysisUtility.runVideoStructureProbe,
     sanitizeFileSegment: mediaAnalysis.sanitizeFileSegment,
@@ -166,8 +172,10 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     cancelJobsForProject: projectRuntimes.jobState.cancelJobsForProject,
     clearJob: projectRuntimes.jobState.clearJob,
     ensureProjectDirectories: io.ensureProjectDirectories,
-    getActiveProject(...args) {
-      return projectRuntimes.stateComposition.laboratoryProjectRecordsRuntime.getActiveProject(...args);
+    getActiveProject(...args: any[]) {
+      return projectRuntimes.stateComposition.laboratoryProjectRecordsRuntime.getActiveProject(
+        ...args
+      );
     },
     getElectronApi: io.getElectronApi,
     getProjectEditDir,
@@ -203,16 +211,56 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     roomSnapshotRuntime: projectRuntimes.snapshot.laboratoryRoomSnapshotRuntime,
     runtimeStorage: {
       ...runtimeStorage,
-      getFeatureProcessRecord: projectRuntimes.stateComposition.getFeatureProcessRecord,
-      getFeatureReportRecord: projectRuntimes.stateComposition.getFeatureReportRecord,
+      getFeatureProcessRecord(project: Record<string, unknown>, featureId: string) {
+        return projectRuntimes.stateComposition.getFeatureProcessRecord(project, featureId);
+      },
+      getFeatureReportRecord(project: Record<string, unknown>, featureId: string) {
+        return projectRuntimes.stateComposition.getFeatureReportRecord(project, featureId);
+      },
+      getProfileModelDescriptor(runtime: unknown, modelId: string) {
+        return runtimeStorage.getProfileModelDescriptor(
+          runtime as Parameters<typeof runtimeStorage.getProfileModelDescriptor>[0],
+          modelId
+        );
+      },
+      getProfileModelDescriptorMap(runtime: unknown) {
+        return runtimeStorage.getProfileModelDescriptorMap(
+          runtime as Parameters<typeof runtimeStorage.getProfileModelDescriptorMap>[0]
+        );
+      },
+      persistProfileModelState(runtime: unknown) {
+        return runtimeStorage.persistProfileModelState(
+          runtime as Parameters<typeof runtimeStorage.persistProfileModelState>[0]
+        );
+      },
+      persistToolState(runtime: unknown) {
+        return runtimeStorage.persistToolState(
+          runtime as Parameters<typeof runtimeStorage.persistToolState>[0]
+        );
+      },
+      refreshProfileModelState(runtime: unknown) {
+        return runtimeStorage.refreshProfileModelState(
+          runtime as Parameters<typeof runtimeStorage.refreshProfileModelState>[0]
+        );
+      },
     },
-    syncProjectAudioAnalysisProjection: processComposition.syncProjectAudioAnalysisProjection,
+    syncProjectAudioAnalysisProjection(runtime: unknown, project: Record<string, unknown>) {
+      return processComposition.syncProjectAudioAnalysisProjection(
+        runtime as Parameters<typeof processComposition.syncProjectAudioAnalysisProjection>[0],
+        project
+      );
+    },
     syncProjectProfileProjection: projectRuntimes.profileProjection.syncProjectProfileProjection,
-    syncProjectSubtitleAnalysisProjection: projectRuntimes.stateComposition.syncProjectSubtitleAnalysisProjection,
+    syncProjectSubtitleAnalysisProjection:
+      projectRuntimes.stateComposition.syncProjectSubtitleAnalysisProjection,
     toFileUrl: hostUtils.toFileUrl,
   });
 
   deps.setProjectStateRuntime(projectState);
+
+  if (!sourceComposition) throw new Error("sourceComposition not initialized");
+  const processDelegates = processComposition.laboratoryProcessDelegatesRuntime;
+  if (!processDelegates) throw new Error("laboratoryProcessDelegatesRuntime not initialized");
 
   const featureAdapters = createLaboratoryFeatureAdapters({
     applyEditRecipePatch: mediaAnalysis.applyEditRecipePatch,
@@ -223,7 +271,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     buildSubtitleEditSummary: subtitleDocument.buildSubtitleEditSummary,
     callRoomTools: io.callRoomTools,
     cancelEditJobsForProject: projectRuntimes.jobRuntime.cancelEditJobsForProject,
-    cancelFeatureProcess: processComposition.laboratoryProcessDelegatesRuntime.cancelFeatureProcess,
+    cancelFeatureProcess: processDelegates.cancelFeatureProcess,
     cancelProfileJobsForProject: projectRuntimes.jobRuntime.cancelProfileJobsForProject,
     clampNumber: hostUtils.clampNumber,
     clampProfileTranscriptSampleSeconds:
@@ -239,18 +287,19 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     ensureHydrated: projectRuntimes.lifecycle.ensureHydrated,
     ensureProjectDirectories: io.ensureProjectDirectories,
     ensureProjectExists: projectRuntimes.lifecycle.ensureProjectExists,
-    exportFeatureReport: processComposition.laboratoryProcessDelegatesRuntime.exportFeatureReport,
+    exportFeatureReport: processDelegates.exportFeatureReport,
     findEditPreset: mediaAnalysis.findEditPreset,
     findProfilePreset: preset.findProfilePreset,
     formatIdentifierLabel: projectRuntimes.analysisArtifact.formatIdentifierLabel,
-    getActiveProject(...args) {
-      return projectRuntimes.stateComposition.laboratoryProjectRecordsRuntime.getActiveProject(...args);
+    getActiveProject(...args: any[]) {
+      return projectRuntimes.stateComposition.laboratoryProjectRecordsRuntime.getActiveProject(
+        ...args
+      );
     },
     getActiveSubtitleEntry: projectRuntimes.stateComposition.getActiveSubtitleEntry,
     getDefaultMode: preset.getDefaultMode,
     getDefaultSourceType: preset.getDefaultSourceType,
-    getDefaultSubtitleEditPresetId:
-      projectRuntimes.stateComposition.getDefaultSubtitleEditPresetId,
+    getDefaultSubtitleEditPresetId: projectRuntimes.stateComposition.getDefaultSubtitleEditPresetId,
     getDefaultSubtitleEditRecipe: projectRuntimes.stateComposition.getDefaultSubtitleEditRecipe,
     getElectronApi: io.getElectronApi,
     getFeatureIdFromContext: bootstrap.getFeatureIdFromContext,
@@ -261,8 +310,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     getSubtitleMimeType: projectRuntimes.stateComposition.getSubtitleMimeType,
     handleLocalPick: sourceComposition.laboratorySourceDelegatesRuntime.handleLocalPick,
     handleUrlDownload: sourceComposition.laboratorySourceDelegatesRuntime.handleUrlDownload,
-    handleYoutubeDownload:
-      sourceComposition.laboratorySourceDelegatesRuntime.handleYoutubeDownload,
+    handleYoutubeDownload: sourceComposition.laboratorySourceDelegatesRuntime.handleYoutubeDownload,
     installProfileModel: projectRuntimes.mediaProfileModel.installProfileModel,
     isSubtitleFileName: projectRuntimes.stateComposition.isSubtitleFileName,
     listDirectory: io.listDirectory,
@@ -277,8 +325,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
       projectRuntimes.mediaProfileState.normalizeProfileArtifactPreferences,
     normalizeStringArray: preset.normalizeStringArray,
     normalizeSubtitleAnalysisState: projectRuntimes.stateComposition.normalizeSubtitleAnalysisState,
-    normalizeSubtitleDiscoveryItem:
-      projectRuntimes.stateComposition.normalizeSubtitleDiscoveryItem,
+    normalizeSubtitleDiscoveryItem: projectRuntimes.stateComposition.normalizeSubtitleDiscoveryItem,
     normalizeSubtitleOutputRecord: projectRuntimes.stateComposition.normalizeSubtitleOutputRecord,
     parseSubtitleCues: subtitleDocument.parseSubtitleCues,
     patchActiveProject: projectRuntimes.lifecycle.patchActiveProject,
@@ -301,7 +348,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     resolveSubtitleOutputFormat: subtitleDocument.resolveSubtitleOutputFormat,
     roomId: deps.roomId,
     runEditPipeline: mediaAnalysis.runEditPipeline,
-    runFeatureProcess: processComposition.laboratoryProcessDelegatesRuntime.runFeatureProcess,
+    runFeatureProcess: processDelegates.runFeatureProcess,
     runProfilePreflight: mediaAnalysis.runProfilePreflight,
     sanitizeFileSegment: mediaAnalysis.sanitizeFileSegment,
     subtitleFeatureId: deps.subtitleFeatureId,

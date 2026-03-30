@@ -32,15 +32,15 @@ function readProviderValue(payload: unknown): string {
   return typeof source.provider === "string" ? source.provider : "";
 }
 
-export function resolveStateMatchId(state) {
+export function resolveStateMatchId(state: any) {
   return state.matchId || state.inviteId || null;
 }
 
-export function isBlocked(state) {
+export function isBlocked(state: any) {
   return state.result === "blocked" || state.blockedReason !== "";
 }
 
-export function blockMatch(api, state, statusKey, blockedReason) {
+export function blockMatch(api: any, state: any, statusKey: any, blockedReason: any) {
   state.active = true;
   state.awaitingMoveFrom = null;
   state.result = "blocked";
@@ -50,7 +50,7 @@ export function blockMatch(api, state, statusKey, blockedReason) {
   return pushRoomState(api, state);
 }
 
-export async function sendAiTurnUpdate(api, state, includeProtocol) {
+export async function sendAiTurnUpdate(api: any, state: any, includeProtocol: any) {
   const context = loadContext(api);
   const opponent = getOpponentInfo(context, state);
 
@@ -98,7 +98,7 @@ export async function sendAiTurnUpdate(api, state, includeProtocol) {
 }
 
 export async function applyOpponentMove(
-  api,
+  api: any,
   payload: unknown,
   expectedProvider: string,
   requireInviteMatch: boolean
@@ -167,12 +167,12 @@ export async function applyOpponentMove(
   }
   const outcome = getOutcomeForBoard(state.board, state);
 
-  if (outcome.finished === true) {
+  if (outcome.finished === true && "winner" in outcome && "statusKey" in outcome) {
     state.active = false;
     state.awaitingMoveFrom = null;
-    state.result = outcome.result;
-    state.winner = outcome.winner;
-    state.statusKey = outcome.statusKey;
+    state.result = outcome.result || "draw";
+    state.winner = (outcome.winner || "") as typeof state.winner;
+    state.statusKey = outcome.statusKey || "draw";
   } else {
     state.awaitingMoveFrom = "user";
     state.result = "pending";

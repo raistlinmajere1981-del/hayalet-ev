@@ -1,4 +1,4 @@
-export function createLaboratoryManagedSubtitleRunnerRuntime(deps) {
+export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
   const {
     asNonEmptyString,
     buildSubtitleAnalysisStats,
@@ -13,15 +13,15 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps) {
     writeTextFile,
   } = deps;
 
-  async function runSubtitleManagedProcess(runtime, project, target, artifactBase, processRecord) {
-    const findings = [];
-    const artifacts = [];
-    const warnings = [];
+  async function runSubtitleManagedProcess(runtime: any, project: any, target: any, artifactBase: any, processRecord: any) {
+    const findings: any[] = [];
+    const artifacts: any[] = [];
+    const warnings: any[] = [];
     const stats = await buildSubtitleAnalysisStats(runtime, project, target);
     const subtitleProcessDir = getProjectSubtitleProcessDir(runtime, project);
     const summaryPath = `${subtitleProcessDir}/${artifactBase}-subtitle-summary.json`;
     const topWordsPath = `${subtitleProcessDir}/${artifactBase}-top-words.txt`;
-    const moduleArtifactIds = {};
+    const moduleArtifactIds: Record<string, string[]> = {};
 
     await writeJsonFile(summaryPath, {
       generatedAt: new Date().toISOString(),
@@ -48,7 +48,7 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps) {
       await writeTextFile(
         topWordsPath,
         stats.topWords
-          .map(function (entry) {
+          .map(function (entry: any) {
             return `${entry.word}\t${entry.count}`;
           })
           .join("\n")
@@ -201,7 +201,7 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps) {
         summary = "Subtitle analysis module finished on the current selection.";
       }
 
-      moduleFindings.forEach(function (finding) {
+      moduleFindings.forEach(function (finding: any) {
         findings.push(normalizeProcessFinding(finding));
       });
       updateProcessModule(processRecord, moduleId, {
@@ -210,7 +210,7 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps) {
         completedAt: new Date().toISOString(),
         summary: summary || "",
         artifactIds: moduleArtifactIds[moduleId] || [],
-        findingIds: moduleFindings.map(function (finding) {
+        findingIds: moduleFindings.map(function (finding: any) {
           return finding.id;
         }),
       });

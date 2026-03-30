@@ -1,4 +1,4 @@
-export function createAudioAnalysisCatalogRuntime(deps) {
+export function createAudioAnalysisCatalogRuntime(deps: any) {
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
   const textFromKey = deps.textFromKey;
@@ -24,7 +24,7 @@ export function createAudioAnalysisCatalogRuntime(deps) {
         </div>
         <div class="lab-tool-grid">
           ${modules
-            .map(function (entry) {
+            .map(function (entry: any) {
               const status = typeof entry.status === "string" ? entry.status : "planned";
               const statusLabel =
                 status === "implemented"
@@ -75,7 +75,9 @@ export function createAudioAnalysisCatalogRuntime(deps) {
           <li>
             <span>${escapeHtml(text(["mediaAnalysis", "shared", "status"]))}</span>
             <strong>${escapeHtml(
-              capabilityNotes.length > 0 ? capabilityNotes.join(" + ") : featureText(["settings", "title"])
+              capabilityNotes.length > 0
+                ? capabilityNotes.join(" + ")
+                : featureText(["settings", "title"])
             )}</strong>
           </li>
           <li>

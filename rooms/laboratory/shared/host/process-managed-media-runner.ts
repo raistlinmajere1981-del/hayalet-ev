@@ -1,4 +1,4 @@
-export function createLaboratoryManagedMediaRunnerRuntime(deps) {
+export function createLaboratoryManagedMediaRunnerRuntime(deps: any) {
   const {
     asNonEmptyString,
     buildProcessSpeechAvailability,
@@ -15,14 +15,14 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps) {
   } = deps;
 
   async function runMediaManagedProcess(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    outputDir,
-    processRecord
+    runtime: any,
+    project: any,
+    requestId: any,
+    jobId: any,
+    target: any,
+    artifactBase: any,
+    outputDir: any,
+    processRecord: any
   ) {
     const findings = [];
     const artifacts = [];
@@ -58,7 +58,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps) {
 
     if (
       toRecord(
-        processRecord.modules.find(function (entry) {
+        processRecord.modules.find(function (entry: any) {
           return entry.id === "motion";
         })
       ).status === "queued"
@@ -107,7 +107,7 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps) {
 
     if (
       toRecord(
-        processRecord.modules.find(function (entry) {
+        processRecord.modules.find(function (entry: any) {
           return entry.id === "audio";
         })
       ).status === "queued"
@@ -177,10 +177,10 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps) {
         completedAt: new Date().toISOString(),
         summary: "Audio continuity checks finished for the active target.",
         artifactIds: artifacts
-          .filter(function (entry) {
+          .filter(function (entry: any) {
             return asNonEmptyString(entry.moduleId) === "audio";
           })
-          .map(function (entry) {
+          .map(function (entry: any) {
             return entry.id;
           }),
       });

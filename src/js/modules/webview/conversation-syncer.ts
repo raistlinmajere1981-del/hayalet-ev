@@ -574,27 +574,27 @@ class ConversationSyncerClass {
       }
 
       if (willRetry) {
-          Logger.debugT(
-            LogCategory.WEBVIEW,
-            syncLogKey("assistantRetryScheduled"),
-            {
-              provider,
-              tried,
-              messageCount: messages?.length ?? 0,
-            },
-            {
-              provider,
-              tried,
-              messageCount: messages?.length ?? 0,
-              transient: res.transient === true,
-            }
-          );
-          this._syncRetryCounts[provider] = tried + 1;
-          this._syncRetryTimers[provider] = setTimeout(() => {
-            if (SlotController.isConnected(provider) === true) {
-              void this.syncProvider(provider, { from: "retry" });
-            }
-          }, this.syncRetryDelayMs);
+        Logger.debugT(
+          LogCategory.WEBVIEW,
+          syncLogKey("assistantRetryScheduled"),
+          {
+            provider,
+            tried,
+            messageCount: messages?.length ?? 0,
+          },
+          {
+            provider,
+            tried,
+            messageCount: messages?.length ?? 0,
+            transient: res.transient === true,
+          }
+        );
+        this._syncRetryCounts[provider] = tried + 1;
+        this._syncRetryTimers[provider] = setTimeout(() => {
+          if (SlotController.isConnected(provider) === true) {
+            void this.syncProvider(provider, { from: "retry" });
+          }
+        }, this.syncRetryDelayMs);
       } else {
         if (this._syncRetryTimers[provider] !== undefined) {
           clearTimeout(this._syncRetryTimers[provider]);

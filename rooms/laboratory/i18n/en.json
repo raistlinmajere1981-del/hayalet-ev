@@ -75,34 +75,34 @@
       "otherToolsTitle": "Other room tools",
       "otherToolsSubtitle": "Stage-adjacent installs stay available from the same overlay.",
       "stageSupportLabel": "Stage support",
-    "tools": {
-      "yt-dlp": "yt-dlp",
-      "ffmpeg": "FFmpeg",
-      "whisper.cpp": "Whisper.cpp",
-      "opensmile": "openSMILE",
-      "yamnet": "YAMNet",
-      "librosa": "librosa",
-      "demucs": "Demucs",
-      "essentia": "Essentia",
-      "pyaudioanalysis": "pyAudioAnalysis"
-    },
+      "tools": {
+        "yt-dlp": "yt-dlp",
+        "ffmpeg": "FFmpeg",
+        "whisper.cpp": "Whisper.cpp",
+        "opensmile": "openSMILE",
+        "yamnet": "YAMNet",
+        "librosa": "librosa",
+        "demucs": "Demucs",
+        "essentia": "Essentia",
+        "pyaudioanalysis": "pyAudioAnalysis"
+      },
       "support": {
         "required": "Required",
         "optional": "Optional",
         "unsupported": "Unsupported"
       },
-    "status": {
-      "missing": "Missing",
-      "installed": "Installed",
-      "updateAvailable": "Update available",
-      "manualSetup": "Manual setup needed",
-      "manualReady": "System tool detected",
-      "ready": "Ready",
-      "idle": "Idle",
-      "error": "Error",
-      "planned": "Planned"
-    }
-  },
+      "status": {
+        "missing": "Missing",
+        "installed": "Installed",
+        "updateAvailable": "Update available",
+        "manualSetup": "Manual setup needed",
+        "manualReady": "System tool detected",
+        "ready": "Ready",
+        "idle": "Idle",
+        "error": "Error",
+        "planned": "Planned"
+      }
+    },
     "messages": {
       "project-create": "New project created.",
       "project-select": "Project resumed.",

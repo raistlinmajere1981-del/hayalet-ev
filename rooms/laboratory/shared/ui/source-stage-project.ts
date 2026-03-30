@@ -1,4 +1,4 @@
-export function createLaboratorySourceStageProjectRuntime(deps) {
+export function createLaboratorySourceStageProjectRuntime(deps: any) {
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
   const featureText = deps.featureText;
@@ -35,7 +35,7 @@ export function createLaboratorySourceStageProjectRuntime(deps) {
           )}</label>
           <select class="lab-select" id="project-select" data-select="project">
             ${projects
-              .map(function (project) {
+              .map(function (project: any) {
                 return `
                   <option value="${escapeHtml(project.id)}" ${
                     project.id === activeProjectId ? "selected" : ""
@@ -80,8 +80,9 @@ export function createLaboratorySourceStageProjectRuntime(deps) {
           </div>
         </div>
         <div class="lab-source-grid">
-          ${getAvailableSourceFormats().map(function (sourceId) {
-            return `
+          ${getAvailableSourceFormats()
+            .map(function (sourceId: any) {
+              return `
               <button
                 class="lab-source-card"
                 type="button"
@@ -98,7 +99,8 @@ export function createLaboratorySourceStageProjectRuntime(deps) {
                 )}</span>
               </button>
             `;
-          }).join("")}
+            })
+            .join("")}
         </div>
       </section>
     `;

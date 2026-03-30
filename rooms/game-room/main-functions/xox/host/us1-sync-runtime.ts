@@ -1,4 +1,4 @@
-export function createGameRoomXoxUs1SyncRuntime(deps) {
+export function createGameRoomXoxUs1SyncRuntime(deps: any) {
   const {
     DEFAULT_STARTER,
     FEATURE_ID,
@@ -27,7 +27,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
     syncFromSnapshot,
   } = deps.inviteRuntime;
 
-  function processRoomCommands(api, roomCommands) {
+  function processRoomCommands(api: any, roomCommands: any) {
     for (let index = 0; index < roomCommands.length; index += 1) {
       const command = roomCommands[index];
       if (
@@ -51,7 +51,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
     }
   }
 
-  async function processRoomEvents(api, roomEvents) {
+  async function processRoomEvents(api: any, roomEvents: any) {
     const currentState = loadState(api);
     const pendingInvite = loadPendingInvite(api);
     const currentMatchId = deps.resolveStateMatchId(currentState);
@@ -82,6 +82,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
             state.result = state.match.result;
             saveTeamTetrisState(api, state);
             pushTeamTetrisState(api, state);
+            // eslint-disable-next-line no-await-in-loop -- NOTE: room events apply in arrival order.
             await dispatchNextTeamTetrisTurn(api, state);
           }
           continue;
@@ -184,7 +185,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
     }
   }
 
-  function ensureUs1SyncLoop(api, syncUs1Mailbox) {
+  function ensureUs1SyncLoop(api: any, syncUs1Mailbox: any) {
     const currentTimer = api.getState("xox-us1-sync-timer");
     if (currentTimer) {
       return;
@@ -199,7 +200,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
     api.setState("xox-us1-sync-timer", timerId);
   }
 
-  function clearUs1SyncLoop(api) {
+  function clearUs1SyncLoop(api: any) {
     const currentTimer = api.getState("xox-us1-sync-timer");
     if (currentTimer) {
       clearInterval(currentTimer);
@@ -207,7 +208,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
     api.deleteState("xox-us1-sync-timer");
   }
 
-  async function syncUs1Mailbox(api, reason) {
+  async function syncUs1Mailbox(api: any, reason: any) {
     if (api.isUs1Connected() !== true) {
       return;
     }

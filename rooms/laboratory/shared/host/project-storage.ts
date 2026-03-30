@@ -1,4 +1,4 @@
-export function createLaboratoryProjectStorageRuntime(deps) {
+export function createLaboratoryProjectStorageRuntime(deps: any) {
   const {
     asNonEmptyString,
     buildEditManifest,
@@ -23,7 +23,7 @@ export function createLaboratoryProjectStorageRuntime(deps) {
     writeJsonFile,
   } = deps;
 
-  async function loadProjects(runtime) {
+  async function loadProjects(runtime: any) {
     const entries = await listDirectory(runtime.paths.projectsDir);
     const projects = [];
 
@@ -33,6 +33,7 @@ export function createLaboratoryProjectStorageRuntime(deps) {
         continue;
       }
 
+      // eslint-disable-next-line no-await-in-loop -- NOTE: keep project bootstrap reads sequential to cap disk IO.
       const project = await readJsonFile(`${entry.path}/project.json`);
       if (project) {
         const normalizedProject = normalizeProject(
@@ -49,22 +50,31 @@ export function createLaboratoryProjectStorageRuntime(deps) {
       }
     }
 
-    projects.sort(function (left, right) {
+    projects.sort(function (left: any, right: any) {
       return String(right.updatedAt).localeCompare(String(left.updatedAt));
     });
 
     runtime.projects = projects;
   }
 
-  async function saveProject(runtime, project) {
+  async function saveProject(runtime: any, project: any) {
     await writeJsonFile(getProjectMetaPath(runtime, project), project);
     await writeJsonFile(getProjectEditManifestPath(runtime, project), buildEditManifest(project));
-    await writeJsonFile(getProjectProfileManifestPath(runtime, project), buildProfileManifest(project));
-    await writeJsonFile(getProjectProcessManifestPath(runtime, project), buildProcessManifest(project));
-    await writeJsonFile(getProjectReportManifestPath(runtime, project), buildReportManifest(project));
+    await writeJsonFile(
+      getProjectProfileManifestPath(runtime, project),
+      buildProfileManifest(project)
+    );
+    await writeJsonFile(
+      getProjectProcessManifestPath(runtime, project),
+      buildProcessManifest(project)
+    );
+    await writeJsonFile(
+      getProjectReportManifestPath(runtime, project),
+      buildReportManifest(project)
+    );
   }
 
-  async function persistToolState(runtime) {
+  async function persistToolState(runtime: any) {
     if (!runtime.paths || !runtime.paths.toolStatePath) {
       return;
     }
@@ -73,7 +83,7 @@ export function createLaboratoryProjectStorageRuntime(deps) {
     await writeJsonFile(runtime.paths.toolStatePath, runtime.toolState);
   }
 
-  async function persistProfileModelState(runtime) {
+  async function persistProfileModelState(runtime: any) {
     if (!runtime.paths) {
       return;
     }
@@ -82,12 +92,12 @@ export function createLaboratoryProjectStorageRuntime(deps) {
     await writeJsonFile(getProfileModelStatePath(runtime), runtime.profileModelState);
   }
 
-  async function loadToolState(runtime) {
+  async function loadToolState(runtime: any) {
     const stored = await readJsonFile(runtime.paths.toolStatePath);
     const nextState = createDefaultToolState(getRuntimeToolIds(runtime));
     const tools = toRecord(toRecord(stored).tools);
 
-    getRuntimeToolIds(runtime).forEach(function (toolId) {
+    getRuntimeToolIds(runtime).forEach(function (toolId: any) {
       nextState.tools[toolId] = {
         ...createDefaultToolEntry(toolId),
         ...toRecord(tools[toolId]),
@@ -100,16 +110,20 @@ export function createLaboratoryProjectStorageRuntime(deps) {
     runtime.toolState = nextState;
   }
 
-  async function loadProfileModelState(runtime) {
+  async function loadProfileModelState(runtime: any) {
     const stored = await readJsonFile(getProfileModelStatePath(runtime));
     const models = toRecord(toRecord(stored).models);
-    const nextState = {
+    const nextState: {
+      schemaVersion: number;
+      updatedAt: string | null;
+      models: Record<string, any>;
+    } = {
       schemaVersion: 1,
       updatedAt: asNonEmptyString(toRecord(stored).updatedAt),
       models: {},
     };
 
-    Object.keys(toRecord(toRecord(runtime.profileModels).models)).forEach(function (modelId) {
+    Object.keys(toRecord(toRecord(runtime.profileModels).models)).forEach(function (modelId: any) {
       nextState.models[modelId] = {
         ...createDefaultProfileModelEntry(modelId),
         ...toRecord(models[modelId]),

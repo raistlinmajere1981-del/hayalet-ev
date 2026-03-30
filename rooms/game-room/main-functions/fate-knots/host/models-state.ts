@@ -21,7 +21,39 @@ import {
   normalizeTransportState,
 } from "./models-memory.js";
 
-export function createInitialFateKnotsState(locale) {
+interface FateKnotsStateRecord extends Record<string, unknown> {
+  schemaVersion?: unknown;
+  locale?: unknown;
+  active?: unknown;
+  phase?: unknown;
+  statusKey?: unknown;
+  compatibility?: unknown;
+  mode?: unknown;
+  reason?: unknown;
+  sessionId?: unknown;
+  participantMode?: unknown;
+  rosterLocked?: unknown;
+  participants?: unknown;
+  excludedSeats?: unknown;
+  waiting?: unknown;
+  scenarioLog?: unknown;
+  currentLocationId?: unknown;
+  currentStepId?: unknown;
+  decision?: unknown;
+  combat?: unknown;
+  result?: unknown;
+  dmNarration?: unknown;
+  npcBanter?: unknown;
+  dispatch?: unknown;
+  transport?: unknown;
+  contentSummary?: unknown;
+  assetErrors?: unknown;
+  sourceErrors?: unknown;
+  startedAt?: unknown;
+  updatedAt?: unknown;
+}
+
+export function createInitialFateKnotsState(locale: unknown) {
   return {
     schemaVersion: FATE_KNOTS_SCHEMA_VERSION,
     locale: normalizeLocale(locale),
@@ -33,36 +65,36 @@ export function createInitialFateKnotsState(locale) {
       mode: "fresh",
       reason: "",
     },
-    sessionId: null,
+    sessionId: null as string | null,
     participantMode: "user-plus-ready-ai",
     rosterLocked: false,
-    participants: [],
-    excludedSeats: [],
+    participants: [] as ReturnType<typeof createParticipant>[],
+    excludedSeats: [] as ReturnType<typeof normalizeExcludedSeats>,
     waiting: createWaitingState(),
-    scenarioLog: [],
-    currentLocationId: null,
-    currentStepId: null,
-    decision: null,
-    combat: null,
+    scenarioLog: [] as string[],
+    currentLocationId: null as string | null,
+    currentStepId: null as string | null,
+    decision: null as ReturnType<typeof normalizeDecisionState>,
+    combat: null as Record<string, unknown> | null,
     result: createResultState(),
-    dmNarration: null,
-    npcBanter: null,
+    dmNarration: null as ReturnType<typeof normalizeAmbientPacket>,
+    npcBanter: null as ReturnType<typeof normalizeAmbientPacket>,
     dispatch: createPromptDispatchState(),
     transport: createTransportState(),
     contentSummary: {
       assetErrors: 0,
       sourceErrors: 0,
     },
-    startedAt: null,
-    updatedAt: null,
+    startedAt: null as number | null,
+    updatedAt: null as number | null,
   };
 }
 
-export function normalizeFateKnotsState(candidate, localeFallback) {
+export function normalizeFateKnotsState(candidate: unknown, localeFallback: unknown) {
   const initial = createInitialFateKnotsState(localeFallback);
   const source =
     candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-      ? candidate
+      ? (candidate as FateKnotsStateRecord)
       : null;
 
   if (!source) {
@@ -82,11 +114,16 @@ export function normalizeFateKnotsState(candidate, localeFallback) {
   initial.phase = normalizePhase(source.phase);
   initial.statusKey = normalizeStatusKey(source.statusKey);
   initial.compatibility =
-    source.compatibility && typeof source.compatibility === "object" && Array.isArray(source.compatibility) === false
-      ? {
-          mode: normalizeText(source.compatibility.mode) || "fresh",
-          reason: normalizeText(source.compatibility.reason),
-        }
+    source.compatibility &&
+    typeof source.compatibility === "object" &&
+    Array.isArray(source.compatibility) === false
+      ? (function () {
+          const compat = source.compatibility as FateKnotsStateRecord;
+          return {
+            mode: normalizeText(compat.mode) || "fresh",
+            reason: normalizeText(compat.reason),
+          };
+        })()
       : initial.compatibility;
   initial.sessionId = normalizeText(source.sessionId) || null;
   initial.participantMode = normalizeText(source.participantMode) || "user-plus-ready-ai";
@@ -102,24 +139,34 @@ export function normalizeFateKnotsState(candidate, localeFallback) {
   initial.currentLocationId = normalizeText(source.currentLocationId) || null;
   initial.currentStepId = normalizeText(source.currentStepId) || null;
   initial.decision = normalizeDecisionState(source.decision);
-  initial.combat = source.combat && typeof source.combat === "object" ? source.combat : null;
+  initial.combat =
+    source.combat &&
+    typeof source.combat === "object" &&
+    Array.isArray(source.combat) === false
+      ? (source.combat as FateKnotsStateRecord)
+      : null;
   initial.result = normalizeResultState(source.result);
   initial.dmNarration = normalizeAmbientPacket(source.dmNarration, "dm");
   initial.npcBanter = normalizeAmbientPacket(source.npcBanter, "npc");
   initial.dispatch = normalizePromptDispatchState(source.dispatch);
   initial.transport = normalizeTransportState(source.transport);
   initial.contentSummary =
-    source.contentSummary && typeof source.contentSummary === "object" && Array.isArray(source.contentSummary) === false
-      ? {
-          assetErrors:
-            typeof source.contentSummary.assetErrors === "number" && Number.isFinite(source.contentSummary.assetErrors)
-              ? Math.trunc(source.contentSummary.assetErrors)
-              : 0,
-          sourceErrors:
-            typeof source.contentSummary.sourceErrors === "number" && Number.isFinite(source.contentSummary.sourceErrors)
-              ? Math.trunc(source.contentSummary.sourceErrors)
-              : 0,
-        }
+    source.contentSummary &&
+    typeof source.contentSummary === "object" &&
+    Array.isArray(source.contentSummary) === false
+      ? (function () {
+          const summary = source.contentSummary as FateKnotsStateRecord;
+          return {
+            assetErrors:
+              typeof summary.assetErrors === "number" && Number.isFinite(summary.assetErrors)
+                ? Math.trunc(summary.assetErrors)
+                : 0,
+            sourceErrors:
+              typeof summary.sourceErrors === "number" && Number.isFinite(summary.sourceErrors)
+                ? Math.trunc(summary.sourceErrors)
+                : 0,
+          };
+        })()
       : initial.contentSummary;
   initial.startedAt =
     typeof source.startedAt === "number" && Number.isFinite(source.startedAt)
@@ -132,8 +179,4 @@ export function normalizeFateKnotsState(candidate, localeFallback) {
   return initial;
 }
 
-export {
-  createDecisionState,
-  createParticipant,
-  createWaitingState,
-};
+export { createDecisionState, createParticipant, createWaitingState };

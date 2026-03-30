@@ -1,4 +1,4 @@
-export function createMediaSourceActionRuntime(deps) {
+export function createMediaSourceActionRuntime(deps: any) {
   const {
     asNonEmptyString,
     getDefaultMode,
@@ -12,10 +12,10 @@ export function createMediaSourceActionRuntime(deps) {
     resetProfileForCurrentSource,
   } = deps;
 
-  async function setSourceKind(runtime, actionPayload) {
-    return patchActiveProject(runtime, function (nextProject) {
+  async function setSourceKind(runtime: any, actionPayload: Record<string, unknown>) {
+    return patchActiveProject(runtime, function (nextProject: any) {
       nextProject.source.kind =
-        asNonEmptyString(actionPayload.kind) || getDefaultSourceType(runtime.sourcePresets);
+        asNonEmptyString(actionPayload["kind"]) || getDefaultSourceType(runtime.sourcePresets);
       nextProject.source.mode = getDefaultMode(runtime.sourcePresets, nextProject.source.kind);
       nextProject.source.status = "idle";
       nextProject.source.storedPath = null;
@@ -36,32 +36,47 @@ export function createMediaSourceActionRuntime(deps) {
     });
   }
 
-  async function setSourceMode(runtime, actionPayload) {
-    return patchActiveProject(runtime, function (nextProject) {
+  async function setSourceMode(runtime: any, actionPayload: Record<string, unknown>) {
+    return patchActiveProject(runtime, function (nextProject: any) {
       nextProject.source.mode =
-        asNonEmptyString(actionPayload.mode) ||
+        asNonEmptyString(actionPayload["mode"]) ||
         getDefaultMode(runtime.sourcePresets, nextProject.source.kind);
       nextProject.source.lastError = null;
       return nextProject;
     });
   }
 
-  async function updateDrafts(runtime, fields) {
+  async function updateDrafts(runtime: any, fields: Record<string, unknown>) {
     return patchActiveProjectDrafts(runtime, fields);
   }
 
-  async function pickLocal(api, runtime, requestId, actionPayload) {
-    await patchActiveProjectDrafts(runtime, actionPayload.fields);
+  async function pickLocal(
+    api: any,
+    runtime: any,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    await patchActiveProjectDrafts(runtime, actionPayload["fields"]);
     return handleLocalPick(api, runtime, requestId);
   }
 
-  async function downloadUrl(api, runtime, requestId, actionPayload) {
-    await patchActiveProjectDrafts(runtime, actionPayload.fields);
+  async function downloadUrl(
+    api: any,
+    runtime: any,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    await patchActiveProjectDrafts(runtime, actionPayload["fields"]);
     return handleUrlDownload(api, runtime, requestId);
   }
 
-  async function downloadYoutube(api, runtime, requestId, actionPayload) {
-    await patchActiveProjectDrafts(runtime, actionPayload.fields);
+  async function downloadYoutube(
+    api: any,
+    runtime: any,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    await patchActiveProjectDrafts(runtime, actionPayload["fields"]);
     return handleYoutubeDownload(api, runtime, requestId);
   }
 

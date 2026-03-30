@@ -11,8 +11,15 @@ import {
 } from "./combat-engine.js";
 import { createDecisionState } from "./models.js";
 
-export function createFateKnotsPhaseRuntime(deps) {
-  function getCombatStatusKey(state) {
+type RoomApi = {
+  getState: (key: string) => unknown;
+  setState: (key: string, value: unknown) => void;
+  getLocale?: () => unknown;
+  notifyRoom?: (eventType: string, data: unknown) => void;
+};
+
+export function createFateKnotsPhaseRuntime(deps: any) {
+  function getCombatStatusKey(state: any) {
     const turn = getCurrentFateKnotsCombatTurn(state.combat);
     return turn?.seatId === "user"
       ? "combatTurnUser"
@@ -21,7 +28,7 @@ export function createFateKnotsPhaseRuntime(deps) {
         : "combatTurnAi";
   }
 
-  function startScenarioStep(state, contentRegistry, stepId, now) {
+  function startScenarioStep(state: any, contentRegistry: any, stepId: string, now: number) {
     const step = contentRegistry.scenarioStepsById.get(stepId);
     if (!step) {
       state.phase = FATE_KNOTS_PHASES.result;
@@ -47,13 +54,13 @@ export function createFateKnotsPhaseRuntime(deps) {
     state.decision = createDecisionState({
       stepId: step.id,
       choices: step.choices,
-      participantIds: state.participants.map(function (participant) {
+      participantIds: state.participants.map(function (participant: any) {
         return participant.seatId;
       }),
       now,
       timeoutMs: FATE_KNOTS_WAIT_TIMEOUT_MS,
     });
-    state.participants.forEach(function (participant) {
+    state.participants.forEach(function (participant: any) {
       participant.decisionChoiceId = null;
     });
     state.scenarioLog.push(`${step.title}: ${step.body}`);
@@ -61,7 +68,7 @@ export function createFateKnotsPhaseRuntime(deps) {
     deps.setDecisionWaiting(state, now);
   }
 
-  function finalizeRun(api, state, outcome, title, summary) {
+  function finalizeRun(api: RoomApi, state: any, outcome: string, title: string, summary: string) {
     state.phase = FATE_KNOTS_PHASES.result;
     state.result = {
       outcome,
@@ -83,7 +90,7 @@ export function createFateKnotsPhaseRuntime(deps) {
     deps.persistRunSummary(api, state, outcome, title, summary);
   }
 
-  function resolveDecisionProgress(api, state, contentRegistry, now) {
+  function resolveDecisionProgress(api: RoomApi, state: any, contentRegistry: any, now: number) {
     const currentStep = contentRegistry.scenarioStepsById.get(state.currentStepId);
     if (!state.decision || !currentStep) {
       return;
@@ -96,7 +103,7 @@ export function createFateKnotsPhaseRuntime(deps) {
     }
 
     const voteValues = Object.values(state.decision.votes);
-    const unanimousChoiceId = voteValues.every(function (choiceId) {
+    const unanimousChoiceId = voteValues.every(function (choiceId: any) {
       return choiceId === voteValues[0];
     })
       ? voteValues[0]
@@ -109,7 +116,7 @@ export function createFateKnotsPhaseRuntime(deps) {
     }
 
     state.decision.resolvedChoiceId = unanimousChoiceId;
-    const choice = currentStep.choices.find(function (entry) {
+    const choice = currentStep.choices.find(function (entry: any) {
       return entry.id === unanimousChoiceId;
     });
     if (!choice) {
@@ -172,7 +179,7 @@ export function createFateKnotsPhaseRuntime(deps) {
     );
   }
 
-  async function advancePendingWork(api, state, contentRegistry, now) {
+  async function advancePendingWork(api: RoomApi, state: any, contentRegistry: any, now: number) {
     deps.maybeMarkSeatLossOrTimeout(state, loadContext(api), now);
     if (state.waiting.mode === FATE_KNOTS_WAIT_MODES.desync) {
       return { success: false };
@@ -219,11 +226,11 @@ export function createFateKnotsPhaseRuntime(deps) {
     return { success: true };
   }
 
-  function recoverDecisionConflict(state, now) {
+  function recoverDecisionConflict(state: any, now: number) {
     if (!state.decision) {
       return;
     }
-    state.participants.forEach(function (participant) {
+    state.participants.forEach(function (participant: any) {
       if (participant.seatId !== "user") {
         participant.decisionChoiceId = null;
         delete state.decision.votes[participant.seatId];
@@ -242,7 +249,7 @@ export function createFateKnotsPhaseRuntime(deps) {
     state.statusKey = "waitingDecision";
   }
 
-  function prepareSync(state, now) {
+  function prepareSync(state: any, now: number) {
     if (state.phase === FATE_KNOTS_PHASES.scenario && state.decision?.conflict === true) {
       recoverDecisionConflict(state, now);
       return;
@@ -250,7 +257,7 @@ export function createFateKnotsPhaseRuntime(deps) {
 
     if (state.phase === FATE_KNOTS_PHASES.scenario) {
       if (Array.isArray(state.waiting?.pendingSeatIds)) {
-        state.waiting.pendingSeatIds.forEach(function (seatId) {
+        state.waiting.pendingSeatIds.forEach(function (seatId: string) {
           deps.clearDecisionPromptKey(state, seatId);
         });
       }

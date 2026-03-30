@@ -1,4 +1,4 @@
-export function createLaboratorySettingsProfileModelRuntime(deps) {
+export function createLaboratorySettingsProfileModelRuntime(deps: any) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
@@ -9,7 +9,7 @@ export function createLaboratorySettingsProfileModelRuntime(deps) {
   const getToolEntry = deps.getToolEntry;
   const renderPreviewMetaRow = deps.renderPreviewMetaRow;
 
-  function renderProfileModelCard(entry) {
+  function renderProfileModelCard(entry: any) {
     const model = toRecord(entry);
     const busy = model.busy === true;
     const canInstall =

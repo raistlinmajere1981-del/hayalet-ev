@@ -1,15 +1,12 @@
-import {
-  buildTeamTetrisSeatView,
-  TEAM_TETRIS_SCHEMA_VERSION,
-} from "./engine.js";
+import { buildTeamTetrisSeatView, TEAM_TETRIS_SCHEMA_VERSION } from "./engine.js";
 import { TEAM_TETRIS_COMMAND_COPY } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
 
-function teamTetrisCommandMessage(locale, key, params = {}) {
+function teamTetrisCommandMessage(locale: any, key: any, params: any = {}) {
   return fillTemplate(translate(locale, TEAM_TETRIS_COMMAND_COPY, key), params);
 }
 
-function resolveTeamTetrisSeatFromProvider(provider) {
+function resolveTeamTetrisSeatFromProvider(provider: any) {
   if (provider === "room-ui") {
     return "user";
   }
@@ -19,14 +16,14 @@ function resolveTeamTetrisSeatFromProvider(provider) {
   return null;
 }
 
-function buildTeamTetrisProtocolScenario(match) {
+function buildTeamTetrisProtocolScenario(match: any) {
   const currentTurn = match && match.currentTurn ? match.currentTurn : null;
   return currentTurn && currentTurn.role === "followup"
     ? "team-tetris-ai-followup"
     : "team-tetris-ai-opening";
 }
 
-function buildTeamTetrisAiTurnPacket(match, seatId) {
+function buildTeamTetrisAiTurnPacket(match: any, seatId: any) {
   const view = buildTeamTetrisSeatView(match, seatId);
   if (!view || !view.pendingTurn) {
     return null;
@@ -49,11 +46,11 @@ function buildTeamTetrisAiTurnPacket(match, seatId) {
   };
 }
 
-function buildTeamTetrisAsciiBoard(rows) {
+function buildTeamTetrisAsciiBoard(rows: any) {
   return Array.isArray(rows) ? rows.join("\n") : "";
 }
 
-function buildTeamTetrisAiTurnMessage(match, seatId) {
+function buildTeamTetrisAiTurnMessage(match: any, seatId: any) {
   const packet = buildTeamTetrisAiTurnPacket(match, seatId);
   if (!packet) {
     return "";
@@ -80,11 +77,11 @@ function buildTeamTetrisAiTurnMessage(match, seatId) {
   ].join("\n");
 }
 
-function buildTeamTetrisRemoteMoveText(movePayload) {
+function buildTeamTetrisRemoteMoveText(movePayload: any) {
   return `++cmd:GameRoomTeamTetrisRemoteMove(${JSON.stringify(movePayload)})`;
 }
 
-function parseTeamTetrisStartEventNote(note) {
+function parseTeamTetrisStartEventNote(note: any) {
   if (typeof note !== "string" || note.trim() === "") {
     return null;
   }

@@ -15,9 +15,7 @@ type MediaAnalysisEditStageDeps = {
   text: (path: string[]) => string;
 };
 
-export function renderMediaAnalysisEditStage(
-  deps: MediaAnalysisEditStageDeps,
-): string {
+export function renderMediaAnalysisEditStage(deps: MediaAnalysisEditStageDeps): string {
   const escapeHtml = deps.escapeHtml;
   const getProjectSource = deps.getProjectSource;
   const renderEditActionsPanel = deps.renderEditActionsPanel;
@@ -31,9 +29,9 @@ export function renderMediaAnalysisEditStage(
   const renderStageIntro = deps.renderStageIntro;
   const text = deps.text;
 
+  const projectSource = getProjectSource();
   const sourceReady =
-    typeof getProjectSource().storedPath === "string" &&
-    getProjectSource().storedPath.trim() !== "";
+    typeof projectSource?.storedPath === "string" && projectSource.storedPath.trim() !== "";
 
   return `
     <div class="lab-layout">

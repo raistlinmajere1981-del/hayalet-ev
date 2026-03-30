@@ -1,4 +1,4 @@
-export function createMediaEditArtifactRuntime(deps) {
+export function createMediaEditArtifactRuntime(deps: any) {
   const {
     asNonEmptyString,
     asNumber,
@@ -12,7 +12,7 @@ export function createMediaEditArtifactRuntime(deps) {
     toRecord,
   } = deps;
 
-  function buildArtifactEntry(filePath, kind) {
+  function buildArtifactEntry(filePath: any, kind: any) {
     const normalizedPath = asNonEmptyString(filePath);
     if (normalizedPath === null) {
       return null;
@@ -24,19 +24,21 @@ export function createMediaEditArtifactRuntime(deps) {
     };
   }
 
-  async function listArtifactsWithPrefix(dirPath, filePrefix) {
+  async function listArtifactsWithPrefix(dirPath: any, filePrefix: any) {
     const entries = await listDirectory(dirPath);
     return entries
-      .filter(function (entry) {
-        return entry && entry.isDirectory !== true && String(entry.name || "").startsWith(filePrefix);
+      .filter(function (entry: any) {
+        return (
+          entry && entry.isDirectory !== true && String(entry.name || "").startsWith(filePrefix)
+        );
       })
-      .map(function (entry) {
+      .map(function (entry: any) {
         return entry.path;
       })
       .sort();
   }
 
-  async function buildAuxiliaryArtifacts(runtime, project, options) {
+  async function buildAuxiliaryArtifacts(runtime: any, project: any, options: any) {
     const artifactDir =
       options.mode === "preview"
         ? getProjectEditPreviewDir(runtime, project)
@@ -111,7 +113,7 @@ export function createMediaEditArtifactRuntime(deps) {
           `${options.baseName}-frame-`
         );
         return createdFrames
-          .map(function (filePath) {
+          .map(function (filePath: any) {
             return buildArtifactEntry(filePath, "frame");
           })
           .filter(Boolean);

@@ -1,13 +1,15 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createFateKnotsUiStateSupportRuntime = function createFateKnotsUiStateSupportRuntime(deps) {
+  registry.createFateKnotsUiStateSupportRuntime = function createFateKnotsUiStateSupportRuntime(
+    deps: any
+  ) {
     const getState = deps.getState;
     const featureId = deps.featureId || "fate-knots";
     const sendRoomCommand = deps.sendRoomCommand;
     const text = deps.text;
 
-    function t(path, fallback) {
+    function t(path: string[], fallback: string) {
       return text(path, fallback);
     }
 
@@ -27,45 +29,47 @@
       return (state && typeof state.locale === "string" && state.locale) || "en";
     }
 
-    function getCurrentStatus(state) {
+    function getCurrentStatus(state: any) {
       return (state && state.status) || "";
     }
 
-    function findParticipant(state, seatId) {
+    function findParticipant(state: any, seatId: string) {
       if (!state || !Array.isArray(state.participants)) {
         return null;
       }
       return (
-        state.participants.find(function (participant) {
+        state.participants.find(function (participant: any) {
           return participant.seatId === seatId;
         }) || null
       );
     }
 
-    function getUserParticipant(state) {
+    function getUserParticipant(state: any) {
       return findParticipant(state, "user");
     }
 
-    function isSelectionComplete(selection) {
-      return Boolean(selection && selection.avatarId && selection.classId && selection.backgroundId);
+    function isSelectionComplete(selection: any) {
+      return Boolean(
+        selection && selection.avatarId && selection.classId && selection.backgroundId
+      );
     }
 
-    function resolveCatalogEntry(list, id, fallback) {
+    function resolveCatalogEntry(list: any, id: string, fallback: any) {
       if (!Array.isArray(list)) {
         return fallback;
       }
       return (
-        list.find(function (entry) {
+        list.find(function (entry: any) {
           return entry.id === id;
         }) || fallback
       );
     }
 
-    function normalizeSelectionEntry(entry) {
+    function normalizeSelectionEntry(entry: any) {
       return entry && typeof entry.id === "string" && entry.id.trim() ? entry : null;
     }
 
-    function getSelectionBundle(state, participant) {
+    function getSelectionBundle(state: any, participant: any) {
       const selection = (participant && participant.selection) || {};
       const catalogs = (state && state.catalogs) || {};
       return {
@@ -76,24 +80,28 @@
           resolveCatalogEntry(catalogs.classes, selection.classId, selection.class || null)
         ),
         background: normalizeSelectionEntry(
-          resolveCatalogEntry(catalogs.backgrounds, selection.backgroundId, selection.background || null)
+          resolveCatalogEntry(
+            catalogs.backgrounds,
+            selection.backgroundId,
+            selection.background || null
+          )
         ),
       };
     }
 
-    function sendSelection(fieldName, value) {
+    function sendSelection(fieldName: string, value: unknown) {
       return sendRoomCommand("GameRoomFateKnotsCharacterSelect", {
         [fieldName]: value,
       });
     }
 
-    function sendReady(state) {
+    function sendReady(state: any) {
       return sendRoomCommand("GameRoomFateKnotsReady", {
         sessionId: state.sessionId,
       });
     }
 
-    function sendChoice(state, choiceId) {
+    function sendChoice(state: any, choiceId: string) {
       return sendRoomCommand("GameRoomFateKnotsChoice", {
         sessionId: state.sessionId,
         stepId:
@@ -104,7 +112,7 @@
       });
     }
 
-    function sendCombatAction(state, actionId) {
+    function sendCombatAction(state: any, actionId: string) {
       return sendRoomCommand("GameRoomFateKnotsCombatAction", {
         sessionId: state.sessionId,
         encounterId: state.combat && state.combat.encounterId ? state.combat.encounterId : null,
@@ -113,17 +121,17 @@
       });
     }
 
-    function sendSync(state) {
+    function sendSync(state: any) {
       return sendRoomCommand("GameRoomFateKnotsSync", {
         sessionId: state.sessionId,
       });
     }
 
-    function formatMetricValue(value) {
+    function formatMetricValue(value: unknown) {
       return Number.isFinite(value) ? String(value) : "--";
     }
 
-    function formatStats(entry) {
+    function formatStats(entry: any) {
       if (!entry) {
         return "";
       }
@@ -138,33 +146,33 @@
           : null,
       ]
         .filter(Boolean)
-        .join(" • ");
+        .join(" \u2022 ");
     }
 
-    function formatDeck(entry) {
+    function formatDeck(entry: any) {
       const cards = Array.isArray(entry && entry.startingDeck)
         ? entry.startingDeck
         : Array.isArray(entry && entry.deck)
           ? entry.deck
           : [];
-      return cards.length > 0 ? cards.join(" • ") : "";
+      return cards.length > 0 ? cards.join(" \u2022 ") : "";
     }
 
-    function formatDeadline(deadlineAt) {
+    function formatDeadline(deadlineAt: unknown) {
       if (!deadlineAt) {
         return "";
       }
-      return new Date(deadlineAt).toLocaleTimeString(getLocale(), {
+      return new Date(deadlineAt as string | number).toLocaleTimeString(getLocale(), {
         hour: "2-digit",
         minute: "2-digit",
       });
     }
 
-    function formatHistoryTimestamp(timestamp) {
+    function formatHistoryTimestamp(timestamp: unknown) {
       if (!timestamp) {
         return "";
       }
-      return new Date(timestamp).toLocaleString(getLocale(), {
+      return new Date(timestamp as string | number).toLocaleString(getLocale(), {
         month: "short",
         day: "2-digit",
         hour: "2-digit",
@@ -172,8 +180,8 @@
       });
     }
 
-    function getPhaseLabel(phaseId) {
-      const labels = {
+    function getPhaseLabel(phaseId: string) {
+      const labels: Record<string, string> = {
         idle: t(["fateKnots", "phase", "overview"], "Gathering"),
         overview: t(["fateKnots", "phase", "overview"], "Gathering"),
         "character-creation": t(["fateKnots", "phase", "characterCreation"], "Preparation"),

@@ -4,7 +4,7 @@ import {
   getAudioAnalysisProcessRootDir,
 } from "../../../shared/host/project-paths.js";
 
-export function createAudioAnalysisMusicRhythmModelRunner(deps) {
+export function createAudioAnalysisMusicRhythmModelRunner(deps: any) {
   const {
     asNonEmptyString,
     createProcessArtifact,
@@ -17,14 +17,14 @@ export function createAudioAnalysisMusicRhythmModelRunner(deps) {
   } = deps;
 
   return async function runMusicRhythmAudioAnalyzer(
-    runtime,
-    project,
-    requestId,
-    jobId,
-    target,
-    artifactBase,
-    moduleOutputDir,
-    moduleId
+    runtime: any,
+    project: any,
+    requestId: any,
+    jobId: any,
+    target: any,
+    artifactBase: any,
+    moduleOutputDir: any,
+    moduleId: any
   ) {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
@@ -75,12 +75,15 @@ export function createAudioAnalysisMusicRhythmModelRunner(deps) {
       }
     );
     const artifacts = [summaryArtifact].filter(Boolean);
-    const artifactIds = artifacts.map(function (artifact) {
+    const artifactIds = artifacts.map(function (artifact: any) {
       return artifact.id;
     });
     const detailParts = [
-      typeof musicSummary.tempoBpm === "number" ? `${Number(musicSummary.tempoBpm).toFixed(1)} BPM` : null,
-      typeof musicSummary.dominantPitchClass === "string" && musicSummary.dominantPitchClass.trim() !== ""
+      typeof musicSummary.tempoBpm === "number"
+        ? `${Number(musicSummary.tempoBpm).toFixed(1)} BPM`
+        : null,
+      typeof musicSummary.dominantPitchClass === "string" &&
+      musicSummary.dominantPitchClass.trim() !== ""
         ? `dominant pitch class ${musicSummary.dominantPitchClass}`
         : null,
       typeof musicSummary.beatCount === "number" ? `${musicSummary.beatCount} beat markers` : null,

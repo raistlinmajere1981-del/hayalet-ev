@@ -7,12 +7,16 @@ import { createLaboratoryProcessRuntime } from "./process-runtime.js";
 import { createLaboratoryProcessTargetingRuntime } from "./process-targeting.js";
 import { createLaboratoryReportingRuntime } from "./reporting.js";
 
-export function createLaboratoryHostProcessCompositionRuntime(deps) {
-  let audioAnalysisProjectionRuntime = null;
-  let laboratoryProcessDelegatesRuntime = null;
+export function createLaboratoryHostProcessCompositionRuntime(deps: any) {
+  let audioAnalysisProjectionRuntime: any = null;
+  let laboratoryProcessDelegatesRuntime: any = null;
 
-  function resolveAudioFeatureTarget(project) {
-    return audioAnalysisProjectionRuntime.resolveAudioFeatureTarget(project);
+  function resolveAudioFeatureTarget(project: any) {
+    const projection = audioAnalysisProjectionRuntime;
+    if (!projection) {
+      throw new Error("Audio analysis projection runtime is not initialized");
+    }
+    return projection.resolveAudioFeatureTarget(project);
   }
 
   const laboratoryProcessTargetingRuntime = createLaboratoryProcessTargetingRuntime({
@@ -34,8 +38,12 @@ export function createLaboratoryHostProcessCompositionRuntime(deps) {
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: deps.asNumber,
     audioAnalysisProjectionRuntime: {
-      buildAudioAnalysisModules(...args) {
-        return audioAnalysisProjectionRuntime.buildAudioAnalysisModules(...args);
+      buildAudioAnalysisModules(...args: unknown[]) {
+        const projection = audioAnalysisProjectionRuntime;
+        if (!projection) {
+          throw new Error("Audio analysis projection runtime is not initialized");
+        }
+        return projection.buildAudioAnalysisModules(...args);
       },
     },
     createEmptyFeatureProcessRecord: deps.createEmptyFeatureProcessRecord,
@@ -56,10 +64,10 @@ export function createLaboratoryHostProcessCompositionRuntime(deps) {
     updateProcessModule,
     updateProcessRecordPercent,
   } = processOrchestrationRuntime;
-  const getFeatureProcessJobAction = function getFeatureProcessJobAction(featureId) {
+  const getFeatureProcessJobAction = function getFeatureProcessJobAction(featureId: any) {
     return getFeatureProcessJobActionForFeature(featureId, deps.audioFeatureId);
   };
-  const getFeatureReportExportAction = function getFeatureReportExportAction(featureId) {
+  const getFeatureReportExportAction = function getFeatureReportExportAction(featureId: any) {
     return getFeatureReportExportActionForFeature(featureId, deps.audioFeatureId);
   };
 
@@ -163,7 +171,7 @@ export function createLaboratoryHostProcessCompositionRuntime(deps) {
     buildAudioAnalysisModules,
     buildMediaProcessModules,
     buildProcessSpeechAvailability,
-    buildSubtitleAnalysisStats(...args) {
+    buildSubtitleAnalysisStats(...args: any[]) {
       return deps.getSubtitleAnalysisHostRuntime().buildSubtitleAnalysisStats(...args);
     },
     buildSubtitleProcessModules(...args) {
@@ -173,8 +181,12 @@ export function createLaboratoryHostProcessCompositionRuntime(deps) {
     clampProfileTranscriptSampleSeconds: deps.clampProfileTranscriptSampleSeconds,
     clearJob: deps.clearJob,
     clone: deps.clone,
-    composeFeatureReport(...args) {
-      return laboratoryProcessDelegatesRuntime.composeFeatureReport(...args);
+    composeFeatureReport(...args: unknown[]) {
+      const delegates = laboratoryProcessDelegatesRuntime;
+      if (!delegates) {
+        throw new Error("Laboratory process delegates runtime is not initialized");
+      }
+      return delegates.composeFeatureReport(...args);
     },
     createEmptyFeatureProcessRecord: deps.createEmptyFeatureProcessRecord,
     createEmptyProcessRun,
@@ -188,7 +200,8 @@ export function createLaboratoryHostProcessCompositionRuntime(deps) {
     getActiveProject: deps.getActiveProject,
     getAudioAnalysisModuleProcessDir:
       laboratoryAudioProcessDelegatesRuntime.getAudioAnalysisModuleProcessDir,
-    getAudioAnalysisModuleRunner: laboratoryAudioProcessDelegatesRuntime.getAudioAnalysisModuleRunner,
+    getAudioAnalysisModuleRunner:
+      laboratoryAudioProcessDelegatesRuntime.getAudioAnalysisModuleRunner,
     getFeatureProcessDir: deps.getFeatureProcessDir,
     getFeatureProcessJobAction,
     getFeatureProcessRecord: deps.getFeatureProcessRecord,

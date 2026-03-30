@@ -1,7 +1,7 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
-  registry.createFateKnotsUiSurfaceRuntime = function createFateKnotsUiSurfaceRuntime(deps) {
+  registry.createFateKnotsUiSurfaceRuntime = function createFateKnotsUiSurfaceRuntime(deps: any) {
     const createFateKnotsUiSurfaceAssetsRuntime = registry.createFateKnotsUiSurfaceAssetsRuntime;
     if (typeof createFateKnotsUiSurfaceAssetsRuntime !== "function") {
       throw new Error("createFateKnotsUiSurfaceAssetsRuntime is unavailable.");

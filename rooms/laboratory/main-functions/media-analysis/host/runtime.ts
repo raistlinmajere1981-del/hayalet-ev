@@ -3,7 +3,7 @@ import { createMediaEditSupportRuntime } from "./edit-support.js";
 import { createMediaEditPipelineRuntime } from "./edit-pipeline.js";
 import { createMediaProfilePreflightRuntime } from "./profile-preflight.js";
 
-export function createLaboratoryMediaAnalysisHostRuntime(deps) {
+export function createLaboratoryMediaAnalysisHostRuntime(deps: any) {
   const {
     asNonEmptyString,
     asNumber,
@@ -75,7 +75,7 @@ export function createLaboratoryMediaAnalysisHostRuntime(deps) {
     sanitizeFileSegment,
   } = mediaEditSupportRuntime;
 
-  function ensureEditToolReady(runtime) {
+  function ensureEditToolReady(runtime: any) {
     const ffmpegState = toRecord(runtime.toolState.tools.ffmpeg);
     if (ffmpegState.installed !== true) {
       throw new Error("Install FFmpeg in settings before using the edit stage.");
@@ -103,7 +103,7 @@ export function createLaboratoryMediaAnalysisHostRuntime(deps) {
     buildEditTargetPath,
     callRoomTools,
     clearJob,
-    collectDerivedOutputMetadata(...args) {
+    collectDerivedOutputMetadata(...args: any[]) {
       return getCollectDerivedOutputMetadata(...args);
     },
     ensureEditJobSlotAvailable,
@@ -125,11 +125,11 @@ export function createLaboratoryMediaAnalysisHostRuntime(deps) {
     toRecord,
   });
 
-  async function runEditPipeline(api, runtime, requestId, mode) {
+  async function runEditPipeline(api: any, runtime: any, requestId: any, mode: any) {
     return mediaEditPipelineRuntime.runEditPipeline(api, runtime, requestId, mode);
   }
 
-  function ensureProfileToolReady(runtime) {
+  function ensureProfileToolReady(runtime: any) {
     const ffmpegState = toRecord(runtime.toolState.tools.ffmpeg);
     if (ffmpegState.installed !== true) {
       throw new Error("Install FFmpeg in settings before using the profile stage.");
@@ -167,7 +167,7 @@ export function createLaboratoryMediaAnalysisHostRuntime(deps) {
     toRecord,
   });
 
-  async function runProfilePreflight(api, runtime, requestId) {
+  async function runProfilePreflight(api: any, runtime: any, requestId: any) {
     return mediaProfilePreflightRuntime.runProfilePreflight(api, runtime, requestId);
   }
 

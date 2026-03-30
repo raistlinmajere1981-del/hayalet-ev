@@ -1,7 +1,9 @@
+import type { XoxGameState } from "./state-core.js";
 import { getOpponentInfo } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
+import type { GameRoomContextState } from "../../../shared/types/room-shell-contracts.js";
 
-export function commandMessage(locale, key, params = {}) {
+export function commandMessage(locale: unknown, key: string, params: Record<string, unknown> = {}) {
   const messages = {
     started: {
       en: "XOX match started.",
@@ -111,23 +113,24 @@ export function commandMessage(locale, key, params = {}) {
   return fillTemplate(translate(locale, messages, key), params);
 }
 
-export function buildAiTurnMessage(state, context) {
+export function buildAiTurnMessage(state: XoxGameState, context: GameRoomContextState) {
   const opponent = getOpponentInfo(context, state);
   const availableCells = state.board
-    .map(function (_cell, index) {
+    .map(function (_cell: string, index: number) {
       return state.board[index] === "" ? String(index) : "";
     })
     .filter(Boolean)
     .join(", ");
-  const boardAscii = state.board.reduce(function (acc, value, index) {
-    const row = Math.floor(index / 3);
-    if (!acc[row]) {
-      acc[row] = [];
-    }
-    acc[row].push(value === "" ? String(index) : value);
-    return acc;
-  }, [])
-    .map(function (row) {
+  const boardAscii = state.board
+    .reduce(function (acc: string[][], value: string, index: number) {
+      const row = Math.floor(index / 3);
+      if (!acc[row]) {
+        acc[row] = [];
+      }
+      acc[row].push(value === "" ? String(index) : value);
+      return acc;
+    }, [])
+    .map(function (row: string[]) {
       return row.join(" | ");
     })
     .join("\n---------\n");
@@ -160,7 +163,11 @@ export function buildInviteId() {
   return `xox_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function buildUs1InviteText(state, context, note) {
+export function buildUs1InviteText(
+  state: XoxGameState,
+  context: GameRoomContextState,
+  note: string
+) {
   const opponent = getOpponentInfo(context, state);
   const starterLabel = state.starter === "ai" ? opponent.nickname : context.user.nickname;
   const parts = [];
@@ -179,16 +186,24 @@ export function buildUs1InviteText(state, context, note) {
   return parts.join("\n");
 }
 
-export function buildUs1InviteResponseText(type, inviteEntry) {
+export function buildUs1InviteResponseText(
+  type: string,
+  inviteEntry: { matchId?: string; inviteId?: string }
+) {
   const opener = type === "accept" ? "XOX invite accepted." : "XOX invite rejected.";
   return [opener, "Match ID: " + (inviteEntry.matchId || inviteEntry.inviteId)].join("\n");
 }
 
-export function buildUs1ResetText(matchId) {
+export function buildUs1ResetText(matchId: string) {
   return ["XOX match reset.", "Match ID: " + matchId].join("\n");
 }
 
-export function buildUs1MoveText(matchId, turnIndex, boardHashBeforeMove, cell) {
+export function buildUs1MoveText(
+  matchId: string,
+  turnIndex: number,
+  boardHashBeforeMove: string,
+  cell: number
+) {
   return `++cmd:GameRoomXoxRemoteMove(${JSON.stringify({
     matchId: matchId,
     inviteId: matchId,

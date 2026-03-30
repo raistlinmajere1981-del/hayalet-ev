@@ -7,7 +7,7 @@ export const config = {
   loginUrl: "https://chatgpt.com/auth/login",
   lastVerified: "2026-03-29",
   selectors: {
-    sendButton: '#composer-submit-button[data-testid="send-button"], #composer-submit-button',
+    sendButton: '#composer-submit-button[data-testid="send-button"], button[data-testid="send-button"][aria-label="Send prompt"], button[data-testid="send-button"][aria-label="İstem gönder"], button[data-testid="send-button"], #composer-submit-button',
 
     sendButtonDisabled:
       '#composer-submit-button[data-testid="send-button"][disabled], button[data-testid="send-button"][aria-label="İstem gönder"][disabled], button[data-testid="send-button"][aria-label="Send prompt"][disabled], #composer-submit-button[disabled]',
@@ -44,9 +44,9 @@ export const config = {
   selectorMatrix: {
     selectors: {
       sendButton: {
-        tr: '#composer-submit-button[data-testid="send-button"], button[data-testid="send-button"][aria-label="İstem gönder"]',
+        tr: '#composer-submit-button[data-testid="send-button"]',
         en: '#composer-submit-button[data-testid="send-button"], button[data-testid="send-button"][aria-label="Send prompt"]',
-        fallbacks: ['button[data-testid="send-button"]', "#composer-submit-button"],
+        fallbacks: ['button[data-testid="send-button"][aria-label="İstem gönder"]', 'button[data-testid="send-button"][aria-label="Send prompt"]', 'button[data-testid="send-button"]', '#composer-submit-button'],
       },
       inputField: {
         tr: 'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"]',
@@ -99,7 +99,7 @@ export const config = {
     '#composer-submit-button[data-testid="send-button"]',
     '#composer-plus-btn[data-testid="composer-plus-btn"]',
     'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"]',
-    "#prompt-textarea[contenteditable=\"true\"]",
+    '#prompt-textarea[contenteditable="true"]',
     '[data-testid="conversation-turn"]',
     "[data-message-author-role]",
   ],

@@ -1,7 +1,7 @@
 import { FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
 import { normalizeText } from "../../../shared/host/text.js";
 
-export function normalizeInviteEntry(candidate) {
+export function normalizeInviteEntry(candidate: any) {
   const source =
     candidate && typeof candidate === "object" && Array.isArray(candidate) === false
       ? candidate
@@ -28,21 +28,21 @@ export function normalizeInviteEntry(candidate) {
   };
 }
 
-export function normalizeInviteInbox(value) {
+export function normalizeInviteInbox(value: any) {
   if (!Array.isArray(value)) {
     return [];
   }
 
   return value
-    .map(function (entry) {
+    .map(function (entry: any) {
       return normalizeInviteEntry(entry);
     })
-    .filter(function (entry) {
+    .filter(function (entry: any) {
       return entry.matchId !== "" && entry.remoteUserId !== "";
     });
 }
 
-export function normalizePendingInvite(value) {
+export function normalizePendingInvite(value: any) {
   if (value === null || value === undefined || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
@@ -67,7 +67,7 @@ export function normalizePendingInvite(value) {
   };
 }
 
-export function createPendingInvite(direction, inviteEntry) {
+export function createPendingInvite(direction: any, inviteEntry: any) {
   const matchId = inviteEntry.matchId || inviteEntry.inviteId;
   return {
     direction: direction === "incoming" ? "incoming" : "outgoing",

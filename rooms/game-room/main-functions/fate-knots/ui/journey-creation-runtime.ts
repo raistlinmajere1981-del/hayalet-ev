@@ -1,33 +1,33 @@
-(function (global) {
+(function (global: any) {
   const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
   registry.createFateKnotsUiJourneyCreationRuntime =
-    function createFateKnotsUiJourneyCreationRuntime(deps) {
-      function hasRenderableAssetSource(assetLink) {
+    function createFateKnotsUiJourneyCreationRuntime(deps: any) {
+      function hasRenderableAssetSource(assetLink: any) {
         const source = assetLink && typeof assetLink === "object" ? assetLink : null;
         if (!source) {
           return false;
         }
         return Boolean(
           (typeof source.uiSrc === "string" && source.uiSrc.trim()) ||
-            (typeof source.src === "string" && source.src.trim()) ||
-            (source.asset &&
-              typeof source.asset === "object" &&
-              ((typeof source.asset.uiSrc === "string" && source.asset.uiSrc.trim()) ||
-                (typeof source.asset.src === "string" && source.asset.src.trim())))
+          (typeof source.src === "string" && source.src.trim()) ||
+          (source.asset &&
+            typeof source.asset === "object" &&
+            ((typeof source.asset.uiSrc === "string" && source.asset.uiSrc.trim()) ||
+              (typeof source.asset.src === "string" && source.asset.src.trim())))
         );
       }
 
       function renderSelectionFamily(
-        parent,
-        state,
-        title,
-        entries,
-        selectedId,
-        disabled,
-        onSelect,
-        metaResolver,
-        family
+        parent: any,
+        _state: any,
+        title: string,
+        entries: any[],
+        selectedId: string | null,
+        disabled: boolean,
+        onSelect: (value: any) => void,
+        metaResolver: (entry: any) => string[],
+        family: string
       ) {
         const familySection = deps.createFrame(
           "section",
@@ -41,7 +41,7 @@
         );
         familySection.append(deps.createElement("p", "fk-frame__eyebrow", title));
         const grid = deps.createRegion("div", "fk-selection-family__grid", null);
-        entries.forEach(function (entry) {
+        entries.forEach(function (entry: any) {
           const template =
             family === "avatar"
               ? deps.getUiAsset("avatarCardTemplate")
@@ -62,7 +62,7 @@
         parent.append(familySection);
       }
 
-      function createSelectionSummary(state, selection) {
+      function createSelectionSummary(state: any, selection: any) {
         const user = deps.getUserParticipant(state);
         const bundle = deps.getSelectionBundle(state, user);
         const summaryMount = deps.createRegion("div", "fk-summary-rail__mount", "summary-rail");
@@ -86,14 +86,12 @@
         summaryMount.dataset.fkRole = "support-rail summary-status summary-rail";
         const seatTabs = deps.createRegion("div", "fk-seat-tabs", ["log", "selection-log"]);
         summary.append(seatTabs);
-        deps.KNOWN_SEAT_IDS.forEach(function (seatId) {
+        deps.KNOWN_SEAT_IDS.forEach(function (seatId: string) {
           const seat = deps.buildSeatDisplay(state, seatId);
           const tab = deps.createRegion(
             "div",
             "fk-seat-tabs__item" +
-              (seatId === "user"
-                ? " fk-seat-tabs__item--active"
-                : " fk-seat-tabs__item--dummy"),
+              (seatId === "user" ? " fk-seat-tabs__item--active" : " fk-seat-tabs__item--dummy"),
             null
           );
           deps.setSeatId(tab, seatId);
@@ -121,11 +119,7 @@
             null
           );
           placeholder.append(
-            deps.createElement(
-              "span",
-              "fk-summary-hero__placeholder-label",
-              "Choose an avatar"
-            )
+            deps.createElement("span", "fk-summary-hero__placeholder-label", "Choose an avatar")
           );
           hero.append(placeholder);
         }
@@ -141,7 +135,11 @@
           deps.createElement(
             "p",
             "fk-summary-hero__meta",
-            [bundle.avatar ? bundle.avatar.label : null, bundle.classDef ? bundle.classDef.label : null, bundle.background ? bundle.background.label : null]
+            [
+              bundle.avatar ? bundle.avatar.label : null,
+              bundle.classDef ? bundle.classDef.label : null,
+              bundle.background ? bundle.background.label : null,
+            ]
               .filter(Boolean)
               .join(" / ") ||
               deps.t(
@@ -159,17 +157,14 @@
           );
         }
         if (bundle.background && bundle.background.perk) {
-          heroBody.append(
-            deps.createElement("p", "fk-summary-hero__meta", bundle.background.perk)
-          );
+          heroBody.append(deps.createElement("p", "fk-summary-hero__meta", bundle.background.perk));
         }
         hero.append(heroBody);
         summary.append(hero);
-        const selectionActions = deps.createRegion(
-          "div",
-          "fk-selection-actions",
-          ["action-zone", "selection-actions"]
-        );
+        const selectionActions = deps.createRegion("div", "fk-selection-actions", [
+          "action-zone",
+          "selection-actions",
+        ]);
         const actions = deps.createRegion("div", "fk-action-cluster", ["action-zone", "lock-zone"]);
         const readyLabel = selection.locked
           ? deps.t(["fateKnots", "creation", "locked"], "Build locked")
@@ -205,15 +200,15 @@
         return summaryMount;
       }
 
-      function renderCreationStage(parent, state) {
+      function renderCreationStage(parent: any, state: any) {
         const user = deps.getUserParticipant(state);
         const selection = user.selection || deps.createDefaultSelection();
         const layout = deps.createRegion("section", "fk-creation", "creation-layout");
-        const table = deps.createRegion(
-          "div",
-          "fk-selection-table",
-          ["main-scene", "selection-zone", "selection-table"]
-        );
+        const table = deps.createRegion("div", "fk-selection-table", [
+          "main-scene",
+          "selection-zone",
+          "selection-table",
+        ]);
         const intro = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--scene fk-creation__intro",
@@ -249,10 +244,10 @@
           state.catalogs.avatars,
           selection.avatarId,
           selection.locked,
-          function (value) {
+          function (value: any) {
             deps.sendSelection("avatarId", value);
           },
-          function (entry) {
+          function (entry: any) {
             return [entry.summary];
           },
           "avatar"
@@ -264,10 +259,10 @@
           state.catalogs.classes,
           selection.classId,
           selection.locked,
-          function (value) {
+          function (value: any) {
             deps.sendSelection("classId", value);
           },
-          function (entry) {
+          function (entry: any) {
             return [deps.formatStats(entry), deps.formatDeck(entry)];
           },
           "class"
@@ -279,10 +274,10 @@
           state.catalogs.backgrounds,
           selection.backgroundId,
           selection.locked,
-          function (value) {
+          function (value: any) {
             deps.sendSelection("backgroundId", value);
           },
-          function (entry) {
+          function (entry: any) {
             return [entry.perk || entry.summary];
           },
           "background"

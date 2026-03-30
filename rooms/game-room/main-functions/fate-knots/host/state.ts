@@ -25,11 +25,18 @@ import {
   normalizeSaveSlotState,
 } from "./models.js";
 
-function cloneJsonValue(value) {
+type RoomApi = {
+  getState: (key: string) => unknown;
+  setState: (key: string, value: unknown) => void;
+  getLocale?: () => unknown;
+  notifyRoom?: (eventType: string, data: unknown) => void;
+};
+
+function cloneJsonValue(value: unknown) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
 }
 
-export function resolveFateKnotsStatusText(state) {
+export function resolveFateKnotsStatusText(state: any) {
   const message = translate(state.locale, FATE_KNOTS_STATUS_COPY, state.statusKey);
   if (message) {
     return message;
@@ -40,52 +47,52 @@ export function resolveFateKnotsStatusText(state) {
   return translate(state.locale, FATE_KNOTS_STATUS_COPY, "idle");
 }
 
-export function loadFateKnotsState(api) {
+export function loadFateKnotsState(api: RoomApi) {
   return normalizeFateKnotsState(api.getState(FATE_KNOTS_STATE_KEY), readLocale(api));
 }
 
-export function saveFateKnotsState(api, state) {
+export function saveFateKnotsState(api: RoomApi, state: any) {
   const normalized = normalizeFateKnotsState(state, readLocale(api));
   normalized.locale = normalizeLocale(readLocale(api));
   api.setState(FATE_KNOTS_STATE_KEY, normalized);
   return normalized;
 }
 
-export function resetFateKnotsState(api, statusKey = "idle") {
+export function resetFateKnotsState(api: RoomApi, statusKey = "idle") {
   const nextState = createInitialFateKnotsState(readLocale(api));
   nextState.statusKey = statusKey;
   nextState.compatibility.mode = statusKey === "idle" ? "fresh" : "reset-safe";
   return saveFateKnotsState(api, nextState);
 }
 
-export function loadFateKnotsProfile(api) {
+export function loadFateKnotsProfile(api: RoomApi) {
   return normalizeProfileState(api.getState(FATE_KNOTS_PROFILE_STATE_KEY));
 }
 
-export function saveFateKnotsProfile(api, profile) {
+export function saveFateKnotsProfile(api: RoomApi, profile: any) {
   const normalized = normalizeProfileState(profile);
   api.setState(FATE_KNOTS_PROFILE_STATE_KEY, normalized);
   return normalized;
 }
 
-export function loadFateKnotsHistory(api) {
+export function loadFateKnotsHistory(api: RoomApi) {
   return normalizeHistoryState(api.getState(FATE_KNOTS_HISTORY_STATE_KEY));
 }
 
-export function saveFateKnotsHistory(api, history) {
+export function saveFateKnotsHistory(api: RoomApi, history: any) {
   const normalized = normalizeHistoryState(history);
   api.setState(FATE_KNOTS_HISTORY_STATE_KEY, normalized);
   return normalized;
 }
 
-export function appendFateKnotsHistory(api, entry) {
+export function appendFateKnotsHistory(api: RoomApi, entry: any) {
   const nextEntry = normalizeHistoryEntry(entry);
   if (nextEntry.timestamp === null) {
     return loadFateKnotsHistory(api);
   }
   const nextHistory = [nextEntry]
     .concat(
-      loadFateKnotsHistory(api).filter(function (item) {
+      loadFateKnotsHistory(api).filter(function (item: any) {
         return item.sessionId !== nextEntry.sessionId;
       })
     )
@@ -93,19 +100,23 @@ export function appendFateKnotsHistory(api, entry) {
   return saveFateKnotsHistory(api, nextHistory);
 }
 
-export function loadFateKnotsSaveSlot(api) {
+export function loadFateKnotsSaveSlot(api: RoomApi) {
   return normalizeSaveSlotState(api.getState(FATE_KNOTS_SAVE_SLOT_STATE_KEY));
 }
 
-export function saveFateKnotsSaveSlot(api, saveSlot) {
+export function saveFateKnotsSaveSlot(api: RoomApi, saveSlot: any) {
   const normalized = normalizeSaveSlotState(saveSlot);
   api.setState(FATE_KNOTS_SAVE_SLOT_STATE_KEY, normalized);
   return normalized;
 }
 
-function resolveSelectionView(selection, contentRegistry) {
-  const avatar = selection.avatarId ? contentRegistry.avatarsById.get(selection.avatarId) || null : null;
-  const classDef = selection.classId ? contentRegistry.classesById.get(selection.classId) || null : null;
+function resolveSelectionView(selection: any, contentRegistry: any) {
+  const avatar = selection.avatarId
+    ? contentRegistry.avatarsById.get(selection.avatarId) || null
+    : null;
+  const classDef = selection.classId
+    ? contentRegistry.classesById.get(selection.classId) || null
+    : null;
   const background = selection.backgroundId
     ? contentRegistry.backgroundsById.get(selection.backgroundId) || null
     : null;
@@ -121,9 +132,9 @@ function resolveSelectionView(selection, contentRegistry) {
   };
 }
 
-function resolveParticipantView(participant, contentRegistry, combatState) {
+function resolveParticipantView(participant: any, contentRegistry: any, combatState: any) {
   const combatant = combatState
-    ? combatState.party.find(function (entry) {
+    ? combatState.party.find(function (entry: any) {
         return entry.seatId === participant.seatId;
       }) || null
     : null;
@@ -149,7 +160,7 @@ function resolveParticipantView(participant, contentRegistry, combatState) {
   };
 }
 
-function resolveStepView(state, contentRegistry) {
+function resolveStepView(state: any, contentRegistry: any) {
   if (!state.currentStepId) {
     return null;
   }
@@ -157,14 +168,16 @@ function resolveStepView(state, contentRegistry) {
   if (!step) {
     return null;
   }
-  const location = step.locationId ? contentRegistry.mapNodesById.get(step.locationId) || null : null;
+  const location = step.locationId
+    ? contentRegistry.mapNodesById.get(step.locationId) || null
+    : null;
   return {
     ...cloneJsonValue(step),
     location,
   };
 }
 
-function resolveDecisionView(state) {
+function resolveDecisionView(state: any) {
   if (!state.decision) {
     return null;
   }
@@ -175,14 +188,14 @@ function resolveDecisionView(state) {
     participantIds: state.decision.participantIds.slice(),
     resolvedChoiceId: state.decision.resolvedChoiceId,
     conflict: state.decision.conflict,
-    pendingSeatIds: state.decision.participantIds.filter(function (seatId) {
+    pendingSeatIds: state.decision.participantIds.filter(function (seatId: string) {
       return !state.decision.votes[seatId];
     }),
     deadlineAt: state.decision.deadlineAt,
   };
 }
 
-function resolveCombatView(state, contentRegistry) {
+function resolveCombatView(state: any, contentRegistry: any) {
   const combat = cloneFateKnotsCombatState(state.combat);
   if (!combat) {
     return null;
@@ -199,40 +212,47 @@ function resolveCombatView(state, contentRegistry) {
     round: combat.round,
     turn,
     turnId,
-    party: combat.party.map(function (member) {
-      const participant = state.participants.find(function (entry) {
-        return entry.seatId === member.seatId;
-      }) || null;
+    party: combat.party.map(function (member: any) {
+      const participant =
+        state.participants.find(function (entry: any) {
+          return entry.seatId === member.seatId;
+        }) || null;
       return {
         ...member,
-        selection: participant ? resolveSelectionView(participant.selection, contentRegistry) : null,
+        selection: participant
+          ? resolveSelectionView(participant.selection, contentRegistry)
+          : null,
       };
     }),
     enemy: {
       ...combat.enemy,
-      asset: combat.enemy.assetId ? contentRegistry.encountersById.get(combat.enemy.id)?.asset || null : null,
+      asset: combat.enemy.assetId
+        ? contentRegistry.encountersById.get(combat.enemy.id)?.asset || null
+        : null,
     },
     recentLog: combat.log.slice(-8),
     availableActions,
   };
 }
 
-function resolveAmbientPacketView(packet) {
+function resolveAmbientPacketView(packet: any) {
   if (!packet || typeof packet !== "object") {
     return null;
   }
   return cloneJsonValue(packet);
 }
 
-function buildUiAssetView(contentRegistry) {
+function buildUiAssetView(contentRegistry: any) {
   const assetRegistry =
-    contentRegistry && contentRegistry.assetRegistry && typeof contentRegistry.assetRegistry === "object"
+    contentRegistry &&
+    contentRegistry.assetRegistry &&
+    typeof contentRegistry.assetRegistry === "object"
       ? contentRegistry.assetRegistry
       : null;
   const assets = Array.isArray(assetRegistry && assetRegistry.assets) ? assetRegistry.assets : [];
-  const byId = {};
+  const byId: Record<string, any> = {};
 
-  assets.forEach(function (asset) {
+  assets.forEach(function (asset: any) {
     if (!asset || typeof asset !== "object" || typeof asset.id !== "string") {
       return;
     }
@@ -247,7 +267,12 @@ function buildUiAssetView(contentRegistry) {
   };
 }
 
-export function serializeFateKnotsState(api, state, context, contentRegistry) {
+export function serializeFateKnotsState(
+  api: RoomApi,
+  state: any,
+  context: any,
+  contentRegistry: any
+) {
   const savedState = saveFateKnotsState(api, state);
   const combat = resolveCombatView(savedState, contentRegistry);
   const uiAssets = buildUiAssetView(contentRegistry);
@@ -263,7 +288,7 @@ export function serializeFateKnotsState(api, state, context, contentRegistry) {
     sessionId: savedState.sessionId,
     participantMode: savedState.participantMode,
     rosterLocked: savedState.rosterLocked,
-    participants: savedState.participants.map(function (participant) {
+    participants: savedState.participants.map(function (participant: any) {
       return resolveParticipantView(participant, contentRegistry, combat);
     }),
     excludedSeats: cloneJsonValue(savedState.excludedSeats),
@@ -298,14 +323,16 @@ export function serializeFateKnotsState(api, state, context, contentRegistry) {
   };
 }
 
-export function pushFateKnotsState(api, state, contentRegistry) {
+export function pushFateKnotsState(api: RoomApi, state: any, contentRegistry: any) {
   const context = api.getState("xox-context") || {};
-  api.notifyRoom("fate-knots-state", {
-    state: serializeFateKnotsState(api, state, context, contentRegistry),
-  });
+  if (typeof api.notifyRoom === "function") {
+    api.notifyRoom("fate-knots-state", {
+      state: serializeFateKnotsState(api, state, context, contentRegistry),
+    });
+  }
   return loadFateKnotsState(api);
 }
 
-export function refreshFateKnotsState(api, contentRegistry) {
+export function refreshFateKnotsState(api: RoomApi, contentRegistry: any) {
   return pushFateKnotsState(api, loadFateKnotsState(api), contentRegistry);
 }

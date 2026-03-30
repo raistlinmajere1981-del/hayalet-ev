@@ -3,7 +3,7 @@ import { createMediaSourceIntakeRuntime } from "../../main-functions/media-analy
 import { createMediaSourceMetadataRuntime } from "../../main-functions/media-analysis/host/source-metadata.js";
 import { createLaboratorySourceDelegatesRuntime } from "./source-delegates.js";
 
-export function createLaboratorySourceCompositionRuntime(deps) {
+export function createLaboratorySourceCompositionRuntime(deps: any) {
   const mediaSourceFileRuntime = createMediaSourceFileRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     getSourceConfig: deps.getSourceConfig,

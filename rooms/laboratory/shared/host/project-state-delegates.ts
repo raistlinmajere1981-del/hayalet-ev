@@ -5,10 +5,7 @@ type LaboratoryProjectStateRuntime = {
   readFeatureReportRecord: (project: LaboratoryRecord, featureId: string) => unknown;
   serializeProject: (project: LaboratoryRecord, runtime: unknown) => unknown;
   serializeProjectSummary: (project: LaboratoryRecord) => unknown;
-  syncProjectFeatureProjections: (
-    runtime: unknown,
-    project: LaboratoryRecord,
-  ) => unknown;
+  syncProjectFeatureProjections: (runtime: unknown, project: LaboratoryRecord) => unknown;
 };
 
 type LaboratoryProjectStateDelegatesRuntimeDeps = {
@@ -24,13 +21,10 @@ type LaboratoryProjectStateDelegatesRuntimeDeps = {
 };
 
 export function createLaboratoryProjectStateDelegatesRuntime(
-  deps: LaboratoryProjectStateDelegatesRuntimeDeps,
+  deps: LaboratoryProjectStateDelegatesRuntimeDeps
 ) {
-  const {
-    getMediaProfileStateRuntime,
-    getProcessReportStateRuntime,
-    getProjectStateRuntime,
-  } = deps;
+  const { getMediaProfileStateRuntime, getProcessReportStateRuntime, getProjectStateRuntime } =
+    deps;
 
   function serializeProjectSummary(project: LaboratoryRecord) {
     return getProjectStateRuntime().serializeProjectSummary(project);
@@ -40,10 +34,7 @@ export function createLaboratoryProjectStateDelegatesRuntime(
     return getProjectStateRuntime().serializeProject(project, runtime);
   }
 
-  function syncProjectFeatureProjections(
-    runtime: unknown,
-    project: LaboratoryRecord,
-  ) {
+  function syncProjectFeatureProjections(runtime: unknown, project: LaboratoryRecord) {
     return getProjectStateRuntime().syncProjectFeatureProjections(runtime, project);
   }
 

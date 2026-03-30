@@ -10,10 +10,7 @@ import {
   resolveInstalledRoomTrackedFiles,
   writeInstalledRoomFileSnapshot,
 } from "./room-install-files.ts";
-import type {
-  RoomOperationResult,
-  RoomPackageTranslator,
-} from "./room-package-types.ts";
+import type { RoomOperationResult, RoomPackageTranslator } from "./room-package-types.ts";
 import type { BuildWorkspaceRoomArtifactResult } from "./workspace-room-build.ts";
 
 function normalizeRoomId(rawValue: string): string {
