@@ -1,4 +1,65 @@
-export function createMediaSourceActionRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryProjectSourceRecord = LaboratoryRecord & {
+  kind?: unknown;
+  lastError?: unknown;
+  metadata?: unknown;
+  metadataError?: unknown;
+  mimeType?: unknown;
+  mode?: unknown;
+  routeLabel?: unknown;
+  sourceUrl?: unknown;
+  status?: unknown;
+  storedFileName?: unknown;
+  storedPath?: unknown;
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  source: LaboratoryProjectSourceRecord;
+};
+
+type MediaSourceActionRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  getDefaultMode: (sourcePresets: unknown, sourceKind: unknown) => string;
+  getDefaultSourceType: (sourcePresets: unknown) => string;
+  handleLocalPick: (api: unknown, runtime: LaboratoryRecord, requestId: string) => Promise<unknown>;
+  handleUrlDownload: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string
+  ) => Promise<unknown>;
+  handleYoutubeDownload: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string
+  ) => Promise<unknown>;
+  patchActiveProject: (
+    runtime: LaboratoryRecord,
+    patcher: (project: LaboratoryRecord) => LaboratoryRecord
+  ) => Promise<unknown>;
+  patchActiveProjectDrafts: (runtime: LaboratoryRecord, fields: unknown) => Promise<unknown>;
+  resetEditForCurrentSource: (runtime: LaboratoryRecord, project: LaboratoryRecord) => void;
+  resetProfileForCurrentSource: (
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    reason: string
+  ) => void;
+};
+
+function isLaboratoryRecord(value: unknown): value is LaboratoryRecord {
+  return value !== null && typeof value === "object" && Array.isArray(value) === false;
+}
+
+function toProjectRecord(value: unknown): LaboratoryProjectRecord {
+  const projectRecord = isLaboratoryRecord(value) ? value : {};
+  const sourceRecord = isLaboratoryRecord(projectRecord["source"]) ? projectRecord["source"] : {};
+  return {
+    ...projectRecord,
+    source: sourceRecord,
+  };
+}
+
+export function createMediaSourceActionRuntime(deps: MediaSourceActionRuntimeDeps) {
   const {
     asNonEmptyString,
     getDefaultMode,
@@ -12,11 +73,12 @@ export function createMediaSourceActionRuntime(deps: any) {
     resetProfileForCurrentSource,
   } = deps;
 
-  async function setSourceKind(runtime: any, actionPayload: Record<string, unknown>) {
-    return patchActiveProject(runtime, function (nextProject: any) {
+  async function setSourceKind(runtime: LaboratoryRecord, actionPayload: LaboratoryRecord) {
+    return patchActiveProject(runtime, function (project) {
+      const nextProject = toProjectRecord(project);
       nextProject.source.kind =
-        asNonEmptyString(actionPayload["kind"]) || getDefaultSourceType(runtime.sourcePresets);
-      nextProject.source.mode = getDefaultMode(runtime.sourcePresets, nextProject.source.kind);
+        asNonEmptyString(actionPayload["kind"]) || getDefaultSourceType(runtime["sourcePresets"]);
+      nextProject.source.mode = getDefaultMode(runtime["sourcePresets"], nextProject.source.kind);
       nextProject.source.status = "idle";
       nextProject.source.storedPath = null;
       nextProject.source.storedFileName = null;
@@ -36,45 +98,46 @@ export function createMediaSourceActionRuntime(deps: any) {
     });
   }
 
-  async function setSourceMode(runtime: any, actionPayload: Record<string, unknown>) {
-    return patchActiveProject(runtime, function (nextProject: any) {
+  async function setSourceMode(runtime: LaboratoryRecord, actionPayload: LaboratoryRecord) {
+    return patchActiveProject(runtime, function (project) {
+      const nextProject = toProjectRecord(project);
       nextProject.source.mode =
         asNonEmptyString(actionPayload["mode"]) ||
-        getDefaultMode(runtime.sourcePresets, nextProject.source.kind);
+        getDefaultMode(runtime["sourcePresets"], nextProject.source.kind);
       nextProject.source.lastError = null;
       return nextProject;
     });
   }
 
-  async function updateDrafts(runtime: any, fields: Record<string, unknown>) {
+  async function updateDrafts(runtime: LaboratoryRecord, fields: LaboratoryRecord) {
     return patchActiveProjectDrafts(runtime, fields);
   }
 
   async function pickLocal(
-    api: any,
-    runtime: any,
+    api: unknown,
+    runtime: LaboratoryRecord,
     requestId: string,
-    actionPayload: Record<string, unknown>
+    actionPayload: LaboratoryRecord
   ) {
     await patchActiveProjectDrafts(runtime, actionPayload["fields"]);
     return handleLocalPick(api, runtime, requestId);
   }
 
   async function downloadUrl(
-    api: any,
-    runtime: any,
+    api: unknown,
+    runtime: LaboratoryRecord,
     requestId: string,
-    actionPayload: Record<string, unknown>
+    actionPayload: LaboratoryRecord
   ) {
     await patchActiveProjectDrafts(runtime, actionPayload["fields"]);
     return handleUrlDownload(api, runtime, requestId);
   }
 
   async function downloadYoutube(
-    api: any,
-    runtime: any,
+    api: unknown,
+    runtime: LaboratoryRecord,
     requestId: string,
-    actionPayload: Record<string, unknown>
+    actionPayload: LaboratoryRecord
   ) {
     await patchActiveProjectDrafts(runtime, actionPayload["fields"]);
     return handleYoutubeDownload(api, runtime, requestId);

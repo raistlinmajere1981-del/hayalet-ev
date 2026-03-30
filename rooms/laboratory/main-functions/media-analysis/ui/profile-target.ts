@@ -44,7 +44,7 @@ export function getMediaAnalysisProfileTargetAsset(deps: MediaAnalysisProfileTar
   const source = getProjectSource();
   const target = getProfileTargetSummary();
   if (target.mode === "derived") {
-    const output = getEditOutputs().find(function (entry: any) {
+    const output = getEditOutputs().find(function (entry) {
       return entry.id === target.outputId;
     });
     if (output) {

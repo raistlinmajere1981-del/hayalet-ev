@@ -5,12 +5,18 @@ import {
   TEAM_TETRIS_BOARD_WIDTH,
   TEAM_TETRIS_SCHEMA_VERSION,
   TEAM_TETRIS_TURN_LOOP,
+  type TeamTetrisSeatView,
+  type TeamTetrisTeamId,
+  type TeamTetrisTurn,
 } from "./engine.js";
 import {
   TEAM_TETRIS_STATUS_COPY,
   createInitialTeamTetrisState,
   loadTeamTetrisState,
   saveTeamTetrisState,
+  type TeamTetrisHostState,
+  type TeamTetrisStateApi,
+  type TeamTetrisStatusKey,
 } from "./state.js";
 import { getActiveFeatureId, loadContext, readLocale } from "../../../shared/host/context-state.js";
 import {
@@ -25,51 +31,75 @@ import { loadFateKnotsContentRegistry } from "../../fate-knots/host/content-load
 
 type TeamTetrisSeatId = "ai1" | "ai2" | "us1";
 type TeamTetrisSeatReadiness = Record<TeamTetrisSeatId, boolean>;
-type TeamTetrisSlotState = { ready?: unknown };
-type TeamTetrisContextWithSlots = {
-  slots?: Partial<Record<TeamTetrisSeatId, TeamTetrisSlotState>>;
-};
+type TeamTetrisContext = ReturnType<typeof loadContext>;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+interface TeamTetrisRuntimeSyncApi extends TeamTetrisStateApi {
+  notifyRoom?(eventType: string, data: unknown): void;
 }
 
-function readTeamTetrisContextSlots(
-  context: unknown
-): Partial<Record<TeamTetrisSeatId, TeamTetrisSlotState>> {
-  if (isRecord(context) === false || isRecord(context["slots"]) === false) {
-    return {};
-  }
-  return (context as TeamTetrisContextWithSlots)["slots"] || {};
+interface TeamTetrisBoardSnapshot {
+  teamId: TeamTetrisTeamId;
+  visibility: "private" | "public";
+  rows: string[];
+  boardBeforePartnerPieceRows?: string[];
+  partnerLastPiece?: TeamTetrisSeatView["ownTeam"]["partnerLastPiece"];
 }
 
-function isKnownTeamTetrisStatusKey(value: unknown): value is keyof typeof TEAM_TETRIS_STATUS_COPY {
+interface TeamTetrisSerializedState {
+  roomId: string;
+  featureId: string;
+  schemaVersion: number;
+  active: boolean;
+  result: TeamTetrisHostState["result"];
+  hiddenPairs: boolean;
+  revealPairsOnFinish: boolean;
+  blockedReason: string;
+  matchId: string | null;
+  localSessionId: string | null;
+  remoteUserId: string | null;
+  lastRemoteTransportMessageId: string | null;
+  lastRemoteTurnIndex: number | null;
+  canStart: boolean;
+  requiredSlots: TeamTetrisSeatReadiness;
+  board: {
+    width: number;
+    height: number;
+    seedLabel: string;
+  };
+  boards: TeamTetrisBoardSnapshot[];
+  turnLoop: string[];
+  currentTurn: TeamTetrisTurn | null;
+  teams: { teamId: TeamTetrisTeamId; seatIds: string[] }[] | null;
+  userView: TeamTetrisSeatView | null;
+  status: string;
+}
+
+function isKnownTeamTetrisStatusKey(value: unknown): value is TeamTetrisStatusKey {
   return (
     typeof value === "string" &&
     Object.prototype.hasOwnProperty.call(TEAM_TETRIS_STATUS_COPY, value)
   );
 }
 
-function isTeamTetrisBlocked(state: any) {
+function isTeamTetrisBlocked(state: TeamTetrisHostState): boolean {
   return state.result === "blocked" || state.blockedReason !== "";
 }
 
-function getTeamTetrisReadiness(context: unknown): TeamTetrisSeatReadiness {
-  const slots = readTeamTetrisContextSlots(context);
+function getTeamTetrisReadiness(context: TeamTetrisContext): TeamTetrisSeatReadiness {
   return {
-    ai1: !!(slots.ai1 && slots.ai1.ready === true),
-    ai2: !!(slots.ai2 && slots.ai2.ready === true),
-    us1: !!(slots.us1 && slots.us1.ready === true),
+    ai1: context.slots.ai1.ready === true,
+    ai2: context.slots.ai2.ready === true,
+    us1: context.slots.us1.ready === true,
   };
 }
 
-function buildEmptyTeamTetrisRows() {
+function buildEmptyTeamTetrisRows(): string[] {
   return Array.from({ length: TEAM_TETRIS_BOARD_HEIGHT }, function () {
     return ".".repeat(TEAM_TETRIS_BOARD_WIDTH);
   });
 }
 
-function resolveTeamTetrisStatusText(state: any, context: unknown) {
+function resolveTeamTetrisStatusText(state: TeamTetrisHostState, context: TeamTetrisContext): string {
   if (state.blockedReason) {
     return state.blockedReason;
   }
@@ -78,16 +108,21 @@ function resolveTeamTetrisStatusText(state: any, context: unknown) {
   }
   const readiness = getTeamTetrisReadiness(context);
   const canStart = readiness.ai1 && readiness.ai2 && readiness.us1;
-  const statusKey = canStart && state.statusKey === "idle" ? "ready" : state.statusKey;
+  const statusKey: TeamTetrisStatusKey =
+    canStart && state.statusKey === "idle" ? "ready" : state.statusKey;
   return translate(state.locale, TEAM_TETRIS_STATUS_COPY, statusKey);
 }
 
-function serializeTeamTetrisState(api: any, state: any, context: unknown) {
+function serializeTeamTetrisState(
+  api: TeamTetrisRuntimeSyncApi,
+  state: TeamTetrisHostState,
+  context: TeamTetrisContext
+): TeamTetrisSerializedState {
   const readiness = getTeamTetrisReadiness(context);
   const canStart = readiness.ai1 && readiness.ai2 && readiness.us1;
   const savedState = saveTeamTetrisState(api, state);
   const userView = savedState.match ? buildTeamTetrisSeatView(savedState.match, "user") : null;
-  const boardSnapshots =
+  const boardSnapshots: TeamTetrisBoardSnapshot[] =
     userView !== null
       ? [
           {
@@ -117,6 +152,7 @@ function serializeTeamTetrisState(api: any, state: any, context: unknown) {
             rows: buildEmptyTeamTetrisRows(),
           },
         ];
+
   return {
     roomId: ROOM_ID,
     featureId: TEAM_TETRIS_FEATURE_ID,
@@ -141,7 +177,7 @@ function serializeTeamTetrisState(api: any, state: any, context: unknown) {
     remoteUserId: savedState.remoteUserId,
     lastRemoteTransportMessageId: savedState.lastRemoteTransportMessageId,
     lastRemoteTurnIndex: savedState.lastRemoteTurnIndex,
-    canStart: canStart,
+    canStart,
     requiredSlots: readiness,
     board: {
       width: TEAM_TETRIS_BOARD_WIDTH,
@@ -152,36 +188,39 @@ function serializeTeamTetrisState(api: any, state: any, context: unknown) {
     turnLoop: TEAM_TETRIS_TURN_LOOP.slice(),
     currentTurn:
       savedState.match && savedState.match.currentTurn ? { ...savedState.match.currentTurn } : null,
-    teams: (function () {
-      const match = savedState.match;
-      if (
-        !match ||
-        savedState.revealPairsOnFinish !== true ||
-        match.revealedPairs !== true
-      ) {
-        return null;
-      }
-      return getTeamTetrisTeamIds().map(function (teamId: any) {
-        return {
-          teamId: teamId,
-          seatIds: match.teams[teamId].seatIds.slice(),
-        };
-      });
-    })(),
-    userView: userView,
+    teams:
+      savedState.match &&
+      savedState.revealPairsOnFinish === true &&
+      savedState.match.revealedPairs === true
+        ? getTeamTetrisTeamIds().map(function (teamId: TeamTetrisTeamId) {
+            return {
+              teamId,
+              seatIds: savedState.match ? savedState.match.teams[teamId].seatIds.slice() : [],
+            };
+          })
+        : null,
+    userView,
     status: resolveTeamTetrisStatusText(savedState, context),
   };
 }
 
-function pushTeamTetrisState(api: any, state: any) {
+function pushTeamTetrisState(
+  api: TeamTetrisRuntimeSyncApi,
+  state: TeamTetrisHostState
+): TeamTetrisHostState {
   const context = loadContext(api);
-  api.notifyRoom("team-tetris-state", {
+  api.notifyRoom?.("team-tetris-state", {
     state: serializeTeamTetrisState(api, state, context),
   });
   return loadTeamTetrisState(api);
 }
 
-function blockTeamTetrisMatch(api: any, state: any, statusKey: any, blockedReason: any) {
+function blockTeamTetrisMatch(
+  api: TeamTetrisRuntimeSyncApi,
+  state: TeamTetrisHostState,
+  statusKey: TeamTetrisStatusKey,
+  blockedReason: string
+): TeamTetrisHostState {
   state.active = false;
   state.result = "blocked";
   state.statusKey = statusKey;
@@ -189,7 +228,10 @@ function blockTeamTetrisMatch(api: any, state: any, statusKey: any, blockedReaso
   return pushTeamTetrisState(api, state);
 }
 
-function resetTeamTetrisState(api: any, statusKey: unknown) {
+function resetTeamTetrisState(
+  api: TeamTetrisRuntimeSyncApi,
+  statusKey: unknown
+): TeamTetrisHostState {
   const nextState = createInitialTeamTetrisState(readLocale(api));
   if (isKnownTeamTetrisStatusKey(statusKey)) {
     nextState.statusKey = statusKey;
@@ -197,13 +239,17 @@ function resetTeamTetrisState(api: any, statusKey: unknown) {
   return saveTeamTetrisState(api, nextState);
 }
 
-function pushActiveFeatureState(api: any) {
+function pushActiveFeatureState(api: TeamTetrisRuntimeSyncApi): unknown {
   const context = loadContext(api);
   if (getActiveFeatureId(context) === TEAM_TETRIS_FEATURE_ID) {
     return pushTeamTetrisState(api, loadTeamTetrisState(api));
   }
   if (getActiveFeatureId(context) === FATE_KNOTS_FEATURE_ID) {
-    return pushFateKnotsState(api, loadFateKnotsState(api), loadFateKnotsContentRegistry());
+    return pushFateKnotsState(
+      api,
+      loadFateKnotsState(api),
+      loadFateKnotsContentRegistry() as unknown as Parameters<typeof pushFateKnotsState>[2]
+    );
   }
   return pushRoomState(api, loadState(api));
 }

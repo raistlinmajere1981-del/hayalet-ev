@@ -46,7 +46,7 @@ function isSafeRelativePath(value: unknown): boolean {
   if (normalized === "" || normalized.startsWith("/") || /^[A-Za-z]:\//.test(normalized)) {
     return false;
   }
-  return normalized.split("/").every(function (segment: any) {
+  return normalized.split("/").every(function (segment: string) {
     return segment !== "" && segment !== "." && segment !== "..";
   });
 }
@@ -124,7 +124,6 @@ export function loadFateKnotsAssetRegistry(): FateKnotsAssetRegistry {
   };
 
   const parsed =
-    fateKnotsRuntimeAssetsManifest &&
     typeof fateKnotsRuntimeAssetsManifest === "object" &&
     Array.isArray(fateKnotsRuntimeAssetsManifest) === false
       ? (fateKnotsRuntimeAssetsManifest as FateKnotsAssetManifestRecord)
@@ -143,7 +142,7 @@ export function loadFateKnotsAssetRegistry(): FateKnotsAssetRegistry {
   const errors: string[] = [];
   const sourceAssets = Array.isArray(parsed.assets) ? parsed.assets : [];
 
-  sourceAssets.forEach(function (entry: any, index: any) {
+  sourceAssets.forEach(function (entry: unknown, index: number) {
     const normalized = normalizeAssetRecord(entry);
     if (normalized === null) {
       errors.push(`invalid-asset-entry:${index}`);
@@ -179,7 +178,7 @@ export function getFateKnotsAsset(
   assetId: string,
   expectedKind?: string
 ): FateKnotsAssetRecord {
-  if (!assetRegistry || !assetRegistry.assetMap) {
+  if (!assetRegistry) {
     return createFallbackAsset(assetId, expectedKind);
   }
   const normalizedId = normalizeText(assetId);
@@ -204,7 +203,7 @@ export function listFateKnotsAssetsByKind(
   assetRegistry: FateKnotsAssetRegistry | null | undefined,
   kind: string
 ): FateKnotsAssetRecord[] {
-  if (!assetRegistry || !assetRegistry.byKind) {
+  if (!assetRegistry) {
     return [];
   }
   return (assetRegistry.byKind.get(normalizeText(kind)) || []).slice();

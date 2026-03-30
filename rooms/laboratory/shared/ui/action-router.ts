@@ -1,7 +1,16 @@
 import { createLaboratoryUiActionHandlers } from "./action-router-actions.js";
 import { createLaboratoryUiActionEventRuntime } from "./action-router-events.js";
 
-export function createLaboratoryUiActionRouter(deps: any) {
+type LaboratoryUiActionHandlersDeps = Parameters<typeof createLaboratoryUiActionHandlers>[0];
+type LaboratoryUiActionEventRuntimeDeps = Omit<
+  Parameters<typeof createLaboratoryUiActionEventRuntime>[0],
+  "handleAction"
+>;
+
+type LaboratoryUiActionRouterDeps = LaboratoryUiActionHandlersDeps &
+  LaboratoryUiActionEventRuntimeDeps;
+
+export function createLaboratoryUiActionRouter(deps: LaboratoryUiActionRouterDeps) {
   const {
     advanceStage,
     buildCurrentDraftPayload,
@@ -32,7 +41,7 @@ export function createLaboratoryUiActionRouter(deps: any) {
     toggleCleanup,
   } = deps;
 
-  const laboratoryUiActionHandlers = createLaboratoryUiActionHandlers({
+  const { handleAction } = createLaboratoryUiActionHandlers({
     advanceStage,
     buildCurrentDraftPayload,
     buildCurrentEditRecipePatch,
@@ -52,7 +61,6 @@ export function createLaboratoryUiActionRouter(deps: any) {
     state,
     syncDraftField,
   });
-  const handleAction = laboratoryUiActionHandlers.handleAction;
 
   const laboratoryUiActionEventRuntime = createLaboratoryUiActionEventRuntime({
     buildNestedPatch,

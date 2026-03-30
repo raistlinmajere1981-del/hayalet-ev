@@ -25,6 +25,14 @@ type LaboratoryProfilePreflight = {
   warnings: string[];
 };
 
+type LaboratoryProfileLaneRecord = LaboratoryRecord & {
+  mediaKinds?: unknown;
+};
+
+type LaboratoryProfileModelRecord = LaboratoryRecord & {
+  mediaKinds?: unknown;
+};
+
 type LaboratoryPresetProfileRuntimeDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   toRecord: (value: unknown) => LaboratoryRecord;
@@ -38,9 +46,10 @@ export function createLaboratoryPresetProfileRuntime(deps: LaboratoryPresetProfi
   }
 
   function getCompatibleProfileLaneIds(profilePresets: unknown, sourceKind: string): string[] {
-    return Object.keys(getProfileLaneMap(profilePresets)).filter(function (laneId: any) {
-      const lane = toRecord(getProfileLaneMap(profilePresets)[laneId]);
-      const mediaKinds = Array.isArray(lane["mediaKinds"]) ? lane["mediaKinds"] : [];
+    const laneMap = getProfileLaneMap(profilePresets);
+    return Object.keys(laneMap).filter(function (laneId) {
+      const lane = toRecord(laneMap[laneId]) as LaboratoryProfileLaneRecord;
+      const mediaKinds = Array.isArray(lane.mediaKinds) ? lane.mediaKinds : [];
       return mediaKinds.length === 0 || mediaKinds.includes(sourceKind);
     });
   }
@@ -53,8 +62,8 @@ export function createLaboratoryPresetProfileRuntime(deps: LaboratoryPresetProfi
     const presetsByKind = toRecord(toRecord(profilePresets)["presets"]);
     const branch = toRecord(presetsByKind[sourceKind]);
     const selectedMode =
-      asNonEmptyString(mode) ||
-      asNonEmptyString(toRecord(profilePresets)["defaultMode"]) ||
+      asNonEmptyString(mode) ??
+      asNonEmptyString(toRecord(profilePresets)["defaultMode"]) ??
       "beginner";
     return Array.isArray(branch[selectedMode]) ? branch[selectedMode] : [];
   }
@@ -70,9 +79,9 @@ export function createLaboratoryPresetProfileRuntime(deps: LaboratoryPresetProfi
     }
 
     return (
-      getProfilePresetList(profilePresets, sourceKind, "beginner").find(function (entry: any) {
+      getProfilePresetList(profilePresets, sourceKind, "beginner").find(function (entry) {
         return asNonEmptyString(toRecord(entry)["id"]) === targetId;
-      }) || null
+      }) ?? null
     );
   }
 
@@ -84,21 +93,19 @@ export function createLaboratoryPresetProfileRuntime(deps: LaboratoryPresetProfi
   function getDefaultProfileModelId(profileModels: unknown, sourceKind: string): string | null {
     const modelMap = toRecord(toRecord(profileModels)["models"]);
     const preferredId = asNonEmptyString(toRecord(profileModels)["defaultModelId"]);
-    const preferredModel = preferredId ? toRecord(modelMap[preferredId]) : {};
-    const preferredKinds = Array.isArray(preferredModel["mediaKinds"])
-      ? preferredModel["mediaKinds"]
-      : [];
+    const preferredModel = preferredId === null ? {} : (toRecord(modelMap[preferredId]) as LaboratoryProfileModelRecord);
+    const preferredKinds = Array.isArray(preferredModel.mediaKinds) ? preferredModel.mediaKinds : [];
 
-    if (preferredId && (preferredKinds.length === 0 || preferredKinds.includes(sourceKind))) {
+    if (preferredId !== null && (preferredKinds.length === 0 || preferredKinds.includes(sourceKind))) {
       return preferredId;
     }
 
     return (
-      Object.keys(modelMap).find(function (modelId: any) {
-        const model = toRecord(modelMap[modelId]);
-        const mediaKinds = Array.isArray(model["mediaKinds"]) ? model["mediaKinds"] : [];
+      Object.keys(modelMap).find(function (modelId) {
+        const model = toRecord(modelMap[modelId]) as LaboratoryProfileModelRecord;
+        const mediaKinds = Array.isArray(model.mediaKinds) ? model.mediaKinds : [];
         return mediaKinds.length === 0 || mediaKinds.includes(sourceKind);
-      }) || null
+      }) ?? null
     );
   }
 

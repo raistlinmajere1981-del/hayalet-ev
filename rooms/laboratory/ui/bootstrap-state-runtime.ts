@@ -1,4 +1,161 @@
-export function createLaboratoryUiBootstrapStateRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryUiRequestDomain =
+  | "project"
+  | "source-config"
+  | "source-acquire"
+  | "edit-config"
+  | "edit-preview"
+  | "edit-apply"
+  | "edit-preview-cancel"
+  | "edit-apply-cancel"
+  | "profile-config"
+  | "profile-run"
+  | "profile-cancel"
+  | "profile-model"
+  | "process-run"
+  | "process-cancel"
+  | "report-export"
+  | "tools"
+  | "misc";
+
+type LaboratoryUiBootstrapContext = {
+  featureId: string;
+  presentation: {
+    mode: "classic";
+    uiScale: number;
+  };
+  room: {
+    id: string;
+    name: string;
+  };
+  user: {
+    nickname: string;
+  };
+};
+
+type LaboratorySourceSnapshot = {
+  activeProject: unknown;
+  activeProjectId: string | null;
+  audioAnalysisCapabilities: LaboratoryRecord;
+  audioAnalysisCatalog: LaboratoryRecord;
+  audioAnalysisPresets: LaboratoryRecord;
+  audioAnalysisProviders: LaboratoryRecord;
+  editCapabilities: LaboratoryRecord;
+  editPresets: LaboratoryRecord;
+  jobs: unknown[];
+  profileCapabilities: LaboratoryRecord;
+  profileModelState: {
+    models: LaboratoryRecord;
+  };
+  profileModels: LaboratoryRecord;
+  profilePresets: LaboratoryRecord;
+  projects: unknown[];
+  ready: boolean;
+  sourcePresets: LaboratoryRecord;
+  stages: string[];
+  subtitleAnalysisCapabilities: LaboratoryRecord;
+  subtitleAnalysisCatalog: LaboratoryRecord;
+  subtitleAnalysisProviders: LaboratoryRecord;
+  subtitleEditPresets: LaboratoryRecord;
+  subtitleSourcePresets: LaboratoryRecord;
+  subtitleYoutubeForm: LaboratoryRecord;
+  toolRegistry: unknown[];
+  toolState: {
+    tools: LaboratoryRecord;
+  };
+  ytDlpForm: LaboratoryRecord;
+};
+
+type LaboratoryLocalDrafts = {
+  fileNameHint: string;
+  urlInput: string;
+  youtubeCustom: LaboratoryRecord;
+  youtubePreset: unknown;
+  youtubeUrl: string;
+};
+
+type LaboratoryLocalSubtitleDrafts = {
+  durationMaxSeconds: number | null;
+  durationMinSeconds: number | null;
+  limitCount: number | null;
+  liveMode: string;
+  playlistItems: string;
+  publishedAfter: string;
+  publishedBefore: string;
+  shortsMode: string;
+  subtitleMode: string;
+  subtitlesLang: string;
+  titleExclude: string;
+  titleInclude: string;
+  urlInput: string;
+  weekdays: string;
+  youtubeUrl: string;
+};
+
+type LaboratoryUiState = {
+  activeStage: string;
+  context: LaboratoryUiBootstrapContext;
+  locale: string;
+  presentation: {
+    mode: "classic";
+    uiScale: number;
+  };
+  sourceSnapshot: LaboratorySourceSnapshot;
+  translations: LaboratoryRecord | null;
+  ui: {
+    audioAnalysis: {
+      bars: number[];
+      url: string | null;
+    };
+    lastActionMessage: string;
+    lastRequestId: string | null;
+    latestRequestByDomain: Record<LaboratoryUiRequestDomain, number>;
+    localDraftProjectId: string | null;
+    localDrafts: LaboratoryLocalDrafts;
+    localEditDraft: unknown;
+    localEditProjectId: string | null;
+    localEditUpdatedAt: string | null;
+    localSubtitleDraftProjectId: string | null;
+    localSubtitleDrafts: LaboratoryLocalSubtitleDrafts;
+    localSubtitleEditDraft: unknown;
+    localSubtitleEditProjectId: string | null;
+    localSubtitleEditUpdatedAt: string | null;
+    overlayScrollResetPending: boolean;
+    pendingDeleteProjectId: string | null;
+    previewMetrics: {
+      duration: number | null;
+      height: number | null;
+      url: string | null;
+      width: number | null;
+    };
+    requestCounter: number;
+    requestLookup: Record<string, unknown>;
+    scrollPositions: {
+      overlay: number;
+      surface: number;
+    };
+    settingsOpen: boolean;
+    stackScrollPositions: {
+      main: number;
+      side: number;
+    };
+    surfaceScrollResetPending: boolean;
+  };
+};
+
+type LaboratoryUiBootstrapStateRuntimeDeps = {
+  documentRef: Document;
+  featureId: string;
+  navigatorRef: Navigator;
+  resolveLocale: (value: unknown) => string;
+  roomId: string;
+  stageOrder: string[];
+};
+
+export function createLaboratoryUiBootstrapStateRuntime(
+  deps: LaboratoryUiBootstrapStateRuntimeDeps
+) {
   const roomId = deps.roomId;
   const featureId = deps.featureId;
   const stageOrder = deps.stageOrder;
@@ -6,7 +163,7 @@ export function createLaboratoryUiBootstrapStateRuntime(deps: any) {
   const navigatorRef = deps.navigatorRef;
   const resolveLocale = deps.resolveLocale;
 
-  function createContext() {
+  function createContext(): LaboratoryUiBootstrapContext {
     return {
       room: {
         id: roomId,
@@ -23,7 +180,7 @@ export function createLaboratoryUiBootstrapStateRuntime(deps: any) {
     };
   }
 
-  function createSourceSnapshot() {
+  function createSourceSnapshot(): LaboratorySourceSnapshot {
     return {
       ready: false,
       stages: stageOrder.slice(),
@@ -58,7 +215,7 @@ export function createLaboratoryUiBootstrapStateRuntime(deps: any) {
     };
   }
 
-  function createLocalDrafts() {
+  function createLocalDrafts(): LaboratoryLocalDrafts {
     return {
       urlInput: "",
       youtubeUrl: "",
@@ -68,7 +225,7 @@ export function createLaboratoryUiBootstrapStateRuntime(deps: any) {
     };
   }
 
-  function createSubtitleLocalDrafts() {
+  function createSubtitleLocalDrafts(): LaboratoryLocalSubtitleDrafts {
     return {
       urlInput: "",
       youtubeUrl: "",
@@ -88,9 +245,9 @@ export function createLaboratoryUiBootstrapStateRuntime(deps: any) {
     };
   }
 
-  const state = {
+  const state: LaboratoryUiState = {
     locale: resolveLocale(documentRef.documentElement.lang || navigatorRef.language),
-    translations: null as unknown,
+    translations: null,
     context: createContext(),
     presentation: {
       mode: "classic",

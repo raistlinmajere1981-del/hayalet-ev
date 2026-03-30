@@ -87,6 +87,10 @@ interface LaboratoryProcessDeps {
   [key: string]: unknown;
 }
 
+type LaboratoryManagedProcessRunnersRuntimeDeps = Parameters<
+  typeof createLaboratoryManagedProcessRunnersRuntime
+>[0];
+
 export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
   const {
     asNonEmptyString,
@@ -119,7 +123,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     audioFeatureId,
     subtitleFeatureId,
   } = deps;
-  const laboratoryManagedProcessRunnersRuntime = createLaboratoryManagedProcessRunnersRuntime({
+  const managedProcessRunnersDeps = {
     asNonEmptyString: deps["asNonEmptyString"],
     buildProcessSpeechAvailability: deps["buildProcessSpeechAvailability"],
     buildSubtitleAnalysisStats: deps["buildSubtitleAnalysisStats"],
@@ -142,7 +146,10 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     updateProcessModule: deps["updateProcessModule"],
     writeJsonFile: deps["writeJsonFile"],
     writeTextFile: deps["writeTextFile"],
-  });
+  };
+  const laboratoryManagedProcessRunnersRuntime = createLaboratoryManagedProcessRunnersRuntime(
+    managedProcessRunnersDeps as unknown as LaboratoryManagedProcessRunnersRuntimeDeps
+  );
 
   async function runManagedProcess(
     runtime: Record<string, unknown>,

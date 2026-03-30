@@ -1,4 +1,88 @@
-export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>
+
+type LaboratoryProcessRecord = LaboratoryRecord & {
+  modules?: unknown
+  targetSummary?: unknown
+}
+
+type LaboratoryProcessModuleRecord = LaboratoryRecord & {
+  id?: unknown
+  status?: unknown
+}
+
+type LaboratoryProcessFindingRecord = LaboratoryRecord & {
+  id?: unknown
+}
+
+type LaboratoryProcessArtifactRecord = LaboratoryRecord & {
+  id?: unknown
+}
+
+type LaboratorySubtitleTopWord = {
+  count: number
+  word: string
+}
+
+type LaboratorySubtitleAnalysisStats = {
+  averageCharsPerLine: number
+  averageCps: number | null
+  emptyCueCount: number
+  invalidDurationCount: number
+  longLineCount: number
+  overlapCount: number
+  topWords: LaboratorySubtitleTopWord[]
+  totalCues: number
+  totalFiles: number
+  uniqueFormats: string[]
+  uniqueLanguages: string[]
+}
+
+type LaboratoryManagedSubtitleResult = {
+  artifacts: LaboratoryProcessArtifactRecord[]
+  findings: LaboratoryProcessFindingRecord[]
+  warnings: string[]
+}
+
+type LaboratoryManagedSubtitleRunnerDeps = {
+  asNonEmptyString: (value: unknown) => string | null
+  buildSubtitleAnalysisStats: (
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    target: LaboratoryRecord
+  ) => Promise<LaboratorySubtitleAnalysisStats>
+  clone: <T>(value: T) => T
+  createProcessArtifact: (
+    moduleId: string,
+    kind: string,
+    path: string,
+    title: string,
+    metadata: LaboratoryRecord
+  ) => LaboratoryProcessArtifactRecord | null
+  createProcessFinding: (
+    moduleId: string,
+    kind: string,
+    level: string,
+    confidence: string,
+    title: string,
+    detail: string,
+    evidenceCount: number,
+    artifactIds: string[]
+  ) => LaboratoryProcessFindingRecord
+  getProjectSubtitleProcessDir: (runtime: LaboratoryRecord, project: LaboratoryRecord) => string
+  normalizeProcessFinding: (rawValue: unknown) => LaboratoryProcessFindingRecord
+  toRecord: (value: unknown) => LaboratoryRecord
+  updateProcessModule: (
+    processRecord: LaboratoryProcessRecord,
+    moduleId: string,
+    patch: LaboratoryRecord
+  ) => LaboratoryProcessRecord
+  writeJsonFile: (filePath: string, payload: unknown) => Promise<unknown> | unknown
+  writeTextFile: (filePath: string, content: string) => Promise<unknown> | unknown
+}
+
+export function createLaboratoryManagedSubtitleRunnerRuntime(
+  deps: LaboratoryManagedSubtitleRunnerDeps
+) {
   const {
     asNonEmptyString,
     buildSubtitleAnalysisStats,
@@ -11,23 +95,33 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
     updateProcessModule,
     writeJsonFile,
     writeTextFile,
-  } = deps;
+  } = deps
 
-  async function runSubtitleManagedProcess(runtime: any, project: any, target: any, artifactBase: any, processRecord: any) {
-    const findings: any[] = [];
-    const artifacts: any[] = [];
-    const warnings: any[] = [];
-    const stats = await buildSubtitleAnalysisStats(runtime, project, target);
-    const subtitleProcessDir = getProjectSubtitleProcessDir(runtime, project);
-    const summaryPath = `${subtitleProcessDir}/${artifactBase}-subtitle-summary.json`;
-    const topWordsPath = `${subtitleProcessDir}/${artifactBase}-top-words.txt`;
-    const moduleArtifactIds: Record<string, string[]> = {};
+  function toProcessModuleRecord(value: unknown): LaboratoryProcessModuleRecord {
+    return toRecord(value)
+  }
+
+  async function runSubtitleManagedProcess(
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    target: LaboratoryRecord,
+    artifactBase: string,
+    processRecord: LaboratoryProcessRecord
+  ): Promise<LaboratoryManagedSubtitleResult> {
+    const findings: LaboratoryProcessFindingRecord[] = []
+    const artifacts: LaboratoryProcessArtifactRecord[] = []
+    const warnings: string[] = []
+    const stats = await buildSubtitleAnalysisStats(runtime, project, target)
+    const subtitleProcessDir = getProjectSubtitleProcessDir(runtime, project)
+    const summaryPath = `${subtitleProcessDir}/${artifactBase}-subtitle-summary.json`
+    const topWordsPath = `${subtitleProcessDir}/${artifactBase}-top-words.txt`
+    const moduleArtifactIds: Record<string, string[]> = {}
 
     await writeJsonFile(summaryPath, {
       generatedAt: new Date().toISOString(),
       target: clone(processRecord.targetSummary),
       stats: clone(stats),
-    });
+    })
 
     const summaryArtifact = createProcessArtifact(
       "batch-summary",
@@ -38,21 +132,21 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
         totalFiles: stats.totalFiles,
         totalCues: stats.totalCues,
       }
-    );
+    )
     if (summaryArtifact) {
-      artifacts.push(summaryArtifact);
-      moduleArtifactIds["batch-summary"] = [summaryArtifact.id];
+      artifacts.push(summaryArtifact)
+      moduleArtifactIds["batch-summary"] = [String(summaryArtifact.id || "")]
     }
 
-    if (Array.isArray(stats.topWords) && stats.topWords.length > 0) {
+    if (stats.topWords.length > 0) {
       await writeTextFile(
         topWordsPath,
         stats.topWords
-          .map(function (entry: any) {
-            return `${entry.word}\t${entry.count}`;
+          .map(function (entry) {
+            return `${entry.word}\t${entry.count}`
           })
           .join("\n")
-      );
+      )
       const topWordsArtifact = createProcessArtifact(
         "lexical-frequency",
         "subtitle-top-words",
@@ -61,32 +155,39 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
         {
           topWord: stats.topWords[0] ? stats.topWords[0].word : null,
         }
-      );
+      )
       if (topWordsArtifact) {
-        artifacts.push(topWordsArtifact);
-        moduleArtifactIds["lexical-frequency"] = [topWordsArtifact.id];
+        artifacts.push(topWordsArtifact)
+        moduleArtifactIds["lexical-frequency"] = [String(topWordsArtifact.id || "")]
       }
     }
 
-    for (let index = 0; index < processRecord.modules.length; index += 1) {
-      const moduleEntry = toRecord(processRecord.modules[index]);
-      const moduleId = asNonEmptyString(moduleEntry.id) || `subtitle-module-${index}`;
-      const moduleStatus = asNonEmptyString(moduleEntry.status) || "queued";
+    const modules = Array.isArray(processRecord.modules)
+      ? processRecord.modules.map(toProcessModuleRecord)
+      : []
+
+    for (let index = 0; index < modules.length; index += 1) {
+      const moduleEntry = modules[index]
+      if (!moduleEntry) {
+        continue
+      }
+      const moduleId = asNonEmptyString(moduleEntry.id) || `subtitle-module-${index}`
+      const moduleStatus = asNonEmptyString(moduleEntry.status) || "queued"
       if (["planned", "gated", "blocked", "skipped"].includes(moduleStatus)) {
-        continue;
+        continue
       }
 
       updateProcessModule(processRecord, moduleId, {
         status: "running",
         percent: 30,
         startedAt: new Date().toISOString(),
-      });
+      })
 
-      const moduleFindings = [];
-      let summary;
+      const moduleFindings: LaboratoryProcessFindingRecord[] = []
+      let summary: string
 
       if (moduleId === "format-qc") {
-        summary = `${stats.totalCues} cues checked across ${stats.totalFiles} subtitle file(s).`;
+        summary = `${stats.totalCues} cues checked across ${stats.totalFiles} subtitle file(s).`
         if (stats.totalCues === 0) {
           moduleFindings.push(
             createProcessFinding(
@@ -99,7 +200,7 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
               stats.totalFiles,
               []
             )
-          );
+          )
         }
         if (stats.emptyCueCount > 0) {
           moduleFindings.push(
@@ -113,10 +214,10 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
               stats.emptyCueCount,
               []
             )
-          );
+          )
         }
       } else if (moduleId === "readability-density") {
-        summary = `Average line density is ${Number(stats.averageCharsPerLine || 0).toFixed(1)} chars/line.`;
+        summary = `Average line density is ${Number(stats.averageCharsPerLine || 0).toFixed(1)} chars/line.`
         if (stats.longLineCount > 0) {
           moduleFindings.push(
             createProcessFinding(
@@ -129,7 +230,7 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
               stats.longLineCount,
               []
             )
-          );
+          )
         }
         if (typeof stats.averageCps === "number" && stats.averageCps > 17) {
           moduleFindings.push(
@@ -143,10 +244,10 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
               Math.round(stats.averageCps),
               []
             )
-          );
+          )
         }
       } else if (moduleId === "cue-timing-structure") {
-        summary = `Timing checks found ${stats.overlapCount} overlap(s) and ${stats.invalidDurationCount} invalid duration cue(s).`;
+        summary = `Timing checks found ${stats.overlapCount} overlap(s) and ${stats.invalidDurationCount} invalid duration cue(s).`
         if (stats.overlapCount > 0) {
           moduleFindings.push(
             createProcessFinding(
@@ -159,7 +260,7 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
               stats.overlapCount,
               []
             )
-          );
+          )
         }
         if (stats.invalidDurationCount > 0) {
           moduleFindings.push(
@@ -173,16 +274,16 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
               stats.invalidDurationCount,
               []
             )
-          );
+          )
         }
       } else if (moduleId === "lexical-frequency") {
-        const topWord = stats.topWords[0];
+        const topWord = stats.topWords[0]
         summary =
           topWord && topWord.word
             ? `Top lexical term is "${topWord.word}" with ${topWord.count} hits.`
-            : "No lexical frequency signal was extracted from the active selection.";
+            : "No lexical frequency signal was extracted from the active selection."
       } else if (moduleId === "batch-summary") {
-        summary = `${stats.totalFiles} file(s), ${stats.totalCues} cues, ${stats.uniqueFormats.join(", ") || "--"} format(s).`;
+        summary = `${stats.totalFiles} file(s), ${stats.totalCues} cues, ${stats.uniqueFormats.join(", ") || "--"} format(s).`
         if (stats.uniqueLanguages.length > 1) {
           moduleFindings.push(
             createProcessFinding(
@@ -195,35 +296,35 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(deps: any) {
               stats.uniqueLanguages.length,
               moduleArtifactIds["batch-summary"] || []
             )
-          );
+          )
         }
       } else {
-        summary = "Subtitle analysis module finished on the current selection.";
+        summary = "Subtitle analysis module finished on the current selection."
       }
 
-      moduleFindings.forEach(function (finding: any) {
-        findings.push(normalizeProcessFinding(finding));
-      });
+      moduleFindings.forEach(function (finding) {
+        findings.push(normalizeProcessFinding(finding))
+      })
       updateProcessModule(processRecord, moduleId, {
         status: "ready",
         percent: 100,
         completedAt: new Date().toISOString(),
-        summary: summary || "",
+        summary,
         artifactIds: moduleArtifactIds[moduleId] || [],
-        findingIds: moduleFindings.map(function (finding: any) {
-          return finding.id;
+        findingIds: moduleFindings.map(function (finding) {
+          return String(finding.id || "")
         }),
-      });
+      })
     }
 
     return {
-      findings: findings,
-      artifacts: artifacts,
-      warnings: warnings,
-    };
+      findings,
+      artifacts,
+      warnings,
+    }
   }
 
   return {
     runSubtitleManagedProcess,
-  };
+  }
 }

@@ -1,21 +1,28 @@
 /* global window */
 
-(function (global: any) {
-  type UnknownRecord = Record<string, unknown>;
-  type UiStateRef = { current?: unknown };
-  type XoxUiModule = {
-    sanitizeGameState: (candidate: unknown) => unknown;
-    syncPreferencesFromGame: () => void;
+(function (global: GameRoomUiGlobal) {
+  type UnknownRecord = GameRoomUnknownRecord;
+  type XoxStateMessageModule = Required<
+    Pick<GameRoomXoxUiModule, "sanitizeGameState" | "syncPreferencesFromGame">
+  >;
+  type TeamTetrisStateMessageModule = Required<
+    Pick<
+      GameRoomTeamTetrisUiModule,
+      "sanitizeTeamTetrisState" | "syncTeamTetrisPreferencesFromState" | "syncTeamTetrisDraftFromState"
+    >
+  >;
+  type FateKnotsStateMessageModule = Required<
+    Pick<GameRoomFateKnotsUiModule, "sanitizeFateKnotsState">
+  >;
+  type StateMessageRuntimeOptions = {
+    stateRef: {
+      current: GameRoomUiState | null;
+    };
+    xoxUi: XoxStateMessageModule;
+    teamTetrisUi: TeamTetrisStateMessageModule;
+    fateKnotsUi: FateKnotsStateMessageModule;
+    render: () => void;
   };
-  type TeamTetrisUiModule = {
-    sanitizeTeamTetrisState: (candidate: unknown) => unknown;
-    syncTeamTetrisPreferencesFromState: () => void;
-    syncTeamTetrisDraftFromState: () => void;
-  };
-  type FateKnotsUiModule = {
-    sanitizeFateKnotsState: (candidate: unknown) => unknown;
-  };
-  type RenderHandler = () => void;
 
   function readRecord(value: unknown): UnknownRecord | null {
     return value && typeof value === "object" && Array.isArray(value) === false
@@ -23,27 +30,34 @@
       : null;
   }
 
-  const registryHost = global as unknown as typeof globalThis & Record<string, unknown>;
-  const registry =
-    (registryHost["GameRoomUiStateMessageRuntime"] as Record<string, unknown> | undefined) ||
-    ((registryHost["GameRoomUiStateMessageRuntime"] = {}) as Record<string, unknown>);
+  function readRuntimeOptions(value: unknown): StateMessageRuntimeOptions | null {
+    return readRecord(value) ? (value as StateMessageRuntimeOptions) : null;
+  }
 
-  registry["createGameRoomUiStateMessageRuntime"] = function createGameRoomUiStateMessageRuntime(
+  function getStateMessageRegistry(
+    host: GameRoomUiGlobal
+  ): GameRoomUiStateMessageRuntimeRegistry {
+    return host.GameRoomUiStateMessageRuntime || (host.GameRoomUiStateMessageRuntime = {});
+  }
+
+  const registry = getStateMessageRegistry(global);
+
+  registry.createGameRoomUiStateMessageRuntime = function createGameRoomUiStateMessageRuntime(
     options: unknown
-  ) {
-    const runtimeOptions = readRecord(options) || {};
-    const stateRef = (runtimeOptions["stateRef"] as UiStateRef | undefined) || {};
-    const xoxUi = runtimeOptions["xoxUi"] as XoxUiModule;
-    const teamTetrisUi = runtimeOptions["teamTetrisUi"] as TeamTetrisUiModule;
-    const fateKnotsUi = runtimeOptions["fateKnotsUi"] as FateKnotsUiModule;
-    const render =
-      typeof runtimeOptions["render"] === "function"
-        ? (runtimeOptions["render"] as RenderHandler)
-        : function () {};
+  ): GameRoomUiStateMessageRuntime {
+    const runtimeOptions = readRuntimeOptions(options);
+    if (!runtimeOptions) {
+      throw new Error("Game Room UI state message runtime options are invalid.");
+    }
 
-    function getState() {
-      const current = readRecord(stateRef["current"]);
-      return current;
+    const stateRef = runtimeOptions.stateRef;
+    const xoxUi = runtimeOptions.xoxUi;
+    const teamTetrisUi = runtimeOptions.teamTetrisUi;
+    const fateKnotsUi = runtimeOptions.fateKnotsUi;
+    const render = runtimeOptions.render;
+
+    function getState(): GameRoomUiState | null {
+      return stateRef.current;
     }
 
     function readPayload(message: unknown): UnknownRecord {
@@ -51,43 +65,43 @@
       return readRecord(source?.["payload"]) || {};
     }
 
-    function handleXoxState(message: unknown) {
+    function handleXoxState(message: unknown): void {
       const state = getState();
       if (state === null) {
         return;
       }
       const payload = readPayload(message);
-      state["game"] = xoxUi.sanitizeGameState(payload["state"]);
+      state.game = xoxUi.sanitizeGameState(payload["state"]);
       xoxUi.syncPreferencesFromGame();
-      state["lastCommandMessage"] = "";
+      state.lastCommandMessage = "";
       render();
     }
 
-    function handleTeamTetrisState(message: unknown) {
+    function handleTeamTetrisState(message: unknown): void {
       const state = getState();
       if (state === null) {
         return;
       }
       const payload = readPayload(message);
-      state["teamTetris"] = teamTetrisUi.sanitizeTeamTetrisState(payload["state"]);
+      state.teamTetris = teamTetrisUi.sanitizeTeamTetrisState(payload["state"]);
       teamTetrisUi.syncTeamTetrisPreferencesFromState();
       teamTetrisUi.syncTeamTetrisDraftFromState();
-      state["lastCommandMessage"] = "";
+      state.lastCommandMessage = "";
       render();
     }
 
-    function handleFateKnotsState(message: unknown) {
+    function handleFateKnotsState(message: unknown): void {
       const state = getState();
       if (state === null) {
         return;
       }
       const payload = readPayload(message);
-      state["fateKnots"] = fateKnotsUi.sanitizeFateKnotsState(payload["state"]);
-      state["lastCommandMessage"] = "";
+      state.fateKnots = fateKnotsUi.sanitizeFateKnotsState(payload["state"]);
+      state.lastCommandMessage = "";
       render();
     }
 
-    function handleCommandResult(message: unknown) {
+    function handleCommandResult(message: unknown): void {
       const state = getState();
       if (state === null) {
         return;
@@ -95,7 +109,7 @@
       const source = readRecord(message);
       const result = readRecord(source?.["result"]) || {};
       if (typeof result["message"] === "string" && result["message"].trim() !== "") {
-        state["lastCommandMessage"] = result["message"].trim();
+        state.lastCommandMessage = result["message"].trim();
       }
       render();
     }
@@ -107,4 +121,4 @@
       handleCommandResult: handleCommandResult,
     };
   };
-})(window);
+})(window as unknown as GameRoomUiGlobal);

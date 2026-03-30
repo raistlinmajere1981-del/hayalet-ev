@@ -10,6 +10,7 @@ import {
   buildFateKnotsCombatTurnId,
   getCurrentFateKnotsCombatTurn,
   settleAutomaticFateKnotsCombatTurns,
+  type FateKnotsEnemyAction,
 } from "./combat-engine.js";
 import type { FateKnotsCombatState } from "./combat-engine.js";
 import {
@@ -66,6 +67,31 @@ type RoomApi = {
   notifyRoom?: (eventType: string, data: unknown) => void;
 };
 
+type FateKnotsCommandState = Parameters<typeof pushFateKnotsState>[1];
+type FateKnotsBaseContentRegistry = Parameters<typeof pushFateKnotsState>[2];
+type FateKnotsPromptRuntimeDeps = Parameters<typeof createFateKnotsPromptRuntime>[0];
+type FateKnotsPhaseRuntimeDeps = Parameters<typeof createFateKnotsPhaseRuntime>[0];
+type FateKnotsSessionState = Parameters<typeof updateContentSummary>[0];
+type FateKnotsSummaryContentRegistry = Parameters<typeof updateContentSummary>[1];
+type FateKnotsProfileState = Parameters<typeof persistProfileFromUser>[1];
+type FateKnotsPhaseState = Parameters<typeof advancePendingWork>[1];
+type FateKnotsPhaseContentRegistry = Parameters<typeof advancePendingWork>[2];
+type FateKnotsSelectionState = Parameters<typeof isSelectionComplete>[0];
+type FateKnotsDecisionPromptState = Parameters<typeof clearDecisionPromptKey>[0];
+type FateKnotsCombatPromptState = Parameters<typeof clearCombatPromptKey>[0];
+type FateKnotsSeatLossState = Parameters<typeof maybeMarkSeatLossOrTimeout>[0];
+type FateKnotsCombatWaitingState = Parameters<typeof setCombatWaiting>[0];
+
+type FateKnotsCommandContentRegistry = FateKnotsBaseContentRegistry & {
+  scenario: {
+    entryStepId: string;
+  };
+  combatConfig: {
+    startingEnergy: number;
+  };
+  enemyActionsById: Map<string, FateKnotsEnemyAction>;
+};
+
 function commandMessage(locale: string, key: string, params: Record<string, string> = {}) {
   return fillTemplate(translate(locale, FATE_KNOTS_COMMAND_COPY, key), params);
 }
@@ -74,18 +100,101 @@ function asCombatState(raw: unknown): FateKnotsCombatState {
   return raw as FateKnotsCombatState;
 }
 
-const fateKnotsPromptRuntime = createFateKnotsPromptRuntime({
+function loadCommandContentRegistry(api: RoomApi): FateKnotsCommandContentRegistry {
+  return ensureFateKnotsContent(api) as unknown as FateKnotsCommandContentRegistry;
+}
+
+function asCommandState(value: ReturnType<typeof loadFateKnotsState>): FateKnotsCommandState {
+  return value as unknown as FateKnotsCommandState;
+}
+
+function asSessionState(value: FateKnotsCommandState): FateKnotsSessionState {
+  return value as unknown as FateKnotsSessionState;
+}
+
+function asProfileState(value: FateKnotsCommandState): FateKnotsProfileState {
+  return value as unknown as FateKnotsProfileState;
+}
+
+function asPhaseState(value: FateKnotsCommandState): FateKnotsPhaseState {
+  return value as unknown as FateKnotsPhaseState;
+}
+
+function asPhaseContentRegistry(
+  value: FateKnotsCommandContentRegistry
+): FateKnotsPhaseContentRegistry {
+  return value as unknown as FateKnotsPhaseContentRegistry;
+}
+
+function asSelectionState(value: Record<string, unknown>): FateKnotsSelectionState {
+  return value as unknown as FateKnotsSelectionState;
+}
+
+function readUs1RemoteUserId(
+  api: RoomApi,
+  state: FateKnotsCommandState,
+  context: Parameters<typeof getUs1RemoteUserId>[2]
+) {
+  return getUs1RemoteUserId(
+    api as Parameters<typeof getUs1RemoteUserId>[0],
+    asSessionState(state),
+    context
+  );
+}
+
+function persistUserProfile(api: RoomApi, state: FateKnotsCommandState) {
+  persistProfileFromUser(api as Parameters<typeof persistProfileFromUser>[0], asProfileState(state));
+}
+
+function refreshContentSummary(
+  state: FateKnotsCommandState,
+  contentRegistry: FateKnotsCommandContentRegistry
+) {
+  updateContentSummary(
+    asSessionState(state),
+    contentRegistry as unknown as FateKnotsSummaryContentRegistry
+  );
+}
+
+function setCommandIdleWaiting(state: FateKnotsCommandState) {
+  setIdleWaiting(asSessionState(state));
+}
+
+function clearCommandDecisionPromptKey(state: FateKnotsCommandState, seatId: string) {
+  clearDecisionPromptKey(state as unknown as FateKnotsDecisionPromptState, seatId);
+}
+
+function clearCommandCombatPromptKey(state: FateKnotsCommandState, seatId: string) {
+  clearCombatPromptKey(state as unknown as FateKnotsCombatPromptState, seatId);
+}
+
+function markSeatLossOrTimeout(
+  state: FateKnotsCommandState,
+  context: Parameters<typeof maybeMarkSeatLossOrTimeout>[1],
+  now: number
+) {
+  maybeMarkSeatLossOrTimeout(state as unknown as FateKnotsSeatLossState, context, now);
+}
+
+function setCommandCombatWaiting(state: FateKnotsCommandState, now: number) {
+  setCombatWaiting(state as unknown as FateKnotsCombatWaitingState, now);
+}
+
+const fateKnotsPromptRuntimeDeps = {
   getParticipant: getParticipant,
   listPendingDecisionSeats: listPendingDecisionSeats,
   getUs1RemoteUserId: getUs1RemoteUserId,
   updateTransportFromSendResult: updateTransportFromSendResult,
-});
+};
+const fateKnotsPromptRuntime = createFateKnotsPromptRuntime(
+  fateKnotsPromptRuntimeDeps as unknown as FateKnotsPromptRuntimeDeps
+);
 const dispatchDecisionPrompts = fateKnotsPromptRuntime.dispatchDecisionPrompts;
 const dispatchCombatPrompt = fateKnotsPromptRuntime.dispatchCombatPrompt;
 const dispatchAmbientPrompts = fateKnotsPromptRuntime.dispatchAmbientPrompts;
 
-function ensureActiveSession(state: any, locale: string) {
-  if (!state.active || !state.sessionId) {
+function ensureActiveSession(state: Record<string, unknown>, locale: string) {
+  if (!state["active"] || !state["sessionId"]) {
     return { success: false, message: commandMessage(locale, "notActive") };
   }
   return null;
@@ -102,7 +211,7 @@ function validateSessionId(
   return null;
 }
 
-const fateKnotsPhaseRuntime = createFateKnotsPhaseRuntime({
+const fateKnotsPhaseRuntimeDeps = {
   clearAmbientPromptKeys: clearAmbientPromptKeys,
   clearCombatPromptKey: clearCombatPromptKey,
   clearDecisionPromptKey: clearDecisionPromptKey,
@@ -117,7 +226,10 @@ const fateKnotsPhaseRuntime = createFateKnotsPhaseRuntime({
   setCombatWaiting: setCombatWaiting,
   setDecisionWaiting: setDecisionWaiting,
   setIdleWaiting: setIdleWaiting,
-});
+};
+const fateKnotsPhaseRuntime = createFateKnotsPhaseRuntime(
+  fateKnotsPhaseRuntimeDeps as unknown as FateKnotsPhaseRuntimeDeps
+);
 export const advancePendingWork = fateKnotsPhaseRuntime.advancePendingWork;
 const finalizeRun = fateKnotsPhaseRuntime.finalizeRun;
 const getCombatStatusKey = fateKnotsPhaseRuntime.getCombatStatusKey;
@@ -126,12 +238,13 @@ const resolveDecisionProgress = fateKnotsPhaseRuntime.resolveDecisionProgress;
 const startScenarioStep = fateKnotsPhaseRuntime.startScenarioStep;
 
 export async function handleStart(api: RoomApi) {
-  const contentRegistry = ensureFateKnotsContent(api);
+  const contentRegistry = loadCommandContentRegistry(api);
   const context = loadContext(api);
   const profile = loadFateKnotsProfile(api);
   const saveSlot = loadFateKnotsSaveSlot(api);
   const readyAiSeats = FATE_KNOTS_SUPPORTED_AI_SEATS.filter(function (seatId: string) {
-    return context?.slots?.[seatId as keyof typeof context.slots]?.ready === true;
+    const slot = context.slots[seatId as keyof typeof context.slots];
+    return slot.ready === true;
   });
   if (readyAiSeats.length === 0) {
     refreshFateKnotsState(api, contentRegistry);
@@ -140,13 +253,13 @@ export async function handleStart(api: RoomApi) {
 
   const sessionId = buildSessionId();
   const now = Date.now();
-  const state = resetFateKnotsState(api, "idle");
+  const state = asCommandState(resetFateKnotsState(api, "idle"));
   const runConfig = buildRunParticipants(
     context,
     contentRegistry,
     sessionId,
     profile,
-    getUs1RemoteUserId(api, state, context)
+    readUs1RemoteUserId(api, state, context)
   );
 
   state.active = true;
@@ -164,21 +277,21 @@ export async function handleStart(api: RoomApi) {
   });
   state.startedAt = now;
   state.updatedAt = now;
-  updateContentSummary(state, contentRegistry);
-  setIdleWaiting(state);
+  refreshContentSummary(state, contentRegistry);
+  setCommandIdleWaiting(state);
   pushFateKnotsState(api, state, contentRegistry);
   return { success: true, message: commandMessage(readLocale(api), "started") };
 }
 
 export function handleReset(api: RoomApi) {
-  const contentRegistry = ensureFateKnotsContent(api);
-  pushFateKnotsState(api, resetFateKnotsState(api, "idle"), contentRegistry);
+  const contentRegistry = loadCommandContentRegistry(api);
+  pushFateKnotsState(api, asCommandState(resetFateKnotsState(api, "idle")), contentRegistry);
   return { success: true, message: commandMessage(readLocale(api), "reset") };
 }
 
-export function handleCharacterSelect(api: RoomApi, payload: any) {
-  const contentRegistry = ensureFateKnotsContent(api);
-  const state = loadFateKnotsState(api);
+export function handleCharacterSelect(api: RoomApi, payload: unknown) {
+  const contentRegistry = loadCommandContentRegistry(api);
+  const state = asCommandState(loadFateKnotsState(api));
   const activeSession = ensureActiveSession(state, readLocale(api));
   if (activeSession) {
     pushFateKnotsState(api, state, contentRegistry);
@@ -201,15 +314,15 @@ export function handleCharacterSelect(api: RoomApi, payload: any) {
   }
 
   applySelectionPayload(userParticipant, selectionPayload, Date.now());
-  persistProfileFromUser(api, state);
-  updateContentSummary(state, contentRegistry);
+  persistUserProfile(api, state);
+  refreshContentSummary(state, contentRegistry);
   pushFateKnotsState(api, state, contentRegistry);
   return { success: true, message: commandMessage(readLocale(api), "selectionSaved") };
 }
 
 export async function handleReady(api: RoomApi) {
-  const contentRegistry = ensureFateKnotsContent(api);
-  const state = loadFateKnotsState(api);
+  const contentRegistry = loadCommandContentRegistry(api);
+  const state = asCommandState(loadFateKnotsState(api));
   const activeSession = ensureActiveSession(state, readLocale(api));
   if (activeSession) {
     pushFateKnotsState(api, state, contentRegistry);
@@ -228,24 +341,28 @@ export async function handleReady(api: RoomApi) {
 
   userParticipant.selection.locked = true;
   userParticipant.selection.updatedAt = Date.now();
-  persistProfileFromUser(api, state);
-  const everyoneLocked = state.participants.every(function (participant: any) {
-    return (
-      participant.selection.locked === true && isSelectionComplete(participant.selection) === true
-    );
+  persistUserProfile(api, state);
+  const everyoneLocked = state.participants.every(function (participant: Record<string, unknown>) {
+    const selection = participant["selection"] as Record<string, unknown>;
+    return selection["locked"] === true && isSelectionComplete(asSelectionState(selection)) === true;
   });
   if (everyoneLocked) {
-    startScenarioStep(state, contentRegistry, contentRegistry.scenario.entryStepId, Date.now());
-    await advancePendingWork(api, state, contentRegistry, Date.now());
+    startScenarioStep(
+      asPhaseState(state),
+      asPhaseContentRegistry(contentRegistry),
+      contentRegistry.scenario.entryStepId,
+      Date.now()
+    );
+    await advancePendingWork(api, asPhaseState(state), asPhaseContentRegistry(contentRegistry), Date.now());
   }
-  updateContentSummary(state, contentRegistry);
+  refreshContentSummary(state, contentRegistry);
   pushFateKnotsState(api, state, contentRegistry);
   return { success: true, message: commandMessage(readLocale(api), "ready") };
 }
 
-export async function handleChoice(api: RoomApi, payload: any) {
-  const contentRegistry = ensureFateKnotsContent(api);
-  const state = loadFateKnotsState(api);
+export async function handleChoice(api: RoomApi, payload: unknown) {
+  const contentRegistry = loadCommandContentRegistry(api);
+  const state = asCommandState(loadFateKnotsState(api));
   const locale = readLocale(api);
   const activeSession = ensureActiveSession(state, locale);
   if (activeSession) {
@@ -284,16 +401,21 @@ export async function handleChoice(api: RoomApi, payload: any) {
   state.decision.votes[seatId] = choiceId;
   state.decision.updatedAt = Date.now();
   state.decision.conflict = false;
-  clearDecisionPromptKey(state, seatId);
-  resolveDecisionProgress(api, state, contentRegistry, Date.now());
-  await advancePendingWork(api, state, contentRegistry, Date.now());
+  clearCommandDecisionPromptKey(state, seatId);
+  resolveDecisionProgress(
+    api,
+    asPhaseState(state),
+    asPhaseContentRegistry(contentRegistry),
+    Date.now()
+  );
+  await advancePendingWork(api, asPhaseState(state), asPhaseContentRegistry(contentRegistry), Date.now());
   pushFateKnotsState(api, state, contentRegistry);
   return { success: true, message: commandMessage(locale, "choiceAccepted") };
 }
 
-export async function handleCombatAction(api: RoomApi, payload: any) {
-  const contentRegistry = ensureFateKnotsContent(api);
-  const state = loadFateKnotsState(api);
+export async function handleCombatAction(api: RoomApi, payload: unknown) {
+  const contentRegistry = loadCommandContentRegistry(api);
+  const state = asCommandState(loadFateKnotsState(api));
   const locale = readLocale(api);
   const activeSession = ensureActiveSession(state, locale);
   if (activeSession) {
@@ -335,12 +457,12 @@ export async function handleCombatAction(api: RoomApi, payload: any) {
     return { success: false, message: commandMessage(locale, "invalidAction") };
   }
 
-  clearCombatPromptKey(state, seatId);
+  clearCommandCombatPromptKey(state, seatId);
   settleAutomaticFateKnotsCombatTurns(combat, contentRegistry.enemyActionsById);
   if (combat.outcome === "victory") {
     finalizeRun(
       api,
-      state,
+      asPhaseState(state),
       "victory",
       "Village Secured",
       "The first Fate Knots combat hook resolves in the party's favor."
@@ -348,24 +470,24 @@ export async function handleCombatAction(api: RoomApi, payload: any) {
   } else if (combat.outcome === "defeat") {
     finalizeRun(
       api,
-      state,
+      asPhaseState(state),
       "defeat",
       "The Knot Tightens",
       "The party fell before it could stabilize the well square."
     );
   } else {
-    state.statusKey = getCombatStatusKey(state);
-    setCombatWaiting(state, Date.now());
-    await advancePendingWork(api, state, contentRegistry, Date.now());
+    state.statusKey = getCombatStatusKey(asPhaseState(state));
+    setCommandCombatWaiting(state, Date.now());
+    await advancePendingWork(api, asPhaseState(state), asPhaseContentRegistry(contentRegistry), Date.now());
   }
 
   pushFateKnotsState(api, state, contentRegistry);
   return { success: true, message: commandMessage(locale, "combatActionAccepted") };
 }
 
-export async function handleSync(api: RoomApi, payload: any) {
-  const contentRegistry = ensureFateKnotsContent(api);
-  const state = loadFateKnotsState(api);
+export async function handleSync(api: RoomApi, payload: unknown) {
+  const contentRegistry = loadCommandContentRegistry(api);
+  const state = asCommandState(loadFateKnotsState(api));
   const locale = readLocale(api);
   const activeSession = ensureActiveSession(state, locale);
   if (activeSession) {
@@ -381,17 +503,17 @@ export async function handleSync(api: RoomApi, payload: any) {
   }
 
   const now = Date.now();
-  maybeMarkSeatLossOrTimeout(state, loadContext(api), now);
-  prepareSync(state, now);
+  markSeatLossOrTimeout(state, loadContext(api), now);
+  prepareSync(asPhaseState(state), now);
 
-  await advancePendingWork(api, state, contentRegistry, now);
+  await advancePendingWork(api, asPhaseState(state), asPhaseContentRegistry(contentRegistry), now);
   pushFateKnotsState(api, state, contentRegistry);
   return { success: true, message: commandMessage(locale, "syncQueued") };
 }
 
-export function handleDmPacket(api: RoomApi, payload: any) {
-  const contentRegistry = ensureFateKnotsContent(api);
-  const state = loadFateKnotsState(api);
+export function handleDmPacket(api: RoomApi, payload: unknown) {
+  const contentRegistry = loadCommandContentRegistry(api);
+  const state = asCommandState(loadFateKnotsState(api));
   const locale = readLocale(api);
   const activeSession = ensureActiveSession(state, locale);
   if (activeSession) {
@@ -436,9 +558,9 @@ export function handleDmPacket(api: RoomApi, payload: any) {
   return { success: true, message: commandMessage(locale, "dmPacketAccepted") };
 }
 
-export function handleNpcBanter(api: RoomApi, payload: any) {
-  const contentRegistry = ensureFateKnotsContent(api);
-  const state = loadFateKnotsState(api);
+export function handleNpcBanter(api: RoomApi, payload: unknown) {
+  const contentRegistry = loadCommandContentRegistry(api);
+  const state = asCommandState(loadFateKnotsState(api));
   const locale = readLocale(api);
   const activeSession = ensureActiveSession(state, locale);
   if (activeSession) {
@@ -485,14 +607,14 @@ export function handleNpcBanter(api: RoomApi, payload: any) {
 }
 
 export function handleEnd(api: RoomApi) {
-  const contentRegistry = ensureFateKnotsContent(api);
-  pushFateKnotsState(api, resetFateKnotsState(api, "idle"), contentRegistry);
+  const contentRegistry = loadCommandContentRegistry(api);
+  pushFateKnotsState(api, asCommandState(resetFateKnotsState(api, "idle")), contentRegistry);
   return { success: true, message: commandMessage(readLocale(api), "ended") };
 }
 
 export async function dispatchPendingWork(api: RoomApi) {
-  const contentRegistry = ensureFateKnotsContent(api);
-  const state = loadFateKnotsState(api);
-  await advancePendingWork(api, state, contentRegistry, Date.now());
+  const contentRegistry = loadCommandContentRegistry(api);
+  const state = asCommandState(loadFateKnotsState(api));
+  await advancePendingWork(api, asPhaseState(state), asPhaseContentRegistry(contentRegistry), Date.now());
   pushFateKnotsState(api, state, contentRegistry);
 }

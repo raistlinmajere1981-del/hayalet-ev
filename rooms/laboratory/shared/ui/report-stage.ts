@@ -1,41 +1,145 @@
 import { createLaboratoryReportStageSupportRuntime } from "./report-stage-support.js";
 import { createLaboratorySubtitleReportStageRuntime } from "./report-stage-subtitle.js";
 
-export function createLaboratoryReportStageUi(deps: any) {
-  const escapeHtml = deps.escapeHtml;
-  const featureText = deps.featureText;
-  const renderStageIntro = deps.renderStageIntro;
-  const renderSummaryRows = deps.renderSummaryRows;
-  const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;
-  const isAudioAnalysisFeature = deps.isAudioAnalysisFeature;
-  const getCurrentFeatureReportRecord = deps.getCurrentFeatureReportRecord;
-  const getEffectiveMediaAsset = deps.getEffectiveMediaAsset;
-  const getReportFindings = deps.getReportFindings;
-  const getReportSummaryCards = deps.getReportSummaryCards;
-  const getReportExports = deps.getReportExports;
-  const getFeaturePreviewImage = deps.getFeaturePreviewImage;
-  const renderAudioAnalysisModuleGrid = deps.renderAudioAnalysisModuleGrid;
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryFeatureReportRecord = LaboratoryRecord & {
+  caveats?: unknown;
+  status?: unknown;
+  warnings?: unknown;
+};
+
+type LaboratoryAssetRecord = LaboratoryRecord & {
+  label?: unknown;
+  previewUrl?: unknown;
+};
+
+type LaboratorySummaryCardRecord = LaboratoryRecord & {
+  label?: unknown;
+  labelKey?: unknown;
+  value?: unknown;
+};
+
+type LaboratoryExportRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  path?: unknown;
+};
+
+type LaboratoryJobRecord = LaboratoryRecord & {
+  message?: unknown;
+};
+
+type LaboratoryReportStageUiDeps = {
+  escapeHtml: (value: string) => string;
+  featureText: (path: string[]) => string;
+  formatDateTime: (value: unknown) => string;
+  formatDuration: (value: unknown) => string;
+  formatStatusLabel: (value: unknown) => string;
+  getCurrentFeatureArtifactCount: () => number;
+  getCurrentFeatureReportRecord: () => unknown;
+  getCurrentFeatureTargetLabel: () => string;
+  getCurrentSourceLabel: () => string;
+  getEffectiveMediaAsset: () => unknown;
+  getFeaturePreviewImage: () => string;
+  getPreferredAssetDuration: (asset: LaboratoryAssetRecord) => unknown;
+  getProcessArtifacts: () => unknown[];
+  getProcessModules: () => unknown[];
+  getProfileConfidenceLabel: (confidence: unknown) => string;
+  getProfileSignalKindLabel: (kind: unknown) => string;
+  getReportExports: () => unknown[];
+  getReportFindings: () => unknown[];
+  getReportJobs: () => unknown[];
+  getReportSummaryCards: () => unknown[];
+  getSubtitleProcessModuleLabel: (module: LaboratoryRecord) => string;
+  getSubtitleProcessModuleSummary: (module: LaboratoryRecord) => string;
+  isAudioAnalysisFeature: () => boolean;
+  isSubtitleAnalysisFeature: () => boolean;
+  renderAudioAnalysisModuleGrid: () => string;
+  renderStageIntro: (stageId: string) => string;
+  renderSummaryRows: (rows: Array<[string, string]>) => string;
+  text: (path: string[]) => string;
+  textFromKey: (key: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps) {
+  const {
+    escapeHtml,
+    featureText,
+    getCurrentFeatureReportRecord,
+    getEffectiveMediaAsset,
+    getFeaturePreviewImage,
+    getReportExports,
+    getReportFindings,
+    getReportSummaryCards,
+    isAudioAnalysisFeature,
+    isSubtitleAnalysisFeature,
+    renderAudioAnalysisModuleGrid,
+    renderStageIntro,
+    renderSummaryRows,
+    toRecord,
+  } = deps;
   const laboratoryReportStageSupportRuntime = createLaboratoryReportStageSupportRuntime(deps);
   const laboratorySubtitleReportStageRuntime = createLaboratorySubtitleReportStageRuntime(deps);
 
-  function getRunningReportJob() {
-    return laboratoryReportStageSupportRuntime.getRunningReportJob();
+  function toFeatureReportRecord(value: unknown): LaboratoryFeatureReportRecord {
+    return toRecord(value);
   }
 
-  function renderReportFinding(signal: any) {
+  function toAssetRecord(value: unknown): LaboratoryAssetRecord {
+    return toRecord(value);
+  }
+
+  function toSummaryCardRecord(value: unknown): LaboratorySummaryCardRecord {
+    return toRecord(value);
+  }
+
+  function toExportRecord(value: unknown): LaboratoryExportRecord {
+    return toRecord(value);
+  }
+
+  function toJobRecord(value: unknown): LaboratoryJobRecord {
+    return toRecord(value);
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.filter((entry): entry is string => typeof entry === "string");
+  }
+
+  function getRunningReportJob() {
+    const runningJob: unknown = laboratoryReportStageSupportRuntime.getRunningReportJob();
+    return runningJob;
+  }
+
+  function renderReportFinding(signal: unknown) {
     return laboratoryReportStageSupportRuntime.renderReportFinding(signal);
   }
 
-  function getReportOverviewRows(reportRecord: any, findings: any, asset: any) {
-    return laboratoryReportStageSupportRuntime.getReportOverviewRows(reportRecord, findings, asset);
+  function getReportOverviewRows(
+    reportRecord: LaboratoryFeatureReportRecord,
+    findings: unknown[],
+    asset: LaboratoryAssetRecord
+  ): [string, string][] {
+    return laboratoryReportStageSupportRuntime.getReportOverviewRows(
+      reportRecord,
+      findings,
+      asset
+    ) as [string, string][];
   }
 
-  function getReportSideRows(reportRecord: any, findings: any, exportsList: any) {
+  function getReportSideRows(
+    reportRecord: LaboratoryFeatureReportRecord,
+    findings: unknown[],
+    exportsList: LaboratoryExportRecord[]
+  ): [string, string][] {
     return laboratoryReportStageSupportRuntime.getReportSideRows(
       reportRecord,
       findings,
       exportsList
-    );
+    ) as [string, string][];
   }
 
   function renderSubtitleReportModuleGrid() {
@@ -47,12 +151,12 @@ export function createLaboratoryReportStageUi(deps: any) {
   }
 
   function renderReportStage() {
-    const reportRecord = getCurrentFeatureReportRecord();
-    const asset = getEffectiveMediaAsset();
+    const reportRecord = toFeatureReportRecord(getCurrentFeatureReportRecord());
+    const asset = toAssetRecord(getEffectiveMediaAsset());
     const findings = getReportFindings();
-    const summaryCards = getReportSummaryCards();
-    const exportsList = getReportExports();
-    const runningJob = getRunningReportJob();
+    const summaryCards = getReportSummaryCards().map(toSummaryCardRecord);
+    const exportsList = getReportExports().map(toExportRecord);
+    const runningJob = toJobRecord(getRunningReportJob());
     const previewUrl =
       typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== ""
         ? asset.previewUrl
@@ -78,9 +182,13 @@ export function createLaboratoryReportStageUi(deps: any) {
             ${
               summaryCards.length > 0
                 ? summaryCards
-                    .map(function (card: any) {
+                    .map(function (card) {
+                      const value =
+                        typeof card.value === "string" || typeof card.value === "number"
+                          ? String(card.value)
+                          : "--";
                       return laboratoryReportStageSupportRuntime.renderSignalCard(
-                        card.value || "--",
+                        value,
                         laboratoryReportStageSupportRuntime.getReportSignalCardLabel(card)
                       );
                     })
@@ -98,7 +206,7 @@ export function createLaboratoryReportStageUi(deps: any) {
               ${
                 findings.length > 0
                   ? findings
-                      .map(function (finding: any) {
+                      .map(function (finding) {
                         return renderReportFinding(finding);
                       })
                       .join("")
@@ -112,14 +220,14 @@ export function createLaboratoryReportStageUi(deps: any) {
           <section class="lab-panel">
             ${renderSummaryRows(getReportSideRows(reportRecord, findings, exportsList))}
             ${
-              Array.isArray(reportRecord.caveats) && reportRecord.caveats.length > 0
+              toStringArray(reportRecord.caveats).length > 0
                 ? `
                   <div class="lab-list-block">
                     <strong>${escapeHtml(featureText(["report", "sideTitle"]))}</strong>
                     <ul class="lab-bullet-list">
-                      ${reportRecord.caveats
+                      ${toStringArray(reportRecord.caveats)
                         .slice(0, 4)
-                        .map(function (entry: any) {
+                        .map(function (entry) {
                           return `<li>${escapeHtml(entry)}</li>`;
                         })
                         .join("")}
@@ -129,14 +237,14 @@ export function createLaboratoryReportStageUi(deps: any) {
                 : ""
             }
             ${
-              Array.isArray(reportRecord.warnings) && reportRecord.warnings.length > 0
+              toStringArray(reportRecord.warnings).length > 0
                 ? `
                   <div class="lab-list-block">
                     <strong>${escapeHtml(featureText(["report", "moduleMeta", "warnings"]))}</strong>
                     <ul class="lab-bullet-list">
-                      ${reportRecord.warnings
+                      ${toStringArray(reportRecord.warnings)
                         .slice(0, 4)
-                        .map(function (entry: any) {
+                        .map(function (entry) {
                           return `<li>${escapeHtml(entry)}</li>`;
                         })
                         .join("")}
@@ -153,8 +261,14 @@ export function createLaboratoryReportStageUi(deps: any) {
                     <ul class="lab-bullet-list">
                       ${exportsList
                         .slice(0, 4)
-                        .map(function (entry: any) {
-                          return `<li>${escapeHtml(entry.fileName || entry.path || "--")}</li>`;
+                        .map(function (entry) {
+                          const label =
+                            typeof entry.fileName === "string" && entry.fileName.trim() !== ""
+                              ? entry.fileName
+                              : typeof entry.path === "string" && entry.path.trim() !== ""
+                                ? entry.path
+                                : "--";
+                          return `<li>${escapeHtml(label)}</li>`;
                         })
                         .join("")}
                     </ul>
@@ -167,15 +281,13 @@ export function createLaboratoryReportStageUi(deps: any) {
                 ${escapeHtml(featureText(["report", "actions", "restart"]))}
               </button>
               <button class="lab-button lab-button--primary" type="button" data-action="export-report" ${
-                reportRecord.status === "ready" && !runningJob ? "" : "disabled"
+                reportRecord.status === "ready" && !getRunningReportJob() ? "" : "disabled"
               }>
                 ${escapeHtml(featureText(["report", "actions", "export"]))}
               </button>
             </div>
             ${
-              runningJob &&
-              typeof runningJob.message === "string" &&
-              runningJob.message.trim() !== ""
+              typeof runningJob.message === "string" && runningJob.message.trim() !== ""
                 ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
                 : ""
             }

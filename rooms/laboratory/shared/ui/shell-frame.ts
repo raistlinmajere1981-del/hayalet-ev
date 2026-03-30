@@ -1,4 +1,25 @@
-export function createLaboratoryShellFrameUi(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryStageCopyRecord = LaboratoryRecord & {
+  subtitle?: unknown;
+  title?: unknown;
+};
+
+type LaboratoryShellFrameUiDeps = {
+  bootstrapText: (key: string) => string;
+  escapeHtml: (value: string) => string;
+  featureText: (path: string[]) => string;
+  getActiveStage: () => string;
+  getStageIndex: (stageId: string) => number;
+  getTranslations: () => LaboratoryRecord;
+  isSubtitleAnalysisFeature: () => boolean;
+  readValue: (source: unknown, path: readonly (string | number)[]) => unknown;
+  stageOrder: string[];
+  subtitleText: (path: string[], tr?: string, en?: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
   const {
     bootstrapText,
     escapeHtml,
@@ -12,6 +33,14 @@ export function createLaboratoryShellFrameUi(deps: any) {
     subtitleText,
     toRecord,
   } = deps;
+
+  function toStageCopyRecord(value: unknown): LaboratoryStageCopyRecord {
+    return toRecord(value);
+  }
+
+  function readStageCopyText(value: unknown, fallback: string): string {
+    return typeof value === "string" && value.trim() !== "" ? value : fallback;
+  }
 
   function renderBootstrap() {
     return `
@@ -41,7 +70,7 @@ export function createLaboratoryShellFrameUi(deps: any) {
           </button>
           <div class="lab-stage-rail__track" role="tablist" aria-label="Stages">
             ${stageOrder
-              .map(function (stageId: any, index: any) {
+              .map(function (stageId, index) {
                 const stateName =
                   stageId === activeStage ? "active" : index < currentIndex ? "complete" : "idle";
                 return `
@@ -86,15 +115,15 @@ export function createLaboratoryShellFrameUi(deps: any) {
     `;
   }
 
-  function renderStageIntro(stageId: any) {
+  function renderStageIntro(stageId: string) {
     if (isSubtitleAnalysisFeature()) {
-      const copy = toRecord(readValue(getTranslations(), ["subtitleAnalysis", "stages", stageId]));
+      const copy = toStageCopyRecord(readValue(getTranslations(), ["subtitleAnalysis", "stages", stageId]));
       return `
         <section class="lab-stage-copy">
           <h1 class="lab-stage-copy__title">${escapeHtml(
-            copy.title || subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle")
+            readStageCopyText(copy.title, subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle"))
           )}</h1>
-          <p class="lab-stage-copy__subtitle">${escapeHtml(copy.subtitle || "")}</p>
+          <p class="lab-stage-copy__subtitle">${escapeHtml(readStageCopyText(copy.subtitle, ""))}</p>
         </section>
       `;
     }

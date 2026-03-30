@@ -1,7 +1,14 @@
 import type { XoxGameState } from "./state-core.js";
 import { getOpponentInfo } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
-import type { GameRoomContextState } from "../../../shared/types/room-shell-contracts.js";
+import type {
+  GameRoomContextState,
+  GameRoomSlotState,
+} from "../../../shared/types/room-shell-contracts.js";
+
+function readOpponentInfo(context: GameRoomContextState, state: XoxGameState): GameRoomSlotState {
+  return getOpponentInfo(context, state);
+}
 
 export function commandMessage(locale: unknown, key: string, params: Record<string, unknown> = {}) {
   const messages = {
@@ -114,7 +121,7 @@ export function commandMessage(locale: unknown, key: string, params: Record<stri
 }
 
 export function buildAiTurnMessage(state: XoxGameState, context: GameRoomContextState) {
-  const opponent = getOpponentInfo(context, state);
+  const opponent = readOpponentInfo(context, state);
   const availableCells = state.board
     .map(function (_cell: string, index: number) {
       return state.board[index] === "" ? String(index) : "";
@@ -168,7 +175,7 @@ export function buildUs1InviteText(
   context: GameRoomContextState,
   note: string
 ) {
-  const opponent = getOpponentInfo(context, state);
+  const opponent = readOpponentInfo(context, state);
   const starterLabel = state.starter === "ai" ? opponent.nickname : context.user.nickname;
   const parts = [];
 

@@ -28,13 +28,13 @@ const FEATURE_CATALOG: FeatureCatalogEntry[] = [
 ];
 
 export function getFeatureName(featureId: string): string {
-  const feature = FEATURE_CATALOG.find((entry: any) => entry["id"] === featureId);
+  const feature = FEATURE_CATALOG.find((entry) => entry.id === featureId);
   return feature ? feature.name : "XOX";
 }
 
 export function normalizeFeatureId(value: unknown): string {
   const normalized = typeof value === "string" ? value.trim() : "";
-  return FEATURE_CATALOG.some((entry: any) => entry["id"] === normalized) ? normalized : FEATURE_ID;
+  return FEATURE_CATALOG.some((entry) => entry.id === normalized) ? normalized : FEATURE_ID;
 }
 
 export function sanitizeFeatureRecord(
@@ -64,5 +64,5 @@ export function getDefaultFeatureRecords(): Array<{
   name: string;
   description: string;
 }> {
-  return FEATURE_CATALOG.map((feature: any) => sanitizeFeatureRecord(feature, feature.id));
+  return FEATURE_CATALOG.map((feature) => sanitizeFeatureRecord(feature, feature.id));
 }

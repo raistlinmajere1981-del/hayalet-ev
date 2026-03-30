@@ -1,7 +1,11 @@
 /* global window */
 
-(function (global: any) {
-  const registry = global.GameRoomUiScrollRuntime || (global.GameRoomUiScrollRuntime = {});
+(function (global: GameRoomUiGlobal) {
+  type ScrollSelectorKey = keyof typeof FEATURE_SCROLL_SELECTORS;
+  type ScrollState = Partial<Record<ScrollSelectorKey, number>>;
+  type QuerySelectorRoot = {
+    querySelector: (selector: string) => Element | null;
+  };
 
   const FEATURE_SCROLL_SELECTORS = {
     xoxRail: ".xox-rail",
@@ -11,34 +15,50 @@
     fateKnotsSurface: ".fk-surface__inner",
   };
 
-  function canQuerySelector(value: any) {
-    return !!value && typeof value === "object" && typeof value.querySelector === "function";
+  function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && Array.isArray(value) === false;
   }
 
-  function isScrollableElement(value: any) {
-    return !!value && typeof value === "object" && typeof value.scrollTop === "number";
+  function canQuerySelector(value: unknown): value is QuerySelectorRoot {
+    return (
+      typeof value === "object" &&
+      value !== null &&
+      typeof (value as { querySelector?: unknown }).querySelector === "function"
+    );
   }
+
+  function isScrollableElement(value: unknown): value is HTMLElement {
+    return value instanceof HTMLElement;
+  }
+
+  const registry: GameRoomUiScrollRuntimeRegistry =
+    global.GameRoomUiScrollRuntime || (global.GameRoomUiScrollRuntime = {});
 
   registry.createGameRoomUiScrollRuntime = function createGameRoomUiScrollRuntime() {
     return {
-      capture(root: any) {
+      capture(root: HTMLElement): ScrollState {
         if (!canQuerySelector(root)) {
           return {};
         }
 
-        return Object.fromEntries(
-          Object.entries(FEATURE_SCROLL_SELECTORS).map(function ([key, selector]) {
+        const scrollState: ScrollState = {};
+        (Object.entries(FEATURE_SCROLL_SELECTORS) as Array<[ScrollSelectorKey, string]>).forEach(
+          function ([key, selector]) {
             const element = root.querySelector(selector);
-            return [key, isScrollableElement(element) ? element.scrollTop : null];
-          })
+            if (isScrollableElement(element)) {
+              scrollState[key] = element.scrollTop;
+            }
+          }
         );
+        return scrollState;
       },
-      restore(root: any, scrollState: any) {
-        if (!scrollState || typeof scrollState !== "object" || !canQuerySelector(root)) {
+      restore(root: HTMLElement, scrollState: unknown) {
+        if (isRecord(scrollState) === false || !canQuerySelector(root)) {
           return;
         }
 
-        Object.entries(FEATURE_SCROLL_SELECTORS).forEach(function ([key, selector]) {
+        (Object.entries(FEATURE_SCROLL_SELECTORS) as Array<[ScrollSelectorKey, string]>).forEach(
+          function ([key, selector]) {
           const top = scrollState[key];
           if (typeof top !== "number") {
             return;
@@ -48,8 +68,9 @@
           if (isScrollableElement(element)) {
             element.scrollTop = top;
           }
-        });
+          }
+        );
       },
     };
   };
-})(window);
+})(window as unknown as GameRoomUiGlobal);

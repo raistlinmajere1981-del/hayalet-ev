@@ -290,7 +290,7 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
     const nextProcess = normalizeProcessState(project.process);
     nextProcess.records[featureId] = normalizeFeatureProcessRecord(record, featureId);
     project.process = nextProcess;
-    return (nextProcess.records as Record<string, unknown>)[featureId];
+    return nextProcess.records[featureId];
   }
 
   function getFeatureReportRecord(project: ProcessReportRecord, featureId: string) {
@@ -308,7 +308,7 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
     const nextReport = normalizeReportState(project.report);
     nextReport.records[featureId] = normalizeFeatureReportRecord(record, featureId);
     project.report = nextReport;
-    return (nextReport.records as Record<string, unknown>)[featureId];
+    return nextReport.records[featureId];
   }
 
   return {

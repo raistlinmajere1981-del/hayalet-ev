@@ -1,8 +1,17 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
 
-  registry.createFateKnotsUiStageSupportRuntime = function createFateKnotsUiStageSupportRuntime(deps: any) {
-    function createNarrationPanel(state: any, role: any) {
+  const registry = getFactoryRegistry(global);
+
+  registry.createFateKnotsUiStageSupportRuntime = function createFateKnotsUiStageSupportRuntime(
+    deps: GameRoomFateKnotsUiStageSupportRuntimeDeps
+  ): GameRoomFateKnotsUiStageSupportRuntime {
+    function createNarrationPanel(
+      state: GameRoomFateKnotsState,
+      role: GameRoomRoleToken
+    ): HTMLElement {
       const narrationRole = role
         ? Array.isArray(role)
           ? role.concat("narration")
@@ -25,7 +34,7 @@
           deps.t(["fateKnots", "narration", "title"], "DM Thread")
         )
       );
-      if (state.dmNarration && state.dmNarration.text) {
+      if (state.dmNarration?.text) {
         panel.append(deps.createElement("p", "fk-narration-panel__text", state.dmNarration.text));
       } else {
         panel.append(
@@ -42,7 +51,11 @@
       return panel;
     }
 
-    function createEvidenceCard(assetLink: any, label: any, family: any) {
+    function createEvidenceCard(
+      assetLink: GameRoomFateKnotsAssetLink,
+      label: string,
+      family: GameRoomFateKnotsEvidenceFamily
+    ): HTMLElement {
       const card = deps.createFrame("div", "fk-evidence-card", null, {
         overlay: deps.getUiAsset("parchmentStain"),
         frame: deps.getUiAsset("cardSlotFrame"),
@@ -58,7 +71,7 @@
       return card;
     }
 
-    function createLogFeed(state: any) {
+    function createLogFeed(state: GameRoomFateKnotsState): HTMLElement {
       const feed = deps.createFrame(
         "section",
         "fk-stage-frame fk-stage-frame--log fk-log-feed",
@@ -83,7 +96,7 @@
       state.scenarioLog
         .slice()
         .reverse()
-        .forEach(function (entry: any) {
+        .forEach(function (entry: string) {
           const item = deps.createFrame("div", "fk-log-feed__entry", null, {
             overlay: deps.getUiAsset("systemMessageBox"),
             frame: deps.getUiAsset("buttonPlate"),
@@ -101,4 +114,4 @@
       createLogFeed: createLogFeed,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})(window as unknown as GameRoomUiGlobal);

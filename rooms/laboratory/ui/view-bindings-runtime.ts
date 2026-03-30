@@ -1,6 +1,54 @@
 import { createLaboratoryViewAccessorsRuntime } from "./view-accessors-runtime.js";
 
-export function createLaboratoryViewBindingsRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratorySnapshotAccessRuntime = {
+  getAudioAnalysisCapabilities: () => unknown;
+  getAudioAnalysisOrderedResultEntries: () => unknown[];
+  getAudioAnalysisPresets: () => unknown;
+  getAudioAnalysisProviders: () => unknown;
+  getProjectAudioAnalysis: () => unknown;
+  getSubtitleEntries: () => unknown;
+  getSubtitleProcessModuleLabel: (entry: unknown) => string;
+  getSubtitleProviderLabel: (entry: unknown) => string;
+};
+
+type LaboratoryProfileProcessReportAccessorsRuntime = {
+  getCurrentFeatureProcessRecord: () => unknown;
+  getCurrentFeatureReportRecord: () => unknown;
+};
+
+type LaboratorySettingsUi = {
+  renderProfileModelCard: (entry: unknown) => string;
+  renderSettingsOverlay: () => string;
+  renderToolCard: (toolId: string, stageId: string) => string;
+};
+
+type LaboratoryProfileTargetAssetDeps = {
+  getCurrentSourceKind: () => string;
+  getCurrentSourceLabel: () => string;
+  getEditOutputs: () => unknown[];
+  getProfileTargetSummary: () => unknown;
+  getProjectSource: () => unknown;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+type LaboratoryViewBindingsRuntimeDeps = {
+  getCurrentSourceKind: () => string;
+  getCurrentSourceLabel: () => string;
+  getEditOutputs: () => unknown[];
+  getLaboratorySettingsUi: () => LaboratorySettingsUi;
+  getMediaAnalysisProfileTargetAsset: (deps: LaboratoryProfileTargetAssetDeps) => unknown;
+  getProfileTargetSummary: () => unknown;
+  getProjectSource: () => unknown;
+  laboratoryProfileProcessReportAccessorsRuntime: LaboratoryProfileProcessReportAccessorsRuntime;
+  laboratorySnapshotAccessRuntime: LaboratorySnapshotAccessRuntime;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryViewBindingsRuntime(
+  deps: LaboratoryViewBindingsRuntimeDeps
+) {
   const laboratorySnapshotAccessRuntime = deps.laboratorySnapshotAccessRuntime;
   const laboratoryProfileProcessReportAccessorsRuntime =
     deps.laboratoryProfileProcessReportAccessorsRuntime;
@@ -39,13 +87,13 @@ export function createLaboratoryViewBindingsRuntime(deps: any) {
     getSubtitleEntries: laboratorySnapshotAccessRuntime.getSubtitleEntries,
     getSubtitleProcessModuleLabel: laboratorySnapshotAccessRuntime.getSubtitleProcessModuleLabel,
     getSubtitleProviderLabel: laboratorySnapshotAccessRuntime.getSubtitleProviderLabel,
-    renderProfileModelCard: function (entry: any) {
+    renderProfileModelCard: function (entry: unknown) {
       return getLaboratorySettingsUi().renderProfileModelCard(entry);
     },
     renderSettingsOverlay: function () {
       return getLaboratorySettingsUi().renderSettingsOverlay();
     },
-    renderToolCard: function (toolId: any, stageId: any) {
+    renderToolCard: function (toolId: string, stageId: string) {
       return getLaboratorySettingsUi().renderToolCard(toolId, stageId);
     },
   });
@@ -57,7 +105,7 @@ export function createLaboratoryViewBindingsRuntime(deps: any) {
     getAudioAnalysisOrderedResultEntries: function () {
       return laboratoryViewAccessorsRuntime.getAudioAnalysisOrderedResultEntries();
     },
-    getAudioAnalysisProviderEntries: function () {
+    getAudioAnalysisProviderEntries: function (): unknown[] {
       return laboratoryViewAccessorsRuntime.getAudioAnalysisProviderEntries();
     },
     getCurrentFeatureProcessRecord: function () {
@@ -75,10 +123,10 @@ export function createLaboratoryViewBindingsRuntime(deps: any) {
     getSubtitleEntries: function () {
       return laboratoryViewAccessorsRuntime.getSubtitleEntries();
     },
-    getSubtitleProcessModuleLabel: function (entry: any) {
+    getSubtitleProcessModuleLabel: function (entry: unknown) {
       return laboratoryViewAccessorsRuntime.getSubtitleProcessModuleLabel(entry);
     },
-    getSubtitleProviderLabel: function (entry: any) {
+    getSubtitleProviderLabel: function (entry: unknown) {
       return laboratoryViewAccessorsRuntime.getSubtitleProviderLabel(entry);
     },
     renderSettingsOverlay: function renderSettingsOverlay() {

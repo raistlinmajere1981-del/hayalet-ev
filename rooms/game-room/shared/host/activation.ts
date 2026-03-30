@@ -1,4 +1,4 @@
-interface GameRoomHostApi {
+export interface GameRoomHostApi {
   log: (level: string, message: string) => void;
   getLocale?: () => unknown;
   getState: (key: string) => unknown;
@@ -64,7 +64,7 @@ export function createGameRoomHostLifecycle(
       }
       void deps.syncUs1Mailbox(api, "room-ready");
     },
-    onRoomEvent(payload: any) {
+    onRoomEvent(payload: unknown) {
       if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
         return;
       }

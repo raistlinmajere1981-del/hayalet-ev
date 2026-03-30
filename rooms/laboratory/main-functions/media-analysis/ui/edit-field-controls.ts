@@ -1,8 +1,33 @@
-export function createMediaAnalysisEditFieldControls(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryEditTextFieldOptions = LaboratoryRecord & {
+  commit?: unknown;
+  placeholder?: unknown;
+  type?: unknown;
+};
+
+type LaboratoryEditOptionEntry = {
+  label: string;
+  value: string | number;
+};
+
+type LaboratoryEditRangeOptions = LaboratoryRecord & {
+  displayValue?: unknown;
+  max?: unknown;
+  min?: unknown;
+  step?: unknown;
+};
+
+type MediaAnalysisEditFieldControlsDeps = {
+  escapeHtml: (value: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createMediaAnalysisEditFieldControls(deps: MediaAnalysisEditFieldControlsDeps) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
 
-  function renderEditToggle(fieldId: any, label: any, active: any) {
+  function renderEditToggle(fieldId: string, label: string, active: boolean) {
     return `
       <button
         class="lab-toggle"
@@ -16,33 +41,47 @@ export function createMediaAnalysisEditFieldControls(deps: any) {
     `;
   }
 
-  function renderEditTextField(fieldId: any, value: any, label: any, extra: any) {
-    const options = toRecord(extra);
+  function renderEditTextField(
+    fieldId: string,
+    value: unknown,
+    label: string,
+    extra: unknown
+  ) {
+    const options = toRecord(extra) as LaboratoryEditTextFieldOptions;
+    const inputType = typeof options.type === "string" ? options.type : "text";
+    const placeholder = typeof options.placeholder === "string" ? options.placeholder : "";
+    const commitMode = typeof options.commit === "string" ? options.commit : "change";
     return `
       <label class="lab-field">
         <span class="lab-field__label">${escapeHtml(label)}</span>
         <input
           class="lab-input"
-          type="${escapeHtml(options.type || "text")}"
-          value="${escapeHtml(value == null ? "" : value)}"
-          placeholder="${escapeHtml(options.placeholder || "")}"
+          type="${escapeHtml(inputType)}"
+          value="${escapeHtml(value == null ? "" : String(value))}"
+          placeholder="${escapeHtml(placeholder)}"
           data-edit-field="${escapeHtml(fieldId)}"
-          data-edit-commit="${escapeHtml(options.commit || "change")}"
+          data-edit-commit="${escapeHtml(commitMode)}"
         />
       </label>
     `;
   }
 
-  function renderEditSelectField(fieldId: any, value: any, label: any, optionEntries: any) {
+  function renderEditSelectField(
+    fieldId: string,
+    value: unknown,
+    label: string,
+    optionEntries: readonly LaboratoryEditOptionEntry[]
+  ) {
     return `
       <label class="lab-field">
         <span class="lab-field__label">${escapeHtml(label)}</span>
         <select class="lab-select" data-edit-field="${escapeHtml(fieldId)}">
           ${optionEntries
-            .map(function (entry: any) {
+            .map(function (entry) {
+              const optionValue = String(entry.value);
               return `
-                <option value="${escapeHtml(entry.value)}" ${
-                  String(entry.value) === String(value) ? "selected" : ""
+                <option value="${escapeHtml(optionValue)}" ${
+                  optionValue === String(value ?? "") ? "selected" : ""
                 }>
                   ${escapeHtml(entry.label)}
                 </option>
@@ -54,17 +93,22 @@ export function createMediaAnalysisEditFieldControls(deps: any) {
     `;
   }
 
-  function renderEditRangeField(fieldId: any, value: any, label: any, options: any) {
-    const config = toRecord(options);
+  function renderEditRangeField(fieldId: string, value: unknown, label: string, options: unknown) {
+    const config = toRecord(options) as LaboratoryEditRangeOptions;
+    const displayValue = config.displayValue ?? value ?? 0;
+    const minValue = config.min ?? 0;
+    const maxValue = config.max ?? 100;
+    const stepValue = config.step ?? 1;
+    const fieldValue = value ?? minValue;
     return `
       <label class="lab-range-group">
-        <span>${escapeHtml(label)} <strong>${escapeHtml(String(config.displayValue || value || 0))}</strong></span>
+        <span>${escapeHtml(label)} <strong>${escapeHtml(String(displayValue))}</strong></span>
         <input
           type="range"
-          min="${escapeHtml(String(config.min ?? 0))}"
-          max="${escapeHtml(String(config.max ?? 100))}"
-          step="${escapeHtml(String(config.step ?? 1))}"
-          value="${escapeHtml(String(value ?? config.min ?? 0))}"
+          min="${escapeHtml(String(minValue))}"
+          max="${escapeHtml(String(maxValue))}"
+          step="${escapeHtml(String(stepValue))}"
+          value="${escapeHtml(String(fieldValue))}"
           data-edit-field="${escapeHtml(fieldId)}"
           data-edit-commit="change"
         />

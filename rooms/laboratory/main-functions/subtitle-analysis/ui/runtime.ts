@@ -1,7 +1,33 @@
 import { createSubtitleAnalysisUi } from "./module.js";
 import { createLaboratorySubtitlePanelRuntime } from "../../../ui/subtitle-panel-runtime.js";
 
-export function createSubtitleAnalysisUiRuntime(deps: any) {
+type SubtitleAnalysisUiDeps = Parameters<typeof createSubtitleAnalysisUi>[0];
+type SubtitleAnalysisUiRuntimeApi = ReturnType<typeof createSubtitleAnalysisUi>;
+type SubtitleAnalysisUiMethodName =
+  | "renderSubtitleCatalogPanel"
+  | "renderSubtitleDiscoveryPanel"
+  | "renderSubtitleDraftSelect"
+  | "renderSubtitleEditActionsPanel"
+  | "renderSubtitleEditControlsPanel"
+  | "renderSubtitleEditStage"
+  | "renderSubtitleEditSummaryPanel"
+  | "renderSubtitleEditWorkspacePanel"
+  | "renderSubtitleEntryPanel"
+  | "renderSubtitleOutputsPanel"
+  | "renderSubtitlePreviewBody"
+  | "renderSubtitlePresetChooser"
+  | "renderSubtitleProviderPanel"
+  | "renderSubtitleSourceIntakePanel"
+  | "renderSubtitleSourceWorkspacePanel";
+
+type LaboratorySubtitlePanelRuntimeApi = Pick<
+  SubtitleAnalysisUiRuntimeApi,
+  SubtitleAnalysisUiMethodName
+>;
+type RenderSubtitleDraftSelect = LaboratorySubtitlePanelRuntimeApi["renderSubtitleDraftSelect"];
+type RenderSubtitlePreviewBody = LaboratorySubtitlePanelRuntimeApi["renderSubtitlePreviewBody"];
+
+export function createSubtitleAnalysisUiRuntime(deps: SubtitleAnalysisUiDeps) {
   const subtitleAnalysisUi = createSubtitleAnalysisUi({
     toRecord: deps.toRecord,
     escapeHtml: deps.escapeHtml,
@@ -43,7 +69,7 @@ export function createSubtitleAnalysisUiRuntime(deps: any) {
   });
   const subtitlePanelRuntime = createLaboratorySubtitlePanelRuntime({
     subtitleAnalysisUi: subtitleAnalysisUi,
-  });
+  }) as LaboratorySubtitlePanelRuntimeApi;
 
   function renderSubtitleCatalogPanel() {
     return subtitlePanelRuntime.renderSubtitleCatalogPanel();
@@ -53,7 +79,7 @@ export function createSubtitleAnalysisUiRuntime(deps: any) {
     return subtitlePanelRuntime.renderSubtitleDiscoveryPanel();
   }
 
-  function renderSubtitleDraftSelect(...args: unknown[]) {
+  function renderSubtitleDraftSelect(...args: Parameters<RenderSubtitleDraftSelect>) {
     return subtitlePanelRuntime.renderSubtitleDraftSelect(...args);
   }
 
@@ -85,7 +111,7 @@ export function createSubtitleAnalysisUiRuntime(deps: any) {
     return subtitlePanelRuntime.renderSubtitleOutputsPanel();
   }
 
-  function renderSubtitlePreviewBody(...args: unknown[]) {
+  function renderSubtitlePreviewBody(...args: Parameters<RenderSubtitlePreviewBody>) {
     return subtitlePanelRuntime.renderSubtitlePreviewBody(...args);
   }
 

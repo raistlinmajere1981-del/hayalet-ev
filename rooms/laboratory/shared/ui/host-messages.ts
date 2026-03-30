@@ -1,90 +1,146 @@
-export function createLaboratoryHostMessageRuntime(deps: any) {
-  const state = deps.state;
-  const toRecord = deps.toRecord;
-  const text = deps.text;
-  const render = deps.render;
-  const applyPresentationMode = deps.applyPresentationMode;
-  const applyLocale = deps.applyLocale;
-  const normalizeContext = deps.normalizeContext;
-  const shouldIgnoreCorrelatedPayload = deps.shouldIgnoreCorrelatedPayload;
-  const setLastAction = deps.setLastAction;
+import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js"
 
-  function handleHostMessage(message: any) {
-    if (!message || typeof message !== "object" || Array.isArray(message)) {
-      return;
+type LaboratoryRecord = Record<string, unknown>
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"]
+type LaboratoryUiContext = LaboratoryUiState["context"]
+type LaboratorySourceSnapshot = LaboratoryUiState["sourceSnapshot"]
+
+type LaboratoryHostMessageRecord = LaboratoryRecord & {
+  payload?: unknown
+  type?: unknown
+}
+
+type LaboratoryHostPayloadRecord = LaboratoryRecord & {
+  action?: unknown
+  error?: unknown
+  locale?: unknown
+  message?: unknown
+  presentation?: unknown
+  requestId?: unknown
+  snapshot?: unknown
+  success?: unknown
+  translations?: unknown
+}
+
+type LaboratoryHostMessageRuntimeDeps = {
+  applyLocale: (locale: unknown) => unknown
+  applyPresentationMode: (presentation: unknown) => unknown
+  normalizeContext: (message: unknown) => LaboratoryUiContext
+  render: () => unknown
+  setLastAction: (message: string) => unknown
+  shouldIgnoreCorrelatedPayload: (requestId: unknown, action: unknown) => boolean
+  state: LaboratoryUiState
+  text: (path: string[]) => string
+  toRecord: (value: unknown) => LaboratoryRecord
+}
+
+export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRuntimeDeps) {
+  const {
+    applyLocale,
+    applyPresentationMode,
+    normalizeContext,
+    render,
+    setLastAction,
+    shouldIgnoreCorrelatedPayload,
+    state,
+    text,
+    toRecord,
+  } = deps
+
+  function toMessageRecord(value: unknown): LaboratoryHostMessageRecord {
+    return toRecord(value)
+  }
+
+  function toPayloadRecord(value: unknown): LaboratoryHostPayloadRecord {
+    return toRecord(value)
+  }
+
+  function toSourceSnapshot(value: unknown): LaboratorySourceSnapshot {
+    return toRecord(value) as LaboratorySourceSnapshot
+  }
+
+  function toString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value.trim() : null
+  }
+
+  function getPayload(message: LaboratoryHostMessageRecord): LaboratoryHostPayloadRecord {
+    const payload = toPayloadRecord(message.payload)
+    return Object.keys(payload).length > 0 ? payload : toPayloadRecord(message)
+  }
+
+  function handleHostMessage(message: unknown) {
+    const messageRecord = toMessageRecord(message)
+    if (Object.keys(messageRecord).length === 0) {
+      return
     }
 
-    const payload =
-      message.payload &&
-      typeof message.payload === "object" &&
-      Array.isArray(message.payload) === false
-        ? message.payload
-        : message;
+    const payload = getPayload(messageRecord)
+    const messageType = toString(messageRecord.type) || ""
 
-    if (message.type === "host-context") {
-      const presentation = toRecord(payload.presentation);
-      applyPresentationMode(presentation.mode);
+    if (messageType === "host-context") {
+      applyPresentationMode(payload.presentation)
       if (typeof payload.locale === "string") {
-        applyLocale(payload.locale);
+        applyLocale(payload.locale)
       }
       if (
         payload.translations &&
         typeof payload.translations === "object" &&
         Array.isArray(payload.translations) === false
       ) {
-        state.translations = payload.translations;
+        state.translations = toRecord(payload.translations)
       }
-      state.context = normalizeContext(payload);
-      render();
-      return;
+      state.context = normalizeContext(payload)
+      render()
+      return
     }
 
-    if (message.type === "media-state" || message.type === "source-state") {
+    if (messageType === "media-state" || messageType === "source-state") {
       if (shouldIgnoreCorrelatedPayload(payload.requestId, payload.action)) {
-        return;
+        return
       }
-      const snapshot =
-        payload.snapshot &&
-        typeof payload.snapshot === "object" &&
-        Array.isArray(payload.snapshot) === false
-          ? payload.snapshot
-          : {};
-      if (typeof snapshot.featureId === "string" && snapshot.featureId.trim() !== "") {
+      const snapshot = toSourceSnapshot(payload.snapshot)
+      const featureId = toString(toRecord(snapshot)["featureId"])
+      if (featureId !== null) {
         state.context = {
-          ...toRecord(state.context),
-          featureId: snapshot.featureId.trim(),
-        };
+          ...state.context,
+          featureId,
+        }
       }
-      state.sourceSnapshot = snapshot;
-      render();
-      return;
+      state.sourceSnapshot = snapshot
+      render()
+      return
     }
 
-    if (message.type === "media-action-result" || message.type === "source-action-result") {
+    if (messageType === "media-action-result" || messageType === "source-action-result") {
       if (shouldIgnoreCorrelatedPayload(payload.requestId, payload.action)) {
-        return;
+        return
       }
       if (payload.success === true) {
-        setLastAction(text(["mediaAnalysis", "messages", payload.action]) || payload.action || "");
-      } else if (typeof payload.error === "string" && payload.error.trim() !== "") {
-        setLastAction(payload.error);
+        const actionId = toString(payload.action) || ""
+        setLastAction(text(["mediaAnalysis", "messages", actionId]) || actionId)
+      } else {
+        const errorMessage = toString(payload.error)
+        if (errorMessage !== null) {
+          setLastAction(errorMessage)
+        }
       }
-      render();
-      return;
+      render()
+      return
     }
 
-    if (message.type === "media-job" || message.type === "source-job") {
+    if (messageType === "media-job" || messageType === "source-job") {
       if (shouldIgnoreCorrelatedPayload(payload.requestId, payload.action)) {
-        return;
+        return
       }
-      if (typeof payload.message === "string" && payload.message.trim() !== "") {
-        setLastAction(payload.message);
+      const jobMessage = toString(payload.message)
+      if (jobMessage !== null) {
+        setLastAction(jobMessage)
       }
-      render();
+      render()
     }
   }
 
   return {
-    handleHostMessage: handleHostMessage,
-  };
+    handleHostMessage,
+  }
 }

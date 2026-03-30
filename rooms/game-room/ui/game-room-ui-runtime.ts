@@ -1,7 +1,11 @@
 /* global document, navigator, window */
 
-(function (global: any) {
-  type UnknownRecord = Record<string, unknown>;
+(function (global: GameRoomUiGlobal) {
+  type UnknownRecord = GameRoomUnknownRecord;
+
+  function getRuntimeRegistry(host: GameRoomUiGlobal): GameRoomUiRuntimeRegistry {
+    return host.GameRoomUiRuntime || (host.GameRoomUiRuntime = {});
+  }
 
   function readRecord(value: unknown): UnknownRecord | null {
     return value && typeof value === "object" && Array.isArray(value) === false
@@ -13,20 +17,17 @@
     return typeof value === "string" ? value : null;
   }
 
-  const registry = global.GameRoomUiRuntime || (global.GameRoomUiRuntime = {});
+  const registry = getRuntimeRegistry(global);
 
-  registry.createGameRoomUiRuntime = function createGameRoomUiRuntime() {
-    const registryHost = global as unknown as typeof globalThis & Record<string, unknown>;
-    const bootstrapFactories =
-      (registryHost["GameRoomUiBootstrapRuntime"] as Record<string, unknown> | undefined) || {};
-    const createBootstrapRuntime = bootstrapFactories["createGameRoomUiBootstrapRuntime"];
+  registry.createGameRoomUiRuntime = function createGameRoomUiRuntime(): GameRoomUiRuntimeHandle {
+    const bootstrapFactories = global.GameRoomUiBootstrapRuntime || {};
+    const createBootstrapRuntime = bootstrapFactories.createGameRoomUiBootstrapRuntime;
     if (typeof createBootstrapRuntime !== "function") {
       throw new Error("Game Room UI bootstrap runtime is unavailable.");
     }
 
-    const stateMessageFactories =
-      (registryHost["GameRoomUiStateMessageRuntime"] as Record<string, unknown> | undefined) || {};
-    const createStateMessageRuntime = stateMessageFactories["createGameRoomUiStateMessageRuntime"];
+    const stateMessageFactories = global.GameRoomUiStateMessageRuntime || {};
+    const createStateMessageRuntime = stateMessageFactories.createGameRoomUiStateMessageRuntime;
     if (typeof createStateMessageRuntime !== "function") {
       throw new Error("Game Room UI state message runtime is unavailable.");
     }
@@ -58,10 +59,18 @@
       render: render,
     });
 
-    function render() {
+    function isRenderableRoot(value: unknown): value is HTMLElement {
+      return (
+        typeof value === "object" &&
+        value !== null &&
+        typeof (value as { append?: unknown }).append === "function"
+      );
+    }
+
+    function render(): void {
       const state = getState();
       const root = document.getElementById("app");
-      if (!root) {
+      if (!isRenderableRoot(root)) {
         return;
       }
 
@@ -143,24 +152,23 @@
       }
     }
 
-    function start() {
+    function start(): void {
       const state = getState();
-      if (global.roomAPI && typeof global.roomAPI.onHostMessage === "function") {
-        global.roomAPI.onHostMessage(handleHostMessage);
+      const roomApi = global.roomAPI;
+      if (roomApi && typeof roomApi.onHostMessage === "function") {
+        roomApi.onHostMessage(handleHostMessage);
       } else {
         state.lastCommandMessage = bootstrapText("roomApiUnavailable");
       }
 
-      if (global && typeof global === "object") {
-        global.__gameRoomTeamTetrisTest__ = teamTetrisUi.getTestBridge();
-      }
+      global.__gameRoomTeamTetrisTest__ = teamTetrisUi.getTestBridge();
 
       applyPresentationMode(state.presentation);
       applyLocale(state.locale);
       render();
 
-      if (global.roomAPI && typeof global.roomAPI.ready === "function") {
-        global.roomAPI.ready({
+      if (roomApi && typeof roomApi.ready === "function") {
+        roomApi.ready({
           room: roomId,
           feature: getActiveFeatureId(),
           stage: "ui-ready",
@@ -175,4 +183,4 @@
       start: start,
     };
   };
-})(window);
+})(window as unknown as GameRoomUiGlobal);

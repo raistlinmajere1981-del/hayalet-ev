@@ -4,73 +4,16 @@ import { createLaboratorySubtitleReportRuntime } from "./reporting-subtitle.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
-type LaboratoryProcessFindingRecord = LaboratoryRecord & {
-  level?: string | null;
-};
-
-type LaboratoryFeatureProcessRecord = LaboratoryRecord & {
-  artifacts?: unknown[];
-  findings?: unknown[];
-  modules?: unknown[];
-  runId?: string | null;
-  status?: string | null;
-  targetSummary?: unknown;
-  warnings?: string[];
-};
-
-type LaboratoryFeatureReportRecord = LaboratoryRecord & {
+type LaboratoryComposedFeatureReportRecord = LaboratoryRecord & {
   exports?: unknown[];
   status?: string | null;
 };
 
-type LaboratoryFeatureReportRuntimeDeps = LaboratoryRecord & {
-  asNonEmptyString: (value: unknown) => string | null;
-  audioFeatureId: string;
-  createEmptyFeatureReportRecord: (featureId: string) => LaboratoryRecord;
-  getFeatureProcessRecord: (
-    project: LaboratoryRecord,
-    featureId: string
-  ) => LaboratoryFeatureProcessRecord;
-  getFeatureReportRecord: (
-    project: LaboratoryRecord,
-    featureId: string
-  ) => LaboratoryFeatureReportRecord;
-  getFindingSeverityRank: (level: string | null | undefined) => number;
-  mediaFeatureId: string;
-  normalizeFeatureReportRecord: (
-    value: unknown,
-    featureId: string
-  ) => LaboratoryFeatureReportRecord;
-  normalizeProcessFinding: (value: unknown) => LaboratoryProcessFindingRecord;
-  subtitleFeatureId: string;
-  toRecord: (value: unknown) => LaboratoryRecord;
-};
-
-type LaboratoryAudioReportRuntime = {
-  buildAudioAnalysisReportProjection: (runtime: unknown, project: LaboratoryRecord) => unknown;
-  composeAudioAnalysisReport: (
-    runtime: unknown,
-    project: LaboratoryRecord
-  ) => LaboratoryFeatureReportRecord;
-};
-
-type LaboratorySubtitleReportRuntime = {
-  composeSubtitleAnalysisReport: (
-    runtime: unknown,
-    project: LaboratoryRecord
-  ) => LaboratoryFeatureReportRecord;
-  getProcessArtifactByKind: (...args: unknown[]) => unknown;
-};
-
-type LaboratoryReportMarkdownRuntime = {
-  buildReportMarkdown: (
-    runtime: unknown,
-    project: LaboratoryRecord,
-    featureId: string,
-    reportRecord: LaboratoryFeatureReportRecord
-  ) => string;
-  formatReportCardLabel: (...args: unknown[]) => string;
-};
+type LaboratoryFeatureReportRuntimeDeps = Parameters<typeof createLaboratoryAudioReportRuntime>[0] &
+  Parameters<typeof createLaboratorySubtitleReportRuntime>[0] &
+  Omit<Parameters<typeof createLaboratoryReportMarkdownRuntime>[0], "buildAudioAnalysisReportProjection"> & {
+    mediaFeatureId: string;
+  };
 
 export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureReportRuntimeDeps) {
   const {
@@ -84,18 +27,13 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
     mediaFeatureId,
   } = deps;
 
-  const laboratoryAudioReportRuntime = createLaboratoryAudioReportRuntime(
-    deps
-  ) as LaboratoryAudioReportRuntime;
-  const laboratorySubtitleReportRuntime = createLaboratorySubtitleReportRuntime(
-    deps
-  ) as LaboratorySubtitleReportRuntime;
+  const laboratoryAudioReportRuntime = createLaboratoryAudioReportRuntime(deps);
+  const laboratorySubtitleReportRuntime = createLaboratorySubtitleReportRuntime(deps);
   const laboratoryReportMarkdownRuntime = createLaboratoryReportMarkdownRuntime({
     ...deps,
-    buildAudioAnalysisReportProjection(runtime: any, project: any) {
-      return laboratoryAudioReportRuntime.buildAudioAnalysisReportProjection(runtime, project);
-    },
-  }) as LaboratoryReportMarkdownRuntime;
+    buildAudioAnalysisReportProjection:
+      laboratoryAudioReportRuntime.buildAudioAnalysisReportProjection,
+  });
 
   const { buildAudioAnalysisReportProjection, composeAudioAnalysisReport } =
     laboratoryAudioReportRuntime;
@@ -107,12 +45,18 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
     runtime: unknown,
     project: LaboratoryRecord,
     featureId: string
-  ): LaboratoryFeatureReportRecord {
+  ): LaboratoryComposedFeatureReportRecord {
     if (featureId === deps.audioFeatureId) {
-      return composeAudioAnalysisReport(runtime, project);
+      return composeAudioAnalysisReport(
+        runtime as LaboratoryRecord,
+        project
+      ) as unknown as LaboratoryComposedFeatureReportRecord;
     }
     if (featureId === deps.subtitleFeatureId) {
-      return composeSubtitleAnalysisReport(runtime, project);
+      return composeSubtitleAnalysisReport(
+        runtime as LaboratoryRecord,
+        project
+      ) as unknown as LaboratoryComposedFeatureReportRecord;
     }
 
     const processRecord = getFeatureProcessRecord(project, featureId);
@@ -121,15 +65,15 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         {
           ...createEmptyFeatureReportRecord(featureId),
           status: processRecord.status === "running" ? "staged" : "idle",
-          warnings: processRecord.warnings || [],
+          warnings: processRecord["warnings"] || [],
         },
         featureId
-      );
+      ) as unknown as LaboratoryComposedFeatureReportRecord;
     }
 
-    const findings = (Array.isArray(processRecord.findings) ? processRecord.findings : [])
+    const findings = (Array.isArray(processRecord["findings"]) ? processRecord["findings"] : [])
       .map(normalizeProcessFinding)
-      .sort(function (left: any, right: any) {
+      .sort(function (left, right) {
         return getFindingSeverityRank(right.level) - getFindingSeverityRank(left.level);
       });
     const topLevel = findings[0] ? asNonEmptyString(findings[0].level) || "low" : "low";
@@ -160,7 +104,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
             id: `${featureId}-modules`,
             label: "Modules",
             value: String(
-              (Array.isArray(processRecord.modules) ? processRecord.modules : []).length
+              (Array.isArray(processRecord["modules"]) ? processRecord["modules"] : []).length
             ),
           },
           {
@@ -172,7 +116,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
             id: `${featureId}-artifacts`,
             labelKey: "mediaAnalysis.profile.summary.artifacts",
             value: String(
-              (Array.isArray(processRecord.artifacts) ? processRecord.artifacts : []).length
+              (Array.isArray(processRecord["artifacts"]) ? processRecord["artifacts"] : []).length
             ),
           },
           {
@@ -183,12 +127,16 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         ],
         findings: findings,
         caveats: caveats,
-        warnings: Array.isArray(processRecord.warnings) ? processRecord.warnings : [],
-        exports: getFeatureReportRecord(project, featureId).exports,
+        warnings: Array.isArray(processRecord["warnings"]) ? processRecord["warnings"] : [],
+        exports:
+          (getFeatureReportRecord(
+            project,
+            featureId
+          ) as unknown as LaboratoryComposedFeatureReportRecord)["exports"],
         error: null,
       },
       featureId
-    );
+    ) as unknown as LaboratoryComposedFeatureReportRecord;
   }
 
   return {

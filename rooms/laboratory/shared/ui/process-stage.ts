@@ -1,51 +1,112 @@
-export function createLaboratoryProcessStageUi(deps: any) {
-  const toRecord = deps.toRecord;
-  const escapeHtml = deps.escapeHtml;
-  const text = deps.text;
-  const featureText = deps.featureText;
-  const renderStageIntro = deps.renderStageIntro;
-  const renderSummaryRows = deps.renderSummaryRows;
-  const formatStatusLabel = deps.formatStatusLabel;
-  const getCurrentFeatureProcessRecord = deps.getCurrentFeatureProcessRecord;
-  const getProcessModules = deps.getProcessModules;
-  const getProcessJobs = deps.getProcessJobs;
-  const getProcessFindings = deps.getProcessFindings;
-  const getCurrentFeatureTargetLabel = deps.getCurrentFeatureTargetLabel;
-  const getCurrentFeatureArtifactCount = deps.getCurrentFeatureArtifactCount;
-  const getCurrentFeatureReportRecord = deps.getCurrentFeatureReportRecord;
+type LaboratoryRecord = Record<string, unknown>
 
-  function getProcessModulePercent(module: any) {
-    const record = toRecord(module);
-    const status = typeof record.status === "string" ? record.status : "idle";
-    if (status === "running" || status === "queued" || status === "idle") {
-      return Math.max(0, Math.min(100, Math.round(Number(record.percent) || 0)));
+type LaboratoryFeatureProcessRecord = LaboratoryRecord & {
+  status?: unknown
+  warnings?: unknown
+}
+
+type LaboratoryProcessModuleRecord = LaboratoryRecord & {
+  id?: unknown
+  percent?: unknown
+  status?: unknown
+  summary?: unknown
+}
+
+type LaboratoryJobRecord = LaboratoryRecord & {
+  message?: unknown
+  stage?: unknown
+}
+
+type LaboratoryProcessStageUiDeps = {
+  escapeHtml: (value: string) => string
+  featureText: (path: string[]) => string
+  formatStatusLabel: (value: unknown) => string
+  getCurrentFeatureArtifactCount: () => number
+  getCurrentFeatureProcessRecord: () => unknown
+  getCurrentFeatureReportRecord: () => unknown
+  getCurrentFeatureTargetLabel: () => string
+  getProcessFindings: () => unknown[]
+  getProcessJobs: () => unknown[]
+  getProcessModules: () => unknown[]
+  renderStageIntro: (stageId: string) => string
+  renderSummaryRows: (rows: Array<[string, string]>) => string
+  text: (path: string[]) => string
+  toRecord: (value: unknown) => LaboratoryRecord
+}
+
+export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDeps) {
+  const {
+    escapeHtml,
+    featureText,
+    formatStatusLabel,
+    getCurrentFeatureArtifactCount,
+    getCurrentFeatureProcessRecord,
+    getCurrentFeatureReportRecord,
+    getCurrentFeatureTargetLabel,
+    getProcessFindings,
+    getProcessJobs,
+    getProcessModules,
+    renderStageIntro,
+    renderSummaryRows,
+    text,
+    toRecord,
+  } = deps
+
+  function toFeatureProcessRecord(value: unknown): LaboratoryFeatureProcessRecord {
+    return toRecord(value)
+  }
+
+  function toProcessModuleRecord(value: unknown): LaboratoryProcessModuleRecord {
+    return toRecord(value)
+  }
+
+  function toJobRecord(value: unknown): LaboratoryJobRecord {
+    return toRecord(value)
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return []
     }
-    return 100;
+    return value.filter((entry): entry is string => typeof entry === "string")
   }
 
-  function getProcessModuleTitle(module: any) {
-    const record = toRecord(module);
-    return (
-      featureText(["process", "moduleTitles", record.id || ""]) || record.title || record.id || "--"
-    );
+  function getProcessModulePercent(module: unknown) {
+    const record = toProcessModuleRecord(module)
+    const status = typeof record.status === "string" ? record.status : "idle"
+    if (status === "running" || status === "queued" || status === "idle") {
+      return Math.max(0, Math.min(100, Math.round(Number(record.percent) || 0)))
+    }
+    return 100
   }
 
-  function getRunningProcessJob() {
+  function getProcessModuleTitle(module: unknown) {
+    const record = toProcessModuleRecord(module)
     return (
-      getProcessJobs().find(function (job: any) {
-        return !["completed", "failed", "cancelled"].includes(String(job.stage || ""));
-      }) || null
-    );
+      featureText(["process", "moduleTitles", String(record.id || "")]) ||
+      String(record["title"] || record.id || "--")
+    )
+  }
+
+  function getRunningProcessJob(): LaboratoryJobRecord | null {
+    return (
+      getProcessJobs()
+        .map(toJobRecord)
+        .find(function (job) {
+          return !["completed", "failed", "cancelled"].includes(String(job.stage || ""))
+        }) || null
+    )
   }
 
   function renderProcessStage() {
-    const processRecord = getCurrentFeatureProcessRecord();
-    const modules = getProcessModules();
-    const runningJob = getRunningProcessJob();
-    const findings = getProcessFindings();
-    const completedModules = modules.filter(function (entry: any) {
-      return !["idle", "queued", "running"].includes(String(toRecord(entry).status || ""));
-    }).length;
+    const processRecord = toFeatureProcessRecord(getCurrentFeatureProcessRecord())
+    const modules = getProcessModules().map(toProcessModuleRecord)
+    const runningJob = getRunningProcessJob()
+    const findings = getProcessFindings()
+    const completedModules = modules.filter(function (entry) {
+      return !["idle", "queued", "running"].includes(String(entry.status || ""))
+    }).length
+    const reportRecord = toFeatureProcessRecord(getCurrentFeatureReportRecord())
 
     return `
       <div class="lab-layout">
@@ -55,8 +116,12 @@ export function createLaboratoryProcessStageUi(deps: any) {
             ${
               modules.length > 0
                 ? modules
-                    .map(function (moduleEntry: any, index: any) {
-                      const progress = getProcessModulePercent(moduleEntry);
+                    .map(function (moduleEntry, index) {
+                      const progress = getProcessModulePercent(moduleEntry)
+                      const summary =
+                        typeof moduleEntry.summary === "string" && moduleEntry.summary.trim() !== ""
+                          ? moduleEntry.summary
+                          : null
                       return `
                         <article class="lab-process-row">
                           <div class="lab-process-row__head">
@@ -69,14 +134,9 @@ export function createLaboratoryProcessStageUi(deps: any) {
                           <div class="lab-progress-bar lab-progress-bar--wide">
                             <span style="width:${progress}%"></span>
                           </div>
-                          ${
-                            typeof toRecord(moduleEntry).summary === "string" &&
-                            toRecord(moduleEntry).summary.trim() !== ""
-                              ? `<p class="lab-panel__hint">${escapeHtml(toRecord(moduleEntry).summary)}</p>`
-                              : ""
-                          }
+                          ${summary ? `<p class="lab-panel__hint">${escapeHtml(summary)}</p>` : ""}
                         </article>
-                      `;
+                      `
                     })
                     .join("")
                 : `<p class="lab-panel__hint">${escapeHtml(featureText(["process", "subtitle"]))}</p>`
@@ -89,14 +149,8 @@ export function createLaboratoryProcessStageUi(deps: any) {
               <p class="lab-panel__eyebrow">${escapeHtml(featureText(["process", "summaryTitle"]))}</p>
             </div>
             ${renderSummaryRows([
-              [
-                text(["mediaAnalysis", "shared", "status"]),
-                formatStatusLabel(processRecord.status || "idle"),
-              ],
-              [
-                text(["mediaAnalysis", "profile", "summary", "target"]),
-                getCurrentFeatureTargetLabel(),
-              ],
+              [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(processRecord.status || "idle")],
+              [text(["mediaAnalysis", "profile", "summary", "target"]), getCurrentFeatureTargetLabel()],
               [featureText(["report", "findingsTitle"]), String(findings.length)],
               [
                 text(["mediaAnalysis", "profile", "summary", "artifacts"]),
@@ -108,15 +162,15 @@ export function createLaboratoryProcessStageUi(deps: any) {
               ],
             ])}
             ${
-              Array.isArray(processRecord.warnings) && processRecord.warnings.length > 0
+              toStringArray(processRecord.warnings).length > 0
                 ? `
                   <div class="lab-list-block">
                     <strong>${escapeHtml(text(["mediaAnalysis", "profile", "warningsTitle"]))}</strong>
                     <ul class="lab-bullet-list">
-                      ${processRecord.warnings
+                      ${toStringArray(processRecord.warnings)
                         .slice(0, 4)
-                        .map(function (entry: any) {
-                          return `<li>${escapeHtml(entry)}</li>`;
+                        .map(function (entry) {
+                          return `<li>${escapeHtml(entry)}</li>`
                         })
                         .join("")}
                     </ul>
@@ -134,9 +188,7 @@ export function createLaboratoryProcessStageUi(deps: any) {
                 ${escapeHtml(text(["mediaAnalysis", "profile", "actions", "cancel"]))}
               </button>
               <button class="lab-button lab-button--primary" type="button" data-action="open-report" ${
-                ["ready", "stale"].includes(String(getCurrentFeatureReportRecord().status || ""))
-                  ? ""
-                  : "disabled"
+                ["ready", "stale"].includes(String(reportRecord.status || "")) ? "" : "disabled"
               }>
                 ${escapeHtml(featureText(["process", "controls", "jumpReport"]))}
               </button>
@@ -151,13 +203,13 @@ export function createLaboratoryProcessStageUi(deps: any) {
           </section>
         </aside>
       </div>
-    `;
+    `
   }
 
   return {
-    getProcessModulePercent: getProcessModulePercent,
-    getProcessModuleTitle: getProcessModuleTitle,
-    getRunningProcessJob: getRunningProcessJob,
-    renderProcessStage: renderProcessStage,
-  };
+    getProcessModulePercent,
+    getProcessModuleTitle,
+    getRunningProcessJob,
+    renderProcessStage,
+  }
 }

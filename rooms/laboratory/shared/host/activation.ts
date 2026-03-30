@@ -1,28 +1,65 @@
-export function createLaboratoryHostActivation(deps: any) {
-  const createRuntimeState = deps.createRuntimeState;
-  const ensureHydrated = deps.ensureHydrated;
-  const ensureRoomToolsSubscription = deps.ensureRoomToolsSubscription;
-  const handleMediaAction = deps.handleMediaAction;
-  const pushMediaState = deps.pushMediaState;
-  const saveContext = deps.saveContext;
-  const tearDownRoomToolsSubscription = deps.tearDownRoomToolsSubscription;
-  const toRecord = deps.toRecord;
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryHostApi = {
+  log: (level: string, message: string) => void;
+};
+
+type LaboratoryRuntimeRecord = LaboratoryRecord;
+
+type LaboratoryHostActivationDeps = {
+  createRuntimeState: () => LaboratoryRuntimeRecord;
+  ensureHydrated: (api: LaboratoryHostApi, runtime: LaboratoryRuntimeRecord) => Promise<unknown>;
+  ensureRoomToolsSubscription: (
+    api: LaboratoryHostApi,
+    runtime: LaboratoryRuntimeRecord
+  ) => void;
+  handleMediaAction: (
+    api: LaboratoryHostApi,
+    runtime: LaboratoryRuntimeRecord,
+    payload: LaboratoryRecord
+  ) => Promise<unknown>;
+  pushMediaState: (
+    api: LaboratoryHostApi,
+    runtime: LaboratoryRuntimeRecord,
+    requestId: string | null
+  ) => void;
+  saveContext: (api: LaboratoryHostApi, payload: LaboratoryRecord) => void;
+  tearDownRoomToolsSubscription: (runtime: LaboratoryRuntimeRecord) => void;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+type LaboratoryHostEventPayload = LaboratoryRecord & {
+  payload?: unknown;
+  type?: unknown;
+};
+
+export function createLaboratoryHostActivation(deps: LaboratoryHostActivationDeps) {
+  const {
+    createRuntimeState,
+    ensureHydrated,
+    ensureRoomToolsSubscription,
+    handleMediaAction,
+    pushMediaState,
+    saveContext,
+    tearDownRoomToolsSubscription,
+    toRecord,
+  } = deps;
 
   return {
-    activate: function activate(api: any) {
+    activate(api: LaboratoryHostApi) {
       const runtime = createRuntimeState();
       api.log("info", "Laboratory media analysis host activated.");
       saveContext(api, {});
       ensureRoomToolsSubscription(api, runtime);
 
       return {
-        onRoomReady: function onRoomReady(payload: any) {
-          saveContext(api, payload);
+        onRoomReady(payload: unknown) {
+          saveContext(api, toRecord(payload));
           void ensureHydrated(api, runtime)
             .then(function () {
               pushMediaState(api, runtime, null);
             })
-            .catch(function (error: any) {
+            .catch(function (error) {
               api.log(
                 "warn",
                 `Laboratory media host bootstrap failed: ${
@@ -31,22 +68,23 @@ export function createLaboratoryHostActivation(deps: any) {
               );
             });
         },
-        onRoomEvent: function onRoomEvent(payload: any) {
-          if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+        onRoomEvent(payload: unknown) {
+          if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
             return;
           }
 
-          if (payload.type === "host-context") {
-            saveContext(api, payload);
+          const eventPayload = toRecord(payload) as LaboratoryHostEventPayload;
+          if (eventPayload.type === "host-context") {
+            saveContext(api, eventPayload);
             pushMediaState(api, runtime, null);
             return;
           }
 
-          if (payload.type === "source-action" || payload.type === "media-action") {
-            void handleMediaAction(api, runtime, toRecord(payload.payload));
+          if (eventPayload.type === "source-action" || eventPayload.type === "media-action") {
+            void handleMediaAction(api, runtime, toRecord(eventPayload.payload));
           }
         },
-        dispose: function dispose() {
+        dispose() {
           tearDownRoomToolsSubscription(runtime);
           api.log("info", "Laboratory media analysis host disposed.");
         },

@@ -51,7 +51,15 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
   } = deps;
 
   function cloneValue(value: unknown): LaboratoryRecord {
-    return JSON.parse(JSON.stringify(value));
+    return toRecord(JSON.parse(JSON.stringify(value)) as unknown);
+  }
+
+  function toUnknownArray(value: unknown): unknown[] {
+    return Array.isArray(value)
+      ? value.map(function (entry): unknown {
+          return entry;
+        })
+      : [];
   }
 
   function createProfileArtifact(kind: string, path: unknown, label: string, metadata: unknown) {
@@ -287,21 +295,20 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
   ) {
     const profileReadiness = toRecord(toRecord(project["profile"])["readiness"]);
     const selectedModel =
-      (Array.isArray(profileReadiness["models"]) ? profileReadiness["models"] : []).find(function (
-        entry: unknown
-      ) {
+      toUnknownArray(profileReadiness["models"]).find(function (entry) {
         return toRecord(entry)["selected"] === true;
       }) || null;
-    if (!selectedModel || (selectedModel as LaboratoryRecord)["ready"] !== true) {
+    const selectedModelRecord = selectedModel === null ? null : toRecord(selectedModel);
+    if (selectedModelRecord === null || selectedModelRecord["ready"] !== true) {
       return null;
     }
 
-    const modelPath = asNonEmptyString((selectedModel as LaboratoryRecord)["path"]);
+    const modelPath = asNonEmptyString(selectedModelRecord["path"]);
     if (modelPath === null) {
       return null;
     }
 
-    const language = asNonEmptyString((selectedModel as LaboratoryRecord)["language"]) || "en";
+    const language = asNonEmptyString(selectedModelRecord["language"]) || "en";
     const sampleWavPath = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-speech.wav`;
     const transcriptBase = `${getProjectProfilePreflightDir(runtime, project as { slug: string })}/${artifactBase}-transcript`;
     const transcriptPath = `${transcriptBase}.txt`;
@@ -356,7 +363,7 @@ export function createLaboratoryAnalysisArtifactRuntime(deps: AnalysisArtifactRu
     sensitivity: number,
     artifactIds: unknown
   ) {
-    const score = signals.reduce<number>(function (total: any, entry: any) {
+    const score = signals.reduce<number>(function (total, entry) {
       const signal = toRecord(entry);
       const level = asNonEmptyString(signal["level"]) || "low";
       return total + (level === "high" ? 3 : level === "medium" ? 2 : 1);

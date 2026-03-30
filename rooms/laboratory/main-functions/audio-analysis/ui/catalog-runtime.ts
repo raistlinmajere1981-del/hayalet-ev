@@ -1,14 +1,66 @@
-export function createAudioAnalysisCatalogRuntime(deps: any) {
-  const escapeHtml = deps.escapeHtml;
-  const text = deps.text;
-  const textFromKey = deps.textFromKey;
-  const featureText = deps.featureText;
-  const getAudioAnalysisModules = deps.getAudioAnalysisModules;
-  const getAudioAnalysisCapabilities = deps.getAudioAnalysisCapabilities;
-  const getAudioAnalysisProviderEntries = deps.getAudioAnalysisProviderEntries;
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryAudioCatalogModuleRecord = LaboratoryRecord & {
+  id?: unknown;
+  phase?: unknown;
+  status?: unknown;
+  summaryKey?: unknown;
+  titleKey?: unknown;
+};
+
+type LaboratoryAudioCapabilitiesRecord = LaboratoryRecord & {
+  sharedSettingsOverlay?: unknown;
+  sharedToolRegistry?: unknown;
+};
+
+type AudioAnalysisCatalogRuntimeDeps = {
+  escapeHtml: (value: string) => string;
+  featureText: (path: string[]) => string;
+  getAudioAnalysisCapabilities: () => unknown;
+  getAudioAnalysisModules: () => unknown;
+  getAudioAnalysisProviderEntries: () => unknown;
+  text: (path: string[]) => string;
+  textFromKey: (key: string) => string;
+  toRecord?: (value: unknown) => LaboratoryRecord;
+};
+
+export function createAudioAnalysisCatalogRuntime(deps: AudioAnalysisCatalogRuntimeDeps) {
+  const {
+    escapeHtml,
+    featureText,
+    getAudioAnalysisCapabilities,
+    getAudioAnalysisModules,
+    getAudioAnalysisProviderEntries,
+    text,
+    textFromKey,
+  } = deps;
+
+  function toRecord(value: unknown): LaboratoryRecord {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return {};
+    }
+    return value as LaboratoryRecord;
+  }
+
+  function toCatalogModuleRecord(value: unknown): LaboratoryAudioCatalogModuleRecord {
+    return toRecord(value);
+  }
+
+  function toCapabilitiesRecord(value: unknown): LaboratoryAudioCapabilitiesRecord {
+    return toRecord(value);
+  }
+
+  function toString(value: unknown, fallback = ""): string {
+    return typeof value === "string" ? value : fallback;
+  }
+
+  function getModules(): LaboratoryAudioCatalogModuleRecord[] {
+    const modules = getAudioAnalysisModules();
+    return Array.isArray(modules) ? modules.map(toCatalogModuleRecord) : [];
+  }
 
   function renderAudioAnalysisCatalogPanel() {
-    const modules = getAudioAnalysisModules();
+    const modules = getModules();
     if (modules.length === 0) {
       return "";
     }
@@ -24,8 +76,8 @@ export function createAudioAnalysisCatalogRuntime(deps: any) {
         </div>
         <div class="lab-tool-grid">
           ${modules
-            .map(function (entry: any) {
-              const status = typeof entry.status === "string" ? entry.status : "planned";
+            .map(function (entry) {
+              const status = toString(entry.status, "planned");
               const statusLabel =
                 status === "implemented"
                   ? featureText(["catalog", "status", "implemented"])
@@ -36,12 +88,12 @@ export function createAudioAnalysisCatalogRuntime(deps: any) {
                 <article class="lab-tool-card">
                   <div class="lab-tool-card__head">
                     <div>
-                      <strong>${escapeHtml(textFromKey(entry.titleKey || "") || entry.id || "--")}</strong>
+                      <strong>${escapeHtml(textFromKey(toString(entry.titleKey)) || toString(entry.id) || "--")}</strong>
                       <span>${escapeHtml(statusLabel)}</span>
                     </div>
-                    <span class="lab-chip">${escapeHtml(String(entry.phase || "--").toUpperCase())}</span>
+                    <span class="lab-chip">${escapeHtml(toString(entry.phase, "--").toUpperCase())}</span>
                   </div>
-                  <p class="lab-panel__hint">${escapeHtml(textFromKey(entry.summaryKey || "") || "")}</p>
+                  <p class="lab-panel__hint">${escapeHtml(textFromKey(toString(entry.summaryKey)) || "")}</p>
                 </article>
               `;
             })
@@ -52,9 +104,10 @@ export function createAudioAnalysisCatalogRuntime(deps: any) {
   }
 
   function renderAudioAnalysisNoticePanel() {
-    const providerCount = getAudioAnalysisProviderEntries().length;
-    const capabilities = getAudioAnalysisCapabilities();
-    const capabilityNotes = [];
+    const providerEntries = getAudioAnalysisProviderEntries();
+    const providerCount = Array.isArray(providerEntries) ? providerEntries.length : 0;
+    const capabilities = toCapabilitiesRecord(getAudioAnalysisCapabilities());
+    const capabilityNotes: string[] = [];
     if (capabilities.sharedSettingsOverlay === true) {
       capabilityNotes.push(featureText(["settings", "title"]));
     }

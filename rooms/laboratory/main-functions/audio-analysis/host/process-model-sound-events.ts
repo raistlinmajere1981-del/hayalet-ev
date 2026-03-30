@@ -4,7 +4,107 @@ import {
   getAudioAnalysisYamnetScriptPath,
 } from "../../../shared/host/project-paths.js";
 
-export function createAudioAnalysisSoundEventsModelRunner(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryRuntimeRecord = LaboratoryRecord & {
+  packageToolsDir?: unknown;
+  paths?: unknown;
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  slug?: unknown;
+};
+
+type LaboratoryProcessTargetRecord = LaboratoryRecord & {
+  path?: unknown;
+};
+
+type LaboratoryProcessArtifactRecord = LaboratoryRecord & {
+  id?: unknown;
+};
+
+type LaboratoryProcessFindingRecord = LaboratoryRecord;
+type AudioAnalysisProcessRootRuntime = Parameters<typeof getAudioAnalysisProcessRootDir>[0];
+type AudioAnalysisProcessRootProject = Parameters<typeof getAudioAnalysisProcessRootDir>[1];
+type AudioAnalysisYamnetRuntime = Parameters<typeof getAudioAnalysisYamnetDir>[0];
+
+type LaboratoryProfileToolRequest = {
+  requestId: string;
+  jobId: string;
+  toolId: string;
+  cwd: string;
+  args: string[];
+  timeoutMs: number;
+};
+
+type LaboratorySoundEventClassRecord = LaboratoryRecord & {
+  className?: unknown;
+  label?: unknown;
+  score?: unknown;
+};
+
+type LaboratorySoundEventsPayload = LaboratoryRecord & {
+  modelVersion?: unknown;
+  topClasses?: unknown;
+  warning?: unknown;
+};
+
+type LaboratoryAudioAnalysisModelResult = {
+  findings: LaboratoryProcessFindingRecord[];
+  artifacts: LaboratoryProcessArtifactRecord[];
+  warnings: string[];
+  status: string;
+  summary: string;
+};
+
+type AudioAnalysisSoundEventsModelRunnerDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  createProcessArtifact: (
+    moduleId: string,
+    artifactKind: string,
+    filePath: string,
+    label: string,
+    metadata: LaboratoryRecord
+  ) => LaboratoryProcessArtifactRecord;
+  createProcessFinding: (
+    moduleId: string,
+    findingKind: string,
+    confidence: string,
+    level: string,
+    title: string,
+    detail: string,
+    evidenceCount: number,
+    artifactIds: string[]
+  ) => LaboratoryProcessFindingRecord;
+  ensureProcessRuntimeDirectories: (
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    moduleOutputDir: string
+  ) => Promise<unknown>;
+  readJsonFile: (path: string) => Promise<unknown>;
+  runProfileTool: (
+    runtime: LaboratoryRuntimeRecord,
+    request: LaboratoryProfileToolRequest
+  ) => Promise<unknown>;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+function asNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : Number.isFinite(Number(value))
+      ? Number(value)
+      : null;
+}
+
+function isNonNullString(value: string | null): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+export function createAudioAnalysisSoundEventsModelRunner(
+  deps: AudioAnalysisSoundEventsModelRunnerDeps
+) {
   const {
     asNonEmptyString,
     createProcessArtifact,
@@ -15,19 +115,62 @@ export function createAudioAnalysisSoundEventsModelRunner(deps: any) {
     toRecord,
   } = deps;
 
+  function toTargetRecord(value: unknown): LaboratoryProcessTargetRecord {
+    return toRecord(value);
+  }
+
+  function toSummaryPayload(value: unknown): LaboratorySoundEventsPayload {
+    return toRecord(value);
+  }
+
+  function toSoundEventClassRecord(value: unknown): LaboratorySoundEventClassRecord {
+    return toRecord(value);
+  }
+
+  function getArtifactIds(artifacts: LaboratoryProcessArtifactRecord[]): string[] {
+    return artifacts
+      .map(function (artifact) {
+        return asNonEmptyString(artifact.id);
+      })
+      .filter(isNonNullString);
+  }
+
+  function getProcessRootDir(
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord
+  ): string {
+    return getAudioAnalysisProcessRootDir(
+      runtime as unknown as AudioAnalysisProcessRootRuntime,
+      project as unknown as AudioAnalysisProcessRootProject
+    );
+  }
+
   return async function runSoundEventsAudioAnalyzer(
-    runtime: any,
-    project: any,
-    requestId: any,
-    jobId: any,
-    target: any,
-    artifactBase: any,
-    moduleOutputDir: any,
-    moduleId: any
-  ) {
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryProcessTargetRecord,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
+  ): Promise<LaboratoryAudioAnalysisModelResult> {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
-    const yamnetScriptPath = getAudioAnalysisYamnetScriptPath(runtime);
+    const targetPath = asNonEmptyString(toTargetRecord(target).path);
+    if (targetPath === null) {
+      return {
+        findings: [],
+        artifacts: [],
+        warnings: ["Sound event analysis requires an audio target path before processing can start."],
+        status: "blocked",
+        summary: "Sound event analysis is waiting for a prepared audio target.",
+      };
+    }
+
+    const yamnetScriptPath = getAudioAnalysisYamnetScriptPath(
+      runtime as unknown as AudioAnalysisYamnetRuntime
+    );
     if (yamnetScriptPath === null) {
       return {
         findings: [],
@@ -45,8 +188,8 @@ export function createAudioAnalysisSoundEventsModelRunner(deps: any) {
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getAudioAnalysisProcessRootDir(runtime, project),
-      args: ["-y", "-i", target.path, "-vn", "-ac", "1", "-ar", "16000", wavPath],
+      cwd: getProcessRootDir(runtime, project),
+      args: ["-y", "-i", targetPath, "-vn", "-ac", "1", "-ar", "16000", wavPath],
       timeoutMs: 3 * 60 * 1000,
     });
 
@@ -54,7 +197,9 @@ export function createAudioAnalysisSoundEventsModelRunner(deps: any) {
       requestId: requestId,
       jobId: jobId,
       toolId: "yamnet",
-      cwd: getAudioAnalysisYamnetDir(runtime) || getAudioAnalysisProcessRootDir(runtime, project),
+      cwd:
+        getAudioAnalysisYamnetDir(runtime as unknown as AudioAnalysisYamnetRuntime) ||
+        getProcessRootDir(runtime, project),
       args: [
         yamnetScriptPath,
         "--input",
@@ -69,9 +214,9 @@ export function createAudioAnalysisSoundEventsModelRunner(deps: any) {
       timeoutMs: 8 * 60 * 1000,
     });
 
-    const summaryPayload = toRecord(await readJsonFile(summaryPath));
+    const summaryPayload = toSummaryPayload(await readJsonFile(summaryPath));
     const topClasses = Array.isArray(summaryPayload.topClasses)
-      ? summaryPayload.topClasses.map(toRecord)
+      ? summaryPayload.topClasses.map(toSoundEventClassRecord)
       : [];
     const headline = topClasses[0] || null;
     const summaryArtifact = createProcessArtifact(
@@ -85,10 +230,8 @@ export function createAudioAnalysisSoundEventsModelRunner(deps: any) {
         classCount: topClasses.length,
       }
     );
-    const artifacts = [summaryArtifact].filter(Boolean);
-    const artifactIds = artifacts.map(function (artifact: any) {
-      return artifact.id;
-    });
+    const artifacts = [summaryArtifact];
+    const artifactIds = getArtifactIds(artifacts);
     const warningText =
       asNonEmptyString(summaryPayload.warning) ||
       "YAMNet predictions are broad sound-event suggestions and should be reviewed manually.";
@@ -101,9 +244,9 @@ export function createAudioAnalysisSoundEventsModelRunner(deps: any) {
                 moduleId,
                 "model",
                 "low",
-                typeof headline.score === "number" && headline.score >= 0.35 ? "medium" : "low",
+                (asNumber(headline.score) ?? 0) >= 0.35 ? "medium" : "low",
                 "Top sound event candidates captured",
-                `Top class: ${headline.label || headline.className || "unknown"} (${typeof headline.score === "number" ? headline.score.toFixed(3) : "n/a"}). ${warningText}`,
+                `Top class: ${asNonEmptyString(headline.label) || asNonEmptyString(headline.className) || "unknown"} (${asNumber(headline.score)?.toFixed(3) ?? "n/a"}). ${warningText}`,
                 topClasses.length,
                 artifactIds
               ),

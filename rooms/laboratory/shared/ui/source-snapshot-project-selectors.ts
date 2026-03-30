@@ -1,140 +1,156 @@
-type LaboratoryRecord = Record<string, unknown>;
+import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js"
 
-export function createLaboratorySnapshotProjectSelectors(deps: any) {
-  const getState = deps.getState;
-  const toRecord = deps.toRecord;
-  const getActiveFeatureId = deps.getActiveFeatureId;
+type LaboratoryRecord = Record<string, unknown>
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"]
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  audioAnalysis?: unknown
+  edit?: unknown
+  process?: unknown
+  profile?: unknown
+  report?: unknown
+  source?: unknown
+  subtitleAnalysis?: unknown
+}
+
+type LaboratorySourceSnapshotProjectSelectorsDeps = {
+  getActiveFeatureId: () => string
+  getState: () => LaboratoryUiState
+  toRecord: (value: unknown) => LaboratoryRecord
+}
+
+export function createLaboratorySnapshotProjectSelectors(
+  deps: LaboratorySourceSnapshotProjectSelectorsDeps
+) {
+  const { getActiveFeatureId, getState, toRecord } = deps
+
+  function toProjectRecord(value: unknown): LaboratoryProjectRecord {
+    return toRecord(value)
+  }
 
   function getSourceSnapshot() {
-    const state = getState();
-    return toRecord(state.sourceSnapshot);
+    return getState().sourceSnapshot
   }
 
-  function getActiveProject() {
-    const project = getSourceSnapshot().activeProject;
+  function getActiveProject(): LaboratoryProjectRecord | null {
+    const project = getSourceSnapshot().activeProject
     return project && typeof project === "object" && Array.isArray(project) === false
-      ? project
-      : null;
+      ? toProjectRecord(project)
+      : null
   }
 
-  function getProjectSummaries() {
-    const projects = getSourceSnapshot().projects;
-    return Array.isArray(projects) ? projects : [];
+  function getProjectSummaries(): LaboratoryRecord[] {
+    return Array.isArray(getSourceSnapshot().projects)
+      ? getSourceSnapshot().projects.map(toRecord)
+      : []
   }
 
   function getSourcePresets() {
-    return toRecord(getSourceSnapshot().sourcePresets);
+    return toRecord(getSourceSnapshot().sourcePresets)
   }
 
   function getYtDlpForm() {
-    return toRecord(getSourceSnapshot().ytDlpForm);
+    return toRecord(getSourceSnapshot().ytDlpForm)
   }
 
   function getEditPresets() {
-    return toRecord(getSourceSnapshot().editPresets);
+    return toRecord(getSourceSnapshot().editPresets)
   }
 
   function getEditCapabilities() {
-    return toRecord(getSourceSnapshot().editCapabilities);
+    return toRecord(getSourceSnapshot().editCapabilities)
   }
 
   function getProfilePresets() {
-    return toRecord(getSourceSnapshot().profilePresets);
+    return toRecord(getSourceSnapshot().profilePresets)
   }
 
   function getProfileCapabilities() {
-    return toRecord(getSourceSnapshot().profileCapabilities);
+    return toRecord(getSourceSnapshot().profileCapabilities)
   }
 
   function getProfileModelsCatalog() {
-    return toRecord(getSourceSnapshot().profileModels);
+    return toRecord(getSourceSnapshot().profileModels)
   }
 
   function getProfileModelState() {
-    return toRecord(getSourceSnapshot().profileModelState);
+    return toRecord(getSourceSnapshot().profileModelState)
   }
 
-  function getToolRegistry() {
-    const toolRegistry = getSourceSnapshot().toolRegistry;
-    return Array.isArray(toolRegistry) ? toolRegistry.map(toRecord) : [];
+  function getToolRegistry(): LaboratoryRecord[] {
+    return Array.isArray(getSourceSnapshot().toolRegistry)
+      ? getSourceSnapshot().toolRegistry.map(toRecord)
+      : []
   }
 
   function getProjectSource() {
-    const project = getActiveProject();
-    return project ? toRecord(project.source) : {};
+    return toRecord(getActiveProject()?.source)
   }
 
   function getProjectEdit() {
-    const project = getActiveProject();
-    return project ? toRecord(project.edit) : {};
+    return toRecord(getActiveProject()?.edit)
   }
 
   function getProjectProfile() {
-    const project = getActiveProject();
-    return project ? toRecord(project.profile) : {};
+    return toRecord(getActiveProject()?.profile)
   }
 
   function getProjectProcess() {
-    const project = getActiveProject();
-    return project ? toRecord(project.process) : {};
+    return toRecord(getActiveProject()?.process)
   }
 
   function getProjectReport() {
-    const project = getActiveProject();
-    return project ? toRecord(project.report) : {};
+    return toRecord(getActiveProject()?.report)
   }
 
   function getProjectAudioAnalysis() {
-    const project = getActiveProject();
-    return project ? toRecord(project.audioAnalysis) : {};
+    return toRecord(getActiveProject()?.audioAnalysis)
   }
 
   function getProjectSubtitleAnalysis() {
-    const project = getActiveProject();
-    return project ? toRecord(project.subtitleAnalysis) : {};
+    return toRecord(getActiveProject()?.subtitleAnalysis)
   }
 
   function getCurrentFeatureProcessRecord() {
-    return toRecord(toRecord(getProjectProcess().records)[getActiveFeatureId()]);
+    const records = toRecord(getProjectProcess()["records"])
+    return toRecord(records[getActiveFeatureId()])
   }
 
   function getCurrentFeatureReportRecord() {
-    return toRecord(toRecord(getProjectReport().records)[getActiveFeatureId()]);
+    const records = toRecord(getProjectReport()["records"])
+    return toRecord(records[getActiveFeatureId()])
   }
 
   function getSourceMetadata() {
-    return toRecord(getProjectSource().metadata);
+    return toRecord(getProjectSource()["metadata"])
   }
 
   function getEditPreview() {
-    return toRecord(getProjectEdit().preview);
+    return toRecord(getProjectEdit()["preview"])
   }
 
   function getEditOutputs(): LaboratoryRecord[] {
-    const outputs = getProjectEdit().outputs;
-    return Array.isArray(outputs)
-      ? outputs.map(function (entry: any) {
-          return toRecord(entry) as LaboratoryRecord;
-        })
-      : [];
+    const outputs = getProjectEdit()["outputs"]
+    return Array.isArray(outputs) ? outputs.map(toRecord) : []
   }
 
-  function getActiveEditOutput() {
-    const edit = getProjectEdit();
+  function getActiveEditOutput(): LaboratoryRecord | null {
+    const projectEdit = getProjectEdit()
+    const activeOutputIdValue = projectEdit["activeOutputId"]
     const activeOutputId =
-      typeof edit.activeOutputId === "string" && edit.activeOutputId.trim() !== ""
-        ? edit.activeOutputId
-        : null;
+      typeof activeOutputIdValue === "string" && activeOutputIdValue.trim() !== ""
+        ? activeOutputIdValue.trim()
+        : null
+
     return (
-      getEditOutputs().find(function (entry: any) {
-        return activeOutputId !== null && entry.id === activeOutputId;
+      getEditOutputs().find(function (entry) {
+        return activeOutputId !== null && typeof entry["id"] === "string" && entry["id"] === activeOutputId
       }) || null
-    );
+    )
   }
 
-  function getJobs() {
-    const jobs = getSourceSnapshot().jobs;
-    return Array.isArray(jobs) ? jobs : [];
+  function getJobs(): LaboratoryRecord[] {
+    return Array.isArray(getSourceSnapshot().jobs) ? getSourceSnapshot().jobs.map(toRecord) : []
   }
 
   return {
@@ -164,5 +180,5 @@ export function createLaboratorySnapshotProjectSelectors(deps: any) {
     getEditOutputs,
     getActiveEditOutput,
     getJobs,
-  };
+  }
 }

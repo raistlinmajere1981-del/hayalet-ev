@@ -14,6 +14,9 @@ import {
 } from "../types/room-shell-contracts.js";
 
 type GenericRecord = Record<string, unknown>;
+export type GameRoomContextSnapshot = GameRoomContextState & {
+  presentation: Record<string, unknown>;
+};
 
 function isRecord(value: unknown): value is GenericRecord {
   return typeof value === "object" && value !== null && Array.isArray(value) === false;
@@ -56,19 +59,17 @@ export function normalizeSlot(candidate: unknown, slotId: string): GameRoomSlotS
   };
 }
 
-export function sanitizeContext(payload: unknown): GameRoomContextState & {
-  presentation: Record<string, unknown>;
-} {
+export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
   const source = isRecord(payload) ? payload : {};
   const fallbackContext = createGameRoomContextState();
   const slotsSource = isRecord(source["slots"]) ? source["slots"] : {};
   const userSource = isRecord(source["user"]) ? source["user"] : {};
   const defaultFeatures = getDefaultFeatureRecords();
   const featureMap = new Map<string, GameRoomFeatureRecord>(
-    defaultFeatures.map((feature: any) => [feature.id, feature])
+    defaultFeatures.map((feature): [string, GameRoomFeatureRecord] => [feature.id, feature])
   );
   if (Array.isArray(source["features"])) {
-    source["features"].forEach((feature: any) => {
+    source["features"].forEach((feature) => {
       const normalized = sanitizeFeatureRecord(feature, FEATURE_ID);
       featureMap.set(normalized.id, normalized);
     });
@@ -94,7 +95,7 @@ export function sanitizeContext(payload: unknown): GameRoomContextState & {
           : fallbackContext.user.nickname,
     },
     features,
-    activeFeature: features.find((feature: any) => feature.id === activeFeature.id) || activeFeature,
+    activeFeature: features.find((feature) => feature.id === activeFeature.id) || activeFeature,
     slots: {
       ai1: normalizeSlot(slotsSource["ai1"], "ai1"),
       ai2: normalizeSlot(slotsSource["ai2"], "ai2"),
@@ -118,14 +119,14 @@ export function getActiveFeatureId(
   return normalizeFeatureId(context?.activeFeature?.id);
 }
 
-export function loadContext(api: { getState: (key: string) => unknown }) {
+export function loadContext(api: { getState: (key: string) => unknown }): GameRoomContextSnapshot {
   return sanitizeContext(api.getState("xox-context"));
 }
 
 export function saveContext(
   api: { setState: (key: string, value: unknown) => unknown },
   payload: unknown
-) {
+): GameRoomContextSnapshot {
   const context = sanitizeContext(payload);
   api.setState("xox-context", context);
   return context;

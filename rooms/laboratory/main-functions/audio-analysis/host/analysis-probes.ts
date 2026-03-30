@@ -22,6 +22,7 @@ interface AnalysisProbesDeps {
 
 export function createAudioAnalysisProbeRuntime(deps: AnalysisProbesDeps) {
   const asNonEmptyString = deps.asNonEmptyString;
+  const toRecord = deps.toRecord;
   const readTextFile = deps.readTextFile;
   const runProfileTool = deps.runProfileTool;
   const buildProsodySummaryFromCsv = deps.buildProsodySummaryFromCsv;
@@ -30,9 +31,47 @@ export function createAudioAnalysisProbeRuntime(deps: AnalysisProbesDeps) {
   const parseSilenceDetectLog = deps.parseSilenceDetectLog;
   const parseVolumeDetectLog = deps.parseVolumeDetectLog;
 
+  function toPackageToolsRuntime(runtime: Record<string, unknown>) {
+    return { packageToolsDir: runtime["packageToolsDir"] };
+  }
+
+  function toProjectPathRuntime(runtime: Record<string, unknown>) {
+    const pathsRecord = toRecord(runtime["paths"]);
+    const projectsDir = asNonEmptyString(pathsRecord["projectsDir"]);
+    if (projectsDir === null) {
+      throw new Error("Audio analysis runtime is missing a projects directory.");
+    }
+    return {
+      paths: {
+        projectsDir: projectsDir,
+      },
+    };
+  }
+
+  function toProjectSlugRecord(project: Record<string, unknown>) {
+    const slug = asNonEmptyString(project["slug"]);
+    if (slug === null) {
+      throw new Error("Audio analysis project is missing a slug.");
+    }
+    return { slug: slug };
+  }
+
+  function readTargetPath(target: Record<string, unknown>) {
+    const path = asNonEmptyString(target["path"]);
+    if (path === null) {
+      throw new Error("Audio analysis target is missing a file path.");
+    }
+    return path;
+  }
+
+  function readProfileToolStderr(result: Record<string, unknown>) {
+    return asNonEmptyString(result["stderr"]);
+  }
+
   function resolveOpenSmileProsodyRuntime(runtime: Record<string, unknown>) {
-    const configDir = getAudioAnalysisOpenSmileConfigDir(runtime as any);
-    const configPath = getAudioAnalysisOpenSmileConfigPath(runtime as any, "prosodyAcf.conf");
+    const packageToolsRuntime = toPackageToolsRuntime(runtime);
+    const configDir = getAudioAnalysisOpenSmileConfigDir(packageToolsRuntime);
+    const configPath = getAudioAnalysisOpenSmileConfigPath(packageToolsRuntime, "prosodyAcf.conf");
     if (configDir === null || configPath === null) {
       return null;
     }
@@ -67,7 +106,7 @@ export function createAudioAnalysisProbeRuntime(deps: AnalysisProbesDeps) {
         "-C",
         openSmileRuntime.configPath,
         "-I",
-        target["path"] as string,
+        readTargetPath(target),
         "-csvoutput",
         contourPath,
         "-appendcsv",
@@ -79,14 +118,15 @@ export function createAudioAnalysisProbeRuntime(deps: AnalysisProbesDeps) {
     });
 
     const contourCsv = await readTextFile(contourPath);
-    if (asNonEmptyString(contourCsv) === null) {
+    const contourCsvText = asNonEmptyString(contourCsv);
+    if (contourCsvText === null) {
       throw new Error("openSMILE did not produce a prosody contour CSV.");
     }
 
     return {
-      contourCsv: contourCsv,
+      contourCsv: contourCsvText,
       contourPath: contourPath,
-      prosodySummary: buildProsodySummaryFromCsv(contourCsv as string),
+      prosodySummary: buildProsodySummaryFromCsv(contourCsvText),
     };
   }
 
@@ -97,27 +137,27 @@ export function createAudioAnalysisProbeRuntime(deps: AnalysisProbesDeps) {
     jobId: string,
     target: Record<string, unknown>
   ) {
-    const stderr = asNonEmptyString(
-      (
-        await runProfileTool(runtime, {
-          requestId: requestId,
-          jobId: jobId,
-          toolId: "ffmpeg",
-          cwd: getProjectProfileDir(runtime as any, project as any),
-          args: [
-            "-hide_banner",
-            "-i",
-            target["path"] as string,
-            "-vf",
-            "blackdetect=d=0.25:pix_th=0.10,freezedetect=n=-40dB:d=0.4",
-            "-an",
-            "-f",
-            "null",
-            "-",
-          ],
-          timeoutMs: 120_000,
-        })
-      )["stderr"]
+    const projectPathRuntime = toProjectPathRuntime(runtime);
+    const projectSlugRecord = toProjectSlugRecord(project);
+    const stderr = readProfileToolStderr(
+      await runProfileTool(runtime, {
+        requestId: requestId,
+        jobId: jobId,
+        toolId: "ffmpeg",
+        cwd: getProjectProfileDir(projectPathRuntime, projectSlugRecord),
+        args: [
+          "-hide_banner",
+          "-i",
+          readTargetPath(target),
+          "-vf",
+          "blackdetect=d=0.25:pix_th=0.10,freezedetect=n=-40dB:d=0.4",
+          "-an",
+          "-f",
+          "null",
+          "-",
+        ],
+        timeoutMs: 120_000,
+      })
     );
     return {
       black: parseBlackDetectLog(stderr),
@@ -132,15 +172,18 @@ export function createAudioAnalysisProbeRuntime(deps: AnalysisProbesDeps) {
     jobId: string,
     target: Record<string, unknown>
   ) {
+    const projectPathRuntime = toProjectPathRuntime(runtime);
+    const projectSlugRecord = toProjectSlugRecord(project);
+    const targetPath = readTargetPath(target);
     const silencePayload = await runProfileTool(runtime, {
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getProjectProfileDir(runtime as any, project as any),
+      cwd: getProjectProfileDir(projectPathRuntime, projectSlugRecord),
       args: [
         "-hide_banner",
         "-i",
-        target["path"] as string,
+        targetPath,
         "-af",
         "silencedetect=n=-38dB:d=0.35",
         "-f",
@@ -153,8 +196,8 @@ export function createAudioAnalysisProbeRuntime(deps: AnalysisProbesDeps) {
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getProjectProfileDir(runtime as any, project as any),
-      args: ["-hide_banner", "-i", target["path"] as string, "-af", "volumedetect", "-f", "null", "-"],
+      cwd: getProjectProfileDir(projectPathRuntime, projectSlugRecord),
+      args: ["-hide_banner", "-i", targetPath, "-af", "volumedetect", "-f", "null", "-"],
       timeoutMs: 120_000,
     });
 

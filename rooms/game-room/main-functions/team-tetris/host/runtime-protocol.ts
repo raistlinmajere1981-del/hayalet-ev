@@ -1,12 +1,25 @@
-import { buildTeamTetrisSeatView, TEAM_TETRIS_SCHEMA_VERSION } from "./engine.js";
+import {
+  buildTeamTetrisSeatView,
+  TEAM_TETRIS_SCHEMA_VERSION,
+  type TeamTetrisMatch,
+  type TeamTetrisSeatId,
+} from "./engine.js";
 import { TEAM_TETRIS_COMMAND_COPY } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
 
-function teamTetrisCommandMessage(locale: any, key: any, params: any = {}) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+function teamTetrisCommandMessage(
+  locale: unknown,
+  key: string,
+  params: Record<string, unknown> = {}
+) {
   return fillTemplate(translate(locale, TEAM_TETRIS_COMMAND_COPY, key), params);
 }
 
-function resolveTeamTetrisSeatFromProvider(provider: any) {
+function resolveTeamTetrisSeatFromProvider(provider: unknown): TeamTetrisSeatId | null {
   if (provider === "room-ui") {
     return "user";
   }
@@ -16,14 +29,17 @@ function resolveTeamTetrisSeatFromProvider(provider: any) {
   return null;
 }
 
-function buildTeamTetrisProtocolScenario(match: any) {
-  const currentTurn = match && match.currentTurn ? match.currentTurn : null;
-  return currentTurn && currentTurn.role === "followup"
+function buildTeamTetrisProtocolScenario(match: TeamTetrisMatch | null | undefined) {
+  const currentTurn = match?.currentTurn ?? null;
+  return currentTurn?.role === "followup"
     ? "team-tetris-ai-followup"
     : "team-tetris-ai-opening";
 }
 
-function buildTeamTetrisAiTurnPacket(match: any, seatId: any) {
+function buildTeamTetrisAiTurnPacket(
+  match: TeamTetrisMatch | null | undefined,
+  seatId: TeamTetrisSeatId
+) {
   const view = buildTeamTetrisSeatView(match, seatId);
   if (!view || !view.pendingTurn) {
     return null;
@@ -46,11 +62,14 @@ function buildTeamTetrisAiTurnPacket(match: any, seatId: any) {
   };
 }
 
-function buildTeamTetrisAsciiBoard(rows: any) {
+function buildTeamTetrisAsciiBoard(rows: string[] | null | undefined) {
   return Array.isArray(rows) ? rows.join("\n") : "";
 }
 
-function buildTeamTetrisAiTurnMessage(match: any, seatId: any) {
+function buildTeamTetrisAiTurnMessage(
+  match: TeamTetrisMatch | null | undefined,
+  seatId: TeamTetrisSeatId
+) {
   const packet = buildTeamTetrisAiTurnPacket(match, seatId);
   if (!packet) {
     return "";
@@ -77,17 +96,17 @@ function buildTeamTetrisAiTurnMessage(match: any, seatId: any) {
   ].join("\n");
 }
 
-function buildTeamTetrisRemoteMoveText(movePayload: any) {
+function buildTeamTetrisRemoteMoveText(movePayload: Record<string, unknown>) {
   return `++cmd:GameRoomTeamTetrisRemoteMove(${JSON.stringify(movePayload)})`;
 }
 
-function parseTeamTetrisStartEventNote(note: any) {
+function parseTeamTetrisStartEventNote(note: unknown): Record<string, unknown> | null {
   if (typeof note !== "string" || note.trim() === "") {
     return null;
   }
   try {
-    const parsed = JSON.parse(note);
-    return parsed && typeof parsed === "object" && Array.isArray(parsed) === false ? parsed : null;
+    const parsed: unknown = JSON.parse(note);
+    return isRecord(parsed) ? parsed : null;
   } catch {
     return null;
   }

@@ -1,3 +1,5 @@
+import type { TeamTetrisStateApi } from "../../team-tetris/host/state.js";
+import type { GameRoomContextState } from "../../../shared/types/room-shell-contracts.js";
 import {
   getActiveFeatureId,
   loadContext,
@@ -21,25 +23,29 @@ type TeamTetrisSeatReadiness = {
   us1: boolean;
 };
 
-function readTeamTetrisSeatReadiness(context: any): TeamTetrisSeatReadiness {
-  const slots = context && context.slots ? context.slots : {};
+interface XoxRuntimeSyncApi extends TeamTetrisStateApi {
+  notifyRoom?(eventType: string, data: unknown): void;
+}
+
+function readTeamTetrisSeatReadiness(context: GameRoomContextState): TeamTetrisSeatReadiness {
   return {
-    ai1: !!(slots.ai1 && slots.ai1.ready === true),
-    ai2: !!(slots.ai2 && slots.ai2.ready === true),
-    us1: !!(slots.us1 && slots.us1.ready === true),
+    ai1: context.slots.ai1.ready === true,
+    ai2: context.slots.ai2.ready === true,
+    us1: context.slots.us1.ready === true,
   };
 }
 
-export function syncFromContext(api: any, payload: unknown) {
+export function syncFromContext(api: XoxRuntimeSyncApi, payload: unknown) {
   const previousContext = loadContext(api);
   const previousActiveFeatureId = getActiveFeatureId(previousContext);
   const context = saveContext(api, payload);
   const activeFeatureId = getActiveFeatureId(context);
   fateKnotsSyncFromContext(api, {
-    context: context,
-    previousActiveFeatureId: previousActiveFeatureId,
-    activeFeatureId: activeFeatureId,
+    context,
+    previousActiveFeatureId,
+    activeFeatureId,
   });
+
   const state = loadState(api);
   const teamTetrisState = loadTeamTetrisState(api);
   if (

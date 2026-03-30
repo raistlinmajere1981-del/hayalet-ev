@@ -167,11 +167,11 @@ const TEAM_TETRIS_PIECES = {
   },
 };
 
-function normalizeText(value: any) {
+function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function hashString(value: any) {
+function hashString(value: unknown) {
   let hash = 2166136261;
   const input = String(value || "");
   for (let index = 0; index < input.length; index += 1) {
@@ -181,7 +181,7 @@ function hashString(value: any) {
   return hash >>> 0;
 }
 
-function createDeterministicRng(seed: any) {
+function createDeterministicRng(seed: unknown) {
   let state = hashString(seed) || 1;
   return function nextRandom() {
     state = (state + 0x6d2b79f5) >>> 0;

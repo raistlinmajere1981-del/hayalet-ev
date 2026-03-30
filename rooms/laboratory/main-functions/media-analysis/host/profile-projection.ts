@@ -1,4 +1,213 @@
-export function createMediaProfileProjectionRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryTargetMode = "derived" | "source";
+
+type LaboratoryMediaProfileProjectionRuntime = LaboratoryRecord & {
+  profileCapabilities?: unknown;
+  profileModels?: unknown;
+  profilePresets?: unknown;
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  name?: unknown;
+  profile?: unknown;
+  source?: unknown;
+};
+
+type LaboratoryProjectProfileRecord = LaboratoryRecord & {
+  activePresetId?: unknown;
+  artifactPreferences?: unknown;
+  depth?: unknown;
+  dirty?: unknown;
+  frameSampleDensity?: unknown;
+  laneSelection?: unknown;
+  modelId?: unknown;
+  preflight?: unknown;
+  profile?: unknown;
+  targetAssetMode?: unknown;
+  targetOutputId?: unknown;
+  transcriptSampleSeconds?: unknown;
+};
+
+type LaboratoryProjectSourceRecord = LaboratoryRecord & {
+  kind?: unknown;
+  metadata?: unknown;
+  mimeType?: unknown;
+  storedFileName?: unknown;
+  storedPath?: unknown;
+};
+
+type LaboratoryProfileLaneRecord = LaboratoryRecord & {
+  artifactKinds?: unknown;
+  labelKey?: unknown;
+  optionalTools?: unknown;
+  requiredTools?: unknown;
+  summaryKey?: unknown;
+};
+
+type LaboratoryNormalizedEditOutputRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  id?: unknown;
+  label?: unknown;
+  metadata?: unknown;
+  mimeType?: unknown;
+  path?: unknown;
+};
+
+type LaboratoryProfileToolSummaryRecord = LaboratoryRecord & {
+  displayName?: unknown;
+  platformSupported?: unknown;
+  ready?: unknown;
+};
+
+type LaboratoryProfileModelSummaryRecord = LaboratoryRecord & {
+  compatibilityReason?: unknown;
+  ready?: unknown;
+  runtimeCompatible?: unknown;
+  selected?: unknown;
+};
+
+type LaboratoryProfilePreflightRecord = LaboratoryRecord & {
+  error?: unknown;
+  jobId?: unknown;
+  ranAt?: unknown;
+  requestId?: unknown;
+  status?: unknown;
+  targetSummary?: unknown;
+  warnings?: unknown;
+};
+
+type LaboratoryProfileTargetSummaryRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  label?: unknown;
+  metadata?: unknown;
+  mimeType?: unknown;
+  mode?: unknown;
+  outputId?: unknown;
+  path?: unknown;
+  reason?: unknown;
+  requestedMode?: unknown;
+  signature?: unknown;
+  usingFallback?: unknown;
+};
+
+type LaboratoryResolvedProfileTarget = {
+  fileName: string | null;
+  label: string;
+  metadata: LaboratoryRecord;
+  mimeType: string | null;
+  mode: LaboratoryTargetMode;
+  outputId: string | null;
+  path: string | null;
+  reason: string | null;
+  requestedMode: LaboratoryTargetMode;
+  signature: string | null;
+  usingFallback: boolean;
+};
+
+type LaboratoryProfileLaneSummary = {
+  artifactKinds: string[];
+  labelKey: string | null;
+  laneId: string;
+  optionalTools: string[];
+  requiredTools: string[];
+  summaryKey: string | null;
+  supportLevel: "blocked" | "degraded" | "ready";
+  warnings: string[];
+};
+
+type LaboratoryProfileReadiness = {
+  blockers: string[];
+  enabledLaneCount: number;
+  enabledLaneIds: string[];
+  lanes: LaboratoryProfileLaneSummary[];
+  models: LaboratoryProfileModelSummaryRecord[];
+  optionalTools: LaboratoryProfileToolSummaryRecord[];
+  requiredTools: LaboratoryProfileToolSummaryRecord[];
+  stageReady: boolean;
+  target: LaboratoryResolvedProfileTarget;
+  warnings: string[];
+};
+
+type LaboratoryProfileEstimate = {
+  artifactCount: number;
+  runtimeSeconds: number;
+  sampleWindowSeconds: number | null;
+};
+
+type MediaProfileProjectionRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
+  buildDerivedTargetSignature: (output: LaboratoryNormalizedEditOutputRecord) => string | null;
+  buildProfileModelSummary: (
+    runtime: LaboratoryMediaProfileProjectionRuntime,
+    project: LaboratoryProjectRecord
+  ) => LaboratoryRecord[];
+  buildProfileToolSummary: (
+    runtime: LaboratoryMediaProfileProjectionRuntime,
+    toolId: string,
+    supportLevel: string
+  ) => LaboratoryRecord;
+  buildSourceTargetSignature: (project: LaboratoryProjectRecord) => string | null;
+  clampProfileTranscriptSampleSeconds: (
+    profileCapabilities: unknown,
+    requestedSeconds: unknown
+  ) => number;
+  clone: (value: unknown) => unknown;
+  createDefaultProfileState: (
+    profilePresets: unknown,
+    profileModels: unknown,
+    profileCapabilities: unknown,
+    sourceKind: string
+  ) => unknown;
+  createEmptyProfilePreflight: () => LaboratoryRecord;
+  findEditOutputById: (
+    project: LaboratoryProjectRecord,
+    outputId: string | null
+  ) => unknown | null;
+  findProfilePreset: (
+    profilePresets: unknown,
+    sourceKind: string,
+    presetId: unknown
+  ) => unknown | null;
+  getCompatibleProfileLaneIds: (profilePresets: unknown, sourceKind: string) => string[];
+  getDefaultProfileModelId: (profileModels: unknown, sourceKind: unknown) => string | null;
+  getEnabledProfileLaneIds: (
+    runtime: LaboratoryMediaProfileProjectionRuntime,
+    project: LaboratoryProjectRecord
+  ) => string[];
+  getProfileDepthConfig: (
+    runtime: LaboratoryMediaProfileProjectionRuntime,
+    depth: unknown
+  ) => LaboratoryRecord;
+  getProfileFrameDensityRuntimeConfig: (
+    runtime: LaboratoryMediaProfileProjectionRuntime,
+    density: unknown
+  ) => LaboratoryRecord;
+  getProfileLaneMap: (profilePresets: unknown) => LaboratoryRecord;
+  getProfileModelDescriptorMap: (
+    runtime: LaboratoryMediaProfileProjectionRuntime
+  ) => LaboratoryRecord;
+  getStageSupport: (manifest: unknown, stageId: string) => string;
+  getToolManifest: (runtime: LaboratoryMediaProfileProjectionRuntime, toolId: string) => unknown;
+  normalizeEditOutput: (output: unknown) => LaboratoryNormalizedEditOutputRecord;
+  normalizeProfileArtifactPreferences: (
+    preferences: LaboratoryRecord,
+    profileCapabilities: unknown,
+    sourceKind: string
+  ) => Record<string, boolean>;
+  normalizeProfileState: (
+    profile: unknown,
+    profilePresets: unknown,
+    profileModels: unknown,
+    profileCapabilities: unknown,
+    sourceKind: string
+  ) => unknown;
+  normalizeSourceMetadata: (value: unknown) => LaboratoryRecord;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createMediaProfileProjectionRuntime(deps: MediaProfileProjectionRuntimeDeps) {
   const {
     asNonEmptyString,
     asNumber,
@@ -28,26 +237,85 @@ export function createMediaProfileProjectionRuntime(deps: any) {
     toRecord,
   } = deps;
 
-  function resolveProfileTarget(project: any) {
-    const profile = toRecord(project.profile);
-    const source = toRecord(project.source);
-    const requestedMode =
+  function toProjectProfileRecord(value: unknown): LaboratoryProjectProfileRecord {
+    return toRecord(value);
+  }
+
+  function toProjectSourceRecord(value: unknown): LaboratoryProjectSourceRecord {
+    return toRecord(value);
+  }
+
+  function toProfileLaneRecord(value: unknown): LaboratoryProfileLaneRecord {
+    return toRecord(value);
+  }
+
+  function toProfileToolSummaryRecord(value: unknown): LaboratoryProfileToolSummaryRecord {
+    return toRecord(value);
+  }
+
+  function toProfileModelSummaryRecord(value: unknown): LaboratoryProfileModelSummaryRecord {
+    return toRecord(value);
+  }
+
+  function toProfilePreflightRecord(value: unknown): LaboratoryProfilePreflightRecord {
+    return toRecord(value);
+  }
+
+  function toProfileTargetSummaryRecord(value: unknown): LaboratoryProfileTargetSummaryRecord {
+    return toRecord(value);
+  }
+
+  function toNormalizedEditOutputRecord(value: unknown): LaboratoryNormalizedEditOutputRecord {
+    return toRecord(value);
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return asNonEmptyString(entry);
+      })
+      .filter((entry): entry is string => entry !== null);
+  }
+
+  function getProjectName(project: LaboratoryProjectRecord): string {
+    return asNonEmptyString(project.name) || "--";
+  }
+
+  function getSourceKind(project: LaboratoryProjectRecord): string {
+    return asNonEmptyString(toProjectSourceRecord(project.source).kind) || "video";
+  }
+
+  function getProfile(project: LaboratoryProjectRecord): LaboratoryProjectProfileRecord {
+    return toProjectProfileRecord(project.profile);
+  }
+
+  function getSource(project: LaboratoryProjectRecord): LaboratoryProjectSourceRecord {
+    return toProjectSourceRecord(project.source);
+  }
+
+  function resolveProfileTarget(project: LaboratoryProjectRecord): LaboratoryResolvedProfileTarget {
+    const profile = getProfile(project);
+    const source = getSource(project);
+    const requestedMode: LaboratoryTargetMode =
       asNonEmptyString(profile.targetAssetMode) === "derived" ? "derived" : "source";
     const sourcePath = asNonEmptyString(source.storedPath);
     const sourceFileName = asNonEmptyString(source.storedFileName);
     const sourceMetadata = normalizeSourceMetadata(source.metadata);
-    const sourceTarget = {
-      requestedMode: requestedMode,
-      mode: "source",
-      outputId: null as string | null,
-      path: sourcePath,
+    const sourceTarget: LaboratoryResolvedProfileTarget = {
       fileName: sourceFileName,
-      mimeType: asNonEmptyString(source.mimeType),
+      label: sourceFileName || getProjectName(project),
       metadata: sourceMetadata,
+      mimeType: asNonEmptyString(source.mimeType),
+      mode: "source",
+      outputId: null,
+      path: sourcePath,
+      reason: null,
+      requestedMode,
       signature: sourcePath !== null ? buildSourceTargetSignature(project) : null,
-      label: sourceFileName || project.name,
       usingFallback: false,
-      reason: null as string | null,
     };
 
     if (requestedMode !== "derived") {
@@ -56,40 +324,48 @@ export function createMediaProfileProjectionRuntime(deps: any) {
 
     const outputId = asNonEmptyString(profile.targetOutputId);
     const pinnedOutput = findEditOutputById(project, outputId);
-    if (pinnedOutput !== null && asNonEmptyString(toRecord(pinnedOutput).path) !== null) {
-      const output = normalizeEditOutput(pinnedOutput);
+    const pinnedOutputRecord = toNormalizedEditOutputRecord(pinnedOutput);
+    if (pinnedOutput !== null && asNonEmptyString(pinnedOutputRecord.path) !== null) {
+      const output = toNormalizedEditOutputRecord(normalizeEditOutput(pinnedOutput));
       return {
-        requestedMode: requestedMode,
-        mode: "derived",
-        outputId: output.id,
-        path: output.path,
-        fileName: output.fileName,
-        mimeType: output.mimeType,
+        fileName: asNonEmptyString(output.fileName),
+        label:
+          asNonEmptyString(output.label) ||
+          asNonEmptyString(output.fileName) ||
+          asNonEmptyString(output.id) ||
+          "--",
         metadata: normalizeSourceMetadata(output.metadata),
-        signature: buildDerivedTargetSignature(output),
-        label: output.label || output.fileName || output.id,
-        usingFallback: false,
+        mimeType: asNonEmptyString(output.mimeType),
+        mode: "derived",
+        outputId: asNonEmptyString(output.id),
+        path: asNonEmptyString(output.path),
         reason: null,
+        requestedMode,
+        signature: buildDerivedTargetSignature(output),
+        usingFallback: false,
       };
     }
 
     return {
       ...sourceTarget,
-      requestedMode: requestedMode,
-      outputId: outputId,
-      usingFallback: true,
+      outputId,
       reason:
         outputId === null
           ? "Choose a derived output to keep the profile target pinned."
           : "Pinned derived output is unavailable. Falling back to the saved source.",
+      requestedMode,
+      usingFallback: true,
     };
   }
 
-  function buildProfileReadiness(runtime: any, project: any) {
-    const sourceKind = asNonEmptyString(toRecord(project.source).kind) || "video";
-    const profile = toRecord(project.profile);
+  function buildProfileReadiness(
+    runtime: LaboratoryMediaProfileProjectionRuntime,
+    project: LaboratoryProjectRecord
+  ): LaboratoryProfileReadiness {
+    const sourceKind = getSourceKind(project);
+    const profile = getProfile(project);
     const enabledLaneIds = getCompatibleProfileLaneIds(runtime.profilePresets, sourceKind).filter(
-      function (laneId: string) {
+      function (laneId) {
         return toRecord(profile.laneSelection)[laneId] === true;
       }
     );
@@ -99,12 +375,14 @@ export function createMediaProfileProjectionRuntime(deps: any) {
     const optionalToolIds: string[] = [];
     const blockers: string[] = [];
     const warnings: string[] = [];
-    const requiredToolMap: Record<string, any> = {};
-    const optionalToolMap: Record<string, any> = {};
-    const modelSummaries = buildProfileModelSummary(runtime, project);
+    const requiredToolMap: Record<string, LaboratoryProfileToolSummaryRecord> = {};
+    const optionalToolMap: Record<string, LaboratoryProfileToolSummaryRecord> = {};
+    const modelSummaries = buildProfileModelSummary(runtime, project).map(
+      toProfileModelSummaryRecord
+    );
     const selectedModel =
-      modelSummaries.find(function (entry: Record<string, unknown>) {
-        return entry["selected"] === true;
+      modelSummaries.find(function (entry) {
+        return entry.selected === true;
       }) || null;
 
     if (target.path === null) {
@@ -114,132 +392,129 @@ export function createMediaProfileProjectionRuntime(deps: any) {
       warnings.push(target.reason);
     }
 
-    const laneSummaries = enabledLaneIds.map(function (laneId: string) {
-      const lane = toRecord(laneMap[laneId]);
-      const laneRequired = Array.isArray(lane.requiredTools) ? lane.requiredTools : [];
-      const laneOptional = Array.isArray(lane.optionalTools) ? lane.optionalTools : [];
-      const laneWarnings = [];
+    const laneSummaries = enabledLaneIds.map(function (laneId): LaboratoryProfileLaneSummary {
+      const lane = toProfileLaneRecord(laneMap[laneId]);
+      const laneRequired = toStringArray(lane.requiredTools);
+      const laneOptional = toStringArray(lane.optionalTools);
+      const laneWarnings: string[] = [];
 
-      laneRequired.forEach(function (toolId: string) {
-        if (requiredToolIds.includes(toolId) === false) {
+      laneRequired.forEach(function (toolId) {
+        if (!requiredToolIds.includes(toolId)) {
           requiredToolIds.push(toolId);
         }
         if (!requiredToolMap[toolId]) {
-          requiredToolMap[toolId] = buildProfileToolSummary(
-            runtime,
-            toolId,
-            getStageSupport(getToolManifest(runtime, toolId), "profile")
+          requiredToolMap[toolId] = toProfileToolSummaryRecord(
+            buildProfileToolSummary(
+              runtime,
+              toolId,
+              getStageSupport(getToolManifest(runtime, toolId), "profile")
+            )
           );
         }
       });
 
-      laneOptional.forEach(function (toolId: string) {
-        if (optionalToolIds.includes(toolId) === false) {
+      laneOptional.forEach(function (toolId) {
+        if (!optionalToolIds.includes(toolId)) {
           optionalToolIds.push(toolId);
         }
         if (!optionalToolMap[toolId]) {
-          optionalToolMap[toolId] = buildProfileToolSummary(
-            runtime,
-            toolId,
-            getStageSupport(getToolManifest(runtime, toolId), "profile")
+          optionalToolMap[toolId] = toProfileToolSummaryRecord(
+            buildProfileToolSummary(
+              runtime,
+              toolId,
+              getStageSupport(getToolManifest(runtime, toolId), "profile")
+            )
           );
         }
       });
 
-      const missingRequired = laneRequired.filter(function (toolId: string) {
-        return toRecord(requiredToolMap[toolId]).ready !== true;
+      const missingRequired = laneRequired.filter(function (toolId) {
+        const requiredSummary = requiredToolMap[toolId];
+        return requiredSummary ? requiredSummary.ready !== true : true;
       });
 
       if (missingRequired.length > 0) {
         blockers.push(
           `${asNonEmptyString(lane.labelKey) || laneId} requires ${missingRequired
-            .map(function (toolId: string) {
-              return asNonEmptyString(toRecord(requiredToolMap[toolId]).displayName) || toolId;
+            .map(function (toolId) {
+              const requiredSummary = requiredToolMap[toolId];
+              return asNonEmptyString(requiredSummary?.displayName) || toolId;
             })
             .join(", ")}.`
         );
       }
 
       if (laneOptional.includes("whisper.cpp")) {
-        const whisperSummary = toRecord(optionalToolMap["whisper.cpp"]);
-        if (whisperSummary.ready !== true) {
-          laneWarnings.push(
-            "Speech transcript sampling is unavailable until Whisper.cpp is ready."
-          );
+        const whisperSummary = optionalToolMap["whisper.cpp"] || null;
+        if (!whisperSummary || whisperSummary.ready !== true) {
+          laneWarnings.push("Speech transcript sampling is unavailable until Whisper.cpp is ready.");
         } else if (
           selectedModel &&
           selectedModel.runtimeCompatible === false &&
-          selectedModel.compatibilityReason
+          asNonEmptyString(selectedModel.compatibilityReason)
         ) {
-          laneWarnings.push(selectedModel.compatibilityReason);
+          laneWarnings.push(asNonEmptyString(selectedModel.compatibilityReason) || "");
         } else if (selectedModel === null || selectedModel.ready !== true) {
           laneWarnings.push("Install and verify a Whisper model to unlock transcript sampling.");
         }
       }
 
-      warnings.push.apply(warnings, laneWarnings);
+      warnings.push(...laneWarnings);
 
       return {
-        laneId: laneId,
+        artifactKinds: toStringArray(lane.artifactKinds),
         labelKey: asNonEmptyString(lane.labelKey),
+        laneId,
+        optionalTools: laneOptional,
+        requiredTools: laneRequired,
         summaryKey: asNonEmptyString(lane.summaryKey),
         supportLevel:
           missingRequired.length > 0 ? "blocked" : laneWarnings.length > 0 ? "degraded" : "ready",
-        requiredTools: laneRequired,
-        optionalTools: laneOptional,
-        artifactKinds: Array.isArray(lane.artifactKinds) ? lane.artifactKinds.slice() : [],
         warnings: laneWarnings,
       };
     });
 
     return {
+      blockers: Array.from(new Set(blockers)),
+      enabledLaneCount: enabledLaneIds.length,
+      enabledLaneIds,
+      lanes: laneSummaries,
+      models: modelSummaries,
+      optionalTools: optionalToolIds.map(function (toolId) {
+        return optionalToolMap[toolId];
+      }).filter((entry): entry is LaboratoryProfileToolSummaryRecord => entry !== undefined),
+      requiredTools: requiredToolIds.map(function (toolId) {
+        return requiredToolMap[toolId];
+      }).filter((entry): entry is LaboratoryProfileToolSummaryRecord => entry !== undefined),
       stageReady: blockers.length === 0,
       target: {
-        requestedMode: target.requestedMode,
-        mode: target.mode,
-        outputId: target.outputId,
-        label: target.label,
-        fileName: target.fileName,
-        path: target.path,
-        mimeType: target.mimeType,
-        signature: target.signature,
-        usingFallback: target.usingFallback,
-        reason: target.reason,
-        metadata: clone(target.metadata || {}),
+        ...target,
+        metadata: toRecord(clone(target.metadata)),
       },
-      enabledLaneIds: enabledLaneIds,
-      enabledLaneCount: enabledLaneIds.length,
-      requiredTools: requiredToolIds.map(function (toolId: any) {
-        return requiredToolMap[toolId];
-      }),
-      optionalTools: optionalToolIds.map(function (toolId: any) {
-        return optionalToolMap[toolId];
-      }),
-      models: modelSummaries,
-      lanes: laneSummaries,
-      blockers: Array.from(new Set(blockers)),
       warnings: Array.from(new Set(warnings)),
     };
   }
 
-  function buildProfileEstimate(runtime: any, project: any, readiness: any) {
-    const profile = toRecord(project.profile);
-    const sourceKind = asNonEmptyString(toRecord(project.source).kind) || "video";
+  function buildProfileEstimate(
+    runtime: LaboratoryMediaProfileProjectionRuntime,
+    project: LaboratoryProjectRecord,
+    readiness: LaboratoryProfileReadiness
+  ): LaboratoryProfileEstimate {
+    const profile = getProfile(project);
+    const sourceKind = getSourceKind(project);
     const depthConfig = getProfileDepthConfig(runtime, profile.depth);
-    const frameDensityConfig = getProfileFrameDensityRuntimeConfig(
-      runtime,
-      profile.frameSampleDensity
-    );
-    const enabledLaneIds = Array.isArray(toRecord(readiness).enabledLaneIds)
-      ? readiness.enabledLaneIds
-      : getEnabledProfileLaneIds(runtime, project);
+    const frameDensityConfig = getProfileFrameDensityRuntimeConfig(runtime, profile.frameSampleDensity);
+    const enabledLaneIds =
+      readiness.enabledLaneIds.length > 0
+        ? readiness.enabledLaneIds
+        : getEnabledProfileLaneIds(runtime, project);
     const laneMap = getProfileLaneMap(runtime.profilePresets);
-    const artifactBudget = Math.max(1, Math.round(asNumber(depthConfig.artifactBudget) || 3));
-    const targetMetadata = normalizeSourceMetadata(toRecord(toRecord(readiness).target).metadata);
-    const durationSeconds = asNumber(toRecord(targetMetadata).durationSeconds);
+    const artifactBudget = Math.max(1, Math.round(asNumber(depthConfig["artifactBudget"]) || 3));
+    const targetMetadata = normalizeSourceMetadata(readiness.target.metadata);
+    const durationSeconds = asNumber(targetMetadata["durationSeconds"]);
     const sampleWindowSeconds = Math.min(
       durationSeconds || Number.MAX_SAFE_INTEGER,
-      Math.max(12, Math.round(asNumber(depthConfig.sampleWindowSeconds) || 60))
+      Math.max(12, Math.round(asNumber(depthConfig["sampleWindowSeconds"]) || 60))
     );
     const transcriptSampleSeconds = clampProfileTranscriptSampleSeconds(
       runtime.profileCapabilities,
@@ -252,15 +527,13 @@ export function createMediaProfileProjectionRuntime(deps: any) {
     );
     const artifactKinds: string[] = [];
 
-    enabledLaneIds.forEach(function (laneId: string) {
-      const lane = toRecord(laneMap[laneId]);
-      (Array.isArray(lane.artifactKinds) ? lane.artifactKinds : []).forEach(function (
-        artifactKind: string
-      ) {
+    enabledLaneIds.forEach(function (laneId) {
+      const lane = toProfileLaneRecord(laneMap[laneId]);
+      toStringArray(lane.artifactKinds).forEach(function (artifactKind) {
         if (artifactPreferences[artifactKind] !== true) {
           return;
         }
-        if (artifactKinds.includes(artifactKind) === false) {
+        if (!artifactKinds.includes(artifactKind)) {
           artifactKinds.push(artifactKind);
         }
       });
@@ -275,17 +548,15 @@ export function createMediaProfileProjectionRuntime(deps: any) {
           ? 8
           : 16);
 
-    runtimeSeconds += Math.max(0, Math.round(asNumber(frameDensityConfig.tileCount) || 4) - 2) * 2;
+    runtimeSeconds += Math.max(0, Math.round(asNumber(frameDensityConfig["tileCount"]) || 4) - 2) * 2;
 
     if (enabledLaneIds.includes("speech-overlay")) {
       const selectedModel =
-        (Array.isArray(toRecord(readiness).models) ? readiness.models : []).find(function (
-          entry: Record<string, unknown>
-        ) {
-          return toRecord(entry).selected === true;
+        readiness.models.find(function (entry) {
+          return entry.selected === true;
         }) || null;
       runtimeSeconds +=
-        artifactPreferences.transcript === true
+        artifactPreferences["transcript"] === true
           ? selectedModel && selectedModel.ready === true
             ? Math.max(8, Math.round(transcriptSampleSeconds / 3))
             : 5
@@ -293,83 +564,85 @@ export function createMediaProfileProjectionRuntime(deps: any) {
     }
 
     return {
-      runtimeSeconds: runtimeSeconds,
       artifactCount: Math.min(artifactBudget, artifactKinds.length),
+      runtimeSeconds,
       sampleWindowSeconds: Number.isFinite(sampleWindowSeconds) ? sampleWindowSeconds : null,
     };
   }
 
-  function syncProjectProfileProjection(runtime: any, project: any) {
-    const defaults = createDefaultProfileState(
-      runtime.profilePresets,
-      runtime.profileModels,
-      runtime.profileCapabilities,
-      asNonEmptyString(toRecord(project.source).kind) || "video"
+  function syncProjectProfileProjection(
+    runtime: LaboratoryMediaProfileProjectionRuntime,
+    project: LaboratoryProjectRecord
+  ) {
+    const sourceKind = getSourceKind(project);
+    const defaults = toProjectProfileRecord(
+      createDefaultProfileState(
+        runtime.profilePresets,
+        runtime.profileModels,
+        runtime.profileCapabilities,
+        sourceKind
+      )
     );
-    const profile = normalizeProfileState(
-      project.profile,
-      runtime.profilePresets,
-      runtime.profileModels,
-      runtime.profileCapabilities,
-      asNonEmptyString(toRecord(project.source).kind) || "video"
+    const profile = toProjectProfileRecord(
+      normalizeProfileState(
+        project.profile,
+        runtime.profilePresets,
+        runtime.profileModels,
+        runtime.profileCapabilities,
+        sourceKind
+      )
     );
-    const compatibleLaneIds = getCompatibleProfileLaneIds(
-      runtime.profilePresets,
-      asNonEmptyString(toRecord(project.source).kind) || "video"
-    );
+    const compatibleLaneIds = getCompatibleProfileLaneIds(runtime.profilePresets, sourceKind);
     const laneSelection: Record<string, boolean> = {};
 
-    compatibleLaneIds.forEach(function (laneId: string) {
+    compatibleLaneIds.forEach(function (laneId) {
       laneSelection[laneId] = toRecord(profile.laneSelection)[laneId] === true;
     });
+
     if (
       compatibleLaneIds.length > 0 &&
-      compatibleLaneIds.every(function (laneId: string) {
+      compatibleLaneIds.every(function (laneId) {
         return laneSelection[laneId] !== true;
       })
     ) {
-      compatibleLaneIds.forEach(function (laneId: string) {
+      compatibleLaneIds.forEach(function (laneId) {
         laneSelection[laneId] = toRecord(defaults.laneSelection)[laneId] === true;
       });
     }
 
-    const requestedTargetMode =
+    const requestedTargetMode: LaboratoryTargetMode =
       asNonEmptyString(profile.targetAssetMode) === "derived" ? "derived" : "source";
     const requestedModelId = asNonEmptyString(profile.modelId);
-    const requestedModelDescriptor = toRecord(
-      getProfileModelDescriptorMap(runtime)[requestedModelId]
-    );
-    const requestedModelKinds = Array.isArray(requestedModelDescriptor.mediaKinds)
-      ? requestedModelDescriptor.mediaKinds
-      : [];
-    const fallbackModelId = getDefaultProfileModelId(runtime.profileModels, project.source.kind);
-    const resolvedProfile = {
+    const requestedModelDescriptor =
+      requestedModelId !== null ? toRecord(getProfileModelDescriptorMap(runtime)[requestedModelId]) : {};
+    const requestedModelKinds = toStringArray(requestedModelDescriptor["mediaKinds"]);
+    const fallbackModelId = getDefaultProfileModelId(runtime.profileModels, sourceKind);
+    const resolvedProfile: LaboratoryProjectProfileRecord = {
       ...profile,
       activePresetId:
-        findProfilePreset(runtime.profilePresets, project.source.kind, profile.activePresetId) !==
-        null
+        findProfilePreset(runtime.profilePresets, sourceKind, profile.activePresetId) !== null
           ? profile.activePresetId
           : defaults.activePresetId,
+      laneSelection,
+      modelId:
+        requestedModelId &&
+        (requestedModelKinds.length === 0 || requestedModelKinds.includes(sourceKind))
+          ? requestedModelId
+          : fallbackModelId,
       targetAssetMode: requestedTargetMode,
       targetOutputId:
         requestedTargetMode === "derived" ? asNonEmptyString(profile.targetOutputId) : null,
-      modelId:
-        requestedModelId &&
-        (requestedModelKinds.length === 0 || requestedModelKinds.includes(project.source.kind))
-          ? requestedModelId
-          : fallbackModelId,
-      laneSelection: laneSelection,
     };
 
     const target = resolveProfileTarget({
       ...project,
       profile: resolvedProfile,
     });
-    const existingPreflight = {
+    const existingPreflight = toProfilePreflightRecord({
       ...createEmptyProfilePreflight(),
       ...toRecord(resolvedProfile.preflight),
-    };
-    const previousTargetSummary = toRecord(existingPreflight.targetSummary);
+    });
+    const previousTargetSummary = toProfileTargetSummaryRecord(existingPreflight.targetSummary);
     const previousSignature = asNonEmptyString(previousTargetSummary.signature);
     const nextSignature = asNonEmptyString(target.signature);
     const signatureChanged = previousSignature !== nextSignature;
@@ -379,53 +652,50 @@ export function createMediaProfileProjectionRuntime(deps: any) {
         nextSignature === null
           ? null
           : {
-              requestedMode: target.requestedMode,
+              fileName: target.fileName,
+              label: target.label,
+              mimeType: target.mimeType,
               mode: target.mode,
               outputId: target.outputId,
-              signature: nextSignature,
-              label: target.label,
-              fileName: target.fileName,
-              mimeType: target.mimeType,
               path: target.path,
+              requestedMode: target.requestedMode,
+              signature: nextSignature,
             };
       if (
         signatureChanged === true ||
         (target.usingFallback === true && asNonEmptyString(existingPreflight.ranAt) !== null)
       ) {
-        existingPreflight.status =
-          asNonEmptyString(existingPreflight.ranAt) !== null ? "stale" : "idle";
+        existingPreflight.status = asNonEmptyString(existingPreflight.ranAt) !== null ? "stale" : "idle";
         existingPreflight.jobId = null;
         existingPreflight.requestId = null;
         existingPreflight.error = null;
         existingPreflight.warnings = Array.from(
           new Set(
-            (Array.isArray(existingPreflight.warnings) ? existingPreflight.warnings : []).concat(
-              target.reason ? [target.reason] : []
-            )
+            toStringArray(existingPreflight.warnings).concat(target.reason ? [target.reason] : [])
           )
         );
       }
     }
 
-    resolvedProfile.targetAssetSignature = nextSignature;
+    resolvedProfile["targetAssetSignature"] = nextSignature;
     resolvedProfile.preflight = existingPreflight;
-    resolvedProfile.readiness = buildProfileReadiness(runtime, {
+    resolvedProfile["readiness"] = buildProfileReadiness(runtime, {
       ...project,
       profile: resolvedProfile,
     });
-    resolvedProfile.estimate = buildProfileEstimate(
+    resolvedProfile["estimate"] = buildProfileEstimate(
       runtime,
       {
         ...project,
         profile: resolvedProfile,
       },
-      resolvedProfile.readiness
+      resolvedProfile["readiness"] as LaboratoryProfileReadiness
     );
     resolvedProfile.dirty =
       resolvedProfile.dirty === true ||
       signatureChanged === true ||
       target.usingFallback === true ||
-      asNonEmptyString(toRecord(resolvedProfile.preflight).status) !== "ready";
+      asNonEmptyString(toProfilePreflightRecord(resolvedProfile["preflight"]).status) !== "ready";
 
     project.profile = resolvedProfile;
     return project;

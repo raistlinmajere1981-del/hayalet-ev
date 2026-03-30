@@ -1,452 +1,465 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  type TeamTetrisCellInputRecord = {
+    x?: unknown;
+    y?: unknown;
+  };
 
-  registry.createTeamTetrisUiStateShapeRuntime = function createTeamTetrisUiStateShapeRuntime() {
-    const BOARD_WIDTH = 10;
-    const BOARD_HEIGHT = 20;
+  type TeamTetrisTeamRecordInput = {
+    seatIds?: unknown;
+    teamId?: unknown;
+  };
 
-    function createTeamTetrisBoard(teamId: string, visibility: string) {
-      return {
-        teamId: teamId,
-        visibility: visibility,
-        rows: Array.from({ length: BOARD_HEIGHT }, function () {
-          return ".".repeat(BOARD_WIDTH);
-        }),
-        boardBeforePartnerPieceRows: Array.from({ length: BOARD_HEIGHT }, function () {
-          return ".".repeat(BOARD_WIDTH);
-        }),
-        partnerLastPiece: null as any,
-      };
-    }
+  type TeamTetrisPieceSnapshotInputRecord = {
+    cells?: unknown;
+    pieceId?: unknown;
+    placedBy?: unknown;
+    placedByRole?: unknown;
+    placedBySeatId?: unknown;
+    rotation?: unknown;
+  };
 
-    function createTeamTetrisDraft() {
-      return {
-        matchId: "",
-        turnIndex: null as number | null,
-        turnToken: "",
-        pieceId: "",
-        rotation: 0,
-        rowShifts: [] as any[],
-        dragTargets: {},
-        preview: null as any,
-        errorKey: "",
-        dragActive: false,
-      };
-    }
+  type TeamTetrisBoardStateInputRecord = {
+    boardBeforePartnerPieceRows?: unknown;
+    partnerLastPiece?: unknown;
+    rows?: unknown;
+    teamId?: unknown;
+    visibility?: unknown;
+  };
 
-    function createTeamTetrisState() {
-      return {
-        active: false,
-        result: "idle",
-        hiddenPairs: true,
-        revealPairsOnFinish: true,
-        blockedReason: "",
-        matchId: null as string | null,
-        canStart: false,
-        requiredSlots: {
-          ai1: false,
-          ai2: false,
-          us1: false,
-        },
-        board: {
-          width: BOARD_WIDTH,
-          height: BOARD_HEIGHT,
-          seedLabel: "contract-frozen",
-        },
-        boards: [
-          createTeamTetrisBoard("team-a", "private"),
-          createTeamTetrisBoard("team-b", "public"),
-        ],
-        turnLoop: ["team-a-opener", "team-b-opener", "team-a-followup", "team-b-followup"],
-        currentTurn: null as any,
-        teams: null as any,
-        userView: null as any,
-        status: "",
-      };
-    }
+  type TeamTetrisPendingTurnInputRecord = {
+    actingRole?: unknown;
+    legalRotations?: unknown;
+    pieceId?: unknown;
+    turnIndex?: unknown;
+    turnToken?: unknown;
+  };
 
-    function sanitizeTeamTetrisRows(rows: unknown) {
-      if (!Array.isArray(rows)) {
+  type TeamTetrisTurnStateInputRecord = {
+    legalRotations?: unknown;
+    pieceId?: unknown;
+    role?: unknown;
+    seatId?: unknown;
+    teamId?: unknown;
+    turnIndex?: unknown;
+    turnToken?: unknown;
+  };
+
+  type TeamTetrisSeatIdentityInputRecord = {
+    role?: unknown;
+    seatId?: unknown;
+    teamId?: unknown;
+  };
+
+  type TeamTetrisSeatTeamViewInputRecord = {
+    boardBeforePartnerPieceRows?: unknown;
+    boardRows?: unknown;
+    partnerLastPiece?: unknown;
+    teamId?: unknown;
+  };
+
+  type TeamTetrisSeatViewInputRecord = {
+    hiddenPairs?: unknown;
+    matchId?: unknown;
+    opponentTeam?: unknown;
+    ownTeam?: unknown;
+    pendingTurn?: unknown;
+    result?: unknown;
+    revealedPairs?: unknown;
+    schemaVersion?: unknown;
+    seat?: unknown;
+    teams?: unknown;
+    winnerTeamId?: unknown;
+  };
+
+  type TeamTetrisRequiredSlotsInputRecord = {
+    ai1?: unknown;
+    ai2?: unknown;
+    us1?: unknown;
+  };
+
+  type TeamTetrisBoardConfigInputRecord = {
+    height?: unknown;
+    seedLabel?: unknown;
+    width?: unknown;
+  };
+
+  type TeamTetrisStateInputRecord = {
+    active?: unknown;
+    blockedReason?: unknown;
+    board?: unknown;
+    boards?: unknown;
+    canStart?: unknown;
+    currentTurn?: unknown;
+    hiddenPairs?: unknown;
+    matchId?: unknown;
+    requiredSlots?: unknown;
+    result?: unknown;
+    revealPairsOnFinish?: unknown;
+    status?: unknown;
+    teams?: unknown;
+    turnLoop?: unknown;
+    userView?: unknown;
+  };
+
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
+
+  function isRecord(value: unknown): value is GameRoomUnknownRecord {
+    return typeof value === "object" && value !== null && Array.isArray(value) === false;
+  }
+
+  function readTrimmedString(value: unknown, fallback = ""): string {
+    return typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
+  }
+
+  function readInteger(value: unknown, fallback: number): number {
+    return typeof value === "number" && Number.isInteger(value) ? value : fallback;
+  }
+
+  const registry = getFactoryRegistry(global);
+
+  registry.createTeamTetrisUiStateShapeRuntime =
+    function createTeamTetrisUiStateShapeRuntime(): GameRoomTeamTetrisUiStateShapeRuntime {
+      const BOARD_WIDTH = 10;
+      const BOARD_HEIGHT = 20;
+
+      function createEmptyRows(): string[] {
         return Array.from({ length: BOARD_HEIGHT }, function () {
           return ".".repeat(BOARD_WIDTH);
         });
       }
 
-      const normalized = rows
-        .filter(function (row: any) {
-          return typeof row === "string" && row.length > 0;
-        })
-        .map(function (row: any) {
-          const nextRow = row.slice(0, BOARD_WIDTH);
-          if (nextRow.length >= BOARD_WIDTH) {
-            return nextRow;
-          }
-          return nextRow + ".".repeat(BOARD_WIDTH - nextRow.length);
-        })
-        .slice(0, BOARD_HEIGHT);
-
-      while (normalized.length < BOARD_HEIGHT) {
-        normalized.push(".".repeat(BOARD_WIDTH));
-      }
-
-      return normalized;
-    }
-
-    function sanitizeTeamTetrisCells(value: any[]) {
-      if (!Array.isArray(value)) {
-        return [];
-      }
-      return value
-        .filter(function (cell: any) {
-          return (
-            cell &&
-            typeof cell === "object" &&
-            Array.isArray(cell) === false &&
-            typeof cell.x === "number" &&
-            Number.isInteger(cell.x) &&
-            typeof cell.y === "number" &&
-            Number.isInteger(cell.y)
-          );
-        })
-        .map(function (cell: any) {
-          return { x: cell.x, y: cell.y };
-        });
-    }
-
-    function sanitizeTeamTetrisPieceSnapshot(candidate: any) {
-      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
-        return null;
-      }
-
-      return {
-        pieceId:
-          typeof candidate.pieceId === "string" && candidate.pieceId.trim() !== ""
-            ? candidate.pieceId.trim()
-            : "",
-        rotation:
-          typeof candidate.rotation === "number" && Number.isInteger(candidate.rotation)
-            ? candidate.rotation
-            : 0,
-        cells: sanitizeTeamTetrisCells(candidate.cells),
-        placedBySeatId:
-          typeof candidate.placedBySeatId === "string" && candidate.placedBySeatId.trim() !== ""
-            ? candidate.placedBySeatId.trim()
-            : "",
-        placedByRole:
-          typeof candidate.placedByRole === "string" && candidate.placedByRole.trim() !== ""
-            ? candidate.placedByRole.trim()
-            : "",
-        placedBy:
-          typeof candidate.placedBy === "string" && candidate.placedBy.trim() !== ""
-            ? candidate.placedBy.trim()
-            : "",
-      };
-    }
-
-    function sanitizeTeamTetrisBoardState(
-      candidate: any,
-      fallbackTeamId: string,
-      fallbackVisibility: string
-    ) {
-      const source =
-        candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-          ? candidate
-          : {};
-      return {
-        teamId:
-          typeof source.teamId === "string" && source.teamId.trim() !== ""
-            ? source.teamId.trim()
-            : fallbackTeamId,
-        visibility:
-          source.visibility === "public" || source.visibility === "private"
-            ? source.visibility
-            : fallbackVisibility,
-        rows: sanitizeTeamTetrisRows(source.rows),
-        boardBeforePartnerPieceRows: sanitizeTeamTetrisRows(source.boardBeforePartnerPieceRows),
-        partnerLastPiece: sanitizeTeamTetrisPieceSnapshot(source.partnerLastPiece),
-      };
-    }
-
-    function sanitizeTeamTetrisSeatView(candidate: any) {
-      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
-        return null;
-      }
-
-      const seatSource =
-        candidate.seat &&
-        typeof candidate.seat === "object" &&
-        Array.isArray(candidate.seat) === false
-          ? candidate.seat
-          : {};
-      const ownTeamSource =
-        candidate.ownTeam &&
-        typeof candidate.ownTeam === "object" &&
-        Array.isArray(candidate.ownTeam) === false
-          ? candidate.ownTeam
-          : {};
-      const opponentTeamSource =
-        candidate.opponentTeam &&
-        typeof candidate.opponentTeam === "object" &&
-        Array.isArray(candidate.opponentTeam) === false
-          ? candidate.opponentTeam
-          : {};
-      const pendingTurnSource =
-        candidate.pendingTurn &&
-        typeof candidate.pendingTurn === "object" &&
-        Array.isArray(candidate.pendingTurn) === false
-          ? candidate.pendingTurn
-          : null;
-
-      return {
-        schemaVersion:
-          typeof candidate.schemaVersion === "number" && Number.isInteger(candidate.schemaVersion)
-            ? candidate.schemaVersion
-            : 1,
-        matchId:
-          typeof candidate.matchId === "string" && candidate.matchId.trim() !== ""
-            ? candidate.matchId.trim()
-            : "",
-        seat: {
-          seatId:
-            typeof seatSource.seatId === "string" && seatSource.seatId.trim() !== ""
-              ? seatSource.seatId.trim()
-              : "user",
-          teamId:
-            typeof seatSource.teamId === "string" && seatSource.teamId.trim() !== ""
-              ? seatSource.teamId.trim()
-              : "team-a",
-          role:
-            typeof seatSource.role === "string" && seatSource.role.trim() !== ""
-              ? seatSource.role.trim()
-              : "opener",
-        },
-        hiddenPairs: candidate.hiddenPairs !== false,
-        revealedPairs: candidate.revealedPairs === true,
-        result:
-          typeof candidate.result === "string" && candidate.result.trim() !== ""
-            ? candidate.result.trim()
-            : "idle",
-        winnerTeamId:
-          typeof candidate.winnerTeamId === "string" && candidate.winnerTeamId.trim() !== ""
-            ? candidate.winnerTeamId.trim()
-            : null,
-        teams: Array.isArray(candidate.teams)
-          ? candidate.teams
-              .map(function (entry: any) {
-                const teamSource =
-                  entry && typeof entry === "object" && Array.isArray(entry) === false ? entry : {};
-                return {
-                  teamId:
-                    typeof teamSource.teamId === "string" && teamSource.teamId.trim() !== ""
-                      ? teamSource.teamId.trim()
-                      : "team-a",
-                  seatIds: Array.isArray(teamSource.seatIds)
-                    ? teamSource.seatIds.filter(function (seatId: any) {
-                        return typeof seatId === "string" && seatId.trim() !== "";
-                      })
-                    : [],
-                };
-              })
-              .slice(0, 2)
-          : null,
-        ownTeam: {
-          teamId:
-            typeof ownTeamSource.teamId === "string" && ownTeamSource.teamId.trim() !== ""
-              ? ownTeamSource.teamId.trim()
-              : "team-a",
-          boardRows: sanitizeTeamTetrisRows(ownTeamSource.boardRows),
-          boardBeforePartnerPieceRows: sanitizeTeamTetrisRows(
-            ownTeamSource.boardBeforePartnerPieceRows
-          ),
-          partnerLastPiece: sanitizeTeamTetrisPieceSnapshot(ownTeamSource.partnerLastPiece),
-        },
-        opponentTeam: {
-          teamId:
-            typeof opponentTeamSource.teamId === "string" && opponentTeamSource.teamId.trim() !== ""
-              ? opponentTeamSource.teamId.trim()
-              : "team-b",
-          boardRows: sanitizeTeamTetrisRows(opponentTeamSource.boardRows),
-        },
-        pendingTurn:
-          pendingTurnSource !== null
-            ? {
-                turnIndex:
-                  typeof pendingTurnSource.turnIndex === "number" &&
-                  Number.isInteger(pendingTurnSource.turnIndex)
-                    ? pendingTurnSource.turnIndex
-                    : 0,
-                turnToken:
-                  typeof pendingTurnSource.turnToken === "string" &&
-                  pendingTurnSource.turnToken.trim() !== ""
-                    ? pendingTurnSource.turnToken.trim()
-                    : "",
-                pieceId:
-                  typeof pendingTurnSource.pieceId === "string" &&
-                  pendingTurnSource.pieceId.trim() !== ""
-                    ? pendingTurnSource.pieceId.trim()
-                    : "",
-                legalRotations: Array.isArray(pendingTurnSource.legalRotations)
-                  ? pendingTurnSource.legalRotations.filter(function (value: any) {
-                      return typeof value === "number" && Number.isInteger(value);
-                    })
-                  : [0],
-                actingRole:
-                  typeof pendingTurnSource.actingRole === "string" &&
-                  pendingTurnSource.actingRole.trim() !== ""
-                    ? pendingTurnSource.actingRole.trim()
-                    : "opener",
-              }
-            : null,
-      };
-    }
-
-    function sanitizeTeamTetrisState(candidate: any) {
-      const source =
-        candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-          ? candidate
-          : {};
-      const next = createTeamTetrisState();
-      next.active = source.active === true;
-      next.result =
-        typeof source.result === "string" && source.result.trim() !== ""
-          ? source.result.trim()
-          : "idle";
-      next.hiddenPairs = source.hiddenPairs !== false;
-      next.revealPairsOnFinish = source.revealPairsOnFinish !== false;
-      next.blockedReason =
-        typeof source.blockedReason === "string" && source.blockedReason.trim() !== ""
-          ? source.blockedReason.trim()
-          : "";
-      next.matchId =
-        typeof source.matchId === "string" && source.matchId.trim() !== ""
-          ? source.matchId.trim()
-          : null;
-      next.canStart = source.canStart === true;
-      if (
-        source.requiredSlots &&
-        typeof source.requiredSlots === "object" &&
-        Array.isArray(source.requiredSlots) === false
-      ) {
-        next.requiredSlots = {
-          ai1: source.requiredSlots.ai1 === true,
-          ai2: source.requiredSlots.ai2 === true,
-          us1: source.requiredSlots.us1 === true,
+      function createTeamTetrisBoard(
+        teamId: string,
+        visibility: string
+      ): GameRoomTeamTetrisBoardState {
+        return {
+          teamId: teamId,
+          visibility: visibility,
+          rows: createEmptyRows(),
+          boardBeforePartnerPieceRows: createEmptyRows(),
+          partnerLastPiece: null,
         };
       }
-      if (
-        source.board &&
-        typeof source.board === "object" &&
-        Array.isArray(source.board) === false
-      ) {
-        next.board = {
-          width:
-            typeof source.board.width === "number" &&
-            Number.isInteger(source.board.width) &&
-            source.board.width > 0
-              ? source.board.width
-              : BOARD_WIDTH,
-          height:
-            typeof source.board.height === "number" &&
-            Number.isInteger(source.board.height) &&
-            source.board.height > 0
-              ? source.board.height
-              : BOARD_HEIGHT,
-          seedLabel:
-            typeof source.board.seedLabel === "string" && source.board.seedLabel.trim() !== ""
-              ? source.board.seedLabel.trim()
-              : "contract-frozen",
+
+      function createTeamTetrisDraft(): GameRoomTeamTetrisDraftState {
+        return {
+          matchId: "",
+          turnIndex: null,
+          turnToken: "",
+          pieceId: "",
+          rotation: 0,
+          rowShifts: [],
+          dragTargets: {},
+          preview: null,
+          errorKey: "",
+          dragActive: false,
         };
       }
-      if (Array.isArray(source.boards)) {
-        next.boards = source.boards
-          .map(function (entry: any, index: number) {
-            return sanitizeTeamTetrisBoardState(
-              entry,
-              index === 0 ? "team-a" : "team-b",
-              index === 0 ? "private" : "public"
+
+      function createTeamTetrisState(): GameRoomTeamTetrisState {
+        return {
+          active: false,
+          result: "idle",
+          hiddenPairs: true,
+          revealPairsOnFinish: true,
+          blockedReason: "",
+          matchId: null,
+          canStart: false,
+          requiredSlots: {
+            ai1: false,
+            ai2: false,
+            us1: false,
+          },
+          board: {
+            width: BOARD_WIDTH,
+            height: BOARD_HEIGHT,
+            seedLabel: "contract-frozen",
+          },
+          boards: [
+            createTeamTetrisBoard("team-a", "private"),
+            createTeamTetrisBoard("team-b", "public"),
+          ],
+          turnLoop: ["team-a-opener", "team-b-opener", "team-a-followup", "team-b-followup"],
+          currentTurn: null,
+          teams: null,
+          userView: null,
+          status: "",
+        };
+      }
+
+      function sanitizeTeamTetrisRows(rows: unknown): string[] {
+        if (!Array.isArray(rows)) {
+          return createEmptyRows();
+        }
+
+        const normalized = rows
+          .filter(function (row: unknown): row is string {
+            return typeof row === "string" && row.length > 0;
+          })
+          .map(function (row: string) {
+            const nextRow = row.slice(0, BOARD_WIDTH);
+            return nextRow.length >= BOARD_WIDTH
+              ? nextRow
+              : nextRow + ".".repeat(BOARD_WIDTH - nextRow.length);
+          })
+          .slice(0, BOARD_HEIGHT);
+
+        while (normalized.length < BOARD_HEIGHT) {
+          normalized.push(".".repeat(BOARD_WIDTH));
+        }
+
+        return normalized;
+      }
+
+      function sanitizeTeamTetrisCells(value: unknown): GameRoomTeamTetrisCell[] {
+        if (!Array.isArray(value)) {
+          return [];
+        }
+
+        return value
+          .filter(function (cell: unknown): cell is { x: number; y: number } {
+            const cellRecord = isRecord(cell) ? (cell as TeamTetrisCellInputRecord) : null;
+            return (
+              cellRecord !== null &&
+              typeof cellRecord.x === "number" &&
+              Number.isInteger(cellRecord.x) &&
+              typeof cellRecord.y === "number" &&
+              Number.isInteger(cellRecord.y)
             );
           })
-          .slice(0, 2);
+          .map(function (cell: { x: number; y: number }): GameRoomTeamTetrisCell {
+            return { x: cell.x, y: cell.y };
+          });
       }
-      if (Array.isArray(source.turnLoop)) {
-        next.turnLoop = source.turnLoop.filter(function (entry: any) {
-          return typeof entry === "string" && entry.trim() !== "";
-        });
-      }
-      next.currentTurn =
-        source.currentTurn &&
-        typeof source.currentTurn === "object" &&
-        Array.isArray(source.currentTurn) === false
-          ? {
-              turnIndex:
-                typeof source.currentTurn.turnIndex === "number" &&
-                Number.isInteger(source.currentTurn.turnIndex)
-                  ? source.currentTurn.turnIndex
-                  : 0,
-              seatId:
-                typeof source.currentTurn.seatId === "string" &&
-                source.currentTurn.seatId.trim() !== ""
-                  ? source.currentTurn.seatId.trim()
-                  : "",
-              teamId:
-                typeof source.currentTurn.teamId === "string" &&
-                source.currentTurn.teamId.trim() !== ""
-                  ? source.currentTurn.teamId.trim()
-                  : "",
-              role:
-                typeof source.currentTurn.role === "string" && source.currentTurn.role.trim() !== ""
-                  ? source.currentTurn.role.trim()
-                  : "",
-              pieceId:
-                typeof source.currentTurn.pieceId === "string" &&
-                source.currentTurn.pieceId.trim() !== ""
-                  ? source.currentTurn.pieceId.trim()
-                  : "",
-              legalRotations: Array.isArray(source.currentTurn.legalRotations)
-                ? source.currentTurn.legalRotations.filter(function (value: any) {
-                    return typeof value === "number" && Number.isInteger(value);
-                  })
-                : [0],
-              turnToken:
-                typeof source.currentTurn.turnToken === "string" &&
-                source.currentTurn.turnToken.trim() !== ""
-                  ? source.currentTurn.turnToken.trim()
-                  : "",
-            }
-          : null;
-      next.teams = Array.isArray(source.teams)
-        ? source.teams
-            .map(function (entry: any) {
-              const teamSource =
-                entry && typeof entry === "object" && Array.isArray(entry) === false ? entry : {};
-              return {
-                teamId:
-                  typeof teamSource.teamId === "string" && teamSource.teamId.trim() !== ""
-                    ? teamSource.teamId.trim()
-                    : "team-a",
-                seatIds: Array.isArray(teamSource.seatIds)
-                  ? teamSource.seatIds.filter(function (seatId: any) {
-                      return typeof seatId === "string" && seatId.trim() !== "";
-                    })
-                  : [],
-              };
-            })
-            .slice(0, 2)
-        : null;
-      next.userView = sanitizeTeamTetrisSeatView(source.userView);
-      next.status =
-        typeof source.status === "string" && source.status.trim() !== ""
-          ? source.status.trim()
-          : "";
-      return next;
-    }
 
-    return {
-      createTeamTetrisBoard: createTeamTetrisBoard,
-      createTeamTetrisDraft: createTeamTetrisDraft,
-      createTeamTetrisState: createTeamTetrisState,
-      sanitizeTeamTetrisRows: sanitizeTeamTetrisRows,
-      sanitizeTeamTetrisState: sanitizeTeamTetrisState,
+      function sanitizeRotationList(value: unknown): number[] {
+        return Array.isArray(value)
+          ? value.filter(function (entry: unknown): entry is number {
+              return typeof entry === "number" && Number.isInteger(entry);
+            })
+          : [0];
+      }
+
+      function sanitizeTeamRecord(candidate: unknown): GameRoomTeamTetrisTeamRecord {
+        const source: TeamTetrisTeamRecordInput =
+          isRecord(candidate) ? (candidate as TeamTetrisTeamRecordInput) : {};
+        return {
+          teamId: readTrimmedString(source.teamId, "team-a"),
+          seatIds: Array.isArray(source.seatIds)
+            ? source.seatIds.filter(function (seatId: unknown): seatId is string {
+                return typeof seatId === "string" && seatId.trim() !== "";
+              })
+            : [],
+        };
+      }
+
+      function sanitizeTeamTetrisPieceSnapshot(
+        candidate: unknown
+      ): GameRoomTeamTetrisPieceSnapshot | null {
+        if (!isRecord(candidate)) {
+          return null;
+        }
+        const source = candidate as TeamTetrisPieceSnapshotInputRecord;
+
+        return {
+          pieceId: readTrimmedString(source.pieceId),
+          rotation: readInteger(source.rotation, 0),
+          cells: sanitizeTeamTetrisCells(source.cells),
+          placedBySeatId: readTrimmedString(source.placedBySeatId),
+          placedByRole: readTrimmedString(source.placedByRole),
+          placedBy: readTrimmedString(source.placedBy),
+        };
+      }
+
+      function sanitizeTeamTetrisBoardState(
+        candidate: unknown,
+        fallbackTeamId: string,
+        fallbackVisibility: string
+      ): GameRoomTeamTetrisBoardState {
+        const source: TeamTetrisBoardStateInputRecord =
+          isRecord(candidate) ? (candidate as TeamTetrisBoardStateInputRecord) : {};
+
+        return {
+          teamId: readTrimmedString(source.teamId, fallbackTeamId),
+          visibility:
+            source.visibility === "public" || source.visibility === "private"
+              ? source.visibility
+              : fallbackVisibility,
+          rows: sanitizeTeamTetrisRows(source.rows),
+          boardBeforePartnerPieceRows: sanitizeTeamTetrisRows(source.boardBeforePartnerPieceRows),
+          partnerLastPiece: sanitizeTeamTetrisPieceSnapshot(source.partnerLastPiece),
+        };
+      }
+
+      function sanitizePendingTurn(candidate: unknown): GameRoomTeamTetrisPendingTurn | null {
+        if (!isRecord(candidate)) {
+          return null;
+        }
+        const source = candidate as TeamTetrisPendingTurnInputRecord;
+
+        return {
+          turnIndex: readInteger(source.turnIndex, 0),
+          turnToken: readTrimmedString(source.turnToken),
+          pieceId: readTrimmedString(source.pieceId),
+          legalRotations: sanitizeRotationList(source.legalRotations),
+          actingRole: readTrimmedString(source.actingRole, "opener"),
+        };
+      }
+
+      function sanitizeCurrentTurn(candidate: unknown): GameRoomTeamTetrisTurnState | null {
+        if (!isRecord(candidate)) {
+          return null;
+        }
+        const source = candidate as TeamTetrisTurnStateInputRecord;
+
+        return {
+          turnIndex: readInteger(source.turnIndex, 0),
+          seatId: readTrimmedString(source.seatId),
+          teamId: readTrimmedString(source.teamId),
+          role: readTrimmedString(source.role),
+          pieceId: readTrimmedString(source.pieceId),
+          legalRotations: sanitizeRotationList(source.legalRotations),
+          turnToken: readTrimmedString(source.turnToken),
+        };
+      }
+
+      function sanitizeSeatView(candidate: unknown): GameRoomTeamTetrisSeatView | null {
+        if (!isRecord(candidate)) {
+          return null;
+        }
+        const source = candidate as TeamTetrisSeatViewInputRecord;
+
+        const seatSource: TeamTetrisSeatIdentityInputRecord =
+          isRecord(source.seat) ? (source.seat as TeamTetrisSeatIdentityInputRecord) : {};
+        const ownTeamSource: TeamTetrisSeatTeamViewInputRecord =
+          isRecord(source.ownTeam) ? (source.ownTeam as TeamTetrisSeatTeamViewInputRecord) : {};
+        const opponentTeamSource: TeamTetrisSeatTeamViewInputRecord =
+          isRecord(source.opponentTeam) ? (source.opponentTeam as TeamTetrisSeatTeamViewInputRecord) : {};
+
+        return {
+          schemaVersion: readInteger(source.schemaVersion, 1),
+          matchId: readTrimmedString(source.matchId),
+          seat: {
+            seatId: readTrimmedString(seatSource.seatId, "user"),
+            teamId: readTrimmedString(seatSource.teamId, "team-a"),
+            role: readTrimmedString(seatSource.role, "opener"),
+          },
+          hiddenPairs: source.hiddenPairs !== false,
+          revealedPairs: source.revealedPairs === true,
+          result: readTrimmedString(source.result, "idle"),
+          winnerTeamId:
+            typeof source.winnerTeamId === "string" && source.winnerTeamId.trim() !== ""
+              ? source.winnerTeamId.trim()
+              : null,
+          teams: Array.isArray(source.teams)
+            ? source.teams
+                .map(function (entry: unknown) {
+                  return sanitizeTeamRecord(entry);
+                })
+                .slice(0, 2)
+            : null,
+          ownTeam: {
+            teamId: readTrimmedString(ownTeamSource.teamId, "team-a"),
+            boardRows: sanitizeTeamTetrisRows(ownTeamSource.boardRows),
+            boardBeforePartnerPieceRows: sanitizeTeamTetrisRows(
+              ownTeamSource.boardBeforePartnerPieceRows
+            ),
+            partnerLastPiece: sanitizeTeamTetrisPieceSnapshot(ownTeamSource.partnerLastPiece),
+          },
+          opponentTeam: {
+            teamId: readTrimmedString(opponentTeamSource.teamId, "team-b"),
+            boardRows: sanitizeTeamTetrisRows(opponentTeamSource.boardRows),
+          },
+          pendingTurn: sanitizePendingTurn(source.pendingTurn),
+        };
+      }
+
+      function sanitizeTeamTetrisState(candidate: unknown): GameRoomTeamTetrisState {
+        const source: TeamTetrisStateInputRecord =
+          isRecord(candidate) ? (candidate as TeamTetrisStateInputRecord) : {};
+        const next = createTeamTetrisState();
+
+        next.active = source.active === true;
+        next.result = readTrimmedString(source.result, "idle");
+        next.hiddenPairs = source.hiddenPairs !== false;
+        next.revealPairsOnFinish = source.revealPairsOnFinish !== false;
+        next.blockedReason = readTrimmedString(source.blockedReason);
+        next.matchId =
+          typeof source.matchId === "string" && source.matchId.trim() !== ""
+            ? source.matchId.trim()
+            : null;
+        next.canStart = source.canStart === true;
+
+        if (isRecord(source.requiredSlots)) {
+          const requiredSlots = source.requiredSlots as TeamTetrisRequiredSlotsInputRecord;
+          next.requiredSlots = {
+            ai1: requiredSlots.ai1 === true,
+            ai2: requiredSlots.ai2 === true,
+            us1: requiredSlots.us1 === true,
+          };
+        }
+
+        if (isRecord(source.board)) {
+          const board = source.board as TeamTetrisBoardConfigInputRecord;
+          next.board = {
+            width:
+              typeof board.width === "number" &&
+              Number.isInteger(board.width) &&
+              board.width > 0
+                ? board.width
+                : BOARD_WIDTH,
+            height:
+              typeof board.height === "number" &&
+              Number.isInteger(board.height) &&
+              board.height > 0
+                ? board.height
+                : BOARD_HEIGHT,
+            seedLabel: readTrimmedString(board.seedLabel, "contract-frozen"),
+          };
+        }
+
+        if (Array.isArray(source.boards)) {
+          next.boards = source.boards
+            .map(function (entry: unknown, index: number) {
+              return sanitizeTeamTetrisBoardState(
+                entry,
+                index === 0 ? "team-a" : "team-b",
+                index === 0 ? "private" : "public"
+              );
+            })
+            .slice(0, 2);
+        }
+
+        if (Array.isArray(source.turnLoop)) {
+          next.turnLoop = source.turnLoop.filter(function (entry: unknown): entry is string {
+            return typeof entry === "string" && entry.trim() !== "";
+          });
+        }
+
+        next.currentTurn = sanitizeCurrentTurn(source.currentTurn);
+        next.teams = Array.isArray(source.teams)
+          ? source.teams
+              .map(function (entry: unknown) {
+                return sanitizeTeamRecord(entry);
+              })
+              .slice(0, 2)
+          : null;
+        next.userView = sanitizeSeatView(source.userView);
+        next.status = readTrimmedString(source.status);
+
+        return next;
+      }
+
+      return {
+        createTeamTetrisBoard: createTeamTetrisBoard,
+        createTeamTetrisDraft: createTeamTetrisDraft,
+        createTeamTetrisState: createTeamTetrisState,
+        sanitizeTeamTetrisRows: sanitizeTeamTetrisRows,
+        sanitizeTeamTetrisState: sanitizeTeamTetrisState,
+      };
     };
-  };
-})(typeof window !== "undefined" ? window : globalThis);
+})(
+  (typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal
+);

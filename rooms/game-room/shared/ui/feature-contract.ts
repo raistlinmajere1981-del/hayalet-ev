@@ -1,13 +1,14 @@
 /* global window */
 
-(function (global: any) {
-  const registry = global.GameRoomUiFeatureContract || (global.GameRoomUiFeatureContract = {});
+(function (global: GameRoomUiGlobal) {
+  const registry: GameRoomUiFeatureContractLike =
+    global.GameRoomUiFeatureContract || (global.GameRoomUiFeatureContract = {});
 
   const FEATURE_ID = "xox";
   const TEAM_TETRIS_FEATURE_ID = "team-tetris";
   const FATE_KNOTS_FEATURE_ID = "fate-knots";
 
-  const FEATURE_RECORDS = [
+  const FEATURE_RECORDS: GameRoomFeatureRecord[] = [
     {
       id: FEATURE_ID,
       name: "XOX",
@@ -25,7 +26,7 @@
     },
   ];
 
-  const BOOTSTRAP_COPY = {
+  const BOOTSTRAP_COPY: GameRoomBootstrapCopy = {
     en: {
       roomTitle: "Game Room",
       loadingTitle: "Loading Game Room",
@@ -44,8 +45,15 @@
     },
   };
 
-  function cloneValue(value: any) {
-    return JSON.parse(JSON.stringify(value));
+  function cloneFeatureRecords(): GameRoomFeatureRecord[] {
+    return FEATURE_RECORDS.map((feature) => ({ ...feature }));
+  }
+
+  function cloneBootstrapCopy(): GameRoomBootstrapCopy {
+    return {
+      en: { ...BOOTSTRAP_COPY["en"] },
+      tr: { ...BOOTSTRAP_COPY["tr"] },
+    };
   }
 
   registry.ROOM_ID = "game-room";
@@ -53,9 +61,9 @@
   registry.TEAM_TETRIS_FEATURE_ID = TEAM_TETRIS_FEATURE_ID;
   registry.FATE_KNOTS_FEATURE_ID = FATE_KNOTS_FEATURE_ID;
   registry.getFeatureRecords = function getFeatureRecords() {
-    return cloneValue(FEATURE_RECORDS);
+    return cloneFeatureRecords();
   };
   registry.getBootstrapCopy = function getBootstrapCopy() {
-    return cloneValue(BOOTSTRAP_COPY);
+    return cloneBootstrapCopy();
   };
-})(window);
+})(window as unknown as GameRoomUiGlobal);

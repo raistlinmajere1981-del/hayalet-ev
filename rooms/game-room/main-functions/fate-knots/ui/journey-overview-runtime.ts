@@ -1,9 +1,53 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  interface FateKnotsUiJourneyOverviewRuntimeDeps {
+    KNOWN_SEAT_IDS: string[];
+    appendImage: GameRoomAppendImage;
+    applyFrameArtwork: GameRoomApplyFrameArtwork;
+    createActionButton: GameRoomCreateActionButton;
+    createDefaultAsset(assetId: string | null): GameRoomFateKnotsAssetLink;
+    createElement: GameRoomCreateElement;
+    createFrame: GameRoomCreateFrame;
+    createMapPathLayer(nodes: unknown, currentLocationId: unknown): HTMLElement;
+    createRegion: GameRoomCreateRegion;
+    createSeatPlaque(state: GameRoomFateKnotsState, seatId: string, role: string): HTMLElement;
+    formatHistoryTimestamp(timestamp: unknown): string;
+    getUiAsset: GameRoomGetUiAsset;
+    sendRoomCommand: GameRoomSendRoomCommand;
+    t(path: string[], fallback: string): string;
+  }
+
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
+
+  const registry = getFactoryRegistry(global);
 
   registry.createFateKnotsUiJourneyOverviewRuntime =
-    function createFateKnotsUiJourneyOverviewRuntime(deps: any) {
-      function createMemoryRail(state: any) {
+    function createFateKnotsUiJourneyOverviewRuntime(
+      deps: FateKnotsUiJourneyOverviewRuntimeDeps
+    ): { renderOverviewStage(parent: HTMLElement, state: GameRoomFateKnotsState): void } {
+      function appendClassName(element: HTMLElement, className: string): void {
+        const classListRef = (element as {
+          classList?: { add?(token: string): void };
+        }).classList;
+        if (typeof classListRef?.add === "function") {
+          classListRef.add(className);
+          return;
+        }
+        const currentClassName = typeof element.className === "string" ? element.className : "";
+        const classes = currentClassName
+          .split(/\s+/)
+          .map(function (token: string): string {
+            return token.trim();
+          })
+          .filter(Boolean);
+        if (classes.includes(className)) {
+          return;
+        }
+        element.className = currentClassName ? currentClassName + " " + className : className;
+      }
+
+      function createMemoryRail(state: GameRoomFateKnotsState): HTMLElement {
         const panel = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--rail fk-memory-rail",
@@ -18,9 +62,9 @@
         );
         const profileBlock = deps.createRegion("div", "fk-memory-rail__block", null);
         const profileValues = [
-          state.profile?.avatarId || "-",
-          state.profile?.classId || "-",
-          state.profile?.backgroundId || "-",
+          state.profile.avatarId || "-",
+          state.profile.classId || "-",
+          state.profile.backgroundId || "-",
         ];
         profileBlock.append(
           deps.createElement("strong", "fk-memory-rail__title", profileValues.join(" / "))
@@ -43,13 +87,11 @@
           )
         );
         const historyList = deps.createRegion("div", "fk-history-list", null);
-        if (Array.isArray(state.history) && state.history.length > 0) {
-          state.history.slice(0, 3).forEach(function (entry: any) {
+        if (state.history.length > 0) {
+          state.history.slice(0, 3).forEach(function (entry: GameRoomFateKnotsHistoryEntry) {
             const item = deps.createRegion("div", "fk-history-list__item", null);
             const title =
-              entry && entry.title
-                ? entry.title
-                : deps.t(["fateKnots", "result", "titleFallback"], "Run Complete");
+              entry.title || deps.t(["fateKnots", "result", "titleFallback"], "Run Complete");
             item.append(deps.createElement("strong", "fk-history-list__title", title));
             item.append(
               deps.createElement(
@@ -75,7 +117,7 @@
         return panel;
       }
 
-      function createMapShell(state: any) {
+      function createMapShell(state: GameRoomFateKnotsState): HTMLElement {
         const shell = deps.createFrame(
           "section",
           "fk-stage-frame fk-stage-frame--scene fk-map-shell",
@@ -114,68 +156,56 @@
         shell.append(header);
 
         const figure = deps.createRegion("div", "fk-map-shell__figure", null);
-        const mapAsset =
-          state.map && state.map.mapAsset ? state.map.mapAsset : deps.createDefaultAsset(null);
+        const mapAsset = state.map.mapAsset;
         deps.appendImage(
           figure,
           "fk-map-shell__image",
           mapAsset,
           deps.t(["fateKnots", "map", "title"], "Route Map")
         );
-        if (state.map && Array.isArray(state.map.nodes)) {
+        if (state.map.nodes.length > 0) {
           figure.append(deps.createMapPathLayer(state.map.nodes, state.map.currentLocationId));
         }
         const crest = deps.createRegion("div", "fk-map-shell__crest", null);
         deps.applyFrameArtwork(crest, { texture: deps.getUiAsset("mapCrest") });
         figure.append(crest);
-        if (state.map && Array.isArray(state.map.nodes)) {
-          state.map.nodes.forEach(function (node: any) {
-            if (!node || !node.marker) {
-              return;
-            }
-            const marker = deps.createRegion(
-              "div",
-              "fk-map-shell__marker" +
-                (state.map.currentLocationId === node.id ? " fk-map-shell__marker--active" : ""),
-              null
-            );
-            marker.style.left = String(node.marker.xPct || 0) + "%";
-            marker.style.top = String(node.marker.yPct || 0) + "%";
-            deps.applyFrameArtwork(marker, {
-              texture:
-                state.map.currentLocationId === node.id
-                  ? deps.getUiAsset("activeMarker")
-                  : deps.getUiAsset("mapMarker"),
-              overlay:
-                state.map.currentLocationId === node.id
-                  ? deps.getUiAsset("selectionGlow")
-                  : deps.getUiAsset("hoverRing"),
-              overlaySize: "100% 100%",
-            });
-            marker.append(
-              deps.createElement(
-                "span",
-                "fk-map-shell__marker-label",
-                node.label || node.id || "Node"
-              )
-            );
-            figure.append(marker);
+        state.map.nodes.forEach(function (node: GameRoomFateKnotsMapNode) {
+          if (!node.marker) {
+            return;
+          }
+          const marker = deps.createRegion(
+            "div",
+            "fk-map-shell__marker" +
+              (state.map.currentLocationId === node.id ? " fk-map-shell__marker--active" : ""),
+            null
+          );
+          marker.style.left = String(node.marker.xPct || 0) + "%";
+          marker.style.top = String(node.marker.yPct || 0) + "%";
+          deps.applyFrameArtwork(marker, {
+            texture:
+              state.map.currentLocationId === node.id
+                ? deps.getUiAsset("activeMarker")
+                : deps.getUiAsset("mapMarker"),
+            overlay:
+              state.map.currentLocationId === node.id
+                ? deps.getUiAsset("selectionGlow")
+                : deps.getUiAsset("hoverRing"),
+            overlaySize: "100% 100%",
           });
-        }
+          marker.append(
+            deps.createElement("span", "fk-map-shell__marker-label", node.label || node.id || "Node")
+          );
+          figure.append(marker);
+        });
         shell.append(figure);
         return shell;
       }
 
-      function renderOverviewStage(parent: any, state: any) {
+      function renderOverviewStage(parent: HTMLElement, state: GameRoomFateKnotsState): void {
         const layout = deps.createRegion("section", "fk-overview", "overview-layout");
         const main = deps.createRegion("div", "fk-overview__main", null);
         const mapShell = createMapShell(state);
-        if (mapShell.classList && typeof mapShell.classList.add === "function") {
-          mapShell.classList.add("fk-overview__map");
-        } else {
-          mapShell.className =
-            (mapShell.className ? mapShell.className + " " : "") + "fk-overview__map";
-        }
+        appendClassName(mapShell, "fk-overview__map");
         main.append(mapShell);
         main.append(createMemoryRail(state));
         layout.append(main);
@@ -197,7 +227,7 @@
           )
         );
         const seatGrid = deps.createRegion("div", "fk-seat-grid", null);
-        deps.KNOWN_SEAT_IDS.forEach(function (seatId: any) {
+        deps.KNOWN_SEAT_IDS.forEach(function (seatId: string) {
           seatGrid.append(deps.createSeatPlaque(state, seatId, "roster-seat"));
         });
         rail.append(seatGrid);
@@ -233,7 +263,7 @@
           )
         );
         rail.append(actionZone);
-        if (state.excludedSeats && state.excludedSeats.length > 0) {
+        if (state.excludedSeats.length > 0) {
           rail.append(
             deps.createElement(
               "p",
@@ -245,7 +275,7 @@
             )
           );
         }
-        if (state.transport && state.transport.remoteUserId) {
+        if (state.transport.remoteUserId) {
           rail.append(
             deps.createElement(
               "p",
@@ -264,4 +294,4 @@
         renderOverviewStage: renderOverviewStage,
       };
     };
-})(typeof window !== "undefined" ? window : globalThis);
+})((typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal);

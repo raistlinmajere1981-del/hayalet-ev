@@ -1,4 +1,118 @@
-export function createSubtitleActionRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  subtitleAnalysis?: unknown;
+};
+
+type LaboratorySubtitleEntryRecord = LaboratoryRecord & {
+  id?: unknown;
+};
+
+type LaboratorySubtitleWorkspaceSelectionRecord = LaboratoryRecord & {
+  selectedEntryIds?: unknown;
+};
+
+type LaboratorySubtitleWorkspaceRecord = LaboratoryRecord & {
+  lastActionAt?: unknown;
+  lastError?: unknown;
+  mode?: unknown;
+  selection?: unknown;
+};
+
+type LaboratorySubtitleDiscoveryRecord = LaboratoryRecord & {
+  items?: unknown;
+  selectedCandidateIds?: unknown;
+};
+
+type LaboratorySubtitleEditRecord = LaboratoryRecord & {
+  lastActionAt?: unknown;
+  lastError?: unknown;
+  presetId?: unknown;
+  preview?: unknown;
+  recipe?: unknown;
+};
+
+type LaboratorySubtitleStateRecord = LaboratoryRecord & {
+  activeEntryId?: unknown;
+  discovery?: unknown;
+  edit?: unknown;
+  workspace?: unknown;
+};
+
+type LaboratorySubtitleDiscoveryItemRecord = LaboratoryRecord & {
+  id?: unknown;
+};
+
+type SubtitleActionRuntimeDeps = {
+  applySubtitleEdit: (runtime: LaboratoryRecord, requestId: string) => Promise<unknown>;
+  applySubtitleEditPatch: (
+    runtime: LaboratoryRecord,
+    project: LaboratoryProjectRecord,
+    patchValue: unknown
+  ) => unknown;
+  asNonEmptyString: (value: unknown) => string | null;
+  createEmptySubtitleDiscoveryState: () => LaboratoryRecord;
+  getDefaultSubtitleEditPresetId: (runtime: LaboratoryRecord) => string;
+  getDefaultSubtitleEditRecipe: (runtime: LaboratoryRecord, presetId: string) => LaboratoryRecord;
+  getSubtitleEntries: (project: LaboratoryProjectRecord) => LaboratorySubtitleEntryRecord[];
+  handleSubtitleFolderPick: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string
+  ) => Promise<unknown>;
+  handleSubtitleLocalPick: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string
+  ) => Promise<unknown>;
+  handleSubtitleUrlDownload: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string
+  ) => Promise<unknown>;
+  handleSubtitleYoutubeDiscovery: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string
+  ) => Promise<unknown>;
+  handleSubtitleYoutubeDownload: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string
+  ) => Promise<unknown>;
+  markFeatureProcessStale: (
+    project: LaboratoryProjectRecord,
+    featureId: string,
+    reason: string
+  ) => unknown;
+  markFeatureReportStale: (
+    project: LaboratoryProjectRecord,
+    featureId: string,
+    reason: string
+  ) => unknown;
+  normalizeStringArray: (value: unknown) => string[];
+  normalizeSubtitleAnalysisState: (
+    rawValue: unknown,
+    runtime: LaboratoryRecord
+  ) => LaboratorySubtitleStateRecord;
+  normalizeSubtitleDiscoveryItem: (
+    rawValue: unknown,
+    index: number
+  ) => LaboratorySubtitleDiscoveryItemRecord;
+  patchActiveProject: (
+    runtime: LaboratoryRecord,
+    updater: (project: LaboratoryProjectRecord) => LaboratoryProjectRecord
+  ) => Promise<unknown>;
+  patchActiveSubtitleWorkspaceDrafts: (
+    runtime: LaboratoryRecord,
+    fields: unknown
+  ) => Promise<unknown>;
+  previewSubtitleEdit: (runtime: LaboratoryRecord, requestId: string) => Promise<unknown>;
+  subtitleFeatureId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createSubtitleActionRuntime(deps: SubtitleActionRuntimeDeps) {
   const {
     applySubtitleEdit,
     applySubtitleEditPatch,
@@ -24,39 +138,86 @@ export function createSubtitleActionRuntime(deps: any) {
     toRecord,
   } = deps;
 
-  async function setSourceMode(
-    runtime: Record<string, unknown>,
-    actionPayload: Record<string, unknown>
+  function toProjectRecord(value: unknown): LaboratoryProjectRecord {
+    return toRecord(value);
+  }
+
+  function toWorkspaceRecord(value: unknown): LaboratorySubtitleWorkspaceRecord {
+    return toRecord(value);
+  }
+
+  function toDiscoveryRecord(value: unknown): LaboratorySubtitleDiscoveryRecord {
+    return toRecord(value);
+  }
+
+  function toEditRecord(value: unknown): LaboratorySubtitleEditRecord {
+    return toRecord(value);
+  }
+
+  function toSelectionRecord(value: unknown): LaboratorySubtitleWorkspaceSelectionRecord {
+    return toRecord(value);
+  }
+
+  function toSubtitleStateRecord(
+    project: LaboratoryProjectRecord,
+    runtime: LaboratoryRecord
+  ): LaboratorySubtitleStateRecord {
+    return normalizeSubtitleAnalysisState(project.subtitleAnalysis, runtime);
+  }
+
+  function updateWorkspaceActionMeta(subtitleState: LaboratorySubtitleStateRecord) {
+    const workspace = toWorkspaceRecord(subtitleState.workspace);
+    workspace.lastError = null;
+    workspace.lastActionAt = new Date().toISOString();
+    subtitleState.workspace = workspace;
+  }
+
+  function markSubtitleStateAsStale(project: LaboratoryProjectRecord, reason: string) {
+    markFeatureProcessStale(project, subtitleFeatureId, reason);
+    markFeatureReportStale(project, subtitleFeatureId, reason);
+  }
+
+  function patchSubtitleProject(
+    runtime: LaboratoryRecord,
+    updateSubtitleState: (
+      project: LaboratoryProjectRecord,
+      subtitleState: LaboratorySubtitleStateRecord
+    ) => LaboratorySubtitleStateRecord
   ) {
-    return patchActiveProject(runtime, function (nextProject: any) {
-      const nextMode =
-        asNonEmptyString(actionPayload["mode"]) ||
-        asNonEmptyString(
-          toRecord(normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime).workspace)
-            .mode
-        ) ||
-        "local-file";
-      const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
-      if (subtitleState.workspace.mode !== nextMode) {
-        subtitleState.discovery = createEmptySubtitleDiscoveryState();
-      }
-      subtitleState.workspace.mode = nextMode;
-      subtitleState.workspace.lastError = null;
-      subtitleState.workspace.lastActionAt = new Date().toISOString();
-      nextProject.subtitleAnalysis = subtitleState;
-      return nextProject;
+    return patchActiveProject(runtime, function (nextProject) {
+      const nextProjectRecord = toProjectRecord(nextProject);
+      const subtitleState = toSubtitleStateRecord(nextProjectRecord, runtime);
+      nextProjectRecord.subtitleAnalysis = updateSubtitleState(nextProjectRecord, subtitleState);
+      return nextProjectRecord;
     });
   }
 
-  async function updateDrafts(runtime: Record<string, unknown>, fields: Record<string, unknown>) {
+  async function setSourceMode(
+    runtime: LaboratoryRecord,
+    actionPayload: LaboratoryRecord
+  ) {
+    return patchSubtitleProject(runtime, function (_project, subtitleState) {
+      const workspace = toWorkspaceRecord(subtitleState.workspace);
+      const nextMode = asNonEmptyString(actionPayload["mode"]) || asNonEmptyString(workspace.mode) || "local-file";
+      if (workspace.mode !== nextMode) {
+        subtitleState.discovery = createEmptySubtitleDiscoveryState();
+      }
+      workspace.mode = nextMode;
+      subtitleState.workspace = workspace;
+      updateWorkspaceActionMeta(subtitleState);
+      return subtitleState;
+    });
+  }
+
+  async function updateDrafts(runtime: LaboratoryRecord, fields: LaboratoryRecord) {
     return patchActiveSubtitleWorkspaceDrafts(runtime, fields);
   }
 
   async function pickLocal(
     api: unknown,
-    runtime: Record<string, unknown>,
+    runtime: LaboratoryRecord,
     requestId: string,
-    actionPayload: Record<string, unknown>
+    actionPayload: LaboratoryRecord
   ) {
     await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload["fields"]);
     return handleSubtitleLocalPick(api, runtime, requestId);
@@ -64,9 +225,9 @@ export function createSubtitleActionRuntime(deps: any) {
 
   async function pickFolder(
     api: unknown,
-    runtime: Record<string, unknown>,
+    runtime: LaboratoryRecord,
     requestId: string,
-    actionPayload: Record<string, unknown>
+    actionPayload: LaboratoryRecord
   ) {
     await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload["fields"]);
     return handleSubtitleFolderPick(api, runtime, requestId);
@@ -74,9 +235,9 @@ export function createSubtitleActionRuntime(deps: any) {
 
   async function downloadUrl(
     api: unknown,
-    runtime: Record<string, unknown>,
+    runtime: LaboratoryRecord,
     requestId: string,
-    actionPayload: Record<string, unknown>
+    actionPayload: LaboratoryRecord
   ) {
     await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload["fields"]);
     return handleSubtitleUrlDownload(api, runtime, requestId);
@@ -84,9 +245,9 @@ export function createSubtitleActionRuntime(deps: any) {
 
   async function discoverYoutube(
     api: unknown,
-    runtime: Record<string, unknown>,
+    runtime: LaboratoryRecord,
     requestId: string,
-    actionPayload: Record<string, unknown>
+    actionPayload: LaboratoryRecord
   ) {
     await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload["fields"]);
     return handleSubtitleYoutubeDiscovery(api, runtime, requestId);
@@ -94,177 +255,182 @@ export function createSubtitleActionRuntime(deps: any) {
 
   async function downloadYoutube(
     api: unknown,
-    runtime: Record<string, unknown>,
+    runtime: LaboratoryRecord,
     requestId: string,
-    actionPayload: Record<string, unknown>
+    actionPayload: LaboratoryRecord
   ) {
     await patchActiveSubtitleWorkspaceDrafts(runtime, actionPayload["fields"]);
     return handleSubtitleYoutubeDownload(api, runtime, requestId);
   }
 
   async function toggleDiscovery(
-    runtime: Record<string, unknown>,
-    actionPayload: Record<string, unknown>
+    runtime: LaboratoryRecord,
+    actionPayload: LaboratoryRecord
   ) {
-    return patchActiveProject(runtime, function (nextProject: any) {
+    return patchSubtitleProject(runtime, function (_project, subtitleState) {
       const candidateId = asNonEmptyString(actionPayload["candidateId"]);
-      const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
-      const selectedIds = normalizeStringArray(
-        toRecord(subtitleState.discovery).selectedCandidateIds
-      );
-      const nextSelectedIds = selectedIds.includes(candidateId)
-        ? selectedIds.filter(function (entry: string) {
-            return entry !== candidateId;
-          })
-        : selectedIds.concat(candidateId);
-      subtitleState.discovery.selectedCandidateIds = nextSelectedIds;
-      subtitleState.workspace.lastError = null;
-      subtitleState.workspace.lastActionAt = new Date().toISOString();
-      nextProject.subtitleAnalysis = subtitleState;
-      return nextProject;
+      const discovery = toDiscoveryRecord(subtitleState.discovery);
+      const selectedIds = normalizeStringArray(discovery.selectedCandidateIds);
+      const nextSelectedIds =
+        candidateId === null
+          ? selectedIds
+          : selectedIds.includes(candidateId)
+            ? selectedIds.filter(function (entry) {
+                return entry !== candidateId;
+              })
+            : selectedIds.concat(candidateId);
+      discovery.selectedCandidateIds = nextSelectedIds;
+      subtitleState.discovery = discovery;
+      updateWorkspaceActionMeta(subtitleState);
+      return subtitleState;
     });
   }
 
-  async function selectAllDiscovery(runtime: Record<string, unknown>) {
-    return patchActiveProject(runtime, function (nextProject: any) {
-      const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
-      subtitleState.discovery.selectedCandidateIds = (
-        Array.isArray(toRecord(subtitleState.discovery).items)
-          ? toRecord(subtitleState.discovery).items
-          : []
-      ).map(function (entry: any, index: number) {
-        return normalizeSubtitleDiscoveryItem(entry, index).id;
-      });
-      subtitleState.workspace.lastError = null;
-      subtitleState.workspace.lastActionAt = new Date().toISOString();
-      nextProject.subtitleAnalysis = subtitleState;
-      return nextProject;
+  async function selectAllDiscovery(runtime: LaboratoryRecord) {
+    return patchSubtitleProject(runtime, function (_project, subtitleState) {
+      const discovery = toDiscoveryRecord(subtitleState.discovery);
+      const items = Array.isArray(discovery.items) ? discovery.items : [];
+      discovery.selectedCandidateIds = items
+        .map(function (entry, index) {
+          return asNonEmptyString(normalizeSubtitleDiscoveryItem(entry, index).id);
+        })
+        .filter((entry): entry is string => entry !== null);
+      subtitleState.discovery = discovery;
+      updateWorkspaceActionMeta(subtitleState);
+      return subtitleState;
     });
   }
 
-  async function clearDiscoverySelection(runtime: Record<string, unknown>) {
-    return patchActiveProject(runtime, function (nextProject: any) {
-      const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
-      subtitleState.discovery.selectedCandidateIds = [];
-      subtitleState.workspace.lastError = null;
-      subtitleState.workspace.lastActionAt = new Date().toISOString();
-      nextProject.subtitleAnalysis = subtitleState;
-      return nextProject;
+  async function clearDiscoverySelection(runtime: LaboratoryRecord) {
+    return patchSubtitleProject(runtime, function (_project, subtitleState) {
+      const discovery = toDiscoveryRecord(subtitleState.discovery);
+      discovery.selectedCandidateIds = [];
+      subtitleState.discovery = discovery;
+      updateWorkspaceActionMeta(subtitleState);
+      return subtitleState;
     });
   }
 
   async function selectEntry(
-    runtime: Record<string, unknown>,
-    actionPayload: Record<string, unknown>
+    runtime: LaboratoryRecord,
+    actionPayload: LaboratoryRecord
   ) {
-    return patchActiveProject(runtime, function (nextProject: any) {
+    return patchSubtitleProject(runtime, function (project, subtitleState) {
       const entryId = asNonEmptyString(actionPayload["entryId"]);
-      const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
-      const availableEntries = getSubtitleEntries(nextProject);
+      const availableEntries = getSubtitleEntries(project);
       const selectedEntry =
-        availableEntries.find(function (entry: any) {
-          return entry.id === entryId;
+        availableEntries.find(function (entry) {
+          return asNonEmptyString(entry.id) === entryId;
         }) || null;
-      subtitleState.activeEntryId = selectedEntry ? selectedEntry.id : subtitleState.activeEntryId;
       if (selectedEntry) {
-        subtitleState.workspace.selection.selectedEntryIds = [selectedEntry.id];
+        subtitleState.activeEntryId = selectedEntry.id;
+        const workspace = toWorkspaceRecord(subtitleState.workspace);
+        const selection = toSelectionRecord(workspace.selection);
+        selection.selectedEntryIds = [selectedEntry.id];
+        workspace.selection = selection;
+        subtitleState.workspace = workspace;
       }
-      subtitleState.workspace.lastError = null;
-      subtitleState.workspace.lastActionAt = new Date().toISOString();
-      nextProject.subtitleAnalysis = subtitleState;
-      markFeatureProcessStale(nextProject, subtitleFeatureId, "Subtitle selection changed.");
-      markFeatureReportStale(nextProject, subtitleFeatureId, "Subtitle selection changed.");
-      return nextProject;
+      updateWorkspaceActionMeta(subtitleState);
+      markSubtitleStateAsStale(project, "Subtitle selection changed.");
+      return subtitleState;
     });
   }
 
   async function toggleSelection(
-    runtime: Record<string, unknown>,
-    actionPayload: Record<string, unknown>
+    runtime: LaboratoryRecord,
+    actionPayload: LaboratoryRecord
   ) {
-    return patchActiveProject(runtime, function (nextProject: any) {
+    return patchSubtitleProject(runtime, function (project, subtitleState) {
       const entryId = asNonEmptyString(actionPayload["entryId"]);
-      const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
-      const selectedIds = normalizeStringArray(
-        toRecord(toRecord(subtitleState.workspace).selection).selectedEntryIds
-      );
-      const nextSelectedIds = selectedIds.includes(entryId)
-        ? selectedIds.filter(function (candidateId: string) {
-            return candidateId !== entryId;
-          })
-        : selectedIds.concat(entryId);
-      subtitleState.workspace.selection.selectedEntryIds = nextSelectedIds;
+      const workspace = toWorkspaceRecord(subtitleState.workspace);
+      const selection = toSelectionRecord(workspace.selection);
+      const selectedIds = normalizeStringArray(selection.selectedEntryIds);
+      const nextSelectedIds =
+        entryId === null
+          ? selectedIds
+          : selectedIds.includes(entryId)
+            ? selectedIds.filter(function (candidateId) {
+                return candidateId !== entryId;
+              })
+            : selectedIds.concat(entryId);
+      selection.selectedEntryIds = nextSelectedIds;
+      workspace.selection = selection;
+      subtitleState.workspace = workspace;
       if (nextSelectedIds.length > 0) {
         subtitleState.activeEntryId = nextSelectedIds[0];
       }
-      subtitleState.workspace.lastError = null;
-      subtitleState.workspace.lastActionAt = new Date().toISOString();
-      nextProject.subtitleAnalysis = subtitleState;
-      markFeatureProcessStale(nextProject, subtitleFeatureId, "Subtitle batch selection changed.");
-      markFeatureReportStale(nextProject, subtitleFeatureId, "Subtitle batch selection changed.");
-      return nextProject;
+      updateWorkspaceActionMeta(subtitleState);
+      markSubtitleStateAsStale(project, "Subtitle batch selection changed.");
+      return subtitleState;
     });
   }
 
   async function applyEditPreset(
-    runtime: Record<string, unknown>,
-    actionPayload: Record<string, unknown>
+    runtime: LaboratoryRecord,
+    actionPayload: LaboratoryRecord
   ) {
-    return patchActiveProject(runtime, function (nextProject: any) {
-      const presetId =
-        asNonEmptyString(actionPayload["presetId"]) || getDefaultSubtitleEditPresetId(runtime);
-      const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
-      subtitleState.edit.presetId = presetId;
-      subtitleState.edit.recipe = getDefaultSubtitleEditRecipe(runtime, presetId);
-      subtitleState.edit.preview = {
+    return patchSubtitleProject(runtime, function (project, subtitleState) {
+      const presetId = asNonEmptyString(actionPayload["presetId"]) || getDefaultSubtitleEditPresetId(runtime);
+      const edit = toEditRecord(subtitleState.edit);
+      edit.presetId = presetId;
+      edit.recipe = getDefaultSubtitleEditRecipe(runtime, presetId);
+      edit.preview = {
         status: "idle",
         entryId: null,
         outputText: "",
         warnings: [],
         summary: null,
       };
-      subtitleState.edit.lastError = null;
-      subtitleState.edit.lastActionAt = new Date().toISOString();
-      nextProject.subtitleAnalysis = subtitleState;
-      markFeatureProcessStale(nextProject, subtitleFeatureId, "Subtitle preset changed.");
-      markFeatureReportStale(nextProject, subtitleFeatureId, "Subtitle preset changed.");
-      return nextProject;
+      edit.lastError = null;
+      edit.lastActionAt = new Date().toISOString();
+      subtitleState.edit = edit;
+      markSubtitleStateAsStale(project, "Subtitle preset changed.");
+      return subtitleState;
     });
   }
 
   async function updateEditRecipe(
-    runtime: Record<string, unknown>,
-    actionPayload: Record<string, unknown>
+    runtime: LaboratoryRecord,
+    actionPayload: LaboratoryRecord
   ) {
-    return patchActiveProject(runtime, function (nextProject: any) {
-      applySubtitleEditPatch(runtime, nextProject, actionPayload["patch"] || actionPayload["fields"]);
-      return nextProject;
+    return patchActiveProject(runtime, function (nextProject) {
+      const nextProjectRecord = toProjectRecord(nextProject);
+      applySubtitleEditPatch(
+        runtime,
+        nextProjectRecord,
+        actionPayload["patch"] || actionPayload["fields"]
+      );
+      return nextProjectRecord;
     });
   }
 
   async function previewEdit(
-    runtime: Record<string, unknown>,
+    runtime: LaboratoryRecord,
     requestId: string,
-    actionPayload: Record<string, unknown>
+    actionPayload: LaboratoryRecord
   ) {
-    if (Object.keys(toRecord(actionPayload["patch"])).length > 0) {
-      await patchActiveProject(runtime, function (nextProject: any) {
-        applySubtitleEditPatch(runtime, nextProject, actionPayload["patch"]);
-        return nextProject;
+    const patch = toRecord(actionPayload["patch"]);
+    if (Object.keys(patch).length > 0) {
+      await patchActiveProject(runtime, function (nextProject) {
+        const nextProjectRecord = toProjectRecord(nextProject);
+        applySubtitleEditPatch(runtime, nextProjectRecord, patch);
+        return nextProjectRecord;
       });
     }
     return previewSubtitleEdit(runtime, requestId);
   }
 
   async function applyEdit(
-    runtime: Record<string, unknown>,
+    runtime: LaboratoryRecord,
     requestId: string,
-    actionPayload: Record<string, unknown>
+    actionPayload: LaboratoryRecord
   ) {
-    if (Object.keys(toRecord(actionPayload["patch"])).length > 0) {
-      await patchActiveProject(runtime, function (nextProject: any) {
-        applySubtitleEditPatch(runtime, nextProject, actionPayload["patch"]);
-        return nextProject;
+    const patch = toRecord(actionPayload["patch"]);
+    if (Object.keys(patch).length > 0) {
+      await patchActiveProject(runtime, function (nextProject) {
+        const nextProjectRecord = toProjectRecord(nextProject);
+        applySubtitleEditPatch(runtime, nextProjectRecord, patch);
+        return nextProjectRecord;
       });
     }
     return applySubtitleEdit(runtime, requestId);

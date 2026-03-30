@@ -3,7 +3,24 @@ import { createMediaSourceIntakeRuntime } from "../../main-functions/media-analy
 import { createMediaSourceMetadataRuntime } from "../../main-functions/media-analysis/host/source-metadata.js";
 import { createLaboratorySourceDelegatesRuntime } from "./source-delegates.js";
 
-export function createLaboratorySourceCompositionRuntime(deps: any) {
+type MediaSourceFileRuntimeDeps = Parameters<typeof createMediaSourceFileRuntime>[0];
+type MediaSourceMetadataRuntimeDeps = Parameters<typeof createMediaSourceMetadataRuntime>[0];
+type MediaSourceIntakeRuntimeDeps = Parameters<typeof createMediaSourceIntakeRuntime>[0];
+type LaboratorySourceDelegatesRuntimeDeps = Parameters<typeof createLaboratorySourceDelegatesRuntime>[0];
+
+type LaboratorySourceCompositionRuntimeDeps = MediaSourceFileRuntimeDeps &
+  Omit<
+    MediaSourceMetadataRuntimeDeps,
+    "findCompanionExecutableName" | "stripMimeParameters" | "validateSourceCandidate"
+  > &
+  Omit<
+    MediaSourceIntakeRuntimeDeps,
+    "deriveFilename" | "normalizeMimeType" | "resolvePreparedSource"
+  >;
+
+export function createLaboratorySourceCompositionRuntime(
+  deps: LaboratorySourceCompositionRuntimeDeps
+) {
   const mediaSourceFileRuntime = createMediaSourceFileRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     getSourceConfig: deps.getSourceConfig,
@@ -27,31 +44,38 @@ export function createLaboratorySourceCompositionRuntime(deps: any) {
     validateSourceCandidate: mediaSourceFileRuntime.validateSourceCandidate,
   });
 
-  const mediaSourceIntakeRuntime = createMediaSourceIntakeRuntime({
+  const mediaSourceIntakeRuntimeDeps: MediaSourceIntakeRuntimeDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     callRoomTools: deps.callRoomTools,
     cancelJobsForProject: deps.cancelJobsForProject,
     clearJob: deps.clearJob,
-    deriveFilename: mediaSourceFileRuntime.deriveFilename,
+    deriveFilename: mediaSourceFileRuntime.deriveFilename as MediaSourceIntakeRuntimeDeps["deriveFilename"],
     getActiveProject: deps.getActiveProject,
     getElectronApi: deps.getElectronApi,
     getPresetDefaultCustomValues: deps.getPresetDefaultCustomValues,
     getProjectSourceDir: deps.getProjectSourceDir,
     getSourceConfig: deps.getSourceConfig,
-    normalizeMimeType: mediaSourceFileRuntime.normalizeMimeType,
+    normalizeMimeType:
+      mediaSourceFileRuntime.normalizeMimeType as MediaSourceIntakeRuntimeDeps["normalizeMimeType"],
     patchActiveProject: deps.patchActiveProject,
     pushJobState: deps.pushJobState,
     registerJob: deps.registerJob,
     resetEditForCurrentSource: deps.resetEditForCurrentSource,
     resetProfileForCurrentSource: deps.resetProfileForCurrentSource,
-    resolvePreparedSource: mediaSourceMetadataRuntime.resolvePreparedSource,
+    resolvePreparedSource:
+      mediaSourceMetadataRuntime.resolvePreparedSource as MediaSourceIntakeRuntimeDeps["resolvePreparedSource"],
     roomId: deps.roomId,
     toRecord: deps.toRecord,
-  });
+  };
+  const mediaSourceIntakeRuntime = createMediaSourceIntakeRuntime(mediaSourceIntakeRuntimeDeps);
 
-  const laboratorySourceDelegatesRuntime = createLaboratorySourceDelegatesRuntime({
-    mediaSourceIntakeRuntime,
-  });
+  const laboratorySourceDelegatesRuntimeDeps: LaboratorySourceDelegatesRuntimeDeps = {
+    mediaSourceIntakeRuntime:
+      mediaSourceIntakeRuntime as unknown as LaboratorySourceDelegatesRuntimeDeps["mediaSourceIntakeRuntime"],
+  };
+  const laboratorySourceDelegatesRuntime = createLaboratorySourceDelegatesRuntime(
+    laboratorySourceDelegatesRuntimeDeps
+  );
 
   return {
     laboratorySourceDelegatesRuntime,

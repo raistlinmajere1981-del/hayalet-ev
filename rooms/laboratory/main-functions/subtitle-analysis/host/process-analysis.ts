@@ -20,6 +20,15 @@ type SubtitleProcessAnalysisRuntimeDeps = {
   toRecord: (value: unknown) => Record<string, unknown>;
 };
 
+type LaboratoryRuntimeRecord = Record<string, unknown>;
+type LaboratoryProjectRecord = Record<string, unknown>;
+type LaboratoryTargetRecord = Record<string, unknown> & {
+  entries?: unknown;
+};
+type SubtitleTargetEntryRecord = Record<string, unknown> & {
+  path?: unknown;
+};
+
 export function createSubtitleProcessAnalysisRuntime(deps: SubtitleProcessAnalysisRuntimeDeps) {
   const {
     asNonEmptyString,
@@ -50,6 +59,10 @@ export function createSubtitleProcessAnalysisRuntime(deps: SubtitleProcessAnalys
     vocabularySize: number;
     topWords: SubtitleTopWord[];
   };
+
+  function toTargetEntryRecord(value: unknown): SubtitleTargetEntryRecord {
+    return toRecord(value);
+  }
 
   function buildSubtitleProcessModules(
     runtime: Record<string, unknown>,
@@ -233,18 +246,24 @@ export function createSubtitleProcessAnalysisRuntime(deps: SubtitleProcessAnalys
   }
 
   async function buildSubtitleAnalysisStats(
-    runtime: Record<string, unknown>,
-    project: Record<string, unknown>,
-    target: Record<string, unknown>
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    target: LaboratoryTargetRecord
   ) {
-    const entries = Array.isArray(target["entries"]) ? target["entries"] : [];
+    const entries = Array.isArray(target["entries"])
+      ? target["entries"].map(toTargetEntryRecord)
+      : [];
     const documents: SubtitleDocumentStats[] = [];
 
     for (let index = 0; index < entries.length; index += 1) {
       const entry = entries[index];
-      if (entry && entry.path) {
+      if (!entry) {
+        continue;
+      }
+      const entryPath = asNonEmptyString(entry.path);
+      if (entryPath !== null) {
         // eslint-disable-next-line no-await-in-loop -- NOTE: keep subtitle reads aligned with source entry order.
-        const rawText = await readSubtitleText(entry.path);
+        const rawText = await readSubtitleText(entryPath);
         documents.push(buildSubtitleDocumentStats(entry, rawText));
       }
     }

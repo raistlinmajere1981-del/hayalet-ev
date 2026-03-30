@@ -1,10 +1,12 @@
+import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js";
 import { createLaboratorySnapshotAudioSelectors } from "./source-snapshot-audio-selectors.js";
 import { createLaboratorySnapshotProjectSelectors } from "./source-snapshot-project-selectors.js";
 import { createLaboratorySnapshotSubtitleSelectors } from "./source-snapshot-subtitle-selectors.js";
 import { createLaboratorySnapshotToolSelectors } from "./source-snapshot-tool-selectors.js";
 
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
 type LaboratorySourceSnapshotSelectorCompositionDeps = {
-  getState: () => Record<string, unknown>;
+  getState: () => LaboratoryUiState;
   toRecord: (value: unknown) => Record<string, unknown>;
   getActiveFeatureId: () => string;
   subtitleText: (path: string[], trFallback?: string, enFallback?: string) => string;
@@ -14,7 +16,7 @@ type LaboratorySourceSnapshotSelectorCompositionDeps = {
     trFallback: string,
     enFallback: string
   ) => string;
-  formatStatusLabel: (status: string) => string;
+  formatStatusLabel: (status: unknown) => string;
 };
 
 export function createSourceSnapshotSelectors(

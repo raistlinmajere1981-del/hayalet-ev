@@ -13,14 +13,18 @@ export function createLaboratorySnapshotToolSelectors(deps: LaboratorySnapshotTo
   const getToolRegistry = deps.getToolRegistry;
   const getEditCapabilities = deps.getEditCapabilities;
 
-  const getToolEntry: (toolId: string) => LaboratorySnapshotRecord = function getToolEntry(toolId: any) {
+  const getToolEntry: (toolId: string) => LaboratorySnapshotRecord = function getToolEntry(
+    toolId: string
+  ) {
     const tools = toRecord(toRecord(getSourceSnapshot()["toolState"])["tools"]);
     return toRecord(tools[toolId]);
   };
 
-  const getStageToolIds: (stageId: string) => string[] = function getStageToolIds(stageId: any) {
+  const getStageToolIds: (stageId: string) => string[] = function getStageToolIds(
+    stageId: string
+  ) {
     return getToolRegistry()
-      .filter(function (entry: any) {
+      .filter(function (entry: unknown) {
         const toolEntry = toRecord(entry);
         const supportLevel = toRecord(toolEntry["stageSupport"])[stageId];
         return (
@@ -29,7 +33,7 @@ export function createLaboratorySnapshotToolSelectors(deps: LaboratorySnapshotTo
           supportLevel !== "unsupported"
         );
       })
-      .map(function (entry: any) {
+      .map(function (entry: unknown) {
         const toolEntry = toRecord(entry);
         return typeof toolEntry["toolId"] === "string" && toolEntry["toolId"].trim() !== ""
           ? toolEntry["toolId"]
@@ -41,7 +45,7 @@ export function createLaboratorySnapshotToolSelectors(deps: LaboratorySnapshotTo
   };
 
   const getWorkspaceCapabilities: (kind: string) => LaboratorySnapshotRecord =
-    function getWorkspaceCapabilities(kind: any) {
+    function getWorkspaceCapabilities(kind: string) {
       return toRecord(toRecord(getEditCapabilities()["workspace"])[kind]);
     };
 

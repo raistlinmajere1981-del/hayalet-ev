@@ -13,8 +13,6 @@ import {
   writeLaboratoryTextFile,
 } from "./electron-bridge.js";
 
-type LaboratoryRecord = Record<string, unknown>;
-
 type LaboratoryHostIoRuntimeDeps = {
   getProjectDirectoryFallbackMarkerList: (runtime: unknown, project: unknown) => string[];
   getProjectDirectoryList: (runtime: unknown, project: unknown) => string[];
@@ -29,7 +27,10 @@ export function createLaboratoryHostIoRuntime(deps: LaboratoryHostIoRuntimeDeps)
   }
 
   async function digestSha1(bytes: unknown) {
-    return digestLaboratorySha1(bytes as Uint8Array);
+    if (!(bytes instanceof Uint8Array)) {
+      throw new Error("SHA-1 digest requires Uint8Array input.");
+    }
+    return digestLaboratorySha1(bytes);
   }
 
   async function readJsonFile(filePath: string) {
@@ -56,8 +57,8 @@ export function createLaboratoryHostIoRuntime(deps: LaboratoryHostIoRuntimeDeps)
     return listLaboratoryDirectory(dirPath);
   }
 
-  async function callRoomTools(request: LaboratoryRecord) {
-    return callLaboratoryRoomTools(request);
+  async function callRoomTools(request: Record<string, unknown>) {
+    return callLaboratoryRoomTools(request as Parameters<typeof callLaboratoryRoomTools>[0]);
   }
 
   async function ensureRuntimeDirectory(dirPath: string, requestId?: string | null) {

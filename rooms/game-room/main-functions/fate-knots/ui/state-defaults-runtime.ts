@@ -1,41 +1,42 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  const registry: GameRoomUiFactoriesRegistry =
+    global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
 
   registry.createFateKnotsUiStateDefaultsRuntime =
-    function createFateKnotsUiStateDefaultsRuntime() {
-      function createDefaultAsset(assetId: any) {
+    function createFateKnotsUiStateDefaultsRuntime(): GameRoomFateKnotsUiStateDefaultsRuntime {
+      function createDefaultAsset(assetId: string | null): GameRoomFateKnotsAssetLink {
         return {
-          assetId: (assetId ?? null) as string | null,
+          assetId,
           asset: {
-            id: (assetId ?? null) as string | null,
-            uiSrc: null as string | null,
-            src: null as string | null,
+            id: assetId,
+            uiSrc: null,
+            src: null,
           },
-          uiSrc: null as string | null,
-          src: null as string | null,
+          uiSrc: null,
+          src: null,
           label: "",
           present: false,
         };
       }
 
-      function createDefaultCatalogEntry() {
+      function createDefaultCatalogEntry(): GameRoomFateKnotsCatalogEntry {
         return {
-          id: null as string | null,
+          id: null,
           label: "",
           summary: "",
           description: "",
           perk: "",
-          stats: null as unknown,
-          startingDeck: [] as unknown[],
+          stats: {},
+          startingDeck: [],
           asset: createDefaultAsset(null),
         };
       }
 
-      function createDefaultSelection() {
+      function createDefaultSelection(): GameRoomFateKnotsSelection {
         return {
-          avatarId: null as string | null,
-          classId: null as string | null,
-          backgroundId: null as string | null,
+          avatarId: null,
+          classId: null,
+          backgroundId: null,
           locked: false,
           autoAssigned: false,
           avatar: createDefaultCatalogEntry(),
@@ -44,28 +45,28 @@
         };
       }
 
-      function createDefaultParticipant(seatId: any) {
+      function createDefaultParticipant(seatId: string | null): GameRoomFateKnotsParticipant {
         return {
-          seatId: seatId || null,
-          provider: seatId || null,
+          seatId,
+          provider: seatId,
           type: seatId === "user" ? "local-user" : "ai",
           nickname: seatId || "Seat",
           ready: false,
           connected: false,
           active: false,
           selection: createDefaultSelection(),
-          decisionChoiceId: null as string | null,
-          combat: null as unknown,
+          decisionChoiceId: null,
+          combat: null,
         };
       }
 
-      function createDefaultTransport() {
+      function createDefaultTransport(): GameRoomFateKnotsTransport {
         return {
-          remoteUserId: null as string | null,
+          remoteUserId: null,
         };
       }
 
-      function createDefaultResult() {
+      function createDefaultResult(): GameRoomFateKnotsResult {
         return {
           outcome: "idle",
           title: "",
@@ -74,39 +75,39 @@
         };
       }
 
-      function createDefaultWaiting() {
+      function createDefaultWaiting(): GameRoomFateKnotsWaitingState {
         return {
           mode: "idle",
           reason: "",
-          pendingSeatIds: [] as string[],
-          deadlineAt: null as number | null,
+          pendingSeatIds: [],
+          deadlineAt: null,
         };
       }
 
-      function createDefaultMap() {
+      function createDefaultMap(): GameRoomFateKnotsMapState {
         return {
           mapAsset: createDefaultAsset(null),
-          nodes: [] as unknown[],
-          currentLocationId: null as string | null,
+          nodes: [],
+          currentLocationId: null,
         };
       }
 
-      function createDefaultCatalogs() {
+      function createDefaultCatalogs(): GameRoomFateKnotsCatalogs {
         return {
-          avatars: [] as unknown[],
-          classes: [] as unknown[],
-          backgrounds: [] as unknown[],
+          avatars: [],
+          classes: [],
+          backgrounds: [],
         };
       }
 
-      function createDefaultUiAssets() {
+      function createDefaultUiAssets(): GameRoomFateKnotsUiAssets {
         return {
           byId: {},
           featureView: createDefaultAsset(null),
         };
       }
 
-      function createFateKnotsState() {
+      function createFateKnotsState(): GameRoomFateKnotsState {
         return {
           roomId: "game-room",
           featureId: "fate-knots",
@@ -119,27 +120,27 @@
             mode: "fresh",
             reason: "",
           },
-          sessionId: null as string | null,
+          sessionId: null,
           participantMode: "user-plus-ready-ai",
           rosterLocked: false,
-          participants: [] as unknown[],
-          excludedSeats: [] as unknown[],
+          participants: [],
+          excludedSeats: [],
           waiting: createDefaultWaiting(),
           map: createDefaultMap(),
-          currentStep: null as unknown,
-          decision: null as unknown,
-          combat: null as unknown,
+          currentStep: null,
+          decision: null,
+          combat: null,
           result: createDefaultResult(),
-          dmNarration: null as unknown,
-          npcBanter: null as unknown,
+          dmNarration: null,
+          npcBanter: null,
           profile: {
-            avatarId: null as string | null,
-            classId: null as string | null,
-            backgroundId: null as string | null,
-            updatedAt: null as string | null,
+            avatarId: null,
+            classId: null,
+            backgroundId: null,
+            updatedAt: null,
           },
-          history: [] as unknown[],
-          scenarioLog: [] as unknown[],
+          history: [],
+          scenarioLog: [],
           transport: createDefaultTransport(),
           catalogs: createDefaultCatalogs(),
           assetCoverage: {},
@@ -158,4 +159,4 @@
         createFateKnotsState,
       };
     };
-})(typeof window !== "undefined" ? window : globalThis);
+})((typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal);

@@ -491,19 +491,20 @@ export function createMediaEditSupportRuntime(deps: MediaEditSupportDeps) {
     runtime: MediaEditSupportRuntimeRecord,
     project: MediaEditSupportProjectRecord,
     presetId: string
-  ) {
+  ): MediaEditSupportRecord | null {
     const sourceKind = asNonEmptyString(toRecord(project["source"])["kind"]) || "video";
     const mode = asNonEmptyString(toRecord(project["edit"])["mode"]) || "beginner";
     const presetsByKind = toRecord(toRecord(runtime["editPresets"])["presets"]);
     const sourcePresets = toRecord(presetsByKind[sourceKind]);
     const modePresets = sourcePresets[mode];
-    const presetList = Array.isArray(modePresets) ? modePresets : [];
+    const presetList: unknown[] = Array.isArray(modePresets) ? modePresets : [];
 
-    return (
+    const matchedPreset =
       presetList.find(function (entry: unknown) {
         return asNonEmptyString(toRecord(entry)["id"]) === presetId;
-      }) || null
-    );
+      }) || null;
+
+    return matchedPreset === null ? null : toRecord(matchedPreset);
   }
 
   function applyEditRecipePatch(
@@ -530,7 +531,7 @@ export function createMediaEditSupportRuntime(deps: MediaEditSupportDeps) {
       nextProject["edit"]["recipe"] = nextRecipe;
     }
 
-    if (options && typeof options["presetId"] === "string" && options["presetId"].trim() !== "") {
+    if (typeof options["presetId"] === "string" && options["presetId"].trim() !== "") {
       nextProject["edit"]["activePresetId"] = options["presetId"].trim();
     }
 

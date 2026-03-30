@@ -1,27 +1,65 @@
 import { renderLaboratoryStageContent, renderLaboratoryShell } from "./shell-render.js";
+import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js";
 
-export function createLaboratoryUiShellRuntime(deps: any) {
-  const state = deps.state;
-  const documentRef = deps.documentRef;
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
+
+type LaboratoryUiShellRuntimeDeps = {
+  bindAudioAnalysis: () => void;
+  bindPreviewMetrics: () => void;
+  captureScrollState: (root: Element) => void;
+  documentRef: Document;
+  escapeHtml: (value: string) => string;
+  featureText: (path: string[]) => string;
+  renderBootstrap: () => string;
+  renderEditStage: () => string;
+  renderProcessStage: () => string;
+  renderProfileStage: () => string;
+  renderReportStage: () => string;
+  renderSettingsOverlay: () => string;
+  renderSourceStage: () => string;
+  renderStageRail: () => string;
+  restoreScrollState: (root: Element) => void;
+  state: LaboratoryUiState;
+};
+
+export function createLaboratoryUiShellRuntime(deps: LaboratoryUiShellRuntimeDeps) {
+  const {
+    bindAudioAnalysis,
+    bindPreviewMetrics,
+    captureScrollState,
+    documentRef,
+    escapeHtml,
+    featureText,
+    renderBootstrap,
+    renderEditStage: getEditStageMarkup,
+    renderProcessStage: getProcessStageMarkup,
+    renderProfileStage: getProfileStageMarkup,
+    renderReportStage: getReportStageMarkup,
+    renderSettingsOverlay,
+    renderSourceStage: getSourceStageMarkup,
+    renderStageRail,
+    restoreScrollState,
+    state,
+  } = deps;
 
   function renderSourceStage() {
-    return deps.renderSourceStage();
+    return getSourceStageMarkup();
   }
 
   function renderEditStage() {
-    return deps.renderEditStage();
+    return getEditStageMarkup();
   }
 
   function renderProfileStage() {
-    return deps.renderProfileStage();
+    return getProfileStageMarkup();
   }
 
   function renderProcessStage() {
-    return deps.renderProcessStage();
+    return getProcessStageMarkup();
   }
 
   function renderReportStage() {
-    return deps.renderReportStage();
+    return getReportStageMarkup();
   }
 
   function renderStageContent() {
@@ -40,26 +78,26 @@ export function createLaboratoryUiShellRuntime(deps: any) {
       return;
     }
 
-    deps.captureScrollState(root);
+    captureScrollState(root);
 
     if (state.translations === null) {
-      root.innerHTML = deps.renderBootstrap();
+      root.innerHTML = renderBootstrap();
       return;
     }
 
     root.innerHTML = renderLaboratoryShell({
       activeStage: state.activeStage,
-      escapeHtml: deps.escapeHtml,
-      featureText: deps.featureText,
+      escapeHtml,
+      featureText,
       lastActionMessage: state.ui.lastActionMessage,
-      renderSettingsOverlay: deps.renderSettingsOverlay,
+      renderSettingsOverlay,
       renderStageContent: renderStageContent,
-      renderStageRail: deps.renderStageRail,
+      renderStageRail,
     });
 
-    deps.restoreScrollState(root);
-    deps.bindPreviewMetrics();
-    deps.bindAudioAnalysis();
+    restoreScrollState(root);
+    bindPreviewMetrics();
+    bindAudioAnalysis();
   }
 
   return {

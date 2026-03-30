@@ -1,8 +1,27 @@
 import { createLaboratoryUiCoreBootstrapRuntime } from "./core-bootstrap.js";
 import { buildLaboratoryUiCoreApi } from "./core-public-api.js";
+import type { createLaboratoryUiRuntimeComposition } from "./runtime-composition.js";
 
-export function createLaboratoryUiCoreRuntime(deps: any) {
+type LaboratoryUiRuntimeCompositionRuntime = ReturnType<typeof createLaboratoryUiRuntimeComposition>;
+type LaboratoryProjectJobs = Parameters<
+  LaboratoryUiRuntimeCompositionRuntime["laboratoryStageAccessorsRuntime"]["collectProfileStageJobs"]
+>[0];
+
+type LaboratoryUiCoreRuntimeDeps = Parameters<typeof createLaboratoryUiCoreBootstrapRuntime>[0] & {
+  createLaboratoryUiRuntimeComposition: typeof createLaboratoryUiRuntimeComposition;
+};
+
+export function createLaboratoryUiCoreRuntime(deps: LaboratoryUiCoreRuntimeDeps) {
   const laboratoryUiCoreBootstrapRuntime = createLaboratoryUiCoreBootstrapRuntime(deps);
+
+  function getStageAccessors() {
+    const accessors = laboratoryUiCoreBootstrapRuntime.runtimeRefs.laboratoryStageAccessorsRuntime;
+    if (!accessors) {
+      throw new Error("Laboratory stage accessors runtime is not initialized");
+    }
+    return accessors;
+  }
+
   const uiRuntimeComposition = deps.createLaboratoryUiRuntimeComposition({
     laboratorySnapshotAccessRuntime:
       laboratoryUiCoreBootstrapRuntime.laboratorySnapshotAccessRuntime,
@@ -14,33 +33,21 @@ export function createLaboratoryUiCoreRuntime(deps: any) {
       laboratoryUiCoreBootstrapRuntime.laboratoryProfileProcessReportAccessorsRuntime,
     isAudioAnalysisFeature: laboratoryUiCoreBootstrapRuntime.isAudioAnalysisFeature,
     isSubtitleAnalysisFeature: laboratoryUiCoreBootstrapRuntime.isSubtitleAnalysisFeature,
-    collectProfileStageJobs(projectJobs: any) {
-      const accessors = laboratoryUiCoreBootstrapRuntime.runtimeRefs.laboratoryStageAccessorsRuntime;
-      if (!accessors) {
-        throw new Error("Laboratory stage accessors runtime is not initialized");
-      }
-      return accessors.collectProfileStageJobs(projectJobs);
+    collectProfileStageJobs(projectJobs: LaboratoryProjectJobs) {
+      return getStageAccessors().collectProfileStageJobs(projectJobs);
     },
-    collectProcessStageJobs(projectJobs: any) {
-      const accessors = laboratoryUiCoreBootstrapRuntime.runtimeRefs.laboratoryStageAccessorsRuntime;
-      if (!accessors) {
-        throw new Error("Laboratory stage accessors runtime is not initialized");
-      }
-      return accessors.collectProcessStageJobs(projectJobs);
+    collectProcessStageJobs(projectJobs: LaboratoryProjectJobs) {
+      return getStageAccessors().collectProcessStageJobs(projectJobs);
     },
-    collectReportStageJobs(projectJobs: any) {
-      const accessors = laboratoryUiCoreBootstrapRuntime.runtimeRefs.laboratoryStageAccessorsRuntime;
-      if (!accessors) {
-        throw new Error("Laboratory stage accessors runtime is not initialized");
-      }
-      return accessors.collectReportStageJobs(projectJobs);
+    collectReportStageJobs(projectJobs: LaboratoryProjectJobs) {
+      return getStageAccessors().collectReportStageJobs(projectJobs);
     },
     setStage: laboratoryUiCoreBootstrapRuntime.setStage,
     subtitleText: laboratoryUiCoreBootstrapRuntime.subtitleText,
     text: laboratoryUiCoreBootstrapRuntime.text,
     textFromKey: laboratoryUiCoreBootstrapRuntime.textFromKey,
     toRecord: laboratoryUiCoreBootstrapRuntime.toRecord,
-  });
+  } as Parameters<typeof deps.createLaboratoryUiRuntimeComposition>[0]);
 
   laboratoryUiCoreBootstrapRuntime.runtimeRefs.laboratoryUiFeatureRuntime =
     uiRuntimeComposition.laboratoryUiFeatureRuntime;
@@ -51,5 +58,5 @@ export function createLaboratoryUiCoreRuntime(deps: any) {
   return buildLaboratoryUiCoreApi({
     ...laboratoryUiCoreBootstrapRuntime,
     uiRuntimeComposition,
-  });
+  } as Parameters<typeof buildLaboratoryUiCoreApi>[0]);
 }

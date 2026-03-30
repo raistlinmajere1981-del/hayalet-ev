@@ -1,4 +1,34 @@
-export function createLaboratorySourceStageProjectRuntime(deps: any) {
+import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js";
+
+type LaboratoryRecord = Record<string, unknown>;
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
+
+type LaboratoryProjectSummaryRecord = LaboratoryRecord & {
+  id?: unknown;
+  name?: unknown;
+  updatedAt?: unknown;
+};
+
+type LaboratorySourceSnapshotRecord = LaboratoryRecord & {
+  activeProjectId?: unknown;
+};
+
+type LaboratorySourceStageProjectRuntimeDeps = {
+  escapeHtml: (value: string) => string;
+  featureText: (path: string[]) => string;
+  getActiveProject: () => LaboratoryRecord | null;
+  getAvailableSourceFormats: () => string[];
+  getCurrentSourceKind: () => string;
+  getProjectSummaries: () => LaboratoryRecord[];
+  getSourceSnapshot: () => LaboratoryRecord;
+  state: LaboratoryUiState;
+  text: (path: string[]) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratorySourceStageProjectRuntime(
+  deps: LaboratorySourceStageProjectRuntimeDeps
+) {
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
   const featureText = deps.featureText;
@@ -8,11 +38,24 @@ export function createLaboratorySourceStageProjectRuntime(deps: any) {
   const getAvailableSourceFormats = deps.getAvailableSourceFormats;
   const getCurrentSourceKind = deps.getCurrentSourceKind;
   const state = deps.state;
+  const toRecord = deps.toRecord;
+
+  function toProjectSummaryRecord(value: unknown): LaboratoryProjectSummaryRecord {
+    return toRecord(value);
+  }
+
+  function toSourceSnapshotRecord(value: unknown): LaboratorySourceSnapshotRecord {
+    return toRecord(value);
+  }
+
+  function readDisplayText(value: unknown, fallback: string): string {
+    return typeof value === "string" && value.trim() !== "" ? value : fallback;
+  }
 
   function renderProjectPanel() {
-    const projects = getProjectSummaries();
-    const activeProjectId = getSourceSnapshot().activeProjectId;
-    const activeProject = getActiveProject();
+    const projects = getProjectSummaries().map(toProjectSummaryRecord);
+    const activeProjectId = toSourceSnapshotRecord(getSourceSnapshot()).activeProjectId;
+    const activeProject = toProjectSummaryRecord(getActiveProject());
 
     return `
       <section class="lab-panel">
@@ -26,8 +69,10 @@ export function createLaboratorySourceStageProjectRuntime(deps: any) {
           </button>
         </div>
         <div class="lab-project-card">
-          <strong>${escapeHtml(activeProject ? activeProject.name : text(["mediaAnalysis", "projects", "empty"]))}</strong>
-          <span>${escapeHtml(activeProject ? activeProject.updatedAt : "--")}</span>
+          <strong>${escapeHtml(
+            readDisplayText(activeProject.name, text(["mediaAnalysis", "projects", "empty"]))
+          )}</strong>
+          <span>${escapeHtml(readDisplayText(activeProject.updatedAt, "--"))}</span>
         </div>
         <div class="lab-field">
           <label class="lab-field__label" for="project-select">${escapeHtml(
@@ -35,12 +80,13 @@ export function createLaboratorySourceStageProjectRuntime(deps: any) {
           )}</label>
           <select class="lab-select" id="project-select" data-select="project">
             ${projects
-              .map(function (project: any) {
+              .map(function (project) {
+                const projectId = readDisplayText(project.id, "");
                 return `
-                  <option value="${escapeHtml(project.id)}" ${
-                    project.id === activeProjectId ? "selected" : ""
+                  <option value="${escapeHtml(projectId)}" ${
+                    projectId === activeProjectId ? "selected" : ""
                   }>
-                    ${escapeHtml(project.name)}
+                    ${escapeHtml(readDisplayText(project.name, projectId))}
                   </option>
                 `;
               })
@@ -71,6 +117,9 @@ export function createLaboratorySourceStageProjectRuntime(deps: any) {
 
   function renderSourceKindPanel() {
     const currentKind = getCurrentSourceKind();
+    const sourceFormats = getAvailableSourceFormats().filter(function (sourceId) {
+      return typeof sourceId === "string" && sourceId.trim() !== "";
+    });
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -80,8 +129,8 @@ export function createLaboratorySourceStageProjectRuntime(deps: any) {
           </div>
         </div>
         <div class="lab-source-grid">
-          ${getAvailableSourceFormats()
-            .map(function (sourceId: any) {
+          ${sourceFormats
+            .map(function (sourceId) {
               return `
               <button
                 class="lab-source-card"

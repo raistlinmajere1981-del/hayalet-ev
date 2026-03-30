@@ -3,7 +3,51 @@ import { createMediaProfileActionRuntime } from "./action-handlers-profile.js";
 import { createMediaProjectActionRuntime } from "./action-handlers-project.js";
 import { createMediaSourceActionRuntime } from "./action-handlers-source.js";
 
-export function createMediaActionRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type MediaSourceActionRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  getDefaultMode: (sourcePresets: unknown, sourceKind: unknown) => string;
+  getDefaultSourceType: (sourcePresets: unknown) => string;
+  handleLocalPick: (api: unknown, runtime: LaboratoryRecord, requestId: string) => Promise<unknown>;
+  handleUrlDownload: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string
+  ) => Promise<unknown>;
+  handleYoutubeDownload: (
+    api: unknown,
+    runtime: LaboratoryRecord,
+    requestId: string
+  ) => Promise<unknown>;
+  patchActiveProject: (
+    runtime: LaboratoryRecord,
+    patcher: (project: LaboratoryRecord) => LaboratoryRecord
+  ) => Promise<unknown>;
+  patchActiveProjectDrafts: (runtime: LaboratoryRecord, fields: unknown) => Promise<unknown>;
+  resetEditForCurrentSource: (runtime: LaboratoryRecord, project: LaboratoryRecord) => void;
+  resetProfileForCurrentSource: (
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    reason: string
+  ) => void;
+};
+
+type MediaEditActionRuntimeDeps = Parameters<typeof createMediaEditActionRuntime>[0];
+type MediaProfileActionRuntimeDeps = Parameters<typeof createMediaProfileActionRuntime>[0];
+type MediaProjectActionRuntimeDeps = Parameters<typeof createMediaProjectActionRuntime>[0];
+
+type MediaActionRuntimeDeps = MediaSourceActionRuntimeDeps &
+  MediaEditActionRuntimeDeps &
+  MediaProfileActionRuntimeDeps &
+  MediaProjectActionRuntimeDeps;
+
+type MediaActionRuntime = ReturnType<typeof createMediaSourceActionRuntime> &
+  ReturnType<typeof createMediaEditActionRuntime> &
+  ReturnType<typeof createMediaProfileActionRuntime> &
+  ReturnType<typeof createMediaProjectActionRuntime>;
+
+export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaActionRuntime {
   const mediaSourceActionRuntime = createMediaSourceActionRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     getDefaultMode: deps.getDefaultMode,

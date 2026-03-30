@@ -1,4 +1,171 @@
-export function createMediaProfileModelRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryMediaProfileRuntime = LaboratoryRecord & {
+  profileModelState?: unknown;
+  toolState?: unknown;
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  id?: unknown;
+  profile?: unknown;
+  source?: unknown;
+};
+
+type LaboratoryProjectProfileRecord = LaboratoryRecord & {
+  modelId?: unknown;
+};
+
+type LaboratoryProjectSourceRecord = LaboratoryRecord & {
+  kind?: unknown;
+};
+
+type LaboratoryToolDetailsRecord = LaboratoryRecord & {
+  platformKey?: unknown;
+  platformSupported?: unknown;
+  supportError?: unknown;
+};
+
+type LaboratoryToolRecord = LaboratoryRecord & {
+  binaryPath?: unknown;
+  busy?: unknown;
+  details?: unknown;
+  installed?: unknown;
+  lastError?: unknown;
+  version?: unknown;
+};
+
+type LaboratoryProfileModelStateRecord = LaboratoryRecord & {
+  models?: unknown;
+  updatedAt?: unknown;
+};
+
+type LaboratoryProfileModelEntryRecord = LaboratoryRecord & {
+  busy?: unknown;
+  checksumSha1?: unknown;
+  checksumValid?: unknown;
+  expectedBytes?: unknown;
+  expectedSha1?: unknown;
+  fileName?: unknown;
+  installed?: unknown;
+  lastError?: unknown;
+  lastVerifiedAt?: unknown;
+  path?: unknown;
+  sizeBytes?: unknown;
+};
+
+type LaboratoryProfileModelDescriptorRecord = LaboratoryRecord & {
+  cleanupPolicy?: unknown;
+  downloadUrl?: unknown;
+  expectedBytes?: unknown;
+  expectedSha1?: unknown;
+  fileName?: unknown;
+  labelKey?: unknown;
+  language?: unknown;
+  mediaKinds?: unknown;
+  quantization?: unknown;
+  runtimeCompatibility?: unknown;
+  summaryKey?: unknown;
+};
+
+type LaboratoryRuntimeCompatibilityRecord = LaboratoryRecord & {
+  platforms?: unknown;
+  requiresBinarySupport?: unknown;
+};
+
+type LaboratoryDirectoryEntryRecord = LaboratoryRecord & {
+  isDirectory?: unknown;
+  name?: unknown;
+  path?: unknown;
+};
+
+type LaboratoryProfileToolSummary = {
+  binaryPath: string | null;
+  busy: boolean;
+  displayName: string;
+  installed: boolean;
+  lastError: string | null;
+  platformSupported: boolean;
+  ready: boolean;
+  supportLevel: string;
+  toolId: string;
+  version: string | null;
+};
+
+type LaboratoryProfileModelCompatibility = {
+  cleanupPolicy: LaboratoryRecord;
+  compatibilityReason: string | null;
+  runtimeCompatible: boolean;
+  runtimePlatformKey: string | null;
+  supportedPlatforms: string[];
+};
+
+type LaboratoryProfileModelSummary = {
+  binaryReady: boolean;
+  binarySupported: boolean;
+  busy: boolean;
+  checksumSha1: string | null;
+  checksumValid: boolean;
+  cleanupPolicy: LaboratoryRecord;
+  compatibilityReason: string | null;
+  expectedBytes: number | null;
+  expectedSha1: string | null;
+  fileName: string | null;
+  installed: boolean;
+  labelKey: string | null;
+  language: string;
+  lastError: string | null;
+  lastVerifiedAt: string | null;
+  modelId: string;
+  path: string | null;
+  quantization: string;
+  ready: boolean;
+  runtimeCompatible: boolean;
+  runtimePlatformKey: string | null;
+  selected: boolean;
+  sizeBytes: number | null;
+  summaryKey: string | null;
+  supportedPlatforms: string[];
+};
+
+type MediaProfileModelRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
+  callRoomTools: (payload: LaboratoryRecord) => Promise<unknown>;
+  clearJob: (runtime: LaboratoryMediaProfileRuntime, jobId: string) => void;
+  createDefaultProfileModelEntry: (modelId: string) => LaboratoryRecord;
+  digestSha1: (bytes: Uint8Array) => Promise<string>;
+  ensureRuntimeDirectory: (path: string, requestId: string | null) => Promise<unknown>;
+  getActiveProject: (runtime: LaboratoryMediaProfileRuntime) => LaboratoryProjectRecord | null;
+  getProfileModelDescriptor: (
+    runtime: LaboratoryMediaProfileRuntime,
+    modelId: string
+  ) => unknown;
+  getProfileModelDescriptorMap: (runtime: LaboratoryMediaProfileRuntime) => LaboratoryRecord;
+  getProfileModelsDir: (runtime: LaboratoryMediaProfileRuntime) => string;
+  getStageSupport: (manifest: unknown, stageId: string) => string;
+  getToolManifest: (runtime: LaboratoryMediaProfileRuntime, toolId: string) => unknown;
+  listDirectory: (path: string) => Promise<unknown[]>;
+  persistProfileModelState: (runtime: LaboratoryMediaProfileRuntime) => Promise<unknown>;
+  pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
+  readBinaryFileBytes: (path: string) => Promise<unknown>;
+  refreshProfileModelState: (runtime: LaboratoryMediaProfileRuntime) => Promise<unknown>;
+  registerJob: (runtime: LaboratoryMediaProfileRuntime, job: LaboratoryRecord) => void;
+  roomId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+  updateProfileModelBusy: (
+    runtime: LaboratoryMediaProfileRuntime,
+    modelId: string,
+    busy: boolean,
+    lastError: string | null
+  ) => unknown;
+  updateProfileModelEntry: (
+    runtime: LaboratoryMediaProfileRuntime,
+    modelId: string,
+    patch: LaboratoryRecord
+  ) => LaboratoryProfileModelEntryRecord;
+};
+
+export function createMediaProfileModelRuntime(deps: MediaProfileModelRuntimeDeps) {
   const {
     asNonEmptyString,
     asNumber,
@@ -25,8 +192,85 @@ export function createMediaProfileModelRuntime(deps: any) {
     updateProfileModelEntry,
   } = deps;
 
-  function getCurrentRuntimePlatformKey(runtime: any) {
-    const toolMap = toRecord(toRecord(runtime.toolState).tools);
+  function toProjectProfileRecord(value: unknown): LaboratoryProjectProfileRecord {
+    return toRecord(value);
+  }
+
+  function toProjectSourceRecord(value: unknown): LaboratoryProjectSourceRecord {
+    return toRecord(value);
+  }
+
+  function toToolRecord(value: unknown): LaboratoryToolRecord {
+    return toRecord(value);
+  }
+
+  function toToolDetailsRecord(value: unknown): LaboratoryToolDetailsRecord {
+    return toRecord(value);
+  }
+
+  function toProfileModelStateRecord(value: unknown): LaboratoryProfileModelStateRecord {
+    return toRecord(value);
+  }
+
+  function toProfileModelEntryRecord(value: unknown): LaboratoryProfileModelEntryRecord {
+    return toRecord(value);
+  }
+
+  function toProfileModelDescriptorRecord(value: unknown): LaboratoryProfileModelDescriptorRecord {
+    return toRecord(value);
+  }
+
+  function toRuntimeCompatibilityRecord(value: unknown): LaboratoryRuntimeCompatibilityRecord {
+    return toRecord(value);
+  }
+
+  function toDirectoryEntryRecord(value: unknown): LaboratoryDirectoryEntryRecord {
+    return toRecord(value);
+  }
+
+  function getToolMap(runtime: LaboratoryMediaProfileRuntime): Record<string, LaboratoryToolRecord> {
+    return toRecord(toRecord(runtime.toolState)["tools"]) as Record<
+      string,
+      LaboratoryToolRecord
+    >;
+  }
+
+  function getToolRecord(runtime: LaboratoryMediaProfileRuntime, toolId: string): LaboratoryToolRecord {
+    return toToolRecord(getToolMap(runtime)[toolId]);
+  }
+
+  function getProfileModelStateMap(
+    runtime: LaboratoryMediaProfileRuntime
+  ): Record<string, LaboratoryProfileModelEntryRecord> {
+    return toRecord(toProfileModelStateRecord(runtime.profileModelState).models) as Record<
+      string,
+      LaboratoryProfileModelEntryRecord
+    >;
+  }
+
+  function getProfileModelDescriptorRecord(
+    runtime: LaboratoryMediaProfileRuntime,
+    modelId: string
+  ): LaboratoryProfileModelDescriptorRecord {
+    return toProfileModelDescriptorRecord(getProfileModelDescriptor(runtime, modelId));
+  }
+
+  function getProjectId(project: LaboratoryProjectRecord | null): string | null {
+    return project ? asNonEmptyString(project.id) : null;
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return asNonEmptyString(entry);
+      })
+      .filter((entry): entry is string => entry !== null);
+  }
+
+  function getCurrentRuntimePlatformKey(runtime: LaboratoryMediaProfileRuntime) {
     const preferredToolIds = ["whisper.cpp", "ffmpeg", "yt-dlp"];
 
     for (let index = 0; index < preferredToolIds.length; index += 1) {
@@ -34,7 +278,8 @@ export function createMediaProfileModelRuntime(deps: any) {
       if (!toolId) {
         continue;
       }
-      const platformKey = asNonEmptyString(toRecord(toRecord(toolMap[toolId]).details).platformKey);
+      const details = toToolDetailsRecord(getToolRecord(runtime, toolId).details);
+      const platformKey = asNonEmptyString(details.platformKey);
       if (platformKey !== null) {
         return platformKey;
       }
@@ -43,23 +288,23 @@ export function createMediaProfileModelRuntime(deps: any) {
     return null;
   }
 
-  function evaluateProfileModelCompatibility(runtime: any, descriptor: any, whisperSummary: any) {
-    const runtimeCompatibility = toRecord(descriptor.runtimeCompatibility);
-    const supportedPlatforms = Array.isArray(runtimeCompatibility.platforms)
-      ? runtimeCompatibility.platforms.map(function (entry: unknown) {
-          return String(entry);
-        })
-      : [];
+  function evaluateProfileModelCompatibility(
+    runtime: LaboratoryMediaProfileRuntime,
+    descriptor: LaboratoryProfileModelDescriptorRecord,
+    whisperSummary: LaboratoryProfileToolSummary
+  ): LaboratoryProfileModelCompatibility {
+    const runtimeCompatibility = toRuntimeCompatibilityRecord(descriptor.runtimeCompatibility);
+    const supportedPlatforms = toStringArray(runtimeCompatibility.platforms);
     const runtimePlatformKey = getCurrentRuntimePlatformKey(runtime);
     const requiresBinarySupport = runtimeCompatibility.requiresBinarySupport === true;
     let runtimeCompatible = true;
-    let compatibilityReason = null;
+    let compatibilityReason: string | null = null;
 
     if (supportedPlatforms.length > 0) {
       if (runtimePlatformKey === null) {
         runtimeCompatible = false;
         compatibilityReason = "Runtime platform could not be resolved yet.";
-      } else if (supportedPlatforms.includes(runtimePlatformKey) === false) {
+      } else if (!supportedPlatforms.includes(runtimePlatformKey)) {
         runtimeCompatible = false;
         compatibilityReason = `This model is not declared for ${runtimePlatformKey}.`;
       }
@@ -71,98 +316,105 @@ export function createMediaProfileModelRuntime(deps: any) {
     }
 
     return {
-      runtimePlatformKey: runtimePlatformKey,
-      supportedPlatforms: supportedPlatforms,
       cleanupPolicy: toRecord(descriptor.cleanupPolicy),
-      runtimeCompatible: runtimeCompatible,
-      compatibilityReason: compatibilityReason,
+      compatibilityReason,
+      runtimeCompatible,
+      runtimePlatformKey,
+      supportedPlatforms,
     };
   }
 
-  function buildProfileToolSummary(runtime: any, toolId: string, supportLevel: string) {
-    const tool = toRecord(toRecord(runtime.toolState).tools)[toolId];
+  function buildProfileToolSummary(
+    runtime: LaboratoryMediaProfileRuntime,
+    toolId: string,
+    supportLevel: string
+  ): LaboratoryProfileToolSummary {
+    const tool = getToolRecord(runtime, toolId);
     const manifest = getToolManifest(runtime, toolId);
-    const details = toRecord(toRecord(tool).details);
-    const displayName = asNonEmptyString(toRecord(manifest).displayName) || toolId;
+    const details = toToolDetailsRecord(tool.details);
+    const displayName = asNonEmptyString(toRecord(manifest)["displayName"]) || toolId;
     const platformSupported = details.platformSupported !== false;
-    const installed = toRecord(tool).installed === true;
+    const installed = tool.installed === true;
 
     return {
-      toolId: toolId,
-      displayName: displayName,
-      supportLevel: supportLevel || "unsupported",
-      installed: installed,
-      busy: toRecord(tool).busy === true,
-      version: asNonEmptyString(tool.version),
       binaryPath: asNonEmptyString(tool.binaryPath),
-      ready: supportLevel === "unsupported" ? false : platformSupported && installed,
-      platformSupported: platformSupported,
+      busy: tool.busy === true,
+      displayName,
+      installed,
       lastError:
         asNonEmptyString(tool.lastError) ||
         (platformSupported === false ? asNonEmptyString(details.supportError) : null),
+      platformSupported,
+      ready: supportLevel === "unsupported" ? false : platformSupported && installed,
+      supportLevel: supportLevel || "unsupported",
+      toolId,
+      version: asNonEmptyString(tool.version),
     };
   }
 
-  function buildProfileModelSummary(runtime: any, project: any) {
-    const sourceKind = asNonEmptyString(toRecord(project.source).kind) || "video";
-    const selectedModelId = asNonEmptyString(toRecord(project.profile).modelId);
+  function buildProfileModelSummary(
+    runtime: LaboratoryMediaProfileRuntime,
+    project: LaboratoryProjectRecord
+  ): LaboratoryProfileModelSummary[] {
+    const source = toProjectSourceRecord(project.source);
+    const profile = toProjectProfileRecord(project.profile);
+    const sourceKind = asNonEmptyString(source.kind) || "video";
+    const selectedModelId = asNonEmptyString(profile.modelId);
     const whisperManifest = getToolManifest(runtime, "whisper.cpp");
     const whisperSupport = getStageSupport(whisperManifest, "profile");
     const whisperSummary = buildProfileToolSummary(runtime, "whisper.cpp", whisperSupport);
-    const storedModels = toRecord(toRecord(runtime.profileModelState).models);
+    const storedModels = getProfileModelStateMap(runtime);
 
     return Object.keys(getProfileModelDescriptorMap(runtime))
-      .filter(function (modelId: string) {
-        const descriptor = getProfileModelDescriptor(runtime, modelId);
-        const mediaKinds = Array.isArray(descriptor.mediaKinds) ? descriptor.mediaKinds : [];
+      .filter(function (modelId) {
+        const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
+        const mediaKinds = toStringArray(descriptor.mediaKinds);
         return mediaKinds.length === 0 || mediaKinds.includes(sourceKind);
       })
-      .map(function (modelId: string) {
-        const descriptor = getProfileModelDescriptor(runtime, modelId);
-        const stored = toRecord(storedModels[modelId]);
+      .map(function (modelId) {
+        const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
+        const stored = toProfileModelEntryRecord(storedModels[modelId]);
         const expectedBytes = asNumber(descriptor.expectedBytes);
         const sizeBytes = asNumber(stored.sizeBytes);
         const checksumValid = stored.installed === true && stored.checksumValid === true;
-        const compatibility = evaluateProfileModelCompatibility(
-          runtime,
-          descriptor,
-          whisperSummary
-        );
+        const compatibility = evaluateProfileModelCompatibility(runtime, descriptor, whisperSummary);
+
         return {
-          modelId: modelId,
-          labelKey: asNonEmptyString(descriptor.labelKey),
-          summaryKey: asNonEmptyString(descriptor.summaryKey),
-          language: asNonEmptyString(descriptor.language) || "en",
-          quantization: asNonEmptyString(descriptor.quantization) || "f16",
-          fileName: asNonEmptyString(descriptor.fileName),
-          expectedBytes: expectedBytes,
-          expectedSha1: asNonEmptyString(descriptor.expectedSha1),
-          sizeBytes: sizeBytes,
-          installed: stored.installed === true,
-          selected: modelId === selectedModelId,
-          checksumValid: checksumValid,
-          checksumSha1: asNonEmptyString(stored.checksumSha1),
-          lastVerifiedAt: asNonEmptyString(stored.lastVerifiedAt),
-          busy: stored.busy === true,
-          path: asNonEmptyString(stored.path),
-          lastError: asNonEmptyString(stored.lastError),
-          binarySupported: whisperSummary.platformSupported,
           binaryReady: whisperSummary.ready,
-          runtimePlatformKey: compatibility.runtimePlatformKey,
-          supportedPlatforms: compatibility.supportedPlatforms,
+          binarySupported: whisperSummary.platformSupported,
+          busy: stored.busy === true,
+          checksumSha1: asNonEmptyString(stored.checksumSha1),
+          checksumValid,
           cleanupPolicy: compatibility.cleanupPolicy,
-          runtimeCompatible: compatibility.runtimeCompatible,
           compatibilityReason: compatibility.compatibilityReason,
+          expectedBytes,
+          expectedSha1: asNonEmptyString(descriptor.expectedSha1),
+          fileName: asNonEmptyString(descriptor.fileName),
+          installed: stored.installed === true,
+          labelKey: asNonEmptyString(descriptor.labelKey),
+          language: asNonEmptyString(descriptor.language) || "en",
+          lastError: asNonEmptyString(stored.lastError),
+          lastVerifiedAt: asNonEmptyString(stored.lastVerifiedAt),
+          modelId,
+          path: asNonEmptyString(stored.path),
+          quantization: asNonEmptyString(descriptor.quantization) || "f16",
           ready: whisperSummary.ready && checksumValid && compatibility.runtimeCompatible,
+          runtimeCompatible: compatibility.runtimeCompatible,
+          runtimePlatformKey: compatibility.runtimePlatformKey,
+          selected: modelId === selectedModelId,
+          sizeBytes,
+          summaryKey: asNonEmptyString(descriptor.summaryKey),
+          supportedPlatforms: compatibility.supportedPlatforms,
         };
       });
   }
 
-  async function verifyProfileModel(runtime: any, modelId: string) {
-    const descriptor = getProfileModelDescriptor(runtime, modelId);
+  async function verifyProfileModel(runtime: LaboratoryMediaProfileRuntime, modelId: string) {
+    const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
+    const storedModel = toProfileModelEntryRecord(getProfileModelStateMap(runtime)[modelId]);
     const fileName = asNonEmptyString(descriptor.fileName);
     const filePath =
-      asNonEmptyString(toRecord(toRecord(runtime.profileModelState).models)[modelId]?.path) ||
+      asNonEmptyString(storedModel.path) ||
       (fileName ? `${getProfileModelsDir(runtime)}/${fileName}` : null);
 
     if (filePath === null) {
@@ -183,16 +435,16 @@ export function createMediaProfileModelRuntime(deps: any) {
       (expectedBytes === null || expectedBytes === sizeBytes);
 
     const nextEntry = updateProfileModelEntry(runtime, modelId, {
+      checksumSha1,
+      checksumValid,
+      expectedBytes,
+      expectedSha1,
+      fileName,
       installed: true,
-      fileName: fileName,
-      path: filePath,
-      sizeBytes: sizeBytes,
-      checksumSha1: checksumSha1,
-      checksumValid: checksumValid,
-      expectedBytes: expectedBytes,
-      expectedSha1: expectedSha1,
-      lastVerifiedAt: new Date().toISOString(),
       lastError: checksumValid ? null : "Downloaded model failed checksum verification.",
+      lastVerifiedAt: new Date().toISOString(),
+      path: filePath,
+      sizeBytes,
     });
 
     await persistProfileModelState(runtime);
@@ -203,8 +455,13 @@ export function createMediaProfileModelRuntime(deps: any) {
     return nextEntry;
   }
 
-  async function installProfileModel(api: any, runtime: any, requestId: string, modelId: string) {
-    const descriptor = getProfileModelDescriptor(runtime, modelId);
+  async function installProfileModel(
+    api: unknown,
+    runtime: LaboratoryMediaProfileRuntime,
+    requestId: string,
+    modelId: string
+  ) {
+    const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
     const downloadUrl = asNonEmptyString(descriptor.downloadUrl);
     const fileName = asNonEmptyString(descriptor.fileName);
     if (downloadUrl === null || fileName === null) {
@@ -222,6 +479,7 @@ export function createMediaProfileModelRuntime(deps: any) {
     if (whisperSummary.installed !== true) {
       throw new Error("Install Whisper.cpp before downloading speech models.");
     }
+
     const compatibility = evaluateProfileModelCompatibility(runtime, descriptor, whisperSummary);
     if (compatibility.runtimeCompatible !== true) {
       throw new Error(
@@ -231,42 +489,46 @@ export function createMediaProfileModelRuntime(deps: any) {
     }
 
     const project = getActiveProject(runtime);
-    const jobId = `room-profile-model-${modelId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const targetPath = `${getProfileModelsDir(runtime)}/${fileName}`;
+    const projectId = getProjectId(project);
+    const jobId = `room-profile-model-${modelId}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    const modelsDir = getProfileModelsDir(runtime);
+    const targetPath = `${modelsDir}/${fileName}`;
 
-    await ensureRuntimeDirectory(getProfileModelsDir(runtime), requestId);
+    await ensureRuntimeDirectory(modelsDir, requestId);
 
     updateProfileModelBusy(runtime, modelId, true, null);
     await persistProfileModelState(runtime);
     registerJob(runtime, {
-      jobId: jobId,
-      requestId: requestId,
       action: "profile-model-install",
-      projectId: project ? project.id : null,
-      toolId: "whisper.cpp",
       featureStage: "profile",
+      jobId,
+      projectId,
+      requestId,
+      toolId: "whisper.cpp",
     });
 
     pushJobState(api, {
-      requestId: requestId,
-      jobId: jobId,
       action: "profile-model-install",
-      projectId: project ? project.id : null,
-      toolId: "whisper.cpp",
       featureStage: "profile",
-      stage: "queued",
+      jobId,
       message: fileName,
+      projectId,
+      requestId,
+      stage: "queued",
+      toolId: "whisper.cpp",
     });
 
     try {
       await callRoomTools({
-        operation: "download-file",
-        roomId: roomId,
-        requestId: requestId,
-        jobId: jobId,
-        url: downloadUrl,
         destinationPath: targetPath,
+        jobId,
+        operation: "download-file",
         overwrite: true,
+        requestId,
+        roomId,
+        url: downloadUrl,
       });
 
       await refreshProfileModelState(runtime);
@@ -275,15 +537,15 @@ export function createMediaProfileModelRuntime(deps: any) {
       await persistProfileModelState(runtime);
 
       pushJobState(api, {
-        requestId: requestId,
-        jobId: jobId,
         action: "profile-model-install",
-        projectId: project ? project.id : null,
-        toolId: "whisper.cpp",
         featureStage: "profile",
-        stage: "completed",
+        jobId,
+        message: asNonEmptyString(verifiedModel.fileName) || modelId,
         percent: 100,
-        message: verifiedModel.fileName || modelId,
+        projectId,
+        requestId,
+        stage: "completed",
+        toolId: "whisper.cpp",
       });
 
       return verifiedModel;
@@ -291,26 +553,28 @@ export function createMediaProfileModelRuntime(deps: any) {
       const message = error instanceof Error ? error.message : String(error);
       updateProfileModelBusy(runtime, modelId, false, message);
       await persistProfileModelState(runtime);
+
       try {
         await callRoomTools({
           operation: "delete-path",
-          roomId: roomId,
-          requestId: requestId,
-          targetPath: targetPath,
           recursive: false,
+          requestId,
+          roomId,
+          targetPath,
         });
       } catch (_cleanupError) {
         // noop
       }
+
       pushJobState(api, {
-        requestId: requestId,
-        jobId: jobId,
         action: "profile-model-install",
-        projectId: project ? project.id : null,
-        toolId: "whisper.cpp",
         featureStage: "profile",
+        jobId,
+        message,
+        projectId,
+        requestId,
         stage: "failed",
-        message: message,
+        toolId: "whisper.cpp",
       });
       throw error;
     } finally {
@@ -319,39 +583,42 @@ export function createMediaProfileModelRuntime(deps: any) {
     }
   }
 
-  async function removeProfileModel(runtime: any, requestId: string, modelId: string) {
-    const modelState = toRecord(toRecord(runtime.profileModelState).models)[modelId];
-    const descriptor = getProfileModelDescriptor(runtime, modelId);
+  async function removeProfileModel(
+    runtime: LaboratoryMediaProfileRuntime,
+    requestId: string,
+    modelId: string
+  ) {
+    const modelState = toProfileModelEntryRecord(getProfileModelStateMap(runtime)[modelId]);
+    const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
+    const descriptorFileName = asNonEmptyString(descriptor.fileName);
     const targetPath =
-      asNonEmptyString(toRecord(modelState).path) ||
-      (asNonEmptyString(descriptor.fileName)
-        ? `${getProfileModelsDir(runtime)}/${descriptor.fileName}`
-        : null);
+      asNonEmptyString(modelState.path) ||
+      (descriptorFileName ? `${getProfileModelsDir(runtime)}/${descriptorFileName}` : null);
 
     if (targetPath !== null) {
       await callRoomTools({
         operation: "delete-path",
-        roomId: roomId,
-        requestId: requestId,
-        targetPath: targetPath,
         recursive: false,
+        requestId,
+        roomId,
+        targetPath,
       });
     }
 
     updateProfileModelEntry(runtime, modelId, {
-      installed: false,
-      sizeBytes: null,
       checksumSha1: null,
       checksumValid: false,
-      path: targetPath,
+      installed: false,
       lastError: null,
       lastVerifiedAt: null,
+      path: targetPath,
+      sizeBytes: null,
     });
     await refreshProfileModelState(runtime);
     await persistProfileModelState(runtime);
   }
 
-  async function refreshProfileModelStateWithStorage(runtime: any) {
+  async function refreshProfileModelStateWithStorage(runtime: LaboratoryMediaProfileRuntime) {
     const modelDir = getProfileModelsDir(runtime);
     try {
       await ensureRuntimeDirectory(modelDir, null);
@@ -359,44 +626,45 @@ export function createMediaProfileModelRuntime(deps: any) {
       // noop; caller may handle fallback directory creation elsewhere
     }
 
-    const directoryEntries = await listDirectory(modelDir);
-    const storedModels = toRecord(runtime.profileModelState.models);
-    const nextState = {
-      schemaVersion: 1,
-      updatedAt: runtime.profileModelState.updatedAt,
-      models: {} as Record<string, any>,
-    };
+    const directoryEntries = (await listDirectory(modelDir)).map(toDirectoryEntryRecord);
+    const currentState = toProfileModelStateRecord(runtime.profileModelState);
+    const storedModels = getProfileModelStateMap(runtime);
+    const nextModels: Record<string, LaboratoryProfileModelEntryRecord> = {};
 
-    Object.keys(getProfileModelDescriptorMap(runtime)).forEach(function (modelId: any) {
-      const descriptor = getProfileModelDescriptor(runtime, modelId);
+    Object.keys(getProfileModelDescriptorMap(runtime)).forEach(function (modelId) {
+      const descriptor = getProfileModelDescriptorRecord(runtime, modelId);
       const fileName = asNonEmptyString(descriptor.fileName);
-      const current = toRecord(storedModels[modelId]);
+      const current = toProfileModelEntryRecord(storedModels[modelId]);
       const fileEntry =
         fileName === null
           ? null
-          : directoryEntries.find(function (entry: Record<string, unknown>) {
-              return entry && entry["isDirectory"] !== true && String(entry["name"] || "") === fileName;
+          : directoryEntries.find(function (entry) {
+              return entry.isDirectory !== true && asNonEmptyString(entry.name) === fileName;
             }) || null;
 
-      nextState.models[modelId] = {
+      nextModels[modelId] = {
         ...createDefaultProfileModelEntry(modelId),
         ...current,
-        modelId: modelId,
-        fileName: fileName,
-        path: fileEntry ? fileEntry.path : fileName ? `${modelDir}/${fileName}` : null,
+        busy: false,
+        checksumSha1: fileEntry ? asNonEmptyString(current.checksumSha1) : null,
+        checksumValid: fileEntry ? current.checksumValid === true : false,
         expectedBytes: asNumber(descriptor.expectedBytes),
         expectedSha1: asNonEmptyString(descriptor.expectedSha1),
+        fileName,
         installed: Boolean(fileEntry),
-        busy: false,
         lastError: fileEntry ? asNonEmptyString(current.lastError) : null,
-        checksumValid: fileEntry ? current.checksumValid === true : false,
-        checksumSha1: fileEntry ? asNonEmptyString(current.checksumSha1) : null,
         lastVerifiedAt: fileEntry ? asNonEmptyString(current.lastVerifiedAt) : null,
+        modelId,
+        path: fileEntry ? asNonEmptyString(fileEntry.path) : fileName ? `${modelDir}/${fileName}` : null,
         sizeBytes: fileEntry ? asNumber(current.sizeBytes) : null,
       };
     });
 
-    runtime.profileModelState = nextState;
+    runtime.profileModelState = {
+      models: nextModels,
+      schemaVersion: 1,
+      updatedAt: currentState.updatedAt,
+    };
     await persistProfileModelState(runtime);
   }
 

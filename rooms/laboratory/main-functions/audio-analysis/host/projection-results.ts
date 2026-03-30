@@ -214,7 +214,7 @@ export function createAudioAnalysisProjectionResultsRuntime(deps: ProjectionResu
               : "Unknown",
       });
     }
-    const separation = sourceSeparationSummary as ProjectionResultsRecord;
+    const separation = sourceSeparationSummary;
     if (typeof separation.stemCount === "number") {
       metrics.push({
         id: "source-separation-stems",

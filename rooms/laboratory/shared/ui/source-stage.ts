@@ -1,7 +1,24 @@
 import { createLaboratorySourceStageIntakeRuntime } from "./source-stage-intake.js";
 import { createLaboratorySourceStageProjectRuntime } from "./source-stage-project.js";
 
-export function createLaboratorySourceStageUi(deps: any) {
+type LaboratorySourceStageUiDeps = Parameters<typeof createLaboratorySourceStageIntakeRuntime>[0] &
+  Parameters<typeof createLaboratorySourceStageProjectRuntime>[0] & {
+    isAudioAnalysisFeature: () => boolean;
+    isSubtitleAnalysisFeature: () => boolean;
+    renderAudioAnalysisCatalogPanel: () => string;
+    renderAudioAnalysisNoticePanel: () => string;
+    renderAudioAnalysisProviderPanel: () => string;
+    renderPreviewSurface: () => string;
+    renderStageIntro: (stageId: string) => string;
+    renderSubtitleCatalogPanel: () => string;
+    renderSubtitleDiscoveryPanel: () => string;
+    renderSubtitleEntryPanel: () => string;
+    renderSubtitleProviderPanel: () => string;
+    renderSubtitleSourceIntakePanel: () => string;
+    renderSubtitleSourceWorkspacePanel: () => string;
+  };
+
+export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps) {
   const renderStageIntro = deps.renderStageIntro;
   const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;
   const isAudioAnalysisFeature = deps.isAudioAnalysisFeature;

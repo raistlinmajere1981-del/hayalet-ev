@@ -1,7 +1,45 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  interface FateKnotsUiChromeRuntimeDeps {
+    KNOWN_SEAT_IDS: string[];
+    createElement: GameRoomCreateElement;
+    appendImage: GameRoomAppendImage;
+    applyAssetLayers: GameRoomApplyAssetLayers;
+    applyFrameArtwork: GameRoomApplyFrameArtwork;
+    createFrame: GameRoomCreateFrame;
+    createRegion: GameRoomCreateRegion;
+    createSigil: GameRoomCreateSigil;
+    createTextChip: GameRoomCreateTextChip;
+    findParticipant(
+      state: GameRoomFateKnotsState | null,
+      seatId: string
+    ): GameRoomFateKnotsParticipant | null;
+    formatDeadline(deadlineAt: unknown): string;
+    getCurrentStatus(state: GameRoomFateKnotsState | null): string;
+    getPhaseLabel(phaseId: string): string;
+    getSelectionBundle(
+      state: GameRoomFateKnotsState | null,
+      participant: GameRoomFateKnotsParticipant | null
+    ): GameRoomFateKnotsSelectionBundle;
+    getUiAsset: GameRoomGetUiAsset;
+    setSeatId: GameRoomSetSeatId;
+    t(path: string[], fallback: string): string;
+  }
 
-  registry.createFateKnotsUiChromeRuntime = function createFateKnotsUiChromeRuntime(deps: any) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
+
+  function readSlotRecord(value: unknown): GameRoomFateKnotsSlotRecord | null {
+    return value && typeof value === "object" && Array.isArray(value) === false
+      ? (value as GameRoomFateKnotsSlotRecord)
+      : null;
+  }
+
+  const registry = getFactoryRegistry(global);
+
+  registry.createFateKnotsUiChromeRuntime = function createFateKnotsUiChromeRuntime(
+    deps: FateKnotsUiChromeRuntimeDeps
+  ): GameRoomFateKnotsUiChromeRuntime {
     const KNOWN_SEAT_IDS = deps.KNOWN_SEAT_IDS;
     const createElement = deps.createElement;
     const appendImage = deps.appendImage;
@@ -20,9 +58,12 @@
     const setSeatId = deps.setSeatId;
     const t = deps.t;
 
-    function createSeatStateText(_state: any, seatDisplay: any) {
+    function createSeatStateText(
+      _state: GameRoomFateKnotsState,
+      seatDisplay: GameRoomFateKnotsSeatDisplay
+    ): string {
       if (seatDisplay.liveParticipant) {
-        if (seatDisplay.liveParticipant.selection && seatDisplay.liveParticipant.selection.locked) {
+        if (seatDisplay.liveParticipant.selection.locked) {
           return t(["fateKnots", "seatState", "locked"], "Locked");
         }
         if (seatDisplay.liveParticipant.ready) {
@@ -33,13 +74,13 @@
       if (seatDisplay.excludedReason) {
         return t(["fateKnots", "seatState", "deferred"], "Deferred");
       }
-      if (seatDisplay.slotRecord && seatDisplay.slotRecord.connected === false) {
+      if (seatDisplay.slotRecord?.connected === false) {
         return t(["fateKnots", "seatState", "reserved"], "Reserved");
       }
       return t(["fateKnots", "seatState", "standby"], "Standby");
     }
 
-    function createSeatLabel(_state: any, seatId: string) {
+    function createSeatLabel(_state: GameRoomFateKnotsState, seatId: string): string {
       const labelMap: Record<string, string> = {
         user: t(["fateKnots", "seats", "user"], "You"),
         ai1: t(["fateKnots", "seats", "ai1"], "AI1"),
@@ -49,34 +90,41 @@
       return labelMap[seatId] || seatId.toUpperCase();
     }
 
-    function getContextSlotRecord(state: any, seatId: string) {
-      return state && state.context && state.context.slots && state.context.slots[seatId]
-        ? state.context.slots[seatId]
-        : null;
-    }
-
-    function getExcludedSeatReason(state: any, seatId: string) {
-      if (!Array.isArray(state.excludedSeats)) {
+    function getContextSlotRecord(
+      state: GameRoomFateKnotsState,
+      seatId: string
+    ): GameRoomFateKnotsSlotRecord | null {
+      const slots = state.context?.slots;
+      if (!slots) {
         return null;
       }
-      const match = state.excludedSeats.find(function (entry: any) {
-        return entry && typeof entry === "object" && entry.seatId === seatId;
-      });
-      return match && typeof match.reason === "string" ? match.reason : null;
+      return readSlotRecord(slots[seatId] ?? null);
     }
 
-    function buildSeatDisplay(state: any, seatId: string) {
+    function getExcludedSeatReason(state: GameRoomFateKnotsState, seatId: string): string | null {
+      const match =
+        state.excludedSeats.find(function (entry: GameRoomFateKnotsExcludedSeatRecord) {
+          return entry.seatId === seatId;
+        }) || null;
+      return match?.reason || null;
+    }
+
+    function buildSeatDisplay(
+      state: GameRoomFateKnotsState,
+      seatId: string
+    ): GameRoomFateKnotsSeatDisplay {
       const liveParticipant = findParticipant(state, seatId);
       const slotRecord = getContextSlotRecord(state, seatId);
       const excludedReason = getExcludedSeatReason(state, seatId);
       const bundle = liveParticipant ? getSelectionBundle(state, liveParticipant) : null;
       const title = liveParticipant
         ? liveParticipant.nickname
-        : slotRecord && slotRecord.nickname
+        : slotRecord?.nickname
           ? slotRecord.nickname
           : createSeatLabel(state, seatId);
-      const portraitAsset = bundle && bundle.avatar ? bundle.avatar : null;
+      const portraitAsset = bundle?.avatar || null;
       const summaryLines: string[] = [];
+
       if (bundle && (bundle.avatar || bundle.classDef || bundle.background)) {
         summaryLines.push(
           [
@@ -86,6 +134,7 @@
           ].join(" / ")
         );
       }
+
       if (!liveParticipant && excludedReason) {
         summaryLines.push(
           t(
@@ -93,21 +142,18 @@
             "US1 stays outside the V1 playable roster and is tracked for later iterations."
           )
         );
-      } else if (!liveParticipant && slotRecord && slotRecord.remoteUserId) {
+      } else if (!liveParticipant && slotRecord?.remoteUserId) {
         summaryLines.push(slotRecord.remoteUserId);
       }
-      return {
+
+      const seatDisplay: GameRoomFateKnotsSeatDisplay = {
         seatId: seatId,
         liveParticipant: liveParticipant,
         slotRecord: slotRecord,
         excludedReason: excludedReason,
         bundle: bundle,
         title: title,
-        stateText: createSeatStateText(state, {
-          liveParticipant: liveParticipant,
-          slotRecord: slotRecord,
-          excludedReason: excludedReason,
-        }),
+        stateText: "",
         eyebrow: createSeatLabel(state, seatId),
         portraitAsset: portraitAsset,
         summaryLines: summaryLines,
@@ -122,10 +168,18 @@
                 ? getUiAsset("diceBadge")
                 : getUiAsset("turnBadge"),
       };
+      return {
+        ...seatDisplay,
+        stateText: createSeatStateText(state, seatDisplay),
+      };
     }
 
-    function appendNpcBanter(parent: any, state: any, seatId: string) {
-      if (!state.npcBanter || state.npcBanter.seatId !== seatId || !state.npcBanter.text) {
+    function appendNpcBanter(
+      parent: HTMLElement,
+      state: GameRoomFateKnotsState,
+      seatId: string
+    ): void {
+      if (!state.npcBanter?.text || state.npcBanter.seatId !== seatId) {
         return;
       }
       const bubble = createRegion("div", "fk-seat-banter", null);
@@ -134,7 +188,11 @@
       parent.append(bubble);
     }
 
-    function createSeatPlaque(state: any, seatId: string, role: string) {
+    function createSeatPlaque(
+      state: GameRoomFateKnotsState,
+      seatId: string,
+      role: string
+    ): HTMLElement {
       const seat = buildSeatDisplay(state, seatId);
       const plaque = createFrame(
         "article",
@@ -185,7 +243,11 @@
       return plaque;
     }
 
-    function createSeatRibbon(state: any, role: string, activeSeatId: string) {
+    function createSeatRibbon(
+      state: GameRoomFateKnotsState,
+      role: string,
+      activeSeatId: string | null
+    ): HTMLElement {
       const ribbon = createRegion("div", "fk-seat-ribbon", role || "seat-ribbon");
       KNOWN_SEAT_IDS.forEach(function (seatId: string) {
         const seat = buildSeatDisplay(state, seatId);
@@ -199,7 +261,7 @@
         setSeatId(chip, seatId);
         chip.append(createElement("span", "fk-seat-ribbon__name", seat.eyebrow));
         chip.append(createElement("span", "fk-seat-ribbon__state", seat.stateText));
-        if (state.npcBanter && state.npcBanter.seatId === seatId && state.npcBanter.text) {
+        if (state.npcBanter?.text && state.npcBanter.seatId === seatId) {
           chip.append(createElement("span", "fk-seat-ribbon__state", state.npcBanter.text));
         }
         ribbon.append(chip);
@@ -207,7 +269,7 @@
       return ribbon;
     }
 
-    function createTopbar(state: any, phaseId: string) {
+    function createTopbar(state: GameRoomFateKnotsState, phaseId: string): HTMLElement {
       const topbar = createFrame("header", "fk-topbar fk-topbar--" + phaseId, "ritual-header", {
         overlay: getUiAsset("lightGlowPatch"),
         overlaySize: "100% 100%",
@@ -226,7 +288,7 @@
         createElement(
           "p",
           "fk-topbar__eyebrow",
-          t(["fateKnots", "heroBadge"], "Game Room") + " \u2022 " + getPhaseLabel(phaseId)
+          t(["fateKnots", "heroBadge"], "Game Room") + " • " + getPhaseLabel(phaseId)
         )
       );
       titleCluster.append(
@@ -237,11 +299,7 @@
 
       const statusCluster = createRegion("div", "fk-topbar__meta", null);
       statusCluster.append(createTextChip(getPhaseLabel(phaseId), "soft"));
-      if (
-        state.waiting &&
-        Array.isArray(state.waiting.pendingSeatIds) &&
-        state.waiting.pendingSeatIds.length > 0
-      ) {
+      if (state.waiting.pendingSeatIds.length > 0) {
         statusCluster.append(
           createTextChip(
             t(["fateKnots", "status", "pendingSeats"], "Pending") +
@@ -251,10 +309,10 @@
           )
         );
       }
-      if (state.compatibility && state.compatibility.mode !== "fresh") {
+      if (state.compatibility.mode !== "fresh") {
         statusCluster.append(createTextChip(state.compatibility.mode, "alert"));
       }
-      if (state.waiting && state.waiting.deadlineAt) {
+      if (state.waiting.deadlineAt) {
         statusCluster.append(
           createTextChip(
             t(["fateKnots", "status", "deadline"], "Deadline") +
@@ -275,7 +333,7 @@
       return topbar;
     }
 
-    function createCoverageLedger(state: any) {
+    function createCoverageLedger(state: GameRoomFateKnotsState): HTMLElement {
       const ledger = createFrame(
         "section",
         "fk-stage-frame fk-stage-frame--ledger fk-coverage-ledger",
@@ -289,32 +347,44 @@
         )
       );
       const grid = createRegion("div", "fk-ledger__grid", null);
-      Object.keys(state.assetCoverage || {}).forEach(function (key: string) {
+      Object.keys(state.assetCoverage).forEach(function (key: string) {
         const item = createRegion("div", "fk-ledger__item", null);
         item.append(createElement("span", "fk-ledger__label", key));
-        item.append(createElement("strong", "fk-ledger__value", String(state.assetCoverage[key])));
+        item.append(
+          createElement("strong", "fk-ledger__value", String(state.assetCoverage[key]))
+        );
         grid.append(item);
       });
       const assetErrors = createRegion("div", "fk-ledger__item", null);
       assetErrors.append(createElement("span", "fk-ledger__label", "assetErrors"));
       assetErrors.append(
-        createElement("strong", "fk-ledger__value", String(state.contentSummary.assetErrors || 0))
+        createElement(
+          "strong",
+          "fk-ledger__value",
+          String(state.contentSummary?.assetErrors || 0)
+        )
       );
       grid.append(assetErrors);
       const sourceErrors = createRegion("div", "fk-ledger__item", null);
       sourceErrors.append(createElement("span", "fk-ledger__label", "sourceErrors"));
       sourceErrors.append(
-        createElement("strong", "fk-ledger__value", String(state.contentSummary.sourceErrors || 0))
+        createElement(
+          "strong",
+          "fk-ledger__value",
+          String(state.contentSummary?.sourceErrors || 0)
+        )
       );
       grid.append(sourceErrors);
       ledger.append(grid);
-      if (state.contentErrors.length > 0) {
-        ledger.append(createElement("p", "fk-frame__hint", state.contentErrors.join(" | ")));
+      if ((state.contentErrors || []).length > 0) {
+        ledger.append(
+          createElement("p", "fk-frame__hint", (state.contentErrors || []).join(" | "))
+        );
       }
       return ledger;
     }
 
-    function applySurfaceBackdrop(surface: any, _state: any) {
+    function applySurfaceBackdrop(surface: HTMLElement, _state: GameRoomFateKnotsState): void {
       const featureView = getUiAsset("featureView");
       applyAssetLayers(surface, [
         {
@@ -334,7 +404,7 @@
       ]);
     }
 
-    function createSurfaceCorner(role: string, asset: any) {
+    function createSurfaceCorner(role: string, asset: unknown): HTMLElement {
       const corner = createRegion("div", "fk-surface__corner fk-surface__corner--" + role, null);
       applyFrameArtwork(corner, { texture: asset });
       return corner;
@@ -352,4 +422,4 @@
       createTopbar: createTopbar,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})((typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal);

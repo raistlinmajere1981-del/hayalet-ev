@@ -1,5 +1,44 @@
-export function createMediaSourceFileRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratorySourceConfigRecord = LaboratoryRecord & {
+  fileDialogFilters?: unknown;
+  supportedMimeTypes?: unknown;
+};
+
+type LaboratoryFileDialogFilterRecord = LaboratoryRecord & {
+  extensions?: unknown;
+};
+
+type LaboratorySourceRuntimeRecord = LaboratoryRecord & {
+  sourcePresets?: unknown;
+};
+
+type LaboratorySourceValidationResult =
+  | {
+      mimeType: string;
+      valid: true;
+    }
+  | {
+      error: string;
+      valid: false;
+    };
+
+type MediaSourceFileRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  getSourceConfig: (sourcePresets: unknown, kind: string) => LaboratoryRecord;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createMediaSourceFileRuntime(deps: MediaSourceFileRuntimeDeps) {
   const { asNonEmptyString, getSourceConfig, toRecord } = deps;
+
+  function toSourceConfigRecord(value: unknown): LaboratorySourceConfigRecord {
+    return toRecord(value);
+  }
+
+  function toFilterRecord(value: unknown): LaboratoryFileDialogFilterRecord {
+    return toRecord(value);
+  }
 
   function normalizeMimeType(fileName: unknown, kind: string) {
     const lowerName = String(fileName || "").toLowerCase();
@@ -32,7 +71,8 @@ export function createMediaSourceFileRuntime(deps: any) {
       return null;
     }
 
-    const normalized = rawValue.split(";")[0].trim().toLowerCase();
+    const [mimeToken = ""] = rawValue.split(";");
+    const normalized = mimeToken.trim().toLowerCase();
     return normalized || null;
   }
 
@@ -43,29 +83,32 @@ export function createMediaSourceFileRuntime(deps: any) {
     }
 
     const match = rawValue.toLowerCase().match(/\.([a-z0-9]+)$/);
-    return match ? match[1] : null;
+    const extension = match?.[1];
+    return extension ? extension : null;
   }
 
-  function getSupportedMimeTypes(sourcePresets: any, kind: string) {
-    const sourceConfig = getSourceConfig(sourcePresets, kind);
-    return toRecord(sourceConfig).supportedMimeTypes instanceof Array
-      ? toRecord(sourceConfig).supportedMimeTypes.map(stripMimeParameters).filter(Boolean)
+  function getSupportedMimeTypes(sourcePresets: unknown, kind: string): string[] {
+    const sourceConfig = toSourceConfigRecord(getSourceConfig(sourcePresets, kind));
+    return Array.isArray(sourceConfig.supportedMimeTypes)
+      ? sourceConfig.supportedMimeTypes
+          .map(stripMimeParameters)
+          .filter((value): value is string => value !== null)
       : [];
   }
 
-  function getSupportedExtensions(sourcePresets: any, kind: string) {
-    const sourceConfig = getSourceConfig(sourcePresets, kind);
+  function getSupportedExtensions(sourcePresets: unknown, kind: string): string[] {
+    const sourceConfig = toSourceConfigRecord(getSourceConfig(sourcePresets, kind));
     const filters = Array.isArray(sourceConfig.fileDialogFilters)
-      ? sourceConfig.fileDialogFilters
+      ? sourceConfig.fileDialogFilters.map(toFilterRecord)
       : [];
     const values: string[] = [];
 
-    filters.forEach(function (filter: Record<string, unknown>) {
-      if (!filter || Array.isArray(filter["extensions"]) === false) {
+    filters.forEach(function (filter) {
+      if (Array.isArray(filter.extensions) === false) {
         return;
       }
 
-      filter["extensions"].forEach(function (extension: unknown) {
+      filter.extensions.forEach(function (extension) {
         const normalized = asNonEmptyString(extension);
         if (normalized) {
           values.push(normalized.toLowerCase().replace(/^\./, ""));
@@ -77,11 +120,11 @@ export function createMediaSourceFileRuntime(deps: any) {
   }
 
   function validateSourceCandidate(
-    runtime: any,
+    runtime: LaboratorySourceRuntimeRecord,
     kind: string,
     storedFileName: unknown,
     mimeType: unknown
-  ) {
+  ): LaboratorySourceValidationResult {
     const normalizedMimeType = stripMimeParameters(mimeType);
     const normalizedExtension = getFileExtension(storedFileName);
     const supportedMimeTypes = getSupportedMimeTypes(runtime.sourcePresets, kind);
@@ -107,17 +150,7 @@ export function createMediaSourceFileRuntime(deps: any) {
     if (mimeMatches || extensionMatches) {
       return {
         valid: true,
-        mimeType:
-          mimeMatches && normalizedMimeType !== null
-            ? normalizedMimeType
-            : normalizeMimeType(storedFileName, kind),
-      };
-    }
-
-    if (normalizedMimeType === "application/octet-stream" && extensionMatches) {
-      return {
-        valid: true,
-        mimeType: normalizeMimeType(storedFileName, kind),
+        mimeType: mimeMatches ? normalizedMimeType : normalizeMimeType(storedFileName, kind),
       };
     }
 
@@ -127,8 +160,8 @@ export function createMediaSourceFileRuntime(deps: any) {
     };
   }
 
-  function findCompanionExecutableName(toolEntry: any, baseName: string) {
-    const companionPaths = toRecord(toRecord(toolEntry).companionPaths);
+  function findCompanionExecutableName(toolEntry: unknown, baseName: string) {
+    const companionPaths = toRecord(toRecord(toolEntry)["companionPaths"]);
     const keys = Object.keys(companionPaths);
     const match = keys.find(function (key: string) {
       return (

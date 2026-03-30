@@ -1,11 +1,221 @@
-export function createMediaAnalysisSourceEditUiRuntime(deps: any) {
-  const featureText = deps.featureText;
-  const subtitleText = deps.subtitleText;
-  const text = deps.text;
-  const textFromKey = deps.textFromKey;
-  const toRecord = deps.toRecord;
+type LaboratoryRecord = Record<string, unknown>;
 
-  function getSubtitleMimeType(fileName: any) {
+export type LaboratoryMediaAnalysisSourceKind = "audio" | "image" | "video";
+export type LaboratoryMediaAnalysisEditMode = "advanced" | "beginner";
+
+export type LaboratoryMediaAnalysisProjectSourceRecord = LaboratoryRecord & {
+  drafts?: unknown;
+  kind?: unknown;
+  mimeType?: unknown;
+  mode?: unknown;
+  previewUrl?: unknown;
+  routeLabel?: unknown;
+  sourceUrl?: unknown;
+  status?: unknown;
+  storedFileName?: unknown;
+  storedPath?: unknown;
+};
+
+export type LaboratoryMediaAnalysisEditDraftRecord = LaboratoryRecord & {
+  activePresetId?: unknown;
+  mode?: unknown;
+  recipe?: unknown;
+};
+
+export type LaboratoryMediaAnalysisEditRecipeRecord = LaboratoryRecord & {
+  audio?: unknown;
+  common?: unknown;
+  image?: unknown;
+  video?: unknown;
+};
+
+export type LaboratoryMediaAnalysisEditPreviewRecord = LaboratoryRecord & {
+  artifacts?: unknown;
+  metadata?: unknown;
+  mimeType?: unknown;
+  path?: unknown;
+  previewUrl?: unknown;
+  status?: unknown;
+  summary?: unknown;
+};
+
+export type LaboratoryMediaAnalysisAssetArtifactRecord = LaboratoryRecord & {
+  kind?: unknown;
+  previewUrl?: unknown;
+};
+
+type LaboratoryMediaAnalysisSourceConfigRecord = LaboratoryRecord & {
+  modes?: unknown;
+};
+
+type LaboratoryMediaAnalysisFocusRegionRecord = LaboratoryRecord & {
+  labelKey?: unknown;
+};
+
+type LaboratoryMediaAnalysisResizePresetRecord = LaboratoryRecord & {
+  labelKey?: unknown;
+};
+
+type LaboratoryMediaAnalysisSubtitleEntryRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  fileUrl?: unknown;
+  id?: unknown;
+  path?: unknown;
+};
+
+type LaboratoryMediaAnalysisSubtitleOutputRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  fileUrl?: unknown;
+  id?: unknown;
+  label?: unknown;
+  path?: unknown;
+};
+
+type LaboratoryMediaAnalysisEditOutputRecord = LaboratoryRecord & {
+  artifacts?: unknown;
+  fileName?: unknown;
+  fileUrl?: unknown;
+  id?: unknown;
+  label?: unknown;
+  metadata?: unknown;
+  mimeType?: unknown;
+  path?: unknown;
+  previewUrl?: unknown;
+};
+
+export type LaboratoryMediaAnalysisAsset = {
+  artifacts: LaboratoryMediaAnalysisAssetArtifactRecord[];
+  kind: "derived" | "preview" | "source" | "subtitle";
+  label: string;
+  metadata: LaboratoryRecord;
+  mimeType: string | null;
+  path: string | null;
+  previewUrl: string | null;
+};
+
+type MediaAnalysisSourceEditUiRuntimeDeps = {
+  featureText: (path: string[]) => string;
+  getActiveEditOutput: () => unknown | null;
+  getActiveProject: () => LaboratoryRecord | null;
+  getActiveSubtitleEntry: () => unknown | null;
+  getAvailableSourceFormats: () => string[];
+  getCurrentEditDraft: () => unknown;
+  getDefaultSourceKind: () => LaboratoryMediaAnalysisSourceKind;
+  getEditPresets: () => LaboratoryRecord;
+  getEditPreview: () => unknown;
+  getProjectEdit: () => LaboratoryRecord;
+  getProjectSource: () => LaboratoryMediaAnalysisProjectSourceRecord;
+  getSourceMetadata: () => LaboratoryRecord;
+  getSourcePresets: () => LaboratoryRecord;
+  getSubtitleEditPreview: () => unknown;
+  getSubtitleOutputs: () => unknown[];
+  isSubtitleAnalysisFeature: () => boolean;
+  subtitleText: (path: string[], tr?: string, en?: string) => string;
+  text: (path: string[]) => string;
+  textFromKey: (key: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createMediaAnalysisSourceEditUiRuntime(
+  deps: MediaAnalysisSourceEditUiRuntimeDeps
+) {
+  const {
+    featureText,
+    getActiveEditOutput,
+    getActiveProject,
+    getActiveSubtitleEntry,
+    getAvailableSourceFormats,
+    getCurrentEditDraft,
+    getDefaultSourceKind,
+    getEditPresets,
+    getEditPreview,
+    getProjectEdit,
+    getProjectSource,
+    getSourceMetadata,
+    getSourcePresets,
+    getSubtitleEditPreview,
+    getSubtitleOutputs,
+    isSubtitleAnalysisFeature,
+    subtitleText,
+    text,
+    textFromKey,
+    toRecord,
+  } = deps;
+
+  function asRecord(value: unknown): LaboratoryRecord {
+    return toRecord(value);
+  }
+
+  function asNonEmptyString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value : null;
+  }
+
+  function asNumber(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return asNonEmptyString(entry);
+      })
+      .filter((entry): entry is string => entry !== null);
+  }
+
+  function toSourceConfigRecord(value: unknown): LaboratoryMediaAnalysisSourceConfigRecord {
+    return asRecord(value);
+  }
+
+  function toEditDraftRecord(value: unknown): LaboratoryMediaAnalysisEditDraftRecord {
+    return asRecord(value);
+  }
+
+  function toEditRecipeRecord(value: unknown): LaboratoryMediaAnalysisEditRecipeRecord {
+    return asRecord(value);
+  }
+
+  function toFocusRegionRecord(value: unknown): LaboratoryMediaAnalysisFocusRegionRecord {
+    return asRecord(value);
+  }
+
+  function toResizePresetRecord(value: unknown): LaboratoryMediaAnalysisResizePresetRecord {
+    return asRecord(value);
+  }
+
+  function toSubtitleEntryRecord(value: unknown): LaboratoryMediaAnalysisSubtitleEntryRecord {
+    return asRecord(value);
+  }
+
+  function toSubtitleOutputRecord(value: unknown): LaboratoryMediaAnalysisSubtitleOutputRecord {
+    return asRecord(value);
+  }
+
+  function toEditOutputRecord(value: unknown): LaboratoryMediaAnalysisEditOutputRecord {
+    return asRecord(value);
+  }
+
+  function toEditPreviewRecord(value: unknown): LaboratoryMediaAnalysisEditPreviewRecord {
+    return asRecord(value);
+  }
+
+  function toArtifactRecord(value: unknown): LaboratoryMediaAnalysisAssetArtifactRecord {
+    return asRecord(value);
+  }
+
+  function formatSecondsLabel(value: number | null) {
+    if (value === null) {
+      return "--";
+    }
+    const totalSeconds = Math.max(0, Math.round(value));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = String(totalSeconds % 60).padStart(2, "0");
+    return `${minutes}:${seconds}`;
+  }
+
+  function getSubtitleMimeType(fileName: unknown) {
     const normalized = typeof fileName === "string" ? fileName.toLowerCase() : "";
     if (normalized.endsWith(".vtt")) {
       return "text/vtt";
@@ -16,205 +226,215 @@ export function createMediaAnalysisSourceEditUiRuntime(deps: any) {
     return "application/x-subrip";
   }
 
-  function getSourceConfig(kind: any) {
-    const sourceTypes = toRecord(deps.getSourcePresets().sourceTypes);
-    return toRecord(sourceTypes[kind]);
+  function getNormalizedSourceKinds(): LaboratoryMediaAnalysisSourceKind[] {
+    const availableKinds = toStringArray(getAvailableSourceFormats());
+    return availableKinds.filter(function (entry): entry is LaboratoryMediaAnalysisSourceKind {
+      return entry === "audio" || entry === "image" || entry === "video";
+    });
   }
 
-  function getSourceModeOptions(kind: any) {
-    const config = getSourceConfig(kind);
-    return Array.isArray(config.modes) ? config.modes : [];
+  function getSourceConfig(kind: LaboratoryMediaAnalysisSourceKind) {
+    const sourceTypes = asRecord(getSourcePresets()["sourceTypes"]);
+    return toSourceConfigRecord(sourceTypes[kind]);
   }
 
-  function getCurrentSourceKind() {
-    const source = deps.getProjectSource();
-    const kind = typeof source.kind === "string" ? source.kind : null;
-    return deps.getAvailableSourceFormats().includes(kind) ? kind : deps.getDefaultSourceKind();
+  function getSourceModeOptions(kind: LaboratoryMediaAnalysisSourceKind) {
+    return toStringArray(getSourceConfig(kind).modes);
+  }
+
+  function getCurrentSourceKind(): LaboratoryMediaAnalysisSourceKind {
+    const source = getProjectSource();
+    const kind = asNonEmptyString(source["kind"]);
+    const availableKinds = getNormalizedSourceKinds();
+    if (kind === "audio" || kind === "image" || kind === "video") {
+      return availableKinds.includes(kind) ? kind : getDefaultSourceKind();
+    }
+    return getDefaultSourceKind();
   }
 
   function getCurrentSourceMode() {
     const kind = getCurrentSourceKind();
-    const source = deps.getProjectSource();
-    const mode = typeof source.mode === "string" ? source.mode : null;
+    const source = getProjectSource();
+    const mode = asNonEmptyString(source["mode"]);
     const modes = getSourceModeOptions(kind);
-    return modes.includes(mode) ? mode : modes[0] || "local";
+    return mode && modes.includes(mode) ? mode : modes[0] || "local";
   }
 
   function getCurrentSourceLabel() {
-    if (deps.isSubtitleAnalysisFeature()) {
-      const activeEntry = deps.getActiveSubtitleEntry();
-      return activeEntry
-        ? activeEntry.fileName || activeEntry.id || "Subtitle"
-        : subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle");
+    if (isSubtitleAnalysisFeature()) {
+      const activeEntry = toSubtitleEntryRecord(getActiveSubtitleEntry());
+      return (
+        asNonEmptyString(activeEntry["fileName"]) ||
+        asNonEmptyString(activeEntry["id"]) ||
+        subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle")
+      );
     }
     return featureText(["source", "formats", getCurrentSourceKind(), "title"]);
   }
 
-  function getCurrentEditMode() {
-    const mode = deps.getCurrentEditDraft().mode;
-    return mode === "advanced" ? "advanced" : "beginner";
+  function getCurrentEditMode(): LaboratoryMediaAnalysisEditMode {
+    return toEditDraftRecord(getCurrentEditDraft()).mode === "advanced" ? "advanced" : "beginner";
   }
 
   function getCurrentEditRecipe() {
-    return toRecord(deps.getCurrentEditDraft().recipe);
+    return toEditRecipeRecord(toEditDraftRecord(getCurrentEditDraft()).recipe);
   }
 
   function getCurrentFocusRegionId() {
     const recipe = getCurrentEditRecipe();
-    const common = toRecord(recipe.common);
-    return (typeof common.focusRegionId === "string" && common.focusRegionId) || "full-frame";
+    const common = asRecord(recipe["common"]);
+    return asNonEmptyString(common["focusRegionId"]) || "full-frame";
   }
 
   function getCurrentFocusLabel() {
-    const focusRegion = toRecord(
-      toRecord(deps.getEditPresets().focusRegions)[getCurrentFocusRegionId()]
-    );
-    const labelKey = typeof focusRegion.labelKey === "string" ? focusRegion.labelKey : null;
+    const focusRegions = asRecord(getEditPresets()["focusRegions"]);
+    const focusRegion = toFocusRegionRecord(focusRegions[getCurrentFocusRegionId()]);
+    const labelKey = asNonEmptyString(focusRegion.labelKey);
     return labelKey ? textFromKey(labelKey) : "--";
   }
 
   function getCurrentResizeLabel() {
     const kind = getCurrentSourceKind();
     const recipe = getCurrentEditRecipe();
-    const branch = toRecord(recipe[kind]);
-    const presetId =
-      typeof branch.resizePreset === "string" && branch.resizePreset.trim() !== ""
-        ? branch.resizePreset
-        : "keep";
-    const preset = toRecord(toRecord(deps.getEditPresets().resizePresets)[presetId]);
-    return preset.labelKey ? textFromKey(preset.labelKey) : presetId;
+    const branch = asRecord(recipe[kind]);
+    const presetId = asNonEmptyString(branch["resizePreset"]) || "keep";
+    const resizePresets = asRecord(getEditPresets()["resizePresets"]);
+    const preset = toResizePresetRecord(resizePresets[presetId]);
+    const labelKey = asNonEmptyString(preset.labelKey);
+    return labelKey ? textFromKey(labelKey) : presetId;
   }
 
   function formatEditWindowLabel() {
     const kind = getCurrentSourceKind();
     const recipe = getCurrentEditRecipe();
-    const branch = toRecord(recipe[kind]);
-    const previewUrl = deps.getProjectSource().previewUrl || null;
-    const sourceMetadata = deps.getSourceMetadata();
-    const previewMetrics = deps.state.ui.previewMetrics;
-    const duration =
-      typeof sourceMetadata.durationSeconds === "number" && sourceMetadata.durationSeconds > 0
-        ? sourceMetadata.durationSeconds
-        : previewMetrics.url === previewUrl
-          ? previewMetrics.duration
-          : null;
+    const branch = asRecord(recipe[kind]);
+    const sourceMetadata = getSourceMetadata();
+    const duration = asNumber(sourceMetadata["durationSeconds"]);
+    const trimStartSeconds = asNumber(branch["trimStartSeconds"]) || 0;
+    const trimEndSeconds = asNumber(branch["trimEndSeconds"]) || duration;
 
-    if ((kind === "video" || kind === "audio") && branch.trimEnabled === true) {
-      const endSeconds =
-        typeof branch.trimEndSeconds === "number" && branch.trimEndSeconds > 0
-          ? branch.trimEndSeconds
-          : duration;
-      return `${deps.formatDuration(branch.trimStartSeconds)} - ${deps.formatDuration(endSeconds)}`;
+    if ((kind === "video" || kind === "audio") && branch["trimEnabled"] === true) {
+      return `${formatSecondsLabel(trimStartSeconds)} - ${formatSecondsLabel(trimEndSeconds)}`;
     }
 
     return text(["mediaAnalysis", "edit", "fullWindow"]);
   }
 
   function getCurrentEditPresetOptions() {
-    const presetsByKind = toRecord(toRecord(deps.getEditPresets().presets)[getCurrentSourceKind()]);
+    const presets = asRecord(getEditPresets()["presets"]);
+    const presetsByKind = asRecord(presets[getCurrentSourceKind()]);
     const presetList = presetsByKind[getCurrentEditMode()];
-    return Array.isArray(presetList) ? presetList.map(toRecord) : [];
+    return Array.isArray(presetList) ? presetList.map(asRecord) : [];
   }
 
-  function getEffectiveMediaAsset() {
-    if (deps.isSubtitleAnalysisFeature()) {
-      const preview = deps.getSubtitleEditPreview();
-      const activeEntry = deps.getActiveSubtitleEntry();
-      const latestOutput = deps.getSubtitleOutputs()[0] || null;
+  function getEffectiveMediaAsset(): LaboratoryMediaAnalysisAsset {
+    if (isSubtitleAnalysisFeature()) {
+      const preview = toEditPreviewRecord(getSubtitleEditPreview());
+      const activeEntry = toSubtitleEntryRecord(getActiveSubtitleEntry());
+      const latestOutput = toSubtitleOutputRecord(getSubtitleOutputs()[0]);
+      const latestOutputLabel =
+        asNonEmptyString(latestOutput.label) ||
+        asNonEmptyString(latestOutput.fileName) ||
+        asNonEmptyString(latestOutput.id);
+      const activeEntryLabel =
+        asNonEmptyString(activeEntry.fileName) || asNonEmptyString(activeEntry.id);
 
       return {
-        kind: latestOutput ? "derived" : "subtitle",
-        label:
-          (latestOutput && (latestOutput.label || latestOutput.fileName || latestOutput.id)) ||
-          (activeEntry && (activeEntry.fileName || activeEntry.id)) ||
-          subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle"),
-        previewUrl: null,
-        path:
-          (latestOutput && (latestOutput.path || latestOutput.fileUrl)) ||
-          (activeEntry && (activeEntry.path || activeEntry.fileUrl)) ||
-          null,
-        mimeType: activeEntry ? getSubtitleMimeType(activeEntry.fileName || "") : null,
-        metadata: preview.summary || {},
         artifacts: [],
+        kind: latestOutputLabel ? "derived" : "subtitle",
+        label:
+          latestOutputLabel ||
+          activeEntryLabel ||
+          subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle"),
+        metadata: asRecord(preview.summary),
+        mimeType: activeEntryLabel
+          ? getSubtitleMimeType(activeEntry.fileName)
+          : null,
+        path:
+          asNonEmptyString(latestOutput.path) ||
+          asNonEmptyString(latestOutput.fileUrl) ||
+          asNonEmptyString(activeEntry.path) ||
+          asNonEmptyString(activeEntry.fileUrl),
+        previewUrl: null,
       };
     }
 
-    const project = deps.getActiveProject();
+    const project = getActiveProject();
     if (!project) {
       return {
+        artifacts: [],
         kind: "source",
         label: "--",
-        previewUrl: null as string | null,
-        path: null as string | null,
-        mimeType: null as string | null,
         metadata: {},
+        mimeType: null,
+        path: null,
+        previewUrl: null,
       };
     }
 
-    const source = deps.getProjectSource();
-    const edit = deps.getProjectEdit();
-    const preview = deps.getEditPreview();
-    const activeOutput = deps.getActiveEditOutput();
+    const source = getProjectSource();
+    const edit = asRecord(getProjectEdit());
+    const preview = toEditPreviewRecord(getEditPreview());
+    const activeOutput = toEditOutputRecord(getActiveEditOutput());
 
     if (
-      typeof edit.handoffMode === "string" &&
-      edit.handoffMode === "derived" &&
-      activeOutput &&
-      typeof activeOutput.previewUrl === "string"
+      asNonEmptyString(edit["handoffMode"]) === "derived" &&
+      asNonEmptyString(activeOutput.previewUrl) !== null
     ) {
       return {
-        kind: "derived",
-        label: activeOutput.label || text(["mediaAnalysis", "edit", "derivedOutput"]),
-        previewUrl: activeOutput.previewUrl,
-        path: activeOutput.path || null,
-        mimeType: activeOutput.mimeType || null,
-        metadata: toRecord(activeOutput.metadata),
         artifacts: Array.isArray(activeOutput.artifacts)
-          ? activeOutput.artifacts.map(toRecord)
+          ? activeOutput.artifacts.map(toArtifactRecord)
           : [],
+        kind: "derived",
+        label:
+          asNonEmptyString(activeOutput.label) ||
+          text(["mediaAnalysis", "edit", "derivedOutput"]),
+        metadata: asRecord(activeOutput.metadata),
+        mimeType: asNonEmptyString(activeOutput.mimeType),
+        path: asNonEmptyString(activeOutput.path),
+        previewUrl: asNonEmptyString(activeOutput.previewUrl),
       };
     }
 
     if (
-      typeof preview.previewUrl === "string" &&
-      preview.previewUrl.trim() !== "" &&
-      (preview.status === "ready" || preview.status === "stale")
+      asNonEmptyString(preview.previewUrl) !== null &&
+      (asNonEmptyString(preview.status) === "ready" || asNonEmptyString(preview.status) === "stale")
     ) {
       return {
+        artifacts: Array.isArray(preview.artifacts) ? preview.artifacts.map(toArtifactRecord) : [],
         kind: "preview",
         label: text(["mediaAnalysis", "edit", "previewAsset"]),
-        previewUrl: preview.previewUrl,
-        path: preview.path || null,
-        mimeType: preview.mimeType || null,
-        metadata: toRecord(preview.metadata),
-        artifacts: Array.isArray(preview.artifacts) ? preview.artifacts.map(toRecord) : [],
+        metadata: asRecord(preview.metadata),
+        mimeType: asNonEmptyString(preview.mimeType),
+        path: asNonEmptyString(preview.path),
+        previewUrl: asNonEmptyString(preview.previewUrl),
       };
     }
 
     return {
+      artifacts: [],
       kind: "source",
       label: text(["mediaAnalysis", "edit", "sourceAsset"]),
-      previewUrl: source.previewUrl || null,
-      path: source.storedPath || null,
-      mimeType: source.mimeType || null,
-      metadata: deps.getSourceMetadata(),
-      artifacts: [],
+      metadata: getSourceMetadata(),
+      mimeType: asNonEmptyString(source.mimeType),
+      path: asNonEmptyString(source.storedPath),
+      previewUrl: asNonEmptyString(source.previewUrl),
     };
   }
 
   return {
-    formatEditWindowLabel: formatEditWindowLabel,
-    getCurrentEditMode: getCurrentEditMode,
-    getCurrentEditPresetOptions: getCurrentEditPresetOptions,
-    getCurrentEditRecipe: getCurrentEditRecipe,
-    getCurrentFocusLabel: getCurrentFocusLabel,
-    getCurrentFocusRegionId: getCurrentFocusRegionId,
-    getCurrentResizeLabel: getCurrentResizeLabel,
-    getCurrentSourceKind: getCurrentSourceKind,
-    getCurrentSourceLabel: getCurrentSourceLabel,
-    getCurrentSourceMode: getCurrentSourceMode,
-    getEffectiveMediaAsset: getEffectiveMediaAsset,
-    getSourceConfig: getSourceConfig,
-    getSourceModeOptions: getSourceModeOptions,
+    formatEditWindowLabel,
+    getCurrentEditMode,
+    getCurrentEditPresetOptions,
+    getCurrentEditRecipe,
+    getCurrentFocusLabel,
+    getCurrentFocusRegionId,
+    getCurrentResizeLabel,
+    getCurrentSourceKind,
+    getCurrentSourceLabel,
+    getCurrentSourceMode,
+    getEffectiveMediaAsset,
+    getSourceConfig,
+    getSourceModeOptions,
   };
 }

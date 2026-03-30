@@ -41,7 +41,7 @@ export function createLaboratoryPresetSourceRuntime(deps: LaboratoryPresetSource
   function normalizeStringArray(value: unknown): string[] {
     return Array.isArray(value)
       ? value
-          .map(function (entry: any) {
+          .map(function (entry: unknown) {
             return asNonEmptyString(entry);
           })
           .filter(function (entry): entry is string {
@@ -68,7 +68,7 @@ export function createLaboratoryPresetSourceRuntime(deps: LaboratoryPresetSource
       extractedAt: asNonEmptyString(source["extractedAt"]),
     };
 
-    const hasValue = Object.values(normalized).some(function (value: any) {
+    const hasValue = Object.values(normalized).some(function (value: string | number | null) {
       return value !== null;
     });
 
@@ -125,7 +125,7 @@ export function createLaboratoryPresetSourceRuntime(deps: LaboratoryPresetSource
     const presets = toRecord(sourcePresets);
     const youtubePresets = toRecord(presets["youtubePresets"]);
     const preset = toRecord(youtubePresets[presetId]);
-    return clone(toRecord(preset["defaultCustomValues"])) as LaboratoryRecord;
+    return clone(toRecord(preset["defaultCustomValues"]));
   }
 
   function createEmptySourceDrafts(sourcePresets: unknown): LaboratorySourceDrafts {

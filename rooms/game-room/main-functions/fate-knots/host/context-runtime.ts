@@ -8,12 +8,26 @@ import {
 } from "./session-support.js";
 import { loadFateKnotsState, resetFateKnotsState } from "./state.js";
 
-export function syncFromContext(api: any, options: any) {
+type FateKnotsContextApi = Parameters<typeof ensureFateKnotsContent>[0] &
+  Parameters<typeof loadFateKnotsState>[0];
+type FateKnotsContextState = ReturnType<typeof loadContext>;
+type FateKnotsContextHostState = Parameters<typeof maybeMarkSeatLossOrTimeout>[0];
+
+interface FateKnotsContextSyncOptions {
+  context?: FateKnotsContextState;
+  previousActiveFeatureId?: string | null;
+  activeFeatureId?: string | null;
+}
+
+export function syncFromContext(
+  api: FateKnotsContextApi,
+  options: FateKnotsContextSyncOptions = {}
+) {
   const contentRegistry = ensureFateKnotsContent(api);
-  const state = loadFateKnotsState(api);
-  const context = options?.context || loadContext(api);
-  const previousActiveFeatureId = options?.previousActiveFeatureId || null;
-  const activeFeatureId = options?.activeFeatureId || getActiveFeatureId(context);
+  const state = loadFateKnotsState(api) as unknown as FateKnotsContextHostState;
+  const context = options.context ?? loadContext(api);
+  const previousActiveFeatureId = options.previousActiveFeatureId ?? null;
+  const activeFeatureId = options.activeFeatureId ?? getActiveFeatureId(context);
 
   if (
     previousActiveFeatureId === FATE_KNOTS_FEATURE_ID &&
@@ -25,7 +39,7 @@ export function syncFromContext(api: any, options: any) {
 
   state.locale = readLocale(api);
   maybeMarkSeatLossOrTimeout(state, context, Date.now());
-  if (state.transport && context?.slots?.us1?.remoteUserId) {
+  if (context.slots.us1.remoteUserId) {
     state.transport.remoteUserId = context.slots.us1.remoteUserId;
   }
   updateContentSummary(state, contentRegistry);

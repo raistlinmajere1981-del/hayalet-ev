@@ -1,4 +1,36 @@
-export function createLaboratoryUiBootstrapRuntime(deps: any) {
+import type { createLaboratoryUiActionRouter } from "../shared/ui/action-router.js";
+import type { createLaboratoryUiBootstrapStateRuntime } from "./bootstrap-state-runtime.js";
+
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
+type LaboratoryUiActionRouter = Pick<
+  ReturnType<typeof createLaboratoryUiActionRouter>,
+  "handleChange" | "handleClick" | "handleInput"
+>;
+
+type LaboratoryRoomApi = {
+  onHostMessage?: (listener: (message: unknown) => void) => void;
+  ready?: (payload: { feature: string; room: string; stage: string }) => void;
+};
+
+type LaboratoryWindowRef = Window & {
+  roomAPI?: LaboratoryRoomApi;
+};
+
+type LaboratoryUiBootstrapRuntimeDeps = {
+  actionRouter: LaboratoryUiActionRouter;
+  applyLocale: (locale: string) => void;
+  applyPresentationMode: (mode: LaboratoryUiState["presentation"]["mode"]) => void;
+  bootstrapText: (key: string) => string;
+  documentRef: Document;
+  getActiveFeatureId: () => string;
+  handleHostMessage: (message: unknown) => void;
+  render: () => void;
+  setLastAction: (message: string) => void;
+  state: LaboratoryUiState;
+  windowRef: LaboratoryWindowRef;
+};
+
+export function createLaboratoryUiBootstrapRuntime(deps: LaboratoryUiBootstrapRuntimeDeps) {
   const actionRouter = deps.actionRouter;
   const applyLocale = deps.applyLocale;
   const applyPresentationMode = deps.applyPresentationMode;
@@ -22,8 +54,9 @@ export function createLaboratoryUiBootstrapRuntime(deps: any) {
       setLastAction(bootstrapText("roomApiUnavailable"));
     }
 
+    const locale = typeof state.locale === "string" ? state.locale : "en";
     applyPresentationMode(state.presentation.mode);
-    applyLocale(state.locale);
+    applyLocale(locale);
     render();
 
     if (windowRef.roomAPI && typeof windowRef.roomAPI.ready === "function") {

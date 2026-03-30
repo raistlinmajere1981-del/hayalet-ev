@@ -10,7 +10,34 @@ import { createLaboratoryPresetRuntime } from "../shared/host/preset-runtime.js"
 import { createSubtitleDocumentRuntime } from "../main-functions/subtitle-analysis/host/document-runtime.js";
 import { createAudioAnalysisUtilityRuntime } from "../main-functions/audio-analysis/host/analysis-utils.js";
 
-export function createLaboratoryHostFoundation(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+type LaboratoryPresetRuntimeDeps = Parameters<typeof createLaboratoryPresetRuntime>[0];
+type LaboratoryRuntimeBootstrapDeps = Parameters<typeof createLaboratoryRuntimeBootstrap>[0];
+type LaboratoryProfileModelStateRuntimeDeps = Parameters<
+  typeof createLaboratoryProfileModelStateRuntime
+>[0];
+type LaboratoryHostUtilsDeps = Parameters<typeof createLaboratoryHostUtils>[0];
+type LaboratoryAudioAnalysisUtilityRuntimeDeps = Parameters<
+  typeof createAudioAnalysisUtilityRuntime
+>[0];
+
+type LaboratoryAnalysisArtifactRuntime = {
+  runProfileTool: LaboratoryAudioAnalysisUtilityRuntimeDeps["runProfileTool"];
+};
+
+type LaboratoryHostFoundationDeps = {
+  asNonEmptyString: LaboratoryPresetRuntimeDeps["asNonEmptyString"];
+  audioFeatureId: LaboratoryHostUtilsDeps["audioFeatureId"];
+  clone: LaboratoryPresetRuntimeDeps["clone"];
+  defaultFeatureId: LaboratoryRuntimeBootstrapDeps["defaultFeatureId"];
+  getAnalysisArtifactRuntime: () => LaboratoryAnalysisArtifactRuntime;
+  getProjectStateRuntime: LaboratoryProfileModelStateRuntimeDeps["getProjectStateRuntime"];
+  normalizeLocale: LaboratoryRuntimeBootstrapDeps["normalizeLocale"];
+  roomId: LaboratoryRuntimeBootstrapDeps["roomId"];
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryHostFoundation(deps: LaboratoryHostFoundationDeps) {
   const bootstrap = createLaboratoryRuntimeBootstrap({
     defaultFeatureId: deps.defaultFeatureId,
     normalizeLocale: deps.normalizeLocale,

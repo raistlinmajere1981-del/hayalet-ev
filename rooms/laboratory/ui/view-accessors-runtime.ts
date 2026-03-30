@@ -1,4 +1,33 @@
-export function createLaboratoryViewAccessorsRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryAudioAnalysisProvidersRecord = LaboratoryRecord & {
+  providers?: unknown;
+};
+
+type LaboratoryViewAccessorsRuntimeDeps = {
+  getAudioAnalysisCapabilities: () => unknown;
+  getAudioAnalysisOrderedResultEntries: () => unknown[];
+  getAudioAnalysisPresets: () => unknown;
+  getAudioAnalysisProviders: () => unknown;
+  getCurrentFeatureProcessRecord: () => unknown;
+  getCurrentFeatureReportRecord: () => unknown;
+  getProfileTargetAsset: () => unknown;
+  getProjectAudioAnalysis: () => unknown;
+  getSubtitleEntries: () => unknown;
+  getSubtitleProcessModuleLabel: (entry: unknown) => string;
+  getSubtitleProviderLabel: (entry: unknown) => string;
+  renderProfileModelCard: (entry: unknown) => string;
+  renderSettingsOverlay: () => string;
+  renderToolCard: (toolId: string, stageId: string) => string;
+};
+
+function isLaboratoryRecord(value: unknown): value is LaboratoryRecord {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+export function createLaboratoryViewAccessorsRuntime(
+  deps: LaboratoryViewAccessorsRuntimeDeps
+) {
   const currentFeatureProcessRecordFn = deps.getCurrentFeatureProcessRecord;
   const currentFeatureReportRecordFn = deps.getCurrentFeatureReportRecord;
   const projectAudioAnalysisFn = deps.getProjectAudioAnalysis;
@@ -30,11 +59,11 @@ export function createLaboratoryViewAccessorsRuntime(deps: any) {
     return subtitleEntriesFn();
   }
 
-  function getSubtitleProcessModuleLabel(entry: any) {
+  function getSubtitleProcessModuleLabel(entry: unknown) {
     return subtitleProcessModuleLabelFn(entry);
   }
 
-  function getSubtitleProviderLabel(entry: any) {
+  function getSubtitleProviderLabel(entry: unknown) {
     return subtitleProviderLabelFn(entry);
   }
 
@@ -46,14 +75,12 @@ export function createLaboratoryViewAccessorsRuntime(deps: any) {
     return audioAnalysisPresetsFn();
   }
 
-  function getAudioAnalysisProviders() {
+  function getAudioAnalysisProviders(): LaboratoryAudioAnalysisProvidersRecord {
     const providers = audioAnalysisProvidersFn();
-    return providers && typeof providers === "object" && Array.isArray(providers) === false
-      ? providers
-      : {};
+    return isLaboratoryRecord(providers) ? providers : {};
   }
 
-  function getAudioAnalysisProviderEntries() {
+  function getAudioAnalysisProviderEntries(): unknown[] {
     const providers = getAudioAnalysisProviders().providers;
     return Array.isArray(providers) ? providers : [];
   }
@@ -66,11 +93,11 @@ export function createLaboratoryViewAccessorsRuntime(deps: any) {
     return audioAnalysisOrderedResultEntriesFn();
   }
 
-  function renderToolCard(toolId: any, stageId: any) {
+  function renderToolCard(toolId: string, stageId: string) {
     return renderToolCardFn(toolId, stageId);
   }
 
-  function renderProfileModelCard(entry: any) {
+  function renderProfileModelCard(entry: unknown) {
     return renderProfileModelCardFn(entry);
   }
 

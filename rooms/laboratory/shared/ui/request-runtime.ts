@@ -1,4 +1,32 @@
-export function createLaboratoryRequestRuntime(deps: any) {
+import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js";
+
+type LaboratoryRecord = Record<string, unknown>;
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
+type LaboratoryActionDomain = keyof LaboratoryUiState["ui"]["latestRequestByDomain"];
+type LaboratoryDraftPayload = LaboratoryRecord & {
+  youtubeCustom?: unknown;
+};
+type LaboratoryTrackedRequest = {
+  domain: LaboratoryActionDomain;
+  sequence: number;
+};
+type LaboratoryRoomApi = {
+  sendEvent: (eventName: string, payload: LaboratoryRecord) => void;
+};
+
+type LaboratoryRequestRuntimeDeps = {
+  bootstrapText: (key: string) => string;
+  buildCurrentDraftPayload: () => LaboratoryDraftPayload;
+  getActiveFeatureId: () => string;
+  getRoomApi: () => LaboratoryRoomApi | null | undefined;
+  isSubtitleAnalysisFeature: () => boolean;
+  render: () => void;
+  requestOverlayScrollReset: () => void;
+  state: LaboratoryUiState;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryRequestRuntime(deps: LaboratoryRequestRuntimeDeps) {
   const {
     bootstrapText,
     buildCurrentDraftPayload,
@@ -11,11 +39,15 @@ export function createLaboratoryRequestRuntime(deps: any) {
     toRecord,
   } = deps;
 
-  function setLastAction(message: any) {
+  function getRequestLookup(): Record<string, LaboratoryTrackedRequest> {
+    return state.ui.requestLookup as Record<string, LaboratoryTrackedRequest>;
+  }
+
+  function setLastAction(message: string) {
     state.ui.lastActionMessage = message;
   }
 
-  function getActionDomain(action: any) {
+  function getActionDomain(action: unknown): LaboratoryActionDomain {
     switch (action) {
       case "project-create":
       case "project-select":
@@ -91,58 +123,52 @@ export function createLaboratoryRequestRuntime(deps: any) {
     }
   }
 
-  function rememberRequest(requestId: any, action: any) {
+  function rememberRequest(requestId: string, action: unknown) {
+    const lookup = getRequestLookup();
     const domain = getActionDomain(action);
     const nextSequence = state.ui.requestCounter + 1;
     state.ui.requestCounter = nextSequence;
     state.ui.latestRequestByDomain[domain] = nextSequence;
-    state.ui.requestLookup[requestId] = {
+    lookup[requestId] = {
       domain: domain,
       sequence: nextSequence,
     };
 
-    const lookupEntries = Object.entries(state.ui.requestLookup);
+    const lookupEntries = Object.entries(lookup);
     if (lookupEntries.length > 120) {
       lookupEntries
-        .sort(function (left: any, right: any) {
-          return Number(toRecord(right[1]).sequence) - Number(toRecord(left[1]).sequence);
+        .sort(function ([, left], [, right]) {
+          return right.sequence - left.sequence;
         })
         .slice(100)
-        .forEach(function (entry: any) {
-          delete state.ui.requestLookup[entry[0]];
+        .forEach(function ([trackedRequestId]) {
+          delete lookup[trackedRequestId];
         });
     }
   }
 
-  function shouldIgnoreCorrelatedPayload(requestId: any, action: any) {
+  function shouldIgnoreCorrelatedPayload(requestId: unknown, action: unknown) {
     if (typeof requestId !== "string" || requestId.trim() === "") {
       return false;
     }
 
-    const tracked = toRecord(state.ui.requestLookup[requestId]);
-    const trackedDomain =
-      typeof tracked.domain === "string" && tracked.domain.trim() !== "" ? tracked.domain : null;
-    const trackedSequence =
-      typeof tracked.sequence === "number" && Number.isFinite(tracked.sequence)
-        ? tracked.sequence
-        : null;
-
-    if (trackedDomain === null || trackedSequence === null) {
+    const tracked = getRequestLookup()[requestId];
+    if (!tracked) {
       return false;
     }
 
-    const domain = getActionDomain(action || trackedDomain);
-    const latestSequence = Number(state.ui.latestRequestByDomain[domain] || 0);
-    return trackedDomain === domain && trackedSequence < latestSequence;
+    const domain = getActionDomain(action ?? tracked.domain);
+    const latestSequence = state.ui.latestRequestByDomain[domain] || 0;
+    return tracked.domain === domain && tracked.sequence < latestSequence;
   }
 
-  function nextRequestId(action: any) {
+  function nextRequestId(action: string) {
     return [action, Date.now(), Math.random().toString(36).slice(2, 8)].join("-");
   }
 
-  function sendMediaAction(action: any, payload: any) {
+  function sendMediaAction(action: string, payload?: LaboratoryRecord | null) {
     const roomApi = getRoomApi();
-    if (!roomApi || typeof roomApi.sendEvent !== "function") {
+    if (!roomApi) {
       setLastAction(bootstrapText("roomApiUnavailable"));
       render();
       return null;
@@ -156,46 +182,55 @@ export function createLaboratoryRequestRuntime(deps: any) {
       action: action,
       payload: {
         featureId: getActiveFeatureId(),
-        ...(payload || {}),
+        ...toRecord(payload),
       },
     });
     return requestId;
   }
 
-  function sendSourceAction(action: any, payload: any) {
+  function sendSourceAction(action: string, payload?: LaboratoryRecord | null) {
     return sendMediaAction(action, payload);
   }
 
-  function syncDraftField(path: any, value: any) {
+  function syncDraftField(path: string, value: unknown) {
     if (isSubtitleAnalysisFeature()) {
-      state.ui.localSubtitleDrafts[path] = value;
+      const subtitleDrafts = state.ui.localSubtitleDrafts as Record<string, unknown>;
+      subtitleDrafts[path] = value;
       return;
     }
+
     if (path === "youtubePreset") {
       state.ui.localDrafts.youtubePreset = value;
       return;
     }
-    if (path.indexOf("youtubeCustom.") === 0) {
+
+    if (path.startsWith("youtubeCustom.")) {
       const key = path.replace("youtubeCustom.", "");
-      state.ui.localDrafts.youtubeCustom[key] = value;
+      const youtubeCustom = state.ui.localDrafts.youtubeCustom as Record<string, unknown>;
+      youtubeCustom[key] = value;
       return;
     }
-    state.ui.localDrafts[path] = value;
+
+    const localDrafts = state.ui.localDrafts as Record<string, unknown>;
+    localDrafts[path] = value;
   }
 
-  function persistDrafts(extraFields: any) {
-    const nextFields = {
-      ...buildCurrentDraftPayload(),
-      ...toRecord(extraFields),
+  function persistDrafts(extraFields: unknown) {
+    const currentDrafts = buildCurrentDraftPayload();
+    const extraDraftFields = toRecord(extraFields);
+    const nextFields: LaboratoryDraftPayload = {
+      ...currentDrafts,
+      ...extraDraftFields,
     };
+
     if (isSubtitleAnalysisFeature()) {
       sendSourceAction("subtitle-source-update-drafts", { fields: nextFields });
       return;
     }
 
-    nextFields.youtubeCustom = {
-      ...toRecord(buildCurrentDraftPayload().youtubeCustom),
-      ...toRecord(toRecord(extraFields).youtubeCustom),
+    nextFields["youtubeCustom"] = {
+      ...toRecord(currentDrafts["youtubeCustom"]),
+      ...toRecord(extraDraftFields["youtubeCustom"]),
     };
     sendSourceAction("source-update-draft", { fields: nextFields });
   }

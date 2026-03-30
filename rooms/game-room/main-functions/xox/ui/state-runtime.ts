@@ -1,4 +1,8 @@
-(function (global: any) {
+(function (
+  global: typeof globalThis & {
+    GameRoomUiFactories?: GameRoomUiFactoriesRegistry;
+  }
+) {
   type UnknownRecord = Record<string, unknown>;
   type XoxTarget = "ai1" | "ai2" | "us1";
   type XoxStarter = "user" | "ai";
@@ -89,6 +93,29 @@
     sendRoomCommand: (command: string, payload: UnknownRecord) => void;
   };
 
+  type XoxUiStateRuntime = {
+    createGameState: () => XoxGameState;
+    sanitizeGameState: (candidate: unknown) => XoxGameState;
+    syncPreferencesFromGame: () => void;
+    getSlotOrder: () => XoxSlotState[];
+    getSlotStatusLabel: (slot: XoxSlotState) => string;
+    getSelectedTarget: () => XoxTarget;
+    getDisplayOpponent: () => XoxSlotState;
+    getCurrentStatus: () => string;
+    getResultLabel: () => string;
+    getTurnLabel: () => string;
+    getSymbolsLabel: () => string;
+    getOpenCellsLabel: () => string;
+    getBoardCaption: () => string;
+    getStarterLabelForCurrentTarget: (value: XoxStarter) => string;
+    formatInviteMeta: (invite: XoxInviteEntry) => string;
+    onStart: () => void;
+    onReset: () => void;
+    onCellClick: (index: number) => void;
+    onAcceptInvite: (inviteId: string, remoteUserId: string) => void;
+    onRejectInvite: (inviteId: string, remoteUserId: string) => void;
+  };
+
   function isRecord(value: unknown): value is UnknownRecord {
     return typeof value === "object" && value !== null && Array.isArray(value) === false;
   }
@@ -113,7 +140,12 @@
     return value === "opponent" ? "opponent" : "user";
   }
 
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+  type XoxUiStateRuntimeRegistry = GameRoomUiFactoriesRegistry & {
+    createXoxUiStateRuntime?: (deps: XoxUiStateRuntimeDeps) => XoxUiStateRuntime;
+  };
+
+  const registry = (global.GameRoomUiFactories ||
+    (global.GameRoomUiFactories = {} as GameRoomUiFactoriesRegistry)) as XoxUiStateRuntimeRegistry;
 
   registry.createXoxUiStateRuntime = function createXoxUiStateRuntime(deps: XoxUiStateRuntimeDeps) {
     const getState = deps.getState;
@@ -184,10 +216,10 @@
         return [];
       }
       return value
-        .map(function (entry: any) {
+        .map(function (entry: unknown) {
           return normalizeInviteEntry(entry);
         })
-        .filter(function (entry: any) {
+        .filter(function (entry: XoxInviteEntry) {
           return entry.inviteId !== "" && entry.remoteUserId !== "";
         });
     }
@@ -218,7 +250,7 @@
       const source = isRecord(candidate) ? candidate : {};
       const next = createGameState();
       if (Array.isArray(source["board"]) && source["board"].length === 9) {
-        next.board = source["board"].map(function (value: any) {
+        next.board = source["board"].map(function (value: unknown) {
           return value === "X" || value === "O" ? value : "";
         });
       }
@@ -226,7 +258,9 @@
         next.boardAscii = source["boardAscii"];
       }
       if (Array.isArray(source["availableCells"])) {
-        next.availableCells = source["availableCells"].filter(function (value: any) {
+        next.availableCells = source["availableCells"].filter(function (
+          value: unknown
+        ): value is number {
           return typeof value === "number" && Number.isInteger(value);
         });
       }
@@ -293,7 +327,7 @@
           nickname: state.game.pendingInvite.nickname,
         };
       }
-      return state.context.slots[getSelectedTarget()] || state.context.slots.ai1;
+      return state.context.slots[getSelectedTarget()];
     }
 
     function getCurrentStatus(): string {

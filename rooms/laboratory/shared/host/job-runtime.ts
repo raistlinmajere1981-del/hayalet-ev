@@ -1,9 +1,11 @@
+type LaboratoryRecord = Record<string, unknown>;
+
 type JobRuntimeDeps = {
   roomId: string;
-  toRecord: (value: unknown) => Record<string, unknown>;
+  toRecord: (value: unknown) => LaboratoryRecord;
   cancelRoomTool: (roomId: string, jobId: string, requestId: string) => Promise<unknown>;
-  clearJob: (runtime: Record<string, unknown>, jobId: string) => void;
-  pushJobState: (api: unknown, payload: Record<string, unknown>) => void;
+  clearJob: (runtime: JobRuntime, jobId: string) => void;
+  pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
 };
 
 type JobRuntime = {
@@ -21,13 +23,21 @@ type JobEntry = {
 export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
   const { roomId, toRecord, cancelRoomTool, clearJob, pushJobState } = deps;
 
+  function toJobEntry(jobId: string, value: unknown): JobEntry {
+    const record = toRecord(value);
+    return {
+      jobId,
+      action: typeof record["action"] === "string" ? record["action"] : null,
+      projectId: typeof record["projectId"] === "string" ? record["projectId"] : null,
+      toolId: typeof record["toolId"] === "string" ? record["toolId"] : null,
+      featureStage: typeof record["featureStage"] === "string" ? record["featureStage"] : null,
+    };
+  }
+
   function collectJobs(runtime: JobRuntime, predicate: (job: JobEntry) => boolean): JobEntry[] {
     return Object.keys(runtime.jobs)
-      .map(function (jobId: any) {
-        return {
-          jobId: jobId,
-          ...toRecord(runtime.jobs[jobId]),
-        } as JobEntry;
+      .map(function (jobId) {
+        return toJobEntry(jobId, runtime.jobs[jobId]);
       })
       .filter(predicate);
   }
@@ -40,10 +50,10 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     resolveFeatureStage: string | ((job: JobEntry) => string)
   ) {
     return Promise.all(
-      activeJobs.map(async function (job: JobEntry) {
+      activeJobs.map(async function (job) {
         await cancelRoomTool(roomId, job.jobId, requestId);
         pushJobState(api, {
-          requestId: requestId,
+          requestId,
           jobId: job.jobId,
           action: job.action,
           projectId: job.projectId,
@@ -65,10 +75,10 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     projectId: string,
     actionId: string | undefined
   ) {
-    return collectJobs(runtime, function (job: JobEntry) {
+    return collectJobs(runtime, function (job) {
       return (
         job.projectId === projectId &&
-        String(job.action || "").startsWith("profile-") &&
+        String(job.action ?? "").startsWith("profile-") &&
         (actionId ? job.action === actionId : true)
       );
     });
@@ -79,8 +89,7 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     projectId: string,
     actionId: string | undefined
   ) {
-    const activeJobs = getActiveProfileJobs(runtime, projectId, actionId);
-    if (activeJobs.length > 0) {
+    if (getActiveProfileJobs(runtime, projectId, actionId).length > 0) {
       throw new Error(
         "This profile job is already running. Cancel it before starting another one."
       );
@@ -100,10 +109,10 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
   }
 
   function getActiveEditJobs(runtime: JobRuntime, projectId: string, actionId: string | undefined) {
-    return collectJobs(runtime, function (job: JobEntry) {
+    return collectJobs(runtime, function (job) {
       return (
         job.projectId === projectId &&
-        String(job.action || "").startsWith("edit-") &&
+        String(job.action ?? "").startsWith("edit-") &&
         (actionId ? job.action === actionId : true)
       );
     });
@@ -114,8 +123,7 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     projectId: string,
     actionId: string | undefined
   ) {
-    const activeJobs = getActiveEditJobs(runtime, projectId, actionId);
-    if (activeJobs.length > 0) {
+    if (getActiveEditJobs(runtime, projectId, actionId).length > 0) {
       throw new Error("This edit job is already running. Cancel it before starting another one.");
     }
   }
@@ -128,8 +136,8 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     actionId: string | undefined
   ) {
     const activeJobs = getActiveEditJobs(runtime, projectId, actionId);
-    await cancelFeatureJobs(api, runtime, activeJobs, requestId, function (job: JobEntry) {
-      return job.featureStage || "edit";
+    await cancelFeatureJobs(api, runtime, activeJobs, requestId, function (job) {
+      return job.featureStage ?? "edit";
     });
     return activeJobs;
   }
@@ -139,10 +147,10 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     projectId: string,
     actionId: string | undefined
   ) {
-    return collectJobs(runtime, function (job: JobEntry) {
+    return collectJobs(runtime, function (job) {
       return (
         job.projectId === projectId &&
-        String(job.featureStage || "") === "process" &&
+        job.featureStage === "process" &&
         (actionId ? job.action === actionId : true)
       );
     });
@@ -153,8 +161,7 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     projectId: string,
     actionId: string | undefined
   ) {
-    const activeJobs = getActiveProcessJobs(runtime, projectId, actionId);
-    if (activeJobs.length > 0) {
+    if (getActiveProcessJobs(runtime, projectId, actionId).length > 0) {
       throw new Error(
         "This process job is already running. Cancel it before starting another one."
       );
@@ -178,10 +185,10 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     projectId: string,
     actionId: string | undefined
   ) {
-    return collectJobs(runtime, function (job: JobEntry) {
+    return collectJobs(runtime, function (job) {
       return (
         job.projectId === projectId &&
-        String(job.featureStage || "") === "report" &&
+        job.featureStage === "report" &&
         (actionId ? job.action === actionId : true)
       );
     });
@@ -192,8 +199,7 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
     projectId: string,
     actionId: string | undefined
   ) {
-    const activeJobs = getActiveReportJobs(runtime, projectId, actionId);
-    if (activeJobs.length > 0) {
+    if (getActiveReportJobs(runtime, projectId, actionId).length > 0) {
       throw new Error("This report job is already running. Wait for it or cancel it first.");
     }
   }

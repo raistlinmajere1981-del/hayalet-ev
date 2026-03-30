@@ -1,44 +1,172 @@
+import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js";
+
 type LaboratoryRecord = Record<string, unknown>;
+type LaboratoryNestedRecord = Record<string, unknown>;
 
-export function createLaboratoryUiDraftRuntime(deps: any) {
-  const state = deps.state;
-  const toRecord = deps.toRecord;
-  const deepClone = deps.deepClone;
-  const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;
-  const getSourceSnapshot = deps.getSourceSnapshot;
-  const getProjectSource = deps.getProjectSource;
-  const getSubtitleWorkspace = deps.getSubtitleWorkspace;
-  const getActiveProject = deps.getActiveProject;
-  const getProjectEdit = deps.getProjectEdit;
-  const getSubtitleEditState = deps.getSubtitleEditState;
-  const getEditPresets = deps.getEditPresets;
-  const asRecord = function asRecord(value: unknown): LaboratoryRecord {
-    return toRecord(value) as LaboratoryRecord;
-  };
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
+type LaboratoryUiDraftState = LaboratoryUiState["ui"]["localDrafts"];
+type LaboratoryUiSubtitleDraftState = LaboratoryUiState["ui"]["localSubtitleDrafts"];
 
-  function sortStageJobs(entries: any[], actionOrder: Record<string, number>) {
-    return entries.sort(function (left: any, right: any) {
-      const leftRankValue = actionOrder[String(left["action"] || "")];
-      const rightRankValue = actionOrder[String(right["action"] || "")];
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  id?: unknown;
+  updatedAt?: unknown;
+};
+
+type LaboratoryProjectSourceRecord = LaboratoryRecord & {
+  drafts?: unknown;
+};
+
+type LaboratorySubtitleWorkspaceRecord = LaboratoryRecord & {
+  drafts?: unknown;
+};
+
+type LaboratoryFocusRegionRecord = LaboratoryRecord & {
+  cropNormalized?: unknown;
+};
+
+export type LaboratoryDraftStageJobRecord = LaboratoryRecord & {
+  action?: unknown;
+  featureStage?: unknown;
+  jobId?: unknown;
+  requestId?: unknown;
+};
+
+type LaboratoryUiDraftRuntimeDeps = {
+  deepClone: <T>(value: T) => T;
+  getActiveProject: () => LaboratoryProjectRecord | null;
+  getEditPresets: () => LaboratoryRecord;
+  getProjectEdit: () => LaboratoryRecord;
+  getProjectSource: () => LaboratoryProjectSourceRecord;
+  getSourceSnapshot: () => LaboratoryRecord & { activeProjectId?: unknown };
+  getSubtitleEditState: () => LaboratoryRecord;
+  getSubtitleWorkspace: () => LaboratorySubtitleWorkspaceRecord;
+  isSubtitleAnalysisFeature: () => boolean;
+  state: LaboratoryUiState;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryUiDraftRuntime(deps: LaboratoryUiDraftRuntimeDeps) {
+  const {
+    deepClone,
+    getActiveProject,
+    getEditPresets,
+    getProjectEdit,
+    getProjectSource,
+    getSourceSnapshot,
+    getSubtitleEditState,
+    getSubtitleWorkspace,
+    isSubtitleAnalysisFeature,
+    state,
+    toRecord,
+  } = deps;
+
+  function asRecord(value: unknown): LaboratoryRecord {
+    return toRecord(value);
+  }
+
+  function asNonEmptyString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value : null;
+  }
+
+  function asNumber(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+
+  function isNestedRecord(value: unknown): value is LaboratoryNestedRecord {
+    return value !== null && typeof value === "object" && Array.isArray(value) === false;
+  }
+
+  function toJobRecord(value: unknown): LaboratoryDraftStageJobRecord {
+    return asRecord(value);
+  }
+
+  function toProjectRecord(value: unknown): LaboratoryProjectRecord {
+    return asRecord(value);
+  }
+
+  function toProjectSourceRecord(value: unknown): LaboratoryProjectSourceRecord {
+    return asRecord(value);
+  }
+
+  function toSubtitleWorkspaceRecord(value: unknown): LaboratorySubtitleWorkspaceRecord {
+    return asRecord(value);
+  }
+
+  function toFocusRegionRecord(value: unknown): LaboratoryFocusRegionRecord {
+    return asRecord(value);
+  }
+
+  function getActiveProjectId() {
+    return getSourceSnapshot().activeProjectId;
+  }
+
+  function createSubtitleLocalDraftState(drafts: LaboratoryRecord): LaboratoryUiSubtitleDraftState {
+    return {
+      durationMaxSeconds: asNumber(drafts["durationMaxSeconds"]),
+      durationMinSeconds: asNumber(drafts["durationMinSeconds"]),
+      limitCount: asNumber(drafts["limitCount"]),
+      liveMode: asNonEmptyString(drafts["liveMode"]) || "all",
+      playlistItems: typeof drafts["playlistItems"] === "string" ? drafts["playlistItems"] : "",
+      publishedAfter:
+        typeof drafts["publishedAfter"] === "string" ? drafts["publishedAfter"] : "",
+      publishedBefore:
+        typeof drafts["publishedBefore"] === "string" ? drafts["publishedBefore"] : "",
+      shortsMode: asNonEmptyString(drafts["shortsMode"]) || "all",
+      subtitleMode: asNonEmptyString(drafts["subtitleMode"]) || "manual",
+      subtitlesLang: asNonEmptyString(drafts["subtitlesLang"]) || "all",
+      titleExclude: typeof drafts["titleExclude"] === "string" ? drafts["titleExclude"] : "",
+      titleInclude: typeof drafts["titleInclude"] === "string" ? drafts["titleInclude"] : "",
+      urlInput: typeof drafts["urlInput"] === "string" ? drafts["urlInput"] : "",
+      weekdays: typeof drafts["weekdays"] === "string" ? drafts["weekdays"] : "",
+      youtubeUrl: typeof drafts["youtubeUrl"] === "string" ? drafts["youtubeUrl"] : "",
+    };
+  }
+
+  function createLocalDraftState(drafts: LaboratoryRecord): LaboratoryUiDraftState {
+    return {
+      fileNameHint: typeof drafts["fileNameHint"] === "string" ? drafts["fileNameHint"] : "",
+      urlInput: typeof drafts["urlInput"] === "string" ? drafts["urlInput"] : "",
+      youtubeCustom: { ...asRecord(drafts["youtubeCustom"]) },
+      youtubePreset: asNonEmptyString(drafts["youtubePreset"]),
+      youtubeUrl: typeof drafts["youtubeUrl"] === "string" ? drafts["youtubeUrl"] : "",
+    };
+  }
+
+  function sortStageJobs(
+    entries: LaboratoryDraftStageJobRecord[],
+    actionOrder: Record<string, number>
+  ) {
+    return entries.sort(function (left, right) {
+      const leftRankValue = actionOrder[asNonEmptyString(left.action) || ""];
+      const rightRankValue = actionOrder[asNonEmptyString(right.action) || ""];
       const leftRank = typeof leftRankValue === "number" ? leftRankValue : 99;
       const rightRank = typeof rightRankValue === "number" ? rightRankValue : 99;
       if (leftRank !== rightRank) {
         return leftRank - rightRank;
       }
 
-      const leftId = String(left["jobId"] || left["requestId"] || left["action"] || "");
-      const rightId = String(right["jobId"] || right["requestId"] || right["action"] || "");
+      const leftId =
+        asNonEmptyString(left.jobId) ||
+        asNonEmptyString(left.requestId) ||
+        asNonEmptyString(left.action) ||
+        "";
+      const rightId =
+        asNonEmptyString(right.jobId) ||
+        asNonEmptyString(right.requestId) ||
+        asNonEmptyString(right.action) ||
+        "";
       return leftId.localeCompare(rightId);
     });
   }
 
   function collectEditStageJobs(projectJobs: unknown[]) {
     const editJobs = Array.isArray(projectJobs)
-      ? projectJobs
-          .map(asRecord)
-          .filter(function (entry: LaboratoryRecord) {
-            return entry["featureStage"] === "edit" || String(entry["action"] || "").startsWith("edit-");
-          })
+      ? projectJobs.map(toJobRecord).filter(function (entry) {
+          return (
+            entry.featureStage === "edit" ||
+            (asNonEmptyString(entry.action) || "").startsWith("edit-")
+          );
+        })
       : [];
     return sortStageJobs(editJobs, {
       "edit-preview": 0,
@@ -48,13 +176,12 @@ export function createLaboratoryUiDraftRuntime(deps: any) {
 
   function collectProfileStageJobs(projectJobs: unknown[]) {
     const profileJobs = Array.isArray(projectJobs)
-      ? projectJobs
-          .map(asRecord)
-          .filter(function (entry: LaboratoryRecord) {
-            return (
-                entry["featureStage"] === "profile" || String(entry["action"] || "").startsWith("profile-")
-            );
-          })
+      ? projectJobs.map(toJobRecord).filter(function (entry) {
+          return (
+            entry.featureStage === "profile" ||
+            (asNonEmptyString(entry.action) || "").startsWith("profile-")
+          );
+        })
       : [];
     return sortStageJobs(profileJobs, {
       "profile-run-preflight": 0,
@@ -65,67 +192,60 @@ export function createLaboratoryUiDraftRuntime(deps: any) {
 
   function collectProcessStageJobs(projectJobs: unknown[]) {
     return (Array.isArray(projectJobs) ? projectJobs : [])
-      .map(asRecord)
-      .filter(function (entry: LaboratoryRecord) {
-        return entry["featureStage"] === "process" || String(entry["action"] || "").includes("process");
-      })
-      .sort(function (left: LaboratoryRecord, right: LaboratoryRecord) {
-        return String(left["jobId"] || left["requestId"] || left["action"] || "").localeCompare(
-          String(right["jobId"] || right["requestId"] || right["action"] || "")
+      .map(toJobRecord)
+      .filter(function (entry) {
+        return (
+          entry.featureStage === "process" ||
+          (asNonEmptyString(entry.action) || "").includes("process")
         );
+      })
+      .sort(function (left, right) {
+        const leftId =
+          asNonEmptyString(left.jobId) ||
+          asNonEmptyString(left.requestId) ||
+          asNonEmptyString(left.action) ||
+          "";
+        const rightId =
+          asNonEmptyString(right.jobId) ||
+          asNonEmptyString(right.requestId) ||
+          asNonEmptyString(right.action) ||
+          "";
+        return leftId.localeCompare(rightId);
       });
   }
 
   function collectReportStageJobs(projectJobs: unknown[]) {
     return (Array.isArray(projectJobs) ? projectJobs : [])
-      .map(asRecord)
-      .filter(function (entry: LaboratoryRecord) {
-        return entry["featureStage"] === "report" || String(entry["action"] || "").includes("report");
-      })
-      .sort(function (left: LaboratoryRecord, right: LaboratoryRecord) {
-        return String(left["jobId"] || left["requestId"] || left["action"] || "").localeCompare(
-          String(right["jobId"] || right["requestId"] || right["action"] || "")
+      .map(toJobRecord)
+      .filter(function (entry) {
+        return (
+          entry.featureStage === "report" ||
+          (asNonEmptyString(entry.action) || "").includes("report")
         );
+      })
+      .sort(function (left, right) {
+        const leftId =
+          asNonEmptyString(left.jobId) ||
+          asNonEmptyString(left.requestId) ||
+          asNonEmptyString(left.action) ||
+          "";
+        const rightId =
+          asNonEmptyString(right.jobId) ||
+          asNonEmptyString(right.requestId) ||
+          asNonEmptyString(right.action) ||
+          "";
+        return leftId.localeCompare(rightId);
       });
   }
 
   function getCurrentDrafts() {
     if (isSubtitleAnalysisFeature()) {
-      const drafts = toRecord(getSubtitleWorkspace().drafts);
+      const drafts = asRecord(toSubtitleWorkspaceRecord(getSubtitleWorkspace()).drafts);
+      const activeProjectId = asNonEmptyString(getActiveProjectId());
 
-      if (state.ui.localSubtitleDraftProjectId !== getSourceSnapshot().activeProjectId) {
-        state.ui.localSubtitleDraftProjectId = getSourceSnapshot().activeProjectId;
-        state.ui.localSubtitleDrafts = {
-          urlInput: typeof drafts.urlInput === "string" ? drafts.urlInput : "",
-          youtubeUrl: typeof drafts.youtubeUrl === "string" ? drafts.youtubeUrl : "",
-          subtitleMode:
-            typeof drafts.subtitleMode === "string" && drafts.subtitleMode.trim() !== ""
-              ? drafts.subtitleMode
-              : "manual",
-          subtitlesLang:
-            typeof drafts.subtitlesLang === "string" && drafts.subtitlesLang.trim() !== ""
-              ? drafts.subtitlesLang
-              : "all",
-          publishedAfter: typeof drafts.publishedAfter === "string" ? drafts.publishedAfter : "",
-          publishedBefore: typeof drafts.publishedBefore === "string" ? drafts.publishedBefore : "",
-          weekdays: typeof drafts.weekdays === "string" ? drafts.weekdays : "",
-          durationMinSeconds:
-            typeof drafts.durationMinSeconds === "number" ? drafts.durationMinSeconds : null,
-          durationMaxSeconds:
-            typeof drafts.durationMaxSeconds === "number" ? drafts.durationMaxSeconds : null,
-          shortsMode:
-            typeof drafts.shortsMode === "string" && drafts.shortsMode.trim() !== ""
-              ? drafts.shortsMode
-              : "all",
-          liveMode:
-            typeof drafts.liveMode === "string" && drafts.liveMode.trim() !== ""
-              ? drafts.liveMode
-              : "all",
-          titleInclude: typeof drafts.titleInclude === "string" ? drafts.titleInclude : "",
-          titleExclude: typeof drafts.titleExclude === "string" ? drafts.titleExclude : "",
-          playlistItems: typeof drafts.playlistItems === "string" ? drafts.playlistItems : "",
-          limitCount: typeof drafts.limitCount === "number" ? drafts.limitCount : null,
-        };
+      if (state.ui.localSubtitleDraftProjectId !== activeProjectId) {
+        state.ui.localSubtitleDraftProjectId = activeProjectId;
+        state.ui.localSubtitleDrafts = createSubtitleLocalDraftState(drafts);
       }
 
       return {
@@ -134,40 +254,31 @@ export function createLaboratoryUiDraftRuntime(deps: any) {
       };
     }
 
-    const source = getProjectSource();
-    const drafts = toRecord(source.drafts);
+    const source = toProjectSourceRecord(getProjectSource());
+    const drafts = asRecord(source.drafts);
+    const activeProjectId = asNonEmptyString(getActiveProjectId());
 
-    if (state.ui.localDraftProjectId !== getSourceSnapshot().activeProjectId) {
-      state.ui.localDraftProjectId = getSourceSnapshot().activeProjectId;
-      state.ui.localDrafts = {
-        urlInput: typeof drafts.urlInput === "string" ? drafts.urlInput : "",
-        youtubeUrl: typeof drafts.youtubeUrl === "string" ? drafts.youtubeUrl : "",
-        fileNameHint: typeof drafts.fileNameHint === "string" ? drafts.fileNameHint : "",
-        youtubePreset:
-          typeof drafts.youtubePreset === "string" && drafts.youtubePreset.trim() !== ""
-            ? drafts.youtubePreset
-            : null,
-        youtubeCustom: { ...toRecord(drafts.youtubeCustom) },
-      };
+    if (state.ui.localDraftProjectId !== activeProjectId) {
+      state.ui.localDraftProjectId = activeProjectId;
+      state.ui.localDrafts = createLocalDraftState(drafts);
     }
 
     return {
       ...drafts,
       ...state.ui.localDrafts,
       youtubeCustom: {
-        ...toRecord(drafts.youtubeCustom),
-        ...toRecord(state.ui.localDrafts.youtubeCustom),
+        ...asRecord(drafts["youtubeCustom"]),
+        ...asRecord(state.ui.localDrafts.youtubeCustom),
       },
     };
   }
 
   function getCurrentEditDraft() {
     if (isSubtitleAnalysisFeature()) {
-      const project = getActiveProject();
+      const project = toProjectRecord(getActiveProject());
       const subtitleEdit = getSubtitleEditState();
-      const projectId = project ? project.id : null;
-      const projectUpdatedAt =
-        project && typeof project.updatedAt === "string" ? project.updatedAt : null;
+      const projectId = asNonEmptyString(project.id);
+      const projectUpdatedAt = asNonEmptyString(project.updatedAt);
 
       if (
         state.ui.localSubtitleEditProjectId !== projectId ||
@@ -179,14 +290,13 @@ export function createLaboratoryUiDraftRuntime(deps: any) {
         state.ui.localSubtitleEditDraft = deepClone(subtitleEdit);
       }
 
-      return toRecord(state.ui.localSubtitleEditDraft);
+      return asRecord(state.ui.localSubtitleEditDraft);
     }
 
-    const project = getActiveProject();
+    const project = toProjectRecord(getActiveProject());
     const projectEdit = getProjectEdit();
-    const projectId = project ? project.id : null;
-    const projectUpdatedAt =
-      project && typeof project.updatedAt === "string" ? project.updatedAt : null;
+    const projectId = asNonEmptyString(project.id);
+    const projectUpdatedAt = asNonEmptyString(project.updatedAt);
 
     if (
       state.ui.localEditProjectId !== projectId ||
@@ -198,10 +308,10 @@ export function createLaboratoryUiDraftRuntime(deps: any) {
       state.ui.localEditDraft = deepClone(projectEdit);
     }
 
-    return toRecord(state.ui.localEditDraft);
+    return asRecord(state.ui.localEditDraft);
   }
 
-  function setNestedValue(target: Record<string, any>, path: string, value: unknown) {
+  function setNestedValue(target: LaboratoryNestedRecord, path: string, value: unknown) {
     const segments = String(path || "")
       .split(".")
       .filter(Boolean);
@@ -209,30 +319,23 @@ export function createLaboratoryUiDraftRuntime(deps: any) {
       return;
     }
 
-    let current: Record<string, any> = target;
-    while (segments.length > 1) {
-      const segment = segments.shift();
-      if (segment === undefined) {
-        return;
-      }
-      if (
-        !current[segment] ||
-        typeof current[segment] !== "object" ||
-        Array.isArray(current[segment])
-      ) {
+    let current = target;
+    for (const segment of segments.slice(0, -1)) {
+      const nextValue = current[segment];
+      if (!isNestedRecord(nextValue)) {
         current[segment] = {};
       }
-      current = current[segment];
+      current = current[segment] as LaboratoryNestedRecord;
     }
-    const finalSegment = segments[0];
-    if (finalSegment === undefined) {
-      return;
+
+    const finalSegment = segments[segments.length - 1];
+    if (finalSegment !== undefined) {
+      current[finalSegment] = value;
     }
-    current[finalSegment] = value;
   }
 
   function buildNestedPatch(path: string, value: unknown) {
-    const patch: Record<string, any> = {};
+    const patch: LaboratoryNestedRecord = {};
     setNestedValue(patch, path, value);
     return patch;
   }
@@ -249,12 +352,15 @@ export function createLaboratoryUiDraftRuntime(deps: any) {
     setNestedValue(draft, path, value);
 
     if (path === "recipe.common.focusRegionId") {
-      const focusRegion = toRecord(toRecord(getEditPresets().focusRegions)[String(value || "")]);
-      const cropNormalized = toRecord(focusRegion.cropNormalized);
+      const focusRegions = asRecord(getEditPresets()["focusRegions"]);
+      const focusRegion = toFocusRegionRecord(focusRegions[String(value || "")]);
+      const cropNormalized = asRecord(focusRegion["cropNormalized"]);
       if (Object.keys(cropNormalized).length > 0) {
-        draft.recipe = toRecord(draft.recipe);
-        draft.recipe.common = toRecord(draft.recipe.common);
-        draft.recipe.common.cropNormalized = deepClone(cropNormalized);
+        const recipe = asRecord(draft["recipe"]);
+        const common = asRecord(recipe["common"]);
+        common["cropNormalized"] = deepClone(cropNormalized);
+        recipe["common"] = common;
+        draft["recipe"] = recipe;
       }
     }
 
@@ -264,30 +370,30 @@ export function createLaboratoryUiDraftRuntime(deps: any) {
   function buildCurrentDraftPayload() {
     if (isSubtitleAnalysisFeature()) {
       return {
-        urlInput: state.ui.localSubtitleDrafts.urlInput,
-        youtubeUrl: state.ui.localSubtitleDrafts.youtubeUrl,
-        subtitleMode: state.ui.localSubtitleDrafts.subtitleMode,
-        subtitlesLang: state.ui.localSubtitleDrafts.subtitlesLang,
+        durationMaxSeconds: state.ui.localSubtitleDrafts.durationMaxSeconds,
+        durationMinSeconds: state.ui.localSubtitleDrafts.durationMinSeconds,
+        limitCount: state.ui.localSubtitleDrafts.limitCount,
+        liveMode: state.ui.localSubtitleDrafts.liveMode,
+        playlistItems: state.ui.localSubtitleDrafts.playlistItems,
         publishedAfter: state.ui.localSubtitleDrafts.publishedAfter,
         publishedBefore: state.ui.localSubtitleDrafts.publishedBefore,
-        weekdays: state.ui.localSubtitleDrafts.weekdays,
-        durationMinSeconds: state.ui.localSubtitleDrafts.durationMinSeconds,
-        durationMaxSeconds: state.ui.localSubtitleDrafts.durationMaxSeconds,
         shortsMode: state.ui.localSubtitleDrafts.shortsMode,
-        liveMode: state.ui.localSubtitleDrafts.liveMode,
-        titleInclude: state.ui.localSubtitleDrafts.titleInclude,
+        subtitleMode: state.ui.localSubtitleDrafts.subtitleMode,
+        subtitlesLang: state.ui.localSubtitleDrafts.subtitlesLang,
         titleExclude: state.ui.localSubtitleDrafts.titleExclude,
-        playlistItems: state.ui.localSubtitleDrafts.playlistItems,
-        limitCount: state.ui.localSubtitleDrafts.limitCount,
+        titleInclude: state.ui.localSubtitleDrafts.titleInclude,
+        urlInput: state.ui.localSubtitleDrafts.urlInput,
+        weekdays: state.ui.localSubtitleDrafts.weekdays,
+        youtubeUrl: state.ui.localSubtitleDrafts.youtubeUrl,
       };
     }
 
     return {
-      urlInput: state.ui.localDrafts.urlInput,
-      youtubeUrl: state.ui.localDrafts.youtubeUrl,
       fileNameHint: state.ui.localDrafts.fileNameHint,
+      urlInput: state.ui.localDrafts.urlInput,
+      youtubeCustom: { ...asRecord(state.ui.localDrafts.youtubeCustom) },
       youtubePreset: state.ui.localDrafts.youtubePreset,
-      youtubeCustom: { ...state.ui.localDrafts.youtubeCustom },
+      youtubeUrl: state.ui.localDrafts.youtubeUrl,
     };
   }
 

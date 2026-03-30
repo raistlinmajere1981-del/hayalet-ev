@@ -1,83 +1,162 @@
 type LaboratoryRecord = Record<string, unknown>;
 
-export function createLaboratorySnapshotSubtitleSelectors(deps: any) {
-  const toRecord = deps.toRecord;
-  const subtitleText = deps.subtitleText;
-  const subtitleTemplate = deps.subtitleTemplate;
-  const formatStatusLabel = deps.formatStatusLabel;
-  const getSourceSnapshot = deps.getSourceSnapshot;
-  const getProjectSubtitleAnalysis = deps.getProjectSubtitleAnalysis;
+type LaboratorySubtitleAnalysisStateRecord = LaboratoryRecord & {
+  activeEntryId?: unknown;
+  discovery?: unknown;
+  edit?: unknown;
+  entries?: unknown;
+  workspace?: unknown;
+};
+
+type LaboratorySubtitleDiscoveryRecord = LaboratoryRecord & {
+  items?: unknown;
+  selectedCandidateIds?: unknown;
+};
+
+type LaboratorySubtitleWorkspaceRecord = LaboratoryRecord & {
+  selection?: unknown;
+};
+
+type LaboratorySubtitleEditRecord = LaboratoryRecord & {
+  outputs?: unknown;
+  preview?: unknown;
+};
+
+type LaboratorySnapshotSubtitleSelectorsDeps = {
+  formatStatusLabel: (value: unknown) => string;
+  getProjectSubtitleAnalysis: () => unknown;
+  getSourceSnapshot: () => unknown;
+  subtitleTemplate: (
+    path: string[],
+    variables: Record<string, string>,
+    tr: string,
+    en: string
+  ) => string;
+  subtitleText: (path: string[], tr: string, en: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratorySnapshotSubtitleSelectors(
+  deps: LaboratorySnapshotSubtitleSelectorsDeps
+) {
+  const {
+    formatStatusLabel,
+    getProjectSubtitleAnalysis,
+    getSourceSnapshot,
+    subtitleTemplate,
+    subtitleText,
+    toRecord,
+  } = deps;
+
+  function toSubtitleAnalysisStateRecord(value: unknown): LaboratorySubtitleAnalysisStateRecord {
+    return toRecord(value);
+  }
+
+  function toSubtitleDiscoveryRecord(value: unknown): LaboratorySubtitleDiscoveryRecord {
+    return toRecord(value);
+  }
+
+  function toSubtitleWorkspaceRecord(value: unknown): LaboratorySubtitleWorkspaceRecord {
+    return toRecord(value);
+  }
+
+  function toSubtitleEditRecord(value: unknown): LaboratorySubtitleEditRecord {
+    return toRecord(value);
+  }
+
+  function toString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value : null;
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return toString(entry);
+      })
+      .filter((entry): entry is string => entry !== null);
+  }
+
+  function getSourceSnapshotRecord() {
+    return toRecord(getSourceSnapshot());
+  }
+
+  function getProjectSubtitleAnalysisRecord(): LaboratorySubtitleAnalysisStateRecord {
+    return toSubtitleAnalysisStateRecord(getProjectSubtitleAnalysis());
+  }
 
   function getSubtitleSourcePresets() {
-    return toRecord(getSourceSnapshot().subtitleSourcePresets);
+    return toRecord(getSourceSnapshotRecord()["subtitleSourcePresets"]);
   }
 
   function getSubtitleYoutubeForm() {
-    return toRecord(getSourceSnapshot().subtitleYoutubeForm);
+    return toRecord(getSourceSnapshotRecord()["subtitleYoutubeForm"]);
   }
 
   function getSubtitleEditPresets() {
-    return toRecord(getSourceSnapshot().subtitleEditPresets);
+    return toRecord(getSourceSnapshotRecord()["subtitleEditPresets"]);
   }
 
   function getSubtitleAnalysisCatalog() {
-    return toRecord(getSourceSnapshot().subtitleAnalysisCatalog);
+    return toRecord(getSourceSnapshotRecord()["subtitleAnalysisCatalog"]);
   }
 
   function getSubtitleAnalysisCapabilities() {
-    return toRecord(getSourceSnapshot().subtitleAnalysisCapabilities);
+    return toRecord(getSourceSnapshotRecord()["subtitleAnalysisCapabilities"]);
   }
 
   function getSubtitleAnalysisProviders() {
-    return toRecord(getSourceSnapshot().subtitleAnalysisProviders);
+    return toRecord(getSourceSnapshotRecord()["subtitleAnalysisProviders"]);
   }
 
-  function getSubtitleProcessStatusLabel(status: any) {
-    const token = typeof status === "string" && status.trim() !== "" ? status.trim() : "planned";
+  function getSubtitleProcessStatusLabel(status: unknown) {
+    const token = toString(status) || "planned";
     const localized = subtitleText(["process", "catalog", "status", token], "", "");
     return localized || formatStatusLabel(token);
   }
 
-  function getSubtitleProviderStatusLabel(status: any) {
-    const token = typeof status === "string" && status.trim() !== "" ? status.trim() : "planned";
+  function getSubtitleProviderStatusLabel(status: unknown) {
+    const token = toString(status) || "planned";
     const localized = subtitleText(["process", "providers", "status", token], "", "");
     return localized || formatStatusLabel(token);
   }
 
-  function getSubtitleProcessModuleLabel(entry: any) {
-    const moduleId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
+  function getSubtitleProcessModuleLabel(entry: unknown) {
+    const moduleId = toString(toRecord(entry)["id"]) || "";
     const localized = moduleId
       ? subtitleText(["process", "catalog", "modules", moduleId, "label"], "", "")
       : "";
-    return localized || toRecord(entry).label || moduleId || "--";
+    return localized || toString(toRecord(entry)["label"]) || moduleId || "--";
   }
 
-  function getSubtitleProcessModuleSummary(entry: any) {
-    const moduleId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
+  function getSubtitleProcessModuleSummary(entry: unknown) {
+    const moduleId = toString(toRecord(entry)["id"]) || "";
     return moduleId
       ? subtitleText(["process", "catalog", "modules", moduleId, "summary"], "", "")
       : "";
   }
 
-  function getSubtitleProviderLabel(entry: any) {
-    const providerId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
+  function getSubtitleProviderLabel(entry: unknown) {
+    const providerId = toString(toRecord(entry)["id"]) || "";
     const localized = providerId
       ? subtitleText(["process", "providers", "items", providerId, "label"], "", "")
       : "";
     return localized || providerId || "--";
   }
 
-  function getSubtitleProviderSummary(entry: any) {
-    const providerId = typeof toRecord(entry).id === "string" ? toRecord(entry).id : "";
+  function getSubtitleProviderSummary(entry: unknown) {
+    const providerId = toString(toRecord(entry)["id"]) || "";
     return providerId
       ? subtitleText(["process", "providers", "items", providerId, "summary"], "", "")
       : "";
   }
 
-  function getSubtitleProviderModuleLabels(entry: any) {
-    const moduleIds = Array.isArray(toRecord(entry).moduleIds) ? toRecord(entry).moduleIds : [];
+  function getSubtitleProviderModuleLabels(entry: unknown) {
+    const moduleIds = toStringArray(toRecord(entry)["moduleIds"]);
     const labels = moduleIds
-      .map(function (moduleId: any) {
+      .map(function (moduleId) {
         return getSubtitleProcessModuleLabel({ id: moduleId });
       })
       .filter(Boolean);
@@ -99,11 +178,11 @@ export function createLaboratorySnapshotSubtitleSelectors(deps: any) {
   }
 
   function getSubtitleWorkspace() {
-    return toRecord(getProjectSubtitleAnalysis().workspace);
+    return toSubtitleWorkspaceRecord(getProjectSubtitleAnalysisRecord().workspace);
   }
 
   function getSubtitleDiscoveryState() {
-    return toRecord(getProjectSubtitleAnalysis().discovery);
+    return toSubtitleDiscoveryRecord(getProjectSubtitleAnalysisRecord().discovery);
   }
 
   function getSubtitleDiscoveryItems() {
@@ -112,31 +191,19 @@ export function createLaboratorySnapshotSubtitleSelectors(deps: any) {
   }
 
   function getSubtitleSelectedCandidateIds() {
-    const selectedCandidateIds = getSubtitleDiscoveryState().selectedCandidateIds;
-    return Array.isArray(selectedCandidateIds)
-      ? selectedCandidateIds.filter(function (entry: any) {
-          return typeof entry === "string" && entry.trim() !== "";
-        })
-      : [];
+    return toStringArray(getSubtitleDiscoveryState().selectedCandidateIds);
   }
 
   function getSubtitleEntries(): LaboratoryRecord[] {
-    const entries = getProjectSubtitleAnalysis().entries;
-    return Array.isArray(entries)
-      ? entries.map(function (entry: any) {
-          return toRecord(entry) as LaboratoryRecord;
-        })
-      : [];
+    const entries = getProjectSubtitleAnalysisRecord().entries;
+    return Array.isArray(entries) ? entries.map(toRecord) : [];
   }
 
   function getActiveSubtitleEntry() {
-    const activeEntryId =
-      typeof getProjectSubtitleAnalysis().activeEntryId === "string"
-        ? getProjectSubtitleAnalysis().activeEntryId
-        : null;
+    const activeEntryId = toString(getProjectSubtitleAnalysisRecord().activeEntryId);
     return (
-      getSubtitleEntries().find(function (entry: any) {
-        return activeEntryId !== null && entry.id === activeEntryId;
+      getSubtitleEntries().find(function (entry) {
+        return activeEntryId !== null && toString(entry["id"]) === activeEntryId;
       }) ||
       getSubtitleEntries()[0] ||
       null
@@ -144,16 +211,11 @@ export function createLaboratorySnapshotSubtitleSelectors(deps: any) {
   }
 
   function getSubtitleSelectedEntryIds() {
-    const selectedEntryIds = toRecord(getSubtitleWorkspace().selection).selectedEntryIds;
-    return Array.isArray(selectedEntryIds)
-      ? selectedEntryIds.filter(function (entry: any) {
-          return typeof entry === "string" && entry.trim() !== "";
-        })
-      : [];
+    return toStringArray(toRecord(getSubtitleWorkspace().selection)["selectedEntryIds"]);
   }
 
   function getSubtitleEditState() {
-    return toRecord(getProjectSubtitleAnalysis().edit);
+    return toSubtitleEditRecord(getProjectSubtitleAnalysisRecord().edit);
   }
 
   function getSubtitleEditPreview() {

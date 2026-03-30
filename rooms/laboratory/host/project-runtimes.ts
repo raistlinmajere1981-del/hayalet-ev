@@ -19,14 +19,67 @@ import { createLaboratoryJobStateRuntime } from "../shared/host/job-state.js";
 import { createMediaProfileModelRuntime } from "../main-functions/media-analysis/host/profile-models.js";
 import { createMediaProfileProjectionRuntime } from "../main-functions/media-analysis/host/profile-projection.js";
 import { createMediaProfileStateRuntime } from "../main-functions/media-analysis/host/profile-state.js";
+import type { createLaboratoryHostFoundation } from "./foundation-runtimes.js";
 
-export function createLaboratoryHostProjectRuntimes(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryHostFoundationRuntime = ReturnType<typeof createLaboratoryHostFoundation>;
+type LaboratoryHostProjectStateComposition = ReturnType<
+  typeof createLaboratoryHostStateCompositionRuntime
+>;
+
+type LaboratoryHostProjectRuntimesDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  audioFeatureId: string;
+  createEmptyAudioAnalysisState: () => unknown;
+  clone: (value: unknown) => unknown;
+  defaultFeatureId: string;
+  featureIds: string[];
+  foundation: LaboratoryHostFoundationRuntime;
+  getProfileArtifactPreferenceMap: (profileCapabilities: unknown) => LaboratoryRecord;
+  getProjectStateRuntime: () => unknown;
+  markCloseoutAsStale: (project: LaboratoryRecord, reason: string, featureIds: string[]) => unknown;
+  markFeatureProcessStale: (
+    project: LaboratoryRecord,
+    featureId: string,
+    reason: string
+  ) => unknown;
+  markFeatureReportStale: (
+    project: LaboratoryRecord,
+    featureId: string,
+    reason: string
+  ) => unknown;
+  mediaFeatureId: string;
+  mediaStages: string[];
+  normalizeAudioAnalysisModuleResult: (
+    rawValue: unknown,
+    moduleId: string,
+    catalogEntry: unknown
+  ) => unknown;
+  normalizeAudioAnalysisState: (rawValue: unknown, runtime: unknown) => unknown;
+  projectSchemaVersion: number;
+  roomId: string;
+  setCloseoutStalenessRuntime: (
+    value: LaboratoryHostProjectStateComposition["laboratoryCloseoutStalenessRuntime"]
+  ) => void;
+  subtitleFeatureId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectRuntimesDeps) {
   const { foundation } = deps;
   const { bootstrap, hostUtils, io, preset, profileModelState } = foundation;
 
-  let stateComposition: any = null;
+  let stateComposition: LaboratoryHostProjectStateComposition | null = null;
 
-  const snapshot = createLaboratorySnapshotCompositionRuntime({
+  function requireStateComposition(): LaboratoryHostProjectStateComposition {
+    if (!stateComposition) {
+      throw new Error("stateComposition not initialized");
+    }
+    return stateComposition;
+  }
+
+  const snapshotDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: preset.asNumber,
     audioFeatureId: deps.audioFeatureId,
@@ -34,13 +87,15 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     defaultFeatureId: deps.defaultFeatureId,
     featureIds: deps.featureIds,
     getFeatureIdFromContext: bootstrap.getFeatureIdFromContext,
-    getFeatureProcessRecord(...args: any[]) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.getFeatureProcessRecord(...args);
+    getFeatureProcessRecord(
+      ...args: Parameters<LaboratoryHostProjectStateComposition["getFeatureProcessRecord"]>
+    ) {
+      return requireStateComposition().getFeatureProcessRecord(...args);
     },
-    getFeatureReportRecord(...args: any[]) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.getFeatureReportRecord(...args);
+    getFeatureReportRecord(
+      ...args: Parameters<LaboratoryHostProjectStateComposition["getFeatureReportRecord"]>
+    ) {
+      return requireStateComposition().getFeatureReportRecord(...args);
     },
     getRuntimeToolIds: bootstrap.getRuntimeToolIds,
     getStageSupport: bootstrap.getStageSupport,
@@ -51,58 +106,81 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     normalizeAudioAnalysisModuleResult: deps.normalizeAudioAnalysisModuleResult,
     normalizeAudioAnalysisState: deps.normalizeAudioAnalysisState,
     normalizeEditOutput: preset.normalizeEditOutput,
-    normalizeProcessState(rawValue: any) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectStateDelegatesRuntime.normalizeProjectProcessState(
+    normalizeProcessState(
+      rawValue: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectStateDelegatesRuntime"]["normalizeProjectProcessState"]
+      >[0]
+    ) {
+      return requireStateComposition().laboratoryProjectStateDelegatesRuntime.normalizeProjectProcessState(
         rawValue
       );
     },
-    normalizeProfileArtifact(rawValue: any) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectStateDelegatesRuntime.normalizeProjectProfileArtifact(
+    normalizeProfileArtifact(
+      rawValue: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectStateDelegatesRuntime"]["normalizeProjectProfileArtifact"]
+      >[0]
+    ) {
+      return requireStateComposition().laboratoryProjectStateDelegatesRuntime.normalizeProjectProfileArtifact(
         rawValue
       );
     },
-    normalizeProfileSignal(rawValue: any) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectStateDelegatesRuntime.normalizeProjectProfileSignal(
+    normalizeProfileSignal(
+      rawValue: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectStateDelegatesRuntime"]["normalizeProjectProfileSignal"]
+      >[0]
+    ) {
+      return requireStateComposition().laboratoryProjectStateDelegatesRuntime.normalizeProjectProfileSignal(
         rawValue
       );
     },
-    normalizeReportState(rawValue: any) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectStateDelegatesRuntime.normalizeProjectReportState(
+    normalizeReportState(
+      rawValue: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectStateDelegatesRuntime"]["normalizeProjectReportState"]
+      >[0]
+    ) {
+      return requireStateComposition().laboratoryProjectStateDelegatesRuntime.normalizeProjectReportState(
         rawValue
       );
     },
     normalizeSourceMetadata: preset.normalizeSourceMetadata,
-    normalizeSubtitleAnalysisState(rawValue: any, runtime: any) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratorySubtitleStateDelegatesRuntime.normalizeSubtitleAnalysisState(
+    normalizeSubtitleAnalysisState(
+      rawValue: Parameters<
+        LaboratoryHostProjectStateComposition["laboratorySubtitleStateDelegatesRuntime"]["normalizeSubtitleAnalysisState"]
+      >[0],
+      runtime: Parameters<
+        LaboratoryHostProjectStateComposition["laboratorySubtitleStateDelegatesRuntime"]["normalizeSubtitleAnalysisState"]
+      >[1]
+    ) {
+      return requireStateComposition().laboratorySubtitleStateDelegatesRuntime.normalizeSubtitleAnalysisState(
         rawValue,
         runtime
-      );
+      ) as unknown;
     },
     projectSchemaVersion: deps.projectSchemaVersion,
     roomId: deps.roomId,
     subtitleFeatureId: deps.subtitleFeatureId,
-    syncProjectFeatureProjections(runtime: any, project: any) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectStateDelegatesRuntime.syncProjectFeatureProjections(
-        runtime,
-        project
+    syncProjectFeatureProjections(
+      ...args: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectStateDelegatesRuntime"]["syncProjectFeatureProjections"]
+      >
+    ) {
+      return requireStateComposition().laboratoryProjectStateDelegatesRuntime.syncProjectFeatureProjections(
+        ...args
       );
     },
     toFileUrl: hostUtils.toFileUrl,
     toRecord: deps.toRecord,
-  });
+  };
+  const snapshot = createLaboratorySnapshotCompositionRuntime(
+    snapshotDeps as unknown as Parameters<typeof createLaboratorySnapshotCompositionRuntime>[0]
+  );
 
   const jobState = createLaboratoryJobStateRuntime({
     cancelRoomTool: io.cancelRoomTool,
     roomId: deps.roomId,
   });
 
-  const lifecycle = createLaboratoryProjectLifecycleRuntime({
+  const lifecycleDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     buildEditManifest: snapshot.buildEditManifest,
     buildProcessManifest: snapshot.buildProcessManifest,
@@ -114,19 +192,28 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     createDefaultProfileModelEntry: bootstrap.createDefaultProfileModelEntry,
     createDefaultToolEntry: bootstrap.createDefaultToolEntry,
     createDefaultToolState: bootstrap.createDefaultToolState,
-    createProjectRecord(...args: any[]) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectRecordsRuntime.createProjectRecord(...args);
+    createProjectRecord(
+      ...args: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectRecordsRuntime"]["createProjectRecord"]
+      >
+    ) {
+      return requireStateComposition().laboratoryProjectRecordsRuntime.createProjectRecord(...args);
     },
     defaultFeatureId: deps.defaultFeatureId,
     ensureProjectDirectories: io.ensureProjectDirectories,
-    findProject(...args: any[]) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectRecordsRuntime.findProject(...args);
+    findProject(
+      ...args: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectRecordsRuntime"]["findProject"]
+      >
+    ) {
+      return requireStateComposition().laboratoryProjectRecordsRuntime.findProject(...args);
     },
-    getActiveProject(...args: any[]) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectRecordsRuntime.getActiveProject(...args);
+    getActiveProject(
+      ...args: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectRecordsRuntime"]["getActiveProject"]
+      >
+    ) {
+      return requireStateComposition().laboratoryProjectRecordsRuntime.getActiveProject(...args);
     },
     getFeatureIdFromContext: bootstrap.getFeatureIdFromContext,
     getProfileModelStatePath,
@@ -139,29 +226,42 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     getRuntimeToolIds: bootstrap.getRuntimeToolIds,
     listDirectory: io.listDirectory,
     loadContext: bootstrap.loadContext,
-    normalizeProject(...args: any[]) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectRecordsRuntime.normalizeProject(...args);
+    normalizeProject(
+      ...args: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectRecordsRuntime"]["normalizeProject"]
+      >
+    ) {
+      return requireStateComposition().laboratoryProjectRecordsRuntime.normalizeProject(...args);
     },
     readJsonFile: io.readJsonFile,
     refreshProfileModelState: profileModelState.reloadProfileModelState,
     roomId: deps.roomId,
-    syncProjectFeatureProjections(runtime: any, project: any) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectStateDelegatesRuntime.syncProjectFeatureProjections(
-        runtime,
-        project
+    syncProjectFeatureProjections(
+      ...args: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectStateDelegatesRuntime"]["syncProjectFeatureProjections"]
+      >
+    ) {
+      return requireStateComposition().laboratoryProjectStateDelegatesRuntime.syncProjectFeatureProjections(
+        ...args
       );
     },
     toRecord: deps.toRecord,
-    updateProjectTimestamps(...args: any[]) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectRecordsRuntime.updateProjectTimestamps(...args);
+    updateProjectTimestamps(
+      ...args: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectRecordsRuntime"]["updateProjectTimestamps"]
+      >
+    ) {
+      return requireStateComposition().laboratoryProjectRecordsRuntime.updateProjectTimestamps(
+        ...args
+      );
     },
     writeJsonFile: io.writeJsonFile,
-  });
+  };
+  const lifecycle = createLaboratoryProjectLifecycleRuntime(
+    lifecycleDeps as unknown as Parameters<typeof createLaboratoryProjectLifecycleRuntime>[0]
+  );
 
-  const mediaProfileModel = createMediaProfileModelRuntime({
+  const mediaProfileModelDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: preset.asNumber,
     callRoomTools: io.callRoomTools,
@@ -169,9 +269,12 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     createDefaultProfileModelEntry: bootstrap.createDefaultProfileModelEntry,
     digestSha1: io.digestSha1,
     ensureRuntimeDirectory: io.ensureRuntimeDirectory,
-    getActiveProject(...args: any[]) {
-      if (!stateComposition) throw new Error("stateComposition not initialized");
-      return stateComposition.laboratoryProjectRecordsRuntime.getActiveProject(...args);
+    getActiveProject(
+      ...args: Parameters<
+        LaboratoryHostProjectStateComposition["laboratoryProjectRecordsRuntime"]["getActiveProject"]
+      >
+    ) {
+      return requireStateComposition().laboratoryProjectRecordsRuntime.getActiveProject(...args);
     },
     getProfileModelDescriptor: profileModelState.readProfileModelDescriptor,
     getProfileModelDescriptorMap: profileModelState.readProfileModelDescriptorMap,
@@ -188,9 +291,12 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     toRecord: deps.toRecord,
     updateProfileModelBusy: profileModelState.updateProfileModelBusy,
     updateProfileModelEntry: profileModelState.updateProfileModelEntry,
-  });
+  };
+  const mediaProfileModel = createMediaProfileModelRuntime(
+    mediaProfileModelDeps as unknown as Parameters<typeof createMediaProfileModelRuntime>[0]
+  );
 
-  const mediaProfileState = createMediaProfileStateRuntime({
+  const mediaProfileStateDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: preset.asNumber,
     clampNumber: hostUtils.clampNumber,
@@ -206,9 +312,12 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     markCloseoutAsStale: deps.markCloseoutAsStale,
     mediaFeatureId: deps.mediaFeatureId,
     toRecord: deps.toRecord,
-  });
+  };
+  const mediaProfileState = createMediaProfileStateRuntime(
+    mediaProfileStateDeps as unknown as Parameters<typeof createMediaProfileStateRuntime>[0]
+  );
 
-  stateComposition = createLaboratoryHostStateCompositionRuntime({
+  const stateCompositionDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: preset.asNumber,
     buildProjectName: preset.buildProjectName,
@@ -239,13 +348,15 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     projectSchemaVersion: deps.projectSchemaVersion,
     subtitleFeatureId: deps.subtitleFeatureId,
     toRecord: deps.toRecord,
-  });
+  };
+  stateComposition = createLaboratoryHostStateCompositionRuntime(
+    stateCompositionDeps as unknown as Parameters<typeof createLaboratoryHostStateCompositionRuntime>[0]
+  );
 
-  if (!stateComposition) throw new Error("stateComposition not initialized");
-  const sc = stateComposition;
+  const sc = requireStateComposition();
   deps.setCloseoutStalenessRuntime(sc.laboratoryCloseoutStalenessRuntime);
 
-  const analysisArtifact = createLaboratoryAnalysisArtifactRuntime({
+  const analysisArtifactDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: preset.asNumber,
     callRoomTools: io.callRoomTools,
@@ -259,9 +370,12 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     roomId: deps.roomId,
     toRecord: deps.toRecord,
     writeJsonFile: io.writeJsonFile,
-  });
+  };
+  const analysisArtifact = createLaboratoryAnalysisArtifactRuntime(
+    analysisArtifactDeps as unknown as Parameters<typeof createLaboratoryAnalysisArtifactRuntime>[0]
+  );
 
-  const profileProjection = createMediaProfileProjectionRuntime({
+  const profileProjectionDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: preset.asNumber,
     buildDerivedTargetSignature: snapshot.buildDerivedTargetSignature,
@@ -288,9 +402,12 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     normalizeProfileState: mediaProfileState.normalizeProfileState,
     normalizeSourceMetadata: preset.normalizeSourceMetadata,
     toRecord: deps.toRecord,
-  });
+  };
+  const profileProjection = createMediaProfileProjectionRuntime(
+    profileProjectionDeps as unknown as Parameters<typeof createMediaProfileProjectionRuntime>[0]
+  );
 
-  const jobRuntime = createLaboratoryJobRuntime({
+  const jobRuntimeDeps = {
     cancelRoomTool: io.cancelRoomTool,
     clearJob(runtime: Record<string, unknown>, jobId: string) {
       jobState.clearJob(runtime as Parameters<typeof jobState.clearJob>[0], jobId);
@@ -298,7 +415,10 @@ export function createLaboratoryHostProjectRuntimes(deps: any) {
     pushJobState: snapshot.pushJobState,
     roomId: deps.roomId,
     toRecord: deps.toRecord,
-  });
+  };
+  const jobRuntime = createLaboratoryJobRuntime(
+    jobRuntimeDeps as unknown as Parameters<typeof createLaboratoryJobRuntime>[0]
+  );
 
   return {
     analysisArtifact,

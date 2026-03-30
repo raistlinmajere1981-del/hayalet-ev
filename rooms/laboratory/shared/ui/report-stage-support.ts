@@ -1,50 +1,133 @@
-export function createLaboratoryReportStageSupportRuntime(deps: Record<string, any>) {
-  const toRecord = deps["toRecord"];
-  const escapeHtml = deps["escapeHtml"];
-  const text = deps["text"];
-  const textFromKey = deps["textFromKey"];
-  const featureText = deps["featureText"];
-  const formatStatusLabel = deps["formatStatusLabel"];
-  const formatDateTime = deps["formatDateTime"];
-  const formatDuration = deps["formatDuration"];
-  const isSubtitleAnalysisFeature = deps["isSubtitleAnalysisFeature"];
-  const getReportJobs = deps["getReportJobs"];
-  const getCurrentFeatureArtifactCount = deps["getCurrentFeatureArtifactCount"];
-  const getCurrentFeatureTargetLabel = deps["getCurrentFeatureTargetLabel"];
-  const getCurrentSourceLabel = deps["getCurrentSourceLabel"];
-  const getPreferredAssetDuration = deps["getPreferredAssetDuration"];
-  const getSubtitleProcessModuleLabel = deps["getSubtitleProcessModuleLabel"];
-  const getProfileSignalKindLabel = deps["getProfileSignalKindLabel"];
-  const getProfileConfidenceLabel = deps["getProfileConfidenceLabel"];
+type LaboratoryRecord = Record<string, unknown>
 
-  function getRunningReportJob() {
-    return (
-      getReportJobs().find(function (job: any) {
-        return !["completed", "failed", "cancelled"].includes(String(job.stage || ""));
-      }) || null
-    );
+type LaboratoryJobRecord = LaboratoryRecord & {
+  stage?: unknown
+}
+
+type LaboratorySignalRecord = LaboratoryRecord & {
+  artifactIds?: unknown
+  confidence?: unknown
+  detail?: unknown
+  evidenceCount?: unknown
+  kind?: unknown
+  laneId?: unknown
+  level?: unknown
+  moduleId?: unknown
+  title?: unknown
+}
+
+type LaboratorySummaryCardRecord = LaboratoryRecord & {
+  label?: unknown
+  labelKey?: unknown
+}
+
+type LaboratoryFeatureReportRecord = LaboratoryRecord & {
+  generatedAt?: unknown
+  status?: unknown
+}
+
+type LaboratoryAssetRecord = LaboratoryRecord & {
+  label?: unknown
+}
+
+type LaboratoryReportStageSupportRuntimeDeps = {
+  escapeHtml: (value: string) => string
+  featureText: (path: string[]) => string
+  formatDateTime: (value: unknown) => string
+  formatDuration: (value: unknown) => string
+  formatStatusLabel: (value: unknown) => string
+  getCurrentFeatureArtifactCount: () => number
+  getCurrentFeatureTargetLabel: () => string
+  getCurrentSourceLabel: () => string
+  getPreferredAssetDuration: (asset: LaboratoryAssetRecord) => unknown
+  getProfileConfidenceLabel: (confidence: unknown) => string
+  getProfileSignalKindLabel: (kind: unknown) => string
+  getReportJobs: () => unknown[]
+  getSubtitleProcessModuleLabel: (module: LaboratoryRecord) => string
+  isSubtitleAnalysisFeature: () => boolean
+  text: (path: string[]) => string
+  textFromKey: (key: string) => string
+  toRecord: (value: unknown) => LaboratoryRecord
+}
+
+export function createLaboratoryReportStageSupportRuntime(
+  deps: LaboratoryReportStageSupportRuntimeDeps
+) {
+  const {
+    escapeHtml,
+    featureText,
+    formatDateTime,
+    formatDuration,
+    formatStatusLabel,
+    getCurrentFeatureArtifactCount,
+    getCurrentFeatureTargetLabel,
+    getCurrentSourceLabel,
+    getPreferredAssetDuration,
+    getProfileConfidenceLabel,
+    getProfileSignalKindLabel,
+    getReportJobs,
+    getSubtitleProcessModuleLabel,
+    isSubtitleAnalysisFeature,
+    text,
+    textFromKey,
+    toRecord,
+  } = deps
+
+  function toJobRecord(value: unknown): LaboratoryJobRecord {
+    return toRecord(value)
   }
 
-  function renderSignalCard(value: any, label: any) {
+  function toSignalRecord(value: unknown): LaboratorySignalRecord {
+    return toRecord(value)
+  }
+
+  function toSummaryCardRecord(value: unknown): LaboratorySummaryCardRecord {
+    return toRecord(value)
+  }
+
+  function toFeatureReportRecord(value: unknown): LaboratoryFeatureReportRecord {
+    return toRecord(value)
+  }
+
+  function toAssetRecord(value: unknown): LaboratoryAssetRecord {
+    return toRecord(value)
+  }
+
+  function toString(value: unknown, fallback = ""): string {
+    return typeof value === "string" ? value : fallback
+  }
+
+  function getRunningReportJob(): LaboratoryJobRecord | null {
+    return (
+      getReportJobs()
+        .map(toJobRecord)
+        .find(function (job) {
+          return !["completed", "failed", "cancelled"].includes(String(job.stage || ""))
+        }) || null
+    )
+  }
+
+  function renderSignalCard(value: string, label: string) {
     return `
       <article class="lab-signal-card">
         <strong class="lab-signal-card__value">${escapeHtml(value)}</strong>
         <span class="lab-signal-card__label">${escapeHtml(label)}</span>
       </article>
-    `;
+    `
   }
 
-  function renderReportFinding(signal: any) {
-    const record = toRecord(signal);
+  function renderReportFinding(signal: unknown) {
+    const record = toSignalRecord(signal)
     if (isSubtitleAnalysisFeature()) {
+      const moduleId = toString(record.moduleId) || toString(record.laneId)
       return `
         <article class="lab-finding">
-          <h3 class="lab-finding__title">${escapeHtml(record.title || record.moduleId || "--")}</h3>
+          <h3 class="lab-finding__title">${escapeHtml(toString(record.title) || moduleId || "--")}</h3>
           <p class="lab-panel__hint">
             ${escapeHtml(
               `${featureText(["report", "findingMeta", "module"])}: ${getSubtitleProcessModuleLabel(
                 {
-                  id: record.moduleId || record.laneId,
+                  id: moduleId,
                 }
               )}`
             )}
@@ -69,14 +152,14 @@ export function createLaboratoryReportStageSupportRuntime(deps: Record<string, a
               )}`
             )}
           </p>
-          <p class="lab-finding__detail">${escapeHtml(record.detail || "")}</p>
+          <p class="lab-finding__detail">${escapeHtml(toString(record.detail))}</p>
         </article>
-      `;
+      `
     }
 
     return `
       <article class="lab-finding">
-        <h3 class="lab-finding__title">${escapeHtml(record.title || record.laneId || "--")}</h3>
+        <h3 class="lab-finding__title">${escapeHtml(toString(record.title) || toString(record.laneId) || "--")}</h3>
         <p class="lab-panel__hint">
           ${escapeHtml(
             `${text(["mediaAnalysis", "profile", "signalMeta", "kind"])}: ${getProfileSignalKindLabel(record.kind)}`
@@ -92,22 +175,25 @@ export function createLaboratoryReportStageSupportRuntime(deps: Record<string, a
             `${text(["mediaAnalysis", "profile", "signalMeta", "evidence"])}: ${String(Number(record.evidenceCount) || 0)}`
           )}
         </p>
-        <p class="lab-finding__detail">${escapeHtml(record.detail || "")}</p>
+        <p class="lab-finding__detail">${escapeHtml(toString(record.detail))}</p>
       </article>
-    `;
+    `
   }
 
-  function getReportSignalCardLabel(card: any) {
-    return textFromKey(toRecord(card)["labelKey"] || "") || toRecord(card)["label"] || "--";
+  function getReportSignalCardLabel(card: unknown) {
+    const record = toSummaryCardRecord(card)
+    return textFromKey(toString(record.labelKey)) || toString(record.label) || "--"
   }
 
-  function getReportOverviewRows(reportRecord: any, findings: any, asset: any) {
+  function getReportOverviewRows(reportRecord: unknown, findings: unknown[], asset: unknown) {
+    const report = toFeatureReportRecord(reportRecord)
+    const assetRecord = toAssetRecord(asset)
     if (isSubtitleAnalysisFeature()) {
       return [
         [featureText(["report", "overviewMeta", "target"]), getCurrentFeatureTargetLabel()],
         [
           featureText(["report", "overviewMeta", "status"]),
-          formatStatusLabel(reportRecord.status || "idle"),
+          formatStatusLabel(report.status || "idle"),
         ],
         [featureText(["report", "overviewMeta", "findings"]), String(findings.length)],
         [
@@ -116,51 +202,46 @@ export function createLaboratoryReportStageSupportRuntime(deps: Record<string, a
         ],
         [
           featureText(["report", "overviewMeta", "generated"]),
-          formatDateTime(reportRecord.generatedAt),
+          formatDateTime(report.generatedAt),
         ],
-      ];
+      ]
     }
 
     return [
-      [text(["mediaAnalysis", "shared", "summary"]), asset.label || getCurrentSourceLabel()],
+      [text(["mediaAnalysis", "shared", "summary"]), toString(assetRecord.label) || getCurrentSourceLabel()],
       [
         text(["mediaAnalysis", "shared", "duration"]),
-        formatDuration(getPreferredAssetDuration(asset)),
+        formatDuration(getPreferredAssetDuration(assetRecord)),
       ],
-      [
-        text(["mediaAnalysis", "shared", "status"]),
-        formatStatusLabel(reportRecord.status || "idle"),
-      ],
+      [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(report.status || "idle")],
       [featureText(["report", "findingsTitle"]), String(findings.length)],
       [
         text(["mediaAnalysis", "profile", "summary", "artifacts"]),
         String(getCurrentFeatureArtifactCount()),
       ],
-    ];
+    ]
   }
 
-  function getReportSideRows(reportRecord: any, findings: any, exportsList: any) {
+  function getReportSideRows(reportRecord: unknown, findings: unknown[], exportsList: unknown[]) {
+    const report = toFeatureReportRecord(reportRecord)
     if (isSubtitleAnalysisFeature()) {
       return [
         [
           featureText(["report", "overviewMeta", "status"]),
-          formatStatusLabel(reportRecord.status || "idle"),
+          formatStatusLabel(report.status || "idle"),
         ],
         [featureText(["report", "overviewMeta", "target"]), getCurrentFeatureTargetLabel()],
         [featureText(["report", "overviewMeta", "findings"]), String(findings.length)],
         [featureText(["report", "overviewMeta", "exports"]), String(exportsList.length)],
         [
           featureText(["report", "overviewMeta", "generated"]),
-          formatDateTime(reportRecord.generatedAt),
+          formatDateTime(report.generatedAt),
         ],
-      ];
+      ]
     }
 
     return [
-      [
-        text(["mediaAnalysis", "shared", "status"]),
-        formatStatusLabel(reportRecord.status || "idle"),
-      ],
+      [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(report.status || "idle")],
       [text(["mediaAnalysis", "profile", "summary", "target"]), getCurrentFeatureTargetLabel()],
       [featureText(["report", "findingsTitle"]), String(findings.length)],
       [
@@ -168,7 +249,7 @@ export function createLaboratoryReportStageSupportRuntime(deps: Record<string, a
         String(getCurrentFeatureArtifactCount()),
       ],
       [featureText(["report", "actions", "export"]), String(exportsList.length)],
-    ];
+    ]
   }
 
   return {
@@ -178,5 +259,5 @@ export function createLaboratoryReportStageSupportRuntime(deps: Record<string, a
     getRunningReportJob,
     renderReportFinding,
     renderSignalCard,
-  };
+  }
 }

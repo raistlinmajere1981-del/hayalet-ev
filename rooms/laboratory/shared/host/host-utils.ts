@@ -7,23 +7,20 @@ type LaboratoryHostUtilsDeps = {
 };
 
 export function createLaboratoryHostUtils(deps: LaboratoryHostUtilsDeps) {
-  const audioFeatureId = deps.audioFeatureId;
-  const getDefaultSourceType = deps.getDefaultSourceType;
-  const toRecord = deps.toRecord;
+  const { audioFeatureId, getDefaultSourceType, toRecord } = deps;
 
-  const getPreferredFeatureSourceKind: (
+  function getPreferredFeatureSourceKind(
     featureId: string,
     sourcePresets: LaboratoryHostUtilsRecord
-  ) => string = function getPreferredFeatureSourceKind(featureId: any, sourcePresets: any) {
-    if (featureId === audioFeatureId) {
-      return Object.prototype.hasOwnProperty.call(toRecord(sourcePresets)["sourceTypes"], "audio")
-        ? "audio"
-        : getDefaultSourceType(sourcePresets);
+  ): string {
+    const sourceTypes = toRecord(toRecord(sourcePresets)["sourceTypes"]);
+    if (featureId === audioFeatureId && Object.prototype.hasOwnProperty.call(sourceTypes, "audio")) {
+      return "audio";
     }
     return getDefaultSourceType(sourcePresets);
-  };
+  }
 
-  const toFileUrl: (filePath: string | null | undefined) => string | null = function toFileUrl(filePath: any) {
+  function toFileUrl(filePath: string | null | undefined): string | null {
     if (typeof filePath !== "string" || filePath.trim() === "") {
       return null;
     }
@@ -33,24 +30,24 @@ export function createLaboratoryHostUtils(deps: LaboratoryHostUtilsDeps) {
       return encodeURI(`file://${normalized}`);
     }
     return encodeURI(`file:///${normalized}`);
-  };
+  }
 
-  const clampNumber: (
+  function clampNumber(
     value: unknown,
     minimum: number,
     maximum: number,
     fallback: number
-  ) => number = function clampNumber(value: any, minimum: any, maximum: any, fallback: any) {
+  ): number {
     const numericValue = Number(value);
     if (Number.isFinite(numericValue) !== true) {
       return fallback;
     }
     return Math.min(maximum, Math.max(minimum, numericValue));
-  };
+  }
 
   return {
-    clampNumber: clampNumber,
-    getPreferredFeatureSourceKind: getPreferredFeatureSourceKind,
-    toFileUrl: toFileUrl,
+    clampNumber,
+    getPreferredFeatureSourceKind,
+    toFileUrl,
   };
 }

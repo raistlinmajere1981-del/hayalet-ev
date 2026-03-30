@@ -27,6 +27,7 @@ import {
   readRemoteUserId,
 } from "../../../shared/host/command-args.js";
 import { loadContext, readLocale } from "../../../shared/host/context-state.js";
+import type { GameRoomContextState, GameRoomSlotState } from "../../../shared/types/room-shell-contracts.js";
 import {
   FATE_KNOTS_FEATURE_ID,
   FEATURE_ID,
@@ -34,7 +35,6 @@ import {
   TEAM_TETRIS_FEATURE_ID,
 } from "../../../shared/host/feature-meta.js";
 import {
-  blockTeamTetrisMatch,
   dispatchNextTeamTetrisTurn,
   parseTeamTetrisStartEventNote,
   pushTeamTetrisState,
@@ -56,6 +56,7 @@ import {
   resolveStateMatchId,
   sendAiTurnUpdate,
 } from "./runtime-match.js";
+import type { XoxRuntimeMatchApi } from "./runtime-match.js";
 import { syncFromContext } from "./runtime-sync.js";
 import { createGameRoomXoxUs1Runtime } from "./us1-runtime.js";
 
@@ -75,15 +76,15 @@ const xoxUs1Runtime = createGameRoomXoxUs1Runtime({
   FATE_KNOTS_FEATURE_ID: FATE_KNOTS_FEATURE_ID,
   ROOM_ID: ROOM_ID,
   TEAM_TETRIS_FEATURE_ID: TEAM_TETRIS_FEATURE_ID,
-  blockTeamTetrisMatch: blockTeamTetrisMatch,
   buildInviteId: buildInviteId,
-  buildUs1InviteResponseText: buildUs1InviteResponseText,
   buildUs1InviteText: buildUs1InviteText,
   buildUs1MoveText: buildUs1MoveText,
   buildUs1ResetText: buildUs1ResetText,
   commandMessage: commandMessage,
   createInitialState: createInitialState,
-  createPendingInvite: createPendingInvite,
+  createPendingInvite: createPendingInvite as unknown as Parameters<
+    typeof createGameRoomXoxUs1Runtime
+  >[0]["createPendingInvite"],
   createTeamTetrisMatch: createTeamTetrisMatch,
   dispatchNextTeamTetrisTurn: dispatchNextTeamTetrisTurn,
   getOpponentInfo: getOpponentInfo,
@@ -121,10 +122,15 @@ const {
 } = xoxUs1Runtime;
 
 type XoxCommandResult = { success: boolean; message: string };
+type XoxTarget = ReturnType<typeof sanitizeTarget>;
 type XoxResetContext = {
   matchId: string;
   localSessionId: string | null;
 };
+type XoxUs1Runtime = ReturnType<typeof createGameRoomXoxUs1Runtime>;
+type XoxUs1Api = Parameters<XoxUs1Runtime["sendUs1Invite"]>[0];
+type XoxUs1InviteApi = Parameters<XoxUs1Runtime["sendUs1Move"]>[0];
+type XoxInviteEntry = NonNullable<ReturnType<XoxUs1Runtime["findInviteById"]>>;
 type CommandDispatchResult = { success?: boolean } | null | undefined;
 type Us1MessageSendResult =
   | {
@@ -134,6 +140,11 @@ type Us1MessageSendResult =
     }
   | null
   | undefined;
+
+interface XoxRuntimeApi extends XoxUs1Api, XoxRuntimeMatchApi {
+  sendUs1Message(msg: Record<string, unknown>): Promise<Us1MessageSendResult>;
+  selectUs1RemoteUser?(remoteUserId: string): Promise<boolean>;
+}
 
 function isSuccessfulDispatch(result: CommandDispatchResult): result is { success: true } {
   return !!result && result.success === true;
@@ -149,21 +160,98 @@ function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
-async function handleStart(api: any, payload: unknown): Promise<XoxCommandResult> {
+function toUs1InviteApi(api: XoxRuntimeApi): XoxUs1InviteApi {
+  const inviteApi: XoxUs1InviteApi = {
+    getState(key: string) {
+      return api.getState(key);
+    },
+    sendUs1Message: async function (msg: Record<string, unknown>) {
+      const result = await api.sendUs1Message(msg);
+      const response: { success: boolean; localSessionId?: string; conversationId?: string } = {
+        success: result?.success === true,
+      };
+      const localSessionId = readNonEmptyString(result?.localSessionId);
+      const conversationId = readNonEmptyString(result?.conversationId);
+      if (localSessionId !== null) {
+        response.localSessionId = localSessionId;
+      }
+      if (conversationId !== null) {
+        response.conversationId = conversationId;
+      }
+      return response;
+    },
+    setState(key: string, value: unknown) {
+      api.setState(key, value);
+    },
+  };
+  if (typeof api.deleteState === "function") {
+    inviteApi.deleteState = function (key: string) {
+      api.deleteState?.(key);
+    };
+  }
+  if (typeof api.getLocale === "function") {
+    inviteApi.getLocale = function () {
+      return api.getLocale?.();
+    };
+  }
+  if (typeof api.notifyRoom === "function") {
+    inviteApi.notifyRoom = function (event: string, payload: Record<string, unknown>) {
+      api.notifyRoom?.(event, payload);
+    };
+  }
+  return inviteApi;
+}
+
+function createUs1OpponentFallback(
+  remoteUserId: string | null,
+  opponentNickname: string
+): GameRoomSlotState {
+  return {
+    slotId: "us1",
+    nickname: opponentNickname || "US1",
+    assigned: remoteUserId !== null,
+    connected: false,
+    ready: false,
+    state: remoteUserId === null ? "empty" : "assigned",
+    urlExcluded: false,
+    accountId: null,
+    remoteUserId,
+  };
+}
+
+function readOpponentSlot(
+  context: GameRoomContextState,
+  target: XoxTarget,
+  remoteUserId: string | null,
+  opponentNickname: string
+): GameRoomSlotState {
+  if (target === "us1") {
+    if (remoteUserId !== null && context.slots.us1.remoteUserId === remoteUserId) {
+      return context.slots.us1;
+    }
+    if (remoteUserId === null) {
+      return context.slots.us1;
+    }
+    return createUs1OpponentFallback(remoteUserId, opponentNickname);
+  }
+  return context.slots[target];
+}
+
+async function selectUs1RemoteUserSafe(api: XoxRuntimeApi, remoteUserId: string): Promise<boolean> {
+  if (typeof api.selectUs1RemoteUser !== "function") {
+    return false;
+  }
+  return await api.selectUs1RemoteUser(remoteUserId);
+}
+
+async function handleStart(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
   const locale = readLocale(api);
   const args = readArgs(payload);
   const target = sanitizeTarget(typeof args["target"] === "string" ? args["target"] : "");
   const starter = sanitizeStarter(typeof args["starter"] === "string" ? args["starter"] : "");
   const inviteNote = readInviteNote(payload);
-  const context = loadContext(api);
-  const opponent =
-    target === "us1"
-      ? context.slots.us1
-      : getOpponentInfo(context, {
-          target: target,
-          remoteUserId: null,
-          opponentNickname: "",
-        } as any);
+  const context = loadContext(api) as GameRoomContextState;
+  const opponent = readOpponentSlot(context, target, null, "");
 
   if (loadPendingInvite(api) !== null) {
     return { success: false, message: commandMessage(locale, "pendingInviteExists") };
@@ -198,10 +286,11 @@ async function handleStart(api: any, payload: unknown): Promise<XoxCommandResult
   return { success: true, message: commandMessage(locale, "started") };
 }
 
-async function handleReset(api: any): Promise<XoxCommandResult> {
+async function handleReset(api: XoxRuntimeApi): Promise<XoxCommandResult> {
   const locale = readLocale(api);
   const currentState = loadState(api);
   const pendingInvite = loadPendingInvite(api);
+  const currentMatchId = resolveStateMatchId(currentState);
   const resetContext: XoxResetContext | null =
     pendingInvite !== null && pendingInvite.direction === "outgoing" && pendingInvite.matchId
       ? {
@@ -210,16 +299,16 @@ async function handleReset(api: any): Promise<XoxCommandResult> {
         }
       : currentState.target === "us1" &&
           currentState.remoteUserId !== null &&
-          resolveStateMatchId(currentState) !== null
+          currentMatchId !== null
         ? {
-            matchId: resolveStateMatchId(currentState),
+            matchId: currentMatchId,
             localSessionId: currentState.localSessionId,
           }
         : null;
 
   let remoteResetSent = true;
   if (resetContext !== null) {
-    const sendResult = await sendUs1Reset(api, resetContext);
+    const sendResult = await sendUs1Reset(toUs1InviteApi(api), resetContext);
     remoteResetSent = isSuccessfulDispatch(sendResult);
   }
 
@@ -232,7 +321,7 @@ async function handleReset(api: any): Promise<XoxCommandResult> {
   };
 }
 
-async function handleUserMove(api: any, payload: unknown): Promise<XoxCommandResult> {
+async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
   const state = loadState(api);
   const locale = state.locale;
   const cell = readCell(payload);
@@ -273,7 +362,7 @@ async function handleUserMove(api: any, payload: unknown): Promise<XoxCommandRes
   }
 
   if (state.target === "us1") {
-    const sendResult = await sendUs1Move(api, state, {
+    const sendResult = await sendUs1Move(toUs1InviteApi(api), state, {
       cell: cell,
       turnIndex: outboundTurnIndex,
       boardHashBeforeMove: boardHashBeforeMove,
@@ -282,17 +371,20 @@ async function handleUserMove(api: any, payload: unknown): Promise<XoxCommandRes
       return { success: false, message: commandMessage(locale, "dispatchFailed") };
     }
     return {
-      success: true,
-      message:
-        outcome.finished === true
-          ? resolveStatusText(state, loadContext(api))
+          success: true,
+          message:
+            outcome.finished === true
+          ? resolveStatusText(state, loadContext(api) as GameRoomContextState)
           : commandMessage(locale, "moveSent"),
     };
   }
 
   if (outcome.finished === true) {
     pushRoomState(api, state);
-    return { success: true, message: resolveStatusText(state, loadContext(api)) };
+    return {
+      success: true,
+      message: resolveStatusText(state, loadContext(api) as GameRoomContextState),
+    };
   }
 
   pushRoomState(api, state);
@@ -305,19 +397,20 @@ async function handleUserMove(api: any, payload: unknown): Promise<XoxCommandRes
   return { success: true, message: commandMessage(locale, "moveSent") };
 }
 
-async function handleAiMove(api: any, payload: unknown): Promise<XoxCommandResult> {
+async function handleAiMove(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
   const state = loadState(api);
   return await applyOpponentMove(api, payload, state.target, false);
 }
 
-async function handleRemoteMove(api: any, payload: unknown): Promise<XoxCommandResult> {
+async function handleRemoteMove(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
   return await applyOpponentMove(api, payload, "us1", true);
 }
 
-async function handleAcceptInvite(api: any, payload: unknown): Promise<XoxCommandResult> {
+async function handleAcceptInvite(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
   const matchId = readInviteId(payload);
   const remoteUserId = readRemoteUserId(payload);
-  const inviteEntry = matchId !== null ? findInviteById(api, matchId, remoteUserId || "") : null;
+  const inviteEntry: XoxInviteEntry | null =
+    matchId !== null ? findInviteById(api, matchId, remoteUserId || "") : null;
   if (inviteEntry === null) {
     return { success: false, message: commandMessage(readLocale(api), "inviteNotFound") };
   }
@@ -326,12 +419,12 @@ async function handleAcceptInvite(api: any, payload: unknown): Promise<XoxComman
     return { success: false, message: commandMessage(readLocale(api), "pendingInviteExists") };
   }
 
-  const selected = await api.selectUs1RemoteUser(inviteEntry.remoteUserId);
+  const selected = await selectUs1RemoteUserSafe(api, inviteEntry.remoteUserId);
   if (selected !== true) {
     return { success: false, message: commandMessage(readLocale(api), "inviteAcceptFailed") };
   }
 
-  const sendResult = (await api.sendUs1Message({
+  const sendResult = await api.sendUs1Message({
     localSessionId: inviteEntry.localSessionId || null,
     text: buildUs1InviteResponseText("accept", inviteEntry),
     roomEvent: {
@@ -343,7 +436,7 @@ async function handleAcceptInvite(api: any, payload: unknown): Promise<XoxComman
       starter: inviteEntry.starter,
       note: inviteEntry.note || null,
     },
-  })) as Us1MessageSendResult;
+  });
 
   if (isSuccessfulUs1MessageSend(sendResult) === false) {
     return { success: false, message: commandMessage(readLocale(api), "inviteAcceptFailed") };
@@ -358,20 +451,21 @@ async function handleAcceptInvite(api: any, payload: unknown): Promise<XoxComman
   return { success: true, message: commandMessage(readLocale(api), "inviteAccepted") };
 }
 
-async function handleRejectInvite(api: any, payload: unknown): Promise<XoxCommandResult> {
+async function handleRejectInvite(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
   const matchId = readInviteId(payload);
   const remoteUserId = readRemoteUserId(payload);
-  const inviteEntry = matchId !== null ? findInviteById(api, matchId, remoteUserId || "") : null;
+  const inviteEntry: XoxInviteEntry | null =
+    matchId !== null ? findInviteById(api, matchId, remoteUserId || "") : null;
   if (inviteEntry === null) {
     return { success: false, message: commandMessage(readLocale(api), "inviteNotFound") };
   }
 
-  const selected = await api.selectUs1RemoteUser(inviteEntry.remoteUserId);
+  const selected = await selectUs1RemoteUserSafe(api, inviteEntry.remoteUserId);
   if (selected !== true) {
     return { success: false, message: commandMessage(readLocale(api), "inviteRejectFailed") };
   }
 
-  const sendResult = (await api.sendUs1Message({
+  const sendResult = await api.sendUs1Message({
     localSessionId: inviteEntry.localSessionId || null,
     text: buildUs1InviteResponseText("reject", inviteEntry),
     roomEvent: {
@@ -383,7 +477,7 @@ async function handleRejectInvite(api: any, payload: unknown): Promise<XoxComman
       starter: inviteEntry.starter,
       note: inviteEntry.note || null,
     },
-  })) as Us1MessageSendResult;
+  });
 
   if (isSuccessfulUs1MessageSend(sendResult) === false) {
     return { success: false, message: commandMessage(readLocale(api), "inviteRejectFailed") };

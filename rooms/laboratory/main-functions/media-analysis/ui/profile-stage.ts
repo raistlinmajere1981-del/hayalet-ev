@@ -1,40 +1,334 @@
-export function createMediaAnalysisProfileStage(deps: any) {
-  const state = deps.state;
-  const escapeHtml = deps.escapeHtml;
-  const text = deps.text;
-  const textFromKey = deps.textFromKey;
-  const formatDuration = deps.formatDuration;
-  const renderStageIntro = deps.renderStageIntro;
-  const renderSummaryRows = deps.renderSummaryRows;
-  const getCurrentProfileMode = deps.getCurrentProfileMode;
-  const getProfileEstimate = deps.getProfileEstimate;
-  const getProfileLabel = deps.getProfileLabel;
-  const renderProfilePresetPanel = deps.renderProfilePresetPanel;
-  const renderProfileAdvancedPanel = deps.renderProfileAdvancedPanel;
-  const getProfileSignals = deps.getProfileSignals;
-  const sortProfileSignals = deps.sortProfileSignals;
-  const getProfileSignalKindLabel = deps.getProfileSignalKindLabel;
-  const getProfileConfidenceLabel = deps.getProfileConfidenceLabel;
-  const getProfileArtifacts = deps.getProfileArtifacts;
-  const getProfileReadiness = deps.getProfileReadiness;
-  const getProfilePreflight = deps.getProfilePreflight;
-  const getProfileJobs = deps.getProfileJobs;
-  const getProfileSelectedModel = deps.getProfileSelectedModel;
-  const getProjectSource = deps.getProjectSource;
-  const getPreferredAssetDuration = deps.getPreferredAssetDuration;
-  const getPreferredAssetResolution = deps.getPreferredAssetResolution;
-  const getPreferredAssetCodec = deps.getPreferredAssetCodec;
-  const getProfileTargetSummary = deps.getProfileTargetSummary;
-  const getProfileTargetAsset = deps.getProfileTargetAsset;
-  const getProfileTargetMode = deps.getProfileTargetMode;
-  const getProfileTargetOutputOptions = deps.getProfileTargetOutputOptions;
-  const getFocusLabel = deps.getFocusLabel;
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryProfileMode = "advanced" | "beginner";
+type LaboratoryTargetMode = "derived" | "source";
+type LaboratoryTargetAssetKind = "audio" | "image" | "video";
+
+type LaboratoryMediaAnalysisUiStateRecord = LaboratoryRecord & {
+  audioAnalysis?: unknown;
+};
+
+type LaboratoryMediaAnalysisStateRecord = LaboratoryRecord & {
+  ui?: unknown;
+};
+
+type LaboratoryAudioAnalysisStateRecord = LaboratoryRecord & {
+  bars?: unknown;
+};
+
+type LaboratoryProfileEstimateRecord = LaboratoryRecord & {
+  runtimeSeconds?: unknown;
+  sampleWindowSeconds?: unknown;
+};
+
+type LaboratoryProfileSignalRecord = LaboratoryRecord & {
+  confidence?: unknown;
+  detail?: unknown;
+  evidenceCount?: unknown;
+  kind?: unknown;
+  laneId?: unknown;
+  level?: unknown;
+  title?: unknown;
+};
+
+type LaboratoryProfileArtifactRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  kind?: unknown;
+  label?: unknown;
+  previewUrl?: unknown;
+};
+
+type LaboratoryProfileReadinessRecord = LaboratoryRecord & {
+  blockers?: unknown;
+  enabledLaneCount?: unknown;
+  stageReady?: unknown;
+  warnings?: unknown;
+};
+
+type LaboratoryProfilePreflightRecord = LaboratoryRecord & {
+  status?: unknown;
+};
+
+type LaboratoryProfileJobRecord = LaboratoryRecord & {
+  action?: unknown;
+  message?: unknown;
+  stage?: unknown;
+};
+
+type LaboratoryProfileSelectedModelRecord = LaboratoryRecord & {
+  labelKey?: unknown;
+};
+
+type LaboratoryProjectSourceRecord = LaboratoryRecord & {
+  storedPath?: unknown;
+};
+
+type LaboratoryProfileTargetSummaryRecord = LaboratoryRecord & {
+  outputId?: unknown;
+  reason?: unknown;
+  usingFallback?: unknown;
+};
+
+type LaboratoryProfileTargetAssetRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  kind?: unknown;
+  label?: unknown;
+  previewUrl?: unknown;
+};
+
+type LaboratoryProfileTargetOutputOptionRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  id?: unknown;
+  label?: unknown;
+};
+
+type LaboratorySummaryRow = [string, string];
+
+type MediaAnalysisProfileStageDeps = {
+  escapeHtml: (value: string) => string;
+  formatDuration: (value: number | null | undefined) => string;
+  getCurrentProfileMode: () => unknown;
+  getFocusLabel: () => string;
+  getPreferredAssetCodec: (asset: LaboratoryProfileTargetAssetRecord) => unknown;
+  getPreferredAssetDuration: (asset: LaboratoryProfileTargetAssetRecord) => unknown;
+  getPreferredAssetResolution: (asset: LaboratoryProfileTargetAssetRecord) => unknown;
+  getProfileArtifacts: () => unknown;
+  getProfileConfidenceLabel: (confidence: unknown) => string;
+  getProfileEstimate: () => unknown;
+  getProfileJobs: () => unknown;
+  getProfileLabel: () => string;
+  getProfilePreflight: () => unknown;
+  getProfileReadiness: () => unknown;
+  getProfileSelectedModel: () => unknown;
+  getProfileSignalKindLabel: (kind: unknown) => string;
+  getProfileSignals: () => unknown;
+  getProfileTargetAsset: () => unknown;
+  getProfileTargetMode: () => unknown;
+  getProfileTargetOutputOptions: () => unknown;
+  getProfileTargetSummary: () => unknown;
+  getProjectSource: () => unknown;
+  renderProfileAdvancedPanel: () => string;
+  renderProfilePresetPanel: () => string;
+  renderStageIntro: (stageId: string) => string;
+  renderSummaryRows: (rows: LaboratorySummaryRow[]) => string;
+  sortProfileSignals: (
+    signals: LaboratoryProfileSignalRecord[]
+  ) => LaboratoryProfileSignalRecord[];
+  state: LaboratoryMediaAnalysisStateRecord;
+  text: (path: string[]) => string;
+  textFromKey: (key: string) => string;
+};
+
+export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageDeps) {
+  const {
+    escapeHtml,
+    formatDuration,
+    getCurrentProfileMode,
+    getFocusLabel,
+    getPreferredAssetCodec,
+    getPreferredAssetDuration,
+    getPreferredAssetResolution,
+    getProfileArtifacts,
+    getProfileConfidenceLabel,
+    getProfileEstimate,
+    getProfileJobs,
+    getProfileLabel,
+    getProfilePreflight,
+    getProfileReadiness,
+    getProfileSelectedModel,
+    getProfileSignalKindLabel,
+    getProfileSignals,
+    getProfileTargetAsset,
+    getProfileTargetMode,
+    getProfileTargetOutputOptions,
+    getProfileTargetSummary,
+    getProjectSource,
+    renderProfileAdvancedPanel,
+    renderProfilePresetPanel,
+    renderStageIntro,
+    renderSummaryRows,
+    sortProfileSignals,
+    state,
+    text,
+    textFromKey,
+  } = deps;
+
+  function toRecord(value: unknown): LaboratoryRecord {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return {};
+    }
+    return value as LaboratoryRecord;
+  }
+
+  function asNonEmptyString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value : null;
+  }
+
+  function asNumber(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return asNonEmptyString(entry);
+      })
+      .filter((entry): entry is string => entry !== null);
+  }
+
+  function toNumberArray(value: unknown): number[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return asNumber(entry);
+      })
+      .filter((entry): entry is number => entry !== null);
+  }
+
+  function toUiStateRecord(value: unknown): LaboratoryMediaAnalysisUiStateRecord {
+    return toRecord(value);
+  }
+
+  function toAudioAnalysisStateRecord(value: unknown): LaboratoryAudioAnalysisStateRecord {
+    return toRecord(value);
+  }
+
+  function toProfileEstimateRecord(value: unknown): LaboratoryProfileEstimateRecord {
+    return toRecord(value);
+  }
+
+  function toProfileSignalRecord(value: unknown): LaboratoryProfileSignalRecord {
+    return toRecord(value);
+  }
+
+  function toProfileArtifactRecord(value: unknown): LaboratoryProfileArtifactRecord {
+    return toRecord(value);
+  }
+
+  function toProfileReadinessRecord(value: unknown): LaboratoryProfileReadinessRecord {
+    return toRecord(value);
+  }
+
+  function toProfilePreflightRecord(value: unknown): LaboratoryProfilePreflightRecord {
+    return toRecord(value);
+  }
+
+  function toProfileJobRecord(value: unknown): LaboratoryProfileJobRecord {
+    return toRecord(value);
+  }
+
+  function toProfileSelectedModelRecord(value: unknown): LaboratoryProfileSelectedModelRecord {
+    return toRecord(value);
+  }
+
+  function toProjectSourceRecord(value: unknown): LaboratoryProjectSourceRecord {
+    return toRecord(value);
+  }
+
+  function toProfileTargetSummaryRecord(value: unknown): LaboratoryProfileTargetSummaryRecord {
+    return toRecord(value);
+  }
+
+  function toProfileTargetAssetRecord(value: unknown): LaboratoryProfileTargetAssetRecord {
+    return toRecord(value);
+  }
+
+  function toProfileTargetOutputOptionRecord(
+    value: unknown
+  ): LaboratoryProfileTargetOutputOptionRecord {
+    return toRecord(value);
+  }
+
+  function getProfileMode(): LaboratoryProfileMode {
+    return getCurrentProfileMode() === "advanced" ? "advanced" : "beginner";
+  }
+
+  function getEstimate(): LaboratoryProfileEstimateRecord {
+    return toProfileEstimateRecord(getProfileEstimate());
+  }
+
+  function getSignals(): LaboratoryProfileSignalRecord[] {
+    const signals = getProfileSignals();
+    return Array.isArray(signals) ? signals.map(toProfileSignalRecord) : [];
+  }
+
+  function getArtifacts(): LaboratoryProfileArtifactRecord[] {
+    const artifacts = getProfileArtifacts();
+    return Array.isArray(artifacts) ? artifacts.map(toProfileArtifactRecord) : [];
+  }
+
+  function getReadiness(): LaboratoryProfileReadinessRecord {
+    return toProfileReadinessRecord(getProfileReadiness());
+  }
+
+  function getPreflight(): LaboratoryProfilePreflightRecord {
+    return toProfilePreflightRecord(getProfilePreflight());
+  }
+
+  function getJobs(): LaboratoryProfileJobRecord[] {
+    const jobs = getProfileJobs();
+    return Array.isArray(jobs) ? jobs.map(toProfileJobRecord) : [];
+  }
+
+  function getSelectedModel(): LaboratoryProfileSelectedModelRecord | null {
+    const model = getProfileSelectedModel();
+    return model ? toProfileSelectedModelRecord(model) : null;
+  }
+
+  function getSource(): LaboratoryProjectSourceRecord {
+    return toProjectSourceRecord(getProjectSource());
+  }
+
+  function getTargetSummary(): LaboratoryProfileTargetSummaryRecord {
+    return toProfileTargetSummaryRecord(getProfileTargetSummary());
+  }
+
+  function getTargetAsset(): LaboratoryProfileTargetAssetRecord {
+    return toProfileTargetAssetRecord(getProfileTargetAsset());
+  }
+
+  function getTargetMode(): LaboratoryTargetMode {
+    return getProfileTargetMode() === "derived" ? "derived" : "source";
+  }
+
+  function getTargetOutputOptions(): LaboratoryProfileTargetOutputOptionRecord[] {
+    const options = getProfileTargetOutputOptions();
+    return Array.isArray(options) ? options.map(toProfileTargetOutputOptionRecord) : [];
+  }
+
+  function getAudioBars(): number[] {
+    const uiState = toUiStateRecord(state.ui);
+    const audioAnalysis = toAudioAnalysisStateRecord(uiState.audioAnalysis);
+    return toNumberArray(audioAnalysis.bars);
+  }
+
+  function getAudioBarsForPreview(): number[] {
+    const audioBars = getAudioBars();
+    return audioBars.length > 0 ? audioBars : Array.from({ length: 36 }, function () {
+      return 20;
+    });
+  }
+
+  function getTargetAssetKind(asset: LaboratoryProfileTargetAssetRecord): LaboratoryTargetAssetKind {
+    const assetKind = asNonEmptyString(asset.kind);
+    if (assetKind === "image" || assetKind === "audio") {
+      return assetKind;
+    }
+    return "video";
+  }
 
   function renderProfileTargetPanel() {
-    const target = getProfileTargetSummary();
-    const asset = getProfileTargetAsset();
-    const targetMode = getProfileTargetMode();
-    const outputOptions = getProfileTargetOutputOptions();
+    const target = getTargetSummary();
+    const asset = getTargetAsset();
+    const targetMode = getTargetMode();
+    const outputOptions = getTargetOutputOptions();
+    const assetPreviewUrl = asNonEmptyString(asset.previewUrl);
+    const assetKind = getTargetAssetKind(asset);
     let mediaMarkup = `
       <div class="lab-empty-preview">
         <strong>${escapeHtml(text(["mediaAnalysis", "profile", "targetEmptyTitle"]))}</strong>
@@ -42,27 +336,25 @@ export function createMediaAnalysisProfileStage(deps: any) {
       </div>
     `;
 
-    if (typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== "") {
-      if (asset.kind === "image") {
-        mediaMarkup = `<img class="lab-preview-media lab-preview-media--image" data-preview-media="image" src="${asset.previewUrl}" alt="" />`;
-      } else if (asset.kind === "audio") {
+    if (assetPreviewUrl !== null) {
+      if (assetKind === "image") {
+        mediaMarkup = `<img class="lab-preview-media lab-preview-media--image" data-preview-media="image" src="${assetPreviewUrl}" alt="" />`;
+      } else if (assetKind === "audio") {
+        const audioBars = getAudioBarsForPreview();
         mediaMarkup = `
           <div class="lab-audio-workbench">
             <div class="lab-audio-bars">
-              ${(state.ui.audioAnalysis.bars.length > 0
-                ? state.ui.audioAnalysis.bars
-                : new Array(36).fill(20)
-              )
-                .map(function (value: any) {
-                  return `<span style="height:${Math.max(10, Number(value) || 10)}px"></span>`;
+              ${audioBars
+                .map(function (value) {
+                  return `<span style="height:${Math.max(10, value)}px"></span>`;
                 })
                 .join("")}
             </div>
-            <audio class="lab-preview-media lab-preview-media--audio" data-preview-media="audio" controls src="${asset.previewUrl}"></audio>
+            <audio class="lab-preview-media lab-preview-media--audio" data-preview-media="audio" controls src="${assetPreviewUrl}"></audio>
           </div>
         `;
       } else {
-        mediaMarkup = `<video class="lab-preview-media lab-preview-media--video" data-preview-media="video" controls src="${asset.previewUrl}"></video>`;
+        mediaMarkup = `<video class="lab-preview-media lab-preview-media--video" data-preview-media="video" controls src="${assetPreviewUrl}"></video>`;
       }
     }
 
@@ -76,7 +368,7 @@ export function createMediaAnalysisProfileStage(deps: any) {
         </div>
         <div class="lab-segmented">
           ${["source", "derived"]
-            .map(function (modeId: any) {
+            .map(function (modeId) {
               const disabled = modeId === "derived" && outputOptions.length === 0;
               return `
                 <button
@@ -101,10 +393,16 @@ export function createMediaAnalysisProfileStage(deps: any) {
                 <select class="lab-select" data-profile-field="targetOutputId">
                   <option value="">${escapeHtml(text(["mediaAnalysis", "profile", "targetOutputEmpty"]))}</option>
                   ${outputOptions
-                    .map(function (entry: any) {
+                    .map(function (entry) {
+                      const entryId = asNonEmptyString(entry.id) || "";
+                      const entryLabel =
+                        asNonEmptyString(entry.label) ||
+                        asNonEmptyString(entry.fileName) ||
+                        entryId ||
+                        "--";
                       return `
-                        <option value="${escapeHtml(entry.id)}" ${entry.id === target.outputId ? "selected" : ""}>
-                          ${escapeHtml(entry.label || entry.fileName || entry.id)}
+                        <option value="${escapeHtml(entryId)}" ${entryId === asNonEmptyString(target.outputId) ? "selected" : ""}>
+                          ${escapeHtml(entryLabel)}
                         </option>
                       `;
                     })
@@ -118,17 +416,23 @@ export function createMediaAnalysisProfileStage(deps: any) {
           <div class="lab-preview-frame">${mediaMarkup}</div>
           <section class="lab-panel lab-panel--dense">
             ${renderSummaryRows([
-              [text(["mediaAnalysis", "profile", "summary", "target"]), asset.label || "--"],
+              [text(["mediaAnalysis", "profile", "summary", "target"]), asNonEmptyString(asset.label) || "--"],
               [
                 text(["mediaAnalysis", "shared", "duration"]),
-                formatDuration(getPreferredAssetDuration(asset)),
+                formatDuration(asNumber(getPreferredAssetDuration(asset))),
               ],
-              [text(["mediaAnalysis", "shared", "resolution"]), getPreferredAssetResolution(asset)],
-              [text(["mediaAnalysis", "shared", "codec"]), getPreferredAssetCodec(asset)],
+              [
+                text(["mediaAnalysis", "shared", "resolution"]),
+                asNonEmptyString(getPreferredAssetResolution(asset)) || "--",
+              ],
+              [
+                text(["mediaAnalysis", "shared", "codec"]),
+                asNonEmptyString(getPreferredAssetCodec(asset)) || "--",
+              ],
             ])}
             ${
-              target.usingFallback === true && typeof target.reason === "string"
-                ? `<p class="lab-panel__hint lab-panel__hint--danger">${escapeHtml(target.reason)}</p>`
+              target.usingFallback === true && asNonEmptyString(target.reason)
+                ? `<p class="lab-panel__hint lab-panel__hint--danger">${escapeHtml(asNonEmptyString(target.reason) || "")}</p>`
                 : ""
             }
           </section>
@@ -138,8 +442,8 @@ export function createMediaAnalysisProfileStage(deps: any) {
   }
 
   function renderProfileModePanel() {
-    const mode = getCurrentProfileMode();
-    const estimate = getProfileEstimate();
+    const mode = getProfileMode();
+    const estimate = getEstimate();
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -150,7 +454,7 @@ export function createMediaAnalysisProfileStage(deps: any) {
         </div>
         <div class="lab-segmented">
           ${["beginner", "advanced"]
-            .map(function (modeId: any) {
+            .map(function (modeId) {
               return `
                 <button
                   class="lab-segmented__button"
@@ -169,11 +473,11 @@ export function createMediaAnalysisProfileStage(deps: any) {
           [text(["mediaAnalysis", "profile", "summary", "preset"]), getProfileLabel()],
           [
             text(["mediaAnalysis", "profile", "summary", "sampleWindow"]),
-            formatDuration(estimate.sampleWindowSeconds),
+            formatDuration(asNumber(estimate.sampleWindowSeconds)),
           ],
           [
             text(["mediaAnalysis", "profile", "summary", "runtime"]),
-            formatDuration(estimate.runtimeSeconds),
+            formatDuration(asNumber(estimate.runtimeSeconds)),
           ],
         ])}
       </section>
@@ -181,7 +485,7 @@ export function createMediaAnalysisProfileStage(deps: any) {
   }
 
   function renderProfileSignalsPanel() {
-    const signals = sortProfileSignals(getProfileSignals());
+    const signals = sortProfileSignals(getSignals());
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -194,12 +498,16 @@ export function createMediaAnalysisProfileStage(deps: any) {
           ${
             signals.length > 0
               ? signals
-                  .map(function (signal: any) {
+                  .map(function (signal) {
+                    const signalTitle =
+                      asNonEmptyString(signal.title) || asNonEmptyString(signal.laneId) || "--";
+                    const signalLevel = asNonEmptyString(signal.level) || "low";
+                    const signalDetail = asNonEmptyString(signal.detail) || "";
                     return `
                       <article class="lab-finding">
                         <div class="lab-finding__head">
-                          <strong>${escapeHtml(signal.title || signal.laneId || "--")}</strong>
-                          <span class="lab-chip">${escapeHtml(text(["mediaAnalysis", "profile", "levels", signal.level || "low"]))}</span>
+                          <strong>${escapeHtml(signalTitle)}</strong>
+                          <span class="lab-chip">${escapeHtml(text(["mediaAnalysis", "profile", "levels", signalLevel]))}</span>
                         </div>
                         <p class="lab-panel__hint">
                           ${escapeHtml(
@@ -212,11 +520,11 @@ export function createMediaAnalysisProfileStage(deps: any) {
                           ·
                           ${escapeHtml(
                             `${text(["mediaAnalysis", "profile", "signalMeta", "evidence"])}: ${String(
-                              Number(signal.evidenceCount) || 0
+                              asNumber(signal.evidenceCount) || 0
                             )}`
                           )}
                         </p>
-                        <p class="lab-finding__detail">${escapeHtml(signal.detail || "")}</p>
+                        <p class="lab-finding__detail">${escapeHtml(signalDetail)}</p>
                       </article>
                     `;
                   })
@@ -229,7 +537,7 @@ export function createMediaAnalysisProfileStage(deps: any) {
   }
 
   function renderProfileArtifactsPanel() {
-    const artifacts = getProfileArtifacts();
+    const artifacts = getArtifacts();
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -242,15 +550,25 @@ export function createMediaAnalysisProfileStage(deps: any) {
           ${
             artifacts.length > 0
               ? artifacts
-                  .map(function (artifact: any) {
+                  .map(function (artifact) {
+                    const previewUrl = asNonEmptyString(artifact.previewUrl);
+                    const fileName = asNonEmptyString(artifact.fileName) || "";
                     const previewable =
-                      typeof artifact.previewUrl === "string" &&
-                      /\.(png|jpe?g|webp|gif)$/i.test(String(artifact.fileName || ""));
+                      previewUrl !== null && /\.(png|jpe?g|webp|gif)$/i.test(fileName);
+                    const artifactLabel =
+                      asNonEmptyString(artifact.label) ||
+                      asNonEmptyString(artifact.fileName) ||
+                      asNonEmptyString(artifact.kind) ||
+                      "--";
+                    const artifactMeta =
+                      asNonEmptyString(artifact.fileName) ||
+                      asNonEmptyString(artifact.kind) ||
+                      "--";
                     return `
                       <article class="lab-artifact-card">
-                        ${previewable ? `<img class="lab-artifact-card__image" src="${artifact.previewUrl}" alt="" />` : ""}
-                        <strong>${escapeHtml(artifact.label || artifact.fileName || artifact.kind || "--")}</strong>
-                        <span>${escapeHtml(artifact.fileName || artifact.kind || "--")}</span>
+                        ${previewable ? `<img class="lab-artifact-card__image" src="${previewUrl}" alt="" />` : ""}
+                        <strong>${escapeHtml(artifactLabel)}</strong>
+                        <span>${escapeHtml(artifactMeta)}</span>
                       </article>
                     `;
                   })
@@ -263,20 +581,24 @@ export function createMediaAnalysisProfileStage(deps: any) {
   }
 
   function getRunningProfileJob() {
-    const jobs = getProfileJobs();
+    const jobs = getJobs();
     return (
-      jobs.find(function (job: any) {
+      jobs.find(function (job) {
         return (
-          job.action === "profile-run-preflight" &&
-          !["completed", "failed", "cancelled"].includes(String(job.stage || ""))
+          asNonEmptyString(job.action) === "profile-run-preflight" &&
+          !["completed", "failed", "cancelled"].includes(asNonEmptyString(job.stage) || "")
         );
       }) || null
     );
   }
 
   function renderProfileActionsPanel() {
-    const preflight = getProfilePreflight();
+    const preflight = getPreflight();
     const runningJob = getRunningProfileJob();
+    const readiness = getReadiness();
+    const estimate = getEstimate();
+    const signals = getSignals();
+    const artifacts = getArtifacts();
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -288,19 +610,19 @@ export function createMediaAnalysisProfileStage(deps: any) {
         ${renderSummaryRows([
           [
             text(["mediaAnalysis", "shared", "status"]),
-            text(["mediaAnalysis", "profile", "status", preflight.status || "idle"]),
+            text(["mediaAnalysis", "profile", "status", asNonEmptyString(preflight.status) || "idle"]),
           ],
           [
             text(["mediaAnalysis", "profile", "summary", "signals"]),
-            String(getProfileSignals().length),
+            String(signals.length),
           ],
           [
             text(["mediaAnalysis", "profile", "summary", "artifacts"]),
-            String(getProfileArtifacts().length),
+            String(artifacts.length),
           ],
           [
             text(["mediaAnalysis", "profile", "summary", "runtime"]),
-            formatDuration(getProfileEstimate().runtimeSeconds),
+            formatDuration(asNumber(estimate.runtimeSeconds)),
           ],
         ])}
         <div class="lab-action-stack">
@@ -308,7 +630,7 @@ export function createMediaAnalysisProfileStage(deps: any) {
             class="lab-button lab-button--primary"
             type="button"
             data-action="profile-run"
-            ${getProfileReadiness().stageReady !== true || runningJob ? "disabled" : ""}
+            ${readiness.stageReady !== true || runningJob ? "disabled" : ""}
           >
             ${escapeHtml(text(["mediaAnalysis", "profile", "actions", "run"]))}
           </button>
@@ -322,8 +644,8 @@ export function createMediaAnalysisProfileStage(deps: any) {
           </button>
         </div>
         ${
-          runningJob && typeof runningJob.message === "string" && runningJob.message.trim() !== ""
-            ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
+          runningJob && asNonEmptyString(runningJob.message)
+            ? `<p class="lab-panel__hint">${escapeHtml(asNonEmptyString(runningJob.message) || "")}</p>`
             : ""
         }
       </section>
@@ -331,9 +653,12 @@ export function createMediaAnalysisProfileStage(deps: any) {
   }
 
   function renderProfileSummaryPanel() {
-    const readiness = getProfileReadiness();
-    const estimate = getProfileEstimate();
-    const selectedModel = getProfileSelectedModel();
+    const readiness = getReadiness();
+    const estimate = getEstimate();
+    const selectedModel = getSelectedModel();
+    const selectedModelLabelKey = selectedModel ? asNonEmptyString(selectedModel.labelKey) : null;
+    const blockers = toStringArray(readiness.blockers);
+    const warnings = toStringArray(readiness.warnings);
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -344,25 +669,25 @@ export function createMediaAnalysisProfileStage(deps: any) {
           [text(["mediaAnalysis", "profile", "summary", "preset"]), getProfileLabel()],
           [
             text(["mediaAnalysis", "profile", "summary", "lanes"]),
-            String(readiness.enabledLaneCount || 0),
+            String(asNumber(readiness.enabledLaneCount) || 0),
           ],
           [
             text(["mediaAnalysis", "profile", "summary", "runtime"]),
-            formatDuration(estimate.runtimeSeconds),
+            formatDuration(asNumber(estimate.runtimeSeconds)),
           ],
           [
             text(["mediaAnalysis", "profile", "summary", "model"]),
-            selectedModel ? textFromKey(selectedModel.labelKey || "") : "--",
+            selectedModelLabelKey ? textFromKey(selectedModelLabelKey) : "--",
           ],
         ])}
         ${
-          Array.isArray(readiness.blockers) && readiness.blockers.length > 0
+          blockers.length > 0
             ? `
               <div class="lab-list-block">
                 <strong>${escapeHtml(text(["mediaAnalysis", "profile", "blockersTitle"]))}</strong>
                 <ul class="lab-bullet-list">
-                  ${readiness.blockers
-                    .map(function (entry: any) {
+                  ${blockers
+                    .map(function (entry) {
                       return `<li>${escapeHtml(entry)}</li>`;
                     })
                     .join("")}
@@ -372,14 +697,14 @@ export function createMediaAnalysisProfileStage(deps: any) {
             : ""
         }
         ${
-          Array.isArray(readiness.warnings) && readiness.warnings.length > 0
+          warnings.length > 0
             ? `
               <div class="lab-list-block">
                 <strong>${escapeHtml(text(["mediaAnalysis", "profile", "warningsTitle"]))}</strong>
                 <ul class="lab-bullet-list">
-                  ${readiness.warnings
+                  ${warnings
                     .slice(0, 4)
-                    .map(function (entry: any) {
+                    .map(function (entry) {
                       return `<li>${escapeHtml(entry)}</li>`;
                     })
                     .join("")}
@@ -393,9 +718,8 @@ export function createMediaAnalysisProfileStage(deps: any) {
   }
 
   function renderProfileStage() {
-    const sourceReady =
-      typeof getProjectSource().storedPath === "string" &&
-      getProjectSource().storedPath.trim() !== "";
+    const source = getSource();
+    const sourceReady = asNonEmptyString(source.storedPath) !== null;
     return `
       <div class="lab-layout">
         <section class="lab-main-stack">
@@ -403,7 +727,7 @@ export function createMediaAnalysisProfileStage(deps: any) {
           ${renderProfileTargetPanel()}
           ${renderProfileModePanel()}
           ${renderProfilePresetPanel()}
-          ${getCurrentProfileMode() === "advanced" ? renderProfileAdvancedPanel() : ""}
+          ${getProfileMode() === "advanced" ? renderProfileAdvancedPanel() : ""}
           <div class="lab-subgrid lab-subgrid--profile">
             ${renderProfileSignalsPanel()}
             ${renderProfileArtifactsPanel()}
@@ -423,12 +747,12 @@ export function createMediaAnalysisProfileStage(deps: any) {
   }
 
   return {
-    renderProfileActionsPanel: renderProfileActionsPanel,
-    renderProfileArtifactsPanel: renderProfileArtifactsPanel,
-    renderProfileModePanel: renderProfileModePanel,
-    renderProfileSignalsPanel: renderProfileSignalsPanel,
-    renderProfileStage: renderProfileStage,
-    renderProfileSummaryPanel: renderProfileSummaryPanel,
-    renderProfileTargetPanel: renderProfileTargetPanel,
+    renderProfileActionsPanel,
+    renderProfileArtifactsPanel,
+    renderProfileModePanel,
+    renderProfileSignalsPanel,
+    renderProfileStage,
+    renderProfileSummaryPanel,
+    renderProfileTargetPanel,
   };
 }

@@ -5,6 +5,18 @@ import {
   getProjectReportDir as getProjectReportDirFromPaths,
 } from "./project-paths.js";
 
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryRuntimeRecord = LaboratoryRecord & {
+  paths: {
+    projectsDir: string;
+  };
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  slug: string;
+};
+
 export const LABORATORY_ROOM_ID = "laboratory";
 export const LABORATORY_MEDIA_FEATURE_ID = "media-analysis";
 export const LABORATORY_AUDIO_FEATURE_ID = "audio-analysis";
@@ -21,37 +33,51 @@ export const LABORATORY_FEATURE_NAMESPACES = {
   [LABORATORY_SUBTITLE_FEATURE_ID]: "subtitleAnalysis",
 };
 
-export function getLaboratoryProjectProcessDir(runtime: any, project: any) {
+export function getLaboratoryProjectProcessDir(
+  runtime: LaboratoryRuntimeRecord,
+  project: LaboratoryProjectRecord
+) {
   return getProjectProcessDirFromPaths(runtime, project);
 }
 
-export function getLaboratoryProjectReportDir(runtime: any, project: any) {
+export function getLaboratoryProjectReportDir(
+  runtime: LaboratoryRuntimeRecord,
+  project: LaboratoryProjectRecord
+) {
   return getProjectReportDirFromPaths(runtime, project);
 }
 
-export function getLaboratoryFeatureProcessDir(runtime: any, project: any, featureId: any) {
+export function getLaboratoryFeatureProcessDir(
+  runtime: LaboratoryRuntimeRecord,
+  project: LaboratoryProjectRecord,
+  featureId: string
+) {
   return getProjectFeatureProcessDirFromPaths(runtime, project, featureId);
 }
 
-export function getLaboratoryFeatureReportDir(runtime: any, project: any, featureId: any) {
+export function getLaboratoryFeatureReportDir(
+  runtime: LaboratoryRuntimeRecord,
+  project: LaboratoryProjectRecord,
+  featureId: string
+) {
   return getProjectFeatureReportDirFromPaths(runtime, project, featureId);
 }
 
-export function toLaboratoryRecord(value: any) {
+export function toLaboratoryRecord(value: unknown): LaboratoryRecord {
   if (value !== null && typeof value === "object" && Array.isArray(value) === false) {
-    return value;
+    return value as LaboratoryRecord;
   }
   return {};
 }
 
-export function cloneLaboratoryValue(value: any) {
-  return JSON.parse(JSON.stringify(value));
+export function cloneLaboratoryValue<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
-export function readNonEmptyString(value: any) {
+export function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 }
 
-export function normalizeLaboratoryLocale(value: any) {
+export function normalizeLaboratoryLocale(value: unknown): "tr" | "en" {
   return typeof value === "string" && value.toLowerCase().startsWith("tr") ? "tr" : "en";
 }

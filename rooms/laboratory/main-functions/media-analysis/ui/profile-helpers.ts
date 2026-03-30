@@ -329,10 +329,13 @@ export function getProfileLaneCardState(params: ProfileLaneCardParams) {
   const lane = toRecord(profileLaneMap[laneId]);
   const mediaKinds = Array.isArray(lane.mediaKinds) ? lane.mediaKinds : [];
   const compatible = mediaKinds.length === 0 || mediaKinds.includes(currentSourceKind);
+  const laneSummaries = Array.isArray(profileReadiness.lanes)
+    ? profileReadiness.lanes.map(function (entry: unknown) {
+        return toRecord(entry);
+      })
+    : [];
   const laneSummary =
-    (Array.isArray(profileReadiness.lanes) ? profileReadiness.lanes : []).find(function (
-      entry: unknown
-    ) {
+    laneSummaries.find(function (entry) {
       return toRecord(entry).laneId === laneId;
     }) || ({} as ProfileHelperRecord);
   const requiredTools = Array.isArray(lane.requiredTools) ? lane.requiredTools : [];

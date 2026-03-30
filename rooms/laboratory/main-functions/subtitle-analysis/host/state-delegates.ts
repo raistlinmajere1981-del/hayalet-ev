@@ -1,23 +1,40 @@
-export function createSubtitleStateDelegatesRuntime(deps: { subtitleStateRuntime: any }) {
+import type { createSubtitleStateRuntime } from "./state.js";
+
+type LaboratoryRecord = Record<string, unknown>;
+type LaboratorySubtitleEntryRecord = LaboratoryRecord;
+type LaboratorySubtitleAnalysisStateRecord = LaboratoryRecord;
+type SubtitleStateRuntime = ReturnType<typeof createSubtitleStateRuntime>;
+
+type SubtitleStateDelegatesRuntimeDeps = {
+  subtitleStateRuntime: SubtitleStateRuntime;
+};
+
+export function createSubtitleStateDelegatesRuntime(deps: SubtitleStateDelegatesRuntimeDeps) {
   const { subtitleStateRuntime } = deps;
 
-  function getDefaultSubtitleEditPresetId(runtime: any) {
-    return subtitleStateRuntime.getDefaultSubtitleEditPresetId(runtime);
+  function getDefaultSubtitleEditPresetId(runtime: LaboratoryRecord): string {
+    return String(subtitleStateRuntime.getDefaultSubtitleEditPresetId(runtime) || "");
   }
 
-  function getDefaultSubtitleEditRecipe(runtime: any, presetId: string) {
-    return subtitleStateRuntime.getDefaultSubtitleEditRecipe(runtime, presetId);
+  function getDefaultSubtitleEditRecipe(
+    runtime: LaboratoryRecord,
+    presetId: string
+  ): LaboratoryRecord {
+    return subtitleStateRuntime.getDefaultSubtitleEditRecipe(runtime, presetId) as LaboratoryRecord;
   }
 
   function createEmptySubtitleDiscoveryState() {
     return subtitleStateRuntime.createEmptySubtitleDiscoveryState();
   }
 
-  function createEmptySubtitleAnalysisState(runtime: any) {
+  function createEmptySubtitleAnalysisState(runtime: LaboratoryRecord) {
     return subtitleStateRuntime.createEmptySubtitleAnalysisState(runtime);
   }
 
-  function normalizeSubtitleAnalysisState(rawValue: unknown, runtime: any) {
+  function normalizeSubtitleAnalysisState(
+    rawValue: unknown,
+    runtime: LaboratoryRecord
+  ): LaboratorySubtitleAnalysisStateRecord {
     return subtitleStateRuntime.normalizeSubtitleAnalysisState(rawValue, runtime);
   }
 
@@ -25,7 +42,7 @@ export function createSubtitleStateDelegatesRuntime(deps: { subtitleStateRuntime
     return subtitleStateRuntime.getSubtitleMimeType(fileName);
   }
 
-  function isSubtitleFileName(runtime: any, fileName: string) {
+  function isSubtitleFileName(runtime: LaboratoryRecord, fileName: string) {
     return subtitleStateRuntime.isSubtitleFileName(runtime, fileName);
   }
 
@@ -41,36 +58,45 @@ export function createSubtitleStateDelegatesRuntime(deps: { subtitleStateRuntime
     return subtitleStateRuntime.normalizeSubtitleDiscoveryItem(rawValue, index);
   }
 
-  function getSubtitleEntries(project: any) {
+  function getSubtitleEntries(project: LaboratoryRecord): LaboratorySubtitleEntryRecord[] {
     return subtitleStateRuntime.getSubtitleEntries(project);
   }
 
-  function getSubtitleEntryById(project: any, entryId: string) {
+  function getSubtitleEntryById(project: LaboratoryRecord, entryId: string) {
     return subtitleStateRuntime.getSubtitleEntryById(project, entryId);
   }
 
-  function getActiveSubtitleEntry(project: any) {
+  function getActiveSubtitleEntry(project: LaboratoryRecord) {
     return subtitleStateRuntime.getActiveSubtitleEntry(project);
   }
 
-  function getSubtitleSelectedEntries(project: any) {
+  function getSubtitleSelectedEntries(project: LaboratoryRecord) {
     return subtitleStateRuntime.getSubtitleSelectedEntries(project);
   }
 
-  function createSubtitleEntryRecord(filePath: string, options: any) {
+  function createSubtitleEntryRecord(filePath: string, options: LaboratoryRecord) {
     return subtitleStateRuntime.createSubtitleEntryRecord(filePath, options);
   }
 
-  function resetSubtitleFeatureState(runtime: any, project: any, reason: string) {
-    return subtitleStateRuntime.resetSubtitleFeatureState(runtime, project, reason);
+  function resetSubtitleFeatureState(
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    reason: string
+  ): void {
+    subtitleStateRuntime.resetSubtitleFeatureState(runtime, project, reason);
   }
 
-  function resetSubtitleDiscovery(runtime: any, project: any) {
-    return subtitleStateRuntime.resetSubtitleDiscovery(runtime, project);
+  function resetSubtitleDiscovery(runtime: LaboratoryRecord, project: LaboratoryRecord): void {
+    subtitleStateRuntime.resetSubtitleDiscovery(runtime, project);
   }
 
-  function upsertSubtitleEntries(runtime: any, project: any, incomingEntries: any[], options: any) {
-    return subtitleStateRuntime.upsertSubtitleEntries(runtime, project, incomingEntries, options);
+  function upsertSubtitleEntries(
+    runtime: LaboratoryRecord,
+    project: LaboratoryRecord,
+    incomingEntries: LaboratorySubtitleEntryRecord[],
+    options: LaboratoryRecord
+  ): void {
+    subtitleStateRuntime.upsertSubtitleEntries(runtime, project, incomingEntries, options);
   }
 
   return {

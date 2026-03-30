@@ -1,6 +1,65 @@
 import { getAudioAnalysisProcessRootDir } from "../../../shared/host/project-paths.js";
 
-export function createAudioAnalysisProcessRunnerSupport(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryRuntimeRecord = LaboratoryRecord & {
+  paths?: unknown;
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  slug?: unknown;
+};
+
+type LaboratoryProcessTargetRecord = LaboratoryRecord & {
+  path?: unknown;
+};
+
+type LaboratoryProcessArtifactRecord = LaboratoryRecord;
+type AudioAnalysisProcessRootRuntime = Parameters<typeof getAudioAnalysisProcessRootDir>[0];
+type AudioAnalysisProcessRootProject = Parameters<typeof getAudioAnalysisProcessRootDir>[1];
+
+type LaboratoryProfileToolRequest = {
+  requestId: string;
+  jobId: string;
+  toolId: string;
+  cwd: string;
+  args: string[];
+  timeoutMs: number;
+};
+
+type AudioAnalysisProcessRunnerSupportDeps = {
+  clone: (value: unknown) => unknown;
+  createProcessArtifact: (
+    moduleId: string,
+    artifactKind: string,
+    filePath: string,
+    label: string,
+    metadata: LaboratoryRecord
+  ) => LaboratoryProcessArtifactRecord;
+  ensureRuntimeDirectory: (path: string, requestId: string | null) => Promise<unknown>;
+  parseAspectralStatsText: (rawText: unknown) => LaboratoryRecord;
+  readTextFile: (path: string) => Promise<string>;
+  runProfileTool: (
+    runtime: LaboratoryRuntimeRecord,
+    request: LaboratoryProfileToolRequest
+  ) => Promise<unknown>;
+  sanitizeFileSegment: (value: string, fallback: string) => string;
+  writeJsonFile: (path: string, content: LaboratoryRecord) => Promise<unknown>;
+};
+
+function asNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
+function requireTargetPath(target: LaboratoryProcessTargetRecord): string {
+  const targetPath = asNonEmptyString(target.path);
+  if (targetPath === null) {
+    throw new Error("Audio analysis target path is required before generating process artifacts.");
+  }
+  return targetPath;
+}
+
+export function createAudioAnalysisProcessRunnerSupport(deps: AudioAnalysisProcessRunnerSupportDeps) {
   const {
     clone,
     createProcessArtifact,
@@ -12,30 +71,47 @@ export function createAudioAnalysisProcessRunnerSupport(deps: any) {
     writeJsonFile,
   } = deps;
 
-  function getModuleProcessDir(runtime: any, project: any, moduleId: string) {
-    return `${getAudioAnalysisProcessRootDir(runtime, project)}/${sanitizeFileSegment(moduleId, "audio-module")}`;
+  function getProcessRootDir(
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord
+  ): string {
+    return getAudioAnalysisProcessRootDir(
+      runtime as unknown as AudioAnalysisProcessRootRuntime,
+      project as unknown as AudioAnalysisProcessRootProject
+    );
+  }
+
+  function getModuleProcessDir(
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    moduleId: string
+  ) {
+    const processRootDir = getProcessRootDir(runtime, project);
+    return `${processRootDir}/${sanitizeFileSegment(moduleId, "audio-module")}`;
   }
 
   async function generateProcessSpectrogram(
-    runtime: any,
-    project: any,
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
     requestId: string,
     jobId: string,
-    target: any,
+    target: LaboratoryProcessTargetRecord,
     artifactBase: string,
     outputDir: string,
     moduleId: string
   ) {
+    const processRootDir = getProcessRootDir(runtime, project);
+    const targetPath = requireTargetPath(target);
     const outputPath = `${outputDir}/${artifactBase}-spectrogram.png`;
     await runProfileTool(runtime, {
-      requestId: requestId,
-      jobId: jobId,
+      requestId,
+      jobId,
       toolId: "ffmpeg",
-      cwd: getAudioAnalysisProcessRootDir(runtime, project),
+      cwd: processRootDir,
       args: [
         "-y",
         "-i",
-        target.path,
+        targetPath,
         "-lavfi",
         "showspectrumpic=s=1600x440:legend=0",
         "-frames:v",
@@ -48,25 +124,27 @@ export function createAudioAnalysisProcessRunnerSupport(deps: any) {
   }
 
   async function generateProcessWaveform(
-    runtime: any,
-    project: any,
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
     requestId: string,
     jobId: string,
-    target: any,
+    target: LaboratoryProcessTargetRecord,
     artifactBase: string,
     outputDir: string,
     moduleId: string
   ) {
+    const processRootDir = getProcessRootDir(runtime, project);
+    const targetPath = requireTargetPath(target);
     const outputPath = `${outputDir}/${artifactBase}-waveform.png`;
     await runProfileTool(runtime, {
-      requestId: requestId,
-      jobId: jobId,
+      requestId,
+      jobId,
       toolId: "ffmpeg",
-      cwd: getAudioAnalysisProcessRootDir(runtime, project),
+      cwd: processRootDir,
       args: [
         "-y",
         "-i",
-        target.path,
+        targetPath,
         "-filter_complex",
         "showwavespic=s=1600x440:split_channels=0",
         "-frames:v",
@@ -79,26 +157,28 @@ export function createAudioAnalysisProcessRunnerSupport(deps: any) {
   }
 
   async function generateSpectralDescriptorArtifact(
-    runtime: any,
-    project: any,
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
     requestId: string,
     jobId: string,
-    target: any,
+    target: LaboratoryProcessTargetRecord,
     artifactBase: string,
     outputDir: string,
     moduleId: string
   ) {
+    const processRootDir = getProcessRootDir(runtime, project);
+    const targetPath = requireTargetPath(target);
     const textPath = `${outputDir}/${artifactBase}-spectral.txt`;
     const jsonPath = `${outputDir}/${artifactBase}-spectral.json`;
     await runProfileTool(runtime, {
-      requestId: requestId,
-      jobId: jobId,
+      requestId,
+      jobId,
       toolId: "ffmpeg",
-      cwd: getAudioAnalysisProcessRootDir(runtime, project),
+      cwd: processRootDir,
       args: [
         "-y",
         "-i",
-        target.path,
+        targetPath,
         "-af",
         `aspectralstats=measure=centroid+rolloff+flatness+flux,ametadata=mode=print:file=${textPath}:direct=1`,
         "-f",
@@ -127,13 +207,13 @@ export function createAudioAnalysisProcessRunnerSupport(deps: any) {
 
   return {
     ensureProcessRuntimeDirectories(
-      runtime: any,
-      project: any,
+      runtime: LaboratoryRuntimeRecord,
+      project: LaboratoryProjectRecord,
       requestId: string,
       moduleOutputDir: string
     ) {
       return Promise.all([
-        ensureRuntimeDirectory(getAudioAnalysisProcessRootDir(runtime, project), requestId),
+        ensureRuntimeDirectory(getProcessRootDir(runtime, project), requestId),
         ensureRuntimeDirectory(moduleOutputDir, requestId),
       ]);
     },

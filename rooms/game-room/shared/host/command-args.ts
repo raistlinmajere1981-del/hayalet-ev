@@ -138,7 +138,7 @@ export function normalizeTeamTetrisMoveArgs(
     rotation: parseIntegerValue(args["rotation"]) || 0,
     rowShifts: Array.isArray(args["rowShifts"])
       ? args["rowShifts"]
-          .map((value: any) => parseIntegerValue(value))
+          .map((value: unknown) => parseIntegerValue(value))
           .filter((value): value is number => value === -1 || value === 0 || value === 1)
       : [],
   };

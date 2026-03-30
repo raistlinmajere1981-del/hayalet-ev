@@ -11,19 +11,25 @@ type LaboratoryFeatureStageRuntimeDeps = Parameters<
 
 type LaboratoryFeatureStageRuntime = ReturnType<typeof createLaboratoryFeatureStagePanelsRuntime> &
   ReturnType<typeof createLaboratoryFeatureStageBundlesRuntime>;
+type LaboratoryFeatureStageBundlesRuntimeDeps = Parameters<
+  typeof createLaboratoryFeatureStageBundlesRuntime
+>[0];
 
 export function createLaboratoryFeatureStageRuntime(
   deps: LaboratoryFeatureStageRuntimeDeps
 ): LaboratoryFeatureStageRuntime {
   const laboratoryFeatureStagePanelsRuntime = createLaboratoryFeatureStagePanelsRuntime(deps);
+  const renderPreviewMetaRow = laboratoryFeatureStagePanelsRuntime.renderPreviewMetaRow;
+  const renderAudioAnalysisProviderPanel =
+    laboratoryFeatureStagePanelsRuntime.renderAudioAnalysisProviderPanel;
+  const renderAudioAnalysisModuleGrid =
+    laboratoryFeatureStagePanelsRuntime.renderAudioAnalysisModuleGrid;
   const laboratoryFeatureStageBundlesRuntime = createLaboratoryFeatureStageBundlesRuntime({
     ...deps,
-    renderPreviewMetaRow: laboratoryFeatureStagePanelsRuntime.renderPreviewMetaRow,
-    renderAudioAnalysisProviderPanel:
-      laboratoryFeatureStagePanelsRuntime.renderAudioAnalysisProviderPanel,
-    renderAudioAnalysisModuleGrid:
-      laboratoryFeatureStagePanelsRuntime.renderAudioAnalysisModuleGrid,
-  });
+    renderPreviewMetaRow,
+    renderAudioAnalysisProviderPanel,
+    renderAudioAnalysisModuleGrid,
+  } as unknown as LaboratoryFeatureStageBundlesRuntimeDeps);
 
   return {
     ...laboratoryFeatureStagePanelsRuntime,

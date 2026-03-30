@@ -114,7 +114,11 @@ export function createMediaProfileActionRuntime(deps: ProfileDeps) {
   ) {
     return patchActiveProject(runtime, function (nextProject: MediaProfileProjectRecord) {
       const presetId = asNonEmptyString(actionPayload["presetId"]);
-      const preset = findProfilePreset(runtime["profilePresets"], nextProject["source"]["kind"], presetId);
+      const preset = findProfilePreset(
+        runtime["profilePresets"],
+        nextProject["source"]["kind"],
+        presetId
+      );
       const nextProfile = applyProfilePresetPatch(
         runtime["profilePresets"],
         runtime["profileModels"],
@@ -227,8 +231,7 @@ export function createMediaProfileActionRuntime(deps: ProfileDeps) {
       const requestedModelId = asNonEmptyString(actionPayload["modelId"]);
       if (
         requestedModelId !== null &&
-        toRecord(getProfileModelDescriptorMap(runtime)[requestedModelId as string])["fileName"] ===
-          undefined
+        toRecord(getProfileModelDescriptorMap(runtime)[requestedModelId])["fileName"] === undefined
       ) {
         throw new Error("Requested speech model is unavailable.");
       }

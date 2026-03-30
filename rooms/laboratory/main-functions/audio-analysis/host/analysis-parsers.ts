@@ -52,152 +52,161 @@ type EmotionHeuristicSummary = {
   prosodySummary: Partial<ProsodySummary>;
 };
 
+const EMPTY_NUMERIC_SUMMARY: NumericSummary = {
+  sampleCount: 0,
+  mean: null,
+  min: null,
+  max: null,
+};
+
+function toText(value: unknown): string {
+  return typeof value === "string" ? value : String(value ?? "");
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  const numericValue = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function isNonNullString(value: string | null): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function buildEmptySpectralStatsSummary(): SpectralStatsSummary {
+  return {
+    centroid: { ...EMPTY_NUMERIC_SUMMARY },
+    rolloff: { ...EMPTY_NUMERIC_SUMMARY },
+    flatness: { ...EMPTY_NUMERIC_SUMMARY },
+    flux: { ...EMPTY_NUMERIC_SUMMARY },
+  };
+}
+
+function parseDetectionLogSummary(rawText: string, pattern: RegExp): DetectionLogSummary {
+  const matches = Array.from(rawText.matchAll(pattern));
+  const totalDurationSeconds = matches.reduce<number>(function (total, match) {
+    const durationText = match[1] ?? "";
+    const durationValue = asFiniteNumber(durationText);
+    return total + (durationValue ?? 0);
+  }, 0);
+
+  return {
+    count: matches.length,
+    totalDurationSeconds,
+  };
+}
+
+function parseCsvTable(rawText: unknown): CsvTable {
+  const lines = toText(rawText)
+    .split(/\r?\n/)
+    .map(function (entry) {
+      return entry.trim();
+    })
+    .filter(function (entry) {
+      return entry.length > 0;
+    });
+
+  if (lines.length < 2) {
+    return {
+      header: [],
+      rows: [],
+    };
+  }
+
+  const header = (lines[0] ?? "").split(";").map(function (entry) {
+    return entry.trim();
+  });
+  const rows = lines.slice(1).map(function (line) {
+    const values = line.split(";").map(function (entry) {
+      return entry.trim();
+    });
+    return header.reduce<CsvTableRow>(function (record, key, index) {
+      record[key] = values[index] ?? "";
+      return record;
+    }, {});
+  });
+
+  return {
+    header,
+    rows,
+  };
+}
+
+function buildNumericSummary(values: number[]): NumericSummary {
+  const samples = values.filter(function (entry) {
+    return Number.isFinite(entry);
+  });
+  if (samples.length === 0) {
+    return { ...EMPTY_NUMERIC_SUMMARY };
+  }
+
+  const total = samples.reduce<number>(function (sum, sample) {
+    return sum + sample;
+  }, 0);
+
+  return {
+    sampleCount: samples.length,
+    mean: total / samples.length,
+    min: Math.min(...samples),
+    max: Math.max(...samples),
+  };
+}
+
+function findProsodyColumn(header: string[], pattern: RegExp): string | null {
+  return header.find(function (column) {
+    return pattern.test(column);
+  }) ?? null;
+}
+
+function toPartialProsodySummary(value: unknown): Partial<ProsodySummary> {
+  return value !== null && typeof value === "object" ? (value as Partial<ProsodySummary>) : {};
+}
+
 export function createAudioAnalysisParserRuntime() {
   function parseBlackDetectLog(stderrValue: unknown): DetectionLogSummary {
-    const matches = Array.from(String(stderrValue || "").match(/black_duration:([0-9.]+)/g) || []);
-    return {
-      count: matches.length,
-      totalDurationSeconds: matches.reduce(function (total: any, match: any) {
-        const value = Number(match.split(":")[1]);
-        return total + (Number.isFinite(value) ? value : 0);
-      }, 0),
-    };
+    return parseDetectionLogSummary(toText(stderrValue), /black_duration:([0-9.]+)/g);
   }
 
   function parseFreezeDetectLog(stderrValue: unknown): DetectionLogSummary {
-    const matches = Array.from(String(stderrValue || "").match(/freeze_duration:([0-9.]+)/g) || []);
-    return {
-      count: matches.length,
-      totalDurationSeconds: matches.reduce(function (total: any, match: any) {
-        const value = Number(match.split(":")[1]);
-        return total + (Number.isFinite(value) ? value : 0);
-      }, 0),
-    };
+    return parseDetectionLogSummary(toText(stderrValue), /freeze_duration:([0-9.]+)/g);
   }
 
   function parseSilenceDetectLog(stderrValue: unknown): DetectionLogSummary {
-    const matches = Array.from(
-      String(stderrValue || "").match(/silence_duration: ([0-9.]+)/g) || []
-    );
-    return {
-      count: matches.length,
-      totalDurationSeconds: matches.reduce(function (total: any, match: any) {
-        const value = Number(match.split(": ")[1]);
-        return total + (Number.isFinite(value) ? value : 0);
-      }, 0),
-    };
+    return parseDetectionLogSummary(toText(stderrValue), /silence_duration:\s*([0-9.]+)/g);
   }
 
   function parseVolumeDetectLog(stderrValue: unknown): VolumeDetectSummary {
-    const meanMatch = String(stderrValue || "").match(/mean_volume:\s*(-?[0-9.]+)\s*dB/i);
-    const maxMatch = String(stderrValue || "").match(/max_volume:\s*(-?[0-9.]+)\s*dB/i);
+    const rawText = toText(stderrValue);
+    const meanMatch = rawText.match(/mean_volume:\s*(-?[0-9.]+)\s*dB/i);
+    const maxMatch = rawText.match(/max_volume:\s*(-?[0-9.]+)\s*dB/i);
+
     return {
-      meanVolumeDb: meanMatch ? Number(meanMatch[1]) : null,
-      maxVolumeDb: maxMatch ? Number(maxMatch[1]) : null,
+      meanVolumeDb: meanMatch ? asFiniteNumber(meanMatch[1]) : null,
+      maxVolumeDb: maxMatch ? asFiniteNumber(maxMatch[1]) : null,
     };
   }
 
   function parseAspectralStatsText(rawText: unknown): SpectralStatsSummary {
-    const rawMetrics = (
-      String(rawText || "").match(/lavfi\.aspectralstats\.[a-zA-Z0-9_.-]+=-?[0-9.]+/g) || []
-    ).map(function (entry: any) {
-      return entry.trim();
-    });
     const metricSamples: Record<string, number[]> = {};
 
-    rawMetrics.forEach(function (entry: any) {
-      const match = entry.match(/lavfi\.aspectralstats\.([a-zA-Z0-9_.-]+)=(-?[0-9.]+)/);
-      if (!match) {
+    Array.from(
+      toText(rawText).matchAll(/lavfi\.aspectralstats\.([a-zA-Z0-9_.-]+)=(-?[0-9.]+)/g)
+    ).forEach(function (match) {
+      const metricId = match[1] ?? "";
+      const numericValue = asFiniteNumber(match[2] ?? "");
+      if (metricId.length === 0 || numericValue === null) {
         return;
       }
-      const metricId = match[1];
-      const numericValue = Number(match[2]);
-      if (!Number.isFinite(numericValue)) {
-        return;
-      }
-      if (!metricSamples[metricId]) {
-        metricSamples[metricId] = [];
-      }
-      metricSamples[metricId].push(numericValue);
+      const existingSamples = metricSamples[metricId] ?? [];
+      existingSamples.push(numericValue);
+      metricSamples[metricId] = existingSamples;
     });
 
     return (["centroid", "rolloff", "flatness", "flux"] as const).reduce<SpectralStatsSummary>(
-      function (accumulator: any, metricId: any) {
-        const samples = Array.isArray(metricSamples[metricId]) ? metricSamples[metricId] : [];
-        const total = samples.reduce(function (sum: any, sample: any) {
-          return sum + sample;
-        }, 0);
-        accumulator[metricId] = {
-          sampleCount: samples.length,
-          mean: samples.length > 0 ? total / samples.length : null,
-          min: samples.length > 0 ? Math.min(...samples) : null,
-          max: samples.length > 0 ? Math.max(...samples) : null,
-        };
+      function (accumulator, metricId) {
+        accumulator[metricId] = buildNumericSummary(metricSamples[metricId] ?? []);
         return accumulator;
       },
-      {
-        centroid: { sampleCount: 0, mean: null, min: null, max: null },
-        rolloff: { sampleCount: 0, mean: null, min: null, max: null },
-        flatness: { sampleCount: 0, mean: null, min: null, max: null },
-        flux: { sampleCount: 0, mean: null, min: null, max: null },
-      }
-    );
-  }
-
-  function parseCsvTable(rawText: unknown): CsvTable {
-    const lines = String(rawText || "")
-      .split(/\r?\n/)
-      .map(function (entry: any) {
-        return entry.trim();
-      })
-      .filter(Boolean);
-
-    if (lines.length < 2) {
-      return {
-        header: [],
-        rows: [],
-      };
-    }
-
-    const header = lines[0].split(";").map(function (entry: any) {
-      return entry.trim();
-    });
-    const rows = lines.slice(1).map(function (line: any) {
-      const values = line.split(";").map(function (entry: any) {
-        return entry.trim();
-      });
-      return header.reduce(function (record: CsvTableRow, key: string, index: number): CsvTableRow {
-        record[key] = values[index] || "";
-        return record;
-      }, {} as CsvTableRow);
-    });
-
-    return {
-      header: header,
-      rows: rows,
-    };
-  }
-
-  function buildNumericSummary(values: number[]): NumericSummary {
-    const samples = values.filter(function (entry: any) {
-      return Number.isFinite(entry);
-    });
-    const total = samples.reduce(function (sum: any, sample: any) {
-      return sum + sample;
-    }, 0);
-    return {
-      sampleCount: samples.length,
-      mean: samples.length > 0 ? total / samples.length : null,
-      min: samples.length > 0 ? Math.min(...samples) : null,
-      max: samples.length > 0 ? Math.max(...samples) : null,
-    };
-  }
-
-  function findProsodyColumn(header: string[], pattern: RegExp): string | null {
-    return (
-      header.find(function (column: any) {
-        return pattern.test(column);
-      }) || null
+      buildEmptySpectralStatsSummary()
     );
   }
 
@@ -211,39 +220,34 @@ export function createAudioAnalysisParserRuntime() {
     const voiceProbKey = findProsodyColumn(header, /voiceprob/i);
     const f0Values: number[] = [];
     const loudnessValues: number[] = [];
+    const timestampValues: number[] = [];
     const voiceProbValues: number[] = [];
     let voicedFrames = 0;
-    let totalDurationSeconds = 0;
     let estimatedPauseCount = 0;
     let previousVoiced = false;
-    let firstTimestamp: number | null = null;
-    let lastTimestamp: number | null = null;
 
-    rows.forEach(function (record: any) {
-      const timestampValue = Number(timestampKey ? record[timestampKey] : NaN);
-      const f0Value = Number(f0Key ? record[f0Key] : NaN);
-      const loudnessValue = Number(loudnessKey ? record[loudnessKey] : NaN);
-      const voiceProbValue = Number(voiceProbKey ? record[voiceProbKey] : NaN);
+    rows.forEach(function (record) {
+      const timestampValue = asFiniteNumber(timestampKey === null ? null : record[timestampKey]);
+      const f0Value = asFiniteNumber(f0Key === null ? null : record[f0Key]);
+      const loudnessValue = asFiniteNumber(loudnessKey === null ? null : record[loudnessKey]);
+      const voiceProbValue = asFiniteNumber(
+        voiceProbKey === null ? null : record[voiceProbKey]
+      );
 
-      if (Number.isFinite(timestampValue)) {
-        if (firstTimestamp === null) {
-          firstTimestamp = timestampValue;
-        }
-        lastTimestamp = timestampValue;
+      if (timestampValue !== null) {
+        timestampValues.push(timestampValue);
       }
-      if (Number.isFinite(f0Value) && f0Value > 0) {
+      if (f0Value !== null && f0Value > 0) {
         f0Values.push(f0Value);
       }
-      if (Number.isFinite(loudnessValue)) {
+      if (loudnessValue !== null) {
         loudnessValues.push(loudnessValue);
       }
-      if (Number.isFinite(voiceProbValue)) {
+      if (voiceProbValue !== null) {
         voiceProbValues.push(voiceProbValue);
       }
 
-      const voiced = Number.isFinite(voiceProbValue)
-        ? voiceProbValue >= 0.5
-        : Number.isFinite(f0Value) && f0Value > 0;
+      const voiced = voiceProbValue !== null ? voiceProbValue >= 0.5 : f0Value !== null && f0Value > 0;
       if (voiced) {
         voicedFrames += 1;
       }
@@ -253,47 +257,40 @@ export function createAudioAnalysisParserRuntime() {
       previousVoiced = voiced;
     });
 
-    const startTimestamp = typeof firstTimestamp === "number" ? firstTimestamp : null;
-    const endTimestamp = typeof lastTimestamp === "number" ? lastTimestamp : null;
-
-    if (startTimestamp !== null && endTimestamp !== null && endTimestamp >= startTimestamp) {
-      totalDurationSeconds = endTimestamp - startTimestamp;
-    }
+    const totalDurationSeconds =
+      timestampValues.length > 1 &&
+      (timestampValues[timestampValues.length - 1] ?? 0) >= (timestampValues[0] ?? 0)
+        ? (timestampValues[timestampValues.length - 1] ?? 0) - (timestampValues[0] ?? 0)
+        : 0;
 
     const voicedRatio = rows.length > 0 ? voicedFrames / rows.length : null;
     const numericSummaries: ProsodyNumericSummaries = {};
 
     if (f0Values.length > 0) {
-      const summary = buildNumericSummary(f0Values);
-      numericSummaries.f0 = summary;
+      numericSummaries.f0 = buildNumericSummary(f0Values);
     }
     if (loudnessValues.length > 0) {
-      const summary = buildNumericSummary(loudnessValues);
-      numericSummaries.loudness = summary;
+      numericSummaries.loudness = buildNumericSummary(loudnessValues);
     }
     if (voiceProbValues.length > 0) {
-      const summary = buildNumericSummary(voiceProbValues);
-      numericSummaries.voiceProbability = summary;
+      numericSummaries.voiceProbability = buildNumericSummary(voiceProbValues);
     }
 
     return {
       columns: header,
       frameCount: rows.length,
       durationSeconds: totalDurationSeconds,
-      meanF0Hz: numericSummaries.f0 ? numericSummaries.f0.mean : null,
-      meanLoudness: numericSummaries.loudness ? numericSummaries.loudness.mean : null,
-      voicedRatio: voicedRatio,
-      estimatedPauseCount: estimatedPauseCount,
-      numericSummaries: numericSummaries,
+      meanF0Hz: numericSummaries.f0?.mean ?? null,
+      meanLoudness: numericSummaries.loudness?.mean ?? null,
+      voicedRatio,
+      estimatedPauseCount,
+      numericSummaries,
     };
   }
 
   function buildEmotionHeuristicFromProsody(prosodySummary: unknown): EmotionHeuristicSummary {
-    const summary =
-      prosodySummary && typeof prosodySummary === "object"
-        ? (prosodySummary as Partial<ProsodySummary>)
-        : {};
-    const cues = [];
+    const summary = toPartialProsodySummary(prosodySummary);
+    const cues: string[] = [];
     let score = 0;
 
     if (typeof summary.meanF0Hz === "number") {
@@ -339,10 +336,10 @@ export function createAudioAnalysisParserRuntime() {
           : "steady-arousal-candidate";
 
     return {
-      label: label,
-      score: score,
+      label,
+      score,
       confidence: Math.abs(score) >= 3 ? "medium" : "low",
-      cues: cues,
+      cues: cues.filter(isNonNullString),
       disclaimer:
         "Heuristic only. This module suggests coarse arousal-style labels and is not a factual emotion classifier.",
       prosodySummary: summary,

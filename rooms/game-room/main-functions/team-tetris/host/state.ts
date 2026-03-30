@@ -1,6 +1,11 @@
 import { readLocale } from "../../../shared/host/context-state.js";
 import { normalizeLocale, normalizeText } from "../../../shared/host/text.js";
-import { TEAM_TETRIS_SCHEMA_VERSION, cloneTeamTetrisMatch } from "./engine.js";
+import {
+  TEAM_TETRIS_SCHEMA_VERSION,
+  cloneTeamTetrisMatch,
+  type TeamTetrisMatch,
+  type TeamTetrisMatchResult,
+} from "./engine.js";
 
 export const TEAM_TETRIS_STATUS_COPY = {
   idle: {
@@ -31,7 +36,7 @@ export const TEAM_TETRIS_STATUS_COPY = {
     en: "An invalid Team Tetris move was returned. Reset to recover.",
     tr: "Gecersiz bir Takim Tetris hamlesi dondu. Kurtarmak icin sifirla.",
   },
-};
+} as const;
 
 export const TEAM_TETRIS_COMMAND_COPY = {
   started: {
@@ -86,9 +91,57 @@ export const TEAM_TETRIS_COMMAND_COPY = {
     en: "The Team Tetris update could not be delivered.",
     tr: "Takim Tetris guncellemesi iletilemedi.",
   },
-};
+} as const;
 
-export function createInitialTeamTetrisState(locale: any) {
+export type TeamTetrisStatusKey = keyof typeof TEAM_TETRIS_STATUS_COPY;
+export type TeamTetrisCommandKey = keyof typeof TEAM_TETRIS_COMMAND_COPY;
+export type TeamTetrisStateResult = TeamTetrisMatchResult | "idle" | "blocked";
+
+export interface TeamTetrisStateApi {
+  getState(key: string): unknown;
+  setState(key: string, value: unknown): void;
+  getLocale?(): unknown;
+}
+
+export interface TeamTetrisHostState {
+  locale: "tr" | "en";
+  schemaVersion: number;
+  active: boolean;
+  result: TeamTetrisStateResult;
+  statusKey: TeamTetrisStatusKey;
+  hiddenPairs: boolean;
+  revealPairsOnFinish: boolean;
+  blockedReason: string;
+  matchId: string | null;
+  match: TeamTetrisMatch | null;
+  localSessionId: string | null;
+  remoteUserId: string | null;
+  lastRemoteTransportMessageId: string | null;
+  lastRemoteTurnIndex: number | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+function isKnownTeamTetrisStatusKey(value: unknown): value is TeamTetrisStatusKey {
+  return (
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(TEAM_TETRIS_STATUS_COPY, value)
+  );
+}
+
+function normalizeTeamTetrisResult(value: unknown): TeamTetrisStateResult {
+  return value === "team-a-win" ||
+    value === "team-b-win" ||
+    value === "draw" ||
+    value === "pending" ||
+    value === "blocked"
+    ? value
+    : "idle";
+}
+
+export function createInitialTeamTetrisState(locale: unknown): TeamTetrisHostState {
   return {
     locale: normalizeLocale(locale),
     schemaVersion: TEAM_TETRIS_SCHEMA_VERSION,
@@ -98,63 +151,61 @@ export function createInitialTeamTetrisState(locale: any) {
     hiddenPairs: true,
     revealPairsOnFinish: true,
     blockedReason: "",
-    matchId: null as string | null,
-    match: null as any,
-    localSessionId: null as string | null,
-    remoteUserId: null as string | null,
-    lastRemoteTransportMessageId: null as string | null,
-    lastRemoteTurnIndex: null as number | null,
+    matchId: null,
+    match: null,
+    localSessionId: null,
+    remoteUserId: null,
+    lastRemoteTransportMessageId: null,
+    lastRemoteTurnIndex: null,
   };
 }
 
-export function normalizeTeamTetrisState(candidate: any, localeFallback: any) {
-  const source =
-    candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-      ? candidate
-      : {};
-  const state = createInitialTeamTetrisState(source.locale || localeFallback);
+export function normalizeTeamTetrisState(
+  candidate: unknown,
+  localeFallback: unknown
+): TeamTetrisHostState {
+  const source = isRecord(candidate) ? candidate : {};
+  const state = createInitialTeamTetrisState(source["locale"] || localeFallback);
   state.schemaVersion = TEAM_TETRIS_SCHEMA_VERSION;
-  state.active = source.active === true;
-  state.result =
-    typeof source.result === "string" && source.result.trim() !== ""
-      ? source.result.trim()
-      : "idle";
-  state.statusKey =
-    typeof source.statusKey === "string" &&
-    Object.prototype.hasOwnProperty.call(TEAM_TETRIS_STATUS_COPY, source.statusKey)
-      ? source.statusKey
-      : "idle";
-  state.hiddenPairs = source.hiddenPairs !== false;
-  state.revealPairsOnFinish = source.revealPairsOnFinish !== false;
-  state.blockedReason = normalizeText(source.blockedReason);
-  state.matchId = normalizeText(source.matchId) || null;
-  state.match = cloneTeamTetrisMatch(source.match);
-  state.localSessionId = normalizeText(source.localSessionId) || null;
-  state.remoteUserId = normalizeText(source.remoteUserId) || null;
-  state.lastRemoteTransportMessageId = normalizeText(source.lastRemoteTransportMessageId) || null;
+  state.active = source["active"] === true;
+  state.result = normalizeTeamTetrisResult(source["result"]);
+  state.statusKey = isKnownTeamTetrisStatusKey(source["statusKey"]) ? source["statusKey"] : "idle";
+  state.hiddenPairs = source["hiddenPairs"] !== false;
+  state.revealPairsOnFinish = source["revealPairsOnFinish"] !== false;
+  state.blockedReason = normalizeText(source["blockedReason"]);
+  state.matchId = normalizeText(source["matchId"]) || null;
+  state.match = cloneTeamTetrisMatch(source["match"]);
+  state.localSessionId = normalizeText(source["localSessionId"]) || null;
+  state.remoteUserId = normalizeText(source["remoteUserId"]) || null;
+  state.lastRemoteTransportMessageId = normalizeText(source["lastRemoteTransportMessageId"]) || null;
   state.lastRemoteTurnIndex =
-    typeof source.lastRemoteTurnIndex === "number" &&
-    Number.isInteger(source.lastRemoteTurnIndex) &&
-    source.lastRemoteTurnIndex >= 0
-      ? source.lastRemoteTurnIndex
+    typeof source["lastRemoteTurnIndex"] === "number" &&
+    Number.isInteger(source["lastRemoteTurnIndex"]) &&
+    source["lastRemoteTurnIndex"] >= 0
+      ? source["lastRemoteTurnIndex"]
       : null;
+
   if (state.match) {
     state.matchId = state.match.matchId || state.matchId;
     if (state.result !== "blocked") {
-      state.result = state.match.result || state.result;
+      state.result = state.match.result;
       state.active = state.match.result === "pending";
     }
     state.hiddenPairs = state.match.hiddenPairs !== false;
     state.revealPairsOnFinish = state.match.revealPairsOnFinish !== false;
   }
+
   return state;
 }
 
-export function loadTeamTetrisState(api: any) {
+export function loadTeamTetrisState(api: TeamTetrisStateApi): TeamTetrisHostState {
   return normalizeTeamTetrisState(api.getState("team-tetris-game"), readLocale(api));
 }
 
-export function saveTeamTetrisState(api: any, state: any) {
+export function saveTeamTetrisState(
+  api: TeamTetrisStateApi,
+  state: TeamTetrisHostState
+): TeamTetrisHostState {
   const normalized = normalizeTeamTetrisState(state, readLocale(api));
   normalized.locale = readLocale(api);
   api.setState("team-tetris-game", normalized);

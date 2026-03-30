@@ -1,7 +1,13 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
 
-  registry.createFateKnotsUiStateRuntime = function createFateKnotsUiStateRuntime(deps: any) {
+  const registry = getFactoryRegistry(global);
+
+  registry.createFateKnotsUiStateRuntime = function createFateKnotsUiStateRuntime(
+    deps: GameRoomFateKnotsUiStateRuntimeDeps
+  ): GameRoomFateKnotsUiStateRuntime {
     const createFateKnotsUiStateDefaultsRuntime = registry.createFateKnotsUiStateDefaultsRuntime;
     const createFateKnotsUiStateSanitizeRuntime = registry.createFateKnotsUiStateSanitizeRuntime;
     const createFateKnotsUiStateSupportRuntime = registry.createFateKnotsUiStateSupportRuntime;
@@ -36,6 +42,13 @@
       getUserParticipant: supportRuntime.getUserParticipant,
       isSelectionComplete: supportRuntime.isSelectionComplete,
       sanitizeAssetLink: sanitizeRuntime.sanitizeAssetLink,
+      sanitizeCatalogEntry: sanitizeRuntime.sanitizeCatalogEntry,
+      sanitizeSelection: sanitizeRuntime.sanitizeSelection,
+      sanitizeParticipant: sanitizeRuntime.sanitizeParticipant,
+      sanitizeCurrentStep: sanitizeRuntime.sanitizeCurrentStep,
+      sanitizeDecision: sanitizeRuntime.sanitizeDecision,
+      sanitizeCombat: sanitizeRuntime.sanitizeCombat,
+      sanitizeUiAssets: sanitizeRuntime.sanitizeUiAssets,
       sanitizeFateKnotsState: sanitizeRuntime.sanitizeFateKnotsState,
       sendChoice: supportRuntime.sendChoice,
       sendCombatAction: supportRuntime.sendCombatAction,
@@ -45,4 +58,6 @@
       t: supportRuntime.t,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})(
+  (typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal
+);

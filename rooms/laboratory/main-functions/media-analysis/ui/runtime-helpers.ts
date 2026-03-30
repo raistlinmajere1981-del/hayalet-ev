@@ -22,7 +22,41 @@ import {
   sortProfileSignals as sortMediaAnalysisProfileSignals,
 } from "./profile-helpers.js";
 
-export function createMediaAnalysisUiRuntimeHelpers(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryPreviewMetricsRecord = LaboratoryRecord & {
+  duration?: unknown;
+  height?: unknown;
+  url?: unknown;
+  width?: unknown;
+};
+
+type LaboratoryUiState = {
+  ui: {
+    previewMetrics: LaboratoryPreviewMetricsRecord;
+  };
+};
+
+type MediaAnalysisUiRuntimeHelpersDeps = {
+  featureText: (path: string[]) => string;
+  getCurrentSourceKind: () => string;
+  getProfileCapabilities: () => LaboratoryRecord;
+  getProfileLaneMap: () => LaboratoryRecord;
+  getProfileReadiness: () => LaboratoryRecord;
+  getProfileSignals: () => unknown[];
+  getProjectProfile: () => LaboratoryRecord;
+  getProjectSource: () => LaboratoryRecord;
+  getSourceMetadata: () => LaboratoryRecord;
+  getToolEntry: (toolId: string) => LaboratoryRecord;
+  getToolRegistry: () => LaboratoryRecord[];
+  state: LaboratoryUiState;
+  text: (path: string[]) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createMediaAnalysisUiRuntimeHelpers(
+  deps: MediaAnalysisUiRuntimeHelpersDeps
+) {
   const state = deps.state;
   const text = deps.text;
   const featureText = deps.featureText;

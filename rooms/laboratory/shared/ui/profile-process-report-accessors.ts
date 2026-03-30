@@ -1,7 +1,15 @@
-export function createLaboratoryProfileProcessReportAccessorsRuntime(deps: any) {
-  const getLaboratoryUiFeatureRuntime = deps.getLaboratoryUiFeatureRuntime;
+import type { LaboratoryUiFeatureRuntimeApi } from "./feature-runtime.js";
 
-  function readLaboratoryUiFeatureRuntime() {
+type LaboratoryProfileProcessReportAccessorsDeps = {
+  getLaboratoryUiFeatureRuntime: () => LaboratoryUiFeatureRuntimeApi;
+};
+
+export function createLaboratoryProfileProcessReportAccessorsRuntime(
+  deps: LaboratoryProfileProcessReportAccessorsDeps
+) {
+  const { getLaboratoryUiFeatureRuntime } = deps;
+
+  function readLaboratoryUiFeatureRuntime(): LaboratoryUiFeatureRuntimeApi {
     return getLaboratoryUiFeatureRuntime();
   }
 

@@ -1,24 +1,104 @@
-export function createLaboratoryMediaPreviewUi(deps: any) {
-  const state = deps.state;
-  const render = deps.render;
-  const escapeHtml = deps.escapeHtml;
-  const text = deps.text;
-  const formatDuration = deps.formatDuration;
-  const getActiveProject = deps.getActiveProject;
-  const getProjectSource = deps.getProjectSource;
-  const getCurrentSourceMode = deps.getCurrentSourceMode;
-  const getRelevantJobs = deps.getRelevantJobs;
-  const getCurrentSourceKind = deps.getCurrentSourceKind;
-  const getProjectStatusLabel = deps.getProjectStatusLabel;
-  const getCurrentSourceLabel = deps.getCurrentSourceLabel;
-  const getPreferredSourceDuration = deps.getPreferredSourceDuration;
-  const getPreferredSourceResolution = deps.getPreferredSourceResolution;
-  const getPreferredSourceCodec = deps.getPreferredSourceCodec;
-  const getPreferredSourceFormat = deps.getPreferredSourceFormat;
-  const formatBitRate = deps.formatBitRate;
-  const getSourceMetadata = deps.getSourceMetadata;
+type LaboratoryRecord = Record<string, unknown>;
 
-  function renderPreviewMetaRow(label: any, value: any) {
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  name?: unknown;
+};
+
+type LaboratorySourceRecord = LaboratoryRecord & {
+  previewUrl?: unknown;
+  routeLabel?: unknown;
+  sourceUrl?: unknown;
+  storedFileName?: unknown;
+};
+
+type LaboratoryMetadataRecord = LaboratoryRecord & {
+  bitRate?: unknown;
+};
+
+type LaboratoryJobRecord = LaboratoryRecord & {
+  featureStage?: unknown;
+  message?: unknown;
+  percent?: unknown;
+  stage?: unknown;
+};
+
+type LaboratoryRelevantJobsRecord = LaboratoryRecord & {
+  project?: unknown;
+};
+
+type LaboratoryPreviewState = {
+  ui: {
+    audioAnalysis: {
+      bars: number[];
+      url: string | null;
+    };
+    previewMetrics: {
+      duration: number | null;
+      height: number | null;
+      url: string | null;
+      width: number | null;
+    };
+  };
+};
+
+type LaboratoryMediaPreviewDeps = {
+  escapeHtml: (value: string) => string;
+  formatBitRate: (value: unknown) => string;
+  formatDuration: (value: number | null | undefined) => string;
+  getActiveProject: () => LaboratoryProjectRecord | null;
+  getCurrentSourceKind: () => string;
+  getCurrentSourceLabel: () => string;
+  getCurrentSourceMode: () => string;
+  getPreferredSourceCodec: () => string;
+  getPreferredSourceDuration: (previewUrl: string | null) => number | null;
+  getPreferredSourceFormat: () => string;
+  getPreferredSourceResolution: (previewUrl: string | null) => string;
+  getProjectSource: () => LaboratorySourceRecord;
+  getProjectStatusLabel: (source: LaboratorySourceRecord) => string;
+  getRelevantJobs: () => LaboratoryRelevantJobsRecord;
+  getSourceMetadata: () => LaboratoryMetadataRecord;
+  render: () => unknown;
+  state: LaboratoryPreviewState;
+  text: (path: string[]) => string;
+};
+
+export function createLaboratoryMediaPreviewUi(deps: LaboratoryMediaPreviewDeps) {
+  const {
+    escapeHtml,
+    formatBitRate,
+    formatDuration,
+    getActiveProject,
+    getCurrentSourceKind,
+    getCurrentSourceLabel,
+    getCurrentSourceMode,
+    getPreferredSourceCodec,
+    getPreferredSourceDuration,
+    getPreferredSourceFormat,
+    getPreferredSourceResolution,
+    getProjectSource,
+    getProjectStatusLabel,
+    getRelevantJobs,
+    getSourceMetadata,
+    render,
+    state,
+    text,
+  } = deps;
+
+  function toString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value : null;
+  }
+
+  function toJobRecord(value: unknown): LaboratoryJobRecord {
+    return (value && typeof value === "object" && Array.isArray(value) === false
+      ? value
+      : {}) as LaboratoryJobRecord;
+  }
+
+  function toJobList(value: unknown): LaboratoryJobRecord[] {
+    return Array.isArray(value) ? value.map(toJobRecord) : [];
+  }
+
+  function renderPreviewMetaRow(label: string, value: string | null) {
     return `
       <li>
         <span>${escapeHtml(label)}</span>
@@ -30,24 +110,16 @@ export function createLaboratoryMediaPreviewUi(deps: any) {
   function renderPreviewSurface() {
     const project = getActiveProject();
     const source = getProjectSource();
-    const previewUrl =
-      typeof source.previewUrl === "string" && source.previewUrl.trim() !== ""
-        ? source.previewUrl
-        : null;
-    const fileName =
-      typeof source.storedFileName === "string" && source.storedFileName.trim() !== ""
-        ? source.storedFileName
-        : "--";
+    const previewUrl = toString(source.previewUrl);
+    const fileName = toString(source.storedFileName) || "--";
     const sourceMode = getCurrentSourceMode();
     const routeLabel =
-      typeof source.routeLabel === "string" && source.routeLabel.trim() !== ""
-        ? source.routeLabel
-        : text(["mediaAnalysis", "source", "modes", sourceMode]);
+      toString(source.routeLabel) || text(["mediaAnalysis", "source", "modes", sourceMode]);
 
-    const projectJobs = getRelevantJobs().project;
+    const projectJobs = toJobList(getRelevantJobs().project);
     const activeJob =
-      projectJobs.find(function (entry: any) {
-        return entry.featureStage !== "edit";
+      projectJobs.find(function (entry) {
+        return toString(entry.featureStage) !== "edit";
       }) || null;
 
     let mediaMarkup = `
@@ -76,9 +148,7 @@ export function createLaboratoryMediaPreviewUi(deps: any) {
       ),
       renderPreviewMetaRow(
         text(["mediaAnalysis", "source", "previewInfo", "source"]),
-        typeof source.sourceUrl === "string" && source.sourceUrl.trim() !== ""
-          ? source.sourceUrl
-          : "--"
+        toString(source.sourceUrl)
       ),
       renderPreviewMetaRow(
         text(["mediaAnalysis", "shared", "duration"]),
@@ -100,7 +170,7 @@ export function createLaboratoryMediaPreviewUi(deps: any) {
       <section class="lab-panel lab-preview-panel">
         <div class="lab-preview-panel__header">
           <div>
-            <p class="lab-panel__subtitle">${escapeHtml(project ? project.name : "--")}</p>
+            <p class="lab-panel__subtitle">${escapeHtml(project ? toString(project.name) || "--" : "--")}</p>
             <h2 class="lab-panel__title">${escapeHtml(getCurrentSourceLabel())}</h2>
           </div>
           <span class="lab-chip">${escapeHtml(getProjectStatusLabel(source))}</span>
@@ -120,13 +190,15 @@ export function createLaboratoryMediaPreviewUi(deps: any) {
                       <span>${escapeHtml(
                         typeof activeJob.percent === "number"
                           ? `${Math.round(activeJob.percent)}%`
-                          : activeJob.stage || "--"
+                          : toString(activeJob.stage) || "--"
                       )}</span>
                     </div>
                     <div class="lab-progress-bar">
                       <span style="width:${Math.max(4, Number(activeJob.percent) || 6)}%"></span>
                     </div>
-                    <p class="lab-status-card__body">${escapeHtml(activeJob.message || activeJob.stage || "")}</p>
+                    <p class="lab-status-card__body">${escapeHtml(
+                      toString(activeJob.message) || toString(activeJob.stage) || ""
+                    )}</p>
                   </div>
                 `
                 : ""
@@ -155,11 +227,7 @@ export function createLaboratoryMediaPreviewUi(deps: any) {
       return;
     }
 
-    const nextUrl =
-      media instanceof HTMLImageElement
-        ? media.currentSrc || media.src
-        : media.currentSrc || media.src;
-
+    const nextUrl = media.currentSrc || media.src;
     if (state.ui.previewMetrics.url === nextUrl) {
       return;
     }
@@ -206,22 +274,21 @@ export function createLaboratoryMediaPreviewUi(deps: any) {
     }
   }
 
-  async function decodeAudioBars(url: any) {
-    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-    if (typeof window.fetch !== "function" || typeof AudioContextCtor !== "function") {
+  async function decodeAudioBars(url: string): Promise<number[]> {
+    if (typeof window.fetch !== "function") {
       return [];
     }
 
     const response = await window.fetch(url);
     const arrayBuffer = await response.arrayBuffer();
-    const audioContext = new AudioContextCtor();
+    const audioContext = new window.AudioContext();
 
     try {
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
       const samples = audioBuffer.getChannelData(0);
       const bucketCount = 42;
       const bucketSize = Math.max(1, Math.floor(samples.length / bucketCount));
-      const bars = [];
+      const bars: number[] = [];
 
       for (let index = 0; index < bucketCount; index += 1) {
         const start = index * bucketSize;
@@ -265,7 +332,7 @@ export function createLaboratoryMediaPreviewUi(deps: any) {
     };
 
     void decodeAudioBars(nextUrl)
-      .then(function (bars: any) {
+      .then(function (bars) {
         if (state.ui.audioAnalysis.url !== nextUrl) {
           return;
         }

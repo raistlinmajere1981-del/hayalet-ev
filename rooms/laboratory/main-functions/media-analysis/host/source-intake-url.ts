@@ -1,4 +1,77 @@
-export function createMediaUrlSourceIntakeRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryMediaUrlRuntime = LaboratoryRecord;
+
+type LaboratoryProjectSourceDraftsRecord = LaboratoryRecord & {
+  fileNameHint?: unknown;
+  urlInput?: unknown;
+};
+
+type LaboratoryProjectSourceRecord = LaboratoryRecord & {
+  drafts?: unknown;
+  kind?: unknown;
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  id?: unknown;
+  source?: unknown;
+};
+
+type LaboratoryPreparedSource = {
+  metadata: unknown;
+  metadataError: string | null;
+  mimeType: string | null;
+  storedFileName: string | null;
+  storedPath: string | null;
+};
+
+type LaboratoryDownloadedFileRecord = LaboratoryRecord & {
+  contentType?: unknown;
+  fileName?: unknown;
+  path?: unknown;
+};
+
+type MediaUrlSourceIntakeRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  callRoomTools: (payload: LaboratoryRecord) => Promise<unknown>;
+  cancelJobsForProject: (
+    runtime: LaboratoryMediaUrlRuntime,
+    projectId: string | null,
+    requestId: string
+  ) => Promise<unknown>;
+  clearJob: (runtime: LaboratoryMediaUrlRuntime, jobId: string) => void;
+  deriveFilename: (urlValue: string, sourceKind: unknown, hintValue: unknown) => string;
+  getActiveProject: (runtime: LaboratoryMediaUrlRuntime) => LaboratoryProjectRecord | null;
+  getProjectSourceDir: (
+    runtime: LaboratoryMediaUrlRuntime,
+    project: LaboratoryProjectRecord
+  ) => string;
+  normalizeMimeType: (fileName: unknown, kind: string) => string;
+  patchActiveProject: (
+    runtime: LaboratoryMediaUrlRuntime,
+    updater: (project: LaboratoryProjectRecord) => LaboratoryProjectRecord
+  ) => Promise<unknown>;
+  pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
+  registerJob: (runtime: LaboratoryMediaUrlRuntime, payload: LaboratoryRecord) => void;
+  resetEditForCurrentSource: (
+    runtime: LaboratoryMediaUrlRuntime,
+    project: LaboratoryProjectRecord
+  ) => void;
+  resetProfileForCurrentSource: (
+    runtime: LaboratoryMediaUrlRuntime,
+    project: LaboratoryProjectRecord,
+    reason: string
+  ) => void;
+  resolvePreparedSource: (
+    runtime: LaboratoryMediaUrlRuntime,
+    project: LaboratoryProjectRecord,
+    options: LaboratoryRecord
+  ) => Promise<LaboratoryPreparedSource>;
+  roomId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createMediaUrlSourceIntakeRuntime(deps: MediaUrlSourceIntakeRuntimeDeps) {
   const {
     asNonEmptyString,
     callRoomTools,
@@ -18,30 +91,68 @@ export function createMediaUrlSourceIntakeRuntime(deps: any) {
     toRecord,
   } = deps;
 
-  async function handleUrlDownload(api: any, runtime: any, requestId: any) {
+  function toProjectSourceRecord(value: unknown): LaboratoryProjectSourceRecord {
+    return toRecord(value);
+  }
+
+  function toProjectSourceDraftsRecord(value: unknown): LaboratoryProjectSourceDraftsRecord {
+    return toRecord(value);
+  }
+
+  function toDownloadedFileRecord(value: unknown): LaboratoryDownloadedFileRecord {
+    return toRecord(value);
+  }
+
+  function getProjectId(project: LaboratoryProjectRecord): string | null {
+    return asNonEmptyString(project.id);
+  }
+
+  function getProjectSourceKind(project: LaboratoryProjectRecord): string {
+    const sourceRecord = toProjectSourceRecord(project.source);
+    return typeof sourceRecord.kind === "string" && sourceRecord.kind.trim() !== ""
+      ? sourceRecord.kind
+      : "video";
+  }
+
+  function getProjectDrafts(project: LaboratoryProjectRecord): LaboratoryProjectSourceDraftsRecord {
+    return toProjectSourceDraftsRecord(toProjectSourceRecord(project.source).drafts);
+  }
+
+  function setProjectSource(
+    project: LaboratoryProjectRecord,
+    updater: (source: LaboratoryProjectSourceRecord) => void
+  ) {
+    const nextSource = toProjectSourceRecord(project["source"]);
+    updater(nextSource);
+    project["source"] = nextSource;
+  }
+
+  async function handleUrlDownload(
+    api: unknown,
+    runtime: LaboratoryMediaUrlRuntime,
+    requestId: string
+  ) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
     }
 
-    const urlValue = asNonEmptyString(project.source.drafts.urlInput);
+    const projectId = getProjectId(project);
+    const sourceDrafts = getProjectDrafts(project);
+    const urlValue = asNonEmptyString(sourceDrafts.urlInput);
     if (urlValue === null) {
       throw new Error("Direct URL is empty.");
     }
 
-    await cancelJobsForProject(runtime, project.id, requestId);
+    await cancelJobsForProject(runtime, projectId, requestId);
 
-    const fileName = deriveFilename(
-      urlValue,
-      project.source.kind,
-      project.source.drafts.fileNameHint
-    );
+    const fileName = deriveFilename(urlValue, getProjectSourceKind(project), sourceDrafts.fileNameHint);
     const jobId = `room-url-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
       jobId: jobId,
       requestId: requestId,
       action: "source-download-url",
-      projectId: project.id,
+      projectId: projectId,
       featureStage: "source",
     });
 
@@ -49,7 +160,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: any) {
       requestId: requestId,
       jobId: jobId,
       action: "source-download-url",
-      projectId: project.id,
+      projectId: projectId,
       stage: "queued",
     });
 
@@ -64,7 +175,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: any) {
         overwrite: false,
       });
 
-      const downloaded = toRecord(downloadResult.download);
+      const downloaded = toDownloadedFileRecord(toRecord(downloadResult)["download"]);
       const storedPath = asNonEmptyString(downloaded.path);
       const storedFileName =
         asNonEmptyString(downloaded.fileName) ||
@@ -76,23 +187,25 @@ export function createMediaUrlSourceIntakeRuntime(deps: any) {
         storedFileName: storedFileName,
         mimeType:
           asNonEmptyString(downloaded.contentType) ||
-          normalizeMimeType(storedFileName, project.source.kind),
+          normalizeMimeType(storedFileName, getProjectSourceKind(project)),
       });
 
-      await patchActiveProject(runtime, function (nextProject: any) {
+      await patchActiveProject(runtime, function (nextProject) {
         if (nextProject.id !== project.id) {
           return nextProject;
         }
-        nextProject.source.mode = "url";
-        nextProject.source.status = "ready";
-        nextProject.source.storedPath = preparedSource.storedPath;
-        nextProject.source.storedFileName = preparedSource.storedFileName;
-        nextProject.source.sourceUrl = urlValue;
-        nextProject.source.mimeType = preparedSource.mimeType;
-        nextProject.source.routeLabel = "Direct URL";
-        nextProject.source.lastError = null;
-        nextProject.source.metadata = preparedSource.metadata;
-        nextProject.source.metadataError = preparedSource.metadataError;
+        setProjectSource(nextProject, function (nextSource) {
+          nextSource["mode"] = "url";
+          nextSource["status"] = "ready";
+          nextSource["storedPath"] = preparedSource.storedPath;
+          nextSource["storedFileName"] = preparedSource.storedFileName;
+          nextSource["sourceUrl"] = urlValue;
+          nextSource["mimeType"] = preparedSource.mimeType;
+          nextSource["routeLabel"] = "Direct URL";
+          nextSource["lastError"] = null;
+          nextSource["metadata"] = preparedSource.metadata;
+          nextSource["metadataError"] = preparedSource.metadataError;
+        });
         resetEditForCurrentSource(runtime, nextProject);
         resetProfileForCurrentSource(
           runtime,
@@ -106,7 +219,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: any) {
         requestId: requestId,
         jobId: jobId,
         action: "source-download-url",
-        projectId: project.id,
+        projectId: projectId,
         stage: "completed",
         percent: 100,
       });
@@ -116,12 +229,14 @@ export function createMediaUrlSourceIntakeRuntime(deps: any) {
         storedFileName: preparedSource.storedFileName,
       };
     } catch (error) {
-      await patchActiveProject(runtime, function (nextProject: any) {
+      await patchActiveProject(runtime, function (nextProject) {
         if (nextProject.id !== project.id) {
           return nextProject;
         }
-        nextProject.source.status = "error";
-        nextProject.source.lastError = error instanceof Error ? error.message : String(error);
+        setProjectSource(nextProject, function (nextSource) {
+          nextSource["status"] = "error";
+          nextSource["lastError"] = error instanceof Error ? error.message : String(error);
+        });
         return nextProject;
       });
 
@@ -129,7 +244,7 @@ export function createMediaUrlSourceIntakeRuntime(deps: any) {
         requestId: requestId,
         jobId: jobId,
         action: "source-download-url",
-        projectId: project.id,
+        projectId: projectId,
         stage: "failed",
         message: error instanceof Error ? error.message : String(error),
       });

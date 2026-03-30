@@ -3,8 +3,14 @@ import {
   buildTeamTetrisBoardHash,
   createTeamTetrisMatch,
   TEAM_TETRIS_SCHEMA_VERSION,
+  type TeamTetrisMovePayload,
 } from "./engine.js";
-import { loadTeamTetrisState, saveTeamTetrisState } from "./state.js";
+import {
+  loadTeamTetrisState,
+  saveTeamTetrisState,
+  type TeamTetrisHostState,
+  type TeamTetrisStateApi,
+} from "./state.js";
 import { loadContext, readLocale } from "../../../shared/host/context-state.js";
 import {
   ROOM_ID,
@@ -42,7 +48,90 @@ import {
   sendTeamTetrisRemoteStart,
 } from "./runtime-transport.js";
 
-async function dispatchNextTeamTetrisTurn(api: any, state: any) {
+interface TeamTetrisProtocolRequest {
+  room: string;
+  scenario: string;
+  targets: string[];
+  context: Record<string, unknown>;
+}
+
+interface TeamTetrisMessageRequest {
+  provider: string;
+  page: string;
+  text: string;
+}
+
+interface TeamTetrisDispatchResult {
+  success?: boolean;
+  localSessionId?: unknown;
+  remoteUserId?: unknown;
+}
+
+interface TeamTetrisRuntimeApi extends TeamTetrisStateApi {
+  notifyRoom?(eventType: string, data: unknown): void;
+  sendProtocol?(options: TeamTetrisProtocolRequest): Promise<TeamTetrisDispatchResult | null>;
+  sendMessage?(options: TeamTetrisMessageRequest): Promise<TeamTetrisDispatchResult | null>;
+  selectUs1RemoteUser?(remoteUserId: string): Promise<boolean>;
+  sendUs1Message?(options: {
+    localSessionId: string | null;
+    text: string;
+    roomEvent?: Record<string, unknown>;
+    roomCommand?: Record<string, unknown>;
+  }): Promise<TeamTetrisDispatchResult | null>;
+}
+
+interface TeamTetrisCommandResult {
+  success: boolean;
+  message?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+function readTeamTetrisProviderSeatId(provider: string): "user" | "ai1" | "ai2" | "us1" | null {
+  if (provider === "room-ui") {
+    return "user";
+  }
+  if (provider === "ai1" || provider === "ai2" || provider === "us1") {
+    return provider;
+  }
+  return null;
+}
+
+function readTeamTetrisStartArgs(payload: unknown): { hiddenPairs: boolean; seed: string } {
+  const args = isRecord(payload) && isRecord(payload["roomArgs"]) ? payload["roomArgs"] : {};
+  return {
+    hiddenPairs: args["hiddenPairs"] !== false,
+    seed:
+      typeof args["seed"] === "string" && args["seed"].trim() !== "" ? args["seed"].trim() : "",
+  };
+}
+
+async function sendProtocolSafe(
+  api: TeamTetrisRuntimeApi,
+  options: TeamTetrisProtocolRequest
+): Promise<TeamTetrisDispatchResult | null> {
+  if (typeof api.sendProtocol !== "function") {
+    return null;
+  }
+  return await api.sendProtocol(options);
+}
+
+async function sendMessageSafe(
+  api: TeamTetrisRuntimeApi,
+  options: TeamTetrisMessageRequest
+): Promise<TeamTetrisDispatchResult | null> {
+  if (typeof api.sendMessage !== "function") {
+    return null;
+  }
+  return await api.sendMessage(options);
+}
+
+async function dispatchNextTeamTetrisTurn(
+  api: TeamTetrisRuntimeApi,
+  state: TeamTetrisHostState
+): Promise<TeamTetrisCommandResult | TeamTetrisDispatchResult> {
   if (!state.match || state.match.result !== "pending" || !state.match.currentTurn) {
     pushTeamTetrisState(api, state);
     return { success: true };
@@ -66,13 +155,13 @@ async function dispatchNextTeamTetrisTurn(api: any, state: any) {
     return { success: true };
   }
 
-  const slot = (context.slots as Record<string, { ready?: boolean }>)[String(currentTurn.seatId)];
-  if (!slot || slot.ready !== true) {
+  const slot = currentTurn.seatId === "ai1" ? context.slots.ai1 : context.slots.ai2;
+  if (slot.ready !== true) {
     blockTeamTetrisMatch(api, state, "blockedOpponent", "ai-unavailable");
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
   }
 
-  const protocolResult = await api.sendProtocol({
+  const protocolResult = await sendProtocolSafe(api, {
     room: ROOM_ID,
     scenario: buildTeamTetrisProtocolScenario(state.match),
     targets: [currentTurn.seatId],
@@ -89,7 +178,7 @@ async function dispatchNextTeamTetrisTurn(api: any, state: any) {
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
   }
 
-  const messageResult = await api.sendMessage({
+  const messageResult = await sendMessageSafe(api, {
     provider: currentTurn.seatId,
     page: TEAM_TETRIS_PAGE_ID,
     text: buildTeamTetrisAiTurnMessage(state.match, currentTurn.seatId),
@@ -103,7 +192,10 @@ async function dispatchNextTeamTetrisTurn(api: any, state: any) {
   return messageResult;
 }
 
-async function handleTeamTetrisStart(api: any, payload: any) {
+async function handleTeamTetrisStart(
+  api: TeamTetrisRuntimeApi,
+  payload: unknown
+): Promise<TeamTetrisCommandResult> {
   const context = loadContext(api);
   const readiness = getTeamTetrisReadiness(context);
   if (readiness.ai1 !== true || readiness.ai2 !== true || readiness.us1 !== true) {
@@ -111,14 +203,14 @@ async function handleTeamTetrisStart(api: any, payload: any) {
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "needReadySeats") };
   }
 
-  const args = payload && typeof payload === "object" ? payload.roomArgs || {} : {};
+  const args = readTeamTetrisStartArgs(payload);
   const state = loadTeamTetrisState(api);
-  state.hiddenPairs = args.hiddenPairs !== false;
+  state.hiddenPairs = args.hiddenPairs;
   state.revealPairsOnFinish = true;
   state.statusKey = "ready";
   const nextMatch = createTeamTetrisMatch({
     seed:
-      (typeof args.seed === "string" && args.seed.trim() !== "" ? args.seed.trim() : "") ||
+      args.seed ||
       [
         Date.now().toString(36),
         context.user.nickname,
@@ -136,16 +228,18 @@ async function handleTeamTetrisStart(api: any, payload: any) {
   state.remoteUserId = context.slots.us1.remoteUserId || state.remoteUserId;
   saveTeamTetrisState(api, state);
   pushTeamTetrisState(api, state);
+
   const remoteResult = await sendTeamTetrisRemoteStart(api, state);
-  if (!remoteResult || remoteResult.success !== true) {
+  if (remoteResult.success !== true) {
     blockTeamTetrisMatch(api, state, "blockedDispatch", "remote-start-dispatch-failed");
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
   }
+
   await dispatchNextTeamTetrisTurn(api, state);
   return { success: true, message: teamTetrisCommandMessage(readLocale(api), "started") };
 }
 
-function handleTeamTetrisReset(api: any) {
+function handleTeamTetrisReset(api: TeamTetrisRuntimeApi): TeamTetrisCommandResult {
   const state = loadTeamTetrisState(api);
   if (state.matchId) {
     void sendTeamTetrisRemoteReset(api, state);
@@ -154,7 +248,10 @@ function handleTeamTetrisReset(api: any) {
   return { success: true, message: teamTetrisCommandMessage(readLocale(api), "reset") };
 }
 
-async function handleTeamTetrisMove(api: any, payload: any) {
+async function handleTeamTetrisMove(
+  api: TeamTetrisRuntimeApi,
+  payload: unknown
+): Promise<TeamTetrisCommandResult> {
   const state = loadTeamTetrisState(api);
   if (!state.match) {
     pushTeamTetrisState(api, state);
@@ -171,14 +268,14 @@ async function handleTeamTetrisMove(api: any, payload: any) {
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "noActiveGame") };
   }
 
-  const providerSeatId = resolveTeamTetrisSeatFromProvider(
-    typeof payload.provider === "string" ? payload.provider : ""
-  );
+  const provider = isRecord(payload) && typeof payload["provider"] === "string" ? payload["provider"] : "";
+  const providerSeatId = readTeamTetrisProviderSeatId(provider);
+  const transportMessageId = readTransportMessageId(payload);
   if (providerSeatId !== currentTurn.seatId) {
     if (
       providerSeatId === "us1" &&
       state.lastRemoteTransportMessageId &&
-      state.lastRemoteTransportMessageId === readTransportMessageId(payload)
+      state.lastRemoteTransportMessageId === transportMessageId
     ) {
       return {
         success: false,
@@ -194,7 +291,10 @@ async function handleTeamTetrisMove(api: any, payload: any) {
     };
   }
 
-  const move = normalizeTeamTetrisMoveArgs(payload, TEAM_TETRIS_SCHEMA_VERSION);
+  const move: TeamTetrisMovePayload = normalizeTeamTetrisMoveArgs(
+    payload,
+    TEAM_TETRIS_SCHEMA_VERSION
+  );
   if (
     providerSeatId === "us1" &&
     state.lastRemoteTurnIndex !== null &&
@@ -206,11 +306,11 @@ async function handleTeamTetrisMove(api: any, payload: any) {
       message: teamTetrisCommandMessage(readLocale(api), "staleRemoteMove"),
     };
   }
+
   const boardHashBeforeMove = buildTeamTetrisBoardHash(state.match.teams[currentTurn.teamId].board);
   const result = applyTeamTetrisMove(state.match, move);
-  if (!("match" in result)) {
-    const failureReason =
-      typeof result.reason === "string" && result.reason ? result.reason : "invalid-move";
+  if (result.success !== true) {
+    const failureReason = typeof result.reason === "string" && result.reason ? result.reason : "invalid-move";
     if (
       providerSeatId === "us1" &&
       (failureReason === "turn-token-mismatch" || failureReason === "turn-index-mismatch")
@@ -220,8 +320,8 @@ async function handleTeamTetrisMove(api: any, payload: any) {
         message: teamTetrisCommandMessage(readLocale(api), "staleRemoteMove"),
       };
     }
-    if (providerSeatId === "us1" && readTransportMessageId(payload)) {
-      state.lastRemoteTransportMessageId = readTransportMessageId(payload);
+    if (providerSeatId === "us1" && transportMessageId) {
+      state.lastRemoteTransportMessageId = transportMessageId;
       saveTeamTetrisState(api, state);
     }
     if (providerSeatId === "ai1" || providerSeatId === "ai2" || providerSeatId === "us1") {
@@ -232,17 +332,13 @@ async function handleTeamTetrisMove(api: any, payload: any) {
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "invalidMove") };
   }
 
-  if (!result.match) {
-    pushTeamTetrisState(api, state);
-    return { success: false, message: teamTetrisCommandMessage(readLocale(api), "invalidMove") };
-  }
   state.match = result.match;
   state.matchId = result.match.matchId;
   state.result = result.match.result;
   state.active = result.match.result === "pending";
   state.blockedReason = "";
   if (providerSeatId === "us1") {
-    state.lastRemoteTransportMessageId = readTransportMessageId(payload);
+    state.lastRemoteTransportMessageId = transportMessageId;
     state.lastRemoteTurnIndex = move.turnIndex;
   }
   saveTeamTetrisState(api, state);
@@ -250,7 +346,7 @@ async function handleTeamTetrisMove(api: any, payload: any) {
 
   if (providerSeatId !== "us1") {
     const remoteResult = await sendTeamTetrisRemoteMove(api, state, move, boardHashBeforeMove);
-    if (!remoteResult || remoteResult.success !== true) {
+    if (remoteResult.success !== true) {
       blockTeamTetrisMatch(api, state, "blockedDispatch", "remote-sync-failed");
       return {
         success: false,

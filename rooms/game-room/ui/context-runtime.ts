@@ -1,13 +1,9 @@
 /* global document, window */
 
-(function (global: any) {
+(function (global: GameRoomUiGlobal) {
   type UnknownRecord = Record<string, unknown>;
-  type BootstrapCopy = Record<string, Record<string, string>>;
-  type FeatureRecord = {
-    id: string;
-    name: string;
-    description: string;
-  };
+  type BootstrapCopy = GameRoomBootstrapCopy;
+  type FeatureRecord = GameRoomFeatureRecord;
   type SlotState = {
     slotId: string;
     nickname: string;
@@ -62,43 +58,42 @@
     return typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
   }
 
-  const registry = global.GameRoomUiContextRuntime || (global.GameRoomUiContextRuntime = {});
+  function createFeatureRecord(candidate: unknown, fallback: FeatureRecord): FeatureRecord {
+    const source = isRecord(candidate) ? candidate : {};
+    return {
+      id: readString(source["id"], fallback.id),
+      name: readString(source["name"], fallback.name),
+      description: readString(source["description"], fallback.description),
+    };
+  }
 
-  registry.createGameRoomUiContextRuntime = function createGameRoomUiContextRuntime(deps: unknown) {
+  const registry: GameRoomUiContextRuntimeRegistry =
+    global.GameRoomUiContextRuntime || (global.GameRoomUiContextRuntime = {});
+
+  registry.createGameRoomUiContextRuntime = function createGameRoomUiContextRuntime(
+    deps: GameRoomUnknownRecord
+  ): GameRoomUiContextRuntimeLike {
     const runtimeDeps = isRecord(deps) ? (deps as ContextRuntimeDeps) : {};
     const ROOM_ID = readString(runtimeDeps["roomId"], "game-room");
     const FEATURE_ID = readString(runtimeDeps["featureId"], "xox");
     const bootstrapCopy = isRecord(runtimeDeps["bootstrapCopy"])
       ? (runtimeDeps["bootstrapCopy"] as BootstrapCopy)
       : {};
+    const defaultFeatureRecord: FeatureRecord = {
+      id: FEATURE_ID,
+      name: "XOX",
+      description: "",
+    };
     const featureRecords: FeatureRecord[] = Array.isArray(runtimeDeps["featureRecords"])
-      ? runtimeDeps["featureRecords"]
-          .filter(function (entry: any) {
-            return isRecord(entry);
-          })
-          .map(function (entry: any) {
-            return {
-              id: readString(entry["id"], FEATURE_ID),
-              name: readString(entry["name"], FEATURE_ID.toUpperCase()),
-              description: readString(entry["description"], ""),
-            };
-          })
-      : [
-          {
-            id: FEATURE_ID,
-            name: "XOX",
-            description: "",
-          },
-        ];
+      ? runtimeDeps["featureRecords"].map((entry) => createFeatureRecord(entry, defaultFeatureRecord))
+      : [defaultFeatureRecord];
     const fallbackFeatureRecord = featureRecords[0] || {
       id: FEATURE_ID,
       name: "XOX",
       description: "",
     };
-    const featureCatalog = new Map(
-      featureRecords.map(function (entry: any) {
-        return [entry.id, entry];
-      })
+    const featureCatalog = new Map<string, FeatureRecord>(
+      featureRecords.map((entry): [string, FeatureRecord] => [entry.id, entry])
     );
 
     function readBootstrapText(locale: string, key: string, fallback: string): string {
@@ -188,22 +183,22 @@
       };
     }
 
-    function readPath(source: unknown, path: string[]): string | undefined {
+    function readPath(source: unknown, path: string[]): string | null {
       let current = source;
       for (let index = 0; index < path.length; index += 1) {
         const key = path[index];
         if (key === undefined) {
-          return undefined;
+          return null;
         }
         if (isRecord(current) === false) {
-          return undefined;
+          return null;
         }
         current = current[key];
       }
-      return typeof current === "string" ? current : undefined;
+      return typeof current === "string" ? current : null;
     }
 
-    function createElement(tagName: string, className?: string, textContent?: string) {
+    function createElement(tagName: string, className?: string | null, textContent?: string | null) {
       const element = document.createElement(tagName);
       if (className) {
         element.className = className;
@@ -238,20 +233,28 @@
       const roomSource = isRecord(source["room"]) ? source["room"] : {};
       const userSource = isRecord(source["user"]) ? source["user"] : {};
       const features: FeatureRecord[] = Array.isArray(source["features"])
-        ? source["features"].map(function (feature: any) {
+        ? source["features"].map(function (feature) {
             const featureSource = isRecord(feature) ? feature : {};
             const id = normalizeFeatureId(featureSource["id"]);
             const fallbackFeature = featureCatalog.get(id) || fallbackFeatureRecord;
-            return {
-              id: id,
-              name: readString(featureSource["name"], fallbackFeature.name),
-              description: readString(featureSource["description"], fallbackFeature.description),
-            };
+            return createFeatureRecord(featureSource, {
+              id,
+              name: fallbackFeature.name,
+              description: fallbackFeature.description,
+            });
           })
         : featureRecords.slice();
       const activeFeatureSource = isRecord(source["activeFeature"]) ? source["activeFeature"] : {};
       const activeFeatureId = normalizeFeatureId(activeFeatureSource["id"]);
       const activeFallback = featureCatalog.get(activeFeatureId) || fallbackFeatureRecord;
+      const activeFeature =
+        features.find(function (feature) {
+          return feature.id === activeFeatureId;
+        }) || {
+          id: activeFeatureId,
+          name: activeFallback.name,
+          description: activeFallback.description,
+        };
 
       return {
         room: {
@@ -262,13 +265,7 @@
           ),
         },
         features: features,
-        activeFeature: features.find(function (feature: any) {
-          return feature.id === activeFeatureId;
-        }) || {
-          id: activeFeatureId,
-          name: activeFallback.name,
-          description: activeFallback.description,
-        },
+        activeFeature,
         user: {
           nickname: readString(
             userSource["nickname"],
@@ -296,4 +293,4 @@
       resolveLocale: resolveLocale,
     };
   };
-})(window);
+})(window as unknown as GameRoomUiGlobal);

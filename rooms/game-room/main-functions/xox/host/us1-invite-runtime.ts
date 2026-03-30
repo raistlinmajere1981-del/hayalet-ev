@@ -20,9 +20,9 @@ interface Us1Api {
   ) => Promise<{ success: boolean; localSessionId?: string; conversationId?: string }>;
   getState: (key: string) => unknown;
   setState: (key: string, value: unknown) => void;
-  deleteState: (key: string) => void;
+  deleteState?: (key: string) => void;
   getLocale?: () => unknown;
-  notifyRoom: (event: string, payload: Record<string, unknown>) => void;
+  notifyRoom?: (event: string, payload: Record<string, unknown>) => void;
 }
 
 interface Us1InviteRuntimeDeps {
@@ -180,7 +180,7 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
       },
     });
 
-    if (!sendResult || sendResult.success !== true) {
+    if (sendResult.success !== true) {
       return { success: false, message: commandMessage(state.locale, "dispatchFailed") };
     }
 
@@ -256,7 +256,7 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
       },
     });
 
-    if (!sendResult || sendResult.success !== true) {
+    if (sendResult.success !== true) {
       return { success: false, message: commandMessage(state.locale, "dispatchFailed") };
     }
 

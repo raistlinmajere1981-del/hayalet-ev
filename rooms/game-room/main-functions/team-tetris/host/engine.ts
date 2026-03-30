@@ -23,46 +23,173 @@ import {
   replayTeamTetrisPath,
   teamTetrisBoardToRows,
 } from "./engine-helpers.js";
-import type { PieceId } from "./engine-board.js";
+import { normalizeText } from "./engine-schema.js";
+import type {
+  PieceId,
+  TeamTetrisCell,
+  TeamTetrisReplayFailure,
+  TeamTetrisReplaySuccess,
+} from "./engine-board.js";
+import type {
+  TeamTetrisMatch,
+  TeamTetrisMatchResult,
+  TeamTetrisRole,
+  TeamTetrisSeatId,
+  TeamTetrisTeamId,
+  TeamTetrisTurn,
+} from "./engine-match.js";
 
-function normalizeText(value: any) {
-  return typeof value === "string" ? value.trim() : "";
+export interface TeamTetrisMovePayload {
+  schemaVersion: number;
+  matchId: string;
+  turnIndex: number | null;
+  turnToken: string;
+  pieceId: string;
+  rotation: number;
+  rowShifts: number[];
 }
 
-function validateTeamTetrisMove(match: any, move: any) {
-  const source = move && typeof move === "object" && Array.isArray(move) === false ? move : {};
+export interface TeamTetrisMoveValidationSuccess {
+  success: true;
+  turn: TeamTetrisTurn;
+  replay: TeamTetrisReplaySuccess;
+}
+
+export type TeamTetrisMoveValidationResult =
+  | TeamTetrisMoveValidationSuccess
+  | TeamTetrisReplayFailure
+  | { success: false; reason: string };
+
+export interface TeamTetrisApplyMoveSuccess {
+  success: true;
+  match: TeamTetrisMatch;
+  clearedLines: number;
+  lockedCells: TeamTetrisCell[];
+}
+
+export type TeamTetrisApplyMoveResult =
+  | TeamTetrisApplyMoveSuccess
+  | TeamTetrisReplayFailure
+  | { success: false; reason: string };
+
+export interface TeamTetrisPartnerPieceView {
+  pieceId: PieceId;
+  rotation: number;
+  cells: TeamTetrisCell[];
+  placedByRole: TeamTetrisRole;
+  placedBySeatId?: TeamTetrisSeatId;
+}
+
+export interface TeamTetrisTeamReveal {
+  teamId: TeamTetrisTeamId;
+  seatIds: TeamTetrisSeatId[];
+}
+
+export interface TeamTetrisPendingTurnView {
+  turnIndex: number;
+  turnToken: string;
+  pieceId: PieceId;
+  legalRotations: number[];
+  actingRole: TeamTetrisRole;
+}
+
+export interface TeamTetrisSeatView {
+  schemaVersion: number;
+  matchId: string;
+  seat: {
+    seatId: TeamTetrisSeatId;
+    teamId: TeamTetrisTeamId;
+    role: TeamTetrisRole;
+  };
+  hiddenPairs: boolean;
+  revealedPairs: boolean;
+  result: TeamTetrisMatchResult;
+  winnerTeamId: TeamTetrisTeamId | null;
+  teams: TeamTetrisTeamReveal[] | null;
+  ownTeam: {
+    teamId: TeamTetrisTeamId;
+    boardRows: string[];
+    boardBeforePartnerPieceRows: string[];
+    partnerLastPiece: TeamTetrisPartnerPieceView | null;
+  };
+  opponentTeam: {
+    teamId: TeamTetrisTeamId;
+    boardRows: string[];
+  };
+  pendingTurn: TeamTetrisPendingTurnView | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+function normalizeTeamTetrisMove(move: TeamTetrisMovePayload | unknown): TeamTetrisMovePayload {
+  const source = isRecord(move) ? move : {};
+  return {
+    schemaVersion:
+      typeof source["schemaVersion"] === "number" && Number.isInteger(source["schemaVersion"])
+        ? source["schemaVersion"]
+        : TEAM_TETRIS_SCHEMA_VERSION,
+    matchId: normalizeText(source["matchId"]),
+    turnIndex:
+      typeof source["turnIndex"] === "number" && Number.isInteger(source["turnIndex"])
+        ? source["turnIndex"]
+        : null,
+    turnToken: normalizeText(source["turnToken"]),
+    pieceId: normalizeText(source["pieceId"]),
+    rotation:
+      typeof source["rotation"] === "number" && Number.isInteger(source["rotation"])
+        ? source["rotation"]
+        : 0,
+    rowShifts: Array.isArray(source["rowShifts"])
+      ? source["rowShifts"].filter(function (value: unknown): value is number {
+          return typeof value === "number" && Number.isInteger(value);
+        })
+      : [],
+  };
+}
+
+function validateTeamTetrisMove(
+  match: TeamTetrisMatch | null | undefined,
+  move: TeamTetrisMovePayload | unknown
+): TeamTetrisMoveValidationResult {
+  const normalizedMove = normalizeTeamTetrisMove(move);
   if (!match || match.result !== "pending" || !match.currentTurn) {
     return { success: false, reason: "match-not-active" };
   }
+
   const currentTurn = match.currentTurn;
-  if (normalizeText(source.matchId) !== match.matchId) {
+  if (normalizedMove.matchId !== match.matchId) {
     return { success: false, reason: "match-id-mismatch" };
   }
-  if (source.schemaVersion !== TEAM_TETRIS_SCHEMA_VERSION) {
+  if (normalizedMove.schemaVersion !== TEAM_TETRIS_SCHEMA_VERSION) {
     return { success: false, reason: "schema-version-mismatch" };
   }
-  if (source.turnIndex !== currentTurn.turnIndex) {
+  if (normalizedMove.turnIndex !== currentTurn.turnIndex) {
     return { success: false, reason: "turn-index-mismatch" };
   }
-  if (normalizeText(source.turnToken) !== currentTurn.turnToken) {
+  if (normalizedMove.turnToken !== currentTurn.turnToken) {
     return { success: false, reason: "turn-token-mismatch" };
   }
-  if (normalizeText(source.pieceId) !== currentTurn.pieceId) {
+  if (normalizedMove.pieceId !== currentTurn.pieceId) {
     return { success: false, reason: "piece-mismatch" };
   }
+
   const team = match.teams[currentTurn.teamId];
-  if (!team || team.alive !== true) {
+  if (team.alive !== true) {
     return { success: false, reason: "team-not-alive" };
   }
+
   const replay = replayTeamTetrisPath(
     team.board,
     currentTurn.pieceId,
-    source.rotation,
-    source.rowShifts
+    normalizedMove.rotation,
+    normalizedMove.rowShifts
   );
   if (replay.success !== true) {
     return replay;
   }
+
   return {
     success: true,
     turn: currentTurn,
@@ -70,7 +197,7 @@ function validateTeamTetrisMove(match: any, move: any) {
   };
 }
 
-function resolveTeamTetrisResult(match: any) {
+function resolveTeamTetrisResult(match: TeamTetrisMatch): void {
   const teamAAlive = match.teams["team-a"].alive === true;
   const teamBAlive = match.teams["team-b"].alive === true;
   if (!teamAAlive && !teamBAlive) {
@@ -92,9 +219,12 @@ function resolveTeamTetrisResult(match: any) {
   match.winnerTeamId = null;
 }
 
-function applyTeamTetrisMove(match: any, move: any) {
+function applyTeamTetrisMove(
+  match: TeamTetrisMatch | null | undefined,
+  move: TeamTetrisMovePayload | unknown
+): TeamTetrisApplyMoveResult {
   const validation = validateTeamTetrisMove(match, move);
-  if (!("replay" in validation)) {
+  if (validation.success !== true) {
     return validation;
   }
 
@@ -102,19 +232,18 @@ function applyTeamTetrisMove(match: any, move: any) {
   if (!nextMatch || !nextMatch.currentTurn) {
     return { success: false, reason: "match-not-active" };
   }
+
   const currentTurn = nextMatch.currentTurn;
-  const team = nextMatch.teams[currentTurn.teamId as keyof typeof nextMatch.teams];
+  const team = nextMatch.teams[currentTurn.teamId];
   const boardBefore = cloneTeamTetrisBoard(team.board);
   const replay = validation.replay;
-  if (!replay) {
-    return { success: false, reason: "invalid-move" };
-  }
-  replay.cells.forEach(function (cell: any) {
+  replay.cells.forEach(function (cell: TeamTetrisCell) {
     const row = team.board[cell.y];
     if (row) {
       row[cell.x] = currentTurn.pieceId;
     }
   });
+
   const clearResult = clearTeamTetrisLines(team.board);
   team.board = clearResult.board;
   team.boardBeforeLastLock = boardBefore;
@@ -125,12 +254,10 @@ function applyTeamTetrisMove(match: any, move: any) {
     placedBySeatId: currentTurn.seatId,
     cells: replay.cells,
   };
-  const drawnNext = drawTeamTetrisPiece(team.bagState) as PieceId;
+  const drawnNext = drawTeamTetrisPiece(team.bagState);
   team.nextPieceId = drawnNext;
-  const spawn = getTeamTetrisSpawnPosition(
-    drawnNext,
-    getTeamTetrisLegalRotations(drawnNext)[0] || 0
-  );
+  const spawnRotation = getTeamTetrisLegalRotations(drawnNext)[0] ?? 0;
+  const spawn = getTeamTetrisSpawnPosition(drawnNext, spawnRotation);
   if (doesTeamTetrisPieceCollide(team.board, drawnNext, 0, spawn.x, spawn.y)) {
     team.alive = false;
     team.topOutTurnIndex = currentTurn.turnIndex;
@@ -155,19 +282,24 @@ function applyTeamTetrisMove(match: any, move: any) {
   };
 }
 
-function buildTeamTetrisSeatView(match: any, seatId: any) {
+function buildTeamTetrisSeatView(
+  match: TeamTetrisMatch | null | undefined,
+  seatId: TeamTetrisSeatId
+): TeamTetrisSeatView | null {
   const source = cloneTeamTetrisMatch(match);
   if (!source) {
     return null;
   }
+
   const seatInfo = getTeamTetrisSeatInfo(source, seatId);
   if (!seatInfo) {
     return null;
   }
-  const ownTeam = source.teams[seatInfo.teamId as keyof typeof source.teams];
-  const opponentTeam = source.teams[getOtherTeamId(seatInfo.teamId) as keyof typeof source.teams];
+
+  const ownTeam = source.teams[seatInfo.teamId];
+  const opponentTeam = source.teams[getOtherTeamId(seatInfo.teamId)];
   const partnerSeatId =
-    ownTeam.seatIds.find(function (candidate: any) {
+    ownTeam.seatIds.find(function (candidate: TeamTetrisSeatId) {
       return candidate !== seatId;
     }) || null;
   const partnerInfo = partnerSeatId ? getTeamTetrisSeatInfo(source, partnerSeatId) : null;
@@ -179,7 +311,7 @@ function buildTeamTetrisSeatView(match: any, seatId: any) {
           rotation: ownTeam.lastLockedPiece.rotation,
           cells: ownTeam.lastLockedPiece.cells.slice(),
           placedByRole: partnerInfo ? partnerInfo.role : "opener",
-          ...(identityVisible === true && partnerSeatId ? { placedBySeatId: partnerSeatId } : {}),
+          ...(identityVisible === true ? { placedBySeatId: partnerSeatId } : {}),
         }
       : null;
 
@@ -197,8 +329,8 @@ function buildTeamTetrisSeatView(match: any, seatId: any) {
     winnerTeamId: source.winnerTeamId,
     teams:
       identityVisible === true
-        ? getTeamTetrisTeamIds().map(function (teamId: any) {
-            const team = source.teams[teamId as keyof typeof source.teams];
+        ? getTeamTetrisTeamIds().map(function (teamId: TeamTetrisTeamId) {
+            const team = source.teams[teamId];
             return {
               teamId,
               seatIds: team.seatIds.slice(),
@@ -243,6 +375,17 @@ const teamTetrisEngine = {
   getLegalRotations: getTeamTetrisLegalRotations,
   replayPath: replayTeamTetrisPath,
   buildTurnToken: buildTeamTetrisTurnToken,
+};
+
+export type {
+  PieceId,
+  TeamTetrisCell,
+  TeamTetrisMatch,
+  TeamTetrisMatchResult,
+  TeamTetrisRole,
+  TeamTetrisSeatId,
+  TeamTetrisTeamId,
+  TeamTetrisTurn,
 };
 
 export {

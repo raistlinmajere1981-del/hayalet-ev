@@ -1,4 +1,95 @@
-export function createMediaYoutubeSourceIntakeRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryMediaYoutubeRuntime = LaboratoryRecord & {
+  sourcePresets?: unknown;
+  toolState?: unknown;
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  id?: unknown;
+  source?: unknown;
+};
+
+type LaboratoryProjectSourceRecord = LaboratoryRecord & {
+  drafts?: unknown;
+  kind?: unknown;
+};
+
+type LaboratorySourceDraftsRecord = LaboratoryRecord & {
+  youtubeCustom?: unknown;
+  youtubePreset?: unknown;
+  youtubeUrl?: unknown;
+};
+
+type LaboratoryToolRecord = LaboratoryRecord & {
+  binaryPath?: unknown;
+  installed?: unknown;
+};
+
+type LaboratoryToolStateRecord = {
+  ffmpeg: LaboratoryToolRecord;
+  sourcePresets: LaboratoryRecord;
+};
+
+type LaboratoryPreparedSource = {
+  metadata: unknown;
+  metadataError: string | null;
+  mimeType: string | null;
+  storedFileName: string | null;
+  storedPath: string | null;
+};
+
+type LaboratoryYoutubeSettings = {
+  presetId: string;
+  values: LaboratoryRecord;
+};
+
+type LaboratoryMediaYoutubeSourceIntakeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  callRoomTools: (payload: LaboratoryRecord) => Promise<unknown>;
+  cancelJobsForProject: (
+    runtime: LaboratoryMediaYoutubeRuntime,
+    projectId: string,
+    requestId: string
+  ) => Promise<unknown>;
+  clearJob: (runtime: LaboratoryMediaYoutubeRuntime, jobId: string) => void;
+  getActiveProject: (runtime: LaboratoryMediaYoutubeRuntime) => LaboratoryProjectRecord | null;
+  getPresetDefaultCustomValues: (
+    sourcePresets: unknown,
+    presetId: string
+  ) => LaboratoryRecord;
+  getProjectSourceDir: (
+    runtime: LaboratoryMediaYoutubeRuntime,
+    project: LaboratoryProjectRecord
+  ) => string;
+  normalizeMimeType: (fileName: unknown, kind: string) => string;
+  patchActiveProject: (
+    runtime: LaboratoryMediaYoutubeRuntime,
+    updater: (project: LaboratoryProjectRecord) => LaboratoryProjectRecord
+  ) => Promise<unknown>;
+  pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
+  registerJob: (runtime: LaboratoryMediaYoutubeRuntime, payload: LaboratoryRecord) => void;
+  resetEditForCurrentSource: (
+    runtime: LaboratoryMediaYoutubeRuntime,
+    project: LaboratoryProjectRecord
+  ) => void;
+  resetProfileForCurrentSource: (
+    runtime: LaboratoryMediaYoutubeRuntime,
+    project: LaboratoryProjectRecord,
+    reason: string
+  ) => void;
+  resolvePreparedSource: (
+    runtime: LaboratoryMediaYoutubeRuntime,
+    project: LaboratoryProjectRecord,
+    options: LaboratoryRecord
+  ) => Promise<LaboratoryPreparedSource>;
+  roomId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createMediaYoutubeSourceIntakeRuntime(
+  deps: LaboratoryMediaYoutubeSourceIntakeDeps
+) {
   const {
     asNonEmptyString,
     callRoomTools,
@@ -18,15 +109,59 @@ export function createMediaYoutubeSourceIntakeRuntime(deps: any) {
     toRecord,
   } = deps;
 
-  function getResolvedYoutubeSettings(project: any, sourcePresets: any) {
-    const presetId = asNonEmptyString(project.source.drafts.youtubePreset) || "medium";
+  function toProjectSourceRecord(value: unknown): LaboratoryProjectSourceRecord {
+    return toRecord(value);
+  }
+
+  function toSourceDraftsRecord(value: unknown): LaboratorySourceDraftsRecord {
+    return toRecord(value);
+  }
+
+  function toToolRecord(value: unknown): LaboratoryToolRecord {
+    return toRecord(value);
+  }
+
+  function toString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value : null;
+  }
+
+  function getProjectId(project: LaboratoryProjectRecord): string {
+    return toString(project.id) || "unknown-project";
+  }
+
+  function getProjectSource(project: LaboratoryProjectRecord): LaboratoryProjectSourceRecord {
+    return toProjectSourceRecord(project.source);
+  }
+
+  function getSourceDrafts(project: LaboratoryProjectRecord): LaboratorySourceDraftsRecord {
+    return toSourceDraftsRecord(getProjectSource(project).drafts);
+  }
+
+  function getToolMap(runtime: LaboratoryMediaYoutubeRuntime): Record<string, LaboratoryToolRecord> {
+    return toRecord(toRecord(runtime.toolState)["tools"]) as Record<string, LaboratoryToolRecord>;
+  }
+
+  function getYoutubeToolState(runtime: LaboratoryMediaYoutubeRuntime): LaboratoryToolRecord {
+    return toToolRecord(getToolMap(runtime)["yt-dlp"]);
+  }
+
+  function getFfmpegToolState(runtime: LaboratoryMediaYoutubeRuntime): LaboratoryToolRecord {
+    return toToolRecord(getToolMap(runtime)["ffmpeg"]);
+  }
+
+  function getResolvedYoutubeSettings(
+    project: LaboratoryProjectRecord,
+    sourcePresets: unknown
+  ): LaboratoryYoutubeSettings {
+    const drafts = getSourceDrafts(project);
+    const presetId = asNonEmptyString(drafts["youtubePreset"]) || "medium";
     const presetDefaults = getPresetDefaultCustomValues(sourcePresets, presetId);
     if (presetId === "custom") {
       return {
         presetId: presetId,
         values: {
           ...presetDefaults,
-          ...toRecord(project.source.drafts.youtubeCustom),
+          ...toRecord(drafts["youtubeCustom"]),
         },
       };
     }
@@ -36,16 +171,19 @@ export function createMediaYoutubeSourceIntakeRuntime(deps: any) {
     };
   }
 
-  function findYtDlpFinalPath(stdoutValue: any) {
+  function findYtDlpFinalPath(stdoutValue: unknown) {
     const lines = String(stdoutValue || "")
       .split(/\r?\n/)
-      .map(function (line: any) {
+      .map(function (line) {
         return line.trim();
       })
       .filter(Boolean);
 
     for (let index = lines.length - 1; index >= 0; index -= 1) {
       const line = lines[index];
+      if (!line) {
+        continue;
+      }
       if (/^[A-Za-z]:\\/.test(line) || line.startsWith("/")) {
         return line;
       }
@@ -54,9 +192,14 @@ export function createMediaYoutubeSourceIntakeRuntime(deps: any) {
     return null;
   }
 
-  function buildYtDlpArgs(project: any, toolState: any, sourceDir: any) {
-    const settings = getResolvedYoutubeSettings(project, toolState.sourcePresets || {});
+  function buildYtDlpArgs(
+    project: LaboratoryProjectRecord,
+    toolState: LaboratoryToolStateRecord,
+    sourceDir: string
+  ) {
+    const settings = getResolvedYoutubeSettings(project, toolState.sourcePresets);
     const values = settings.values;
+    const youtubeUrl = asNonEmptyString(getSourceDrafts(project)["youtubeUrl"]);
     const args = [
       "--newline",
       "--progress",
@@ -66,64 +209,60 @@ export function createMediaYoutubeSourceIntakeRuntime(deps: any) {
       `${sourceDir}/%(title).120B-%(id)s.%(ext)s`,
     ];
 
-    let formatValue = asNonEmptyString(values.format) || "best";
-    if (
-      formatValue.indexOf("+") >= 0 &&
-      (!toolState.ffmpeg || toolState.ffmpeg.installed !== true)
-    ) {
+    let formatValue = asNonEmptyString(values["format"]) || "best";
+    if (formatValue.indexOf("+") >= 0 && toolState.ffmpeg.installed !== true) {
       formatValue = "best";
     }
 
     args.push("-f", formatValue);
 
-    const mergeOutputFormat = asNonEmptyString(values.mergeOutputFormat);
+    const mergeOutputFormat = asNonEmptyString(values["mergeOutputFormat"]);
     if (mergeOutputFormat && mergeOutputFormat !== "auto") {
       args.push("--merge-output-format", mergeOutputFormat);
     }
 
-    const recodeVideo = asNonEmptyString(values.recodeVideo);
+    const recodeVideo = asNonEmptyString(values["recodeVideo"]);
     if (recodeVideo && recodeVideo !== "none") {
       args.push("--recode-video", recodeVideo);
     }
 
-    const audioFormat = asNonEmptyString(values.audioFormat);
+    const audioFormat = asNonEmptyString(values["audioFormat"]);
     if (audioFormat && audioFormat !== "none") {
       args.push("-x", "--audio-format", audioFormat);
     }
 
-    if (values.writeSubtitles === true) {
+    if (values["writeSubtitles"] === true) {
       args.push("--write-subs");
     }
-    if (values.writeAutoSubtitles === true) {
+    if (values["writeAutoSubtitles"] === true) {
       args.push("--write-auto-subs");
     }
 
-    const subtitlesLang = asNonEmptyString(values.subtitlesLang);
+    const subtitlesLang = asNonEmptyString(values["subtitlesLang"]);
     if (subtitlesLang) {
       args.push("--sub-langs", subtitlesLang);
-    } else if (values.writeSubtitles === true || values.writeAutoSubtitles === true) {
+    } else if (values["writeSubtitles"] === true || values["writeAutoSubtitles"] === true) {
       args.push("--sub-langs", "all");
     }
 
-    const playlistItems = asNonEmptyString(values.playlistItems);
+    const playlistItems = asNonEmptyString(values["playlistItems"]);
     if (playlistItems) {
       args.push("--playlist-items", playlistItems);
     } else {
       args.push("--no-playlist");
     }
 
-    const limitRate = asNonEmptyString(values.limitRate);
+    const limitRate = asNonEmptyString(values["limitRate"]);
     if (limitRate) {
       args.push("--limit-rate", limitRate);
     }
 
-    const retries = Number(values.retries);
+    const retries = Number(values["retries"]);
     if (Number.isFinite(retries) && retries > 0) {
       args.push("--retries", String(retries));
     }
 
     if (
-      toolState.ffmpeg &&
       toolState.ffmpeg.installed === true &&
       typeof toolState.ffmpeg.binaryPath === "string" &&
       toolState.ffmpeg.binaryPath.trim() !== ""
@@ -134,96 +273,108 @@ export function createMediaYoutubeSourceIntakeRuntime(deps: any) {
       args.push("--ffmpeg-location", ffmpegDir);
     }
 
-    args.push(project.source.drafts.youtubeUrl);
+    if (youtubeUrl !== null) {
+      args.push(youtubeUrl);
+    }
     return args;
   }
 
-  async function handleYoutubeDownload(api: any, runtime: any, requestId: any) {
+  async function handleYoutubeDownload(
+    api: unknown,
+    runtime: LaboratoryMediaYoutubeRuntime,
+    requestId: string
+  ) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
     }
 
-    const ytDlpState = toRecord(runtime.toolState.tools["yt-dlp"]);
+    const projectId = getProjectId(project);
+    const ytDlpState = getYoutubeToolState(runtime);
     if (ytDlpState.installed !== true) {
       throw new Error("yt-dlp is not installed.");
     }
 
-    const youtubeUrl = asNonEmptyString(project.source.drafts.youtubeUrl);
+    const source = getProjectSource(project);
+    const drafts = toSourceDraftsRecord(source.drafts);
+    const youtubeUrl = asNonEmptyString(drafts.youtubeUrl);
     if (youtubeUrl === null) {
       throw new Error("YouTube URL is empty.");
     }
 
-    await cancelJobsForProject(runtime, project.id, requestId);
+    await cancelJobsForProject(runtime, projectId, requestId);
 
     const jobId = `room-youtube-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
-      jobId: jobId,
-      requestId: requestId,
       action: "source-download-youtube",
-      projectId: project.id,
-      toolId: "yt-dlp",
       featureStage: "source",
+      jobId: jobId,
+      projectId: projectId,
+      requestId: requestId,
+      toolId: "yt-dlp",
     });
 
     pushJobState(api, {
-      requestId: requestId,
-      jobId: jobId,
       action: "source-download-youtube",
-      projectId: project.id,
-      toolId: "yt-dlp",
+      featureStage: "source",
+      jobId: jobId,
+      projectId: projectId,
+      requestId: requestId,
       stage: "queued",
+      toolId: "yt-dlp",
     });
 
     try {
+      const sourceDir = getProjectSourceDir(runtime, project);
       const runResult = await callRoomTools({
-        operation: "tool-run",
-        roomId: roomId,
-        requestId: requestId,
-        jobId: jobId,
-        toolId: "yt-dlp",
-        cwd: getProjectSourceDir(runtime, project),
         args: buildYtDlpArgs(
           project,
           {
-            sourcePresets: runtime.sourcePresets,
-            ffmpeg: runtime.toolState.tools.ffmpeg,
+            ffmpeg: getFfmpegToolState(runtime),
+            sourcePresets: toRecord(runtime.sourcePresets),
           },
-          getProjectSourceDir(runtime, project)
+          sourceDir
         ),
+        cwd: sourceDir,
+        jobId: jobId,
+        operation: "tool-run",
+        requestId: requestId,
+        roomId: roomId,
         timeoutMs: 45 * 60 * 1000,
+        toolId: "yt-dlp",
       });
 
-      const runPayload = toRecord(runResult.run);
-      const storedPath = findYtDlpFinalPath(runPayload.stdout);
-      const storedFileName = storedPath ? storedPath.split(/[\\/]/).pop() : null;
-
+      const runPayload = toRecord(toRecord(runResult)["run"]);
+      const storedPath = findYtDlpFinalPath(runPayload["stdout"]);
+      const storedFileName = storedPath ? storedPath.split(/[\\/]/).pop() || null : null;
       if (!storedPath) {
         throw new Error("yt-dlp finished without a final output path.");
       }
 
       const preparedSource = await resolvePreparedSource(runtime, project, {
-        requestId: requestId,
         jobId: jobId,
-        storedPath: storedPath,
+        mimeType: normalizeMimeType(storedFileName, toString(source["kind"]) || "video"),
+        requestId: requestId,
         storedFileName: storedFileName,
-        mimeType: normalizeMimeType(storedFileName, project.source.kind),
+        storedPath: storedPath,
       });
 
-      await patchActiveProject(runtime, function (nextProject: any) {
-        if (nextProject.id !== project.id) {
+      await patchActiveProject(runtime, function (nextProject) {
+        if (toString(nextProject.id) !== projectId) {
           return nextProject;
         }
-        nextProject.source.mode = "youtube";
-        nextProject.source.status = "ready";
-        nextProject.source.storedPath = preparedSource.storedPath;
-        nextProject.source.storedFileName = preparedSource.storedFileName;
-        nextProject.source.sourceUrl = youtubeUrl;
-        nextProject.source.mimeType = preparedSource.mimeType;
-        nextProject.source.routeLabel = "YouTube";
-        nextProject.source.lastError = null;
-        nextProject.source.metadata = preparedSource.metadata;
-        nextProject.source.metadataError = preparedSource.metadataError;
+        const nextSource = toProjectSourceRecord(nextProject.source);
+        nextProject.source = nextSource;
+        nextSource["mode"] = "youtube";
+        nextSource["status"] = "ready";
+        nextSource["storedPath"] = preparedSource.storedPath;
+        nextSource["storedFileName"] = preparedSource.storedFileName;
+        nextSource["sourceUrl"] = youtubeUrl;
+        nextSource["mimeType"] = preparedSource.mimeType;
+        nextSource["routeLabel"] = "YouTube";
+        nextSource["lastError"] = null;
+        nextSource["metadata"] = preparedSource.metadata;
+        nextSource["metadataError"] = preparedSource.metadataError;
         resetEditForCurrentSource(runtime, nextProject);
         resetProfileForCurrentSource(
           runtime,
@@ -234,37 +385,40 @@ export function createMediaYoutubeSourceIntakeRuntime(deps: any) {
       });
 
       pushJobState(api, {
-        requestId: requestId,
-        jobId: jobId,
         action: "source-download-youtube",
-        projectId: project.id,
-        toolId: "yt-dlp",
-        stage: "completed",
+        jobId: jobId,
         percent: 100,
+        projectId: projectId,
+        requestId: requestId,
+        stage: "completed",
+        toolId: "yt-dlp",
       });
 
       return {
-        storedPath: preparedSource.storedPath,
         storedFileName: preparedSource.storedFileName,
+        storedPath: preparedSource.storedPath,
       };
     } catch (error) {
-      await patchActiveProject(runtime, function (nextProject: any) {
-        if (nextProject.id !== project.id) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await patchActiveProject(runtime, function (nextProject) {
+        if (toString(nextProject.id) !== projectId) {
           return nextProject;
         }
-        nextProject.source.status = "error";
-        nextProject.source.lastError = error instanceof Error ? error.message : String(error);
+        const nextSource = toProjectSourceRecord(nextProject.source);
+        nextProject.source = nextSource;
+        nextSource["status"] = "error";
+        nextSource["lastError"] = errorMessage;
         return nextProject;
       });
 
       pushJobState(api, {
-        requestId: requestId,
-        jobId: jobId,
         action: "source-download-youtube",
-        projectId: project.id,
-        toolId: "yt-dlp",
+        jobId: jobId,
+        message: errorMessage,
+        projectId: projectId,
+        requestId: requestId,
         stage: "failed",
-        message: error instanceof Error ? error.message : String(error),
+        toolId: "yt-dlp",
       });
       throw error;
     } finally {

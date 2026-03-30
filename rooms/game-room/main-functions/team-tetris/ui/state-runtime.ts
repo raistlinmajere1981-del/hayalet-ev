@@ -1,79 +1,47 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
 
-  registry.createTeamTetrisUiStateRuntime = function createTeamTetrisUiStateRuntime(deps: any) {
-    const getState = deps.getState;
-    const sendRoomCommand = deps.sendRoomCommand;
-    const text = deps.text;
+  const registry = getFactoryRegistry(global);
 
+  registry.createTeamTetrisUiStateRuntime = function createTeamTetrisUiStateRuntime(
+    deps: GameRoomTeamTetrisUiStateRuntimeDeps
+  ): GameRoomTeamTetrisUiStateRuntime {
     const createTeamTetrisUiStateShapeRuntime = registry.createTeamTetrisUiStateShapeRuntime;
+    const createTeamTetrisUiStateViewRuntime = registry.createTeamTetrisUiStateViewRuntime;
+    const createTeamTetrisUiDraftRuntime = registry.createTeamTetrisUiDraftRuntime;
+
     if (typeof createTeamTetrisUiStateShapeRuntime !== "function") {
       throw new Error("Team Tetris UI state shape runtime is not registered.");
     }
-    const teamTetrisUiStateShapeRuntime = createTeamTetrisUiStateShapeRuntime();
-    const createTeamTetrisBoard = teamTetrisUiStateShapeRuntime.createTeamTetrisBoard;
-    const createTeamTetrisDraft = teamTetrisUiStateShapeRuntime.createTeamTetrisDraft;
-    const createTeamTetrisState = teamTetrisUiStateShapeRuntime.createTeamTetrisState;
-    const sanitizeTeamTetrisRows = teamTetrisUiStateShapeRuntime.sanitizeTeamTetrisRows;
-    const sanitizeTeamTetrisState = teamTetrisUiStateShapeRuntime.sanitizeTeamTetrisState;
-
-    const createTeamTetrisUiStateViewRuntime = registry.createTeamTetrisUiStateViewRuntime;
     if (typeof createTeamTetrisUiStateViewRuntime !== "function") {
       throw new Error("Team Tetris UI state view runtime is not registered.");
     }
-    const teamTetrisUiStateViewRuntime = createTeamTetrisUiStateViewRuntime({
-      getState: getState,
-      text: text,
-      createTeamTetrisBoard: createTeamTetrisBoard,
-    });
-    const syncTeamTetrisPreferencesFromState =
-      teamTetrisUiStateViewRuntime.syncTeamTetrisPreferencesFromState;
-    const getTeamTetrisView = teamTetrisUiStateViewRuntime.getTeamTetrisView;
-    const getTeamTetrisBoardLabel = teamTetrisUiStateViewRuntime.getTeamTetrisBoardLabel;
-    const getTeamTetrisSeatDisplayLabel =
-      teamTetrisUiStateViewRuntime.getTeamTetrisSeatDisplayLabel;
-    const getTeamTetrisPendingTurn = teamTetrisUiStateViewRuntime.getTeamTetrisPendingTurn;
-    const getTeamTetrisOwnBoardState = teamTetrisUiStateViewRuntime.getTeamTetrisOwnBoardState;
-    const getTeamTetrisOpponentBoardState =
-      teamTetrisUiStateViewRuntime.getTeamTetrisOpponentBoardState;
-    const getTeamTetrisPlacedByLabel = teamTetrisUiStateViewRuntime.getTeamTetrisPlacedByLabel;
-    const getTeamTetrisPartnerRoleLabel =
-      teamTetrisUiStateViewRuntime.getTeamTetrisPartnerRoleLabel;
-    const getTeamTetrisTurnLabel = teamTetrisUiStateViewRuntime.getTeamTetrisTurnLabel;
-    const getTeamTetrisResultLabel = teamTetrisUiStateViewRuntime.getTeamTetrisResultLabel;
-    const getTeamTetrisDraftStatusText = teamTetrisUiStateViewRuntime.getTeamTetrisDraftStatusText;
-    const getTeamTetrisStatusText = teamTetrisUiStateViewRuntime.getTeamTetrisStatusText;
-
-    const createTeamTetrisUiDraftRuntime = registry.createTeamTetrisUiDraftRuntime;
     if (typeof createTeamTetrisUiDraftRuntime !== "function") {
       throw new Error("Team Tetris UI draft runtime is not registered.");
     }
-    const teamTetrisUiDraftRuntime = createTeamTetrisUiDraftRuntime({
-      createTeamTetrisDraft: createTeamTetrisDraft,
-      getState: getState,
-      render: deps.render,
-      sendRoomCommand: sendRoomCommand,
-      sanitizeTeamTetrisRows: sanitizeTeamTetrisRows,
-      getTeamTetrisOwnBoardState: getTeamTetrisOwnBoardState,
-      getTeamTetrisPendingTurn: getTeamTetrisPendingTurn,
-    });
-    const getTeamTetrisRotationCells = teamTetrisUiDraftRuntime.getTeamTetrisRotationCells;
-    const getTeamTetrisPieceBounds = teamTetrisUiDraftRuntime.getTeamTetrisPieceBounds;
-    const getTeamTetrisSpawnPosition = teamTetrisUiDraftRuntime.getTeamTetrisSpawnPosition;
-    const replayTeamTetrisDraft = teamTetrisUiDraftRuntime.replayTeamTetrisDraft;
-    const buildTeamTetrisRowShiftsFromTargets =
-      teamTetrisUiDraftRuntime.buildTeamTetrisRowShiftsFromTargets;
-    const getTeamTetrisOriginFromCell = teamTetrisUiDraftRuntime.getTeamTetrisOriginFromCell;
-    const syncTeamTetrisDraftFromState = teamTetrisUiDraftRuntime.syncTeamTetrisDraftFromState;
-    const startTeamTetrisDrag = teamTetrisUiDraftRuntime.startTeamTetrisDrag;
-    const updateTeamTetrisDraftTarget = teamTetrisUiDraftRuntime.updateTeamTetrisDraftTarget;
-    const finishTeamTetrisDrag = teamTetrisUiDraftRuntime.finishTeamTetrisDrag;
-    const onTeamTetrisRotationSelect = teamTetrisUiDraftRuntime.onTeamTetrisRotationSelect;
-    const onTeamTetrisRotate = teamTetrisUiDraftRuntime.onTeamTetrisRotate;
-    const onTeamTetrisClearDraft = teamTetrisUiDraftRuntime.onTeamTetrisClearDraft;
-    const onTeamTetrisSubmit = teamTetrisUiDraftRuntime.onTeamTetrisSubmit;
 
-    function onTeamTetrisStart() {
+    const getState = deps.getState;
+    const sendRoomCommand = deps.sendRoomCommand;
+
+    const stateShapeRuntime = createTeamTetrisUiStateShapeRuntime();
+    const stateViewRuntime = createTeamTetrisUiStateViewRuntime({
+      getState: deps.getState,
+      text: deps.text,
+      createTeamTetrisBoard: stateShapeRuntime.createTeamTetrisBoard,
+    });
+    const draftRuntime = createTeamTetrisUiDraftRuntime({
+      createTeamTetrisDraft: stateShapeRuntime.createTeamTetrisDraft,
+      getState: deps.getState,
+      render: deps.render,
+      sendRoomCommand: deps.sendRoomCommand,
+      sanitizeTeamTetrisRows: stateShapeRuntime.sanitizeTeamTetrisRows,
+      getTeamTetrisOwnBoardState: stateViewRuntime.getTeamTetrisOwnBoardState,
+      getTeamTetrisPendingTurn: stateViewRuntime.getTeamTetrisPendingTurn,
+    });
+
+    function onTeamTetrisStart(): void {
       const state = getState();
       state.lastCommandMessage = "";
       sendRoomCommand("GameRoomTeamTetrisStart", {
@@ -81,46 +49,49 @@
       });
     }
 
-    function onTeamTetrisReset() {
+    function onTeamTetrisReset(): void {
       const state = getState();
       state.lastCommandMessage = "";
       sendRoomCommand("GameRoomTeamTetrisReset", {});
     }
 
     return {
-      createTeamTetrisDraft: createTeamTetrisDraft,
-      createTeamTetrisState: createTeamTetrisState,
-      sanitizeTeamTetrisRows: sanitizeTeamTetrisRows,
-      sanitizeTeamTetrisState: sanitizeTeamTetrisState,
-      syncTeamTetrisPreferencesFromState: syncTeamTetrisPreferencesFromState,
-      getTeamTetrisView: getTeamTetrisView,
-      getTeamTetrisBoardLabel: getTeamTetrisBoardLabel,
-      getTeamTetrisSeatDisplayLabel: getTeamTetrisSeatDisplayLabel,
-      getTeamTetrisPendingTurn: getTeamTetrisPendingTurn,
-      getTeamTetrisOwnBoardState: getTeamTetrisOwnBoardState,
-      getTeamTetrisOpponentBoardState: getTeamTetrisOpponentBoardState,
-      getTeamTetrisRotationCells: getTeamTetrisRotationCells,
-      getTeamTetrisPieceBounds: getTeamTetrisPieceBounds,
-      getTeamTetrisPlacedByLabel: getTeamTetrisPlacedByLabel,
-      getTeamTetrisPartnerRoleLabel: getTeamTetrisPartnerRoleLabel,
-      getTeamTetrisTurnLabel: getTeamTetrisTurnLabel,
-      getTeamTetrisResultLabel: getTeamTetrisResultLabel,
-      getTeamTetrisDraftStatusText: getTeamTetrisDraftStatusText,
-      getTeamTetrisStatusText: getTeamTetrisStatusText,
-      replayTeamTetrisDraft: replayTeamTetrisDraft,
-      buildTeamTetrisRowShiftsFromTargets: buildTeamTetrisRowShiftsFromTargets,
-      getTeamTetrisOriginFromCell: getTeamTetrisOriginFromCell,
-      getTeamTetrisSpawnPosition: getTeamTetrisSpawnPosition,
-      syncTeamTetrisDraftFromState: syncTeamTetrisDraftFromState,
-      startTeamTetrisDrag: startTeamTetrisDrag,
-      updateTeamTetrisDraftTarget: updateTeamTetrisDraftTarget,
-      finishTeamTetrisDrag: finishTeamTetrisDrag,
-      onTeamTetrisRotationSelect: onTeamTetrisRotationSelect,
-      onTeamTetrisRotate: onTeamTetrisRotate,
-      onTeamTetrisClearDraft: onTeamTetrisClearDraft,
-      onTeamTetrisSubmit: onTeamTetrisSubmit,
+      createTeamTetrisBoard: stateShapeRuntime.createTeamTetrisBoard,
+      createTeamTetrisDraft: stateShapeRuntime.createTeamTetrisDraft,
+      createTeamTetrisState: stateShapeRuntime.createTeamTetrisState,
+      sanitizeTeamTetrisRows: stateShapeRuntime.sanitizeTeamTetrisRows,
+      sanitizeTeamTetrisState: stateShapeRuntime.sanitizeTeamTetrisState,
+      syncTeamTetrisPreferencesFromState: stateViewRuntime.syncTeamTetrisPreferencesFromState,
+      getTeamTetrisView: stateViewRuntime.getTeamTetrisView,
+      getTeamTetrisBoardLabel: stateViewRuntime.getTeamTetrisBoardLabel,
+      getTeamTetrisSeatDisplayLabel: stateViewRuntime.getTeamTetrisSeatDisplayLabel,
+      getTeamTetrisPendingTurn: stateViewRuntime.getTeamTetrisPendingTurn,
+      getTeamTetrisOwnBoardState: stateViewRuntime.getTeamTetrisOwnBoardState,
+      getTeamTetrisOpponentBoardState: stateViewRuntime.getTeamTetrisOpponentBoardState,
+      getTeamTetrisPlacedByLabel: stateViewRuntime.getTeamTetrisPlacedByLabel,
+      getTeamTetrisPartnerRoleLabel: stateViewRuntime.getTeamTetrisPartnerRoleLabel,
+      getTeamTetrisTurnLabel: stateViewRuntime.getTeamTetrisTurnLabel,
+      getTeamTetrisResultLabel: stateViewRuntime.getTeamTetrisResultLabel,
+      getTeamTetrisDraftStatusText: stateViewRuntime.getTeamTetrisDraftStatusText,
+      getTeamTetrisStatusText: stateViewRuntime.getTeamTetrisStatusText,
+      getTeamTetrisRotationCells: draftRuntime.getTeamTetrisRotationCells,
+      getTeamTetrisPieceBounds: draftRuntime.getTeamTetrisPieceBounds,
+      getTeamTetrisSpawnPosition: draftRuntime.getTeamTetrisSpawnPosition,
+      replayTeamTetrisDraft: draftRuntime.replayTeamTetrisDraft,
+      buildTeamTetrisRowShiftsFromTargets: draftRuntime.buildTeamTetrisRowShiftsFromTargets,
+      getTeamTetrisOriginFromCell: draftRuntime.getTeamTetrisOriginFromCell,
+      syncTeamTetrisDraftFromState: draftRuntime.syncTeamTetrisDraftFromState,
+      startTeamTetrisDrag: draftRuntime.startTeamTetrisDrag,
+      updateTeamTetrisDraftTarget: draftRuntime.updateTeamTetrisDraftTarget,
+      finishTeamTetrisDrag: draftRuntime.finishTeamTetrisDrag,
+      onTeamTetrisRotationSelect: draftRuntime.onTeamTetrisRotationSelect,
+      onTeamTetrisRotate: draftRuntime.onTeamTetrisRotate,
+      onTeamTetrisClearDraft: draftRuntime.onTeamTetrisClearDraft,
+      onTeamTetrisSubmit: draftRuntime.onTeamTetrisSubmit,
       onTeamTetrisStart: onTeamTetrisStart,
       onTeamTetrisReset: onTeamTetrisReset,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})(
+  (typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal
+);

@@ -210,7 +210,11 @@ export function sanitizeStarter(value: string): "ai" | "user" {
 }
 
 export function cloneBoard(board: unknown): string[] {
-  return Array.isArray(board) ? board.slice(0, 9) : EMPTY_BOARD.slice();
+  return Array.isArray(board)
+    ? board.slice(0, 9).map(function (value: unknown) {
+        return typeof value === "string" ? value : "";
+      })
+    : EMPTY_BOARD.slice();
 }
 
 export function normalizeBoard(board: unknown): string[] {
@@ -218,7 +222,7 @@ export function normalizeBoard(board: unknown): string[] {
   while (next.length < 9) {
     next.push("");
   }
-  return next.map(function (value: any) {
+  return next.map(function (value: string) {
     return value === "X" || value === "O" ? value : "";
   });
 }
@@ -251,13 +255,12 @@ export function buildBoardStateHash(board: string[]): string {
 }
 
 export function getAvailableCells(board: string[]): number[] {
-  return board
-    .map(function (value: string, index: number) {
-      return value === "" ? index : null;
-    })
-    .filter(function (value: number | null) {
-      return value !== null;
-    });
+  return board.reduce<number[]>(function (available, value, index) {
+    if (value === "") {
+      available.push(index);
+    }
+    return available;
+  }, []);
 }
 
 export function createInitialState(locale: unknown, target: string, starter: string): XoxGameState {

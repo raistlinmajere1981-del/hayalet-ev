@@ -514,7 +514,7 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
       ...profile,
       dirty: true,
       targetOutputId:
-        options && options["clearTargetOutput"] === true
+        options["clearTargetOutput"] === true
           ? null
           : asNonEmptyString(profile["targetOutputId"]),
       targetAssetSignature: null,
@@ -527,13 +527,14 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
         jobId: null,
         requestId: null,
         error: null,
-        warnings: Array.from(
-          new Set(
-            (Array.isArray(preflight["warnings"]) ? preflight["warnings"] : []).concat(
-              reason ? [reason] : []
-            )
-          )
-        ),
+        warnings: Array.from(new Set([
+          ...(Array.isArray(preflight["warnings"])
+            ? preflight["warnings"].filter(function (entry): entry is string {
+                return typeof entry === "string" && entry.trim() !== "";
+              })
+            : []),
+          ...(reason ? [reason] : []),
+        ])),
       },
     };
     markCloseoutAsStale(nextProject, reason, [mediaFeatureId]);

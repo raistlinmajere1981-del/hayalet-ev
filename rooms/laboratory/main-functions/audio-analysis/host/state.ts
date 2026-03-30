@@ -111,7 +111,7 @@ export function createAudioAnalysisStateRuntime(deps: AudioAnalysisStateDeps) {
       preferredSourceKind: "audio",
       requestedMode: "source",
       mode: "source",
-      outputId: null as string | null,
+      outputId: null,
       targetSignature: null as string | null,
       targetPath: null as string | null,
       targetFileName: null as string | null,
@@ -124,11 +124,11 @@ export function createAudioAnalysisStateRuntime(deps: AudioAnalysisStateDeps) {
 
   function createEmptyAudioAnalysisCatalogState() {
     return {
-      orderedIds: [] as string[],
-      implementedIds: [] as string[],
-      gatedIds: [] as string[],
-      plannedIds: [] as string[],
-      visibleIds: [] as string[],
+      orderedIds: [],
+      implementedIds: [],
+      gatedIds: [],
+      plannedIds: [],
+      visibleIds: [],
     };
   }
 
@@ -148,7 +148,7 @@ export function createAudioAnalysisStateRuntime(deps: AudioAnalysisStateDeps) {
     catalogEntry: unknown
   ) {
     const source = toRecord(rawValue);
-    const catalog = toRecord(catalogEntry) as AudioAnalysisModuleDescriptor;
+    const catalog = toRecord(catalogEntry);
     return {
       moduleId: moduleId,
       phase: asNonEmptyString(source.phase) || asNonEmptyString(catalog.phase) || "v1",
@@ -178,7 +178,7 @@ export function createAudioAnalysisStateRuntime(deps: AudioAnalysisStateDeps) {
     descriptor: unknown
   ) {
     const source = toRecord(rawValue);
-    const provider = toRecord(descriptor) as AudioAnalysisProviderDescriptor;
+    const provider = toRecord(descriptor);
     return {
       providerId: providerId,
       status: asNonEmptyString(source.status) || asNonEmptyString(provider.status) || "planned",
@@ -217,15 +217,15 @@ export function createAudioAnalysisStateRuntime(deps: AudioAnalysisStateDeps) {
     return {
       moduleId: moduleId,
       status: "idle",
-      runId: null as string | null,
-      jobId: null as string | null,
-      requestId: null as string | null,
-      startedAt: null as string | null,
-      completedAt: null as string | null,
-      warnings: [] as string[],
-      error: null as string | null,
-      artifactIds: [] as string[],
-      findingIds: [] as string[],
+      runId: null,
+      jobId: null,
+      requestId: null,
+      startedAt: null,
+      completedAt: null,
+      warnings: [],
+      error: null,
+      artifactIds: [],
+      findingIds: [],
     };
   }
 
@@ -249,7 +249,7 @@ export function createAudioAnalysisStateRuntime(deps: AudioAnalysisStateDeps) {
   }
 
   function createEmptyAudioAnalysisModuleResult(moduleId: string, catalogEntry: unknown) {
-    const catalog = toRecord(catalogEntry) as AudioAnalysisModuleDescriptor;
+    const catalog = toRecord(catalogEntry);
     const status = asNonEmptyString(catalog.status) || "planned";
     return {
       moduleId: moduleId,
@@ -364,9 +364,9 @@ export function createAudioAnalysisStateRuntime(deps: AudioAnalysisStateDeps) {
       ? (toRecord(runtime.audioAnalysisProviders).providers as unknown[]).map(function (
           entry: unknown
         ) {
-          return toRecord(entry) as AudioAnalysisProviderDescriptor;
+          return toRecord(entry);
         })
-      : ([] as AudioAnalysisProviderDescriptor[]);
+      : [];
     const normalizedResults: Record<string, unknown> = {};
     const normalizedRuns: Record<string, unknown> = {};
     const normalizedCapabilities: Record<string, unknown> = {};

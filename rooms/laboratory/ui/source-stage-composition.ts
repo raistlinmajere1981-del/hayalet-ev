@@ -1,6 +1,10 @@
 import { createLaboratorySourceStageUi } from "../shared/ui/source-stage.js";
 
-export function createLaboratorySourceStageComposition(deps: any) {
+type LaboratorySourceStageCompositionDeps = Parameters<typeof createLaboratorySourceStageUi>[0];
+
+export function createLaboratorySourceStageComposition(
+  deps: LaboratorySourceStageCompositionDeps
+) {
   return createLaboratorySourceStageUi({
     state: deps.state,
     toRecord: deps.toRecord,

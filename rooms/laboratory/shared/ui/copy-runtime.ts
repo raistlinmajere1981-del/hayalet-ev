@@ -1,5 +1,30 @@
-export function createLaboratoryCopyRuntime(deps: any) {
+import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js"
+
+type LaboratoryRecord = Record<string, unknown>
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"]
+
+type LaboratoryAudioSourceConfigRecord = LaboratoryRecord & {
+  allowedSourceKinds?: unknown
+  defaultSourceKind?: unknown
+}
+
+type LaboratoryCopyRuntimeDeps = {
+  audioFeatureId: string
+  bootstrapCopy: Record<string, LaboratoryRecord>
+  defaultFeatureId: string
+  featureNamespaces: Record<string, string>
+  featurePreviewImages: Record<string, string>
+  getAudioAnalysisCapabilities: () => LaboratoryAudioSourceConfigRecord
+  getAudioAnalysisPresets: () => LaboratoryAudioSourceConfigRecord
+  readValue: (source: unknown, path: readonly string[]) => unknown
+  sourceFormats: string[]
+  state: LaboratoryUiState
+  subtitleFeatureId: string
+}
+
+export function createLaboratoryCopyRuntime(deps: LaboratoryCopyRuntimeDeps) {
   const {
+    audioFeatureId,
     bootstrapCopy,
     defaultFeatureId,
     featureNamespaces,
@@ -10,126 +35,149 @@ export function createLaboratoryCopyRuntime(deps: any) {
     sourceFormats,
     state,
     subtitleFeatureId,
-    audioFeatureId,
-  } = deps;
+  } = deps
 
-  function text(path: any) {
-    const localized = readValue(state.translations, path);
+  function toString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value : null
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return []
+    }
+    return value
+      .map(function (entry) {
+        return toString(entry)
+      })
+      .filter((entry): entry is string => entry !== null)
+  }
+
+  function getBootstrapLocaleCopy(locale: string): LaboratoryRecord {
+    return bootstrapCopy[locale] || bootstrapCopy["en"] || {}
+  }
+
+  function getCurrentLocale(): string {
+    return typeof state.locale === "string" && state.locale.trim() !== "" ? state.locale : "en"
+  }
+
+  function text(path: string[]): string {
+    const localized = readValue(state.translations, path)
     if (typeof localized === "string") {
-      return localized;
+      return localized
     }
-    const fallback = readValue(bootstrapCopy[state.locale], path);
-    if (typeof fallback === "string") {
-      return fallback;
+
+    const localeFallback = readValue(getBootstrapLocaleCopy(getCurrentLocale()), path)
+    if (typeof localeFallback === "string") {
+      return localeFallback
     }
-    const englishFallback = readValue(bootstrapCopy.en, path);
+
+    const englishFallback = readValue(getBootstrapLocaleCopy("en"), path)
     if (typeof englishFallback === "string") {
-      return englishFallback;
+      return englishFallback
     }
-    return path[path.length - 1] || "";
+
+    return path[path.length - 1] || ""
   }
 
-  function textFromKey(key: any) {
-    if (typeof key !== "string" || key.trim() === "") {
-      return "";
+  function textFromKey(key: string): string {
+    if (key.trim() === "") {
+      return ""
     }
-    return text(key.split("."));
+    return text(key.split("."))
   }
 
-  function list(path: any) {
-    const value = readValue(state.translations, path);
-    return Array.isArray(value) ? value.filter((item: any) => typeof item === "string") : [];
+  function list(path: string[]): string[] {
+    return toStringArray(readValue(state.translations, path))
   }
 
-  function getActiveFeatureId() {
-    return typeof state.context.featureId === "string" && state.context.featureId.trim() !== ""
-      ? state.context.featureId
-      : defaultFeatureId;
+  function getActiveFeatureId(): string {
+    return toString(state.context.featureId) || defaultFeatureId
   }
 
-  function isSubtitleAnalysisFeature() {
-    return getActiveFeatureId() === subtitleFeatureId;
+  function isSubtitleAnalysisFeature(): boolean {
+    return getActiveFeatureId() === subtitleFeatureId
   }
 
-  function isAudioAnalysisFeature() {
-    return getActiveFeatureId() === audioFeatureId;
+  function isAudioAnalysisFeature(): boolean {
+    return getActiveFeatureId() === audioFeatureId
   }
 
-  function getFeatureNamespace() {
-    return featureNamespaces[getActiveFeatureId()] || featureNamespaces[defaultFeatureId];
+  function getFeatureNamespace(): string {
+    return featureNamespaces[getActiveFeatureId()] || featureNamespaces[defaultFeatureId] || ""
   }
 
-  function getFeaturePreviewImage() {
-    return featurePreviewImages[getActiveFeatureId()] || featurePreviewImages[defaultFeatureId];
+  function getFeaturePreviewImage(): string {
+    return featurePreviewImages[getActiveFeatureId()] || featurePreviewImages[defaultFeatureId] || ""
   }
 
-  function featureText(path: any) {
-    const localized = readValue(state.translations, [getFeatureNamespace()].concat(path));
+  function featureText(path: string[]): string {
+    const localized = readValue(state.translations, [getFeatureNamespace(), ...path])
     if (typeof localized === "string") {
-      return localized;
+      return localized
     }
-    return text(["mediaAnalysis"].concat(path));
+    return text(["mediaAnalysis", ...path])
   }
 
-  function getAvailableSourceFormats() {
-    if (isAudioAnalysisFeature()) {
-      const presets = getAudioAnalysisPresets();
-      const capabilities = getAudioAnalysisCapabilities();
-      const configuredFormats = Array.isArray(presets.allowedSourceKinds)
-        ? presets.allowedSourceKinds
-        : Array.isArray(capabilities.allowedSourceKinds)
-          ? capabilities.allowedSourceKinds
-          : [];
-      const filteredFormats = configuredFormats.filter(function (entry: any) {
-        return typeof entry === "string" && sourceFormats.includes(entry);
-      });
-      return filteredFormats.length > 0 ? filteredFormats : ["audio", "video"];
+  function getAvailableSourceFormats(): string[] {
+    if (!isAudioAnalysisFeature()) {
+      return sourceFormats.slice()
     }
 
-    return sourceFormats.slice();
+    const presets = getAudioAnalysisPresets()
+    const capabilities = getAudioAnalysisCapabilities()
+    const configuredFormats =
+      toStringArray(presets.allowedSourceKinds).length > 0
+        ? toStringArray(presets.allowedSourceKinds)
+        : toStringArray(capabilities.allowedSourceKinds)
+    const filteredFormats = configuredFormats.filter(function (entry) {
+      return sourceFormats.includes(entry)
+    })
+    return filteredFormats.length > 0 ? filteredFormats : ["audio", "video"]
   }
 
-  function getDefaultSourceKind() {
-    if (isAudioAnalysisFeature()) {
-      const configuredKind = getAudioAnalysisPresets().defaultSourceKind;
-      if (
-        typeof configuredKind === "string" &&
-        getAvailableSourceFormats().includes(configuredKind)
-      ) {
-        return configuredKind;
-      }
-      return "audio";
+  function getDefaultSourceKind(): string {
+    if (!isAudioAnalysisFeature()) {
+      return "video"
     }
 
-    return "video";
+    const configuredKind = toString(getAudioAnalysisPresets().defaultSourceKind)
+    if (configuredKind !== null && getAvailableSourceFormats().includes(configuredKind)) {
+      return configuredKind
+    }
+
+    return "audio"
   }
 
-  function bootstrapText(key: any) {
-    return (
-      readValue(bootstrapCopy[state.locale], [key]) || readValue(bootstrapCopy.en, [key]) || key
-    );
-  }
-
-  function subtitleCopy(trValue: any, enValue: any) {
-    return state.locale === "tr" ? trValue : enValue;
-  }
-
-  function subtitleText(path: any, trFallback: any, enFallback: any) {
-    const localized = readValue(state.translations, ["subtitleAnalysis"].concat(path));
+  function bootstrapText(key: string): string {
+    const localized = readValue(getBootstrapLocaleCopy(getCurrentLocale()), [key])
     if (typeof localized === "string") {
-      return localized;
+      return localized
     }
-    return subtitleCopy(trFallback, enFallback);
+    const englishFallback = readValue(getBootstrapLocaleCopy("en"), [key])
+    return typeof englishFallback === "string" ? englishFallback : key
   }
 
-  function subtitleTemplate(path: any, replacements: any, trFallback: any, enFallback: any) {
-    const template = subtitleText(path, trFallback, enFallback);
-    return Object.keys(replacements && typeof replacements === "object" ? replacements : {}).reduce(
-      function (message: any, key: any) {
-        return message.replaceAll(`{${key}}`, String(replacements[key]));
-      },
-      template
-    );
+  function subtitleCopy(trValue: string, enValue: string): string {
+    return state.locale === "tr" ? trValue : enValue
+  }
+
+  function subtitleText(path: string[], trFallback: string, enFallback: string): string {
+    const localized = readValue(state.translations, ["subtitleAnalysis", ...path])
+    if (typeof localized === "string") {
+      return localized
+    }
+    return subtitleCopy(trFallback, enFallback)
+  }
+
+  function subtitleTemplate(
+    path: string[],
+    replacements: Record<string, string | number>,
+    trFallback: string,
+    enFallback: string
+  ): string {
+    return Object.keys(replacements).reduce(function (message, key) {
+      return message.replaceAll(`{${key}}`, String(replacements[key]))
+    }, subtitleText(path, trFallback, enFallback))
   }
 
   return {
@@ -147,5 +195,5 @@ export function createLaboratoryCopyRuntime(deps: any) {
     subtitleTemplate,
     text,
     textFromKey,
-  };
+  }
 }

@@ -1,4 +1,39 @@
-export function createSubtitleAnalysisSourceProcessPanels(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratorySubtitleAnalysisCatalogRecord = LaboratoryRecord & {
+  modules?: unknown;
+};
+
+type LaboratorySubtitleAnalysisProvidersRecord = LaboratoryRecord & {
+  providers?: unknown;
+};
+
+type LaboratorySubtitleProcessModuleRecord = LaboratoryRecord & {
+  status?: unknown;
+};
+
+type LaboratorySubtitleProviderRecord = LaboratoryRecord & {
+  status?: unknown;
+};
+
+type SubtitleAnalysisSourceProcessPanelsDeps = {
+  escapeHtml: (value: string) => string;
+  getSubtitleAnalysisCatalog: () => LaboratorySubtitleAnalysisCatalogRecord;
+  getSubtitleAnalysisProviders: () => LaboratorySubtitleAnalysisProvidersRecord;
+  getSubtitleProcessModuleLabel: (entry: LaboratorySubtitleProcessModuleRecord) => string;
+  getSubtitleProcessModuleSummary: (entry: LaboratorySubtitleProcessModuleRecord) => string;
+  getSubtitleProcessStatusLabel: (status: unknown) => string;
+  getSubtitleProviderLabel: (entry: LaboratorySubtitleProviderRecord) => string;
+  getSubtitleProviderModuleLabels: (entry: LaboratorySubtitleProviderRecord) => string;
+  getSubtitleProviderStatusLabel: (status: unknown) => string;
+  getSubtitleProviderSummary: (entry: LaboratorySubtitleProviderRecord) => string;
+  subtitleText: (path: string[], tr: string, en: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createSubtitleAnalysisSourceProcessPanels(
+  deps: SubtitleAnalysisSourceProcessPanelsDeps
+) {
   const toRecord = deps.toRecord;
   const escapeHtml = deps.escapeHtml;
   const subtitleText = deps.subtitleText;
@@ -12,10 +47,26 @@ export function createSubtitleAnalysisSourceProcessPanels(deps: any) {
   const getSubtitleProviderLabel = deps.getSubtitleProviderLabel;
   const getSubtitleProviderModuleLabels = deps.getSubtitleProviderModuleLabels;
 
+  function toProcessModuleRecord(value: unknown): LaboratorySubtitleProcessModuleRecord {
+    return toRecord(value);
+  }
+
+  function toProviderRecord(value: unknown): LaboratorySubtitleProviderRecord {
+    return toRecord(value);
+  }
+
+  function getCatalogModules(): LaboratorySubtitleProcessModuleRecord[] {
+    const modules = getSubtitleAnalysisCatalog().modules;
+    return Array.isArray(modules) ? modules.map(toProcessModuleRecord) : [];
+  }
+
+  function getProviderEntries(): LaboratorySubtitleProviderRecord[] {
+    const providers = getSubtitleAnalysisProviders().providers;
+    return Array.isArray(providers) ? providers.map(toProviderRecord) : [];
+  }
+
   function renderSubtitleCatalogPanel() {
-    const modules = Array.isArray(getSubtitleAnalysisCatalog().modules)
-      ? getSubtitleAnalysisCatalog().modules.map(toRecord)
-      : [];
+    const modules = getCatalogModules();
     if (modules.length === 0) {
       return "";
     }
@@ -37,7 +88,7 @@ export function createSubtitleAnalysisSourceProcessPanels(deps: any) {
         </div>
         <div class="lab-tool-grid">
           ${modules
-            .map(function (entry: any) {
+            .map(function (entry) {
               const statusLabel = getSubtitleProcessStatusLabel(entry.status || "planned");
               const summary = getSubtitleProcessModuleSummary(entry);
               return `
@@ -60,9 +111,7 @@ export function createSubtitleAnalysisSourceProcessPanels(deps: any) {
   }
 
   function renderSubtitleProviderPanel() {
-    const providers = Array.isArray(getSubtitleAnalysisProviders().providers)
-      ? getSubtitleAnalysisProviders().providers.map(toRecord)
-      : [];
+    const providers = getProviderEntries();
     if (providers.length === 0) {
       return "";
     }
@@ -77,7 +126,7 @@ export function createSubtitleAnalysisSourceProcessPanels(deps: any) {
         </div>
         <div class="lab-tool-grid">
           ${providers
-            .map(function (entry: any) {
+            .map(function (entry) {
               const statusLabel = getSubtitleProviderStatusLabel(entry.status || "planned");
               const providerSummary = getSubtitleProviderSummary(entry);
               const moduleSummary = getSubtitleProviderModuleLabels(entry);

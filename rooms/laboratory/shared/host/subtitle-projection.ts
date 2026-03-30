@@ -83,16 +83,13 @@ export function createLaboratorySubtitleProjectionRuntime(
     runtime: unknown,
     project: LaboratorySubtitleProjectionProject
   ): LaboratorySubtitleAnalysisState {
-    const subtitleState = normalizeSubtitleAnalysisState(
-      toRecord(project)["subtitleAnalysis"],
-      runtime
-    );
+    const subtitleState = normalizeSubtitleAnalysisState(toRecord(project)["subtitleAnalysis"], runtime);
     const processRecord = readFeatureProcessRecord(project, subtitleFeatureId);
     const reportRecord = readFeatureReportRecord(project, subtitleFeatureId);
 
     subtitleState.analysis = {
       ...subtitleState.analysis,
-      status: asNonEmptyString(processRecord.status) || "idle",
+      status: asNonEmptyString(processRecord.status) ?? "idle",
       summaryCards: Array.isArray(reportRecord.summaryCards)
         ? reportRecord.summaryCards.map(normalizeReportSummaryCard)
         : [],
@@ -102,7 +99,7 @@ export function createLaboratorySubtitleProjectionRuntime(
       warnings: Array.isArray(reportRecord.warnings) ? reportRecord.warnings.map(String) : [],
       moduleResults: (Array.isArray(processRecord.modules) ? processRecord.modules : []).reduce<
         Record<string, LaboratoryProcessModuleRecord>
-      >(function (accumulator: any, entry: any) {
+      >(function (accumulator, entry) {
         const moduleRecord = normalizeProcessModule(entry);
         accumulator[moduleRecord.id] = moduleRecord;
         return accumulator;

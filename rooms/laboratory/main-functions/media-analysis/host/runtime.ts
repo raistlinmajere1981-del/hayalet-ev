@@ -3,7 +3,40 @@ import { createMediaEditSupportRuntime } from "./edit-support.js";
 import { createMediaEditPipelineRuntime } from "./edit-pipeline.js";
 import { createMediaProfilePreflightRuntime } from "./profile-preflight.js";
 
-export function createLaboratoryMediaAnalysisHostRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+type MediaEditSupportRuntimeDeps = Parameters<typeof createMediaEditSupportRuntime>[0];
+type MediaEditArtifactRuntimeDeps = Parameters<typeof createMediaEditArtifactRuntime>[0];
+type MediaEditPipelineRuntimeDeps = Parameters<typeof createMediaEditPipelineRuntime>[0];
+type MediaProfilePreflightRuntimeDeps = Parameters<typeof createMediaProfilePreflightRuntime>[0];
+type MediaEditPipelineRuntimeApi = ReturnType<typeof createMediaEditPipelineRuntime>;
+type MediaProfilePreflightRuntimeApi = ReturnType<typeof createMediaProfilePreflightRuntime>;
+
+type LaboratoryToolReadyRuntime = LaboratoryRecord & {
+  toolState?: unknown;
+};
+
+type LaboratoryMediaAnalysisHostRuntimeDeps = MediaEditSupportRuntimeDeps &
+  MediaEditArtifactRuntimeDeps &
+  Omit<
+    MediaEditPipelineRuntimeDeps,
+    | "buildAuxiliaryArtifacts"
+    | "buildEditCommand"
+    | "buildEditOutputLabel"
+    | "buildEditTargetPath"
+    | "collectDerivedOutputMetadata"
+    | "ensureEditToolReady"
+    | "getDerivedMimeType"
+    | "getEditRecipeSignature"
+    | "getPreparedSourcePath"
+    | "requirePreparedSource"
+  > &
+  Omit<MediaProfilePreflightRuntimeDeps, "ensureProfileToolReady" | "sanitizeFileSegment"> & {
+    getCollectDerivedOutputMetadata: MediaEditPipelineRuntimeDeps["collectDerivedOutputMetadata"];
+  };
+
+export function createLaboratoryMediaAnalysisHostRuntime(
+  deps: LaboratoryMediaAnalysisHostRuntimeDeps
+) {
   const {
     asNonEmptyString,
     asNumber,
@@ -47,6 +80,10 @@ export function createLaboratoryMediaAnalysisHostRuntime(deps: any) {
     toRecord,
   } = deps;
 
+  function getFfmpegToolState(runtime: LaboratoryToolReadyRuntime) {
+    return toRecord(toRecord(toRecord(runtime.toolState)["tools"])["ffmpeg"]);
+  }
+
   const mediaEditSupportRuntime = createMediaEditSupportRuntime({
     asNonEmptyString,
     asNumber,
@@ -75,9 +112,11 @@ export function createLaboratoryMediaAnalysisHostRuntime(deps: any) {
     sanitizeFileSegment,
   } = mediaEditSupportRuntime;
 
-  function ensureEditToolReady(runtime: any) {
-    const ffmpegState = toRecord(runtime.toolState.tools.ffmpeg);
-    if (ffmpegState.installed !== true) {
+  function ensureEditToolReady(
+    runtime: Parameters<MediaEditPipelineRuntimeDeps["ensureEditToolReady"]>[0]
+  ) {
+    const ffmpegState = getFfmpegToolState(runtime);
+    if (ffmpegState["installed"] !== true) {
       throw new Error("Install FFmpeg in settings before using the edit stage.");
     }
   }
@@ -98,21 +137,23 @@ export function createLaboratoryMediaAnalysisHostRuntime(deps: any) {
   const mediaEditPipelineRuntime = createMediaEditPipelineRuntime({
     audioFeatureId,
     buildAuxiliaryArtifacts: mediaEditArtifactRuntime.buildAuxiliaryArtifacts,
-    buildEditCommand,
-    buildEditOutputLabel,
-    buildEditTargetPath,
+    buildEditCommand: buildEditCommand as MediaEditPipelineRuntimeDeps["buildEditCommand"],
+    buildEditOutputLabel:
+      buildEditOutputLabel as MediaEditPipelineRuntimeDeps["buildEditOutputLabel"],
+    buildEditTargetPath:
+      buildEditTargetPath as MediaEditPipelineRuntimeDeps["buildEditTargetPath"],
     callRoomTools,
     clearJob,
-    collectDerivedOutputMetadata(...args: any[]) {
-      return getCollectDerivedOutputMetadata(...args);
-    },
+    collectDerivedOutputMetadata: getCollectDerivedOutputMetadata,
     ensureEditJobSlotAvailable,
     ensureEditToolReady,
     ensureProjectDirectories,
     getActiveProject,
-    getDerivedMimeType,
-    getEditRecipeSignature,
-    getPreparedSourcePath,
+    getDerivedMimeType: getDerivedMimeType as MediaEditPipelineRuntimeDeps["getDerivedMimeType"],
+    getEditRecipeSignature:
+      getEditRecipeSignature as MediaEditPipelineRuntimeDeps["getEditRecipeSignature"],
+    getPreparedSourcePath:
+      getPreparedSourcePath as MediaEditPipelineRuntimeDeps["getPreparedSourcePath"],
     getProjectEditDir,
     markCloseoutAsStale,
     markProfileAsStale,
@@ -120,18 +161,23 @@ export function createLaboratoryMediaAnalysisHostRuntime(deps: any) {
     patchActiveProject,
     pushJobState,
     registerJob,
-    requirePreparedSource,
+    requirePreparedSource:
+      requirePreparedSource as MediaEditPipelineRuntimeDeps["requirePreparedSource"],
     roomId,
     toRecord,
   });
 
-  async function runEditPipeline(api: any, runtime: any, requestId: any, mode: any) {
-    return mediaEditPipelineRuntime.runEditPipeline(api, runtime, requestId, mode);
+  function runEditPipeline(
+    ...args: Parameters<MediaEditPipelineRuntimeApi["runEditPipeline"]>
+  ) {
+    return mediaEditPipelineRuntime.runEditPipeline(...args);
   }
 
-  function ensureProfileToolReady(runtime: any) {
-    const ffmpegState = toRecord(runtime.toolState.tools.ffmpeg);
-    if (ffmpegState.installed !== true) {
+  function ensureProfileToolReady(
+    runtime: Parameters<MediaProfilePreflightRuntimeDeps["ensureProfileToolReady"]>[0]
+  ) {
+    const ffmpegState = getFfmpegToolState(runtime);
+    if (ffmpegState["installed"] !== true) {
       throw new Error("Install FFmpeg in settings before using the profile stage.");
     }
   }
@@ -167,8 +213,10 @@ export function createLaboratoryMediaAnalysisHostRuntime(deps: any) {
     toRecord,
   });
 
-  async function runProfilePreflight(api: any, runtime: any, requestId: any) {
-    return mediaProfilePreflightRuntime.runProfilePreflight(api, runtime, requestId);
+  function runProfilePreflight(
+    ...args: Parameters<MediaProfilePreflightRuntimeApi["runProfilePreflight"]>
+  ) {
+    return mediaProfilePreflightRuntime.runProfilePreflight(...args);
   }
 
   return {

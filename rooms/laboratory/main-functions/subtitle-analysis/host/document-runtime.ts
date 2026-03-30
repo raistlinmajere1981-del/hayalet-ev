@@ -5,6 +5,47 @@ export function createSubtitleDocumentRuntime(deps: {
 }) {
   const { asNonEmptyString, asNumber, toRecord } = deps;
 
+  type SubtitleCueRecord = {
+    id: string;
+    startSeconds: number | null;
+    endSeconds: number | null;
+    textLines: string[];
+    text: string;
+  };
+
+  type SubtitleCueLikeRecord = Record<string, unknown> & {
+    endSeconds?: unknown;
+    id?: unknown;
+    startSeconds?: unknown;
+    text?: unknown;
+    textLines?: unknown;
+  };
+
+  function normalizeCueRecord(value: unknown, index: number): SubtitleCueRecord {
+    const record = toRecord(value) as SubtitleCueLikeRecord;
+    const textLines = Array.isArray(record.textLines)
+      ? record.textLines.map(String)
+      : [String(record.text ?? "")];
+    return {
+      id: asNonEmptyString(record.id) ?? `subtitle-cue-${index}`,
+      startSeconds: asNumber(record.startSeconds),
+      endSeconds: asNumber(record.endSeconds),
+      textLines: textLines.filter(function (line) {
+        return line.trim() !== "";
+      }),
+      text:
+        asNonEmptyString(record.text) ??
+        textLines
+          .map(function (line) {
+            return line.trim();
+          })
+          .filter(function (line) {
+            return line.length > 0;
+          })
+          .join(" "),
+    };
+  }
+
   function normalizeSubtitleText(rawText: unknown) {
     return String(rawText || "").replace(/\r\n/g, "\n");
   }
@@ -231,23 +272,25 @@ export function createSubtitleDocumentRuntime(deps: {
     );
   }
 
-  function buildNormalizedSubtitleCueModel(rawText: unknown, format: unknown, recipe: unknown) {
+  function buildNormalizedSubtitleCueModel(
+    rawText: unknown,
+    format: unknown,
+    recipe: unknown
+  ): SubtitleCueRecord[] {
     return parseSubtitleCues(rawText, format)
-      .map(function (cue: any, index: number) {
-        if (!cue) {
-          return null;
-        }
-        const nextLines = transformSubtitleCueLines(cue.textLines, recipe);
+      .map(function (cue, index): SubtitleCueRecord {
+        const normalizedCue = normalizeCueRecord(cue, index);
+        const nextLines = transformSubtitleCueLines(normalizedCue.textLines, recipe);
         return {
-          id: cue.id || `subtitle-cue-${index}`,
-          startSeconds: cue.startSeconds,
-          endSeconds: cue.endSeconds,
+          id: normalizedCue.id,
+          startSeconds: normalizedCue.startSeconds,
+          endSeconds: normalizedCue.endSeconds,
           textLines: nextLines,
           text: nextLines.join(" "),
         };
       })
-      .filter(function (cue: any) {
-        return cue && cue.textLines.length > 0;
+      .filter(function (cue) {
+        return cue.textLines.length > 0;
       });
   }
 
@@ -257,11 +300,14 @@ export function createSubtitleDocumentRuntime(deps: {
       return JSON.stringify(Array.isArray(cues) ? cues : [], null, 2);
     }
 
-    const blocks = (Array.isArray(cues) ? cues : []).map(function (cue: any, index: number) {
+    const cueList = (Array.isArray(cues) ? cues : []).map(function (cue, index) {
+      return normalizeCueRecord(cue, index);
+    });
+    const blocks = cueList.map(function (cue, index) {
       const startToken = formatSubtitleRenderTimestamp(cue.startSeconds, nextFormat);
       const endToken = formatSubtitleRenderTimestamp(cue.endSeconds, nextFormat);
       const header = `${startToken} --> ${endToken}`;
-      const textLines = Array.isArray(cue.textLines) ? cue.textLines : [String(cue.text || "")];
+      const textLines = cue.textLines.length > 0 ? cue.textLines : [cue.text];
 
       if (nextFormat === "vtt") {
         return [header].concat(textLines).join("\n");
@@ -356,10 +402,14 @@ export function createSubtitleDocumentRuntime(deps: {
     const sourceCues = parseSubtitleCues(sourceText, format);
     const outputCues =
       normalizedOutputFormat === "json"
-        ? (function () {
+        ? (function (): SubtitleCueRecord[] {
             try {
-              const parsed = JSON.parse(outputText as string);
-              return Array.isArray(parsed) ? parsed.map(toRecord) : [];
+              const parsed: unknown = JSON.parse(String(outputText ?? ""));
+              return Array.isArray(parsed)
+                ? parsed.map(function (entry, index) {
+                    return normalizeCueRecord(entry, index);
+                  })
+                : [];
             } catch (_error) {
               return [];
             }

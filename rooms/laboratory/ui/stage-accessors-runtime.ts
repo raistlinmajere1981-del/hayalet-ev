@@ -1,38 +1,75 @@
-export function createLaboratoryStageAccessorsRuntime(deps: any) {
-  const laboratoryUiFeatureRuntime = deps.laboratoryUiFeatureRuntime;
-  const laboratoryUiDraftRuntime = deps.laboratoryUiDraftRuntime;
-  const laboratoryUiDraftAccessRuntime = deps.laboratoryUiDraftAccessRuntime;
-  const laboratoryProfileProcessReportAccessorsRuntime =
-    deps.laboratoryProfileProcessReportAccessorsRuntime;
-  const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;
-  const toRecord = deps.toRecord;
-  const text = deps.text;
-  const subtitleText = deps.subtitleText;
-  const setStage = deps.setStage;
+import type { createLaboratoryProfileProcessReportAccessorsRuntime } from "../shared/ui/profile-process-report-accessors.js"
+import type { LaboratoryUiFeatureRuntimeApi } from "../shared/ui/feature-runtime.js"
+import type { createLaboratoryUiDraftRuntime } from "../shared/ui/draft-runtime.js"
+import type { createLaboratoryUiDraftAccessRuntime } from "./draft-access-runtime.js"
+
+type LaboratoryRecord = Record<string, unknown>;
+type LaboratoryUiDraftRuntimeApi = ReturnType<typeof createLaboratoryUiDraftRuntime>
+type LaboratoryUiDraftAccessRuntimeApi = ReturnType<typeof createLaboratoryUiDraftAccessRuntime>
+type LaboratoryProfileProcessReportAccessorsRuntimeApi = ReturnType<
+  typeof createLaboratoryProfileProcessReportAccessorsRuntime
+>
+
+type LaboratoryStageAccessorsRuntimeDeps = {
+  isSubtitleAnalysisFeature: () => boolean;
+  laboratoryProfileProcessReportAccessorsRuntime: LaboratoryProfileProcessReportAccessorsRuntimeApi;
+  laboratoryUiDraftAccessRuntime: LaboratoryUiDraftAccessRuntimeApi;
+  laboratoryUiDraftRuntime: LaboratoryUiDraftRuntimeApi;
+  laboratoryUiFeatureRuntime: LaboratoryUiFeatureRuntimeApi;
+  setStage: (stageId: string) => void;
+  subtitleText: (path: string[], tr: string, en: string) => string;
+  text: (path: string[]) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryStageAccessorsRuntime(
+  deps: LaboratoryStageAccessorsRuntimeDeps
+) {
+  const {
+    isSubtitleAnalysisFeature,
+    laboratoryProfileProcessReportAccessorsRuntime,
+    laboratoryUiDraftAccessRuntime,
+    laboratoryUiDraftRuntime,
+    laboratoryUiFeatureRuntime,
+    setStage,
+    subtitleText,
+    text,
+    toRecord,
+  } = deps;
 
   function getRelevantJobs() {
     return laboratoryUiFeatureRuntime.getRelevantJobs();
   }
 
-  function collectEditStageJobs(projectJobs: any) {
-    return laboratoryUiDraftRuntime.collectEditStageJobs(projectJobs);
+  function collectEditStageJobs(projectJobs: unknown) {
+    return laboratoryUiDraftRuntime.collectEditStageJobs(
+      projectJobs as Parameters<LaboratoryUiDraftRuntimeApi["collectEditStageJobs"]>[0]
+    );
   }
 
-  function collectProfileStageJobs(projectJobs: any) {
-    return laboratoryUiDraftRuntime.collectProfileStageJobs(projectJobs);
+  function collectProfileStageJobs(projectJobs: unknown) {
+    return laboratoryUiDraftRuntime.collectProfileStageJobs(
+      projectJobs as Parameters<LaboratoryUiDraftRuntimeApi["collectProfileStageJobs"]>[0]
+    );
   }
 
-  function collectProcessStageJobs(projectJobs: any) {
-    return laboratoryUiDraftRuntime.collectProcessStageJobs(projectJobs);
+  function collectProcessStageJobs(projectJobs: unknown) {
+    return laboratoryUiDraftRuntime.collectProcessStageJobs(
+      projectJobs as Parameters<LaboratoryUiDraftRuntimeApi["collectProcessStageJobs"]>[0]
+    );
   }
 
-  function collectReportStageJobs(projectJobs: any) {
-    return laboratoryUiDraftRuntime.collectReportStageJobs(projectJobs);
+  function collectReportStageJobs(projectJobs: unknown) {
+    return laboratoryUiDraftRuntime.collectReportStageJobs(
+      projectJobs as Parameters<LaboratoryUiDraftRuntimeApi["collectReportStageJobs"]>[0]
+    );
   }
 
-  function getEditJobLabel(job: any) {
+  function getEditJobLabel(job: unknown) {
+    const jobRecord = toRecord(job)
+    const jobAction = typeof jobRecord["action"] === "string" ? jobRecord["action"] : "";
     if (isSubtitleAnalysisFeature()) {
-      switch (String(toRecord(job).action || "")) {
+      switch (jobAction) {
         case "subtitle-edit-preview":
           return subtitleText(
             ["edit", "jobs", "preview"],
@@ -46,7 +83,7 @@ export function createLaboratoryStageAccessorsRuntime(deps: any) {
       }
     }
 
-    switch (String(toRecord(job).action || "")) {
+    switch (jobAction) {
       case "edit-preview":
         return text(["mediaAnalysis", "edit", "actions", "preview"]);
       case "edit-apply":
@@ -64,11 +101,11 @@ export function createLaboratoryStageAccessorsRuntime(deps: any) {
     return laboratoryUiDraftAccessRuntime.getCurrentEditDraft();
   }
 
-  function buildNestedPatch(path: any, value: any) {
+  function buildNestedPatch(path: unknown, value: unknown) {
     return laboratoryUiDraftAccessRuntime.buildNestedPatch(path, value);
   }
 
-  function syncLocalEditField(path: any, value: any) {
+  function syncLocalEditField(path: unknown, value: unknown) {
     laboratoryUiDraftAccessRuntime.syncLocalEditField(path, value);
   }
 
@@ -236,4 +273,6 @@ export function createLaboratoryStageAccessorsRuntime(deps: any) {
   };
 }
 
-export type LaboratoryStageAccessorsRuntimeApi = ReturnType<typeof createLaboratoryStageAccessorsRuntime>;
+export type LaboratoryStageAccessorsRuntimeApi = ReturnType<
+  typeof createLaboratoryStageAccessorsRuntime
+>;

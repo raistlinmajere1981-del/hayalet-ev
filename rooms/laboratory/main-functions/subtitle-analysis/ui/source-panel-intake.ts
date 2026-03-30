@@ -1,6 +1,59 @@
 import { createSubtitleAnalysisSourcePanelPrimitives } from "./source-panel-primitives.js";
 
-export function createSubtitleAnalysisSourceIntakePanels(deps: any) {
+type SubtitleAnalysisSourcePanelPrimitivesDeps = Parameters<
+  typeof createSubtitleAnalysisSourcePanelPrimitives
+>[0];
+
+type LaboratorySourceDraftsRecord = Record<string, unknown> & {
+  durationMaxSeconds?: number | null;
+  durationMinSeconds?: number | null;
+  limitCount?: number | null;
+  liveMode?: string;
+  playlistItems?: string;
+  publishedAfter?: string;
+  publishedBefore?: string;
+  shortsMode?: string;
+  subtitleMode?: string;
+  subtitlesLang?: string;
+  titleExclude?: string;
+  titleInclude?: string;
+  urlInput?: string;
+  weekdays?: string;
+  youtubeUrl?: string;
+};
+
+type LaboratoryToolEntryRecord = Record<string, unknown> & {
+  installed?: unknown;
+};
+
+type SubtitleTextFieldOptions = {
+  type?: string;
+};
+
+type SubtitleAnalysisSourceIntakePanelsDeps = SubtitleAnalysisSourcePanelPrimitivesDeps & {
+  featureText: (path: string[]) => string;
+  getCurrentDrafts: () => LaboratorySourceDraftsRecord;
+  getSubtitleDiscoveryItems: () => unknown[];
+  getSubtitleSelectedCandidateIds: () => string[];
+  getToolEntry: (toolId: string) => LaboratoryToolEntryRecord;
+  renderTextField: (
+    fieldId: string,
+    value: string,
+    label: string,
+    placeholder: string,
+    options?: SubtitleTextFieldOptions
+  ) => string;
+  subtitleTemplate: (
+    path: string[],
+    values: Record<string, unknown>,
+    tr: string,
+    en: string
+  ) => string;
+};
+
+export function createSubtitleAnalysisSourceIntakePanels(
+  deps: SubtitleAnalysisSourceIntakePanelsDeps
+) {
   const escapeHtml = deps.escapeHtml;
   const featureText = deps.featureText;
   const subtitleText = deps.subtitleText;
@@ -35,7 +88,7 @@ export function createSubtitleAnalysisSourceIntakePanels(deps: any) {
             ? `
         ${renderTextField(
           "urlInput",
-          drafts.urlInput,
+          drafts.urlInput || "",
           subtitleText(["source", "fields", "subtitleUrl"], "Altyazi URL", "Subtitle URL"),
           subtitleText(
             ["source", "placeholders", "subtitleUrl"],
@@ -55,7 +108,7 @@ export function createSubtitleAnalysisSourceIntakePanels(deps: any) {
         }
         ${renderTextField(
           "youtubeUrl",
-          drafts.youtubeUrl,
+          drafts.youtubeUrl || "",
           subtitleText(["source", "fields", "youtubeUrl"], "YouTube URL", "YouTube URL"),
           subtitleText(
             ["source", "placeholders", "youtubeUrl"],
@@ -288,7 +341,7 @@ export function createSubtitleAnalysisSourceIntakePanels(deps: any) {
         <div class="lab-segmented lab-segmented--subtitle-source">
           ${primitives
             .getSubtitleSourceModeOptions()
-            .map(function (modeId: any) {
+            .map(function (modeId) {
               const disabled = modeId.indexOf("youtube-") === 0 && ytDlpInstalled !== true;
               return `
                 <button

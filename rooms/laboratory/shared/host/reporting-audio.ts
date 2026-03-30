@@ -1,116 +1,267 @@
-export function createLaboratoryAudioReportRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  audioAnalysis?: unknown
+  name?: unknown
+}
+
+type LaboratoryFeatureProcessRecord = LaboratoryRecord & {
+  runId?: unknown
+  status?: unknown
+  targetSummary?: unknown
+  warnings?: unknown
+}
+
+type LaboratoryFeatureReportRecord = LaboratoryRecord & {
+  exports?: unknown
+}
+
+type LaboratoryProcessFindingRecord = LaboratoryRecord & {
+  level?: unknown
+}
+
+type LaboratoryAudioAnalysisCatalogRecord = LaboratoryRecord & {
+  orderedIds?: unknown
+}
+
+type LaboratoryAudioAnalysisSourceRecord = LaboratoryRecord & {
+  targetLabel?: unknown
+}
+
+type LaboratoryAudioAnalysisStateRecord = LaboratoryRecord & {
+  analysisCatalog?: unknown
+  results?: unknown
+  source?: unknown
+}
+
+type LaboratoryAudioModuleDescriptor = LaboratoryRecord & {
+  id?: unknown
+}
+
+type LaboratoryAudioModuleResultRecord = LaboratoryRecord & {
+  artifacts?: unknown
+  signals?: unknown
+  status?: unknown
+  warnings?: unknown
+}
+
+type LaboratoryAudioReportProjection = {
+  audioAnalysis: LaboratoryAudioAnalysisStateRecord
+  orderedResults: LaboratoryAudioModuleResultRecord[]
+}
+
+type LaboratoryAudioReportRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null
+  audioFeatureId: string
+  clone: <T>(value: T) => T
+  createEmptyFeatureReportRecord: (featureId: string) => LaboratoryRecord
+  getAudioAnalysisModulesForRuntime: (runtime: LaboratoryRecord) => unknown[]
+  getFeatureProcessRecord: (
+    project: LaboratoryProjectRecord,
+    featureId: string
+  ) => LaboratoryFeatureProcessRecord
+  getFeatureReportRecord: (
+    project: LaboratoryProjectRecord,
+    featureId: string
+  ) => LaboratoryFeatureReportRecord
+  getFindingSeverityRank: (level: unknown) => number
+  normalizeAudioAnalysisModuleResult: (
+    rawValue: LaboratoryRecord,
+    moduleId: string,
+    moduleDescriptor: LaboratoryAudioModuleDescriptor
+  ) => LaboratoryAudioModuleResultRecord
+  normalizeAudioAnalysisState: (
+    rawValue: unknown,
+    runtime: LaboratoryRecord
+  ) => LaboratoryAudioAnalysisStateRecord
+  normalizeFeatureReportRecord: (
+    rawValue: unknown,
+    featureId: string
+  ) => LaboratoryFeatureReportRecord
+  normalizeProcessFinding: (rawValue: unknown) => LaboratoryProcessFindingRecord
+  normalizeStringArray: (value: unknown) => string[]
+  syncProjectAudioAnalysisProjection: (
+    runtime: LaboratoryRecord,
+    project: LaboratoryProjectRecord
+  ) => void
+  toRecord: (value: unknown) => LaboratoryRecord
+}
+
+export function createLaboratoryAudioReportRuntime(deps: LaboratoryAudioReportRuntimeDeps) {
   const {
     asNonEmptyString,
-    clone,
-    syncProjectAudioAnalysisProjection,
-    normalizeAudioAnalysisState,
-    getAudioAnalysisModulesForRuntime,
-    toRecord,
-    normalizeStringArray,
-    normalizeAudioAnalysisModuleResult,
-    getFindingSeverityRank,
-    normalizeFeatureReportRecord,
-    createEmptyFeatureReportRecord,
-    getFeatureProcessRecord,
-    normalizeProcessFinding,
-    getFeatureReportRecord,
     audioFeatureId,
-  } = deps;
+    clone,
+    createEmptyFeatureReportRecord,
+    getAudioAnalysisModulesForRuntime,
+    getFeatureProcessRecord,
+    getFeatureReportRecord,
+    getFindingSeverityRank,
+    normalizeAudioAnalysisModuleResult,
+    normalizeAudioAnalysisState,
+    normalizeFeatureReportRecord,
+    normalizeProcessFinding,
+    normalizeStringArray,
+    syncProjectAudioAnalysisProjection,
+    toRecord,
+  } = deps
 
-  function buildAudioAnalysisReportProjection(runtime: any, project: any) {
-    const projectedProject = clone(project);
-    syncProjectAudioAnalysisProjection(runtime, projectedProject);
-
-    const audioAnalysis = normalizeAudioAnalysisState(projectedProject.audioAnalysis, runtime);
-    const catalogMap = getAudioAnalysisModulesForRuntime(runtime).reduce(function (
-      accumulator: Record<string, unknown>,
-      entry: any
-    ) {
-      const moduleId = asNonEmptyString(entry.id);
-      if (moduleId !== null) {
-        accumulator[moduleId] = entry;
-      }
-      return accumulator;
-    }, {});
-    const orderedIds = normalizeStringArray(toRecord(audioAnalysis.analysisCatalog).orderedIds);
-    const extraIds = Object.keys(toRecord(audioAnalysis.results)).filter(function (moduleId: string) {
-      return !orderedIds.includes(moduleId);
-    });
-    const orderedResults = orderedIds.concat(extraIds).map(function (moduleId: string) {
-      return normalizeAudioAnalysisModuleResult(
-        toRecord(toRecord(audioAnalysis.results)[moduleId]),
-        moduleId,
-        toRecord(catalogMap[moduleId])
-      );
-    });
-
-    return {
-      audioAnalysis: audioAnalysis,
-      orderedResults: orderedResults,
-    };
+  function toProjectRecord(value: unknown): LaboratoryProjectRecord {
+    return toRecord(value)
   }
 
-  function composeAudioAnalysisReport(runtime: any, project: any) {
-    const processRecord = getFeatureProcessRecord(project, audioFeatureId);
-    if (processRecord.status !== "ready" && processRecord.status !== "stale") {
+  function toFeatureProcessRecord(value: unknown): LaboratoryFeatureProcessRecord {
+    return toRecord(value)
+  }
+
+  function toFeatureReportRecord(value: unknown): LaboratoryFeatureReportRecord {
+    return toRecord(value)
+  }
+
+  function toAnalysisStateRecord(value: unknown): LaboratoryAudioAnalysisStateRecord {
+    return toRecord(value)
+  }
+
+  function toAnalysisCatalogRecord(value: unknown): LaboratoryAudioAnalysisCatalogRecord {
+    return toRecord(value)
+  }
+
+  function toAnalysisSourceRecord(value: unknown): LaboratoryAudioAnalysisSourceRecord {
+    return toRecord(value)
+  }
+
+  function toModuleDescriptor(value: unknown): LaboratoryAudioModuleDescriptor {
+    return toRecord(value)
+  }
+
+  function toModuleResultRecord(value: unknown): LaboratoryAudioModuleResultRecord {
+    return toRecord(value)
+  }
+
+  function toProcessFindingRecord(value: unknown): LaboratoryProcessFindingRecord {
+    return toRecord(value)
+  }
+
+  function toUnknownArray(value: unknown): unknown[] {
+    return Array.isArray(value)
+      ? value.map(function (entry): unknown {
+          return entry
+        })
+      : []
+  }
+
+  function buildAudioAnalysisReportProjection(
+    runtime: LaboratoryRecord,
+    project: LaboratoryProjectRecord
+  ): LaboratoryAudioReportProjection {
+    const projectedProject = clone(project)
+    syncProjectAudioAnalysisProjection(runtime, projectedProject)
+
+    const audioAnalysis = toAnalysisStateRecord(
+      normalizeAudioAnalysisState(projectedProject.audioAnalysis, runtime)
+    )
+    const catalogMap = getAudioAnalysisModulesForRuntime(runtime).reduce<
+      Record<string, LaboratoryAudioModuleDescriptor>
+    >(function (accumulator, entry) {
+      const descriptor = toModuleDescriptor(entry)
+      const moduleId = asNonEmptyString(descriptor.id)
+      if (moduleId !== null) {
+        accumulator[moduleId] = descriptor
+      }
+      return accumulator
+    }, {})
+    const orderedIds = normalizeStringArray(
+      toAnalysisCatalogRecord(audioAnalysis.analysisCatalog).orderedIds
+    )
+    const resultMap = toRecord(audioAnalysis.results)
+    const extraIds = Object.keys(resultMap).filter(function (moduleId) {
+      return !orderedIds.includes(moduleId)
+    })
+    const orderedResults = orderedIds.concat(extraIds).map(function (moduleId) {
+      return normalizeAudioAnalysisModuleResult(
+        toRecord(resultMap[moduleId]),
+        moduleId,
+        catalogMap[moduleId] || {}
+      )
+    })
+
+    return {
+      audioAnalysis,
+      orderedResults,
+    }
+  }
+
+  function composeAudioAnalysisReport(
+    runtime: LaboratoryRecord,
+    project: LaboratoryProjectRecord
+  ) {
+    const processRecord = toFeatureProcessRecord(getFeatureProcessRecord(project, audioFeatureId))
+    const processStatus = asNonEmptyString(processRecord.status) || "idle"
+    if (processStatus !== "ready" && processStatus !== "stale") {
       return normalizeFeatureReportRecord(
         {
           ...createEmptyFeatureReportRecord(audioFeatureId),
-          status: processRecord.status === "running" ? "staged" : "idle",
-          warnings: processRecord.warnings || [],
+          status: processStatus === "running" ? "staged" : "idle",
+          warnings: normalizeStringArray(processRecord.warnings),
         },
         audioFeatureId
-      );
+      )
     }
 
-    const projection = buildAudioAnalysisReportProjection(runtime, project);
-    const orderedResults = projection.orderedResults;
+    const projection = buildAudioAnalysisReportProjection(runtime, project)
+    const orderedResults = projection.orderedResults.map(toModuleResultRecord)
     const findings = orderedResults
-      .flatMap(function (entry: any) {
-        return Array.isArray(entry.signals) ? entry.signals : [];
+      .flatMap(function (entry) {
+        return toUnknownArray(entry.signals)
       })
       .map(normalizeProcessFinding)
-      .sort(function (left: any, right: any) {
-        return getFindingSeverityRank(right.level) - getFindingSeverityRank(left.level);
-      });
-    const artifactCount = orderedResults.reduce(function (sum: number, entry: any) {
-      return sum + (Array.isArray(entry.artifacts) ? entry.artifacts.length : 0);
-    }, 0);
-    const completedCount = orderedResults.filter(function (entry: any) {
-      return ["complete", "stale"].includes(asNonEmptyString(entry.status) || "idle");
-    }).length;
-    const gatedCount = orderedResults.filter(function (entry: any) {
-      return asNonEmptyString(entry.status) === "gated";
-    }).length;
-    const plannedCount = orderedResults.filter(function (entry: any) {
-      return asNonEmptyString(entry.status) === "planned";
-    }).length;
-    const blockedCount = orderedResults.filter(function (entry: any) {
-      return asNonEmptyString(entry.status) === "blocked";
-    }).length;
+      .map(toProcessFindingRecord)
+      .sort(function (left, right) {
+        return getFindingSeverityRank(right.level) - getFindingSeverityRank(left.level)
+      })
+    const artifactCount = orderedResults.reduce(function (sum, entry) {
+      return sum + (Array.isArray(entry.artifacts) ? entry.artifacts.length : 0)
+    }, 0)
+    const completedCount = orderedResults.filter(function (entry) {
+      return ["complete", "stale"].includes(asNonEmptyString(entry.status) || "idle")
+    }).length
+    const gatedCount = orderedResults.filter(function (entry) {
+      return asNonEmptyString(entry.status) === "gated"
+    }).length
+    const plannedCount = orderedResults.filter(function (entry) {
+      return asNonEmptyString(entry.status) === "planned"
+    }).length
+    const blockedCount = orderedResults.filter(function (entry) {
+      return asNonEmptyString(entry.status) === "blocked"
+    }).length
     const warnings = Array.from(
       new Set(
         normalizeStringArray(processRecord.warnings).concat(
-          orderedResults.flatMap(function (entry: any) {
-            return normalizeStringArray(entry.warnings);
+          orderedResults.flatMap(function (entry) {
+            return normalizeStringArray(entry.warnings)
           })
         )
       )
-    );
-    const caveats: string[] = [];
+    )
+    const caveats: string[] = []
     if (plannedCount > 0) {
-      caveats.push("${String(plannedCount)} audio module(s) remain planned for the v2 rollout.");
+      caveats.push(`${String(plannedCount)} audio module(s) remain planned for the v2 rollout.`)
     }
     if (gatedCount > 0) {
       caveats.push(
-        "${String(gatedCount)} audio module(s) remain capability-gated on the current runtime."
-      );
+        `${String(gatedCount)} audio module(s) remain capability-gated on the current runtime.`
+      )
     }
     if (blockedCount > 0) {
       caveats.push(
         "Blocked audio modules keep their slot visible until the target and providers are ready."
-      );
+      )
     }
+
+    const targetSummary = toRecord(processRecord.targetSummary)
+    const audioSource = toAnalysisSourceRecord(projection.audioAnalysis.source)
+    const projectRecord = toProjectRecord(project)
+    const reportRecord = toFeatureReportRecord(getFeatureReportRecord(project, audioFeatureId))
 
     return normalizeFeatureReportRecord(
       {
@@ -123,9 +274,10 @@ export function createLaboratoryAudioReportRuntime(deps: any) {
             id: "audio-target",
             label: "Target",
             value:
-              asNonEmptyString(toRecord(projection.audioAnalysis.source).targetLabel) ||
-              asNonEmptyString(toRecord(processRecord.targetSummary).label) ||
-              project.name,
+              asNonEmptyString(audioSource.targetLabel) ||
+              asNonEmptyString(targetSummary["label"]) ||
+              asNonEmptyString(projectRecord.name) ||
+              "Project",
           },
           {
             id: "audio-visible-modules",
@@ -148,18 +300,18 @@ export function createLaboratoryAudioReportRuntime(deps: any) {
             value: String(artifactCount),
           },
         ],
-        findings: findings,
-        caveats: caveats,
-        warnings: warnings,
-        exports: getFeatureReportRecord(project, audioFeatureId).exports,
+        findings,
+        caveats,
+        warnings,
+        exports: reportRecord.exports,
         error: null,
       },
       audioFeatureId
-    );
+    )
   }
 
   return {
     buildAudioAnalysisReportProjection,
     composeAudioAnalysisReport,
-  };
+  }
 }

@@ -1,21 +1,65 @@
-export function createLaboratoryUiNavigationRuntime(deps: any) {
-  const {
-    defaultFeatureId,
-    documentRef,
-    render,
-    resolveLocale,
-    roomId,
-    stageOrder,
-    state,
-    toRecord,
-  } = deps;
+type LaboratoryRecord = Record<string, unknown>;
 
-  function applyLocale(locale: any) {
+type LaboratoryPresentationMode = "classic" | "scene-view";
+
+type LaboratoryUiState = {
+  activeStage: string;
+  locale: string;
+  presentation: {
+    mode: LaboratoryPresentationMode;
+    uiScale: number;
+  };
+  ui: {
+    overlayScrollResetPending: boolean;
+    scrollPositions: {
+      overlay: number;
+      surface: number;
+    };
+    stackScrollPositions: {
+      main: number;
+      side: number;
+    };
+    surfaceScrollResetPending: boolean;
+  };
+};
+
+type LaboratoryNavigationContextRecord = LaboratoryRecord & {
+  activeFeature?: unknown;
+  featureId?: unknown;
+  presentation?: unknown;
+  room?: unknown;
+  user?: unknown;
+};
+
+type LaboratoryNavigationDeps = {
+  defaultFeatureId: string;
+  documentRef: Document;
+  render: () => unknown;
+  resolveLocale: (locale: unknown) => string;
+  roomId: string;
+  stageOrder: string[];
+  state: LaboratoryUiState;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDeps) {
+  const { defaultFeatureId, documentRef, render, resolveLocale, roomId, stageOrder, state, toRecord } =
+    deps;
+
+  function toContextRecord(value: unknown): LaboratoryNavigationContextRecord {
+    return toRecord(value);
+  }
+
+  function toString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+  }
+
+  function applyLocale(locale: unknown) {
     state.locale = resolveLocale(locale);
     documentRef.documentElement.lang = state.locale;
   }
 
-  function normalizeUiScale(value: any) {
+  function normalizeUiScale(value: unknown) {
     const numeric =
       typeof value === "number"
         ? value
@@ -28,74 +72,62 @@ export function createLaboratoryUiNavigationRuntime(deps: any) {
     return Math.max(70, Math.min(130, Math.round(numeric)));
   }
 
-  function formatScaleFactor(value: any) {
+  function formatScaleFactor(value: number) {
     return value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
   }
 
-  function applyPresentationMode(nextPresentation: any) {
+  function applyPresentationMode(nextPresentation: unknown) {
     const presentation =
       nextPresentation &&
       typeof nextPresentation === "object" &&
       Array.isArray(nextPresentation) === false
-        ? nextPresentation
+        ? toRecord(nextPresentation)
         : { mode: nextPresentation };
-    state.presentation.mode = presentation.mode === "scene-view" ? "scene-view" : "classic";
-    state.presentation.uiScale = normalizeUiScale(presentation.uiScale);
+    state.presentation.mode =
+      presentation["mode"] === "scene-view" ? "scene-view" : "classic";
+    state.presentation.uiScale = normalizeUiScale(presentation["uiScale"]);
     const scaleFactor = formatScaleFactor(state.presentation.uiScale / 100);
-    documentRef.body.dataset.presentationMode = state.presentation.mode;
-    documentRef.body.dataset.roomUiScale = String(state.presentation.uiScale);
-    if (documentRef.body.style && typeof documentRef.body.style.setProperty === "function") {
+    documentRef.body.dataset["presentationMode"] = state.presentation.mode;
+    documentRef.body.dataset["roomUiScale"] = String(state.presentation.uiScale);
+    if (typeof documentRef.body.style.setProperty === "function") {
       documentRef.body.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
     }
-    documentRef.documentElement.dataset.presentationMode = state.presentation.mode;
-    documentRef.documentElement.dataset.roomUiScale = String(state.presentation.uiScale);
-    if (
-      documentRef.documentElement.style &&
-      typeof documentRef.documentElement.style.setProperty === "function"
-    ) {
-      documentRef.documentElement.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
+    documentRef.documentElement.dataset["presentationMode"] = state.presentation.mode;
+    documentRef.documentElement.dataset["roomUiScale"] = String(state.presentation.uiScale);
+    if (typeof documentRef.documentElement.style.setProperty === "function") {
+      documentRef.documentElement.style.setProperty(
+        "--room-runtime-ui-scale-factor",
+        scaleFactor
+      );
     }
   }
 
-  function normalizeContext(message: any) {
-    const source =
-      message && typeof message === "object" && Array.isArray(message) === false ? message : {};
+  function normalizeContext(message: unknown) {
+    const source = toContextRecord(message);
     const room = toRecord(source.room);
     const user = toRecord(source.user);
     const presentation = toRecord(source.presentation);
     const activeFeature = toRecord(source.activeFeature);
     const featureId =
-      (typeof activeFeature.id === "string" && activeFeature.id.trim() !== ""
-        ? activeFeature.id.trim()
-        : null) ||
-      (typeof source.featureId === "string" && source.featureId.trim() !== ""
-        ? source.featureId.trim()
-        : null) ||
-      defaultFeatureId;
+      toString(activeFeature["id"]) || toString(source["featureId"]) || defaultFeatureId;
 
     return {
-      room: {
-        id: typeof room.id === "string" && room.id.trim() !== "" ? room.id.trim() : roomId,
-        name:
-          typeof room.name === "string" && room.name.trim() !== ""
-            ? room.name.trim()
-            : "Laboratory",
-      },
       featureId: featureId,
-      user: {
-        nickname:
-          typeof user.nickname === "string" && user.nickname.trim() !== ""
-            ? user.nickname.trim()
-            : "Operator",
-      },
       presentation: {
-        mode: presentation.mode === "scene-view" ? "scene-view" : "classic",
-        uiScale: normalizeUiScale(presentation.uiScale),
+        mode: presentation["mode"] === "scene-view" ? "scene-view" : "classic",
+        uiScale: normalizeUiScale(presentation["uiScale"]),
+      },
+      room: {
+        id: toString(room["id"]) || roomId,
+        name: toString(room["name"]) || "Laboratory",
+      },
+      user: {
+        nickname: toString(user["nickname"]) || "Operator",
       },
     };
   }
 
-  function getStageIndex(stageId: any) {
+  function getStageIndex(stageId: string) {
     return stageOrder.indexOf(stageId);
   }
 
@@ -111,7 +143,7 @@ export function createLaboratoryUiNavigationRuntime(deps: any) {
     state.ui.overlayScrollResetPending = true;
   }
 
-  function setStage(stageId: any) {
+  function setStage(stageId: string) {
     if (stageOrder.includes(stageId) === false) {
       return;
     }
@@ -123,13 +155,17 @@ export function createLaboratoryUiNavigationRuntime(deps: any) {
     render();
   }
 
-  function advanceStage(direction: any) {
+  function advanceStage(direction: number) {
     const currentIndex = getStageIndex(state.activeStage);
     const nextIndex = Math.max(0, Math.min(stageOrder.length - 1, currentIndex + direction));
-    setStage(stageOrder[nextIndex]);
+    const nextStageId = stageOrder.at(nextIndex);
+    if (!nextStageId) {
+      return;
+    }
+    setStage(nextStageId);
   }
 
-  function captureScrollState(root: any) {
+  function captureScrollState(root: ParentNode) {
     const surface = root.querySelector(".lab-surface");
     if (surface instanceof HTMLElement) {
       state.ui.scrollPositions.surface = surface.scrollTop;
@@ -151,7 +187,7 @@ export function createLaboratoryUiNavigationRuntime(deps: any) {
     }
   }
 
-  function restoreScrollState(root: any) {
+  function restoreScrollState(root: ParentNode) {
     const surface = root.querySelector(".lab-surface");
     if (surface instanceof HTMLElement) {
       surface.scrollTop = state.ui.surfaceScrollResetPending ? 0 : state.ui.scrollPositions.surface;

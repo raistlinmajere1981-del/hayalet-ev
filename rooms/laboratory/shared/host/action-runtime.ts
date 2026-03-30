@@ -1,6 +1,7 @@
 import { createLaboratoryActionRouter } from "./action-router.js";
 
 type LaboratoryRecord = Record<string, unknown>;
+type LaboratoryActionRouterDeps = Parameters<typeof createLaboratoryActionRouter>[0];
 
 type LaboratoryActionRouter = {
   dispatch: (api: unknown, runtime: unknown, payload: unknown) => Promise<unknown>;
@@ -11,9 +12,9 @@ type LaboratoryActionRuntimeDeps = {
   createRequestId: () => string;
   ensureHydrated: (api: unknown, runtime: unknown) => Promise<unknown>;
   getFeatureIdFromContext: (payload: unknown) => string | null;
-  getSubtitleActionRuntime: () => unknown;
+  getSubtitleActionRuntime: () => LaboratoryActionRouterDeps["subtitleActionRuntime"];
   loadContext: (payload: unknown) => LaboratoryRecord;
-  mediaActionRuntime: unknown;
+  mediaActionRuntime: LaboratoryActionRouterDeps["mediaActionRuntime"];
   persistProfileModelState: (runtime: unknown) => Promise<unknown> | unknown;
   persistToolState: (runtime: unknown) => Promise<unknown> | unknown;
   pushActionResult: (api: unknown, payload: unknown) => void;
@@ -55,7 +56,7 @@ export function createLaboratoryHostActionRuntime(deps: LaboratoryActionRuntimeD
         pushMediaState: deps.pushMediaState,
         subtitleActionRuntime: deps.getSubtitleActionRuntime(),
         toRecord: deps.toRecord,
-      }) as LaboratoryActionRouter;
+      } as LaboratoryActionRouterDeps) as LaboratoryActionRouter;
     }
 
     return actionRouter;

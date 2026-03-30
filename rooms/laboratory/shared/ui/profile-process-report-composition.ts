@@ -1,4 +1,86 @@
-export function createLaboratoryProfileProcessReportComposition(deps: any) {
+import type { createMediaAnalysisProfilePanels } from "../../main-functions/media-analysis/ui/profile-panels.js";
+import type { createMediaAnalysisProfileStage } from "../../main-functions/media-analysis/ui/profile-stage.js";
+import type { createLaboratoryProfileProcessReportRuntime } from "../../ui/profile-process-report-runtime.js";
+import type { createLaboratoryProcessStageUi } from "./process-stage.js";
+import type { createLaboratoryReportStageUi } from "./report-stage.js";
+
+type LaboratoryRecord = Record<string, unknown>;
+type MediaAnalysisProfileStageDeps = Parameters<typeof createMediaAnalysisProfileStage>[0];
+type LaboratoryReportStageUiDeps = Parameters<typeof createLaboratoryReportStageUi>[0];
+
+type LaboratoryProfileProcessReportCompositionDeps = {
+  createLaboratoryProcessStageUi: typeof createLaboratoryProcessStageUi;
+  createLaboratoryProfileProcessReportRuntime: typeof createLaboratoryProfileProcessReportRuntime;
+  createLaboratoryReportStageUi: typeof createLaboratoryReportStageUi;
+  createMediaAnalysisProfilePanels: typeof createMediaAnalysisProfilePanels;
+  createMediaAnalysisProfileStage: typeof createMediaAnalysisProfileStage;
+  escapeHtml: MediaAnalysisProfileStageDeps["escapeHtml"];
+  featureText: (path: string[]) => string;
+  formatDateTime: (value: unknown) => string;
+  formatDuration: MediaAnalysisProfileStageDeps["formatDuration"];
+  formatStatusLabel: (value: unknown) => string;
+  getCurrentFeatureArtifactCount: () => number;
+  getCurrentFeatureProcessRecord: () => unknown;
+  getCurrentFeatureReportRecord: () => unknown;
+  getCurrentFeatureTargetLabel: () => string;
+  getCurrentProfileMode: MediaAnalysisProfileStageDeps["getCurrentProfileMode"];
+  getCurrentSourceKind: () => string;
+  getCurrentSourceLabel: () => string;
+  getEffectiveMediaAsset: () => unknown;
+  getFeaturePreviewImage: () => string;
+  getFocusLabel: () => string;
+  getPreferredAssetCodec: MediaAnalysisProfileStageDeps["getPreferredAssetCodec"];
+  getPreferredAssetDuration: MediaAnalysisProfileStageDeps["getPreferredAssetDuration"];
+  getPreferredAssetResolution: MediaAnalysisProfileStageDeps["getPreferredAssetResolution"];
+  getProcessArtifacts: () => unknown[];
+  getProcessFindings: () => unknown[];
+  getProcessJobs: () => unknown[];
+  getProcessModules: () => unknown[];
+  getProfileArtifactPreferenceEntries: () => unknown[];
+  getProfileArtifacts: MediaAnalysisProfileStageDeps["getProfileArtifacts"];
+  getProfileCapabilities: () => LaboratoryRecord;
+  getProfileConfidenceLabel: MediaAnalysisProfileStageDeps["getProfileConfidenceLabel"];
+  getProfileEstimate: MediaAnalysisProfileStageDeps["getProfileEstimate"];
+  getProfileFrameDensityOptions: () => unknown[];
+  getProfileJobs: MediaAnalysisProfileStageDeps["getProfileJobs"];
+  getProfileLabel: () => string;
+  getProfileLaneCardState: (laneId: string) => LaboratoryRecord;
+  getProfileLaneMap: () => LaboratoryRecord;
+  getProfileModelEntries: () => unknown[];
+  getProfilePreflight: MediaAnalysisProfileStageDeps["getProfilePreflight"];
+  getProfilePresetOptions: () => unknown[];
+  getProfileReadiness: MediaAnalysisProfileStageDeps["getProfileReadiness"];
+  getProfileSelectedModel: MediaAnalysisProfileStageDeps["getProfileSelectedModel"];
+  getProfileSignalKindLabel: MediaAnalysisProfileStageDeps["getProfileSignalKindLabel"];
+  getProfileSignals: MediaAnalysisProfileStageDeps["getProfileSignals"];
+  getProfileTargetAsset: MediaAnalysisProfileStageDeps["getProfileTargetAsset"];
+  getProfileTargetMode: MediaAnalysisProfileStageDeps["getProfileTargetMode"];
+  getProfileTargetOutputOptions: MediaAnalysisProfileStageDeps["getProfileTargetOutputOptions"];
+  getProfileTargetSummary: MediaAnalysisProfileStageDeps["getProfileTargetSummary"];
+  getProfileTranscriptSampleConfig: () => LaboratoryRecord;
+  getProjectProfile: () => unknown;
+  getProjectSource: MediaAnalysisProfileStageDeps["getProjectSource"];
+  getReportExports: () => unknown[];
+  getReportFindings: () => unknown[];
+  getReportJobs: () => unknown[];
+  getReportSummaryCards: () => unknown[];
+  getSubtitleProcessModuleLabel: (moduleId: unknown) => string;
+  getSubtitleProcessModuleSummary: (module: unknown) => string;
+  isAudioAnalysisFeature: () => boolean;
+  isSubtitleAnalysisFeature: () => boolean;
+  renderAudioAnalysisModuleGrid: () => string;
+  renderStageIntro: MediaAnalysisProfileStageDeps["renderStageIntro"];
+  renderSummaryRows: MediaAnalysisProfileStageDeps["renderSummaryRows"];
+  sortProfileSignals: MediaAnalysisProfileStageDeps["sortProfileSignals"];
+  state: MediaAnalysisProfileStageDeps["state"];
+  text: MediaAnalysisProfileStageDeps["text"];
+  textFromKey: MediaAnalysisProfileStageDeps["textFromKey"];
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryProfileProcessReportComposition(
+  deps: LaboratoryProfileProcessReportCompositionDeps
+) {
   const laboratoryProcessStageUi = deps.createLaboratoryProcessStageUi({
     toRecord: deps.toRecord,
     escapeHtml: deps.escapeHtml,
@@ -26,7 +108,8 @@ export function createLaboratoryProfileProcessReportComposition(deps: any) {
     renderSummaryRows: deps.renderSummaryRows,
     formatStatusLabel: deps.formatStatusLabel,
     formatDateTime: deps.formatDateTime,
-    formatDuration: deps.formatDuration,
+    formatDuration:
+      deps.formatDuration as unknown as LaboratoryReportStageUiDeps["formatDuration"],
     isSubtitleAnalysisFeature: deps.isSubtitleAnalysisFeature,
     isAudioAnalysisFeature: deps.isAudioAnalysisFeature,
     getCurrentFeatureReportRecord: deps.getCurrentFeatureReportRecord,
@@ -69,15 +152,12 @@ export function createLaboratoryProfileProcessReportComposition(deps: any) {
 
   const mediaAnalysisProfileStage = deps.createMediaAnalysisProfileStage({
     state: deps.state,
-    toRecord: deps.toRecord,
     escapeHtml: deps.escapeHtml,
     text: deps.text,
     textFromKey: deps.textFromKey,
     formatDuration: deps.formatDuration,
     renderStageIntro: deps.renderStageIntro,
     renderSummaryRows: deps.renderSummaryRows,
-    getCurrentSourceKind: deps.getCurrentSourceKind,
-    getCurrentSourceLabel: deps.getCurrentSourceLabel,
     getCurrentProfileMode: deps.getCurrentProfileMode,
     getProfileEstimate: deps.getProfileEstimate,
     getProfileLabel: deps.getProfileLabel,

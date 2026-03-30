@@ -1,5 +1,8 @@
-(function (global: any) {
-  type UnknownRecord = Record<string, unknown>;
+(function (
+  global: typeof globalThis & {
+    GameRoomUiFactories?: GameRoomUiFactoriesRegistry;
+  }
+) {
   type XoxUiStateRuntime = {
     createGameState: () => unknown;
     sanitizeGameState: (candidate: unknown) => unknown;
@@ -9,23 +12,24 @@
     renderBootstrap: (root: HTMLElement) => void;
     renderXox: (root: HTMLElement) => void;
   };
-  type XoxUiModuleDeps = UnknownRecord;
-
-  const registry = (global.GameRoomUiFactories || (global.GameRoomUiFactories = {})) as {
-    createXoxUiStateRuntime: (deps: XoxUiModuleDeps) => XoxUiStateRuntime;
+  type XoxUiModuleRegistry = GameRoomUiFactoriesRegistry & {
+    createXoxUiStateRuntime: (deps: GameRoomXoxUiModuleDeps) => XoxUiStateRuntime;
     createXoxUiRenderRuntime: (
-      deps: XoxUiModuleDeps & {
+      deps: GameRoomXoxUiModuleDeps & {
         stateRuntime: XoxUiStateRuntime;
       }
     ) => XoxUiRenderRuntime;
-    createXoxUiModule?: (deps: XoxUiModuleDeps) => unknown;
+    createXoxUiModule?: (deps: GameRoomXoxUiModuleDeps) => GameRoomXoxUiModule;
   };
 
-  registry.createXoxUiModule = function createXoxUiModule(deps: XoxUiModuleDeps) {
+  const registry = (global.GameRoomUiFactories ||
+    (global.GameRoomUiFactories = {} as GameRoomUiFactoriesRegistry)) as XoxUiModuleRegistry;
+
+  registry.createXoxUiModule = function createXoxUiModule(deps: GameRoomXoxUiModuleDeps) {
     const stateRuntime = registry.createXoxUiStateRuntime(deps);
     const renderRuntime = registry.createXoxUiRenderRuntime({
       ...deps,
-      stateRuntime: stateRuntime,
+      stateRuntime,
     });
 
     return {

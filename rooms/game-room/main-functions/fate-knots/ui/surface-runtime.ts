@@ -1,7 +1,13 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
 
-  registry.createFateKnotsUiSurfaceRuntime = function createFateKnotsUiSurfaceRuntime(deps: any) {
+  const registry = getFactoryRegistry(global);
+
+  registry.createFateKnotsUiSurfaceRuntime = function createFateKnotsUiSurfaceRuntime(
+    deps: GameRoomFateKnotsUiSurfaceRuntimeDeps
+  ): GameRoomFateKnotsUiSurfaceRuntime {
     const createFateKnotsUiSurfaceAssetsRuntime = registry.createFateKnotsUiSurfaceAssetsRuntime;
     if (typeof createFateKnotsUiSurfaceAssetsRuntime !== "function") {
       throw new Error("createFateKnotsUiSurfaceAssetsRuntime is unavailable.");
@@ -40,4 +46,4 @@
       ...fateKnotsUiSurfaceMapRuntime,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})(window as unknown as GameRoomUiGlobal);

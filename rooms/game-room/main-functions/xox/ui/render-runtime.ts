@@ -1,4 +1,9 @@
-(function (global: any) {
+(function (
+  global: typeof globalThis & {
+    GameRoomUiFactories?: GameRoomUiFactoriesRegistry;
+  }
+) {
+  type XoxTarget = "ai1" | "ai2" | "us1";
   type XoxInviteEntry = {
     inviteId: string;
     remoteUserId: string;
@@ -13,7 +18,7 @@
     note: string;
   };
   type XoxSlotState = {
-    slotId: string;
+    slotId: XoxTarget;
     nickname: string;
     ready?: boolean;
   };
@@ -55,7 +60,7 @@
     onAcceptInvite: (inviteId: string, remoteUserId: string) => void;
     onRejectInvite: (inviteId: string, remoteUserId: string) => void;
     formatInviteMeta: (invite: XoxInviteEntry) => string;
-    getSelectedTarget: () => string;
+    getSelectedTarget: () => XoxTarget;
     getDisplayOpponent: () => XoxSlotState;
     getSlotOrder: () => XoxSlotState[];
     getSlotStatusLabel: (slot: XoxSlotState) => string;
@@ -90,7 +95,20 @@
     stateRuntime: XoxUiStateRuntime;
   };
 
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+  type XoxStarterChoice = {
+    value: "user" | "ai";
+    label: string;
+  };
+
+  type XoxUiRenderRuntimeRegistry = GameRoomUiFactoriesRegistry & {
+    createXoxUiRenderRuntime?: (deps: XoxUiRenderRuntimeDeps) => {
+      renderBootstrap(root: HTMLElement): void;
+      renderXox(root: HTMLElement): void;
+    };
+  };
+
+  const registry = (global.GameRoomUiFactories ||
+    (global.GameRoomUiFactories = {} as GameRoomUiFactoriesRegistry)) as XoxUiRenderRuntimeRegistry;
 
   registry.createXoxUiRenderRuntime = function createXoxUiRenderRuntime(
     deps: XoxUiRenderRuntimeDeps
@@ -186,7 +204,7 @@
       }
 
       const list = createElement("div", "xox-invite-list", "");
-      state.game.inviteInbox.forEach(function (invite: any) {
+      state.game.inviteInbox.forEach(function (invite: XoxInviteEntry) {
         const card = createElement("article", "xox-invite-card", "");
         const actions = createElement("div", "xox-invite-card__actions", "");
         const acceptButton = createElement(
@@ -230,9 +248,11 @@
       const state = getState();
       document.title = state.context.room.name + " - " + getFeatureLabel(featureId);
 
-      const selectedTarget = stateRuntime.getSelectedTarget() || "ai1";
-      const selectedSlot =
-        state.context.slots[selectedTarget] || state.context.slots["ai1"] || { ready: false };
+      const selectedTarget = stateRuntime.getSelectedTarget();
+      const selectedSlot = state.context.slots[selectedTarget] ?? state.context.slots["ai1"];
+      if (!selectedSlot) {
+        return;
+      }
       const displayOpponent = stateRuntime.getDisplayOpponent();
       const hasPendingOutgoingInvite =
         !!state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing";
@@ -257,7 +277,7 @@
         createElement("p", "xox-panel__label", text(["xox", "topbar", "opponentLabel"]))
       );
       const opponentChoices = createElement("div", "xox-choice-grid", "");
-      stateRuntime.getSlotOrder().forEach(function (slot: any) {
+      stateRuntime.getSlotOrder().forEach(function (slot: XoxSlotState) {
         const button = createChoiceButton(
           slot.nickname,
           slot.slotId.toUpperCase() + " / " + stateRuntime.getSlotStatusLabel(slot),
@@ -276,11 +296,12 @@
       starterPanel.append(
         createElement("p", "xox-panel__label", text(["xox", "topbar", "starterLabel"]))
       );
-      const starterChoices = createElement("div", "xox-toggle-row", "");
-      [
+      const starterChoiceRow = createElement("div", "xox-toggle-row", "");
+      const starterChoices: XoxStarterChoice[] = [
         { value: "user", label: stateRuntime.getStarterLabelForCurrentTarget("user") },
         { value: "ai", label: stateRuntime.getStarterLabelForCurrentTarget("ai") },
-      ].forEach(function (entry: any) {
+      ];
+      starterChoices.forEach(function (entry: XoxStarterChoice) {
         const button = createChoiceButton(
           entry.label,
           "",
@@ -291,9 +312,9 @@
           state.preferences.starter = entry.value === "ai" ? "ai" : "user";
           render();
         });
-        starterChoices.append(button);
+        starterChoiceRow.append(button);
       });
-      starterPanel.append(starterChoices);
+      starterPanel.append(starterChoiceRow);
 
       const actionPanel = createElement("section", "xox-panel xox-panel--actions", "");
       actionPanel.append(
@@ -366,7 +387,7 @@
 
       const boardShell = createElement("div", "xox-board-shell", "");
       const board = createElement("div", "xox-board", "");
-      state.game.board.forEach(function (symbol: any, index: any) {
+      state.game.board.forEach(function (symbol: string, index: number) {
         const cell = createElement("button", "xox-cell", symbol);
         cell.type = "button";
         cell.dataset["index"] = String(index);

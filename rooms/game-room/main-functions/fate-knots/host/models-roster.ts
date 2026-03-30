@@ -43,12 +43,12 @@ interface FateKnotsRosterRecord extends Record<string, unknown> {
 }
 
 export function normalizePhase(value: unknown) {
-  const allowed = Object.values(FATE_KNOTS_PHASES) as string[];
+  const allowed = Object.values(FATE_KNOTS_PHASES);
   return typeof value === "string" && allowed.includes(value) ? value : FATE_KNOTS_PHASES.idle;
 }
 
 export function normalizeWaitMode(value: unknown) {
-  const allowed = Object.values(FATE_KNOTS_WAIT_MODES) as string[];
+  const allowed = Object.values(FATE_KNOTS_WAIT_MODES);
   return typeof value === "string" && allowed.includes(value) ? value : FATE_KNOTS_WAIT_MODES.idle;
 }
 
@@ -189,11 +189,11 @@ export function createDecisionState(
       : FATE_KNOTS_WAIT_TIMEOUT_MS;
   const choiceIds = choices
     .map(function (choice: unknown) {
-        return normalizeText(
-          choice && typeof choice === "object" && !Array.isArray(choice)
-            ? (choice as FateKnotsRosterRecord).id
+      return normalizeText(
+        choice && typeof choice === "object" && !Array.isArray(choice)
+          ? (choice as FateKnotsRosterRecord).id
           : choice
-        );
+      );
     })
     .filter(Boolean);
   const activeParticipantIds = participantIds.map(normalizeText).filter(Boolean);
@@ -228,7 +228,7 @@ export function normalizeDecisionState(candidate: unknown) {
     source.votes && typeof source.votes === "object" && Array.isArray(source.votes) === false
       ? (source.votes as FateKnotsRosterRecord)
       : {};
-  Object.keys(votes).forEach(function (seatId: any) {
+  Object.keys(votes).forEach(function (seatId: string) {
     const key = normalizeText(seatId);
     const choiceId = normalizeText(votes[seatId]);
     if (key !== "" && choiceId !== "") {

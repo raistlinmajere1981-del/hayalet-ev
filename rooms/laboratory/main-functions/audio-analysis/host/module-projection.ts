@@ -1,7 +1,206 @@
 import { createAudioAnalysisProjectionCatalogRuntime } from "./projection-catalog.js";
 import { createAudioAnalysisProjectionResultsRuntime } from "./projection-results.js";
 
-export function createAudioAnalysisProjectionRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryAudioAnalysisRuntime = LaboratoryRecord & {
+  sourcePresets?: unknown;
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  audioAnalysis?: unknown;
+  updatedAt?: unknown;
+};
+
+type LaboratoryAudioTargetRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  label?: unknown;
+  metadata?: unknown;
+  mimeType?: unknown;
+  mode?: unknown;
+  outputId?: unknown;
+  path?: unknown;
+  requestedMode?: unknown;
+  signature?: unknown;
+};
+
+type LaboratoryAudioCatalogModuleRecord = LaboratoryRecord & {
+  id?: unknown;
+  phase?: unknown;
+  providerIds?: unknown;
+  status?: unknown;
+  summaryKey?: unknown;
+  titleKey?: unknown;
+  toolIds?: unknown;
+};
+
+type LaboratoryAudioCapabilityEntryRecord = LaboratoryRecord & {
+  blockers?: unknown;
+  providerIds?: unknown;
+  requiredToolIds?: unknown;
+  status?: unknown;
+  toolIds?: unknown;
+  warnings?: unknown;
+};
+
+type LaboratoryAudioProviderStateEntryRecord = LaboratoryRecord & {
+  blockers?: unknown;
+  ready?: unknown;
+  warnings?: unknown;
+};
+
+type LaboratoryProcessRecord = LaboratoryRecord & {
+  artifacts?: unknown;
+  completedAt?: unknown;
+  error?: unknown;
+  findings?: unknown;
+  jobId?: unknown;
+  modules?: unknown;
+  requestId?: unknown;
+  runId?: unknown;
+  startedAt?: unknown;
+  status?: unknown;
+  targetSummary?: unknown;
+};
+
+type LaboratoryProcessModuleRecord = LaboratoryRecord & {
+  completedAt?: unknown;
+  id?: unknown;
+  startedAt?: unknown;
+  warnings?: unknown;
+};
+
+type LaboratoryProcessFindingRecord = LaboratoryRecord & {
+  confidence?: unknown;
+  id?: unknown;
+  moduleId?: unknown;
+};
+
+type LaboratoryProcessArtifactRecord = LaboratoryRecord & {
+  id?: unknown;
+  moduleId?: unknown;
+};
+
+type LaboratoryReportRecord = LaboratoryRecord & {
+  exports?: unknown;
+  generatedAt?: unknown;
+};
+
+type LaboratoryAudioAnalysisModuleResultRecord = LaboratoryRecord & {
+  artifacts?: unknown;
+  signals?: unknown;
+  status?: unknown;
+  warnings?: unknown;
+};
+
+type LaboratoryAudioAnalysisRunRecord = LaboratoryRecord;
+
+type LaboratoryAudioProjectionCatalogRuntime = {
+  buildAudioAnalysisCapabilityState: (
+    runtime: LaboratoryAudioAnalysisRuntime,
+    project: LaboratoryProjectRecord,
+    target: LaboratoryAudioTargetRecord,
+    providerState: Record<string, LaboratoryAudioProviderStateEntryRecord>
+  ) => Record<string, LaboratoryAudioCapabilityEntryRecord>;
+  buildAudioAnalysisCatalogProjection: (
+    runtime: LaboratoryAudioAnalysisRuntime
+  ) => LaboratoryRecord;
+  buildAudioAnalysisProviderState: (
+    runtime: LaboratoryAudioAnalysisRuntime,
+    project: LaboratoryProjectRecord
+  ) => Record<string, LaboratoryAudioProviderStateEntryRecord>;
+  resolveAudioFeatureTarget: (
+    project: LaboratoryProjectRecord
+  ) => LaboratoryAudioTargetRecord;
+};
+
+type LaboratoryAudioProjectionResultsRuntime = {
+  buildAudioAnalysisModuleMetrics: (
+    signals: LaboratoryProcessFindingRecord[],
+    artifacts: LaboratoryProcessArtifactRecord[]
+  ) => LaboratoryRecord[];
+  buildAudioAnalysisModuleSummary: (
+    resultStatus: string,
+    processModule: LaboratoryProcessModuleRecord,
+    capabilityEntry: LaboratoryAudioCapabilityEntryRecord
+  ) => string;
+  getAudioAnalysisConfidenceRank: (confidence: unknown) => number;
+  mapAudioAnalysisResultStatus: (
+    processRecord: LaboratoryProcessRecord,
+    moduleEntry: LaboratoryProcessModuleRecord,
+    capabilityEntry: LaboratoryAudioCapabilityEntryRecord
+  ) => string;
+};
+
+type AudioAnalysisProjectionDeps = {
+  asNumber: (value: unknown) => number | null;
+  asNonEmptyString: (value: unknown) => string | null;
+  audioAnalysisSchemaVersion: number;
+  audioFeatureId: string;
+  buildDerivedTargetSignature: (output: LaboratoryRecord) => string | null;
+  buildProcessSpeechAvailability: (
+    runtime: LaboratoryAudioAnalysisRuntime,
+    project: LaboratoryProjectRecord
+  ) => LaboratoryRecord;
+  buildProfileModelSummary: (
+    runtime: LaboratoryAudioAnalysisRuntime,
+    project: LaboratoryProjectRecord
+  ) => LaboratoryRecord[];
+  buildSourceTargetSignature: (project: LaboratoryProjectRecord) => string | null;
+  findEditOutputById: (
+    project: LaboratoryProjectRecord,
+    outputId: string | null
+  ) => unknown | null;
+  getAudioAnalysisModulesForRuntime: (
+    runtime: LaboratoryAudioAnalysisRuntime
+  ) => LaboratoryAudioCatalogModuleRecord[];
+  getFeatureProcessRecord: (
+    project: LaboratoryProjectRecord,
+    featureId: string
+  ) => unknown;
+  getFeatureReportRecord: (
+    project: LaboratoryProjectRecord,
+    featureId: string
+  ) => unknown;
+  getPreferredFeatureSourceKind: (
+    featureId: string,
+    sourcePresets: unknown
+  ) => string;
+  normalizeAudioAnalysisCapabilityEntry: (
+    rawValue: unknown,
+    moduleId: string,
+    catalogEntry: LaboratoryAudioCatalogModuleRecord
+  ) => LaboratoryAudioCapabilityEntryRecord;
+  normalizeAudioAnalysisMetric: (rawValue: unknown) => LaboratoryRecord;
+  normalizeAudioAnalysisModuleResult: (
+    rawValue: unknown,
+    moduleId: string,
+    catalogEntry: LaboratoryAudioCatalogModuleRecord
+  ) => LaboratoryAudioAnalysisModuleResultRecord;
+  normalizeAudioAnalysisProviderStateEntry: (
+    rawValue: unknown,
+    providerId: string,
+    descriptor: unknown
+  ) => LaboratoryAudioProviderStateEntryRecord;
+  normalizeAudioAnalysisRunRecord: (
+    rawValue: unknown,
+    moduleId: string
+  ) => LaboratoryAudioAnalysisRunRecord;
+  normalizeAudioAnalysisState: (
+    rawValue: unknown,
+    runtime: LaboratoryAudioAnalysisRuntime
+  ) => LaboratoryRecord;
+  normalizeEditOutput: (value: unknown) => LaboratoryRecord;
+  normalizeProcessArtifact: (value: unknown) => LaboratoryProcessArtifactRecord;
+  normalizeProcessFinding: (value: unknown) => LaboratoryProcessFindingRecord;
+  normalizeProcessModule: (value: unknown) => LaboratoryProcessModuleRecord;
+  normalizeReportExport: (value: unknown) => LaboratoryRecord;
+  normalizeSourceMetadata: (value: unknown) => LaboratoryRecord | null;
+  normalizeStringArray: (value: unknown) => string[];
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createAudioAnalysisProjectionRuntime(deps: AudioAnalysisProjectionDeps) {
   const {
     asNumber,
     asNonEmptyString,
@@ -32,21 +231,60 @@ export function createAudioAnalysisProjectionRuntime(deps: any) {
     toRecord,
   } = deps;
 
-  const audioAnalysisProjectionCatalogRuntime = createAudioAnalysisProjectionCatalogRuntime({
-    asNonEmptyString,
-    buildDerivedTargetSignature,
-    buildProcessSpeechAvailability,
-    buildProfileModelSummary,
-    buildSourceTargetSignature,
-    findEditOutputById,
-    getAudioAnalysisModulesForRuntime,
-    normalizeAudioAnalysisCapabilityEntry,
-    normalizeAudioAnalysisProviderStateEntry,
-    normalizeEditOutput,
-    normalizeSourceMetadata,
-    normalizeStringArray,
-    toRecord,
-  });
+  function toCatalogModuleRecord(value: unknown): LaboratoryAudioCatalogModuleRecord {
+    return toRecord(value);
+  }
+
+  function toCapabilityEntryRecord(value: unknown): LaboratoryAudioCapabilityEntryRecord {
+    return toRecord(value);
+  }
+
+  function toProcessRecord(value: unknown): LaboratoryProcessRecord {
+    return toRecord(value);
+  }
+
+  function toProcessModuleRecord(value: unknown): LaboratoryProcessModuleRecord {
+    return toRecord(value);
+  }
+
+  function toProcessFindingRecord(value: unknown): LaboratoryProcessFindingRecord {
+    return toRecord(value);
+  }
+
+  function toProcessArtifactRecord(value: unknown): LaboratoryProcessArtifactRecord {
+    return toRecord(value);
+  }
+
+  function toReportRecord(value: unknown): LaboratoryReportRecord {
+    return toRecord(value);
+  }
+
+  function toAudioTargetRecord(value: unknown): LaboratoryAudioTargetRecord {
+    return toRecord(value);
+  }
+
+  function getCatalogModules(
+    runtime: LaboratoryAudioAnalysisRuntime
+  ): LaboratoryAudioCatalogModuleRecord[] {
+    return getAudioAnalysisModulesForRuntime(runtime).map(toCatalogModuleRecord);
+  }
+
+  const audioAnalysisProjectionCatalogRuntime =
+    createAudioAnalysisProjectionCatalogRuntime({
+      asNonEmptyString,
+      buildDerivedTargetSignature,
+      buildProcessSpeechAvailability,
+      buildProfileModelSummary,
+      buildSourceTargetSignature,
+      findEditOutputById,
+      getAudioAnalysisModulesForRuntime,
+      normalizeAudioAnalysisCapabilityEntry,
+      normalizeAudioAnalysisProviderStateEntry,
+      normalizeEditOutput,
+      normalizeSourceMetadata,
+      normalizeStringArray,
+      toRecord,
+    }) as LaboratoryAudioProjectionCatalogRuntime;
   const {
     buildAudioAnalysisCapabilityState,
     buildAudioAnalysisCatalogProjection,
@@ -58,7 +296,7 @@ export function createAudioAnalysisProjectionRuntime(deps: any) {
     normalizeAudioAnalysisMetric,
     normalizeStringArray,
     toRecord,
-  });
+  }) as LaboratoryAudioProjectionResultsRuntime;
   const {
     buildAudioAnalysisModuleMetrics,
     buildAudioAnalysisModuleSummary,
@@ -66,8 +304,12 @@ export function createAudioAnalysisProjectionRuntime(deps: any) {
     mapAudioAnalysisResultStatus,
   } = audioAnalysisProjectionResultsRuntime;
 
-  function buildAudioAnalysisModules(runtime: any, project: any, target: any) {
-    const catalogModules = getAudioAnalysisModulesForRuntime(runtime);
+  function buildAudioAnalysisModules(
+    runtime: LaboratoryAudioAnalysisRuntime,
+    project: LaboratoryProjectRecord,
+    target: LaboratoryAudioTargetRecord
+  ) {
+    const catalogModules = getCatalogModules(runtime);
     const providerState = buildAudioAnalysisProviderState(runtime, project);
     const capabilityState = buildAudioAnalysisCapabilityState(
       runtime,
@@ -76,9 +318,13 @@ export function createAudioAnalysisProjectionRuntime(deps: any) {
       providerState
     );
 
-    return catalogModules.map(function (entry: any) {
+    return catalogModules.map(function (entry) {
       const moduleId = asNonEmptyString(entry.id) || "audio-module";
-      const capabilityEntry = toRecord(capabilityState[moduleId]);
+      const capabilityEntry = normalizeAudioAnalysisCapabilityEntry(
+        toCapabilityEntryRecord(capabilityState[moduleId]),
+        moduleId,
+        entry
+      );
       const status =
         asNonEmptyString(capabilityEntry.status) || asNonEmptyString(entry.status) || "planned";
       const blockers = normalizeStringArray(capabilityEntry.blockers);
@@ -88,33 +334,32 @@ export function createAudioAnalysisProjectionRuntime(deps: any) {
         return normalizeProcessModule({
           id: moduleId,
           labelKey: asNonEmptyString(entry.titleKey),
-          title: moduleId,
           status: "planned",
           summary: "Reserved for the later rollout.",
+          title: moduleId,
         });
       }
       if (status === "gated") {
         return normalizeProcessModule({
           id: moduleId,
           labelKey: asNonEmptyString(entry.titleKey),
-          title: moduleId,
           status: "gated",
           summary: warnings[0] || "This module remains capability-gated on the current runtime.",
+          title: moduleId,
         });
       }
       if (status === "blocked") {
         return normalizeProcessModule({
           id: moduleId,
           labelKey: asNonEmptyString(entry.titleKey),
-          title: moduleId,
           status: "blocked",
           summary: blockers[0] || "Resolve the module blockers before starting the run.",
+          title: moduleId,
         });
       }
       return normalizeProcessModule({
         id: moduleId,
         labelKey: asNonEmptyString(entry.titleKey),
-        title: moduleId,
         status: status === "ready" ? "queued" : status,
         summary:
           status === "ready"
@@ -122,13 +367,17 @@ export function createAudioAnalysisProjectionRuntime(deps: any) {
             : warnings[0] ||
               blockers[0] ||
               "Audio analysis module state is waiting on provider readiness.",
+        title: moduleId,
       });
     });
   }
 
-  function syncProjectAudioAnalysisProjection(runtime: any, project: any) {
+  function syncProjectAudioAnalysisProjection(
+    runtime: LaboratoryAudioAnalysisRuntime,
+    project: LaboratoryProjectRecord
+  ) {
     const normalizedState = normalizeAudioAnalysisState(project.audioAnalysis, runtime);
-    const target = resolveAudioFeatureTarget(project);
+    const target = toAudioTargetRecord(resolveAudioFeatureTarget(project));
     const providerState = buildAudioAnalysisProviderState(runtime, project);
     const capabilityState = buildAudioAnalysisCapabilityState(
       runtime,
@@ -136,128 +385,146 @@ export function createAudioAnalysisProjectionRuntime(deps: any) {
       target,
       providerState
     );
-    const processRecord = getFeatureProcessRecord(project, audioFeatureId);
-    const reportRecord = getFeatureReportRecord(project, audioFeatureId);
-    const nextResults: Record<string, any> = {};
-    const nextRuns: Record<string, any> = {};
+    const processRecord = toProcessRecord(getFeatureProcessRecord(project, audioFeatureId));
+    const reportRecord = toReportRecord(getFeatureReportRecord(project, audioFeatureId));
+    const nextResults: Record<string, LaboratoryAudioAnalysisModuleResultRecord> = {};
+    const nextRuns: Record<string, LaboratoryAudioAnalysisRunRecord> = {};
+    const processModules = Array.isArray(processRecord.modules)
+      ? processRecord.modules.map(toProcessModuleRecord)
+      : [];
+    const processFindings = Array.isArray(processRecord.findings)
+      ? processRecord.findings.map(normalizeProcessFinding).map(toProcessFindingRecord)
+      : [];
+    const processArtifacts = Array.isArray(processRecord.artifacts)
+      ? processRecord.artifacts.map(normalizeProcessArtifact).map(toProcessArtifactRecord)
+      : [];
 
-    getAudioAnalysisModulesForRuntime(runtime).forEach(function (entry: any) {
+    getCatalogModules(runtime).forEach(function (entry) {
       const moduleId = asNonEmptyString(entry.id) || `audio-module-${Date.now()}`;
       const existingResult = normalizeAudioAnalysisModuleResult(
-        toRecord(toRecord(normalizedState.results)[moduleId]),
+        toRecord(toRecord(normalizedState["results"])[moduleId]),
         moduleId,
         entry
       );
       const capabilityEntry = normalizeAudioAnalysisCapabilityEntry(
-        toRecord(capabilityState[moduleId]),
+        toCapabilityEntryRecord(capabilityState[moduleId]),
         moduleId,
         entry
       );
       const processModule =
-        (Array.isArray(processRecord.modules) ? processRecord.modules : []).find(
-          function (candidate: any) {
-            return asNonEmptyString(toRecord(candidate).id) === moduleId;
-          }
-        ) || {};
-      const signals = (Array.isArray(processRecord.findings) ? processRecord.findings : [])
-        .filter(function (candidate: any) {
-          return asNonEmptyString(toRecord(candidate).moduleId) === moduleId;
-        })
-        .map(normalizeProcessFinding);
-      const artifacts = (Array.isArray(processRecord.artifacts) ? processRecord.artifacts : [])
-        .filter(function (candidate: any) {
-          return asNonEmptyString(toRecord(candidate).moduleId) === moduleId;
-        })
-        .map(normalizeProcessArtifact);
+        processModules.find(function (candidate) {
+          return asNonEmptyString(candidate.id) === moduleId;
+        }) || normalizeProcessModule({});
+      const signals = processFindings.filter(function (candidate) {
+        return asNonEmptyString(candidate.moduleId) === moduleId;
+      });
+      const artifacts = processArtifacts.filter(function (candidate) {
+        return asNonEmptyString(candidate.moduleId) === moduleId;
+      });
       const resultStatus = mapAudioAnalysisResultStatus(
         processRecord,
-        processModule,
+        toProcessModuleRecord(processModule),
         capabilityEntry
       );
       const confidence =
-        signals.sort(function (left: any, right: any) {
+        [...signals].sort(function (left, right) {
           return (
             getAudioAnalysisConfidenceRank(right.confidence) -
             getAudioAnalysisConfidenceRank(left.confidence)
           );
         })[0]?.confidence || null;
 
-      nextResults[moduleId] = normalizeAudioAnalysisModuleResult(
+      const nextResult = normalizeAudioAnalysisModuleResult(
         {
           ...existingResult,
+          artifacts: artifacts,
+          blockers:
+            resultStatus === "planned" || resultStatus === "gated" || resultStatus === "blocked"
+              ? normalizeStringArray(capabilityEntry.blockers)
+              : [],
+          confidence: confidence,
+          metrics: buildAudioAnalysisModuleMetrics(signals, artifacts),
           moduleId: moduleId,
-          phase: asNonEmptyString(entry.phase) || existingResult.phase,
-          status: resultStatus,
-          titleKey: asNonEmptyString(entry.titleKey) || existingResult.titleKey,
-          summaryKey: asNonEmptyString(entry.summaryKey) || existingResult.summaryKey,
+          phase: asNonEmptyString(entry["phase"]) || asNonEmptyString(existingResult["phase"]),
           providerIds:
             normalizeStringArray(entry.providerIds).length > 0
               ? normalizeStringArray(entry.providerIds)
-              : capabilityEntry.providerIds,
+              : normalizeStringArray(capabilityEntry.providerIds),
+          requiredToolIds: normalizeStringArray(capabilityEntry.requiredToolIds),
+          runMeta: {
+            jobId: asNonEmptyString(processRecord.jobId),
+            requestId: asNonEmptyString(processRecord.requestId),
+            runId: asNonEmptyString(processRecord.runId),
+          },
+          signals: signals,
+          sourceSignature: asNonEmptyString(target.signature),
+          status: resultStatus,
+          summary: buildAudioAnalysisModuleSummary(
+            resultStatus,
+            toProcessModuleRecord(processModule),
+            capabilityEntry
+          ),
+          summaryKey:
+            asNonEmptyString(entry["summaryKey"]) || asNonEmptyString(existingResult["summaryKey"]),
+          timing: {
+            completedAt: asNonEmptyString(toProcessModuleRecord(processModule).completedAt),
+            sampleWindowSeconds:
+              asNumber(toRecord(processRecord.targetSummary)["sampleWindowSeconds"]),
+            startedAt: asNonEmptyString(toProcessModuleRecord(processModule).startedAt),
+          },
+          titleKey: asNonEmptyString(entry["titleKey"]) || asNonEmptyString(existingResult["titleKey"]),
           toolIds:
             normalizeStringArray(entry.toolIds).length > 0
               ? normalizeStringArray(entry.toolIds)
-              : capabilityEntry.toolIds,
-          requiredToolIds: capabilityEntry.requiredToolIds,
-          summary: buildAudioAnalysisModuleSummary(resultStatus, processModule, capabilityEntry),
-          blockers:
-            resultStatus === "planned" || resultStatus === "gated" || resultStatus === "blocked"
-              ? capabilityEntry.blockers
-              : [],
+              : normalizeStringArray(capabilityEntry.toolIds),
           warnings: Array.from(
             new Set(
               normalizeStringArray(capabilityEntry.warnings).concat(
-                normalizeStringArray(toRecord(processModule).warnings),
+                normalizeStringArray(toProcessModuleRecord(processModule).warnings),
                 resultStatus === "stale" ? ["Target changed; rerun this audio module."] : []
               )
             )
           ),
-          signals: signals,
-          artifacts: artifacts,
-          metrics: buildAudioAnalysisModuleMetrics(signals, artifacts),
-          confidence: confidence,
-          timing: {
-            sampleWindowSeconds: asNumber(
-              toRecord(processRecord.targetSummary).sampleWindowSeconds
-            ),
-            startedAt: asNonEmptyString(toRecord(processModule).startedAt),
-            completedAt: asNonEmptyString(toRecord(processModule).completedAt),
-          },
-          runMeta: {
-            runId: asNonEmptyString(processRecord.runId),
-            jobId: asNonEmptyString(processRecord.jobId),
-            requestId: asNonEmptyString(processRecord.requestId),
-          },
-          sourceSignature: asNonEmptyString(target.signature),
         },
         moduleId,
         entry
       );
+      nextResults[moduleId] = nextResult;
 
+      const resultArtifacts = Array.isArray(nextResult.artifacts)
+        ? nextResult.artifacts.map(toProcessArtifactRecord)
+        : [];
+      const resultSignals = Array.isArray(nextResult.signals)
+        ? nextResult.signals.map(toProcessFindingRecord)
+        : [];
       nextRuns[moduleId] = normalizeAudioAnalysisRunRecord(
         {
-          moduleId: moduleId,
-          status: nextResults[moduleId].status,
-          runId: asNonEmptyString(processRecord.runId),
-          jobId: asNonEmptyString(processRecord.jobId),
-          requestId: asNonEmptyString(processRecord.requestId),
-          startedAt:
-            asNonEmptyString(toRecord(processModule).startedAt) ||
-            asNonEmptyString(processRecord.startedAt),
+          artifactIds: resultArtifacts
+            .map(function (artifact) {
+              return asNonEmptyString(artifact.id);
+            })
+            .filter((artifactId): artifactId is string => artifactId !== null),
           completedAt:
-            asNonEmptyString(toRecord(processModule).completedAt) ||
+            asNonEmptyString(toProcessModuleRecord(processModule).completedAt) ||
             asNonEmptyString(processRecord.completedAt),
-          warnings: nextResults[moduleId].warnings,
           error:
-            nextResults[moduleId].status === "failed"
+            asNonEmptyString(nextResult.status) === "failed"
               ? asNonEmptyString(processRecord.error)
               : null,
-          artifactIds: nextResults[moduleId].artifacts.map(function (artifact: any) {
-            return artifact.id;
-          }),
-          findingIds: nextResults[moduleId].signals.map(function (signal: any) {
-            return signal.id;
-          }),
+          findingIds: resultSignals
+            .map(function (signal) {
+              return asNonEmptyString(signal.id);
+            })
+            .filter((signalId): signalId is string => signalId !== null),
+          jobId: asNonEmptyString(processRecord.jobId),
+          moduleId: moduleId,
+          requestId: asNonEmptyString(processRecord.requestId),
+          runId: asNonEmptyString(processRecord.runId),
+          startedAt:
+            asNonEmptyString(toProcessModuleRecord(processModule).startedAt) ||
+            asNonEmptyString(processRecord.startedAt),
+          status: asNonEmptyString(nextResult.status),
+          warnings: normalizeStringArray(nextResult.warnings),
         },
         moduleId
       );
@@ -266,33 +533,33 @@ export function createAudioAnalysisProjectionRuntime(deps: any) {
     project.audioAnalysis = normalizeAudioAnalysisState(
       {
         ...normalizedState,
-        schemaVersion: audioAnalysisSchemaVersion,
-        source: {
-          preferredSourceKind: getPreferredFeatureSourceKind(audioFeatureId, runtime.sourcePresets),
-          requestedMode: target.requestedMode,
-          mode: target.mode,
-          outputId: target.outputId,
-          targetSignature: target.signature,
-          targetPath: target.path,
-          targetFileName: target.fileName,
-          targetMimeType: target.mimeType,
-          targetLabel: target.label,
-          extractedAudioPath:
-            asNonEmptyString(toRecord(target.metadata).extractedBy) !== null
-              ? asNonEmptyString(target.path)
-              : null,
-          updatedAt: project.updatedAt,
-        },
         analysisCatalog: buildAudioAnalysisCatalogProjection(runtime),
         capabilityState: capabilityState,
-        providerState: providerState,
-        runs: nextRuns,
-        results: nextResults,
         export: {
-          lastGeneratedAt: asNonEmptyString(reportRecord.generatedAt),
           items: Array.isArray(reportRecord.exports)
             ? reportRecord.exports.map(normalizeReportExport)
             : [],
+          lastGeneratedAt: asNonEmptyString(reportRecord.generatedAt),
+        },
+        providerState: providerState,
+        results: nextResults,
+        runs: nextRuns,
+        schemaVersion: audioAnalysisSchemaVersion,
+        source: {
+          extractedAudioPath:
+            asNonEmptyString(toRecord(target.metadata)["extractedBy"]) !== null
+              ? asNonEmptyString(target.path)
+              : null,
+          mode: asNonEmptyString(target.mode),
+          outputId: asNonEmptyString(target.outputId),
+          preferredSourceKind: getPreferredFeatureSourceKind(audioFeatureId, runtime.sourcePresets),
+          requestedMode: asNonEmptyString(target.requestedMode),
+          targetFileName: asNonEmptyString(target.fileName),
+          targetLabel: asNonEmptyString(target.label),
+          targetMimeType: asNonEmptyString(target.mimeType),
+          targetPath: asNonEmptyString(target.path),
+          targetSignature: asNonEmptyString(target.signature),
+          updatedAt: asNonEmptyString(project.updatedAt),
         },
       },
       runtime

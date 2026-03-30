@@ -1,29 +1,58 @@
-import { createLaboratoryProjectManifestRuntime } from "./project-manifests.js";
-import { createLaboratoryRoomSnapshotRuntime } from "./room-snapshot.js";
-import { createLaboratoryRuntimeEvents } from "./runtime-events.js";
+import { createLaboratoryProjectManifestRuntime } from "./project-manifests.js"
+import { createLaboratoryRoomSnapshotRuntime } from "./room-snapshot.js"
+import { createLaboratoryRuntimeEvents } from "./runtime-events.js"
 
-export function createLaboratorySnapshotCompositionRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>
+type LaboratoryProjectManifestRuntimeDeps = Parameters<
+  typeof createLaboratoryProjectManifestRuntime
+>[0]
+type LaboratoryRuntimeEventsDeps = Parameters<typeof createLaboratoryRuntimeEvents>[0]
+
+type LaboratorySnapshotCompositionDeps = LaboratoryProjectManifestRuntimeDeps & {
+  audioFeatureId: string
+  defaultFeatureId: string
+  featureIds: string[]
+  getFeatureIdFromContext: LaboratoryRuntimeEventsDeps["getFeatureIdFromContext"]
+  getFeatureProcessRecord: (project: LaboratoryRecord, featureId: string) => LaboratoryRecord
+  getFeatureReportRecord: (project: LaboratoryRecord, featureId: string) => LaboratoryRecord
+  getRuntimeToolIds: (runtime: LaboratoryRecord) => string[]
+  getStageSupport: (toolManifest: LaboratoryRecord, stageId: string) => string
+  getToolManifest: (runtime: LaboratoryRecord, toolId: string) => LaboratoryRecord
+  loadContext: LaboratoryRuntimeEventsDeps["loadContext"]
+  mediaFeatureId: string
+  mediaStages: string[]
+  normalizeAudioAnalysisModuleResult: (
+    rawValue: unknown,
+    moduleId: string,
+    extra: LaboratoryRecord
+  ) => LaboratoryRecord
+  normalizeAudioAnalysisState: (rawValue: unknown, runtime: LaboratoryRecord) => LaboratoryRecord
+  normalizeSubtitleAnalysisState: (
+    rawValue: unknown,
+    runtime: LaboratoryRecord
+  ) => LaboratoryRecord
+  roomId: string
+  subtitleFeatureId: string
+  syncProjectFeatureProjections: (runtime: LaboratoryRecord, project: LaboratoryRecord) => void
+  toFileUrl: (path: unknown) => string
+}
+
+export function createLaboratorySnapshotCompositionRuntime(
+  deps: LaboratorySnapshotCompositionDeps
+) {
   const laboratoryProjectManifestRuntime = createLaboratoryProjectManifestRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: deps.asNumber,
     clone: deps.clone,
     normalizeEditOutput: deps.normalizeEditOutput,
-    normalizeProcessState(rawValue: any) {
-      return deps.normalizeProcessState(rawValue);
-    },
-    normalizeProfileArtifact(rawValue: any) {
-      return deps.normalizeProfileArtifact(rawValue);
-    },
-    normalizeProfileSignal(rawValue: any) {
-      return deps.normalizeProfileSignal(rawValue);
-    },
-    normalizeReportState(rawValue: any) {
-      return deps.normalizeReportState(rawValue);
-    },
+    normalizeProcessState: deps.normalizeProcessState,
+    normalizeProfileArtifact: deps.normalizeProfileArtifact,
+    normalizeProfileSignal: deps.normalizeProfileSignal,
+    normalizeReportState: deps.normalizeReportState,
     normalizeSourceMetadata: deps.normalizeSourceMetadata,
     projectSchemaVersion: deps.projectSchemaVersion,
     toRecord: deps.toRecord,
-  });
+  })
   const {
     buildDerivedTargetSignature,
     buildEditManifest,
@@ -32,7 +61,7 @@ export function createLaboratorySnapshotCompositionRuntime(deps: any) {
     buildReportManifest,
     buildSourceTargetSignature,
     findEditOutputById,
-  } = laboratoryProjectManifestRuntime;
+  } = laboratoryProjectManifestRuntime
 
   const laboratoryRoomSnapshotRuntime = createLaboratoryRoomSnapshotRuntime({
     asNonEmptyString: deps.asNonEmptyString,
@@ -42,36 +71,30 @@ export function createLaboratorySnapshotCompositionRuntime(deps: any) {
     mediaStages: deps.mediaStages,
     audioFeatureId: deps.audioFeatureId,
     subtitleFeatureId: deps.subtitleFeatureId,
-    getFeatureProcessRecord(...args: any[]) {
-      return deps.getFeatureProcessRecord(...args);
-    },
-    getFeatureReportRecord(...args: any[]) {
-      return deps.getFeatureReportRecord(...args);
-    },
+    getFeatureProcessRecord: deps.getFeatureProcessRecord,
+    getFeatureReportRecord: deps.getFeatureReportRecord,
     getRuntimeToolIds: deps.getRuntimeToolIds,
     getStageSupport: deps.getStageSupport,
     getToolManifest: deps.getToolManifest,
     mediaFeatureId: deps.mediaFeatureId,
     normalizeAudioAnalysisModuleResult: deps.normalizeAudioAnalysisModuleResult,
     normalizeAudioAnalysisState: deps.normalizeAudioAnalysisState,
-    normalizeSubtitleAnalysisState(rawValue: any, runtime: any) {
-      return deps.normalizeSubtitleAnalysisState(rawValue, runtime);
-    },
+    normalizeSubtitleAnalysisState: deps.normalizeSubtitleAnalysisState,
     roomId: deps.roomId,
-    syncProjectFeatureProjections(runtime: any, project: any) {
-      return deps.syncProjectFeatureProjections(runtime, project);
-    },
+    syncProjectFeatureProjections: deps.syncProjectFeatureProjections,
     toFileUrl: deps.toFileUrl,
     toRecord: deps.toRecord,
-  });
+  })
 
-  const laboratoryRuntimeEvents = createLaboratoryRuntimeEvents({
+  const laboratoryRuntimeEventsDeps: LaboratoryRuntimeEventsDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     defaultFeatureId: deps.defaultFeatureId,
     getFeatureIdFromContext: deps.getFeatureIdFromContext,
     loadContext: deps.loadContext,
-    roomSnapshotRuntime: laboratoryRoomSnapshotRuntime,
-  });
+    roomSnapshotRuntime:
+      laboratoryRoomSnapshotRuntime as unknown as LaboratoryRuntimeEventsDeps["roomSnapshotRuntime"],
+  }
+  const laboratoryRuntimeEvents = createLaboratoryRuntimeEvents(laboratoryRuntimeEventsDeps)
   const {
     buildMediaSnapshot,
     buildSourceSnapshot,
@@ -81,7 +104,7 @@ export function createLaboratorySnapshotCompositionRuntime(deps: any) {
     pushJobState,
     pushMediaState,
     pushSourceState,
-  } = laboratoryRuntimeEvents;
+  } = laboratoryRuntimeEvents
 
   return {
     buildDerivedTargetSignature,
@@ -100,5 +123,5 @@ export function createLaboratorySnapshotCompositionRuntime(deps: any) {
     pushJobState,
     pushMediaState,
     pushSourceState,
-  };
+  }
 }

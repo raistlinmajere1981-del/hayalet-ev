@@ -1,76 +1,7 @@
 /* global document, navigator, window */
 
-(function (global: any) {
-  type UnknownRecord = Record<string, unknown>;
-  type BootstrapCopy = Record<string, Record<string, string>>;
-  type FeatureRecord = { id: string; name: string; description: string };
-  type BootstrapFeatureSummary = { id: string; name?: string | null };
-  type BootstrapContext = {
-    activeFeature?: { id?: unknown } | null;
-    features?: BootstrapFeatureSummary[] | null;
-  };
-  type BootstrapState = {
-    locale: string;
-    translations: unknown;
-    context: BootstrapContext;
-    game: unknown;
-    teamTetris: unknown;
-    teamTetrisDraft: unknown;
-    fateKnots: unknown;
-    presentation: {
-      mode: string;
-      uiScale: number;
-    };
-    preferences: {
-      target: string;
-      starter: string;
-      inviteMessage: string;
-      teamTetrisHiddenPairs: boolean;
-    };
-    lastCommandMessage: string;
-  };
-  type BootstrapRuntimeOptions = {
-    document?: Document;
-    navigator?: Navigator;
-    render?: () => void;
-  };
-  type BootstrapFeatureContract = {
-    ROOM_ID?: unknown;
-    FEATURE_ID?: unknown;
-    TEAM_TETRIS_FEATURE_ID?: unknown;
-    FATE_KNOTS_FEATURE_ID?: unknown;
-    getBootstrapCopy?: () => BootstrapCopy;
-    getFeatureRecords?: () => FeatureRecord[];
-  };
-  type ContextRuntime = {
-    readPath: (source: unknown, path: string[]) => string | null;
-    normalizePresentationMode: (value: unknown) => string;
-    normalizeUiScale: (value: unknown) => number;
-    resolveLocale: (value: unknown) => string;
-    createContext: () => BootstrapContext;
-    createSlot: (...args: unknown[]) => unknown;
-    createInviteEntry: (...args: unknown[]) => unknown;
-    normalizeSlot: (...args: unknown[]) => unknown;
-    createElement: (...args: unknown[]) => unknown;
-  };
-  type XoxUiModule = {
-    createGameState: () => unknown;
-  };
-  type TeamTetrisUiModule = {
-    createTeamTetrisState: () => unknown;
-    createTeamTetrisDraft: () => unknown;
-  };
-  type FateKnotsUiModule = {
-    createFateKnotsState: () => unknown;
-  };
-  type FactoryRegistry = {
-    createXoxUiModule: (options: UnknownRecord) => XoxUiModule;
-    createTeamTetrisUiModule: (options: UnknownRecord) => TeamTetrisUiModule;
-    createFateKnotsUiModule: (options: UnknownRecord) => FateKnotsUiModule;
-  };
-  type RoomApi = {
-    sendCommand: (command: string, payload: UnknownRecord) => boolean;
-  };
+(function (global: GameRoomUiGlobal) {
+  type UnknownRecord = GameRoomUnknownRecord;
 
   function isRecord(value: unknown): value is UnknownRecord {
     return typeof value === "object" && value !== null && Array.isArray(value) === false;
@@ -80,26 +11,29 @@
     return typeof value === "string" && value !== "" ? value : fallback;
   }
 
-  function readRuntimeOptions(value: unknown): BootstrapRuntimeOptions {
-    return isRecord(value) ? (value as BootstrapRuntimeOptions) : {};
+  function readRuntimeOptions(value: unknown): GameRoomUiBootstrapRuntimeOptions {
+    return isRecord(value) ? (value as GameRoomUiBootstrapRuntimeOptions) : {};
   }
 
-  function readFeatureContract(value: unknown): BootstrapFeatureContract {
-    return isRecord(value) ? (value as BootstrapFeatureContract) : {};
+  function readFeatureContract(value: unknown): GameRoomUiFeatureContractLike {
+    return isRecord(value) ? (value as GameRoomUiFeatureContractLike) : {};
   }
 
-  function readRoomApi(value: unknown): RoomApi | null {
-    return isRecord(value) && typeof value["sendCommand"] === "function" ? (value as RoomApi) : null;
+  function readRoomApi(value: unknown): GameRoomRoomApi | null {
+    return isRecord(value) && typeof value["sendCommand"] === "function"
+      ? (value as GameRoomRoomApi)
+      : null;
   }
 
-  const registryHost = global as unknown as typeof globalThis & Record<string, unknown>;
-  const registry =
-    (registryHost["GameRoomUiBootstrapRuntime"] as Record<string, unknown> | undefined) ||
-    ((registryHost["GameRoomUiBootstrapRuntime"] = {}) as Record<string, unknown>);
+  function getBootstrapRegistry(host: GameRoomUiGlobal): GameRoomUiBootstrapRuntimeRegistry {
+    return host.GameRoomUiBootstrapRuntime || (host.GameRoomUiBootstrapRuntime = {});
+  }
 
-  registry["createGameRoomUiBootstrapRuntime"] = function createGameRoomUiBootstrapRuntime(
+  const registry = getBootstrapRegistry(global);
+
+  registry.createGameRoomUiBootstrapRuntime = function createGameRoomUiBootstrapRuntime(
     options: unknown
-  ) {
+  ): GameRoomUiBootstrapRuntime {
     const runtimeOptions = readRuntimeOptions(options);
     const documentRef = runtimeOptions.document || document;
     const navigatorRef = runtimeOptions.navigator || navigator;
@@ -111,7 +45,7 @@
     const featureId = readString(featureContract.FEATURE_ID, "xox");
     const teamTetrisFeatureId = readString(featureContract.TEAM_TETRIS_FEATURE_ID, "team-tetris");
     const fateKnotsFeatureId = readString(featureContract.FATE_KNOTS_FEATURE_ID, "fate-knots");
-    const bootstrapCopy =
+    const bootstrapCopy: GameRoomBootstrapCopy =
       typeof featureContract.getBootstrapCopy === "function"
         ? featureContract.getBootstrapCopy()
         : {
@@ -132,7 +66,7 @@
               commandSendFailed: "Komut oda host'una gonderilemedi.",
             },
           };
-    const featureRecords =
+    const featureRecords: GameRoomFeatureRecord[] =
       typeof featureContract.getFeatureRecords === "function"
         ? featureContract.getFeatureRecords()
         : [
@@ -141,18 +75,13 @@
             { id: fateKnotsFeatureId, name: "Fate Knots", description: "" },
           ];
 
-    const contextFactories = (global.GameRoomUiContextRuntime || {}) as {
-      createGameRoomUiContextRuntime?: (options: UnknownRecord) => ContextRuntime;
-    };
-    const contextRuntimeFactory = contextFactories.createGameRoomUiContextRuntime;
+    const contextRuntimeFactory =
+      (global.GameRoomUiContextRuntime || {}).createGameRoomUiContextRuntime;
     if (typeof contextRuntimeFactory !== "function") {
       throw new Error("Game Room UI context runtime is unavailable.");
     }
 
-    const scrollRuntimeFactories = (global.GameRoomUiScrollRuntime || {}) as {
-      createGameRoomUiScrollRuntime?: () => unknown;
-    };
-    const createScrollRuntime = scrollRuntimeFactories.createGameRoomUiScrollRuntime;
+    const createScrollRuntime = (global.GameRoomUiScrollRuntime || {}).createGameRoomUiScrollRuntime;
     if (typeof createScrollRuntime !== "function") {
       throw new Error("Game Room UI scroll runtime is unavailable.");
     }
@@ -164,10 +93,10 @@
       featureRecords: featureRecords,
     });
     const scrollRuntime = createScrollRuntime();
-    const stateRef = { current: null as BootstrapState | null };
+    const stateRef = { current: null as GameRoomUiState | null };
 
-    function getState(): BootstrapState {
-      return stateRef.current as BootstrapState;
+    function getState(): GameRoomUiState {
+      return stateRef.current as GameRoomUiState;
     }
 
     function text(path: string[]): string {
@@ -187,7 +116,25 @@
       return value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
     }
 
-    function applyPresentationMode(nextPresentation: unknown) {
+    function setRuntimeScaleFactor(
+      target: { style?: CSSStyleDeclaration | Record<string, string> | null } | null,
+      scaleFactor: string
+    ): void {
+      const style = target?.style;
+      if (!style) {
+        return;
+      }
+      const styleRecord = style as CSSStyleDeclaration & {
+        setProperty?: ((propertyName: string, value: string) => void) | undefined;
+      };
+      if (typeof styleRecord.setProperty === "function") {
+        styleRecord.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
+        return;
+      }
+      (style as Record<string, string>)["--room-runtime-ui-scale-factor"] = scaleFactor;
+    }
+
+    function applyPresentationMode(nextPresentation: unknown): void {
       const state = getState();
       const presentation = isRecord(nextPresentation)
         ? nextPresentation
@@ -195,26 +142,15 @@
       state.presentation.mode = contextRuntime.normalizePresentationMode(presentation["mode"]);
       state.presentation.uiScale = contextRuntime.normalizeUiScale(presentation["uiScale"]);
       const scaleFactor = formatScaleFactor(state.presentation.uiScale / 100);
-      if (documentRef.body && documentRef.body.dataset) {
-        documentRef.body.dataset["presentationMode"] = state.presentation.mode;
-        documentRef.body.dataset["roomUiScale"] = String(state.presentation.uiScale);
-        if (documentRef.body.style && typeof documentRef.body.style.setProperty === "function") {
-          documentRef.body.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
-        }
-      }
-      if (documentRef.documentElement && documentRef.documentElement.dataset) {
-        documentRef.documentElement.dataset["presentationMode"] = state.presentation.mode;
-        documentRef.documentElement.dataset["roomUiScale"] = String(state.presentation.uiScale);
-        if (
-          documentRef.documentElement.style &&
-          typeof documentRef.documentElement.style.setProperty === "function"
-        ) {
-          documentRef.documentElement.style.setProperty(
-            "--room-runtime-ui-scale-factor",
-            scaleFactor
-          );
-        }
-      }
+      const body = documentRef.body;
+      body.dataset["presentationMode"] = state.presentation.mode;
+      body.dataset["roomUiScale"] = String(state.presentation.uiScale);
+      setRuntimeScaleFactor(body, scaleFactor);
+
+      const documentElement = documentRef.documentElement;
+      documentElement.dataset["presentationMode"] = state.presentation.mode;
+      documentElement.dataset["roomUiScale"] = String(state.presentation.uiScale);
+      setRuntimeScaleFactor(documentElement, scaleFactor);
     }
 
     function statusText(key: string): string {
@@ -224,23 +160,19 @@
       );
     }
 
-    function applyLocale(nextLocale: unknown) {
+    function applyLocale(nextLocale: unknown): void {
       const state = getState();
       state.locale = contextRuntime.resolveLocale(nextLocale);
-      if (documentRef.documentElement) {
-        documentRef.documentElement.lang = state.locale;
-      }
+      documentRef.documentElement.lang = state.locale;
     }
 
     function getActiveFeatureId(): string {
       const state = getState();
       const activeFeatureId =
-        state.context &&
-        state.context.activeFeature &&
-        typeof state.context.activeFeature.id === "string"
+        typeof state.context.activeFeature?.id === "string"
           ? state.context.activeFeature.id
           : featureId;
-      return featureRecords.some(function (feature: any) {
+      return featureRecords.some(function (feature: GameRoomFeatureRecord) {
         return feature.id === activeFeatureId;
       })
         ? activeFeatureId
@@ -250,11 +182,11 @@
     function getFeatureLabel(activeFeatureId: string): string {
       const state = getState();
       const feature = Array.isArray(state.context.features)
-        ? state.context.features.find(function (entry: any) {
+        ? state.context.features.find(function (entry: GameRoomFeatureRecord) {
             return entry.id === activeFeatureId;
-          })
+          }) || null
         : null;
-      if (feature && feature.name) {
+      if (feature?.name) {
         return feature.name;
       }
       return text(["features", activeFeatureId]);
@@ -264,24 +196,39 @@
       return readRoomApi(global.roomAPI) !== null;
     }
 
-    function sendRoomCommand(command: string, payload: unknown) {
+    function sendRoomCommand(command: string, payload: unknown): void {
       const state = getState();
       const roomApi = readRoomApi(global.roomAPI);
-      if (roomApi === null) {
+      if (roomApi === null || typeof roomApi.sendCommand !== "function") {
         state.lastCommandMessage = statusText("roomApiUnavailable");
         render();
         return;
       }
 
-      const sent = roomApi.sendCommand(command, (payload || {}) as UnknownRecord);
+      const normalizedPayload = isRecord(payload) ? payload : {};
+      const sent = roomApi.sendCommand(command, normalizedPayload);
       if (sent !== true) {
         state.lastCommandMessage = statusText("commandSendFailed");
         render();
       }
     }
 
-    const factories = (global.GameRoomUiFactories || {}) as FactoryRegistry;
-    const xoxUi = factories.createXoxUiModule({
+    const factories = global.GameRoomUiFactories || {};
+    const createXoxUiModule = factories.createXoxUiModule;
+    const createTeamTetrisUiModule = factories.createTeamTetrisUiModule;
+    const createFateKnotsUiModule = factories.createFateKnotsUiModule;
+
+    if (typeof createXoxUiModule !== "function") {
+      throw new Error("XOX UI module is unavailable.");
+    }
+    if (typeof createTeamTetrisUiModule !== "function") {
+      throw new Error("Team Tetris UI module is unavailable.");
+    }
+    if (typeof createFateKnotsUiModule !== "function") {
+      throw new Error("Fate Knots UI module is unavailable.");
+    }
+
+    const xoxUi = createXoxUiModule({
       getState: getState,
       roomId: roomId,
       featureId: featureId,
@@ -297,7 +244,7 @@
       isRoomApiAvailable: isRoomApiAvailable,
       getFeatureLabel: getFeatureLabel,
     });
-    const teamTetrisUi = factories.createTeamTetrisUiModule({
+    const teamTetrisUi = createTeamTetrisUiModule({
       getState: getState,
       featureId: teamTetrisFeatureId,
       createSlot: contextRuntime.createSlot,
@@ -307,7 +254,7 @@
       sendRoomCommand: sendRoomCommand,
       getFeatureLabel: getFeatureLabel,
     });
-    const fateKnotsUi = factories.createFateKnotsUiModule({
+    const fateKnotsUi = createFateKnotsUiModule({
       getState: getState,
       featureId: fateKnotsFeatureId,
       createElement: contextRuntime.createElement,
@@ -316,10 +263,7 @@
       text: text,
     });
 
-    const documentLocale =
-      documentRef.documentElement && typeof documentRef.documentElement.lang === "string"
-        ? documentRef.documentElement.lang
-        : "";
+    const documentLocale = documentRef.documentElement.lang;
 
     stateRef.current = {
       locale: contextRuntime.resolveLocale(documentLocale || navigatorRef.language),
@@ -361,4 +305,4 @@
       getFeatureLabel: getFeatureLabel,
     };
   };
-})(window);
+})(window as unknown as GameRoomUiGlobal);

@@ -2,6 +2,8 @@ import { createAudioAnalysisCatalogRuntime } from "./catalog-runtime.js";
 import { createAudioAnalysisProviderRuntime } from "./provider-runtime.js";
 import { createAudioAnalysisResultRuntime } from "./result-runtime.js";
 
+type LaboratoryAudioModuleEntry = Record<string, unknown>;
+
 type AudioAnalysisUiDeps = Parameters<typeof createAudioAnalysisCatalogRuntime>[0] &
   Parameters<typeof createAudioAnalysisProviderRuntime>[0] &
   Omit<
@@ -20,9 +22,9 @@ export function createAudioAnalysisUi(deps: AudioAnalysisUiDeps): AudioAnalysisU
   const audioAnalysisProviderRuntime = createAudioAnalysisProviderRuntime(deps);
   const audioAnalysisResultRuntime = createAudioAnalysisResultRuntime({
     ...deps,
-    getAudioAnalysisProviderLabel: audioAnalysisProviderRuntime.getAudioAnalysisProviderLabel,
-    getAudioAnalysisModuleTitle: audioAnalysisProviderRuntime.getAudioAnalysisModuleTitle,
     getAudioAnalysisModuleSummary: audioAnalysisProviderRuntime.getAudioAnalysisModuleSummary,
+    getAudioAnalysisModuleTitle: audioAnalysisProviderRuntime.getAudioAnalysisModuleTitle,
+    getAudioAnalysisProviderLabel: audioAnalysisProviderRuntime.getAudioAnalysisProviderLabel,
   });
 
   function renderAudioAnalysisCatalogPanel() {
@@ -33,19 +35,19 @@ export function createAudioAnalysisUi(deps: AudioAnalysisUiDeps): AudioAnalysisU
     return audioAnalysisCatalogRuntime.renderAudioAnalysisNoticePanel();
   }
 
-  function getAudioAnalysisProviderStatusLabel(status: any) {
+  function getAudioAnalysisProviderStatusLabel(status: unknown) {
     return audioAnalysisProviderRuntime.getAudioAnalysisProviderStatusLabel(status);
   }
 
-  function getAudioAnalysisProviderLabel(providerId: any) {
+  function getAudioAnalysisProviderLabel(providerId: string) {
     return audioAnalysisProviderRuntime.getAudioAnalysisProviderLabel(providerId);
   }
 
-  function getAudioAnalysisModuleTitle(moduleEntry: any) {
+  function getAudioAnalysisModuleTitle(moduleEntry: LaboratoryAudioModuleEntry) {
     return audioAnalysisProviderRuntime.getAudioAnalysisModuleTitle(moduleEntry);
   }
 
-  function getAudioAnalysisModuleSummary(moduleEntry: any) {
+  function getAudioAnalysisModuleSummary(moduleEntry: LaboratoryAudioModuleEntry) {
     return audioAnalysisProviderRuntime.getAudioAnalysisModuleSummary(moduleEntry);
   }
 
@@ -53,7 +55,7 @@ export function createAudioAnalysisUi(deps: AudioAnalysisUiDeps): AudioAnalysisU
     return audioAnalysisProviderRuntime.renderAudioAnalysisProviderPanel();
   }
 
-  function renderAudioAnalysisResultCard(moduleEntry: any) {
+  function renderAudioAnalysisResultCard(moduleEntry: LaboratoryAudioModuleEntry) {
     return audioAnalysisResultRuntime.renderAudioAnalysisResultCard(moduleEntry);
   }
 
@@ -62,14 +64,14 @@ export function createAudioAnalysisUi(deps: AudioAnalysisUiDeps): AudioAnalysisU
   }
 
   return {
-    renderAudioAnalysisCatalogPanel,
-    renderAudioAnalysisNoticePanel,
-    getAudioAnalysisProviderStatusLabel,
-    renderAudioAnalysisProviderPanel,
-    getAudioAnalysisProviderLabel,
-    getAudioAnalysisModuleTitle,
     getAudioAnalysisModuleSummary,
-    renderAudioAnalysisResultCard,
+    getAudioAnalysisModuleTitle,
+    getAudioAnalysisProviderLabel,
+    getAudioAnalysisProviderStatusLabel,
+    renderAudioAnalysisCatalogPanel,
     renderAudioAnalysisModuleGrid,
+    renderAudioAnalysisNoticePanel,
+    renderAudioAnalysisProviderPanel,
+    renderAudioAnalysisResultCard,
   };
 }

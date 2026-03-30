@@ -2,7 +2,23 @@ import { createMediaLocalSourceIntakeRuntime } from "./source-intake-local.js";
 import { createMediaUrlSourceIntakeRuntime } from "./source-intake-url.js";
 import { createMediaYoutubeSourceIntakeRuntime } from "./source-intake-youtube.js";
 
-export function createMediaSourceIntakeRuntime(deps: any) {
+type MediaLocalSourceIntakeRuntimeDeps = Parameters<typeof createMediaLocalSourceIntakeRuntime>[0];
+type MediaUrlSourceIntakeRuntimeDeps = Parameters<typeof createMediaUrlSourceIntakeRuntime>[0];
+type MediaYoutubeSourceIntakeRuntimeDeps = Parameters<
+  typeof createMediaYoutubeSourceIntakeRuntime
+>[0];
+
+type MediaSourceIntakeRuntimeDeps = MediaLocalSourceIntakeRuntimeDeps &
+  MediaUrlSourceIntakeRuntimeDeps &
+  MediaYoutubeSourceIntakeRuntimeDeps;
+
+type MediaSourceIntakeRuntime = ReturnType<typeof createMediaLocalSourceIntakeRuntime> &
+  ReturnType<typeof createMediaUrlSourceIntakeRuntime> &
+  ReturnType<typeof createMediaYoutubeSourceIntakeRuntime>;
+
+export function createMediaSourceIntakeRuntime(
+  deps: MediaSourceIntakeRuntimeDeps
+): MediaSourceIntakeRuntime {
   const mediaLocalSourceIntakeRuntime = createMediaLocalSourceIntakeRuntime({
     asNonEmptyString: deps.asNonEmptyString,
     getActiveProject: deps.getActiveProject,

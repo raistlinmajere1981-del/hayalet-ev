@@ -1,141 +1,165 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
+
+  function readFeatureState(value: unknown): GameRoomFateKnotsState | null {
+    return value && typeof value === "object" && Array.isArray(value) === false
+      ? (value as GameRoomFateKnotsState)
+      : null;
+  }
+
+  const registry = getFactoryRegistry(global);
 
   registry.createFateKnotsUiStateSupportRuntime = function createFateKnotsUiStateSupportRuntime(
-    deps: any
-  ) {
+    deps: GameRoomFateKnotsUiStateRuntimeDeps
+  ): GameRoomFateKnotsUiStateSupportRuntime {
     const getState = deps.getState;
     const featureId = deps.featureId || "fate-knots";
     const sendRoomCommand = deps.sendRoomCommand;
     const text = deps.text;
 
-    function t(path: string[], fallback: string) {
+    function t(path: string[], fallback: string): string {
       return text(path, fallback);
     }
 
-    function getCurrentState() {
+    function getCurrentState(): GameRoomFateKnotsState | null {
       const state = getState();
-      if (state && state[featureId]) {
-        return state[featureId];
-      }
-      if (state && state.fateKnots) {
-        return state.fateKnots;
-      }
-      return null;
+      const featureState = readFeatureState((state as GameRoomUnknownRecord)[featureId]);
+      return featureState || state.fateKnots;
     }
 
-    function getLocale() {
+    function getLocale(): string {
       const state = getState();
-      return (state && typeof state.locale === "string" && state.locale) || "en";
+      return typeof state.locale === "string" && state.locale ? state.locale : "en";
     }
 
-    function getCurrentStatus(state: any) {
-      return (state && state.status) || "";
+    function getCurrentStatus(state: GameRoomFateKnotsState | null): string {
+      return state?.status || "";
     }
 
-    function findParticipant(state: any, seatId: string) {
-      if (!state || !Array.isArray(state.participants)) {
+    function findParticipant(
+      state: GameRoomFateKnotsState | null,
+      seatId: string
+    ): GameRoomFateKnotsParticipant | null {
+      if (!state) {
         return null;
       }
       return (
-        state.participants.find(function (participant: any) {
+        state.participants.find(function (participant: GameRoomFateKnotsParticipant) {
           return participant.seatId === seatId;
         }) || null
       );
     }
 
-    function getUserParticipant(state: any) {
+    function getUserParticipant(
+      state: GameRoomFateKnotsState | null
+    ): GameRoomFateKnotsParticipant | null {
       return findParticipant(state, "user");
     }
 
-    function isSelectionComplete(selection: any) {
-      return Boolean(
-        selection && selection.avatarId && selection.classId && selection.backgroundId
-      );
+    function isSelectionComplete(
+      selection: GameRoomFateKnotsSelection | null | undefined
+    ): boolean {
+      return Boolean(selection && selection.avatarId && selection.classId && selection.backgroundId);
     }
 
-    function resolveCatalogEntry(list: any, id: string, fallback: any) {
-      if (!Array.isArray(list)) {
+    function resolveCatalogEntry(
+      list: GameRoomFateKnotsCatalogEntry[],
+      id: string | null,
+      fallback: GameRoomFateKnotsCatalogEntry | null
+    ): GameRoomFateKnotsCatalogEntry | null {
+      if (!id) {
         return fallback;
       }
       return (
-        list.find(function (entry: any) {
+        list.find(function (entry: GameRoomFateKnotsCatalogEntry) {
           return entry.id === id;
         }) || fallback
       );
     }
 
-    function normalizeSelectionEntry(entry: any) {
+    function normalizeSelectionEntry(
+      entry: GameRoomFateKnotsCatalogEntry | null
+    ): GameRoomFateKnotsCatalogEntry | null {
       return entry && typeof entry.id === "string" && entry.id.trim() ? entry : null;
     }
 
-    function getSelectionBundle(state: any, participant: any) {
-      const selection = (participant && participant.selection) || {};
-      const catalogs = (state && state.catalogs) || {};
+    function getSelectionBundle(
+      state: GameRoomFateKnotsState | null,
+      participant: GameRoomFateKnotsParticipant | null
+    ): GameRoomFateKnotsSelectionBundle {
+      const selection = participant?.selection || null;
+      const catalogs = state?.catalogs;
       return {
         avatar: normalizeSelectionEntry(
-          resolveCatalogEntry(catalogs.avatars, selection.avatarId, selection.avatar || null)
+          resolveCatalogEntry(
+            catalogs?.avatars || [],
+            selection?.avatarId || null,
+            selection?.avatar || null
+          )
         ),
         classDef: normalizeSelectionEntry(
-          resolveCatalogEntry(catalogs.classes, selection.classId, selection.class || null)
+          resolveCatalogEntry(
+            catalogs?.classes || [],
+            selection?.classId || null,
+            selection?.class || null
+          )
         ),
         background: normalizeSelectionEntry(
           resolveCatalogEntry(
-            catalogs.backgrounds,
-            selection.backgroundId,
-            selection.background || null
+            catalogs?.backgrounds || [],
+            selection?.backgroundId || null,
+            selection?.background || null
           )
         ),
       };
     }
 
-    function sendSelection(fieldName: string, value: unknown) {
+    function sendSelection(fieldName: string, value: unknown): unknown {
       return sendRoomCommand("GameRoomFateKnotsCharacterSelect", {
         [fieldName]: value,
       });
     }
 
-    function sendReady(state: any) {
+    function sendReady(state: GameRoomFateKnotsState): unknown {
       return sendRoomCommand("GameRoomFateKnotsReady", {
         sessionId: state.sessionId,
       });
     }
 
-    function sendChoice(state: any, choiceId: string) {
+    function sendChoice(state: GameRoomFateKnotsState, choiceId: string): unknown {
       return sendRoomCommand("GameRoomFateKnotsChoice", {
         sessionId: state.sessionId,
-        stepId:
-          (state.decision && state.decision.stepId) ||
-          (state.currentStep && state.currentStep.id) ||
-          null,
+        stepId: state.decision?.stepId || state.currentStep?.id || null,
         choiceId: choiceId,
       });
     }
 
-    function sendCombatAction(state: any, actionId: string) {
+    function sendCombatAction(state: GameRoomFateKnotsState, actionId: string): unknown {
       return sendRoomCommand("GameRoomFateKnotsCombatAction", {
         sessionId: state.sessionId,
-        encounterId: state.combat && state.combat.encounterId ? state.combat.encounterId : null,
-        turnId: state.combat && state.combat.turnId ? state.combat.turnId : null,
+        encounterId: state.combat?.encounterId || null,
+        turnId: state.combat?.turnId || null,
         actionId: actionId,
       });
     }
 
-    function sendSync(state: any) {
+    function sendSync(state: GameRoomFateKnotsState): unknown {
       return sendRoomCommand("GameRoomFateKnotsSync", {
         sessionId: state.sessionId,
       });
     }
 
-    function formatMetricValue(value: unknown) {
+    function formatMetricValue(value: unknown): string {
       return Number.isFinite(value) ? String(value) : "--";
     }
 
-    function formatStats(entry: any) {
-      if (!entry) {
+    function formatStats(entry: GameRoomFateKnotsCatalogEntry | null | undefined): string {
+      const stats = entry?.stats;
+      if (!entry || !stats) {
         return "";
       }
-      const stats = entry.stats && typeof entry.stats === "object" ? entry.stats : entry;
       return [
         stats.maxHp != null ? "HP " + formatMetricValue(stats.maxHp) : null,
         stats.attack != null ? "ATK " + formatMetricValue(stats.attack) : null,
@@ -149,16 +173,12 @@
         .join(" \u2022 ");
     }
 
-    function formatDeck(entry: any) {
-      const cards = Array.isArray(entry && entry.startingDeck)
-        ? entry.startingDeck
-        : Array.isArray(entry && entry.deck)
-          ? entry.deck
-          : [];
+    function formatDeck(entry: GameRoomFateKnotsCatalogEntry | null | undefined): string {
+      const cards = Array.isArray(entry?.startingDeck) ? entry.startingDeck : [];
       return cards.length > 0 ? cards.join(" \u2022 ") : "";
     }
 
-    function formatDeadline(deadlineAt: unknown) {
+    function formatDeadline(deadlineAt: unknown): string {
       if (!deadlineAt) {
         return "";
       }
@@ -168,7 +188,7 @@
       });
     }
 
-    function formatHistoryTimestamp(timestamp: unknown) {
+    function formatHistoryTimestamp(timestamp: unknown): string {
       if (!timestamp) {
         return "";
       }
@@ -180,7 +200,7 @@
       });
     }
 
-    function getPhaseLabel(phaseId: string) {
+    function getPhaseLabel(phaseId: string): string {
       const labels: Record<string, string> = {
         idle: t(["fateKnots", "phase", "overview"], "Gathering"),
         overview: t(["fateKnots", "phase", "overview"], "Gathering"),
@@ -193,23 +213,23 @@
     }
 
     return {
-      findParticipant,
-      formatDeck,
-      formatDeadline,
-      formatHistoryTimestamp,
-      formatStats,
-      getCurrentState,
-      getCurrentStatus,
-      getPhaseLabel,
-      getSelectionBundle,
-      getUserParticipant,
-      isSelectionComplete,
-      sendChoice,
-      sendCombatAction,
-      sendReady,
-      sendSelection,
-      sendSync,
-      t,
+      findParticipant: findParticipant,
+      formatDeck: formatDeck,
+      formatDeadline: formatDeadline,
+      formatHistoryTimestamp: formatHistoryTimestamp,
+      formatStats: formatStats,
+      getCurrentState: getCurrentState,
+      getCurrentStatus: getCurrentStatus,
+      getPhaseLabel: getPhaseLabel,
+      getSelectionBundle: getSelectionBundle,
+      getUserParticipant: getUserParticipant,
+      isSelectionComplete: isSelectionComplete,
+      sendChoice: sendChoice,
+      sendCombatAction: sendCombatAction,
+      sendReady: sendReady,
+      sendSelection: sendSelection,
+      sendSync: sendSync,
+      t: t,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})(window as unknown as GameRoomUiGlobal);

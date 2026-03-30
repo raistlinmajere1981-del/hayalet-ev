@@ -1,4 +1,20 @@
-export function createLaboratoryRuntimeEvents(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryRuntimeEventsApi = {
+  notifyRoom: (type: string, payload: LaboratoryRecord) => void;
+};
+
+type LaboratoryRuntimeEventsDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  defaultFeatureId: string;
+  getFeatureIdFromContext: (context: unknown) => string;
+  loadContext: (api: LaboratoryRuntimeEventsApi) => unknown;
+  roomSnapshotRuntime: {
+    buildMediaSnapshot: (runtime: unknown, featureId: string) => unknown;
+  };
+};
+
+export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps) {
   const {
     asNonEmptyString,
     defaultFeatureId,
@@ -7,19 +23,23 @@ export function createLaboratoryRuntimeEvents(deps: any) {
     roomSnapshotRuntime,
   } = deps;
 
-  function buildMediaSnapshot(runtime: any, featureId: any) {
+  function buildMediaSnapshot(runtime: unknown, featureId: string) {
     return roomSnapshotRuntime.buildMediaSnapshot(runtime, featureId);
   }
 
-  function buildSourceSnapshot(runtime: any) {
+  function buildSourceSnapshot(runtime: unknown) {
     return roomSnapshotRuntime.buildMediaSnapshot(runtime, defaultFeatureId);
   }
 
-  function notifyRoom(api: any, type: any, payload: any) {
-    api.notifyRoom(type, payload || {});
+  function notifyRoom(
+    api: LaboratoryRuntimeEventsApi,
+    type: string,
+    payload: LaboratoryRecord | null | undefined
+  ) {
+    api.notifyRoom(type, payload ?? {});
   }
 
-  function isSourceCompatibleAction(action: any) {
+  function isSourceCompatibleAction(action: unknown) {
     const actionId = asNonEmptyString(action);
     if (actionId === null) {
       return true;
@@ -34,11 +54,16 @@ export function createLaboratoryRuntimeEvents(deps: any) {
     );
   }
 
-  function pushMediaState(api: any, runtime: any, requestId: any, action: any) {
+  function pushMediaState(
+    api: LaboratoryRuntimeEventsApi,
+    runtime: unknown,
+    requestId: string | null | undefined,
+    action: unknown
+  ) {
     const featureId = getFeatureIdFromContext(loadContext(api));
     const payload = {
-      requestId: requestId || null,
-      action: action || null,
+      requestId: requestId ?? null,
+      action: asNonEmptyString(action),
       snapshot: buildMediaSnapshot(runtime, featureId),
     };
 
@@ -48,20 +73,25 @@ export function createLaboratoryRuntimeEvents(deps: any) {
     }
   }
 
-  function pushSourceState(api: any, runtime: any, requestId: any, action: any) {
+  function pushSourceState(
+    api: LaboratoryRuntimeEventsApi,
+    runtime: unknown,
+    requestId: string | null | undefined,
+    action: unknown
+  ) {
     pushMediaState(api, runtime, requestId, action);
   }
 
-  function pushActionResult(api: any, payload: any) {
+  function pushActionResult(api: LaboratoryRuntimeEventsApi, payload: LaboratoryRecord) {
     notifyRoom(api, "media-action-result", payload);
-    if (isSourceCompatibleAction(payload && payload.action)) {
+    if (isSourceCompatibleAction(payload["action"])) {
       notifyRoom(api, "source-action-result", payload);
     }
   }
 
-  function pushJobState(api: any, payload: any) {
+  function pushJobState(api: LaboratoryRuntimeEventsApi, payload: LaboratoryRecord) {
     notifyRoom(api, "media-job", payload);
-    if (isSourceCompatibleAction(payload && payload.action)) {
+    if (isSourceCompatibleAction(payload["action"])) {
       notifyRoom(api, "source-job", payload);
     }
   }

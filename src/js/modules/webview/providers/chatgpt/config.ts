@@ -46,7 +46,7 @@ export const config = {
       sendButton: {
         tr: '#composer-submit-button[data-testid="send-button"]',
         en: '#composer-submit-button[data-testid="send-button"], button[data-testid="send-button"][aria-label="Send prompt"]',
-        fallbacks: ['button[data-testid="send-button"][aria-label="İstem gönder"]', 'button[data-testid="send-button"][aria-label="Send prompt"]', 'button[data-testid="send-button"]', '#composer-submit-button'],
+        fallbacks: ['button[data-testid="send-button"][aria-label="Send prompt"]', 'button[data-testid="send-button"][aria-label="İstem gönder"]', 'button[data-testid="send-button"]', '#composer-submit-button'],
       },
       inputField: {
         tr: 'div#prompt-textarea.ProseMirror[contenteditable="true"][role="textbox"], #prompt-textarea[contenteditable="true"]',

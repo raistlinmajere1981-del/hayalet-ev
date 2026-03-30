@@ -7,6 +7,7 @@ import {
   resolveStatusText,
   saveState,
 } from "./state.js";
+import type { XoxGameState } from "./state-core.js";
 import {
   readBoardHashBeforeMove,
   readCell,
@@ -18,11 +19,35 @@ import {
 import { loadContext } from "../../../shared/host/context-state.js";
 import { FEATURE_ID, ROOM_ID } from "../../../shared/host/feature-meta.js";
 import { buildAiTurnMessage, commandMessage } from "./copy.js";
+import type { GameRoomContextState, GameRoomSlotState } from "../../../shared/types/room-shell-contracts.js";
 
-type XoxCommandResult = {
+export type XoxCommandResult = {
   success: boolean;
   message: string;
 };
+
+type XoxDispatchResult =
+  | {
+      success?: boolean;
+    }
+  | null
+  | undefined;
+
+export interface XoxRuntimeMatchApi {
+  getState(key: string): unknown;
+  setState(key: string, value: unknown): void;
+  deleteState?(key: string): void;
+  getLocale?(): unknown;
+  notifyRoom?(event: string, payload: Record<string, unknown>): void;
+  sendProtocol?(options: {
+    room: string;
+    scenario: string;
+    targets: string[];
+    preface?: string | null;
+    context: Record<string, unknown>;
+  }): Promise<XoxDispatchResult>;
+  sendMessage?(options: { provider: string; page: string; text: string }): Promise<XoxDispatchResult>;
+}
 
 function readProviderValue(payload: unknown): string {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -32,15 +57,50 @@ function readProviderValue(payload: unknown): string {
   return typeof source.provider === "string" ? source.provider : "";
 }
 
-export function resolveStateMatchId(state: any) {
+function readOpponentInfo(context: GameRoomContextState, state: XoxGameState): GameRoomSlotState {
+  return getOpponentInfo(context, state);
+}
+
+async function sendProtocolSafe(
+  api: XoxRuntimeMatchApi,
+  options: {
+    room: string;
+    scenario: string;
+    targets: string[];
+    preface?: string | null;
+    context: Record<string, unknown>;
+  }
+): Promise<XoxDispatchResult> {
+  if (typeof api.sendProtocol !== "function") {
+    return null;
+  }
+  return await api.sendProtocol(options);
+}
+
+async function sendMessageSafe(
+  api: XoxRuntimeMatchApi,
+  options: { provider: string; page: string; text: string }
+): Promise<XoxDispatchResult> {
+  if (typeof api.sendMessage !== "function") {
+    return null;
+  }
+  return await api.sendMessage(options);
+}
+
+export function resolveStateMatchId(state: XoxGameState): string | null {
   return state.matchId || state.inviteId || null;
 }
 
-export function isBlocked(state: any) {
+export function isBlocked(state: XoxGameState): boolean {
   return state.result === "blocked" || state.blockedReason !== "";
 }
 
-export function blockMatch(api: any, state: any, statusKey: any, blockedReason: any) {
+export function blockMatch(
+  api: XoxRuntimeMatchApi,
+  state: XoxGameState,
+  statusKey: string,
+  blockedReason: string
+): XoxGameState {
   state.active = true;
   state.awaitingMoveFrom = null;
   state.result = "blocked";
@@ -50,9 +110,13 @@ export function blockMatch(api: any, state: any, statusKey: any, blockedReason: 
   return pushRoomState(api, state);
 }
 
-export async function sendAiTurnUpdate(api: any, state: any, includeProtocol: any) {
-  const context = loadContext(api);
-  const opponent = getOpponentInfo(context, state);
+export async function sendAiTurnUpdate(
+  api: XoxRuntimeMatchApi,
+  state: XoxGameState,
+  includeProtocol: boolean
+): Promise<XoxCommandResult | XoxDispatchResult> {
+  const context = loadContext(api) as GameRoomContextState;
+  const opponent = readOpponentInfo(context, state);
 
   if (opponent.ready !== true) {
     blockMatch(api, state, "blockedOpponent", "opponent-unavailable");
@@ -60,7 +124,7 @@ export async function sendAiTurnUpdate(api: any, state: any, includeProtocol: an
   }
 
   if (includeProtocol === true && state.protocolDelivered !== true) {
-    const protocolResult = await api.sendProtocol({
+    const protocolResult = await sendProtocolSafe(api, {
       room: ROOM_ID,
       scenario: state.starter === "ai" ? "xox-ai-start" : "xox-user-start",
       targets: [state.target],
@@ -82,7 +146,7 @@ export async function sendAiTurnUpdate(api: any, state: any, includeProtocol: an
     saveState(api, state);
   }
 
-  const messageResult = await api.sendMessage({
+  const messageResult = await sendMessageSafe(api, {
     provider: state.target,
     page: "ui/index.html",
     text: buildAiTurnMessage(state, context),
@@ -98,7 +162,7 @@ export async function sendAiTurnUpdate(api: any, state: any, includeProtocol: an
 }
 
 export async function applyOpponentMove(
-  api: any,
+  api: XoxRuntimeMatchApi,
   payload: unknown,
   expectedProvider: string,
   requireInviteMatch: boolean
@@ -180,5 +244,5 @@ export async function applyOpponentMove(
   }
 
   pushRoomState(api, state);
-  return { success: true, message: resolveStatusText(state, loadContext(api)) };
+  return { success: true, message: resolveStatusText(state, loadContext(api) as GameRoomContextState) };
 }

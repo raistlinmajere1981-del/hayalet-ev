@@ -4,7 +4,93 @@ import {
   getAudioAnalysisProcessRootDir,
 } from "../../../shared/host/project-paths.js";
 
-export function createAudioAnalysisMusicRhythmModelRunner(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryRuntimeRecord = LaboratoryRecord & {
+  packageToolsDir?: unknown;
+  paths?: unknown;
+};
+type LaboratoryAudioAnalysisMusicScriptRuntime = Parameters<typeof getAudioAnalysisMusicScriptPath>[0];
+type LaboratoryAudioAnalysisProcessRootRuntime = Parameters<typeof getAudioAnalysisProcessRootDir>[0];
+type LaboratoryAudioAnalysisProcessRootProject = Parameters<typeof getAudioAnalysisProcessRootDir>[1];
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  slug?: unknown;
+};
+
+type LaboratoryProcessTargetRecord = LaboratoryRecord & {
+  path?: unknown;
+};
+
+type LaboratoryProcessArtifactRecord = LaboratoryRecord & {
+  id?: unknown;
+};
+
+type LaboratoryProcessFindingRecord = LaboratoryRecord;
+
+type LaboratoryProfileToolRequest = {
+  requestId: string;
+  jobId: string;
+  toolId: string;
+  cwd: string;
+  args: string[];
+  timeoutMs: number;
+};
+
+type LaboratoryMusicRhythmPayload = LaboratoryRecord & {
+  essentia?: unknown;
+  musicSummary?: unknown;
+};
+
+type LaboratoryAudioAnalysisModelResult = {
+  findings: LaboratoryProcessFindingRecord[];
+  artifacts: LaboratoryProcessArtifactRecord[];
+  warnings: string[];
+  status: string;
+  summary: string;
+};
+
+type AudioAnalysisMusicRhythmModelRunnerDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  createProcessArtifact: (
+    moduleId: string,
+    artifactKind: string,
+    filePath: string,
+    label: string,
+    metadata: LaboratoryRecord
+  ) => LaboratoryProcessArtifactRecord;
+  createProcessFinding: (
+    moduleId: string,
+    findingKind: string,
+    confidence: string,
+    level: string,
+    title: string,
+    detail: string,
+    evidenceCount: number,
+    artifactIds: string[]
+  ) => LaboratoryProcessFindingRecord;
+  ensureProcessRuntimeDirectories: (
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    moduleOutputDir: string
+  ) => Promise<unknown>;
+  readJsonFile: (path: string) => Promise<unknown>;
+  runProfileTool: (
+    runtime: LaboratoryRuntimeRecord,
+    request: LaboratoryProfileToolRequest
+  ) => Promise<unknown>;
+  sanitizeFileSegment: (value: string, fallback: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+function isNonNullString(value: string | null): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+export function createAudioAnalysisMusicRhythmModelRunner(
+  deps: AudioAnalysisMusicRhythmModelRunnerDeps
+) {
   const {
     asNonEmptyString,
     createProcessArtifact,
@@ -16,19 +102,64 @@ export function createAudioAnalysisMusicRhythmModelRunner(deps: any) {
     toRecord,
   } = deps;
 
+  function toTargetRecord(value: unknown): LaboratoryProcessTargetRecord {
+    return toRecord(value);
+  }
+
+  function toSummaryPayload(value: unknown): LaboratoryMusicRhythmPayload {
+    return toRecord(value);
+  }
+
+  function getArtifactIds(artifacts: LaboratoryProcessArtifactRecord[]): string[] {
+    return artifacts
+      .map(function (artifact) {
+        return asNonEmptyString(artifact.id);
+      })
+      .filter(isNonNullString);
+  }
+
+  function asMusicScriptRuntime(
+    runtime: LaboratoryRuntimeRecord
+  ): LaboratoryAudioAnalysisMusicScriptRuntime {
+    return runtime as unknown as LaboratoryAudioAnalysisMusicScriptRuntime;
+  }
+
+  function asProcessRootRuntime(
+    runtime: LaboratoryRuntimeRecord
+  ): LaboratoryAudioAnalysisProcessRootRuntime {
+    return runtime as unknown as LaboratoryAudioAnalysisProcessRootRuntime;
+  }
+
+  function asProcessRootProject(
+    project: LaboratoryProjectRecord
+  ): LaboratoryAudioAnalysisProcessRootProject {
+    return project as unknown as LaboratoryAudioAnalysisProcessRootProject;
+  }
+
   return async function runMusicRhythmAudioAnalyzer(
-    runtime: any,
-    project: any,
-    requestId: any,
-    jobId: any,
-    target: any,
-    artifactBase: any,
-    moduleOutputDir: any,
-    moduleId: any
-  ) {
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryProcessTargetRecord,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
+  ): Promise<LaboratoryAudioAnalysisModelResult> {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
-    const musicScriptPath = getAudioAnalysisMusicScriptPath(runtime);
+    const targetPath = asNonEmptyString(toTargetRecord(target).path);
+    if (targetPath === null) {
+      return {
+        findings: [],
+        artifacts: [],
+        warnings: ["Music analysis requires an audio target path before processing can start."],
+        status: "blocked",
+        summary: "Music analysis is waiting for a prepared audio target.",
+      };
+    }
+
+    const musicScriptPath = getAudioAnalysisMusicScriptPath(asMusicScriptRuntime(runtime));
     if (musicScriptPath === null) {
       return {
         findings: [],
@@ -47,8 +178,8 @@ export function createAudioAnalysisMusicRhythmModelRunner(deps: any) {
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getAudioAnalysisProcessRootDir(runtime, project),
-      args: ["-y", "-i", target.path, "-vn", "-ac", "1", "-ar", "22050", preparedInputPath],
+      cwd: getAudioAnalysisProcessRootDir(asProcessRootRuntime(runtime), asProcessRootProject(project)),
+      args: ["-y", "-i", targetPath, "-vn", "-ac", "1", "-ar", "22050", preparedInputPath],
       timeoutMs: 4 * 60 * 1000,
     });
 
@@ -56,12 +187,14 @@ export function createAudioAnalysisMusicRhythmModelRunner(deps: any) {
       requestId: requestId,
       jobId: jobId,
       toolId: "librosa",
-      cwd: getAudioAnalysisMusicDir(runtime) || getAudioAnalysisProcessRootDir(runtime, project),
+      cwd:
+        getAudioAnalysisMusicDir(asMusicScriptRuntime(runtime)) ||
+        getAudioAnalysisProcessRootDir(asProcessRootRuntime(runtime), asProcessRootProject(project)),
       args: [musicScriptPath, "--input", preparedInputPath, "--output", summaryPath],
       timeoutMs: 10 * 60 * 1000,
     });
 
-    const summaryPayload = toRecord(await readJsonFile(summaryPath));
+    const summaryPayload = toSummaryPayload(await readJsonFile(summaryPath));
     const musicSummary = toRecord(summaryPayload.musicSummary);
     const essentiaSummary = toRecord(summaryPayload.essentia);
     const summaryArtifact = createProcessArtifact(
@@ -74,23 +207,23 @@ export function createAudioAnalysisMusicRhythmModelRunner(deps: any) {
         essentia: essentiaSummary,
       }
     );
-    const artifacts = [summaryArtifact].filter(Boolean);
-    const artifactIds = artifacts.map(function (artifact: any) {
-      return artifact.id;
-    });
+    const artifacts = [summaryArtifact];
+    const artifactIds = getArtifactIds(artifacts);
     const detailParts = [
-      typeof musicSummary.tempoBpm === "number"
-        ? `${Number(musicSummary.tempoBpm).toFixed(1)} BPM`
+      typeof musicSummary["tempoBpm"] === "number"
+        ? `${Number(musicSummary["tempoBpm"]).toFixed(1)} BPM`
         : null,
-      typeof musicSummary.dominantPitchClass === "string" &&
-      musicSummary.dominantPitchClass.trim() !== ""
-        ? `dominant pitch class ${musicSummary.dominantPitchClass}`
+      typeof musicSummary["dominantPitchClass"] === "string" &&
+      musicSummary["dominantPitchClass"].trim() !== ""
+        ? `dominant pitch class ${musicSummary["dominantPitchClass"]}`
         : null,
-      typeof musicSummary.beatCount === "number" ? `${musicSummary.beatCount} beat markers` : null,
+      typeof musicSummary["beatCount"] === "number"
+        ? `${musicSummary["beatCount"]} beat markers`
+        : null,
     ].filter(Boolean);
     const warnings = [];
-    if (asNonEmptyString(essentiaSummary.error) !== null) {
-      warnings.push(asNonEmptyString(essentiaSummary.error));
+    if (asNonEmptyString(essentiaSummary["error"]) !== null) {
+      warnings.push(asNonEmptyString(essentiaSummary["error"]));
     }
     warnings.push(
       "Music and rhythm analysis is descriptor-driven; tonal summaries should be treated as guidance rather than a full musicology readout."
@@ -102,7 +235,7 @@ export function createAudioAnalysisMusicRhythmModelRunner(deps: any) {
           moduleId,
           "descriptor",
           "low",
-          essentiaSummary.available === true ? "medium" : "low",
+          essentiaSummary["available"] === true ? "medium" : "low",
           "Music descriptor summary generated",
           detailParts.length > 0
             ? `The music analysis helper produced ${detailParts.join(", ")} for the active target.`
@@ -112,7 +245,7 @@ export function createAudioAnalysisMusicRhythmModelRunner(deps: any) {
         ),
       ],
       artifacts: artifacts,
-      warnings: warnings.filter(Boolean),
+      warnings: warnings.filter(isNonNullString),
       status: "ready",
       summary: "Music and rhythm descriptors were generated for the active audio target.",
     };

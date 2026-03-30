@@ -1,7 +1,19 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  type FateKnotsPhaseIdentity = {
+    phaseId: string;
+    screenId: "overview" | "character-creation" | "scenario" | "combat" | "result" | "unknown";
+    known: boolean;
+  };
 
-  registry.createFateKnotsUiModule = function createFateKnotsUiModule(deps: any) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
+
+  const registry = getFactoryRegistry(global);
+
+  registry.createFateKnotsUiModule = function createFateKnotsUiModule(
+    deps: GameRoomFateKnotsUiModuleDeps
+  ): GameRoomFateKnotsUiModule {
     const getState = deps.getState;
     const featureId = deps.featureId || "fate-knots";
     const createElement = deps.createElement;
@@ -73,7 +85,6 @@
     }
     const fateKnotsUiChromeRuntime = createFateKnotsUiChromeRuntime({
       KNOWN_SEAT_IDS: KNOWN_SEAT_IDS,
-      createDefaultAsset: createDefaultAsset,
       createElement: createElement,
       appendImage: appendImage,
       applyAssetLayers: applyAssetLayers,
@@ -122,7 +133,6 @@
       formatDeck: formatDeck,
       formatHistoryTimestamp: formatHistoryTimestamp,
       formatStats: formatStats,
-      getCurrentStatus: getCurrentStatus,
       getSelectionBundle: getSelectionBundle,
       getUiAsset: getUiAsset,
       getUserParticipant: getUserParticipant,
@@ -140,6 +150,18 @@
     if (typeof createFateKnotsUiStageRuntime !== "function") {
       throw new Error("Fate Knots UI stage runtime is not registered.");
     }
+    const createFateKnotsUiStageSupportRuntime = registry.createFateKnotsUiStageSupportRuntime;
+    if (typeof createFateKnotsUiStageSupportRuntime !== "function") {
+      throw new Error("Fate Knots UI stage support runtime is not registered.");
+    }
+    const fateKnotsUiStageSupportRuntime = createFateKnotsUiStageSupportRuntime({
+      appendImage: appendImage,
+      createElement: createElement,
+      createFrame: createFrame,
+      getCurrentStatus: getCurrentStatus,
+      getUiAsset: getUiAsset,
+      t: t,
+    });
     const fateKnotsUiStageRuntime = createFateKnotsUiStageRuntime({
       appendImage: appendImage,
       appendNpcBanter: appendNpcBanter,
@@ -147,7 +169,10 @@
       createActionButton: createActionButton,
       createDefaultSelection: createDefaultSelection,
       createElement: createElement,
+      createEvidenceCard: fateKnotsUiStageSupportRuntime.createEvidenceCard,
       createFrame: createFrame,
+      createLogFeed: fateKnotsUiStageSupportRuntime.createLogFeed,
+      createNarrationPanel: fateKnotsUiStageSupportRuntime.createNarrationPanel,
       createRegion: createRegion,
       createSeatRibbon: createSeatRibbon,
       createStatBadge: createStatBadge,
@@ -164,7 +189,9 @@
     const renderCombatStage = fateKnotsUiStageRuntime.renderCombatStage;
     const renderResultStage = fateKnotsUiStageRuntime.renderResultStage;
 
-    function resolvePhaseIdentity(state: any) {
+    function resolvePhaseIdentity(
+      state: GameRoomFateKnotsState | null | undefined
+    ): FateKnotsPhaseIdentity {
       const phaseId =
         state && typeof state.phase === "string" && state.phase.trim()
           ? state.phase.trim()
@@ -195,7 +222,11 @@
       };
     }
 
-    function renderUnknownPhaseStage(parent: any, state: any, phaseIdentity: any) {
+    function renderUnknownPhaseStage(
+      parent: HTMLElement,
+      state: GameRoomFateKnotsState,
+      phaseIdentity: FateKnotsPhaseIdentity
+    ): void {
       const layout = createRegion("section", "fk-result", "unknown-layout");
       const warning = createFrame(
         "section",
@@ -213,7 +244,7 @@
         createElement(
           "p",
           "fk-scene-shell__body",
-          state && state.status
+          state.status
             ? state.status
             : "The current renderer does not have an explicit stage for this phase."
         )
@@ -252,14 +283,14 @@
       parent.append(layout);
     }
 
-    function renderFateKnots(root: any) {
+    function renderFateKnots(root: HTMLElement): void {
       ensureUiAssetsPreloaded();
       const state = getCurrentState() || createFateKnotsState();
       const phaseIdentity = resolvePhaseIdentity(state);
       const shell = createRegion("div", "fk-shell", "shell");
-      shell.dataset.fkPhase = phaseIdentity.phaseId;
-      shell.dataset.fkScreen = phaseIdentity.screenId;
-      shell.dataset.fkPhaseKnown = phaseIdentity.known ? "true" : "false";
+      shell.dataset["fkPhase"] = phaseIdentity.phaseId;
+      shell.dataset["fkScreen"] = phaseIdentity.screenId;
+      shell.dataset["fkPhaseKnown"] = phaseIdentity.known ? "true" : "false";
       const surface = createRegion("section", "fk-surface", "surface-shell");
       applySurfaceBackdrop(surface, state);
       const inner = createRegion("div", "fk-surface__inner", null);
@@ -290,4 +321,6 @@
       renderFateKnots: renderFateKnots,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})(
+  (typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal
+);

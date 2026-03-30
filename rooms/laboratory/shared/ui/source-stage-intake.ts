@@ -1,27 +1,118 @@
-export function createLaboratorySourceStageIntakeRuntime(deps: any) {
-  const toRecord = deps.toRecord;
-  const escapeHtml = deps.escapeHtml;
-  const text = deps.text;
-  const textFromKey = deps.textFromKey;
-  const renderTextField = deps.renderTextField;
-  const getCurrentSourceKind = deps.getCurrentSourceKind;
-  const getCurrentSourceMode = deps.getCurrentSourceMode;
-  const getSourceModeOptions = deps.getSourceModeOptions;
-  const getToolEntry = deps.getToolEntry;
-  const getCurrentDrafts = deps.getCurrentDrafts;
-  const getYtDlpForm = deps.getYtDlpForm;
+type LaboratoryRecord = Record<string, unknown>
+
+type LaboratoryToolEntryRecord = LaboratoryRecord & {
+  installed?: unknown
+}
+
+type LaboratorySourceDraftRecord = LaboratoryRecord & {
+  fileNameHint?: unknown
+  urlInput?: unknown
+  youtubeCustom?: unknown
+  youtubePreset?: unknown
+  youtubeUrl?: unknown
+}
+
+type LaboratoryYtDlpFormRecord = LaboratoryRecord & {
+  sections?: unknown
+}
+
+type LaboratoryYtDlpSectionRecord = LaboratoryRecord & {
+  fields?: unknown
+}
+
+type LaboratoryYtDlpFieldRecord = LaboratoryRecord & {
+  id?: unknown
+  labelKey?: unknown
+  options?: unknown
+  placeholderKey?: unknown
+  type?: unknown
+}
+
+type LaboratoryYtDlpOptionRecord = LaboratoryRecord & {
+  labelKey?: unknown
+  value?: unknown
+}
+
+type LaboratoryTextFieldOptions = {
+  type?: "number" | "text"
+}
+
+type LaboratorySourceStageIntakeDeps = {
+  escapeHtml: (value: string) => string
+  getCurrentDrafts: () => LaboratorySourceDraftRecord
+  getCurrentSourceKind: () => string
+  getCurrentSourceMode: () => string
+  getSourceModeOptions: (kind: string) => string[]
+  getToolEntry: (toolId: string) => LaboratoryToolEntryRecord
+  getYtDlpForm: () => LaboratoryYtDlpFormRecord
+  renderTextField: (
+    path: string,
+    value: unknown,
+    label: string,
+    placeholder: string,
+    options?: LaboratoryTextFieldOptions
+  ) => string
+  text: (path: string[]) => string
+  textFromKey: (key: string) => string
+  toRecord: (value: unknown) => LaboratoryRecord
+}
+
+export function createLaboratorySourceStageIntakeRuntime(
+  deps: LaboratorySourceStageIntakeDeps
+) {
+  const {
+    escapeHtml,
+    getCurrentDrafts,
+    getCurrentSourceKind,
+    getCurrentSourceMode,
+    getSourceModeOptions,
+    getToolEntry,
+    getYtDlpForm,
+    renderTextField,
+    text,
+    textFromKey,
+    toRecord,
+  } = deps
+
+  function toDraftRecord(value: unknown): LaboratorySourceDraftRecord {
+    return toRecord(value)
+  }
+
+  function toFormRecord(value: unknown): LaboratoryYtDlpFormRecord {
+    return toRecord(value)
+  }
+
+  function toSectionRecord(value: unknown): LaboratoryYtDlpSectionRecord {
+    return toRecord(value)
+  }
+
+  function toFieldRecord(value: unknown): LaboratoryYtDlpFieldRecord {
+    return toRecord(value)
+  }
+
+  function toOptionRecord(value: unknown): LaboratoryYtDlpOptionRecord {
+    return toRecord(value)
+  }
+
+  function asString(value: unknown, fallback = ""): string {
+    return typeof value === "string" ? value : fallback
+  }
+
+  function getYoutubeCustomDrafts(drafts: LaboratorySourceDraftRecord): LaboratoryRecord {
+    return toRecord(drafts.youtubeCustom)
+  }
 
   function renderSourceModes() {
-    const currentKind = getCurrentSourceKind();
-    const currentMode = getCurrentSourceMode();
-    const modes = getSourceModeOptions(currentKind);
-    const ytDlpInstalled = getToolEntry("yt-dlp").installed === true;
+    const currentKind = getCurrentSourceKind()
+    const currentMode = getCurrentSourceMode()
+    const modes = getSourceModeOptions(currentKind)
+    const ytDlpInstalled = getToolEntry("yt-dlp").installed === true
 
     return `
       <div class="lab-segmented">
         ${modes
-          .map(function (modeId: any) {
-            const disabled = modeId === "youtube" && ytDlpInstalled !== true;
+          .map(function (modeId) {
+            const disabled = modeId === "youtube" && ytDlpInstalled !== true
             return `
               <button
                 class="lab-segmented__button"
@@ -33,89 +124,110 @@ export function createLaboratorySourceStageIntakeRuntime(deps: any) {
               >
                 ${escapeHtml(text(["mediaAnalysis", "source", "modes", modeId]))}
               </button>
-            `;
+            `
           })
           .join("")}
       </div>
-    `;
+    `
   }
 
-  function renderYoutubeCustomForm(drafts: any) {
-    const sections = Array.isArray(getYtDlpForm().sections) ? getYtDlpForm().sections : [];
+  function renderYoutubeCustomForm(drafts: LaboratorySourceDraftRecord) {
+    const form = toFormRecord(getYtDlpForm())
+    const rawSections = form.sections
+    const sections: LaboratoryYtDlpSectionRecord[] = Array.isArray(rawSections)
+      ? rawSections.map(function (section): LaboratoryYtDlpSectionRecord {
+          return toSectionRecord(section)
+        })
+      : []
+    const youtubeCustomDrafts = getYoutubeCustomDrafts(drafts)
+
     return `
       <div class="lab-form-stack">
         ${sections
-          .map(function (section: any) {
-            const fields = Array.isArray(section.fields) ? section.fields : [];
+          .map(function (section) {
+            const rawFields = section.fields
+            const fields: LaboratoryYtDlpFieldRecord[] = Array.isArray(rawFields)
+              ? rawFields.map(function (field): LaboratoryYtDlpFieldRecord {
+                  return toFieldRecord(field)
+                })
+              : []
             return `
               <div class="lab-form-section">
                 <div class="lab-form-grid">
                   ${fields
-                    .map(function (field: any) {
-                      const value = toRecord(drafts.youtubeCustom)[field.id];
+                    .map(function (field) {
+                      const fieldId = asString(field.id)
+                      const value = youtubeCustomDrafts[fieldId]
                       if (field.type === "toggle") {
                         return `
                           <button
                             class="lab-toggle"
                             type="button"
-                            data-toggle-field="youtubeCustom.${field.id}"
+                            data-toggle-field="youtubeCustom.${fieldId}"
                             data-active="${value === true ? "true" : "false"}"
                           >
                             <span class="lab-toggle__track"><span class="lab-toggle__thumb"></span></span>
-                            <span class="lab-toggle__label">${escapeHtml(textFromKey(field.labelKey))}</span>
+                            <span class="lab-toggle__label">${escapeHtml(textFromKey(asString(field.labelKey)))}</span>
                           </button>
-                        `;
+                        `
                       }
 
                       if (field.type === "select") {
+                        const rawOptions = field.options
+                        const options: LaboratoryYtDlpOptionRecord[] = Array.isArray(rawOptions)
+                          ? rawOptions.map(function (option): LaboratoryYtDlpOptionRecord {
+                              return toOptionRecord(option)
+                            })
+                          : []
                         return `
                           <label class="lab-field">
-                            <span class="lab-field__label">${escapeHtml(textFromKey(field.labelKey))}</span>
-                            <select class="lab-select" data-draft-field="youtubeCustom.${field.id}">
-                              ${(Array.isArray(field.options) ? field.options : [])
-                                .map(function (option: any) {
+                            <span class="lab-field__label">${escapeHtml(textFromKey(asString(field.labelKey)))}</span>
+                            <select class="lab-select" data-draft-field="youtubeCustom.${fieldId}">
+                              ${options
+                                .map(function (option) {
+                                  const optionValue = asString(option.value)
                                   return `
-                                    <option value="${escapeHtml(option.value)}" ${
-                                      String(option.value) === String(value) ? "selected" : ""
+                                    <option value="${escapeHtml(optionValue)}" ${
+                                      optionValue === String(value || "") ? "selected" : ""
                                     }>
-                                      ${escapeHtml(textFromKey(option.labelKey))}
+                                      ${escapeHtml(textFromKey(asString(option.labelKey)))}
                                     </option>
-                                  `;
+                                  `
                                 })
                                 .join("")}
                             </select>
                           </label>
-                        `;
+                        `
                       }
 
                       return renderTextField(
-                        `youtubeCustom.${field.id}`,
+                        `youtubeCustom.${fieldId}`,
                         value,
-                        textFromKey(field.labelKey),
-                        textFromKey(field.placeholderKey),
+                        textFromKey(asString(field.labelKey)),
+                        textFromKey(asString(field.placeholderKey)),
                         {
                           type: field.type === "number" ? "number" : "text",
                         }
-                      );
+                      )
                     })
                     .join("")}
                 </div>
               </div>
-            `;
+            `
           })
           .join("")}
       </div>
-    `;
+    `
   }
 
   function renderSourceIntakePanel() {
-    const currentMode = getCurrentSourceMode();
-    const drafts = getCurrentDrafts();
-    const ytDlpInstalled = getToolEntry("yt-dlp").installed === true;
+    const currentMode = getCurrentSourceMode()
+    const drafts = toDraftRecord(getCurrentDrafts())
+    const ytDlpInstalled = getToolEntry("yt-dlp").installed === true
     const youtubePreset =
       typeof drafts.youtubePreset === "string" && drafts.youtubePreset.trim() !== ""
         ? drafts.youtubePreset
-        : "medium";
+        : "medium"
 
     const body =
       currentMode === "local"
@@ -164,7 +276,7 @@ export function createLaboratorySourceStageIntakeRuntime(deps: any) {
           <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "source", "youtubePresetLabel"]))}</span>
           <div class="lab-chip-row">
             ${["low", "medium", "best", "custom"]
-              .map(function (presetId: any) {
+              .map(function (presetId) {
                 return `
                   <button
                     class="lab-choice-chip"
@@ -175,7 +287,7 @@ export function createLaboratorySourceStageIntakeRuntime(deps: any) {
                   >
                     ${escapeHtml(text(["mediaAnalysis", "source", "youtubePresets", presetId]))}
                   </button>
-                `;
+                `
               })
               .join("")}
           </div>
@@ -189,7 +301,7 @@ export function createLaboratorySourceStageIntakeRuntime(deps: any) {
         >
           ${escapeHtml(text(["mediaAnalysis", "source", "actions", "downloadYoutube"]))}
         </button>
-      `;
+      `
 
     return `
       <section class="lab-panel">
@@ -202,10 +314,10 @@ export function createLaboratorySourceStageIntakeRuntime(deps: any) {
         ${renderSourceModes()}
         <div class="lab-form-stack">${body}</div>
       </section>
-    `;
+    `
   }
 
   return {
     renderSourceIntakePanel,
-  };
+  }
 }

@@ -1,12 +1,18 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
 
-  registry.createFateKnotsUiSurfaceMapRuntime = function createFateKnotsUiSurfaceMapRuntime(deps: any) {
+  const registry = getFactoryRegistry(global);
+
+  registry.createFateKnotsUiSurfaceMapRuntime = function createFateKnotsUiSurfaceMapRuntime(
+    deps: GameRoomFateKnotsUiSurfaceMapRuntimeDeps
+  ): GameRoomFateKnotsUiSurfaceMapRuntime {
     const createRegion = deps.createRegion;
     const applyFrameArtwork = deps.applyFrameArtwork;
     const getUiAsset = deps.getUiAsset;
 
-    function createSigil(className: any, texture: any, overlay: any) {
+    function createSigil(className: string, texture: unknown, overlay: unknown): HTMLElement {
       const sigil = createRegion("div", className, null);
       applyFrameArtwork(sigil, {
         overlay: overlay || null,
@@ -18,23 +24,30 @@
       return sigil;
     }
 
-    function createMapPathLayer(nodes: any, currentLocationId: any) {
+    function createMapPathLayer(
+      nodes: GameRoomFateKnotsMapNode[],
+      currentLocationId: string | null
+    ): HTMLElement {
       const pathLayer = createRegion("div", "fk-map-shell__paths", null);
       const list = Array.isArray(nodes) ? nodes : [];
-      const nodeById = new Map();
-      list.forEach(function (node: any) {
-        if (node && node.id && node.marker) {
+      const nodeById = new Map<string, GameRoomFateKnotsMapNode>();
+
+      list.forEach(function (node: GameRoomFateKnotsMapNode) {
+        if (node.id && node.marker) {
           nodeById.set(node.id, node);
         }
       });
-      const seenPairs = new Set();
-      list.forEach(function (node: any) {
-        if (!node || !node.id || !node.marker || !Array.isArray(node.connections)) {
+
+      const seenPairs = new Set<string>();
+      list.forEach(function (node: GameRoomFateKnotsMapNode) {
+        const nodeMarker = node.marker;
+        if (!node.id || !nodeMarker || !Array.isArray(node.connections)) {
           return;
         }
-        node.connections.forEach(function (otherId: any) {
+        node.connections.forEach(function (otherId: string) {
           const other = nodeById.get(otherId);
-          if (!other || !other.marker) {
+          const otherMarker = other?.marker;
+          if (!otherMarker) {
             return;
           }
           const pairKey = [node.id, other.id].sort().join(":");
@@ -42,10 +55,10 @@
             return;
           }
           seenPairs.add(pairKey);
-          const x1 = (Number(node.marker.xPct) || 0) * 16;
-          const y1 = (Number(node.marker.yPct) || 0) * 9;
-          const x2 = (Number(other.marker.xPct) || 0) * 16;
-          const y2 = (Number(other.marker.yPct) || 0) * 9;
+          const x1 = (Number(nodeMarker.xPct) || 0) * 16;
+          const y1 = (Number(nodeMarker.yPct) || 0) * 9;
+          const x2 = (Number(otherMarker.xPct) || 0) * 16;
+          const y2 = (Number(otherMarker.yPct) || 0) * 9;
           const dx = x2 - x1;
           const dy = y2 - y1;
           const length = Math.sqrt(dx * dx + dy * dy);
@@ -60,8 +73,8 @@
                 : ""),
             null
           );
-          segment.style.left = String(node.marker.xPct || 0) + "%";
-          segment.style.top = String(node.marker.yPct || 0) + "%";
+          segment.style.left = String(nodeMarker.xPct || 0) + "%";
+          segment.style.top = String(nodeMarker.yPct || 0) + "%";
           segment.style.width = String((length / 1600) * 100) + "%";
           segment.style.transform =
             "translateY(-50%) rotate(" + String((Math.atan2(dy, dx) * 180) / Math.PI) + "deg)";
@@ -77,6 +90,7 @@
           pathLayer.append(segment);
         });
       });
+
       return pathLayer;
     }
 
@@ -85,4 +99,4 @@
       createSigil: createSigil,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})(window as unknown as GameRoomUiGlobal);

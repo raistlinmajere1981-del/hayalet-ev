@@ -20,11 +20,37 @@ import { createLaboratoryHostFeatureRuntimes } from "./feature-runtimes.js";
 const AUDIO_ANALYSIS_SCHEMA_VERSION = 1;
 const PROJECT_SCHEMA_VERSION = 1;
 
+type LaboratoryRecord = Record<string, unknown>;
+type LaboratoryHostProjectRuntimes = ReturnType<typeof createLaboratoryHostProjectRuntimes>;
+type LaboratoryHostFeatureRuntimes = ReturnType<typeof createLaboratoryHostFeatureRuntimes>;
+type LaboratoryHostFoundationDeps = Parameters<typeof createLaboratoryHostFoundation>[0];
+type LaboratoryHostProjectRuntimesDeps = Parameters<typeof createLaboratoryHostProjectRuntimes>[0];
+type LaboratoryHostFeatureRuntimesDeps = Parameters<typeof createLaboratoryHostFeatureRuntimes>[0];
+type LaboratoryHostActivationDeps = Parameters<typeof createLaboratoryHostActivation>[0];
+type LaboratoryCloseoutStalenessRuntime = NonNullable<
+  LaboratoryHostProjectRuntimes["stateComposition"]
+>["laboratoryCloseoutStalenessRuntime"];
+type LaboratoryProjectRecord = Parameters<
+  LaboratoryCloseoutStalenessRuntime["markFeatureProcessStale"]
+>[0];
+type LaboratoryAudioAnalysisStateRuntime =
+  LaboratoryHostFeatureRuntimes["processComposition"]["audioAnalysisStateRuntime"];
+
+function toRuntimeRecord(value: unknown): LaboratoryRecord {
+  return value !== null && typeof value === "object" && Array.isArray(value) === false
+    ? (value as LaboratoryRecord)
+    : {};
+}
+
 const runtimeRefs: {
-  closeoutStaleness: any;
-  processCoordination: any;
-  projectState: any;
-  subtitleAnalysisHost: any;
+  closeoutStaleness: LaboratoryCloseoutStalenessRuntime | null;
+  processCoordination:
+    | LaboratoryHostFeatureRuntimes["processComposition"]["laboratoryProcessCoordinationRuntime"]
+    | null;
+  projectState: LaboratoryHostFeatureRuntimes["projectState"] | null;
+  subtitleAnalysisHost:
+    | LaboratoryHostFeatureRuntimes["featureAdapters"]["laboratorySubtitleAnalysisHostRuntime"]
+    | null;
 } = {
   closeoutStaleness: null,
   processCoordination: null,
@@ -32,72 +58,91 @@ const runtimeRefs: {
   subtitleAnalysisHost: null,
 };
 
-let projectRuntimes: any = null;
-let featureRuntimes: any = null;
+let projectRuntimes: LaboratoryHostProjectRuntimes | null = null;
+let featureRuntimes: LaboratoryHostFeatureRuntimes | null = null;
 
-function markFeatureProcessStale(project: any, featureId: string, reason: string) {
-  if (!runtimeRefs.closeoutStaleness) throw new Error("closeoutStaleness not initialized");
-  return runtimeRefs.closeoutStaleness.markFeatureProcessStale(project, featureId, reason);
+function requireProjectRuntimes(): LaboratoryHostProjectRuntimes {
+  if (!projectRuntimes) {
+    throw new Error("projectRuntimes not initialized");
+  }
+  return projectRuntimes;
 }
 
-function markFeatureReportStale(project: any, featureId: string, reason: string) {
-  if (!runtimeRefs.closeoutStaleness) throw new Error("closeoutStaleness not initialized");
-  return runtimeRefs.closeoutStaleness.markFeatureReportStale(project, featureId, reason);
+function requireFeatureRuntimes(): LaboratoryHostFeatureRuntimes {
+  if (!featureRuntimes) {
+    throw new Error("featureRuntimes not initialized");
+  }
+  return featureRuntimes;
 }
 
-function markCloseoutAsStale(project: any, reason: string, featureIds: string[]) {
-  if (!runtimeRefs.closeoutStaleness) throw new Error("closeoutStaleness not initialized");
-  return runtimeRefs.closeoutStaleness.markCloseoutAsStale(project, reason, featureIds);
+function requireCloseoutStaleness(): LaboratoryCloseoutStalenessRuntime {
+  if (!runtimeRefs.closeoutStaleness) {
+    throw new Error("closeoutStaleness not initialized");
+  }
+  return runtimeRefs.closeoutStaleness;
 }
 
 function normalizeAudioAnalysisModuleResult(
-  rawValue: unknown,
-  moduleId: string,
-  catalogEntry: unknown
+  ...args: Parameters<LaboratoryAudioAnalysisStateRuntime["normalizeAudioAnalysisModuleResult"]>
 ) {
-  if (!featureRuntimes) throw new Error("featureRuntimes not initialized");
-  return featureRuntimes.processComposition.audioAnalysisStateRuntime.normalizeAudioAnalysisModuleResult(
-    rawValue,
-    moduleId,
-    catalogEntry
-  );
+  return requireFeatureRuntimes()
+    .processComposition.audioAnalysisStateRuntime.normalizeAudioAnalysisModuleResult(...args);
 }
 
-function createEmptyAudioAnalysisState() {
-  if (!featureRuntimes) throw new Error("featureRuntimes not initialized");
-  return featureRuntimes.processComposition.audioAnalysisStateRuntime.createEmptyAudioAnalysisState();
+function createEmptyAudioAnalysisState(): ReturnType<
+  LaboratoryAudioAnalysisStateRuntime["createEmptyAudioAnalysisState"]
+> {
+  return requireFeatureRuntimes()
+    .processComposition.audioAnalysisStateRuntime.createEmptyAudioAnalysisState();
 }
 
-function normalizeAudioAnalysisState(rawValue: unknown, runtime: unknown) {
-  if (!featureRuntimes) throw new Error("featureRuntimes not initialized");
-  return featureRuntimes.processComposition.audioAnalysisStateRuntime.normalizeAudioAnalysisState(
-    rawValue,
-    runtime
-  );
+function normalizeAudioAnalysisState(
+  ...args: Parameters<LaboratoryAudioAnalysisStateRuntime["normalizeAudioAnalysisState"]>
+) {
+  return requireFeatureRuntimes()
+    .processComposition.audioAnalysisStateRuntime.normalizeAudioAnalysisState(...args);
 }
 
-function getProfileArtifactPreferenceMap(profileCapabilities: unknown) {
-  return toRecord(toRecord(profileCapabilities).artifactPreferences);
+function markFeatureProcessStale(project: LaboratoryProjectRecord, featureId: string, reason: string) {
+  return requireCloseoutStaleness().markFeatureProcessStale(project, featureId, reason);
 }
 
-const foundation = createLaboratoryHostFoundation({
+function markFeatureReportStale(project: LaboratoryProjectRecord, featureId: string, reason: string) {
+  return requireCloseoutStaleness().markFeatureReportStale(project, featureId, reason);
+}
+
+function markCloseoutAsStale(project: LaboratoryProjectRecord, reason: string, featureIds: string[]) {
+  return requireCloseoutStaleness().markCloseoutAsStale(project, reason, featureIds);
+}
+
+function getProfileArtifactPreferenceMap(profileCapabilities: unknown): LaboratoryRecord {
+  return toRuntimeRecord(toRuntimeRecord(profileCapabilities)["artifactPreferences"]);
+}
+
+const foundationDeps = {
   asNonEmptyString,
   audioFeatureId: AUDIO_FEATURE_ID,
   clone,
   defaultFeatureId: FEATURE_ID,
   getAnalysisArtifactRuntime() {
-    if (!projectRuntimes) throw new Error("projectRuntimes not initialized");
-    return projectRuntimes.analysisArtifact;
+    return requireProjectRuntimes().analysisArtifact;
   },
   getProjectStateRuntime() {
+    if (!runtimeRefs.projectState) {
+      throw new Error("projectState not initialized");
+    }
     return runtimeRefs.projectState;
   },
   normalizeLocale,
   roomId: ROOM_ID,
   toRecord,
-});
+};
 
-projectRuntimes = createLaboratoryHostProjectRuntimes({
+const foundation = createLaboratoryHostFoundation(
+  foundationDeps as unknown as LaboratoryHostFoundationDeps
+);
+
+const projectRuntimesDeps = {
   asNonEmptyString,
   audioFeatureId: AUDIO_FEATURE_ID,
   createEmptyAudioAnalysisState,
@@ -118,14 +163,20 @@ projectRuntimes = createLaboratoryHostProjectRuntimes({
   normalizeAudioAnalysisState,
   projectSchemaVersion: PROJECT_SCHEMA_VERSION,
   roomId: ROOM_ID,
-  setCloseoutStalenessRuntime(value: any) {
+  setCloseoutStalenessRuntime(
+    value: NonNullable<LaboratoryHostProjectRuntimes["stateComposition"]>["laboratoryCloseoutStalenessRuntime"]
+  ) {
     runtimeRefs.closeoutStaleness = value;
   },
   subtitleFeatureId: SUBTITLE_FEATURE_ID,
   toRecord,
-});
+};
 
-featureRuntimes = createLaboratoryHostFeatureRuntimes({
+projectRuntimes = createLaboratoryHostProjectRuntimes(
+  projectRuntimesDeps as unknown as LaboratoryHostProjectRuntimesDeps
+);
+
+const featureRuntimesDeps = {
   asNonEmptyString,
   audioAnalysisSchemaVersion: AUDIO_ANALYSIS_SCHEMA_VERSION,
   audioFeatureId: AUDIO_FEATURE_ID,
@@ -144,30 +195,41 @@ featureRuntimes = createLaboratoryHostFeatureRuntimes({
   normalizeAudioAnalysisState,
   projectRuntimes,
   roomId: ROOM_ID,
-  setProcessCoordinationRuntime(value: any) {
+  setProcessCoordinationRuntime(
+    value: LaboratoryHostFeatureRuntimes["processComposition"]["laboratoryProcessCoordinationRuntime"]
+  ) {
     runtimeRefs.processCoordination = value;
   },
-  setProjectStateRuntime(value: any) {
+  setProjectStateRuntime(value: LaboratoryHostFeatureRuntimes["projectState"]) {
     runtimeRefs.projectState = value;
   },
-  setSubtitleAnalysisHostRuntime(value: any) {
+  setSubtitleAnalysisHostRuntime(
+    value: LaboratoryHostFeatureRuntimes["featureAdapters"]["laboratorySubtitleAnalysisHostRuntime"]
+  ) {
     runtimeRefs.subtitleAnalysisHost = value;
   },
   subtitleFeatureId: SUBTITLE_FEATURE_ID,
   toRecord,
-});
+};
+
+featureRuntimes = createLaboratoryHostFeatureRuntimes(
+  featureRuntimesDeps as unknown as LaboratoryHostFeatureRuntimesDeps
+);
 
 export default function createLaboratoryHostRuntime() {
-  if (!projectRuntimes) throw new Error("projectRuntimes not initialized");
-  if (!featureRuntimes) throw new Error("featureRuntimes not initialized");
-  return createLaboratoryHostActivation({
+  const currentProjectRuntimes = requireProjectRuntimes();
+  const currentFeatureRuntimes = requireFeatureRuntimes();
+  const activationDeps = {
     createRuntimeState: foundation.bootstrap.createRuntimeState,
-    ensureHydrated: projectRuntimes.lifecycle.ensureHydrated,
-    ensureRoomToolsSubscription: featureRuntimes.roomToolsProgress.ensureRoomToolsSubscription,
-    handleMediaAction: featureRuntimes.featureAdapters.handleMediaAction,
-    pushMediaState: projectRuntimes.snapshot.pushMediaState,
+    ensureHydrated: currentProjectRuntimes.lifecycle.ensureHydrated,
+    ensureRoomToolsSubscription: currentFeatureRuntimes.roomToolsProgress.ensureRoomToolsSubscription,
+    handleMediaAction: currentFeatureRuntimes.featureAdapters.handleMediaAction,
+    pushMediaState: currentProjectRuntimes.snapshot.pushMediaState,
     saveContext: foundation.bootstrap.saveContext,
-    tearDownRoomToolsSubscription: featureRuntimes.roomToolsProgress.tearDownRoomToolsSubscription,
+    tearDownRoomToolsSubscription:
+      currentFeatureRuntimes.roomToolsProgress.tearDownRoomToolsSubscription,
     toRecord,
-  });
+  };
+
+  return createLaboratoryHostActivation(activationDeps as unknown as LaboratoryHostActivationDeps);
 }

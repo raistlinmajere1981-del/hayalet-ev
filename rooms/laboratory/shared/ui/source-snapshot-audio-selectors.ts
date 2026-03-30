@@ -1,63 +1,150 @@
 type LaboratoryRecord = Record<string, unknown>;
 
-export function createLaboratorySnapshotAudioSelectors(deps: any) {
-  const toRecord = deps.toRecord;
-  const getSourceSnapshot = deps.getSourceSnapshot;
-  const getProjectAudioAnalysis = deps.getProjectAudioAnalysis;
+type LaboratoryAudioAnalysisCatalogRecord = LaboratoryRecord & {
+  modules?: unknown;
+};
+
+type LaboratoryAudioAnalysisProvidersRecord = LaboratoryRecord & {
+  providers?: unknown;
+};
+
+type LaboratoryAudioAnalysisStateRecord = LaboratoryRecord & {
+  analysisCatalog?: unknown;
+  providerState?: unknown;
+  results?: unknown;
+  source?: unknown;
+};
+
+type LaboratoryAudioAnalysisCatalogStateRecord = LaboratoryRecord & {
+  orderedIds?: unknown;
+};
+
+type LaboratoryAudioModuleRecord = LaboratoryRecord & {
+  id?: unknown;
+  phase?: unknown;
+  providerIds?: unknown;
+  status?: unknown;
+  summaryKey?: unknown;
+  titleKey?: unknown;
+};
+
+type LaboratoryAudioResultRecord = LaboratoryRecord & {
+  artifacts?: unknown;
+  blockers?: unknown;
+  confidence?: unknown;
+  metrics?: unknown;
+  phase?: unknown;
+  providerIds?: unknown;
+  signals?: unknown;
+  status?: unknown;
+  summary?: unknown;
+  summaryKey?: unknown;
+  titleKey?: unknown;
+  warnings?: unknown;
+};
+
+type LaboratorySnapshotAudioSelectorsDeps = {
+  getProjectAudioAnalysis: () => unknown;
+  getSourceSnapshot: () => unknown;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratorySnapshotAudioSelectors(
+  deps: LaboratorySnapshotAudioSelectorsDeps
+) {
+  const { getProjectAudioAnalysis, getSourceSnapshot, toRecord } = deps;
+
+  function toAudioCatalogRecord(value: unknown): LaboratoryAudioAnalysisCatalogRecord {
+    return toRecord(value);
+  }
+
+  function toAudioProvidersRecord(value: unknown): LaboratoryAudioAnalysisProvidersRecord {
+    return toRecord(value);
+  }
+
+  function toAudioStateRecord(value: unknown): LaboratoryAudioAnalysisStateRecord {
+    return toRecord(value);
+  }
+
+  function toAudioCatalogStateRecord(value: unknown): LaboratoryAudioAnalysisCatalogStateRecord {
+    return toRecord(value);
+  }
+
+  function toAudioModuleRecord(value: unknown): LaboratoryAudioModuleRecord {
+    return toRecord(value);
+  }
+
+  function toAudioResultRecord(value: unknown): LaboratoryAudioResultRecord {
+    return toRecord(value);
+  }
+
+  function toString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value : null;
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return toString(entry);
+      })
+      .filter((entry): entry is string => entry !== null);
+  }
 
   function getAudioAnalysisCatalog() {
-    return toRecord(getSourceSnapshot().audioAnalysisCatalog);
+    return toAudioCatalogRecord(toRecord(getSourceSnapshot())["audioAnalysisCatalog"]);
   }
 
   function getAudioAnalysisCapabilities() {
-    return toRecord(getSourceSnapshot().audioAnalysisCapabilities);
+    return toRecord(toRecord(getSourceSnapshot())["audioAnalysisCapabilities"]);
   }
 
   function getAudioAnalysisPresets() {
-    return toRecord(getSourceSnapshot().audioAnalysisPresets);
+    return toRecord(toRecord(getSourceSnapshot())["audioAnalysisPresets"]);
   }
 
   function getAudioAnalysisProviders() {
-    return toRecord(getSourceSnapshot().audioAnalysisProviders);
+    return toAudioProvidersRecord(toRecord(getSourceSnapshot())["audioAnalysisProviders"]);
   }
 
-  function getAudioAnalysisModules(): LaboratoryRecord[] {
+  function getAudioAnalysisModules(): LaboratoryAudioModuleRecord[] {
     const modules = getAudioAnalysisCatalog().modules;
-    return Array.isArray(modules)
-      ? modules.map(function (entry: any) {
-          return toRecord(entry) as LaboratoryRecord;
-        })
-      : [];
+    return Array.isArray(modules) ? modules.map(toAudioModuleRecord) : [];
   }
 
   function getAudioAnalysisProviderEntries(): LaboratoryRecord[] {
     const providers = getAudioAnalysisProviders().providers;
-    return Array.isArray(providers)
-      ? providers.map(function (entry: any) {
-          return toRecord(entry) as LaboratoryRecord;
-        })
-      : [];
+    return Array.isArray(providers) ? providers.map(toRecord) : [];
+  }
+
+  function getProjectAudioAnalysisState(): LaboratoryAudioAnalysisStateRecord {
+    return toAudioStateRecord(getProjectAudioAnalysis());
   }
 
   function getAudioAnalysisSourceState() {
-    return toRecord(getProjectAudioAnalysis().source);
+    return toRecord(getProjectAudioAnalysisState().source);
   }
 
   function getAudioAnalysisCatalogState() {
-    return toRecord(getProjectAudioAnalysis().analysisCatalog);
+    return toAudioCatalogStateRecord(getProjectAudioAnalysisState().analysisCatalog);
   }
 
   function getAudioAnalysisProviderState() {
-    return toRecord(getProjectAudioAnalysis().providerState);
+    return toRecord(getProjectAudioAnalysisState().providerState);
   }
 
   function getAudioAnalysisResultMap() {
-    return toRecord(getProjectAudioAnalysis().results);
+    return toRecord(getProjectAudioAnalysisState().results);
   }
 
   function getAudioAnalysisOrderedResultEntries() {
-    const catalogModules = getAudioAnalysisModules().reduce(function (accumulator: any, entry: any) {
-      const moduleId = typeof entry.id === "string" && entry.id.trim() !== "" ? entry.id : null;
+    const catalogModules = getAudioAnalysisModules().reduce(function (
+      accumulator: Record<string, LaboratoryAudioModuleRecord>,
+      entry
+    ) {
+      const moduleId = toString(entry.id);
       if (moduleId !== null) {
         accumulator[moduleId] = entry;
       }
@@ -65,58 +152,38 @@ export function createLaboratorySnapshotAudioSelectors(deps: any) {
     }, {});
     const catalogState = getAudioAnalysisCatalogState();
     const resultMap = getAudioAnalysisResultMap();
-    const orderedIds = Array.isArray(catalogState.orderedIds)
-      ? catalogState.orderedIds.filter(function (entry: any) {
-          return typeof entry === "string" && entry.trim() !== "";
-        })
-      : getAudioAnalysisModules().map(function (entry: any) {
-          return entry.id;
-        });
-    const extraIds = Object.keys(resultMap).filter(function (moduleId: any) {
-      return !orderedIds.includes(moduleId);
+    const orderedIds =
+      toStringArray(catalogState.orderedIds).length > 0
+        ? toStringArray(catalogState.orderedIds)
+        : getAudioAnalysisModules()
+            .map(function (entry) {
+              return toString(entry.id);
+            })
+            .filter((entry): entry is string => entry !== null);
+    const extraIds = Object.keys(resultMap).filter(function (moduleId) {
+      return orderedIds.includes(moduleId) === false;
     });
 
-    return orderedIds.concat(extraIds).map(function (moduleId: any) {
-      const descriptor = toRecord(catalogModules[moduleId]);
-      const result = toRecord(resultMap[moduleId]);
+    return orderedIds.concat(extraIds).map(function (moduleId) {
+      const descriptor = toAudioModuleRecord(catalogModules[moduleId]);
+      const result = toAudioResultRecord(resultMap[moduleId]);
       return {
-        moduleId: moduleId,
-        phase:
-          typeof result.phase === "string" && result.phase.trim() !== ""
-            ? result.phase
-            : typeof descriptor.phase === "string" && descriptor.phase.trim() !== ""
-              ? descriptor.phase
-              : "v1",
-        status:
-          typeof result.status === "string" && result.status.trim() !== ""
-            ? result.status
-            : typeof descriptor.status === "string" && descriptor.status.trim() !== ""
-              ? descriptor.status
-              : "planned",
-        titleKey:
-          typeof result.titleKey === "string" && result.titleKey.trim() !== ""
-            ? result.titleKey
-            : typeof descriptor.titleKey === "string"
-              ? descriptor.titleKey
-              : null,
-        summaryKey:
-          typeof result.summaryKey === "string" && result.summaryKey.trim() !== ""
-            ? result.summaryKey
-            : typeof descriptor.summaryKey === "string"
-              ? descriptor.summaryKey
-              : null,
-        summary: typeof result.summary === "string" ? result.summary : "",
-        providerIds: Array.isArray(result.providerIds)
-          ? result.providerIds
-          : Array.isArray(descriptor.providerIds)
-            ? descriptor.providerIds
-            : [],
-        blockers: Array.isArray(result.blockers) ? result.blockers : [],
-        warnings: Array.isArray(result.warnings) ? result.warnings : [],
-        metrics: Array.isArray(result.metrics) ? result.metrics.map(toRecord) : [],
-        confidence: typeof result.confidence === "string" ? result.confidence : null,
-        signals: Array.isArray(result.signals) ? result.signals.map(toRecord) : [],
         artifacts: Array.isArray(result.artifacts) ? result.artifacts.map(toRecord) : [],
+        blockers: toStringArray(result.blockers),
+        confidence: toString(result.confidence),
+        metrics: Array.isArray(result.metrics) ? result.metrics.map(toRecord) : [],
+        moduleId: moduleId,
+        phase: toString(result.phase) || toString(descriptor.phase) || "v1",
+        providerIds:
+          toStringArray(result.providerIds).length > 0
+            ? toStringArray(result.providerIds)
+            : toStringArray(descriptor.providerIds),
+        signals: Array.isArray(result.signals) ? result.signals.map(toRecord) : [],
+        status: toString(result.status) || toString(descriptor.status) || "planned",
+        summary: toString(result.summary) || "",
+        summaryKey: toString(result.summaryKey) || toString(descriptor.summaryKey),
+        titleKey: toString(result.titleKey) || toString(descriptor.titleKey),
+        warnings: toStringArray(result.warnings),
       };
     });
   }

@@ -1,134 +1,330 @@
-export function createLaboratoryFeatureStagePanelsRuntime(deps: any) {
-  const laboratoryMediaPreviewUi = deps.createLaboratoryMediaPreviewUi({
-    state: deps.state,
-    render: deps.render,
-    escapeHtml: deps.escapeHtml,
-    text: deps.text,
-    formatDuration: deps.formatDuration,
-    getActiveProject: deps.getActiveProject,
-    getProjectSource: deps.getProjectSource,
-    getCurrentSourceMode: deps.getCurrentSourceMode,
-    getRelevantJobs() {
-      return deps.laboratoryStageAccessorsRuntime.getRelevantJobs();
-    },
-    getCurrentSourceKind: deps.getCurrentSourceKind,
-    getProjectStatusLabel: deps.getProjectStatusLabel,
-    getCurrentSourceLabel: deps.getCurrentSourceLabel,
-    getPreferredSourceDuration: deps.getPreferredSourceDuration,
-    getPreferredSourceResolution: deps.getPreferredSourceResolution,
-    getPreferredSourceCodec: deps.getPreferredSourceCodec,
-    getPreferredSourceFormat: deps.getPreferredSourceFormat,
-    formatBitRate: deps.formatBitRate,
-    getSourceMetadata: deps.getSourceMetadata,
-  });
+import type { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/module.js";
+import type { createMediaAnalysisEditPanels } from "../main-functions/media-analysis/ui/edit-panels.js";
+import type { createSubtitleAnalysisUiRuntime } from "../main-functions/subtitle-analysis/ui/runtime.js";
+import type { createLaboratoryMediaPreviewUi } from "../shared/ui/media-preview.js";
+import type { LaboratoryDraftStageJobRecord } from "../shared/ui/draft-runtime.js";
+import type { createLaboratoryUiBootstrapStateRuntime } from "./bootstrap-state-runtime.js";
+import type { createLaboratoryAudioAnalysisRuntime } from "./audio-analysis-runtime.js";
+import type { LaboratoryStageAccessorsRuntimeApi } from "./stage-accessors-runtime.js";
+
+type LaboratoryRecord = Record<string, unknown>;
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
+
+type LaboratoryRelevantJobsRecord = LaboratoryRecord & {
+  project?: unknown;
+};
+
+type LaboratoryFeatureStagePanelsDeps = {
+  createAudioAnalysisUi: typeof createAudioAnalysisUi;
+  createLaboratoryAudioAnalysisRuntime: typeof createLaboratoryAudioAnalysisRuntime;
+  createLaboratoryMediaPreviewUi: typeof createLaboratoryMediaPreviewUi;
+  createMediaAnalysisEditPanels: typeof createMediaAnalysisEditPanels;
+  createSubtitleAnalysisUiRuntime: typeof createSubtitleAnalysisUiRuntime;
+  escapeHtml: (value: string) => string;
+  featureText: (...args: unknown[]) => string;
+  formatBitRate: (value: unknown) => string;
+  formatDuration: (value: number | null | undefined) => string;
+  formatEditWindowLabel: () => string;
+  formatStatusLabel: (...args: unknown[]) => string;
+  getActiveEditOutput: () => unknown | null;
+  getActiveProject: () => LaboratoryRecord | null;
+  getActiveSubtitleEntry: () => unknown | null;
+  getAudioAnalysisCapabilities: () => unknown;
+  getAudioAnalysisModules: () => unknown;
+  getAudioAnalysisOrderedResultEntries: () => unknown;
+  getAudioAnalysisProviderEntries: () => unknown;
+  getAudioAnalysisProviderState: () => unknown;
+  getCurrentEditMode: () => string;
+  getCurrentEditRecipe: () => LaboratoryRecord;
+  getCurrentFocusLabel: () => string;
+  getCurrentFocusRegionId: () => string;
+  getCurrentResizeLabel: () => string;
+  getCurrentSourceKind: () => string;
+  getCurrentSourceLabel: () => string;
+  getCurrentSourceMode: () => string;
+  getEditOutputs: () => unknown[];
+  getEditPresets: () => LaboratoryRecord;
+  getEditPreview: () => LaboratoryRecord;
+  getEffectiveMediaAsset: () => LaboratoryRecord;
+  getPreferredSourceCodec: () => string;
+  getPreferredSourceDuration: (previewUrl: string | null) => number | null;
+  getPreferredSourceFormat: () => string;
+  getPreferredSourceResolution: (previewUrl: string | null) => string;
+  getProjectEdit: () => LaboratoryRecord;
+  getProjectSource: () => LaboratoryRecord;
+  getProjectStatusLabel: (...args: unknown[]) => string;
+  getSourceMetadata: () => LaboratoryRecord;
+  getSubtitleAnalysisCatalog: () => unknown;
+  getSubtitleAnalysisProviders: () => unknown;
+  getSubtitleDiscoveryItems: () => unknown;
+  getSubtitleDiscoveryState: () => unknown;
+  getSubtitleEditPresets: () => unknown;
+  getSubtitleEditPreview: () => unknown;
+  getSubtitleEditState: () => unknown;
+  getSubtitleEntries: () => unknown;
+  getSubtitleOutputs: () => unknown;
+  getSubtitleProcessModuleLabel: (...args: unknown[]) => string;
+  getSubtitleProcessModuleSummary: (...args: unknown[]) => unknown;
+  getSubtitleProcessStatusLabel: (...args: unknown[]) => string;
+  getSubtitleProviderLabel: (...args: unknown[]) => string;
+  getSubtitleProviderModuleLabels: (...args: unknown[]) => unknown;
+  getSubtitleProviderStatusLabel: (...args: unknown[]) => string;
+  getSubtitleProviderSummary: (...args: unknown[]) => unknown;
+  getSubtitleSelectedCandidateIds: () => unknown;
+  getSubtitleSelectedEntryIds: () => unknown;
+  getSubtitleSourcePresets: () => unknown;
+  getSubtitleWorkspace: () => unknown;
+  getToolDisplayName: (...args: unknown[]) => string;
+  getToolEntry: (...args: unknown[]) => LaboratoryRecord;
+  laboratoryStageAccessorsRuntime: LaboratoryStageAccessorsRuntimeApi;
+  render: () => unknown;
+  renderStageIntro: (...args: unknown[]) => string;
+  renderSummaryRows: (...args: unknown[]) => string;
+  renderTextField: (...args: unknown[]) => string;
+  state: LaboratoryUiState;
+  subtitleTemplate: unknown;
+  subtitleText: (...args: unknown[]) => string;
+  text: (path: string[]) => string;
+  textFromKey: (key: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createLaboratoryFeatureStagePanelsRuntime(
+  deps: LaboratoryFeatureStagePanelsDeps
+) {
+  const {
+    createAudioAnalysisUi,
+    createLaboratoryAudioAnalysisRuntime,
+    createLaboratoryMediaPreviewUi,
+    createMediaAnalysisEditPanels,
+    createSubtitleAnalysisUiRuntime,
+    escapeHtml,
+    featureText,
+    formatBitRate,
+    formatDuration,
+    formatEditWindowLabel,
+    formatStatusLabel,
+    getActiveEditOutput,
+    getActiveProject,
+    getActiveSubtitleEntry,
+    getAudioAnalysisCapabilities,
+    getAudioAnalysisModules,
+    getAudioAnalysisOrderedResultEntries,
+    getAudioAnalysisProviderEntries,
+    getAudioAnalysisProviderState,
+    getCurrentEditMode,
+    getCurrentEditRecipe,
+    getCurrentFocusLabel,
+    getCurrentFocusRegionId,
+    getCurrentResizeLabel,
+    getCurrentSourceKind,
+    getCurrentSourceLabel,
+    getCurrentSourceMode,
+    getEditOutputs,
+    getEditPresets,
+    getEditPreview,
+    getEffectiveMediaAsset,
+    getPreferredSourceCodec,
+    getPreferredSourceDuration,
+    getPreferredSourceFormat,
+    getPreferredSourceResolution,
+    getProjectEdit,
+    getProjectSource,
+    getProjectStatusLabel,
+    getSourceMetadata,
+    getSubtitleAnalysisCatalog,
+    getSubtitleAnalysisProviders,
+    getSubtitleDiscoveryItems,
+    getSubtitleDiscoveryState,
+    getSubtitleEditPresets,
+    getSubtitleEditPreview,
+    getSubtitleEditState,
+    getSubtitleEntries,
+    getSubtitleOutputs,
+    getSubtitleProcessModuleLabel,
+    getSubtitleProcessModuleSummary,
+    getSubtitleProcessStatusLabel,
+    getSubtitleProviderLabel,
+    getSubtitleProviderModuleLabels,
+    getSubtitleProviderStatusLabel,
+    getSubtitleProviderSummary,
+    getSubtitleSelectedCandidateIds,
+    getSubtitleSelectedEntryIds,
+    getSubtitleSourcePresets,
+    getSubtitleWorkspace,
+    getToolDisplayName,
+    getToolEntry,
+    laboratoryStageAccessorsRuntime,
+    render,
+    renderStageIntro,
+    renderSummaryRows,
+    renderTextField,
+    state,
+    subtitleTemplate,
+    subtitleText,
+    text,
+    textFromKey,
+    toRecord,
+  } = deps;
+
+  function asRecord(value: unknown): LaboratoryRecord {
+    return toRecord(value);
+  }
+
+  function toJobRecord(value: unknown): LaboratoryDraftStageJobRecord {
+    return asRecord(value);
+  }
+
+  function getRelevantJobsSafe(): LaboratoryRelevantJobsRecord {
+    return asRecord(laboratoryStageAccessorsRuntime.getRelevantJobs());
+  }
+
+  function getCurrentEditDraftSafe() {
+    return asRecord(laboratoryStageAccessorsRuntime.getCurrentEditDraft());
+  }
+
+  function getCurrentDraftsSafe() {
+    return asRecord(laboratoryStageAccessorsRuntime.getCurrentDrafts());
+  }
+
+  function getProfilePresetOptionsSafe() {
+    const presetOptions: unknown = laboratoryStageAccessorsRuntime.getProfilePresetOptions();
+    return Array.isArray(presetOptions) ? presetOptions.map(asRecord) : [];
+  }
+
+  function collectEditStageJobsSafe(projectJobs: unknown[]) {
+    const jobs: unknown = laboratoryStageAccessorsRuntime.collectEditStageJobs(projectJobs);
+    return Array.isArray(jobs) ? jobs.map(toJobRecord) : [];
+  }
+
+  function getEditJobLabelSafe(job: LaboratoryDraftStageJobRecord) {
+    const label: unknown = laboratoryStageAccessorsRuntime.getEditJobLabel(job);
+    return typeof label === "string" ? label : "";
+  }
+
+  const laboratoryMediaPreviewUiDeps = {
+    state,
+    render,
+    escapeHtml,
+    text,
+    formatDuration,
+    getActiveProject,
+    getProjectSource,
+    getCurrentSourceMode,
+    getRelevantJobs: getRelevantJobsSafe,
+    getCurrentSourceKind,
+    getProjectStatusLabel,
+    getCurrentSourceLabel,
+    getPreferredSourceDuration,
+    getPreferredSourceResolution,
+    getPreferredSourceCodec,
+    getPreferredSourceFormat,
+    formatBitRate,
+    getSourceMetadata,
+  };
+  const laboratoryMediaPreviewUi = createLaboratoryMediaPreviewUi(
+    laboratoryMediaPreviewUiDeps as unknown as Parameters<typeof createLaboratoryMediaPreviewUi>[0]
+  );
   const { bindAudioAnalysis, bindPreviewMetrics, renderPreviewMetaRow, renderPreviewSurface } =
     laboratoryMediaPreviewUi;
 
-  const mediaAnalysisEditPanels = deps.createMediaAnalysisEditPanels({
-    toRecord: deps.toRecord,
-    escapeHtml: deps.escapeHtml,
-    text: deps.text,
-    textFromKey: deps.textFromKey,
-    formatDuration: deps.formatDuration,
-    state: deps.state,
-    getCurrentSourceKind: deps.getCurrentSourceKind,
-    getCurrentEditPresetOptions() {
-      return deps.laboratoryStageAccessorsRuntime.getProfilePresetOptions();
-    },
-    getCurrentEditDraft() {
-      return deps.laboratoryStageAccessorsRuntime.getCurrentEditDraft();
-    },
-    getProjectSource: deps.getProjectSource,
-    getCurrentEditRecipe: deps.getCurrentEditRecipe,
-    getEffectiveMediaAsset: deps.getEffectiveMediaAsset,
-    getEditPreview: deps.getEditPreview,
-    getRelevantJobs() {
-      return deps.laboratoryStageAccessorsRuntime.getRelevantJobs();
-    },
-    collectEditStageJobs(projectJobs: any) {
-      return deps.laboratoryStageAccessorsRuntime.collectEditStageJobs(projectJobs);
-    },
+  const mediaAnalysisEditPanelsDeps = {
+    toRecord,
+    escapeHtml,
+    text,
+    textFromKey,
+    formatDuration,
+    state,
+    getCurrentSourceKind,
+    getCurrentEditPresetOptions: getProfilePresetOptionsSafe,
+    getCurrentEditDraft: getCurrentEditDraftSafe,
+    getProjectSource,
+    getCurrentEditRecipe,
+    getEffectiveMediaAsset,
+    getEditPreview,
+    getRelevantJobs: getRelevantJobsSafe,
+    collectEditStageJobs: collectEditStageJobsSafe,
     renderPreviewMetaRow,
-    getPreferredSourceDuration: deps.getPreferredSourceDuration,
-    getPreferredSourceResolution: deps.getPreferredSourceResolution,
-    getPreferredSourceCodec: deps.getPreferredSourceCodec,
-    getPreferredSourceFormat: deps.getPreferredSourceFormat,
-    getEditJobLabel(job: any) {
-      return deps.laboratoryStageAccessorsRuntime.getEditJobLabel(job);
-    },
-    getCurrentEditMode: deps.getCurrentEditMode,
-    getEditPresets: deps.getEditPresets,
-    getCurrentFocusRegionId: deps.getCurrentFocusRegionId,
-    getEditOutputs: deps.getEditOutputs,
-    getActiveEditOutput: deps.getActiveEditOutput,
-    getToolEntry: deps.getToolEntry,
-    getProjectEdit: deps.getProjectEdit,
-    renderSummaryRows: deps.renderSummaryRows,
-    formatEditWindowLabel: deps.formatEditWindowLabel,
-    getCurrentFocusLabel: deps.getCurrentFocusLabel,
-    getCurrentResizeLabel: deps.getCurrentResizeLabel,
-  });
+    getPreferredSourceDuration,
+    getPreferredSourceResolution,
+    getPreferredSourceCodec,
+    getPreferredSourceFormat,
+    getEditJobLabel: getEditJobLabelSafe,
+    getCurrentEditMode,
+    getEditPresets,
+    getCurrentFocusRegionId,
+    getEditOutputs,
+    getActiveEditOutput,
+    getToolEntry,
+    getProjectEdit,
+    renderSummaryRows,
+    formatEditWindowLabel,
+    getCurrentFocusLabel,
+    getCurrentResizeLabel,
+  };
+  const mediaAnalysisEditPanels = createMediaAnalysisEditPanels(
+    mediaAnalysisEditPanelsDeps as unknown as Parameters<typeof createMediaAnalysisEditPanels>[0]
+  );
 
-  const subtitleAnalysisUiRuntime = deps.createSubtitleAnalysisUiRuntime({
-    toRecord: deps.toRecord,
-    escapeHtml: deps.escapeHtml,
-    featureText: deps.featureText,
-    subtitleText: deps.subtitleText,
-    subtitleTemplate: deps.subtitleTemplate,
-    formatStatusLabel: deps.formatStatusLabel,
-    formatDuration: deps.formatDuration,
-    renderSummaryRows: deps.renderSummaryRows,
-    renderTextField: deps.renderTextField,
+  const subtitleAnalysisUiRuntimeDeps = {
+    toRecord,
+    escapeHtml,
+    featureText,
+    subtitleText,
+    subtitleTemplate,
+    formatStatusLabel,
+    formatDuration,
+    renderSummaryRows,
+    renderTextField,
     renderEditToggle: mediaAnalysisEditPanels.renderEditToggle,
     renderEditSelectField: mediaAnalysisEditPanels.renderEditSelectField,
     renderEditRangeField: mediaAnalysisEditPanels.renderEditRangeField,
-    renderStageIntro: deps.renderStageIntro,
-    getCurrentDrafts() {
-      return deps.laboratoryStageAccessorsRuntime.getCurrentDrafts();
-    },
-    getCurrentEditDraft() {
-      return deps.laboratoryStageAccessorsRuntime.getCurrentEditDraft();
-    },
-    getToolEntry: deps.getToolEntry,
-    getSubtitleSourcePresets: deps.getSubtitleSourcePresets,
-    getSubtitleWorkspace: deps.getSubtitleWorkspace,
-    getSubtitleAnalysisCatalog: deps.getSubtitleAnalysisCatalog,
-    getSubtitleAnalysisProviders: deps.getSubtitleAnalysisProviders,
-    getSubtitleProcessStatusLabel: deps.getSubtitleProcessStatusLabel,
-    getSubtitleProcessModuleSummary: deps.getSubtitleProcessModuleSummary,
-    getSubtitleProcessModuleLabel: deps.getSubtitleProcessModuleLabel,
-    getSubtitleProviderStatusLabel: deps.getSubtitleProviderStatusLabel,
-    getSubtitleProviderSummary: deps.getSubtitleProviderSummary,
-    getSubtitleProviderLabel: deps.getSubtitleProviderLabel,
-    getSubtitleProviderModuleLabels: deps.getSubtitleProviderModuleLabels,
-    getActiveSubtitleEntry: deps.getActiveSubtitleEntry,
-    getSubtitleSelectedEntryIds: deps.getSubtitleSelectedEntryIds,
-    getSubtitleDiscoveryState: deps.getSubtitleDiscoveryState,
-    getSubtitleDiscoveryItems: deps.getSubtitleDiscoveryItems,
-    getSubtitleSelectedCandidateIds: deps.getSubtitleSelectedCandidateIds,
-    getSubtitleEntries: deps.getSubtitleEntries,
-    getSubtitleEditState: deps.getSubtitleEditState,
-    getSubtitleEditPresets: deps.getSubtitleEditPresets,
-    getSubtitleEditPreview: deps.getSubtitleEditPreview,
-    getSubtitleOutputs: deps.getSubtitleOutputs,
-  });
+    renderStageIntro,
+    getCurrentDrafts: getCurrentDraftsSafe,
+    getCurrentEditDraft: getCurrentEditDraftSafe,
+    getToolEntry,
+    getSubtitleSourcePresets,
+    getSubtitleWorkspace,
+    getSubtitleAnalysisCatalog,
+    getSubtitleAnalysisProviders,
+    getSubtitleProcessStatusLabel,
+    getSubtitleProcessModuleSummary,
+    getSubtitleProcessModuleLabel,
+    getSubtitleProviderStatusLabel,
+    getSubtitleProviderSummary,
+    getSubtitleProviderLabel,
+    getSubtitleProviderModuleLabels,
+    getActiveSubtitleEntry,
+    getSubtitleSelectedEntryIds,
+    getSubtitleDiscoveryState,
+    getSubtitleDiscoveryItems,
+    getSubtitleSelectedCandidateIds,
+    getSubtitleEntries,
+    getSubtitleEditState,
+    getSubtitleEditPresets,
+    getSubtitleEditPreview,
+    getSubtitleOutputs,
+  };
+  const subtitleAnalysisUiRuntime = createSubtitleAnalysisUiRuntime(
+    subtitleAnalysisUiRuntimeDeps as unknown as Parameters<typeof createSubtitleAnalysisUiRuntime>[0]
+  );
 
-  const audioAnalysisUi = deps.createAudioAnalysisUi({
-    toRecord: deps.toRecord,
-    escapeHtml: deps.escapeHtml,
-    text: deps.text,
-    textFromKey: deps.textFromKey,
-    featureText: deps.featureText,
-    formatStatusLabel: deps.formatStatusLabel,
-    renderSummaryRows: deps.renderSummaryRows,
-    getToolDisplayName: deps.getToolDisplayName,
-    getAudioAnalysisModules: deps.getAudioAnalysisModules,
-    getAudioAnalysisCapabilities: deps.getAudioAnalysisCapabilities,
-    getAudioAnalysisProviderEntries: deps.getAudioAnalysisProviderEntries,
-    getAudioAnalysisProviderState: deps.getAudioAnalysisProviderState,
-    getAudioAnalysisOrderedResultEntries: deps.getAudioAnalysisOrderedResultEntries,
+  const audioAnalysisUi = createAudioAnalysisUi({
+    toRecord,
+    escapeHtml,
+    text,
+    textFromKey,
+    featureText,
+    formatStatusLabel,
+    renderSummaryRows,
+    getToolDisplayName,
+    getAudioAnalysisModules,
+    getAudioAnalysisCapabilities,
+    getAudioAnalysisProviderEntries,
+    getAudioAnalysisProviderState,
+    getAudioAnalysisOrderedResultEntries,
   });
-  const laboratoryAudioAnalysisRuntime = deps.createLaboratoryAudioAnalysisRuntime({
+  const laboratoryAudioAnalysisRuntime = createLaboratoryAudioAnalysisRuntime({
     audioAnalysisUi,
   });
 

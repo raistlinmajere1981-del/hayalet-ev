@@ -1,19 +1,83 @@
 import { createSubtitleAnalysisSourcePanelPrimitives } from "./source-panel-primitives.js";
 
-export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
-  const escapeHtml = deps.escapeHtml;
-  const subtitleText = deps.subtitleText;
-  const formatStatusLabel = deps.formatStatusLabel;
-  const formatDuration = deps.formatDuration;
-  const renderSummaryRows = deps.renderSummaryRows;
-  const getSubtitleWorkspace = deps.getSubtitleWorkspace;
-  const getActiveSubtitleEntry = deps.getActiveSubtitleEntry;
-  const getSubtitleSelectedEntryIds = deps.getSubtitleSelectedEntryIds;
-  const getSubtitleDiscoveryState = deps.getSubtitleDiscoveryState;
-  const getSubtitleDiscoveryItems = deps.getSubtitleDiscoveryItems;
-  const getSubtitleSelectedCandidateIds = deps.getSubtitleSelectedCandidateIds;
-  const getSubtitleEntries = deps.getSubtitleEntries;
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratorySubtitleWorkspaceRecord = LaboratoryRecord & {
+  lastError?: unknown;
+  mode?: unknown;
+};
+
+type LaboratorySubtitleEntryRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  format?: unknown;
+  id?: unknown;
+  language?: unknown;
+  publishedAt?: unknown;
+  sourceType?: unknown;
+};
+
+type LaboratorySubtitleDiscoveryRecord = LaboratoryRecord & {
+  lastError?: unknown;
+  status?: unknown;
+  totalCandidateCount?: unknown;
+};
+
+type LaboratorySubtitleDiscoveryItemRecord = LaboratoryRecord & {
+  channelTitle?: unknown;
+  durationSeconds?: unknown;
+  id?: unknown;
+  liveStatus?: unknown;
+  publishedAt?: unknown;
+  subtitleLanguages?: unknown;
+  title?: unknown;
+  videoId?: unknown;
+};
+
+type LaboratorySubtitleWorkspacePanelDeps = {
+  escapeHtml: (value: string) => string;
+  formatDuration: (value: unknown) => string;
+  formatStatusLabel: (value: unknown) => string;
+  getActiveSubtitleEntry: () => LaboratorySubtitleEntryRecord | null;
+  getSubtitleDiscoveryItems: () => LaboratorySubtitleDiscoveryItemRecord[];
+  getSubtitleDiscoveryState: () => LaboratorySubtitleDiscoveryRecord;
+  getSubtitleEntries: () => LaboratorySubtitleEntryRecord[];
+  getSubtitleSelectedCandidateIds: () => string[];
+  getSubtitleSelectedEntryIds: () => string[];
+  getSubtitleWorkspace: () => LaboratorySubtitleWorkspaceRecord;
+  getSubtitleSourcePresets: () => LaboratoryRecord;
+  renderSummaryRows: (rows: Array<[string, string]>) => string;
+  subtitleText: (path: string[], tr: string, en: string) => string;
+};
+
+export function createSubtitleAnalysisSourceWorkspacePanels(
+  deps: LaboratorySubtitleWorkspacePanelDeps
+) {
+  const {
+    escapeHtml,
+    formatDuration,
+    formatStatusLabel,
+    getActiveSubtitleEntry,
+    getSubtitleDiscoveryItems,
+    getSubtitleDiscoveryState,
+    getSubtitleEntries,
+    getSubtitleSelectedCandidateIds,
+    getSubtitleSelectedEntryIds,
+    getSubtitleWorkspace,
+    renderSummaryRows,
+    subtitleText,
+  } = deps;
   const primitives = createSubtitleAnalysisSourcePanelPrimitives(deps);
+
+  function toString(value: unknown, fallback = "--"): string {
+    return typeof value === "string" && value.trim() !== "" ? value : fallback;
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
+  }
 
   function renderSubtitleSourceWorkspacePanel() {
     const workspace = getSubtitleWorkspace();
@@ -28,7 +92,7 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
             <p class="lab-panel__eyebrow">${escapeHtml(subtitleText(["source", "summary", "eyebrow"], "Kaynak Ozet", "Source Summary"))}</p>
             <h2 class="lab-panel__title">${escapeHtml(
               activeEntry
-                ? activeEntry.fileName || activeEntry.id || "--"
+                ? toString(activeEntry.fileName, toString(activeEntry.id))
                 : subtitleText(
                     ["source", "summary", "emptyTitle"],
                     "Altyazi secilmedi",
@@ -57,7 +121,10 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
               "Calisma modu",
               "Workspace mode"
             ),
-            primitives.getSubtitleSourceModeLabel(primitives.getCurrentSubtitleSourceMode()),
+            toString(
+              primitives.getSubtitleSourceModeLabel(primitives.getCurrentSubtitleSourceMode()),
+              ""
+            ),
           ],
           [
             subtitleText(
@@ -77,15 +144,15 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
           ],
           [
             subtitleText(["source", "summary", "labels", "format"], "Format", "Format"),
-            activeEntry ? String(activeEntry.format || "--").toUpperCase() : "--",
+            activeEntry ? toString(activeEntry.format).toUpperCase() : "--",
           ],
           [
             subtitleText(["source", "summary", "labels", "language"], "Dil", "Language"),
-            activeEntry ? activeEntry.language || "--" : "--",
+            activeEntry ? toString(activeEntry.language) : "--",
           ],
           [
             subtitleText(["source", "summary", "labels", "published"], "Yayin", "Published"),
-            activeEntry ? activeEntry.publishedAt || "--" : "--",
+            activeEntry ? toString(activeEntry.publishedAt) : "--",
           ],
           [
             subtitleText(["source", "summary", "labels", "discovery"], "Kesif", "Discovery"),
@@ -122,18 +189,19 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
           ${
             entries.length > 0
               ? entries
-                  .map(function (entry: any) {
+                  .map(function (entry) {
+                    const entryId = toString(entry.id, "");
                     return `
                       <article class="lab-output-card" data-selected="${
                         activeEntry && activeEntry.id === entry.id ? "true" : "false"
                       }">
                         <div>
-                          <strong>${escapeHtml(entry.fileName || entry.id || "--")}</strong>
+                          <strong>${escapeHtml(toString(entry.fileName, toString(entry.id)))}</strong>
                           <span>${escapeHtml(
                             [
-                              String(entry.format || "--").toUpperCase(),
-                              entry.language || "--",
-                              entry.sourceType || "--",
+                              toString(entry.format).toUpperCase(),
+                              toString(entry.language),
+                              toString(entry.sourceType),
                             ]
                               .filter(Boolean)
                               .join(" · ")
@@ -144,7 +212,7 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
                             class="lab-button lab-button--ghost lab-button--tight"
                             type="button"
                             data-action="subtitle-source-select-entry"
-                            data-value="${escapeHtml(entry.id || "")}"
+                            data-value="${escapeHtml(entryId)}"
                           >
                             ${escapeHtml(subtitleText(["source", "entries", "actions", "makeActive"], "Aktif yap", "Make active"))}
                           </button>
@@ -152,10 +220,10 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
                             class="lab-button lab-button--ghost lab-button--tight"
                             type="button"
                             data-action="subtitle-source-toggle-selection"
-                            data-value="${escapeHtml(entry.id || "")}"
+                            data-value="${escapeHtml(entryId)}"
                           >
                             ${escapeHtml(
-                              selectedIds.includes(entry.id)
+                              selectedIds.includes(entryId)
                                 ? subtitleText(
                                     ["source", "entries", "actions", "removeFromBatch"],
                                     "Batchten cikar",
@@ -211,7 +279,11 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
               "Toplam aday",
               "Total candidates"
             ),
-            String(discovery.totalCandidateCount || items.length),
+            String(
+              typeof discovery.totalCandidateCount === "number"
+                ? discovery.totalCandidateCount
+                : items.length
+            ),
           ],
           [
             subtitleText(["source", "discovery", "labels", "matched"], "Eslesen", "Matched"),
@@ -246,27 +318,26 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
                       <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "title"], "Baslik", "Title"))}</th>
                       <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "published"], "Yayin", "Published"))}</th>
                       <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "duration"], "Sure", "Duration"))}</th>
-                      <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "languages"], "Dil", "Languages"))}</th>
+                      <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "languages"], "Dil", "Language"))}</th>
                       <th>${escapeHtml(subtitleText(["source", "discovery", "headers", "live"], "Canli", "Live"))}</th>
                     </tr>
                   </thead>
                   <tbody>
                     ${items
-                      .map(function (entry: any) {
-                        const languageList = Array.isArray(entry.subtitleLanguages)
-                          ? entry.subtitleLanguages.slice(0, 4)
-                          : [];
+                      .map(function (entry) {
+                        const entryId = toString(entry.id, "");
+                        const languageList = toStringArray(entry.subtitleLanguages).slice(0, 4);
                         return `
-                          <tr data-selected="${selectedCandidateIds.includes(entry.id) ? "true" : "false"}">
+                          <tr data-selected="${selectedCandidateIds.includes(entryId) ? "true" : "false"}">
                             <td>
                               <button
                                 class="lab-button lab-button--ghost lab-button--tight"
                                 type="button"
                                 data-action="subtitle-source-toggle-discovery"
-                                data-value="${escapeHtml(entry.id || "")}"
+                                data-value="${escapeHtml(entryId)}"
                               >
                                 ${escapeHtml(
-                                  selectedCandidateIds.includes(entry.id)
+                                  selectedCandidateIds.includes(entryId)
                                     ? subtitleText(
                                         ["source", "discovery", "actions", "remove"],
                                         "Cikar",
@@ -281,10 +352,10 @@ export function createSubtitleAnalysisSourceWorkspacePanels(deps: any) {
                               </button>
                             </td>
                             <td>
-                              <div class="lab-discovery-table__title">${escapeHtml(entry.title || "--")}</div>
-                              <div class="lab-discovery-table__meta">${escapeHtml(entry.channelTitle || entry.videoId || "--")}</div>
+                              <div class="lab-discovery-table__title">${escapeHtml(toString(entry.title))}</div>
+                              <div class="lab-discovery-table__meta">${escapeHtml(toString(entry.channelTitle, toString(entry.videoId)))}</div>
                             </td>
-                            <td>${escapeHtml(entry.publishedAt || "--")}</td>
+                            <td>${escapeHtml(toString(entry.publishedAt))}</td>
                             <td>${escapeHtml(formatDuration(entry.durationSeconds))}</td>
                             <td>${escapeHtml(languageList.length > 0 ? languageList.join(", ") : "--")}</td>
                             <td>${escapeHtml(formatStatusLabel(entry.liveStatus || "offline"))}</td>

@@ -64,38 +64,38 @@ export function loadFateKnotsContentRegistry() {
     combatConfig,
     cardsById: combatCards.cardMap,
     classesById: new Map(
-      selections.classes.map(function (entry: any) {
-        return [entry.id, entry];
+      selections.classes.map(function (entry: Record<string, unknown>) {
+        return [String(entry["id"] || ""), entry];
       })
     ),
     avatarsById: new Map(
-      selections.avatars.map(function (entry: any) {
-        return [entry.id, entry];
+      selections.avatars.map(function (entry: Record<string, unknown>) {
+        return [String(entry["id"] || ""), entry];
       })
     ),
     backgroundsById: new Map(
-      selections.backgrounds.map(function (entry: any) {
-        return [entry.id, entry];
+      selections.backgrounds.map(function (entry: Record<string, unknown>) {
+        return [String(entry["id"] || ""), entry];
       })
     ),
     scenarioStepsById: new Map(
-      scenario.steps.map(function (entry: any) {
-        return [entry.id, entry];
+      scenario.steps.map(function (entry: Record<string, unknown>) {
+        return [String(entry["id"] || ""), entry];
       })
     ),
     mapNodesById: new Map(
-      map.nodes.map(function (entry: any) {
-        return [entry.id, entry];
+      map.nodes.map(function (entry: Record<string, unknown>) {
+        return [String(entry["id"] || ""), entry];
       })
     ),
     encountersById: new Map(
-      combatConfig.encounters.map(function (entry: any) {
-        return [entry.id, entry];
+      combatConfig.encounters.map(function (entry: Record<string, unknown>) {
+        return [String(entry["id"] || ""), entry];
       })
     ),
     enemyActionsById: new Map(
-      combatConfig.enemyActions.map(function (entry: any) {
-        return [entry.id, entry];
+      combatConfig.enemyActions.map(function (entry: Record<string, unknown>) {
+        return [String(entry["id"] || ""), entry];
       })
     ),
     assetCoverage: {

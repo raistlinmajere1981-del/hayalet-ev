@@ -1,6 +1,97 @@
 import { getProjectSubtitleSourceDir } from "../../../shared/host/project-paths.js";
 
-export function createSubtitleSourceIntakeRuntime(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryRuntimeRecord = LaboratoryRecord & {
+  subtitleSourcePresets?: unknown;
+};
+type LaboratoryProjectSubtitleSourceDirRuntime = Parameters<typeof getProjectSubtitleSourceDir>[0];
+type LaboratoryProjectSubtitleSourceDirProject = Parameters<typeof getProjectSubtitleSourceDir>[1];
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  id?: unknown;
+  slug?: unknown;
+  subtitleAnalysis?: unknown;
+};
+
+type LaboratorySubtitleWorkspaceRecord = LaboratoryRecord & {
+  drafts?: unknown;
+  lastActionAt?: unknown;
+  lastError?: unknown;
+};
+
+type LaboratorySubtitleStateRecord = LaboratoryRecord & {
+  workspace?: unknown;
+};
+
+type LaboratorySubtitleEntryRecord = LaboratoryRecord & {
+  id?: unknown;
+};
+
+type LaboratoryDirectoryEntry = {
+  isDirectory: boolean;
+  name: string;
+  path: string;
+};
+
+type LaboratoryOpenDialogResult = LaboratoryRecord & {
+  canceled?: unknown;
+  filePaths?: unknown;
+};
+
+type LaboratoryCopyFileResult = LaboratoryRecord & {
+  error?: unknown;
+  message?: unknown;
+  name?: unknown;
+  path?: unknown;
+  success?: unknown;
+};
+
+type LaboratoryElectronApi = {
+  copyFileTo: (sourcePath: string, destinationDir: string) => Promise<LaboratoryCopyFileResult>;
+  showOpenDialog: (options: LaboratoryRecord) => Promise<LaboratoryOpenDialogResult>;
+};
+
+type SubtitleSourceIntakeRuntimeDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  callRoomTools: (payload: LaboratoryRecord) => Promise<LaboratoryRecord>;
+  createSubtitleEntryRecord: (
+    filePath: string,
+    options: LaboratoryRecord
+  ) => LaboratorySubtitleEntryRecord;
+  getActiveProject: (runtime: LaboratoryRuntimeRecord) => LaboratoryProjectRecord | null;
+  getElectronApi: () => LaboratoryElectronApi | null;
+  getSubtitleMimeType: (fileName: string) => string | null;
+  isSubtitleFileName: (runtime: LaboratoryRuntimeRecord, fileName: string) => boolean;
+  listSubtitleFilesInDirectory: (
+    runtime: LaboratoryRuntimeRecord,
+    dirPath: string
+  ) => Promise<LaboratoryDirectoryEntry[]>;
+  normalizeSubtitleAnalysisState: (
+    rawValue: unknown,
+    runtime: LaboratoryRuntimeRecord
+  ) => LaboratorySubtitleStateRecord;
+  patchActiveProject: (
+    runtime: LaboratoryRuntimeRecord,
+    updater: (project: LaboratoryProjectRecord) => LaboratoryProjectRecord
+  ) => Promise<unknown>;
+  pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
+  registerJob: (runtime: LaboratoryRuntimeRecord, options: LaboratoryRecord) => unknown;
+  resetSubtitleDiscovery: (
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord
+  ) => void;
+  roomId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+  upsertSubtitleEntries: (
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    incomingEntries: LaboratorySubtitleEntryRecord[],
+    options: LaboratoryRecord
+  ) => void;
+};
+
+export function createSubtitleSourceIntakeRuntime(deps: SubtitleSourceIntakeRuntimeDeps) {
   const {
     asNonEmptyString,
     callRoomTools,
@@ -20,7 +111,38 @@ export function createSubtitleSourceIntakeRuntime(deps: any) {
     upsertSubtitleEntries,
   } = deps;
 
-  function getSubtitleUrlFileName(urlValue: any, hintValue: any) {
+  function toWorkspaceRecord(value: unknown): LaboratorySubtitleWorkspaceRecord {
+    return toRecord(value);
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "");
+  }
+
+  function getProjectId(project: LaboratoryProjectRecord): string {
+    const projectId = asNonEmptyString(project.id);
+    if (projectId === null) {
+      throw new Error("Active project id is missing.");
+    }
+    return projectId;
+  }
+
+  function asProjectSubtitleSourceDirRuntime(
+    runtime: LaboratoryRuntimeRecord
+  ): LaboratoryProjectSubtitleSourceDirRuntime {
+    return runtime as unknown as LaboratoryProjectSubtitleSourceDirRuntime;
+  }
+
+  function asProjectSubtitleSourceDirProject(
+    project: LaboratoryProjectRecord
+  ): LaboratoryProjectSubtitleSourceDirProject {
+    return project as unknown as LaboratoryProjectSubtitleSourceDirProject;
+  }
+
+  function getSubtitleUrlFileName(urlValue: string, hintValue: unknown) {
     const hinted = asNonEmptyString(hintValue);
     if (hinted !== null) {
       return getSubtitleMimeType(hinted) !== null ? hinted : `${hinted}.srt`;
@@ -43,29 +165,26 @@ export function createSubtitleSourceIntakeRuntime(deps: any) {
     return `subtitle-${Date.now()}.srt`;
   }
 
-  async function handleLocalPick(api: any, runtime: any, requestId: any) {
+  async function handleLocalPick(api: unknown, runtime: LaboratoryRuntimeRecord, requestId: string) {
     const project = getActiveProject(runtime);
     const electronApi = getElectronApi();
     if (project === null) {
       throw new Error("Active project is missing.");
     }
-    if (electronApi === null || typeof electronApi.showOpenDialog !== "function") {
+    if (electronApi === null) {
       throw new Error("File picker is unavailable.");
     }
 
+    const subtitleSourcePresets = toRecord(runtime.subtitleSourcePresets);
     const dialogResult = await electronApi.showOpenDialog({
       properties: ["openFile"],
-      filters: Array.isArray(toRecord(runtime.subtitleSourcePresets).fileDialogFilters)
-        ? runtime.subtitleSourcePresets.fileDialogFilters
+      filters: Array.isArray(subtitleSourcePresets["fileDialogFilters"])
+        ? subtitleSourcePresets["fileDialogFilters"]
         : [],
     });
 
-    if (!dialogResult || dialogResult.canceled === true || !Array.isArray(dialogResult.filePaths)) {
-      return { cancelled: true };
-    }
-
-    const selectedPath = asNonEmptyString(dialogResult.filePaths[0]);
-    if (selectedPath === null) {
+    const selectedPath = asNonEmptyString(toStringArray(dialogResult.filePaths)[0]);
+    if (dialogResult.canceled === true || selectedPath === null) {
       return { cancelled: true };
     }
 
@@ -74,18 +193,26 @@ export function createSubtitleSourceIntakeRuntime(deps: any) {
       throw new Error("Pick a supported subtitle file.");
     }
 
-    const targetDir = getProjectSubtitleSourceDir(runtime, project);
+    const targetDir = getProjectSubtitleSourceDir(
+      asProjectSubtitleSourceDirRuntime(runtime),
+      asProjectSubtitleSourceDirProject(project)
+    );
     const copyResult = await electronApi.copyFileTo(selectedPath, targetDir);
-    if (!copyResult || copyResult.success !== true) {
-      throw new Error((copyResult && (copyResult.message || copyResult.error)) || "Copy failed.");
+    const copiedPath = asNonEmptyString(copyResult.path);
+    if (copyResult.success !== true || copiedPath === null) {
+      throw new Error(
+        (typeof copyResult.message === "string" && copyResult.message) ||
+          (typeof copyResult.error === "string" && copyResult.error) ||
+          "Copy failed."
+      );
     }
 
-    const subtitleEntry = createSubtitleEntryRecord(asNonEmptyString(copyResult.path), {
+    const subtitleEntry = createSubtitleEntryRecord(copiedPath, {
       fileName: asNonEmptyString(copyResult.name) || selectedName,
       sourceType: "local-file",
       sourceUrl: selectedPath,
     });
-    await patchActiveProject(runtime, function (nextProject: any) {
+    await patchActiveProject(runtime, function (nextProject) {
       resetSubtitleDiscovery(runtime, nextProject);
       upsertSubtitleEntries(runtime, nextProject, [subtitleEntry], {
         mode: "local-file",
@@ -100,25 +227,25 @@ export function createSubtitleSourceIntakeRuntime(deps: any) {
     return subtitleEntry;
   }
 
-  async function handleFolderPick(api: any, runtime: any, requestId: any) {
+  async function handleFolderPick(
+    api: unknown,
+    runtime: LaboratoryRuntimeRecord,
+    requestId: string
+  ) {
     const project = getActiveProject(runtime);
     const electronApi = getElectronApi();
     if (project === null) {
       throw new Error("Active project is missing.");
     }
-    if (electronApi === null || typeof electronApi.showOpenDialog !== "function") {
+    if (electronApi === null) {
       throw new Error("Folder picker is unavailable.");
     }
 
     const dialogResult = await electronApi.showOpenDialog({
       properties: ["openDirectory"],
     });
-    if (!dialogResult || dialogResult.canceled === true || !Array.isArray(dialogResult.filePaths)) {
-      return { cancelled: true };
-    }
-
-    const selectedDir = asNonEmptyString(dialogResult.filePaths[0]);
-    if (selectedDir === null) {
+    const selectedDir = asNonEmptyString(toStringArray(dialogResult.filePaths)[0]);
+    if (dialogResult.canceled === true || selectedDir === null) {
       return { cancelled: true };
     }
 
@@ -127,21 +254,32 @@ export function createSubtitleSourceIntakeRuntime(deps: any) {
       throw new Error("No supported subtitle files were found in the selected folder.");
     }
 
-    const targetDir = getProjectSubtitleSourceDir(runtime, project);
-    const importedEntries: any[] = [];
+    const targetDir = getProjectSubtitleSourceDir(
+      asProjectSubtitleSourceDirRuntime(runtime),
+      asProjectSubtitleSourceDirProject(project)
+    );
+    const importedEntries: LaboratorySubtitleEntryRecord[] = [];
     const failedEntries: string[] = [];
     for (let index = 0; index < directoryEntries.length; index += 1) {
-      const entry = directoryEntries[index];
+      const entry = directoryEntries.at(index);
+      if (!entry) {
+        continue;
+      }
       // eslint-disable-next-line no-await-in-loop -- NOTE: keep folder imports ordered for stable failure reporting.
       const copyResult = await electronApi.copyFileTo(entry.path, targetDir);
-      if (!copyResult || copyResult.success !== true) {
+      const copiedPath = asNonEmptyString(copyResult.path);
+      if (copyResult.success !== true || copiedPath === null) {
         failedEntries.push(
-          `${entry.name}: ${(copyResult && (copyResult.message || copyResult.error)) || "Folder copy failed."}`
+          `${entry.name}: ${
+            (typeof copyResult.message === "string" && copyResult.message) ||
+            (typeof copyResult.error === "string" && copyResult.error) ||
+            "Folder copy failed."
+          }`
         );
         continue;
       }
       importedEntries.push(
-        createSubtitleEntryRecord(asNonEmptyString(copyResult.path), {
+        createSubtitleEntryRecord(copiedPath, {
           fileName: asNonEmptyString(copyResult.name) || entry.name,
           sourceType: "local-folder",
           sourceUrl: entry.path,
@@ -155,20 +293,24 @@ export function createSubtitleSourceIntakeRuntime(deps: any) {
       );
     }
 
-    await patchActiveProject(runtime, function (nextProject: any) {
+    await patchActiveProject(runtime, function (nextProject) {
       resetSubtitleDiscovery(runtime, nextProject);
       upsertSubtitleEntries(runtime, nextProject, importedEntries, {
         mode: "local-folder",
-        activeEntryId: importedEntries[0] ? importedEntries[0].id : null,
-        selectedEntryIds: importedEntries.map(function (entry: any) {
-          return entry.id;
-        }),
+        activeEntryId: importedEntries[0]?.id || null,
+        selectedEntryIds: importedEntries
+          .map(function (entry) {
+            return asNonEmptyString(entry.id);
+          })
+          .filter((entry): entry is string => entry !== null),
         replaceExisting: false,
       });
       if (failedEntries.length > 0) {
         const subtitleState = normalizeSubtitleAnalysisState(nextProject.subtitleAnalysis, runtime);
-        subtitleState.workspace.lastError = `Skipped ${failedEntries.length} subtitle file(s) during folder import.`;
-        subtitleState.workspace.lastActionAt = new Date().toISOString();
+        const workspace = toWorkspaceRecord(subtitleState.workspace);
+        workspace.lastError = `Skipped ${failedEntries.length} subtitle file(s) during folder import.`;
+        workspace.lastActionAt = new Date().toISOString();
+        subtitleState.workspace = workspace;
         nextProject.subtitleAnalysis = subtitleState;
       }
       return nextProject;
@@ -181,33 +323,38 @@ export function createSubtitleSourceIntakeRuntime(deps: any) {
     };
   }
 
-  async function handleUrlDownload(api: any, runtime: any, requestId: any) {
+  async function handleUrlDownload(
+    api: unknown,
+    runtime: LaboratoryRuntimeRecord,
+    requestId: string
+  ) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
     }
 
+    const projectId = getProjectId(project);
     const subtitleState = normalizeSubtitleAnalysisState(project.subtitleAnalysis, runtime);
-    const drafts = toRecord(toRecord(subtitleState.workspace).drafts);
-    const urlValue = asNonEmptyString(drafts.urlInput);
+    const drafts = toRecord(toWorkspaceRecord(subtitleState.workspace).drafts);
+    const urlValue = asNonEmptyString(drafts["urlInput"]);
     if (urlValue === null) {
       throw new Error("Direct subtitle URL is empty.");
     }
 
-    const fileName = getSubtitleUrlFileName(urlValue, drafts.fileNameHint);
+    const fileName = getSubtitleUrlFileName(urlValue, drafts["fileNameHint"]);
     const jobId = `room-subtitle-url-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
       jobId: jobId,
       requestId: requestId,
       action: "subtitle-source-download-url",
-      projectId: project.id,
+      projectId: projectId,
       featureStage: "source",
     });
     pushJobState(api, {
       requestId: requestId,
       jobId: jobId,
       action: "subtitle-source-download-url",
-      projectId: project.id,
+      projectId: projectId,
       featureStage: "source",
       stage: "queued",
     });
@@ -219,20 +366,28 @@ export function createSubtitleSourceIntakeRuntime(deps: any) {
         requestId: requestId,
         jobId: jobId,
         url: urlValue,
-        destinationPath: `${getProjectSubtitleSourceDir(runtime, project)}/${fileName}`,
+        destinationPath: `${getProjectSubtitleSourceDir(
+          asProjectSubtitleSourceDirRuntime(runtime),
+          asProjectSubtitleSourceDirProject(project)
+        )}/${fileName}`,
         overwrite: false,
       });
 
-      const downloaded = toRecord(downloadResult.download);
-      const subtitleEntry = createSubtitleEntryRecord(asNonEmptyString(downloaded.path), {
-        fileName: asNonEmptyString(downloaded.fileName) || fileName,
+      const downloaded = toRecord(downloadResult["download"]);
+      const downloadedPath = asNonEmptyString(downloaded["path"]);
+      if (downloadedPath === null) {
+        throw new Error("Downloaded subtitle path is missing.");
+      }
+
+      const subtitleEntry = createSubtitleEntryRecord(downloadedPath, {
+        fileName: asNonEmptyString(downloaded["fileName"]) || fileName,
         sourceType: "url",
         sourceUrl: urlValue,
         metadata: {
-          mimeType: asNonEmptyString(downloaded.contentType) || getSubtitleMimeType(fileName),
+          mimeType: asNonEmptyString(downloaded["contentType"]) || getSubtitleMimeType(fileName),
         },
       });
-      await patchActiveProject(runtime, function (nextProject: any) {
+      await patchActiveProject(runtime, function (nextProject) {
         resetSubtitleDiscovery(runtime, nextProject);
         upsertSubtitleEntries(runtime, nextProject, [subtitleEntry], {
           mode: "url",
@@ -247,7 +402,7 @@ export function createSubtitleSourceIntakeRuntime(deps: any) {
         requestId: requestId,
         jobId: jobId,
         action: "subtitle-source-download-url",
-        projectId: project.id,
+        projectId: projectId,
         featureStage: "source",
         stage: "completed",
         percent: 100,
@@ -258,7 +413,7 @@ export function createSubtitleSourceIntakeRuntime(deps: any) {
         requestId: requestId,
         jobId: jobId,
         action: "subtitle-source-download-url",
-        projectId: project.id,
+        projectId: projectId,
         featureStage: "source",
         stage: "failed",
         message: error instanceof Error ? error.message : String(error),

@@ -111,10 +111,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       extra: Record<string, unknown>
     ) => SnapshotRecord;
     normalizeAudioAnalysisState: (rawValue: unknown, runtime: SnapshotRecord) => SnapshotRecord;
-    normalizeSubtitleAnalysisState: (
-      rawValue: unknown,
-      runtime: SnapshotRecord
-    ) => SnapshotRecord;
+    normalizeSubtitleAnalysisState: (rawValue: unknown, runtime: SnapshotRecord) => SnapshotRecord;
     roomId: string;
     syncProjectFeatureProjections: (runtime: SnapshotRecord, project: SnapshotRecord) => void;
     toFileUrl: (path: unknown) => string;
@@ -157,7 +154,8 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       sourceKind: projectSource.kind,
       sourceMode: projectSource.mode,
       status: projectSource.status,
-      hasSource: typeof projectSource.storedPath === "string" && projectSource.storedPath.trim() !== "",
+      hasSource:
+        typeof projectSource.storedPath === "string" && projectSource.storedPath.trim() !== "",
       handoffMode: asNonEmptyString(projectEdit.handoffMode) || "source",
       hasDerivedOutput:
         Array.isArray(projectEdit.outputs) &&
@@ -180,7 +178,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     };
   }
 
-  function serializeProject(project: SnapshotRecord, runtime: SnapshotRecord) {
+  function serializeProject(project: SnapshotRecord | null, runtime: SnapshotRecord) {
     if (project === null) {
       return null;
     }
@@ -219,25 +217,24 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
             };
           }),
         },
-        outputs: (Array.isArray(projectEdit.outputs)
-          ? (projectEdit.outputs as unknown[])
-          : []
-        ).map(function (entry: unknown) {
-          const entryRecord = toRecord(entry);
-          return {
-            ...(clone(entry) as Record<string, unknown>),
-            previewUrl: toFileUrl(entryRecord.path),
-            artifacts: (Array.isArray(entryRecord.artifacts)
-              ? (entryRecord.artifacts as unknown[])
-              : []
-            ).map(function (artifact: unknown) {
-              return {
-                ...(clone(artifact) as Record<string, unknown>),
-                previewUrl: toFileUrl(toRecord(artifact).path),
-              };
-            }),
-          };
-        }),
+        outputs: (Array.isArray(projectEdit.outputs) ? (projectEdit.outputs as unknown[]) : []).map(
+          function (entry: unknown) {
+            const entryRecord = toRecord(entry);
+            return {
+              ...(clone(entry) as Record<string, unknown>),
+              previewUrl: toFileUrl(entryRecord.path),
+              artifacts: (Array.isArray(entryRecord.artifacts)
+                ? (entryRecord.artifacts as unknown[])
+                : []
+              ).map(function (artifact: unknown) {
+                return {
+                  ...(clone(artifact) as Record<string, unknown>),
+                  previewUrl: toFileUrl(toRecord(artifact).path),
+                };
+              }),
+            };
+          }
+        ),
       },
       profile: {
         ...(clone(project.profile) as Record<string, unknown>),
@@ -413,12 +410,12 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
 
   function buildToolRegistry(runtime: SnapshotRecord) {
     const runtimeRecord = getRuntimeRecord(runtime);
-    return (getRuntimeToolIds(runtimeRecord) as string[]).map(function (toolId: string) {
+    return getRuntimeToolIds(runtimeRecord).map(function (toolId: string) {
       const toolManifest = getToolManifest(runtimeRecord, toolId);
       const systemCommand = toRecord(toolManifest.systemCommand);
       const stageSupport: Record<string, string> = {};
 
-      (mediaStages as string[]).forEach(function (stageId: string) {
+      mediaStages.forEach(function (stageId: string) {
         const supportLevel = getStageSupport(toolManifest, stageId);
         if (supportLevel !== "unsupported") {
           stageSupport[stageId] = supportLevel;

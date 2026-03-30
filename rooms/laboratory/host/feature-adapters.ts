@@ -1,8 +1,99 @@
 import { createLaboratoryActionCompositionRuntime } from "../shared/host/action-composition.js";
 import { createLaboratorySubtitleAnalysisHostRuntime } from "../main-functions/subtitle-analysis/host/runtime.js";
 
-export function createLaboratoryFeatureAdapters(deps: any) {
-  const laboratorySubtitleAnalysisHostRuntime = createLaboratorySubtitleAnalysisHostRuntime({
+type LaboratoryRecord = Record<string, unknown>;
+type UnknownFn = (...args: unknown[]) => unknown;
+
+type LaboratoryFeatureAdaptersDeps = {
+  applyEditRecipePatch: UnknownFn;
+  applyProfilePresetPatch: UnknownFn;
+  asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
+  audioFeatureId: string;
+  buildSubtitleEditSummary: UnknownFn;
+  callRoomTools: UnknownFn;
+  cancelEditJobsForProject: UnknownFn;
+  cancelFeatureProcess: UnknownFn;
+  cancelProfileJobsForProject: UnknownFn;
+  clampNumber: UnknownFn;
+  clampProfileTranscriptSampleSeconds: UnknownFn;
+  clearJob: UnknownFn;
+  createDefaultEditState: UnknownFn;
+  createDefaultToolEntry: UnknownFn;
+  createEmptySubtitleDiscoveryState: UnknownFn;
+  createProject: UnknownFn;
+  createRequestId: UnknownFn;
+  createSubtitleEntryRecord: UnknownFn;
+  ensureHydrated: UnknownFn;
+  ensureProjectDirectories: UnknownFn;
+  ensureProjectExists: UnknownFn;
+  exportFeatureReport: UnknownFn;
+  findEditPreset: UnknownFn;
+  findProfilePreset: UnknownFn;
+  formatIdentifierLabel: UnknownFn;
+  getActiveProject: UnknownFn;
+  getActiveSubtitleEntry: UnknownFn;
+  getDefaultMode: UnknownFn;
+  getDefaultSourceType: UnknownFn;
+  getDefaultSubtitleEditPresetId: UnknownFn;
+  getDefaultSubtitleEditRecipe: UnknownFn;
+  getElectronApi: UnknownFn;
+  getFeatureIdFromContext: UnknownFn;
+  getProfileModelDescriptorMap: UnknownFn;
+  getProjectSubtitleEditOutputDir: UnknownFn;
+  getRuntimeToolIds: UnknownFn;
+  getSubtitleEntries: UnknownFn;
+  getSubtitleMimeType: UnknownFn;
+  handleLocalPick: UnknownFn;
+  handleUrlDownload: UnknownFn;
+  handleYoutubeDownload: UnknownFn;
+  installProfileModel: UnknownFn;
+  isSubtitleFileName: UnknownFn;
+  listDirectory: UnknownFn;
+  loadContext: UnknownFn;
+  markCloseoutAsStale: UnknownFn;
+  markFeatureProcessStale: UnknownFn;
+  markFeatureReportStale: UnknownFn;
+  markProfileAsStale: UnknownFn;
+  mergeObjects: UnknownFn;
+  normalizeProcessModule: UnknownFn;
+  normalizeProfileArtifactPreferences: UnknownFn;
+  normalizeStringArray: (value: unknown) => string[];
+  normalizeSubtitleAnalysisState: UnknownFn;
+  normalizeSubtitleDiscoveryItem: UnknownFn;
+  normalizeSubtitleOutputRecord: UnknownFn;
+  parseSubtitleCues: UnknownFn;
+  patchActiveProject: UnknownFn;
+  patchActiveProjectDrafts: UnknownFn;
+  persistProfileModelState: UnknownFn;
+  persistToolState: UnknownFn;
+  pushActionResult: UnknownFn;
+  pushJobState: UnknownFn;
+  pushMediaState: UnknownFn;
+  readTextFile: UnknownFn;
+  refreshActiveProjectMetadata: UnknownFn;
+  refreshProfileModelState: UnknownFn;
+  refreshToolStatus: UnknownFn;
+  registerJob: UnknownFn;
+  removeProfileModel: UnknownFn;
+  resetEditForCurrentSource: UnknownFn;
+  resetProfileForCurrentSource: UnknownFn;
+  resetSubtitleDiscovery: UnknownFn;
+  resolveSubtitleOutputFormat: UnknownFn;
+  roomId: string;
+  runEditPipeline: UnknownFn;
+  runFeatureProcess: UnknownFn;
+  runProfilePreflight: UnknownFn;
+  sanitizeFileSegment: UnknownFn;
+  subtitleFeatureId: string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+  transformSubtitleDocument: UnknownFn;
+  upsertSubtitleEntries: UnknownFn;
+  writeTextFile: UnknownFn;
+};
+
+export function createLaboratoryFeatureAdapters(deps: LaboratoryFeatureAdaptersDeps) {
+  const laboratorySubtitleAnalysisHostRuntimeDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: deps.asNumber,
     buildSubtitleEditSummary: deps.buildSubtitleEditSummary,
@@ -44,10 +135,13 @@ export function createLaboratoryFeatureAdapters(deps: any) {
     transformSubtitleDocument: deps.transformSubtitleDocument,
     upsertSubtitleEntries: deps.upsertSubtitleEntries,
     writeTextFile: deps.writeTextFile,
-  });
+  };
+  const laboratorySubtitleAnalysisHostRuntime = createLaboratorySubtitleAnalysisHostRuntime(
+    laboratorySubtitleAnalysisHostRuntimeDeps as unknown as Parameters<typeof createLaboratorySubtitleAnalysisHostRuntime>[0]
+  );
   const { buildSubtitleAnalysisStats, buildSubtitleProcessModules, subtitleActionRuntime } =
     laboratorySubtitleAnalysisHostRuntime;
-  const laboratoryActionCompositionRuntime = createLaboratoryActionCompositionRuntime({
+  const laboratoryActionCompositionRuntimeDeps = {
     applyEditRecipePatch: deps.applyEditRecipePatch,
     applyProfilePresetPatch: deps.applyProfilePresetPatch,
     asNonEmptyString: deps.asNonEmptyString,
@@ -104,12 +198,23 @@ export function createLaboratoryFeatureAdapters(deps: any) {
     getSubtitleActionRuntime: function () {
       return subtitleActionRuntime;
     },
-  });
+  };
+  const laboratoryActionCompositionRuntime = createLaboratoryActionCompositionRuntime(
+    laboratoryActionCompositionRuntimeDeps as unknown as Parameters<typeof createLaboratoryActionCompositionRuntime>[0]
+  );
+  const laboratoryActionCompositionRuntimeRecord = laboratoryActionCompositionRuntime as
+    LaboratoryRecord & {
+      handleMediaAction: UnknownFn;
+    };
+
+  function handleMediaAction(...args: unknown[]) {
+    return laboratoryActionCompositionRuntimeRecord.handleMediaAction(...args);
+  }
 
   return {
     buildSubtitleAnalysisStats,
     buildSubtitleProcessModules,
-    handleMediaAction: laboratoryActionCompositionRuntime.handleMediaAction,
+    handleMediaAction,
     laboratorySubtitleAnalysisHostRuntime,
   };
 }

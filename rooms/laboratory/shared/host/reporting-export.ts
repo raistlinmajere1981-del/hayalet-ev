@@ -127,13 +127,12 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
         status: "ready",
       });
 
-      await patchActiveProject(runtime, function (nextProject: any) {
+      await patchActiveProject(runtime, function (nextProject) {
         const nextReportRecord = composeFeatureReport(runtime, nextProject, featureId);
         const currentReportRecord = getFeatureReportRecord(nextProject, featureId);
-        const currentExports =
-          currentReportRecord && Array.isArray(currentReportRecord.exports)
-            ? currentReportRecord.exports
-            : [];
+        const currentExports = Array.isArray(currentReportRecord.exports)
+          ? currentReportRecord.exports
+          : [];
         nextReportRecord.exports = [exportEntry].concat(currentExports.slice(0, 7));
         setFeatureReportRecord(nextProject, featureId, nextReportRecord);
         return nextProject;
@@ -148,7 +147,7 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
         percent: 100,
       });
     } catch (error) {
-      await patchActiveProject(runtime, function (nextProject: any) {
+      await patchActiveProject(runtime, function (nextProject) {
         setFeatureReportRecord(nextProject, featureId, {
           ...getFeatureReportRecord(nextProject, featureId),
           status: "error",

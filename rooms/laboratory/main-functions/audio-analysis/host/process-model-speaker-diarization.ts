@@ -4,7 +4,100 @@ import {
   getAudioAnalysisProcessRootDir,
 } from "../../../shared/host/project-paths.js";
 
-export function createAudioAnalysisSpeakerDiarizationModelRunner(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryRuntimeRecord = LaboratoryRecord & {
+  packageToolsDir?: unknown;
+  paths?: unknown;
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  slug?: unknown;
+};
+
+type LaboratoryProcessTargetRecord = LaboratoryRecord & {
+  path?: unknown;
+};
+
+type LaboratoryProcessArtifactRecord = LaboratoryRecord & {
+  id?: unknown;
+};
+
+type LaboratoryProcessFindingRecord = LaboratoryRecord;
+type AudioAnalysisDiarizationRuntime = Parameters<typeof getAudioAnalysisDiarizationDir>[0];
+type AudioAnalysisProcessRootRuntime = Parameters<typeof getAudioAnalysisProcessRootDir>[0];
+type AudioAnalysisProcessRootProject = Parameters<typeof getAudioAnalysisProcessRootDir>[1];
+
+type LaboratoryProfileToolRequest = {
+  requestId: string;
+  jobId: string;
+  toolId: string;
+  cwd: string;
+  args: string[];
+  timeoutMs: number;
+};
+
+type LaboratorySpeakerDiarizationPayload = LaboratoryRecord & {
+  durationSeconds?: unknown;
+  effectiveNumSpeakers?: unknown;
+  fallbackApplied?: unknown;
+  purityCluster?: unknown;
+  puritySpeaker?: unknown;
+  segments?: unknown;
+  speakerCount?: unknown;
+  speakerCountMode?: unknown;
+};
+
+type LaboratoryAudioAnalysisModelResult = {
+  findings: LaboratoryProcessFindingRecord[];
+  artifacts: LaboratoryProcessArtifactRecord[];
+  warnings: string[];
+  status: string;
+  summary: string;
+};
+
+type AudioAnalysisSpeakerDiarizationModelRunnerDeps = {
+  asNonEmptyString: (value: unknown) => string | null;
+  asNumber: (value: unknown) => number | null;
+  createProcessArtifact: (
+    moduleId: string,
+    artifactKind: string,
+    filePath: string,
+    label: string,
+    metadata: LaboratoryRecord
+  ) => LaboratoryProcessArtifactRecord;
+  createProcessFinding: (
+    moduleId: string,
+    findingKind: string,
+    confidence: string,
+    level: string,
+    title: string,
+    detail: string,
+    evidenceCount: number,
+    artifactIds: string[]
+  ) => LaboratoryProcessFindingRecord;
+  ensureProcessRuntimeDirectories: (
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    moduleOutputDir: string
+  ) => Promise<unknown>;
+  readJsonFile: (path: string) => Promise<unknown>;
+  runProfileTool: (
+    runtime: LaboratoryRuntimeRecord,
+    request: LaboratoryProfileToolRequest
+  ) => Promise<unknown>;
+  sanitizeFileSegment: (value: string, fallback: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+function isNonNullString(value: string | null): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+export function createAudioAnalysisSpeakerDiarizationModelRunner(
+  deps: AudioAnalysisSpeakerDiarizationModelRunnerDeps
+) {
   const {
     asNonEmptyString,
     asNumber,
@@ -17,19 +110,58 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps: any) {
     toRecord,
   } = deps;
 
+  function toTargetRecord(value: unknown): LaboratoryProcessTargetRecord {
+    return toRecord(value);
+  }
+
+  function toSummaryPayload(value: unknown): LaboratorySpeakerDiarizationPayload {
+    return toRecord(value);
+  }
+
+  function getArtifactIds(artifacts: LaboratoryProcessArtifactRecord[]): string[] {
+    return artifacts
+      .map(function (artifact) {
+        return asNonEmptyString(artifact.id);
+      })
+      .filter(isNonNullString);
+  }
+
+  function getProcessRootDir(
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord
+  ): string {
+    return getAudioAnalysisProcessRootDir(
+      runtime as unknown as AudioAnalysisProcessRootRuntime,
+      project as unknown as AudioAnalysisProcessRootProject
+    );
+  }
+
   return async function runSpeakerDiarizationAudioAnalyzer(
-    runtime: any,
-    project: any,
-    requestId: any,
-    jobId: any,
-    target: any,
-    artifactBase: any,
-    moduleOutputDir: any,
-    moduleId: any
-  ) {
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    requestId: string,
+    jobId: string,
+    target: LaboratoryProcessTargetRecord,
+    artifactBase: string,
+    moduleOutputDir: string,
+    moduleId: string
+  ): Promise<LaboratoryAudioAnalysisModelResult> {
     await ensureProcessRuntimeDirectories(runtime, project, requestId, moduleOutputDir);
 
-    const diarizationScriptPath = getAudioAnalysisDiarizationScriptPath(runtime);
+    const targetPath = asNonEmptyString(toTargetRecord(target).path);
+    if (targetPath === null) {
+      return {
+        findings: [],
+        artifacts: [],
+        warnings: ["Speaker diarization requires an audio target path before processing can start."],
+        status: "blocked",
+        summary: "Speaker diarization is waiting for a prepared audio target.",
+      };
+    }
+
+    const diarizationScriptPath = getAudioAnalysisDiarizationScriptPath(
+      runtime as unknown as AudioAnalysisDiarizationRuntime
+    );
     if (diarizationScriptPath === null) {
       return {
         findings: [],
@@ -48,8 +180,8 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps: any) {
       requestId: requestId,
       jobId: jobId,
       toolId: "ffmpeg",
-      cwd: getAudioAnalysisProcessRootDir(runtime, project),
-      args: ["-y", "-i", target.path, "-vn", "-ac", "1", "-ar", "16000", preparedInputPath],
+      cwd: getProcessRootDir(runtime, project),
+      args: ["-y", "-i", targetPath, "-vn", "-ac", "1", "-ar", "16000", preparedInputPath],
       timeoutMs: 4 * 60 * 1000,
     });
 
@@ -58,12 +190,13 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps: any) {
       jobId: jobId,
       toolId: "pyaudioanalysis",
       cwd:
-        getAudioAnalysisDiarizationDir(runtime) || getAudioAnalysisProcessRootDir(runtime, project),
+        getAudioAnalysisDiarizationDir(runtime as unknown as AudioAnalysisDiarizationRuntime) ||
+        getProcessRootDir(runtime, project),
       args: [diarizationScriptPath, "--input", preparedInputPath, "--output", summaryPath],
       timeoutMs: 12 * 60 * 1000,
     });
 
-    const summaryPayload = toRecord(await readJsonFile(summaryPath));
+    const summaryPayload = toSummaryPayload(await readJsonFile(summaryPath));
     const segments = Array.isArray(summaryPayload.segments)
       ? summaryPayload.segments.map(toRecord)
       : [];
@@ -90,10 +223,8 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps: any) {
         segments: segments,
       }
     );
-    const artifacts = [summaryArtifact].filter(Boolean);
-    const artifactIds = artifacts.map(function (artifact: any) {
-      return artifact.id;
-    });
+    const artifacts = [summaryArtifact];
+    const artifactIds = getArtifactIds(artifacts);
     const detailParts = [
       typeof diarizationSummary.speakerCount === "number"
         ? `${diarizationSummary.speakerCount} speakers`
@@ -109,6 +240,7 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps: any) {
     const reviewWarning =
       "pyAudioAnalysis diarization is a fully local heuristic pipeline; speaker boundaries should be reviewed manually.";
     const warningText = [fallbackWarning, reviewWarning].filter(Boolean).join(" ");
+    const warnings = [fallbackWarning, reviewWarning].filter(isNonNullString);
 
     return {
       findings: [
@@ -126,7 +258,7 @@ export function createAudioAnalysisSpeakerDiarizationModelRunner(deps: any) {
         ),
       ],
       artifacts: artifacts,
-      warnings: [fallbackWarning, reviewWarning].filter(Boolean),
+      warnings: warnings,
       status: "ready",
       summary:
         "Speaker diarization generated a local speaker timeline for the active audio target.",

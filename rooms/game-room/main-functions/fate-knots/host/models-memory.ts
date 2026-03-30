@@ -177,7 +177,7 @@ export function normalizePromptDispatchState(candidate: unknown) {
       rawValue && typeof rawValue === "object" && Array.isArray(rawValue) === false
         ? (rawValue as FateKnotsMemoryRecord)
         : {};
-    Object.keys(value).forEach(function (seatId: any) {
+    Object.keys(value).forEach(function (seatId: string) {
       const normalizedSeatId = normalizeText(seatId);
       const promptKey = normalizeText(value[seatId]);
       if (normalizedSeatId !== "" && promptKey !== "") {

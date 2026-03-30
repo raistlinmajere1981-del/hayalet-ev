@@ -1,5 +1,75 @@
-export function createLaboratorySnapshotAccessRuntime(deps: any) {
-  const snapshotSelectors = deps.snapshotSelectors;
+type LaboratorySnapshotSelectorsApi = {
+  getActiveEditOutput: () => unknown;
+  getActiveProject: () => unknown;
+  getActiveSubtitleEntry: () => unknown;
+  getAudioAnalysisCapabilities: () => unknown;
+  getAudioAnalysisCatalog: () => unknown;
+  getAudioAnalysisCatalogState: () => unknown;
+  getAudioAnalysisModules: () => unknown[];
+  getAudioAnalysisOrderedResultEntries: () => unknown[];
+  getAudioAnalysisPresets: () => unknown;
+  getAudioAnalysisProviderEntries: () => unknown;
+  getAudioAnalysisProviderState: () => unknown;
+  getAudioAnalysisProviders: () => unknown;
+  getAudioAnalysisResultMap: () => unknown;
+  getAudioAnalysisSourceState: () => unknown;
+  getEditCapabilities: () => unknown;
+  getEditOutputs: () => unknown[];
+  getEditPresets: () => unknown;
+  getEditPreview: () => unknown;
+  getJobs: () => unknown[];
+  getProfileCapabilities: () => unknown;
+  getProfileModelState: () => unknown;
+  getProfileModelsCatalog: () => unknown;
+  getProfilePresets: () => unknown;
+  getProjectAudioAnalysis: () => unknown;
+  getProjectEdit: () => unknown;
+  getProjectProcess: () => unknown;
+  getProjectProfile: () => unknown;
+  getProjectReport: () => unknown;
+  getProjectSource: () => unknown;
+  getProjectSubtitleAnalysis: () => unknown;
+  getProjectSummaries: () => unknown[];
+  getSourceMetadata: () => unknown;
+  getSourcePresets: () => unknown;
+  getSourceSnapshot: () => unknown;
+  getStageToolIds: (stageId: string) => unknown;
+  getSubtitleAnalysisCapabilities: () => unknown;
+  getSubtitleAnalysisCatalog: () => unknown;
+  getSubtitleAnalysisProviders: () => unknown;
+  getSubtitleDiscoveryItems: () => unknown;
+  getSubtitleDiscoveryState: () => unknown;
+  getSubtitleEditPreview: () => unknown;
+  getSubtitleEditPresets: () => unknown;
+  getSubtitleEditState: () => unknown;
+  getSubtitleEntries: () => unknown;
+  getSubtitleOutputs: () => unknown;
+  getSubtitleProcessModuleLabel: (entry: unknown) => unknown;
+  getSubtitleProcessModuleSummary: (entry: unknown) => unknown;
+  getSubtitleProcessStatusLabel: (status?: unknown) => unknown;
+  getSubtitleProviderLabel: (entry: unknown) => unknown;
+  getSubtitleProviderModuleLabels: (entry: unknown) => unknown;
+  getSubtitleProviderStatusLabel: (status?: unknown) => unknown;
+  getSubtitleProviderSummary: (entry: unknown) => unknown;
+  getSubtitleSelectedCandidateIds: () => unknown;
+  getSubtitleSelectedEntryIds: () => unknown;
+  getSubtitleSourcePresets: () => unknown;
+  getSubtitleWorkspace: () => unknown;
+  getSubtitleYoutubeForm: () => unknown;
+  getToolEntry: (toolId: string) => unknown;
+  getToolRegistry: () => unknown[];
+  getWorkspaceCapabilities: (kind: string) => unknown;
+  getYtDlpForm: () => unknown;
+};
+
+type LaboratorySnapshotAccessRuntimeDeps = {
+  snapshotSelectors: LaboratorySnapshotSelectorsApi;
+};
+
+export function createLaboratorySnapshotAccessRuntime(
+  deps: LaboratorySnapshotAccessRuntimeDeps
+) {
+  const { snapshotSelectors } = deps;
 
   function getSourceSnapshot() {
     return snapshotSelectors.getSourceSnapshot();
@@ -69,24 +139,24 @@ export function createLaboratorySnapshotAccessRuntime(deps: any) {
     return snapshotSelectors.getSubtitleAnalysisProviders();
   }
 
-  function getSubtitleProcessStatusLabel() {
-    return snapshotSelectors.getSubtitleProcessStatusLabel();
+  function getSubtitleProcessStatusLabel(status?: unknown) {
+    return snapshotSelectors.getSubtitleProcessStatusLabel(status);
   }
 
-  function getSubtitleProviderStatusLabel() {
-    return snapshotSelectors.getSubtitleProviderStatusLabel();
+  function getSubtitleProviderStatusLabel(status?: unknown) {
+    return snapshotSelectors.getSubtitleProviderStatusLabel(status);
   }
 
-  function getSubtitleProcessModuleSummary() {
-    return snapshotSelectors.getSubtitleProcessModuleSummary();
+  function getSubtitleProcessModuleSummary(entry: unknown) {
+    return snapshotSelectors.getSubtitleProcessModuleSummary(entry);
   }
 
-  function getSubtitleProviderSummary() {
-    return snapshotSelectors.getSubtitleProviderSummary();
+  function getSubtitleProviderSummary(entry: unknown) {
+    return snapshotSelectors.getSubtitleProviderSummary(entry);
   }
 
-  function getSubtitleProviderModuleLabels() {
-    return snapshotSelectors.getSubtitleProviderModuleLabels();
+  function getSubtitleProviderModuleLabels(entry: unknown) {
+    return snapshotSelectors.getSubtitleProviderModuleLabels(entry);
   }
 
   function getAudioAnalysisCatalog() {
@@ -193,16 +263,16 @@ export function createLaboratorySnapshotAccessRuntime(deps: any) {
     return snapshotSelectors.getActiveEditOutput();
   }
 
-  function getToolEntry() {
-    return snapshotSelectors.getToolEntry();
+  function getToolEntry(toolId: string) {
+    return snapshotSelectors.getToolEntry(toolId);
   }
 
-  function getStageToolIds() {
-    return snapshotSelectors.getStageToolIds();
+  function getStageToolIds(stageId: string) {
+    return snapshotSelectors.getStageToolIds(stageId);
   }
 
-  function getWorkspaceCapabilities() {
-    return snapshotSelectors.getWorkspaceCapabilities();
+  function getWorkspaceCapabilities(kind: string) {
+    return snapshotSelectors.getWorkspaceCapabilities(kind);
   }
 
   function getJobs() {
@@ -233,16 +303,17 @@ export function createLaboratorySnapshotAccessRuntime(deps: any) {
     return snapshotSelectors.getSubtitleEntries();
   }
 
-  function getSubtitleProcessModuleLabel(entry: any) {
+  function getSubtitleProcessModuleLabel(entry: unknown) {
     return snapshotSelectors.getSubtitleProcessModuleLabel(entry);
   }
 
-  function getSubtitleProviderLabel(entry: any) {
+  function getSubtitleProviderLabel(entry: unknown) {
     return snapshotSelectors.getSubtitleProviderLabel(entry);
   }
 
   return {
     getActiveEditOutput,
+    getActiveProject,
     getActiveSubtitleEntry,
     getAudioAnalysisCapabilities,
     getAudioAnalysisCatalog,
@@ -258,7 +329,6 @@ export function createLaboratorySnapshotAccessRuntime(deps: any) {
     getEditOutputs,
     getEditPresets,
     getEditPreview,
-    getActiveProject,
     getJobs,
     getProfileCapabilities,
     getProfileModelState,

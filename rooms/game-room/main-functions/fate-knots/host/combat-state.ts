@@ -136,9 +136,17 @@ type FateKnotsClassStatsRecord = Record<string, unknown> & {
   energy?: unknown;
 };
 
+type FateKnotsClassDefinition = {
+  stats: FateKnotsClassStatsRecord;
+  startingDeck: string[];
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
 function cloneStatus(status: FateKnotsStatusRecord | null = null) {
-  const source =
-    status && typeof status === "object" && Array.isArray(status) === false ? status : {};
+  const source = isRecord(status) ? status : {};
   return {
     guard: Number.isFinite(source.guard) ? Number(source.guard) : 0,
     focus: Number.isFinite(source.focus) ? Number(source.focus) : 0,
@@ -149,11 +157,8 @@ function cloneStatus(status: FateKnotsStatusRecord | null = null) {
   };
 }
 
-function cloneCombatant(candidate: FateKnotsCombatantRecord): FateKnotsCombatant {
-  const source =
-    candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-      ? candidate
-      : {};
+function cloneCombatant(candidate: unknown): FateKnotsCombatant {
+  const source: FateKnotsCombatantRecord = isRecord(candidate) ? candidate : {};
   return {
     seatId: typeof source.seatId === "string" ? source.seatId : "unknown",
     nickname: typeof source.nickname === "string" ? source.nickname : "Unknown",
@@ -172,11 +177,8 @@ function cloneCombatant(candidate: FateKnotsCombatantRecord): FateKnotsCombatant
   };
 }
 
-function cloneEnemy(candidate: FateKnotsEnemyRecord): FateKnotsEnemy {
-  const source =
-    candidate && typeof candidate === "object" && Array.isArray(candidate) === false
-      ? candidate
-      : {};
+function cloneEnemy(candidate: unknown): FateKnotsEnemy {
+  const source: FateKnotsEnemyRecord = isRecord(candidate) ? candidate : {};
   return {
     id: typeof source.id === "string" ? source.id : "enemy",
     label: typeof source.label === "string" ? source.label : "Enemy",
@@ -258,8 +260,9 @@ export function createFateKnotsCombatState(options: {
   startingEnergy?: number;
 }): FateKnotsCombatState {
   const participants = Array.isArray(options.participants) ? options.participants : [];
-  const encounter = (options.encounter || {}) as FateKnotsEncounterRecord;
-  const classesById = options.classesById || new Map();
+  const encounter: FateKnotsEncounterRecord = isRecord(options.encounter) ? options.encounter : {};
+  const classesById =
+    options.classesById || new Map<string, FateKnotsClassDefinition>();
   const startingEnergy = Number.isFinite(options.startingEnergy)
     ? Number(options.startingEnergy)
     : 3;
@@ -269,18 +272,18 @@ export function createFateKnotsCombatState(options: {
     nickname: string;
     selection: { classId: string; backgroundId: string };
   }) {
-    const classDef = classesById.get(participant.selection.classId) || {
+    const classDef: FateKnotsClassDefinition = classesById.get(participant.selection.classId) || {
       stats: {},
       startingDeck: [],
     };
     const boostedStats = applyBackgroundBonuses(
       {
-        maxHp: Number.isFinite(classDef.stats?.maxHp) ? Number(classDef.stats.maxHp) : 16,
-        attack: Number.isFinite(classDef.stats?.attack) ? Number(classDef.stats.attack) : 3,
-        defense: Number.isFinite(classDef.stats?.defense) ? Number(classDef.stats.defense) : 1,
-        speed: Number.isFinite(classDef.stats?.speed) ? Number(classDef.stats.speed) : 2,
-        luck: Number.isFinite(classDef.stats?.luck) ? Number(classDef.stats.luck) : 1,
-        energy: Number.isFinite(classDef.stats?.energy)
+        maxHp: Number.isFinite(classDef.stats.maxHp) ? Number(classDef.stats.maxHp) : 16,
+        attack: Number.isFinite(classDef.stats.attack) ? Number(classDef.stats.attack) : 3,
+        defense: Number.isFinite(classDef.stats.defense) ? Number(classDef.stats.defense) : 1,
+        speed: Number.isFinite(classDef.stats.speed) ? Number(classDef.stats.speed) : 2,
+        luck: Number.isFinite(classDef.stats.luck) ? Number(classDef.stats.luck) : 1,
+        energy: Number.isFinite(classDef.stats.energy)
           ? Number(classDef.stats.energy)
           : startingEnergy,
       },
@@ -343,7 +346,7 @@ export function createFateKnotsCombatState(options: {
 export function cloneFateKnotsCombatState(
   candidate: Record<string, unknown>
 ): FateKnotsCombatState | null {
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (typeof candidate !== "object" || Array.isArray(candidate)) {
     return null;
   }
   const source = candidate as FateKnotsCombatStateRecord;
@@ -353,9 +356,9 @@ export function cloneFateKnotsCombatState(
     turnOrder: Array.isArray(source.turnOrder)
       ? source.turnOrder.map(function (turn: { seatId?: string; side?: string; speed?: number }) {
           return {
-            seatId: typeof turn?.seatId === "string" ? turn.seatId : "unknown",
-            side: turn?.side === "enemy" ? "enemy" : "party",
-            speed: Number.isFinite(turn?.speed) ? Number(turn.speed) : 0,
+            seatId: typeof turn.seatId === "string" ? turn.seatId : "unknown",
+            side: turn.side === "enemy" ? "enemy" : "party",
+            speed: Number.isFinite(turn.speed) ? Number(turn.speed) : 0,
           };
         })
       : [],

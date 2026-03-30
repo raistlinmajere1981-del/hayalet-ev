@@ -1,4 +1,48 @@
-export function createMediaAnalysisEditOutputPanels(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryToolEntryRecord = LaboratoryRecord & {
+  installed?: unknown;
+};
+
+type LaboratorySourceRecord = LaboratoryRecord & {
+  storedPath?: string | null;
+};
+
+type LaboratoryEditRecord = LaboratoryRecord & {
+  handoffMode?: string | null;
+  lastError?: string | null;
+};
+
+type LaboratoryJobRecord = LaboratoryRecord & {
+  action?: string | null;
+};
+
+type LaboratoryRelevantJobs = {
+  project: LaboratoryJobRecord[];
+};
+
+type LaboratoryEditOutputRecord = LaboratoryRecord & {
+  fileName?: string | null;
+  id?: string | null;
+  label?: string | null;
+};
+
+type MediaAnalysisEditOutputPanelsDeps = {
+  escapeHtml: (value: string) => string;
+  formatEditWindowLabel: () => string;
+  getActiveEditOutput: () => LaboratoryEditOutputRecord | null;
+  getCurrentFocusLabel: () => string;
+  getCurrentResizeLabel: () => string;
+  getEditOutputs: () => LaboratoryEditOutputRecord[];
+  getProjectEdit: () => LaboratoryEditRecord;
+  getProjectSource: () => LaboratorySourceRecord;
+  getRelevantJobs: () => LaboratoryRelevantJobs;
+  getToolEntry: (toolId: string) => LaboratoryToolEntryRecord;
+  renderSummaryRows: (rows: Array<[string, string]>) => string;
+  text: (path: string[]) => string;
+};
+
+export function createMediaAnalysisEditOutputPanels(deps: MediaAnalysisEditOutputPanelsDeps) {
   const escapeHtml = deps.escapeHtml;
   const text = deps.text;
   const getProjectSource = deps.getProjectSource;
@@ -18,11 +62,11 @@ export function createMediaAnalysisEditOutputPanels(deps: any) {
     const activeOutput = getActiveEditOutput();
     const ffmpegInstalled = getToolEntry("ffmpeg").installed === true;
     const previewJob =
-      getRelevantJobs().project.find(function (entry: any) {
+      getRelevantJobs().project.find(function (entry) {
         return entry.action === "edit-preview";
       }) || null;
     const applyJob =
-      getRelevantJobs().project.find(function (entry: any) {
+      getRelevantJobs().project.find(function (entry) {
         return entry.action === "edit-apply";
       }) || null;
 
@@ -80,7 +124,7 @@ export function createMediaAnalysisEditOutputPanels(deps: any) {
         </div>
         <div class="lab-segmented">
           ${["source", "derived"]
-            .map(function (modeId: any) {
+            .map(function (modeId) {
               const disabled = modeId === "derived" && activeOutput === null;
               return `
                 <button
@@ -117,18 +161,21 @@ export function createMediaAnalysisEditOutputPanels(deps: any) {
           ${
             outputs.length > 0
               ? outputs
-                  .map(function (entry: any) {
+                  .map(function (entry) {
+                    const entryId = entry.id || "";
+                    const entryLabel = entry.label || entry.fileName || entryId || "--";
+                    const entryFileName = entry.fileName || "--";
                     return `
-                      <article class="lab-output-card" data-selected="${activeOutput && activeOutput.id === entry.id ? "true" : "false"}">
+                      <article class="lab-output-card" data-selected="${activeOutput && activeOutput.id === entryId ? "true" : "false"}">
                         <div>
-                          <strong>${escapeHtml(entry.label || entry.fileName || entry.id)}</strong>
-                          <span>${escapeHtml(entry.fileName || "--")}</span>
+                          <strong>${escapeHtml(entryLabel)}</strong>
+                          <span>${escapeHtml(entryFileName)}</span>
                         </div>
                         <button
                           class="lab-button lab-button--ghost lab-button--tight"
                           type="button"
                           data-action="edit-select-output"
-                          data-value="${escapeHtml(entry.id)}"
+                          data-value="${escapeHtml(entryId)}"
                         >
                           ${escapeHtml(text(["mediaAnalysis", "edit", "actions", "selectOutput"]))}
                         </button>
@@ -157,7 +204,7 @@ export function createMediaAnalysisEditOutputPanels(deps: any) {
           [text(["mediaAnalysis", "edit", "selectedResize"]), getCurrentResizeLabel()],
           [
             text(["mediaAnalysis", "edit", "selectedOutput"]),
-            activeOutput ? activeOutput.label || activeOutput.fileName || activeOutput.id : "--",
+            activeOutput ? activeOutput.label || activeOutput.fileName || activeOutput.id || "--" : "--",
           ],
           [
             text(["mediaAnalysis", "edit", "handoffLabel"]),

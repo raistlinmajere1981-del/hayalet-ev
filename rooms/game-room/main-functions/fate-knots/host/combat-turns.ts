@@ -107,7 +107,7 @@ export function getAvailableFateKnotsCombatActions(
     .map(function (cardId: string) {
       return cardsById.get(cardId) ?? null;
     })
-    .filter((card): card is FateKnotsCombatCard => card !== null && card !== undefined)
+    .filter((card): card is FateKnotsCombatCard => card !== null)
     .map(function (card: FateKnotsCombatCard) {
       return {
         ...card,
@@ -265,9 +265,7 @@ export function settleAutomaticFateKnotsCombatTurns(
     }
     resolveCounter(combat.enemy, target, combat);
     refreshCombatOutcome(combat);
-    if (combat.outcome === "pending") {
-      advanceCombatTurn(combat);
-    }
+    advanceCombatTurn(combat);
   }
 
   return combat;

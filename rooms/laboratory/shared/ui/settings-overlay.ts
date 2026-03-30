@@ -1,42 +1,113 @@
-import { createLaboratorySettingsProfileModelRuntime } from "./settings-profile-model.js";
-import { createLaboratorySettingsToolCardRuntime } from "./settings-tool-card.js";
+import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js"
+import { createLaboratorySettingsProfileModelRuntime } from "./settings-profile-model.js"
+import { createLaboratorySettingsToolCardRuntime } from "./settings-tool-card.js"
 
-export function createLaboratorySettingsUi(deps: any) {
-  const stageOrder = Array.isArray(deps.stageOrder) ? deps.stageOrder : [];
-  const state = deps.state;
-  const escapeHtml = deps.escapeHtml;
-  const text = deps.text;
-  const featureText = deps.featureText;
-  const getToolRegistry = deps.getToolRegistry;
-  const getStageToolIds = deps.getStageToolIds;
-  const getProfileModelEntries = deps.getProfileModelEntries;
-  const getProfileSelectedModel = deps.getProfileSelectedModel;
-  const renderAudioAnalysisProviderPanel = deps.renderAudioAnalysisProviderPanel;
-  const isAudioAnalysisFeature = deps.isAudioAnalysisFeature;
-  const laboratorySettingsToolCardRuntime = createLaboratorySettingsToolCardRuntime(deps);
-  const laboratorySettingsProfileModelRuntime = createLaboratorySettingsProfileModelRuntime(deps);
+type LaboratoryRecord = Record<string, unknown>
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"]
 
-  function renderToolCard(toolId: any, stageId: any) {
-    return laboratorySettingsToolCardRuntime.renderToolCard(toolId, stageId);
+type LaboratoryToolDescriptorRecord = LaboratoryRecord & {
+  toolId?: unknown
+}
+
+type LaboratoryProfileModelRecord = LaboratoryRecord & {
+  modelId?: unknown
+}
+
+type LaboratorySettingsUiDeps = {
+  escapeHtml: (value: string) => string
+  featureText: (path: string[]) => string
+  formatBytes: (value: unknown) => string
+  formatCleanupPolicy: (value: unknown) => string
+  formatPlatformList: (value: unknown) => string
+  getProfileModelEntries: () => LaboratoryProfileModelRecord[]
+  getProfileSelectedModel: () => LaboratoryProfileModelRecord | null
+  getStageToolIds: (stageId: string) => string[]
+  getToolEntry: (toolId: string) => LaboratoryRecord
+  getToolRegistry: () => LaboratoryToolDescriptorRecord[]
+  isAudioAnalysisFeature: () => boolean
+  renderAudioAnalysisProviderPanel: () => string
+  renderPreviewMetaRow: (label: string, value: unknown) => string
+  stageOrder: string[]
+  state: LaboratoryUiState
+  text: (path: string[]) => string
+  textFromKey: (key: string) => string
+  toRecord: (value: unknown) => LaboratoryRecord
+}
+
+export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
+  const {
+    escapeHtml,
+    featureText,
+    formatBytes,
+    formatCleanupPolicy,
+    formatPlatformList,
+    getProfileModelEntries,
+    getProfileSelectedModel,
+    getStageToolIds,
+    getToolEntry,
+    getToolRegistry,
+    isAudioAnalysisFeature,
+    renderAudioAnalysisProviderPanel,
+    renderPreviewMetaRow,
+    stageOrder,
+    state,
+    text,
+    textFromKey,
+    toRecord,
+  } = deps
+
+  const laboratorySettingsToolCardRuntime = createLaboratorySettingsToolCardRuntime({
+    escapeHtml,
+    getToolEntry,
+    getToolRegistry,
+    renderPreviewMetaRow,
+    text,
+    toRecord,
+  })
+  const laboratorySettingsProfileModelRuntime = createLaboratorySettingsProfileModelRuntime({
+    escapeHtml,
+    formatBytes,
+    formatCleanupPolicy,
+    formatPlatformList,
+    getToolEntry,
+    renderPreviewMetaRow,
+    text,
+    textFromKey,
+    toRecord,
+  })
+
+  function toString(value: unknown, fallback = ""): string {
+    return typeof value === "string" ? value : fallback
   }
 
-  function renderProfileModelCard(entry: any) {
-    return laboratorySettingsProfileModelRuntime.renderProfileModelCard(entry);
+  function getAllToolIds(): string[] {
+    return getToolRegistry()
+      .map(function (entry) {
+        const toolId = toString(entry.toolId).trim()
+        return toolId !== "" ? toolId : null
+      })
+      .filter((toolId): toolId is string => toolId !== null)
+  }
+
+  function renderToolCard(toolId: string, stageId: string) {
+    return laboratorySettingsToolCardRuntime.renderToolCard(toolId, stageId)
+  }
+
+  function renderProfileModelCard(entry: LaboratoryProfileModelRecord) {
+    return laboratorySettingsProfileModelRuntime.renderProfileModelCard(entry)
   }
 
   function renderSettingsOverlay() {
     if (state.ui.settingsOpen !== true) {
-      return "";
+      return ""
     }
 
-    const stageId = stageOrder.includes(state.activeStage) ? state.activeStage : "source";
-    const allToolIds = getToolRegistry().map(function (entry: any) {
-      return entry.toolId;
-    });
-    const currentStageToolIds = getStageToolIds(stageId);
-    const otherToolIds = allToolIds.filter(function (toolId: any) {
-      return currentStageToolIds.includes(toolId) === false;
-    });
+    const stageId = stageOrder.includes(state.activeStage) ? state.activeStage : "source"
+    const currentStageToolIds = getStageToolIds(stageId)
+    const otherToolIds = getAllToolIds().filter(function (toolId) {
+      return currentStageToolIds.includes(toolId) === false
+    })
+    const profileModelEntries = getProfileModelEntries()
 
     return `
       <div class="lab-overlay" role="dialog" aria-modal="true" aria-label="${escapeHtml(
@@ -72,8 +143,8 @@ export function createLaboratorySettingsUi(deps: any) {
               ${
                 currentStageToolIds.length > 0
                   ? currentStageToolIds
-                      .map(function (toolId: any) {
-                        return renderToolCard(toolId, stageId);
+                      .map(function (toolId) {
+                        return renderToolCard(toolId, stageId)
                       })
                       .join("")
                   : `<p class="lab-panel__hint">${escapeHtml(
@@ -94,8 +165,8 @@ export function createLaboratorySettingsUi(deps: any) {
                   </div>
                   <div class="lab-tool-grid">
                     ${otherToolIds
-                      .map(function (toolId: any) {
-                        return renderToolCard(toolId, stageId);
+                      .map(function (toolId) {
+                        return renderToolCard(toolId, stageId)
                       })
                       .join("")}
                   </div>
@@ -105,7 +176,7 @@ export function createLaboratorySettingsUi(deps: any) {
           }
           ${isAudioAnalysisFeature() ? renderAudioAnalysisProviderPanel() : ""}
           ${
-            stageId === "profile" && getProfileModelEntries().length > 0
+            stageId === "profile" && profileModelEntries.length > 0
               ? `
                 <section class="lab-panel">
                   <div class="lab-panel__header">
@@ -115,9 +186,9 @@ export function createLaboratorySettingsUi(deps: any) {
                     </div>
                   </div>
                   <div class="lab-tool-grid">
-                    ${getProfileModelEntries()
-                      .map(function (entry: any) {
-                        return renderProfileModelCard(entry);
+                    ${profileModelEntries
+                      .map(function (entry) {
+                        return renderProfileModelCard(entry)
                       })
                       .join("")}
                   </div>
@@ -127,22 +198,19 @@ export function createLaboratorySettingsUi(deps: any) {
           }
         </section>
       </div>
-    `;
+    `
   }
 
   function getSelectedProfileModelId() {
-    const selectedModel = getProfileSelectedModel();
-    return selectedModel && typeof selectedModel.modelId === "string"
-      ? selectedModel.modelId
-      : null;
+    return toString(getProfileSelectedModel()?.modelId) || null
   }
 
   return {
-    getSelectedProfileModelId: getSelectedProfileModelId,
-    renderToolCard: renderToolCard,
-    renderProfileModelCard: renderProfileModelCard,
-    renderSettingsOverlay: renderSettingsOverlay,
-  };
+    getSelectedProfileModelId,
+    renderToolCard,
+    renderProfileModelCard,
+    renderSettingsOverlay,
+  }
 }
 
-export type LaboratorySettingsUiApi = ReturnType<typeof createLaboratorySettingsUi>;
+export type LaboratorySettingsUiApi = ReturnType<typeof createLaboratorySettingsUi>

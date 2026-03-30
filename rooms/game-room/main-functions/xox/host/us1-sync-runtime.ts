@@ -1,4 +1,226 @@
-export function createGameRoomXoxUs1SyncRuntime(deps: any) {
+import type { TeamTetrisMatch } from "../../team-tetris/host/engine-match.js";
+import type { TeamTetrisHostState } from "../../team-tetris/host/state.js";
+import type { XoxGameState } from "./state-core.js";
+
+type XoxDispatchRoomCommandPayload = {
+  roomPayload?: unknown;
+  args?: string;
+  remoteUserId?: string | null;
+  localSessionId?: string | null;
+  transportMessageId?: string | null;
+};
+
+type XoxToastPayload = {
+  type: "info" | "success";
+  message: string;
+};
+
+type XoxUs1MailboxResult = {
+  success?: boolean;
+  roomInviteInbox?: unknown;
+  roomEvents?: unknown;
+  roomCommands?: unknown;
+};
+
+type XoxTeamTetrisStartConfig = {
+  seed: string;
+  hiddenPairs: boolean;
+  revealPairsOnFinish: boolean;
+};
+
+type XoxRoomCommand = {
+  roomId: string;
+  featureId: string;
+  commandName: string;
+  commandArgs: unknown;
+  rawArgs: string;
+  remoteUserId: string | null;
+  localSessionId: string | null;
+  transportMessageId: string | null;
+};
+
+type XoxRoomEvent = {
+  roomId: string;
+  featureId: string;
+  eventType: string;
+  inviteId: string | null;
+  matchId: string | null;
+  remoteUserId: string | null;
+  localSessionId: string | null;
+  conversationId: string | null;
+  senderNickname: string;
+  starter: "user" | "opponent";
+  note: unknown;
+};
+
+type XoxPendingInvite = {
+  direction: "incoming" | "outgoing";
+  matchId: string;
+  remoteUserId: string;
+  localSessionId: string;
+  conversationId: string;
+  nickname: string;
+};
+
+type XoxInviteRuntime = {
+  applyInviteAcceptedState: (
+    api: XoxUs1SyncApi,
+    inviteEntry: XoxPendingInvite,
+    starter: "ai" | "user"
+  ) => unknown;
+  readOutgoingInviteStarter: (inviteEntry: XoxPendingInvite) => "ai" | "user";
+  removeInviteFromInbox: (
+    api: XoxUs1SyncApi,
+    inviteId: string,
+    remoteUserId: string | null
+  ) => void;
+  syncFromSnapshot: (api: XoxUs1SyncApi, roomInviteInbox: unknown) => void;
+};
+
+export interface XoxUs1SyncApi {
+  getState(key: string): unknown;
+  setState(key: string, value: unknown): void;
+  deleteState?(key: string): void;
+  dispatchRoomCommand(commandName: string, payload: XoxDispatchRoomCommandPayload): unknown;
+  showToast(payload: XoxToastPayload): void;
+  isUs1Connected(): boolean;
+  syncUs1Messages(options: {
+    localSessionId: string | null;
+  }): Promise<XoxUs1MailboxResult | null | undefined>;
+  log(level: string, message: string): void;
+  getLocale?(): unknown;
+  notifyRoom?(event: string, payload: Record<string, unknown>): void;
+}
+
+export interface XoxUs1SyncRuntimeDeps {
+  DEFAULT_STARTER: string;
+  FEATURE_ID: string;
+  FATE_KNOTS_FEATURE_ID: string;
+  ROOM_ID: string;
+  TEAM_TETRIS_FEATURE_ID: string;
+  commandMessage: (locale: unknown, key: string, params?: Record<string, unknown>) => string;
+  createInitialState: (locale: unknown, target: string, starter: string) => XoxGameState;
+  createTeamTetrisMatch: (config: {
+    seed: string;
+    matchId?: string | null;
+    hiddenPairs: boolean;
+    revealPairsOnFinish: boolean;
+  }) => TeamTetrisMatch;
+  dispatchNextTeamTetrisTurn: (
+    api: XoxUs1SyncApi,
+    state: TeamTetrisHostState
+  ) => Promise<unknown>;
+  loadPendingInvite: (api: XoxUs1SyncApi) => XoxPendingInvite | null;
+  loadState: (api: XoxUs1SyncApi) => XoxGameState;
+  loadTeamTetrisState: (api: XoxUs1SyncApi) => TeamTetrisHostState;
+  parseTeamTetrisStartEventNote: (note: unknown) => unknown;
+  pushRoomState: (api: XoxUs1SyncApi, state: XoxGameState) => XoxGameState;
+  pushTeamTetrisState: (api: XoxUs1SyncApi, state: TeamTetrisHostState) => unknown;
+  readLocale: (api: XoxUs1SyncApi) => "tr" | "en";
+  refreshRoomState: (api: XoxUs1SyncApi) => unknown;
+  removePendingInvite: (api: XoxUs1SyncApi) => void;
+  resolveStateMatchId: (state: XoxGameState) => string | null;
+  resetTeamTetrisState: (api: XoxUs1SyncApi, statusKey: string) => TeamTetrisHostState;
+  saveTeamTetrisState: (api: XoxUs1SyncApi, state: TeamTetrisHostState) => TeamTetrisHostState;
+  inviteRuntime: XoxInviteRuntime;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+function readString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function readOptionalString(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
+function normalizeRoomCommand(candidate: unknown): XoxRoomCommand | null {
+  if (isRecord(candidate) === false) {
+    return null;
+  }
+
+  return {
+    roomId: readString(candidate["roomId"]),
+    featureId: readString(candidate["featureId"]),
+    commandName: readString(candidate["commandName"]),
+    commandArgs: candidate["commandArgs"],
+    rawArgs: readString(candidate["rawArgs"]),
+    remoteUserId: readOptionalString(candidate["remoteUserId"]),
+    localSessionId: readOptionalString(candidate["localSessionId"]),
+    transportMessageId: readOptionalString(candidate["transportMessageId"]),
+  };
+}
+
+function readRoomCommands(value: unknown): XoxRoomCommand[] {
+  if (Array.isArray(value) === false) {
+    return [];
+  }
+
+  return value
+    .map(normalizeRoomCommand)
+    .filter((command): command is XoxRoomCommand => command !== null && command.commandName !== "");
+}
+
+function normalizeRoomEvent(candidate: unknown): XoxRoomEvent | null {
+  if (isRecord(candidate) === false) {
+    return null;
+  }
+
+  return {
+    roomId: readString(candidate["roomId"]),
+    featureId: readString(candidate["featureId"]),
+    eventType: readString(candidate["eventType"]),
+    inviteId: readOptionalString(candidate["inviteId"]),
+    matchId: readOptionalString(candidate["matchId"]),
+    remoteUserId: readOptionalString(candidate["remoteUserId"]),
+    localSessionId: readOptionalString(candidate["localSessionId"]),
+    conversationId: readOptionalString(candidate["conversationId"]),
+    senderNickname: readString(candidate["senderNickname"]),
+    starter: candidate["starter"] === "opponent" ? "opponent" : "user",
+    note: candidate["note"],
+  };
+}
+
+function readRoomEvents(value: unknown): XoxRoomEvent[] {
+  if (Array.isArray(value) === false) {
+    return [];
+  }
+
+  return value
+    .map(normalizeRoomEvent)
+    .filter((event): event is XoxRoomEvent => event !== null && event.eventType !== "");
+}
+
+function readEventMatchId(event: XoxRoomEvent): string | null {
+  return event.matchId || event.inviteId;
+}
+
+function readTeamTetrisStartConfig(candidate: unknown): XoxTeamTetrisStartConfig | null {
+  if (isRecord(candidate) === false) {
+    return null;
+  }
+
+  return {
+    seed: readString(candidate["seed"]),
+    hiddenPairs: candidate["hiddenPairs"] !== false,
+    revealPairsOnFinish: candidate["revealPairsOnFinish"] !== false,
+  };
+}
+
+function readTimerHandle(value: unknown): ReturnType<typeof setInterval> | null {
+  if (typeof value === "number") {
+    return value as unknown as ReturnType<typeof setInterval>;
+  }
+  if (typeof value === "object" && value !== null) {
+    return value as ReturnType<typeof setInterval>;
+  }
+  return null;
+}
+
+export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
   const {
     DEFAULT_STARTER,
     FEATURE_ID,
@@ -27,13 +249,15 @@ export function createGameRoomXoxUs1SyncRuntime(deps: any) {
     syncFromSnapshot,
   } = deps.inviteRuntime;
 
-  function processRoomCommands(api: any, roomCommands: any) {
+  function processRoomCommands(api: XoxUs1SyncApi, roomCommands: XoxRoomCommand[]) {
     for (let index = 0; index < roomCommands.length; index += 1) {
-      const command = roomCommands[index];
+      const command = roomCommands.at(index);
+      if (!command) {
+        continue;
+      }
       if (
-        !command ||
         command.roomId !== ROOM_ID ||
-        (command.featureId &&
+        (command.featureId !== "" &&
           command.featureId !== FEATURE_ID &&
           command.featureId !== TEAM_TETRIS_FEATURE_ID &&
           command.featureId !== FATE_KNOTS_FEATURE_ID)
@@ -43,7 +267,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps: any) {
 
       void api.dispatchRoomCommand(command.commandName, {
         roomPayload: command.commandArgs,
-        args: command.rawArgs || "",
+        args: command.rawArgs,
         remoteUserId: command.remoteUserId,
         localSessionId: command.localSessionId,
         transportMessageId: command.transportMessageId,
@@ -51,35 +275,40 @@ export function createGameRoomXoxUs1SyncRuntime(deps: any) {
     }
   }
 
-  async function processRoomEvents(api: any, roomEvents: any) {
+  async function processRoomEvents(api: XoxUs1SyncApi, roomEvents: XoxRoomEvent[]) {
     const currentState = loadState(api);
     const pendingInvite = loadPendingInvite(api);
     const currentMatchId = deps.resolveStateMatchId(currentState);
 
     for (let index = 0; index < roomEvents.length; index += 1) {
-      const event = roomEvents[index];
-      if (!event || event.roomId !== ROOM_ID) {
+      const event = roomEvents.at(index);
+      if (!event) {
+        continue;
+      }
+      if (event.roomId !== ROOM_ID) {
         continue;
       }
 
       if (event.featureId === TEAM_TETRIS_FEATURE_ID) {
+        const eventMatchId = readEventMatchId(event);
         if (event.eventType === "start") {
-          const config = parseTeamTetrisStartEventNote(event.note);
-          if (config) {
+          const config = readTeamTetrisStartConfig(parseTeamTetrisStartEventNote(event.note));
+          if (config !== null) {
             const state = loadTeamTetrisState(api);
-            state.hiddenPairs = config.hiddenPairs !== false;
-            state.revealPairsOnFinish = config.revealPairsOnFinish !== false;
-            state.match = createTeamTetrisMatch({
+            const match = createTeamTetrisMatch({
               seed: config.seed,
-              matchId: event.matchId || event.inviteId,
+              matchId: eventMatchId,
               hiddenPairs: state.hiddenPairs,
               revealPairsOnFinish: state.revealPairsOnFinish,
             });
-            state.matchId = state.match.matchId;
+            state.hiddenPairs = config.hiddenPairs;
+            state.revealPairsOnFinish = config.revealPairsOnFinish;
+            state.match = match;
+            state.matchId = match.matchId;
             state.remoteUserId = event.remoteUserId || state.remoteUserId;
             state.localSessionId = event.localSessionId || state.localSessionId;
             state.active = true;
-            state.result = state.match.result;
+            state.result = match.result;
             saveTeamTetrisState(api, state);
             pushTeamTetrisState(api, state);
             // eslint-disable-next-line no-await-in-loop -- NOTE: room events apply in arrival order.
@@ -90,8 +319,8 @@ export function createGameRoomXoxUs1SyncRuntime(deps: any) {
 
         if (
           event.eventType === "reset" &&
-          (event.matchId || event.inviteId) &&
-          loadTeamTetrisState(api).matchId === (event.matchId || event.inviteId)
+          eventMatchId !== null &&
+          loadTeamTetrisState(api).matchId === eventMatchId
         ) {
           pushTeamTetrisState(api, resetTeamTetrisState(api, "idle"));
         }
@@ -116,11 +345,11 @@ export function createGameRoomXoxUs1SyncRuntime(deps: any) {
         if (
           pendingInvite !== null &&
           pendingInvite.direction === "outgoing" &&
-          pendingInvite.matchId === (event.matchId || event.inviteId) &&
+          pendingInvite.matchId === readEventMatchId(event) &&
           pendingInvite.remoteUserId === event.remoteUserId
         ) {
-          pendingInvite.localSessionId = event.localSessionId;
-          pendingInvite.conversationId = event.conversationId;
+          pendingInvite.localSessionId = event.localSessionId || pendingInvite.localSessionId;
+          pendingInvite.conversationId = event.conversationId || pendingInvite.conversationId;
           applyInviteAcceptedState(api, pendingInvite, readOutgoingInviteStarter(pendingInvite));
           api.showToast({
             type: "success",
@@ -134,7 +363,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps: any) {
         event.eventType === "reject" &&
         pendingInvite !== null &&
         pendingInvite.direction === "outgoing" &&
-        pendingInvite.matchId === (event.matchId || event.inviteId) &&
+        pendingInvite.matchId === readEventMatchId(event) &&
         pendingInvite.remoteUserId === event.remoteUserId
       ) {
         const state = loadState(api);
@@ -163,19 +392,19 @@ export function createGameRoomXoxUs1SyncRuntime(deps: any) {
         event.eventType === "reset" &&
         ((pendingInvite !== null &&
           pendingInvite.direction === "outgoing" &&
-          pendingInvite.matchId === (event.matchId || event.inviteId) &&
+          pendingInvite.matchId === readEventMatchId(event) &&
           pendingInvite.remoteUserId === event.remoteUserId) ||
           (currentState.target === "us1" &&
             currentMatchId !== null &&
-            currentMatchId === (event.matchId || event.inviteId) &&
+            currentMatchId === readEventMatchId(event) &&
             currentState.remoteUserId === event.remoteUserId))
       ) {
         deps.removePendingInvite(api);
-        removeInviteFromInbox(api, event.matchId || event.inviteId, event.remoteUserId || null);
+        removeInviteFromInbox(api, readEventMatchId(event) || "", event.remoteUserId);
         const resetState = createInitialState(readLocale(api), "us1", DEFAULT_STARTER);
         resetState.statusKey = "remoteReset";
         resetState.remoteUserId = event.remoteUserId;
-        resetState.opponentNickname = event.senderNickname || event.remoteUserId;
+        resetState.opponentNickname = event.senderNickname || event.remoteUserId || "";
         pushRoomState(api, resetState);
       }
     }
@@ -185,30 +414,33 @@ export function createGameRoomXoxUs1SyncRuntime(deps: any) {
     }
   }
 
-  function ensureUs1SyncLoop(api: any, syncUs1Mailbox: any) {
-    const currentTimer = api.getState("xox-us1-sync-timer");
-    if (currentTimer) {
+  function ensureUs1SyncLoop(
+    api: XoxUs1SyncApi,
+    syncUs1MailboxFn: (api: XoxUs1SyncApi, reason: string) => Promise<void>
+  ) {
+    const currentTimer = readTimerHandle(api.getState("xox-us1-sync-timer"));
+    if (currentTimer !== null) {
       return;
     }
 
     const timerId = setInterval(function () {
-      void syncUs1Mailbox(api, "poll");
+      void syncUs1MailboxFn(api, "poll");
     }, 5000);
-    if (timerId && typeof timerId.unref === "function") {
+    if (typeof timerId.unref === "function") {
       timerId.unref();
     }
     api.setState("xox-us1-sync-timer", timerId);
   }
 
-  function clearUs1SyncLoop(api: any) {
-    const currentTimer = api.getState("xox-us1-sync-timer");
-    if (currentTimer) {
+  function clearUs1SyncLoop(api: XoxUs1SyncApi) {
+    const currentTimer = readTimerHandle(api.getState("xox-us1-sync-timer"));
+    if (currentTimer !== null) {
       clearInterval(currentTimer);
     }
-    api.deleteState("xox-us1-sync-timer");
+    api.deleteState?.("xox-us1-sync-timer");
   }
 
-  async function syncUs1Mailbox(api: any, reason: any) {
+  async function syncUs1Mailbox(api: XoxUs1SyncApi, reason: string) {
     if (api.isUs1Connected() !== true) {
       return;
     }
@@ -228,19 +460,19 @@ export function createGameRoomXoxUs1SyncRuntime(deps: any) {
       }
 
       syncFromSnapshot(api, result.roomInviteInbox);
-      await processRoomEvents(api, Array.isArray(result.roomEvents) ? result.roomEvents : []);
-      processRoomCommands(api, Array.isArray(result.roomCommands) ? result.roomCommands : []);
+      await processRoomEvents(api, readRoomEvents(result.roomEvents));
+      processRoomCommands(api, readRoomCommands(result.roomCommands));
       refreshRoomState(api);
     } finally {
-      api.deleteState("xox-us1-syncing");
+      api.deleteState?.("xox-us1-syncing");
     }
   }
 
   return {
-    clearUs1SyncLoop: clearUs1SyncLoop,
-    ensureUs1SyncLoop: ensureUs1SyncLoop,
-    processRoomCommands: processRoomCommands,
-    processRoomEvents: processRoomEvents,
-    syncUs1Mailbox: syncUs1Mailbox,
+    clearUs1SyncLoop,
+    ensureUs1SyncLoop,
+    processRoomCommands,
+    processRoomEvents,
+    syncUs1Mailbox,
   };
 }

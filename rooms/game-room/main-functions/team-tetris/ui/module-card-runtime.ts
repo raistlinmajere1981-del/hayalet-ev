@@ -1,76 +1,34 @@
-(function (global: any) {
-  type UnknownRecord = Record<string, unknown>;
-  type TeamTetrisOverlayCell = {
-    x: number;
-    y: number;
-  };
-  type TeamTetrisSlotState = {
-    nickname: string;
-  };
-  type TeamTetrisBoardRowsState = {
-    width: number;
-  };
-  type TeamTetrisRootState = {
-    context: {
-      slots: Record<string, TeamTetrisSlotState>;
-    };
-    teamTetris: {
-      board: TeamTetrisBoardRowsState;
-    };
-    teamTetrisDraft: {
-      dragActive: boolean;
-    };
-  };
-  type TeamTetrisBoardOptions = {
-    interactive?: boolean;
-    overlayCells?: TeamTetrisOverlayCell[];
-    overlayTone?: string;
-    overlayPieceId?: string;
-  };
-  type TeamTetrisBoardCardOptions = TeamTetrisBoardOptions & {
-    tone?: string;
-    meta?: string;
-    context?: HTMLElement[];
-  };
-  type TeamTetrisBoardState = {
-    label: string;
-    visibility: string;
-    rows: unknown;
-  };
-  type TeamTetrisPieceBounds = {
-    width: number;
-    height: number;
-  };
-  type TeamTetrisModuleCardDeps = {
-    getState: () => TeamTetrisRootState;
-    createSlot: (slotId: string) => TeamTetrisSlotState;
-    createElement: (tagName: string, className?: string, textContent?: string) => HTMLElement;
-    text: (path: string[]) => string;
-    getTeamTetrisRotationCells: (pieceId: string, rotation: number) => Array<[number, number]>;
-    getTeamTetrisPieceBounds: (pieceId: string, rotation: number) => TeamTetrisPieceBounds;
-    sanitizeTeamTetrisRows: (rows: unknown) => string[];
-    startTeamTetrisDrag: (columnIndex: number, rowIndex: number) => void;
-    updateTeamTetrisDraftTarget: (columnIndex: number, rowIndex: number) => void;
-    finishTeamTetrisDrag: () => void;
-  };
+(function (global: GameRoomUiGlobal) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
 
-  function isRecord(value: unknown): value is UnknownRecord {
+  function isRecord(value: unknown): value is GameRoomUnknownRecord {
     return typeof value === "object" && value !== null && Array.isArray(value) === false;
   }
 
-  function readBoardOptions(options: unknown): TeamTetrisBoardOptions {
-    return isRecord(options) ? (options as TeamTetrisBoardOptions) : {};
+  function readBoardOptions(
+    options: GameRoomTeamTetrisBoardCardOptions | null | undefined
+  ): GameRoomTeamTetrisBoardCardOptions {
+    return options || {};
   }
 
-  function readBoardCardOptions(options: unknown): TeamTetrisBoardCardOptions {
-    return isRecord(options) ? (options as TeamTetrisBoardCardOptions) : {};
+  function readSlotNickname(slotValue: unknown, fallbackLabel: string): string {
+    if (
+      isRecord(slotValue) &&
+      typeof slotValue["nickname"] === "string" &&
+      slotValue["nickname"].trim() !== ""
+    ) {
+      return slotValue["nickname"];
+    }
+    return fallbackLabel;
   }
 
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+  const registry = getFactoryRegistry(global);
 
   registry.createTeamTetrisUiModuleCardRuntime = function createTeamTetrisUiModuleCardRuntime(
-    deps: TeamTetrisModuleCardDeps
-  ) {
+    deps: GameRoomTeamTetrisUiModuleCardRuntimeDeps
+  ): GameRoomTeamTetrisUiModuleCardRuntime {
     const getState = deps.getState;
     const createSlot = deps.createSlot;
     const createElement = deps.createElement;
@@ -82,7 +40,7 @@
     const updateTeamTetrisDraftTarget = deps.updateTeamTetrisDraftTarget;
     const finishTeamTetrisDrag = deps.finishTeamTetrisDrag;
 
-    function createTeamTetrisMiniPiece(pieceId: string, rotation: number) {
+    function createTeamTetrisMiniPiece(pieceId: string, rotation: number): HTMLElement {
       const cells = getTeamTetrisRotationCells(pieceId, rotation);
       const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
       const shell = createElement("div", "tt-piece-mini", "");
@@ -90,7 +48,7 @@
 
       for (let y = 0; y < Math.max(bounds.height, 1); y += 1) {
         for (let x = 0; x < Math.max(bounds.width, 1); x += 1) {
-          const filled = cells.some(function (cell: any) {
+          const filled = cells.some(function (cell: GameRoomTeamTetrisRotationCell) {
             return cell[0] === x && cell[1] === y;
           });
           const cell = createElement("div", "tt-piece-mini__cell", "");
@@ -103,14 +61,17 @@
       return shell;
     }
 
-    function createTeamTetrisRequirementCard(slotId: string, ready: boolean) {
+    function createTeamTetrisRequirementCard(slotId: string, ready: boolean): HTMLElement {
       const state = getState();
-      const slot = state.context.slots[slotId] || createSlot(slotId);
+      const slotValue = state.context.slots?.[slotId] ?? createSlot(slotId);
+      const fallbackLabel = slotId.toUpperCase();
+      const displayName = readSlotNickname(slotValue, fallbackLabel);
       const card = createElement("div", "tt-requirement", "");
+
       card.dataset["ready"] = ready ? "true" : "false";
       card.append(
-        createElement("span", "tt-requirement__slot", slotId.toUpperCase()),
-        createElement("strong", "tt-requirement__name", slot.nickname),
+        createElement("span", "tt-requirement__slot", fallbackLabel),
+        createElement("strong", "tt-requirement__name", displayName),
         createElement(
           "span",
           "tt-requirement__status",
@@ -119,10 +80,11 @@
             : text(["teamTetris", "controls", "requirementWaiting"])
         )
       );
+
       return card;
     }
 
-    function createTeamTetrisMetric(label: string, value: string) {
+    function createTeamTetrisMetric(label: string, value: string): HTMLElement {
       const item = createElement("div", "tt-scorebar__item", "");
       item.append(
         createElement("span", "tt-scorebar__label", label),
@@ -131,53 +93,63 @@
       return item;
     }
 
-    function createTeamTetrisBoardElement(rows: unknown, options: unknown) {
+    function createTeamTetrisBoardElement(
+      rows: unknown,
+      options: GameRoomTeamTetrisBoardCardOptions
+    ): HTMLElement {
       const state = getState();
       const config = readBoardOptions(options);
       const boardRows = sanitizeTeamTetrisRows(rows);
       const overlayLookup: Record<string, boolean> = {};
-      (Array.isArray(config.overlayCells) ? config.overlayCells : []).forEach(function (cell: any) {
+      const overlayCells = config.overlayCells || [];
+      const board = createElement("div", "tt-board", "");
+
+      overlayCells.forEach(function (cell: GameRoomTeamTetrisCell) {
         overlayLookup[cell.x + ":" + cell.y] = true;
       });
-      const board = createElement("div", "tt-board", "");
+
       board.style.gridTemplateColumns =
         "repeat(" + state.teamTetris.board.width + ", minmax(0, 1fr))";
       if (config.interactive === true) {
         board.dataset["interactive"] = "true";
       }
 
-      boardRows.forEach(function (row: any, rowIndex: any) {
-        row.split("").forEach(function (cellValue: any, columnIndex: any) {
+      boardRows.forEach(function (row: string, rowIndex: number) {
+        row.split("").forEach(function (cellValue: string, columnIndex: number) {
           const cell = createElement(
             config.interactive === true ? "button" : "div",
             "tt-board__cell",
             ""
-          ) as HTMLElement & { type?: string };
+          );
+
           if (config.interactive === true) {
-            cell.type = "button";
-            cell.addEventListener("mousedown", function () {
+            const interactiveCell = cell as HTMLButtonElement;
+            interactiveCell.type = "button";
+            interactiveCell.addEventListener("mousedown", function () {
               startTeamTetrisDrag(columnIndex, rowIndex);
             });
-            cell.addEventListener("mouseenter", function () {
-              const currentState = getState();
-              if (currentState.teamTetrisDraft.dragActive === true) {
+            interactiveCell.addEventListener("mouseenter", function () {
+              if (getState().teamTetrisDraft.dragActive === true) {
                 updateTeamTetrisDraftTarget(columnIndex, rowIndex);
               }
             });
-            cell.addEventListener("mouseup", function () {
+            interactiveCell.addEventListener("mouseup", function () {
               finishTeamTetrisDrag();
             });
-            cell.addEventListener("click", function () {
+            interactiveCell.addEventListener("click", function () {
               startTeamTetrisDrag(columnIndex, rowIndex);
               finishTeamTetrisDrag();
             });
           }
+
           cell.dataset["filled"] = cellValue !== "." ? "true" : "false";
           cell.dataset["piece"] = cellValue !== "." ? cellValue : "";
+
           if (overlayLookup[columnIndex + ":" + rowIndex]) {
             cell.dataset["overlay"] = config.overlayTone || "draft";
             cell.dataset["overlayPiece"] = config.overlayPieceId || "";
           }
+
           board.append(cell);
         });
       });
@@ -190,9 +162,10 @@
       pieceId: string,
       rotation: number,
       subtitle: string
-    ) {
+    ): HTMLElement {
       const card = createElement("section", "tt-context-card", "");
       card.append(createElement("span", "tt-context-card__label", title));
+
       if (pieceId && pieceId.trim() !== "") {
         card.append(createTeamTetrisMiniPiece(pieceId, rotation));
         card.append(
@@ -211,13 +184,15 @@
           createElement("p", "tt-context-card__empty", text(["teamTetris", "boards", "emptyPiece"]))
         );
       }
+
       if (subtitle && subtitle.trim() !== "") {
         card.append(createElement("p", "tt-context-card__meta", subtitle));
       }
+
       return card;
     }
 
-    function createTeamTetrisSnapshotCard(title: string, rows: unknown) {
+    function createTeamTetrisSnapshotCard(title: string, rows: unknown): HTMLElement {
       const card = createElement("section", "tt-context-card", "");
       card.append(
         createElement("span", "tt-context-card__label", title),
@@ -226,12 +201,17 @@
       return card;
     }
 
-    function renderTeamTetrisBoardCard(boardState: TeamTetrisBoardState, options: unknown) {
-      const config = readBoardCardOptions(options);
+    function renderTeamTetrisBoardCard(
+      boardState: GameRoomTeamTetrisBoardViewState,
+      options: GameRoomTeamTetrisBoardCardOptions
+    ): HTMLElement {
+      const config = readBoardOptions(options);
       const card = createElement("section", "tt-board-card", "");
+
       if (config.tone) {
         card.dataset["tone"] = config.tone;
       }
+
       const header = createElement("div", "tt-board-card__header", "");
       header.append(
         createElement("strong", "tt-board-card__title", boardState.label),
@@ -260,7 +240,7 @@
 
       if (config.context && config.context.length > 0) {
         const details = createElement("div", "tt-board-card__details", "");
-        config.context.forEach(function (entry: any) {
+        config.context.forEach(function (entry: HTMLElement) {
           details.append(entry);
         });
         card.append(details);
@@ -277,4 +257,6 @@
       renderTeamTetrisBoardCard: renderTeamTetrisBoardCard,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})(
+  (typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal
+);

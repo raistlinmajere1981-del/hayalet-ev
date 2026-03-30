@@ -1,7 +1,13 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
 
-  registry.createFateKnotsUiStageRuntime = function createFateKnotsUiStageRuntime(deps: any) {
+  const registry = getFactoryRegistry(global);
+
+  registry.createFateKnotsUiStageRuntime = function createFateKnotsUiStageRuntime(
+    deps: GameRoomFateKnotsUiStageRuntimeDeps
+  ): GameRoomFateKnotsUiStageRuntime {
     const createFateKnotsUiStageSupportRuntime = registry.createFateKnotsUiStageSupportRuntime;
     if (typeof createFateKnotsUiStageSupportRuntime !== "function") {
       throw new Error("Fate Knots UI stage support runtime is not registered.");
@@ -63,7 +69,7 @@
     const renderNarrativeStage = fateKnotsUiNarrativeStageRuntime.renderNarrativeStage;
     const renderCombatStage = fateKnotsUiCombatStageRuntime.renderCombatStage;
 
-    function renderResultStage(parent: any, state: any) {
+    function renderResultStage(parent: HTMLElement, state: GameRoomFateKnotsState): void {
       const layout = deps.createRegion("section", "fk-result", "result-layout");
       const resultShell = deps.createFrame(
         "section",
@@ -97,7 +103,9 @@
         )
       );
       if (state.result.continueHint) {
-        resultShell.append(deps.createElement("p", "fk-frame__hint", state.result.continueHint));
+        resultShell.append(
+          deps.createElement("p", "fk-frame__hint", state.result.continueHint)
+        );
       }
       resultShell.append(deps.createSeatRibbon(state, "result-ribbon", null));
       resultShell.append(
@@ -138,4 +146,4 @@
       renderResultStage: renderResultStage,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})(window as unknown as GameRoomUiGlobal);

@@ -1,34 +1,169 @@
-export function createMediaAnalysisEditWorkspacePanels(deps: any) {
-  const toRecord = deps.toRecord;
-  const escapeHtml = deps.escapeHtml;
-  const text = deps.text;
-  const textFromKey = deps.textFromKey;
-  const formatDuration = deps.formatDuration;
-  const state = deps.state;
-  const getCurrentSourceKind = deps.getCurrentSourceKind;
-  const getCurrentEditPresetOptions = deps.getCurrentEditPresetOptions;
-  const getCurrentEditDraft = deps.getCurrentEditDraft;
-  const getProjectSource = deps.getProjectSource;
-  const getCurrentEditRecipe = deps.getCurrentEditRecipe;
-  const getEffectiveMediaAsset = deps.getEffectiveMediaAsset;
-  const getEditPreview = deps.getEditPreview;
-  const getRelevantJobs = deps.getRelevantJobs;
-  const collectEditStageJobs = deps.collectEditStageJobs;
-  const renderPreviewMetaRow = deps.renderPreviewMetaRow;
-  const getPreferredSourceDuration = deps.getPreferredSourceDuration;
-  const getPreferredSourceResolution = deps.getPreferredSourceResolution;
-  const getPreferredSourceCodec = deps.getPreferredSourceCodec;
-  const getPreferredSourceFormat = deps.getPreferredSourceFormat;
-  const getEditJobLabel = deps.getEditJobLabel;
-  const getEditPresets = deps.getEditPresets;
-  const getCurrentFocusRegionId = deps.getCurrentFocusRegionId;
-  const renderEditTextField = deps.renderEditTextField;
+import type { createLaboratoryUiBootstrapStateRuntime } from "../../../ui/bootstrap-state-runtime.js";
+import type {
+  LaboratoryMediaAnalysisAsset,
+  LaboratoryMediaAnalysisEditDraftRecord,
+  LaboratoryMediaAnalysisEditPreviewRecord,
+  LaboratoryMediaAnalysisEditRecipeRecord,
+  LaboratoryMediaAnalysisProjectSourceRecord,
+  LaboratoryMediaAnalysisSourceKind,
+} from "./source-edit-runtime.js";
 
-  function renderEditMediaMarkup(asset: any, cropNormalized: any) {
-    const previewUrl =
-      typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== ""
-        ? asset.previewUrl
-        : null;
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
+
+type LaboratoryCropRecord = LaboratoryRecord & {
+  height?: unknown;
+  width?: unknown;
+  x?: unknown;
+  y?: unknown;
+};
+
+type LaboratoryAssetMetadataRecord = LaboratoryRecord & {
+  codec?: unknown;
+  durationSeconds?: unknown;
+  formatName?: unknown;
+  height?: unknown;
+  width?: unknown;
+};
+
+type LaboratoryFocusRegionRecord = LaboratoryRecord & {
+  labelKey?: unknown;
+};
+
+type LaboratoryEditStageJobRecord = LaboratoryRecord & {
+  action?: unknown;
+  message?: unknown;
+  percent?: unknown;
+  stage?: unknown;
+};
+
+type LaboratoryRelevantJobsRecord = LaboratoryRecord & {
+  project?: unknown;
+};
+
+type LaboratoryEditTextFieldOptions = {
+  placeholder?: string;
+};
+
+type MediaAnalysisEditWorkspacePanelsDeps = {
+  collectEditStageJobs: (projectJobs: unknown[]) => LaboratoryEditStageJobRecord[];
+  escapeHtml: (value: string) => string;
+  formatDuration: (value: number | null | undefined) => string;
+  getCurrentEditDraft: () => LaboratoryMediaAnalysisEditDraftRecord;
+  getCurrentEditPresetOptions: () => LaboratoryRecord[];
+  getCurrentEditRecipe: () => LaboratoryMediaAnalysisEditRecipeRecord;
+  getCurrentFocusRegionId: () => string;
+  getCurrentSourceKind: () => LaboratoryMediaAnalysisSourceKind;
+  getEditJobLabel: (job: LaboratoryEditStageJobRecord) => string;
+  getEditPresets: () => LaboratoryRecord;
+  getEditPreview: () => LaboratoryMediaAnalysisEditPreviewRecord;
+  getEffectiveMediaAsset: () => LaboratoryMediaAnalysisAsset;
+  getPreferredSourceCodec: () => string;
+  getPreferredSourceDuration: (previewUrl: string | null) => number | null;
+  getPreferredSourceFormat: () => string;
+  getPreferredSourceResolution: (previewUrl: string | null) => string;
+  getProjectSource: () => LaboratoryMediaAnalysisProjectSourceRecord;
+  getRelevantJobs: () => LaboratoryRelevantJobsRecord;
+  renderEditTextField: (
+    fieldId: string,
+    value: string | number,
+    label: string,
+    extra?: LaboratoryEditTextFieldOptions
+  ) => string;
+  renderPreviewMetaRow: (label: string, value: string) => string;
+  state: LaboratoryUiState;
+  text: (path: string[]) => string;
+  textFromKey: (key: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createMediaAnalysisEditWorkspacePanels(
+  deps: MediaAnalysisEditWorkspacePanelsDeps
+) {
+  const {
+    collectEditStageJobs,
+    escapeHtml,
+    formatDuration,
+    getCurrentEditDraft,
+    getCurrentEditPresetOptions,
+    getCurrentEditRecipe,
+    getCurrentFocusRegionId,
+    getCurrentSourceKind,
+    getEditJobLabel,
+    getEditPresets,
+    getEditPreview,
+    getEffectiveMediaAsset,
+    getPreferredSourceCodec,
+    getPreferredSourceDuration,
+    getPreferredSourceFormat,
+    getPreferredSourceResolution,
+    getProjectSource,
+    getRelevantJobs,
+    renderEditTextField,
+    renderPreviewMetaRow,
+    state,
+    text,
+    textFromKey,
+    toRecord,
+  } = deps;
+
+  function asRecord(value: unknown): LaboratoryRecord {
+    return toRecord(value);
+  }
+
+  function asNonEmptyString(value: unknown): string | null {
+    return typeof value === "string" && value.trim() !== "" ? value : null;
+  }
+
+  function asNumber(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+
+  function toCropRecord(value: unknown): LaboratoryCropRecord {
+    return asRecord(value);
+  }
+
+  function toAssetMetadataRecord(value: unknown): LaboratoryAssetMetadataRecord {
+    return asRecord(value);
+  }
+
+  function toFocusRegionRecord(value: unknown): LaboratoryFocusRegionRecord {
+    return asRecord(value);
+  }
+
+  function toEditStageJobRecord(value: unknown): LaboratoryEditStageJobRecord {
+    return asRecord(value);
+  }
+
+  function getCropPercent(value: unknown, minimumPercent: number) {
+    return Math.max(minimumPercent, (asNumber(value) || 0) * 100);
+  }
+
+  function getAudioBars(previewUrl: string) {
+    const audioAnalysis = state.ui.audioAnalysis;
+    if (audioAnalysis.url === previewUrl && audioAnalysis.bars.length > 0) {
+      return audioAnalysis.bars;
+    }
+
+    return Array.from({ length: 42 }, function (_, index) {
+      return 16 + ((index * 11) % 36);
+    });
+  }
+
+  function getSpectrogramPreviewUrl(asset: LaboratoryMediaAnalysisAsset) {
+    const spectrogram =
+      asset.artifacts.find(function (entry) {
+        return (
+          asNonEmptyString(entry.kind) === "spectrogram" &&
+          asNonEmptyString(entry.previewUrl) !== null
+        );
+      }) || null;
+    return spectrogram ? asNonEmptyString(spectrogram.previewUrl) : null;
+  }
+
+  function renderEditMediaMarkup(asset: LaboratoryMediaAnalysisAsset, cropNormalized: unknown) {
+    const previewUrl = asNonEmptyString(asset.previewUrl);
     if (previewUrl === null) {
       return `
         <div class="lab-empty-preview">
@@ -39,16 +174,16 @@ export function createMediaAnalysisEditWorkspacePanels(deps: any) {
     }
 
     const kind = getCurrentSourceKind();
-    const crop = toRecord(cropNormalized);
+    const crop = toCropRecord(cropNormalized);
     const focusStyle =
       kind === "audio"
         ? ""
-        : `style="left:${Math.max(0, Number(crop.x || 0) * 100)}%; top:${Math.max(
-            0,
-            Number(crop.y || 0) * 100
-          )}%; width:${Math.max(2, Number(crop.width || 0) * 100)}%; height:${Math.max(
-            2,
-            Number(crop.height || 0) * 100
+        : `style="left:${getCropPercent(crop.x, 0)}%; top:${getCropPercent(
+            crop.y,
+            0
+          )}%; width:${getCropPercent(crop.width, 2)}%; height:${getCropPercent(
+            crop.height,
+            2
           )}%;"`;
 
     if (kind === "image") {
@@ -59,26 +194,14 @@ export function createMediaAnalysisEditWorkspacePanels(deps: any) {
     }
 
     if (kind === "audio") {
-      const bars =
-        state.ui.audioAnalysis.url === previewUrl && state.ui.audioAnalysis.bars.length > 0
-          ? state.ui.audioAnalysis.bars
-          : Array.from({ length: 42 }, function (_: any, index: any) {
-              return 16 + ((index * 11) % 36);
-            });
-      const spectrogram =
-        (Array.isArray(asset.artifacts) ? asset.artifacts : []).find(function (entry: any) {
-          return entry.kind === "spectrogram" && typeof entry.previewUrl === "string";
-        }) || null;
+      const bars = getAudioBars(previewUrl);
+      const spectrogramPreviewUrl = getSpectrogramPreviewUrl(asset);
       return `
         <div class="lab-audio-workbench">
-          ${
-            spectrogram
-              ? `<img class="lab-audio-spectrogram" src="${spectrogram.previewUrl}" alt="" />`
-              : ""
-          }
+          ${spectrogramPreviewUrl ? `<img class="lab-audio-spectrogram" src="${spectrogramPreviewUrl}" alt="" />` : ""}
           <div class="lab-audio-bars">
             ${bars
-              .map(function (height: any) {
+              .map(function (height) {
                 return `<span style="height:${height}px"></span>`;
               })
               .join("")}
@@ -96,10 +219,7 @@ export function createMediaAnalysisEditWorkspacePanels(deps: any) {
 
   function renderEditPresetChooser() {
     const presetOptions = getCurrentEditPresetOptions();
-    const activePresetId =
-      typeof getCurrentEditDraft().activePresetId === "string"
-        ? getCurrentEditDraft().activePresetId
-        : null;
+    const activePresetId = asNonEmptyString(getCurrentEditDraft().activePresetId);
 
     if (presetOptions.length === 0) {
       return "";
@@ -115,16 +235,18 @@ export function createMediaAnalysisEditWorkspacePanels(deps: any) {
         </div>
         <div class="lab-chip-row">
           ${presetOptions
-            .map(function (preset: any) {
+            .map(function (preset) {
+              const presetId = asNonEmptyString(preset["id"]) || "";
+              const labelKey = asNonEmptyString(preset["labelKey"]);
               return `
                 <button
                   class="lab-choice-chip"
                   type="button"
                   data-action="edit-preset"
-                  data-value="${escapeHtml(preset.id)}"
-                  data-selected="${preset.id === activePresetId ? "true" : "false"}"
+                  data-value="${escapeHtml(presetId)}"
+                  data-selected="${presetId === activePresetId ? "true" : "false"}"
                 >
-                  ${escapeHtml(textFromKey(preset.labelKey))}
+                  ${escapeHtml(labelKey ? textFromKey(labelKey) : presetId)}
                 </button>
               `;
             })
@@ -137,64 +259,82 @@ export function createMediaAnalysisEditWorkspacePanels(deps: any) {
   function renderEditWorkspacePanel() {
     const source = getProjectSource();
     const recipe = getCurrentEditRecipe();
-    const common = toRecord(recipe.common);
+    const common = asRecord(recipe.common);
     const asset = getEffectiveMediaAsset();
     const preview = getEditPreview();
-    const projectJobs = getRelevantJobs().project;
-    const activeEditJobs = collectEditStageJobs(projectJobs);
+    const relevantJobs = getRelevantJobs();
+    const projectJobs: unknown[] = Array.isArray(relevantJobs["project"])
+      ? (relevantJobs["project"] as unknown[])
+      : [];
+    const activeEditJobs = collectEditStageJobs(projectJobs).map(toEditStageJobRecord);
+    const assetMetadata = toAssetMetadataRecord(asset.metadata);
+    const assetLabel = asset.label || text(["mediaAnalysis", "edit", "sourceAsset"]);
+    const previewStatus = asNonEmptyString(preview.status) || text(["mediaAnalysis", "shared", "idle"]);
+    const sourceStatus = source.status === "error" ? "error" : "ready";
+    const durationValue =
+      asNumber(assetMetadata.durationSeconds) ||
+      getPreferredSourceDuration(asNonEmptyString(asset.previewUrl));
+    const resolutionValue =
+      asNumber(assetMetadata.width) !== null && asNumber(assetMetadata.height) !== null
+        ? `${asNumber(assetMetadata.width)} x ${asNumber(assetMetadata.height)}`
+        : getPreferredSourceResolution(asNonEmptyString(getProjectSource().previewUrl));
+    const codecValue = asNonEmptyString(assetMetadata.codec) || getPreferredSourceCodec();
+    const formatValue =
+      asNonEmptyString(assetMetadata.formatName) ||
+      asNonEmptyString(asset.mimeType) ||
+      getPreferredSourceFormat();
 
     return `
       <section class="lab-panel lab-preview-panel">
         <div class="lab-panel__header">
           <div>
             <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "workspaceTitle"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(asset.label || text(["mediaAnalysis", "edit", "sourceAsset"]))}</h2>
+            <h2 class="lab-panel__title">${escapeHtml(assetLabel)}</h2>
             <p class="lab-panel__subtitle">${escapeHtml(
-              preview.status === "stale"
+              asNonEmptyString(preview.status) === "stale"
                 ? text(["mediaAnalysis", "edit", "previewStates", "stale"])
                 : text(["mediaAnalysis", "edit", "workspaceHint"])
             )}</p>
           </div>
-          <span class="lab-chip">${escapeHtml(text(["mediaAnalysis", "settings", "status", source.status === "error" ? "error" : "ready"]))}</span>
+          <span class="lab-chip">${escapeHtml(text(["mediaAnalysis", "settings", "status", sourceStatus]))}</span>
         </div>
         <div class="lab-preview-card">
           <div class="lab-preview-frame lab-edit-frame">
-            ${renderEditMediaMarkup(asset, common.cropNormalized)}
+            ${renderEditMediaMarkup(asset, common["cropNormalized"])}
           </div>
           <div class="lab-preview-copy">
             <ul class="lab-meta-list">
-              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "status"]), preview.status || text(["mediaAnalysis", "shared", "idle"]))}
-              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "duration"]), formatDuration(typeof toRecord(asset.metadata).durationSeconds === "number" ? toRecord(asset.metadata).durationSeconds : getPreferredSourceDuration(asset.previewUrl)))}
-              ${renderPreviewMetaRow(
-                text(["mediaAnalysis", "shared", "resolution"]),
-                typeof toRecord(asset.metadata).width === "number" &&
-                  typeof toRecord(asset.metadata).height === "number"
-                  ? `${asset.metadata.width} x ${asset.metadata.height}`
-                  : getPreferredSourceResolution(getProjectSource().previewUrl || null)
-              )}
-              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "codec"]), asset.metadata.codec || getPreferredSourceCodec())}
-              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "format"]), asset.metadata.formatName || asset.mimeType || getPreferredSourceFormat())}
+              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "status"]), previewStatus)}
+              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "duration"]), formatDuration(durationValue))}
+              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "resolution"]), resolutionValue)}
+              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "codec"]), codecValue)}
+              ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "format"]), formatValue)}
             </ul>
             ${
               activeEditJobs.length > 0
                 ? `
                   <div class="lab-status-stack">
                     ${activeEditJobs
-                      .map(function (activeEditJob: any) {
+                      .map(function (activeEditJob) {
+                        const progressLabel =
+                          asNumber(activeEditJob.percent) !== null
+                            ? `${Math.round(asNumber(activeEditJob.percent) || 0)}%`
+                            : asNonEmptyString(activeEditJob.stage) || "--";
+                        const progressWidth = Math.max(6, asNumber(activeEditJob.percent) || 8);
+                        const message =
+                          asNonEmptyString(activeEditJob.message) ||
+                          asNonEmptyString(activeEditJob.action) ||
+                          "";
                         return `
                           <div class="lab-status-card">
                             <div class="lab-status-card__head">
                               <strong>${escapeHtml(getEditJobLabel(activeEditJob))}</strong>
-                              <span>${escapeHtml(
-                                typeof activeEditJob.percent === "number"
-                                  ? `${Math.round(activeEditJob.percent)}%`
-                                  : activeEditJob.stage || "--"
-                              )}</span>
+                              <span>${escapeHtml(progressLabel)}</span>
                             </div>
                             <div class="lab-progress-bar">
-                              <span style="width:${Math.max(6, Number(activeEditJob.percent) || 8)}%"></span>
+                              <span style="width:${progressWidth}%"></span>
                             </div>
-                            <p class="lab-status-card__body">${escapeHtml(activeEditJob.message || activeEditJob.action || "")}</p>
+                            <p class="lab-status-card__body">${escapeHtml(message)}</p>
                           </div>
                         `;
                       })
@@ -211,9 +351,8 @@ export function createMediaAnalysisEditWorkspacePanels(deps: any) {
 
   function renderEditCommonPanel() {
     const kind = getCurrentSourceKind();
-    const recipe = getCurrentEditRecipe();
-    const common = toRecord(recipe.common);
-    const focusRegions = toRecord(getEditPresets().focusRegions);
+    const common = asRecord(getCurrentEditRecipe().common);
+    const focusRegions = asRecord(getEditPresets()["focusRegions"]);
 
     return `
       <section class="lab-panel">
@@ -228,7 +367,9 @@ export function createMediaAnalysisEditWorkspacePanels(deps: any) {
             ? `
           <div class="lab-chip-row">
             ${Object.keys(focusRegions)
-              .map(function (regionId: any) {
+              .map(function (regionId) {
+                const focusRegion = toFocusRegionRecord(focusRegions[regionId]);
+                const labelKey = asNonEmptyString(focusRegion.labelKey);
                 return `
                   <button
                     class="lab-choice-chip"
@@ -237,7 +378,7 @@ export function createMediaAnalysisEditWorkspacePanels(deps: any) {
                     data-value="${regionId}"
                     data-selected="${regionId === getCurrentFocusRegionId() ? "true" : "false"}"
                   >
-                    ${escapeHtml(textFromKey(toRecord(focusRegions[regionId]).labelKey))}
+                    ${escapeHtml(labelKey ? textFromKey(labelKey) : regionId)}
                   </button>
                 `;
               })
@@ -249,13 +390,13 @@ export function createMediaAnalysisEditWorkspacePanels(deps: any) {
         <div class="lab-form-grid">
           ${renderEditTextField(
             "recipe.common.outputNameHint",
-            common.outputNameHint || "",
+            asNonEmptyString(common["outputNameHint"]) || "",
             text(["mediaAnalysis", "edit", "fields", "outputNameHint"]),
             { placeholder: text(["mediaAnalysis", "edit", "placeholders", "outputNameHint"]) }
           )}
           ${renderEditTextField(
             "recipe.common.notes",
-            common.notes || "",
+            asNonEmptyString(common["notes"]) || "",
             text(["mediaAnalysis", "edit", "fields", "notes"]),
             { placeholder: text(["mediaAnalysis", "edit", "placeholders", "notes"]) }
           )}

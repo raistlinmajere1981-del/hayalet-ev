@@ -3,7 +3,15 @@ import { createMediaAnalysisEditModePanels } from "./edit-mode-panels.js";
 import { createMediaAnalysisEditOutputPanels } from "./edit-output-panels.js";
 import { createMediaAnalysisEditWorkspacePanels } from "./edit-workspace-panels.js";
 
-export function createMediaAnalysisEditPanels(deps: any) {
+type MediaAnalysisEditPanelsDeps = Parameters<typeof createMediaAnalysisEditFieldControls>[0] &
+  Omit<Parameters<typeof createMediaAnalysisEditWorkspacePanels>[0], "renderEditTextField"> &
+  Omit<
+    Parameters<typeof createMediaAnalysisEditModePanels>[0],
+    "renderEditRangeField" | "renderEditSelectField" | "renderEditTextField" | "renderEditToggle"
+  > &
+  Parameters<typeof createMediaAnalysisEditOutputPanels>[0];
+
+export function createMediaAnalysisEditPanels(deps: MediaAnalysisEditPanelsDeps) {
   const mediaAnalysisEditFieldControls = createMediaAnalysisEditFieldControls(deps);
   const { renderEditRangeField, renderEditSelectField, renderEditTextField, renderEditToggle } =
     mediaAnalysisEditFieldControls;

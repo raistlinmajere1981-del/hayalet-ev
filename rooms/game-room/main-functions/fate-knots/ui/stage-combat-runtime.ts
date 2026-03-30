@@ -1,16 +1,49 @@
-(function (global: any) {
-  const registry = global.GameRoomUiFactories || (global.GameRoomUiFactories = {});
+(function (global: GameRoomUiGlobal) {
+  interface FateKnotsUiCombatStageRuntimeDeps {
+    appendImage: GameRoomAppendImage;
+    appendNpcBanter(parent: HTMLElement, state: GameRoomFateKnotsState, seatId: string): void;
+    applyFrameArtwork: GameRoomApplyFrameArtwork;
+    createActionButton: GameRoomCreateActionButton;
+    createDefaultSelection(): GameRoomFateKnotsSelection;
+    createElement: GameRoomCreateElement;
+    createFrame: GameRoomCreateFrame;
+    createNarrationPanel(state: GameRoomFateKnotsState, role: GameRoomRoleToken): HTMLElement;
+    createRegion: GameRoomCreateRegion;
+    createSeatRibbon(
+      state: GameRoomFateKnotsState,
+      role: string,
+      activeSeatId: string | null
+    ): HTMLElement;
+    createStatBadge: GameRoomCreateStatBadge;
+    getUiAsset: GameRoomGetUiAsset;
+    sendCombatAction(state: GameRoomFateKnotsState, actionId: string): unknown;
+    sendRoomCommand: GameRoomSendRoomCommand;
+    sendSync(state: GameRoomFateKnotsState): unknown;
+    setSeatId: GameRoomSetSeatId;
+    t(path: string[], fallback: string): string;
+  }
 
-  registry.createFateKnotsUiCombatStageRuntime = function createFateKnotsUiCombatStageRuntime(deps: any) {
-    function createPartyGrid(state: any, combat: any) {
+  function getFactoryRegistry(host: GameRoomUiGlobal): GameRoomUiFactoriesRegistry {
+    return host.GameRoomUiFactories || (host.GameRoomUiFactories = {});
+  }
+
+  const registry = getFactoryRegistry(global);
+
+  registry.createFateKnotsUiCombatStageRuntime = function createFateKnotsUiCombatStageRuntime(
+    deps: FateKnotsUiCombatStageRuntimeDeps
+  ): { renderCombatStage(parent: HTMLElement, state: GameRoomFateKnotsState): void } {
+    function createPartyGrid(
+      state: GameRoomFateKnotsState,
+      combat: GameRoomFateKnotsCombatState
+    ): HTMLElement {
       const grid = deps.createRegion("div", "fk-party-grid", "summary-status");
-      combat.party.forEach(function (member: any) {
+      combat.party.forEach(function (member: GameRoomFateKnotsCombatPartyMember) {
         const card = deps.createFrame("article", "fk-party-card", null, {
           overlay: deps.getUiAsset("parchmentStain"),
           frame: deps.getUiAsset("sidePanelFrame"),
           texture: deps.getUiAsset("defaultPanel"),
         });
-        deps.setSeatId(card, member.seatId);
+        deps.setSeatId(card, member.seatId || "");
         card.append(
           deps.createElement(
             "strong",
@@ -18,36 +51,39 @@
             member.nickname || member.seatId || "Seat"
           )
         );
-        const selection = member.selection || deps.createDefaultSelection();
-        if (selection.avatar && selection.avatar.uiSrc) {
-          deps.appendImage(
-            card,
-            "fk-party-card__portrait",
-            selection.avatar,
-            member.nickname || member.seatId || "Seat"
-          );
+        const selection = member.selection;
+        deps.appendImage(
+          card,
+          "fk-party-card__portrait",
+          selection.avatar,
+          member.nickname || member.seatId || "Seat"
+        );
+        card.append(
+          deps.createElement(
+            "p",
+            "fk-party-card__meta",
+            String(member.hp || 0) + "/" + String(member.maxHp || 0) + " HP"
+          )
+        );
+        card.append(
+          deps.createElement(
+            "p",
+            "fk-party-card__meta",
+            String(member.energy || 0) + "/" + String(member.maxEnergy || 0) + " EN"
+          )
+        );
+        if (member.seatId) {
+          deps.appendNpcBanter(card, state, member.seatId);
         }
-        card.append(
-          deps.createElement(
-            "p",
-            "fk-party-card__meta",
-            String(member.hp) + "/" + String(member.maxHp) + " HP"
-          )
-        );
-        card.append(
-          deps.createElement(
-            "p",
-            "fk-party-card__meta",
-            String(member.energy) + "/" + String(member.maxEnergy) + " EN"
-          )
-        );
-        deps.appendNpcBanter(card, state, member.seatId);
         grid.append(card);
       });
       return grid;
     }
 
-    function createCombatHand(state: any, combat: any) {
+    function createCombatHand(
+      state: GameRoomFateKnotsState,
+      combat: GameRoomFateKnotsCombatState
+    ): HTMLElement {
       const hand = deps.createFrame(
         "section",
         "fk-stage-frame fk-stage-frame--decision fk-combat-hand",
@@ -58,8 +94,8 @@
           texture: deps.getUiAsset("darkPanel"),
         }
       );
-      hand.dataset.activeTurn = combat.turn && combat.turn.seatId === "user" ? "true" : "false";
-      hand.dataset.turnSeatId = combat.turn && combat.turn.seatId ? String(combat.turn.seatId) : "";
+      hand.dataset["activeTurn"] = combat.turn?.seatId === "user" ? "true" : "false";
+      hand.dataset["turnSeatId"] = combat.turn?.seatId ? String(combat.turn.seatId) : "";
       hand.append(
         deps.createElement(
           "p",
@@ -69,12 +105,12 @@
       );
       const cards = deps.createRegion("div", "fk-combat-hand__cards", null);
       if (combat.availableActions.length > 0) {
-        combat.availableActions.forEach(function (action: any) {
-          const button = deps.createRegion("button", "fk-card-choice fk-card-choice--combat", null);
+        combat.availableActions.forEach(function (action: GameRoomFateKnotsCombatAction) {
+          const button = deps.createRegion("button", "fk-card-choice fk-card-choice--combat", null) as HTMLButtonElement;
           button.type = "button";
           button.disabled = action.available !== true;
-          button.dataset.selected = "false";
-          button.dataset.available = action.available === true ? "true" : "false";
+          button.dataset["selected"] = "false";
+          button.dataset["available"] = action.available === true ? "true" : "false";
           deps.applyFrameArtwork(button, {
             overlay: button.disabled
               ? deps.getUiAsset("cardDisabled")
@@ -133,7 +169,7 @@
       return hand;
     }
 
-    function renderCombatStage(parent: any, state: any) {
+    function renderCombatStage(parent: HTMLElement, state: GameRoomFateKnotsState): void {
       const combat = state.combat;
       if (!combat) {
         parent.append(
@@ -161,8 +197,7 @@
           texture: deps.getUiAsset("defaultPanel"),
         }
       );
-      arena.dataset.turnSeatId =
-        combat.turn && combat.turn.seatId ? String(combat.turn.seatId) : "";
+      arena.dataset["turnSeatId"] = combat.turn?.seatId ? String(combat.turn.seatId) : "";
       arena.append(
         deps.createElement(
           "p",
@@ -170,7 +205,9 @@
           deps.t(["fateKnots", "combat", "enemyLabel"], "Encounter")
         )
       );
-      arena.append(deps.createElement("h2", "fk-frame__title", combat.enemy.label || "Enemy"));
+      arena.append(
+        deps.createElement("h2", "fk-frame__title", combat.enemy.label || "Enemy")
+      );
       deps.appendImage(
         arena,
         "fk-combat-arena__image",
@@ -195,7 +232,7 @@
       arenaStats.append(
         deps.createStatBadge(
           deps.t(["fateKnots", "combat", "turnLabel"], "Turn"),
-          combat.turn && combat.turn.seatId
+          combat.turn?.seatId
             ? combat.turn.seatId
             : deps.t(["fateKnots", "turns", "idle"], "Idle"),
           "soft"
@@ -203,11 +240,7 @@
       );
       arena.append(arenaStats);
       arena.append(
-        deps.createSeatRibbon(
-          state,
-          "turn-order",
-          combat.turn && combat.turn.seatId ? combat.turn.seatId : null
-        )
+        deps.createSeatRibbon(state, "turn-order", combat.turn?.seatId ? combat.turn.seatId : null)
       );
       layout.append(arena);
 
@@ -233,7 +266,7 @@
       status.append(createPartyGrid(state, combat));
       if (combat.recentLog.length > 0) {
         const combatLog = deps.createRegion("div", "fk-combat-log", "log");
-        combat.recentLog.forEach(function (entry: any) {
+        combat.recentLog.forEach(function (entry: string) {
           combatLog.append(deps.createElement("p", "fk-log-feed__text", entry));
         });
         status.append(combatLog);
@@ -248,4 +281,4 @@
       renderCombatStage: renderCombatStage,
     };
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})((typeof window !== "undefined" ? window : globalThis) as unknown as GameRoomUiGlobal);

@@ -1,41 +1,97 @@
-export function createLaboratorySettingsToolCardRuntime(deps: any) {
-  const toRecord = deps.toRecord;
-  const escapeHtml = deps.escapeHtml;
-  const text = deps.text;
-  const getToolEntry = deps.getToolEntry;
-  const getToolRegistry = deps.getToolRegistry;
-  const renderPreviewMetaRow = deps.renderPreviewMetaRow;
+type LaboratoryRecord = Record<string, unknown>
 
-  function renderToolCard(toolId: any, stageId: any) {
-    const tool = getToolEntry(toolId);
-    const descriptor =
-      getToolRegistry().find(function (entry: any) {
-        return entry.toolId === toolId;
-      }) || {};
-    const details = toRecord(tool.details);
-    const busy = tool.busy === true;
-    const updateAvailable = tool.updateAvailable === true;
-    const stageSupport = toRecord(descriptor.stageSupport)[stageId] || "unsupported";
-    const availability =
-      typeof details.availability === "string" && details.availability.trim() !== ""
-        ? details.availability
-        : typeof descriptor.availability === "string" && descriptor.availability.trim() !== ""
-          ? descriptor.availability
-          : "installable";
-    const planned = availability === "planned";
-    const systemCommand = availability === "system-command";
-    const plannedReason =
-      typeof details.plannedReason === "string" && details.plannedReason.trim() !== ""
-        ? details.plannedReason
-        : typeof descriptor.plannedReason === "string" && descriptor.plannedReason.trim() !== ""
-          ? descriptor.plannedReason
-          : null;
-    const setupHint =
-      typeof details.setupHint === "string" && details.setupHint.trim() !== ""
-        ? details.setupHint
-        : typeof descriptor.setupHint === "string" && descriptor.setupHint.trim() !== ""
-          ? descriptor.setupHint
-          : null;
+type LaboratoryToolDetailsRecord = LaboratoryRecord & {
+  availability?: unknown
+  plannedReason?: unknown
+  setupHint?: unknown
+}
+
+type LaboratoryToolStateRecord = LaboratoryRecord & {
+  binaryPath?: unknown
+  busy?: unknown
+  details?: unknown
+  installed?: unknown
+  lastError?: unknown
+  latestReleaseName?: unknown
+  latestVersion?: unknown
+  updateAvailable?: unknown
+  version?: unknown
+}
+
+type LaboratoryToolDescriptorRecord = LaboratoryRecord & {
+  availability?: unknown
+  displayName?: unknown
+  plannedReason?: unknown
+  setupHint?: unknown
+  stageSupport?: unknown
+  toolId?: unknown
+}
+
+type LaboratorySettingsToolCardRuntimeDeps = {
+  escapeHtml: (value: string) => string
+  getToolEntry: (toolId: string) => LaboratoryToolStateRecord
+  getToolRegistry: () => LaboratoryToolDescriptorRecord[]
+  renderPreviewMetaRow: (label: string, value: unknown) => string
+  text: (path: string[]) => string
+  toRecord: (value: unknown) => LaboratoryRecord
+}
+
+export function createLaboratorySettingsToolCardRuntime(
+  deps: LaboratorySettingsToolCardRuntimeDeps
+) {
+  const { escapeHtml, getToolEntry, getToolRegistry, renderPreviewMetaRow, text, toRecord } = deps
+
+  function toToolStateRecord(value: unknown): LaboratoryToolStateRecord {
+    return toRecord(value)
+  }
+
+  function toToolDetailsRecord(value: unknown): LaboratoryToolDetailsRecord {
+    return toRecord(value)
+  }
+
+  function toString(value: unknown, fallback = ""): string {
+    return typeof value === "string" ? value : fallback
+  }
+
+  function getDescriptor(toolId: string): LaboratoryToolDescriptorRecord | null {
+    return (
+      getToolRegistry().find(function (entry) {
+        return toString(entry.toolId) === toolId
+      }) || null
+    )
+  }
+
+  function getAvailability(
+    details: LaboratoryToolDetailsRecord,
+    descriptor: LaboratoryToolDescriptorRecord | null
+  ): string {
+    return (
+      toString(details.availability).trim() ||
+      toString(descriptor?.availability).trim() ||
+      "installable"
+    )
+  }
+
+  function readStageSupport(
+    descriptor: LaboratoryToolDescriptorRecord | null,
+    stageId: string
+  ): string {
+    const stageSupport = toRecord(descriptor?.stageSupport)
+    return toString(stageSupport[stageId], "unsupported")
+  }
+
+  function renderToolCard(toolId: string, stageId: string) {
+    const tool = toToolStateRecord(getToolEntry(toolId))
+    const descriptor = getDescriptor(toolId)
+    const details = toToolDetailsRecord(tool.details)
+    const busy = tool.busy === true
+    const updateAvailable = tool.updateAvailable === true
+    const availability = getAvailability(details, descriptor)
+    const stageSupport = readStageSupport(descriptor, stageId)
+    const planned = availability === "planned"
+    const systemCommand = availability === "system-command"
+    const plannedReason = toString(details.plannedReason).trim() || toString(descriptor?.plannedReason).trim()
+    const setupHint = toString(details.setupHint).trim() || toString(descriptor?.setupHint).trim()
     const statusLabel = planned
       ? text(["mediaAnalysis", "settings", "status", "planned"])
       : systemCommand
@@ -46,7 +102,7 @@ export function createLaboratorySettingsToolCardRuntime(deps: any) {
           ? updateAvailable
             ? text(["mediaAnalysis", "settings", "status", "updateAvailable"])
             : text(["mediaAnalysis", "settings", "status", "installed"])
-          : text(["mediaAnalysis", "settings", "status", "missing"]);
+          : text(["mediaAnalysis", "settings", "status", "missing"])
     const actionMarkup = planned
       ? `
                 <button
@@ -95,13 +151,17 @@ export function createLaboratorySettingsToolCardRuntime(deps: any) {
                 >
                   ${escapeHtml(text(["mediaAnalysis", "settings", "installAction"]))}
                 </button>
-              `;
+              `
 
     return `
       <article class="lab-tool-card">
         <div class="lab-tool-card__head">
           <div>
-            <strong>${escapeHtml(text(["mediaAnalysis", "settings", "tools", toolId]) || descriptor.displayName || toolId)}</strong>
+            <strong>${escapeHtml(
+              text(["mediaAnalysis", "settings", "tools", toolId]) ||
+                toString(descriptor?.displayName) ||
+                toolId
+            )}</strong>
             <span>${escapeHtml(statusLabel)}</span>
           </div>
           ${actionMarkup}
@@ -111,12 +171,15 @@ export function createLaboratorySettingsToolCardRuntime(deps: any) {
             text(["mediaAnalysis", "settings", "stageSupportLabel"]),
             text(["mediaAnalysis", "settings", "support", stageSupport])
           )}
-          ${renderPreviewMetaRow(text(["mediaAnalysis", "settings", "versionLabel"]), tool.version || "--")}
+          ${renderPreviewMetaRow(text(["mediaAnalysis", "settings", "versionLabel"]), toString(tool.version, "--"))}
           ${renderPreviewMetaRow(
             text(["mediaAnalysis", "settings", "latestLabel"]),
-            tool.latestVersion || tool.latestReleaseName || "--"
+            toString(tool.latestVersion) || toString(tool.latestReleaseName) || "--"
           )}
-          ${renderPreviewMetaRow(text(["mediaAnalysis", "settings", "pathLabel"]), tool.binaryPath || "--")}
+          ${renderPreviewMetaRow(
+            text(["mediaAnalysis", "settings", "pathLabel"]),
+            toString(tool.binaryPath, "--")
+          )}
         </ul>
         ${
           busy
@@ -126,15 +189,17 @@ export function createLaboratorySettingsToolCardRuntime(deps: any) {
         ${plannedReason ? `<p class="lab-panel__hint">${escapeHtml(plannedReason)}</p>` : ""}
         ${setupHint ? `<p class="lab-panel__hint">${escapeHtml(setupHint)}</p>` : ""}
         ${
-          typeof tool.lastError === "string" && tool.lastError.trim() !== ""
-            ? `<p class="lab-panel__hint lab-panel__hint--danger">${escapeHtml(tool.lastError)}</p>`
+          toString(tool.lastError).trim()
+            ? `<p class="lab-panel__hint lab-panel__hint--danger">${escapeHtml(
+                toString(tool.lastError)
+              )}</p>`
             : ""
         }
       </article>
-    `;
+    `
   }
 
   return {
     renderToolCard,
-  };
+  }
 }

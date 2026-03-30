@@ -124,7 +124,7 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps: SubtitleDiscoveryRun
       requestId: requestId,
       jobId: `${jobId}-${flatPlaylist ? "flat" : "single"}`,
       toolId: "yt-dlp",
-        cwd: toRecord(runtime["paths"])["storageDir"],
+      cwd: toRecord(runtime["paths"])["storageDir"],
       args:
         flatPlaylist === true
           ? ["--dump-single-json", "--flat-playlist", "--skip-download", urlValue]
@@ -171,14 +171,16 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps: SubtitleDiscoveryRun
     }
     args.push("--sub-langs", subtitlesLang);
 
-    if (toRecord(toRecord(toRecord(runtime["toolState"])["tools"])["ffmpeg"])["installed"] === true) {
+    if (
+      toRecord(toRecord(toRecord(runtime["toolState"])["tools"])["ffmpeg"])["installed"] === true
+    ) {
       args.push("--convert-subs", "srt");
     }
     if (publishedAfter !== null) {
-      args.push("--dateafter", publishedAfter as string);
+      args.push("--dateafter", publishedAfter);
     }
     if (publishedBefore !== null) {
-      args.push("--datebefore", publishedBefore as string);
+      args.push("--datebefore", publishedBefore);
     }
     if (scopeId === "single") {
       args.push("--no-playlist");
@@ -202,7 +204,11 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps: SubtitleDiscoveryRun
   function getSubtitleLiveStatus(metadata: Record<string, unknown>): string {
     return (
       asNonEmptyString(metadata["live_status"]) ||
-      (metadata["is_live"] === true ? "live" : metadata["was_live"] === true ? "post_live" : "offline")
+      (metadata["is_live"] === true
+        ? "live"
+        : metadata["was_live"] === true
+          ? "post_live"
+          : "offline")
     );
   }
 
@@ -220,7 +226,8 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps: SubtitleDiscoveryRun
         url: candidateUrl,
         videoId: videoId,
         title: title || candidateUrl || `Subtitle candidate ${scopeId}`,
-        channelTitle: asNonEmptyString(metadata["channel"]) || asNonEmptyString(metadata["uploader"]),
+        channelTitle:
+          asNonEmptyString(metadata["channel"]) || asNonEmptyString(metadata["uploader"]),
         publishedAt:
           asNonEmptyString(metadata["upload_date"]) ||
           asNonEmptyString(metadata["release_date"]) ||
@@ -290,9 +297,7 @@ export function createSubtitleYoutubeDiscoveryRuntime(deps: SubtitleDiscoveryRun
         continue;
       }
 
-      matchedItems.push(
-        buildSubtitleDiscoveryItem(normalizedMetadata, candidateUrl, scopeId)
-      );
+      matchedItems.push(buildSubtitleDiscoveryItem(normalizedMetadata, candidateUrl, scopeId));
     }
 
     return {

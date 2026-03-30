@@ -1,41 +1,73 @@
-import { saveTeamTetrisState } from "./state.js";
+import { saveTeamTetrisState, type TeamTetrisHostState, type TeamTetrisStateApi } from "./state.js";
 import { loadContext } from "../../../shared/host/context-state.js";
 import { ROOM_ID, TEAM_TETRIS_FEATURE_ID } from "../../../shared/host/feature-meta.js";
 import { buildTeamTetrisRemoteMoveText } from "./runtime-protocol.js";
+import type { TeamTetrisMovePayload } from "./engine.js";
 
-type TeamTetrisRemoteSendResult =
-  | {
-      success?: boolean;
-      localSessionId?: unknown;
-      remoteUserId?: unknown;
-    }
-  | null
-  | undefined;
+interface TeamTetrisRemoteSendResult {
+  success?: boolean;
+  localSessionId?: unknown;
+  remoteUserId?: unknown;
+}
+
+interface TeamTetrisUs1MessageRequest {
+  localSessionId: string | null;
+  text: string;
+  roomEvent?: Record<string, unknown>;
+  roomCommand?: Record<string, unknown>;
+}
+
+interface TeamTetrisTransportApi extends TeamTetrisStateApi {
+  selectUs1RemoteUser?(remoteUserId: string): Promise<boolean>;
+  sendUs1Message?(options: TeamTetrisUs1MessageRequest): Promise<TeamTetrisRemoteSendResult | null>;
+}
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
-function isSuccessfulSendResult(result: TeamTetrisRemoteSendResult): result is {
-  success: true;
-  localSessionId?: unknown;
-  remoteUserId?: unknown;
-} {
+function isSuccessfulSendResult(
+  result: TeamTetrisRemoteSendResult | null | undefined
+): result is TeamTetrisRemoteSendResult & { success: true } {
   return !!result && result.success === true;
 }
 
-async function sendTeamTetrisRemoteStart(api: any, state: any) {
+async function selectUs1RemoteUserSafe(
+  api: TeamTetrisTransportApi,
+  remoteUserId: string
+): Promise<boolean> {
+  if (typeof api.selectUs1RemoteUser !== "function") {
+    return false;
+  }
+  return await api.selectUs1RemoteUser(remoteUserId);
+}
+
+async function sendUs1MessageSafe(
+  api: TeamTetrisTransportApi,
+  options: TeamTetrisUs1MessageRequest
+): Promise<TeamTetrisRemoteSendResult | null> {
+  if (typeof api.sendUs1Message !== "function") {
+    return null;
+  }
+  return await api.sendUs1Message(options);
+}
+
+async function sendTeamTetrisRemoteStart(
+  api: TeamTetrisTransportApi,
+  state: TeamTetrisHostState
+): Promise<TeamTetrisRemoteSendResult> {
   const context = loadContext(api);
   const remoteUserId = context.slots.us1.remoteUserId || state.remoteUserId;
   if (!state.match || !remoteUserId) {
     return { success: false };
   }
-  const selected = await api.selectUs1RemoteUser(remoteUserId);
+
+  const selected = await selectUs1RemoteUserSafe(api, remoteUserId);
   if (selected !== true) {
     return { success: false };
   }
 
-  const sendResult = await api.sendUs1Message({
+  const sendResult = await sendUs1MessageSafe(api, {
     localSessionId: state.localSessionId,
     text: "Team Tetris match started.",
     roomEvent: {
@@ -56,19 +88,26 @@ async function sendTeamTetrisRemoteStart(api: any, state: any) {
     state.localSessionId = readNonEmptyString(sendResult.localSessionId) || state.localSessionId;
     state.remoteUserId = readNonEmptyString(sendResult.remoteUserId) || remoteUserId;
     saveTeamTetrisState(api, state);
+    return sendResult;
   }
+
   return sendResult || { success: false };
 }
 
-async function sendTeamTetrisRemoteReset(api: any, state: any) {
+async function sendTeamTetrisRemoteReset(
+  api: TeamTetrisTransportApi,
+  state: TeamTetrisHostState
+): Promise<TeamTetrisRemoteSendResult> {
   if (!state.matchId || !state.remoteUserId) {
     return { success: true };
   }
-  const selected = await api.selectUs1RemoteUser(state.remoteUserId);
+
+  const selected = await selectUs1RemoteUserSafe(api, state.remoteUserId);
   if (selected !== true) {
     return { success: false };
   }
-  return await api.sendUs1Message({
+
+  const sendResult = await sendUs1MessageSafe(api, {
     localSessionId: state.localSessionId,
     text: "Team Tetris match reset.",
     roomEvent: {
@@ -79,20 +118,29 @@ async function sendTeamTetrisRemoteReset(api: any, state: any) {
       eventType: "reset",
     },
   });
+
+  return sendResult || { success: false };
 }
 
-async function sendTeamTetrisRemoteMove(api: any, state: any, movePayload: any, boardHashBeforeMove: any) {
+async function sendTeamTetrisRemoteMove(
+  api: TeamTetrisTransportApi,
+  state: TeamTetrisHostState,
+  movePayload: TeamTetrisMovePayload,
+  boardHashBeforeMove: string
+): Promise<TeamTetrisRemoteSendResult> {
   if (!state.remoteUserId) {
     return { success: true };
   }
-  const selected = await api.selectUs1RemoteUser(state.remoteUserId);
+
+  const selected = await selectUs1RemoteUserSafe(api, state.remoteUserId);
   if (selected !== true) {
     return { success: false };
   }
+
   const rawArgs = JSON.stringify(movePayload);
-  const sendResult = await api.sendUs1Message({
+  const sendResult = await sendUs1MessageSafe(api, {
     localSessionId: state.localSessionId,
-    text: buildTeamTetrisRemoteMoveText(movePayload),
+    text: buildTeamTetrisRemoteMoveText(movePayload as unknown as Record<string, unknown>),
     roomCommand: {
       roomId: ROOM_ID,
       featureId: TEAM_TETRIS_FEATURE_ID,
@@ -100,14 +148,17 @@ async function sendTeamTetrisRemoteMove(api: any, state: any, movePayload: any, 
       matchId: movePayload.matchId,
       turnIndex: movePayload.turnIndex,
       turnToken: movePayload.turnToken,
-      boardHashBeforeMove: boardHashBeforeMove,
-      rawArgs: rawArgs,
+      boardHashBeforeMove,
+      rawArgs,
     },
   });
+
   if (isSuccessfulSendResult(sendResult)) {
     state.localSessionId = readNonEmptyString(sendResult.localSessionId) || state.localSessionId;
     saveTeamTetrisState(api, state);
+    return sendResult;
   }
+
   return sendResult || { success: false };
 }
 

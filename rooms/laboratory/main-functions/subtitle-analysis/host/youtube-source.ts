@@ -2,42 +2,116 @@ import { getProjectSubtitleSourceDir } from "../../../shared/host/project-paths.
 import { createSubtitleYoutubeDiscoveryRuntime } from "./youtube-discovery.js";
 import { createSubtitleYoutubeFilterRuntime } from "./youtube-filters.js";
 
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryRuntimeRecord = LaboratoryRecord & {
+  paths?: unknown;
+  toolState?: unknown;
+};
+
+type LaboratoryProjectRecord = LaboratoryRecord & {
+  id?: unknown;
+  slug?: unknown;
+  subtitleAnalysis?: unknown;
+};
+
+type LaboratoryWorkspaceDraftsRecord = LaboratoryRecord & {
+  youtubeUrl?: unknown;
+};
+
+type LaboratoryWorkspaceRecord = LaboratoryRecord & {
+  drafts?: unknown;
+  lastActionAt?: unknown;
+  lastError?: unknown;
+  mode?: unknown;
+};
+
+type LaboratorySubtitleDiscoveryStateRecord = LaboratoryRecord & {
+  items?: unknown;
+  lastDownloadAt?: unknown;
+};
+
+type LaboratorySubtitleStateRecord = LaboratoryRecord & {
+  discovery?: unknown;
+  workspace?: unknown;
+};
+
+type LaboratorySubtitleDiscoveryItemRecord = LaboratoryRecord & {
+  durationSeconds?: unknown;
+  id?: unknown;
+  isShort?: unknown;
+  publishedAt?: unknown;
+  subtitleLanguages?: unknown;
+  url?: unknown;
+  videoId?: unknown;
+};
+
+type LaboratorySubtitleEntryRecord = LaboratoryRecord & {
+  id?: unknown;
+};
+
+type LaboratoryToolEntryRecord = LaboratoryRecord & {
+  installed?: unknown;
+};
+
+type LaboratoryRuntimePathsRecord = LaboratoryRecord & {
+  projectsDir?: unknown;
+};
+
+type SubtitleSourceFileEntry = {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+};
+
+type SubtitleYoutubeDiscoveryResult = {
+  items: LaboratorySubtitleDiscoveryItemRecord[];
+  totalCandidateCount: number;
+};
+
 type SubtitleYoutubeSourceRuntimeDeps = {
   asNonEmptyString: (value: unknown) => string | null;
   asNumber: (value: unknown) => number | null;
-  callRoomTools: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
-  clearJob: (runtime: Record<string, unknown>, jobId: string) => void;
-  createEmptySubtitleDiscoveryState: () => Record<string, unknown>;
+  callRoomTools: (payload: LaboratoryRecord) => Promise<LaboratoryRecord>;
+  clearJob: (runtime: LaboratoryRuntimeRecord, jobId: string) => void;
+  createEmptySubtitleDiscoveryState: () => LaboratoryRecord;
   createSubtitleEntryRecord: (
     filePath: string,
-    options: Record<string, unknown>
-  ) => Record<string, unknown>;
-  getActiveProject: (runtime: Record<string, unknown>) => Record<string, unknown> | null;
+    options: LaboratoryRecord
+  ) => LaboratorySubtitleEntryRecord;
+  getActiveProject: (runtime: LaboratoryRuntimeRecord) => LaboratoryProjectRecord | null;
   listSubtitleFilesInDirectory: (
-    runtime: Record<string, unknown>,
+    runtime: LaboratoryRuntimeRecord,
     dirPath: string
-  ) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;
+  ) => Promise<SubtitleSourceFileEntry[]>;
   normalizeStringArray: (value: unknown) => string[];
   normalizeSubtitleAnalysisState: (
     rawValue: unknown,
-    runtime: Record<string, unknown>
-  ) => Record<string, unknown>;
-  normalizeSubtitleDiscoveryItem: (rawValue: unknown, index: number) => Record<string, unknown>;
+    runtime: LaboratoryRuntimeRecord
+  ) => LaboratorySubtitleStateRecord;
+  normalizeSubtitleDiscoveryItem: (
+    rawValue: unknown,
+    index: number
+  ) => LaboratorySubtitleDiscoveryItemRecord;
   patchActiveProject: (
-    runtime: Record<string, unknown>,
-    updater: (project: Record<string, unknown>) => Record<string, unknown>
+    runtime: LaboratoryRuntimeRecord,
+    updater: (project: LaboratoryProjectRecord) => LaboratoryProjectRecord
   ) => Promise<unknown>;
-  pushJobState: (api: unknown, payload: Record<string, unknown>) => void;
-  registerJob: (runtime: Record<string, unknown>, options: Record<string, unknown>) => unknown;
+  pushJobState: (api: unknown, payload: LaboratoryRecord) => void;
+  registerJob: (runtime: LaboratoryRuntimeRecord, options: LaboratoryRecord) => unknown;
   roomId: string;
-  toRecord: (value: unknown) => Record<string, unknown>;
+  toRecord: (value: unknown) => LaboratoryRecord;
   upsertSubtitleEntries: (
-    runtime: Record<string, unknown>,
-    project: Record<string, unknown>,
-    incomingEntries: Record<string, unknown>[],
-    options: Record<string, unknown>
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord,
+    incomingEntries: LaboratorySubtitleEntryRecord[],
+    options: LaboratoryRecord
   ) => void;
 };
+
+function isNonNullString(value: string | null): value is string {
+  return typeof value === "string" && value.length > 0;
+}
 
 export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRuntimeDeps) {
   const {
@@ -60,6 +134,89 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
     upsertSubtitleEntries,
   } = deps;
 
+  function toProjectRecord(value: unknown): LaboratoryProjectRecord {
+    return toRecord(value);
+  }
+
+  function toWorkspaceRecord(value: unknown): LaboratoryWorkspaceRecord {
+    return toRecord(value);
+  }
+
+  function toDraftsRecord(value: unknown): LaboratoryWorkspaceDraftsRecord {
+    return toRecord(value);
+  }
+
+  function toSubtitleStateRecord(
+    value: unknown,
+    runtime: LaboratoryRuntimeRecord
+  ): LaboratorySubtitleStateRecord {
+    return normalizeSubtitleAnalysisState(value, runtime);
+  }
+
+  function toDiscoveryStateRecord(value: unknown): LaboratorySubtitleDiscoveryStateRecord {
+    return toRecord(value);
+  }
+
+  function toDiscoveryItemRecord(value: unknown): LaboratorySubtitleDiscoveryItemRecord {
+    return toRecord(value);
+  }
+
+  function toToolEntryRecord(value: unknown): LaboratoryToolEntryRecord {
+    return toRecord(value);
+  }
+
+  function toRuntimePathsRecord(value: unknown): LaboratoryRuntimePathsRecord {
+    return toRecord(value);
+  }
+
+  function getToolEntry(runtime: LaboratoryRuntimeRecord, toolId: string): LaboratoryToolEntryRecord {
+    return toToolEntryRecord(toRecord(toRecord(runtime.toolState)["tools"])[toolId]);
+  }
+
+  function getWorkspaceScopeId(workspace: LaboratoryWorkspaceRecord): string {
+    const mode = asNonEmptyString(workspace.mode);
+    if (mode === "youtube-playlist") {
+      return "playlist";
+    }
+    if (mode === "youtube-channel") {
+      return "channel";
+    }
+    return "single";
+  }
+
+  function getProjectSubtitleSourcePath(
+    runtime: LaboratoryRuntimeRecord,
+    project: LaboratoryProjectRecord
+  ): string {
+    const projectsDir = asNonEmptyString(toRuntimePathsRecord(runtime.paths).projectsDir);
+    const slug = asNonEmptyString(project.slug);
+    if (projectsDir === null || slug === null) {
+      throw new Error("Project source directory could not be resolved for subtitle downloads.");
+    }
+    return getProjectSubtitleSourceDir({ paths: { projectsDir } }, { slug });
+  }
+
+  function getDiscoveryItems(
+    subtitleState: LaboratorySubtitleStateRecord
+  ): LaboratorySubtitleDiscoveryItemRecord[] {
+    const discovery = toDiscoveryStateRecord(subtitleState.discovery);
+    return Array.isArray(discovery.items)
+      ? discovery.items.map(function (entry, index) {
+          return normalizeSubtitleDiscoveryItem(entry, index);
+        })
+      : [];
+  }
+
+  function toDiscoveryResult(value: {
+    items: Record<string, unknown>[];
+    totalCandidateCount: number;
+  }): SubtitleYoutubeDiscoveryResult {
+    return {
+      items: value.items.map(toDiscoveryItemRecord),
+      totalCandidateCount: value.totalCandidateCount,
+    };
+  }
+
   const subtitleYoutubeFilterRuntime = createSubtitleYoutubeFilterRuntime({
     asNonEmptyString,
     asNumber,
@@ -80,95 +237,90 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
 
   async function handleYoutubeDiscovery(
     api: unknown,
-    runtime: Record<string, unknown>,
+    runtime: LaboratoryRuntimeRecord,
     requestId: string
   ) {
     const project = getActiveProject(runtime);
-    const ytDlpState = toRecord(toRecord(runtime["toolState"])["tools"])["yt-dlp"];
+    const ytDlpState = getToolEntry(runtime, "yt-dlp");
     if (project === null) {
       throw new Error("Active project is missing.");
     }
-    if (toRecord(ytDlpState)["installed"] !== true) {
+    if (ytDlpState.installed !== true) {
       throw new Error("yt-dlp is not installed.");
     }
 
-    const subtitleState = normalizeSubtitleAnalysisState(project["subtitleAnalysis"], runtime);
-    const drafts = toRecord(toRecord(subtitleState["workspace"])["drafts"]);
-    const urlValue = asNonEmptyString(drafts["youtubeUrl"]);
-    const scopeId =
-      (subtitleState["workspace"] as Record<string, unknown>)["mode"] === "youtube-playlist"
-        ? "playlist"
-        : (subtitleState["workspace"] as Record<string, unknown>)["mode"] === "youtube-channel"
-          ? "channel"
-          : "single";
+    const subtitleState = toSubtitleStateRecord(project.subtitleAnalysis, runtime);
+    const workspace = toWorkspaceRecord(subtitleState.workspace);
+    const drafts = toDraftsRecord(workspace.drafts);
+    const urlValue = asNonEmptyString(drafts.youtubeUrl);
+    const scopeId = getWorkspaceScopeId(workspace);
     if (urlValue === null) {
       throw new Error("YouTube URL is empty.");
     }
 
     const jobId = `room-subtitle-youtube-discovery-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     registerJob(runtime, {
-      jobId: jobId,
-      requestId: requestId,
+      jobId,
+      requestId,
       action: "subtitle-source-discover-youtube",
-      projectId: project["id"],
+      projectId: project.id,
       toolId: "yt-dlp",
       featureStage: "source",
     });
     pushJobState(api, {
-      requestId: requestId,
-      jobId: jobId,
+      requestId,
+      jobId,
       action: "subtitle-source-discover-youtube",
-      projectId: project["id"],
+      projectId: project.id,
       toolId: "yt-dlp",
       featureStage: "source",
       stage: "queued",
     });
 
     try {
-      const discoveryResult = await collectSubtitleYoutubeDiscovery(
-        runtime,
-        requestId,
-        jobId,
-        urlValue,
-        scopeId,
-        drafts
+      const discoveryResult = toDiscoveryResult(
+        await collectSubtitleYoutubeDiscovery(runtime, requestId, jobId, urlValue, scopeId, drafts)
       );
       if (discoveryResult.items.length === 0) {
         throw new Error("No videos matched the requested subtitle filters.");
       }
 
-      await patchActiveProject(runtime, function (nextProject: any) {
-        const nextSubtitleState = normalizeSubtitleAnalysisState(
-          nextProject["subtitleAnalysis"],
+      await patchActiveProject(runtime, function (nextProject) {
+        const nextProjectRecord = toProjectRecord(nextProject);
+        const nextSubtitleState = toSubtitleStateRecord(
+          nextProjectRecord.subtitleAnalysis,
           runtime
         );
-        (nextSubtitleState["workspace"] as Record<string, unknown>)["mode"] = (
-          subtitleState["workspace"] as Record<string, unknown>
-        )["mode"];
-        (nextSubtitleState["workspace"] as Record<string, unknown>)["lastError"] = null;
-        (nextSubtitleState["workspace"] as Record<string, unknown>)["lastActionAt"] =
-          new Date().toISOString();
-        nextSubtitleState["discovery"] = {
+        const nextWorkspace = toWorkspaceRecord(nextSubtitleState.workspace);
+        const nextDiscovery = toDiscoveryStateRecord(nextSubtitleState.discovery);
+
+        nextWorkspace.mode = asNonEmptyString(workspace.mode) ?? nextWorkspace.mode;
+        nextWorkspace.lastError = null;
+        nextWorkspace.lastActionAt = new Date().toISOString();
+        nextSubtitleState.workspace = nextWorkspace;
+        nextSubtitleState.discovery = {
           status: "ready",
           scope: scopeId,
           items: discoveryResult.items,
-          selectedCandidateIds: discoveryResult.items.map(function (entry: any) {
-            return entry["id"];
-          }),
+          selectedCandidateIds: discoveryResult.items
+            .map(function (entry) {
+              return asNonEmptyString(entry.id);
+            })
+            .filter(isNonNullString),
           totalCandidateCount: discoveryResult.totalCandidateCount,
           lastError: null,
           lastRunAt: new Date().toISOString(),
-          lastDownloadAt: asNonEmptyString(toRecord(nextSubtitleState["discovery"])["lastDownloadAt"]),
+          lastDownloadAt: asNonEmptyString(nextDiscovery.lastDownloadAt),
         };
-        nextProject["subtitleAnalysis"] = nextSubtitleState;
-        return nextProject;
+        nextProjectRecord.subtitleAnalysis = nextSubtitleState;
+        return nextProjectRecord;
       });
 
       pushJobState(api, {
-        requestId: requestId,
-        jobId: jobId,
+        requestId,
+        jobId,
         action: "subtitle-source-discover-youtube",
-        projectId: project["id"],
+        projectId: project.id,
         toolId: "yt-dlp",
         featureStage: "source",
         stage: "completed",
@@ -180,31 +332,33 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
         totalCandidateCount: discoveryResult.totalCandidateCount,
       };
     } catch (error) {
-      await patchActiveProject(runtime, function (nextProject: any) {
-        const nextSubtitleState = normalizeSubtitleAnalysisState(
-          nextProject["subtitleAnalysis"],
+      await patchActiveProject(runtime, function (nextProject) {
+        const nextProjectRecord = toProjectRecord(nextProject);
+        const nextSubtitleState = toSubtitleStateRecord(
+          nextProjectRecord.subtitleAnalysis,
           runtime
         );
-        nextSubtitleState["discovery"] = {
+        const nextWorkspace = toWorkspaceRecord(nextSubtitleState.workspace);
+
+        nextSubtitleState.discovery = {
           ...createEmptySubtitleDiscoveryState(),
           status: "error",
           scope: scopeId,
           lastError: error instanceof Error ? error.message : String(error),
           lastRunAt: new Date().toISOString(),
         };
-        (nextSubtitleState["workspace"] as Record<string, unknown>)["lastError"] =
-          error instanceof Error ? error.message : String(error);
-        (nextSubtitleState["workspace"] as Record<string, unknown>)["lastActionAt"] =
-          new Date().toISOString();
-        nextProject["subtitleAnalysis"] = nextSubtitleState;
-        return nextProject;
+        nextWorkspace.lastError = error instanceof Error ? error.message : String(error);
+        nextWorkspace.lastActionAt = new Date().toISOString();
+        nextSubtitleState.workspace = nextWorkspace;
+        nextProjectRecord.subtitleAnalysis = nextSubtitleState;
+        return nextProjectRecord;
       });
 
       pushJobState(api, {
-        requestId: requestId,
-        jobId: jobId,
+        requestId,
+        jobId,
         action: "subtitle-source-discover-youtube",
-        projectId: project["id"],
+        projectId: project.id,
         toolId: "yt-dlp",
         featureStage: "source",
         stage: "failed",
@@ -218,74 +372,61 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
 
   async function handleYoutubeDownload(
     api: unknown,
-    runtime: Record<string, unknown>,
+    runtime: LaboratoryRuntimeRecord,
     requestId: string
   ) {
     const project = getActiveProject(runtime);
-    const ytDlpState = toRecord(toRecord(runtime["toolState"])["tools"])["yt-dlp"];
+    const ytDlpState = getToolEntry(runtime, "yt-dlp");
     if (project === null) {
       throw new Error("Active project is missing.");
     }
-    if (toRecord(ytDlpState)["installed"] !== true) {
+    if (ytDlpState.installed !== true) {
       throw new Error("yt-dlp is not installed.");
     }
 
-    const subtitleState = normalizeSubtitleAnalysisState(project["subtitleAnalysis"], runtime);
-    const drafts = toRecord(toRecord(subtitleState["workspace"])["drafts"]);
-    const urlValue = asNonEmptyString(drafts["youtubeUrl"]);
-    const scopeId =
-      (subtitleState["workspace"] as Record<string, unknown>)["mode"] === "youtube-playlist"
-        ? "playlist"
-        : (subtitleState["workspace"] as Record<string, unknown>)["mode"] === "youtube-channel"
-          ? "channel"
-          : "single";
+    const subtitleState = toSubtitleStateRecord(project.subtitleAnalysis, runtime);
+    const workspace = toWorkspaceRecord(subtitleState.workspace);
+    const drafts = toDraftsRecord(workspace.drafts);
+    const urlValue = asNonEmptyString(drafts.youtubeUrl);
+    const scopeId = getWorkspaceScopeId(workspace);
     if (urlValue === null) {
       throw new Error("YouTube URL is empty.");
     }
 
-    const discoveryItems = Array.isArray(toRecord(subtitleState["discovery"])["items"])
-      ? (toRecord(subtitleState["discovery"])["items"] as unknown[]).map(function (
-          entry: unknown,
-          index: number
-        ) {
-          return normalizeSubtitleDiscoveryItem(entry, index);
-        })
-      : [];
+    const discoveryItems = getDiscoveryItems(subtitleState);
     const selectedCandidateIds = normalizeStringArray(
-      toRecord(subtitleState["discovery"])["selectedCandidateIds"]
+      toDiscoveryStateRecord(subtitleState.discovery)["selectedCandidateIds"]
     );
-    const selectedCandidates = discoveryItems.filter(function (entry: Record<string, unknown>) {
-      const id = asNonEmptyString(entry["id"]) || "";
-      return selectedCandidateIds.includes(id) && entry["url"] !== null;
+    const selectedCandidates = discoveryItems.filter(function (entry) {
+      const id = asNonEmptyString(entry.id) ?? "";
+      return selectedCandidateIds.includes(id) && asNonEmptyString(entry.url) !== null;
     });
+
     if (selectedCandidates.length === 0) {
       throw new Error("Run discovery and select at least one video before downloading subtitles.");
     }
 
     const jobId = `room-subtitle-youtube-download-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const sourceDir = getProjectSubtitleSourceDir(
-      runtime as { paths: { projectsDir: string } },
-      project as { slug: string }
-    );
+    const sourceDir = getProjectSubtitleSourcePath(runtime, project);
     const beforePaths = new Set(
-      (await listSubtitleFilesInDirectory(runtime, sourceDir)).map(function (entry: any) {
+      (await listSubtitleFilesInDirectory(runtime, sourceDir)).map(function (entry) {
         return entry.path;
       })
     );
 
     registerJob(runtime, {
-      jobId: jobId,
-      requestId: requestId,
+      jobId,
+      requestId,
       action: "subtitle-source-download-youtube",
-      projectId: project["id"],
+      projectId: project.id,
       toolId: "yt-dlp",
       featureStage: "source",
     });
     pushJobState(api, {
-      requestId: requestId,
-      jobId: jobId,
+      requestId,
+      jobId,
       action: "subtitle-source-download-youtube",
-      projectId: project["id"],
+      projectId: project.id,
       toolId: "yt-dlp",
       featureStage: "source",
       stage: "queued",
@@ -293,11 +434,16 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
 
     try {
       for (let index = 0; index < selectedCandidates.length; index += 1) {
+        const selectedCandidate = selectedCandidates[index];
+        if (!selectedCandidate) {
+          continue;
+        }
+        const selectedUrl = asNonEmptyString(selectedCandidate.url) ?? "";
         // eslint-disable-next-line no-await-in-loop -- NOTE: keep yt-dlp downloads ordered per request.
         await callRoomTools({
           operation: "tool-run",
-          roomId: roomId,
-          requestId: requestId,
+          roomId,
+          requestId,
           jobId: `${jobId}-${index}`,
           toolId: "yt-dlp",
           cwd: sourceDir,
@@ -305,7 +451,7 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
             runtime,
             drafts,
             sourceDir,
-            asNonEmptyString(toRecord(selectedCandidates[index])["url"]) || "",
+            selectedUrl,
             "single"
           ),
           timeoutMs: 20 * 60 * 1000,
@@ -320,26 +466,29 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
             : "youtube-single";
       const afterEntries = await listSubtitleFilesInDirectory(runtime, sourceDir);
       const importedEntries = afterEntries
-        .filter(function (entry: any) {
+        .filter(function (entry) {
           return beforePaths.has(entry.path) !== true;
         })
-        .map(function (entry: any) {
+        .map(function (entry) {
           const matchedDiscovery =
-            selectedCandidates.find(function (candidate: Record<string, unknown>) {
-              const candidateId = asNonEmptyString(candidate["videoId"]);
+            selectedCandidates.find(function (candidate) {
+              const candidateId = asNonEmptyString(candidate.videoId);
               return candidateId !== null && entry.name.includes(candidateId);
-            }) ||
-            selectedCandidates[0] ||
+            }) ??
+            selectedCandidates[0] ??
             null;
           return createSubtitleEntryRecord(entry.path, {
             fileName: entry.name,
-            sourceType: sourceType,
-            sourceUrl: matchedDiscovery ? matchedDiscovery["url"] : urlValue,
-            publishedAt: matchedDiscovery ? matchedDiscovery["publishedAt"] : null,
-            durationSeconds: matchedDiscovery ? matchedDiscovery["durationSeconds"] : null,
-            isShort: matchedDiscovery ? matchedDiscovery["isShort"] : null,
+            sourceType,
+            sourceUrl: matchedDiscovery === null ? urlValue : matchedDiscovery.url,
+            publishedAt: matchedDiscovery === null ? null : matchedDiscovery.publishedAt,
+            durationSeconds: matchedDiscovery === null ? null : matchedDiscovery.durationSeconds,
+            isShort: matchedDiscovery === null ? null : matchedDiscovery.isShort,
             metadata: {
-              subtitleLanguages: matchedDiscovery ? matchedDiscovery["subtitleLanguages"] : [],
+              subtitleLanguages:
+                matchedDiscovery === null
+                  ? []
+                  : normalizeStringArray(matchedDiscovery.subtitleLanguages),
             },
           });
         });
@@ -348,35 +497,39 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
         throw new Error("yt-dlp finished without creating subtitle files.");
       }
 
-      await patchActiveProject(runtime, function (nextProject: any) {
-        upsertSubtitleEntries(runtime, nextProject, importedEntries, {
-          mode: (subtitleState["workspace"] as Record<string, unknown>)["mode"],
-          activeEntryId: importedEntries[0] ? importedEntries[0]["id"] : null,
-          selectedEntryIds: importedEntries.map(function (entry: any) {
-            return entry["id"];
-          }),
+      await patchActiveProject(runtime, function (nextProject) {
+        const nextProjectRecord = toProjectRecord(nextProject);
+        upsertSubtitleEntries(runtime, nextProjectRecord, importedEntries, {
+          mode: asNonEmptyString(workspace.mode),
+          activeEntryId: asNonEmptyString(importedEntries[0]?.id) ?? null,
+          selectedEntryIds: importedEntries
+            .map(function (entry) {
+              return asNonEmptyString(entry.id);
+            })
+            .filter(isNonNullString),
           replaceExisting: false,
         });
-        const nextSubtitleState = normalizeSubtitleAnalysisState(
-          nextProject["subtitleAnalysis"],
+        const nextSubtitleState = toSubtitleStateRecord(
+          nextProjectRecord.subtitleAnalysis,
           runtime
         );
-        nextSubtitleState["discovery"] = {
-          ...(nextSubtitleState["discovery"] as Record<string, unknown>),
+        const nextDiscovery = toDiscoveryStateRecord(nextSubtitleState.discovery);
+        nextSubtitleState.discovery = {
+          ...nextDiscovery,
           status: "ready",
           scope: scopeId,
           lastError: null,
           lastDownloadAt: new Date().toISOString(),
         };
-        nextProject["subtitleAnalysis"] = nextSubtitleState;
-        return nextProject;
+        nextProjectRecord.subtitleAnalysis = nextSubtitleState;
+        return nextProjectRecord;
       });
 
       pushJobState(api, {
-        requestId: requestId,
-        jobId: jobId,
+        requestId,
+        jobId,
         action: "subtitle-source-download-youtube",
-        projectId: project["id"],
+        projectId: project.id,
         toolId: "yt-dlp",
         featureStage: "source",
         stage: "completed",
@@ -389,10 +542,10 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
       };
     } catch (error) {
       pushJobState(api, {
-        requestId: requestId,
-        jobId: jobId,
+        requestId,
+        jobId,
         action: "subtitle-source-download-youtube",
-        projectId: project["id"],
+        projectId: project.id,
         toolId: "yt-dlp",
         featureStage: "source",
         stage: "failed",
@@ -405,8 +558,8 @@ export function createSubtitleYoutubeSourceRuntime(deps: SubtitleYoutubeSourceRu
   }
 
   return {
-    handleYoutubeDiscovery: handleYoutubeDiscovery,
-    handleYoutubeDownload: handleYoutubeDownload,
+    handleYoutubeDiscovery,
+    handleYoutubeDownload,
     needsMetadataFiltering: needsSubtitleYoutubeMetadataFiltering,
   };
 }

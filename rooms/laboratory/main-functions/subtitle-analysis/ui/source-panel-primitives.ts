@@ -1,4 +1,28 @@
-export function createSubtitleAnalysisSourcePanelPrimitives(deps: any) {
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratorySubtitleSourcePresetsRecord = LaboratoryRecord & {
+  modes?: unknown;
+};
+
+type LaboratorySubtitleWorkspaceRecord = LaboratoryRecord & {
+  mode?: unknown;
+};
+
+type SubtitleDraftSelectOption = {
+  label: string;
+  value: string;
+};
+
+type SubtitleAnalysisSourcePanelPrimitivesDeps = {
+  escapeHtml: (value: string) => string;
+  getSubtitleSourcePresets: () => LaboratorySubtitleSourcePresetsRecord;
+  getSubtitleWorkspace: () => LaboratorySubtitleWorkspaceRecord;
+  subtitleText: (path: string[], tr: string, en: string) => string;
+};
+
+export function createSubtitleAnalysisSourcePanelPrimitives(
+  deps: SubtitleAnalysisSourcePanelPrimitivesDeps
+) {
   const escapeHtml = deps.escapeHtml;
   const subtitleText = deps.subtitleText;
   const getSubtitleSourcePresets = deps.getSubtitleSourcePresets;
@@ -7,7 +31,7 @@ export function createSubtitleAnalysisSourcePanelPrimitives(deps: any) {
   function getSubtitleSourceModeOptions() {
     const modes = getSubtitleSourcePresets().modes;
     return Array.isArray(modes)
-      ? modes.filter(function (entry: any) {
+      ? modes.filter(function (entry): entry is string {
           return typeof entry === "string" && entry.trim() !== "";
         })
       : [
@@ -24,10 +48,11 @@ export function createSubtitleAnalysisSourcePanelPrimitives(deps: any) {
     const workspace = getSubtitleWorkspace();
     const currentMode = typeof workspace.mode === "string" ? workspace.mode : null;
     const modes = getSubtitleSourceModeOptions();
-    return modes.includes(currentMode) ? currentMode : modes[0] || "local-file";
+    const fallbackMode = modes[0] ?? "local-file";
+    return currentMode !== null && modes.includes(currentMode) ? currentMode : fallbackMode;
   }
 
-  function getSubtitleSourceModeLabel(modeId: any) {
+  function getSubtitleSourceModeLabel(modeId: string) {
     switch (modeId) {
       case "local-folder":
         return subtitleText(["source", "modes", "localFolder"], "Klasor", "Folder");
@@ -57,13 +82,18 @@ export function createSubtitleAnalysisSourcePanelPrimitives(deps: any) {
     }
   }
 
-  function renderSubtitleDraftSelect(fieldId: any, value: any, label: any, options: any) {
+  function renderSubtitleDraftSelect(
+    fieldId: string,
+    value: string,
+    label: string,
+    options: SubtitleDraftSelectOption[]
+  ) {
     return `
       <label class="lab-field">
         <span class="lab-field__label">${escapeHtml(label)}</span>
         <select class="lab-select" data-draft-field="${escapeHtml(fieldId)}">
           ${options
-            .map(function (entry: any) {
+            .map(function (entry) {
               return `
                 <option value="${escapeHtml(entry.value)}" ${
                   String(entry.value) === String(value) ? "selected" : ""

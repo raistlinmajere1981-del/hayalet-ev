@@ -95,7 +95,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     }
     return shell.render();
   }
-  const coreRuntime = createLaboratoryUiCoreRuntime({
+  const coreRuntimeDeps = {
     audioFeatureId: AUDIO_FEATURE_ID,
     bootstrapCopy: BOOTSTRAP_COPY,
     cloneLaboratoryValue,
@@ -135,10 +135,13 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     sourceFormats: SOURCE_FORMATS,
     stageOrder: STAGE_ORDER,
     subtitleFeatureId: SUBTITLE_FEATURE_ID,
-  });
+  };
+  const coreRuntime = createLaboratoryUiCoreRuntime(
+    coreRuntimeDeps as unknown as Parameters<typeof createLaboratoryUiCoreRuntime>[0]
+  );
   void coreRuntime.laboratoryStageAccessorsRuntime.collectProfileStageJobs;
 
-  const laboratoryFeatureStageRuntime = createLaboratoryFeatureStageRuntime({
+  const laboratoryFeatureStageRuntimeDeps = {
     applyLocale: coreRuntime.applyLocale,
     applyPresentationMode: coreRuntime.applyPresentationMode,
     createAudioAnalysisUi: createAudioAnalysisUi,
@@ -249,11 +252,14 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     text: coreRuntime.text,
     textFromKey: coreRuntime.textFromKey,
     toRecord: coreRuntime.toRecord,
-  });
+  };
+  const laboratoryFeatureStageRuntime = createLaboratoryFeatureStageRuntime(
+    laboratoryFeatureStageRuntimeDeps as unknown as Parameters<typeof createLaboratoryFeatureStageRuntime>[0]
+  );
   const profileProcessBundle = laboratoryFeatureStageRuntime.profileProcessBundle;
   void profileProcessBundle.renderReportFinding;
 
-  const laboratoryUiShellComposition = createLaboratoryUiShellComposition({
+  const laboratoryUiShellCompositionDeps = {
     advanceStage: coreRuntime.advanceStage,
     applyLocale: coreRuntime.applyLocale,
     applyPresentationMode: coreRuntime.applyPresentationMode,
@@ -291,7 +297,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     getSourceSnapshot: coreRuntime.getSourceSnapshot,
     getToolEntry: coreRuntime.getToolEntry,
     getYtDlpForm: coreRuntime.getYtDlpForm,
-    handleHostMessage: function (message: any) {
+    handleHostMessage: function (message: unknown) {
       return laboratoryFeatureStageRuntime.laboratoryHostMessageRuntime.handleHostMessage(message);
     },
     isAudioAnalysisFeature: coreRuntime.isAudioAnalysisFeature,
@@ -347,11 +353,14 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     text: coreRuntime.text,
     textFromKey: coreRuntime.textFromKey,
     toRecord: coreRuntime.toRecord,
-    toggleCleanup(key: any) {
+    toggleCleanup(key: unknown) {
       void key;
     },
     windowRef: window,
-  });
+  };
+  const laboratoryUiShellComposition = createLaboratoryUiShellComposition(
+    laboratoryUiShellCompositionDeps as unknown as Parameters<typeof createLaboratoryUiShellComposition>[0]
+  );
 
   const laboratoryUiBootstrapRuntime = laboratoryUiShellComposition.laboratoryUiBootstrapRuntime;
   laboratoryUiRefs.settingsUi = laboratoryFeatureStageRuntime.laboratorySettingsUi;

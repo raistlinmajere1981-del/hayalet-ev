@@ -1,22 +1,119 @@
-export function createSubtitleAnalysisEditPanels(deps: any) {
-  const toRecord = deps.toRecord;
-  const escapeHtml = deps.escapeHtml;
-  const featureText = deps.featureText;
-  const subtitleText = deps.subtitleText;
-  const formatStatusLabel = deps.formatStatusLabel;
-  const renderSummaryRows = deps.renderSummaryRows;
-  const renderEditToggle = deps.renderEditToggle;
-  const renderEditSelectField = deps.renderEditSelectField;
-  const renderEditRangeField = deps.renderEditRangeField;
-  const renderStageIntro = deps.renderStageIntro;
-  const getCurrentEditDraft = deps.getCurrentEditDraft;
-  const getActiveSubtitleEntry = deps.getActiveSubtitleEntry;
-  const getSubtitleEditState = deps.getSubtitleEditState;
-  const getSubtitleEditPresets = deps.getSubtitleEditPresets;
-  const getSubtitleEditPreview = deps.getSubtitleEditPreview;
-  const getSubtitleOutputs = deps.getSubtitleOutputs;
+type LaboratoryRecord = Record<string, unknown>;
 
-  function renderSubtitlePreviewBody(textValue: any, emptyLabel: any) {
+type LaboratorySubtitleEntryRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  format?: unknown;
+  id?: unknown;
+};
+
+type LaboratorySubtitleEditStateRecord = LaboratoryRecord & {
+  lastError?: unknown;
+  presetId?: unknown;
+};
+
+type LaboratorySubtitlePresetRecord = LaboratoryRecord & {
+  id?: unknown;
+  label?: unknown;
+};
+
+type LaboratorySubtitlePreviewSummaryRecord = LaboratoryRecord & {
+  changed?: unknown;
+  maxLineLength?: unknown;
+  outputCueCount?: unknown;
+  outputLineCount?: unknown;
+  sourceCueCount?: unknown;
+  sourceLineCount?: unknown;
+};
+
+type LaboratorySubtitlePreviewRecord = LaboratoryRecord & {
+  outputText?: unknown;
+  status?: unknown;
+  summary?: unknown;
+};
+
+type LaboratorySubtitleOutputRecord = LaboratoryRecord & {
+  fileName?: unknown;
+  fileUrl?: unknown;
+  id?: unknown;
+  label?: unknown;
+  path?: unknown;
+  summary?: unknown;
+};
+
+type LaboratorySubtitleEditDraftRecord = LaboratoryRecord & {
+  recipe?: unknown;
+};
+
+type LaboratorySubtitlePanelDeps = {
+  escapeHtml: (value: string) => string;
+  featureText: (path: string[]) => string;
+  formatStatusLabel: (value: unknown) => string;
+  getActiveSubtitleEntry: () => LaboratorySubtitleEntryRecord | null;
+  getCurrentEditDraft: () => LaboratorySubtitleEditDraftRecord;
+  getSubtitleEditPresets: () => LaboratoryRecord;
+  getSubtitleEditPreview: () => LaboratorySubtitlePreviewRecord;
+  getSubtitleEditState: () => LaboratorySubtitleEditStateRecord;
+  getSubtitleOutputs: () => LaboratorySubtitleOutputRecord[];
+  renderEditRangeField: (
+    fieldId: string,
+    value: number,
+    label: string,
+    options: LaboratoryRecord
+  ) => string;
+  renderEditSelectField: (
+    fieldId: string,
+    value: unknown,
+    label: string,
+    options: Array<{ value: string; label: string }>
+  ) => string;
+  renderEditToggle: (fieldId: string, label: string, active: boolean) => string;
+  renderStageIntro: (stageId: string) => string;
+  renderSummaryRows: (rows: Array<[string, string]>) => string;
+  subtitleText: (path: string[], tr: string, en: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createSubtitleAnalysisEditPanels(deps: LaboratorySubtitlePanelDeps) {
+  const {
+    escapeHtml,
+    featureText,
+    formatStatusLabel,
+    getActiveSubtitleEntry,
+    getCurrentEditDraft,
+    getSubtitleEditPresets,
+    getSubtitleEditPreview,
+    getSubtitleEditState,
+    getSubtitleOutputs,
+    renderEditRangeField,
+    renderEditSelectField,
+    renderEditToggle,
+    renderStageIntro,
+    renderSummaryRows,
+    subtitleText,
+    toRecord,
+  } = deps;
+
+  function toPresetRecord(value: unknown): LaboratorySubtitlePresetRecord {
+    return toRecord(value);
+  }
+
+  function toPreviewSummaryRecord(value: unknown): LaboratorySubtitlePreviewSummaryRecord {
+    return toRecord(value);
+  }
+
+  function toOutputRecord(value: unknown): LaboratorySubtitleOutputRecord {
+    return toRecord(value);
+  }
+
+  function toString(value: unknown, fallback = ""): string {
+    return typeof value === "string" ? value : fallback;
+  }
+
+  function toNumber(value: unknown, fallback = 0): number {
+    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  }
+
+  function renderSubtitlePreviewBody(textValue: unknown, emptyLabel: string) {
     const nextValue = typeof textValue === "string" ? textValue.trim() : "";
     return nextValue !== ""
       ? `<pre class="lab-subtitle-preview">${escapeHtml(nextValue)}</pre>`
@@ -25,8 +122,9 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
 
   function renderSubtitlePresetChooser() {
     const presetState = getSubtitleEditState();
-    const presets = Array.isArray(getSubtitleEditPresets().presets)
-      ? getSubtitleEditPresets().presets.map(toRecord)
+    const presetsState = toRecord(getSubtitleEditPresets());
+    const presets = Array.isArray(presetsState["presets"])
+      ? presetsState["presets"].map(toPresetRecord)
       : [];
     if (presets.length === 0) {
       return "";
@@ -42,16 +140,17 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
         </div>
         <div class="lab-chip-row">
           ${presets
-            .map(function (preset: any) {
+            .map(function (preset) {
+              const presetId = toString(preset.id, "");
               return `
                 <button
                   class="lab-choice-chip"
                   type="button"
                   data-action="subtitle-edit-preset"
-                  data-value="${escapeHtml(preset.id || "")}"
-                  data-selected="${preset.id === presetState.presetId ? "true" : "false"}"
+                  data-value="${escapeHtml(presetId)}"
+                  data-selected="${presetId === presetState.presetId ? "true" : "false"}"
                 >
-                  ${escapeHtml(preset.label || preset.id || "--")}
+                  ${escapeHtml(toString(preset.label, presetId || "--"))}
                 </button>
               `;
             })
@@ -64,12 +163,12 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
   function renderSubtitleEditWorkspacePanel() {
     const activeEntry = getActiveSubtitleEntry();
     const preview = getSubtitleEditPreview();
-    const latestOutput = getSubtitleOutputs()[0] || null;
+    const latestOutput = getSubtitleOutputs().map(toOutputRecord)[0] || null;
     const displayText =
       typeof preview.outputText === "string" && preview.outputText.trim() !== ""
         ? preview.outputText
         : "";
-    const summary = toRecord(preview.summary);
+    const summary = toPreviewSummaryRecord(preview.summary);
 
     return `
       <section class="lab-panel lab-preview-panel">
@@ -78,7 +177,7 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
             <p class="lab-panel__eyebrow">${escapeHtml(featureText(["edit", "workspaceTitle"]))}</p>
             <h2 class="lab-panel__title">${escapeHtml(
               activeEntry
-                ? activeEntry.fileName || activeEntry.id || "--"
+                ? toString(activeEntry.fileName, toString(activeEntry.id, "--"))
                 : subtitleText(
                     ["edit", "workspace", "emptyTitle"],
                     "Altyazi secilmedi",
@@ -99,20 +198,20 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
         ${renderSummaryRows([
           [
             subtitleText(["edit", "workspace", "labels", "cues"], "Cue", "Cues"),
-            String(summary.outputCueCount || summary.sourceCueCount || 0),
+            String(toNumber(summary.outputCueCount) || toNumber(summary.sourceCueCount)),
           ],
           [
             subtitleText(["edit", "workspace", "labels", "lines"], "Satir", "Lines"),
-            String(summary.outputLineCount || summary.sourceLineCount || 0),
+            String(toNumber(summary.outputLineCount) || toNumber(summary.sourceLineCount)),
           ],
           [
             subtitleText(["edit", "workspace", "labels", "maxLine"], "Max satir", "Max line"),
-            String(summary.maxLineLength || 0),
+            String(toNumber(summary.maxLineLength)),
           ],
           [
             subtitleText(["edit", "workspace", "labels", "output"], "Cikti", "Output"),
             latestOutput
-              ? latestOutput.label || latestOutput.fileName || latestOutput.id || "--"
+              ? toString(latestOutput.label, toString(latestOutput.fileName, toString(latestOutput.id, "--")))
               : "--",
           ],
         ])}
@@ -121,7 +220,7 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
   }
 
   function renderSubtitleEditControlsPanel() {
-    const recipe = toRecord(getCurrentEditDraft().recipe);
+    const recipe = toRecord(getCurrentEditDraft()["recipe"]);
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -131,18 +230,18 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
           </div>
         </div>
         <div class="lab-toggle-grid">
-          ${renderEditToggle("trimWhitespace", subtitleText(["edit", "controls", "toggles", "trimWhitespace"], "Bosluk temizle", "Trim whitespace"), recipe.trimWhitespace === true)}
-          ${renderEditToggle("collapseBlankLines", subtitleText(["edit", "controls", "toggles", "collapseBlankLines"], "Bos satirlari daralt", "Collapse blank lines"), recipe.collapseBlankLines === true)}
-          ${renderEditToggle("normalizeQuotes", subtitleText(["edit", "controls", "toggles", "normalizeQuotes"], "Tirnak normalize et", "Normalize quotes"), recipe.normalizeQuotes === true)}
-          ${renderEditToggle("stripHtml", subtitleText(["edit", "controls", "toggles", "stripHtml"], "HTML etiketlerini sil", "Strip HTML"), recipe.stripHtml === true)}
-          ${renderEditToggle("removeMusicTags", subtitleText(["edit", "controls", "toggles", "removeMusicTags"], "Muzik etiketlerini sil", "Remove music tags"), recipe.removeMusicTags === true)}
-          ${renderEditToggle("mergeShortCues", subtitleText(["edit", "controls", "toggles", "mergeShortCues"], "Kisa satirlari birlestir", "Merge short cues"), recipe.mergeShortCues === true)}
-          ${renderEditToggle("splitLongLines", subtitleText(["edit", "controls", "toggles", "splitLongLines"], "Uzun satirlari bol", "Split long lines"), recipe.splitLongLines === true)}
+          ${renderEditToggle("trimWhitespace", subtitleText(["edit", "controls", "toggles", "trimWhitespace"], "Bosluk temizle", "Trim whitespace"), recipe["trimWhitespace"] === true)}
+          ${renderEditToggle("collapseBlankLines", subtitleText(["edit", "controls", "toggles", "collapseBlankLines"], "Bos satirlari daralt", "Collapse blank lines"), recipe["collapseBlankLines"] === true)}
+          ${renderEditToggle("normalizeQuotes", subtitleText(["edit", "controls", "toggles", "normalizeQuotes"], "Tirnak normalize et", "Normalize quotes"), recipe["normalizeQuotes"] === true)}
+          ${renderEditToggle("stripHtml", subtitleText(["edit", "controls", "toggles", "stripHtml"], "HTML etiketlerini sil", "Strip HTML"), recipe["stripHtml"] === true)}
+          ${renderEditToggle("removeMusicTags", subtitleText(["edit", "controls", "toggles", "removeMusicTags"], "Muzik etiketlerini sil", "Remove music tags"), recipe["removeMusicTags"] === true)}
+          ${renderEditToggle("mergeShortCues", subtitleText(["edit", "controls", "toggles", "mergeShortCues"], "Kisa satirlari birlestir", "Merge short lines"), recipe["mergeShortCues"] === true)}
+          ${renderEditToggle("splitLongLines", subtitleText(["edit", "controls", "toggles", "splitLongLines"], "Uzun satirlari bol", "Split long lines"), recipe["splitLongLines"] === true)}
         </div>
         <div class="lab-form-grid">
           ${renderEditSelectField(
             "outputFormat",
-            recipe.outputFormat || "source",
+            toString(recipe["outputFormat"], "source"),
             subtitleText(["edit", "fields", "outputFormat"], "Cikti formati", "Output format"),
             [
               {
@@ -160,13 +259,13 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
           )}
           ${renderEditRangeField(
             "maxCharsPerLine",
-            recipe.maxCharsPerLine || 42,
+            toNumber(recipe["maxCharsPerLine"], 42),
             subtitleText(["edit", "controls", "labels", "maxChars"], "Max karakter", "Max chars"),
             {
               min: 24,
               max: 64,
               step: 1,
-              displayValue: String(recipe.maxCharsPerLine || 42),
+              displayValue: String(toNumber(recipe["maxCharsPerLine"], 42)),
             }
           )}
         </div>
@@ -202,7 +301,7 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
   }
 
   function renderSubtitleOutputsPanel() {
-    const outputs = getSubtitleOutputs();
+    const outputs = getSubtitleOutputs().map(toOutputRecord);
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -215,17 +314,21 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
           ${
             outputs.length > 0
               ? outputs
-                  .map(function (entry: any) {
-                    const summary = toRecord(entry.summary);
+                  .map(function (entry) {
+                    const summary = toPreviewSummaryRecord(entry.summary);
                     return `
                       <article class="lab-output-card">
                         <div>
-                          <strong>${escapeHtml(entry.label || entry.fileName || entry.id || "--")}</strong>
-                          <span>${escapeHtml(entry.path || entry.fileUrl || "--")}</span>
+                          <strong>${escapeHtml(
+                            toString(entry.label, toString(entry.fileName, toString(entry.id, "--")))
+                          )}</strong>
+                          <span>${escapeHtml(
+                            toString(entry.path, toString(entry.fileUrl, "--"))
+                          )}</span>
                         </div>
                         <span>${escapeHtml(
                           subtitleText(["edit", "outputs", "labels", "cues"], "Cue", "Cues")
-                        )}: ${escapeHtml(String(summary.outputCueCount || 0))}</span>
+                        )}: ${escapeHtml(String(toNumber(summary.outputCueCount)))}</span>
                       </article>
                     `;
                   })
@@ -239,7 +342,7 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
 
   function renderSubtitleEditSummaryPanel() {
     const preview = getSubtitleEditPreview();
-    const summary = toRecord(preview.summary);
+    const summary = toPreviewSummaryRecord(preview.summary);
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -262,15 +365,15 @@ export function createSubtitleAnalysisEditPanels(deps: any) {
           ],
           [
             subtitleText(["edit", "summary", "labels", "sourceCues"], "Kaynak cue", "Source cues"),
-            String(summary.sourceCueCount || 0),
+            String(toNumber(summary.sourceCueCount)),
           ],
           [
             subtitleText(["edit", "summary", "labels", "outputCues"], "Cikti cue", "Output cues"),
-            String(summary.outputCueCount || 0),
+            String(toNumber(summary.outputCueCount)),
           ],
           [
             subtitleText(["edit", "summary", "labels", "maxLine"], "Max satir", "Max line"),
-            String(summary.maxLineLength || 0),
+            String(toNumber(summary.maxLineLength)),
           ],
         ])}
       </section>

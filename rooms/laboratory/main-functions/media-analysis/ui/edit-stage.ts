@@ -31,7 +31,7 @@ export function renderMediaAnalysisEditStage(deps: MediaAnalysisEditStageDeps): 
 
   const projectSource = getProjectSource();
   const sourceReady =
-    typeof projectSource?.storedPath === "string" && projectSource.storedPath.trim() !== "";
+    typeof projectSource.storedPath === "string" && projectSource.storedPath.trim() !== "";
 
   return `
     <div class="lab-layout">

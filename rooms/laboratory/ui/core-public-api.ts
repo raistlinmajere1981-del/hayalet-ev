@@ -1,5 +1,64 @@
-export function buildLaboratoryUiCoreApi(deps: any) {
-  const laboratoryStageAccessorsRuntime = deps.uiRuntimeComposition.laboratoryStageAccessorsRuntime;
+import type { createLaboratoryRequestRuntime } from "../shared/ui/request-runtime.js";
+import type { LaboratoryUiFeatureRuntimeApi } from "../shared/ui/feature-runtime.js";
+import type { createMediaAnalysisUiRuntime } from "../main-functions/media-analysis/ui/runtime.js";
+import type { createLaboratorySnapshotAccessRuntime } from "./snapshot-access-runtime.js";
+import type { LaboratoryStageAccessorsRuntimeApi } from "./stage-accessors-runtime.js";
+import type { createLaboratoryUiEditRuntime } from "./edit-runtime.js";
+import type { createLaboratoryViewBindingsRuntime } from "./view-bindings-runtime.js";
+
+type LaboratoryRecord = Record<string, unknown>;
+
+type LaboratoryUiRuntimeBase = ReturnType<typeof createLaboratorySnapshotAccessRuntime> &
+  ReturnType<typeof createLaboratoryViewBindingsRuntime> &
+  ReturnType<typeof createMediaAnalysisUiRuntime>;
+
+type LaboratoryUiRuntimeCompositionRuntime = LaboratoryUiRuntimeBase &
+  LaboratoryUiFeatureRuntimeApi &
+  LaboratoryStageAccessorsRuntimeApi & {
+    laboratoryStageAccessorsRuntime: LaboratoryStageAccessorsRuntimeApi;
+  };
+
+type LaboratoryUiCoreApiDeps = {
+  advanceStage: (...args: unknown[]) => unknown;
+  applyLocale: (...args: unknown[]) => unknown;
+  applyPresentationMode: (...args: unknown[]) => unknown;
+  bootstrapText: unknown;
+  captureScrollState: (...args: unknown[]) => unknown;
+  escapeHtml: (...args: unknown[]) => string;
+  featureText: unknown;
+  formatDateTime: (value: unknown) => string;
+  formatDuration: (value: unknown) => string;
+  formatStatusLabel: (...args: unknown[]) => unknown;
+  getActiveFeatureId: () => string;
+  getAvailableSourceFormats: () => unknown;
+  getDefaultSourceKind: () => string;
+  getFeaturePreviewImage: (...args: unknown[]) => unknown;
+  getStageIndex: (...args: unknown[]) => unknown;
+  isAudioAnalysisFeature: () => boolean;
+  isSubtitleAnalysisFeature: () => boolean;
+  laboratoryRequestRuntime: ReturnType<typeof createLaboratoryRequestRuntime>;
+  laboratoryUiEditRuntime: ReturnType<typeof createLaboratoryUiEditRuntime>;
+  normalizeContext: (...args: unknown[]) => unknown;
+  readFormValue: (...args: unknown[]) => unknown;
+  renderBootstrap: (...args: unknown[]) => string;
+  renderStageIntro: (...args: unknown[]) => string;
+  renderStageRail: (...args: unknown[]) => string;
+  renderSummaryRows: (...args: unknown[]) => string;
+  renderTextField: (...args: unknown[]) => string;
+  restoreScrollState: (...args: unknown[]) => unknown;
+  setStage: (...args: unknown[]) => unknown;
+  state: LaboratoryRecord;
+  subtitleTemplate: unknown;
+  subtitleText: unknown;
+  text: unknown;
+  textFromKey: (key: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+  uiRuntimeComposition: LaboratoryUiRuntimeCompositionRuntime;
+};
+
+export function buildLaboratoryUiCoreApi(deps: LaboratoryUiCoreApiDeps) {
+  const { laboratoryRequestRuntime, laboratoryUiEditRuntime, uiRuntimeComposition } = deps;
+  const { laboratoryStageAccessorsRuntime } = uiRuntimeComposition;
 
   return {
     advanceStage: deps.advanceStage,
@@ -7,129 +66,129 @@ export function buildLaboratoryUiCoreApi(deps: any) {
     applyPresentationMode: deps.applyPresentationMode,
     bootstrapText: deps.bootstrapText,
     buildCurrentDraftPayload: laboratoryStageAccessorsRuntime.buildCurrentDraftPayload,
-    buildCurrentEditRecipePatch: deps.laboratoryUiEditRuntime.buildCurrentEditRecipePatch,
+    buildCurrentEditRecipePatch: laboratoryUiEditRuntime.buildCurrentEditRecipePatch,
     buildNestedPatch: laboratoryStageAccessorsRuntime.buildNestedPatch,
     captureScrollState: deps.captureScrollState,
-    closeSettingsOverlay: deps.laboratoryRequestRuntime.closeSettingsOverlay,
-    commitEditPatch: deps.laboratoryUiEditRuntime.commitEditPatch,
+    closeSettingsOverlay: laboratoryRequestRuntime.closeSettingsOverlay,
+    commitEditPatch: laboratoryUiEditRuntime.commitEditPatch,
     escapeHtml: deps.escapeHtml,
     featureText: deps.featureText,
-    formatBitRate: deps.uiRuntimeComposition.formatBitRate,
-    formatBytes: deps.uiRuntimeComposition.formatBytes,
-    formatCleanupPolicy: deps.uiRuntimeComposition.formatCleanupPolicy,
+    formatBitRate: uiRuntimeComposition.formatBitRate,
+    formatBytes: uiRuntimeComposition.formatBytes,
+    formatCleanupPolicy: uiRuntimeComposition.formatCleanupPolicy,
     formatDateTime: deps.formatDateTime,
     formatDuration: deps.formatDuration,
-    formatEditWindowLabel: deps.uiRuntimeComposition.formatEditWindowLabel,
-    formatPlatformList: deps.uiRuntimeComposition.formatPlatformList,
+    formatEditWindowLabel: uiRuntimeComposition.formatEditWindowLabel,
+    formatPlatformList: uiRuntimeComposition.formatPlatformList,
     formatStatusLabel: deps.formatStatusLabel,
-    getActiveEditOutput: deps.uiRuntimeComposition.getActiveEditOutput,
+    getActiveEditOutput: uiRuntimeComposition.getActiveEditOutput,
     getActiveFeatureId: deps.getActiveFeatureId,
-    getActiveProject: deps.uiRuntimeComposition.getActiveProject,
-    getActiveSubtitleEntry: deps.uiRuntimeComposition.getActiveSubtitleEntry,
-    getAudioAnalysisCapabilities: deps.uiRuntimeComposition.getAudioAnalysisCapabilities,
-    getAudioAnalysisModules: deps.uiRuntimeComposition.getAudioAnalysisModules,
+    getActiveProject: uiRuntimeComposition.getActiveProject,
+    getActiveSubtitleEntry: uiRuntimeComposition.getActiveSubtitleEntry,
+    getAudioAnalysisCapabilities: uiRuntimeComposition.getAudioAnalysisCapabilities,
+    getAudioAnalysisModules: uiRuntimeComposition.getAudioAnalysisModules,
     getAudioAnalysisOrderedResultEntries:
-      deps.uiRuntimeComposition.getAudioAnalysisOrderedResultEntries,
-    getAudioAnalysisProviderEntries: deps.uiRuntimeComposition.getAudioAnalysisProviderEntries,
-    getAudioAnalysisProviderState: deps.uiRuntimeComposition.getAudioAnalysisProviderState,
+      uiRuntimeComposition.getAudioAnalysisOrderedResultEntries,
+    getAudioAnalysisProviderEntries: uiRuntimeComposition.getAudioAnalysisProviderEntries,
+    getAudioAnalysisProviderState: uiRuntimeComposition.getAudioAnalysisProviderState,
     getAvailableSourceFormats: deps.getAvailableSourceFormats,
     getCurrentDrafts: laboratoryStageAccessorsRuntime.getCurrentDrafts,
     getCurrentEditDraft: laboratoryStageAccessorsRuntime.getCurrentEditDraft,
-    getCurrentEditMode: deps.uiRuntimeComposition.getCurrentEditMode,
-    getCurrentEditPresetOptions: deps.uiRuntimeComposition.getCurrentEditPresetOptions,
-    getCurrentEditRecipe: deps.uiRuntimeComposition.getCurrentEditRecipe,
-    getCurrentFeatureProcessRecord: deps.uiRuntimeComposition.getCurrentFeatureProcessRecord,
-    getCurrentFeatureReportRecord: deps.uiRuntimeComposition.getCurrentFeatureReportRecord,
-    getCurrentFocusLabel: deps.uiRuntimeComposition.getCurrentFocusLabel,
-    getCurrentFocusRegionId: deps.uiRuntimeComposition.getCurrentFocusRegionId,
-    getCurrentResizeLabel: deps.uiRuntimeComposition.getCurrentResizeLabel,
-    getCurrentSourceKind: deps.uiRuntimeComposition.getCurrentSourceKind,
-    getCurrentSourceLabel: deps.uiRuntimeComposition.getCurrentSourceLabel,
-    getCurrentSourceMode: deps.uiRuntimeComposition.getCurrentSourceMode,
+    getCurrentEditMode: uiRuntimeComposition.getCurrentEditMode,
+    getCurrentEditPresetOptions: uiRuntimeComposition.getCurrentEditPresetOptions,
+    getCurrentEditRecipe: uiRuntimeComposition.getCurrentEditRecipe,
+    getCurrentFeatureProcessRecord: uiRuntimeComposition.getCurrentFeatureProcessRecord,
+    getCurrentFeatureReportRecord: uiRuntimeComposition.getCurrentFeatureReportRecord,
+    getCurrentFocusLabel: uiRuntimeComposition.getCurrentFocusLabel,
+    getCurrentFocusRegionId: uiRuntimeComposition.getCurrentFocusRegionId,
+    getCurrentResizeLabel: uiRuntimeComposition.getCurrentResizeLabel,
+    getCurrentSourceKind: uiRuntimeComposition.getCurrentSourceKind,
+    getCurrentSourceLabel: uiRuntimeComposition.getCurrentSourceLabel,
+    getCurrentSourceMode: uiRuntimeComposition.getCurrentSourceMode,
     getDefaultSourceKind: deps.getDefaultSourceKind,
-    getEditOutputs: deps.uiRuntimeComposition.getEditOutputs,
-    getEditPresets: deps.uiRuntimeComposition.getEditPresets,
-    getEditPreview: deps.uiRuntimeComposition.getEditPreview,
-    getEffectiveMediaAsset: deps.uiRuntimeComposition.getEffectiveMediaAsset,
+    getEditOutputs: uiRuntimeComposition.getEditOutputs,
+    getEditPresets: uiRuntimeComposition.getEditPresets,
+    getEditPreview: uiRuntimeComposition.getEditPreview,
+    getEffectiveMediaAsset: uiRuntimeComposition.getEffectiveMediaAsset,
     getFeaturePreviewImage: deps.getFeaturePreviewImage,
-    getPreferredAssetCodec: deps.uiRuntimeComposition.getPreferredAssetCodec,
-    getPreferredAssetDuration: deps.uiRuntimeComposition.getPreferredAssetDuration,
-    getPreferredAssetResolution: deps.uiRuntimeComposition.getPreferredAssetResolution,
-    getPreferredSourceCodec: deps.uiRuntimeComposition.getPreferredSourceCodec,
-    getPreferredSourceDuration: deps.uiRuntimeComposition.getPreferredSourceDuration,
-    getPreferredSourceFormat: deps.uiRuntimeComposition.getPreferredSourceFormat,
-    getPreferredSourceResolution: deps.uiRuntimeComposition.getPreferredSourceResolution,
+    getPreferredAssetCodec: uiRuntimeComposition.getPreferredAssetCodec,
+    getPreferredAssetDuration: uiRuntimeComposition.getPreferredAssetDuration,
+    getPreferredAssetResolution: uiRuntimeComposition.getPreferredAssetResolution,
+    getPreferredSourceCodec: uiRuntimeComposition.getPreferredSourceCodec,
+    getPreferredSourceDuration: uiRuntimeComposition.getPreferredSourceDuration,
+    getPreferredSourceFormat: uiRuntimeComposition.getPreferredSourceFormat,
+    getPreferredSourceResolution: uiRuntimeComposition.getPreferredSourceResolution,
     getProfileArtifactPreferenceEntries:
-      deps.uiRuntimeComposition.getProfileArtifactPreferenceEntries,
-    getProfileCapabilities: deps.uiRuntimeComposition.getProfileCapabilities,
-    getProfileConfidenceLabel: deps.uiRuntimeComposition.getProfileConfidenceLabel,
-    getProfileFrameDensityOptions: deps.uiRuntimeComposition.getProfileFrameDensityOptions,
-    getProfileLaneCardState: deps.uiRuntimeComposition.getProfileLaneCardState,
-    getProfileSignalKindLabel: deps.uiRuntimeComposition.getProfileSignalKindLabel,
-    getProfileTargetAsset: deps.uiRuntimeComposition.getProfileTargetAsset,
+      uiRuntimeComposition.getProfileArtifactPreferenceEntries,
+    getProfileCapabilities: uiRuntimeComposition.getProfileCapabilities,
+    getProfileConfidenceLabel: uiRuntimeComposition.getProfileConfidenceLabel,
+    getProfileFrameDensityOptions: uiRuntimeComposition.getProfileFrameDensityOptions,
+    getProfileLaneCardState: uiRuntimeComposition.getProfileLaneCardState,
+    getProfileSignalKindLabel: uiRuntimeComposition.getProfileSignalKindLabel,
+    getProfileTargetAsset: uiRuntimeComposition.getProfileTargetAsset,
     getProfileTargetSummary: laboratoryStageAccessorsRuntime.getProfileTargetSummary,
-    getProfileTranscriptSampleConfig: deps.uiRuntimeComposition.getProfileTranscriptSampleConfig,
-    getProjectEdit: deps.uiRuntimeComposition.getProjectEdit,
-    getProjectProfile: deps.uiRuntimeComposition.getProjectProfile,
-    getProjectSource: deps.uiRuntimeComposition.getProjectSource,
-    getProjectStatusLabel: deps.uiRuntimeComposition.getProjectStatusLabel,
-    getProjectSummaries: deps.uiRuntimeComposition.getProjectSummaries,
-    getSourceMetadata: deps.uiRuntimeComposition.getSourceMetadata,
-    getSourceModeOptions: deps.uiRuntimeComposition.getSourceModeOptions,
-    getSourceSnapshot: deps.uiRuntimeComposition.getSourceSnapshot,
+    getProfileTranscriptSampleConfig: uiRuntimeComposition.getProfileTranscriptSampleConfig,
+    getProjectEdit: uiRuntimeComposition.getProjectEdit,
+    getProjectProfile: uiRuntimeComposition.getProjectProfile,
+    getProjectSource: uiRuntimeComposition.getProjectSource,
+    getProjectStatusLabel: uiRuntimeComposition.getProjectStatusLabel,
+    getProjectSummaries: uiRuntimeComposition.getProjectSummaries,
+    getSourceMetadata: uiRuntimeComposition.getSourceMetadata,
+    getSourceModeOptions: uiRuntimeComposition.getSourceModeOptions,
+    getSourceSnapshot: uiRuntimeComposition.getSourceSnapshot,
     getStageIndex: deps.getStageIndex,
-    getStageToolIds: deps.uiRuntimeComposition.getStageToolIds,
-    getSubtitleAnalysisCatalog: deps.uiRuntimeComposition.getSubtitleAnalysisCatalog,
-    getSubtitleAnalysisProviders: deps.uiRuntimeComposition.getSubtitleAnalysisProviders,
-    getSubtitleDiscoveryItems: deps.uiRuntimeComposition.getSubtitleDiscoveryItems,
-    getSubtitleDiscoveryState: deps.uiRuntimeComposition.getSubtitleDiscoveryState,
-    getSubtitleEditPresets: deps.uiRuntimeComposition.getSubtitleEditPresets,
-    getSubtitleEditPreview: deps.uiRuntimeComposition.getSubtitleEditPreview,
-    getSubtitleEditState: deps.uiRuntimeComposition.getSubtitleEditState,
-    getSubtitleEntries: deps.uiRuntimeComposition.getSubtitleEntries,
-    getSubtitleOutputs: deps.uiRuntimeComposition.getSubtitleOutputs,
-    getSubtitleProcessModuleLabel: deps.uiRuntimeComposition.getSubtitleProcessModuleLabel,
-    getSubtitleProcessModuleSummary: deps.uiRuntimeComposition.getSubtitleProcessModuleSummary,
-    getSubtitleProcessStatusLabel: deps.uiRuntimeComposition.getSubtitleProcessStatusLabel,
-    getSubtitleProviderLabel: deps.uiRuntimeComposition.getSubtitleProviderLabel,
-    getSubtitleProviderModuleLabels: deps.uiRuntimeComposition.getSubtitleProviderModuleLabels,
-    getSubtitleProviderStatusLabel: deps.uiRuntimeComposition.getSubtitleProviderStatusLabel,
-    getSubtitleProviderSummary: deps.uiRuntimeComposition.getSubtitleProviderSummary,
-    getSubtitleSelectedCandidateIds: deps.uiRuntimeComposition.getSubtitleSelectedCandidateIds,
-    getSubtitleSelectedEntryIds: deps.uiRuntimeComposition.getSubtitleSelectedEntryIds,
-    getSubtitleSourcePresets: deps.uiRuntimeComposition.getSubtitleSourcePresets,
-    getSubtitleWorkspace: deps.uiRuntimeComposition.getSubtitleWorkspace,
-    getToolDisplayName: deps.uiRuntimeComposition.getToolDisplayName,
-    getToolEntry: deps.uiRuntimeComposition.getToolEntry,
-    getToolRegistry: deps.uiRuntimeComposition.getToolRegistry,
-    getYtDlpForm: deps.uiRuntimeComposition.getYtDlpForm,
+    getStageToolIds: uiRuntimeComposition.getStageToolIds,
+    getSubtitleAnalysisCatalog: uiRuntimeComposition.getSubtitleAnalysisCatalog,
+    getSubtitleAnalysisProviders: uiRuntimeComposition.getSubtitleAnalysisProviders,
+    getSubtitleDiscoveryItems: uiRuntimeComposition.getSubtitleDiscoveryItems,
+    getSubtitleDiscoveryState: uiRuntimeComposition.getSubtitleDiscoveryState,
+    getSubtitleEditPresets: uiRuntimeComposition.getSubtitleEditPresets,
+    getSubtitleEditPreview: uiRuntimeComposition.getSubtitleEditPreview,
+    getSubtitleEditState: uiRuntimeComposition.getSubtitleEditState,
+    getSubtitleEntries: uiRuntimeComposition.getSubtitleEntries,
+    getSubtitleOutputs: uiRuntimeComposition.getSubtitleOutputs,
+    getSubtitleProcessModuleLabel: uiRuntimeComposition.getSubtitleProcessModuleLabel,
+    getSubtitleProcessModuleSummary: uiRuntimeComposition.getSubtitleProcessModuleSummary,
+    getSubtitleProcessStatusLabel: uiRuntimeComposition.getSubtitleProcessStatusLabel,
+    getSubtitleProviderLabel: uiRuntimeComposition.getSubtitleProviderLabel,
+    getSubtitleProviderModuleLabels: uiRuntimeComposition.getSubtitleProviderModuleLabels,
+    getSubtitleProviderStatusLabel: uiRuntimeComposition.getSubtitleProviderStatusLabel,
+    getSubtitleProviderSummary: uiRuntimeComposition.getSubtitleProviderSummary,
+    getSubtitleSelectedCandidateIds: uiRuntimeComposition.getSubtitleSelectedCandidateIds,
+    getSubtitleSelectedEntryIds: uiRuntimeComposition.getSubtitleSelectedEntryIds,
+    getSubtitleSourcePresets: uiRuntimeComposition.getSubtitleSourcePresets,
+    getSubtitleWorkspace: uiRuntimeComposition.getSubtitleWorkspace,
+    getToolDisplayName: uiRuntimeComposition.getToolDisplayName,
+    getToolEntry: uiRuntimeComposition.getToolEntry,
+    getToolRegistry: uiRuntimeComposition.getToolRegistry,
+    getYtDlpForm: uiRuntimeComposition.getYtDlpForm,
     isAudioAnalysisFeature: deps.isAudioAnalysisFeature,
     isSubtitleAnalysisFeature: deps.isSubtitleAnalysisFeature,
-    laboratoryRequestRuntime: deps.laboratoryRequestRuntime,
+    laboratoryRequestRuntime,
     laboratoryStageAccessorsRuntime,
     normalizeContext: deps.normalizeContext,
     openReport: laboratoryStageAccessorsRuntime.openReport,
-    openSettingsOverlay: deps.laboratoryRequestRuntime.openSettingsOverlay,
-    persistDrafts: deps.laboratoryRequestRuntime.persistDrafts,
+    openSettingsOverlay: laboratoryRequestRuntime.openSettingsOverlay,
+    persistDrafts: laboratoryRequestRuntime.persistDrafts,
     readFormValue: deps.readFormValue,
     renderBootstrap: deps.renderBootstrap,
-    renderSettingsOverlay: deps.uiRuntimeComposition.renderSettingsOverlay,
+    renderSettingsOverlay: uiRuntimeComposition.renderSettingsOverlay,
     renderStageIntro: deps.renderStageIntro,
     renderStageRail: deps.renderStageRail,
     renderSummaryRows: deps.renderSummaryRows,
     renderTextField: deps.renderTextField,
     resetJourney: laboratoryStageAccessorsRuntime.resetJourney,
-    restartProcess: deps.laboratoryUiEditRuntime.restartProcess,
+    restartProcess: laboratoryUiEditRuntime.restartProcess,
     restoreScrollState: deps.restoreScrollState,
-    sendMediaAction: deps.laboratoryRequestRuntime.sendMediaAction,
-    sendSourceAction: deps.laboratoryRequestRuntime.sendSourceAction,
-    setLastAction: deps.laboratoryRequestRuntime.setLastAction,
+    sendMediaAction: laboratoryRequestRuntime.sendMediaAction,
+    sendSourceAction: laboratoryRequestRuntime.sendSourceAction,
+    setLastAction: laboratoryRequestRuntime.setLastAction,
     setStage: deps.setStage,
-    sortProfileSignals: deps.uiRuntimeComposition.sortProfileSignals,
+    sortProfileSignals: uiRuntimeComposition.sortProfileSignals,
     state: deps.state,
     subtitleTemplate: deps.subtitleTemplate,
     subtitleText: deps.subtitleText,
-    syncDraftField: deps.laboratoryRequestRuntime.syncDraftField,
+    syncDraftField: laboratoryRequestRuntime.syncDraftField,
     syncLocalEditField: laboratoryStageAccessorsRuntime.syncLocalEditField,
     text: deps.text,
     textFromKey: deps.textFromKey,

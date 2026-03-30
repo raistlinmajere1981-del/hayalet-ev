@@ -20,7 +20,8 @@ export function translate(
 }
 
 export function fillTemplate(template: unknown, params: Record<string, unknown> = {}): string {
-  return String(template || "").replace(/\{([a-zA-Z0-9_]+)\}/g, (_match: any, key: any) => {
-    return Object.prototype.hasOwnProperty.call(params, key) ? String(params[key]) : "";
+  return String(template || "").replace(/\{([a-zA-Z0-9_]+)\}/g, (_match: string, key: string) => {
+    const value = Object.prototype.hasOwnProperty.call(params, key) ? params[key] : "";
+    return String(value ?? "");
   });
 }

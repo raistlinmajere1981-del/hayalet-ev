@@ -1,42 +1,114 @@
-export function createAudioAnalysisResultRuntime(deps: any) {
-  const toRecord = deps.toRecord;
-  const escapeHtml = deps.escapeHtml;
-  const textFromKey = deps.textFromKey;
-  const featureText = deps.featureText;
-  const formatStatusLabel = deps.formatStatusLabel;
-  const getAudioAnalysisOrderedResultEntries = deps.getAudioAnalysisOrderedResultEntries;
-  const getAudioAnalysisProviderLabel = deps.getAudioAnalysisProviderLabel;
-  const getAudioAnalysisModuleTitle = deps.getAudioAnalysisModuleTitle;
-  const getAudioAnalysisModuleSummary = deps.getAudioAnalysisModuleSummary;
+type LaboratoryRecord = Record<string, unknown>;
 
-  function renderAudioAnalysisResultCard(moduleEntry: any) {
-    const metrics = Array.isArray(moduleEntry.metrics) ? moduleEntry.metrics.map(toRecord) : [];
-    const providerLabels = Array.isArray(moduleEntry.providerIds)
-      ? moduleEntry.providerIds
-          .map(function (providerId: any) {
-            return getAudioAnalysisProviderLabel(providerId);
-          })
-          .filter(Boolean)
-      : [];
+type LaboratoryAudioMetricRecord = LaboratoryRecord & {
+  id?: unknown;
+  label?: unknown;
+  labelKey?: unknown;
+  value?: unknown;
+};
+
+type LaboratoryAudioModuleResultRecord = LaboratoryRecord & {
+  artifacts?: unknown;
+  blockers?: unknown;
+  confidence?: unknown;
+  metrics?: unknown;
+  moduleId?: unknown;
+  phase?: unknown;
+  providerIds?: unknown;
+  signals?: unknown;
+  status?: unknown;
+  warnings?: unknown;
+};
+
+type AudioAnalysisResultRuntimeDeps = {
+  escapeHtml: (value: string) => string;
+  featureText: (path: string[]) => string;
+  formatStatusLabel: (value: unknown) => string;
+  getAudioAnalysisModuleSummary: (moduleEntry: LaboratoryAudioModuleResultRecord) => string;
+  getAudioAnalysisModuleTitle: (moduleEntry: LaboratoryAudioModuleResultRecord) => string;
+  getAudioAnalysisOrderedResultEntries: () => unknown;
+  getAudioAnalysisProviderLabel: (providerId: string) => string;
+  textFromKey: (key: string) => string;
+  toRecord: (value: unknown) => LaboratoryRecord;
+};
+
+export function createAudioAnalysisResultRuntime(deps: AudioAnalysisResultRuntimeDeps) {
+  const {
+    escapeHtml,
+    featureText,
+    formatStatusLabel,
+    getAudioAnalysisModuleSummary,
+    getAudioAnalysisModuleTitle,
+    getAudioAnalysisOrderedResultEntries,
+    getAudioAnalysisProviderLabel,
+    textFromKey,
+    toRecord,
+  } = deps;
+
+  function toMetricRecord(value: unknown): LaboratoryAudioMetricRecord {
+    return toRecord(value);
+  }
+
+  function toModuleResultRecord(value: unknown): LaboratoryAudioModuleResultRecord {
+    return toRecord(value);
+  }
+
+  function toString(value: unknown, fallback = ""): string {
+    return typeof value === "string" ? value : fallback;
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return typeof entry === "string" && entry.trim() !== "" ? entry : null;
+      })
+      .filter((entry): entry is string => entry !== null);
+  }
+
+  function getOrderedResultEntries(): LaboratoryAudioModuleResultRecord[] {
+    const entries = getAudioAnalysisOrderedResultEntries();
+    return Array.isArray(entries) ? entries.map(toModuleResultRecord) : [];
+  }
+
+  function renderAudioAnalysisResultCard(moduleEntry: LaboratoryAudioModuleResultRecord) {
+    const metrics = Array.isArray(moduleEntry.metrics) ? moduleEntry.metrics.map(toMetricRecord) : [];
+    const providerLabels = toStringArray(moduleEntry.providerIds)
+      .map(function (providerId) {
+        return getAudioAnalysisProviderLabel(providerId);
+      })
+      .filter(Boolean);
+    const signalCount = Array.isArray(moduleEntry.signals) ? moduleEntry.signals.length : 0;
+    const artifactCount = Array.isArray(moduleEntry.artifacts) ? moduleEntry.artifacts.length : 0;
+    const blockers = toStringArray(moduleEntry.blockers).slice(0, 3);
+    const warnings = toStringArray(moduleEntry.warnings).slice(0, 3);
+    const phaseLabel = toString(moduleEntry.phase, "v1").toUpperCase();
+    const statusLabel = formatStatusLabel(toString(moduleEntry.status, "planned"));
 
     return `
       <article class="lab-tool-card">
         <div class="lab-tool-card__head">
           <div>
             <strong>${escapeHtml(getAudioAnalysisModuleTitle(moduleEntry))}</strong>
-            <span>${escapeHtml(formatStatusLabel(moduleEntry.status || "planned"))}</span>
+            <span>${escapeHtml(statusLabel)}</span>
           </div>
-          <span class="lab-chip">${escapeHtml(String(moduleEntry.phase || "v1").toUpperCase())}</span>
+          <span class="lab-chip">${escapeHtml(phaseLabel)}</span>
         </div>
         <p class="lab-panel__hint">${escapeHtml(getAudioAnalysisModuleSummary(moduleEntry))}</p>
         <ul class="lab-meta-list">
           <li>
             <span>${escapeHtml(featureText(["report", "moduleMeta", "phase"]))}</span>
-            <strong>${escapeHtml(String(moduleEntry.phase || "v1").toUpperCase())}</strong>
+            <strong>${escapeHtml(phaseLabel)}</strong>
           </li>
           <li>
             <span>${escapeHtml(featureText(["report", "moduleMeta", "confidence"]))}</span>
-            <strong>${escapeHtml(moduleEntry.confidence ? formatStatusLabel(moduleEntry.confidence) : "--")}</strong>
+            <strong>${escapeHtml(
+              toString(moduleEntry.confidence) !== ""
+                ? formatStatusLabel(moduleEntry.confidence)
+                : "--"
+            )}</strong>
           </li>
           <li>
             <span>${escapeHtml(featureText(["report", "moduleMeta", "providers"]))}</span>
@@ -44,11 +116,11 @@ export function createAudioAnalysisResultRuntime(deps: any) {
           </li>
           <li>
             <span>${escapeHtml(featureText(["report", "moduleMeta", "signals"]))}</span>
-            <strong>${escapeHtml(String(moduleEntry.signals.length))}</strong>
+            <strong>${escapeHtml(String(signalCount))}</strong>
           </li>
           <li>
             <span>${escapeHtml(featureText(["report", "moduleMeta", "artifacts"]))}</span>
-            <strong>${escapeHtml(String(moduleEntry.artifacts.length))}</strong>
+            <strong>${escapeHtml(String(artifactCount))}</strong>
           </li>
         </ul>
         ${
@@ -59,12 +131,13 @@ export function createAudioAnalysisResultRuntime(deps: any) {
                 <ul class="lab-bullet-list">
                   ${metrics
                     .slice(0, 4)
-                    .map(function (metric: any) {
-                      return `<li>${escapeHtml(
-                        `${metric.label || textFromKey(metric.labelKey || "") || metric.id || "--"}: ${
-                          metric.value || "--"
-                        }`
-                      )}</li>`;
+                    .map(function (metric) {
+                      const label =
+                        toString(metric.label) ||
+                        textFromKey(toString(metric.labelKey)) ||
+                        toString(metric.id) ||
+                        "--";
+                      return `<li>${escapeHtml(`${label}: ${toString(metric.value, "--")}`)}</li>`;
                     })
                     .join("")}
                 </ul>
@@ -73,14 +146,13 @@ export function createAudioAnalysisResultRuntime(deps: any) {
             : ""
         }
         ${
-          Array.isArray(moduleEntry.blockers) && moduleEntry.blockers.length > 0
+          blockers.length > 0
             ? `
               <div class="lab-list-block">
                 <strong>${escapeHtml(featureText(["report", "moduleMeta", "blockers"]))}</strong>
                 <ul class="lab-bullet-list">
-                  ${moduleEntry.blockers
-                    .slice(0, 3)
-                    .map(function (entry: any) {
+                  ${blockers
+                    .map(function (entry) {
                       return `<li>${escapeHtml(entry)}</li>`;
                     })
                     .join("")}
@@ -90,14 +162,13 @@ export function createAudioAnalysisResultRuntime(deps: any) {
             : ""
         }
         ${
-          Array.isArray(moduleEntry.warnings) && moduleEntry.warnings.length > 0
+          warnings.length > 0
             ? `
               <div class="lab-list-block">
                 <strong>${escapeHtml(featureText(["report", "moduleMeta", "warnings"]))}</strong>
                 <ul class="lab-bullet-list">
-                  ${moduleEntry.warnings
-                    .slice(0, 3)
-                    .map(function (entry: any) {
+                  ${warnings
+                    .map(function (entry) {
                       return `<li>${escapeHtml(entry)}</li>`;
                     })
                     .join("")}
@@ -111,7 +182,7 @@ export function createAudioAnalysisResultRuntime(deps: any) {
   }
 
   function renderAudioAnalysisModuleGrid() {
-    const moduleEntries = getAudioAnalysisOrderedResultEntries();
+    const moduleEntries = getOrderedResultEntries();
     if (moduleEntries.length === 0) {
       return "";
     }
@@ -127,7 +198,7 @@ export function createAudioAnalysisResultRuntime(deps: any) {
         </div>
         <div class="lab-tool-grid">
           ${moduleEntries
-            .map(function (moduleEntry: any) {
+            .map(function (moduleEntry) {
               return renderAudioAnalysisResultCard(moduleEntry);
             })
             .join("")}
