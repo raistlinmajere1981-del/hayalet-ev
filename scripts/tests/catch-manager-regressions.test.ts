@@ -75,3 +75,22 @@ test("catch manager keeps structured Team Tetris AI commands from the latest ass
   assert.equal(commands[0]?.command, "GameRoomTeamTetrisAiMove");
   assert.match(commands[0]?.args ?? "", /"turnToken":"tt_token"/);
 });
+
+test("catch manager keeps balanced SlotBridge JSON when payload contains closing parentheses", () => {
+  const commands = CatchManager.catchCommands({
+    provider: "ai1",
+    webUrl: "https://chatgpt.com/c/slot-bridge",
+    messages: [
+      {
+        index: 0,
+        role: "assistant",
+        text:
+          '++cmd:SlotBridge({"action":"message.send","toSlot":"ai2","payload":{"text":"https://example.com/path_(demo)"}})',
+      },
+    ],
+  });
+
+  assert.equal(commands.length, 1);
+  assert.equal(commands[0]?.command, "SlotBridge");
+  assert.match(commands[0]?.args ?? "", /path_\(demo\)/);
+});

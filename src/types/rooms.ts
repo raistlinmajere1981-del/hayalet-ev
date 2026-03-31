@@ -39,6 +39,7 @@ export type {
   RoomSceneWindowControlsVisibility,
 } from "./room-scene-guards.js";
 export type {
+  RoomCommandExposure,
   RoomBundle,
   RoomBundleFile,
   RoomCommandScope,

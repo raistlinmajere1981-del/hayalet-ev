@@ -1,37 +1,41 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CoreEngine } from "../../src/js/modules/core-engine.ts";
 import { RelayManager } from "../../src/js/modules/relay-manager.ts";
 import { SettingsManager } from "../../src/js/modules/settings-manager.ts";
-import { serverCommands } from "../../src/js/modules/server-commands.ts";
-import { SlotController } from "../../src/js/modules/slot-controller.ts";
-import {
-  assistantAISendHandler,
-  aiAssistantSendHandler,
-} from "../../src/js/modules/commands/ai-chat-commands.ts";
+type SlotBridgePayload = Record<string, unknown>;
+const slotBridgeCalls: SlotBridgePayload[] = [];
+let slotBridgeImpl = async (_payload: SlotBridgePayload) => ({ success: true });
+
+const { serverCommands } = await import("../../src/js/modules/server-commands.ts");
+const { aiChatRuntime, assistantAISendHandler, aiAssistantSendHandler } = await import(
+  "../../src/js/modules/commands/ai-chat-commands.ts"
+);
+
+function resetSlotBridgeMock(): void {
+  slotBridgeCalls.length = 0;
+  slotBridgeImpl = async () => ({ success: true });
+}
+
+test.beforeEach(() => {
+  resetSlotBridgeMock();
+  aiChatRuntime.slotBridge = async (payload: SlotBridgePayload = {}) => {
+    slotBridgeCalls.push(payload);
+    return await slotBridgeImpl(payload);
+  };
+});
 
 test("AssistantAISend sends cleaned text to explicit target and stops relay", async () => {
-  const originalSendMessage = CoreEngine.sendMessage;
   const originalIsAIAssistantActive = RelayManager.isAIAssistantActive;
   const originalStopAIAssistantSession = RelayManager.stopAIAssistantSession;
-  const originalIsConnected = SlotController.isConnected;
 
-  let sentProvider = "";
-  let sentText = "";
   let stopped = false;
 
   try {
-    CoreEngine.sendMessage = async ({ provider, text }: { provider: string; text: string }) => {
-      sentProvider = provider;
-      sentText = text;
-      return { success: true };
-    };
     RelayManager.isAIAssistantActive = () => true;
     RelayManager.stopAIAssistantSession = async () => {
       stopped = true;
     };
-    SlotController.isConnected = () => true;
 
     const result = await assistantAISendHandler({
       provider: "ai0",
@@ -40,32 +44,29 @@ test("AssistantAISend sends cleaned text to explicit target and stops relay", as
       source: "ai0",
     });
 
+    const bridgeCall = slotBridgeCalls[0] ?? {};
     assert.equal(result.success, true);
-    assert.equal(sentProvider, "ai2");
-    assert.equal(sentText, "Merhaba AI2\n<!-- hev-sender:Asistan -->");
+    assert.equal(bridgeCall["toSlot"], "ai2");
+    assert.equal(bridgeCall["fromSlot"], "ai0");
+    assert.equal(bridgeCall["force"], false);
+    assert.equal(
+      (bridgeCall["payload"] as { text?: string } | undefined)?.text,
+      "Merhaba AI2\n<!-- hev-sender:Asistan -->"
+    );
     assert.equal(stopped, true);
   } finally {
-    CoreEngine.sendMessage = originalSendMessage;
     RelayManager.isAIAssistantActive = originalIsAIAssistantActive;
     RelayManager.stopAIAssistantSession = originalStopAIAssistantSession;
-    SlotController.isConnected = originalIsConnected;
   }
 });
 
 test("AssistantAISend fails when target cannot be resolved", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
-  const originalSendMessage = CoreEngine.sendMessage;
-  let sendCalled = false;
 
   try {
     SettingsManager.getSnapshot = () => ({
       assistants: { lastActiveRelay: null },
     }) as never;
-
-    CoreEngine.sendMessage = async () => {
-      sendCalled = true;
-      return { success: true };
-    };
 
     const result = await assistantAISendHandler({
       provider: "ai0",
@@ -76,53 +77,29 @@ test("AssistantAISend fails when target cannot be resolved", async () => {
 
     assert.equal(result.success, false);
     assert.match(String(result.message), /Hedef secilemedi/i);
-    assert.equal(sendCalled, false);
+    assert.equal(slotBridgeCalls.length, 0);
   } finally {
     SettingsManager.getSnapshot = originalGetSnapshot;
-    CoreEngine.sendMessage = originalSendMessage;
   }
 });
 
-test("AIAssistantSend connects ai0 if needed and forwards cleaned message", async () => {
-  const originalSendMessage = CoreEngine.sendMessage;
-  const originalIsConnected = SlotController.isConnected;
-  const originalConnect = SlotController.connect;
+test("AIAssistantSend routes to ai0 with generic force policy instead of direct connect logic", async () => {
+  const result = await aiAssistantSendHandler({
+    provider: "ai1",
+    args: "ai1",
+    text: "++cmd:AIAssistantSend(ai1) Asistana iletilecek mesaj",
+    source: "ai1",
+  });
 
-  let sentProvider = "";
-  let sentText = "";
-  let connectCalled = false;
-
-  try {
-    SlotController.isConnected = (slot: string) => (slot === "ai0" ? false : true);
-    SlotController.connect = async (slot: "ai0" | "ai1" | "ai2") => {
-      if (slot === "ai0") {
-        connectCalled = true;
-      }
-      return { success: true, message: "connected" };
-    };
-
-    CoreEngine.sendMessage = async ({ provider, text }: { provider: string; text: string }) => {
-      sentProvider = provider;
-      sentText = text;
-      return { success: true };
-    };
-
-    const result = await aiAssistantSendHandler({
-      provider: "ai1",
-      args: "ai1",
-      text: "++cmd:AIAssistantSend(ai1) Asistana iletilecek mesaj",
-      source: "ai1",
-    });
-
-    assert.equal(result.success, true);
-    assert.equal(connectCalled, true);
-    assert.equal(sentProvider, "ai0");
-    assert.equal(sentText, "Asistana iletilecek mesaj\n<!-- hev-sender:ai1 -->");
-  } finally {
-    CoreEngine.sendMessage = originalSendMessage;
-    SlotController.isConnected = originalIsConnected;
-    SlotController.connect = originalConnect;
-  }
+  const bridgeCall = slotBridgeCalls[0] ?? {};
+  assert.equal(result.success, true);
+  assert.equal(bridgeCall["toSlot"], "ai0");
+  assert.equal(bridgeCall["fromSlot"], "ai1");
+  assert.equal(bridgeCall["force"], true);
+  assert.equal(
+    (bridgeCall["payload"] as { text?: string } | undefined)?.text,
+    "Asistana iletilecek mesaj\n<!-- hev-sender:ai1 -->"
+  );
 });
 
 test("RelayManager catches ai0 last-message commands only when assistant checkbox is enabled", async () => {
@@ -209,8 +186,10 @@ test("server commands expose AI1-AI2 and AI0 categories", () => {
 
   assert.equal(aiCategory.includes("AIAIChatStart"), true);
   assert.equal(assistantCategory.includes("AssistantAISend"), true);
+  assert.equal(aiCategory.includes("SlotBridge"), true);
+  assert.equal(assistantCategory.includes("SlotBridge"), true);
   assert.equal(assistantCategory.includes("AIAIChatStart"), false);
-  assert.equal(categoryApi.has?.("AsistanAISend"), true);
+  assert.equal(categoryApi.has?.("AssistantAISend"), true);
 });
 
 test("server commands block disabled commands per slot", async () => {
@@ -237,59 +216,52 @@ test("server commands block disabled commands per slot", async () => {
   }
 });
 
-test("AIAssistantSend test mode does not connect or send to ai0", async () => {
-  const originalSendMessage = CoreEngine.sendMessage;
-  const originalConnect = SlotController.connect;
-  const originalIsConnected = SlotController.isConnected;
-
-  let sendCalled = false;
-  let connectCalled = false;
+test("server commands can disable SlotBridge actions per slot", async () => {
+  const originalGetSnapshot = SettingsManager.getSnapshot;
 
   try {
-    SlotController.isConnected = () => false;
-    SlotController.connect = async () => {
-      connectCalled = true;
-      return { success: true, message: "connected" };
-    };
-    CoreEngine.sendMessage = async () => {
-      sendCalled = true;
-      return { success: true };
-    };
+    SettingsManager.getSnapshot = () => ({
+      slots: {
+        ai1: { disabledCommands: ["SlotBridge:message.send"] },
+        ai2: { disabledCommands: [] },
+      },
+      assistantSlot: { disabledCommands: [] },
+    }) as never;
 
-    const result = await aiAssistantSendHandler({
+    const disabled = (await serverCommands.run("SlotBridge", {
       provider: "ai1",
-      args: "ai1",
-      text: "++cmd:AIAssistantSend(ai1) test mesajı",
-      testMode: true,
-      source: "manual",
-    });
+      action: "message.send",
+      toSlot: "ai2",
+      payload: { text: "hello" },
+    })) as { success?: boolean; message?: string };
 
-    assert.equal(result.success, true);
-    assert.equal(connectCalled, false);
-    assert.equal(sendCalled, false);
+    assert.equal(disabled.success, false);
+    assert.match(String(disabled.message), /pasif|disabled|devre dışı/i);
   } finally {
-    CoreEngine.sendMessage = originalSendMessage;
-    SlotController.connect = originalConnect;
-    SlotController.isConnected = originalIsConnected;
+    SettingsManager.getSnapshot = originalGetSnapshot;
   }
 });
 
-test("AssistantAISend test mode does not send to target slot", async () => {
-  const originalGetSnapshot = SettingsManager.getSnapshot;
-  const originalSendMessage = CoreEngine.sendMessage;
-  const originalIsConnected = SlotController.isConnected;
+test("AIAssistantSend test mode does not route through SlotBridge", async () => {
+  const result = await aiAssistantSendHandler({
+    provider: "ai1",
+    args: "ai1",
+    text: "++cmd:AIAssistantSend(ai1) test mesajı",
+    testMode: true,
+    source: "manual",
+  });
 
-  let sendCalled = false;
+  assert.equal(result.success, true);
+  assert.equal(slotBridgeCalls.length, 0);
+});
+
+test("AssistantAISend test mode does not route through SlotBridge", async () => {
+  const originalGetSnapshot = SettingsManager.getSnapshot;
 
   try {
     SettingsManager.getSnapshot = () => ({
       assistants: { lastActiveRelay: "ai1 - assistant" },
     }) as never;
-    SlotController.isConnected = () => true;
-    CoreEngine.sendMessage = async () => {
-      sendCalled = true;
-      return { success: true };
-    };
 
     const result = await assistantAISendHandler({
       provider: "ai0",
@@ -300,10 +272,8 @@ test("AssistantAISend test mode does not send to target slot", async () => {
     });
 
     assert.equal(result.success, true);
-    assert.equal(sendCalled, false);
+    assert.equal(slotBridgeCalls.length, 0);
   } finally {
     SettingsManager.getSnapshot = originalGetSnapshot;
-    CoreEngine.sendMessage = originalSendMessage;
-    SlotController.isConnected = originalIsConnected;
   }
 });

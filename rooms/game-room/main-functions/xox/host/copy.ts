@@ -1,6 +1,7 @@
 import type { XoxGameState } from "./state-core.js";
 import { getOpponentInfo } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
+import { buildRoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
 import type {
   GameRoomContextState,
   GameRoomSlotState,
@@ -148,7 +149,9 @@ export function buildAiTurnMessage(state: XoxGameState, context: GameRoomContext
     "XOX turn update from the Game Room.",
     "Game: XOX.",
     "Your reply is parsed from only the latest assistant message.",
-    'Use exactly one command line in this format: ++cmd:GameRoomXoxAiMove({"cell":4})',
+    `Use exactly one command line in this format: ${buildRoomBridgeCommand("GameRoomXoxAiMove", {
+      cell: 4,
+    })}`,
     "Do not add markdown, prose, code fences, or a second command.",
     "",
     "Match setup:",
@@ -211,11 +214,11 @@ export function buildUs1MoveText(
   boardHashBeforeMove: string,
   cell: number
 ) {
-  return `++cmd:GameRoomXoxRemoteMove(${JSON.stringify({
+  return buildRoomBridgeCommand("GameRoomXoxRemoteMove", {
     matchId: matchId,
     inviteId: matchId,
     turnIndex: turnIndex,
     boardHashBeforeMove: boardHashBeforeMove,
     cell: cell,
-  })})`;
+  });
 }

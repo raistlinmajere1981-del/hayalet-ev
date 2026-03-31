@@ -27,12 +27,19 @@ import {
   getCommandDescriptionText,
 } from "./commands/command-descriptions.js";
 import type { CommandDescriptionInfo } from "./commands/command-descriptions.js";
+import {
+  SLOT_BRIDGE_COMMAND_NAME,
+  getSlotBridgeAction,
+  getSlotBridgeActionCategories,
+  slotBridgeHandler,
+} from "./commands/slot-bridge.js";
 
 type CommandCategory = "ai1-ai2" | "ai0" | "us1";
 
 interface CommandDefinition {
   name: string;
   category: CommandCategory;
+  additionalCategories?: CommandCategory[];
   supportsTestMode?: boolean;
 }
 
@@ -59,6 +66,12 @@ const BUILTIN_COMMANDS: CommandDefinition[] = [
   { name: "AIAssistantChatStop", category: "ai1-ai2" },
   { name: "AIAssistantSend", category: "ai1-ai2", supportsTestMode: true },
   { name: "AssistantAISend", category: "ai0", supportsTestMode: true },
+  {
+    name: SLOT_BRIDGE_COMMAND_NAME,
+    category: "ai1-ai2",
+    additionalCategories: ["ai0"],
+    supportsTestMode: true,
+  },
   { name: "GetFile", category: "ai1-ai2" },
   { name: "GetItDone", category: "ai1-ai2" },
   { name: "ListFiles", category: "ai1-ai2", supportsTestMode: true },
@@ -140,26 +153,38 @@ function checkCommandAccess(
   const provider = normalizeProvider(payload["provider"]);
   const providerCategory = resolveProviderCategory(provider);
   const commandDefinition = getCommandDefinition(commandName);
+  const slotBridgeAction =
+    resolveCanonicalCommandName(commandName).toLowerCase() === SLOT_BRIDGE_COMMAND_NAME.toLowerCase()
+      ? resolveSlotBridgeActionFromPayload(payload)
+      : null;
 
   if (providerCategory !== null && commandDefinition !== null) {
-    if (providerCategory === "ai0" && commandDefinition.category !== "ai0") {
-      return {
-        allowed: false,
-        message: AppI18n.t("app.commands.access.assistantCannotUse"),
-      };
-    }
+    const allowedCategories =
+      slotBridgeAction !== null
+        ? getSlotBridgeActionCategories(slotBridgeAction)
+        : [
+            commandDefinition.category,
+            ...(commandDefinition.additionalCategories ?? []),
+          ];
 
-    if (providerCategory === "ai1-ai2" && commandDefinition.category === "ai0") {
+    if (allowedCategories.includes(providerCategory) !== true) {
+      if (providerCategory === "ai0") {
+        return {
+          allowed: false,
+          message: AppI18n.t("app.commands.access.assistantCannotUse"),
+        };
+      }
+
+      if (providerCategory === "us1") {
+        return {
+          allowed: false,
+          message: AppI18n.t("app.commands.access.us1SlotOnly"),
+        };
+      }
+
       return {
         allowed: false,
         message: AppI18n.t("app.commands.access.assistantSlotOnly"),
-      };
-    }
-
-    if (providerCategory === "us1" && commandDefinition.category !== "us1") {
-      return {
-        allowed: false,
-        message: AppI18n.t("app.commands.access.us1SlotOnly"),
       };
     }
   }
@@ -168,7 +193,16 @@ function checkCommandAccess(
     const disabledCommands = getDisabledCommandsForProvider(provider);
     const commandKey = resolveCanonicalCommandName(commandName).toLowerCase();
     const isDisabled = disabledCommands.some(
-      (command) => resolveCanonicalCommandName(command).toLowerCase() === commandKey
+      (command) => {
+        const normalized = resolveCanonicalCommandName(command).toLowerCase();
+        if (normalized === commandKey) {
+          return true;
+        }
+        if (slotBridgeAction === null) {
+          return false;
+        }
+        return normalized === `${commandKey}:${slotBridgeAction.toLowerCase()}`;
+      }
     );
 
     if (isDisabled) {
@@ -180,6 +214,29 @@ function checkCommandAccess(
   }
 
   return { allowed: true, message: "" };
+}
+
+function resolveSlotBridgeActionFromPayload(
+  payload: Record<string, unknown>
+): ReturnType<typeof getSlotBridgeAction> {
+  const action = getSlotBridgeAction(payload["action"]);
+  if (action !== null) {
+    return action;
+  }
+
+  const args = typeof payload["args"] === "string" ? payload["args"].trim() : "";
+  if (args === "") {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(args) as unknown;
+    return typeof parsed === "object" && parsed !== null
+      ? getSlotBridgeAction((parsed as Record<string, unknown>)["action"])
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 const handlers: Record<string, (payload?: CommandPayload) => unknown> = {};
@@ -244,6 +301,9 @@ handlers["assistantaisend"] = async (payload): Promise<unknown> => {
   const { assistantAISendHandler } = await getAiChatHandlers();
   return await assistantAISendHandler(payload);
 };
+handlers["slotbridge"] = async (payload): Promise<unknown> => {
+  return await slotBridgeHandler(payload);
+};
 
 const serverCommands = {
   async run(commandName: string, payload: Record<string, unknown> = {}): Promise<unknown> {
@@ -288,9 +348,9 @@ const serverCommands = {
   },
 
   listByCategory(category: CommandCategory): string[] {
-    const builtIns = BUILTIN_COMMANDS.filter((command) => command.category === category).map(
-      (command) => command.name
-    );
+    const builtIns = BUILTIN_COMMANDS.filter((command) =>
+      command.category === category || command.additionalCategories?.includes(category) === true
+    ).map((command) => command.name);
 
     if (category !== "ai1-ai2") {
       return [...builtIns, ...RoomCommandRegistry.listCommands(category)];
@@ -301,10 +361,16 @@ const serverCommands = {
 
   getCatalog(category?: CommandCategory): CommandCatalogItem[] {
     const builtIns = BUILTIN_COMMANDS.filter((command) =>
-      category !== undefined ? command.category === category : true
+      category !== undefined
+        ? command.category === category || command.additionalCategories?.includes(category) === true
+        : true
     ).map((command) => ({
       name: command.name,
-      category: command.category,
+      category:
+        category !== undefined &&
+        command.additionalCategories?.includes(category) === true
+          ? category
+          : command.category,
       isCustom: false,
       supportsTestMode: command.supportsTestMode === true,
     }));

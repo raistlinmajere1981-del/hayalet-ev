@@ -7,6 +7,6 @@ Rules:
 - Read only the latest room message.
 - Return exactly one command line.
 - Do not add markdown, prose, code fences, or a second command.
-- Use `++cmd:GameRoomFateKnotsNpcBanter({...})`.
+- Use `++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomFateKnotsNpcBanter",...}})`.
 - Keep the line short, in-world, and player-visible.
 - Do not change rules, reveal hidden state, or add a second command.

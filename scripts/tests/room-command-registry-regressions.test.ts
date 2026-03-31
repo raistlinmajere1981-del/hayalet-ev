@@ -64,6 +64,12 @@ const room: InstalledRoomRecord = {
       description: "Apply Fate Knots remote decision vote",
       scope: "us1",
     },
+    {
+      name: "GameRoomInternalBridgeOnly",
+      description: "Internal bridge-only action",
+      scope: "ai-slots",
+      exposure: "internal",
+    },
   ],
   installedAt: "2026-03-08T00:00:00.000Z",
   updatedAt: "2026-03-08T00:00:00.000Z",
@@ -78,6 +84,7 @@ test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
   assert.deepEqual(RoomCommandRegistry.listCommands("ai1-ai2"), [
     "GameRoomFateKnotsAiChoice",
     "GameRoomFateKnotsStart",
+    "GameRoomInternalBridgeOnly",
     "GameRoomTeamTetrisAiMove",
     "GameRoomTeamTetrisStart",
     "GameRoomXoxAiMove",
@@ -88,6 +95,25 @@ test("RoomCommandRegistry syncs manifest command metadata into catalog", () => {
     "GameRoomTeamTetrisRemoteMove",
     "GameRoomXoxRemoteMove",
   ]);
+});
+
+test("RoomCommandRegistry hides internal commands from the public catalog", async () => {
+  RoomCommandRegistry.reset();
+  RoomCommandRegistry.syncInstalledRooms([room]);
+  RoomCommandRegistry.registerHandler(
+    "game-room",
+    "GameRoomInternalBridgeOnly",
+    async (payload) => payload.roomArgs
+  );
+
+  const catalog = RoomCommandRegistry.getCatalog("ai1-ai2");
+  const directResult = await RoomCommandRegistry.run("GameRoomInternalBridgeOnly", {
+    provider: "ai1",
+    roomPayload: { cell: 6 },
+  });
+
+  assert.equal(catalog.some((item) => item.name === "GameRoomInternalBridgeOnly"), false);
+  assert.deepEqual(directResult, { cell: 6 });
 });
 
 test("RoomCommandRegistry runs room-ui commands with structured payloads", async () => {

@@ -9,7 +9,7 @@ Lifecycle events travel in the conversation envelope as `roomEvent`:
 
 Turn actions travel as `roomCommand` and are mirrored in the mail body as a single `++cmd` line:
 
-- `++cmd:GameRoomXoxRemoteMove({...})`
+- `++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove",...}})`
 
 Canonical fields:
 

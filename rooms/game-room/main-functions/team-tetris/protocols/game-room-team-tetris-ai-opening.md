@@ -4,7 +4,7 @@ You are taking the opening seat turn for Team Tetris inside the Game Room.
 
 Rules:
 
-- Reply with exactly one command line using `++cmd:GameRoomTeamTetrisAiMove({...})`
+- Reply with exactly one command line using `++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomTeamTetrisAiMove",...}})`
 - Do not add prose, markdown, or a second command
 - `seatId` is informational only; the host derives the acting seat from the active turn
 - The payload must follow the structured JSON contract from the latest turn packet

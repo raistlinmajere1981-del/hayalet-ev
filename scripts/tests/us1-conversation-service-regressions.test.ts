@@ -1030,11 +1030,19 @@ test("US1 conversation service includes room event and room command metadata in 
     const commandResult = await service.sendMessage({
       localSessionId: inviteResult.localSessionId,
       text:
-        '++cmd:GameRoomXoxRemoteMove({"matchId":"invite-1","inviteId":"invite-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4})',
+        '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove","matchId":"invite-1","inviteId":"invite-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
       roomCommand: {
         roomId: "game-room",
         featureId: "xox",
+        action: "room.command",
         commandName: "GameRoomXoxRemoteMove",
+        roomPayload: {
+          matchId: "invite-1",
+          inviteId: "invite-1",
+          turnIndex: 0,
+          boardHashBeforeMove: ".........",
+          cell: 4,
+        },
         matchId: "invite-1",
         turnIndex: 0,
         boardHashBeforeMove: ".........",
@@ -1062,7 +1070,15 @@ test("US1 conversation service includes room event and room command metadata in 
     assert.deepEqual(commandEnvelope["roomCommand"], {
       roomId: "game-room",
       featureId: "xox",
+      action: "room.command",
       commandName: "GameRoomXoxRemoteMove",
+      roomPayload: {
+        matchId: "invite-1",
+        inviteId: "invite-1",
+        turnIndex: 0,
+        boardHashBeforeMove: ".........",
+        cell: 4,
+      },
       matchId: "invite-1",
       turnIndex: 0,
       boardHashBeforeMove: ".........",
@@ -1126,12 +1142,20 @@ test("US1 conversation sync projects room events, commands, and invite inbox ent
           localSessionId: "room-sync-session",
           nickname: "Remote Player",
           text:
-            '++cmd:GameRoomXoxRemoteMove({"matchId":"invite-sync-1","inviteId":"invite-sync-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4})',
+            '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove","matchId":"invite-sync-1","inviteId":"invite-sync-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
           subject: "XOX move",
           roomCommand: {
             roomId: "game-room",
             featureId: "xox",
+            action: "room.command",
             commandName: "GameRoomXoxRemoteMove",
+            roomPayload: {
+              matchId: "invite-sync-1",
+              inviteId: "invite-sync-1",
+              turnIndex: 0,
+              boardHashBeforeMove: ".........",
+              cell: 4,
+            },
             matchId: "invite-sync-1",
             turnIndex: 0,
             boardHashBeforeMove: ".........",
@@ -1153,6 +1177,14 @@ test("US1 conversation sync projects room events, commands, and invite inbox ent
     assert.equal(result.roomEvents?.[0]?.matchId, "invite-sync-1");
     assert.equal(result.roomEvents?.[0]?.senderNickname, "Remote Player");
     assert.equal(result.roomCommands?.[0]?.commandName, "GameRoomXoxRemoteMove");
+    assert.equal(result.roomCommands?.[0]?.action, "room.command");
+    assert.deepEqual(result.roomCommands?.[0]?.roomPayload, {
+      matchId: "invite-sync-1",
+      inviteId: "invite-sync-1",
+      turnIndex: 0,
+      boardHashBeforeMove: ".........",
+      cell: 4,
+    });
     assert.deepEqual(result.roomCommands?.[0]?.commandArgs, {
       matchId: "invite-sync-1",
       inviteId: "invite-sync-1",
@@ -1197,11 +1229,21 @@ test("US1 conversation service preserves Team Tetris start events and turnToken 
     const commandResult = await service.sendMessage({
       localSessionId: startResult.localSessionId,
       text:
-        '++cmd:GameRoomTeamTetrisRemoteMove({"schemaVersion":1,"matchId":"tt-match-1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]})',
+        '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomTeamTetrisRemoteMove","schemaVersion":1,"matchId":"tt-match-1","turnIndex":2,"turnToken":"tt_token","pieceId":"T","rotation":1,"rowShifts":[0,1,0]}})',
       roomCommand: {
         roomId: "game-room",
         featureId: "team-tetris",
+        action: "room.command",
         commandName: "GameRoomTeamTetrisRemoteMove",
+        roomPayload: {
+          schemaVersion: 1,
+          matchId: "tt-match-1",
+          turnIndex: 2,
+          turnToken: "tt_token",
+          pieceId: "T",
+          rotation: 1,
+          rowShifts: [0, 1, 0],
+        },
         matchId: "tt-match-1",
         turnIndex: 2,
         turnToken: "tt_token",
@@ -1228,7 +1270,17 @@ test("US1 conversation service preserves Team Tetris start events and turnToken 
     assert.deepEqual(commandEnvelope["roomCommand"], {
       roomId: "game-room",
       featureId: "team-tetris",
+      action: "room.command",
       commandName: "GameRoomTeamTetrisRemoteMove",
+      roomPayload: {
+        schemaVersion: 1,
+        matchId: "tt-match-1",
+        turnIndex: 2,
+        turnToken: "tt_token",
+        pieceId: "T",
+        rotation: 1,
+        rowShifts: [0, 1, 0],
+      },
       matchId: "tt-match-1",
       turnIndex: 2,
       turnToken: "tt_token",

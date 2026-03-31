@@ -8,7 +8,7 @@ Rules:
 - The human user plays as O.
 - Your reply is parsed only from the latest assistant message.
 - When it is your turn, answer with exactly one line in this format:
-  ++cmd:GameRoomXoxAiMove({"cell":4})
+  ++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxAiMove","cell":4}})
 - Do not add prose, markdown, code fences, a second command, or explanations.
 
 Match loop:

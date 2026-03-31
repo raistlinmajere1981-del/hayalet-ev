@@ -388,10 +388,12 @@ test("game-room host mirrors Team Tetris starts and local moves over US1 room tr
   });
 
   assert.equal(moveResult?.success, true);
+  assert.equal(runtime.us1MessageCalls[1]?.roomCommand?.action, "room.command");
   assert.equal(
     runtime.us1MessageCalls[1]?.roomCommand?.commandName,
     "GameRoomTeamTetrisRemoteMove"
   );
+  assert.deepEqual(runtime.us1MessageCalls[1]?.roomCommand?.roomPayload, move);
   assert.equal(runtime.state.get("team-tetris-game")?.match?.turnIndex, 1);
 });
 

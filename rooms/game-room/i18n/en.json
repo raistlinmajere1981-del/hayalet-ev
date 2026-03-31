@@ -38,7 +38,7 @@
       "title": "Live Opponents",
       "protocolTitle": "Protocol Rules",
       "controlsTitle": "How It Works",
-      "commandHint": "AI reply format: ++cmd:GameRoomXoxAiMove({\"cell\":4})",
+      "commandHint": "AI reply format: ++cmd:SlotBridge({\"action\":\"room.command\",\"payload\":{\"commandName\":\"GameRoomXoxAiMove\",\"cell\":4}})",
       "latestMessageHint": "Only the latest assistant message is scanned for commands.",
       "help1": "1. Choose a connected AI slot and decide who opens the match.",
       "help2": "2. When it is your turn, tap one empty board cell.",

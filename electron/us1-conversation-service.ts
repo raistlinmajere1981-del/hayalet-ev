@@ -714,6 +714,13 @@ function normalizeConversationRoomCommand(roomCommand: unknown): ConversationRoo
   const roomId = normalizeOptionalText(source["roomId"]);
   const featureId = normalizeOptionalText(source["featureId"]);
   const commandName = normalizeOptionalText(source["commandName"]);
+  const action = source["action"] === "room.command" ? "room.command" : null;
+  const roomPayload =
+    source["roomPayload"] !== undefined
+      ? source["roomPayload"]
+      : source["payload"] !== undefined
+        ? source["payload"]
+        : undefined;
   const matchId = normalizeOptionalText(source["matchId"]);
   const turnIndex =
     typeof source["turnIndex"] === "number" && Number.isInteger(source["turnIndex"])
@@ -721,6 +728,18 @@ function normalizeConversationRoomCommand(roomCommand: unknown): ConversationRoo
       : null;
   const turnToken = normalizeOptionalText(source["turnToken"]);
   const boardHashBeforeMove = normalizeOptionalText(source["boardHashBeforeMove"]);
+  const rawArgs =
+    normalizeOptionalText(source["rawArgs"]) ??
+    (() : string | null => {
+      if (roomPayload === undefined) {
+        return null;
+      }
+      try {
+        return JSON.stringify(roomPayload);
+      } catch {
+        return null;
+      }
+    })();
   if (roomId === null || featureId === null || commandName === null) {
     return null;
   }
@@ -729,11 +748,13 @@ function normalizeConversationRoomCommand(roomCommand: unknown): ConversationRoo
     roomId,
     featureId,
     commandName,
+    ...(action !== null ? { action } : {}),
+    ...(roomPayload !== undefined ? { roomPayload } : {}),
     ...(matchId !== null ? { matchId } : {}),
     ...(turnIndex !== null ? { turnIndex } : {}),
     ...(turnToken !== null ? { turnToken } : {}),
     ...(boardHashBeforeMove !== null ? { boardHashBeforeMove } : {}),
-    rawArgs: normalizeOptionalText(source["rawArgs"]),
+    ...(rawArgs !== null ? { rawArgs } : {}),
   };
 }
 
@@ -2337,9 +2358,21 @@ export class Us1ConversationService {
       return null;
     }
 
-    let commandArgs: unknown;
-    const rawArgs = normalizeOptionalText(roomCommand.rawArgs) ?? "";
-    if (rawArgs !== "") {
+    let commandArgs: unknown =
+      roomCommand.roomPayload !== undefined ? roomCommand.roomPayload : undefined;
+    const rawArgs =
+      normalizeOptionalText(roomCommand.rawArgs) ??
+      (() : string => {
+        if (commandArgs === undefined) {
+          return "";
+        }
+        try {
+          return JSON.stringify(commandArgs);
+        } catch {
+          return "";
+        }
+      })();
+    if (commandArgs === undefined && rawArgs !== "") {
       try {
         commandArgs = JSON.parse(rawArgs) as unknown;
       } catch {

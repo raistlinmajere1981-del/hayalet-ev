@@ -278,7 +278,10 @@ test("game-room host delays protocol until the first AI turn when the user start
   assert.equal(runtime.protocolCalls.length, 1);
   assert.equal(runtime.messageCalls.length, 1);
   assert.equal(runtime.protocolCalls[0]?.scenario, "xox-user-start");
-  assert.match(String(runtime.messageCalls[0]?.text ?? ""), /\+\+cmd:GameRoomXoxAiMove/);
+  assert.match(
+    String(runtime.messageCalls[0]?.text ?? ""),
+    /\+\+cmd:SlotBridge\(\{"action":"room\.command","payload":\{"commandName":"GameRoomXoxAiMove"/
+  );
   assert.match(String(runtime.messageCalls[0]?.text ?? ""), /X \| 1 \| 2/);
   assert.equal(runtime.latestGameState()?.selectedTarget, "ai1");
   assert.equal(runtime.latestGameState()?.awaitingMoveFrom, "ai");
@@ -497,12 +500,20 @@ test("game-room host sends US1 move metadata with match id, turn index, and boar
 
   assert.equal(userMoveResult.success, true);
   assert.equal(runtime.us1MessageCalls.length, 2);
+  assert.equal(runtime.us1MessageCalls[1]?.roomCommand?.action, "room.command");
   assert.equal(runtime.us1MessageCalls[1]?.roomCommand?.matchId, pendingInvite.matchId);
   assert.equal(runtime.us1MessageCalls[1]?.roomCommand?.turnIndex, 0);
   assert.equal(runtime.us1MessageCalls[1]?.roomCommand?.boardHashBeforeMove, ".........");
+  assert.deepEqual(runtime.us1MessageCalls[1]?.roomCommand?.roomPayload, {
+    matchId: pendingInvite.matchId,
+    inviteId: pendingInvite.matchId,
+    turnIndex: 0,
+    boardHashBeforeMove: ".........",
+    cell: 0,
+  });
   assert.match(
     String(runtime.us1MessageCalls[1]?.text ?? ""),
-    /"matchId":"[^"]+","inviteId":"[^"]+","turnIndex":0,"boardHashBeforeMove":"\.\.\.\.\.\.\.\.\."/
+    /\+\+cmd:SlotBridge\(\{"action":"room\.command","payload":\{"commandName":"GameRoomXoxRemoteMove"/
   );
   assert.equal(runtime.latestGameState()?.turnIndex, 1);
 });

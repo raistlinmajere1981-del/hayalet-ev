@@ -7,5 +7,5 @@ Rules:
 - Read only the latest room message.
 - Return exactly one command line.
 - Do not add markdown, prose, code fences, or a second command.
-- Choice replies must use `++cmd:GameRoomFateKnotsAiChoice({...})`.
-- Combat replies must use `++cmd:GameRoomFateKnotsAiCombatAction({...})`.
+- Choice replies must use `++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomFateKnotsAiChoice",...}})`.
+- Combat replies must use `++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomFateKnotsAiCombatAction",...}})`.

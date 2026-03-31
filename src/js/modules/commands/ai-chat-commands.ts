@@ -9,6 +9,8 @@ import { SettingsManager } from "../settings-manager.js";
 import type { CommandPayload } from "./utils.js";
 import { logCommandResult } from "./utils.js";
 import { getErrorMessage } from "@shared/index.js";
+import { stripInlineCommandsFromText } from "./inline-command-parser.js";
+import { slotBridgeHandler } from "./slot-bridge.js";
 
 type CommandHandlerResult = { success: boolean; message?: string; [key: string]: unknown };
 
@@ -41,12 +43,30 @@ function resolveAssistantTarget(argsRaw: string, relayLabel: string): "ai1" | "a
 }
 
 function stripInlineCommands(textRaw: string): string {
-  return textRaw
-    .replace(/\+\+cmd:[A-Za-z0-9_]+\(([^)]*)\)/g, " ")
+  return stripInlineCommandsFromText(textRaw)
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n[ \t]+/g, "\n")
     .trim();
 }
+
+function logLegacyBridgeAdapterUse(
+  command: "AIAssistantSend" | "AssistantAISend",
+  context: Record<string, unknown>
+): void {
+  Logger.info(LogCategory.COMMAND, `${command} routed through SlotBridge adapter`, {
+    eventType: "slot-bridge-legacy-adapter",
+    legacyCommand: command,
+    bridgeCommand: "SlotBridge",
+    bridgeAction: "message.send",
+    ...context,
+  });
+}
+
+export const aiChatRuntime = {
+  slotBridge: async (payload: CommandPayload = {}): Promise<CommandHandlerResult> => {
+    return (await slotBridgeHandler(payload)) as CommandHandlerResult;
+  },
+};
 
 export async function aiaiChatStartHandler(
   payload: CommandPayload = {}
@@ -301,7 +321,6 @@ export async function aiAssistantChatStopHandler(
 export async function aiAssistantSendHandler(
   payload: CommandPayload = {}
 ): Promise<CommandHandlerResult> {
-  const { CoreEngine: coreEngine } = await import("../core-engine.js");
   const providerRaw = payload.provider ?? "";
   const argsLabel = typeof payload.args === "string" ? payload.args : "";
   const rawText = typeof payload["text"] === "string" ? payload["text"] : "";
@@ -346,27 +365,28 @@ export async function aiAssistantSendHandler(
       return { success: true, message };
     }
 
-    if (SlotController.isConnected("ai0") !== true) {
-      const connectResult = await SlotController.connect("ai0");
-      if (connectResult.success !== true) {
-        const message = aiChatT("assistantConnectFailed");
-        Logger.error(LogCategory.COMMAND, message, {
-          eventType: "ai-asistan-send-connect-failed",
-          provider: sourceProvider,
-        });
-        return { success: false, message };
-      }
-    }
-
     // NOTE: The hev-sender tag preserves the originating AI nickname so ai0 sync can restore the author.
     // NOTE: Keep the tag for future ai0 DB support even though the sync path does not consume it today.
     const senderNick = payload.sender ?? sourceProvider;
     const taggedText = `${cleanText}\n<!-- hev-sender:${senderNick} -->`;
+    logLegacyBridgeAdapterUse("AIAssistantSend", {
+      fromSlot: sourceProvider,
+      toSlot: "ai0",
+      triggerSource: payload.source ?? "manual",
+      args: argsLabel,
+    });
 
-    const sendResult = await coreEngine.sendMessage({
-      provider: "ai0",
-      text: taggedText,
-      page: "ai-asistan-command",
+    const sendResult = await aiChatRuntime.slotBridge({
+      action: "message.send",
+      fromSlot: sourceProvider,
+      toSlot: "ai0",
+      force: true,
+      payload: {
+        text: taggedText,
+      },
+      provider: sourceProvider,
+      ...(typeof payload.source === "string" ? { source: payload.source } : {}),
+      ...(typeof payload.sender === "string" ? { sender: payload.sender } : {}),
     });
 
     if (sendResult.success !== true) {
@@ -396,7 +416,6 @@ export async function aiAssistantSendHandler(
 export async function assistantAISendHandler(
   payload: CommandPayload = {}
 ): Promise<CommandHandlerResult> {
-  const { CoreEngine: coreEngine } = await import("../core-engine.js");
   const providerRaw = payload.provider ?? "ai0";
   const argsLabel = typeof payload.args === "string" ? payload.args : "";
   const rawText = typeof payload["text"] === "string" ? payload["text"] : "";
@@ -456,24 +475,27 @@ export async function assistantAISendHandler(
       return { success: true, message };
     }
 
-    if (SlotController.isConnected(target) !== true) {
-      const message = aiChatT("targetOffline", { target: target.toUpperCase() });
-      Logger.error(LogCategory.COMMAND, message, {
-        eventType: "assistant-ai-send-target-offline",
-        provider: providerRaw,
-        target,
-      });
-      return { success: false, message };
-    }
-
     // NOTE: The hev-sender tag marks Assistant (ai0) as the sender so sync can restore the author.
     const senderNick = payload.sender ?? AppI18n.t("shell.relay.participants.assistant");
     const taggedText = `${cleanText}\n<!-- hev-sender:${senderNick} -->`;
+    logLegacyBridgeAdapterUse("AssistantAISend", {
+      fromSlot: "ai0",
+      toSlot: target,
+      triggerSource: payload.source ?? "manual",
+      args: argsLabel,
+    });
 
-    const sendResult = await coreEngine.sendMessage({
-      provider: target,
-      text: taggedText,
-      page: "assistant-ai-command",
+    const sendResult = await aiChatRuntime.slotBridge({
+      action: "message.send",
+      fromSlot: "ai0",
+      toSlot: target,
+      force: payload["force"] === true,
+      payload: {
+        text: taggedText,
+      },
+      provider: providerRaw,
+      ...(typeof payload.source === "string" ? { source: payload.source } : {}),
+      ...(typeof payload.sender === "string" ? { sender: payload.sender } : {}),
     });
 
     if (sendResult.success !== true) {
@@ -483,6 +505,7 @@ export async function assistantAISendHandler(
     if (RelayManager.isAIAssistantActive() === true) {
       const sourceSlot = RelayManager.getAIAssistantSourceSlot();
       if (sourceSlot === "ai1" || sourceSlot === "ai2") {
+        const { CoreEngine: coreEngine } = await import("../core-engine.js");
         await coreEngine.sendProtocol({
           room: "analyze",
           scenario: "ai-assistant-stop",

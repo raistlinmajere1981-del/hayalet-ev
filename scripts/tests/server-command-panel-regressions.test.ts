@@ -57,6 +57,17 @@ test("parseCommandExecutionInput parses inline command input", () => {
   assert.equal(parsed.inputWasInlineCommand, true);
 });
 
+test("parseCommandExecutionInput keeps balanced SlotBridge JSON payloads intact", () => {
+  const inline =
+    '++cmd:SlotBridge({"action":"message.send","toSlot":"ai1","payload":{"text":"https://example.com/path_(demo)"}})';
+
+  const parsed = parseCommandExecutionInput(inline, "PlayMusic");
+
+  assert.equal(parsed.commandName, "SlotBridge");
+  assert.match(parsed.args, /path_\(demo\)/);
+  assert.equal(parsed.inputWasInlineCommand, true);
+});
+
 test("parseCommandExecutionInput falls back to selected command with plain args", () => {
   const parsed = parseCommandExecutionInput("classic", "PlayMusic");
 

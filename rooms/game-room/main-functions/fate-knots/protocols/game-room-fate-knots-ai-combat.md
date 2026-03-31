@@ -7,5 +7,5 @@ Rules:
 - Read only the latest room message.
 - Return exactly one command line.
 - Do not add markdown, prose, code fences, or a second command.
-- Use `++cmd:GameRoomFateKnotsAiCombatAction({...})`.
+- Use `++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomFateKnotsAiCombatAction",...}})`.
 - If the turn is no longer valid, do not invent fallback prose.

@@ -1,5 +1,6 @@
 import type { XoxGameState } from "./state-core.js";
 import type { GameRoomContextState } from "../../../shared/types/room-shell-contracts.js";
+import { buildUs1RoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
 
 interface InviteEntry {
   inviteId: string;
@@ -230,13 +231,13 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
     }
 
     const matchId = resolveStateMatchId(state) || "";
-    const rawArgs = JSON.stringify({
+    const movePayload = {
       matchId: matchId,
       inviteId: matchId,
       turnIndex: moveContext.turnIndex,
       boardHashBeforeMove: moveContext.boardHashBeforeMove,
       cell: moveContext.cell,
-    });
+    };
     const sendResult = await api.sendUs1Message({
       localSessionId: state.localSessionId,
       text: buildUs1MoveText(
@@ -245,15 +246,15 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
         moveContext.boardHashBeforeMove,
         moveContext.cell
       ),
-      roomCommand: {
+      roomCommand: buildUs1RoomBridgeCommand({
         roomId: ROOM_ID,
         featureId: FEATURE_ID,
         commandName: "GameRoomXoxRemoteMove",
-        matchId: matchId,
+        matchId,
         turnIndex: moveContext.turnIndex,
         boardHashBeforeMove: moveContext.boardHashBeforeMove,
-        rawArgs: rawArgs,
-      },
+        payload: movePayload,
+      }),
     });
 
     if (sendResult.success !== true) {

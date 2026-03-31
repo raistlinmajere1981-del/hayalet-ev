@@ -9,6 +9,7 @@ import type {
 import type { RoomSchemaVersion } from "./room-schema-version.js";
 
 export type RoomCommandScope = "room-ui" | "ai-slots" | "assistant" | "us1" | "system";
+export type RoomCommandExposure = "public" | "internal";
 
 export interface RoomMenuConfig {
   label: string;
@@ -25,6 +26,7 @@ export interface RoomCommandSpec {
   name: string;
   description?: string;
   scope?: RoomCommandScope;
+  exposure?: RoomCommandExposure;
 }
 
 export interface RoomProtocolSpec {

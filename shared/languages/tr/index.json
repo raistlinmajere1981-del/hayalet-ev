@@ -691,6 +691,12 @@
           "usage": "++cmd:AssistantAISend(<hedef>)\nHedef: ai1 veya ai2 (opsiyonel)",
           "example": "++cmd:AssistantAISend(ai1) Mesajı AI1'e ilet"
         },
+        "SlotBridge": {
+          "description": "Birleşik slot köprü komut ailesini çalıştırır.",
+          "detail": "Cross-slot mesaj gönderimi, waited reply, room.command dispatch, connection.ensure ve session aksiyonlarını tek bir JSON zarfı üzerinden yönlendirir. Attachment içeren public aksiyonlarda ham dosya yolu yerine archive attachment ref kullanılması tercih edilir.",
+          "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"toSlot\":\"ai1\",\"payload\":{\"text\":\"Merhaba\"}})",
+          "example": "++cmd:SlotBridge({\"action\":\"room.command\",\"fromSlot\":\"ai1\",\"payload\":{\"commandName\":\"GameRoomXoxAiMove\",\"cell\":4}})"
+        },
         "GetFile": {
           "description": "Belirtilen dosyayı alır ve AI'a gönderir.",
           "detail": "İstenen dosyayı okuyarak ilgili AI slotuna attachment olarak iletir. Dosya içeriğinin AI tarafından işlenmesini sağlar.",

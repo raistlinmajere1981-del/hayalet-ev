@@ -2,6 +2,7 @@ import { saveTeamTetrisState, type TeamTetrisHostState, type TeamTetrisStateApi 
 import { loadContext } from "../../../shared/host/context-state.js";
 import { ROOM_ID, TEAM_TETRIS_FEATURE_ID } from "../../../shared/host/feature-meta.js";
 import { buildTeamTetrisRemoteMoveText } from "./runtime-protocol.js";
+import { buildUs1RoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
 import type { TeamTetrisMovePayload } from "./engine.js";
 
 interface TeamTetrisRemoteSendResult {
@@ -137,11 +138,10 @@ async function sendTeamTetrisRemoteMove(
     return { success: false };
   }
 
-  const rawArgs = JSON.stringify(movePayload);
   const sendResult = await sendUs1MessageSafe(api, {
     localSessionId: state.localSessionId,
     text: buildTeamTetrisRemoteMoveText(movePayload as unknown as Record<string, unknown>),
-    roomCommand: {
+    roomCommand: buildUs1RoomBridgeCommand({
       roomId: ROOM_ID,
       featureId: TEAM_TETRIS_FEATURE_ID,
       commandName: "GameRoomTeamTetrisRemoteMove",
@@ -149,8 +149,8 @@ async function sendTeamTetrisRemoteMove(
       turnIndex: movePayload.turnIndex,
       turnToken: movePayload.turnToken,
       boardHashBeforeMove,
-      rawArgs,
-    },
+      payload: movePayload as unknown as Record<string, unknown>,
+    }),
   });
 
   if (isSuccessfulSendResult(sendResult)) {

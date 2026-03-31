@@ -1,6 +1,8 @@
 import { AppI18n } from "../modules/i18n/index.js";
-
-const COMMAND_REGEX = /\+\+cmd:([A-Za-z0-9_]+)\(([^)]*)\)/g;
+import {
+  parseExactInlineCommand,
+  parseInlineCommands,
+} from "../modules/commands/inline-command-parser.js";
 
 export interface ParsedCommandInput {
   commandName: string;
@@ -18,15 +20,13 @@ export function extractExampleArgsFromDescription(commandName: string, detailTex
   }
 
   const target = commandName.trim().toLowerCase();
-  let match: RegExpExecArray | null;
-
-  while ((match = COMMAND_REGEX.exec(detailText)) !== null) {
-    const parsedName = (match[1] ?? "").trim().toLowerCase();
+  for (const match of parseInlineCommands(detailText)) {
+    const parsedName = match.commandName.trim().toLowerCase();
     if (parsedName !== target) {
       continue;
     }
 
-    return (match[2] ?? "").trim();
+    return match.args.trim();
   }
 
   return "";
@@ -46,11 +46,11 @@ export function parseCommandExecutionInput(
   const input = typeof rawInput === "string" ? rawInput.trim() : "";
   const fallback = typeof fallbackCommandName === "string" ? fallbackCommandName.trim() : "";
 
-  const match = input.match(/^\+\+cmd:([A-Za-z0-9_]+)\(([^)]*)\)$/);
+  const match = parseExactInlineCommand(input);
   if (match !== null) {
     return {
-      commandName: (match[1] ?? fallback).trim(),
-      args: (match[2] ?? "").trim(),
+      commandName: (match.commandName ?? fallback).trim(),
+      args: match.args.trim(),
       inputWasInlineCommand: true,
     };
   }

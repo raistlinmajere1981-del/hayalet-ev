@@ -35,6 +35,7 @@ const COMMAND_DESCRIPTION_NAMES = [
   "AIAssistantChatStop",
   "AIAssistantSend",
   "AssistantAISend",
+  "SlotBridge",
   "GetFile",
   "GetItDone",
   "ListFiles",
@@ -49,6 +50,7 @@ const COMMAND_DESCRIPTION_ALIASES = new Map<string, CommandDescriptionName>([
   ["aiasistanchatstop", "AIAssistantChatStop"],
   ["aiasistansend", "AIAssistantSend"],
   ["asistanaisend", "AssistantAISend"],
+  ["slotbridge", "SlotBridge"],
 ]);
 
 function resolveCanonicalCommandDescriptionName(commandName: string): string {

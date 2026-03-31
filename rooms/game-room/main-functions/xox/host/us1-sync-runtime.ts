@@ -32,6 +32,8 @@ type XoxRoomCommand = {
   roomId: string;
   featureId: string;
   commandName: string;
+  action: string | null;
+  roomPayload?: unknown;
   commandArgs: unknown;
   rawArgs: string;
   remoteUserId: string | null;
@@ -143,6 +145,8 @@ function normalizeRoomCommand(candidate: unknown): XoxRoomCommand | null {
     roomId: readString(candidate["roomId"]),
     featureId: readString(candidate["featureId"]),
     commandName: readString(candidate["commandName"]),
+    action: readOptionalString(candidate["action"]),
+    roomPayload: candidate["roomPayload"],
     commandArgs: candidate["commandArgs"],
     rawArgs: readString(candidate["rawArgs"]),
     remoteUserId: readOptionalString(candidate["remoteUserId"]),
@@ -263,7 +267,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
       }
 
       void api.dispatchRoomCommand(command.commandName, {
-        roomPayload: command.commandArgs,
+        roomPayload: command.roomPayload ?? command.commandArgs,
         args: command.rawArgs,
         remoteUserId: command.remoteUserId,
         localSessionId: command.localSessionId,

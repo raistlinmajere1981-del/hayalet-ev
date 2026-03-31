@@ -4,7 +4,7 @@ Team Tetris uses live room-command transport with the connected US1 slot.
 
 Transport contract:
 
-- command: `++cmd:GameRoomTeamTetrisRemoteMove({...})`
+- command: `++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomTeamTetrisRemoteMove",...}})`
 - scope: `us1`
 - the host validates `matchId`, `turnIndex`, `turnToken`, and move legality before mutating the match
 - `seatId` is not trusted input

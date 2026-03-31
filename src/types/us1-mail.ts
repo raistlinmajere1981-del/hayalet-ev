@@ -136,6 +136,8 @@ export interface Us1RoomCommandInput {
   roomId: string;
   featureId: string;
   commandName: string;
+  action?: "room.command";
+  roomPayload?: unknown;
   matchId?: string | null;
   turnIndex?: number;
   turnToken?: string | null;

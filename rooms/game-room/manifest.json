@@ -90,37 +90,44 @@
         {
           "name": "GameRoomXoxStart",
           "description": "Start a new XOX match from the room UI.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomXoxReset",
           "description": "Reset the active XOX match state.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomXoxUserMove",
           "description": "Apply the user's XOX move from the room UI.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomXoxAiMove",
           "description": "Apply the AI move returned by the selected opponent slot.",
-          "scope": "ai-slots"
+          "scope": "ai-slots",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomXoxRemoteMove",
           "description": "Apply the remote US1 move delivered over room mail transport.",
-          "scope": "us1"
+          "scope": "us1",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomXoxAcceptInvite",
           "description": "Accept an incoming US1 XOX invite from the room UI.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomXoxRejectInvite",
           "description": "Reject an incoming US1 XOX invite from the room UI.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         }
       ],
       "protocolSpecs": [
@@ -183,27 +190,32 @@
         {
           "name": "GameRoomTeamTetrisStart",
           "description": "Start a new Team Tetris match from the room UI.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomTeamTetrisReset",
           "description": "Reset the active Team Tetris match state.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomTeamTetrisUserMove",
           "description": "Apply the local user's Team Tetris path selection from the room UI.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomTeamTetrisAiMove",
           "description": "Apply the Team Tetris move returned by AI1 or AI2.",
-          "scope": "ai-slots"
+          "scope": "ai-slots",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomTeamTetrisRemoteMove",
           "description": "Apply the Team Tetris move delivered over the connected US1 transport.",
-          "scope": "us1"
+          "scope": "us1",
+          "exposure": "internal"
         }
       ],
       "protocolSpecs": [
@@ -266,72 +278,86 @@
         {
           "name": "GameRoomFateKnotsStart",
           "description": "Start a new Fate Knots run from the room UI.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsReset",
           "description": "Reset the active Fate Knots run state.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsReady",
           "description": "Lock the local Fate Knots character build and continue the slice.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsCharacterSelect",
           "description": "Apply the local Fate Knots avatar, class, or background selection.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsChoice",
           "description": "Submit the local shared-decision vote for the current Fate Knots step.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsCombatAction",
           "description": "Submit the local combat action for the current Fate Knots turn.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsSync",
           "description": "Recalculate waiting state and retry pending Fate Knots dispatch work.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsEnd",
           "description": "End the current Fate Knots run and return the feature to idle.",
-          "scope": "room-ui"
+          "scope": "room-ui",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsAiChoice",
           "description": "Apply the AI seat vote returned for a Fate Knots decision step.",
-          "scope": "ai-slots"
+          "scope": "ai-slots",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsAiCombatAction",
           "description": "Apply the AI seat combat action returned for Fate Knots combat.",
-          "scope": "ai-slots"
+          "scope": "ai-slots",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsRemoteChoice",
           "description": "Apply a US1 Fate Knots decision vote delivered over room transport.",
-          "scope": "us1"
+          "scope": "us1",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsRemoteCombatAction",
           "description": "Apply a US1 Fate Knots combat action delivered over room transport.",
-          "scope": "us1"
+          "scope": "us1",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsDmPacket",
           "description": "Store an additive Fate Knots DM narration packet.",
-          "scope": "ai-slots"
+          "scope": "ai-slots",
+          "exposure": "internal"
         },
         {
           "name": "GameRoomFateKnotsNpcBanter",
           "description": "Store an additive Fate Knots NPC banter packet.",
-          "scope": "ai-slots"
+          "scope": "ai-slots",
+          "exposure": "internal"
         }
       ],
       "protocolSpecs": [

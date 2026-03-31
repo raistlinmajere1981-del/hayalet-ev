@@ -691,6 +691,12 @@
           "usage": "++cmd:AssistantAISend(<target>)\nTarget: ai1 or ai2 (optional)",
           "example": "++cmd:AssistantAISend(ai1) Forward the message to AI1"
         },
+        "SlotBridge": {
+          "description": "Runs the unified slot bridge command family.",
+          "detail": "Routes cross-slot message sends, waited replies, room.command dispatch, connection.ensure, and session actions through a single JSON envelope. For attachment-bearing public actions, prefer archive attachment refs instead of raw filesystem paths.",
+          "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"toSlot\":\"ai1\",\"payload\":{\"text\":\"Hello\"}})",
+          "example": "++cmd:SlotBridge({\"action\":\"room.command\",\"fromSlot\":\"ai1\",\"payload\":{\"commandName\":\"GameRoomXoxAiMove\",\"cell\":4}})"
+        },
         "GetFile": {
           "description": "Fetches the requested file and sends it to the AI.",
           "detail": "Reads the requested file and forwards it to the related AI slot as an attachment. This allows the AI to process the file content.",

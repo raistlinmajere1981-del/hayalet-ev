@@ -1,4 +1,8 @@
-import type { InstalledRoomRecord, RoomCommandScope } from "@shared/index.js";
+import type {
+  InstalledRoomRecord,
+  RoomCommandExposure,
+  RoomCommandScope,
+} from "@shared/index.js";
 import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory } from "../logger/index.js";
 
@@ -10,6 +14,7 @@ export interface RoomCommandMetadata {
   description: string;
   scope: RoomCommandScope;
   category: RoomCommandCategory;
+  exposure: RoomCommandExposure;
 }
 
 export interface RoomCommandHandlerPayload extends Record<string, unknown> {
@@ -52,6 +57,10 @@ function normalizeDescription(
 ): string {
   const trimmed = description?.trim() ?? "";
   return trimmed !== "" ? trimmed : `${roomId} room command: ${name}`;
+}
+
+function normalizeExposure(exposure: RoomCommandExposure | undefined): RoomCommandExposure {
+  return exposure === "internal" ? "internal" : "public";
 }
 
 function roomCommandT(key: string, params?: Record<string, string | number>): string {
@@ -140,6 +149,7 @@ class RoomCommandRegistryClass {
           description: normalizeDescription(spec.description, room.id, spec.name),
           scope: normalizeScope(spec.scope),
           category: scopeToCategory(normalizeScope(spec.scope)),
+          exposure: normalizeExposure(spec.exposure),
         };
 
         nextEntries.set(key, {
@@ -182,6 +192,7 @@ class RoomCommandRegistryClass {
       ),
       scope,
       category: scopeToCategory(scope),
+      exposure: existing?.metadata.exposure ?? "public",
     };
 
     this.entries.set(key, {
@@ -213,6 +224,14 @@ class RoomCommandRegistryClass {
       .sort((left, right) => left.localeCompare(right));
   }
 
+  listPublicCommands(category?: RoomCommandCategory): string[] {
+    return Array.from(this.entries.values())
+      .filter((entry) => entry.metadata.exposure === "public")
+      .filter((entry) => (category !== undefined ? entry.metadata.category === category : true))
+      .map((entry) => entry.metadata.name)
+      .sort((left, right) => left.localeCompare(right));
+  }
+
   getCatalog(category?: RoomCommandCategory): Array<{
     name: string;
     category: RoomCommandCategory;
@@ -220,6 +239,7 @@ class RoomCommandRegistryClass {
     supportsTestMode: boolean;
   }> {
     return Array.from(this.entries.values())
+      .filter((entry) => entry.metadata.exposure === "public")
       .filter((entry) => (category !== undefined ? entry.metadata.category === category : true))
       .map((entry) => ({
         name: entry.metadata.name,

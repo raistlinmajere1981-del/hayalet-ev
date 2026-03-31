@@ -1,5 +1,6 @@
 import { Logger } from "./logger/index.js";
 import { LogCategory } from "@shared/logging-core";
+import { parseInlineCommands } from "./commands/inline-command-parser.js";
 
 class CatchManagerClass {
   catchCommands({
@@ -45,12 +46,13 @@ class CatchManagerClass {
 
     targetMessages.forEach((msg) => {
       const text = msg.text ?? "";
-      const regex = new RegExp(`\\+\\+${prefix}:([A-Za-z0-9_]+)\\(([^)]*)\\)`, "g");
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        const name = match[1];
-        const argsRaw = match[2];
-        if (name === undefined || name === "") continue;
+      const matches = parseInlineCommands(text, { prefix });
+      matches.forEach((match) => {
+        const name = match.commandName;
+        const argsRaw = match.args;
+        if (name === undefined || name === "") {
+          return;
+        }
         found.push({
           provider,
           command: name,
@@ -72,7 +74,7 @@ class CatchManagerClass {
             category: `catch-${provider}`,
           }
         );
-      }
+      });
     });
 
     return found;

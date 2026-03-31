@@ -1,4 +1,5 @@
 import { loadContext } from "../../../shared/host/context-state.js";
+import { buildRoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
 import {
   FATE_KNOTS_FEATURE_ID,
   FATE_KNOTS_PAGE_ID,
@@ -125,7 +126,11 @@ export function createFateKnotsPromptRuntime(deps: FateKnotsPromptRuntimeDeps) {
     return [
       "Fate Knots common-decision update from the Game Room.",
       "Reply with exactly one command line.",
-      `Use ++cmd:${commandName}({"sessionId":"${state.sessionId}","stepId":"${step.id}","choiceId":"<choice-id>"})`,
+      `Use ${buildRoomBridgeCommand(commandName, {
+        sessionId: state.sessionId,
+        stepId: step.id,
+        choiceId: "<choice-id>",
+      })}`,
       "Do not add prose, markdown, or a second command.",
       "",
       `Party lead: ${context.user.nickname || "User"}`,
@@ -182,7 +187,12 @@ export function createFateKnotsPromptRuntime(deps: FateKnotsPromptRuntimeDeps) {
     return [
       "Fate Knots combat update from the Game Room.",
       "Reply with exactly one command line.",
-      `Use ++cmd:${commandName}({"sessionId":"${state.sessionId}","encounterId":"${combat?.encounterId || ""}","turnId":"${turnId}","actionId":"<card-id>"})`,
+      `Use ${buildRoomBridgeCommand(commandName, {
+        sessionId: state.sessionId,
+        encounterId: combat?.encounterId || "",
+        turnId,
+        actionId: "<card-id>",
+      })}`,
       "Do not add prose, markdown, or a second command.",
       "",
       JSON.stringify(
@@ -227,7 +237,14 @@ export function createFateKnotsPromptRuntime(deps: FateKnotsPromptRuntimeDeps) {
     return [
       "Fate Knots additive narration request.",
       "Reply with exactly one command line.",
-      `Use ++cmd:${FATE_KNOTS_COMMAND_NAMES.dmPacket}({"sessionId":"${state.sessionId}","phase":"${state.phase}","stepId":"${state.currentStepId || ""}","encounterId":"${combat?.encounterId || ""}","turnId":"${combat ? buildFateKnotsCombatTurnId(combat) : ""}","text":"<one short narration sentence>"})`,
+      `Use ${buildRoomBridgeCommand(FATE_KNOTS_COMMAND_NAMES.dmPacket, {
+        sessionId: state.sessionId,
+        phase: state.phase,
+        stepId: state.currentStepId || "",
+        encounterId: combat?.encounterId || "",
+        turnId: combat ? buildFateKnotsCombatTurnId(combat) : "",
+        text: "<one short narration sentence>",
+      })}`,
       "Keep the response player-visible only. Do not change rules, reveal secrets, or add a second command.",
       "",
       JSON.stringify(summary, null, 2),
@@ -251,7 +268,15 @@ export function createFateKnotsPromptRuntime(deps: FateKnotsPromptRuntimeDeps) {
     return [
       "Fate Knots short companion banter request.",
       "Reply with exactly one command line.",
-      `Use ++cmd:${FATE_KNOTS_COMMAND_NAMES.npcBanter}({"sessionId":"${state.sessionId}","phase":"${state.phase}","seatId":"${seatId}","stepId":"${state.currentStepId || ""}","encounterId":"${combat?.encounterId || ""}","turnId":"${combat ? buildFateKnotsCombatTurnId(combat) : ""}","text":"<one short in-world line>"})`,
+      `Use ${buildRoomBridgeCommand(FATE_KNOTS_COMMAND_NAMES.npcBanter, {
+        sessionId: state.sessionId,
+        phase: state.phase,
+        seatId,
+        stepId: state.currentStepId || "",
+        encounterId: combat?.encounterId || "",
+        turnId: combat ? buildFateKnotsCombatTurnId(combat) : "",
+        text: "<one short in-world line>",
+      })}`,
       "Keep it short, supportive, and player-visible. Do not add a second command.",
       "",
       JSON.stringify(summary, null, 2),

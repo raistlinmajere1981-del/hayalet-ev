@@ -7,6 +7,7 @@ import {
   readRequiredString,
 } from "./room-validation-primitives.js";
 import type {
+  RoomCommandExposure,
   RoomCommandScope,
   RoomCommandSpec,
   RoomI18nConfig,
@@ -17,9 +18,14 @@ import type {
 
 const LEGACY_ASSISTANT_SCOPE = "ai0";
 const ROOM_COMMAND_SCOPES = ["room-ui", "ai-slots", "assistant", "us1", "system"] as const;
+const ROOM_COMMAND_EXPOSURES = ["public", "internal"] as const;
 
 function isRoomCommandScope(value: string): value is RoomCommandScope {
   return ROOM_COMMAND_SCOPES.includes(value as RoomCommandScope);
+}
+
+function isRoomCommandExposure(value: string): value is RoomCommandExposure {
+  return ROOM_COMMAND_EXPOSURES.includes(value as RoomCommandExposure);
 }
 
 export function readMenuConfig(
@@ -112,7 +118,9 @@ export function readCommandSpecs(
     }
     const descriptionValue = readOptionalString(item, "description", errors);
     const scopeRaw = item["scope"];
+    const exposureRaw = item["exposure"];
     let scope: RoomCommandScope | undefined;
+    let exposure: RoomCommandExposure | undefined;
     if (scopeRaw !== undefined) {
       if (typeof scopeRaw !== "string") {
         errors.push(`${path}[${String(index)}].scope is invalid`);
@@ -122,11 +130,19 @@ export function readCommandSpecs(
         scope = scopeRaw === LEGACY_ASSISTANT_SCOPE ? "assistant" : scopeRaw;
       }
     }
+    if (exposureRaw !== undefined) {
+      if (typeof exposureRaw !== "string" || isRoomCommandExposure(exposureRaw) === false) {
+        errors.push(`${path}[${String(index)}].exposure is invalid`);
+      } else {
+        exposure = exposureRaw;
+      }
+    }
     if (commandName !== undefined) {
       parsed.push({
         name: commandName,
         ...(descriptionValue !== undefined ? { description: descriptionValue } : {}),
         ...(scope !== undefined ? { scope } : {}),
+        ...(exposure !== undefined ? { exposure } : {}),
       });
     }
   });

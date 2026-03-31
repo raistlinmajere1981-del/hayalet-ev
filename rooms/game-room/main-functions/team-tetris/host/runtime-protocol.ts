@@ -6,6 +6,7 @@ import {
 } from "./engine.js";
 import { TEAM_TETRIS_COMMAND_COPY } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
+import { buildRoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && Array.isArray(value) === false;
@@ -76,7 +77,10 @@ function buildTeamTetrisAiTurnMessage(
     "Team Tetris turn update from the Game Room.",
     "Game: Team Tetris.",
     "Your reply is parsed from only the latest assistant message.",
-    "Use exactly one command line in this format: ++cmd:GameRoomTeamTetrisAiMove({...})",
+    `Use exactly one command line in this format: ${buildRoomBridgeCommand(
+      "GameRoomTeamTetrisAiMove",
+      { pieceId: "<piece-id>" }
+    )}`,
     "Do not add markdown, prose, code fences, or a second command.",
     "",
     "Turn packet JSON:",
@@ -95,7 +99,7 @@ function buildTeamTetrisAiTurnMessage(
 }
 
 function buildTeamTetrisRemoteMoveText(movePayload: Record<string, unknown>) {
-  return `++cmd:GameRoomTeamTetrisRemoteMove(${JSON.stringify(movePayload)})`;
+  return buildRoomBridgeCommand("GameRoomTeamTetrisRemoteMove", movePayload);
 }
 
 function parseTeamTetrisStartEventNote(note: unknown): Record<string, unknown> | null {

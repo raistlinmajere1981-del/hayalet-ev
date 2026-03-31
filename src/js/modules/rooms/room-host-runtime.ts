@@ -14,6 +14,7 @@ import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory, LogLevel } from "../logger/index.js";
 import { SettingsManager } from "../settings-manager.js";
 import { ServerCommands } from "../server-commands.js";
+import { SLOT_BRIDGE_COMMAND_NAME } from "../commands/slot-bridge.js";
 import { RoomCommandRegistry, type RoomCommandHandler } from "./room-command-registry.js";
 import { RoomProtocolRegistry } from "./room-protocol-registry.js";
 import {
@@ -219,12 +220,21 @@ class RoomHostRuntimeClass {
         return;
       }
 
-      const result = await ServerCommands.run(payload.command, {
+      const result = await ServerCommands.run(SLOT_BRIDGE_COMMAND_NAME, {
         provider: "room-ui",
         source: "room-ui",
-        roomId,
-        roomPayload: payload.payload ?? null,
-        message: `++cmd:${payload.command}`,
+        fromSlot: "room-ui",
+        action: "room.command",
+        payload: {
+          commandName: payload.command,
+          roomId,
+          ...(isRoomCommandPayload(payload.payload)
+            ? payload.payload
+            : payload.payload !== undefined
+              ? { value: payload.payload }
+              : {}),
+        },
+        message: `++cmd:${SLOT_BRIDGE_COMMAND_NAME}`,
       });
 
       registration.bridge?.sendToRoom({
@@ -454,12 +464,35 @@ class RoomHostRuntimeClass {
         return await electronApi.us1SyncMessages(params);
       },
       dispatchRoomCommand: async (commandName, payload = {}): Promise<unknown> => {
-        return await ServerCommands.run(commandName, {
+        const bridgePayload = { ...payload };
+        delete bridgePayload["roomPayload"];
+        delete bridgePayload["payload"];
+        delete bridgePayload["action"];
+        delete bridgePayload["fromSlot"];
+        delete bridgePayload["provider"];
+        delete bridgePayload["source"];
+        const roomPayload =
+          payload["roomPayload"] !== undefined &&
+          payload["roomPayload"] !== null &&
+          typeof payload["roomPayload"] === "object" &&
+          Array.isArray(payload["roomPayload"]) === false
+            ? (payload["roomPayload"] as Record<string, unknown>)
+            : payload["roomPayload"] !== undefined
+              ? { value: payload["roomPayload"] }
+              : {};
+
+        return await ServerCommands.run(SLOT_BRIDGE_COMMAND_NAME, {
           provider: "us1",
           source: "us1",
-          roomId: registration.room.id,
-          ...payload,
-          message: `++cmd:${commandName}`,
+          fromSlot: "us1",
+          ...bridgePayload,
+          action: "room.command",
+          payload: {
+            commandName,
+            roomId: registration.room.id,
+            ...roomPayload,
+          },
+          message: `++cmd:${SLOT_BRIDGE_COMMAND_NAME}`,
         });
       },
       getUs1Identity: (): RemoteUserIdentity | null => AppState.getUs1Identity(),

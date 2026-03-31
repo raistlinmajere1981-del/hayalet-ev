@@ -38,7 +38,7 @@
       "title": "Canli Rakipler",
       "protocolTitle": "Protokol Kurallari",
       "controlsTitle": "Nasil Isler",
-      "commandHint": "AI cevap formati: ++cmd:GameRoomXoxAiMove({\"cell\":4})",
+      "commandHint": "AI cevap formati: ++cmd:SlotBridge({\"action\":\"room.command\",\"payload\":{\"commandName\":\"GameRoomXoxAiMove\",\"cell\":4}})",
       "latestMessageHint": "Komutlar yalnizca son assistant mesajindan yakalanir.",
       "help1": "1. Bagli bir AI slotu sec ve kimin acilis yapacagini belirle.",
       "help2": "2. Sira sendeyken bos bir hucreye tikla.",

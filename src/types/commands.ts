@@ -1,6 +1,71 @@
 import type { SlotId, Attachment } from "./common.js";
 
 export type CommandJobStatus = "pending" | "processing" | "done" | "failed";
+export type CommandProvider = SlotId | "room-ui" | "us1" | "user" | "system";
+export type SlotBridgeAction =
+  | "message.send"
+  | "message.sendWait"
+  | "message.sendWithAttachments"
+  | "file.send"
+  | "connection.ensure"
+  | "session.open"
+  | "session.switch"
+  | "room.command";
+export type SlotBridgeConnectPolicy = "never" | "ensure" | "require-ready";
+export type SlotBridgeDelivery = "sync" | "async";
+export type SlotBridgeArtifactKind =
+  | "attachment-ref"
+  | "filesystem"
+  | "archive-attachment"
+  | "generated-image";
+
+export interface SlotBridgeSessionRef {
+  id?: string | null;
+  conversationId?: string | null;
+  threadId?: string | null;
+  openHint?: string | null;
+}
+
+export interface SlotBridgeAttachmentDescriptor {
+  id?: string;
+  ref?: string | null;
+  name: string;
+  kind?: SlotBridgeArtifactKind;
+  path?: string | null;
+  url?: string | null;
+  archivePath?: string | null;
+  mimeType?: string | null;
+  size?: number | null;
+  sourceSlot?: SlotId | null;
+  conversationId?: string | null;
+  messageId?: string | null;
+}
+
+export interface SlotBridgeReply {
+  text?: string;
+  slot?: CommandProvider | null;
+  provider?: string | null;
+  conversationId?: string | null;
+  messageId?: string | null;
+  attachments?: SlotBridgeAttachmentDescriptor[];
+}
+
+export interface SlotBridgeEnvelope {
+  version?: number;
+  reqId?: string;
+  action: SlotBridgeAction;
+  fromSlot?: CommandProvider;
+  toSlot?: CommandProvider | null;
+  replyToSlot?: CommandProvider | null;
+  delivery?: SlotBridgeDelivery;
+  wait?: boolean;
+  timeoutMs?: number;
+  force?: boolean;
+  connectPolicy?: SlotBridgeConnectPolicy;
+  sessionRef?: SlotBridgeSessionRef | null;
+  payload?: Record<string, unknown> | null;
+  attachments?: SlotBridgeAttachmentDescriptor[];
+}
 
 export interface CommandJob {
   id: string;
@@ -35,6 +100,15 @@ export interface CommandResult {
   message?: string;
   data?: unknown;
   error?: string;
+}
+
+export interface SlotBridgeResult extends CommandResult {
+  ok?: boolean;
+  reqId?: string;
+  code?: string;
+  reply?: SlotBridgeReply | null;
+  session?: SlotBridgeSessionRef | null;
+  artifacts?: SlotBridgeAttachmentDescriptor[];
 }
 
 export interface CommandDefinition {
