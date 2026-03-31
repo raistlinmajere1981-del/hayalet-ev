@@ -357,7 +357,7 @@ export async function testMicrophoneButton(ctx: TestContext): Promise<ProviderTe
 
 export async function testTextInjection(
   ctx: TestContext,
-  message = PROVIDER_TEST.TEST_MESSAGE
+  message: string = PROVIDER_TEST.TEST_MESSAGE
 ): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
@@ -813,7 +813,7 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
 
 export async function testUserMessageInspect(
   ctx: TestContext,
-  expectedMessage = PROVIDER_TEST.TEST_MESSAGE
+  expectedMessage: string = PROVIDER_TEST.TEST_MESSAGE
 ): Promise<ProviderTestResult> {
   const start = Date.now();
   try {

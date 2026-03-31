@@ -146,7 +146,9 @@ export function createSubtitleStateProjectRuntime(deps: SubtitleStateProjectRunt
     const normalizedFilePath = asNonEmptyString(filePath);
     const requestedFileName = asNonEmptyString(config.fileName);
     const derivedFileName =
-      normalizedFilePath === null ? null : asNonEmptyString(normalizedFilePath.split(/[\\/]/).pop());
+      normalizedFilePath === null
+        ? null
+        : asNonEmptyString(normalizedFilePath.split(/[\\/]/).pop());
     const fileName = requestedFileName ?? derivedFileName ?? `subtitle-${Date.now()}.srt`;
 
     return normalizationRuntime.normalizeSubtitleEntryRecord(

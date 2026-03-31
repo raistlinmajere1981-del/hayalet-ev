@@ -803,6 +803,7 @@ declare global {
       payload: Record<string, unknown>
     ) => Promise<IPCResult & { data?: Array<Record<string, unknown>> }>;
     dbSaveAttachment: (payload: Record<string, unknown>) => Promise<IPCResult>;
+    dbSaveAttachmentContent: (payload: Record<string, unknown>) => Promise<IPCResult>;
 
     archiveSync: (payload: Record<string, unknown>) => Promise<IPCResult>;
     readArchivesIndex: () => Promise<Array<Record<string, unknown>>>;
@@ -816,6 +817,10 @@ declare global {
       options?: Record<string, unknown> | string
     ) => Promise<IPCResult & { path?: string; base64?: string; data?: string }>;
     capturePage: (type?: string, region?: unknown) => Promise<IPCResult & { data?: string }>;
+    captureWebContentsPage: (
+      targetContentsId: number,
+      region?: unknown
+    ) => Promise<IPCResult & { data?: string }>;
 
     deviceAction: (action: string, payload?: unknown) => Promise<IPCResult>;
 

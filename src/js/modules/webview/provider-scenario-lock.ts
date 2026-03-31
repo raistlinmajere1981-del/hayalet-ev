@@ -7,12 +7,12 @@ type ProviderScenarioLockEntry = {
 type ProviderScenarioLockMap = Record<string, ProviderScenarioLockEntry>;
 
 function readProviderScenarioLocks(): ProviderScenarioLockMap | null {
-  const locks = window.__providerScenarioLocks;
-  if (locks === undefined || locks === null || typeof locks !== "object") {
+  const locks = window.__providerScenarioLocks as unknown;
+  if (typeof locks !== "object" || locks === null) {
     return null;
   }
 
-  return locks;
+  return locks as ProviderScenarioLockMap;
 }
 
 export function isProviderScenarioActive(slot: string): boolean {
@@ -22,5 +22,5 @@ export function isProviderScenarioActive(slot: string): boolean {
 
   const locks = readProviderScenarioLocks();
   const entry = locks?.[slot];
-  return entry !== undefined && entry !== null && typeof entry === "object";
+  return entry !== undefined;
 }

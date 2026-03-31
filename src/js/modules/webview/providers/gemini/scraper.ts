@@ -5,7 +5,19 @@ interface ScrapedMessage {
   contentHash: string;
   domIndex: number;
   domId?: string | null;
+  generatedImages?: Array<{
+    id: string;
+    stableKey: string;
+    src: string;
+    currentSrc: string;
+    alt: string;
+    mimeType: string;
+    originalName: string;
+    imageIndex: number;
+  }>;
 }
+
+type ScrapedGeneratedImage = NonNullable<ScrapedMessage["generatedImages"]>[number];
 
 export function scrapeMessages(): ScrapedMessage[] {
   function normalizeText(str: string): string {
@@ -31,16 +43,41 @@ export function scrapeMessages(): ScrapedMessage[] {
     return hash.toString(16);
   }
 
+  function inferMimeType(src: string): string {
+    const normalized = src.trim().toLowerCase();
+    if (normalized.startsWith("data:image/")) {
+      const match = /^data:([^;,]+)[;,]/.exec(normalized);
+      return match?.[1] ?? "image/png";
+    }
+    if (normalized.includes(".webp")) return "image/webp";
+    if (normalized.includes(".gif")) return "image/gif";
+    if (normalized.includes(".bmp")) return "image/bmp";
+    if (normalized.includes(".svg")) return "image/svg+xml";
+    if (normalized.includes(".jpg") || normalized.includes(".jpeg")) return "image/jpeg";
+    return "image/png";
+  }
+
+  function extensionFromMime(mimeType: string): string {
+    if (mimeType.includes("webp")) return "webp";
+    if (mimeType.includes("gif")) return "gif";
+    if (mimeType.includes("bmp")) return "bmp";
+    if (mimeType.includes("svg")) return "svg";
+    if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpg";
+    return "png";
+  }
+
   const config = (window.__app_provider_config ?? {}) as {
     scrapeSelectors?: Record<string, string>;
     roleSelectors?: Record<string, string>;
+    selectors?: Record<string, string>;
   };
-  const { scrapeSelectors = {}, roleSelectors = {} } = config;
+  const { scrapeSelectors = {}, roleSelectors = {}, selectors = {} } = config;
 
   const preferredSel = scrapeSelectors["preferred"] ?? ".message-content";
   const fallbackSel =
     scrapeSelectors["fallback"] ?? ".user-query-bubble-with-background, .markdown-main-panel";
   const messageIdSel = scrapeSelectors["messageId"] ?? '[id^="message-content-id-"]';
+  const generatedImageSelector = selectors["generatedImage"] ?? "";
 
   const preferred = Array.from(document.querySelectorAll(preferredSel));
   const base =
@@ -108,7 +145,64 @@ export function scrapeMessages(): ScrapedMessage[] {
 
     // NOTE: Add a hash for fallback lookup or duplicate detection.
     const contentHash = hashString(textContent);
-    result.push({ index: idx, role, text: textContent, contentHash, domIndex: idx, domId });
+
+    const generatedImages =
+      generatedImageSelector.trim() === ""
+        ? []
+        : ((): ScrapedGeneratedImage[] => {
+            const seen = new Set<string>();
+            const roots = [
+              ...(node.matches(generatedImageSelector) ? [node] : []),
+              ...Array.from(node.querySelectorAll(generatedImageSelector)),
+            ];
+
+            return roots.flatMap((root, imageIndex) => {
+              const image = root instanceof HTMLImageElement ? root : root.querySelector("img");
+              if (!(image instanceof HTMLImageElement)) {
+                return [];
+              }
+
+              const src = image.getAttribute("src")?.trim() ?? "";
+              const currentSrc = image.currentSrc.trim();
+              const alt = image.getAttribute("alt")?.trim() ?? "";
+              const effectiveSrc = currentSrc !== "" ? currentSrc : src;
+              if (effectiveSrc === "" && alt === "") {
+                return [];
+              }
+
+              const messageKey = domId ?? contentHash;
+              const stableKey = hashString(`${messageKey}|${imageIndex}|${alt}`);
+              const id = hashString(`${effectiveSrc}|${alt}|${imageIndex}`);
+              if (seen.has(id)) {
+                return [];
+              }
+              seen.add(id);
+
+              const mimeType = inferMimeType(effectiveSrc);
+              return [
+                {
+                  id,
+                  stableKey,
+                  src,
+                  currentSrc,
+                  alt,
+                  mimeType,
+                  originalName: `generated-image-${String(imageIndex + 1).padStart(2, "0")}-${stableKey}.${extensionFromMime(mimeType)}`,
+                  imageIndex,
+                },
+              ];
+            });
+          })();
+
+    result.push({
+      index: idx,
+      role,
+      text: textContent,
+      contentHash,
+      domIndex: idx,
+      domId,
+      ...(generatedImages.length > 0 ? { generatedImages } : {}),
+    });
   });
 
   return result;

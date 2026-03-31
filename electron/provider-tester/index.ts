@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import {
@@ -79,6 +79,11 @@ import {
   testStopButton,
   testVoiceButton,
 } from "./scraping-tests.ts";
+import { hashString } from "../../src/js/modules/webview/providers/shared/scraper-helpers.ts";
+import {
+  buildGeneratedImageExtractionScript,
+  parseGeneratedImageDataUrl,
+} from "../../src/js/modules/webview/providers/shared/generated-image-extractor.ts";
 
 const STATUS_COLOR = {
   busy: "rgb(231, 76, 60)",
@@ -175,6 +180,184 @@ interface ConversationMetadataResult {
   };
 }
 
+interface ProviderTesterGeneratedImageAsset {
+  id?: string;
+  stableKey?: string;
+  src?: string;
+  currentSrc?: string;
+  alt?: string;
+  mimeType?: string;
+  originalName?: string;
+  imageIndex?: number;
+}
+
+interface ProviderTesterScrapedMessage {
+  role: "user" | "assistant";
+  text: string;
+  index: number;
+  domId?: string;
+  contentHash?: string;
+  generatedImages?: ProviderTesterGeneratedImageAsset[];
+}
+
+interface ProviderTesterDbMessageRow {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  dom_index: number | null;
+  dom_id: string | null;
+  content_hash: string | null;
+}
+
+interface ProviderTesterImageCaptureRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface ProviderTesterImageExtractionResult {
+  success?: boolean;
+  base64?: string;
+  mimeType?: string;
+  rect?: ProviderTesterImageCaptureRect | null;
+  error?: string;
+}
+
+interface ProviderTesterGeneratedImagePersistResult {
+  savedCount: number;
+  pendingCount: number;
+}
+
+function readStringField(value: unknown, ...keys: string[]): string {
+  if (typeof value !== "object" || value === null) {
+    return "";
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim() !== "") {
+      return candidate.trim();
+    }
+  }
+
+  return "";
+}
+
+function readNumberField(value: unknown, ...keys: string[]): number | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeGeneratedImageAssets(value: unknown): ProviderTesterGeneratedImageAsset[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item, index) => {
+    if (typeof item !== "object" || item === null) {
+      return [];
+    }
+
+    const id = readStringField(item, "id");
+    const src = readStringField(item, "src");
+    const currentSrc = readStringField(item, "currentSrc", "current_src");
+    const stableKey = readStringField(item, "stableKey", "stable_key");
+    const alt = readStringField(item, "alt");
+    const mimeType = readStringField(item, "mimeType", "mime_type");
+    const originalName = readStringField(item, "originalName", "original_name");
+    const imageIndex = readNumberField(item, "imageIndex", "image_index") ?? index;
+
+    if (
+      id === "" &&
+      src === "" &&
+      currentSrc === "" &&
+      stableKey === "" &&
+      alt === "" &&
+      mimeType === "" &&
+      originalName === ""
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        ...(id !== "" ? { id } : {}),
+        ...(stableKey !== "" ? { stableKey } : {}),
+        ...(src !== "" ? { src } : {}),
+        ...(currentSrc !== "" ? { currentSrc } : {}),
+        ...(alt !== "" ? { alt } : {}),
+        ...(mimeType !== "" ? { mimeType } : {}),
+        ...(originalName !== "" ? { originalName } : {}),
+        imageIndex,
+      },
+    ];
+  });
+}
+
+function buildGeneratedImageLookupKey(domIndex: number | undefined, contentHash: string): string {
+  return `${domIndex ?? -1}:${contentHash}`;
+}
+
+function buildAttachmentDedupeKey(messageId: string, originalName: string): string {
+  return `${messageId}::${originalName}`;
+}
+
+function extensionFromMimeType(mimeType: string | undefined): string {
+  const normalized = mimeType?.trim().toLowerCase() ?? "";
+  if (normalized === "image/jpeg" || normalized === "image/jpg") {
+    return "jpg";
+  }
+  if (normalized === "image/webp") {
+    return "webp";
+  }
+  if (normalized === "image/gif") {
+    return "gif";
+  }
+  return "png";
+}
+
+function normalizeDbMessages(value: unknown[]): ProviderTesterDbMessageRow[] {
+  return value.flatMap((item) => {
+    if (typeof item !== "object" || item === null) {
+      return [];
+    }
+
+    const record = item as Record<string, unknown>;
+    const id = readStringField(record, "id");
+    const role =
+      record["role"] === "user" ? "user" : record["role"] === "assistant" ? "assistant" : null;
+    if (id === "" || role === null) {
+      return [];
+    }
+
+    const domId = readStringField(record, "dom_id");
+    const contentHash = readStringField(record, "content_hash");
+    return [
+      {
+        id,
+        role,
+        content: readStringField(record, "content"),
+        dom_index: readNumberField(record, "dom_index") ?? null,
+        dom_id: domId === "" ? null : domId,
+        content_hash: contentHash === "" ? null : contentHash,
+      },
+    ];
+  });
+}
+
 function normalizeSyncMode(syncMode?: ProviderWebviewSyncMode): ProviderWebviewSyncMode {
   return syncMode ?? "full";
 }
@@ -233,13 +416,7 @@ async function loadDatabaseManager(): Promise<ProviderTesterDatabaseManager> {
   return imported.databaseManager;
 }
 
-function normalizeScrapedMessages(messages: unknown[]): Array<{
-  role: "user" | "assistant";
-  text: string;
-  index: number;
-  domId?: string;
-  contentHash?: string;
-}> {
+function normalizeScrapedMessages(messages: unknown[]): ProviderTesterScrapedMessage[] {
   return messages.flatMap((message, index) => {
     if (typeof message !== "object" || message === null) {
       return [];
@@ -254,21 +431,28 @@ function normalizeScrapedMessages(messages: unknown[]): Array<{
         : typeof maybe["content"] === "string"
           ? maybe["content"]
           : "";
-    if (role === null || text.trim() === "") {
+    const generatedImages = normalizeGeneratedImageAssets(maybe["generatedImages"]);
+    const normalizedText =
+      text.trim() !== "" ? text.trim() : generatedImages.length > 0 ? "[image]" : "";
+    if (role === null || normalizedText === "") {
       return [];
     }
+
+    const contentHash =
+      typeof maybe["contentHash"] === "string" && maybe["contentHash"].trim() !== ""
+        ? maybe["contentHash"].trim()
+        : hashString(normalizedText);
 
     return [
       {
         role,
-        text: text.trim(),
+        text: normalizedText,
         index,
         ...(typeof maybe["domId"] === "string" && maybe["domId"] !== ""
           ? { domId: maybe["domId"] }
           : {}),
-        ...(typeof maybe["contentHash"] === "string" && maybe["contentHash"] !== ""
-          ? { contentHash: maybe["contentHash"] }
-          : {}),
+        contentHash,
+        ...(generatedImages.length > 0 ? { generatedImages } : {}),
       },
     ];
   });
@@ -566,6 +750,8 @@ export class ProviderTester {
         return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_FINAL_BUBBLES;
       case "assert-generated-image":
         return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_GENERATED_IMAGE;
+      case "assert-generated-image-archive":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_GENERATED_IMAGE_ARCHIVE;
       case "assert-scroll-behavior":
         return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_SCROLL_BEHAVIOR;
       case "assert-provider-capabilities":
@@ -833,6 +1019,13 @@ export class ProviderTester {
           stepName,
           "scraping",
           async () => await this.runGeneratedImageStep()
+        );
+      case "assert-generated-image-archive":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "advanced",
+          async () => await this.runGeneratedImageArchiveStep()
         );
       case "assert-scroll-behavior":
         return await this.executeAggregatedTestScenarioCommand(
@@ -1421,15 +1614,7 @@ export class ProviderTester {
     `);
   }
 
-  private async scrapeActiveConversationMessages(): Promise<
-    Array<{
-      role: "user" | "assistant";
-      text: string;
-      index: number;
-      domId?: string;
-      contentHash?: string;
-    }>
-  > {
+  private async scrapeActiveConversationMessages(): Promise<ProviderTesterScrapedMessage[]> {
     const providerModule = await loadProviderModule(this.config.id);
     const scrapeMessages = providerModule?.["scrapeMessages"];
     if (typeof scrapeMessages !== "function") {
@@ -1444,6 +1629,289 @@ export class ProviderTester {
     return normalizeScrapedMessages(Array.isArray(rawMessages) ? rawMessages : []);
   }
 
+  private resolveGeneratedImageMessageId(
+    scrapedMessage: ProviderTesterScrapedMessage,
+    finalMessages: ProviderTesterDbMessageRow[]
+  ): string | null {
+    if (scrapedMessage.role !== "assistant") {
+      return null;
+    }
+
+    if (typeof scrapedMessage.domId === "string" && scrapedMessage.domId.trim() !== "") {
+      const match = finalMessages.find(
+        (message) =>
+          message.role === "assistant" && (message.dom_id ?? "").trim() === scrapedMessage.domId
+      );
+      if (match !== undefined) {
+        return match.id;
+      }
+    }
+
+    const contentHash =
+      typeof scrapedMessage.contentHash === "string" && scrapedMessage.contentHash.trim() !== ""
+        ? scrapedMessage.contentHash.trim()
+        : hashString(scrapedMessage.text);
+    const lookupKey = buildGeneratedImageLookupKey(scrapedMessage.index, contentHash);
+    const match = finalMessages.find((message) => {
+      if (message.role !== "assistant") {
+        return false;
+      }
+
+      const messageHash = (message.content_hash ?? "").trim();
+      if (messageHash === "") {
+        return false;
+      }
+
+      return (
+        buildGeneratedImageLookupKey(message.dom_index ?? undefined, messageHash) === lookupKey
+      );
+    });
+
+    return match?.id ?? null;
+  }
+
+  private buildGeneratedImageStableKey(
+    message: ProviderTesterScrapedMessage,
+    asset: ProviderTesterGeneratedImageAsset
+  ): string {
+    const assetStableKey = asset.stableKey?.trim() ?? "";
+    if (assetStableKey !== "") {
+      return assetStableKey;
+    }
+
+    const domId = message.domId?.trim() ?? "";
+    const contentHash = message.contentHash?.trim() ?? "";
+    const messageKey =
+      domId !== "" ? domId : contentHash !== "" ? contentHash : `message:${message.index}`;
+    return hashString(`${messageKey}|${asset.imageIndex ?? 0}|${asset.alt ?? ""}`);
+  }
+
+  private buildGeneratedImageName(
+    message: ProviderTesterScrapedMessage,
+    asset: ProviderTesterGeneratedImageAsset
+  ): string {
+    const originalName = asset.originalName?.trim() ?? "";
+    if ((asset.stableKey?.trim() ?? "") === "" && originalName !== "") {
+      return originalName;
+    }
+
+    const imageIndex = Math.max(0, Math.trunc(asset.imageIndex ?? 0));
+    const ext = extensionFromMimeType(asset.mimeType);
+    const stableKey = this.buildGeneratedImageStableKey(message, asset);
+    return `generated-image-${String(imageIndex + 1).padStart(2, "0")}-${stableKey}.${ext}`;
+  }
+
+  private async extractGeneratedImageContent(
+    asset: ProviderTesterGeneratedImageAsset
+  ): Promise<ProviderTesterImageExtractionResult | null> {
+    try {
+      return (await this.webview.executeJavaScript(
+        buildGeneratedImageExtractionScript(asset as Record<string, unknown>)
+      )) as ProviderTesterImageExtractionResult | null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async captureGeneratedImageFallback(
+    rect: ProviderTesterImageCaptureRect | null | undefined
+  ): Promise<ProviderTesterImageExtractionResult | null> {
+    if (rect === null || rect === undefined) {
+      return null;
+    }
+
+    const width = Math.max(1, Math.round(rect.width));
+    const height = Math.max(1, Math.round(rect.height));
+    if (width < 2 || height < 2) {
+      return null;
+    }
+
+    try {
+      if (typeof this.webview.capturePageRegion === "function") {
+        const capture = await this.webview.capturePageRegion({
+          x: Math.max(0, Math.round(rect.x)),
+          y: Math.max(0, Math.round(rect.y)),
+          width,
+          height,
+        });
+        if (capture?.success === true) {
+          const parsed = parseGeneratedImageDataUrl(capture.dataUrl ?? "");
+          if (parsed !== null && parsed.base64 !== "") {
+            return {
+              success: true,
+              base64: parsed.base64,
+              mimeType: parsed.mimeType ?? "image/png",
+            };
+          }
+        }
+      }
+
+      const rendererWindow =
+        typeof window !== "undefined"
+          ? (window as Window &
+              typeof globalThis & {
+                electronAPI?: {
+                  capturePage?: (
+                    type?: string,
+                    region?: unknown
+                  ) => Promise<{ success?: boolean; dataUrl?: string; data?: string } | null>;
+                };
+              })
+          : undefined;
+      const electronApi =
+        rendererWindow !== undefined && typeof rendererWindow.electronAPI === "object"
+          ? rendererWindow.electronAPI
+          : undefined;
+      if (
+        typeof this.webview.getBoundingClientRect !== "function" ||
+        electronApi?.capturePage === undefined
+      ) {
+        return null;
+      }
+
+      const hostRect = this.webview.getBoundingClientRect();
+      const x = Math.max(0, Math.round(hostRect.x + rect.x));
+      const y = Math.max(0, Math.round(hostRect.y + rect.y));
+      const region = `${x};${y}:${width};${height}`;
+      const capture = (await electronApi.capturePage("region", region)) as {
+        success?: boolean;
+        dataUrl?: string;
+        data?: string;
+      } | null;
+      if (capture?.success !== true) {
+        return null;
+      }
+
+      const parsed = parseGeneratedImageDataUrl(capture.dataUrl ?? capture.data ?? "");
+      if (parsed === null || parsed.base64 === "") {
+        return null;
+      }
+
+      return {
+        success: true,
+        base64: parsed.base64,
+        mimeType: parsed.mimeType ?? "image/png",
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async persistGeneratedImages(
+    accountId: string,
+    conversationId: string,
+    scrapedMessages: ProviderTesterScrapedMessage[],
+    finalMessages: ProviderTesterDbMessageRow[]
+  ): Promise<ProviderTesterGeneratedImagePersistResult> {
+    const databaseManager = await this.resolveDatabaseManager();
+    const rawAttachments = await databaseManager.getAttachments(null, {
+      accountId,
+      conversationId,
+    });
+    const existingAttachments = new Map<string, { storedPath: string }>(
+      (Array.isArray(rawAttachments.data) ? rawAttachments.data : []).flatMap((attachment) => {
+        const messageId = readStringField(attachment, "messageId", "message_id");
+        const originalName = readStringField(attachment, "originalName", "original_name");
+        if (messageId === "" || originalName === "") {
+          return [];
+        }
+
+        return [
+          [
+            buildAttachmentDedupeKey(messageId, originalName),
+            {
+              storedPath: readStringField(attachment, "storedPath", "stored_path"),
+            },
+          ] as const,
+        ];
+      })
+    );
+
+    let savedCount = 0;
+    let pendingCount = 0;
+
+    for (const message of scrapedMessages) {
+      if (message.role !== "assistant") {
+        continue;
+      }
+
+      const generatedImages = normalizeGeneratedImageAssets(message.generatedImages);
+      if (generatedImages.length === 0) {
+        continue;
+      }
+
+      const messageId = this.resolveGeneratedImageMessageId(message, finalMessages);
+      if (messageId === null) {
+        pendingCount += generatedImages.length;
+        continue;
+      }
+
+      for (const asset of generatedImages) {
+        const originalName = this.buildGeneratedImageName(message, asset);
+        const dedupeKey = buildAttachmentDedupeKey(messageId, originalName);
+        // NOTE: Extraction and fallback capture depend on the current DOM state of each image slot.
+        // eslint-disable-next-line no-await-in-loop
+        const extracted = await this.extractGeneratedImageContent(asset);
+        const persisted =
+          extracted?.success === true &&
+          typeof extracted.base64 === "string" &&
+          extracted.base64 !== ""
+            ? extracted
+            : // NOTE: Fallback capture must run after extraction for the same slot to avoid stale crops.
+              // eslint-disable-next-line no-await-in-loop
+              await this.captureGeneratedImageFallback(extracted?.rect);
+        const existingAttachment = existingAttachments.get(dedupeKey);
+
+        if (
+          persisted?.success !== true ||
+          typeof persisted.base64 !== "string" ||
+          persisted.base64 === ""
+        ) {
+          if (existingAttachment !== undefined) {
+            continue;
+          }
+          pendingCount += 1;
+          continue;
+        }
+
+        if (
+          existingAttachment !== undefined &&
+          existingAttachment.storedPath !== "" &&
+          existsSync(existingAttachment.storedPath)
+        ) {
+          const currentBase64 = readFileSync(existingAttachment.storedPath).toString("base64");
+          if (currentBase64 === persisted.base64) {
+            continue;
+          }
+        }
+
+        // NOTE: Saves stay ordered so replacement writes update the in-memory dedupe map deterministically.
+        // eslint-disable-next-line no-await-in-loop
+        const saveResult = await databaseManager.saveAttachmentContent(null, {
+          accountId,
+          conversationId,
+          messageId,
+          base64: persisted.base64,
+          originalName,
+          mimeType: persisted.mimeType ?? asset.mimeType ?? "image/png",
+        });
+        if (saveResult.success !== true) {
+          pendingCount += 1;
+          continue;
+        }
+
+        const savedStoredPath = readStringField(saveResult.data, "storedPath", "stored_path");
+        existingAttachments.set(dedupeKey, {
+          storedPath:
+            savedStoredPath !== "" ? savedStoredPath : (existingAttachment?.storedPath ?? ""),
+        });
+        savedCount += 1;
+      }
+    }
+
+    return { savedCount, pendingCount };
+  }
+
   private async performFullSyncForSession(
     session: SyncSessionPreviewItem,
     accountId: string
@@ -1451,6 +1919,8 @@ export class ProviderTester {
     added: number;
     total: number;
     metadata?: ConversationMetadataResult["data"];
+    generatedImageSavedCount: number;
+    generatedImagePendingCount: number;
   }> {
     const databaseManager = await this.resolveDatabaseManager();
     const messages = await this.scrapeActiveConversationMessages();
@@ -1480,10 +1950,34 @@ export class ProviderTester {
       );
     }
 
+    const conversationId = metadataResult.data?.conversationId ?? syncResult.conversationId;
+    let generatedImageSavedCount = 0;
+    let generatedImagePendingCount = 0;
+
+    if (typeof conversationId === "string" && conversationId !== "") {
+      const messageResult = await databaseManager.getMessages(null, {
+        accountId,
+        conversationId,
+      });
+      const finalMessages = normalizeDbMessages(
+        Array.isArray(messageResult.data) ? messageResult.data : []
+      );
+      const generatedImageResult = await this.persistGeneratedImages(
+        accountId,
+        conversationId,
+        messages,
+        finalMessages
+      );
+      generatedImageSavedCount = generatedImageResult.savedCount;
+      generatedImagePendingCount = generatedImageResult.pendingCount;
+    }
+
     return {
       added: syncResult.added ?? 0,
       total: syncResult.total ?? messages.length,
       metadata: metadataResult.data,
+      generatedImageSavedCount,
+      generatedImagePendingCount,
     };
   }
 
@@ -1556,6 +2050,8 @@ export class ProviderTester {
           url: session.url,
           added: syncResult.added,
           total: syncResult.total,
+          generatedImageSavedCount: syncResult.generatedImageSavedCount,
+          generatedImagePendingCount: syncResult.generatedImagePendingCount,
           conversationId: syncResult.metadata?.conversationId ?? "",
           created: syncResult.metadata?.created ?? false,
           titleUpdated: syncResult.metadata?.titleUpdated ?? false,
@@ -1609,6 +2105,8 @@ export class ProviderTester {
           deletedCount: resetResult.data?.deletedCount ?? 0,
           added: syncResult.added,
           total: syncResult.total,
+          generatedImageSavedCount: syncResult.generatedImageSavedCount,
+          generatedImagePendingCount: syncResult.generatedImagePendingCount,
           conversationId: syncResult.metadata?.conversationId ?? "",
           created: syncResult.metadata?.created ?? false,
           titleUpdated: syncResult.metadata?.titleUpdated ?? false,
@@ -2050,10 +2548,11 @@ export class ProviderTester {
     const isImagePrompt = params?.["promptKind"] === "image";
     const assistantSelector =
       this.config.scrapeSelectors.assistantWrapper ?? this.config.scrapeSelectors.preferred;
+    const generatedImageSelector = this.config.selectors.generatedImage ?? "";
     const assistantCountBeforeSend = await this.getSelectorCount(assistantSelector);
     const generatedImageCountBeforeSend =
-      isImagePrompt && this.config.selectors.generatedImage
-        ? await this.getSelectorCount(this.config.selectors.generatedImage)
+      isImagePrompt && generatedImageSelector !== ""
+        ? await this.getSelectorCount(generatedImageSelector)
         : 0;
     const sendResult = await testSendMessage(this.ctx);
     const thinkingBusy = await this.waitForShellIndicator("thinking", "busy", 8000);
@@ -2086,9 +2585,9 @@ export class ProviderTester {
         ? await this.runtimeT("scenario.thinkingIndicatorBusy")
         : generatedImageAppeared
           ? await this.runtimeT("scenario.generatedImageObserved")
-        : inferredThinking
-          ? await this.runtimeT("scenario.thinkingTransientObserved")
-          : await this.runtimeT("scenario.thinkingIndicatorMissing")
+          : inferredThinking
+            ? await this.runtimeT("scenario.thinkingTransientObserved")
+            : await this.runtimeT("scenario.thinkingIndicatorMissing")
     );
     const results = this.pushResults([sendResult, thinkingResult, stopResult, stopScrapeResult]);
     return this.summarizeStep(results, await this.runtimeT("scenario.sendThinkingFailed"));
@@ -2118,7 +2617,117 @@ export class ProviderTester {
 
   private async runGeneratedImageStep(): Promise<AggregatedCommandStepResult> {
     const results = this.pushResults([await testGeneratedImage(this.ctx)]);
-    return this.summarizeStep(results, await this.runtimeT("scenario.generatedImageCheckCompleted"));
+    return this.summarizeStep(
+      results,
+      await this.runtimeT("scenario.generatedImageCheckCompleted")
+    );
+  }
+
+  private async runGeneratedImageArchiveStep(): Promise<AggregatedCommandStepResult> {
+    const selector = this.config.selectors.generatedImage?.trim() ?? "";
+    if (selector === "") {
+      const result = this.pushResult(
+        createShellResult(
+          "generated-image-archive",
+          "Generated Image Archive",
+          "advanced",
+          "skip",
+          "Generated image archive check skipped because the provider has no generated-image selector."
+        )
+      );
+      return this.summarizeStep([result], result.message);
+    }
+
+    const accountId = await this.resolveSlotAccountId();
+    if (accountId === "") {
+      const result = this.pushResult(
+        createShellResult(
+          "generated-image-archive",
+          "Generated Image Archive",
+          "advanced",
+          "skip",
+          "Generated image archive check skipped because no account is assigned to this slot."
+        )
+      );
+      return this.summarizeStep([result], result.message);
+    }
+
+    const url = this.webview.getURL();
+    if (url.trim() === "") {
+      const result = this.pushResult(
+        createShellResult(
+          "generated-image-archive",
+          "Generated Image Archive",
+          "advanced",
+          "fail",
+          "Generated image archive check failed because the current session URL is unavailable."
+        )
+      );
+      return this.summarizeStep([result], result.message);
+    }
+
+    try {
+      const titleValue = await this.webview.executeJavaScript("document.title || ''");
+      const session = {
+        title: typeof titleValue === "string" && titleValue.trim() !== "" ? titleValue.trim() : url,
+        url,
+      };
+      const syncResult = await this.performFullSyncForSession(session, accountId);
+      const conversationId = syncResult.metadata?.conversationId ?? "";
+      const databaseManager = await this.resolveDatabaseManager();
+      const attachmentsResult =
+        conversationId !== ""
+          ? await databaseManager.getAttachments(null, {
+              accountId,
+              conversationId,
+            })
+          : { success: true, data: [] as unknown[] };
+      const archivedImageCount = (
+        Array.isArray(attachmentsResult.data) ? attachmentsResult.data : []
+      ).filter((attachment) => {
+        const mimeType = readStringField(attachment, "mimeType", "mime_type").toLowerCase();
+        if (mimeType.startsWith("image/")) {
+          return true;
+        }
+
+        const originalName = readStringField(attachment, "originalName", "original_name");
+        return /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(originalName);
+      }).length;
+      const status: TestStatus =
+        syncResult.generatedImageSavedCount > 0 || archivedImageCount > 0
+          ? "pass"
+          : syncResult.generatedImagePendingCount > 0
+            ? "fail"
+            : "fail";
+      const message =
+        status === "pass"
+          ? `Generated image archive verified (${archivedImageCount} archived image attachment${archivedImageCount === 1 ? "" : "s"}).`
+          : syncResult.generatedImagePendingCount > 0
+            ? `Generated image archive is still pending for ${syncResult.generatedImagePendingCount} image attachment${syncResult.generatedImagePendingCount === 1 ? "" : "s"}.`
+            : "Generated image archive verification failed because no archived image attachment was found.";
+      const result = this.pushResult(
+        createShellResult(
+          "generated-image-archive",
+          "Generated Image Archive",
+          "advanced",
+          status,
+          message,
+          { selector: url }
+        )
+      );
+      return this.summarizeStep([result], message);
+    } catch (error) {
+      const result = this.pushResult(
+        createShellResult(
+          "generated-image-archive",
+          "Generated Image Archive",
+          "advanced",
+          "fail",
+          (error as Error).message
+        )
+      );
+      return this.summarizeStep([result], result.message);
+    }
   }
 
   private async runScrollStep(): Promise<AggregatedCommandStepResult> {

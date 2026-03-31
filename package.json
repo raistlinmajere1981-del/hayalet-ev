@@ -155,7 +155,7 @@
   "dependencies": {
     "@babel/traverse": "^7.29.0",
     "@babel/types": "^7.29.0",
-    "@imgly/background-removal-node": "^1.4.3",
+    "@imgly/background-removal-node": "^1.4.5",
     "@libsql/client": "^0.17.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/jscodeshift": "^17.3.0",
@@ -170,7 +170,7 @@
     "googleapis": "^171.4.0",
     "gsap": "^3.14.2",
     "imapflow": "^1.2.18",
-    "jimp": "^0.22.12",
+    "jimp": "^1.6.0",
     "jscodeshift": "^17.3.0",
     "mailparser": "^3.9.6",
     "nodemailer": "^8.0.4",

@@ -2,7 +2,7 @@ import { dirname } from "path";
 import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import type { IpcMainInvokeEvent } from "electron";
-import { nativeImage, BrowserWindow } from "electron";
+import { nativeImage, BrowserWindow, webContents } from "electron";
 import screenshot from "screenshot-desktop";
 import { loadSettings } from "./settings-manager.ts";
 import type { TranslationParams } from "../src/types/i18n.ts";
@@ -17,6 +17,26 @@ interface CaptureResult {
   dataUrl?: string;
   path?: string | null;
   message?: string;
+}
+
+function parseCaptureRegion(region: string): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} {
+  const match = region.match(/(\d+)[;,](\d+)[: ](\d+)[;,](\d+)/);
+  if (match === null) {
+    return { x: 0, y: 0, width: 0, height: 0 };
+  }
+
+  const nums = match.slice(1).map(Number);
+  return {
+    x: nums[0] ?? 0,
+    y: nums[1] ?? 0,
+    width: nums[2] ?? 0,
+    height: nums[3] ?? 0,
+  };
 }
 
 async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
@@ -51,15 +71,37 @@ export async function capturePageHandler(
     const bounds = win.getBounds();
     let rect = { x: 0, y: 0, width: bounds.width, height: bounds.height };
     if (region.length > 0) {
-      const match = region.match(/(\d+)[;,](\d+)[: ](\d+)[;,](\d+)/);
-      if (match !== null) {
-        const nums = match.slice(1).map(Number);
-        rect = { x: nums[0] ?? 0, y: nums[1] ?? 0, width: nums[2] ?? 0, height: nums[3] ?? 0 };
-      }
+      rect = parseCaptureRegion(region);
     }
     const img = await win.capturePage(rect);
     const dataUrl = img.toDataURL();
     return { success: true, dataUrl };
+  } catch (error) {
+    return { success: false, message: (error as Error).message };
+  }
+}
+
+export async function captureWebContentsPageHandler(
+  _event: IpcMainInvokeEvent | null,
+  targetContentsId: number,
+  region: string = ""
+): Promise<CaptureResult> {
+  try {
+    const target = webContents.fromId(targetContentsId);
+    if (target === undefined) {
+      throw new Error(await screenshotT("windowNotFound"));
+    }
+
+    const bounds = BrowserWindow.fromWebContents(target)?.getBounds();
+    const rect =
+      region.length > 0
+        ? parseCaptureRegion(region)
+        : { x: 0, y: 0, width: bounds?.width ?? 0, height: bounds?.height ?? 0 };
+    const img = await target.capturePage(rect);
+    return {
+      success: true,
+      dataUrl: img.toDataURL(),
+    };
   } catch (error) {
     return { success: false, message: (error as Error).message };
   }
@@ -85,16 +127,7 @@ export async function screenshotCaptureHandler(
     >[0]);
     let img = nativeImage.createFromBuffer(Buffer.from(buffer));
     if (region.length > 0) {
-      const match = region.match(/(\d+)[;,](\d+)[: ](\d+)[;,](\d+)/);
-      if (match !== null) {
-        const nums = match.slice(1).map(Number);
-        img = img.crop({
-          x: nums[0] ?? 0,
-          y: nums[1] ?? 0,
-          width: nums[2] ?? 0,
-          height: nums[3] ?? 0,
-        });
-      }
+      img = img.crop(parseCaptureRegion(region));
     }
     const dataBuffer = useJpg ? img.toJPEG(90) : img.toPNG();
     const dataUrl = `data:image/${useJpg ? "jpeg" : "png"};base64,${dataBuffer.toString("base64")}`;

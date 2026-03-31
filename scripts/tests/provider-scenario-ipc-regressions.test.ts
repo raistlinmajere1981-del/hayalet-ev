@@ -194,6 +194,80 @@ test("provider tester resolves webview-test from provider config scenario defini
   );
 });
 
+test("provider tester dispatches generated image archive scenario actions", async () => {
+  const executed: string[] = [];
+  const fakeWebview = {
+    getURL: () => "https://chatgpt.com/c/test",
+    loadURL: async () => {},
+    executeJavaScript: async () => null,
+    addEventListener: () => {},
+  };
+
+  const config = {
+    id: "chatgpt",
+    name: "ChatGPT",
+    baseUrl: "https://chatgpt.com",
+    loginUrl: "https://chatgpt.com/auth/login",
+    lastVerified: "2026-03-31",
+    selectors: {
+      sendButton: "button",
+      stopButton: "button.stop",
+      inputField: "textarea",
+      messageContainer: "main",
+      generatedImage: "img.generated",
+    },
+    inputType: "direct",
+    scrollerSelectors: [],
+    scrapeSelectors: {
+      preferred: "main",
+      fallback: "main",
+    },
+    fileInputSelectors: [],
+    uploadTargetSelectors: [],
+    criticalSelectors: [],
+    contentContainers: [],
+    excludedUrls: [],
+    filters: {
+      selectors: [],
+      hosts: [],
+      blockResourceTypes: [],
+    },
+    telemetry: {
+      endpoints: [],
+      tokenPaths: [],
+    },
+    scenarios: {
+      webviewTest: {
+        id: "webview-test",
+        title: "Archive Scenario",
+        commands: [
+          {
+            id: "generated-image-archive",
+            label: "Generated Image Archive",
+            action: "assert-generated-image-archive",
+            onFail: "warn",
+          },
+        ],
+      },
+    },
+  };
+
+  const tester = new ProviderTester(fakeWebview as never, config as never, "ai1");
+  const testerOverrides = tester as unknown as Record<string, () => Promise<unknown>>;
+  testerOverrides.runGeneratedImageArchiveStep = async () => {
+    executed.push("assert-generated-image-archive");
+    return { status: "pass", message: "archive ok" };
+  };
+
+  const result = await tester.runScenario("webview-test");
+
+  assert.deepEqual(executed, ["assert-generated-image-archive"]);
+  assert.deepEqual(
+    result.commands?.map((command) => [command.id, command.status]),
+    [["generated-image-archive", "pass"]]
+  );
+});
+
 test("provider tester uses default URL override for opencode-ui reset step", async () => {
   const loadedUrls: string[] = [];
   const fakeWebview = {

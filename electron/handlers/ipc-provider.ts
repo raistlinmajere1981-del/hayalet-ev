@@ -250,11 +250,21 @@ async function runProviderScenario(
 
     const webviewWrapper = {
       getURL: (): string => webviewContents.getURL(),
+      getWebContentsId: (): number => webviewContents.id,
       loadURL: async (url: string): Promise<void> => {
         await webviewContents.loadURL(url);
       },
       executeJavaScript: async (script: string): Promise<unknown> =>
         await webviewContents.executeJavaScript(script),
+      capturePageRegion: async (rect: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      }): Promise<{ success?: boolean; dataUrl?: string } | null> => {
+        const image = await webviewContents.capturePage(rect);
+        return { success: true, dataUrl: image.toDataURL() };
+      },
       addEventListener: (
         listenerEvent: "did-finish-load",
         listener: () => void,

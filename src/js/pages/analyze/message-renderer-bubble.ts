@@ -33,6 +33,72 @@ function formatTimestamp(timestamp: number | undefined): string {
   });
 }
 
+function resolveAttachmentPath(att: AttachmentData, attachmentsBasePath: string): string {
+  return att.storedPath ?? `${attachmentsBasePath}/${att.messageId}/${att.storedName ?? "unknown"}`;
+}
+
+function isImageAttachment(att: AttachmentData): boolean {
+  const mimeType = att.mimeType?.toLowerCase() ?? "";
+  if (mimeType.startsWith("image/")) {
+    return true;
+  }
+
+  const name =
+    `${att.storedName ?? ""} ${att.originalName ?? ""} ${att.storedPath ?? ""}`.toLowerCase();
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name);
+}
+
+function toImageMimeType(att: AttachmentData): string {
+  const mimeType = att.mimeType?.trim();
+  if (mimeType !== undefined && mimeType !== "") {
+    return mimeType;
+  }
+
+  const name =
+    `${att.storedName ?? ""} ${att.originalName ?? ""} ${att.storedPath ?? ""}`.toLowerCase();
+  if (name.includes(".webp")) return "image/webp";
+  if (name.includes(".gif")) return "image/gif";
+  if (name.includes(".bmp")) return "image/bmp";
+  if (name.includes(".svg")) return "image/svg+xml";
+  if (name.includes(".jpg") || name.includes(".jpeg")) return "image/jpeg";
+  return "image/png";
+}
+
+async function hydrateImageAttachmentPreview(
+  img: HTMLImageElement,
+  badge: HTMLElement,
+  filePath: string,
+  mimeType: string
+): Promise<void> {
+  if (filePath === "") {
+    badge.textContent = analyzeBubbleT("attachmentFallback");
+    return;
+  }
+
+  try {
+    const electronApi = window.electronAPI;
+    if (electronApi === undefined || typeof electronApi.readFile !== "function") {
+      throw new Error(analyzeBubbleT("errors.electronApiUnavailable"));
+    }
+
+    const rawContent = await electronApi.readFile(filePath);
+    const base64 = typeof rawContent === "string" ? rawContent.trim() : "";
+    if (base64 === "") {
+      throw new Error(analyzeBubbleT("errors.openFailed"));
+    }
+
+    img.src = `data:${mimeType};base64,${base64}`;
+    badge.textContent = "";
+    badge.hidden = true;
+  } catch (err) {
+    badge.textContent = analyzeBubbleT("attachmentFallback");
+    Logger.warn(
+      LogCategory.ANALYZE,
+      analyzeBubbleT("logs.openFailed", { message: getErrorMessage(err) })
+    );
+  }
+}
+
 export function createMessageBubble(
   msg: MessageItem,
   provider: string,
@@ -111,16 +177,46 @@ export function createMessageBubble(
     attWrap.className = "msg-attachments";
 
     msgAttachments.forEach((att: AttachmentData) => {
-      const link = document.createElement("button");
-      link.className = "attachment-link";
-      link.textContent = `📎 ${att.originalName ?? att.storedName ?? analyzeBubbleT("attachmentFallback")}`;
-      link.addEventListener("click", () => {
-        const filePath =
-          att.storedPath ??
-          `${attachmentsBasePath}/${att.messageId}/${att.storedName ?? "unknown"}`;
+      const filePath = resolveAttachmentPath(att, attachmentsBasePath);
+      if (!isImageAttachment(att)) {
+        const link = document.createElement("button");
+        link.className = "attachment-link";
+        link.textContent = `📎 ${att.originalName ?? att.storedName ?? analyzeBubbleT("attachmentFallback")}`;
+        link.addEventListener("click", () => {
+          void openAttachmentByPath(filePath);
+        });
+        attWrap.appendChild(link);
+        return;
+      }
+
+      const imageButton = document.createElement("button");
+      imageButton.type = "button";
+      imageButton.className = "attachment-link attachment-link-image";
+      imageButton.title =
+        att.originalName ?? att.storedName ?? analyzeBubbleT("attachmentFallback");
+      imageButton.setAttribute(
+        "aria-label",
+        att.originalName ?? att.storedName ?? analyzeBubbleT("attachmentFallback")
+      );
+      imageButton.addEventListener("click", () => {
         void openAttachmentByPath(filePath);
       });
-      attWrap.appendChild(link);
+
+      const media = document.createElement("span");
+      media.className = "attachment-link-image__media";
+
+      const img = document.createElement("img");
+      img.className = "attachment-link-image__preview";
+      img.alt = att.originalName ?? att.storedName ?? analyzeBubbleT("attachmentFallback");
+      img.loading = "lazy";
+
+      const badge = document.createElement("span");
+      badge.className = "attachment-link-image__badge";
+      badge.textContent = analyzeBubbleT("attachmentFallback");
+      media.append(img, badge);
+      imageButton.append(media);
+      attWrap.appendChild(imageButton);
+      void hydrateImageAttachmentPreview(img, badge, filePath, toImageMimeType(att));
     });
 
     bubble.appendChild(attWrap);

@@ -136,6 +136,12 @@ export const WEBVIEW_TEST_SCENARIO: ProviderScenarioDefinition = {
       onFail: "warn",
     },
     {
+      id: "generated-image-archive",
+      label: "Generated Image Archive",
+      action: "assert-generated-image-archive",
+      onFail: "warn",
+    },
+    {
       id: "scroll-behavior",
       label: "Scroll Behavior",
       action: "assert-scroll-behavior",

@@ -4,7 +4,19 @@ interface ScrapedMessage {
   text: string;
   contentHash: string;
   domIndex: number;
+  generatedImages?: Array<{
+    id: string;
+    stableKey: string;
+    src: string;
+    currentSrc: string;
+    alt: string;
+    mimeType: string;
+    originalName: string;
+    imageIndex: number;
+  }>;
 }
+
+type ScrapedGeneratedImage = NonNullable<ScrapedMessage["generatedImages"]>[number];
 
 export function scrapeMessages(): ScrapedMessage[] {
   function normalizeText(str: string): string {
@@ -30,16 +42,46 @@ export function scrapeMessages(): ScrapedMessage[] {
     return hash.toString(16);
   }
 
-  const config =
-    window.__app_provider_config ??
-    ({
-      scrapeSelectors: {
-        preferred: "[data-message-author-role]",
-        fallback: ".message-bubble",
-      },
-    } as const);
+  function inferMimeType(src: string): string {
+    const normalized = src.trim().toLowerCase();
+    if (normalized.startsWith("data:image/")) {
+      const match = /^data:([^;,]+)[;,]/.exec(normalized);
+      return match?.[1] ?? "image/png";
+    }
+    if (normalized.includes(".webp")) return "image/webp";
+    if (normalized.includes(".gif")) return "image/gif";
+    if (normalized.includes(".bmp")) return "image/bmp";
+    if (normalized.includes(".svg")) return "image/svg+xml";
+    if (normalized.includes(".jpg") || normalized.includes(".jpeg")) return "image/jpeg";
+    return "image/png";
+  }
+
+  function extensionFromMime(mimeType: string): string {
+    if (mimeType.includes("webp")) return "webp";
+    if (mimeType.includes("gif")) return "gif";
+    if (mimeType.includes("bmp")) return "bmp";
+    if (mimeType.includes("svg")) return "svg";
+    if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpg";
+    return "png";
+  }
+
+  const config: {
+    scrapeSelectors: {
+      preferred: string;
+      fallback: string;
+    };
+    selectors?: {
+      generatedImage?: string;
+    };
+  } = window.__app_provider_config ?? {
+    scrapeSelectors: {
+      preferred: "[data-message-author-role]",
+      fallback: ".message-bubble",
+    },
+  };
   const preferredSel = config.scrapeSelectors.preferred;
   const fallbackSel = config.scrapeSelectors.fallback;
+  const generatedImageSelector = config.selectors?.generatedImage ?? "";
   const preferred = Array.from(document.querySelectorAll(preferredSel));
   const fallback = Array.from(document.querySelectorAll(fallbackSel));
   const base = preferred.length !== 0 ? preferred : fallback;
@@ -75,7 +117,63 @@ export function scrapeMessages(): ScrapedMessage[] {
       return rect.left > mid ? "user" : "assistant";
     })();
     const contentHash = hashString(text);
-    result.push({ index: idx, role, text, contentHash, domIndex: idx });
+
+    const generatedImages =
+      generatedImageSelector.trim() === ""
+        ? []
+        : ((): ScrapedGeneratedImage[] => {
+            const seen = new Set<string>();
+            const roots = [
+              ...(node.matches(generatedImageSelector) ? [node] : []),
+              ...Array.from(node.querySelectorAll(generatedImageSelector)),
+            ];
+
+            return roots.flatMap((root, imageIndex) => {
+              const image = root instanceof HTMLImageElement ? root : root.querySelector("img");
+              if (!(image instanceof HTMLImageElement)) {
+                return [];
+              }
+
+              const src = image.getAttribute("src")?.trim() ?? "";
+              const currentSrc = image.currentSrc.trim();
+              const alt = image.getAttribute("alt")?.trim() ?? "";
+              const effectiveSrc = currentSrc !== "" ? currentSrc : src;
+              if (effectiveSrc === "" && alt === "") {
+                return [];
+              }
+
+              const messageKey = contentHash !== "" ? contentHash : String(idx);
+              const stableKey = hashString(`${messageKey}|${imageIndex}|${alt}`);
+              const id = hashString(`${effectiveSrc}|${alt}|${imageIndex}`);
+              if (seen.has(id)) {
+                return [];
+              }
+              seen.add(id);
+
+              const mimeType = inferMimeType(effectiveSrc);
+              return [
+                {
+                  id,
+                  stableKey,
+                  src,
+                  currentSrc,
+                  alt,
+                  mimeType,
+                  originalName: `generated-image-${String(imageIndex + 1).padStart(2, "0")}-${stableKey}.${extensionFromMime(mimeType)}`,
+                  imageIndex,
+                },
+              ];
+            });
+          })();
+
+    result.push({
+      index: idx,
+      role,
+      text,
+      contentHash,
+      domIndex: idx,
+      ...(generatedImages.length > 0 ? { generatedImages } : {}),
+    });
   });
   return result;
 }

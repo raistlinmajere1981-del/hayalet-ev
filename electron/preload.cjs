@@ -348,6 +348,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   dbGetMessages: (params) => ipcRenderer.invoke("db-get-messages", params),
   dbSyncMessages: (params) => ipcRenderer.invoke("db-sync-messages", params),
   dbSaveAttachment: (params) => ipcRenderer.invoke("db-save-attachment", params),
+  dbSaveAttachmentContent: (params) => ipcRenderer.invoke("db-save-attachment-content", params),
   dbGetAttachments: (params) => ipcRenderer.invoke("db-get-attachments", params),
   dbDeleteConversation: (params) => ipcRenderer.invoke("db-delete-conversation", params),
   dbSearchMessages: (params) => ipcRenderer.invoke("db-search-messages", params),
@@ -377,6 +378,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   whisperLoad: (params) => ipcRenderer.invoke("whisper-load", params),
   whisperSave: (params) => ipcRenderer.invoke("whisper-save", params),
   capturePage: (type, region) => ipcRenderer.invoke("capture-page", type, region),
+  captureWebContentsPage: (targetContentsId, region) =>
+    ipcRenderer.invoke("capture-webcontents-page", targetContentsId, region),
   screenshotCapture: (options) => ipcRenderer.invoke("screenshot-capture", options),
   catboxUpload: (payload) => ipcRenderer.invoke("catbox-upload", payload),
   uguuUpload: (payload) => ipcRenderer.invoke("uguu-upload", payload),

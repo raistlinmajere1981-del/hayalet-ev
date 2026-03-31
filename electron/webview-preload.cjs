@@ -186,6 +186,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   whisperLoad: (provider) => ipcRenderer.invoke("whisper-load", provider),
   whisperSave: (provider, payload) => ipcRenderer.invoke("whisper-save", provider, payload),
   capturePage: (type, region) => ipcRenderer.invoke("capture-page", type, region),
+  captureWebContentsPage: (targetContentsId, region) =>
+    ipcRenderer.invoke("capture-webcontents-page", targetContentsId, region),
   screenshotCapture: (options) => ipcRenderer.invoke("screenshot-capture", options),
   catboxUpload: (payload) => ipcRenderer.invoke("catbox-upload", payload),
   uguuUpload: (payload) => ipcRenderer.invoke("uguu-upload", payload),

@@ -199,6 +199,8 @@ export const PROVIDER_SCENARIO_DELAYS = {
   STEP_ASSERT_FINAL_BUBBLES: 350,
   /** Delay after generated-image steps. */
   STEP_ASSERT_GENERATED_IMAGE: 350,
+  /** Delay after generated-image archive steps. */
+  STEP_ASSERT_GENERATED_IMAGE_ARCHIVE: 350,
   /** Delay after scroll-behavior steps. */
   STEP_ASSERT_SCROLL_BEHAVIOR: 350,
   /** Delay after provider-capability steps. */

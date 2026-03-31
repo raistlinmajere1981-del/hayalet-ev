@@ -2111,12 +2111,13 @@ export class AssistantController {
 
     const displayCommands =
       state.commands.length > 0 ? state.commands : (state.suite?.commands ?? []);
+    const totalSteps = state.totalCommandCount ?? state.suite?.commands.length;
     const summary = buildScenarioProgressSummary({
       slot: "ai0",
       providerName: state.providerName,
       scenarioTitle: getScenarioTitleLabel(state.scenarioId),
       commands: displayCommands,
-      totalSteps: state.totalCommandCount ?? state.suite?.commands.length,
+      ...(totalSteps !== undefined ? { totalSteps } : {}),
     });
     const counts = buildScenarioStatusCounts({ commands: displayCommands });
     const rows = filterScenarioDisplayRows({

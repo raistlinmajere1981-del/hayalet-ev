@@ -4,7 +4,11 @@ import { existsSync, mkdirSync, readFileSync } from "fs";
 import { basename, dirname, join } from "path";
 import { initPaths, Paths } from "./paths.ts";
 import { deviceActionHandler } from "./device-manager.ts";
-import { capturePageHandler, screenshotCaptureHandler } from "./screenshot-manager.ts";
+import {
+  capturePageHandler,
+  captureWebContentsPageHandler,
+  screenshotCaptureHandler,
+} from "./screenshot-manager.ts";
 import { whisperLoad, whisperSave } from "./whisper-manager.ts";
 import { buildInstalledRoomRecord } from "./room-package-manager.ts";
 import {
@@ -701,6 +705,7 @@ registerHandler("command-cleanup-job", commandCleanupJob);
 registerHandler("command-move", commandMove);
 
 registerHandler("capture-page", capturePageHandler);
+registerHandler("capture-webcontents-page", captureWebContentsPageHandler);
 registerHandler("screenshot-capture", screenshotCaptureHandler);
 
 registerHandler("logger:appendBatch", handleLoggerAppendBatch);

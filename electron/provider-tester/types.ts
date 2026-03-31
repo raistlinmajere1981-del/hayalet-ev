@@ -66,6 +66,14 @@ export interface WebviewTag {
   loadURL(url: string): Promise<void>;
   executeJavaScript(script: string): Promise<unknown>;
   addEventListener(event: string, listener: () => void, options?: { once?: boolean }): void;
+  getBoundingClientRect?: () => DOMRect;
+  getWebContentsId?: () => number;
+  capturePageRegion?: (rect: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => Promise<{ success?: boolean; dataUrl?: string } | null>;
 }
 
 export interface RendererShell {
@@ -79,8 +87,17 @@ export interface ProviderTesterDatabaseManager {
   ) => Promise<{
     success: boolean;
     error?: string;
+    conversationId?: string;
     added?: number;
     total?: number;
+  }>;
+  getMessages: (
+    event: null,
+    params: { accountId: string; conversationId: string }
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    data?: unknown[];
   }>;
   upsertConversationMetadata: (
     event: null,
@@ -93,6 +110,32 @@ export interface ProviderTesterDatabaseManager {
       created: boolean;
       title: string;
       titleUpdated: boolean;
+    };
+  }>;
+  getAttachments: (
+    event: null,
+    params: { accountId: string; conversationId: string }
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    data?: unknown[];
+  }>;
+  saveAttachmentContent: (
+    event: null,
+    params: {
+      accountId: string;
+      conversationId: string;
+      messageId: string;
+      base64: string;
+      originalName: string;
+      mimeType?: string;
+    }
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    data?: {
+      attachmentId: string;
+      storedPath: string;
     };
   }>;
   resetConversationMessages: (

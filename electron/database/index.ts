@@ -318,6 +318,36 @@ export const databaseManager = {
     }
   },
 
+  async saveAttachmentContent(
+    _event: IpcMainInvokeEvent | null,
+    params: {
+      accountId: string;
+      conversationId: string;
+      messageId: string;
+      base64: string;
+      originalName: string;
+      mimeType?: string;
+    }
+  ): Promise<IpcResult<{ attachmentId: string; storedPath: string }>> {
+    try {
+      const { accountId, conversationId, messageId, base64, originalName, mimeType } = params;
+      const manager = getManager(accountId);
+      return await manager.saveAttachmentContent(
+        conversationId,
+        messageId,
+        Buffer.from(base64, "base64"),
+        originalName,
+        mimeType
+      );
+    } catch (err) {
+      await logDatabaseError("saveAttachmentContent", {
+        params,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
   async getAttachments(
     _event: IpcMainInvokeEvent | null,
     { accountId, conversationId }: { accountId: string; conversationId: string }

@@ -722,32 +722,56 @@ export class SQLiteArchiveManager {
   ): Promise<IpcResult<{ attachmentId: string; storedPath: string }>> {
     try {
       const db = this.getDb();
-      const attachmentId = hashString(`${messageId}-${originalName}-${Date.now()}`);
-      const storedName = `${attachmentId}_${originalName}`;
+      const now = new Date().toISOString();
+      const existingStmt = db.prepare(`
+        SELECT id, stored_name, stored_path
+        FROM attachments
+        WHERE message_id = ? AND conversation_id = ? AND account_id = ? AND original_name = ?
+        LIMIT 1
+      `);
+      const existing = existingStmt.get(messageId, conversationId, this.accountId, originalName) as
+        | {
+            id: string;
+            stored_name: string;
+            stored_path: string;
+          }
+        | undefined;
 
-      const attachDir = ensureAttachmentDir(this.accountId, conversationId, messageId);
-      const targetPath = `${attachDir}/${storedName}`;
+      const attachmentId = existing?.id ?? hashString(`${messageId}-${originalName}-${Date.now()}`);
+      const storedName = existing?.stored_name ?? `${attachmentId}_${originalName}`;
+
+      ensureAttachmentDir(this.accountId, conversationId, messageId);
+      const targetPath =
+        existing?.stored_path ??
+        getAttachmentPath(this.accountId, conversationId, messageId, storedName);
 
       writeFileSync(targetPath, content);
 
-      const relativePath = getAttachmentPath(this.accountId, conversationId, messageId, storedName);
-
-      const stmt = db.prepare(`
-        INSERT INTO attachments (id, message_id, conversation_id, account_id, original_name, stored_name, stored_path, mime_type, size, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      stmt.run(
-        attachmentId,
-        messageId,
-        conversationId,
-        this.accountId,
-        originalName,
-        storedName,
-        relativePath,
-        mimeType ?? null,
-        content.length,
-        new Date().toISOString()
-      );
+      if (existing !== undefined) {
+        const updateStmt = db.prepare(`
+          UPDATE attachments
+          SET mime_type = ?, size = ?, created_at = ?
+          WHERE id = ?
+        `);
+        updateStmt.run(mimeType ?? null, content.length, now, attachmentId);
+      } else {
+        const stmt = db.prepare(`
+          INSERT INTO attachments (id, message_id, conversation_id, account_id, original_name, stored_name, stored_path, mime_type, size, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        stmt.run(
+          attachmentId,
+          messageId,
+          conversationId,
+          this.accountId,
+          originalName,
+          storedName,
+          targetPath,
+          mimeType ?? null,
+          content.length,
+          now
+        );
+      }
 
       await logDatabaseInfo(
         "attachmentSaved",
@@ -756,10 +780,11 @@ export class SQLiteArchiveManager {
           attachmentId,
           messageId,
           originalName,
+          replaced: existing !== undefined,
         }
       );
 
-      return { success: true, data: { attachmentId, storedPath: relativePath } };
+      return { success: true, data: { attachmentId, storedPath: targetPath } };
     } catch (err) {
       await logDatabaseError("saveAttachmentContent", {
         accountId: this.accountId,

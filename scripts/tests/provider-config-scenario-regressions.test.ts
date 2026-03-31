@@ -40,10 +40,11 @@ test("webview-test scenario commands keep stable preset actions", () => {
   );
 
   assert.deepEqual(
-    scenario.commands.slice(-4).map((command) => [command.id, command.action]),
+    scenario.commands.slice(-5).map((command) => [command.id, command.action]),
     [
       ["image-final-bubbles", "assert-final-bubbles"],
       ["generated-image", "assert-generated-image"],
+      ["generated-image-archive", "assert-generated-image-archive"],
       ["scroll-behavior", "assert-scroll-behavior"],
       ["provider-capabilities", "assert-provider-capabilities"],
     ]

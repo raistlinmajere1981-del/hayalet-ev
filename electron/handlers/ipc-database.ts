@@ -61,6 +61,21 @@ export function setupDatabaseHandlers(): void {
   );
 
   registerHandler(
+    "db-save-attachment-content",
+    async (
+      event,
+      params: {
+        accountId: string;
+        conversationId: string;
+        messageId: string;
+        base64: string;
+        originalName: string;
+        mimeType?: string;
+      }
+    ) => await DatabaseManager.saveAttachmentContent(event, params)
+  );
+
+  registerHandler(
     "db-get-attachments",
     async (event, params: { accountId: string; conversationId: string }) =>
       await DatabaseManager.getAttachments(event, params)

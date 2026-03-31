@@ -60,12 +60,11 @@ import { renderMessages, resetMessageRenderState } from "./analyze/message-rende
 import type { RenderCallbacks } from "./analyze/message-renderer.js";
 import { createMessageBubble } from "./analyze/message-renderer-bubble.js";
 import {
-  isAttachmentData,
   isDbAttachmentsResult,
   isDbMessagesResult,
-  isMessageItem,
+  normalizeAttachmentData,
+  normalizeMessageItem,
   type AttachmentData,
-  type MessageItem,
 } from "./analyze/message-renderer-types.js";
 import { renderUploadList, addUploadFiles, removeUploadFile } from "./analyze/upload-handler.js";
 import type { StagedFile } from "./analyze/upload-handler.js";
@@ -1126,12 +1125,14 @@ export class AnalyzeController {
     const rawAttachmentItems = Array.isArray(attachmentsResult.data)
       ? (attachmentsResult.data as unknown[])
       : [];
-    const messages = rawMessageItems.filter((message): message is MessageItem =>
-      isMessageItem(message)
-    );
-    const attachments = rawAttachmentItems.filter((attachment): attachment is AttachmentData =>
-      isAttachmentData(attachment)
-    );
+    const messages = rawMessageItems.flatMap((message) => {
+      const normalized = normalizeMessageItem(message);
+      return normalized !== null ? [normalized] : [];
+    });
+    const attachments = rawAttachmentItems.flatMap((attachment) => {
+      const normalized = normalizeAttachmentData(attachment);
+      return normalized !== null ? [normalized] : [];
+    });
 
     container.innerHTML = "";
 

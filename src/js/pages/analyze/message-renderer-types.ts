@@ -12,6 +12,8 @@ export interface AttachmentData {
   originalName?: string;
   storedName?: string;
   storedPath?: string;
+  mimeType?: string;
+  size?: number;
 }
 
 export interface DbMessagesResult {
@@ -29,31 +31,87 @@ export interface OpenPathResult {
 }
 
 export function isMessageItem(value: unknown): value is MessageItem {
-  if (value === null || value === undefined || typeof value !== "object") {
-    return false;
-  }
-  const maybe = value as Record<string, unknown>;
-  return (
-    typeof maybe["id"] === "string" &&
-    typeof maybe["role"] === "string" &&
-    (maybe["content"] === undefined || typeof maybe["content"] === "string") &&
-    (maybe["text"] === undefined || typeof maybe["text"] === "string") &&
-    (maybe["author"] === undefined || typeof maybe["author"] === "string") &&
-    (maybe["createdAt"] === undefined || typeof maybe["createdAt"] === "number")
-  );
+  return normalizeMessageItem(value) !== null;
 }
 
 export function isAttachmentData(value: unknown): value is AttachmentData {
-  if (value === null || value === undefined || typeof value !== "object") {
-    return false;
+  return normalizeAttachmentData(value) !== null;
+}
+
+function readStringField(value: Record<string, unknown>, ...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const candidate = value[key];
+    if (typeof candidate === "string" && candidate.trim() !== "") {
+      return candidate.trim();
+    }
   }
+
+  return undefined;
+}
+
+function readNumberField(value: Record<string, unknown>, ...keys: string[]): number | undefined {
+  for (const key of keys) {
+    const candidate = value[key];
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
+export function normalizeMessageItem(value: unknown): MessageItem | null {
+  if (value === null || value === undefined || typeof value !== "object") {
+    return null;
+  }
+
   const maybe = value as Record<string, unknown>;
-  return (
-    typeof maybe["messageId"] === "string" &&
-    (maybe["originalName"] === undefined || typeof maybe["originalName"] === "string") &&
-    (maybe["storedName"] === undefined || typeof maybe["storedName"] === "string") &&
-    (maybe["storedPath"] === undefined || typeof maybe["storedPath"] === "string")
-  );
+  const id = readStringField(maybe, "id");
+  const role = readStringField(maybe, "role");
+  if (id === undefined || role === undefined) {
+    return null;
+  }
+
+  const content = readStringField(maybe, "content");
+  const text = readStringField(maybe, "text", "content");
+  const author = readStringField(maybe, "author");
+  const createdAt = readNumberField(maybe, "createdAt", "created_at");
+
+  return {
+    id,
+    role,
+    ...(content !== undefined ? { content } : {}),
+    ...(text !== undefined ? { text } : {}),
+    ...(author !== undefined ? { author } : {}),
+    ...(createdAt !== undefined ? { createdAt } : {}),
+  };
+}
+
+export function normalizeAttachmentData(value: unknown): AttachmentData | null {
+  if (value === null || value === undefined || typeof value !== "object") {
+    return null;
+  }
+
+  const maybe = value as Record<string, unknown>;
+  const messageId = readStringField(maybe, "messageId", "message_id");
+  if (messageId === undefined) {
+    return null;
+  }
+
+  const originalName = readStringField(maybe, "originalName", "original_name");
+  const storedName = readStringField(maybe, "storedName", "stored_name");
+  const storedPath = readStringField(maybe, "storedPath", "stored_path");
+  const mimeType = readStringField(maybe, "mimeType", "mime_type");
+  const size = readNumberField(maybe, "size");
+
+  return {
+    messageId,
+    ...(originalName !== undefined ? { originalName } : {}),
+    ...(storedName !== undefined ? { storedName } : {}),
+    ...(storedPath !== undefined ? { storedPath } : {}),
+    ...(mimeType !== undefined ? { mimeType } : {}),
+    ...(size !== undefined ? { size } : {}),
+  };
 }
 
 export function isDbMessagesResult(value: unknown): value is DbMessagesResult {

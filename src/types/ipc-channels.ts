@@ -125,6 +125,22 @@ export interface DbSaveAttachmentResult {
   error?: string;
 }
 
+export interface DbSaveAttachmentContentParams {
+  accountId: string;
+  conversationId: string;
+  messageId: string;
+  base64: string;
+  originalName: string;
+  mimeType?: string;
+}
+
+export interface DbSaveAttachmentContentResult {
+  success: boolean;
+  attachmentId?: string;
+  storedPath?: string;
+  error?: string;
+}
+
 export interface DbGetAttachmentsParams {
   accountId: string;
   conversationId: string;
@@ -451,6 +467,10 @@ export interface IPCChannelMap {
     result: DbUpdateConversationResult;
   };
   "db-save-attachment": { params: DbSaveAttachmentParams; result: DbSaveAttachmentResult };
+  "db-save-attachment-content": {
+    params: DbSaveAttachmentContentParams;
+    result: DbSaveAttachmentContentResult;
+  };
   "db-get-attachments": { params: DbGetAttachmentsParams; result: DbGetAttachmentsResult };
   "db-search-messages": { params: DbSearchMessagesParams; result: DbSearchMessagesResult };
   "db-search-attachments": { params: DbSearchAttachmentsParams; result: DbSearchAttachmentsResult };

@@ -12,6 +12,7 @@ export interface SnapshotAttachment {
   originalName?: string;
   storedName?: string;
   storedPath?: string;
+  mimeType?: string;
 }
 
 export interface RenderSnapshot {
@@ -54,6 +55,7 @@ function hashAttachments(attachments: SnapshotAttachment[]): number {
     hash = updateHash(hash, att.originalName ?? "");
     hash = updateHash(hash, att.storedName ?? "");
     hash = updateHash(hash, att.storedPath ?? "");
+    hash = updateHash(hash, att.mimeType ?? "");
   }
   return hash >>> 0;
 }
@@ -126,7 +128,8 @@ function isSameAttachment(a: SnapshotAttachment, b: SnapshotAttachment): boolean
     a.messageId === b.messageId &&
     (a.originalName ?? "") === (b.originalName ?? "") &&
     (a.storedName ?? "") === (b.storedName ?? "") &&
-    (a.storedPath ?? "") === (b.storedPath ?? "")
+    (a.storedPath ?? "") === (b.storedPath ?? "") &&
+    (a.mimeType ?? "") === (b.mimeType ?? "")
   );
 }
 

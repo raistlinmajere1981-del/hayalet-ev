@@ -14,6 +14,12 @@ import { getProvider } from "./provider-factory.js";
 import { isProviderScenarioActive } from "./provider-scenario-lock.js";
 import { normalizeUrl, isSlotUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
 import { PendingArchiveHandler } from "./pending-archive-handler.js";
+import { hashString } from "./providers/shared/scraper-helpers.js";
+import {
+  buildGeneratedImageExtractionScript,
+  parseGeneratedImageDataUrl,
+  type GeneratedImageExtractionResult,
+} from "./providers/shared/generated-image-extractor.js";
 import type { AppSettings } from "@shared/settings.js";
 
 function syncLogKey(key: string): string {
@@ -35,6 +41,8 @@ function syncError(
 interface WebviewElement {
   getURL?: () => string;
   executeJavaScript: (script: string) => Promise<unknown>;
+  getBoundingClientRect?: () => DOMRect;
+  getWebContentsId?: () => number;
 }
 
 interface SyncResult {
@@ -54,6 +62,11 @@ interface ScrapedMessage {
   role?: string;
   text?: string;
   content?: string;
+  index?: number;
+  domIndex?: number;
+  domId?: string | null;
+  contentHash?: string;
+  generatedImages?: unknown;
   [key: string]: unknown;
 }
 
@@ -69,6 +82,36 @@ interface DbMessagesResult {
   data?: ScrapedMessage[];
 }
 
+interface DbAttachmentsResult {
+  data?: unknown[];
+  success?: boolean;
+}
+
+interface GeneratedImageAsset {
+  id?: string;
+  stableKey?: string;
+  src?: string;
+  currentSrc?: string;
+  alt?: string;
+  mimeType?: string;
+  originalName?: string;
+  imageIndex?: number;
+}
+
+interface ImageCaptureRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+type ImageExtractionResult = GeneratedImageExtractionResult;
+
+interface GeneratedImagePersistResult {
+  savedCount: number;
+  pendingCount: number;
+}
+
 interface ConversationItem {
   webUrl?: string;
   messageCount?: number;
@@ -77,10 +120,101 @@ interface ConversationItem {
 type ResolveWebviewFn = (slot: string) => WebviewElement | null;
 type StableCallback = (err: Error | null, result: SyncResult | null) => void;
 
+function readStringField(value: unknown, ...keys: string[]): string {
+  if (typeof value !== "object" || value === null) {
+    return "";
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim() !== "") {
+      return candidate.trim();
+    }
+  }
+
+  return "";
+}
+
+function readNumberField(value: unknown, ...keys: string[]): number | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeGeneratedImageAssets(value: unknown): GeneratedImageAsset[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item, index) => {
+    if (typeof item !== "object" || item === null) {
+      return [];
+    }
+
+    const id = readStringField(item, "id");
+    const src = readStringField(item, "src");
+    const currentSrc = readStringField(item, "currentSrc", "current_src");
+    const stableKey = readStringField(item, "stableKey", "stable_key");
+    const alt = readStringField(item, "alt");
+    const mimeType = readStringField(item, "mimeType", "mime_type");
+    const originalName = readStringField(item, "originalName", "original_name");
+    const imageIndex = readNumberField(item, "imageIndex", "image_index") ?? index;
+
+    if (
+      id === "" &&
+      src === "" &&
+      currentSrc === "" &&
+      stableKey === "" &&
+      alt === "" &&
+      originalName === "" &&
+      mimeType === ""
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        ...(id !== "" ? { id } : {}),
+        ...(stableKey !== "" ? { stableKey } : {}),
+        ...(src !== "" ? { src } : {}),
+        ...(currentSrc !== "" ? { currentSrc } : {}),
+        ...(alt !== "" ? { alt } : {}),
+        ...(mimeType !== "" ? { mimeType } : {}),
+        ...(originalName !== "" ? { originalName } : {}),
+        imageIndex,
+      },
+    ];
+  });
+}
+
+function buildGeneratedImageLookupKey(domIndex: number | undefined, contentHash: string): string {
+  return `${domIndex ?? -1}:${contentHash}`;
+}
+
+function buildAttachmentDedupeKey(messageId: string, originalName: string): string {
+  return `${messageId}::${originalName}`;
+}
+
+function hasGeneratedImageSupport(providerId: string | null): boolean {
+  return providerId === "chatgpt" || providerId === "gemini" || providerId === "grok";
+}
+
 class ConversationSyncerClass {
   _settings: AppSettings | null;
   _syncInProgress: Record<string, boolean>;
   _lastThinkingState: Record<string, string>;
+  _lastThinkingEndedAt: Record<string, number>;
   _lastLoadingEnded: Record<string, number>;
   _syncRetryTimers: Record<string, ReturnType<typeof setTimeout>>;
   _syncRetryCounts: Record<string, number>;
@@ -91,11 +225,15 @@ class ConversationSyncerClass {
   _resolveWebviewFn: ResolveWebviewFn | null;
   syncRetryLimit: number;
   syncRetryDelayMs: number;
+  postThinkingProbeWindowMs: number;
+  postThinkingProbePollMs: number;
+  postThinkingProbeMaxPolls: number;
 
   constructor() {
     this._settings = null;
     this._syncInProgress = {};
     this._lastThinkingState = { ai1: "idle", ai2: "idle" };
+    this._lastThinkingEndedAt = { ai1: 0, ai2: 0 };
     this._lastLoadingEnded = { ai1: 0, ai2: 0 };
     this._syncRetryTimers = {};
     this._syncRetryCounts = {};
@@ -106,13 +244,17 @@ class ConversationSyncerClass {
     this._resolveWebviewFn = null;
     this.syncRetryLimit = 5;
     this.syncRetryDelayMs = 3000;
+    this.postThinkingProbeWindowMs = 2500;
+    this.postThinkingProbePollMs = 300;
+    this.postThinkingProbeMaxPolls = 4;
   }
 
   _hasReadableAssistant(messages: ScrapedMessage[] | undefined): boolean {
     if (messages === undefined || messages.length === 0) return false;
     const last = messages[messages.length - 1];
     const text = (last?.text ?? last?.content ?? "").trim();
-    return last?.role === "assistant" && text !== "";
+    const generatedImages = normalizeGeneratedImageAssets(last?.generatedImages);
+    return last?.role === "assistant" && (text !== "" || generatedImages.length > 0);
   }
 
   _isTransientSyncError(detail: unknown): boolean {
@@ -163,6 +305,7 @@ class ConversationSyncerClass {
           this._lastThinkingState[provider] = currentThinking;
 
           if (prevThinking !== "idle" && currentThinking === "idle") {
+            this._lastThinkingEndedAt[provider] = Date.now();
             await this.syncProvider(provider, { from: "auto" });
           }
 
@@ -198,6 +341,97 @@ class ConversationSyncerClass {
 
   isUrlExcluded(providerSlot: string, url: string): boolean {
     return isSlotUrlExcluded(providerSlot, url);
+  }
+
+  async _scrapeMessages(
+    webview: Electron.WebviewTag | WebviewElement,
+    scrapeMessagesFn: unknown
+  ): Promise<ScrapedMessage[]> {
+    if (typeof scrapeMessagesFn !== "function") {
+      return [];
+    }
+
+    const messages = (await webview.executeJavaScript(`(${scrapeMessagesFn.toString()})();`)) as
+      | ScrapedMessage[]
+      | null
+      | undefined;
+    return Array.isArray(messages) ? messages : [];
+  }
+
+  _shouldProbePostThinkingImages(
+    provider: string,
+    providerId: string | null,
+    source: string | undefined,
+    messages: ScrapedMessage[]
+  ): boolean {
+    if (!hasGeneratedImageSupport(providerId)) {
+      return false;
+    }
+
+    if (source !== "auto" && source !== "retry") {
+      return false;
+    }
+
+    const lastThinkingEndedAt = this._lastThinkingEndedAt[provider] ?? 0;
+    if (
+      lastThinkingEndedAt <= 0 ||
+      Date.now() - lastThinkingEndedAt > this.postThinkingProbeWindowMs
+    ) {
+      return false;
+    }
+
+    const generatedImageCount = messages.reduce((count, message) => {
+      return count + normalizeGeneratedImageAssets(message.generatedImages).length;
+    }, 0);
+    if (generatedImageCount > 0) {
+      return false;
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    const text = (lastMessage?.text ?? lastMessage?.content ?? "").trim();
+    return (
+      lastMessage?.role !== "assistant" ||
+      text === "" ||
+      text === "[image]" ||
+      this._hasReadableAssistant(messages) === false
+    );
+  }
+
+  async _probeGeneratedImagesAfterThinking(
+    provider: string,
+    providerId: string | null,
+    source: string | undefined,
+    webview: Electron.WebviewTag | WebviewElement,
+    scrapeMessagesFn: unknown,
+    initialMessages: ScrapedMessage[]
+  ): Promise<ScrapedMessage[]> {
+    if (
+      this._shouldProbePostThinkingImages(provider, providerId, source, initialMessages) === false
+    ) {
+      return initialMessages;
+    }
+
+    let latestMessages = initialMessages;
+    for (let poll = 0; poll < this.postThinkingProbeMaxPolls; poll += 1) {
+      // NOTE: The post-thinking probe is intentionally sequential because each rescrape depends on DOM settle time.
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => setTimeout(resolve, this.postThinkingProbePollMs));
+      // NOTE: Each scrape must observe the DOM after the prior settle window, not in parallel.
+      // eslint-disable-next-line no-await-in-loop
+      const nextMessages = await this._scrapeMessages(webview, scrapeMessagesFn);
+      if (nextMessages.length > 0) {
+        latestMessages = nextMessages;
+      }
+
+      const generatedImageCount = latestMessages.reduce((count, message) => {
+        return count + normalizeGeneratedImageAssets(message.generatedImages).length;
+      }, 0);
+      if (generatedImageCount > 0) {
+        break;
+      }
+    }
+
+    return latestMessages;
   }
 
   async syncConversation(
@@ -258,21 +492,22 @@ class ConversationSyncerClass {
         throw new Error(syncT("scrapeMessagesMissing", { provider }));
       }
 
-      const messages = (await webview.executeJavaScript(
-        `(${providerModule["scrapeMessages"].toString()})();`
-      )) as ScrapedMessage[] | null | undefined;
+      const source = options.source ?? "manual";
+      const messages = await this._probeGeneratedImagesAfterThinking(
+        provider,
+        providerId,
+        source,
+        webview,
+        providerModule["scrapeMessages"],
+        await this._scrapeMessages(webview, providerModule["scrapeMessages"])
+      );
 
       const rawUrl = webview.getURL?.() ?? "";
       const webUrl = normalizeUrl(rawUrl);
 
       const { existing, prevCount, newEntry } = await this._getArchiveStatus(provider, webUrl);
 
-      if (
-        messages === null ||
-        messages === undefined ||
-        !Array.isArray(messages) ||
-        messages.length === 0
-      ) {
+      if (messages.length === 0) {
         this._syncInProgress[provider] = false;
         return {
           success: true,
@@ -304,6 +539,7 @@ class ConversationSyncerClass {
           typeof m.text === "string" ? m.text : typeof m.content === "string" ? m.content : "";
         const senderMatch = /<!--\s*hev-sender:([^-]+?)\s*-->/.exec(textContent);
         const senderOverride = senderMatch?.[1]?.trim();
+        const generatedImages = normalizeGeneratedImageAssets(m.generatedImages);
         return {
           ...m,
           text:
@@ -317,6 +553,7 @@ class ConversationSyncerClass {
                 ? authors.ai
                 : authors.user,
           ts: Date.now(),
+          ...(generatedImages.length > 0 ? { generatedImages } : {}),
         };
       });
 
@@ -365,6 +602,14 @@ class ConversationSyncerClass {
       })) as DbMessagesResult | undefined;
 
       const finalMessages: ScrapedMessage[] = dbMessagesResult?.data ?? normalized;
+      const generatedImageResult = await this._persistGeneratedImages(
+        provider,
+        webview,
+        accountInfo.id,
+        syncResult.conversationId,
+        normalized,
+        finalMessages
+      );
 
       const lastMsg = finalMessages[finalMessages.length - 1];
       if (lastMsg !== undefined && lastMsg.role !== "user") {
@@ -377,6 +622,8 @@ class ConversationSyncerClass {
           newEntry,
           added: syncResult.added,
           total: syncResult.total,
+          generatedImageSavedCount: generatedImageResult.savedCount,
+          generatedImagePendingCount: generatedImageResult.pendingCount,
           ...(syncResult.conversationId !== undefined && {
             conversationId: syncResult.conversationId,
           }),
@@ -409,6 +656,8 @@ class ConversationSyncerClass {
         newEntry,
         added: syncResult.added,
         total: syncResult.total,
+        generatedImageSavedCount: generatedImageResult.savedCount,
+        generatedImagePendingCount: generatedImageResult.pendingCount,
         ...(syncResult.conversationId !== undefined && {
           conversationId: syncResult.conversationId,
         }),
@@ -562,9 +811,14 @@ class ConversationSyncerClass {
       const res = await this.syncConversation(provider, webview, { source: from });
       const messages = res["messages"] as ScrapedMessage[] | undefined;
       const stableAfter = this._hasReadableAssistant(messages);
+      const pendingGeneratedImages =
+        typeof res["generatedImagePendingCount"] === "number"
+          ? Math.max(0, Math.trunc(res["generatedImagePendingCount"]))
+          : 0;
       const shouldRetryByReadiness =
         (from === "auto" || from === "retry" || from === "manual") &&
-        ((res.success === true && stableAfter === false) || res.transient === true);
+        ((res.success === true && (stableAfter === false || pendingGeneratedImages > 0)) ||
+          res.transient === true);
       const tried = this._syncRetryCounts[provider] ?? 0;
       const willRetry = shouldRetryByReadiness && tried < this.syncRetryLimit;
 
@@ -655,6 +909,357 @@ class ConversationSyncerClass {
       this._setSyncStatus(provider, "error", message);
       return { success: false, message };
     }
+  }
+
+  _resolveGeneratedImageMessageId(
+    message: ScrapedMessage,
+    finalMessages: ScrapedMessage[]
+  ): string | null {
+    const domId = readStringField(message, "domId", "dom_id");
+    const savedContentHash = readStringField(message, "contentHash", "content_hash");
+    const fallbackContentHash = hashString((message.text ?? message.content ?? "").trim());
+    const contentHash = savedContentHash !== "" ? savedContentHash : fallbackContentHash;
+    const domIndex =
+      readNumberField(message, "domIndex", "dom_index", "index") ??
+      readNumberField(message, "index");
+
+    const byDomId =
+      domId === ""
+        ? null
+        : finalMessages.find(
+            (candidate) => readStringField(candidate, "domId", "dom_id") === domId
+          );
+    if (byDomId !== null && byDomId !== undefined) {
+      const messageId = readStringField(byDomId, "id");
+      if (messageId !== "") {
+        return messageId;
+      }
+    }
+
+    const lookupKey = buildGeneratedImageLookupKey(domIndex, contentHash);
+    const byHash = finalMessages.find((candidate) => {
+      const candidateLookupKey = buildGeneratedImageLookupKey(
+        readNumberField(candidate, "domIndex", "dom_index", "index"),
+        readStringField(candidate, "contentHash", "content_hash")
+      );
+      return candidateLookupKey === lookupKey;
+    });
+
+    const messageId = byHash !== undefined ? readStringField(byHash, "id") : "";
+    return messageId !== "" ? messageId : null;
+  }
+
+  _buildGeneratedImageStableKey(
+    provider: string,
+    message: ScrapedMessage,
+    asset: GeneratedImageAsset
+  ): string {
+    const assetStableKey = asset.stableKey?.trim() ?? "";
+    if (assetStableKey !== "") {
+      return assetStableKey;
+    }
+
+    const messageIdentity = readStringField(
+      message,
+      "domId",
+      "dom_id",
+      "contentHash",
+      "content_hash"
+    );
+    const messageKey =
+      messageIdentity !== ""
+        ? messageIdentity
+        : `${provider}:${readNumberField(message, "domIndex", "dom_index", "index") ?? 0}`;
+    return hashString(`${messageKey}|${asset.imageIndex ?? 0}|${asset.alt ?? ""}`);
+  }
+
+  _buildGeneratedImageName(
+    provider: string,
+    message: ScrapedMessage,
+    asset: GeneratedImageAsset
+  ): string {
+    const originalName = asset.originalName?.trim() ?? "";
+    if ((asset.stableKey?.trim() ?? "") === "" && originalName !== "") {
+      return originalName;
+    }
+
+    const mimeType = asset.mimeType ?? "";
+    const lowerMimeType = mimeType.toLowerCase();
+    const ext = lowerMimeType.includes("png")
+      ? "png"
+      : lowerMimeType.includes("webp")
+        ? "webp"
+        : lowerMimeType.includes("gif")
+          ? "gif"
+          : lowerMimeType.includes("bmp")
+            ? "bmp"
+            : lowerMimeType.includes("svg")
+              ? "svg"
+              : lowerMimeType.includes("jpeg") || lowerMimeType.includes("jpg")
+                ? "jpg"
+                : "png";
+
+    const imageIndex = asset.imageIndex ?? 0;
+    const stableKey = this._buildGeneratedImageStableKey(provider, message, asset);
+    return `generated-image-${provider}-${String(imageIndex + 1).padStart(2, "0")}-${stableKey}.${ext}`;
+  }
+
+  async _extractGeneratedImageContent(
+    webview: Electron.WebviewTag | WebviewElement,
+    asset: GeneratedImageAsset
+  ): Promise<ImageExtractionResult | null> {
+    try {
+      const rawResult = (await webview.executeJavaScript(
+        buildGeneratedImageExtractionScript(asset as Record<string, unknown>)
+      )) as ImageExtractionResult | null;
+
+      return rawResult;
+    } catch (error) {
+      Logger.warn(LogCategory.WEBVIEW, "[webview-sync] Failed to extract generated image bytes", {
+        providerError: getErrorMessage(error),
+      });
+      return null;
+    }
+  }
+
+  async _captureGeneratedImageFallback(
+    webview: Electron.WebviewTag | WebviewElement,
+    rect: ImageCaptureRect | null | undefined
+  ): Promise<ImageExtractionResult | null> {
+    if (rect === null || rect === undefined) {
+      return null;
+    }
+
+    const width = Math.max(1, Math.round(rect.width));
+    const height = Math.max(1, Math.round(rect.height));
+    if (width < 2 || height < 2) {
+      return null;
+    }
+
+    const webContentsId =
+      typeof webview.getWebContentsId === "function" ? webview.getWebContentsId() : null;
+    const electronApi = window.electronAPI;
+    const guestRegion = `${Math.max(0, Math.round(rect.x))};${Math.max(0, Math.round(rect.y))}:${width};${height}`;
+
+    try {
+      if (
+        typeof webContentsId === "number" &&
+        Number.isFinite(webContentsId) &&
+        typeof electronApi?.captureWebContentsPage === "function"
+      ) {
+        const guestCapture = (await electronApi.captureWebContentsPage(
+          webContentsId,
+          guestRegion
+        )) as { success?: boolean; dataUrl?: string; data?: string } | null;
+        if (guestCapture?.success === true) {
+          const parsed = parseGeneratedImageDataUrl(
+            guestCapture.dataUrl ?? guestCapture.data ?? ""
+          );
+          if (parsed !== null && parsed.base64 !== "") {
+            return {
+              success: true,
+              base64: parsed.base64,
+              mimeType: parsed.mimeType ?? "image/png",
+            };
+          }
+        }
+      }
+
+      if (
+        typeof webview.getBoundingClientRect !== "function" ||
+        typeof electronApi?.capturePage !== "function"
+      ) {
+        return null;
+      }
+
+      const hostRect = webview.getBoundingClientRect();
+      const x = Math.max(0, Math.round(hostRect.x + rect.x));
+      const y = Math.max(0, Math.round(hostRect.y + rect.y));
+      const windowRegion = `${x};${y}:${width};${height}`;
+      const capture = (await electronApi.capturePage("region", windowRegion)) as {
+        success?: boolean;
+        dataUrl?: string;
+        data?: string;
+      } | null;
+      if (capture?.success !== true) {
+        return null;
+      }
+
+      const parsed = parseGeneratedImageDataUrl(capture.dataUrl ?? capture.data ?? "");
+      if (parsed === null || parsed.base64 === "") {
+        return null;
+      }
+
+      return {
+        success: true,
+        base64: parsed.base64,
+        mimeType: parsed.mimeType ?? "image/png",
+      };
+    } catch (error) {
+      Logger.warn(
+        LogCategory.WEBVIEW,
+        "[webview-sync] Generated image screenshot fallback failed",
+        {
+          providerError: getErrorMessage(error),
+        }
+      );
+      return null;
+    }
+  }
+
+  async _persistGeneratedImages(
+    provider: string,
+    webview: Electron.WebviewTag | WebviewElement,
+    accountId: string,
+    conversationId: string | undefined,
+    scrapedMessages: ScrapedMessage[],
+    finalMessages: ScrapedMessage[]
+  ): Promise<GeneratedImagePersistResult> {
+    if (conversationId === undefined || conversationId === "") {
+      const pendingCount = scrapedMessages.reduce((count, message) => {
+        return count + normalizeGeneratedImageAssets(message.generatedImages).length;
+      }, 0);
+      return { savedCount: 0, pendingCount };
+    }
+
+    const saveAttachmentContent = window.electronAPI?.dbSaveAttachmentContent;
+    const getAttachments = window.electronAPI?.["dbGetAttachments"];
+    const readFile = window.electronAPI?.readFile;
+    if (typeof saveAttachmentContent !== "function" || typeof getAttachments !== "function") {
+      return { savedCount: 0, pendingCount: 0 };
+    }
+
+    const rawAttachments = (await getAttachments({
+      accountId,
+      conversationId,
+    })) as DbAttachmentsResult | undefined;
+    const attachmentRows = Array.isArray(rawAttachments?.data) ? rawAttachments.data : [];
+    const existingAttachments = new Map<
+      string,
+      { storedPath: string; mimeType: string; originalName: string }
+    >(
+      attachmentRows.flatMap((attachment) => {
+        const messageId = readStringField(attachment, "messageId", "message_id");
+        const originalName = readStringField(attachment, "originalName", "original_name");
+        if (messageId === "" || originalName === "") {
+          return [];
+        }
+
+        const storedPath = readStringField(attachment, "storedPath", "stored_path");
+        const mimeType = readStringField(attachment, "mimeType", "mime_type");
+        return [
+          [
+            buildAttachmentDedupeKey(messageId, originalName),
+            {
+              storedPath,
+              mimeType,
+              originalName,
+            },
+          ] as const,
+        ];
+      })
+    );
+
+    let savedCount = 0;
+    let pendingCount = 0;
+
+    for (const message of scrapedMessages) {
+      if (message.role !== "assistant") {
+        continue;
+      }
+
+      const generatedImages = normalizeGeneratedImageAssets(message.generatedImages);
+      if (generatedImages.length === 0) {
+        continue;
+      }
+
+      const messageId = this._resolveGeneratedImageMessageId(message, finalMessages);
+      if (messageId === null) {
+        pendingCount += generatedImages.length;
+        continue;
+      }
+
+      for (const asset of generatedImages) {
+        const originalName = this._buildGeneratedImageName(provider, message, asset);
+        const dedupeKey = buildAttachmentDedupeKey(messageId, originalName);
+        // NOTE: Extraction is sequential because each asset maps to a live DOM node that may mutate during generation.
+        // eslint-disable-next-line no-await-in-loop
+        const extracted = await this._extractGeneratedImageContent(webview, asset);
+        const persisted =
+          extracted?.success === true &&
+          typeof extracted.base64 === "string" &&
+          extracted.base64 !== ""
+            ? extracted
+            : // NOTE: Fallback capture must run after extraction on the same asset to keep coordinates aligned.
+              // eslint-disable-next-line no-await-in-loop
+              await this._captureGeneratedImageFallback(webview, extracted?.rect);
+        const existingAttachment = existingAttachments.get(dedupeKey);
+
+        if (
+          persisted?.success !== true ||
+          typeof persisted.base64 !== "string" ||
+          persisted.base64 === ""
+        ) {
+          if (existingAttachment !== undefined) {
+            continue;
+          }
+          pendingCount += 1;
+          continue;
+        }
+
+        if (
+          existingAttachment !== undefined &&
+          typeof existingAttachment.storedPath === "string" &&
+          existingAttachment.storedPath !== ""
+        ) {
+          try {
+            const currentBase64 =
+              typeof readFile === "function"
+                ? // NOTE: Replacement detection must read the current archived file before deciding whether to rewrite it.
+                  // eslint-disable-next-line no-await-in-loop
+                  await readFile(existingAttachment.storedPath)
+                : null;
+            if (typeof currentBase64 === "string" && currentBase64 === persisted.base64) {
+              continue;
+            }
+          } catch {}
+        }
+
+        // NOTE: Save operations stay ordered so later assets observe the updated dedupe map from earlier writes.
+        // eslint-disable-next-line no-await-in-loop
+        const saveResult = (await saveAttachmentContent({
+          accountId,
+          conversationId,
+          messageId,
+          base64: persisted.base64,
+          originalName,
+          mimeType: persisted.mimeType ?? asset.mimeType ?? "image/png",
+        })) as { success?: boolean; error?: string; data?: unknown } | null;
+
+        if (saveResult?.success === true) {
+          const savedData = saveResult.data;
+          const savedStoredPath = readStringField(savedData, "storedPath", "stored_path");
+          existingAttachments.set(dedupeKey, {
+            storedPath:
+              savedStoredPath !== "" ? savedStoredPath : (existingAttachment?.storedPath ?? ""),
+            mimeType: persisted.mimeType ?? asset.mimeType ?? "image/png",
+            originalName,
+          });
+          savedCount += 1;
+          continue;
+        }
+
+        pendingCount += 1;
+        Logger.warn(LogCategory.WEBVIEW, "[webview-sync] Generated image could not be archived", {
+          provider,
+          messageId,
+          originalName,
+          error: saveResult?.error ?? "unknown",
+        });
+      }
+    }
+
+    return { savedCount, pendingCount };
   }
 
   _notifyStable(provider: string, res: SyncResult): void {

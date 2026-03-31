@@ -52,6 +52,7 @@ function resetSyncerState(): void {
   ConversationSyncer._syncRetryCounts = {};
   ConversationSyncer._syncInProgress = {};
   ConversationSyncer._lastSyncResult = {};
+  ConversationSyncer._lastThinkingEndedAt = { ai1: 0, ai2: 0 };
 }
 
 test("auto sync schedules retry when scraped messages are empty", async () => {
@@ -96,6 +97,40 @@ test("auto sync does not schedule retry when last message is assistant", async (
     messages: [
       { role: "user", text: "hello" },
       { role: "assistant", text: "hi" },
+    ],
+    commands: [],
+    webUrl: "https://chatgpt.com/c/abc",
+  });
+  ConversationListManager.refresh = async () => {};
+
+  try {
+    await ConversationSyncer.syncProvider("ai1", { from: "auto" });
+    assert.equal(timerMock.scheduled.length, 0);
+  } finally {
+    ConversationSyncer.syncConversation = originalSyncConversation;
+    ConversationListManager.refresh = originalRefresh;
+    timerMock.restore();
+    windowMock.restore();
+  }
+});
+
+test("auto sync does not schedule retry when assistant only contains generated images", async () => {
+  const windowMock = installWindowMock();
+  const timerMock = installTimerMock();
+  const originalSyncConversation = ConversationSyncer.syncConversation;
+  const originalRefresh = ConversationListManager.refresh;
+
+  resetSyncerState();
+
+  ConversationSyncer.syncConversation = async () => ({
+    success: true,
+    count: 1,
+    messages: [
+      {
+        role: "assistant",
+        text: "",
+        generatedImages: [{ id: "img-1", src: "data:image/png;base64,QUJD" }],
+      },
     ],
     commands: [],
     webUrl: "https://chatgpt.com/c/abc",
@@ -165,6 +200,590 @@ test("ai0 sync returns latest assistant message without DB persistence", async (
   } finally {
     AppState.getProviderIdForSlot = originalGetProvider;
     AppState.getAccountForSlot = originalGetAccount;
+    globalScope.window = originalWindow;
+  }
+});
+
+test("syncConversation saves generated images as assistant attachments", async () => {
+  const globalScope = globalThis as unknown as {
+    window?: {
+      electronAPI?: {
+        dbSyncMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetAttachments?: (...args: unknown[]) => Promise<unknown>;
+        dbSaveAttachmentContent?: (...args: unknown[]) => Promise<unknown>;
+        capturePage?: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+  };
+
+  const originalWindow = globalScope.window;
+  const originalGetProvider = AppState.getProviderIdForSlot;
+  const originalGetAccount = AppState.getAccountForSlot;
+  const originalGetRelay = AppState.getAssistantRelay;
+  const originalGetNickname = AppState.getNickname;
+
+  const saveCalls: Array<Record<string, unknown>> = [];
+  let captureCallCount = 0;
+  let executeCount = 0;
+
+  globalScope.window = {
+    electronAPI: {
+      dbSyncMessages: async () => ({ success: true, conversationId: "c1", added: 1, total: 1 }),
+      dbGetMessages: async () => ({
+        data: [
+          {
+            id: "db-assistant-1",
+            role: "assistant",
+            content: "[image]",
+            dom_index: 0,
+            content_hash: "h1",
+            created_at: 123,
+          },
+        ],
+      }),
+      dbGetAttachments: async () => ({ success: true, data: [] }),
+      dbSaveAttachmentContent: async (payload: Record<string, unknown>) => {
+        saveCalls.push(payload);
+        return { success: true, data: { attachmentId: "att-1", storedPath: "/tmp/generated.png" } };
+      },
+      capturePage: async () => {
+        captureCallCount += 1;
+        return { success: false };
+      },
+    },
+  };
+
+  AppState.getProviderIdForSlot = (() => "chatgpt") as typeof AppState.getProviderIdForSlot;
+  AppState.getAccountForSlot = (() => ({
+    id: "account-1",
+    provider: "chatgpt",
+  })) as typeof AppState.getAccountForSlot;
+  AppState.getAssistantRelay = (() => ({
+    active: false,
+    sourceSlot: null,
+  })) as typeof AppState.getAssistantRelay;
+  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+
+  const mockWebview = {
+    getURL: () => "https://chatgpt.com/c/generated-image",
+    executeJavaScript: async () => {
+      executeCount += 1;
+      if (executeCount === 1) {
+        return [
+          {
+            role: "assistant",
+            text: "[image]",
+            index: 0,
+            domIndex: 0,
+            contentHash: "h1",
+            generatedImages: [
+              {
+                id: "img-1",
+                src: "data:image/png;base64,QUJD",
+                currentSrc: "data:image/png;base64,QUJD",
+                alt: "Generated image",
+                mimeType: "image/png",
+                originalName: "generated-image-chatgpt-01-img-1.png",
+                imageIndex: 0,
+              },
+            ],
+          },
+        ];
+      }
+
+      return {
+        success: true,
+        base64: "QUJD",
+        mimeType: "image/png",
+        rect: null,
+      };
+    },
+  };
+
+  try {
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {});
+    assert.equal(result.success, true);
+    assert.equal(saveCalls.length, 1);
+    assert.equal(saveCalls[0]?.["messageId"], "db-assistant-1");
+    assert.equal(saveCalls[0]?.["base64"], "QUJD");
+    assert.equal(captureCallCount, 0);
+  } finally {
+    AppState.getProviderIdForSlot = originalGetProvider;
+    AppState.getAccountForSlot = originalGetAccount;
+    AppState.getAssistantRelay = originalGetRelay;
+    AppState.getNickname = originalGetNickname;
+    globalScope.window = originalWindow;
+  }
+});
+
+test("syncConversation skips generated image save when attachment already exists", async () => {
+  const globalScope = globalThis as unknown as {
+    window?: {
+      electronAPI?: {
+        dbSyncMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetAttachments?: (...args: unknown[]) => Promise<unknown>;
+        dbSaveAttachmentContent?: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+  };
+
+  const originalWindow = globalScope.window;
+  const originalGetProvider = AppState.getProviderIdForSlot;
+  const originalGetAccount = AppState.getAccountForSlot;
+  const originalGetRelay = AppState.getAssistantRelay;
+  const originalGetNickname = AppState.getNickname;
+
+  let saveCallCount = 0;
+  let executeCount = 0;
+
+  globalScope.window = {
+    electronAPI: {
+      dbSyncMessages: async () => ({ success: true, conversationId: "c1", added: 1, total: 1 }),
+      dbGetMessages: async () => ({
+        data: [
+          {
+            id: "db-assistant-1",
+            role: "assistant",
+            content: "[image]",
+            dom_index: 0,
+            content_hash: "h1",
+            created_at: 123,
+          },
+        ],
+      }),
+      dbGetAttachments: async () => ({
+        success: true,
+        data: [
+          {
+            message_id: "db-assistant-1",
+            original_name: "generated-image-chatgpt-01-img-1.png",
+          },
+        ],
+      }),
+      dbSaveAttachmentContent: async () => {
+        saveCallCount += 1;
+        return { success: true };
+      },
+    },
+  };
+
+  AppState.getProviderIdForSlot = (() => "chatgpt") as typeof AppState.getProviderIdForSlot;
+  AppState.getAccountForSlot = (() => ({
+    id: "account-1",
+    provider: "chatgpt",
+  })) as typeof AppState.getAccountForSlot;
+  AppState.getAssistantRelay = (() => ({
+    active: false,
+    sourceSlot: null,
+  })) as typeof AppState.getAssistantRelay;
+  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+
+  const mockWebview = {
+    getURL: () => "https://chatgpt.com/c/generated-image",
+    executeJavaScript: async () => {
+      executeCount += 1;
+      return [
+        {
+          role: "assistant",
+          text: "[image]",
+          index: 0,
+          domIndex: 0,
+          contentHash: "h1",
+          generatedImages: [
+            {
+              id: "img-1",
+              src: "data:image/png;base64,QUJD",
+              currentSrc: "data:image/png;base64,QUJD",
+              alt: "Generated image",
+              mimeType: "image/png",
+              originalName: "generated-image-chatgpt-01-img-1.png",
+              imageIndex: 0,
+            },
+          ],
+        },
+      ];
+    },
+  };
+
+  try {
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {});
+    assert.equal(result.success, true);
+    assert.equal(saveCallCount, 0);
+    assert.equal(executeCount, 2);
+  } finally {
+    AppState.getProviderIdForSlot = originalGetProvider;
+    AppState.getAccountForSlot = originalGetAccount;
+    AppState.getAssistantRelay = originalGetRelay;
+    AppState.getNickname = originalGetNickname;
+    globalScope.window = originalWindow;
+  }
+});
+
+test("syncConversation replaces preview image attachment when final bytes change", async () => {
+  const globalScope = globalThis as unknown as {
+    window?: {
+      electronAPI?: {
+        dbSyncMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetAttachments?: (...args: unknown[]) => Promise<unknown>;
+        dbSaveAttachmentContent?: (...args: unknown[]) => Promise<unknown>;
+        readFile?: (path: string) => Promise<string | null>;
+      };
+    };
+  };
+
+  const originalWindow = globalScope.window;
+  const originalGetProvider = AppState.getProviderIdForSlot;
+  const originalGetAccount = AppState.getAccountForSlot;
+  const originalGetRelay = AppState.getAssistantRelay;
+  const originalGetNickname = AppState.getNickname;
+  const saveCalls: Array<Record<string, unknown>> = [];
+  let executeCount = 0;
+
+  globalScope.window = {
+    electronAPI: {
+      dbSyncMessages: async () => ({ success: true, conversationId: "c1", added: 1, total: 1 }),
+      dbGetMessages: async () => ({
+        data: [
+          {
+            id: "db-assistant-1",
+            role: "assistant",
+            content: "[image]",
+            dom_index: 0,
+            content_hash: "h1",
+            created_at: 123,
+          },
+        ],
+      }),
+      dbGetAttachments: async () => ({
+        success: true,
+        data: [
+          {
+            message_id: "db-assistant-1",
+            original_name: "generated-image-ai1-01-stable.png",
+            stored_path: "/tmp/generated-preview.png",
+          },
+        ],
+      }),
+      readFile: async () => "UFJFVklFVw==",
+      dbSaveAttachmentContent: async (payload: Record<string, unknown>) => {
+        saveCalls.push(payload);
+        return { success: true, data: { attachmentId: "att-1", storedPath: "/tmp/generated-preview.png" } };
+      },
+    },
+  };
+
+  AppState.getProviderIdForSlot = (() => "chatgpt") as typeof AppState.getProviderIdForSlot;
+  AppState.getAccountForSlot = (() => ({
+    id: "account-1",
+    provider: "chatgpt",
+  })) as typeof AppState.getAccountForSlot;
+  AppState.getAssistantRelay = (() => ({
+    active: false,
+    sourceSlot: null,
+  })) as typeof AppState.getAssistantRelay;
+  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+
+  const mockWebview = {
+    getURL: () => "https://chatgpt.com/c/generated-image",
+    executeJavaScript: async () => {
+      executeCount += 1;
+      if (executeCount === 1) {
+        return [
+          {
+            role: "assistant",
+            text: "[image]",
+            index: 0,
+            domIndex: 0,
+            contentHash: "h1",
+            generatedImages: [
+              {
+                stableKey: "stable",
+                src: "https://cdn.example.test/final.png",
+                currentSrc: "https://cdn.example.test/final.png",
+                mimeType: "image/png",
+                originalName: "generated-image-ai1-01-stable.png",
+                imageIndex: 0,
+              },
+            ],
+          },
+        ];
+      }
+
+      return {
+        success: true,
+        base64: "RklOQUw=",
+        mimeType: "image/png",
+        rect: null,
+      };
+    },
+  };
+
+  try {
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {});
+    assert.equal(result.success, true);
+    assert.equal(saveCalls.length, 1);
+    assert.equal(saveCalls[0]?.["originalName"], "generated-image-ai1-01-stable.png");
+    assert.equal(saveCalls[0]?.["base64"], "RklOQUw=");
+  } finally {
+    AppState.getProviderIdForSlot = originalGetProvider;
+    AppState.getAccountForSlot = originalGetAccount;
+    AppState.getAssistantRelay = originalGetRelay;
+    AppState.getNickname = originalGetNickname;
+    globalScope.window = originalWindow;
+  }
+});
+
+test("syncConversation uses a post-thinking probe to pick up generated images", async () => {
+  const globalScope = globalThis as unknown as {
+    window?: {
+      electronAPI?: {
+        dbSyncMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetAttachments?: (...args: unknown[]) => Promise<unknown>;
+        dbSaveAttachmentContent?: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+  };
+
+  const originalWindow = globalScope.window;
+  const originalGetProvider = AppState.getProviderIdForSlot;
+  const originalGetAccount = AppState.getAccountForSlot;
+  const originalGetRelay = AppState.getAssistantRelay;
+  const originalGetNickname = AppState.getNickname;
+  const originalProbeDelay = ConversationSyncer.postThinkingProbePollMs;
+  const originalProbeMaxPolls = ConversationSyncer.postThinkingProbeMaxPolls;
+
+  const saveCalls: Array<Record<string, unknown>> = [];
+  let executeCount = 0;
+
+  globalScope.window = {
+    electronAPI: {
+      dbSyncMessages: async () => ({ success: true, conversationId: "c1", added: 1, total: 1 }),
+      dbGetMessages: async () => ({
+        data: [
+          {
+            id: "db-assistant-1",
+            role: "assistant",
+            content: "[image]",
+            dom_index: 0,
+            content_hash: "h1",
+            created_at: 123,
+          },
+        ],
+      }),
+      dbGetAttachments: async () => ({ success: true, data: [] }),
+      dbSaveAttachmentContent: async (payload: Record<string, unknown>) => {
+        saveCalls.push(payload);
+        return { success: true, data: { attachmentId: "att-1", storedPath: "/tmp/generated.png" } };
+      },
+    },
+  };
+
+  AppState.getProviderIdForSlot = (() => "chatgpt") as typeof AppState.getProviderIdForSlot;
+  AppState.getAccountForSlot = (() => ({
+    id: "account-1",
+    provider: "chatgpt",
+  })) as typeof AppState.getAccountForSlot;
+  AppState.getAssistantRelay = (() => ({
+    active: false,
+    sourceSlot: null,
+  })) as typeof AppState.getAssistantRelay;
+  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+
+  ConversationSyncer.postThinkingProbePollMs = 0;
+  ConversationSyncer.postThinkingProbeMaxPolls = 1;
+  ConversationSyncer._lastThinkingEndedAt.ai1 = Date.now();
+
+  const mockWebview = {
+    getURL: () => "https://chatgpt.com/c/generated-image",
+    executeJavaScript: async () => {
+      executeCount += 1;
+      if (executeCount === 1) {
+        return [
+          {
+            role: "assistant",
+            text: "[image]",
+            index: 0,
+            domIndex: 0,
+            contentHash: "h1",
+            generatedImages: [],
+          },
+        ];
+      }
+
+      if (executeCount === 2) {
+        return [
+          {
+            role: "assistant",
+            text: "[image]",
+            index: 0,
+            domIndex: 0,
+            contentHash: "h1",
+            generatedImages: [
+              {
+                stableKey: "stable",
+                currentSrc: "data:image/png;base64,QUJD",
+                mimeType: "image/png",
+                originalName: "generated-image-ai1-01-stable.png",
+                imageIndex: 0,
+              },
+            ],
+          },
+        ];
+      }
+
+      return {
+        success: true,
+        base64: "QUJD",
+        mimeType: "image/png",
+        rect: null,
+      };
+    },
+  };
+
+  try {
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {
+      source: "auto",
+    });
+    assert.equal(result.success, true);
+    assert.equal(saveCalls.length, 1);
+  } finally {
+    AppState.getProviderIdForSlot = originalGetProvider;
+    AppState.getAccountForSlot = originalGetAccount;
+    AppState.getAssistantRelay = originalGetRelay;
+    AppState.getNickname = originalGetNickname;
+    ConversationSyncer.postThinkingProbePollMs = originalProbeDelay;
+    ConversationSyncer.postThinkingProbeMaxPolls = originalProbeMaxPolls;
+    globalScope.window = originalWindow;
+  }
+});
+
+test("syncConversation prefers webcontents capture fallback and isolates image save failures", async () => {
+  const globalScope = globalThis as unknown as {
+    window?: {
+      electronAPI?: {
+        dbSyncMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetMessages?: (...args: unknown[]) => Promise<unknown>;
+        dbGetAttachments?: (...args: unknown[]) => Promise<unknown>;
+        dbSaveAttachmentContent?: (...args: unknown[]) => Promise<unknown>;
+        captureWebContentsPage?: (...args: unknown[]) => Promise<unknown>;
+        capturePage?: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+  };
+
+  const originalWindow = globalScope.window;
+  const originalGetProvider = AppState.getProviderIdForSlot;
+  const originalGetAccount = AppState.getAccountForSlot;
+  const originalGetRelay = AppState.getAssistantRelay;
+  const originalGetNickname = AppState.getNickname;
+  const saveCalls: Array<Record<string, unknown>> = [];
+  let guestCaptureCalls = 0;
+  let windowCaptureCalls = 0;
+  let executeCount = 0;
+
+  globalScope.window = {
+    electronAPI: {
+      dbSyncMessages: async () => ({ success: true, conversationId: "c1", added: 1, total: 1 }),
+      dbGetMessages: async () => ({
+        data: [
+          {
+            id: "db-assistant-1",
+            role: "assistant",
+            content: "[image]",
+            dom_index: 0,
+            content_hash: "h1",
+            created_at: 123,
+          },
+        ],
+      }),
+      dbGetAttachments: async () => ({ success: true, data: [] }),
+      dbSaveAttachmentContent: async (payload: Record<string, unknown>) => {
+        saveCalls.push(payload);
+        if (saveCalls.length === 1) {
+          return { success: false, error: "first-failed" };
+        }
+        return { success: true, data: { attachmentId: "att-2", storedPath: "/tmp/generated-2.png" } };
+      },
+      captureWebContentsPage: async () => {
+        guestCaptureCalls += 1;
+        return { success: true, dataUrl: "data:image/png;base64,Q0FQVFVSRTI=" };
+      },
+      capturePage: async () => {
+        windowCaptureCalls += 1;
+        return { success: true, dataUrl: "data:image/png;base64,V0lORE9X" };
+      },
+    },
+  };
+
+  AppState.getProviderIdForSlot = (() => "chatgpt") as typeof AppState.getProviderIdForSlot;
+  AppState.getAccountForSlot = (() => ({
+    id: "account-1",
+    provider: "chatgpt",
+  })) as typeof AppState.getAccountForSlot;
+  AppState.getAssistantRelay = (() => ({
+    active: false,
+    sourceSlot: null,
+  })) as typeof AppState.getAssistantRelay;
+  AppState.getNickname = ((slot: string) => slot) as typeof AppState.getNickname;
+
+  const mockWebview = {
+    getURL: () => "https://chatgpt.com/c/generated-image",
+    getWebContentsId: () => 42,
+    executeJavaScript: async () => {
+      executeCount += 1;
+      if (executeCount === 1) {
+        return [
+          {
+            role: "assistant",
+            text: "[image]",
+            index: 0,
+            domIndex: 0,
+            contentHash: "h1",
+            generatedImages: [
+              {
+                stableKey: "stable-1",
+                currentSrc: "https://cdn.example.test/first.png",
+                mimeType: "image/png",
+                originalName: "generated-image-ai1-01-stable-1.png",
+                imageIndex: 0,
+              },
+              {
+                stableKey: "stable-2",
+                currentSrc: "https://cdn.example.test/second.png",
+                mimeType: "image/png",
+                originalName: "generated-image-ai1-02-stable-2.png",
+                imageIndex: 1,
+              },
+            ],
+          },
+        ];
+      }
+
+      return {
+        success: false,
+        base64: "",
+        mimeType: "image/png",
+        rect: { x: 5, y: 8, width: 120, height: 90 },
+      };
+    },
+  };
+
+  try {
+    const result = await ConversationSyncer.syncConversation("ai1", mockWebview as never, {});
+    assert.equal(result.success, true);
+    assert.equal(result.generatedImageSavedCount, 1);
+    assert.equal(result.generatedImagePendingCount, 1);
+    assert.equal(guestCaptureCalls, 2);
+    assert.equal(windowCaptureCalls, 0);
+  } finally {
+    AppState.getProviderIdForSlot = originalGetProvider;
+    AppState.getAccountForSlot = originalGetAccount;
+    AppState.getAssistantRelay = originalGetRelay;
+    AppState.getNickname = originalGetNickname;
     globalScope.window = originalWindow;
   }
 });

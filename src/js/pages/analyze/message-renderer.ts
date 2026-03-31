@@ -14,10 +14,10 @@ import {
   type RenderSnapshot,
 } from "./render-cache.js";
 import {
-  isAttachmentData,
   isDbAttachmentsResult,
   isDbMessagesResult,
-  isMessageItem,
+  normalizeAttachmentData,
+  normalizeMessageItem,
   type AttachmentData,
   type MessageItem,
 } from "./message-renderer-types.js";
@@ -167,9 +167,10 @@ export async function renderMessages(
         : undefined;
     const messagesResult = isDbMessagesResult(rawMessagesResult) ? rawMessagesResult : {};
     const rawMessages = Array.isArray(messagesResult.data) ? messagesResult.data : [];
-    const messages = rawMessages.filter((message): message is MessageItem =>
-      isMessageItem(message)
-    );
+    const messages = rawMessages.flatMap((message) => {
+      const normalized = normalizeMessageItem(message);
+      return normalized !== null ? [normalized] : [];
+    });
 
     Logger.debug(LogCategory.ANALYZE, analyzeRendererT("logs.dbQueryResult"), {
       messagesCount: messages.length,
@@ -194,9 +195,10 @@ export async function renderMessages(
         ? rawAttachmentsResult
         : {};
       const rawAttachments = Array.isArray(attachmentsResult.data) ? attachmentsResult.data : [];
-      attachments = rawAttachments.filter((attachment): attachment is AttachmentData =>
-        isAttachmentData(attachment)
-      );
+      attachments = rawAttachments.flatMap((attachment) => {
+        const normalized = normalizeAttachmentData(attachment);
+        return normalized !== null ? [normalized] : [];
+      });
       Logger.debug(LogCategory.ANALYZE, analyzeRendererT("logs.attachmentsFetched"), {
         count: attachments.length,
         success: attachmentsResult.success === true,

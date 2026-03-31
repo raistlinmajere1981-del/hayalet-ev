@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-30T21:28:33.767Z",
+  "generatedAt": "2026-03-31T01:35:18.083Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 611,
+    "filesScanned": 613,
     "ids": 573,
-    "testIds": 14,
-    "querySelectors": 145,
-    "totalSelectors": 732
+    "testIds": 15,
+    "querySelectors": 147,
+    "totalSelectors": 735
   },
   "lookup": {
     "id": {
@@ -602,6 +602,7 @@
       "drag": "[data-testid=\"drag\"]",
       "drop": "[data-testid=\"drop\"]",
       "file": "[data-testid=\"file\"]",
+      "image-gen-overlay-actions": "[data-testid=\"image-gen-overlay-actions\"]",
       "open-sidebar-button": "[data-testid=\"open-sidebar-button\"]",
       "send-button": "[data-testid=\"send-button\"]",
       "stop-button": "[data-testid=\"stop-button\"]",
@@ -634,6 +635,7 @@
       "ds_toast": ".ds-toast",
       "edit_btn": ".edit-btn",
       "files_header_div": ".files-header div",
+      "group_imagegen_image_id_image_group_imagegen_image_id_image_role_button_testid_i": ".group\\\\/imagegen-image, [id^=\"image-\"].group\\\\/imagegen-image, [id^=\"image-\"][role=\"button\"], [data-testid=\"image-gen-overlay-actions\"], img[src*=\"/backend-api/estuary/content?id=file_\"], img[alt^=\"Üretilen görsel:\"], img[alt^=\"Generated image:\"], img[alt*=\"generated image\" i]",
       "language_editor_side_card_head": ".language-editor-side-card__head",
       "load_more_btn": ".load-more-btn",
       "markdown_main_panel": ".markdown-main-panel",
@@ -694,6 +696,7 @@
       "data_ui_mode_trigger": "[data-ui-mode-trigger]",
       "data_workspace_tool_scene_back": "[data-workspace-tool-scene-back=",
       "data_workspace_tool_scene_chrome": "[data-workspace-tool-scene-chrome=",
+      "data_testid": "], [data-testid=",
       "id_composer_submit_button_data_testid": "], #composer-submit-button[data-testid=",
       "button_data_testid": "], button[data-testid=",
       "disabled_button_data_testid": "][disabled], button[data-testid=",

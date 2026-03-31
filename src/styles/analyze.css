@@ -12,6 +12,8 @@
   --analyze-scene-hotspot-label-pad-x: 0.72rem;
   --analyze-scene-exit-copy-letter-spacing: 0.08em;
   --analyze-scene-exit-shift: 0.2rem;
+  --analyze-message-image-attachment-max-width: 13.75rem;
+  --analyze-message-image-attachment-surface: var(--bg-surface-2);
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -415,6 +417,40 @@
 
 .msg-attachments .attachment-link:hover {
   opacity: 1;
+}
+
+.msg-attachments .attachment-link-image {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--analyze-message-image-attachment-max-width), 100%);
+  padding: var(--space-2);
+  text-align: left;
+  opacity: 1;
+}
+
+.attachment-link-image__media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  border: var(--border-1) solid currentColor;
+  overflow: hidden;
+  background: var(--analyze-message-image-attachment-surface);
+}
+
+.attachment-link-image__preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-link-image__badge {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--text-xs);
 }
 
 .compose-input-row {

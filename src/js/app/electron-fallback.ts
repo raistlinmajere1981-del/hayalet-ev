@@ -265,6 +265,8 @@ export function ensureElectronApiFallback(): void {
       await Promise.resolve({ success: true, path: String(p) }),
     capturePage: async (): Promise<{ success: boolean }> =>
       await Promise.resolve({ success: false }),
+    captureWebContentsPage: async (): Promise<{ success: boolean }> =>
+      await Promise.resolve({ success: false }),
     screenshotCapture: async (): Promise<{ success: boolean }> =>
       await Promise.resolve({ success: false }),
     windowMinimize: (): void => {},

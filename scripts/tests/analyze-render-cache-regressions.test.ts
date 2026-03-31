@@ -66,6 +66,39 @@ test("shouldSkipRender returns false when attachments changed", () => {
   assert.equal(shouldSkipRender(prev, next), false);
 });
 
+test("shouldSkipRender returns false when attachment mime type changed", () => {
+  const messages = [
+    {
+      id: "m1",
+      role: "assistant",
+      content: "Merhaba",
+      createdAt: 100,
+    },
+  ];
+
+  const prev = buildRenderSnapshot("c1", messages, [
+    {
+      messageId: "m1",
+      originalName: "image.png",
+      storedName: "image.png",
+      storedPath: "data/p/image.png",
+      mimeType: "image/png",
+    },
+  ]);
+
+  const next = buildRenderSnapshot("c1", messages, [
+    {
+      messageId: "m1",
+      originalName: "image.png",
+      storedName: "image.png",
+      storedPath: "data/p/image.png",
+      mimeType: "image/webp",
+    },
+  ]);
+
+  assert.equal(shouldSkipRender(prev, next), false);
+});
+
 test("shouldSkipRender returns false when conversation changes", () => {
   const messages = [
     {

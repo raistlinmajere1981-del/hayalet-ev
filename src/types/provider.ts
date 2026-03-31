@@ -23,6 +23,19 @@ export interface ScrapeSelectors {
   assistantMessage?: string;
 }
 
+export interface GeneratedImageAsset {
+  id?: string;
+  stableKey?: string;
+  src?: string;
+  currentSrc?: string;
+  alt?: string;
+  mimeType?: string;
+  originalName?: string;
+  imageIndex?: number;
+  width?: number;
+  height?: number;
+}
+
 export interface RoleSelectors {
   user: string;
   assistant: string;
@@ -69,6 +82,7 @@ export type ProviderScenarioCommandActionId =
   | "send-and-wait-thinking"
   | "assert-final-bubbles"
   | "assert-generated-image"
+  | "assert-generated-image-archive"
   | "assert-scroll-behavior"
   | "assert-provider-capabilities"
   | "click"
@@ -206,6 +220,7 @@ export interface ScrapedMessage {
   index: number;
   contentHash?: string;
   domId?: string;
+  generatedImages?: GeneratedImageAsset[];
 }
 
 export interface ProviderInstance {

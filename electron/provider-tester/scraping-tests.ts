@@ -254,7 +254,9 @@ export async function testGeneratedImage(ctx: TestContext): Promise<ProviderTest
             tagName: result.tagName ?? "unknown",
             visible: result.visible === true,
             enabled: result.enabled !== false,
-            ...(typeof result.alt === "string" && result.alt !== "" ? { textContent: result.alt } : {}),
+            ...(typeof result.alt === "string" && result.alt !== ""
+              ? { textContent: result.alt }
+              : {}),
           },
         },
         duration: Date.now() - start,
