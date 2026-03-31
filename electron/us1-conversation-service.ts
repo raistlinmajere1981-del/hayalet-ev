@@ -730,7 +730,7 @@ function normalizeConversationRoomCommand(roomCommand: unknown): ConversationRoo
   const boardHashBeforeMove = normalizeOptionalText(source["boardHashBeforeMove"]);
   const rawArgs =
     normalizeOptionalText(source["rawArgs"]) ??
-    (() : string | null => {
+    ((): string | null => {
       if (roomPayload === undefined) {
         return null;
       }
@@ -2362,7 +2362,7 @@ export class Us1ConversationService {
       roomCommand.roomPayload !== undefined ? roomCommand.roomPayload : undefined;
     const rawArgs =
       normalizeOptionalText(roomCommand.rawArgs) ??
-      (() : string => {
+      ((): string => {
         if (commandArgs === undefined) {
           return "";
         }

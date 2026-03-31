@@ -558,20 +558,16 @@ export function handleDmPacket(api: RoomApi, payload: unknown) {
     return { success: false, message: commandMessage(locale, "invalidPacket") };
   }
 
+  const combat = state.combat ? asCombatState(state.combat) : null;
+
   state.dmNarration = {
     kind: "dm",
     seatId,
     phase: packet.phase || state.phase,
     text,
     stepId: normalizeText(packet.stepId) || state.currentStepId || null,
-    encounterId:
-      normalizeText(packet.encounterId) ||
-      normalizeText(asCombatState(state.combat).encounterId) ||
-      null,
-    turnId:
-      normalizeText(packet.turnId) ||
-      buildFateKnotsCombatTurnId(asCombatState(state.combat)) ||
-      null,
+    encounterId: normalizeText(packet.encounterId) || normalizeText(combat?.encounterId) || null,
+    turnId: normalizeText(packet.turnId) || (combat ? buildFateKnotsCombatTurnId(combat) : null),
     updatedAt: Date.now(),
   };
   pushFateKnotsState(api, state, contentRegistry);
@@ -606,20 +602,16 @@ export function handleNpcBanter(api: RoomApi, payload: unknown) {
     return { success: false, message: commandMessage(locale, "invalidPacket") };
   }
 
+  const combat = state.combat ? asCombatState(state.combat) : null;
+
   state.npcBanter = {
     kind: "npc",
     seatId: speakerSeatId,
     phase: packet.phase || state.phase,
     text,
     stepId: normalizeText(packet.stepId) || state.currentStepId || null,
-    encounterId:
-      normalizeText(packet.encounterId) ||
-      normalizeText(asCombatState(state.combat).encounterId) ||
-      null,
-    turnId:
-      normalizeText(packet.turnId) ||
-      buildFateKnotsCombatTurnId(asCombatState(state.combat)) ||
-      null,
+    encounterId: normalizeText(packet.encounterId) || normalizeText(combat?.encounterId) || null,
+    turnId: normalizeText(packet.turnId) || (combat ? buildFateKnotsCombatTurnId(combat) : null),
     updatedAt: Date.now(),
   };
   pushFateKnotsState(api, state, contentRegistry);

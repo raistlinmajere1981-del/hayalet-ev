@@ -11,6 +11,7 @@ export type SlotBridgeAction =
   | "session.open"
   | "session.switch"
   | "room.command";
+export type SlotBridgeMessageTarget = SlotId | "us1";
 export type SlotBridgeConnectPolicy = "never" | "ensure" | "require-ready";
 export type SlotBridgeDelivery = "sync" | "async";
 export type SlotBridgeArtifactKind =
@@ -18,6 +19,17 @@ export type SlotBridgeArtifactKind =
   | "filesystem"
   | "archive-attachment"
   | "generated-image";
+export type SlotBridgeProtocolTextPosition = "before" | "after" | "replace";
+
+export interface SlotBridgeProtocolDescriptor {
+  room?: string;
+  scenario?: string;
+  protocolKey?: string;
+  fallbackTitle?: string | null;
+  preface?: string | null;
+  context?: Record<string, unknown> | null;
+  textPosition?: SlotBridgeProtocolTextPosition;
+}
 
 export interface SlotBridgeSessionRef {
   id?: string | null;
@@ -56,6 +68,7 @@ export interface SlotBridgeEnvelope {
   action: SlotBridgeAction;
   fromSlot?: CommandProvider;
   toSlot?: CommandProvider | null;
+  toSlots?: CommandProvider[] | null;
   replyToSlot?: CommandProvider | null;
   delivery?: SlotBridgeDelivery;
   wait?: boolean;

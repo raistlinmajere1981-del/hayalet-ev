@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-31T01:35:17.249Z",
+  "generatedAt": "2026-03-31T16:36:02.882Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 593,
-    "filesWithComments": 121,
-    "commentsIndexed": 307,
-    "fileLevelComments": 235,
+    "filesScanned": 596,
+    "filesWithComments": 122,
+    "commentsIndexed": 309,
+    "fileLevelComments": 237,
     "symbolLevelComments": 72,
     "prefixCounts": {
-      "none": 39,
+      "none": 40,
       "AI": 0,
-      "NOTE": 264,
+      "NOTE": 265,
       "WARNING": 4,
       "TODO": 0
     }
@@ -1122,6 +1122,41 @@
       ]
     },
     {
+      "path": "electron/rooms/workspace-room-build-support.ts",
+      "totalComments": 2,
+      "byKind": {
+        "note": 2
+      },
+      "byPrefix": {
+        "none": 1,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 21,
+          "endLine": 21,
+          "text": "NOTE: Packaged workspace room builds must execute the unpacked esbuild entry so its helper",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 22,
+          "endLine": 22,
+          "text": "binary stays spawnable outside app.asar.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
       "path": "electron/session-manager.ts",
       "totalComments": 1,
       "byKind": {
@@ -1190,8 +1225,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1150,
-          "endLine": 1150,
+          "startLine": 1171,
+          "endLine": 1171,
           "text": "NOTE: Inbox sync intentionally runs account-by-account to keep sidecar writes ordered.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1199,8 +1234,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1902,
-          "endLine": 1902,
+          "startLine": 1923,
+          "endLine": 1923,
           "text": "NOTE: Relay sync mutates archive and session state per message, so processing stays sequential.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1533,8 +1568,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 361,
-          "endLine": 361,
+          "startLine": 368,
+          "endLine": 368,
           "text": "NOTE: The hev-sender tag preserves the originating AI nickname so ai0 sync can restore the author.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1542,8 +1577,8 @@
         },
         {
           "kind": "note",
-          "startLine": 362,
-          "endLine": 362,
+          "startLine": 369,
+          "endLine": 369,
           "text": "NOTE: Keep the tag for future ai0 DB support even though the sync path does not consume it today.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1551,8 +1586,8 @@
         },
         {
           "kind": "note",
-          "startLine": 469,
-          "endLine": 469,
+          "startLine": 478,
+          "endLine": 478,
           "text": "NOTE: The hev-sender tag marks Assistant (ai0) as the sender so sync can restore the author.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4837,8 +4872,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 23,
-          "endLine": 23,
+          "startLine": 88,
+          "endLine": 88,
           "text": "NOTE: Extra fields used by server command utilities.",
           "prefix": "NOTE",
           "scopeType": "file",

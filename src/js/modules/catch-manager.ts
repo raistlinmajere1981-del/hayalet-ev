@@ -50,18 +50,18 @@ class CatchManagerClass {
       matches.forEach((match) => {
         const name = match.commandName;
         const argsRaw = match.args;
-        if (name === undefined || name === "") {
+        if (name === "") {
           return;
         }
         found.push({
           provider,
           command: name,
-          args: (argsRaw ?? "").trim(),
+          args: argsRaw.trim(),
           prefix,
           text,
           webUrl,
         });
-        const argsSuffix = argsRaw !== undefined && argsRaw !== "" ? " | " + argsRaw : "";
+        const argsSuffix = argsRaw !== "" ? " | " + argsRaw : "";
         Logger.infoT(
           LogCategory.CATCH_MANAGER,
           "app.logs.catchManager.commandFound",

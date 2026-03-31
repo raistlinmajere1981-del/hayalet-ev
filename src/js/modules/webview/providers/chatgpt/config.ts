@@ -85,7 +85,7 @@ export const config = {
   scrapeSelectors: {
     preferred: "[data-message-author-role]",
     fallback: ".message-bubble, .markdown.prose",
-    messageWrapper: '[data-testid="conversation-turn"]',
+    messageWrapper: '[data-testid="conversation-turn"], [data-message-id], [data-turn-id]',
     userWrapper: '[data-message-author-role="user"], .user-message-bubble-color',
     assistantWrapper: '[data-message-author-role="assistant"], .agent-turn',
   },

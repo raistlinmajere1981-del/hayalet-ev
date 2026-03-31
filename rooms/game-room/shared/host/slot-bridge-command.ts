@@ -36,9 +36,7 @@ export function buildRoomBridgeCommand(
   return `++cmd:${SLOT_BRIDGE_COMMAND}(${JSON.stringify(buildRoomBridgeEnvelope(commandName, payload))})`;
 }
 
-export function buildUs1RoomBridgeCommand(
-  options: Us1RoomBridgeCommandOptions
-): {
+export function buildUs1RoomBridgeCommand(options: Us1RoomBridgeCommandOptions): {
   roomId: string;
   featureId: string;
   action: "room.command";
@@ -53,7 +51,8 @@ export function buildUs1RoomBridgeCommand(
   const roomPayload = options.payload !== undefined ? { ...options.payload } : {};
 
   const matchId = readOptionalString(options.matchId) ?? readOptionalString(roomPayload["matchId"]);
-  const turnIndex = readOptionalInteger(options.turnIndex) ?? readOptionalInteger(roomPayload["turnIndex"]);
+  const turnIndex =
+    readOptionalInteger(options.turnIndex) ?? readOptionalInteger(roomPayload["turnIndex"]);
   const turnToken =
     readOptionalString(options.turnToken) ?? readOptionalString(roomPayload["turnToken"]);
   const boardHashBeforeMove =

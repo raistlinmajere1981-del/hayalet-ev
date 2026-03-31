@@ -66,12 +66,15 @@ export const aiChatRuntime = {
   slotBridge: async (payload: CommandPayload = {}): Promise<CommandHandlerResult> => {
     return (await slotBridgeHandler(payload)) as CommandHandlerResult;
   },
+  getCoreEngine: async () => {
+    return (await import("../core-engine.js")).CoreEngine;
+  },
 };
 
 export async function aiaiChatStartHandler(
   payload: CommandPayload = {}
 ): Promise<CommandHandlerResult> {
-  const { CoreEngine: coreEngine } = await import("../core-engine.js");
+  const coreEngine = await aiChatRuntime.getCoreEngine();
   const providerRaw = payload.provider ?? "ai1";
   const provider = providerRaw === "ai1" || providerRaw === "ai2" ? providerRaw : "ai1";
   const argsLabel = payload.args ?? "";
@@ -142,7 +145,7 @@ export async function aiaiChatStartHandler(
 export async function aiaiChatStopHandler(
   payload: CommandPayload = {}
 ): Promise<CommandHandlerResult> {
-  const { CoreEngine: coreEngine } = await import("../core-engine.js");
+  const coreEngine = await aiChatRuntime.getCoreEngine();
   const providerRaw = payload.provider ?? "AI";
 
   try {
@@ -253,7 +256,7 @@ export async function aiAssistantChatStartHandler(
 export async function aiAssistantChatStopHandler(
   payload: CommandPayload = {}
 ): Promise<CommandHandlerResult> {
-  const { CoreEngine: coreEngine } = await import("../core-engine.js");
+  const coreEngine = await aiChatRuntime.getCoreEngine();
   const providerRaw = payload.provider ?? "AI";
 
   try {
@@ -505,7 +508,7 @@ export async function assistantAISendHandler(
     if (RelayManager.isAIAssistantActive() === true) {
       const sourceSlot = RelayManager.getAIAssistantSourceSlot();
       if (sourceSlot === "ai1" || sourceSlot === "ai2") {
-        const { CoreEngine: coreEngine } = await import("../core-engine.js");
+        const coreEngine = await aiChatRuntime.getCoreEngine();
         await coreEngine.sendProtocol({
           room: "analyze",
           scenario: "ai-assistant-stop",

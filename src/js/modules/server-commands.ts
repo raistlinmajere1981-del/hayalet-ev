@@ -154,7 +154,8 @@ function checkCommandAccess(
   const providerCategory = resolveProviderCategory(provider);
   const commandDefinition = getCommandDefinition(commandName);
   const slotBridgeAction =
-    resolveCanonicalCommandName(commandName).toLowerCase() === SLOT_BRIDGE_COMMAND_NAME.toLowerCase()
+    resolveCanonicalCommandName(commandName).toLowerCase() ===
+    SLOT_BRIDGE_COMMAND_NAME.toLowerCase()
       ? resolveSlotBridgeActionFromPayload(payload)
       : null;
 
@@ -162,10 +163,7 @@ function checkCommandAccess(
     const allowedCategories =
       slotBridgeAction !== null
         ? getSlotBridgeActionCategories(slotBridgeAction)
-        : [
-            commandDefinition.category,
-            ...(commandDefinition.additionalCategories ?? []),
-          ];
+        : [commandDefinition.category, ...(commandDefinition.additionalCategories ?? [])];
 
     if (allowedCategories.includes(providerCategory) !== true) {
       if (providerCategory === "ai0") {
@@ -192,18 +190,16 @@ function checkCommandAccess(
   if (provider !== "") {
     const disabledCommands = getDisabledCommandsForProvider(provider);
     const commandKey = resolveCanonicalCommandName(commandName).toLowerCase();
-    const isDisabled = disabledCommands.some(
-      (command) => {
-        const normalized = resolveCanonicalCommandName(command).toLowerCase();
-        if (normalized === commandKey) {
-          return true;
-        }
-        if (slotBridgeAction === null) {
-          return false;
-        }
-        return normalized === `${commandKey}:${slotBridgeAction.toLowerCase()}`;
+    const isDisabled = disabledCommands.some((command) => {
+      const normalized = resolveCanonicalCommandName(command).toLowerCase();
+      if (normalized === commandKey) {
+        return true;
       }
-    );
+      if (slotBridgeAction === null) {
+        return false;
+      }
+      return normalized === `${commandKey}:${slotBridgeAction.toLowerCase()}`;
+    });
 
     if (isDisabled) {
       return {
@@ -348,8 +344,9 @@ const serverCommands = {
   },
 
   listByCategory(category: CommandCategory): string[] {
-    const builtIns = BUILTIN_COMMANDS.filter((command) =>
-      command.category === category || command.additionalCategories?.includes(category) === true
+    const builtIns = BUILTIN_COMMANDS.filter(
+      (command) =>
+        command.category === category || command.additionalCategories?.includes(category) === true
     ).map((command) => command.name);
 
     if (category !== "ai1-ai2") {
@@ -367,8 +364,7 @@ const serverCommands = {
     ).map((command) => ({
       name: command.name,
       category:
-        category !== undefined &&
-        command.additionalCategories?.includes(category) === true
+        category !== undefined && command.additionalCategories?.includes(category) === true
           ? category
           : command.category,
       isCustom: false,

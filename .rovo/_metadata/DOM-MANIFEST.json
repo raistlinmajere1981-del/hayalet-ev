@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-31T01:35:18.083Z",
+  "generatedAt": "2026-03-31T16:36:03.615Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 613,
-    "ids": 573,
+    "filesScanned": 616,
+    "ids": 574,
     "testIds": 15,
-    "querySelectors": 147,
-    "totalSelectors": 735
+    "querySelectors": 148,
+    "totalSelectors": 737
   },
   "lookup": {
     "id": {
@@ -361,6 +361,7 @@
       "protocol-editor-title": "#protocol-editor-title",
       "protocol-empty": "#protocol-empty",
       "protocol-list": "#protocol-list",
+      "protocol-rich-editor": "#protocol-rich-editor",
       "protocol-status": "#protocol-status",
       "protocol-tag-buttons": "#protocol-tag-buttons",
       "protocol-textarea": "#protocol-textarea",
@@ -635,6 +636,7 @@
       "ds_toast": ".ds-toast",
       "edit_btn": ".edit-btn",
       "files_header_div": ".files-header div",
+      "group_imagegen_image_id": ".group\\\\/imagegen-image, [id^=",
       "group_imagegen_image_id_image_group_imagegen_image_id_image_role_button_testid_i": ".group\\\\/imagegen-image, [id^=\"image-\"].group\\\\/imagegen-image, [id^=\"image-\"][role=\"button\"], [data-testid=\"image-gen-overlay-actions\"], img[src*=\"/backend-api/estuary/content?id=file_\"], img[alt^=\"Üretilen görsel:\"], img[alt^=\"Generated image:\"], img[alt*=\"generated image\" i]",
       "language_editor_side_card_head": ".language-editor-side-card__head",
       "load_more_btn": ".load-more-btn",

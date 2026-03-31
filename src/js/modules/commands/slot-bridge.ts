@@ -7,14 +7,18 @@ import {
   type SlotBridgeAttachmentDescriptor,
   type SlotBridgeConnectPolicy,
   type SlotBridgeEnvelope,
+  type SlotBridgeProtocolDescriptor,
   type SlotBridgeReply,
   type SlotBridgeResult,
   type SlotBridgeSessionRef,
 } from "@shared/index.js";
 import type { CoreEngine as CoreEngineInstance } from "../core-engine.js";
 import { AppState } from "../app-state.js";
+import { resolveComposedProtocolMessage } from "../protocol-message-composer.js";
+import { ProtocolHandler } from "../protocol-handler.js";
 import { RoomCommandRegistry } from "../rooms/room-command-registry.js";
 import { SlotController } from "../slot-controller.js";
+import { replaceProtocolTagsWithResolver } from "../../../../shared/protocol-tags.js";
 
 export const SLOT_BRIDGE_COMMAND_NAME = "SlotBridge";
 
@@ -32,14 +36,13 @@ export const SLOT_BRIDGE_ACTIONS = [
 export type SlotBridgeActionKey = (typeof SLOT_BRIDGE_ACTIONS)[number];
 export type SlotBridgeActionCategory = "ai0" | "ai1-ai2" | "us1";
 
-type SlotBridgeCoreEngineRef = Pick<CoreEngineInstance, "setConnection" | "sendBatch" | "sendMessage">;
+type SlotBridgeCoreEngineRef = Pick<
+  CoreEngineInstance,
+  "setConnection" | "sendBatch" | "sendMessage"
+>;
 
 interface SlotBridgeConversationListManagerRef {
-  refresh(options: {
-    silent?: boolean;
-    forceSelectId?: string;
-    provider?: string;
-  }): Promise<void>;
+  refresh(options: { silent?: boolean; forceSelectId?: string; provider?: string }): Promise<void>;
   updateSelection(
     conversationId: string,
     options?: { silent?: boolean; provider?: string | null }
@@ -59,10 +62,10 @@ const SLOT_BRIDGE_ACTION_SET = new Set<string>(SLOT_BRIDGE_ACTIONS);
 const SLOT_BRIDGE_TIMEOUT_MS = 45_000;
 
 const SLOT_BRIDGE_ACTION_CATEGORIES: Record<SlotBridgeActionKey, SlotBridgeActionCategory[]> = {
-  "message.send": ["ai0", "ai1-ai2"],
-  "message.sendWait": ["ai0", "ai1-ai2"],
-  "message.sendWithAttachments": ["ai0", "ai1-ai2"],
-  "file.send": ["ai0", "ai1-ai2"],
+  "message.send": ["ai0", "ai1-ai2", "us1"],
+  "message.sendWait": ["ai0", "ai1-ai2", "us1"],
+  "message.sendWithAttachments": ["ai0", "ai1-ai2", "us1"],
+  "file.send": ["ai0", "ai1-ai2", "us1"],
   "connection.ensure": ["ai0", "ai1-ai2"],
   "session.open": ["ai0", "ai1-ai2"],
   "session.switch": ["ai0", "ai1-ai2", "us1"],
@@ -111,10 +114,26 @@ function normalizeSlotId(value: unknown): "ai0" | "ai1" | "ai2" | null {
   return value === "ai0" || value === "ai1" || value === "ai2" ? value : null;
 }
 
-function normalizeConnectPolicy(
-  value: unknown,
-  force: boolean
-): SlotBridgeConnectPolicy {
+function normalizeMessageTarget(value: unknown): "ai0" | "ai1" | "ai2" | "us1" | null {
+  return value === "us1" ? "us1" : normalizeSlotId(value);
+}
+
+function readCommandProviderArray(value: unknown): CommandProvider[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const next: CommandProvider[] = [];
+  value.forEach((item) => {
+    const normalized = normalizeCommandProvider(item);
+    if (normalized !== null && next.includes(normalized) !== true) {
+      next.push(normalized);
+    }
+  });
+  return next;
+}
+
+function normalizeConnectPolicy(value: unknown, force: boolean): SlotBridgeConnectPolicy {
   if (value === "never" || value === "ensure" || value === "require-ready") {
     return value;
   }
@@ -171,9 +190,7 @@ function toAttachmentDescriptor(value: unknown): SlotBridgeAttachmentDescriptor 
   }
 
   const name =
-    typeof value["name"] === "string" && value["name"].trim() !== ""
-      ? value["name"].trim()
-      : "";
+    typeof value["name"] === "string" && value["name"].trim() !== "" ? value["name"].trim() : "";
   if (name === "") {
     return null;
   }
@@ -188,14 +205,14 @@ function toAttachmentDescriptor(value: unknown): SlotBridgeAttachmentDescriptor 
   const ref = typeof value["ref"] === "string" ? value["ref"].trim() : "";
   const path = typeof value["path"] === "string" ? value["path"].trim() : "";
   const url = typeof value["url"] === "string" ? value["url"].trim() : "";
-  const archivePath =
-    typeof value["archivePath"] === "string" ? value["archivePath"].trim() : "";
+  const archivePath = typeof value["archivePath"] === "string" ? value["archivePath"].trim() : "";
   const mimeType = typeof value["mimeType"] === "string" ? value["mimeType"].trim() : "";
   const sourceSlot = normalizeSlotId(value["sourceSlot"]);
   const conversationId =
     typeof value["conversationId"] === "string" ? value["conversationId"].trim() : "";
   const messageId = typeof value["messageId"] === "string" ? value["messageId"].trim() : "";
-  const size = typeof value["size"] === "number" && Number.isFinite(value["size"]) ? value["size"] : undefined;
+  const size =
+    typeof value["size"] === "number" && Number.isFinite(value["size"]) ? value["size"] : undefined;
 
   return {
     name,
@@ -221,6 +238,62 @@ function readAttachments(value: unknown): SlotBridgeAttachmentDescriptor[] {
     const descriptor = toAttachmentDescriptor(item);
     return descriptor !== null ? [descriptor] : [];
   });
+}
+
+function readProtocolDescriptor(
+  envelope: SlotBridgeEnvelope
+): SlotBridgeProtocolDescriptor | null {
+  const actionPayload = isRecord(envelope.payload) ? envelope.payload : {};
+  const protocolPayload = isRecord(actionPayload["protocol"]) ? actionPayload["protocol"] : {};
+  const source = Object.keys(protocolPayload).length > 0 ? protocolPayload : actionPayload;
+
+  const room =
+    typeof source["room"] === "string" && source["room"].trim() !== "" ? source["room"].trim() : "";
+  const scenario =
+    typeof source["scenario"] === "string" && source["scenario"].trim() !== ""
+      ? source["scenario"].trim()
+      : "";
+  const protocolKey =
+    typeof source["protocolKey"] === "string" && source["protocolKey"].trim() !== ""
+      ? source["protocolKey"].trim()
+      : "";
+  const fallbackTitle =
+    typeof source["fallbackTitle"] === "string" && source["fallbackTitle"].trim() !== ""
+      ? source["fallbackTitle"].trim()
+      : typeof source["title"] === "string" && source["title"].trim() !== ""
+        ? source["title"].trim()
+        : "";
+  const preface =
+    typeof source["preface"] === "string" && source["preface"].trim() !== ""
+      ? source["preface"].trim()
+      : null;
+  const textPosition =
+    source["textPosition"] === "before" ||
+    source["textPosition"] === "after" ||
+    source["textPosition"] === "replace"
+      ? source["textPosition"]
+      : undefined;
+  const context = isRecord(source["context"]) ? source["context"] : null;
+
+  if (
+    room === "" &&
+    scenario === "" &&
+    protocolKey === "" &&
+    fallbackTitle === "" &&
+    preface === null
+  ) {
+    return null;
+  }
+
+  return {
+    ...(room !== "" ? { room } : {}),
+    ...(scenario !== "" ? { scenario } : {}),
+    ...(protocolKey !== "" ? { protocolKey } : {}),
+    ...(fallbackTitle !== "" ? { fallbackTitle } : {}),
+    ...(preface !== null ? { preface } : {}),
+    ...(context !== null ? { context } : {}),
+    ...(textPosition !== undefined ? { textPosition } : {}),
+  };
 }
 
 function buildActionPayload(
@@ -263,7 +336,11 @@ function normalizeEnvelope(payload: CommandPayload = {}): SlotBridgeEnvelope {
   const parsedArgs = parseJsonRecord(typeof payload.args === "string" ? payload.args : "") ?? {};
   const directPayload = isRecord(payload["payload"]) ? payload["payload"] : {};
   const rawSessionRef =
-    parsedArgs["sessionRef"] ?? parsedArgs["session"] ?? payload["sessionRef"] ?? payload["session"] ?? null;
+    parsedArgs["sessionRef"] ??
+    parsedArgs["session"] ??
+    payload["sessionRef"] ??
+    payload["session"] ??
+    null;
   const fromSlot =
     normalizeCommandProvider(parsedArgs["fromSlot"]) ??
     normalizeCommandProvider(payload["fromSlot"]) ??
@@ -280,6 +357,14 @@ function normalizeEnvelope(payload: CommandPayload = {}): SlotBridgeEnvelope {
     normalizeCommandProvider(parsedArgs["replyToSlot"]) ??
     normalizeCommandProvider(payload["replyToSlot"]) ??
     fromSlot;
+  const toSlots = readCommandProviderArray(
+    parsedArgs["toSlots"] ??
+      parsedArgs["targets"] ??
+      payload["toSlots"] ??
+      payload["targets"] ??
+      directPayload["toSlots"] ??
+      directPayload["targets"]
+  );
   const force = parsedArgs["force"] === true || payload["force"] === true;
   const action =
     normalizeSlotBridgeAction(parsedArgs["action"]) ??
@@ -294,14 +379,15 @@ function normalizeEnvelope(payload: CommandPayload = {}): SlotBridgeEnvelope {
           ? Math.trunc(payload["version"])
           : 1,
     reqId:
-      (typeof parsedArgs["reqId"] === "string" && parsedArgs["reqId"].trim() !== ""
+      typeof parsedArgs["reqId"] === "string" && parsedArgs["reqId"].trim() !== ""
         ? parsedArgs["reqId"].trim()
         : typeof payload["reqId"] === "string" && payload["reqId"].trim() !== ""
           ? payload["reqId"].trim()
-          : generateUniqueId("slotbridge")),
+          : generateUniqueId("slotbridge"),
     action,
     fromSlot,
     toSlot,
+    ...(toSlots.length > 0 ? { toSlots } : {}),
     replyToSlot,
     delivery:
       parsedArgs["delivery"] === "sync" || parsedArgs["delivery"] === "async"
@@ -363,10 +449,7 @@ function buildErrorResult(
   });
 }
 
-function readActionText(
-  envelope: SlotBridgeEnvelope,
-  payload: CommandPayload
-): string {
+function readActionText(envelope: SlotBridgeEnvelope, payload: CommandPayload): string {
   const actionPayload = isRecord(envelope.payload) ? envelope.payload : {};
   const candidates = [
     actionPayload["text"],
@@ -380,6 +463,76 @@ function readActionText(
     }
   }
   return "";
+}
+
+function replaceProtocolTags(text: string): string {
+  return replaceProtocolTagsWithResolver(text, (provider) => AppState.getNickname(provider));
+}
+
+async function resolveProtocolActionText(envelope: SlotBridgeEnvelope): Promise<string> {
+  const protocol = readProtocolDescriptor(envelope);
+  if (protocol === null) {
+    return "";
+  }
+
+  const descriptor = ProtocolHandler.resolveDescriptor({
+    context: protocol.context ?? {},
+    fallbackTitle: protocol.fallbackTitle ?? "",
+    ...(protocol.room !== undefined ? { room: protocol.room } : {}),
+    ...(protocol.scenario !== undefined ? { scenario: protocol.scenario } : {}),
+    ...(protocol.protocolKey !== undefined ? { protocolKey: protocol.protocolKey } : {}),
+  });
+  if (descriptor === null) {
+    return "";
+  }
+
+  const resolved = await resolveComposedProtocolMessage({
+    fallbackTitle: descriptor.fallbackTitle,
+    ...(descriptor.protocolKey !== undefined ? { protocolKey: descriptor.protocolKey } : {}),
+    ...(protocol.preface !== undefined ? { preface: protocol.preface } : {}),
+  });
+  return replaceProtocolTags(resolved.message);
+}
+
+function mergeActionText(
+  text: string,
+  protocolText: string,
+  textPosition: SlotBridgeProtocolDescriptor["textPosition"] = "after"
+): string {
+  const plain = text.trim();
+  const protocol = protocolText.trim();
+  if (protocol === "") {
+    return plain;
+  }
+  if (plain === "" || textPosition === "replace") {
+    return protocol;
+  }
+  return textPosition === "before" ? `${plain}\n\n${protocol}` : `${protocol}\n\n${plain}`;
+}
+
+async function composeActionText(
+  envelope: SlotBridgeEnvelope,
+  payload: CommandPayload
+): Promise<string> {
+  const protocol = readProtocolDescriptor(envelope);
+  const plainText = readActionText(envelope, payload);
+  if (protocol === null) {
+    return plainText;
+  }
+
+  const protocolText = await resolveProtocolActionText(envelope);
+  return mergeActionText(plainText, protocolText, protocol.textPosition ?? "after");
+}
+
+function readActionPage(envelope: SlotBridgeEnvelope, payload: CommandPayload): string {
+  const actionPayload = isRecord(envelope.payload) ? envelope.payload : {};
+  const candidates = [actionPayload["page"], payload["page"]];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim() !== "") {
+      return candidate.trim();
+    }
+  }
+  return `slot-bridge:${envelope.action}`;
 }
 
 function buildRequestMarker(reqId: string | undefined): string {
@@ -431,6 +584,41 @@ async function getWebviewManager(): Promise<SlotBridgeWebviewManagerRef> {
   return await slotBridgeRuntime.getWebviewManager();
 }
 
+type UnifiedMessageTarget = "ai0" | "ai1" | "ai2" | "us1";
+
+type ResolvedSendAttachment = {
+  name: string;
+  path: string;
+  mimeType?: string;
+};
+
+function readMessageTargets(envelope: SlotBridgeEnvelope): UnifiedMessageTarget[] {
+  const direct = normalizeMessageTarget(envelope.toSlot);
+  const list = (envelope.toSlots ?? [])
+    .map((item) => normalizeMessageTarget(item))
+    .filter((item): item is UnifiedMessageTarget => item !== null);
+  const next = direct !== null ? [direct, ...list] : [...list];
+  return next.filter((item, index) => next.indexOf(item) === index);
+}
+
+function getElectronApi():
+  | {
+      us1SendMessage?: (params: Record<string, unknown>) => Promise<unknown>;
+      us1SyncMessages?: (params?: Record<string, unknown>) => Promise<unknown>;
+      dbGetMessages?: (query: Record<string, unknown>) => Promise<unknown>;
+      dbGetAttachments?: (query: Record<string, unknown>) => Promise<unknown>;
+    }
+  | undefined {
+  return window.electronAPI as
+    | {
+        us1SendMessage?: (params: Record<string, unknown>) => Promise<unknown>;
+        us1SyncMessages?: (params?: Record<string, unknown>) => Promise<unknown>;
+        dbGetMessages?: (query: Record<string, unknown>) => Promise<unknown>;
+        dbGetAttachments?: (query: Record<string, unknown>) => Promise<unknown>;
+      }
+    | undefined;
+}
+
 async function ensureConnected(
   slot: "ai0" | "ai1" | "ai2",
   envelope: SlotBridgeEnvelope
@@ -449,6 +637,19 @@ async function ensureConnected(
   }
 
   return { success: false, message: `${slot.toUpperCase()} is offline` };
+}
+
+async function ensureMessageTarget(
+  target: UnifiedMessageTarget,
+  envelope: SlotBridgeEnvelope
+): Promise<{ success: boolean; message?: string }> {
+  if (target === "us1") {
+    return AppState.isUs1Connected() === true
+      ? { success: true }
+      : { success: false, message: "US1 is offline" };
+  }
+
+  return await ensureConnected(target, envelope);
 }
 
 interface NormalizedReplyMessage {
@@ -470,9 +671,9 @@ function normalizeReplyMessage(value: unknown): NormalizedReplyMessage | null {
   }
 
   const textCandidates = [value["text"], value["content"]];
-  const text = textCandidates.find(
-    (candidate): candidate is string => typeof candidate === "string"
-  )?.trim();
+  const text = textCandidates
+    .find((candidate): candidate is string => typeof candidate === "string")
+    ?.trim();
   const author = typeof value["author"] === "string" ? value["author"].trim() : "";
 
   return {
@@ -484,20 +685,15 @@ function normalizeReplyMessage(value: unknown): NormalizedReplyMessage | null {
 }
 
 async function listConversationMessages(
-  slot: CommandProvider,
+  slot: UnifiedMessageTarget,
   conversationId: string | null
 ): Promise<NormalizedReplyMessage[]> {
-  const normalizedSlot = slot === "ai0" || slot === "ai1" || slot === "ai2" || slot === "us1" ? slot : null;
-  if (normalizedSlot === null) {
-    return [];
-  }
-
-  const accountId = AppState.getArchiveAccountIdForProvider(normalizedSlot);
+  const accountId = AppState.getArchiveAccountIdForProvider(slot);
   if (accountId === null || conversationId === null || conversationId === "") {
     return [];
   }
 
-  const electronApi = window.electronAPI;
+  const electronApi = getElectronApi();
   if (electronApi === undefined) {
     return [];
   }
@@ -576,20 +772,15 @@ function normalizeReplyAttachment(value: unknown): SlotBridgeAttachmentDescripto
 }
 
 async function listConversationAttachments(
-  slot: CommandProvider,
+  slot: UnifiedMessageTarget,
   conversationId: string | null
 ): Promise<SlotBridgeAttachmentDescriptor[]> {
-  const normalizedSlot = slot === "ai0" || slot === "ai1" || slot === "ai2" || slot === "us1" ? slot : null;
-  if (normalizedSlot === null) {
-    return [];
-  }
-
-  const accountId = AppState.getArchiveAccountIdForProvider(normalizedSlot);
+  const accountId = AppState.getArchiveAccountIdForProvider(slot);
   if (accountId === null || conversationId === null || conversationId === "") {
     return [];
   }
 
-  const raw = await window.electronAPI?.["dbGetAttachments"]?.({
+  const raw = await getElectronApi()?.["dbGetAttachments"]?.({
     accountId,
     conversationId,
   });
@@ -603,7 +794,7 @@ async function listConversationAttachments(
 }
 
 async function readLatestArchivedReply(
-  slot: "ai0" | "ai1" | "ai2",
+  slot: UnifiedMessageTarget,
   conversationId: string | null,
   reqId?: string
 ): Promise<SlotBridgeReply | null> {
@@ -615,12 +806,13 @@ async function readLatestArchivedReply(
           .map((message, index) =>
             message.role === "user" && message.text.includes(marker) ? index : -1
           )
-          .reduce((latestIndex, currentIndex) =>
-            currentIndex > latestIndex ? currentIndex : latestIndex,
-          -1)
+          .reduce(
+            (latestIndex, currentIndex) =>
+              currentIndex > latestIndex ? currentIndex : latestIndex,
+            -1
+          )
       : -1;
-  const candidateMessages =
-    requestIndex >= 0 ? messages.slice(requestIndex + 1) : messages;
+  const candidateMessages = requestIndex >= 0 ? messages.slice(requestIndex + 1) : messages;
   const latestAssistant = [...candidateMessages]
     .reverse()
     .find((message) => message.role === "assistant");
@@ -636,37 +828,74 @@ async function readLatestArchivedReply(
   return {
     text: latestAssistant.text,
     slot,
-    provider: AppState.getProviderIdForSlot(slot),
+    provider: AppState.getProviderIdForSlot(slot) ?? slot,
     conversationId,
     messageId: latestAssistant.id,
     attachments,
   };
 }
 
+async function syncReplyTarget(
+  target: UnifiedMessageTarget,
+  envelope: SlotBridgeEnvelope,
+  conversationId: string | null
+): Promise<{ conversationId: string | null; generatedImagePendingCount: number }> {
+  if (target === "us1") {
+    const electronApi = getElectronApi();
+    const localSessionId =
+      envelope.sessionRef?.id?.trim() ??
+      envelope.sessionRef?.conversationId?.trim() ??
+      conversationId ??
+      null;
+    const syncResult = await electronApi?.us1SyncMessages?.({
+      localSessionId,
+    });
+    const record = isRecord(syncResult) ? syncResult : {};
+    return {
+      conversationId:
+        typeof record["conversationId"] === "string" && record["conversationId"] !== ""
+          ? record["conversationId"]
+          : conversationId,
+      generatedImagePendingCount: 0,
+    };
+  }
+
+  const webviewManager = await getWebviewManager();
+  const syncResultRaw = await webviewManager.syncProvider(target, { from: "manual" });
+  const syncResult = isRecord(syncResultRaw) ? syncResultRaw : null;
+  return {
+    conversationId:
+      syncResult !== null &&
+      typeof syncResult["conversationId"] === "string" &&
+      syncResult["conversationId"] !== ""
+        ? syncResult["conversationId"]
+        : conversationId,
+    generatedImagePendingCount:
+      syncResult !== null && typeof syncResult["generatedImagePendingCount"] === "number"
+        ? Math.max(0, Math.trunc(syncResult["generatedImagePendingCount"]))
+        : 0,
+  };
+}
+
 async function waitForReply(
   envelope: SlotBridgeEnvelope,
-  targetSlot: "ai0" | "ai1" | "ai2",
+  targetSlot: UnifiedMessageTarget,
   previousReply: SlotBridgeReply | null
 ): Promise<SlotBridgeResult> {
   const deadline = Date.now() + readTimeoutMs(envelope.timeoutMs);
-  let conversationId = envelope.sessionRef?.conversationId ?? null;
-
-  while (Date.now() <= deadline) {
-    const webviewManager = await getWebviewManager();
-    const syncResultRaw = await webviewManager.syncProvider(targetSlot, { from: "manual" });
-    const syncResult = isRecord(syncResultRaw) ? syncResultRaw : null;
-    if (syncResult !== null && typeof syncResult["conversationId"] === "string" && syncResult["conversationId"] !== "") {
-      conversationId = syncResult["conversationId"];
+  const pollReply = async (conversationId: string | null): Promise<SlotBridgeResult> => {
+    if (Date.now() > deadline) {
+      return buildErrorResult(envelope, "TARGET_TIMEOUT", "Timed out while waiting for reply");
     }
 
-    const reply = await readLatestArchivedReply(targetSlot, conversationId, envelope.reqId);
+    const syncResult = await syncReplyTarget(targetSlot, envelope, conversationId);
+    const nextConversationId = syncResult.conversationId;
+
+    const reply = await readLatestArchivedReply(targetSlot, nextConversationId, envelope.reqId);
     const replyChanged =
       reply !== null &&
       (previousReply?.messageId === undefined || previousReply.messageId !== reply.messageId);
-    const pendingGeneratedImages =
-      syncResult !== null && typeof syncResult["generatedImagePendingCount"] === "number"
-        ? Math.max(0, Math.trunc(syncResult["generatedImagePendingCount"]))
-        : 0;
+    const pendingGeneratedImages = syncResult.generatedImagePendingCount;
     const hasReadableReply =
       reply !== null && ((reply.text ?? "").trim() !== "" || (reply.attachments?.length ?? 0) > 0);
 
@@ -675,16 +904,17 @@ async function waitForReply(
         reply,
         session: {
           ...(envelope.sessionRef ?? {}),
-          ...(conversationId !== null ? { conversationId } : {}),
+          ...(nextConversationId !== null ? { conversationId: nextConversationId } : {}),
         },
         artifacts: reply.attachments ?? [],
       });
     }
 
     await sleep(pendingGeneratedImages > 0 ? 900 : 500);
-  }
+    return await pollReply(nextConversationId);
+  };
 
-  return buildErrorResult(envelope, "TARGET_TIMEOUT", "Timed out while waiting for reply");
+  return await pollReply(envelope.sessionRef?.conversationId ?? null);
 }
 
 function collectReplyForwardAttachments(
@@ -711,7 +941,7 @@ function collectReplyForwardAttachments(
   });
 }
 
-function buildReplyForwardText(reply: SlotBridgeReply, targetSlot: "ai0" | "ai1" | "ai2"): string {
+function buildReplyForwardText(reply: SlotBridgeReply, targetSlot: UnifiedMessageTarget): string {
   const text = typeof reply.text === "string" ? reply.text.trim() : "";
   const senderTag = `<!-- hev-sender:${targetSlot} -->`;
   return text !== "" ? `${text}\n${senderTag}` : senderTag;
@@ -719,7 +949,7 @@ function buildReplyForwardText(reply: SlotBridgeReply, targetSlot: "ai0" | "ai1"
 
 async function maybeForwardReplyToOrigin(
   envelope: SlotBridgeEnvelope,
-  targetSlot: "ai0" | "ai1" | "ai2",
+  targetSlot: UnifiedMessageTarget,
   reply: SlotBridgeReply | null
 ): Promise<{ success: boolean; forwarded: boolean; message?: string }> {
   const replyToSlot = normalizeSlotId(envelope.replyToSlot);
@@ -758,7 +988,8 @@ async function maybeForwardReplyToOrigin(
     : {
         success: false,
         forwarded: false,
-        message: sendResult.message ?? `Reply could not be forwarded to ${replyToSlot.toUpperCase()}`,
+        message:
+          sendResult.message ?? `Reply could not be forwarded to ${replyToSlot.toUpperCase()}`,
       };
 }
 
@@ -805,70 +1036,196 @@ async function resolveArchiveAttachmentReference(
 
 async function resolveSendAttachmentPaths(
   envelope: SlotBridgeEnvelope
-): Promise<Array<{ name: string; path: string }>> {
+): Promise<ResolvedSendAttachment[]> {
   const fromSlot = envelope.fromSlot;
   const internalFilesystemAllowed =
     fromSlot === "room-ui" || fromSlot === "system" || fromSlot === "user";
   const attachments = Array.isArray(envelope.attachments) ? envelope.attachments : [];
-  const resolved: Array<{ name: string; path: string }> = [];
+  return await Promise.all(
+    attachments.map(async (attachment) => {
+      if (
+        typeof attachment.path === "string" &&
+        attachment.path !== "" &&
+        internalFilesystemAllowed
+      ) {
+        return {
+          name: attachment.name,
+          path: attachment.path,
+          ...(typeof attachment.mimeType === "string" && attachment.mimeType !== ""
+            ? { mimeType: attachment.mimeType }
+            : {}),
+        };
+      }
 
-  for (const attachment of attachments) {
-    if (typeof attachment.path === "string" && attachment.path !== "" && internalFilesystemAllowed) {
-      resolved.push({ name: attachment.name, path: attachment.path });
-      continue;
-    }
+      const archivePath = await resolveArchiveAttachmentReference(attachment);
+      if (archivePath !== null && archivePath !== "") {
+        return {
+          name: attachment.name,
+          path: archivePath,
+          ...(typeof attachment.mimeType === "string" && attachment.mimeType !== ""
+            ? { mimeType: attachment.mimeType }
+            : {}),
+        };
+      }
 
-    const archivePath = await resolveArchiveAttachmentReference(attachment);
-    if (archivePath !== null && archivePath !== "") {
-      resolved.push({ name: attachment.name, path: archivePath });
-      continue;
-    }
+      throw new Error(`Attachment reference required for ${attachment.name}`);
+    })
+  );
+}
 
-    throw new Error(`Attachment reference required for ${attachment.name}`);
+async function sendUs1Message(
+  envelope: SlotBridgeEnvelope,
+  text: string,
+  attachments: ResolvedSendAttachment[]
+): Promise<SlotBridgeResult> {
+  const electronApi = getElectronApi();
+  const send = electronApi?.us1SendMessage;
+  if (typeof send !== "function") {
+    return buildErrorResult(envelope, "TARGET_UNREACHABLE", "US1 transport is unavailable");
   }
 
-  return resolved;
+  const actionPayload = isRecord(envelope.payload) ? envelope.payload : {};
+  const resultRaw = await send({
+    text,
+    localSessionId:
+      envelope.sessionRef?.id?.trim() ?? envelope.sessionRef?.conversationId?.trim() ?? null,
+    attachments: attachments.map((attachment) => ({
+      path: attachment.path,
+      name: attachment.name,
+      ...(attachment.mimeType !== undefined ? { mimeType: attachment.mimeType } : {}),
+    })),
+    ...(isRecord(actionPayload["roomEvent"]) ? { roomEvent: actionPayload["roomEvent"] } : {}),
+    ...(isRecord(actionPayload["roomCommand"])
+      ? { roomCommand: actionPayload["roomCommand"] }
+      : {}),
+  });
+  const result = isRecord(resultRaw) ? resultRaw : {};
+  if (result["success"] !== true) {
+    return buildErrorResult(
+      envelope,
+      "SEND_FAILED",
+      typeof result["error"] === "string" ? result["error"] : "US1 message could not be sent"
+    );
+  }
+
+  const session = {
+    ...(envelope.sessionRef ?? {}),
+    ...(typeof result["localSessionId"] === "string" && result["localSessionId"] !== ""
+      ? { id: result["localSessionId"] }
+      : {}),
+    ...(typeof result["conversationId"] === "string" && result["conversationId"] !== ""
+      ? { conversationId: result["conversationId"] }
+      : {}),
+  };
+
+  return buildResult(envelope, {
+    session,
+    data: {
+      ...(typeof result["remoteUserId"] === "string" && result["remoteUserId"] !== ""
+        ? { remoteUserId: result["remoteUserId"] }
+        : {}),
+      ...(typeof result["transportMessageId"] === "string" && result["transportMessageId"] !== ""
+        ? { transportMessageId: result["transportMessageId"] }
+        : {}),
+      ...(typeof result["archiveMessageId"] === "string" && result["archiveMessageId"] !== ""
+        ? { archiveMessageId: result["archiveMessageId"] }
+        : {}),
+    },
+  });
+}
+
+async function sendAiTargets(
+  envelope: SlotBridgeEnvelope,
+  targets: Array<"ai0" | "ai1" | "ai2">,
+  text: string,
+  attachments: ResolvedSendAttachment[],
+  page: string
+): Promise<SlotBridgeResult> {
+  const coreEngine = await getCoreEngine();
+  const sendResult =
+    attachments.length > 0 || targets.length > 1
+      ? await coreEngine.sendBatch({
+          targets,
+          text,
+          page,
+          attachments: attachments.map((attachment) => ({
+            name: attachment.name,
+            path: attachment.path,
+          })),
+        })
+      : await coreEngine.sendMessage({
+          text,
+          page,
+          ...(targets[0] !== undefined ? { provider: targets[0] } : {}),
+        });
+
+  return sendResult.success === true
+    ? buildResult(envelope, {
+        session: envelope.sessionRef ?? null,
+      })
+    : buildErrorResult(
+        envelope,
+        "SEND_FAILED",
+        sendResult.message ?? "Message could not be sent"
+      );
 }
 
 async function runMessageAction(
   envelope: SlotBridgeEnvelope,
   payload: CommandPayload
 ): Promise<SlotBridgeResult> {
-  const targetSlot = normalizeSlotId(envelope.toSlot);
-  if (targetSlot === null) {
+  const targets = readMessageTargets(envelope);
+  if (targets.length === 0) {
     return buildErrorResult(envelope, "TARGET_REQUIRED", "Target slot is required");
   }
 
-  const ready = await ensureConnected(targetSlot, envelope);
-  if (ready.success !== true) {
+  if ((envelope.wait === true || envelope.action === "message.sendWait") && targets.length !== 1) {
     return buildErrorResult(
       envelope,
-      ready.message?.includes("offline") === true ? "TARGET_UNREACHABLE" : "CONNECT_FAILED",
-      ready.message ?? "Target is not reachable"
+      "WAIT_SINGLE_TARGET_REQUIRED",
+      "message.sendWait requires exactly one target"
     );
+  }
+
+  const readyResults = await Promise.all(
+    targets.map(async (target) => ({
+      target,
+      ready: await ensureMessageTarget(target, envelope),
+    }))
+  );
+  for (const { ready } of readyResults) {
+    if (ready.success !== true) {
+      return buildErrorResult(
+        envelope,
+        ready.message?.includes("offline") === true ? "TARGET_UNREACHABLE" : "CONNECT_FAILED",
+        ready.message ?? "Target is not reachable"
+      );
+    }
   }
 
   let previousReply: SlotBridgeReply | null = null;
+  const primaryTarget = targets[0] ?? null;
   if (envelope.wait === true || envelope.action === "message.sendWait") {
-    const webviewManager = await getWebviewManager();
-    const baselineSyncRaw = await webviewManager.syncProvider(targetSlot, { from: "manual" });
-    const baselineSync = isRecord(baselineSyncRaw) ? baselineSyncRaw : null;
-    const baselineConversationId =
-      baselineSync !== null && typeof baselineSync["conversationId"] === "string"
-        ? baselineSync["conversationId"]
-        : envelope.sessionRef?.conversationId ?? null;
-    previousReply = await readLatestArchivedReply(
-      targetSlot,
-      baselineConversationId,
-      envelope.reqId
-    );
+    if (primaryTarget !== null) {
+      const baselineSync = await syncReplyTarget(
+        primaryTarget,
+        envelope,
+        envelope.sessionRef?.conversationId ?? envelope.sessionRef?.id ?? null
+      );
+      previousReply = await readLatestArchivedReply(
+        primaryTarget,
+        baselineSync.conversationId,
+        envelope.reqId
+      );
+    }
   }
 
-  const text = appendRequestMarker(readActionText(envelope, payload), envelope);
-  let attachments: Array<{ name: string; path: string }> = [];
+  const text = appendRequestMarker(await composeActionText(envelope, payload), envelope);
+  const page = readActionPage(envelope, payload);
+  let attachments: ResolvedSendAttachment[] = [];
   if (
-    envelope.action === "message.sendWithAttachments" ||
-    envelope.action === "file.send"
+    Array.isArray(envelope.attachments) &&
+    envelope.attachments.length > 0
   ) {
     try {
       attachments = await resolveSendAttachmentPaths(envelope);
@@ -886,42 +1243,50 @@ async function runMessageAction(
     return buildErrorResult(envelope, "ATTACHMENT_REQUIRED", "At least one attachment is required");
   }
 
-  if ((envelope.action === "message.send" || envelope.action === "message.sendWait") && text === "") {
+  if (text === "" && attachments.length === 0) {
     return buildErrorResult(envelope, "MESSAGE_REQUIRED", "Text is required for this action");
   }
 
-  const coreEngine = await getCoreEngine();
-  const sendResult =
-    attachments.length > 0
-      ? await coreEngine.sendBatch({
-          targets: [targetSlot],
-          text,
-          page: `slot-bridge:${envelope.action}`,
-          attachments,
-        })
-      : await coreEngine.sendMessage({
-          provider: targetSlot,
-          text,
-          page: `slot-bridge:${envelope.action}`,
-        });
+  const aiTargets = targets.filter(
+    (target): target is "ai0" | "ai1" | "ai2" => target !== "us1"
+  );
+  const us1Targets = targets.filter((target): target is "us1" => target === "us1");
 
-  if (sendResult.success !== true) {
-    return buildErrorResult(
-      envelope,
-      "SEND_FAILED",
-      sendResult.message ?? "Message could not be sent"
-    );
+  if (aiTargets.length > 0) {
+    const aiResult = await sendAiTargets(envelope, aiTargets, text, attachments, page);
+    if (aiResult.success !== true) {
+      return aiResult;
+    }
+  }
+
+  let us1Result: SlotBridgeResult | null = null;
+  if (us1Targets.length > 0) {
+    if (us1Targets.length > 1 || targets.length > aiTargets.length + 1) {
+      return buildErrorResult(
+        envelope,
+        "TARGET_UNSUPPORTED",
+        "US1 may only be addressed once per unified send action"
+      );
+    }
+    us1Result = await sendUs1Message(envelope, text, attachments);
+    if (us1Result.success !== true) {
+      return us1Result;
+    }
   }
 
   if (envelope.wait === true || envelope.action === "message.sendWait") {
-    const waitResult = await waitForReply(envelope, targetSlot, previousReply);
+    if (primaryTarget === null) {
+      return buildErrorResult(envelope, "TARGET_REQUIRED", "Target slot is required");
+    }
+
+    const waitResult = await waitForReply(envelope, primaryTarget, previousReply);
     if (waitResult.success !== true) {
       return waitResult;
     }
 
     const forwardResult = await maybeForwardReplyToOrigin(
       envelope,
-      targetSlot,
+      primaryTarget,
       waitResult.reply ?? null
     );
     if (forwardResult.success !== true) {
@@ -940,14 +1305,12 @@ async function runMessageAction(
       data: {
         ...baseData,
         replyForwarded: forwardResult.forwarded,
-        replyForwardSlot: forwardResult.forwarded ? envelope.replyToSlot ?? null : null,
+        replyForwardSlot: forwardResult.forwarded ? (envelope.replyToSlot ?? null) : null,
       },
     });
   }
 
-  return buildResult(envelope, {
-    session: envelope.sessionRef ?? null,
-  });
+  return us1Result ?? buildResult(envelope, { session: envelope.sessionRef ?? null });
 }
 
 async function runConnectionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridgeResult> {
@@ -969,34 +1332,33 @@ async function runConnectionAction(envelope: SlotBridgeEnvelope): Promise<SlotBr
       );
 }
 
-async function runRoomCommandAction(
-  envelope: SlotBridgeEnvelope
-): Promise<SlotBridgeResult> {
+async function runRoomCommandAction(envelope: SlotBridgeEnvelope): Promise<SlotBridgeResult> {
   const actionPayload = isRecord(envelope.payload) ? envelope.payload : {};
   const commandNameCandidates = [
     actionPayload["commandName"],
     actionPayload["actionId"],
     actionPayload["roomCommand"],
   ];
-  const commandName = commandNameCandidates.find(
-    (candidate): candidate is string => typeof candidate === "string" && candidate.trim() !== ""
-  )?.trim();
+  const commandName = commandNameCandidates
+    .find(
+      (candidate): candidate is string => typeof candidate === "string" && candidate.trim() !== ""
+    )
+    ?.trim();
 
   if (commandName === undefined) {
     return buildErrorResult(envelope, "ROOM_COMMAND_REQUIRED", "Room command is required");
   }
 
   const provider = envelope.fromSlot ?? "system";
-  const roomPayload =
-    isRecord(actionPayload["roomPayload"])
-      ? actionPayload["roomPayload"]
-      : Object.entries(actionPayload).reduce<Record<string, unknown>>((acc, [key, value]) => {
-          if (key === "commandName" || key === "actionId" || key === "roomCommand") {
-            return acc;
-          }
-          acc[key] = value;
+  const roomPayload = isRecord(actionPayload["roomPayload"])
+    ? actionPayload["roomPayload"]
+    : Object.entries(actionPayload).reduce<Record<string, unknown>>((acc, [key, value]) => {
+        if (key === "commandName" || key === "actionId" || key === "roomCommand") {
           return acc;
-        }, {});
+        }
+        acc[key] = value;
+        return acc;
+      }, {});
   const rawArgs =
     typeof actionPayload["rawArgs"] === "string"
       ? actionPayload["rawArgs"]
@@ -1072,7 +1434,8 @@ async function runAi0SessionOpen(envelope: SlotBridgeEnvelope): Promise<SlotBrid
 }
 
 async function runAi0SessionSwitch(envelope: SlotBridgeEnvelope): Promise<SlotBridgeResult> {
-  const sessionId = envelope.sessionRef?.id?.trim() ?? envelope.sessionRef?.conversationId?.trim() ?? "";
+  const sessionId =
+    envelope.sessionRef?.id?.trim() ?? envelope.sessionRef?.conversationId?.trim() ?? "";
   if (sessionId === "") {
     return buildErrorResult(envelope, "SESSION_ID_REQUIRED", "Session id is required");
   }
@@ -1123,7 +1486,9 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
   }
 
   const readyEnvelope =
-    envelope.connectPolicy === "never" ? { ...envelope, connectPolicy: "ensure" as const } : envelope;
+    envelope.connectPolicy === "never"
+      ? { ...envelope, connectPolicy: "ensure" as const }
+      : envelope;
   const ready = await ensureConnected(targetSlot, readyEnvelope);
   if (ready.success !== true) {
     return buildErrorResult(
@@ -1149,7 +1514,8 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
     });
   }
 
-  const conversationId = envelope.sessionRef?.conversationId?.trim() ?? envelope.sessionRef?.id?.trim() ?? "";
+  const conversationId =
+    envelope.sessionRef?.conversationId?.trim() ?? envelope.sessionRef?.id?.trim() ?? "";
   if (conversationId === "") {
     return buildErrorResult(envelope, "CONVERSATION_ID_REQUIRED", "Conversation id is required");
   }
@@ -1179,9 +1545,7 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
       );
 }
 
-export async function slotBridgeHandler(
-  payload: CommandPayload = {}
-): Promise<SlotBridgeResult> {
+export async function slotBridgeHandler(payload: CommandPayload = {}): Promise<SlotBridgeResult> {
   const envelope = normalizeEnvelope(payload);
 
   try {

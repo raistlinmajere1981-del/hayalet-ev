@@ -111,9 +111,10 @@ export function parseInlineCommands(
   options: InlineCommandParseOptions = {}
 ): InlineCommandMatch[] {
   const source = typeof text === "string" ? text : "";
-  const prefix = typeof options.prefix === "string" && options.prefix.trim() !== ""
-    ? options.prefix.trim()
-    : "cmd";
+  const prefix =
+    typeof options.prefix === "string" && options.prefix.trim() !== ""
+      ? options.prefix.trim()
+      : "cmd";
   const matches: InlineCommandMatch[] = [];
 
   let cursor = 0;

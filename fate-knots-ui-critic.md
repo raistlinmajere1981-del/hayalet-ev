@@ -31,6 +31,14 @@ It should be useful.
 
 ---
 
+## Critique Depth
+
+- evaluate emotional tone
+- evaluate immersion
+- evaluate whether user feels inside a world or inside software
+
+---
+
 ## What To Evaluate
 
 ### 1. Dominance

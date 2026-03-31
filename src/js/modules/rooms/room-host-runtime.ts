@@ -9,7 +9,7 @@ import type {
   Us1SyncMessagesResult,
 } from "@shared/us1-mail.js";
 import { AppState } from "../app-state.js";
-import { CoreEngine } from "../core-engine.js";
+import type { CoreEngine } from "../core-engine.js";
 import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory, LogLevel } from "../logger/index.js";
 import { SettingsManager } from "../settings-manager.js";
@@ -50,6 +50,7 @@ interface RoomHostRegistration {
 
 interface RoomHostApi {
   room: InstalledRoomRecord;
+  dispatchBridge: (payload: Record<string, unknown>) => Promise<unknown>;
   registerCommand: (
     commandName: string,
     handler: RoomCommandHandler,
@@ -432,8 +433,19 @@ class RoomHostRuntimeClass {
   }
 
   private createApi(registration: RoomHostRegistration): RoomHostApi {
+    const dispatchBridge = async (payload: Record<string, unknown> = {}): Promise<unknown> => {
+      return await ServerCommands.run(SLOT_BRIDGE_COMMAND_NAME, {
+        provider: "room-ui",
+        source: "room-ui",
+        fromSlot: "room-ui",
+        ...payload,
+        message: `++cmd:${SLOT_BRIDGE_COMMAND_NAME}`,
+      });
+    };
+
     return {
       room: { ...registration.room },
+      dispatchBridge,
       registerCommand: (commandName, handler, options = {}): void => {
         RoomCommandRegistry.registerHandler(registration.room.id, commandName, handler, options);
       },
@@ -446,15 +458,99 @@ class RoomHostRuntimeClass {
           payload,
         });
       },
-      sendProtocol: CoreEngine.sendProtocol.bind(CoreEngine),
-      sendMessage: CoreEngine.sendMessage.bind(CoreEngine),
-      sendToTargets: CoreEngine.sendToTargets.bind(CoreEngine),
+      sendProtocol: async (
+        options
+      ): Promise<Awaited<ReturnType<typeof CoreEngine.sendProtocol>>> => {
+        const sendOptions = options ?? {};
+        return (await dispatchBridge({
+          action: "message.send",
+          ...(Array.isArray(sendOptions.targets) && sendOptions.targets.length === 1
+            ? { toSlot: sendOptions.targets[0] }
+            : { toSlots: sendOptions.targets ?? [] }),
+          payload: {
+            protocol: {
+              room: sendOptions.room,
+              scenario: sendOptions.scenario,
+              ...(sendOptions.preface !== undefined ? { preface: sendOptions.preface } : {}),
+              ...(sendOptions.context !== undefined ? { context: sendOptions.context } : {}),
+            },
+          },
+        })) as Awaited<ReturnType<typeof CoreEngine.sendProtocol>>;
+      },
+      sendMessage: async (
+        options
+      ): Promise<Awaited<ReturnType<typeof CoreEngine.sendMessage>>> => {
+        const sendOptions = options ?? {};
+        return (await dispatchBridge({
+          action: "message.send",
+          ...(sendOptions.provider !== undefined ? { toSlot: sendOptions.provider } : {}),
+          payload: {
+            text: sendOptions.text,
+            page: sendOptions.page,
+          },
+        })) as Awaited<ReturnType<typeof CoreEngine.sendMessage>>;
+      },
+      sendToTargets: async (
+        options
+      ): Promise<Awaited<ReturnType<typeof CoreEngine.sendToTargets>>> => {
+        return (await dispatchBridge({
+          action: "message.send",
+          toSlots: options?.targets ?? [],
+          payload: {
+            text: options?.text ?? "",
+            page: options?.page ?? "generic",
+          },
+        })) as Awaited<ReturnType<typeof CoreEngine.sendToTargets>>;
+      },
       sendUs1Message: async (params): Promise<Us1SendMessageResult> => {
-        const electronApi = window.electronAPI;
-        if (electronApi === undefined || typeof electronApi.us1SendMessage !== "function") {
-          return { success: false, error: "Electron API is unavailable." };
-        }
-        return await electronApi.us1SendMessage(params);
+        const result = await dispatchBridge({
+          action: "message.send",
+          toSlot: "us1",
+          ...(typeof params.localSessionId === "string" && params.localSessionId.trim() !== ""
+            ? {
+                sessionRef: {
+                  id: params.localSessionId.trim(),
+                },
+              }
+            : {}),
+          payload: {
+            ...(typeof params.text === "string" ? { text: params.text } : {}),
+            ...(params.roomEvent !== undefined ? { roomEvent: params.roomEvent } : {}),
+            ...(params.roomCommand !== undefined ? { roomCommand: params.roomCommand } : {}),
+          },
+        });
+
+        const record =
+          result !== null && typeof result === "object" && Array.isArray(result) === false
+            ? (result as Record<string, unknown>)
+            : {};
+        const data =
+          record["data"] !== null &&
+          typeof record["data"] === "object" &&
+          Array.isArray(record["data"]) === false
+            ? (record["data"] as Record<string, unknown>)
+            : {};
+        return {
+          success: record["success"] === true,
+          ...(typeof record["message"] === "string" ? { error: record["message"] } : {}),
+          ...(typeof data["remoteUserId"] === "string" ? { remoteUserId: data["remoteUserId"] } : {}),
+          ...(typeof data["transportMessageId"] === "string"
+            ? { transportMessageId: data["transportMessageId"] }
+            : {}),
+          ...(typeof data["archiveMessageId"] === "string"
+            ? { archiveMessageId: data["archiveMessageId"] }
+            : {}),
+          ...(typeof record["session"] === "object" &&
+          record["session"] !== null &&
+          Array.isArray(record["session"]) === false
+            ? ((): { localSessionId?: string } => {
+                const session = record["session"] as Record<string, unknown>;
+                return {
+                  ...(typeof session["id"] === "string" ? { localSessionId: session["id"] } : {}),
+                };
+              })()
+            : {}),
+        };
       },
       syncUs1Messages: async (params): Promise<Us1SyncMessagesResult> => {
         const electronApi = window.electronAPI;

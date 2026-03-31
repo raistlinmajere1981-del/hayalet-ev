@@ -34,35 +34,61 @@ type ProtocolPayload = {
   targets: string[];
 };
 
-function buildProtocolPayload({
+export type ProtocolDescriptor = {
+  fallbackTitle: string;
+  protocolKey?: string;
+};
+
+type ProtocolDescriptorRequest = {
+  room?: string;
+  scenario?: string;
+  context?: { starter?: string };
+  protocolKey?: string;
+  fallbackTitle?: string;
+};
+
+function resolveProtocolDescriptor({
   room = "",
   scenario = "",
-  targets = [] as string[],
-  context = {} as { starter?: string },
-}): ProtocolPayload | null {
-  const connected = targets.filter((t) => isSlotReady(t));
+  context = {},
+  protocolKey = "",
+  fallbackTitle = "",
+}: ProtocolDescriptorRequest = {}): ProtocolDescriptor | null {
+  const normalizedProtocolKey = protocolKey.trim();
+  const normalizedFallbackTitle = fallbackTitle.trim();
+  if (normalizedProtocolKey !== "" && normalizedFallbackTitle !== "") {
+    return {
+      fallbackTitle: normalizedFallbackTitle,
+      protocolKey: normalizedProtocolKey,
+    };
+  }
+
+  if (normalizedFallbackTitle !== "") {
+    return {
+      fallbackTitle: normalizedFallbackTitle,
+      ...(normalizedProtocolKey !== "" ? { protocolKey: normalizedProtocolKey } : {}),
+    };
+  }
+
   const roomProtocol = RoomProtocolRegistry.resolve(room, scenario);
 
   if (roomProtocol !== null) {
     return {
-      message: roomProtocol.title,
+      fallbackTitle: roomProtocol.title,
       protocolKey: roomProtocol.key,
-      targets: /** @type {any[]} */ connected,
     };
   }
 
   if (room === "analyze") {
     if (scenario === "user-ai-ai") {
       return {
-        message: START_STOP_PROTOCOL_HEADERS.ANALYZE_USER_AI_AI_START,
+        fallbackTitle: START_STOP_PROTOCOL_HEADERS.ANALYZE_USER_AI_AI_START,
         protocolKey: "analyze-user-AI-AI",
-        targets: /** @type {any[]} */ connected,
       };
     }
     if (scenario === "user-ai-ai-stop") {
       return {
-        message: START_STOP_PROTOCOL_HEADERS.ANALYZE_USER_AI_AI_STOP,
-        targets: /** @type {any[]} */ connected,
+        fallbackTitle: START_STOP_PROTOCOL_HEADERS.ANALYZE_USER_AI_AI_STOP,
       };
     }
 
@@ -71,39 +97,70 @@ function buildProtocolPayload({
       const protocolKey = starter === "ai2" ? "analyze-AI2-AI1" : "analyze-AI1-AI2";
 
       return {
-        message: START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_AI_START,
+        fallbackTitle: START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_AI_START,
         protocolKey,
-        targets: /** @type {any[]} */ connected,
       };
     }
 
     if (scenario === "ai-ai-stop") {
       return {
-        message: START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_AI_STOP,
-        targets: /** @type {any[]} */ connected,
+        fallbackTitle: START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_AI_STOP,
       };
     }
 
     if (scenario === "ai-assistant-stop") {
       return {
-        message: START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_ASSISTANT_STOP,
-        targets: /** @type {any[]} */ connected,
+        fallbackTitle: START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_ASSISTANT_STOP,
       };
     }
   }
 
   if (room === "server" && scenario === "takecontrol") {
     return {
-      message: AppI18n.t("app.protocol.controlTransferred"),
+      fallbackTitle: AppI18n.t("app.protocol.controlTransferred"),
       protocolKey: "takecontrol",
-      targets: /** @type {any[]} */ connected,
     };
   }
   return null;
 }
 
+function buildProtocolPayload({
+  room = "",
+  scenario = "",
+  targets = [] as string[],
+  context = {} as { starter?: string },
+  protocolKey = "",
+  fallbackTitle = "",
+}: {
+  room?: string;
+  scenario?: string;
+  targets?: string[];
+  context?: { starter?: string };
+  protocolKey?: string;
+  fallbackTitle?: string;
+} = {}): ProtocolPayload | null {
+  const descriptor = resolveProtocolDescriptor({
+    room,
+    scenario,
+    context,
+    protocolKey,
+    fallbackTitle,
+  });
+  if (descriptor === null) {
+    return null;
+  }
+
+  const connected = targets.filter((t) => isSlotReady(t));
+  return {
+    message: descriptor.fallbackTitle,
+    ...(descriptor.protocolKey !== undefined ? { protocolKey: descriptor.protocolKey } : {}),
+    targets: /** @type {any[]} */ connected,
+  };
+}
+
 const protocolHandler = {
   buildPayload: buildProtocolPayload,
+  resolveDescriptor: resolveProtocolDescriptor,
 };
 
 export { protocolHandler, protocolHandler as ProtocolHandler };

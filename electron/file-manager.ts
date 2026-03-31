@@ -386,7 +386,10 @@ async function resolveProtocolLocale(): Promise<string> {
   }
 }
 
-async function writeProtocolsJson(protocolsPath: string, protocols: StoredProtocolMap): Promise<void> {
+async function writeProtocolsJson(
+  protocolsPath: string,
+  protocols: StoredProtocolMap
+): Promise<void> {
   await ensureDir(Paths.getDataDir());
   await writeFile(protocolsPath, `${JSON.stringify(protocols, null, 2)}\n`, "utf-8");
 }
@@ -424,7 +427,10 @@ export async function loadProtocols(
   try {
     const [protocols, locale] = await Promise.all([ensureProtocolsJson(), resolveProtocolLocale()]);
     const resolved = Object.fromEntries(
-      Object.entries(protocols).map(([key, value]) => [key, resolveStoredProtocolEntryForLocale(value, locale)])
+      Object.entries(protocols).map(([key, value]) => [
+        key,
+        resolveStoredProtocolEntryForLocale(value, locale),
+      ])
     );
     return { success: true, protocols: resolved };
   } catch (error: unknown) {

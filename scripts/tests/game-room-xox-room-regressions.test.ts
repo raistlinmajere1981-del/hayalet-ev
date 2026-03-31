@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import vm from "node:vm";
 
 import { validateRoomManifest } from "../../src/types/rooms.ts";
 import { loadWorkspaceScriptForVm } from "./helpers/room-workspace-script.ts";
@@ -53,6 +54,105 @@ const requiredFiles = [
   "rooms/game-room/main-functions/xox/assets/xox-view.webp",
 ];
 
+type XoxUiStateHarness = {
+  state: {
+    game: Record<string, unknown>;
+    context: {
+      slots: Record<string, Record<string, unknown>>;
+      user: {
+        nickname: string;
+      };
+    };
+    preferences: {
+      target: string;
+      starter: string;
+      inviteMessage: string;
+    };
+    lastCommandMessage: string;
+    locale: string;
+  };
+  runtime: {
+    createGameState: () => Record<string, unknown>;
+    syncPreferencesFromGame: () => void;
+  };
+};
+
+function createXoxUiStateHarness(): XoxUiStateHarness {
+  const windowObject: {
+    GameRoomUiFactories?: {
+      createXoxUiStateRuntime?: (deps: Record<string, unknown>) => XoxUiStateHarness["runtime"];
+    };
+  } = {};
+  const context = {
+    window: windowObject,
+    globalThis: windowObject,
+  };
+  vm.createContext(context);
+  vm.runInNewContext(
+    loadWorkspaceScriptForVm("rooms/game-room/main-functions/xox/ui/state-runtime.ts"),
+    context
+  );
+
+  const createSlot = (slotId: string) => ({
+    slotId,
+    nickname: slotId.toUpperCase(),
+    assigned: true,
+    connected: slotId !== "us1",
+    ready: true,
+  });
+  const state = {
+    game: {} as Record<string, unknown>,
+    context: {
+      slots: {
+        ai1: createSlot("ai1"),
+        ai2: createSlot("ai2"),
+        us1: {
+          ...createSlot("us1"),
+          connected: false,
+        },
+      },
+      user: {
+        nickname: "User",
+      },
+    },
+    preferences: {
+      target: "ai1",
+      starter: "user",
+      inviteMessage: "",
+    },
+    lastCommandMessage: "",
+    locale: "tr",
+  };
+
+  const runtimeFactory = windowObject.GameRoomUiFactories?.createXoxUiStateRuntime;
+  assert.equal(typeof runtimeFactory, "function");
+  const runtime = runtimeFactory({
+    getState: () => state,
+    roomId: "game-room",
+    featureId: "xox",
+    createSlot,
+    createInviteEntry: () => ({
+      roomId: "game-room",
+      featureId: "xox",
+      inviteId: "",
+      remoteUserId: "",
+      nickname: "US1",
+      senderEmail: "",
+      note: "",
+      starter: "user",
+      localSessionId: "",
+      conversationId: "",
+      sentAt: null,
+    }),
+    normalizeSlot: (_candidate: unknown, slotId: string) => createSlot(slotId),
+    text: () => "",
+    sendRoomCommand: () => undefined,
+  });
+
+  state.game = runtime.createGameState();
+  return { state, runtime };
+}
+
 test("game-room workspace keeps the required XOX package files", () => {
   requiredFiles.forEach((filePath) => {
     assert.equal(existsSync(filePath), true, filePath);
@@ -75,6 +175,46 @@ test("game-room manifest validates with the XOX-first room contract", () => {
   assert.equal(validation.manifest?.scene?.characterRosterPreset, "connected-plus-user");
   assert.equal(validation.manifest?.scene?.characters?.length, 3);
   assert.equal(validation.manifest?.scene?.chrome?.pageShellVariant, "immersive-stage");
+});
+
+test("game-room XOX UI keeps the local idle target selection during snapshot sync", () => {
+  const { state, runtime } = createXoxUiStateHarness();
+  state.preferences.target = "us1";
+  state.preferences.starter = "ai";
+  Object.assign(state.game, {
+    active: false,
+    result: "idle",
+    pendingInvite: null,
+    inviteId: null,
+    remoteUserId: null,
+    selectedTarget: "ai1",
+    starter: "user",
+  });
+
+  runtime.syncPreferencesFromGame();
+
+  assert.equal(state.preferences.target, "us1");
+  assert.equal(state.preferences.starter, "ai");
+});
+
+test("game-room XOX UI syncs the host target once the match state becomes authoritative", () => {
+  const { state, runtime } = createXoxUiStateHarness();
+  state.preferences.target = "ai1";
+  state.preferences.starter = "user";
+  Object.assign(state.game, {
+    active: true,
+    result: "pending",
+    pendingInvite: null,
+    inviteId: "invite-1",
+    remoteUserId: "remote-user-1",
+    selectedTarget: "us1",
+    starter: "ai",
+  });
+
+  runtime.syncPreferencesFromGame();
+
+  assert.equal(state.preferences.target, "us1");
+  assert.equal(state.preferences.starter, "ai");
 });
 
 test("game-room XOX UI forwards remote identity with invite actions", () => {

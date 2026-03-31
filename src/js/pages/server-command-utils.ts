@@ -49,7 +49,7 @@ export function parseCommandExecutionInput(
   const match = parseExactInlineCommand(input);
   if (match !== null) {
     return {
-      commandName: (match.commandName ?? fallback).trim(),
+      commandName: match.commandName.trim(),
       args: match.args.trim(),
       inputWasInlineCommand: true,
     };

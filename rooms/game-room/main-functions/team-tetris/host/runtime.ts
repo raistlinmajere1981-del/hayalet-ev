@@ -69,8 +69,7 @@ interface TeamTetrisDispatchResult {
 
 interface TeamTetrisRuntimeApi extends TeamTetrisStateApi {
   notifyRoom?(eventType: string, data: unknown): void;
-  sendProtocol?(options: TeamTetrisProtocolRequest): Promise<TeamTetrisDispatchResult | null>;
-  sendMessage?(options: TeamTetrisMessageRequest): Promise<TeamTetrisDispatchResult | null>;
+  dispatchBridge?(options: Record<string, unknown>): Promise<TeamTetrisDispatchResult | null>;
   selectUs1RemoteUser?(remoteUserId: string): Promise<boolean>;
   sendUs1Message?(options: {
     localSessionId: string | null;
@@ -107,24 +106,30 @@ function readTeamTetrisStartArgs(payload: unknown): { hiddenPairs: boolean; seed
   };
 }
 
-async function sendProtocolSafe(
+async function sendBridgeMessageSafe(
   api: TeamTetrisRuntimeApi,
-  options: TeamTetrisProtocolRequest
+  options: TeamTetrisMessageRequest & { protocol?: TeamTetrisProtocolRequest }
 ): Promise<TeamTetrisDispatchResult | null> {
-  if (typeof api.sendProtocol !== "function") {
+  if (typeof api.dispatchBridge !== "function") {
     return null;
   }
-  return await api.sendProtocol(options);
-}
-
-async function sendMessageSafe(
-  api: TeamTetrisRuntimeApi,
-  options: TeamTetrisMessageRequest
-): Promise<TeamTetrisDispatchResult | null> {
-  if (typeof api.sendMessage !== "function") {
-    return null;
-  }
-  return await api.sendMessage(options);
+  return await api.dispatchBridge({
+    action: "message.send",
+    toSlot: options.provider,
+    payload: {
+      text: options.text,
+      page: options.page,
+      ...(options.protocol !== undefined
+        ? {
+            protocol: {
+              room: options.protocol.room,
+              scenario: options.protocol.scenario,
+              context: options.protocol.context,
+            },
+          }
+        : {}),
+    },
+  });
 }
 
 async function dispatchNextTeamTetrisTurn(
@@ -160,30 +165,25 @@ async function dispatchNextTeamTetrisTurn(
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
   }
 
-  const protocolResult = await sendProtocolSafe(api, {
-    room: ROOM_ID,
-    scenario: buildTeamTetrisProtocolScenario(state.match),
-    targets: [currentTurn.seatId],
-    context: {
-      featureId: TEAM_TETRIS_FEATURE_ID,
-      hiddenPairs: state.match.hiddenPairs,
-      revealedPairs: state.match.revealedPairs,
-      actingRole: currentTurn.role,
-      teamId: currentTurn.teamId,
-    },
-  });
-  if (!protocolResult || protocolResult.success !== true) {
-    blockTeamTetrisMatch(api, state, "blockedDispatch", "protocol-dispatch-failed");
-    return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
-  }
-
-  const messageResult = await sendMessageSafe(api, {
+  const messageResult = await sendBridgeMessageSafe(api, {
     provider: currentTurn.seatId,
     page: TEAM_TETRIS_PAGE_ID,
     text: buildTeamTetrisAiTurnMessage(state.match, currentTurn.seatId),
+    protocol: {
+      room: ROOM_ID,
+      scenario: buildTeamTetrisProtocolScenario(state.match),
+      targets: [currentTurn.seatId],
+      context: {
+        featureId: TEAM_TETRIS_FEATURE_ID,
+        hiddenPairs: state.match.hiddenPairs,
+        revealedPairs: state.match.revealedPairs,
+        actingRole: currentTurn.role,
+        teamId: currentTurn.teamId,
+      },
+    },
   });
   if (!messageResult || messageResult.success !== true) {
-    blockTeamTetrisMatch(api, state, "blockedDispatch", "turn-dispatch-failed");
+    blockTeamTetrisMatch(api, state, "blockedDispatch", "protocol-dispatch-failed");
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
   }
 

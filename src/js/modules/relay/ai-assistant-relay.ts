@@ -3,7 +3,7 @@ import type { CoreEngineInterface } from "./base-relay.js";
 import { LogCategory } from "@shared/logging-core";
 import { SlotController } from "../slot-controller.js";
 import { AppI18n } from "../i18n/index.js";
-import { resolveComposedProtocolMessage } from "../protocol-message-composer.js";
+import { slotBridgeHandler } from "../commands/slot-bridge.js";
 import { START_STOP_PROTOCOL_HEADERS } from "../protocol-default-headers.js";
 import { PROTOCOL_KEY } from "@slots";
 
@@ -92,8 +92,6 @@ export class AIAssistantRelay extends BaseRelay {
 
   async _sendProtocolToAI(aiSlot: string): Promise<void> {
     try {
-      const protocol = await this._loadProtocol();
-
       this._sessionState = "protocol-sent";
       this._logT(
         "info",
@@ -103,18 +101,27 @@ export class AIAssistantRelay extends BaseRelay {
         },
         {
           sessionId: this._session?.id,
-          protocolLength: protocol.length,
+          protocolKey: PROTOCOL_KEY,
         }
       );
 
-      if (this.coreEngine.sendMessage === undefined) {
-        throw new Error(relayT("sendMessageUnavailable"));
-      }
-      await this.coreEngine.sendMessage({
-        provider: aiSlot,
-        text: protocol,
-        page: "ai-assistant-protocol",
+      const sendResult = await slotBridgeHandler({
+        action: "message.send",
+        fromSlot: "system",
+        toSlot: aiSlot,
+        payload: {
+          protocol: {
+            protocolKey: PROTOCOL_KEY,
+            fallbackTitle: AI_ASSISTANT_PROTOCOL_FALLBACK_TITLE,
+          },
+        },
+        provider: "system",
+        source: "system",
+        message: "++cmd:SlotBridge",
       });
+      if (sendResult.success !== true) {
+        throw new Error(sendResult.message ?? relayT("sendMessageUnavailable"));
+      }
 
       this._logT("info", "app.logs.aiAssistantRelay.protocolSent", {
         provider: aiSlot,
@@ -126,21 +133,6 @@ export class AIAssistantRelay extends BaseRelay {
       });
       this._sessionState = "relay-active";
     }
-  }
-
-  async _loadProtocol(): Promise<string> {
-    const resolvedMessage = await resolveComposedProtocolMessage({
-      fallbackTitle: AI_ASSISTANT_PROTOCOL_FALLBACK_TITLE,
-      protocolKey: PROTOCOL_KEY,
-    });
-
-    if (resolvedMessage.error !== undefined) {
-      this._logT("warning", "app.logs.aiAssistantRelay.protocolLoadError", {
-        message: resolvedMessage.error.message,
-      });
-    }
-
-    return resolvedMessage.message;
   }
 
   override async stop(): Promise<void> {

@@ -42,18 +42,7 @@ export interface XoxRuntimeMatchApi {
   deleteState?(key: string): void;
   getLocale?(): unknown;
   notifyRoom?(event: string, payload: Record<string, unknown>): void;
-  sendProtocol?(options: {
-    room: string;
-    scenario: string;
-    targets: string[];
-    preface?: string | null;
-    context: Record<string, unknown>;
-  }): Promise<XoxDispatchResult>;
-  sendMessage?(options: {
-    provider: string;
-    page: string;
-    text: string;
-  }): Promise<XoxDispatchResult>;
+  dispatchBridge?(options: Record<string, unknown>): Promise<XoxDispatchResult>;
 }
 
 function readProviderValue(payload: unknown): string {
@@ -68,30 +57,32 @@ function readOpponentInfo(context: GameRoomContextState, state: XoxGameState): G
   return getOpponentInfo(context, state);
 }
 
-async function sendProtocolSafe(
+async function sendBridgeMessageSafe(
   api: XoxRuntimeMatchApi,
   options: {
-    room: string;
-    scenario: string;
-    targets: string[];
-    preface?: string | null;
-    context: Record<string, unknown>;
+    provider: string;
+    page: string;
+    text: string;
+    protocol?: {
+      room: string;
+      scenario: string;
+      preface?: string | null;
+      context: Record<string, unknown>;
+    };
   }
 ): Promise<XoxDispatchResult> {
-  if (typeof api.sendProtocol !== "function") {
+  if (typeof api.dispatchBridge !== "function") {
     return null;
   }
-  return await api.sendProtocol(options);
-}
-
-async function sendMessageSafe(
-  api: XoxRuntimeMatchApi,
-  options: { provider: string; page: string; text: string }
-): Promise<XoxDispatchResult> {
-  if (typeof api.sendMessage !== "function") {
-    return null;
-  }
-  return await api.sendMessage(options);
+  return await api.dispatchBridge({
+    action: "message.send",
+    toSlot: options.provider,
+    payload: {
+      text: options.text,
+      page: options.page,
+      ...(options.protocol !== undefined ? { protocol: options.protocol } : {}),
+    },
+  });
 }
 
 export function resolveStateMatchId(state: XoxGameState): string | null {
@@ -130,41 +121,43 @@ export async function sendAiTurnUpdate(
     return { success: false, message: commandMessage(state.locale, "needReadyOpponent") };
   }
 
-  if (includeProtocol === true && state.protocolDelivered !== true) {
-    const protocolResult = await sendProtocolSafe(api, {
-      room: ROOM_ID,
-      scenario: state.starter === "ai" ? "xox-ai-start" : "xox-user-start",
-      targets: [state.target],
-      preface: state.protocolPreface || null,
-      context: {
-        featureId: FEATURE_ID,
-        starter: state.starter,
-        aiSymbol: state.aiSymbol,
-        userSymbol: state.userSymbol,
-      },
-    });
-
-    if (!protocolResult || protocolResult.success !== true) {
-      blockMatch(api, state, "blockedDispatch", "protocol-dispatch-failed");
-      return { success: false, message: commandMessage(state.locale, "dispatchFailed") };
-    }
-
-    state.protocolDelivered = true;
-    saveState(api, state);
-  }
-
-  const messageResult = await sendMessageSafe(api, {
+  const shouldIncludeProtocol = includeProtocol === true && state.protocolDelivered !== true;
+  const messageResult = await sendBridgeMessageSafe(api, {
     provider: state.target,
     page: "ui/index.html",
     text: buildAiTurnMessage(state, context),
+    ...(shouldIncludeProtocol
+      ? {
+          protocol: {
+            room: ROOM_ID,
+            scenario: state.starter === "ai" ? "xox-ai-start" : "xox-user-start",
+            preface: state.protocolPreface || null,
+            context: {
+              featureId: FEATURE_ID,
+              starter: state.starter,
+              aiSymbol: state.aiSymbol,
+              userSymbol: state.userSymbol,
+            },
+          },
+        }
+      : {}),
   });
 
   if (messageResult && messageResult.success === true) {
+    if (shouldIncludeProtocol) {
+      state.protocolDelivered = true;
+      saveState(api, state);
+    }
     pushRoomState(api, state);
     return messageResult;
   }
 
-  blockMatch(api, state, "blockedDispatch", "turn-dispatch-failed");
+  blockMatch(
+    api,
+    state,
+    "blockedDispatch",
+    shouldIncludeProtocol ? "protocol-dispatch-failed" : "turn-dispatch-failed"
+  );
   return { success: false, message: commandMessage(state.locale, "dispatchFailed") };
 }
 

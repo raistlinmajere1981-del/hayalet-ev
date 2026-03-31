@@ -471,8 +471,22 @@
       });
     }
 
+    function hasAuthoritativeGamePreferences() {
+      const state = getState();
+      return (
+        state.game.active === true ||
+        state.game.pendingInvite !== null ||
+        state.game.result !== "idle" ||
+        state.game.inviteId !== null ||
+        state.game.remoteUserId !== null
+      );
+    }
+
     function syncPreferencesFromGame() {
       const state = getState();
+      if (hasAuthoritativeGamePreferences() !== true) {
+        return;
+      }
       state.preferences.target = readTarget(state.game.selectedTarget);
       state.preferences.starter = readStarter(state.game.starter);
     }

@@ -171,6 +171,9 @@ test("room package manager keeps installed room record building in a dedicated b
     workspaceRoomBuildSupportSource,
     /export function roomSourceSatisfiesRuntimePath\(/
   );
+  assert.match(workspaceRoomBuildSupportSource, /app\.asar\.unpacked/);
+  assert.match(workspaceRoomBuildSupportSource, /pathToFileURL/);
+  assert.match(workspaceRoomBuildSupportSource, /async function loadEsbuildModule\(/);
   assert.equal(scripts["rooms:bundle"], "node --import tsx scripts/rooms/build-room-bundle.mjs");
   assert.equal(scripts["rooms:build"], "node --import tsx scripts/rooms/build-workspace-rooms.ts");
   assert.ok(scripts["rooms:lint"]?.startsWith("NODE_OPTIONS="));

@@ -69,16 +69,22 @@ async function loadProtocolMap(): Promise<{ protocols: ProtocolMap | null; error
       };
     }
     return {
-      protocols: await RoomProtocolRegistry.mergeProtocolMap({}, {
-        locale: AppI18n.getLocale(),
-      }),
+      protocols: await RoomProtocolRegistry.mergeProtocolMap(
+        {},
+        {
+          locale: AppI18n.getLocale(),
+        }
+      ),
     };
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
     return {
-      protocols: await RoomProtocolRegistry.mergeProtocolMap({}, {
-        locale: AppI18n.getLocale(),
-      }),
+      protocols: await RoomProtocolRegistry.mergeProtocolMap(
+        {},
+        {
+          locale: AppI18n.getLocale(),
+        }
+      ),
       error: err,
     };
   }

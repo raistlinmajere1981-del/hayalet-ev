@@ -84,7 +84,7 @@ export function scrapeMessages(): ScrapedMessage[] {
   const defaultScrapeSelectors = {
     preferred: "[data-message-author-role]",
     fallback: ".message-bubble, .markdown.prose",
-    messageWrapper: '[data-testid="conversation-turn"]',
+    messageWrapper: '[data-testid="conversation-turn"], [data-message-id], [data-turn-id]',
     userWrapper: '[data-message-author-role="user"], .user-message-bubble-color',
     assistantWrapper: '[data-message-author-role="assistant"], .agent-turn',
   };
@@ -122,7 +122,10 @@ export function scrapeMessages(): ScrapedMessage[] {
       : Array.from(document.querySelectorAll(rootSelectorParts.join(", ")));
   const preferred = Array.from(document.querySelectorAll(preferredSel));
   const fallback = Array.from(document.querySelectorAll(fallbackSel));
-  const base = wrappedBase.length !== 0 ? wrappedBase : preferred.length !== 0 ? preferred : fallback;
+  // NOTE: Prefer explicit message nodes over generic turn wrappers so streaming assistant updates
+  // keep the stable message id instead of producing partial/final duplicates.
+  const base =
+    preferred.length !== 0 ? preferred : wrappedBase.length !== 0 ? wrappedBase : fallback;
   const nodes = Array.from(new Set(base)).filter(
     (n, i, arr) => !arr.some((o, j) => i !== j && o.contains(n))
   );

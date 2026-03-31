@@ -11,6 +11,15 @@ It should be used before major UI implementation and during visual redesign plan
 
 ---
 
+## Visual Language Rules
+
+- describe scenes as physical spaces, not layouts
+- prefer “table”, “surface”, “ritual space” over “container”
+- avoid UI terminology when guiding composition
+- think like set design, not web design
+
+---
+
 ## Core Mission
 
 Preserve and enforce the Fate Knots visual identity:

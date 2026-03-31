@@ -259,7 +259,10 @@ class RoomProtocolRegistryClass {
     return await this.readBodyFromInstalledRoomPath(room.installedDir, relativeProtocolPath);
   }
 
-  private async resolveProtocolBody(entry: RoomProtocolEntry, locale: AppLanguage): Promise<string> {
+  private async resolveProtocolBody(
+    entry: RoomProtocolEntry,
+    locale: AppLanguage
+  ): Promise<string> {
     if (entry.relativeProtocolPath === null) {
       return entry.defaultBody;
     }

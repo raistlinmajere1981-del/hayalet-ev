@@ -28,6 +28,14 @@ The job is:
 
 ---
 
+## Composition Style
+
+- describe layering as foreground / midground / background
+- define visual weight instead of CSS priority
+- prefer fewer stronger surfaces over many weak ones
+
+---
+
 ## Primitive Families
 
 Think in these terms:

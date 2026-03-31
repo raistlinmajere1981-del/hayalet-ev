@@ -1,10 +1,47 @@
 import { existsSync } from "fs";
 import { readFile, writeFile } from "fs/promises";
 import { dirname, extname, join } from "path";
-import { transform, type Format, type Loader } from "esbuild";
+import { pathToFileURL } from "url";
+import type { Format, Loader } from "esbuild";
+import type * as EsbuildModule from "esbuild";
 import { collectFilesRecursive, copyDirectoryContents, ensureDir } from "./room-install-files.ts";
 
 const ROOM_TYPESCRIPT_SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"]);
+type EsbuildTransformModule = Pick<typeof EsbuildModule, "transform">;
+
+let cachedEsbuildModulePromise: Promise<EsbuildTransformModule> | null = null;
+let cachedEsbuildModuleSpecifier: string | null = null;
+
+function resolvePackagedEsbuildModuleSpecifier(): string | null {
+  const resourcesPath =
+    typeof process.resourcesPath === "string" ? process.resourcesPath.trim() : "";
+  if (resourcesPath === "") {
+    return null;
+  }
+
+  // NOTE: Packaged workspace room builds must execute the unpacked esbuild entry so its helper
+  // binary stays spawnable outside app.asar.
+  const unpackedMainPath = join(
+    resourcesPath,
+    "app.asar.unpacked",
+    "node_modules",
+    "esbuild",
+    "lib",
+    "main.js"
+  );
+  return existsSync(unpackedMainPath) ? pathToFileURL(unpackedMainPath).href : null;
+}
+
+async function loadEsbuildModule(): Promise<EsbuildTransformModule> {
+  const specifier = resolvePackagedEsbuildModuleSpecifier() ?? "esbuild";
+  if (cachedEsbuildModulePromise !== null && cachedEsbuildModuleSpecifier === specifier) {
+    return await cachedEsbuildModulePromise;
+  }
+
+  cachedEsbuildModuleSpecifier = specifier;
+  cachedEsbuildModulePromise = import(specifier) as Promise<EsbuildTransformModule>;
+  return await cachedEsbuildModulePromise;
+}
 
 function isTypeDeclarationPath(relativePath: string): boolean {
   return (
@@ -113,6 +150,7 @@ export async function buildWorkspaceRoomOutput(sourceDir: string, buildDir: stri
     sourceFiles.map(async (file): Promise<void> => {
       const sourceCode = await readFile(file.absolutePath, "utf8");
       const format = resolveEsbuildFormat(file.relativePath);
+      const { transform } = await loadEsbuildModule();
       const transformed = await transform(sourceCode, {
         charset: "utf8",
         loader: resolveEsbuildLoader(file.relativePath),

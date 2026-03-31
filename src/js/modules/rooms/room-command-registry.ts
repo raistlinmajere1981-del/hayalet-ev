@@ -1,8 +1,4 @@
-import type {
-  InstalledRoomRecord,
-  RoomCommandExposure,
-  RoomCommandScope,
-} from "@shared/index.js";
+import type { InstalledRoomRecord, RoomCommandExposure, RoomCommandScope } from "@shared/index.js";
 import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory } from "../logger/index.js";
 

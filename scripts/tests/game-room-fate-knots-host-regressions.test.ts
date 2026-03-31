@@ -20,11 +20,46 @@ function createRoomHostRuntime() {
   const protocolCalls: Array<Record<string, unknown>> = [];
   const messageCalls: Array<Record<string, unknown>> = [];
   const us1MessageCalls: Array<Record<string, unknown>> = [];
+  const dispatchCalls: Array<Record<string, unknown>> = [];
   let exported: Record<string, unknown>;
 
   const api = {
     notifyRoom(type: string, payload: Record<string, unknown> = {}) {
       notifications.push({ type, payload });
+    },
+    dispatchBridge: async (payload: Record<string, unknown>) => {
+      dispatchCalls.push(payload);
+      const target =
+        typeof payload.toSlot === "string"
+          ? payload.toSlot
+          : Array.isArray(payload.toSlots) && typeof payload.toSlots[0] === "string"
+            ? payload.toSlots[0]
+            : null;
+      const bridgePayload =
+        payload.payload !== null && typeof payload.payload === "object"
+          ? (payload.payload as Record<string, unknown>)
+          : {};
+      const protocol =
+        bridgePayload.protocol !== null && typeof bridgePayload.protocol === "object"
+          ? (bridgePayload.protocol as Record<string, unknown>)
+          : null;
+
+      if (protocol !== null) {
+        protocolCalls.push(protocol);
+      }
+
+      if (
+        (typeof bridgePayload.text === "string" && bridgePayload.text.trim() !== "") ||
+        typeof bridgePayload.page === "string"
+      ) {
+        messageCalls.push({
+          provider: target,
+          text: bridgePayload.text,
+          page: bridgePayload.page,
+        });
+      }
+
+      return { success: true };
     },
     sendProtocol: async (payload: Record<string, unknown>) => {
       protocolCalls.push(payload);
@@ -83,6 +118,7 @@ function createRoomHostRuntime() {
     protocolCalls,
     messageCalls,
     us1MessageCalls,
+    dispatchCalls,
     exported,
     async emitHostContext(context: Record<string, unknown>) {
       runtime.exported.onRoomEvent(context);

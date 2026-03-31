@@ -8,10 +8,8 @@ import {
   replaceProtocolTags,
   sendBatchWithContext,
   sendMessageWithContext,
-  sendProtocolWithContext,
   sendToTargetsWithContext,
   type SendBatchParams,
-  type SendProtocolParams,
 } from "./core/send-actions.js";
 import {
   handleRelayDisconnectAutoStop as handleCoreRelayDisconnectAutoStop,
@@ -52,6 +50,15 @@ interface ConnectionResult {
   success: boolean;
   message?: string;
   correlationId?: string;
+}
+
+interface SendProtocolParams {
+  room?: string;
+  scenario?: string;
+  targets?: string[];
+  context?: Record<string, unknown>;
+  mode?: string | null;
+  preface?: string | null;
 }
 
 class CoreEngineClass {
@@ -224,21 +231,114 @@ class CoreEngineClass {
     mode = null,
     preface = null,
   }: SendProtocolParams = {}): Promise<{ success: boolean; message?: string }> {
-    return await sendProtocolWithContext(
-      {
+    await this.ensureReady();
+
+    if (room === "analyze" && scenario === "ai-ai" && mode === "aiRelaySequential") {
+      const [{ ProtocolHandler: protocolHandler }, { resolveComposedProtocolMessage }] =
+        await Promise.all([
+        import("./protocol-handler.js"),
+        import("./protocol-message-composer.js"),
+        ]);
+      const protocolPayload = protocolHandler.buildPayload({
         room,
         scenario,
         targets,
         context,
-        mode,
-        preface,
-      },
-      {
-        ensureReady: this.ensureReady.bind(this),
-        sendBatch: this.sendBatch.bind(this),
-        relay: this.relay,
+      });
+      if (protocolPayload === null) {
+        return { success: false, message: AppI18n.t("app.commands.executor.unknownProtocol") };
       }
-    );
+
+      const orderedTargets = [...protocolPayload.targets];
+      const starter = typeof context["starter"] === "string" ? context["starter"] : null;
+      if (starter !== null && orderedTargets.includes(starter) === true) {
+        orderedTargets.splice(orderedTargets.indexOf(starter), 1);
+        orderedTargets.unshift(starter);
+      }
+
+      if (orderedTargets.length === 0) {
+        return { success: false, message: AppI18n.t("app.commands.executor.noConnectedTarget") };
+      }
+
+      const resolvedMessage = await resolveComposedProtocolMessage({
+        fallbackTitle: protocolPayload.message,
+        ...(typeof protocolPayload.protocolKey === "string" && protocolPayload.protocolKey !== ""
+          ? { protocolKey: protocolPayload.protocolKey }
+          : {}),
+        ...(preface !== null ? { preface } : {}),
+      });
+
+      if (this.relay !== null) {
+        await this.relay.startProtocolSession({
+          providers: orderedTargets,
+          protocolPayload: {
+            room,
+            scenario,
+            targets: orderedTargets,
+            context,
+            message: replaceProtocolTags(resolvedMessage.message),
+          },
+          attachments: [],
+        });
+      }
+
+      return { success: true, message: "sequential-session-started" };
+    }
+
+    const { slotBridgeHandler } = await import("./commands/slot-bridge.js");
+    const bridgeResult = await slotBridgeHandler({
+      action: "message.send",
+      fromSlot: "system",
+      ...(targets.length === 1 ? { toSlot: targets[0] } : { toSlots: targets }),
+      payload: {
+        protocol: {
+          room,
+          scenario,
+          ...(preface !== null ? { preface } : {}),
+          ...(Object.keys(context).length > 0 ? { context } : {}),
+        },
+      },
+      provider: "system",
+      source: "system",
+      message: "++cmd:SlotBridge",
+    });
+
+    try {
+      if (bridgeResult.success === true && room === "analyze") {
+        if (scenario === "ai-ai") {
+          if (this.relay !== null) {
+            void this.relay.startSession({ providers: targets });
+          }
+        }
+        if (scenario === "ai-ai-stop") {
+          if (this.relay !== null) {
+            void this.relay.stopProtocolSession();
+            void this.relay.stopSession();
+          }
+        }
+        if (scenario === "ai-assistant-stop") {
+          if (this.relay !== null) {
+            void this.relay.stopAIAssistantSession();
+          }
+        }
+      }
+    } catch (error) {
+      Logger.warn(
+        LogCategory.RELAY,
+        AppI18n.t("app.commands.executor.protocolRelayActionFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        }),
+        {
+        error: error instanceof Error ? error : new Error(String(error)),
+        context: { room, scenario },
+        }
+      );
+    }
+
+    return {
+      success: bridgeResult.success,
+      ...(bridgeResult.message !== undefined ? { message: bridgeResult.message } : {}),
+    };
   }
 
   async _handleRelayDisconnectAutoStop(slot: string): Promise<void> {
