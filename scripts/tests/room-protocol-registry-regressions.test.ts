@@ -71,9 +71,57 @@ test("RoomProtocolRegistry merges runtime and saved protocol bodies", async () =
     "game-room-xox-user-start": "Prepare the XOX board for the user-first match.",
   });
 
-  const merged = RoomProtocolRegistry.mergeProtocolMap({
+  const merged = await RoomProtocolRegistry.mergeProtocolMap({
     "game-room-xox-user-start": "Saved override body",
   });
 
   assert.equal(merged["game-room-xox-user-start"], "Saved override body");
+});
+
+test("RoomProtocolRegistry prefers locale-specific bodies and falls back to Turkish", async () => {
+  const readFileCalls: string[] = [];
+  const electronWindow = {
+    electronAPI: {
+      readFile: async (filePath: string): Promise<string | null> => {
+        readFileCalls.push(filePath);
+
+        if (filePath.endsWith("/protocols/en/game-room-xox-user-start.md")) {
+          return "EN localized body";
+        }
+
+        if (filePath.endsWith("/protocols/tr/game-room-xox-user-start.md")) {
+          return "TR fallback body";
+        }
+
+        if (filePath.endsWith("/protocols/game-room-xox-user-start.md")) {
+          return "EN base body";
+        }
+
+        return null;
+      },
+    },
+  };
+
+  Object.assign(globalThis, { window: electronWindow });
+
+  RoomProtocolRegistry.reset();
+  await RoomProtocolRegistry.syncInstalledRooms([room]);
+
+  const mergedTr = await RoomProtocolRegistry.mergeProtocolMap({}, { locale: "tr" });
+  const mergedEn = await RoomProtocolRegistry.mergeProtocolMap({}, { locale: "en" });
+  const mergedEnUs = await RoomProtocolRegistry.mergeProtocolMap({}, { locale: "en-US" });
+  const mergedDe = await RoomProtocolRegistry.mergeProtocolMap({}, { locale: "de" });
+
+  assert.equal(mergedTr["game-room-xox-user-start"], "TR fallback body");
+  assert.equal(mergedEn["game-room-xox-user-start"], "EN localized body");
+  assert.equal(mergedEnUs["game-room-xox-user-start"], "TR fallback body");
+  assert.equal(mergedDe["game-room-xox-user-start"], "TR fallback body");
+  assert.ok(
+    readFileCalls.some((filePath) => filePath.endsWith("/protocols/en/game-room-xox-user-start.md"))
+  );
+  assert.ok(
+    readFileCalls.some((filePath) => filePath.endsWith("/protocols/tr/game-room-xox-user-start.md"))
+  );
+
+  delete (globalThis as { window?: unknown }).window;
 });

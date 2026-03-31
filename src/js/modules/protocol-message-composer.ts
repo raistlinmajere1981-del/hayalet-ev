@@ -1,4 +1,5 @@
 import { RoomProtocolRegistry } from "./rooms/room-protocol-registry.js";
+import { AppI18n } from "./i18n/index.js";
 
 type ProtocolMap = Record<string, string>;
 
@@ -53,18 +54,33 @@ export function composeProtocolMessage(
 async function loadProtocolMap(): Promise<{ protocols: ProtocolMap | null; error?: Error }> {
   const loadProtocols = window.electronAPI?.loadProtocols;
   if (loadProtocols === undefined) {
-    return { protocols: null };
+    return {
+      protocols: await RoomProtocolRegistry.mergeProtocolMap({}, { locale: AppI18n.getLocale() }),
+    };
   }
 
   try {
     const result = (await loadProtocols()) as LoadProtocolsResult;
     if (result.success === true && result.protocols !== undefined) {
-      return { protocols: RoomProtocolRegistry.mergeProtocolMap(result.protocols) };
+      return {
+        protocols: await RoomProtocolRegistry.mergeProtocolMap(result.protocols, {
+          locale: AppI18n.getLocale(),
+        }),
+      };
     }
-    return { protocols: RoomProtocolRegistry.mergeProtocolMap({}) };
+    return {
+      protocols: await RoomProtocolRegistry.mergeProtocolMap({}, {
+        locale: AppI18n.getLocale(),
+      }),
+    };
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    return { protocols: RoomProtocolRegistry.mergeProtocolMap({}), error: err };
+    return {
+      protocols: await RoomProtocolRegistry.mergeProtocolMap({}, {
+        locale: AppI18n.getLocale(),
+      }),
+      error: err,
+    };
   }
 }
 

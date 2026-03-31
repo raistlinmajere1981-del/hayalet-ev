@@ -1,4 +1,5 @@
 import type {
+  AppLanguage,
   InstalledRoomRecord,
   RoomProtocolSpec,
   StartupRoomProtocolSnapshot,
@@ -6,6 +7,8 @@ import type {
 import { decodeBase64 } from "../../constants/index.js";
 import { resolveRoomProtocolFilePath } from "@shared/index.js";
 import { Logger, LogCategory } from "../logger/index.js";
+import { DEFAULT_APP_LANGUAGE } from "@shared/i18n.js";
+import { normalizeAppLanguage } from "../../../../shared/i18n/locale.js";
 
 interface RoomProtocolEntry {
   roomId: string;
@@ -15,6 +18,9 @@ interface RoomProtocolEntry {
   title: string;
   editable: boolean;
   defaultBody: string;
+  relativeProtocolPath: string | null;
+  installedDir: string;
+  localizedBodies: Map<string, string>;
 }
 
 function normalizeProtocolKey(key: string): string {
@@ -42,6 +48,41 @@ function decodeProtocolBody(content: string): string {
 
   const decoded = decodeBase64(trimmed);
   return decoded.trim() !== "" ? decoded : content;
+}
+
+function insertLocaleIntoRelativePath(relativePath: string, locale: string): string {
+  const normalizedPath = relativePath.replace(/\\/g, "/");
+  const lastSeparator = normalizedPath.lastIndexOf("/");
+  if (lastSeparator === -1) {
+    return `${locale}/${normalizedPath}`;
+  }
+
+  return `${normalizedPath.slice(0, lastSeparator)}/${locale}/${normalizedPath.slice(lastSeparator + 1)}`;
+}
+
+function buildProtocolPathCandidates(relativePath: string, locale: unknown): string[] {
+  const normalizedLocale = normalizeAppLanguage(locale);
+  const lowerLocale = normalizedLocale.toLowerCase();
+  const baseLocale = lowerLocale.split("-")[0] ?? DEFAULT_APP_LANGUAGE;
+  const candidates: string[] = [];
+  const push = (candidate: string): void => {
+    if (candidate.trim() === "" || candidates.includes(candidate)) {
+      return;
+    }
+
+    candidates.push(candidate);
+  };
+
+  push(insertLocaleIntoRelativePath(relativePath, normalizedLocale));
+  if (lowerLocale === "en") {
+    push(relativePath);
+  }
+  push(insertLocaleIntoRelativePath(relativePath, DEFAULT_APP_LANGUAGE));
+  if (baseLocale === "en" && lowerLocale !== "en") {
+    push(relativePath);
+  }
+  push(relativePath);
+  return candidates;
 }
 
 class RoomProtocolRegistryClass {
@@ -118,6 +159,9 @@ class RoomProtocolRegistryClass {
         title: spec.title,
         editable: spec.editable !== false,
         defaultBody,
+        relativeProtocolPath: resolveRoomProtocolFilePath(spec),
+        installedDir: room.installedDir,
+        localizedBodies: new Map(),
       });
       nextScenarioMap.set(buildScenarioKey(spec.room, spec.scenario), key);
     }
@@ -150,12 +194,19 @@ class RoomProtocolRegistryClass {
     return this.entriesByKey.get(key) ?? null;
   }
 
-  mergeProtocolMap(protocols: Record<string, string>): Record<string, string> {
-    const merged: Record<string, string> = {};
-
-    Array.from(this.entriesByKey.values()).forEach((entry) => {
-      merged[entry.key] = entry.defaultBody;
-    });
+  async mergeProtocolMap(
+    protocols: Record<string, string>,
+    options: { locale?: string } = {}
+  ): Promise<Record<string, string>> {
+    const locale = normalizeAppLanguage(options.locale);
+    const merged = Object.fromEntries(
+      await Promise.all(
+        Array.from(this.entriesByKey.values()).map(async (entry) => [
+          entry.key,
+          await this.resolveProtocolBody(entry, locale),
+        ])
+      )
+    ) as Record<string, string>;
 
     Array.from(this.runtimeBodiesByRoom.entries()).forEach(([roomId, protocolMap]) => {
       if (
@@ -205,12 +256,76 @@ class RoomProtocolRegistryClass {
       return "";
     }
 
+    return await this.readBodyFromInstalledRoomPath(room.installedDir, relativeProtocolPath);
+  }
+
+  private async resolveProtocolBody(entry: RoomProtocolEntry, locale: AppLanguage): Promise<string> {
+    if (entry.relativeProtocolPath === null) {
+      return entry.defaultBody;
+    }
+
+    const localizedBody = await this.readProtocolLocalizedBody(entry, locale);
+    if (localizedBody.trim() !== "") {
+      return localizedBody;
+    }
+
+    return entry.defaultBody;
+  }
+
+  private async readProtocolLocalizedBody(
+    entry: RoomProtocolEntry,
+    locale: AppLanguage
+  ): Promise<string> {
+    const normalizedLocale = normalizeAppLanguage(locale);
+    if (entry.localizedBodies.has(normalizedLocale)) {
+      return entry.localizedBodies.get(normalizedLocale) ?? "";
+    }
+
+    const bodiesByCandidate = await Promise.all(
+      buildProtocolPathCandidates(entry.relativeProtocolPath ?? "", normalizedLocale).map(
+        async (candidatePath) => {
+          if (candidatePath === entry.relativeProtocolPath) {
+            return {
+              candidatePath,
+              body: entry.defaultBody,
+            };
+          }
+
+          return {
+            candidatePath,
+            body: await this.readBodyFromInstalledRoomPath(entry.installedDir, candidatePath),
+          };
+        }
+      )
+    );
+
+    for (const { body } of bodiesByCandidate) {
+      if (body.trim() === "") {
+        continue;
+      }
+
+      entry.localizedBodies.set(normalizedLocale, body);
+      return body;
+    }
+
+    entry.localizedBodies.set(normalizedLocale, "");
+    return "";
+  }
+
+  private async readBodyFromInstalledRoomPath(
+    installedDir: string,
+    relativeProtocolPath: string
+  ): Promise<string> {
+    if (typeof window === "undefined") {
+      return "";
+    }
+
     const readFile = window.electronAPI?.readFile;
     if (typeof readFile !== "function") {
       return "";
     }
 
-    const protocolPath = `${room.installedDir.replace(/\\/g, "/")}/${relativeProtocolPath}`;
+    const protocolPath = `${installedDir.replace(/\\/g, "/")}/${relativeProtocolPath}`;
     try {
       const content = await readFile(protocolPath);
       return typeof content === "string" ? decodeProtocolBody(content) : "";

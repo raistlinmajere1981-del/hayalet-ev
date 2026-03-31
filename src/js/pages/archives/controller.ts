@@ -29,12 +29,17 @@ import {
 } from "./actions.js";
 import {
   applyProtocolSelectionView,
+  bindProtocolEditor,
   insertTagAtCursor as insertTagAtCursorInEditor,
   loadProtocolsFromApi,
+  readProtocolEditorValue,
+  refreshProtocolEditorTokens,
+  refreshProtocolTagButtons,
   renderProtocolListView,
   saveProtocolContent,
   setProtocolStatusView,
 } from "./protocol-editor.js";
+import { handleProtocolLocaleChange } from "./protocol-locale.js";
 import { clearSearchResultsView, renderSearchResultsView, switchSearchTab } from "./search-view.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import {
@@ -100,6 +105,7 @@ export class ArchivesPageController {
 
   protocolListEl: HTMLElement | null;
   protocolEditorTitleEl: HTMLElement | null;
+  protocolEditorEl: HTMLElement | null;
   protocolTextareaEl: HTMLTextAreaElement | null;
   protocolSaveBtn: HTMLElement | null;
   protocolEmptyEl: HTMLElement | null;
@@ -143,6 +149,7 @@ export class ArchivesPageController {
 
     this.protocolListEl = null;
     this.protocolEditorTitleEl = null;
+    this.protocolEditorEl = null;
     this.protocolTextareaEl = null;
     this.protocolSaveBtn = null;
     this.protocolEmptyEl = null;
@@ -187,6 +194,7 @@ export class ArchivesPageController {
 
     this.protocolListEl = document.getElementById("protocol-list");
     this.protocolEditorTitleEl = document.getElementById("protocol-editor-title");
+    this.protocolEditorEl = document.getElementById("protocol-rich-editor");
     this.protocolTextareaEl = document.getElementById(
       "protocol-textarea"
     ) as HTMLTextAreaElement | null;
@@ -194,6 +202,10 @@ export class ArchivesPageController {
     this.protocolEmptyEl = document.getElementById("protocol-empty");
     this.protocolStatusEl = document.getElementById("protocol-status");
     this.protocolTagButtonsEl = document.getElementById("protocol-tag-buttons");
+    bindProtocolEditor({
+      protocolEditorEl: this.protocolEditorEl,
+      protocolTextareaEl: this.protocolTextareaEl,
+    });
   }
 
   bindEvents(): void {
@@ -330,10 +342,13 @@ export class ArchivesPageController {
     });
 
     this.protocolTagButtonsEl?.querySelectorAll(".protocol-tag-btn").forEach((btn) => {
+      btn.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+      });
       btn.addEventListener("click", () => {
         const tag = (btn as HTMLElement).dataset["tag"];
-        if (tag !== undefined && tag !== "" && this.protocolTextareaEl) {
-          this.insertTagAtCursor(this.protocolTextareaEl, tag);
+        if (tag !== undefined && tag !== "") {
+          this.insertTagAtCursor(tag);
         }
       });
     });
@@ -366,7 +381,7 @@ export class ArchivesPageController {
     );
 
     this._unsubI18n ??= AppI18n.subscribe(() => {
-      this.applyTranslations();
+      void this.handleLocaleChanged();
     });
   }
 
@@ -730,6 +745,7 @@ export class ArchivesPageController {
     const us1Assigned = AppState.getArchiveAccountIdForProvider("us1") !== null;
 
     const ai1Name = ai1Assigned ? AppState.getNickname("ai1") : "AI1";
+    const ai0Name = AppState.getNickname("ai0");
     const ai2Name = ai2Assigned ? AppState.getNickname("ai2") : "AI2";
     const us1Name = us1Assigned ? AppState.getNickname("us1") : "US1";
 
@@ -748,6 +764,21 @@ export class ArchivesPageController {
     if (radioAi2) (radioAi2 as HTMLInputElement).disabled = !ai2Assigned;
     if (radioUs1) (radioUs1 as HTMLInputElement).disabled = !us1Assigned;
 
+    const ai0TagButton = this.protocolTagButtonsEl?.querySelector<HTMLElement>('[data-tag="<AI0>"]');
+    const ai1TagButton = this.protocolTagButtonsEl?.querySelector<HTMLElement>('[data-tag="<AI1>"]');
+    const ai2TagButton = this.protocolTagButtonsEl?.querySelector<HTMLElement>('[data-tag="<AI2>"]');
+    const us1TagButton = this.protocolTagButtonsEl?.querySelector<HTMLElement>('[data-tag="<US1>"]');
+
+    if (ai0TagButton) ai0TagButton.dataset["nickname"] = ai0Name;
+    if (ai1TagButton) ai1TagButton.dataset["nickname"] = ai1Name;
+    if (ai2TagButton) ai2TagButton.dataset["nickname"] = ai2Name;
+    if (us1TagButton) us1TagButton.dataset["nickname"] = us1Name;
+
+    refreshProtocolTagButtons(this.protocolTagButtonsEl);
+    refreshProtocolEditorTokens({
+      protocolEditorEl: this.protocolEditorEl,
+      protocolTextareaEl: this.protocolTextareaEl,
+    });
     this.syncActiveProvider();
   }
 
@@ -755,6 +786,9 @@ export class ArchivesPageController {
     try {
       this._protocols = await loadProtocolsFromApi(window.electronAPI);
       this.renderProtocolList();
+      if (this._selectedProtocolKey !== null && this._protocols[this._selectedProtocolKey] !== undefined) {
+        this.selectProtocol(this._selectedProtocolKey);
+      }
     } catch (e) {
       const err = e as Error;
       Logger.error(
@@ -784,6 +818,7 @@ export class ArchivesPageController {
       key,
       protocols: this._protocols,
       protocolEditorTitleEl: this.protocolEditorTitleEl,
+      protocolEditorEl: this.protocolEditorEl,
       protocolTextareaEl: this.protocolTextareaEl,
       protocolEmptyEl: this.protocolEmptyEl,
       protocolSaveBtn: this.protocolSaveBtn,
@@ -800,7 +835,10 @@ export class ArchivesPageController {
       return;
     }
 
-    const content = this.protocolTextareaEl?.value ?? "";
+    const content = readProtocolEditorValue({
+      protocolEditorEl: this.protocolEditorEl,
+      protocolTextareaEl: this.protocolTextareaEl,
+    });
     const saveBtn = this.protocolSaveBtn as HTMLButtonElement | null;
 
     try {
@@ -843,8 +881,12 @@ export class ArchivesPageController {
     }
   }
 
-  insertTagAtCursor(textarea: HTMLTextAreaElement, tag: string): void {
-    insertTagAtCursorInEditor(textarea, tag);
+  insertTagAtCursor(tag: string): void {
+    insertTagAtCursorInEditor({
+      protocolEditorEl: this.protocolEditorEl,
+      protocolTextareaEl: this.protocolTextareaEl,
+      tag,
+    });
   }
 
   setProtocolStatus(text: string, type = "info"): void {
@@ -857,6 +899,18 @@ export class ArchivesPageController {
     this.applyTranslations();
     await Promise.all([this.loadIndex(), this.loadProtocols()]);
     this.applyTranslations();
+  }
+
+  private async handleLocaleChanged(): Promise<void> {
+    await handleProtocolLocaleChange({
+      isOpen: this._isOpen,
+      applyTranslations: () => {
+        this.applyTranslations();
+      },
+      loadProtocols: async () => {
+        await this.loadProtocols();
+      },
+    });
   }
 
   private setElementText(id: string, text: string): void {
@@ -895,6 +949,9 @@ export class ArchivesPageController {
     if (this.protocolTextareaEl) {
       this.protocolTextareaEl.placeholder = archivesT("page.protocolPlaceholder");
     }
+    if (this.protocolEditorEl) {
+      this.protocolEditorEl.dataset["placeholder"] = archivesT("page.protocolPlaceholder");
+    }
 
     const copyUrlButton = document.getElementById("btn-copy-url");
     if (copyUrlButton) {
@@ -919,6 +976,8 @@ export class ArchivesPageController {
     if (this._selectedProtocolKey === null && this.protocolEditorTitleEl) {
       this.protocolEditorTitleEl.textContent = archivesT("page.protocolEditorPlaceholderTitle");
     }
+
+    refreshProtocolTagButtons(this.protocolTagButtonsEl);
 
     this.fillForm(this._selectedEntry);
     this.renderList();

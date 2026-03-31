@@ -13,6 +13,14 @@ import { loadAvailableLanguage } from "./i18n/language-service.ts";
 import { translateCatalog } from "../shared/i18n/catalog.js";
 import { getBuiltInLanguagePack } from "../shared/i18n/bundled-languages.js";
 import { normalizeAppLanguage } from "../shared/i18n/locale.js";
+import {
+  canonicalizeProtocolKey,
+  DEFAULT_PROTOCOL_KEYS,
+  normalizeStoredProtocols,
+  resolveStoredProtocolEntryForLocale,
+  type StoredProtocolMap,
+  upsertStoredProtocolEntry,
+} from "../shared/protocol-storage.ts";
 
 const logger = getLoggerCore();
 
@@ -365,29 +373,43 @@ export async function openPath(targetPath: string): Promise<ResultBase> {
   }
 }
 
-const DEFAULT_PROTOCOL_KEYS = [
-  "AI-assistant",
-  "analyze-AI1-AI2",
-  "analyze-AI2-AI1",
-  "analyze-user-AI-AI",
-  "takecontrol",
-] as const;
+function normalizeLocaleKey(locale: unknown): string {
+  return normalizeAppLanguage(locale);
+}
 
-async function ensureProtocolsJson(): Promise<Record<string, string>> {
+async function resolveProtocolLocale(): Promise<string> {
+  try {
+    const settings = (await loadSettings()) as { general?: { language?: unknown } } | null;
+    return normalizeLocaleKey(settings?.general?.language);
+  } catch {
+    return DEFAULT_APP_LANGUAGE;
+  }
+}
+
+async function writeProtocolsJson(protocolsPath: string, protocols: StoredProtocolMap): Promise<void> {
+  await ensureDir(Paths.getDataDir());
+  await writeFile(protocolsPath, `${JSON.stringify(protocols, null, 2)}\n`, "utf-8");
+}
+
+async function ensureProtocolsJson(): Promise<StoredProtocolMap> {
   const protocolsPath = Paths.getProtocolsPath();
 
   if (existsSync(protocolsPath)) {
     const raw = await readFile(protocolsPath, "utf-8");
-    return JSON.parse(raw) as Record<string, string>;
+    const parsed = JSON.parse(raw) as unknown;
+    const normalized = normalizeStoredProtocols(parsed);
+    if (normalized.changed === true) {
+      await writeProtocolsJson(protocolsPath, normalized.protocols);
+    }
+    return normalized.protocols;
   }
 
-  const protocols: Record<string, string> = {};
+  const protocols: StoredProtocolMap = {};
   DEFAULT_PROTOCOL_KEYS.forEach((key) => {
     protocols[key] = "";
   });
 
-  await ensureDir(Paths.getDataDir());
-  await writeFile(protocolsPath, JSON.stringify(protocols, null, 2), "utf-8");
+  await writeProtocolsJson(protocolsPath, protocols);
   await logger.logInternal(
     LogCategory.SYSTEM,
     LogLevel.INFO,
@@ -400,8 +422,11 @@ export async function loadProtocols(
   _event: IpcMainInvokeEvent
 ): Promise<{ success: boolean; protocols?: Record<string, string>; message?: string }> {
   try {
-    const protocols = await ensureProtocolsJson();
-    return { success: true, protocols };
+    const [protocols, locale] = await Promise.all([ensureProtocolsJson(), resolveProtocolLocale()]);
+    const resolved = Object.fromEntries(
+      Object.entries(protocols).map(([key, value]) => [key, resolveStoredProtocolEntryForLocale(value, locale)])
+    );
+    return { success: true, protocols: resolved };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     await logger.logInternal(
@@ -419,16 +444,16 @@ export async function saveProtocol(
   content: string
 ): Promise<{ success: boolean; message?: string }> {
   try {
-    if (key.length === 0) throw new Error(await fileManagerT("protocolKeyMissing"));
+    if (key.trim().length === 0) throw new Error(await fileManagerT("protocolKeyMissing"));
 
-    const protocols = await ensureProtocolsJson();
-    protocols[key] = content;
+    const [protocols, locale] = await Promise.all([ensureProtocolsJson(), resolveProtocolLocale()]);
+    const nextProtocols = upsertStoredProtocolEntry(protocols, key, content, locale);
     const protocolsPath = Paths.getProtocolsPath();
-    await writeFile(protocolsPath, JSON.stringify(protocols, null, 2), "utf-8");
+    await writeProtocolsJson(protocolsPath, nextProtocols);
     await logger.logInternal(
       LogCategory.SYSTEM,
       LogLevel.INFO,
-      await fileManagerT("protocolUpdated", { key })
+      await fileManagerT("protocolUpdated", { key: canonicalizeProtocolKey(key) })
     );
     return { success: true };
   } catch (error: unknown) {

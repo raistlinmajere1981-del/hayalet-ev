@@ -8,6 +8,7 @@ import { Logger, LogCategory, LogLevel } from "../logger/index.js";
 import { ProtocolHandler } from "../protocol-handler.js";
 import { resolveComposedProtocolMessage } from "../protocol-message-composer.js";
 import { SlotController } from "../slot-controller.js";
+import { replaceProtocolTagsWithResolver } from "../../../../shared/protocol-tags.js";
 
 export interface AttachmentInput {
   name?: string;
@@ -64,10 +65,7 @@ function commandT(key: string, params?: Record<string, string | number>): string
 }
 
 export function replaceProtocolTags(text: string): string {
-  return text
-    .replace(/<AI0>/g, AppState.getNickname("ai0"))
-    .replace(/<AI1>/g, AppState.getNickname("ai1"))
-    .replace(/<AI2>/g, AppState.getNickname("ai2"));
+  return replaceProtocolTagsWithResolver(text, (provider) => AppState.getNickname(provider));
 }
 
 export async function sendBatchWithContext(
