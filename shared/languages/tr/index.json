@@ -84,6 +84,17 @@
         "noFiles": "Henüz dosya yok.",
         "us1DummyReply": "US1 transport mesajı yerel olarak kaydetti. Archive projection daha sonraki bir fazda bağlanacak.",
         "us1AttachmentOnlyMessage": "US1 için {{count}} dosya hazırlandı, ancak archive projection henüz etkin değil.",
+        "dictation": {
+          "idleTitle": "Sesle metin ekle",
+          "listeningTitle": "Dinlemeyi durdur ve metni ekle",
+          "transcribingTitle": "Ses çözülüyor",
+          "listeningMessage": "Mikrofon açık. Bitirdiğinde tekrar tıkla.",
+          "preparingMessage": "Yerel ses çözümleme altyapısı hazırlanıyor.",
+          "emptyResultMessage": "Sesten metin sonucu boş döndü.",
+          "insertedMessage": "Transcript metin alanına eklendi.",
+          "captureError": "Mikrofon başlatılamadı: {{message}}",
+          "transcriptionError": "Ses çözümlenemedi: {{message}}"
+        },
         "buttons": {
           "sending": "Gönderiliyor...",
           "sent": "Gönderildi!",
@@ -5957,7 +5968,18 @@
       "attachmentFallbackName": "ek",
       "removeAttachmentAria": "{{name}} kaldır",
       "attachmentSourceClipboard": "Panodan eklendi",
-      "attachmentSourceFile": "Dosyadan eklendi"
+      "attachmentSourceFile": "Dosyadan eklendi",
+      "dictation": {
+        "idleTitle": "Sesle metin ekle",
+        "listeningTitle": "Dinlemeyi durdur ve metni ekle",
+        "transcribingTitle": "Ses çözülüyor",
+        "listeningMessage": "Mikrofon açık. Bitirdiğinde tekrar tıkla.",
+        "preparingMessage": "Yerel ses çözümleme altyapısı hazırlanıyor.",
+        "emptyResultMessage": "Sesten metin sonucu boş döndü.",
+        "insertedMessage": "Transcript metin alanına eklendi.",
+        "captureError": "Mikrofon başlatılamadı: {{message}}",
+        "transcriptionError": "Ses çözümlenemedi: {{message}}"
+      }
     },
     "message": {
       "reasoningTitle": "Akıl Yürütme",

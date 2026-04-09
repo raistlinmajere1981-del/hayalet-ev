@@ -4,10 +4,12 @@ const ALLOWED_IPC_RENDERER_CHANNELS = new Set(["log:ui-notify-batch"]);
 const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
 const ROOM_TOOLS_PROGRESS_CHANNEL = "room-tools:progress";
+const TRANSCRIPT_INGRESS_CHANNEL = "transcript:ingress";
 const SETTINGS_BROADCAST_NAME = "app-settings";
 const opencodeUiSessionUpdatedHandlers = new Map();
 const providerScenarioProgressHandlers = new Map();
 const roomToolsProgressHandlers = new Map();
+const transcriptIngressHandlers = new Map();
 let __app_preload_locale = "tr";
 let __app_preload_catalog = null;
 let __app_preload_settings_channel = null;
@@ -447,6 +449,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
     if (!handler) return;
     ipcRenderer.removeListener(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
     opencodeUiSessionUpdatedHandlers.delete(callback);
+  },
+  transcriptStatus: () => ipcRenderer.invoke("transcript-status"),
+  transcriptEnsureRuntime: () => ipcRenderer.invoke("transcript-ensure-runtime"),
+  transcriptTranscribeLocal: (request) =>
+    ipcRenderer.invoke("transcript-transcribe-local", request),
+  transcriptSubmitIngress: (request) => ipcRenderer.invoke("transcript-submit-ingress", request),
+  transcriptOnIngress: (callback) => {
+    if (typeof callback !== "function" || transcriptIngressHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    transcriptIngressHandlers.set(callback, handler);
+    ipcRenderer.on(TRANSCRIPT_INGRESS_CHANNEL, handler);
+  },
+  transcriptOffIngress: (callback) => {
+    const handler = transcriptIngressHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(TRANSCRIPT_INGRESS_CHANNEL, handler);
+    transcriptIngressHandlers.delete(callback);
   },
 
   // NOTE: Startup flags are read from the preload process argv so the renderer stays passive.

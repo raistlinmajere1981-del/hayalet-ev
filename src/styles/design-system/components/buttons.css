@@ -108,6 +108,33 @@
   box-shadow: var(--surface-shadow), var(--glow-error);
 }
 
+.dictation-trigger {
+  flex-shrink: 0;
+}
+
+.dictation-trigger__icon {
+  width: var(--size-icon-md);
+  height: var(--size-icon-md);
+}
+
+.dictation-trigger__icon--spinner {
+  animation: spin var(--duration-pulse) linear infinite;
+}
+
+.dictation-trigger.is-listening:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-error) 48%, var(--border-default));
+  background: color-mix(in srgb, var(--color-error) 14%, var(--bg-surface));
+  color: var(--color-error);
+  box-shadow:
+    var(--surface-outline),
+    0 0 0 var(--size-focus-ring) color-mix(in srgb, var(--color-error) 14%, transparent);
+}
+
+.dictation-trigger.is-transcribing:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 48%, var(--border-default));
+  color: var(--color-accent);
+}
+
 .icon-btn {
   display: inline-flex;
   align-items: center;

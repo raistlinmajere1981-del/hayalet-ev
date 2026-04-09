@@ -169,6 +169,74 @@ export function ensureElectronApiFallback(): void {
       }),
     whisperSave: async (_params: unknown): Promise<{ success: boolean }> =>
       await Promise.resolve({ success: true }),
+    transcriptStatus: async (): Promise<{
+      state: string;
+      ready: boolean;
+      binaryPath: string | null;
+      modelPath: string | null;
+      modelId: string;
+      modelLanguage: string;
+      message: string | null;
+    }> =>
+      await Promise.resolve({
+        state: "missing-runtime",
+        ready: false,
+        binaryPath: null,
+        modelPath: null,
+        modelId: "base",
+        modelLanguage: "auto",
+        message: "electronAPI fallback",
+      }),
+    transcriptEnsureRuntime: async (): Promise<{
+      state: string;
+      ready: boolean;
+      binaryPath: string | null;
+      modelPath: string | null;
+      modelId: string;
+      modelLanguage: string;
+      message: string | null;
+    }> =>
+      await Promise.resolve({
+        state: "missing-runtime",
+        ready: false,
+        binaryPath: null,
+        modelPath: null,
+        modelId: "base",
+        modelLanguage: "auto",
+        message: "electronAPI fallback",
+      }),
+    transcriptTranscribeLocal: async (): Promise<{
+      success: boolean;
+      status: {
+        state: string;
+        ready: boolean;
+        binaryPath: string | null;
+        modelPath: string | null;
+        modelId: string;
+        modelLanguage: string;
+        message: string | null;
+      };
+      error: string;
+    }> =>
+      await Promise.resolve({
+        success: false,
+        status: {
+          state: "missing-runtime",
+          ready: false,
+          binaryPath: null,
+          modelPath: null,
+          modelId: "base",
+          modelLanguage: "auto",
+          message: "electronAPI fallback",
+        },
+        error: "fallback",
+      }),
+    transcriptSubmitIngress: async (): Promise<{ success: boolean }> =>
+      await Promise.resolve({ success: false }),
+    transcriptOnIngress: (): void => {},
+    transcriptOffIngress: (): void => {},
+    assistantOnTranscriptIngress: (): void => {},
+    assistantOffTranscriptIngress: (): void => {},
 
     getPreloadPath: async (): Promise<string> => await Promise.resolve(""),
     showOpenDialog: async (): Promise<{ canceled: boolean; filePaths: string[] }> =>

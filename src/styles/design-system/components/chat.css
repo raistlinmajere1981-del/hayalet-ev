@@ -587,6 +587,12 @@
   box-shadow: var(--surface-shadow), var(--glow-accent);
 }
 
+.ds-chat__dictation {
+  width: var(--btn-height);
+  min-width: var(--btn-height);
+  border-radius: var(--radius-lg);
+}
+
 .ds-chat__token-info {
   display: flex;
   justify-content: flex-end;

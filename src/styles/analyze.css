@@ -481,6 +481,27 @@
   resize: none;
 }
 
+.compose-textarea-stack {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.compose-textarea-stack textarea {
+  padding-right: calc(var(--btn-height-sm) + var(--space-8));
+}
+
+.compose-dictation-btn {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  width: var(--btn-height-sm);
+  height: var(--btn-height-sm);
+  border-radius: var(--radius-md);
+  z-index: 1;
+}
+
 .compose-start-action {
   margin-right: auto;
 }

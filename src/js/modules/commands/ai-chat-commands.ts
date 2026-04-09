@@ -11,6 +11,7 @@ import { logCommandResult } from "./utils.js";
 import { getErrorMessage } from "@shared/index.js";
 import { stripInlineCommandsFromText } from "./inline-command-parser.js";
 import { slotBridgeHandler } from "./slot-bridge.js";
+import type { CoreEngine as CoreEngineType } from "../core-engine.js";
 
 type CommandHandlerResult = { success: boolean; message?: string; [key: string]: unknown };
 
@@ -66,7 +67,7 @@ export const aiChatRuntime = {
   slotBridge: async (payload: CommandPayload = {}): Promise<CommandHandlerResult> => {
     return (await slotBridgeHandler(payload)) as CommandHandlerResult;
   },
-  getCoreEngine: async () => {
+  getCoreEngine: async (): Promise<CoreEngineType> => {
     return (await import("../core-engine.js")).CoreEngine;
   },
 };

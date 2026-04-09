@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-31T16:36:03.615Z",
+  "generatedAt": "2026-04-08T22:00:08.059Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 616,
-    "ids": 574,
+    "filesScanned": 624,
+    "ids": 576,
     "testIds": 15,
-    "querySelectors": 148,
-    "totalSelectors": 737
+    "querySelectors": 149,
+    "totalSelectors": 740
   },
   "lookup": {
     "id": {
@@ -186,6 +186,7 @@
       "character-pool-list": "#character-pool-list",
       "character-save-btn": "#character-save-btn",
       "chat-area": "#chat-area",
+      "chat-dictation-btn": "#chat-dictation-btn",
       "chat-empty": "#chat-empty",
       "chat-empty-subtitle": "#chat-empty-subtitle",
       "chat-empty-title": "#chat-empty-title",
@@ -197,6 +198,7 @@
       "cluster-ai1": "#cluster-ai1",
       "cluster-ai2": "#cluster-ai2",
       "cluster-us1": "#cluster-us1",
+      "compose-dictation-btn": "#compose-dictation-btn",
       "compose-input": "#compose-input",
       "compose-send-btn": "#compose-send-btn",
       "compose-start-btn": "#compose-start-btn",
@@ -688,6 +690,7 @@
       "data_testid_file": "[data-testid*=\"file\"]",
       "testid_attachment_preview": "[data-testid=\"attachment-preview\"]",
       "testid_conversation_turn": "[data-testid=\"conversation-turn\"]",
+      "testid_conversation_turn_data_message_id_data_turn_id": "[data-testid=\"conversation-turn\"], [data-message-id], [data-turn-id]",
       "testid_dmcomposertextinput": "[data-testid=\"dmComposerTextInput\"]",
       "testid_dmcomposertextinput_prosemirror_contenteditable_true": "[data-testid=\"dmComposerTextInput\"] .ProseMirror[contenteditable=\"true\"]",
       "testid_dmcomposertextinput_prosemirror_contenteditable_true_prosemirror_contente": "[data-testid=\"dmComposerTextInput\"] .ProseMirror[contenteditable=\"true\"], .ProseMirror[contenteditable=\"true\"], textarea[aria-label=\"Grok\\",

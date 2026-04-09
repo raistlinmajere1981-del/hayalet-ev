@@ -82,7 +82,10 @@ import {
 import {
   bindAssistantPrimaryWebviewEvents,
   bindAssistantWebviewIpcEvents,
+  sendTranscriptIngressToAssistantWebview,
 } from "./webview-bindings.js";
+import { onTranscriptIngress } from "../../modules/transcript/electron-client.js";
+import type { TranscriptIngressPayload } from "../../../types/transcript.js";
 import {
   applySceneDebugFlag,
   createSceneLayoutEditorAssetBindings,
@@ -276,6 +279,8 @@ export class AssistantController {
   _assistantSceneCharacterRenderToken: number;
   _assistantSceneThemeUnsub: (() => void) | null;
   _assistantSceneAssetDraftUnsub: (() => void) | null;
+  _offTranscriptIngress: (() => void) | null;
+  _pendingTranscriptIngress: TranscriptIngressPayload[];
 
   get _assistantSceneLayout(): SceneLayoutConfig {
     return this._assistantSceneSession.getSceneLayout();
@@ -353,6 +358,8 @@ export class AssistantController {
     this._assistantSceneCharacterRenderToken = 0;
     this._assistantSceneThemeUnsub = null;
     this._assistantSceneAssetDraftUnsub = null;
+    this._offTranscriptIngress = null;
+    this._pendingTranscriptIngress = [];
   }
 
   async init(): Promise<void> {
@@ -514,6 +521,9 @@ export class AssistantController {
 
     this._loadDisabledMcpServers();
     registerAssistantDeliveryHandler(this._handleDeliveryRequest.bind(this));
+    this._offTranscriptIngress ??= onTranscriptIngress((payload) => {
+      this._handleTranscriptIngress(payload);
+    });
 
     this._updateConnectionUI();
     Logger.debug(LogCategory.ASSISTANT_CORE, assistantT("logs.controllerInitialized"));
@@ -2463,7 +2473,52 @@ export class AssistantController {
       syncThemeToWebview: () => {
         this._syncOpencodeUiTheme(ThemeManager.current, { assumeDomReady: true });
       },
+      onTranscriptDomReady: () => {
+        this._flushPendingTranscriptIngress();
+      },
     });
+  }
+
+  _handleTranscriptIngress(payload: TranscriptIngressPayload): void {
+    const activePage = document.documentElement.getAttribute("data-active-page");
+    if (activePage !== "assistant") {
+      return;
+    }
+
+    if (payload.target !== null && payload.target !== "assistant-opencode-native") {
+      return;
+    }
+
+    const providerId = this.providerSelect?.value ?? this._activeAdapter?.id ?? null;
+    if (providerId !== "opencode-ui") {
+      return;
+    }
+
+    const ai0Webview = document.getElementById("ai0-webview") as WebviewElement | null;
+    const delivered = sendTranscriptIngressToAssistantWebview(ai0Webview, payload);
+    if (!delivered) {
+      this._pendingTranscriptIngress.push(payload);
+    }
+  }
+
+  _flushPendingTranscriptIngress(): void {
+    if (this._pendingTranscriptIngress.length === 0) {
+      return;
+    }
+
+    const ai0Webview = document.getElementById("ai0-webview") as WebviewElement | null;
+    if (ai0Webview == null) {
+      return;
+    }
+
+    const stillPending: TranscriptIngressPayload[] = [];
+    for (const payload of this._pendingTranscriptIngress) {
+      const delivered = sendTranscriptIngressToAssistantWebview(ai0Webview, payload);
+      if (!delivered) {
+        stillPending.push(payload);
+      }
+    }
+    this._pendingTranscriptIngress = stillPending;
   }
   _loadDisabledMcpServers(): void {
     const settings = SettingsManager.getSnapshot() as AppSettings | null;

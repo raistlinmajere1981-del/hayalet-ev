@@ -12,13 +12,13 @@ import {
   type SlotBridgeResult,
   type SlotBridgeSessionRef,
 } from "@shared/index.js";
-import type { CoreEngine as CoreEngineInstance } from "../core-engine.js";
 import { AppState } from "../app-state.js";
 import { resolveComposedProtocolMessage } from "../protocol-message-composer.js";
 import { ProtocolHandler } from "../protocol-handler.js";
 import { RoomCommandRegistry } from "../rooms/room-command-registry.js";
 import { SlotController } from "../slot-controller.js";
 import { replaceProtocolTagsWithResolver } from "../../../../shared/protocol-tags.js";
+import { getSlotBridgeCoreEngine, type SlotBridgeCoreEngineRef } from "./slot-bridge-runtime.js";
 
 export const SLOT_BRIDGE_COMMAND_NAME = "SlotBridge";
 
@@ -35,11 +35,6 @@ export const SLOT_BRIDGE_ACTIONS = [
 
 export type SlotBridgeActionKey = (typeof SLOT_BRIDGE_ACTIONS)[number];
 export type SlotBridgeActionCategory = "ai0" | "ai1-ai2" | "us1";
-
-type SlotBridgeCoreEngineRef = Pick<
-  CoreEngineInstance,
-  "setConnection" | "sendBatch" | "sendMessage"
->;
 
 interface SlotBridgeConversationListManagerRef {
   refresh(options: { silent?: boolean; forceSelectId?: string; provider?: string }): Promise<void>;
@@ -240,9 +235,7 @@ function readAttachments(value: unknown): SlotBridgeAttachmentDescriptor[] {
   });
 }
 
-function readProtocolDescriptor(
-  envelope: SlotBridgeEnvelope
-): SlotBridgeProtocolDescriptor | null {
+function readProtocolDescriptor(envelope: SlotBridgeEnvelope): SlotBridgeProtocolDescriptor | null {
   const actionPayload = isRecord(envelope.payload) ? envelope.payload : {};
   const protocolPayload = isRecord(actionPayload["protocol"]) ? actionPayload["protocol"] : {};
   const source = Object.keys(protocolPayload).length > 0 ? protocolPayload : actionPayload;
@@ -563,8 +556,8 @@ export const slotBridgeRuntime = {
     return module.ConversationListManager;
   },
   getCoreEngine: async (): Promise<SlotBridgeCoreEngineRef> => {
-    const module = await import("../core-engine.js");
-    return module.CoreEngine;
+    const coreEngine = await Promise.resolve(getSlotBridgeCoreEngine());
+    return coreEngine;
   },
   getWebviewManager: async (): Promise<SlotBridgeWebviewManagerRef> => {
     const module = await import("../webview-manager.js");
@@ -1163,11 +1156,7 @@ async function sendAiTargets(
     ? buildResult(envelope, {
         session: envelope.sessionRef ?? null,
       })
-    : buildErrorResult(
-        envelope,
-        "SEND_FAILED",
-        sendResult.message ?? "Message could not be sent"
-      );
+    : buildErrorResult(envelope, "SEND_FAILED", sendResult.message ?? "Message could not be sent");
 }
 
 async function runMessageAction(
@@ -1223,10 +1212,7 @@ async function runMessageAction(
   const text = appendRequestMarker(await composeActionText(envelope, payload), envelope);
   const page = readActionPage(envelope, payload);
   let attachments: ResolvedSendAttachment[] = [];
-  if (
-    Array.isArray(envelope.attachments) &&
-    envelope.attachments.length > 0
-  ) {
+  if (Array.isArray(envelope.attachments) && envelope.attachments.length > 0) {
     try {
       attachments = await resolveSendAttachmentPaths(envelope);
     } catch (error) {
@@ -1247,9 +1233,7 @@ async function runMessageAction(
     return buildErrorResult(envelope, "MESSAGE_REQUIRED", "Text is required for this action");
   }
 
-  const aiTargets = targets.filter(
-    (target): target is "ai0" | "ai1" | "ai2" => target !== "us1"
-  );
+  const aiTargets = targets.filter((target): target is "ai0" | "ai1" | "ai2" => target !== "us1");
   const us1Targets = targets.filter((target): target is "us1" => target === "us1");
 
   if (aiTargets.length > 0) {

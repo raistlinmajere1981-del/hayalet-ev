@@ -7,6 +7,7 @@ export interface BaseSelectors {
   inputField: string;
   messageContainer: string;
   voiceButton?: string;
+  microphoneButton?: string;
   generatedImage?: string;
   filePreview?: string | string[];
   attachButton?: string;

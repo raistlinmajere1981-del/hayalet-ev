@@ -1,4 +1,5 @@
 import type { WebviewElement } from "@shared/assistant.js";
+import type { TranscriptIngressPayload } from "../../../types/transcript.js";
 
 import { AppState } from "../../modules/app-state.js";
 import { AppI18n } from "../../modules/i18n/index.js";
@@ -105,6 +106,7 @@ interface BindAssistantPrimaryWebviewEventsOptions {
   scheduleSaveLastOpencodeUrl: (url: string) => void;
   syncDisabledMcpToHealth: () => void;
   syncThemeToWebview: () => void;
+  onTranscriptDomReady?: () => void;
 }
 
 export function bindAssistantPrimaryWebviewEvents(
@@ -156,6 +158,7 @@ export function bindAssistantPrimaryWebviewEvents(
 
       options.syncDisabledMcpToHealth();
       options.syncThemeToWebview();
+      options.onTranscriptDomReady?.();
     })();
   });
 
@@ -172,4 +175,20 @@ export function bindAssistantPrimaryWebviewEvents(
       }
     } catch (_) {}
   });
+}
+
+export function sendTranscriptIngressToAssistantWebview(
+  webviewEl: WebviewElement | null,
+  payload: TranscriptIngressPayload
+): boolean {
+  if (webviewEl == null || typeof webviewEl.send !== "function") {
+    return false;
+  }
+
+  try {
+    webviewEl.send("assistant-transcript-ingress", payload);
+    return true;
+  } catch {
+    return false;
+  }
 }

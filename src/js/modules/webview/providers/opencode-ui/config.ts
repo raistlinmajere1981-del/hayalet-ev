@@ -68,7 +68,8 @@ export const config = {
     userMessage: ".ds-message--user .ds-message__bubble",
     assistantMessage: ".ds-message--assistant .ds-message__bubble",
     assistantMessageAlt: ".ds-message--assistant .ds-message__bubble",
-    voiceButton: "",
+    voiceButton: "#chat-dictation-btn",
+    microphoneButton: "#chat-dictation-btn",
     filePreview: [".ds-file-chips"],
   },
   selectorMatrix: {

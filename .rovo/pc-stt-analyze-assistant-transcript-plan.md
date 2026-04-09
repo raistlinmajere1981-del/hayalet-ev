@@ -95,13 +95,15 @@ Suggested runtime surfaces:
 Normalize every transcript source into one envelope shape:
 
 - `source`: `pc-mic | android-bridge | synthetic-test`
-- `target`: `analyze-compose | assistant-opencode-native`
+- `target`: `analyze-compose | assistant-opencode-native | null`
 - `text`
 - `isFinal`
 - `createdAt`
 - `metadata`
+- `requestId`
 
 This keeps desktop mic capture and future Android ingress on the same downstream insertion path.
+`target: null` is reserved for “deliver to the currently active supported page” when the source cannot know the active page ahead of time.
 
 ### 3. Target Inserter Layer
 

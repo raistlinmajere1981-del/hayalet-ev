@@ -84,6 +84,17 @@
         "noFiles": "No files yet.",
         "us1DummyReply": "US1 transport recorded the message locally. Archive projection will arrive in a later phase.",
         "us1AttachmentOnlyMessage": "{{count}} file(s) are staged for US1, but archive projection is not enabled yet.",
+        "dictation": {
+          "idleTitle": "Add voice transcript",
+          "listeningTitle": "Stop listening and insert the transcript",
+          "transcribingTitle": "Transcribing audio",
+          "listeningMessage": "Microphone is live. Click again when you are done.",
+          "preparingMessage": "Preparing the local voice transcription runtime.",
+          "emptyResultMessage": "The voice transcript came back empty.",
+          "insertedMessage": "The transcript was inserted into the text field.",
+          "captureError": "Could not start the microphone: {{message}}",
+          "transcriptionError": "Could not transcribe the audio: {{message}}"
+        },
         "buttons": {
           "sending": "Sending...",
           "sent": "Sent!",
@@ -5957,7 +5968,18 @@
       "attachmentFallbackName": "attachment",
       "removeAttachmentAria": "Remove {{name}}",
       "attachmentSourceClipboard": "Added from clipboard",
-      "attachmentSourceFile": "Added from file"
+      "attachmentSourceFile": "Added from file",
+      "dictation": {
+        "idleTitle": "Add voice transcript",
+        "listeningTitle": "Stop listening and insert the transcript",
+        "transcribingTitle": "Transcribing audio",
+        "listeningMessage": "Microphone is live. Click again when you are done.",
+        "preparingMessage": "Preparing the local voice transcription runtime.",
+        "emptyResultMessage": "The voice transcript came back empty.",
+        "insertedMessage": "The transcript was inserted into the text field.",
+        "captureError": "Could not start the microphone: {{message}}",
+        "transcriptionError": "Could not transcribe the audio: {{message}}"
+      }
     },
     "message": {
       "reasoningTitle": "Reasoning",

@@ -34,6 +34,14 @@ import type {
   RoomToolCancelResult,
   RoomToolProgressEvent,
 } from "../types/room-tools.js";
+import type {
+  TranscriptIngressPayload,
+  TranscriptRuntimeStatus,
+  TranscriptSubmitIngressRequest,
+  TranscriptSubmitIngressResult,
+  TranscriptTranscriptionRequest,
+  TranscriptTranscriptionResult,
+} from "../types/transcript.js";
 import type { SceneThemeRegistration } from "./scene-system/scene-theme-registry-contract.js";
 
 export {};
@@ -1085,6 +1093,18 @@ declare global {
     opencodeUiSessionWatchStop: () => Promise<{ success: boolean }>;
     opencodeUiOnSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;
     opencodeUiOffSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;
+    transcriptStatus: () => Promise<TranscriptRuntimeStatus>;
+    transcriptEnsureRuntime: () => Promise<TranscriptRuntimeStatus>;
+    transcriptTranscribeLocal: (
+      request: TranscriptTranscriptionRequest
+    ) => Promise<TranscriptTranscriptionResult>;
+    transcriptSubmitIngress: (
+      request: TranscriptSubmitIngressRequest
+    ) => Promise<TranscriptSubmitIngressResult>;
+    transcriptOnIngress?: (callback: (payload: TranscriptIngressPayload) => void) => void;
+    transcriptOffIngress?: (callback: (payload: TranscriptIngressPayload) => void) => void;
+    assistantOnTranscriptIngress?: (callback: (payload: TranscriptIngressPayload) => void) => void;
+    assistantOffTranscriptIngress?: (callback: (payload: TranscriptIngressPayload) => void) => void;
 
     opencodeUiHevTools: () => Promise<{
       success: boolean;

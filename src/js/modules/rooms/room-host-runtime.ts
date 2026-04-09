@@ -477,9 +477,7 @@ class RoomHostRuntimeClass {
           },
         })) as Awaited<ReturnType<typeof CoreEngine.sendProtocol>>;
       },
-      sendMessage: async (
-        options
-      ): Promise<Awaited<ReturnType<typeof CoreEngine.sendMessage>>> => {
+      sendMessage: async (options): Promise<Awaited<ReturnType<typeof CoreEngine.sendMessage>>> => {
         const sendOptions = options ?? {};
         return (await dispatchBridge({
           action: "message.send",
@@ -533,7 +531,9 @@ class RoomHostRuntimeClass {
         return {
           success: record["success"] === true,
           ...(typeof record["message"] === "string" ? { error: record["message"] } : {}),
-          ...(typeof data["remoteUserId"] === "string" ? { remoteUserId: data["remoteUserId"] } : {}),
+          ...(typeof data["remoteUserId"] === "string"
+            ? { remoteUserId: data["remoteUserId"] }
+            : {}),
           ...(typeof data["transportMessageId"] === "string"
             ? { transportMessageId: data["transportMessageId"] }
             : {}),

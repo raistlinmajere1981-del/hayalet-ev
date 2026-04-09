@@ -4,6 +4,7 @@ import { CommandManager } from "./command-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
 import { WebviewManager } from "./webview-manager.js";
 import { AppI18n } from "./i18n/index.js";
+import { registerSlotBridgeCoreEngine } from "./commands/slot-bridge-runtime.js";
 import {
   replaceProtocolTags,
   sendBatchWithContext,
@@ -236,8 +237,8 @@ class CoreEngineClass {
     if (room === "analyze" && scenario === "ai-ai" && mode === "aiRelaySequential") {
       const [{ ProtocolHandler: protocolHandler }, { resolveComposedProtocolMessage }] =
         await Promise.all([
-        import("./protocol-handler.js"),
-        import("./protocol-message-composer.js"),
+          import("./protocol-handler.js"),
+          import("./protocol-message-composer.js"),
         ]);
       const protocolPayload = protocolHandler.buildPayload({
         room,
@@ -329,8 +330,8 @@ class CoreEngineClass {
           message: error instanceof Error ? error.message : String(error),
         }),
         {
-        error: error instanceof Error ? error : new Error(String(error)),
-        context: { room, scenario },
+          error: error instanceof Error ? error : new Error(String(error)),
+          context: { room, scenario },
         }
       );
     }
@@ -452,6 +453,7 @@ class CoreEngineClass {
 }
 
 const coreEngine = new CoreEngineClass();
+registerSlotBridgeCoreEngine(coreEngine);
 export { coreEngine as CoreEngine, registerServerCommands };
 export type { ServerCommandsRef };
 export type CoreEngine = CoreEngineClass;

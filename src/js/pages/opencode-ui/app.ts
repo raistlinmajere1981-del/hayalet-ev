@@ -72,6 +72,11 @@ import {
 import { createSessionStorage } from "./session-storage.js";
 import { initOpencodeUiChatEvents } from "./chat-events.js";
 import { bootstrapOpencodeUiApp as bootstrapOpencodeUiAppFromModule } from "./app-bootstrap.js";
+import {
+  bindDictationTrigger,
+  type DictationBinding,
+} from "../../modules/transcript/dictation-ui.js";
+import { onAssistantTranscriptIngress } from "../../modules/transcript/electron-client.js";
 import type {
   ComposerAttachment,
   CustomSelectAPI,
@@ -117,6 +122,7 @@ let modelDropdown: CustomSelectAPI | null = null;
 let effortDropdown: CustomSelectAPI | null = null;
 let modelSettingsOverlayController: ReturnType<typeof createModelSettingsOverlayController> | null =
   null;
+let dictationBinding: DictationBinding | null = null;
 let localeRefreshBound = false;
 let localeRefreshInFlight: Promise<void> | null = null;
 
@@ -453,6 +459,29 @@ function initChatEvents(): void {
     removeComposerAttachment,
     renderAttachmentTray,
   });
+
+  dictationBinding?.dispose();
+  dictationBinding = bindDictationTrigger({
+    button: byId<HTMLButtonElement>("chat-dictation-btn"),
+    textarea: byId<HTMLTextAreaElement>("chat-input"),
+    targetId: "assistant-opencode-native",
+    getLabels: () => ({
+      idleTitle: t("chat.dictation.idleTitle"),
+      listeningTitle: t("chat.dictation.listeningTitle"),
+      transcribingTitle: t("chat.dictation.transcribingTitle"),
+      listeningMessage: t("chat.dictation.listeningMessage"),
+      preparingMessage: t("chat.dictation.preparingMessage"),
+      emptyResultMessage: t("chat.dictation.emptyResultMessage"),
+      insertedMessage: t("chat.dictation.insertedMessage"),
+      captureError: (message: string): string => t("chat.dictation.captureError", { message }),
+      transcriptionError: (message: string): string =>
+        t("chat.dictation.transcriptionError", { message }),
+    }),
+    showNotice: (message) => {
+      showToast(message);
+    },
+    subscribeIngress: onAssistantTranscriptIngress,
+  });
 }
 
 async function loadAgents(): Promise<void> {
@@ -569,6 +598,7 @@ function bindLocaleRefresh(): void {
 
   localeRefreshBound = true;
   AppI18n.subscribe(() => {
+    dictationBinding?.refresh();
     void refreshLocalizedDynamicPanels();
   });
 }

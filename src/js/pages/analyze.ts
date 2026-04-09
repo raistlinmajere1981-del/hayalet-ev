@@ -12,6 +12,7 @@ import { getMimeTypeFromPath } from "../constants/index.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { ButtonStates } from "../ui/button-states.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
+import { notifyUser } from "../ui/user-notification.js";
 import { shellT } from "../app/shell-i18n.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import type { Us1RoomPackageCandidate, Us1SessionEvent } from "@shared/us1-mail.js";
@@ -70,6 +71,8 @@ import { renderUploadList, addUploadFiles, removeUploadFile } from "./analyze/up
 import type { StagedFile } from "./analyze/upload-handler.js";
 import { applyMessageAction } from "./analyze/context-menu.js";
 import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
+import { bindDictationTrigger, type DictationBinding } from "../modules/transcript/dictation-ui.js";
+import { onTranscriptIngress } from "../modules/transcript/electron-client.js";
 interface ConversationSelectedDetail {
   provider?: "ai1" | "ai2" | "us1";
   isNew?: boolean;
@@ -144,6 +147,7 @@ export class AnalyzeController {
   _analyzeSceneCharacterRenderToken: number;
   _unsubSceneTheme: (() => void) | null;
   _unsubSceneThemeAssets: (() => void) | null;
+  _dictationBinding: DictationBinding | null;
 
   get _analyzeSceneLayout(): SceneLayoutConfig {
     return this._analyzeSceneSession.getSceneLayout();
@@ -187,6 +191,7 @@ export class AnalyzeController {
     this._analyzeSceneCharacterRenderToken = 0;
     this._unsubSceneTheme = null;
     this._unsubSceneThemeAssets = null;
+    this._dictationBinding = null;
   }
 
   async init(): Promise<void> {
@@ -223,6 +228,7 @@ export class AnalyzeController {
     );
 
     this.bindActions();
+    this._bindDictationUi();
     TrafficManager.onUpdate(() => {
       this.updateSendButtonState();
       void this._renderAnalyzeSceneCharacters();
@@ -242,6 +248,7 @@ export class AnalyzeController {
     this._unsubI18n ??= AppI18n.subscribe(() => {
       this.applyNames();
       this.updateConnectionStates();
+      this._dictationBinding?.refresh();
       this.refreshUploads();
       this._renderAnalyzeSceneHotspots();
       this._analyzeSceneEditor?.refresh();
@@ -1050,6 +1057,38 @@ export class AnalyzeController {
       document.getElementById(id)?.addEventListener("change", () => {
         this.updateSendButtonState();
       });
+    });
+  }
+
+  _bindDictationUi(): void {
+    this._dictationBinding?.dispose();
+
+    this._dictationBinding = bindDictationTrigger({
+      button: document.getElementById("compose-dictation-btn") as HTMLButtonElement | null,
+      textarea: document.getElementById("compose-input") as HTMLTextAreaElement | null,
+      targetId: "analyze-compose",
+      getLabels: () => ({
+        idleTitle: analyzeT("page.dictation.idleTitle"),
+        listeningTitle: analyzeT("page.dictation.listeningTitle"),
+        transcribingTitle: analyzeT("page.dictation.transcribingTitle"),
+        listeningMessage: analyzeT("page.dictation.listeningMessage"),
+        preparingMessage: analyzeT("page.dictation.preparingMessage"),
+        emptyResultMessage: analyzeT("page.dictation.emptyResultMessage"),
+        insertedMessage: analyzeT("page.dictation.insertedMessage"),
+        captureError: (message: string): string =>
+          analyzeT("page.dictation.captureError", { message }),
+        transcriptionError: (message: string): string =>
+          analyzeT("page.dictation.transcriptionError", { message }),
+      }),
+      showNotice: (message, kind = "info") => {
+        notifyUser({
+          kind,
+          title: message,
+          dedupeKey: "analyze-dictation",
+        });
+      },
+      isTargetActive: () => document.documentElement.getAttribute("data-active-page") === "analyze",
+      subscribeIngress: onTranscriptIngress,
     });
   }
 

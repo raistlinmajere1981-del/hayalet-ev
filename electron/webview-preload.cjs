@@ -2,7 +2,9 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 let __global_app_slot = null;
 const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
+const ASSISTANT_TRANSCRIPT_INGRESS_CHANNEL = "assistant-transcript-ingress";
 const opencodeUiSessionUpdatedHandlers = new Map();
+const assistantTranscriptIngressHandlers = new Map();
 let __app_preload_locale = "tr";
 let __app_preload_catalog = null;
 
@@ -250,6 +252,24 @@ contextBridge.exposeInMainWorld("electronAPI", {
     if (!handler) return;
     ipcRenderer.removeListener(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
     opencodeUiSessionUpdatedHandlers.delete(callback);
+  },
+  transcriptStatus: () => ipcRenderer.invoke("transcript-status"),
+  transcriptEnsureRuntime: () => ipcRenderer.invoke("transcript-ensure-runtime"),
+  transcriptTranscribeLocal: (request) =>
+    ipcRenderer.invoke("transcript-transcribe-local", request),
+  assistantOnTranscriptIngress: (callback) => {
+    if (typeof callback !== "function" || assistantTranscriptIngressHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    assistantTranscriptIngressHandlers.set(callback, handler);
+    ipcRenderer.on(ASSISTANT_TRANSCRIPT_INGRESS_CHANNEL, handler);
+  },
+  assistantOffTranscriptIngress: (callback) => {
+    const handler = assistantTranscriptIngressHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(ASSISTANT_TRANSCRIPT_INGRESS_CHANNEL, handler);
+    assistantTranscriptIngressHandlers.delete(callback);
   },
 });
 
