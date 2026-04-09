@@ -1,11 +1,9 @@
 // NOTE: Provide a mock window.electronAPI for web/dev runs outside Electron.
 import { getFilename } from "../constants/index.js";
 import { DEFAULT_APP_LANGUAGE } from "../../types/i18n.js";
-import {
-  getBuiltInLanguageDescriptors,
-  getBuiltInLanguagePack,
-} from "../../../shared/i18n/bundled-languages.js";
+import { getBuiltInLanguageDescriptors } from "../../../shared/i18n/built-in-descriptors.js";
 import { normalizeAppLanguage } from "../../../shared/i18n/locale.js";
+import { loadBuiltInLanguagePack } from "../modules/i18n/built-in-loader.js";
 
 export function ensureElectronApiFallback(): void {
   if (window.electronAPI) return;
@@ -68,12 +66,11 @@ export function ensureElectronApiFallback(): void {
     i18nListLanguages: async (): Promise<ReturnType<typeof getBuiltInLanguageDescriptors>> => {
       return await Promise.resolve(getBuiltInLanguageDescriptors());
     },
-    i18nLoadLanguage: async (
-      locale: string
-    ): Promise<ReturnType<typeof getBuiltInLanguagePack>> => {
+    i18nLoadLanguage: async (locale: string): ReturnType<typeof loadBuiltInLanguagePack> => {
       const normalized = normalizeAppLanguage(locale);
       return await Promise.resolve(
-        getBuiltInLanguagePack(normalized) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)
+        (await loadBuiltInLanguagePack(normalized)) ??
+          (await loadBuiltInLanguagePack(DEFAULT_APP_LANGUAGE))
       );
     },
 

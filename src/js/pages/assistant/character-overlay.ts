@@ -1,10 +1,10 @@
 // NOTE: Opened from the assistant page; writes selected features to .rovo/_metadata/CHARACTER.md.
-import type { AppLanguage } from "@shared/i18n.js";
+import type { AppLanguage, TranslationCatalog } from "@shared/i18n.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { translateCatalog } from "../../../../shared/i18n/catalog.js";
-import { getBuiltInLanguagePack } from "../../../../shared/i18n/bundled-languages.js";
 import type { ManagedOverlayController } from "../../ui/overlay-system.js";
 import { createSharedAssistantToolOverlayController } from "../../ui/overlay-presets.js";
+import { loadBuiltInLanguagePack } from "../../modules/i18n/built-in-loader.js";
 
 interface CharacterFeature {
   id: string;
@@ -33,32 +33,16 @@ const EMPTY_PROFILE_HINT_PATTERN =
   /> \*(Henüz bir profil tanımlanmadı\..*?|No profile has been defined yet\..*?)\*/;
 const LAST_UPDATED_PATTERN = /\*\*(Son güncelleme|Last updated):\*\* .*/;
 
-function translateCharacterCatalogKey(
-  key: string,
-  locale: AppLanguage = AppI18n.getLocale()
-): string {
-  if (locale === AppI18n.getLocale()) {
-    return characterT(key);
-  }
-
-  const pack = getBuiltInLanguagePack(locale);
-  const fallbackCatalog = getBuiltInLanguagePack("en")?.catalog;
-  return pack
-    ? translateCatalog(
-        pack.catalog,
-        `shell.assistant.characterOverlay.${key}`,
-        undefined,
-        fallbackCatalog
-      )
-    : characterT(key);
+function translateCharacterCatalogKey(key: string): string {
+  return characterT(key);
 }
 
-function getCategoryLabel(category: CharacterCategory, locale?: AppLanguage): string {
-  return translateCharacterCatalogKey(category.translationKey, locale);
+function getCategoryLabel(category: CharacterCategory): string {
+  return translateCharacterCatalogKey(category.translationKey);
 }
 
-function getFeatureLabel(feature: CharacterFeature, locale?: AppLanguage): string {
-  return translateCharacterCatalogKey(feature.translationKey, locale);
+function getFeatureLabel(feature: CharacterFeature): string {
+  return translateCharacterCatalogKey(feature.translationKey);
 }
 
 function normalizeProfileLabel(label: string): string {
@@ -210,13 +194,58 @@ const CATEGORIES: CharacterCategory[] = [
 
 const FEATURE_MAP = new Map<string, CharacterFeature>();
 const FEATURE_LABEL_INDEX = new Map<string, string>();
+let featureLabelIndexPromise: Promise<void> | null = null;
+
+async function ensureFeatureLabelIndex(): Promise<void> {
+  if (featureLabelIndexPromise !== null) {
+    await featureLabelIndexPromise;
+    return;
+  }
+
+  featureLabelIndexPromise = (async (): Promise<void> => {
+    const fallbackCatalog = (await loadBuiltInLanguagePack("en"))?.catalog;
+    const localeCatalogs = new Map<AppLanguage, TranslationCatalog>();
+
+    await Promise.all(
+      PROFILE_LABEL_LOCALES.map(async (locale) => {
+        const pack = await loadBuiltInLanguagePack(locale);
+        if (pack !== null) {
+          localeCatalogs.set(locale, pack.catalog);
+        }
+      })
+    );
+
+    for (const category of CATEGORIES) {
+      for (const feature of category.features) {
+        for (const locale of PROFILE_LABEL_LOCALES) {
+          const catalog = localeCatalogs.get(locale);
+          if (catalog === undefined) {
+            continue;
+          }
+
+          FEATURE_LABEL_INDEX.set(
+            normalizeProfileLabel(
+              translateCatalog(
+                catalog,
+                `shell.assistant.characterOverlay.${feature.translationKey}`,
+                undefined,
+                fallbackCatalog
+              )
+            ),
+            feature.id
+          );
+        }
+      }
+    }
+  })();
+
+  await featureLabelIndexPromise;
+}
+
 for (const cat of CATEGORIES) {
   for (const f of cat.features) {
     FEATURE_MAP.set(f.id, f);
     FEATURE_LABEL_INDEX.set(normalizeProfileLabel(f.id), f.id);
-    for (const locale of PROFILE_LABEL_LOCALES) {
-      FEATURE_LABEL_INDEX.set(normalizeProfileLabel(getFeatureLabel(f, locale)), f.id);
-    }
   }
 }
 
@@ -330,12 +359,14 @@ export class CharacterOverlay {
   }
 
   private open(): void {
-    void this._loadFromDisk().then(() => {
+    void (async (): Promise<void> => {
+      await ensureFeatureLabelIndex();
+      await this._loadFromDisk();
       this._renderActivePanel();
       this._updatePool();
       this._checkConflicts();
       this.overlayController?.open();
-    });
+    })();
   }
 
   private close(): void {

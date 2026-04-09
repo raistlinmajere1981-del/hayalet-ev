@@ -299,15 +299,17 @@ function shouldUseInteractiveDashboard(
   stdout: NodeJS.WriteStream,
   env: NodeJS.ProcessEnv = process.env
 ): boolean {
-  if (stdout?.isTTY !== true) return false;
-  if (isTruthyFlag(env.HAYALET_WRAPPER_PLAIN)) return false;
-  if (isTruthyFlag(env.HAYALET_WRAPPER_TUI)) return true;
+  if (stdout.isTTY !== true) return false;
+  if (isTruthyFlag(env["HAYALET_WRAPPER_PLAIN"])) return false;
+  if (isTruthyFlag(env["HAYALET_WRAPPER_TUI"])) return true;
 
-  const term = String(env.TERM ?? "").trim().toLowerCase();
+  const term = String(env["TERM"] ?? "")
+    .trim()
+    .toLowerCase();
   if (term === "" || term === "dumb") return false;
 
-  const columns = Number(stdout.columns ?? 0);
-  const rows = Number(stdout.rows ?? 0);
+  const columns = Number(stdout.columns);
+  const rows = Number(stdout.rows);
   return Number.isFinite(columns) && Number.isFinite(rows) && columns > 0 && rows > 0;
 }
 

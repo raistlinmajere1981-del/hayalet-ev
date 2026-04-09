@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-08T22:00:07.660Z",
+  "generatedAt": "2026-04-09T12:42:37.898Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -17,14 +17,14 @@
   },
   "stats": {
     "filesScanned": 604,
-    "filesWithComments": 125,
-    "commentsIndexed": 317,
-    "fileLevelComments": 244,
-    "symbolLevelComments": 73,
+    "filesWithComments": 124,
+    "commentsIndexed": 313,
+    "fileLevelComments": 242,
+    "symbolLevelComments": 71,
     "prefixCounts": {
-      "none": 41,
+      "none": 39,
       "AI": 1,
-      "NOTE": 271,
+      "NOTE": 269,
       "WARNING": 4,
       "TODO": 0
     }
@@ -410,42 +410,6 @@
       ]
     },
     {
-      "path": "electron/main.ts",
-      "totalComments": 2,
-      "byKind": {
-        "note": 1,
-        "fallback": 1
-      },
-      "byPrefix": {
-        "none": 1,
-        "AI": 0,
-        "NOTE": 1,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 255,
-          "endLine": 255,
-          "text": "NOTE: Wine can load the renderer successfully but fail to present the window when GPU",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "fallback",
-          "startLine": 256,
-          "endLine": 256,
-          "text": "compositing stays enabled, so keep the fallback local to Wine instead of all Windows builds.",
-          "prefix": null,
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
       "path": "electron/native/better-sqlite3-runtime.js",
       "totalComments": 18,
       "byKind": {
@@ -781,8 +745,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 522,
-          "endLine": 522,
+          "startLine": 546,
+          "endLine": 546,
           "text": "NOTE: The console shim runs under ELECTRON_RUN_AS_NODE, but spawned surfaces must boot the GUI runtime.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -790,8 +754,8 @@
         },
         {
           "kind": "note",
-          "startLine": 603,
-          "endLine": 603,
+          "startLine": 627,
+          "endLine": 627,
           "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -816,8 +780,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 539,
-          "endLine": 539,
+          "startLine": 526,
+          "endLine": 526,
           "text": "NOTE: Launcher fallback order matters, so probes remain sequential.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -825,8 +789,8 @@
         },
         {
           "kind": "note",
-          "startLine": 773,
-          "endLine": 773,
+          "startLine": 759,
+          "endLine": 759,
           "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1271,44 +1235,24 @@
     },
     {
       "path": "electron/window-manager.ts",
-      "totalComments": 12,
+      "totalComments": 10,
       "byKind": {
-        "note": 11,
+        "note": 9,
         "warning": 1
       },
       "byPrefix": {
-        "none": 1,
+        "none": 0,
         "AI": 0,
-        "NOTE": 10,
+        "NOTE": 9,
         "WARNING": 1,
         "TODO": 0
       },
-      "symbols": [
-        "initTray"
-      ],
+      "symbols": [],
       "comments": [
         {
           "kind": "note",
-          "startLine": 74,
-          "endLine": 74,
-          "text": "NOTE: Linux desktop scaling reduces the CSS pixel budget compared with Wine/Windows, so",
-          "prefix": "NOTE",
-          "scopeType": "function",
-          "scopeName": "initTray"
-        },
-        {
-          "kind": "note",
-          "startLine": 75,
-          "endLine": 75,
-          "text": "normalize the renderer zoom to keep the UI density closer across runtimes on the same panel.",
-          "prefix": null,
-          "scopeType": "function",
-          "scopeName": "initTray"
-        },
-        {
-          "kind": "note",
-          "startLine": 144,
-          "endLine": 144,
+          "startLine": 120,
+          "endLine": 120,
           "text": "NOTE: Log the resolved tray icon path because packaging issues often surface here first.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1316,8 +1260,8 @@
         },
         {
           "kind": "note",
-          "startLine": 304,
-          "endLine": 304,
+          "startLine": 280,
+          "endLine": 280,
           "text": "NOTE: Room hosts fall back to data: module graphs when the renderer cannot import file URLs directly.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1325,8 +1269,8 @@
         },
         {
           "kind": "note",
-          "startLine": 322,
-          "endLine": 322,
+          "startLine": 298,
+          "endLine": 298,
           "text": "NOTE: Local helper services need explicit CORS headers because they are called from isolated webviews.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1334,8 +1278,8 @@
         },
         {
           "kind": "note",
-          "startLine": 340,
-          "endLine": 340,
+          "startLine": 316,
+          "endLine": 316,
           "text": "NOTE: The assistant webview needs broader connect-src rules for OpenCode changelog fetches and local helper services.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1343,8 +1287,8 @@
         },
         {
           "kind": "note",
-          "startLine": 354,
-          "endLine": 354,
+          "startLine": 330,
+          "endLine": 330,
           "text": "NOTE: Mirror the local-service CORS override for the assistant partition.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1352,8 +1296,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 379,
-          "endLine": 379,
+          "startLine": 351,
+          "endLine": 351,
           "text": "WARNING: Install the webview navigation guard before any provider content starts navigating.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -1361,8 +1305,8 @@
         },
         {
           "kind": "note",
-          "startLine": 709,
-          "endLine": 709,
+          "startLine": 680,
+          "endLine": 680,
           "text": "NOTE: Ignore malformed targets instead of blocking navigation entirely.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1370,8 +1314,8 @@
         },
         {
           "kind": "note",
-          "startLine": 713,
-          "endLine": 713,
+          "startLine": 684,
+          "endLine": 684,
           "text": "NOTE: Non-http(s) schemes stay allowed so built-in Electron pages are not blocked.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1379,8 +1323,8 @@
         },
         {
           "kind": "note",
-          "startLine": 722,
-          "endLine": 722,
+          "startLine": 693,
+          "endLine": 693,
           "text": "NOTE: Skip enforcement when the current provider URL is unavailable.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1388,8 +1332,8 @@
         },
         {
           "kind": "note",
-          "startLine": 728,
-          "endLine": 728,
+          "startLine": 699,
+          "endLine": 699,
           "text": "NOTE: Unknown providers fall back to permissive navigation.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2447,8 +2391,8 @@
         },
         {
           "kind": "note",
-          "startLine": 255,
-          "endLine": 255,
+          "startLine": 284,
+          "endLine": 284,
           "text": "NOTE: Snapshot the persisted selection so close() can discard local edits.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2456,8 +2400,8 @@
         },
         {
           "kind": "note",
-          "startLine": 370,
-          "endLine": 370,
+          "startLine": 401,
+          "endLine": 401,
           "text": "NOTE: Each line uses the \"- Label\" format.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2465,8 +2409,8 @@
         },
         {
           "kind": "note",
-          "startLine": 530,
-          "endLine": 530,
+          "startLine": 561,
+          "endLine": 561,
           "text": "NOTE: Clear only the groups first to preserve the empty state.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2719,8 +2663,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1951,
-          "endLine": 1951,
+          "startLine": 1957,
+          "endLine": 1957,
           "text": "NOTE: The panel should open from startup cache; forcing room hydration here can stall the overlay.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -5159,23 +5103,6 @@
       ]
     },
     {
-      "file": "electron/window-manager.ts",
-      "type": "function",
-      "name": "initTray",
-      "comments": [
-        {
-          "startLine": 74,
-          "kind": "note",
-          "text": "NOTE: Linux desktop scaling reduces the CSS pixel budget compared with Wine/Windows, so"
-        },
-        {
-          "startLine": 75,
-          "kind": "note",
-          "text": "normalize the renderer zoom to keep the UI density closer across runtimes on the same panel."
-        }
-      ]
-    },
-    {
       "file": "src/types/assistant.ts",
       "type": "interface",
       "name": "AssistantProviderAdapter",
@@ -5462,7 +5389,7 @@
       "name": "attachPipe",
       "comments": [
         {
-          "startLine": 522,
+          "startLine": 546,
           "kind": "note",
           "text": "NOTE: The console shim runs under ELECTRON_RUN_AS_NODE, but spawned surfaces must boot the GUI runtime."
         }

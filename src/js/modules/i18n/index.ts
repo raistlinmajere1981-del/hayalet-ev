@@ -7,11 +7,10 @@ import type {
 } from "@shared/i18n.js";
 import { DEFAULT_APP_LANGUAGE } from "@shared/i18n.js";
 import { translateCatalog } from "../../../../shared/i18n/catalog.js";
-import {
-  getBuiltInLanguageDescriptors,
-  getBuiltInLanguagePack,
-} from "../../../../shared/i18n/bundled-languages.js";
+import { getBuiltInLanguageDescriptors } from "../../../../shared/i18n/built-in-descriptors.js";
+import { getBuiltInLanguagePack } from "../../../../shared/i18n/bundled-languages.js";
 import { normalizeAppLanguage, resolveSelectorLanguage } from "../../../../shared/i18n/locale.js";
+import { loadBuiltInLanguagePack } from "./built-in-loader.js";
 
 interface I18nSettingsSnapshot {
   general?: {
@@ -51,6 +50,38 @@ class AppI18nManager {
   private availableLanguages: LanguageDescriptor[] = getBuiltInLanguageDescriptors();
   private listeners = new Set<(pack: LoadedLanguagePack) => void>();
   private settingsUnsubscribe: (() => void) | null = null;
+  private defaultPackPromise: Promise<LoadedLanguagePack | null> | null = null;
+
+  constructor() {
+    void this.ensureDefaultPack();
+  }
+
+  private async ensureDefaultPack(): Promise<LoadedLanguagePack | null> {
+    if (this.defaultPackPromise !== null) {
+      return await this.defaultPackPromise;
+    }
+
+    this.defaultPackPromise = (async (): Promise<LoadedLanguagePack | null> => {
+      const defaultPack = await loadBuiltInLanguagePack(DEFAULT_APP_LANGUAGE);
+      if (defaultPack === null) {
+        return null;
+      }
+
+      this.fallbackCatalog = defaultPack.catalog;
+      if (
+        this.currentLocale === DEFAULT_APP_LANGUAGE &&
+        Object.keys(this.activeCatalog).length === 0
+      ) {
+        this.activePack = defaultPack;
+        this.activeCatalog = defaultPack.catalog;
+        this.applyDocumentLocale(defaultPack);
+      }
+
+      return defaultPack;
+    })();
+
+    return await this.defaultPackPromise;
+  }
 
   private applyDocumentLocale(pack: LoadedLanguagePack): void {
     if (typeof document === "undefined") {
@@ -110,21 +141,25 @@ class AppI18nManager {
     const normalized = normalizeAppLanguage(locale);
     const api = window.electronAPI;
     const previousLocale = this.currentLocale;
-    let nextPack: LoadedLanguagePack | null;
-
-    try {
-      nextPack = api?.i18nLoadLanguage ? await api.i18nLoadLanguage(normalized) : null;
-    } catch {
-      nextPack = null;
-    }
-
-    const builtInPack = getBuiltInLanguagePack(normalized);
+    const defaultPackPromise = this.ensureDefaultPack();
     const fallbackLocale = resolveSelectorLanguage(normalized);
-    const fallbackPack =
-      fallbackLocale !== normalized ? getBuiltInLanguagePack(fallbackLocale) : null;
+    const [nextPack, builtInPack, fallbackPack, defaultPack] = await Promise.all([
+      (async (): Promise<LoadedLanguagePack | null> => {
+        try {
+          return api?.i18nLoadLanguage ? await api.i18nLoadLanguage(normalized) : null;
+        } catch {
+          return null;
+        }
+      })(),
+      loadBuiltInLanguagePack(normalized),
+      fallbackLocale !== normalized
+        ? loadBuiltInLanguagePack(fallbackLocale)
+        : Promise.resolve(null),
+      defaultPackPromise,
+    ]);
 
     this.currentLocale = normalized;
-    this.activePack = nextPack ?? builtInPack ?? fallbackPack ?? this.activePack;
+    this.activePack = nextPack ?? builtInPack ?? fallbackPack ?? defaultPack ?? this.activePack;
     this.activeCatalog = this.activePack.catalog;
     this.applyDocumentLocale(this.activePack);
 

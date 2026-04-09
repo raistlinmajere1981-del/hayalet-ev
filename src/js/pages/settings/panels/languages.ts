@@ -6,10 +6,7 @@ import type {
   TranslationParams,
 } from "@shared/i18n.js";
 import type { InstalledRoomRecord } from "@shared/index.js";
-import {
-  getBuiltInLanguageDescriptor,
-  getBuiltInLanguagePack,
-} from "../../../../../shared/i18n/bundled-languages.js";
+import { getBuiltInLanguageDescriptor } from "../../../../../shared/i18n/built-in-descriptors.js";
 import {
   isTranslationCatalog,
   mergeTranslationCatalogs,
@@ -24,6 +21,7 @@ import { RoomRegistry } from "../../../modules/rooms/room-registry.js";
 import { Toast } from "../../../ui/toast-manager.js";
 import { shellT } from "../../../app/shell-i18n.js";
 import { registerSettingsPanelLifecycle } from "../controller.js";
+import { loadBuiltInLanguagePack } from "../../../modules/i18n/built-in-loader.js";
 
 type EditorScope = "app" | "room";
 type AppSourceKind = "builtin" | "external";
@@ -91,7 +89,6 @@ interface LanguageEditorState {
   sourceMissing: boolean;
 }
 
-const BUILT_IN_TR_CATALOG = cloneCatalog(getBuiltInLanguagePack("tr")?.catalog ?? {});
 const CATEGORY_DEPTH = 2;
 const ALL_CATEGORIES_VALUE = "__all__";
 const localeCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
@@ -105,6 +102,11 @@ function languageEditorT(key: string, params?: TranslationParams): string {
 
 function cloneCatalog(catalog: TranslationCatalog): TranslationCatalog {
   return JSON.parse(JSON.stringify(catalog)) as TranslationCatalog;
+}
+
+async function loadBuiltInCatalog(locale: string): Promise<TranslationCatalog> {
+  const pack = await loadBuiltInLanguagePack(locale);
+  return cloneCatalog(pack?.catalog ?? {});
 }
 
 function joinPath(basePath: string, ...segments: string[]): string {
@@ -1437,11 +1439,15 @@ async function loadActiveScope(
   try {
     if (state.scope === "app") {
       const locale = normalizeAppLanguage(state.selectedLocale);
-      const builtInCatalog = cloneCatalog(getBuiltInLanguagePack(locale)?.catalog ?? {});
       const externalDir =
         state.appLanguageRoot === "" ? "" : joinPath(state.appLanguageRoot, locale);
-      const externalCatalog =
-        externalDir === "" ? {} : await loadLooseCatalog(joinPath(externalDir, "index.json"));
+      const [builtInCatalog, sourceCatalog, externalCatalog] = await Promise.all([
+        loadBuiltInCatalog(locale),
+        loadBuiltInCatalog("tr"),
+        externalDir === ""
+          ? Promise.resolve({})
+          : loadLooseCatalog(joinPath(externalDir, "index.json")),
+      ]);
       const descriptor = state.appLanguages.find(
         (language) => normalizeAppLanguage(language.locale) === locale
       ) ??
@@ -1458,7 +1464,7 @@ async function loadActiveScope(
       }
 
       state.selectedLocale = locale;
-      state.sourceCatalog = cloneCatalog(BUILT_IN_TR_CATALOG);
+      state.sourceCatalog = sourceCatalog;
       state.targetCatalog = mergeTranslationCatalogs([builtInCatalog, externalCatalog]);
       state.catalogShape = mergeTranslationCatalogs([state.sourceCatalog, state.targetCatalog]);
       state.entries = buildEntries(
@@ -1644,7 +1650,7 @@ async function createLocaleTemplate(
       return;
     }
     const languageDir = joinPath(state.appLanguageRoot, locale);
-    const blankCatalog = createBlankCatalog(BUILT_IN_TR_CATALOG);
+    const blankCatalog = createBlankCatalog(await loadBuiltInCatalog("tr"));
     const manifest = buildAppManifest({
       ...state.createDraft,
       locale,

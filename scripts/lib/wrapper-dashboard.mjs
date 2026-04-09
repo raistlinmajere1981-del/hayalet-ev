@@ -113,6 +113,7 @@ export function createWrapperDashboard({
   let phase = "idle";
   let attached = false;
   let preserveLastFrame = true;
+  let renderTimer = null;
 
   function prune(lines) {
     if (lines.length > 400) {
@@ -121,7 +122,7 @@ export function createWrapperDashboard({
   }
 
   function render() {
-    if (!tty) return;
+    if (!tty || !attached) return;
     const frame = renderDashboardFrame({
       sessionId,
       phase,
@@ -138,6 +139,27 @@ export function createWrapperDashboard({
     stdout.write(frame);
   }
 
+  function cancelScheduledRender() {
+    if (renderTimer === null) return;
+    clearTimeout(renderTimer);
+    renderTimer = null;
+  }
+
+  function scheduleRender({ immediate = false } = {}) {
+    if (!tty || !attached) return;
+    if (immediate) {
+      cancelScheduledRender();
+      render();
+      return;
+    }
+    if (renderTimer !== null) return;
+    renderTimer = setTimeout(() => {
+      renderTimer = null;
+      render();
+    }, 16);
+    renderTimer.unref?.();
+  }
+
   function attach() {
     if (!tty || attached) return;
     attached = true;
@@ -149,10 +171,12 @@ export function createWrapperDashboard({
     preserveLastFrame = options.preserveLastFrame !== false;
     if (tty && attached) {
       if (preserveLastFrame) {
+        cancelScheduledRender();
         render();
         stdout.write("\u001b[?25h");
         stdout.write("\n");
       } else {
+        cancelScheduledRender();
         cursorTo(stdout, 0, 0);
         clearScreenDown(stdout);
         stdout.write("\u001b[?25h");
@@ -169,7 +193,7 @@ export function createWrapperDashboard({
       stdout.write(`[${label}] ${message.trim()}\n`);
       return;
     }
-    render();
+    scheduleRender();
   }
 
   return {
@@ -177,7 +201,7 @@ export function createWrapperDashboard({
     dispose,
     setPhase(nextPhase) {
       phase = nextPhase;
-      render();
+      scheduleRender({ immediate: true });
     },
     user(message) {
       push(userLines, "user", message);

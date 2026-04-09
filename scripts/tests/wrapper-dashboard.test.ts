@@ -35,6 +35,7 @@ test("createWrapperDashboard preserves final frame on dispose by default", () =>
 
   const dashboard = createWrapperDashboard({
     stdout,
+    env: { TERM: "xterm-256color" },
     sessionId: "wr-test",
     userLabel: "KULLANICI",
     formatPhaseLabel(phase) {
@@ -74,4 +75,34 @@ test("createWrapperDashboard falls back to plain logs for dumb terminals", () =>
   assert.match(output, /\[user\] Calisma dongusu sonlandi\./);
   assert.match(output, /\[dev\] build tamamlandi/);
   assert.doesNotMatch(output, /\u001b\[/);
+});
+
+test("createWrapperDashboard coalesces burst updates into one frame render", async () => {
+  const writes = [];
+  const stdout = {
+    isTTY: true,
+    columns: 80,
+    rows: 12,
+    write(chunk) {
+      writes.push(String(chunk));
+    },
+  };
+
+  const dashboard = createWrapperDashboard({
+    stdout,
+    env: { TERM: "xterm-256color" },
+    sessionId: "wr-test",
+  });
+  dashboard.attach();
+  writes.length = 0;
+
+  dashboard.user("Calisma dongusu sonlandi.");
+  dashboard.developer("build tamamlandi");
+
+  await new Promise((resolve) => {
+    setTimeout(resolve, 25);
+  });
+
+  const frameWrites = writes.filter((chunk) => chunk.includes("Wrapper Session wr-test"));
+  assert.equal(frameWrites.length, 1);
 });
