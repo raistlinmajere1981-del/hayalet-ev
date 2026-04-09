@@ -63,9 +63,10 @@ test("wrapper event helpers resolve surface labels from ui mode", () => {
   );
 });
 
-test("wrapper event helpers filter known noisy log lines", () => {
-  assert.equal(isNoiseLogLine("xapp-gtk3-module warning"), true);
-  assert.equal(isNoiseLogLine("Cannot start http server for devtools"), true);
+test("wrapper event helpers only suppress blank log lines", () => {
+  assert.equal(isNoiseLogLine("xapp-gtk3-module warning"), false);
+  assert.equal(isNoiseLogLine("Cannot start http server for devtools"), false);
+  assert.equal(isNoiseLogLine("   "), true);
   assert.equal(isNoiseLogLine("vite ready in 250 ms"), false);
 });
 

@@ -214,7 +214,6 @@ export function createWrapperSupervisor({
       env: {
         HAYALET_WRAPPER_MANAGED: "1",
         HAYALET_WRAPPER_SESSION_ID: sessionId,
-        LIBVA_DRIVER_NAME: env.LIBVA_DRIVER_NAME ?? "i965",
       },
     });
     const code = await record.closed;
@@ -238,9 +237,7 @@ export function createWrapperSupervisor({
     dashboard.setPhase("running-ghost");
     emit("ghost.launch", ghostSurfaceDetails);
     const record = spawnManaged("ghost-app", electronCommand, buildGhostArgs(), {
-      env: {
-        LIBVA_DRIVER_NAME: env.LIBVA_DRIVER_NAME ?? "i965",
-      },
+      env: {},
     });
     const code = await record.closed;
     emit("ghost.closed", ghostSurfaceDetails);

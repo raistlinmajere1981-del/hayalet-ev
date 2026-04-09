@@ -2,15 +2,14 @@ import { app } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { access, appendFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { clearScreenDown, cursorTo } from "node:readline";
 import {
-  createWindowsWrapperLogViewerLauncher,
   createVisibleTerminalLaunchers,
   PACKAGED_SURFACE_FLAG,
   type PackagedSurface,
   shouldLaunchVisibleTerminal,
   WRAPPER_TERMINAL_ENV_KEY,
 } from "./packaged-wrapper-launcher.ts";
-import { isWineRuntime } from "./runtime-environment.ts";
 import { parseStartupFlagsFromArgv, type StartupUiMode } from "./startup-flags.ts";
 
 type RuntimeControl = {
@@ -38,11 +37,6 @@ const wrapperRestartRequestPath = join(
   resolvePackagedRoot(),
   "data",
   "assistant-wrapper-restart.json"
-);
-const wrapperLogViewerScriptPath = join(
-  resolvePackagedRoot(),
-  "data",
-  "assistant-wrapper-viewer.cmd"
 );
 const wrapperSessionId = createWrapperSessionId();
 const dashboard = createWrapperDashboard({
@@ -215,6 +209,7 @@ function renderDashboardFrame({
 
 function createWrapperDashboard({
   stdout = process.stdout,
+  env = process.env,
   sessionId = "wrapper",
   enabled = true,
   userLabel = "USER",
@@ -222,6 +217,7 @@ function createWrapperDashboard({
   formatPhaseLabel = undefined,
 }: {
   stdout?: NodeJS.WriteStream;
+  env?: NodeJS.ProcessEnv;
   sessionId?: string;
   enabled?: boolean;
   userLabel?: string;
@@ -234,7 +230,7 @@ function createWrapperDashboard({
   user: (message: string) => void;
   developer: (message: string) => void;
 } {
-  const tty = enabled === true && stdout.isTTY === true;
+  const tty = enabled === true && shouldUseInteractiveDashboard(stdout, env);
   const userLines: string[] = [];
   const developerLines: string[] = [];
   let phase = "idle";
@@ -259,8 +255,9 @@ function createWrapperDashboard({
       width: stdout.columns,
       height: stdout.rows,
     });
-    stdout.write("\u001b[H\u001b[2J");
-    stdout.write(`${frame}\n`);
+    cursorTo(stdout, 0, 0);
+    clearScreenDown(stdout);
+    stdout.write(frame);
   }
 
   function attach(): void {
@@ -277,7 +274,9 @@ function createWrapperDashboard({
         stdout.write("\u001b[?25h");
         stdout.write("\n");
       } else {
-        stdout.write("\u001b[2J\u001b[H\u001b[?25h");
+        cursorTo(stdout, 0, 0);
+        clearScreenDown(stdout);
+        stdout.write("\u001b[?25h");
       }
       attached = false;
     }
@@ -310,6 +309,27 @@ function createWrapperDashboard({
   };
 }
 
+function isTruthyFlag(value: string | undefined): boolean {
+  if (typeof value !== "string") return false;
+  return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+function shouldUseInteractiveDashboard(
+  stdout: NodeJS.WriteStream,
+  env: NodeJS.ProcessEnv = process.env
+): boolean {
+  if (stdout?.isTTY !== true) return false;
+  if (isTruthyFlag(env.HAYALET_WRAPPER_PLAIN)) return false;
+  if (isTruthyFlag(env.HAYALET_WRAPPER_TUI)) return true;
+
+  const term = String(env.TERM ?? "").trim().toLowerCase();
+  if (term === "" || term === "dumb") return false;
+
+  const columns = Number(stdout.columns ?? 0);
+  const rows = Number(stdout.rows ?? 0);
+  return Number.isFinite(columns) && Number.isFinite(rows) && columns > 0 && rows > 0;
+}
+
 function formatCommand(command: string, args: string[] = []): string {
   return [command, ...args].join(" ");
 }
@@ -320,11 +340,7 @@ function formatProcessLine(role: string, streamName: string, line: string): stri
 
 function isNoiseLogLine(line: string): boolean {
   if (typeof line !== "string") return true;
-  const trimmed = line.trim();
-  if (trimmed === "") return true;
-  return ["xapp-gtk3-module", "bind() failed", "Cannot start http server for devtools"].some(
-    (pattern) => trimmed.includes(pattern)
-  );
+  return line.trim() === "";
 }
 
 function splitLines(
@@ -465,7 +481,6 @@ async function spawnDetachedTerminal(
       env: {
         ...process.env,
         [WRAPPER_TERMINAL_ENV_KEY]: "1",
-        LIBVA_DRIVER_NAME: process.env["LIBVA_DRIVER_NAME"] ?? "i965",
       },
     });
 
@@ -475,33 +490,6 @@ async function spawnDetachedTerminal(
       resolve();
     });
   });
-}
-
-async function ensureWineWrapperLogViewerScript(): Promise<string> {
-  await mkdir(dirname(wrapperLogViewerScriptPath), { recursive: true });
-
-  const content = [
-    "@echo off",
-    "title Hayalet Ev Wrapper",
-    `cd /d "${resolvePackagedRoot()}"`,
-    "if not exist data mkdir data",
-    "if not exist data\\assistant-runtime-events.log type nul > data\\assistant-runtime-events.log",
-    ":loop",
-    "cls",
-    "echo Hayalet Ev Wrapper - Wine fallback",
-    "echo.",
-    "echo NOTE: Wrapper events are mirrored here because Wine does not keep the Electron CLI attached to cmd reliably.",
-    "echo.",
-    "type data\\assistant-runtime-events.log",
-    "echo.",
-    "echo Press Ctrl+C to close this viewer after the wrapper exits.",
-    "timeout /t 1 /nobreak >nul",
-    "goto loop",
-    "",
-  ].join("\r\n");
-
-  await writeFile(wrapperLogViewerScriptPath, content, "utf-8");
-  return wrapperLogViewerScriptPath;
 }
 
 async function launchVisibleTerminalIfNeeded(
@@ -521,20 +509,17 @@ async function launchVisibleTerminalIfNeeded(
     };
   }
 
-  const useWineLogViewer = process.platform === "win32" && isWineRuntime();
   const resourcesPath =
     typeof process.resourcesPath === "string" && process.resourcesPath.trim() !== ""
       ? process.resourcesPath
       : null;
-  const launchers = useWineLogViewer
-    ? [createWindowsWrapperLogViewerLauncher(await ensureWineWrapperLogViewerScript())]
-    : createVisibleTerminalLaunchers({
-        platform: process.platform,
-        executablePath: resolvePackagedExecutablePath(),
-        rootDir: resolvePackagedRoot(),
-        ...(resourcesPath !== null ? { resourcesPath } : {}),
-        argv: process.argv,
-      });
+  const launchers = createVisibleTerminalLaunchers({
+    platform: process.platform,
+    executablePath: resolvePackagedExecutablePath(),
+    rootDir: resolvePackagedRoot(),
+    ...(resourcesPath !== null ? { resourcesPath } : {}),
+    argv: process.argv,
+  });
 
   // NOTE: Launcher fallback order matters, so probes remain sequential.
   /* eslint-disable no-await-in-loop */
@@ -546,11 +531,11 @@ async function launchVisibleTerminalIfNeeded(
       await appendRuntimeEvent("wrapper.terminal.spawned", {
         sessionId: wrapperSessionId,
         launcher: launcher.command,
-        mode: useWineLogViewer ? "wine-log-viewer" : "direct-cli",
+        mode: "direct-cli",
       });
       return {
         launched: true,
-        keepRunning: useWineLogViewer,
+        keepRunning: false,
       };
     } catch {
       continue;
@@ -672,7 +657,6 @@ function buildChildEnv(): NodeJS.ProcessEnv {
     ...process.env,
     HAYALET_WRAPPER_MANAGED: "1",
     HAYALET_WRAPPER_SESSION_ID: wrapperSessionId,
-    LIBVA_DRIVER_NAME: process.env["LIBVA_DRIVER_NAME"] ?? "i965",
   };
 }
 

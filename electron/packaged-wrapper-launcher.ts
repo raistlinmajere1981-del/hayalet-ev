@@ -72,25 +72,6 @@ function buildWindowsVisibleTerminalCommand(
   return `cd /d ${root} && set ELECTRON_RUN_AS_NODE=1 && ${executable} ${cliEntrypoint}${quotedArgs !== "" ? ` ${quotedArgs}` : ""}`;
 }
 
-export function createWindowsWrapperLogViewerLauncher(
-  viewerScriptPath: string
-): VisibleTerminalLauncher {
-  return {
-    command: "cmd",
-    args: [
-      "/d",
-      "/c",
-      "start",
-      '"Hayalet Ev Wrapper"',
-      "cmd",
-      "/d",
-      "/k",
-      quoteWindowsCmdArg(viewerScriptPath),
-    ],
-    shell: true,
-  };
-}
-
 export function shouldLaunchVisibleTerminal({
   surface,
   platform,

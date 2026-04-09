@@ -30,7 +30,6 @@ const wrapperRestartRequestPath = join(root, "data", "assistant-wrapper-restart.
 const env = {
   ...process.env,
   APP_UI_MODE: normalizeMainAppUiMode(process.env.APP_UI_MODE),
-  LIBVA_DRIVER_NAME: process.env.LIBVA_DRIVER_NAME ?? "i965",
 };
 
 function isSceneDebugEnabled() {

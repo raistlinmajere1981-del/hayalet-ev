@@ -19,11 +19,7 @@ export function formatCommand(command, args = []) {
 
 export function isNoiseLogLine(line) {
   if (typeof line !== "string") return true;
-  const trimmed = line.trim();
-  if (trimmed === "") return true;
-  return ["xapp-gtk3-module", "bind() failed", "Cannot start http server for devtools"].some((pattern) =>
-    trimmed.includes(pattern)
-  );
+  return line.trim() === "";
 }
 
 function resolveMainSurfaceKey(details = {}) {

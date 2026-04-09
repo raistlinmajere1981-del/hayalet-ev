@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  createWindowsWrapperLogViewerLauncher,
   createVisibleTerminalLaunchers,
   PACKAGED_SURFACE_FLAG,
   shouldLaunchVisibleTerminal,
@@ -101,26 +100,4 @@ test("windows launchers open a visible cmd wrapper and preserve user flags", () 
     /cd \/d "C:\\Portable Apps\\Hayalet Ev" && set ELECTRON_RUN_AS_NODE=1 && "C:\\Portable Apps\\Hayalet Ev\\Hayalet Ev\.exe" C:\\Users\\raistlin\\AppData\\Local\\Temp\\hayalet-ev\\resources\\app\.asar\\dist\\electron\\packaged-wrapper-cli\.js --start-page=assistant --auto-connect/
   );
   assert.doesNotMatch(launchers[0]?.args[7] ?? "", /--packaged-surface=wrapper/);
-});
-
-test("wine wrapper fallback opens the dedicated log viewer script", () => {
-  const launcher = createWindowsWrapperLogViewerLauncher(
-    String.raw`C:\Portable Apps\Hayalet Ev\data\assistant-wrapper-viewer.cmd`
-  );
-
-  assert.equal(launcher.command, "cmd");
-  assert.equal(launcher.shell, true);
-  assert.deepEqual(launcher.args.slice(0, 7), [
-    "/d",
-    "/c",
-    "start",
-    '"Hayalet Ev Wrapper"',
-    "cmd",
-    "/d",
-    "/k",
-  ]);
-  assert.equal(
-    launcher.args[7],
-    String.raw`"C:\Portable Apps\Hayalet Ev\data\assistant-wrapper-viewer.cmd"`
-  );
 });

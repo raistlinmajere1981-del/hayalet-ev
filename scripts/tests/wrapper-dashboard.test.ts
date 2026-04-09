@@ -50,3 +50,28 @@ test("createWrapperDashboard preserves final frame on dispose by default", () =>
   assert.match(output, /\u001b\[\?25h/);
   assert.doesNotMatch(output, /\u001b\[2J\u001b\[H\u001b\[\?25h$/);
 });
+
+test("createWrapperDashboard falls back to plain logs for dumb terminals", () => {
+  let output = "";
+  const stdout = {
+    isTTY: true,
+    columns: 80,
+    rows: 12,
+    write(chunk) {
+      output += String(chunk);
+    },
+  };
+
+  const dashboard = createWrapperDashboard({
+    stdout,
+    env: { TERM: "dumb" },
+    sessionId: "wr-test",
+  });
+  dashboard.attach();
+  dashboard.user("Calisma dongusu sonlandi.");
+  dashboard.developer("build tamamlandi");
+
+  assert.match(output, /\[user\] Calisma dongusu sonlandi\./);
+  assert.match(output, /\[dev\] build tamamlandi/);
+  assert.doesNotMatch(output, /\u001b\[/);
+});

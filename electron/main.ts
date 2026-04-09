@@ -68,7 +68,6 @@ import {
 } from "./logger/session-manager.ts";
 import { writeStateSnapshot } from "./logger/log-writer.ts";
 import { SessionManager } from "./session-manager.ts";
-import { isWineRuntime } from "./runtime-environment.ts";
 
 function generateCorrelationId(prefix: string = "op"): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -250,13 +249,6 @@ const userDataDir = join(Paths.getDataDir(), "electron-user-data");
 app.setName(appInstanceLabel);
 mkdirSync(userDataDir, { recursive: true });
 app.setPath("userData", userDataDir);
-
-if (isWineRuntime()) {
-  // NOTE: Wine can load the renderer successfully but fail to present the window when GPU
-  // compositing stays enabled, so keep the fallback local to Wine instead of all Windows builds.
-  app.disableHardwareAcceleration();
-  app.commandLine.appendSwitch("disable-gpu-compositing");
-}
 
 const CDP_PORT = process.env["CDP_PORT"] ?? 9222;
 app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());

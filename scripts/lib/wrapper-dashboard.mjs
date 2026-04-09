@@ -1,3 +1,5 @@
+import { clearScreenDown, cursorTo } from "node:readline";
+
 function repeat(char, count) {
   return count > 0 ? char.repeat(count) : "";
 }
@@ -78,15 +80,34 @@ export function renderDashboardFrame({
   return rows.join("\n");
 }
 
+function isTruthyFlag(value) {
+  if (typeof value !== "string") return false;
+  return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+function shouldUseInteractiveDashboard(stdout, env) {
+  if (stdout?.isTTY !== true) return false;
+  if (isTruthyFlag(env?.HAYALET_WRAPPER_PLAIN)) return false;
+  if (isTruthyFlag(env?.HAYALET_WRAPPER_TUI)) return true;
+
+  const term = String(env?.TERM ?? "").trim().toLowerCase();
+  if (term === "" || term === "dumb") return false;
+
+  const columns = Number(stdout.columns ?? 0);
+  const rows = Number(stdout.rows ?? 0);
+  return Number.isFinite(columns) && Number.isFinite(rows) && columns > 0 && rows > 0;
+}
+
 export function createWrapperDashboard({
   stdout = process.stdout,
+  env = process.env,
   sessionId = "wrapper",
   enabled = true,
   userLabel = "USER",
   developerLabel = "DEV",
   formatPhaseLabel = undefined,
 } = {}) {
-  const tty = enabled === true && stdout.isTTY === true;
+  const tty = enabled === true && shouldUseInteractiveDashboard(stdout, env);
   const userLines = [];
   const developerLines = [];
   let phase = "idle";
@@ -112,8 +133,9 @@ export function createWrapperDashboard({
       width: stdout.columns ?? 120,
       height: stdout.rows ?? 30,
     });
-    stdout.write("\u001b[H\u001b[2J");
-    stdout.write(`${frame}\n`);
+    cursorTo(stdout, 0, 0);
+    clearScreenDown(stdout);
+    stdout.write(frame);
   }
 
   function attach() {
@@ -131,7 +153,9 @@ export function createWrapperDashboard({
         stdout.write("\u001b[?25h");
         stdout.write("\n");
       } else {
-        stdout.write("\u001b[2J\u001b[H\u001b[?25h");
+        cursorTo(stdout, 0, 0);
+        clearScreenDown(stdout);
+        stdout.write("\u001b[?25h");
       }
       attached = false;
     }
