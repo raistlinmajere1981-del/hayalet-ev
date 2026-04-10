@@ -1,14 +1,11 @@
 import { Logger } from "../modules/logger/index.js";
 import type { LogEntry } from "../modules/logger/index.js";
 import type { TranslationParams } from "@shared/i18n.js";
-import { LogCategory, LogLevel } from "@shared/logging-core";
-import { CoreEngine } from "../modules/core-engine.js";
-import { SettingsManager } from "../modules/settings-manager.js";
+import { LogCategory } from "@shared/logging-core";
 import { AppState } from "../modules/app-state.js";
-import { SlotController } from "../modules/slot-controller.js";
+import { SettingsManager } from "../modules/settings-manager.js";
 import { ServerCommands } from "../modules/server-commands.js";
 import { AppI18n } from "../modules/i18n/index.js";
-import { ButtonStates } from "../ui/button-states.js";
 import {
   applySceneAlphaWindowBoundsToTarget,
   clearSceneAlphaWindowFrameVariables,
@@ -46,6 +43,7 @@ import {
   SceneThemeManager,
 } from "../scene-system/index.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
+import { ButtonStates } from "../ui/button-states.js";
 import { shellT } from "../app/shell-i18n.js";
 import {
   buildCommandTestMessage,
@@ -93,18 +91,10 @@ function serverCommandPanelT(key: string, params?: TranslationParams): string {
 }
 
 export class ServerController {
-  isDelegated: boolean;
-  availableControllers: { key: string; fallback: string }[];
   unsubscribeTraffic: (() => void) | null;
   logUnsubscribe: (() => void) | null;
   _unsubSettings: (() => void) | null;
   _unsubSlotController: (() => void) | null;
-
-  controllerSelect: HTMLSelectElement | null;
-  timelineLog: HTMLElement | null;
-  timelineMeta: HTMLElement | null;
-  delegateBtn: HTMLButtonElement | null;
-  reclaimBtn: HTMLButtonElement | null;
 
   commandSlotSelect: HTMLSelectElement | null;
   commandList: HTMLElement | null;
@@ -114,6 +104,8 @@ export class ServerController {
   commandCategoryTabs: HTMLElement | null;
   activeCategory: CommandCategory;
   selectedCommand: string;
+  timelineLog: HTMLElement | null;
+  timelineMeta: HTMLElement | null;
   timelineEvents: Map<string, TimelineEvent>;
   timelineSessionIds: string[];
   timelineSessionCursor: number;
@@ -148,18 +140,10 @@ export class ServerController {
   }
 
   constructor() {
-    this.isDelegated = false;
-    this.availableControllers = [];
     this.unsubscribeTraffic = null;
     this.logUnsubscribe = null;
     this._unsubSettings = null;
     this._unsubSlotController = null;
-
-    this.controllerSelect = null;
-    this.timelineLog = null;
-    this.timelineMeta = null;
-    this.delegateBtn = null;
-    this.reclaimBtn = null;
 
     this.commandSlotSelect = null;
     this.commandList = null;
@@ -169,6 +153,8 @@ export class ServerController {
     this.commandCategoryTabs = null;
     this.activeCategory = "ai1-ai2";
     this.selectedCommand = "";
+    this.timelineLog = null;
+    this.timelineMeta = null;
     this.timelineEvents = new Map();
     this.timelineSessionIds = [];
     this.timelineSessionCursor = 0;
@@ -186,13 +172,13 @@ export class ServerController {
     this._unsubSceneThemeAssets = null;
   }
 
-  private getServerCommandsApi(): ServerCommandsApi {
-    return ServerCommands as unknown as ServerCommandsApi;
-  }
-
   private updateTimelineMeta(text: string): void {
     if (this.timelineMeta === null) return;
     this.timelineMeta.textContent = text;
+  }
+
+  private getServerCommandsApi(): ServerCommandsApi {
+    return ServerCommands as unknown as ServerCommandsApi;
   }
 
   private normalizeSlot(value: string): CommandSlot {
@@ -718,7 +704,7 @@ export class ServerController {
     }
   }
 
-  private renderCommandPanel(): void {
+  renderCommandPanel(): void {
     if (this.commandList === null) {
       return;
     }
@@ -878,128 +864,8 @@ export class ServerController {
     });
   }
 
-  renderControllerOptions(): void {
-    if (!this.controllerSelect) return;
-    const providers = [
-      { key: "ai1", fallback: "AI1" },
-      { key: "ai2", fallback: "AI2" },
-    ];
-
-    const available = providers.filter((p) => {
-      return SlotController.isConnected(p.key) === true;
-    });
-    this.availableControllers = available;
-    this.controllerSelect.innerHTML = "";
-    if (available.length === 0) {
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = serverCommandPanelT("status.noConnectedAi");
-      this.controllerSelect.appendChild(opt);
-    } else {
-      available.forEach((p) => {
-        const opt = document.createElement("option");
-        opt.value = p.key;
-        opt.textContent = AppState.getNickname(p.key);
-        this.controllerSelect?.appendChild(opt);
-      });
-    }
-  }
-
-  updateControlButtons(): void {
-    const hasConnectedAI = this.availableControllers.length > 0;
-    const delegateBtn = document.getElementById("server-delegate-btn") as HTMLButtonElement | null;
-    const reclaimBtn = document.getElementById("server-reclaim-btn") as HTMLButtonElement | null;
-
-    if (delegateBtn) {
-      delegateBtn.disabled = !hasConnectedAI;
-    }
-    if (reclaimBtn) {
-      reclaimBtn.disabled = !hasConnectedAI;
-    }
-  }
-
-  async assignControl(): Promise<void> {
-    const controller = this.controllerSelect?.value ?? "ai1";
-    if (controller === "") return;
-
-    if (this.delegateBtn) {
-      ButtonStates.setLoading(this.delegateBtn, serverCommandPanelT("buttons.delegateLoading"));
-    }
-
-    try {
-      await CoreEngine.sendProtocol({
-        room: "server",
-        scenario: "takecontrol",
-        targets: [controller],
-      });
-      this.isDelegated = true;
-
-      if (this.delegateBtn) {
-        ButtonStates.setSuccess(
-          this.delegateBtn,
-          serverCommandPanelT("buttons.delegateSuccess"),
-          1500
-        );
-      }
-      Logger.panel(
-        LogCategory.SYSTEM,
-        LogLevel.SUCCESS,
-        serverCommandPanelT("logs.delegateSuccess", {
-          controller: AppState.getNickname(controller),
-        })
-      );
-    } catch (_error) {
-      if (this.delegateBtn) {
-        ButtonStates.setError(this.delegateBtn, serverCommandPanelT("buttons.error"), 1500);
-      }
-      Logger.error(LogCategory.SERVER_COMMANDS, serverCommandPanelT("logs.delegateError"));
-    }
-
-    setTimeout(() => {
-      this.updateControlButtons();
-    }, 1600);
-  }
-
-  async reclaimControl(): Promise<void> {
-    const controller = this.controllerSelect?.value ?? "ai1";
-
-    if (this.reclaimBtn) {
-      ButtonStates.setLoading(this.reclaimBtn, serverCommandPanelT("buttons.reclaimLoading"));
-    }
-
-    try {
-      await CoreEngine.sendBatch({
-        targets: [controller],
-        text: serverCommandPanelT("controlBatchText"),
-        page: "server",
-      });
-
-      this.isDelegated = false;
-
-      if (this.reclaimBtn) {
-        ButtonStates.setSuccess(
-          this.reclaimBtn,
-          serverCommandPanelT("buttons.reclaimSuccess"),
-          1500
-        );
-      }
-      Logger.success(LogCategory.SYSTEM, serverCommandPanelT("logs.reclaimSuccess"));
-    } catch (_error) {
-      if (this.reclaimBtn) {
-        ButtonStates.setError(this.reclaimBtn, serverCommandPanelT("buttons.error"), 1500);
-      }
-      Logger.error(LogCategory.SERVER_COMMANDS, serverCommandPanelT("logs.reclaimError"));
-    }
-
-    setTimeout(() => {
-      this.updateControlButtons();
-    }, 1600);
-  }
-
   onShow(): void {
     this.syncServerSceneVisibility();
-    this.renderControllerOptions();
-    this.updateControlButtons();
     this.renderCommandPanel();
     if (this.timelineInitialized) {
       this.rebuildTimeline(false);

@@ -38,9 +38,9 @@ test("extractExampleArgsFromDescription ignores other command examples", () => {
 });
 
 test("buildInlineCommandSnippet formats command with args", () => {
-  const snippet = buildInlineCommandSnippet("PlayMusic", "classic");
+  const snippet = buildInlineCommandSnippet("WhisperManager", "demo");
 
-  assert.equal(snippet, "++cmd:PlayMusic(classic)");
+  assert.equal(snippet, "++cmd:WhisperManager(demo)");
 });
 
 test("buildInlineCommandSnippet formats command without args", () => {
@@ -50,7 +50,7 @@ test("buildInlineCommandSnippet formats command without args", () => {
 });
 
 test("parseCommandExecutionInput parses inline command input", () => {
-  const parsed = parseCommandExecutionInput("++cmd:AssistantAISend(ai2)", "PlayMusic");
+  const parsed = parseCommandExecutionInput("++cmd:AssistantAISend(ai2)", "WhisperManager");
 
   assert.equal(parsed.commandName, "AssistantAISend");
   assert.equal(parsed.args, "ai2");
@@ -61,7 +61,7 @@ test("parseCommandExecutionInput keeps balanced SlotBridge JSON payloads intact"
   const inline =
     '++cmd:SlotBridge({"action":"message.send","toSlot":"ai1","payload":{"text":"https://example.com/path_(demo)"}})';
 
-  const parsed = parseCommandExecutionInput(inline, "PlayMusic");
+  const parsed = parseCommandExecutionInput(inline, "WhisperManager");
 
   assert.equal(parsed.commandName, "SlotBridge");
   assert.match(parsed.args, /path_\(demo\)/);
@@ -69,17 +69,17 @@ test("parseCommandExecutionInput keeps balanced SlotBridge JSON payloads intact"
 });
 
 test("parseCommandExecutionInput falls back to selected command with plain args", () => {
-  const parsed = parseCommandExecutionInput("classic", "PlayMusic");
+  const parsed = parseCommandExecutionInput("demo", "WhisperManager");
 
-  assert.equal(parsed.commandName, "PlayMusic");
-  assert.equal(parsed.args, "classic");
+  assert.equal(parsed.commandName, "WhisperManager");
+  assert.equal(parsed.args, "demo");
   assert.equal(parsed.inputWasInlineCommand, false);
 });
 
 test("buildCommandTestMessage formats command with args", () => {
-  const message = buildCommandTestMessage("PlayMusic", "classic");
+  const message = buildCommandTestMessage("WhisperManager", "demo");
 
-  assert.equal(message, "++cmd:PlayMusic(classic) Komut paneli test mesaji");
+  assert.equal(message, "++cmd:WhisperManager(demo) Komut paneli test mesaji");
 });
 
 test("buildCommandTestMessage formats command without args", () => {

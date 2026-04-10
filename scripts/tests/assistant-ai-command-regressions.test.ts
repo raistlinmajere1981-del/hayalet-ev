@@ -198,13 +198,13 @@ test("server commands block disabled commands per slot", async () => {
   try {
     SettingsManager.getSnapshot = () => ({
       slots: {
-        ai1: { disabledCommands: ["PlayMusic"] },
+        ai1: { disabledCommands: ["WhisperManager"] },
         ai2: { disabledCommands: [] },
       },
       assistantSlot: { disabledCommands: [] },
     }) as never;
 
-    const disabled = (await serverCommands.run("PlayMusic", {
+    const disabled = (await serverCommands.run("WhisperManager", {
       provider: "ai1",
       args: "",
     })) as { success?: boolean; message?: string };

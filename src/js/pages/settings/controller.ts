@@ -59,7 +59,7 @@ import {
   type WorkspaceToolOpenDetail,
 } from "../../ui/workspace-tool-overlay.js";
 
-const SETTINGS_PANELS = ["theme", "accounts", "backup", "rooms", "live-log", "languages"] as const;
+const SETTINGS_PANELS = ["accounts", "theme", "backup", "rooms", "live-log", "languages"] as const;
 
 export type SettingsPanelId = (typeof SETTINGS_PANELS)[number];
 
@@ -670,7 +670,7 @@ export class SettingsPageController {
   private panels: HTMLElement[] = [];
   private sceneController: SettingsSceneController | null = null;
   private isOpen = false;
-  private activePanel: SettingsPanelId = "theme";
+  private activePanel: SettingsPanelId = "accounts";
   private visiblePanel: SettingsPanelId | null = null;
   private transitionState: SettingsPanelLifecycleState | null = null;
   private initialized = false;

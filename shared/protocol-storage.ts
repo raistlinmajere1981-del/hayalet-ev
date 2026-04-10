@@ -19,7 +19,6 @@ export const DEFAULT_PROTOCOL_KEYS = [
   "analyze-AI1-AI2",
   "analyze-AI2-AI1",
   "analyze-user-AI-AI",
-  "takecontrol",
 ] as const;
 
 export function canonicalizeProtocolKey(key: string): string {

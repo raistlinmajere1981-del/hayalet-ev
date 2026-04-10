@@ -7,6 +7,7 @@ import { LogCategory, LogLevel } from "@shared/index.js";
 import { PARTITIONS } from "@slots";
 import { Paths } from "./paths.ts";
 import { buildPreloadAdditionalArguments, type StartupFlags } from "./startup-flags.ts";
+import { resolveLaunchDisplay } from "./window-launch-display.ts";
 import type { TranslationParams } from "../src/types/i18n.ts";
 import { readElectronAppLanguageSync, translateElectronMessage } from "./i18n/language-service.ts";
 import { resolveAcceptLanguage } from "../shared/i18n/locale.js";
@@ -21,6 +22,7 @@ let _tray: Tray | null = null;
 let _trayIconPath: string | null = null;
 let _isMinimizedToTray: boolean = false;
 let _mainWindow: BrowserWindow | null = null;
+const SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE = process.platform === "linux";
 
 async function windowT(key: string, params?: TranslationParams): Promise<string> {
   return await translateElectronMessage(`electron.window.${key}`, params);
@@ -50,6 +52,18 @@ function applyPreferredLanguageHeader(targetSession: Electron.Session): void {
     headers["Accept-Language"] = resolveAcceptLanguage(readElectronAppLanguageSync());
     callback({ requestHeaders: headers });
   });
+}
+
+function restoreWindowedBounds(win: BrowserWindow): void {
+  if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
+    win.setResizable(true);
+    win.maximize();
+    return;
+  }
+
+  win.setResizable(false);
+  const { workArea } = screen.getDisplayMatching(win.getBounds());
+  win.setBounds(workArea);
 }
 
 export function initTray(iconPath: string): void {
@@ -241,7 +255,13 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   const { isDev = !Paths.isPackaged(), startupFlags } = options;
   const additionalArguments =
     startupFlags === undefined ? [] : buildPreloadAdditionalArguments(startupFlags);
-  const { workArea } = screen.getPrimaryDisplay();
+  const launchDisplay = resolveLaunchDisplay(
+    screen.getAllDisplays(),
+    screen.getPrimaryDisplay(),
+    screen.getCursorScreenPoint(),
+    { displayId: startupFlags?.displayId ?? null }
+  );
+  const { workArea } = launchDisplay;
 
   if (isDev) {
     process.env["ELECTRON_DISABLE_SECURITY_WARNINGS"] = "true";
@@ -255,8 +275,8 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
     width: workArea.width,
     height: workArea.height,
     frame: false,
-    resizable: false,
-    maximizable: false,
+    resizable: SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE,
+    maximizable: SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE,
     fullscreenable: true,
     show: false,
     icon: nativeImage.createFromPath(iconPath),
@@ -351,7 +371,16 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   // WARNING: Install the webview navigation guard before any provider content starts navigating.
   setupWebviewNavigationGuard();
 
+  if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
+    win.on("maximize", () => {
+      win.setResizable(false);
+    });
+  }
+
   win.once("ready-to-show", () => {
+    if (SHOULD_USE_LINUX_WINDOW_MANAGER_MAXIMIZE) {
+      restoreWindowedBounds(win);
+    }
     win.show();
   });
 
@@ -427,9 +456,7 @@ export function windowToggleFullscreen(): void {
     const isFull = _mainWindow.isFullScreen();
     if (isFull) {
       _mainWindow.setFullScreen(false);
-      _mainWindow.setResizable(false);
-      const { workArea } = screen.getDisplayMatching(_mainWindow.getBounds());
-      _mainWindow.setBounds(workArea);
+      restoreWindowedBounds(_mainWindow);
       void logger.logInternalT(
         LogCategory.MAIN,
         LogLevel.INFO,

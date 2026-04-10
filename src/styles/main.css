@@ -123,7 +123,7 @@ body.is-scroll-locked {
 #app {
   display: flex;
   flex-direction: column;
-  height: var(--layout-app-height);
+  height: var(--layout-app-height-zoom-compensated);
   overflow: hidden;
   position: relative;
   --overlay-shell-max-w: 72rem;
@@ -2040,7 +2040,7 @@ body.menu-hidden .top-bar {
 }
 
 body.menu-hidden .main-content {
-  height: var(--layout-app-height);
+  height: var(--layout-app-height-zoom-compensated);
 }
 
 .form-label {
@@ -2080,7 +2080,7 @@ body.menu-hidden .main-content {
 .app-shell {
   display: flex;
   flex-direction: column;
-  height: var(--layout-app-height);
+  height: var(--layout-app-height-zoom-compensated);
   overflow: hidden;
   background: var(--app-shell-bg);
 }

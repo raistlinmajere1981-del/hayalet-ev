@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-09T12:42:37.898Z",
+  "generatedAt": "2026-04-10T11:43:34.413Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,7 +16,7 @@
     ]
   },
   "stats": {
-    "filesScanned": 604,
+    "filesScanned": 599,
     "filesWithComments": 124,
     "commentsIndexed": 313,
     "fileLevelComments": 242,
@@ -745,8 +745,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 546,
-          "endLine": 546,
+          "startLine": 551,
+          "endLine": 551,
           "text": "NOTE: The console shim runs under ELECTRON_RUN_AS_NODE, but spawned surfaces must boot the GUI runtime.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -754,8 +754,8 @@
         },
         {
           "kind": "note",
-          "startLine": 627,
-          "endLine": 627,
+          "startLine": 633,
+          "endLine": 633,
           "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -780,8 +780,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 526,
-          "endLine": 526,
+          "startLine": 527,
+          "endLine": 527,
           "text": "NOTE: Launcher fallback order matters, so probes remain sequential.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -789,8 +789,8 @@
         },
         {
           "kind": "note",
-          "startLine": 759,
-          "endLine": 759,
+          "startLine": 765,
+          "endLine": 765,
           "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1251,8 +1251,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 120,
-          "endLine": 120,
+          "startLine": 134,
+          "endLine": 134,
           "text": "NOTE: Log the resolved tray icon path because packaging issues often surface here first.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1260,8 +1260,8 @@
         },
         {
           "kind": "note",
-          "startLine": 280,
-          "endLine": 280,
+          "startLine": 300,
+          "endLine": 300,
           "text": "NOTE: Room hosts fall back to data: module graphs when the renderer cannot import file URLs directly.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1269,8 +1269,8 @@
         },
         {
           "kind": "note",
-          "startLine": 298,
-          "endLine": 298,
+          "startLine": 318,
+          "endLine": 318,
           "text": "NOTE: Local helper services need explicit CORS headers because they are called from isolated webviews.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1278,8 +1278,8 @@
         },
         {
           "kind": "note",
-          "startLine": 316,
-          "endLine": 316,
+          "startLine": 336,
+          "endLine": 336,
           "text": "NOTE: The assistant webview needs broader connect-src rules for OpenCode changelog fetches and local helper services.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1287,8 +1287,8 @@
         },
         {
           "kind": "note",
-          "startLine": 330,
-          "endLine": 330,
+          "startLine": 350,
+          "endLine": 350,
           "text": "NOTE: Mirror the local-service CORS override for the assistant partition.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1296,8 +1296,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 351,
-          "endLine": 351,
+          "startLine": 371,
+          "endLine": 371,
           "text": "WARNING: Install the webview navigation guard before any provider content starts navigating.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -1305,8 +1305,8 @@
         },
         {
           "kind": "note",
-          "startLine": 680,
-          "endLine": 680,
+          "startLine": 707,
+          "endLine": 707,
           "text": "NOTE: Ignore malformed targets instead of blocking navigation entirely.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1314,8 +1314,8 @@
         },
         {
           "kind": "note",
-          "startLine": 684,
-          "endLine": 684,
+          "startLine": 711,
+          "endLine": 711,
           "text": "NOTE: Non-http(s) schemes stay allowed so built-in Electron pages are not blocked.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1323,8 +1323,8 @@
         },
         {
           "kind": "note",
-          "startLine": 693,
-          "endLine": 693,
+          "startLine": 720,
+          "endLine": 720,
           "text": "NOTE: Skip enforcement when the current provider URL is unavailable.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1332,8 +1332,8 @@
         },
         {
           "kind": "note",
-          "startLine": 699,
-          "endLine": 699,
+          "startLine": 726,
+          "endLine": 726,
           "text": "NOTE: Unknown providers fall back to permissive navigation.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -5389,7 +5389,7 @@
       "name": "attachPipe",
       "comments": [
         {
-          "startLine": 546,
+          "startLine": 551,
           "kind": "note",
           "text": "NOTE: The console shim runs under ELECTRON_RUN_AS_NODE, but spawned surfaces must boot the GUI runtime."
         }

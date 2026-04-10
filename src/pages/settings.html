@@ -83,32 +83,32 @@
               >
                 <button
                   class="settings-hub-tab is-active"
-                  id="settings-tab-theme"
+                  id="settings-tab-accounts"
                   type="button"
                   role="tab"
                   aria-selected="true"
-                  aria-controls="settings-panel-theme"
-                  data-settings-panel="theme"
+                  aria-controls="settings-panel-accounts"
+                  data-settings-panel="accounts"
                 >
                   <span class="settings-hub-tab__index">01</span>
                   <span
                     class="settings-hub-tab__label"
-                    data-shell-i18n-text="settingsHub.nav.theme"
+                    data-shell-i18n-text="settingsHub.nav.accounts"
                   ></span>
                 </button>
                 <button
                   class="settings-hub-tab"
-                  id="settings-tab-accounts"
+                  id="settings-tab-theme"
                   type="button"
                   role="tab"
                   aria-selected="false"
-                  aria-controls="settings-panel-accounts"
-                  data-settings-panel="accounts"
+                  aria-controls="settings-panel-theme"
+                  data-settings-panel="theme"
                 >
                   <span class="settings-hub-tab__index">02</span>
                   <span
                     class="settings-hub-tab__label"
-                    data-shell-i18n-text="settingsHub.nav.accounts"
+                    data-shell-i18n-text="settingsHub.nav.theme"
                   ></span>
                 </button>
                 <button
@@ -183,11 +183,13 @@
 
             <div class="settings-hub-panels">
               <section
-                class="settings-hub-panel is-active"
+                class="settings-hub-panel is-hidden"
                 id="settings-panel-theme"
                 role="tabpanel"
                 aria-labelledby="settings-tab-theme"
                 data-settings-panel="theme"
+                aria-hidden="true"
+                hidden
               >
                 <div
                   class="settings-panel-shell scene-shell__framed-shell settings-panel-shell--theme"
@@ -511,13 +513,12 @@
               </section>
 
               <section
-                class="settings-hub-panel is-hidden"
+                class="settings-hub-panel is-active"
                 id="settings-panel-accounts"
                 role="tabpanel"
                 aria-labelledby="settings-tab-accounts"
                 data-settings-panel="accounts"
-                aria-hidden="true"
-                hidden
+                aria-hidden="false"
               >
                 <div
                   class="settings-panel-shell scene-shell__framed-shell settings-panel-shell--accounts"

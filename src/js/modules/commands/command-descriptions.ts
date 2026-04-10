@@ -20,15 +20,7 @@ export interface CommandDescriptionInfo {
 }
 
 const COMMAND_DESCRIPTION_NAMES = [
-  "DeviceManager",
-  "FileManager",
-  "WebviewManager",
   "WhisperManager",
-  "WindowManager",
-  "ScreenshotManager",
-  "TakeScreenshot",
-  "PlayMusic",
-  "Restart",
   "AIAIChatStart",
   "AIAIChatStop",
   "AIAssistantChatStart",
@@ -36,9 +28,6 @@ const COMMAND_DESCRIPTION_NAMES = [
   "AIAssistantSend",
   "AssistantAISend",
   "SlotBridge",
-  "GetFile",
-  "GetItDone",
-  "ListFiles",
 ] as const;
 
 type CommandDescriptionName = (typeof COMMAND_DESCRIPTION_NAMES)[number];

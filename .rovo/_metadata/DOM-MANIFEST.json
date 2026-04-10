@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-09T12:42:38.315Z",
+  "generatedAt": "2026-04-10T11:43:34.803Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 624,
-    "ids": 576,
+    "filesScanned": 619,
+    "ids": 573,
     "testIds": 15,
     "querySelectors": 149,
-    "totalSelectors": 740
+    "totalSelectors": 737
   },
   "lookup": {
     "id": {
@@ -433,9 +433,6 @@
       "server-command-slot-select": "#server-command-slot-select",
       "server-command-test-args": "#server-command-test-args",
       "server-command-timeline": "#server-command-timeline",
-      "server-controller-select": "#server-controller-select",
-      "server-delegate-btn": "#server-delegate-btn",
-      "server-reclaim-btn": "#server-reclaim-btn",
       "server-scene-background": "#server-scene-background",
       "server-scene-characters": "#server-scene-characters",
       "server-scene-editor-host": "#server-scene-editor-host",

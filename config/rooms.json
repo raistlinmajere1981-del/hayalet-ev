@@ -1,5 +1,823 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-09T11:21:08.496Z",
-  "rooms": []
+  "updatedAt": "2026-04-09T20:41:59.350Z",
+  "rooms": [
+    {
+      "id": "game-room",
+      "name": "Game Room",
+      "version": "2.5.0",
+      "description": "A focused board-game room for XOX duels, four-seat Team Tetris matches, and the co-op Fate Knots story-combat skeleton with live AI slots plus the connected US1 remote user.",
+      "icon": "🎮",
+      "sourceDir": "/home/raistlin/hayalet-ev/rooms/game-room",
+      "installedDir": "/home/raistlin/hayalet-ev/data/rooms/game-room",
+      "manifestPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/manifest.json",
+      "runtimeEntryPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/ui/index.html",
+      "hostEntryPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/host/index.js",
+      "defaultFeatureId": "xox",
+      "features": [
+        {
+          "id": "xox",
+          "name": "XOX",
+          "description": "Three-in-a-row matches against AI1, AI2, or the connected US1 remote user.",
+          "icon": "XO",
+          "commandSpecs": [
+            {
+              "name": "GameRoomXoxStart",
+              "description": "Start a new XOX match from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomXoxReset",
+              "description": "Reset the active XOX match state.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomXoxUserMove",
+              "description": "Apply the user's XOX move from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomXoxAiMove",
+              "description": "Apply the AI move returned by the selected opponent slot.",
+              "scope": "ai-slots",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomXoxRemoteMove",
+              "description": "Apply the remote US1 move delivered over room mail transport.",
+              "scope": "us1",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomXoxAcceptInvite",
+              "description": "Accept an incoming US1 XOX invite from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomXoxRejectInvite",
+              "description": "Reject an incoming US1 XOX invite from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            }
+          ],
+          "protocolSpecs": [
+            {
+              "key": "game-room-xox-user-start",
+              "room": "game-room",
+              "scenario": "xox-user-start",
+              "title": "[START][GAME-ROOM][XOX][USER-FIRST]",
+              "editable": true,
+              "path": "main-functions/xox/protocols/game-room-xox-user-start.md"
+            },
+            {
+              "key": "game-room-xox-ai-start",
+              "room": "game-room",
+              "scenario": "xox-ai-start",
+              "title": "[START][GAME-ROOM][XOX][AI-FIRST]",
+              "editable": true,
+              "path": "main-functions/xox/protocols/game-room-xox-ai-start.md"
+            },
+            {
+              "key": "game-room-xox-us1-transport",
+              "room": "game-room",
+              "scenario": "xox-us1-transport",
+              "title": "[INFO][GAME-ROOM][XOX][US1-TRANSPORT]",
+              "editable": false,
+              "path": "main-functions/xox/protocols/game-room-xox-us1-transport.md"
+            }
+          ],
+          "scene": {
+            "hotspot": {
+              "id": "game-room-xox",
+              "rect": {
+                "leftPx": 188,
+                "topPx": 362,
+                "widthPx": 446,
+                "heightPx": 258
+              },
+              "label": {
+                "text": "XOX"
+              }
+            },
+            "view": {
+              "id": "xox-closeup",
+              "backgroundPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/main-functions/xox/assets/xox-view.webp",
+              "transparentWindow": {
+                "leftPct": 28.28,
+                "topPct": 18.8,
+                "widthPct": 43.59,
+                "heightPct": 54.17
+              }
+            }
+          }
+        },
+        {
+          "id": "team-tetris",
+          "name": "Team Tetris",
+          "description": "A four-seat, turn-based team Tetris mode for the local user, AI1, AI2, and the connected US1 remote user.",
+          "icon": "TT",
+          "commandSpecs": [
+            {
+              "name": "GameRoomTeamTetrisStart",
+              "description": "Start a new Team Tetris match from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomTeamTetrisReset",
+              "description": "Reset the active Team Tetris match state.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomTeamTetrisUserMove",
+              "description": "Apply the local user's Team Tetris path selection from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomTeamTetrisAiMove",
+              "description": "Apply the Team Tetris move returned by AI1 or AI2.",
+              "scope": "ai-slots",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomTeamTetrisRemoteMove",
+              "description": "Apply the Team Tetris move delivered over the connected US1 transport.",
+              "scope": "us1",
+              "exposure": "internal"
+            }
+          ],
+          "protocolSpecs": [
+            {
+              "key": "game-room-team-tetris-ai-opening",
+              "room": "game-room",
+              "scenario": "team-tetris-ai-opening",
+              "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][OPENING]",
+              "editable": true,
+              "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-opening.md"
+            },
+            {
+              "key": "game-room-team-tetris-ai-followup",
+              "room": "game-room",
+              "scenario": "team-tetris-ai-followup",
+              "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][FOLLOWUP]",
+              "editable": true,
+              "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-followup.md"
+            },
+            {
+              "key": "game-room-team-tetris-us1-transport",
+              "room": "game-room",
+              "scenario": "team-tetris-us1-transport",
+              "title": "[INFO][GAME-ROOM][TEAM-TETRIS][US1-TRANSPORT]",
+              "editable": false,
+              "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
+            }
+          ],
+          "scene": {
+            "hotspot": {
+              "id": "game-room-team-tetris",
+              "rect": {
+                "leftPx": 958,
+                "topPx": 346,
+                "widthPx": 428,
+                "heightPx": 272
+              },
+              "label": {
+                "text": "Team Tetris"
+              }
+            },
+            "view": {
+              "id": "team-tetris-closeup",
+              "backgroundPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/main-functions/team-tetris/assets/team-tetris-view.webp",
+              "transparentWindow": {
+                "leftPct": 12.4,
+                "topPct": 16.4,
+                "widthPct": 75.2,
+                "heightPct": 63.8
+              }
+            }
+          }
+        },
+        {
+          "id": "fate-knots",
+          "name": "Fate Knots",
+          "description": "A shared story-combat skeleton with unanimous party decisions, deterministic AI companions, and one opening encounter.",
+          "icon": "FK",
+          "commandSpecs": [
+            {
+              "name": "GameRoomFateKnotsStart",
+              "description": "Start a new Fate Knots run from the room UI.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsReset",
+              "description": "Reset the active Fate Knots run state.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsReady",
+              "description": "Lock the local Fate Knots character build and continue the slice.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsCharacterSelect",
+              "description": "Apply the local Fate Knots avatar, class, or background selection.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsChoice",
+              "description": "Submit the local shared-decision vote for the current Fate Knots step.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsCombatAction",
+              "description": "Submit the local combat action for the current Fate Knots turn.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsSync",
+              "description": "Recalculate waiting state and retry pending Fate Knots dispatch work.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsEnd",
+              "description": "End the current Fate Knots run and return the feature to idle.",
+              "scope": "room-ui",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsAiChoice",
+              "description": "Apply the AI seat vote returned for a Fate Knots decision step.",
+              "scope": "ai-slots",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsAiCombatAction",
+              "description": "Apply the AI seat combat action returned for Fate Knots combat.",
+              "scope": "ai-slots",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsRemoteChoice",
+              "description": "Apply a US1 Fate Knots decision vote delivered over room transport.",
+              "scope": "us1",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsRemoteCombatAction",
+              "description": "Apply a US1 Fate Knots combat action delivered over room transport.",
+              "scope": "us1",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsDmPacket",
+              "description": "Store an additive Fate Knots DM narration packet.",
+              "scope": "ai-slots",
+              "exposure": "internal"
+            },
+            {
+              "name": "GameRoomFateKnotsNpcBanter",
+              "description": "Store an additive Fate Knots NPC banter packet.",
+              "scope": "ai-slots",
+              "exposure": "internal"
+            }
+          ],
+          "protocolSpecs": [
+            {
+              "key": "game-room-fate-knots-ai-decision",
+              "room": "game-room",
+              "scenario": "fate-knots-ai-decision",
+              "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][DECISION]",
+              "editable": true,
+              "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-decision.md"
+            },
+            {
+              "key": "game-room-fate-knots-ai-combat",
+              "room": "game-room",
+              "scenario": "fate-knots-ai-combat",
+              "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][COMBAT]",
+              "editable": true,
+              "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-combat.md"
+            },
+            {
+              "key": "game-room-fate-knots-ai-dm",
+              "room": "game-room",
+              "scenario": "fate-knots-ai-dm",
+              "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][DM]",
+              "editable": true,
+              "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-dm.md"
+            },
+            {
+              "key": "game-room-fate-knots-ai-npc",
+              "room": "game-room",
+              "scenario": "fate-knots-ai-npc",
+              "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][NPC]",
+              "editable": true,
+              "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-npc.md"
+            },
+            {
+              "key": "game-room-fate-knots-us1-transport",
+              "room": "game-room",
+              "scenario": "fate-knots-us1-transport",
+              "title": "[INFO][GAME-ROOM][FATE-KNOTS][US1-TRANSPORT]",
+              "editable": false,
+              "path": "main-functions/fate-knots/protocols/game-room-fate-knots-us1-transport.md"
+            }
+          ],
+          "scene": {
+            "hotspot": {
+              "id": "game-room-fate-knots",
+              "rect": {
+                "leftPx": 632,
+                "topPx": 268,
+                "widthPx": 304,
+                "heightPx": 216
+              },
+              "label": {
+                "text": "Fate Knots"
+              }
+            },
+            "view": {
+              "id": "fate-knots-closeup",
+              "backgroundPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/main-functions/fate-knots/assets/fate-knots-view.webp",
+              "transparentWindow": {
+                "leftPct": 17.5,
+                "topPct": 14.2,
+                "widthPct": 65.4,
+                "heightPct": 67.6
+              }
+            }
+          }
+        }
+      ],
+      "scene": {
+        "referenceSize": {
+          "width": 1600,
+          "height": 900
+        },
+        "roomBackgroundPath": "/home/raistlin/hayalet-ev/data/rooms/game-room/shared/assets/room-background.webp",
+        "roomsHotspot": {
+          "id": "game-room-door",
+          "rect": {
+            "leftPx": 726,
+            "topPx": 244,
+            "widthPx": 154,
+            "heightPx": 318
+          },
+          "label": {
+            "text": "Game Room"
+          }
+        },
+        "backHotspot": {
+          "id": "game-room-back",
+          "rect": {
+            "leftPx": 52,
+            "topPx": 152,
+            "widthPx": 156,
+            "heightPx": 248
+          },
+          "label": {
+            "text": "Corridor"
+          }
+        },
+        "characterRosterPreset": "connected-plus-user",
+        "characters": [
+          {
+            "id": "anchor-ai1-primary",
+            "characterKind": "ai",
+            "preferredSlot": "ai1",
+            "leftPx": 948,
+            "bottomPx": -12,
+            "scale": 0.74,
+            "depth": 3
+          },
+          {
+            "id": "anchor-user",
+            "characterKind": "user",
+            "leftPx": 1208,
+            "bottomPx": -64,
+            "scale": 0.84,
+            "depth": 4
+          },
+          {
+            "id": "anchor-ai2-primary",
+            "characterKind": "ai",
+            "preferredSlot": "ai2",
+            "leftPx": 1432,
+            "bottomPx": -8,
+            "scale": 0.74,
+            "depth": 5
+          }
+        ],
+        "chrome": {
+          "pageShellVariant": "immersive-stage"
+        }
+      },
+      "i18nBaseDir": "/home/raistlin/hayalet-ev/data/rooms/game-room/i18n",
+      "commandSpecs": [
+        {
+          "name": "GameRoomXoxStart",
+          "description": "Start a new XOX match from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxReset",
+          "description": "Reset the active XOX match state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxUserMove",
+          "description": "Apply the user's XOX move from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxAiMove",
+          "description": "Apply the AI move returned by the selected opponent slot.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxRemoteMove",
+          "description": "Apply the remote US1 move delivered over room mail transport.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxAcceptInvite",
+          "description": "Accept an incoming US1 XOX invite from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomXoxRejectInvite",
+          "description": "Reject an incoming US1 XOX invite from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomTeamTetrisStart",
+          "description": "Start a new Team Tetris match from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomTeamTetrisReset",
+          "description": "Reset the active Team Tetris match state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomTeamTetrisUserMove",
+          "description": "Apply the local user's Team Tetris path selection from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomTeamTetrisAiMove",
+          "description": "Apply the Team Tetris move returned by AI1 or AI2.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomTeamTetrisRemoteMove",
+          "description": "Apply the Team Tetris move delivered over the connected US1 transport.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsStart",
+          "description": "Start a new Fate Knots run from the room UI.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsReset",
+          "description": "Reset the active Fate Knots run state.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsReady",
+          "description": "Lock the local Fate Knots character build and continue the slice.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsCharacterSelect",
+          "description": "Apply the local Fate Knots avatar, class, or background selection.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsChoice",
+          "description": "Submit the local shared-decision vote for the current Fate Knots step.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsCombatAction",
+          "description": "Submit the local combat action for the current Fate Knots turn.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsSync",
+          "description": "Recalculate waiting state and retry pending Fate Knots dispatch work.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsEnd",
+          "description": "End the current Fate Knots run and return the feature to idle.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsAiChoice",
+          "description": "Apply the AI seat vote returned for a Fate Knots decision step.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsAiCombatAction",
+          "description": "Apply the AI seat combat action returned for Fate Knots combat.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsRemoteChoice",
+          "description": "Apply a US1 Fate Knots decision vote delivered over room transport.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsRemoteCombatAction",
+          "description": "Apply a US1 Fate Knots combat action delivered over room transport.",
+          "scope": "us1",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsDmPacket",
+          "description": "Store an additive Fate Knots DM narration packet.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        },
+        {
+          "name": "GameRoomFateKnotsNpcBanter",
+          "description": "Store an additive Fate Knots NPC banter packet.",
+          "scope": "ai-slots",
+          "exposure": "internal"
+        }
+      ],
+      "protocolSpecs": [
+        {
+          "key": "game-room-xox-user-start",
+          "room": "game-room",
+          "scenario": "xox-user-start",
+          "title": "[START][GAME-ROOM][XOX][USER-FIRST]",
+          "editable": true,
+          "path": "main-functions/xox/protocols/game-room-xox-user-start.md"
+        },
+        {
+          "key": "game-room-xox-ai-start",
+          "room": "game-room",
+          "scenario": "xox-ai-start",
+          "title": "[START][GAME-ROOM][XOX][AI-FIRST]",
+          "editable": true,
+          "path": "main-functions/xox/protocols/game-room-xox-ai-start.md"
+        },
+        {
+          "key": "game-room-xox-us1-transport",
+          "room": "game-room",
+          "scenario": "xox-us1-transport",
+          "title": "[INFO][GAME-ROOM][XOX][US1-TRANSPORT]",
+          "editable": false,
+          "path": "main-functions/xox/protocols/game-room-xox-us1-transport.md"
+        },
+        {
+          "key": "game-room-team-tetris-ai-opening",
+          "room": "game-room",
+          "scenario": "team-tetris-ai-opening",
+          "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][OPENING]",
+          "editable": true,
+          "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-opening.md"
+        },
+        {
+          "key": "game-room-team-tetris-ai-followup",
+          "room": "game-room",
+          "scenario": "team-tetris-ai-followup",
+          "title": "[TURN][GAME-ROOM][TEAM-TETRIS][AI][FOLLOWUP]",
+          "editable": true,
+          "path": "main-functions/team-tetris/protocols/game-room-team-tetris-ai-followup.md"
+        },
+        {
+          "key": "game-room-team-tetris-us1-transport",
+          "room": "game-room",
+          "scenario": "team-tetris-us1-transport",
+          "title": "[INFO][GAME-ROOM][TEAM-TETRIS][US1-TRANSPORT]",
+          "editable": false,
+          "path": "main-functions/team-tetris/protocols/game-room-team-tetris-us1-transport.md"
+        },
+        {
+          "key": "game-room-fate-knots-ai-decision",
+          "room": "game-room",
+          "scenario": "fate-knots-ai-decision",
+          "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][DECISION]",
+          "editable": true,
+          "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-decision.md"
+        },
+        {
+          "key": "game-room-fate-knots-ai-combat",
+          "room": "game-room",
+          "scenario": "fate-knots-ai-combat",
+          "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][COMBAT]",
+          "editable": true,
+          "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-combat.md"
+        },
+        {
+          "key": "game-room-fate-knots-ai-dm",
+          "room": "game-room",
+          "scenario": "fate-knots-ai-dm",
+          "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][DM]",
+          "editable": true,
+          "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-dm.md"
+        },
+        {
+          "key": "game-room-fate-knots-ai-npc",
+          "room": "game-room",
+          "scenario": "fate-knots-ai-npc",
+          "title": "[TURN][GAME-ROOM][FATE-KNOTS][AI][NPC]",
+          "editable": true,
+          "path": "main-functions/fate-knots/protocols/game-room-fate-knots-ai-npc.md"
+        },
+        {
+          "key": "game-room-fate-knots-us1-transport",
+          "room": "game-room",
+          "scenario": "fate-knots-us1-transport",
+          "title": "[INFO][GAME-ROOM][FATE-KNOTS][US1-TRANSPORT]",
+          "editable": false,
+          "path": "main-functions/fate-knots/protocols/game-room-fate-knots-us1-transport.md"
+        }
+      ],
+      "installedAt": "2026-04-09T15:01:01.313Z",
+      "updatedAt": "2026-04-09T15:01:01.313Z"
+    },
+    {
+      "id": "laboratory",
+      "name": "Laboratory",
+      "version": "1.0.0",
+      "description": "An obsidian media analysis room with staged dummy controls for capture, cleanup, profiling, processing, and reporting.",
+      "icon": "LB",
+      "sourceDir": "/home/raistlin/hayalet-ev/rooms/laboratory",
+      "installedDir": "/home/raistlin/hayalet-ev/data/rooms/laboratory",
+      "manifestPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/manifest.json",
+      "runtimeEntryPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/ui/index.html",
+      "hostEntryPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/host/index.js",
+      "defaultFeatureId": "media-analysis",
+      "features": [
+        {
+          "id": "media-analysis",
+          "name": "Media Analysis",
+          "description": "A staged visual shell for source capture, edit setup, profile selection, processing, and reporting.",
+          "icon": "MA",
+          "scene": {
+            "hotspot": {
+              "id": "laboratory-media-analysis",
+              "rect": {
+                "leftPx": 934,
+                "topPx": 176,
+                "widthPx": 508,
+                "heightPx": 320
+              },
+              "label": {
+                "text": "Media Analysis"
+              }
+            },
+            "view": {
+              "id": "media-analysis-console",
+              "backgroundPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/main-functions/media-analysis/assets/media-analysis-view.webp",
+              "transparentWindow": {
+                "leftPct": 2.4,
+                "topPct": 10.8,
+                "widthPct": 95.2,
+                "heightPct": 79.4
+              }
+            }
+          }
+        },
+        {
+          "id": "audio-analysis",
+          "name": "Audio Analysis",
+          "description": "An audio-first analysis desk that reuses the laboratory tool room for source prep, signal checks, speech tooling, and reporting.",
+          "icon": "AU",
+          "scene": {
+            "hotspot": {
+              "id": "laboratory-audio-analysis",
+              "rect": {
+                "leftPx": 182,
+                "topPx": 172,
+                "widthPx": 468,
+                "heightPx": 318
+              },
+              "label": {
+                "text": "Audio Analysis"
+              }
+            },
+            "view": {
+              "id": "audio-analysis-console",
+              "backgroundPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/main-functions/audio-analysis/assets/sound-analysis.webp",
+              "transparentWindow": {
+                "leftPct": 2.4,
+                "topPct": 10.8,
+                "widthPct": 95.2,
+                "heightPct": 79.4
+              }
+            }
+          }
+        },
+        {
+          "id": "subtitle-analysis",
+          "name": "Subtitle Analysis",
+          "description": "A subtitle-first workbench for local subtitle intake, YouTube subtitle capture, cleanup, QC, and reporting.",
+          "icon": "SB",
+          "scene": {
+            "hotspot": {
+              "id": "laboratory-subtitle-analysis",
+              "rect": {
+                "leftPx": 678,
+                "topPx": 522,
+                "widthPx": 348,
+                "heightPx": 214
+              },
+              "label": {
+                "text": "Subtitle Analysis"
+              }
+            },
+            "view": {
+              "id": "subtitle-analysis-console",
+              "backgroundPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/main-functions/subtitle-analysis/assets/subtitle-analysis.webp",
+              "transparentWindow": {
+                "leftPct": 2.4,
+                "topPct": 10.8,
+                "widthPct": 95.2,
+                "heightPct": 79.4
+              }
+            }
+          }
+        }
+      ],
+      "scene": {
+        "referenceSize": {
+          "width": 1600,
+          "height": 900
+        },
+        "roomBackgroundPath": "/home/raistlin/hayalet-ev/data/rooms/laboratory/shared/assets/room-background.webp",
+        "roomsHotspot": {
+          "id": "laboratory-door",
+          "rect": {
+            "leftPx": 722,
+            "topPx": 234,
+            "widthPx": 170,
+            "heightPx": 330
+          },
+          "label": {
+            "text": "Laboratory"
+          }
+        },
+        "backHotspot": {
+          "id": "laboratory-back",
+          "rect": {
+            "leftPx": 54,
+            "topPx": 150,
+            "widthPx": 168,
+            "heightPx": 256
+          },
+          "label": {
+            "text": "Corridor"
+          }
+        },
+        "chrome": {
+          "pageShellVariant": "immersive-stage"
+        }
+      },
+      "i18nBaseDir": "/home/raistlin/hayalet-ev/data/rooms/laboratory/i18n",
+      "installedAt": "2026-04-09T20:41:59.350Z",
+      "updatedAt": "2026-04-09T20:41:59.350Z"
+    }
+  ]
 }

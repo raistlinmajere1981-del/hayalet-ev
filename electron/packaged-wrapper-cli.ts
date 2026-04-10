@@ -17,6 +17,7 @@ type MainLaunchOptions = {
   autoConnect: boolean;
   uiMode: StartupUiMode;
   sceneDebug: boolean;
+  displayId: number | null;
 };
 
 type WrapperRestartRequest = {
@@ -524,6 +525,10 @@ function buildMainArgs(options: MainLaunchOptions): string[] {
     args.push("--scene-debug");
   }
 
+  if (options.displayId !== null) {
+    args.push(`--display-id=${options.displayId}`);
+  }
+
   return args;
 }
 
@@ -608,6 +613,7 @@ function createInitialMainLaunchOptions(): MainLaunchOptions {
     autoConnect: startupFlags.autoConnect,
     uiMode: startupFlags.uiMode,
     sceneDebug: startupFlags.sceneDebug,
+    displayId: startupFlags.displayId,
   };
 }
 

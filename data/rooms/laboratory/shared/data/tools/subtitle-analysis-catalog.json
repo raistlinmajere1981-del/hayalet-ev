@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "modules": [
+    { "id": "format-qc", "status": "implemented", "label": "Format QC" },
+    { "id": "readability-density", "status": "implemented", "label": "Readability" },
+    { "id": "cue-timing-structure", "status": "implemented", "label": "Cue timing" },
+    { "id": "lexical-frequency", "status": "implemented", "label": "Lexical frequency" },
+    { "id": "batch-summary", "status": "implemented", "label": "Batch summary" },
+    { "id": "entities-keyphrases", "status": "planned", "label": "Entities and keyphrases" },
+    { "id": "semantic-search", "status": "planned", "label": "Semantic search" }
+  ]
+}

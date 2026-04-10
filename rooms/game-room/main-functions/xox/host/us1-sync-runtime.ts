@@ -11,7 +11,7 @@ type XoxDispatchRoomCommandPayload = {
 };
 
 type XoxToastPayload = {
-  type: "info" | "success";
+  type: "info" | "success" | "warning";
   message: string;
 };
 
@@ -165,6 +165,88 @@ function readRoomCommands(value: unknown): XoxRoomCommand[] {
     .filter((command): command is XoxRoomCommand => command !== null && command.commandName !== "");
 }
 
+function readCommandSuccess(value: unknown): boolean | null {
+  if (isRecord(value) === false) {
+    return null;
+  }
+  if (value["success"] === true) {
+    return true;
+  }
+  if (value["success"] === false) {
+    return false;
+  }
+  return null;
+}
+
+function readCommandMessage(value: unknown): string {
+  if (isRecord(value) === false) {
+    return "";
+  }
+  return readString(value["message"]).trim();
+}
+
+function buildRoomCommandFailureMessage(
+  commandName: string,
+  result: unknown,
+  error?: unknown
+): string {
+  const resultMessage = readCommandMessage(result);
+  if (resultMessage !== "") {
+    return resultMessage;
+  }
+  if (error instanceof Error && error.message.trim() !== "") {
+    return error.message.trim();
+  }
+  if (typeof error === "string" && error.trim() !== "") {
+    return error.trim();
+  }
+  return `Incoming ${commandName} update could not be applied.`;
+}
+
+function surfaceRoomCommandFailure(
+  api: XoxUs1SyncApi,
+  command: XoxRoomCommand,
+  message: string
+): void {
+  const details = [
+    `command=${command.commandName}`,
+    ...(command.transportMessageId !== null ? [`transport=${command.transportMessageId}`] : []),
+    ...(command.remoteUserId !== null ? [`remote=${command.remoteUserId}`] : []),
+  ].join(", ");
+
+  api.notifyRoom?.("command-result", {
+    command: command.commandName,
+    result: {
+      success: false,
+      message,
+    },
+  });
+  api.showToast({
+    type: "warning",
+    message,
+  });
+  api.log("warn", `US1 room command ignored (${details}): ${message}`);
+}
+
+function shouldProcessRoomCommand(
+  command: XoxRoomCommand,
+  roomId: string,
+  featureId: string,
+  teamTetrisFeatureId: string,
+  fateKnotsFeatureId: string
+): boolean {
+  if (command.roomId !== roomId) {
+    return false;
+  }
+
+  return (
+    command.featureId === "" ||
+    command.featureId === featureId ||
+    command.featureId === teamTetrisFeatureId ||
+    command.featureId === fateKnotsFeatureId
+  );
+}
+
 function normalizeRoomEvent(candidate: unknown): XoxRoomEvent | null {
   if (isRecord(candidate) === false) {
     return null;
@@ -250,30 +332,44 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
     syncFromSnapshot,
   } = deps.inviteRuntime;
 
-  function processRoomCommands(api: XoxUs1SyncApi, roomCommands: XoxRoomCommand[]) {
-    for (let index = 0; index < roomCommands.length; index += 1) {
-      const command = roomCommands.at(index);
-      if (!command) {
-        continue;
-      }
+  async function processRoomCommands(api: XoxUs1SyncApi, roomCommands: XoxRoomCommand[]) {
+    await roomCommands.reduce<Promise<void>>(async (previous, command) => {
+      await previous;
       if (
-        command.roomId !== ROOM_ID ||
-        (command.featureId !== "" &&
-          command.featureId !== FEATURE_ID &&
-          command.featureId !== TEAM_TETRIS_FEATURE_ID &&
-          command.featureId !== FATE_KNOTS_FEATURE_ID)
+        shouldProcessRoomCommand(
+          command,
+          ROOM_ID,
+          FEATURE_ID,
+          TEAM_TETRIS_FEATURE_ID,
+          FATE_KNOTS_FEATURE_ID
+        ) === false
       ) {
-        continue;
+        return;
       }
 
-      void api.dispatchRoomCommand(command.commandName, {
-        roomPayload: command.roomPayload ?? command.commandArgs,
-        args: command.rawArgs,
-        remoteUserId: command.remoteUserId,
-        localSessionId: command.localSessionId,
-        transportMessageId: command.transportMessageId,
-      });
-    }
+      try {
+        const result = await api.dispatchRoomCommand(command.commandName, {
+          roomPayload: command.roomPayload ?? command.commandArgs,
+          args: command.rawArgs,
+          remoteUserId: command.remoteUserId,
+          localSessionId: command.localSessionId,
+          transportMessageId: command.transportMessageId,
+        });
+        if (readCommandSuccess(result) === false) {
+          surfaceRoomCommandFailure(
+            api,
+            command,
+            buildRoomCommandFailureMessage(command.commandName, result)
+          );
+        }
+      } catch (error) {
+        surfaceRoomCommandFailure(
+          api,
+          command,
+          buildRoomCommandFailureMessage(command.commandName, null, error)
+        );
+      }
+    }, Promise.resolve());
   }
 
   async function processRoomEvents(api: XoxUs1SyncApi, roomEvents: XoxRoomEvent[]) {
@@ -462,7 +558,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
 
       syncFromSnapshot(api, result.roomInviteInbox);
       await processRoomEvents(api, readRoomEvents(result.roomEvents));
-      processRoomCommands(api, readRoomCommands(result.roomCommands));
+      await processRoomCommands(api, readRoomCommands(result.roomCommands));
       refreshRoomState(api);
     } finally {
       api.deleteState?.("xox-us1-syncing");

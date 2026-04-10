@@ -8,6 +8,7 @@ export interface StartupFlags {
   uiMode: StartupUiMode;
   sceneEditor: boolean;
   sceneDebug: boolean;
+  displayId: number | null;
   roomsSnapshot: StartupRoomsSnapshot | null;
 }
 
@@ -36,6 +37,15 @@ function normalizeUiMode(uiMode: string | null): StartupUiMode {
   return uiMode === "scene" ? "scene" : "classic";
 }
 
+function normalizeDisplayId(displayId: string | null): number | null {
+  if (displayId === null || displayId === "") {
+    return null;
+  }
+
+  const parsed = Number.parseInt(displayId, 10);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
 export function parseStartupFlagsFromArgv(argv: readonly string[]): StartupFlags {
   const startPage = normalizeStartPage(
     readFlagValue(argv, "--app-start-page") ?? readFlagValue(argv, "--start-page")
@@ -58,6 +68,9 @@ export function parseStartupFlagsFromArgv(argv: readonly string[]): StartupFlags
     argv.includes("--app-scene-debug=true") ||
     argv.includes("--app-scene-debug") ||
     argv.includes("--scene-debug");
+  const displayId = normalizeDisplayId(
+    readFlagValue(argv, "--app-display-id") ?? readFlagValue(argv, "--display-id")
+  );
 
   return {
     startPage,
@@ -65,6 +78,7 @@ export function parseStartupFlagsFromArgv(argv: readonly string[]): StartupFlags
     uiMode,
     sceneEditor: sceneDebug,
     sceneDebug,
+    displayId,
     roomsSnapshot: null,
   };
 }

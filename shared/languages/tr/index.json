@@ -24,8 +24,6 @@
     "server": {
       "page": {
         "sceneAriaLabel": "Sunucu sahnesi",
-        "delegateButton": "Kontrolü Devret",
-        "reclaimButton": "Kontrolü Devral",
         "timelineTitle": "Komut Akışı (Komut → Sonuç)",
         "timelineHint": "Yukarı kaydırdıkça 3 session daha yüklenir",
         "timelineEmpty": "Henüz komut kaydı yok",
@@ -324,9 +322,6 @@
         "archiveReadError": "Arşiv okunamadı: {{message}}"
       }
     },
-    "protocol": {
-      "controlTransferred": "Kontrol devredildi."
-    },
     "upload": {
       "validationFailed": "Doğrulama başarısız",
       "noFiles": "Yüklenecek dosya bulunamadı",
@@ -566,23 +561,8 @@
         "scopeDetail": "kapsam: {{scope}}",
         "kindDetail": "tür: {{kind}}",
         "apiUnavailable": "electronAPI mevcut değil",
-        "treeGenerationFailed": "Ağaç üretimi başarısız",
-        "listFilesStarting": "ListFiles başlatıldı | kapsam: {{scope}}",
-        "listFilesAttachmentText": "Dosya Listesi ({{scope}}): {{lines}} satır",
-        "listFilesSent": "ListFiles gönderildi -> {{provider}} | {{fileName}}",
         "deliveryTriggered": "CoreEngine -> {{provider}} gönderimi tetiklendi",
         "deliveryFailed": "{{command}} gönderilemedi: {{message}}",
-        "listFilesSummary": "{{lines}} satır, {{fileName}}",
-        "windowManagerRan": "WindowManager çalıştı | aksiyon: {{action}}",
-        "windowActionResult": "aksiyon: {{action}}, durum: {{status}}",
-        "restartStarting": "Yeniden başlatma başlatılıyor",
-        "restartRequested": "Uygulama yeniden başlatılıyor...",
-        "screenshotAttachmentText": "Ekran görüntüsü: {{kind}}",
-        "screenshotRan": "ScreenshotManager çalıştı | tür: {{kind}}",
-        "screenshotSent": "ScreenshotManager gönderildi -> {{provider}} | {{path}}",
-        "screenshotSaved": "Kaydedildi: {{path}}",
-        "screenshotEmpty": "Ekran görüntüsü alınamadı",
-        "screenshotEmptyLog": "ScreenshotManager çalıştı fakat sonuç üretmedi | tür: {{kind}}",
         "commandError": "{{command}} hatası: {{message}}"
       },
       "executor": {
@@ -612,119 +592,53 @@
         "unknownMessage": "bilinmiyor"
       },
       "catalog": {
-        "DeviceManager": {
-          "description": "Fare ve klavye işlemlerini uzaktan kontrol eder.",
-          "detail": "Bilgisayarın fare hareketleri, tıklama, sağ tıklama, klavye tuş basımı, metin yazma, kopyalama ve yapıştırma gibi cihaz giriş işlemlerini programatik olarak yönetir. AI'ın bilgisayarı fiziksel olarak kontrol etmesini sağlar.",
-          "usage": "++cmd:DeviceManager(<aksiyon>, <parametreler>)\nAksiyonlar: move, click, rightclick, mousedown, mouseup, key, type, copy, paste",
-          "example": "++cmd:DeviceManager(move, 500, 300)\n++cmd:DeviceManager(click)\n++cmd:DeviceManager(type, Merhaba Dünya)\n++cmd:DeviceManager(key, enter)"
-        },
-        "FileManager": {
-          "description": "Dosya yönetim işlemlerini gerçekleştirir.",
-          "detail": "Proje dizinindeki dosya ve klasör işlemlerini yönetir. Dosya okuma, yazma ve organizasyon gibi temel dosya sistemi operasyonlarını sağlar.",
-          "usage": "++cmd:FileManager(<aksiyon>, <parametreler>)",
-          "example": "++cmd:FileManager()"
-        },
-        "WebviewManager": {
-          "description": "Webview pencerelerini yönetir ve kontrol eder.",
-          "detail": "Electron uygulamasındaki webview bileşenlerini kontrol eder. AI slotlarının web içeriklerini yönetme, mesaj gönderme ve webview durumunu izleme işlemlerini sağlar.",
-          "usage": "++cmd:WebviewManager(<aksiyon>, <parametreler>)",
-          "example": "++cmd:WebviewManager()"
-        },
         "WhisperManager": {
-          "description": "Hesap bazlı zamanlanmış fısıltı mesajı oluşturur.",
-          "detail": "Belirli bir hesaba bağlı zamanlanmış mesajlar üretir. Hesap bir slota bağlıysa zamanı geldiğinde ilgili slot üzerinden iletilir.",
-          "usage": "++cmd:WhisperManager(<accountId>, \"<mesaj>\", \"<zaman>\")",
-          "example": "++cmd:WhisperManager(chatgpt_user_at_mail_com, \"Raporu tamamla\", \"5m\")"
-        },
-        "WindowManager": {
-          "description": "Uygulama penceresini kontrol eder.",
-          "detail": "Electron uygulama penceresinin durumunu yönetir. Pencereyi küçültme, tam ekran yapma ve normal boyuta döndürme gibi işlemleri gerçekleştirir.",
-          "usage": "++cmd:WindowManager(<aksiyon>)\nAksiyonlar: minimize, fullscreen, restore",
-          "example": "++cmd:WindowManager(minimize)\n++cmd:WindowManager(fullscreen)"
-        },
-        "ScreenshotManager": {
-          "description": "Ekran görüntüsü alır ve AI'a gönderir.",
-          "detail": "Sistemin veya belirli bir pencerenin ekran görüntüsünü yakalar. Alınan görüntüyü otomatik olarak kaydeder ve ilgili AI slotuna attachment olarak iletir. Sistem, pencere ve bölge bazlı yakalama destekler.",
-          "usage": "++cmd:ScreenshotManager(<tür>, <parametre>, <format>)\nTürler: system, window, region",
-          "example": "++cmd:ScreenshotManager(system)\n++cmd:ScreenshotManager(window, 0, png)"
-        },
-        "TakeScreenshot": {
-          "description": "Hızlı ekran görüntüsü alır.",
-          "detail": "ScreenshotManager'ın kısayol versiyonudur. Varsayılan ayarlarla hızlıca ekran görüntüsü alır ve aktif AI slotuna gönderir.",
-          "usage": "++cmd:TakeScreenshot(<tür>, <parametre>)",
-          "example": "++cmd:TakeScreenshot(system)"
-        },
-        "PlayMusic": {
-          "description": "Müzik çalma işlemini başlatır.",
-          "detail": "Sistemde müzik çalma komutunu tetikler. Belirtilen türde veya varsayılan müzik çalma işlemini başlatır.",
-          "usage": "++cmd:PlayMusic(<tür>)",
-          "example": "++cmd:PlayMusic(classic)"
-        },
-        "Restart": {
-          "description": "Uygulamayı yeniden başlatır.",
-          "detail": "Electron uygulamasını tamamen kapatıp yeniden başlatır. Tüm aktif bağlantılar ve oturumlar sonlandırılır, uygulama sıfırdan yüklenir. Dikkatli kullanılmalıdır.",
-          "usage": "++cmd:Restart()",
-          "example": "++cmd:Restart()"
+          "description": "Bir slot hesabı için zamanlanmış tekil fısıltı görevi oluşturur.",
+          "detail": "Belirli bir hesaba bağlı gecikmeli mesaj üretir. Komut AI veya asistan slotundan çağrılırsa accountId verilmeden mevcut slotun hesabı kullanılabilir. Bu komut relay başlatmaz; yalnızca zamanı geldiğinde ilgili hesap akışına bırakılacak bir whisper kaydı ekler.",
+          "usage": "++cmd:WhisperManager(<accountId>, \"<mesaj>\", \"<zaman>\")\nveya ++cmd:WhisperManager(\"<mesaj>\", \"<zaman>\")",
+          "example": "++cmd:WhisperManager(\"5 dakika sonra bulguları özetle\", \"5m\")"
         },
         "AIAIChatStart": {
-          "description": "İki AI arasında otomatik sohbet başlatır.",
-          "detail": "AI1 ve AI2 slotları arasında relay tabanlı otomatik sohbet oturumu başlatır. Her iki AI'ın da bağlı olması gerekir. Başlatıcı AI parametreyle belirlenebilir. Sıralı modda çalışır.",
+          "description": "AI1 ile AI2 arasında sürekli relay oturumu başlatır.",
+          "detail": "AI1 ve AI2 slotları arasında sıralı, sürekli relay akışı açar. Her iki AI slotu bağlı olmalıdır. Başlatıcı parametresi ilk mesajı hangi AI'ın üreteceğini belirler ve buna göre `analyze-AI1-AI2` veya `analyze-AI2-AI1` protokolü gönderilir. Bu komut tek mesaj göndermek için değil, oturum başlatmak içindir.",
           "usage": "++cmd:AIAIChatStart(<başlatıcı>)\nBaşlatıcı: ai1 veya ai2",
           "example": "++cmd:AIAIChatStart(ai1)"
         },
         "AIAIChatStop": {
-          "description": "AI-AI sohbetini durdurur.",
-          "detail": "Aktif olan AI-AI relay sohbet oturumunu sonlandırır. Her iki AI slotuna da durdurma sinyali gönderir ve relay döngüsünü keser.",
+          "description": "Aktif AI-AI relay oturumunu durdurur.",
+          "detail": "Çalışan AI1 ↔ AI2 relay akışını sonlandırır. Uygulama iki slota `[STOP][ANALYZE][AI-AI]` kontrol protokolünü gönderir ve otomatik mesaj aktarımı kesilir.",
           "usage": "++cmd:AIAIChatStop()",
           "example": "++cmd:AIAIChatStop()"
         },
         "AIAssistantChatStart": {
-          "description": "AI ile Asistan arasında sohbet başlatır.",
-          "detail": "Belirtilen AI slotu ile Asistan arasında relay tabanlı sohbet oturumu başlatır. Kaynak AI'ın ve Asistan'ın bağlı olması gerekir.",
+          "description": "Seçilen AI slotu ile asistan arasında sürekli relay oturumu başlatır.",
+          "detail": "Belirtilen AI slotu ile ai0 arasında karşılıklı relay akışı açar. Kaynak AI ve asistan bağlı olmalıdır. Başlangıçta seçilen AI slotuna `AI-assistant` protokolü gönderilir. Bu komut tek seferlik handoff için değil, oturum bazlı konuşma için kullanılır.",
           "usage": "++cmd:AIAssistantChatStart(<kaynak>)\nKaynak: ai1 veya ai2",
           "example": "++cmd:AIAssistantChatStart(ai1)"
         },
         "AIAssistantChatStop": {
-          "description": "AI-Asistan sohbetini durdurur.",
-          "detail": "Aktif olan AI-Asistan relay sohbet oturumunu sonlandırır. İlgili slotlara durdurma sinyali gönderir.",
+          "description": "Aktif AI-Asistan relay oturumunu durdurur.",
+          "detail": "Çalışan AI ↔ asistan relay akışını sonlandırır. Uygulama ilgili AI slotuna `[STOP][ANALYZE][AI-ASSISTANT]` kontrol protokolünü gönderir; tek seferlik mesaj aktarımı gerekiyorsa bunun yerine `AIAssistantSend` veya `AssistantAISend` kullanılmalıdır.",
           "usage": "++cmd:AIAssistantChatStop()",
           "example": "++cmd:AIAssistantChatStop()"
         },
         "AIAssistantSend": {
-          "description": "AI slotundan asistana tek mesaj gönderir.",
-          "detail": "Provider ai1 veya ai2 olmalıdır. Mesaj gövdesi komuttan ayıklanır ve ai0 slotuna gönderilir. Asistan bağlı değilse önce bağlantı başlatılır.",
-          "usage": "++cmd:AIAssistantSend(<provider>)\nProvider: ai1 veya ai2",
-          "example": "++cmd:AIAssistantSend(ai1) Assistana iletilecek mesaj"
+          "description": "AI slotundan asistana tek seferlik mesaj iletir.",
+          "detail": "Provider `ai1` veya `ai2` olmalıdır. Mesaj gövdesindeki inline komut sarmalayıcıları temizlenir, kaynak AI etiketi korunur ve içerik SlotBridge `message.send` aksiyonu üzerinden ai0 slotuna iletilir. Sürekli relay başlatmaz.",
+          "usage": "++cmd:AIAssistantSend(<provider>) <mesaj>\nProvider: ai1 veya ai2",
+          "example": "++cmd:AIAssistantSend(ai1) Asistana iletilecek tek mesaj"
         },
         "AssistantAISend": {
-          "description": "Asistanın son cevabını hedef AI slotuna tek sefer gönderir.",
-          "detail": "Bu komut sadece asistan slotunda çalışır. Hedef parametresi ai1 veya ai2 olabilir. Parametre boşsa assistants.lastActiveRelay alanından hedef çözülür. Hedef bulunamazsa işlem hata ile sonlanır.",
-          "usage": "++cmd:AssistantAISend(<hedef>)\nHedef: ai1 veya ai2 (opsiyonel)",
-          "example": "++cmd:AssistantAISend(ai1) Mesajı AI1'e ilet"
+          "description": "Asistanın son cevabını hedef AI slotuna tek sefer iletir.",
+          "detail": "Bu komut yalnızca asistan slotunda çalışır. Hedef `ai1` veya `ai2` olabilir; boş bırakılırsa `assistants.lastActiveRelay` alanından çözülür. Gönderim SlotBridge `message.send` aksiyonu üzerinden yapılır. Aktif AI-Asistan relay varsa uygun stop akışı da tetiklenir.",
+          "usage": "++cmd:AssistantAISend(<hedef>) <mesaj>\nHedef: ai1 veya ai2 (opsiyonel)",
+          "example": "++cmd:AssistantAISend() Son cevabı son aktif relay hedefine ilet"
         },
         "SlotBridge": {
-          "description": "Birleşik slot köprü komut ailesini çalıştırır.",
-          "detail": "Cross-slot mesaj gönderimi, waited reply, room.command dispatch, connection.ensure ve session aksiyonlarını tek bir JSON zarfı üzerinden yönlendirir. Attachment içeren public aksiyonlarda ham dosya yolu yerine archive attachment ref kullanılması tercih edilir.",
-          "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"toSlot\":\"ai1\",\"payload\":{\"text\":\"Merhaba\"}})",
-          "example": "++cmd:SlotBridge({\"action\":\"room.command\",\"fromSlot\":\"ai1\",\"payload\":{\"commandName\":\"GameRoomXoxAiMove\",\"cell\":4}})"
-        },
-        "GetFile": {
-          "description": "Belirtilen dosyayı alır ve AI'a gönderir.",
-          "detail": "İstenen dosyayı okuyarak ilgili AI slotuna attachment olarak iletir. Dosya içeriğinin AI tarafından işlenmesini sağlar.",
-          "usage": "++cmd:GetFile(<dosya_yolu>)",
-          "example": "++cmd:GetFile(src/index.ts)"
-        },
-        "GetItDone": {
-          "description": "Genel amaçlı görev tamamlama komutu.",
-          "detail": "Verilen görevi veya talimatı işleyerek sonuçlandırmayı hedefler. Genel amaçlı bir komut olarak çeşitli işlemleri tetikleyebilir.",
-          "usage": "++cmd:GetItDone(<görev_açıklaması>)",
-          "example": "++cmd:GetItDone(projeyi derle)"
-        },
-        "ListFiles": {
-          "description": "Proje dosya ağacını oluşturur ve AI'a gönderir.",
-          "detail": "Belirtilen kapsamda dosya ağacı oluşturur. node_modules ve dist gibi klasörler otomatik hariç tutulur. Sonuç dosya olarak kaydedilir ve ilgili AI slotuna gönderilir.",
-          "usage": "++cmd:ListFiles(<kapsam>)\nKapsam: project (varsayılan) veya dizin yolu",
-          "example": "++cmd:ListFiles(project)\n++cmd:ListFiles(src/js)"
+          "description": "Canonical slot komut otobüsünü çalıştırır.",
+          "detail": "Cross-slot mesaj gönderimi, waited reply, attachment/file delivery, `connection.ensure`, `session.open`, `session.switch` ve `room.command` dispatch aksiyonlarını tek JSON zarfında toplar. Yeni slot veya oda entegrasyonlarında tercih edilen ana komut budur; diğer kısa komutlar ergonomi katmanıdır.",
+          "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"fromSlot\":\"ai1\",\"toSlot\":\"ai0\",\"payload\":{\"text\":\"Merhaba\"}})\nAksiyonlar: message.send, message.sendWait, message.sendWithAttachments, file.send, connection.ensure, session.open, session.switch, room.command",
+          "example": "++cmd:SlotBridge({\"action\":\"message.sendWait\",\"fromSlot\":\"ai0\",\"toSlot\":\"ai1\",\"replyToSlot\":\"ai0\",\"payload\":{\"text\":\"Hazır mısın?\"}})"
         }
       }
     }
@@ -2619,15 +2533,6 @@
         "commandReceived": "Sunucu komutu alındı: {{name}}",
         "whisperAdded": "{{accountId}} için WhisperManager kaydı eklendi",
         "whisperError": "WhisperManager hatası: {{message}}",
-        "deviceAction": "DeviceManager aksiyonu çalıştırıldı: {{action}}",
-        "deviceError": "DeviceManager hatası: {{message}}",
-        "screenshotSaved": "ScreenshotManager kaydetti: {{path}}",
-        "screenshotError": "ScreenshotManager hatası: {{message}}",
-        "windowAction": "WindowManager aksiyonu çalıştırıldı: {{action}}",
-        "windowError": "WindowManager hatası: {{message}}",
-        "restartRequested": "Yeniden başlatma istendi",
-        "restartError": "Yeniden başlatma hatası: {{message}}",
-        "listFilesError": "ListFiles hatası: {{message}}",
         "undefinedCommand": "Tanımsız komut: {{commandName}}"
       }
     },

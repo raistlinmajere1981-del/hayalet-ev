@@ -19,9 +19,9 @@ test("composeProtocolMessage falls back to header-only when body is empty", () =
 });
 
 test("composeProtocolMessage keeps spacing for non-bracket legacy headers", () => {
-  const message = composeProtocolMessage("Kontrol Devredildi", "");
+  const message = composeProtocolMessage("Legacy Header", "");
 
-  assert.equal(message, `${PROTOCOL_HEADER_TAG} Kontrol Devredildi`);
+  assert.equal(message, `${PROTOCOL_HEADER_TAG} Legacy Header`);
 });
 
 test("composeProtocolMessage inserts protocol preface before the loaded body", () => {

@@ -3,20 +3,9 @@ import { Logger } from "./logger/index.js";
 import { AppI18n } from "./i18n/index.js";
 import { SettingsManager } from "./settings-manager.js";
 
-import { createDefaultHandler } from "./commands/utils.js";
 import type { CommandPayload } from "@shared/commands.js";
 
-import { deviceManagerHandler } from "./commands/device-commands.js";
-import { screenshotManagerHandler } from "./commands/screenshot-commands.js";
-import {
-  windowManagerHandler,
-  minimizeHandler,
-  maximizeHandler,
-  restoreHandler,
-  restartHandler,
-} from "./commands/window-commands.js";
 import { whisperManagerHandler } from "./commands/whisper-commands.js";
-import { listFilesHandler } from "./commands/file-commands.js";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 async function getAiChatHandlers(): Promise<typeof import("./commands/ai-chat-commands.js")> {
   return await import("./commands/ai-chat-commands.js");
@@ -51,15 +40,7 @@ interface CommandCatalogItem {
 }
 
 const BUILTIN_COMMANDS: CommandDefinition[] = [
-  { name: "DeviceManager", category: "ai1-ai2" },
-  { name: "FileManager", category: "ai1-ai2" },
-  { name: "WebviewManager", category: "ai1-ai2" },
   { name: "WhisperManager", category: "ai1-ai2" },
-  { name: "WindowManager", category: "ai1-ai2" },
-  { name: "ScreenshotManager", category: "ai1-ai2", supportsTestMode: true },
-  { name: "TakeScreenshot", category: "ai1-ai2", supportsTestMode: true },
-  { name: "PlayMusic", category: "ai1-ai2" },
-  { name: "Restart", category: "ai1-ai2" },
   { name: "AIAIChatStart", category: "ai1-ai2" },
   { name: "AIAIChatStop", category: "ai1-ai2" },
   { name: "AIAssistantChatStart", category: "ai1-ai2" },
@@ -72,9 +53,6 @@ const BUILTIN_COMMANDS: CommandDefinition[] = [
     additionalCategories: ["ai0"],
     supportsTestMode: true,
   },
-  { name: "GetFile", category: "ai1-ai2" },
-  { name: "GetItDone", category: "ai1-ai2" },
-  { name: "ListFiles", category: "ai1-ai2", supportsTestMode: true },
 ];
 
 const COMMAND_LIST = BUILTIN_COMMANDS.map((command) => command.name);
@@ -237,42 +215,7 @@ function resolveSlotBridgeActionFromPayload(
 
 const handlers: Record<string, (payload?: CommandPayload) => unknown> = {};
 
-COMMAND_LIST.forEach((name) => {
-  const key = name.toLowerCase();
-  if (
-    ![
-      "whispermanager",
-      "devicemanager",
-      "screenshotmanager",
-      "takescreenshot",
-      "windowmanager",
-      "minimize",
-      "maximize",
-      "restore",
-      "restart",
-      "listfiles",
-      "aiaichatstart",
-      "aiaichatstop",
-      "aiassistantchatstart",
-      "aiassistantchatstop",
-      "aiassistantsend",
-      "assistantaisend",
-    ].includes(key)
-  ) {
-    handlers[key] = createDefaultHandler(name);
-  }
-});
-
-handlers["devicemanager"] = deviceManagerHandler;
-handlers["screenshotmanager"] = screenshotManagerHandler;
-handlers["takescreenshot"] = screenshotManagerHandler;
-handlers["windowmanager"] = windowManagerHandler;
-handlers["minimize"] = minimizeHandler;
-handlers["maximize"] = maximizeHandler;
-handlers["restore"] = restoreHandler;
-handlers["restart"] = restartHandler;
 handlers["whispermanager"] = whisperManagerHandler;
-handlers["listfiles"] = listFilesHandler;
 handlers["aiaichatstart"] = async (payload): Promise<unknown> => {
   const { aiaiChatStartHandler } = await getAiChatHandlers();
   return await aiaiChatStartHandler(payload);

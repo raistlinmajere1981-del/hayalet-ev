@@ -1,30 +1,11 @@
-import { deviceActionHandler } from "./device-manager.ts";
-import { screenshotCaptureHandler } from "./screenshot-manager.ts";
 import { whisperLoad, whisperSave } from "./whisper-manager.ts";
 import type { BrowserWindow, IpcMainInvokeEvent } from "electron";
 import { getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "../src/types/logging-core.js";
-import { Paths } from "./paths.ts";
 
 const logger = getLoggerCore();
-let _mainWindow: BrowserWindow | null = null;
 
-const COMMAND_LIST = [
-  "DeviceManager",
-  "FileManager",
-  "WebviewManager",
-  "WhisperManager",
-  "WindowManager",
-  "ScreenshotManager",
-  "TakeScreenshot",
-  "PlayMusic",
-  "Restart",
-  "AIAIChatStart",
-  "AIAIChatStop",
-  "GetFile",
-  "GetItDone",
-  "ListFiles",
-];
+const COMMAND_LIST = ["WhisperManager", "AIAIChatStart", "AIAIChatStop"];
 
 interface CommandPayload {
   args?: string;
@@ -121,22 +102,6 @@ const parseWhisperArgs = (
   };
 };
 
-const parseScreenshotArgs = (
-  rawArgs = ""
-): { kind: string; selectorOrId: string; format: string } => {
-  const parts = parseArgs(rawArgs);
-  const kind = (parts[0] ?? "system").toLowerCase();
-  const selectorOrId = parts[1] ?? "";
-  const format = parts[2] ?? "";
-  return { kind, selectorOrId, format };
-};
-
-const parseWindowArgs = (rawArgs = ""): { action: string } => {
-  const parts = parseArgs(rawArgs);
-  const action = (parts[0] ?? "minimize").toLowerCase();
-  return { action };
-};
-
 COMMAND_LIST.forEach((name) => {
   if (name === "WhisperManager") return;
   handlers[name.toLowerCase()] = defaultHandler(name);
@@ -206,148 +171,8 @@ handlers["whispermanager"] = async (payload: CommandPayload = {}): Promise<unkno
   }
 };
 
-handlers["devicemanager"] = async (payload: CommandPayload = {}): Promise<unknown> => {
-  try {
-    const parts = parseArgs(payload.args ?? "");
-    const action = (parts[0] ?? "").toLowerCase();
-    const params = parts.slice(1);
-    const res = await deviceActionHandler(null, action, params);
-
-    await logger.logInternalT(
-      LogCategory.SERVER_COMMANDS,
-      LogLevel.INFO,
-      "electron.serverCommands.logs.deviceAction",
-      { action },
-      { action, params, result: res }
-    );
-    return { success: res.success === true, result: res };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternalT(
-      LogCategory.SERVER_COMMANDS,
-      LogLevel.ERROR,
-      "electron.serverCommands.logs.deviceError",
-      { message },
-      { error: err }
-    );
-    return { success: false, message };
-  }
-};
-
-handlers["screenshotmanager"] = async (payload: CommandPayload = {}): Promise<unknown> => {
-  try {
-    const { kind: _kind, selectorOrId, format } = parseScreenshotArgs(payload.args ?? "");
-    const options: { format?: string; region?: string } = {};
-    if (format !== "") options.format = format;
-    if (selectorOrId !== "") options.region = selectorOrId;
-    const res = await screenshotCaptureHandler(null, options);
-    if (res.success === true) {
-      const savedPath = typeof res.path === "string" ? res.path : "in-memory";
-      await logger.logInternalT(
-        LogCategory.SERVER_COMMANDS,
-        LogLevel.INFO,
-        "electron.serverCommands.logs.screenshotSaved",
-        { path: savedPath },
-        { path: res.path, options }
-      );
-      return { success: true, path: res.path, dataUrl: res.dataUrl };
-    }
-    return { success: false, message: res.message };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternalT(
-      LogCategory.SERVER_COMMANDS,
-      LogLevel.ERROR,
-      "electron.serverCommands.logs.screenshotError",
-      { message },
-      { error: err }
-    );
-    return { success: false, message };
-  }
-};
-
-handlers["takescreenshot"] = handlers["screenshotmanager"];
-
-handlers["windowmanager"] = async (payload: CommandPayload = {}): Promise<unknown> => {
-  try {
-    const { action } = parseWindowArgs(payload.args ?? "");
-    if (_mainWindow === null) return { success: false, message: "no-window" };
-    let result = false;
-    if (action === "minimize") {
-      _mainWindow.minimize();
-      result = true;
-    } else if (action === "fullscreen" || action === "maximize") {
-      _mainWindow.setFullScreen(true);
-      result = true;
-    } else if (action === "restore") {
-      _mainWindow.restore();
-      result = true;
-    }
-
-    await logger.logInternalT(
-      LogCategory.SERVER_COMMANDS,
-      LogLevel.INFO,
-      "electron.serverCommands.logs.windowAction",
-      { action },
-      { action, result }
-    );
-    return { success: result, action, executed: result };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternalT(
-      LogCategory.SERVER_COMMANDS,
-      LogLevel.ERROR,
-      "electron.serverCommands.logs.windowError",
-      { message },
-      { error: err }
-    );
-    return { success: false, message };
-  }
-};
-
-handlers["restart"] = async (_payload: CommandPayload = {}): Promise<unknown> => {
-  try {
-    await logger.logInternalT(
-      LogCategory.SERVER_COMMANDS,
-      LogLevel.INFO,
-      "electron.serverCommands.logs.restartRequested"
-    );
-    return { success: true, message: "restart requested" };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternalT(
-      LogCategory.SERVER_COMMANDS,
-      LogLevel.ERROR,
-      "electron.serverCommands.logs.restartError",
-      { message },
-      { error: err }
-    );
-    return { success: false, message };
-  }
-};
-
-handlers["listfiles"] = async (_payload: CommandPayload = {}): Promise<unknown> => {
-  try {
-    if (_mainWindow === null) return { success: false, message: "no-main-window" };
-    const baseDir = Paths.getProjectRoot();
-    return { success: true, command: "ListFiles", path: baseDir, fileName: "root", lines: 0 };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternalT(
-      LogCategory.SERVER_COMMANDS,
-      LogLevel.ERROR,
-      "electron.serverCommands.logs.listFilesError",
-      { message },
-      { error: err }
-    );
-    return { success: false, message };
-  }
-};
-
 const serverCommands = {
-  init(opts: ServerCommandsOptions = {}): void {
-    _mainWindow = opts.mainWindow ?? null;
-  },
+  init(_opts: ServerCommandsOptions = {}): void {},
   async run(
     _event: IpcMainInvokeEvent | null,
     commandName: string,

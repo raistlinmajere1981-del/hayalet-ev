@@ -21,7 +21,7 @@
 }
 
 [data-ui-mode="scene"] .main-content {
-  height: var(--layout-app-height);
+  height: var(--layout-app-height-zoom-compensated);
 }
 
 [data-ui-mode="scene"] .app-overlay-host__layer[data-overlay-layer="workspace-tool"],

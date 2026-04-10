@@ -1,6 +1,10 @@
 :root {
   --layout-app-height: 100vh;
-  --layout-page-height: calc(var(--layout-app-height) - var(--topbar-height));
+  /* NOTE: App-wide zoom shrinks fixed CSS heights physically, so viewport-sized shells need inverse compensation. */
+  --layout-app-height-zoom-compensated: calc(
+    var(--layout-app-height) / max(var(--app-ui-scale-factor, 1), 0.01)
+  );
+  --layout-page-height: calc(var(--layout-app-height-zoom-compensated) - var(--topbar-height));
   --layout-offscreen-offset: -99999px;
   --avatar-image: none;
   --layout-room-manager-modal-w: min(1080px, calc(100vw - 3rem));
@@ -77,8 +81,6 @@
   --layout-panel-item-h: 300px;
   --layout-data-label-w-sm: 72px;
   --layout-logo-text-max-w: 92px;
-
-  --layout-server-topbar-min-h: 48px;
   --layout-server-workspace-columns: minmax(0, 1.25fr) minmax(360px, 1fr);
   --layout-server-command-tab-min-w: clamp(72px, 10vw, 88px);
   --layout-server-command-list-min-h: 180px;

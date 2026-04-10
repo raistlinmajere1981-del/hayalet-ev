@@ -26,11 +26,13 @@ test("reads startup flags from app-prefixed preload arguments", () => {
     "--app-start-page=assistant",
     "--app-auto-connect=1",
     "--app-ui-mode=scene",
+    "--app-display-id=7",
   ]);
 
   assert.equal(flags.startPage, "assistant");
   assert.equal(flags.autoConnect, true);
   assert.equal(flags.uiMode, "scene");
+  assert.equal(flags.displayId, 7);
 });
 
 test("serializes startup flags into preload additional arguments", () => {
@@ -38,6 +40,9 @@ test("serializes startup flags into preload additional arguments", () => {
     startPage: "assistant",
     autoConnect: true,
     uiMode: "scene",
+    sceneEditor: false,
+    sceneDebug: false,
+    displayId: 4,
     roomsSnapshot: null,
   });
 
@@ -53,6 +58,9 @@ test("omits empty startup flags while serializing preload arguments", () => {
     startPage: null,
     autoConnect: false,
     uiMode: "classic",
+    sceneEditor: false,
+    sceneDebug: false,
+    displayId: null,
     roomsSnapshot: null,
   });
 

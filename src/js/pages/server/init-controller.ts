@@ -10,25 +10,18 @@ export interface ServerInitContext {
   _unsubSlotController: (() => void) | null;
   unsubscribeTraffic: (() => void) | null;
   logUnsubscribe: (() => void) | null;
-  controllerSelect: HTMLSelectElement | null;
-  timelineLog: HTMLElement | null;
-  timelineMeta: HTMLElement | null;
-  delegateBtn: HTMLButtonElement | null;
-  reclaimBtn: HTMLButtonElement | null;
   commandSlotSelect: HTMLSelectElement | null;
   commandList: HTMLElement | null;
   commandDetail: HTMLTextAreaElement | null;
   commandTestArgs: HTMLInputElement | null;
   commandRunBtn: HTMLButtonElement | null;
   commandCategoryTabs: HTMLElement | null;
+  timelineLog: HTMLElement | null;
+  timelineMeta: HTMLElement | null;
   renderCommandPanel: () => void;
-  renderControllerOptions: () => void;
-  updateControlButtons: () => void;
   syncCategoryWithSlot: () => void;
   syncServerSceneVisibility: () => void;
   renderServerSceneCharacters: () => Promise<void>;
-  assignControl: () => Promise<void>;
-  reclaimControl: () => Promise<void>;
   runSelectedCommand: () => Promise<void>;
   handleTimelineScroll: () => Promise<void>;
   handleLogEntry: (entry: unknown) => void;
@@ -60,16 +53,6 @@ export async function initServerControllerPage(controller: ServerInitContext): P
     }
   );
 
-  controller.controllerSelect = document.getElementById(
-    "server-controller-select"
-  ) as HTMLSelectElement | null;
-  controller.timelineLog = document.getElementById("server-command-timeline");
-  controller.timelineMeta = document.getElementById("server-timeline-meta");
-  controller.delegateBtn = document.getElementById(
-    "server-delegate-btn"
-  ) as HTMLButtonElement | null;
-  controller.reclaimBtn = document.getElementById("server-reclaim-btn") as HTMLButtonElement | null;
-
   controller.commandSlotSelect = document.getElementById(
     "server-command-slot-select"
   ) as HTMLSelectElement | null;
@@ -84,18 +67,8 @@ export async function initServerControllerPage(controller: ServerInitContext): P
     "server-command-run"
   ) as HTMLButtonElement | null;
   controller.commandCategoryTabs = document.getElementById("server-command-category-tabs");
-
-  controller.delegateBtn?.addEventListener("click", () => {
-    void controller.assignControl();
-  });
-
-  controller.reclaimBtn?.addEventListener("click", () => {
-    void controller.reclaimControl();
-  });
-
-  controller.controllerSelect?.addEventListener("change", () => {
-    controller.updateControlButtons();
-  });
+  controller.timelineLog = document.getElementById("server-command-timeline");
+  controller.timelineMeta = document.getElementById("server-timeline-meta");
 
   controller.commandSlotSelect?.addEventListener("change", () => {
     controller.syncCategoryWithSlot();
@@ -148,26 +121,20 @@ export async function initServerControllerPage(controller: ServerInitContext): P
     void controller.handleTimelineScroll();
   });
 
-  controller.renderControllerOptions();
-  controller.updateControlButtons();
   controller.syncCategoryWithSlot();
   controller.renderCommandPanel();
 
   AppState.subscribe(() => {
-    controller.renderControllerOptions();
-    controller.updateControlButtons();
     controller.syncServerSceneVisibility();
     void controller.renderServerSceneCharacters();
   });
 
   controller._unsubSlotController ??= SlotController.on(SlotEvent.STATE_CHANGED, () => {
-    controller.updateControlButtons();
     controller.syncServerSceneVisibility();
     void controller.renderServerSceneCharacters();
   });
 
   controller.unsubscribeTraffic = TrafficManager.onUpdate((_snapshot) => {
-    controller.updateControlButtons();
     void controller.renderServerSceneCharacters();
   });
 

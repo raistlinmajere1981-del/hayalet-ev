@@ -17,7 +17,7 @@ async function bootstrapSettingsPage(): Promise<void> {
 
   const controller = new SettingsPageController();
   controller.init();
-  controller.show(resolveSettingsPanelId(resolveExternalPanel()) ?? "theme");
+  controller.show(resolveSettingsPanelId(resolveExternalPanel()) ?? "accounts");
 }
 
 void bootstrapSettingsPage();

@@ -270,6 +270,15 @@ async function handleStart(api: XoxRuntimeApi, payload: unknown): Promise<XoxCom
   state.protocolPreface = inviteNote;
 
   if (target === "us1") {
+    if (state.remoteUserId === null) {
+      return { success: false, message: commandMessage(locale, "needReadyOpponent") };
+    }
+
+    const selected = await selectUs1RemoteUserSafe(api, state.remoteUserId);
+    if (selected !== true) {
+      return { success: false, message: commandMessage(locale, "dispatchFailed") };
+    }
+
     return await sendUs1Invite(api, state, inviteNote);
   }
 
@@ -294,6 +303,12 @@ async function handleReset(api: XoxRuntimeApi): Promise<XoxCommandResult> {
   const currentState = loadState(api);
   const pendingInvite = loadPendingInvite(api);
   const currentMatchId = resolveStateMatchId(currentState);
+  const resetRemoteUserId =
+    pendingInvite !== null && pendingInvite.direction === "outgoing"
+      ? pendingInvite.remoteUserId || null
+      : currentState.target === "us1"
+        ? currentState.remoteUserId
+        : null;
   const resetContext: XoxResetContext | null =
     pendingInvite !== null && pendingInvite.direction === "outgoing" && pendingInvite.matchId
       ? {
@@ -311,8 +326,17 @@ async function handleReset(api: XoxRuntimeApi): Promise<XoxCommandResult> {
 
   let remoteResetSent = true;
   if (resetContext !== null) {
-    const sendResult = await sendUs1Reset(toUs1InviteApi(api), resetContext);
-    remoteResetSent = isSuccessfulDispatch(sendResult);
+    if (resetRemoteUserId === null) {
+      remoteResetSent = false;
+    } else {
+      const selected = await selectUs1RemoteUserSafe(api, resetRemoteUserId);
+      if (selected !== true) {
+        remoteResetSent = false;
+      } else {
+        const sendResult = await sendUs1Reset(toUs1InviteApi(api), resetContext);
+        remoteResetSent = isSuccessfulDispatch(sendResult);
+      }
+    }
   }
 
   clearPendingInvite(api);
@@ -343,6 +367,17 @@ async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<Xox
   }
   if (state.board[cell] !== "") {
     return { success: false, message: commandMessage(locale, "cellFilled") };
+  }
+
+  if (state.target === "us1") {
+    if (state.remoteUserId === null) {
+      return { success: false, message: commandMessage(locale, "needReadyOpponent") };
+    }
+
+    const selected = await selectUs1RemoteUserSafe(api, state.remoteUserId);
+    if (selected !== true) {
+      return { success: false, message: commandMessage(locale, "dispatchFailed") };
+    }
   }
 
   const outboundTurnIndex = state.turnIndex;

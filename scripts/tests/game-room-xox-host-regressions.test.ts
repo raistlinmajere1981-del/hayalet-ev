@@ -177,6 +177,12 @@ function createRoomHostRuntime() {
         .at(-1)?.payload?.state as Record<string, unknown> | undefined;
       return latest ?? null;
     },
+    latestCommandResult() {
+      const latest = notifications
+        .filter((entry) => entry.type === "command-result")
+        .at(-1)?.payload?.result as Record<string, unknown> | undefined;
+      return latest ?? null;
+    },
   };
 
   activeRuntimes.push(runtime);
@@ -645,6 +651,111 @@ test("game-room host ignores duplicate and stale US1 moves without mutating the 
   assert.equal((runtime.latestGameState()?.board as string[])[4], "X");
   assert.equal((runtime.latestGameState()?.board as string[])[8], "");
   assert.equal(runtime.latestGameState()?.turnIndex, 1);
+});
+
+test("game-room host surfaces synced stale US1 moves as diagnostics", async () => {
+  const runtime = createRoomHostRuntime();
+  const inviteEntry = {
+    roomId: "game-room",
+    featureId: "xox",
+    inviteId: "invite-diagnostics",
+    matchId: "invite-diagnostics",
+    remoteUserId: "challenger@example.com",
+    nickname: "Challenger",
+    senderEmail: "challenger@example.com",
+    starter: "user",
+    localSessionId: "challenger-session-diagnostics",
+    conversationId: "challenger-conversation-diagnostics",
+  };
+
+  runtime.api.setState("xox-invite-inbox", [inviteEntry]);
+  runtime.api.setState(
+    "xox-context",
+    buildReadyHostContext("us1", {
+      us1RemoteUserId: inviteEntry.remoteUserId,
+      us1Nickname: inviteEntry.nickname,
+    })
+  );
+
+  const acceptResult = await runtime.exported.commands.GameRoomXoxAcceptInvite({
+    roomArgs: { inviteId: inviteEntry.inviteId },
+  });
+
+  assert.equal(acceptResult.success, true);
+
+  runtime.enqueueUs1SyncResult({
+    roomCommands: [
+      {
+        roomId: "game-room",
+        featureId: "xox",
+        commandName: "GameRoomXoxRemoteMove",
+        matchId: "invite-diagnostics",
+        turnIndex: 0,
+        boardHashBeforeMove: ".........",
+        rawArgs:
+          '{"matchId":"invite-diagnostics","inviteId":"invite-diagnostics","turnIndex":0,"boardHashBeforeMove":".........","cell":4}',
+        commandArgs: {
+          matchId: "invite-diagnostics",
+          inviteId: "invite-diagnostics",
+          turnIndex: 0,
+          boardHashBeforeMove: ".........",
+          cell: 4,
+        },
+        remoteUserId: inviteEntry.remoteUserId,
+        localSessionId: runtime.latestGameState()?.localSessionId,
+        conversationId: "challenger-conversation-diagnostics",
+        transportMessageId: "<move-diagnostics-1@example.test>",
+        sentAt: 1700000003000,
+      },
+    ],
+  });
+  await runtime.emitHostContext(
+    buildReadyHostContext("us1", {
+      us1RemoteUserId: inviteEntry.remoteUserId,
+      us1Nickname: inviteEntry.nickname,
+    })
+  );
+
+  runtime.enqueueUs1SyncResult({
+    roomCommands: [
+      {
+        roomId: "game-room",
+        featureId: "xox",
+        commandName: "GameRoomXoxRemoteMove",
+        matchId: "invite-diagnostics",
+        turnIndex: 0,
+        boardHashBeforeMove: ".........",
+        rawArgs:
+          '{"matchId":"invite-diagnostics","inviteId":"invite-diagnostics","turnIndex":0,"boardHashBeforeMove":".........","cell":8}',
+        commandArgs: {
+          matchId: "invite-diagnostics",
+          inviteId: "invite-diagnostics",
+          turnIndex: 0,
+          boardHashBeforeMove: ".........",
+          cell: 8,
+        },
+        remoteUserId: inviteEntry.remoteUserId,
+        localSessionId: runtime.latestGameState()?.localSessionId,
+        conversationId: "challenger-conversation-diagnostics",
+        transportMessageId: "<move-diagnostics-2@example.test>",
+        sentAt: 1700000004000,
+      },
+    ],
+  });
+  await runtime.emitHostContext(
+    buildReadyHostContext("us1", {
+      us1RemoteUserId: inviteEntry.remoteUserId,
+      us1Nickname: inviteEntry.nickname,
+    })
+  );
+
+  assert.equal((runtime.latestGameState()?.board as string[])[4], "X");
+  assert.equal((runtime.latestGameState()?.board as string[])[8], "");
+  assert.equal(runtime.latestGameState()?.turnIndex, 1);
+  assert.equal(runtime.latestCommandResult()?.success, false);
+  assert.match(String(runtime.latestCommandResult()?.message ?? ""), /stale/i);
+  assert.equal(runtime.toastCalls.at(-1)?.type, "warning");
+  assert.match(String(runtime.toastCalls.at(-1)?.message ?? ""), /stale/i);
 });
 
 test("game-room host rejects US1 moves from a different remote identity without mutating the board", async () => {

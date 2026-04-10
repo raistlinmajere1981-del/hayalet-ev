@@ -24,8 +24,6 @@
     "server": {
       "page": {
         "sceneAriaLabel": "Server scene",
-        "delegateButton": "Delegate Control",
-        "reclaimButton": "Reclaim Control",
         "timelineTitle": "Command Flow (Command → Result)",
         "timelineHint": "Scroll up to load 3 more sessions",
         "timelineEmpty": "No command history yet",
@@ -324,9 +322,6 @@
         "archiveReadError": "Archive could not be read: {{message}}"
       }
     },
-    "protocol": {
-      "controlTransferred": "Control transferred."
-    },
     "upload": {
       "validationFailed": "Validation failed",
       "noFiles": "No files were provided for upload",
@@ -566,23 +561,8 @@
         "scopeDetail": "scope: {{scope}}",
         "kindDetail": "kind: {{kind}}",
         "apiUnavailable": "electronAPI is unavailable",
-        "treeGenerationFailed": "Tree generation failed",
-        "listFilesStarting": "ListFiles started | scope: {{scope}}",
-        "listFilesAttachmentText": "File List ({{scope}}): {{lines}} lines",
-        "listFilesSent": "ListFiles sent -> {{provider}} | {{fileName}}",
         "deliveryTriggered": "CoreEngine -> {{provider}} delivery triggered",
         "deliveryFailed": "{{command}} could not be delivered: {{message}}",
-        "listFilesSummary": "{{lines}} lines, {{fileName}}",
-        "windowManagerRan": "WindowManager ran | action: {{action}}",
-        "windowActionResult": "action: {{action}}, status: {{status}}",
-        "restartStarting": "Restart starting",
-        "restartRequested": "Application is restarting...",
-        "screenshotAttachmentText": "Screenshot: {{kind}}",
-        "screenshotRan": "ScreenshotManager ran | kind: {{kind}}",
-        "screenshotSent": "ScreenshotManager sent -> {{provider}} | {{path}}",
-        "screenshotSaved": "Saved: {{path}}",
-        "screenshotEmpty": "Screenshot could not be captured",
-        "screenshotEmptyLog": "ScreenshotManager ran but returned no output | kind: {{kind}}",
         "commandError": "{{command}} error: {{message}}"
       },
       "executor": {
@@ -612,119 +592,53 @@
         "unknownMessage": "unknown"
       },
       "catalog": {
-        "DeviceManager": {
-          "description": "Remotely controls mouse and keyboard actions.",
-          "detail": "Programmatically manages device input actions such as mouse movement, clicking, right-clicking, key presses, typing, copying, and pasting. It allows the AI to control the computer physically.",
-          "usage": "++cmd:DeviceManager(<action>, <parameters>)\nActions: move, click, rightclick, mousedown, mouseup, key, type, copy, paste",
-          "example": "++cmd:DeviceManager(move, 500, 300)\n++cmd:DeviceManager(click)\n++cmd:DeviceManager(type, Hello World)\n++cmd:DeviceManager(key, enter)"
-        },
-        "FileManager": {
-          "description": "Performs file management actions.",
-          "detail": "Manages file and folder operations inside the project directory. It covers core filesystem actions such as reading, writing, and organizing files.",
-          "usage": "++cmd:FileManager(<action>, <parameters>)",
-          "example": "++cmd:FileManager()"
-        },
-        "WebviewManager": {
-          "description": "Manages and controls webview windows.",
-          "detail": "Controls the Electron application's webview components. It enables AI slots to manage web content, send messages, and monitor webview state.",
-          "usage": "++cmd:WebviewManager(<action>, <parameters>)",
-          "example": "++cmd:WebviewManager()"
-        },
         "WhisperManager": {
-          "description": "Creates scheduled whisper messages per account.",
-          "detail": "Creates scheduled messages tied to a specific account. If the account is linked to a slot, the message is delivered through that slot when its scheduled time arrives.",
-          "usage": "++cmd:WhisperManager(<accountId>, \"<message>\", \"<time>\")",
-          "example": "++cmd:WhisperManager(chatgpt_user_at_mail_com, \"Finish the report\", \"5m\")"
-        },
-        "WindowManager": {
-          "description": "Controls the application window.",
-          "detail": "Manages the Electron application window state. It supports actions such as minimizing, entering fullscreen, and restoring the window.",
-          "usage": "++cmd:WindowManager(<action>)\nActions: minimize, fullscreen, restore",
-          "example": "++cmd:WindowManager(minimize)\n++cmd:WindowManager(fullscreen)"
-        },
-        "ScreenshotManager": {
-          "description": "Captures a screenshot and sends it to the AI.",
-          "detail": "Captures a screenshot of the system or a specific window. The captured image is saved automatically and delivered to the target AI slot as an attachment. System, window, and region capture modes are supported.",
-          "usage": "++cmd:ScreenshotManager(<type>, <parameter>, <format>)\nTypes: system, window, region",
-          "example": "++cmd:ScreenshotManager(system)\n++cmd:ScreenshotManager(window, 0, png)"
-        },
-        "TakeScreenshot": {
-          "description": "Captures a quick screenshot.",
-          "detail": "This is the shortcut variant of ScreenshotManager. It takes a screenshot with default settings and sends it to the active AI slot.",
-          "usage": "++cmd:TakeScreenshot(<type>, <parameter>)",
-          "example": "++cmd:TakeScreenshot(system)"
-        },
-        "PlayMusic": {
-          "description": "Starts music playback.",
-          "detail": "Triggers the system music playback action. It can start the requested genre or fall back to the default playback action.",
-          "usage": "++cmd:PlayMusic(<genre>)",
-          "example": "++cmd:PlayMusic(classic)"
-        },
-        "Restart": {
-          "description": "Restarts the application.",
-          "detail": "Completely closes and restarts the Electron application. All active connections and sessions are terminated, and the application is loaded again from scratch. Use it carefully.",
-          "usage": "++cmd:Restart()",
-          "example": "++cmd:Restart()"
+          "description": "Creates a scheduled one-off whisper task for a slot account.",
+          "detail": "Creates a delayed message tied to an account. When the command is called from an AI or assistant slot, the current slot account can be used without passing `accountId`. It does not start a relay session; it only adds a whisper record that will be injected into the matching account flow when its time arrives.",
+          "usage": "++cmd:WhisperManager(<accountId>, \"<message>\", \"<time>\")\nor ++cmd:WhisperManager(\"<message>\", \"<time>\")",
+          "example": "++cmd:WhisperManager(\"Summarize the findings in 5 minutes\", \"5m\")"
         },
         "AIAIChatStart": {
-          "description": "Starts an automatic chat between two AI slots.",
-          "detail": "Starts a relay-based automatic chat session between the AI1 and AI2 slots. Both AI slots must already be connected. The starter AI can be selected through the parameter. It runs in sequential mode.",
+          "description": "Starts a continuous relay session between AI1 and AI2.",
+          "detail": "Opens a sequential, ongoing relay flow between the AI1 and AI2 slots. Both AI slots must already be connected. The starter parameter selects which AI produces the first message, and the app sends either the `analyze-AI1-AI2` or `analyze-AI2-AI1` protocol accordingly. This is for starting a session, not for sending a one-off message.",
           "usage": "++cmd:AIAIChatStart(<starter>)\nStarter: ai1 or ai2",
           "example": "++cmd:AIAIChatStart(ai1)"
         },
         "AIAIChatStop": {
-          "description": "Stops the AI-AI chat.",
-          "detail": "Stops the active AI-AI relay chat session. It sends the stop signal to both AI slots and breaks the relay loop.",
+          "description": "Stops the active AI-AI relay session.",
+          "detail": "Ends the running AI1 ↔ AI2 relay flow. The app sends the `[STOP][ANALYZE][AI-AI]` control protocol to the two AI slots and stops automatic forwarding.",
           "usage": "++cmd:AIAIChatStop()",
           "example": "++cmd:AIAIChatStop()"
         },
         "AIAssistantChatStart": {
-          "description": "Starts a chat between an AI slot and the assistant.",
-          "detail": "Starts a relay-based chat session between the selected AI slot and the assistant. Both the source AI and the assistant must be connected.",
+          "description": "Starts a continuous relay session between the selected AI slot and the assistant.",
+          "detail": "Opens a back-and-forth relay flow between the selected AI slot and ai0. The source AI and the assistant must already be connected. At startup, the selected AI receives the `AI-assistant` protocol. Use this command for a session, not for a one-off handoff.",
           "usage": "++cmd:AIAssistantChatStart(<source>)\nSource: ai1 or ai2",
           "example": "++cmd:AIAssistantChatStart(ai1)"
         },
         "AIAssistantChatStop": {
-          "description": "Stops the AI-assistant chat.",
-          "detail": "Stops the active AI-assistant relay chat session and sends the stop signal to the related slots.",
+          "description": "Stops the active AI-assistant relay session.",
+          "detail": "Ends the running AI ↔ assistant relay flow. The app sends the `[STOP][ANALYZE][AI-ASSISTANT]` control protocol to the related AI slot. If you only need a single handoff, use `AIAssistantSend` or `AssistantAISend` instead.",
           "usage": "++cmd:AIAssistantChatStop()",
           "example": "++cmd:AIAssistantChatStop()"
         },
         "AIAssistantSend": {
-          "description": "Sends a single message from an AI slot to the assistant.",
-          "detail": "The provider must be ai1 or ai2. The command wrapper is stripped from the message body and the cleaned message is sent to the ai0 slot. If the assistant is not connected, the connection is started first.",
-          "usage": "++cmd:AIAssistantSend(<provider>)\nProvider: ai1 or ai2",
-          "example": "++cmd:AIAssistantSend(ai1) Message to forward to the assistant"
+          "description": "Forwards a one-off message from an AI slot to the assistant.",
+          "detail": "The provider must be `ai1` or `ai2`. Inline command wrappers are stripped from the message body, the source AI identity is preserved, and the content is delivered to ai0 through the SlotBridge `message.send` action. It does not start a continuous relay session.",
+          "usage": "++cmd:AIAssistantSend(<provider>) <message>\nProvider: ai1 or ai2",
+          "example": "++cmd:AIAssistantSend(ai1) One message to forward to the assistant"
         },
         "AssistantAISend": {
-          "description": "Sends the assistant's latest reply to the target AI slot once.",
-          "detail": "This command only works in the assistant slot. The target parameter can be ai1 or ai2. If the parameter is empty, the target is resolved from assistants.lastActiveRelay. If the target cannot be resolved, the command fails.",
-          "usage": "++cmd:AssistantAISend(<target>)\nTarget: ai1 or ai2 (optional)",
-          "example": "++cmd:AssistantAISend(ai1) Forward the message to AI1"
+          "description": "Forwards the assistant's latest reply to a target AI slot once.",
+          "detail": "This command only works in the assistant slot. The target can be `ai1` or `ai2`; when omitted, it is resolved from `assistants.lastActiveRelay`. Delivery runs through the SlotBridge `message.send` action. If an AI-assistant relay is active, the related stop flow is also triggered after the handoff.",
+          "usage": "++cmd:AssistantAISend(<target>) <message>\nTarget: ai1 or ai2 (optional)",
+          "example": "++cmd:AssistantAISend() Forward the latest reply to the last active relay target"
         },
         "SlotBridge": {
-          "description": "Runs the unified slot bridge command family.",
-          "detail": "Routes cross-slot message sends, waited replies, room.command dispatch, connection.ensure, and session actions through a single JSON envelope. For attachment-bearing public actions, prefer archive attachment refs instead of raw filesystem paths.",
-          "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"toSlot\":\"ai1\",\"payload\":{\"text\":\"Hello\"}})",
-          "example": "++cmd:SlotBridge({\"action\":\"room.command\",\"fromSlot\":\"ai1\",\"payload\":{\"commandName\":\"GameRoomXoxAiMove\",\"cell\":4}})"
-        },
-        "GetFile": {
-          "description": "Fetches the requested file and sends it to the AI.",
-          "detail": "Reads the requested file and forwards it to the related AI slot as an attachment. This allows the AI to process the file content.",
-          "usage": "++cmd:GetFile(<file_path>)",
-          "example": "++cmd:GetFile(src/index.ts)"
-        },
-        "GetItDone": {
-          "description": "General-purpose task completion command.",
-          "detail": "Processes the requested task or instruction and aims to complete it. As a general-purpose command, it can trigger different kinds of actions.",
-          "usage": "++cmd:GetItDone(<task_description>)",
-          "example": "++cmd:GetItDone(build the project)"
-        },
-        "ListFiles": {
-          "description": "Builds the project file tree and sends it to the AI.",
-          "detail": "Builds a file tree for the requested scope. Directories such as node_modules and dist are automatically excluded. The result is saved as a file and sent to the related AI slot.",
-          "usage": "++cmd:ListFiles(<scope>)\nScope: project (default) or a directory path",
-          "example": "++cmd:ListFiles(project)\n++cmd:ListFiles(src/js)"
+          "description": "Runs the canonical slot command bus.",
+          "detail": "Collects cross-slot messaging, waited replies, attachment/file delivery, `connection.ensure`, `session.open`, `session.switch`, and `room.command` dispatch inside one JSON envelope. This is the preferred primary command for new slot and room integrations; the shorter commands are convenience wrappers.",
+          "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"fromSlot\":\"ai1\",\"toSlot\":\"ai0\",\"payload\":{\"text\":\"Hello\"}})\nActions: message.send, message.sendWait, message.sendWithAttachments, file.send, connection.ensure, session.open, session.switch, room.command",
+          "example": "++cmd:SlotBridge({\"action\":\"message.sendWait\",\"fromSlot\":\"ai0\",\"toSlot\":\"ai1\",\"replyToSlot\":\"ai0\",\"payload\":{\"text\":\"Are you ready?\"}})"
         }
       }
     }
@@ -2619,15 +2533,6 @@
         "commandReceived": "Server command received: {{name}}",
         "whisperAdded": "WhisperManager entry added for {{accountId}}",
         "whisperError": "WhisperManager error: {{message}}",
-        "deviceAction": "DeviceManager action executed: {{action}}",
-        "deviceError": "DeviceManager error: {{message}}",
-        "screenshotSaved": "ScreenshotManager saved {{path}}",
-        "screenshotError": "ScreenshotManager error: {{message}}",
-        "windowAction": "WindowManager action executed: {{action}}",
-        "windowError": "WindowManager error: {{message}}",
-        "restartRequested": "Restart requested",
-        "restartError": "Restart error: {{message}}",
-        "listFilesError": "ListFiles error: {{message}}",
         "undefinedCommand": "Undefined command: {{commandName}}"
       }
     },
