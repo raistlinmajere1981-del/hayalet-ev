@@ -774,7 +774,7 @@ module.exports = tseslint.config(
 
   // === MCP Server TypeScript Files ===
   {
-    files: ["src/mcp-server/**/*.ts"],
+    files: ["mcp-server/**/*.ts"],
     extends: [...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: "latest",

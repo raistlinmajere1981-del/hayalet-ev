@@ -1295,21 +1295,11 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
   if (!isPlainObject(merged.assistants.opencode)) {
     merged.assistants.opencode = defaults.assistants?.opencode ?? {
-      binaryPath: null,
       defaultPort: 4096,
     };
   }
-  if (
-    typeof merged.assistants.opencode.binaryPath !== "string" &&
-    merged.assistants.opencode.binaryPath !== null
-  ) {
-    merged.assistants.opencode.binaryPath = null;
-  }
-  if (
-    typeof merged.assistants.opencode.binaryPath === "string" &&
-    merged.assistants.opencode.binaryPath.trim() === ""
-  ) {
-    merged.assistants.opencode.binaryPath = null;
+  if ("binaryPath" in merged.assistants.opencode) {
+    delete (merged.assistants.opencode as { binaryPath?: unknown }).binaryPath;
   }
   if (
     typeof merged.assistants.opencode.defaultPort !== "number" ||

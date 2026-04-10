@@ -42,3 +42,11 @@ test("opencode-ui connect url resolver injects active theme and assistant syncs 
   assert.match(content, /buildInlineThemeSyncScript/);
   assert.match(content, /isOpencodeUiThemeHost/);
 });
+
+test("opencode-ui connect url resolver converts packaged file routes into absolute page URLs", () => {
+  const content = readAssistantIndex();
+
+  assert.match(content, /window\.location\.protocol === "file:" && baseUrl\.startsWith\("\/"\)/);
+  assert.match(content, /new URL\("\.", window\.location\.href\)/);
+  assert.match(content, /if \(isPackagedFileRoute\) \{\s*return parsed\.toString\(\);/s);
+});

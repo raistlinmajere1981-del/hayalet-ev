@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { resolveProjectRootFromFile } from "../../src/mcp-server/utils/project-root.ts";
+import { resolveProjectRootFromFile } from "../../mcp-server/utils/project-root.ts";
 
 async function createProjectRootFixture(): Promise<{
   cleanup: () => Promise<void>;
@@ -26,8 +26,8 @@ test("resolveProjectRootFromFile finds repo root from source tree path", async (
   const fixture = await createProjectRootFixture();
 
   try {
-    const sourceFile = join(fixture.root, "src", "mcp-server", "utils", "project-root.ts");
-    await mkdir(join(fixture.root, "src", "mcp-server", "utils"), { recursive: true });
+    const sourceFile = join(fixture.root, "mcp-server", "utils", "project-root.ts");
+    await mkdir(join(fixture.root, "mcp-server", "utils"), { recursive: true });
     await writeFile(sourceFile, "// fixture\n", "utf-8");
 
     assert.equal(resolveProjectRootFromFile(sourceFile), fixture.root);
@@ -49,6 +49,22 @@ test("resolveProjectRootFromFile finds repo root from compiled mcp dist path", a
       "project-root.js"
     );
     await mkdir(join(fixture.root, "dist", "mcp-server", "mcp-server", "utils"), {
+      recursive: true,
+    });
+    await writeFile(distFile, "// fixture\n", "utf-8");
+
+    assert.equal(resolveProjectRootFromFile(distFile), fixture.root);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("resolveProjectRootFromFile finds repo root from bundled standalone dist path", async () => {
+  const fixture = await createProjectRootFixture();
+
+  try {
+    const distFile = join(fixture.root, "dist", "mcp-server", "standalone", "index.js");
+    await mkdir(join(fixture.root, "dist", "mcp-server", "standalone"), {
       recursive: true,
     });
     await writeFile(distFile, "// fixture\n", "utf-8");

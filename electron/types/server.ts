@@ -1,7 +1,6 @@
 export interface ServerOptions {
   port?: number;
   cors?: string[];
-  binaryPath?: string;
 }
 
 export interface ServerInfo {

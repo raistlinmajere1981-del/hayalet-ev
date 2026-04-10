@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { getSessionSummary, readElectronLogs } from "../../src/mcp-server/tools/log-tools.ts";
+import { getSessionSummary, readElectronLogs } from "../../mcp-server/tools/log-tools.ts";
 
 test("readElectronLogs structured level filter matches level field", async () => {
   const root = await mkdtemp(join(tmpdir(), "app-log-tools-"));

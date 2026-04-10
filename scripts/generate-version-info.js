@@ -19,14 +19,14 @@ function getPackageVersion() {
 
 function getMcpServerVersion() {
   try {
-    const changelogPath = join(PROJECT_ROOT, "src", "mcp-server", "CHANGELOG.md");
+    const changelogPath = join(PROJECT_ROOT, "mcp-server", "CHANGELOG.md");
     if (existsSync(changelogPath)) {
       const changelog = readFileSync(changelogPath, "utf-8");
       const match = changelog.match(/##\s+\[(\d+\.\d+\.\d+)\]/);
       if (match) return match[1];
     }
 
-    const packagePath = join(PROJECT_ROOT, "src", "mcp-server", "package.json");
+    const packagePath = join(PROJECT_ROOT, "mcp-server", "package.json");
     if (existsSync(packagePath)) {
       const pkg = JSON.parse(readFileSync(packagePath, "utf-8"));
       if (pkg.version) return pkg.version;
@@ -43,10 +43,10 @@ async function getToolCountFromRegistry() {
   try {
     // Bootstrap the unified registry and get count
     const { registerAllTools } = await import(
-      join(PROJECT_ROOT, "src", "mcp-server", "core", "handlers", "index.ts")
+      join(PROJECT_ROOT, "mcp-server", "core", "handlers", "index.ts")
     );
     const { getToolCount: getCount } = await import(
-      join(PROJECT_ROOT, "src", "mcp-server", "core", "registry.ts")
+      join(PROJECT_ROOT, "mcp-server", "core", "registry.ts")
     );
     const context = { PROJECT_ROOT, LOG_DIR: join(PROJECT_ROOT, "logs") };
     registerAllTools(context);

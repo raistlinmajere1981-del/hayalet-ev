@@ -14,13 +14,10 @@ export function normalizeOpencodePort(raw: unknown): number {
 }
 
 export function getOpencodePreferences(settings: AppSettings | null): {
-  binaryPath: string | null;
   defaultPort: number;
 } {
-  const rawPath = settings?.assistants?.opencode?.binaryPath;
-  const binaryPath = typeof rawPath === "string" && rawPath.trim() !== "" ? rawPath.trim() : null;
   const defaultPort = normalizeOpencodePort(settings?.assistants?.opencode?.defaultPort);
-  return { binaryPath, defaultPort };
+  return { defaultPort };
 }
 
 export function resolveOpencodeUiDbPath(settings: AppSettings | null): string {

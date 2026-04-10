@@ -188,12 +188,15 @@ export class RoomPackageManager {
   }
 
   private shouldUseWorkspaceFallbackInstalledRooms(): boolean {
+    return this.usesDefaultRoomRoots() && Paths.isPackaged() !== true;
+  }
+
+  private usesDefaultRoomRoots(): boolean {
     return (
       this.workspaceRootOption === undefined &&
       this.bundledWorkspaceRootOption === undefined &&
       this.installedRootOption === undefined &&
-      this.registryPathOption === undefined &&
-      Paths.isPackaged() !== true
+      this.registryPathOption === undefined
     );
   }
 
@@ -222,18 +225,24 @@ export class RoomPackageManager {
   }
 
   private shouldBootstrapPackagedInstalledRooms(): boolean {
-    return Paths.isPackaged() === true && existsSync(this.getRegistryPath()) === false;
+    return (
+      this.usesDefaultRoomRoots() &&
+      Paths.isPackaged() === true &&
+      existsSync(this.getRegistryPath()) === false
+    );
   }
 
   private async bootstrapPackagedInstalledRoomsFromWorkspace(): Promise<void> {
     const workspaceRooms = await this.listWorkspaceRooms();
-    for (const room of workspaceRooms) {
+    // NOTE: Bootstrap installs stay ordered because each run rewrites the shared registry file.
+    await workspaceRooms.reduce(async (previousInstall, room) => {
+      await previousInstall;
       if (room.valid !== true || room.manifest === undefined || room.readOnly === true) {
-        continue;
+        return;
       }
 
       await this.installFromWorkspace(room.manifest.id);
-    }
+    }, Promise.resolve());
   }
 
   private async hydrateInstalledRoomsFromRegistry(): Promise<InstalledRoomRecord[]> {

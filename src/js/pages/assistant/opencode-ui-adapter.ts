@@ -37,14 +37,6 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
     return { start, end: Math.min(start + 14, 65535) };
   }
 
-  private _resolveBinaryPath(): string | undefined {
-    const settings = SettingsManager.getSnapshot() as AppSettings | null;
-    const binaryPath = settings?.assistants?.opencode?.binaryPath;
-    if (typeof binaryPath !== "string") return undefined;
-    const trimmed = binaryPath.trim();
-    return trimmed !== "" ? trimmed : undefined;
-  }
-
   private _buildPageUrl(port: number): string {
     const params = new URLSearchParams({ port: String(port) });
     return `/pages/opencode-ui.html?${params.toString()}`;
@@ -106,11 +98,8 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
         }
       }
 
-      const binaryPath = this._resolveBinaryPath();
-
       const result = await electronApi.opencodeServeStart({
         ...(typeof port === "number" ? { port } : {}),
-        ...(binaryPath !== undefined ? { binaryPath } : {}),
         cors: ["http://localhost:5174"],
       });
 

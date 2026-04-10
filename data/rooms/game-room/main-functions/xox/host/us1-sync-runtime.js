@@ -30,6 +30,62 @@ function readRoomCommands(value) {
   }
   return value.map(normalizeRoomCommand).filter((command) => command !== null && command.commandName !== "");
 }
+function readCommandSuccess(value) {
+  if (isRecord(value) === false) {
+    return null;
+  }
+  if (value["success"] === true) {
+    return true;
+  }
+  if (value["success"] === false) {
+    return false;
+  }
+  return null;
+}
+function readCommandMessage(value) {
+  if (isRecord(value) === false) {
+    return "";
+  }
+  return readString(value["message"]).trim();
+}
+function buildRoomCommandFailureMessage(commandName, result, error) {
+  const resultMessage = readCommandMessage(result);
+  if (resultMessage !== "") {
+    return resultMessage;
+  }
+  if (error instanceof Error && error.message.trim() !== "") {
+    return error.message.trim();
+  }
+  if (typeof error === "string" && error.trim() !== "") {
+    return error.trim();
+  }
+  return `Incoming ${commandName} update could not be applied.`;
+}
+function surfaceRoomCommandFailure(api, command, message) {
+  const details = [
+    `command=${command.commandName}`,
+    ...command.transportMessageId !== null ? [`transport=${command.transportMessageId}`] : [],
+    ...command.remoteUserId !== null ? [`remote=${command.remoteUserId}`] : []
+  ].join(", ");
+  api.notifyRoom?.("command-result", {
+    command: command.commandName,
+    result: {
+      success: false,
+      message
+    }
+  });
+  api.showToast({
+    type: "warning",
+    message
+  });
+  api.log("warn", `US1 room command ignored (${details}): ${message}`);
+}
+function shouldProcessRoomCommand(command, roomId, featureId, teamTetrisFeatureId, fateKnotsFeatureId) {
+  if (command.roomId !== roomId) {
+    return false;
+  }
+  return command.featureId === "" || command.featureId === featureId || command.featureId === teamTetrisFeatureId || command.featureId === fateKnotsFeatureId;
+}
 function normalizeRoomEvent(candidate) {
   if (isRecord(candidate) === false) {
     return null;
@@ -104,23 +160,41 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
     removeInviteFromInbox,
     syncFromSnapshot
   } = deps.inviteRuntime;
-  function processRoomCommands(api, roomCommands) {
-    for (let index = 0; index < roomCommands.length; index += 1) {
-      const command = roomCommands.at(index);
-      if (!command) {
-        continue;
+  async function processRoomCommands(api, roomCommands) {
+    await roomCommands.reduce(async (previous, command) => {
+      await previous;
+      if (shouldProcessRoomCommand(
+        command,
+        ROOM_ID,
+        FEATURE_ID,
+        TEAM_TETRIS_FEATURE_ID,
+        FATE_KNOTS_FEATURE_ID
+      ) === false) {
+        return;
       }
-      if (command.roomId !== ROOM_ID || command.featureId !== "" && command.featureId !== FEATURE_ID && command.featureId !== TEAM_TETRIS_FEATURE_ID && command.featureId !== FATE_KNOTS_FEATURE_ID) {
-        continue;
+      try {
+        const result = await api.dispatchRoomCommand(command.commandName, {
+          roomPayload: command.roomPayload ?? command.commandArgs,
+          args: command.rawArgs,
+          remoteUserId: command.remoteUserId,
+          localSessionId: command.localSessionId,
+          transportMessageId: command.transportMessageId
+        });
+        if (readCommandSuccess(result) === false) {
+          surfaceRoomCommandFailure(
+            api,
+            command,
+            buildRoomCommandFailureMessage(command.commandName, result)
+          );
+        }
+      } catch (error) {
+        surfaceRoomCommandFailure(
+          api,
+          command,
+          buildRoomCommandFailureMessage(command.commandName, null, error)
+        );
       }
-      void api.dispatchRoomCommand(command.commandName, {
-        roomPayload: command.roomPayload ?? command.commandArgs,
-        args: command.rawArgs,
-        remoteUserId: command.remoteUserId,
-        localSessionId: command.localSessionId,
-        transportMessageId: command.transportMessageId
-      });
-    }
+    }, Promise.resolve());
   }
   async function processRoomEvents(api, roomEvents) {
     const currentState = loadState(api);
@@ -264,7 +338,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
       }
       syncFromSnapshot(api, result.roomInviteInbox);
       await processRoomEvents(api, readRoomEvents(result.roomEvents));
-      processRoomCommands(api, readRoomCommands(result.roomCommands));
+      await processRoomCommands(api, readRoomCommands(result.roomCommands));
       refreshRoomState(api);
     } finally {
       api.deleteState?.("xox-us1-syncing");

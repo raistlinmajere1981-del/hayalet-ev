@@ -482,7 +482,7 @@ Projede **TypeScript Language Service** doğrudan entegre edilmiştir — `ts.cr
 - **Multi-tsconfig** — dosya yoluna göre otomatik tsconfig algılama:
   - `tsconfig.json` → `src/js/`, `src/types/`
   - `tsconfig.electron.json` → `electron/`, `src/types/`
-  - `tsconfig.mcp.json` → `src/mcp-server/`, `src/types/`
+  - `tsconfig.mcp.json` → `mcp-server/`, `src/types/`
 
 ### TS Language Service Tool'ları
 

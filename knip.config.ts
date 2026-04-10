@@ -4,7 +4,7 @@ import type { KnipConfig } from "knip";
  * Knip Configuration - Unused Code Detection
  * 
  * Optimized: 2026-02-05
- * - Fixed path patterns (mcp-server → src/mcp-server)
+ * - Moved MCP paths from src/mcp-server to mcp-server
  * - Added all MCP dependencies to ignoreDependencies
  * - Cleaned up duplicate type paths (removed src/js/types)
  * - Comprehensive ignore patterns for dynamic modules
@@ -27,14 +27,14 @@ const config: KnipConfig = {
     "src/js/modules/commands/*.ts",  // Dinamik command handler'lar
     
     // MCP Server
-    "src/mcp-server/index.ts",
+    "mcp-server/index.ts",
   ],
 
   // Project files - analiz edilecek dosyalar
   project: [
     "electron/**/*.{ts,cjs}",
     "src/js/**/*.ts",
-    "src/mcp-server/**/*.ts",
+    "mcp-server/**/*.ts",
   ],
 
   // Ignore patterns - hariç tutulacaklar
@@ -78,24 +78,24 @@ const config: KnipConfig = {
     "electron/logger/**/*",
     
     // MCP server tool modules - dinamik olarak handler registry'den kullanılır
-    "src/mcp-server/tools/fs/**/*",
-    "src/mcp-server/tools/log/**/*",
-    "src/mcp-server/tools/dev/batch-type-fix.ts",
-    "src/mcp-server/tools/dev/error-clustering.ts",
-    "src/mcp-server/tools/dev/typescript-context-fixer.ts",
-    "src/mcp-server/tools/debug-tools.ts",  // Dinamik handler'lar
-    "src/mcp-server/tools/filesystem-tools.ts",  // Dinamik handler'lar
-    "src/mcp-server/core/index.ts",  // Re-export barrel
-    "src/mcp-server/core/handler-registry.ts",  // Public API
-    "src/mcp-server/core/handlers.ts",  // Handler utilities
-    "src/mcp-server/utils/edit-safety-helpers.ts",  // Utility helpers
-    "src/mcp-server/utils/git-utils.ts",  // Utility helpers
-    "src/mcp-server/utils/ast-transformer.ts",  // Public utilities
-    "src/mcp-server/utils/diff-utils.ts",  // Public utilities
-    "src/mcp-server/utils/progress.ts",  // Public utilities
-    "src/mcp-server/utils/timeouts.ts",  // Public utilities
-    "src/mcp-server/utils/web-scraper.ts",  // Public utilities
-    "src/mcp-server/utils/provider-config.ts",  // Type definitions
+    "mcp-server/tools/fs/**/*",
+    "mcp-server/tools/log/**/*",
+    "mcp-server/tools/dev/batch-type-fix.ts",
+    "mcp-server/tools/dev/error-clustering.ts",
+    "mcp-server/tools/dev/typescript-context-fixer.ts",
+    "mcp-server/tools/debug-tools.ts",  // Dinamik handler'lar
+    "mcp-server/tools/filesystem-tools.ts",  // Dinamik handler'lar
+    "mcp-server/core/index.ts",  // Re-export barrel
+    "mcp-server/core/handler-registry.ts",  // Public API
+    "mcp-server/core/handlers.ts",  // Handler utilities
+    "mcp-server/utils/edit-safety-helpers.ts",  // Utility helpers
+    "mcp-server/utils/git-utils.ts",  // Utility helpers
+    "mcp-server/utils/ast-transformer.ts",  // Public utilities
+    "mcp-server/utils/diff-utils.ts",  // Public utilities
+    "mcp-server/utils/progress.ts",  // Public utilities
+    "mcp-server/utils/timeouts.ts",  // Public utilities
+    "mcp-server/utils/web-scraper.ts",  // Public utilities
+    "mcp-server/utils/provider-config.ts",  // Type definitions
     
     // Logger ve provider factory - internal utilities
     "src/js/modules/logger/Logger.ts",  // Public API default export

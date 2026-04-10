@@ -317,7 +317,7 @@ function buildManualMcpConfig(name: string, enabled: boolean): Record<string, un
 
   if (name === "app") {
     const normalizedWorkspacePath = workspacePath.replace(/[\\/]$/, "");
-    const launcherPath = `${normalizedWorkspacePath}/src/mcp-server/start.js`;
+    const launcherPath = `${normalizedWorkspacePath}/mcp-server/start.js`;
     return {
       type: "local",
       command: ["node", launcherPath],

@@ -22,10 +22,10 @@ const CATEGORIES = {
 async function loadToolDefinitions() {
   // Bootstrap the unified registry and get all definitions
   const { registerAllTools } = await import(
-    join(PROJECT_ROOT, "src", "mcp-server", "core", "handlers", "index.ts")
+    join(PROJECT_ROOT, "mcp-server", "core", "handlers", "index.ts")
   );
   const { getAllDefinitions } = await import(
-    join(PROJECT_ROOT, "src", "mcp-server", "core", "registry.ts")
+    join(PROJECT_ROOT, "mcp-server", "core", "registry.ts")
   );
   const context = { PROJECT_ROOT, LOG_DIR: join(PROJECT_ROOT, "logs") };
   registerAllTools(context);

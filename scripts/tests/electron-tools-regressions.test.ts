@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { testElectron } from "../../src/mcp-server/tools/electron-tools.ts";
+import { testElectron } from "../../mcp-server/tools/electron-tools.ts";
 
 test("testElectron should not start wrapper when runtime mode is already app", async () => {
   const calls: string[] = [];

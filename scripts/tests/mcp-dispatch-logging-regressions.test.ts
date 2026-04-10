@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { executeHandlerWithLogging } from "../../src/mcp-server/core/handlers.ts";
+import { executeHandlerWithLogging } from "../../mcp-server/core/handlers.ts";
 
 test("executeHandlerWithLogging logs start and success", async () => {
   const events: string[] = [];

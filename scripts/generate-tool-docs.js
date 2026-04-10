@@ -22,7 +22,7 @@ const PROJECT_ROOT = join(__dirname, '..');
  * Load and parse tool definitions (tsx-based, no build needed)
  */
 async function loadToolDefinitions() {
-  const toolsListModule = await import('../src/mcp-server/core/tools-list.ts');
+  const toolsListModule = await import('../mcp-server/core/tools-list.ts');
   const allTools = toolsListModule.getAllToolDefinitions();
   
   return allTools;
@@ -100,7 +100,7 @@ function generateQuickReference(analysis) {
   
   let content = `# 🚀 app Quick Reference for AI Agents\n\n`;
   content += `> **📚 Full Documentation:** [.rovo/01-AGENTS.md](.rovo/01-AGENTS.md)\n`;
-  content += `> **🔧 MCP Server Details:** [src/mcp-server/AGENTS.md](src/mcp-server/AGENTS.md)\n`;
+  content += `> **🔧 MCP Server Details:** [mcp-server/AGENTS.md](mcp-server/AGENTS.md)\n`;
   content += `> **⚡ Quick Start (5 min):** [.rovo/00-QUICK-START.md](.rovo/00-QUICK-START.md)\n\n`;
   content += `---\n\n`;
   
@@ -254,7 +254,7 @@ function generateAgentGuide(analysis) {
   }
   
   content += `---\n`;
-  content += `**Full Reference:** [src/mcp-server/AGENTS.md](../src/mcp-server/AGENTS.md)\n`;
+  content += `**Full Reference:** [mcp-server/AGENTS.md](../mcp-server/AGENTS.md)\n`;
   content += `**Tool List:** [.rovo/_metadata/TOOL-LIST.md](./_metadata/TOOL-LIST.md)\n`;
   
   return content;

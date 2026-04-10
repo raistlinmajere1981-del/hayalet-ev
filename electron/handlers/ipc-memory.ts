@@ -10,7 +10,7 @@ import {
   type MemoryStatsInput,
   type MemoryUpdateInput,
   type MemoryWriteInput,
-} from "../../src/mcp-server/tools/memory/store.js";
+} from "../../mcp-server/tools/memory/store.js";
 
 let _store: MemoryStore | null = null;
 

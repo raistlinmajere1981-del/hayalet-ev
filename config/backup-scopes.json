@@ -35,7 +35,7 @@
       "requiresColdRestore": true,
       "restartTargets": ["mcp-server"],
       "include": [
-        "src/mcp-server/**",
+        "mcp-server/**",
         "tsconfig.mcp.json",
         "scripts/generate-dom-manifest.js",
         "scripts/generate-system-info.js",

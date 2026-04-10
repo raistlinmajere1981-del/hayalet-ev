@@ -5,7 +5,7 @@ import test from "node:test";
 import {
   flattenSelectors,
   parseProviderConfig,
-} from "../../src/mcp-server/utils/provider-config.ts";
+} from "../../mcp-server/utils/provider-config.ts";
 import { config as grokConfig } from "../../src/js/modules/webview/providers/grok/config.ts";
 
 test("grok input selector includes ProseMirror composer root", () => {

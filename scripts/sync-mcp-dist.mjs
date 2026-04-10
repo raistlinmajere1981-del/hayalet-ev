@@ -32,10 +32,6 @@ function syncDirectory(sourceDir, destinationDir) {
 
 const syncTargets = [
   {
-    source: join(distRoot, "src", "mcp-server"),
-    destination: join(distRoot, "mcp-server"),
-  },
-  {
     source: join(distRoot, "src", "types"),
     destination: join(distRoot, "types"),
   },

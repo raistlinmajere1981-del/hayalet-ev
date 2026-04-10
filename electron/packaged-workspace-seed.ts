@@ -20,6 +20,7 @@ const PACKAGED_WORKSPACE_SEED_PATHS = [
   "eslint.config.cjs",
   "ghost-agent",
   "knip.config.ts",
+  "mcp-server",
   "metadata.json",
   "package.json",
   "rooms",
@@ -71,12 +72,13 @@ async function copyMissingEntry(sourcePath: string, targetPath: string): Promise
   }
 
   const entries = await readdir(sourcePath);
-  let copiedEntries = 0;
-  for (const entry of entries) {
-    copiedEntries += await copyMissingEntry(join(sourcePath, entry), join(targetPath, entry));
-  }
+  const copiedEntries = await Promise.all(
+    entries.map(async (entry) => {
+      return await copyMissingEntry(join(sourcePath, entry), join(targetPath, entry));
+    })
+  );
 
-  return copiedEntries;
+  return copiedEntries.reduce((total, count) => total + count, 0);
 }
 
 export async function seedPackagedProjectRoot(targetRoot: string): Promise<{
@@ -99,17 +101,15 @@ export async function seedPackagedProjectRoot(targetRoot: string): Promise<{
     };
   }
 
-  let copiedEntries = 0;
-  for (const relativePath of PACKAGED_WORKSPACE_SEED_PATHS) {
-    copiedEntries += await copyMissingEntry(
-      join(mirrorRoot, relativePath),
-      join(targetRoot, relativePath)
-    );
-  }
+  const copiedEntries = await Promise.all(
+    PACKAGED_WORKSPACE_SEED_PATHS.map(async (relativePath) => {
+      return await copyMissingEntry(join(mirrorRoot, relativePath), join(targetRoot, relativePath));
+    })
+  );
 
   return {
-    copiedEntries,
-    seeded: copiedEntries > 0,
+    copiedEntries: copiedEntries.reduce((total, count) => total + count, 0),
+    seeded: copiedEntries.some((count) => count > 0),
     skipped: false,
   };
 }

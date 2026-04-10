@@ -278,7 +278,7 @@ updateAppState({
   nodeVersion: process.version,
 });
 
-async function syncOpencodeBinarySettingsOnStartup(): Promise<void> {
+async function syncOpencodeSettingsOnStartup(): Promise<void> {
   try {
     const settings = await loadSettings();
     if (settings === null) return;
@@ -305,14 +305,12 @@ async function syncOpencodeBinarySettingsOnStartup(): Promise<void> {
       opencode["defaultPort"] = 4096;
     }
 
-    const configuredBinaryPath =
-      typeof opencode["binaryPath"] === "string" && opencode["binaryPath"].trim() !== ""
-        ? opencode["binaryPath"].trim()
-        : null;
+    const hadLegacyBinaryPath = "binaryPath" in opencode;
+    if (hadLegacyBinaryPath) {
+      delete opencode["binaryPath"];
+    }
 
-    const diagnosis = await opencodeServerManager.diagnoseBinary({
-      ...(configuredBinaryPath !== null ? { binaryPath: configuredBinaryPath } : {}),
-    });
+    const diagnosis = await opencodeServerManager.diagnoseBinary();
 
     const nextVersion =
       diagnosis.available &&
@@ -320,27 +318,15 @@ async function syncOpencodeBinarySettingsOnStartup(): Promise<void> {
       diagnosis.version.trim() !== ""
         ? diagnosis.version.trim()
         : null;
-    const detectedPathCandidate = (diagnosis.resolvedPath ?? diagnosis.command).trim();
-    const nextPath =
-      diagnosis.available === true
-        ? detectedPathCandidate !== ""
-          ? detectedPathCandidate
-          : configuredBinaryPath
-        : configuredBinaryPath;
 
     const prevVersion =
       typeof opencode["version"] === "string" && opencode["version"].trim() !== ""
         ? opencode["version"].trim()
         : null;
-    const prevPath =
-      typeof opencode["binaryPath"] === "string" && opencode["binaryPath"].trim() !== ""
-        ? opencode["binaryPath"].trim()
-        : null;
 
     opencode["version"] = nextVersion;
-    opencode["binaryPath"] = nextPath;
 
-    if (prevVersion !== nextVersion || prevPath !== nextPath) {
+    if (prevVersion !== nextVersion || hadLegacyBinaryPath) {
       await saveSettings(settings);
     }
 
@@ -352,7 +338,8 @@ async function syncOpencodeBinarySettingsOnStartup(): Promise<void> {
       {
         available: diagnosis.available,
         version: opencode["version"],
-        binaryPath: opencode["binaryPath"],
+        command: diagnosis.command,
+        resolvedPath: diagnosis.resolvedPath ?? null,
         error: diagnosis.error,
       }
     );
@@ -420,7 +407,7 @@ void app.whenReady().then(async () => {
       );
     }
 
-    await syncOpencodeBinarySettingsOnStartup();
+    await syncOpencodeSettingsOnStartup();
 
     setupFsHandlers(null);
     setupWindowHandlers();
@@ -766,14 +753,7 @@ registerHandler("generate-correlation-id", (_event, prefix: string = "op") => {
 
 registerHandler(
   "opencode-serve-start",
-  async (
-    _event,
-    options?: {
-      port?: number;
-      cors?: string[];
-      binaryPath?: string;
-    }
-  ) => {
+  async (_event, options?: { port?: number; cors?: string[] }) => {
     try {
       const result = await opencodeServerManager.start(options);
       return { success: true, ...result };
@@ -848,23 +828,18 @@ registerHandler("opencode-serve-health", async (_event, url: string) => {
   return await opencodeServerManager.checkHealth(url);
 });
 
-registerHandler("opencode-serve-doctor", async (_event, options?: { binaryPath?: string }) => {
+registerHandler("opencode-serve-doctor", async () => {
   try {
-    const info = await opencodeServerManager.diagnoseBinary(
-      options?.binaryPath !== undefined ? { binaryPath: options.binaryPath } : {}
-    );
+    const info = await opencodeServerManager.diagnoseBinary();
     return {
       success: true,
       ...info,
     };
   } catch (err) {
-    const trimmedBinaryPath =
-      typeof options?.binaryPath === "string" ? options.binaryPath.trim() : "";
-    const command = trimmedBinaryPath !== "" ? trimmedBinaryPath : "opencode";
     return {
       success: false,
       available: false,
-      command,
+      command: "opencode",
       error: err instanceof Error ? err.message : "Unknown error",
     };
   }

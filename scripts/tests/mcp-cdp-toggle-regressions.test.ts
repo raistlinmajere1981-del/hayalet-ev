@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createCdpTools } from "../../src/mcp-server/core/handlers/cdp-handlers.ts";
+import { createCdpTools } from "../../mcp-server/core/handlers/cdp-handlers.ts";
 
 test("cdp tool registry includes MCP panel toggle automation tool", () => {
   const entries = createCdpTools();

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-09T20:41:59.350Z",
+  "updatedAt": "2026-04-10T13:43:26.072Z",
   "rooms": [
     {
       "id": "game-room",
@@ -674,8 +674,8 @@
           "path": "main-functions/fate-knots/protocols/game-room-fate-knots-us1-transport.md"
         }
       ],
-      "installedAt": "2026-04-09T15:01:01.313Z",
-      "updatedAt": "2026-04-09T15:01:01.313Z"
+      "installedAt": "2026-04-10T13:43:08.997Z",
+      "updatedAt": "2026-04-10T13:43:08.997Z"
     },
     {
       "id": "laboratory",
@@ -816,8 +816,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/data/rooms/laboratory/i18n",
-      "installedAt": "2026-04-09T20:41:59.350Z",
-      "updatedAt": "2026-04-09T20:41:59.350Z"
+      "installedAt": "2026-04-10T13:43:26.072Z",
+      "updatedAt": "2026-04-10T13:43:26.072Z"
     }
   ]
 }

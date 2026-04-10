@@ -29,6 +29,7 @@ const packagedWorkspaceMirrorPaths = [
   "eslint.config.cjs",
   "ghost-agent",
   "knip.config.ts",
+  "mcp-server",
   "metadata.json",
   "package.json",
   "rooms",

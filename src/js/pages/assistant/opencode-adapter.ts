@@ -36,14 +36,6 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
     return { start, end: Math.min(start + 14, 65535) };
   }
 
-  private _resolveBinaryPath(): string | undefined {
-    const settings = SettingsManager.getSnapshot() as AppSettings | null;
-    const binaryPath = settings?.assistants?.opencode?.binaryPath;
-    if (typeof binaryPath !== "string") return undefined;
-    const trimmed = binaryPath.trim();
-    return trimmed !== "" ? trimmed : undefined;
-  }
-
   async startServer(portSelection?: string): Promise<ServerResult> {
     try {
       Logger.infoT(LogCategory.ASSISTANT_CORE, "shell.assistant.logs.providerServeStarting", {
@@ -97,11 +89,8 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         }
       }
 
-      const binaryPath = this._resolveBinaryPath();
-
       const result = await electronApi.opencodeServeStart({
         ...(typeof port === "number" ? { port } : {}),
-        ...(binaryPath !== undefined ? { binaryPath } : {}),
         cors: ["http://localhost:5174"],
       });
 

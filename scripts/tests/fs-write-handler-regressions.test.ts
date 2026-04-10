@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createFilesystemBasicTools } from "../../src/mcp-server/core/handlers/filesystem/basic-tools.ts";
+import { createFilesystemBasicTools } from "../../mcp-server/core/handlers/filesystem/basic-tools.ts";
 
 function getWriteHandler(): (args: unknown) => Promise<unknown> {
   const tool = createFilesystemBasicTools().find(

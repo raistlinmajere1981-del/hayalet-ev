@@ -361,8 +361,6 @@ export interface AppSettings {
     lastActiveRelay?: string | null;
     disabledMcpServers?: string[];
     opencode?: {
-      // NOTE: Empty or null uses the PATH "opencode" binary.
-      binaryPath?: string | null;
       defaultPort?: number;
       version?: string | null;
     };

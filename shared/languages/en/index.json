@@ -3586,7 +3586,7 @@
           "completed": "{{totalProblems}} problems analyzed"
         },
         "runtime": {
-          "timeoutOrNoOutput": "\n⚠️ ESLint Dashboard\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nTimeout or no output from ESLint.\n\nTry:\n1. Run with a smaller pattern: `hev_dev_eslint_dashboard({pattern: \"src/mcp-server/**/*.ts\"})`\n2. Use `hev_dev_lint_project` for batch processing\n3. Check `.eslintcache` and clear it if needed",
+          "timeoutOrNoOutput": "\n⚠️ ESLint Dashboard\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nTimeout or no output from ESLint.\n\nTry:\n1. Run with a smaller pattern: `hev_dev_eslint_dashboard({pattern: \"mcp-server/**/*.ts\"})`\n2. Use `hev_dev_lint_project` for batch processing\n3. Check `.eslintcache` and clear it if needed",
           "parseFailed": "\n⚠️ ESLint Dashboard\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFailed to parse ESLint output.\n\nOutput preview:\n{{preview}}",
           "error": "Dashboard error: {{message}}",
           "statsLine": "⏱️  {{executionTime}}s | 📁 {{allFolders}} folders ({{foldersWithErrors}} with errors) | 📄 {{allFiles}} files ({{filesWithErrors}} with errors)",

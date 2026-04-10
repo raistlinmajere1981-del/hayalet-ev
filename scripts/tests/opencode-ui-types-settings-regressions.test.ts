@@ -138,12 +138,13 @@ test("default settings include opencode-ui db path binding", () => {
 
 test("default settings scaffold assistants.opencode preferences", () => {
   const settings = defaultSettings();
-  assert.equal(settings.assistants?.opencode?.binaryPath, null);
-  assert.equal(settings.assistants?.opencode?.defaultPort, 4096);
-  assert.equal(settings.assistants?.opencode?.version, null);
+  assert.deepEqual(settings.assistants?.opencode, {
+    defaultPort: 4096,
+    version: null,
+  });
 });
 
-test("normalize settings coerces invalid assistants.opencode preferences", () => {
+test("normalize settings coerces invalid assistants.opencode preferences and drops legacy binaryPath", () => {
   const normalized = normalizeSettings({
     assistants: {
       opencode: {
@@ -154,7 +155,8 @@ test("normalize settings coerces invalid assistants.opencode preferences", () =>
     },
   });
 
-  assert.equal(normalized.assistants?.opencode?.binaryPath, null);
-  assert.equal(normalized.assistants?.opencode?.defaultPort, 4096);
-  assert.equal(normalized.assistants?.opencode?.version, null);
+  assert.deepEqual(normalized.assistants?.opencode, {
+    defaultPort: 4096,
+    version: null,
+  });
 });

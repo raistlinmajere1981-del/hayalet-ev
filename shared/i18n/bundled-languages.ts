@@ -7,8 +7,8 @@ import { isBuiltInAppLanguage, normalizeAppLanguage } from "./locale.js";
 import { normalizeLogNamespaceCatalog } from "./catalog.js";
 import { getBuiltInLanguageDescriptor } from "./built-in-descriptors.js";
 
-import trCatalogJson from "../languages/tr/index.json";
-import enCatalogJson from "../languages/en/index.json";
+import trCatalogJson from "../languages/tr/index.json" with { type: "json" };
+import enCatalogJson from "../languages/en/index.json" with { type: "json" };
 
 const BUILT_IN_CATALOGS: Record<BuiltInAppLanguage, TranslationCatalog> = {
   tr: normalizeLogNamespaceCatalog(trCatalogJson as TranslationCatalog),

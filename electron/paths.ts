@@ -231,17 +231,7 @@ const paths: PathResolver = {
 
   getProviderConfigPath(providerId: string): string {
     const cfg = getConfig();
-    if (cfg.isPackaged) {
-      return join(
-        process.resourcesPath,
-        "app.asar",
-        "src/js/modules/webview/providers",
-        providerId,
-        "config.js"
-      );
-    } else {
-      return join(cfg.projectRoot, "src/js/modules/webview/providers", providerId, "config.ts");
-    }
+    return join(cfg.projectRoot, "src/js/modules/webview/providers", providerId, "config.ts");
   },
 
   getProtocolsPath(): string {

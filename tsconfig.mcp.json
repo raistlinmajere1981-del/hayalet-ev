@@ -4,7 +4,7 @@
     "paths": {
       "@/*": ["src/*"],
       "@electron/*": ["electron/*"],
-      "@mcp/*": ["src/mcp-server/*"],
+      "@mcp/*": ["mcp-server/*"],
       "@shared/*": ["src/types/*"],
       "@theme-source/*": ["shared/themes/*"],
       "@timeouts": ["shared/timeouts.ts"],
@@ -27,7 +27,7 @@
     "noErrorTruncation": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/mcp-server/**/*.ts", "src/types/**/*.ts"],
+  "include": ["mcp-server/**/*.ts", "src/types/**/*.ts"],
   "exclude": [
     "node_modules",
     "dist",

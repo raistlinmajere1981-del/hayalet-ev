@@ -1700,7 +1700,11 @@ export class AssistantController {
 
     if (providerId === "opencode-ui" && baseUrl !== "") {
       try {
-        const parsed = new URL(baseUrl, window.location.origin);
+        const isPackagedFileRoute = window.location.protocol === "file:" && baseUrl.startsWith("/");
+        const parsed = new URL(
+          isPackagedFileRoute ? `.${baseUrl}` : baseUrl,
+          isPackagedFileRoute ? new URL(".", window.location.href) : window.location.origin
+        );
         const resumeSessionId = this._getResumeSessionId(providerId, options);
         if (resumeSessionId !== "") {
           parsed.searchParams.set("resumeSessionId", resumeSessionId);
@@ -1712,6 +1716,10 @@ export class AssistantController {
         }
 
         parsed.searchParams.set("theme", ThemeManager.current);
+
+        if (isPackagedFileRoute) {
+          return parsed.toString();
+        }
 
         return baseUrl.startsWith("/")
           ? `${parsed.pathname}${parsed.search}${parsed.hash}`

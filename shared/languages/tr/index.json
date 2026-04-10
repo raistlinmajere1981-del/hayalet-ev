@@ -3586,7 +3586,7 @@
           "completed": "{{totalProblems}} sorun analiz edildi"
         },
         "runtime": {
-          "timeoutOrNoOutput": "\n⚠️ ESLint Dashboard\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nESLint zaman aşımına uğradı veya çıktı vermedi.\n\nŞunları deneyin:\n1. Daha küçük pattern ile çalıştır: `hev_dev_eslint_dashboard({pattern: \"src/mcp-server/**/*.ts\"})`\n2. Toplu işleme için `hev_dev_lint_project` kullan\n3. Gerekirse `.eslintcache` dosyasını temizle",
+          "timeoutOrNoOutput": "\n⚠️ ESLint Dashboard\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nESLint zaman aşımına uğradı veya çıktı vermedi.\n\nŞunları deneyin:\n1. Daha küçük pattern ile çalıştır: `hev_dev_eslint_dashboard({pattern: \"mcp-server/**/*.ts\"})`\n2. Toplu işleme için `hev_dev_lint_project` kullan\n3. Gerekirse `.eslintcache` dosyasını temizle",
           "parseFailed": "\n⚠️ ESLint Dashboard\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nESLint çıktısı ayrıştırılamadı.\n\nÇıktı önizlemesi:\n{{preview}}",
           "error": "Dashboard hatası: {{message}}",
           "statsLine": "⏱️  {{executionTime}}s | 📁 {{allFolders}} klasör ({{foldersWithErrors}} tanesinde hata) | 📄 {{allFiles}} dosya ({{filesWithErrors}} tanesinde hata)",

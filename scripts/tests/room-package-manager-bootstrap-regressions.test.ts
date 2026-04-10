@@ -216,10 +216,11 @@ test("packaged startup seeds the external workspace root and bootstraps installe
   const pathsSource = await readFile(pathsPath, "utf8");
 
   assert.match(pathsSource, /return join\(getConfig\(\)\.projectRoot, "rooms"\);/);
+  assert.match(managerSource, /private usesDefaultRoomRoots\(\): boolean/);
   assert.match(managerSource, /private shouldBootstrapPackagedInstalledRooms\(\): boolean/);
   assert.match(
     managerSource,
-    /return Paths\.isPackaged\(\) === true && existsSync\(this\.getRegistryPath\(\)\) === false;/
+    /return\s*\(\s*this\.usesDefaultRoomRoots\(\)\s*&&\s*Paths\.isPackaged\(\)\s*===\s*true\s*&&\s*existsSync\(this\.getRegistryPath\(\)\)\s*===\s*false\s*\);/
   );
   assert.match(
     managerSource,

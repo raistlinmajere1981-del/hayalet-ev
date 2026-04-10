@@ -139,7 +139,6 @@ export function createDefaultSettings(): AppSettings {
       lastActiveRelay: null,
       disabledMcpServers: [],
       opencode: {
-        binaryPath: null,
         defaultPort: 4096,
         version: null,
       },

@@ -8,7 +8,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     suggestion:
       "The selector likely changed. Inspect the provider DOM and update the selectors in config.js.",
     checkFiles: [
-      "src/js/modules/webview/providers/{provider}/config.js",
+      "src/js/modules/webview/providers/{provider}/config.ts",
       "src/js/modules/webview/providers/{provider}/index.js",
     ],
     relatedDocs: [],
@@ -28,7 +28,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     category: "dom-selector",
     suggestion:
       "The DOM element was not found. Verify the selector and ensure the element has loaded.",
-    checkFiles: ["src/js/modules/webview/providers/{provider}/config.js"],
+    checkFiles: ["src/js/modules/webview/providers/{provider}/config.ts"],
     relatedDocs: [],
     severity: "medium",
   },
@@ -46,7 +46,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     category: "network",
     suggestion:
       "DNS resolution failed. Verify the domain name and confirm the DNS server is reachable.",
-    checkFiles: ["src/js/modules/webview/providers/{provider}/config.js"],
+    checkFiles: ["src/js/modules/webview/providers/{provider}/config.ts"],
     relatedDocs: [],
     severity: "high",
   },
@@ -189,7 +189,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     pattern: "did-fail-load",
     category: "webview-load",
     suggestion: "The webview failed to load the page. Verify the URL and network connection.",
-    checkFiles: ["src/js/modules/webview/providers/{provider}/config.js"],
+    checkFiles: ["src/js/modules/webview/providers/{provider}/config.ts"],
     relatedDocs: [],
     severity: "high",
   },

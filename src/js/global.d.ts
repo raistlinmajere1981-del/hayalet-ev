@@ -965,11 +965,7 @@ declare global {
     assistantGetConfig: (providerId: string) => Promise<Record<string, unknown>>;
     onAssistantDisconnected: (callback: () => void) => () => void;
 
-    opencodeServeStart: (options?: {
-      port?: number;
-      cors?: string[];
-      binaryPath?: string;
-    }) => Promise<{
+    opencodeServeStart: (options?: { port?: number; cors?: string[] }) => Promise<{
       success: boolean;
       port?: number;
       url?: string;
@@ -1005,7 +1001,7 @@ declare global {
       url?: string;
       error?: string;
     }>;
-    opencodeServeDoctor: (options?: { binaryPath?: string }) => Promise<{
+    opencodeServeDoctor: () => Promise<{
       success: boolean;
       available: boolean;
       command: string;

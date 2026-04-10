@@ -111,19 +111,12 @@ export function refreshOpencodeDoctorStatus(elements: OpencodeIndicatorElements)
   const settings = SettingsManager.getSnapshot() as AppSettings | null;
   const opencode = settings?.assistants?.opencode;
   const defaultPort = normalizeOpencodePort(opencode?.defaultPort);
-  const binaryPath =
-    typeof opencode?.binaryPath === "string" && opencode.binaryPath.trim() !== ""
-      ? opencode.binaryPath.trim()
-      : null;
   const version =
     typeof opencode?.version === "string" && opencode.version.trim() !== ""
       ? opencode.version.trim()
       : null;
 
   const titleLines = [assistantT("opencodeDoctor.defaultPortTitle", { port: defaultPort })];
-  if (binaryPath !== null) {
-    titleLines.push(assistantT("opencodeDoctor.binaryPathTitle", { path: binaryPath }));
-  }
 
   if (version !== null) {
     setOpencodeIndicatorState(
@@ -314,21 +307,7 @@ export async function openOpencodeSettingsModal(
   const content = document.createElement("div");
   content.className = "opencode-settings-modal";
   content.innerHTML = `
-    <div class="opencode-settings-row">
-      <label>${assistantT("opencodeDoctor.settingsModal.binaryPathLabel")}</label>
-      <input
-        class="input opencode-settings-input"
-        type="text"
-        placeholder="${assistantT("opencodeDoctor.settingsModal.binaryPathPlaceholder")}"
-        data-role="binary-path"
-      />
-      <p class="opencode-settings-help">
-        ${assistantT("opencodeDoctor.settingsModal.binaryPathHelp")}
-      </p>
-    </div>
     <div class="opencode-settings-actions">
-      <button class="btn btn-secondary btn-sm" data-action="browse" type="button">${assistantT("opencodeDoctor.settingsModal.browseButton")}</button>
-      <button class="btn btn-ghost btn-sm" data-action="reset" type="button">${assistantT("opencodeDoctor.settingsModal.usePathButton")}</button>
       <button class="btn btn-ghost btn-sm" data-action="check" type="button">${assistantT("opencodeDoctor.settingsModal.checkButton")}</button>
     </div>
     <div class="opencode-settings-row">
@@ -345,14 +324,10 @@ export async function openOpencodeSettingsModal(
     <div class="opencode-settings-check" data-role="check-result"></div>
   `;
 
-  const binaryInput = content.querySelector<HTMLInputElement>('[data-role="binary-path"]');
   const portInput = content.querySelector<HTMLInputElement>('[data-role="default-port"]');
   const checkResult = content.querySelector<HTMLElement>('[data-role="check-result"]');
-  const browseBtn = content.querySelector<HTMLButtonElement>('[data-action="browse"]');
-  const resetBtn = content.querySelector<HTMLButtonElement>('[data-action="reset"]');
   const checkBtn = content.querySelector<HTMLButtonElement>('[data-action="check"]');
 
-  if (binaryInput != null) binaryInput.value = prefs.binaryPath ?? "";
   if (portInput != null) portInput.value = String(prefs.defaultPort);
 
   const setCheckResult = (
@@ -370,7 +345,7 @@ export async function openOpencodeSettingsModal(
     }
   };
 
-  let lastValidation: { binaryPath: string | null; version: string | null } | null = null;
+  let lastValidation: { version: string | null } | null = null;
 
   const runDoctorCheck = async (): Promise<void> => {
     if (electronApi === undefined || typeof electronApi.opencodeServeDoctor !== "function") {
@@ -378,13 +353,10 @@ export async function openOpencodeSettingsModal(
       return;
     }
 
-    const value = binaryInput?.value.trim() ?? "";
     setCheckResult(assistantT("opencodeDoctor.settingsModal.checking"));
 
     try {
-      const result = await electronApi.opencodeServeDoctor(
-        value !== "" ? { binaryPath: value } : undefined
-      );
+      const result = await electronApi.opencodeServeDoctor();
       if (result.success !== true || result.available !== true) {
         lastValidation = null;
         setCheckResult(
@@ -399,23 +371,12 @@ export async function openOpencodeSettingsModal(
         return;
       }
 
-      const detectedPath =
-        typeof result.resolvedPath === "string" && result.resolvedPath.trim() !== ""
-          ? result.resolvedPath.trim()
-          : value !== ""
-            ? value
-            : null;
       const detectedVersion =
         typeof result.version === "string" && result.version.trim() !== ""
           ? result.version.trim()
           : null;
 
-      if (binaryInput != null && detectedPath !== null) {
-        binaryInput.value = detectedPath;
-      }
-
       lastValidation = {
-        binaryPath: detectedPath,
         version: detectedVersion,
       };
 
@@ -439,30 +400,6 @@ export async function openOpencodeSettingsModal(
     }
   };
 
-  browseBtn?.addEventListener("click", () => {
-    void (async (): Promise<void> => {
-      if (electronApi === undefined || typeof electronApi.showOpenDialog !== "function") {
-        setCheckResult(assistantT("opencodeDoctor.settingsModal.filePickerUnavailable"), "error");
-        return;
-      }
-
-      const selected = await electronApi.showOpenDialog({
-        title: assistantT("opencodeDoctor.settingsModal.selectBinaryDialogTitle"),
-        properties: ["openFile"],
-      });
-      const pickedPath = selected.filePaths[0];
-      if (selected.canceled || pickedPath === undefined) return;
-
-      if (binaryInput != null) binaryInput.value = pickedPath;
-      setCheckResult(assistantT("opencodeDoctor.settingsModal.binaryPathSelected"));
-    })();
-  });
-
-  resetBtn?.addEventListener("click", () => {
-    if (binaryInput != null) binaryInput.value = "";
-    setCheckResult(assistantT("opencodeDoctor.settingsModal.pathWillBeUsed"));
-  });
-
   checkBtn?.addEventListener("click", () => {
     void runDoctorCheck();
   });
@@ -479,7 +416,6 @@ export async function openOpencodeSettingsModal(
         closeOnClick: false,
         onClick: (): void => {
           void (async (): Promise<void> => {
-            const normalizedPath = binaryInput?.value.trim() ?? "";
             const normalizedPortText = portInput?.value.trim() ?? "";
             const parsedPort = Number.parseInt(normalizedPortText, 10);
             if (Number.isInteger(parsedPort) !== true || parsedPort < 1024 || parsedPort > 65535) {
@@ -500,16 +436,12 @@ export async function openOpencodeSettingsModal(
             }
 
             await SettingsManager.set("assistants.opencode", {
-              binaryPath:
-                lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
               defaultPort: parsedPort,
               version: lastValidation.version,
             });
 
             setCheckResult(assistantT("opencodeDoctor.settingsModal.saved"), "success");
             Logger.info(LogCategory.ASSISTANT_CORE, assistantT("logs.opencodeSettingsUpdated"), {
-              binaryPath:
-                lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
               defaultPort: parsedPort,
               version: lastValidation.version,
             });

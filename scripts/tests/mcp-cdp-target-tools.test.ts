@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createCdpTools } from "../../src/mcp-server/core/handlers/cdp-handlers.ts";
-import { handleSuggestTool } from "../../src/mcp-server/tools/tool-discovery.ts";
-import { getCdpTargetInfo, sendCdpCommand } from "../../src/mcp-server/tools/cdp-tools.ts";
+import { createCdpTools } from "../../mcp-server/core/handlers/cdp-handlers.ts";
+import { handleSuggestTool } from "../../mcp-server/tools/tool-discovery.ts";
+import { getCdpTargetInfo, sendCdpCommand } from "../../mcp-server/tools/cdp-tools.ts";
 
 test("cdp tool registry includes target-aware CDP tools", () => {
   const entries = createCdpTools();

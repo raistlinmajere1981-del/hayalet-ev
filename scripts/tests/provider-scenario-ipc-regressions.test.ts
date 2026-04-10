@@ -13,6 +13,8 @@ const testerTypesPath = "electron/provider-tester/types.ts";
 const testerUtilsPath = "electron/provider-tester/utils.ts";
 const testerInteractivePath = "electron/provider-tester/interactive-tests.ts";
 const sharedScenarioPath = "src/js/modules/webview/providers/shared/scenarios.ts";
+const pathsPath = "electron/paths.ts";
+const opencodeServerManagerPath = "electron/opencode-server-manager.ts";
 
 test("preload exposes generic provider scenario APIs alongside test compatibility aliases", () => {
   const content = readFileSync(preloadPath, "utf8");
@@ -48,6 +50,23 @@ test("ipc provider handler registers a generic scenario entry point", () => {
   );
   assert.match(content, /const results = await tester\.runScenario\(scenarioId\);/);
   assert.doesNotMatch(content, /runTestSuite\(/);
+});
+
+test("provider config paths resolve against the projected source tree for packaged mirrors", () => {
+  const content = readFileSync(pathsPath, "utf8");
+
+  assert.match(
+    content,
+    /return join\(cfg\.projectRoot, "src\/js\/modules\/webview\/providers", providerId, "config\.ts"\);/
+  );
+});
+
+test("opencode serve startup assigns the project root as the default workspace", () => {
+  const content = readFileSync(opencodeServerManagerPath, "utf8");
+
+  assert.match(content, /const workspacePath = Paths\.getProjectRoot\(\)\.trim\(\)/);
+  assert.match(content, /args\.push\(workspacePath\)/);
+  assert.match(content, /cwd: workspacePath/);
 });
 
 test("provider tester exposes a scenario-oriented entry point", () => {

@@ -46,7 +46,7 @@
     "paths": {
       "@/*": ["src/*"],
       "@electron/*": ["electron/*"],
-      "@mcp/*": ["src/mcp-server/*"],
+      "@mcp/*": ["mcp-server/*"],
       "@shared/*": ["src/types/*"],
       "@theme-source/*": ["shared/themes/*"],
       "@timeouts": ["shared/timeouts.ts"],
@@ -80,7 +80,7 @@
     "dist",
     "build",
     "electron",
-    "src/mcp-server",
+    "mcp-server",
     ".rovo",
     "logs",
     "commands",

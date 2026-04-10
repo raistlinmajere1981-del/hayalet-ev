@@ -1,15 +1,16 @@
 import type { ChildProcess } from "child_process";
 import { spawn } from "child_process";
 import * as net from "net";
-import { isAbsolute, join } from "path";
 import { getLoggerCore } from "./logger/index.js";
-import { Paths } from "./paths.js";
+import { Paths } from "./paths.ts";
 import { LogCategory, LogLevel } from "../src/types/logging-core.js";
 import type { ServerOptions, ServerInfo, ServerBinaryInfo } from "./types/server.ts";
 import { SERVER_TIMEOUTS } from "@timeouts";
 import { translateElectronMessage } from "./i18n/language-service.ts";
 
 const logger = getLoggerCore();
+const OPENCODE_COMMAND = "opencode";
+const WINDOWS_PATH_PATTERN = /^[A-Za-z]:[\\/]/;
 
 function chunkToString(data: unknown): string {
   if (typeof data === "string") return data;
@@ -23,12 +24,6 @@ export class OpenCodeServerManager {
   private startTime: number | null = null;
   private usingExternalServer = false;
 
-  private resolveBinaryCommand(binaryPath?: string | null): string {
-    if (typeof binaryPath !== "string") return "opencode";
-    const trimmed = binaryPath.trim();
-    return trimmed !== "" ? trimmed : "opencode";
-  }
-
   private parseVersion(raw: string): string | undefined {
     const output = raw.trim();
     if (output === "") return undefined;
@@ -36,22 +31,38 @@ export class OpenCodeServerManager {
     return match?.[1];
   }
 
-  private parseWhereisOutput(raw: string): string | undefined {
-    const line = raw.trim();
-    if (line === "") return undefined;
-    const colonIndex = line.indexOf(":");
-    const list = (colonIndex >= 0 ? line.slice(colonIndex + 1) : line)
-      .trim()
-      .split(/\s+/)
-      .map((token) => token.trim())
-      .filter((token) => token !== "");
-    return list.find((token) => token.startsWith("/"));
+  private parseBinaryLocatorOutput(raw: string): string | undefined {
+    const lines = raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+
+    return lines.find(
+      (line) => line.startsWith("/") || line.startsWith("\\\\") || WINDOWS_PATH_PATTERN.test(line)
+    );
+  }
+
+  private isMissingCommandProbe(result: {
+    exitCode: number | null;
+    stdout: string;
+    stderr: string;
+    error?: string;
+  }): boolean {
+    const combinedOutput = `${result.stdout}\n${result.stderr}`.trim();
+    if (typeof result.error === "string" && /ENOENT|not found/i.test(result.error)) {
+      return true;
+    }
+    if (result.exitCode === 127) {
+      return true;
+    }
+    return /\b(command not found|not found)\b/i.test(combinedOutput);
   }
 
   private async runCommandCapture(
     command: string,
     args: string[],
-    timeoutMs = 3000
+    timeoutMs = 3000,
+    env?: NodeJS.ProcessEnv
   ): Promise<{ exitCode: number | null; stdout: string; stderr: string; error?: string }> {
     return await new Promise((resolve) => {
       let stdout = "";
@@ -76,6 +87,7 @@ export class OpenCodeServerManager {
       const child = spawn(command, args, {
         stdio: ["ignore", "pipe", "pipe"],
         detached: false,
+        ...(env !== undefined ? { env } : {}),
       });
 
       child.stdout.on("data", (data: unknown) => {
@@ -117,43 +129,79 @@ export class OpenCodeServerManager {
     });
   }
 
-  async diagnoseBinary(options: { binaryPath?: string | null } = {}): Promise<ServerBinaryInfo> {
-    const command = this.resolveBinaryCommand(options.binaryPath);
+  private async runInteractiveShellCapture(
+    command: string,
+    timeoutMs = 3000
+  ): Promise<{ exitCode: number | null; stdout: string; stderr: string; error?: string }> {
+    const shellEnv = {
+      ...process.env,
+      TERM: process.env["TERM"] ?? "dumb",
+    };
+
+    return await this.runCommandCapture("bash", ["-ic", command], timeoutMs, shellEnv);
+  }
+
+  private async resolveBinaryPath(command: string): Promise<string | undefined> {
+    if (process.platform === "win32") {
+      const whereResult = await this.runCommandCapture("where", [command], 1800);
+      if (whereResult.exitCode === 0) {
+        return this.parseBinaryLocatorOutput(whereResult.stdout);
+      }
+      return undefined;
+    }
+
+    const whichResult = await this.runCommandCapture("which", [command], 1800);
+    if (whichResult.exitCode === 0) {
+      const detectedPath = this.parseBinaryLocatorOutput(whichResult.stdout);
+      if (detectedPath !== undefined) {
+        return detectedPath;
+      }
+    }
+
+    const shellResult = await this.runInteractiveShellCapture(`command -v ${command}`, 2200);
+    if (shellResult.exitCode === 0) {
+      return this.parseBinaryLocatorOutput(shellResult.stdout);
+    }
+
+    return undefined;
+  }
+
+  async diagnoseBinary(): Promise<ServerBinaryInfo> {
+    const command = OPENCODE_COMMAND;
     const versionProbe = await this.runCommandCapture(
       command,
       ["--version"],
       SERVER_TIMEOUTS.BINARY_PROBE
     );
-    const combinedOutput = `${versionProbe.stdout}\n${versionProbe.stderr}`.trim();
+    let probeResult = versionProbe;
 
-    if (versionProbe.error !== undefined) {
+    if (process.platform !== "win32" && this.isMissingCommandProbe(versionProbe)) {
+      probeResult = await this.runInteractiveShellCapture(
+        `exec ${OPENCODE_COMMAND} --version`,
+        SERVER_TIMEOUTS.BINARY_PROBE
+      );
+    }
+
+    const combinedOutput = `${probeResult.stdout}\n${probeResult.stderr}`.trim();
+
+    if (probeResult.error !== undefined) {
       return {
         available: false,
         command,
-        error: versionProbe.error,
+        error: probeResult.error,
       };
     }
 
-    if (versionProbe.exitCode !== 0) {
+    if (probeResult.exitCode !== 0) {
       return {
         available: false,
         command,
-        error:
-          combinedOutput !== "" ? combinedOutput : `Exit code ${String(versionProbe.exitCode)}`,
+        error: combinedOutput !== "" ? combinedOutput : `Exit code ${String(probeResult.exitCode)}`,
       };
     }
 
     const version = this.parseVersion(combinedOutput);
-    let resolvedPath: string | undefined;
-
-    if (command.includes("/") || command.includes("\\")) {
-      resolvedPath = isAbsolute(command) ? command : join(Paths.getProjectRoot(), command);
-    } else if (process.platform !== "win32") {
-      const whereisResult = await this.runCommandCapture("whereis", [command], 1800);
-      if (whereisResult.exitCode === 0) {
-        resolvedPath = this.parseWhereisOutput(whereisResult.stdout);
-      }
-    }
+    const resolvedPath = await this.resolveBinaryPath(command);
 
     return {
       available: true,
@@ -272,8 +320,8 @@ export class OpenCodeServerManager {
       port = foundPort;
     }
 
-    const binaryCommand = this.resolveBinaryCommand(options.binaryPath);
-    const binaryInfo = await this.diagnoseBinary({ binaryPath: binaryCommand });
+    const binaryCommand = OPENCODE_COMMAND;
+    const binaryInfo = await this.diagnoseBinary();
     if (!binaryInfo.available) {
       throw new Error(
         await translateElectronMessage("electron.opencodeServer.binaryCheckFailed", {
@@ -291,6 +339,11 @@ export class OpenCodeServerManager {
       args.push("--cors", origin);
     });
 
+    const workspacePath = Paths.getProjectRoot().trim();
+    if (workspacePath !== "") {
+      args.push(workspacePath);
+    }
+
     await logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.INFO,
@@ -300,6 +353,7 @@ export class OpenCodeServerManager {
         port,
         binaryCommand,
         binaryExecutable,
+        workspacePath: workspacePath !== "" ? workspacePath : null,
         args,
       }
     );
@@ -313,6 +367,7 @@ export class OpenCodeServerManager {
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
       env: childEnv,
+      ...(workspacePath !== "" ? { cwd: workspacePath } : {}),
     });
 
     this.currentPort = port;
