@@ -417,22 +417,35 @@ function createArchiveFactory() {
       }) {
         const conversationId = hashString(params.webUrl);
         const now = new Date(FIXED_NOW).toISOString();
+        const normalizedTitle =
+          typeof params.title === "string" && params.title.trim() !== "" ? params.title.trim() : "";
         const existing = db
-          .prepare<[string], { id: string; title: string | null }>(
-            "SELECT id, title FROM conversations WHERE id = ? LIMIT 1"
+          .prepare<[string], { id: string; title: string | null; title_source: string | null }>(
+            "SELECT id, title, title_source FROM conversations WHERE id = ? LIMIT 1"
           )
           .get(conversationId);
 
         if (existing === undefined) {
+          const countRow = db
+            .prepare<[string], { count: number }>(
+              "SELECT COUNT(*) as count FROM conversations WHERE account_id = ?"
+            )
+            .get(accountId);
+          const nextTitle =
+            normalizedTitle !== ""
+              ? normalizedTitle
+              : `Sohbet ${String((countRow?.count ?? 0) + 1).padStart(3, "0")}`;
+          const titleSource = normalizedTitle !== "" ? "synced" : "system";
           db.prepare(
             `INSERT INTO conversations (id, account_id, web_url, provider, title, title_source, summary, message_count, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, 'synced', '', 0, ?, ?)`
+             VALUES (?, ?, ?, ?, ?, ?, '', 0, ?, ?)`
           ).run(
             conversationId,
             accountId,
             params.webUrl,
             params.provider ?? "us1",
-            params.title ?? "",
+            nextTitle,
+            titleSource,
             now,
             now
           );
@@ -441,22 +454,39 @@ function createArchiveFactory() {
             data: {
               conversationId,
               created: true,
-              title: params.title ?? "",
-              titleUpdated: true,
+              title: nextTitle,
+              titleUpdated: normalizedTitle !== "",
             },
           };
         }
 
-        db.prepare(
-          "UPDATE conversations SET web_url = ?, provider = ?, title = ?, updated_at = ? WHERE id = ?"
-        ).run(params.webUrl, params.provider ?? "us1", params.title ?? existing.title ?? "", now, conversationId);
+        const updateParts = ["web_url = ?", "provider = ?", "updated_at = ?"];
+        const updateValues: Array<string> = [params.webUrl, params.provider ?? "us1", now];
+        let nextTitle = existing.title ?? "";
+        let titleUpdated = false;
+
+        if (
+          normalizedTitle !== "" &&
+          existing.title_source !== "user" &&
+          existing.title !== normalizedTitle
+        ) {
+          updateParts.push("title = ?", "title_source = ?");
+          updateValues.push(normalizedTitle, "synced");
+          nextTitle = normalizedTitle;
+          titleUpdated = true;
+        }
+
+        updateValues.push(conversationId);
+        db.prepare(`UPDATE conversations SET ${updateParts.join(", ")} WHERE id = ?`).run(
+          ...updateValues
+        );
         return {
           success: true,
           data: {
             conversationId,
             created: false,
-            title: params.title ?? existing.title ?? "",
-            titleUpdated: params.title !== undefined && params.title !== existing.title,
+            title: nextTitle,
+            titleUpdated,
           },
         };
       },
@@ -631,6 +661,7 @@ test("US1 conversation service sends outbound mail and projects archive metadata
       result.localSessionId ?? null
     );
     assert.equal((envelope["session"] as Record<string, unknown>)?.["mode"], "new");
+    assert.equal((envelope["session"] as Record<string, unknown>)?.["title"], null);
 
     const sidecar = new MailSidecarStoreManager(accountId);
     const meta = sidecar.getMessageMeta(result.transportMessageId ?? "");
@@ -639,6 +670,11 @@ test("US1 conversation service sends outbound mail and projects archive metadata
     assert.equal(meta?.metadata?.["localSessionId"], result.localSessionId);
 
     const db = new Database(Paths.getAccountDbPath(remoteAccountId), { readonly: true });
+    const conversation = db
+      .prepare<[string], { title: string | null }>(
+        "SELECT title FROM conversations WHERE id = ? LIMIT 1"
+      )
+      .get(result.conversationId ?? "");
     const messages = db
       .prepare<[string], { role: string; content: string }>(
         "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at ASC"
@@ -651,6 +687,7 @@ test("US1 conversation service sends outbound mail and projects archive metadata
       .all(result.conversationId ?? "");
     db.close();
 
+    assert.equal(conversation?.title, "Sohbet 001");
     assert.equal(messages.length, 1);
     assert.equal(messages[0]?.role, "user");
     assert.equal(messages[0]?.content, "Outbound hello");
@@ -887,7 +924,7 @@ test("US1 conversation sync keeps explicit inbound new session ids isolated", as
       .get(result.conversationId ?? "");
     db.close();
 
-    assert.equal(conversation?.title, "Remote Fresh / Fresh thread");
+    assert.equal(conversation?.title, "Sohbet 001");
     assert.match(conversation?.web_url ?? "", /us1-remote-session-1/);
   } finally {
     cleanupAccount(accountId);

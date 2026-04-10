@@ -830,30 +830,10 @@ function buildConversationSubject(text: string, attachmentCount: number): string
   return SUBJECT_PREFIX;
 }
 
-function buildSessionTitle(text: string, attachmentCount: number): string | null {
-  const preview = normalizeText(text).replace(/\n+/g, " ").slice(0, 48);
-  if (preview !== "") {
-    return preview;
-  }
-  if (attachmentCount > 0) {
-    return `${attachmentCount} attachment${attachmentCount === 1 ? "" : "s"}`;
-  }
-  return null;
-}
-
 function buildConversationAuthor(
   remoteUser: Pick<RemoteUserIdentity, "nickname" | "email">
 ): string {
   return normalizeOptionalText(remoteUser.nickname) ?? remoteUser.email;
-}
-
-function buildConversationTitle(
-  remoteUser: Pick<RemoteUserIdentity, "nickname" | "email">,
-  sessionTitle?: string | null
-): string {
-  const author = buildConversationAuthor(remoteUser);
-  const normalizedSessionTitle = normalizeOptionalText(sessionTitle);
-  return normalizedSessionTitle === null ? author : `${author} / ${normalizedSessionTitle}`;
 }
 
 function buildArchiveMessageId(conversationId: string, domId: string): string {
@@ -969,7 +949,7 @@ export class Us1ConversationService {
       requestedSessionId ??
       latestMapping?.localSessionId ??
       buildSessionId(remoteUser.remoteUserId, latestMapping?.threadMessageId ?? null, this.now());
-    const sessionTitle = isNewSession ? buildSessionTitle(text, attachments.length) : null;
+    const sessionTitle = null;
     const sessionMode: Us1SessionMode = isNewSession ? "new" : "reply";
     const sessionOpenHint: Us1SessionOpenHint = isNewSession ? "auto_if_idle" : "list_only";
     const localProfile = this.buildLocalProfile(settings, account);
@@ -1041,7 +1021,7 @@ export class Us1ConversationService {
       const archiveContext = await this.prepareArchiveContext(
         remoteUser,
         localSessionId,
-        isNewSession ? buildConversationTitle(remoteUser, sessionTitle) : null
+        isNewSession ? null : undefined
       );
       const projectedMessage = await this.appendArchiveMessage(archiveContext, {
         role: "user",
@@ -1264,21 +1244,7 @@ export class Us1ConversationService {
           }
 
           const isNewSession = existingSessionMapping === null;
-          const archiveTitle =
-            isNewSession === true
-              ? buildConversationTitle(
-                  nextRemoteUser,
-                  sessionTitle ??
-                    buildSessionTitle(
-                      toDisplayText(
-                        message.parsed.text,
-                        message.parsed.attachments.length,
-                        INBOUND_ATTACHMENT_ONLY_TEXT
-                      ),
-                      message.parsed.attachments.length
-                    )
-                )
-              : null;
+          const archiveTitle = isNewSession === true ? null : undefined;
 
           const archiveContext = await this.prepareArchiveContext(
             nextRemoteUser,
@@ -1714,7 +1680,7 @@ export class Us1ConversationService {
       requestedSessionId ??
       latestMapping?.localSessionId ??
       buildSessionId(remoteUser.remoteUserId, latestMapping?.threadMessageId ?? null, this.now());
-    const sessionTitle = isNewSession ? buildSessionTitle(text, attachments.length) : null;
+    const sessionTitle = null;
     const sessionMode: Us1SessionMode = isNewSession ? "new" : "reply";
     const sessionOpenHint: Us1SessionOpenHint = isNewSession ? "auto_if_idle" : "list_only";
     const localProfile = this.buildLocalProfile(settings, account);
@@ -1806,7 +1772,7 @@ export class Us1ConversationService {
       const archiveContext = await this.prepareArchiveContext(
         remoteUser,
         localSessionId,
-        isNewSession ? buildConversationTitle(remoteUser, sessionTitle) : null
+        isNewSession ? null : undefined
       );
       const projectedMessage = await this.appendArchiveMessage(archiveContext, {
         role: "user",
@@ -1988,21 +1954,7 @@ export class Us1ConversationService {
         }
 
         const isNewSession = existingSessionMapping === null;
-        const archiveTitle =
-          isNewSession === true
-            ? buildConversationTitle(
-                remoteUser,
-                sessionTitle ??
-                  buildSessionTitle(
-                    relayPayload.text !== ""
-                      ? relayPayload.text
-                      : relayPayload.attachments.length > 0
-                        ? INBOUND_ATTACHMENT_ONLY_TEXT
-                        : "",
-                    relayPayload.attachments.length
-                  )
-              )
-            : null;
+        const archiveTitle = isNewSession === true ? null : undefined;
 
         const archiveContext = await this.prepareArchiveContext(
           remoteUser,
