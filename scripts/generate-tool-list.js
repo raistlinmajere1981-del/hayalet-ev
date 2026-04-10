@@ -10,14 +10,10 @@ const PROJECT_ROOT = join(__dirname, "..");
 const CATEGORIES = {
   Filesystem: "hev_fs_*",
   Development: "hev_dev_*",
-  Context: "hev_context_*",
-  "Git/PR": "hev_git_*",
   Web: "hev_web_*",
   Workflow: "hev_run_*",
   Memory: "memory_*",
   "Electron/CDP": "hev_* (others)",
-  "UI/Display": "hev_message_box",
-  "MCP Analysis": "hev_* (analysis)",
   "Tool Discovery": "hev_* (discovery)",
   Provider: "hev_* (provider)",
   Debug: "hev_* (debug)",
@@ -42,33 +38,23 @@ function inferCategory(tool) {
     const normalized = category.toLowerCase();
     if (normalized === "filesystem") return "Filesystem";
     if (normalized === "development") return "Development";
-    if (normalized === "context") return "Context";
-    if (normalized === "git") return "Git/PR";
     if (normalized === "web") return "Web";
     if (normalized === "workflow") return "Workflow";
     if (normalized === "memory") return "Memory";
     if (normalized === "electron") return "Electron/CDP";
     if (normalized === "provider") return "Provider";
     if (normalized === "debug") return "Debug";
-    if (normalized === "ui" || normalized === "display") return "UI/Display";
     if (normalized === "discovery") return "Tool Discovery";
-    if (normalized === "analysis") return "MCP Analysis";
   }
 
   const name = tool.name || "";
   if (name.startsWith("hev_fs_")) return "Filesystem";
   if (name.startsWith("hev_dev_")) return "Development";
-  if (name.startsWith("hev_context_")) return "Context";
-  if (name.startsWith("hev_git_")) return "Git/PR";
   if (name.startsWith("hev_web_")) return "Web";
   if (name.startsWith("hev_run_")) return "Workflow";
   if (name.startsWith("memory_") || name.startsWith("database_")) return "Memory";
   if (name.includes("provider") || name.includes("validate_provider") || name.includes("inspect_provider")) {
     return "Provider";
-  }
-  if (name.includes("message_box")) return "UI/Display";
-  if (name.includes("mcp_tool") || name.includes("tool_usage") || name.includes("tool_performance")) {
-    return "MCP Analysis";
   }
   if (name.includes("suggest_tool") || name.includes("tool_workflow")) {
     return "Tool Discovery";

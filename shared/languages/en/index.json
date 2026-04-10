@@ -989,7 +989,7 @@
           "exportError": "Scene theme bundle export failed"
         }
       }
-  },
+    },
     "themes": {
       "obsidian": {
         "name": "Obsidian",
@@ -2699,8 +2699,8 @@
     },
     "fileUtils": {
       "findReplace": {
-        "patternNotFoundWithSuggestions": "Pattern not found. Close matches:\n{{suggestions}}\n\nTip: use ignore_whitespace: true or inspect the file with hev_fs_show.",
-        "patternNotFoundLineMissing": "Pattern not found. No line contains \"{{term}}\".\n\nTip: inspect the file with hev_fs_show.",
+        "patternNotFoundWithSuggestions": "Pattern not found. Close matches:\n{{suggestions}}\n\nTip: use ignore_whitespace: true or inspect the file with hev_fs_read.",
+        "patternNotFoundLineMissing": "Pattern not found. No line contains \"{{term}}\".\n\nTip: inspect the file with hev_fs_read.",
         "previewTotal": "Total: {{count}} changes"
       },
       "fileReading": {
@@ -2780,66 +2780,6 @@
       "failureTitle": "⚠️  If this tool does not work:",
       "failureLine1": "   → App MCP has likely crashed",
       "failureLine2": "   → Urgent: restart the MCP server"
-    },
-    "analysis": {
-      "common": {
-        "unknown": "unknown",
-        "unknownError": "Unknown error"
-      },
-      "usage": {
-        "title": "📊 MCP Tool Usage Analysis",
-        "totalCalls": "Total Calls: {{value}}",
-        "totalErrors": "Total Errors: {{value}}",
-        "topToolsTitle": "📈 Top Tools by Call Count:",
-        "topToolLine": "  {{tool}}: {{calls}} calls, avg {{avgDuration}}ms, {{errorPct}}% errors",
-        "slowestCallsTitle": "🐌 Slowest Calls:",
-        "slowestCallLine": "  {{tool}}: {{duration}}ms ({{timestamp}})"
-      },
-      "performance": {
-        "title": "📊 MCP Tool Performance: {{toolName}}",
-        "totalCalls": "Total Calls: {{value}}",
-        "successfulCalls": "Successful: {{value}}",
-        "failedCalls": "Failed: {{value}}",
-        "avgDuration": "Avg Duration: {{value}}ms",
-        "minMaxDuration": "Min/Max: {{min}}ms / {{max}}ms",
-        "recentErrorsTitle": "❌ Recent Errors:",
-        "recentErrorLine": "  [{{timestamp}}] {{error}}"
-      },
-      "correlation": {
-        "title": "🔗 MCP Error Correlation Analysis",
-        "noErrors": "No MCP errors were found in this session.",
-        "errorLine": "❌ {{toolName}} @ {{timestamp}}",
-        "errorDetail": "   Error: {{error}}",
-        "nearbyEventsTitle": "   Nearby Events:",
-        "nearbyEventLine": "     [{{timeDiff}}] {{source}}: {{message}}",
-        "noCorrelatedEvents": "   No correlated events found"
-      },
-      "trace": {
-        "title": "🔍 Agent Tool Trace",
-        "totalTools": "Total Unique Tools: {{value}}",
-        "showingLastCalls": "Showing: last {{value}} calls",
-        "callLine": "{{icon}} [{{timestamp}}] {{toolName}}",
-        "callLineWithDuration": "{{icon}} [{{timestamp}}] {{toolName}} ({{duration}}ms)"
-      }
-    },
-    "streaming": {
-      "bannerTitle": "🔴 Real-time Log Streaming (tail -f)",
-      "sessionLine": "Session: {{sessionId}}",
-      "logFileLine": "Log file: {{path}}",
-      "filterLine": "Filter: {{filters}}",
-      "showingLastEntries": "Showing the last {{count}} entries...",
-      "followDisabledResult": "Returned {{count}} log entries (follow disabled)",
-      "liveStreamingTitle": "🔴 LIVE STREAMING STARTED",
-      "pressCtrlC": "Press Ctrl+C to stop",
-      "streamingStarted": "Real-time streaming started",
-      "sessionNotFound": "Session not found: {{sessionId}}",
-      "statFailed": "Failed to read file stats: {{message}}",
-      "readError": "Error while reading the file: {{message}}",
-      "stoppedByUser": "🛑 Streaming stopped by user",
-      "watcherError": "Watcher error: {{message}}",
-      "errorLabel": "Error",
-      "noSessionsFound": "No sessions were found in the log directory",
-      "failedToGetLatestSession": "Failed to resolve the latest session"
     },
     "electronTools": {
       "testElectron": {
@@ -2938,7 +2878,6 @@
         "fileOperations": "File operations → `hev_fs_*` category",
         "devTools": "TypeScript/ESLint → `hev_dev_*` category",
         "debugging": "Debug → `hev_read_electron_logs`, `hev_get_error_hints`",
-        "git": "Git → `hev_git_*` category",
         "listToolsHint": "Use `hev_list_tools()` to see all available tools."
       },
       "categories": {
@@ -2948,7 +2887,6 @@
         "cdpAdvanced": "Advanced CDP",
         "debugging": "Debugging",
         "eslint": "ESLint",
-        "git": "Git",
         "memory": "Memory",
         "fileReading": "File Reading",
         "testing": "Testing",
@@ -3025,140 +2963,6 @@
           "findPath": "Finding a path through a large toolset"
         },
         "agentGuidance": "Use this when you are lost among many tools. It performs intent-based smart discovery."
-      }
-    },
-    "contextTools": {
-      "common": {
-        "timeout": "Timeout ({{seconds}}s)",
-        "unknown": "unknown"
-      },
-      "levels": {
-        "L1": "Quick",
-        "L2": "Standard",
-        "L3": "Deep",
-        "L4": "Full"
-      },
-      "age": {
-        "daysAgo": "{{count}}d ago",
-        "hoursAgo": "{{count}}h ago",
-        "minutesAgo": "{{count}}m ago",
-        "justNow": "just now"
-      },
-      "generate": {
-        "operation": "Context {{level}}",
-        "configMissing": "Config not found: {{configPath}}",
-        "cacheUsedProgress": "Cache used ({{age}})",
-        "cacheUsedMessage": "✅ Cache used: {{outputPath}}\nAge: {{age}}\nSize: {{sizeKB}}KB",
-        "runningRepomix": "Running Repomix...",
-        "repomixFailedProgress": "Repomix error",
-        "repomixFailedMessage": "Repomix error: {{output}}",
-        "successProgress": "{{fileCount}} files, {{sizeKB}}KB",
-        "successMessage": "✅ Context created: {{level}} ({{levelLabel}})\n📁 Files: {{fileCount}}\n🔢 Tokens: {{tokenCount}}\n📊 Size: {{sizeKB}}KB\n📍 Path: {{outputPath}}"
-      },
-      "module": {
-        "operation": "Module: {{moduleName}}",
-        "headerText": "# app Context - Module: {{moduleName}}\n",
-        "runningRepomix": "Running Repomix...",
-        "failedProgress": "Module context could not be created",
-        "failedMessage": "Module context error: {{output}}",
-        "successProgress": "{{fileCount}} files, {{sizeKB}}KB",
-        "successMessage": "✅ Module context: {{moduleName}}\n📁 {{fileCount}} files\n📊 {{sizeKB}}KB\n📍 {{outputPath}}"
-      },
-      "read": {
-        "missing": "Context file not found: {{outputPath}}\nRun hev_context_generate level={{level}} first."
-      },
-      "handler": {
-        "statusTitle": "📊 Context Status",
-        "available": "Available: {{value}}",
-        "none": "none",
-        "repomix": "Repomix: {{value}}",
-        "lastGenerated": "Last generated: {{value}}",
-        "levelsTitle": "Levels:",
-        "levelLine": "- {{level}}: {{sizeKB}}KB • {{age}} • {{tokens}} tokens"
-      },
-      "definition": {
-        "generate": {
-          "description": "Generate project context (Repomix). L1=Quick(7K), L2=Standard(48K), L3=Deep(360K), L4=Full(518K tokens)",
-          "level": "Context level: L1(quick), L2(standard), L3(deep), L4(full)",
-          "force": "Ignore the cache and regenerate",
-          "includeContent": "Return the context content directly (may be large)",
-          "useCases": {
-            "projectContext": "Generate project context",
-            "codebaseSummary": "Summarize the codebase for AI sharing",
-            "codeAnalysis": "Code analysis"
-          },
-          "agentGuidance": "Generate project context. L2 is the standard choice; L3/L4 are for larger analyses. Uses cache."
-        },
-        "status": {
-          "description": "Show the status of existing context files (size, age, token count)",
-          "useCases": {
-            "checkFiles": "Check context files",
-            "cacheState": "Inspect cache state",
-            "tokenCount": "Review token count"
-          },
-          "agentGuidance": "Use this to see which context files exist and how fresh they are."
-        },
-        "module": {
-          "description": "Generate a focused context for a specific module (for example: webview, traffic, slot)",
-          "module": "Module name or path pattern (for example: webview, traffic, slot-controller)",
-          "includeTests": "Include test files",
-          "useCases": {
-            "moduleSpecific": "Module-specific context",
-            "focusedAnalysis": "Focused analysis",
-            "smallScope": "Small scope"
-          },
-          "agentGuidance": "Use this to generate context for a specific module when full-project context would be too broad."
-        },
-        "read": {
-          "description": "Read a generated context file. Run hev_context_generate first if needed.",
-          "level": "Context level to read",
-          "useCases": {
-            "readGenerated": "Read generated context",
-            "loadFromCache": "Load context from cache"
-          },
-          "agentGuidance": "Use this to read a generated context file. Generate it first when necessary."
-        }
-      }
-    },
-    "uiTools": {
-      "messageBox": {
-        "runtime": {
-          "selectedMarker": "← SELECTED",
-          "detailsTitle": "Details:"
-        },
-        "definition": {
-          "description": "Display a formatted message box with support for status, progress, table, menu, and tree layouts.",
-          "type": "Message box type (controls icon and visual style)",
-          "title": "Message box title",
-          "message": "Main message body",
-          "icon": "Custom icon that overrides the default type icon",
-          "details": "Additional detail lines rendered as bullets",
-          "actions": "Action labels rendered in the footer",
-          "width": "Box width in characters (auto-detected up to 80 by default)",
-          "boxStyle": "Border drawing style",
-          "timestamp": "Show the current time in the title row",
-          "progress": {
-            "description": "Progress bar configuration for `type=progress`",
-            "current": "Current progress value",
-            "total": "Total progress value",
-            "percentage": "Optional manual percentage override",
-            "style": "Progress bar style"
-          },
-          "table": {
-            "description": "Table data for `type=table`",
-            "columns": "Column headers",
-            "rows": "Table rows"
-          },
-          "menu": {
-            "description": "Interactive menu configuration for `type=menu`",
-            "options": "Menu options",
-            "optionKey": "Option key or shortcut",
-            "optionLabel": "Option label",
-            "optionIcon": "Optional option icon",
-            "defaultSelected": "Default selected option index"
-          },
-          "tree": "Nested object tree for `type=tree`. Example: {\"src/\": {\"file.ts\": \"✏️ modified\"}}"
-        }
       }
     },
     "logIntegration": {
@@ -3296,20 +3100,6 @@
       }
     },
     "fsCodeTools": {
-      "common": {
-        "unknownError": "Unknown error",
-        "unknownSyntaxError": "Unknown syntax error"
-      },
-      "errors": {
-        "syntaxValidationFailed": "Syntax validation failed after replacement:\n{{details}}"
-      },
-      "progress": {
-        "operation": "Find and replace",
-        "processing": "Processing {{filePath}}",
-        "syntaxDetected": "Syntax issue detected",
-        "preview": "Preview ready: {{count}} replacement(s)",
-        "applied": "Applied: {{count}} replacement(s)"
-      },
       "definition": {
         "common": {
           "filePath": "File path"
@@ -3324,20 +3114,6 @@
             "expandSymbols": "Expand matching symbols before editing"
           },
           "agentGuidance": "Use this before editing when you need a larger, line-numbered code window around ranges or symbols."
-        },
-        "replace": {
-          "description": "Perform code-aware find and replace with optional whitespace tolerance and syntax validation.",
-          "find": "Text to find",
-          "replace": "Replacement text",
-          "ignoreWhitespace": "Treat whitespace differences as equivalent",
-          "dryRun": "Preview replacements without writing the file",
-          "validateSyntax": "Validate the resulting code syntax before applying changes",
-          "useCases": {
-            "simpleReplacement": "Apply simple string replacements",
-            "multilineReplacement": "Replace multiline code blocks",
-            "safePreview": "Preview risky replacements before writing"
-          },
-          "agentGuidance": "Use this for targeted replacements. Keep dry_run enabled first for risky edits and leave syntax validation on for code files."
         }
       }
     },
@@ -3676,37 +3452,16 @@
           "referencesTitle": "References ({{count}})",
           "referencesSummary": "Definitions: {{definitions}} | Usages: {{usages}} | Writes: {{writes}}",
           "filesCount": "Files: {{count}}",
-          "noCompletions": "No completions available.",
-          "completionsTitle": "Completions ({{count}})",
           "diagnosticsTitle": "Diagnostics: {{filePath}}",
           "diagnosticsSummary": "Errors: {{errors}} | Warnings: {{warnings}} | Suggestions: {{suggestions}}",
           "noIssues": "No diagnostics found.",
-          "cannotRename": "Rename is not allowed here: {{reason}}",
-          "unknownReason": "unknown reason",
-          "renameNoEdits": "Rename preview produced no edits.",
-          "renamePreviewTitle": "Rename Preview",
-          "renameSummary": "Changes: {{changes}} across {{files}} file(s)",
-          "noSymbols": "No symbols found in {{filePath}}.",
-          "documentSymbolsTitle": "Document Symbols: {{filePath}}",
-          "topLevelSymbols": "Top-level symbols: {{count}}",
-          "noSignatureHelp": "No signature help available.",
-          "signatureHelpTitle": "Signature Help",
-          "documentationInline": "Docs: {{text}}",
-          "parametersTitle": "Parameters:",
-          "noTypeInfo": "No type information available at this location.",
-          "statsTitle": "TypeScript Service Stats",
-          "availableConfigs": "Available configs: {{configs}}",
-          "loadedProjects": "Loaded projects: {{count}}",
-          "projectLine": "{{name}} - {{fileCount}} files, last used {{lastUsedAgo}}ms ago",
-          "totalFiles": "Total files: {{count}}"
+          "noTypeInfo": "No type information available at this location."
         },
         "definition": {
           "common": {
             "filePath": "File path",
             "line": "Line number (1-based)",
-            "column": "Column number (1-based)",
-            "newName": "New symbol name",
-            "maxItems": "Maximum item count to return"
+            "column": "Column number (1-based)"
           },
           "typeInfo": {
             "description": "Return hover-style type information at a file position.",
@@ -3735,15 +3490,6 @@
             },
             "agentGuidance": "Use this before renames or behavioral changes so you understand the symbol's full usage surface."
           },
-          "safeRename": {
-            "description": "Preview a safe cross-file rename without applying edits.",
-            "useCases": {
-              "safeRename": "Preview a safe rename",
-              "previewImpact": "Inspect rename impact before applying",
-              "crossFile": "Prepare cross-file refactors"
-            },
-            "agentGuidance": "Use this before manual renames. It gives you the edit set without changing files."
-          },
           "diagnostics": {
             "description": "Return TypeScript diagnostics for a single file using the in-process language service.",
             "useCases": {
@@ -3752,43 +3498,6 @@
               "validateChanges": "Validate a file after edits"
             },
             "agentGuidance": "Use this when you need faster file-scoped diagnostics than a full `tsc` run."
-          },
-          "documentSymbols": {
-            "description": "Return the document symbol tree for a file.",
-            "useCases": {
-              "outline": "Get a file outline",
-              "listSymbols": "List top-level declarations",
-              "navigateLargeFiles": "Navigate large files faster"
-            },
-            "agentGuidance": "Use this to map a file before editing, especially when the file is large or unfamiliar."
-          },
-          "completions": {
-            "description": "Return completion suggestions at a file position.",
-            "useCases": {
-              "codeCompletion": "Explore possible completions",
-              "exploreApis": "Inspect nearby APIs",
-              "objectProperties": "List available object properties"
-            },
-            "agentGuidance": "Use this when you need completion candidates or want to inspect what the language service sees at a location."
-          },
-          "signatureHelp": {
-            "description": "Return function signature help at a file position.",
-            "column": "Column number inside the call expression (1-based)",
-            "useCases": {
-              "parameterHints": "Check active parameter hints",
-              "argumentTypes": "Understand expected argument types",
-              "understandSignatures": "Inspect overloads and signatures"
-            },
-            "agentGuidance": "Use this inside function calls when you need parameter order, overloads, or inline documentation."
-          },
-          "serviceStats": {
-            "description": "Show TypeScript language service cache and project statistics.",
-            "useCases": {
-              "checkStatus": "Check service status",
-              "monitorMemory": "Monitor loaded project state",
-              "debugIssues": "Debug language service behavior"
-            },
-            "agentGuidance": "Use this when you need to understand which projects are loaded and how much work the language service is holding."
           }
         }
       },
@@ -3797,25 +3506,6 @@
         "cacheUpdated": "✅ Cache updated",
         "scopeWarningsTitle": "Scope Warnings:",
         "bracketIssuesTitle": "Bracket Issues:"
-      },
-      "projectAnalyzer": {
-        "progress": {
-          "operation": "Project analysis",
-          "scanningDir": "Scanning {{srcDir}}...",
-          "analyzingModules": "Analyzing modules...",
-          "completed": "{{totalFiles}} files analyzed"
-        },
-        "definition": {
-          "description": "Project analysis: file counts, line counts, dependencies, and git state. `mode` only accepts `summary | deps | modules | full`.",
-          "mode": "Analysis mode: `summary` (files/lines/git, fast 1-2s) | `deps` (dependencies) | `modules` (import/export map, first 50 files) | `full` (everything, slower 5-10s)",
-          "useCases": {
-            "summary": "Understand project state at session start (`summary`)",
-            "dependencies": "Build a dependency inventory (`deps`)",
-            "modules": "Analyze module architecture (`modules`)",
-            "full": "Generate a full project report (`full`)"
-          },
-          "agentGuidance": "Use `mode=\"summary\"` for a quick overview and `mode=\"full\"` for a full report. The mode parameter only accepts `summary`, `deps`, `modules`, or `full`."
-        }
       },
       "linter": {
         "progress": {
@@ -4167,90 +3857,6 @@
           "agentGuidance": "Use this when the insertion point is easier to describe in natural language than by exact text or AST structure."
         }
       },
-      "structureVisualizer": {
-        "runtime": {
-          "fileNotFound": "File not found: {{filePath}}",
-          "fileNotFoundShort": "File not found",
-          "title": "Structure visualization: {{filePath}}",
-          "scopeHierarchyTitle": "Scope hierarchy",
-          "scopeStatus": {
-            "closed": "✅",
-            "unclosed": "❌ UNCLOSED"
-          },
-          "astParseSuccess": "AST parse succeeded. Scopes found: {{scopeCount}}",
-          "astParseError": "AST parse failed: {{message}}",
-          "astParseFallback": "Falling back to bracket-aware analysis.",
-          "bracketAnalysisTitle": "Bracket analysis",
-          "bracketsBalancedAst": "Brackets are balanced according to AST parsing.",
-          "bracketsBalanced": "Brackets are balanced.",
-          "unclosedBracketsTitle": "Unclosed brackets: {{count}}",
-          "unclosedBracketLine": "  Line {{line}}: expected closing `{{char}}`",
-          "extraBracketsTitle": "Extra closing brackets: {{count}}",
-          "extraBracketLine": "  Line {{line}}: unexpected `{{char}}`",
-          "moreBracketIssues": "  ... and {{count}} more issue(s)",
-          "commentBlocksTitle": "Comment blocks",
-          "unclosedCommentError": "Unclosed multiline comment starting at line {{startLine}}",
-          "noCommentBlocks": "No comment blocks found.",
-          "singleLineComments": "Single-line comments: {{count}}",
-          "multiLineComments": "Multiline comments: {{count}}",
-          "commentBlockClosed": "  Lines {{start}}-{{end}}: closed multiline comment",
-          "commentBlockUnclosed": "  Line {{start}}: unclosed multiline comment",
-          "totalLines": "Total lines: {{count}}",
-          "issuesDetected": "Issues detected:"
-        },
-        "definition": {
-          "description": "Visualize file structure with AST scope mapping, bracket analysis, and comment inspection.",
-          "filePath": "File path to analyze",
-          "showScopes": "Include scope hierarchy output",
-          "showBrackets": "Include bracket analysis output",
-          "showComments": "Include comment block analysis",
-          "showStrings": "Include string literal analysis when supported",
-          "maxDepth": "Maximum scope depth to render",
-          "useCases": {
-            "visualizeScopes": "Inspect nested scopes in a large file",
-            "detectUnclosed": "Find unclosed scopes, comments, or brackets",
-            "commentAst": "Review structural comment regions"
-          },
-          "agentGuidance": "Use this when a file is structurally confusing or you need a quick map of scopes and bracket health before editing."
-        }
-      },
-      "codemod": {
-        "common": {
-          "unknown": "unknown"
-        },
-        "runtime": {
-          "fileNotFound": "File not found: {{filePath}}",
-          "functionCallNamesRequired": "`old_name` and `new_name` are required for `function_call`.",
-          "variableNamesRequired": "`old_name` and `new_name` are required for `variable`.",
-          "importSourcesRequired": "`old_source` and `new_source` are required for `import`.",
-          "addImportFieldsRequired": "`imports` and `source` are required for `add_import`.",
-          "batchOperationsRequired": "`operations` is required for `batch`.",
-          "unknownTransformationType": "Unknown transformation type: {{type}}",
-          "syntaxValidationFailed": "Syntax validation failed: {{error}}"
-        },
-        "definition": {
-          "description": "Run AST-based safe code transformations using jscodeshift.",
-          "filePath": "Target file path",
-          "transformation": "Transformation object",
-          "transformationType": "Transformation type: `function_call`, `variable`, `import`, `add_import`, `remove_unused`, or `batch`",
-          "oldName": "Previous identifier name for `function_call` or `variable`",
-          "newName": "New identifier name for `function_call` or `variable`",
-          "oldSource": "Previous import source for `import`",
-          "newSource": "New import source for `import`",
-          "imports": "Imported names for `add_import`",
-          "source": "Import source for `add_import`",
-          "operations": "Batch operation list for `batch`",
-          "dryRun": "Preview only without writing file changes",
-          "validateSyntax": "Run Prettier-based syntax validation",
-          "useCases": {
-            "safeRename": "Safely rename functions or variables",
-            "importUpdates": "Update import paths or sources",
-            "importCleanup": "Add imports or remove unused imports",
-            "batchRefactor": "Run multiple AST refactors in one pass"
-          },
-          "agentGuidance": "Use this for AST-based refactoring when regex replacements would be risky. Start with `dry_run=true`, then apply after reviewing the result."
-        }
-      },
       "symbolSearcher": {
         "definition": {
           "description": "Search the project for symbol definitions and enrich matches with TS Language Service type data.",
@@ -4309,14 +3915,8 @@
         "command": "❌ Command error: {{message}}",
         "toggleMcpPanel": "❌ MCP panel toggle error: {{message}}",
         "screenshot": "❌ Screenshot error: {{message}}",
-        "windowInfo": "❌ Window info error: {{message}}",
-        "click": "❌ Click error: {{message}}",
-        "fillInput": "❌ Input error: {{message}}",
-        "pageDomStructure": "❌ Page structure error: {{message}}",
         "inspectElement": "❌ Inspect error: {{message}}",
         "queryElements": "❌ Query error: {{message}}",
-        "keyPress": "❌ Key error: {{message}}",
-        "scroll": "❌ Scroll error: {{message}}",
         "listTargets": "❌ CDP target listing error: {{message}}",
         "targetInfo": "❌ CDP target info error: {{message}}",
         "cdpCommand": "❌ CDP command error: {{message}}"
@@ -4364,27 +3964,6 @@
         "saved": "✅ Screenshot saved: {{savePath}}\n\nSize: {{sizeBytes}} bytes",
         "preview": "✅ Screenshot captured ({{format}})\n\n**Size:** ~{{sizeKB}} KB\n\n**Usage:** Add the `savePath` parameter to save it to a file."
       },
-      "windowInfo": {
-        "success": "🪟 **Electron Window Info:**\n\n- **Title:** {{title}}\n- **URL:** {{url}}\n- **Inner Size:** {{innerWidth}} x {{innerHeight}}\n- **Outer Size:** {{outerWidth}} x {{outerHeight}}\n- **Pixel Ratio:** {{devicePixelRatio}}\n- **Scroll Position:** ({{scrollX}}, {{scrollY}})"
-      },
-      "clickBySelector": {
-        "missingSelector": "❌ 'selector' is required",
-        "success": "✅ Click succeeded\n\n**Element:** {{element}}",
-        "notFound": "❌ Element not found: `{{selector}}`"
-      },
-      "clickByText": {
-        "missingText": "❌ 'text' is required",
-        "success": "✅ Click succeeded\n\n**Element:** <{{tagName}}>\n**Content:** \"{{textContent}}\"",
-        "notFound": "❌ No matching element found for text \"{{text}}\" (tag: {{tagName}})"
-      },
-      "fillInput": {
-        "missingSelectorValue": "❌ 'selector' and 'value' are required",
-        "success": "✅ Input filled\n\n**New value:** \"{{newValue}}\"",
-        "notFound": "❌ Input not found: `{{selector}}`"
-      },
-      "pageDomStructure": {
-        "success": "📄 **Page Structure:**\n\n**Title:** {{title}}\n**URL:** {{url}}\n\n**DOM Structure:**\n```json\n{{body}}\n```"
-      },
       "inspectElement": {
         "missingSelector": "❌ 'selector' is required",
         "success": "✅ Element found\n\n**Selector:** `{{selector}}`\n**Tag:** {{tagName}}\n**ID:** {{id}}\n**Class:** {{className}}\n**Visible:** {{visible}}\n**Disabled:** {{disabled}}\n**Size:** {{width}}x{{height}}\n**Position:** ({{x}}, {{y}})\n**Content:** \"{{textContent}}\"",
@@ -4394,13 +3973,6 @@
         "missingSelector": "❌ 'selector' is required",
         "noneFound": "❌ No elements found: `{{selector}}`",
         "success": "✅ {{count}} elements found\n\n**Selector:** `{{selector}}`\n\n{{list}}"
-      },
-      "sendKeyPress": {
-        "missingKey": "❌ 'key' is required",
-        "success": "✅ Key sent: {{keyCombo}}\n\n**Target element:** <{{target}}>"
-      },
-      "scrollPage": {
-        "success": "✅ Scroll completed\n\n**New position:** ({{scrollX}}, {{scrollY}})"
       }
     },
     "webTools": {
@@ -5202,25 +4774,6 @@
             },
             "agentGuidance": "Use this when you need a visual record or want to verify the current UI state."
           },
-          "getWindowInfo": {
-            "description": "Get the Electron window size, position, and URL.",
-            "useCases": {
-              "windowStateInspection": "Inspecting window state",
-              "layoutDebugging": "Debugging layout issues",
-              "urlVerification": "Verifying the current URL"
-            },
-            "agentGuidance": "Use this to confirm that the window is on the right page and has the expected dimensions."
-          },
-          "getPageDomStructure": {
-            "description": "Get the page DOM structure. Useful for debugging and discovering elements.",
-            "maxDepth": "Maximum DOM depth",
-            "useCases": {
-              "domExploration": "Exploring the DOM",
-              "elementDiscovery": "Discovering elements",
-              "structureDebugging": "Debugging page structure"
-            },
-            "agentGuidance": "Inspect the DOM structure to find selectors; use maxDepth to limit the scope."
-          },
           "getCdpTargetInfo": {
             "description": "Get details about a specific CDP target, including its type, URL, and common command domains.",
             "targetId": "CDP target id",
@@ -5251,65 +4804,6 @@
               "selectorValidation": "Validating selectors"
             },
             "agentGuidance": "Use this to see how many elements a selector matches and to choose the right target."
-          },
-          "clickBySelector": {
-            "description": "Click an element using a CSS selector.",
-            "selector": "CSS selector (for example: #myButton, .btn-primary, button[type='submit'])",
-            "useCases": {
-              "uiAutomation": "UI automation",
-              "buttonClicks": "Button clicks",
-              "elementInteraction": "Element interaction"
-            },
-            "agentGuidance": "Use this when you know the selector. If needed, validate the element first with hev_inspect_element."
-          },
-          "clickByText": {
-            "description": "Click an element by matching its visible text.",
-            "text": "Text content to search for",
-            "tagName": "Tag filter (button, a, div, etc.)",
-            "useCases": {
-              "textBasedInteraction": "Text-based interaction",
-              "buttonClicksByLabel": "Clicking buttons by label",
-              "linkClicks": "Clicking links"
-            },
-            "agentGuidance": "Use this when you do not know the selector but do know the visible label."
-          },
-          "fillInput": {
-            "description": "Fill an input field with a value.",
-            "selector": "CSS selector of the input element",
-            "value": "Value to enter",
-            "clear": "Clear the existing value before typing",
-            "useCases": {
-              "formFilling": "Form filling",
-              "inputAutomation": "Input automation",
-              "textEntry": "Entering text"
-            },
-            "agentGuidance": "Use this for form fields; it clears the existing value by default."
-          },
-          "sendKeyPress": {
-            "description": "Send a keyboard key press (Enter, Escape, Tab, etc.).",
-            "key": "Key name (Enter, Escape, Tab, ArrowDown, etc.)",
-            "ctrl": "Ctrl key held down",
-            "alt": "Alt key held down",
-            "shift": "Shift key held down",
-            "meta": "Meta/Cmd key held down",
-            "useCases": {
-              "keyboardAutomation": "Keyboard automation",
-              "formSubmission": "Submitting forms",
-              "navigationKeys": "Using navigation keys"
-            },
-            "agentGuidance": "Use this to automate steps driven by Enter, Escape, Tab, and other keyboard actions."
-          },
-          "scrollPage": {
-            "description": "Scroll the page to a specific position.",
-            "x": "Horizontal scroll position",
-            "y": "Vertical scroll position",
-            "behavior": "Scroll behavior",
-            "useCases": {
-              "pageScrolling": "Scrolling the page",
-              "elementVisibility": "Making an element visible",
-              "longPageNavigation": "Navigating long pages"
-            },
-            "agentGuidance": "Use this to bring elements into view or move to the right region on a long page."
           },
           "toggleMcpPanelServers": {
             "description": "Toggle the specified servers in the AI0 OpenCode MCP panel with an OFF→ON cycle.",

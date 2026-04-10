@@ -12,7 +12,6 @@ files:
   - config/backup-scopes.json
   - data/protocols.json
   - dist/**/*
-  - rooms/**/*
   - scripts/**/*
   - shared/**/*
   - src/assets/**/*

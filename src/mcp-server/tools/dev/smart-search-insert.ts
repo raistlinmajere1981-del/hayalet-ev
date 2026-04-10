@@ -216,7 +216,7 @@ export const SMART_SEARCH_INSERT_TOOL = {
       smartInsertDefT("useCases.anchorBased"),
       smartInsertDefT("useCases.humanReadable"),
     ],
-    relatedTools: ["hev_dev_ast_insert", "hev_fs_find_and_replace"],
+    relatedTools: ["hev_fs_edit", "hev_dev_edit_lines"],
     agentGuidance: smartInsertDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",

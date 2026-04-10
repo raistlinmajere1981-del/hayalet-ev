@@ -386,7 +386,7 @@ export const WEB_SEARCH_TOOL = {
       webSearchDefT("useCases.errorResearch"),
       webSearchDefT("useCases.packageInfo"),
     ],
-    relatedTools: ["hev_web_fetch_url", "hev_web_search_and_fetch"],
+    relatedTools: ["hev_web_fetch_url"],
     agentGuidance: webSearchDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",

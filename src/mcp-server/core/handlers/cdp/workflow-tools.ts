@@ -52,7 +52,7 @@ export function createCdpWorkflowTools(): ToolEntry[] {
           relatedTools: [
             "hev_send_command_to_electron",
             "hev_check_electron_connection",
-            "hev_get_electron_window_info",
+            "hev_take_cdp_screenshot",
           ],
           agentGuidance: cdpToolT("toggleMcpPanelServers.agentGuidance"),
           requiresConfirmation: false,

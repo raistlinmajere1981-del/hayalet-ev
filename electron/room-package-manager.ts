@@ -1,3 +1,4 @@
+import { existsSync } from "fs";
 import { rm } from "fs/promises";
 import { dirname, join } from "path";
 import { formatErrorWithDetail } from "../shared/i18n/error-detail.ts";
@@ -220,16 +221,45 @@ export class RoomPackageManager {
     };
   }
 
-  async listInstalledRooms(): Promise<InstalledRoomRecord[]> {
+  private shouldBootstrapPackagedInstalledRooms(): boolean {
+    return Paths.isPackaged() === true && existsSync(this.getRegistryPath()) === false;
+  }
+
+  private async bootstrapPackagedInstalledRoomsFromWorkspace(): Promise<void> {
+    const workspaceRooms = await this.listWorkspaceRooms();
+    for (const room of workspaceRooms) {
+      if (room.valid !== true || room.manifest === undefined || room.readOnly === true) {
+        continue;
+      }
+
+      await this.installFromWorkspace(room.manifest.id);
+    }
+  }
+
+  private async hydrateInstalledRoomsFromRegistry(): Promise<InstalledRoomRecord[]> {
     const registry = await this.readRegistry();
     const hydrated = await Promise.all(
       registry.rooms.map(async (record) => await this.hydrateInstalledRoomRecord(record))
     );
-    const installedRooms = hydrated
+
+    return hydrated
       .filter((record): record is InstalledRoomRecord => record !== null)
       .sort((left, right) => left.id.localeCompare(right.id));
+  }
 
-    if (installedRooms.length > 0 || this.shouldUseWorkspaceFallbackInstalledRooms() === false) {
+  async listInstalledRooms(): Promise<InstalledRoomRecord[]> {
+    const installedRooms = await this.hydrateInstalledRoomsFromRegistry();
+
+    if (installedRooms.length > 0) {
+      return installedRooms;
+    }
+
+    if (this.shouldBootstrapPackagedInstalledRooms()) {
+      await this.bootstrapPackagedInstalledRoomsFromWorkspace();
+      return await this.hydrateInstalledRoomsFromRegistry();
+    }
+
+    if (this.shouldUseWorkspaceFallbackInstalledRooms() === false) {
       return installedRooms;
     }
 

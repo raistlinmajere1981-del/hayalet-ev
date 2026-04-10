@@ -232,7 +232,7 @@ function generateAgentGuide(analysis) {
   content += `\`\`\`typescript\n`;
   content += `❌ WRONG: hev_dev_edit_lines({ ... })\n\n`;
   content += `✅ RIGHT:\n`;
-  content += `hev_fs_show({ file_path: 'file.ts', start_line: 100, end_line: 120 })\n`;
+  content += `hev_fs_read({ file_path: 'file.ts', start_line: 100, end_line: 120 })\n`;
   content += `// Then edit...\n`;
   content += `hev_dev_edit_lines({ ... })\n`;
   content += `\`\`\`\n\n`;
@@ -389,4 +389,3 @@ main().catch(err => {
   console.error('❌ Error:', err);
   process.exit(1);
 });
-

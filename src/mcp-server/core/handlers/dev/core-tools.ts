@@ -1,33 +1,21 @@
 import {
-  analyzeProject,
-  bootstrapContext,
-  generateDiagram,
-  updateCache,
   editLines,
-  gitDiff,
   lintFile,
   lintProject,
   generateEslintDashboard,
   searchSymbol,
   testRun,
   checkSyntax,
-  visualizeStructure,
   fixTypescriptErrors,
   generateTypescriptDashboard,
   analyzeTypeConflicts,
-  PROJECT_ANALYZER_TOOL,
-  CONTEXT_GENERATOR_TOOL,
-  DIAGRAM_GENERATOR_TOOL,
-  CACHE_MANAGER_TOOL,
   LINE_EDITOR_TOOL,
-  GIT_DIFF_TOOL,
   LINTER_TOOL,
   LINT_PROJECT_TOOL,
   ESLINT_DASHBOARD_TOOL,
   SYMBOL_SEARCHER_TOOL,
   TEST_RUNNER_TOOL,
   SYNTAX_CHECKER_TOOL,
-  STRUCTURE_VISUALIZER_TOOL,
   TYPESCRIPT_BATCH_FIXER_TOOL,
   TYPESCRIPT_DASHBOARD_TOOL,
   TYPESCRIPT_TYPE_HELPER_TOOL,
@@ -41,41 +29,6 @@ function coreDevT(key: string, params?: Record<string, string | number | boolean
 
 export function createCoreDevTools(projectRoot: string): ToolEntry[] {
   return [
-    {
-      definition: PROJECT_ANALYZER_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const result = await analyzeProject(projectRoot, args as Record<string, unknown>);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      },
-    },
-    {
-      definition: CONTEXT_GENERATOR_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const result = await bootstrapContext(projectRoot, args as Record<string, unknown>);
-        return {
-          content: [
-            {
-              type: "text",
-              text: coreDevT("bootstrapCompleted", { lines: result.stats.lines }),
-            },
-          ],
-        };
-      },
-    },
-    {
-      definition: DIAGRAM_GENERATOR_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const result = await generateDiagram(projectRoot, args as Record<string, unknown>);
-        return { content: [{ type: "text", text: result.diagram }] };
-      },
-    },
-    {
-      definition: CACHE_MANAGER_TOOL,
-      handler: async (args): Promise<unknown> => {
-        await updateCache(projectRoot, args as Record<string, unknown>);
-        return { content: [{ type: "text", text: coreDevT("cacheUpdated") }] };
-      },
-    },
     {
       definition: LINE_EDITOR_TOOL,
       handler: async (args): Promise<unknown> => {
@@ -126,13 +79,6 @@ export function createCoreDevTools(projectRoot: string): ToolEntry[] {
           output += "\n\n" + result.contextPreview;
         }
         return { content: [{ type: "text", text: output }] };
-      },
-    },
-    {
-      definition: GIT_DIFF_TOOL,
-      handler: (args): unknown => {
-        const result = gitDiff(projectRoot, args as Record<string, unknown>);
-        return { content: [{ type: "text", text: result.diff }] };
       },
     },
     {
@@ -256,32 +202,6 @@ export function createCoreDevTools(projectRoot: string): ToolEntry[] {
       },
     },
     {
-      definition: STRUCTURE_VISUALIZER_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const a = args as Record<string, unknown>;
-        const filePath = a["file_path"] as string;
-        const options = {
-          ...((a["show_scopes"] as boolean | undefined) !== undefined
-            ? { showScopes: a["show_scopes"] as boolean }
-            : {}),
-          ...((a["show_brackets"] as boolean | undefined) !== undefined
-            ? { showBrackets: a["show_brackets"] as boolean }
-            : {}),
-          ...((a["show_comments"] as boolean | undefined) !== undefined
-            ? { showComments: a["show_comments"] as boolean }
-            : {}),
-          ...((a["show_strings"] as boolean | undefined) !== undefined
-            ? { showStrings: a["show_strings"] as boolean }
-            : {}),
-          ...((a["max_depth"] as number | undefined) !== undefined
-            ? { maxDepth: a["max_depth"] as number }
-            : {}),
-        };
-        const result = await visualizeStructure(projectRoot, filePath, options);
-        return { content: [{ type: "text", text: result.output }] };
-      },
-    },
-    {
       definition: TYPESCRIPT_BATCH_FIXER_TOOL,
       handler: (args): unknown => {
         const a = args ?? {};
@@ -318,27 +238,18 @@ export function createCoreDevTools(projectRoot: string): ToolEntry[] {
     {
       definition: TYPESCRIPT_DASHBOARD_TOOL,
       handler: (args): unknown => {
-        const result = generateTypescriptDashboard(args ?? {}, projectRoot);
+        const result = generateTypescriptDashboard(
+          args as Parameters<typeof generateTypescriptDashboard>[0],
+          projectRoot
+        );
         return { content: [{ type: "text", text: result.output }] };
       },
     },
     {
       definition: TYPESCRIPT_TYPE_HELPER_TOOL,
       handler: (args): unknown => {
-        const a = args ?? {};
         const result = analyzeTypeConflicts(
-          {
-            file_path: a["file_path"] as string,
-            ...((a["show_interfaces"] as boolean | undefined) !== undefined
-              ? { show_interfaces: a["show_interfaces"] as boolean }
-              : {}),
-            ...((a["suggest_fixes"] as boolean | undefined) !== undefined
-              ? { suggest_fixes: a["suggest_fixes"] as boolean }
-              : {}),
-            ...((a["analyze_conflicts"] as boolean | undefined) !== undefined
-              ? { analyze_conflicts: a["analyze_conflicts"] as boolean }
-              : {}),
-          },
+          args as unknown as Parameters<typeof analyzeTypeConflicts>[0],
           projectRoot
         );
         return { content: [{ type: "text", text: result.output }] };

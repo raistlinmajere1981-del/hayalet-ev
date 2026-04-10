@@ -10,6 +10,7 @@ import {
   shouldLaunchVisibleTerminal,
   WRAPPER_TERMINAL_ENV_KEY,
 } from "./packaged-wrapper-launcher.ts";
+import { seedPackagedProjectRoot } from "./packaged-workspace-seed.ts";
 import { parseStartupFlagsFromArgv, type StartupUiMode } from "./startup-flags.ts";
 
 type RuntimeControl = {
@@ -721,6 +722,7 @@ async function spawnSurface(label: "main" | "ghost", args: string[]): Promise<nu
 }
 
 async function runPackagedSurface(surface: "main" | "ghost"): Promise<void> {
+  await seedPackagedProjectRoot(resolvePackagedRoot());
   if (surface === "main") {
     await import("./main.js");
     return;
@@ -752,10 +754,17 @@ async function announceWrapperEvent(
 }
 
 async function runPackagedWrapper(): Promise<void> {
+  const seedResult = await seedPackagedProjectRoot(resolvePackagedRoot());
   await ensureControlFile();
   dashboard.attach();
+  if (seedResult.copiedEntries > 0) {
+    dashboard.developer(
+      `workspace seed copied ${String(seedResult.copiedEntries)} packaged entries into ${resolvePackagedRoot()}`
+    );
+  }
   await announceWrapperEvent("wrapper.start", {
     root: resolvePackagedRoot(),
+    workspaceSeedCopiedEntries: seedResult.copiedEntries,
   });
 
   let nextTarget: "main" | "ghost" = "main";

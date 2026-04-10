@@ -43,7 +43,10 @@ const workspaceRoomBuildSupportPath = join(
   "rooms",
   "workspace-room-build-support.ts"
 );
+const packagedWorkspaceSeedPath = join(projectRoot, "electron", "packaged-workspace-seed.ts");
 const ipcRoomsPath = join(projectRoot, "electron", "handlers", "ipc-rooms.ts");
+const afterPackScriptPath = join(projectRoot, "scripts", "electron-builder-after-pack.mjs");
+const pathsPath = join(projectRoot, "electron", "paths.ts");
 const eslintConfigPath = join(projectRoot, "eslint.config.cjs");
 
 test("room package manager resolves Paths lazily instead of constructor time", async () => {
@@ -196,9 +199,40 @@ test("dev startup falls back to workspace rooms when installed registry is empty
   );
   assert.match(managerSource, /installedDir: buildResult\.artifact\.buildDir/);
   assert.match(managerSource, /sourceDir: room\.dirPath/);
+  assert.match(managerSource, /if \(installedRooms\.length > 0\) \{/);
   assert.match(
     managerSource,
-    /if \(installedRooms\.length > 0 \|\| this\.shouldUseWorkspaceFallbackInstalledRooms\(\) === false\)/
+    /if \(this\.shouldUseWorkspaceFallbackInstalledRooms\(\) === false\) \{\s*return installedRooms;\s*\}/
   );
   assert.match(mainSource, /if \(rooms\.length === 0\) \{\s*return null;\s*\}/);
+});
+
+test("packaged startup seeds the external workspace root and bootstraps installed rooms from rooms/", async () => {
+  const managerSource = await readFile(roomPackageManagerPath, "utf8");
+  const mainWrapperSource = await readFile(join(projectRoot, "electron", "packaged-wrapper-main.ts"), "utf8");
+  const cliWrapperSource = await readFile(join(projectRoot, "electron", "packaged-wrapper-cli.ts"), "utf8");
+  const seedSource = await readFile(packagedWorkspaceSeedPath, "utf8");
+  const afterPackSource = await readFile(afterPackScriptPath, "utf8");
+  const pathsSource = await readFile(pathsPath, "utf8");
+
+  assert.match(pathsSource, /return join\(getConfig\(\)\.projectRoot, "rooms"\);/);
+  assert.match(managerSource, /private shouldBootstrapPackagedInstalledRooms\(\): boolean/);
+  assert.match(
+    managerSource,
+    /return Paths\.isPackaged\(\) === true && existsSync\(this\.getRegistryPath\(\)\) === false;/
+  );
+  assert.match(
+    managerSource,
+    /private async bootstrapPackagedInstalledRoomsFromWorkspace\(\): Promise<void>/
+  );
+  assert.match(managerSource, /await this\.installFromWorkspace\(room\.manifest\.id\);/);
+  assert.match(mainWrapperSource, /import \{ seedPackagedProjectRoot \} from "\.\/packaged-workspace-seed\.ts";/);
+  assert.match(cliWrapperSource, /import \{ seedPackagedProjectRoot \} from "\.\/packaged-workspace-seed\.ts";/);
+  assert.match(seedSource, /return dirname\(resourcesPath\);/);
+  assert.match(seedSource, /"AGENTS\.md"/);
+  assert.match(seedSource, /"rooms"/);
+  assert.match(seedSource, /"scripts"/);
+  assert.match(seedSource, /"tsconfig\.rooms\.json"/);
+  assert.doesNotMatch(seedSource, /"config\/rooms\.json"/);
+  assert.doesNotMatch(afterPackSource, /"config\/rooms\.json"/);
 });

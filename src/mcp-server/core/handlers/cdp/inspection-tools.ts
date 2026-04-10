@@ -1,6 +1,5 @@
 import {
   getCdpTargetInfo,
-  getPageDomStructure,
   inspectElement,
   queryElements,
 } from "../../../tools/cdp-tools.js";
@@ -47,39 +46,6 @@ export function createCdpInspectionTools(): ToolEntry[] {
     },
     {
       definition: {
-        name: "hev_get_page_dom_structure",
-        description: cdpToolT("getPageDomStructure.description"),
-        inputSchema: {
-          type: "object",
-          properties: {
-            maxDepth: {
-              type: "number",
-              description: cdpToolT("getPageDomStructure.maxDepth"),
-              default: 3,
-            },
-          },
-        },
-        metadata: {
-          category: "electron",
-          subcategory: "cdp-inspection",
-          priority: "high",
-          complexity: "medium",
-          useCases: [
-            cdpToolT("getPageDomStructure.useCases.domExploration"),
-            cdpToolT("getPageDomStructure.useCases.elementDiscovery"),
-            cdpToolT("getPageDomStructure.useCases.structureDebugging"),
-          ],
-          relatedTools: ["hev_inspect_element", "hev_query_elements"],
-          agentGuidance: cdpToolT("getPageDomStructure.agentGuidance"),
-          requiresConfirmation: false,
-          riskLevel: "low",
-          tags: ["cdp", "dom", "inspection", "debugging"],
-        },
-      },
-      handler: async (args) => await getPageDomStructure(args ?? {}),
-    },
-    {
-      definition: {
         name: "hev_inspect_element",
         description: cdpToolT("inspectElement.description"),
         inputSchema: {
@@ -99,11 +65,7 @@ export function createCdpInspectionTools(): ToolEntry[] {
             cdpToolT("inspectElement.useCases.layoutInspection"),
             cdpToolT("inspectElement.useCases.visibilityCheck"),
           ],
-          relatedTools: [
-            "hev_query_elements",
-            "hev_get_page_dom_structure",
-            "hev_click_element_by_selector",
-          ],
+          relatedTools: ["hev_query_elements", "hev_send_command_to_electron"],
           agentGuidance: cdpToolT("inspectElement.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
@@ -138,7 +100,7 @@ export function createCdpInspectionTools(): ToolEntry[] {
             cdpToolT("queryElements.useCases.elementCounting"),
             cdpToolT("queryElements.useCases.selectorValidation"),
           ],
-          relatedTools: ["hev_inspect_element", "hev_get_page_dom_structure"],
+          relatedTools: ["hev_inspect_element", "hev_send_command_to_electron"],
           agentGuidance: cdpToolT("queryElements.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",

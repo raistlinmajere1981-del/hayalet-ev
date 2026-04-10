@@ -3,6 +3,7 @@ import { access, appendFile, mkdir, readFile, rm, writeFile } from "node:fs/prom
 import { dirname, join } from "node:path";
 import { clearScreenDown, cursorTo } from "node:readline";
 import { PACKAGED_SURFACE_FLAG } from "./packaged-wrapper-launcher.ts";
+import { seedPackagedProjectRoot } from "./packaged-workspace-seed.ts";
 import { parseStartupFlagsFromArgv, type StartupUiMode } from "./startup-flags.ts";
 
 type RuntimeControl = {
@@ -618,12 +619,19 @@ function createInitialMainLaunchOptions(): MainLaunchOptions {
 }
 
 async function runPackagedWrapper(): Promise<void> {
+  const seedResult = await seedPackagedProjectRoot(resolvePackagedRoot());
   await ensureControlFile();
   dashboard.attach();
+  if (seedResult.copiedEntries > 0) {
+    dashboard.developer(
+      `workspace seed copied ${String(seedResult.copiedEntries)} packaged entries into ${resolvePackagedRoot()}`
+    );
+  }
   dashboard.user(renderUserMessage("wrapper.start"));
   await appendRuntimeEvent("wrapper.start", {
     sessionId: wrapperSessionId,
     root: resolvePackagedRoot(),
+    workspaceSeedCopiedEntries: seedResult.copiedEntries,
   });
 
   let nextTarget: "main" | "ghost" = "main";

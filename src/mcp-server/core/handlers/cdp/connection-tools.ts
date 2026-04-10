@@ -4,7 +4,6 @@ import {
   sendCdpCommand,
   sendCommandToElectron,
   takeCdpScreenshot,
-  getElectronWindowInfo,
 } from "../../../tools/cdp-tools.js";
 import { createMcpTranslatorSync } from "../../../utils/i18n/index.js";
 import type { ToolEntry } from "../../registry.js";
@@ -90,7 +89,7 @@ export function createCdpConnectionTools(): ToolEntry[] {
             cdpToolT("sendCommandToElectron.useCases.stateInspection"),
             cdpToolT("sendCommandToElectron.useCases.customJsExecution"),
           ],
-          relatedTools: ["hev_inspect_element", "hev_get_page_dom_structure"],
+          relatedTools: ["hev_inspect_element", "hev_query_elements"],
           agentGuidance: cdpToolT("sendCommandToElectron.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "medium",
@@ -186,7 +185,7 @@ export function createCdpConnectionTools(): ToolEntry[] {
             cdpToolT("takeScreenshot.useCases.uiVerification"),
             cdpToolT("takeScreenshot.useCases.documentation"),
           ],
-          relatedTools: ["hev_get_electron_window_info", "hev_inspect_element"],
+          relatedTools: ["hev_inspect_element", "hev_query_elements"],
           agentGuidance: cdpToolT("takeScreenshot.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
@@ -194,30 +193,6 @@ export function createCdpConnectionTools(): ToolEntry[] {
         },
       },
       handler: async (args) => await takeCdpScreenshot(args ?? {}),
-    },
-    {
-      definition: {
-        name: "hev_get_electron_window_info",
-        description: cdpToolT("getWindowInfo.description"),
-        inputSchema: { type: "object", properties: {} },
-        metadata: {
-          category: "electron",
-          subcategory: "cdp",
-          priority: "medium",
-          complexity: "simple",
-          useCases: [
-            cdpToolT("getWindowInfo.useCases.windowStateInspection"),
-            cdpToolT("getWindowInfo.useCases.layoutDebugging"),
-            cdpToolT("getWindowInfo.useCases.urlVerification"),
-          ],
-          relatedTools: ["hev_take_cdp_screenshot", "hev_check_electron_connection"],
-          agentGuidance: cdpToolT("getWindowInfo.agentGuidance"),
-          requiresConfirmation: false,
-          riskLevel: "low",
-          tags: ["cdp", "window", "info", "layout"],
-        },
-      },
-      handler: async () => await getElectronWindowInfo(),
     },
   ];
 }

@@ -109,11 +109,8 @@ const paths: PathResolver = {
   },
 
   getBundledRoomsDir(): string {
-    const cfg = getConfig();
-    // NOTE: Bundled rooms are read-only package inputs, never a second authoring root.
-    return cfg.isPackaged
-      ? join(process.resourcesPath, "app.asar", "rooms")
-      : join(cfg.projectRoot, "rooms");
+    // NOTE: Packaged room workflows resolve against the projected external workspace root.
+    return join(getConfig().projectRoot, "rooms");
   },
 
   getInstalledRoomsDir(): string {

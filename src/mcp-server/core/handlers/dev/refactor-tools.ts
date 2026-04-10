@@ -1,37 +1,13 @@
 import {
-  insertCodeWithAST,
   safelyRefactorCode,
   smartInsertCode,
-  registerNewTool,
-  runCodemod,
-  AST_CODE_INSERTER_TOOL,
   SAFE_BATCH_REFACTOR_TOOL,
   SMART_SEARCH_INSERT_TOOL,
-  TOOL_REGISTRATION_HELPER_TOOL,
-  CODEMOD_TOOL,
 } from "../../../tools/dev/index.js";
 import type { ToolEntry } from "../../registry.js";
 
 export function createRefactorDevTools(projectRoot: string): ToolEntry[] {
   return [
-    {
-      definition: AST_CODE_INSERTER_TOOL,
-      handler: (args): unknown => {
-        const a = args as Record<string, unknown>;
-        const result = insertCodeWithAST({
-          file_path: a["file_path"] as string,
-          after_pattern: a["after_pattern"] as string,
-          insert_type: a["insert_type"] as "function" | "method" | "import" | "export" | "if_block",
-          code: a["code"] as string,
-          ...((a["dry_run"] as boolean | undefined) !== undefined
-            ? { dry_run: a["dry_run"] as boolean }
-            : {}),
-        });
-        return {
-          content: [{ type: "text", text: result.success ? "✅ Inserted" : "❌ Failed" }],
-        };
-      },
-    },
     {
       definition: SAFE_BATCH_REFACTOR_TOOL,
       handler: async (args): Promise<unknown> => {
@@ -85,100 +61,6 @@ export function createRefactorDevTools(projectRoot: string): ToolEntry[] {
         });
         return {
           content: [{ type: "text", text: result.success ? "✅ Inserted" : "❌ Failed" }],
-        };
-      },
-    },
-    {
-      definition: TOOL_REGISTRATION_HELPER_TOOL,
-      handler: (args): unknown => {
-        const a = args ?? {};
-        const result = registerNewTool(
-          {
-            tool_name: a["tool_name"] as string,
-            description: a["description"] as string,
-            function_name: a["function_name"] as string,
-            tool_constant: a["tool_constant"] as string,
-            ...((a["auto_add_to"] as string | undefined) !== undefined
-              ? { auto_add_to: (a["auto_add_to"] as string).split(",") }
-              : {}),
-            ...((a["test_immediately"] as boolean | undefined) !== undefined
-              ? { test_immediately: a["test_immediately"] as boolean }
-              : {}),
-            ...((a["dry_run"] as boolean | undefined) !== undefined
-              ? { dry_run: a["dry_run"] as boolean }
-              : {}),
-          },
-          projectRoot
-        );
-        return {
-          content: [{ type: "text", text: result.success ? "✅ Registered" : "❌ Failed" }],
-        };
-      },
-    },
-    {
-      definition: CODEMOD_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const a = args as Record<string, unknown>;
-        const transformation = a["transformation"] as Record<string, unknown>;
-        const result = await runCodemod({
-          file_path: a["file_path"] as string,
-          transformation: {
-            type: transformation["type"] as
-              | "variable"
-              | "import"
-              | "batch"
-              | "function_call"
-              | "add_import"
-              | "remove_unused",
-            ...((transformation["old_name"] as string | undefined) !== undefined
-              ? { old_name: transformation["old_name"] as string }
-              : {}),
-            ...((transformation["new_name"] as string | undefined) !== undefined
-              ? { new_name: transformation["new_name"] as string }
-              : {}),
-            ...((transformation["old_source"] as string | undefined) !== undefined
-              ? { old_source: transformation["old_source"] as string }
-              : {}),
-            ...((transformation["new_source"] as string | undefined) !== undefined
-              ? { new_source: transformation["new_source"] as string }
-              : {}),
-            ...((transformation["imports"] as string[] | undefined) !== undefined
-              ? { imports: transformation["imports"] as string[] }
-              : {}),
-            ...((transformation["source"] as string | undefined) !== undefined
-              ? { source: transformation["source"] as string }
-              : {}),
-            ...(Array.isArray(transformation["operations"])
-              ? {
-                  operations: (transformation["operations"] as Array<Record<string, unknown>>).map(
-                    (op) => ({
-                      type: op["type"] as "variable" | "import" | "function_call",
-                      ...((op["old_name"] as string | undefined) !== undefined
-                        ? { old_name: op["old_name"] as string }
-                        : {}),
-                      ...((op["new_name"] as string | undefined) !== undefined
-                        ? { new_name: op["new_name"] as string }
-                        : {}),
-                      ...((op["old_source"] as string | undefined) !== undefined
-                        ? { old_source: op["old_source"] as string }
-                        : {}),
-                      ...((op["new_source"] as string | undefined) !== undefined
-                        ? { new_source: op["new_source"] as string }
-                        : {}),
-                    })
-                  ),
-                }
-              : {}),
-          },
-          ...((a["dry_run"] as boolean | undefined) !== undefined
-            ? { dry_run: a["dry_run"] as boolean }
-            : {}),
-          ...((a["validate_syntax"] as boolean | undefined) !== undefined
-            ? { validate_syntax: a["validate_syntax"] as boolean }
-            : {}),
-        });
-        return {
-          content: [{ type: "text", text: result.success ? "✅ Codemod applied" : "❌ Failed" }],
         };
       },
     },

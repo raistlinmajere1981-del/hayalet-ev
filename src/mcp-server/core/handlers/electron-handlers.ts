@@ -277,7 +277,7 @@ export function createElectronTools(context: ToolContext): ToolEntry[] {
             electronToolT("getErrorHints.useCases.getSuggestions"),
             electronToolT("getErrorHints.useCases.providerTroubleshooting"),
           ],
-          relatedTools: ["hev_collect_error_context", "hev_read_electron_logs"],
+          relatedTools: ["hev_read_electron_logs", "hev_get_session_summary"],
           agentGuidance: electronToolT("getErrorHints.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",

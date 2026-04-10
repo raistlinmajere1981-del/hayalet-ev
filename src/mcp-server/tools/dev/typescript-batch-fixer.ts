@@ -356,7 +356,7 @@ export const TYPESCRIPT_BATCH_FIXER_TOOL = {
     relatedTools: [
       "hev_dev_typescript_dashboard",
       "hev_dev_typescript_type_helper",
-      "hev_fs_backup",
+      "hev_dev_check_syntax",
     ],
     agentGuidance: tsBatchFixerDefT("agentGuidance"),
     requiresConfirmation: false,

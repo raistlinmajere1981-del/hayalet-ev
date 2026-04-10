@@ -1,9 +1,4 @@
 import { expandCodeChunks } from "../../../tools/fs/code-operations.js";
-import { createChunkedFile, appendChunk } from "../../../tools/fs/chunked-writer.js";
-import { trashList, restoreFile, trashEmpty } from "../../../tools/fs/trash-manager.js";
-import { backupFile, undoOperation, operationHistory } from "../../../tools/fs/history-manager.js";
-import { fileDiff, contentDiff } from "../../../tools/fs/diff-tools.js";
-import { createTechnicalPlan } from "../../../tools/fs/plan-creator.js";
 import { executeBash } from "../../../tools/fs/bash-executor.js";
 import { createMcpTranslator } from "../../../utils/i18n/index.js";
 import {
@@ -15,22 +10,7 @@ import {
   SAFE_CHUNK_TOOL_DEFINITIONS,
 } from "../../../tools/safe-chunk-tools.js";
 import { sanitizeContent } from "../../../tools/fs/shared/helpers.js";
-import {
-  EXPAND_CODE_CHUNKS_TOOL,
-  CREATE_PLAN_TOOL,
-  TRASH_LIST_TOOL,
-  RESTORE_FILE_TOOL,
-  TRASH_EMPTY_TOOL,
-  BACKUP_FILE_TOOL,
-  UNDO_OPERATION_TOOL,
-  OPERATION_HISTORY_TOOL,
-  FILE_DIFF_TOOL,
-  CONTENT_DIFF_TOOL,
-  CREATE_CHUNKED_FILE_TOOL,
-  APPEND_CHUNK_TOOL,
-  BASH_EXECUTOR_TOOL,
-} from "../../../tools/fs/index.js";
-import type { TechnicalPlan } from "@shared/index-mcp.js";
+import { EXPAND_CODE_CHUNKS_TOOL, BASH_EXECUTOR_TOOL } from "../../../tools/fs/index.js";
 import type { ToolEntry } from "../../registry.js";
 import type { TranslationParams } from "../../../../types/i18n.js";
 
@@ -51,141 +31,6 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
           (args as { patterns?: string[] }).patterns ?? []
         );
         return { content: [{ type: "text", text: result.error ?? result.content }] };
-      },
-    },
-    {
-      definition: CREATE_PLAN_TOOL,
-      handler: (args): unknown => {
-        const rawPlan = (args as { plan: TechnicalPlan | string }).plan;
-        const technicalPlan =
-          typeof rawPlan === "string" ? (JSON.parse(rawPlan) as TechnicalPlan) : rawPlan;
-        const result = createTechnicalPlan(technicalPlan);
-        return { content: [{ type: "text", text: result.summary }] };
-      },
-    },
-    {
-      definition: TRASH_LIST_TOOL,
-      handler: async (): Promise<unknown> => {
-        const t = await createMcpTranslator();
-        const result = trashList(projectRoot);
-        if (result.total === 0) {
-          return { content: [{ type: "text", text: fsT(t, "trash.listEmpty") }] };
-        }
-        let output = `${fsT(t, "trash.listTitle", { total: result.total })}\n\n`;
-        result.items.forEach((item, i) => {
-          output += `${i}. ${item.path} (${item.size}) - ${item.deletedAt}\n`;
-        });
-        return { content: [{ type: "text", text: output }] };
-      },
-    },
-    {
-      definition: RESTORE_FILE_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const result = await restoreFile(projectRoot, (args as { index?: number }).index);
-        return { content: [{ type: "text", text: result.message }] };
-      },
-    },
-    {
-      definition: TRASH_EMPTY_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const result = await trashEmpty(
-          projectRoot,
-          (args as { older_than_days?: number }).older_than_days
-        );
-        return { content: [{ type: "text", text: result.message }] };
-      },
-    },
-    {
-      definition: BACKUP_FILE_TOOL,
-      handler: (args): unknown => {
-        const result = backupFile(projectRoot, (args as { file_path: string }).file_path);
-        return { content: [{ type: "text", text: result.message }] };
-      },
-    },
-    {
-      definition: UNDO_OPERATION_TOOL,
-      handler: (): unknown => {
-        const result = undoOperation(projectRoot);
-        return { content: [{ type: "text", text: result.message }] };
-      },
-    },
-    {
-      definition: OPERATION_HISTORY_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const t = await createMcpTranslator();
-        const result = operationHistory(projectRoot, (args as { limit?: number }).limit ?? 20);
-        if (result.operations.length === 0) {
-          return { content: [{ type: "text", text: fsT(t, "misc.operationHistoryEmpty") }] };
-        }
-        let output = `${fsT(t, "misc.operationHistoryTitle", {
-          count: result.operations.length,
-        })}\n\n`;
-        result.operations.forEach((op, i) => {
-          const undoIcon = op.canUndo ? "↩️" : "✓";
-          output += `${i + 1}. ${undoIcon} ${op.type} - ${op.timestamp}\n`;
-        });
-        return { content: [{ type: "text", text: output }] };
-      },
-    },
-    {
-      definition: FILE_DIFF_TOOL,
-      handler: (args): unknown => {
-        const result = fileDiff(
-          (args as { file1: string }).file1,
-          (args as { file2: string }).file2
-        );
-        return { content: [{ type: "text", text: result.summary }] };
-      },
-    },
-    {
-      definition: CONTENT_DIFF_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const t = await createMcpTranslator();
-        const result = contentDiff(
-          (args as { content1: string }).content1,
-          (args as { content2: string }).content2,
-          (args as { label1?: string }).label1,
-          (args as { label2?: string }).label2
-        );
-        if (result.identical) {
-          return { content: [{ type: "text", text: fsT(t, "misc.contentIdentical") }] };
-        }
-        return {
-          content: [
-            {
-              type: "text",
-              text: `${fsT(t, "misc.contentDiffSummary", {
-                additions: result.additions,
-                deletions: result.deletions,
-              })}\n\n${result.unified}`,
-            },
-          ],
-        };
-      },
-    },
-    {
-      definition: CREATE_CHUNKED_FILE_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const rawChunks = (args as { chunks: string[] }).chunks;
-        const sanitizedChunks = rawChunks.map((chunk) => sanitizeContent(chunk));
-        const result = await createChunkedFile(
-          (args as { file_path: string }).file_path,
-          sanitizedChunks,
-          projectRoot,
-          (args as { overwrite?: boolean }).overwrite
-        );
-        return { content: [{ type: "text", text: result.message }] };
-      },
-    },
-    {
-      definition: APPEND_CHUNK_TOOL,
-      handler: async (args): Promise<unknown> => {
-        const result = await appendChunk(
-          (args as { file_path: string }).file_path,
-          sanitizeContent((args as { content: string }).content),
-          (args as { create_if_missing?: boolean }).create_if_missing
-        );
-        return { content: [{ type: "text", text: result.message }] };
       },
     },
     {

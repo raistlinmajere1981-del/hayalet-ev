@@ -3,14 +3,10 @@ import type { ToolContext } from "../registry.js";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
 import { createElectronTools } from "./electron-handlers.js";
-import { createMcpAnalysisTools } from "./mcp-analysis-handlers.js";
 import { createCdpTools } from "./cdp-handlers.js";
 import { createFilesystemTools } from "./filesystem-handlers.js";
 import { createDevTools } from "./dev-handlers.js";
-import { createGitTools } from "./git-handlers.js";
-import { createContextTools } from "./context-handlers.js";
 import { createMemoryTools } from "./memory-handlers.js";
-import { createUiTools } from "./ui-handlers.js";
 import { createWebTools } from "./web-handlers.js";
 
 const startupTranslator = createMcpTranslatorSync();
@@ -21,14 +17,10 @@ function startupT(key: string, params?: Record<string, string | number | boolean
 
 export function registerAllTools(context: ToolContext): void {
   registerTools(createElectronTools(context), "electron");
-  registerTools(createMcpAnalysisTools(), "mcp-analysis");
   registerTools(createCdpTools(), "cdp");
   registerTools(createFilesystemTools(context), "filesystem");
   registerTools(createDevTools(context), "dev");
-  registerTools(createGitTools(), "git");
-  registerTools(createContextTools(context), "context");
   registerTools(createMemoryTools(context), "memory");
-  registerTools(createUiTools(), "ui");
   registerTools(createWebTools(), "web");
 
   const stats = getRegistryStats();

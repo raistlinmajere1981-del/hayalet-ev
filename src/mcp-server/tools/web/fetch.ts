@@ -180,110 +180,6 @@ function formatFetchedContent(
   return lines.join("\n");
 }
 
-export async function webSearchAndFetch(args: {
-  query: string;
-  num_results?: number;
-  fetch_count?: number;
-  max_content_length?: number;
-}): Promise<ToolResult> {
-  const t = await createMcpTranslator();
-  const {
-    query,
-    num_results: numResults = 5,
-    fetch_count: fetchCount = 1,
-    max_content_length: maxContentLength = 10000,
-  } = args;
-
-  // NOTE: Lazy import avoids a fetch/search circular dependency during module initialization.
-  const { webSearch } = await import("./search.js");
-
-  const searchResult = await webSearch({
-    query,
-    numResults,
-  });
-
-  if (searchResult.isError === true) {
-    return searchResult;
-  }
-
-  const searchText = searchResult.content[0]?.text ?? "";
-  const urls = extractUrlsFromSearchResults(searchText).slice(0, fetchCount);
-
-  if (urls.length === 0) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `${searchText}\n\n${webFetchT(t, "combined.noUrlFound")}`,
-        },
-      ],
-    };
-  }
-
-  const fetchResults: string[] = [
-    searchText,
-    "",
-    webFetchT(t, "combined.title"),
-    "═".repeat(60),
-    "",
-  ];
-
-  for (let i = 0; i < urls.length; i++) {
-    const url = urls[i];
-    if (url == null || url === "") continue;
-
-    fetchResults.push("");
-    fetchResults.push(webFetchT(t, "combined.resultHeader", { index: i + 1, total: urls.length }));
-    fetchResults.push("─".repeat(60));
-
-    // eslint-disable-next-line no-await-in-loop
-    const fetchResult = await webFetchUrl({
-      url,
-      maxLength: maxContentLength,
-      includeLinks: false,
-    });
-
-    if (fetchResult.isError === true) {
-      fetchResults.push(
-        webFetchT(t, "combined.fetchFailed", {
-          message: fetchResult.content[0]?.text ?? webFetchT(t, "combined.unknownError"),
-        })
-      );
-    } else {
-      fetchResults.push(fetchResult.content[0]?.text ?? "");
-    }
-
-    if (i < urls.length - 1) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-
-  return {
-    content: [
-      {
-        type: "text",
-        text: fetchResults.join("\n"),
-      },
-    ],
-  };
-}
-
-function extractUrlsFromSearchResults(text: string): string[] {
-  const urls: string[] = [];
-  const lines = text.split("\n");
-
-  for (const line of lines) {
-    // NOTE: Search output prefixes URLs with the globe marker; keep this parser aligned with that formatter.
-    const match = line.match(/^\s+🌐\s+(https?:\/\/\S+)$/);
-    if (match?.[1] != null && match[1] !== "") {
-      urls.push(match[1]);
-    }
-  }
-
-  return urls;
-}
-
 export const WEB_FETCH_URL_TOOL = {
   name: "hev_web_fetch_url",
   description: webFetchDefT("fetchUrl.description"),
@@ -318,60 +214,10 @@ export const WEB_FETCH_URL_TOOL = {
       webFetchDefT("fetchUrl.useCases.errorResearch"),
       webFetchDefT("fetchUrl.useCases.blogSummary"),
     ],
-    relatedTools: ["hev_web_search", "hev_web_search_and_fetch"],
+    relatedTools: ["hev_web_search"],
     agentGuidance: webFetchDefT("fetchUrl.agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",
     tags: ["web", "fetch", "scrape", "content", "markdown"],
-  },
-};
-
-export const WEB_SEARCH_AND_FETCH_TOOL_DEFINITION = {
-  name: "hev_web_search_and_fetch",
-  description: webFetchDefT("searchAndFetch.description"),
-  inputSchema: {
-    type: "object" as const,
-    properties: {
-      query: {
-        type: "string",
-        description: webFetchDefT("searchAndFetch.query"),
-      },
-      num_results: {
-        type: "integer",
-        description: webFetchDefT("searchAndFetch.numResults"),
-        default: 5,
-        minimum: 1,
-        maximum: 10,
-      },
-      fetch_count: {
-        type: "integer",
-        description: webFetchDefT("searchAndFetch.fetchCount"),
-        default: 1,
-        minimum: 1,
-        maximum: 3,
-      },
-      max_content_length: {
-        type: "integer",
-        description: webFetchDefT("searchAndFetch.maxContentLength"),
-        default: 10000,
-      },
-    },
-    required: ["query"],
-  },
-  metadata: {
-    category: "web",
-    subcategory: "search",
-    priority: "high",
-    complexity: "complex",
-    useCases: [
-      webFetchDefT("searchAndFetch.useCases.deepResearch"),
-      webFetchDefT("searchAndFetch.useCases.documentationAnalysis"),
-      webFetchDefT("searchAndFetch.useCases.errorResolution"),
-    ],
-    relatedTools: ["hev_web_search", "hev_web_fetch_url"],
-    agentGuidance: webFetchDefT("searchAndFetch.agentGuidance"),
-    requiresConfirmation: false,
-    riskLevel: "low",
-    tags: ["web", "search", "fetch", "combined", "research"],
   },
 };

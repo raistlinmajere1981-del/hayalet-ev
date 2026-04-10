@@ -15,7 +15,7 @@
 | Base | `hev_memory_bootstrap_policy{ namespace: "policy" }` | Session başında 1 kez |
 | İhtiyaç | `hev_list_tools` | MCP tool kullanacaksan |
 | İhtiyaç | `hev_suggest_tool{ intent: "..." }` | Intent belirsizse |
-| İhtiyaç | `hev_dev_analyze_project{ mode: "summary" }` | Proje istatistikleri gerektiğinde |
+| İhtiyaç | `hev_fs_read{ file_path }` | Dosya/bağlam gerektiğinde |
 
 > **MCP çalışmazsa:** Built-in toollar aktif olur — RİSKLİ. Kullanıcıyı bilgilendir.
 
@@ -61,7 +61,7 @@
 |------|------|
 | `grep{ pattern }` | Projede regex arama - built-in OK |
 | `hev_dev_search_symbol{ symbol, type }` | Fonksiyon/class/interface ara |
-| `hev_dev_generate_diagram{ format }` | Bağımlılık diagramı - Mermaid/DOT |
+| `hev_dev_find_references{ ... }` | Cross-file kullanım etkisini gör |
 | `hev_dev_eslint_dashboard` | ESLint hata analizi + dashboard |
 
 ---
@@ -71,20 +71,19 @@
 | Tool | Amaç |
 |------|------|
 | `hev_dev_check_syntax{ file_path }` | Parantez + ESLint + TS kontrol |
-| `hev_dev_visualize_structure{ file_path }` | AST scope tree, bracket analizi |
-| `hev_fs_backup{ file_path }` | Değişiklik öncesi yedek al |
-| `hev_fs_undo` | Son MCP işlemini geri al |
+| `hev_dev_ts_diagnostics{ file_path }` | Tek dosya için derin TS tanısı |
+| `hev_take_cdp_screenshot` | UI debug için ekran görüntüsü al |
 
 ---
 
-## 💻 Shell ve Git
+## 💻 Shell ve Test
 
 ```
 bash{ command: "npm run check-types" }   → TypeScript kontrol
 bash{ command: "npm run lint" }          → ESLint
 bash{ command: "npm run ai:check" }      → Unified check
-hev_dev_git_diff                         → Değişiklikleri gör
-hev_git_create_pr{ title, body }         → PR oluştur
+git diff                                 → Değişiklikleri gör
+gh pr create                             → Gerekirse PR oluştur
 ```
 
 > ⚠️ Riskli komutlar — rm -rf, git push — için önce plan onayı al.

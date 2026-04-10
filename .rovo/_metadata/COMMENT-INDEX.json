@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-10T11:43:34.413Z",
+  "generatedAt": "2026-04-10T12:41:43.785Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 599,
-    "filesWithComments": 124,
-    "commentsIndexed": 313,
-    "fileLevelComments": 242,
-    "symbolLevelComments": 71,
+    "filesScanned": 575,
+    "filesWithComments": 114,
+    "commentsIndexed": 286,
+    "fileLevelComments": 216,
+    "symbolLevelComments": 70,
     "prefixCounts": {
       "none": 39,
       "AI": 1,
-      "NOTE": 269,
+      "NOTE": 242,
       "WARNING": 4,
       "TODO": 0
     }
@@ -745,8 +745,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 551,
-          "endLine": 551,
+          "startLine": 552,
+          "endLine": 552,
           "text": "NOTE: The console shim runs under ELECTRON_RUN_AS_NODE, but spawned surfaces must boot the GUI runtime.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -754,8 +754,8 @@
         },
         {
           "kind": "note",
-          "startLine": 633,
-          "endLine": 633,
+          "startLine": 641,
+          "endLine": 641,
           "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -780,8 +780,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 527,
-          "endLine": 527,
+          "startLine": 528,
+          "endLine": 528,
           "text": "NOTE: Launcher fallback order matters, so probes remain sequential.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -789,8 +789,8 @@
         },
         {
           "kind": "note",
-          "startLine": 765,
-          "endLine": 765,
+          "startLine": 774,
+          "endLine": 774,
           "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -853,17 +853,17 @@
         },
         {
           "kind": "note",
-          "startLine": 113,
-          "endLine": 113,
-          "text": "NOTE: Bundled rooms are read-only package inputs, never a second authoring root.",
+          "startLine": 112,
+          "endLine": 112,
+          "text": "NOTE: Packaged room workflows resolve against the projected external workspace root.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
         },
         {
           "kind": "note",
-          "startLine": 120,
-          "endLine": 120,
+          "startLine": 117,
+          "endLine": 117,
           "text": "NOTE: `data/rooms` contains generated install copies only.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -871,8 +871,8 @@
         },
         {
           "kind": "note",
-          "startLine": 129,
-          "endLine": 129,
+          "startLine": 126,
+          "endLine": 126,
           "text": "NOTE: Room runtime state and generated artifacts live outside the package tree.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -880,8 +880,8 @@
         },
         {
           "kind": "note",
-          "startLine": 138,
-          "endLine": 138,
+          "startLine": 135,
+          "endLine": 135,
           "text": "NOTE: Room webview/session partitions are runtime residue, not package content.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -889,8 +889,8 @@
         },
         {
           "kind": "note",
-          "startLine": 139,
-          "endLine": 139,
+          "startLine": 136,
+          "endLine": 136,
           "text": "NOTE: Retain them by default so reinstalls can reuse session state; only explicit deleteData cleanup removes them.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1030,8 +1030,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 133,
-          "endLine": 133,
+          "startLine": 134,
+          "endLine": 134,
           "text": "NOTE: This path only runs for explicit data deletion, so runtime residue is always removed here.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -3319,137 +3319,6 @@
       ]
     },
     {
-      "path": "src/mcp-server/tools/context-tools.ts",
-      "totalComments": 1,
-      "byKind": {
-        "note": 1
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 1,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 255,
-          "endLine": 255,
-          "text": "NOTE: Intentionally ignored.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "src/mcp-server/tools/dev/cache-manager.ts",
-      "totalComments": 2,
-      "byKind": {
-        "note": 2
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 2,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 64,
-          "endLine": 64,
-          "text": "NOTE: Intentionally ignored.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 112,
-          "endLine": 112,
-          "text": "NOTE: Intentionally ignored.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "src/mcp-server/tools/dev/context-generator.ts",
-      "totalComments": 3,
-      "byKind": {
-        "note": 3
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 3,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 71,
-          "endLine": 71,
-          "text": "NOTE: Intentionally ignored.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 75,
-          "endLine": 75,
-          "text": "NOTE: Intentionally ignored.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 123,
-          "endLine": 123,
-          "text": "NOTE: Intentionally ignored.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "src/mcp-server/tools/dev/diagram-generator.ts",
-      "totalComments": 1,
-      "byKind": {
-        "note": 1
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 1,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 43,
-          "endLine": 43,
-          "text": "NOTE: Intentionally ignored.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
       "path": "src/mcp-server/tools/dev/eslint-dashboard.ts",
       "totalComments": 3,
       "byKind": {
@@ -3549,50 +3418,6 @@
       ]
     },
     {
-      "path": "src/mcp-server/tools/dev/project-analyzer.ts",
-      "totalComments": 3,
-      "byKind": {
-        "note": 3
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 3,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 86,
-          "endLine": 86,
-          "text": "NOTE: Intentionally ignored.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 102,
-          "endLine": 102,
-          "text": "NOTE: Intentionally ignored.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 132,
-          "endLine": 132,
-          "text": "NOTE: Intentionally ignored.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
       "path": "src/mcp-server/tools/dev/scope-validator.ts",
       "totalComments": 1,
       "byKind": {
@@ -3612,43 +3437,6 @@
           "startLine": 80,
           "endLine": 80,
           "text": "NOTE: Debug logs are intentionally omitted. The MCP server should not write to stdout.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "src/mcp-server/tools/dev/structure-visualizer-core.ts",
-      "totalComments": 2,
-      "byKind": {
-        "note": 2
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 2,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [
-        "TraverseModule"
-      ],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 64,
-          "endLine": 64,
-          "text": "NOTE: Support both CommonJS and ESM Babel traverse exports.",
-          "prefix": "NOTE",
-          "scopeType": "interface",
-          "scopeName": "TraverseModule"
-        },
-        {
-          "kind": "note",
-          "startLine": 609,
-          "endLine": 609,
-          "text": "NOTE: Use prevTokenEnd (whitespace-skipped) instead of checkPos (backslash-skipped).",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -3807,14 +3595,14 @@
     },
     {
       "path": "src/mcp-server/tools/fs/code-operations.ts",
-      "totalComments": 6,
+      "totalComments": 3,
       "byKind": {
-        "note": 6
+        "note": 3
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 6,
+        "NOTE": 3,
         "WARNING": 0,
         "TODO": 0
       },
@@ -3824,15 +3612,15 @@
           "kind": "note",
           "startLine": 1,
           "endLine": 1,
-          "text": "NOTE: Code-specific helpers for expand and find/replace.",
+          "text": "NOTE: Code-specific helpers for targeted expansion.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
         },
         {
           "kind": "note",
-          "startLine": 34,
-          "endLine": 34,
+          "startLine": 18,
+          "endLine": 18,
           "text": "NOTE: Prefer symbol expansion when patterns are provided.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -3840,36 +3628,9 @@
         },
         {
           "kind": "note",
-          "startLine": 40,
-          "endLine": 40,
+          "startLine": 24,
+          "endLine": 24,
           "text": "NOTE: Fall back to explicit line ranges.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 65,
-          "endLine": 65,
-          "text": "NOTE: Run a dry-run first to validate before writing.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 107,
-          "endLine": 107,
-          "text": "NOTE: Validation failures should not block execution.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 143,
-          "endLine": 143,
-          "text": "NOTE: Continue silently if the context preview cannot be built.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -3901,59 +3662,6 @@
           "prefix": "NOTE",
           "scopeType": "function",
           "scopeName": "sanitizeContent"
-        }
-      ]
-    },
-    {
-      "path": "src/mcp-server/tools/git-tools.ts",
-      "totalComments": 4,
-      "byKind": {
-        "note": 4
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 4,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 343,
-          "endLine": 343,
-          "text": "NOTE: Continue scanning optional template locations.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 364,
-          "endLine": 364,
-          "text": "NOTE: Continue scanning optional files for DCO references.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 396,
-          "endLine": 396,
-          "text": "NOTE: Makefile support is optional.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 580,
-          "endLine": 580,
-          "text": "NOTE: Auto-generated metadata for listTools().",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
         }
       ]
     },
@@ -4003,85 +3711,6 @@
           "startLine": 1,
           "endLine": 1,
           "text": "NOTE: Integration layer for legacy log tooling.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "src/mcp-server/tools/log/mcp-analysis.ts",
-      "totalComments": 1,
-      "byKind": {
-        "note": 1
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 1,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 1,
-          "endLine": 1,
-          "text": "NOTE: Analyze MCP log streams for usage and performance stats.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "src/mcp-server/tools/log/streaming.ts",
-      "totalComments": 4,
-      "byKind": {
-        "note": 4
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 4,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 1,
-          "endLine": 1,
-          "text": "NOTE: Stream logs in real time using fs.watch.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 114,
-          "endLine": 114,
-          "text": "NOTE: Skip invalid lines.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 163,
-          "endLine": 163,
-          "text": "NOTE: Skip incomplete or invalid lines.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 218,
-          "endLine": 218,
-          "text": "NOTE: Ignore invalid regex values.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -4191,41 +3820,15 @@
       ]
     },
     {
-      "path": "src/mcp-server/tools/ui-tools.ts",
-      "totalComments": 1,
-      "byKind": {
-        "note": 1
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 1,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 1,
-          "endLine": 1,
-          "text": "NOTE: Render formatted message boxes for MCP responses.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
       "path": "src/mcp-server/tools/web/fetch.ts",
-      "totalComments": 4,
+      "totalComments": 2,
       "byKind": {
-        "note": 4
+        "note": 2
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 4,
+        "NOTE": 2,
         "WARNING": 0,
         "TODO": 0
       },
@@ -4250,24 +3853,6 @@
           "prefix": "NOTE",
           "scopeType": "function",
           "scopeName": "validateUrl"
-        },
-        {
-          "kind": "note",
-          "startLine": 197,
-          "endLine": 197,
-          "text": "NOTE: Lazy import avoids a fetch/search circular dependency during module initialization.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 277,
-          "endLine": 277,
-          "text": "NOTE: Search output prefixes URLs with the globe marker; keep this parser aligned with that formatter.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
         }
       ]
     },
@@ -4343,8 +3928,8 @@
         },
         {
           "kind": "note",
-          "startLine": 196,
-          "endLine": 196,
+          "startLine": 72,
+          "endLine": 72,
           "text": "NOTE: On multi-monitor setups, screenshots can fail while in background. Bring to front first.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -4352,8 +3937,8 @@
         },
         {
           "kind": "note",
-          "startLine": 209,
-          "endLine": 209,
+          "startLine": 84,
+          "endLine": 84,
           "text": "NOTE: Read from the compositor surface for better reliability.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -5389,7 +4974,7 @@
       "name": "attachPipe",
       "comments": [
         {
-          "startLine": 551,
+          "startLine": 552,
           "kind": "note",
           "text": "NOTE: The console shim runs under ELECTRON_RUN_AS_NODE, but spawned surfaces must boot the GUI runtime."
         }
@@ -5648,18 +5233,6 @@
       ]
     },
     {
-      "file": "src/mcp-server/tools/dev/structure-visualizer-core.ts",
-      "type": "interface",
-      "name": "TraverseModule",
-      "comments": [
-        {
-          "startLine": 64,
-          "kind": "note",
-          "text": "NOTE: Support both CommonJS and ESM Babel traverse exports."
-        }
-      ]
-    },
-    {
       "file": "src/mcp-server/tools/fs/basic/operations.ts",
       "type": "function",
       "name": "validatePath",
@@ -5737,7 +5310,7 @@
       "name": "takeScreenshot",
       "comments": [
         {
-          "startLine": 196,
+          "startLine": 72,
           "kind": "note",
           "text": "NOTE: On multi-monitor setups, screenshots can fail while in background. Bring to front first."
         }

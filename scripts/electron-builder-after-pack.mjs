@@ -22,7 +22,6 @@ const packagedWorkspaceMirrorPaths = [
   "PACKAGING.md",
   "README.md",
   "config/backup-scopes.json",
-  "config/rooms.json",
   "data/protocols.json",
   "dist",
   "electron",
@@ -39,6 +38,7 @@ const packagedWorkspaceMirrorPaths = [
   "tsconfig.electron.json",
   "tsconfig.json",
   "tsconfig.mcp.json",
+  "tsconfig.rooms.json",
   "vite.config.js",
 ];
 

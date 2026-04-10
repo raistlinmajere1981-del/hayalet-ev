@@ -488,7 +488,7 @@ export const SAFE_BATCH_REFACTOR_TOOL = {
       safeBatchRefactorDefT("useCases.rollback"),
       safeBatchRefactorDefT("useCases.verified"),
     ],
-    relatedTools: ["hev_fs_find_and_replace", "hev_fs_backup", "hev_dev_check_syntax"],
+    relatedTools: ["hev_fs_edit", "hev_dev_edit_lines", "hev_dev_check_syntax"],
     agentGuidance: safeBatchRefactorDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",

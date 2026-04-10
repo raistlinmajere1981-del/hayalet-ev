@@ -252,7 +252,7 @@ export const SYNTAX_CHECKER_TOOL = {
       syntaxCheckerDefT("useCases.bracketBalance"),
       syntaxCheckerDefT("useCases.combinedCheck"),
     ],
-    relatedTools: ["hev_dev_lint_file", "hev_dev_check_syntax", "hev_fs_show"],
+    relatedTools: ["hev_dev_lint_file", "hev_dev_check_syntax", "hev_fs_read"],
     agentGuidance: syntaxCheckerDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",

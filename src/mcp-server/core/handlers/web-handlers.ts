@@ -1,5 +1,5 @@
 import { webSearch } from "../../tools/web/search.js";
-import { webFetchUrl, webSearchAndFetch } from "../../tools/web/fetch.js";
+import { webFetchUrl } from "../../tools/web/fetch.js";
 import { WEB_TOOL_DEFINITIONS } from "../../tools/web/index.js";
 import type { ToolEntry } from "../registry.js";
 
@@ -29,17 +29,6 @@ export function createWebTools(): ToolEntry[] {
           url: (args as { url: string }).url,
           maxLength: (args as { max_length?: number }).max_length ?? 10000,
           includeLinks: (args as { include_links?: boolean }).include_links ?? true,
-        });
-      },
-    },
-    {
-      definition: WEB_TOOL_DEFINITIONS[2],
-      handler: async (args): Promise<unknown> => {
-        return await webSearchAndFetch({
-          query: (args as { query: string }).query,
-          num_results: (args as { num_results?: number }).num_results ?? 5,
-          fetch_count: (args as { fetch_count?: number }).fetch_count ?? 1,
-          max_content_length: (args as { max_content_length?: number }).max_content_length ?? 10000,
         });
       },
     },

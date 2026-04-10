@@ -151,7 +151,7 @@ export const SYMBOL_SEARCHER_TOOL = {
     relatedTools: [
       "hev_dev_find_references",
       "hev_dev_go_to_definition",
-      "hev_dev_document_symbols",
+      "hev_dev_type_info",
     ],
     agentGuidance: symbolSearchDefT("agentGuidance"),
     requiresConfirmation: false,

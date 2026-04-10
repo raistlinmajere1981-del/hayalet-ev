@@ -39,13 +39,12 @@
 | 3    | `hev_dev_smart_insert`        | Doğal dil ile pozisyon bulma — `"after function X"` |
 | 4    | `hev_dev_safe_batch_refactor` | Toplu refactor — auto-rollback destekli             |
 
-### MCP Tool Ekleme — Otomatik Build + Restart
+### MCP Metadata Yenileme
 
-Yeni MCP tool eklerken `hev_dev_register_tool` için varsayılan akış:
+MCP tool yüzeyi değiştiğinde varsayılan akış:
 
-- `auto_build_restart: true` — varsayılan → kayıt sonrası `npm run mcp:build` çalışır ve MCP restart tetiklenir.
-- `dry_run: true` ise sadece önizleme olur — build/restart çalışmaz.
-- MCP panel toggle otomasyonu için `hev_toggle_mcp_panel_servers` kullanılabilir — OpenCode.
+- `npm run mcp:build` → tool listesi ve metadata yeniden üretilir.
+- Gerekirse MCP panel toggle otomasyonu için `hev_toggle_mcp_panel_servers` kullanılabilir — OpenCode.
 
 
 ---
@@ -149,7 +148,7 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
   4. `hev_fs_read` ile son kontrol
 
 - `batch-refactor`:
-  1. `hev_dev_analyze_project`
+  1. `hev_fs_read`
   2. `hev_fs_bash` ile branch hazırlığı
   3. `hev_dev_safe_batch_refactor`
   4. `hev_dev_check_syntax`
@@ -160,13 +159,12 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
   2. `hev_read_electron_logs`
   3. `hev_get_error_hints` — hata mesajı varsa
   4. `hev_take_cdp_screenshot` — UI sorunu varsa
-  5. `hev_collect_error_context`
 
 - `create-pr`:
-  1. `hev_dev_git_diff`
+  1. `git diff`
   2. `hev_dev_check_syntax`
-  3. `hev_git_check_guidelines` — varsa
-  4. `hev_git_create_pr`
+  3. `git status`
+  4. Gerekirse `gh pr create`
 
 - `eslint-fix-large`:
   1. `hev_dev_eslint_dashboard`
@@ -493,11 +491,7 @@ Projede **TypeScript Language Service** doğrudan entegre edilmiştir — `ts.cr
 | `hev_dev_type_info`        | Sembolün tam tip bilgisi - hover      | ~3ms      |
 | `hev_dev_go_to_definition` | Tanım yerine git                      | ~1ms      |
 | `hev_dev_find_references`  | Cross-file tüm kullanım yerleri       | ~20ms     |
-| `hev_dev_safe_rename`      | Cross-file rename preview — uygulamaz | ~55ms     |
-| `hev_dev_document_symbols` | Dosya sembol ağacı - outline          | ~1.4ms    |
-| `hev_dev_completions`      | Kod tamamlama önerileri               | ~1.8s     |
-| `hev_dev_signature_help`   | Fonksiyon parametre bilgisi           | ~5ms      |
-| `hev_dev_ts_service_stats` | Service durum bilgisi                 | anlık     |
+| `hev_dev_ts_diagnostics`   | Tek dosya için in-process TS tanıları | ~5ms      |
 
 ### TS API-Backed Mevcut Tool'lar
 
@@ -511,7 +505,6 @@ Projede **TypeScript Language Service** doğrudan entegre edilmiştir — `ts.cr
 - **Tip bilgisi almak için**: `hev_dev_type_info` — 1-indexed satır/sütun
 - **"Bu fonksiyon nerede tanımlı?"**: `hev_dev_go_to_definition`
 - **"Bu sembol nerede kullanılıyor?"**: `hev_dev_find_references`
-- **Güvenli rename**: `hev_dev_safe_rename` — önce preview, sonra `hev_fs_edit` ile uygula
 - **Dosya sağlığı**: `hev_dev_ts_diagnostics` — `hev_dev_check_syntax`'den daha derin
 
 ---

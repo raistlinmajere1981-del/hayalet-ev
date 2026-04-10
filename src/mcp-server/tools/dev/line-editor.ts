@@ -388,7 +388,7 @@ export const LINE_EDITOR_TOOL = {
       lineEditorDefT("useCases.safeReplacement"),
       lineEditorDefT("useCases.scopeAwareDeletion"),
     ],
-    relatedTools: ["hev_fs_find_and_replace", "hev_fs_show", "hev_dev_check_syntax"],
+    relatedTools: ["hev_fs_edit", "hev_fs_read", "hev_dev_check_syntax"],
     agentGuidance: lineEditorDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",

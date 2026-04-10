@@ -2699,8 +2699,8 @@
     },
     "fileUtils": {
       "findReplace": {
-        "patternNotFoundWithSuggestions": "Pattern bulunamadı. Yakın eşleşmeler:\n{{suggestions}}\n\nİpucu: ignore_whitespace: true kullanın veya dosyayı hev_fs_show ile inceleyin.",
-        "patternNotFoundLineMissing": "Pattern bulunamadı. Dosyada \"{{term}}\" içeren satır yok.\n\nİpucu: dosyayı hev_fs_show ile inceleyin.",
+        "patternNotFoundWithSuggestions": "Pattern bulunamadı. Yakın eşleşmeler:\n{{suggestions}}\n\nİpucu: ignore_whitespace: true kullanın veya dosyayı hev_fs_read ile inceleyin.",
+        "patternNotFoundLineMissing": "Pattern bulunamadı. Dosyada \"{{term}}\" içeren satır yok.\n\nİpucu: dosyayı hev_fs_read ile inceleyin.",
         "previewTotal": "Toplam: {{count}} değişiklik"
       },
       "fileReading": {
@@ -2780,66 +2780,6 @@
       "failureTitle": "⚠️  Eğer bu tool çalışmazsa:",
       "failureLine1": "   → App MCP çökmüş demektir",
       "failureLine2": "   → Acil: MCP server'ı yeniden başlat"
-    },
-    "analysis": {
-      "common": {
-        "unknown": "bilinmiyor",
-        "unknownError": "Bilinmeyen hata"
-      },
-      "usage": {
-        "title": "📊 MCP Tool Kullanım Analizi",
-        "totalCalls": "Toplam Çağrı: {{value}}",
-        "totalErrors": "Toplam Hata: {{value}}",
-        "topToolsTitle": "📈 Çağrı Sayısına Göre En Çok Kullanılan Tool'lar:",
-        "topToolLine": "  {{tool}}: {{calls}} çağrı, ort. {{avgDuration}}ms, %{{errorPct}} hata",
-        "slowestCallsTitle": "🐌 En Yavaş Çağrılar:",
-        "slowestCallLine": "  {{tool}}: {{duration}}ms ({{timestamp}})"
-      },
-      "performance": {
-        "title": "📊 MCP Tool Performansı: {{toolName}}",
-        "totalCalls": "Toplam Çağrı: {{value}}",
-        "successfulCalls": "Başarılı: {{value}}",
-        "failedCalls": "Başarısız: {{value}}",
-        "avgDuration": "Ort. Süre: {{value}}ms",
-        "minMaxDuration": "Min/Maks: {{min}}ms / {{max}}ms",
-        "recentErrorsTitle": "❌ Son Hatalar:",
-        "recentErrorLine": "  [{{timestamp}}] {{error}}"
-      },
-      "correlation": {
-        "title": "🔗 MCP Hata Korelasyon Analizi",
-        "noErrors": "Bu session içinde MCP hatası bulunamadı.",
-        "errorLine": "❌ {{toolName}} @ {{timestamp}}",
-        "errorDetail": "   Hata: {{error}}",
-        "nearbyEventsTitle": "   Yakındaki Olaylar:",
-        "nearbyEventLine": "     [{{timeDiff}}] {{source}}: {{message}}",
-        "noCorrelatedEvents": "   İlişkili olay bulunamadı"
-      },
-      "trace": {
-        "title": "🔍 Agent Tool Trace",
-        "totalTools": "Toplam Benzersiz Tool: {{value}}",
-        "showingLastCalls": "Gösterilen: son {{value}} çağrı",
-        "callLine": "{{icon}} [{{timestamp}}] {{toolName}}",
-        "callLineWithDuration": "{{icon}} [{{timestamp}}] {{toolName}} ({{duration}}ms)"
-      }
-    },
-    "streaming": {
-      "bannerTitle": "🔴 Gerçek Zamanlı Log Akışı (tail -f)",
-      "sessionLine": "Session: {{sessionId}}",
-      "logFileLine": "Log dosyası: {{path}}",
-      "filterLine": "Filtre: {{filters}}",
-      "showingLastEntries": "Son {{count}} kayıt gösteriliyor...",
-      "followDisabledResult": "{{count}} log kaydı döndürüldü (follow kapalı)",
-      "liveStreamingTitle": "🔴 CANLI AKIŞ BAŞLADI",
-      "pressCtrlC": "Durdurmak için Ctrl+C",
-      "streamingStarted": "Gerçek zamanlı akış başlatıldı",
-      "sessionNotFound": "Session bulunamadı: {{sessionId}}",
-      "statFailed": "Dosya bilgisi okunamadı: {{message}}",
-      "readError": "Dosya okunurken hata oluştu: {{message}}",
-      "stoppedByUser": "🛑 Akış kullanıcı tarafından durduruldu",
-      "watcherError": "Watcher hatası: {{message}}",
-      "errorLabel": "Hata",
-      "noSessionsFound": "Log dizininde session bulunamadı",
-      "failedToGetLatestSession": "Son session alınamadı"
     },
     "electronTools": {
       "testElectron": {
@@ -2938,7 +2878,6 @@
         "fileOperations": "Dosya işlemleri → `hev_fs_*` kategorisi",
         "devTools": "TypeScript/ESLint → `hev_dev_*` kategorisi",
         "debugging": "Debug → `hev_read_electron_logs`, `hev_get_error_hints`",
-        "git": "Git → `hev_git_*` kategorisi",
         "listToolsHint": "`hev_list_tools()` ile tüm tool'ları görebilirsin."
       },
       "categories": {
@@ -2948,7 +2887,6 @@
         "cdpAdvanced": "İleri CDP",
         "debugging": "Debug",
         "eslint": "ESLint",
-        "git": "Git",
         "memory": "Memory",
         "fileReading": "Dosya Okuma",
         "testing": "Test",
@@ -3025,140 +2963,6 @@
           "findPath": "Çok sayıda tool arasında yol bulma"
         },
         "agentGuidance": "Çok sayıda tool arasında kayboluyorsan bu tool'u kullan. Intent bazlı akıllı arama yapar."
-      }
-    },
-    "contextTools": {
-      "common": {
-        "timeout": "Zaman aşımı ({{seconds}}s)",
-        "unknown": "bilinmiyor"
-      },
-      "levels": {
-        "L1": "Hızlı",
-        "L2": "Standart",
-        "L3": "Derin",
-        "L4": "Tam"
-      },
-      "age": {
-        "daysAgo": "{{count}}g önce",
-        "hoursAgo": "{{count}}s önce",
-        "minutesAgo": "{{count}}d önce",
-        "justNow": "az önce"
-      },
-      "generate": {
-        "operation": "Context {{level}}",
-        "configMissing": "Config bulunamadı: {{configPath}}",
-        "cacheUsedProgress": "Cache kullanıldı ({{age}})",
-        "cacheUsedMessage": "✅ Cache kullanıldı: {{outputPath}}\nYaş: {{age}}\nBoyut: {{sizeKB}}KB",
-        "runningRepomix": "Repomix çalıştırılıyor...",
-        "repomixFailedProgress": "Repomix hatası",
-        "repomixFailedMessage": "Repomix hatası: {{output}}",
-        "successProgress": "{{fileCount}} dosya, {{sizeKB}}KB",
-        "successMessage": "✅ Context oluşturuldu: {{level}} ({{levelLabel}})\n📁 Dosya: {{fileCount}}\n🔢 Token: {{tokenCount}}\n📊 Boyut: {{sizeKB}}KB\n📍 Path: {{outputPath}}"
-      },
-      "module": {
-        "operation": "Modül: {{moduleName}}",
-        "headerText": "# app Bağlamı - Modül: {{moduleName}}\n",
-        "runningRepomix": "Repomix çalıştırılıyor...",
-        "failedProgress": "Module context oluşturulamadı",
-        "failedMessage": "Module context hatası: {{output}}",
-        "successProgress": "{{fileCount}} dosya, {{sizeKB}}KB",
-        "successMessage": "✅ Module context: {{moduleName}}\n📁 {{fileCount}} dosya\n📊 {{sizeKB}}KB\n📍 {{outputPath}}"
-      },
-      "read": {
-        "missing": "Context dosyası bulunamadı: {{outputPath}}\nÖnce hev_context_generate level={{level}} çalıştırın."
-      },
-      "handler": {
-        "statusTitle": "📊 Context Durumu",
-        "available": "Kullanılabilir: {{value}}",
-        "none": "yok",
-        "repomix": "Repomix: {{value}}",
-        "lastGenerated": "Son üretilen: {{value}}",
-        "levelsTitle": "Seviyeler:",
-        "levelLine": "- {{level}}: {{sizeKB}}KB • {{age}} • {{tokens}} token"
-      },
-      "definition": {
-        "generate": {
-          "description": "Proje context'i oluştur (Repomix). L1=Quick(7K), L2=Standard(48K), L3=Deep(360K), L4=Full(518K token)",
-          "level": "Context seviyesi: L1(hızlı), L2(standart), L3(derin), L4(tam)",
-          "force": "Cache'i yoksay, yeniden oluştur",
-          "includeContent": "Context içeriğini döndür (büyük olabilir!)",
-          "useCases": {
-            "projectContext": "Proje context oluştur",
-            "codebaseSummary": "AI ile paylaşım için codebase özeti",
-            "codeAnalysis": "Kod analizi"
-          },
-          "agentGuidance": "Proje context'i oluştur. L2 standart seçimdir, L3/L4 büyük analizler içindir. Cache kullanır."
-        },
-        "status": {
-          "description": "Mevcut context dosyalarının durumunu göster (boyut, yaş, token sayısı)",
-          "useCases": {
-            "checkFiles": "Context dosyalarını kontrol et",
-            "cacheState": "Cache durumunu gör",
-            "tokenCount": "Token sayısını incele"
-          },
-          "agentGuidance": "Hangi context dosyalarının var olduğunu ve ne kadar güncel kaldığını kontrol etmek için kullan."
-        },
-        "module": {
-          "description": "Belirli bir modül için özel context oluştur (örn: webview, traffic, slot)",
-          "module": "Modül adı veya path pattern (örn: webview, traffic, slot-controller)",
-          "includeTests": "Test dosyalarını dahil et",
-          "useCases": {
-            "moduleSpecific": "Modül bazlı context",
-            "focusedAnalysis": "Odaklanmış analiz",
-            "smallScope": "Küçük scope"
-          },
-          "agentGuidance": "Belirli bir modül için context oluştur. Full context yerine focused analiz için kullan."
-        },
-        "read": {
-          "description": "Oluşturulmuş context dosyasını oku. Önce hev_context_generate ile oluşturulmalı.",
-          "level": "Okunacak context seviyesi",
-          "useCases": {
-            "readGenerated": "Oluşturulmuş context'i oku",
-            "loadFromCache": "Cache'den context yükle"
-          },
-          "agentGuidance": "Üretilmiş context dosyasını okumak için kullan. Gerekirse önce generate çalıştır."
-        }
-      }
-    },
-    "uiTools": {
-      "messageBox": {
-        "runtime": {
-          "selectedMarker": "← SEÇİLİ",
-          "detailsTitle": "Detaylar:"
-        },
-        "definition": {
-          "description": "Durum, ilerleme, tablo, menü ve ağaç yerleşimlerini destekleyen biçimlendirilmiş bir mesaj kutusu gösterir.",
-          "type": "Mesaj kutusu tipi (ikon ve görsel stili belirler)",
-          "title": "Mesaj kutusu başlığı",
-          "message": "Ana mesaj gövdesi",
-          "icon": "Varsayılan tip ikonunu ezen özel ikon",
-          "details": "Madde işaretleriyle gösterilecek ek detay satırları",
-          "actions": "Alt bölümde gösterilecek aksiyon etiketleri",
-          "width": "Karakter cinsinden kutu genişliği (varsayılan olarak otomatik, en çok 80)",
-          "boxStyle": "Kenarlık çizim stili",
-          "timestamp": "Başlık satırında güncel zamanı göster",
-          "progress": {
-            "description": "`type=progress` için ilerleme çubuğu yapılandırması",
-            "current": "Mevcut ilerleme değeri",
-            "total": "Toplam ilerleme değeri",
-            "percentage": "İsteğe bağlı manuel yüzde değeri",
-            "style": "İlerleme çubuğu stili"
-          },
-          "table": {
-            "description": "`type=table` için tablo verisi",
-            "columns": "Sütun başlıkları",
-            "rows": "Tablo satırları"
-          },
-          "menu": {
-            "description": "`type=menu` için etkileşimli menü yapılandırması",
-            "options": "Menü seçenekleri",
-            "optionKey": "Seçenek tuşu veya kısayolu",
-            "optionLabel": "Seçenek etiketi",
-            "optionIcon": "Opsiyonel seçenek ikonu",
-            "defaultSelected": "Varsayılan seçili seçenek indeksi"
-          },
-          "tree": "`type=tree` için iç içe nesne ağacı. Örnek: {\"src/\": {\"file.ts\": \"✏️ değişti\"}}"
-        }
       }
     },
     "logIntegration": {
@@ -3296,20 +3100,6 @@
       }
     },
     "fsCodeTools": {
-      "common": {
-        "unknownError": "Bilinmeyen hata",
-        "unknownSyntaxError": "Bilinmeyen söz dizimi hatası"
-      },
-      "errors": {
-        "syntaxValidationFailed": "Değişimden sonra söz dizimi doğrulaması başarısız oldu:\n{{details}}"
-      },
-      "progress": {
-        "operation": "Bul ve değiştir",
-        "processing": "{{filePath}} işleniyor",
-        "syntaxDetected": "Söz dizimi sorunu tespit edildi",
-        "preview": "Önizleme hazır: {{count}} değişim",
-        "applied": "Uygulandı: {{count}} değişim"
-      },
       "definition": {
         "common": {
           "filePath": "Dosya yolu"
@@ -3324,20 +3114,6 @@
             "expandSymbols": "Düzenleme öncesi eşleşen sembolleri açma"
           },
           "agentGuidance": "Düzenleme öncesi daha geniş ve satır numaralı bir pencere gerektiğinde kullan."
-        },
-        "replace": {
-          "description": "İsteğe bağlı boşluk toleransı ve söz dizimi doğrulamasıyla kod odaklı bul/değiştir yapar.",
-          "find": "Bulunacak metin",
-          "replace": "Yerine yazılacak metin",
-          "ignoreWhitespace": "Boşluk farklarını eşdeğer kabul et",
-          "dryRun": "Dosyaya yazmadan önce önizleme yap",
-          "validateSyntax": "Değişiklikten sonra kod söz dizimini doğrula",
-          "useCases": {
-            "simpleReplacement": "Basit metin değişimleri uygulama",
-            "multilineReplacement": "Çok satırlı kod bloklarını değiştirme",
-            "safePreview": "Riskli değişimleri önce önizleme"
-          },
-          "agentGuidance": "Hedefli değişimler için kullan. Riskli düzenlemelerde önce dry_run aç, kod dosyalarında söz dizimi doğrulamasını kapatma."
         }
       }
     },
@@ -3676,37 +3452,16 @@
           "referencesTitle": "Reference'lar ({{count}})",
           "referencesSummary": "Definition: {{definitions}} | Kullanım: {{usages}} | Yazma: {{writes}}",
           "filesCount": "Dosya: {{count}}",
-          "noCompletions": "Completion yok.",
-          "completionsTitle": "Completion'lar ({{count}})",
           "diagnosticsTitle": "Tanılar: {{filePath}}",
           "diagnosticsSummary": "Hata: {{errors}} | Uyarı: {{warnings}} | Öneri: {{suggestions}}",
           "noIssues": "Tanı bulunmadı.",
-          "cannotRename": "Burada rename yapılamaz: {{reason}}",
-          "unknownReason": "bilinmeyen neden",
-          "renameNoEdits": "Rename önizlemesi hiç edit üretmedi.",
-          "renamePreviewTitle": "Rename Önizlemesi",
-          "renameSummary": "{{files}} dosyada {{changes}} değişiklik",
-          "noSymbols": "{{filePath}} içinde sembol bulunamadı.",
-          "documentSymbolsTitle": "Doküman Sembolleri: {{filePath}}",
-          "topLevelSymbols": "Üst seviye sembol: {{count}}",
-          "noSignatureHelp": "Signature help yok.",
-          "signatureHelpTitle": "Signature Help",
-          "documentationInline": "Doküman: {{text}}",
-          "parametersTitle": "Parametreler:",
-          "noTypeInfo": "Bu konumda tip bilgisi yok.",
-          "statsTitle": "TypeScript Service İstatistikleri",
-          "availableConfigs": "Kullanılabilir config'ler: {{configs}}",
-          "loadedProjects": "Yüklü proje: {{count}}",
-          "projectLine": "{{name}} - {{fileCount}} dosya, son kullanım {{lastUsedAgo}}ms önce",
-          "totalFiles": "Toplam dosya: {{count}}"
+          "noTypeInfo": "Bu konumda tip bilgisi yok."
         },
         "definition": {
           "common": {
             "filePath": "Dosya yolu",
             "line": "Satır numarası (1 tabanlı)",
-            "column": "Sütun numarası (1 tabanlı)",
-            "newName": "Yeni sembol adı",
-            "maxItems": "Döndürülecek maksimum öğe"
+            "column": "Sütun numarası (1 tabanlı)"
           },
           "typeInfo": {
             "description": "Dosya konumunda hover benzeri tip bilgisini döndürür.",
@@ -3735,15 +3490,6 @@
             },
             "agentGuidance": "Rename veya davranış değişikliği öncesi sembolün tüm kullanım yüzeyini görmek için bunu kullan."
           },
-          "safeRename": {
-            "description": "Edit uygulamadan güvenli cross-file rename önizlemesi üretir.",
-            "useCases": {
-              "safeRename": "Güvenli rename önizlemesi",
-              "previewImpact": "Uygulamadan önce etkiyi görme",
-              "crossFile": "Dosyalar arası refactor hazırlama"
-            },
-            "agentGuidance": "Manuel rename öncesi bunu kullan. Dosyaları değiştirmeden edit setini verir."
-          },
           "diagnostics": {
             "description": "In-process language service ile tek dosya için TypeScript tanılarını döndürür.",
             "useCases": {
@@ -3752,43 +3498,6 @@
               "validateChanges": "Düzenleme sonrası dosyayı doğrulama"
             },
             "agentGuidance": "Full `tsc` yerine hızlı tek dosya tanısı gerektiğinde kullan."
-          },
-          "documentSymbols": {
-            "description": "Bir dosyanın sembol ağacını döndürür.",
-            "useCases": {
-              "outline": "Dosya outline çıkarma",
-              "listSymbols": "Üst seviye bildirimi listeleme",
-              "navigateLargeFiles": "Büyük dosyalarda hızlı gezinme"
-            },
-            "agentGuidance": "Özellikle büyük veya yabancı dosyalarda düzenleme öncesi harita çıkarmak için kullan."
-          },
-          "completions": {
-            "description": "Dosya konumunda completion önerileri döndürür.",
-            "useCases": {
-              "codeCompletion": "Olası completion'ları inceleme",
-              "exploreApis": "Yakındaki API'leri keşfetme",
-              "objectProperties": "Nesne özelliklerini listeleme"
-            },
-            "agentGuidance": "Completion adaylarına veya language service'in gördüğü yüzeye bakmak gerektiğinde kullan."
-          },
-          "signatureHelp": {
-            "description": "Dosya konumunda fonksiyon signature help döndürür.",
-            "column": "Çağrı ifadesi içindeki sütun numarası (1 tabanlı)",
-            "useCases": {
-              "parameterHints": "Aktif parametre ipuçlarını görme",
-              "argumentTypes": "Beklenen argüman tiplerini anlama",
-              "understandSignatures": "Overload ve imzaları inceleme"
-            },
-            "agentGuidance": "Fonksiyon çağrısı içindeyken parametre sırası, overload veya satır içi dokümantasyon gerektiğinde kullan."
-          },
-          "serviceStats": {
-            "description": "TypeScript language service cache ve proje istatistiklerini gösterir.",
-            "useCases": {
-              "checkStatus": "Servis durumunu kontrol etme",
-              "monitorMemory": "Yüklü proje durumunu izleme",
-              "debugIssues": "Language service davranışını debug etme"
-            },
-            "agentGuidance": "Hangi projelerin yüklü olduğunu ve language service'in ne tuttuğunu anlamak gerektiğinde kullan."
           }
         }
       },
@@ -3797,25 +3506,6 @@
         "cacheUpdated": "✅ Cache güncellendi",
         "scopeWarningsTitle": "Scope Uyarıları:",
         "bracketIssuesTitle": "Parantez Sorunları:"
-      },
-      "projectAnalyzer": {
-        "progress": {
-          "operation": "Proje analizi",
-          "scanningDir": "{{srcDir}} taranıyor...",
-          "analyzingModules": "Modüller analiz ediliyor...",
-          "completed": "{{totalFiles}} dosya analiz edildi"
-        },
-        "definition": {
-          "description": "Proje analizi: dosya sayıları, satır sayıları, bağımlılıklar ve git durumu. `mode` sadece `summary | deps | modules | full` kabul eder.",
-          "mode": "Analiz modu: `summary` (dosya/satır/git, hızlı 1-2s) | `deps` (bağımlılıklar) | `modules` (import/export haritası, ilk 50 dosya) | `full` (hepsi, daha yavaş 5-10s)",
-          "useCases": {
-            "summary": "Oturum başında proje durumunu anlama (`summary`)",
-            "dependencies": "Bağımlılık envanteri çıkarma (`deps`)",
-            "modules": "Modül mimarisini analiz etme (`modules`)",
-            "full": "Tam proje raporu üretme (`full`)"
-          },
-          "agentGuidance": "Hızlı genel bakış için `mode=\"summary\"`, tam rapor için `mode=\"full\"` kullan. Mode parametresi sadece `summary`, `deps`, `modules` veya `full` olabilir."
-        }
       },
       "linter": {
         "progress": {
@@ -4167,90 +3857,6 @@
           "agentGuidance": "Ekleme noktası, kesin text veya AST yapısından çok doğal dille tarif edilebiliyorsa bunu kullan."
         }
       },
-      "structureVisualizer": {
-        "runtime": {
-          "fileNotFound": "Dosya bulunamadı: {{filePath}}",
-          "fileNotFoundShort": "Dosya bulunamadı",
-          "title": "Yapı görselleştirme: {{filePath}}",
-          "scopeHierarchyTitle": "Scope hiyerarşisi",
-          "scopeStatus": {
-            "closed": "✅",
-            "unclosed": "❌ KAPANMADI"
-          },
-          "astParseSuccess": "AST parse başarılı. Bulunan scope sayısı: {{scopeCount}}",
-          "astParseError": "AST parse başarısız oldu: {{message}}",
-          "astParseFallback": "Bracket farkındalıklı analize fallback yapılıyor.",
-          "bracketAnalysisTitle": "Bracket analizi",
-          "bracketsBalancedAst": "AST parse sonucuna göre bracket'lar dengeli.",
-          "bracketsBalanced": "Bracket'lar dengeli.",
-          "unclosedBracketsTitle": "Kapanmayan bracket sayısı: {{count}}",
-          "unclosedBracketLine": "  Satır {{line}}: beklenen kapanış `{{char}}`",
-          "extraBracketsTitle": "Fazladan kapanan bracket sayısı: {{count}}",
-          "extraBracketLine": "  Satır {{line}}: beklenmeyen `{{char}}`",
-          "moreBracketIssues": "  ... ve {{count}} sorun daha",
-          "commentBlocksTitle": "Yorum blokları",
-          "unclosedCommentError": "{{startLine}}. satırda başlayan çok satırlı yorum kapanmadı",
-          "noCommentBlocks": "Yorum bloğu bulunamadı.",
-          "singleLineComments": "Tek satırlı yorum: {{count}}",
-          "multiLineComments": "Çok satırlı yorum: {{count}}",
-          "commentBlockClosed": "  {{start}}-{{end}} satırlar: kapanmış çok satırlı yorum",
-          "commentBlockUnclosed": "  {{start}}. satır: kapanmamış çok satırlı yorum",
-          "totalLines": "Toplam satır: {{count}}",
-          "issuesDetected": "Tespit edilen sorunlar:"
-        },
-        "definition": {
-          "description": "AST scope haritası, bracket analizi ve yorum incelemesi ile dosya yapısını görselleştirir.",
-          "filePath": "Analiz edilecek dosya yolu",
-          "showScopes": "Scope hiyerarşisi çıktısını dahil et",
-          "showBrackets": "Bracket analizi çıktısını dahil et",
-          "showComments": "Yorum bloğu analizini dahil et",
-          "showStrings": "Destekleniyorsa string literal analizini dahil et",
-          "maxDepth": "Render edilecek maksimum scope derinliği",
-          "useCases": {
-            "visualizeScopes": "Büyük dosyada iç içe scope'ları inceleme",
-            "detectUnclosed": "Kapanmayan scope, yorum veya bracket bulma",
-            "commentAst": "Yapısal yorum bölgelerini inceleme"
-          },
-          "agentGuidance": "Bir dosyanın yapısı karmaşıksa veya düzenleme öncesi scope ve bracket sağlığını hızlı görmek gerekiyorsa bunu kullan."
-        }
-      },
-      "codemod": {
-        "common": {
-          "unknown": "bilinmiyor"
-        },
-        "runtime": {
-          "fileNotFound": "Dosya bulunamadı: {{filePath}}",
-          "functionCallNamesRequired": "`function_call` için `old_name` ve `new_name` gerekli.",
-          "variableNamesRequired": "`variable` için `old_name` ve `new_name` gerekli.",
-          "importSourcesRequired": "`import` için `old_source` ve `new_source` gerekli.",
-          "addImportFieldsRequired": "`add_import` için `imports` ve `source` gerekli.",
-          "batchOperationsRequired": "`batch` için `operations` gerekli.",
-          "unknownTransformationType": "Bilinmeyen transformation tipi: {{type}}",
-          "syntaxValidationFailed": "Syntax doğrulaması başarısız oldu: {{error}}"
-        },
-        "definition": {
-          "description": "Jscodeshift kullanarak AST tabanlı güvenli kod dönüşümleri uygular.",
-          "filePath": "Hedef dosya yolu",
-          "transformation": "Transformation nesnesi",
-          "transformationType": "Transformation tipi: `function_call`, `variable`, `import`, `add_import`, `remove_unused` veya `batch`",
-          "oldName": "`function_call` veya `variable` için eski identifier adı",
-          "newName": "`function_call` veya `variable` için yeni identifier adı",
-          "oldSource": "`import` için eski import kaynağı",
-          "newSource": "`import` için yeni import kaynağı",
-          "imports": "`add_import` için import edilecek isimler",
-          "source": "`add_import` için import kaynağı",
-          "operations": "`batch` için operasyon listesi",
-          "dryRun": "Dosyaya yazmadan sadece önizleme yap",
-          "validateSyntax": "Prettier tabanlı syntax doğrulaması çalıştır",
-          "useCases": {
-            "safeRename": "Fonksiyon veya değişkenleri güvenli rename etme",
-            "importUpdates": "Import path veya source güncelleme",
-            "importCleanup": "Import ekleme veya kullanılmayan import'ları temizleme",
-            "batchRefactor": "Birden fazla AST refactor'u tek geçişte çalıştırma"
-          },
-          "agentGuidance": "Regex replace riskliyse AST tabanlı refactor için bunu kullan. Önce `dry_run=true` ile dene, sonra sonucu kontrol edip uygula."
-        }
-      },
       "symbolSearcher": {
         "definition": {
           "description": "Projede sembol tanımlarını arar ve eşleşmeleri TS Language Service tip bilgisiyle zenginleştirir.",
@@ -4309,14 +3915,8 @@
         "command": "❌ Komut hatası: {{message}}",
         "toggleMcpPanel": "❌ MCP panel toggle hatası: {{message}}",
         "screenshot": "❌ Screenshot hatası: {{message}}",
-        "windowInfo": "❌ Pencere bilgisi hatası: {{message}}",
-        "click": "❌ Tıklama hatası: {{message}}",
-        "fillInput": "❌ Input hatası: {{message}}",
-        "pageDomStructure": "❌ Sayfa yapısı hatası: {{message}}",
         "inspectElement": "❌ Element inceleme hatası: {{message}}",
         "queryElements": "❌ Element sorgu hatası: {{message}}",
-        "keyPress": "❌ Tuş hatası: {{message}}",
-        "scroll": "❌ Scroll hatası: {{message}}",
         "listTargets": "❌ CDP hedef listeleme hatası: {{message}}",
         "targetInfo": "❌ CDP hedef bilgisi hatası: {{message}}",
         "cdpCommand": "❌ CDP komut hatası: {{message}}"
@@ -4364,27 +3964,6 @@
         "saved": "✅ Screenshot kaydedildi: {{savePath}}\n\nBoyut: {{sizeBytes}} bytes",
         "preview": "✅ Screenshot alındı ({{format}})\n\n**Boyut:** ~{{sizeKB}} KB\n\n**Kullanım:** Dosyaya kaydetmek için `savePath` parametresini ekleyin."
       },
-      "windowInfo": {
-        "success": "🪟 **Electron Pencere Bilgileri:**\n\n- **Başlık:** {{title}}\n- **URL:** {{url}}\n- **İç Boyut:** {{innerWidth}} x {{innerHeight}}\n- **Dış Boyut:** {{outerWidth}} x {{outerHeight}}\n- **Pixel Ratio:** {{devicePixelRatio}}\n- **Scroll Pozisyonu:** ({{scrollX}}, {{scrollY}})"
-      },
-      "clickBySelector": {
-        "missingSelector": "❌ 'selector' parametresi gerekli",
-        "success": "✅ Tıklama başarılı\n\n**Element:** {{element}}",
-        "notFound": "❌ Element bulunamadı: `{{selector}}`"
-      },
-      "clickByText": {
-        "missingText": "❌ 'text' parametresi gerekli",
-        "success": "✅ Tıklama başarılı\n\n**Element:** <{{tagName}}>\n**İçerik:** \"{{textContent}}\"",
-        "notFound": "❌ \"{{text}}\" metni için eşleşen element bulunamadı (tag: {{tagName}})"
-      },
-      "fillInput": {
-        "missingSelectorValue": "❌ 'selector' ve 'value' parametreleri gerekli",
-        "success": "✅ Input dolduruldu\n\n**Yeni değer:** \"{{newValue}}\"",
-        "notFound": "❌ Input bulunamadı: `{{selector}}`"
-      },
-      "pageDomStructure": {
-        "success": "📄 **Sayfa Yapısı:**\n\n**Başlık:** {{title}}\n**URL:** {{url}}\n\n**DOM Yapısı:**\n```json\n{{body}}\n```"
-      },
       "inspectElement": {
         "missingSelector": "❌ 'selector' parametresi gerekli",
         "success": "✅ Element bulundu\n\n**Selector:** `{{selector}}`\n**Tag:** {{tagName}}\n**ID:** {{id}}\n**Class:** {{className}}\n**Görünür:** {{visible}}\n**Devre dışı:** {{disabled}}\n**Boyut:** {{width}}x{{height}}\n**Pozisyon:** ({{x}}, {{y}})\n**İçerik:** \"{{textContent}}\"",
@@ -4394,13 +3973,6 @@
         "missingSelector": "❌ 'selector' parametresi gerekli",
         "noneFound": "❌ Hiç element bulunamadı: `{{selector}}`",
         "success": "✅ {{count}} element bulundu\n\n**Selector:** `{{selector}}`\n\n{{list}}"
-      },
-      "sendKeyPress": {
-        "missingKey": "❌ 'key' parametresi gerekli",
-        "success": "✅ Tuş gönderildi: {{keyCombo}}\n\n**Hedef element:** <{{target}}>"
-      },
-      "scrollPage": {
-        "success": "✅ Scroll yapıldı\n\n**Yeni pozisyon:** ({{scrollX}}, {{scrollY}})"
       }
     },
     "webTools": {
@@ -4884,7 +4456,7 @@
             "deleteEmptyDirectories": "Boş dizin silme",
             "deleteDirectoriesRecursively": "Recursive dizin silme"
           },
-          "agentGuidance": "Dosya/dizin silmek için kullan. Dizin silmek için recursive=true gerekir. Güvenli silme için önce hev_fs_trash_list kullanılabilir."
+          "agentGuidance": "Dosya/dizin silmek için kullan. Dizin silmek için recursive=true gerekir. Silmeden önce hedefi hev_fs_read veya hev_fs_list ile doğrula."
         },
         "move": {
           "description": "Dosya veya dizin taşı / yeniden adlandır. Kaynak hedefe taşınır.",
@@ -5202,25 +4774,6 @@
             },
             "agentGuidance": "UI state'ini görsel olarak doğrulamak veya kaydetmek istediğinde kullan."
           },
-          "getWindowInfo": {
-            "description": "Electron penceresinin boyut, pozisyon ve URL bilgilerini al.",
-            "useCases": {
-              "windowStateInspection": "Pencere durumunu inceleme",
-              "layoutDebugging": "Layout sorunlarını debug etme",
-              "urlVerification": "URL doğrulama"
-            },
-            "agentGuidance": "Pencerenin gerçekten doğru sayfada ve doğru boyutta olup olmadığını görmek için kullan."
-          },
-          "getPageDomStructure": {
-            "description": "Sayfanın DOM yapısını al. Debug ve element bulma için kullanışlı.",
-            "maxDepth": "Maksimum DOM derinliği",
-            "useCases": {
-              "domExploration": "DOM keşfi",
-              "elementDiscovery": "Element bulma",
-              "structureDebugging": "Yapısal debug"
-            },
-            "agentGuidance": "Element selector'ı bulmak için DOM yapısını incele; maxDepth ile kapsamı sınırlayabilirsin."
-          },
           "getCdpTargetInfo": {
             "description": "Belirli bir CDP hedefinin tip, URL ve yaygın komut domain'leri dahil detaylarını getir.",
             "targetId": "CDP hedef id'si",
@@ -5251,65 +4804,6 @@
               "selectorValidation": "Selector doğrulama"
             },
             "agentGuidance": "Bir selector kaç elemente vuruyor görmek ve doğru hedefi seçmek için kullan."
-          },
-          "clickBySelector": {
-            "description": "CSS selector ile bir elemente tıkla.",
-            "selector": "CSS selector (örn: #myButton, .btn-primary, button[type='submit'])",
-            "useCases": {
-              "uiAutomation": "UI otomasyonu",
-              "buttonClicks": "Buton tıklamaları",
-              "elementInteraction": "Element etkileşimi"
-            },
-            "agentGuidance": "Selector biliyorsan doğrudan tıklamak için kullan; gerekirse önce hev_inspect_element ile doğrula."
-          },
-          "clickByText": {
-            "description": "Metin içeriğine göre bir elemente tıkla.",
-            "text": "Aranacak metin içeriği",
-            "tagName": "Tag filtresi (button, a, div vb.)",
-            "useCases": {
-              "textBasedInteraction": "Metin bazlı etkileşim",
-              "buttonClicksByLabel": "Etiketine göre buton tıklama",
-              "linkClicks": "Link tıklama"
-            },
-            "agentGuidance": "Selector bilinmiyorsa görünen metne göre hedef bulup tıklamak için kullan."
-          },
-          "fillInput": {
-            "description": "Bir input alanına değer yaz.",
-            "selector": "Input elementinin CSS selector'ı",
-            "value": "Yazılacak değer",
-            "clear": "Yazmadan önce mevcut değeri temizle",
-            "useCases": {
-              "formFilling": "Form doldurma",
-              "inputAutomation": "Input otomasyonu",
-              "textEntry": "Metin girişi"
-            },
-            "agentGuidance": "Form alanlarını doldururken kullan; varsayılan olarak eski değeri temizler."
-          },
-          "sendKeyPress": {
-            "description": "Klavye tuşu gönder (Enter, Escape, Tab vb.).",
-            "key": "Tuş adı (Enter, Escape, Tab, ArrowDown vb.)",
-            "ctrl": "Ctrl tuşu basılı",
-            "alt": "Alt tuşu basılı",
-            "shift": "Shift tuşu basılı",
-            "meta": "Meta/Cmd tuşu basılı",
-            "useCases": {
-              "keyboardAutomation": "Klavye otomasyonu",
-              "formSubmission": "Form gönderme",
-              "navigationKeys": "Navigasyon tuşları"
-            },
-            "agentGuidance": "Enter, Escape ve Tab gibi akış adımlarını otomatikleştirmek için kullan."
-          },
-          "scrollPage": {
-            "description": "Sayfada belirli bir konuma scroll yap.",
-            "x": "Yatay scroll pozisyonu",
-            "y": "Dikey scroll pozisyonu",
-            "behavior": "Scroll animasyonu",
-            "useCases": {
-              "pageScrolling": "Sayfayı kaydırma",
-              "elementVisibility": "Elementi görünür hale getirme",
-              "longPageNavigation": "Uzun sayfada gezinme"
-            },
-            "agentGuidance": "Elementi görünür yapmak veya uzun sayfalarda doğru bölgeye gitmek için kullan."
           },
           "toggleMcpPanelServers": {
             "description": "AI0 webview içindeki OpenCode MCP panelinde belirtilen sunucuları OFF→ON cycle ile toggle eder.",

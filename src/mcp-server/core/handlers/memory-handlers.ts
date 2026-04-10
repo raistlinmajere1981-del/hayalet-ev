@@ -1,6 +1,5 @@
 import {
   memoryBootstrapPolicy,
-  memoryDelete,
   memoryPrune,
   memorySearch,
   memoryStats,
@@ -19,7 +18,6 @@ function getDefinition(name: string): (typeof MEMORY_TOOL_DEFINITIONS)[number] {
 
 export function createMemoryTools(context: ToolContext): ToolEntry[] {
   const { PROJECT_ROOT } = context;
-
   const memoryHandlerT = (
     key: string,
     params?: Record<string, string | number | boolean>
@@ -71,16 +69,6 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
         const result = await memoryUpdate(PROJECT_ROOT, args as Parameters<typeof memoryUpdate>[1]);
         const text = result.updated
           ? memoryHandlerT("updated", { id: result.id })
-          : memoryHandlerT("notFound", { id: result.id });
-        return { content: [{ type: "text", text }] };
-      },
-    },
-    {
-      definition: getDefinition("hev_memory_delete"),
-      handler: async (args): Promise<unknown> => {
-        const result = await memoryDelete(PROJECT_ROOT, args as Parameters<typeof memoryDelete>[1]);
-        const text = result.deleted
-          ? memoryHandlerT("deleted", { id: result.id })
           : memoryHandlerT("notFound", { id: result.id });
         return { content: [{ type: "text", text }] };
       },
