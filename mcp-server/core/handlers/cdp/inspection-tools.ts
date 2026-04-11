@@ -22,6 +22,7 @@ export function createCdpInspectionTools(): ToolEntry[] {
           type: "object",
           properties: {
             targetId: { type: "string", description: cdpToolT("getCdpTargetInfo.targetId") },
+            port: { type: "number", description: cdpToolT("getCdpTargetInfo.port") },
           },
           required: ["targetId"],
         },
@@ -52,6 +53,7 @@ export function createCdpInspectionTools(): ToolEntry[] {
           type: "object",
           properties: {
             selector: { type: "string", description: cdpToolT("inspectElement.selector") },
+            port: { type: "number", description: cdpToolT("inspectElement.port") },
           },
           required: ["selector"],
         },
@@ -82,6 +84,7 @@ export function createCdpInspectionTools(): ToolEntry[] {
           type: "object",
           properties: {
             selector: { type: "string", description: cdpToolT("queryElements.selector") },
+            port: { type: "number", description: cdpToolT("queryElements.port") },
             limit: {
               type: "number",
               description: cdpToolT("queryElements.limit"),

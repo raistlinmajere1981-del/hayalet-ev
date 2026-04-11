@@ -76,7 +76,7 @@ type XoxInviteRuntime = {
     inviteId: string,
     remoteUserId: string | null
   ) => void;
-  syncFromSnapshot: (api: XoxUs1SyncApi, roomInviteInbox: unknown) => void;
+  syncFromSnapshot: (api: XoxUs1SyncApi, roomInviteInbox: unknown) => boolean;
 };
 
 export interface XoxUs1SyncApi {
@@ -166,24 +166,46 @@ function readRoomCommands(value: unknown): XoxRoomCommand[] {
     .filter((command): command is XoxRoomCommand => command !== null && command.commandName !== "");
 }
 
-function readCommandSuccess(value: unknown): boolean | null {
+function readCommandResultCandidates(value: unknown): Record<string, unknown>[] {
   if (isRecord(value) === false) {
-    return null;
+    return [];
   }
-  if (value["success"] === true) {
-    return true;
+
+  const candidates: Record<string, unknown>[] = [];
+  const data = value["data"];
+  if (isRecord(data)) {
+    const nestedResult = data["result"];
+    if (isRecord(nestedResult)) {
+      candidates.push(nestedResult);
+    }
+    candidates.push(data);
   }
-  if (value["success"] === false) {
-    return false;
+  candidates.push(value);
+  return candidates;
+}
+
+function readCommandSuccess(value: unknown): boolean | null {
+  const candidates = readCommandResultCandidates(value);
+  for (const candidate of candidates) {
+    if (candidate["success"] === true) {
+      return true;
+    }
+    if (candidate["success"] === false) {
+      return false;
+    }
   }
   return null;
 }
 
 function readCommandMessage(value: unknown): string {
-  if (isRecord(value) === false) {
-    return "";
+  const candidates = readCommandResultCandidates(value);
+  for (let index = 0; index < candidates.length; index += 1) {
+    const message = readString(candidates[index]?.["message"]).trim();
+    if (message !== "") {
+      return message;
+    }
   }
-  return readString(value["message"]).trim();
+  return "";
 }
 
 function buildRoomCommandFailureMessage(
@@ -506,10 +528,6 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
         pushRoomState(api, resetState);
       }
     }
-
-    if (currentState.active !== true) {
-      refreshRoomState(api);
-    }
   }
 
   function ensureUs1SyncLoop(
@@ -558,10 +576,12 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
         return;
       }
 
-      syncFromSnapshot(api, result.roomInviteInbox);
+      const inviteInboxChanged = syncFromSnapshot(api, result.roomInviteInbox);
       await processRoomEvents(api, readRoomEvents(result.roomEvents));
       await processRoomCommands(api, readRoomCommands(result.roomCommands));
-      refreshRoomState(api);
+      if (inviteInboxChanged === true) {
+        refreshRoomState(api);
+      }
     } finally {
       api.deleteState?.("xox-us1-syncing");
     }

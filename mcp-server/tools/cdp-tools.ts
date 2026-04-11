@@ -4,7 +4,9 @@ import type { ToolResult } from "../types/index-mcp.js";
 
 import {
   checkConnection,
+  discoverInstances as _discoverInstances,
   discoverTargets as _discoverTargets,
+  type CDPConnectionOptions,
   findTargetById,
   pickPreferredTarget,
   sendCDPCommand as dispatchCdpCommand,
@@ -71,9 +73,109 @@ function stringifyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
-export async function checkElectronConnection(): Promise<ToolResult> {
+function normalizePort(value: unknown): number | null {
+  if (typeof value !== "number" || Number.isInteger(value) === false) {
+    return null;
+  }
+  return value >= 1 && value <= 65535 ? value : null;
+}
+
+function readConnectionOptions(
+  args: Record<string, unknown>
+): { value: CDPConnectionOptions } | { error: ToolResult } {
+  const portRaw = args["port"];
+  if (portRaw === undefined) {
+    return { value: {} };
+  }
+
+  const port = normalizePort(portRaw);
+  if (port === null) {
+    return {
+      error: {
+        content: [{ type: "text", text: cdpT("common.invalidPort") }],
+        isError: true,
+      },
+    };
+  }
+
+  return { value: { port } };
+}
+
+function readInstanceDiscoveryRange(
+  args: Record<string, unknown>
+): { value: { startPort?: number; endPort?: number } } | { error: ToolResult } {
+  const startPortRaw = args["startPort"];
+  const endPortRaw = args["endPort"];
+  const parsedStartPort = startPortRaw === undefined ? undefined : normalizePort(startPortRaw);
+  const parsedEndPort = endPortRaw === undefined ? undefined : normalizePort(endPortRaw);
+
+  if (startPortRaw !== undefined && parsedStartPort === null) {
+    return {
+      error: {
+        content: [{ type: "text", text: cdpT("common.invalidStartPort") }],
+        isError: true,
+      },
+    };
+  }
+
+  if (endPortRaw !== undefined && parsedEndPort === null) {
+    return {
+      error: {
+        content: [{ type: "text", text: cdpT("common.invalidEndPort") }],
+        isError: true,
+      },
+    };
+  }
+
+  const startPort = parsedStartPort ?? undefined;
+  const endPort = parsedEndPort ?? undefined;
+
+  return {
+    value: {
+      ...(startPort !== undefined ? { startPort } : {}),
+      ...(endPort !== undefined ? { endPort } : {}),
+    },
+  };
+}
+
+export async function listCdpInstances(args: Record<string, unknown> = {}): Promise<ToolResult> {
+  const rangeResult = readInstanceDiscoveryRange(args);
+  if ("error" in rangeResult) {
+    return rangeResult.error;
+  }
+
   try {
-    const status = await checkConnection();
+    const instances = await _discoverInstances(rangeResult.value);
+    if (instances.length === 0) {
+      return {
+        content: [{ type: "text", text: cdpT("listCdpInstances.noneFound") }],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: cdpT("listCdpInstances.success", {
+            count: instances.length,
+            instances: stringifyJson(instances),
+          }),
+        },
+      ],
+    };
+  } catch (err) {
+    return cdpError("hev_list_cdp_instances", err as Error, "errors.listInstances");
+  }
+}
+
+export async function checkElectronConnection(args: Record<string, unknown> = {}): Promise<ToolResult> {
+  const connectionResult = readConnectionOptions(args);
+  if ("error" in connectionResult) {
+    return connectionResult.error;
+  }
+
+  try {
+    const status = await checkConnection(connectionResult.value);
 
     if (status.connected) {
       const notAvailable = cdpT("common.notAvailable");
@@ -109,9 +211,14 @@ export async function checkElectronConnection(): Promise<ToolResult> {
   }
 }
 
-export async function listCdpTargets(): Promise<ToolResult> {
+export async function listCdpTargets(args: Record<string, unknown> = {}): Promise<ToolResult> {
+  const connectionResult = readConnectionOptions(args);
+  if ("error" in connectionResult) {
+    return connectionResult.error;
+  }
+
   try {
-    const targets = await _discoverTargets();
+    const targets = await _discoverTargets(connectionResult.value);
 
     if (targets.length === 0) {
       return {
@@ -147,6 +254,11 @@ export async function listCdpTargets(): Promise<ToolResult> {
 }
 
 export async function getCdpTargetInfo(args: Record<string, unknown> = {}): Promise<ToolResult> {
+  const connectionResult = readConnectionOptions(args);
+  if ("error" in connectionResult) {
+    return connectionResult.error;
+  }
+
   const { targetId } = args as { targetId?: string };
 
   if (isNonEmptyString(targetId) === false) {
@@ -157,7 +269,7 @@ export async function getCdpTargetInfo(args: Record<string, unknown> = {}): Prom
   }
 
   try {
-    const target = await findTargetById(targetId);
+    const target = await findTargetById(targetId, connectionResult.value);
     if (target === null) {
       return {
         content: [{ type: "text", text: cdpT("getCdpTargetInfo.notFound", { targetId }) }],
@@ -187,6 +299,11 @@ export async function getCdpTargetInfo(args: Record<string, unknown> = {}): Prom
 }
 
 export async function sendCdpCommand(args: Record<string, unknown> = {}): Promise<ToolResult> {
+  const connectionResult = readConnectionOptions(args);
+  if ("error" in connectionResult) {
+    return connectionResult.error;
+  }
+
   const { targetId, domain, method, params, timeout } = args as {
     targetId?: string;
     domain?: string;
@@ -215,10 +332,15 @@ export async function sendCdpCommand(args: Record<string, unknown> = {}): Promis
       : undefined;
 
   try {
-    const result = await withTargetConnection(targetId, async (ws, target) => ({
-      commandResult: await dispatchCdpCommand(ws, `${domain}.${method}`, params ?? {}, timeoutMs),
-      resolvedTargetId: target.id,
-    }));
+    const result = await withTargetConnection(
+      targetId,
+      async (ws, target) => ({
+        commandResult: await dispatchCdpCommand(ws, `${domain}.${method}`, params ?? {}, timeoutMs),
+        resolvedTargetId: target.id,
+      }),
+      {},
+      connectionResult.value
+    );
 
     return {
       content: [
@@ -240,6 +362,11 @@ export async function sendCdpCommand(args: Record<string, unknown> = {}): Promis
 export async function sendCommandToElectron(
   args: Record<string, unknown> = {}
 ): Promise<ToolResult> {
+  const connectionResult = readConnectionOptions(args);
+  if ("error" in connectionResult) {
+    return connectionResult.error;
+  }
+
   const { command, description } = args as { command?: string; description?: string };
 
   if (command == null || command === "") {
@@ -250,7 +377,7 @@ export async function sendCommandToElectron(
   }
 
   try {
-    const result = await executeScript(command);
+    const result = await executeScript(command, undefined, connectionResult.value);
 
     return {
       content: [
@@ -274,6 +401,11 @@ export async function sendCommandToElectron(
 export async function toggleMcpPanelServers(
   args: Record<string, unknown> = {}
 ): Promise<ToolResult> {
+  const connectionResult = readConnectionOptions(args);
+  if ("error" in connectionResult) {
+    return connectionResult.error;
+  }
+
   const serversRaw = Array.isArray(args["servers"]) ? args["servers"] : [];
   const servers = serversRaw
     .filter((item): item is string => typeof item === "string")
@@ -523,7 +655,7 @@ export async function toggleMcpPanelServers(
           (Math.max(5000, settleMs) + Math.max(1200, Math.floor(settleMs / 2)) * 8)
     );
 
-    const result = await executeScript(command, commandTimeout);
+    const result = await executeScript(command, commandTimeout, connectionResult.value);
     return {
       content: [
         {
@@ -540,6 +672,11 @@ export async function toggleMcpPanelServers(
 }
 
 export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<ToolResult> {
+  const connectionResult = readConnectionOptions(args);
+  if ("error" in connectionResult) {
+    return connectionResult.error;
+  }
+
   const {
     format = "png",
     quality = 80,
@@ -547,7 +684,7 @@ export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<
   } = args as { format?: string; quality?: number; savePath?: string };
 
   try {
-    const base64Data = await takeScreenshot(format, quality);
+    const base64Data = await takeScreenshot(format, quality, connectionResult.value);
 
     if (isNonEmptyString(savePath)) {
       const { writeFile } = await import("fs/promises");
@@ -584,6 +721,11 @@ export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<
 }
 
 export async function inspectElement(args: Record<string, unknown>): Promise<ToolResult> {
+  const connectionResult = readConnectionOptions(args);
+  if ("error" in connectionResult) {
+    return connectionResult.error;
+  }
+
   const { selector } = args as { selector?: string };
 
   if (!isNonEmptyString(selector)) {
@@ -594,7 +736,7 @@ export async function inspectElement(args: Record<string, unknown>): Promise<Too
   }
 
   try {
-    const info = await checkElement(selector);
+    const info = await checkElement(selector, connectionResult.value);
 
     if (info.exists) {
       return {
@@ -628,6 +770,11 @@ export async function inspectElement(args: Record<string, unknown>): Promise<Too
 }
 
 export async function queryElements(args: Record<string, unknown>): Promise<ToolResult> {
+  const connectionResult = readConnectionOptions(args);
+  if ("error" in connectionResult) {
+    return connectionResult.error;
+  }
+
   const { selector, limit = 20 } = args as { selector?: string; limit?: number };
 
   if (!isNonEmptyString(selector)) {
@@ -638,7 +785,7 @@ export async function queryElements(args: Record<string, unknown>): Promise<Tool
   }
 
   try {
-    const elements = await findElements(selector, limit);
+    const elements = await findElements(selector, limit, connectionResult.value);
 
     if (elements.length === 0) {
       return {

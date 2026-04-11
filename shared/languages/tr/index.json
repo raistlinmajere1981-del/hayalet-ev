@@ -3931,7 +3931,10 @@
         "yes": "Evet",
         "no": "Hayır",
         "none": "(yok)",
-        "empty": "(boş)"
+        "empty": "(boş)",
+        "invalidPort": "❌ 'port' parametresi 1 ile 65535 arasında tam sayı olmalı",
+        "invalidStartPort": "❌ 'startPort' parametresi 1 ile 65535 arasında tam sayı olmalı",
+        "invalidEndPort": "❌ 'endPort' parametresi 1 ile 65535 arasında tam sayı olmalı"
       },
       "errors": {
         "generic": "❌ {{message}}",
@@ -3941,6 +3944,7 @@
         "screenshot": "❌ Screenshot hatası: {{message}}",
         "inspectElement": "❌ Element inceleme hatası: {{message}}",
         "queryElements": "❌ Element sorgu hatası: {{message}}",
+        "listInstances": "❌ CDP örnek listeleme hatası: {{message}}",
         "listTargets": "❌ CDP hedef listeleme hatası: {{message}}",
         "targetInfo": "❌ CDP hedef bilgisi hatası: {{message}}",
         "cdpCommand": "❌ CDP komut hatası: {{message}}"
@@ -3964,6 +3968,10 @@
       "checkConnection": {
         "connected": "✅ Electron bağlantısı aktif\n\n📡 **Bağlantı Bilgileri:**\n- Port: {{port}}\n- Hedef sayısı: {{targetsCount}}\n\n🪟 **Ana Pencere:**\n- Başlık: {{title}}\n- URL: {{url}}\n- Tip: {{windowType}}",
         "disconnected": "❌ Electron bağlantısı yok\n\n**Hata:** {{error}}\n\n**Çözüm:**\n1. Uygulamayı başlatın: `npm start`\n2. Uygulama debug modunda {{port}} portunda açılır\n3. Tekrar deneyin"
+      },
+      "listCdpInstances": {
+        "noneFound": "❌ Hayalet Ev için çalışan CDP örneği bulunamadı.",
+        "success": "✅ {{count}} CDP örneği bulundu\n\n```json\n{{instances}}\n```"
       },
       "listCdpTargets": {
         "noneFound": "❌ CDP hedefi bulunamadı.",
@@ -4743,8 +4751,20 @@
           "agentGuidance": "Canlı sorunları izlemek için kullan. Ctrl+C ile durana kadar sürekli stream eder."
         },
         "cdp": {
+          "listCdpInstances": {
+            "description": "Çalışan Hayalet Ev CDP örneklerini listele; böylece dev ve packaged/AppImage kopyaları ayrı hedeflenebilir.",
+            "startPort": "Opsiyonel ilk tarama portu",
+            "endPort": "Opsiyonel son tarama portu",
+            "useCases": {
+              "instanceDiscovery": "Çalışan Hayalet Ev örneklerini keşfetme",
+              "devPackagedRouting": "Dev ve packaged/AppImage kopyaları arasında seçim yapma",
+              "multiAppDebugging": "Aynı anda birden fazla uygulama kopyasını debug etme"
+            },
+            "agentGuidance": "Birden fazla Hayalet Ev kopyası çalışıyorsa ve doğru CDP portunu seçmen gerekiyorsa önce bunu kullan."
+          },
           "checkElectronConnection": {
             "description": "Electron uygulamasına CDP bağlantısını kontrol et. Uygulama çalışıyor mu ve debug portu açık mı?",
+            "port": "Opsiyonel CDP portu. Varsayılan dev örneği portudur; packaged/AppImage varsayılan olarak bir sonraki portu kullanır.",
             "useCases": {
               "connectivityCheck": "CDP bağlantı kontrolü",
               "appHealth": "Electron uygulama sağlık kontrolü",
@@ -4754,6 +4774,7 @@
           },
           "listCdpTargets": {
             "description": "Mevcut Electron oturumundaki görünür tüm CDP hedeflerini listele.",
+            "port": "Opsiyonel CDP portu. Varsayılan dev örneği portudur; packaged/AppImage varsayılan olarak bir sonraki portu kullanır.",
             "useCases": {
               "targetDiscovery": "Mevcut CDP hedeflerini keşfetme",
               "targetSelection": "İleri seviye komutlardan önce doğru hedefi seçme",
@@ -4765,6 +4786,7 @@
             "description": "Electron uygulamasında JavaScript kodu çalıştır. Herhangi bir JS expression çalıştırabilir.",
             "command": "Çalıştırılacak JavaScript kodu",
             "commandDescription": "Komutun ne yaptığına dair kısa açıklama (opsiyonel)",
+            "port": "Opsiyonel CDP portu. Varsayılan dev örneği portudur; packaged/AppImage varsayılan olarak bir sonraki portu kullanır.",
             "useCases": {
               "domManipulation": "DOM manipülasyonu",
               "stateInspection": "State inspection",
@@ -4775,6 +4797,7 @@
           "sendCdpCommand": {
             "description": "Belirli bir Electron hedefine ham Chrome DevTools Protocol komutu gönder.",
             "targetId": "CDP hedef id'si (opsiyonel; verilmezse tercih edilen page target kullanılır)",
+            "port": "Opsiyonel CDP portu. Varsayılan dev örneği portudur; packaged/AppImage varsayılan olarak bir sonraki portu kullanır.",
             "domain": "CDP domain adı (örn: Page, Runtime, Debugger)",
             "method": "Domain içindeki CDP method adı (örn: reload, evaluate, pause)",
             "params": "Komutla birlikte gönderilecek CDP params object'i",
@@ -4791,6 +4814,7 @@
             "format": "Görüntü formatı",
             "quality": "JPEG kalitesi (1-100)",
             "savePath": "Dosya kaydetme yolu (opsiyonel)",
+            "port": "Opsiyonel CDP portu. Varsayılan dev örneği portudur; packaged/AppImage varsayılan olarak bir sonraki portu kullanır.",
             "useCases": {
               "visualDebugging": "Görsel hata ayıklama",
               "uiVerification": "UI doğrulama",
@@ -4801,6 +4825,7 @@
           "getCdpTargetInfo": {
             "description": "Belirli bir CDP hedefinin tip, URL ve yaygın komut domain'leri dahil detaylarını getir.",
             "targetId": "CDP hedef id'si",
+            "port": "Opsiyonel CDP portu. Varsayılan dev örneği portudur; packaged/AppImage varsayılan olarak bir sonraki portu kullanır.",
             "useCases": {
               "targetInspection": "Belirli bir CDP hedefini inceleme",
               "domainReference": "Ham CDP komutu göndermeden önce yaygın domain'leri gözden geçirme",
@@ -4811,6 +4836,7 @@
           "inspectElement": {
             "description": "Bir elementin detaylı bilgilerini al (boyut, pozisyon, görünürlük, içerik).",
             "selector": "CSS selector",
+            "port": "Opsiyonel CDP portu. Varsayılan dev örneği portudur; packaged/AppImage varsayılan olarak bir sonraki portu kullanır.",
             "useCases": {
               "elementDebugging": "Element debug etme",
               "layoutInspection": "Layout inceleme",
@@ -4821,6 +4847,7 @@
           "queryElements": {
             "description": "Bir selector ile eşleşen tüm elementleri bul ve listele.",
             "selector": "CSS selector",
+            "port": "Opsiyonel CDP portu. Varsayılan dev örneği portudur; packaged/AppImage varsayılan olarak bir sonraki portu kullanır.",
             "limit": "Maksimum sonuç sayısı",
             "useCases": {
               "multipleElementsSearch": "Birden fazla eşleşmeyi arama",
@@ -4835,6 +4862,7 @@
             "servers": "Toggle edilecek MCP sunucu isimleri (örn: context7, websearch, app)",
             "settleMs": "Her toggle sonrası bekleme süresi (ms)",
             "cycles": "OFF→ON cycle sayısı (1-5)",
+            "port": "Opsiyonel CDP portu. Varsayılan dev örneği portudur; packaged/AppImage varsayılan olarak bir sonraki portu kullanır.",
             "useCases": {
               "panelToggleAutomation": "OpenCode MCP panel toggle otomasyonu",
               "postRestartVerification": "Restart sonrası MCP switch doğrulaması"

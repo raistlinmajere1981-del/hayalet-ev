@@ -352,6 +352,7 @@ export class MailTransportService {
           secure: account.imap.secure,
           auth,
           disableAutoIdle: true,
+          logger: false,
         };
 
         return new ImapFlow(config) as unknown as MailTransportImapClient;

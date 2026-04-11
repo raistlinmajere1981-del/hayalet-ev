@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { loadGameRoomHostModule } from "./helpers/game-room-host-module.ts";
+import { syncUs1Mailbox as xoxSyncUs1Mailbox } from "../../rooms/game-room/main-functions/xox/host/runtime.ts";
 
 const gameRoomHostModule = await loadGameRoomHostModule();
 
@@ -757,6 +758,90 @@ test("game-room host surfaces synced stale US1 moves as diagnostics", async () =
   assert.match(String(runtime.latestCommandResult()?.message ?? ""), /stale/i);
   assert.equal(runtime.toastCalls.at(-1)?.type, "warning");
   assert.match(String(runtime.toastCalls.at(-1)?.message ?? ""), /stale/i);
+});
+
+test("game-room host surfaces SlotBridge-wrapped US1 command failures as diagnostics", async () => {
+  const runtime = createRoomHostRuntime();
+  const inviteEntry = {
+    roomId: "game-room",
+    featureId: "xox",
+    inviteId: "invite-slotbridge-failure",
+    matchId: "invite-slotbridge-failure",
+    remoteUserId: "challenger@example.com",
+    nickname: "Challenger",
+    senderEmail: "challenger@example.com",
+    note: "I will start.",
+    starter: "user",
+    localSessionId: "challenger-session-slotbridge-failure",
+    conversationId: "challenger-conversation-slotbridge-failure",
+  };
+
+  runtime.api.setState("xox-invite-inbox", [inviteEntry]);
+  runtime.api.setState(
+    "xox-context",
+    buildReadyHostContext("us1", {
+      us1RemoteUserId: inviteEntry.remoteUserId,
+      us1Nickname: inviteEntry.nickname,
+    })
+  );
+
+  const acceptResult = await runtime.exported.commands.GameRoomXoxAcceptInvite({
+    roomArgs: { inviteId: inviteEntry.inviteId },
+  });
+  assert.equal(acceptResult.success, true);
+
+  runtime.api.dispatchRoomCommand = async () => ({
+    success: true,
+    data: {
+      success: false,
+      message: "stale remote move from wrapped SlotBridge result",
+    },
+  });
+  runtime.enqueueUs1SyncResult({
+    roomCommands: [
+      {
+        roomId: "game-room",
+        featureId: "xox",
+        commandName: "GameRoomXoxRemoteMove",
+        matchId: "invite-slotbridge-failure",
+        turnIndex: 0,
+        boardHashBeforeMove: ".........",
+        rawArgs:
+          '{"matchId":"invite-slotbridge-failure","inviteId":"invite-slotbridge-failure","turnIndex":0,"boardHashBeforeMove":".........","cell":4}',
+        commandArgs: {
+          matchId: "invite-slotbridge-failure",
+          inviteId: "invite-slotbridge-failure",
+          turnIndex: 0,
+          boardHashBeforeMove: ".........",
+          cell: 4,
+        },
+        remoteUserId: inviteEntry.remoteUserId,
+        localSessionId: runtime.latestGameState()?.localSessionId,
+        transportMessageId: "<move-slotbridge-failure@example.test>",
+      },
+    ],
+  });
+
+  await xoxSyncUs1Mailbox(runtime.api as never, "wrapped-command-failure");
+
+  assert.equal((runtime.latestGameState()?.board as string[])[4], "");
+  assert.equal(runtime.latestCommandResult()?.success, false);
+  assert.match(
+    String(runtime.latestCommandResult()?.message ?? ""),
+    /stale remote move from wrapped SlotBridge result/i
+  );
+  assert.equal(runtime.toastCalls.at(-1)?.type, "warning");
+  assert.match(String(runtime.toastCalls.at(-1)?.message ?? ""), /wrapped SlotBridge result/i);
+});
+
+test("game-room host skips redundant XOX state refreshes on empty US1 sync results", async () => {
+  const runtime = createRoomHostRuntime();
+  const xoxStateCountBefore = runtime.notifications.filter((entry) => entry.type === "xox-state").length;
+
+  await xoxSyncUs1Mailbox(runtime.api as never, "empty-mailbox");
+
+  const xoxStateCountAfter = runtime.notifications.filter((entry) => entry.type === "xox-state").length;
+  assert.equal(xoxStateCountAfter, xoxStateCountBefore);
 });
 
 test("game-room host rejects US1 moves from a different remote identity without mutating the board", async () => {

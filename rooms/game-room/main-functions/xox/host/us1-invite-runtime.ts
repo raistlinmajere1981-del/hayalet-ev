@@ -1,19 +1,7 @@
 import type { XoxGameState } from "./state-core.js";
+import type { InviteEntry } from "./state-invites.js";
 import type { GameRoomContextState } from "../../../shared/types/room-shell-contracts.js";
 import { buildUs1RoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
-
-interface InviteEntry {
-  inviteId: string;
-  matchId: string;
-  remoteUserId: string;
-  nickname: string;
-  starter: "user" | "opponent";
-  localSessionId: string | null;
-  note: string;
-  conversationId: string;
-  roomId: string;
-  featureId: string;
-}
 
 interface Us1Api {
   sendUs1Message: (
@@ -108,7 +96,28 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
     );
   }
 
-  function syncInviteInboxFromSnapshot(api: Us1Api, roomInviteInbox: unknown) {
+  function buildInviteInboxSnapshotKey(inviteInbox: InviteEntry[]): string {
+    return JSON.stringify(
+      inviteInbox.map((entry) => ({
+        roomId: entry.roomId,
+        featureId: entry.featureId,
+        inviteId: entry.inviteId,
+        matchId: entry.matchId,
+        remoteUserId: entry.remoteUserId,
+        nickname: entry.nickname,
+        senderEmail: entry.senderEmail,
+        note: entry.note,
+        starter: entry.starter,
+        localSessionId: entry.localSessionId,
+        conversationId: entry.conversationId,
+        transportMessageId: entry.transportMessageId,
+        sentAt: entry.sentAt,
+      }))
+    );
+  }
+
+  function syncInviteInboxFromSnapshot(api: Us1Api, roomInviteInbox: unknown): boolean {
+    const currentInviteInbox = loadInviteInbox(api);
     const nextInviteInbox = normalizeInviteInbox(roomInviteInbox).filter(function (
       entry: InviteEntry
     ) {
@@ -119,7 +128,14 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
         entry.remoteUserId !== ""
       );
     });
+    if (
+      buildInviteInboxSnapshotKey(currentInviteInbox) ===
+      buildInviteInboxSnapshotKey(nextInviteInbox)
+    ) {
+      return false;
+    }
     saveInviteInbox(api, nextInviteInbox);
+    return true;
   }
 
   function removeInviteFromInbox(api: Us1Api, inviteId: string, remoteUserId: string) {

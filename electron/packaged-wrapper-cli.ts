@@ -503,12 +503,14 @@ function toGhostRunningControl(control: RuntimeControl): RuntimeControl {
   });
 }
 
+function resolvePackagedCdpPort(): string {
+  const cdpPort = typeof process.env["CDP_PORT"] === "string" ? process.env["CDP_PORT"].trim() : "";
+  return cdpPort !== "" ? cdpPort : "9223";
+}
+
 function buildMainArgs(options: MainLaunchOptions): string[] {
   const args = [`${PACKAGED_SURFACE_FLAG}=main`, "--no-sandbox"];
-  const cdpPort = typeof process.env["CDP_PORT"] === "string" ? process.env["CDP_PORT"].trim() : "";
-  if (cdpPort !== "") {
-    args.push(`--remote-debugging-port=${cdpPort}`);
-  }
+  args.push(`--remote-debugging-port=${resolvePackagedCdpPort()}`);
 
   if (options.startPage !== null && options.startPage !== "") {
     args.push(`--start-page=${options.startPage}`);
@@ -535,10 +537,7 @@ function buildMainArgs(options: MainLaunchOptions): string[] {
 
 function buildGhostArgs(): string[] {
   const args = [`${PACKAGED_SURFACE_FLAG}=ghost`, "--no-sandbox"];
-  const cdpPort = typeof process.env["CDP_PORT"] === "string" ? process.env["CDP_PORT"].trim() : "";
-  if (cdpPort !== "") {
-    args.push(`--remote-debugging-port=${cdpPort}`);
-  }
+  args.push(`--remote-debugging-port=${resolvePackagedCdpPort()}`);
   return args;
 }
 

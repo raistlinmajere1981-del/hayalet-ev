@@ -1,6 +1,7 @@
 // NOTE: High-level DOM helpers executed via CDP.
 
 import type WebSocket from "ws";
+import type { CDPConnectionOptions } from "./cdp-connection.js";
 import { withConnection, evaluateJS, sendCDPCommand } from "./cdp-connection.js";
 import { CDP_TIMEOUTS } from "@timeouts";
 
@@ -25,7 +26,10 @@ interface ElementListItem {
   visible: boolean;
 }
 
-export async function checkElement(selector: string): Promise<ElementInfo> {
+export async function checkElement(
+  selector: string,
+  connectionOptions: CDPConnectionOptions = {}
+): Promise<ElementInfo> {
   return await withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
@@ -47,10 +51,14 @@ export async function checkElement(selector: string): Promise<ElementInfo> {
       })()
     `;
     return await (evaluateJS(ws, script) as Promise<ElementInfo>);
-  });
+  }, connectionOptions);
 }
 
-export async function findElements(selector: string, limit = 20): Promise<ElementListItem[]> {
+export async function findElements(
+  selector: string,
+  limit = 20,
+  connectionOptions: CDPConnectionOptions = {}
+): Promise<ElementListItem[]> {
   return await withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
@@ -66,11 +74,15 @@ export async function findElements(selector: string, limit = 20): Promise<Elemen
       })()
     `;
     return await (evaluateJS(ws, script) as Promise<ElementListItem[]>);
-  });
+  }, connectionOptions);
 }
 
 // NOTE: On multi-monitor setups, screenshots can fail while in background. Bring to front first.
-export async function takeScreenshot(format = "png", quality = 80): Promise<string> {
+export async function takeScreenshot(
+  format = "png",
+  quality = 80,
+  connectionOptions: CDPConnectionOptions = {}
+): Promise<string> {
   return await withConnection(async (ws: WebSocket) => {
     await sendCDPCommand(ws, "Page.bringToFront", {}, CDP_TIMEOUTS.COMMAND_FAST);
     await sendCDPCommand(ws, "Page.enable", {}, CDP_TIMEOUTS.COMMAND_FAST);
@@ -88,11 +100,15 @@ export async function takeScreenshot(format = "png", quality = 80): Promise<stri
     );
 
     return result["data"] as string;
-  });
+  }, connectionOptions);
 }
 
-export async function executeScript(code: string, timeout?: number): Promise<unknown> {
+export async function executeScript(
+  code: string,
+  timeout?: number,
+  connectionOptions: CDPConnectionOptions = {}
+): Promise<unknown> {
   return await withConnection(async (ws: WebSocket) => {
     return await evaluateJS(ws, code, true, timeout);
-  });
+  }, connectionOptions);
 }

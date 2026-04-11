@@ -1,0 +1,111 @@
+.xox-choice-button {
+  display: grid;
+  gap: 0.22rem;
+  padding: 0.64rem 0.72rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.03);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.xox-choice-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgb(121 209 194 / 0.34);
+  box-shadow: 0 18px 26px rgb(0 0 0 / 0.18);
+}
+
+.xox-choice-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.xox-choice-button[data-selected="true"] {
+  border-color: rgb(121 209 194 / 0.44);
+  background:
+    linear-gradient(135deg, rgb(15 181 158 / 0.18), rgb(255 255 255 / 0.04)),
+    rgb(255 255 255 / 0.04);
+}
+
+.xox-choice-button__title {
+  font-weight: 700;
+}
+
+.xox-choice-button__meta {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.xox-feature-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6rem;
+  padding: 0 0.95rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(223 184 102 / 0.22);
+  background:
+    linear-gradient(135deg, rgb(223 184 102 / 0.16), rgb(255 255 255 / 0.04)),
+    rgb(255 255 255 / 0.03);
+  color: #f8e8c4;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.xox-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 4.5rem;
+  padding: 0.78rem 0.82rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--ink);
+  font: inherit;
+}
+
+.xox-textarea:focus {
+  outline: none;
+  border-color: rgb(121 209 194 / 0.36);
+  box-shadow: 0 0 0 1px rgb(121 209 194 / 0.1);
+}
+
+.xox-button {
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 1rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.xox-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.xox-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.xox-button--primary {
+  background: linear-gradient(135deg, #18c0a7, #0d8d7e);
+  color: #041117;
+  box-shadow: 0 18px 28px rgb(11 192 167 / 0.2);
+}
+
+.xox-button--ghost {
+  background: rgb(255 255 255 / 0.05);
+  color: var(--ink);
+  border-color: rgb(255 255 255 / 0.08);
+}

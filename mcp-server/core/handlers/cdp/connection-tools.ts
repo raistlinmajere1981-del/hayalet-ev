@@ -1,5 +1,6 @@
 import {
   checkElectronConnection,
+  listCdpInstances,
   listCdpTargets,
   sendCdpCommand,
   sendCommandToElectron,
@@ -18,9 +19,53 @@ export function createCdpConnectionTools(): ToolEntry[] {
   return [
     {
       definition: {
+        name: "hev_list_cdp_instances",
+        description: cdpToolT("listCdpInstances.description"),
+        inputSchema: {
+          type: "object",
+          properties: {
+            startPort: {
+              type: "number",
+              description: cdpToolT("listCdpInstances.startPort"),
+            },
+            endPort: {
+              type: "number",
+              description: cdpToolT("listCdpInstances.endPort"),
+            },
+          },
+        },
+        metadata: {
+          category: "electron",
+          subcategory: "cdp",
+          priority: "high",
+          complexity: "simple",
+          useCases: [
+            cdpToolT("listCdpInstances.useCases.instanceDiscovery"),
+            cdpToolT("listCdpInstances.useCases.devPackagedRouting"),
+            cdpToolT("listCdpInstances.useCases.multiAppDebugging"),
+          ],
+          relatedTools: ["hev_check_electron_connection", "hev_list_cdp_targets"],
+          agentGuidance: cdpToolT("listCdpInstances.agentGuidance"),
+          requiresConfirmation: false,
+          riskLevel: "low",
+          tags: ["cdp", "instances", "ports", "discovery"],
+        },
+      },
+      handler: async (args) => await listCdpInstances(args ?? {}),
+    },
+    {
+      definition: {
         name: "hev_check_electron_connection",
         description: cdpToolT("checkElectronConnection.description"),
-        inputSchema: { type: "object", properties: {} },
+        inputSchema: {
+          type: "object",
+          properties: {
+            port: {
+              type: "number",
+              description: cdpToolT("checkElectronConnection.port"),
+            },
+          },
+        },
         metadata: {
           category: "electron",
           subcategory: "cdp",
@@ -38,13 +83,21 @@ export function createCdpConnectionTools(): ToolEntry[] {
           tags: ["cdp", "connectivity", "electron", "health"],
         },
       },
-      handler: async () => await checkElectronConnection(),
+      handler: async (args) => await checkElectronConnection(args ?? {}),
     },
     {
       definition: {
         name: "hev_list_cdp_targets",
         description: cdpToolT("listCdpTargets.description"),
-        inputSchema: { type: "object", properties: {} },
+        inputSchema: {
+          type: "object",
+          properties: {
+            port: {
+              type: "number",
+              description: cdpToolT("listCdpTargets.port"),
+            },
+          },
+        },
         metadata: {
           category: "electron",
           subcategory: "cdp",
@@ -62,7 +115,7 @@ export function createCdpConnectionTools(): ToolEntry[] {
           tags: ["cdp", "targets", "inspection", "debugging"],
         },
       },
-      handler: async () => await listCdpTargets(),
+      handler: async (args) => await listCdpTargets(args ?? {}),
     },
     {
       definition: {
@@ -75,6 +128,10 @@ export function createCdpConnectionTools(): ToolEntry[] {
             description: {
               type: "string",
               description: cdpToolT("sendCommandToElectron.commandDescription"),
+            },
+            port: {
+              type: "number",
+              description: cdpToolT("sendCommandToElectron.port"),
             },
           },
           required: ["command"],
@@ -108,6 +165,10 @@ export function createCdpConnectionTools(): ToolEntry[] {
             targetId: {
               type: "string",
               description: cdpToolT("sendCdpCommand.targetId"),
+            },
+            port: {
+              type: "number",
+              description: cdpToolT("sendCdpCommand.port"),
             },
             domain: {
               type: "string",
@@ -172,6 +233,10 @@ export function createCdpConnectionTools(): ToolEntry[] {
             savePath: {
               type: "string",
               description: cdpToolT("takeScreenshot.savePath"),
+            },
+            port: {
+              type: "number",
+              description: cdpToolT("takeScreenshot.port"),
             },
           },
         },

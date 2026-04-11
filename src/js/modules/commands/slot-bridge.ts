@@ -325,7 +325,14 @@ function buildActionPayload(
   }
 
   if (isRecord(source["payload"])) {
-    return { ...source["payload"] };
+    const nestedPayload = source["payload"];
+    return {
+      ...fallback,
+      ...nestedPayload,
+      ...(rawArgs.trim() !== "" && typeof nestedPayload["rawArgs"] !== "string"
+        ? { rawArgs: rawArgs.trim() }
+        : {}),
+    };
   }
 
   const knownKeys = new Set([
@@ -353,12 +360,50 @@ function buildActionPayload(
     return acc;
   }, {});
 
-  return Object.keys(derived).length > 0 ? derived : fallback;
+  return Object.keys(derived).length > 0 ? { ...fallback, ...derived } : fallback;
+}
+
+function buildTopLevelActionPayload(payload: CommandPayload = {}): Record<string, unknown> {
+  const knownKeys = new Set([
+    "version",
+    "reqId",
+    "action",
+    "fromSlot",
+    "toSlot",
+    "replyToSlot",
+    "delivery",
+    "wait",
+    "timeoutMs",
+    "force",
+    "connectPolicy",
+    "sessionRef",
+    "session",
+    "attachments",
+    "payload",
+    "args",
+    "provider",
+    "source",
+    "target",
+    "targets",
+    "message",
+  ]);
+
+  return Object.entries(payload).reduce<Record<string, unknown>>((acc, [key, value]) => {
+    if (knownKeys.has(key)) {
+      return acc;
+    }
+    acc[key] = value;
+    return acc;
+  }, {});
 }
 
 function normalizeEnvelope(payload: CommandPayload = {}): SlotBridgeEnvelope {
   const parsedArgs = parseJsonRecord(typeof payload.args === "string" ? payload.args : "") ?? {};
   const directPayload = isRecord(payload["payload"]) ? payload["payload"] : {};
+  const fallbackPayload = {
+    ...buildTopLevelActionPayload(payload),
+    ...directPayload,
+  };
   const rawSessionRef =
     parsedArgs["sessionRef"] ??
     parsedArgs["session"] ??
@@ -426,7 +471,7 @@ function normalizeEnvelope(payload: CommandPayload = {}): SlotBridgeEnvelope {
     sessionRef: readSessionRef(rawSessionRef),
     payload: buildActionPayload(
       parsedArgs,
-      directPayload,
+      fallbackPayload,
       typeof payload.args === "string" ? payload.args : ""
     ),
     attachments: readAttachments(parsedArgs["attachments"] ?? payload.attachments),
@@ -1376,7 +1421,10 @@ async function runRoomCommandAction(envelope: SlotBridgeEnvelope): Promise<SlotB
           key === "commandName" ||
           key === "actionId" ||
           key === "roomCommand" ||
-          key === "rawArgs"
+          key === "rawArgs" ||
+          key === "remoteUserId" ||
+          key === "localSessionId" ||
+          key === "transportMessageId"
         ) {
           return acc;
         }
@@ -1387,14 +1435,27 @@ async function runRoomCommandAction(envelope: SlotBridgeEnvelope): Promise<SlotB
     typeof actionPayload["rawArgs"] === "string"
       ? actionPayload["rawArgs"]
       : JSON.stringify(roomPayload);
-
-  const result = await RoomCommandRegistry.run(commandName, {
+  const commandPayload = {
     provider,
     source: provider,
     roomPayload,
     args: rawArgs,
     roomId: actionPayload["roomId"],
-  });
+    ...(typeof actionPayload["remoteUserId"] === "string" &&
+    actionPayload["remoteUserId"].trim() !== ""
+      ? { remoteUserId: actionPayload["remoteUserId"].trim() }
+      : {}),
+    ...(typeof actionPayload["localSessionId"] === "string" &&
+    actionPayload["localSessionId"].trim() !== ""
+      ? { localSessionId: actionPayload["localSessionId"].trim() }
+      : {}),
+    ...(typeof actionPayload["transportMessageId"] === "string" &&
+    actionPayload["transportMessageId"].trim() !== ""
+      ? { transportMessageId: actionPayload["transportMessageId"].trim() }
+      : {}),
+  };
+
+  const result = await RoomCommandRegistry.run(commandName, commandPayload);
   return isRecord(result)
     ? buildResult(envelope, { data: result })
     : buildResult(envelope, { data: { result } });

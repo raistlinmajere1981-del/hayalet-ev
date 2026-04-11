@@ -3931,7 +3931,10 @@
         "yes": "Yes",
         "no": "No",
         "none": "(none)",
-        "empty": "(empty)"
+        "empty": "(empty)",
+        "invalidPort": "❌ 'port' must be an integer between 1 and 65535",
+        "invalidStartPort": "❌ 'startPort' must be an integer between 1 and 65535",
+        "invalidEndPort": "❌ 'endPort' must be an integer between 1 and 65535"
       },
       "errors": {
         "generic": "❌ {{message}}",
@@ -3941,6 +3944,7 @@
         "screenshot": "❌ Screenshot error: {{message}}",
         "inspectElement": "❌ Inspect error: {{message}}",
         "queryElements": "❌ Query error: {{message}}",
+        "listInstances": "❌ CDP instance listing error: {{message}}",
         "listTargets": "❌ CDP target listing error: {{message}}",
         "targetInfo": "❌ CDP target info error: {{message}}",
         "cdpCommand": "❌ CDP command error: {{message}}"
@@ -3964,6 +3968,10 @@
       "checkConnection": {
         "connected": "✅ Electron connection is active\n\n📡 **Connection Details:**\n- Port: {{port}}\n- Targets: {{targetsCount}}\n\n🪟 **Main Window:**\n- Title: {{title}}\n- URL: {{url}}\n- Type: {{windowType}}",
         "disconnected": "❌ Electron connection is unavailable\n\n**Error:** {{error}}\n\n**Fix:**\n1. Start the app: `npm start`\n2. The app starts in debug mode on port {{port}}\n3. Try again"
+      },
+      "listCdpInstances": {
+        "noneFound": "❌ No Hayalet Ev CDP instances found.",
+        "success": "✅ {{count}} CDP instances found\n\n```json\n{{instances}}\n```"
       },
       "listCdpTargets": {
         "noneFound": "❌ No CDP targets found.",
@@ -4743,8 +4751,20 @@
           "agentGuidance": "Use this for live investigations. It keeps streaming until interrupted with Ctrl+C."
         },
         "cdp": {
+          "listCdpInstances": {
+            "description": "List the running Hayalet Ev CDP instances so dev and packaged/AppImage copies can be targeted separately.",
+            "startPort": "Optional first port to scan",
+            "endPort": "Optional last port to scan",
+            "useCases": {
+              "instanceDiscovery": "Discovering running Hayalet Ev instances",
+              "devPackagedRouting": "Choosing between dev and packaged/AppImage copies",
+              "multiAppDebugging": "Debugging multiple app copies at the same time"
+            },
+            "agentGuidance": "Use this first when more than one Hayalet Ev copy may be running and you need the right CDP port."
+          },
           "checkElectronConnection": {
             "description": "Check the CDP connection to the Electron application. Verifies that the app is running and the debug port is open.",
+            "port": "Optional CDP port. Defaults to the dev instance port; packaged/AppImage uses the next port by default.",
             "useCases": {
               "connectivityCheck": "CDP connectivity checks",
               "appHealth": "Electron application health checks",
@@ -4754,6 +4774,7 @@
           },
           "listCdpTargets": {
             "description": "List all visible CDP targets for the current Electron session.",
+            "port": "Optional CDP port. Defaults to the dev instance port; packaged/AppImage uses the next port by default.",
             "useCases": {
               "targetDiscovery": "Discovering available CDP targets",
               "targetSelection": "Choosing the right target before running advanced commands",
@@ -4765,6 +4786,7 @@
             "description": "Run JavaScript inside the Electron application. Can execute any JS expression.",
             "command": "JavaScript code to execute",
             "commandDescription": "Short description of what the command does (optional)",
+            "port": "Optional CDP port. Defaults to the dev instance port; packaged/AppImage uses the next port by default.",
             "useCases": {
               "domManipulation": "DOM manipulation",
               "stateInspection": "State inspection",
@@ -4775,6 +4797,7 @@
           "sendCdpCommand": {
             "description": "Send a raw Chrome DevTools Protocol command to a specific Electron target.",
             "targetId": "CDP target id (optional; defaults to the preferred page target)",
+            "port": "Optional CDP port. Defaults to the dev instance port; packaged/AppImage uses the next port by default.",
             "domain": "CDP domain name (for example: Page, Runtime, Debugger)",
             "method": "CDP method name inside the domain (for example: reload, evaluate, pause)",
             "params": "CDP params object to send with the command",
@@ -4791,6 +4814,7 @@
             "format": "Image format",
             "quality": "JPEG quality (1-100)",
             "savePath": "Save path for the screenshot (optional)",
+            "port": "Optional CDP port. Defaults to the dev instance port; packaged/AppImage uses the next port by default.",
             "useCases": {
               "visualDebugging": "Visual debugging",
               "uiVerification": "UI verification",
@@ -4801,6 +4825,7 @@
           "getCdpTargetInfo": {
             "description": "Get details about a specific CDP target, including its type, URL, and common command domains.",
             "targetId": "CDP target id",
+            "port": "Optional CDP port. Defaults to the dev instance port; packaged/AppImage uses the next port by default.",
             "useCases": {
               "targetInspection": "Inspecting a specific CDP target",
               "domainReference": "Reviewing common command domains before sending a raw CDP command",
@@ -4811,6 +4836,7 @@
           "inspectElement": {
             "description": "Get detailed information about an element (size, position, visibility, content).",
             "selector": "CSS selector",
+            "port": "Optional CDP port. Defaults to the dev instance port; packaged/AppImage uses the next port by default.",
             "useCases": {
               "elementDebugging": "Debugging an element",
               "layoutInspection": "Inspecting layout details",
@@ -4821,6 +4847,7 @@
           "queryElements": {
             "description": "Find and list all elements that match a selector.",
             "selector": "CSS selector",
+            "port": "Optional CDP port. Defaults to the dev instance port; packaged/AppImage uses the next port by default.",
             "limit": "Maximum number of results",
             "useCases": {
               "multipleElementsSearch": "Searching for multiple matches",
@@ -4835,6 +4862,7 @@
             "servers": "Server names to toggle (for example: context7, websearch, app)",
             "settleMs": "Wait time after each toggle (ms)",
             "cycles": "Number of OFF→ON cycles (1-5)",
+            "port": "Optional CDP port. Defaults to the dev instance port; packaged/AppImage uses the next port by default.",
             "useCases": {
               "panelToggleAutomation": "OpenCode MCP panel toggle automation",
               "postRestartVerification": "Verifying MCP switches after a restart"

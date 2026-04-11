@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-11T14:35:21.285Z",
+  "generatedAt": "2026-04-11T17:36:20.624Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -745,8 +745,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 552,
-          "endLine": 552,
+          "startLine": 551,
+          "endLine": 551,
           "text": "NOTE: The console shim runs under ELECTRON_RUN_AS_NODE, but spawned surfaces must boot the GUI runtime.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -754,8 +754,8 @@
         },
         {
           "kind": "note",
-          "startLine": 641,
-          "endLine": 641,
+          "startLine": 640,
+          "endLine": 640,
           "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -789,8 +789,8 @@
         },
         {
           "kind": "note",
-          "startLine": 774,
-          "endLine": 774,
+          "startLine": 773,
+          "endLine": 773,
           "text": "NOTE: Wrapper lifecycle transitions are intentionally serialized.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -3637,7 +3637,7 @@
       "name": "attachPipe",
       "comments": [
         {
-          "startLine": 552,
+          "startLine": 551,
           "kind": "note",
           "text": "NOTE: The console shim runs under ELECTRON_RUN_AS_NODE, but spawned surfaces must boot the GUI runtime."
         }

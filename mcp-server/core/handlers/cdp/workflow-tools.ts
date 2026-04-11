@@ -38,6 +38,10 @@ export function createCdpWorkflowTools(): ToolEntry[] {
               description: cdpToolT("toggleMcpPanelServers.cycles"),
               default: 1,
             },
+            port: {
+              type: "number",
+              description: cdpToolT("toggleMcpPanelServers.port"),
+            },
           },
         },
         metadata: {

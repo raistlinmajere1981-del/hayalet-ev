@@ -250,7 +250,7 @@ app.setName(appInstanceLabel);
 mkdirSync(userDataDir, { recursive: true });
 app.setPath("userData", userDataDir);
 
-const CDP_PORT = process.env["CDP_PORT"] ?? 9222;
+const CDP_PORT = process.env["CDP_PORT"] ?? (app.isPackaged ? 9223 : 9222);
 app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
 
 let mainWindow: BrowserWindow | null = null;
