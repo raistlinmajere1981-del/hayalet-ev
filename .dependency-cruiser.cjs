@@ -97,7 +97,7 @@ module.exports = {
       path: "node_modules",
     },
     tsConfig: {
-      fileName: "tsconfig.json",
+      fileName: ".dependency-cruiser.tsconfig.json",
     },
     enhancedResolveOptions: {
       exportsFields: ["exports"],

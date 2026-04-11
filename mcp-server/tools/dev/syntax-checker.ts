@@ -13,6 +13,33 @@ interface SyntaxCheckResult {
   bracketDetails?: Array<{ open: number; close: number; type: string }>;
 }
 
+function resolveTsconfigForFile(filePath: string): string | null {
+  const normalizedPath = filePath.replaceAll("\\", "/").replace(/^\.?\//, "");
+
+  if (normalizedPath.startsWith("mcp-server/")) return "mcp-server/tsconfig.mcp.json";
+  if (normalizedPath.startsWith("electron/")) return "electron/tsconfig.electron.json";
+  if (normalizedPath.startsWith("ghost-agent/electron/")) return "ghost-agent/tsconfig.electron.json";
+  if (normalizedPath.startsWith("ghost-agent/")) return "ghost-agent/tsconfig.json";
+  if (normalizedPath.startsWith("rooms/")) return "rooms/tsconfig.rooms.json";
+  if (
+    normalizedPath.startsWith("src/") ||
+    normalizedPath.startsWith("shared/")
+  ) {
+    return "src/tsconfig.json";
+  }
+
+  return null;
+}
+
+function filterTypeScriptOutputForFile(output: string, filePath: string): string {
+  const normalizedPath = filePath.replaceAll("\\", "/").replace(/^\.?\//, "");
+
+  return output
+    .split("\n")
+    .filter((line) => line.replaceAll("\\", "/").includes(normalizedPath))
+    .join("\n");
+}
+
 function syntaxCheckerT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.syntaxChecker.${key}`, params);
 }
@@ -175,17 +202,37 @@ export async function checkSyntax(
   }
 
   if (checkTs && projectRoot !== undefined && /\.(ts|tsx)$/.test(ext)) {
+    const tsconfigPath = resolveTsconfigForFile(filePath);
+    const tsCommand =
+      tsconfigPath !== null
+        ? `npx tsc --noEmit -p "${tsconfigPath}"`
+        : `npx tsc --noEmit "${filePath}"`;
+
     try {
-      execSync(`npx tsc --noEmit "${filePath}"`, {
+      const tsOutput = execSync(tsCommand, {
         cwd: projectRoot,
         encoding: "utf-8",
         timeout: 15000,
       });
-      output.push(syntaxCheckerT("runtime.typescriptOk"));
+      const relevantTsOutput =
+        tsconfigPath !== null ? filterTypeScriptOutputForFile(tsOutput, filePath) : tsOutput;
+
+      if (relevantTsOutput.match(/error TS\d+:/g)) {
+        const errorCount = relevantTsOutput.match(/error TS\d+:/g)?.length ?? 0;
+        output.push(syntaxCheckerT("runtime.typescriptSummary", { errorCount }));
+        errors.push({
+          message: `TypeScript: ${errorCount} error(s)`,
+          type: "typescript",
+        });
+      } else {
+        output.push(syntaxCheckerT("runtime.typescriptOk"));
+      }
     } catch (err: unknown) {
       const error = err as { stdout?: string; stderr?: string };
       const tsOutput = error.stdout ?? error.stderr ?? "";
-      const tsErrors = tsOutput.match(/error TS\d+:/g);
+      const relevantTsOutput =
+        tsconfigPath !== null ? filterTypeScriptOutputForFile(tsOutput, filePath) : tsOutput;
+      const tsErrors = relevantTsOutput.match(/error TS\d+:/g);
 
       if (tsErrors) {
         output.push(syntaxCheckerT("runtime.typescriptSummary", { errorCount: tsErrors.length }));
@@ -193,6 +240,8 @@ export async function checkSyntax(
           message: `TypeScript: ${tsErrors.length} error(s)`,
           type: "typescript",
         });
+      } else {
+        output.push(syntaxCheckerT("runtime.typescriptOk"));
       }
     }
     output.push("─".repeat(50));

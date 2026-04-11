@@ -1,7 +1,0 @@
-{
-  "schemaVersion": 1,
-  "defaultSourceKind": "audio",
-  "allowedSourceKinds": ["audio", "video"],
-  "sharedMediaStages": ["source", "edit", "profile", "process", "report"],
-  "sharedTooling": true
-}

@@ -36,10 +36,10 @@ const packagedWorkspaceMirrorPaths = [
   "scripts",
   "shared",
   "src",
-  "tsconfig.electron.json",
-  "tsconfig.json",
-  "tsconfig.mcp.json",
-  "tsconfig.rooms.json",
+  "electron/tsconfig.electron.json",
+  "src/tsconfig.json",
+  "mcp-server/tsconfig.mcp.json",
+  "rooms/tsconfig.rooms.json",
   "vite.config.js",
 ];
 
@@ -88,6 +88,7 @@ function syncPackagedWorkspaceMirror(appOutDir) {
     cpSync(sourcePath, targetPath, {
       force: true,
       recursive: true,
+      filter: (entryPath) => !entryPath.endsWith(".tsbuildinfo"),
     });
     mirroredPaths.push(relativePath);
   }

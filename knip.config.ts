@@ -128,7 +128,7 @@ const config: KnipConfig = {
   },
 
   typescript: {
-    config: ["tsconfig.json", "tsconfig.electron.json", "tsconfig.mcp.json"],
+    config: ["src/tsconfig.json", "electron/tsconfig.electron.json", "mcp-server/tsconfig.mcp.json"],
   },
 };
 

@@ -455,7 +455,7 @@ module.exports = tseslint.config(
       ecmaVersion: "latest",
       sourceType: "module",
       parserOptions: {
-        project: "./tsconfig.rooms.json",
+        project: "./rooms/tsconfig.rooms.json",
         tsconfigRootDir: __dirname,
       },
       globals: {
@@ -533,7 +533,7 @@ module.exports = tseslint.config(
       ecmaVersion: "latest",
       sourceType: "module",
       parserOptions: {
-        project: "./tsconfig.json",
+        project: "./src/tsconfig.json",
         tsconfigRootDir: __dirname,
       },
       globals: {
@@ -742,7 +742,7 @@ module.exports = tseslint.config(
       ecmaVersion: "latest",
       sourceType: "module",
       parserOptions: {
-        project: "./tsconfig.electron.json",
+        project: "./electron/tsconfig.electron.json",
         tsconfigRootDir: __dirname,
       },
       globals: {
@@ -780,7 +780,7 @@ module.exports = tseslint.config(
       ecmaVersion: "latest",
       sourceType: "module",
       parserOptions: {
-        project: "./tsconfig.mcp.json",
+        project: "./mcp-server/tsconfig.mcp.json",
         tsconfigRootDir: __dirname,
       },
       globals: {
@@ -989,7 +989,7 @@ module.exports = tseslint.config(
   },
 
   // === Shared Type Definitions (src/types) ===
-  // Not: Bu dosyalar tsconfig.json, tsconfig.electron.json ve tsconfig.mcp.json'a dahil.
+  // Not: Bu dosyalar src/tsconfig.json, electron/tsconfig.electron.json ve mcp-server/tsconfig.mcp.json'a dahil.
   // Type-aware lint kurallarının bu dosyalarda da çalışması için açıkça tanımlanmalı.
   {
     files: ["src/types/**/*.ts"],
@@ -998,7 +998,7 @@ module.exports = tseslint.config(
       ecmaVersion: "latest",
       sourceType: "module",
       parserOptions: {
-        project: "./tsconfig.json", // base config — tüm tsconfig'lere dahil
+        project: "./src/tsconfig.json", // base config — tüm tsconfig'lere dahil
         tsconfigRootDir: __dirname,
       },
     },

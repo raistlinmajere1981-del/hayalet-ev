@@ -665,7 +665,7 @@ body.is-scroll-locked {
   gap: var(--space-2);
   padding: 0 var(--space-3);
   background: var(--bg-glass);
-  border-bottom: var(--border-1) solid var(--border-glass);
+  border-bottom: 0;
   backdrop-filter: var(--glass-blur);
   z-index: var(--z-elevated);
   box-sizing: border-box;
@@ -1807,23 +1807,46 @@ body.is-scroll-locked {
 .indicators-group--topbar {
   flex: 0 0 auto;
   padding: var(--space-2) 0;
+  --topbar-slot-width: clamp(10.5rem, 16vw, var(--sidebar-width));
 }
 
 .indicators-group--topbar .indicators-row {
+  align-items: stretch;
   gap: var(--layout-topbar-slot-gap);
 }
 
-.indicators-group--topbar .relay-flow-wrapper {
-  gap: var(--layout-topbar-relay-gap);
+.indicators-group--topbar .indicator-cluster-wide,
+.indicators-group--topbar .indicator-cluster-assistant {
+  flex: 0 1 var(--topbar-slot-width);
+  width: var(--topbar-slot-width);
+  max-width: var(--topbar-slot-width);
+  align-self: stretch;
+  box-sizing: border-box;
 }
 
-.indicators-group--topbar .relay-flow-line {
-  width: var(--layout-topbar-relay-line-w);
+.indicators-group--topbar .indicator-cluster-assistant {
+  padding: var(--space-2) var(--space-4);
+  gap: var(--space-4);
 }
 
+.indicators-group--topbar .indicator-avatar-md {
+  width: var(--size-avatar-lg);
+  height: var(--size-avatar-lg);
+  border-radius: var(--radius-lg);
+}
+
+.indicators-group--topbar .indicator-cluster-assistant .indicator-content {
+  gap: var(--space-1-5);
+  justify-content: center;
+}
+
+.indicators-group--topbar .indicator-cluster-assistant .indicator-dots-row {
+  gap: var(--space-3);
+}
+
+.indicators-group--topbar .relay-flow-wrapper,
 .indicators-group--topbar .relay-flow-bottom-row {
-  left: calc(var(--relay-cluster-w) + var(--layout-topbar-slot-gap) - var(--relay-btn-offset));
-  right: calc(var(--relay-cluster-w) + var(--layout-topbar-slot-gap) - var(--relay-btn-offset));
+  display: none;
 }
 
 .indicators-row {
@@ -1977,16 +2000,11 @@ body.is-scroll-locked {
 }
 
 .relay-flow-bottom-row {
-  --relay-cluster-w: var(--sidebar-width);
-  --relay-btn-offset: var(--space-10);
-
   position: absolute;
-  bottom: var(--space-1);
-  left: calc(var(--relay-cluster-w) + var(--space-3) - var(--relay-btn-offset));
-  right: calc(var(--relay-cluster-w) + var(--space-3) - var(--relay-btn-offset));
+  bottom: calc(var(--space-2) + (var(--size-icon-sm) / 2) - (var(--relay-line-height) / 2));
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
 }
 
 .relay-btn-bottom-left,
@@ -2003,8 +2021,8 @@ body.is-scroll-locked {
   background: var(--relay-track-color);
   border-radius: var(--radius-full);
   overflow: hidden;
-  margin-left: var(--space-2);
-  margin-right: var(--space-2);
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .flow-track-horizontal {

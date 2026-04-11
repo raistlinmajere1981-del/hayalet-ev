@@ -38,6 +38,7 @@ export async function initServerControllerPage(controller: ServerInitContext): P
         changedPaths.some(
           (path) =>
             path.startsWith("slots") ||
+            path.startsWith("us1Slot") ||
             isAssistantSlotSettingsPath(path) ||
             path.startsWith("accounts") ||
             isAssistantAccountsSettingsPath(path)
@@ -86,7 +87,7 @@ export async function initServerControllerPage(controller: ServerInitContext): P
     }
 
     const categoryValue = button.dataset["category"];
-    if (categoryValue !== "ai0" && categoryValue !== "ai1-ai2") {
+    if (categoryValue !== "ai0" && categoryValue !== "ai1-ai2" && categoryValue !== "us1") {
       return;
     }
 
@@ -94,9 +95,13 @@ export async function initServerControllerPage(controller: ServerInitContext): P
       if (controller.commandSlotSelect !== null) {
         controller.commandSlotSelect.value = "ai0";
       }
+    } else if (categoryValue === "us1") {
+      if (controller.commandSlotSelect !== null) {
+        controller.commandSlotSelect.value = "us1";
+      }
     } else if (
       controller.commandSlotSelect !== null &&
-      controller.commandSlotSelect.value === "ai0"
+      (controller.commandSlotSelect.value === "ai0" || controller.commandSlotSelect.value === "us1")
     ) {
       controller.commandSlotSelect.value = "ai1";
     }

@@ -4,6 +4,7 @@ import test from "node:test";
 const { slotBridgeHandler, slotBridgeRuntime } = await import(
   "../../src/js/modules/commands/slot-bridge.ts"
 );
+const { RoomCommandRegistry } = await import("../../src/js/modules/rooms/room-command-registry.ts");
 const { SlotController } = await import("../../src/js/modules/slot-controller.ts");
 const { AppState } = await import("../../src/js/modules/app-state.ts");
 
@@ -351,6 +352,57 @@ test(
       assert.match(String(blockedResult.message), /Attachment reference required/i);
     } finally {
       harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge room.command keeps explicit payload when args contains raw room args",
+  { concurrency: false },
+  async () => {
+    const registry = RoomCommandRegistry as unknown as {
+      run: (commandName: string, payload?: Record<string, unknown>) => Promise<unknown>;
+    };
+    const originalRun = registry.run;
+    const runCalls: Array<{ commandName: string; payload: Record<string, unknown> }> = [];
+
+    try {
+      registry.run = async (commandName, payload = {}) => {
+        runCalls.push({ commandName, payload });
+        return { success: true, handled: true };
+      };
+
+      const result = await slotBridgeHandler({
+        action: "room.command",
+        fromSlot: "us1",
+        args: '{"matchId":"xox_1","turnIndex":0,"boardHashBeforeMove":".........","cell":1}',
+        payload: {
+          commandName: "GameRoomXoxRemoteMove",
+          roomId: "game-room",
+          matchId: "xox_1",
+          turnIndex: 0,
+          boardHashBeforeMove: ".........",
+          cell: 1,
+        },
+      });
+
+      assert.equal(result.success, true);
+      assert.equal(runCalls.length, 1);
+      assert.equal(runCalls[0]?.commandName, "GameRoomXoxRemoteMove");
+      assert.deepEqual(runCalls[0]?.payload.roomPayload, {
+        roomId: "game-room",
+        matchId: "xox_1",
+        turnIndex: 0,
+        boardHashBeforeMove: ".........",
+        cell: 1,
+      });
+      assert.equal(
+        runCalls[0]?.payload.args,
+        '{"matchId":"xox_1","turnIndex":0,"boardHashBeforeMove":".........","cell":1}'
+      );
+      assert.deepEqual(result.data, { success: true, handled: true });
+    } finally {
+      registry.run = originalRun;
     }
   }
 );

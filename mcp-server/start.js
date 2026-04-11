@@ -11,6 +11,7 @@ const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, "..");
 const standaloneEntryPoint = join(projectRoot, "dist", "mcp-server", "standalone", "index.js");
 const sourceEntryPoint = join(__dirname, "index.ts");
+const sourceTsconfigPath = join(__dirname, "tsconfig.mcp.json");
 
 function hasSourceRuntimeSupport() {
   if (existsSync(sourceEntryPoint) !== true) {
@@ -43,6 +44,7 @@ const child = spawn(
     env: {
       ...globalThis.process.env,
       HEV_PROJECT_ROOT: projectRoot,
+      TSX_TSCONFIG_PATH: sourceTsconfigPath,
     },
     cwd: projectRoot,
   }

@@ -480,9 +480,9 @@ Projede **TypeScript Language Service** doğrudan entegre edilmiştir — `ts.cr
 - **LRU eviction** — bellekte max 1 proje — OOM koruması
 - **Auto-dispose** — 90s inaktivitede bellekten atılır
 - **Multi-tsconfig** — dosya yoluna göre otomatik tsconfig algılama:
-  - `tsconfig.json` → `src/js/`, `src/types/`
-  - `tsconfig.electron.json` → `electron/`, `src/types/`
-  - `tsconfig.mcp.json` → `mcp-server/`, `src/types/`
+  - `src/tsconfig.json` → `src/js/`, `src/types/`, `shared/`
+  - `electron/tsconfig.electron.json` → `electron/`, `src/types/`
+  - `mcp-server/tsconfig.mcp.json` → `mcp-server/`, `src/types/`
 
 ### TS Language Service Tool'ları
 

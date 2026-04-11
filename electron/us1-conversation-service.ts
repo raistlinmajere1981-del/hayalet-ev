@@ -43,6 +43,7 @@ import type {
 } from "@shared/us1-relay.js";
 import { US1_RELAY_MESSAGE_PROTOCOL, US1_RELAY_PROTOCOL_VERSION } from "@shared/us1-relay.js";
 
+import { parseInlineCommands } from "../src/js/modules/commands/inline-command-parser.ts";
 import { normalizeSettings } from "../src/js/modules/settings/settings-schema.ts";
 import { MailSidecarStoreManager } from "./database/mail-sidecar-manager.ts";
 import { hashString, normalizeText } from "./database/hash-utils.ts";
@@ -67,6 +68,7 @@ import {
   type Us1RelayRequestOptions,
   type Us1RelayResponseMeta,
 } from "./us1-relay/client.ts";
+import { Paths } from "./paths.ts";
 
 const HANDSHAKE_PROTOCOL = "hayalet-ev-us1-handshake";
 const HANDSHAKE_VERSION = 1;
@@ -134,7 +136,15 @@ interface ConversationThreadDescriptor {
 
 type ConversationRoomEvent = Us1RoomEventInput;
 
-type ConversationRoomCommand = Us1RoomCommandInput;
+type ConversationRoomCommand = Omit<Us1RoomCommandInput, "roomId" | "featureId"> & {
+  roomId?: string | null;
+  featureId?: string | null;
+};
+
+interface RoomCommandIdentity {
+  roomId: string;
+  featureId: string;
+}
 
 interface MailTransportFacade {
   sendMail(
@@ -459,6 +469,94 @@ function normalizeRoomInviteStarter(value: unknown): Us1RoomInviteStarter | null
   return value === "user" || value === "opponent" ? value : null;
 }
 
+function buildDerivedRoomPayload(
+  source: Record<string, unknown>
+): Record<string, unknown> | undefined {
+  const payload = Object.entries(source).reduce<Record<string, unknown>>((acc, [key, value]) => {
+    if (
+      key === "commandName" ||
+      key === "actionId" ||
+      key === "roomCommand" ||
+      key === "roomId" ||
+      key === "featureId" ||
+      key === "rawArgs"
+    ) {
+      return acc;
+    }
+    acc[key] = value;
+    return acc;
+  }, {});
+  return Object.keys(payload).length > 0 ? payload : undefined;
+}
+
+function buildRoomCommandIdentityIndex(candidate: unknown): Map<string, RoomCommandIdentity> {
+  const index = new Map<string, RoomCommandIdentity>();
+  if (candidate === null || candidate === undefined || typeof candidate !== "object") {
+    return index;
+  }
+
+  const rooms = Array.isArray((candidate as { rooms?: unknown }).rooms)
+    ? ((candidate as { rooms?: unknown[] }).rooms ?? [])
+    : [];
+
+  for (const room of rooms) {
+    if (room === null || room === undefined || typeof room !== "object") {
+      continue;
+    }
+    const roomRecord = room as Record<string, unknown>;
+    const roomId = normalizeOptionalText(roomRecord["id"]);
+    if (roomId === null) {
+      continue;
+    }
+
+    const roomCommandSpecs = Array.isArray(roomRecord["commandSpecs"])
+      ? (roomRecord["commandSpecs"] as unknown[])
+      : [];
+    for (const spec of roomCommandSpecs) {
+      if (spec !== null && typeof spec === "object") {
+        const commandName = normalizeOptionalText((spec as Record<string, unknown>)["name"]);
+        if (commandName !== null) {
+          index.set(commandName.toLowerCase(), {
+            roomId,
+            featureId: roomId,
+          });
+        }
+      }
+    }
+
+    const features = Array.isArray(roomRecord["features"])
+      ? (roomRecord["features"] as unknown[])
+      : [];
+    for (const feature of features) {
+      if (feature === null || feature === undefined || typeof feature !== "object") {
+        continue;
+      }
+      const featureRecord = feature as Record<string, unknown>;
+      const featureId = normalizeOptionalText(featureRecord["id"]);
+      if (featureId === null) {
+        continue;
+      }
+
+      const commandSpecs = Array.isArray(featureRecord["commandSpecs"])
+        ? (featureRecord["commandSpecs"] as unknown[])
+        : [];
+      for (const spec of commandSpecs) {
+        if (spec !== null && typeof spec === "object") {
+          const commandName = normalizeOptionalText((spec as Record<string, unknown>)["name"]);
+          if (commandName !== null) {
+            index.set(commandName.toLowerCase(), {
+              roomId,
+              featureId,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return index;
+}
+
 function parseHeaderValue(headerLines: string[], headerName: string): string | null {
   const normalizedHeaderName = headerName.toLowerCase();
   for (const line of headerLines) {
@@ -711,25 +809,45 @@ function normalizeConversationRoomCommand(roomCommand: unknown): ConversationRoo
   }
 
   const source = roomCommand as Record<string, unknown>;
-  const roomId = normalizeOptionalText(source["roomId"]);
-  const featureId = normalizeOptionalText(source["featureId"]);
-  const commandName = normalizeOptionalText(source["commandName"]);
+  const actionPayload =
+    source["payload"] !== null &&
+    source["payload"] !== undefined &&
+    typeof source["payload"] === "object" &&
+    Array.isArray(source["payload"]) === false
+      ? (source["payload"] as Record<string, unknown>)
+      : source;
+  const commandName =
+    normalizeOptionalText(actionPayload["commandName"]) ??
+    normalizeOptionalText(actionPayload["actionId"]) ??
+    normalizeOptionalText(actionPayload["roomCommand"]) ??
+    normalizeOptionalText(source["commandName"]);
+  const roomId =
+    normalizeOptionalText(actionPayload["roomId"]) ??
+    normalizeOptionalText(source["roomId"]) ??
+    null;
+  const featureId =
+    normalizeOptionalText(actionPayload["featureId"]) ??
+    normalizeOptionalText(source["featureId"]) ??
+    null;
   const action = source["action"] === "room.command" ? "room.command" : null;
   const roomPayload =
     source["roomPayload"] !== undefined
       ? source["roomPayload"]
-      : source["payload"] !== undefined
-        ? source["payload"]
-        : undefined;
-  const matchId = normalizeOptionalText(source["matchId"]);
+      : actionPayload["roomPayload"] !== undefined
+        ? actionPayload["roomPayload"]
+        : buildDerivedRoomPayload(actionPayload);
+  const matchId = normalizeOptionalText(source["matchId"] ?? actionPayload["matchId"]);
   const turnIndex =
-    typeof source["turnIndex"] === "number" && Number.isInteger(source["turnIndex"])
-      ? source["turnIndex"]
+    typeof (source["turnIndex"] ?? actionPayload["turnIndex"]) === "number" &&
+    Number.isInteger(source["turnIndex"] ?? actionPayload["turnIndex"])
+      ? ((source["turnIndex"] ?? actionPayload["turnIndex"]) as number)
       : null;
-  const turnToken = normalizeOptionalText(source["turnToken"]);
-  const boardHashBeforeMove = normalizeOptionalText(source["boardHashBeforeMove"]);
+  const turnToken = normalizeOptionalText(source["turnToken"] ?? actionPayload["turnToken"]);
+  const boardHashBeforeMove = normalizeOptionalText(
+    source["boardHashBeforeMove"] ?? actionPayload["boardHashBeforeMove"]
+  );
   const rawArgs =
-    normalizeOptionalText(source["rawArgs"]) ??
+    normalizeOptionalText(source["rawArgs"] ?? actionPayload["rawArgs"]) ??
     ((): string | null => {
       if (roomPayload === undefined) {
         return null;
@@ -740,7 +858,7 @@ function normalizeConversationRoomCommand(roomCommand: unknown): ConversationRoo
         return null;
       }
     })();
-  if (roomId === null || featureId === null || commandName === null) {
+  if (commandName === null) {
     return null;
   }
 
@@ -756,6 +874,27 @@ function normalizeConversationRoomCommand(roomCommand: unknown): ConversationRoo
     ...(boardHashBeforeMove !== null ? { boardHashBeforeMove } : {}),
     ...(rawArgs !== null ? { rawArgs } : {}),
   };
+}
+
+function extractConversationRoomCommandFromText(text: string): ConversationRoomCommand | null {
+  const commandText = stripJsonBlock(text, MESSAGE_PAYLOAD_START, MESSAGE_PAYLOAD_END);
+  for (const match of parseInlineCommands(commandText)) {
+    if (match.commandName.trim().toLowerCase() !== "slotbridge") {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(match.args) as unknown;
+      const normalized = normalizeConversationRoomCommand(parsed);
+      if (normalized?.action === "room.command") {
+        return normalized;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
 }
 
 function extractConversationEnvelope(text: string): ConversationEnvelope | null {
@@ -889,6 +1028,8 @@ export class Us1ConversationService {
   private settingsStore: ConversationSettingsStore;
   private archiveFactory: ArchiveManagerFactory;
   private roomInviteInbox = new Map<string, Us1RoomEventRecord>();
+  private pendingRoomCommands = new Map<string, Us1RoomCommandRecord>();
+  private roomCommandIdentityIndex: Map<string, RoomCommandIdentity> | null = null;
 
   constructor(
     options: {
@@ -1100,6 +1241,7 @@ export class Us1ConversationService {
 
   async syncMessages(params: Us1SyncMessagesParams = {}): Promise<Us1SyncMessagesResult> {
     const settings = await this.loadNormalizedSettings();
+    const consumeRoomCommands = params.consumeRoomCommands === true;
     const communicationSystem = getUs1CommunicationSystem(settings);
     const activeBinding =
       communicationSystem === "relay-e2ee"
@@ -1123,7 +1265,7 @@ export class Us1ConversationService {
         unresolvedSessionCount: 0,
         roomPackages: [],
         roomEvents: [],
-        roomCommands: [],
+        roomCommands: consumeRoomCommands ? [] : this.listPendingRoomCommands(null),
         roomInviteInbox: this.listRoomInviteInbox(),
       };
     }
@@ -1144,7 +1286,6 @@ export class Us1ConversationService {
       const roomPackages: Us1RoomPackageCandidate[] = [];
       const sessionEventsById = new Map<string, Us1SessionEvent>();
       const roomEvents: Us1RoomEventRecord[] = [];
-      const roomCommands: Us1RoomCommandRecord[] = [];
       const activeRemoteUserId = activeBinding?.remoteUser.remoteUserId ?? "";
       const syncedAccountIds = new Set<string>();
 
@@ -1330,8 +1471,9 @@ export class Us1ConversationService {
             this.applyRoomInviteEvent(roomEvent);
           }
 
-          const roomCommand = this.buildRoomCommandRecord(
-            messageEnvelope?.roomCommand ?? null,
+          const roomCommand = await this.buildRoomCommandRecord(
+            messageEnvelope?.roomCommand ??
+              extractConversationRoomCommandFromText(message.parsed.text),
             nextRemoteUser,
             localSessionId,
             projectedMessage.conversationId,
@@ -1339,7 +1481,7 @@ export class Us1ConversationService {
             messageEnvelope?.sentAt ?? message.parsed.receivedAt
           );
           if (roomCommand !== null) {
-            roomCommands.push(roomCommand);
+            this.queuePendingRoomCommand(roomCommand);
           }
 
           if (remoteUserId === activeRemoteUserId) {
@@ -1368,6 +1510,10 @@ export class Us1ConversationService {
       }
 
       await this.persistSettings(settings);
+
+      const roomCommands = consumeRoomCommands
+        ? this.drainPendingRoomCommands(activeLocalSessionId)
+        : this.listPendingRoomCommands(activeLocalSessionId);
 
       return {
         success: true,
@@ -1882,7 +2028,6 @@ export class Us1ConversationService {
       const roomPackages: Us1RoomPackageCandidate[] = [];
       const sessionEventsById = new Map<string, Us1SessionEvent>();
       const roomEvents: Us1RoomEventRecord[] = [];
-      const roomCommands: Us1RoomCommandRecord[] = [];
       const acknowledgedMessageIds: string[] = [];
       const acknowledgedAttachmentIds = new Set<string>();
 
@@ -2058,8 +2203,8 @@ export class Us1ConversationService {
           this.applyRoomInviteEvent(roomEvent);
         }
 
-        const roomCommand = this.buildRoomCommandRecord(
-          relayPayload.roomCommand ?? null,
+        const roomCommand = await this.buildRoomCommandRecord(
+          relayPayload.roomCommand ?? extractConversationRoomCommandFromText(relayPayload.text),
           remoteUser,
           localSessionId,
           projectedMessage.conversationId,
@@ -2067,7 +2212,7 @@ export class Us1ConversationService {
           relayPayload.sentAt
         );
         if (roomCommand !== null) {
-          roomCommands.push(roomCommand);
+          this.queuePendingRoomCommand(roomCommand);
         }
 
         if (remoteUser.remoteUserId === activeBinding?.remoteUser.remoteUserId) {
@@ -2109,6 +2254,11 @@ export class Us1ConversationService {
       }
 
       await this.persistSettings(settings);
+
+      const roomCommands =
+        params.consumeRoomCommands === true
+          ? this.drainPendingRoomCommands(activeLocalSessionId)
+          : this.listPendingRoomCommands(activeLocalSessionId);
 
       return {
         success: true,
@@ -2274,6 +2424,53 @@ export class Us1ConversationService {
     this.roomInviteInbox.delete(key);
   }
 
+  private buildPendingRoomCommandKey(roomCommand: Us1RoomCommandRecord): string {
+    return `${roomCommand.remoteUserId}::${roomCommand.transportMessageId}`;
+  }
+
+  private sortPendingRoomCommands(roomCommands: Us1RoomCommandRecord[]): Us1RoomCommandRecord[] {
+    return roomCommands.sort((left, right) => {
+      const leftSentAt = left.sentAt ?? 0;
+      const rightSentAt = right.sentAt ?? 0;
+      if (leftSentAt !== rightSentAt) {
+        return leftSentAt - rightSentAt;
+      }
+      return left.transportMessageId.localeCompare(right.transportMessageId, "tr");
+    });
+  }
+
+  private queuePendingRoomCommand(roomCommand: Us1RoomCommandRecord): void {
+    this.pendingRoomCommands.set(this.buildPendingRoomCommandKey(roomCommand), roomCommand);
+  }
+
+  private listPendingRoomCommands(localSessionId: string | null): Us1RoomCommandRecord[] {
+    if (localSessionId === null) {
+      return [];
+    }
+
+    const roomCommands = Array.from(this.pendingRoomCommands.values()).filter(
+      (roomCommand) => roomCommand.localSessionId === localSessionId
+    );
+    return this.sortPendingRoomCommands(roomCommands);
+  }
+
+  private drainPendingRoomCommands(localSessionId: string | null): Us1RoomCommandRecord[] {
+    if (localSessionId === null) {
+      return [];
+    }
+
+    const roomCommands: Us1RoomCommandRecord[] = [];
+    for (const [key, roomCommand] of this.pendingRoomCommands.entries()) {
+      if (roomCommand.localSessionId !== localSessionId) {
+        continue;
+      }
+      roomCommands.push(roomCommand);
+      this.pendingRoomCommands.delete(key);
+    }
+
+    return this.sortPendingRoomCommands(roomCommands);
+  }
+
   private buildRoomEventRecord(
     roomEvent: ConversationRoomEvent | null,
     remoteUser: Pick<RemoteUserIdentity, "remoteUserId" | "nickname" | "email">,
@@ -2298,15 +2495,55 @@ export class Us1ConversationService {
     };
   }
 
-  private buildRoomCommandRecord(
+  private async loadRoomCommandIdentityIndex(): Promise<Map<string, RoomCommandIdentity>> {
+    if (this.roomCommandIdentityIndex !== null) {
+      return this.roomCommandIdentityIndex;
+    }
+
+    try {
+      const registryRaw = await readFile(Paths.getRoomsRegistryPath(), "utf8");
+      this.roomCommandIdentityIndex = buildRoomCommandIdentityIndex(
+        JSON.parse(registryRaw) as unknown
+      );
+    } catch {
+      this.roomCommandIdentityIndex = new Map();
+    }
+
+    return this.roomCommandIdentityIndex;
+  }
+
+  private async resolveRoomCommandIdentity(
+    roomCommand: ConversationRoomCommand
+  ): Promise<RoomCommandIdentity | null> {
+    const roomId = normalizeOptionalText(roomCommand.roomId);
+    const featureId = normalizeOptionalText(roomCommand.featureId);
+    if (roomId !== null && featureId !== null) {
+      return { roomId, featureId };
+    }
+
+    const commandName = normalizeOptionalText(roomCommand.commandName);
+    if (commandName === null) {
+      return null;
+    }
+
+    const index = await this.loadRoomCommandIdentityIndex();
+    return index.get(commandName.toLowerCase()) ?? null;
+  }
+
+  private async buildRoomCommandRecord(
     roomCommand: ConversationRoomCommand | null,
     remoteUser: Pick<RemoteUserIdentity, "remoteUserId" | "nickname" | "email">,
     localSessionId: string,
     conversationId: string,
     transportMessageId: string,
     sentAt: number | undefined
-  ): Us1RoomCommandRecord | null {
+  ): Promise<Us1RoomCommandRecord | null> {
     if (roomCommand === null) {
+      return null;
+    }
+
+    const identity = await this.resolveRoomCommandIdentity(roomCommand);
+    if (identity === null) {
       return null;
     }
 
@@ -2334,6 +2571,8 @@ export class Us1ConversationService {
 
     return {
       ...roomCommand,
+      roomId: identity.roomId,
+      featureId: identity.featureId,
       rawArgs,
       ...(commandArgs !== undefined ? { commandArgs } : {}),
       remoteUserId: remoteUser.remoteUserId,

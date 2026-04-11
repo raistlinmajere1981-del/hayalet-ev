@@ -58,6 +58,18 @@
   gap: var(--space-4);
 }
 
+.indicator-cluster-relay {
+  position: relative;
+}
+
+.indicator-cluster-relay--end {
+  padding-right: calc(var(--space-4) + var(--size-icon-sm) + var(--space-2));
+}
+
+.indicator-cluster-relay--start {
+  padding-left: calc(var(--space-4) + var(--size-icon-sm) + var(--space-2));
+}
+
 .indicator-cluster-assistant {
   flex: 0 0 auto;
   padding: var(--space-1-5) var(--space-3);
@@ -123,6 +135,127 @@
   gap: var(--space-1-5);
   min-width: 0;
   flex: 1;
+}
+
+.indicator-relay-stack {
+  position: absolute;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 1;
+}
+
+.indicator-relay-stack--end {
+  right: var(--space-2);
+  align-items: flex-end;
+}
+
+.indicator-relay-stack--start {
+  left: var(--space-2);
+  align-items: flex-start;
+}
+
+.relay-toggle-btn--embedded {
+  flex-shrink: 0;
+}
+
+.indicators-group--topbar .indicator-cluster,
+.topbar-slot-lane > .indicator-cluster {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.indicators-group--topbar .indicator-cluster::before,
+.indicators-group--topbar .indicator-cluster::after,
+.topbar-slot-lane > .indicator-cluster::before,
+.topbar-slot-lane > .indicator-cluster::after {
+  content: "";
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  height: max(var(--relay-line-height), var(--space-0-5));
+  border-radius: var(--radius-full);
+  opacity: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg, var(--relay-track-color), var(--relay-track-color)),
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--relay-particle-color) 18%, transparent) 28%,
+      var(--relay-particle-color) 50%,
+      color-mix(in srgb, var(--relay-particle-color) 18%, transparent) 72%,
+      transparent 100%
+    );
+  background-repeat: no-repeat;
+  background-size:
+    100% 100%,
+    36% 100%;
+  background-position:
+    0 0,
+    -42% 0;
+  box-shadow: var(--effect-glow-relay-particle);
+}
+
+.indicators-group--topbar .indicator-cluster::before,
+.topbar-slot-lane > .indicator-cluster::before {
+  top: 0;
+}
+
+.indicators-group--topbar .indicator-cluster::after,
+.topbar-slot-lane > .indicator-cluster::after {
+  bottom: 0;
+}
+
+.indicators-group--topbar .indicator-cluster.is-relay-top-active::before,
+.topbar-slot-lane > .indicator-cluster.is-relay-top-active::before {
+  opacity: 1;
+  animation: relay-border-ltr var(--duration-flow) ease-in-out infinite;
+}
+
+.indicators-group--topbar .indicator-cluster.is-relay-top-active.is-relay-top-rtl::before,
+.topbar-slot-lane > .indicator-cluster.is-relay-top-active.is-relay-top-rtl::before {
+  animation-name: relay-border-rtl;
+}
+
+.indicators-group--topbar .indicator-cluster.is-relay-bottom-active::after,
+.topbar-slot-lane > .indicator-cluster.is-relay-bottom-active::after {
+  opacity: 1;
+  animation: relay-border-ltr var(--duration-flow-slow) ease-in-out infinite;
+}
+
+.indicators-group--topbar .indicator-cluster.is-relay-bottom-active.is-relay-bottom-rtl::after,
+.topbar-slot-lane > .indicator-cluster.is-relay-bottom-active.is-relay-bottom-rtl::after {
+  animation-name: relay-border-rtl;
+}
+
+@keyframes relay-border-ltr {
+  0% {
+    background-position:
+      0 0,
+      -42% 0;
+  }
+  100% {
+    background-position:
+      0 0,
+      142% 0;
+  }
+}
+
+@keyframes relay-border-rtl {
+  0% {
+    background-position:
+      0 0,
+      142% 0;
+  }
+  100% {
+    background-position:
+      0 0,
+      -42% 0;
+  }
 }
 
 .indicator-dots-row {

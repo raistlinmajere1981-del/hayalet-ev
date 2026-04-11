@@ -2,6 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildSettingsWithDisabledCommands,
+  getDisabledCommandsForSlot,
+  normalizeSlot,
+  resolveCategoryForSlot,
+  splitCommandCatalogBySource,
+} from "../../src/js/pages/server/command-helpers.ts";
+import {
   extractExampleArgsFromDescription,
   buildCommandTestMessage,
   buildInlineCommandSnippet,
@@ -86,4 +93,55 @@ test("buildCommandTestMessage formats command without args", () => {
   const message = buildCommandTestMessage("AIAIChatStop", "");
 
   assert.equal(message, "++cmd:AIAIChatStop() Komut paneli test mesaji");
+});
+
+test("normalizeSlot keeps us1 selection", () => {
+  assert.equal(normalizeSlot("us1"), "us1");
+});
+
+test("resolveCategoryForSlot maps us1 to us1 category", () => {
+  assert.equal(resolveCategoryForSlot("us1"), "us1");
+});
+
+test("getDisabledCommandsForSlot reads us1 disabled commands", () => {
+  const disabled = getDisabledCommandsForSlot(
+    {
+      slots: {
+        ai1: { disabledCommands: [] },
+        ai2: { disabledCommands: [] },
+      },
+      us1Slot: { selectedRemoteUserId: null, disabledCommands: ["GameRoomXoxRemoteMove"] },
+      assistantSlot: { disabledCommands: [] },
+    } as never,
+    "us1"
+  );
+
+  assert.deepEqual(disabled, ["GameRoomXoxRemoteMove"]);
+});
+
+test("buildSettingsWithDisabledCommands stores disabled commands under us1 slot", () => {
+  const next = buildSettingsWithDisabledCommands(
+    {
+      slots: {
+        ai1: { disabledCommands: [] },
+        ai2: { disabledCommands: [] },
+      },
+      us1Slot: { selectedRemoteUserId: null, disabledCommands: [] },
+      assistantSlot: { disabledCommands: [] },
+    } as never,
+    "us1",
+    ["GameRoomXoxRemoteMove"]
+  );
+
+  assert.deepEqual(next.us1Slot?.disabledCommands, ["GameRoomXoxRemoteMove"]);
+});
+
+test("splitCommandCatalogBySource separates system and room commands", () => {
+  const grouped = splitCommandCatalogBySource([
+    { name: "SlotBridge", category: "us1", isCustom: false, supportsTestMode: true },
+    { name: "GameRoomXoxRemoteMove", category: "us1", isCustom: true, supportsTestMode: false },
+  ]);
+
+  assert.deepEqual(grouped.systemCommands.map((item) => item.name), ["SlotBridge"]);
+  assert.deepEqual(grouped.roomCommands.map((item) => item.name), ["GameRoomXoxRemoteMove"]);
 });

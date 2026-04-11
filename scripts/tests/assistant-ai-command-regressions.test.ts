@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { RelayManager } from "../../src/js/modules/relay-manager.ts";
+import { RoomCommandRegistry } from "../../src/js/modules/rooms/room-command-registry.ts";
 import { SettingsManager } from "../../src/js/modules/settings-manager.ts";
+import type { InstalledRoomRecord } from "../../src/types/rooms.ts";
 type SlotBridgePayload = Record<string, unknown>;
 const slotBridgeCalls: SlotBridgePayload[] = [];
 let slotBridgeImpl = async (_payload: SlotBridgePayload) => ({ success: true });
@@ -11,6 +13,35 @@ const { serverCommands } = await import("../../src/js/modules/server-commands.ts
 const { aiChatRuntime, assistantAISendHandler, aiAssistantSendHandler } = await import(
   "../../src/js/modules/commands/ai-chat-commands.ts"
 );
+
+const room: InstalledRoomRecord = {
+  id: "game-room",
+  name: "Game Room",
+  version: "2.2.0",
+  installedDir: "/workspace/data/rooms/game-room",
+  sourceDir: "/workspace/rooms/game-room",
+  manifestPath: "/workspace/data/rooms/game-room/manifest.json",
+  runtimeEntryPath: "/workspace/data/rooms/game-room/ui/index.html",
+  hostEntryPath: "/workspace/data/rooms/game-room/host/index.js",
+  defaultFeatureId: "xox",
+  features: [{ id: "xox", name: "XOX" }],
+  commandSpecs: [
+    {
+      name: "GameRoomXoxAiMove",
+      description: "Apply AI move from slot response",
+      scope: "ai-slots",
+      exposure: "internal",
+    },
+    {
+      name: "GameRoomXoxRemoteMove",
+      description: "Apply remote move from US1 response",
+      scope: "us1",
+      exposure: "internal",
+    },
+  ],
+  installedAt: "2026-03-08T00:00:00.000Z",
+  updatedAt: "2026-03-08T00:00:00.000Z",
+};
 
 function resetSlotBridgeMock(): void {
   slotBridgeCalls.length = 0;
@@ -23,6 +54,10 @@ test.beforeEach(() => {
     slotBridgeCalls.push(payload);
     return await slotBridgeImpl(payload);
   };
+});
+
+test.afterEach(() => {
+  RoomCommandRegistry.reset();
 });
 
 test("AssistantAISend sends cleaned text to explicit target and stops relay", async () => {
@@ -183,13 +218,29 @@ test("server commands expose AI1-AI2 and AI0 categories", () => {
 
   const aiCategory = categoryApi.listByCategory?.("ai1-ai2") ?? [];
   const assistantCategory = categoryApi.listByCategory?.("ai0") ?? [];
+  const us1Category = categoryApi.listByCategory?.("us1") ?? [];
 
   assert.equal(aiCategory.includes("AIAIChatStart"), true);
   assert.equal(assistantCategory.includes("AssistantAISend"), true);
   assert.equal(aiCategory.includes("SlotBridge"), true);
   assert.equal(assistantCategory.includes("SlotBridge"), true);
+  assert.equal(us1Category.includes("SlotBridge"), true);
   assert.equal(assistantCategory.includes("AIAIChatStart"), false);
   assert.equal(categoryApi.has?.("AssistantAISend"), true);
+});
+
+test("server command catalog includes internal room commands for slot panels", () => {
+  const categoryApi = serverCommands as unknown as {
+    getCatalog?: (category: string) => Array<{ name: string }>;
+  };
+
+  RoomCommandRegistry.syncInstalledRooms([room]);
+
+  const aiCatalog = categoryApi.getCatalog?.("ai1-ai2") ?? [];
+  const us1Catalog = categoryApi.getCatalog?.("us1") ?? [];
+
+  assert.equal(aiCatalog.some((item) => item.name === "GameRoomXoxAiMove"), true);
+  assert.equal(us1Catalog.some((item) => item.name === "GameRoomXoxRemoteMove"), true);
 });
 
 test("server commands block disabled commands per slot", async () => {
@@ -233,6 +284,59 @@ test("server commands can disable SlotBridge actions per slot", async () => {
       action: "message.send",
       toSlot: "ai2",
       payload: { text: "hello" },
+    })) as { success?: boolean; message?: string };
+
+    assert.equal(disabled.success, false);
+    assert.match(String(disabled.message), /pasif|disabled|devre dışı/i);
+  } finally {
+    SettingsManager.getSnapshot = originalGetSnapshot;
+  }
+});
+
+test("server commands block disabled room commands routed through SlotBridge", async () => {
+  const originalGetSnapshot = SettingsManager.getSnapshot;
+
+  try {
+    RoomCommandRegistry.syncInstalledRooms([room]);
+
+    SettingsManager.getSnapshot = () => ({
+      slots: {
+        ai1: { disabledCommands: ["GameRoomXoxAiMove"] },
+        ai2: { disabledCommands: [] },
+      },
+      assistantSlot: { disabledCommands: [] },
+    }) as never;
+
+    const disabled = (await serverCommands.run("SlotBridge", {
+      provider: "ai1",
+      args: '{"action":"room.command","payload":{"commandName":"GameRoomXoxAiMove","cell":4}}',
+    })) as { success?: boolean; message?: string };
+
+    assert.equal(disabled.success, false);
+    assert.match(String(disabled.message), /pasif|disabled|devre dışı/i);
+  } finally {
+    SettingsManager.getSnapshot = originalGetSnapshot;
+  }
+});
+
+test("server commands block disabled us1 room commands routed through SlotBridge", async () => {
+  const originalGetSnapshot = SettingsManager.getSnapshot;
+
+  try {
+    RoomCommandRegistry.syncInstalledRooms([room]);
+
+    SettingsManager.getSnapshot = () => ({
+      slots: {
+        ai1: { disabledCommands: [] },
+        ai2: { disabledCommands: [] },
+      },
+      us1Slot: { selectedRemoteUserId: null, disabledCommands: ["GameRoomXoxRemoteMove"] },
+      assistantSlot: { disabledCommands: [] },
+    }) as never;
+
+    const disabled = (await serverCommands.run("SlotBridge", {
+      provider: "us1",
+      args: '{"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove","cell":4}}',
     })) as { success?: boolean; message?: string };
 
     assert.equal(disabled.success, false);

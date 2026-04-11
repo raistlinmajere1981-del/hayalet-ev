@@ -129,17 +129,25 @@ export class TsLanguageServiceManager {
     const mappings: TsConfigMapping[] = [];
 
     // NOTE: Check the narrowest tsconfig mappings first so shared files resolve predictably.
-    const candidates: Array<{ file: string; prefixes: string[] }> = [
-      { file: "tsconfig.mcp.json", prefixes: ["mcp-server/"] },
-      { file: "tsconfig.electron.json", prefixes: ["electron/"] },
-      { file: "tsconfig.json", prefixes: ["src/js/", "src/types/"] },
+    const candidates: Array<{ name: string; file: string; prefixes: string[] }> = [
+      { name: "tsconfig.mcp", file: "mcp-server/tsconfig.mcp.json", prefixes: ["mcp-server/"] },
+      {
+        name: "tsconfig.electron",
+        file: "electron/tsconfig.electron.json",
+        prefixes: ["electron/"],
+      },
+      {
+        name: "tsconfig",
+        file: "src/tsconfig.json",
+        prefixes: ["src/js/", "src/types/", "shared/"],
+      },
     ];
 
     for (const candidate of candidates) {
       const fullPath = join(this.projectRoot, candidate.file);
       if (existsSync(fullPath)) {
         mappings.push({
-          name: candidate.file.replace(".json", ""),
+          name: candidate.name,
           configPath: fullPath,
           pathPrefixes: candidate.prefixes,
         });

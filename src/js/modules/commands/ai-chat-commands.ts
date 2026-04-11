@@ -23,23 +23,27 @@ function formatCommandTimestamp(): string {
   return new Date().toLocaleString(AppI18n.getLocale());
 }
 
-function resolveTargetFromRelayLabel(labelRaw: string): "ai1" | "ai2" | null {
+function resolveTargetFromRelayLabel(labelRaw: string): "ai1" | "ai2" | "us1" | null {
   const label = labelRaw.trim().toLowerCase();
   if (label === "") return null;
 
   if (label === "ai1") return "ai1";
   if (label === "ai2") return "ai2";
+  if (label === "us1") return "us1";
 
   if (/^ai1\s*-\s*(?:assistant|asistan)$/.test(label)) return "ai1";
   if (/^(?:assistant|asistan)\s*-\s*ai2$/.test(label)) return "ai2";
+  if (/^(?:assistant|asistan)\s*-\s*us1$/.test(label)) return "us1";
+  if (/^us1\s*-\s*(?:assistant|asistan)$/.test(label)) return "us1";
 
   return null;
 }
 
-function resolveAssistantTarget(argsRaw: string, relayLabel: string): "ai1" | "ai2" | null {
+function resolveAssistantTarget(argsRaw: string, relayLabel: string): "ai1" | "ai2" | "us1" | null {
   const args = argsRaw.trim().toLowerCase();
   if (args === "ai1" || args === "1") return "ai1";
   if (args === "ai2" || args === "2") return "ai2";
+  if (args === "us1" || args === "u1") return "us1";
   return resolveTargetFromRelayLabel(relayLabel);
 }
 
@@ -267,7 +271,7 @@ export async function aiAssistantChatStopHandler(
       aiChatT("commandRequested", { command: "AIAssistantChatStop" })
     );
 
-    if (RelayManager.isAIAssistantActive() !== true) {
+    if (RelayManager.isAssistantRelayActive() !== true) {
       const message = aiChatT("aiAssistantRelayInactive");
       logCommandResult("AIAssistantChatStop", {
         providerRaw,
@@ -279,8 +283,8 @@ export async function aiAssistantChatStopHandler(
       return { success: false, message };
     }
 
-    const sourceSlot = RelayManager.getAIAssistantSourceSlot();
-    if (sourceSlot !== "ai1" && sourceSlot !== "ai2") {
+    const sourceSlot = RelayManager.getAssistantRelaySourceSlot();
+    if (sourceSlot !== "ai1" && sourceSlot !== "ai2" && sourceSlot !== "us1") {
       const message = aiChatT("aiAssistantSourceUnknown");
       logCommandResult("AIAssistantChatStop", {
         providerRaw,
@@ -506,9 +510,9 @@ export async function assistantAISendHandler(
       throw new Error(sendResult.message ?? aiChatT("messageSendFailed"));
     }
 
-    if (RelayManager.isAIAssistantActive() === true) {
-      const sourceSlot = RelayManager.getAIAssistantSourceSlot();
-      if (sourceSlot === "ai1" || sourceSlot === "ai2") {
+    if (RelayManager.isAssistantRelayActive() === true) {
+      const sourceSlot = RelayManager.getAssistantRelaySourceSlot();
+      if (sourceSlot === "ai1" || sourceSlot === "ai2" || sourceSlot === "us1") {
         const coreEngine = await aiChatRuntime.getCoreEngine();
         await coreEngine.sendProtocol({
           room: "analyze",
@@ -516,7 +520,7 @@ export async function assistantAISendHandler(
           targets: [sourceSlot],
         });
       } else {
-        await RelayManager.stopAIAssistantSession();
+        await RelayManager.stopAssistantRelaySession();
       }
     }
 

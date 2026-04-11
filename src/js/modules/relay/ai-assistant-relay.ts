@@ -3,6 +3,7 @@ import type { CoreEngineInterface } from "./base-relay.js";
 import { LogCategory } from "@shared/logging-core";
 import { SlotController } from "../slot-controller.js";
 import { AppI18n } from "../i18n/index.js";
+import { AppState } from "../app-state.js";
 import { slotBridgeHandler } from "../commands/slot-bridge.js";
 import { START_STOP_PROTOCOL_HEADERS } from "../protocol-default-headers.js";
 import { PROTOCOL_KEY } from "@slots";
@@ -80,6 +81,7 @@ export class AIAssistantRelay extends BaseRelay {
       source,
       target: this._targetSlot,
     });
+    AppState.setAssistantRelay(true, source);
     this._dispatchEvent("relay-changed", {
       active: true,
       type: "ai-assistant",
@@ -155,6 +157,7 @@ export class AIAssistantRelay extends BaseRelay {
     this._prevThinking = { ai0: "idle", ai1: "idle", ai2: "idle" };
     this._lastMessageTimes = { ai0: 0, ai1: 0, ai2: 0 };
 
+    AppState.setAssistantRelay(false, null);
     this._dispatchEvent("relay-changed", { active: false, type: "ai-assistant" });
     await Promise.resolve();
   }

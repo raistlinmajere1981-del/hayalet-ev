@@ -94,7 +94,8 @@ export function createDefaultSettings(): AppSettings {
       selectedAccountId: null,
       connectionState: "disconnected",
       relayConnectionState: "disconnected",
-      catchCommands: false,
+      catchCommands: true,
+      disabledCommands: [],
       resumeLastSession: true,
       rememberConnectionStatus: false,
       lastConnectionState: "disconnected",
@@ -124,7 +125,7 @@ export function createDefaultSettings(): AppSettings {
     },
     assistantSlot: {
       accountId: DEFAULT_ASSISTANT_ACCOUNT_ID,
-      catchCommands: false,
+      catchCommands: true,
       disabledCommands: [],
       messageMethod: "injection",
       fileMethod: "injection",

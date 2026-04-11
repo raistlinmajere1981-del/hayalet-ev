@@ -8,6 +8,7 @@ import { SettingsManager } from "./settings-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
 import { AppState } from "./app-state.js";
 import { parseUs1SyntheticSessionUri } from "@shared/archive.js";
+import { resolveUs1ForceSelectConversationId } from "./us1-session-selection.js";
 
 interface RawConversationEntry {
   id?: string;
@@ -494,12 +495,16 @@ class ConversationListManagerClass {
 
       await SettingsManager.reload();
 
-      const forceSelectId =
-        (selectedConversationId !== "new"
-          ? selectedConversationId
-          : typeof result.conversationId === "string" && result.conversationId !== ""
-            ? result.conversationId
-            : null) ?? undefined;
+      const forceSelectId = resolveUs1ForceSelectConversationId({
+        selectedConversationId,
+        resultConversationId:
+          typeof result.conversationId === "string" ? result.conversationId : null,
+        sessionEvents,
+        targetRemoteUserId:
+          typeof result.remoteUserId === "string"
+            ? result.remoteUserId
+            : (AppState.getUs1Identity()?.remoteUserId ?? null),
+      });
 
       await this.refresh({
         silent: true,

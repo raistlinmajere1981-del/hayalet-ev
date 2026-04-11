@@ -56,9 +56,10 @@ addition to Electron's platform binaries:
 - `electron-builder.yml`
 - `eslint.config.cjs`
 - `knip.config.ts`
-- `tsconfig.electron.json`
-- `tsconfig.json`
-- `tsconfig.mcp.json`
+- `electron/tsconfig.electron.json`
+- `src/tsconfig.json`
+- `mcp-server/tsconfig.mcp.json`
+- `rooms/tsconfig.rooms.json`
 - `vite.config.js`
 - `.dependency-cruiser.cjs`
 - `.gitignore`

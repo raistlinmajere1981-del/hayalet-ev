@@ -164,7 +164,10 @@
             <div class="topbar-slot-lane">
               <div class="indicators-group indicators-group--topbar">
                 <div class="indicators-row">
-                  <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai1">
+                  <div
+                    class="indicator-cluster indicator-cluster-wide indicator-cluster-relay indicator-cluster-relay--end"
+                    id="cluster-ai1"
+                  >
                     <div
                       class="indicator-avatar indicator-avatar-lg"
                       id="indicator-avatar-ai1"
@@ -222,20 +225,33 @@
                         </button>
                       </div>
                     </div>
+                    <div class="indicator-relay-stack indicator-relay-stack--end">
+                      <button
+                        class="relay-toggle-btn relay-toggle-btn--embedded"
+                        id="relay-btn-ai1-ai0"
+                        title=""
+                        aria-label=""
+                        data-shell-i18n-title="relay.toggle.ai1Assistant"
+                        data-shell-i18n-aria-label="relay.toggle.ai1Assistant"
+                      >
+                        <span class="relay-btn-icon icon-play">▶</span>
+                        <span class="relay-btn-icon icon-stop">⏹</span>
+                      </button>
+                      <button
+                        class="relay-toggle-btn relay-toggle-btn--embedded"
+                        id="relay-btn-ai1-ai2-left"
+                        title=""
+                        aria-label=""
+                        data-shell-i18n-title="relay.toggle.ai1Ai2"
+                        data-shell-i18n-aria-label="relay.toggle.ai1Ai2"
+                      >
+                        <span class="relay-btn-icon icon-play">▶</span>
+                        <span class="relay-btn-icon icon-stop">⏹</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div class="relay-flow-wrapper">
-                    <button
-                      class="relay-toggle-btn"
-                      id="relay-btn-ai1-ai0"
-                      title=""
-                      aria-label=""
-                      data-shell-i18n-title="relay.toggle.ai1Assistant"
-                      data-shell-i18n-aria-label="relay.toggle.ai1Assistant"
-                    >
-                      <span class="relay-btn-icon icon-play">▶</span>
-                      <span class="relay-btn-icon icon-stop">⏹</span>
-                    </button>
                     <div
                       class="relay-flow-line"
                       id="relay-flow-ai1-ai0"
@@ -306,20 +322,36 @@
                         <div class="flow-particle"></div>
                       </div>
                     </div>
-                    <button
-                      class="relay-toggle-btn"
-                      id="relay-btn-ai0-ai2"
-                      title=""
-                      aria-label=""
-                      data-shell-i18n-title="relay.toggle.assistantAi2"
-                      data-shell-i18n-aria-label="relay.toggle.assistantAi2"
-                    >
-                      <span class="relay-btn-icon icon-play">◀</span>
-                      <span class="relay-btn-icon icon-stop">⏹</span>
-                    </button>
                   </div>
 
-                  <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai2">
+                  <div
+                    class="indicator-cluster indicator-cluster-wide indicator-cluster-relay indicator-cluster-relay--start"
+                    id="cluster-ai2"
+                  >
+                    <div class="indicator-relay-stack indicator-relay-stack--start">
+                      <button
+                        class="relay-toggle-btn relay-toggle-btn--embedded"
+                        id="relay-btn-ai0-ai2"
+                        title=""
+                        aria-label=""
+                        data-shell-i18n-title="relay.toggle.assistantAi2"
+                        data-shell-i18n-aria-label="relay.toggle.assistantAi2"
+                      >
+                        <span class="relay-btn-icon icon-play">◀</span>
+                        <span class="relay-btn-icon icon-stop">⏹</span>
+                      </button>
+                      <button
+                        class="relay-toggle-btn relay-toggle-btn--embedded"
+                        id="relay-btn-ai1-ai2-right"
+                        title=""
+                        aria-label=""
+                        data-shell-i18n-title="relay.toggle.ai2Ai1"
+                        data-shell-i18n-aria-label="relay.toggle.ai2Ai1"
+                      >
+                        <span class="relay-btn-icon icon-play">◀</span>
+                        <span class="relay-btn-icon icon-stop">⏹</span>
+                      </button>
+                    </div>
                     <div
                       class="indicator-avatar indicator-avatar-lg"
                       id="indicator-avatar-ai2"
@@ -380,17 +412,6 @@
                   </div>
                 </div>
                 <div class="relay-flow-bottom-row">
-                  <button
-                    class="relay-toggle-btn relay-btn-bottom-left"
-                    id="relay-btn-ai1-ai2-left"
-                    title=""
-                    aria-label=""
-                    data-shell-i18n-title="relay.toggle.ai1Ai2"
-                    data-shell-i18n-aria-label="relay.toggle.ai1Ai2"
-                  >
-                    <span class="relay-btn-icon icon-play">▶</span>
-                    <span class="relay-btn-icon icon-stop">⏹</span>
-                  </button>
                   <div
                     class="relay-flow-line-bottom"
                     id="relay-flow-ai1-ai2"
@@ -401,21 +422,26 @@
                       <div class="flow-particle"></div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div
+                class="indicator-cluster indicator-cluster-wide indicator-cluster-relay indicator-cluster-relay--start is-empty"
+                id="cluster-us1"
+              >
+                <div class="indicator-relay-stack indicator-relay-stack--start">
                   <button
-                    class="relay-toggle-btn relay-btn-bottom-right"
-                    id="relay-btn-ai1-ai2-right"
+                    class="relay-toggle-btn relay-toggle-btn--embedded"
+                    id="relay-btn-ai0-us1"
                     title=""
                     aria-label=""
-                    data-shell-i18n-title="relay.toggle.ai2Ai1"
-                    data-shell-i18n-aria-label="relay.toggle.ai2Ai1"
+                    data-shell-i18n-title="relay.toggle.assistantUs1"
+                    data-shell-i18n-aria-label="relay.toggle.assistantUs1"
                   >
                     <span class="relay-btn-icon icon-play">◀</span>
                     <span class="relay-btn-icon icon-stop">⏹</span>
                   </button>
                 </div>
-              </div>
-
-              <div class="indicator-cluster indicator-cluster-wide is-empty" id="cluster-us1">
                 <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-us1">US</div>
                 <div class="indicator-content">
                   <div class="indicator-dots-row">

@@ -1,6 +1,7 @@
 import { getErrorMessage } from "@shared/index.js";
 import { Logger, LogCategory } from "../modules/logger/index.js";
 import { AppI18n } from "../modules/i18n/index.js";
+import { AppState } from "../modules/app-state.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { SlotController } from "../modules/slot-controller.js";
 import { RelayManager } from "../modules/relay-manager.js";
@@ -8,9 +9,12 @@ import { TrafficManager } from "../modules/traffic-manager.js";
 import { CoreEngine } from "../modules/core-engine.js";
 import { shellT } from "./shell-i18n.js";
 
-type RelayRoute = "ai1Assistant" | "assistantAi2" | "ai1Ai2" | "ai2Ai1";
+type RelayRoute = "ai1Assistant" | "assistantAi2" | "assistantUs1" | "ai1Ai2" | "ai2Ai1";
+type RelaySlot = "ai0" | "ai1" | "ai2" | "us1";
+type RelayEdge = "top" | "bottom";
 
 let relayI18nBound = false;
+let relaySettingsBound = false;
 
 function relayLogKey(key: string): string {
   return `app.logs.${key}`;
@@ -54,6 +58,8 @@ function getRelayLabel(route: RelayRoute): string {
       return shellT("relay.label.ai1Assistant");
     case "assistantAi2":
       return shellT("relay.label.assistantAi2");
+    case "assistantUs1":
+      return shellT("relay.label.assistantUs1");
     case "ai1Ai2":
       return shellT("relay.label.ai1Ai2");
     case "ai2Ai1":
@@ -63,7 +69,7 @@ function getRelayLabel(route: RelayRoute): string {
   }
 }
 
-function getSlotLabel(slot: "ai0" | "ai1" | "ai2"): string {
+function getSlotLabel(slot: RelaySlot): string {
   switch (slot) {
     case "ai0":
       return shellT("relay.participants.assistant");
@@ -71,6 +77,8 @@ function getSlotLabel(slot: "ai0" | "ai1" | "ai2"): string {
       return shellT("relay.participants.ai1");
     case "ai2":
       return shellT("relay.participants.ai2");
+    case "us1":
+      return shellT("relay.participants.us1");
     default:
       return "";
   }
@@ -105,49 +113,121 @@ function bindRelayI18n(): void {
   relayI18nBound = true;
 }
 
+function bindRelaySettings(): void {
+  if (relaySettingsBound) {
+    return;
+  }
+
+  SettingsManager.subscribe(({ changedPaths }) => {
+    const shouldRefresh =
+      changedPaths.includes("*") ||
+      changedPaths.some(
+        (path) =>
+          path.startsWith("us1Slot") ||
+          path.startsWith("assistantSlot") ||
+          path.startsWith("slots.ai1") ||
+          path.startsWith("slots.ai2") ||
+          path.startsWith("accounts")
+      );
+    if (!shouldRefresh) {
+      return;
+    }
+
+    updateRelayButtonStates();
+    updateRelayIndicator();
+  });
+
+  relaySettingsBound = true;
+}
+
+function getRelayCluster(slot: RelaySlot): HTMLElement | null {
+  return document.getElementById(`cluster-${slot}`);
+}
+
+function clearRelayClusterVisuals(): void {
+  (["ai0", "ai1", "ai2", "us1"] as const).forEach((slot) => {
+    const cluster = getRelayCluster(slot);
+    if (cluster === null) {
+      return;
+    }
+    cluster.classList.remove(
+      "is-relay-top-active",
+      "is-relay-top-rtl",
+      "is-relay-bottom-active",
+      "is-relay-bottom-rtl"
+    );
+  });
+}
+
+function applyRelayClusterVisuals(slots: RelaySlot[], edge: RelayEdge, rtl: boolean): void {
+  const activeClass = edge === "top" ? "is-relay-top-active" : "is-relay-bottom-active";
+  const rtlClass = edge === "top" ? "is-relay-top-rtl" : "is-relay-bottom-rtl";
+
+  slots.forEach((slot) => {
+    const cluster = getRelayCluster(slot);
+    if (cluster === null) {
+      return;
+    }
+    cluster.classList.add(activeClass);
+    cluster.classList.toggle(rtlClass, rtl);
+  });
+}
+
 export function updateRelayIndicator(): void {
   const flowAi1Ai0 = document.getElementById("relay-flow-ai1-ai0");
   const flowAi0Ai2 = document.getElementById("relay-flow-ai0-ai2");
   const flowAi1Ai2 = document.getElementById("relay-flow-ai1-ai2");
-
-  if (!flowAi1Ai0 || !flowAi0Ai2 || !flowAi1Ai2) return;
-
-  flowAi1Ai0.classList.remove("is-active", "flow-rtl");
-  flowAi0Ai2.classList.remove("is-active", "flow-rtl");
-  flowAi1Ai2.classList.remove("is-active", "flow-rtl");
+  flowAi1Ai0?.classList.remove("is-active", "flow-rtl");
+  flowAi0Ai2?.classList.remove("is-active", "flow-rtl");
+  flowAi1Ai2?.classList.remove("is-active", "flow-rtl");
+  clearRelayClusterVisuals();
   applyDefaultRelayTitles();
 
   const isAIAIActive = RelayManager.isAIAIActive();
-  const isAssistantRelayActive = RelayManager.isAIAssistantActive();
-  const assistantSourceSlot = RelayManager.getAIAssistantSourceSlot();
+  const isAssistantRelayActive = RelayManager.isAssistantRelayActive();
+  const assistantSourceSlot = RelayManager.getAssistantRelaySourceSlot();
 
   const getThinking = (slot: string): boolean =>
     TrafficManager.state[slot]?.status.thinking === "busy";
 
   if (isAIAIActive) {
-    flowAi1Ai2.classList.add("is-active");
-    if (getThinking("ai2")) {
-      flowAi1Ai2.classList.add("flow-rtl");
-      flowAi1Ai2.title = shellT("relay.active.ai2ToAi1");
-    } else {
+    const rtl = getThinking("ai2");
+    flowAi1Ai2?.classList.add("is-active");
+    flowAi1Ai2?.classList.toggle("flow-rtl", rtl);
+    applyRelayClusterVisuals(["ai1", "ai2"], "bottom", rtl);
+    if (rtl) {
+      if (flowAi1Ai2 !== null) {
+        flowAi1Ai2.title = shellT("relay.active.ai2ToAi1");
+      }
+    } else if (flowAi1Ai2 !== null) {
       flowAi1Ai2.title = shellT("relay.active.ai1ToAi2");
     }
   } else if (isAssistantRelayActive && assistantSourceSlot === "ai1") {
-    flowAi1Ai0.classList.add("is-active");
-    if (getThinking("ai0")) {
-      flowAi1Ai0.classList.add("flow-rtl");
-      flowAi1Ai0.title = shellT("relay.active.assistantToAi1");
-    } else {
+    const rtl = getThinking("ai0");
+    flowAi1Ai0?.classList.add("is-active");
+    flowAi1Ai0?.classList.toggle("flow-rtl", rtl);
+    applyRelayClusterVisuals(["ai1", "ai0"], "top", rtl);
+    if (rtl) {
+      if (flowAi1Ai0 !== null) {
+        flowAi1Ai0.title = shellT("relay.active.assistantToAi1");
+      }
+    } else if (flowAi1Ai0 !== null) {
       flowAi1Ai0.title = shellT("relay.active.ai1ToAssistant");
     }
   } else if (isAssistantRelayActive && assistantSourceSlot === "ai2") {
-    flowAi0Ai2.classList.add("is-active");
-    if (getThinking("ai2")) {
-      flowAi0Ai2.classList.add("flow-rtl");
-      flowAi0Ai2.title = shellT("relay.active.ai2ToAssistant");
-    } else {
+    const rtl = getThinking("ai2");
+    flowAi0Ai2?.classList.add("is-active");
+    flowAi0Ai2?.classList.toggle("flow-rtl", rtl);
+    applyRelayClusterVisuals(["ai0", "ai2"], "top", rtl);
+    if (rtl) {
+      if (flowAi0Ai2 !== null) {
+        flowAi0Ai2.title = shellT("relay.active.ai2ToAssistant");
+      }
+    } else if (flowAi0Ai2 !== null) {
       flowAi0Ai2.title = shellT("relay.active.assistantToAi2");
     }
+  } else if (isAssistantRelayActive && assistantSourceSlot === "us1") {
+    applyRelayClusterVisuals(["ai0", "us1"], "top", false);
   }
 }
 
@@ -162,6 +242,7 @@ async function persistLastActiveRelay(relayName: string): Promise<void> {
 export function setupTopBarRelayButtons(): void {
   try {
     bindRelayI18n();
+    bindRelaySettings();
     relayInfo("relaySetupStarted");
 
     const btnAi1Ai0 = document.getElementById("relay-btn-ai1-ai0") as HTMLButtonElement | null;
@@ -249,6 +330,49 @@ export function setupTopBarRelayButtons(): void {
           } catch (err) {
             relayError("relayError", {
               relay: getRelayLabel("assistantAi2"),
+              message: getErrorMessage(err),
+            });
+          }
+        })();
+      });
+    }
+
+    const btnAi0Us1 = document.getElementById("relay-btn-ai0-us1") as HTMLButtonElement | null;
+    relayDebug("relayButtonFound", {
+      relay: getRelayLabel("assistantUs1"),
+      found: String(!!btnAi0Us1),
+      disabled: String(btnAi0Us1?.disabled ?? false),
+    });
+    if (btnAi0Us1) {
+      btnAi0Us1.addEventListener("click", (): void => {
+        void (async (): Promise<void> => {
+          relayInfo("relayButtonClicked", { relay: getRelayLabel("assistantUs1") });
+          try {
+            if (RelayManager.isUs1AssistantActive()) {
+              await CoreEngine.sendProtocol({
+                room: "analyze",
+                scenario: "ai-assistant-stop",
+                targets: ["us1"],
+              });
+              relayInfo("relayStopped", { relay: getRelayLabel("assistantUs1") });
+            } else {
+              if (AppState.isUs1Connected() !== true) {
+                relayWarn("relayStartBlocked", { slot: getSlotLabel("us1") });
+                return;
+              }
+              if (SlotController.isConnected("ai0") !== true) {
+                relayWarn("relayStartBlocked", { slot: getSlotLabel("ai0") });
+                return;
+              }
+              await RelayManager.startUs1AssistantSession();
+              relayInfo("relayStarted", { relay: getRelayLabel("assistantUs1") });
+              await persistLastActiveRelay("assistant-us1");
+            }
+            updateRelayButtonStates();
+            updateRelayIndicator();
+          } catch (err) {
+            relayError("relayError", {
+              relay: getRelayLabel("assistantUs1"),
               message: getErrorMessage(err),
             });
           }
@@ -370,7 +494,7 @@ export function setupTopBarRelayButtons(): void {
     });
 
     TrafficManager.onUpdate(() => {
-      if (RelayManager.isAIAIActive() || RelayManager.isAIAssistantActive()) {
+      if (RelayManager.isAIAIActive() || RelayManager.isAssistantRelayActive()) {
         updateRelayIndicator();
       }
     });
@@ -390,6 +514,7 @@ export function updateRelayButtonStates(): void {
   try {
     const btnAi1Ai0 = document.getElementById("relay-btn-ai1-ai0") as HTMLButtonElement | null;
     const btnAi0Ai2 = document.getElementById("relay-btn-ai0-ai2") as HTMLButtonElement | null;
+    const btnAi0Us1 = document.getElementById("relay-btn-ai0-us1") as HTMLButtonElement | null;
     const btnAi1Ai2Left = document.getElementById(
       "relay-btn-ai1-ai2-left"
     ) as HTMLButtonElement | null;
@@ -400,16 +525,18 @@ export function updateRelayButtonStates(): void {
     const ai1Connected = SlotController.isConnected("ai1") === true;
     const ai2Connected = SlotController.isConnected("ai2") === true;
     const ai0Connected = SlotController.isConnected("ai0") === true;
+    const us1Connected = AppState.isUs1Connected() === true;
 
     relayDebug("relayButtonStates", {
       ai1: String(ai1Connected),
       ai2: String(ai2Connected),
       ai0: String(ai0Connected),
+      us1: String(us1Connected),
     });
 
     const isAIAIActive = RelayManager.isAIAIActive() === true;
-    const isAssistantRelayActive = RelayManager.isAIAssistantActive() === true;
-    const assistantSourceSlot = RelayManager.getAIAssistantSourceSlot();
+    const isAssistantRelayActive = RelayManager.isAssistantRelayActive() === true;
+    const assistantSourceSlot = RelayManager.getAssistantRelaySourceSlot();
     const anyRelayActive = isAIAIActive || isAssistantRelayActive;
 
     if (btnAi1Ai0) {
@@ -424,6 +551,13 @@ export function updateRelayButtonStates(): void {
       const canEnable = ai2Connected && ai0Connected && (!anyRelayActive || isThisActive);
       btnAi0Ai2.disabled = !canEnable;
       btnAi0Ai2.classList.toggle("is-active", isThisActive);
+    }
+
+    if (btnAi0Us1) {
+      const isThisActive = isAssistantRelayActive && assistantSourceSlot === "us1";
+      const canEnable = us1Connected && ai0Connected && (!anyRelayActive || isThisActive);
+      btnAi0Us1.disabled = !canEnable;
+      btnAi0Us1.classList.toggle("is-active", isThisActive);
     }
 
     if (btnAi1Ai2Left) {

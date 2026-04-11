@@ -319,7 +319,7 @@ class CoreEngineClass {
         }
         if (scenario === "ai-assistant-stop") {
           if (this.relay !== null) {
-            void this.relay.stopAIAssistantSession();
+            void this.relay.stopAssistantRelaySession();
           }
         }
       }

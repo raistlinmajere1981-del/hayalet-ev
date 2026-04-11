@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-10T15:46:48.395Z",
+  "generatedAt": "2026-04-11T14:35:21.668Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 497,
-    "ids": 573,
+    "filesScanned": 499,
+    "ids": 574,
     "testIds": 15,
     "querySelectors": 141,
-    "totalSelectors": 729
+    "totalSelectors": 730
   },
   "lookup": {
     "id": {
@@ -374,6 +374,7 @@
       "providers-panel-body": "#providers-panel-body",
       "prune-btn": "#prune-btn",
       "relay-btn-ai0-ai2": "#relay-btn-ai0-ai2",
+      "relay-btn-ai0-us1": "#relay-btn-ai0-us1",
       "relay-btn-ai1-ai0": "#relay-btn-ai1-ai0",
       "relay-btn-ai1-ai2-left": "#relay-btn-ai1-ai2-left",
       "relay-btn-ai1-ai2-right": "#relay-btn-ai1-ai2-right",

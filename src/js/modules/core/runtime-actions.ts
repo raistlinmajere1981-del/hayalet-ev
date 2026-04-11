@@ -21,9 +21,11 @@ import { WhisperManager } from "../whisper-manager.js";
 interface RelayRef {
   isAIAIActive(): boolean;
   isAIAssistantActive(): boolean;
+  isUs1AssistantActive(): boolean;
   stopProtocolSession(): Promise<void>;
   stopSession(): Promise<void>;
   stopAIAssistantSession(): Promise<void>;
+  stopUs1AssistantSession(): Promise<void>;
   getAIAssistantSourceSlot(): string | null;
 }
 
@@ -333,6 +335,27 @@ export async function handleRelayDisconnectAutoStop(
     }
 
     if (context.relay.isAIAssistantActive() !== true) {
+      if (context.relay.isUs1AssistantActive() !== true) {
+        return;
+      }
+
+      if (slot !== "ai0") {
+        return;
+      }
+
+      if (AppState.isUs1Connected() === true) {
+        const stopResult = await context.sendProtocol({
+          room: "analyze",
+          scenario: "ai-assistant-stop",
+          targets: ["us1"],
+        });
+
+        if (stopResult.success === true) {
+          return;
+        }
+      }
+
+      await context.relay.stopUs1AssistantSession();
       return;
     }
 

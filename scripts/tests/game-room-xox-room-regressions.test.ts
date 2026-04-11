@@ -73,6 +73,7 @@ type XoxUiStateHarness = {
   };
   runtime: {
     createGameState: () => Record<string, unknown>;
+    getCurrentStatus: () => string;
     syncPreferencesFromGame: () => void;
   };
 };
@@ -215,6 +216,18 @@ test("game-room XOX UI syncs the host target once the match state becomes author
 
   assert.equal(state.preferences.target, "us1");
   assert.equal(state.preferences.starter, "ai");
+});
+
+test("game-room XOX UI prioritizes command-result messages over stale game status text", () => {
+  const { state, runtime } = createXoxUiStateHarness();
+  Object.assign(state.game, {
+    active: true,
+    result: "pending",
+    status: "Waiting for the remote move.",
+  });
+  state.lastCommandMessage = "A duplicate remote move was ignored.";
+
+  assert.equal(runtime.getCurrentStatus(), "A duplicate remote move was ignored.");
 });
 
 test("game-room XOX UI forwards remote identity with invite actions", () => {

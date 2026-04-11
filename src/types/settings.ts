@@ -122,6 +122,7 @@ export interface Us1SlotSettings {
   connectionState?: Us1SlotConnectionState;
   relayConnectionState?: Us1RelayConnectionState;
   catchCommands?: boolean;
+  disabledCommands?: string[];
   resumeLastSession?: boolean;
   rememberConnectionStatus?: boolean;
   lastConnectionState?: Us1SlotConnectionState | null;

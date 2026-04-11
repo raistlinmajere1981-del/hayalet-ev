@@ -317,6 +317,53 @@ test("syncConversation saves generated images as assistant attachments", async (
   }
 });
 
+test("_getArchiveStatus reads wrapped conversation payloads from IPC", async () => {
+  const globalScope = globalThis as unknown as {
+    window?: {
+      electronAPI?: {
+        dbGetConversations?: (...args: unknown[]) => Promise<unknown>;
+      };
+    };
+  };
+
+  const originalWindow = globalScope.window;
+  const originalGetAccount = AppState.getAccountForSlot;
+
+  globalScope.window = {
+    electronAPI: {
+      dbGetConversations: async () => ({
+        success: true,
+        data: [
+          {
+            id: "conversation-1",
+            webUrl: "https://chatgpt.com/c/archive-demo",
+            messageCount: 7,
+          },
+        ],
+      }),
+    },
+  };
+
+  AppState.getAccountForSlot = (() => ({
+    id: "account-1",
+    provider: "chatgpt",
+  })) as typeof AppState.getAccountForSlot;
+
+  try {
+    const result = await ConversationSyncer._getArchiveStatus(
+      "ai1",
+      "https://chatgpt.com/c/archive-demo"
+    );
+
+    assert.equal(result.newEntry, false);
+    assert.equal(result.prevCount, 7);
+    assert.equal(result.existing?.webUrl, "https://chatgpt.com/c/archive-demo");
+  } finally {
+    AppState.getAccountForSlot = originalGetAccount;
+    globalScope.window = originalWindow;
+  }
+});
+
 test("syncConversation skips generated image save when attachment already exists", async () => {
   const globalScope = globalThis as unknown as {
     window?: {

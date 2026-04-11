@@ -493,6 +493,7 @@ test("game-room host accepts incoming US1 invites and applies synced remote move
     })
   );
 
+  assert.equal(runtime.us1SyncCalls.at(-1)?.consumeRoomCommands, true);
   assert.equal(runtime.dispatchCalls.length, 1);
   assert.equal((runtime.latestGameState()?.board as string[])[4], "X");
   assert.equal(runtime.latestGameState()?.awaitingMoveFrom, "user");

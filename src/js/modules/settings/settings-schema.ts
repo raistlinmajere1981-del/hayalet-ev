@@ -609,6 +609,7 @@ function normalizeUs1Slot(raw: unknown): Us1SlotSettings | undefined {
   const communicationSystem = raw["communicationSystem"];
   const relayConnectionState = raw["relayConnectionState"];
   const catchCommands = raw["catchCommands"];
+  const disabledCommands = raw["disabledCommands"];
   const resumeLastSession = raw["resumeLastSession"];
   const rememberConnectionStatus = raw["rememberConnectionStatus"];
   const lastConnectionState = raw["lastConnectionState"];
@@ -632,7 +633,10 @@ function normalizeUs1Slot(raw: unknown): Us1SlotSettings | undefined {
           ? "connected"
           : "disconnected",
     relayConnectionState: normalizeUs1RelayConnectionState(relayConnectionState),
-    catchCommands: catchCommands === true,
+    catchCommands: typeof catchCommands === "boolean" ? catchCommands : true,
+    disabledCommands: Array.isArray(disabledCommands)
+      ? disabledCommands.filter((item): item is string => typeof item === "string")
+      : [],
     resumeLastSession: typeof resumeLastSession === "boolean" ? resumeLastSession : true,
     rememberConnectionStatus:
       typeof rememberConnectionStatus === "boolean" ? rememberConnectionStatus : false,
@@ -996,7 +1000,7 @@ function normalizeKnownSettings(raw: unknown): Record<string, unknown> {
     out.assistantSlot = {
       accountId: assistantSlot.accountId ?? null,
       catchCommands:
-        typeof assistantSlot.catchCommands === "boolean" ? assistantSlot.catchCommands : false,
+        typeof assistantSlot.catchCommands === "boolean" ? assistantSlot.catchCommands : true,
       disabledCommands: Array.isArray(assistantSlot.disabledCommands)
         ? assistantSlot.disabledCommands.filter((item): item is string => typeof item === "string")
         : [],
@@ -1117,7 +1121,8 @@ export function normalizeSettings(raw: unknown): AppSettings {
       selectedAccountId: null,
       connectionState: "disconnected",
       relayConnectionState: "disconnected",
-      catchCommands: false,
+      catchCommands: true,
+      disabledCommands: [],
       resumeLastSession: true,
       rememberConnectionStatus: false,
       lastConnectionState: "disconnected",
@@ -1165,7 +1170,10 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
   us1Slot.relayConnectionState = normalizeUs1RelayConnectionState(us1Slot.relayConnectionState);
   if (typeof us1Slot.catchCommands !== "boolean") {
-    us1Slot.catchCommands = false;
+    us1Slot.catchCommands = true;
+  }
+  if (!Array.isArray(us1Slot.disabledCommands)) {
+    us1Slot.disabledCommands = [];
   }
   if (typeof us1Slot.resumeLastSession !== "boolean") {
     us1Slot.resumeLastSession = true;
@@ -1192,7 +1200,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
   if (!isPlainObject(merged.assistantSlot)) {
     merged.assistantSlot = defaults.assistantSlot ?? {
       accountId: DEFAULT_ASSISTANT_ACCOUNT_ID,
-      catchCommands: false,
+      catchCommands: true,
       disabledCommands: [],
       messageMethod: "injection",
       fileMethod: "injection",
@@ -1205,7 +1213,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
     merged.assistantSlot.accountId = DEFAULT_ASSISTANT_ACCOUNT_ID;
   }
   if (typeof merged.assistantSlot.catchCommands !== "boolean") {
-    merged.assistantSlot.catchCommands = false;
+    merged.assistantSlot.catchCommands = true;
   }
   if (!Array.isArray(merged.assistantSlot.disabledCommands)) {
     merged.assistantSlot.disabledCommands = [];

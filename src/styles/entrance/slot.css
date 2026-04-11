@@ -23,7 +23,7 @@
   gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   background: var(--bg-elevated);
-  border-bottom: var(--border-1) solid var(--border-glass);
+  border-bottom: 0;
 }
 
 .slot-header-top {

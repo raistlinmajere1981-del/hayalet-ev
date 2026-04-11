@@ -50,7 +50,7 @@ const BUILTIN_COMMANDS: CommandDefinition[] = [
   {
     name: SLOT_BRIDGE_COMMAND_NAME,
     category: "ai1-ai2",
-    additionalCategories: ["ai0"],
+    additionalCategories: ["ai0", "us1"],
     supportsTestMode: true,
   },
 ];
@@ -60,12 +60,30 @@ const BUILTIN_BY_KEY = new Map(
   BUILTIN_COMMANDS.map((command) => [command.name.toLowerCase(), command])
 );
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && Array.isArray(value) === false;
+}
+
 function resolveCanonicalCommandName(commandName: string): string {
   return commandName.trim();
 }
 
 function normalizeProvider(value: unknown): string {
   return typeof value === "string" ? value.toLowerCase() : "";
+}
+
+function parseJsonRecord(value: unknown): Record<string, unknown> | null {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  if (trimmed === "") {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function resolveProviderCategory(provider: string): CommandCategory | null {
@@ -98,6 +116,13 @@ function getDisabledCommandsForProvider(provider: string): string[] {
       : [];
   }
 
+  if (provider === "us1") {
+    const disabled = snapshot.us1Slot?.disabledCommands;
+    return Array.isArray(disabled)
+      ? disabled.filter((command): command is string => typeof command === "string")
+      : [];
+  }
+
   return [];
 }
 
@@ -121,6 +146,47 @@ function getCommandDefinition(commandName: string): CommandDefinition | null {
   return null;
 }
 
+function resolveSlotBridgeEnvelopeFromPayload(
+  payload: Record<string, unknown>
+): Record<string, unknown> | null {
+  if (getSlotBridgeAction(payload["action"]) !== null) {
+    return payload;
+  }
+
+  return parseJsonRecord(payload["args"]);
+}
+
+function resolveSlotBridgeRoomCommandName(payload: Record<string, unknown>): string | null {
+  const envelope = resolveSlotBridgeEnvelopeFromPayload(payload);
+  if (envelope === null || getSlotBridgeAction(envelope["action"]) !== "room.command") {
+    return null;
+  }
+
+  const actionPayload = isRecord(envelope["payload"]) ? envelope["payload"] : envelope;
+  const commandNameCandidates = [
+    actionPayload["commandName"],
+    actionPayload["actionId"],
+    actionPayload["roomCommand"],
+  ];
+  const commandName = commandNameCandidates.find(
+    (candidate): candidate is string => typeof candidate === "string" && candidate.trim() !== ""
+  );
+  return commandName?.trim() ?? null;
+}
+
+function getRoomCommandCatalog(category?: CommandCategory): CommandCatalogItem[] {
+  return RoomCommandRegistry.listCommands(category)
+    .map((name) => RoomCommandRegistry.getMetadata(name))
+    .filter((metadata): metadata is NonNullable<typeof metadata> => metadata !== null)
+    .filter((metadata) => BUILTIN_BY_KEY.has(metadata.name.toLowerCase()) !== true)
+    .map((metadata) => ({
+      name: metadata.name,
+      category: metadata.category,
+      isCustom: true,
+      supportsTestMode: false,
+    }));
+}
+
 function checkCommandAccess(
   commandName: string,
   payload: Record<string, unknown>
@@ -135,6 +201,11 @@ function checkCommandAccess(
     resolveCanonicalCommandName(commandName).toLowerCase() ===
     SLOT_BRIDGE_COMMAND_NAME.toLowerCase()
       ? resolveSlotBridgeActionFromPayload(payload)
+      : null;
+  const slotBridgeRoomCommandName =
+    resolveCanonicalCommandName(commandName).toLowerCase() ===
+    SLOT_BRIDGE_COMMAND_NAME.toLowerCase()
+      ? resolveSlotBridgeRoomCommandName(payload)
       : null;
 
   if (providerCategory !== null && commandDefinition !== null) {
@@ -168,15 +239,26 @@ function checkCommandAccess(
   if (provider !== "") {
     const disabledCommands = getDisabledCommandsForProvider(provider);
     const commandKey = resolveCanonicalCommandName(commandName).toLowerCase();
+    const slotBridgeRoomCommandKey =
+      slotBridgeRoomCommandName !== null ? slotBridgeRoomCommandName.toLowerCase() : "";
     const isDisabled = disabledCommands.some((command) => {
       const normalized = resolveCanonicalCommandName(command).toLowerCase();
       if (normalized === commandKey) {
         return true;
       }
+      if (slotBridgeRoomCommandKey !== "" && normalized === slotBridgeRoomCommandKey) {
+        return true;
+      }
       if (slotBridgeAction === null) {
         return false;
       }
-      return normalized === `${commandKey}:${slotBridgeAction.toLowerCase()}`;
+      if (normalized === `${commandKey}:${slotBridgeAction.toLowerCase()}`) {
+        return true;
+      }
+      return (
+        slotBridgeRoomCommandKey !== "" &&
+        normalized === `${commandKey}:${slotBridgeAction.toLowerCase()}:${slotBridgeRoomCommandKey}`
+      );
     });
 
     if (isDisabled) {
@@ -313,12 +395,7 @@ const serverCommands = {
       isCustom: false,
       supportsTestMode: command.supportsTestMode === true,
     }));
-
-    if (category !== undefined && category !== "ai1-ai2") {
-      return builtIns;
-    }
-
-    return [...builtIns, ...RoomCommandRegistry.getCatalog(category)];
+    return [...builtIns, ...getRoomCommandCatalog(category)];
   },
 
   getCommandMeta(commandName: string): CommandCatalogItem | undefined {

@@ -6,11 +6,20 @@ import {
   normalizeSettings,
 } from "../../src/js/modules/settings/settings-schema.ts";
 
-test("default settings enable slot resume for AI1 and AI2", () => {
+test("default settings enable slot command capture and resume defaults", () => {
   const settings = defaultSettings();
 
+  assert.equal(settings.slots.ai1.catchCommands, true);
   assert.equal(settings.slots.ai1.resumeLastSession, true);
+  assert.equal(settings.slots.ai1.rememberConnectionStatus, false);
+  assert.equal(settings.slots.ai2.catchCommands, true);
   assert.equal(settings.slots.ai2.resumeLastSession, true);
+  assert.equal(settings.slots.ai2.rememberConnectionStatus, false);
+  assert.equal(settings.us1Slot.catchCommands, true);
+  assert.equal(settings.us1Slot.resumeLastSession, true);
+  assert.equal(settings.us1Slot.rememberConnectionStatus, false);
+  assert.equal(settings.assistantSlot.catchCommands, true);
+  assert.equal(settings.assistants.resumeLastSession, true);
 });
 
 test("normalize settings backfills missing slot resume flag", () => {

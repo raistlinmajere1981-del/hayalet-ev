@@ -1340,13 +1340,17 @@ class ConversationSyncerClass {
         return { existing: null, prevCount: 0, newEntry: true };
       }
 
-      const conversations = (await window.electronAPI?.dbGetConversations({
+      const conversationsResult = (await window.electronAPI?.dbGetConversations({
         accountId: accountInfo.id,
-      })) as ConversationItem[] | undefined;
+      })) as { data?: ConversationItem[] } | ConversationItem[] | undefined;
+      const conversations = Array.isArray(conversationsResult)
+        ? conversationsResult
+        : Array.isArray(conversationsResult?.data)
+          ? conversationsResult.data
+          : [];
 
       const existing =
-        (conversations ?? []).find((item) => normalizeUrl(item.webUrl as string) === webUrl) ??
-        null;
+        conversations.find((item) => normalizeUrl(item.webUrl as string) === webUrl) ?? null;
 
       return {
         existing,

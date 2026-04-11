@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-10T15:46:48.018Z",
+  "generatedAt": "2026-04-11T14:35:21.285Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,7 +16,7 @@
     ]
   },
   "stats": {
-    "filesScanned": 477,
+    "filesScanned": 479,
     "filesWithComments": 81,
     "commentsIndexed": 203,
     "fileLevelComments": 149,
@@ -1224,8 +1224,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1171,
-          "endLine": 1171,
+          "startLine": 1292,
+          "endLine": 1292,
           "text": "NOTE: Inbox sync intentionally runs account-by-account to keep sidecar writes ordered.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1233,8 +1233,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1923,
-          "endLine": 1923,
+          "startLine": 2034,
+          "endLine": 2034,
           "text": "NOTE: Relay sync mutates archive and session state per message, so processing stays sequential.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1547,8 +1547,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 372,
-          "endLine": 372,
+          "startLine": 376,
+          "endLine": 376,
           "text": "NOTE: The hev-sender tag preserves the originating AI nickname so ai0 sync can restore the author.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1556,8 +1556,8 @@
         },
         {
           "kind": "note",
-          "startLine": 373,
-          "endLine": 373,
+          "startLine": 377,
+          "endLine": 377,
           "text": "NOTE: Keep the tag for future ai0 DB support even though the sync path does not consume it today.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1565,8 +1565,8 @@
         },
         {
           "kind": "note",
-          "startLine": 482,
-          "endLine": 482,
+          "startLine": 486,
+          "endLine": 486,
           "text": "NOTE: The hev-sender tag marks Assistant (ai0) as the sender so sync can restore the author.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1673,8 +1673,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 198,
-          "endLine": 198,
+          "startLine": 201,
+          "endLine": 201,
           "text": "NOTE: Timestamp-based duplicate protection.",
           "prefix": "NOTE",
           "scopeType": "file",

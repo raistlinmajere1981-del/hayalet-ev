@@ -183,9 +183,9 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.ok(scripts["rooms:lint"]?.includes('"rooms/**/*.{js,ts}"'));
   assert.match(eslintConfigSource, /"rooms\/\*\*\/ui\/\*\*\/\*\.ts"/);
   assert.match(eslintConfigSource, /"rooms\/\*\*\/main-functions\/\*\*\/host\/\*\*\/\*\.ts"/);
-  assert.match(eslintConfigSource, /project:\s*"\.\/tsconfig\.rooms\.json"/);
+  assert.match(eslintConfigSource, /project:\s*"\.\/rooms\/tsconfig\.rooms\.json"/);
   assert.equal(scripts.check, "npm run lint && npm run check-types && npm run rooms:test:core");
-  assert.ok(scripts.typecheck?.includes("tsconfig.rooms.json"));
+  assert.ok(scripts.typecheck?.includes("rooms/tsconfig.rooms.json"));
 });
 
 test("dev startup falls back to workspace rooms when installed registry is empty", async () => {
@@ -233,7 +233,7 @@ test("packaged startup seeds the external workspace root and bootstraps installe
   assert.match(seedSource, /"AGENTS\.md"/);
   assert.match(seedSource, /"rooms"/);
   assert.match(seedSource, /"scripts"/);
-  assert.match(seedSource, /"tsconfig\.rooms\.json"/);
+  assert.match(seedSource, /"rooms\/tsconfig\.rooms\.json"/);
   assert.doesNotMatch(seedSource, /"config\/rooms\.json"/);
   assert.doesNotMatch(afterPackSource, /"config\/rooms\.json"/);
 });

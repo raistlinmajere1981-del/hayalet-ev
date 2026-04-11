@@ -32,6 +32,8 @@
         "testArgsPlaceholder": "Optional test argument",
         "runCommandButton": "Run Command",
         "emptyCategory": "No commands were found for this category",
+        "systemCommandsGroupTitle": "Core System Commands",
+        "roomCommandsGroupTitle": "Room Commands",
         "commandDetailLabel": "Command Details",
         "commandDetailPlaceholder": "Select a command to view details"
       },
@@ -530,6 +532,7 @@
           "disabledTitle": "Command disabled",
           "enabled": "Enabled",
           "disabled": "Disabled",
+          "emptyGroup": "No commands in this group",
           "emptyCategory": "No commands were found for this category.",
           "noConnectedAi": "No connected AI"
         },
@@ -618,7 +621,7 @@
         },
         "AIAssistantChatStop": {
           "description": "Stops the active AI-assistant relay session.",
-          "detail": "Ends the running AI ↔ assistant relay flow. The app sends the `[STOP][ANALYZE][AI-ASSISTANT]` control protocol to the related AI slot. If you only need a single handoff, use `AIAssistantSend` or `AssistantAISend` instead.",
+          "detail": "Ends the running assistant relay flow. The app sends the `[STOP][ANALYZE][AI-ASSISTANT]` control protocol to the related source slot. If you only need a single handoff, use `AIAssistantSend` or `AssistantAISend` instead.",
           "usage": "++cmd:AIAssistantChatStop()",
           "example": "++cmd:AIAssistantChatStop()"
         },
@@ -629,9 +632,9 @@
           "example": "++cmd:AIAssistantSend(ai1) One message to forward to the assistant"
         },
         "AssistantAISend": {
-          "description": "Forwards the assistant's latest reply to a target AI slot once.",
-          "detail": "This command only works in the assistant slot. The target can be `ai1` or `ai2`; when omitted, it is resolved from `assistants.lastActiveRelay`. Delivery runs through the SlotBridge `message.send` action. If an AI-assistant relay is active, the related stop flow is also triggered after the handoff.",
-          "usage": "++cmd:AssistantAISend(<target>) <message>\nTarget: ai1 or ai2 (optional)",
+          "description": "Forwards the assistant's latest reply to a target slot once.",
+          "detail": "This command only works in the assistant slot. The target can be `ai1`, `ai2`, or `us1`; when omitted, it is resolved from `assistants.lastActiveRelay`. Delivery runs through the SlotBridge `message.send` action. If an assistant relay is active, the related stop flow is also triggered after the handoff.",
+          "usage": "++cmd:AssistantAISend(<target>) <message>\nTarget: ai1, ai2, or us1 (optional)",
           "example": "++cmd:AssistantAISend() Forward the latest reply to the last active relay target"
         },
         "SlotBridge": {
@@ -670,6 +673,7 @@
       "toggle": {
         "ai1Assistant": "Start/stop the AI1 ↔ Assistant relay",
         "assistantAi2": "Start/stop the Assistant ↔ AI2 relay",
+        "assistantUs1": "Start/stop the Assistant ↔ US1 relay",
         "ai1Ai2": "AI1 → AI2 relay",
         "ai2Ai1": "AI2 → AI1 relay"
       },
@@ -689,13 +693,15 @@
       "label": {
         "ai1Assistant": "AI1 - Assistant",
         "assistantAi2": "Assistant - AI2",
+        "assistantUs1": "Assistant - US1",
         "ai1Ai2": "AI1 - AI2",
         "ai2Ai1": "AI2 - AI1"
       },
       "participants": {
         "assistant": "Assistant",
         "ai1": "AI1",
-        "ai2": "AI2"
+        "ai2": "AI2",
+        "us1": "US1"
       }
     },
     "window": {
@@ -1680,7 +1686,7 @@
       "relayStarted": "{{relay}} relay started (top bar)",
       "relayError": "{{relay}} relay error: {{message}}",
       "relayButtonSetupError": "Relay button setup error: {{message}}",
-      "relayButtonStates": "Button states - ai1={{ai1}}, ai2={{ai2}}, ai0={{ai0}}",
+      "relayButtonStates": "Button states - ai1={{ai1}}, ai2={{ai2}}, ai0={{ai0}}, us1={{us1}}",
       "relayButtonStateUpdateError": "Relay button state update error: {{message}}",
       "themeManager": {
         "listenerError": "Theme listener error: {{message}}",
@@ -1830,7 +1836,7 @@
         "clearThinkingJustEndedFailed": "thinkingJustEnded could not be cleared for {{provider}}: {{message}}"
       },
       "relayManager": {
-        "initialized": "RelayManager initialized with AI-AI and AI-Assistant relays",
+        "initialized": "RelayManager initialized with AI-AI, AI-Assistant, and US1-Assistant relays",
         "assistantCommandCatchError": "Assistant command catch failed: {{message}}",
         "trafficUpdateHandlerError": "Traffic update handler failed: {{message}}",
         "syncCompleteHandlerError": "Sync-complete handler failed: {{message}}"
@@ -1877,6 +1883,24 @@
         "providerNotRecognized": "Provider {{provider}} is not recognized in relay flow",
         "targetNull": "Relay target is null for provider {{provider}}",
         "thinkingTransition": "Thinking transition: {{provider}} {{previousState}} -> {{thinkingState}}"
+      },
+      "us1AssistantRelay": {
+        "started": "US1-Assistant relay started: {{source}} <-> {{target}}",
+        "sourceDisconnected": "Source slot {{source}} is not connected",
+        "assistantDisconnected": "Assistant ({{target}}) is not connected",
+        "sendMessageUnavailable": "sendMessage method is not available",
+        "protocolSending": "Sending protocol to {{provider}}",
+        "protocolSent": "Protocol sent to {{provider}}",
+        "protocolSendFailed": "Failed to send protocol: {{message}}",
+        "transportUnavailable": "US1 transport is unavailable",
+        "stoppedWithSession": "US1-Assistant relay {{sessionId}} stopped ({{source}} <-> {{target}})",
+        "stopped": "US1-Assistant relay stopped",
+        "handleThinkingCompleteError": "US1-Assistant relay thinking-complete handling failed: {{message}}",
+        "duplicateMessageBlocked": "Duplicate message detected for {{provider}}; blocking",
+        "forwardSkippedTargetNotConnected": "Forward skipped because target {{target}} is not connected",
+        "forwarding": "US1-Assistant relay forwarding (#{{count}}) {{from}} -> {{to}}",
+        "forwardingFailed": "US1-Assistant relay forwarding failed: {{message}}",
+        "syncFailed": "US1 relay sync failed: {{message}}"
       },
       "errorBoundary": {
         "initialized": "ErrorBoundary initialized",

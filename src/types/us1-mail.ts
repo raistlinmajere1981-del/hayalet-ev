@@ -201,6 +201,7 @@ export interface Us1SendMessageResult {
 export interface Us1SyncMessagesParams {
   limit?: number;
   localSessionId?: string | null;
+  consumeRoomCommands?: boolean;
 }
 
 export interface Us1SyncMessagesResult {

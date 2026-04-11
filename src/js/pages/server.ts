@@ -58,6 +58,7 @@ import {
   isCommandEnabled,
   normalizeSlot,
   resolveCategoryForSlot,
+  splitCommandCatalogBySource,
 } from "./server/command-helpers.js";
 import type {
   CommandCatalogItem,
@@ -88,6 +89,10 @@ function toHeadLabel(label: string): string {
 
 function serverCommandPanelT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.commands.panel.${key}`, params);
+}
+
+function serverPageT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.server.page.${key}`, params);
 }
 
 export class ServerController {
@@ -716,6 +721,7 @@ export class ServerController {
     const list = this.getCommandCatalog(this.activeCategory)
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name, AppI18n.getLocale()));
+    const groupedCatalog = splitCommandCatalogBySource(list);
 
     this.commandList.innerHTML = "";
 
@@ -735,101 +741,136 @@ export class ServerController {
       this.selectedCommand = list[0]?.name ?? "";
     }
 
-    list.forEach((item) => {
-      const enabled = this.isCommandEnabled(slot, item.name);
+    [
+      {
+        id: "system",
+        title: serverPageT("systemCommandsGroupTitle"),
+        items: groupedCatalog.systemCommands,
+      },
+      {
+        id: "room",
+        title: serverPageT("roomCommandsGroupTitle"),
+        items: groupedCatalog.roomCommands,
+      },
+    ].forEach((section) => {
+      const sectionElement = document.createElement("section");
+      sectionElement.className = "command-section";
+      sectionElement.dataset["commandGroup"] = section.id;
 
-      const row = document.createElement("div");
-      row.className = "command-item";
+      const header = document.createElement("div");
+      header.className = "command-section-header";
+      header.textContent = section.title;
 
-      const left = document.createElement("div");
-      left.className = "command-item-left";
+      const body = document.createElement("div");
+      body.className = "command-section-list";
 
-      const toggle = document.createElement("input");
-      toggle.type = "checkbox";
-      toggle.className = "command-toggle";
-      toggle.checked = enabled;
-      toggle.title = enabled
-        ? serverCommandPanelT("status.enabledTitle")
-        : serverCommandPanelT("status.disabledTitle");
+      if (section.items.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "ds-log-empty";
+        empty.textContent = serverCommandPanelT("status.emptyGroup");
+        body.appendChild(empty);
+      } else {
+        section.items.forEach((item) => {
+          const enabled = this.isCommandEnabled(slot, item.name);
 
-      const name = document.createElement("span");
-      name.className = "command-item-name";
-      name.textContent = item.name;
+          const row = document.createElement("div");
+          row.className = "command-item";
 
-      const status = document.createElement("span");
-      status.className = "command-item-status";
-      status.textContent = enabled
-        ? serverCommandPanelT("status.enabled")
-        : serverCommandPanelT("status.disabled");
+          const left = document.createElement("div");
+          left.className = "command-item-left";
 
-      left.appendChild(toggle);
-      left.appendChild(name);
-      left.appendChild(status);
+          const toggle = document.createElement("input");
+          toggle.type = "checkbox";
+          toggle.className = "command-toggle";
+          toggle.checked = enabled;
+          toggle.title = enabled
+            ? serverCommandPanelT("status.enabledTitle")
+            : serverCommandPanelT("status.disabledTitle");
 
-      const actions = document.createElement("div");
-      actions.className = "command-item-actions";
+          const name = document.createElement("span");
+          name.className = "command-item-name";
+          name.textContent = item.name;
 
-      const detailButton = document.createElement("button");
-      detailButton.className = "btn btn-secondary btn-sm";
-      detailButton.type = "button";
-      detailButton.textContent = serverCommandPanelT("buttons.detail");
+          const status = document.createElement("span");
+          status.className = "command-item-status";
+          status.textContent = enabled
+            ? serverCommandPanelT("status.enabled")
+            : serverCommandPanelT("status.disabled");
 
-      const exampleButton = document.createElement("button");
-      exampleButton.className = "btn btn-primary btn-sm";
-      exampleButton.type = "button";
-      exampleButton.textContent = serverCommandPanelT("buttons.example");
+          left.appendChild(toggle);
+          left.appendChild(name);
+          left.appendChild(status);
 
-      actions.appendChild(detailButton);
-      actions.appendChild(exampleButton);
+          const actions = document.createElement("div");
+          actions.className = "command-item-actions";
 
-      row.appendChild(left);
-      row.appendChild(actions);
+          const detailButton = document.createElement("button");
+          detailButton.className = "btn btn-secondary btn-sm";
+          detailButton.type = "button";
+          detailButton.textContent = serverCommandPanelT("buttons.detail");
 
-      toggle.addEventListener("change", () => {
-        const requestedState = toggle.checked;
-        toggle.disabled = true;
+          const exampleButton = document.createElement("button");
+          exampleButton.className = "btn btn-primary btn-sm";
+          exampleButton.type = "button";
+          exampleButton.textContent = serverCommandPanelT("buttons.example");
 
-        void this.toggleCommandForSlot(slot, item.name, requestedState)
-          .then(() => {
-            status.textContent = requestedState
-              ? serverCommandPanelT("status.enabled")
-              : serverCommandPanelT("status.disabled");
-            toggle.title = requestedState
-              ? serverCommandPanelT("status.enabledTitle")
-              : serverCommandPanelT("status.disabledTitle");
-            Logger.info(
-              LogCategory.SERVER_COMMANDS,
-              serverCommandPanelT("logs.statusUpdated", { command: item.name }),
-              {
-                command: item.name,
-                slot,
-                enabled: requestedState,
-              }
-            );
-          })
-          .catch((error) => {
-            toggle.checked = !requestedState;
-            Logger.error(
-              LogCategory.SERVER_COMMANDS,
-              serverCommandPanelT("logs.statusUpdateError", {
-                message: error instanceof Error ? error.message : String(error),
+          actions.appendChild(detailButton);
+          actions.appendChild(exampleButton);
+
+          row.appendChild(left);
+          row.appendChild(actions);
+
+          toggle.addEventListener("change", () => {
+            const requestedState = toggle.checked;
+            toggle.disabled = true;
+
+            void this.toggleCommandForSlot(slot, item.name, requestedState)
+              .then(() => {
+                status.textContent = requestedState
+                  ? serverCommandPanelT("status.enabled")
+                  : serverCommandPanelT("status.disabled");
+                toggle.title = requestedState
+                  ? serverCommandPanelT("status.enabledTitle")
+                  : serverCommandPanelT("status.disabledTitle");
+                Logger.info(
+                  LogCategory.SERVER_COMMANDS,
+                  serverCommandPanelT("logs.statusUpdated", { command: item.name }),
+                  {
+                    command: item.name,
+                    slot,
+                    enabled: requestedState,
+                  }
+                );
               })
-            );
-          })
-          .finally(() => {
-            toggle.disabled = false;
+              .catch((error) => {
+                toggle.checked = !requestedState;
+                Logger.error(
+                  LogCategory.SERVER_COMMANDS,
+                  serverCommandPanelT("logs.statusUpdateError", {
+                    message: error instanceof Error ? error.message : String(error),
+                  })
+                );
+              })
+              .finally(() => {
+                toggle.disabled = false;
+              });
           });
-      });
 
-      detailButton.addEventListener("click", () => {
-        this.setCommandDetail(item.name);
-      });
+          detailButton.addEventListener("click", () => {
+            this.setCommandDetail(item.name);
+          });
 
-      exampleButton.addEventListener("click", () => {
-        this.insertExampleArgs(item.name);
-      });
+          exampleButton.addEventListener("click", () => {
+            this.insertExampleArgs(item.name);
+          });
 
-      this.commandList?.appendChild(row);
+          body.appendChild(row);
+        });
+      }
+
+      sectionElement.appendChild(header);
+      sectionElement.appendChild(body);
+      this.commandList?.appendChild(sectionElement);
     });
 
     if (this.selectedCommand !== "") {
@@ -839,7 +880,7 @@ export class ServerController {
 
   getProviderLabel(provider: string | null): string {
     if (provider == null || provider === "") return "AI";
-    if (provider === "ai1" || provider === "ai2" || provider === "user") {
+    if (provider === "ai1" || provider === "ai2" || provider === "us1" || provider === "user") {
       return String(AppState.getNickname(provider));
     }
     return provider;

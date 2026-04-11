@@ -13,8 +13,8 @@
         "src/**",
         "electron/**",
         "package.json",
-        "tsconfig.json",
-        "tsconfig.electron.json",
+        "src/tsconfig.json",
+        "electron/tsconfig.electron.json",
         "vite.config.*"
       ],
       "exclude": [
@@ -36,7 +36,7 @@
       "restartTargets": ["mcp-server"],
       "include": [
         "mcp-server/**",
-        "tsconfig.mcp.json",
+        "mcp-server/tsconfig.mcp.json",
         "scripts/generate-dom-manifest.js",
         "scripts/generate-system-info.js",
         "scripts/sync-mcp-dist.mjs"

@@ -1236,6 +1236,140 @@ test("US1 conversation sync projects room events, commands, and invite inbox ent
   }
 });
 
+test("US1 conversation sync falls back to inline SlotBridge room.command text", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_room_inline_cmd`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    transportStub.enqueueFetch({
+      accountId,
+      mailbox: "INBOX",
+      cursor: "uid:41",
+      fetchedCount: 1,
+      processedCount: 1,
+      duplicateCount: 0,
+      messages: [
+        buildFetchedConversationMessage({
+          accountId,
+          uid: 41,
+          transportMessageId: "<inline-room-command@example.test>",
+          localMessageId: "local-inline-room-command",
+          localSessionId: "room-inline-session",
+          nickname: "Remote Player",
+          text:
+            '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove","matchId":"invite-inline-1","inviteId":"invite-inline-1","turnIndex":0,"boardHashBeforeMove":".........","cell":4}})',
+          subject: "XOX move inline",
+        }),
+      ],
+    });
+
+    const result = await service.syncMessages({ localSessionId: "room-inline-session" });
+
+    assert.equal(result.success, true);
+    assert.equal(result.projectedCount, 1);
+    assert.equal(result.roomCommands?.length, 1);
+    assert.equal(result.roomCommands?.[0]?.roomId, "game-room");
+    assert.equal(result.roomCommands?.[0]?.featureId, "xox");
+    assert.equal(result.roomCommands?.[0]?.commandName, "GameRoomXoxRemoteMove");
+    assert.equal(result.roomCommands?.[0]?.action, "room.command");
+    assert.deepEqual(result.roomCommands?.[0]?.roomPayload, {
+      matchId: "invite-inline-1",
+      inviteId: "invite-inline-1",
+      turnIndex: 0,
+      boardHashBeforeMove: ".........",
+      cell: 4,
+    });
+    assert.deepEqual(result.roomCommands?.[0]?.commandArgs, {
+      matchId: "invite-inline-1",
+      inviteId: "invite-inline-1",
+      turnIndex: 0,
+      boardHashBeforeMove: ".........",
+      cell: 4,
+    });
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
+test("US1 conversation sync preserves pending room commands until a consumer drains them", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_room_pending_cmd`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    transportStub.enqueueFetch({
+      accountId,
+      mailbox: "INBOX",
+      cursor: "uid:42",
+      fetchedCount: 1,
+      processedCount: 1,
+      duplicateCount: 0,
+      messages: [
+        buildFetchedConversationMessage({
+          accountId,
+          uid: 42,
+          transportMessageId: "<pending-room-command@example.test>",
+          localMessageId: "local-pending-room-command",
+          localSessionId: "room-pending-session",
+          nickname: "Remote Player",
+          text:
+            '++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomXoxRemoteMove","matchId":"invite-pending-1","inviteId":"invite-pending-1","turnIndex":0,"boardHashBeforeMove":".........","cell":0}})',
+          subject: "XOX move pending",
+        }),
+      ],
+    });
+
+    const previewResult = await service.syncMessages({ localSessionId: "room-pending-session" });
+    const repeatedPreviewResult = await service.syncMessages({
+      localSessionId: "room-pending-session",
+    });
+    const consumeResult = await service.syncMessages({
+      localSessionId: "room-pending-session",
+      consumeRoomCommands: true,
+    });
+    const drainedResult = await service.syncMessages({
+      localSessionId: "room-pending-session",
+      consumeRoomCommands: true,
+    });
+
+    assert.equal(previewResult.success, true);
+    assert.equal(previewResult.roomCommands?.length, 1);
+    assert.equal(repeatedPreviewResult.success, true);
+    assert.equal(repeatedPreviewResult.roomCommands?.length, 1);
+    assert.equal(repeatedPreviewResult.duplicateCount, 0);
+    assert.equal(consumeResult.success, true);
+    assert.equal(consumeResult.roomCommands?.length, 1);
+    assert.equal(consumeResult.roomCommands?.[0]?.commandName, "GameRoomXoxRemoteMove");
+    assert.equal(drainedResult.success, true);
+    assert.equal(drainedResult.roomCommands?.length, 0);
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
 test("US1 conversation service preserves Team Tetris start events and turnToken metadata", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_team_tetris_meta`;
   const store = createSettingsStore(createSettings(accountId));

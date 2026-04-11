@@ -332,11 +332,11 @@
 
     function getCurrentStatus(): string {
       const state = getState();
-      if (state.game.status && state.game.status.trim() !== "") {
-        return state.game.status.trim();
-      }
       if (state.lastCommandMessage && state.lastCommandMessage.trim() !== "") {
         return state.lastCommandMessage.trim();
+      }
+      if (state.game.status && state.game.status.trim() !== "") {
+        return state.game.status.trim();
       }
       return text(["xox", "status", "idle"]);
     }

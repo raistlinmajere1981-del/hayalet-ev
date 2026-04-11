@@ -289,10 +289,41 @@ function readProtocolDescriptor(envelope: SlotBridgeEnvelope): SlotBridgeProtoco
   };
 }
 
+function hasEnvelopeKeys(source: Record<string, unknown>): boolean {
+  const envelopeKeys = [
+    "action",
+    "payload",
+    "toSlot",
+    "toSlots",
+    "target",
+    "targets",
+    "replyToSlot",
+    "delivery",
+    "wait",
+    "timeoutMs",
+    "force",
+    "connectPolicy",
+    "sessionRef",
+    "session",
+    "attachments",
+  ];
+  return envelopeKeys.some((key) => key in source);
+}
+
 function buildActionPayload(
   source: Record<string, unknown>,
-  fallback: Record<string, unknown>
+  fallback: Record<string, unknown>,
+  rawArgs = ""
 ): Record<string, unknown> {
+  if (Object.keys(fallback).length > 0 && hasEnvelopeKeys(source) === false) {
+    return {
+      ...fallback,
+      ...(rawArgs.trim() !== "" && typeof fallback["rawArgs"] !== "string"
+        ? { rawArgs: rawArgs.trim() }
+        : {}),
+    };
+  }
+
   if (isRecord(source["payload"])) {
     return { ...source["payload"] };
   }
@@ -393,7 +424,11 @@ function normalizeEnvelope(payload: CommandPayload = {}): SlotBridgeEnvelope {
     force,
     connectPolicy: normalizeConnectPolicy(parsedArgs["connectPolicy"], force),
     sessionRef: readSessionRef(rawSessionRef),
-    payload: buildActionPayload(parsedArgs, directPayload),
+    payload: buildActionPayload(
+      parsedArgs,
+      directPayload,
+      typeof payload.args === "string" ? payload.args : ""
+    ),
     attachments: readAttachments(parsedArgs["attachments"] ?? payload.attachments),
   };
 }
@@ -1337,7 +1372,12 @@ async function runRoomCommandAction(envelope: SlotBridgeEnvelope): Promise<SlotB
   const roomPayload = isRecord(actionPayload["roomPayload"])
     ? actionPayload["roomPayload"]
     : Object.entries(actionPayload).reduce<Record<string, unknown>>((acc, [key, value]) => {
-        if (key === "commandName" || key === "actionId" || key === "roomCommand") {
+        if (
+          key === "commandName" ||
+          key === "actionId" ||
+          key === "roomCommand" ||
+          key === "rawArgs"
+        ) {
           return acc;
         }
         acc[key] = value;

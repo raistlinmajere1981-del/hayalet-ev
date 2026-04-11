@@ -88,6 +88,7 @@ export interface XoxUs1SyncApi {
   isUs1Connected(): boolean;
   syncUs1Messages(options: {
     localSessionId: string | null;
+    consumeRoomCommands?: boolean;
   }): Promise<XoxUs1MailboxResult | null | undefined>;
   log(level: string, message: string): void;
   getLocale?(): unknown;
@@ -550,6 +551,7 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
       const state = loadState(api);
       const result = await api.syncUs1Messages({
         localSessionId: state.localSessionId,
+        consumeRoomCommands: true,
       });
       if (!result || result.success !== true) {
         api.log("warn", `US1 XOX sync failed (${reason}).`);

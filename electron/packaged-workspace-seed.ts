@@ -27,10 +27,10 @@ const PACKAGED_WORKSPACE_SEED_PATHS = [
   "scripts",
   "shared",
   "src",
-  "tsconfig.electron.json",
-  "tsconfig.json",
-  "tsconfig.mcp.json",
-  "tsconfig.rooms.json",
+  "electron/tsconfig.electron.json",
+  "src/tsconfig.json",
+  "mcp-server/tsconfig.mcp.json",
+  "rooms/tsconfig.rooms.json",
   "vite.config.js",
 ] as const;
 
@@ -48,6 +48,10 @@ function resolvePackagedMirrorRoot(): string | null {
 
 async function copyMissingEntry(sourcePath: string, targetPath: string): Promise<number> {
   if (existsSync(sourcePath) !== true) {
+    return 0;
+  }
+
+  if (sourcePath.endsWith(".tsbuildinfo")) {
     return 0;
   }
 

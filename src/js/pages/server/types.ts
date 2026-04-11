@@ -1,5 +1,5 @@
-export type CommandCategory = "ai1-ai2" | "ai0";
-export type CommandSlot = "ai1" | "ai2" | "ai0";
+export type CommandCategory = "ai1-ai2" | "ai0" | "us1";
+export type CommandSlot = "ai1" | "ai2" | "ai0" | "us1";
 
 export interface CommandCatalogItem {
   name: string;

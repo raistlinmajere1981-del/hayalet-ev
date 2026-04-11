@@ -10,6 +10,7 @@ import { buildRemoteEmailAccountId } from "@shared/archive.js";
 import { AppState } from "../../../modules/app-state.js";
 import { ConversationListManager } from "../../../modules/conversation-list-manager.js";
 import { TrafficManager } from "../../../modules/traffic-manager.js";
+import { resolveUs1ForceSelectConversationId } from "../../../modules/us1-session-selection.js";
 import { notifyUser } from "../../../ui/user-notification.js";
 import { getErrorMessage } from "@shared/index.js";
 import { formatTime, t as entranceT } from "../panel-i18n.js";
@@ -371,6 +372,13 @@ export class Us1Panel {
     return trimmed === "" ? null : trimmed;
   }
 
+  private getSelectedConversationId(): string {
+    const conversationSelect = document.getElementById(
+      "conversation-us1"
+    ) as HTMLSelectElement | null;
+    return this.readSelectValue(conversationSelect) ?? "new";
+  }
+
   private async reloadSettings(): Promise<void> {
     if (typeof this.settingsManager.reload === "function") {
       await this.settingsManager.reload();
@@ -566,12 +574,17 @@ export class Us1Panel {
       }
 
       const processedCount = result.processedCount ?? result.fetchedCount ?? 0;
+      const forceSelectId = resolveUs1ForceSelectConversationId({
+        selectedConversationId: this.getSelectedConversationId(),
+        resultConversationId:
+          typeof result.conversationId === "string" ? result.conversationId : null,
+        sessionEvents: Array.isArray(result.sessionEvents) ? result.sessionEvents : [],
+        targetRemoteUserId: selectedBinding.remoteUserId,
+      });
       await ConversationListManager.refresh({
         silent: true,
         provider: "us1",
-        ...(typeof result.conversationId === "string" && result.conversationId !== ""
-          ? { forceSelectId: result.conversationId }
-          : {}),
+        ...(forceSelectId !== undefined ? { forceSelectId } : {}),
       });
       const message = entranceT("us1.feedback.connectSuccess", {
         count: String(processedCount),
@@ -624,12 +637,19 @@ export class Us1Panel {
       }
 
       const processedCount = result.processedCount ?? result.fetchedCount ?? 0;
+      const forceSelectId = resolveUs1ForceSelectConversationId({
+        selectedConversationId: this.getSelectedConversationId(),
+        resultConversationId:
+          typeof result.conversationId === "string" ? result.conversationId : null,
+        sessionEvents: Array.isArray(result.sessionEvents) ? result.sessionEvents : [],
+        targetRemoteUserId:
+          AppState.getUs1Identity()?.remoteUserId ??
+          (typeof result.remoteUserId === "string" ? result.remoteUserId : null),
+      });
       await ConversationListManager.refresh({
         silent: true,
         provider: "us1",
-        ...(typeof result.conversationId === "string" && result.conversationId !== ""
-          ? { forceSelectId: result.conversationId }
-          : {}),
+        ...(forceSelectId !== undefined ? { forceSelectId } : {}),
       });
       const message = entranceT("us1.feedback.syncSuccess", {
         count: String(processedCount),

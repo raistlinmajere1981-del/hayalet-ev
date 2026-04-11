@@ -14,7 +14,7 @@ const projectRoot = join(scriptDir, "..");
 const distRoot = join(projectRoot, "dist", "mcp-server");
 const standaloneOutfile = join(distRoot, "standalone", "index.js");
 const tscCliPath = require.resolve("typescript/bin/tsc");
-const tsconfigPath = join(projectRoot, "tsconfig.mcp.json");
+const tsconfigPath = join(projectRoot, "mcp-server", "tsconfig.mcp.json");
 const syncScriptPath = join(projectRoot, "scripts", "sync-mcp-dist.mjs");
 
 function runNodeScript(args, label) {

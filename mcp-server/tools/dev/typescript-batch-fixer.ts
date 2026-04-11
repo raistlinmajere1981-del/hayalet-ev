@@ -26,6 +26,33 @@ interface FixResult {
   }>;
 }
 
+function resolveTsconfigForFile(filePath: string): string | null {
+  const normalizedPath = filePath.replaceAll("\\", "/").replace(/^\.?\//, "");
+
+  if (normalizedPath.startsWith("mcp-server/")) return "mcp-server/tsconfig.mcp.json";
+  if (normalizedPath.startsWith("electron/")) return "electron/tsconfig.electron.json";
+  if (normalizedPath.startsWith("ghost-agent/electron/")) return "ghost-agent/tsconfig.electron.json";
+  if (normalizedPath.startsWith("ghost-agent/")) return "ghost-agent/tsconfig.json";
+  if (normalizedPath.startsWith("rooms/")) return "rooms/tsconfig.rooms.json";
+  if (
+    normalizedPath.startsWith("src/") ||
+    normalizedPath.startsWith("shared/")
+  ) {
+    return "src/tsconfig.json";
+  }
+
+  return null;
+}
+
+function filterTypeScriptOutputForFile(output: string, filePath: string): string {
+  const normalizedPath = filePath.replaceAll("\\", "/").replace(/^\.?\//, "");
+
+  return output
+    .split("\n")
+    .filter((line) => line.replaceAll("\\", "/").includes(normalizedPath))
+    .join("\n");
+}
+
 function tsBatchFixerT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.typescriptBatchFixer.${key}`, params);
 }
@@ -101,14 +128,18 @@ function getTypescriptErrors(
 ): Array<{ line: number; column: number; code: string; message: string }> {
   try {
     const cwd = projectRoot;
+    const tsconfigPath = resolveTsconfigForFile(filePath);
+    const tsCommand =
+      tsconfigPath !== null
+        ? `npx tsc --noEmit -p "${tsconfigPath}"`
+        : `npx tsc --noEmit "${filePath}"`;
     let result = "";
 
     try {
-      result = execSync(`npx tsc --noEmit 2>&1 | grep '${filePath}' | grep 'error TS'`, {
+      result = execSync(tsCommand, {
         cwd,
         encoding: "utf-8",
         timeout: DEV_TIMEOUTS.TYPESCRIPT_CHECK,
-        shell: "/bin/bash",
       });
     } catch (execError: unknown) {
       interface ExecError {
@@ -122,6 +153,7 @@ function getTypescriptErrors(
       );
     }
 
+    result = filterTypeScriptOutputForFile(result, filePath);
     process.stderr.write(`[DEBUG] getTypescriptErrors result length: ${result.length}\n`);
 
     const errors: Array<{

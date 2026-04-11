@@ -1,5 +1,6 @@
 import { LogCategory } from "@shared/logging-core";
 import type { CoreEngine } from "./core-engine.js";
+import { AppState } from "./app-state.js";
 import { TrafficManager } from "./traffic-manager.js";
 import { WebviewManager } from "./webview-manager.js";
 import { SettingsManager } from "./settings-manager.js";
@@ -8,23 +9,28 @@ import { Logger } from "./logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { AIAIRelay } from "./relay/ai-ai-relay.js";
 import { AIAssistantRelay } from "./relay/ai-assistant-relay.js";
+import { Us1AssistantRelay } from "./relay/us1-assistant-relay.js";
 
 class RelayManagerClass {
   coreEngine: typeof CoreEngine | null;
   _aiaiRelay: AIAIRelay | null;
   _aiAssistantRelay: AIAssistantRelay | null;
+  _us1AssistantRelay: Us1AssistantRelay | null;
   _boundUpdate: typeof this._onTrafficUpdate;
   _boundSyncComplete: (event: Event) => void;
   _trafficUnsubscribe: (() => void) | null;
+  _settingsUnsubscribe: (() => void) | null;
   _lastAi0Thinking: string;
 
   constructor() {
     this.coreEngine = null;
     this._aiaiRelay = null;
     this._aiAssistantRelay = null;
+    this._us1AssistantRelay = null;
     this._boundUpdate = this._onTrafficUpdate.bind(this);
     this._boundSyncComplete = this._onSyncComplete.bind(this);
     this._trafficUnsubscribe = null;
+    this._settingsUnsubscribe = null;
     this._lastAi0Thinking = "idle";
   }
 
@@ -33,6 +39,7 @@ class RelayManagerClass {
 
     this._aiaiRelay = new AIAIRelay(coreEngine);
     this._aiAssistantRelay = new AIAssistantRelay(coreEngine);
+    this._us1AssistantRelay = new Us1AssistantRelay(coreEngine);
 
     if (this._trafficUnsubscribe !== null) {
       this._trafficUnsubscribe();
@@ -43,6 +50,24 @@ class RelayManagerClass {
 
     window.addEventListener("sync-complete", this._boundSyncComplete);
 
+    if (this._settingsUnsubscribe !== null) {
+      this._settingsUnsubscribe();
+    }
+    this._settingsUnsubscribe = SettingsManager.subscribe(({ changedPaths }) => {
+      const shouldCheckUs1 =
+        changedPaths.includes("*") ||
+        changedPaths.some((path) => path.startsWith("us1Slot") || path.startsWith("accounts"));
+      if (!shouldCheckUs1 || this._us1AssistantRelay?.isActive !== true) {
+        return;
+      }
+
+      if (AppState.isUs1Connected() === true) {
+        return;
+      }
+
+      void this._us1AssistantRelay.stop();
+    });
+
     Logger.infoT(LogCategory.RELAY, "app.logs.relayManager.initialized");
   }
 
@@ -50,7 +75,9 @@ class RelayManagerClass {
     const ai1Active = this._aiaiRelay !== null && this._aiaiRelay.isActive === true;
     const assistantRelayActive =
       this._aiAssistantRelay !== null && this._aiAssistantRelay.isActive === true;
-    return ai1Active || assistantRelayActive;
+    const us1AssistantRelayActive =
+      this._us1AssistantRelay !== null && this._us1AssistantRelay.isActive === true;
+    return ai1Active || assistantRelayActive || us1AssistantRelayActive;
   }
 
   isAIAIActive(): boolean {
@@ -61,8 +88,23 @@ class RelayManagerClass {
     return this._aiAssistantRelay !== null && this._aiAssistantRelay.isActive === true;
   }
 
+  isUs1AssistantActive(): boolean {
+    return this._us1AssistantRelay !== null && this._us1AssistantRelay.isActive === true;
+  }
+
+  isAssistantRelayActive(): boolean {
+    return this.isAIAssistantActive() === true || this.isUs1AssistantActive() === true;
+  }
+
   getAIAssistantSourceSlot(): string | null {
     return this._aiAssistantRelay !== null ? this._aiAssistantRelay.sourceSlot : null;
+  }
+
+  getAssistantRelaySourceSlot(): string | null {
+    if (this._us1AssistantRelay !== null && this._us1AssistantRelay.isActive === true) {
+      return this._us1AssistantRelay.sourceSlot;
+    }
+    return this.getAIAssistantSourceSlot();
   }
 
   async startSession(opts = {}): Promise<void> {
@@ -94,14 +136,49 @@ class RelayManagerClass {
       await this._aiaiRelay.stop();
     }
 
+    if (this._us1AssistantRelay !== null && this._us1AssistantRelay.isActive === true) {
+      await this._us1AssistantRelay.stop();
+    }
+
     if (this._aiAssistantRelay !== null) {
       await this._aiAssistantRelay.start({ sourceSlot });
+    }
+  }
+
+  async startUs1AssistantSession(): Promise<void> {
+    if (this._aiaiRelay !== null && this._aiaiRelay.isActive === true) {
+      await this._aiaiRelay.stop();
+    }
+
+    if (this._aiAssistantRelay !== null && this._aiAssistantRelay.isActive === true) {
+      await this._aiAssistantRelay.stop();
+    }
+
+    if (this._us1AssistantRelay !== null) {
+      await this._us1AssistantRelay.start();
     }
   }
 
   async stopAIAssistantSession(): Promise<void> {
     if (this._aiAssistantRelay !== null) {
       await this._aiAssistantRelay.stop();
+    }
+  }
+
+  async stopUs1AssistantSession(): Promise<void> {
+    if (this._us1AssistantRelay !== null) {
+      await this._us1AssistantRelay.stop();
+    }
+  }
+
+  async stopAssistantRelaySession(): Promise<void> {
+    if (this._aiAssistantRelay !== null && this._aiAssistantRelay.isActive === true) {
+      await this._aiAssistantRelay.stop();
+      return;
+    }
+
+    if (this._us1AssistantRelay !== null && this._us1AssistantRelay.isActive === true) {
+      await this._us1AssistantRelay.stop();
     }
   }
 
@@ -207,6 +284,12 @@ class RelayManagerClass {
       ) {
         activeRelay = this._aiAssistantRelay;
         thinkingComplete = activeRelay.checkThinkingTransition(provider, currentThinking);
+      } else if (
+        this._us1AssistantRelay !== null &&
+        this._us1AssistantRelay.handlesProvider(provider) === true
+      ) {
+        activeRelay = this._us1AssistantRelay;
+        thinkingComplete = activeRelay.checkThinkingTransition(provider, currentThinking);
       } else if (this._aiaiRelay !== null && this._aiaiRelay.handlesProvider(provider) === true) {
         activeRelay = this._aiaiRelay;
         thinkingComplete = activeRelay.checkThinkingTransition(provider, currentThinking);
@@ -214,7 +297,8 @@ class RelayManagerClass {
 
       if (activeRelay !== null && thinkingComplete === true) {
         const shouldUseLatestOnlySync =
-          activeRelay === this._aiAssistantRelay && provider === "ai0";
+          (activeRelay === this._aiAssistantRelay || activeRelay === this._us1AssistantRelay) &&
+          provider === "ai0";
         const syncResult = (await (shouldUseLatestOnlySync
           ? WebviewManager.syncLatestMessage(provider)
           : WebviewManager.syncConversation(provider, null, {}))) as Record<string, unknown>;
@@ -239,6 +323,10 @@ class RelayManagerClass {
 
   get aiAssistantRelay(): AIAssistantRelay | null {
     return this._aiAssistantRelay;
+  }
+
+  get us1AssistantRelay(): Us1AssistantRelay | null {
+    return this._us1AssistantRelay;
   }
 
   _onSyncComplete(event: Event): void {
@@ -276,6 +364,18 @@ class RelayManagerClass {
           this._aiAssistantRelay.isActive === false ||
           this._aiAssistantRelay.handlesProvider(provider) === false
         ) {
+          if (
+            this._us1AssistantRelay === null ||
+            this._us1AssistantRelay.isActive === false ||
+            this._us1AssistantRelay.handlesProvider(provider) === false
+          ) {
+            return;
+          }
+
+          await this._us1AssistantRelay.handleThinkingComplete(
+            provider,
+            result as unknown as Record<string, unknown>
+          );
           return;
         }
 

@@ -32,6 +32,8 @@
         "testArgsPlaceholder": "Test argümanı (opsiyonel)",
         "runCommandButton": "Komutu Çalıştır",
         "emptyCategory": "Bu kategori için komut bulunamadı",
+        "systemCommandsGroupTitle": "Ana Sistem Komutları",
+        "roomCommandsGroupTitle": "Oda Komutları",
         "commandDetailLabel": "Komut Detayı",
         "commandDetailPlaceholder": "Komut seçerek detay görüntüleyin"
       },
@@ -530,6 +532,7 @@
           "disabledTitle": "Komut pasif",
           "enabled": "Aktif",
           "disabled": "Pasif",
+          "emptyGroup": "Bu grupta komut yok",
           "emptyCategory": "Bu kategori için komut bulunamadı",
           "noConnectedAi": "Bağlı AI yok"
         },
@@ -618,7 +621,7 @@
         },
         "AIAssistantChatStop": {
           "description": "Aktif AI-Asistan relay oturumunu durdurur.",
-          "detail": "Çalışan AI ↔ asistan relay akışını sonlandırır. Uygulama ilgili AI slotuna `[STOP][ANALYZE][AI-ASSISTANT]` kontrol protokolünü gönderir; tek seferlik mesaj aktarımı gerekiyorsa bunun yerine `AIAssistantSend` veya `AssistantAISend` kullanılmalıdır.",
+          "detail": "Çalışan asistan relay akışını sonlandırır. Uygulama ilgili kaynak slota `[STOP][ANALYZE][AI-ASSISTANT]` kontrol protokolünü gönderir; tek seferlik mesaj aktarımı gerekiyorsa bunun yerine `AIAssistantSend` veya `AssistantAISend` kullanılmalıdır.",
           "usage": "++cmd:AIAssistantChatStop()",
           "example": "++cmd:AIAssistantChatStop()"
         },
@@ -629,9 +632,9 @@
           "example": "++cmd:AIAssistantSend(ai1) Asistana iletilecek tek mesaj"
         },
         "AssistantAISend": {
-          "description": "Asistanın son cevabını hedef AI slotuna tek sefer iletir.",
-          "detail": "Bu komut yalnızca asistan slotunda çalışır. Hedef `ai1` veya `ai2` olabilir; boş bırakılırsa `assistants.lastActiveRelay` alanından çözülür. Gönderim SlotBridge `message.send` aksiyonu üzerinden yapılır. Aktif AI-Asistan relay varsa uygun stop akışı da tetiklenir.",
-          "usage": "++cmd:AssistantAISend(<hedef>) <mesaj>\nHedef: ai1 veya ai2 (opsiyonel)",
+          "description": "Asistanın son cevabını hedef slota tek sefer iletir.",
+          "detail": "Bu komut yalnızca asistan slotunda çalışır. Hedef `ai1`, `ai2` veya `us1` olabilir; boş bırakılırsa `assistants.lastActiveRelay` alanından çözülür. Gönderim SlotBridge `message.send` aksiyonu üzerinden yapılır. Aktif asistan relay varsa uygun stop akışı da tetiklenir.",
+          "usage": "++cmd:AssistantAISend(<hedef>) <mesaj>\nHedef: ai1, ai2 veya us1 (opsiyonel)",
           "example": "++cmd:AssistantAISend() Son cevabı son aktif relay hedefine ilet"
         },
         "SlotBridge": {
@@ -670,6 +673,7 @@
       "toggle": {
         "ai1Assistant": "AI1 ↔ Asistan relay başlat/durdur",
         "assistantAi2": "Asistan ↔ AI2 relay başlat/durdur",
+        "assistantUs1": "Asistan ↔ US1 relay başlat/durdur",
         "ai1Ai2": "AI1 → AI2 relay",
         "ai2Ai1": "AI2 → AI1 relay"
       },
@@ -689,13 +693,15 @@
       "label": {
         "ai1Assistant": "AI1 - Asistan",
         "assistantAi2": "Asistan - AI2",
+        "assistantUs1": "Asistan - US1",
         "ai1Ai2": "AI1 - AI2",
         "ai2Ai1": "AI2 - AI1"
       },
       "participants": {
         "assistant": "Asistan",
         "ai1": "AI1",
-        "ai2": "AI2"
+        "ai2": "AI2",
+        "us1": "US1"
       }
     },
     "window": {
@@ -1680,7 +1686,7 @@
       "relayStarted": "{{relay}} relay başlatıldı (top bar)",
       "relayError": "{{relay}} relay hatası: {{message}}",
       "relayButtonSetupError": "Relay buton kurulumu hatası: {{message}}",
-      "relayButtonStates": "Buton durumları - ai1={{ai1}}, ai2={{ai2}}, ai0={{ai0}}",
+      "relayButtonStates": "Buton durumları - ai1={{ai1}}, ai2={{ai2}}, ai0={{ai0}}, us1={{us1}}",
       "relayButtonStateUpdateError": "Relay buton durum güncelleme hatası: {{message}}",
       "themeManager": {
         "listenerError": "Tema dinleyici hatası: {{message}}",
@@ -1830,7 +1836,7 @@
         "clearThinkingJustEndedFailed": "{{provider}} için thinkingJustEnded temizlenemedi: {{message}}"
       },
       "relayManager": {
-        "initialized": "RelayManager AI-AI ve AI-Assistant relay'leriyle başlatıldı",
+        "initialized": "RelayManager AI-AI, AI-Assistant ve US1-Assistant relay'leriyle başlatıldı",
         "assistantCommandCatchError": "Assistant command catch başarısız: {{message}}",
         "trafficUpdateHandlerError": "Traffic update handler başarısız: {{message}}",
         "syncCompleteHandlerError": "Sync-complete handler başarısız: {{message}}"
@@ -1877,6 +1883,24 @@
         "providerNotRecognized": "{{provider}} relay akışında tanınmadı",
         "targetNull": "{{provider}} için relay hedefi null",
         "thinkingTransition": "Thinking geçişi: {{provider}} {{previousState}} -> {{thinkingState}}"
+      },
+      "us1AssistantRelay": {
+        "started": "US1-Assistant relay başladı: {{source}} <-> {{target}}",
+        "sourceDisconnected": "Kaynak slot {{source}} bağlı değil",
+        "assistantDisconnected": "Asistan ({{target}}) bağlı değil",
+        "sendMessageUnavailable": "sendMessage metodu kullanılamıyor",
+        "protocolSending": "Protocol {{provider}} hedefine gönderiliyor",
+        "protocolSent": "Protocol {{provider}} hedefine gönderildi",
+        "protocolSendFailed": "Protocol gönderilemedi: {{message}}",
+        "transportUnavailable": "US1 transport kullanılamıyor",
+        "stoppedWithSession": "US1-Assistant relay {{sessionId}} durduruldu ({{source}} <-> {{target}})",
+        "stopped": "US1-Assistant relay durduruldu",
+        "handleThinkingCompleteError": "US1-Assistant relay thinking-complete işlemesi başarısız: {{message}}",
+        "duplicateMessageBlocked": "{{provider}} için yinelenen mesaj algılandı; engellendi",
+        "forwardSkippedTargetNotConnected": "{{target}} hedefi bağlı olmadığı için forward atlandı",
+        "forwarding": "US1-Assistant relay iletimi (#{{count}}) {{from}} -> {{to}}",
+        "forwardingFailed": "US1-Assistant relay iletimi başarısız: {{message}}",
+        "syncFailed": "US1 relay senkronizasyonu başarısız: {{message}}"
       },
       "errorBoundary": {
         "initialized": "ErrorBoundary başlatıldı",
