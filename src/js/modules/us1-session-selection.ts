@@ -5,6 +5,7 @@ interface ResolveUs1ForceSelectConversationIdOptions {
   resultConversationId?: string | null;
   sessionEvents?: Us1SessionEvent[] | null;
   targetRemoteUserId?: string | null;
+  preserveExplicitNewSelection?: boolean | null;
 }
 
 function normalizeNonEmptyText(value: unknown): string | null {
@@ -20,8 +21,13 @@ export function resolveUs1ForceSelectConversationId(
   options: ResolveUs1ForceSelectConversationIdOptions
 ): string | undefined {
   const selectedConversationId = normalizeNonEmptyText(options.selectedConversationId);
-  if (selectedConversationId !== null && selectedConversationId !== "new") {
-    return selectedConversationId;
+  if (selectedConversationId !== null) {
+    if (selectedConversationId !== "new") {
+      return selectedConversationId;
+    }
+    if (options.preserveExplicitNewSelection === true) {
+      return undefined;
+    }
   }
 
   const targetRemoteUserId = normalizeNonEmptyText(options.targetRemoteUserId);

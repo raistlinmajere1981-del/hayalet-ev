@@ -1,3 +1,18 @@
+@media (max-width: 1380px) {
+  .tt-stage-main {
+    grid-template-columns: 1fr;
+  }
+
+  .tt-support-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto;
+  }
+
+  .tt-support-pair {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 1180px) {
   .tt-arena {
     grid-template-columns: 1fr;
@@ -6,40 +21,45 @@
   .tt-board-grid {
     grid-template-columns: 1fr;
   }
-
-  .tt-board-card__details {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 860px) {
-  .tt-scorebar,
-  .tt-toggle-row {
+  .tt-requirement-grid,
+  .tt-toggle-row,
+  .tt-partner-row,
+  .tt-actions,
+  .tt-support-stack,
+  .tt-support-pair {
     grid-template-columns: 1fr;
   }
 
   .tt-rotation-row,
   .tt-actions--compact {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
   .tt-shell {
-    padding: 0.75rem;
+    padding: 0.55rem;
   }
 
   .tt-surface {
-    padding: 0.9rem;
-    border-radius: 1.4rem;
+    padding: 0.55rem;
+    border-radius: 1.2rem;
   }
 
   .tt-panel,
   .tt-stage,
   .tt-requirement,
   .tt-board-card,
-  .tt-scorebar__item {
-    border-radius: 1.1rem;
+  .tt-context-card {
+    border-radius: 0.96rem;
+  }
+
+  .tt-rotation-row,
+  .tt-actions--compact {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -63,66 +83,58 @@ body[data-presentation-mode="scene-view"] .tt-surface {
 
 body[data-presentation-mode="scene-view"] .tt-arena {
   min-height: 0;
-  grid-template-columns: 1fr;
-  gap: 0.55rem;
+  grid-template-columns: minmax(13.5rem, 15rem) minmax(0, 1fr);
+  gap: 0.45rem;
   overflow: hidden;
 }
 
 body[data-presentation-mode="scene-view"] .tt-rail {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  overflow: auto;
+  gap: 0.45rem;
 }
 
 body[data-presentation-mode="scene-view"] .tt-panel,
 body[data-presentation-mode="scene-view"] .tt-stage,
 body[data-presentation-mode="scene-view"] .tt-requirement,
 body[data-presentation-mode="scene-view"] .tt-board-card,
-body[data-presentation-mode="scene-view"] .tt-scorebar__item {
-  border-radius: 0.95rem;
+body[data-presentation-mode="scene-view"] .tt-context-card {
+  border-radius: 0.88rem;
 }
 
 body[data-presentation-mode="scene-view"] .tt-panel {
-  padding: 0.58rem;
-  gap: 0.45rem;
+  padding: 0.54rem;
+  gap: 0.4rem;
 }
 
 body[data-presentation-mode="scene-view"] .tt-panel__label,
 body[data-presentation-mode="scene-view"] .tt-panel__eyebrow {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
 }
 
 body[data-presentation-mode="scene-view"] .tt-panel__title {
-  font-size: clamp(1.3rem, 2.8vw, 1.8rem);
+  font-size: clamp(1.22rem, 2.2vw, 1.6rem);
 }
 
 body[data-presentation-mode="scene-view"] .tt-panel__body,
 body[data-presentation-mode="scene-view"] .tt-panel__hint,
-body[data-presentation-mode="scene-view"] .tt-stage-footer__message,
-body[data-presentation-mode="scene-view"] .tt-stage-footer__meta {
-  font-size: 0.72rem;
-  line-height: 1.35;
+body[data-presentation-mode="scene-view"] .tt-context-card__meta,
+body[data-presentation-mode="scene-view"] .tt-context-card__lead {
+  font-size: 0.7rem;
+  line-height: 1.32;
 }
 
 body[data-presentation-mode="scene-view"] .tt-stage {
-  padding: 0.68rem;
-  overflow: auto;
+  padding: 0.52rem;
 }
 
-body[data-presentation-mode="scene-view"] .tt-scorebar {
-  grid-template-columns: 1fr;
+body[data-presentation-mode="scene-view"] .tt-stage-main {
+  grid-template-columns: minmax(0, 1fr) minmax(13.5rem, 14.5rem);
   gap: 0.45rem;
 }
 
-body[data-presentation-mode="scene-view"] .tt-scorebar__item,
-body[data-presentation-mode="scene-view"] .tt-board-card,
-body[data-presentation-mode="scene-view"] .tt-requirement {
-  padding: 0.58rem 0.62rem;
+body[data-presentation-mode="scene-view"] .tt-board {
+  --tt-cell-size: clamp(0.56rem, 0.8vw, 0.92rem);
 }
 
-body[data-presentation-mode="scene-view"] .tt-board-grid {
-  gap: 0.55rem;
-}
-
-body[data-presentation-mode="scene-view"] .tt-board-card__details {
-  grid-template-columns: 1fr;
+body[data-presentation-mode="scene-view"] .tt-context-card[data-variant="snapshot"] .tt-board {
+  --tt-cell-size: clamp(0.22rem, 0.3vw, 0.32rem);
 }

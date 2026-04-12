@@ -6,6 +6,7 @@ function loadTeamTetrisEngine() {
   return gameRoomHostModule.teamTetrisEngine as {
     createMatch: (options: Record<string, unknown>) => Record<string, unknown>;
     cloneMatch: (match: Record<string, unknown>) => Record<string, unknown>;
+    boardToRows: (board: string[][]) => string[];
     buildSeatView: (
       match: Record<string, unknown>,
       seatId: string
@@ -81,7 +82,29 @@ test("Team Tetris hidden-pair seat views keep partner identity anonymous", () =>
     String(partnerView?.ownTeam?.partnerLastPiece?.placedByRole ?? ""),
     /opener|followup/
   );
+  assert.deepEqual(partnerView?.ownTeam?.partnerLastPiece?.cells ?? null, []);
   assert.equal(partnerView?.pendingTurn, null);
+});
+
+test("Team Tetris seat views hide only the partner's latest lock from the receiving teammate", () => {
+  const engine = loadTeamTetrisEngine();
+  const prepared = preparePartnerHistory(engine, true);
+  const team = prepared.match.teams[prepared.teamId] as Record<string, unknown>;
+  const partnerSeatId = (team.seatIds as string[]).find(
+    (seatId) => seatId !== prepared.placedBySeatId
+  )!;
+
+  const actingView = engine.buildSeatView(prepared.match, prepared.placedBySeatId);
+  const partnerView = engine.buildSeatView(prepared.match, partnerSeatId);
+  const actualBoardRows = engine.boardToRows(team.board as string[][]);
+  const boardBeforeLastLockRows = engine.boardToRows(team.boardBeforeLastLock as string[][]);
+
+  assert.deepEqual(actingView?.ownTeam?.boardRows, actualBoardRows);
+  assert.deepEqual(partnerView?.ownTeam?.boardRows, boardBeforeLastLockRows);
+  assert.deepEqual(partnerView?.ownTeam?.boardBeforePartnerPieceRows, boardBeforeLastLockRows);
+  assert.notDeepEqual(partnerView?.ownTeam?.boardRows, actualBoardRows);
+  assert.equal(partnerView?.ownTeam?.partnerLastPiece?.pieceId, "O");
+  assert.deepEqual(partnerView?.ownTeam?.partnerLastPiece?.cells ?? null, []);
 });
 
 test("Team Tetris revealed seat views expose concrete pairings and only the acting seat gets a pending turn", () => {

@@ -22,6 +22,9 @@ import { translate } from "../../../shared/host/text.js";
 import { loadState, pushRoomState } from "../../xox/host/state.js";
 import { loadFateKnotsState, pushFateKnotsState } from "../../fate-knots/host/state.js";
 import { loadFateKnotsContentRegistry } from "../../fate-knots/host/content-loader.js";
+function resolveTeamTetrisLocalSeatId(state) {
+  return state.localSeatId === "us1" ? "us1" : "user";
+}
 function isKnownTeamTetrisStatusKey(value) {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(TEAM_TETRIS_STATUS_COPY, value);
 }
@@ -56,7 +59,8 @@ function serializeTeamTetrisState(api, state, context) {
   const readiness = getTeamTetrisReadiness(context);
   const canStart = readiness.ai1 && readiness.ai2 && readiness.us1;
   const savedState = saveTeamTetrisState(api, state);
-  const userView = savedState.match ? buildTeamTetrisSeatView(savedState.match, "user") : null;
+  const localSeatId = resolveTeamTetrisLocalSeatId(savedState);
+  const userView = savedState.match ? buildTeamTetrisSeatView(savedState.match, localSeatId) : null;
   const boardSnapshots = userView !== null ? [
     {
       teamId: userView.ownTeam.teamId,

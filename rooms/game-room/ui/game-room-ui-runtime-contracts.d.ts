@@ -200,7 +200,13 @@ interface GameRoomTeamTetrisDraftPreview extends GameRoomUnknownRecord {
   success: true;
   x: number;
   y: number;
+  rotation: number;
   cells: GameRoomTeamTetrisCell[];
+  pathCells: GameRoomTeamTetrisCell[];
+  pathComplete: boolean;
+  autoDropDistance: number;
+  blockedReason?: string;
+  stepIndex?: number;
 }
 
 interface GameRoomTeamTetrisDraftReplayFailure extends GameRoomUnknownRecord {
@@ -209,7 +215,12 @@ interface GameRoomTeamTetrisDraftReplayFailure extends GameRoomUnknownRecord {
   stepIndex?: number;
   x?: number;
   y?: number;
+  rotation?: number;
   cells?: GameRoomTeamTetrisCell[];
+  pathCells?: GameRoomTeamTetrisCell[];
+  pathComplete?: boolean;
+  autoDropDistance?: number;
+  blockedReason?: string;
 }
 
 type GameRoomTeamTetrisDraftReplayResult =
@@ -224,7 +235,7 @@ interface GameRoomTeamTetrisDraftState extends GameRoomUnknownRecord {
   rotation: number;
   rowShifts: number[];
   dragTargets: Record<number, number>;
-  preview: GameRoomTeamTetrisDraftPreview | null;
+  preview: GameRoomTeamTetrisDraftReplayResult | null;
   errorKey: string;
   dragActive: boolean;
 }
@@ -262,6 +273,7 @@ interface GameRoomUiState extends GameRoomUnknownRecord {
   preferences: GameRoomUnknownRecord & {
     target: string;
     teamTetrisHiddenPairs?: boolean;
+    teamTetrisSelectedPartnerSeatId?: string | null;
   };
   lastCommandMessage: string;
 }
@@ -441,6 +453,10 @@ interface GameRoomTeamTetrisBoardCardOptions extends GameRoomUnknownRecord {
   overlayCells?: GameRoomTeamTetrisCell[];
   overlayTone?: string;
   overlayPieceId?: string;
+  pathCells?: GameRoomTeamTetrisCell[];
+  pathTone?: string;
+  pathTurnCell?: GameRoomTeamTetrisCell | null;
+  pathTurnTone?: string;
   tone?: string;
   meta?: string;
   context?: HTMLElement[];

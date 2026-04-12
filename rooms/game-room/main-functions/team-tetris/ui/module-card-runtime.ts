@@ -44,7 +44,9 @@
       const cells = getTeamTetrisRotationCells(pieceId, rotation);
       const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
       const shell = createElement("div", "tt-piece-mini", "");
-      shell.style.gridTemplateColumns = "repeat(" + Math.max(bounds.width, 1) + ", minmax(0, 1fr))";
+      shell.style.gridTemplateColumns =
+        "repeat(" + Math.max(bounds.width, 1) + ", var(--tt-mini-cell-size, 0.68rem))";
+      shell.dataset["piece"] = pieceId;
 
       for (let y = 0; y < Math.max(bounds.height, 1); y += 1) {
         for (let x = 0; x < Math.max(bounds.width, 1); x += 1) {
@@ -101,11 +103,19 @@
       const config = readBoardOptions(options);
       const boardRows = sanitizeTeamTetrisRows(rows);
       const overlayLookup: Record<string, boolean> = {};
+      const pathLookup: Record<string, string> = {};
+      const pathTurnKey = config.pathTurnCell
+        ? config.pathTurnCell.x + ":" + config.pathTurnCell.y
+        : null;
       const overlayCells = config.overlayCells || [];
+      const pathCells = config.pathCells || [];
       const board = createElement("div", "tt-board", "");
 
       overlayCells.forEach(function (cell: GameRoomTeamTetrisCell) {
         overlayLookup[cell.x + ":" + cell.y] = true;
+      });
+      pathCells.forEach(function (cell: GameRoomTeamTetrisCell) {
+        pathLookup[cell.x + ":" + cell.y] = config.pathTone || "trace-valid";
       });
 
       board.style.gridTemplateColumns =
@@ -145,6 +155,14 @@
           cell.dataset["filled"] = cellValue !== "." ? "true" : "false";
           cell.dataset["piece"] = cellValue !== "." ? cellValue : "";
 
+          const pathTone = pathLookup[columnIndex + ":" + rowIndex];
+          if (pathTone) {
+            cell.dataset["path"] = pathTone;
+          }
+          if (pathTurnKey === columnIndex + ":" + rowIndex) {
+            cell.dataset["pathTurn"] = config.pathTurnTone || "trace-valid-turn";
+          }
+
           if (overlayLookup[columnIndex + ":" + rowIndex]) {
             cell.dataset["overlay"] = config.overlayTone || "draft";
             cell.dataset["overlayPiece"] = config.overlayPieceId || "";
@@ -163,22 +181,25 @@
       rotation: number,
       subtitle: string
     ): HTMLElement {
-      const card = createElement("section", "tt-context-card", "");
+      const card = createElement("section", "tt-context-card tt-context-card--piece", "");
       card.append(createElement("span", "tt-context-card__label", title));
 
       if (pieceId && pieceId.trim() !== "") {
-        card.append(createTeamTetrisMiniPiece(pieceId, rotation));
-        card.append(
-          createElement(
-            "p",
-            "tt-context-card__meta",
-            pieceId +
-              " / " +
-              text(["teamTetris", "controls", "rotationShort"]) +
-              " " +
-              String(rotation)
-          )
+        const showcase = createElement("div", "tt-piece-showcase", "");
+        const metaRow = createElement("div", "tt-piece-meta-row", "");
+        const pieceBadge = createElement("span", "tt-piece-badge", pieceId);
+        const rotationBadge = createElement(
+          "span",
+          "tt-piece-badge",
+          text(["teamTetris", "controls", "rotationShort"]) + " " + String(rotation)
         );
+
+        pieceBadge.dataset["piece"] = pieceId;
+        rotationBadge.dataset["tone"] = "rotation";
+        showcase.dataset["piece"] = pieceId;
+        metaRow.append(pieceBadge, rotationBadge);
+        showcase.append(createTeamTetrisMiniPiece(pieceId, rotation), metaRow);
+        card.append(showcase);
       } else {
         card.append(
           createElement("p", "tt-context-card__empty", text(["teamTetris", "boards", "emptyPiece"]))
@@ -186,7 +207,7 @@
       }
 
       if (subtitle && subtitle.trim() !== "") {
-        card.append(createElement("p", "tt-context-card__meta", subtitle));
+        card.append(createElement("p", "tt-context-card__hint", subtitle));
       }
 
       return card;
@@ -233,6 +254,10 @@
           overlayCells: config.overlayCells || [],
           overlayTone: config.overlayTone || "draft",
           overlayPieceId: config.overlayPieceId || "",
+          pathCells: config.pathCells || [],
+          pathTone: config.pathTone || "trace-valid",
+          pathTurnCell: config.pathTurnCell || null,
+          pathTurnTone: config.pathTurnTone || "trace-valid-turn",
         })
       );
 

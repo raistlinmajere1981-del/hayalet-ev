@@ -215,7 +215,8 @@
         target: "ai1",
         starter: "user",
         inviteMessage: "",
-        teamTetrisHiddenPairs: true
+        teamTetrisHiddenPairs: true,
+        teamTetrisSelectedPartnerSeatId: null
       },
       lastCommandMessage: ""
     };

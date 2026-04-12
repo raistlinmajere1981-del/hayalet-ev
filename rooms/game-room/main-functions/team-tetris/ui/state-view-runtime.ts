@@ -9,6 +9,12 @@
       : null;
   }
 
+  function readNicknameRecord(value: unknown): { nickname?: string } | null {
+    return value && typeof value === "object" && Array.isArray(value) === false
+      ? (value as { nickname?: string })
+      : null;
+  }
+
   const registry = getFactoryRegistry(global);
 
   registry.createTeamTetrisUiStateViewRuntime = function createTeamTetrisUiStateViewRuntime(
@@ -18,9 +24,37 @@
     const text = deps.text;
     const createTeamTetrisBoard = deps.createTeamTetrisBoard;
 
+    function getTeamTetrisLocalSeatId(): string {
+      const localSeatId = getState().teamTetris.userView?.seat.seatId;
+      return typeof localSeatId === "string" && localSeatId.trim() !== "" ? localSeatId : "user";
+    }
+
+    function readCreatorPartnerSeatId(): string | null {
+      const teams = getState().teamTetris.teams;
+      if (!Array.isArray(teams)) {
+        return null;
+      }
+
+      const creatorTeam =
+        teams.find(function (team: GameRoomTeamTetrisTeamRecord) {
+          return Array.isArray(team.seatIds) && team.seatIds.includes("user");
+        }) || null;
+      if (!creatorTeam || !Array.isArray(creatorTeam.seatIds)) {
+        return null;
+      }
+
+      return (
+        creatorTeam.seatIds.find(function (seatId: string) {
+          return seatId !== "user";
+        }) || null
+      );
+    }
+
     function syncTeamTetrisPreferencesFromState(): void {
       const state = getState();
       state.preferences.teamTetrisHiddenPairs = state.teamTetris.hiddenPairs !== false;
+      state.preferences.teamTetrisSelectedPartnerSeatId =
+        state.teamTetris.hiddenPairs === false ? readCreatorPartnerSeatId() : null;
     }
 
     function getTeamTetrisView(): GameRoomTeamTetrisSeatView | null {
@@ -35,8 +69,21 @@
 
     function getTeamTetrisSeatDisplayLabel(seatId: string): string {
       const state = getState();
-      if (seatId === "user") {
+      const localSeatId = getTeamTetrisLocalSeatId();
+      if (seatId === localSeatId) {
         return text(["teamTetris", "turns", "you"]);
+      }
+      if (seatId === "user") {
+        if (localSeatId === "us1") {
+          const mirroredUser = readSlotRecord(state.context.slots?.["us1"] ?? null);
+          if (mirroredUser?.nickname && mirroredUser.nickname.trim() !== "") {
+            return mirroredUser.nickname;
+          }
+        }
+        const localUser = readNicknameRecord(state.context["user"]);
+        return localUser?.nickname && localUser.nickname.trim() !== ""
+          ? localUser.nickname.trim()
+          : "USER";
       }
 
       const slot = readSlotRecord(state.context.slots?.[seatId] ?? null);
@@ -182,7 +229,11 @@
       if (!pendingTurn) {
         return text(["teamTetris", "controls", "awaitingTurn"]);
       }
-      if (state.teamTetrisDraft.preview) {
+      if (
+        state.teamTetrisDraft.preview &&
+        state.teamTetrisDraft.preview.success === true &&
+        state.teamTetrisDraft.preview.pathComplete === true
+      ) {
         return text(["teamTetris", "controls", "pathReady"]);
       }
       if (state.teamTetrisDraft.errorKey) {

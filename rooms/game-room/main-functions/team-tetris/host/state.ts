@@ -51,6 +51,10 @@ export const TEAM_TETRIS_COMMAND_COPY = {
     en: "AI1, AI2, and US1 must all be ready before Team Tetris can start.",
     tr: "Takim Tetris baslamadan once AI1, AI2 ve US1 hazir olmali.",
   },
+  needPartnerSelection: {
+    en: "Select the local user's partner before starting Team Tetris.",
+    tr: "Takim Tetris baslamadan once yerel kullanicinin esini sec.",
+  },
   notImplemented: {
     en: "Team Tetris turn execution is not available in this sprint yet.",
     tr: "Takim Tetris tur yurutme bu sprintte henuz aktif degil.",
@@ -74,6 +78,10 @@ export const TEAM_TETRIS_COMMAND_COPY = {
   invalidMove: {
     en: "The Team Tetris move was invalid.",
     tr: "Takim Tetris hamlesi gecersizdi.",
+  },
+  commandCaptureFailed: {
+    en: "The latest Team Tetris AI reply did not contain a valid command.",
+    tr: "Son Team Tetris AI cevabi gecerli bir komut icermiyordu.",
   },
   moveApplied: {
     en: "Team Tetris move applied.",
@@ -109,6 +117,7 @@ export interface TeamTetrisHostState {
   active: boolean;
   result: TeamTetrisStateResult;
   statusKey: TeamTetrisStatusKey;
+  localSeatId: "user" | "us1";
   hiddenPairs: boolean;
   revealPairsOnFinish: boolean;
   blockedReason: string;
@@ -148,6 +157,7 @@ export function createInitialTeamTetrisState(locale: unknown): TeamTetrisHostSta
     active: false,
     result: "idle",
     statusKey: "idle",
+    localSeatId: "user",
     hiddenPairs: true,
     revealPairsOnFinish: true,
     blockedReason: "",
@@ -170,6 +180,7 @@ export function normalizeTeamTetrisState(
   state.active = source["active"] === true;
   state.result = normalizeTeamTetrisResult(source["result"]);
   state.statusKey = isKnownTeamTetrisStatusKey(source["statusKey"]) ? source["statusKey"] : "idle";
+  state.localSeatId = source["localSeatId"] === "us1" ? "us1" : "user";
   state.hiddenPairs = source["hiddenPairs"] !== false;
   state.revealPairsOnFinish = source["revealPairsOnFinish"] !== false;
   state.blockedReason = normalizeText(source["blockedReason"]);

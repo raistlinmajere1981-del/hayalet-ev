@@ -18,6 +18,10 @@
     }
     const getState = deps.getState;
     const sendRoomCommand = deps.sendRoomCommand;
+    function readSelectedPartnerSeatId() {
+      const selectedPartnerSeatId = getState().preferences.teamTetrisSelectedPartnerSeatId;
+      return selectedPartnerSeatId === "ai1" || selectedPartnerSeatId === "ai2" || selectedPartnerSeatId === "us1" ? selectedPartnerSeatId : null;
+    }
     const stateShapeRuntime = createTeamTetrisUiStateShapeRuntime();
     const stateViewRuntime = createTeamTetrisUiStateViewRuntime({
       getState: deps.getState,
@@ -36,8 +40,10 @@
     function onTeamTetrisStart() {
       const state = getState();
       state.lastCommandMessage = "";
+      const hiddenPairs = state.preferences.teamTetrisHiddenPairs !== false;
       sendRoomCommand("GameRoomTeamTetrisStart", {
-        hiddenPairs: state.preferences.teamTetrisHiddenPairs !== false
+        hiddenPairs,
+        ...hiddenPairs !== true && readSelectedPartnerSeatId() ? { selectedPartnerSeatId: readSelectedPartnerSeatId() } : {}
       });
     }
     function onTeamTetrisReset() {

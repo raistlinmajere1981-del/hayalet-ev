@@ -99,6 +99,18 @@ function doesTeamTetrisPieceCollide(board, pieceId, rotation, x, y) {
 function buildTeamTetrisBoardHash(board) {
   return teamTetrisBoardToRows(board).join("|");
 }
+function pushUniqueTeamTetrisPathCell(pathCells, pieceId, rotation, x, y) {
+  const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
+  const traceCell = {
+    x: Math.max(0, Math.min(TEAM_TETRIS_BOARD_WIDTH - 1, x + Math.floor((bounds.width - 1) / 2))),
+    y: Math.max(0, Math.min(TEAM_TETRIS_BOARD_HEIGHT - 1, y + Math.floor((bounds.height - 1) / 2)))
+  };
+  const lastCell = pathCells[pathCells.length - 1] ?? null;
+  if (lastCell && lastCell.x === traceCell.x && lastCell.y === traceCell.y) {
+    return;
+  }
+  pathCells.push(traceCell);
+}
 function replayTeamTetrisPath(board, pieceId, rotation, rowShifts) {
   const normalizedRotation = getNormalizedTeamTetrisRotation(pieceId, rotation);
   if (normalizedRotation === null) {
@@ -115,28 +127,59 @@ function replayTeamTetrisPath(board, pieceId, rotation, rowShifts) {
   }
   let x = spawn.x;
   let y = spawn.y;
+  const pathCells = [];
+  pushUniqueTeamTetrisPathCell(pathCells, pieceId, normalizedRotation, x, y);
   for (let index = 0; index < rowShifts.length; index += 1) {
     const shift = rowShifts[index] ?? 0;
     if (shift !== 0) {
       if (doesTeamTetrisPieceCollide(board, pieceId, normalizedRotation, x + shift, y)) {
-        return { success: false, reason: "horizontal-collision", stepIndex: index };
+        return {
+          success: true,
+          x,
+          y,
+          rotation: normalizedRotation,
+          cells: getTeamTetrisPieceCells(pieceId, normalizedRotation, x, y),
+          pathCells,
+          pathComplete: false,
+          autoDropDistance: 0,
+          blockedReason: "horizontal-collision",
+          stepIndex: index
+        };
       }
       x += shift;
     }
     if (doesTeamTetrisPieceCollide(board, pieceId, normalizedRotation, x, y + 1)) {
-      return { success: false, reason: "downward-collision", stepIndex: index };
+      return {
+        success: true,
+        x,
+        y,
+        rotation: normalizedRotation,
+        cells: getTeamTetrisPieceCells(pieceId, normalizedRotation, x, y),
+        pathCells,
+        pathComplete: false,
+        autoDropDistance: 0,
+        blockedReason: "downward-collision",
+        stepIndex: index
+      };
     }
     y += 1;
+    pushUniqueTeamTetrisPathCell(pathCells, pieceId, normalizedRotation, x, y);
   }
-  if (!doesTeamTetrisPieceCollide(board, pieceId, normalizedRotation, x, y + 1)) {
-    return { success: false, reason: "incomplete-path" };
+  let autoDropDistance = 0;
+  while (!doesTeamTetrisPieceCollide(board, pieceId, normalizedRotation, x, y + 1)) {
+    y += 1;
+    autoDropDistance += 1;
+    pushUniqueTeamTetrisPathCell(pathCells, pieceId, normalizedRotation, x, y);
   }
   return {
     success: true,
     x,
     y,
     rotation: normalizedRotation,
-    cells: getTeamTetrisPieceCells(pieceId, normalizedRotation, x, y)
+    cells: getTeamTetrisPieceCells(pieceId, normalizedRotation, x, y),
+    pathCells,
+    pathComplete: true,
+    autoDropDistance
   };
 }
 function clearTeamTetrisLines(board) {

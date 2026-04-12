@@ -45,6 +45,25 @@ test("US1 session selection falls back to the latest matching session event when
   assert.equal(result, "conv-2");
 });
 
+test("US1 session selection can preserve an explicit new selection", () => {
+  const result = resolveUs1ForceSelectConversationId({
+    selectedConversationId: "new",
+    resultConversationId: "conv-fallback",
+    sessionEvents: [
+      {
+        remoteUserId: "remote@example.com",
+        localSessionId: "session-1",
+        conversationId: "conv-1",
+        isNewSession: true,
+      },
+    ],
+    targetRemoteUserId: "remote@example.com",
+    preserveExplicitNewSelection: true,
+  });
+
+  assert.equal(result, undefined);
+});
+
 test("US1 session selection ignores session events from other remote users", () => {
   const result = resolveUs1ForceSelectConversationId({
     selectedConversationId: "new",

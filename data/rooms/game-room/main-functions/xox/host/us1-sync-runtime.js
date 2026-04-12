@@ -30,23 +30,43 @@ function readRoomCommands(value) {
   }
   return value.map(normalizeRoomCommand).filter((command) => command !== null && command.commandName !== "");
 }
-function readCommandSuccess(value) {
+function readCommandResultCandidates(value) {
   if (isRecord(value) === false) {
-    return null;
+    return [];
   }
-  if (value["success"] === true) {
-    return true;
+  const candidates = [];
+  const data = value["data"];
+  if (isRecord(data)) {
+    const nestedResult = data["result"];
+    if (isRecord(nestedResult)) {
+      candidates.push(nestedResult);
+    }
+    candidates.push(data);
   }
-  if (value["success"] === false) {
-    return false;
+  candidates.push(value);
+  return candidates;
+}
+function readCommandSuccess(value) {
+  const candidates = readCommandResultCandidates(value);
+  for (const candidate of candidates) {
+    if (candidate["success"] === true) {
+      return true;
+    }
+    if (candidate["success"] === false) {
+      return false;
+    }
   }
   return null;
 }
 function readCommandMessage(value) {
-  if (isRecord(value) === false) {
-    return "";
+  const candidates = readCommandResultCandidates(value);
+  for (let index = 0; index < candidates.length; index += 1) {
+    const message = readString(candidates[index]?.["message"]).trim();
+    if (message !== "") {
+      return message;
+    }
   }
-  return readString(value["message"]).trim();
+  return "";
 }
 function buildRoomCommandFailureMessage(commandName, result, error) {
   const resultMessage = readCommandMessage(result);
@@ -120,7 +140,8 @@ function readTeamTetrisStartConfig(candidate) {
   return {
     seed: readString(candidate["seed"]),
     hiddenPairs: candidate["hiddenPairs"] !== false,
-    revealPairsOnFinish: candidate["revealPairsOnFinish"] !== false
+    revealPairsOnFinish: candidate["revealPairsOnFinish"] !== false,
+    selectedPartnerSeatId: candidate["selectedPartnerSeatId"] === "ai1" || candidate["selectedPartnerSeatId"] === "ai2" || candidate["selectedPartnerSeatId"] === "us1" ? candidate["selectedPartnerSeatId"] : null
   };
 }
 function readTimerHandle(value) {
@@ -217,11 +238,13 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
             const match = createTeamTetrisMatch({
               seed: config.seed,
               matchId: eventMatchId,
-              hiddenPairs: state.hiddenPairs,
-              revealPairsOnFinish: state.revealPairsOnFinish
+              hiddenPairs: config.hiddenPairs,
+              revealPairsOnFinish: config.revealPairsOnFinish,
+              selectedPartnerSeatId: config.selectedPartnerSeatId
             });
             state.hiddenPairs = config.hiddenPairs;
             state.revealPairsOnFinish = config.revealPairsOnFinish;
+            state.localSeatId = "us1";
             state.match = match;
             state.matchId = match.matchId;
             state.remoteUserId = event.remoteUserId || state.remoteUserId;
@@ -295,9 +318,6 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
         pushRoomState(api, resetState);
       }
     }
-    if (currentState.active !== true) {
-      refreshRoomState(api);
-    }
   }
   function ensureUs1SyncLoop(api, syncUs1MailboxFn) {
     const currentTimer = readTimerHandle(api.getState("xox-us1-sync-timer"));
@@ -337,10 +357,12 @@ export function createGameRoomXoxUs1SyncRuntime(deps) {
         api.log("warn", `US1 XOX sync failed (${reason}).`);
         return;
       }
-      syncFromSnapshot(api, result.roomInviteInbox);
+      const inviteInboxChanged = syncFromSnapshot(api, result.roomInviteInbox);
       await processRoomEvents(api, readRoomEvents(result.roomEvents));
       await processRoomCommands(api, readRoomCommands(result.roomCommands));
-      refreshRoomState(api);
+      if (inviteInboxChanged === true) {
+        refreshRoomState(api);
+      }
     } finally {
       api.deleteState?.("xox-us1-syncing");
     }

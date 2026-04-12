@@ -15,6 +15,7 @@ import { isProviderScenarioActive } from "./provider-scenario-lock.js";
 import { normalizeUrl, isSlotUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
 import { PendingArchiveHandler } from "./pending-archive-handler.js";
 import { hashString } from "./providers/shared/scraper-helpers.js";
+import { dispatchExpectedCommandCaptureFailure } from "../rooms/expected-command-capture-events.js";
 import {
   buildGeneratedImageExtractionScript,
   parseGeneratedImageDataUrl,
@@ -613,6 +614,19 @@ class ConversationSyncerClass {
 
       const lastMsg = finalMessages[finalMessages.length - 1];
       if (lastMsg !== undefined && lastMsg.role !== "user") {
+        if (catchEnabled && commands.length === 0) {
+          dispatchExpectedCommandCaptureFailure({
+            webUrl,
+            text:
+              typeof lastMsg.text === "string"
+                ? lastMsg.text
+                : typeof lastMsg.content === "string"
+                  ? lastMsg.content
+                  : "",
+            provider,
+          });
+        }
+
         const result: SyncResult = {
           success: true,
           count: normalized.length,

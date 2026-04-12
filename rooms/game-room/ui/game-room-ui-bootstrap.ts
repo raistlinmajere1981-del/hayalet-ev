@@ -283,6 +283,7 @@
         starter: "user",
         inviteMessage: "",
         teamTetrisHiddenPairs: true,
+        teamTetrisSelectedPartnerSeatId: null,
       },
       lastCommandMessage: "",
     };

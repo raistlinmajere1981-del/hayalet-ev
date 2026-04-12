@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-11T17:36:20.624Z",
+  "generatedAt": "2026-04-12T11:50:07.109Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 479,
-    "filesWithComments": 81,
-    "commentsIndexed": 203,
-    "fileLevelComments": 149,
+    "filesScanned": 480,
+    "filesWithComments": 82,
+    "commentsIndexed": 204,
+    "fileLevelComments": 150,
     "symbolLevelComments": 54,
     "prefixCounts": {
       "none": 39,
       "AI": 1,
-      "NOTE": 161,
+      "NOTE": 162,
       "WARNING": 2,
       "TODO": 0
     }
@@ -1224,8 +1224,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1292,
-          "endLine": 1292,
+          "startLine": 1296,
+          "endLine": 1296,
           "text": "NOTE: Inbox sync intentionally runs account-by-account to keep sidecar writes ordered.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1233,8 +1233,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2034,
-          "endLine": 2034,
+          "startLine": 2038,
+          "endLine": 2038,
           "text": "NOTE: Relay sync mutates archive and session state per message, so processing stays sequential.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1718,6 +1718,32 @@
       ]
     },
     {
+      "path": "src/js/modules/rooms/expected-command-capture-events.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 23,
+          "endLine": 23,
+          "text": "NOTE: Ignore dispatch errors from optional room feedback hooks.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
       "path": "src/js/modules/rooms/room-runtime-url.ts",
       "totalComments": 1,
       "byKind": {
@@ -2022,8 +2048,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 416,
-          "endLine": 416,
+          "startLine": 417,
+          "endLine": 417,
           "text": "NOTE: The post-thinking probe is intentionally sequential because each rescrape depends on DOM settle time.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2031,8 +2057,8 @@
         },
         {
           "kind": "note",
-          "startLine": 419,
-          "endLine": 419,
+          "startLine": 420,
+          "endLine": 420,
           "text": "NOTE: Each scrape must observe the DOM after the prior settle window, not in parallel.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2040,8 +2066,8 @@
         },
         {
           "kind": "note",
-          "startLine": 522,
-          "endLine": 522,
+          "startLine": 523,
+          "endLine": 523,
           "text": "NOTE: In relay mode the user-side author actually comes from the peer AI.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2049,8 +2075,8 @@
         },
         {
           "kind": "note",
-          "startLine": 537,
-          "endLine": 537,
+          "startLine": 538,
+          "endLine": 538,
           "text": "NOTE: If the message contains a hev-sender tag (++cmd delivery), override the author.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2058,8 +2084,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1185,
-          "endLine": 1185,
+          "startLine": 1199,
+          "endLine": 1199,
           "text": "NOTE: Extraction is sequential because each asset maps to a live DOM node that may mutate during generation.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2067,8 +2093,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1193,
-          "endLine": 1193,
+          "startLine": 1207,
+          "endLine": 1207,
           "text": "NOTE: Fallback capture must run after extraction on the same asset to keep coordinates aligned.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2076,8 +2102,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1218,
-          "endLine": 1218,
+          "startLine": 1232,
+          "endLine": 1232,
           "text": "NOTE: Replacement detection must read the current archived file before deciding whether to rewrite it.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2085,8 +2111,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1228,
-          "endLine": 1228,
+          "startLine": 1242,
+          "endLine": 1242,
           "text": "NOTE: Save operations stay ordered so later assets observe the updated dedupe map from earlier writes.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2250,8 +2276,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1024,
-          "endLine": 1024,
+          "startLine": 1028,
+          "endLine": 1028,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2259,8 +2285,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1043,
-          "endLine": 1043,
+          "startLine": 1047,
+          "endLine": 1047,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
           "prefix": "NOTE",
           "scopeType": "file",

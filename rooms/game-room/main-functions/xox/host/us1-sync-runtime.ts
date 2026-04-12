@@ -26,6 +26,7 @@ type XoxTeamTetrisStartConfig = {
   seed: string;
   hiddenPairs: boolean;
   revealPairsOnFinish: boolean;
+  selectedPartnerSeatId: "ai1" | "ai2" | "us1" | null;
 };
 
 type XoxRoomCommand = {
@@ -108,6 +109,7 @@ export interface XoxUs1SyncRuntimeDeps {
     matchId?: string | null;
     hiddenPairs: boolean;
     revealPairsOnFinish: boolean;
+    selectedPartnerSeatId?: "ai1" | "ai2" | "us1" | null;
   }) => TeamTetrisMatch;
   dispatchNextTeamTetrisTurn: (api: XoxUs1SyncApi, state: TeamTetrisHostState) => Promise<unknown>;
   loadPendingInvite: (api: XoxUs1SyncApi) => XoxPendingInvite | null;
@@ -313,6 +315,12 @@ function readTeamTetrisStartConfig(candidate: unknown): XoxTeamTetrisStartConfig
     seed: readString(candidate["seed"]),
     hiddenPairs: candidate["hiddenPairs"] !== false,
     revealPairsOnFinish: candidate["revealPairsOnFinish"] !== false,
+    selectedPartnerSeatId:
+      candidate["selectedPartnerSeatId"] === "ai1" ||
+      candidate["selectedPartnerSeatId"] === "ai2" ||
+      candidate["selectedPartnerSeatId"] === "us1"
+        ? candidate["selectedPartnerSeatId"]
+        : null,
   };
 }
 
@@ -418,11 +426,13 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
             const match = createTeamTetrisMatch({
               seed: config.seed,
               matchId: eventMatchId,
-              hiddenPairs: state.hiddenPairs,
-              revealPairsOnFinish: state.revealPairsOnFinish,
+              hiddenPairs: config.hiddenPairs,
+              revealPairsOnFinish: config.revealPairsOnFinish,
+              selectedPartnerSeatId: config.selectedPartnerSeatId,
             });
             state.hiddenPairs = config.hiddenPairs;
             state.revealPairsOnFinish = config.revealPairsOnFinish;
+            state.localSeatId = "us1";
             state.match = match;
             state.matchId = match.matchId;
             state.remoteUserId = event.remoteUserId || state.remoteUserId;

@@ -31,11 +31,23 @@ function loadTeamTetrisEngine() {
   };
 }
 
-function findSeedForSeat(targetSeatId: "ai1" | "ai2" | "user" | "us1"): string {
+function findSeedForSeat(
+  targetSeatId: "ai1" | "ai2" | "user" | "us1",
+  options: {
+    hiddenPairs?: boolean;
+    selectedPartnerSeatId?: "ai1" | "ai2" | "us1";
+  } = {}
+): string {
   const engine = loadTeamTetrisEngine();
   for (let index = 0; index < 200; index += 1) {
     const seed = `seed-${targetSeatId}-${index}`;
-    const match = engine.createMatch({ seed, hiddenPairs: true });
+    const match = engine.createMatch({
+      seed,
+      hiddenPairs: options.hiddenPairs ?? true,
+      ...(options.selectedPartnerSeatId
+        ? { selectedPartnerSeatId: options.selectedPartnerSeatId }
+        : {}),
+    });
     if ((match.currentTurn as Record<string, unknown>).seatId === targetSeatId) {
       return seed;
     }
@@ -324,6 +336,7 @@ test("game-room host serializes Team Tetris ids without visible board or seat la
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: false,
+      selectedPartnerSeatId: "ai1",
       seed: findSeedForSeat("user"),
     },
   });
@@ -350,6 +363,7 @@ test("game-room host resets Team Tetris state when the active feature switches a
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: false,
+      selectedPartnerSeatId: "ai1",
     },
   });
 
@@ -379,6 +393,21 @@ test("game-room host blocks Team Tetris start until ai1, ai2, and us1 are ready"
   assert.match(String(result?.message ?? ""), /AI1, AI2, and US1/);
 });
 
+test("game-room host blocks visible Team Tetris setup until a local partner is selected", async () => {
+  const runtime = createRoomHostRuntime();
+
+  await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
+  const result = await runtime.exported.commands.GameRoomTeamTetrisStart({
+    provider: "room-ui",
+    roomArgs: {
+      hiddenPairs: false,
+    },
+  });
+
+  assert.equal(result?.success, false);
+  assert.match(String(result?.message ?? ""), /partner/i);
+});
+
 test("game-room host dispatches Team Tetris AI protocol and turn packet for AI opening seats", async () => {
   const runtime = createRoomHostRuntime();
   const seed = findSeedForSeat("ai1");
@@ -396,25 +425,52 @@ test("game-room host dispatches Team Tetris AI protocol and turn packet for AI o
   assert.equal(runtime.protocolCalls.length > 0, true);
   assert.equal(runtime.messageCalls.length > 0, true);
   assert.equal(runtime.protocolCalls[0]?.scenario, "team-tetris-ai-opening");
-  assert.equal(runtime.messageCalls[0]?.provider, "ai1");
-  assert.match(String(runtime.messageCalls[0]?.text ?? ""), /GameRoomTeamTetrisAiMove/);
+  const aiOpeningMessage = String(
+    runtime.messageCalls.find((entry) => entry.provider === "ai1")?.text ?? ""
+  );
+  assert.equal(
+    runtime.messageCalls.some(
+      (entry) =>
+        entry.provider === "ai1" && /GameRoomTeamTetrisAiMove/.test(String(entry.text ?? ""))
+    ),
+    true
+  );
+  assert.match(aiOpeningMessage, /keeps dropping the piece straight down/i);
+  assert.match(aiOpeningMessage, /locks at the last reached step/i);
+  assert.match(aiOpeningMessage, /pieceGeometryCatalog/i);
+  assert.equal(/"rowShifts":\[0\]\}\}\)/.test(aiOpeningMessage), false);
+  assert.equal(
+    runtime.messageCalls.some(
+      (entry) => entry.provider === "ai2" && /No reply is needed yet/.test(String(entry.text ?? ""))
+    ),
+    true
+  );
 });
 
 test("game-room host mirrors Team Tetris starts and local moves over US1 room transport", async () => {
   const runtime = createRoomHostRuntime();
-  const seed = findSeedForSeat("user");
+  const seed = findSeedForSeat("user", {
+    hiddenPairs: false,
+    selectedPartnerSeatId: "us1",
+  });
 
   await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
   const startResult = await runtime.exported.commands.GameRoomTeamTetrisStart({
     provider: "room-ui",
     roomArgs: {
       hiddenPairs: false,
+      selectedPartnerSeatId: "us1",
       seed,
     },
   });
 
   assert.equal(startResult?.success, true);
   assert.equal(runtime.us1MessageCalls[0]?.roomEvent?.eventType, "start");
+  assert.match(String(runtime.us1MessageCalls[0]?.text ?? ""), /Creator pair: USER \+ US1\./);
+  assert.equal(
+    JSON.parse(String(runtime.us1MessageCalls[0]?.roomEvent?.note ?? "{}")).selectedPartnerSeatId,
+    "us1"
+  );
 
   const currentMatch = runtime.state.get("team-tetris-game")?.match as Record<string, unknown>;
   const move = buildValidMoveForCurrentTurn(currentMatch);
@@ -431,6 +487,97 @@ test("game-room host mirrors Team Tetris starts and local moves over US1 room tr
   );
   assert.deepEqual(runtime.us1MessageCalls[1]?.roomCommand?.roomPayload, move);
   assert.equal(runtime.state.get("team-tetris-game")?.match?.turnIndex, 1);
+});
+
+test("game-room host lets a mirrored US1 room-ui turn submit through room transport", async () => {
+  const runtime = createRoomHostRuntime();
+  const seed = findSeedForSeat("us1");
+
+  await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
+  await runtime.exported.commands.GameRoomTeamTetrisStart({
+    provider: "room-ui",
+    roomArgs: {
+      hiddenPairs: true,
+      seed,
+    },
+  });
+
+  const state = runtime.state.get("team-tetris-game") as Record<string, unknown>;
+  state.localSeatId = "us1";
+  runtime.state.set("team-tetris-game", state);
+
+  const currentMatch = runtime.state.get("team-tetris-game")?.match as Record<string, unknown>;
+  const move = buildValidMoveForCurrentTurn(currentMatch);
+  const result = await runtime.exported.commands.GameRoomTeamTetrisUserMove({
+    provider: "room-ui",
+    roomArgs: move,
+  });
+
+  assert.equal(result?.success, true);
+  assert.equal(runtime.us1MessageCalls.at(-1)?.roomCommand?.commandName, "GameRoomTeamTetrisRemoteMove");
+  assert.equal(runtime.state.get("team-tetris-game")?.match?.turnIndex, 1);
+});
+
+test("game-room host lets a mirrored US1 copy apply relayed Team Tetris remote moves for non-US1 turns", async () => {
+  const runtime = createRoomHostRuntime();
+  const seed = findSeedForSeat("ai1");
+
+  await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
+  await runtime.exported.commands.GameRoomTeamTetrisStart({
+    provider: "room-ui",
+    roomArgs: {
+      hiddenPairs: true,
+      seed,
+    },
+  });
+
+  const state = runtime.state.get("team-tetris-game") as Record<string, unknown>;
+  state.localSeatId = "us1";
+  runtime.state.set("team-tetris-game", state);
+
+  const currentMatch = runtime.state.get("team-tetris-game")?.match as Record<string, unknown>;
+  const move = buildValidMoveForCurrentTurn(currentMatch);
+  const result = await runtime.exported.commands.GameRoomTeamTetrisRemoteMove({
+    provider: "us1",
+    roomCommand: "GameRoomTeamTetrisRemoteMove",
+    transportMessageId: "mirrored-relay-1",
+    roomArgs: move,
+  });
+
+  assert.equal(result?.success, true);
+  assert.equal(runtime.state.get("team-tetris-game")?.match?.turnIndex, 1);
+  assert.equal(runtime.state.get("team-tetris-game")?.lastRemoteTransportMessageId, "mirrored-relay-1");
+});
+
+test("game-room host ignores mirrored US1-caught Team Tetris AI commands without mutating the match", async () => {
+  const runtime = createRoomHostRuntime();
+  const seed = findSeedForSeat("ai1");
+
+  await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
+  await runtime.exported.commands.GameRoomTeamTetrisStart({
+    provider: "room-ui",
+    roomArgs: {
+      hiddenPairs: true,
+      seed,
+    },
+  });
+
+  const state = runtime.state.get("team-tetris-game") as Record<string, unknown>;
+  state.localSeatId = "us1";
+  runtime.state.set("team-tetris-game", state);
+
+  const beforeTurnIndex = runtime.state.get("team-tetris-game")?.match?.turnIndex;
+  const currentMatch = runtime.state.get("team-tetris-game")?.match as Record<string, unknown>;
+  const move = buildValidMoveForCurrentTurn(currentMatch);
+  const result = await runtime.exported.commands.GameRoomTeamTetrisAiMove({
+    provider: "us1",
+    roomCommand: "GameRoomTeamTetrisAiMove",
+    transportMessageId: "mirrored-catch-1",
+    roomArgs: move,
+  });
+
+  assert.equal(result?.success, true);
+  assert.equal(runtime.state.get("team-tetris-game")?.match?.turnIndex, beforeTurnIndex);
 });
 
 test("game-room host selects the followup Team Tetris protocol scenario when a followup AI seat becomes active", async () => {
@@ -465,6 +612,19 @@ test("game-room host selects the followup Team Tetris protocol scenario when a f
 
   assert.equal(runtime.protocolCalls[0]?.scenario, "team-tetris-ai-followup");
   assert.equal(runtime.messageCalls[0]?.provider, "ai1");
+  assert.match(
+    String(runtime.messageCalls[0]?.text ?? ""),
+    /visible board intentionally omits your partner's most recent lock/i
+  );
+  assert.match(String(runtime.messageCalls[0]?.text ?? ""), /"pieceGeometryCatalog"/i);
+  assert.match(
+    String(runtime.messageCalls[0]?.text ?? ""),
+    /"partnerLastPiece"\s*:\s*\{[\s\S]*"cells"\s*:\s*\[\]/i
+  );
+  assert.doesNotMatch(
+    String(runtime.messageCalls[0]?.text ?? ""),
+    /A legal reference command for this exact board is:/i
+  );
 });
 
 test("game-room host blocks Team Tetris when a required seat disconnects mid-match", async () => {
@@ -557,7 +717,7 @@ test("game-room host ignores duplicate Team Tetris remote moves after the turn h
   assert.equal(runtime.state.get("team-tetris-game")?.match?.turnIndex, turnIndexAfterMove);
 });
 
-test("game-room host blocks invalid Team Tetris AI paths and preserves the blocked result", async () => {
+test("game-room host blocks invalid Team Tetris AI payloads and preserves the blocked result", async () => {
   const runtime = createRoomHostRuntime();
   const seed = findSeedForSeat("ai1");
 
@@ -580,8 +740,8 @@ test("game-room host blocks invalid Team Tetris AI paths and preserves the block
       turnIndex: currentTurn.turnIndex,
       turnToken: currentTurn.turnToken,
       pieceId: "O",
-      rotation: 0,
-      rowShifts: [0],
+      rotation: 1,
+      rowShifts: [],
     },
   });
 
@@ -589,6 +749,66 @@ test("game-room host blocks invalid Team Tetris AI paths and preserves the block
   assert.match(String(result?.message ?? ""), /invalid/i);
   assert.equal(runtime.state.get("team-tetris-game")?.result, "blocked");
   assert.equal(runtime.state.get("team-tetris-game")?.statusKey, "blockedInvalidMove");
+});
+
+test("game-room host returns Team Tetris move resolution details in test mode", async () => {
+  const runtime = createRoomHostRuntime();
+  const seed = findSeedForSeat("user");
+
+  await runtime.emitHostContext(buildHostContext({ us1Ready: true }));
+  await runtime.exported.commands.GameRoomTeamTetrisStart({
+    provider: "room-ui",
+    roomArgs: {
+      hiddenPairs: true,
+      seed,
+    },
+  });
+
+  const currentMatch = runtime.state.get("team-tetris-game")?.match as Record<string, unknown>;
+  const successMove = buildValidMoveForCurrentTurn(currentMatch);
+  const successResult = await runtime.exported.commands.GameRoomTeamTetrisUserMove({
+    provider: "room-ui",
+    testMode: true,
+    roomArgs: successMove,
+  });
+
+  assert.equal(successResult?.success, true);
+  assert.deepEqual(Array.isArray(successResult?.debug?.resolvedPath), true);
+  assert.deepEqual(Array.isArray(successResult?.debug?.finalLockCells), true);
+  assert.equal(typeof successResult?.debug?.finalRotation, "number");
+  assert.equal(successResult?.debug?.rejectReason, null);
+
+  const blockedRuntime = createRoomHostRuntime();
+  const blockedSeed = findSeedForSeat("ai1");
+
+  await blockedRuntime.emitHostContext(buildHostContext({ us1Ready: true }));
+  await blockedRuntime.exported.commands.GameRoomTeamTetrisStart({
+    provider: "room-ui",
+    roomArgs: {
+      hiddenPairs: true,
+      seed: blockedSeed,
+    },
+  });
+
+  const blockedMatch = primeRuntimeMatchWithPiece(blockedRuntime, "O");
+  const blockedTurn = blockedMatch.currentTurn as Record<string, unknown>;
+  const failureResult = await blockedRuntime.exported.commands.GameRoomTeamTetrisAiMove({
+    provider: "ai1",
+    testMode: true,
+    roomArgs: {
+      schemaVersion: 1,
+      matchId: blockedMatch.matchId,
+      turnIndex: blockedTurn.turnIndex,
+      turnToken: blockedTurn.turnToken,
+      pieceId: "O",
+      rotation: 1,
+      rowShifts: [],
+    },
+  });
+
+  assert.equal(failureResult?.success, false);
+  assert.equal(failureResult?.debug?.rejectReason, "invalid-rotation");
+  assert.equal(failureResult?.debug?.collisionStep, null);
 });
 
 test("game-room host reveals hidden Team Tetris pairs once a hidden-pair match ends", async () => {

@@ -88,15 +88,19 @@
       "requirementsLabel": "Start Gate",
       "hiddenPairsLabel": "Hidden Pairs",
       "hiddenPairsOn": "Hidden until game over",
-      "hiddenPairsOff": "Reveal pairs immediately",
+      "hiddenPairsOff": "Choose pairs",
+      "partnerLabel": "Choose the local partner",
+      "partnerPreviewTitle": "Pairing Preview",
+      "partnerPending": "Pick one teammate before the match starts.",
+      "partnerHint": "The chosen seat joins USER. The remaining two seats become the other team.",
       "start": "Start Match",
       "reset": "Reset Match",
-      "startHint": "The match starts only when AI1, AI2, and US1 are ready. During a live match, hidden-pair mode stays locked until reset.",
+      "startHint": "The match starts only when AI1, AI2, and US1 are ready. If pairs are visible from the start, the local partner must be selected first.",
       "requirementReady": "Ready",
       "requirementWaiting": "Waiting",
       "awaitingTurn": "Waiting for the local user's turn packet.",
-      "pathHint": "Rotate the piece, then draw a downward path on your team board.",
-      "pathReady": "Draft path is valid and ready to submit.",
+      "pathHint": "Rotate the piece, then draw the fall and side-shift route you expect to work.",
+      "pathReady": "The visible-board route is ready. After your last planned step, the piece continues straight down on its own.",
       "rotate": "Rotate CW",
       "clearPath": "Clear Path",
       "submitMove": "Submit Move",
@@ -104,7 +108,7 @@
       "rotationShort": "Rot",
       "pathEmpty": "No path yet",
       "pathLegend": "Path Rule",
-      "pathRule": "Each downward step may shift left 1, stay, or shift right 1."
+      "pathRule": "Each downward step may shift left 1, stay, or shift right 1. If the route is blocked early, the piece stays there; if the route ends with open air below, it keeps falling straight down."
     },
     "boards": {
       "teamA": "Team A Board",
@@ -129,7 +133,7 @@
       "activeFeatureReset": "Leaving the Team Tetris feature resets the active Team Tetris match.",
       "notImplemented": "The Team Tetris host shell is online. Gameplay turns are enabled in the next sprint.",
       "blocked": "This Team Tetris match is blocked. Reset to recover.",
-      "yourTurn": "Your turn. Rotate the piece, draw the path, and submit the move.",
+      "yourTurn": "Your turn. Rotate the piece, draw the route you expect, and submit the move.",
       "partnerTurnHidden": "Your teammate is acting, but the hidden pairing keeps their identity concealed for now.",
       "partnerTurn": "Your teammate is acting on your board.",
       "opponentTurn": "The opposing team is taking its turn.",
@@ -161,9 +165,9 @@
       "partnerUnknown": "Partner hidden",
       "partnerOpener": "Hidden opener",
       "partnerFollowup": "Hidden follow-up",
-      "revealTitle": "Revealed Pairs",
+      "pairStatusTitle": "Pair Status",
       "hiddenHint": "Pair identities stay hidden until the match ends.",
-      "revealedHint": "Randomized pairs are now revealed for both teams."
+      "revealedHint": "Pair identities are now visible for both teams."
     },
     "metrics": {
       "turnLabel": "Acting Seat",
@@ -175,9 +179,9 @@
       "invalidRotation": "This rotation is not legal for the current piece.",
       "invalidRowShifts": "The drawn path contains an illegal sideways step.",
       "spawnCollision": "The piece cannot spawn on the current board.",
-      "horizontalCollision": "The drawn path hits an occupied cell while shifting sideways.",
-      "downwardCollision": "The drawn path pushes the piece below its legal lock point.",
-      "incompletePath": "Keep drawing until the piece reaches its final lock position."
+      "horizontalCollision": "The drafted route hits a filled cell on the visible board while shifting sideways.",
+      "downwardCollision": "The drafted route hits a filled cell on the visible board while moving down.",
+      "incompletePath": "If the route ends here, the piece finishes the remaining fall straight down."
     }
   },
   "fateKnots": {

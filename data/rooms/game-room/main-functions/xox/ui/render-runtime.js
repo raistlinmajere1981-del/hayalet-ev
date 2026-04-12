@@ -186,14 +186,13 @@
       actionPanel.append(
         createElement("p", "xox-panel__label", text(["xox", "topbar", "featureLabel"]))
       );
-      const featurePill = createElement("div", "xox-feature-pill", getFeatureLabel(featureId));
       const inviteFieldLabel = createElement("label", "xox-field", "");
       inviteFieldLabel.append(
         createElement("span", "xox-field__label", text(["xox", "topbar", "inviteMessageLabel"]))
       );
       const inviteField = document.createElement("textarea");
       inviteField.className = "xox-textarea";
-      inviteField.rows = 4;
+      inviteField.rows = 3;
       inviteField.placeholder = text(["xox", "topbar", "inviteMessagePlaceholder"]);
       inviteField.value = state.preferences.inviteMessage;
       inviteField.disabled = state.game.active === true || hasPendingOutgoingInvite;
@@ -224,18 +223,13 @@
       resetButton.disabled = !canReset;
       resetButton.addEventListener("click", stateRuntime.onReset);
       actionGroup.append(startButton, resetButton);
-      actionPanel.append(featurePill, inviteFieldLabel, actionHint, actionGroup);
+      actionPanel.append(inviteFieldLabel, actionHint, actionGroup);
       rail.append(opponentPanel, starterPanel, actionPanel, renderInviteInbox(canRespondToInvites));
       const stage = createElement("section", "xox-stage", "");
-      const scorebar = createElement("div", "xox-scorebar", "");
-      scorebar.append(
-        createStatCard(text(["xox", "board", "statusLabel"]), stateRuntime.getCurrentStatus()),
-        createStatCard(text(["xox", "board", "turnLabel"]), stateRuntime.getTurnLabel()),
-        createStatCard(text(["xox", "board", "resultLabel"]), stateRuntime.getResultLabel()),
-        createStatCard(text(["xox", "board", "symbolsLabel"]), stateRuntime.getSymbolsLabel())
-      );
-      const boardWrap = createElement("div", "xox-board-wrap", "");
-      boardWrap.append(
+      const stageMain = createElement("div", "xox-stage-main", "");
+      const boardDeck = createElement("div", "xox-board-deck", "");
+      const playerStrip = createElement("div", "xox-player-strip", "");
+      playerStrip.append(
         createSeatCard(
           text(["xox", "turns", "user"]),
           state.game.user.nickname || state.context.user.nickname,
@@ -258,8 +252,7 @@
         board.append(cell);
       });
       boardShell.append(board);
-      boardWrap.append(boardShell);
-      boardWrap.append(
+      playerStrip.append(
         createSeatCard(
           text(["xox", "turns", "ai"]),
           displayOpponent.nickname,
@@ -267,16 +260,71 @@
           state.game.awaitingMoveFrom === "ai"
         )
       );
-      const footer = createElement("div", "xox-stage-footer", "");
-      footer.append(
-        createElement("p", "xox-stage-footer__message", stateRuntime.getBoardCaption()),
+      const boardWell = createElement("section", "xox-context-card xox-context-card--board", "");
+      const boardMeta = createElement("div", "xox-board-meta", "");
+      boardMeta.append(
+        createElement("span", "xox-context-card__label", text(["xox", "board", "turnLabel"])),
+        createElement("p", "xox-context-card__lead", stateRuntime.getBoardCaption()),
         createElement(
           "p",
-          "xox-stage-footer__meta",
+          "xox-context-card__meta",
           text(["xox", "board", "cellsLabel"]) + ": " + stateRuntime.getOpenCellsLabel()
+        ),
+        createElement(
+          "p",
+          "xox-context-card__meta",
+          selectedSlot.slotId.toUpperCase() + " • " + stateRuntime.getSlotStatusLabel(selectedSlot)
         )
       );
-      stage.append(scorebar, boardWrap, footer);
+      boardWell.append(boardShell, boardMeta);
+      const supportStack = createElement("div", "xox-support-stack", "");
+      const statusCard = createElement("section", "xox-context-card xox-context-card--status", "");
+      statusCard.append(
+        createElement("span", "xox-context-card__label", text(["xox", "board", "statusLabel"])),
+        createElement("p", "xox-context-card__lead", stateRuntime.getCurrentStatus()),
+        createElement(
+          "p",
+          "xox-context-card__meta",
+          text(["xox", "board", "turnLabel"]) + ": " + stateRuntime.getTurnLabel()
+        ),
+        createElement(
+          "p",
+          "xox-context-card__meta",
+          text(["xox", "board", "resultLabel"]) + ": " + stateRuntime.getResultLabel()
+        )
+      );
+      const matchupCard = createElement("section", "xox-context-card", "");
+      matchupCard.append(
+        createElement("span", "xox-context-card__label", text(["xox", "board", "symbolsLabel"])),
+        createElement(
+          "p",
+          "xox-context-card__lead",
+          (state.game.user.nickname || state.context.user.nickname) + " " + state.game.userSymbol + " • " + displayOpponent.nickname + " " + state.game.aiSymbol
+        ),
+        createElement(
+          "p",
+          "xox-context-card__meta",
+          text(["xox", "topbar", "starterLabel"]) + ": " + stateRuntime.getStarterLabelForCurrentTarget(
+            state.preferences.starter === "ai" ? "ai" : "user"
+          )
+        ),
+        createElement(
+          "p",
+          "xox-context-card__meta",
+          text(["xox", "topbar", "opponentLabel"]) + ": " + displayOpponent.nickname
+        )
+      );
+      const stageStats = createElement("div", "xox-stage-stats", "");
+      stageStats.append(
+        createStatCard(text(["xox", "board", "turnLabel"]), stateRuntime.getTurnLabel()),
+        createStatCard(text(["xox", "board", "resultLabel"]), stateRuntime.getResultLabel()),
+        createStatCard(text(["xox", "board", "symbolsLabel"]), stateRuntime.getSymbolsLabel()),
+        createStatCard(text(["xox", "board", "cellsLabel"]), stateRuntime.getOpenCellsLabel())
+      );
+      boardDeck.append(playerStrip, boardWell);
+      supportStack.append(statusCard, matchupCard, stageStats);
+      stageMain.append(boardDeck, supportStack);
+      stage.append(stageMain);
       arena.append(rail, stage);
       surface.append(arena);
       app.append(surface);

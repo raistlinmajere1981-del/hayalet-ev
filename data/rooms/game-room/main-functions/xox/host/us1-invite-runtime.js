@@ -39,11 +39,35 @@ export function createGameRoomXoxUs1InviteRuntime(deps) {
       return matchesInviteEntry(entry, inviteId, remoteUserId || null);
     }) || null;
   }
+  function buildInviteInboxSnapshotKey(inviteInbox) {
+    return JSON.stringify(
+      inviteInbox.map((entry) => ({
+        roomId: entry.roomId,
+        featureId: entry.featureId,
+        inviteId: entry.inviteId,
+        matchId: entry.matchId,
+        remoteUserId: entry.remoteUserId,
+        nickname: entry.nickname,
+        senderEmail: entry.senderEmail,
+        note: entry.note,
+        starter: entry.starter,
+        localSessionId: entry.localSessionId,
+        conversationId: entry.conversationId,
+        transportMessageId: entry.transportMessageId,
+        sentAt: entry.sentAt
+      }))
+    );
+  }
   function syncInviteInboxFromSnapshot(api, roomInviteInbox) {
+    const currentInviteInbox = loadInviteInbox(api);
     const nextInviteInbox = normalizeInviteInbox(roomInviteInbox).filter(function(entry) {
       return entry.roomId === ROOM_ID && entry.featureId === FEATURE_ID && entry.inviteId !== "" && entry.remoteUserId !== "";
     });
+    if (buildInviteInboxSnapshotKey(currentInviteInbox) === buildInviteInboxSnapshotKey(nextInviteInbox)) {
+      return false;
+    }
     saveInviteInbox(api, nextInviteInbox);
+    return true;
   }
   function removeInviteFromInbox(api, inviteId, remoteUserId) {
     const nextInviteInbox = loadInviteInbox(api).filter(function(entry) {

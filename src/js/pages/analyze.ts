@@ -851,7 +851,11 @@ export class AnalyzeController {
       return currentMatch;
     }
 
-    if (options.currentConversationId === null || options.isNewSelected === true) {
+    if (options.isNewSelected === true) {
+      return null;
+    }
+
+    if (options.currentConversationId === null) {
       return eligibleEvents[eligibleEvents.length - 1] ?? null;
     }
 
@@ -1378,16 +1382,21 @@ export class AnalyzeController {
         isNewSelected,
         composeHasDraft,
       });
+      const preserveExplicitNewSelection = isNewSelected === true && currentSessionId === null;
       const nextConversationId =
-        autoOpenSession?.conversationId ??
-        (sessionEvents.length > 0 && currentConversationId !== null
-          ? currentConversationId
-          : (result.conversationId ?? currentConversationId));
+        preserveExplicitNewSelection === true
+          ? null
+          : (autoOpenSession?.conversationId ??
+            (sessionEvents.length > 0 && currentConversationId !== null
+              ? currentConversationId
+              : (result.conversationId ?? currentConversationId)));
       const nextSessionId =
-        autoOpenSession?.localSessionId ??
-        (nextConversationId === currentConversationId
-          ? (currentSessionId ?? result.localSessionId ?? null)
-          : (result.localSessionId ?? currentSessionId));
+        preserveExplicitNewSelection === true
+          ? currentSessionId
+          : (autoOpenSession?.localSessionId ??
+            (nextConversationId === currentConversationId
+              ? (currentSessionId ?? result.localSessionId ?? null)
+              : (result.localSessionId ?? currentSessionId)));
 
       this._applyUs1PendingSessions(sessionEvents, nextSessionId, nextConversationId);
       this.us1SessionId = nextSessionId;

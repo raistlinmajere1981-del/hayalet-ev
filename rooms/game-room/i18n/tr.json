@@ -88,15 +88,19 @@
       "requirementsLabel": "Baslangic Kapisi",
       "hiddenPairsLabel": "Gizli Esler",
       "hiddenPairsOn": "Esler oyun sonuna kadar gizli",
-      "hiddenPairsOff": "Esleri hemen goster",
+      "hiddenPairsOff": "Esleri belirle",
+      "partnerLabel": "Yerel es sec",
+      "partnerPreviewTitle": "Eslesme Onizlemesi",
+      "partnerPending": "Mac baslamadan once bir takim arkadasi sec.",
+      "partnerHint": "Secilen koltuk USER ile ayni takima gecer. Kalan iki koltuk diger takim olur.",
       "start": "Maci Baslat",
       "reset": "Maci Sifirla",
-      "startHint": "Mac ancak AI1, AI2 ve US1 hazir oldugunda baslar. Canli mac sirasinda gizli es modu reset olana kadar sabit kalir.",
+      "startHint": "Mac ancak AI1, AI2 ve US1 hazir oldugunda baslar. Esler bastan acik olacaksa once yerel es secilmelidir.",
       "requirementReady": "Hazir",
       "requirementWaiting": "Bekleniyor",
       "awaitingTurn": "Yerel kullanicinin tur paketi bekleniyor.",
-      "pathHint": "Parcayi dondur, sonra kendi takim tahtanda asagi inen yolu ciz.",
-      "pathReady": "Taslak yol gecerli ve gonderime hazir.",
+      "pathHint": "Parcayi dondur, sonra gorecegini dusundugun dusus ve kayis yolunu ciz.",
+      "pathReady": "Gorunen tahtaya gore yol hazir. Son belirledigin noktadan sonra parca kendi kendine duz asagi iner.",
       "rotate": "Saat Yonunde Dondur",
       "clearPath": "Yolu Temizle",
       "submitMove": "Hamleyi Gonder",
@@ -104,7 +108,7 @@
       "rotationShort": "Rot",
       "pathEmpty": "Henuz yol yok",
       "pathLegend": "Yol Kurali",
-      "pathRule": "Her asagi adimda sola 1, sabit ya da saga 1 kayilabilir."
+      "pathRule": "Her asagi adimda sola 1, sabit ya da saga 1 kayilabilir. Yol erken bloke olursa parca orada kalir; yol biter ve alti bossa duz asagi dusmeye devam eder."
     },
     "boards": {
       "teamA": "Takim A Tahtasi",
@@ -129,7 +133,7 @@
       "activeFeatureReset": "Takim Tetris ozelliginden cikmak aktif Takim Tetris macini sifirlar.",
       "notImplemented": "Takim Tetris host shell'i hazir. Oynanis turleri sonraki sprintte acilacak.",
       "blocked": "Bu Takim Tetris maci bloke oldu. Toparlamak icin sifirla.",
-      "yourTurn": "Sira sende. Parcayi dondur, yolu ciz ve hamleyi gonder.",
+      "yourTurn": "Sira sende. Parcayi dondur, tahmin ettigin yolu ciz ve hamleyi gonder.",
       "partnerTurnHidden": "Takim arkadasin oynuyor, ama gizli es modu kimligini simdilik sakliyor.",
       "partnerTurn": "Takim arkadasin kendi tahtanda hamle yapiyor.",
       "opponentTurn": "Karsi takim su anda hamle yapiyor.",
@@ -161,9 +165,9 @@
       "partnerUnknown": "Es gizli",
       "partnerOpener": "Gizli acilis oyuncusu",
       "partnerFollowup": "Gizli takip oyuncusu",
-      "revealTitle": "Acilan Eslesmeler",
+      "pairStatusTitle": "Es Durumu",
       "hiddenHint": "Es kimlikleri mac bitene kadar gizli kalir.",
-      "revealedHint": "Randomize eslesmeler artik iki takim icin de acildi."
+      "revealedHint": "Es kimlikleri artik iki takim icin de gorunur."
     },
     "metrics": {
       "turnLabel": "Hamle Sirasi",
@@ -175,9 +179,9 @@
       "invalidRotation": "Bu donus siradaki parca icin gecerli degil.",
       "invalidRowShifts": "Cizilen yol gecersiz bir yatay kayma iceriyor.",
       "spawnCollision": "Parca mevcut tahtada dogamiyor.",
-      "horizontalCollision": "Cizilen yol yatay kayarken dolu bir hucreye carpisiyor.",
-      "downwardCollision": "Cizilen yol parcayi yasal kilit noktasinin altina zorluyor.",
-      "incompletePath": "Parca son kilit konumuna ulasana kadar cizmeye devam et."
+      "horizontalCollision": "Cizilen yol gorunen tahtada yana kayarken dolu bir hucreye carpisiyor.",
+      "downwardCollision": "Cizilen yol gorunen tahtada asagi inerken dolu bir hucreye carpisiyor.",
+      "incompletePath": "Yol burada biterse parca kalan mesafeyi duz asagi kendi tamamlar."
     }
   },
   "fateKnots": {

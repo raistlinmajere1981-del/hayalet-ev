@@ -17,6 +17,7 @@ import { ServerCommands } from "../server-commands.js";
 import { SLOT_BRIDGE_COMMAND_NAME } from "../commands/slot-bridge.js";
 import { RoomCommandRegistry, type RoomCommandHandler } from "./room-command-registry.js";
 import { RoomProtocolRegistry } from "./room-protocol-registry.js";
+import { EXPECTED_COMMAND_CAPTURE_FAILURE_EVENT } from "./expected-command-capture-events.js";
 import {
   buildRoomHostModuleBlobUrl,
   buildRoomHostModuleDataUrl,
@@ -145,8 +146,28 @@ function resolveHostActivator(exported: unknown): RoomHostActivator | null {
   return null;
 }
 
+const EXPECTED_COMMAND_CAPTURE_STATE_KEY = "room.expectedCommandCapture";
+
 class RoomHostRuntimeClass {
   private rooms = new Map<string, RoomHostRegistration>();
+
+  constructor() {
+    window.addEventListener(
+      EXPECTED_COMMAND_CAPTURE_FAILURE_EVENT,
+      this.handleExpectedCommandCaptureFailureEvent as EventListener
+    );
+  }
+
+  private handleExpectedCommandCaptureFailureEvent = (event: Event): void => {
+    const detail = toRecord((event as CustomEvent<unknown>).detail);
+    this.reportExpectedCommandCaptureFailure(
+      typeof detail["provider"] === "string" ? detail["provider"] : "",
+      {
+        ...(typeof detail["webUrl"] === "string" ? { webUrl: detail["webUrl"] } : {}),
+        ...(typeof detail["text"] === "string" ? { text: detail["text"] } : {}),
+      }
+    );
+  };
 
   async ensureRoomHost(room: InstalledRoomRecord, bridge: RoomBridge): Promise<boolean> {
     let registration = this.rooms.get(room.id);
@@ -194,6 +215,68 @@ class RoomHostRuntimeClass {
         void this.disposeRoom(roomId);
       }
     });
+  }
+
+  reportExpectedCommandCaptureFailure(
+    provider: string,
+    details: {
+      webUrl?: string;
+      text?: string;
+    } = {}
+  ): boolean {
+    const normalizedProvider = provider.trim();
+    if (normalizedProvider === "") {
+      return false;
+    }
+
+    for (const registration of this.rooms.values()) {
+      const expectation = toRecord(registration.state.get(EXPECTED_COMMAND_CAPTURE_STATE_KEY));
+      if (expectation["provider"] !== normalizedProvider) {
+        continue;
+      }
+
+      registration.state.delete(EXPECTED_COMMAND_CAPTURE_STATE_KEY);
+      const api = this.createApi(registration);
+      const message =
+        typeof expectation["message"] === "string" && expectation["message"].trim() !== ""
+          ? expectation["message"].trim()
+          : "The latest reply did not contain a valid command.";
+      const commandName =
+        typeof expectation["commandName"] === "string" && expectation["commandName"].trim() !== ""
+          ? expectation["commandName"].trim()
+          : "RoomCommand";
+      const detailParts = [
+        `command=${commandName}`,
+        `provider=${normalizedProvider}`,
+        ...(typeof details.webUrl === "string" && details.webUrl.trim() !== ""
+          ? [`webUrl=${details.webUrl.trim()}`]
+          : []),
+      ].join(", ");
+      const replyExcerpt =
+        typeof details.text === "string" && details.text.trim() !== ""
+          ? details.text.trim().replace(/\s+/g, " ").slice(0, 160)
+          : "";
+      const logMessage = [
+        `Expected room command could not be captured (${detailParts}): ${message}`,
+        ...(replyExcerpt !== "" ? [`reply=${replyExcerpt}`] : []),
+      ].join(" | ");
+
+      api.notifyRoom("command-result", {
+        command: commandName,
+        result: {
+          success: false,
+          message,
+        },
+      });
+      api.showToast({
+        type: "warning",
+        message,
+      });
+      api.log("warn", logMessage);
+      return true;
+    }
+
+    return false;
   }
 
   async handleRuntimeMessage(roomId: string, channel: string, payload: unknown): Promise<void> {

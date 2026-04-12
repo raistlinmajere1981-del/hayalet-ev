@@ -580,6 +580,7 @@ export class Us1Panel {
           typeof result.conversationId === "string" ? result.conversationId : null,
         sessionEvents: Array.isArray(result.sessionEvents) ? result.sessionEvents : [],
         targetRemoteUserId: selectedBinding.remoteUserId,
+        preserveExplicitNewSelection: true,
       });
       await ConversationListManager.refresh({
         silent: true,
@@ -645,6 +646,7 @@ export class Us1Panel {
         targetRemoteUserId:
           AppState.getUs1Identity()?.remoteUserId ??
           (typeof result.remoteUserId === "string" ? result.remoteUserId : null),
+        preserveExplicitNewSelection: true,
       });
       await ConversationListManager.refresh({
         silent: true,

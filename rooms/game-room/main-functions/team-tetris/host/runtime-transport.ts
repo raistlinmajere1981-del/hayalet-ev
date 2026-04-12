@@ -1,7 +1,10 @@
 import { saveTeamTetrisState, type TeamTetrisHostState, type TeamTetrisStateApi } from "./state.js";
 import { loadContext } from "../../../shared/host/context-state.js";
 import { ROOM_ID, TEAM_TETRIS_FEATURE_ID } from "../../../shared/host/feature-meta.js";
-import { buildTeamTetrisRemoteMoveText } from "./runtime-protocol.js";
+import {
+  buildTeamTetrisRemoteMoveText,
+  buildTeamTetrisRemoteStartText,
+} from "./runtime-protocol.js";
 import { buildUs1RoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
 import type { TeamTetrisMovePayload } from "./engine.js";
 
@@ -55,7 +58,10 @@ async function sendUs1MessageSafe(
 
 async function sendTeamTetrisRemoteStart(
   api: TeamTetrisTransportApi,
-  state: TeamTetrisHostState
+  state: TeamTetrisHostState,
+  options: {
+    selectedPartnerSeatId?: string | null;
+  } = {}
 ): Promise<TeamTetrisRemoteSendResult> {
   const context = loadContext(api);
   const remoteUserId = context.slots.us1.remoteUserId || state.remoteUserId;
@@ -70,7 +76,10 @@ async function sendTeamTetrisRemoteStart(
 
   const sendResult = await sendUs1MessageSafe(api, {
     localSessionId: state.localSessionId,
-    text: "Team Tetris match started.",
+    text: buildTeamTetrisRemoteStartText(state.match, {
+      hiddenPairs: state.match.hiddenPairs,
+      selectedPartnerSeatId: options.selectedPartnerSeatId || null,
+    }),
     roomEvent: {
       roomId: ROOM_ID,
       featureId: TEAM_TETRIS_FEATURE_ID,
@@ -81,6 +90,10 @@ async function sendTeamTetrisRemoteStart(
         seed: state.match.seed,
         hiddenPairs: state.match.hiddenPairs,
         revealPairsOnFinish: state.match.revealPairsOnFinish,
+        ...(typeof options.selectedPartnerSeatId === "string" &&
+        options.selectedPartnerSeatId !== ""
+          ? { selectedPartnerSeatId: options.selectedPartnerSeatId }
+          : {}),
       }),
     },
   });

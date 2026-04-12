@@ -5,6 +5,7 @@ import {
   TEAM_TETRIS_BOARD_WIDTH,
   TEAM_TETRIS_SCHEMA_VERSION,
   TEAM_TETRIS_TURN_LOOP,
+  type TeamTetrisSeatId,
   type TeamTetrisSeatView,
   type TeamTetrisTeamId,
   type TeamTetrisTurn,
@@ -29,8 +30,8 @@ import { loadState, pushRoomState } from "../../xox/host/state.js";
 import { loadFateKnotsState, pushFateKnotsState } from "../../fate-knots/host/state.js";
 import { loadFateKnotsContentRegistry } from "../../fate-knots/host/content-loader.js";
 
-type TeamTetrisSeatId = "ai1" | "ai2" | "us1";
-type TeamTetrisSeatReadiness = Record<TeamTetrisSeatId, boolean>;
+type TeamTetrisRequiredSeatId = Exclude<TeamTetrisSeatId, "user">;
+type TeamTetrisSeatReadiness = Record<TeamTetrisRequiredSeatId, boolean>;
 type TeamTetrisContext = ReturnType<typeof loadContext>;
 
 interface TeamTetrisRuntimeSyncApi extends TeamTetrisStateApi {
@@ -72,6 +73,10 @@ interface TeamTetrisSerializedState {
   teams: { teamId: TeamTetrisTeamId; seatIds: string[] }[] | null;
   userView: TeamTetrisSeatView | null;
   status: string;
+}
+
+function resolveTeamTetrisLocalSeatId(state: TeamTetrisHostState): TeamTetrisSeatId {
+  return state.localSeatId === "us1" ? "us1" : "user";
 }
 
 function isKnownTeamTetrisStatusKey(value: unknown): value is TeamTetrisStatusKey {
@@ -124,7 +129,8 @@ function serializeTeamTetrisState(
   const readiness = getTeamTetrisReadiness(context);
   const canStart = readiness.ai1 && readiness.ai2 && readiness.us1;
   const savedState = saveTeamTetrisState(api, state);
-  const userView = savedState.match ? buildTeamTetrisSeatView(savedState.match, "user") : null;
+  const localSeatId = resolveTeamTetrisLocalSeatId(savedState);
+  const userView = savedState.match ? buildTeamTetrisSeatView(savedState.match, localSeatId) : null;
   const boardSnapshots: TeamTetrisBoardSnapshot[] =
     userView !== null
       ? [

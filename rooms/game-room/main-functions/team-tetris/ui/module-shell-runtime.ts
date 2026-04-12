@@ -14,7 +14,6 @@
     const text = deps.text;
     const render = deps.render;
     const getFeatureLabel = deps.getFeatureLabel;
-    const createTeamTetrisMetric = deps.createTeamTetrisMetric;
     const createTeamTetrisPieceCard = deps.createTeamTetrisPieceCard;
     const createTeamTetrisRequirementCard = deps.createTeamTetrisRequirementCard;
     const createTeamTetrisSnapshotCard = deps.createTeamTetrisSnapshotCard;
@@ -44,6 +43,47 @@
       return button;
     }
 
+    function readSelectedPartnerSeatId(state: GameRoomUiState): string | null {
+      const selectedPartnerSeatId = state.preferences.teamTetrisSelectedPartnerSeatId;
+      return selectedPartnerSeatId === "ai1" ||
+        selectedPartnerSeatId === "ai2" ||
+        selectedPartnerSeatId === "us1"
+        ? selectedPartnerSeatId
+        : null;
+    }
+
+    function getTeamTetrisNeutralSeatLabel(seatId: string): string {
+      return seatId.trim() !== "" ? seatId.trim().toUpperCase() : "???";
+    }
+
+    function buildTeamTetrisSelectionPreview(selectedPartnerSeatId: string): string[] {
+      const remainingPair = ["ai1", "ai2", "us1"].filter(function (seatId) {
+        return seatId !== selectedPartnerSeatId;
+      });
+      return [
+        "USER + " + getTeamTetrisNeutralSeatLabel(selectedPartnerSeatId),
+        remainingPair.map(getTeamTetrisNeutralSeatLabel).join(" + "),
+      ];
+    }
+
+    function buildTeamTetrisPairStatusLines(state: GameRoomUiState): string[] {
+      if (Array.isArray(state.teamTetris.teams) && state.teamTetris.teams.length > 0) {
+        return state.teamTetris.teams.map(function (team: GameRoomTeamTetrisTeamRecord) {
+          return (
+            getTeamTetrisBoardLabel(team.teamId) +
+            ": " +
+            team.seatIds.map(getTeamTetrisNeutralSeatLabel).join(" + ")
+          );
+        });
+      }
+
+      if (state.teamTetris.hiddenPairs === true) {
+        return [text(["teamTetris", "roster", "hiddenHint"])];
+      }
+
+      return [text(["teamTetris", "roster", "revealedHint"])];
+    }
+
     function renderTeamTetris(root: HTMLElement): void {
       const state = getState();
       document.title = state.context.room.name + " - " + getFeatureLabel(featureId);
@@ -52,10 +92,40 @@
       const pendingTurn = getTeamTetrisPendingTurn();
       const ownBoard = getTeamTetrisOwnBoardState();
       const opponentBoard = getTeamTetrisOpponentBoardState();
+      const hiddenPairs = state.preferences.teamTetrisHiddenPairs !== false;
+      const selectedPartnerSeatId = readSelectedPartnerSeatId(state);
+      const draftPreview = state.teamTetrisDraft.preview;
+      const draftCanSubmit =
+        draftPreview !== null &&
+        draftPreview.success === true &&
+        draftPreview.pathComplete === true;
+      const draftOverlayCells =
+        draftPreview && Array.isArray(draftPreview.cells) ? draftPreview.cells : [];
+      const draftPathCells =
+        draftPreview && Array.isArray(draftPreview.pathCells) ? draftPreview.pathCells : [];
+      const draftPathTail: GameRoomTeamTetrisCell | null =
+        draftPathCells.length > 1 ? draftPathCells[draftPathCells.length - 1] || null : null;
+      const draftPathBeforeTail: GameRoomTeamTetrisCell | null =
+        draftPathCells.length > 1 ? draftPathCells[draftPathCells.length - 2] || null : null;
+      const hasHorizontalTail =
+        draftPathTail !== null &&
+        draftPathBeforeTail !== null &&
+        draftPathTail.y === draftPathBeforeTail.y &&
+        draftPathTail.x !== draftPathBeforeTail.x;
+      const draftPathTurnCell: GameRoomTeamTetrisCell | null = hasHorizontalTail
+        ? draftPathTail
+        : null;
+      const draftPathLineCells = hasHorizontalTail ? draftPathCells.slice(0, -1) : draftPathCells;
+      const draftOverlayTone = draftCanSubmit ? "draft-valid" : "draft-blocked";
+      const draftPathTone = draftCanSubmit ? "trace-valid" : "trace-blocked";
+      const draftPathTurnTone = draftCanSubmit ? "trace-valid-turn" : "trace-blocked-turn";
       const canConfigureMatch =
         state.teamTetris.active !== true && state.teamTetris.result !== "pending";
-      const canStart = state.teamTetris.canStart === true && canConfigureMatch;
-      const canSubmitMove = pendingTurn !== null && state.teamTetrisDraft.preview !== null;
+      const canStart =
+        state.teamTetris.canStart === true &&
+        canConfigureMatch &&
+        (hiddenPairs === true || selectedPartnerSeatId !== null);
+      const canSubmitMove = pendingTurn !== null && draftCanSubmit;
 
       const app = createElement("main", "tt-shell", "");
       app.dataset["presentationMode"] = state.presentation.mode;
@@ -75,8 +145,12 @@
         )
       );
 
-      const roster = createElement("section", "tt-panel", "");
-      roster.append(
+      const roster = createElement("section", "tt-panel tt-panel--overview", "");
+      const overviewGrid = createElement("div", "tt-overview-grid", "");
+      const overviewCopy = createElement("div", "tt-overview-copy", "");
+      const readinessGrid = createElement("div", "tt-requirement-grid", "");
+
+      overviewCopy.append(
         createElement("p", "tt-panel__label", text(["teamTetris", "roster", "title"])),
         createElement(
           "p",
@@ -93,18 +167,22 @@
           text(["teamTetris", "roster", "partnerLabel"]) + ": " + getTeamTetrisPartnerRoleLabel()
         )
       );
-
-      const requirements = createElement("section", "tt-panel", "");
-      requirements.append(
-        createElement(
-          "p",
-          "tt-panel__label",
-          text(["teamTetris", "controls", "requirementsLabel"])
-        ),
+      readinessGrid.append(
         createTeamTetrisRequirementCard("ai1", state.teamTetris.requiredSlots.ai1 === true),
         createTeamTetrisRequirementCard("ai2", state.teamTetris.requiredSlots.ai2 === true),
         createTeamTetrisRequirementCard("us1", state.teamTetris.requiredSlots.us1 === true)
       );
+      overviewGrid.append(overviewCopy, readinessGrid);
+      roster.append(overviewGrid);
+
+      if (state.teamTetris.matchId || state.teamTetris.active === true) {
+        roster.append(
+          createElement("p", "tt-panel__label", text(["teamTetris", "roster", "pairStatusTitle"]))
+        );
+        buildTeamTetrisPairStatusLines(state).forEach(function (line: string) {
+          roster.append(createElement("p", "tt-panel__body", line));
+        });
+      }
 
       const controls = createElement("section", "tt-panel", "");
       controls.append(
@@ -120,14 +198,56 @@
       hiddenToggleOptions.forEach(function (entry: { value: boolean; label: string }) {
         const button = createButton("tt-toggle", entry.label);
         button.disabled = !canConfigureMatch;
-        button.dataset["selected"] =
-          state.preferences.teamTetrisHiddenPairs === entry.value ? "true" : "false";
+        button.dataset["selected"] = hiddenPairs === entry.value ? "true" : "false";
         button.addEventListener("click", function () {
           state.preferences.teamTetrisHiddenPairs = entry.value;
           render();
         });
         hiddenChoices.append(button);
       });
+
+      controls.append(hiddenChoices);
+
+      if (hiddenPairs !== true) {
+        const partnerChoices = createElement("div", "tt-partner-row", "");
+        (["ai1", "ai2", "us1"] as const).forEach(function (seatId) {
+          const button = createButton("tt-toggle", getTeamTetrisSeatDisplayLabel(seatId));
+          button.disabled = !canConfigureMatch;
+          button.dataset["selected"] = selectedPartnerSeatId === seatId ? "true" : "false";
+          button.addEventListener("click", function () {
+            state.preferences.teamTetrisSelectedPartnerSeatId = seatId;
+            render();
+          });
+          partnerChoices.append(button);
+        });
+
+        const previewCard = createElement("div", "tt-pairing-preview", "");
+        previewCard.append(
+          createElement(
+            "p",
+            "tt-panel__label",
+            text(["teamTetris", "controls", "partnerPreviewTitle"])
+          )
+        );
+        if (selectedPartnerSeatId) {
+          buildTeamTetrisSelectionPreview(selectedPartnerSeatId).forEach(function (line: string) {
+            previewCard.append(createElement("p", "tt-panel__body", line));
+          });
+        } else {
+          previewCard.append(
+            createElement("p", "tt-panel__body", text(["teamTetris", "controls", "partnerPending"]))
+          );
+        }
+        previewCard.append(
+          createElement("p", "tt-panel__hint", text(["teamTetris", "controls", "partnerHint"]))
+        );
+
+        controls.append(
+          createElement("p", "tt-panel__label", text(["teamTetris", "controls", "partnerLabel"])),
+          partnerChoices,
+          previewCard
+        );
+      }
 
       const actions = createElement("div", "tt-actions", "");
       const startButton = createButton(
@@ -145,87 +265,65 @@
 
       actions.append(startButton, resetButton);
       controls.append(
-        hiddenChoices,
         createElement("p", "tt-panel__hint", text(["teamTetris", "controls", "startHint"])),
         actions
       );
+      rail.append(intro, roster, controls);
 
-      if (state.teamTetris.teams && state.teamTetris.teams.length > 0) {
-        const reveal = createElement("section", "tt-panel", "");
-        reveal.append(
-          createElement("p", "tt-panel__label", text(["teamTetris", "roster", "revealTitle"]))
-        );
-
-        state.teamTetris.teams.forEach(function (team: GameRoomTeamTetrisTeamRecord) {
-          const revealedSeatLabels = team.seatIds.map(function (seatId: string) {
-            return getTeamTetrisSeatDisplayLabel(seatId);
-          });
-
-          reveal.append(
-            createElement(
-              "p",
-              "tt-panel__body",
-              getTeamTetrisBoardLabel(team.teamId) +
-                ": " +
-                (revealedSeatLabels.length > 0
-                  ? revealedSeatLabels.join(" + ")
-                  : text(["teamTetris", "turns", "idle"]))
-            )
-          );
-        });
-
-        rail.append(intro, roster, requirements, controls, reveal);
-      } else {
-        rail.append(intro, roster, requirements, controls);
-      }
-
-      const scorebar = createElement("div", "tt-scorebar", "");
-      scorebar.append(
-        createTeamTetrisMetric(
-          text(["teamTetris", "metrics", "turnLabel"]),
-          getTeamTetrisTurnLabel()
-        ),
-        createTeamTetrisMetric(
-          text(["teamTetris", "metrics", "resultLabel"]),
-          getTeamTetrisResultLabel()
-        ),
-        createTeamTetrisMetric(
-          text(["teamTetris", "controls", "hiddenPairsLabel"]),
-          state.teamTetris.hiddenPairs
-            ? text(["teamTetris", "controls", "hiddenPairsOn"])
-            : text(["teamTetris", "controls", "hiddenPairsOff"])
-        ),
-        createTeamTetrisMetric(
-          text(["teamTetris", "boards", "seedLabel"]),
-          state.teamTetris.board.seedLabel
-        ),
-        createTeamTetrisMetric(
-          text(["teamTetris", "metrics", "roleLabel"]),
-          view
-            ? text(["teamTetris", "roles", view.seat.role])
-            : text(["teamTetris", "turns", "idle"])
-        ),
-        createTeamTetrisMetric(
-          text(["teamTetris", "metrics", "draftLabel"]),
-          state.teamTetrisDraft.rowShifts.length > 0
-            ? state.teamTetrisDraft.rowShifts.join(",")
-            : text(["teamTetris", "controls", "pathEmpty"])
-        )
+      const stageMain = createElement("div", "tt-stage-main", "");
+      const supportStack = createElement("div", "tt-support-stack", "");
+      const supportPair = createElement("div", "tt-support-pair", "");
+      const statusPanel = createElement("section", "tt-context-card tt-context-card--status", "");
+      const rotationPanel = createTeamTetrisPieceCard(
+        text(["teamTetris", "boards", "currentPiece"]),
+        pendingTurn ? pendingTurn.pieceId : "",
+        state.teamTetrisDraft.rotation,
+        ""
+      );
+      const snapshotCard = createTeamTetrisSnapshotCard(
+        text(["teamTetris", "boards", "beforePartner"]),
+        ownBoard.boardBeforePartnerPieceRows
+      );
+      const partnerPieceCard = createTeamTetrisPieceCard(
+        text(["teamTetris", "boards", "partnerPiece"]),
+        ownBoard.partnerLastPiece ? ownBoard.partnerLastPiece.pieceId : "",
+        ownBoard.partnerLastPiece ? ownBoard.partnerLastPiece.rotation : 0,
+        getTeamTetrisPlacedByLabel(ownBoard.partnerLastPiece)
       );
 
-      const rotationPanel = createElement("section", "tt-context-card", "");
-      rotationPanel.append(
+      rotationPanel.className = `${rotationPanel.className} tt-context-card--controls`.trim();
+      rotationPanel.dataset["variant"] = "current-piece";
+      snapshotCard.dataset["variant"] = "snapshot";
+      partnerPieceCard.dataset["variant"] = "partner";
+      statusPanel.append(
+        createElement("span", "tt-context-card__label", text(["teamTetris", "heroBadge"])),
+        createElement("p", "tt-context-card__lead", getTeamTetrisStatusText()),
         createElement(
-          "span",
-          "tt-context-card__label",
-          text(["teamTetris", "controls", "rotationLabel"])
+          "p",
+          "tt-context-card__meta",
+          text(["teamTetris", "metrics", "turnLabel"]) +
+            ": " +
+            getTeamTetrisTurnLabel() +
+            " • " +
+            text(["teamTetris", "metrics", "resultLabel"]) +
+            ": " +
+            getTeamTetrisResultLabel()
         ),
-        createTeamTetrisPieceCard(
-          text(["teamTetris", "boards", "currentPiece"]),
-          pendingTurn ? pendingTurn.pieceId : "",
-          state.teamTetrisDraft.rotation,
-          getTeamTetrisDraftStatusText()
-        )
+        createElement(
+          "p",
+          "tt-context-card__meta",
+          text(["teamTetris", "controls", "pathLegend"]) +
+            ": " +
+            text(["teamTetris", "controls", "pathRule"])
+        ),
+        createElement(
+          "p",
+          "tt-context-card__meta",
+          view && view.hiddenPairs === true && view.revealedPairs !== true
+            ? text(["teamTetris", "roster", "hiddenHint"])
+            : text(["teamTetris", "roster", "revealedHint"])
+        ),
+        createElement("p", "tt-context-card__meta", text(["teamTetris", "boards", "publicHint"]))
       );
 
       const rotationChoices = createElement("div", "tt-rotation-row", "");
@@ -263,21 +361,13 @@
       submitButton.addEventListener("click", onTeamTetrisSubmit);
 
       draftActions.append(clearButton, rotateButton, submitButton);
-      rotationPanel.append(rotationChoices, draftActions);
-
-      const ownContext: HTMLElement[] = [
-        createTeamTetrisSnapshotCard(
-          text(["teamTetris", "boards", "beforePartner"]),
-          ownBoard.boardBeforePartnerPieceRows
-        ),
-        createTeamTetrisPieceCard(
-          text(["teamTetris", "boards", "partnerPiece"]),
-          ownBoard.partnerLastPiece ? ownBoard.partnerLastPiece.pieceId : "",
-          ownBoard.partnerLastPiece ? ownBoard.partnerLastPiece.rotation : 0,
-          getTeamTetrisPlacedByLabel(ownBoard.partnerLastPiece)
-        ),
-        rotationPanel,
-      ];
+      rotationPanel.append(
+        rotationChoices,
+        draftActions,
+        createElement("p", "tt-context-card__hint", getTeamTetrisDraftStatusText())
+      );
+      supportPair.append(snapshotCard, partnerPieceCard);
+      supportStack.append(statusPanel, rotationPanel, supportPair);
 
       const boardGrid = createElement("div", "tt-board-grid", "");
       boardGrid.append(
@@ -285,53 +375,23 @@
           tone: "private",
           meta: text(["teamTetris", "boards", "privateBoard"]),
           interactive: pendingTurn !== null,
-          overlayCells: state.teamTetrisDraft.preview ? state.teamTetrisDraft.preview.cells : [],
-          overlayTone: "draft",
+          overlayCells: draftOverlayCells,
+          overlayTone: draftOverlayTone,
           overlayPieceId: pendingTurn ? pendingTurn.pieceId : "",
-          context: ownContext,
+          pathCells: draftPathLineCells,
+          pathTone: draftPathTone,
+          pathTurnCell: draftPathTurnCell,
+          pathTurnTone: draftPathTurnTone,
         }),
         renderTeamTetrisBoardCard(opponentBoard, {
           tone: "public",
           meta: text(["teamTetris", "boards", "publicBoard"]),
           interactive: false,
-          context: [
-            createTeamTetrisPieceCard(
-              text(["teamTetris", "boards", "publicSummary"]),
-              "",
-              0,
-              text(["teamTetris", "boards", "publicHint"])
-            ),
-          ],
         })
       );
 
-      const footer = createElement("div", "tt-stage-footer", "");
-      footer.append(
-        createElement("p", "tt-stage-footer__message", getTeamTetrisStatusText()),
-        createElement(
-          "p",
-          "tt-stage-footer__meta",
-          text(["teamTetris", "controls", "pathLegend"]) +
-            ": " +
-            text(["teamTetris", "controls", "pathRule"])
-        )
-      );
-
-      if (view && view.hiddenPairs === true && view.revealedPairs !== true) {
-        footer.append(
-          createElement("p", "tt-stage-footer__meta", text(["teamTetris", "roster", "hiddenHint"]))
-        );
-      } else {
-        footer.append(
-          createElement(
-            "p",
-            "tt-stage-footer__meta",
-            text(["teamTetris", "roster", "revealedHint"])
-          )
-        );
-      }
-
-      stage.append(scorebar, boardGrid, footer);
+      stageMain.append(boardGrid, supportStack);
+      stage.append(stageMain);
       arena.append(rail, stage);
       surface.append(arena);
       app.append(surface);

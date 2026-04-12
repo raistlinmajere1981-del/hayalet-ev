@@ -247,6 +247,86 @@
       });
     }
 
+    function pushUniqueTeamTetrisPathCell(
+      pathCells: GameRoomTeamTetrisCell[],
+      pieceId: string,
+      rotation: number,
+      originX: number,
+      originY: number
+    ): void {
+      const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
+      const traceCell = {
+        x: clampNumber(
+          originX + Math.floor((Math.max(bounds.width, 1) - 1) / 2),
+          0,
+          BOARD_WIDTH - 1
+        ),
+        y: clampNumber(
+          originY + Math.floor((Math.max(bounds.height, 1) - 1) / 2),
+          0,
+          BOARD_HEIGHT - 1
+        ),
+      };
+      const lastCell = pathCells[pathCells.length - 1];
+      if (lastCell && lastCell.x === traceCell.x && lastCell.y === traceCell.y) {
+        return;
+      }
+      pathCells.push(traceCell);
+    }
+
+    function buildSimplifiedTeamTetrisPathCells(
+      pieceId: string,
+      rotation: number,
+      rowShifts: number[],
+      preview: GameRoomTeamTetrisDraftReplayResult
+    ): GameRoomTeamTetrisCell[] {
+      if (preview.success !== true) {
+        return [];
+      }
+
+      const bounds = getTeamTetrisPieceBounds(pieceId, rotation);
+      const spawn = getTeamTetrisSpawnPosition(pieceId, rotation);
+      const centerOffsetX = Math.floor((Math.max(bounds.width, 1) - 1) / 2);
+      const centerOffsetY = Math.floor((Math.max(bounds.height, 1) - 1) / 2);
+      const finalCenterX = clampNumber(preview.x + centerOffsetX, 0, BOARD_WIDTH - 1);
+      const finalCenterY = clampNumber(preview.y + centerOffsetY, 0, BOARD_HEIGHT - 1);
+      const pathCells: GameRoomTeamTetrisCell[] = [];
+      const totalHorizontalIntent = rowShifts.reduce(function (sum: number, shift: number) {
+        return sum + shift;
+      }, 0);
+      const spawnCenterX = clampNumber(spawn.x + centerOffsetX, 0, BOARD_WIDTH - 1);
+      const horizontalDirection =
+        totalHorizontalIntent !== 0
+          ? totalHorizontalIntent > 0
+            ? 1
+            : -1
+          : finalCenterX === spawnCenterX
+            ? 0
+            : finalCenterX > spawnCenterX
+              ? 1
+              : -1;
+
+      for (let rowIndex = centerOffsetY; rowIndex <= finalCenterY; rowIndex += 1) {
+        pathCells.push({
+          x: finalCenterX,
+          y: rowIndex,
+        });
+      }
+
+      if (horizontalDirection !== 0) {
+        const branchX = clampNumber(finalCenterX - horizontalDirection, 0, BOARD_WIDTH - 1);
+        const lastCell = pathCells[pathCells.length - 1] || null;
+        if (!lastCell || lastCell.x !== branchX || lastCell.y !== finalCenterY) {
+          pathCells.push({
+            x: branchX,
+            y: finalCenterY,
+          });
+        }
+      }
+
+      return pathCells;
+    }
+
     function replayTeamTetrisDraft(
       rows: string[],
       pieceId: string,
@@ -274,32 +354,64 @@
 
       let x = spawn.x;
       let y = spawn.y;
+      const pathCells: GameRoomTeamTetrisCell[] = [];
+      pushUniqueTeamTetrisPathCell(pathCells, pieceId, rotation, x, y);
 
       for (let index = 0; index < rowShifts.length; index += 1) {
         const shift = rowShifts[index] ?? 0;
         if (shift !== 0) {
           if (doesTeamTetrisPieceCollide(rows, pieceId, rotation, x + shift, y)) {
-            return { success: false, reason: "horizontalCollision", stepIndex: index };
+            return {
+              success: true,
+              x: x,
+              y: y,
+              rotation: rotation,
+              cells: getTeamTetrisPlacedCells(pieceId, rotation, x, y),
+              pathCells: pathCells,
+              pathComplete: false,
+              autoDropDistance: 0,
+              blockedReason: "horizontalCollision",
+              stepIndex: index,
+            };
           }
           x += shift;
         }
 
         if (doesTeamTetrisPieceCollide(rows, pieceId, rotation, x, y + 1)) {
-          return { success: false, reason: "downwardCollision", stepIndex: index };
+          return {
+            success: true,
+            x: x,
+            y: y,
+            rotation: rotation,
+            cells: getTeamTetrisPlacedCells(pieceId, rotation, x, y),
+            pathCells: pathCells,
+            pathComplete: false,
+            autoDropDistance: 0,
+            blockedReason: "downwardCollision",
+            stepIndex: index,
+          };
         }
 
         y += 1;
+        pushUniqueTeamTetrisPathCell(pathCells, pieceId, rotation, x, y);
       }
 
-      if (!doesTeamTetrisPieceCollide(rows, pieceId, rotation, x, y + 1)) {
-        return { success: false, reason: "incompletePath" };
+      let autoDropDistance = 0;
+      while (!doesTeamTetrisPieceCollide(rows, pieceId, rotation, x, y + 1)) {
+        y += 1;
+        autoDropDistance += 1;
+        pushUniqueTeamTetrisPathCell(pathCells, pieceId, rotation, x, y);
       }
 
       return {
         success: true,
         x: x,
         y: y,
+        rotation: rotation,
         cells: getTeamTetrisPlacedCells(pieceId, rotation, x, y),
+        pathCells: pathCells,
+        pathComplete: true,
+        autoDropDistance: autoDropDistance,
       };
     }
 
@@ -347,27 +459,6 @@
       return rowShifts;
     }
 
-    function normalizeTeamTetrisPreview(
-      pieceId: string,
-      rotation: number,
-      rowShifts: number[]
-    ): { rowShifts: number[]; preview: GameRoomTeamTetrisDraftReplayResult } {
-      const ownBoard = getTeamTetrisOwnBoardState();
-      let nextRowShifts = rowShifts.slice();
-      let preview = replayTeamTetrisDraft(ownBoard.rows, pieceId, rotation, nextRowShifts);
-
-      while (
-        nextRowShifts.length > 0 &&
-        preview.success !== true &&
-        preview.reason === "downwardCollision"
-      ) {
-        nextRowShifts = nextRowShifts.slice(0, -1);
-        preview = replayTeamTetrisDraft(ownBoard.rows, pieceId, rotation, nextRowShifts);
-      }
-
-      return { rowShifts: nextRowShifts, preview: preview };
-    }
-
     function refreshTeamTetrisDraftPreview(): void {
       const state = getState();
       const pendingTurn = getTeamTetrisPendingTurn();
@@ -377,17 +468,37 @@
         return;
       }
 
-      const normalized = normalizeTeamTetrisPreview(
+      if (Object.keys(state.teamTetrisDraft.dragTargets).length === 0) {
+        state.teamTetrisDraft.preview = null;
+        state.teamTetrisDraft.errorKey = "";
+        return;
+      }
+
+      const ownBoard = getTeamTetrisOwnBoardState();
+      const preview = replayTeamTetrisDraft(
+        ownBoard.rows,
         pendingTurn.pieceId,
         state.teamTetrisDraft.rotation,
         state.teamTetrisDraft.rowShifts
       );
 
-      state.teamTetrisDraft.rowShifts = normalized.rowShifts;
       state.teamTetrisDraft.preview =
-        normalized.preview.success === true ? normalized.preview : null;
+        preview.success === true
+          ? Object.assign({}, preview, {
+              pathCells: buildSimplifiedTeamTetrisPathCells(
+                pendingTurn.pieceId,
+                state.teamTetrisDraft.rotation,
+                state.teamTetrisDraft.rowShifts,
+                preview
+              ),
+            })
+          : preview;
       state.teamTetrisDraft.errorKey =
-        normalized.preview.success === true ? "" : normalized.preview.reason;
+        preview.success === true
+          ? preview.pathComplete === true
+            ? ""
+            : preview.blockedReason || ""
+          : preview.reason;
     }
 
     function getInitialRotation(pendingTurn: GameRoomTeamTetrisPendingTurn): number {
@@ -535,6 +646,12 @@
       const pendingTurn = getTeamTetrisPendingTurn();
 
       if (!pendingTurn || !state.teamTetrisDraft.preview) {
+        return;
+      }
+      if (
+        state.teamTetrisDraft.preview.success !== true ||
+        state.teamTetrisDraft.preview.pathComplete !== true
+      ) {
         return;
       }
 

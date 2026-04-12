@@ -1,12 +1,22 @@
 import {
   buildTeamTetrisSeatView,
+  getTeamTetrisSpawnPosition,
+  TEAM_TETRIS_BOARD_HEIGHT,
+  TEAM_TETRIS_BOARD_WIDTH,
+  TEAM_TETRIS_MOVE_SCHEMA,
   TEAM_TETRIS_SCHEMA_VERSION
 } from "./engine.js";
+import { TEAM_TETRIS_PIECES } from "./engine-schema.js";
 import { TEAM_TETRIS_COMMAND_COPY } from "./state.js";
 import { fillTemplate, translate } from "../../../shared/host/text.js";
 import { buildRoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
+const TEAM_TETRIS_PATH_SHIFTS = [-1, 0, 1];
+const TEAM_TETRIS_PIECE_MAP = TEAM_TETRIS_PIECES;
 function isRecord(value) {
   return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+function isTeamTetrisPieceId(value) {
+  return value === "I" || value === "O" || value === "T" || value === "S" || value === "Z" || value === "J" || value === "L";
 }
 function teamTetrisCommandMessage(locale, key, params = {}) {
   return fillTemplate(translate(locale, TEAM_TETRIS_COMMAND_COPY, key), params);
@@ -24,6 +34,40 @@ function buildTeamTetrisProtocolScenario(match) {
   const currentTurn = match?.currentTurn ?? null;
   return currentTurn?.role === "followup" ? "team-tetris-ai-followup" : "team-tetris-ai-opening";
 }
+function formatTeamTetrisSeatToken(seatId) {
+  return typeof seatId === "string" && seatId.trim() !== "" ? seatId.trim().toUpperCase() : "???";
+}
+function deriveCreatorPartnerSeatId(match) {
+  if (!match) {
+    return null;
+  }
+  const teamWithUser = match.teams["team-a"].seatIds.includes("user") === true ? match.teams["team-a"] : match.teams["team-b"];
+  const partnerSeatId = teamWithUser.seatIds.find(function(seatId) {
+    return seatId !== "user";
+  }) || null;
+  return partnerSeatId;
+}
+function buildTeamTetrisPairingLines(match, options = {}) {
+  const hiddenPairs = options.hiddenPairs !== void 0 ? options.hiddenPairs === true : match?.hiddenPairs === true;
+  if (hiddenPairs === true && match?.revealedPairs !== true) {
+    return [
+      "Pairing mode: Hidden until game over.",
+      "Pairs were randomized and their identities stay hidden until the match ends."
+    ];
+  }
+  const creatorPartnerSeatId = options.selectedPartnerSeatId || deriveCreatorPartnerSeatId(match);
+  if (!creatorPartnerSeatId) {
+    return ["Pairing mode: Pairs are visible from the start."];
+  }
+  const remainingPair = ["ai1", "ai2", "us1"].filter(function(seatId) {
+    return seatId !== creatorPartnerSeatId;
+  });
+  return [
+    "Pairing mode: Creator-selected pairs are visible from the start.",
+    `Creator pair: USER + ${formatTeamTetrisSeatToken(creatorPartnerSeatId)}.`,
+    `Remaining pair: ${remainingPair.map(formatTeamTetrisSeatToken).join(" + ")}.`
+  ];
+}
 function buildTeamTetrisAiTurnPacket(match, seatId) {
   const view = buildTeamTetrisSeatView(match, seatId);
   if (!view || !view.pendingTurn) {
@@ -36,6 +80,22 @@ function buildTeamTetrisAiTurnPacket(match, seatId) {
     turnToken: view.pendingTurn.turnToken,
     teamId: view.seat.teamId,
     actingRole: view.pendingTurn.actingRole,
+    boardWidth: TEAM_TETRIS_BOARD_WIDTH,
+    boardHeight: TEAM_TETRIS_BOARD_HEIGHT,
+    pathEncoding: TEAM_TETRIS_MOVE_SCHEMA.pathEncoding,
+    rowShiftRange: TEAM_TETRIS_MOVE_SCHEMA.rowShiftRange.slice(),
+    pieceGeometryCatalog: Object.fromEntries(
+      Object.entries(TEAM_TETRIS_PIECE_MAP).map(function([pieceKey, definition]) {
+        return [
+          pieceKey,
+          Array.isArray(definition.rotations) ? definition.rotations.map(function(shape) {
+            return Array.isArray(shape) ? shape.map(function(cell) {
+              return [cell[0], cell[1]];
+            }) : [];
+          }) : []
+        ];
+      })
+    ),
     hiddenPairs: view.hiddenPairs,
     revealedPairs: view.revealedPairs,
     teamBoardPrivateRows: view.ownTeam.boardRows.slice(),
@@ -49,33 +109,205 @@ function buildTeamTetrisAiTurnPacket(match, seatId) {
 function buildTeamTetrisAsciiBoard(rows) {
   return Array.isArray(rows) ? rows.join("\n") : "";
 }
+function getTeamTetrisRotationCells(pieceId, rotation, originX, originY) {
+  const definition = TEAM_TETRIS_PIECE_MAP[pieceId];
+  const shape = Array.isArray(definition.rotations) ? definition.rotations[rotation] : null;
+  if (!Array.isArray(shape)) {
+    return [];
+  }
+  return shape.map(function(cell) {
+    return {
+      x: originX + cell[0],
+      y: originY + cell[1]
+    };
+  });
+}
+function isTeamTetrisAsciiCellBlocked(rows, x, y) {
+  if (x < 0 || x >= TEAM_TETRIS_BOARD_WIDTH || y < 0 || y >= TEAM_TETRIS_BOARD_HEIGHT) {
+    return true;
+  }
+  const row = rows[y] ?? "";
+  const cell = row[x] ?? ".";
+  return cell !== ".";
+}
+function doesTeamTetrisAsciiPieceCollide(rows, pieceId, rotation, x, y) {
+  const cells = getTeamTetrisRotationCells(pieceId, rotation, x, y);
+  if (cells.length === 0) {
+    return true;
+  }
+  return cells.some(function(cell) {
+    return isTeamTetrisAsciiCellBlocked(rows, cell.x, cell.y);
+  });
+}
+function buildTeamTetrisReferenceMove(packet) {
+  if (isTeamTetrisPieceId(packet.currentPiece) === false) {
+    return null;
+  }
+  for (const rotation of packet.legalRotations) {
+    const spawn = getTeamTetrisSpawnPosition(packet.currentPiece, rotation);
+    if (doesTeamTetrisAsciiPieceCollide(
+      packet.teamBoardPrivateRows,
+      packet.currentPiece,
+      rotation,
+      spawn.x,
+      spawn.y
+    )) {
+      continue;
+    }
+    const queue = [
+      {
+        x: spawn.x,
+        y: spawn.y,
+        rowShifts: []
+      }
+    ];
+    const visited = /* @__PURE__ */ new Set([`${rotation}:${spawn.x}:${spawn.y}`]);
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current) {
+        continue;
+      }
+      if (doesTeamTetrisAsciiPieceCollide(
+        packet.teamBoardPrivateRows,
+        packet.currentPiece,
+        rotation,
+        current.x,
+        current.y + 1
+      )) {
+        return {
+          rotation,
+          rowShifts: current.rowShifts
+        };
+      }
+      TEAM_TETRIS_PATH_SHIFTS.forEach(function(shift) {
+        const shiftedX = current.x + shift;
+        if (shift !== 0 && doesTeamTetrisAsciiPieceCollide(
+          packet.teamBoardPrivateRows,
+          packet.currentPiece,
+          rotation,
+          shiftedX,
+          current.y
+        )) {
+          return;
+        }
+        if (doesTeamTetrisAsciiPieceCollide(
+          packet.teamBoardPrivateRows,
+          packet.currentPiece,
+          rotation,
+          shiftedX,
+          current.y + 1
+        )) {
+          return;
+        }
+        const nextY = current.y + 1;
+        const key = `${rotation}:${shiftedX}:${nextY}`;
+        if (visited.has(key)) {
+          return;
+        }
+        visited.add(key);
+        queue.push({
+          x: shiftedX,
+          y: nextY,
+          rowShifts: current.rowShifts.concat(shift)
+        });
+      });
+    }
+  }
+  return null;
+}
+function buildTeamTetrisSpawnHints(packet) {
+  if (isTeamTetrisPieceId(packet.currentPiece) === false) {
+    return [];
+  }
+  return packet.legalRotations.map(function(rotation) {
+    const spawn = getTeamTetrisSpawnPosition(packet.currentPiece, rotation);
+    return `rot ${rotation} -> (${spawn.x},${spawn.y})`;
+  });
+}
+function buildTeamTetrisAiCommandExample(packet) {
+  if (packet.partnerLastPiece) {
+    return "";
+  }
+  const referenceMove = buildTeamTetrisReferenceMove(packet);
+  if (!referenceMove) {
+    return "";
+  }
+  return buildRoomBridgeCommand("GameRoomTeamTetrisAiMove", {
+    schemaVersion: packet.schemaVersion,
+    matchId: packet.matchId,
+    turnIndex: packet.turnIndex,
+    turnToken: packet.turnToken,
+    pieceId: packet.currentPiece,
+    rotation: referenceMove.rotation,
+    rowShifts: referenceMove.rowShifts
+  });
+}
+function buildTeamTetrisCommandSkeleton(packet) {
+  return `++cmd:SlotBridge({"action":"room.command","payload":{"commandName":"GameRoomTeamTetrisAiMove","schemaVersion":${packet.schemaVersion},"matchId":"${packet.matchId}","turnIndex":${packet.turnIndex},"turnToken":"${packet.turnToken}","pieceId":"${packet.currentPiece}","rotation":<legal-rotation>,"rowShifts":[${packet.rowShiftRange.join("|")}, ... intended route]}})`;
+}
 function buildTeamTetrisAiTurnMessage(match, seatId) {
   const packet = buildTeamTetrisAiTurnPacket(match, seatId);
   if (!packet) {
     return "";
   }
-  return [
+  const commandExample = buildTeamTetrisAiCommandExample(packet);
+  const commandSkeleton = buildTeamTetrisCommandSkeleton(packet);
+  const spawnHints = buildTeamTetrisSpawnHints(packet);
+  const hiddenPartnerLock = packet.partnerLastPiece !== null;
+  const privateBoardAscii = buildTeamTetrisAsciiBoard(packet.teamBoardPrivateRows);
+  const beforePartnerAscii = buildTeamTetrisAsciiBoard(packet.teamBoardBeforePartnerPieceRows);
+  const includeBeforePartnerAppendix = beforePartnerAscii.trim() !== "" && beforePartnerAscii !== privateBoardAscii;
+  const messageLines = [
     "Team Tetris turn update from the Game Room.",
     "Game: Team Tetris.",
+    ...buildTeamTetrisPairingLines(match),
     "Your reply is parsed from only the latest assistant message.",
-    `Use exactly one command line in this format: ${buildRoomBridgeCommand(
-      "GameRoomTeamTetrisAiMove",
-      { pieceId: "<piece-id>" }
-    )}`,
+    'Reply with exactly one ++cmd:SlotBridge({"action":"room.command","payload":{...}}) line.',
+    "Copy schemaVersion, matchId, turnIndex, turnToken, and pieceId exactly from the turn packet.",
+    "Use pieceGeometryCatalog from the packet as the authoritative tetromino geometry reference instead of memory.",
+    hiddenPartnerLock ? "Choose one legal rotation from the packet and compute an intended rowShifts route from the visible private board plus the hidden occupancy implied by partnerLastPiece." : "Choose one legal rotation from the packet and compute an intended rowShifts route from the private board snapshot.",
+    ...hiddenPartnerLock ? [
+      "If partnerLastPiece is present, the visible board intentionally omits your partner's most recent lock; infer its landing cells before planning rowShifts."
+    ] : [],
+    "rowShifts encodes your intended sideways shift for each downward advance you explicitly plan.",
+    "When the explicit rowShifts route ends, the host keeps dropping the piece straight down until it locks.",
+    "If the real board blocks a drawn step early, the piece locks at the last reached step instead.",
+    "The host rejects stale turn tokens, invalid rotations, invalid rowShifts, and spawn collisions.",
+    commandExample ? `A legal reference command for this exact board is: ${commandExample}` : hiddenPartnerLock ? `No exact reference command is included because the visible board may hide your partner's latest lock. Command skeleton (replace placeholders before sending): ${commandSkeleton}` : `Command skeleton (replace placeholders before sending): ${commandSkeleton}`,
+    "You may send a different legal move, but rowShifts should only describe the intended route you want replayed.",
+    "The final closing `)` is required or the command is rejected.",
     "Do not add markdown, prose, code fences, or a second command.",
     "",
     "Turn packet JSON:",
     JSON.stringify(packet, null, 2),
     "",
-    "ASCII appendix:",
-    "Own team board:",
-    buildTeamTetrisAsciiBoard(packet.teamBoardPrivateRows),
+    `Board geometry: ${packet.boardWidth} columns x ${packet.boardHeight} rows.`,
+    `Path encoding: ${packet.pathEncoding} (${packet.rowShiftRange.join(", ")} per row, top-to-bottom).`,
+    spawnHints.length > 0 ? `Spawn by legal rotation: ${spawnHints.join(" | ")}` : "Spawn by legal rotation: unavailable",
     "",
-    "Own team board before partner piece:",
-    buildTeamTetrisAsciiBoard(packet.teamBoardBeforePartnerPieceRows),
+    "ASCII appendix:",
+    hiddenPartnerLock ? "Own team visible board (partner lock hidden on purpose):" : "Own team board:",
+    privateBoardAscii,
+    ...includeBeforePartnerAppendix ? ["", "Own team board before partner piece:", beforePartnerAscii] : [],
     "",
     "Opponent public board:",
     buildTeamTetrisAsciiBoard(packet.opponentBoardPublicRows)
+  ];
+  return messageLines.join("\n");
+}
+function buildTeamTetrisAiStartMessage(match, options = {}) {
+  return [
+    "Team Tetris match initialized from the Game Room.",
+    "Game: Team Tetris.",
+    ...buildTeamTetrisPairingLines(match, options),
+    "No reply is needed yet. Wait for your turn packet before sending any move command."
+  ].join("\n");
+}
+function buildTeamTetrisRemoteStartText(match, options = {}) {
+  return [
+    "Team Tetris match started.",
+    ...buildTeamTetrisPairingLines(match, options),
+    "Open the room UI to follow the live board state."
   ].join("\n");
 }
 function buildTeamTetrisRemoteMoveText(movePayload) {
@@ -93,10 +325,12 @@ function parseTeamTetrisStartEventNote(note) {
   }
 }
 export {
+  buildTeamTetrisAiStartMessage,
   buildTeamTetrisAiTurnMessage,
   buildTeamTetrisAiTurnPacket,
   buildTeamTetrisAsciiBoard,
   buildTeamTetrisProtocolScenario,
+  buildTeamTetrisRemoteStartText,
   buildTeamTetrisRemoteMoveText,
   parseTeamTetrisStartEventNote,
   resolveTeamTetrisSeatFromProvider,

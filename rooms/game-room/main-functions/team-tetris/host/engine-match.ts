@@ -1,5 +1,6 @@
 import {
   TEAM_TETRIS_PIECE_IDS,
+  TEAM_TETRIS_SEAT_IDS,
   TEAM_TETRIS_SCHEMA_VERSION,
   createDeterministicRng,
   hashString,
@@ -85,6 +86,7 @@ export interface TeamTetrisMatchOptions {
   matchId?: unknown;
   hiddenPairs?: unknown;
   revealPairsOnFinish?: unknown;
+  selectedPartnerSeatId?: unknown;
 }
 
 const DEFAULT_TEAM_TETRIS_PIECE_ID: PieceId = "I";
@@ -95,6 +97,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isTeamTetrisSeatId(value: unknown): value is TeamTetrisSeatId {
   return value === "user" || value === "ai1" || value === "ai2" || value === "us1";
+}
+
+function isManualPartnerSeatId(value: unknown): value is Exclude<TeamTetrisSeatId, "user"> {
+  return value === "ai1" || value === "ai2" || value === "us1";
 }
 
 function isTeamTetrisTeamId(value: unknown): value is TeamTetrisTeamId {
@@ -133,6 +139,10 @@ function readInteger(value: unknown, fallback: number = 0): number {
 
 function normalizeSeatId(value: unknown, fallback: TeamTetrisSeatId): TeamTetrisSeatId {
   return isTeamTetrisSeatId(value) ? value : fallback;
+}
+
+function readSelectedPartnerSeatId(value: unknown): Exclude<TeamTetrisSeatId, "user"> | null {
+  return isManualPartnerSeatId(value) ? value : null;
 }
 
 function normalizeTeamId(value: unknown, fallback: TeamTetrisTeamId): TeamTetrisTeamId {
@@ -386,6 +396,43 @@ function shuffleTeamTetrisBag(seed: string, cursor: number): PieceId[] {
   return bag;
 }
 
+function shuffleTeamTetrisSeatOrder(seed: string, seatIds: TeamTetrisSeatId[]): TeamTetrisSeatId[] {
+  const next = seatIds.slice();
+  const rng = createDeterministicRng(seed);
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(rng() * (index + 1));
+    const current = next[index];
+    const swapValue = next[swapIndex];
+    if (current === undefined || swapValue === undefined) {
+      continue;
+    }
+    next[index] = swapValue;
+    next[swapIndex] = current;
+  }
+  return next;
+}
+
+function buildTeamTetrisTeamsFromSeed(
+  seed: string,
+  hiddenPairs: boolean,
+  selectedPartnerSeatId: Exclude<TeamTetrisSeatId, "user"> | null
+): [TeamTetrisSeatId[], TeamTetrisSeatId[]] {
+  if (hiddenPairs !== true && selectedPartnerSeatId !== null) {
+    const remainingSeats = TEAM_TETRIS_SEAT_IDS.filter(function (
+      seatId: string
+    ): seatId is TeamTetrisSeatId {
+      return seatId !== "user" && seatId !== selectedPartnerSeatId && isTeamTetrisSeatId(seatId);
+    });
+    return [
+      shuffleTeamTetrisSeatOrder(`${seed}|team-a`, ["user", selectedPartnerSeatId]),
+      shuffleTeamTetrisSeatOrder(`${seed}|team-b`, remainingSeats),
+    ];
+  }
+
+  const shuffledSeats = shuffleTeamTetrisSeatOrder(seed, ["user", "ai1", "ai2", "us1"]);
+  return [shuffledSeats.slice(0, 2), shuffledSeats.slice(2, 4)];
+}
+
 function drawTeamTetrisPiece(bagState: BagState | unknown): PieceId {
   if (isRecord(bagState) === false) {
     return DEFAULT_TEAM_TETRIS_PIECE_ID;
@@ -499,30 +546,22 @@ function buildTeamTetrisTurn(match: TeamTetrisMatch, turnIndex: number): TeamTet
 function createTeamTetrisMatch(options: TeamTetrisMatchOptions | unknown): TeamTetrisMatch {
   const source = isRecord(options) ? options : {};
   const seed = normalizeText(source["seed"]) || `seed_${Date.now().toString(36)}`;
-  const rng = createDeterministicRng(`${seed}|teams`);
-  const shuffledSeats: TeamTetrisSeatId[] = ["user", "ai1", "ai2", "us1"];
-  for (let index = shuffledSeats.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(rng() * (index + 1));
-    const current = shuffledSeats[index];
-    const swapValue = shuffledSeats[swapIndex];
-    if (current === undefined || swapValue === undefined) {
-      continue;
-    }
-    shuffledSeats[index] = swapValue;
-    shuffledSeats[swapIndex] = current;
-  }
-
-  const teamASeats = shuffledSeats.slice(0, 2);
-  const teamBSeats = shuffledSeats.slice(2, 4);
+  const hiddenPairs = source["hiddenPairs"] !== false;
+  const selectedPartnerSeatId = readSelectedPartnerSeatId(source["selectedPartnerSeatId"]);
+  const [teamASeats, teamBSeats] = buildTeamTetrisTeamsFromSeed(
+    `${seed}|teams`,
+    hiddenPairs,
+    selectedPartnerSeatId
+  );
   const [teamAOpener, teamAFollowup] = getTeamTetrisSeatPair(teamASeats, "user", "ai1");
   const [teamBOpener, teamBFollowup] = getTeamTetrisSeatPair(teamBSeats, "ai2", "us1");
   const match: TeamTetrisMatch = {
     schemaVersion: TEAM_TETRIS_SCHEMA_VERSION,
     matchId: normalizeText(source["matchId"]) || `tt_${hashString(seed).toString(36)}`,
     seed,
-    hiddenPairs: source["hiddenPairs"] !== false,
+    hiddenPairs,
     revealPairsOnFinish: source["revealPairsOnFinish"] !== false,
-    revealedPairs: source["hiddenPairs"] === false,
+    revealedPairs: hiddenPairs === false,
     result: "pending",
     winnerTeamId: null,
     turnIndex: 0,

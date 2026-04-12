@@ -1096,9 +1096,13 @@ export class Us1ConversationService {
     const localProfile = this.buildLocalProfile(settings, account);
     const localMessageId = buildLocalMessageId("us1-out", remoteUser.remoteUserId, this.now());
     const threadMessageId =
-      latestMapping?.threadMessageId ?? normalizeOptionalText(remoteUser.threadMessageId);
+      isNewSession === true
+        ? null
+        : (latestMapping.threadMessageId ?? normalizeOptionalText(remoteUser.threadMessageId));
     const inReplyTo =
-      latestMapping?.lastMessageId ?? normalizeOptionalText(remoteUser.lastTransportMessageId);
+      isNewSession === true
+        ? null
+        : (latestMapping.lastMessageId ?? normalizeOptionalText(remoteUser.lastTransportMessageId));
 
     try {
       const transportResult = await this.transport.sendMail(account, {

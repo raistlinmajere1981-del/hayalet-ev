@@ -131,11 +131,11 @@ function applyTeamTetrisMove(match, move) {
     placedBySeatId: currentTurn.seatId,
     cells: replay.cells
   };
-  const drawnNext = drawTeamTetrisPiece(team.bagState);
-  team.nextPieceId = drawnNext;
-  const spawnRotation = getTeamTetrisLegalRotations(drawnNext)[0] ?? 0;
-  const spawn = getTeamTetrisSpawnPosition(drawnNext, spawnRotation);
-  if (doesTeamTetrisPieceCollide(team.board, drawnNext, 0, spawn.x, spawn.y)) {
+  const nextTeamPieceId = currentTurn.role === "followup" ? drawTeamTetrisPiece(team.bagState) : currentTurn.pieceId;
+  team.nextPieceId = nextTeamPieceId;
+  const spawnRotation = getTeamTetrisLegalRotations(nextTeamPieceId)[0] ?? 0;
+  const spawn = getTeamTetrisSpawnPosition(nextTeamPieceId, spawnRotation);
+  if (doesTeamTetrisPieceCollide(team.board, nextTeamPieceId, 0, spawn.x, spawn.y)) {
     team.alive = false;
     team.topOutTurnIndex = currentTurn.turnIndex;
   }
@@ -153,7 +153,8 @@ function applyTeamTetrisMove(match, move) {
     success: true,
     match: nextMatch,
     clearedLines: clearResult.clearedLines,
-    lockedCells: replay.cells
+    lockedCells: replay.cells,
+    resolution: replay
   };
 }
 function buildTeamTetrisSeatView(match, seatId) {
@@ -175,10 +176,13 @@ function buildTeamTetrisSeatView(match, seatId) {
   const partnerSnapshot = ownTeam.lastLockedPiece && ownTeam.lastLockedPiece.placedBySeatId === partnerSeatId ? {
     pieceId: ownTeam.lastLockedPiece.pieceId,
     rotation: ownTeam.lastLockedPiece.rotation,
-    cells: ownTeam.lastLockedPiece.cells.slice(),
+    cells: [],
     placedByRole: partnerInfo ? partnerInfo.role : "opener",
     ...identityVisible === true ? { placedBySeatId: partnerSeatId } : {}
   } : null;
+  const actualOwnBoardRows = teamTetrisBoardToRows(ownTeam.board);
+  const boardBeforePartnerPieceRows = partnerSnapshot ? teamTetrisBoardToRows(ownTeam.boardBeforeLastLock) : actualOwnBoardRows;
+  const visibleOwnBoardRows = partnerSnapshot ? boardBeforePartnerPieceRows : actualOwnBoardRows;
   return {
     schemaVersion: TEAM_TETRIS_SCHEMA_VERSION,
     matchId: source.matchId,
@@ -200,8 +204,8 @@ function buildTeamTetrisSeatView(match, seatId) {
     }) : null,
     ownTeam: {
       teamId: ownTeam.id,
-      boardRows: teamTetrisBoardToRows(ownTeam.board),
-      boardBeforePartnerPieceRows: partnerSnapshot ? teamTetrisBoardToRows(ownTeam.boardBeforeLastLock) : teamTetrisBoardToRows(ownTeam.board),
+      boardRows: visibleOwnBoardRows,
+      boardBeforePartnerPieceRows,
       partnerLastPiece: partnerSnapshot
     },
     opponentTeam: {

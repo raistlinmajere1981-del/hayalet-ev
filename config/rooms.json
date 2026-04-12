@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-11T14:54:11.832Z",
+  "updatedAt": "2026-04-12T11:58:44.410Z",
   "rooms": [
     {
       "id": "game-room",
@@ -674,8 +674,8 @@
           "path": "main-functions/fate-knots/protocols/game-room-fate-knots-us1-transport.md"
         }
       ],
-      "installedAt": "2026-04-11T14:54:11.832Z",
-      "updatedAt": "2026-04-11T14:54:11.832Z"
+      "installedAt": "2026-04-12T11:58:44.410Z",
+      "updatedAt": "2026-04-12T11:58:44.410Z"
     }
   ]
 }

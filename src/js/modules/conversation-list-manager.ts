@@ -504,6 +504,7 @@ class ConversationListManagerClass {
           typeof result.remoteUserId === "string"
             ? result.remoteUserId
             : (AppState.getUs1Identity()?.remoteUserId ?? null),
+        preserveExplicitNewSelection: true,
       });
 
       await this.refresh({

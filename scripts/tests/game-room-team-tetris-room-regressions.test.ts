@@ -131,6 +131,14 @@ test("game-room Team Tetris UI and host sources expose the new feature shell", (
   const teamTetrisHostProtocolSource = loadWorkspaceScriptForVm(
     "rooms/game-room/main-functions/team-tetris/host/runtime-protocol.ts"
   );
+  const teamTetrisAiOpeningProtocolSource = readFileSync(
+    "rooms/game-room/main-functions/team-tetris/protocols/game-room-team-tetris-ai-opening.md",
+    "utf8"
+  );
+  const teamTetrisAiFollowupProtocolSource = readFileSync(
+    "rooms/game-room/main-functions/team-tetris/protocols/game-room-team-tetris-ai-followup.md",
+    "utf8"
+  );
   const teamTetrisHostTransportSource = loadWorkspaceScriptForVm(
     "rooms/game-room/main-functions/team-tetris/host/runtime-transport.ts"
   );
@@ -197,6 +205,20 @@ test("game-room Team Tetris UI and host sources expose the new feature shell", (
     teamTetrisHostProtocolSource,
     /function buildTeamTetrisAiTurnMessage\(match, seatId\)/
   );
+  assert.match(teamTetrisHostProtocolSource, /pieceGeometryCatalog/);
+  assert.match(teamTetrisHostProtocolSource, /function buildTeamTetrisReferenceMove\(packet\)/);
+  assert.match(teamTetrisHostProtocolSource, /keeps dropping the piece straight down/i);
+  assert.match(teamTetrisEngineSource, /currentTurn\.role === "followup"/);
+  assert.match(teamTetrisEngineSource, /team\.nextPieceId = nextTeamPieceId/);
+  assert.match(teamTetrisEngineSource, /cells: \[\]/);
+  assert.match(teamTetrisHostRuntimeSource, /function buildTeamTetrisFailureDebug/);
+  assert.match(teamTetrisHostRuntimeSource, /function buildTeamTetrisSuccessDebug/);
+  assert.match(teamTetrisHostRuntimeSource, /resolvedPath: null/);
+  assert.match(teamTetrisHostRuntimeSource, /finalLockCells: null/);
+  assert.equal(/"rowShifts":\[0\]/.test(teamTetrisAiOpeningProtocolSource), false);
+  assert.equal(/"rowShifts":\[0\]/.test(teamTetrisAiFollowupProtocolSource), false);
+  assert.match(teamTetrisAiOpeningProtocolSource, /keeps dropping the piece straight down/i);
+  assert.match(teamTetrisAiFollowupProtocolSource, /authoritative geometry/i);
   assert.match(teamTetrisHostTransportSource, /async function sendTeamTetrisRemoteMove/);
   assert.match(
     teamTetrisHostSyncSource,

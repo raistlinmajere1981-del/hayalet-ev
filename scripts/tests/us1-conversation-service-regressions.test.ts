@@ -700,6 +700,67 @@ test("US1 conversation service sends outbound mail and projects archive metadata
   }
 });
 
+test("US1 conversation service starts explicit new sessions as fresh mail threads", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_fresh_thread`;
+  const initialSettings = createSettings(accountId);
+  if (initialSettings.remoteUsers?.[0] !== undefined) {
+    initialSettings.remoteUsers[0].threadMessageId = "<handshake-root@example.test>";
+    initialSettings.remoteUsers[0].lastTransportMessageId = "<handshake-last@example.test>";
+  }
+  const store = createSettingsStore(initialSettings);
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    const firstResult = await service.sendMessage({
+      text: "Fresh branch",
+      localSessionId: "fresh-session-1",
+    });
+
+    assert.equal(firstResult.success, true);
+    assert.equal(firstResult.localSessionId, "fresh-session-1");
+    assert.equal(transportStub.sentMessages.length, 1);
+    assert.equal(transportStub.sentMessages[0]?.threadMessageId, null);
+    assert.equal(transportStub.sentMessages[0]?.inReplyTo, null);
+    assert.equal(transportStub.sentMessages[0]?.references, undefined);
+    const firstEnvelope = extractConversationEnvelope(transportStub.sentMessages[0] as SendMailRequest);
+    assert.equal((firstEnvelope["session"] as Record<string, unknown>)?.["mode"], "new");
+
+    const secondResult = await service.sendMessage({
+      text: "Fresh follow up",
+      localSessionId: "fresh-session-1",
+    });
+
+    assert.equal(secondResult.success, true);
+    assert.equal(transportStub.sentMessages.length, 2);
+    assert.equal(transportStub.sentMessages[1]?.threadMessageId, firstResult.transportMessageId);
+    assert.equal(transportStub.sentMessages[1]?.inReplyTo, firstResult.transportMessageId);
+    assert.deepEqual(transportStub.sentMessages[1]?.references, [
+      firstResult.transportMessageId,
+      firstResult.transportMessageId,
+    ]);
+    const secondEnvelope = extractConversationEnvelope(transportStub.sentMessages[1] as SendMailRequest);
+    assert.equal((secondEnvelope["session"] as Record<string, unknown>)?.["mode"], "reply");
+
+    const sidecar = new MailSidecarStoreManager(accountId);
+    const mapping = sidecar.getSessionMapping("remote@example.com", "fresh-session-1");
+    assert.equal(mapping?.threadMessageId, firstResult.transportMessageId);
+    assert.equal(mapping?.lastMessageId, secondResult.transportMessageId);
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
 test("US1 conversation service syncs inbound mail, updates remote profile, and flags room bundles", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_sync`;
   const store = createSettingsStore(createSettings(accountId));
