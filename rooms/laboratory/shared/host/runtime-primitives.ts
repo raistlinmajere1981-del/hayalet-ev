@@ -81,13 +81,10 @@ export function createLaboratoryWorkbenchState(overrides: unknown = {}) {
 
   return {
     schemaVersion: LABORATORY_WORKBENCH_SCHEMA_VERSION,
-    experienceId:
-      readNonEmptyString(source["experienceId"]) || LABORATORY_WORKBENCH_EXPERIENCE_ID,
+    experienceId: readNonEmptyString(source["experienceId"]) || LABORATORY_WORKBENCH_EXPERIENCE_ID,
     mode: LABORATORY_WORKBENCH_MODE,
     primaryFeatureId,
-    activeModuleId: availableModuleIds.includes(activeModuleId)
-      ? activeModuleId
-      : primaryFeatureId,
+    activeModuleId: availableModuleIds.includes(activeModuleId) ? activeModuleId : primaryFeatureId,
     availableModuleIds,
     selectedModuleIds:
       selectedModuleIds.length > 0

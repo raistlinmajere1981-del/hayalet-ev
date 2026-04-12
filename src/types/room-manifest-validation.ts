@@ -64,8 +64,7 @@ function readWorkbenchConfig(
   if (mode !== undefined && mode !== "guided") {
     errors.push("workbench.mode must be 'guided' when provided");
   }
-  const workbenchMode: RoomWorkbenchConfig["mode"] =
-    mode === "guided" ? "guided" : undefined;
+  const workbenchMode: RoomWorkbenchConfig["mode"] = mode === "guided" ? "guided" : undefined;
   const primaryFeatureId = readOptionalString(candidate, "primaryFeatureId", errors);
   if (primaryFeatureId !== undefined && featureIds.includes(primaryFeatureId) === false) {
     errors.push("workbench.primaryFeatureId must match one of the feature ids");
@@ -77,7 +76,9 @@ function readWorkbenchConfig(
     if (!Array.isArray(availableFeatureIdsRaw)) {
       errors.push("workbench.availableFeatureIds must be an array of strings");
     } else {
-      const parsed = availableFeatureIdsRaw.filter((value): value is string => typeof value === "string");
+      const parsed = availableFeatureIdsRaw.filter(
+        (value): value is string => typeof value === "string"
+      );
       if (parsed.length !== availableFeatureIdsRaw.length) {
         errors.push("workbench.availableFeatureIds must contain only strings");
       } else {
@@ -194,7 +195,9 @@ export function validateRoomManifest(
       : undefined;
 
   const scene =
-    features !== undefined ? readSceneConfig(candidate["scene"], features, workbench, errors) : undefined;
+    features !== undefined
+      ? readSceneConfig(candidate["scene"], features, workbench, errors)
+      : undefined;
 
   if (features !== undefined) {
     const commandNames = [

@@ -223,11 +223,7 @@ export function createLaboratorySettingsToolCardRuntime(
             : ""
         }
         ${plannedReason ? `<p class="lab-panel__hint">${escapeHtml(plannedReason)}</p>` : ""}
-        ${
-          readinessImpact
-            ? `<p class="lab-panel__hint">${escapeHtml(readinessImpact)}</p>`
-            : ""
-        }
+        ${readinessImpact ? `<p class="lab-panel__hint">${escapeHtml(readinessImpact)}</p>` : ""}
         ${setupHint ? `<p class="lab-panel__hint">${escapeHtml(setupHint)}</p>` : ""}
         ${
           toString(tool.lastError).trim()

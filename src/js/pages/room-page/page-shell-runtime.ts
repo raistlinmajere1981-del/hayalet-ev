@@ -31,7 +31,7 @@ export function shouldShowRoomPageFeatureStripForRoom(
   immersive: boolean,
   room: InstalledRoomRecord
 ): boolean {
-  if (room.workbench?.experienceId) {
+  if (room.workbench?.experienceId !== undefined) {
     return false;
   }
   return shouldShowRoomFeatureStrip(immersive, room.features.length);

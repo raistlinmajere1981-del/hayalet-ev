@@ -44,6 +44,8 @@ type ToolAvailability = "installable" | "system-command" | "planned";
 type SystemCommandSpec = {
   executableName: string;
   companionExecutables?: string[];
+  envVarNames?: string[];
+  candidatePaths?: string[];
   setupHint?: string;
 };
 
@@ -192,6 +194,45 @@ function resolveRuntimePaths(roomId: string): RoomToolRuntimePaths {
   };
 }
 
+function getToolchainManifestCandidates(paths: RoomToolRuntimePaths): string[] {
+  return Array.from(
+    new Set([
+      join(paths.packageToolsDir, "toolchain.manifest.json"),
+      join(paths.installedDir, "shared", "data", "tools", "toolchain.manifest.json"),
+      join(
+        paths.storageDir,
+        "build",
+        "workspace",
+        "shared",
+        "data",
+        "tools",
+        "toolchain.manifest.json"
+      ),
+      join(
+        Paths.getRoomsWorkspaceDir(),
+        paths.roomId,
+        "shared",
+        "data",
+        "tools",
+        "toolchain.manifest.json"
+      ),
+    ])
+  );
+}
+
+function expandRuntimePathTemplate(
+  template: string,
+  runtimePaths: RoomToolRuntimePaths | null = null
+): string {
+  return template
+    .replaceAll("${dataDir}", Paths.getDataDir())
+    .replaceAll("${projectRoot}", Paths.getProjectRoot())
+    .replaceAll("${installedDir}", runtimePaths?.installedDir ?? "")
+    .replaceAll("${roomStorageDir}", runtimePaths?.storageDir ?? "")
+    .replaceAll("${toolRuntimeDir}", runtimePaths?.toolRuntimeDir ?? "")
+    .replaceAll("${packageToolsDir}", runtimePaths?.packageToolsDir ?? "");
+}
+
 function isPathInside(parentPath: string, childPath: string): boolean {
   const relativePath = relative(ensureAbsolutePath(parentPath), ensureAbsolutePath(childPath));
   return (
@@ -264,10 +305,36 @@ function compareLooseVersion(left: string, right: string): number {
   return 0;
 }
 
-async function resolveSystemCommandBinaryPath(executableName: string): Promise<string | null> {
+async function resolveSystemCommandBinaryPath(
+  executableName: string,
+  options?: {
+    candidatePaths?: string[] | undefined;
+    envVarNames?: string[] | undefined;
+    runtimePaths?: RoomToolRuntimePaths | null | undefined;
+  }
+): Promise<string | null> {
   const normalizedName = asNonEmptyString(executableName);
   if (normalizedName === null) {
     return null;
+  }
+
+  const envVarNames = Array.isArray(options?.envVarNames) ? options.envVarNames : [];
+  for (const envVarName of envVarNames) {
+    const envBinaryPath = asNonEmptyString(process.env[envVarName]);
+    if (envBinaryPath !== null && existsSync(envBinaryPath)) {
+      return envBinaryPath;
+    }
+  }
+
+  const candidatePaths = Array.isArray(options?.candidatePaths) ? options.candidatePaths : [];
+  for (const candidateTemplate of candidatePaths) {
+    const expandedPath = expandRuntimePathTemplate(
+      candidateTemplate,
+      options?.runtimePaths ?? null
+    );
+    if (expandedPath !== "" && existsSync(expandedPath)) {
+      return expandedPath;
+    }
   }
 
   if (normalizedName.includes("/") || normalizedName.includes("\\")) {
@@ -767,7 +834,8 @@ class RoomToolService {
     const toolManifest = this.getToolManifest(manifest, request.toolId);
     const paths = resolveRuntimePaths(request.roomId);
     const installDir = join(paths.toolRuntimeDir, toolManifest.installDirName ?? request.toolId);
-    const platformKey = detectPlatformKey() ?? `${process.platform}-${process.arch}`;
+    const detectedPlatformKey = detectPlatformKey();
+    const platformKey = detectedPlatformKey ?? `${process.platform}-${process.arch}`;
 
     if (this.getToolAvailability(toolManifest) === "planned") {
       return {
@@ -787,79 +855,18 @@ class RoomToolService {
       };
     }
 
-    if (this.isSystemCommandTool(toolManifest) === true) {
-      const resolved = this.resolveSystemCommandTool(manifest, request.toolId);
-      const binaryPath = await resolveSystemCommandBinaryPath(
-        resolved.systemCommand.executableName
+    if (
+      this.isSystemCommandTool(toolManifest) === true ||
+      this.shouldUseSystemCommandFallback(toolManifest, detectedPlatformKey) === true
+    ) {
+      return await this.probeSystemCommandToolStatus(
+        request.toolId,
+        toolManifest,
+        paths,
+        platformKey,
+        normalizeRequestId(request.requestId),
+        request.operation
       );
-      const setupHint = this.getSystemCommandSetupHint(request.toolId, resolved.manifest);
-
-      if (binaryPath === null) {
-        return {
-          success: true,
-          operation: request.operation,
-          requestId: normalizeRequestId(request.requestId),
-          tool: normalizeToolStatus(request.toolId, {
-            installed: false,
-            details: {
-              platformKey,
-              availability: "system-command",
-              installable: false,
-              manualSetup: true,
-              executableName: resolved.systemCommand.executableName,
-              companionExecutables: resolved.systemCommand.companionExecutables ?? [],
-              setupHint,
-            },
-          }),
-        };
-      }
-
-      const probe = await runCommand(
-        binaryPath,
-        resolved.manifest.probe.args,
-        dirname(binaryPath),
-        undefined,
-        12_000
-      );
-      const combinedOutput = `${probe.stdout}\n${probe.stderr}`;
-      const version =
-        probe.exitCode === 0
-          ? findVersion(combinedOutput, resolved.manifest.probe.versionRegex)
-          : null;
-      const companionPaths: Record<string, string> = {};
-
-      await Promise.all(
-        (resolved.systemCommand.companionExecutables ?? []).map(
-          async (companionName): Promise<void> => {
-            const companionPath = await resolveSystemCommandBinaryPath(companionName);
-            if (companionPath !== null) {
-              companionPaths[companionName] = companionPath;
-            }
-          }
-        )
-      );
-
-      return {
-        success: true,
-        operation: request.operation,
-        requestId: normalizeRequestId(request.requestId),
-        tool: normalizeToolStatus(request.toolId, {
-          installed: probe.exitCode === 0,
-          version,
-          binaryPath,
-          installDir: dirname(binaryPath),
-          companionPaths,
-          details: {
-            platformKey,
-            availability: "system-command",
-            installable: false,
-            manualSetup: true,
-            executableName: resolved.systemCommand.executableName,
-            companionExecutables: resolved.systemCommand.companionExecutables ?? [],
-            setupHint,
-          },
-        }),
-      };
     }
 
     const resolved = this.resolveTool(manifest, request.toolId);
@@ -923,6 +930,7 @@ class RoomToolService {
   ): Promise<RoomToolCallResult> {
     const manifest = await this.loadToolchainManifest(request.roomId);
     const toolManifest = this.getToolManifest(manifest, request.toolId);
+    const platformKey = detectPlatformKey();
     if (this.isToolInstallable(toolManifest) !== true) {
       const update: RoomToolUpdateCheck = {
         toolId: request.toolId,
@@ -935,6 +943,25 @@ class RoomToolService {
           this.isSystemCommandTool(toolManifest) === true
             ? null
             : asNonEmptyString(toolManifest.releaseProvider?.releaseUrl),
+      };
+
+      return {
+        success: true,
+        operation: request.operation,
+        requestId: normalizeRequestId(request.requestId),
+        update,
+      };
+    }
+
+    if (this.shouldUseSystemCommandFallback(toolManifest, platformKey) === true) {
+      const update: RoomToolUpdateCheck = {
+        toolId: request.toolId,
+        installedVersion: asNonEmptyString(request.installedVersion),
+        latestVersion: null,
+        latestReleaseTag: null,
+        latestReleaseName: null,
+        updateAvailable: false,
+        releaseUrl: asNonEmptyString(toolManifest.releaseProvider?.releaseUrl),
       };
 
       return {
@@ -991,7 +1018,10 @@ class RoomToolService {
     );
     const manifest = await this.loadToolchainManifest(request.roomId);
     const toolManifest = this.getToolManifest(manifest, request.toolId);
-    if (this.isSystemCommandTool(toolManifest) === true) {
+    if (
+      this.isSystemCommandTool(toolManifest) === true ||
+      this.shouldUseSystemCommandFallback(toolManifest, detectPlatformKey()) === true
+    ) {
       return await this.recheckSystemCommandTool(request);
     }
     if (this.isToolInstallable(toolManifest) !== true) {
@@ -1137,8 +1167,12 @@ class RoomToolService {
     let defaultCwd = paths.storageDir;
     let allowedExecutableNames: string[] = [];
     let defaultExecutableName = "";
+    const detectedPlatformKey = detectPlatformKey();
+    const useSystemCommandFallback =
+      this.isSystemCommandTool(toolManifest) === true ||
+      this.shouldUseSystemCommandFallback(toolManifest, detectedPlatformKey) === true;
 
-    if (this.isToolInstallable(toolManifest) === true) {
+    if (this.isToolInstallable(toolManifest) === true && useSystemCommandFallback !== true) {
       const resolved = this.resolveTool(manifest, request.toolId);
       const installDir = join(paths.toolRuntimeDir, resolved.installDirName);
       defaultCwd = installDir;
@@ -1147,8 +1181,11 @@ class RoomToolService {
         ...(resolved.asset.companionExecutables ?? []),
       ];
       defaultExecutableName = resolved.asset.executableName;
-    } else if (this.isSystemCommandTool(toolManifest) === true) {
-      const resolved = this.resolveSystemCommandTool(manifest, request.toolId);
+    } else if (useSystemCommandFallback === true) {
+      const resolved =
+        this.isSystemCommandTool(toolManifest) === true
+          ? this.resolveSystemCommandTool(manifest, request.toolId)
+          : this.resolveToolSystemCommandSpec(toolManifest, request.toolId);
       allowedExecutableNames = [
         resolved.systemCommand.executableName,
         ...(resolved.systemCommand.companionExecutables ?? []),
@@ -1169,7 +1206,7 @@ class RoomToolService {
       );
     }
 
-    if (this.isToolInstallable(toolManifest) === true) {
+    if (this.isToolInstallable(toolManifest) === true && useSystemCommandFallback !== true) {
       binaryPath = join(defaultCwd, selectedExecutableName);
       if (!existsSync(binaryPath)) {
         throw new Error(
@@ -1177,10 +1214,24 @@ class RoomToolService {
         );
       }
     } else {
-      const resolvedBinaryPath = await resolveSystemCommandBinaryPath(selectedExecutableName);
+      const resolvedSystemCommand =
+        this.isSystemCommandTool(toolManifest) === true
+          ? this.resolveSystemCommandTool(manifest, request.toolId)
+          : this.resolveToolSystemCommandSpec(toolManifest, request.toolId);
+      const resolvedBinaryPath = await resolveSystemCommandBinaryPath(selectedExecutableName, {
+        envVarNames:
+          selectedExecutableName === resolvedSystemCommand.systemCommand.executableName
+            ? resolvedSystemCommand.systemCommand.envVarNames
+            : undefined,
+        candidatePaths:
+          selectedExecutableName === resolvedSystemCommand.systemCommand.executableName
+            ? resolvedSystemCommand.systemCommand.candidatePaths
+            : undefined,
+        runtimePaths: paths,
+      });
       if (resolvedBinaryPath === null) {
         throw new Error(
-          `${request.toolId}:${selectedExecutableName} is not available on PATH for room ${request.roomId}`
+          `${request.toolId}:${selectedExecutableName} is not available on the shared transcript runtime or PATH for room ${request.roomId}`
         );
       }
       binaryPath = resolvedBinaryPath;
@@ -1334,9 +1385,10 @@ class RoomToolService {
 
   private async loadToolchainManifest(roomId: string): Promise<ToolchainManifest> {
     const paths = resolveRuntimePaths(roomId);
-    const manifestPath = join(paths.packageToolsDir, "toolchain.manifest.json");
-    if (!existsSync(manifestPath)) {
-      throw new Error(`Room toolchain manifest missing: ${manifestPath}`);
+    const candidatePaths = getToolchainManifestCandidates(paths);
+    const manifestPath = candidatePaths.find((candidate) => existsSync(candidate));
+    if (manifestPath === undefined) {
+      throw new Error(`Room toolchain manifest missing: ${candidatePaths.join(" | ")}`);
     }
     return await readJsonFile<ToolchainManifest>(manifestPath);
   }
@@ -1380,6 +1432,130 @@ class RoomToolService {
       asNonEmptyString(toolManifest.systemCommand?.setupHint) ??
       `Install ${toolId} on the host system, make the binary available on PATH, and refresh the probe.`
     );
+  }
+
+  private hasPlatformAsset(toolManifest: ToolManifest, platformKey: PlatformKey | null): boolean {
+    if (platformKey === null) {
+      return false;
+    }
+    return toolManifest.assets?.[platformKey] !== undefined;
+  }
+
+  private shouldUseSystemCommandFallback(
+    toolManifest: ToolManifest,
+    platformKey: PlatformKey | null
+  ): boolean {
+    return (
+      this.isToolInstallable(toolManifest) === true &&
+      toolManifest.systemCommand !== undefined &&
+      this.hasPlatformAsset(toolManifest, platformKey) !== true
+    );
+  }
+
+  private resolveToolSystemCommandSpec(
+    toolManifest: ToolManifest,
+    toolId: string
+  ): {
+    manifest: ToolManifest;
+    probe: NonNullable<ToolManifest["probe"]>;
+    systemCommand: SystemCommandSpec;
+  } {
+    const probe = toolManifest.probe;
+    if (probe === undefined) {
+      throw new Error(`Tool ${toolId} is missing a probe declaration`);
+    }
+    const systemCommand = toolManifest.systemCommand;
+    if (systemCommand === undefined) {
+      throw new Error(`Tool ${toolId} is missing a system-command declaration`);
+    }
+
+    return {
+      manifest: toolManifest,
+      probe,
+      systemCommand,
+    };
+  }
+
+  private async probeSystemCommandToolStatus(
+    toolId: string,
+    toolManifest: ToolManifest,
+    paths: RoomToolRuntimePaths,
+    platformKey: string,
+    requestId: string | null,
+    operation: "tool-probe" | "tool-install" | "tool-update"
+  ): Promise<RoomToolCallResult> {
+    const resolved = this.resolveToolSystemCommandSpec(toolManifest, toolId);
+    const binaryPath = await resolveSystemCommandBinaryPath(resolved.systemCommand.executableName, {
+      envVarNames: resolved.systemCommand.envVarNames,
+      candidatePaths: resolved.systemCommand.candidatePaths,
+      runtimePaths: paths,
+    });
+    const setupHint = this.getSystemCommandSetupHint(toolId, resolved.manifest);
+
+    if (binaryPath === null) {
+      return {
+        success: true,
+        operation,
+        requestId,
+        tool: normalizeToolStatus(toolId, {
+          installed: false,
+          details: {
+            platformKey,
+            availability: "system-command",
+            installable: false,
+            manualSetup: true,
+            executableName: resolved.systemCommand.executableName,
+            companionExecutables: resolved.systemCommand.companionExecutables ?? [],
+            setupHint,
+          },
+        }),
+      };
+    }
+
+    const probe = await runCommand(
+      binaryPath,
+      resolved.probe.args,
+      dirname(binaryPath),
+      undefined,
+      12_000
+    );
+    const combinedOutput = `${probe.stdout}\n${probe.stderr}`;
+    const version =
+      probe.exitCode === 0 ? findVersion(combinedOutput, resolved.probe.versionRegex) : null;
+    const companionPaths: Record<string, string> = {};
+
+    await Promise.all(
+      (resolved.systemCommand.companionExecutables ?? []).map(
+        async (companionName): Promise<void> => {
+          const companionPath = await resolveSystemCommandBinaryPath(companionName);
+          if (companionPath !== null) {
+            companionPaths[companionName] = companionPath;
+          }
+        }
+      )
+    );
+
+    return {
+      success: true,
+      operation,
+      requestId,
+      tool: normalizeToolStatus(toolId, {
+        installed: probe.exitCode === 0,
+        version,
+        binaryPath,
+        installDir: dirname(binaryPath),
+        companionPaths,
+        details: {
+          platformKey,
+          availability: "system-command",
+          installable: false,
+          manualSetup: true,
+          executableName: resolved.systemCommand.executableName,
+          companionExecutables: resolved.systemCommand.companionExecutables ?? [],
+          setupHint,
+        },
+      }),
+    };
   }
 
   private async recheckSystemCommandTool(
@@ -1457,16 +1633,11 @@ class RoomToolService {
     if (this.isSystemCommandTool(toolManifest) !== true) {
       throw new Error(`${toolId} does not use the system-command tool runtime`);
     }
-    if (!toolManifest.probe) {
-      throw new Error(`Tool ${toolId} is missing a probe declaration`);
-    }
-    if (!toolManifest.systemCommand) {
-      throw new Error(`Tool ${toolId} is missing a system-command declaration`);
-    }
+    const resolved = this.resolveToolSystemCommandSpec(toolManifest, toolId);
 
     return {
-      manifest: toolManifest as SystemCommandToolManifest,
-      systemCommand: toolManifest.systemCommand,
+      manifest: resolved.manifest as SystemCommandToolManifest,
+      systemCommand: resolved.systemCommand,
     };
   }
 

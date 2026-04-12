@@ -214,7 +214,7 @@ export function createLaboratoryProjectManifestRuntime(deps: LaboratoryProjectMa
   function buildSourceTargetSignature(project: unknown) {
     const projectRecord = toProjectRecord(project);
     const sourceRecord = toProjectSourceRecord(projectRecord.source);
-    const metadata = normalizeSourceMetadata(sourceRecord.metadata);
+    const metadata = toRecord(normalizeSourceMetadata(sourceRecord.metadata));
 
     return JSON.stringify({
       mode: "source",
@@ -222,15 +222,15 @@ export function createLaboratoryProjectManifestRuntime(deps: LaboratoryProjectMa
       path: asNonEmptyString(sourceRecord.storedPath),
       fileName: asNonEmptyString(sourceRecord.storedFileName),
       mimeType: asNonEmptyString(sourceRecord.mimeType),
-      durationSeconds: asNumber(metadata.durationSeconds),
-      sizeBytes: asNumber(metadata.sizeBytes),
+      durationSeconds: asNumber(metadata["durationSeconds"]),
+      sizeBytes: asNumber(metadata["sizeBytes"]),
       updatedAt: asNonEmptyString(projectRecord.updatedAt),
     });
   }
 
   function buildDerivedTargetSignature(output: unknown) {
     const entry = normalizeEditOutput(output);
-    const metadata = normalizeSourceMetadata(entry.metadata);
+    const metadata = toRecord(normalizeSourceMetadata(entry.metadata));
 
     return JSON.stringify({
       mode: "derived",
@@ -239,8 +239,8 @@ export function createLaboratoryProjectManifestRuntime(deps: LaboratoryProjectMa
       fileName: asNonEmptyString(entry.fileName),
       mimeType: asNonEmptyString(entry.mimeType),
       recipeSignature: asNonEmptyString(entry.recipeSignature),
-      durationSeconds: asNumber(metadata.durationSeconds),
-      sizeBytes: asNumber(metadata.sizeBytes),
+      durationSeconds: asNumber(metadata["durationSeconds"]),
+      sizeBytes: asNumber(metadata["sizeBytes"]),
       createdAt: asNonEmptyString(entry.createdAt),
     });
   }

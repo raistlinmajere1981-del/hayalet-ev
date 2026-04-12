@@ -67,7 +67,7 @@ export function renderLaboratoryShell(deps: LaboratoryShellRenderDeps): string {
       </section>
       ${
         dependencyCenterOpen
-          ? `<aside class="lab-shell__center">${dependencyCenterMarkup}</aside>`
+          ? `<div class="lab-shell__overlay">${dependencyCenterMarkup}</div>`
           : ""
       }
     </main>

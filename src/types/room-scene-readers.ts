@@ -489,7 +489,7 @@ export function createRoomSceneReaders(deps: RoomSceneReaderDeps) {
     const missingFeatureScene = features
       .filter((feature) => feature.scene === undefined)
       .map((feature) => feature.id);
-    if (workbench?.experienceId) {
+    if (workbench?.experienceId !== undefined) {
       if (featureSceneIds.length === 0) {
         errors.push("scene requires at least one feature.scene when workbench is enabled");
       }

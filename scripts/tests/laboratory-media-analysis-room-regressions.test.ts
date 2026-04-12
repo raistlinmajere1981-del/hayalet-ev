@@ -793,8 +793,9 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
     typedParamSignature("renderProfileModelCard", "entry")
   );
   assert.match(settingsOverlaySource, /createLaboratorySettingsUi/);
-  assert.match(settingsOverlaySource, /lab-overlay--dock/);
-  assert.doesNotMatch(settingsOverlaySource, /aria-modal="true"/);
+  assert.match(settingsOverlaySource, /lab-overlay--center/);
+  assert.match(settingsOverlaySource, /aria-modal="true"/);
+  assert.match(settingsOverlaySource, /lab-overlay__scrim/);
   assert.match(settingsProfileModelSource, /data-action="profile-model-install"/);
   assert.match(settingsProfileModelSource, /data-action="profile-model-remove"/);
   assert.match(settingsProfileModelSource, /getToolRegistry/);
@@ -852,7 +853,7 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
     shellRenderSource,
     /export function renderLaboratoryShell\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
-  assert.match(shellRenderSource, /lab-shell__center/);
+  assert.match(shellRenderSource, /lab-shell__overlay/);
   assert.match(shellRuntimeSource, typedDepsSignature("createLaboratoryUiShellRuntime"));
   assert.match(shellRuntimeSource, /captureScrollState\(root\);/);
   assert.match(shellRuntimeSource, /restoreScrollState\(root\);/);
@@ -896,6 +897,7 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   assert.match(uiSource, /main-functions\/audio-analysis\/ui\/module\.js/);
   assert.match(uiSource, /main-functions\/subtitle-analysis\/ui\/runtime\.js/);
   assert.match(bootstrapStateSource, /scrollPositions:\s*\{\s*surface: 0,\s*overlay: 0,\s*\}/);
+  assert.match(bootstrapStateSource, /settingsAnimateIn: false,/);
   assert.match(
     navigationRuntimeSource,
     /surface\.scrollTop = state\.ui\.surfaceScrollResetPending \? 0 : state\.ui\.scrollPositions\.surface;/
@@ -906,6 +908,10 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   );
   assert.match(navigationRuntimeSource, /requestSurfaceScrollReset\(\);/);
   assert.match(requestRuntimeSource, /requestOverlayScrollReset\(\);/);
+  assert.match(requestRuntimeSource, /state\.ui\.settingsAnimateIn = true;/);
+  assert.match(requestRuntimeSource, /state\.ui\.settingsAnimateIn = false;/);
+  assert.match(requestRuntimeSource, /sendSourceAction\("tools-refresh", \{\}\);/);
+  assert.match(settingsOverlaySource, /data-animate="\$\{state\.ui\.settingsAnimateIn === true \? "enter" : "idle"\}"/);
 });
 
 test("laboratory host orchestrates projects, source intake, edit rendering, and profile preflight through room tools", () => {

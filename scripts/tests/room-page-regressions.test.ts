@@ -173,7 +173,10 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(pageShellRuntimeSource, /\.\/shell-layout\.js/);
   assert.match(pageShellRuntimeSource, /\.\/runtime-events\.js/);
   assert.match(pageShellRuntimeSource, /export function shouldShowRoomPageFeatureStripForRoom\(/);
-  assert.match(pageShellRuntimeSource, /if \(room\.workbench\?\.experienceId\) \{\s*return false;\s*\}/);
+  assert.match(
+    pageShellRuntimeSource,
+    /if \(room\.workbench\?\.experienceId(?: !== undefined)?\) \{\s*return false;\s*\}/
+  );
   assert.match(pageShellRuntimeSource, /export function ensureRoomPageFeatureShell\(/);
   assert.match(pageShellRuntimeSource, /export function renderRoomPageFeatureStrip\(/);
   assert.match(pageShellRuntimeSource, /export function updateRoomPageStatusPanel\(/);

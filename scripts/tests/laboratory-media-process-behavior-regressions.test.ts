@@ -306,12 +306,50 @@ test("laboratory UI renders the process stage from host-backed state and honest 
   assert.match(processStageSource, /data-action="process-cancel"/);
   assert.match(processStageSource, /data-action="open-report"/);
   assert.match(settingsOverlaySource, /currentStageToolIds = getStageToolIds\(stageId\);/);
-  assert.match(settingsOverlaySource, /lab-overlay--dock/);
-  assert.doesNotMatch(settingsOverlaySource, /aria-modal="true"/);
+  assert.match(settingsOverlaySource, /lab-overlay--center/);
+  assert.match(settingsOverlaySource, /aria-modal="true"/);
+  assert.match(settingsOverlaySource, /lab-overlay__scrim/);
   assert.match(settingsOverlaySource, /text\(\["workbench", "dependencyOverview"\]\)/);
   assert.match(settingsOverlaySource, /text\(\["workbench", "toolGridTitle"\]\)/);
   assert.doesNotMatch(uiSource, /return stageToolIds\.length > 0 \? stageToolIds : allToolIds;/);
   assert.equal(toolchain.tools.ffmpeg.stageSupport.process, "required");
   assert.equal(toolchain.tools["whisper.cpp"].stageSupport.process, "optional");
+  assert.equal(toolchain.tools["whisper.cpp"].systemCommand.executableName, "whisper-cli");
+  assert.equal(
+    toolchain.tools["whisper.cpp"].systemCommand.envVarNames.includes(
+      "HAYALET_EV_TRANSCRIPT_WHISPER_BIN"
+    ),
+    true
+  );
+  assert.equal(
+    toolchain.tools["whisper.cpp"].systemCommand.candidatePaths.includes(
+      "${dataDir}/transcript/whisper.cpp-build/bin/whisper-cli"
+    ),
+    true
+  );
   assert.equal(toolchain.tools["yt-dlp"].stageSupport.process, "unsupported");
+});
+
+test("laboratory dependency refresh guards missing metadata before reading duration fields", () => {
+  const projectManifestSource = readFileSync(
+    "rooms/laboratory/shared/host/project-manifests.ts",
+    "utf8"
+  );
+  const profileProjectionSource = readFileSync(
+    "rooms/laboratory/main-functions/media-analysis/host/profile-projection.ts",
+    "utf8"
+  );
+
+  assert.match(
+    projectManifestSource,
+    /const metadata = toRecord\(normalizeSourceMetadata\(sourceRecord\.metadata\)\);/
+  );
+  assert.match(
+    projectManifestSource,
+    /const metadata = toRecord\(normalizeSourceMetadata\(entry\.metadata\)\);/
+  );
+  assert.match(
+    profileProjectionSource,
+    /const targetMetadata = toRecord\(normalizeSourceMetadata\(readiness\.target\.metadata\)\);/
+  );
 });

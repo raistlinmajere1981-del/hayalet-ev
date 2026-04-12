@@ -33,16 +33,46 @@ test("room tool service can describe planned and system-command tools without fo
 
   assert.match(serviceSource, /type ToolAvailability = "installable" \| "system-command" \| "planned";/);
   assert.match(serviceSource, /type SystemCommandSpec = \{/);
+  assert.match(serviceSource, /envVarNames\?: string\[\];/);
+  assert.match(serviceSource, /candidatePaths\?: string\[\];/);
   assert.match(serviceSource, /plannedReason\?: string;/);
   assert.match(serviceSource, /systemCommand\?: SystemCommandSpec;/);
   assert.match(serviceSource, /availability: "planned"/);
   assert.match(serviceSource, /availability: "system-command"/);
   assert.match(serviceSource, /installable: false/);
-  assert.match(serviceSource, /async function resolveSystemCommandBinaryPath\(executableName: string\): Promise<string \| null>/);
+  assert.match(serviceSource, /async function resolveSystemCommandBinaryPath\(/);
+  assert.match(serviceSource, /expandRuntimePathTemplate\(/);
   assert.match(serviceSource, /private isToolInstallable\(toolManifest: ToolManifest\): boolean/);
   assert.match(serviceSource, /private isSystemCommandTool\(toolManifest: ToolManifest\): boolean/);
-  assert.match(serviceSource, /private resolveSystemCommandTool\(manifest: ToolchainManifest, toolId: string\): \{/);
+  assert.match(serviceSource, /private shouldUseSystemCommandFallback\(/);
+  assert.match(serviceSource, /private async probeSystemCommandToolStatus\(/);
+  assert.match(
+    serviceSource,
+    /private resolveSystemCommandTool\(\s*manifest: ToolchainManifest,\s*toolId: string\s*\): \{/
+  );
   assert.match(serviceSource, /private getPlannedToolMessage\(toolId: string, toolManifest: ToolManifest\): string/);
+});
+
+test("room tool service resolves toolchain manifests from installed and workspace fallback layouts", () => {
+  const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
+
+  assert.match(
+    serviceSource,
+    /function getToolchainManifestCandidates\(paths: RoomToolRuntimePaths\): string\[\]/
+  );
+  assert.match(
+    serviceSource,
+    /join\(paths\.installedDir, "shared", "data", "tools", "toolchain\.manifest\.json"\)/
+  );
+  assert.match(
+    serviceSource,
+    /join\(\s*paths\.storageDir,\s*"build",\s*"workspace",\s*"shared",\s*"data",\s*"tools",\s*"toolchain\.manifest\.json"\s*\)/
+  );
+  assert.match(
+    serviceSource,
+    /join\(Paths\.getRoomsWorkspaceDir\(\), paths\.roomId, "shared", "data", "tools", "toolchain\.manifest\.json"\)/
+  );
+  assert.match(serviceSource, /const manifestPath = candidatePaths\.find\(\(candidate\) => existsSync\(candidate\)\);/);
 });
 
 test("room tool preload and global typings expose the generic room-tools seam", () => {

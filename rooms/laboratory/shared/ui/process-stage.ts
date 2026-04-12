@@ -153,7 +153,9 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
           .map(function (featureId) {
             const processRecord = getFeatureProcessRecord(featureId);
             const reportRecord = getFeatureReportRecord(featureId);
-            const moduleCount = Array.isArray(processRecord.modules) ? processRecord.modules.length : 0;
+            const moduleCount = Array.isArray(processRecord.modules)
+              ? processRecord.modules.length
+              : 0;
             const findingCount = Array.isArray(processRecord.findings)
               ? processRecord.findings.length
               : 0;

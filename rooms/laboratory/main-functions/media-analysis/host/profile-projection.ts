@@ -516,7 +516,7 @@ export function createMediaProfileProjectionRuntime(deps: MediaProfileProjection
         : getEnabledProfileLaneIds(runtime, project);
     const laneMap = getProfileLaneMap(runtime.profilePresets);
     const artifactBudget = Math.max(1, Math.round(asNumber(depthConfig["artifactBudget"]) || 3));
-    const targetMetadata = normalizeSourceMetadata(readiness.target.metadata);
+    const targetMetadata = toRecord(normalizeSourceMetadata(readiness.target.metadata));
     const durationSeconds = asNumber(targetMetadata["durationSeconds"]);
     const sampleWindowSeconds = Math.min(
       durationSeconds || Number.MAX_SAFE_INTEGER,

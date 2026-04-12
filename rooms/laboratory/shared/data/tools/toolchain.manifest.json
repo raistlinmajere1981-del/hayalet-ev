@@ -122,7 +122,7 @@
       "usedBy": ["Transcript extraction", "Speech overlay checks"],
       "testImpact": ["profile-transcript", "speech-overlay"],
       "readinessImpact": "Limits transcript-backed speech checks and transcript artifacts.",
-      "manualHint": "If automatic install is unavailable on this runtime, place a compatible whisper-cli binary on PATH or in the room-managed tool directory, then refresh the dependency center.",
+      "manualHint": "If automatic install is unavailable on this runtime, Laboratory can reuse the Analyze dictate whisper-cli runtime, an explicit HAYALET_EV_TRANSCRIPT_WHISPER_BIN path, or a PATH-installed whisper-cli binary after refresh.",
       "stageSupport": {
         "source": "unsupported",
         "edit": "unsupported",
@@ -139,6 +139,17 @@
       "probe": {
         "args": ["--help"],
         "versionRegex": "v?(\\d+\\.\\d+\\.\\d+)"
+      },
+      "systemCommand": {
+        "executableName": "whisper-cli",
+        "envVarNames": ["HAYALET_EV_TRANSCRIPT_WHISPER_BIN"],
+        "candidatePaths": [
+          "${dataDir}/transcript/whisper.cpp-build/bin/whisper-cli",
+          "${dataDir}/transcript/whisper.cpp-build/bin/main",
+          "${dataDir}/transcript/whisper.cpp-src/build/bin/whisper-cli",
+          "${dataDir}/transcript/whisper.cpp-src/build/bin/main"
+        ],
+        "setupHint": "Use the Analyze dictate runtime, set HAYALET_EV_TRANSCRIPT_WHISPER_BIN to a whisper-cli binary, or install whisper-cli on PATH, then refresh this tool."
       },
       "assets": {
         "win32-x64": {

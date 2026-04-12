@@ -391,13 +391,18 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
           requestId: requestId,
           percent: 0,
         });
-        markFeatureReportStale(nextProject, queuedFeatureId, "A new process run is now in progress.");
+        markFeatureReportStale(
+          nextProject,
+          queuedFeatureId,
+          "A new process run is now in progress."
+        );
       });
       return nextProject;
     });
 
     const errors: Error[] = [];
-    for (const nextFeatureId of runFeatureIds) {
+    await runFeatureIds.reduce(async function (previousRun, nextFeatureId): Promise<void> {
+      await previousRun;
       try {
         await runSingleFeatureProcess(api, runtime, requestId, nextFeatureId, workbench);
       } catch (error) {
@@ -407,10 +412,11 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
             : new Error(typeof error === "string" ? error : "Process run failed.")
         );
       }
-    }
+    }, Promise.resolve());
 
     if (errors.length === runFeatureIds.length) {
-      throw errors[0];
+      const firstError = errors[0];
+      throw firstError instanceof Error ? firstError : new Error("Process run failed.");
     }
 
     if (errors.length > 0) {

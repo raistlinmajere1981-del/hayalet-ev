@@ -102,16 +102,13 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
     const scaleFactor = formatScaleFactor(state.presentation.uiScale / 100);
     documentRef.body.dataset["presentationMode"] = state.presentation.mode;
     documentRef.body.dataset["roomUiScale"] = String(state.presentation.uiScale);
-    if (typeof documentRef.body?.style?.setProperty === "function") {
+    if (typeof documentRef.body.style.setProperty === "function") {
       documentRef.body.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
     }
     documentRef.documentElement.dataset["presentationMode"] = state.presentation.mode;
     documentRef.documentElement.dataset["roomUiScale"] = String(state.presentation.uiScale);
-    if (typeof documentRef.documentElement?.style?.setProperty === "function") {
-      documentRef.documentElement.style.setProperty(
-        "--room-runtime-ui-scale-factor",
-        scaleFactor
-      );
+    if (typeof documentRef.documentElement.style.setProperty === "function") {
+      documentRef.documentElement.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
     }
   }
 

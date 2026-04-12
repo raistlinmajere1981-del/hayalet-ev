@@ -151,16 +151,29 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
     const readyModels = profileModelEntries.filter(function (entry) {
       return entry.ready === true;
     }).length;
+    const closeActionLabel = text(["mediaAnalysis", "settings", "closeAction"]);
 
     return `
-      <section class="lab-overlay lab-overlay--dock" aria-label="${escapeHtml(
-        text(["workbench", "dependencyAction"])
-      )}">
+      <section
+        class="lab-overlay lab-overlay--center"
+        data-animate="${state.ui.settingsAnimateIn === true ? "enter" : "idle"}"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lab-dependency-center-title"
+      >
+        <button
+          class="lab-overlay__scrim"
+          type="button"
+          data-action="close-settings"
+          aria-label="${escapeHtml(closeActionLabel)}"
+        ></button>
         <section class="lab-overlay__panel lab-center-panel__scroll">
           <header class="lab-overlay__header">
             <div>
               <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "dependencyEyebrow"]))}</p>
-              <h2 class="lab-panel__title">${escapeHtml(text(["workbench", "dependencyTitle"]))}</h2>
+              <h2 class="lab-panel__title" id="lab-dependency-center-title">${escapeHtml(
+                text(["workbench", "dependencyTitle"])
+              )}</h2>
               <p class="lab-panel__subtitle">${escapeHtml(text(["workbench", "dependencySubtitle"]))}</p>
             </div>
             <div class="lab-overlay__actions">
@@ -168,7 +181,7 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
                 ${escapeHtml(text(["mediaAnalysis", "settings", "refreshAction"]))}
               </button>
               <button class="lab-button lab-button--ghost lab-button--tight" type="button" data-action="close-settings">
-                ${escapeHtml(text(["mediaAnalysis", "settings", "closeAction"]))}
+                ${escapeHtml(closeActionLabel)}
               </button>
             </div>
           </header>
@@ -207,7 +220,8 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
                     <div class="lab-chip-row">
                       ${currentStageToolIds
                         .map(function (toolId) {
-                          const label = text(["mediaAnalysis", "settings", "tools", toolId]) || toolId;
+                          const label =
+                            text(["mediaAnalysis", "settings", "tools", toolId]) || toolId;
                           return `<span class="lab-chip">${escapeHtml(label)}</span>`;
                         })
                         .join("")}

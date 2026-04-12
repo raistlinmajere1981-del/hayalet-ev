@@ -326,14 +326,21 @@ export function createLaboratoryRequestRuntime(deps: LaboratoryRequestRuntimeDep
   }
 
   function openSettingsOverlay() {
+    if (state.ui.settingsOpen === true) {
+      return;
+    }
+
     state.ui.settingsOpen = true;
+    state.ui.settingsAnimateIn = true;
     requestOverlayScrollReset();
     render();
+    state.ui.settingsAnimateIn = false;
     sendSourceAction("tools-refresh", {});
   }
 
   function closeSettingsOverlay() {
     state.ui.settingsOpen = false;
+    state.ui.settingsAnimateIn = false;
     render();
   }
 

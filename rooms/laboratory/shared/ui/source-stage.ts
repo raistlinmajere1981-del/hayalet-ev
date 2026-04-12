@@ -169,11 +169,9 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
                       "resultsSuffix",
                     ])}`
                   : featureId === "subtitle-analysis"
-                    ? `${Array.isArray(subtitleAnalysis["entries"]) ? subtitleAnalysis["entries"].length : 0} ${text([
-                        "workbench",
-                        "cards",
-                        "entriesSuffix",
-                    ])}`
+                    ? `${Array.isArray(subtitleAnalysis["entries"]) ? subtitleAnalysis["entries"].length : 0} ${text(
+                        ["workbench", "cards", "entriesSuffix"]
+                      )}`
                     : toString(sourceRecord["status"]) || text(["mediaAnalysis", "shared", "idle"]);
               return `
                 <article
@@ -287,8 +285,7 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
                     .slice(0, 3)
                     .map(function (entry) {
                       const toolId = toString(entry.toolId) || "";
-                      const label =
-                        text(["mediaAnalysis", "settings", "tools", toolId]) || toolId;
+                      const label = text(["mediaAnalysis", "settings", "tools", toolId]) || toolId;
                       const hint = toString(entry.readinessImpact) || "";
                       return `<li>${escapeHtml(`${label}: ${hint}`)}</li>`;
                     })

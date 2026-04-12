@@ -481,7 +481,11 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     });
   }
 
-  function buildMediaSnapshot(runtime: SnapshotRecord, featureId: string, workbenchSource: unknown = {}) {
+  function buildMediaSnapshot(
+    runtime: SnapshotRecord,
+    featureId: string,
+    workbenchSource: unknown = {}
+  ) {
     const runtimeRecord = getRuntimeRecord(runtime);
     const projectedProjects = buildProjectedProjects(runtimeRecord);
     const activeProject =

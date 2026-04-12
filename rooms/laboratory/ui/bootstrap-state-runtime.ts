@@ -139,6 +139,7 @@ type LaboratoryUiState = {
       overlay: number;
       surface: number;
     };
+    settingsAnimateIn: boolean;
     settingsOpen: boolean;
     stackScrollPositions: {
       main: number;
@@ -316,6 +317,7 @@ export function createLaboratoryUiBootstrapStateRuntime(
         surface: 0,
         overlay: 0,
       },
+      settingsAnimateIn: false,
       stackScrollPositions: {
         main: 0,
         side: 0,

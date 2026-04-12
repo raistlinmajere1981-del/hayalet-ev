@@ -117,6 +117,14 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     return toRecord(value);
   }
 
+  function toUnknownArray(value: unknown): unknown[] {
+    return Array.isArray(value)
+      ? value.map(function (entry): unknown {
+          return entry;
+        })
+      : [];
+  }
+
   function getFeatureProcessRecord(featureId: string): LaboratoryFeatureProcessRecord {
     const records = toRecord(toRecord(getProjectProcess())["records"]);
     return toRecord(records[featureId]);
@@ -158,7 +166,7 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
   function getWorkbenchFindings(): unknown[] {
     return getSelectedFeatureIds().flatMap(function (featureId) {
       const reportRecord = getFeatureReportRecord(featureId);
-      return Array.isArray(reportRecord["findings"]) ? reportRecord["findings"] : [];
+      return toUnknownArray(reportRecord["findings"]);
     });
   }
 
