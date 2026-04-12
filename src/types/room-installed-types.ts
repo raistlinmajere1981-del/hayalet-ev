@@ -5,6 +5,7 @@ import type {
   RoomSceneChromeConfig,
   RoomSceneHotspotConfig,
   RoomSceneTransparentWindowConfig,
+  RoomWorkbenchConfig,
 } from "./room-manifest-types.js";
 import type { RoomSchemaVersion } from "./room-schema-version.js";
 import type { RoomSceneCharacterRosterPreset } from "./room-scene-guards.js";
@@ -58,6 +59,7 @@ export interface InstalledRoomRecord {
   hostEntryPath: string;
   defaultFeatureId: string;
   features: InstalledRoomFeatureRecord[];
+  workbench?: RoomWorkbenchConfig;
   scene?: InstalledRoomSceneRecord;
   i18nBaseDir?: string;
   commandSpecs?: RoomCommandSpec[];

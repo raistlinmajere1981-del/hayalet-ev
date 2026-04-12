@@ -118,6 +118,15 @@ export interface RoomFeatureManifest {
   scene?: RoomFeatureSceneConfig;
 }
 
+export interface RoomWorkbenchConfig {
+  experienceId: string;
+  label?: string;
+  description?: string;
+  mode?: "guided";
+  primaryFeatureId?: string;
+  availableFeatureIds?: string[];
+}
+
 export interface RoomManifest {
   schemaVersion: RoomSchemaVersion;
   id: string;
@@ -128,6 +137,7 @@ export interface RoomManifest {
   runtime: RoomRuntimeConfig;
   defaultFeatureId: string;
   features: RoomFeatureManifest[];
+  workbench?: RoomWorkbenchConfig;
   scene?: RoomSceneConfig;
   i18n?: RoomI18nConfig;
   storageNamespace?: string;

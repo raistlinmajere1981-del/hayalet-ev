@@ -81,6 +81,7 @@ type LaboratoryUiFeatureRuntimeDeps = {
   collectProcessStageJobs: (projectJobs: LaboratoryJobRecord[]) => unknown[];
   collectProfileStageJobs: (projectJobs: LaboratoryJobRecord[]) => unknown[];
   collectReportStageJobs: (projectJobs: LaboratoryJobRecord[]) => unknown[];
+  getActiveFeatureId: () => string;
   getActiveProject: () => unknown;
   getActiveSubtitleEntry: () => unknown;
   getAudioAnalysisOrderedResultEntries: () => unknown[];
@@ -106,6 +107,7 @@ export function createLaboratoryUiFeatureRuntime(deps: LaboratoryUiFeatureRuntim
     collectProcessStageJobs,
     collectProfileStageJobs,
     collectReportStageJobs,
+    getActiveFeatureId,
     getActiveProject: readActiveProject,
     getActiveSubtitleEntry: readActiveSubtitleEntry,
     getAudioAnalysisOrderedResultEntries: readAudioAnalysisOrderedResultEntries,
@@ -251,11 +253,13 @@ export function createLaboratoryUiFeatureRuntime(deps: LaboratoryUiFeatureRuntim
   }
 
   function getCurrentFeatureProcessRecord(): LaboratoryFeatureProcessRecord {
-    return toFeatureProcessRecord(readProjectProcess());
+    const records = toRecord(toRecord(readProjectProcess())["records"]);
+    return toFeatureProcessRecord(records[getActiveFeatureId()]);
   }
 
   function getCurrentFeatureReportRecord(): LaboratoryFeatureReportRecord {
-    return toFeatureReportRecord(readProjectReport());
+    const records = toRecord(toRecord(readProjectReport())["records"]);
+    return toFeatureReportRecord(records[getActiveFeatureId()]);
   }
 
   function getCurrentProfileMode() {

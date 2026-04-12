@@ -29,8 +29,9 @@ test("laboratory host composes and exports report artifacts from persisted proce
   );
   assert.match(
     profileProcessReportCompositionSharedSource,
-    /export function createLaboratoryProfileProcessReportComposition\(deps\)/
+    /export function createLaboratoryProfileProcessReportComposition\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
+  assert.match(reportStageSource, /function getSelectedFeatureIds\(\)/);
   assert.match(reportStageSource, /data-action="export-report"/);
   assert.match(reportStageSource, /featureText\(\["report", "actions", "export"\]\)/);
   assert.match(reportStageSource, /featureText\(\["report", "stagedHint"\]\)/);
@@ -83,6 +84,7 @@ test("laboratory UI renders report findings and export history from room-managed
     profileProcessReportRuntimeSource,
     /function renderReportFinding\(signal(?:: [^)]+)?\)/
   );
+  assert.match(reportStageSource, /getWorkbench,/);
   assert.match(reportStageSource, /data-action="export-report"/);
   assert.match(reportStageSource, /featureText\(\["report", "actions", "export"\]\)/);
   assert.match(reportStageSource, /featureText\(\["report", "stagedHint"\]\)/);

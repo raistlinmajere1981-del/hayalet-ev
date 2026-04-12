@@ -6,6 +6,83 @@
     "audio-analysis": "Audio Analysis",
     "subtitle-analysis": "Subtitle Analysis"
   },
+  "workbench": {
+    "eyebrow": "Central Laboratory",
+    "title": "Analysis Workbench",
+    "subtitle": "One desktop-first flow for project intake, module focus, readiness, runs, and reports.",
+    "moduleRailLabel": "Analysis modules",
+    "moduleTitle": "Choose the active module",
+    "moduleSelectionHint": "Build the run set here, then focus one module for detailed setup.",
+    "selectedModulesTitle": "Modules in this run",
+    "selectedModulesEmpty": "No modules are queued yet.",
+    "includeAction": "Add to run",
+    "excludeAction": "Remove",
+    "focusAction": "Focus module",
+    "activeTag": "Focused",
+    "dependencyAction": "Dependency Center",
+    "dependencyEyebrow": "Operations Center",
+    "dependencyTitle": "Dependencies And Models",
+    "dependencySubtitle": "Inspect installs, manual blockers, updates, and model lifecycle from one management surface.",
+    "dependencyOverview": "Workbench readiness overview",
+    "dependencyFocus": "Current step focus:",
+    "readinessTitle": "Readiness",
+    "readinessSubtitle": "Coverage snapshot",
+    "blockerTitle": "Current blockers",
+    "readyHint": "The current workspace has enough coverage to continue with the active module.",
+    "operationsTitle": "Live operations",
+    "operationsFallback": "Room job",
+    "operationsEmpty": "No active dependency or model operation is running.",
+    "toolGridTitle": "Tool inventory",
+    "modelGridTitle": "Profile model inventory",
+    "dependency": {
+      "strategy": "Install strategy",
+      "usedBy": "Used by",
+      "tests": "Impacts"
+    },
+    "cards": {
+      "autoManaged": "Auto-managed",
+      "manualFlows": "Manual host flows",
+      "operations": "Active operations",
+      "models": "Models ready",
+      "toolCoverage": "Tool coverage",
+      "blockers": "Blocking items",
+      "resultsSuffix": "results",
+      "entriesSuffix": "entries"
+    },
+    "modules": {
+      "media-analysis": {
+        "summary": "Source intake, edit handoff, profiling, and report composition."
+      },
+      "audio-analysis": {
+        "summary": "Audio-first module checks, provider readiness, and signal summaries."
+      },
+      "subtitle-analysis": {
+        "summary": "Subtitle discovery, cleanup, batch entry review, and QC."
+      }
+    },
+    "stages": {
+      "source": {
+        "title": "Build the project route",
+        "subtitle": "Pick or create a project, choose the active module, and prepare the source from one workspace."
+      },
+      "edit": {
+        "title": "Shape the active handoff",
+        "subtitle": "Refine the asset or subtitle output before deeper profiling and managed runs."
+      },
+      "profile": {
+        "title": "Check readiness before the run",
+        "subtitle": "Tune the profile, review blockers, and decide which artifacts the workbench should prepare."
+      },
+      "process": {
+        "title": "Run the guided analysis",
+        "subtitle": "Track module progress, warnings, and downstream report readiness without leaving the shell."
+      },
+      "report": {
+        "title": "Review the laboratory outcome",
+        "subtitle": "Read one report surface with module sections, caveats, exports, and follow-up actions."
+      }
+    }
+  },
   "mediaAnalysis": {
     "eyebrow": "Obsidian Laboratory",
     "operatorLabel": "Operator",
@@ -525,6 +602,7 @@
       "modelTitle": "Transcript Models",
       "modelSubtitle": "Optional Whisper.cpp models help the room sample speech continuity and overdub clues.",
       "modelUnavailable": "Install the room-local Whisper.cpp binary first to manage transcript models on this platform.",
+      "modelVerificationHint": "After host setup, refresh the dependency center, confirm Whisper.cpp is ready, then retry the model install.",
       "modelActions": {
         "install": "Install Model",
         "remove": "Remove Model"

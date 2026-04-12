@@ -191,6 +191,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     getEditPreview: coreRuntime.getEditPreview,
     getEffectiveMediaAsset: coreRuntime.getEffectiveMediaAsset,
     getFeaturePreviewImage: coreRuntime.getFeaturePreviewImage,
+    getWorkbench: coreRuntime.getWorkbench,
     getPreferredAssetCodec: coreRuntime.getPreferredAssetCodec,
     getPreferredAssetDuration: coreRuntime.getPreferredAssetDuration,
     getPreferredAssetResolution: coreRuntime.getPreferredAssetResolution,
@@ -207,7 +208,9 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     getProfileTargetAsset: coreRuntime.getProfileTargetAsset,
     getProfileTranscriptSampleConfig: coreRuntime.getProfileTranscriptSampleConfig,
     getProjectEdit: coreRuntime.getProjectEdit,
+    getProjectProcess: coreRuntime.getProjectProcess,
     getProjectProfile: coreRuntime.getProjectProfile,
+    getProjectReport: coreRuntime.getProjectReport,
     getProjectSource: coreRuntime.getProjectSource,
     getProjectStatusLabel: coreRuntime.getProjectStatusLabel,
     getSourceMetadata: coreRuntime.getSourceMetadata,
@@ -345,6 +348,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     resetJourney: coreRuntime.resetJourney,
     restartProcess: coreRuntime.restartProcess,
     restoreScrollState: coreRuntime.restoreScrollState,
+    setActiveWorkbenchModule: coreRuntime.setActiveWorkbenchModule,
     sendMediaAction: coreRuntime.sendMediaAction,
     sendSourceAction: coreRuntime.sendSourceAction,
     setLastAction: coreRuntime.setLastAction,
@@ -355,6 +359,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     text: coreRuntime.text,
     textFromKey: coreRuntime.textFromKey,
     toRecord: coreRuntime.toRecord,
+    toggleWorkbenchModuleSelection: coreRuntime.toggleWorkbenchModuleSelection,
     toggleCleanup(key: unknown) {
       void key;
     },

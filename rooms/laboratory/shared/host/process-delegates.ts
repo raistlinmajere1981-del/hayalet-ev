@@ -76,13 +76,15 @@ export function createLaboratoryProcessDelegatesRuntime(deps: Record<string, unk
     api: Record<string, unknown>,
     runtime: Record<string, unknown>,
     requestId: string,
-    featureId: string
+    featureId: string,
+    workbenchSource?: unknown
   ) {
     return (processCoordinationRuntime["runFeatureProcess"] as UnknownFn)(
       api,
       runtime,
       requestId,
-      featureId
+      featureId,
+      workbenchSource
     );
   }
 
@@ -106,13 +108,15 @@ export function createLaboratoryProcessDelegatesRuntime(deps: Record<string, unk
     api: Record<string, unknown>,
     runtime: Record<string, unknown>,
     requestId: string,
-    featureId: string
+    featureId: string,
+    workbenchSource?: unknown
   ) {
     return (processCoordinationRuntime["cancelFeatureProcess"] as UnknownFn)(
       api,
       runtime,
       requestId,
-      featureId
+      featureId,
+      workbenchSource
     );
   }
 

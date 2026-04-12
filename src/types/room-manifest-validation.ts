@@ -1,4 +1,9 @@
-import type { RoomFeatureManifest, RoomManifest, RoomManifestValidationResult } from "./rooms.js";
+import type {
+  RoomFeatureManifest,
+  RoomManifest,
+  RoomManifestValidationResult,
+  RoomWorkbenchConfig,
+} from "./rooms.js";
 import {
   hasDuplicateValues,
   isRecord,
@@ -38,6 +43,68 @@ const roomSceneReaders = createRoomSceneReaders({
 });
 
 const { readFeatureManifest, readSceneConfig } = roomSceneReaders;
+
+function readWorkbenchConfig(
+  candidate: unknown,
+  featureIds: string[],
+  errors: string[]
+): RoomWorkbenchConfig | undefined {
+  if (candidate === undefined) {
+    return undefined;
+  }
+  if (!isRecord(candidate)) {
+    errors.push("workbench must be an object");
+    return undefined;
+  }
+
+  const experienceId = readRequiredString(candidate, "experienceId", errors);
+  const label = readOptionalString(candidate, "label", errors);
+  const description = readOptionalString(candidate, "description", errors);
+  const mode = readOptionalString(candidate, "mode", errors);
+  if (mode !== undefined && mode !== "guided") {
+    errors.push("workbench.mode must be 'guided' when provided");
+  }
+  const workbenchMode: RoomWorkbenchConfig["mode"] =
+    mode === "guided" ? "guided" : undefined;
+  const primaryFeatureId = readOptionalString(candidate, "primaryFeatureId", errors);
+  if (primaryFeatureId !== undefined && featureIds.includes(primaryFeatureId) === false) {
+    errors.push("workbench.primaryFeatureId must match one of the feature ids");
+  }
+
+  const availableFeatureIdsRaw = candidate["availableFeatureIds"];
+  let availableFeatureIds: string[] | undefined;
+  if (availableFeatureIdsRaw !== undefined) {
+    if (!Array.isArray(availableFeatureIdsRaw)) {
+      errors.push("workbench.availableFeatureIds must be an array of strings");
+    } else {
+      const parsed = availableFeatureIdsRaw.filter((value): value is string => typeof value === "string");
+      if (parsed.length !== availableFeatureIdsRaw.length) {
+        errors.push("workbench.availableFeatureIds must contain only strings");
+      } else {
+        availableFeatureIds = parsed.map((value) => value.trim()).filter((value) => value !== "");
+        if (availableFeatureIds.some((value) => featureIds.includes(value) === false)) {
+          errors.push("workbench.availableFeatureIds must match declared feature ids");
+        }
+        if (hasDuplicateValues(availableFeatureIds)) {
+          errors.push("workbench.availableFeatureIds must be unique");
+        }
+      }
+    }
+  }
+
+  if (experienceId === undefined) {
+    return undefined;
+  }
+
+  return {
+    experienceId,
+    ...(label !== undefined ? { label } : {}),
+    ...(description !== undefined ? { description } : {}),
+    ...(workbenchMode !== undefined ? { mode: workbenchMode } : {}),
+    ...(primaryFeatureId !== undefined ? { primaryFeatureId } : {}),
+    ...(availableFeatureIds !== undefined ? { availableFeatureIds } : {}),
+  };
+}
 
 export function validateRoomManifest(
   candidate: unknown,
@@ -117,8 +184,17 @@ export function validateRoomManifest(
     errors.push("defaultFeatureId must match one of the feature ids");
   }
 
+  const workbench =
+    features !== undefined
+      ? readWorkbenchConfig(
+          candidate["workbench"],
+          features.map((feature) => feature.id),
+          errors
+        )
+      : undefined;
+
   const scene =
-    features !== undefined ? readSceneConfig(candidate["scene"], features, errors) : undefined;
+    features !== undefined ? readSceneConfig(candidate["scene"], features, workbench, errors) : undefined;
 
   if (features !== undefined) {
     const commandNames = [
@@ -163,6 +239,7 @@ export function validateRoomManifest(
     runtime,
     defaultFeatureId,
     features,
+    ...(workbench !== undefined ? { workbench } : {}),
     ...(description !== undefined ? { description } : {}),
     ...(scene !== undefined ? { scene } : {}),
     ...(i18n !== undefined ? { i18n } : {}),

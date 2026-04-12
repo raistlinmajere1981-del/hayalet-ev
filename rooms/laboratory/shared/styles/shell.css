@@ -50,13 +50,18 @@ body {
 .lab-shell {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
   min-height: 100%;
   min-width: 0;
   height: 100%;
   padding: clamp(0.75rem, 1.6vw, 1rem);
   isolation: isolate;
   overflow: hidden;
+  gap: 0.9rem;
+}
+
+.lab-shell[data-center-open="true"] {
+  grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr) minmax(22rem, 26rem);
 }
 
 .lab-shell__grain,
@@ -85,20 +90,40 @@ body {
     linear-gradient(180deg, rgb(255 255 255 / 0.03), transparent 18%);
 }
 
-.lab-topbar,
+.lab-shell__rail,
+.lab-shell__workspace,
+.lab-shell__center,
 .lab-surface,
 .lab-footer {
   position: relative;
   z-index: 1;
 }
 
+.lab-shell__rail,
+.lab-shell__workspace,
+.lab-shell__center {
+  min-height: 0;
+  min-width: 0;
+}
+
+.lab-shell__workspace {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+}
+
+.lab-shell__center {
+  display: grid;
+}
+
 .lab-topbar {
-  margin-bottom: 0.7rem;
+  height: 100%;
 }
 
 body[data-presentation-mode="scene-view"] .lab-shell {
+  grid-template-columns: minmax(13rem, 16rem) minmax(0, 1fr);
   height: 100%;
-  padding: 0;
+  padding: 0.55rem;
 }
 
 body[data-presentation-mode="scene-view"] .lab-surface {

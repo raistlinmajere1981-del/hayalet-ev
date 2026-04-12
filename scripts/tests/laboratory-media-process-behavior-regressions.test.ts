@@ -108,11 +108,23 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   assert.match(processReportStateSource, /function createEmptyProcessState\(\)/);
   assert.match(hostSource, /\.\/runtime\.js/);
   assert.match(hostRuntimeSource, /shared\/host\/runtime-primitives\.js/);
-  assert.match(runtimePrimitivesSource, /export function getLaboratoryProjectProcessDir\(runtime, project\)/);
-  assert.match(runtimePrimitivesSource, /export function getLaboratoryFeatureProcessDir\(runtime, project, featureId\)/);
-  assert.match(runtimePrimitivesSource, /export function getLaboratoryFeatureReportDir\(runtime, project, featureId\)/);
+  assert.match(
+    runtimePrimitivesSource,
+    /export function getLaboratoryProjectProcessDir\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    runtimePrimitivesSource,
+    /export function getLaboratoryFeatureProcessDir\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?,\s*featureId(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    runtimePrimitivesSource,
+    /export function getLaboratoryFeatureReportDir\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?,\s*featureId(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(hostCompositionSource, /shared\/host\/snapshot-composition\.js/);
-  assert.match(projectManifestSource, /function buildProcessManifest\(project\)/);
+  assert.match(
+    projectManifestSource,
+    /function buildProcessManifest\(\s*project(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(snapshotCompositionSource, /from "\.\/project-manifests\.js"/);
   assert.match(snapshotCompositionSource, /from "\.\/room-snapshot\.js"/);
   assert.match(snapshotCompositionSource, /from "\.\/runtime-events\.js"/);
@@ -124,7 +136,7 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   assert.match(stateCompositionSource, /from "\.\/process-report-state\.js"/);
   assert.match(
     stateCompositionSource,
-    /export function createLaboratoryHostStateCompositionRuntime\(deps\)/
+    /export function createLaboratoryHostStateCompositionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(processCompositionSource, /from "\.\/process-coordination\.js"/);
   assert.match(processCompositionSource, /from "\.\/process-runtime\.js"/);
@@ -133,7 +145,10 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   assert.match(processCompositionSource, /from "\.\/reporting\.js"/);
   assert.match(processCompositionSource, /main-functions\/audio-analysis\/host\/runtime\.js/);
   assert.match(processCoordinationSource, /export function createLaboratoryProcessCoordinationRuntime/);
-  assert.match(processCoordinationSource, /return processRuntime\.runManagedProcess\(runtime, project, requestId, jobId, featureId\);/);
+  assert.match(
+    processCoordinationSource,
+    /return \(processRuntime\["runManagedProcess"\] as UnknownFn\)\(\s*runtime,\s*project,\s*requestId,\s*jobId,\s*featureId\s*\);/
+  );
   assert.match(processRuntimeSource, /export function createLaboratoryProcessRuntime/);
   assert.match(processRuntimeSource, /from "\.\/process-managed-runners\.js"/);
   assert.match(
@@ -142,24 +157,24 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   );
   assert.match(
     processManagedRunnersSource,
-    /export function createLaboratoryManagedProcessRunnersRuntime\(deps\)/
+    /export function createLaboratoryManagedProcessRunnersRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(processManagedRunnersSource, /from "\.\/process-managed-audio-runner\.js"/);
   assert.match(processManagedRunnersSource, /from "\.\/process-managed-media-runner\.js"/);
   assert.match(processManagedRunnersSource, /from "\.\/process-managed-subtitle-runner\.js"/);
   assert.match(
     processManagedAudioRunnerSource,
-    /export function createLaboratoryManagedAudioRunnerRuntime\(deps\)/
+    /export function createLaboratoryManagedAudioRunnerRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(processManagedAudioRunnerSource, /async function runAudioManagedProcess/);
   assert.match(
     processManagedMediaRunnerSource,
-    /export function createLaboratoryManagedMediaRunnerRuntime\(deps\)/
+    /export function createLaboratoryManagedMediaRunnerRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(processManagedMediaRunnerSource, /async function runMediaManagedProcess/);
   assert.match(
     processManagedSubtitleRunnerSource,
-    /export function createLaboratoryManagedSubtitleRunnerRuntime\(deps\)/
+    /export function createLaboratoryManagedSubtitleRunnerRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(processManagedSubtitleRunnerSource, /async function runSubtitleManagedProcess/);
   assert.match(
@@ -175,7 +190,18 @@ test("laboratory host keeps process orchestration on the shared room-managed con
     /function markFeatureReportStale\(\s*project\??(?::[\s\S]+?)?,\s*featureId\??(?::[\s\S]+?)?,\s*reason\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
   );
   assert.match(processTargetingSource, /export function createLaboratoryProcessTargetingRuntime/);
-  assert.match(processTargetingSource, /function buildProcessSpeechAvailability\(runtime, project\)/);
+  assert.match(
+    processTargetingSource,
+    /function resolveProcessRunFeatureIds\(\s*project(?::[\s\S]+?)?,\s*featureId(?::[\s\S]+?)?,\s*workbenchSource(?::[\s\S]+?)?\s*=\s*\{\}\s*\)/
+  );
+  assert.match(
+    processTargetingSource,
+    /function resolveProcessWorkbench\(\s*project(?::[\s\S]+?)?,\s*featureId(?::[\s\S]+?)?,\s*workbenchSource(?::[\s\S]+?)?\s*=\s*\{\}\s*\)/
+  );
+  assert.match(
+    processTargetingSource,
+    /function buildProcessSpeechAvailability\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(roomToolsProgressSource, /export function createLaboratoryRoomToolsProgressRuntime/);
   assert.match(
     roomToolsProgressSource,
@@ -183,13 +209,41 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   );
   assert.match(processRuntimeSource, /async function runManagedProcess/);
   assert.match(processRuntimeSource, /async function runFeatureProcess/);
+  assert.match(processRuntimeSource, /async function runSingleFeatureProcess/);
+  assert.match(
+    processRuntimeSource,
+    /const runFeatureIds = resolveProcessRunFeatureIds\(project,\s*featureId,\s*workbenchSource\)/
+  );
+  assert.match(
+    processRuntimeSource,
+    /await runSingleFeatureProcess\(api,\s*runtime,\s*requestId,\s*nextFeatureId,\s*workbench\)/
+  );
+  assert.match(
+    processRuntimeSource,
+    /await cancelProcessJobsForProject\(api,\s*runtime,\s*project\["id"\] as string,\s*requestId\)/
+  );
   assert.match(processRuntimeSource, /getFeatureProcessDir\(runtime, project, featureId\)/);
   assert.match(processDelegatesSource, /export function createLaboratoryProcessDelegatesRuntime/);
-  assert.match(processDelegatesSource, /function runManagedProcess\(runtime, project, requestId, jobId, featureId\)/);
-  assert.match(processDelegatesSource, /function runFeatureProcess\(api, runtime, requestId, featureId\)/);
-  assert.match(processDelegatesSource, /function cancelFeatureProcess\(api, runtime, requestId, featureId\)/);
-  assert.match(processCompositionSource, /composeFeatureReport\(\.\.\.args\) \{/);
-  assert.match(actionCompositionSource, /export function createLaboratoryActionCompositionRuntime\(deps\)/);
+  assert.match(
+    processDelegatesSource,
+    /function runManagedProcess\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?,\s*requestId(?::[\s\S]+?)?,\s*jobId(?::[\s\S]+?)?,\s*featureId(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    processDelegatesSource,
+    /function runFeatureProcess\(\s*api(?::[\s\S]+?)?,\s*runtime(?::[\s\S]+?)?,\s*requestId(?::[\s\S]+?)?,\s*featureId(?::[\s\S]+?)?,\s*workbenchSource\?(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    processDelegatesSource,
+    /function cancelFeatureProcess\(\s*api(?::[\s\S]+?)?,\s*runtime(?::[\s\S]+?)?,\s*requestId(?::[\s\S]+?)?,\s*featureId(?::[\s\S]+?)?,\s*workbenchSource\?(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    processCompositionSource,
+    /composeFeatureReport\(\s*\.\.\.args(?::[\s\S]+?)?\s*\)\s*\{/
+  );
+  assert.match(
+    actionCompositionSource,
+    /export function createLaboratoryActionCompositionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(actionCompositionSource, /from "\.\/action-runtime\.js"/);
   assert.match(actionCompositionSource, /from "\.\/tool-mutations\.js"/);
   assert.match(
@@ -204,7 +258,7 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   assert.match(audioAnalysisHostRuntimeSource, /shared\/host\/audio-process-delegates\.js/);
   assert.match(
     audioAnalysisHostRuntimeSource,
-    /export function createLaboratoryAudioAnalysisHostRuntime\(deps\)/
+    /export function createLaboratoryAudioAnalysisHostRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     audioAnalysisHostRuntimeSource,
@@ -213,10 +267,16 @@ test("laboratory host keeps process orchestration on the shared room-managed con
   assert.match(audioProcessDelegatesSource, /export function createLaboratoryAudioProcessDelegatesRuntime/);
   assert.match(
     audioProcessDelegatesSource,
-    /function getAudioAnalysisModuleProcessDir\(\s*runtime,\s*project,\s*moduleId,?\s*\)/
+    /getAudioAnalysisModuleProcessDir:\s*audioAnalysisProcessRuntime\.getModuleProcessDir/
   );
-  assert.match(audioProcessDelegatesSource, /function getAudioAnalysisModuleRunner\(moduleId\)/);
-  assert.match(audioProcessDelegatesSource, /async function generateProcessSpectrogram\(/);
+  assert.match(
+    audioProcessDelegatesSource,
+    /getAudioAnalysisModuleRunner:\s*audioAnalysisProcessRuntime\.getModuleRunner/
+  );
+  assert.match(
+    audioProcessDelegatesSource,
+    /generateProcessSpectrogram:\s*audioAnalysisProcessRuntime\.generateProcessSpectrogram/
+  );
   assert.match(
     reportingExportSource,
     /const outputPath = `\$\{getFeatureReportDir\(runtime, project, featureId\)\}\/\$\{fileName\}`;/
@@ -246,7 +306,10 @@ test("laboratory UI renders the process stage from host-backed state and honest 
   assert.match(processStageSource, /data-action="process-cancel"/);
   assert.match(processStageSource, /data-action="open-report"/);
   assert.match(settingsOverlaySource, /currentStageToolIds = getStageToolIds\(stageId\);/);
-  assert.match(settingsOverlaySource, /text\(\["mediaAnalysis", "settings", "noStageTools"\]\)/);
+  assert.match(settingsOverlaySource, /lab-overlay--dock/);
+  assert.doesNotMatch(settingsOverlaySource, /aria-modal="true"/);
+  assert.match(settingsOverlaySource, /text\(\["workbench", "dependencyOverview"\]\)/);
+  assert.match(settingsOverlaySource, /text\(\["workbench", "toolGridTitle"\]\)/);
   assert.doesNotMatch(uiSource, /return stageToolIds\.length > 0 \? stageToolIds : allToolIds;/);
   assert.equal(toolchain.tools.ffmpeg.stageSupport.process, "required");
   assert.equal(toolchain.tools["whisper.cpp"].stageSupport.process, "optional");

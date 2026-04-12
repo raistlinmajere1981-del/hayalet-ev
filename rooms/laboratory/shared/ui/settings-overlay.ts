@@ -6,11 +6,25 @@ type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
 
 type LaboratoryToolDescriptorRecord = LaboratoryRecord & {
+  availability?: unknown;
+  installStrategy?: unknown;
   toolId?: unknown;
 };
 
 type LaboratoryProfileModelRecord = LaboratoryRecord & {
+  busy?: unknown;
   modelId?: unknown;
+  ready?: unknown;
+};
+
+type LaboratoryJobRecord = LaboratoryRecord & {
+  action?: unknown;
+  featureStage?: unknown;
+  message?: unknown;
+  percent?: unknown;
+  requestId?: unknown;
+  stage?: unknown;
+  toolId?: unknown;
 };
 
 type LaboratorySettingsUiDeps = {
@@ -70,6 +84,7 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
     formatCleanupPolicy,
     formatPlatformList,
     getToolEntry,
+    getToolRegistry,
     renderPreviewMetaRow,
     text,
     textFromKey,
@@ -80,6 +95,10 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
     return typeof value === "string" ? value : fallback;
   }
 
+  function toJobRecord(value: unknown): LaboratoryJobRecord {
+    return toRecord(value);
+  }
+
   function getAllToolIds(): string[] {
     return getToolRegistry()
       .map(function (entry) {
@@ -87,6 +106,21 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
         return toolId !== "" ? toolId : null;
       })
       .filter((toolId): toolId is string => toolId !== null);
+  }
+
+  function getRunningJobs(): LaboratoryJobRecord[] {
+    return (Array.isArray(state.sourceSnapshot.jobs) ? state.sourceSnapshot.jobs : [])
+      .map(toJobRecord)
+      .filter(function (job) {
+        return !["completed", "failed", "cancelled"].includes(toString(job.stage));
+      });
+  }
+
+  function getJobPercent(job: LaboratoryJobRecord): number {
+    if (typeof job.percent !== "number" || Number.isFinite(job.percent) !== true) {
+      return 0;
+    }
+    return Math.max(0, Math.min(100, Math.round(job.percent)));
   }
 
   function renderToolCard(toolId: string, stageId: string) {
@@ -103,25 +137,31 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
     }
 
     const stageId = stageOrder.includes(state.activeStage) ? state.activeStage : "source";
+    const toolIds = getAllToolIds();
+    const toolDescriptors = getToolRegistry();
     const currentStageToolIds = getStageToolIds(stageId);
-    const otherToolIds = getAllToolIds().filter(function (toolId) {
-      return currentStageToolIds.includes(toolId) === false;
-    });
+    const autoManagedCount = toolDescriptors.filter(function (entry) {
+      return toString(entry.installStrategy) === "automatic";
+    }).length;
+    const manualCount = toolDescriptors.filter(function (entry) {
+      return toString(entry.installStrategy) === "manual";
+    }).length;
+    const runningJobs = getRunningJobs();
     const profileModelEntries = getProfileModelEntries();
+    const readyModels = profileModelEntries.filter(function (entry) {
+      return entry.ready === true;
+    }).length;
 
     return `
-      <div class="lab-overlay" role="dialog" aria-modal="true" aria-label="${escapeHtml(
-        featureText(["settings", "title"])
+      <section class="lab-overlay lab-overlay--dock" aria-label="${escapeHtml(
+        text(["workbench", "dependencyAction"])
       )}">
-        <div class="lab-overlay__scrim" data-action="close-settings"></div>
-        <section class="lab-overlay__panel">
+        <section class="lab-overlay__panel lab-center-panel__scroll">
           <header class="lab-overlay__header">
             <div>
-              <p class="lab-panel__eyebrow">${escapeHtml(featureText(["settings", "eyebrow"]))}</p>
-              <h2 class="lab-panel__title">${escapeHtml(featureText(["settings", "title"]))}</h2>
-              <p class="lab-panel__subtitle">${escapeHtml(
-                `${featureText(["settings", "subtitle"])} ${featureText(["stages", stageId])}`
-              )}</p>
+              <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "dependencyEyebrow"]))}</p>
+              <h2 class="lab-panel__title">${escapeHtml(text(["workbench", "dependencyTitle"]))}</h2>
+              <p class="lab-panel__subtitle">${escapeHtml(text(["workbench", "dependencySubtitle"]))}</p>
             </div>
             <div class="lab-overlay__actions">
               <button class="lab-button lab-button--ghost lab-button--tight" type="button" data-action="tools-refresh">
@@ -132,57 +172,122 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
               </button>
             </div>
           </header>
+          <div class="lab-center-grid">
+            <section class="lab-panel">
+              <div class="lab-panel__header">
+                <div>
+                  <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "readinessTitle"]))}</p>
+                  <h2 class="lab-panel__title">${escapeHtml(text(["workbench", "dependencyOverview"]))}</h2>
+                </div>
+              </div>
+              <div class="lab-summary-cards">
+                <article class="lab-signal-card">
+                  <strong>${autoManagedCount}</strong>
+                  <span>${escapeHtml(text(["workbench", "cards", "autoManaged"]))}</span>
+                </article>
+                <article class="lab-signal-card">
+                  <strong>${manualCount}</strong>
+                  <span>${escapeHtml(text(["workbench", "cards", "manualFlows"]))}</span>
+                </article>
+                <article class="lab-signal-card">
+                  <strong>${runningJobs.length}</strong>
+                  <span>${escapeHtml(text(["workbench", "cards", "operations"]))}</span>
+                </article>
+                <article class="lab-signal-card">
+                  <strong>${readyModels}/${profileModelEntries.length || 0}</strong>
+                  <span>${escapeHtml(text(["workbench", "cards", "models"]))}</span>
+                </article>
+              </div>
+              <p class="lab-panel__hint">${escapeHtml(
+                `${text(["workbench", "dependencyFocus"])} ${featureText(["stages", stageId])}`
+              )}</p>
+              ${
+                currentStageToolIds.length > 0
+                  ? `
+                    <div class="lab-chip-row">
+                      ${currentStageToolIds
+                        .map(function (toolId) {
+                          const label = text(["mediaAnalysis", "settings", "tools", toolId]) || toolId;
+                          return `<span class="lab-chip">${escapeHtml(label)}</span>`;
+                        })
+                        .join("")}
+                    </div>
+                  `
+                  : ""
+              }
+            </section>
+            <section class="lab-panel">
+              <div class="lab-panel__header">
+                <div>
+                  <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "cards", "operations"]))}</p>
+                  <h2 class="lab-panel__title">${escapeHtml(text(["workbench", "operationsTitle"]))}</h2>
+                </div>
+              </div>
+              ${
+                runningJobs.length > 0
+                  ? `
+                    <div class="lab-ops-feed">
+                      ${runningJobs
+                        .slice(0, 6)
+                        .map(function (job) {
+                          const toolId = toString(job.toolId);
+                          const label = toolId
+                            ? text(["mediaAnalysis", "settings", "tools", toolId]) || toolId
+                            : text(["workbench", "operationsFallback"]);
+                          const percent = getJobPercent(job);
+                          const stageLabel = toString(job.stage, "--");
+                          const actionLabel = toString(job.action, "");
+                          const featureStageLabel = toString(job.featureStage, "");
+                          return `
+                            <article class="lab-op-row">
+                              <strong>${escapeHtml(label)}</strong>
+                              <span>${escapeHtml(
+                                `${stageLabel}${percent > 0 ? ` · ${String(percent)}%` : ""}`
+                              )}</span>
+                              <p>${escapeHtml(
+                                [featureStageLabel, actionLabel]
+                                  .filter(function (entry) {
+                                    return entry.trim() !== "";
+                                  })
+                                  .join(" · ")
+                              )}</p>
+                              <p>${escapeHtml(toString(job.message, ""))}</p>
+                              <div class="lab-progress-bar lab-progress-bar--wide" aria-hidden="true">
+                                <span style="width:${Math.max(4, percent || 4)}%"></span>
+                              </div>
+                            </article>
+                          `;
+                        })
+                        .join("")}
+                    </div>
+                  `
+                  : `<p class="lab-panel__hint">${escapeHtml(text(["workbench", "operationsEmpty"]))}</p>`
+              }
+            </section>
+          </div>
           <section class="lab-panel">
             <div class="lab-panel__header">
               <div>
-                <p class="lab-panel__eyebrow">${escapeHtml(featureText(["settings", "currentStageTitle"]))}</p>
-                <h2 class="lab-panel__title">${escapeHtml(featureText(["stages", stageId]))}</h2>
+                <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "dependencyTitle"]))}</p>
+                <h2 class="lab-panel__title">${escapeHtml(text(["workbench", "toolGridTitle"]))}</h2>
               </div>
             </div>
             <div class="lab-tool-grid">
-              ${
-                currentStageToolIds.length > 0
-                  ? currentStageToolIds
-                      .map(function (toolId) {
-                        return renderToolCard(toolId, stageId);
-                      })
-                      .join("")
-                  : `<p class="lab-panel__hint">${escapeHtml(
-                      text(["mediaAnalysis", "settings", "noStageTools"])
-                    )}</p>`
-              }
+              ${toolIds
+                .map(function (toolId) {
+                  return renderToolCard(toolId, stageId);
+                })
+                .join("")}
             </div>
           </section>
           ${
-            otherToolIds.length > 0
-              ? `
-                <section class="lab-panel">
-                  <div class="lab-panel__header">
-                    <div>
-                      <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "settings", "otherToolsTitle"]))}</p>
-                      <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "settings", "otherToolsSubtitle"]))}</h2>
-                    </div>
-                  </div>
-                  <div class="lab-tool-grid">
-                    ${otherToolIds
-                      .map(function (toolId) {
-                        return renderToolCard(toolId, stageId);
-                      })
-                      .join("")}
-                  </div>
-                </section>
-              `
-              : ""
-          }
-          ${isAudioAnalysisFeature() ? renderAudioAnalysisProviderPanel() : ""}
-          ${
-            stageId === "profile" && profileModelEntries.length > 0
+            profileModelEntries.length > 0
               ? `
                 <section class="lab-panel">
                   <div class="lab-panel__header">
                     <div>
                       <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "modelTitle"]))}</p>
-                      <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "modelSubtitle"]))}</h2>
+                      <h2 class="lab-panel__title">${escapeHtml(text(["workbench", "modelGridTitle"]))}</h2>
                     </div>
                   </div>
                   <div class="lab-tool-grid">
@@ -196,8 +301,9 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
               `
               : ""
           }
+          ${isAudioAnalysisFeature() ? renderAudioAnalysisProviderPanel() : ""}
         </section>
-      </div>
+      </section>
     `;
   }
 
@@ -207,9 +313,9 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
 
   return {
     getSelectedProfileModelId,
-    renderToolCard,
     renderProfileModelCard,
     renderSettingsOverlay,
+    renderToolCard,
   };
 }
 

@@ -21,7 +21,7 @@ interface LaboratoryProcessDeps {
     runtime: Record<string, unknown>,
     projectId: string,
     requestId: string,
-    action: string
+    action?: string
   ) => Promise<void>;
   clearJob: (runtime: Record<string, unknown>, jobId: string) => void;
   clone: <T>(value: T) => T;
@@ -60,6 +60,16 @@ interface LaboratoryProcessDeps {
   ) => Promise<void>;
   pushJobState: (api: Record<string, unknown>, state: Record<string, unknown>) => void;
   registerJob: (runtime: Record<string, unknown>, job: Record<string, unknown>) => void;
+  resolveProcessRunFeatureIds: (
+    project: Record<string, unknown>,
+    featureId: string,
+    workbenchSource?: unknown
+  ) => string[];
+  resolveProcessWorkbench: (
+    project: Record<string, unknown>,
+    featureId: string,
+    workbenchSource?: unknown
+  ) => Record<string, unknown>;
   resolveProcessTarget: (
     project: Record<string, unknown>,
     featureId: string
@@ -113,6 +123,8 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     patchActiveProject,
     pushJobState,
     registerJob,
+    resolveProcessRunFeatureIds,
+    resolveProcessWorkbench,
     resolveProcessTarget,
     sanitizeFileSegment,
     setFeatureProcessRecord,
@@ -235,11 +247,12 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     return processRecord;
   }
 
-  async function runFeatureProcess(
+  async function runSingleFeatureProcess(
     api: Record<string, unknown>,
     runtime: Record<string, unknown>,
     requestId: string,
-    featureId: string
+    featureId: string,
+    workbenchSource: unknown = {}
   ) {
     const project = getActiveProject(runtime);
     if (project === null) {
@@ -282,6 +295,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     });
 
     await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
+      nextProject["workbench"] = resolveProcessWorkbench(nextProject, featureId, workbenchSource);
       setFeatureProcessRecord(nextProject, featureId, {
         ...createEmptyFeatureProcessRecord(featureId),
         featureId: featureId,
@@ -349,25 +363,101 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     }
   }
 
-  async function cancelFeatureProcess(
+  async function runFeatureProcess(
     api: Record<string, unknown>,
     runtime: Record<string, unknown>,
     requestId: string,
-    featureId: string
+    featureId: string,
+    workbenchSource: unknown = {}
   ) {
     const project = getActiveProject(runtime);
     if (project === null) {
       throw new Error("Active project is missing.");
     }
-    const action = getFeatureProcessJobAction(featureId);
-    await cancelProcessJobsForProject(api, runtime, project["id"] as string, requestId, action);
+
+    const workbench = resolveProcessWorkbench(project, featureId, workbenchSource);
+    const runFeatureIds = resolveProcessRunFeatureIds(project, featureId, workbenchSource);
+    if (runFeatureIds.length === 0) {
+      throw new Error("Select at least one analysis module before starting the process stage.");
+    }
+
     await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
-      setFeatureProcessRecord(nextProject, featureId, {
-        ...getFeatureProcessRecord(nextProject, featureId),
-        status: "cancelled",
-        jobId: null,
-        requestId: null,
-        error: null,
+      nextProject["workbench"] = workbench;
+      runFeatureIds.slice(1).forEach(function (queuedFeatureId) {
+        setFeatureProcessRecord(nextProject, queuedFeatureId, {
+          ...createEmptyFeatureProcessRecord(queuedFeatureId),
+          featureId: queuedFeatureId,
+          status: "queued",
+          requestId: requestId,
+          percent: 0,
+        });
+        markFeatureReportStale(nextProject, queuedFeatureId, "A new process run is now in progress.");
+      });
+      return nextProject;
+    });
+
+    const errors: Error[] = [];
+    for (const nextFeatureId of runFeatureIds) {
+      try {
+        await runSingleFeatureProcess(api, runtime, requestId, nextFeatureId, workbench);
+      } catch (error) {
+        errors.push(
+          error instanceof Error
+            ? error
+            : new Error(typeof error === "string" ? error : "Process run failed.")
+        );
+      }
+    }
+
+    if (errors.length === runFeatureIds.length) {
+      throw errors[0];
+    }
+
+    if (errors.length > 0) {
+      await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
+        nextProject["process"] = {
+          ...toRecord(nextProject["process"]),
+          lastError: errors
+            .map(function (entry) {
+              return entry.message;
+            })
+            .join(" | "),
+          lastActionAt: new Date().toISOString(),
+        };
+        return nextProject;
+      });
+    }
+  }
+
+  async function cancelFeatureProcess(
+    api: Record<string, unknown>,
+    runtime: Record<string, unknown>,
+    requestId: string,
+    featureId: string,
+    workbenchSource: unknown = {}
+  ) {
+    const project = getActiveProject(runtime);
+    if (project === null) {
+      throw new Error("Active project is missing.");
+    }
+
+    const workbench = resolveProcessWorkbench(project, featureId, workbenchSource);
+    await cancelProcessJobsForProject(api, runtime, project["id"] as string, requestId);
+    await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
+      nextProject["workbench"] = workbench;
+      const records = toRecord(toRecord(nextProject["process"])["records"]);
+      Object.keys(records).forEach(function (recordFeatureId) {
+        const existingRecord = getFeatureProcessRecord(nextProject, recordFeatureId);
+        if (!["running", "queued"].includes(String(existingRecord["status"] || ""))) {
+          return;
+        }
+        setFeatureProcessRecord(nextProject, recordFeatureId, {
+          ...existingRecord,
+          status: "cancelled",
+          jobId: null,
+          requestId: null,
+          error: null,
+        });
       });
       return nextProject;
     });
@@ -377,5 +467,6 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     cancelFeatureProcess,
     runFeatureProcess,
     runManagedProcess,
+    runSingleFeatureProcess,
   };
 }

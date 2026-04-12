@@ -1,3 +1,5 @@
+import { createLaboratoryWorkbenchState } from "./runtime-primitives.js";
+
 type LaboratoryProjectRecordValue = Record<string, unknown> & {
   activeProjectId?: unknown;
   audioAnalysis?: unknown;
@@ -28,6 +30,7 @@ type LaboratoryProjectRecordValue = Record<string, unknown> & {
   subtitleAnalysis?: unknown;
   updatedAt?: unknown;
   urlInput?: unknown;
+  workbench?: unknown;
   youtubeCustom?: LaboratoryProjectRecordValue;
   youtubePreset?: unknown;
   youtubeUrl?: unknown;
@@ -62,6 +65,7 @@ type LaboratoryProjectRecord = {
   source: LaboratoryProjectSource;
   subtitleAnalysis: unknown;
   updatedAt: string;
+  workbench: ReturnType<typeof createLaboratoryWorkbenchState>;
 };
 
 type LaboratoryProjectRuntimeRecord = {
@@ -180,6 +184,9 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
       subtitleAnalysis: createEmptySubtitleAnalysisState(subtitleRuntime || {}),
       process: createEmptyProcessState(),
       report: createEmptyReportState(),
+      workbench: createLaboratoryWorkbenchState({
+        activeModuleId: featureId,
+      }),
     };
   }
 
@@ -253,6 +260,9 @@ export function createLaboratoryProjectRecordsRuntime(deps: LaboratoryProjectRec
       subtitleAnalysis: normalizeSubtitleAnalysisState(rawProject.subtitleAnalysis, runtime || {}),
       process: normalizeProcessState(rawProject.process),
       report: normalizeReportState(rawProject.report),
+      workbench: createLaboratoryWorkbenchState({
+        ...toRecord(rawProject.workbench),
+      }),
     };
   }
 

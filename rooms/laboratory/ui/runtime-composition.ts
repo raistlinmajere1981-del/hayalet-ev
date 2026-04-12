@@ -21,6 +21,7 @@ type LaboratoryUiRuntimeCompositionDeps = {
   collectProcessStageJobs: LaboratoryUiFeatureRuntimeDeps["collectProcessStageJobs"];
   collectProfileStageJobs: LaboratoryUiFeatureRuntimeDeps["collectProfileStageJobs"];
   collectReportStageJobs: LaboratoryUiFeatureRuntimeDeps["collectReportStageJobs"];
+  getActiveFeatureId: LaboratoryUiFeatureRuntimeDeps["getActiveFeatureId"];
   isAudioAnalysisFeature: LaboratoryUiFeatureRuntimeDeps["isAudioAnalysisFeature"];
   isSubtitleAnalysisFeature: LaboratoryUiFeatureRuntimeDeps["isSubtitleAnalysisFeature"];
   laboratoryProfileProcessReportAccessorsRuntime: LaboratoryStageAccessorsRuntimeDeps["laboratoryProfileProcessReportAccessorsRuntime"];
@@ -44,6 +45,7 @@ export function createLaboratoryUiRuntimeComposition(deps: LaboratoryUiRuntimeCo
   });
 
   const laboratoryUiFeatureRuntime = createLaboratoryUiFeatureRuntime({
+    getActiveFeatureId: deps.getActiveFeatureId,
     getActiveProject: function () {
       return laboratoryUiRuntimeBase.getActiveProject();
     },

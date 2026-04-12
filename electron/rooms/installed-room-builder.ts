@@ -30,6 +30,21 @@ export function optionalI18nBaseDir(
   return typeof i18nBaseDir === "string" ? { i18nBaseDir } : {};
 }
 
+function optionalWorkbench(
+  workbench: RoomManifest["workbench"] | undefined
+): { workbench: NonNullable<RoomManifest["workbench"]> } | Record<string, never> {
+  return workbench === undefined
+    ? {}
+    : {
+        workbench: {
+          ...workbench,
+          ...(Array.isArray(workbench.availableFeatureIds)
+            ? { availableFeatureIds: [...workbench.availableFeatureIds] }
+            : {}),
+        },
+      };
+}
+
 export function buildInstalledRoomRecord(
   manifest: RoomManifest,
   options: {
@@ -106,6 +121,7 @@ export function buildInstalledRoomRecord(
     hostEntryPath: join(installedDir, manifest.runtime.hostEntry),
     defaultFeatureId: manifest.defaultFeatureId,
     features: cloneInstalledFeatures(features),
+    ...optionalWorkbench(manifest.workbench),
     ...optionalScene(scene),
     ...optionalI18nBaseDir(
       manifest.i18n !== undefined ? join(installedDir, manifest.i18n.baseDir) : undefined

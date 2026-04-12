@@ -31,6 +31,7 @@ export function createLaboratoryUiActionRouter(deps: LaboratoryUiActionRouterDep
     render,
     resetJourney,
     restartProcess,
+    setActiveWorkbenchModule,
     sendMediaAction,
     sendSourceAction,
     setStage,
@@ -38,6 +39,7 @@ export function createLaboratoryUiActionRouter(deps: LaboratoryUiActionRouterDep
     syncDraftField,
     syncLocalEditField,
     toRecord,
+    toggleWorkbenchModuleSelection,
     toggleCleanup,
   } = deps;
 
@@ -56,10 +58,12 @@ export function createLaboratoryUiActionRouter(deps: LaboratoryUiActionRouterDep
     render,
     resetJourney,
     restartProcess,
+    setActiveWorkbenchModule,
     sendMediaAction,
     sendSourceAction,
     state,
     syncDraftField,
+    toggleWorkbenchModuleSelection,
   });
 
   const laboratoryUiActionEventRuntime = createLaboratoryUiActionEventRuntime({

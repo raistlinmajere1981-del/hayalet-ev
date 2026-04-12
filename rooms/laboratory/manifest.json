@@ -3,7 +3,7 @@
   "id": "laboratory",
   "name": "Laboratory",
   "version": "1.0.0",
-  "description": "An obsidian media analysis room with staged dummy controls for capture, cleanup, profiling, processing, and reporting.",
+  "description": "An obsidian analysis room with a guided workbench for intake, readiness, processing, and reporting across media, audio, and subtitle modules.",
   "menu": {
     "label": "Laboratory",
     "icon": "LB",
@@ -14,6 +14,14 @@
     "hostEntry": "host/index.js"
   },
   "defaultFeatureId": "media-analysis",
+  "workbench": {
+    "experienceId": "analysis-workbench",
+    "label": "Laboratory Workbench",
+    "description": "A guided desktop workbench that unifies media, audio, and subtitle analysis into one room flow.",
+    "mode": "guided",
+    "primaryFeatureId": "media-analysis",
+    "availableFeatureIds": ["media-analysis", "audio-analysis", "subtitle-analysis"]
+  },
   "i18n": {
     "baseDir": "i18n"
   },
@@ -54,8 +62,8 @@
   "features": [
     {
       "id": "media-analysis",
-      "name": "Media Analysis",
-      "description": "A staged visual shell for source capture, edit setup, profile selection, processing, and reporting.",
+      "name": "Analysis Workbench",
+      "description": "The unified Laboratory entry point for project intake, readiness review, processing, and reporting across all analysis modules.",
       "icon": "MA",
       "scene": {
         "hotspot": {
@@ -67,7 +75,7 @@
             "heightPx": 320
           },
           "label": {
-            "text": "Media Analysis"
+            "text": "Analysis Workbench"
           }
         },
         "view": {
@@ -86,61 +94,13 @@
       "id": "audio-analysis",
       "name": "Audio Analysis",
       "description": "An audio-first analysis desk that reuses the laboratory tool room for source prep, signal checks, speech tooling, and reporting.",
-      "icon": "AU",
-      "scene": {
-        "hotspot": {
-          "id": "laboratory-audio-analysis",
-          "rect": {
-            "leftPx": 182,
-            "topPx": 172,
-            "widthPx": 468,
-            "heightPx": 318
-          },
-          "label": {
-            "text": "Audio Analysis"
-          }
-        },
-        "view": {
-          "id": "audio-analysis-console",
-          "backgroundSrc": "main-functions/audio-analysis/assets/sound-analysis.webp",
-          "transparentWindow": {
-            "leftPct": 2.4,
-            "topPct": 10.8,
-            "widthPct": 95.2,
-            "heightPct": 79.4
-          }
-        }
-      }
+      "icon": "AU"
     },
     {
       "id": "subtitle-analysis",
       "name": "Subtitle Analysis",
       "description": "A subtitle-first workbench for local subtitle intake, YouTube subtitle capture, cleanup, QC, and reporting.",
-      "icon": "SB",
-      "scene": {
-        "hotspot": {
-          "id": "laboratory-subtitle-analysis",
-          "rect": {
-            "leftPx": 678,
-            "topPx": 522,
-            "widthPx": 348,
-            "heightPx": 214
-          },
-          "label": {
-            "text": "Subtitle Analysis"
-          }
-        },
-        "view": {
-          "id": "subtitle-analysis-console",
-          "backgroundSrc": "main-functions/subtitle-analysis/assets/subtitle-analysis.webp",
-          "transparentWindow": {
-            "leftPct": 2.4,
-            "topPct": 10.8,
-            "widthPct": 95.2,
-            "heightPct": 79.4
-          }
-        }
-      }
+      "icon": "SB"
     }
   ]
 }

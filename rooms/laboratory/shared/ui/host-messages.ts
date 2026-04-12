@@ -99,13 +99,12 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
         return;
       }
       const snapshot = toSourceSnapshot(payload.snapshot);
-      const featureId = toString(toRecord(snapshot)["featureId"]);
-      if (featureId !== null) {
-        state.context = {
-          ...state.context,
-          featureId,
-        };
-      }
+      const snapshotRecord = toRecord(snapshot);
+      state.context = normalizeContext({
+        ...state.context,
+        featureId: toString(snapshotRecord["featureId"]) || state.context.featureId,
+        workbench: toRecord(snapshotRecord["workbench"]),
+      });
       state.sourceSnapshot = snapshot;
       render();
       return;

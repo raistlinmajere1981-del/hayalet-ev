@@ -1,3 +1,5 @@
+import { createLaboratoryWorkbenchState } from "../shared/host/runtime-primitives.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryUiRequestDomain =
@@ -32,6 +34,7 @@ type LaboratoryUiBootstrapContext = {
   user: {
     nickname: string;
   };
+  workbench: ReturnType<typeof createLaboratoryWorkbenchState>;
 };
 
 type LaboratorySourceSnapshot = {
@@ -64,6 +67,7 @@ type LaboratorySourceSnapshot = {
   toolState: {
     tools: LaboratoryRecord;
   };
+  workbench: ReturnType<typeof createLaboratoryWorkbenchState>;
   ytDlpForm: LaboratoryRecord;
 };
 
@@ -164,12 +168,15 @@ export function createLaboratoryUiBootstrapStateRuntime(
   const resolveLocale = deps.resolveLocale;
 
   function createContext(): LaboratoryUiBootstrapContext {
+    const workbench = createLaboratoryWorkbenchState({
+      activeModuleId: featureId,
+    });
     return {
       room: {
         id: roomId,
         name: "Laboratory",
       },
-      featureId: featureId,
+      featureId: workbench.activeModuleId,
       user: {
         nickname: "Operator",
       },
@@ -177,6 +184,7 @@ export function createLaboratoryUiBootstrapStateRuntime(
         mode: "classic",
         uiScale: 100,
       },
+      workbench,
     };
   }
 
@@ -212,6 +220,9 @@ export function createLaboratoryUiBootstrapStateRuntime(
         tools: {},
       },
       jobs: [] as unknown[],
+      workbench: createLaboratoryWorkbenchState({
+        activeModuleId: featureId,
+      }),
     };
   }
 

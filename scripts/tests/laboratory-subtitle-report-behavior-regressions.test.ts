@@ -29,7 +29,10 @@ test("subtitle host composes richer report summary cards and markdown exports", 
   assert.match([hostRuntimeSource, hostFeatureSource].join("\n"), /shared\/host\/process-composition\.js/);
   assert.match(processCompositionSource, /from "\.\/process-delegates\.js"/);
   assert.match(processCompositionSource, /from "\.\/reporting\.js"/);
-  assert.match(processDelegatesSource, /function composeSubtitleAnalysisReport\(runtime, project\)/);
+  assert.match(
+    processDelegatesSource,
+    /function composeSubtitleAnalysisReport\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(reportingSource, /from "\.\/reporting-feature-report\.js"/);
   assert.match(reportingFeatureSource, /from "\.\/reporting-subtitle\.js"/);
   assert.match(reportingFeatureSource, /from "\.\/reporting-markdown\.js"/);
@@ -56,15 +59,18 @@ test("subtitle UI renders report module rollup and export history panels", () =>
   assert.match(reportStageSource, /\.\/report-stage-support\.js/);
   assert.match(reportStageSource, /\.\/report-stage-subtitle\.js/);
   assert.match(reportStageSource, /function renderSubtitleReportModuleGrid\(\)/);
-  assert.match(reportStageSource, /function renderSubtitleReportExportHistoryPanel\(\)/);
-  assert.match(reportStageSource, /function getReportOverviewRows\(reportRecord, findings, asset\)/);
+  assert.match(reportStageSource, /function renderUnifiedExportHistoryPanel\(/);
+  assert.match(
+    reportStageSource,
+    /function getReportOverviewRows\(\s*reportRecord(?::[\s\S]+?)?,\s*findings(?::[\s\S]+?)?,\s*asset(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(
     reportStageSupportSource,
-    /export function createLaboratoryReportStageSupportRuntime\(deps\)/
+    /export function createLaboratoryReportStageSupportRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     reportStageSubtitleSource,
-    /export function createLaboratorySubtitleReportStageRuntime\(deps\)/
+    /export function createLaboratorySubtitleReportStageRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(reportStageSubtitleSource, /featureText\(\["report", "moduleRollupTitle"\]\)/);
   assert.match(reportStageSubtitleSource, /featureText\(\["report", "exportHistoryTitle"\]\)/);

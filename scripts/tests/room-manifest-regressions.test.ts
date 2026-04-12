@@ -104,6 +104,71 @@ test("validateRoomManifest rejects invalid ids, commands, and unsafe paths", () 
   assert.match(result.errors.join("\n"), /commandSpecs\[0\]\.name must match/);
 });
 
+test("validateRoomManifest allows workbench rooms to keep scene entries only for visible entry features", () => {
+  const result = validateRoomManifest({
+    schemaVersion: ROOM_SCHEMA_VERSION,
+    id: "laboratory",
+    name: "Laboratory",
+    version: "1.0.0",
+    menu: {
+      label: "Laboratory",
+      icon: "LB",
+    },
+    runtime: {
+      uiEntry: "ui/index.html",
+      hostEntry: "host/index.js",
+    },
+    defaultFeatureId: "media-analysis",
+    workbench: {
+      experienceId: "analysis-workbench",
+      primaryFeatureId: "media-analysis",
+      availableFeatureIds: ["media-analysis", "audio-analysis", "subtitle-analysis"],
+    },
+    features: [
+      {
+        id: "media-analysis",
+        name: "Analysis Workbench",
+        scene: {
+          hotspot: {
+            id: "laboratory-media-analysis",
+            rect: { leftPx: 100, topPx: 200, widthPx: 180, heightPx: 120 },
+            label: { text: "Analysis Workbench" },
+          },
+          view: {
+            id: "media-analysis-console",
+            backgroundSrc: "assets/media-analysis-view.webp",
+          },
+        },
+      },
+      {
+        id: "audio-analysis",
+        name: "Audio Analysis",
+      },
+      {
+        id: "subtitle-analysis",
+        name: "Subtitle Analysis",
+      },
+    ],
+    scene: {
+      referenceSize: { width: 1600, height: 900 },
+      roomBackgroundSrc: "assets/room-background.webp",
+      roomsHotspot: {
+        id: "laboratory-door",
+        rect: { leftPx: 700, topPx: 240, widthPx: 160, heightPx: 300 },
+      },
+      backHotspot: {
+        id: "laboratory-back",
+        rect: { leftPx: 70, topPx: 180, widthPx: 120, heightPx: 240 },
+      },
+    },
+  });
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.manifest?.workbench?.experienceId, "analysis-workbench");
+  assert.equal(result.manifest?.features.find((feature) => feature.id === "audio-analysis")?.scene, undefined);
+});
+
 test("normalizeRoomRelativePath blocks traversal and preserves safe paths", () => {
   assert.equal(normalizeRoomRelativePath("ui/index.html"), "ui/index.html");
   assert.equal(normalizeRoomRelativePath("ui\\index.html"), "ui/index.html");

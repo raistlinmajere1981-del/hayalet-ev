@@ -29,6 +29,7 @@ type LaboratoryProfileProcessReportCompositionDeps = {
   getEffectiveMediaAsset: () => unknown;
   getFeaturePreviewImage: () => string;
   getFocusLabel: () => string;
+  getWorkbench: () => unknown;
   getPreferredAssetCodec: MediaAnalysisProfileStageDeps["getPreferredAssetCodec"];
   getPreferredAssetDuration: MediaAnalysisProfileStageDeps["getPreferredAssetDuration"];
   getPreferredAssetResolution: MediaAnalysisProfileStageDeps["getPreferredAssetResolution"];
@@ -59,6 +60,8 @@ type LaboratoryProfileProcessReportCompositionDeps = {
   getProfileTargetSummary: MediaAnalysisProfileStageDeps["getProfileTargetSummary"];
   getProfileTranscriptSampleConfig: () => LaboratoryRecord;
   getProjectProfile: () => unknown;
+  getProjectProcess: () => unknown;
+  getProjectReport: () => unknown;
   getProjectSource: MediaAnalysisProfileStageDeps["getProjectSource"];
   getReportExports: () => unknown[];
   getReportFindings: () => unknown[];
@@ -90,9 +93,12 @@ export function createLaboratoryProfileProcessReportComposition(
     renderSummaryRows: deps.renderSummaryRows,
     formatStatusLabel: deps.formatStatusLabel,
     getCurrentFeatureProcessRecord: deps.getCurrentFeatureProcessRecord,
+    getProjectProcess: deps.getProjectProcess,
+    getProjectReport: deps.getProjectReport,
     getProcessModules: deps.getProcessModules,
     getProcessJobs: deps.getProcessJobs,
     getProcessFindings: deps.getProcessFindings,
+    getWorkbench: deps.getWorkbench,
     getCurrentFeatureTargetLabel: deps.getCurrentFeatureTargetLabel,
     getCurrentFeatureArtifactCount: deps.getCurrentFeatureArtifactCount,
     getCurrentFeatureReportRecord: deps.getCurrentFeatureReportRecord,
@@ -111,6 +117,9 @@ export function createLaboratoryProfileProcessReportComposition(
     formatDuration: deps.formatDuration as unknown as LaboratoryReportStageUiDeps["formatDuration"],
     isSubtitleAnalysisFeature: deps.isSubtitleAnalysisFeature,
     isAudioAnalysisFeature: deps.isAudioAnalysisFeature,
+    getProjectProcess: deps.getProjectProcess,
+    getProjectReport: deps.getProjectReport,
+    getWorkbench: deps.getWorkbench,
     getCurrentFeatureReportRecord: deps.getCurrentFeatureReportRecord,
     getEffectiveMediaAsset: deps.getEffectiveMediaAsset,
     getReportFindings: deps.getReportFindings,

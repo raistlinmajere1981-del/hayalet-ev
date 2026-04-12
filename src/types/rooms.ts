@@ -45,6 +45,7 @@ export type {
   RoomCommandScope,
   RoomCommandSpec,
   RoomFeatureManifest,
+  RoomWorkbenchConfig,
   RoomFeatureSceneConfig,
   RoomFeatureSceneViewConfig,
   RoomI18nConfig,

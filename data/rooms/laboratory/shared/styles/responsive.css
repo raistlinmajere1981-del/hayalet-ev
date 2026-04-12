@@ -1,0 +1,115 @@
+body[data-presentation-mode="scene-view"] .lab-stage-copy__title {
+  font-size: clamp(1.58rem, 2.4vw, 2.18rem);
+}
+
+body[data-presentation-mode="scene-view"] .lab-panel,
+body[data-presentation-mode="scene-view"] .lab-source-card,
+body[data-presentation-mode="scene-view"] .lab-profile-card,
+body[data-presentation-mode="scene-view"] .lab-signal-card {
+  border-radius: 1.1rem;
+}
+
+body[data-presentation-mode="scene-view"] .lab-topbar {
+  gap: 0.65rem;
+}
+
+body[data-presentation-mode="scene-view"] .lab-stage-pill {
+  min-height: 2.55rem;
+  padding: 0.48rem 0.62rem;
+}
+
+body[data-presentation-mode="scene-view"] .lab-stage-pill__label {
+  font-size: 0.72rem;
+}
+
+body[data-presentation-mode="scene-view"] .lab-source-grid,
+body[data-presentation-mode="scene-view"] .lab-profile-grid {
+  gap: 0.6rem;
+}
+
+body[data-presentation-mode="scene-view"] .lab-panel {
+  padding: 0.82rem;
+}
+
+body[data-presentation-mode="scene-view"] .lab-preview-card,
+body[data-presentation-mode="scene-view"] .lab-report-hero {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 1120px) {
+  .lab-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .lab-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lab-center-grid,
+  .lab-summary-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lab-side-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lab-surface {
+    overflow: auto;
+  }
+
+  .lab-main-stack,
+  .lab-side-stack {
+    overflow: visible;
+  }
+
+  .lab-subgrid,
+  .lab-source-grid,
+  .lab-profile-grid,
+  .lab-signal-grid,
+  .lab-tool-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .lab-shell {
+    padding: 0.55rem;
+  }
+
+  .lab-stage-rail,
+  .lab-preview-card,
+  .lab-report-hero,
+  .lab-center-grid,
+  .lab-summary-cards,
+  .lab-side-stack,
+  .lab-subgrid,
+  .lab-source-grid,
+  .lab-profile-grid,
+  .lab-signal-grid,
+  .lab-tool-grid,
+  .lab-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lab-stage-rail__track {
+    grid-template-columns: 1fr;
+  }
+
+  .lab-stage-nav {
+    width: 100%;
+  }
+
+  .lab-module-card__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .lab-surface {
+    min-height: auto;
+    overflow: auto;
+  }
+
+  .lab-toggle-grid {
+    grid-template-columns: 1fr;
+  }
+}

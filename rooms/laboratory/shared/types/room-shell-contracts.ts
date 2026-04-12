@@ -1,8 +1,7 @@
 import {
-  LABORATORY_FEATURE_IDS,
-  LABORATORY_MEDIA_FEATURE_ID,
   LABORATORY_MEDIA_STAGES,
   LABORATORY_ROOM_ID,
+  createLaboratoryWorkbenchState,
   normalizeLaboratoryLocale,
 } from "../host/runtime-primitives.js";
 
@@ -11,11 +10,22 @@ export const LABORATORY_STAGE_IDS = [...LABORATORY_MEDIA_STAGES];
 
 export type LaboratoryPresentationMode = "classic" | "scene-view";
 
+export interface LaboratoryWorkbenchContext {
+  schemaVersion: number;
+  experienceId: string;
+  mode: string;
+  primaryFeatureId: string;
+  activeModuleId: string;
+  availableModuleIds: string[];
+  selectedModuleIds: string[];
+}
+
 export interface LaboratoryRoomShellContext {
   room: { id: string; name: string };
   user: { nickname: string };
   locale: string;
   featureId: string;
+  workbench: LaboratoryWorkbenchContext;
   roomId: string;
   presentation: {
     mode: LaboratoryPresentationMode;
@@ -76,6 +86,17 @@ export function createLaboratoryRoomShellContext(
     overrideSlots && typeof overrideSlots === "object" && Array.isArray(overrideSlots) === false
       ? (overrideSlots as Record<string, unknown>)
       : {};
+  const overrideWorkbench = overrides["workbench"];
+  const workbenchOverrides =
+    overrideWorkbench &&
+    typeof overrideWorkbench === "object" &&
+    Array.isArray(overrideWorkbench) === false
+      ? (overrideWorkbench as Record<string, unknown>)
+      : {};
+  const workbench = createLaboratoryWorkbenchState({
+    ...workbenchOverrides,
+    activeModuleId: overrides["featureId"] ?? workbenchOverrides["activeModuleId"],
+  });
 
   return {
     room: {
@@ -92,11 +113,8 @@ export function createLaboratoryRoomShellContext(
           : "Operator",
     },
     locale: normalizeLaboratoryLocale(overrides["locale"]),
-    featureId:
-      typeof overrides["featureId"] === "string" &&
-      LABORATORY_FEATURE_IDS.includes(overrides["featureId"])
-        ? overrides["featureId"]
-        : LABORATORY_MEDIA_FEATURE_ID,
+    featureId: workbench.activeModuleId,
+    workbench,
     roomId:
       typeof overrides["roomId"] === "string" && overrides["roomId"].trim() !== ""
         ? overrides["roomId"].trim()

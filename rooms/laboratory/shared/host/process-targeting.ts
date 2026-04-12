@@ -1,3 +1,5 @@
+import { createLaboratoryWorkbenchState } from "./runtime-primitives.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryProjectRecord = LaboratoryRecord & {
@@ -6,6 +8,7 @@ type LaboratoryProjectRecord = LaboratoryRecord & {
   profile?: unknown;
   source?: unknown;
   subtitleAnalysis?: unknown;
+  workbench?: unknown;
 };
 
 type LaboratoryProjectProfileRecord = LaboratoryRecord & {
@@ -128,6 +131,10 @@ export function createLaboratoryProcessTargetingRuntime(
     return toRecord(value);
   }
 
+  function toWorkbenchRecord(value: unknown): LaboratoryRecord {
+    return toRecord(value);
+  }
+
   function toModelSummaryEntry(value: unknown): LaboratoryProfileModelSummaryEntry {
     return toRecord(value);
   }
@@ -141,6 +148,55 @@ export function createLaboratoryProcessTargetingRuntime(
         return asNonEmptyString(entry);
       })
       .filter((entry): entry is string => entry !== null);
+  }
+
+  function resolveProcessWorkbench(
+    project: LaboratoryProjectRecord,
+    featureId: string | null,
+    workbenchSource: unknown = {}
+  ) {
+    const requestedFeatureId = asNonEmptyString(featureId);
+    const baseWorkbench = createLaboratoryWorkbenchState({
+      ...toWorkbenchRecord(project.workbench),
+      ...toWorkbenchRecord(workbenchSource),
+      ...(requestedFeatureId ? { activeModuleId: requestedFeatureId } : {}),
+    });
+    const selectedModuleIds = toStringArray(baseWorkbench.selectedModuleIds);
+    if (requestedFeatureId === null || selectedModuleIds.includes(requestedFeatureId)) {
+      return baseWorkbench;
+    }
+
+    return createLaboratoryWorkbenchState({
+      ...baseWorkbench,
+      activeModuleId: requestedFeatureId,
+      selectedModuleIds: [requestedFeatureId, ...selectedModuleIds],
+    });
+  }
+
+  function resolveProcessRunFeatureIds(
+    project: LaboratoryProjectRecord,
+    featureId: string | null,
+    workbenchSource: unknown = {}
+  ) {
+    const workbench = resolveProcessWorkbench(project, featureId, workbenchSource);
+    const requestedFeatureId =
+      asNonEmptyString(featureId) || asNonEmptyString(workbench.activeModuleId);
+    const selectedModuleIds = toStringArray(workbench.selectedModuleIds);
+
+    if (requestedFeatureId === null) {
+      return selectedModuleIds;
+    }
+
+    if (selectedModuleIds.includes(requestedFeatureId) === false) {
+      return [requestedFeatureId];
+    }
+
+    return [
+      requestedFeatureId,
+      ...selectedModuleIds.filter(function (entry) {
+        return entry !== requestedFeatureId;
+      }),
+    ];
   }
 
   function resolveProcessTarget(project: LaboratoryProjectRecord, featureId: string | null) {
@@ -309,6 +365,8 @@ export function createLaboratoryProcessTargetingRuntime(
   return {
     buildMediaProcessModules,
     buildProcessSpeechAvailability,
+    resolveProcessRunFeatureIds,
+    resolveProcessWorkbench,
     resolveProcessTarget,
   };
 }

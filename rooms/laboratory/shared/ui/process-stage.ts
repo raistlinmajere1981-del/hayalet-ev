@@ -1,6 +1,8 @@
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryFeatureProcessRecord = LaboratoryRecord & {
+  findings?: unknown;
+  modules?: unknown;
   status?: unknown;
   warnings?: unknown;
 };
@@ -25,9 +27,12 @@ type LaboratoryProcessStageUiDeps = {
   getCurrentFeatureProcessRecord: () => unknown;
   getCurrentFeatureReportRecord: () => unknown;
   getCurrentFeatureTargetLabel: () => string;
+  getProjectProcess: () => unknown;
+  getProjectReport: () => unknown;
   getProcessFindings: () => unknown[];
   getProcessJobs: () => unknown[];
   getProcessModules: () => unknown[];
+  getWorkbench: () => unknown;
   renderStageIntro: (stageId: string) => string;
   renderSummaryRows: (rows: Array<[string, string]>) => string;
   text: (path: string[]) => string;
@@ -35,6 +40,7 @@ type LaboratoryProcessStageUiDeps = {
 };
 
 export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDeps) {
+  const featureIds = ["media-analysis", "audio-analysis", "subtitle-analysis"] as const;
   const {
     escapeHtml,
     featureText,
@@ -43,9 +49,12 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
     getCurrentFeatureProcessRecord,
     getCurrentFeatureReportRecord,
     getCurrentFeatureTargetLabel,
+    getProjectProcess,
+    getProjectReport,
     getProcessFindings,
     getProcessJobs,
     getProcessModules,
+    getWorkbench,
     renderStageIntro,
     renderSummaryRows,
     text,
@@ -98,6 +107,75 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
     );
   }
 
+  function getFeatureProcessRecord(featureId: string): LaboratoryFeatureProcessRecord {
+    const records = toRecord(toRecord(getProjectProcess())["records"]);
+    return toFeatureProcessRecord(records[featureId]);
+  }
+
+  function getFeatureReportRecord(featureId: string): LaboratoryFeatureProcessRecord {
+    const records = toRecord(toRecord(getProjectReport())["records"]);
+    return toFeatureProcessRecord(records[featureId]);
+  }
+
+  function getSelectedFeatureIds() {
+    const workbench = toRecord(getWorkbench());
+    const selectedFeatureIds = Array.isArray(workbench["selectedModuleIds"])
+      ? workbench["selectedModuleIds"].filter(function (entry): entry is string {
+          return typeof entry === "string" && entry.trim() !== "";
+        })
+      : [];
+    const activeFeatureId =
+      typeof workbench["activeModuleId"] === "string" && workbench["activeModuleId"].trim() !== ""
+        ? workbench["activeModuleId"]
+        : null;
+
+    if (selectedFeatureIds.length === 0) {
+      return activeFeatureId ? [activeFeatureId] : featureIds.slice();
+    }
+
+    if (activeFeatureId === null || selectedFeatureIds.includes(activeFeatureId) === false) {
+      return selectedFeatureIds;
+    }
+
+    return [
+      activeFeatureId,
+      ...selectedFeatureIds.filter(function (featureId) {
+        return featureId !== activeFeatureId;
+      }),
+    ];
+  }
+
+  function renderFeatureRunMatrix() {
+    const selectedFeatureIds = getSelectedFeatureIds();
+    return `
+      <section class="lab-signal-grid">
+        ${selectedFeatureIds
+          .map(function (featureId) {
+            const processRecord = getFeatureProcessRecord(featureId);
+            const reportRecord = getFeatureReportRecord(featureId);
+            const moduleCount = Array.isArray(processRecord.modules) ? processRecord.modules.length : 0;
+            const findingCount = Array.isArray(processRecord.findings)
+              ? processRecord.findings.length
+              : 0;
+            return `
+              <article class="lab-signal-card">
+                <strong>${escapeHtml(text(["features", featureId]))}</strong>
+                <span>${escapeHtml(formatStatusLabel(processRecord.status || "idle"))}</span>
+                <span>${escapeHtml(
+                  `${String(moduleCount)} ${text(["workbench", "cards", "resultsSuffix"])}`
+                )}</span>
+                <span>${escapeHtml(
+                  `${String(findingCount)} ${featureText(["report", "findingsTitle"]).toLowerCase()}`
+                )}</span>
+                <span>${escapeHtml(formatStatusLabel(reportRecord.status || "idle"))}</span>
+              </article>
+            `;
+          })
+          .join("")}
+      </section>
+    `;
+  }
+
   function renderProcessStage() {
     const processRecord = toFeatureProcessRecord(getCurrentFeatureProcessRecord());
     const modules = getProcessModules().map(toProcessModuleRecord);
@@ -107,11 +185,13 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
       return !["idle", "queued", "running"].includes(String(entry.status || ""));
     }).length;
     const reportRecord = toFeatureProcessRecord(getCurrentFeatureReportRecord());
+    const selectedFeatureIds = getSelectedFeatureIds();
 
     return `
       <div class="lab-layout">
         <section class="lab-main-stack">
           ${renderStageIntro("process")}
+          ${renderFeatureRunMatrix()}
           <section class="lab-panel lab-process-panel">
             ${
               modules.length > 0
@@ -184,6 +264,21 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
                 `
                 : ""
             }
+            <div class="lab-list-block">
+              <strong>${escapeHtml(text(["workbench", "moduleTitle"]))}</strong>
+              <ul class="lab-bullet-list">
+                ${selectedFeatureIds
+                  .map(function (featureId) {
+                    const featureRecord = getFeatureProcessRecord(featureId);
+                    return `<li>${escapeHtml(
+                      `${text(["features", featureId])}: ${formatStatusLabel(
+                        featureRecord.status || "idle"
+                      )}`
+                    )}</li>`;
+                  })
+                  .join("")}
+              </ul>
+            </div>
             <div class="lab-action-stack">
               <button class="lab-button lab-button--ghost" type="button" data-action="restart-process">
                 ${escapeHtml(featureText(["process", "controls", "restart"]))}

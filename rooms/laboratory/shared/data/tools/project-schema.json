@@ -16,6 +16,18 @@
       "process",
       "report"
     ],
+    "optional": ["workbench"],
+    "workbench": {
+      "required": [
+        "schemaVersion",
+        "experienceId",
+        "mode",
+        "primaryFeatureId",
+        "activeModuleId",
+        "availableModuleIds",
+        "selectedModuleIds"
+      ]
+    },
     "source": {
       "required": ["kind", "mode", "status", "drafts"],
       "optional": [

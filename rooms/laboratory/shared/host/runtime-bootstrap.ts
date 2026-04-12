@@ -1,3 +1,8 @@
+import {
+  createLaboratoryWorkbenchState,
+  normalizeLaboratoryFeatureId,
+} from "./runtime-primitives.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryContextRecord = LaboratoryRecord & {
@@ -11,6 +16,7 @@ type LaboratoryContextRecord = LaboratoryRecord & {
   slots?: unknown;
   translations?: unknown;
   user?: unknown;
+  workbench?: unknown;
 };
 
 type LaboratoryContextRoomRecord = LaboratoryRecord & {
@@ -28,6 +34,10 @@ type LaboratoryContextPresentationRecord = LaboratoryRecord & {
 
 type LaboratoryActiveFeatureRecord = LaboratoryRecord & {
   id?: unknown;
+};
+
+type LaboratoryWorkbenchRecord = LaboratoryRecord & {
+  activeModuleId?: unknown;
 };
 
 type LaboratoryRoomApi = {
@@ -136,6 +146,7 @@ type LaboratoryContext = {
   user: {
     nickname: string;
   };
+  workbench: ReturnType<typeof createLaboratoryWorkbenchState>;
 };
 
 type LaboratoryRuntimeBootstrapDeps = {
@@ -172,6 +183,10 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
     return toRecord(value);
   }
 
+  function toWorkbenchRecord(value: unknown): LaboratoryWorkbenchRecord {
+    return toRecord(value);
+  }
+
   function asNonEmptyString(value: unknown): string | null {
     return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
   }
@@ -197,6 +212,20 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
     const translations = toRecord(source.translations);
     const slots = toRecord(source.slots);
     const activeFeature = toActiveFeatureRecord(source.activeFeature);
+    const workbenchSource = toWorkbenchRecord(source.workbench);
+    const normalizedFeatureId = normalizeLaboratoryFeatureId(
+      asNonEmptyString(workbenchSource.activeModuleId) ||
+        asNonEmptyString(activeFeature.id) ||
+        asNonEmptyString(source.featureId) ||
+        asNonEmptyString(source.feature) ||
+        defaultFeatureId,
+      defaultFeatureId
+    );
+    const workbench = createLaboratoryWorkbenchState({
+      ...workbenchSource,
+      primaryFeatureId: defaultFeatureId,
+      activeModuleId: normalizedFeatureId,
+    });
 
     return {
       room: {
@@ -214,11 +243,8 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
       translations,
       slots,
       roomId: asNonEmptyString(source.roomId) || roomId,
-      featureId:
-        asNonEmptyString(activeFeature.id) ||
-        asNonEmptyString(source.featureId) ||
-        asNonEmptyString(source.feature) ||
-        defaultFeatureId,
+      featureId: workbench.activeModuleId,
+      workbench,
     };
   }
 
@@ -233,8 +259,11 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
   }
 
   function getFeatureIdFromContext(context: unknown): string {
-    const featureId = asNonEmptyString(toContextRecord(context).featureId);
-    return featureId || defaultFeatureId;
+    const source = toContextRecord(context);
+    const featureId =
+      asNonEmptyString(toWorkbenchRecord(source.workbench).activeModuleId) ||
+      asNonEmptyString(source.featureId);
+    return normalizeLaboratoryFeatureId(featureId, defaultFeatureId);
   }
 
   function createDefaultToolEntry(toolId: string): LaboratoryToolEntry {

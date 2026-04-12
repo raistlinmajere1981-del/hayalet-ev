@@ -34,10 +34,12 @@ type LaboratoryUiActionHandlersDeps = {
   render: () => void;
   resetJourney: () => void;
   restartProcess: () => void;
+  setActiveWorkbenchModule: (featureId: string) => void;
   sendMediaAction: (action: string, payload?: LaboratoryUiActionPayload | null) => string | null;
   sendSourceAction: (action: string, payload?: LaboratoryUiActionPayload | null) => string | null;
   state: LaboratoryUiState;
   syncDraftField: (path: string, value: unknown) => void;
+  toggleWorkbenchModuleSelection: (featureId: string) => void;
 };
 
 export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandlersDeps) {
@@ -56,10 +58,12 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
     render,
     resetJourney,
     restartProcess,
+    setActiveWorkbenchModule,
     sendMediaAction,
     sendSourceAction,
     state,
     syncDraftField,
+    toggleWorkbenchModuleSelection,
   } = deps;
 
   function getDerivedProfileOutputId(): string | null {
@@ -90,6 +94,12 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
         return;
       case "tools-refresh":
         sendSourceAction("tools-refresh");
+        return;
+      case "workbench-activate-module":
+        setActiveWorkbenchModule(String(value || ""));
+        return;
+      case "workbench-toggle-module":
+        toggleWorkbenchModuleSelection(String(value || ""));
         return;
       case "project-create":
         state.ui.pendingDeleteProjectId = null;

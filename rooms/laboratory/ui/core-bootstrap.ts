@@ -198,6 +198,7 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps: LaboratoryCoreBoots
     bootstrapText,
     escapeHtml,
     featureText,
+    getActiveFeatureId,
     getActiveStage() {
       return state.activeStage;
     },
@@ -205,10 +206,14 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps: LaboratoryCoreBoots
     getTranslations() {
       return state.translations;
     },
+    getWorkbench() {
+      return state.context.workbench;
+    },
     isSubtitleAnalysisFeature,
     readValue,
     stageOrder: deps.stageOrder,
     subtitleText,
+    text,
     toRecord,
   };
   const laboratoryShellFrameUi = deps.createLaboratoryShellFrameUi(

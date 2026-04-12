@@ -1,0 +1,142 @@
+import { createLaboratoryWorkbenchState } from "./runtime-primitives.js";
+export function createLaboratoryProjectRecordsRuntime(deps) {
+  const {
+    asNonEmptyString,
+    buildProjectName,
+    buildProjectSlug,
+    createDefaultEditState,
+    createDefaultProfileState,
+    createEmptyAudioAnalysisState,
+    createEmptyProcessState,
+    createEmptyReportState,
+    createEmptySubtitleAnalysisState,
+    createEmptySourceDrafts,
+    getDefaultMode,
+    getDefaultSourceType,
+    getDefaultYoutubePreset,
+    getPreferredFeatureSourceKind,
+    getPresetDefaultCustomValues,
+    normalizeEditState,
+    normalizeAudioAnalysisState,
+    normalizeProfileState,
+    normalizeProcessState,
+    normalizeReportState,
+    normalizeSourceMetadata,
+    normalizeSubtitleAnalysisState,
+    projectSchemaVersion,
+    toRecord
+  } = deps;
+  function createProjectRecord(sourcePresets, editPresets, profilePresets, profileModels, profileCapabilities, subtitleRuntime, featureId) {
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const kind = getPreferredFeatureSourceKind(featureId, sourcePresets);
+    const mode = getDefaultMode(sourcePresets, kind);
+    const slug = buildProjectSlug(now);
+    return {
+      schemaVersion: projectSchemaVersion,
+      id: slug,
+      slug,
+      name: buildProjectName(now),
+      createdAt: now,
+      updatedAt: now,
+      source: {
+        kind,
+        mode,
+        status: "idle",
+        storedPath: null,
+        storedFileName: null,
+        sourceUrl: null,
+        mimeType: null,
+        routeLabel: null,
+        lastError: null,
+        metadata: null,
+        metadataError: null,
+        drafts: createEmptySourceDrafts(sourcePresets)
+      },
+      edit: createDefaultEditState(editPresets, kind),
+      profile: createDefaultProfileState(profilePresets, profileModels, profileCapabilities, kind),
+      audioAnalysis: createEmptyAudioAnalysisState(),
+      subtitleAnalysis: createEmptySubtitleAnalysisState(subtitleRuntime || {}),
+      process: createEmptyProcessState(),
+      report: createEmptyReportState(),
+      workbench: createLaboratoryWorkbenchState({
+        activeModuleId: featureId
+      })
+    };
+  }
+  function normalizeProject(rawValue, sourcePresets, editPresets, profilePresets, profileModels, profileCapabilities, runtime) {
+    const rawProject = toRecord(rawValue);
+    const source = toRecord(rawProject.source);
+    const kind = asNonEmptyString(source.kind) || getDefaultSourceType(sourcePresets);
+    const mode = asNonEmptyString(source.mode) || getDefaultMode(sourcePresets, kind);
+    const drafts = toRecord(source.drafts);
+    const defaultPreset = getDefaultYoutubePreset(sourcePresets);
+    const youtubePreset = asNonEmptyString(drafts.youtubePreset) || defaultPreset;
+    const currentTimestamp = (/* @__PURE__ */ new Date()).toISOString();
+    const schemaVersion = typeof rawProject.schemaVersion === "number" ? rawProject.schemaVersion : projectSchemaVersion;
+    return {
+      schemaVersion,
+      id: asNonEmptyString(rawProject.id) || asNonEmptyString(rawProject.slug) || buildProjectSlug(currentTimestamp),
+      slug: asNonEmptyString(rawProject.slug) || asNonEmptyString(rawProject.id) || buildProjectSlug(currentTimestamp),
+      name: asNonEmptyString(rawProject.name) || buildProjectName(currentTimestamp),
+      createdAt: asNonEmptyString(rawProject.createdAt) || currentTimestamp,
+      updatedAt: asNonEmptyString(rawProject.updatedAt) || currentTimestamp,
+      source: {
+        kind,
+        mode,
+        status: asNonEmptyString(source.status) || "idle",
+        storedPath: asNonEmptyString(source.storedPath),
+        storedFileName: asNonEmptyString(source.storedFileName),
+        sourceUrl: asNonEmptyString(source.sourceUrl),
+        mimeType: asNonEmptyString(source.mimeType),
+        routeLabel: asNonEmptyString(source.routeLabel),
+        lastError: asNonEmptyString(source.lastError),
+        metadata: normalizeSourceMetadata(source.metadata),
+        metadataError: asNonEmptyString(source.metadataError),
+        drafts: {
+          urlInput: asNonEmptyString(drafts.urlInput) || "",
+          youtubeUrl: asNonEmptyString(drafts.youtubeUrl) || "",
+          fileNameHint: asNonEmptyString(drafts.fileNameHint) || "",
+          youtubePreset,
+          youtubeCustom: {
+            ...getPresetDefaultCustomValues(sourcePresets, youtubePreset),
+            ...toRecord(drafts.youtubeCustom)
+          }
+        }
+      },
+      edit: normalizeEditState(rawProject.edit, editPresets, kind),
+      profile: normalizeProfileState(
+        rawProject.profile,
+        profilePresets,
+        profileModels,
+        profileCapabilities,
+        kind
+      ),
+      audioAnalysis: normalizeAudioAnalysisState(rawProject.audioAnalysis, runtime || {}),
+      subtitleAnalysis: normalizeSubtitleAnalysisState(rawProject.subtitleAnalysis, runtime || {}),
+      process: normalizeProcessState(rawProject.process),
+      report: normalizeReportState(rawProject.report),
+      workbench: createLaboratoryWorkbenchState({
+        ...toRecord(rawProject.workbench)
+      })
+    };
+  }
+  function updateProjectTimestamps(project) {
+    project.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+    return project;
+  }
+  function findProject(runtime, projectId) {
+    return runtime.projects.find(function(project) {
+      return project.id === projectId;
+    });
+  }
+  function getActiveProject(runtime) {
+    return findProject(runtime, runtime.activeProjectId) || null;
+  }
+  return {
+    createProjectRecord,
+    findProject,
+    getActiveProject,
+    normalizeProject,
+    updateProjectTimestamps
+  };
+}

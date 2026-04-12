@@ -177,8 +177,14 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.match(workspaceRoomBuildSupportSource, /app\.asar\.unpacked/);
   assert.match(workspaceRoomBuildSupportSource, /pathToFileURL/);
   assert.match(workspaceRoomBuildSupportSource, /async function loadEsbuildModule\(/);
-  assert.equal(scripts["rooms:bundle"], "node --import tsx scripts/rooms/build-room-bundle.mjs");
-  assert.equal(scripts["rooms:build"], "node --import tsx scripts/rooms/build-workspace-rooms.ts");
+  assert.equal(
+    scripts["rooms:bundle"],
+    "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/build-room-bundle.mjs"
+  );
+  assert.equal(
+    scripts["rooms:build"],
+    "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/build-workspace-rooms.ts"
+  );
   assert.ok(scripts["rooms:lint"]?.startsWith("NODE_OPTIONS="));
   assert.ok(scripts["rooms:lint"]?.includes('"rooms/**/*.{js,ts}"'));
   assert.match(eslintConfigSource, /"rooms\/\*\*\/ui\/\*\*\/\*\.ts"/);

@@ -9,7 +9,8 @@ type ProjectDeps = {
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
     requestId: string,
-    featureId: string | null
+    featureId: string | null,
+    workbenchSource?: unknown
   ) => Promise<unknown>;
   createProject: (runtime: MediaProjectRuntimeRecord, featureId: string | null) => Promise<unknown>;
   deleteProject: (
@@ -48,7 +49,8 @@ type ProjectDeps = {
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
     requestId: string,
-    featureId: string | null
+    featureId: string | null,
+    workbenchSource?: unknown
   ) => Promise<unknown>;
 };
 
@@ -110,18 +112,20 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
     requestId: string,
-    featureId: string | null
+    featureId: string | null,
+    workbenchSource?: unknown
   ) {
-    return runFeatureProcess(api, runtime, requestId, featureId);
+    return runFeatureProcess(api, runtime, requestId, featureId, workbenchSource);
   }
 
   async function cancelProcess(
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
     requestId: string,
-    featureId: string | null
+    featureId: string | null,
+    workbenchSource?: unknown
   ) {
-    return cancelFeatureProcess(api, runtime, requestId, featureId);
+    return cancelFeatureProcess(api, runtime, requestId, featureId, workbenchSource);
   }
 
   async function exportReport(

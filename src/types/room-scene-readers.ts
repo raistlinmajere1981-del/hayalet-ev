@@ -24,6 +24,7 @@ import type {
   RoomSceneTransparentWindowConfig,
   RoomSceneViewBackButtonVariant,
   RoomSceneWindowControlsVisibility,
+  RoomWorkbenchConfig,
 } from "./rooms.js";
 
 interface RoomSceneReaderDeps {
@@ -430,6 +431,7 @@ export function createRoomSceneReaders(deps: RoomSceneReaderDeps) {
   function readSceneConfig(
     rawValue: unknown,
     features: RoomFeatureManifest[],
+    workbench: RoomWorkbenchConfig | undefined,
     errors: string[]
   ): RoomSceneConfig | undefined {
     if (rawValue === undefined) {
@@ -481,10 +483,27 @@ export function createRoomSceneReaders(deps: RoomSceneReaderDeps) {
       }
     }
 
+    const featureSceneIds = features
+      .filter((feature) => feature.scene !== undefined)
+      .map((feature) => feature.id);
     const missingFeatureScene = features
       .filter((feature) => feature.scene === undefined)
       .map((feature) => feature.id);
-    if (missingFeatureScene.length > 0) {
+    if (workbench?.experienceId) {
+      if (featureSceneIds.length === 0) {
+        errors.push("scene requires at least one feature.scene when workbench is enabled");
+      }
+      if (
+        workbench.primaryFeatureId !== undefined &&
+        features.some(
+          (feature) => feature.id === workbench.primaryFeatureId && feature.scene === undefined
+        )
+      ) {
+        errors.push(
+          `scene requires feature.scene for workbench.primaryFeatureId: ${workbench.primaryFeatureId}`
+        );
+      }
+    } else if (missingFeatureScene.length > 0) {
       errors.push(`scene requires feature.scene for: ${missingFeatureScene.join(", ")}`);
     }
 

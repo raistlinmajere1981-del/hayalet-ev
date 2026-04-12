@@ -212,11 +212,14 @@ test("scene pages enable clickable labels and shared clickable classes", () => {
   assert.match(entranceCssSource, /\.entrance-scene \.entrance-scene__character-head,[\s\S]*pointer-events: auto;/);
 });
 
-test("installed laboratory manifest exposes subtitle-analysis hotspot ids for scene debug visibility", async () => {
+test("installed laboratory manifest exposes one workbench hotspot while legacy features stay scene-passive", async () => {
   const installedCopy = await createRoomInstalledCopy("laboratory");
 
   try {
     const manifest = JSON.parse(readFileSync(`${installedCopy.rootDir}/manifest.json`, "utf8"));
+    const mediaFeature = Array.isArray(manifest.features)
+      ? manifest.features.find((feature) => feature.id === "media-analysis")
+      : null;
     const audioFeature = Array.isArray(manifest.features)
       ? manifest.features.find((feature) => feature.id === "audio-analysis")
       : null;
@@ -224,18 +227,15 @@ test("installed laboratory manifest exposes subtitle-analysis hotspot ids for sc
       ? manifest.features.find((feature) => feature.id === "subtitle-analysis")
       : null;
 
-    assert.equal(audioFeature?.scene?.hotspot?.id, "laboratory-audio-analysis");
-    assert.equal(audioFeature?.scene?.view?.id, "audio-analysis-console");
+    assert.equal(manifest.workbench?.experienceId, "analysis-workbench");
+    assert.equal(mediaFeature?.scene?.hotspot?.id, "laboratory-media-analysis");
+    assert.equal(mediaFeature?.scene?.view?.id, "media-analysis-console");
     assert.equal(
-      audioFeature?.scene?.view?.backgroundSrc,
-      "main-functions/audio-analysis/assets/sound-analysis.webp"
+      mediaFeature?.scene?.view?.backgroundSrc,
+      "main-functions/media-analysis/assets/media-analysis-view.webp"
     );
-    assert.equal(subtitleFeature?.scene?.hotspot?.id, "laboratory-subtitle-analysis");
-    assert.equal(subtitleFeature?.scene?.view?.id, "subtitle-analysis-console");
-    assert.equal(
-      subtitleFeature?.scene?.view?.backgroundSrc,
-      "main-functions/subtitle-analysis/assets/subtitle-analysis.webp"
-    );
+    assert.equal(audioFeature?.scene, undefined);
+    assert.equal(subtitleFeature?.scene, undefined);
   } finally {
     await installedCopy.cleanup();
   }

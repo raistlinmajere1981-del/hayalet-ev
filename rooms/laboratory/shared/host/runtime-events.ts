@@ -10,7 +10,7 @@ type LaboratoryRuntimeEventsDeps = {
   getFeatureIdFromContext: (context: unknown) => string;
   loadContext: (api: LaboratoryRuntimeEventsApi) => unknown;
   roomSnapshotRuntime: {
-    buildMediaSnapshot: (runtime: unknown, featureId: string) => unknown;
+    buildMediaSnapshot: (runtime: unknown, featureId: string, workbenchSource?: unknown) => unknown;
   };
 };
 
@@ -23,8 +23,14 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     roomSnapshotRuntime,
   } = deps;
 
-  function buildMediaSnapshot(runtime: unknown, featureId: string) {
-    return roomSnapshotRuntime.buildMediaSnapshot(runtime, featureId);
+  function toRecord(value: unknown): LaboratoryRecord {
+    return value !== null && typeof value === "object" && Array.isArray(value) === false
+      ? (value as LaboratoryRecord)
+      : {};
+  }
+
+  function buildMediaSnapshot(runtime: unknown, featureId: string, workbenchSource: unknown = {}) {
+    return roomSnapshotRuntime.buildMediaSnapshot(runtime, featureId, workbenchSource);
   }
 
   function buildSourceSnapshot(runtime: unknown) {
@@ -60,11 +66,13 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     requestId: string | null | undefined,
     action: unknown
   ) {
-    const featureId = getFeatureIdFromContext(loadContext(api));
+    const context = loadContext(api);
+    const contextRecord = toRecord(context);
+    const featureId = getFeatureIdFromContext(context);
     const payload = {
       requestId: requestId ?? null,
       action: asNonEmptyString(action),
-      snapshot: buildMediaSnapshot(runtime, featureId),
+      snapshot: buildMediaSnapshot(runtime, featureId, contextRecord["workbench"]),
     };
 
     notifyRoom(api, "media-state", payload);

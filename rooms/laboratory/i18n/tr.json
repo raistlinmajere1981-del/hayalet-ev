@@ -6,6 +6,83 @@
     "audio-analysis": "Ses Analizi",
     "subtitle-analysis": "Altyazi Analizi"
   },
+  "workbench": {
+    "eyebrow": "Merkezi Laboratuvar",
+    "title": "Analiz Workbench'i",
+    "subtitle": "Proje alimi, modül odagi, readiness, kosular ve rapor icin tek masaustu akis.",
+    "moduleRailLabel": "Analiz modulleri",
+    "moduleTitle": "Aktif modulu sec",
+    "moduleSelectionHint": "Kosacak modul setini burada kur, sonra ayrintili ayar icin tek bir modulu odaga al.",
+    "selectedModulesTitle": "Bu kosudaki moduller",
+    "selectedModulesEmpty": "Henuz kosuya alinmis modul yok.",
+    "includeAction": "Kosuya ekle",
+    "excludeAction": "Cikar",
+    "focusAction": "Modulu odakla",
+    "activeTag": "Odakta",
+    "dependencyAction": "Bagimlilik Merkezi",
+    "dependencyEyebrow": "Operasyon Merkezi",
+    "dependencyTitle": "Bagimliliklar ve Modeller",
+    "dependencySubtitle": "Kurulumlari, manuel blokajlari, guncellemeleri ve model yasam dongusunu tek panelden yonet.",
+    "dependencyOverview": "Workbench readiness ozeti",
+    "dependencyFocus": "Aktif adim odagi:",
+    "readinessTitle": "Readiness",
+    "readinessSubtitle": "Kapsam gorunumu",
+    "blockerTitle": "Guncel blokajlar",
+    "readyHint": "Mevcut calisma alani aktif modul ile devam etmek icin yeterli kapsama sahip.",
+    "operationsTitle": "Canli operasyonlar",
+    "operationsFallback": "Oda isi",
+    "operationsEmpty": "Su anda calisan bir bagimlilik veya model islemi yok.",
+    "toolGridTitle": "Arac envanteri",
+    "modelGridTitle": "Profil model envanteri",
+    "dependency": {
+      "strategy": "Kurulum stratejisi",
+      "usedBy": "Kullanim",
+      "tests": "Etkiledigi akıslar"
+    },
+    "cards": {
+      "autoManaged": "Otomatik yonetilen",
+      "manualFlows": "Manuel host akislar",
+      "operations": "Aktif operasyon",
+      "models": "Hazir modeller",
+      "toolCoverage": "Arac kapsami",
+      "blockers": "Blokajlar",
+      "resultsSuffix": "sonuc",
+      "entriesSuffix": "girdi"
+    },
+    "modules": {
+      "media-analysis": {
+        "summary": "Kaynak alimi, edit handoff, profil ve rapor kompozisyonu."
+      },
+      "audio-analysis": {
+        "summary": "Ses odakli modul kontrolleri, provider readiness ve sinyal ozetleri."
+      },
+      "subtitle-analysis": {
+        "summary": "Altyazi kesfi, temizleme, toplu girdi inceleme ve QC."
+      }
+    },
+    "stages": {
+      "source": {
+        "title": "Proje rotasini kur",
+        "subtitle": "Tek bir alandan proje sec veya olustur, aktif modulu belirle ve kaynagi hazirla."
+      },
+      "edit": {
+        "title": "Aktif handoff'u sekillendir",
+        "subtitle": "Derin profile ve yonetilen kosa gecmeden once asset ya da altyazi ciktisini duzenle."
+      },
+      "profile": {
+        "title": "Kosu oncesi readiness kontrolu yap",
+        "subtitle": "Profili ayarla, blokajlari gor ve hangi artifact'lerin hazirlanacagina karar ver."
+      },
+      "process": {
+        "title": "Rehberli analizi calistir",
+        "subtitle": "Modul ilerlemesini, uyarilari ve rapor readiness durumunu shell icinden takip et."
+      },
+      "report": {
+        "title": "Laboratuvar sonucunu incele",
+        "subtitle": "Modul bolumleri, caveat'ler, export'lar ve sonraki adimlari tek rapor yuzeyinde gor."
+      }
+    }
+  },
   "mediaAnalysis": {
     "eyebrow": "Obsidian Laboratuvar",
     "operatorLabel": "Operator",
@@ -525,6 +602,7 @@
       "modelTitle": "Transkript Modelleri",
       "modelSubtitle": "Opsiyonel Whisper.cpp modelleri, konusma surekliligi ve overdub ipuclarini orneklemeye yardim eder.",
       "modelUnavailable": "Bu platformda transkript modellerini yonetmek icin once oda-yerel Whisper.cpp binary'sini kur.",
+      "modelVerificationHint": "Host kurulumu bittikten sonra bagimlilik merkezini yenile, Whisper.cpp hazirligini dogrula ve model kurulumunu tekrar dene.",
       "modelActions": {
         "install": "Modeli Kur",
         "remove": "Modeli Kaldir"

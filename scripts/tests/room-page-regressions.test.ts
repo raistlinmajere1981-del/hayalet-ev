@@ -173,6 +173,7 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(pageShellRuntimeSource, /\.\/shell-layout\.js/);
   assert.match(pageShellRuntimeSource, /\.\/runtime-events\.js/);
   assert.match(pageShellRuntimeSource, /export function shouldShowRoomPageFeatureStripForRoom\(/);
+  assert.match(pageShellRuntimeSource, /if \(room\.workbench\?\.experienceId\) \{\s*return false;\s*\}/);
   assert.match(pageShellRuntimeSource, /export function ensureRoomPageFeatureShell\(/);
   assert.match(pageShellRuntimeSource, /export function renderRoomPageFeatureStrip\(/);
   assert.match(pageShellRuntimeSource, /export function updateRoomPageStatusPanel\(/);
@@ -327,15 +328,18 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(laboratoryUiCssSource, /@import "\.\.\/main-functions\/media-analysis\/styles\.css";/);
   assert.match(
     laboratoryShellCssSource,
-    /body\[data-presentation-mode="scene-view"\] \.lab-shell \{\s*height: 100%;[\s\S]*padding: 0;/
+    /body\[data-presentation-mode="scene-view"\] \.lab-shell \{[\s\S]*height: 100%;[\s\S]*padding: 0\.55rem;/
   );
 });
 
-test("installed laboratory manifest keeps the subtitle-analysis scene contract for room-page routing", () => {
+test("installed laboratory manifest keeps one workbench scene entry for room-page routing", () => {
   const manifestPath = existsSync("data/rooms/laboratory/manifest.json")
     ? "data/rooms/laboratory/manifest.json"
     : "rooms/laboratory/manifest.json";
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const mediaFeature = Array.isArray(manifest.features)
+    ? manifest.features.find((feature) => feature.id === "media-analysis")
+    : null;
   const audioFeature = Array.isArray(manifest.features)
     ? manifest.features.find((feature) => feature.id === "audio-analysis")
     : null;
@@ -343,16 +347,14 @@ test("installed laboratory manifest keeps the subtitle-analysis scene contract f
     ? manifest.features.find((feature) => feature.id === "subtitle-analysis")
     : null;
 
-  assert.equal(audioFeature?.scene?.hotspot?.id, "laboratory-audio-analysis");
-  assert.equal(audioFeature?.scene?.view?.id, "audio-analysis-console");
+  assert.equal(manifest.workbench?.experienceId, "analysis-workbench");
+  assert.equal(mediaFeature?.name, "Analysis Workbench");
+  assert.equal(mediaFeature?.scene?.hotspot?.id, "laboratory-media-analysis");
+  assert.equal(mediaFeature?.scene?.view?.id, "media-analysis-console");
   assert.equal(
-    audioFeature?.scene?.view?.backgroundSrc,
-    "main-functions/audio-analysis/assets/sound-analysis.webp"
+    mediaFeature?.scene?.view?.backgroundSrc,
+    "main-functions/media-analysis/assets/media-analysis-view.webp"
   );
-  assert.equal(subtitleFeature?.scene?.hotspot?.id, "laboratory-subtitle-analysis");
-  assert.equal(subtitleFeature?.scene?.view?.id, "subtitle-analysis-console");
-  assert.equal(
-    subtitleFeature?.scene?.view?.backgroundSrc,
-    "main-functions/subtitle-analysis/assets/subtitle-analysis.webp"
-  );
+  assert.equal(audioFeature?.scene, undefined);
+  assert.equal(subtitleFeature?.scene, undefined);
 });

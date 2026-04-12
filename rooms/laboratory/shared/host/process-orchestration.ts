@@ -32,6 +32,16 @@ type LaboratoryProcessTargetingRuntime = {
     runtime: LaboratoryRuntimeRecord,
     project: LaboratoryProjectRecord
   ) => LaboratoryRecord;
+  resolveProcessRunFeatureIds: (
+    project: LaboratoryProjectRecord,
+    featureId: string | null,
+    workbenchSource?: unknown
+  ) => string[];
+  resolveProcessWorkbench: (
+    project: LaboratoryProjectRecord,
+    featureId: string | null,
+    workbenchSource?: unknown
+  ) => LaboratoryRecord;
   resolveProcessTarget: (
     project: LaboratoryProjectRecord,
     featureId: string | null
@@ -83,6 +93,22 @@ export function createLaboratoryProcessOrchestrationRuntime(
 
   function resolveProcessTarget(project: LaboratoryProjectRecord, featureId: string | null) {
     return processTargetingRuntime.resolveProcessTarget(project, featureId);
+  }
+
+  function resolveProcessRunFeatureIds(
+    project: LaboratoryProjectRecord,
+    featureId: string | null,
+    workbenchSource: unknown = {}
+  ) {
+    return processTargetingRuntime.resolveProcessRunFeatureIds(project, featureId, workbenchSource);
+  }
+
+  function resolveProcessWorkbench(
+    project: LaboratoryProjectRecord,
+    featureId: string | null,
+    workbenchSource: unknown = {}
+  ) {
+    return processTargetingRuntime.resolveProcessWorkbench(project, featureId, workbenchSource);
   }
 
   function buildMediaProcessModules(
@@ -183,6 +209,8 @@ export function createLaboratoryProcessOrchestrationRuntime(
     getAudioAnalysisModulesForRuntime,
     getFeatureProcessJobAction,
     getFeatureReportExportAction,
+    resolveProcessRunFeatureIds,
+    resolveProcessWorkbench,
     resolveProcessTarget,
     updateProcessModule,
     updateProcessRecordPercent,

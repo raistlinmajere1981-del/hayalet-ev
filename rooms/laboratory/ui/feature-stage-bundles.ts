@@ -28,6 +28,7 @@ type LaboratoryFeatureStageBundlesRuntimeDeps = Pick<
   | "getCurrentSourceLabel"
   | "getEffectiveMediaAsset"
   | "getFeaturePreviewImage"
+  | "getWorkbench"
   | "getPreferredAssetCodec"
   | "getPreferredAssetDuration"
   | "getPreferredAssetResolution"
@@ -39,6 +40,8 @@ type LaboratoryFeatureStageBundlesRuntimeDeps = Pick<
   | "getProfileSignalKindLabel"
   | "getProfileTranscriptSampleConfig"
   | "getProjectProfile"
+  | "getProjectProcess"
+  | "getProjectReport"
   | "getProjectSource"
   | "getProfileTargetAsset"
   | "getSubtitleProcessModuleLabel"
@@ -270,6 +273,9 @@ export function createLaboratoryFeatureStageBundlesRuntime(
     getCurrentFeatureTargetLabel,
     getCurrentFeatureArtifactCount,
     getCurrentFeatureReportRecord: deps.getCurrentFeatureReportRecord,
+    getProjectProcess: deps.getProjectProcess,
+    getProjectReport: deps.getProjectReport,
+    getWorkbench: deps.getWorkbench,
     getEffectiveMediaAsset: deps.getEffectiveMediaAsset,
     getReportFindings,
     getReportSummaryCards,

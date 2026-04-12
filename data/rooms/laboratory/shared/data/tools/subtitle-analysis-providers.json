@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "providers": [
+    {
+      "id": "native-subtitle-qc",
+      "status": "ready",
+      "providerType": "built-in",
+      "moduleIds": ["format-qc", "readability-density", "cue-timing-structure", "lexical-frequency", "batch-summary"]
+    },
+    {
+      "id": "planned-entity-provider",
+      "status": "planned",
+      "providerType": "planned",
+      "moduleIds": ["entities-keyphrases"]
+    },
+    {
+      "id": "planned-semantic-provider",
+      "status": "planned",
+      "providerType": "planned",
+      "moduleIds": ["semantic-search"]
+    }
+  ]
+}

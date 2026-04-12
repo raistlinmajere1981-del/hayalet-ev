@@ -21,10 +21,15 @@ type LaboratoryToolStateRecord = LaboratoryRecord & {
 type LaboratoryToolDescriptorRecord = LaboratoryRecord & {
   availability?: unknown;
   displayName?: unknown;
+  installStrategy?: unknown;
+  manualHint?: unknown;
   plannedReason?: unknown;
+  readinessImpact?: unknown;
   setupHint?: unknown;
   stageSupport?: unknown;
+  testImpact?: unknown;
   toolId?: unknown;
+  usedBy?: unknown;
 };
 
 type LaboratorySettingsToolCardRuntimeDeps = {
@@ -92,7 +97,22 @@ export function createLaboratorySettingsToolCardRuntime(
     const systemCommand = availability === "system-command";
     const plannedReason =
       toString(details.plannedReason).trim() || toString(descriptor?.plannedReason).trim();
-    const setupHint = toString(details.setupHint).trim() || toString(descriptor?.setupHint).trim();
+    const setupHint =
+      toString(details.setupHint).trim() ||
+      toString(descriptor?.manualHint).trim() ||
+      toString(descriptor?.setupHint).trim();
+    const installStrategy = toString(descriptor?.installStrategy, "--");
+    const readinessImpact = toString(descriptor?.readinessImpact).trim();
+    const usedBy = Array.isArray(descriptor?.usedBy)
+      ? (descriptor.usedBy as unknown[]).map(function (entry) {
+          return String(entry);
+        })
+      : [];
+    const testImpact = Array.isArray(descriptor?.testImpact)
+      ? (descriptor.testImpact as unknown[]).map(function (entry) {
+          return String(entry);
+        })
+      : [];
     const statusLabel = planned
       ? text(["mediaAnalysis", "settings", "status", "planned"])
       : systemCommand
@@ -181,13 +201,33 @@ export function createLaboratorySettingsToolCardRuntime(
             text(["mediaAnalysis", "settings", "pathLabel"]),
             toString(tool.binaryPath, "--")
           )}
+          ${renderPreviewMetaRow(text(["workbench", "dependency", "strategy"]), installStrategy)}
         </ul>
         ${
           busy
             ? `<p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "settings", "busyHint"]))}</p>`
             : ""
         }
+        ${
+          usedBy.length > 0
+            ? `<p class="lab-panel__hint">${escapeHtml(
+                `${text(["workbench", "dependency", "usedBy"])}: ${usedBy.join(", ")}`
+              )}</p>`
+            : ""
+        }
+        ${
+          testImpact.length > 0
+            ? `<p class="lab-panel__hint">${escapeHtml(
+                `${text(["workbench", "dependency", "tests"])}: ${testImpact.join(", ")}`
+              )}</p>`
+            : ""
+        }
         ${plannedReason ? `<p class="lab-panel__hint">${escapeHtml(plannedReason)}</p>` : ""}
+        ${
+          readinessImpact
+            ? `<p class="lab-panel__hint">${escapeHtml(readinessImpact)}</p>`
+            : ""
+        }
         ${setupHint ? `<p class="lab-panel__hint">${escapeHtml(setupHint)}</p>` : ""}
         ${
           toString(tool.lastError).trim()

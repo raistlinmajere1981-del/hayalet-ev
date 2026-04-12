@@ -1,4 +1,5 @@
 import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js";
+import { createLaboratoryWorkbenchState } from "../host/runtime-primitives.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
@@ -235,6 +236,95 @@ export function createLaboratoryRequestRuntime(deps: LaboratoryRequestRuntimeDep
     sendSourceAction("source-update-draft", { fields: nextFields });
   }
 
+  function syncHostContext(payload: LaboratoryRecord) {
+    const roomApi = getRoomApi();
+    if (!roomApi) {
+      setLastAction(bootstrapText("roomApiUnavailable"));
+      render();
+      return;
+    }
+    roomApi.sendEvent("host-context", payload);
+  }
+
+  function syncWorkbenchContext(patch: LaboratoryRecord) {
+    const nextWorkbench = createLaboratoryWorkbenchState({
+      ...toRecord(state.context.workbench),
+      ...toRecord(patch),
+    });
+    state.context = {
+      ...state.context,
+      featureId:
+        typeof nextWorkbench["activeModuleId"] === "string" &&
+        nextWorkbench["activeModuleId"].trim() !== ""
+          ? nextWorkbench["activeModuleId"]
+          : state.context.featureId,
+      workbench: nextWorkbench,
+    };
+    state.sourceSnapshot.workbench = nextWorkbench;
+    render();
+    syncHostContext({
+      ...state.context,
+      activeFeature: {
+        id: state.context.featureId,
+      },
+    });
+  }
+
+  function getAvailableWorkbenchModuleIds(): string[] {
+    return Array.isArray(state.context.workbench["availableModuleIds"])
+      ? state.context.workbench["availableModuleIds"].filter(function (entry): entry is string {
+          return typeof entry === "string" && entry.trim() !== "";
+        })
+      : [getActiveFeatureId()];
+  }
+
+  function getSelectedWorkbenchModuleIds(): string[] {
+    return Array.isArray(state.context.workbench["selectedModuleIds"])
+      ? state.context.workbench["selectedModuleIds"].filter(function (entry): entry is string {
+          return typeof entry === "string" && entry.trim() !== "";
+        })
+      : [getActiveFeatureId()];
+  }
+
+  function setActiveWorkbenchModule(featureId: string) {
+    const selectedModuleIds = getSelectedWorkbenchModuleIds();
+    syncWorkbenchContext({
+      activeModuleId: featureId,
+      selectedModuleIds: selectedModuleIds.includes(featureId)
+        ? selectedModuleIds
+        : [...selectedModuleIds, featureId],
+    });
+  }
+
+  function toggleWorkbenchModuleSelection(featureId: string) {
+    const availableModuleIds = getAvailableWorkbenchModuleIds();
+    if (!availableModuleIds.includes(featureId)) {
+      return;
+    }
+
+    const activeModuleId = getActiveFeatureId();
+    const selectedModuleIds = getSelectedWorkbenchModuleIds();
+    const isSelected = selectedModuleIds.includes(featureId);
+    const nextSelectedModuleIds = isSelected
+      ? selectedModuleIds.filter(function (entry) {
+          return entry !== featureId;
+        })
+      : [...selectedModuleIds, featureId];
+    const fallbackModuleId = availableModuleIds.find(function (entry) {
+      return entry !== featureId;
+    });
+    const nextActiveModuleId =
+      featureId === activeModuleId && isSelected
+        ? nextSelectedModuleIds[0] || fallbackModuleId || activeModuleId
+        : activeModuleId;
+
+    syncWorkbenchContext({
+      activeModuleId: nextActiveModuleId,
+      selectedModuleIds:
+        nextSelectedModuleIds.length > 0 ? nextSelectedModuleIds : [nextActiveModuleId],
+    });
+  }
+
   function openSettingsOverlay() {
     state.ui.settingsOpen = true;
     requestOverlayScrollReset();
@@ -253,8 +343,12 @@ export function createLaboratoryRequestRuntime(deps: LaboratoryRequestRuntimeDep
     persistDrafts,
     sendMediaAction,
     sendSourceAction,
+    setActiveWorkbenchModule,
     setLastAction,
     shouldIgnoreCorrelatedPayload,
+    syncHostContext,
+    syncWorkbenchContext,
     syncDraftField,
+    toggleWorkbenchModuleSelection,
   };
 }

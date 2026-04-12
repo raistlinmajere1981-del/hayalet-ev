@@ -117,6 +117,7 @@ type LaboratoryUiShellCompositionDeps = {
   resetJourney: () => void;
   restartProcess: () => void;
   restoreScrollState: (root: Element) => void;
+  setActiveWorkbenchModule: (featureId: string) => void;
   sendMediaAction: (...args: unknown[]) => unknown;
   sendSourceAction: (...args: unknown[]) => unknown;
   setLastAction: (message: string) => void;
@@ -127,6 +128,7 @@ type LaboratoryUiShellCompositionDeps = {
   text: (path: string[]) => string;
   textFromKey: (key: string) => string;
   toRecord: (value: unknown) => LaboratoryRecord;
+  toggleWorkbenchModuleSelection: (featureId: string) => void;
   toggleCleanup: (...args: unknown[]) => unknown;
   windowRef: LaboratoryShellWindow;
 };
@@ -237,6 +239,7 @@ export function createLaboratoryUiShellComposition(deps: LaboratoryUiShellCompos
     render: deps.render,
     resetJourney: deps.resetJourney,
     restartProcess: deps.restartProcess,
+    setActiveWorkbenchModule: deps.setActiveWorkbenchModule,
     sendMediaAction: deps.sendMediaAction,
     sendSourceAction: deps.sendSourceAction,
     setStage: deps.setStage,
@@ -244,6 +247,7 @@ export function createLaboratoryUiShellComposition(deps: LaboratoryUiShellCompos
     syncDraftField: deps.syncDraftField,
     syncLocalEditField: deps.syncLocalEditField,
     toRecord: deps.toRecord,
+    toggleWorkbenchModuleSelection: deps.toggleWorkbenchModuleSelection,
     toggleCleanup: deps.toggleCleanup,
   };
   const laboratoryUiActionRouter = deps.createLaboratoryUiActionRouter(

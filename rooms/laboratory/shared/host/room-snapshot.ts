@@ -1,3 +1,5 @@
+import { createLaboratoryWorkbenchState } from "./runtime-primitives.js";
+
 interface SnapshotRecord extends Record<string, unknown> {
   id?: unknown;
   slug?: unknown;
@@ -28,6 +30,7 @@ interface SnapshotRecord extends Record<string, unknown> {
   export?: unknown;
   items?: unknown;
   records?: unknown;
+  workbench?: unknown;
   exports?: unknown;
   displayName?: unknown;
   installDirName?: unknown;
@@ -36,6 +39,11 @@ interface SnapshotRecord extends Record<string, unknown> {
   systemCommand?: unknown;
   executableName?: unknown;
   setupHint?: unknown;
+  installStrategy?: unknown;
+  usedBy?: unknown;
+  testImpact?: unknown;
+  readinessImpact?: unknown;
+  manualHint?: unknown;
   activeProjectId?: unknown;
   hydrated?: unknown;
   projects?: unknown;
@@ -145,6 +153,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     const profilePreflight = toRecord(projectProfile.preflight);
     const audioAnalysis = toRecord(project.audioAnalysis);
     const subtitleAnalysis = toRecord(project.subtitleAnalysis);
+    const workbench = toRecord(project.workbench);
 
     return {
       id: project.id,
@@ -175,6 +184,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       subtitleEntryCount: Array.isArray(subtitleAnalysis.entries)
         ? (subtitleAnalysis.entries as unknown[]).length
         : 0,
+      workbench: clone(workbench),
     };
   }
 
@@ -190,6 +200,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
     const audioAnalysis = normalizeAudioAnalysisState(project.audioAnalysis, runtime);
     const subtitleAnalysis = normalizeSubtitleAnalysisState(project.subtitleAnalysis, runtime);
     const subtitleEdit = toRecord(subtitleAnalysis.edit);
+    const workbench = toRecord(project.workbench);
 
     return {
       id: project.id,
@@ -321,6 +332,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
           }),
         },
       },
+      workbench: clone(workbench),
       process: {
         ...(clone(project.process) as Record<string, unknown>),
         records: featureIds.reduce(
@@ -422,30 +434,69 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
         }
       });
 
+      const usedBy = Array.isArray(toolManifest.usedBy)
+        ? (toolManifest.usedBy as unknown[]).map(function (entry) {
+            return String(entry);
+          })
+        : [];
+      const testImpact = Array.isArray(toolManifest.testImpact)
+        ? (toolManifest.testImpact as unknown[]).map(function (entry) {
+            return String(entry);
+          })
+        : [];
+      const availability = asNonEmptyString(toolManifest.availability) || "installable";
+      const installStrategy =
+        asNonEmptyString(toolManifest.installStrategy) ||
+        (availability === "planned"
+          ? "planned"
+          : availability === "system-command"
+            ? "manual"
+            : "automatic");
+
       return {
         toolId: toolId,
         displayName: asNonEmptyString(toolManifest.displayName) || toolId,
         installDirName: asNonEmptyString(toolManifest.installDirName) || toolId,
-        availability: asNonEmptyString(toolManifest.availability) || "installable",
+        availability,
         plannedReason: asNonEmptyString(toolManifest.plannedReason),
         commandName: asNonEmptyString(systemCommand.executableName),
         setupHint: asNonEmptyString(systemCommand.setupHint),
+        installStrategy,
+        manualHint:
+          asNonEmptyString(toolManifest.manualHint) || asNonEmptyString(systemCommand.setupHint),
+        usedBy,
+        testImpact,
+        readinessImpact: asNonEmptyString(toolManifest.readinessImpact),
         stageSupport: stageSupport,
       };
     });
   }
 
-  function buildMediaSnapshot(runtime: SnapshotRecord, featureId: string) {
+  function buildWorkbenchSnapshot(featureId: string, workbenchSource: unknown = {}) {
+    return createLaboratoryWorkbenchState({
+      ...toRecord(workbenchSource),
+      primaryFeatureId: mediaFeatureId,
+      activeModuleId: featureId || defaultFeatureId,
+      availableModuleIds: featureIds.slice(),
+    });
+  }
+
+  function buildMediaSnapshot(runtime: SnapshotRecord, featureId: string, workbenchSource: unknown = {}) {
     const runtimeRecord = getRuntimeRecord(runtime);
     const projectedProjects = buildProjectedProjects(runtimeRecord);
     const activeProject =
       projectedProjects.find(function (project: SnapshotRecord) {
         return project.id === runtimeRecord.activeProjectId;
       }) || null;
+    const workbenchSnapshot = buildWorkbenchSnapshot(featureId || defaultFeatureId, {
+      ...(activeProject === null ? {} : toRecord(activeProject.workbench)),
+      ...toRecord(workbenchSource),
+    });
 
     return {
       roomId: roomId,
       featureId: featureId || defaultFeatureId,
+      workbench: workbenchSnapshot,
       ready: runtimeRecord.hydrated === true,
       stages: mediaStages.slice(),
       sourcePresets: clone(runtimeRecord.sourcePresets || {}),

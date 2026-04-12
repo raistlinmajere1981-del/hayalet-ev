@@ -82,12 +82,12 @@ test("subtitle host keeps discovery and explicit export format plumbing", () => 
   assert.match(subtitleStateSource, /from "\.\/state-projects\.js"/);
   assert.match(
     subtitleStateDefaultsSource,
-    /export function createSubtitleStateDefaultsRuntime\(deps\)/
+    /export function createSubtitleStateDefaultsRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(subtitleStateNormalizationSource, /selectedCandidateIds/);
   assert.match(
     subtitleStateProjectsSource,
-    /function upsertSubtitleEntries\(runtime, project, incomingEntries, options\)/
+    /function upsertSubtitleEntries\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?,\s*incomingEntries(?::[\s\S]+?)?,\s*options(?::[\s\S]+?)?\s*\)/
   );
   assert.match(hostSource, /\.\/runtime\.js/);
   assert.match(hostCompositionSource, /main-functions\/subtitle-analysis\/host\/runtime\.js/);
@@ -109,12 +109,24 @@ test("subtitle host keeps discovery and explicit export format plumbing", () => 
   assert.match(subtitleYoutubeDiscoverySource, /toolId: "yt-dlp"/);
   assert.match(
     subtitleYoutubeDiscoverySource,
-    /function buildSubtitleYoutubeDownloadArgs\(runtime, drafts, sourceDir, urlValue, scopeId\)/
+    /function buildSubtitleYoutubeDownloadArgs\(\s*runtime(?::[\s\S]+?)?,\s*drafts(?::[\s\S]+?)?,\s*sourceDir(?::[\s\S]+?)?,\s*urlValue(?::[\s\S]+?)?,\s*scopeId(?::[\s\S]+?)?\s*\)/
   );
-  assert.match(subtitleYoutubeFiltersSource, /function matchesSubtitleLanguageAvailability\(metadata, drafts\)/);
-  assert.match(subtitleYoutubeFiltersSource, /function parseSubtitleWeekdayFilter\(value\)/);
-  assert.match(subtitleDocumentSource, /function resolveSubtitleOutputFormat\(sourceFormat, outputFormatValue\)/);
-  assert.match(subtitleDocumentSource, /function serializeSubtitleCueModel\(cues, format\)/);
+  assert.match(
+    subtitleYoutubeFiltersSource,
+    /function matchesSubtitleLanguageAvailability\(\s*metadata(?::[\s\S]+?)?,\s*drafts(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    subtitleYoutubeFiltersSource,
+    /function parseSubtitleWeekdayFilter\(\s*value(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    subtitleDocumentSource,
+    /function resolveSubtitleOutputFormat\(\s*sourceFormat(?::[\s\S]+?)?,\s*outputFormatValue(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    subtitleDocumentSource,
+    /function serializeSubtitleCueModel\(\s*cues(?::[\s\S]+?)?,\s*format(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(subtitleStateDefaultsSource, /outputFormat: "source"/);
 });
 
@@ -147,7 +159,10 @@ test("subtitle UI renders discovery table controls and output format selection",
   );
 
   assert.match(uiSource, /shared\/ui\/copy-runtime\.js/);
-  assert.match(copyRuntimeSource, /function subtitleText\(path, trFallback, enFallback\)/);
+  assert.match(
+    copyRuntimeSource,
+    /function subtitleText\(\s*path(?::[\s\S]+?)?,\s*trFallback(?::[\s\S]+?)?,\s*enFallback(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(uiSource, /main-functions\/subtitle-analysis\/ui\/runtime\.js/);
   assert.match(uiSource, /\.\/view-bindings-runtime\.js/);
   assert.match(subtitleAnalysisUiRuntimeSource, /\.\.\/\.\.\/\.\.\/ui\/subtitle-panel-runtime\.js/);
@@ -162,7 +177,7 @@ test("subtitle UI renders discovery table controls and output format selection",
   assert.match(subtitleSourceWorkspaceSource, /data-action="subtitle-source-toggle-discovery"/);
   assert.match(subtitleSourceWorkspaceSource, /Candidate Table/);
   assert.match(subtitleSourceIntakeSource, /data-action="subtitle-source-download-youtube"/);
-  assert.match(subtitleEditPanelsSource, /renderEditSelectField\("outputFormat"/);
+  assert.match(subtitleEditPanelsSource, /renderEditSelectField\(\s*"outputFormat"/);
 });
 
 test("subtitle locale catalogs keep stage, source, and edit copy in room-local i18n", () => {

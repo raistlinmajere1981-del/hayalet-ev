@@ -93,6 +93,23 @@ type LaboratoryFeatureAdaptersDeps = {
 };
 
 export function createLaboratoryFeatureAdapters(deps: LaboratoryFeatureAdaptersDeps) {
+  function buildWorkbenchFeatureDescriptors() {
+    return [
+      {
+        featureId: "media-analysis",
+        role: "primary",
+      },
+      {
+        featureId: deps.audioFeatureId,
+        role: "optional",
+      },
+      {
+        featureId: deps.subtitleFeatureId,
+        role: "optional",
+      },
+    ];
+  }
+
   const laboratorySubtitleAnalysisHostRuntimeDeps = {
     asNonEmptyString: deps.asNonEmptyString,
     asNumber: deps.asNumber,
@@ -216,6 +233,7 @@ export function createLaboratoryFeatureAdapters(deps: LaboratoryFeatureAdaptersD
   }
 
   return {
+    buildWorkbenchFeatureDescriptors,
     buildSubtitleAnalysisStats,
     buildSubtitleProcessModules,
     handleMediaAction,

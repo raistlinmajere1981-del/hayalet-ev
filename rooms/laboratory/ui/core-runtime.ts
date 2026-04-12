@@ -44,6 +44,7 @@ export function createLaboratoryUiCoreRuntime(deps: LaboratoryUiCoreRuntimeDeps)
     collectReportStageJobs(projectJobs: LaboratoryProjectJobs) {
       return getStageAccessors().collectReportStageJobs(projectJobs);
     },
+    getActiveFeatureId: laboratoryUiCoreBootstrapRuntime.getActiveFeatureId,
     setStage: laboratoryUiCoreBootstrapRuntime.setStage,
     subtitleText: laboratoryUiCoreBootstrapRuntime.subtitleText,
     text: laboratoryUiCoreBootstrapRuntime.text,

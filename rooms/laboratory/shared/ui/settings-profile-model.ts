@@ -20,6 +20,16 @@ type LaboratoryProfileModelRecord = LaboratoryRecord & {
   supportedPlatforms?: unknown;
 };
 
+type LaboratoryToolDescriptorRecord = LaboratoryRecord & {
+  installStrategy?: unknown;
+  manualHint?: unknown;
+  readinessImpact?: unknown;
+  setupHint?: unknown;
+  testImpact?: unknown;
+  toolId?: unknown;
+  usedBy?: unknown;
+};
+
 type LaboratoryToolStateRecord = LaboratoryRecord & {
   installed?: unknown;
 };
@@ -30,6 +40,7 @@ type LaboratorySettingsProfileModelRuntimeDeps = {
   formatCleanupPolicy: (value: unknown) => string;
   formatPlatformList: (value: unknown) => string;
   getToolEntry: (toolId: string) => LaboratoryToolStateRecord;
+  getToolRegistry: () => LaboratoryToolDescriptorRecord[];
   renderPreviewMetaRow: (label: string, value: unknown) => string;
   text: (path: string[]) => string;
   textFromKey: (key: string) => string;
@@ -45,6 +56,7 @@ export function createLaboratorySettingsProfileModelRuntime(
     formatCleanupPolicy,
     formatPlatformList,
     getToolEntry,
+    getToolRegistry,
     renderPreviewMetaRow,
     text,
     textFromKey,
@@ -59,13 +71,28 @@ export function createLaboratorySettingsProfileModelRuntime(
     return toRecord(value);
   }
 
+  function toToolDescriptorRecord(value: unknown): LaboratoryToolDescriptorRecord {
+    return toRecord(value);
+  }
+
   function toString(value: unknown, fallback = ""): string {
     return typeof value === "string" ? value : fallback;
+  }
+
+  function getDescriptor(toolId: string): LaboratoryToolDescriptorRecord | null {
+    return (
+      getToolRegistry().find(function (entry) {
+        return toString(toToolDescriptorRecord(entry).toolId) === toolId;
+      }) || null
+    );
   }
 
   function renderProfileModelCard(entry: LaboratoryProfileModelRecord) {
     const model = toModelRecord(entry);
     const whisperTool = toToolStateRecord(getToolEntry("whisper.cpp"));
+    const whisperDescriptor = getDescriptor("whisper.cpp");
+    const whisperDescriptorRecord =
+      whisperDescriptor === null ? ({} as LaboratoryToolDescriptorRecord) : whisperDescriptor;
     const busy = model.busy === true;
     const canInstall =
       model.binarySupported === true &&
@@ -79,6 +106,21 @@ export function createLaboratorySettingsProfileModelRuntime(
           : text(["mediaAnalysis", "settings", "status", "missing"]);
     const modelId = toString(model.modelId);
     const label = textFromKey(toString(model.labelKey)) || modelId || "--";
+    const usedBy = Array.isArray(whisperDescriptorRecord.usedBy)
+      ? (whisperDescriptorRecord.usedBy as unknown[]).map(function (item) {
+          return String(item);
+        })
+      : [];
+    const testImpact = Array.isArray(whisperDescriptorRecord.testImpact)
+      ? (whisperDescriptorRecord.testImpact as unknown[]).map(function (item) {
+          return String(item);
+        })
+      : [];
+    const installStrategy = toString(whisperDescriptorRecord.installStrategy, "--");
+    const setupHint =
+      toString(whisperDescriptorRecord.manualHint).trim() ||
+      toString(whisperDescriptorRecord.setupHint).trim();
+    const readinessImpact = toString(whisperDescriptorRecord.readinessImpact).trim();
 
     return `
       <article class="lab-tool-card">
@@ -134,6 +176,7 @@ export function createLaboratorySettingsProfileModelRuntime(
             text(["mediaAnalysis", "profile", "modelSummary", "cleanup"]),
             formatCleanupPolicy(model.cleanupPolicy)
           )}
+          ${renderPreviewMetaRow(text(["workbench", "dependency", "strategy"]), installStrategy)}
           ${renderPreviewMetaRow(
             text(["mediaAnalysis", "profile", "modelSummary", "integrity"]),
             model.checksumValid === true
@@ -149,10 +192,41 @@ export function createLaboratorySettingsProfileModelRuntime(
             : ""
         }
         ${
+          usedBy.length > 0
+            ? `<p class="lab-panel__hint">${escapeHtml(
+                `${text(["workbench", "dependency", "usedBy"])}: ${usedBy.join(", ")}`
+              )}</p>`
+            : ""
+        }
+        ${
+          testImpact.length > 0
+            ? `<p class="lab-panel__hint">${escapeHtml(
+                `${text(["workbench", "dependency", "tests"])}: ${testImpact.join(", ")}`
+              )}</p>`
+            : ""
+        }
+        ${
           canInstall !== true
             ? `<p class="lab-panel__hint">${escapeHtml(
                 text(["mediaAnalysis", "profile", "modelUnavailable"])
               )}</p>`
+            : ""
+        }
+        ${
+          canInstall !== true && setupHint
+            ? `<p class="lab-panel__hint">${escapeHtml(setupHint)}</p>`
+            : ""
+        }
+        ${
+          canInstall !== true
+            ? `<p class="lab-panel__hint">${escapeHtml(
+                text(["mediaAnalysis", "profile", "modelVerificationHint"])
+              )}</p>`
+            : ""
+        }
+        ${
+          canInstall !== true && readinessImpact
+            ? `<p class="lab-panel__hint">${escapeHtml(readinessImpact)}</p>`
             : ""
         }
         ${

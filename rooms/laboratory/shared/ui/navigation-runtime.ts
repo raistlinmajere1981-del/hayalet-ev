@@ -1,3 +1,8 @@
+import {
+  createLaboratoryWorkbenchState,
+  normalizeLaboratoryFeatureId,
+} from "../host/runtime-primitives.js";
+
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryPresentationMode = "classic" | "scene-view";
@@ -29,6 +34,7 @@ type LaboratoryNavigationContextRecord = LaboratoryRecord & {
   presentation?: unknown;
   room?: unknown;
   user?: unknown;
+  workbench?: unknown;
 };
 
 type LaboratoryNavigationDeps = {
@@ -96,13 +102,16 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
     const scaleFactor = formatScaleFactor(state.presentation.uiScale / 100);
     documentRef.body.dataset["presentationMode"] = state.presentation.mode;
     documentRef.body.dataset["roomUiScale"] = String(state.presentation.uiScale);
-    if (typeof documentRef.body.style.setProperty === "function") {
+    if (typeof documentRef.body?.style?.setProperty === "function") {
       documentRef.body.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
     }
     documentRef.documentElement.dataset["presentationMode"] = state.presentation.mode;
     documentRef.documentElement.dataset["roomUiScale"] = String(state.presentation.uiScale);
-    if (typeof documentRef.documentElement.style.setProperty === "function") {
-      documentRef.documentElement.style.setProperty("--room-runtime-ui-scale-factor", scaleFactor);
+    if (typeof documentRef.documentElement?.style?.setProperty === "function") {
+      documentRef.documentElement.style.setProperty(
+        "--room-runtime-ui-scale-factor",
+        scaleFactor
+      );
     }
   }
 
@@ -112,11 +121,21 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
     const user = toRecord(source.user);
     const presentation = toRecord(source.presentation);
     const activeFeature = toRecord(source.activeFeature);
-    const featureId =
-      toString(activeFeature["id"]) || toString(source["featureId"]) || defaultFeatureId;
+    const requestedFeatureId = normalizeLaboratoryFeatureId(
+      toString(activeFeature["id"]) ||
+        toString(source["featureId"]) ||
+        toString(toRecord(source["workbench"])["activeModuleId"]) ||
+        defaultFeatureId,
+      defaultFeatureId
+    );
+    const workbench = createLaboratoryWorkbenchState({
+      ...toRecord(source["workbench"]),
+      primaryFeatureId: defaultFeatureId,
+      activeModuleId: requestedFeatureId,
+    });
 
     return {
-      featureId: featureId,
+      featureId: workbench.activeModuleId,
       presentation: {
         mode: presentation["mode"] === "scene-view" ? "scene-view" : "classic",
         uiScale: normalizeUiScale(presentation["uiScale"]),
@@ -128,6 +147,7 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
       user: {
         nickname: toString(user["nickname"]) || "Operator",
       },
+      workbench,
     };
   }
 
