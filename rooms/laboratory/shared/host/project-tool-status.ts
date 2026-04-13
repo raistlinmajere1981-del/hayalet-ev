@@ -65,7 +65,10 @@ export function createLaboratoryProjectToolStatusRuntime(
           ...probeTool,
           toolId: toolId,
           busy: false,
-          lastError: null,
+          lastError:
+            typeof probeTool["lastError"] === "string" && probeTool["lastError"].trim() !== ""
+              ? probeTool["lastError"]
+              : null,
           lastCheckedAt: new Date().toISOString(),
         };
 

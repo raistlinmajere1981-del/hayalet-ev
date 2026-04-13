@@ -194,6 +194,13 @@ test("room runtime residue is preserved by default and only cleared by explicit 
   const workspaceRoot = join(tempRoot, "rooms");
   const installedRoot = join(tempRoot, "data", "rooms");
   const roomStorageRoot = join(tempRoot, "data", "room-storage", "workspace-room");
+  const roomToolRuntimeRoot = join(
+    roomStorageRoot,
+    "tools",
+    "runtime",
+    "linux-x64",
+    "ffmpeg"
+  );
   const roomPartitionRoot = join(
     tempRoot,
     "data",
@@ -216,8 +223,10 @@ test("room runtime residue is preserved by default and only cleared by explicit 
     assert.equal(installResult.success, true, installResult.error);
 
     await mkdir(roomStorageRoot, { recursive: true });
+    await mkdir(roomToolRuntimeRoot, { recursive: true });
     await mkdir(roomPartitionRoot, { recursive: true });
     await writeFile(join(roomStorageRoot, "state.json"), JSON.stringify({ roomId: "workspace-room" }), "utf8");
+    await writeFile(join(roomToolRuntimeRoot, "ffmpeg"), "binary", "utf8");
     await writeFile(join(roomPartitionRoot, "session.json"), JSON.stringify({ roomId: "workspace-room" }), "utf8");
 
     const removeWithoutData = await manager.removeInstalledRoom("workspace-room");
@@ -226,6 +235,11 @@ test("room runtime residue is preserved by default and only cleared by explicit 
       existsSync(join(roomStorageRoot, "state.json")),
       true,
       "room-storage residue should be preserved until deleteData is requested"
+    );
+    assert.equal(
+      existsSync(join(roomToolRuntimeRoot, "ffmpeg")),
+      true,
+      "room-local tool runtimes should stay available across reinstall until deleteData is requested"
     );
     assert.equal(
       existsSync(join(roomPartitionRoot, "session.json")),

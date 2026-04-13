@@ -451,6 +451,41 @@ export function createLaboratorySettingsToolCardRuntime(
             : text(["mediaAnalysis", "settings", "status", "installed"])
           : text(["mediaAnalysis", "settings", "status", "missing"]);
 
+    const helperToggleButtonMarkup = `
+      <button
+        class="lab-button lab-button--ghost lab-button--tight"
+        type="button"
+        data-action="tool-helper-toggle"
+        data-value="${toolId}"
+        aria-expanded="${helperOpen ? "true" : "false"}"
+      >
+        ${escapeHtml(
+          text([
+            "mediaAnalysis",
+            "settings",
+            "helper",
+            helperOpen ? "collapseAction" : "toggleAction",
+          ])
+        )}
+      </button>
+    `;
+
+    const manualProbeActionMarkup = `
+      <button
+        class="lab-button lab-button--ghost lab-button--tight"
+        type="button"
+        data-action="${tool.installed === true ? "tool-update" : "tool-install"}"
+        data-value="${toolId}"
+        ${busy ? "disabled" : ""}
+      >
+        ${escapeHtml(
+          tool.installed === true
+            ? text(["mediaAnalysis", "settings", "manualRefreshAction"])
+            : text(["mediaAnalysis", "settings", "manualCheckAction"])
+        )}
+      </button>
+    `;
+
     const primaryActionMarkup = planned
       ? `
           <button
@@ -478,21 +513,12 @@ export function createLaboratorySettingsToolCardRuntime(
               )}
             </button>
           `
-          : `
-            <button
-              class="lab-button lab-button--ghost lab-button--tight"
-              type="button"
-              data-action="${tool.installed === true ? "tool-update" : "tool-install"}"
-              data-value="${toolId}"
-              ${busy ? "disabled" : ""}
-            >
-              ${escapeHtml(
-                tool.installed === true
-                  ? text(["mediaAnalysis", "settings", "manualRefreshAction"])
-                  : text(["mediaAnalysis", "settings", "manualCheckAction"])
-              )}
-            </button>
-          `
+          : tool.installed === true
+            ? manualProbeActionMarkup
+            : helperToggleButtonMarkup.replace(
+                "lab-button--ghost",
+                helperOpen ? "lab-button--ghost" : "lab-button--primary"
+              )
         : tool.installed === true
           ? `
               <button
@@ -518,24 +544,9 @@ export function createLaboratorySettingsToolCardRuntime(
             `;
 
     const helperToggleMarkup = systemCommand
-      ? `
-          <button
-            class="lab-button lab-button--ghost lab-button--tight"
-            type="button"
-            data-action="tool-helper-toggle"
-            data-value="${toolId}"
-            aria-expanded="${helperOpen ? "true" : "false"}"
-          >
-            ${escapeHtml(
-              text([
-                "mediaAnalysis",
-                "settings",
-                "helper",
-                helperOpen ? "collapseAction" : "toggleAction",
-              ])
-            )}
-          </button>
-        `
+      ? managedInstaller || tool.installed === true
+        ? helperToggleButtonMarkup
+        : manualProbeActionMarkup
       : "";
 
     return `

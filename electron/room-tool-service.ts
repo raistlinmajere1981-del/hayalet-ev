@@ -21,6 +21,7 @@ import type {
 import { LogCategory, LogLevel } from "@shared/index.js";
 
 const ROOM_TOOLS_PROGRESS_CHANNEL = "room-tools:progress";
+const PYTHON_GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py";
 const logger = getLoggerCore();
 
 type PlatformKey =
@@ -224,7 +225,8 @@ function resolveRuntimePaths(roomId: string): RoomToolRuntimePaths {
     storageDir,
     projectsDir: join(storageDir, "projects"),
     packageToolsDir: join(installedDir, "tools"),
-    toolRuntimeDir: join(installedDir, "tools", "runtime", platformKey),
+    packageToolRuntimeDir: join(installedDir, "tools", "runtime", platformKey),
+    toolRuntimeDir: join(storageDir, "tools", "runtime", platformKey),
     toolStatePath: join(storageDir, "tool-state.json"),
   };
 }
@@ -430,6 +432,19 @@ async function fetchJson(url: string): Promise<unknown> {
   return await response.json();
 }
 
+async function fetchText(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "hayalet-ev-room-tools",
+      Accept: "text/plain, application/octet-stream;q=0.9, */*;q=0.1",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Request failed (${response.status}) for ${url}`);
+  }
+  return await response.text();
+}
+
 async function fetchGitHubRelease(provider: GitHubReleaseProvider): Promise<GitHubReleasePayload> {
   const url = `https://api.github.com/repos/${provider.owner}/${provider.repo}/releases/latest`;
   return (await fetchJson(url)) as GitHubReleasePayload;
@@ -580,12 +595,52 @@ function normalizeToolStatus(toolId: string, data: Partial<RoomToolStatus>): Roo
     installed: data.installed === true,
     version: data.version ?? null,
     binaryPath: data.binaryPath ?? null,
+    lastError: data.lastError ?? null,
     releaseTag: data.releaseTag ?? null,
     releaseName: data.releaseName ?? null,
     installDir: data.installDir ?? null,
     companionPaths: data.companionPaths ?? {},
     details: data.details ?? {},
   };
+}
+
+function summarizeCommandFailure(result: { stderr: string; stdout: string }): string | null {
+  const prioritizedOutputs = [result.stderr, result.stdout];
+  for (let index = 0; index < prioritizedOutputs.length; index += 1) {
+    const output = prioritizedOutputs[index];
+    if (typeof output !== "string" || output.trim() === "") {
+      continue;
+    }
+    const lines = output
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+    if (lines.length === 0) {
+      continue;
+    }
+    return lines[lines.length - 1] ?? null;
+  }
+  return null;
+}
+
+async function resolveInstallableToolInstallDir(
+  paths: RoomToolRuntimePaths,
+  installDirName: string
+): Promise<string> {
+  const preferredInstallDir = join(paths.toolRuntimeDir, installDirName);
+  const legacyInstallDir = join(paths.packageToolRuntimeDir, installDirName);
+
+  if (existsSync(preferredInstallDir) || !existsSync(legacyInstallDir)) {
+    return preferredInstallDir;
+  }
+
+  await ensureDir(dirname(preferredInstallDir));
+  try {
+    await rename(legacyInstallDir, preferredInstallDir);
+    return preferredInstallDir;
+  } catch {
+    return legacyInstallDir;
+  }
 }
 
 class RoomToolService {
@@ -882,7 +937,10 @@ class RoomToolService {
     const manifest = await this.loadToolchainManifest(request.roomId);
     const toolManifest = this.getToolManifest(manifest, request.toolId);
     const paths = resolveRuntimePaths(request.roomId);
-    const installDir = join(paths.toolRuntimeDir, toolManifest.installDirName ?? request.toolId);
+    const installDir = await resolveInstallableToolInstallDir(
+      paths,
+      toolManifest.installDirName ?? request.toolId
+    );
     const detectedPlatformKey = detectPlatformKey();
     const platformKey = detectedPlatformKey ?? `${process.platform}-${process.arch}`;
 
@@ -1082,6 +1140,7 @@ class RoomToolService {
     const resolved = this.resolveTool(manifest, request.toolId);
     const paths = resolveRuntimePaths(request.roomId);
     const installDir = join(paths.toolRuntimeDir, resolved.installDirName);
+    await resolveInstallableToolInstallDir(paths, resolved.installDirName);
     const tempRoot = await mkdtemp(join(tmpdir(), `hayalet-room-tool-${request.toolId}-`));
     const downloadPath = join(tempRoot, resolved.releaseAssetNameHint);
 
@@ -1226,7 +1285,7 @@ class RoomToolService {
 
     if (this.isToolInstallable(toolManifest) === true && useSystemCommandFallback !== true) {
       const resolved = this.resolveTool(manifest, request.toolId);
-      const installDir = join(paths.toolRuntimeDir, resolved.installDirName);
+      const installDir = await resolveInstallableToolInstallDir(paths, resolved.installDirName);
       defaultCwd = installDir;
       allowedExecutableNames = [
         resolved.asset.executableName,
@@ -1692,6 +1751,76 @@ class RoomToolService {
     });
   }
 
+  private shouldUsePythonWithoutPipFallback(result: { stderr: string; stdout: string }): boolean {
+    const combinedOutput = `${result.stderr}\n${result.stdout}`;
+    return /ensurepip is not\s+available/i.test(combinedOutput);
+  }
+
+  private isMissingPythonPip(result: { stderr: string; stdout: string }): boolean {
+    const combinedOutput = `${result.stderr}\n${result.stdout}`;
+    return /No module named pip/i.test(combinedOutput);
+  }
+
+  private async bootstrapPythonVenvPip(
+    event: IpcMainInvokeEvent,
+    options: {
+      getCancelled: () => boolean;
+      jobId: string;
+      operation: "tool-install" | "tool-update";
+      requestId: string | null;
+      roomId: string;
+      setActiveChild: (child: SpawnedProcess | null) => void;
+      toolId: string;
+      venvPythonPath: string;
+    }
+  ): Promise<void> {
+    const bootstrapDir = await mkdtemp(join(tmpdir(), "hayalet-ev-get-pip-"));
+    const scriptPath = join(bootstrapDir, "get-pip.py");
+
+    try {
+      this.emitProgress(event, {
+        roomId: options.roomId,
+        operation: options.operation,
+        requestId: options.requestId,
+        jobId: options.jobId,
+        toolId: options.toolId,
+        stage: "running",
+        message: `Download pip bootstrap: ${PYTHON_GET_PIP_URL}`,
+      });
+
+      const scriptSource = await fetchText(PYTHON_GET_PIP_URL);
+      await writeFile(scriptPath, scriptSource, "utf8");
+
+      const bootstrapResult = await this.runProgressCommand(event, {
+        command: options.venvPythonPath,
+        args: [scriptPath],
+        cwd: dirname(options.venvPythonPath),
+        getCancelled: options.getCancelled,
+        jobId: options.jobId,
+        message: `Bootstrap pip for ${options.toolId}`,
+        operation: options.operation,
+        requestId: options.requestId,
+        roomId: options.roomId,
+        setActiveChild: options.setActiveChild,
+        timeoutMs: 12 * 60_000,
+        toolId: options.toolId,
+      });
+
+      if (bootstrapResult.cancelled === true) {
+        throw new Error("Python package bootstrap cancelled.");
+      }
+      if (bootstrapResult.exitCode !== 0) {
+        throw new Error(
+          asNonEmptyString(bootstrapResult.stderr) ??
+            asNonEmptyString(bootstrapResult.stdout) ??
+            "Python package bootstrap failed."
+        );
+      }
+    } finally {
+      await rm(bootstrapDir, { recursive: true, force: true });
+    }
+  }
+
   private async installPythonVenvPipTool(
     event: IpcMainInvokeEvent,
     request: Extract<RoomToolCallRequest, { operation: "tool-install" | "tool-update" }>,
@@ -1730,6 +1859,7 @@ class RoomToolService {
     try {
       await ensureDir(dirname(venvDir));
       let venvPythonPath = resolveExistingPythonVenvExecutable(venvDir);
+      let pipBootstrapped = false;
 
       if (venvPythonPath === null) {
         const bootstrap = await this.resolvePythonBootstrapInvocation(resolvedInstaller);
@@ -1753,11 +1883,43 @@ class RoomToolService {
           throw new Error("Python runtime creation cancelled.");
         }
         if (createVenvResult.exitCode !== 0) {
-          throw new Error(
-            asNonEmptyString(createVenvResult.stderr) ??
-              asNonEmptyString(createVenvResult.stdout) ??
-              "Python runtime creation failed."
-          );
+          if (this.shouldUsePythonWithoutPipFallback(createVenvResult) !== true) {
+            throw new Error(
+              asNonEmptyString(createVenvResult.stderr) ??
+                asNonEmptyString(createVenvResult.stdout) ??
+                "Python runtime creation failed."
+            );
+          }
+
+          await rm(venvDir, { recursive: true, force: true });
+
+          const createWithoutPipResult = await this.runProgressCommand(event, {
+            command: bootstrap.command,
+            args: [...bootstrap.argsPrefix, "-m", "venv", "--without-pip", venvDir],
+            cwd: paths.storageDir,
+            getCancelled: () => installState.cancelled,
+            jobId,
+            message: `Create room-local python runtime without pip: ${venvDir}`,
+            operation: request.operation,
+            requestId,
+            roomId: request.roomId,
+            setActiveChild(child) {
+              activeChild = child;
+            },
+            timeoutMs: 10 * 60_000,
+            toolId: request.toolId,
+          });
+          if (createWithoutPipResult.cancelled === true) {
+            throw new Error("Python runtime creation cancelled.");
+          }
+          if (createWithoutPipResult.exitCode !== 0) {
+            throw new Error(
+              asNonEmptyString(createWithoutPipResult.stderr) ??
+                asNonEmptyString(createWithoutPipResult.stdout) ??
+                "Python runtime creation failed."
+            );
+          }
+          pipBootstrapped = true;
         }
         venvPythonPath = resolveExistingPythonVenvExecutable(venvDir);
       }
@@ -1768,7 +1930,22 @@ class RoomToolService {
         );
       }
 
-      const bootstrapPipResult = await this.runProgressCommand(event, {
+      if (pipBootstrapped === true) {
+        await this.bootstrapPythonVenvPip(event, {
+          getCancelled: () => installState.cancelled,
+          jobId,
+          operation: request.operation,
+          requestId,
+          roomId: request.roomId,
+          setActiveChild(child) {
+            activeChild = child;
+          },
+          toolId: request.toolId,
+          venvPythonPath,
+        });
+      }
+
+      let bootstrapPipResult = await this.runProgressCommand(event, {
         command: venvPythonPath,
         args: ["-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
         cwd: paths.storageDir,
@@ -1786,6 +1963,39 @@ class RoomToolService {
       });
       if (bootstrapPipResult.cancelled === true) {
         throw new Error("Python package bootstrap cancelled.");
+      }
+      if (
+        bootstrapPipResult.exitCode !== 0 &&
+        this.isMissingPythonPip(bootstrapPipResult) === true
+      ) {
+        await this.bootstrapPythonVenvPip(event, {
+          getCancelled: () => installState.cancelled,
+          jobId,
+          operation: request.operation,
+          requestId,
+          roomId: request.roomId,
+          setActiveChild(child) {
+            activeChild = child;
+          },
+          toolId: request.toolId,
+          venvPythonPath,
+        });
+        bootstrapPipResult = await this.runProgressCommand(event, {
+          command: venvPythonPath,
+          args: ["-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
+          cwd: paths.storageDir,
+          getCancelled: () => installState.cancelled,
+          jobId,
+          message: `Bootstrap python tooling for ${request.toolId}`,
+          operation: request.operation,
+          requestId,
+          roomId: request.roomId,
+          setActiveChild(child) {
+            activeChild = child;
+          },
+          timeoutMs: 12 * 60_000,
+          toolId: request.toolId,
+        });
       }
       if (bootstrapPipResult.exitCode !== 0) {
         throw new Error(
@@ -1837,6 +2047,13 @@ class RoomToolService {
         requestId,
         toolId: request.toolId,
       });
+      const probeTool = probeResult.tool;
+      if (probeTool?.installed !== true) {
+        throw new Error(
+          asNonEmptyString(probeTool?.lastError) ??
+            `${resolvedInstaller.manifest.displayName} probe failed after package installation.`
+        );
+      }
 
       this.emitProgress(event, {
         roomId: request.roomId,
@@ -1983,6 +2200,7 @@ class RoomToolService {
         installed: probe.exitCode === 0,
         version,
         binaryPath,
+        lastError: probe.exitCode === 0 ? null : summarizeCommandFailure(probe),
         installDir: dirname(binaryPath),
         companionPaths,
         details: {

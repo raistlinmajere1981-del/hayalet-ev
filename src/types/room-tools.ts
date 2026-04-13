@@ -15,6 +15,7 @@ export interface RoomToolRuntimePaths {
   storageDir: string;
   projectsDir: string;
   packageToolsDir: string;
+  packageToolRuntimeDir: string;
   toolRuntimeDir: string;
   toolStatePath: string;
 }
@@ -24,6 +25,7 @@ export interface RoomToolStatus {
   installed: boolean;
   version: string | null;
   binaryPath: string | null;
+  lastError?: string | null;
   releaseTag?: string | null;
   releaseName?: string | null;
   installDir?: string | null;

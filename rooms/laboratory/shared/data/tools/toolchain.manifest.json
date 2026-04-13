@@ -255,27 +255,27 @@
           "${roomStorageDir}/runtime/yamnet-venv/bin/python",
           "${roomStorageDir}/runtime/yamnet-venv/Scripts/python.exe"
         ],
-        "setupHint": "Install python3 packages tensorflow, tensorflow_hub, numpy, and scipy so the room-local YAMNet helper can run, then refresh this tool from settings."
+        "setupHint": "Install python3 packages tensorflow, tensorflow_hub, numpy, scipy, and setuptools<81 so the room-local YAMNet helper can run, then refresh this tool from settings."
       },
       "installer": {
         "type": "python-venv-pip",
         "venvDir": "${roomStorageDir}/runtime/yamnet-venv",
-        "packages": ["tensorflow", "tensorflow_hub", "numpy", "scipy"]
+        "packages": ["tensorflow", "tensorflow_hub", "numpy", "scipy", "setuptools<81"]
       },
       "manualGuide": {
         "linux": {
           "installCommands": [
-            "python3 -m pip install tensorflow tensorflow_hub numpy scipy"
+            "python3 -m pip install tensorflow tensorflow_hub numpy scipy 'setuptools<81'"
           ]
         },
         "macos": {
           "installCommands": [
-            "python3 -m pip install tensorflow tensorflow_hub numpy scipy"
+            "python3 -m pip install tensorflow tensorflow_hub numpy scipy 'setuptools<81'"
           ]
         },
         "windows": {
           "installCommands": [
-            "py -m pip install tensorflow tensorflow_hub numpy scipy"
+            "py -m pip install tensorflow tensorflow_hub numpy scipy \"setuptools<81\""
           ]
         }
       }
@@ -471,27 +471,27 @@
           "${roomStorageDir}/runtime/pyaudioanalysis-venv/bin/python",
           "${roomStorageDir}/runtime/pyaudioanalysis-venv/Scripts/python.exe"
         ],
-        "setupHint": "Install pyAudioAnalysis plus its local runtime dependencies (numpy, scipy, scikit-learn, and hmmlearn) on the host system, then refresh this tool from settings."
+        "setupHint": "Install pyAudioAnalysis plus its local runtime dependencies (numpy, scipy, scikit-learn, hmmlearn, matplotlib, eyed3, and pydub) on the host system, then refresh this tool from settings."
       },
       "installer": {
         "type": "python-venv-pip",
         "venvDir": "${roomStorageDir}/runtime/pyaudioanalysis-venv",
-        "packages": ["pyAudioAnalysis", "numpy", "scipy", "scikit-learn", "hmmlearn"]
+        "packages": ["pyAudioAnalysis", "numpy", "scipy", "scikit-learn", "hmmlearn", "matplotlib", "eyed3", "pydub"]
       },
       "manualGuide": {
         "linux": {
           "installCommands": [
-            "python3 -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn"
+            "python3 -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn matplotlib eyed3 pydub"
           ]
         },
         "macos": {
           "installCommands": [
-            "python3 -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn"
+            "python3 -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn matplotlib eyed3 pydub"
           ]
         },
         "windows": {
           "installCommands": [
-            "py -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn"
+            "py -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn matplotlib eyed3 pydub"
           ]
         }
       }

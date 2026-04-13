@@ -30,13 +30,24 @@ test("room tool service stays generic and avoids laboratory-specific branching",
 
 test("room tool service can describe planned and system-command tools without forcing an installer contract", () => {
   const serviceSource = readFileSync("electron/room-tool-service.ts", "utf8");
+  const typeSource = readFileSync("src/types/room-tools.ts", "utf8");
+  const manifestSource = readFileSync(
+    "rooms/laboratory/shared/data/tools/toolchain.manifest.json",
+    "utf8"
+  );
+  const projectToolStatusSource = readFileSync(
+    "rooms/laboratory/shared/host/project-tool-status.ts",
+    "utf8"
+  );
 
   assert.match(serviceSource, /type ToolAvailability = "installable" \| "system-command" \| "planned";/);
   assert.match(serviceSource, /type SystemCommandSpec = \{/);
   assert.match(serviceSource, /type PythonVenvPipInstallerSpec = \{/);
   assert.match(serviceSource, /type ToolInstallerSpec = PythonVenvPipInstallerSpec;/);
+  assert.match(serviceSource, /const PYTHON_GET_PIP_URL = "https:\/\/bootstrap\.pypa\.io\/get-pip\.py";/);
   assert.match(serviceSource, /envVarNames\?: string\[\];/);
   assert.match(serviceSource, /candidatePaths\?: string\[\];/);
+  assert.match(typeSource, /packageToolRuntimeDir: string;/);
   assert.match(serviceSource, /installer\?: ToolInstallerSpec;/);
   assert.match(serviceSource, /plannedReason\?: string;/);
   assert.match(serviceSource, /systemCommand\?: SystemCommandSpec;/);
@@ -50,10 +61,28 @@ test("room tool service can describe planned and system-command tools without fo
   assert.match(serviceSource, /private getInstallerType\(toolManifest: ToolManifest\): ToolInstallerSpec\["type"\] \| null/);
   assert.match(serviceSource, /private resolvePythonVenvPipInstaller\(/);
   assert.match(serviceSource, /private async resolvePythonBootstrapInvocation\(/);
+  assert.match(serviceSource, /private shouldUsePythonWithoutPipFallback\(/);
+  assert.match(serviceSource, /private isMissingPythonPip\(/);
+  assert.match(serviceSource, /private async bootstrapPythonVenvPip\(/);
   assert.match(serviceSource, /private async installPythonVenvPipTool\(/);
   assert.match(serviceSource, /private shouldUseSystemCommandFallback\(/);
   assert.match(serviceSource, /private async probeSystemCommandToolStatus\(/);
   assert.match(serviceSource, /installerType,/);
+  assert.match(serviceSource, /args: \[\.\.\.bootstrap\.argsPrefix, "-m", "venv", "--without-pip", venvDir\]/);
+  assert.match(serviceSource, /Download pip bootstrap: \$\{PYTHON_GET_PIP_URL\}/);
+  assert.match(typeSource, /lastError\?: string \| null;/);
+  assert.match(serviceSource, /lastError: data\.lastError \?\? null,/);
+  assert.match(serviceSource, /function summarizeCommandFailure\(result: \{ stderr: string; stdout: string \}\): string \| null/);
+  assert.match(serviceSource, /async function resolveInstallableToolInstallDir\(/);
+  assert.match(serviceSource, /packageToolRuntimeDir: join\(installedDir, "tools", "runtime", platformKey\),/);
+  assert.match(serviceSource, /toolRuntimeDir: join\(storageDir, "tools", "runtime", platformKey\),/);
+  assert.match(serviceSource, /const legacyInstallDir = join\(paths\.packageToolRuntimeDir, installDirName\);/);
+  assert.match(serviceSource, /await rename\(legacyInstallDir, preferredInstallDir\);/);
+  assert.match(serviceSource, /lastError: probe\.exitCode === 0 \? null : summarizeCommandFailure\(probe\),/);
+  assert.match(serviceSource, /throw new Error\(\s*asNonEmptyString\(probeTool\?\.lastError\) \?\?/);
+  assert.match(projectToolStatusSource, /lastError:\s*typeof probeTool\["lastError"\] === "string"/);
+  assert.match(manifestSource, /"packages": \["tensorflow", "tensorflow_hub", "numpy", "scipy", "setuptools<81"\]/);
+  assert.match(manifestSource, /"packages": \["pyAudioAnalysis", "numpy", "scipy", "scikit-learn", "hmmlearn", "matplotlib", "eyed3", "pydub"\]/);
   assert.match(
     serviceSource,
     /private resolveSystemCommandTool\(\s*manifest: ToolchainManifest,\s*toolId: string\s*\): \{/
