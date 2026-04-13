@@ -5,6 +5,8 @@ const ROOM_HOST_MESSAGE_CHANNEL = "room-host-message";
 const hostMessageHandlers = new Set();
 const pendingHostEvents = [];
 let pendingHostFlushTimer = null;
+let pendingAutoRoomReadyTimer = null;
+let explicitRoomReadySent = false;
 
 function trySendToHost(channel, payload) {
   ipcRenderer.sendToHost(channel, payload);
@@ -49,6 +51,15 @@ function emitToHost(channel, payload = {}) {
   }
 }
 
+function clearPendingAutoRoomReady() {
+  if (pendingAutoRoomReadyTimer === null) {
+    return;
+  }
+
+  globalThis.clearTimeout(pendingAutoRoomReadyTimer);
+  pendingAutoRoomReadyTimer = null;
+}
+
 function normalizeName(value) {
   if (typeof value !== "string") {
     return "";
@@ -83,7 +94,11 @@ ipcRenderer.on(ROOM_HOST_MESSAGE_CHANNEL, (_event, payload) => {
 });
 
 contextBridge.exposeInMainWorld("roomAPI", {
-  ready: (payload = {}) => emitToHost("room-ready", payload),
+  ready: (payload = {}) => {
+    explicitRoomReadySent = true;
+    clearPendingAutoRoomReady();
+    return emitToHost("room-ready", payload);
+  },
   sendCommand: (command, payload = {}) => {
     const normalized = normalizeName(command);
     if (normalized === "") {
@@ -115,9 +130,22 @@ contextBridge.exposeInMainWorld("roomAPI", {
 
 if (typeof globalThis.addEventListener === "function") {
   globalThis.addEventListener("load", () => {
-    emitToHost("room-ready", {
-      stage: "load",
-      url: globalThis.location?.href ?? "",
-    });
+    if (explicitRoomReadySent) {
+      return;
+    }
+
+    clearPendingAutoRoomReady();
+    // Delay the preload fallback so explicit room bootstraps do not hydrate twice.
+    pendingAutoRoomReadyTimer = globalThis.setTimeout(() => {
+      pendingAutoRoomReadyTimer = null;
+      if (explicitRoomReadySent) {
+        return;
+      }
+
+      emitToHost("room-ready", {
+        stage: "load",
+        url: globalThis.location?.href ?? "",
+      });
+    }, 100);
   });
 }

@@ -97,6 +97,8 @@ type LaboratoryLocalSubtitleDrafts = {
   youtubeUrl: string;
 };
 
+type LaboratoryManualHelperPlatform = "linux" | "macos" | "windows";
+
 type LaboratoryUiState = {
   activeStage: string;
   context: LaboratoryUiBootstrapContext;
@@ -139,6 +141,8 @@ type LaboratoryUiState = {
       overlay: number;
       surface: number;
     };
+    settingsHelperPlatform: LaboratoryManualHelperPlatform;
+    settingsHelperToolId: string | null;
     settingsAnimateIn: boolean;
     settingsOpen: boolean;
     stackScrollPositions: {
@@ -167,6 +171,20 @@ export function createLaboratoryUiBootstrapStateRuntime(
   const documentRef = deps.documentRef;
   const navigatorRef = deps.navigatorRef;
   const resolveLocale = deps.resolveLocale;
+
+  function resolveManualHelperPlatform(): LaboratoryManualHelperPlatform {
+    const platform =
+      typeof navigatorRef.userAgent === "string" ? navigatorRef.userAgent : navigatorRef.platform;
+    const normalized = String(platform || "").toLowerCase();
+
+    if (normalized.includes("mac")) {
+      return "macos";
+    }
+    if (normalized.includes("win")) {
+      return "windows";
+    }
+    return "linux";
+  }
 
   function createContext(): LaboratoryUiBootstrapContext {
     const workbench = createLaboratoryWorkbenchState({
@@ -317,6 +335,8 @@ export function createLaboratoryUiBootstrapStateRuntime(
         surface: 0,
         overlay: 0,
       },
+      settingsHelperPlatform: resolveManualHelperPlatform(),
+      settingsHelperToolId: null as string | null,
       settingsAnimateIn: false,
       stackScrollPositions: {
         main: 0,

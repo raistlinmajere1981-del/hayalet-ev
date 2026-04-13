@@ -49,10 +49,20 @@ type SystemCommandSpec = {
   setupHint?: string;
 };
 
+type PythonVenvPipInstallerSpec = {
+  type: "python-venv-pip";
+  bootstrapExecutableNames?: string[];
+  packages: string[];
+  venvDir: string;
+};
+
+type ToolInstallerSpec = PythonVenvPipInstallerSpec;
+
 type ToolManifest = {
   displayName: string;
   installDirName?: string;
   availability?: ToolAvailability;
+  installer?: ToolInstallerSpec;
   plannedReason?: string;
   releaseProvider?: GitHubReleaseProvider;
   assets?: Partial<Record<PlatformKey, ToolAssetSpec>>;
@@ -78,6 +88,18 @@ type SystemCommandToolManifest = ToolManifest & {
   probe: {
     args: string[];
     versionRegex: string;
+  };
+};
+
+type ResolvedPythonVenvPipInstaller = {
+  manifest: ToolManifest;
+  probe: NonNullable<ToolManifest["probe"]>;
+  systemCommand: SystemCommandSpec;
+  installer: {
+    type: "python-venv-pip";
+    bootstrapExecutableNames: string[];
+    packages: string[];
+    venvDir: string;
   };
 };
 
@@ -122,8 +144,21 @@ type ActiveJob =
     }
   | undefined;
 
+type SpawnedProcess = ReturnType<typeof spawn>;
+
 function asNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map(function (entry) {
+      return asNonEmptyString(entry);
+    })
+    .filter((entry): entry is string => entry !== null);
 }
 
 function ensureAbsolutePath(filePath: string): string {
@@ -366,6 +401,20 @@ async function readJsonFile<T>(filePath: string): Promise<T> {
 
 async function ensureDir(dirPath: string): Promise<void> {
   await mkdir(dirPath, { recursive: true });
+}
+
+function getPythonVenvExecutableCandidates(venvDir: string): string[] {
+  if (process.platform === "win32") {
+    return [join(venvDir, "Scripts", "python.exe")];
+  }
+
+  return [join(venvDir, "bin", "python3"), join(venvDir, "bin", "python")];
+}
+
+function resolveExistingPythonVenvExecutable(venvDir: string): string | null {
+  return (
+    getPythonVenvExecutableCandidates(venvDir).find((candidate) => existsSync(candidate)) ?? null
+  );
 }
 
 async function fetchJson(url: string): Promise<unknown> {
@@ -1018,10 +1067,13 @@ class RoomToolService {
     );
     const manifest = await this.loadToolchainManifest(request.roomId);
     const toolManifest = this.getToolManifest(manifest, request.toolId);
-    if (
-      this.isSystemCommandTool(toolManifest) === true ||
-      this.shouldUseSystemCommandFallback(toolManifest, detectPlatformKey()) === true
-    ) {
+    if (this.isSystemCommandTool(toolManifest) === true) {
+      if (this.getInstallerType(toolManifest) === "python-venv-pip") {
+        return await this.installPythonVenvPipTool(event, request, toolManifest, jobId);
+      }
+      return await this.recheckSystemCommandTool(request);
+    }
+    if (this.shouldUseSystemCommandFallback(toolManifest, detectPlatformKey()) === true) {
       return await this.recheckSystemCommandTool(request);
     }
     if (this.isToolInstallable(toolManifest) !== true) {
@@ -1434,6 +1486,392 @@ class RoomToolService {
     );
   }
 
+  private getInstallerType(toolManifest: ToolManifest): ToolInstallerSpec["type"] | null {
+    return toolManifest.installer?.type ?? null;
+  }
+
+  private resolvePythonVenvPipInstaller(
+    toolManifest: ToolManifest,
+    toolId: string
+  ): ResolvedPythonVenvPipInstaller {
+    const resolved = this.resolveToolSystemCommandSpec(toolManifest, toolId);
+    const installer = toolManifest.installer;
+    if (installer?.type !== "python-venv-pip") {
+      throw new Error(`${toolId} does not expose a python-venv installer`);
+    }
+
+    const venvDir = asNonEmptyString(installer.venvDir);
+    const packages = normalizeStringArray(installer.packages);
+    if (venvDir === null || packages.length === 0) {
+      throw new Error(`${toolId} installer is missing a venvDir or package list`);
+    }
+
+    return {
+      manifest: resolved.manifest,
+      probe: resolved.probe,
+      systemCommand: resolved.systemCommand,
+      installer: {
+        type: "python-venv-pip",
+        venvDir,
+        packages,
+        bootstrapExecutableNames: normalizeStringArray(installer.bootstrapExecutableNames),
+      },
+    };
+  }
+
+  private async resolvePythonBootstrapInvocation(
+    resolvedInstaller: ResolvedPythonVenvPipInstaller
+  ): Promise<{ command: string; argsPrefix: string[] }> {
+    const candidateNames = Array.from(
+      new Set(
+        [
+          resolvedInstaller.systemCommand.executableName,
+          ...resolvedInstaller.installer.bootstrapExecutableNames,
+          "python3",
+          "python",
+          "py",
+        ].filter((entry) => typeof entry === "string" && entry.trim() !== "")
+      )
+    );
+
+    const resolveCandidate = async (
+      index: number
+    ): Promise<{ command: string; argsPrefix: string[] } | null> => {
+      const candidateName = candidateNames[index];
+      if (candidateName === undefined) {
+        return null;
+      }
+
+      const resolvedBinaryPath = await resolveSystemCommandBinaryPath(candidateName);
+      if (resolvedBinaryPath === null) {
+        return await resolveCandidate(index + 1);
+      }
+
+      if (
+        process.platform === "win32" &&
+        (candidateName === "py" || /(?:^|[\\/])py(?:\.exe)?$/i.test(resolvedBinaryPath))
+      ) {
+        return {
+          command: resolvedBinaryPath,
+          argsPrefix: ["-3"],
+        };
+      }
+
+      return {
+        command: resolvedBinaryPath,
+        argsPrefix: [],
+      };
+    };
+
+    const resolvedCandidate = await resolveCandidate(0);
+    if (resolvedCandidate !== null) {
+      return resolvedCandidate;
+    }
+
+    throw new Error(
+      `Python build prerequisites are missing for ${resolvedInstaller.manifest.displayName}. Install python3 or python, then retry.`
+    );
+  }
+
+  private async runProgressCommand(
+    event: IpcMainInvokeEvent,
+    options: {
+      args: string[];
+      command: string;
+      cwd: string;
+      env?: Record<string, string | undefined>;
+      getCancelled: () => boolean;
+      jobId: string;
+      message: string;
+      operation: "tool-install" | "tool-update";
+      requestId: string | null;
+      roomId: string;
+      setActiveChild: (child: SpawnedProcess | null) => void;
+      timeoutMs: number;
+      toolId: string;
+    }
+  ): Promise<{ cancelled: boolean; exitCode: number | null; stderr: string; stdout: string }> {
+    return await new Promise((resolvePromise, rejectPromise) => {
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+      let timedOut = false;
+
+      const child = spawn(options.command, options.args, {
+        cwd: options.cwd,
+        env: {
+          ...process.env,
+          ...Object.fromEntries(
+            Object.entries(options.env ?? {}).filter(
+              (entry): entry is [string, string] => typeof entry[1] === "string"
+            )
+          ),
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      });
+      options.setActiveChild(child);
+
+      this.emitProgress(event, {
+        roomId: options.roomId,
+        operation: options.operation,
+        requestId: options.requestId,
+        jobId: options.jobId,
+        toolId: options.toolId,
+        stage: "running",
+        message: options.message,
+      });
+
+      const finish = (payload: {
+        cancelled: boolean;
+        exitCode: number | null;
+        stderr: string;
+        stdout: string;
+      }): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        options.setActiveChild(null);
+        resolvePromise(payload);
+      };
+
+      child.stdout.on("data", (chunk: Buffer) => {
+        const text = chunk.toString("utf8");
+        stdout += text;
+        this.emitProgress(event, {
+          roomId: options.roomId,
+          operation: options.operation,
+          requestId: options.requestId,
+          jobId: options.jobId,
+          toolId: options.toolId,
+          stage: "stdout",
+          chunk: text,
+          message: options.message,
+        });
+      });
+
+      child.stderr.on("data", (chunk: Buffer) => {
+        const text = chunk.toString("utf8");
+        stderr += text;
+        this.emitProgress(event, {
+          roomId: options.roomId,
+          operation: options.operation,
+          requestId: options.requestId,
+          jobId: options.jobId,
+          toolId: options.toolId,
+          stage: "stderr",
+          chunk: text,
+          message: options.message,
+        });
+      });
+
+      child.once("error", (error) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        options.setActiveChild(null);
+        rejectPromise(error);
+      });
+      child.once("close", (code) => {
+        finish({
+          exitCode: code,
+          stdout,
+          stderr,
+          cancelled: timedOut || options.getCancelled() === true,
+        });
+      });
+
+      const timer = setTimeout(() => {
+        timedOut = true;
+        child.kill("SIGKILL");
+      }, options.timeoutMs);
+    });
+  }
+
+  private async installPythonVenvPipTool(
+    event: IpcMainInvokeEvent,
+    request: Extract<RoomToolCallRequest, { operation: "tool-install" | "tool-update" }>,
+    toolManifest: ToolManifest,
+    jobId: string
+  ): Promise<RoomToolCallResult> {
+    const requestId = normalizeRequestId(request.requestId);
+    const paths = resolveRuntimePaths(request.roomId);
+    const resolvedInstaller = this.resolvePythonVenvPipInstaller(toolManifest, request.toolId);
+    const venvDir = expandRuntimePathTemplate(resolvedInstaller.installer.venvDir, paths);
+    const packageListLabel = resolvedInstaller.installer.packages.join(", ");
+    let activeChild: SpawnedProcess | null = null;
+    const installState = {
+      cancelled: false,
+    };
+
+    this.activeJobs.set(jobId, {
+      roomId: request.roomId,
+      jobId,
+      cancel: () => {
+        installState.cancelled = true;
+        activeChild?.kill("SIGKILL");
+      },
+    });
+
+    this.emitProgress(event, {
+      roomId: request.roomId,
+      operation: request.operation,
+      requestId,
+      jobId,
+      toolId: request.toolId,
+      stage: "queued",
+      message: packageListLabel,
+    });
+
+    try {
+      await ensureDir(dirname(venvDir));
+      let venvPythonPath = resolveExistingPythonVenvExecutable(venvDir);
+
+      if (venvPythonPath === null) {
+        const bootstrap = await this.resolvePythonBootstrapInvocation(resolvedInstaller);
+        const createVenvResult = await this.runProgressCommand(event, {
+          command: bootstrap.command,
+          args: [...bootstrap.argsPrefix, "-m", "venv", venvDir],
+          cwd: paths.storageDir,
+          getCancelled: () => installState.cancelled,
+          jobId,
+          message: `Create room-local python runtime: ${venvDir}`,
+          operation: request.operation,
+          requestId,
+          roomId: request.roomId,
+          setActiveChild(child) {
+            activeChild = child;
+          },
+          timeoutMs: 10 * 60_000,
+          toolId: request.toolId,
+        });
+        if (createVenvResult.cancelled === true) {
+          throw new Error("Python runtime creation cancelled.");
+        }
+        if (createVenvResult.exitCode !== 0) {
+          throw new Error(
+            asNonEmptyString(createVenvResult.stderr) ??
+              asNonEmptyString(createVenvResult.stdout) ??
+              "Python runtime creation failed."
+          );
+        }
+        venvPythonPath = resolveExistingPythonVenvExecutable(venvDir);
+      }
+
+      if (venvPythonPath === null) {
+        throw new Error(
+          "Python runtime was created, but the venv executable could not be resolved."
+        );
+      }
+
+      const bootstrapPipResult = await this.runProgressCommand(event, {
+        command: venvPythonPath,
+        args: ["-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"],
+        cwd: paths.storageDir,
+        getCancelled: () => installState.cancelled,
+        jobId,
+        message: `Bootstrap python tooling for ${request.toolId}`,
+        operation: request.operation,
+        requestId,
+        roomId: request.roomId,
+        setActiveChild(child) {
+          activeChild = child;
+        },
+        timeoutMs: 12 * 60_000,
+        toolId: request.toolId,
+      });
+      if (bootstrapPipResult.cancelled === true) {
+        throw new Error("Python package bootstrap cancelled.");
+      }
+      if (bootstrapPipResult.exitCode !== 0) {
+        throw new Error(
+          asNonEmptyString(bootstrapPipResult.stderr) ??
+            asNonEmptyString(bootstrapPipResult.stdout) ??
+            "Python package bootstrap failed."
+        );
+      }
+
+      const installArgs = [
+        "-m",
+        "pip",
+        "install",
+        "--disable-pip-version-check",
+        "--prefer-binary",
+        ...(request.operation === "tool-update" ? ["--upgrade"] : []),
+        ...resolvedInstaller.installer.packages,
+      ];
+      const installPackagesResult = await this.runProgressCommand(event, {
+        command: venvPythonPath,
+        args: installArgs,
+        cwd: paths.storageDir,
+        getCancelled: () => installState.cancelled,
+        jobId,
+        message: `Install python packages for ${request.toolId}: ${packageListLabel}`,
+        operation: request.operation,
+        requestId,
+        roomId: request.roomId,
+        setActiveChild(child) {
+          activeChild = child;
+        },
+        timeoutMs: 45 * 60_000,
+        toolId: request.toolId,
+      });
+      if (installPackagesResult.cancelled === true) {
+        throw new Error("Python package installation cancelled.");
+      }
+      if (installPackagesResult.exitCode !== 0) {
+        throw new Error(
+          asNonEmptyString(installPackagesResult.stderr) ??
+            asNonEmptyString(installPackagesResult.stdout) ??
+            "Python package installation failed."
+        );
+      }
+
+      const probeResult = await this.probeTool({
+        operation: "tool-probe",
+        roomId: request.roomId,
+        requestId,
+        toolId: request.toolId,
+      });
+
+      this.emitProgress(event, {
+        roomId: request.roomId,
+        operation: request.operation,
+        requestId,
+        jobId,
+        toolId: request.toolId,
+        stage: "completed",
+        percent: 100,
+        message: venvPythonPath,
+      });
+
+      return {
+        ...probeResult,
+        operation: request.operation,
+        requestId,
+        jobId,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.emitProgress(event, {
+        roomId: request.roomId,
+        operation: request.operation,
+        requestId,
+        jobId,
+        toolId: request.toolId,
+        stage: installState.cancelled === true ? "cancelled" : "failed",
+        message,
+      });
+      throw error;
+    } finally {
+      this.activeJobs.delete(jobId);
+    }
+  }
+
   private hasPlatformAsset(toolManifest: ToolManifest, platformKey: PlatformKey | null): boolean {
     if (platformKey === null) {
       return false;
@@ -1491,6 +1929,7 @@ class RoomToolService {
       runtimePaths: paths,
     });
     const setupHint = this.getSystemCommandSetupHint(toolId, resolved.manifest);
+    const installerType = this.getInstallerType(resolved.manifest);
 
     if (binaryPath === null) {
       return {
@@ -1506,6 +1945,7 @@ class RoomToolService {
             manualSetup: true,
             executableName: resolved.systemCommand.executableName,
             companionExecutables: resolved.systemCommand.companionExecutables ?? [],
+            installerType,
             setupHint,
           },
         }),
@@ -1552,6 +1992,7 @@ class RoomToolService {
           manualSetup: true,
           executableName: resolved.systemCommand.executableName,
           companionExecutables: resolved.systemCommand.companionExecutables ?? [],
+          installerType,
           setupHint,
         },
       }),

@@ -301,6 +301,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     getSourceModeOptions: coreRuntime.getSourceModeOptions,
     getSourceSnapshot: coreRuntime.getSourceSnapshot,
     getToolEntry: coreRuntime.getToolEntry,
+    getToolRegistry: coreRuntime.getToolRegistry,
     getYtDlpForm: coreRuntime.getYtDlpForm,
     handleHostMessage: function (message: unknown) {
       return laboratoryFeatureStageRuntime.laboratoryHostMessageRuntime.handleHostMessage(message);

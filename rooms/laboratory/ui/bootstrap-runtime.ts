@@ -42,8 +42,14 @@ export function createLaboratoryUiBootstrapRuntime(deps: LaboratoryUiBootstrapRu
   const state = deps.state;
   const windowRef = deps.windowRef;
   const documentRef = deps.documentRef;
+  let attached = false;
 
   function attach() {
+    if (attached) {
+      return;
+    }
+
+    attached = true;
     documentRef.addEventListener("click", actionRouter.handleClick);
     documentRef.addEventListener("input", actionRouter.handleInput);
     documentRef.addEventListener("change", actionRouter.handleChange);

@@ -36,14 +36,19 @@ interface SnapshotRecord extends Record<string, unknown> {
   installDirName?: unknown;
   availability?: unknown;
   plannedReason?: unknown;
+  commandName?: unknown;
   systemCommand?: unknown;
   executableName?: unknown;
+  envVarNames?: unknown;
+  installer?: unknown;
+  installerType?: unknown;
   setupHint?: unknown;
   installStrategy?: unknown;
   usedBy?: unknown;
   testImpact?: unknown;
   readinessImpact?: unknown;
   manualHint?: unknown;
+  manualGuide?: unknown;
   activeProjectId?: unknown;
   hydrated?: unknown;
   projects?: unknown;
@@ -412,8 +417,11 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
           projectId: job.projectId || null,
           toolId: job.toolId || null,
           featureStage: job.featureStage || null,
+          operation: job["operation"] || null,
           stage: job.stage || "queued",
           percent: typeof job.percent === "number" ? job.percent : null,
+          bytesReceived: typeof job["bytesReceived"] === "number" ? job["bytesReceived"] : null,
+          bytesTotal: typeof job["bytesTotal"] === "number" ? job["bytesTotal"] : null,
           message: job.message || null,
         };
       })
@@ -445,6 +453,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
           })
         : [];
       const availability = asNonEmptyString(toolManifest.availability) || "installable";
+      const installerType = asNonEmptyString(toRecord(toolManifest.installer)["type"]);
       const installStrategy =
         asNonEmptyString(toolManifest.installStrategy) ||
         (availability === "planned"
@@ -460,10 +469,17 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
         availability,
         plannedReason: asNonEmptyString(toolManifest.plannedReason),
         commandName: asNonEmptyString(systemCommand.executableName),
+        envVarNames: Array.isArray(systemCommand.envVarNames)
+          ? (systemCommand.envVarNames as unknown[]).map(function (entry) {
+              return String(entry);
+            })
+          : [],
+        installerType,
         setupHint: asNonEmptyString(systemCommand.setupHint),
         installStrategy,
         manualHint:
           asNonEmptyString(toolManifest.manualHint) || asNonEmptyString(systemCommand.setupHint),
+        manualGuide: clone(toRecord(toolManifest.manualGuide)),
         usedBy,
         testImpact,
         readinessImpact: asNonEmptyString(toolManifest.readinessImpact),

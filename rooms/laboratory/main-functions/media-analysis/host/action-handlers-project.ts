@@ -5,6 +5,12 @@ type MediaProjectRuntimeRecord = {
 
 type ProjectDeps = {
   asNonEmptyString: (value: unknown) => string | null;
+  cancelJobById: (
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    jobId: string,
+    requestId: string
+  ) => Promise<unknown>;
   cancelFeatureProcess: (
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
@@ -57,6 +63,7 @@ type ProjectDeps = {
 export function createMediaProjectActionRuntime(deps: ProjectDeps) {
   const {
     asNonEmptyString,
+    cancelJobById,
     cancelFeatureProcess,
     createProject: createProjectRecord,
     deleteProject: deleteProjectRecord,
@@ -128,6 +135,19 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     return cancelFeatureProcess(api, runtime, requestId, featureId, workbenchSource);
   }
 
+  async function cancelJob(
+    api: MediaProjectActionApi,
+    runtime: MediaProjectRuntimeRecord,
+    requestId: string,
+    actionPayload: Record<string, unknown>
+  ) {
+    const jobId = asNonEmptyString(actionPayload["jobId"]);
+    if (jobId !== null) {
+      await cancelJobById(api, runtime, jobId, requestId);
+    }
+    return refreshActiveProjectMetadata(runtime, requestId);
+  }
+
   async function exportReport(
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
@@ -157,6 +177,7 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
   }
 
   return {
+    cancelJob,
     cancelProcess,
     createProject,
     deleteProject,

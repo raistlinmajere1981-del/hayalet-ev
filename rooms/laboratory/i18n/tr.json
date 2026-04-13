@@ -32,6 +32,38 @@
     "operationsTitle": "Canli operasyonlar",
     "operationsFallback": "Oda isi",
     "operationsEmpty": "Su anda calisan bir bagimlilik veya model islemi yok.",
+    "operationsMeta": {
+      "cancelAction": "Iptal Et",
+      "operationLabel": "Islem",
+      "stepLabel": "Adim",
+      "transferLabel": "Transfer",
+      "actions": {
+        "tool-install": "Arac kurulumu",
+        "tool-update": "Arac guncellemesi",
+        "profile-model-install": "Profil modeli indiriliyor",
+        "source-download-url": "Dogrudan URL alimi",
+        "source-download-youtube": "YouTube alimi",
+        "subtitle-source-download-url": "Altyazi URL alimi",
+        "subtitle-source-download-youtube": "YouTube altyazi alimi",
+        "subtitle-source-discover-youtube": "YouTube altyazi kesfi"
+      },
+      "operations": {
+        "download-file": "Dosya indiriliyor",
+        "tool-run": "Arac komutu calisiyor",
+        "tool-install": "Kurulum gorevi calisiyor",
+        "tool-update": "Guncelleme gorevi calisiyor",
+        "delete-path": "Gecici dosyalar temizleniyor"
+      },
+      "stages": {
+        "queued": "Siraya alindi",
+        "running": "Calisiyor",
+        "stdout": "Canli cikti",
+        "stderr": "Uyari akisi",
+        "completed": "Tamamlandi",
+        "failed": "Hata",
+        "cancelled": "Iptal edildi"
+      }
+    },
     "toolGridTitle": "Arac envanteri",
     "modelGridTitle": "Profil model envanteri",
     "dependency": {
@@ -172,12 +204,43 @@
         "missing": "Eksik",
         "installed": "Kurulu",
         "updateAvailable": "Guncelleme var",
+        "appInstall": "Uygulama ici kurulum hazir",
         "manualSetup": "Elle kurulum gerekli",
         "manualReady": "Sistem araci algilandi",
         "ready": "Hazir",
         "idle": "Bos",
         "error": "Hata",
         "planned": "Planli"
+      },
+      "helper": {
+        "toggleAction": "Kurulum Yardimi",
+        "collapseAction": "Yardimi Gizle",
+        "title": "Kurulum Yardimcisi",
+        "diagnosisLabel": "Teshis",
+        "diagnosisMissing": "Aranan host komutu bu sistemde henuz gorunmuyor.",
+        "diagnosisProbeFailed": "Host komutu bulundu ama probe dogrulamasi basarisiz oldu.",
+        "diagnosisReady": "Host komutu algilandi. Gerekirse probe'u yeniden calistirabilirsin.",
+        "appInstallHint": "Laboratory bu araci room-local bir Python runtime icine kurabilir.",
+        "hostLabel": "Host beklentisi",
+        "expectedCommandLabel": "Laboratory bu komutu ariyor.",
+        "envOverrideLabel": "Desteklenen env override",
+        "unlockLabel": "Kurulumdan sonra",
+        "unlockFallback": "Ilgili moduller bu host runtime ile acilir.",
+        "commandsLabel": "Kurulum komutlari",
+        "commandsHint": "Host ortaminda calistir, sonra probe'u yenile.",
+        "commandsEmpty": "Bu platform icin hazir komut verilmiyor. Host aracini kurup beklenen binary'yi PATH'e eklemen yeterli.",
+        "copyCommandAction": "Komutu Kopyala",
+        "notesLabel": "Ek notlar",
+        "setupHintLabel": "Laboratory ipucu",
+        "nextStepLabel": "Sonraki adim",
+        "nextStepBody": "Kurulum bittiginde bu karttan dogrulamayi yeniden calistir.",
+        "copySuccess": "Komut panoya kopyalandi.",
+        "copyFailure": "Komut panoya kopyalanamadi.",
+        "platforms": {
+          "linux": "Linux",
+          "macos": "macOS",
+          "windows": "Windows"
+        }
       }
     },
     "messages": {

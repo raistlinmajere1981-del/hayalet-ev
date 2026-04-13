@@ -12,6 +12,7 @@ type LaboratoryFeatureAdaptersDeps = {
   audioFeatureId: string;
   buildSubtitleEditSummary: UnknownFn;
   callRoomTools: UnknownFn;
+  cancelJobById: UnknownFn;
   cancelEditJobsForProject: UnknownFn;
   cancelFeatureProcess: UnknownFn;
   cancelProfileJobsForProject: UnknownFn;
@@ -165,6 +166,7 @@ export function createLaboratoryFeatureAdapters(deps: LaboratoryFeatureAdaptersD
     applyProfilePresetPatch: deps.applyProfilePresetPatch,
     asNonEmptyString: deps.asNonEmptyString,
     audioFeatureId: deps.audioFeatureId,
+    cancelJobById: deps.cancelJobById,
     cancelEditJobsForProject: deps.cancelEditJobsForProject,
     cancelFeatureProcess: deps.cancelFeatureProcess,
     cancelProfileJobsForProject: deps.cancelProfileJobsForProject,

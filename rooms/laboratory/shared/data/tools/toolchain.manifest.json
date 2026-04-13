@@ -151,6 +151,32 @@
         ],
         "setupHint": "Use the Analyze dictate runtime, set HAYALET_EV_TRANSCRIPT_WHISPER_BIN to a whisper-cli binary, or install whisper-cli on PATH, then refresh this tool."
       },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "export HAYALET_EV_TRANSCRIPT_WHISPER_BIN=/absolute/path/to/whisper-cli"
+          ],
+          "notes": [
+            "You can also reuse the Analyze dictate runtime or place whisper-cli directly on PATH."
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "export HAYALET_EV_TRANSCRIPT_WHISPER_BIN=/absolute/path/to/whisper-cli"
+          ],
+          "notes": [
+            "You can also reuse the Analyze dictate runtime or place whisper-cli directly on PATH."
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "setx HAYALET_EV_TRANSCRIPT_WHISPER_BIN \"C:\\\\path\\\\to\\\\whisper-cli.exe\""
+          ],
+          "notes": [
+            "You can also reuse the Analyze dictate runtime or place whisper-cli.exe directly on PATH."
+          ]
+        }
+      },
       "assets": {
         "win32-x64": {
           "assetMatch": "^whisper-bin-x64\\.zip$",
@@ -181,6 +207,23 @@
       "systemCommand": {
         "executableName": "SMILExtract",
         "setupHint": "Install openSMILE on the host system so the SMILExtract binary is available on PATH, then refresh this tool from settings."
+      },
+      "manualGuide": {
+        "linux": {
+          "notes": [
+            "Install an openSMILE build for your distro, then ensure SMILExtract is available on PATH."
+          ]
+        },
+        "macos": {
+          "notes": [
+            "Install openSMILE from a host package or local build, then expose SMILExtract on PATH."
+          ]
+        },
+        "windows": {
+          "notes": [
+            "Install the openSMILE host build and make sure SMILExtract.exe is available on PATH."
+          ]
+        }
       }
     },
     "yamnet": {
@@ -207,7 +250,34 @@
       },
       "systemCommand": {
         "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/yamnet-venv/bin/python3",
+          "${roomStorageDir}/runtime/yamnet-venv/bin/python",
+          "${roomStorageDir}/runtime/yamnet-venv/Scripts/python.exe"
+        ],
         "setupHint": "Install python3 packages tensorflow, tensorflow_hub, numpy, and scipy so the room-local YAMNet helper can run, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/yamnet-venv",
+        "packages": ["tensorflow", "tensorflow_hub", "numpy", "scipy"]
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "python3 -m pip install tensorflow tensorflow_hub numpy scipy"
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "python3 -m pip install tensorflow tensorflow_hub numpy scipy"
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "py -m pip install tensorflow tensorflow_hub numpy scipy"
+          ]
+        }
       }
     },
     "librosa": {
@@ -234,7 +304,34 @@
       },
       "systemCommand": {
         "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/librosa-venv/bin/python3",
+          "${roomStorageDir}/runtime/librosa-venv/bin/python",
+          "${roomStorageDir}/runtime/librosa-venv/Scripts/python.exe"
+        ],
         "setupHint": "Install python3 packages librosa, numpy, and scipy so the room-local music analysis helpers can run, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/librosa-venv",
+        "packages": ["librosa", "numpy", "scipy"]
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "python3 -m pip install librosa numpy scipy"
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "python3 -m pip install librosa numpy scipy"
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "py -m pip install librosa numpy scipy"
+          ]
+        }
       }
     },
     "demucs": {
@@ -261,7 +358,34 @@
       },
       "systemCommand": {
         "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/demucs-venv/bin/python3",
+          "${roomStorageDir}/runtime/demucs-venv/bin/python",
+          "${roomStorageDir}/runtime/demucs-venv/Scripts/python.exe"
+        ],
         "setupHint": "Install the demucs Python package so the prepared source-separation runtime can be enabled, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/demucs-venv",
+        "packages": ["demucs"]
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "python3 -m pip install demucs"
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "python3 -m pip install demucs"
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "py -m pip install demucs"
+          ]
+        }
       }
     },
     "essentia": {
@@ -288,7 +412,34 @@
       },
       "systemCommand": {
         "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/essentia-venv/bin/python3",
+          "${roomStorageDir}/runtime/essentia-venv/bin/python",
+          "${roomStorageDir}/runtime/essentia-venv/Scripts/python.exe"
+        ],
         "setupHint": "Install the essentia Python package so the prepared tonal fallback can be enabled, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/essentia-venv",
+        "packages": ["essentia"]
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "python3 -m pip install essentia"
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "python3 -m pip install essentia"
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "py -m pip install essentia"
+          ]
+        }
       }
     },
     "pyaudioanalysis": {
@@ -315,7 +466,34 @@
       },
       "systemCommand": {
         "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/pyaudioanalysis-venv/bin/python3",
+          "${roomStorageDir}/runtime/pyaudioanalysis-venv/bin/python",
+          "${roomStorageDir}/runtime/pyaudioanalysis-venv/Scripts/python.exe"
+        ],
         "setupHint": "Install pyAudioAnalysis plus its local runtime dependencies (numpy, scipy, scikit-learn, and hmmlearn) on the host system, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/pyaudioanalysis-venv",
+        "packages": ["pyAudioAnalysis", "numpy", "scipy", "scikit-learn", "hmmlearn"]
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "python3 -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn"
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "python3 -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn"
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "py -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn"
+          ]
+        }
       }
     }
   }

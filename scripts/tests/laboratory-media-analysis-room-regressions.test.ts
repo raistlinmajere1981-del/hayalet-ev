@@ -862,6 +862,8 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
     typedDepsSignature("createLaboratoryUiBootstrapRuntime")
   );
   assert.match(bootstrapRuntimeSource, /function attach\(\)/);
+  assert.match(bootstrapRuntimeSource, /let attached = false;/);
+  assert.match(bootstrapRuntimeSource, /if \(attached\) \{\s*return;\s*\}/);
   assert.match(copyRuntimeSource, typedDepsSignature("createLaboratoryCopyRuntime"));
   assert.match(copyRuntimeSource, /function getFeaturePreviewImage\(\)/);
   assert.match(copyRuntimeSource, typedParamSignature("subtitleTemplate", "path"));
@@ -1128,6 +1130,7 @@ test("laboratory host orchestrates projects, source intake, edit rendering, and 
   assert.match(processCompositionSource, /from "\.\.\/\.\.\/main-functions\/audio-analysis\/host\/runtime\.js"/);
   assert.match(processCompositionSource, /from "\.\/process-orchestration\.js"/);
   assert.match(sourceCompositionSource, /from "\.\/source-delegates\.js"/);
+  assert.match(hostProjectSource, /getDefaultYoutubePreset: preset\.getDefaultYoutubePreset,/);
   assert.match(
     sourceCompositionSource,
     /from "\.\.\/\.\.\/main-functions\/media-analysis\/host\/source-file-utils\.js"/

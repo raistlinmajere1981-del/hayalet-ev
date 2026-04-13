@@ -15,6 +15,18 @@ type LaboratoryOutputRecord = LaboratoryRecord & {
   id?: unknown;
 };
 
+type LaboratoryToolDescriptorRecord = LaboratoryRecord & {
+  displayName?: unknown;
+  manualGuide?: unknown;
+  toolId?: unknown;
+};
+
+type LaboratoryManualGuidePlatformRecord = LaboratoryRecord & {
+  installCommands?: unknown;
+};
+
+type LaboratoryManualGuidePlatform = "linux" | "macos" | "windows";
+
 type LaboratoryUiActionPayload = LaboratoryRecord & {
   featureStage?: string;
 };
@@ -27,6 +39,7 @@ type LaboratoryUiActionHandlersDeps = {
   getActiveEditOutput: () => LaboratoryOutputRecord | null;
   getProfileTargetSummary: () => LaboratoryProfileTargetSummaryRecord;
   getSourceSnapshot: () => LaboratorySourceSnapshotRecord;
+  getToolRegistry: () => LaboratoryToolDescriptorRecord[];
   isAudioAnalysisFeature: () => boolean;
   openReport: () => void;
   openSettingsOverlay: () => void;
@@ -39,6 +52,7 @@ type LaboratoryUiActionHandlersDeps = {
   sendSourceAction: (action: string, payload?: LaboratoryUiActionPayload | null) => string | null;
   state: LaboratoryUiState;
   syncDraftField: (path: string, value: unknown) => void;
+  text: (path: string[]) => string;
   toggleWorkbenchModuleSelection: (featureId: string) => void;
 };
 
@@ -51,6 +65,7 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
     getActiveEditOutput,
     getProfileTargetSummary,
     getSourceSnapshot,
+    getToolRegistry,
     isAudioAnalysisFeature,
     openReport,
     openSettingsOverlay,
@@ -63,8 +78,99 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
     sendSourceAction,
     state,
     syncDraftField,
+    text,
     toggleWorkbenchModuleSelection,
   } = deps;
+
+  function toRecord(value: unknown): LaboratoryRecord {
+    return value !== null && typeof value === "object" && Array.isArray(value) === false
+      ? (value as LaboratoryRecord)
+      : {};
+  }
+
+  function toString(value: unknown, fallback = ""): string {
+    return typeof value === "string" ? value : fallback;
+  }
+
+  function toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(function (entry) {
+        return toString(entry).trim();
+      })
+      .filter(function (entry) {
+        return entry !== "";
+      });
+  }
+
+  function normalizeHelperPlatform(value: unknown): LaboratoryManualGuidePlatform {
+    if (value === "macos" || value === "windows") {
+      return value;
+    }
+    return "linux";
+  }
+
+  function getToolDescriptor(toolId: string): LaboratoryToolDescriptorRecord | null {
+    return (
+      getToolRegistry().find(function (entry) {
+        return toString(entry.toolId).trim() === toolId;
+      }) || null
+    );
+  }
+
+  function getManualGuidePlatformRecord(
+    descriptor: LaboratoryToolDescriptorRecord | null,
+    platform: LaboratoryManualGuidePlatform
+  ): LaboratoryManualGuidePlatformRecord {
+    const manualGuide = toRecord(descriptor?.manualGuide);
+    return toRecord(manualGuide[platform]);
+  }
+
+  function getInstallCommand(
+    toolId: string,
+    platform: LaboratoryManualGuidePlatform,
+    index: number
+  ): string | null {
+    const descriptor = getToolDescriptor(toolId);
+    const commands = toStringArray(
+      getManualGuidePlatformRecord(descriptor, platform).installCommands
+    );
+    return commands[index] || null;
+  }
+
+  async function copyInstallCommand(
+    toolId: string,
+    platform: LaboratoryManualGuidePlatform,
+    index: number
+  ) {
+    const command = getInstallCommand(toolId, platform, index);
+    const toolLabel =
+      text(["mediaAnalysis", "settings", "tools", toolId]) ||
+      toString(getToolDescriptor(toolId)?.displayName) ||
+      toolId;
+
+    if (command === null) {
+      state.ui.lastActionMessage = text(["mediaAnalysis", "settings", "helper", "copyFailure"]);
+      render();
+      return;
+    }
+
+    try {
+      const navigatorRef = globalThis.navigator as Navigator | undefined;
+      const clipboard = navigatorRef?.clipboard;
+      if (typeof clipboard?.writeText !== "function") {
+        throw new Error("Clipboard API is unavailable");
+      }
+      await clipboard.writeText(command);
+      state.ui.lastActionMessage = `${text(["mediaAnalysis", "settings", "helper", "copySuccess"])} ${toolLabel}`;
+      render();
+    } catch {
+      state.ui.lastActionMessage = text(["mediaAnalysis", "settings", "helper", "copyFailure"]);
+      render();
+    }
+  }
 
   function getDerivedProfileOutputId(): string | null {
     const targetSummary = getProfileTargetSummary();
@@ -90,11 +196,44 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
         openSettingsOverlay();
         return;
       case "close-settings":
+        state.ui.settingsHelperToolId = null;
         closeSettingsOverlay();
         return;
       case "tools-refresh":
         sendSourceAction("tools-refresh");
         return;
+      case "tool-helper-toggle": {
+        const toolId = String(value || "").trim();
+        if (toolId === "") {
+          return;
+        }
+        state.ui.settingsHelperToolId = state.ui.settingsHelperToolId === toolId ? null : toolId;
+        render();
+        return;
+      }
+      case "tool-helper-platform": {
+        const [toolId, platformValue] = String(value || "").split("::");
+        state.ui.settingsHelperPlatform = normalizeHelperPlatform(platformValue);
+        if (typeof toolId === "string" && toolId.trim() !== "") {
+          state.ui.settingsHelperToolId = toolId.trim();
+        }
+        render();
+        return;
+      }
+      case "tool-helper-copy-install": {
+        const [toolId, platformValue, indexValue] = String(value || "").split("::");
+        const normalizedToolId = typeof toolId === "string" ? toolId.trim() : "";
+        const commandIndex = Number.parseInt(indexValue || "", 10);
+        if (normalizedToolId === "") {
+          return;
+        }
+        void copyInstallCommand(
+          normalizedToolId,
+          normalizeHelperPlatform(platformValue),
+          Number.isFinite(commandIndex) ? commandIndex : 0
+        );
+        return;
+      }
       case "workbench-activate-module":
         setActiveWorkbenchModule(String(value || ""));
         return;
@@ -300,6 +439,9 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
         return;
       case "tool-update":
         sendMediaAction("tool-update", { toolId: value, featureStage: state.activeStage });
+        return;
+      case "job-cancel":
+        sendMediaAction("job-cancel", { jobId: value, featureStage: state.activeStage });
         return;
       case "restart-process":
         restartProcess();

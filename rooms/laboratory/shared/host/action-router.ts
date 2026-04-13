@@ -259,6 +259,9 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
             toRecord(loadContext(api))["workbench"]
           );
           break;
+        case "job-cancel":
+          await mediaActionRuntime.cancelJob(api, runtime, requestId, actionPayload);
+          break;
         case "report-export":
         case "audio-report-export":
           await mediaActionRuntime.exportReport(api, runtime, requestId, featureId);

@@ -33,8 +33,11 @@ test("room tool service can describe planned and system-command tools without fo
 
   assert.match(serviceSource, /type ToolAvailability = "installable" \| "system-command" \| "planned";/);
   assert.match(serviceSource, /type SystemCommandSpec = \{/);
+  assert.match(serviceSource, /type PythonVenvPipInstallerSpec = \{/);
+  assert.match(serviceSource, /type ToolInstallerSpec = PythonVenvPipInstallerSpec;/);
   assert.match(serviceSource, /envVarNames\?: string\[\];/);
   assert.match(serviceSource, /candidatePaths\?: string\[\];/);
+  assert.match(serviceSource, /installer\?: ToolInstallerSpec;/);
   assert.match(serviceSource, /plannedReason\?: string;/);
   assert.match(serviceSource, /systemCommand\?: SystemCommandSpec;/);
   assert.match(serviceSource, /availability: "planned"/);
@@ -44,8 +47,13 @@ test("room tool service can describe planned and system-command tools without fo
   assert.match(serviceSource, /expandRuntimePathTemplate\(/);
   assert.match(serviceSource, /private isToolInstallable\(toolManifest: ToolManifest\): boolean/);
   assert.match(serviceSource, /private isSystemCommandTool\(toolManifest: ToolManifest\): boolean/);
+  assert.match(serviceSource, /private getInstallerType\(toolManifest: ToolManifest\): ToolInstallerSpec\["type"\] \| null/);
+  assert.match(serviceSource, /private resolvePythonVenvPipInstaller\(/);
+  assert.match(serviceSource, /private async resolvePythonBootstrapInvocation\(/);
+  assert.match(serviceSource, /private async installPythonVenvPipTool\(/);
   assert.match(serviceSource, /private shouldUseSystemCommandFallback\(/);
   assert.match(serviceSource, /private async probeSystemCommandToolStatus\(/);
+  assert.match(serviceSource, /installerType,/);
   assert.match(
     serviceSource,
     /private resolveSystemCommandTool\(\s*manifest: ToolchainManifest,\s*toolId: string\s*\): \{/
@@ -70,7 +78,7 @@ test("room tool service resolves toolchain manifests from installed and workspac
   );
   assert.match(
     serviceSource,
-    /join\(Paths\.getRoomsWorkspaceDir\(\), paths\.roomId, "shared", "data", "tools", "toolchain\.manifest\.json"\)/
+    /join\(\s*Paths\.getRoomsWorkspaceDir\(\),\s*paths\.roomId,\s*"shared",\s*"data",\s*"tools",\s*"toolchain\.manifest\.json"\s*\)/
   );
   assert.match(serviceSource, /const manifestPath = candidatePaths\.find\(\(candidate\) => existsSync\(candidate\)\);/);
 });

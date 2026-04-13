@@ -77,6 +77,7 @@ type LaboratoryUiShellCompositionDeps = {
   getSourceModeOptions: () => unknown[];
   getSourceSnapshot: () => unknown;
   getToolEntry: (toolId: unknown) => unknown;
+  getToolRegistry: () => unknown[];
   getYtDlpForm: () => unknown;
   handleHostMessage: (message: unknown) => void;
   isAudioAnalysisFeature: () => boolean;
@@ -231,6 +232,7 @@ export function createLaboratoryUiShellComposition(deps: LaboratoryUiShellCompos
     getProfileTargetSummary: deps.getProfileTargetSummary,
     getProjectProfile: deps.getProjectProfile,
     getSourceSnapshot: deps.getSourceSnapshot,
+    getToolRegistry: deps.getToolRegistry,
     isAudioAnalysisFeature: deps.isAudioAnalysisFeature,
     openReport: deps.openReport,
     openSettingsOverlay: deps.openSettingsOverlay,
@@ -246,6 +248,7 @@ export function createLaboratoryUiShellComposition(deps: LaboratoryUiShellCompos
     state: deps.state,
     syncDraftField: deps.syncDraftField,
     syncLocalEditField: deps.syncLocalEditField,
+    text: deps.text,
     toRecord: deps.toRecord,
     toggleWorkbenchModuleSelection: deps.toggleWorkbenchModuleSelection,
     toggleCleanup: deps.toggleCleanup,

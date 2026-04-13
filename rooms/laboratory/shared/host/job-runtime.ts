@@ -42,6 +42,33 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
       .filter(predicate);
   }
 
+  async function cancelJobById(
+    api: unknown,
+    runtime: JobRuntime,
+    jobId: string,
+    requestId: string
+  ) {
+    const job = runtime.jobs[jobId];
+    if (!job) {
+      return null;
+    }
+
+    const jobEntry = toJobEntry(jobId, job);
+    await cancelRoomTool(roomId, jobEntry.jobId, requestId);
+    pushJobState(api, {
+      requestId,
+      jobId: jobEntry.jobId,
+      action: jobEntry.action,
+      projectId: jobEntry.projectId,
+      toolId: jobEntry.toolId,
+      featureStage: jobEntry.featureStage || "source",
+      stage: "cancelled",
+      message: "Cancelled by operator.",
+    });
+    clearJob(runtime, jobEntry.jobId);
+    return jobEntry;
+  }
+
   function cancelFeatureJobs(
     api: unknown,
     runtime: JobRuntime,
@@ -205,6 +232,7 @@ export function createLaboratoryJobRuntime(deps: JobRuntimeDeps) {
   }
 
   return {
+    cancelJobById,
     cancelEditJobsForProject,
     cancelProcessJobsForProject,
     cancelProfileJobsForProject,

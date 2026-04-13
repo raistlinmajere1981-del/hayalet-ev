@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { InstalledRoomRecord } from "../../src/types/rooms.ts";
 import {
   buildRoomNavMarkup,
@@ -64,4 +65,15 @@ test("secondary room markup renders deterministic nav and page metadata", () => 
   assert.match(navMarkup, /Workshop/);
   assert.match(pageMarkup, /id="page-room-workshop"/);
   assert.match(pageMarkup, /data-room-id="workshop"/);
+});
+
+test("room webview preload delays the fallback room-ready signal when runtimes self-report readiness", () => {
+  const preloadSource = readFileSync("electron/room-webview-preload.cjs", "utf8");
+
+  assert.match(preloadSource, /let pendingAutoRoomReadyTimer = null;/);
+  assert.match(preloadSource, /let explicitRoomReadySent = false;/);
+  assert.match(preloadSource, /explicitRoomReadySent = true;/);
+  assert.match(preloadSource, /clearPendingAutoRoomReady\(\);/);
+  assert.match(preloadSource, /pendingAutoRoomReadyTimer = globalThis\.setTimeout\(/);
+  assert.match(preloadSource, /if \(explicitRoomReadySent\) \{\s*return;\s*\}/);
 });

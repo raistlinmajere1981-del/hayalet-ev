@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-12T18:58:27.167Z",
+  "generatedAt": "2026-04-13T08:16:15.694Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -17,12 +17,12 @@
   },
   "stats": {
     "filesScanned": 480,
-    "filesWithComments": 82,
-    "commentsIndexed": 204,
-    "fileLevelComments": 150,
+    "filesWithComments": 83,
+    "commentsIndexed": 205,
+    "fileLevelComments": 151,
     "symbolLevelComments": 54,
     "prefixCounts": {
-      "none": 39,
+      "none": 40,
       "AI": 1,
       "NOTE": 162,
       "WARNING": 2,
@@ -1043,6 +1043,32 @@
           "endLine": 237,
           "text": "NOTE: Bootstrap installs stay ordered because each run rewrites the shared registry file.",
           "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "electron/room-webview-preload.cjs",
+      "totalComments": 1,
+      "byKind": {
+        "fallback": 1
+      },
+      "byPrefix": {
+        "none": 1,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "fallback",
+          "startLine": 138,
+          "endLine": 138,
+          "text": "Delay the preload fallback so explicit room bootstraps do not hydrate twice.",
+          "prefix": null,
           "scopeType": "file",
           "scopeName": null
         }

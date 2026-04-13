@@ -326,6 +326,7 @@ export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectR
     featureIds: deps.featureIds,
     getDefaultMode: preset.getDefaultMode,
     getDefaultSourceType: preset.getDefaultSourceType,
+    getDefaultYoutubePreset: preset.getDefaultYoutubePreset,
     getMediaProfileStateRuntime() {
       return mediaProfileState;
     },

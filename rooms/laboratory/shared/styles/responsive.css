@@ -45,9 +45,20 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
     grid-template-columns: 1fr;
   }
 
+  .lab-center-layout,
   .lab-center-grid,
   .lab-summary-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lab-center-sidebar {
+    position: static;
+    top: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lab-tool-helper__meta-grid {
+    grid-template-columns: 1fr;
   }
 
   .lab-side-stack {
@@ -80,6 +91,8 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
   .lab-stage-rail,
   .lab-preview-card,
   .lab-report-hero,
+  .lab-center-layout,
+  .lab-center-sidebar,
   .lab-center-grid,
   .lab-summary-cards,
   .lab-side-stack,
@@ -110,6 +123,21 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
   }
 
   .lab-toggle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lab-tool-card__head,
+  .lab-tool-helper__section-head,
+  .lab-tool-helper__next {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lab-tool-helper__command {
+    grid-template-columns: 1fr;
+  }
+
+  .lab-tool-helper__platforms {
     grid-template-columns: 1fr;
   }
 }

@@ -367,6 +367,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     audioFeatureId: deps.audioFeatureId,
     buildSubtitleEditSummary: subtitleDocument.buildSubtitleEditSummary,
     callRoomTools: io.callRoomTools,
+    cancelJobById: projectRuntimes.jobRuntime.cancelJobById,
     cancelEditJobsForProject: projectRuntimes.jobRuntime.cancelEditJobsForProject,
     cancelFeatureProcess: processDelegates.cancelFeatureProcess,
     cancelProfileJobsForProject: projectRuntimes.jobRuntime.cancelProfileJobsForProject,

@@ -32,6 +32,38 @@
     "operationsTitle": "Live operations",
     "operationsFallback": "Room job",
     "operationsEmpty": "No active dependency or model operation is running.",
+    "operationsMeta": {
+      "cancelAction": "Cancel",
+      "operationLabel": "Operation",
+      "stepLabel": "Step",
+      "transferLabel": "Transfer",
+      "actions": {
+        "tool-install": "Tool install",
+        "tool-update": "Tool update",
+        "profile-model-install": "Profile model download",
+        "source-download-url": "Direct URL intake",
+        "source-download-youtube": "YouTube intake",
+        "subtitle-source-download-url": "Subtitle URL intake",
+        "subtitle-source-download-youtube": "YouTube subtitle intake",
+        "subtitle-source-discover-youtube": "YouTube subtitle discovery"
+      },
+      "operations": {
+        "download-file": "Downloading file",
+        "tool-run": "Running tool command",
+        "tool-install": "Install task running",
+        "tool-update": "Update task running",
+        "delete-path": "Cleaning temporary files"
+      },
+      "stages": {
+        "queued": "Queued",
+        "running": "Running",
+        "stdout": "Live output",
+        "stderr": "Warning stream",
+        "completed": "Completed",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      }
+    },
     "toolGridTitle": "Tool inventory",
     "modelGridTitle": "Profile model inventory",
     "dependency": {
@@ -172,12 +204,43 @@
         "missing": "Missing",
         "installed": "Installed",
         "updateAvailable": "Update available",
+        "appInstall": "In-app install ready",
         "manualSetup": "Manual setup needed",
         "manualReady": "System tool detected",
         "ready": "Ready",
         "idle": "Idle",
         "error": "Error",
         "planned": "Planned"
+      },
+      "helper": {
+        "toggleAction": "Setup Helper",
+        "collapseAction": "Hide Helper",
+        "title": "Setup Helper",
+        "diagnosisLabel": "Diagnosis",
+        "diagnosisMissing": "The expected host command is not visible on this system yet.",
+        "diagnosisProbeFailed": "The host command was found, but the probe validation failed.",
+        "diagnosisReady": "The host command is available. Re-run the probe if you need to verify it again.",
+        "appInstallHint": "Laboratory can install this tool into a room-local Python runtime.",
+        "hostLabel": "Host expectation",
+        "expectedCommandLabel": "Laboratory looks for this command.",
+        "envOverrideLabel": "Supported env override",
+        "unlockLabel": "After install",
+        "unlockFallback": "The related modules unlock once this host runtime is available.",
+        "commandsLabel": "Install commands",
+        "commandsHint": "Run these on the host, then refresh the probe.",
+        "commandsEmpty": "No ready-made command is listed for this platform. Install the host tool and expose the expected binary on PATH.",
+        "copyCommandAction": "Copy Command",
+        "notesLabel": "Additional notes",
+        "setupHintLabel": "Laboratory hint",
+        "nextStepLabel": "Next step",
+        "nextStepBody": "Re-run the validation from this card after the install is complete.",
+        "copySuccess": "Command copied to clipboard.",
+        "copyFailure": "The command could not be copied to the clipboard.",
+        "platforms": {
+          "linux": "Linux",
+          "macos": "macOS",
+          "windows": "Windows"
+        }
       }
     },
     "messages": {

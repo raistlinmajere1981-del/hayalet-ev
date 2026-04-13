@@ -2,8 +2,11 @@ type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryJobRecord = LaboratoryRecord & {
   action: string | null;
+  bytesReceived: number | null;
+  bytesTotal: number | null;
   featureStage: string | null;
   message: string | null;
+  operation: string | null;
   percent: number | null;
   projectId: string | null;
   requestId: string | null;
@@ -36,9 +39,12 @@ type LaboratoryRoomToolsEventPayload = LaboratoryRecord & {
 
 type LaboratoryRoomToolsProgressPayload = {
   action: string | null;
+  bytesReceived: number | null;
+  bytesTotal: number | null;
   featureStage: string | null;
   jobId: string;
   message: string | null;
+  operation: string | null;
   percent: number | null;
   projectId: string | null;
   requestId: string | null;
@@ -86,6 +92,13 @@ export function createLaboratoryRoomToolsProgressRuntime(
 
     const job = runtime.jobs[jobId];
     job.stage = asNonEmptyString(eventPayload.stage) || job.stage;
+    job.operation = asNonEmptyString(eventPayload.operation) || job.operation;
+    if (typeof eventPayload.bytesReceived === "number") {
+      job.bytesReceived = eventPayload.bytesReceived;
+    }
+    if (typeof eventPayload.bytesTotal === "number") {
+      job.bytesTotal = eventPayload.bytesTotal;
+    }
     if (typeof eventPayload.percent === "number") {
       job.percent = eventPayload.percent;
     } else if (
@@ -117,8 +130,11 @@ export function createLaboratoryRoomToolsProgressRuntime(
       projectId: job.projectId,
       toolId: job.toolId,
       featureStage: job.featureStage || null,
+      operation: job.operation || null,
       stage: job.stage,
       percent: job.percent,
+      bytesReceived: job.bytesReceived,
+      bytesTotal: job.bytesTotal,
       message: job.message,
     };
   }

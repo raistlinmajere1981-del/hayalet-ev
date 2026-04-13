@@ -21,6 +21,7 @@
 .lab-overlay__panel {
   position: relative;
   z-index: 1;
+  --lab-overlay-sticky-offset: calc(clamp(1rem, 1.8vw, 1.35rem) + 4.9rem);
   justify-self: center;
   width: min(94rem, 100%);
   max-width: 100%;
@@ -102,6 +103,7 @@
   .lab-overlay__panel {
     border-radius: 1.15rem;
     padding: 0.9rem;
+    --lab-overlay-sticky-offset: 0.9rem;
   }
 
   .lab-overlay__header {

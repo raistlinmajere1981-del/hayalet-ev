@@ -47,6 +47,25 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
     toRecord,
   } = deps;
 
+  // AI: Coalesce rapid-fire host notifications into a single render.
+  // Host sends media-state + source-state + media-action-result +
+  // source-action-result for every action; without debounce each
+  // triggers a full innerHTML rebuild causing visible button flicker.
+  // IPC messages arrive in separate event-loop turns (~30ms apart)
+  // so microtask batching is insufficient — trailing setTimeout
+  // debounce is required.
+  let renderTimerId: ReturnType<typeof setTimeout> | null = null;
+
+  function scheduleRender() {
+    if (renderTimerId !== null) {
+      clearTimeout(renderTimerId);
+    }
+    renderTimerId = setTimeout(function () {
+      renderTimerId = null;
+      render();
+    }, 80);
+  }
+
   function toMessageRecord(value: unknown): LaboratoryHostMessageRecord {
     return toRecord(value);
   }
@@ -90,7 +109,7 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
         state.translations = toRecord(payload.translations);
       }
       state.context = normalizeContext(payload);
-      render();
+      scheduleRender();
       return;
     }
 
@@ -106,7 +125,7 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
         workbench: toRecord(snapshotRecord["workbench"]),
       });
       state.sourceSnapshot = snapshot;
-      render();
+      scheduleRender();
       return;
     }
 
@@ -123,7 +142,7 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
           setLastAction(errorMessage);
         }
       }
-      render();
+      scheduleRender();
       return;
     }
 
@@ -135,7 +154,7 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
       if (jobMessage !== null) {
         setLastAction(jobMessage);
       }
-      render();
+      scheduleRender();
     }
   }
 

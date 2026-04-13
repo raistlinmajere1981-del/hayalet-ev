@@ -23,6 +23,7 @@ export function createLaboratoryUiActionRouter(deps: LaboratoryUiActionRouterDep
     getProfileTargetSummary,
     getProjectProfile,
     getSourceSnapshot,
+    getToolRegistry,
     isAudioAnalysisFeature,
     openReport,
     openSettingsOverlay,
@@ -38,6 +39,7 @@ export function createLaboratoryUiActionRouter(deps: LaboratoryUiActionRouterDep
     state,
     syncDraftField,
     syncLocalEditField,
+    text,
     toRecord,
     toggleWorkbenchModuleSelection,
     toggleCleanup,
@@ -51,6 +53,7 @@ export function createLaboratoryUiActionRouter(deps: LaboratoryUiActionRouterDep
     getActiveEditOutput,
     getProfileTargetSummary,
     getSourceSnapshot,
+    getToolRegistry,
     isAudioAnalysisFeature,
     openReport,
     openSettingsOverlay,
@@ -63,6 +66,7 @@ export function createLaboratoryUiActionRouter(deps: LaboratoryUiActionRouterDep
     sendSourceAction,
     state,
     syncDraftField,
+    text,
     toggleWorkbenchModuleSelection,
   });
 

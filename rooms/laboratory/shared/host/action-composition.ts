@@ -19,6 +19,7 @@ type LaboratoryMediaActionRuntimeDeps = {
   applyProfilePresetPatch: UnknownFn;
   asNonEmptyString: (value: unknown) => string | null;
   audioFeatureId: string;
+  cancelJobById: UnknownFn;
   cancelEditJobsForProject: UnknownFn;
   cancelFeatureProcess: UnknownFn;
   cancelProfileJobsForProject: UnknownFn;
@@ -92,6 +93,7 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     applyProfilePresetPatch: deps.applyProfilePresetPatch,
     asNonEmptyString: deps.asNonEmptyString,
     audioFeatureId: deps.audioFeatureId,
+    cancelJobById: deps.cancelJobById,
     cancelEditJobsForProject: deps.cancelEditJobsForProject,
     cancelFeatureProcess: deps.cancelFeatureProcess,
     cancelProfileJobsForProject: deps.cancelProfileJobsForProject,

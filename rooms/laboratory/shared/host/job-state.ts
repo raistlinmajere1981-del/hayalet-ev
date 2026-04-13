@@ -4,8 +4,11 @@ type LaboratoryJobStateRecord = {
   projectId: string | null;
   toolId: string | null;
   featureStage: string | null;
+  operation: string | null;
   stage: "queued";
   percent: number | null;
+  bytesReceived: number | null;
+  bytesTotal: number | null;
   message: string | null;
 };
 
@@ -20,6 +23,8 @@ type LaboratoryJobRegistrationOptions = {
   projectId?: string | null;
   toolId?: string | null;
   featureStage?: string | null;
+  operation?: string | null;
+  message?: string | null;
 };
 
 type LaboratoryJobStateRuntimeDeps = {
@@ -44,9 +49,12 @@ export function createLaboratoryJobStateRuntime(deps: LaboratoryJobStateRuntimeD
       projectId: options.projectId || null,
       toolId: options.toolId || null,
       featureStage: options.featureStage || null,
+      operation: options.operation || null,
       stage: "queued",
       percent: null,
-      message: null,
+      bytesReceived: null,
+      bytesTotal: null,
+      message: options.message || null,
     };
     runtime.jobs[options.jobId] = nextJob;
     return nextJob;
