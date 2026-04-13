@@ -455,12 +455,14 @@ test("laboratory audio-analysis locks a persistent v2-ready contract and plannin
   assert.match(trLocale, /tamamen local pyAudioAnalysis yolu ile calisir/);
   assert.match(enLocale, /dominant pitch-class/);
   assert.match(trLocale, /baskin pitch-class/);
-  assert.equal(toolchain.tools.opensmile.availability, "system-command");
+  assert.equal(toolchain.tools.opensmile.availability, "installable");
   assert.equal(toolchain.tools.yamnet.availability, "system-command");
   assert.equal(toolchain.tools.librosa.availability, "system-command");
   assert.equal(toolchain.tools.demucs.availability, "system-command");
   assert.equal(toolchain.tools.essentia.availability, "system-command");
   assert.equal(toolchain.tools.pyaudioanalysis.availability, "system-command");
+  assert.equal(toolchain.tools.opensmile.releaseProvider?.owner, "audeering");
+  assert.equal(toolchain.tools.opensmile.releaseProvider?.repo, "opensmile");
   assert.equal(toolchain.tools.opensmile.systemCommand.executableName, "SMILExtract");
   assert.equal(toolchain.tools.yamnet.systemCommand.executableName, "python3");
   assert.equal(toolchain.tools.librosa.systemCommand.executableName, "python3");
@@ -468,6 +470,12 @@ test("laboratory audio-analysis locks a persistent v2-ready contract and plannin
   assert.equal(toolchain.tools.essentia.systemCommand.executableName, "python3");
   assert.equal(toolchain.tools.pyaudioanalysis.systemCommand.executableName, "python3");
   assert.equal(toolchain.tools.opensmile.installer, undefined);
+  assert.equal(toolchain.tools.opensmile.assets?.["linux-x64"]?.executableName, "SMILExtract");
+  assert.deepEqual(toolchain.tools.opensmile.assets?.["linux-x64"]?.companionExecutables, ["libSMILEapi.so"]);
+  assert.equal(toolchain.tools.opensmile.assets?.["darwin-arm64"]?.executableName, "SMILExtract");
+  assert.deepEqual(toolchain.tools.opensmile.assets?.["darwin-arm64"]?.companionExecutables, ["libSMILEapi.dylib"]);
+  assert.equal(toolchain.tools.opensmile.assets?.["win32-x64"]?.executableName, "SMILExtract.exe");
+  assert.deepEqual(toolchain.tools.opensmile.assets?.["win32-x64"]?.companionExecutables, ["SMILEapi.dll"]);
   assert.equal(toolchain.tools.yamnet.installer?.type, "python-venv-pip");
   assert.equal(toolchain.tools.librosa.installer?.type, "python-venv-pip");
   assert.equal(toolchain.tools.demucs.installer?.type, "python-venv-pip");
@@ -507,7 +515,9 @@ test("laboratory audio-analysis locks a persistent v2-ready contract and plannin
   assert.equal(speakerProvider?.toolId, "pyaudioanalysis");
   assert.equal(speakerProvider?.installStrategy, "shared-room-tool-manual");
   assert.equal(prosodyProvider?.status, "ready");
+  assert.equal(prosodyProvider?.installStrategy, "shared-room-tool");
   assert.equal(emotionProvider?.status, "ready");
+  assert.equal(emotionProvider?.installStrategy, "shared-room-tool");
   assert.equal(soundEventsProvider?.status, "ready");
   assert.equal(sourceSeparationProvider?.status, "ready");
   assert.equal(musicRhythmProvider?.status, "ready");

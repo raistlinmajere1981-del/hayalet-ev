@@ -43,7 +43,12 @@ export function createMediaAnalysisEditPanels(deps: MediaAnalysisEditPanelsDeps)
   } = mediaAnalysisEditModePanels;
 
   const mediaAnalysisEditOutputPanels = createMediaAnalysisEditOutputPanels(deps);
-  const { renderEditActionsPanel, renderEditOutputsPanel, renderEditSummaryPanel } =
+  const {
+    renderEditActionsPanel,
+    renderEditOutputsPanel,
+    renderEditProgressPanel,
+    renderEditSummaryPanel,
+  } =
     mediaAnalysisEditOutputPanels;
 
   return {
@@ -55,6 +60,7 @@ export function createMediaAnalysisEditPanels(deps: MediaAnalysisEditPanelsDeps)
     renderEditModePanel,
     renderEditOutputsPanel,
     renderEditPresetChooser,
+    renderEditProgressPanel,
     renderEditRangeField,
     renderEditSelectField,
     renderEditSummaryPanel,

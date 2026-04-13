@@ -118,6 +118,8 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     clearJob: projectRuntimes.jobState.clearJob,
     clone: deps.clone,
     clampNumber: hostUtils.clampNumber,
+    clampProfileTranscriptSampleSeconds:
+      projectRuntimes.mediaProfileState.clampProfileTranscriptSampleSeconds,
     createDefaultEditState: preset.createDefaultEditState,
     createEmptyProfilePreflight: preset.createEmptyProfilePreflight,
     createProfileSignal: projectRuntimes.analysisArtifact.createProfileSignal,
@@ -205,6 +207,8 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
       return Array.isArray(modules) ? modules.map(deps.toRecord) : [];
     },
     getToolManifest: bootstrap.getToolManifest,
+    generateProcessMetadataArtifact:
+      projectRuntimes.analysisArtifact.generateProcessMetadataArtifact,
     listDirectory: io.listDirectory,
     markFeatureReportStale: deps.markFeatureReportStale,
     maybeRunWhisperProfileSample: projectRuntimes.analysisArtifact.maybeRunWhisperProfileSample,

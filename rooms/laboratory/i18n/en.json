@@ -472,6 +472,12 @@
       "outputsTitle": "Derived Outputs",
       "outputsSubtitle": "Each applied render is stored under the project and can be handed to later stages.",
       "outputsEmpty": "No derived outputs yet. Generate one after previewing the recipe.",
+      "progressTitle": "Edit Job Flow",
+      "progressSubtitle": "Track preview, render, and cancel operations here.",
+      "progressIdle": "No active edit job. Progress appears here when you start a preview or a derived render.",
+      "progressUpdated": "Last update",
+      "progressRunningHint": "The background task is still running; this panel refreshes as progress arrives.",
+      "progressToolOutputHidden": "Verbose tool output was hidden here. Open logs if you need the full command stream.",
       "ffmpegMissing": "FFmpeg is required for the edit stage. Install or update it from settings.",
       "sourceRequired": "The edit stage stays read-only until the project has a prepared source file.",
       "sourceAsset": "Source Asset",
@@ -931,7 +937,7 @@
         },
         "prosody": {
           "title": "Prosody",
-          "summary": "Speech pacing, contour, and estimated pause metrics now run when the manual openSMILE tool is ready."
+          "summary": "Speech pacing, contour, and estimated pause metrics now run when the room-local openSMILE install is ready."
         },
         "emotion": {
           "title": "Emotion heuristics",
@@ -966,11 +972,11 @@
       },
       "prosody-open-smile": {
         "title": "Prosody descriptor runner",
-        "summary": "Manual openSMILE-backed runner for pacing, contour, and pause-oriented prosody summaries."
+        "summary": "Shared room-local openSMILE runner for pacing, contour, and pause-oriented prosody summaries."
       },
       "emotion-heuristic": {
         "title": "Emotion heuristic adapter",
-        "summary": "Manual openSMILE-backed heuristic layer with explicit confidence and disclaimer handling."
+        "summary": "Shared room-local openSMILE heuristic layer with explicit confidence and disclaimer handling."
       },
       "sound-event-classifier": {
         "title": "Sound event classifier",

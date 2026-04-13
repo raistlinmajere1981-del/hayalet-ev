@@ -402,6 +402,7 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
       case "profile-preset":
         sendMediaAction("profile-apply-preset", {
           presetId: value,
+          outputId: getDerivedProfileOutputId(),
           featureStage: "profile",
         });
         return;

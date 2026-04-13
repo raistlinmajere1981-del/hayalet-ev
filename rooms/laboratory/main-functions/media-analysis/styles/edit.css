@@ -1,5 +1,16 @@
+.lab-preview-card--edit {
+  min-height: 22rem;
+  align-items: stretch;
+}
+
 .lab-edit-frame {
   isolation: isolate;
+  min-height: 22rem;
+}
+
+.lab-preview-card--edit .lab-preview-copy {
+  align-content: start;
+  min-height: 22rem;
 }
 
 .lab-edit-overlay__focus {

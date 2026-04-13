@@ -1570,3 +1570,48 @@ test("laboratory source stage wires the generic room-tools ipc seam", () => {
   assert.match(globalTypes, /roomToolsCall: \(request: RoomToolCallRequest\) => Promise<RoomToolCallResult>;/);
   assert.match(globalTypes, /onRoomToolsProgress: \(callback: \(event: RoomToolProgressEvent\) => void\) => void;/);
 });
+
+test("laboratory profile runtime keeps clamp wiring and preset fallback guards intact", () => {
+  const featureRuntimesSource = readFileSync("rooms/laboratory/host/feature-runtimes.ts", "utf8");
+  const profileStateSource = readFileSync(
+    "rooms/laboratory/main-functions/media-analysis/host/profile-state.ts",
+    "utf8"
+  );
+  const actionRouterActionsSource = readFileSync(
+    "rooms/laboratory/shared/ui/action-router-actions.ts",
+    "utf8"
+  );
+
+  assert.match(
+    featureRuntimesSource,
+    /clampProfileTranscriptSampleSeconds:\s*projectRuntimes\.mediaProfileState\.clampProfileTranscriptSampleSeconds,/
+  );
+  assert.match(
+    profileStateSource,
+    /function markProfileAsStale\(\s*nextProject:\s*MediaProfileProjectRecord,\s*reason:\s*string,\s*options:\s*MediaProfileRecord = \{\}\s*\)/
+  );
+  assert.match(profileStateSource, /const staleOptions = toRecord\(options\);/);
+  assert.match(
+    actionRouterActionsSource,
+    /case "profile-preset":[\s\S]*sendMediaAction\("profile-apply-preset", \{[\s\S]*outputId:\s*getDerivedProfileOutputId\(\),/
+  );
+});
+
+test("laboratory source signatures ignore project timestamp churn and preflight footer stays quiet", () => {
+  const projectManifestSource = readFileSync(
+    "rooms/laboratory/shared/host/project-manifests.ts",
+    "utf8"
+  );
+  const hostMessagesSource = readFileSync("rooms/laboratory/shared/ui/host-messages.ts", "utf8");
+
+  assert.doesNotMatch(
+    projectManifestSource,
+    /function buildSourceTargetSignature\([\s\S]*updatedAt:\s*asNonEmptyString\(projectRecord\.updatedAt\),/
+  );
+  assert.match(hostMessagesSource, /function shouldHideInlineActionResult/);
+  assert.match(
+    hostMessagesSource,
+    /return actionId === "profile-run-preflight" \|\| actionId === "profile-cancel-preflight";/
+  );
+  assert.match(hostMessagesSource, /function shouldHideInlineJobProgress/);
+});

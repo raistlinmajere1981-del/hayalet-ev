@@ -34,7 +34,14 @@
   border: 1px solid var(--lab-line);
   background: rgb(255 255 255 / 0.04);
   color: var(--lab-ink);
+  color-scheme: dark;
   font: inherit;
+}
+
+.lab-select option,
+.lab-select optgroup {
+  color: var(--lab-ink);
+  background: #0c141d;
 }
 
 .lab-chip-row {

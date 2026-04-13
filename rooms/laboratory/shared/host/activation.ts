@@ -72,7 +72,10 @@ export function createLaboratoryHostActivation(deps: LaboratoryHostActivationDep
 
           const eventPayload = toRecord(payload) as LaboratoryHostEventPayload;
           if (eventPayload.type === "host-context") {
-            saveContext(api, eventPayload);
+            saveContext(
+              api,
+              eventPayload.payload !== undefined ? toRecord(eventPayload.payload) : eventPayload
+            );
             pushMediaState(api, runtime, null);
             return;
           }

@@ -80,7 +80,6 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     featureText,
     getCurrentFeatureReportRecord,
     getEffectiveMediaAsset,
-    getFeaturePreviewImage,
     getProjectProcess,
     getProjectReport,
     getWorkbench,
@@ -358,17 +357,24 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     const runningJob = toJobRecord(getRunningReportJob());
     const previewUrl =
       typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== ""
-        ? asset.previewUrl
-        : getFeaturePreviewImage();
+        ? asset.previewUrl.trim()
+        : null;
+    const heroClass = previewUrl ? "lab-panel lab-report-hero" : "lab-panel lab-report-hero lab-report-hero--text-only";
 
     return `
       <div class="lab-layout">
         <section class="lab-main-stack">
           ${renderStageIntro("report")}
-          <section class="lab-panel lab-report-hero">
-            <div class="lab-report-hero__media">
-              <img class="lab-report-hero__image" src="${previewUrl}" alt="" />
-            </div>
+          <section class="${heroClass}">
+            ${
+              previewUrl
+                ? `
+                  <div class="lab-report-hero__media">
+                    <div class="lab-report-hero__image" style="background-image:url('${escapeHtml(previewUrl)}')"></div>
+                  </div>
+                `
+                : ""
+            }
             <div class="lab-report-hero__copy">
               <div class="lab-panel__header">
                 <h2 class="lab-panel__title">${escapeHtml(featureText(["report", "overviewTitle"]))}</h2>

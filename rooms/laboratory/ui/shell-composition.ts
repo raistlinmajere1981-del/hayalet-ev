@@ -23,6 +23,7 @@ type LaboratoryMediaAnalysisEditStageDeps = {
   renderEditModePanel: () => string;
   renderEditOutputsPanel: () => string;
   renderEditPresetChooser: () => string;
+  renderEditProgressPanel: () => string;
   renderEditSummaryPanel: () => string;
   renderEditWorkspacePanel: () => string;
   renderStageIntro: (stageId: string) => string;
@@ -100,6 +101,7 @@ type LaboratoryUiShellCompositionDeps = {
   renderEditModePanel: () => string;
   renderEditOutputsPanel: () => string;
   renderEditPresetChooser: () => string;
+  renderEditProgressPanel: () => string;
   renderEditSummaryPanel: () => string;
   renderEditWorkspacePanel: () => string;
   renderMediaAnalysisEditStage: (deps: LaboratoryMediaAnalysisEditStageDeps) => string;
@@ -185,6 +187,7 @@ export function createLaboratoryUiShellComposition(deps: LaboratoryUiShellCompos
       renderEditModePanel: deps.renderEditModePanel,
       renderEditOutputsPanel: deps.renderEditOutputsPanel,
       renderEditPresetChooser: deps.renderEditPresetChooser,
+      renderEditProgressPanel: deps.renderEditProgressPanel,
       renderEditSummaryPanel: deps.renderEditSummaryPanel,
       renderEditWorkspacePanel: deps.renderEditWorkspacePanel,
       renderStageIntro: deps.renderStageIntro,

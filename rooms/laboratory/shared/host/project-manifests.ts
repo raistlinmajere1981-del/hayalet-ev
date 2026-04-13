@@ -224,7 +224,6 @@ export function createLaboratoryProjectManifestRuntime(deps: LaboratoryProjectMa
       mimeType: asNonEmptyString(sourceRecord.mimeType),
       durationSeconds: asNumber(metadata["durationSeconds"]),
       sizeBytes: asNumber(metadata["sizeBytes"]),
-      updatedAt: asNonEmptyString(projectRecord.updatedAt),
     });
   }
 

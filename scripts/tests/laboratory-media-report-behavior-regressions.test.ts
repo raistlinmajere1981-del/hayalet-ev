@@ -35,6 +35,8 @@ test("laboratory host composes and exports report artifacts from persisted proce
   assert.match(reportStageSource, /data-action="export-report"/);
   assert.match(reportStageSource, /featureText\(\["report", "actions", "export"\]\)/);
   assert.match(reportStageSource, /featureText\(\["report", "stagedHint"\]\)/);
+  assert.match(reportStageSource, /lab-report-hero--text-only/);
+  assert.doesNotMatch(reportStageSource, /:\s*getFeaturePreviewImage\(\)/);
 });
 
 test("laboratory UI renders report findings and export history from room-managed snapshots", () => {
@@ -88,6 +90,7 @@ test("laboratory UI renders report findings and export history from room-managed
   assert.match(reportStageSource, /data-action="export-report"/);
   assert.match(reportStageSource, /featureText\(\["report", "actions", "export"\]\)/);
   assert.match(reportStageSource, /featureText\(\["report", "stagedHint"\]\)/);
+  assert.match(reportStageSource, /style="background-image:url\('/);
 });
 
 test("laboratory translations and tool metadata describe the closeout report stage honestly", () => {

@@ -185,9 +185,11 @@ export function createLaboratoryFeatureStagePanelsRuntime(deps: LaboratoryFeatur
     return asRecord(laboratoryStageAccessorsRuntime.getCurrentDrafts());
   }
 
-  function getProfilePresetOptionsSafe() {
-    const presetOptions: unknown = laboratoryStageAccessorsRuntime.getProfilePresetOptions();
-    return Array.isArray(presetOptions) ? presetOptions.map(asRecord) : [];
+  function getCurrentEditPresetOptionsSafe() {
+    const presets = asRecord(getEditPresets()["presets"]);
+    const presetsByKind = asRecord(presets[getCurrentSourceKind()]);
+    const presetList = presetsByKind[getCurrentEditMode()];
+    return Array.isArray(presetList) ? presetList.map(asRecord) : [];
   }
 
   function collectEditStageJobsSafe(projectJobs: unknown[]) {
@@ -234,7 +236,7 @@ export function createLaboratoryFeatureStagePanelsRuntime(deps: LaboratoryFeatur
     formatDuration,
     state,
     getCurrentSourceKind,
-    getCurrentEditPresetOptions: getProfilePresetOptionsSafe,
+    getCurrentEditPresetOptions: getCurrentEditPresetOptionsSafe,
     getCurrentEditDraft: getCurrentEditDraftSafe,
     getProjectSource,
     getCurrentEditRecipe,
@@ -340,6 +342,7 @@ export function createLaboratoryFeatureStagePanelsRuntime(deps: LaboratoryFeatur
     renderEditModePanel: mediaAnalysisEditPanels.renderEditModePanel,
     renderEditOutputsPanel: mediaAnalysisEditPanels.renderEditOutputsPanel,
     renderEditPresetChooser: mediaAnalysisEditPanels.renderEditPresetChooser,
+    renderEditProgressPanel: mediaAnalysisEditPanels.renderEditProgressPanel,
     renderEditRangeField: mediaAnalysisEditPanels.renderEditRangeField,
     renderEditSelectField: mediaAnalysisEditPanels.renderEditSelectField,
     renderEditSummaryPanel: mediaAnalysisEditPanels.renderEditSummaryPanel,

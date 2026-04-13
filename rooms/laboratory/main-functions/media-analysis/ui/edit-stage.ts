@@ -9,6 +9,7 @@ type MediaAnalysisEditStageDeps = {
   renderEditModePanel: () => string;
   renderEditOutputsPanel: () => string;
   renderEditPresetChooser: () => string;
+  renderEditProgressPanel: () => string;
   renderEditSummaryPanel: () => string;
   renderEditWorkspacePanel: () => string;
   renderStageIntro: (stageId: string) => string;
@@ -24,6 +25,7 @@ export function renderMediaAnalysisEditStage(deps: MediaAnalysisEditStageDeps): 
   const renderEditModePanel = deps.renderEditModePanel;
   const renderEditOutputsPanel = deps.renderEditOutputsPanel;
   const renderEditPresetChooser = deps.renderEditPresetChooser;
+  const renderEditProgressPanel = deps.renderEditProgressPanel;
   const renderEditSummaryPanel = deps.renderEditSummaryPanel;
   const renderEditWorkspacePanel = deps.renderEditWorkspacePanel;
   const renderStageIntro = deps.renderStageIntro;
@@ -52,6 +54,7 @@ export function renderMediaAnalysisEditStage(deps: MediaAnalysisEditStageDeps): 
         }
       </section>
       <aside class="lab-side-stack">
+        ${renderEditProgressPanel()}
         ${renderEditSummaryPanel()}
         ${renderEditOutputsPanel()}
       </aside>

@@ -188,8 +188,8 @@
     "opensmile": {
       "displayName": "openSMILE",
       "installDirName": "opensmile",
-      "availability": "system-command",
-      "installStrategy": "manual",
+      "availability": "installable",
+      "installStrategy": "automatic",
       "usedBy": ["Prosody checks", "Paralinguistic audio features"],
       "testImpact": ["audio-prosody", "voice-pattern-checks"],
       "readinessImpact": "Optional audio feature extraction stays unavailable until the host binary is installed.",
@@ -204,24 +204,62 @@
         "args": ["-h"],
         "versionRegex": "(?:openSMILE|SMILExtract)[^\\d]*(\\d+(?:\\.\\d+)+)"
       },
+      "releaseProvider": {
+        "type": "github-release",
+        "owner": "audeering",
+        "repo": "opensmile",
+        "releaseUrl": "https://github.com/audeering/opensmile/releases/latest"
+      },
+      "assets": {
+        "linux-x64": {
+          "assetMatch": "^opensmile-.*-linux-x86_64\\.zip$",
+          "archive": "zip",
+          "executableName": "SMILExtract",
+          "companionExecutables": ["libSMILEapi.so"]
+        },
+        "linux-arm64": {
+          "assetMatch": "^opensmile-.*-linux-armv8\\.zip$",
+          "archive": "zip",
+          "executableName": "SMILExtract",
+          "companionExecutables": ["libSMILEapi.so"]
+        },
+        "darwin-x64": {
+          "assetMatch": "^opensmile-.*-macos-x86_64\\.zip$",
+          "archive": "zip",
+          "executableName": "SMILExtract",
+          "companionExecutables": ["libSMILEapi.dylib"]
+        },
+        "darwin-arm64": {
+          "assetMatch": "^opensmile-.*-macos-armv8\\.zip$",
+          "archive": "zip",
+          "executableName": "SMILExtract",
+          "companionExecutables": ["libSMILEapi.dylib"]
+        },
+        "win32-x64": {
+          "assetMatch": "^opensmile-.*-windows-x86_64\\.zip$",
+          "archive": "zip",
+          "executableName": "SMILExtract.exe",
+          "companionExecutables": ["SMILEapi.dll"]
+        }
+      },
       "systemCommand": {
         "executableName": "SMILExtract",
-        "setupHint": "Install openSMILE on the host system so the SMILExtract binary is available on PATH, then refresh this tool from settings."
+        "setupHint": "Use the in-app install on supported runtimes, or install openSMILE on the host system so the SMILExtract binary is available on PATH, then refresh this tool from settings."
       },
       "manualGuide": {
         "linux": {
           "notes": [
-            "Install an openSMILE build for your distro, then ensure SMILExtract is available on PATH."
+            "If this runtime does not expose an in-app binary, install an openSMILE build for your distro and ensure SMILExtract is available on PATH."
           ]
         },
         "macos": {
           "notes": [
-            "Install openSMILE from a host package or local build, then expose SMILExtract on PATH."
+            "If this runtime does not expose an in-app binary, install openSMILE from a host package or local build, then expose SMILExtract on PATH."
           ]
         },
         "windows": {
           "notes": [
-            "Install the openSMILE host build and make sure SMILExtract.exe is available on PATH."
+            "If this runtime does not expose an in-app binary, install the openSMILE host build and make sure SMILExtract.exe is available on PATH."
           ]
         }
       }

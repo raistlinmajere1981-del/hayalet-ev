@@ -513,15 +513,18 @@ export function createMediaProfileStateRuntime(deps: MediaProfileStateRuntimeDep
   function markProfileAsStale(
     nextProject: MediaProfileProjectRecord,
     reason: string,
-    options: MediaProfileRecord
+    options: MediaProfileRecord = {}
   ): void {
     const profile = toRecord(nextProject["profile"]);
     const preflight = toRecord(profile["preflight"]);
+    const staleOptions = toRecord(options);
     nextProject["profile"] = {
       ...profile,
       dirty: true,
       targetOutputId:
-        options["clearTargetOutput"] === true ? null : asNonEmptyString(profile["targetOutputId"]),
+        staleOptions["clearTargetOutput"] === true
+          ? null
+          : asNonEmptyString(profile["targetOutputId"]),
       targetAssetSignature: null,
       lastError: null,
       lastActionAt: new Date().toISOString(),

@@ -2,6 +2,67 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { createRoomBuiltArtifact, createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
+import { createLaboratoryHostActivation } from "../../rooms/laboratory/shared/host/activation.ts";
+
+test("laboratory host activation unwraps host-context room-event payloads before saving context", () => {
+  const savedContexts: Array<Record<string, unknown>> = [];
+  const pushCalls: Array<string | null> = [];
+
+  const activation = createLaboratoryHostActivation({
+    createRuntimeState() {
+      return {};
+    },
+    ensureHydrated: async function () {},
+    ensureRoomToolsSubscription: function () {},
+    handleMediaAction: async function () {},
+    pushMediaState(_api, _runtime, requestId) {
+      pushCalls.push(requestId);
+    },
+    saveContext(_api, payload) {
+      savedContexts.push(payload);
+    },
+    tearDownRoomToolsSubscription: function () {},
+    toRecord(value) {
+      return value !== null && typeof value === "object" && Array.isArray(value) === false
+        ? (value as Record<string, unknown>)
+        : {};
+    },
+  });
+
+  const runtime = activation.activate({
+    log() {},
+  });
+
+  const nestedContext = {
+    roomId: "laboratory",
+    featureId: "audio-analysis",
+    workbench: {
+      activeModuleId: "audio-analysis",
+      selectedModuleIds: ["audio-analysis", "subtitle-analysis"],
+    },
+  };
+  runtime.onRoomEvent({
+    type: "host-context",
+    payload: nestedContext,
+  });
+
+  assert.deepEqual(savedContexts.at(-1), nestedContext);
+  assert.deepEqual(pushCalls, [null]);
+
+  const directContext = {
+    type: "host-context",
+    roomId: "laboratory",
+    featureId: "subtitle-analysis",
+    workbench: {
+      activeModuleId: "subtitle-analysis",
+      selectedModuleIds: ["subtitle-analysis"],
+    },
+  };
+  runtime.onRoomEvent(directContext);
+
+  assert.deepEqual(savedContexts.at(-1), directContext);
+  assert.deepEqual(pushCalls, [null, null]);
+});
 
 test("laboratory host action composition is extracted into a shared host boundary", async () => {
   const workspaceHostSource = readFileSync("rooms/laboratory/host/index.ts", "utf8");

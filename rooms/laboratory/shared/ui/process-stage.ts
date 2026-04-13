@@ -195,34 +195,36 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
           ${renderStageIntro("process")}
           ${renderFeatureRunMatrix()}
           <section class="lab-panel lab-process-panel">
-            ${
-              modules.length > 0
-                ? modules
-                    .map(function (moduleEntry, index) {
-                      const progress = getProcessModulePercent(moduleEntry);
-                      const summary =
-                        typeof moduleEntry.summary === "string" && moduleEntry.summary.trim() !== ""
-                          ? moduleEntry.summary
-                          : null;
-                      return `
-                        <article class="lab-process-row">
-                          <div class="lab-process-row__head">
-                            <div>
-                              <p class="lab-process-row__eyebrow">${String(index + 1)}</p>
-                              <h2 class="lab-process-row__title">${escapeHtml(getProcessModuleTitle(moduleEntry))}</h2>
+            <div class="lab-process-panel__body">
+              ${
+                modules.length > 0
+                  ? modules
+                      .map(function (moduleEntry, index) {
+                        const progress = getProcessModulePercent(moduleEntry);
+                        const summary =
+                          typeof moduleEntry.summary === "string" && moduleEntry.summary.trim() !== ""
+                            ? moduleEntry.summary
+                            : null;
+                        return `
+                          <article class="lab-process-row">
+                            <div class="lab-process-row__head">
+                              <div>
+                                <p class="lab-process-row__eyebrow">${String(index + 1)}</p>
+                                <h2 class="lab-process-row__title">${escapeHtml(getProcessModuleTitle(moduleEntry))}</h2>
+                              </div>
+                              <strong>${escapeHtml(formatStatusLabel(moduleEntry.status))} ${String(progress)}%</strong>
                             </div>
-                            <strong>${escapeHtml(formatStatusLabel(moduleEntry.status))} ${String(progress)}%</strong>
-                          </div>
-                          <div class="lab-progress-bar lab-progress-bar--wide">
-                            <span style="width:${progress}%"></span>
-                          </div>
-                          ${summary ? `<p class="lab-panel__hint">${escapeHtml(summary)}</p>` : ""}
-                        </article>
-                      `;
-                    })
-                    .join("")
-                : `<p class="lab-panel__hint">${escapeHtml(featureText(["process", "subtitle"]))}</p>`
-            }
+                            <div class="lab-progress-bar lab-progress-bar--wide">
+                              <span style="width:${progress}%"></span>
+                            </div>
+                            ${summary ? `<p class="lab-panel__hint">${escapeHtml(summary)}</p>` : ""}
+                          </article>
+                        `;
+                      })
+                      .join("")
+                  : `<p class="lab-panel__hint">${escapeHtml(featureText(["process", "subtitle"]))}</p>`
+              }
+            </div>
           </section>
         </section>
         <aside class="lab-side-stack">

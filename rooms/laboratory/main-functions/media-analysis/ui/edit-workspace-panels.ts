@@ -31,23 +31,11 @@ type LaboratoryFocusRegionRecord = LaboratoryRecord & {
   labelKey?: unknown;
 };
 
-type LaboratoryEditStageJobRecord = LaboratoryRecord & {
-  action?: unknown;
-  message?: unknown;
-  percent?: unknown;
-  stage?: unknown;
-};
-
-type LaboratoryRelevantJobsRecord = LaboratoryRecord & {
-  project?: unknown;
-};
-
 type LaboratoryEditTextFieldOptions = {
   placeholder?: string;
 };
 
 type MediaAnalysisEditWorkspacePanelsDeps = {
-  collectEditStageJobs: (projectJobs: unknown[]) => LaboratoryEditStageJobRecord[];
   escapeHtml: (value: string) => string;
   formatDuration: (value: number | null | undefined) => string;
   getCurrentEditDraft: () => LaboratoryMediaAnalysisEditDraftRecord;
@@ -55,7 +43,6 @@ type MediaAnalysisEditWorkspacePanelsDeps = {
   getCurrentEditRecipe: () => LaboratoryMediaAnalysisEditRecipeRecord;
   getCurrentFocusRegionId: () => string;
   getCurrentSourceKind: () => LaboratoryMediaAnalysisSourceKind;
-  getEditJobLabel: (job: LaboratoryEditStageJobRecord) => string;
   getEditPresets: () => LaboratoryRecord;
   getEditPreview: () => LaboratoryMediaAnalysisEditPreviewRecord;
   getEffectiveMediaAsset: () => LaboratoryMediaAnalysisAsset;
@@ -64,7 +51,6 @@ type MediaAnalysisEditWorkspacePanelsDeps = {
   getPreferredSourceFormat: () => string;
   getPreferredSourceResolution: (previewUrl: string | null) => string;
   getProjectSource: () => LaboratoryMediaAnalysisProjectSourceRecord;
-  getRelevantJobs: () => LaboratoryRelevantJobsRecord;
   renderEditTextField: (
     fieldId: string,
     value: string | number,
@@ -80,7 +66,6 @@ type MediaAnalysisEditWorkspacePanelsDeps = {
 
 export function createMediaAnalysisEditWorkspacePanels(deps: MediaAnalysisEditWorkspacePanelsDeps) {
   const {
-    collectEditStageJobs,
     escapeHtml,
     formatDuration,
     getCurrentEditDraft,
@@ -88,7 +73,6 @@ export function createMediaAnalysisEditWorkspacePanels(deps: MediaAnalysisEditWo
     getCurrentEditRecipe,
     getCurrentFocusRegionId,
     getCurrentSourceKind,
-    getEditJobLabel,
     getEditPresets,
     getEditPreview,
     getEffectiveMediaAsset,
@@ -97,7 +81,6 @@ export function createMediaAnalysisEditWorkspacePanels(deps: MediaAnalysisEditWo
     getPreferredSourceFormat,
     getPreferredSourceResolution,
     getProjectSource,
-    getRelevantJobs,
     renderEditTextField,
     renderPreviewMetaRow,
     state,
@@ -127,10 +110,6 @@ export function createMediaAnalysisEditWorkspacePanels(deps: MediaAnalysisEditWo
   }
 
   function toFocusRegionRecord(value: unknown): LaboratoryFocusRegionRecord {
-    return asRecord(value);
-  }
-
-  function toEditStageJobRecord(value: unknown): LaboratoryEditStageJobRecord {
     return asRecord(value);
   }
 
@@ -260,11 +239,6 @@ export function createMediaAnalysisEditWorkspacePanels(deps: MediaAnalysisEditWo
     const common = asRecord(recipe.common);
     const asset = getEffectiveMediaAsset();
     const preview = getEditPreview();
-    const relevantJobs = getRelevantJobs();
-    const projectJobs: unknown[] = Array.isArray(relevantJobs["project"])
-      ? (relevantJobs["project"] as unknown[])
-      : [];
-    const activeEditJobs = collectEditStageJobs(projectJobs).map(toEditStageJobRecord);
     const assetMetadata = toAssetMetadataRecord(asset.metadata);
     const assetLabel = asset.label || text(["mediaAnalysis", "edit", "sourceAsset"]);
     const previewStatus =
@@ -297,7 +271,7 @@ export function createMediaAnalysisEditWorkspacePanels(deps: MediaAnalysisEditWo
           </div>
           <span class="lab-chip">${escapeHtml(text(["mediaAnalysis", "settings", "status", sourceStatus]))}</span>
         </div>
-        <div class="lab-preview-card">
+        <div class="lab-preview-card lab-preview-card--edit">
           <div class="lab-preview-frame lab-edit-frame">
             ${renderEditMediaMarkup(asset, common["cropNormalized"])}
           </div>
@@ -309,39 +283,6 @@ export function createMediaAnalysisEditWorkspacePanels(deps: MediaAnalysisEditWo
               ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "codec"]), codecValue)}
               ${renderPreviewMetaRow(text(["mediaAnalysis", "shared", "format"]), formatValue)}
             </ul>
-            ${
-              activeEditJobs.length > 0
-                ? `
-                  <div class="lab-status-stack">
-                    ${activeEditJobs
-                      .map(function (activeEditJob) {
-                        const progressLabel =
-                          asNumber(activeEditJob.percent) !== null
-                            ? `${Math.round(asNumber(activeEditJob.percent) || 0)}%`
-                            : asNonEmptyString(activeEditJob.stage) || "--";
-                        const progressWidth = Math.max(6, asNumber(activeEditJob.percent) || 8);
-                        const message =
-                          asNonEmptyString(activeEditJob.message) ||
-                          asNonEmptyString(activeEditJob.action) ||
-                          "";
-                        return `
-                          <div class="lab-status-card">
-                            <div class="lab-status-card__head">
-                              <strong>${escapeHtml(getEditJobLabel(activeEditJob))}</strong>
-                              <span>${escapeHtml(progressLabel)}</span>
-                            </div>
-                            <div class="lab-progress-bar">
-                              <span style="width:${progressWidth}%"></span>
-                            </div>
-                            <p class="lab-status-card__body">${escapeHtml(message)}</p>
-                          </div>
-                        `;
-                      })
-                      .join("")}
-                  </div>
-                `
-                : ""
-            }
           </div>
         </div>
       </section>

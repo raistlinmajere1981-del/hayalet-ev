@@ -278,6 +278,10 @@ test("laboratory host keeps process orchestration on the shared room-managed con
     /generateProcessSpectrogram:\s*audioAnalysisProcessRuntime\.generateProcessSpectrogram/
   );
   assert.match(
+    hostFeatureSource,
+    /generateProcessMetadataArtifact:\s*projectRuntimes\.analysisArtifact\.generateProcessMetadataArtifact,/
+  );
+  assert.match(
     reportingExportSource,
     /const outputPath = `\$\{getFeatureReportDir\(runtime, project, featureId\)\}\/\$\{fileName\}`;/
   );
@@ -305,6 +309,7 @@ test("laboratory UI renders the process stage from host-backed state and honest 
   assert.match(processStageSource, /data-action="restart-process"/);
   assert.match(processStageSource, /data-action="process-cancel"/);
   assert.match(processStageSource, /data-action="open-report"/);
+  assert.match(processStageSource, /class="lab-process-panel__body"/);
   assert.match(settingsOverlaySource, /currentStageToolIds = getStageToolIds\(stageId\);/);
   assert.match(settingsOverlaySource, /lab-overlay--center/);
   assert.match(settingsOverlaySource, /aria-modal="true"/);

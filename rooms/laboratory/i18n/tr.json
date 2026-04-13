@@ -472,6 +472,12 @@
       "outputsTitle": "Turetilmis Ciktilar",
       "outputsSubtitle": "Uygulanan her render proje icinde saklanir ve sonraki asamalara aktarilabilir.",
       "outputsEmpty": "Henuz turetilmis cikti yok. Tarifi onizledikten sonra bir cikti uret.",
+      "progressTitle": "Duzenleme Is Akisi",
+      "progressSubtitle": "Onizleme, render ve iptal sureclerini burada takip et.",
+      "progressIdle": "Aktif duzenleme isi yok. Onizleme veya turetilmis cikti baslattiginda ilerleme burada gorunur.",
+      "progressUpdated": "Son guncelleme",
+      "progressRunningHint": "Arka plan isi suruyor; tamamlandiginda bu panel guncellenir.",
+      "progressToolOutputHidden": "Ayrintili arac cikisi gizlendi. Gerekirse loglardan inceleyebilirsin.",
       "ffmpegMissing": "Duzenleme asamasi icin FFmpeg zorunlu. Ayarlardan kur veya guncelle.",
       "sourceRequired": "Duzenleme asamasi proje icinde hazir kaynak dosyasi olana kadar salt-okunur kalir.",
       "sourceAsset": "Kaynak Varlik",
@@ -931,7 +937,7 @@
         },
         "prosody": {
           "title": "Prosodi",
-          "summary": "Elle kurulan openSMILE araci hazir oldugunda konusma hizi, kontur ve tahmini duraksama metrikleri calisir."
+          "summary": "Room-local openSMILE kurulumu hazir oldugunda konusma hizi, kontur ve tahmini duraksama metrikleri calisir."
         },
         "emotion": {
           "title": "Duygu heuristikleri",
@@ -966,11 +972,11 @@
       },
       "prosody-open-smile": {
         "title": "Prosodi descriptor yuruyucusu",
-        "summary": "Konusma hizi, kontur ve duraksama odakli prosodi ozetleri icin elle kurulan openSMILE tabanli yuruyucu."
+        "summary": "Konusma hizi, kontur ve duraksama odakli prosodi ozetleri icin ortak room-local openSMILE yuruyucusu."
       },
       "emotion-heuristic": {
         "title": "Duygu heuristik adaptoru",
-        "summary": "Acik guven ve uyari diliyle calisan, elle kurulan openSMILE tabanli heuristik katman."
+        "summary": "Acik guven ve uyari diliyle calisan, ortak room-local openSMILE tabanli heuristik katman."
       },
       "sound-event-classifier": {
         "title": "Ses olayi siniflandiricisi",
