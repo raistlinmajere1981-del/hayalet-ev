@@ -102,7 +102,7 @@ export function createLaboratoryMediaPreviewUi(deps) {
             ${mediaMarkup}
           </div>
           <div class="lab-preview-copy">
-            <ul class="lab-meta-list">${infoRows.join("")}</ul>
+            <ul class="lab-meta-list lab-meta-list--compact">${infoRows.join("")}</ul>
             ${activeJob ? `
                   <div class="lab-status-card">
                     <div class="lab-status-card__head">

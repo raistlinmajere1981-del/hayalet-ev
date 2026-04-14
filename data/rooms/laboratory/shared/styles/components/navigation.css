@@ -44,27 +44,6 @@
 .lab-profile-card,
 .lab-toggle,
 .lab-button,
-.lab-select,
-.lab-segmented__button {
-  transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    background 140ms ease,
-    box-shadow 140ms ease,
-    opacity 140ms ease;
-}
-
-.lab-stage-nav,
-.lab-stage-pill,
-.lab-module-pill,
-.lab-module-card,
-.lab-rail-action,
-.lab-rail-icon,
-.lab-source-card,
-.lab-choice-chip,
-.lab-profile-card,
-.lab-toggle,
-.lab-button,
 .lab-segmented__button {
   border: 1px solid var(--lab-line);
   background: rgb(255 255 255 / 0.03);
@@ -84,9 +63,8 @@
 .lab-toggle:hover,
 .lab-button:hover:not(:disabled),
 .lab-segmented__button:hover:not(:disabled) {
-  transform: translateY(-1px);
   border-color: var(--lab-line-strong);
-  box-shadow: 0 18px 30px rgb(0 0 0 / 0.18);
+  background: rgb(255 255 255 / 0.045);
 }
 
 .lab-stage-nav:disabled,

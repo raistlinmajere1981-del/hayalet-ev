@@ -302,7 +302,7 @@ export function createLaboratorySourceStageIntakeRuntime(deps: LaboratorySourceS
       `;
 
     return `
-      <section class="lab-panel">
+      <section class="lab-panel lab-panel--compact lab-intake-panel">
         <div class="lab-panel__header">
           <div>
             <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "source", "modeLabel"]))}</p>
