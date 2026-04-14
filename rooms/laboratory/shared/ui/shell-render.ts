@@ -42,17 +42,20 @@ type LaboratoryShellRegions = {
   statusMarkup: string;
 };
 
-function formatSourceLabel(source: LaboratoryShellStatusChannel["source"]): string {
+function formatSourceLabel(
+  source: LaboratoryShellStatusChannel["source"],
+  text: (path: string[]) => string
+): string {
   switch (source) {
     case "host":
-      return "Host";
+      return text(["workbench", "statusLine", "sourceLabels", "host"]);
     case "request":
-      return "Request";
+      return text(["workbench", "statusLine", "sourceLabels", "request"]);
     case "ui":
-      return "UI";
+      return text(["workbench", "statusLine", "sourceLabels", "ui"]);
     case "system":
     default:
-      return "System";
+      return text(["workbench", "statusLine", "sourceLabels", "system"]);
   }
 }
 
@@ -91,13 +94,25 @@ function renderStatusChannel(
           deps.text(["workbench", "statusLine", labelKey])
         )}</span>
         <span class="lab-status-line__source">${deps.escapeHtml(
-          formatSourceLabel(channel.source)
+          formatSourceLabel(channel.source, deps.text)
         )}</span>
       </div>
       <strong class="lab-status-line__message">${deps.escapeHtml(channel.message)}</strong>
       ${detailMarkup}
     </article>
   `;
+}
+
+function getPrimaryStatusTone(status: LaboratoryShellRenderDeps["status"]): "activity" | "result" | null {
+  if (status.result.visible === true && status.result.message.trim() !== "") {
+    return "result";
+  }
+
+  if (status.activity.visible === true && status.activity.message.trim() !== "") {
+    return "activity";
+  }
+
+  return null;
 }
 
 function renderEventLog(
@@ -110,6 +125,7 @@ function renderEventLog(
       data-open="${deps.eventLogOpen ? "true" : "false"}"
       role="region"
       aria-labelledby="lab-event-log-title"
+      ${deps.eventLogOpen ? "" : "hidden"}
     >
       <div class="lab-event-log__head">
         <div>
@@ -157,7 +173,7 @@ function renderEventLog(
                         <span>${deps.escapeHtml(timeLabel)}</span>
                       </div>
                       <p class="lab-event-log__meta">${deps.escapeHtml(
-                        `${formatSourceLabel(entry.source)} · ${entry.tone}`
+                        `${formatSourceLabel(entry.source, deps.text)} · ${entry.tone}`
                       )}</p>
                       ${
                         entry.detail
@@ -200,15 +216,15 @@ export function getLaboratoryShellRegions(deps: LaboratoryShellRenderDeps): Labo
   const dependencyCenterMarkup = deps.renderSettingsOverlay();
   const stageHasInspector =
     typeof deps.stageSurface.inspector === "string" && deps.stageSurface.inspector.trim() !== "";
-  const statusMarkup = [
-    renderStatusChannel("blocking", deps.status.blocking, deps),
-    renderStatusChannel("activity", deps.status.activity, deps),
-    renderStatusChannel("result", deps.status.result, deps),
-  ]
-    .filter(function (entry) {
-      return entry.trim() !== "";
-    })
-    .join("");
+  const blockingMarkup = renderStatusChannel("blocking", deps.status.blocking, deps);
+  const primaryTone = getPrimaryStatusTone(deps.status);
+  const primaryMarkup =
+    primaryTone === null
+      ? ""
+      : renderStatusChannel(primaryTone, deps.status[primaryTone], deps);
+  const visibleCards = [blockingMarkup, primaryMarkup].filter(function (entry) {
+    return entry.trim() !== "";
+  });
 
   return {
     eventLogMarkup: renderEventLog(deps),
@@ -221,10 +237,10 @@ export function getLaboratoryShellRegions(deps: LaboratoryShellRenderDeps): Labo
     stageMainClassName: deps.stageSurface.mainClassName || "",
     stageMainMarkup: deps.stageSurface.main,
     statusMarkup: `
-      <div class="lab-status-line__cards">
+      <div class="lab-status-line__cards" data-card-count="${String(visibleCards.length || 1)}">
         ${
-          statusMarkup.trim() !== ""
-            ? statusMarkup
+          visibleCards.length > 0
+            ? visibleCards.join("")
             : `
                 <article
                   class="lab-status-line__card lab-status-line__card--quiet"

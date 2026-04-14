@@ -16,6 +16,8 @@
     "selectedModulesTitle": "Modules in this run",
     "selectedModulesEmpty": "No modules are queued yet.",
     "railCurrentStage": "Current stage",
+    "railFocusedModule": "Focused module",
+    "railJourneyLabel": "Workbench stages",
     "railStepCount": "Stage progress",
     "includeAction": "Add to run",
     "excludeAction": "Remove",
@@ -43,6 +45,12 @@
       "hideEventsAction": "Hide events",
       "idleMessage": "Waiting for the next workbench action.",
       "resultLabel": "Result",
+      "sourceLabels": {
+        "host": "Host",
+        "request": "Request",
+        "system": "System",
+        "ui": "UI"
+      },
       "showEventsAction": "Show events"
     },
     "operationsMeta": {

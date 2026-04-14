@@ -218,7 +218,7 @@ export function createLaboratorySourceStageIntakeRuntime(deps: LaboratorySourceS
     `;
   }
 
-  function renderSourceIntakePanel() {
+  function renderSourceIntakePanelBody() {
     const currentMode = getCurrentSourceMode();
     const drafts = toDraftRecord(getCurrentDrafts());
     const ytDlpInstalled = getToolEntry("yt-dlp").installed === true;
@@ -302,6 +302,13 @@ export function createLaboratorySourceStageIntakeRuntime(deps: LaboratorySourceS
       `;
 
     return `
+      ${renderSourceModes()}
+      <div class="lab-form-stack">${body}</div>
+    `;
+  }
+
+  function renderSourceIntakePanel() {
+    return `
       <section class="lab-panel lab-panel--compact lab-intake-panel">
         <div class="lab-panel__header">
           <div>
@@ -309,13 +316,13 @@ export function createLaboratorySourceStageIntakeRuntime(deps: LaboratorySourceS
             <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "source", "intakeTitle"]))}</h2>
           </div>
         </div>
-        ${renderSourceModes()}
-        <div class="lab-form-stack">${body}</div>
+        ${renderSourceIntakePanelBody()}
       </section>
     `;
   }
 
   return {
     renderSourceIntakePanel,
+    renderSourceIntakePanelBody,
   };
 }

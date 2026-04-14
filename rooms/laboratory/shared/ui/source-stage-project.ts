@@ -52,22 +52,12 @@ export function createLaboratorySourceStageProjectRuntime(
     return typeof value === "string" && value.trim() !== "" ? value : fallback;
   }
 
-  function renderProjectPanel() {
+  function renderProjectPanelBody() {
     const projects = getProjectSummaries().map(toProjectSummaryRecord);
     const activeProjectId = toSourceSnapshotRecord(getSourceSnapshot()).activeProjectId;
     const activeProject = toProjectSummaryRecord(getActiveProject());
 
     return `
-      <section class="lab-panel lab-panel--compact lab-project-panel">
-        <div class="lab-panel__header">
-          <div>
-            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "projects", "eyebrow"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "projects", "title"]))}</h2>
-          </div>
-          <button class="lab-button lab-button--ghost lab-button--tight" type="button" data-action="project-create">
-            ${escapeHtml(text(["mediaAnalysis", "projects", "newAction"]))}
-          </button>
-        </div>
         <div class="lab-project-panel__grid">
           <div class="lab-project-card">
             <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "projects", "title"]))}</span>
@@ -118,23 +108,32 @@ export function createLaboratorySourceStageProjectRuntime(
               `
           }
         </div>
+    `;
+  }
+
+  function renderProjectPanel() {
+    return `
+      <section class="lab-panel lab-panel--compact lab-project-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "projects", "eyebrow"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "projects", "title"]))}</h2>
+          </div>
+          <button class="lab-button lab-button--ghost lab-button--tight" type="button" data-action="project-create">
+            ${escapeHtml(text(["mediaAnalysis", "projects", "newAction"]))}
+          </button>
+        </div>
+        ${renderProjectPanelBody()}
       </section>
     `;
   }
 
-  function renderSourceKindPanel() {
+  function renderSourceKindPanelBody() {
     const currentKind = getCurrentSourceKind();
     const sourceFormats = getAvailableSourceFormats().filter(function (sourceId) {
       return typeof sourceId === "string" && sourceId.trim() !== "";
     });
     return `
-      <section class="lab-panel lab-panel--compact">
-        <div class="lab-panel__header">
-          <div>
-            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["source", "formatLabel"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(featureText(["source", "title"]))}</h2>
-          </div>
-        </div>
         <div class="lab-source-grid">
           ${sourceFormats
             .map(function (sourceId) {
@@ -158,12 +157,27 @@ export function createLaboratorySourceStageProjectRuntime(
             })
             .join("")}
         </div>
+    `;
+  }
+
+  function renderSourceKindPanel() {
+    return `
+      <section class="lab-panel lab-panel--compact">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["source", "formatLabel"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["source", "title"]))}</h2>
+          </div>
+        </div>
+        ${renderSourceKindPanelBody()}
       </section>
     `;
   }
 
   return {
     renderProjectPanel,
+    renderProjectPanelBody,
     renderSourceKindPanel,
+    renderSourceKindPanelBody,
   };
 }

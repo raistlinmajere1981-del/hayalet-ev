@@ -16,6 +16,8 @@
     "selectedModulesTitle": "Bu kosudaki moduller",
     "selectedModulesEmpty": "Henuz kosuya alinmis modul yok.",
     "railCurrentStage": "Aktif asama",
+    "railFocusedModule": "Odaktaki modul",
+    "railJourneyLabel": "Workbench asamalari",
     "railStepCount": "Asama ilerlemesi",
     "includeAction": "Kosuya ekle",
     "excludeAction": "Cikar",
@@ -43,6 +45,12 @@
       "hideEventsAction": "Olaylari gizle",
       "idleMessage": "Siradaki workbench adimi bekleniyor.",
       "resultLabel": "Sonuc",
+      "sourceLabels": {
+        "host": "Host",
+        "request": "Istek",
+        "system": "Sistem",
+        "ui": "Arayuz"
+      },
       "showEventsAction": "Olaylari goster"
     },
     "operationsMeta": {

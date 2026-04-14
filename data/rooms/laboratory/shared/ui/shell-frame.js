@@ -7,7 +7,6 @@ export function createLaboratoryShellFrameUi(deps) {
     getActiveStage,
     getStageIndex,
     getTranslations,
-    getWorkbench,
     isSubtitleAnalysisFeature,
     readValue,
     stageOrder,
@@ -18,21 +17,18 @@ export function createLaboratoryShellFrameUi(deps) {
   function toStageCopyRecord(value) {
     return toRecord(value);
   }
-  function toWorkbenchRecord(value) {
-    return toRecord(value);
-  }
   function readStageCopyText(value, fallback) {
     return typeof value === "string" && value.trim() !== "" ? value : fallback;
   }
   function getFeatureLabel(featureId) {
     return text(["features", featureId]) || featureId;
   }
-  function renderRailMetric(label, value) {
+  function renderRailSummaryRow(label, value, valueClassName = "") {
     return `
-      <article class="lab-stage-rail__metric">
+      <div class="lab-stage-rail__summary-row">
         <span>${escapeHtml(label)}</span>
-        <strong>${escapeHtml(value)}</strong>
-      </article>
+        <strong class="${escapeHtml(valueClassName)}">${escapeHtml(value)}</strong>
+      </div>
     `;
   }
   function renderBootstrap() {
@@ -49,14 +45,6 @@ export function createLaboratoryShellFrameUi(deps) {
     const activeStage = getActiveStage();
     const activeFeatureId = getActiveFeatureId();
     const currentIndex = getStageIndex(activeStage);
-    const workbench = toWorkbenchRecord(getWorkbench());
-    const selectedModuleIds = Array.isArray(workbench["selectedModuleIds"]) ? workbench["selectedModuleIds"].filter(function(entry) {
-      return typeof entry === "string" && entry.trim() !== "";
-    }) : [activeFeatureId];
-    const selectedModuleMarkup = selectedModuleIds.length > 0 ? selectedModuleIds.map(function(featureId) {
-      return `<span class="lab-chip">${escapeHtml(getFeatureLabel(featureId))}</span>`;
-    }).join("") : `<span class="lab-panel__hint">${escapeHtml(text(["workbench", "selectedModulesEmpty"]))}</span>`;
-    const currentStageLabel = featureText(["stages", activeStage]);
     const activeModuleLabel = getFeatureLabel(activeFeatureId);
     return `
       <section class="lab-topbar">
@@ -64,34 +52,20 @@ export function createLaboratoryShellFrameUi(deps) {
           <div class="lab-stage-rail__brand">
             <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "eyebrow"]))}</p>
             <h1 class="lab-stage-rail__title">${escapeHtml(text(["workbench", "title"]))}</h1>
-            <p class="lab-stage-rail__subtitle">${escapeHtml(text(["workbench", "subtitle"]))}</p>
           </div>
-          <section class="lab-stage-rail__context">
-            <div class="lab-stage-rail__metrics">
-              ${renderRailMetric(
+          <section class="lab-stage-rail__context" hidden>
+            <div class="lab-stage-rail__summary">
+              ${renderRailSummaryRow(
       text(["workbench", "railStepCount"]),
       `${String(currentIndex + 1)} / ${String(stageOrder.length)}`
     )}
-              ${renderRailMetric(
-      text(["workbench", "selectedModulesTitle"]),
-      String(selectedModuleIds.length)
-    )}
             </div>
-            <div class="lab-stage-rail__focus">
-              <div class="lab-stage-rail__focus-head">
-                <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "railCurrentStage"]))}</p>
-                <strong class="lab-stage-rail__focus-label">${escapeHtml(currentStageLabel)}</strong>
-              </div>
-              <p class="lab-stage-rail__focus-meta">${escapeHtml(activeModuleLabel)}</p>
-              <div class="lab-stage-rail__modules">
-                <span class="lab-stage-rail__modules-label">${escapeHtml(
-      text(["workbench", "selectedModulesTitle"])
-    )}</span>
-                <div class="lab-chip-row lab-chip-row--tight">${selectedModuleMarkup}</div>
-              </div>
-            </div>
+            <span class="lab-stage-rail__focus-label" hidden>${escapeHtml(activeModuleLabel)}</span>
           </section>
-          <div class="lab-stage-rail__track" aria-label="Journey">
+          <div
+            class="lab-stage-rail__track"
+            aria-label="${escapeHtml(text(["workbench", "railJourneyLabel"]))}"
+          >
             ${stageOrder.map(function(stageId, index) {
       const stateName = stageId === activeStage ? "active" : index < currentIndex ? "complete" : "idle";
       return `
@@ -108,19 +82,6 @@ export function createLaboratoryShellFrameUi(deps) {
     }).join("")}
           </div>
           <div class="lab-stage-rail__footer">
-            <button
-              class="lab-rail-action"
-              type="button"
-              data-action="open-settings"
-              aria-label="${escapeHtml(text(["workbench", "dependencyAction"]))}"
-            >
-              <span class="lab-rail-action__icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M10.4 2h3.2l.6 2.6a7.8 7.8 0 0 1 1.8.8L18.4 4l2.2 2.2-1.4 2.4c.3.6.6 1.2.8 1.8L22 11.2v3.2l-2.6.6a7.8 7.8 0 0 1-.8 1.8l1.4 2.4-2.2 2.2-2.4-1.4a7.8 7.8 0 0 1-1.8.8L13.6 22h-3.2l-.6-2.6a7.8 7.8 0 0 1-1.8-.8L5.6 20 3.4 17.8l1.4-2.4a7.8 7.8 0 0 1-.8-1.8L2 13.6v-3.2l2.6-.6a7.8 7.8 0 0 1 .8-1.8L4 5.6 6.2 3.4l2.4 1.4a7.8 7.8 0 0 1 1.8-.8L10.4 2Zm1.6 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"></path>
-                </svg>
-              </span>
-              <span>${escapeHtml(text(["workbench", "dependencyAction"]))}</span>
-            </button>
             <div class="lab-stage-nav-group">
               <button
                 class="lab-stage-nav"
