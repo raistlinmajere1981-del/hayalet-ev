@@ -1,298 +1,387 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import vm from "node:vm";
 
-function extractFunctionSource(source: string, functionName: string): string {
-  const marker = `function ${functionName}(`;
-  const start = source.indexOf(marker);
-  assert.notEqual(start, -1, `Missing function ${functionName}`);
+import { createLaboratoryUiDraftRuntime } from "../../rooms/laboratory/shared/ui/draft-runtime.ts";
+import { createLaboratoryRequestRuntime } from "../../rooms/laboratory/shared/ui/request-runtime.ts";
+import { createLaboratoryJobRuntime } from "../../rooms/laboratory/shared/host/job-runtime.ts";
+import {
+  getPreferredAssetCodec,
+  getPreferredAssetDuration,
+  getPreferredAssetResolution,
+} from "../../rooms/laboratory/main-functions/media-analysis/ui/profile-helpers.ts";
+import { createMediaProfileProjectionRuntime } from "../../rooms/laboratory/main-functions/media-analysis/host/profile-projection.ts";
 
-  let braceIndex = source.indexOf("{", start);
-  assert.notEqual(braceIndex, -1, `Missing body for ${functionName}`);
+function toRecord<T extends Record<string, unknown> = Record<string, unknown>>(value: unknown): T {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as T) : ({} as T);
+}
 
-  let depth = 0;
-  for (let index = braceIndex; index < source.length; index += 1) {
-    const char = source[index];
-    if (char === "{") {
-      depth += 1;
-    } else if (char === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(start, index + 1);
+function asNonEmptyString(value: unknown) {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+function createRequestState() {
+  return {
+    context: {
+      featureId: "media-analysis",
+      workbench: {
+        activeModuleId: "media-analysis",
+        availableModuleIds: ["media-analysis"],
+        selectedModuleIds: ["media-analysis"],
+      },
+    },
+    sourceSnapshot: {
+      workbench: {
+        activeModuleId: "media-analysis",
+        availableModuleIds: ["media-analysis"],
+        selectedModuleIds: ["media-analysis"],
+      },
+    },
+    ui: {
+      eventLog: [],
+      eventLogOpen: false,
+      lastRequestId: null,
+      latestRequestByDomain: {
+        project: 0,
+        "source-config": 0,
+        "source-acquire": 0,
+        "edit-config": 0,
+        "edit-preview": 0,
+        "edit-apply": 0,
+        "edit-preview-cancel": 0,
+        "edit-apply-cancel": 0,
+        "profile-config": 0,
+        "profile-run": 0,
+        "profile-cancel": 0,
+        "profile-model": 0,
+        "process-run": 0,
+        "process-cancel": 0,
+        "report-export": 0,
+        tools: 0,
+        misc: 0,
+      },
+      localDrafts: {
+        fileNameHint: "",
+        urlInput: "",
+        youtubeCustom: {},
+        youtubePreset: null,
+        youtubeUrl: "",
+      },
+      localSubtitleDrafts: {},
+      requestCounter: 0,
+      requestLookup: {},
+      settingsAnimateIn: false,
+      settingsOpen: false,
+      settingsHelperPlatform: "linux",
+      settingsHelperToolId: null,
+      status: {
+        activity: {
+          detail: null,
+          message: "",
+          source: "system",
+          sticky: false,
+          updatedAt: null,
+          visible: false,
+        },
+        blocking: {
+          detail: null,
+          message: "",
+          source: "system",
+          sticky: false,
+          updatedAt: null,
+          visible: false,
+        },
+        result: {
+          detail: null,
+          message: "",
+          source: "system",
+          sticky: false,
+          updatedAt: null,
+          visible: false,
+        },
+      },
+    },
+  };
+}
+
+function createProfileProjectionRuntime(overrides: Partial<Parameters<typeof createMediaProfileProjectionRuntime>[0]> = {}) {
+  return createMediaProfileProjectionRuntime({
+    asNonEmptyString,
+    asNumber(value: unknown) {
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
+    },
+    buildDerivedTargetSignature() {
+      return "derived-sig";
+    },
+    buildProfileModelSummary() {
+      return [];
+    },
+    buildProfileToolSummary(_runtime: Record<string, unknown>, toolId: string) {
+      return { toolId, displayName: toolId, ready: true };
+    },
+    buildSourceTargetSignature() {
+      return "source-sig";
+    },
+    clampProfileTranscriptSampleSeconds() {
+      return 30;
+    },
+    clone(value: unknown) {
+      return structuredClone(value);
+    },
+    createDefaultProfileState() {
+      return {};
+    },
+    createEmptyProfilePreflight() {
+      return {};
+    },
+    findEditOutputById(project: Record<string, unknown>, outputId: string | null) {
+      if (!outputId) {
+        return null;
       }
-    }
-  }
-
-  throw new Error(`Unterminated function ${functionName}`);
+      const outputs = Array.isArray(toRecord(project.edit).outputs) ? (toRecord(project.edit).outputs as unknown[]) : [];
+      return outputs.find(function (entry) {
+        return toRecord(entry).id === outputId;
+      }) || null;
+    },
+    findProfilePreset() {
+      return null;
+    },
+    getCompatibleProfileLaneIds() {
+      return [];
+    },
+    getDefaultProfileModelId() {
+      return null;
+    },
+    getEnabledProfileLaneIds() {
+      return [];
+    },
+    getProfileDepthConfig() {
+      return {};
+    },
+    getProfileFrameDensityRuntimeConfig() {
+      return {};
+    },
+    getProfileLaneMap() {
+      return {};
+    },
+    getProfileModelDescriptorMap() {
+      return {};
+    },
+    getStageSupport() {
+      return "required";
+    },
+    getToolManifest() {
+      return {};
+    },
+    normalizeEditOutput(output: unknown) {
+      return toRecord(output);
+    },
+    normalizeProfileArtifactPreferences() {
+      return {};
+    },
+    normalizeProfileState(profile: unknown) {
+      return profile;
+    },
+    normalizeSourceMetadata(value: unknown) {
+      return toRecord(value);
+    },
+    toRecord,
+    ...overrides,
+  });
 }
 
 test("laboratory UI keeps profile stale-response tracking isolated by action domain", () => {
-  const coreBootstrapSource = readFileSync("rooms/laboratory/ui/core-bootstrap.ts", "utf8");
-  const draftRuntimeSource = readFileSync("rooms/laboratory/shared/ui/draft-runtime.ts", "utf8");
-  const requestRuntimeSource = readFileSync(
-    "rooms/laboratory/shared/ui/request-runtime.ts",
-    "utf8"
-  );
-  const context = {
-    state: {
-      ui: {
-        requestCounter: 0,
-        latestRequestByDomain: {
-          project: 0,
-          "source-config": 0,
-          "source-acquire": 0,
-          "edit-config": 0,
-          "edit-preview": 0,
-          "edit-apply": 0,
-          "edit-preview-cancel": 0,
-          "edit-apply-cancel": 0,
-          "profile-config": 0,
-          "profile-run": 0,
-          "profile-cancel": 0,
-          "profile-model": 0,
-          tools: 0,
-          misc: 0,
-        },
-        requestLookup: {},
-      },
+  const state = createRequestState();
+  const requestRuntime = createLaboratoryRequestRuntime({
+    bootstrapText() {
+      return "unavailable";
     },
-    sampleJobs: [
-      {
-        jobId: "run-job",
-        requestId: "profile-run-current",
-        action: "profile-run-preflight",
-        featureStage: "profile",
-      },
-      {
-        jobId: "model-job",
-        requestId: "profile-model-current",
-        action: "profile-model-install",
-        featureStage: "profile",
-      },
-      {
-        jobId: "edit-job",
-        requestId: "edit-preview-current",
-        action: "edit-preview",
-        featureStage: "edit",
-      },
-    ],
-  };
+    buildCurrentDraftPayload() {
+      return {};
+    },
+    getActiveFeatureId() {
+      return "media-analysis";
+    },
+    getRoomApi() {
+      return {
+        sendEvent() {},
+      };
+    },
+    isSubtitleAnalysisFeature() {
+      return false;
+    },
+    render() {},
+    requestOverlayScrollReset() {},
+    state: state as never,
+    toRecord,
+  });
+  const draftRuntime = createLaboratoryUiDraftRuntime({
+    deepClone<T>(value: T): T {
+      return structuredClone(value);
+    },
+    getActiveProject() {
+      return null;
+    },
+    getEditPresets() {
+      return {};
+    },
+    getProjectEdit() {
+      return {};
+    },
+    getProjectSource() {
+      return {};
+    },
+    getSourceSnapshot() {
+      return { activeProjectId: "project-1" };
+    },
+    getSubtitleEditState() {
+      return {};
+    },
+    getSubtitleWorkspace() {
+      return {};
+    },
+    isSubtitleAnalysisFeature() {
+      return false;
+    },
+    state: { ui: {} } as never,
+    toRecord,
+  });
+  const sampleJobs = [
+    {
+      jobId: "run-job",
+      requestId: "profile-run-current",
+      action: "profile-run-preflight",
+      featureStage: "profile",
+    },
+    {
+      jobId: "model-job",
+      requestId: "profile-model-current",
+      action: "profile-model-install",
+      featureStage: "profile",
+    },
+    {
+      jobId: "edit-job",
+      requestId: "edit-preview-current",
+      action: "edit-preview",
+      featureStage: "edit",
+    },
+  ];
 
-  vm.createContext(context);
-  vm.runInContext(
-    [
-      extractFunctionSource(draftRuntimeSource, "sortStageJobs"),
-      extractFunctionSource(coreBootstrapSource, "toRecord"),
-      extractFunctionSource(requestRuntimeSource, "getActionDomain"),
-      extractFunctionSource(requestRuntimeSource, "rememberRequest"),
-      extractFunctionSource(requestRuntimeSource, "shouldIgnoreCorrelatedPayload"),
-      extractFunctionSource(draftRuntimeSource, "collectProfileStageJobs"),
-    ].join("\n"),
-    context
-  );
+  const profileRunOld = requestRuntime.sendMediaAction("profile-run-preflight");
+  const profileRunCurrent = requestRuntime.sendMediaAction("profile-run-preflight");
+  const profileModelCurrent = requestRuntime.sendMediaAction("profile-model-install");
 
-  vm.runInContext(`rememberRequest("profile-run-old", "profile-run-preflight");`, context);
-  vm.runInContext(`rememberRequest("profile-run-current", "profile-run-preflight");`, context);
-  vm.runInContext(`rememberRequest("profile-model-current", "profile-model-install");`, context);
-
+  assert.equal(requestRuntime.shouldIgnoreCorrelatedPayload(profileRunOld, "profile-run-preflight"), true);
   assert.equal(
-    vm.runInContext(`shouldIgnoreCorrelatedPayload("profile-run-old", "profile-run-preflight")`, context),
-    true
-  );
-  assert.equal(
-    vm.runInContext(`shouldIgnoreCorrelatedPayload("profile-run-current", "profile-run-preflight")`, context),
+    requestRuntime.shouldIgnoreCorrelatedPayload(profileRunCurrent, "profile-run-preflight"),
     false
   );
   assert.equal(
-    vm.runInContext(`shouldIgnoreCorrelatedPayload("profile-run-current", "profile-model-install")`, context),
+    requestRuntime.shouldIgnoreCorrelatedPayload(profileRunCurrent, "profile-model-install"),
     false
   );
-  assert.equal(vm.runInContext(`collectProfileStageJobs(sampleJobs).length`, context), 2);
+  assert.equal(draftRuntime.collectProfileStageJobs(sampleJobs).length, 2);
+  assert.equal(draftRuntime.collectProfileStageJobs(sampleJobs)[0]?.action, "profile-run-preflight");
   assert.equal(
-    vm.runInContext(`collectProfileStageJobs(sampleJobs)[0].action`, context),
-    "profile-run-preflight"
-  );
-  assert.equal(
-    vm.runInContext(`collectProfileStageJobs(sampleJobs)[1].action`, context),
+    draftRuntime.collectProfileStageJobs(sampleJobs)[1]?.action,
     "profile-model-install"
   );
 });
 
 test("laboratory host treats profile preflight and model jobs as action-scoped slots", () => {
-  const jobRuntimeSource = readFileSync("rooms/laboratory/shared/host/job-runtime.ts", "utf8");
-  const runtimePrimitivesSource = readFileSync(
-    "rooms/laboratory/shared/host/runtime-primitives.ts",
-    "utf8"
-  );
-  const context = {
-    runtime: {
-      jobs: {
-        preflightJob: {
-          requestId: "req-profile-run",
-          action: "profile-run-preflight",
-          projectId: "project-1",
-        },
-        modelJob: {
-          requestId: "req-profile-model",
-          action: "profile-model-install",
-          projectId: "project-1",
-        },
+  const jobRuntime = createLaboratoryJobRuntime({
+    roomId: "laboratory",
+    toRecord,
+    async cancelRoomTool() {
+      return null;
+    },
+    clearJob() {},
+    pushJobState() {},
+  });
+  const runtime = {
+    jobs: {
+      preflightJob: {
+        requestId: "req-profile-run",
+        action: "profile-run-preflight",
+        projectId: "project-1",
+      },
+      modelJob: {
+        requestId: "req-profile-model",
+        action: "profile-model-install",
+        projectId: "project-1",
       },
     },
   };
 
-  vm.createContext(context);
-  vm.runInContext(
-    [
-      extractFunctionSource(runtimePrimitivesSource, "toLaboratoryRecord").replace(
-        /function toLaboratoryRecord/,
-        "function toRecord"
-      ),
-      extractFunctionSource(jobRuntimeSource, "collectJobs"),
-      extractFunctionSource(jobRuntimeSource, "getActiveProfileJobs"),
-      extractFunctionSource(jobRuntimeSource, "ensureProfileJobSlotAvailable"),
-    ].join("\n"),
-    context
-  );
-
-  assert.equal(
-    vm.runInContext(`getActiveProfileJobs(runtime, "project-1", "profile-run-preflight").length`, context),
-    1
-  );
-  assert.equal(
-    vm.runInContext(`getActiveProfileJobs(runtime, "project-1", "profile-model-install").length`, context),
-    1
-  );
-
   assert.throws(() => {
-    vm.runInContext(`ensureProfileJobSlotAvailable(runtime, "project-1", "profile-run-preflight")`, context);
+    jobRuntime.ensureProfileJobSlotAvailable(runtime, "project-1", "profile-run-preflight");
   }, /already running/i);
 
-  assert.equal(
-    vm.runInContext(
-      `
-        const isolatedRuntime = { jobs: { modelOnly: runtime.jobs.modelJob } };
-        try {
-          ensureProfileJobSlotAvailable(isolatedRuntime, "project-1", "profile-run-preflight");
-          "ok";
-        } catch (error) {
-          error.message;
-        }
-      `,
-      context
-    ),
-    "ok"
-  );
+  assert.throws(() => {
+    jobRuntime.ensureProfileJobSlotAvailable(runtime, "project-1", "profile-model-install");
+  }, /already running/i);
+
+  assert.doesNotThrow(() => {
+    jobRuntime.ensureProfileJobSlotAvailable(
+      {
+        jobs: {
+          modelOnly: runtime.jobs.modelJob,
+        },
+      },
+      "project-1",
+      "profile-run-preflight"
+    );
+  });
 });
 
 test("laboratory UI prefers the active profile target metadata over the source-only summary helpers", () => {
-  const helperSource = readFileSync(
-    "rooms/laboratory/main-functions/media-analysis/ui/profile-helpers.ts",
-    "utf8"
-  );
-  const context = {
-    previewMetrics: {
-      url: "file:///derived-preview.mp4",
-      duration: 41,
-      width: 1024,
-      height: 576,
-    },
-    toRecord(value: unknown) {
-      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-    },
+  const previewMetrics = {
+    url: "file:///derived-preview.mp4",
+    duration: 41,
+    width: 1024,
+    height: 576,
   };
 
-  vm.createContext(context);
-  vm.runInContext(
-    [
-      extractFunctionSource(helperSource, "getPreferredAssetDuration"),
-      extractFunctionSource(helperSource, "getPreferredAssetResolution"),
-      extractFunctionSource(helperSource, "getPreferredAssetCodec"),
-    ].join("\n"),
-    context
-  );
-
   assert.equal(
-    vm.runInContext(
-      `getPreferredAssetDuration({ previewUrl: "file:///derived-preview.mp4", metadata: { durationSeconds: 58 } }, previewMetrics, toRecord)`,
-      context
+    getPreferredAssetDuration(
+      { previewUrl: "file:///derived-preview.mp4", metadata: { durationSeconds: 58 } },
+      previewMetrics,
+      toRecord
     ),
     58
   );
   assert.equal(
-    vm.runInContext(
-      `getPreferredAssetResolution({ previewUrl: "file:///derived-preview.mp4", metadata: { width: 1920, height: 1080 } }, previewMetrics, toRecord)`,
-      context
+    getPreferredAssetResolution(
+      { previewUrl: "file:///derived-preview.mp4", metadata: { width: 1920, height: 1080 } },
+      previewMetrics,
+      toRecord
     ),
     "1920 x 1080"
   );
   assert.equal(
-    vm.runInContext(
-      `getPreferredAssetCodec({ previewUrl: "file:///derived-preview.mp4", metadata: { videoCodec: "h264" } }, toRecord)`,
-      context
+    getPreferredAssetCodec(
+      { previewUrl: "file:///derived-preview.mp4", metadata: { videoCodec: "h264" } },
+      toRecord
     ),
     "h264"
   );
 });
 
 test("laboratory host resolves derived profile targets with safe fallback when the pin is stale", () => {
-  const profileProjectionSource = readFileSync(
-    "rooms/laboratory/main-functions/media-analysis/host/profile-projection.ts",
-    "utf8"
-  );
-  const context = {
-    toRecord(value: unknown) {
-      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-    },
-    asNonEmptyString(value: unknown) {
-      return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
-    },
-    asNumber(value: unknown) {
-      return typeof value === "number" && Number.isFinite(value) ? value : null;
-    },
-    normalizeSourceMetadata(value: unknown) {
-      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-    },
-    buildSourceTargetSignature() {
-      return "source-sig";
-    },
-    buildDerivedTargetSignature() {
-      return "derived-sig";
-    },
-    findEditOutputById(project: any, outputId: string | null) {
-      if (!outputId) {
-        return null;
-      }
-      return (Array.isArray(project.edit?.outputs) ? project.edit.outputs : []).find((entry: any) => entry.id === outputId) ?? null;
-    },
-    normalizeEditOutput(entry: any) {
-      return entry;
-    },
-  };
+  const projectionRuntime = createProfileProjectionRuntime();
 
-  vm.createContext(context);
-  vm.runInContext(extractFunctionSource(profileProjectionSource, "resolveProfileTarget"), context);
-
-  assert.equal(
-    vm.runInContext(
-      `
-        const result = resolveProfileTarget({
-          name: "Project",
-          source: {
-            storedPath: "/project/source.mp4",
-            storedFileName: "source.mp4",
-            mimeType: "video/mp4",
-            metadata: { durationSeconds: 20 }
-          },
-          edit: { outputs: [] },
-          profile: { targetAssetMode: "derived", targetOutputId: "missing-output" }
-        });
-        JSON.stringify(result);
-      `,
-      context
-    ),
-    JSON.stringify({
+  assert.deepEqual(
+    projectionRuntime.resolveProfileTarget({
+      name: "Project",
+      source: {
+        storedPath: "/project/source.mp4",
+        storedFileName: "source.mp4",
+        mimeType: "video/mp4",
+        metadata: { durationSeconds: 20 },
+      },
+      edit: { outputs: [] },
+      profile: { targetAssetMode: "derived", targetOutputId: "missing-output" },
+    }),
+    {
       requestedMode: "derived",
       mode: "source",
       outputId: "missing-output",
@@ -304,27 +393,22 @@ test("laboratory host resolves derived profile targets with safe fallback when t
       label: "source.mp4",
       usingFallback: true,
       reason: "Pinned derived output is unavailable. Falling back to the saved source.",
-    })
+    }
   );
 });
 
 test("laboratory host readiness blocks missing targets and surfaces model-compatibility warnings", () => {
-  const profileProjectionSource = readFileSync(
-    "rooms/laboratory/main-functions/media-analysis/host/profile-projection.ts",
-    "utf8"
-  );
-  const context = {
-    toRecord(value: unknown) {
-      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-    },
-    asNonEmptyString(value: unknown) {
-      return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
-    },
-    clone(value: unknown) {
-      return JSON.parse(JSON.stringify(value));
-    },
-    resolveProfileTarget(project: any) {
-      return project.__target;
+  const projectionRuntime = createProfileProjectionRuntime({
+    buildProfileModelSummary() {
+      return [
+        {
+          modelId: "tiny.en",
+          selected: true,
+          ready: false,
+          runtimeCompatible: false,
+          compatibilityReason: "This model is not declared for linux-x64.",
+        },
+      ];
     },
     getCompatibleProfileLaneIds() {
       return ["speech-overlay"];
@@ -340,94 +424,49 @@ test("laboratory host readiness blocks missing targets and surfaces model-compat
         },
       };
     },
-    buildProfileModelSummary() {
-      return [
-        {
-          modelId: "tiny.en",
-          selected: true,
-          ready: false,
-          runtimeCompatible: false,
-          compatibilityReason: "This model is not declared for linux-x64.",
-        },
-      ];
-    },
-    buildProfileToolSummary(runtime: any, toolId: string) {
+    buildProfileToolSummary(_runtime: Record<string, unknown>, toolId: string) {
       if (toolId === "ffmpeg") {
         return { toolId, displayName: "FFmpeg", ready: true };
       }
       return { toolId, displayName: "Whisper.cpp", ready: true };
     },
-    getToolManifest() {
-      return {};
-    },
-    getStageSupport() {
-      return "required";
-    },
-  };
+  });
 
-  vm.createContext(context);
-  vm.runInContext(extractFunctionSource(profileProjectionSource, "buildProfileReadiness"), context);
-
-  const blockedResult = JSON.parse(
-    vm.runInContext(
-      `
-        JSON.stringify(
-          buildProfileReadiness(
-            { profilePresets: {}, toolState: {}, profileModelState: {}, profileModels: {} },
-            {
-              source: { kind: "video" },
-              profile: { laneSelection: { "speech-overlay": true } },
-              __target: {
-                requestedMode: "source",
-                mode: "source",
-                outputId: null,
-                path: null,
-                label: "source.mp4",
-                metadata: {},
-                usingFallback: false,
-                reason: null
-              }
-            }
-          )
-        )
-      `,
-      context
-    )
+  const blockedResult = projectionRuntime.buildProfileReadiness(
+    { profilePresets: {}, toolState: {}, profileModelState: {}, profileModels: {} },
+    {
+      source: { kind: "video" },
+      profile: { laneSelection: { "speech-overlay": true } },
+    }
   );
 
   assert.equal(blockedResult.stageReady, false);
-  assert.match(blockedResult.blockers[0], /Prepare a source or derived output/i);
+  assert.match(blockedResult.blockers[0] || "", /Prepare a source or derived output/i);
 
-  const warningResult = JSON.parse(
-    vm.runInContext(
-      `
-        JSON.stringify(
-          buildProfileReadiness(
-            { profilePresets: {}, toolState: {}, profileModelState: {}, profileModels: {} },
-            {
-              source: { kind: "video" },
-              profile: { laneSelection: { "speech-overlay": true } },
-              __target: {
-                requestedMode: "derived",
-                mode: "source",
-                outputId: "stale-output",
-                path: "/project/source.mp4",
-                label: "source.mp4",
-                metadata: {},
-                usingFallback: true,
-                reason: "Pinned derived output is unavailable. Falling back to the saved source."
-              }
-            }
-          )
-        )
-      `,
-      context
-    )
+  const warningResult = projectionRuntime.buildProfileReadiness(
+    { profilePresets: {}, toolState: {}, profileModelState: {}, profileModels: {} },
+    {
+      source: {
+        kind: "video",
+        storedPath: "/project/source.mp4",
+        storedFileName: "source.mp4",
+        mimeType: "video/mp4",
+        metadata: {},
+      },
+      edit: { outputs: [] },
+      profile: {
+        laneSelection: { "speech-overlay": true },
+        targetAssetMode: "derived",
+        targetOutputId: "stale-output",
+      },
+    }
   );
 
   assert.equal(warningResult.stageReady, true);
   assert.ok(
-    warningResult.warnings.includes("Pinned derived output is unavailable. Falling back to the saved source.")
+    warningResult.warnings.includes(
+      "Pinned derived output is unavailable. Falling back to the saved source."
+    )
   );
   assert.ok(warningResult.warnings.includes("This model is not declared for linux-x64."));
 });

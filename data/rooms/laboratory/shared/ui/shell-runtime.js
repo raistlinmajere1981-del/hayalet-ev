@@ -146,8 +146,14 @@ export function createLaboratoryUiShellRuntime(deps) {
     }
     if (isTextSelectionElement(target)) {
       const valueLength = target.value.length;
-      const selectionStart = Math.max(0, Math.min(snapshot.selectionStart ?? valueLength, valueLength));
-      const selectionEnd = Math.max(selectionStart, Math.min(snapshot.selectionEnd ?? selectionStart, valueLength));
+      const selectionStart = Math.max(
+        0,
+        Math.min(snapshot.selectionStart ?? valueLength, valueLength)
+      );
+      const selectionEnd = Math.max(
+        selectionStart,
+        Math.min(snapshot.selectionEnd ?? selectionStart, valueLength)
+      );
       try {
         target.setSelectionRange(selectionStart, selectionEnd);
       } catch {
@@ -200,11 +206,21 @@ export function createLaboratoryUiShellRuntime(deps) {
     }
     let shouldRebind = false;
     const updatedRegions = /* @__PURE__ */ new Set();
-    if (updateRegionIfChanged(root, "#lab-shell-rail", regions.railMarkup, markupCache?.railMarkup ?? null)) {
+    if (updateRegionIfChanged(
+      root,
+      "#lab-shell-rail",
+      regions.railMarkup,
+      markupCache?.railMarkup ?? null
+    )) {
       updatedRegions.add("#lab-shell-rail");
       shouldRebind = true;
     }
-    if (updateRegionIfChanged(root, "#lab-shell-main", regions.stageMainMarkup, markupCache?.stageMainMarkup ?? null)) {
+    if (updateRegionIfChanged(
+      root,
+      "#lab-shell-main",
+      regions.stageMainMarkup,
+      markupCache?.stageMainMarkup ?? null
+    )) {
       updatedRegions.add("#lab-shell-main");
       shouldRebind = true;
     }
@@ -217,15 +233,30 @@ export function createLaboratoryUiShellRuntime(deps) {
       updatedRegions.add("#lab-shell-inspector");
       shouldRebind = true;
     }
-    if (updateRegionIfChanged(root, "#lab-shell-status", regions.statusMarkup, markupCache?.statusMarkup ?? null)) {
+    if (updateRegionIfChanged(
+      root,
+      "#lab-shell-status",
+      regions.statusMarkup,
+      markupCache?.statusMarkup ?? null
+    )) {
       updatedRegions.add("#lab-shell-status");
       shouldRebind = true;
     }
-    if (updateRegionIfChanged(root, "#lab-shell-log", regions.eventLogMarkup, markupCache?.eventLogMarkup ?? null)) {
+    if (updateRegionIfChanged(
+      root,
+      "#lab-shell-log",
+      regions.eventLogMarkup,
+      markupCache?.eventLogMarkup ?? null
+    )) {
       updatedRegions.add("#lab-shell-log");
       shouldRebind = true;
     }
-    if (updateRegionIfChanged(root, "#lab-shell-overlay", regions.overlayMarkup, markupCache?.overlayMarkup ?? null)) {
+    if (updateRegionIfChanged(
+      root,
+      "#lab-shell-overlay",
+      regions.overlayMarkup,
+      markupCache?.overlayMarkup ?? null
+    )) {
       updatedRegions.add("#lab-shell-overlay");
       shouldRebind = true;
     }

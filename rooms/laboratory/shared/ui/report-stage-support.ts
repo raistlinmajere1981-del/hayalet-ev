@@ -222,7 +222,11 @@ export function createLaboratoryReportStageSupportRuntime(
     ];
   }
 
-  function getReportSideRows(reportRecord: unknown, findings: unknown[], exportsList: unknown[]) {
+  function getReportSideRows(
+    reportRecord: unknown,
+    _findings: unknown[],
+    _exportsList: unknown[]
+  ) {
     const report = toFeatureReportRecord(reportRecord);
     if (isSubtitleAnalysisFeature()) {
       return [
@@ -231,8 +235,6 @@ export function createLaboratoryReportStageSupportRuntime(
           formatStatusLabel(report.status || "idle"),
         ],
         [featureText(["report", "overviewMeta", "target"]), getCurrentFeatureTargetLabel()],
-        [featureText(["report", "overviewMeta", "findings"]), String(findings.length)],
-        [featureText(["report", "overviewMeta", "exports"]), String(exportsList.length)],
         [featureText(["report", "overviewMeta", "generated"]), formatDateTime(report.generatedAt)],
       ];
     }
@@ -240,12 +242,7 @@ export function createLaboratoryReportStageSupportRuntime(
     return [
       [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(report.status || "idle")],
       [text(["mediaAnalysis", "profile", "summary", "target"]), getCurrentFeatureTargetLabel()],
-      [featureText(["report", "findingsTitle"]), String(findings.length)],
-      [
-        text(["mediaAnalysis", "profile", "summary", "artifacts"]),
-        String(getCurrentFeatureArtifactCount()),
-      ],
-      [featureText(["report", "actions", "export"]), String(exportsList.length)],
+      [featureText(["report", "overviewMeta", "generated"]), formatDateTime(report.generatedAt)],
     ];
   }
 

@@ -124,10 +124,43 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps: LaboratoryCoreBoots
   );
   const renderSummaryRows = laboratoryMarkupHelpers.renderSummaryRows;
   const renderTextField = laboratoryMarkupHelpers.renderTextField;
+  const navigationRuntimeRefs: {
+    getStageGuard: (stageId: string) => {
+      allowed: boolean;
+      detail: string | null;
+      reason: string | null;
+    };
+    onStageBlocked: (
+      stageId: string,
+      guard: {
+        allowed: boolean;
+        detail?: string | null;
+        reason?: string | null;
+      }
+    ) => void;
+  } = {
+    getStageGuard() {
+      return {
+        allowed: true,
+        detail: null,
+        reason: null,
+      };
+    },
+    onStageBlocked() {},
+  };
 
   const laboratoryUiNavigationRuntimeDeps = {
     defaultFeatureId: deps.featureId,
     documentRef: deps.documentRef,
+    getStageGuard(stageId: string) {
+      return navigationRuntimeRefs.getStageGuard(stageId);
+    },
+    onStageBlocked(
+      stageId: string,
+      guard: { allowed: boolean; detail?: string | null; reason?: string | null }
+    ) {
+      navigationRuntimeRefs.onStageBlocked(stageId, guard);
+    },
     render: deps.render,
     resolveLocale: deps.resolveLaboratoryLocale,
     roomId: deps.roomId,
@@ -201,6 +234,9 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps: LaboratoryCoreBoots
     getActiveFeatureId,
     getActiveStage() {
       return state.activeStage;
+    },
+    getStageGuard(stageId: string) {
+      return navigationRuntimeRefs.getStageGuard(stageId);
     },
     getStageIndex,
     getTranslations() {
@@ -387,6 +423,140 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps: LaboratoryCoreBoots
   const laboratoryViewBindingsRuntime = deps.createLaboratoryViewBindingsRuntime(
     laboratoryViewBindingsRuntimeDeps as unknown as LaboratoryViewBindingsRuntimeDeps
   );
+
+  function readActiveProjectRecord() {
+    return toRecord(laboratorySnapshotAccessRuntime.getActiveProject());
+  }
+
+  function hasActiveProject() {
+    const activeProject = readActiveProjectRecord();
+    if (typeof activeProject["id"] === "string" && activeProject["id"].trim() !== "") {
+      return true;
+    }
+    return (
+      typeof state.sourceSnapshot.activeProjectId === "string" &&
+      state.sourceSnapshot.activeProjectId.trim() !== ""
+    );
+  }
+
+  function hasPreparedSourceForFeature() {
+    if (isSubtitleAnalysisFeature()) {
+      const subtitleWorkspace = toRecord(laboratorySnapshotAccessRuntime.getSubtitleWorkspace());
+      const selection = toRecord(subtitleWorkspace["selection"]);
+      const selectedEntryIds = Array.isArray(selection["selectedEntryIds"])
+        ? selection["selectedEntryIds"].filter(function (entry): entry is string {
+            return typeof entry === "string" && entry.trim() !== "";
+          })
+        : [];
+      const subtitleEntries = laboratorySnapshotAccessRuntime.getSubtitleEntries();
+      return selectedEntryIds.length > 0 || (Array.isArray(subtitleEntries) && subtitleEntries.length > 0);
+    }
+
+    const projectSource = toRecord(laboratorySnapshotAccessRuntime.getProjectSource());
+    return typeof projectSource["storedPath"] === "string" && projectSource["storedPath"].trim() !== "";
+  }
+
+  function getCurrentFeatureProcessStatus() {
+    const processRecords = toRecord(toRecord(laboratorySnapshotAccessRuntime.getProjectProcess())["records"]);
+    const processRecord = toRecord(processRecords[getActiveFeatureId()]);
+    return typeof processRecord["status"] === "string" ? processRecord["status"].trim() : "";
+  }
+
+  function getCurrentFeatureReportStatus() {
+    const reportRecords = toRecord(toRecord(laboratorySnapshotAccessRuntime.getProjectReport())["records"]);
+    const reportRecord = toRecord(reportRecords[getActiveFeatureId()]);
+    return typeof reportRecord["status"] === "string" ? reportRecord["status"].trim() : "";
+  }
+
+  function getProfileGuardReason() {
+    if (isAudioAnalysisFeature() || isSubtitleAnalysisFeature()) {
+      return null;
+    }
+
+    const readiness = toRecord(laboratoryProfileProcessReportAccessorsRuntime.getProfileReadiness());
+    const blockers = Array.isArray(readiness["blockers"])
+      ? readiness["blockers"].filter(function (entry): entry is string {
+          return typeof entry === "string" && entry.trim() !== "";
+        })
+      : [];
+    if (readiness["stageReady"] !== true) {
+      return blockers[0] || text(["workbench", "stageGuards", "profileRequired"]);
+    }
+
+    const preflight = toRecord(laboratoryProfileProcessReportAccessorsRuntime.getProfilePreflight());
+    return preflight["status"] === "ready"
+      ? null
+      : text(["workbench", "stageGuards", "preflightRequired"]);
+  }
+
+  navigationRuntimeRefs.getStageGuard = function (stageId: string) {
+    if (stageId === "source") {
+      return {
+        allowed: true,
+        detail: null,
+        reason: null,
+      };
+    }
+
+    if (hasActiveProject() !== true) {
+      return {
+        allowed: false,
+        detail: null,
+        reason: text(["workbench", "stageGuards", "noProject"]),
+      };
+    }
+
+    if (hasPreparedSourceForFeature() !== true) {
+      return {
+        allowed: false,
+        detail: null,
+        reason: isSubtitleAnalysisFeature()
+          ? text(["workbench", "stageGuards", "subtitleSourceRequired"])
+          : text(["workbench", "stageGuards", "sourceRequired"]),
+      };
+    }
+
+    if (stageId === "process") {
+      const profileReason = getProfileGuardReason();
+      return {
+        allowed: profileReason === null,
+        detail: null,
+        reason: profileReason,
+      };
+    }
+
+    if (stageId === "report") {
+      const reportStatus = getCurrentFeatureReportStatus();
+      const processStatus = getCurrentFeatureProcessStatus();
+      const reportReady = ["ready", "stale"].includes(reportStatus);
+      const processFinished = ["ready", "stale"].includes(processStatus);
+      return {
+        allowed: reportReady,
+        detail: null,
+        reason: processFinished
+          ? text(["workbench", "stageGuards", "reportPending"])
+          : text(["workbench", "stageGuards", "processRequired"]),
+      };
+    }
+
+    return {
+      allowed: true,
+      detail: null,
+      reason: null,
+    };
+  };
+
+  navigationRuntimeRefs.onStageBlocked = function (
+    _stageId: string,
+    guard: { allowed: boolean; detail?: string | null; reason?: string | null }
+  ) {
+    const reason =
+      typeof guard.reason === "string" && guard.reason.trim() !== ""
+        ? guard.reason
+        : text(["workbench", "statusLine", "idleMessage"]);
+    laboratoryRequestRuntime.setBlockingStatus(reason, guard.detail ?? null, "ui");
+    deps.render();
+  };
 
   function bindViewCompositionAccessors(
     uiRuntimeComposition: LaboratoryUiRuntimeCompositionAccessors

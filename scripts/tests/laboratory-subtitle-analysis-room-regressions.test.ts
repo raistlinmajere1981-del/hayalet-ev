@@ -79,12 +79,8 @@ test("laboratory manifest exposes the subtitle-analysis feature beside media and
   assert.equal(validation.valid, true);
   assert.equal(validation.manifest?.features.length, 3);
   assert.equal(subtitleFeature?.name, "Subtitle Analysis");
-  assert.equal(subtitleFeature?.scene?.hotspot.id, "laboratory-subtitle-analysis");
-  assert.equal(subtitleFeature?.scene?.view.id, "subtitle-analysis-console");
-  assert.equal(
-    subtitleFeature?.scene?.view.backgroundSrc,
-    "main-functions/subtitle-analysis/assets/subtitle-analysis.webp"
-  );
+  assert.equal(validation.manifest?.workbench?.availableFeatureIds.includes("subtitle-analysis"), true);
+  assert.equal(subtitleFeature?.scene, undefined);
 });
 
 test("laboratory host wires subtitle source, edit, and process actions into the shared room contract", () => {
@@ -216,7 +212,7 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
   );
   assert.match(
     projectStorageSource,
-    /export function createLaboratoryProjectStorageRuntime\(deps\)/
+    /export function createLaboratoryProjectStorageRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     projectToolStatusSource,
@@ -231,25 +227,25 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
   assert.match(subtitleStateSource, /from "\.\/state-projects\.js"/);
   assert.match(
     subtitleStateDefaultsSource,
-    /export function createSubtitleStateDefaultsRuntime\(deps\)/
+    /export function createSubtitleStateDefaultsRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     subtitleStateNormalizationSource,
-    /export function createSubtitleStateNormalizationRuntime\(deps\)/
+    /export function createSubtitleStateNormalizationRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     subtitleStateProjectsSource,
-    /export function createSubtitleStateProjectRuntime\(deps\)/
+    /export function createSubtitleStateProjectRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     stateCompositionSource,
     /from "\.\.\/\.\.\/main-functions\/subtitle-analysis\/host\/state\.js"/
   );
-  assert.match(stateCompositionSource, /readFeatureProcessRecord\(\.\.\.args\) \{/);
-  assert.match(stateCompositionSource, /readFeatureReportRecord\(\.\.\.args\) \{/);
+  assert.match(stateCompositionSource, /readFeatureProcessRecord:\s*getFeatureProcessRecord/);
+  assert.match(stateCompositionSource, /readFeatureReportRecord:\s*getFeatureReportRecord/);
   assert.match(
     stateCompositionSource,
-    /export function createLaboratoryHostStateCompositionRuntime\(deps\)/
+    /export function createLaboratoryHostStateCompositionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(projectConfigLoaderSource, /subtitle-source-presets\.json/);
   assert.match(projectConfigLoaderSource, /subtitle-youtube\.form\.json/);
@@ -257,7 +253,10 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
   assert.match(projectConfigLoaderSource, /subtitle-analysis-catalog\.json/);
   assert.match(projectConfigLoaderSource, /subtitle-analysis-capabilities\.json/);
   assert.match(projectConfigLoaderSource, /subtitle-analysis-providers\.json/);
-  assert.match(projectStorageSource, /async function loadProjects\(runtime\)/);
+  assert.match(
+    projectStorageSource,
+    /async function loadProjects\(\s*runtime(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(projectToolStatusSource, /operation: "tool-probe"/);
   assert.match(reportingSource, /from "\.\/reporting-feature-report\.js"/);
   assert.match(reportingSource, /from "\.\/reporting-export\.js"/);
@@ -271,16 +270,28 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
     reportingExportSource,
     /export function createLaboratoryReportExportRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
-  assert.match(reportingAudioSource, /export function createLaboratoryAudioReportRuntime\(deps\)/);
-  assert.match(reportingSubtitleSource, /function composeSubtitleAnalysisReport\(runtime, project\)/);
+  assert.match(
+    reportingAudioSource,
+    /export function createLaboratoryAudioReportRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    reportingSubtitleSource,
+    /function composeSubtitleAnalysisReport\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(reportingSubtitleSource, /subtitleAnalysis\.report\.summaryCards\.target/);
   assert.match(reportingMarkdownSource, /## Warnings/);
-  assert.match(projectRecordsSource, /export function createLaboratoryProjectRecordsRuntime\(deps\)/);
+  assert.match(
+    projectRecordsSource,
+    /export function createLaboratoryProjectRecordsRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(
     subtitleProjectionSource,
     /export function createLaboratorySubtitleProjectionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
-  assert.match(actionCompositionSource, /export function createLaboratoryActionCompositionRuntime\(deps\)/);
+  assert.match(
+    actionCompositionSource,
+    /export function createLaboratoryActionCompositionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(actionRouterSource, /case "subtitle-source-set-mode":/);
   assert.match(actionRouterSource, /case "subtitle-source-pick-local":/);
   assert.match(actionRouterSource, /case "subtitle-source-pick-folder":/);
@@ -299,11 +310,20 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
   assert.doesNotMatch(hostCompositionSource, /const laboratoryActionRouter = createLaboratoryActionRouter\(/);
   assert.match(
     subtitleRuntimeSource,
-    /export function createLaboratorySubtitleAnalysisHostRuntime\(deps\)/
+    /export function createLaboratorySubtitleAnalysisHostRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
-  assert.match(subtitleActionSource, /async function setSourceMode\(runtime, actionPayload\)/);
-  assert.match(subtitleActionSource, /async function toggleSelection\(runtime, actionPayload\)/);
-  assert.match(subtitleActionSource, /async function previewEdit\(runtime, requestId, actionPayload\)/);
+  assert.match(
+    subtitleActionSource,
+    /async function setSourceMode\(\s*runtime(?::[\s\S]+?)?,\s*actionPayload(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    subtitleActionSource,
+    /async function toggleSelection\(\s*runtime(?::[\s\S]+?)?,\s*actionPayload(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    subtitleActionSource,
+    /async function previewEdit\(\s*runtime(?::[\s\S]+?)?,\s*requestId(?::[\s\S]+?)?,\s*actionPayload(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(
     subtitleRuntimeSource,
     /handleSubtitleYoutubeDiscovery: subtitleYoutubeSourceRuntime\.handleYoutubeDiscovery/
@@ -315,12 +335,27 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
     subtitleYoutubeSource,
     /const subtitleYoutubeDiscoveryRuntime = createSubtitleYoutubeDiscoveryRuntime\(/
   );
-  assert.match(subtitleYoutubeDiscoverySource, /export function createSubtitleYoutubeDiscoveryRuntime\(deps\)/);
+  assert.match(
+    subtitleYoutubeDiscoverySource,
+    /export function createSubtitleYoutubeDiscoveryRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(subtitleYoutubeDiscoverySource, /async function collectSubtitleYoutubeDiscovery\(/);
-  assert.match(subtitleYoutubeFiltersSource, /export function createSubtitleYoutubeFilterRuntime\(deps\)/);
-  assert.match(subtitleYoutubeFiltersSource, /function needsSubtitleYoutubeMetadataFiltering\(drafts\)/);
-  assert.match(subtitleRuntimeSource, /buildSubtitleProcessModules\(runtime, target\)/);
-  assert.match(subtitleRuntimeSource, /buildSubtitleAnalysisStats\(runtime, project, target\)/);
+  assert.match(
+    subtitleYoutubeFiltersSource,
+    /export function createSubtitleYoutubeFilterRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    subtitleYoutubeFiltersSource,
+    /function needsSubtitleYoutubeMetadataFiltering\(\s*drafts(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    subtitleRuntimeSource,
+    /buildSubtitleProcessModules\(\s*runtime(?::[\s\S]+?)?,\s*target(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    subtitleRuntimeSource,
+    /buildSubtitleAnalysisStats\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?,\s*target(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(
     actionRuntimeSource,
     /export function createLaboratoryHostActionRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
@@ -333,10 +368,19 @@ test("laboratory host wires subtitle source, edit, and process actions into the 
     actionRuntimeSource,
     /function handleToolMutation\(\s*api\??(?::[\s\S]+?)?,\s*runtime\??(?::[\s\S]+?)?,\s*requestId\??(?::[\s\S]+?)?,\s*action\??(?::[\s\S]+?)?,\s*toolId\??(?::[\s\S]+?)?,\s*featureStage\??(?::[\s\S]+?)?\s*\)(?::[\s\S]+?)?/
   );
-  assert.match(subtitleProcessSource, /function buildSubtitleProcessModules\(runtime, target\)/);
-  assert.match(subtitleProcessSource, /async function buildSubtitleAnalysisStats\(runtime, project, target\)/);
+  assert.match(
+    subtitleProcessSource,
+    /function buildSubtitleProcessModules\(\s*runtime(?::[\s\S]+?)?,\s*target(?::[\s\S]+?)?\s*\)/
+  );
+  assert.match(
+    subtitleProcessSource,
+    /async function buildSubtitleAnalysisStats\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?,\s*target(?::[\s\S]+?)?\s*\)/
+  );
   assert.doesNotMatch(hostCompositionSource, /const laboratoryActionRouter = createLaboratoryActionRouter\(/);
-  assert.match(processDelegatesSource, /function composeSubtitleAnalysisReport\(runtime, project\)/);
+  assert.match(
+    processDelegatesSource,
+    /function composeSubtitleAnalysisReport\(\s*runtime(?::[\s\S]+?)?,\s*project(?::[\s\S]+?)?\s*\)/
+  );
 });
 
 test("laboratory UI renders subtitle source and edit workspaces on the shared shell", () => {
@@ -400,7 +444,10 @@ test("laboratory UI renders subtitle source and edit workspaces on the shared sh
   assert.match(stageShellDelegatesSource, /function renderSourceStage\(\)/);
   assert.match(sourceStageCompositionSource, /createLaboratorySourceStageUi\(/);
   assert.match(viewAccessorsRuntimeSource, /function getSubtitleEntries\(\)/);
-  assert.match(subtitleAnalysisUiRuntimeSource, /export function createSubtitleAnalysisUiRuntime\(deps\)/);
+  assert.match(
+    subtitleAnalysisUiRuntimeSource,
+    /export function createSubtitleAnalysisUiRuntime\(\s*deps(?::[\s\S]+?)?\s*\)/
+  );
   assert.match(subtitleAnalysisUiRuntimeSource, /\.\.\/\.\.\/\.\.\/ui\/subtitle-panel-runtime\.js/);
   assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitleSourceIntakePanel\(\)/);
   assert.match(subtitleAnalysisUiRuntimeSource, /function renderSubtitleEntryPanel\(\)/);
@@ -415,11 +462,11 @@ test("laboratory UI renders subtitle source and edit workspaces on the shared sh
   assert.match(subtitleSourcePanelsSource, /from "\.\/source-panel-workspace\.js"/);
   assert.match(
     subtitleSourcePrimitivesSource,
-    /export function createSubtitleAnalysisSourcePanelPrimitives\(deps\)/
+    /export function createSubtitleAnalysisSourcePanelPrimitives\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(
     subtitleSourceProcessSource,
-    /export function createSubtitleAnalysisSourceProcessPanels\(deps\)/
+    /export function createSubtitleAnalysisSourceProcessPanels\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(subtitleSourceIntakeSource, /data-action="subtitle-source-discover-youtube"/);
   assert.match(subtitleSourceIntakeSource, /data-action="subtitle-source-download-youtube"/);

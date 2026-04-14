@@ -334,6 +334,7 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   const shellRenderSource = readFileSync("rooms/laboratory/shared/ui/shell-render.ts", "utf8");
   const shellRuntimeSource = readFileSync("rooms/laboratory/shared/ui/shell-runtime.ts", "utf8");
   const shellFrameSource = readFileSync("rooms/laboratory/shared/ui/shell-frame.ts", "utf8");
+  const shellCssSource = readFileSync("rooms/laboratory/shared/styles/shell.css", "utf8");
   const featureRuntimeSource = readFileSync("rooms/laboratory/shared/ui/feature-runtime.ts", "utf8");
   const profileProcessReportRuntimeSource = readFileSync(
     "rooms/laboratory/ui/profile-process-report-runtime.ts",
@@ -811,7 +812,8 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
   assert.match(navigationRuntimeSource, typedParamSignature("restoreScrollState", "root"));
   assert.match(sourceStageSource, /function renderSourceStage\(\)/);
   assert.match(sourceStageSource, /function renderSourceIntakePanel\(\)/);
-  assert.match(sourceStageSource, /data-action="workbench-toggle-module"/);
+  assert.doesNotMatch(sourceStageSource, /data-action="workbench-toggle-module"/);
+  assert.match(settingsOverlaySource, /data-action="workbench-toggle-module"/);
   assert.match(draftRuntimeSource, typedParamSignature("collectEditStageJobs", "projectJobs"));
   assert.match(
     draftRuntimeSource,

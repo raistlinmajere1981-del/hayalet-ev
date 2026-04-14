@@ -11,11 +11,6 @@ type LaboratoryFeatureReportRecord = LaboratoryRecord & {
   warnings?: unknown;
 };
 
-type LaboratoryFeatureProcessRecord = LaboratoryRecord & {
-  modules?: unknown;
-  status?: unknown;
-};
-
 type LaboratoryAssetRecord = LaboratoryRecord & {
   label?: unknown;
   previewUrl?: unknown;
@@ -80,7 +75,6 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     featureText,
     getCurrentFeatureReportRecord,
     getEffectiveMediaAsset,
-    getProjectProcess,
     getProjectReport,
     getWorkbench,
     getReportSummaryCards,
@@ -89,7 +83,6 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     renderAudioAnalysisModuleGrid,
     renderStageIntro,
     renderSummaryRows,
-    formatStatusLabel,
     text,
     toRecord,
   } = deps;
@@ -122,11 +115,6 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
           return entry;
         })
       : [];
-  }
-
-  function getFeatureProcessRecord(featureId: string): LaboratoryFeatureProcessRecord {
-    const records = toRecord(toRecord(getProjectProcess())["records"]);
-    return toRecord(records[featureId]);
   }
 
   function getFeatureReportRecord(featureId: string): LaboratoryFeatureReportRecord {
@@ -226,68 +214,6 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     return laboratorySubtitleReportStageRuntime.renderSubtitleReportModuleGrid();
   }
 
-  function renderWorkbenchReportMatrix() {
-    const selectedFeatureIds = getSelectedFeatureIds();
-    return `
-      <section class="lab-panel">
-        <div class="lab-panel__header">
-          <div>
-            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["report", "sideTitle"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(text(["workbench", "moduleRailLabel"]))}</h2>
-            <p class="lab-panel__subtitle">${escapeHtml(text(["workbench", "stages", "report", "subtitle"]))}</p>
-          </div>
-        </div>
-        <div class="lab-tool-grid">
-          ${selectedFeatureIds
-            .map(function (featureId) {
-              const processRecord = getFeatureProcessRecord(featureId);
-              const reportRecord = getFeatureReportRecord(featureId);
-              const moduleCount = Array.isArray(processRecord["modules"])
-                ? processRecord["modules"].length
-                : 0;
-              const findingCount = Array.isArray(reportRecord["findings"])
-                ? reportRecord["findings"].length
-                : 0;
-              const exportCount = Array.isArray(reportRecord["exports"])
-                ? reportRecord["exports"].length
-                : 0;
-              return `
-                <article class="lab-tool-card">
-                  <div class="lab-tool-card__head">
-                    <div>
-                      <strong>${escapeHtml(text(["features", featureId]))}</strong>
-                      <span>${escapeHtml(formatStatusLabel(reportRecord["status"] || "idle"))}</span>
-                    </div>
-                    <span class="lab-chip">${escapeHtml(formatStatusLabel(processRecord["status"] || "idle"))}</span>
-                  </div>
-                  <p class="lab-panel__hint">${escapeHtml(text(["workbench", "modules", featureId, "summary"]))}</p>
-                  <ul class="lab-meta-list">
-                    <li>
-                      <span>${escapeHtml(text(["mediaAnalysis", "shared", "status"]))}</span>
-                      <strong>${escapeHtml(formatStatusLabel(reportRecord["status"] || "idle"))}</strong>
-                    </li>
-                    <li>
-                      <span>${escapeHtml(featureText(["report", "findingsTitle"]))}</span>
-                      <strong>${escapeHtml(String(findingCount))}</strong>
-                    </li>
-                    <li>
-                      <span>${escapeHtml(featureText(["report", "actions", "export"]))}</span>
-                      <strong>${escapeHtml(String(exportCount))}</strong>
-                    </li>
-                    <li>
-                      <span>${escapeHtml(featureText(["report", "moduleMeta", "artifacts"]))}</span>
-                      <strong>${escapeHtml(String(moduleCount))}</strong>
-                    </li>
-                  </ul>
-                </article>
-              `;
-            })
-            .join("")}
-        </div>
-      </section>
-    `;
-  }
-
   function renderUnifiedModuleEvidencePanel() {
     const sections = [
       isAudioAnalysisFeature() ? renderAudioAnalysisModuleGrid() : "",
@@ -358,7 +284,9 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
       typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== ""
         ? asset.previewUrl.trim()
         : null;
-    const heroClass = previewUrl ? "lab-panel lab-report-hero" : "lab-panel lab-report-hero lab-report-hero--text-only";
+    const heroClass = previewUrl
+      ? "lab-panel lab-report-hero"
+      : "lab-panel lab-report-hero lab-report-hero--text-only";
 
     return `
       <div class="lab-stage-stack">
@@ -426,64 +354,19 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     const findings = getWorkbenchFindings();
     const exportsList = getWorkbenchExports();
     const runningJob = toJobRecord(getRunningReportJob());
+    const reportWarnings = toStringArray(reportRecord.warnings);
+    const reportCaveats = toStringArray(reportRecord.caveats);
+    const summaryHint =
+      reportCaveats[0] ||
+      reportWarnings[0] ||
+      (typeof runningJob.message === "string" && runningJob.message.trim() !== ""
+        ? runningJob.message
+        : "");
 
     return `
       <div class="lab-stage-stack lab-stage-stack--inspector">
-        ${renderWorkbenchReportMatrix()}
         <section class="lab-panel">
             ${renderSummaryRows(getReportSideRows(reportRecord, findings, exportsList))}
-            ${
-              toStringArray(reportRecord.caveats).length > 0
-                ? `
-                  <div class="lab-list-block">
-                    <strong>${escapeHtml(featureText(["report", "sideTitle"]))}</strong>
-                    <ul class="lab-bullet-list">
-                      ${toStringArray(reportRecord.caveats)
-                        .slice(0, 4)
-                        .map(function (entry) {
-                          return `<li>${escapeHtml(entry)}</li>`;
-                        })
-                        .join("")}
-                    </ul>
-                  </div>
-                `
-                : ""
-            }
-            ${
-              toStringArray(reportRecord.warnings).length > 0
-                ? `
-                  <div class="lab-list-block">
-                    <strong>${escapeHtml(featureText(["report", "moduleMeta", "warnings"]))}</strong>
-                    <ul class="lab-bullet-list">
-                      ${toStringArray(reportRecord.warnings)
-                        .slice(0, 4)
-                        .map(function (entry) {
-                          return `<li>${escapeHtml(entry)}</li>`;
-                        })
-                        .join("")}
-                    </ul>
-                  </div>
-                `
-                : ""
-            }
-            <div class="lab-list-block">
-              <strong>${escapeHtml(text(["workbench", "moduleRailLabel"]))}</strong>
-              <ul class="lab-bullet-list">
-                ${featureIds
-                  .map(function (featureId) {
-                    const featureRecord = getFeatureReportRecord(featureId);
-                    const findingCount = Array.isArray(featureRecord["findings"])
-                      ? featureRecord["findings"].length
-                      : 0;
-                    return `<li>${escapeHtml(
-                      `${text(["features", featureId])}: ${formatStatusLabel(
-                        featureRecord["status"] || "idle"
-                      )} · ${String(findingCount)} ${featureText(["report", "findingsTitle"]).toLowerCase()}`
-                    )}</li>`;
-                  })
-                  .join("")}
-              </ul>
-            </div>
             <div class="lab-action-stack">
               <button class="lab-button lab-button--ghost" type="button" data-action="reset-journey">
                 ${escapeHtml(featureText(["report", "actions", "restart"]))}
@@ -495,8 +378,8 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
               </button>
             </div>
             ${
-              typeof runningJob.message === "string" && runningJob.message.trim() !== ""
-                ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
+              summaryHint !== ""
+                ? `<p class="lab-panel__hint">${escapeHtml(summaryHint)}</p>`
                 : ""
             }
         </section>

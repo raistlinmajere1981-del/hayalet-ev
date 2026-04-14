@@ -48,8 +48,7 @@ export function createMediaAnalysisEditPanels(deps: MediaAnalysisEditPanelsDeps)
     renderEditOutputsPanel,
     renderEditProgressPanel,
     renderEditSummaryPanel,
-  } =
-    mediaAnalysisEditOutputPanels;
+  } = mediaAnalysisEditOutputPanels;
 
   return {
     renderEditActionsPanel,

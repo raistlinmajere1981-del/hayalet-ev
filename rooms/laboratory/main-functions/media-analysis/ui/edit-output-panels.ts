@@ -186,10 +186,7 @@ export function createMediaAnalysisEditOutputPanels(deps: MediaAnalysisEditOutpu
       return null;
     }
 
-    return getSafeDetail(
-      errorMessage,
-      text(["mediaAnalysis", "edit", "progressToolOutputHidden"])
-    );
+    return getSafeDetail(errorMessage, text(["mediaAnalysis", "edit", "progressToolOutputHidden"]));
   }
 
   function renderEditActionsPanel() {
@@ -226,7 +223,7 @@ export function createMediaAnalysisEditOutputPanels(deps: MediaAnalysisEditOutpu
         }
         <div class="lab-action-stack">
           <button
-            class="lab-button lab-button--ghost"
+            class="lab-button lab-button--primary"
             type="button"
             data-action="edit-preview"
             ${ffmpegInstalled !== true || typeof source.storedPath !== "string" || previewJob ? "disabled" : ""}
@@ -242,7 +239,7 @@ export function createMediaAnalysisEditOutputPanels(deps: MediaAnalysisEditOutpu
             ${escapeHtml(text(["mediaAnalysis", "edit", "actions", "cancelPreview"]))}
           </button>
           <button
-            class="lab-button lab-button--primary"
+            class="lab-button lab-button--ghost"
             type="button"
             data-action="edit-apply"
             ${ffmpegInstalled !== true || typeof source.storedPath !== "string" || applyJob ? "disabled" : ""}
@@ -285,7 +282,8 @@ export function createMediaAnalysisEditOutputPanels(deps: MediaAnalysisEditOutpu
     const edit = getProjectEdit();
     const preview = toPreviewRecord(edit.preview);
     const previewStatus = asNonEmptyString(preview.status);
-    const previewUpdatedAt = asNonEmptyString(preview.updatedAt) || asNonEmptyString(edit.lastActionAt);
+    const previewUpdatedAt =
+      asNonEmptyString(preview.updatedAt) || asNonEmptyString(edit.lastActionAt);
     const activeEditJobs = collectEditStageJobs(getRelevantJobs().project);
 
     return `

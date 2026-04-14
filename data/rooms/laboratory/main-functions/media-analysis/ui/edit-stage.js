@@ -24,16 +24,21 @@ export function renderMediaAnalysisEditStage(deps) {
           ${renderEditModePanel()}
           ${renderEditPresetChooser()}
         </div>
-        <div class="lab-subgrid lab-subgrid--edit lab-edit-console">
-          ${renderEditCommonPanel()}
-          ${renderEditControlsPanel()}
-          ${renderEditActionsPanel()}
-        </div>
+        ${renderEditActionsPanel()}
+        ${renderEditProgressPanel()}
+        ${renderEditOutputsPanel()}
+        <details class="lab-panel lab-panel--compact">
+          <summary class="lab-field__label">${escapeHtml(
+    text(["mediaAnalysis", "edit", "modes", "advanced"])
+  )}</summary>
+          <div class="lab-subgrid lab-subgrid--edit lab-edit-console">
+            ${renderEditCommonPanel()}
+            ${renderEditControlsPanel()}
+          </div>
+        </details>
       </section>
       <aside class="lab-side-stack">
-        ${renderEditProgressPanel()}
         ${renderEditSummaryPanel()}
-        ${renderEditOutputsPanel()}
       </aside>
     </div>
   `;

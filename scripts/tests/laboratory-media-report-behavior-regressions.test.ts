@@ -63,6 +63,10 @@ test("laboratory UI renders report findings and export history from room-managed
     "utf8"
   );
   const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.ts", "utf8");
+  const reportStageSupportSource = readFileSync(
+    "rooms/laboratory/shared/ui/report-stage-support.ts",
+    "utf8"
+  );
   assert.match(uiSource, /shared\/ui\/report-stage\.js/);
   assert.match(uiSource, /shared\/ui\/shell-runtime\.js/);
   assert.match(uiSource, /\.\/shell-composition\.js/);
@@ -91,6 +95,18 @@ test("laboratory UI renders report findings and export history from room-managed
   assert.match(reportStageSource, /featureText\(\["report", "actions", "export"\]\)/);
   assert.match(reportStageSource, /featureText\(\["report", "stagedHint"\]\)/);
   assert.match(reportStageSource, /style="background-image:url\('/);
+  assert.match(
+    reportStageSupportSource,
+    /function getReportSideRows\(\s*reportRecord: unknown,\s*_findings: unknown\[],\s*_exportsList: unknown\[]\s*\)/
+  );
+  assert.doesNotMatch(
+    reportStageSupportSource,
+    /function getReportSideRows[\s\S]*featureText\(\["report", "findingsTitle"\]\)/
+  );
+  assert.doesNotMatch(
+    reportStageSupportSource,
+    /function getReportSideRows[\s\S]*text\(\["mediaAnalysis", "profile", "summary", "artifacts"\]\)/
+  );
 });
 
 test("laboratory translations and tool metadata describe the closeout report stage honestly", () => {

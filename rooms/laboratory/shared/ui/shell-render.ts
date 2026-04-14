@@ -69,11 +69,7 @@ function renderStatusChannel(
   }
 
   const labelKey =
-    tone === "blocking"
-      ? "blockingLabel"
-      : tone === "activity"
-        ? "activityLabel"
-        : "resultLabel";
+    tone === "blocking" ? "blockingLabel" : tone === "activity" ? "activityLabel" : "resultLabel";
   const liveRole = tone === "blocking" ? "alert" : "status";
   const liveMode = tone === "blocking" ? "assertive" : "polite";
   const detailMarkup =
@@ -103,7 +99,9 @@ function renderStatusChannel(
   `;
 }
 
-function getPrimaryStatusTone(status: LaboratoryShellRenderDeps["status"]): "activity" | "result" | null {
+function getPrimaryStatusTone(
+  status: LaboratoryShellRenderDeps["status"]
+): "activity" | "result" | null {
   if (status.result.visible === true && status.result.message.trim() !== "") {
     return "result";
   }
@@ -116,7 +114,10 @@ function getPrimaryStatusTone(status: LaboratoryShellRenderDeps["status"]): "act
 }
 
 function renderEventLog(
-  deps: Pick<LaboratoryShellRenderDeps, "escapeHtml" | "eventLog" | "eventLogOpen" | "locale" | "text">
+  deps: Pick<
+    LaboratoryShellRenderDeps,
+    "escapeHtml" | "eventLog" | "eventLogOpen" | "locale" | "text"
+  >
 ): string {
   const entries = deps.eventLog.slice(0, 24);
   return `
@@ -219,9 +220,7 @@ export function getLaboratoryShellRegions(deps: LaboratoryShellRenderDeps): Labo
   const blockingMarkup = renderStatusChannel("blocking", deps.status.blocking, deps);
   const primaryTone = getPrimaryStatusTone(deps.status);
   const primaryMarkup =
-    primaryTone === null
-      ? ""
-      : renderStatusChannel(primaryTone, deps.status[primaryTone], deps);
+    primaryTone === null ? "" : renderStatusChannel(primaryTone, deps.status[primaryTone], deps);
   const visibleCards = [blockingMarkup, primaryMarkup].filter(function (entry) {
     return entry.trim() !== "";
   });

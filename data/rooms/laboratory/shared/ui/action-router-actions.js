@@ -79,7 +79,9 @@ export function createLaboratoryUiActionHandlers(deps) {
         throw new Error("Clipboard API is unavailable");
       }
       await clipboard.writeText(command);
-      setResultStatus(`${text(["mediaAnalysis", "settings", "helper", "copySuccess"])} ${toolLabel}`);
+      setResultStatus(
+        `${text(["mediaAnalysis", "settings", "helper", "copySuccess"])} ${toolLabel}`
+      );
       render();
     } catch {
       setBlockingStatus(text(["mediaAnalysis", "settings", "helper", "copyFailure"]));

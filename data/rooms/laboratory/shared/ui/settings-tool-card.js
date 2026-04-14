@@ -235,6 +235,7 @@ export function createLaboratorySettingsToolCardRuntime(deps) {
     const setupHint = toString(details.setupHint).trim() || toString(descriptor?.manualHint).trim() || toString(descriptor?.setupHint).trim();
     const installStrategy = toString(descriptor?.installStrategy, "--");
     const readinessImpact = toString(descriptor?.readinessImpact).trim();
+    const stageUnsupported = stageSupport === "unsupported";
     const usedBy = Array.isArray(descriptor?.usedBy) ? descriptor.usedBy.map(function(entry) {
       return String(entry);
     }) : [];
@@ -273,7 +274,16 @@ export function createLaboratorySettingsToolCardRuntime(deps) {
     )}
       </button>
     `;
-    const primaryActionMarkup = planned ? `
+    const unsupportedActionMarkup = `
+      <button
+        class="lab-button lab-button--ghost lab-button--tight"
+        type="button"
+        disabled
+      >
+        ${escapeHtml(text(["mediaAnalysis", "settings", "support", "unsupported"]))}
+      </button>
+    `;
+    const primaryActionMarkup = stageUnsupported ? unsupportedActionMarkup : planned ? `
           <button
             class="lab-button lab-button--ghost lab-button--tight"
             type="button"
@@ -317,7 +327,7 @@ export function createLaboratorySettingsToolCardRuntime(deps) {
                 ${escapeHtml(text(["mediaAnalysis", "settings", "installAction"]))}
               </button>
             `;
-    const helperToggleMarkup = systemCommand ? managedInstaller || tool.installed === true ? helperToggleButtonMarkup : manualProbeActionMarkup : "";
+    const helperToggleMarkup = systemCommand ? stageUnsupported ? helperToggleButtonMarkup : managedInstaller || tool.installed === true ? helperToggleButtonMarkup : manualProbeActionMarkup : "";
     return `
       <article class="lab-tool-card">
         <div class="lab-tool-card__head">

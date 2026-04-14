@@ -40,6 +40,19 @@ type LaboratoryNavigationContextRecord = LaboratoryRecord & {
 type LaboratoryNavigationDeps = {
   defaultFeatureId: string;
   documentRef: Document;
+  getStageGuard?: (stageId: string) => {
+    allowed: boolean;
+    detail?: string | null;
+    reason?: string | null;
+  };
+  onStageBlocked?: (
+    stageId: string,
+    guard: {
+      allowed: boolean;
+      detail?: string | null;
+      reason?: string | null;
+    }
+  ) => void;
   render: () => unknown;
   resolveLocale: (locale: unknown) => string;
   roomId: string;
@@ -52,6 +65,8 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
   const {
     defaultFeatureId,
     documentRef,
+    getStageGuard,
+    onStageBlocked,
     render,
     resolveLocale,
     roomId,
@@ -152,6 +167,23 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
     return stageOrder.indexOf(stageId);
   }
 
+  function readStageGuard(stageId: string) {
+    if (typeof getStageGuard !== "function") {
+      return {
+        allowed: true,
+        detail: null,
+        reason: null,
+      };
+    }
+
+    const guard = getStageGuard(stageId);
+    return {
+      allowed: guard.allowed !== false,
+      detail: toString(guard.detail) || null,
+      reason: toString(guard.reason) || null,
+    };
+  }
+
   function requestSurfaceScrollReset() {
     state.ui.scrollPositions.surface = 0;
     state.ui.stackScrollPositions.main = 0;
@@ -166,14 +198,27 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
 
   function setStage(stageId: string) {
     if (stageOrder.includes(stageId) === false) {
-      return;
+      return false;
     }
     if (state.activeStage === stageId) {
-      return;
+      return true;
     }
+
+    const currentIndex = getStageIndex(state.activeStage);
+    const nextIndex = getStageIndex(stageId);
+    const movingForward = nextIndex > currentIndex;
+    const guard = readStageGuard(stageId);
+    if (movingForward && guard.allowed !== true) {
+      if (typeof onStageBlocked === "function") {
+        onStageBlocked(stageId, guard);
+      }
+      return false;
+    }
+
     state.activeStage = stageId;
     requestSurfaceScrollReset();
     render();
+    return true;
   }
 
   function advanceStage(direction: number) {
@@ -181,9 +226,9 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
     const nextIndex = Math.max(0, Math.min(stageOrder.length - 1, currentIndex + direction));
     const nextStageId = stageOrder.at(nextIndex);
     if (!nextStageId) {
-      return;
+      return false;
     }
-    setStage(nextStageId);
+    return setStage(nextStageId);
   }
 
   function captureScrollState(root: ParentNode) {
@@ -243,7 +288,11 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
     advanceStage,
     applyLocale,
     applyPresentationMode,
+    canEnterStage(stageId: string) {
+      return readStageGuard(stageId).allowed;
+    },
     captureScrollState,
+    getStageGuard: readStageGuard,
     getStageIndex,
     normalizeContext,
     requestOverlayScrollReset,

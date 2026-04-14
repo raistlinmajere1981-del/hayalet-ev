@@ -82,18 +82,25 @@ export function createLaboratoryHostMessageRuntime(deps) {
     }
     return message;
   }
+  const quietInlineResultActionIds = [
+    "profile-run-preflight",
+    "profile-cancel-preflight",
+    "process-run",
+    "audio-process-run",
+    "process-cancel",
+    "audio-process-cancel"
+  ];
+  function shouldHideInlinePreflightActionResult(actionId) {
+    return actionId === "profile-run-preflight" || actionId === "profile-cancel-preflight";
+  }
   function shouldHideInlineActionResult(actionId, succeeded) {
     if (succeeded !== true) {
       return false;
     }
-    return [
-      "profile-run-preflight",
-      "profile-cancel-preflight",
-      "process-run",
-      "audio-process-run",
-      "process-cancel",
-      "audio-process-cancel"
-    ].includes(actionId || "");
+    if (shouldHideInlinePreflightActionResult(actionId)) {
+      return true;
+    }
+    return quietInlineResultActionIds.includes(actionId || "");
   }
   function shouldHideInlineJobProgress(actionId, stageId) {
     return ["profile-run-preflight", "process-run", "audio-process-run"].includes(actionId || "") && stageId !== "failed";

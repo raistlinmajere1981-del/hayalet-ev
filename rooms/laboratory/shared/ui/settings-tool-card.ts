@@ -427,6 +427,7 @@ export function createLaboratorySettingsToolCardRuntime(
       toString(descriptor?.setupHint).trim();
     const installStrategy = toString(descriptor?.installStrategy, "--");
     const readinessImpact = toString(descriptor?.readinessImpact).trim();
+    const stageUnsupported = stageSupport === "unsupported";
     const usedBy = Array.isArray(descriptor?.usedBy)
       ? (descriptor.usedBy as unknown[]).map(function (entry) {
           return String(entry);
@@ -486,8 +487,20 @@ export function createLaboratorySettingsToolCardRuntime(
       </button>
     `;
 
-    const primaryActionMarkup = planned
-      ? `
+    const unsupportedActionMarkup = `
+      <button
+        class="lab-button lab-button--ghost lab-button--tight"
+        type="button"
+        disabled
+      >
+        ${escapeHtml(text(["mediaAnalysis", "settings", "support", "unsupported"]))}
+      </button>
+    `;
+
+    const primaryActionMarkup = stageUnsupported
+      ? unsupportedActionMarkup
+      : planned
+        ? `
           <button
             class="lab-button lab-button--ghost lab-button--tight"
             type="button"
@@ -496,9 +509,9 @@ export function createLaboratorySettingsToolCardRuntime(
             ${escapeHtml(text(["mediaAnalysis", "settings", "status", "planned"]))}
           </button>
         `
-      : systemCommand
-        ? managedInstaller
-          ? `
+        : systemCommand
+          ? managedInstaller
+            ? `
             <button
               class="lab-button lab-button--${tool.installed === true ? "ghost" : "primary"} lab-button--tight"
               type="button"
@@ -544,9 +557,11 @@ export function createLaboratorySettingsToolCardRuntime(
             `;
 
     const helperToggleMarkup = systemCommand
-      ? managedInstaller || tool.installed === true
+      ? stageUnsupported
         ? helperToggleButtonMarkup
-        : manualProbeActionMarkup
+        : managedInstaller || tool.installed === true
+          ? helperToggleButtonMarkup
+          : manualProbeActionMarkup
       : "";
 
     return `

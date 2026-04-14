@@ -23,6 +23,7 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
   const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;
   const isAudioAnalysisFeature = deps.isAudioAnalysisFeature;
   const renderSubtitleSourceIntakePanel = deps.renderSubtitleSourceIntakePanel;
+  const getActiveProject = deps.getActiveProject;
   const text = deps.text;
   const state = deps.state;
   const escapeHtml = deps.escapeHtml;
@@ -41,7 +42,7 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
     return laboratorySourceStageProjectRuntime.renderSourceKindPanelBody();
   }
 
-  function renderSourceIntakePanelBody() {
+  function renderSourceIntakePanel() {
     return laboratorySourceStageIntakeRuntime.renderSourceIntakePanelBody();
   }
 
@@ -68,20 +69,30 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
     };
   }
 
-  function renderModuleSelectionPanel() {
+  function renderSourceContextPanel() {
+    const activeProject = getActiveProject();
     const activeFeatureId = getActiveFeatureId();
     const overview = getWorkbenchOverview();
     const selectedModuleIds = overview.selectedModuleIds;
-    const availableModuleIds = Array.isArray(state.context.workbench.availableModuleIds)
-      ? state.context.workbench.availableModuleIds
-      : [activeFeatureId];
+    const activeProjectName =
+      activeProject && typeof activeProject["name"] === "string" && activeProject["name"].trim() !== ""
+        ? activeProject["name"].trim()
+        : text(["mediaAnalysis", "projects", "empty"]);
+    const selectedSummary =
+      selectedModuleIds.length > 0
+        ? selectedModuleIds.map(getFeatureLabel).join(", ")
+        : text(["workbench", "selectedModulesEmpty"]);
+    const contextHint =
+      activeProject && typeof activeProject["id"] === "string" && activeProject["id"].trim() !== ""
+        ? text(["workbench", "readyHint"])
+        : text(["workbench", "stageGuards", "noProject"]);
 
     return `
       <section class="lab-panel lab-panel--dense lab-module-panel lab-module-panel--context">
         <div class="lab-panel__header">
           <div>
-            <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "moduleRailLabel"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(text(["workbench", "moduleTitle"]))}</h2>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "projects", "eyebrow"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "shared", "summary"]))}</h2>
           </div>
           <button
             class="lab-button lab-button--ghost lab-button--tight"
@@ -91,57 +102,21 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
             ${escapeHtml(text(["workbench", "dependencyAction"]))}
           </button>
         </div>
-        <div class="lab-module-rail">
-          ${availableModuleIds
-            .map(function (featureId) {
-              const isSelected = selectedModuleIds.includes(featureId);
-              const isActive = featureId === activeFeatureId;
-              return `
-                <article
-                  class="lab-module-pill"
-                  data-active="${isActive ? "true" : "false"}"
-                  data-selected="${isSelected ? "true" : "false"}"
-                >
-                  <div class="lab-module-pill__row">
-                    <span class="lab-module-pill__title">${escapeHtml(getFeatureLabel(featureId))}</span>
-                    ${
-                      isActive
-                        ? `<span class="lab-module-pill__flag">${escapeHtml(text(["workbench", "activeTag"]))}</span>`
-                        : ""
-                    }
-                  </div>
-                  <div class="lab-module-pill__actions">
-                    <button
-                      class="lab-button ${isSelected ? "lab-button--ghost" : "lab-button--primary"} lab-button--tight"
-                      type="button"
-                      data-action="workbench-toggle-module"
-                      data-value="${featureId}"
-                    >
-                      ${escapeHtml(
-                        isSelected
-                          ? text(["workbench", "excludeAction"])
-                          : text(["workbench", "includeAction"])
-                      )}
-                    </button>
-                    <button
-                      class="lab-button lab-button--ghost lab-button--tight"
-                      type="button"
-                      data-action="workbench-activate-module"
-                      data-value="${featureId}"
-                      ${isActive ? "disabled" : ""}
-                    >
-                      ${escapeHtml(
-                        isActive
-                          ? text(["workbench", "activeTag"])
-                          : text(["workbench", "focusAction"])
-                      )}
-                    </button>
-                  </div>
-                </article>
-              `;
-            })
-            .join("")}
+        <div class="lab-summary-list">
+          <div class="lab-summary-list__row">
+            <span>${escapeHtml(text(["mediaAnalysis", "projects", "title"]))}</span>
+            <strong>${escapeHtml(activeProjectName)}</strong>
+          </div>
+          <div class="lab-summary-list__row">
+            <span>${escapeHtml(text(["workbench", "moduleTitle"]))}</span>
+            <strong>${escapeHtml(getFeatureLabel(activeFeatureId))}</strong>
+          </div>
+          <div class="lab-summary-list__row">
+            <span>${escapeHtml(text(["workbench", "selectedModulesTitle"]))}</span>
+            <strong>${escapeHtml(selectedSummary)}</strong>
+          </div>
         </div>
+        <p class="lab-panel__hint">${escapeHtml(contextHint)}</p>
       </section>
     `;
   }
@@ -155,7 +130,7 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
       return `
         <section class="lab-intake-canvas__section">
           ${renderSourceKindPanelBody()}
-          ${renderSourceIntakePanelBody()}
+          ${renderSourceIntakePanel()}
         </section>
       `;
     }
@@ -163,12 +138,16 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
     return `
       <section class="lab-intake-canvas__section">
         ${renderSourceKindPanelBody()}
-        ${renderSourceIntakePanelBody()}
+        ${renderSourceIntakePanel()}
       </section>
     `;
   }
 
   function renderPrimaryIntakeCanvas() {
+    const activeProject = getActiveProject();
+    const activeProjectReady =
+      activeProject && typeof activeProject["id"] === "string" && activeProject["id"].trim() !== "";
+
     return `
       <section class="lab-panel lab-panel--primary-canvas lab-intake-canvas">
         <div class="lab-intake-canvas__sections">
@@ -185,12 +164,22 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
             </div>
             ${renderProjectPanelBody()}
           </section>
-          <div class="lab-intake-canvas__group lab-intake-canvas__group--setup">
-            <div class="lab-intake-canvas__label-row">
-              <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "source", "intakeTitle"]))}</span>
-            </div>
-            ${renderActiveModuleSidebar()}
-          </div>
+          ${
+            activeProjectReady
+              ? `
+                <div class="lab-intake-canvas__group lab-intake-canvas__group--setup">
+                  <div class="lab-intake-canvas__label-row">
+                    <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "source", "intakeTitle"]))}</span>
+                  </div>
+                  ${renderActiveModuleSidebar()}
+                </div>
+              `
+              : `
+                <div class="lab-notice">
+                  ${escapeHtml(text(["workbench", "stageGuards", "noProject"]))}
+                </div>
+              `
+          }
         </div>
       </section>
     `;
@@ -208,7 +197,7 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
   function renderSourceInspector() {
     return `
       <div class="lab-stage-stack lab-stage-stack--inspector">
-        ${renderModuleSelectionPanel()}
+        ${renderSourceContextPanel()}
       </div>
     `;
   }

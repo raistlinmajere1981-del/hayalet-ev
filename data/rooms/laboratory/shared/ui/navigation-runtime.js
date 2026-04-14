@@ -6,6 +6,8 @@ export function createLaboratoryUiNavigationRuntime(deps) {
   const {
     defaultFeatureId,
     documentRef,
+    getStageGuard,
+    onStageBlocked,
     render,
     resolveLocale,
     roomId,
@@ -83,6 +85,21 @@ export function createLaboratoryUiNavigationRuntime(deps) {
   function getStageIndex(stageId) {
     return stageOrder.indexOf(stageId);
   }
+  function readStageGuard(stageId) {
+    if (typeof getStageGuard !== "function") {
+      return {
+        allowed: true,
+        detail: null,
+        reason: null
+      };
+    }
+    const guard = getStageGuard(stageId);
+    return {
+      allowed: guard.allowed !== false,
+      detail: toString(guard.detail) || null,
+      reason: toString(guard.reason) || null
+    };
+  }
   function requestSurfaceScrollReset() {
     state.ui.scrollPositions.surface = 0;
     state.ui.stackScrollPositions.main = 0;
@@ -95,23 +112,34 @@ export function createLaboratoryUiNavigationRuntime(deps) {
   }
   function setStage(stageId) {
     if (stageOrder.includes(stageId) === false) {
-      return;
+      return false;
     }
     if (state.activeStage === stageId) {
-      return;
+      return true;
+    }
+    const currentIndex = getStageIndex(state.activeStage);
+    const nextIndex = getStageIndex(stageId);
+    const movingForward = nextIndex > currentIndex;
+    const guard = readStageGuard(stageId);
+    if (movingForward && guard.allowed !== true) {
+      if (typeof onStageBlocked === "function") {
+        onStageBlocked(stageId, guard);
+      }
+      return false;
     }
     state.activeStage = stageId;
     requestSurfaceScrollReset();
     render();
+    return true;
   }
   function advanceStage(direction) {
     const currentIndex = getStageIndex(state.activeStage);
     const nextIndex = Math.max(0, Math.min(stageOrder.length - 1, currentIndex + direction));
     const nextStageId = stageOrder.at(nextIndex);
     if (!nextStageId) {
-      return;
+      return false;
     }
-    setStage(nextStageId);
+    return setStage(nextStageId);
   }
   function captureScrollState(root) {
     const surface = root.querySelector(".lab-surface");
@@ -155,7 +183,11 @@ export function createLaboratoryUiNavigationRuntime(deps) {
     advanceStage,
     applyLocale,
     applyPresentationMode,
+    canEnterStage(stageId) {
+      return readStageGuard(stageId).allowed;
+    },
     captureScrollState,
+    getStageGuard: readStageGuard,
     getStageIndex,
     normalizeContext,
     requestOverlayScrollReset,

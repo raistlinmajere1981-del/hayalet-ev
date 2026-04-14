@@ -11,6 +11,11 @@ type LaboratoryShellFrameUiDeps = {
   featureText: (path: string[]) => string;
   getActiveFeatureId: () => string;
   getActiveStage: () => string;
+  getStageGuard: (stageId: string) => {
+    allowed: boolean;
+    detail?: string | null;
+    reason?: string | null;
+  };
   getStageIndex: (stageId: string) => number;
   getTranslations: () => LaboratoryRecord;
   getWorkbench: () => LaboratoryRecord;
@@ -29,6 +34,7 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
     featureText,
     getActiveFeatureId,
     getActiveStage,
+    getStageGuard,
     getStageIndex,
     getTranslations,
     isSubtitleAnalysisFeature,
@@ -76,6 +82,13 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
     const activeFeatureId = getActiveFeatureId();
     const currentIndex = getStageIndex(activeStage);
     const activeModuleLabel = getFeatureLabel(activeFeatureId);
+    const nextStageId = stageOrder.at(Math.min(stageOrder.length - 1, currentIndex + 1)) || null;
+    const nextStageGuard =
+      nextStageId && nextStageId !== activeStage ? getStageGuard(nextStageId) : null;
+    const nextDisabled =
+      currentIndex === stageOrder.length - 1 || (nextStageGuard && nextStageGuard.allowed !== true);
+    const nextReason =
+      nextStageGuard && typeof nextStageGuard.reason === "string" ? nextStageGuard.reason : "";
     return `
       <section class="lab-topbar">
         <div class="lab-stage-rail">
@@ -98,12 +111,26 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
           >
             ${stageOrder
               .map(function (stageId, index) {
+                const stageGuard = getStageGuard(stageId);
+                const futureStageBlocked =
+                  index > currentIndex && stageGuard.allowed !== true && stageId !== activeStage;
                 const stateName =
-                  stageId === activeStage ? "active" : index < currentIndex ? "complete" : "idle";
+                  stageId === activeStage
+                    ? "active"
+                    : index < currentIndex
+                      ? "complete"
+                      : futureStageBlocked
+                        ? "blocked"
+                        : "idle";
+                const stageReason =
+                  typeof stageGuard.reason === "string" && stageGuard.reason.trim() !== ""
+                    ? `title="${escapeHtml(stageGuard.reason)}"`
+                    : "";
                 return `
                   <article
                     class="lab-stage-pill"
                     data-state="${stateName}"
+                    ${stageReason}
                   >
                     <span class="lab-stage-pill__index">${String(index + 1)}</span>
                     <span class="lab-stage-pill__label">${escapeHtml(
@@ -119,6 +146,13 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
               <button
                 class="lab-stage-nav"
                 type="button"
+                data-action="open-settings"
+              >
+                ${escapeHtml(text(["workbench", "dependencyAction"]))}
+              </button>
+              <button
+                class="lab-stage-nav"
+                type="button"
                 data-action="nav-previous"
                 ${currentIndex === 0 ? "disabled" : ""}
               >
@@ -128,7 +162,8 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
                 class="lab-stage-nav"
                 type="button"
                 data-action="nav-next"
-                ${currentIndex === stageOrder.length - 1 ? "disabled" : ""}
+                ${nextDisabled ? "disabled" : ""}
+                ${nextReason ? `title="${escapeHtml(nextReason)}"` : ""}
               >
                 ${escapeHtml(featureText(["stageNav", "next"]))}
               </button>

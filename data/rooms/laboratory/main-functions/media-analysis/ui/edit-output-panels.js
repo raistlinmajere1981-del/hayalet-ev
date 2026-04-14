@@ -110,10 +110,7 @@ export function createMediaAnalysisEditOutputPanels(deps) {
     if (errorMessage === null) {
       return null;
     }
-    return getSafeDetail(
-      errorMessage,
-      text(["mediaAnalysis", "edit", "progressToolOutputHidden"])
-    );
+    return getSafeDetail(errorMessage, text(["mediaAnalysis", "edit", "progressToolOutputHidden"]));
   }
   function renderEditActionsPanel() {
     const source = getProjectSource();
@@ -138,7 +135,7 @@ export function createMediaAnalysisEditOutputPanels(deps) {
         ${getFriendlyEditError(asNonEmptyString(edit.lastError)) ? `<div class="lab-notice">${escapeHtml(getFriendlyEditError(asNonEmptyString(edit.lastError)) || "")}</div>` : ""}
         <div class="lab-action-stack">
           <button
-            class="lab-button lab-button--ghost"
+            class="lab-button lab-button--primary"
             type="button"
             data-action="edit-preview"
             ${ffmpegInstalled !== true || typeof source.storedPath !== "string" || previewJob ? "disabled" : ""}
@@ -154,7 +151,7 @@ export function createMediaAnalysisEditOutputPanels(deps) {
             ${escapeHtml(text(["mediaAnalysis", "edit", "actions", "cancelPreview"]))}
           </button>
           <button
-            class="lab-button lab-button--primary"
+            class="lab-button lab-button--ghost"
             type="button"
             data-action="edit-apply"
             ${ffmpegInstalled !== true || typeof source.storedPath !== "string" || applyJob ? "disabled" : ""}

@@ -57,6 +57,7 @@ type LaboratoryProfileJobRecord = LaboratoryRecord & {
 
 type LaboratoryProfileSelectedModelRecord = LaboratoryRecord & {
   labelKey?: unknown;
+  ready?: unknown;
 };
 
 type LaboratoryProjectSourceRecord = LaboratoryRecord & {
@@ -604,6 +605,9 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
     const estimate = getEstimate();
     const signals = getSignals();
     const artifacts = getArtifacts();
+    const blockers = toStringArray(readiness.blockers);
+    const selectedModel = getSelectedModel();
+    const selectedModelReady = selectedModel ? selectedModel.ready === true : false;
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -629,6 +633,18 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
             formatDuration(asNumber(estimate.runtimeSeconds)),
           ],
         ])}
+        ${
+          readiness.stageReady !== true
+            ? `
+              <p class="lab-panel__hint">${escapeHtml(
+                blockers[0] ||
+                  (selectedModelReady !== true
+                    ? text(["mediaAnalysis", "profile", "modelVerificationHint"])
+                    : text(["workbench", "stageGuards", "profileRequired"]))
+              )}</p>
+            `
+            : ""
+        }
         <div class="lab-action-stack">
           <button
             class="lab-button lab-button--primary"
@@ -637,6 +653,13 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
             ${readiness.stageReady !== true || runningJob ? "disabled" : ""}
           >
             ${escapeHtml(text(["mediaAnalysis", "profile", "actions", "run"]))}
+          </button>
+          <button
+            class="lab-button lab-button--ghost"
+            type="button"
+            data-action="open-settings"
+          >
+            ${escapeHtml(text(["workbench", "dependencyAction"]))}
           </button>
           <button
             class="lab-button lab-button--ghost"
@@ -658,11 +681,12 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
 
   function renderProfileSummaryPanel() {
     const readiness = getReadiness();
-    const estimate = getEstimate();
     const selectedModel = getSelectedModel();
     const selectedModelLabelKey = selectedModel ? asNonEmptyString(selectedModel.labelKey) : null;
     const blockers = toStringArray(readiness.blockers);
     const warnings = toStringArray(readiness.warnings);
+    const statusId = readiness.stageReady === true ? "ready" : "stale";
+    const summaryHint = blockers[0] || warnings[0] || "";
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">
@@ -670,52 +694,18 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
         </div>
         ${renderSummaryRows([
           [text(["mediaAnalysis", "profile", "summary", "target"]), getFocusLabel()],
-          [text(["mediaAnalysis", "profile", "summary", "preset"]), getProfileLabel()],
-          [
-            text(["mediaAnalysis", "profile", "summary", "lanes"]),
-            String(asNumber(readiness.enabledLaneCount) || 0),
-          ],
-          [
-            text(["mediaAnalysis", "profile", "summary", "runtime"]),
-            formatDuration(asNumber(estimate.runtimeSeconds)),
-          ],
+          [text(["mediaAnalysis", "shared", "status"]), text(["mediaAnalysis", "profile", "status", statusId])],
           [
             text(["mediaAnalysis", "profile", "summary", "model"]),
             selectedModelLabelKey ? textFromKey(selectedModelLabelKey) : "--",
           ],
+          [text(["mediaAnalysis", "profile", "blockersTitle"]), String(blockers.length)],
+          [text(["mediaAnalysis", "profile", "warningsTitle"]), String(warnings.length)],
         ])}
         ${
-          blockers.length > 0
-            ? `
-              <div class="lab-list-block">
-                <strong>${escapeHtml(text(["mediaAnalysis", "profile", "blockersTitle"]))}</strong>
-                <ul class="lab-bullet-list">
-                  ${blockers
-                    .map(function (entry) {
-                      return `<li>${escapeHtml(entry)}</li>`;
-                    })
-                    .join("")}
-                </ul>
-              </div>
-            `
-            : ""
-        }
-        ${
-          warnings.length > 0
-            ? `
-              <div class="lab-list-block">
-                <strong>${escapeHtml(text(["mediaAnalysis", "profile", "warningsTitle"]))}</strong>
-                <ul class="lab-bullet-list">
-                  ${warnings
-                    .slice(0, 4)
-                    .map(function (entry) {
-                      return `<li>${escapeHtml(entry)}</li>`;
-                    })
-                    .join("")}
-                </ul>
-              </div>
-            `
-            : ""
+          summaryHint !== ""
+            ? `<p class="lab-panel__hint">${escapeHtml(summaryHint)}</p>`
+            : `<p class="lab-panel__hint">${escapeHtml(text(["workbench", "readyHint"]))}</p>`
         }
       </section>
     `;

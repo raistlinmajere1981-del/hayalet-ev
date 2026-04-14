@@ -113,6 +113,7 @@ export function createLaboratoryFeatureStageBundlesRuntime(deps) {
     formatBytes: deps.formatBytes,
     formatCleanupPolicy: deps.formatCleanupPolicy,
     formatPlatformList: deps.formatPlatformList,
+    getWorkbench: deps.getWorkbench,
     getToolEntry: deps.getToolEntry,
     getToolRegistry: deps.getToolRegistry,
     getStageToolIds: deps.getStageToolIds,

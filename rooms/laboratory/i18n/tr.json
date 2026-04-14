@@ -134,6 +134,15 @@
         "title": "Laboratuvar sonucunu incele",
         "subtitle": "Modul bolumleri, caveat'ler, export'lar ve sonraki adimlari tek rapor yuzeyinde gor."
       }
+    },
+    "stageGuards": {
+      "noProject": "Kaynak asamasindan cikmadan once bir proje sec ya da olustur.",
+      "sourceRequired": "Sonraki asamaya gecmeden once bir kaynak dosyasi hazirla.",
+      "subtitleSourceRequired": "Sonraki asamaya gecmeden once altyazi girdilerini ice aktar.",
+      "profileRequired": "Rehberli analize baslamadan once profil blokajlarini cozumle.",
+      "preflightRequired": "Rehberli analize baslamadan once profile preflight calistir.",
+      "processRequired": "Rapor asamasini acmadan once rehberli analizi tamamla.",
+      "reportPending": "Rapor asamasini acmadan once rapor goruntusunun tamamlanmasini bekle."
     }
   },
   "mediaAnalysis": {

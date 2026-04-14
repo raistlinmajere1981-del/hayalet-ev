@@ -134,6 +134,15 @@
         "title": "Review the laboratory outcome",
         "subtitle": "Read one report surface with module sections, caveats, exports, and follow-up actions."
       }
+    },
+    "stageGuards": {
+      "noProject": "Select or create a project before leaving the source stage.",
+      "sourceRequired": "Prepare a source file before continuing to the next stage.",
+      "subtitleSourceRequired": "Import subtitle entries before continuing to the next stage.",
+      "profileRequired": "Resolve the profile blockers before starting the guided analysis.",
+      "preflightRequired": "Run the profile preflight before starting the guided analysis.",
+      "processRequired": "Finish the guided analysis before opening the report stage.",
+      "reportPending": "Wait for the report snapshot to finish before opening the report stage."
     }
   },
   "mediaAnalysis": {

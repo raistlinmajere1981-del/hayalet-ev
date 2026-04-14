@@ -228,7 +228,8 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
                       .map(function (moduleEntry, index) {
                         const progress = getProcessModulePercent(moduleEntry);
                         const summary =
-                          typeof moduleEntry.summary === "string" && moduleEntry.summary.trim() !== ""
+                          typeof moduleEntry.summary === "string" &&
+                          moduleEntry.summary.trim() !== ""
                             ? moduleEntry.summary
                             : null;
                         return `
@@ -264,8 +265,12 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
       return !["idle", "queued", "running"].includes(String(entry.status || ""));
     }).length;
     const reportRecord = toFeatureProcessRecord(getCurrentFeatureReportRecord());
-    const selectedFeatureIds = getSelectedFeatureIds();
     const runningJob = getRunningProcessJob();
+    const processWarnings = toStringArray(processRecord.warnings);
+    const inspectorHint =
+      (runningJob && typeof runningJob.message === "string" && runningJob.message.trim() !== ""
+        ? runningJob.message
+        : null) || processWarnings[0] || "";
 
     return `
       <div class="lab-stage-stack lab-stage-stack--inspector">
@@ -292,40 +297,8 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
                 `${String(completedModules)} / ${String(modules.length || 0)}`,
               ],
             ])}
-            ${
-              toStringArray(processRecord.warnings).length > 0
-                ? `
-                  <div class="lab-list-block">
-                    <strong>${escapeHtml(text(["mediaAnalysis", "profile", "warningsTitle"]))}</strong>
-                    <ul class="lab-bullet-list">
-                      ${toStringArray(processRecord.warnings)
-                        .slice(0, 4)
-                        .map(function (entry) {
-                          return `<li>${escapeHtml(entry)}</li>`;
-                        })
-                        .join("")}
-                    </ul>
-                  </div>
-                `
-                : ""
-            }
-            <div class="lab-list-block">
-              <strong>${escapeHtml(text(["workbench", "moduleTitle"]))}</strong>
-              <ul class="lab-bullet-list">
-                ${selectedFeatureIds
-                  .map(function (featureId) {
-                    const featureRecord = getFeatureProcessRecord(featureId);
-                    return `<li>${escapeHtml(
-                      `${text(["features", featureId])}: ${formatStatusLabel(
-                        featureRecord.status || "idle"
-                      )}`
-                    )}</li>`;
-                  })
-                  .join("")}
-              </ul>
-            </div>
             <div class="lab-action-stack">
-              <button class="lab-button lab-button--ghost" type="button" data-action="restart-process">
+              <button class="lab-button lab-button--primary" type="button" data-action="restart-process">
                 ${escapeHtml(featureText(["process", "controls", "restart"]))}
               </button>
               <button class="lab-button lab-button--ghost" type="button" data-action="process-cancel" ${
@@ -333,17 +306,15 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
               }>
                 ${escapeHtml(text(["mediaAnalysis", "profile", "actions", "cancel"]))}
               </button>
-              <button class="lab-button lab-button--primary" type="button" data-action="open-report" ${
+              <button class="lab-button lab-button--ghost" type="button" data-action="open-report" ${
                 ["ready", "stale"].includes(String(reportRecord.status || "")) ? "" : "disabled"
               }>
                 ${escapeHtml(featureText(["process", "controls", "jumpReport"]))}
               </button>
             </div>
             ${
-              runningJob &&
-              typeof runningJob.message === "string" &&
-              runningJob.message.trim() !== ""
-                ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
+              inspectorHint !== ""
+                ? `<p class="lab-panel__hint">${escapeHtml(inspectorHint)}</p>`
                 : ""
             }
         </section>

@@ -297,6 +297,10 @@ test("laboratory UI renders the process stage from host-backed state and honest 
   const shellCompositionSource = readFileSync("rooms/laboratory/ui/shell-composition.ts", "utf8");
   const processStageSource = readFileSync("rooms/laboratory/shared/ui/process-stage.ts", "utf8");
   const settingsOverlaySource = readFileSync("rooms/laboratory/shared/ui/settings-overlay.ts", "utf8");
+  const settingsToolCardSource = readFileSync(
+    "rooms/laboratory/shared/ui/settings-tool-card.ts",
+    "utf8"
+  );
   const toolchain = JSON.parse(readFileSync("rooms/laboratory/shared/data/tools/toolchain.manifest.json", "utf8"));
 
   assert.match(uiSource, /shared\/ui\/process-stage\.js/);
@@ -316,6 +320,8 @@ test("laboratory UI renders the process stage from host-backed state and honest 
   assert.match(settingsOverlaySource, /lab-overlay__scrim/);
   assert.match(settingsOverlaySource, /text\(\["workbench", "dependencyOverview"\]\)/);
   assert.match(settingsOverlaySource, /text\(\["workbench", "toolGridTitle"\]\)/);
+  assert.match(settingsToolCardSource, /const stageUnsupported = stageSupport === "unsupported";/);
+  assert.match(settingsToolCardSource, /const unsupportedActionMarkup = `[\s\S]*support", "unsupported"/);
   assert.doesNotMatch(uiSource, /return stageToolIds\.length > 0 \? stageToolIds : allToolIds;/);
   assert.equal(toolchain.tools.ffmpeg.stageSupport.process, "required");
   assert.equal(toolchain.tools["whisper.cpp"].stageSupport.process, "optional");
