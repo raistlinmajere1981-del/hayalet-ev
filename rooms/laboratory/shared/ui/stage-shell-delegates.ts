@@ -1,6 +1,8 @@
+import type { LaboratoryStageSurface } from "../types/room-shell-contracts.js";
+
 type LaboratoryStageShellDelegatesDeps<TMediaAnalysisEditStageDeps> = {
   laboratorySourceStageUi: {
-    renderSourceStage: () => string;
+    renderSourceStage: () => LaboratoryStageSurface;
   };
   isSubtitleAnalysisFeature: () => boolean;
   renderSubtitleEditStage: () => string;
@@ -10,10 +12,10 @@ type LaboratoryStageShellDelegatesDeps<TMediaAnalysisEditStageDeps> = {
     renderProfileStage: () => string;
   };
   laboratoryProcessStageUi: {
-    renderProcessStage: () => string;
+    renderProcessStage: () => LaboratoryStageSurface;
   };
   laboratoryReportStageUi: {
-    renderReportStage: () => string;
+    renderReportStage: () => LaboratoryStageSurface;
   };
 };
 
@@ -35,13 +37,22 @@ export function createLaboratoryStageShellDelegates<TMediaAnalysisEditStageDeps>
 
   function renderEditStage() {
     if (isSubtitleAnalysisFeature()) {
-      return renderSubtitleEditStage();
+      return {
+        main: renderSubtitleEditStage(),
+        mainClassName: "lab-workspace__main--full",
+      };
     }
-    return renderMediaAnalysisEditStage(mediaAnalysisEditStageDeps);
+    return {
+      main: renderMediaAnalysisEditStage(mediaAnalysisEditStageDeps),
+      mainClassName: "lab-workspace__main--full",
+    };
   }
 
   function renderProfileStage() {
-    return mediaAnalysisProfileStage.renderProfileStage();
+    return {
+      main: mediaAnalysisProfileStage.renderProfileStage(),
+      mainClassName: "lab-workspace__main--full",
+    };
   }
 
   function renderProcessStage() {

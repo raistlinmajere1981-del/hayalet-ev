@@ -1,5 +1,10 @@
 import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js";
 import { createLaboratoryWorkbenchState } from "../host/runtime-primitives.js";
+import type {
+  LaboratoryShellEventLogItem,
+  LaboratoryShellStatusSource,
+  LaboratoryShellStatusTone,
+} from "../types/room-shell-contracts.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
@@ -44,8 +49,144 @@ export function createLaboratoryRequestRuntime(deps: LaboratoryRequestRuntimeDep
     return state.ui.requestLookup as Record<string, LaboratoryTrackedRequest>;
   }
 
+  function normalizeStatusMessage(message: string): string {
+    return message.replace(/\s+/g, " ").trim();
+  }
+
+  function extractStatusDetail(message: string): string | null {
+    const normalized = message.trim();
+    if (normalized === "") {
+      return null;
+    }
+    if (normalized.length > 180 || normalized.includes("\n")) {
+      return normalized;
+    }
+    return null;
+  }
+
+  function summarizeStatusMessage(message: string): string {
+    const normalized = normalizeStatusMessage(message);
+    if (normalized.length <= 180) {
+      return normalized;
+    }
+    return `${normalized.slice(0, 177).trimEnd()}...`;
+  }
+
+  function pushEventLogEntry(
+    tone: LaboratoryShellStatusTone,
+    message: string,
+    source: LaboratoryShellStatusSource,
+    detail: string | null = null
+  ) {
+    const now = Date.now();
+    const normalizedMessage = summarizeStatusMessage(message);
+    if (normalizedMessage === "") {
+      return;
+    }
+
+    const latestEntry = state.ui.eventLog[0];
+    if (
+      latestEntry &&
+      latestEntry.tone === tone &&
+      latestEntry.source === source &&
+      latestEntry.message === normalizedMessage &&
+      now - latestEntry.timestamp < 2000
+    ) {
+      latestEntry.timestamp = now;
+      latestEntry.detail = detail;
+      return;
+    }
+
+    const entry: LaboratoryShellEventLogItem = {
+      detail,
+      id: `${tone}-${now}-${Math.random().toString(36).slice(2, 8)}`,
+      message: normalizedMessage,
+      source,
+      timestamp: now,
+      tone,
+    };
+    state.ui.eventLog.unshift(entry);
+    if (state.ui.eventLog.length > 80) {
+      state.ui.eventLog.length = 80;
+    }
+  }
+
+  function setStatusChannel(
+    tone: LaboratoryShellStatusTone,
+    message: string,
+    options: {
+      detail?: string | null;
+      source?: LaboratoryShellStatusSource;
+      sticky?: boolean;
+    } = {}
+  ) {
+    const normalizedMessage = summarizeStatusMessage(message);
+    if (normalizedMessage === "") {
+      return;
+    }
+
+    const source = options.source || "system";
+    const detail = options.detail ?? extractStatusDetail(message);
+    const channel = state.ui.status[tone];
+    channel.message = normalizedMessage;
+    channel.detail = detail;
+    channel.source = source;
+    channel.sticky = options.sticky ?? tone === "blocking";
+    channel.updatedAt = Date.now();
+    channel.visible = true;
+    if (tone !== "activity") {
+      const activityChannel = state.ui.status["activity"];
+      activityChannel.message = "";
+      activityChannel.detail = null;
+      activityChannel.source = "system";
+      activityChannel.sticky = false;
+      activityChannel.updatedAt = null;
+      activityChannel.visible = false;
+    }
+    state.ui.lastActionMessage = normalizedMessage;
+    pushEventLogEntry(tone, normalizedMessage, source, detail);
+  }
+
+  function clearStatusChannel(tone: LaboratoryShellStatusTone) {
+    const channel = state.ui.status[tone];
+    channel.message = "";
+    channel.detail = null;
+    channel.source = "system";
+    channel.sticky = false;
+    channel.updatedAt = null;
+    channel.visible = false;
+  }
+
   function setLastAction(message: string) {
-    state.ui.lastActionMessage = message;
+    setStatusChannel("result", message, { source: "request", sticky: false });
+  }
+
+  function setBlockingStatus(
+    message: string,
+    detail?: string | null,
+    source: LaboratoryShellStatusSource = "system"
+  ) {
+    setStatusChannel("blocking", message, { detail: detail ?? null, source, sticky: true });
+  }
+
+  function setActivityStatus(
+    message: string,
+    detail?: string | null,
+    source: LaboratoryShellStatusSource = "system"
+  ) {
+    setStatusChannel("activity", message, { detail: detail ?? null, source, sticky: false });
+  }
+
+  function setResultStatus(
+    message: string,
+    detail?: string | null,
+    source: LaboratoryShellStatusSource = "system"
+  ) {
+    setStatusChannel("result", message, { detail: detail ?? null, source, sticky: false });
+  }
+
+  function toggleEventLog(force?: boolean) {
+    state.ui.eventLogOpen = typeof force === "boolean" ? force : !state.ui.eventLogOpen;
   }
 
   function getActionDomain(action: unknown): LaboratoryActionDomain {
@@ -170,7 +311,7 @@ export function createLaboratoryRequestRuntime(deps: LaboratoryRequestRuntimeDep
   function sendMediaAction(action: string, payload?: LaboratoryRecord | null) {
     const roomApi = getRoomApi();
     if (!roomApi) {
-      setLastAction(bootstrapText("roomApiUnavailable"));
+      setBlockingStatus(bootstrapText("roomApiUnavailable"));
       render();
       return null;
     }
@@ -239,7 +380,7 @@ export function createLaboratoryRequestRuntime(deps: LaboratoryRequestRuntimeDep
   function syncHostContext(payload: LaboratoryRecord) {
     const roomApi = getRoomApi();
     if (!roomApi) {
-      setLastAction(bootstrapText("roomApiUnavailable"));
+      setBlockingStatus(bootstrapText("roomApiUnavailable"));
       render();
       return;
     }
@@ -345,17 +486,22 @@ export function createLaboratoryRequestRuntime(deps: LaboratoryRequestRuntimeDep
   }
 
   return {
+    clearStatusChannel,
     closeSettingsOverlay,
     openSettingsOverlay,
     persistDrafts,
     sendMediaAction,
     sendSourceAction,
     setActiveWorkbenchModule,
+    setActivityStatus,
+    setBlockingStatus,
     setLastAction,
+    setResultStatus,
     shouldIgnoreCorrelatedPayload,
     syncHostContext,
     syncWorkbenchContext,
     syncDraftField,
+    toggleEventLog,
     toggleWorkbenchModuleSelection,
   };
 }

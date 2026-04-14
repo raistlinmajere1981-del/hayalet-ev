@@ -129,7 +129,10 @@ export function buildLaboratoryUiCoreApi(deps) {
     sendMediaAction: laboratoryRequestRuntime.sendMediaAction,
     sendSourceAction: laboratoryRequestRuntime.sendSourceAction,
     setActiveWorkbenchModule: laboratoryRequestRuntime.setActiveWorkbenchModule,
+    setActivityStatus: laboratoryRequestRuntime.setActivityStatus,
+    setBlockingStatus: laboratoryRequestRuntime.setBlockingStatus,
     setLastAction: laboratoryRequestRuntime.setLastAction,
+    setResultStatus: laboratoryRequestRuntime.setResultStatus,
     setStage: deps.setStage,
     sortProfileSignals: uiRuntimeComposition.sortProfileSignals,
     state: deps.state,
@@ -142,6 +145,7 @@ export function buildLaboratoryUiCoreApi(deps) {
     text: deps.text,
     textFromKey: deps.textFromKey,
     toRecord: deps.toRecord,
+    toggleEventLog: laboratoryRequestRuntime.toggleEventLog,
     toggleWorkbenchModuleSelection: laboratoryRequestRuntime.toggleWorkbenchModuleSelection
   };
 }

@@ -41,11 +41,20 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
     grid-template-columns: 1fr;
   }
 
+  .lab-workspace,
+  .lab-intake-console,
+  .lab-status-line,
+  .lab-status-line__cards,
+  .lab-event-log__head {
+    grid-template-columns: 1fr;
+  }
+
   .lab-layout {
     grid-template-columns: 1fr;
   }
 
   .lab-source-workbench,
+  .lab-intake-console,
   .lab-orientation__header,
   .lab-orientation__body {
     grid-template-columns: 1fr;
@@ -71,16 +80,13 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .lab-surface {
-    overflow: auto;
-  }
-
   .lab-main-stack,
   .lab-side-stack {
     overflow: visible;
   }
 
   .lab-subgrid,
+  .lab-edit-console,
   .lab-source-grid,
   .lab-profile-grid,
   .lab-signal-grid,
@@ -106,7 +112,9 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
   .lab-summary-cards,
   .lab-side-stack,
   .lab-source-workbench,
+  .lab-intake-console,
   .lab-subgrid,
+  .lab-edit-console,
   .lab-source-grid,
   .lab-profile-grid,
   .lab-signal-grid,
@@ -116,7 +124,11 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
   .lab-orientation__body,
   .lab-orientation__metrics,
   .lab-project-panel__grid,
-  .lab-meta-list--compact {
+  .lab-meta-list--compact,
+  .lab-workspace,
+  .lab-status-line,
+  .lab-status-line__cards,
+  .lab-event-log__head {
     grid-template-columns: 1fr;
   }
 
@@ -130,11 +142,6 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
 
   .lab-module-card__actions {
     grid-template-columns: 1fr;
-  }
-
-  .lab-surface {
-    min-height: auto;
-    overflow: auto;
   }
 
   .lab-toggle-grid {

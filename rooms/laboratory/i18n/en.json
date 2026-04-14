@@ -15,6 +15,8 @@
     "moduleSelectionHint": "Build the run set here, then focus one module for detailed setup.",
     "selectedModulesTitle": "Modules in this run",
     "selectedModulesEmpty": "No modules are queued yet.",
+    "railCurrentStage": "Current stage",
+    "railStepCount": "Stage progress",
     "includeAction": "Add to run",
     "excludeAction": "Remove",
     "focusAction": "Focus module",
@@ -32,6 +34,17 @@
     "operationsTitle": "Live operations",
     "operationsFallback": "Room job",
     "operationsEmpty": "No active dependency or model operation is running.",
+    "statusLine": {
+      "activityLabel": "Activity",
+      "blockingLabel": "Blocking",
+      "eventLogEmpty": "No recent event has been recorded.",
+      "eventLogEyebrow": "Event stream",
+      "eventLogTitle": "Workbench events",
+      "hideEventsAction": "Hide events",
+      "idleMessage": "Waiting for the next workbench action.",
+      "resultLabel": "Result",
+      "showEventsAction": "Show events"
+    },
     "operationsMeta": {
       "cancelAction": "Cancel",
       "operationLabel": "Operation",

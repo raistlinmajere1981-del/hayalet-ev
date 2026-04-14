@@ -27,7 +27,22 @@ type LaboratoryHostMessageRuntimeDeps = {
   applyPresentationMode: (presentation: unknown) => unknown;
   normalizeContext: (message: unknown) => LaboratoryUiContext;
   render: () => unknown;
+  setActivityStatus: (
+    message: string,
+    detail?: string | null,
+    source?: "host" | "request" | "system" | "ui"
+  ) => unknown;
+  setBlockingStatus: (
+    message: string,
+    detail?: string | null,
+    source?: "host" | "request" | "system" | "ui"
+  ) => unknown;
   setLastAction: (message: string) => unknown;
+  setResultStatus: (
+    message: string,
+    detail?: string | null,
+    source?: "host" | "request" | "system" | "ui"
+  ) => unknown;
   shouldIgnoreCorrelatedPayload: (requestId: unknown, action: unknown) => boolean;
   state: LaboratoryUiState;
   text: (path: string[]) => string;
@@ -40,7 +55,10 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
     applyPresentationMode,
     normalizeContext,
     render,
+    setActivityStatus,
+    setBlockingStatus,
     setLastAction,
+    setResultStatus,
     shouldIgnoreCorrelatedPayload,
     state,
     text,
@@ -236,7 +254,13 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
       }
       const actionMessage = formatActionResultMessage(payload);
       if (actionMessage !== null) {
-        setLastAction(actionMessage);
+        if (payload.success === true) {
+          setResultStatus(actionMessage, null, "host");
+        } else if (actionMessage !== "") {
+          setBlockingStatus(actionMessage, toString(payload.error), "host");
+        } else {
+          setLastAction(actionMessage);
+        }
       }
       scheduleRender();
       return;
@@ -248,7 +272,15 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
       }
       const jobMessage = formatJobProgressMessage(payload);
       if (jobMessage !== null) {
-        setLastAction(jobMessage);
+        const stageId = toString(payload["stage"]);
+        const jobDetail = toString(payload.message);
+        if (stageId === "failed") {
+          setBlockingStatus(jobMessage, jobDetail, "host");
+        } else if (stageId === "completed" || stageId === "cancelled") {
+          setResultStatus(jobMessage, jobDetail, "host");
+        } else if (jobMessage !== "") {
+          setActivityStatus(jobMessage, jobDetail, "host");
+        }
       }
       scheduleRender();
     }

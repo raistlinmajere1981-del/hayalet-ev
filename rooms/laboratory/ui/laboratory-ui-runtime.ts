@@ -352,6 +352,8 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     restartProcess: coreRuntime.restartProcess,
     restoreScrollState: coreRuntime.restoreScrollState,
     setActiveWorkbenchModule: coreRuntime.setActiveWorkbenchModule,
+    setBlockingStatus: coreRuntime.setBlockingStatus,
+    setResultStatus: coreRuntime.setResultStatus,
     sendMediaAction: coreRuntime.sendMediaAction,
     sendSourceAction: coreRuntime.sendSourceAction,
     setLastAction: coreRuntime.setLastAction,
@@ -362,6 +364,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     text: coreRuntime.text,
     textFromKey: coreRuntime.textFromKey,
     toRecord: coreRuntime.toRecord,
+    toggleEventLog: coreRuntime.toggleEventLog,
     toggleWorkbenchModuleSelection: coreRuntime.toggleWorkbenchModuleSelection,
     toggleCleanup(key: unknown) {
       void key;

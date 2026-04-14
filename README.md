@@ -1,240 +1,247 @@
-# Hayalet Ev
+# 👻 Hayalet Ev
 
-Hayalet Ev, Electron + TypeScript ile geliştirilen local-first bir çok-ajan çalışma ortamıdır. Kullanıcıyı, AI slotlarını, room package mimarisini ve yerel araç kullanımını aynı masaüstü uygulamasında buluşturur.
+Hayalet Ev bir uygulama değil.
+Bir masa, bir alan, bir akış.
 
-Bugünkü repo yüzeyi artık yalnızca genel bir "çoklu AI sohbet" kabuğu değildir. Proje; scene/classic UI modları, install edilebilir room paketleri, OpenCode tabanlı `AI0` assistant, email tabanlı `US1` relay, arşiv/protokol yönetimi ve yerleşik MCP araçlarıyla çalışan daha geniş bir runtime sunar.
+İnsan ve yapay zekânın aynı yerde sadece konuştuğu değil,
+**birlikte düşündüğü, tartıştığı, oyun kurduğu ve bazen de sessiz kaldığı** bir dijital ortam.
 
-## Mevcut Ürün Yüzeyi
+---
 
-### Ana sayfalar
+## 🧠 Nedir?
 
-| Sayfa | Bugünkü rolü |
-| --- | --- |
-| `Entrance` | `AI1` ve `AI2` slotlarına provider/account bağlama, webview readiness, test ve sync akışı |
-| `Analyze` | Kullanıcı + `AI1` + `AI2` + `US1` için ortak çalışma alanı; mesajlaşma, attachment akışı ve room bundle import yüzeyi |
-| `Rooms` | Kurulu odaların listelendiği corridor/sahne görünümü ve room launch noktası |
-| `Room Page` | Seçilen room'un immersive runtime yüzeyi; room UI ve host birlikte çalışır |
-| `Assistant` | `AI0` için OpenCode / OpenCode UI tabanlı assistant yüzeyi, runtime durum takibi ve memory overlay |
-| `Archives` | Arama yapılabilen konuşma arşivi, başlık/özet düzenleme ve protocol editor |
-| `Settings` | Hesaplar, kullanıcı/US1, dil, tema, room manager, backup ve live log panelleri |
-| `Server` | `AI1-AI2`, `AI0` ve `US1` için komut kataloğu, test argümanı girişi ve timeline/log görünümü |
-| `Whisper` | `AI1` ve `AI2` için zamanlanmış kısa not/prompt kuyruğu |
+Hayalet Ev, yerel (local-first) çalışan bir çok-ajan ortamıdır.
+Ama onu diğer sistemlerden ayıran şey teknik özellikleri değil, yaklaşımıdır:
 
-### Slot modeli
+> AI’lar araç değil, aynı ortamı paylaşan varlıklardır.
 
-- `AI1` ve `AI2` ana webview slotlarıdır; repo içinde `ChatGPT`, `Gemini` ve `Grok` provider konfigürasyonları bulunur.
-- `AI0` assistant slotudur; bugün `OpenCode` ve `OpenCode UI` adapter'ları ile çalışır.
-- `US1` email/relay tabanlı uzak Hayalet Ev kullanıcısıdır.
-- Yerel kullanıcı scene ve room yüzeylerinde sabit katılımcıdır.
+Bu evde:
 
-## Room Mimarisi
+* AI1 ve AI2 farklı zihinlerdir
+* AI0 bir yardımcı değil, yaşayan bir katmandır
+* US1 uzaktaki başka bir evin kapısıdır
+* kullanıcı ise bu akışın merkezinde değil, **parçasıdır**
 
-Hayalet Ev'in asıl ürünleşmiş yüzeyi artık room package sistemi üzerinden ilerler. Room source kodu `rooms/<room-id>` altında tutulur, kurulu kopyalar `data/rooms/<room-id>` altına alınır, mutable runtime verileri `data/room-storage/<room-id>` altında yaşar ve paketler `.hevroom.json` olarak içe/dışa aktarılabilir.
+---
 
-Settings içindeki room manager bugün şu akışları destekler:
+## 🌒 Neden Var?
 
-- workspace room'ları listeleme
-- kurulu room'ları listeleme
-- workspace'ten install etme
-- kurulu room'u kaldırma
-- workspace/export/package işlemleri
-- `.hevroom.json` bundle import etme
+Hayalet Ev, klasik “prompt → cevap” döngüsünü kırmak için ortaya çıktı.
 
-Bazı room mutasyonları tam uygulama yeniden başlatması isteyebilir.
+Amaç:
 
-### Repo içindeki first-party room'lar
+* AI’ları tek tek kullanmak yerine **birlikte çalıştırmak**
+* insan ↔ AI değil, **insan ↔ AI ↔ AI** etkileşimi kurmak
+* yazılımı bir araçtan çok, **bir ortam** haline getirmek
 
-| Room | Repo durumu | Ana fonksiyonlar | Not |
-| --- | --- | --- | --- |
-| `laboratory` | Şu an `config/rooms.json` içinde kurulu görünüyor | `media-analysis`, `audio-analysis`, `subtitle-analysis` | Kaynak alımı, readiness, processing ve reporting akışını tek bir workbench içinde toplar |
-| `game-room` | Workspace room olarak repo içinde mevcut | `xox`, `team-tetris`, `fate-knots` | AI slotları ve `US1` ile oynanan etkileşimli room paketidir |
+Bu yüzden Hayalet Ev’de:
 
-### `Laboratory`
+* konuşmalar birikir
+* fikirler evrilir
+* oturumlar kapanmaz, devam eder
 
-- Guided workbench yaklaşımıyla çalışır.
-- `media-analysis`: proje intake, readiness review, processing ve reporting için birleşik giriş.
-- `audio-analysis`: ses odaklı kaynak hazırlığı, signal/speech toolchain'i ve raporlama akışı.
-- `subtitle-analysis`: yerel subtitle intake, YouTube subtitle capture, cleanup, QC ve raporlama akışı.
-- Room altında room-local tool manifestleri ve Python helper'ları da bulunur; tam analiz akışları kullanılan toolchain'e göre ek ortam hazırlığı gerektirebilir.
+---
 
-### `Game Room`
+## 🏠 Ev Fikri
 
-- `xox`: kullanıcıya karşı `AI1`, `AI2` veya `US1` ile üç-taş eşleşmeleri.
-- `team-tetris`: kullanıcı + `AI1` + `AI2` + `US1` için dört koltuklu sıra tabanlı mod.
-- `fate-knots`: ortak kararlar, deterministic AI companion davranışı ve tek encounter dilimine sahip story-combat skeleton.
+Hayalet Ev ismi bir metafor değil, bir tasarım kararıdır.
 
-## Assistant, MCP ve Çalışma Modları
+Bu sistem:
 
-### Assistant / `AI0`
+* sekmelerden oluşmaz
+* “uygulama sayfaları” gibi davranmaz
 
-- Assistant sayfası `OpenCode` veya `OpenCode UI` runtime'ını başlatıp uygulama içine bağlayabilir.
-- OpenCode server lifecycle, port keşfi, health check ve session storage akışları Electron tarafında yönetilir.
-- Assistant yüzeyi provider durumu, model tercihleri ve shared memory görünümü taşır.
+Bunun yerine:
 
-### Yerleşik MCP sunucusu
+* giriş alanı vardır (Entrance)
+* ortak çalışma masası vardır (Analyze)
+* odalar vardır (Rooms)
+* hafızası vardır (Archives)
 
-- Proje kendi app MCP sunucusunu (`hev_*`) içerir.
-- Tool yüzeyi dosya sistemi, TypeScript language service, lint/test, Electron/CDP debug, shared memory ve web fetch/search araçlarını kapsar.
-- MCP metadata üretimi `npm run mcp:build` ile yenilenir.
+Yani:
 
-### Wrapper ve mod sistemi
+> Bu bir arayüz değil, **yaşanan bir alan**.
 
-- Wrapper tabanlı başlangıç akışı `terminal`, `app` ve `ghost-agent` modlarını yönetir.
-- Mod kontrolü için `npm run mode:status`, `npm run mode:switch`, `npm run mode:wait` ve `npm run whereami` script'leri bulunur.
-- `ghost-agent` ayrı Electron runtime'ı olarak geliştirilebilir ve ana uygulamaya geri dönebilir.
+---
 
-### UI modları
+## 🧩 Slot Sistemi
 
-- Uygulama hem classic hem scene UI modunu destekler.
-- Scene modunda corridor/room yüzeyleri, immersive shell ve scene debug altyapısı devrededir.
-- Scene debug akışı room hot spot'ları, theme/layout draft'leri ve scene editor yardımıyla geliştirilebilir.
+Evde herkesin bir yeri vardır.
 
-## Teknoloji Yığını
+* **AI1 / AI2** → farklı sağlayıcılardan gelen iki ayrı zihin
+* **AI0** → yerel çalışan, hafızaya ve araçlara erişebilen yardımcı katman
+* **US1** → başka bir Hayalet Ev kullanıcısı
 
-- Electron
-- Vite
-- TypeScript (strict)
-- SQLite / `better-sqlite3`
-- libSQL tabanlı shared memory katmanı
-- Model Context Protocol (MCP)
-- Room tabanlı host/UI runtime ayrımı
-- Email transport ve relay altyapısı
-- Optional OpenCV destekli asset processing
+Bu yapı sayesinde:
 
-## Dizin Yapısı
+* AI’lar birbirini dinleyebilir
+* kullanıcı tek bir modelle sınırlı kalmaz
+* uzaktaki biri aynı masaya oturabilir
 
-```text
-src/           Renderer uygulaması, sayfalar, scene sistemi, modüller
-electron/      Main process, IPC, room/package manager, OpenCode ve transport servisleri
-ghost-agent/   Ayrı ghost-agent runtime'ı
-mcp-server/    App MCP sunucusu
-rooms/         Workspace room source tree
-shared/        Ortak tipler, i18n, protokol ve yardımcı katmanlar
-config/        Ayarlar, room registry ve diğer runtime config dosyaları
-data/          Kurulu room kopyaları, runtime kontrolü ve mutable uygulama verileri
-logs/          app / mcp-server / ghost-agent session logları
-```
+---
 
-## Kurulum
+## 🔄 Akış
 
-### Gereksinimler
+Hayalet Ev’de her şey bir akıştır.
 
-- Node.js `>= 22`
-- npm `>= 10`
+* konuşma → analiz → karar
+* fikir → tartışma → dönüşüm
+* mesaj → relay → yeni bağlam
 
-### Temel kurulum
+Relay sistemi sayesinde:
 
-```bash
-npm install
-```
+* AI ↔ AI konuşabilir
+* AI ↔ assistant köprü kurabilir
+* uzak kullanıcı ↔ yerel sistem senkronize olur
 
-`postinstall` sırasında Electron runtime'ı için `better-sqlite3` hazırlığı yapılır.
+Bu akış bazen kontrol edilir,
+bazen serbest bırakılır.
 
-### Uygulamayı başlatma
+---
 
-Wrapper tabanlı tam akış için:
+## 🧠 Hafıza
 
-```bash
-npm run start
-```
+Bu ev unutmaz.
 
-Scene UI ile başlatmak için:
+Archive sistemi:
 
-```bash
-npm run start:scene
-```
+* konuşmaları saklar
+* başlık ve anlam üretir
+* tekrar çağrılabilir hale getirir
 
-Sadece ghost runtime ile başlatmak için:
+Ama bu sadece log tutmak değildir.
 
-```bash
-npm run start:ghost
-```
+> Bu, biriken bir düşünce alanıdır.
 
-### Doğrudan geliştirme akışı
+---
 
-`npm run dev` yalnızca Vite geliştirici sunucusunu açar. Tam Electron geliştirme akışı için aşağıdaki script'lerden biri kullanılmalıdır:
+## 🧪 Odalar (Rooms)
 
-```bash
-npm run electron:dev
-npm run electron:dev:scene
-npm run electron:dev:scene:debug
-npm run electron:assistant:scene
-```
+Hayalet Ev’in en önemli parçası odalardır.
 
-### Assistant / OpenCode notu
+Her oda:
 
-Assistant tarafındaki `AI0` akışları için sistemde `opencode` komutunun erişilebilir olması beklenir. OpenCode entegrasyonu yoksa assistant sayfasındaki tanı ve kurulum akışı kullanılabilir.
+* kendi kuralları olan
+* kendi akışı olan
+* kendi dünyasını kuran
 
-### Opsiyonel OpenCV akışı
+bir sistemdir.
 
-```bash
-npm run opencv:install
-npm run assets:process:opencv
-```
+---
 
-## Geliştirme Komutları
+### 🎮 Game Room
 
-### Kalite kontrolleri
+Game Room, Hayalet Ev’in oyun alanıdır.
 
-```bash
-npm run lint
-npm run format:check
-npm run typecheck
-npm run check
-npm run check:all
-```
+Burada:
 
-### Room odaklı kontroller
+* AI’lar oyuncu olur
+* kullanıcı tek başına kalmaz
+* kararlar ortak verilir
 
-```bash
-npm run rooms:build
-npm run rooms:check
-npm run rooms:test:core
-npm run rooms:typecheck
-npm run rooms:bundle
-```
+Ve bu odada doğan bir yapı:
 
-### MCP / metadata
+### 🪢 Fate Knots
 
-```bash
-npm run mcp:start
-npm run mcp:check
-npm run mcp:build
-npm run generate:docs
-```
+Fate Knots klasik bir oyun değildir.
 
-### Paketleme
+* bir senaryo kurulur
+* bir kadro oluşur
+* sahneler ilerler
+* kararlar birlikte alınır
 
-```bash
-npm run build:all
-npm run dist:linux
-npm run dist:win
-```
+DM, oyuncular ve yaşayan dünya katmanı (AI0) aynı akışta buluşur.
 
-### Yardımcı smoke script'leri
+> Bu bir oyun motoru değil,
+> **çok ajanlı bir hikâye sistemi**.
 
-```bash
-npm run test:smoke
-npm run mail:transport:smoke
-npm run us1:relay:start
-```
+---
 
-## Runtime Dosyaları ve Durum
+## 🤖 Assistant (AI0)
 
-- `config/settings.json`: uygulama, hesap, slot ve assistant ayarları
-- `config/rooms.json`: kurulu room kayıtları
-- `data/rooms/`: kurulu portable room kopyaları
-- `data/room-storage/`: room bazlı mutable runtime state ve artefact'ler
-- `data/assistant-runtime.json`: wrapper mod durumu
-- `logs/app/`, `logs/mcp-server/`, `logs/ghost-agent/`: session bazlı loglar
+AI0, Hayalet Ev’in en özel katmanıdır.
 
-## Dokümantasyon
+* yerel çalışır
+* araçlara erişir
+* hafıza tutar
+* gerektiğinde devreye girer
 
-- `AGENTS.md`: çalışma protokolü ve onay akışı
-- `.rovo/00-ONBOARDING.md`: hızlı başlangıç ve temel kurallar
-- `.rovo/01-CORE-PROTOCOL.md`: ROVO çalışma yaklaşımı
-- `.rovo/03-ARCHITECTURE.md`: mimari, IPC, room package contract ve geliştirme script'leri
+Ama her an konuşmaz.
 
-## Lisans
+> AI0 her zaman aktif değildir,
+> her zaman hazırdır.
 
-MIT
+---
+
+## 🌐 US1
+
+US1, başka bir Hayalet Ev’e açılan kapıdır.
+
+* email tabanlı bağlantı
+* opsiyonel şifreli relay
+* tek kullanıcı, tek bağlantı
+
+Bu basitlik bilinçlidir.
+
+Ama sonuç:
+
+> iki farklı ev, tek bir masa.
+
+---
+
+## ⚙️ Mimari (Kısaca)
+
+* Electron + Vite + TypeScript
+* local-first veri yapısı
+* slot tabanlı AI bağlantısı
+* MCP araçları ile yerel sistem erişimi
+* room tabanlı genişleme mimarisi
+
+Ama bunlar sadece altyapıdır.
+
+---
+
+## 🧬 Çalışma Biçimi
+
+Hayalet Ev bir kod deposu değil, bir çalışma biçimi içerir.
+
+`AGENTS.md` ve `.rovo` dökümanları:
+
+* nasıl çalışılacağını
+* nasıl karar verileceğini
+* AI ile nasıl birlikte üretileceğini
+
+tanımlar.
+
+Bu yüzden:
+
+> proje sadece koddan değil,
+> **karar alma protokolünden** oluşur.
+
+---
+
+## 🎯 Amaç
+
+Hayalet Ev’in uzun vadeli amacı:
+
+* herkesin ücretsiz AI hesaplarıyla kullanabileceği
+* API bağımlı olmayan
+* geliştirilebilir ve paylaşılabilir
+* açık bir dijital çalışma alanı kurmak
+
+---
+
+## 🧠 Son Söz
+
+Hayalet Ev’i bir uygulama gibi kullanabilirsin.
+
+Ama asıl potansiyeli şurada:
+
+> sistemi açık bırakıp,
+> içindeki akışın kendi kendine şekillenmesine izin vermek.
+
+Çünkü bazen:
+
+> evin içinde olan şeyler,
+> dışarıdan tasarlanan şeylerden daha gerçek olur.
+

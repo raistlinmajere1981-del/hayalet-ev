@@ -17,9 +17,12 @@ const textParityFiles = [
   "shared/ui/report-stage-support.js",
   "shared/ui/report-stage-subtitle.js",
   "shared/ui/feature-runtime.js",
+  "shared/ui/request-runtime.js",
   "shared/ui/settings-profile-model.js",
   "shared/ui/settings-tool-card.js",
   "shared/ui/settings-overlay.js",
+  "shared/ui/shell-frame.js",
+  "shared/ui/shell-render.js",
   "shared/ui/stage-shell-delegates.js",
   "shared/ui/source-stage.js",
   "shared/ui/source-stage-intake.js",
@@ -82,21 +85,42 @@ const textParityFiles = [
   "main-functions/subtitle-analysis/ui/runtime.js",
 ];
 
+function assertTextParity(leftRoot: string, rightRoot: string, relativePath: string) {
+  const leftPath = `${leftRoot}/${relativePath}`;
+  const rightPath = `${rightRoot}/${relativePath}`;
+
+  assert.equal(existsSync(leftPath), true, leftPath);
+  assert.equal(existsSync(rightPath), true, rightPath);
+  assert.equal(readFileSync(rightPath, "utf8"), readFileSync(leftPath, "utf8"), relativePath);
+}
+
 test("laboratory installed room mirrors the workspace package for live runtime files", async () => {
   const buildArtifact = await createRoomBuiltArtifact("laboratory");
   const installedCopy = await createRoomInstalledCopy("laboratory");
 
   try {
     textParityFiles.forEach((relativePath) => {
-      const buildPath = `${buildArtifact.rootDir}/${relativePath}`;
-      const installedPath = `${installedCopy.rootDir}/${relativePath}`;
-
-      assert.equal(existsSync(buildPath), true, buildPath);
-      assert.equal(existsSync(installedPath), true, installedPath);
-      assert.equal(readFileSync(installedPath, "utf8"), readFileSync(buildPath, "utf8"), relativePath);
+      assertTextParity(buildArtifact.rootDir, installedCopy.rootDir, relativePath);
     });
   } finally {
     await buildArtifact.cleanup();
     await installedCopy.cleanup();
+  }
+});
+
+test("laboratory shipped room keeps shell chrome parity with the current workspace build", async () => {
+  const buildArtifact = await createRoomBuiltArtifact("laboratory");
+
+  try {
+    [
+      "shared/ui/request-runtime.js",
+      "shared/ui/shell-frame.js",
+      "shared/ui/shell-render.js",
+      "shared/ui/shell-runtime.js",
+    ].forEach((relativePath) => {
+      assertTextParity(buildArtifact.rootDir, "data/rooms/laboratory", relativePath);
+    });
+  } finally {
+    await buildArtifact.cleanup();
   }
 });

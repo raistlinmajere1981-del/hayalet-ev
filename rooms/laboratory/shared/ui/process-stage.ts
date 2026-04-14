@@ -178,23 +178,49 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
     `;
   }
 
-  function renderProcessStage() {
+  function renderProcessMain() {
     const processRecord = toFeatureProcessRecord(getCurrentFeatureProcessRecord());
     const modules = getProcessModules().map(toProcessModuleRecord);
     const runningJob = getRunningProcessJob();
     const findings = getProcessFindings();
-    const completedModules = modules.filter(function (entry) {
-      return !["idle", "queued", "running"].includes(String(entry.status || ""));
-    }).length;
-    const reportRecord = toFeatureProcessRecord(getCurrentFeatureReportRecord());
-    const selectedFeatureIds = getSelectedFeatureIds();
+    const queueSummary =
+      runningJob && typeof runningJob.message === "string" && runningJob.message.trim() !== ""
+        ? runningJob.message
+        : featureText(["process", "subtitle"]);
 
     return `
-      <div class="lab-layout">
-        <section class="lab-main-stack">
+      <div class="lab-stage-stack">
           ${renderStageIntro("process")}
+          <section class="lab-panel lab-panel--orientation">
+            <div class="lab-orientation__header">
+              <div class="lab-orientation__intro">
+                <p class="lab-panel__eyebrow">${escapeHtml(featureText(["process", "summaryTitle"]))}</p>
+                <h2 class="lab-panel__title">${escapeHtml(getCurrentFeatureTargetLabel())}</h2>
+                <p class="lab-panel__subtitle">${escapeHtml(queueSummary)}</p>
+              </div>
+              <div class="lab-orientation__metrics">
+                ${renderSummaryRows([
+                  [
+                    text(["mediaAnalysis", "shared", "status"]),
+                    formatStatusLabel(processRecord.status || "idle"),
+                  ],
+                  [featureText(["report", "findingsTitle"]), String(findings.length)],
+                  [
+                    text(["mediaAnalysis", "profile", "summary", "artifacts"]),
+                    String(getCurrentFeatureArtifactCount()),
+                  ],
+                ])}
+              </div>
+            </div>
+          </section>
           ${renderFeatureRunMatrix()}
           <section class="lab-panel lab-process-panel">
+            <div class="lab-panel__header">
+              <div>
+                <p class="lab-panel__eyebrow">${escapeHtml(featureText(["process", "currentStageTitle"]))}</p>
+                <h2 class="lab-panel__title">${escapeHtml(featureText(["process", "summaryTitle"]))}</h2>
+              </div>
+            </div>
             <div class="lab-process-panel__body">
               ${
                 modules.length > 0
@@ -226,9 +252,24 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
               }
             </div>
           </section>
-        </section>
-        <aside class="lab-side-stack">
-          <section class="lab-panel">
+      </div>
+    `;
+  }
+
+  function renderProcessInspector() {
+    const processRecord = toFeatureProcessRecord(getCurrentFeatureProcessRecord());
+    const modules = getProcessModules().map(toProcessModuleRecord);
+    const findings = getProcessFindings();
+    const completedModules = modules.filter(function (entry) {
+      return !["idle", "queued", "running"].includes(String(entry.status || ""));
+    }).length;
+    const reportRecord = toFeatureProcessRecord(getCurrentFeatureReportRecord());
+    const selectedFeatureIds = getSelectedFeatureIds();
+    const runningJob = getRunningProcessJob();
+
+    return `
+      <div class="lab-stage-stack lab-stage-stack--inspector">
+        <section class="lab-panel">
             <div class="lab-panel__header">
               <p class="lab-panel__eyebrow">${escapeHtml(featureText(["process", "summaryTitle"]))}</p>
             </div>
@@ -305,16 +346,26 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
                 ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
                 : ""
             }
-          </section>
-        </aside>
+        </section>
       </div>
     `;
+  }
+
+  function renderProcessStage() {
+    return {
+      inspector: renderProcessInspector(),
+      inspectorClassName: "lab-workspace__inspector--process",
+      main: renderProcessMain(),
+      mainClassName: "lab-workspace__main--process",
+    };
   }
 
   return {
     getProcessModulePercent,
     getProcessModuleTitle,
     getRunningProcessJob,
+    renderProcessInspector,
+    renderProcessMain,
     renderProcessStage,
   };
 }

@@ -1,4 +1,8 @@
 import { createLaboratoryWorkbenchState } from "../shared/host/runtime-primitives.js";
+import type {
+  LaboratoryShellEventLogItem,
+  LaboratoryShellStatusChannel,
+} from "../shared/types/room-shell-contracts.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
@@ -114,6 +118,8 @@ type LaboratoryUiState = {
       bars: number[];
       url: string | null;
     };
+    eventLog: LaboratoryShellEventLogItem[];
+    eventLogOpen: boolean;
     lastActionMessage: string;
     lastRequestId: string | null;
     latestRequestByDomain: Record<LaboratoryUiRequestDomain, number>;
@@ -137,6 +143,11 @@ type LaboratoryUiState = {
     };
     requestCounter: number;
     requestLookup: Record<string, unknown>;
+    status: {
+      activity: LaboratoryShellStatusChannel;
+      blocking: LaboratoryShellStatusChannel;
+      result: LaboratoryShellStatusChannel;
+    };
     scrollPositions: {
       overlay: number;
       surface: number;
@@ -275,6 +286,17 @@ export function createLaboratoryUiBootstrapStateRuntime(
     };
   }
 
+  function createStatusChannel(): LaboratoryShellStatusChannel {
+    return {
+      detail: null,
+      message: "",
+      source: "system",
+      sticky: false,
+      updatedAt: null,
+      visible: false,
+    };
+  }
+
   const state: LaboratoryUiState = {
     locale: resolveLocale(documentRef.documentElement.lang || navigatorRef.language),
     translations: null,
@@ -287,6 +309,8 @@ export function createLaboratoryUiBootstrapStateRuntime(
     sourceSnapshot: createSourceSnapshot(),
     ui: {
       settingsOpen: false,
+      eventLogOpen: false,
+      eventLog: [] as LaboratoryShellEventLogItem[],
       pendingDeleteProjectId: null as string | null,
       lastRequestId: null as string | null,
       requestCounter: 0,
@@ -311,6 +335,11 @@ export function createLaboratoryUiBootstrapStateRuntime(
       },
       requestLookup: {},
       lastActionMessage: "",
+      status: {
+        blocking: createStatusChannel(),
+        activity: createStatusChannel(),
+        result: createStatusChannel(),
+      },
       localDraftProjectId: null as string | null,
       localDrafts: createLocalDrafts(),
       localSubtitleDraftProjectId: null as string | null,

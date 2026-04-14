@@ -12,12 +12,21 @@ export function createLaboratoryStageShellDelegates(deps) {
   }
   function renderEditStage() {
     if (isSubtitleAnalysisFeature()) {
-      return renderSubtitleEditStage();
+      return {
+        main: renderSubtitleEditStage(),
+        mainClassName: "lab-workspace__main--full"
+      };
     }
-    return renderMediaAnalysisEditStage(mediaAnalysisEditStageDeps);
+    return {
+      main: renderMediaAnalysisEditStage(mediaAnalysisEditStageDeps),
+      mainClassName: "lab-workspace__main--full"
+    };
   }
   function renderProfileStage() {
-    return mediaAnalysisProfileStage.renderProfileStage();
+    return {
+      main: mediaAnalysisProfileStage.renderProfileStage(),
+      mainClassName: "lab-workspace__main--full"
+    };
   }
   function renderProcessStage() {
     return laboratoryProcessStageUi.renderProcessStage();

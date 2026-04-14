@@ -721,6 +721,51 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
     `;
   }
 
+  function renderProfileReadinessPanel() {
+    const readiness = getReadiness();
+    const blockers = toStringArray(readiness.blockers);
+    const warnings = toStringArray(readiness.warnings);
+    const selectedModel = getSelectedModel();
+    const selectedModelLabelKey = selectedModel ? asNonEmptyString(selectedModel.labelKey) : null;
+
+    return `
+      <section class="lab-panel lab-panel--orientation">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "readinessTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "summaryTitle"]))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(text(["mediaAnalysis", "profile", "preflightSubtitle"]))}</p>
+          </div>
+        </div>
+        <section class="lab-signal-grid">
+          <article class="lab-signal-card">
+            <strong>${escapeHtml(
+              text([
+                "mediaAnalysis",
+                "profile",
+                "status",
+                readiness.stageReady === true ? "ready" : "stale",
+              ])
+            )}</strong>
+            <span>${escapeHtml(text(["mediaAnalysis", "profile", "preflightTitle"]))}</span>
+          </article>
+          <article class="lab-signal-card">
+            <strong>${escapeHtml(String(blockers.length))}</strong>
+            <span>${escapeHtml(text(["mediaAnalysis", "profile", "blockersTitle"]))}</span>
+          </article>
+          <article class="lab-signal-card">
+            <strong>${escapeHtml(String(warnings.length))}</strong>
+            <span>${escapeHtml(text(["mediaAnalysis", "profile", "warningsTitle"]))}</span>
+          </article>
+          <article class="lab-signal-card">
+            <strong>${escapeHtml(selectedModelLabelKey ? textFromKey(selectedModelLabelKey) : "--")}</strong>
+            <span>${escapeHtml(text(["mediaAnalysis", "profile", "summary", "model"]))}</span>
+          </article>
+        </section>
+      </section>
+    `;
+  }
+
   function renderProfileStage() {
     const source = getSource();
     const sourceReady = asNonEmptyString(source.storedPath) !== null;
@@ -728,6 +773,7 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
       <div class="lab-layout">
         <section class="lab-main-stack">
           ${renderStageIntro("profile")}
+          ${renderProfileReadinessPanel()}
           ${renderProfileTargetPanel()}
           ${renderProfileModePanel()}
           ${renderProfilePresetPanel()}
@@ -754,6 +800,7 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
     renderProfileActionsPanel,
     renderProfileArtifactsPanel,
     renderProfileModePanel,
+    renderProfileReadinessPanel,
     renderProfileSignalsPanel,
     renderProfileStage,
     renderProfileSummaryPanel,

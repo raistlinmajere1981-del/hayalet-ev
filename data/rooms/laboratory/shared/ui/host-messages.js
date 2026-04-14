@@ -4,7 +4,10 @@ export function createLaboratoryHostMessageRuntime(deps) {
     applyPresentationMode,
     normalizeContext,
     render,
+    setActivityStatus,
+    setBlockingStatus,
     setLastAction,
+    setResultStatus,
     shouldIgnoreCorrelatedPayload,
     state,
     text,
@@ -42,6 +45,8 @@ export function createLaboratoryHostMessageRuntime(deps) {
   }
   function getEditActionLabel(actionId) {
     switch (actionId) {
+      case null:
+        return text(["mediaAnalysis", "shared", "status"]);
       case "edit-preview":
         return text(["mediaAnalysis", "edit", "actions", "preview"]);
       case "edit-apply":
@@ -56,6 +61,8 @@ export function createLaboratoryHostMessageRuntime(deps) {
   }
   function getJobStageLabel(stageId) {
     switch (stageId) {
+      case null:
+        return text(["mediaAnalysis", "shared", "idle"]);
       case "stdout":
       case "stderr":
         return text(["mediaAnalysis", "settings", "stages", "running"]);
@@ -155,7 +162,13 @@ export function createLaboratoryHostMessageRuntime(deps) {
       }
       const actionMessage = formatActionResultMessage(payload);
       if (actionMessage !== null) {
-        setLastAction(actionMessage);
+        if (payload.success === true) {
+          setResultStatus(actionMessage, null, "host");
+        } else if (actionMessage !== "") {
+          setBlockingStatus(actionMessage, toString(payload.error), "host");
+        } else {
+          setLastAction(actionMessage);
+        }
       }
       scheduleRender();
       return;
@@ -166,7 +179,15 @@ export function createLaboratoryHostMessageRuntime(deps) {
       }
       const jobMessage = formatJobProgressMessage(payload);
       if (jobMessage !== null) {
-        setLastAction(jobMessage);
+        const stageId = toString(payload["stage"]);
+        const jobDetail = toString(payload.message);
+        if (stageId === "failed") {
+          setBlockingStatus(jobMessage, jobDetail, "host");
+        } else if (stageId === "completed" || stageId === "cancelled") {
+          setResultStatus(jobMessage, jobDetail, "host");
+        } else if (jobMessage !== "") {
+          setActivityStatus(jobMessage, jobDetail, "host");
+        }
       }
       scheduleRender();
     }

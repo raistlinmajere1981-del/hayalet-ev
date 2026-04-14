@@ -1,6 +1,7 @@
 import type { createLaboratoryUiActionRouter } from "../shared/ui/action-router.js";
 import type { createLaboratoryStageShellDelegates } from "../shared/ui/stage-shell-delegates.js";
 import type { createLaboratoryUiShellRuntime } from "../shared/ui/shell-runtime.js";
+import type { LaboratoryStageSurface } from "../shared/types/room-shell-contracts.js";
 import type { createLaboratoryUiBootstrapStateRuntime } from "./bootstrap-state-runtime.js";
 import type { createLaboratoryUiBootstrapRuntime } from "./bootstrap-runtime.js";
 import type { createLaboratorySourceStageComposition } from "./source-stage-composition.js";
@@ -33,10 +34,10 @@ type LaboratoryProfileStageUi = {
   renderProfileStage: () => string;
 };
 type LaboratoryProcessStageUi = {
-  renderProcessStage: () => string;
+  renderProcessStage: () => LaboratoryStageSurface;
 };
 type LaboratoryReportStageUi = {
-  renderReportStage: () => string;
+  renderReportStage: () => LaboratoryStageSurface;
 };
 type LaboratoryShellWindow = Window & {
   roomAPI?: unknown;
@@ -121,6 +122,8 @@ type LaboratoryUiShellCompositionDeps = {
   restartProcess: () => void;
   restoreScrollState: (root: Element) => void;
   setActiveWorkbenchModule: (featureId: string) => void;
+  setBlockingStatus: (message: string, detail?: string | null) => void;
+  setResultStatus: (message: string, detail?: string | null) => void;
   sendMediaAction: (...args: unknown[]) => unknown;
   sendSourceAction: (...args: unknown[]) => unknown;
   setLastAction: (message: string) => void;
@@ -131,6 +134,7 @@ type LaboratoryUiShellCompositionDeps = {
   text: (path: string[]) => string;
   textFromKey: (key: string) => string;
   toRecord: (value: unknown) => LaboratoryRecord;
+  toggleEventLog: (force?: boolean) => void;
   toggleWorkbenchModuleSelection: (featureId: string) => void;
   toggleCleanup: (...args: unknown[]) => unknown;
   windowRef: LaboratoryShellWindow;
@@ -205,7 +209,6 @@ export function createLaboratoryUiShellComposition(deps: LaboratoryUiShellCompos
     state: deps.state,
     documentRef: deps.documentRef,
     escapeHtml: deps.escapeHtml,
-    featureText: deps.featureText,
     renderBootstrap: deps.renderBootstrap,
     renderStageRail: deps.renderStageRail,
     renderSettingsOverlay: deps.renderSettingsOverlay,
@@ -218,6 +221,7 @@ export function createLaboratoryUiShellComposition(deps: LaboratoryUiShellCompos
     restoreScrollState: deps.restoreScrollState,
     bindPreviewMetrics: deps.bindPreviewMetrics,
     bindAudioAnalysis: deps.bindAudioAnalysis,
+    text: deps.text,
   };
   const laboratoryUiShellRuntime = deps.createLaboratoryUiShellRuntime(
     laboratoryUiShellRuntimeDeps as unknown as LaboratoryUiShellRuntimeDeps
@@ -245,6 +249,8 @@ export function createLaboratoryUiShellComposition(deps: LaboratoryUiShellCompos
     resetJourney: deps.resetJourney,
     restartProcess: deps.restartProcess,
     setActiveWorkbenchModule: deps.setActiveWorkbenchModule,
+    setBlockingStatus: deps.setBlockingStatus,
+    setResultStatus: deps.setResultStatus,
     sendMediaAction: deps.sendMediaAction,
     sendSourceAction: deps.sendSourceAction,
     setStage: deps.setStage,
@@ -253,6 +259,7 @@ export function createLaboratoryUiShellComposition(deps: LaboratoryUiShellCompos
     syncLocalEditField: deps.syncLocalEditField,
     text: deps.text,
     toRecord: deps.toRecord,
+    toggleEventLog: deps.toggleEventLog,
     toggleWorkbenchModuleSelection: deps.toggleWorkbenchModuleSelection,
     toggleCleanup: deps.toggleCleanup,
   };

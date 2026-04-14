@@ -36,22 +36,24 @@ export function renderMediaAnalysisEditStage(deps: MediaAnalysisEditStageDeps): 
     typeof projectSource.storedPath === "string" && projectSource.storedPath.trim() !== "";
 
   return `
-    <div class="lab-layout">
+    <div class="lab-layout lab-layout--workbench">
       <section class="lab-main-stack">
         ${renderStageIntro("edit")}
-        ${renderEditWorkspacePanel()}
-        ${renderEditModePanel()}
-        ${renderEditPresetChooser()}
-        <div class="lab-subgrid lab-subgrid--edit">
-          ${renderEditCommonPanel()}
-          ${renderEditControlsPanel()}
-          ${renderEditActionsPanel()}
-        </div>
         ${
           sourceReady !== true
             ? `<div class="lab-notice">${escapeHtml(text(["mediaAnalysis", "edit", "sourceRequired"]))}</div>`
             : ""
         }
+        ${renderEditWorkspacePanel()}
+        <div class="lab-edit-console">
+          ${renderEditModePanel()}
+          ${renderEditPresetChooser()}
+        </div>
+        <div class="lab-subgrid lab-subgrid--edit lab-edit-console">
+          ${renderEditCommonPanel()}
+          ${renderEditControlsPanel()}
+          ${renderEditActionsPanel()}
+        </div>
       </section>
       <aside class="lab-side-stack">
         ${renderEditProgressPanel()}

@@ -102,6 +102,16 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       limitCount: null
     };
   }
+  function createStatusChannel() {
+    return {
+      detail: null,
+      message: "",
+      source: "system",
+      sticky: false,
+      updatedAt: null,
+      visible: false
+    };
+  }
   const state = {
     locale: resolveLocale(documentRef.documentElement.lang || navigatorRef.language),
     translations: null,
@@ -114,6 +124,8 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
     sourceSnapshot: createSourceSnapshot(),
     ui: {
       settingsOpen: false,
+      eventLogOpen: false,
+      eventLog: [],
       pendingDeleteProjectId: null,
       lastRequestId: null,
       requestCounter: 0,
@@ -138,6 +150,11 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       },
       requestLookup: {},
       lastActionMessage: "",
+      status: {
+        blocking: createStatusChannel(),
+        activity: createStatusChannel(),
+        result: createStatusChannel()
+      },
       localDraftProjectId: null,
       localDrafts: createLocalDrafts(),
       localSubtitleDraftProjectId: null,

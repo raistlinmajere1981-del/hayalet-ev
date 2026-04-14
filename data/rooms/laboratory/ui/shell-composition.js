@@ -65,7 +65,6 @@ export function createLaboratoryUiShellComposition(deps) {
     state: deps.state,
     documentRef: deps.documentRef,
     escapeHtml: deps.escapeHtml,
-    featureText: deps.featureText,
     renderBootstrap: deps.renderBootstrap,
     renderStageRail: deps.renderStageRail,
     renderSettingsOverlay: deps.renderSettingsOverlay,
@@ -77,7 +76,8 @@ export function createLaboratoryUiShellComposition(deps) {
     captureScrollState: deps.captureScrollState,
     restoreScrollState: deps.restoreScrollState,
     bindPreviewMetrics: deps.bindPreviewMetrics,
-    bindAudioAnalysis: deps.bindAudioAnalysis
+    bindAudioAnalysis: deps.bindAudioAnalysis,
+    text: deps.text
   };
   const laboratoryUiShellRuntime = deps.createLaboratoryUiShellRuntime(
     laboratoryUiShellRuntimeDeps
@@ -104,6 +104,8 @@ export function createLaboratoryUiShellComposition(deps) {
     resetJourney: deps.resetJourney,
     restartProcess: deps.restartProcess,
     setActiveWorkbenchModule: deps.setActiveWorkbenchModule,
+    setBlockingStatus: deps.setBlockingStatus,
+    setResultStatus: deps.setResultStatus,
     sendMediaAction: deps.sendMediaAction,
     sendSourceAction: deps.sendSourceAction,
     setStage: deps.setStage,
@@ -112,6 +114,7 @@ export function createLaboratoryUiShellComposition(deps) {
     syncLocalEditField: deps.syncLocalEditField,
     text: deps.text,
     toRecord: deps.toRecord,
+    toggleEventLog: deps.toggleEventLog,
     toggleWorkbenchModuleSelection: deps.toggleWorkbenchModuleSelection,
     toggleCleanup: deps.toggleCleanup
   };

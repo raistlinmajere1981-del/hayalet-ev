@@ -9,6 +9,33 @@ export const LABORATORY_SLOT_IDS = ["ai1", "ai2", "us1"] as const;
 export const LABORATORY_STAGE_IDS = [...LABORATORY_MEDIA_STAGES];
 
 export type LaboratoryPresentationMode = "classic" | "scene-view";
+export type LaboratoryShellStatusTone = "blocking" | "activity" | "result";
+export type LaboratoryShellStatusSource = "host" | "request" | "system" | "ui";
+
+export interface LaboratoryShellStatusChannel {
+  detail: string | null;
+  message: string;
+  source: LaboratoryShellStatusSource;
+  sticky: boolean;
+  updatedAt: number | null;
+  visible: boolean;
+}
+
+export interface LaboratoryShellEventLogItem {
+  detail: string | null;
+  id: string;
+  message: string;
+  source: LaboratoryShellStatusSource;
+  timestamp: number;
+  tone: LaboratoryShellStatusTone;
+}
+
+export interface LaboratoryStageSurface {
+  inspector?: string;
+  inspectorClassName?: string;
+  main: string;
+  mainClassName?: string;
+}
 
 export interface LaboratoryWorkbenchContext {
   schemaVersion: number;

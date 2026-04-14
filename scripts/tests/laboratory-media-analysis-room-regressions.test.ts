@@ -854,9 +854,28 @@ test("laboratory UI ships source, edit, and profile controls through the shared 
     /export function renderLaboratoryShell\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
   assert.match(shellRenderSource, /lab-shell__overlay/);
+  assert.match(shellRenderSource, /const overlayMarkup = overlayOpen \? regions\.overlayMarkup : "";/);
   assert.match(shellRuntimeSource, typedDepsSignature("createLaboratoryUiShellRuntime"));
   assert.match(shellRuntimeSource, /captureScrollState\(root\);/);
+  assert.match(shellRuntimeSource, /type LaboratoryFocusSnapshot = \{/);
+  assert.match(shellRuntimeSource, /function captureFocusSnapshot\(root: HTMLElement\)/);
+  assert.match(shellRuntimeSource, /function restoreFocusSnapshot\(/);
+  assert.match(shellRuntimeSource, /documentRef\.activeElement/);
+  assert.match(shellRuntimeSource, /target\.setSelectionRange\(selectionStart, selectionEnd\);/);
   assert.match(shellRuntimeSource, /restoreScrollState\(root\);/);
+  assert.match(shellRuntimeSource, /shellElement\.dataset\["centerOpen"\] = regions\.overlayMarkup\.trim\(\) !== "" \? "true" : "false";/);
+  assert.match(shellFrameSource, /lab-stage-rail__context/);
+  assert.match(shellFrameSource, /lab-stage-rail__focus-label/);
+  assert.doesNotMatch(shellFrameSource, /currentStageSummary/);
+  assert.doesNotMatch(shellFrameSource, /lab-stage-rail__focus-detail/);
+  assert.match(shellRenderSource, /role="region"/);
+  assert.match(shellRenderSource, /aria-labelledby="lab-event-log-title"/);
+  assert.match(shellRenderSource, /aria-controls="lab-event-log-list"/);
+  assert.match(shellRenderSource, /aria-expanded="\$\{deps\.eventLogOpen \? "true" : "false"\}"/);
+  assert.match(shellRenderSource, /aria-live="\$\{liveMode\}"/);
+  assert.match(shellRenderSource, /role="\$\{liveRole\}"/);
+  assert.match(shellCssSource, /\.lab-shell\[data-center-open="false"\] \.lab-shell__overlay,/);
+  assert.match(shellCssSource, /\.lab-shell__overlay:empty \{[\s\S]*pointer-events:\s*none;/);
   assert.match(
     bootstrapRuntimeSource,
     typedDepsSignature("createLaboratoryUiBootstrapRuntime")

@@ -35,6 +35,8 @@ export function createMediaAnalysisEditOutputPanels(deps) {
   }
   function getJobActionLabel(actionId) {
     switch (actionId) {
+      case null:
+        return text(["mediaAnalysis", "edit", "jobsTitle"]);
       case "edit-preview":
         return text(["mediaAnalysis", "edit", "actions", "preview"]);
       case "edit-apply":
@@ -49,6 +51,8 @@ export function createMediaAnalysisEditOutputPanels(deps) {
   }
   function getJobStageLabel(stageId) {
     switch (stageId) {
+      case null:
+        return text(["mediaAnalysis", "shared", "idle"]);
       case "stdout":
       case "stderr":
         return text(["mediaAnalysis", "settings", "stages", "running"]);
@@ -64,6 +68,8 @@ export function createMediaAnalysisEditOutputPanels(deps) {
   }
   function getPreviewStatusLabel(statusId) {
     switch (statusId) {
+      case null:
+        return text(["mediaAnalysis", "shared", "idle"]);
       case "generating":
         return text(["mediaAnalysis", "settings", "stages", "running"]);
       case "ready":
@@ -88,6 +94,8 @@ export function createMediaAnalysisEditOutputPanels(deps) {
       return Math.max(8, Math.min(100, Math.round(percent)));
     }
     switch (asNonEmptyString(job.stage)) {
+      case null:
+        return 38;
       case "queued":
         return 12;
       case "completed":
@@ -187,7 +195,7 @@ export function createMediaAnalysisEditOutputPanels(deps) {
     const preview = toPreviewRecord(edit.preview);
     const previewStatus = asNonEmptyString(preview.status);
     const previewUpdatedAt = asNonEmptyString(preview.updatedAt) || asNonEmptyString(edit.lastActionAt);
-    const activeEditJobs = collectEditStageJobs(getRelevantJobs().project || []);
+    const activeEditJobs = collectEditStageJobs(getRelevantJobs().project);
     return `
       <section class="lab-panel">
         <div class="lab-panel__header">

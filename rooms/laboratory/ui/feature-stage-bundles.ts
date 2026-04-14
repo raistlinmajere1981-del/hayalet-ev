@@ -243,8 +243,11 @@ export function createLaboratoryFeatureStageBundlesRuntime(
     applyPresentationMode: deps.applyPresentationMode,
     applyLocale: deps.applyLocale,
     normalizeContext: deps.normalizeContext,
+    setActivityStatus: deps.laboratoryRequestRuntime.setActivityStatus,
+    setBlockingStatus: deps.laboratoryRequestRuntime.setBlockingStatus,
     shouldIgnoreCorrelatedPayload: deps.laboratoryRequestRuntime.shouldIgnoreCorrelatedPayload,
     setLastAction: deps.laboratoryRequestRuntime.setLastAction,
+    setResultStatus: deps.laboratoryRequestRuntime.setResultStatus,
   } as unknown as LaboratoryHostMessageRuntimeDeps);
 
   const profileProcessBundle = deps.createLaboratoryProfileProcessReportComposition({

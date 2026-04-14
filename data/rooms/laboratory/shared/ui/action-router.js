@@ -23,6 +23,8 @@ export function createLaboratoryUiActionRouter(deps) {
     resetJourney,
     restartProcess,
     setActiveWorkbenchModule,
+    setBlockingStatus,
+    setResultStatus,
     sendMediaAction,
     sendSourceAction,
     setStage,
@@ -31,8 +33,9 @@ export function createLaboratoryUiActionRouter(deps) {
     syncLocalEditField,
     text,
     toRecord,
-    toggleWorkbenchModuleSelection,
-    toggleCleanup
+    toggleCleanup,
+    toggleEventLog,
+    toggleWorkbenchModuleSelection
   } = deps;
   const { handleAction } = createLaboratoryUiActionHandlers({
     advanceStage,
@@ -51,11 +54,14 @@ export function createLaboratoryUiActionRouter(deps) {
     resetJourney,
     restartProcess,
     setActiveWorkbenchModule,
+    setBlockingStatus,
+    setResultStatus,
     sendMediaAction,
     sendSourceAction,
     state,
     syncDraftField,
     text,
+    toggleEventLog,
     toggleWorkbenchModuleSelection
   });
   const laboratoryUiActionEventRuntime = createLaboratoryUiActionEventRuntime({

@@ -16,11 +16,14 @@ export function createLaboratoryUiActionHandlers(deps) {
     resetJourney,
     restartProcess,
     setActiveWorkbenchModule,
+    setBlockingStatus,
+    setResultStatus,
     sendMediaAction,
     sendSourceAction,
     state,
     syncDraftField,
     text,
+    toggleEventLog,
     toggleWorkbenchModuleSelection
   } = deps;
   function toRecord(value) {
@@ -65,7 +68,7 @@ export function createLaboratoryUiActionHandlers(deps) {
     const command = getInstallCommand(toolId, platform, index);
     const toolLabel = text(["mediaAnalysis", "settings", "tools", toolId]) || toString(getToolDescriptor(toolId)?.displayName) || toolId;
     if (command === null) {
-      state.ui.lastActionMessage = text(["mediaAnalysis", "settings", "helper", "copyFailure"]);
+      setBlockingStatus(text(["mediaAnalysis", "settings", "helper", "copyFailure"]));
       render();
       return;
     }
@@ -76,10 +79,10 @@ export function createLaboratoryUiActionHandlers(deps) {
         throw new Error("Clipboard API is unavailable");
       }
       await clipboard.writeText(command);
-      state.ui.lastActionMessage = `${text(["mediaAnalysis", "settings", "helper", "copySuccess"])} ${toolLabel}`;
+      setResultStatus(`${text(["mediaAnalysis", "settings", "helper", "copySuccess"])} ${toolLabel}`);
       render();
     } catch {
-      state.ui.lastActionMessage = text(["mediaAnalysis", "settings", "helper", "copyFailure"]);
+      setBlockingStatus(text(["mediaAnalysis", "settings", "helper", "copyFailure"]));
       render();
     }
   }
@@ -144,6 +147,10 @@ export function createLaboratoryUiActionHandlers(deps) {
         );
         return;
       }
+      case "toggle-event-log":
+        toggleEventLog();
+        render();
+        return;
       case "workbench-activate-module":
         setActiveWorkbenchModule(String(value || ""));
         return;

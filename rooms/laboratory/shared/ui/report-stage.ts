@@ -348,13 +348,12 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     `;
   }
 
-  function renderReportStage() {
+  function renderReportMain() {
     const reportRecord = toFeatureReportRecord(getCurrentFeatureReportRecord());
     const asset = toAssetRecord(getEffectiveMediaAsset());
     const findings = getWorkbenchFindings();
     const summaryCards = getReportSummaryCards().map(toSummaryCardRecord);
     const exportsList = getWorkbenchExports();
-    const runningJob = toJobRecord(getRunningReportJob());
     const previewUrl =
       typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== ""
         ? asset.previewUrl.trim()
@@ -362,8 +361,7 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     const heroClass = previewUrl ? "lab-panel lab-report-hero" : "lab-panel lab-report-hero lab-report-hero--text-only";
 
     return `
-      <div class="lab-layout">
-        <section class="lab-main-stack">
+      <div class="lab-stage-stack">
           ${renderStageIntro("report")}
           <section class="${heroClass}">
             ${
@@ -401,7 +399,6 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
                 : `<p class="lab-panel__hint">${escapeHtml(featureText(["report", "emptyFindings"]))}</p>`
             }
           </section>
-          ${renderWorkbenchReportMatrix()}
           ${renderUnifiedModuleEvidencePanel()}
           <section class="lab-panel">
             <div class="lab-panel__header">
@@ -420,9 +417,20 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
             </div>
           </section>
           ${renderUnifiedExportHistoryPanel(exportsList)}
-        </section>
-        <aside class="lab-side-stack">
-          <section class="lab-panel">
+      </div>
+    `;
+  }
+
+  function renderReportInspector() {
+    const reportRecord = toFeatureReportRecord(getCurrentFeatureReportRecord());
+    const findings = getWorkbenchFindings();
+    const exportsList = getWorkbenchExports();
+    const runningJob = toJobRecord(getRunningReportJob());
+
+    return `
+      <div class="lab-stage-stack lab-stage-stack--inspector">
+        ${renderWorkbenchReportMatrix()}
+        <section class="lab-panel">
             ${renderSummaryRows(getReportSideRows(reportRecord, findings, exportsList))}
             ${
               toStringArray(reportRecord.caveats).length > 0
@@ -491,15 +499,25 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
                 ? `<p class="lab-panel__hint">${escapeHtml(runningJob.message)}</p>`
                 : ""
             }
-          </section>
-        </aside>
+        </section>
       </div>
     `;
+  }
+
+  function renderReportStage() {
+    return {
+      inspector: renderReportInspector(),
+      inspectorClassName: "lab-workspace__inspector--report",
+      main: renderReportMain(),
+      mainClassName: "lab-workspace__main--report",
+    };
   }
 
   return {
     getRunningReportJob: getRunningReportJob,
     renderReportFinding: renderReportFinding,
+    renderReportInspector,
+    renderReportMain,
     renderReportStage: renderReportStage,
   };
 }

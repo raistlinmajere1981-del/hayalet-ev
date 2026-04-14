@@ -130,8 +130,11 @@ export function createLaboratoryFeatureStageBundlesRuntime(deps) {
     applyPresentationMode: deps.applyPresentationMode,
     applyLocale: deps.applyLocale,
     normalizeContext: deps.normalizeContext,
+    setActivityStatus: deps.laboratoryRequestRuntime.setActivityStatus,
+    setBlockingStatus: deps.laboratoryRequestRuntime.setBlockingStatus,
     shouldIgnoreCorrelatedPayload: deps.laboratoryRequestRuntime.shouldIgnoreCorrelatedPayload,
-    setLastAction: deps.laboratoryRequestRuntime.setLastAction
+    setLastAction: deps.laboratoryRequestRuntime.setLastAction,
+    setResultStatus: deps.laboratoryRequestRuntime.setResultStatus
   });
   const profileProcessBundle = deps.createLaboratoryProfileProcessReportComposition({
     createLaboratoryProcessStageUi: deps.createLaboratoryProcessStageUi,

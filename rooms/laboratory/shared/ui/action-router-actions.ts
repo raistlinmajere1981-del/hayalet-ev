@@ -48,11 +48,14 @@ type LaboratoryUiActionHandlersDeps = {
   resetJourney: () => void;
   restartProcess: () => void;
   setActiveWorkbenchModule: (featureId: string) => void;
+  setBlockingStatus: (message: string, detail?: string | null) => void;
+  setResultStatus: (message: string, detail?: string | null) => void;
   sendMediaAction: (action: string, payload?: LaboratoryUiActionPayload | null) => string | null;
   sendSourceAction: (action: string, payload?: LaboratoryUiActionPayload | null) => string | null;
   state: LaboratoryUiState;
   syncDraftField: (path: string, value: unknown) => void;
   text: (path: string[]) => string;
+  toggleEventLog: (force?: boolean) => void;
   toggleWorkbenchModuleSelection: (featureId: string) => void;
 };
 
@@ -74,11 +77,14 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
     resetJourney,
     restartProcess,
     setActiveWorkbenchModule,
+    setBlockingStatus,
+    setResultStatus,
     sendMediaAction,
     sendSourceAction,
     state,
     syncDraftField,
     text,
+    toggleEventLog,
     toggleWorkbenchModuleSelection,
   } = deps;
 
@@ -152,7 +158,7 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
       toolId;
 
     if (command === null) {
-      state.ui.lastActionMessage = text(["mediaAnalysis", "settings", "helper", "copyFailure"]);
+      setBlockingStatus(text(["mediaAnalysis", "settings", "helper", "copyFailure"]));
       render();
       return;
     }
@@ -164,10 +170,10 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
         throw new Error("Clipboard API is unavailable");
       }
       await clipboard.writeText(command);
-      state.ui.lastActionMessage = `${text(["mediaAnalysis", "settings", "helper", "copySuccess"])} ${toolLabel}`;
+      setResultStatus(`${text(["mediaAnalysis", "settings", "helper", "copySuccess"])} ${toolLabel}`);
       render();
     } catch {
-      state.ui.lastActionMessage = text(["mediaAnalysis", "settings", "helper", "copyFailure"]);
+      setBlockingStatus(text(["mediaAnalysis", "settings", "helper", "copyFailure"]));
       render();
     }
   }
@@ -234,6 +240,10 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
         );
         return;
       }
+      case "toggle-event-log":
+        toggleEventLog();
+        render();
+        return;
       case "workbench-activate-module":
         setActiveWorkbenchModule(String(value || ""));
         return;

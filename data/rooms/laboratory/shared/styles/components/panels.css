@@ -232,6 +232,10 @@
   padding-right: 0.2rem;
 }
 
+.lab-workspace__main--process .lab-process-panel__body {
+  max-height: none;
+}
+
 .lab-preview-card,
 .lab-report-hero {
   display: grid;

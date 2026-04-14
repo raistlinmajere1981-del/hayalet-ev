@@ -147,7 +147,9 @@ export function createLaboratorySourceStageUi(deps) {
       <section class="lab-panel lab-panel--orientation">
         <div class="lab-orientation__header">
           <div class="lab-orientation__intro">
-            ${renderStageIntro("source")}
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "dependencyOverview"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(getFeatureLabel(activeFeatureId))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(getModuleSummary(activeFeatureId))}</p>
           </div>
           <section class="lab-orientation__focus">
             <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "dependencyOverview"]))}</p>
@@ -299,28 +301,41 @@ export function createLaboratorySourceStageUi(deps) {
       ${renderSourceIntakePanel()}
     `;
   }
-  function renderSourceStage() {
+  function renderSourceMain() {
     return `
-      <div class="lab-layout lab-layout--source-console">
-        <section class="lab-main-stack lab-main-stack--source">
-          ${renderWorkbenchOrientationPanel()}
-          <div class="lab-source-workbench">
-            <section class="lab-source-workbench__flow">
-              ${renderProjectPanel()}
-              ${renderActiveModuleSidebar()}
-            </section>
-            <aside class="lab-source-workbench__modules">
-              ${renderModuleSelectionPanel()}
-            </aside>
-          </div>
+      <div class="lab-stage-stack lab-stage-stack--source">
+        ${renderStageIntro("source")}
+        <section class="lab-intake-console">
+          <section class="lab-intake-console__flow">
+            ${renderProjectPanel()}
+            ${renderActiveModuleSidebar()}
+          </section>
+          <section class="lab-intake-console__workspace">
+            ${renderActiveModulePanels()}
+          </section>
         </section>
-        <aside class="lab-side-stack lab-side-stack--source">
-          ${renderActiveModulePanels()}
-        </aside>
       </div>
     `;
   }
+  function renderSourceInspector() {
+    return `
+      <div class="lab-stage-stack lab-stage-stack--inspector">
+        ${renderWorkbenchOrientationPanel()}
+        ${renderModuleSelectionPanel()}
+      </div>
+    `;
+  }
+  function renderSourceStage() {
+    return {
+      inspector: renderSourceInspector(),
+      inspectorClassName: "lab-workspace__inspector--source",
+      main: renderSourceMain(),
+      mainClassName: "lab-workspace__main--source"
+    };
+  }
   return {
+    renderSourceInspector,
+    renderSourceMain,
     renderSourceStage
   };
 }
