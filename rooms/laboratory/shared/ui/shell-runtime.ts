@@ -274,7 +274,7 @@ export function createLaboratoryUiShellRuntime(deps: LaboratoryUiShellRuntimeDep
     captureScrollState(root);
     const focusSnapshot = captureFocusSnapshot(root);
 
-    if (state.translations === null) {
+    if (state.translations === null || state.ui.bootstrap.readyToDismiss !== true) {
       markupCache = null;
       root.innerHTML = renderBootstrap();
       return;

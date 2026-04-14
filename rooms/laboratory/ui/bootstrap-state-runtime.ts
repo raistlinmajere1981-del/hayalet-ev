@@ -48,6 +48,16 @@ type LaboratorySourceSnapshot = {
   audioAnalysisCatalog: LaboratoryRecord;
   audioAnalysisPresets: LaboratoryRecord;
   audioAnalysisProviders: LaboratoryRecord;
+  bootstrap: {
+    active: boolean;
+    currentStep: number;
+    currentStepId: string | null;
+    error: string | null;
+    message: string | null;
+    status: string;
+    steps: unknown[];
+    totalSteps: number;
+  };
   editCapabilities: LaboratoryRecord;
   editPresets: LaboratoryRecord;
   jobs: unknown[];
@@ -73,6 +83,23 @@ type LaboratorySourceSnapshot = {
   };
   workbench: ReturnType<typeof createLaboratoryWorkbenchState>;
   ytDlpForm: LaboratoryRecord;
+};
+
+type LaboratoryUiBootstrapOverlayStep = {
+  id: string;
+  status: string;
+  visible: boolean;
+};
+
+type LaboratoryUiBootstrapOverlayState = {
+  currentStep: number;
+  currentStepId: string | null;
+  error: string | null;
+  message: string | null;
+  readyToDismiss: boolean;
+  status: string;
+  steps: LaboratoryUiBootstrapOverlayStep[];
+  totalSteps: number;
 };
 
 type LaboratoryLocalDrafts = {
@@ -101,7 +128,7 @@ type LaboratoryLocalSubtitleDrafts = {
   youtubeUrl: string;
 };
 
-type LaboratoryManualHelperPlatform = "linux" | "macos" | "windows";
+type LaboratoryManualHelperPlatform = "linux" | "windows";
 
 type LaboratoryUiState = {
   activeStage: string;
@@ -135,6 +162,7 @@ type LaboratoryUiState = {
     localSubtitleEditUpdatedAt: string | null;
     overlayScrollResetPending: boolean;
     pendingDeleteProjectId: string | null;
+    bootstrap: LaboratoryUiBootstrapOverlayState;
     previewMetrics: {
       duration: number | null;
       height: number | null;
@@ -188,9 +216,6 @@ export function createLaboratoryUiBootstrapStateRuntime(
       typeof navigatorRef.userAgent === "string" ? navigatorRef.userAgent : navigatorRef.platform;
     const normalized = String(platform || "").toLowerCase();
 
-    if (normalized.includes("mac")) {
-      return "macos";
-    }
     if (normalized.includes("win")) {
       return "windows";
     }
@@ -239,6 +264,16 @@ export function createLaboratoryUiBootstrapStateRuntime(
       audioAnalysisCapabilities: {},
       audioAnalysisPresets: {},
       audioAnalysisProviders: {},
+      bootstrap: {
+        active: false,
+        currentStep: 0,
+        currentStepId: null,
+        error: null,
+        message: null,
+        status: "idle",
+        steps: [] as unknown[],
+        totalSteps: 0,
+      },
       profileModelState: {
         models: {},
       },
@@ -297,6 +332,19 @@ export function createLaboratoryUiBootstrapStateRuntime(
     };
   }
 
+  function createBootstrapOverlayState(): LaboratoryUiBootstrapOverlayState {
+    return {
+      currentStep: 0,
+      currentStepId: null,
+      error: null,
+      message: null,
+      readyToDismiss: false,
+      status: "idle",
+      steps: [],
+      totalSteps: 0,
+    };
+  }
+
   const state: LaboratoryUiState = {
     locale: resolveLocale(documentRef.documentElement.lang || navigatorRef.language),
     translations: null,
@@ -335,6 +383,7 @@ export function createLaboratoryUiBootstrapStateRuntime(
       },
       requestLookup: {},
       lastActionMessage: "",
+      bootstrap: createBootstrapOverlayState(),
       status: {
         blocking: createStatusChannel(),
         activity: createStatusChannel(),

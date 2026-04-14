@@ -11,6 +11,7 @@
       "loadingWhispers": "Whisper servisi başlatılıyor...",
       "startingWebviews": "Webview senkronizasyonu başlatılıyor...",
       "startingSlots": "Slot denetleyicisi başlatılıyor...",
+      "syncingLinkedRooms": "Workspace bağlı odalar senkronlanıyor...",
       "loadingRooms": "Odalar hazırlanıyor...",
       "preparingUi": "Arayüz hazırlanıyor...",
       "startingModules": "Modüller başlatılıyor...",
@@ -2016,6 +2017,7 @@
         "listenerFailed": "Room registry listener başarısız: {{message}}",
         "installedRoomsUnavailable": "electronAPI.roomsListInstalled kullanılamadığı için room registry yenilemesi atlandı",
         "refreshFailed": "Room registry yenilemesi başarısız: {{message}}",
+        "startupSyncFailed": "Room startup senkronizasyonu başarısız: {{message}}",
         "workspaceListingFailed": "Workspace room listesi alınamadı: {{message}}"
       },
       "roomCommandRegistry": {

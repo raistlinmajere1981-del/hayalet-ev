@@ -18,7 +18,10 @@ function renderStatusChannel(tone, channel, deps) {
   const labelKey = tone === "blocking" ? "blockingLabel" : tone === "activity" ? "activityLabel" : "resultLabel";
   const liveRole = tone === "blocking" ? "alert" : "status";
   const liveMode = tone === "blocking" ? "assertive" : "polite";
-  const detailMarkup = typeof channel.detail === "string" && channel.detail.trim() !== "" ? `<p class="lab-status-line__detail">${deps.escapeHtml(channel.detail)}</p>` : "";
+  const detailMarkup = typeof channel.detail === "string" && channel.detail.trim() !== "" ? `
+          <span class="lab-status-line__detail-separator" aria-hidden="true">/</span>
+          <span class="lab-status-line__detail">${deps.escapeHtml(channel.detail)}</span>
+        ` : "";
   return `
     <article
       class="lab-status-line__card"
@@ -27,16 +30,20 @@ function renderStatusChannel(tone, channel, deps) {
       aria-live="${liveMode}"
       aria-atomic="true"
     >
-      <div class="lab-status-line__head">
-        <span class="lab-status-line__label">${deps.escapeHtml(
+      <div class="lab-status-line__row">
+        <div class="lab-status-line__summary">
+          <span class="lab-status-line__label">${deps.escapeHtml(
     deps.text(["workbench", "statusLine", labelKey])
   )}</span>
+          <span class="lab-status-line__text">
+            <strong class="lab-status-line__message">${deps.escapeHtml(channel.message)}</strong>
+            ${detailMarkup}
+          </span>
+        </div>
         <span class="lab-status-line__source">${deps.escapeHtml(
     formatSourceLabel(channel.source, deps.text)
   )}</span>
       </div>
-      <strong class="lab-status-line__message">${deps.escapeHtml(channel.message)}</strong>
-      ${detailMarkup}
     </article>
   `;
 }
@@ -50,14 +57,15 @@ function getPrimaryStatusTone(status) {
   return null;
 }
 function renderEventLog(deps) {
+  if (deps.eventLogOpen !== true) {
+    return "";
+  }
   const entries = deps.eventLog.slice(0, 24);
   return `
     <section
       class="lab-event-log"
-      data-open="${deps.eventLogOpen ? "true" : "false"}"
       role="region"
       aria-labelledby="lab-event-log-title"
-      ${deps.eventLogOpen ? "" : "hidden"}
     >
       <div class="lab-event-log__head">
         <div>
@@ -68,22 +76,11 @@ function renderEventLog(deps) {
     deps.text(["workbench", "statusLine", "eventLogTitle"])
   )}</h2>
         </div>
-        <button
-          class="lab-button lab-button--ghost lab-button--tight"
-          type="button"
-          data-action="toggle-event-log"
-          aria-expanded="${deps.eventLogOpen ? "true" : "false"}"
-          aria-controls="lab-event-log-list"
-        >
-          ${deps.escapeHtml(
-    deps.eventLogOpen ? deps.text(["workbench", "statusLine", "hideEventsAction"]) : deps.text(["workbench", "statusLine", "showEventsAction"])
-  )}
-        </button>
       </div>
       <div
         class="lab-event-log__list"
         id="lab-event-log-list"
-        aria-hidden="${deps.eventLogOpen ? "false" : "true"}"
+        aria-hidden="false"
       >
         ${entries.length > 0 ? entries.map(function(entry) {
     const timeLabel = new Date(entry.timestamp).toLocaleTimeString(
@@ -100,7 +97,7 @@ function renderEventLog(deps) {
                         <span>${deps.escapeHtml(timeLabel)}</span>
                       </div>
                       <p class="lab-event-log__meta">${deps.escapeHtml(
-      `${formatSourceLabel(entry.source, deps.text)} · ${entry.tone}`
+      `${formatSourceLabel(entry.source, deps.text)} / ${entry.tone}`
     )}</p>
                       ${entry.detail ? `<p class="lab-event-log__detail">${deps.escapeHtml(entry.detail)}</p>` : ""}
                     </article>
@@ -156,14 +153,18 @@ export function getLaboratoryShellRegions(deps) {
                   aria-live="polite"
                   aria-atomic="true"
                 >
-                  <div class="lab-status-line__head">
-                    <span class="lab-status-line__label">${deps.escapeHtml(
+                  <div class="lab-status-line__row">
+                    <div class="lab-status-line__summary">
+                      <span class="lab-status-line__label">${deps.escapeHtml(
       deps.text(["workbench", "statusLine", "resultLabel"])
     )}</span>
-                  </div>
-                  <strong class="lab-status-line__message">${deps.escapeHtml(
+                      <span class="lab-status-line__text">
+                        <strong class="lab-status-line__message">${deps.escapeHtml(
       deps.text(["workbench", "statusLine", "idleMessage"])
     )}</strong>
+                      </span>
+                    </div>
+                  </div>
                 </article>
               `}
       </div>

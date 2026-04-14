@@ -11,6 +11,7 @@
       "loadingWhispers": "Starting whisper services...",
       "startingWebviews": "Starting webview sync...",
       "startingSlots": "Starting slot controller...",
+      "syncingLinkedRooms": "Syncing workspace-linked rooms...",
       "loadingRooms": "Preparing rooms...",
       "preparingUi": "Preparing interface...",
       "startingModules": "Starting modules...",
@@ -2016,6 +2017,7 @@
         "listenerFailed": "Room registry listener failed: {{message}}",
         "installedRoomsUnavailable": "Room registry refresh skipped because electronAPI.roomsListInstalled is unavailable",
         "refreshFailed": "Room registry refresh failed: {{message}}",
+        "startupSyncFailed": "Room startup sync failed: {{message}}",
         "workspaceListingFailed": "Workspace room listing failed: {{message}}"
       },
       "roomCommandRegistry": {

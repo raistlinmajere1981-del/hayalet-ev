@@ -339,6 +339,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps) {
       roomId,
       featureId: featureId || defaultFeatureId,
       workbench: workbenchSnapshot,
+      bootstrap: clone(runtimeRecord.bootstrap || {}),
       ready: runtimeRecord.hydrated === true,
       stages: mediaStages.slice(),
       sourcePresets: clone(runtimeRecord.sourcePresets || {}),

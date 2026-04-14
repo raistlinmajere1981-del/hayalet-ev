@@ -25,7 +25,7 @@ type LaboratoryManualGuidePlatformRecord = LaboratoryRecord & {
   installCommands?: unknown;
 };
 
-type LaboratoryManualGuidePlatform = "linux" | "macos" | "windows";
+type LaboratoryManualGuidePlatform = "linux" | "windows";
 
 type LaboratoryUiActionPayload = LaboratoryRecord & {
   featureStage?: string;
@@ -112,7 +112,7 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
   }
 
   function normalizeHelperPlatform(value: unknown): LaboratoryManualGuidePlatform {
-    if (value === "macos" || value === "windows") {
+    if (value === "windows") {
       return value;
     }
     return "linux";
@@ -209,6 +209,9 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
         return;
       case "tools-refresh":
         sendSourceAction("tools-refresh");
+        return;
+      case "tool-update-all":
+        sendMediaAction("tool-update-all", { featureStage: state.activeStage });
         return;
       case "tool-helper-toggle": {
         const toolId = String(value || "").trim();
@@ -452,6 +455,12 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
         return;
       case "tool-update":
         sendMediaAction("tool-update", { toolId: value, featureStage: state.activeStage });
+        return;
+      case "tool-check-updates":
+        sendMediaAction("tool-check-updates", {
+          toolId: value,
+          featureStage: state.activeStage,
+        });
         return;
       case "job-cancel":
         sendMediaAction("job-cancel", { jobId: value, featureStage: state.activeStage });

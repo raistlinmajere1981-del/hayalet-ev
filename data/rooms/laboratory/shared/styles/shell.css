@@ -101,6 +101,7 @@ body {
   grid-template-rows: minmax(0, 1fr) auto auto;
   gap: 0.75rem;
   min-height: 0;
+  align-content: stretch;
 }
 
 .lab-shell__overlay {
@@ -183,7 +184,7 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.75rem;
-  align-items: start;
+  align-items: center;
   padding: 0.7rem 0.82rem;
   border-radius: 1.2rem;
   border: 1px solid var(--lab-line);
@@ -196,6 +197,7 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
+  min-width: 0;
 }
 
 .lab-status-line__cards[data-card-count="1"] {
@@ -203,15 +205,22 @@ body {
 }
 
 .lab-status-line__actions {
-  display: grid;
-  align-items: start;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+}
+
+.lab-status-line__actions .lab-button {
+  white-space: nowrap;
+  align-self: center;
 }
 
 .lab-status-line__card {
-  display: grid;
-  gap: 0.4rem;
+  display: flex;
+  align-items: center;
   min-width: 0;
-  padding: 0.68rem 0.78rem;
+  min-height: 3.1rem;
+  padding: 0.58rem 0.78rem;
   border-radius: 1rem;
   border: 1px solid rgb(255 255 255 / 0.05);
   background: rgb(255 255 255 / 0.025);
@@ -237,11 +246,21 @@ body {
   background: rgb(255 255 255 / 0.02);
 }
 
-.lab-status-line__head {
+.lab-status-line__row {
   display: flex;
   justify-content: space-between;
   gap: 0.6rem;
   align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.lab-status-line__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.72rem;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .lab-status-line__label,
@@ -252,17 +271,44 @@ body {
   text-transform: uppercase;
 }
 
+.lab-status-line__label {
+  flex: 0 0 auto;
+}
+
+.lab-status-line__text {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .lab-status-line__message {
   min-width: 0;
   font-size: 0.95rem;
   line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lab-status-line__detail {
-  margin: 0;
   color: var(--lab-muted);
-  line-height: 1.45;
-  white-space: pre-wrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lab-status-line__detail-separator {
+  color: var(--lab-muted);
+  flex: 0 0 auto;
+}
+
+.lab-status-line__source {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .lab-event-log {
@@ -278,10 +324,6 @@ body {
 }
 
 #lab-shell-log:empty {
-  display: none;
-}
-
-.lab-event-log[hidden] {
   display: none;
 }
 

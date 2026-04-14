@@ -28,6 +28,15 @@ const rendererRoomRegistryPath = join(
   "rooms",
   "room-registry.ts"
 );
+const appIndexPath = join(projectRoot, "src", "js", "app", "index.ts");
+const externalBootstrapPath = join(
+  projectRoot,
+  "src",
+  "js",
+  "pages",
+  "shared",
+  "bootstrap-external-tool-page.ts"
+);
 const mainPath = join(projectRoot, "electron", "main.ts");
 const workspaceRoomOperationsPath = join(
   projectRoot,
@@ -77,6 +86,7 @@ test("ipc room handlers resolve the room package manager at handler execution ti
     /import \{ roomPackageManager \} from "\.\.\/room-package-manager\.ts"/
   );
   assert.match(source, /const roomPackageManager = getRoomPackageManager\(\);/);
+  assert.match(source, /registerHandler\("rooms-sync-linked-startup", async \(\) => \{/);
 });
 
 test("room package manager keeps installed room record building in a dedicated builder module", async () => {
@@ -91,6 +101,8 @@ test("room package manager keeps installed room record building in a dedicated b
   const roomPackageTypesSource = await readFile(roomPackageTypesPath, "utf8");
   const registrySource = await readFile(roomRegistryPath, "utf8");
   const rendererRegistrySource = await readFile(rendererRoomRegistryPath, "utf8");
+  const appIndexSource = await readFile(appIndexPath, "utf8");
+  const externalBootstrapSource = await readFile(externalBootstrapPath, "utf8");
   const workspaceRoomOperationsSource = await readFile(workspaceRoomOperationsPath, "utf8");
   const workspaceDiscoverySource = await readFile(workspaceDiscoveryPath, "utf8");
   const workspaceRoomBuildSource = await readFile(workspaceRoomBuildPath, "utf8");
@@ -104,6 +116,7 @@ test("room package manager keeps installed room record building in a dedicated b
   assert.match(managerSource, /from "\.\/rooms\/workspace-room-operations\.ts"/);
   assert.match(managerSource, /from "\.\/rooms\/workspace-room-build\.ts"/);
   assert.match(managerSource, /from "\.\/rooms\/workspace-discovery\.ts"/);
+  assert.match(managerSource, /from "\.\/rooms\/workspace-room-build-support\.ts"/);
   assert.match(managerSource, /export \{ buildInstalledRoomRecord \};/);
   assert.match(
     managerSource,
@@ -113,6 +126,12 @@ test("room package manager keeps installed room record building in a dedicated b
     managerSource,
     /private async buildWorkspaceRoomArtifact\(\s*roomId: string\s*\): Promise<BuildWorkspaceRoomArtifactResult>/
   );
+  assert.match(
+    managerSource,
+    /async syncLinkedWorkspaceRoomsOnStartup\(\): Promise<StartupRoomsSyncResult>/
+  );
+  assert.match(managerSource, /private async workspaceRoomNeedsStartupSync\(/);
+  assert.match(managerSource, /private async buildManagedStartupSnapshot\(\)/);
   assert.match(builderSource, /export function buildInstalledRoomRecord\(/);
   assert.match(builderSource, /export function optionalI18nBaseDir\(/);
   assert.match(bundleOperationsSource, /export async function packageWorkspaceRoomBundle\(/);
@@ -172,6 +191,10 @@ test("room package manager keeps installed room record building in a dedicated b
   );
   assert.match(
     workspaceRoomBuildSupportSource,
+    /export async function collectWorkspaceRoomSourceBuildState\(/
+  );
+  assert.match(
+    workspaceRoomBuildSupportSource,
     /export function roomSourceSatisfiesRuntimePath\(/
   );
   assert.match(workspaceRoomBuildSupportSource, /app\.asar\.unpacked/);
@@ -187,6 +210,11 @@ test("room package manager keeps installed room record building in a dedicated b
   );
   assert.ok(scripts["rooms:lint"]?.startsWith("NODE_OPTIONS="));
   assert.ok(scripts["rooms:lint"]?.includes('"rooms/**/*.{js,ts}"'));
+  assert.match(rendererRegistrySource, /async prepareStartupSnapshot\(/);
+  assert.match(rendererRegistrySource, /roomsSyncLinkedStartup/);
+  assert.match(appIndexSource, /AppI18n\.t\("app\.startup\.syncingLinkedRooms"\)/);
+  assert.match(appIndexSource, /await RoomRegistry\.prepareStartupSnapshot\(/);
+  assert.match(externalBootstrapSource, /await RoomRegistry\.prepareStartupSnapshot\(/);
   assert.match(eslintConfigSource, /"rooms\/\*\*\/ui\/\*\*\/\*\.ts"/);
   assert.match(eslintConfigSource, /"rooms\/\*\*\/main-functions\/\*\*\/host\/\*\*\/\*\.ts"/);
   assert.match(eslintConfigSource, /project:\s*"\.\/rooms\/tsconfig\.rooms\.json"/);

@@ -72,6 +72,7 @@ export type {
   RoomRegistryState,
   StartupRoomProtocolSnapshot,
   StartupRoomsSnapshot,
+  StartupRoomsSyncResult,
 } from "./room-installed-types.js";
 
 export function isValidRoomFeatureId(value: string): boolean {

@@ -1,5 +1,5 @@
 import { existsSync } from "fs";
-import { readFile, writeFile } from "fs/promises";
+import { readFile, stat, writeFile } from "fs/promises";
 import { dirname, extname, join } from "path";
 import { pathToFileURL } from "url";
 import type { Format, Loader } from "esbuild";
@@ -8,6 +8,11 @@ import { collectFilesRecursive, copyDirectoryContents, ensureDir } from "./room-
 
 const ROOM_TYPESCRIPT_SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"]);
 type EsbuildTransformModule = Pick<typeof EsbuildModule, "transform">;
+
+export interface WorkspaceRoomSourceBuildState {
+  latestSourceMtimeMs: number;
+  outputRelativePaths: string[];
+}
 
 let cachedEsbuildModulePromise: Promise<EsbuildTransformModule> | null = null;
 let cachedEsbuildModuleSpecifier: string | null = null;
@@ -105,6 +110,40 @@ function resolveCompiledOutputRelativePath(relativePath: string): string {
   }
 
   return relativePath;
+}
+
+export async function collectWorkspaceRoomSourceBuildState(
+  sourceDir: string
+): Promise<WorkspaceRoomSourceBuildState> {
+  const sourceFiles = await collectFilesRecursive(sourceDir);
+  const latestSourceMtimeMs =
+    sourceFiles.length === 0
+      ? 0
+      : Math.max(
+          ...(await Promise.all(
+            sourceFiles.map(async (file) => {
+              const fileStat = await stat(file.absolutePath).catch(() => null);
+              return fileStat?.mtimeMs ?? 0;
+            })
+          ))
+        );
+
+  const outputRelativePaths = Array.from(
+    new Set(
+      sourceFiles
+        .filter((file) => isTypeDeclarationPath(file.relativePath) === false)
+        .map((file) =>
+          isWorkspaceTypeScriptSourcePath(file.relativePath)
+            ? resolveCompiledOutputRelativePath(file.relativePath)
+            : file.relativePath
+        )
+    )
+  ).sort((left, right) => left.localeCompare(right));
+
+  return {
+    latestSourceMtimeMs,
+    outputRelativePaths,
+  };
 }
 
 function resolveEsbuildLoader(relativePath: string): Loader {

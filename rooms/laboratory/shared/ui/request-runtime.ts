@@ -258,6 +258,8 @@ export function createLaboratoryRequestRuntime(deps: LaboratoryRequestRuntimeDep
         return "report-export";
       case "tool-install":
       case "tool-update":
+      case "tool-check-updates":
+      case "tool-update-all":
       case "tools-refresh":
         return "tools";
       default:
@@ -476,7 +478,6 @@ export function createLaboratoryRequestRuntime(deps: LaboratoryRequestRuntimeDep
     requestOverlayScrollReset();
     render();
     state.ui.settingsAnimateIn = false;
-    sendSourceAction("tools-refresh", {});
   }
 
   function closeSettingsOverlay() {

@@ -4,7 +4,6 @@ export function createLaboratorySourceStageProjectRuntime(deps) {
   const featureText = deps.featureText;
   const getProjectSummaries = deps.getProjectSummaries;
   const getSourceSnapshot = deps.getSourceSnapshot;
-  const getActiveProject = deps.getActiveProject;
   const getAvailableSourceFormats = deps.getAvailableSourceFormats;
   const getCurrentSourceKind = deps.getCurrentSourceKind;
   const state = deps.state;
@@ -20,21 +19,15 @@ export function createLaboratorySourceStageProjectRuntime(deps) {
   }
   function renderProjectPanelBody() {
     const projects = getProjectSummaries().map(toProjectSummaryRecord);
-    const activeProjectId = toSourceSnapshotRecord(getSourceSnapshot()).activeProjectId;
-    const activeProject = toProjectSummaryRecord(getActiveProject());
+    const activeProjectId = readDisplayText(
+      toSourceSnapshotRecord(getSourceSnapshot()).activeProjectId,
+      ""
+    );
+    const pendingDelete = state.ui.pendingDeleteProjectId === activeProjectId && activeProjectId !== "";
     return `
         <div class="lab-project-panel__grid">
-          <div class="lab-project-card">
-            <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "projects", "title"]))}</span>
-            <strong>${escapeHtml(
-      readDisplayText(activeProject.name, text(["mediaAnalysis", "projects", "empty"]))
-    )}</strong>
-            <span>${escapeHtml(readDisplayText(activeProject.updatedAt, "--"))}</span>
-          </div>
-          <div class="lab-field">
-            <label class="lab-field__label" for="project-select">${escapeHtml(
-      text(["mediaAnalysis", "projects", "selectLabel"])
-    )}</label>
+          <label class="lab-field lab-project-panel__field" for="project-select">
+            <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "projects", "selectLabel"]))}</span>
             <select class="lab-select" id="project-select" data-select="project">
               ${projects.length > 0 ? projects.map(function(project) {
       const projectId = readDisplayText(project.id, "");
@@ -45,36 +38,35 @@ export function createLaboratorySourceStageProjectRuntime(deps) {
                         `;
     }).join("") : `<option value="">${escapeHtml(text(["mediaAnalysis", "projects", "empty"]))}</option>`}
             </select>
+          </label>
+          <div class="lab-project-panel__actions">
+            ${pendingDelete ? `
+                  <button class="lab-button lab-button--danger" type="button" data-action="project-delete-confirm">
+                    ${escapeHtml(text(["mediaAnalysis", "projects", "deleteConfirm"]))}
+                  </button>
+                  <button class="lab-button lab-button--ghost" type="button" data-action="project-delete-cancel">
+                    ${escapeHtml(text(["mediaAnalysis", "projects", "deleteCancel"]))}
+                  </button>
+                ` : `
+                  <button
+                    class="lab-button lab-button--ghost"
+                    type="button"
+                    data-action="project-delete-arm"
+                    ${activeProjectId === "" ? "disabled" : ""}
+                  >
+                    ${escapeHtml(text(["mediaAnalysis", "projects", "deleteAction"]))}
+                  </button>
+                `}
+            <button class="lab-button lab-button--ghost" type="button" data-action="project-create">
+              ${escapeHtml(text(["mediaAnalysis", "projects", "newAction"]))}
+            </button>
           </div>
-        </div>
-        <div class="lab-action-stack lab-action-stack--inline">
-          ${state.ui.pendingDeleteProjectId === activeProjectId ? `
-                <button class="lab-button lab-button--danger" type="button" data-action="project-delete-confirm">
-                  ${escapeHtml(text(["mediaAnalysis", "projects", "deleteConfirm"]))}
-                </button>
-                <button class="lab-button lab-button--ghost" type="button" data-action="project-delete-cancel">
-                  ${escapeHtml(text(["mediaAnalysis", "projects", "deleteCancel"]))}
-                </button>
-              ` : `
-                <button class="lab-button lab-button--ghost" type="button" data-action="project-delete-arm">
-                  ${escapeHtml(text(["mediaAnalysis", "projects", "deleteAction"]))}
-                </button>
-              `}
         </div>
     `;
   }
   function renderProjectPanel() {
     return `
       <section class="lab-panel lab-panel--compact lab-project-panel">
-        <div class="lab-panel__header">
-          <div>
-            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "projects", "eyebrow"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "projects", "title"]))}</h2>
-          </div>
-          <button class="lab-button lab-button--ghost lab-button--tight" type="button" data-action="project-create">
-            ${escapeHtml(text(["mediaAnalysis", "projects", "newAction"]))}
-          </button>
-        </div>
         ${renderProjectPanelBody()}
       </section>
     `;
@@ -95,7 +87,6 @@ export function createLaboratorySourceStageProjectRuntime(deps) {
                 data-value="${sourceId}"
                 data-selected="${sourceId === currentKind ? "true" : "false"}"
               >
-                <span class="lab-source-card__icon">${escapeHtml(sourceId.slice(0, 1).toUpperCase())}</span>
                 <span class="lab-source-card__title">${escapeHtml(
         featureText(["source", "formats", sourceId, "title"])
       )}</span>

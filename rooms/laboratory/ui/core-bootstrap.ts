@@ -235,6 +235,9 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps: LaboratoryCoreBoots
     getActiveStage() {
       return state.activeStage;
     },
+    getBootstrapState() {
+      return toRecord(state.ui.bootstrap);
+    },
     getStageGuard(stageId: string) {
       return navigationRuntimeRefs.getStageGuard(stageId);
     },

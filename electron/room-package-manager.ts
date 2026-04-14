@@ -1,9 +1,12 @@
 import { existsSync } from "fs";
-import { rm } from "fs/promises";
-import { dirname, join } from "path";
+import { readFile, rm } from "fs/promises";
+import { dirname, join, resolve } from "path";
 import { formatErrorWithDetail } from "../shared/i18n/error-detail.ts";
 import { Paths } from "./paths.ts";
-import { ensureDir } from "./rooms/room-install-files.ts";
+import {
+  ensureDir,
+  resolveInstalledRoomTrackedFiles,
+} from "./rooms/room-install-files.ts";
 import { buildInstalledRoomRecord } from "./rooms/installed-room-builder.ts";
 import type { RoomOperationResult } from "./rooms/room-package-types.ts";
 import {
@@ -26,9 +29,17 @@ import {
   pickPreferredWorkspaceRoom,
   readWorkspaceRoomsFromRoot,
 } from "./rooms/workspace-discovery.ts";
+import { collectWorkspaceRoomSourceBuildState } from "./rooms/workspace-room-build-support.ts";
 import { buildWorkspaceRoomArtifact as buildWorkspaceRoomArtifactOperation } from "./rooms/workspace-room-build.ts";
 import type { BuildWorkspaceRoomArtifactResult } from "./rooms/workspace-room-build.ts";
-import type { InstalledRoomRecord, RoomRegistryState, RoomWorkspaceEntry } from "@shared/index.js";
+import type {
+  InstalledRoomRecord,
+  RoomRegistryState,
+  RoomWorkspaceEntry,
+  StartupRoomProtocolSnapshot,
+  StartupRoomsSnapshot,
+  StartupRoomsSyncResult,
+} from "@shared/index.js";
 import { translateElectronMessage } from "./i18n/language-service.ts";
 
 interface RoomManagerOptions {
@@ -49,6 +60,18 @@ interface RoomRuntimeResiduePaths {
 }
 
 export { buildInstalledRoomRecord };
+
+function normalizeRoomPath(value: string): string {
+  return resolve(value).replace(/[\\/]+$/, "");
+}
+
+function haveSameRelativePaths(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((path, index) => path === right[index]);
+}
 
 async function roomPackageT(
   key: string,
@@ -280,6 +303,135 @@ export class RoomPackageManager {
     return builtWorkspaceRooms
       .filter((room): room is InstalledRoomRecord => room !== null)
       .sort((left, right) => left.id.localeCompare(right.id));
+  }
+
+  private findLinkedWorkspaceRoom(
+    room: InstalledRoomRecord,
+    workspaceRooms: RoomWorkspaceEntry[]
+  ): RoomWorkspaceEntry | null {
+    const writableWorkspaceRooms = workspaceRooms.filter(
+      (candidate) => candidate.readOnly !== true && candidate.sourceKind !== "bundle"
+    );
+    const sourcePath = normalizeRoomPath(room.sourceDir);
+    const pathMatch =
+      writableWorkspaceRooms.find((candidate) => normalizeRoomPath(candidate.dirPath) === sourcePath) ??
+      null;
+
+    if (pathMatch !== null) {
+      return pathMatch;
+    }
+
+    return writableWorkspaceRooms.find((candidate) => candidate.manifest?.id === room.id) ?? null;
+  }
+
+  private async workspaceRoomNeedsStartupSync(
+    room: InstalledRoomRecord,
+    workspaceRoom: RoomWorkspaceEntry
+  ): Promise<boolean> {
+    const sourceState = await collectWorkspaceRoomSourceBuildState(workspaceRoom.dirPath);
+    const trackedFiles = await resolveInstalledRoomTrackedFiles(room);
+    if (haveSameRelativePaths(sourceState.outputRelativePaths, trackedFiles) === false) {
+      return true;
+    }
+
+    const installedUpdatedAtMs = Date.parse(room.updatedAt);
+    if (Number.isFinite(installedUpdatedAtMs) !== true) {
+      return true;
+    }
+
+    return sourceState.latestSourceMtimeMs > installedUpdatedAtMs;
+  }
+
+  private async buildStartupProtocols(
+    rooms: InstalledRoomRecord[]
+  ): Promise<StartupRoomProtocolSnapshot[]> {
+    const protocolEntries = await Promise.all(
+      rooms.flatMap((room) =>
+        (room.protocolSpecs ?? []).map(async (spec) => {
+          const protocolPath = join(room.installedDir, "protocols", `${spec.key}.md`);
+          const body =
+            existsSync(protocolPath) === true ? await readFile(protocolPath, "utf8").catch(() => "") : "";
+
+          return {
+            roomId: room.id,
+            key: spec.key,
+            body,
+          };
+        })
+      )
+    );
+
+    return protocolEntries;
+  }
+
+  private async buildManagedStartupSnapshot(): Promise<StartupRoomsSnapshot | null> {
+    const rooms = await this.hydrateInstalledRoomsFromRegistry();
+    if (rooms.length === 0) {
+      return null;
+    }
+
+    return {
+      rooms,
+      protocols: await this.buildStartupProtocols(rooms),
+    };
+  }
+
+  async syncLinkedWorkspaceRoomsOnStartup(): Promise<StartupRoomsSyncResult> {
+    const installedRooms = await this.hydrateInstalledRoomsFromRegistry();
+    if (installedRooms.length === 0) {
+      return {
+        success: true,
+        snapshot: null,
+        syncedRoomIds: [],
+      };
+    }
+
+    const workspaceRooms = await this.listWorkspaceRooms();
+    const syncedRoomIds: string[] = [];
+    const errors: string[] = [];
+
+    for (const room of installedRooms) {
+      const linkedWorkspaceRoom = this.findLinkedWorkspaceRoom(room, workspaceRooms);
+      if (linkedWorkspaceRoom === null) {
+        continue;
+      }
+
+      if (linkedWorkspaceRoom.valid !== true || linkedWorkspaceRoom.manifest === undefined) {
+        errors.push(`${room.id}: workspace source is invalid`);
+        continue;
+      }
+
+      const shouldSync = await this.workspaceRoomNeedsStartupSync(room, linkedWorkspaceRoom);
+      if (shouldSync !== true) {
+        continue;
+      }
+
+      const installResult = await this.installFromWorkspace(linkedWorkspaceRoom.manifest.id);
+      if (installResult.success === true) {
+        syncedRoomIds.push(linkedWorkspaceRoom.manifest.id);
+        continue;
+      }
+
+      errors.push(
+        `${linkedWorkspaceRoom.manifest.id}: ${installResult.error ?? "workspace sync failed"}`
+      );
+    }
+
+    const snapshot = await this.buildManagedStartupSnapshot();
+    if (errors.length > 0) {
+      return {
+        success: false,
+        snapshot,
+        syncedRoomIds,
+        error: errors.join(" | "),
+      };
+    }
+
+    return {
+      success: true,
+      snapshot,
+      syncedRoomIds,
+    };
   }
 
   async installFromWorkspace(roomId: string): Promise<RoomOperationResult> {

@@ -14,6 +14,11 @@ export function createLaboratoryHostMessageRuntime(deps) {
     toRecord
   } = deps;
   let renderTimerId = null;
+  let bootstrapRevealTimerId = null;
+  let bootstrapDismissTimerId = null;
+  let bootstrapTargetState = null;
+  const bootstrapRevealDelayMs = 95;
+  const bootstrapReadyHoldMs = 150;
   function scheduleRender() {
     if (renderTimerId !== null) {
       clearTimeout(renderTimerId);
@@ -23,10 +28,23 @@ export function createLaboratoryHostMessageRuntime(deps) {
       render();
     }, 80);
   }
+  function flushRender() {
+    if (renderTimerId !== null) {
+      clearTimeout(renderTimerId);
+      renderTimerId = null;
+    }
+    render();
+  }
   function toMessageRecord(value) {
     return toRecord(value);
   }
   function toPayloadRecord(value) {
+    return toRecord(value);
+  }
+  function toBootstrapRecord(value) {
+    return toRecord(value);
+  }
+  function toBootstrapStepRecord(value) {
     return toRecord(value);
   }
   function toSourceSnapshot(value) {
@@ -34,6 +52,175 @@ export function createLaboratoryHostMessageRuntime(deps) {
   }
   function toString(value) {
     return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+  }
+  function createBootstrapOverlayTarget(snapshot) {
+    const bootstrap = toBootstrapRecord(snapshot.bootstrap);
+    const steps = Array.isArray(bootstrap.steps) ? bootstrap.steps.map(function(step) {
+      const record = toBootstrapStepRecord(step);
+      return {
+        id: toString(record.id) || "unknown",
+        status: toString(record.status) || "pending",
+        visible: false
+      };
+    }) : [];
+    const totalSteps = typeof bootstrap.totalSteps === "number" && Number.isFinite(bootstrap.totalSteps) ? bootstrap.totalSteps : steps.length;
+    const currentStep = typeof bootstrap.currentStep === "number" && Number.isFinite(bootstrap.currentStep) ? bootstrap.currentStep : 0;
+    return {
+      currentStep,
+      currentStepId: toString(bootstrap.currentStepId),
+      error: toString(bootstrap.error),
+      message: toString(bootstrap.message),
+      readyToDismiss: false,
+      status: toString(bootstrap.status) || (snapshot.ready === true ? "ready" : "running"),
+      steps,
+      totalSteps
+    };
+  }
+  function getBootstrapTargetVisibleCount(target) {
+    const totalSteps = Math.max(target.totalSteps, target.steps.length);
+    if (target.status === "ready") {
+      return totalSteps;
+    }
+    if (target.status === "error") {
+      return Math.max(1, target.currentStep || 0);
+    }
+    return Math.max(0, Math.min(target.currentStep || 0, totalSteps));
+  }
+  function buildPresentedBootstrapSteps(target, visibleCount) {
+    const clampedVisibleCount = Math.max(0, Math.min(visibleCount, target.steps.length));
+    return target.steps.map(function(step, index) {
+      if (index >= clampedVisibleCount) {
+        return {
+          id: step.id,
+          status: "pending",
+          visible: false
+        };
+      }
+      if (target.status === "error" && index === clampedVisibleCount - 1) {
+        return {
+          id: step.id,
+          status: "error",
+          visible: true
+        };
+      }
+      if (target.status === "ready" && clampedVisibleCount >= target.steps.length) {
+        return {
+          id: step.id,
+          status: "done",
+          visible: true
+        };
+      }
+      return {
+        id: step.id,
+        status: index === clampedVisibleCount - 1 ? "active" : "done",
+        visible: true
+      };
+    });
+  }
+  function applyBootstrapPresentation(target, visibleCount, options) {
+    const totalSteps = Math.max(target.totalSteps, target.steps.length);
+    const safeVisibleCount = Math.max(0, Math.min(visibleCount, totalSteps));
+    const lastVisibleStep = safeVisibleCount > 0 ? target.steps[safeVisibleCount - 1] || null : null;
+    state.ui.bootstrap = {
+      currentStep: safeVisibleCount,
+      currentStepId: lastVisibleStep ? lastVisibleStep.id : null,
+      error: options?.status === "error" || target.status === "error" ? target.error : null,
+      message: target.message,
+      readyToDismiss: options?.readyToDismiss === true,
+      status: options?.status || target.status,
+      steps: buildPresentedBootstrapSteps(target, safeVisibleCount),
+      totalSteps
+    };
+  }
+  function clearBootstrapRevealTimer() {
+    if (bootstrapRevealTimerId !== null) {
+      clearTimeout(bootstrapRevealTimerId);
+      bootstrapRevealTimerId = null;
+    }
+  }
+  function clearBootstrapDismissTimer() {
+    if (bootstrapDismissTimerId !== null) {
+      clearTimeout(bootstrapDismissTimerId);
+      bootstrapDismissTimerId = null;
+    }
+  }
+  function scheduleBootstrapDismiss() {
+    clearBootstrapDismissTimer();
+    bootstrapDismissTimerId = setTimeout(function() {
+      bootstrapDismissTimerId = null;
+      if (bootstrapTargetState === null || bootstrapTargetState.status !== "ready") {
+        return;
+      }
+      applyBootstrapPresentation(
+        bootstrapTargetState,
+        Math.max(bootstrapTargetState.totalSteps, bootstrapTargetState.steps.length, 0),
+        {
+          readyToDismiss: true,
+          status: "ready"
+        }
+      );
+      flushRender();
+    }, bootstrapReadyHoldMs);
+  }
+  function scheduleBootstrapReveal() {
+    if (bootstrapRevealTimerId !== null) {
+      return;
+    }
+    bootstrapRevealTimerId = setTimeout(function() {
+      bootstrapRevealTimerId = null;
+      const target = bootstrapTargetState;
+      if (target === null) {
+        return;
+      }
+      const desiredVisibleCount = getBootstrapTargetVisibleCount(target);
+      const currentVisibleCount = Math.max(0, state.ui.bootstrap.currentStep || 0);
+      if (desiredVisibleCount <= currentVisibleCount) {
+        if (target.status === "ready") {
+          scheduleBootstrapDismiss();
+        }
+        return;
+      }
+      const nextVisibleCount = currentVisibleCount + 1;
+      const nextStatus = target.status === "error" && nextVisibleCount >= desiredVisibleCount ? "error" : "running";
+      applyBootstrapPresentation(target, nextVisibleCount, {
+        readyToDismiss: false,
+        status: nextStatus
+      });
+      flushRender();
+      if (nextVisibleCount < desiredVisibleCount) {
+        scheduleBootstrapReveal();
+        return;
+      }
+      if (target.status === "ready") {
+        scheduleBootstrapDismiss();
+      }
+    }, bootstrapRevealDelayMs);
+  }
+  function syncBootstrapPresentation(snapshot) {
+    const target = createBootstrapOverlayTarget(snapshot);
+    bootstrapTargetState = target;
+    clearBootstrapDismissTimer();
+    const desiredVisibleCount = getBootstrapTargetVisibleCount(target);
+    const isFreshSequence = state.ui.bootstrap.readyToDismiss === true || state.ui.bootstrap.totalSteps === 0 || desiredVisibleCount < state.ui.bootstrap.currentStep;
+    const baseVisibleCount = isFreshSequence ? 0 : Math.max(0, state.ui.bootstrap.currentStep || 0);
+    const nextVisibleCount = baseVisibleCount === 0 && desiredVisibleCount > 0 ? 1 : Math.min(baseVisibleCount, desiredVisibleCount);
+    const nextStatus = target.status === "error" ? "error" : target.status === "ready" && desiredVisibleCount <= nextVisibleCount ? "ready" : "running";
+    applyBootstrapPresentation(target, nextVisibleCount, {
+      readyToDismiss: false,
+      status: nextStatus
+    });
+    if (target.status === "error") {
+      clearBootstrapRevealTimer();
+      return;
+    }
+    if (desiredVisibleCount > nextVisibleCount) {
+      scheduleBootstrapReveal();
+      return;
+    }
+    clearBootstrapRevealTimer();
+    if (target.status === "ready") {
+      scheduleBootstrapDismiss();
+    }
   }
   function looksLikeVerboseToolOutput(message) {
     if (message === null) {
@@ -160,6 +347,7 @@ export function createLaboratoryHostMessageRuntime(deps) {
         workbench: toRecord(snapshotRecord["workbench"])
       });
       state.sourceSnapshot = snapshot;
+      syncBootstrapPresentation(snapshot);
       scheduleRender();
       return;
     }

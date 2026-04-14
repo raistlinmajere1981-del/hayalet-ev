@@ -59,7 +59,8 @@ export async function bootstrapExternalToolPage(
 
   const startupFlags = window.electronAPI?.getStartupFlags();
   if (options.initializeRooms === true) {
-    const roomsSnapshot: StartupRoomsSnapshot | null = startupFlags?.roomsSnapshot ?? null;
+    const roomsSnapshot: StartupRoomsSnapshot | null =
+      await RoomRegistry.prepareStartupSnapshot(startupFlags?.roomsSnapshot ?? null);
     await RoomRegistry.loadInstalledRooms(roomsSnapshot);
   }
 

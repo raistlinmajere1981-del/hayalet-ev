@@ -92,6 +92,22 @@ type LaboratoryProfileModelState = {
   updatedAt: string | number | null;
 };
 
+type LaboratoryBootstrapStepState = {
+  id: string;
+  status: "pending" | "active" | "done" | "error";
+};
+
+type LaboratoryBootstrapState = {
+  active: boolean;
+  currentStep: number;
+  currentStepId: string | null;
+  error: string | null;
+  message: string | null;
+  status: "idle" | "running" | "ready" | "error";
+  steps: LaboratoryBootstrapStepState[];
+  totalSteps: number;
+};
+
 type LaboratoryToolManifestRecord = LaboratoryRecord & {
   stageSupport?: unknown;
 };
@@ -102,6 +118,7 @@ type LaboratoryRuntimeState = {
   audioAnalysisCatalog: unknown;
   audioAnalysisPresets: unknown;
   audioAnalysisProviders: unknown;
+  bootstrap: LaboratoryBootstrapState;
   editCapabilities: unknown;
   editPresets: unknown;
   hydrated: boolean;
@@ -348,8 +365,22 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
     return asNonEmptyString(stageSupport[stageId]) || "unsupported";
   }
 
+  function createBootstrapState(): LaboratoryBootstrapState {
+    return {
+      active: false,
+      currentStep: 0,
+      currentStepId: null,
+      error: null,
+      message: null,
+      status: "idle",
+      steps: [],
+      totalSteps: 0,
+    };
+  }
+
   function createRuntimeState(): LaboratoryRuntimeState {
     return {
+      bootstrap: createBootstrapState(),
       hydrated: false,
       hydrating: null,
       paths: null,
@@ -388,6 +419,7 @@ export function createLaboratoryRuntimeBootstrap(deps: LaboratoryRuntimeBootstra
   }
 
   return {
+    createBootstrapState,
     createDefaultProfileModelEntry,
     createDefaultToolEntry,
     createDefaultToolState,

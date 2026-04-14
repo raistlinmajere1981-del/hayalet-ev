@@ -19,6 +19,11 @@ export function setupRoomHandlers(_mainWindow: BrowserWindow | null): void {
     };
   });
 
+  registerHandler("rooms-sync-linked-startup", async () => {
+    const roomPackageManager = getRoomPackageManager();
+    return await roomPackageManager.syncLinkedWorkspaceRoomsOnStartup();
+  });
+
   registerHandler("rooms-install-from-workspace", async (_event, roomId: string) => {
     const roomPackageManager = getRoomPackageManager();
     return await roomPackageManager.installFromWorkspace(roomId);

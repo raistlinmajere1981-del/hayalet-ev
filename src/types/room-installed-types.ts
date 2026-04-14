@@ -84,3 +84,10 @@ export interface StartupRoomsSnapshot {
   rooms: InstalledRoomRecord[];
   protocols: StartupRoomProtocolSnapshot[];
 }
+
+export interface StartupRoomsSyncResult {
+  success: boolean;
+  snapshot: StartupRoomsSnapshot | null;
+  syncedRoomIds?: string[];
+  error?: string;
+}

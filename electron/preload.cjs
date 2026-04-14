@@ -264,6 +264,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveProtocol: (key, content) => ipcRenderer.invoke("save-protocol", key, content),
   roomsListWorkspace: () => ipcRenderer.invoke("rooms-list-workspace"),
   roomsListInstalled: () => ipcRenderer.invoke("rooms-list-installed"),
+  roomsSyncLinkedStartup: () => ipcRenderer.invoke("rooms-sync-linked-startup"),
   roomsInstallFromWorkspace: (roomId) => ipcRenderer.invoke("rooms-install-from-workspace", roomId),
   roomsRemoveInstalled: (payload) => ipcRenderer.invoke("rooms-remove-installed", payload),
   roomsDeleteWorkspace: (payload) => ipcRenderer.invoke("rooms-delete-workspace", payload),

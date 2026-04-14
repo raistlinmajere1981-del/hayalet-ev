@@ -5,12 +5,31 @@ type LaboratoryStageCopyRecord = LaboratoryRecord & {
   title?: unknown;
 };
 
+type LaboratoryBootstrapStateRecord = LaboratoryRecord & {
+  active?: unknown;
+  currentStep?: unknown;
+  currentStepId?: unknown;
+  error?: unknown;
+  message?: unknown;
+  readyToDismiss?: unknown;
+  status?: unknown;
+  steps?: unknown;
+  totalSteps?: unknown;
+};
+
+type LaboratoryBootstrapStepRecord = LaboratoryRecord & {
+  id?: unknown;
+  status?: unknown;
+  visible?: unknown;
+};
+
 type LaboratoryShellFrameUiDeps = {
   bootstrapText: (key: string) => string;
   escapeHtml: (value: string) => string;
   featureText: (path: string[]) => string;
   getActiveFeatureId: () => string;
   getActiveStage: () => string;
+  getBootstrapState: () => LaboratoryRecord;
   getStageGuard: (stageId: string) => {
     allowed: boolean;
     detail?: string | null;
@@ -34,6 +53,7 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
     featureText,
     getActiveFeatureId,
     getActiveStage,
+    getBootstrapState,
     getStageGuard,
     getStageIndex,
     getTranslations,
@@ -53,6 +73,14 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
     return typeof value === "string" && value.trim() !== "" ? value : fallback;
   }
 
+  function toBootstrapStateRecord(value: unknown): LaboratoryBootstrapStateRecord {
+    return toRecord(value);
+  }
+
+  function toBootstrapStepRecord(value: unknown): LaboratoryBootstrapStepRecord {
+    return toRecord(value);
+  }
+
   function getFeatureLabel(featureId: string): string {
     return text(["features", featureId]) || featureId;
   }
@@ -67,11 +95,174 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
   }
 
   function renderBootstrap() {
+    const bootstrap = toBootstrapStateRecord(getBootstrapState());
+    const steps = Array.isArray(bootstrap.steps)
+      ? bootstrap.steps.map(toBootstrapStepRecord)
+      : [];
+    const currentStepId =
+      typeof bootstrap.currentStepId === "string" && bootstrap.currentStepId.trim() !== ""
+        ? bootstrap.currentStepId.trim()
+        : null;
+    const currentStep =
+      typeof bootstrap.currentStep === "number" && Number.isFinite(bootstrap.currentStep)
+        ? bootstrap.currentStep
+        : 0;
+    const totalSteps =
+      typeof bootstrap.totalSteps === "number" && Number.isFinite(bootstrap.totalSteps)
+        ? bootstrap.totalSteps
+        : steps.length;
+    const status =
+      typeof bootstrap.status === "string" && bootstrap.status.trim() !== ""
+        ? bootstrap.status.trim()
+        : "idle";
+    const error =
+      typeof bootstrap.error === "string" && bootstrap.error.trim() !== ""
+        ? bootstrap.error.trim()
+        : null;
+    const effectiveSteps =
+      steps.length > 0
+        ? steps
+        : [
+            {
+              id: "resolve-paths",
+              status: currentStepId === "resolve-paths" ? "active" : "pending",
+              visible: currentStepId === "resolve-paths",
+            },
+            {
+              id: "load-config",
+              status: currentStepId === "load-config" ? "active" : "pending",
+              visible: currentStepId === "load-config",
+            },
+            {
+              id: "load-tool-state",
+              status: currentStepId === "load-tool-state" ? "active" : "pending",
+              visible: currentStepId === "load-tool-state",
+            },
+            {
+              id: "load-profile-model-state",
+              status: currentStepId === "load-profile-model-state" ? "active" : "pending",
+              visible: currentStepId === "load-profile-model-state",
+            },
+            {
+              id: "load-projects",
+              status: currentStepId === "load-projects" ? "active" : "pending",
+              visible: currentStepId === "load-projects",
+            },
+            {
+              id: "ensure-project",
+              status: currentStepId === "ensure-project" ? "active" : "pending",
+              visible: currentStepId === "ensure-project",
+            },
+            {
+              id: "refresh-tools",
+              status: currentStepId === "refresh-tools" ? "active" : "pending",
+              visible: currentStepId === "refresh-tools",
+            },
+            {
+              id: "refresh-profile-models",
+              status: currentStepId === "refresh-profile-models" ? "active" : "pending",
+              visible: currentStepId === "refresh-profile-models",
+            },
+          ];
+    const visibleSteps = effectiveSteps.filter(function (step) {
+      return step.visible === true;
+    });
+    const progressValue =
+      totalSteps > 0 && currentStep > 0
+        ? `${String(currentStep)} / ${String(totalSteps)}`
+        : bootstrapText("loadingProgressPending");
+    const progressPercent =
+      totalSteps > 0
+        ? Math.max(8, Math.min(100, Math.round((Math.max(0, currentStep) / totalSteps) * 100)))
+        : 12;
+    const currentStepLabel = (() => {
+      if (status === "ready") {
+        return bootstrapText("loadingReadyLabel");
+      }
+      if (status === "error") {
+        return bootstrapText("loadingErrorLabel");
+      }
+      if (currentStepId === null) {
+        return bootstrapText("loadingProgressPending");
+      }
+      return bootstrapText(`bootstrapStep.${currentStepId}`);
+    })();
+    const detailText =
+      error ||
+      (status === "ready"
+        ? bootstrapText("loadingReadyBody")
+        : status === "error"
+          ? bootstrapText("loadingErrorBody")
+          : bootstrapText("loadingBody"));
+
     return `
-      <section class="lab-bootstrap">
-        <div class="lab-bootstrap__panel">
+      <section class="lab-bootstrap" data-status="${escapeHtml(status)}">
+        <div class="lab-bootstrap__shell">
+          <div class="lab-bootstrap__brand">
+            <p class="lab-bootstrap__eyebrow">${escapeHtml(bootstrapText("loadingEyebrow"))}</p>
+            <strong class="lab-bootstrap__progress-pill">${escapeHtml(progressValue)}</strong>
+          </div>
           <h1 class="lab-bootstrap__title">${escapeHtml(bootstrapText("loadingTitle"))}</h1>
-          <p class="lab-bootstrap__body">${escapeHtml(bootstrapText("loadingBody"))}</p>
+          <p class="lab-bootstrap__body">${escapeHtml(detailText)}</p>
+          <div class="lab-bootstrap__loader" aria-hidden="true">
+            <span
+              class="lab-bootstrap__loader-bar"
+              style="width: ${escapeHtml(`${String(progressPercent)}%`)}"
+            ></span>
+          </div>
+          <div class="lab-bootstrap__meta">
+            <div class="lab-bootstrap__progress">
+              <span class="lab-bootstrap__progress-label">${escapeHtml(
+                bootstrapText("loadingProgressLabel")
+              )}</span>
+              <strong class="lab-bootstrap__progress-value">${escapeHtml(progressValue)}</strong>
+            </div>
+            <div class="lab-bootstrap__current">
+              <span class="lab-bootstrap__current-label">${escapeHtml(
+                bootstrapText("loadingCurrentStepLabel")
+              )}</span>
+              <strong class="lab-bootstrap__current-value">${escapeHtml(currentStepLabel)}</strong>
+            </div>
+          </div>
+          <div class="lab-bootstrap__steps" aria-label="${escapeHtml(
+            bootstrapText("loadingTimelineLabel")
+          )}">
+            ${
+              visibleSteps.length > 0
+                ? visibleSteps
+                    .map(function (step) {
+                      const stepId =
+                        typeof step.id === "string" && step.id.trim() !== ""
+                          ? step.id.trim()
+                          : "unknown";
+                      const stepStatus =
+                        typeof step.status === "string" && step.status.trim() !== ""
+                          ? step.status.trim()
+                          : "pending";
+                      return `
+                        <article class="lab-bootstrap__step" data-status="${escapeHtml(stepStatus)}">
+                          <span class="lab-bootstrap__step-dot" aria-hidden="true"></span>
+                          <span class="lab-bootstrap__step-label">${escapeHtml(
+                            bootstrapText(`bootstrapStep.${stepId}`)
+                          )}</span>
+                        </article>
+                      `;
+                    })
+                    .join("")
+                : `<article class="lab-bootstrap__step lab-bootstrap__step--placeholder" data-status="pending">
+                    <span class="lab-bootstrap__step-dot" aria-hidden="true"></span>
+                    <span class="lab-bootstrap__step-label">${escapeHtml(
+                      bootstrapText("loadingTimelinePending")
+                    )}</span>
+                  </article>`
+            }
+          </div>
+          <div class="lab-bootstrap__footer">
+            <span class="lab-bootstrap__current-label">${escapeHtml(
+              bootstrapText("loadingFooterLabel")
+            )}</span>
+            <strong class="lab-bootstrap__footer-value">${escapeHtml(currentStepLabel)}</strong>
+          </div>
         </div>
       </section>
     `;

@@ -12,6 +12,7 @@ import { RoomHostRuntime } from "./room-host-runtime.js";
 type RoomRegistryListener = (rooms: InstalledRoomRecord[]) => void;
 const LIST_INSTALLED_TIMEOUT_MS = 5000;
 const PROTOCOL_SYNC_TIMEOUT_MS = 5000;
+const STARTUP_SYNC_TIMEOUT_MS = 15000;
 
 function cloneRooms(rooms: InstalledRoomRecord[]): InstalledRoomRecord[] {
   return rooms.map((room) => ({
@@ -108,6 +109,46 @@ class RoomRegistryClass {
 
     const rooms = await this.fetchInstalledRooms();
     return await this.applyInstalledRooms(rooms);
+  }
+
+  async prepareStartupSnapshot(
+    startupSnapshot: StartupRoomsSnapshot | null = null
+  ): Promise<StartupRoomsSnapshot | null> {
+    const api = window.electronAPI;
+    if (api === undefined || typeof api.roomsSyncLinkedStartup !== "function") {
+      return startupSnapshot;
+    }
+
+    try {
+      const result = await withTimeout(
+        "room-registry.startup-sync",
+        STARTUP_SYNC_TIMEOUT_MS,
+        async () => await api.roomsSyncLinkedStartup()
+      );
+      if (result.success !== true) {
+        Logger.warnT(
+          LogCategory.SYSTEM,
+          "app.logs.roomRegistry.startupSyncFailed",
+          { message: result.error ?? "startup room sync failed" },
+          {
+            error: result.error ?? "startup room sync failed",
+            syncedRoomIds: result.syncedRoomIds ?? [],
+          }
+        );
+      }
+
+      return result.snapshot ?? startupSnapshot;
+    } catch (error) {
+      Logger.warnT(
+        LogCategory.SYSTEM,
+        "app.logs.roomRegistry.startupSyncFailed",
+        { message: error instanceof Error ? error.message : String(error) },
+        {
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
+      return startupSnapshot;
+    }
   }
 
   private async fetchInstalledRooms(): Promise<InstalledRoomRecord[]> {

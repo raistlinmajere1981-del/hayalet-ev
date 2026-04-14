@@ -9,9 +9,6 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
   function resolveManualHelperPlatform() {
     const platform = typeof navigatorRef.userAgent === "string" ? navigatorRef.userAgent : navigatorRef.platform;
     const normalized = String(platform || "").toLowerCase();
-    if (normalized.includes("mac")) {
-      return "macos";
-    }
     if (normalized.includes("win")) {
       return "windows";
     }
@@ -58,6 +55,16 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       audioAnalysisCapabilities: {},
       audioAnalysisPresets: {},
       audioAnalysisProviders: {},
+      bootstrap: {
+        active: false,
+        currentStep: 0,
+        currentStepId: null,
+        error: null,
+        message: null,
+        status: "idle",
+        steps: [],
+        totalSteps: 0
+      },
       profileModelState: {
         models: {}
       },
@@ -112,6 +119,18 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       visible: false
     };
   }
+  function createBootstrapOverlayState() {
+    return {
+      currentStep: 0,
+      currentStepId: null,
+      error: null,
+      message: null,
+      readyToDismiss: false,
+      status: "idle",
+      steps: [],
+      totalSteps: 0
+    };
+  }
   const state = {
     locale: resolveLocale(documentRef.documentElement.lang || navigatorRef.language),
     translations: null,
@@ -150,6 +169,7 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       },
       requestLookup: {},
       lastActionMessage: "",
+      bootstrap: createBootstrapOverlayState(),
       status: {
         blocking: createStatusChannel(),
         activity: createStatusChannel(),

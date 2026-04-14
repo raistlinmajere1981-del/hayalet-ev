@@ -155,8 +155,21 @@ export function createLaboratoryRuntimeBootstrap(deps) {
     const stageSupport = toRecord(toToolManifestRecord(toolManifest).stageSupport);
     return asNonEmptyString(stageSupport[stageId]) || "unsupported";
   }
+  function createBootstrapState() {
+    return {
+      active: false,
+      currentStep: 0,
+      currentStepId: null,
+      error: null,
+      message: null,
+      status: "idle",
+      steps: [],
+      totalSteps: 0
+    };
+  }
   function createRuntimeState() {
     return {
+      bootstrap: createBootstrapState(),
       hydrated: false,
       hydrating: null,
       paths: null,
@@ -194,6 +207,7 @@ export function createLaboratoryRuntimeBootstrap(deps) {
     };
   }
   return {
+    createBootstrapState,
     createDefaultProfileModelEntry,
     createDefaultToolEntry,
     createDefaultToolState,

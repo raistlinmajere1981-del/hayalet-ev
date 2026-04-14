@@ -38,15 +38,7 @@ export function createLaboratorySettingsProfileModelRuntime(deps) {
     const statusLabel = model.ready === true ? text(["mediaAnalysis", "settings", "status", "ready"]) : model.installed === true ? text(["mediaAnalysis", "settings", "status", "installed"]) : text(["mediaAnalysis", "settings", "status", "missing"]);
     const modelId = toString(model.modelId);
     const label = textFromKey(toString(model.labelKey)) || modelId || "--";
-    const usedBy = Array.isArray(whisperDescriptorRecord.usedBy) ? whisperDescriptorRecord.usedBy.map(function(item) {
-      return String(item);
-    }) : [];
-    const testImpact = Array.isArray(whisperDescriptorRecord.testImpact) ? whisperDescriptorRecord.testImpact.map(function(item) {
-      return String(item);
-    }) : [];
     const installStrategy = toString(whisperDescriptorRecord.installStrategy, "--");
-    const setupHint = toString(whisperDescriptorRecord.manualHint).trim() || toString(whisperDescriptorRecord.setupHint).trim();
-    const readinessImpact = toString(whisperDescriptorRecord.readinessImpact).trim();
     return `
       <article class="lab-tool-card">
         <div class="lab-tool-card__head">
@@ -104,23 +96,11 @@ export function createLaboratorySettingsProfileModelRuntime(deps) {
     )}
         </ul>
         ${toString(model.summaryKey).trim() ? `<p class="lab-panel__hint">${escapeHtml(textFromKey(toString(model.summaryKey)))}</p>` : ""}
-        ${usedBy.length > 0 ? `<p class="lab-panel__hint">${escapeHtml(
-      `${text(["workbench", "dependency", "usedBy"])}: ${usedBy.join(", ")}`
-    )}</p>` : ""}
-        ${testImpact.length > 0 ? `<p class="lab-panel__hint">${escapeHtml(
-      `${text(["workbench", "dependency", "tests"])}: ${testImpact.join(", ")}`
-    )}</p>` : ""}
         ${canInstall !== true ? `<p class="lab-panel__hint">${escapeHtml(
       text(["mediaAnalysis", "profile", "modelUnavailable"])
     )}</p>` : ""}
-        ${canInstall !== true && setupHint ? `<p class="lab-panel__hint">${escapeHtml(setupHint)}</p>` : ""}
         ${canInstall !== true ? `<p class="lab-panel__hint">${escapeHtml(
       text(["mediaAnalysis", "profile", "modelVerificationHint"])
-    )}</p>` : ""}
-        ${canInstall !== true && readinessImpact ? `<p class="lab-panel__hint">${escapeHtml(readinessImpact)}</p>` : ""}
-        ${toString(model.compatibilityReason).trim() ? `<p class="lab-panel__hint">${escapeHtml(toString(model.compatibilityReason))}</p>` : ""}
-        ${toString(model.lastError).trim() ? `<p class="lab-panel__hint lab-panel__hint--danger">${escapeHtml(
-      toString(model.lastError)
     )}</p>` : ""}
       </article>
     `;

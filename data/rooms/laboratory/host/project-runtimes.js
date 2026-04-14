@@ -131,6 +131,7 @@ export function createLaboratoryHostProjectRuntimes(deps) {
     getRuntimeToolIds: bootstrap.getRuntimeToolIds,
     listDirectory: io.listDirectory,
     loadContext: bootstrap.loadContext,
+    pushBootstrapState: snapshot.pushMediaState,
     normalizeProject(...args) {
       return requireStateComposition().laboratoryProjectRecordsRuntime.normalizeProject(...args);
     },

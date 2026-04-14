@@ -105,10 +105,10 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
 
       switch (action) {
         case "refresh":
-          await mediaActionRuntime.refresh(runtime, requestId, false);
+          await mediaActionRuntime.refresh(runtime, requestId);
           break;
         case "tools-refresh":
-          await mediaActionRuntime.refresh(runtime, requestId, true);
+          await mediaActionRuntime.refreshTools(runtime);
           break;
         case "project-create":
           await mediaActionRuntime.createProject(runtime, featureId);
@@ -274,6 +274,23 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
             requestId,
             action,
             actionPayload,
+            featureStage || "source"
+          );
+          break;
+        case "tool-check-updates":
+          await mediaActionRuntime.checkTool(
+            api,
+            runtime,
+            requestId,
+            actionPayload,
+            featureStage || "source"
+          );
+          break;
+        case "tool-update-all":
+          await mediaActionRuntime.updateTools(
+            api,
+            runtime,
+            requestId,
             featureStage || "source"
           );
           break;

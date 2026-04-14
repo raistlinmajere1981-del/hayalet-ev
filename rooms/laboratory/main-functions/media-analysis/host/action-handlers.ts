@@ -99,6 +99,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     asNonEmptyString: deps.asNonEmptyString,
     cancelJobById: deps.cancelJobById,
     cancelFeatureProcess: deps.cancelFeatureProcess,
+    checkToolUpdates: deps.checkToolUpdates,
     createProject: deps.createProject,
     deleteProject: deps.deleteProject,
     ensureProjectExists: deps.ensureProjectExists,
@@ -107,6 +108,7 @@ export function createMediaActionRuntime(deps: MediaActionRuntimeDeps): MediaAct
     refreshActiveProjectMetadata: deps.refreshActiveProjectMetadata,
     refreshToolStatus: deps.refreshToolStatus,
     runFeatureProcess: deps.runFeatureProcess,
+    updateAllTools: deps.updateAllTools,
   });
 
   return {

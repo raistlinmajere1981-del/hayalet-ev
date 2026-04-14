@@ -25,6 +25,7 @@ import type {
   InstalledRoomRecord,
   RoomWorkspaceEntry,
   StartupRoomsSnapshot,
+  StartupRoomsSyncResult,
 } from "../types/rooms.js";
 import type { LanguageDescriptor, LoadedLanguagePack, TranslationParams } from "../types/i18n.js";
 import type {
@@ -578,6 +579,7 @@ declare global {
       rooms?: InstalledRoomRecord[];
       error?: string;
     }>;
+    roomsSyncLinkedStartup: () => Promise<StartupRoomsSyncResult>;
     roomsInstallFromWorkspace: (roomId: string) => Promise<{
       success: boolean;
       room?: InstalledRoomRecord;

@@ -27,6 +27,9 @@ export function createLaboratoryActionCompositionRuntime(deps) {
     cancelEditJobsForProject: deps.cancelEditJobsForProject,
     cancelFeatureProcess: deps.cancelFeatureProcess,
     cancelProfileJobsForProject: deps.cancelProfileJobsForProject,
+    checkToolUpdates(...args) {
+      return laboratoryToolMutationRuntime.checkToolUpdates(...args);
+    },
     clampNumber: deps.clampNumber,
     clampProfileTranscriptSampleSeconds: deps.clampProfileTranscriptSampleSeconds,
     createEmptyProfilePreflight: deps.createEmptyProfilePreflight,
@@ -65,7 +68,10 @@ export function createLaboratoryActionCompositionRuntime(deps) {
     runFeatureProcess: deps.runFeatureProcess,
     runEditPipeline: deps.runEditPipeline,
     runProfilePreflight: deps.runProfilePreflight,
-    toRecord: deps.toRecord
+    toRecord: deps.toRecord,
+    updateAllTools(...args) {
+      return laboratoryToolMutationRuntime.updateAllTools(...args);
+    }
   };
   const mediaActionRuntime = createMediaActionRuntime(
     mediaActionRuntimeDeps

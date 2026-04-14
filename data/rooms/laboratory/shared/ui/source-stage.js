@@ -4,7 +4,9 @@ export function createLaboratorySourceStageUi(deps) {
   const renderStageIntro = deps.renderStageIntro;
   const isSubtitleAnalysisFeature = deps.isSubtitleAnalysisFeature;
   const isAudioAnalysisFeature = deps.isAudioAnalysisFeature;
+  const renderPreviewSurface = deps.renderPreviewSurface;
   const renderSubtitleSourceIntakePanel = deps.renderSubtitleSourceIntakePanel;
+  const renderSubtitleSourceWorkspacePanel = deps.renderSubtitleSourceWorkspacePanel;
   const getActiveProject = deps.getActiveProject;
   const text = deps.text;
   const state = deps.state;
@@ -109,13 +111,6 @@ export function createLaboratorySourceStageUi(deps) {
           <section class="lab-intake-canvas__section">
             <div class="lab-intake-canvas__label-row">
               <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "projects", "title"]))}</span>
-              <button
-                class="lab-button lab-button--ghost lab-button--tight"
-                type="button"
-                data-action="project-create"
-              >
-                ${escapeHtml(text(["mediaAnalysis", "projects", "newAction"]))}
-              </button>
             </div>
             ${renderProjectPanelBody()}
           </section>
@@ -147,6 +142,7 @@ export function createLaboratorySourceStageUi(deps) {
     return `
       <div class="lab-stage-stack lab-stage-stack--inspector">
         ${renderSourceContextPanel()}
+        ${isSubtitleAnalysisFeature() ? renderSubtitleSourceWorkspacePanel() : renderPreviewSurface()}
       </div>
     `;
   }

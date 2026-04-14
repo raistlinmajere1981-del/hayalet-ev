@@ -69,6 +69,10 @@ async function writeRoomRuntimeDataFixture(
   };
 }
 
+async function waitForFsTick(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 25));
+}
+
 test("RoomPackageManager imports a .hevroom bundle into workspace and installed registry", async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), "room-bundle-import-"));
   const workspaceRoot = join(tempRoot, "rooms");
@@ -236,6 +240,60 @@ test("RoomPackageManager packages workspace rooms into room-storage exports by d
     assert.equal(existsSync(expectedOutput), true);
     assert.equal(existsSync(expectedBuildRoot), true);
     assert.equal(existsSync(join(expectedBuildRoot, "ui", "index.html")), true);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("RoomPackageManager startup sync refreshes workspace-linked installed rooms after source edits", async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), "room-startup-sync-"));
+  const workspaceRoot = join(tempRoot, "rooms");
+  const installedRoot = join(tempRoot, "data", "rooms");
+  const registryPath = join(tempRoot, "config", "rooms.json");
+
+  try {
+    await writeRoomFixture(workspaceRoot, "sync-room", "Sync Room");
+
+    const manager = new RoomPackageManager({
+      workspaceRoot,
+      installedRoot,
+      registryPath,
+    });
+
+    const installResult = await manager.installFromWorkspace("sync-room");
+    assert.equal(installResult.success, true, installResult.error);
+
+    const initialInstalledRooms = await manager.listInstalledRooms();
+    assert.equal(initialInstalledRooms.length, 1);
+    const initialRoom = initialInstalledRooms[0];
+    assert.ok(initialRoom);
+    const initialUpdatedAt = initialRoom.updatedAt;
+    assert.match(
+      await readFile(join(installedRoot, "sync-room", "ui", "index.html"), "utf8"),
+      /Sync Room/
+    );
+
+    await waitForFsTick();
+    await writeFile(
+      join(workspaceRoot, "sync-room", "ui", "index.html"),
+      "<!doctype html><html><body>Sync Room v2</body></html>",
+      "utf8"
+    );
+
+    const syncResult = await manager.syncLinkedWorkspaceRoomsOnStartup();
+    assert.equal(syncResult.success, true, syncResult.error);
+    assert.deepEqual(syncResult.syncedRoomIds, ["sync-room"]);
+    assert.equal(syncResult.snapshot?.rooms.length, 1);
+    assert.ok(syncResult.snapshot?.rooms[0]);
+    assert.notEqual(syncResult.snapshot?.rooms[0]?.updatedAt, initialUpdatedAt);
+    assert.match(
+      await readFile(join(installedRoot, "sync-room", "ui", "index.html"), "utf8"),
+      /Sync Room v2/
+    );
+
+    const secondSyncResult = await manager.syncLinkedWorkspaceRoomsOnStartup();
+    assert.equal(secondSyncResult.success, true, secondSyncResult.error);
+    assert.deepEqual(secondSyncResult.syncedRoomIds, []);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

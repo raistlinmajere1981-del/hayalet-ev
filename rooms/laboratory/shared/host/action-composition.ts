@@ -97,6 +97,9 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     cancelEditJobsForProject: deps.cancelEditJobsForProject,
     cancelFeatureProcess: deps.cancelFeatureProcess,
     cancelProfileJobsForProject: deps.cancelProfileJobsForProject,
+    checkToolUpdates(...args: Parameters<LaboratoryToolMutationRuntime["checkToolUpdates"]>) {
+      return laboratoryToolMutationRuntime.checkToolUpdates(...args);
+    },
     clampNumber: deps.clampNumber,
     clampProfileTranscriptSampleSeconds: deps.clampProfileTranscriptSampleSeconds,
     createEmptyProfilePreflight: deps.createEmptyProfilePreflight,
@@ -136,6 +139,9 @@ export function createLaboratoryActionCompositionRuntime(deps: LaboratoryActionC
     runEditPipeline: deps.runEditPipeline,
     runProfilePreflight: deps.runProfilePreflight,
     toRecord: deps.toRecord,
+    updateAllTools(...args: Parameters<LaboratoryToolMutationRuntime["updateAllTools"]>) {
+      return laboratoryToolMutationRuntime.updateAllTools(...args);
+    },
   };
   const mediaActionRuntime: LaboratoryMediaActionRuntime = createMediaActionRuntime(
     mediaActionRuntimeDeps as unknown as Parameters<typeof createMediaActionRuntime>[0]

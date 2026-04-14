@@ -39,13 +39,11 @@ export function createLaboratoryProjectToolStatusRuntime(
   } = deps;
 
   async function refreshToolStatus(
-    runtime: LaboratoryRuntimeWithToolState,
-    options?: { checkUpdates?: boolean } | null
+    runtime: LaboratoryRuntimeWithToolState
   ): Promise<void> {
-    const checkUpdates = options && options.checkUpdates === true;
     const toolIds = getRuntimeToolIds(runtime);
 
-    // NOTE: Tool probes stay sequential to avoid overlapping room-tool checks and update lookups.
+    // NOTE: Tool probes stay sequential to avoid overlapping room-tool checks.
     /* eslint-disable no-await-in-loop */
     for (let index = 0; index < toolIds.length; index += 1) {
       const toolId = toolIds[index];
@@ -71,35 +69,6 @@ export function createLaboratoryProjectToolStatusRuntime(
               : null,
           lastCheckedAt: new Date().toISOString(),
         };
-
-        if (
-          checkUpdates &&
-          toRecord(toRecord(runtime.toolState.tools[toolId])["details"])["platformSupported"] !==
-            false
-        ) {
-          const installedEntry = toRecord(runtime.toolState.tools[toolId]);
-          const updateResult = await callRoomTools({
-            operation: "tool-check-for-updates",
-            roomId: roomId,
-            toolId: toolId,
-            installedVersion: installedEntry["version"],
-            installedReleaseTag: installedEntry["releaseTag"],
-            installedReleaseName: installedEntry["releaseName"],
-          });
-          const update = toRecord(updateResult["update"]);
-
-          runtime.toolState.tools[toolId] = {
-            ...runtime.toolState.tools[toolId],
-            latestVersion:
-              typeof update["latestVersion"] === "string" ? update["latestVersion"] : null,
-            latestReleaseTag:
-              typeof update["latestReleaseTag"] === "string" ? update["latestReleaseTag"] : null,
-            latestReleaseName:
-              typeof update["latestReleaseName"] === "string" ? update["latestReleaseName"] : null,
-            releaseUrl: typeof update["releaseUrl"] === "string" ? update["releaseUrl"] : null,
-            updateAvailable: update["updateAvailable"] === true,
-          };
-        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         runtime.toolState.tools[toolId] = {

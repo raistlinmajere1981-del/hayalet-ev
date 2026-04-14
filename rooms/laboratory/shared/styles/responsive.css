@@ -68,7 +68,13 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
   .lab-center-sidebar {
     position: static;
     top: auto;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: grid;
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .lab-center-sidebar__panel--fill {
+    min-height: 18rem;
   }
 
   .lab-tool-helper__meta-grid {
@@ -91,9 +97,16 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
   .lab-signal-grid,
   .lab-tool-grid,
   .lab-orientation__metrics,
-  .lab-project-panel__grid,
   .lab-meta-list--compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lab-project-panel__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lab-project-panel__actions {
+    flex-wrap: wrap;
   }
 
   .lab-stage-rail__summary-row {
@@ -134,6 +147,23 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
     grid-template-columns: 1fr;
   }
 
+  .lab-project-panel__actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lab-status-line__row,
+  .lab-status-line__summary,
+  .lab-status-line__text {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .lab-status-line__source {
+    width: 100%;
+  }
+
   .lab-stage-rail__track {
     grid-template-columns: 1fr;
   }
@@ -162,9 +192,15 @@ body[data-presentation-mode="scene-view"] .lab-report-hero {
 
   .lab-tool-card__head,
   .lab-tool-helper__section-head,
-  .lab-tool-helper__next {
+  .lab-tool-helper__next,
+  .lab-module-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .lab-module-row__actions {
+    width: 100%;
+    justify-content: stretch;
   }
 
   .lab-tool-helper__command {

@@ -222,6 +222,7 @@ export function createLaboratoryHostProjectRuntimes(deps: LaboratoryHostProjectR
     getRuntimeToolIds: bootstrap.getRuntimeToolIds,
     listDirectory: io.listDirectory,
     loadContext: bootstrap.loadContext,
+    pushBootstrapState: snapshot.pushMediaState,
     normalizeProject(
       ...args: Parameters<
         LaboratoryHostProjectStateComposition["laboratoryProjectRecordsRuntime"]["normalizeProject"]

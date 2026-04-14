@@ -43,7 +43,7 @@ export function createLaboratoryUiActionHandlers(deps) {
     });
   }
   function normalizeHelperPlatform(value) {
-    if (value === "macos" || value === "windows") {
+    if (value === "windows") {
       return value;
     }
     return "linux";
@@ -116,6 +116,9 @@ export function createLaboratoryUiActionHandlers(deps) {
         return;
       case "tools-refresh":
         sendSourceAction("tools-refresh");
+        return;
+      case "tool-update-all":
+        sendMediaAction("tool-update-all", { featureStage: state.activeStage });
         return;
       case "tool-helper-toggle": {
         const toolId = String(value || "").trim();
@@ -358,6 +361,12 @@ export function createLaboratoryUiActionHandlers(deps) {
         return;
       case "tool-update":
         sendMediaAction("tool-update", { toolId: value, featureStage: state.activeStage });
+        return;
+      case "tool-check-updates":
+        sendMediaAction("tool-check-updates", {
+          toolId: value,
+          featureStage: state.activeStage
+        });
         return;
       case "job-cancel":
         sendMediaAction("job-cancel", { jobId: value, featureStage: state.activeStage });

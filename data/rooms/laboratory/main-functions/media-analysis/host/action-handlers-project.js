@@ -3,6 +3,7 @@ export function createMediaProjectActionRuntime(deps) {
     asNonEmptyString,
     cancelJobById,
     cancelFeatureProcess,
+    checkToolUpdates,
     createProject: createProjectRecord,
     deleteProject: deleteProjectRecord,
     ensureProjectExists,
@@ -10,12 +11,11 @@ export function createMediaProjectActionRuntime(deps) {
     handleToolMutation,
     refreshActiveProjectMetadata,
     refreshToolStatus,
-    runFeatureProcess
+    runFeatureProcess,
+    updateAllTools
   } = deps;
-  async function refresh(runtime, requestId, checkUpdates) {
-    await refreshToolStatus(runtime, {
-      checkUpdates: checkUpdates === true
-    });
+  async function refresh(runtime, requestId) {
+    await refreshToolStatus(runtime);
     return refreshActiveProjectMetadata(runtime, requestId);
   }
   async function createProject(runtime, featureId) {
@@ -61,15 +61,29 @@ export function createMediaProjectActionRuntime(deps) {
     );
     return refreshActiveProjectMetadata(runtime, requestId);
   }
+  async function checkTool(api, runtime, requestId, actionPayload, featureStage) {
+    const toolId = asNonEmptyString(actionPayload["toolId"]);
+    if (toolId === null) {
+      throw new Error("Tool id is required.");
+    }
+    await checkToolUpdates(api, runtime, requestId, toolId, featureStage || "source");
+    return refreshActiveProjectMetadata(runtime, requestId);
+  }
+  async function updateTools(api, runtime, requestId, featureStage) {
+    await updateAllTools(api, runtime, requestId, featureStage || "source");
+    return refreshActiveProjectMetadata(runtime, requestId);
+  }
   return {
     cancelJob,
     cancelProcess,
+    checkTool,
     createProject,
     deleteProject,
     exportReport,
     mutateTool,
     refresh,
     runProcess,
-    selectProject
+    selectProject,
+    updateTools
   };
 }

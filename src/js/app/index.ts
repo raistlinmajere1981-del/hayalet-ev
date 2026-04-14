@@ -121,9 +121,13 @@ async function initApp(): Promise<void> {
     Logger.info(LogCategory.SYSTEM, "[startup] core-engine.init:start");
     await CoreEngine.init();
     Logger.info(LogCategory.SYSTEM, "[startup] core-engine.init:complete");
+    SplashScreen.update(52, AppI18n.t("app.startup.syncingLinkedRooms"));
+    const preparedRoomsSnapshot = await RoomRegistry.prepareStartupSnapshot(
+      startupFlags?.roomsSnapshot ?? null
+    );
     SplashScreen.update(60, AppI18n.t("app.startup.loadingRooms"));
     Logger.info(LogCategory.SYSTEM, "[startup] room-registry.load:start");
-    await RoomRegistry.loadInstalledRooms(startupFlags?.roomsSnapshot ?? null);
+    await RoomRegistry.loadInstalledRooms(preparedRoomsSnapshot);
     Logger.info(LogCategory.SYSTEM, "[startup] room-registry.load:complete");
     SplashScreen.update(70, AppI18n.t("app.startup.preparingUi"));
 

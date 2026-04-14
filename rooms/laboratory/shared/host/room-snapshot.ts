@@ -50,6 +50,7 @@ interface SnapshotRecord extends Record<string, unknown> {
   manualHint?: unknown;
   manualGuide?: unknown;
   activeProjectId?: unknown;
+  bootstrap?: unknown;
   hydrated?: unknown;
   projects?: unknown;
   jobs?: unknown;
@@ -517,6 +518,7 @@ export function createLaboratoryRoomSnapshotRuntime(deps: Record<string, unknown
       roomId: roomId,
       featureId: featureId || defaultFeatureId,
       workbench: workbenchSnapshot,
+      bootstrap: clone(runtimeRecord.bootstrap || {}),
       ready: runtimeRecord.hydrated === true,
       stages: mediaStages.slice(),
       sourcePresets: clone(runtimeRecord.sourcePresets || {}),
