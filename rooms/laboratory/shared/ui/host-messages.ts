@@ -98,6 +98,8 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
 
   function getEditActionLabel(actionId: string | null): string {
     switch (actionId) {
+      case null:
+        return text(["mediaAnalysis", "shared", "status"]);
       case "edit-preview":
         return text(["mediaAnalysis", "edit", "actions", "preview"]);
       case "edit-apply":
@@ -113,6 +115,8 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
 
   function getJobStageLabel(stageId: string | null): string {
     switch (stageId) {
+      case null:
+        return text(["mediaAnalysis", "shared", "idle"]);
       case "stdout":
       case "stderr":
         return text(["mediaAnalysis", "settings", "stages", "running"]);

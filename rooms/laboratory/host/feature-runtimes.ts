@@ -386,6 +386,7 @@ export function createLaboratoryHostFeatureRuntimes(deps: LaboratoryHostFeatureR
     createProject: projectRuntimes.lifecycle.createProject,
     createRequestId: projectRuntimes.jobState.createRequestId,
     createSubtitleEntryRecord: projectRuntimes.stateComposition.createSubtitleEntryRecord,
+    deleteProject: projectRuntimes.lifecycle.deleteProject,
     ensureHydrated: projectRuntimes.lifecycle.ensureHydrated,
     ensureProjectDirectories: io.ensureProjectDirectories,
     ensureProjectExists: projectRuntimes.lifecycle.ensureProjectExists,

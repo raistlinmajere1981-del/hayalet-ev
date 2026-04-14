@@ -1,0 +1,538 @@
+{
+  "version": 1,
+  "roomId": "laboratory",
+  "tools": {
+    "yt-dlp": {
+      "displayName": "yt-dlp",
+      "installDirName": "yt-dlp",
+      "installStrategy": "automatic",
+      "usedBy": ["Media intake", "YouTube capture", "Subtitle discovery"],
+      "testImpact": ["source-routing", "youtube-import", "subtitle-youtube"],
+      "readinessImpact": "Blocks remote YouTube and playlist-based intake flows.",
+      "stageSupport": {
+        "source": "required",
+        "edit": "unsupported",
+        "profile": "unsupported",
+        "process": "unsupported",
+        "report": "unsupported"
+      },
+      "releaseProvider": {
+        "type": "github-release",
+        "owner": "yt-dlp",
+        "repo": "yt-dlp",
+        "releaseUrl": "https://github.com/yt-dlp/yt-dlp/releases/latest"
+      },
+      "probe": {
+        "args": ["--version"],
+        "versionRegex": "(\\d{4}\\.\\d{2}\\.\\d{2}(?:\\.[0-9]+)?)"
+      },
+      "assets": {
+        "linux-x64": {
+          "assetMatch": "^yt-dlp_linux$",
+          "archive": "none",
+          "executableName": "yt-dlp"
+        },
+        "linux-arm64": {
+          "assetMatch": "^yt-dlp_linux_aarch64$",
+          "archive": "none",
+          "executableName": "yt-dlp"
+        },
+        "linux-musl-x64": {
+          "assetMatch": "^yt-dlp_musllinux$",
+          "archive": "none",
+          "executableName": "yt-dlp"
+        },
+        "darwin-x64": {
+          "assetMatch": "^yt-dlp_macos$",
+          "archive": "none",
+          "executableName": "yt-dlp"
+        },
+        "darwin-arm64": {
+          "assetMatch": "^yt-dlp_macos$",
+          "archive": "none",
+          "executableName": "yt-dlp"
+        },
+        "win32-x64": {
+          "assetMatch": "^yt-dlp\\.exe$",
+          "archive": "none",
+          "executableName": "yt-dlp.exe"
+        },
+        "win32-arm64": {
+          "assetMatch": "^yt-dlp_arm64\\.exe$",
+          "archive": "none",
+          "executableName": "yt-dlp.exe"
+        }
+      }
+    },
+    "ffmpeg": {
+      "displayName": "FFmpeg",
+      "installDirName": "ffmpeg",
+      "installStrategy": "automatic",
+      "usedBy": ["Media edit", "Profile artifacts", "Managed process runs"],
+      "testImpact": ["media-edit", "profile-preflight", "managed-reporting"],
+      "readinessImpact": "Blocks local transforms, derived outputs, and most managed analysis runs.",
+      "stageSupport": {
+        "source": "required",
+        "edit": "required",
+        "profile": "required",
+        "process": "required",
+        "report": "unsupported"
+      },
+      "releaseProvider": {
+        "type": "github-release",
+        "owner": "yt-dlp",
+        "repo": "FFmpeg-Builds",
+        "releaseUrl": "https://github.com/yt-dlp/FFmpeg-Builds/releases/latest"
+      },
+      "probe": {
+        "args": ["-version"],
+        "versionRegex": "ffmpeg version\\s+([^\\s]+)"
+      },
+      "assets": {
+        "linux-x64": {
+          "assetMatch": "^ffmpeg-master-latest-linux64-gpl\\.tar\\.xz$",
+          "archive": "tar.xz",
+          "executableName": "ffmpeg",
+          "companionExecutables": ["ffprobe"]
+        },
+        "linux-arm64": {
+          "assetMatch": "^ffmpeg-master-latest-linuxarm64-gpl\\.tar\\.xz$",
+          "archive": "tar.xz",
+          "executableName": "ffmpeg",
+          "companionExecutables": ["ffprobe"]
+        },
+        "win32-x64": {
+          "assetMatch": "^ffmpeg-master-latest-win64-gpl\\.zip$",
+          "archive": "zip",
+          "executableName": "ffmpeg.exe",
+          "companionExecutables": ["ffprobe.exe"]
+        },
+        "win32-arm64": {
+          "assetMatch": "^ffmpeg-master-latest-winarm64-gpl\\.zip$",
+          "archive": "zip",
+          "executableName": "ffmpeg.exe",
+          "companionExecutables": ["ffprobe.exe"]
+        }
+      }
+    },
+    "whisper.cpp": {
+      "displayName": "Whisper.cpp",
+      "installDirName": "whisper-cpp",
+      "installStrategy": "automatic",
+      "usedBy": ["Transcript extraction", "Speech overlay checks"],
+      "testImpact": ["profile-transcript", "speech-overlay"],
+      "readinessImpact": "Limits transcript-backed speech checks and transcript artifacts.",
+      "manualHint": "If automatic install is unavailable on this runtime, Laboratory can reuse the Analyze dictate whisper-cli runtime, an explicit HAYALET_EV_TRANSCRIPT_WHISPER_BIN path, or a PATH-installed whisper-cli binary after refresh.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "releaseProvider": {
+        "type": "github-release",
+        "owner": "ggml-org",
+        "repo": "whisper.cpp",
+        "releaseUrl": "https://github.com/ggml-org/whisper.cpp/releases/latest"
+      },
+      "probe": {
+        "args": ["--help"],
+        "versionRegex": "v?(\\d+\\.\\d+\\.\\d+)"
+      },
+      "systemCommand": {
+        "executableName": "whisper-cli",
+        "envVarNames": ["HAYALET_EV_TRANSCRIPT_WHISPER_BIN"],
+        "candidatePaths": [
+          "${dataDir}/transcript/whisper.cpp-build/bin/whisper-cli",
+          "${dataDir}/transcript/whisper.cpp-build/bin/main",
+          "${dataDir}/transcript/whisper.cpp-src/build/bin/whisper-cli",
+          "${dataDir}/transcript/whisper.cpp-src/build/bin/main"
+        ],
+        "setupHint": "Use the Analyze dictate runtime, set HAYALET_EV_TRANSCRIPT_WHISPER_BIN to a whisper-cli binary, or install whisper-cli on PATH, then refresh this tool."
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "export HAYALET_EV_TRANSCRIPT_WHISPER_BIN=/absolute/path/to/whisper-cli"
+          ],
+          "notes": [
+            "You can also reuse the Analyze dictate runtime or place whisper-cli directly on PATH."
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "export HAYALET_EV_TRANSCRIPT_WHISPER_BIN=/absolute/path/to/whisper-cli"
+          ],
+          "notes": [
+            "You can also reuse the Analyze dictate runtime or place whisper-cli directly on PATH."
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "setx HAYALET_EV_TRANSCRIPT_WHISPER_BIN \"C:\\\\path\\\\to\\\\whisper-cli.exe\""
+          ],
+          "notes": [
+            "You can also reuse the Analyze dictate runtime or place whisper-cli.exe directly on PATH."
+          ]
+        }
+      },
+      "assets": {
+        "win32-x64": {
+          "assetMatch": "^whisper-bin-x64\\.zip$",
+          "archive": "zip",
+          "executableName": "whisper-cli.exe"
+        }
+      }
+    },
+    "opensmile": {
+      "displayName": "openSMILE",
+      "installDirName": "opensmile",
+      "availability": "installable",
+      "installStrategy": "automatic",
+      "usedBy": ["Prosody checks", "Paralinguistic audio features"],
+      "testImpact": ["audio-prosody", "voice-pattern-checks"],
+      "readinessImpact": "Optional audio feature extraction stays unavailable until the host binary is installed.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": ["-h"],
+        "versionRegex": "(?:openSMILE|SMILExtract)[^\\d]*(\\d+(?:\\.\\d+)+)"
+      },
+      "releaseProvider": {
+        "type": "github-release",
+        "owner": "audeering",
+        "repo": "opensmile",
+        "releaseUrl": "https://github.com/audeering/opensmile/releases/latest"
+      },
+      "assets": {
+        "linux-x64": {
+          "assetMatch": "^opensmile-.*-linux-x86_64\\.zip$",
+          "archive": "zip",
+          "executableName": "SMILExtract",
+          "companionExecutables": ["libSMILEapi.so"]
+        },
+        "linux-arm64": {
+          "assetMatch": "^opensmile-.*-linux-armv8\\.zip$",
+          "archive": "zip",
+          "executableName": "SMILExtract",
+          "companionExecutables": ["libSMILEapi.so"]
+        },
+        "darwin-x64": {
+          "assetMatch": "^opensmile-.*-macos-x86_64\\.zip$",
+          "archive": "zip",
+          "executableName": "SMILExtract",
+          "companionExecutables": ["libSMILEapi.dylib"]
+        },
+        "darwin-arm64": {
+          "assetMatch": "^opensmile-.*-macos-armv8\\.zip$",
+          "archive": "zip",
+          "executableName": "SMILExtract",
+          "companionExecutables": ["libSMILEapi.dylib"]
+        },
+        "win32-x64": {
+          "assetMatch": "^opensmile-.*-windows-x86_64\\.zip$",
+          "archive": "zip",
+          "executableName": "SMILExtract.exe",
+          "companionExecutables": ["SMILEapi.dll"]
+        }
+      },
+      "systemCommand": {
+        "executableName": "SMILExtract",
+        "setupHint": "Use the in-app install on supported runtimes, or install openSMILE on the host system so the SMILExtract binary is available on PATH, then refresh this tool from settings."
+      },
+      "manualGuide": {
+        "linux": {
+          "notes": [
+            "If this runtime does not expose an in-app binary, install an openSMILE build for your distro and ensure SMILExtract is available on PATH."
+          ]
+        },
+        "macos": {
+          "notes": [
+            "If this runtime does not expose an in-app binary, install openSMILE from a host package or local build, then expose SMILExtract on PATH."
+          ]
+        },
+        "windows": {
+          "notes": [
+            "If this runtime does not expose an in-app binary, install the openSMILE host build and make sure SMILExtract.exe is available on PATH."
+          ]
+        }
+      }
+    },
+    "yamnet": {
+      "displayName": "YAMNet",
+      "installDirName": "yamnet",
+      "availability": "system-command",
+      "installStrategy": "manual",
+      "usedBy": ["Sound event tagging", "Ambient event summaries"],
+      "testImpact": ["audio-events", "environmental-audio"],
+      "readinessImpact": "Event tagging and ambient sound summaries remain disabled without the Python runtime.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "import tensorflow as tf, tensorflow_hub as hub, scipy, numpy; print(tf.__version__)"
+        ],
+        "versionRegex": "(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/yamnet-venv/bin/python3",
+          "${roomStorageDir}/runtime/yamnet-venv/bin/python",
+          "${roomStorageDir}/runtime/yamnet-venv/Scripts/python.exe"
+        ],
+        "setupHint": "Install python3 packages tensorflow, tensorflow_hub, numpy, scipy, and setuptools<81 so the room-local YAMNet helper can run, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/yamnet-venv",
+        "packages": ["tensorflow", "tensorflow_hub", "numpy", "scipy", "setuptools<81"]
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "python3 -m pip install tensorflow tensorflow_hub numpy scipy 'setuptools<81'"
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "python3 -m pip install tensorflow tensorflow_hub numpy scipy 'setuptools<81'"
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "py -m pip install tensorflow tensorflow_hub numpy scipy \"setuptools<81\""
+          ]
+        }
+      }
+    },
+    "librosa": {
+      "displayName": "librosa",
+      "installDirName": "librosa",
+      "availability": "system-command",
+      "installStrategy": "manual",
+      "usedBy": ["Rhythm fallback", "Music structure helpers"],
+      "testImpact": ["audio-rhythm", "music-analysis"],
+      "readinessImpact": "Music and rhythm oriented helpers stay blocked until the package is installed.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "import librosa, numpy, scipy; print(librosa.__version__)"
+        ],
+        "versionRegex": "(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/librosa-venv/bin/python3",
+          "${roomStorageDir}/runtime/librosa-venv/bin/python",
+          "${roomStorageDir}/runtime/librosa-venv/Scripts/python.exe"
+        ],
+        "setupHint": "Install python3 packages librosa, numpy, and scipy so the room-local music analysis helpers can run, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/librosa-venv",
+        "packages": ["librosa", "numpy", "scipy"]
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "python3 -m pip install librosa numpy scipy"
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "python3 -m pip install librosa numpy scipy"
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "py -m pip install librosa numpy scipy"
+          ]
+        }
+      }
+    },
+    "demucs": {
+      "displayName": "Demucs",
+      "installDirName": "demucs",
+      "availability": "system-command",
+      "installStrategy": "manual",
+      "usedBy": ["Source separation", "Vocal isolation"],
+      "testImpact": ["source-separation", "speech-vs-music"],
+      "readinessImpact": "Optional separation workflows cannot run without the host package.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "import demucs, importlib.metadata; print(importlib.metadata.version('demucs'))"
+        ],
+        "versionRegex": "(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/demucs-venv/bin/python3",
+          "${roomStorageDir}/runtime/demucs-venv/bin/python",
+          "${roomStorageDir}/runtime/demucs-venv/Scripts/python.exe"
+        ],
+        "setupHint": "Install the demucs Python package so the prepared source-separation runtime can be enabled, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/demucs-venv",
+        "packages": ["demucs"]
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "python3 -m pip install demucs"
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "python3 -m pip install demucs"
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "py -m pip install demucs"
+          ]
+        }
+      }
+    },
+    "essentia": {
+      "displayName": "Essentia",
+      "installDirName": "essentia",
+      "availability": "system-command",
+      "installStrategy": "manual",
+      "usedBy": ["Tonal fallback", "Music descriptor extraction"],
+      "testImpact": ["tonal-analysis", "music-descriptors"],
+      "readinessImpact": "Fallback tonal analysis remains unavailable until the host package is installed.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "import essentia, importlib.metadata; print(importlib.metadata.version('essentia'))"
+        ],
+        "versionRegex": "(\\d+(?:\\.\\d+)+)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/essentia-venv/bin/python3",
+          "${roomStorageDir}/runtime/essentia-venv/bin/python",
+          "${roomStorageDir}/runtime/essentia-venv/Scripts/python.exe"
+        ],
+        "setupHint": "Install the essentia Python package so the prepared tonal fallback can be enabled, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/essentia-venv",
+        "packages": ["essentia"]
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "python3 -m pip install essentia"
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "python3 -m pip install essentia"
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "py -m pip install essentia"
+          ]
+        }
+      }
+    },
+    "pyaudioanalysis": {
+      "displayName": "pyAudioAnalysis",
+      "installDirName": "pyaudioanalysis",
+      "availability": "system-command",
+      "installStrategy": "manual",
+      "usedBy": ["Speaker diarization fallback", "Segment classification"],
+      "testImpact": ["speaker-diarization", "audio-segmentation"],
+      "readinessImpact": "Diarization and segmentation fallback flows stay blocked until the host package is installed.",
+      "stageSupport": {
+        "source": "unsupported",
+        "edit": "unsupported",
+        "profile": "optional",
+        "process": "optional",
+        "report": "unsupported"
+      },
+      "probe": {
+        "args": [
+          "-c",
+          "from pyAudioAnalysis import audioSegmentation as aS; import hmmlearn, sklearn, scipy, numpy; print('pyAudioAnalysis')"
+        ],
+        "versionRegex": "(pyAudioAnalysis)"
+      },
+      "systemCommand": {
+        "executableName": "python3",
+        "candidatePaths": [
+          "${roomStorageDir}/runtime/pyaudioanalysis-venv/bin/python3",
+          "${roomStorageDir}/runtime/pyaudioanalysis-venv/bin/python",
+          "${roomStorageDir}/runtime/pyaudioanalysis-venv/Scripts/python.exe"
+        ],
+        "setupHint": "Install pyAudioAnalysis plus its local runtime dependencies (numpy, scipy, scikit-learn, hmmlearn, matplotlib, eyed3, and pydub) on the host system, then refresh this tool from settings."
+      },
+      "installer": {
+        "type": "python-venv-pip",
+        "venvDir": "${roomStorageDir}/runtime/pyaudioanalysis-venv",
+        "packages": ["pyAudioAnalysis", "numpy", "scipy", "scikit-learn", "hmmlearn", "matplotlib", "eyed3", "pydub"]
+      },
+      "manualGuide": {
+        "linux": {
+          "installCommands": [
+            "python3 -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn matplotlib eyed3 pydub"
+          ]
+        },
+        "macos": {
+          "installCommands": [
+            "python3 -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn matplotlib eyed3 pydub"
+          ]
+        },
+        "windows": {
+          "installCommands": [
+            "py -m pip install pyAudioAnalysis numpy scipy scikit-learn hmmlearn matplotlib eyed3 pydub"
+          ]
+        }
+      }
+    }
+  }
+}

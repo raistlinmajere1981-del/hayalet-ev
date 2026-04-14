@@ -152,6 +152,9 @@ test("laboratory host action composition is extracted into a shared host boundar
     workspaceFeatureAdaptersSource,
     /export function createLaboratoryFeatureAdapters\(\s*deps(?::[\s\S]+?)?\s*\)/
   );
+  assert.match(workspaceFeatureAdaptersSource, /deleteProject:\s*UnknownFn;/);
+  assert.match(workspaceFeatureAdaptersSource, /deleteProject:\s*deps\.deleteProject,/);
+  assert.match(workspaceHostFeatureSource, /deleteProject:\s*projectRuntimes\.lifecycle\.deleteProject,/);
   assert.match(workspaceFeatureAdaptersSource, /from "\.\.\/shared\/host\/action-composition\.js"/);
   assert.match(
     workspaceFeatureAdaptersSource,

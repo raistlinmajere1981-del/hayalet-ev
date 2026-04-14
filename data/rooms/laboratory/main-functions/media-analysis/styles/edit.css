@@ -1,0 +1,22 @@
+.lab-preview-card--edit {
+  min-height: 22rem;
+  align-items: stretch;
+}
+
+.lab-edit-frame {
+  isolation: isolate;
+  min-height: 22rem;
+}
+
+.lab-preview-card--edit .lab-preview-copy {
+  align-content: start;
+  min-height: 22rem;
+}
+
+.lab-edit-overlay__focus {
+  position: absolute;
+  border: 2px dashed rgb(121 211 224 / 0.86);
+  border-radius: 1rem;
+  box-shadow: 0 0 0 999px rgb(0 0 0 / 0.24);
+  pointer-events: none;
+}

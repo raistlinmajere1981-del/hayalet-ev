@@ -25,6 +25,7 @@ type LaboratoryFeatureAdaptersDeps = {
   createProject: UnknownFn;
   createRequestId: UnknownFn;
   createSubtitleEntryRecord: UnknownFn;
+  deleteProject: UnknownFn;
   ensureHydrated: UnknownFn;
   ensureProjectDirectories: UnknownFn;
   ensureProjectExists: UnknownFn;
@@ -176,6 +177,7 @@ export function createLaboratoryFeatureAdapters(deps: LaboratoryFeatureAdaptersD
     createDefaultToolEntry: deps.createDefaultToolEntry,
     createProject: deps.createProject,
     createRequestId: deps.createRequestId,
+    deleteProject: deps.deleteProject,
     ensureHydrated: deps.ensureHydrated,
     ensureProjectExists: deps.ensureProjectExists,
     exportFeatureReport: deps.exportFeatureReport,
