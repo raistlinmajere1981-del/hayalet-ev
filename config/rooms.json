@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-15T02:17:12.723Z",
+  "updatedAt": "2026-04-15T14:54:55.609Z",
   "rooms": [
     {
       "id": "laboratory",
@@ -105,8 +105,8 @@
         }
       },
       "i18nBaseDir": "/home/raistlin/hayalet-ev/data/rooms/laboratory/i18n",
-      "installedAt": "2026-04-15T00:54:26.316Z",
-      "updatedAt": "2026-04-15T00:54:26.316Z"
+      "installedAt": "2026-04-15T03:08:28.436Z",
+      "updatedAt": "2026-04-15T03:08:28.436Z"
     },
     {
       "id": "forge-room",
@@ -445,8 +445,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-04-15T02:17:12.723Z",
-      "updatedAt": "2026-04-15T02:17:12.723Z"
+      "installedAt": "2026-04-15T14:54:55.609Z",
+      "updatedAt": "2026-04-15T14:54:55.609Z"
     }
   ]
 }

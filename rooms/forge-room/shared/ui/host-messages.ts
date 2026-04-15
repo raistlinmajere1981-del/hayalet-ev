@@ -1,4 +1,8 @@
-import { createEmptyForgeRoomSnapshot, type ForgeRoomSnapshot, type ForgeUiContextState } from "./state.js";
+import {
+  createEmptyForgeRoomSnapshot,
+  type ForgeRoomSnapshot,
+  type ForgeUiContextState,
+} from "./state.js";
 
 type ForgeUnknownRecord = Record<string, unknown>;
 

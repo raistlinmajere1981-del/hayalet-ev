@@ -145,8 +145,7 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
         roomId,
         toolId,
         requestId,
-        installedVersion:
-          typeof currentEntry.version === "string" ? currentEntry.version : null,
+        installedVersion: typeof currentEntry.version === "string" ? currentEntry.version : null,
         installedReleaseTag:
           typeof currentEntry.releaseTag === "string" ? currentEntry.releaseTag : null,
         installedReleaseName:
@@ -158,8 +157,7 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
       runtime.toolState.tools[toolId] = {
         ...nextEntry,
         busy: false,
-        latestVersion:
-          typeof update["latestVersion"] === "string" ? update["latestVersion"] : null,
+        latestVersion: typeof update["latestVersion"] === "string" ? update["latestVersion"] : null,
         latestReleaseTag:
           typeof update["latestReleaseTag"] === "string" ? update["latestReleaseTag"] : null,
         latestReleaseName:

@@ -285,21 +285,33 @@ export class SQLiteArchiveManager {
       );
 
       const hashStmt = db.prepare(
-        `SELECT content_hash, dom_index, dom_id FROM messages WHERE conversation_id = ?`
+        `SELECT id, content, content_hash, dom_index, dom_id FROM messages WHERE conversation_id = ?`
       );
+      const existingRows = hashStmt.all(conversationId) as Array<{
+        id: string;
+        content: string | null;
+        content_hash: string | null;
+        dom_index: number | null;
+        dom_id: string | null;
+      }>;
       const existingMessageKeys = new Set(
-        (
-          hashStmt.all(conversationId) as Array<{
-            content_hash: string | null;
-            dom_index: number | null;
-            dom_id: string | null;
-          }>
-        ).map((row) => createMessageDedupeKey(row.dom_index, row.content_hash, row.dom_id))
+        existingRows.map((row) => createMessageDedupeKey(row.dom_index, row.content_hash, row.dom_id))
+      );
+      const existingMessagesByDomId = new Map(
+        existingRows.flatMap((row) => {
+          const normalizedDomId = (row.dom_id ?? "").trim();
+          return normalizedDomId !== "" ? [[normalizedDomId, row] as const] : [];
+        })
       );
 
       const insertStmt = db.prepare(`
         INSERT INTO messages (id, conversation_id, account_id, role, author, content, dom_index, dom_id, content_hash, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const refreshStmt = db.prepare(`
+        UPDATE messages
+        SET role = ?, author = ?, content = ?, dom_index = ?, content_hash = ?
+        WHERE id = ?
       `);
       const [fallbackUserAuthor, fallbackAssistantAuthor] = await Promise.all([
         archiveT("fallbackUserAuthor"),
@@ -307,12 +319,36 @@ export class SQLiteArchiveManager {
       ]);
 
       let addedCount = 0;
+      let updatedCount = 0;
       db.exec("BEGIN");
       try {
         for (const msg of messages) {
           const contentHash = msg.contentHash ?? hashString(msg.text);
           const domIndex = msg.index ?? 0;
+          const normalizedDomId = (msg.domId ?? "").trim();
           const dedupeKey = createMessageDedupeKey(domIndex, contentHash, msg.domId);
+          const author =
+            msg.author ?? (msg.role === "user" ? fallbackUserAuthor : fallbackAssistantAuthor);
+
+          const existingMessage =
+            normalizedDomId !== "" ? existingMessagesByDomId.get(normalizedDomId) ?? null : null;
+          const existingContentHash = (existingMessage?.content_hash ?? "").trim();
+          const existingContent = existingMessage?.content ?? "";
+          const existingDomIndex = existingMessage?.dom_index ?? null;
+          if (existingMessage !== null) {
+            const shouldRefreshExistingMessage =
+              existingContentHash !== contentHash ||
+              existingContent !== msg.text ||
+              existingDomIndex !== domIndex;
+            if (shouldRefreshExistingMessage) {
+              refreshStmt.run(msg.role, author, msg.text, domIndex, contentHash, existingMessage.id);
+              existingMessage.content_hash = contentHash;
+              existingMessage.content = msg.text;
+              existingMessage.dom_index = domIndex;
+              updatedCount += 1;
+            }
+            continue;
+          }
 
           if (existingMessageKeys.has(dedupeKey)) continue;
           existingMessageKeys.add(dedupeKey);
@@ -328,13 +364,22 @@ export class SQLiteArchiveManager {
             conversationId,
             this.accountId,
             msg.role,
-            msg.author ?? (msg.role === "user" ? fallbackUserAuthor : fallbackAssistantAuthor),
+            author,
             msg.text,
             domIndex,
             msg.domId ?? null,
             contentHash,
             now
           );
+          if (normalizedDomId !== "") {
+            existingMessagesByDomId.set(normalizedDomId, {
+              id: messageId,
+              content: msg.text,
+              content_hash: contentHash,
+              dom_index: domIndex,
+              dom_id: normalizedDomId,
+            });
+          }
           addedCount++;
         }
         db.exec("COMMIT");
@@ -362,6 +407,7 @@ export class SQLiteArchiveManager {
           accountId: this.accountId,
           conversationId,
           added: addedCount,
+          updated: updatedCount,
           total: totalCount,
         }
       );

@@ -220,21 +220,21 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
 
   function getSelectedModuleIds() {
     return Array.isArray(getWorkbenchRecord()["selectedModuleIds"])
-      ? (getWorkbenchRecord()["selectedModuleIds"] as unknown[]).filter(function (
-          entry
-        ): entry is string {
-          return typeof entry === "string" && entry.trim() !== "";
-        })
+      ? (getWorkbenchRecord()["selectedModuleIds"] as unknown[]).filter(
+          function (entry): entry is string {
+            return typeof entry === "string" && entry.trim() !== "";
+          }
+        )
       : [];
   }
 
   function getAvailableModuleIds() {
     return Array.isArray(getWorkbenchRecord()["availableModuleIds"])
-      ? (getWorkbenchRecord()["availableModuleIds"] as unknown[]).filter(function (
-          entry
-        ): entry is string {
-          return typeof entry === "string" && entry.trim() !== "";
-        })
+      ? (getWorkbenchRecord()["availableModuleIds"] as unknown[]).filter(
+          function (entry): entry is string {
+            return typeof entry === "string" && entry.trim() !== "";
+          }
+        )
       : [];
   }
 

@@ -222,11 +222,7 @@ export function createLaboratoryReportStageSupportRuntime(
     ];
   }
 
-  function getReportSideRows(
-    reportRecord: unknown,
-    _findings: unknown[],
-    _exportsList: unknown[]
-  ) {
+  function getReportSideRows(reportRecord: unknown, _findings: unknown[], _exportsList: unknown[]) {
     const report = toFeatureReportRecord(reportRecord);
     if (isSubtitleAnalysisFeature()) {
       return [

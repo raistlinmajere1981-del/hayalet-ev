@@ -1,4 +1,11 @@
-import type { ForgeGoal, ForgeTask, ForgeTaskAssignment, ForgeAgentResponse, ForgeConflict, ForgeSynthesis } from "../../shared/types/index.js";
+import type {
+  ForgeGoal,
+  ForgeTask,
+  ForgeTaskAssignment,
+  ForgeAgentResponse,
+  ForgeConflict,
+  ForgeSynthesis,
+} from "../../shared/types/index.js";
 import type { ForgeRuntimeState } from "./forge-runtime-state.js";
 
 export type ForgeRuntimeAction =

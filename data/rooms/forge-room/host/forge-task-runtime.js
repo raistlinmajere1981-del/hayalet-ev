@@ -1,7 +1,5 @@
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
-import {
-  FORGE_TARGET_ROOM_ID
-} from "../shared/forge-constants.js";
+import { FORGE_TARGET_ROOM_ID } from "../shared/forge-constants.js";
 import { FORGE_PERSONA_PRESETS } from "../shared/data/persona-presets.js";
 import { isForgeSeatId } from "../shared/types/index.js";
 import {
@@ -67,8 +65,8 @@ export function buildForgeTaskPrompt(params) {
     "Return JSON only using this exact schema:",
     JSON.stringify(
       {
-        summary: "One or two sentence summary",
-        body: "Full recommendation body",
+        summary: "One short sentence summary",
+        body: "Compact recommendation body under 900 chars",
         artifacts: [
           {
             kind: "file",
@@ -93,6 +91,11 @@ export function buildForgeTaskPrompt(params) {
     `Constraints: ${goal.constraints.length > 0 ? goal.constraints.join(" | ") : "None"}`,
     `Acceptance criteria: ${goal.acceptanceCriteria.length > 0 ? goal.acceptanceCriteria.join(" | ") : "Derive practical acceptance criteria."}`,
     persona ? `Persona focus: ${formatPersonaPrompt(persona)}` : "Persona focus: none",
+    "This run is a smoke test. Keep the JSON compact and avoid unnecessary detail.",
+    "Keep summary under 140 characters.",
+    "Keep body under 900 characters and prefer 3 to 6 short bullet-style lines inside the JSON string when helpful.",
+    "Produce exactly one final JSON response for this task.",
+    "Do not provide alternatives, variants, multiple drafts, or multiple candidate answers.",
     "Keep the answer practical and directly useful for downstream Repair Room handoff."
   ].join("\n");
 }
@@ -125,12 +128,36 @@ export function createForgeArchiveRef(input) {
     provider: asNonEmptyString(input.provider) ?? null
   };
 }
-export function parseForgeTaskResponse(params) {
-  const { archiveRef, assignment, rawText, task } = params;
+export function parseForgeTaskResponsePayload(rawText) {
   const parsed = extractJsonValue(rawText);
+  if (parsed === null) {
+    return {
+      payload: null,
+      validationMessages: ["Task response did not contain valid JSON."]
+    };
+  }
   const record = toRecord(parsed);
-  const summary = asNonEmptyString(record["summary"]) ?? rawText.split(/\r?\n/).map((line) => line.trim()).find((line) => line !== "") ?? `${assignment.roleId} responded for ${task.title}.`;
-  const body = asNonEmptyString(record["body"]) ?? rawText.trim();
+  const summary = asNonEmptyString(record["summary"]);
+  const body = asNonEmptyString(record["body"]);
+  const artifacts = toArtifactRefs(record["artifacts"]);
+  const validationMessages = [];
+  if (summary === null) {
+    validationMessages.push("Task response summary is required.");
+  }
+  if (body === null) {
+    validationMessages.push("Task response body is required.");
+  }
+  return {
+    payload: summary !== null && body !== null ? {
+      summary,
+      body,
+      artifacts
+    } : null,
+    validationMessages
+  };
+}
+export function createForgeTaskResponse(params) {
+  const { archiveRef, assignment, payload, rawText, task } = params;
   return {
     id: createForgeId("forge-response"),
     assignmentId: assignment.id,
@@ -138,11 +165,11 @@ export function parseForgeTaskResponse(params) {
     seatId: assignment.seatId,
     roleId: assignment.roleId,
     personaPresetId: assignment.personaPresetId,
-    summary,
-    body,
+    summary: payload.summary,
+    body: payload.body,
     rawText: rawText.trim(),
     archiveRef,
-    artifacts: toArtifactRefs(record["artifacts"]),
+    artifacts: payload.artifacts,
     status: "captured",
     createdAt: nowIso()
   };
@@ -168,7 +195,9 @@ export function groupForgeConflicts(params) {
     if (taskResponses.length < 2) {
       return [];
     }
-    const uniqueBodies = new Set(taskResponses.map((response) => normalizeTextForComparison(response.body)));
+    const uniqueBodies = new Set(
+      taskResponses.map((response) => normalizeTextForComparison(response.body))
+    );
     if (task.dispatchMode !== "compare" && uniqueBodies.size < 2) {
       return [];
     }
@@ -219,7 +248,9 @@ export function createForgeSynthesisCandidate(params) {
     if (taskResponses.length === 0) {
       return [];
     }
-    const preferred = taskResponses.find((response) => response.seatId === (task.seatId ?? "ai1"));
+    const preferred = taskResponses.find(
+      (response) => response.seatId === (task.seatId ?? "ai1")
+    );
     return [preferred ?? taskResponses[0]].filter(
       (entry) => entry !== void 0
     );
@@ -268,7 +299,9 @@ export function syncApprovedTaskStatuses(params) {
       return task;
     }
     const taskAssignments = assignments.filter((assignment) => assignment.taskId === task.id);
-    const completedAssignments = taskAssignments.filter((assignment) => assignment.status === "completed");
+    const completedAssignments = taskAssignments.filter(
+      (assignment) => assignment.status === "completed"
+    );
     if (taskAssignments.length > 0 && completedAssignments.length === taskAssignments.length) {
       return {
         ...task,

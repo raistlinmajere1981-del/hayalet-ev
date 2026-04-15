@@ -42,7 +42,11 @@ function normalizePersonaPresetId(value: unknown): ForgePersonaPresetId | null {
   return isForgePersonaPresetId(value) ? value : null;
 }
 
-function normalizeCompareSeatIds(primarySeatId: ForgeSeatId, mode: ForgeTaskDispatchMode, value: unknown): ForgeSeatId[] {
+function normalizeCompareSeatIds(
+  primarySeatId: ForgeSeatId,
+  mode: ForgeTaskDispatchMode,
+  value: unknown
+): ForgeSeatId[] {
   if (mode !== "compare") {
     return [];
   }
@@ -62,9 +66,11 @@ function normalizeCompareSeatIds(primarySeatId: ForgeSeatId, mode: ForgeTaskDisp
   return ["ai1"];
 }
 
-function materializeDraft(
-  payload: ForgeBreakdownDraftPayload
-): { draftSourceText: string; draftTasks: ForgeTask[]; validationMessages: string[] } {
+function materializeDraft(payload: ForgeBreakdownDraftPayload): {
+  draftSourceText: string;
+  draftTasks: ForgeTask[];
+  validationMessages: string[];
+} {
   const sourceText = JSON.stringify(payload, null, 2);
   const parsed = parseForgeBreakdownDraft(sourceText);
   if (parsed.payload === null) {
@@ -82,7 +88,10 @@ function materializeDraft(
   };
 }
 
-function readDraftPayload(acceptanceCriteria: string[], draftTasks: ForgeTask[]): ForgeBreakdownDraftPayload {
+function readDraftPayload(
+  acceptanceCriteria: string[],
+  draftTasks: ForgeTask[]
+): ForgeBreakdownDraftPayload {
   return serializeForgeBreakdownDraft({
     acceptanceCriteria,
     tasks: draftTasks,
@@ -115,7 +124,7 @@ export function upsertForgeDraftTask(params: {
   const taskId = asNonEmptyString(params.payload["taskId"]);
   const taskIndex = taskId ? topLevelTasks.findIndex((task) => task.id === taskId) : -1;
   const nextTaskSpec = createTaskSpecFromPayload(params.payload);
-  const oldTitle = taskIndex >= 0 ? currentPayload.tasks[taskIndex]?.title ?? null : null;
+  const oldTitle = taskIndex >= 0 ? (currentPayload.tasks[taskIndex]?.title ?? null) : null;
   const nextTitle = nextTaskSpec.title.trim();
   const titleByTaskId = new Map(topLevelTasks.map((task) => [task.id, task.title]));
 
@@ -175,7 +184,9 @@ export function removeForgeDraftTask(params: {
         dependsOnTaskTitles:
           removedTitle === null
             ? [...task.dependsOnTaskTitles]
-            : task.dependsOnTaskTitles.filter((dependencyTitle) => dependencyTitle !== removedTitle),
+            : task.dependsOnTaskTitles.filter(
+                (dependencyTitle) => dependencyTitle !== removedTitle
+              ),
       })),
   };
 
@@ -194,7 +205,9 @@ export function updateForgeApprovedTask(params: {
     };
   }
 
-  const taskIndex = params.approvedTasks.findIndex((task) => task.id === taskId && task.level === 1);
+  const taskIndex = params.approvedTasks.findIndex(
+    (task) => task.id === taskId && task.level === 1
+  );
   if (taskIndex < 0) {
     return {
       approvedTasks: params.approvedTasks,
@@ -211,7 +224,9 @@ export function updateForgeApprovedTask(params: {
   }
 
   const seatId = normalizeSeatId(params.payload["seatId"] ?? currentTask.seatId);
-  const dispatchMode = normalizeDispatchMode(params.payload["dispatchMode"] ?? currentTask.dispatchMode);
+  const dispatchMode = normalizeDispatchMode(
+    params.payload["dispatchMode"] ?? currentTask.dispatchMode
+  );
   const roleId = normalizeRoleId(params.payload["roleId"] ?? currentTask.roleId, seatId);
   const compareSeatIds = normalizeCompareSeatIds(
     seatId,
@@ -224,12 +239,16 @@ export function updateForgeApprovedTask(params: {
     roleId,
     dispatchMode,
     compareSeatIds,
-    personaPresetId: normalizePersonaPresetId(params.payload["personaPresetId"] ?? currentTask.personaPresetId),
+    personaPresetId: normalizePersonaPresetId(
+      params.payload["personaPresetId"] ?? currentTask.personaPresetId
+    ),
     status: "approved",
   };
 
   return {
-    approvedTasks: params.approvedTasks.map((task, index) => (index === taskIndex ? nextTask : task)),
+    approvedTasks: params.approvedTasks.map((task, index) =>
+      index === taskIndex ? nextTask : task
+    ),
     validationMessage: null,
   };
 }

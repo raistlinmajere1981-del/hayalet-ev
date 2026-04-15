@@ -3,10 +3,7 @@ import { readFile, rm } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { formatErrorWithDetail } from "../shared/i18n/error-detail.ts";
 import { Paths } from "./paths.ts";
-import {
-  ensureDir,
-  resolveInstalledRoomTrackedFiles,
-} from "./rooms/room-install-files.ts";
+import { ensureDir, resolveInstalledRoomTrackedFiles } from "./rooms/room-install-files.ts";
 import { buildInstalledRoomRecord } from "./rooms/installed-room-builder.ts";
 import type { RoomOperationResult } from "./rooms/room-package-types.ts";
 import {
@@ -314,8 +311,9 @@ export class RoomPackageManager {
     );
     const sourcePath = normalizeRoomPath(room.sourceDir);
     const pathMatch =
-      writableWorkspaceRooms.find((candidate) => normalizeRoomPath(candidate.dirPath) === sourcePath) ??
-      null;
+      writableWorkspaceRooms.find(
+        (candidate) => normalizeRoomPath(candidate.dirPath) === sourcePath
+      ) ?? null;
 
     if (pathMatch !== null) {
       return pathMatch;
@@ -350,7 +348,9 @@ export class RoomPackageManager {
         (room.protocolSpecs ?? []).map(async (spec) => {
           const protocolPath = join(room.installedDir, "protocols", `${spec.key}.md`);
           const body =
-            existsSync(protocolPath) === true ? await readFile(protocolPath, "utf8").catch(() => "") : "";
+            existsSync(protocolPath) === true
+              ? await readFile(protocolPath, "utf8").catch(() => "")
+              : "";
 
           return {
             roomId: room.id,
@@ -389,33 +389,53 @@ export class RoomPackageManager {
     const workspaceRooms = await this.listWorkspaceRooms();
     const syncedRoomIds: string[] = [];
     const errors: string[] = [];
+    const startupSyncPlan = await Promise.all(
+      installedRooms.map(async (room) => {
+        const linkedWorkspaceRoom = this.findLinkedWorkspaceRoom(room, workspaceRooms);
+        if (linkedWorkspaceRoom === null) {
+          return null;
+        }
 
-    for (const room of installedRooms) {
-      const linkedWorkspaceRoom = this.findLinkedWorkspaceRoom(room, workspaceRooms);
-      if (linkedWorkspaceRoom === null) {
-        continue;
+        if (linkedWorkspaceRoom.valid !== true || linkedWorkspaceRoom.manifest === undefined) {
+          return {
+            roomId: room.id,
+            status: "invalid" as const,
+          };
+        }
+
+        const shouldSync = await this.workspaceRoomNeedsStartupSync(room, linkedWorkspaceRoom);
+        if (shouldSync !== true) {
+          return null;
+        }
+
+        return {
+          manifestId: linkedWorkspaceRoom.manifest.id,
+          status: "sync" as const,
+        };
+      })
+    );
+
+    await startupSyncPlan.reduce<Promise<void>>(async (previous, entry) => {
+      await previous;
+      if (entry === null) {
+        return;
       }
 
-      if (linkedWorkspaceRoom.valid !== true || linkedWorkspaceRoom.manifest === undefined) {
-        errors.push(`${room.id}: workspace source is invalid`);
-        continue;
+      if (entry.status === "invalid") {
+        errors.push(`${entry.roomId}: workspace source is invalid`);
+        return;
       }
 
-      const shouldSync = await this.workspaceRoomNeedsStartupSync(room, linkedWorkspaceRoom);
-      if (shouldSync !== true) {
-        continue;
-      }
-
-      const installResult = await this.installFromWorkspace(linkedWorkspaceRoom.manifest.id);
+      // NOTE: Install writes shared registry state, so startup sync stays serialized even
+      // though the "needs sync" probes can run in parallel.
+      const installResult = await this.installFromWorkspace(entry.manifestId);
       if (installResult.success === true) {
-        syncedRoomIds.push(linkedWorkspaceRoom.manifest.id);
-        continue;
+        syncedRoomIds.push(entry.manifestId);
+        return;
       }
 
-      errors.push(
-        `${linkedWorkspaceRoom.manifest.id}: ${installResult.error ?? "workspace sync failed"}`
-      );
-    }
+      errors.push(`${entry.manifestId}: ${installResult.error ?? "workspace sync failed"}`);
+    }, Promise.resolve());
 
     const snapshot = await this.buildManagedStartupSnapshot();
     if (errors.length > 0) {

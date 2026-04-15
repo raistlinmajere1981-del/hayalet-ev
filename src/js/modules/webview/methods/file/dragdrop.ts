@@ -79,7 +79,7 @@ export async function attachFiles(
       dataTransfer.items.add(f);
     });
 
-    const cleanupDragOverlay = (): unknown => {
+    const cleanupDragOverlay = () => {
       const config = window.__app_provider_config;
       
       let overlaySelectors = [
@@ -111,7 +111,7 @@ export async function attachFiles(
         criticalSelectors = config.criticalSelectors;
       }
 
-      const isCritical = (node): unknown => {
+      const isCritical = (node) => {
         if (!node) return false;
         if (node === document.body || node === document.documentElement) return true;
         return criticalSelectors.some((sel) => {

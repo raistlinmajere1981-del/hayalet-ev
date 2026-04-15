@@ -6,6 +6,7 @@ Kurallar:
 
 - Yalnizca JSON dondur.
 - Son mesajdaki semayi birebir kullan.
+- Bu calismayi smoke test olarak ele al ve tum alanlari gecerli kalacak en kisa bicimde tut.
 - 3 ile 7 arasinda top-level task uret.
 - `checklist` alanini yalniz assign edilmeyen child adimlar icin kullan.
 - `checklist` disinda daha derin task agaci kurma.

@@ -13,7 +13,9 @@ export function createForgeHandoffExport() {
   function readAcceptanceCriteria(session, selected) {
     const criteria = selected.acceptanceCriteria.length > 0 ? selected.acceptanceCriteria : session.goal?.acceptanceCriteria ?? [];
     if (criteria.length === 0) {
-      throw new Error("At least one acceptance criterion is required before exporting a handoff package.");
+      throw new Error(
+        "At least one acceptance criterion is required before exporting a handoff package."
+      );
     }
     return criteria;
   }

@@ -55,6 +55,17 @@ interface SendResult {
   files: FileResult | null;
 }
 
+interface SendAckState {
+  loading: string;
+  send: string;
+  thinking: string;
+}
+
+interface SendButtonState {
+  found: boolean;
+  disabled: boolean;
+}
+
 type FileFn = (
   webview: MessageSenderWebview,
   opts: { files: unknown[]; provider: string }
@@ -304,7 +315,7 @@ class MessageSenderClass {
       TrafficManager.skipNextLoadingFor(provider);
     }
 
-    await this._triggerSendButton(webview, provider, providerId);
+    await this._triggerSendWithAck(webview, provider, providerId);
 
     return {
       success: true,
@@ -420,6 +431,133 @@ class MessageSenderClass {
     }
 
     return fileResult;
+  }
+
+  private _readSendAckState(provider: string): SendAckState {
+    const state = TrafficManager.getState(provider);
+    return {
+      loading: state?.status.loading ?? "idle",
+      send: state?.status.send ?? "busy",
+      thinking: state?.status.thinking ?? "idle",
+    };
+  }
+
+  private async _readSendButtonState(
+    webview: MessageSenderWebview,
+    providerId: string
+  ): Promise<SendButtonState> {
+    const providerConfig = ProviderRegistry.get(providerId);
+    const sendButtonSelector = this._getSendButtonSelector(providerConfig);
+
+    if (sendButtonSelector.length === 0) {
+      return { found: false, disabled: true };
+    }
+
+    const selectorCandidates = JSON.stringify(sendButtonSelector);
+    const script = `(function() {
+      const selectorCandidates = ${selectorCandidates};
+      let sendButton = null;
+      for (const selector of selectorCandidates) {
+        try {
+          sendButton = document.querySelector(selector);
+          if (sendButton) {
+            break;
+          }
+        } catch (_) {
+          void 0;
+        }
+      }
+
+      if (!sendButton) {
+        return { found: false, disabled: true };
+      }
+
+      const disabledAttr = sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true';
+      const disabledStyle = getComputedStyle(sendButton).pointerEvents === 'none';
+      const disabledClass = /disabled|opacity-4|opacity-5|cursor-not-allowed/i.test(sendButton.className || '');
+      return {
+        found: true,
+        disabled: disabledAttr || disabledStyle || disabledClass
+      };
+    })();`;
+
+    try {
+      const result = (await webview.executeJavaScript(script)) as SendButtonState | null;
+      return {
+        found: result?.found === true,
+        disabled: result?.disabled !== false,
+      };
+    } catch {
+      return { found: false, disabled: true };
+    }
+  }
+
+  private _didButtonDisableAfterSend(baseline: SendButtonState, current: SendButtonState): boolean {
+    return baseline.found === true && baseline.disabled === false && current.found === true && current.disabled === true;
+  }
+
+  private _hasSendAck(provider: string, baseline: SendAckState): boolean {
+    const current = this._readSendAckState(provider);
+    return (
+      (current.thinking === "busy" && baseline.thinking !== "busy") ||
+      (current.send === "busy" && baseline.send !== "busy") ||
+      (current.loading === "busy" && baseline.loading !== "busy")
+    );
+  }
+
+  private async _waitForSendAck(
+    webview: MessageSenderWebview,
+    provider: string,
+    providerId: string,
+    baseline: SendAckState,
+    baselineButton: SendButtonState,
+    timeoutMs = 4500,
+    intervalMs = 150
+  ): Promise<boolean> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() <= deadline) {
+      if (this._hasSendAck(provider, baseline)) {
+        return true;
+      }
+      const currentButton = await this._readSendButtonState(webview, providerId);
+      if (this._didButtonDisableAfterSend(baselineButton, currentButton)) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+    const finalButtonState = await this._readSendButtonState(webview, providerId);
+    return (
+      this._hasSendAck(provider, baseline) || this._didButtonDisableAfterSend(baselineButton, finalButtonState)
+    );
+  }
+
+  private async _triggerSendWithAck(
+    webview: MessageSenderWebview,
+    provider: string,
+    providerId: string
+  ): Promise<void> {
+    const maxAttempts = 4;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const baseline = this._readSendAckState(provider);
+      const baselineButton = await this._readSendButtonState(webview, providerId);
+      await this._triggerSendButton(webview, provider, providerId);
+      if (await this._waitForSendAck(webview, provider, providerId, baseline, baselineButton)) {
+        return;
+      }
+
+      if (attempt < maxAttempts - 1) {
+        const sendReady = await TrafficManager.waitForSendEnabled(provider, 4000);
+        if (sendReady !== true) {
+          const currentButton = await this._readSendButtonState(webview, providerId);
+          if (this._hasSendAck(provider, baseline) || this._didButtonDisableAfterSend(baselineButton, currentButton)) {
+            return;
+          }
+          break;
+        }
+      }
+    }
+
+    throw new Error(messageSenderT("sendTriggerFailed"));
   }
 
   async _triggerSendButton(

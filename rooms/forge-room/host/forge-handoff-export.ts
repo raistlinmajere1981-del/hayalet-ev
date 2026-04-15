@@ -19,9 +19,11 @@ export function createForgeHandoffExport() {
     const criteria =
       selected.acceptanceCriteria.length > 0
         ? selected.acceptanceCriteria
-        : session.goal?.acceptanceCriteria ?? [];
+        : (session.goal?.acceptanceCriteria ?? []);
     if (criteria.length === 0) {
-      throw new Error("At least one acceptance criterion is required before exporting a handoff package.");
+      throw new Error(
+        "At least one acceptance criterion is required before exporting a handoff package."
+      );
     }
     return criteria;
   }
@@ -103,8 +105,10 @@ export function createForgeHandoffExport() {
     selectedSynthesisId: string | null;
     targetRoomId: string | null;
   } {
-    const selected = session.syntheses.find((entry) => entry.id === session.selectedSynthesisId) ?? null;
-    const acceptanceCriteriaCount = selected?.acceptanceCriteria.length ?? session.goal?.acceptanceCriteria.length ?? 0;
+    const selected =
+      session.syntheses.find((entry) => entry.id === session.selectedSynthesisId) ?? null;
+    const acceptanceCriteriaCount =
+      selected?.acceptanceCriteria.length ?? session.goal?.acceptanceCriteria.length ?? 0;
     return {
       acceptanceCriteriaCount,
       exportReady:

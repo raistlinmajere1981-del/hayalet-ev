@@ -77,7 +77,9 @@ export function createLaboratorySourceStageUi(deps: LaboratorySourceStageUiDeps)
     const overview = getWorkbenchOverview();
     const selectedModuleIds = overview.selectedModuleIds;
     const activeProjectName =
-      activeProject && typeof activeProject["name"] === "string" && activeProject["name"].trim() !== ""
+      activeProject &&
+      typeof activeProject["name"] === "string" &&
+      activeProject["name"].trim() !== ""
         ? activeProject["name"].trim()
         : text(["mediaAnalysis", "projects", "empty"]);
     const selectedSummary =

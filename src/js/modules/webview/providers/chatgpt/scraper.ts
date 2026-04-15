@@ -75,8 +75,140 @@ export function scrapeMessages(): ScrapedMessage[] {
       .replace(/^(üretilen görsel|uretilen gorsel|generated image)\s*:\s*/i, "")
       .replace(/^(görsel oluşturuldu|gorsel olusturuldu|image created)\s*[•:.-]?\s*/i, "")
       .replace(/\b(düzenle|paylaş|edit|share)\b/gi, "")
-      .replace(/\s*[•·]\s*/g, " ")
+        .replace(/\s*[•·]\s*/g, " ")
+        .trim();
+  }
+
+  function readElementText(element: Element | null): string {
+    if (!(element instanceof HTMLElement)) {
+      return "";
+    }
+
+    const innerText = element.innerText.trim();
+    if (innerText !== "") {
+      return innerText;
+    }
+
+    return element.textContent?.trim() ?? "";
+  }
+
+  function cleanAssistantChrome(value: string): string {
+    const normalized = normalizeText(value)
+      .replace(/^(chatgpt|chat gpt|assistant)\s*:\s*/i, "")
       .trim();
+    if (normalized === "") {
+      return "";
+    }
+
+    const lines = normalized
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+    while (lines.length > 0 && /^(chatgpt|chat gpt|assistant)\s*:?\s*$/i.test(lines[0] ?? "")) {
+      lines.shift();
+    }
+
+    return normalizeText(lines.join("\n"));
+  }
+
+  function isAssistantStatusOnlyText(value: string): boolean {
+    const normalized = cleanAssistantChrome(value);
+    if (normalized === "") {
+      return false;
+    }
+
+    const collapsed = normalized
+      .toLocaleLowerCase("tr-TR")
+      .replace(/\s+/g, "")
+      .replace(/[.!?…,:;'"`-]/g, "");
+
+    return (
+      collapsed === "düşünüyor" ||
+      collapsed === "dusunuyor" ||
+      collapsed === "thinking" ||
+      collapsed === "thinking…" ||
+      collapsed === "düşünmedurduruldu" ||
+      collapsed === "dusunmedurduruldu" ||
+      collapsed === "thinkingstopped" ||
+      collapsed === "stoppedthinking" ||
+      collapsed === "düşünmedurdurulduhızlıyanıt" ||
+      collapsed === "dusunmedurdurulduhizliyanit" ||
+      collapsed === "thinkingstoppedquickresponse"
+    );
+  }
+
+  function selectBestTextCandidate(candidates: string[], role: string): string {
+    const unique = Array.from(
+      new Set(
+        candidates
+          .map((candidate) =>
+            role === "assistant" ? cleanAssistantChrome(candidate) : normalizeText(candidate)
+          )
+          .filter((candidate) => candidate !== "")
+      )
+    );
+    if (unique.length === 0) {
+      return "";
+    }
+
+    unique.sort((left, right) => {
+      const rightStructured = /^(?:\{|\[|```(?:json)?)/i.test(right) ? 1 : 0;
+      const leftStructured = /^(?:\{|\[|```(?:json)?)/i.test(left) ? 1 : 0;
+      if (rightStructured !== leftStructured) {
+        return rightStructured - leftStructured;
+      }
+
+      return right.length - left.length;
+    });
+
+    return unique[0] ?? "";
+  }
+
+  function extractMessageText(node: Element, wrapper: Element, role: string): string {
+    const assistantContentSelectors = [
+      '[data-message-author-role="assistant"] .markdown',
+      '[data-message-author-role="assistant"] [class*="prose"]',
+      '.agent-turn .markdown',
+      '.agent-turn [class*="prose"]',
+      '[data-testid="conversation-turn"] .markdown',
+      '[data-testid^="conversation-turn"] .markdown',
+      '[data-testid*="conversation-turn"] .markdown',
+      '[data-testid="conversation-turn"] [class*="prose"]',
+      '[data-testid^="conversation-turn"] [class*="prose"]',
+      '[data-testid*="conversation-turn"] [class*="prose"]',
+      "article .markdown",
+      "article [class*=\"prose\"]",
+      "[dir=\"auto\"]",
+    ];
+    const userContentSelectors = [
+      '[data-message-author-role="user"] [dir="auto"]',
+      ".user-message-bubble-color [dir=\"auto\"]",
+      '[data-message-author-role="user"]',
+      ".user-message-bubble-color",
+      "[dir=\"auto\"]",
+    ];
+    const contentSelectors = role === "assistant" ? assistantContentSelectors : userContentSelectors;
+    const roots = Array.from(new Set([wrapper, node]));
+    const contentNodes = roots.flatMap((root) =>
+      contentSelectors.flatMap((selector) => {
+        if (selector.trim() === "") {
+          return [];
+        }
+
+        const matchesSelf = root.matches(selector) ? [root] : [];
+        const descendants = Array.from(root.querySelectorAll(selector));
+        return [...matchesSelf, ...descendants];
+      })
+    );
+    const focusedText = selectBestTextCandidate(
+      Array.from(new Set(contentNodes)).map((candidate) => readElementText(candidate)),
+      role
+    );
+    if (focusedText !== "") {
+      return focusedText;
+    }
+
+    return selectBestTextCandidate(roots.map((root) => readElementText(root)), role);
   }
 
   const defaultGeneratedImageSelector =
@@ -84,7 +216,8 @@ export function scrapeMessages(): ScrapedMessage[] {
   const defaultScrapeSelectors = {
     preferred: "[data-message-author-role]",
     fallback: ".message-bubble, .markdown.prose",
-    messageWrapper: '[data-testid="conversation-turn"], [data-message-id], [data-turn-id]',
+    messageWrapper:
+      '[data-testid="conversation-turn"], [data-testid^="conversation-turn"], [data-testid*="conversation-turn"], [data-message-id], [data-turn-id], main article',
     userWrapper: '[data-message-author-role="user"], .user-message-bubble-color',
     assistantWrapper: '[data-message-author-role="assistant"], .agent-turn',
   };
@@ -122,10 +255,12 @@ export function scrapeMessages(): ScrapedMessage[] {
       : Array.from(document.querySelectorAll(rootSelectorParts.join(", ")));
   const preferred = Array.from(document.querySelectorAll(preferredSel));
   const fallback = Array.from(document.querySelectorAll(fallbackSel));
-  // NOTE: Prefer explicit message nodes over generic turn wrappers so streaming assistant updates
-  // keep the stable message id instead of producing partial/final duplicates.
-  const base =
-    preferred.length !== 0 ? preferred : wrappedBase.length !== 0 ? wrappedBase : fallback;
+  // NOTE: ChatGPT can expose user turns with explicit role markers while assistant turns live
+  // only on the surrounding conversation wrapper/article. Keep both sources so assistant replies
+  // still get scraped when role attributes disappear during UI changes.
+  const baseCandidates =
+    wrappedBase.length !== 0 || preferred.length !== 0 ? [...wrappedBase, ...preferred] : fallback;
+  const base = Array.from(new Set(baseCandidates));
   const nodes = Array.from(new Set(base)).filter(
     (n, i, arr) => !arr.some((o, j) => i !== j && o.contains(n))
   );
@@ -138,23 +273,6 @@ export function scrapeMessages(): ScrapedMessage[] {
     const roleNode =
       authorRole !== null && authorRole !== "" ? node : node.closest("[data-message-author-role]");
     const roleAttr = roleNode?.getAttribute("data-message-author-role") ?? "";
-    let text = (node as HTMLElement).innerText.trim();
-    if (text === "") {
-      const textContent = (node as HTMLElement).textContent.trim();
-      if (textContent !== "") {
-        text = textContent;
-      }
-    }
-    if (text === "") {
-      const imgs = Array.from(node.querySelectorAll("img"));
-      const alt = imgs
-        .map((img) => img.alt.trim())
-        .filter(Boolean)
-        .join(" ");
-      if (alt !== "") text = alt;
-      else if (imgs.length !== 0) text = "[image]";
-    }
-    if (text === "") return;
     const role = ((): string => {
       if (isUserWrapper) return "user";
       if (isAssistantWrapper) return "assistant";
@@ -172,6 +290,18 @@ export function scrapeMessages(): ScrapedMessage[] {
       (messageWrapperSel !== "" ? node.closest(messageWrapperSel) : null) ??
       node.closest("[data-message-id]") ??
       node;
+    let text = extractMessageText(node, wrapper, role);
+    if (text === "") {
+      const imgs = Array.from(node.querySelectorAll("img"));
+      const alt = imgs
+        .map((img) => img.alt.trim())
+        .filter(Boolean)
+        .join(" ");
+      if (alt !== "") text = alt;
+      else if (imgs.length !== 0) text = "[image]";
+    }
+    if (role === "assistant" && isAssistantStatusOnlyText(text)) return;
+    if (text === "") return;
     const domIdCandidate =
       wrapper.getAttribute("data-message-id") ??
       wrapper.getAttribute("data-turn-id") ??

@@ -57,7 +57,8 @@ export function createLaboratorySourceStageProjectRuntime(
       toSourceSnapshotRecord(getSourceSnapshot()).activeProjectId,
       ""
     );
-    const pendingDelete = state.ui.pendingDeleteProjectId === activeProjectId && activeProjectId !== "";
+    const pendingDelete =
+      state.ui.pendingDeleteProjectId === activeProjectId && activeProjectId !== "";
 
     return `
         <div class="lab-project-panel__grid">

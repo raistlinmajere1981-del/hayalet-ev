@@ -96,9 +96,7 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
 
   function renderBootstrap() {
     const bootstrap = toBootstrapStateRecord(getBootstrapState());
-    const steps = Array.isArray(bootstrap.steps)
-      ? bootstrap.steps.map(toBootstrapStepRecord)
-      : [];
+    const steps = Array.isArray(bootstrap.steps) ? bootstrap.steps.map(toBootstrapStepRecord) : [];
     const currentStepId =
       typeof bootstrap.currentStepId === "string" && bootstrap.currentStepId.trim() !== ""
         ? bootstrap.currentStepId.trim()

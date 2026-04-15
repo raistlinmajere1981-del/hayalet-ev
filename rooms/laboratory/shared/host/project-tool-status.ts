@@ -38,9 +38,7 @@ export function createLaboratoryProjectToolStatusRuntime(
     toRecord,
   } = deps;
 
-  async function refreshToolStatus(
-    runtime: LaboratoryRuntimeWithToolState
-  ): Promise<void> {
+  async function refreshToolStatus(runtime: LaboratoryRuntimeWithToolState): Promise<void> {
     const toolIds = getRuntimeToolIds(runtime);
 
     // NOTE: Tool probes stay sequential to avoid overlapping room-tool checks.

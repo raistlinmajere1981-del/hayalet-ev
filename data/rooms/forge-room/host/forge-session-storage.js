@@ -44,7 +44,9 @@ export function createForgeSessionStorage(deps) {
     return session;
   }
   async function loadSession(runtimePaths, sessionId) {
-    const session = asSession(await readJsonFile(createForgeStoragePaths(runtimePaths, sessionId).sessionFilePath));
+    const session = asSession(
+      await readJsonFile(createForgeStoragePaths(runtimePaths, sessionId).sessionFilePath)
+    );
     if (session === null || session.roomId !== FORGE_ROOM_ID) {
       return null;
     }

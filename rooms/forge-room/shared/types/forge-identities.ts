@@ -28,7 +28,6 @@ export function isForgeRoleId(value: unknown): value is ForgeRoleId {
 
 export function isForgePersonaPresetId(value: unknown): value is ForgePersonaPresetId {
   return (
-    typeof value === "string" &&
-    FORGE_PERSONA_PRESET_IDS.includes(value as ForgePersonaPresetId)
+    typeof value === "string" && FORGE_PERSONA_PRESET_IDS.includes(value as ForgePersonaPresetId)
   );
 }

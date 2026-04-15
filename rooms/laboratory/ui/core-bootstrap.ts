@@ -452,21 +452,30 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps: LaboratoryCoreBoots
           })
         : [];
       const subtitleEntries = laboratorySnapshotAccessRuntime.getSubtitleEntries();
-      return selectedEntryIds.length > 0 || (Array.isArray(subtitleEntries) && subtitleEntries.length > 0);
+      return (
+        selectedEntryIds.length > 0 ||
+        (Array.isArray(subtitleEntries) && subtitleEntries.length > 0)
+      );
     }
 
     const projectSource = toRecord(laboratorySnapshotAccessRuntime.getProjectSource());
-    return typeof projectSource["storedPath"] === "string" && projectSource["storedPath"].trim() !== "";
+    return (
+      typeof projectSource["storedPath"] === "string" && projectSource["storedPath"].trim() !== ""
+    );
   }
 
   function getCurrentFeatureProcessStatus() {
-    const processRecords = toRecord(toRecord(laboratorySnapshotAccessRuntime.getProjectProcess())["records"]);
+    const processRecords = toRecord(
+      toRecord(laboratorySnapshotAccessRuntime.getProjectProcess())["records"]
+    );
     const processRecord = toRecord(processRecords[getActiveFeatureId()]);
     return typeof processRecord["status"] === "string" ? processRecord["status"].trim() : "";
   }
 
   function getCurrentFeatureReportStatus() {
-    const reportRecords = toRecord(toRecord(laboratorySnapshotAccessRuntime.getProjectReport())["records"]);
+    const reportRecords = toRecord(
+      toRecord(laboratorySnapshotAccessRuntime.getProjectReport())["records"]
+    );
     const reportRecord = toRecord(reportRecords[getActiveFeatureId()]);
     return typeof reportRecord["status"] === "string" ? reportRecord["status"].trim() : "";
   }
@@ -476,7 +485,9 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps: LaboratoryCoreBoots
       return null;
     }
 
-    const readiness = toRecord(laboratoryProfileProcessReportAccessorsRuntime.getProfileReadiness());
+    const readiness = toRecord(
+      laboratoryProfileProcessReportAccessorsRuntime.getProfileReadiness()
+    );
     const blockers = Array.isArray(readiness["blockers"])
       ? readiness["blockers"].filter(function (entry): entry is string {
           return typeof entry === "string" && entry.trim() !== "";
@@ -486,7 +497,9 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps: LaboratoryCoreBoots
       return blockers[0] || text(["workbench", "stageGuards", "profileRequired"]);
     }
 
-    const preflight = toRecord(laboratoryProfileProcessReportAccessorsRuntime.getProfilePreflight());
+    const preflight = toRecord(
+      laboratoryProfileProcessReportAccessorsRuntime.getProfilePreflight()
+    );
     return preflight["status"] === "ready"
       ? null
       : text(["workbench", "stageGuards", "preflightRequired"]);

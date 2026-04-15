@@ -18,7 +18,11 @@ function safeTaskKey(taskId: string): string {
   return taskId.replace(/[^a-z0-9_-]/gi, "-");
 }
 
-function createLabeledField(documentRef: Document, labelText: string, control: HTMLElement): HTMLElement {
+function createLabeledField(
+  documentRef: Document,
+  labelText: string,
+  control: HTMLElement
+): HTMLElement {
   const wrapper = documentRef.createElement("label");
   wrapper.className = "forge-field";
   const label = documentRef.createElement("span");
@@ -36,6 +40,8 @@ export function renderDraftBreakdownPanel(
   const body = documentRef.createElement("div");
   body.className = "forge-panel__body";
   const topLevelTasks = state.snapshot.draftTasks.filter((task) => task.level === 1);
+  const flowLane = documentRef.createElement("div");
+  flowLane.className = "forge-flow-lane";
   const checklistByParentId = new Map(
     topLevelTasks.map((task) => [
       task.id,
@@ -48,9 +54,44 @@ export function renderDraftBreakdownPanel(
   if (topLevelTasks.length === 0) {
     const empty = documentRef.createElement("p");
     empty.className = "forge-panel__hint";
-    empty.textContent = text(["workbench", "states", "emptyDraft"], "Draft tasks will appear here.");
+    empty.textContent = text(
+      ["workbench", "states", "emptyDraft"],
+      "Draft tasks will appear here."
+    );
     body.append(empty);
   } else {
+    topLevelTasks.forEach((task) => {
+      const item = documentRef.createElement("article");
+      item.className = "forge-flow-item";
+
+      const content = documentRef.createElement("div");
+      content.className = "forge-flow-item__content";
+
+      const title = documentRef.createElement("strong");
+      title.textContent = task.title;
+
+      const summary = documentRef.createElement("p");
+      summary.className = "forge-flow-item__summary";
+      summary.textContent = task.summary;
+
+      const meta = documentRef.createElement("div");
+      meta.className = "forge-flow-item__meta";
+
+      const seat = documentRef.createElement("span");
+      seat.className = "forge-chip";
+      seat.textContent = task.seatId ?? "ai1";
+
+      const mode = documentRef.createElement("span");
+      mode.className = "forge-chip forge-chip--soft";
+      mode.textContent = task.dispatchMode;
+
+      meta.append(seat, mode);
+      content.append(title, summary, meta);
+      item.append(content);
+      flowLane.append(item);
+    });
+    body.append(flowLane);
+
     const cards = documentRef.createElement("div");
     cards.className = "forge-card-list";
     topLevelTasks.forEach((task) => {
@@ -71,11 +112,13 @@ export function renderDraftBreakdownPanel(
       const seatSelect = documentRef.createElement("select");
       seatSelect.id = `forge-draft-seat-${taskKey}`;
       seatSelect.className = "forge-input";
-      ([
-        ["ai1", "ai1"],
-        ["ai2", "ai2"],
-        ["us1", "us1"],
-      ] as const).forEach(([value, label]) => {
+      (
+        [
+          ["ai1", "ai1"],
+          ["ai2", "ai2"],
+          ["us1", "us1"],
+        ] as const
+      ).forEach(([value, label]) => {
         seatSelect.append(createOption(documentRef, value, label, task.seatId));
       });
 
@@ -106,12 +149,7 @@ export function renderDraftBreakdownPanel(
       compareSeatSelect.append(createOption(documentRef, "", "none", null));
       ["ai1", "ai2", "us1"].forEach((seatId) => {
         compareSeatSelect.append(
-          createOption(
-            documentRef,
-            seatId,
-            seatId,
-            task.compareSeatIds[0] ?? null
-          )
+          createOption(documentRef, seatId, seatId, task.compareSeatIds[0] ?? null)
         );
       });
 

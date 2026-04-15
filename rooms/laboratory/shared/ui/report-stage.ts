@@ -377,11 +377,7 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
                 ${escapeHtml(featureText(["report", "actions", "export"]))}
               </button>
             </div>
-            ${
-              summaryHint !== ""
-                ? `<p class="lab-panel__hint">${escapeHtml(summaryHint)}</p>`
-                : ""
-            }
+            ${summaryHint !== "" ? `<p class="lab-panel__hint">${escapeHtml(summaryHint)}</p>` : ""}
         </section>
       </div>
     `;

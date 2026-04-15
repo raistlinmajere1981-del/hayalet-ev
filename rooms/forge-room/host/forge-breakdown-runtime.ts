@@ -44,7 +44,10 @@ function readDefaultRoleForSeat(seatId: ForgeSeatId): ForgeRoleId {
   const roleEntry = Object.values(FORGE_ROLE_CATALOG).find(
     (entry) => entry.defaultSeatId === seatId && entry.localActor === false
   );
-  return roleEntry?.id ?? (seatId === "ai2" ? "challenger" : seatId === "us1" ? "external-perspective" : "architect");
+  return (
+    roleEntry?.id ??
+    (seatId === "ai2" ? "challenger" : seatId === "us1" ? "external-perspective" : "architect")
+  );
 }
 
 function readDefaultSeatForRole(roleId: ForgeRoleId): ForgeSeatId {
@@ -72,7 +75,9 @@ function readCompareSeats(primarySeatId: ForgeSeatId, rawValue: unknown): ForgeS
 function normalizeTaskSpec(candidate: unknown): ForgeBreakdownTaskSpec {
   const record = toRecord(candidate);
   const roleId = isForgeRoleId(record["roleId"]) ? record["roleId"] : "architect";
-  const seatId = isForgeSeatId(record["seatId"]) ? record["seatId"] : readDefaultSeatForRole(roleId);
+  const seatId = isForgeSeatId(record["seatId"])
+    ? record["seatId"]
+    : readDefaultSeatForRole(roleId);
   return {
     title: asNonEmptyString(record["title"]) ?? "",
     summary: asNonEmptyString(record["summary"]) ?? "",
@@ -120,7 +125,10 @@ export function parseForgeBreakdownDraft(rawText: string): {
 
 export function validateForgeBreakdownDraft(payload: ForgeBreakdownDraftPayload): string[] {
   const messages: string[] = [];
-  if (payload.tasks.length < FORGE_BREAKDOWN_MIN_TASKS || payload.tasks.length > FORGE_BREAKDOWN_MAX_TASKS) {
+  if (
+    payload.tasks.length < FORGE_BREAKDOWN_MIN_TASKS ||
+    payload.tasks.length > FORGE_BREAKDOWN_MAX_TASKS
+  ) {
     messages.push(
       `Draft breakdown must contain ${String(FORGE_BREAKDOWN_MIN_TASKS)} to ${String(
         FORGE_BREAKDOWN_MAX_TASKS
@@ -244,6 +252,7 @@ export function buildForgeBreakdownPrompt(goal: ForgeGoal): string {
     `Goal brief: ${goal.brief || "No additional brief provided."}`,
     `Constraints: ${goal.constraints.length > 0 ? goal.constraints.join(" | ") : "None"}`,
     "Requirements:",
+    "- This run is a smoke test; keep acceptance criteria, summaries, and checklist items as short as possible.",
     "- Produce 3 to 7 top-level tasks.",
     "- Use compare mode only when two seats should answer the same task.",
     "- Use checklist only for non-assignable child steps.",
@@ -256,8 +265,7 @@ export function serializeForgeBreakdownDraft(payload: {
   tasks: ForgeTask[] | ForgeBreakdownTaskSpec[];
 }): ForgeBreakdownDraftPayload {
   const topLevelTasks = payload.tasks.filter(
-    (task): task is ForgeTask & { level: 1 } =>
-      "level" in task && task.level === 1
+    (task): task is ForgeTask & { level: 1 } => "level" in task && task.level === 1
   );
   if (topLevelTasks.length > 0) {
     return {

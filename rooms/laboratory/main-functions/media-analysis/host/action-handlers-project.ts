@@ -54,9 +54,7 @@ type ProjectDeps = {
     runtime: MediaProjectRuntimeRecord,
     requestId: string
   ) => Promise<unknown>;
-  refreshToolStatus: (
-    runtime: MediaProjectRuntimeRecord
-  ) => Promise<unknown>;
+  refreshToolStatus: (runtime: MediaProjectRuntimeRecord) => Promise<unknown>;
   runFeatureProcess: (
     api: MediaProjectActionApi,
     runtime: MediaProjectRuntimeRecord,
@@ -89,10 +87,7 @@ export function createMediaProjectActionRuntime(deps: ProjectDeps) {
     updateAllTools,
   } = deps;
 
-  async function refresh(
-    runtime: MediaProjectRuntimeRecord,
-    requestId: string
-  ) {
+  async function refresh(runtime: MediaProjectRuntimeRecord, requestId: string) {
     await refreshToolStatus(runtime);
     return refreshActiveProjectMetadata(runtime, requestId);
   }

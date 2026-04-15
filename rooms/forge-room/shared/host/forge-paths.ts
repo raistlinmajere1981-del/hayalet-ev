@@ -20,7 +20,10 @@ export function readForgeRoomStorageDir(runtimePaths: unknown): string | null {
   return asNonEmptyString((runtimePaths as ForgeRuntimePathsRecord | null)?.storageDir);
 }
 
-export function createForgeStoragePaths(runtimePaths: unknown, sessionId: string): ForgeStoragePaths {
+export function createForgeStoragePaths(
+  runtimePaths: unknown,
+  sessionId: string
+): ForgeStoragePaths {
   const roomStorageDir = readForgeRoomStorageDir(runtimePaths);
   if (roomStorageDir === null) {
     throw new Error("Forge room storage path is unavailable.");

@@ -18,7 +18,11 @@ function createOption(
   return option;
 }
 
-function createLabeledField(documentRef: Document, labelText: string, control: HTMLElement): HTMLElement {
+function createLabeledField(
+  documentRef: Document,
+  labelText: string,
+  control: HTMLElement
+): HTMLElement {
   const wrapper = documentRef.createElement("label");
   wrapper.className = "forge-field";
   const label = documentRef.createElement("span");
@@ -36,6 +40,8 @@ export function renderApprovedTasksPanel(
   const body = documentRef.createElement("div");
   body.className = "forge-panel__body";
   const topLevelTasks = state.snapshot.approvedTasks.filter((task) => task.level === 1);
+  const lane = documentRef.createElement("div");
+  lane.className = "forge-flow-lane";
 
   if (topLevelTasks.length === 0) {
     const empty = documentRef.createElement("p");
@@ -46,11 +52,45 @@ export function renderApprovedTasksPanel(
     );
     body.append(empty);
   } else {
+    topLevelTasks.forEach((task) => {
+      const item = documentRef.createElement("article");
+      item.className = "forge-flow-item";
+
+      const content = documentRef.createElement("div");
+      content.className = "forge-flow-item__content";
+
+      const title = documentRef.createElement("strong");
+      title.textContent = task.title;
+
+      const summary = documentRef.createElement("p");
+      summary.className = "forge-flow-item__summary";
+      summary.textContent = task.summary;
+
+      const meta = documentRef.createElement("div");
+      meta.className = "forge-flow-item__meta";
+
+      const mode = documentRef.createElement("span");
+      mode.className = "forge-chip";
+      mode.textContent = task.dispatchMode === "compare" ? "compare" : task.seatId ?? "unassigned";
+
+      const role = documentRef.createElement("span");
+      role.className = "forge-chip forge-chip--soft";
+      role.textContent = task.roleId ?? "no role";
+
+      meta.append(mode, role);
+      content.append(title, summary, meta);
+      item.append(content);
+      lane.append(item);
+    });
+    body.append(lane);
+
     const cards = documentRef.createElement("div");
     cards.className = "forge-card-list";
     topLevelTasks.forEach((task) => {
       const taskKey = safeTaskKey(task.id);
-      const taskAssignments = state.snapshot.assignments.filter((entry) => entry.taskId === task.id);
+      const taskAssignments = state.snapshot.assignments.filter(
+        (entry) => entry.taskId === task.id
+      );
       const card = documentRef.createElement("article");
       card.className = "forge-card forge-card--form";
 

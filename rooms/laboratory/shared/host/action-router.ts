@@ -287,12 +287,7 @@ export function createLaboratoryActionRouter(deps: LaboratoryActionRouterDeps) {
           );
           break;
         case "tool-update-all":
-          await mediaActionRuntime.updateTools(
-            api,
-            runtime,
-            requestId,
-            featureStage || "source"
-          );
+          await mediaActionRuntime.updateTools(api, runtime, requestId, featureStage || "source");
           break;
         default:
           throw new Error(`Unsupported media action: ${action}`);

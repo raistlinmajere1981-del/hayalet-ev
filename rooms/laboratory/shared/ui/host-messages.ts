@@ -175,7 +175,8 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
 
   function shouldSyncBootstrapPresentation(snapshot: LaboratorySourceSnapshot): boolean {
     const bootstrap = toBootstrapRecord(snapshot.bootstrap);
-    const bootstrapStatus = toString(bootstrap.status) || (snapshot.ready === true ? "ready" : "running");
+    const bootstrapStatus =
+      toString(bootstrap.status) || (snapshot.ready === true ? "ready" : "running");
 
     if (snapshot.ready !== true) {
       return true;
@@ -245,7 +246,8 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
   ) {
     const totalSteps = Math.max(target.totalSteps, target.steps.length);
     const safeVisibleCount = Math.max(0, Math.min(visibleCount, totalSteps));
-    const lastVisibleStep = safeVisibleCount > 0 ? target.steps[safeVisibleCount - 1] || null : null;
+    const lastVisibleStep =
+      safeVisibleCount > 0 ? target.steps[safeVisibleCount - 1] || null : null;
 
     state.ui.bootstrap = {
       currentStep: safeVisibleCount,
@@ -345,7 +347,9 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
       desiredVisibleCount < state.ui.bootstrap.currentStep;
     const baseVisibleCount = isFreshSequence ? 0 : Math.max(0, state.ui.bootstrap.currentStep || 0);
     const nextVisibleCount =
-      baseVisibleCount === 0 && desiredVisibleCount > 0 ? 1 : Math.min(baseVisibleCount, desiredVisibleCount);
+      baseVisibleCount === 0 && desiredVisibleCount > 0
+        ? 1
+        : Math.min(baseVisibleCount, desiredVisibleCount);
     const nextStatus =
       target.status === "error"
         ? "error"

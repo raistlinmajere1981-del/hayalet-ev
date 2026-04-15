@@ -8,7 +8,7 @@ export function createForgePanel(
   }
 ): HTMLElement {
   const section = documentRef.createElement("section");
-  section.className = "forge-panel";
+  section.className = `forge-panel forge-panel--${options.panelId}`;
   section.dataset["forgePanel"] = options.panelId;
 
   const header = documentRef.createElement("header");

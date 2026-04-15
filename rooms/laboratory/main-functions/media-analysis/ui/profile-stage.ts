@@ -694,7 +694,10 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
         </div>
         ${renderSummaryRows([
           [text(["mediaAnalysis", "profile", "summary", "target"]), getFocusLabel()],
-          [text(["mediaAnalysis", "shared", "status"]), text(["mediaAnalysis", "profile", "status", statusId])],
+          [
+            text(["mediaAnalysis", "shared", "status"]),
+            text(["mediaAnalysis", "profile", "status", statusId]),
+          ],
           [
             text(["mediaAnalysis", "profile", "summary", "model"]),
             selectedModelLabelKey ? textFromKey(selectedModelLabelKey) : "--",

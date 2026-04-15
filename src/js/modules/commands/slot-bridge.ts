@@ -17,6 +17,7 @@ import { resolveComposedProtocolMessage } from "../protocol-message-composer.js"
 import { ProtocolHandler } from "../protocol-handler.js";
 import { RoomCommandRegistry } from "../rooms/room-command-registry.js";
 import { SlotController } from "../slot-controller.js";
+import { TrafficManager } from "../traffic-manager.js";
 import { replaceProtocolTagsWithResolver } from "../../../../shared/protocol-tags.js";
 import { getSlotBridgeCoreEngine, type SlotBridgeCoreEngineRef } from "./slot-bridge-runtime.js";
 
@@ -659,6 +660,12 @@ async function getWebviewManager(): Promise<SlotBridgeWebviewManagerRef> {
 
 type UnifiedMessageTarget = "ai0" | "ai1" | "ai2" | "us1";
 
+type ReplyTrafficState = {
+  loading: string;
+  send: string;
+  thinking: string;
+};
+
 type ResolvedSendAttachment = {
   name: string;
   path: string;
@@ -672,6 +679,165 @@ function readMessageTargets(envelope: SlotBridgeEnvelope): UnifiedMessageTarget[
     .filter((item): item is UnifiedMessageTarget => item !== null);
   const next = direct !== null ? [direct, ...list] : [...list];
   return next.filter((item, index) => next.indexOf(item) === index);
+}
+
+function isAiMessageTarget(target: UnifiedMessageTarget): target is "ai0" | "ai1" | "ai2" {
+  return target === "ai0" || target === "ai1" || target === "ai2";
+}
+
+function readReplyTrafficState(targetSlot: UnifiedMessageTarget): ReplyTrafficState {
+  if (!isAiMessageTarget(targetSlot)) {
+    return {
+      loading: "idle",
+      send: "idle",
+      thinking: "idle",
+    };
+  }
+
+  const state = TrafficManager.getState(targetSlot);
+  return {
+    loading: state?.status.loading ?? "idle",
+    send: state?.status.send ?? "idle",
+    thinking: state?.status.thinking ?? "idle",
+  };
+}
+
+function hasBusyReplyTraffic(targetSlot: UnifiedMessageTarget): boolean {
+  const state = readReplyTrafficState(targetSlot);
+  return state.loading === "busy" || state.send === "busy" || state.thinking === "busy";
+}
+
+type StructuredReplyState = "none" | "partial" | "complete";
+
+function readStructuredReplyBody(text: string): { body: string; structured: boolean } {
+  const trimmed = text.trim();
+  if (trimmed === "") {
+    return { body: "", structured: false };
+  }
+
+  const withoutJsonPrefix = trimmed.replace(/^json\b\s*/i, "").trimStart();
+  if (withoutJsonPrefix.startsWith("```")) {
+    const fencedBodyMatch = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(withoutJsonPrefix);
+    if (fencedBodyMatch === null) {
+      return { body: withoutJsonPrefix, structured: true };
+    }
+    const fencedBody = fencedBodyMatch[1] ?? "";
+    return { body: fencedBody.trim(), structured: true };
+  }
+
+  return {
+    body: withoutJsonPrefix,
+    structured: withoutJsonPrefix.startsWith("{") || withoutJsonPrefix.startsWith("["),
+  };
+}
+
+function findStructuredReplyBoundary(text: string): number | null {
+  const startChar = text.charAt(0);
+  if (startChar !== "{" && startChar !== "[") {
+    return null;
+  }
+
+  let braceDepth = startChar === "{" ? 1 : 0;
+  let bracketDepth = startChar === "[" ? 1 : 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let index = 1; index < text.length; index += 1) {
+    const char = text.charAt(index);
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (inString) {
+      if (char === "\\") {
+        escapeNext = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      braceDepth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      braceDepth -= 1;
+      if (braceDepth < 0) {
+        return null;
+      }
+    } else if (char === "[") {
+      bracketDepth += 1;
+    } else if (char === "]") {
+      bracketDepth -= 1;
+      if (bracketDepth < 0) {
+        return null;
+      }
+    }
+
+    if (braceDepth === 0 && bracketDepth === 0 && inString === false) {
+      return index + 1;
+    }
+  }
+
+  return null;
+}
+
+function readStructuredReplyState(text: string): StructuredReplyState {
+  const { body, structured } = readStructuredReplyBody(text);
+  if (!structured) {
+    return "none";
+  }
+
+  const normalized = body.trim();
+  if (normalized === "") {
+    return "partial";
+  }
+
+  try {
+    JSON.parse(normalized);
+    return "complete";
+  } catch {
+    const boundary = findStructuredReplyBoundary(normalized);
+    return boundary === null ? "partial" : "complete";
+  }
+}
+
+function isSameReplySnapshot(left: SlotBridgeReply | null, right: SlotBridgeReply | null): boolean {
+  if (left === null || right === null) {
+    return false;
+  }
+
+  if (left.messageId !== right.messageId) {
+    return false;
+  }
+
+  if ((left.text ?? "").trim() !== (right.text ?? "").trim()) {
+    return false;
+  }
+
+  const leftAttachments = left.attachments ?? [];
+  const rightAttachments = right.attachments ?? [];
+  if (leftAttachments.length !== rightAttachments.length) {
+    return false;
+  }
+
+  return leftAttachments.every((attachment, index) => {
+    const other = rightAttachments[index];
+    return (
+      other !== undefined &&
+      attachment.name === other.name &&
+      attachment.path === other.path &&
+      attachment.archivePath === other.archivePath
+    );
+  });
 }
 
 function getElectronApi():
@@ -955,8 +1121,15 @@ async function waitForReply(
   targetSlot: UnifiedMessageTarget,
   previousReply: SlotBridgeReply | null
 ): Promise<SlotBridgeResult> {
+  const busyReplyStableFallbackMs = 5000;
+  const idlePartialReplyStallMs = 6000;
   const deadline = Date.now() + readTimeoutMs(envelope.timeoutMs);
-  const pollReply = async (conversationId: string | null): Promise<SlotBridgeResult> => {
+  const pollReply = async (
+    conversationId: string | null,
+    stableCandidate: SlotBridgeReply | null,
+    stablePollCount: number,
+    stableSinceMs: number | null
+  ): Promise<SlotBridgeResult> => {
     if (Date.now() > deadline) {
       return buildErrorResult(envelope, "TARGET_TIMEOUT", "Timed out while waiting for reply");
     }
@@ -971,8 +1144,36 @@ async function waitForReply(
     const pendingGeneratedImages = syncResult.generatedImagePendingCount;
     const hasReadableReply =
       reply !== null && ((reply.text ?? "").trim() !== "" || (reply.attachments?.length ?? 0) > 0);
+    const replyStable = hasReadableReply && isSameReplySnapshot(stableCandidate, reply);
+    const nextStableSinceMs =
+      replyChanged && hasReadableReply && pendingGeneratedImages === 0
+        ? replyStable
+          ? stableSinceMs ?? Date.now()
+          : Date.now()
+        : null;
+    const replyTrafficBusy = hasBusyReplyTraffic(targetSlot);
+    const structuredReplyState =
+      hasReadableReply && reply !== null ? readStructuredReplyState(reply.text ?? "") : "none";
+    const nextStablePollCount =
+      replyChanged && hasReadableReply && pendingGeneratedImages === 0
+        ? replyStable
+          ? stablePollCount + 1
+          : 1
+        : 0;
+    const stableDurationMs =
+      nextStableSinceMs !== null ? Math.max(0, Date.now() - nextStableSinceMs) : 0;
+    const requiredStableDurationMs = replyTrafficBusy === true ? busyReplyStableFallbackMs : 0;
+    const replySettled =
+      structuredReplyState !== "partial" &&
+      nextStablePollCount >= 2 &&
+      stableDurationMs >= requiredStableDurationMs;
 
-    if (replyChanged && hasReadableReply && pendingGeneratedImages === 0) {
+    if (
+      replyChanged &&
+      hasReadableReply &&
+      pendingGeneratedImages === 0 &&
+      replySettled
+    ) {
       return buildResult(envelope, {
         reply,
         session: {
@@ -983,11 +1184,44 @@ async function waitForReply(
       });
     }
 
+    if (
+      replyChanged &&
+      hasReadableReply &&
+      pendingGeneratedImages === 0 &&
+      replyTrafficBusy !== true &&
+      structuredReplyState === "partial" &&
+      nextStablePollCount >= 2 &&
+      stableDurationMs >= idlePartialReplyStallMs
+    ) {
+      return buildResult(envelope, {
+        success: false,
+        code: "PARTIAL_REPLY_STALLED",
+        message: "Reply stopped before completing.",
+        reply,
+        session: {
+          ...(envelope.sessionRef ?? {}),
+          ...(nextConversationId !== null ? { conversationId: nextConversationId } : {}),
+        },
+        artifacts: reply?.attachments ?? [],
+        data: {
+          partialReply: true,
+        },
+      });
+    }
+
+    const nextStableCandidate =
+      replyChanged && hasReadableReply && pendingGeneratedImages === 0 ? reply : stableCandidate;
+
     await sleep(pendingGeneratedImages > 0 ? 900 : 500);
-    return await pollReply(nextConversationId);
+    return await pollReply(
+      nextConversationId,
+      nextStableCandidate,
+      nextStablePollCount,
+      nextStableSinceMs
+    );
   };
 
-  return await pollReply(envelope.sessionRef?.conversationId ?? null);
+  return await pollReply(envelope.sessionRef?.conversationId ?? null, null, 0, null);
 }
 
 function collectReplyForwardAttachments(

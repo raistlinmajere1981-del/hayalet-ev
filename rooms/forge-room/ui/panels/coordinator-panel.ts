@@ -9,6 +9,12 @@ export function renderCoordinatorPanel(
   const body = documentRef.createElement("div");
   body.className = "forge-panel__body forge-coordinator-panel";
 
+  const note = documentRef.createElement("p");
+  note.className = "forge-coordinator-note";
+  note.textContent =
+    state.snapshot.coordinatorState.note ||
+    "Coordinator is monitoring the room-local orchestration state.";
+
   const statusList = documentRef.createElement("dl");
   statusList.className = "forge-stats";
   statusList.innerHTML = `
@@ -21,17 +27,13 @@ export function renderCoordinatorPanel(
     <div><dt>Export</dt><dd>${state.snapshot.coordinatorState.exportReady ? "ready" : "blocked"}</dd></div>
   `;
 
-  const note = documentRef.createElement("p");
-  note.className = "forge-panel__hint";
-  note.textContent = state.snapshot.coordinatorState.note || "Coordinator is monitoring the room-local orchestration state.";
-
   const lastCommand = documentRef.createElement("p");
   lastCommand.className = "forge-panel__hint";
   lastCommand.textContent = state.pendingCommand
     ? `Pending: ${state.pendingCommand}`
     : state.lastCommandResult
-    ? `${state.lastCommandResult.command}: ${state.lastCommandResult.success ? "ok" : state.lastCommandResult.message || "failed"}`
-    : "No room command has been issued yet.";
+      ? `${state.lastCommandResult.command}: ${state.lastCommandResult.success ? "ok" : state.lastCommandResult.message || "failed"}`
+      : "No room command has been issued yet.";
 
   const lastExport = documentRef.createElement("p");
   lastExport.className = "forge-panel__hint";
@@ -58,7 +60,7 @@ export function renderCoordinatorPanel(
     sessionList.append(list);
   }
 
-  body.append(statusList, note, lastCommand, lastExport, sessionList);
+  body.append(note, statusList, lastCommand, lastExport, sessionList);
   return createForgePanel(documentRef, {
     panelId: "coordinator",
     eyebrow: "Local actor",

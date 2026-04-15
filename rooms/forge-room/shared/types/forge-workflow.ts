@@ -1,4 +1,9 @@
-import type { ForgeActorId, ForgePersonaPresetId, ForgeRoleId, ForgeSeatId } from "./forge-identities.js";
+import type {
+  ForgeActorId,
+  ForgePersonaPresetId,
+  ForgeRoleId,
+  ForgeSeatId,
+} from "./forge-identities.js";
 
 export type ForgeTaskStatus = "draft" | "approved" | "assigned" | "answered" | "complete";
 export type ForgeTaskExecutionKind = "task" | "checklist";

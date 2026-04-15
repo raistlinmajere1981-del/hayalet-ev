@@ -324,12 +324,16 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
     return typeof projectSource["storedPath"] === "string" && projectSource["storedPath"].trim() !== "";
   }
   function getCurrentFeatureProcessStatus() {
-    const processRecords = toRecord(toRecord(laboratorySnapshotAccessRuntime.getProjectProcess())["records"]);
+    const processRecords = toRecord(
+      toRecord(laboratorySnapshotAccessRuntime.getProjectProcess())["records"]
+    );
     const processRecord = toRecord(processRecords[getActiveFeatureId()]);
     return typeof processRecord["status"] === "string" ? processRecord["status"].trim() : "";
   }
   function getCurrentFeatureReportStatus() {
-    const reportRecords = toRecord(toRecord(laboratorySnapshotAccessRuntime.getProjectReport())["records"]);
+    const reportRecords = toRecord(
+      toRecord(laboratorySnapshotAccessRuntime.getProjectReport())["records"]
+    );
     const reportRecord = toRecord(reportRecords[getActiveFeatureId()]);
     return typeof reportRecord["status"] === "string" ? reportRecord["status"].trim() : "";
   }
@@ -337,14 +341,18 @@ export function createLaboratoryUiCoreBootstrapRuntime(deps) {
     if (isAudioAnalysisFeature() || isSubtitleAnalysisFeature()) {
       return null;
     }
-    const readiness = toRecord(laboratoryProfileProcessReportAccessorsRuntime.getProfileReadiness());
+    const readiness = toRecord(
+      laboratoryProfileProcessReportAccessorsRuntime.getProfileReadiness()
+    );
     const blockers = Array.isArray(readiness["blockers"]) ? readiness["blockers"].filter(function(entry) {
       return typeof entry === "string" && entry.trim() !== "";
     }) : [];
     if (readiness["stageReady"] !== true) {
       return blockers[0] || text(["workbench", "stageGuards", "profileRequired"]);
     }
-    const preflight = toRecord(laboratoryProfileProcessReportAccessorsRuntime.getProfilePreflight());
+    const preflight = toRecord(
+      laboratoryProfileProcessReportAccessorsRuntime.getProfilePreflight()
+    );
     return preflight["status"] === "ready" ? null : text(["workbench", "stageGuards", "preflightRequired"]);
   }
   navigationRuntimeRefs.getStageGuard = function(stageId) {

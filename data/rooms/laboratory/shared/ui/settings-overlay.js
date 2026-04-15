@@ -130,14 +130,18 @@ export function createLaboratorySettingsUi(deps) {
     return toRecord(getWorkbench());
   }
   function getSelectedModuleIds() {
-    return Array.isArray(getWorkbenchRecord()["selectedModuleIds"]) ? getWorkbenchRecord()["selectedModuleIds"].filter(function(entry) {
-      return typeof entry === "string" && entry.trim() !== "";
-    }) : [];
+    return Array.isArray(getWorkbenchRecord()["selectedModuleIds"]) ? getWorkbenchRecord()["selectedModuleIds"].filter(
+      function(entry) {
+        return typeof entry === "string" && entry.trim() !== "";
+      }
+    ) : [];
   }
   function getAvailableModuleIds() {
-    return Array.isArray(getWorkbenchRecord()["availableModuleIds"]) ? getWorkbenchRecord()["availableModuleIds"].filter(function(entry) {
-      return typeof entry === "string" && entry.trim() !== "";
-    }) : [];
+    return Array.isArray(getWorkbenchRecord()["availableModuleIds"]) ? getWorkbenchRecord()["availableModuleIds"].filter(
+      function(entry) {
+        return typeof entry === "string" && entry.trim() !== "";
+      }
+    ) : [];
   }
   function getActiveModuleId() {
     const activeModuleId = toString(getWorkbenchRecord()["activeModuleId"]).trim();

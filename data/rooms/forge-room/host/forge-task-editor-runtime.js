@@ -129,7 +129,9 @@ export function removeForgeDraftTask(params) {
     acceptanceCriteria: [...currentPayload.acceptanceCriteria],
     tasks: currentPayload.tasks.filter((_, index) => index !== taskIndex).map((task) => ({
       ...task,
-      dependsOnTaskTitles: removedTitle === null ? [...task.dependsOnTaskTitles] : task.dependsOnTaskTitles.filter((dependencyTitle) => dependencyTitle !== removedTitle)
+      dependsOnTaskTitles: removedTitle === null ? [...task.dependsOnTaskTitles] : task.dependsOnTaskTitles.filter(
+        (dependencyTitle) => dependencyTitle !== removedTitle
+      )
     }))
   };
   return materializeDraft(nextPayload);
@@ -142,7 +144,9 @@ export function updateForgeApprovedTask(params) {
       validationMessage: "Approved task id is required."
     };
   }
-  const taskIndex = params.approvedTasks.findIndex((task) => task.id === taskId && task.level === 1);
+  const taskIndex = params.approvedTasks.findIndex(
+    (task) => task.id === taskId && task.level === 1
+  );
   if (taskIndex < 0) {
     return {
       approvedTasks: params.approvedTasks,
@@ -157,7 +161,9 @@ export function updateForgeApprovedTask(params) {
     };
   }
   const seatId = normalizeSeatId(params.payload["seatId"] ?? currentTask.seatId);
-  const dispatchMode = normalizeDispatchMode(params.payload["dispatchMode"] ?? currentTask.dispatchMode);
+  const dispatchMode = normalizeDispatchMode(
+    params.payload["dispatchMode"] ?? currentTask.dispatchMode
+  );
   const roleId = normalizeRoleId(params.payload["roleId"] ?? currentTask.roleId, seatId);
   const compareSeatIds = normalizeCompareSeatIds(
     seatId,
@@ -170,11 +176,15 @@ export function updateForgeApprovedTask(params) {
     roleId,
     dispatchMode,
     compareSeatIds,
-    personaPresetId: normalizePersonaPresetId(params.payload["personaPresetId"] ?? currentTask.personaPresetId),
+    personaPresetId: normalizePersonaPresetId(
+      params.payload["personaPresetId"] ?? currentTask.personaPresetId
+    ),
     status: "approved"
   };
   return {
-    approvedTasks: params.approvedTasks.map((task, index) => index === taskIndex ? nextTask : task),
+    approvedTasks: params.approvedTasks.map(
+      (task, index) => index === taskIndex ? nextTask : task
+    ),
     validationMessage: null
   };
 }

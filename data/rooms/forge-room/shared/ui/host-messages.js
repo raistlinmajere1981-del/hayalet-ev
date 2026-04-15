@@ -1,4 +1,6 @@
-import { createEmptyForgeRoomSnapshot } from "./state.js";
+import {
+  createEmptyForgeRoomSnapshot
+} from "./state.js";
 function toRecord(value) {
   return value !== null && typeof value === "object" && Array.isArray(value) === false ? value : {};
 }

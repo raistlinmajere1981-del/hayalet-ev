@@ -261,7 +261,7 @@
           "windows": "Windows"
         }
       }
-  },
+    },
     "messages": {
       "project-create": "Yeni proje olusturuldu.",
       "project-select": "Projeye devam edildi.",

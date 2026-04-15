@@ -191,6 +191,7 @@ export function buildForgeBreakdownPrompt(goal) {
     `Goal brief: ${goal.brief || "No additional brief provided."}`,
     `Constraints: ${goal.constraints.length > 0 ? goal.constraints.join(" | ") : "None"}`,
     "Requirements:",
+    "- This run is a smoke test; keep acceptance criteria, summaries, and checklist items as short as possible.",
     "- Produce 3 to 7 top-level tasks.",
     "- Use compare mode only when two seats should answer the same task.",
     "- Use checklist only for non-assignable child steps.",

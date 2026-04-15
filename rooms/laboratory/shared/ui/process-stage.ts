@@ -270,7 +270,9 @@ export function createLaboratoryProcessStageUi(deps: LaboratoryProcessStageUiDep
     const inspectorHint =
       (runningJob && typeof runningJob.message === "string" && runningJob.message.trim() !== ""
         ? runningJob.message
-        : null) || processWarnings[0] || "";
+        : null) ||
+      processWarnings[0] ||
+      "";
 
     return `
       <div class="lab-stage-stack lab-stage-stack--inspector">
