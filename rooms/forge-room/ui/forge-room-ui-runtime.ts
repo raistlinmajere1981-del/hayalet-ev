@@ -46,6 +46,7 @@ type ForgeUiFlowModel = {
 type ForgePanelMode = "active" | "monitor" | "locked";
 
 type ForgePanelModeMap = Record<ForgeWorkbenchUiSurface, ForgePanelMode>;
+type ForgeTextParams = Record<string, number | string>;
 
 export function createForgeRoomUiRuntime() {
   const state: ForgeUiState = createInitialForgeUiState();
@@ -82,16 +83,61 @@ export function createForgeRoomUiRuntime() {
       : {};
   }
 
-  function text(path: string[], fallback: string): string {
+  function applyTextParams(template: string, params?: ForgeTextParams): string {
+    if (!params) {
+      return template;
+    }
+    return Object.entries(params).reduce((result, [key, value]) => {
+      return result.replaceAll(`{${key}}`, String(value));
+    }, template);
+  }
+
+  function text(path: string[], fallback: string, params?: ForgeTextParams): string {
     let current: unknown = state.context.translations;
     for (const part of path) {
       const next = toRecord(current)[part];
       if (next === undefined) {
-        return fallback;
+        return applyTextParams(fallback, params);
       }
       current = next;
     }
-    return typeof current === "string" && current.trim() !== "" ? current : fallback;
+    const resolved =
+      typeof current === "string" && current.trim() !== "" ? current : fallback;
+    return applyTextParams(resolved, params);
+  }
+
+  function localizedRoomName(): string {
+    return text(["title"], state.context.roomName);
+  }
+
+  function toFlowKey(flowState: ForgeWorkbenchUiFlowState): string {
+    const keys: Record<ForgeWorkbenchUiFlowState, string> = {
+      IDLE: "idle",
+      GOAL_DEFINED: "goalDefined",
+      SESSION_CREATED: "sessionCreated",
+      DRAFT_READY: "draftReady",
+      APPROVED: "approved",
+      DISPATCHED: "dispatched",
+      RESPONSES_READY: "responsesReady",
+      CONFLICT: "conflict",
+      SYNTHESIS_READY: "synthesisReady",
+      EXPORTED: "exported",
+    };
+    return keys[flowState];
+  }
+
+  function setPanelBadge(panel: HTMLElement, mode: ForgePanelMode): void {
+    const badge =
+      mode === "locked"
+        ? text(["workbench", "badges", "locked"], "Locked")
+        : mode === "monitor"
+          ? text(["workbench", "badges", "monitor"], "Monitor")
+          : "";
+    if (badge === "") {
+      delete panel.dataset["panelBadge"];
+      return;
+    }
+    panel.dataset["panelBadge"] = badge;
   }
 
   function buildRenderSignature(): string {
@@ -181,7 +227,7 @@ export function createForgeRoomUiRuntime() {
   }
 
   function toUiFlowLabel(flowState: ForgeWorkbenchUiFlowState): string {
-    const labels: Record<ForgeWorkbenchUiFlowState, string> = {
+    const fallbacks: Record<ForgeWorkbenchUiFlowState, string> = {
       IDLE: "Idle",
       GOAL_DEFINED: "Goal Defined",
       SESSION_CREATED: "Session Created",
@@ -193,7 +239,7 @@ export function createForgeRoomUiRuntime() {
       SYNTHESIS_READY: "Synthesis Ready",
       EXPORTED: "Exported",
     };
-    return labels[flowState];
+    return text(["workbench", "flow", toFlowKey(flowState)], fallbacks[flowState]);
   }
 
   function deriveDefaultSurface(flowState: ForgeWorkbenchUiFlowState): ForgeWorkbenchUiSurface {
@@ -233,14 +279,14 @@ export function createForgeRoomUiRuntime() {
       case "APPROVED":
         return {
           goal: "active",
-          output: "locked",
+          synthesis: "locked",
           responses: "locked",
         };
       case "DISPATCHED":
       case "CONFLICT":
         return {
           goal: "locked",
-          output: "locked",
+          synthesis: "locked",
           responses: "active",
         };
       case "RESPONSES_READY":
@@ -248,70 +294,87 @@ export function createForgeRoomUiRuntime() {
       case "EXPORTED":
         return {
           goal: "locked",
-          output: "active",
+          synthesis: "active",
           responses: "monitor",
+        };
+      default:
+        return {
+          goal: "active",
+          synthesis: "locked",
+          responses: "locked",
         };
     }
   }
 
   function describeDraftStep(): string | null {
     if (hasGoalSummary() !== true) {
-      return "REQUIRES: SAVED GOAL";
+      return text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: SAVED GOAL");
     }
     return null;
   }
 
   function describeApprovalStep(): string | null {
     if (hasDraftTasks() !== true) {
-      return "REQUIRES: DRAFT TASKS";
+      return text(["workbench", "guards", "requiresDraftTasks"], "REQUIRES: DRAFT TASKS");
     }
     if (state.snapshot.validationMessages.length > 0) {
-      return "BLOCKER: DRAFT ISSUES";
+      return text(["workbench", "guards", "blockerDraftIssues"], "BLOCKER: DRAFT ISSUES");
     }
     return null;
   }
 
   function describeDispatchStep(): string | null {
     if (hasApprovedTasks() !== true) {
-      return "REQUIRES: APPROVED PLAN";
+      return text(["workbench", "guards", "requiresApprovedPlan"], "REQUIRES: APPROVED PLAN");
     }
     if (countQueuedAssignments() === 0) {
-      return "BLOCKER: NO QUEUED WORK";
+      return text(["workbench", "guards", "blockerNoQueuedWork"], "BLOCKER: NO QUEUED WORK");
     }
     return null;
   }
 
   function describeSynthesisStep(): string | null {
     if (state.snapshot.responses.length === 0) {
-      return "REQUIRES: RESPONSES";
+      return text(["workbench", "guards", "requiresResponses"], "REQUIRES: RESPONSES");
     }
     if (countOpenConflicts() > 0) {
-      return countOpenConflicts() === 1 ? "BLOCKER: OPEN DECISION" : "BLOCKER: OPEN DECISIONS";
+      return countOpenConflicts() === 1
+        ? text(["workbench", "guards", "blockerOpenDecision"], "BLOCKER: OPEN DECISION")
+        : text(["workbench", "guards", "blockerOpenDecisions"], "BLOCKER: OPEN DECISIONS");
     }
     return null;
   }
 
   function describeHandoffStep(): string {
     if (state.snapshot.exportSummary.exportReady) {
-      return "STATE: EXPORT READY";
+      return text(["workbench", "guards", "stateExportReady"], "STATE: EXPORT READY");
     }
     const firstRequirement = state.snapshot.exportSummary.missingRequirements[0] ?? "";
     if (firstRequirement === "Define a goal") {
-      return "REQUIRES: SAVED GOAL";
+      return text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: SAVED GOAL");
     }
     if (firstRequirement === "Target room must be repair-room") {
-      return "REQUIRES: TARGET REPAIR ROOM";
+      return text(
+        ["workbench", "guards", "requiresTargetRepairRoom"],
+        "REQUIRES: TARGET REPAIR ROOM"
+      );
     }
     if (firstRequirement === "Select a synthesis") {
-      return "REQUIRES: SELECTED SYNTHESIS";
+      return text(
+        ["workbench", "guards", "requiresSelectedSynthesis"],
+        "REQUIRES: SELECTED SYNTHESIS"
+      );
     }
     if (firstRequirement.startsWith("Resolve ")) {
-      return "BLOCKER: OPEN DECISION";
+      return text(["workbench", "guards", "blockerOpenDecision"], "BLOCKER: OPEN DECISION");
     }
     if (firstRequirement === "Add at least one acceptance criterion") {
-      return "REQUIRES: ACCEPTANCE CRITERIA";
+      return text(
+        ["workbench", "guards", "requiresAcceptanceCriteria"],
+        "REQUIRES: ACCEPTANCE CRITERIA"
+      );
     }
-    return "BLOCKER: HANDOFF CHECK";
+    return text(["workbench", "guards", "blockerHandoffCheck"], "BLOCKER: HANDOFF CHECK");
   }
 
   function latestExportLabel(): string | null {
@@ -320,26 +383,35 @@ export function createForgeRoomUiRuntime() {
   }
 
   function derivePrimaryAction(flow: ForgeUiFlowModel): ForgePrimaryAction {
-    const nextAction = (() => {
+    const nextAction: ForgePrimaryAction = (() => {
       switch (flow.state) {
         case "IDLE":
           return {
-            label: "Save goal",
-            description: "CONTROL LOCKED UNTIL GOAL IS SAVED.",
+            label: text(["workbench", "primaryAction", "saveGoal"], "Save goal"),
+            description: text(
+              ["workbench", "primaryAction", "saveGoalLocked"],
+              "CONTROL LOCKED UNTIL GOAL IS SAVED."
+            ),
             mode: "command" as const,
             commandAction: "save-goal",
           };
         case "SESSION_CREATED":
           return {
-            label: "Save goal",
-            description: "NEXT ACTION REQUIRED: SAVE GOAL.",
+            label: text(["workbench", "primaryAction", "saveGoal"], "Save goal"),
+            description: text(
+              ["workbench", "primaryAction", "saveGoalRequired"],
+              "NEXT ACTION REQUIRED: SAVE GOAL."
+            ),
             mode: "command" as const,
             commandAction: "save-goal",
           };
         case "GOAL_DEFINED":
           return {
-            label: "Generate draft",
-            description: "NEXT ACTION REQUIRED: GENERATE DRAFT.",
+            label: text(["workbench", "primaryAction", "generateDraft"], "Generate draft"),
+            description: text(
+              ["workbench", "primaryAction", "generateDraftRequired"],
+              "NEXT ACTION REQUIRED: GENERATE DRAFT."
+            ),
             mode: "command" as const,
             commandAction: "generate-draft",
           };
@@ -347,74 +419,118 @@ export function createForgeRoomUiRuntime() {
           const approvalStep = describeApprovalStep();
           return approvalStep
             ? {
-                label: "Finish draft",
+                label: text(["workbench", "primaryAction", "finishDraft"], "Finish draft"),
                 description: approvalStep,
                 mode: "guide" as const,
                 guidedSurface: "goal",
               }
             : {
-                label: "Approve draft",
-                description: "NEXT ACTION REQUIRED: APPROVE DRAFT.",
+                label: text(["workbench", "primaryAction", "approveDraft"], "Approve draft"),
+                description: text(
+                  ["workbench", "primaryAction", "approveDraftRequired"],
+                  "NEXT ACTION REQUIRED: APPROVE DRAFT."
+                ),
                 mode: "command" as const,
                 commandAction: "approve-draft",
               };
         }
         case "APPROVED":
           return {
-            label: "Dispatch assignments",
-            description: "NEXT ACTION REQUIRED: DISPATCH ASSIGNMENTS.",
+            label: text(
+              ["workbench", "primaryAction", "dispatchAssignments"],
+              "Dispatch assignments"
+            ),
+            description: text(
+              ["workbench", "primaryAction", "dispatchAssignmentsRequired"],
+              "NEXT ACTION REQUIRED: DISPATCH ASSIGNMENTS."
+            ),
             mode: "command" as const,
             commandAction: "dispatch-assignments",
           };
         case "DISPATCHED":
           return {
-            label: "Review response lane",
-            description: "STATE HOLD: WAIT FOR RESPONSES.",
+            label: text(
+              ["workbench", "primaryAction", "reviewResponseLane"],
+              "Review response lane"
+            ),
+            description: text(
+              ["workbench", "primaryAction", "waitForResponses"],
+              "STATE HOLD: WAIT FOR RESPONSES."
+            ),
             mode: "guide" as const,
             guidedSurface: "responses",
           };
         case "RESPONSES_READY":
           return {
-            label: "Generate synthesis",
-            description: "NEXT ACTION REQUIRED: GENERATE SYNTHESIS.",
+            label: text(
+              ["workbench", "primaryAction", "generateSynthesis"],
+              "Generate synthesis"
+            ),
+            description: text(
+              ["workbench", "primaryAction", "generateSynthesisRequired"],
+              "NEXT ACTION REQUIRED: GENERATE SYNTHESIS."
+            ),
             mode: "command" as const,
             commandAction: "generate-synthesis",
           };
         case "CONFLICT":
           return {
-            label: "Resolve decision",
-            description: "RUN BLOCKED: RESOLVE DECISION.",
+            label: text(["workbench", "primaryAction", "resolveDecision"], "Resolve decision"),
+            description: text(
+              ["workbench", "primaryAction", "resolveDecisionBlocked"],
+              "RUN BLOCKED: RESOLVE DECISION."
+            ),
             mode: "guide" as const,
             guidedSurface: "responses",
           };
         case "SYNTHESIS_READY":
           if (state.snapshot.selectedSynthesisId === null) {
             return {
-              label: "Choose synthesis",
-              description: "EXPORT LOCKED: SELECT SYNTHESIS.",
+              label: text(["workbench", "primaryAction", "chooseSynthesis"], "Choose synthesis"),
+              description: text(
+                ["workbench", "primaryAction", "chooseSynthesisRequired"],
+                "EXPORT LOCKED: SELECT SYNTHESIS."
+              ),
               mode: "guide" as const,
               guidedSurface: "synthesis",
             };
           }
           return state.snapshot.exportSummary.exportReady
             ? {
-                label: "Export handoff",
-                description: "FINAL STEP READY: EXPORT HANDOFF.",
+                label: text(["workbench", "primaryAction", "exportHandoff"], "Export handoff"),
+                description: text(
+                  ["workbench", "primaryAction", "exportHandoffReady"],
+                  "FINAL STEP READY: EXPORT HANDOFF."
+                ),
                 mode: "command" as const,
                 commandAction: "export-handoff",
               }
             : {
-                label: "Check handoff",
+                label: text(["workbench", "primaryAction", "checkHandoff"], "Check handoff"),
                 description: describeHandoffStep(),
                 mode: "command" as const,
                 commandAction: "handoff-check",
               };
         case "EXPORTED":
           return {
-            label: "Review export",
-            description: `EXPORT COMPLETE: ${latestExportLabel() ?? "HANDOFF PACKAGE"}.`,
+            label: text(["workbench", "primaryAction", "reviewExport"], "Review export"),
+            description: text(
+              ["workbench", "primaryAction", "exportComplete"],
+              "EXPORT COMPLETE: {label}.",
+              { label: latestExportLabel() ?? "HANDOFF PACKAGE" }
+            ),
             mode: "guide" as const,
             guidedSurface: "synthesis",
+          };
+        default:
+          return {
+            label: text(["workbench", "primaryAction", "saveGoal"], "Save goal"),
+            description: text(
+              ["workbench", "primaryAction", "saveGoalLocked"],
+              "CONTROL LOCKED UNTIL GOAL IS SAVED."
+            ),
+            mode: "command" as const,
+            commandAction: "save-goal",
           };
       }
     })();
@@ -422,8 +538,11 @@ export function createForgeRoomUiRuntime() {
     if (state.pendingCommand !== null) {
       return {
         ...nextAction,
-        label: "Working on this step",
-        description: "SYSTEM LOCKED UNTIL STEP COMPLETES.",
+        label: text(["workbench", "primaryAction", "working"], "Working on this step"),
+        description: text(
+          ["workbench", "primaryAction", "workingLocked"],
+          "SYSTEM LOCKED UNTIL STEP COMPLETES."
+        ),
         disabled: true,
       };
     }
@@ -437,22 +556,42 @@ export function createForgeRoomUiRuntime() {
 
     const identity = createElement("div", "forge-statusbar__identity");
     identity.append(
-      createElement("p", "forge-statusbar__room", state.context.roomName),
+      createElement("p", "forge-statusbar__room", localizedRoomName()),
       createElement(
         "strong",
         "forge-statusbar__goal",
-        state.snapshot.currentGoal?.summary || "Define the goal to start this run."
+        state.snapshot.currentGoal?.summary ||
+          text(
+            ["workbench", "statusBar", "startGoal"],
+            "Define the goal to start this run."
+          )
       ),
-      createElement("p", "forge-statusbar__stage", `State ${flow.label}`)
+      createElement(
+        "p",
+        "forge-statusbar__stage",
+        text(["workbench", "statusBar", "stage"], "State {label}", { label: flow.label })
+      )
     );
 
     const stats = createElement("div", "forge-statusbar__stats");
     [
-      `QUEUE ${String(countQueuedAssignments())}`,
-      `ANS ${String(state.snapshot.responses.length)}`,
-      `CF ${String(countOpenConflicts())}`,
-      `SYN ${hasSynthesisArtifacts() ? "OPEN" : "LOCKED"}`,
-      `EXP ${hasValidExport() ? "SENT" : state.snapshot.exportSummary.exportReady ? "READY" : "LOCKED"}`,
+      text(["workbench", "statusBar", "stats", "queue"], "QUEUE {count}", {
+        count: countQueuedAssignments(),
+      }),
+      text(["workbench", "statusBar", "stats", "answers"], "ANS {count}", {
+        count: state.snapshot.responses.length,
+      }),
+      text(["workbench", "statusBar", "stats", "decisions"], "CF {count}", {
+        count: countOpenConflicts(),
+      }),
+      hasSynthesisArtifacts()
+        ? text(["workbench", "statusBar", "stats", "synthesisOpen"], "SYN OPEN")
+        : text(["workbench", "statusBar", "stats", "synthesisLocked"], "SYN LOCKED"),
+      hasValidExport()
+        ? text(["workbench", "statusBar", "stats", "exportSent"], "EXP SENT")
+        : state.snapshot.exportSummary.exportReady
+          ? text(["workbench", "statusBar", "stats", "exportReady"], "EXP READY")
+          : text(["workbench", "statusBar", "stats", "exportLocked"], "EXP LOCKED"),
     ].forEach((value, index) => {
       const chip = createElement(
         "span",
@@ -469,7 +608,7 @@ export function createForgeRoomUiRuntime() {
       "button",
       "forge-button forge-button--primary forge-statusbar__action",
       primaryAction.label
-    ) as HTMLButtonElement;
+    );
     actionButton.disabled = primaryAction.disabled === true;
     if (primaryAction.mode === "command" && primaryAction.commandAction) {
       actionButton.dataset["forgeAction"] = primaryAction.commandAction;
@@ -478,7 +617,11 @@ export function createForgeRoomUiRuntime() {
       actionButton.dataset["forgeGuideSurface"] = primaryAction.guidedSurface;
     }
     guidance.append(
-      createElement("p", "forge-statusbar__label", "Required action"),
+      createElement(
+        "p",
+        "forge-statusbar__label",
+        text(["workbench", "statusBar", "requiredAction"], "Required action")
+      ),
       actionButton,
       createElement("p", "forge-statusbar__note", primaryAction.description)
     );
@@ -501,6 +644,14 @@ export function createForgeRoomUiRuntime() {
     if (mount === null) {
       return;
     }
+    documentRef.documentElement.lang =
+      typeof state.context.locale === "string" && state.context.locale.trim() !== ""
+        ? state.context.locale
+        : "en";
+    documentRef.title = `${localizedRoomName()} - ${text(
+      ["workbench", "title"],
+      "Forge Workbench"
+    )}`;
     const renderSignature = buildRenderSignature();
     if (renderSignature === lastRenderSignature && mount.childElementCount > 0) {
       return;
@@ -514,28 +665,37 @@ export function createForgeRoomUiRuntime() {
 
     const workbench = createElement("section", "forge-workbench");
     const guidedSurface = viewState.guidedSurface ?? flow.surface;
+    const flowLabel = toUiFlowLabel(flow.state);
 
     const planColumn = createElement("section", "forge-column forge-column--plan");
     planColumn.dataset["panelMode"] = panelModes.goal;
     if (guidedSurface === "goal" && panelModes.goal !== "locked") {
       planColumn.dataset["guided"] = "true";
     }
+    const goalPanel = renderGoalInputPanel(documentRef, state, text, {
+      draftBlockedReason: describeDraftStep(),
+      flowLabel,
+      flowState: flow.state,
+    });
+    setPanelBadge(goalPanel, panelModes.goal);
+    const planSecondaryPanel = hasApprovedTasks()
+      ? renderApprovedTasksPanel(documentRef, state, text, {
+          dispatchBlockedReason: describeDispatchStep(),
+          flowState: flow.state,
+        })
+      : renderDraftBreakdownPanel(documentRef, state, text, {
+          approvalBlockedReason: describeApprovalStep(),
+          flowState: flow.state,
+          rawEditorOpen: viewState.advancedDraftOpen,
+        });
+    setPanelBadge(planSecondaryPanel, panelModes.goal);
     planColumn.append(
-      renderColumnHeading("Left", "Plan"),
-      renderGoalInputPanel(documentRef, state, text, {
-        draftBlockedReason: describeDraftStep(),
-        flowState: flow.state,
-      }),
-      hasApprovedTasks()
-        ? renderApprovedTasksPanel(documentRef, state, text, {
-            dispatchBlockedReason: describeDispatchStep(),
-            flowState: flow.state,
-          })
-        : renderDraftBreakdownPanel(documentRef, state, text, {
-            approvalBlockedReason: describeApprovalStep(),
-            flowState: flow.state,
-            rawEditorOpen: viewState.advancedDraftOpen,
-          })
+      renderColumnHeading(
+        text(["workbench", "columns", "planEyebrow"], "Left"),
+        text(["workbench", "columns", "planTitle"], "Plan")
+      ),
+      goalPanel,
+      planSecondaryPanel
     );
 
     const responseColumn = createElement("section", "forge-column forge-column--responses");
@@ -543,12 +703,17 @@ export function createForgeRoomUiRuntime() {
     if (guidedSurface === "responses" && panelModes.responses !== "locked") {
       responseColumn.dataset["guided"] = "true";
     }
+    const responsesPanel = renderResponsesPanel(documentRef, state, text, {
+      expandedResponseIds: viewState.expandedResponseIds,
+      flowState: flow.state,
+    });
+    setPanelBadge(responsesPanel, panelModes.responses);
     responseColumn.append(
-      renderColumnHeading("Center", "Responses / Decision"),
-      renderResponsesPanel(documentRef, state, text, {
-        expandedResponseIds: viewState.expandedResponseIds,
-        flowState: flow.state,
-      })
+      renderColumnHeading(
+        text(["workbench", "columns", "responsesEyebrow"], "Center"),
+        text(["workbench", "columns", "responsesTitle"], "Responses / Decision")
+      ),
+      responsesPanel
     );
 
     const outputColumn = createElement("section", "forge-column forge-column--output");
@@ -556,27 +721,33 @@ export function createForgeRoomUiRuntime() {
     if (guidedSurface === "synthesis" && panelModes.synthesis !== "locked") {
       outputColumn.dataset["guided"] = "true";
     }
+    const synthesisPanel = renderSynthesisPanel(documentRef, state, text, {
+      expandedSynthesisIds: viewState.expandedSynthesisIds,
+      exportBlockedReason: describeHandoffStep(),
+      flowState: flow.state,
+      synthesisBlockedReason: describeSynthesisStep(),
+    });
+    setPanelBadge(synthesisPanel, panelModes.synthesis);
     outputColumn.append(
-      renderColumnHeading("Right", "Output"),
-      renderSynthesisPanel(documentRef, state, text, {
-        expandedSynthesisIds: viewState.expandedSynthesisIds,
-        exportBlockedReason: describeHandoffStep(),
-        flowState: flow.state,
-        synthesisBlockedReason: describeSynthesisStep(),
-      })
+      renderColumnHeading(
+        text(["workbench", "columns", "outputEyebrow"], "Right"),
+        text(["workbench", "columns", "outputTitle"], "Output")
+      ),
+      synthesisPanel
     );
 
     workbench.append(planColumn, responseColumn, outputColumn);
     shell.append(
       renderStatusBar(flow),
       workbench,
-      renderCoordinatorPanel(documentRef, state, {
+      renderCoordinatorPanel(documentRef, state, text, {
+        flowLabel,
         flowState: flow.state,
         handoffLabel: hasValidExport()
-          ? "sent"
+          ? text(["workbench", "coordinator", "handoffStatuses", "sent"], "sent")
           : state.snapshot.exportSummary.exportReady
-            ? "ready"
-            : "locked",
+            ? text(["workbench", "coordinator", "handoffStatuses", "ready"], "ready")
+            : text(["workbench", "coordinator", "handoffStatuses", "locked"], "locked"),
         note: derivePrimaryAction(flow).description,
       })
     );
@@ -708,8 +879,11 @@ export function createForgeRoomUiRuntime() {
       ?.addEventListener("click", () => {
         issueCommand("ForgeRoomUpsertDraftTask", () =>
           requestRuntime.upsertDraftTask({
-            title: "New task",
-            summary: "Describe the next top-level Forge task.",
+            title: text(["workbench", "defaults", "newTaskTitle"], "New task"),
+            summary: text(
+              ["workbench", "defaults", "newTaskSummary"],
+              "Describe the next top-level Forge task."
+            ),
             seatId: "ai1",
             roleId: "architect",
             dispatchMode: "single-owner",

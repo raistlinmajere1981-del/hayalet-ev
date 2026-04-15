@@ -8,7 +8,9 @@ export function renderConflictSummaryPanel(
 ): HTMLElement {
   const body = documentRef.createElement("div");
   body.className = "forge-panel__body";
-  const responseIndex = new Map(state.snapshot.responses.map((response) => [response.id, response]));
+  const responseIndex = new Map(
+    state.snapshot.responses.map((response) => [response.id, response])
+  );
   const taskCatalog = new Map(
     [...state.snapshot.approvedTasks, ...state.snapshot.draftTasks]
       .filter((task) => task.level === 1)

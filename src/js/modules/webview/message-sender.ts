@@ -493,7 +493,12 @@ class MessageSenderClass {
   }
 
   private _didButtonDisableAfterSend(baseline: SendButtonState, current: SendButtonState): boolean {
-    return baseline.found === true && baseline.disabled === false && current.found === true && current.disabled === true;
+    return (
+      baseline.found === true &&
+      baseline.disabled === false &&
+      current.found === true &&
+      current.disabled === true
+    );
   }
 
   private _hasSendAck(provider: string, baseline: SendAckState): boolean {
@@ -502,6 +507,48 @@ class MessageSenderClass {
       (current.thinking === "busy" && baseline.thinking !== "busy") ||
       (current.send === "busy" && baseline.send !== "busy") ||
       (current.loading === "busy" && baseline.loading !== "busy")
+    );
+  }
+
+  private async _sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async _pollSendAck(
+    webview: MessageSenderWebview,
+    provider: string,
+    providerId: string,
+    baseline: SendAckState,
+    baselineButton: SendButtonState,
+    deadline: number,
+    intervalMs: number
+  ): Promise<boolean> {
+    if (Date.now() > deadline) {
+      const finalButtonState = await this._readSendButtonState(webview, providerId);
+      return (
+        this._hasSendAck(provider, baseline) ||
+        this._didButtonDisableAfterSend(baselineButton, finalButtonState)
+      );
+    }
+
+    if (this._hasSendAck(provider, baseline)) {
+      return true;
+    }
+
+    const currentButton = await this._readSendButtonState(webview, providerId);
+    if (this._didButtonDisableAfterSend(baselineButton, currentButton)) {
+      return true;
+    }
+
+    await this._sleep(intervalMs);
+    return await this._pollSendAck(
+      webview,
+      provider,
+      providerId,
+      baseline,
+      baselineButton,
+      deadline,
+      intervalMs
     );
   }
 
@@ -514,21 +561,49 @@ class MessageSenderClass {
     timeoutMs = 4500,
     intervalMs = 150
   ): Promise<boolean> {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() <= deadline) {
-      if (this._hasSendAck(provider, baseline)) {
-        return true;
-      }
-      const currentButton = await this._readSendButtonState(webview, providerId);
-      if (this._didButtonDisableAfterSend(baselineButton, currentButton)) {
-        return true;
-      }
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-    }
-    const finalButtonState = await this._readSendButtonState(webview, providerId);
-    return (
-      this._hasSendAck(provider, baseline) || this._didButtonDisableAfterSend(baselineButton, finalButtonState)
+    return await this._pollSendAck(
+      webview,
+      provider,
+      providerId,
+      baseline,
+      baselineButton,
+      Date.now() + timeoutMs,
+      intervalMs
     );
+  }
+
+  private async _triggerSendWithAckAttempt(
+    webview: MessageSenderWebview,
+    provider: string,
+    providerId: string,
+    attempt: number,
+    maxAttempts: number
+  ): Promise<void> {
+    const baseline = this._readSendAckState(provider);
+    const baselineButton = await this._readSendButtonState(webview, providerId);
+    await this._triggerSendButton(webview, provider, providerId);
+    if (await this._waitForSendAck(webview, provider, providerId, baseline, baselineButton)) {
+      return;
+    }
+
+    if (attempt >= maxAttempts - 1) {
+      throw new Error(messageSenderT("sendTriggerFailed"));
+    }
+
+    const sendReady = await TrafficManager.waitForSendEnabled(provider, 4000);
+    if (sendReady !== true) {
+      const currentButton = await this._readSendButtonState(webview, providerId);
+      if (
+        this._hasSendAck(provider, baseline) ||
+        this._didButtonDisableAfterSend(baselineButton, currentButton)
+      ) {
+        return;
+      }
+      throw new Error(messageSenderT("sendTriggerFailed"));
+    }
+
+    await this._triggerSendWithAckAttempt(webview, provider, providerId, attempt + 1, maxAttempts);
+    return;
   }
 
   private async _triggerSendWithAck(
@@ -537,27 +612,7 @@ class MessageSenderClass {
     providerId: string
   ): Promise<void> {
     const maxAttempts = 4;
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const baseline = this._readSendAckState(provider);
-      const baselineButton = await this._readSendButtonState(webview, providerId);
-      await this._triggerSendButton(webview, provider, providerId);
-      if (await this._waitForSendAck(webview, provider, providerId, baseline, baselineButton)) {
-        return;
-      }
-
-      if (attempt < maxAttempts - 1) {
-        const sendReady = await TrafficManager.waitForSendEnabled(provider, 4000);
-        if (sendReady !== true) {
-          const currentButton = await this._readSendButtonState(webview, providerId);
-          if (this._hasSendAck(provider, baseline) || this._didButtonDisableAfterSend(baselineButton, currentButton)) {
-            return;
-          }
-          break;
-        }
-      }
-    }
-
-    throw new Error(messageSenderT("sendTriggerFailed"));
+    await this._triggerSendWithAckAttempt(webview, provider, providerId, 0, maxAttempts);
   }
 
   async _triggerSendButton(

@@ -979,32 +979,35 @@ export default function createForgeRoomHostRuntime() {
           };
         }
 
-        const nextConflicts = state.conflicts.map((conflict) =>
-          conflict.id === conflictId
-            ? {
-                ...conflict,
-                status: requestedStatus,
-                preferredResponseId: nextPreferredResponseId,
-                resolutionNote:
-                  resolutionNote ?? (requestedStatus === "open" ? null : conflict.resolutionNote),
-              }
-            : conflict
+        const nextConflicts: ForgeConflict[] = state.conflicts.map(
+          (conflict): ForgeConflict =>
+            conflict.id === conflictId
+              ? {
+                  ...conflict,
+                  status: requestedStatus,
+                  preferredResponseId: nextPreferredResponseId,
+                  resolutionNote:
+                    resolutionNote ?? (requestedStatus === "open" ? null : conflict.resolutionNote),
+                }
+              : conflict
         );
-        const nextResponses = state.responses.map((response) => {
-          if (currentConflict.responseIds.includes(response.id) !== true) {
-            return response;
-          }
-          if (requestedStatus === "resolved") {
+        const nextResponses: ForgeAgentResponse[] = state.responses.map(
+          (response): ForgeAgentResponse => {
+            if (currentConflict.responseIds.includes(response.id) !== true) {
+              return response;
+            }
+            if (requestedStatus === "resolved") {
+              return {
+                ...response,
+                status: response.id === nextPreferredResponseId ? "selected" : "rejected",
+              };
+            }
             return {
               ...response,
-              status: response.id === nextPreferredResponseId ? "selected" : "rejected",
+              status: "captured",
             };
           }
-          return {
-            ...response,
-            status: "captured",
-          };
-        });
+        );
         const openConflictCount = nextConflicts.filter(
           (conflict) => conflict.status === "open"
         ).length;

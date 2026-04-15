@@ -295,7 +295,9 @@ export class SQLiteArchiveManager {
         dom_id: string | null;
       }>;
       const existingMessageKeys = new Set(
-        existingRows.map((row) => createMessageDedupeKey(row.dom_index, row.content_hash, row.dom_id))
+        existingRows.map((row) =>
+          createMessageDedupeKey(row.dom_index, row.content_hash, row.dom_id)
+        )
       );
       const existingMessagesByDomId = new Map(
         existingRows.flatMap((row) => {
@@ -331,7 +333,7 @@ export class SQLiteArchiveManager {
             msg.author ?? (msg.role === "user" ? fallbackUserAuthor : fallbackAssistantAuthor);
 
           const existingMessage =
-            normalizedDomId !== "" ? existingMessagesByDomId.get(normalizedDomId) ?? null : null;
+            normalizedDomId !== "" ? (existingMessagesByDomId.get(normalizedDomId) ?? null) : null;
           const existingContentHash = (existingMessage?.content_hash ?? "").trim();
           const existingContent = existingMessage?.content ?? "";
           const existingDomIndex = existingMessage?.dom_index ?? null;
@@ -341,7 +343,14 @@ export class SQLiteArchiveManager {
               existingContent !== msg.text ||
               existingDomIndex !== domIndex;
             if (shouldRefreshExistingMessage) {
-              refreshStmt.run(msg.role, author, msg.text, domIndex, contentHash, existingMessage.id);
+              refreshStmt.run(
+                msg.role,
+                author,
+                msg.text,
+                domIndex,
+                contentHash,
+                existingMessage.id
+              );
               existingMessage.content_hash = contentHash;
               existingMessage.content = msg.text;
               existingMessage.dom_index = domIndex;

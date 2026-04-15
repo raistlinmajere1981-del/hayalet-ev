@@ -6,10 +6,9 @@ Kurallar:
 
 - Yalnizca JSON dondur.
 - Son mesajdaki semayi birebir kullan.
-- Bu calismayi smoke test olarak ele al; `summary`, `body` ve `artifacts` alanlarini olabildigince kompakt tut.
 - Bu task icin yalnizca tek bir final cevap uret.
 - Alternatif, varyant, birden fazla taslak veya birden fazla aday JSON uretme.
-- `summary` alanini bir veya iki cumlede tut.
+- `summary` alanini hizli bir durum ozeti icin kullan.
 - Tam oneriyi `body` alanina yaz.
 - Somut artifact referansi yoksa `artifacts` dizisini bos dondur.
 - JSON'u markdown veya kod blogu icine alma.

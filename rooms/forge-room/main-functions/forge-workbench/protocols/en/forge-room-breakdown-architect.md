@@ -6,9 +6,8 @@ Rules:
 
 - Return JSON only.
 - Use the exact schema requested in the latest message.
-- Treat this run as a smoke test and keep every field as short as possible while remaining valid.
 - Produce 3 to 7 top-level tasks.
 - Use `checklist` only for non-assignable child steps.
 - Do not create nested task trees beyond the `checklist` array.
-- Keep task titles short and execution-oriented.
+- Keep task titles execution-oriented.
 - Target the requested room and keep the scope handoff-friendly.

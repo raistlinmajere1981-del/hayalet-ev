@@ -208,6 +208,7 @@ body::before {
 
 .forge-column[data-panel-mode="locked"] .forge-panel::before,
 .forge-column[data-panel-mode="monitor"] .forge-panel::before {
+  content: attr(data-panel-badge);
   position: absolute;
   top: 10px;
   right: 10px;
@@ -220,14 +221,12 @@ body::before {
 }
 
 .forge-column[data-panel-mode="locked"] .forge-panel::before {
-  content: "Locked";
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
   color: rgba(255, 255, 255, 0.58);
 }
 
 .forge-column[data-panel-mode="monitor"] .forge-panel::before {
-  content: "Monitor";
   border: 1px solid rgba(243, 170, 79, 0.18);
   background: rgba(243, 170, 79, 0.08);
   color: rgba(255, 211, 154, 0.86);

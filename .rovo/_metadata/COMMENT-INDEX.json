@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-15T03:07:55.022Z",
+  "generatedAt": "2026-04-15T17:33:44.070Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -18,11 +18,11 @@
   "stats": {
     "filesScanned": 480,
     "filesWithComments": 83,
-    "commentsIndexed": 207,
-    "fileLevelComments": 153,
+    "commentsIndexed": 208,
+    "fileLevelComments": 154,
     "symbolLevelComments": 54,
     "prefixCounts": {
-      "none": 41,
+      "none": 42,
       "AI": 1,
       "NOTE": 163,
       "WARNING": 2,
@@ -2181,8 +2181,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 147,
-          "endLine": 147,
+          "startLine": 158,
+          "endLine": 158,
           "text": "NOTE: Inject provider config only when missing.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2192,12 +2192,12 @@
     },
     {
       "path": "src/js/modules/webview/providers/chatgpt/scraper.ts",
-      "totalComments": 2,
+      "totalComments": 3,
       "byKind": {
-        "note": 2
+        "note": 3
       },
       "byPrefix": {
-        "none": 1,
+        "none": 2,
         "AI": 0,
         "NOTE": 1,
         "WARNING": 0,
@@ -2207,18 +2207,27 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 125,
-          "endLine": 125,
-          "text": "NOTE: Prefer explicit message nodes over generic turn wrappers so streaming assistant updates",
+          "startLine": 262,
+          "endLine": 262,
+          "text": "NOTE: ChatGPT can expose user turns with explicit role markers while assistant turns live",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
         },
         {
           "kind": "note",
-          "startLine": 126,
-          "endLine": 126,
-          "text": "keep the stable message id instead of producing partial/final duplicates.",
+          "startLine": 263,
+          "endLine": 263,
+          "text": "only on the surrounding conversation wrapper/article. Keep both sources so assistant replies",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 264,
+          "endLine": 264,
+          "text": "still get scraped when role attributes disappear during UI changes.",
           "prefix": null,
           "scopeType": "file",
           "scopeName": null

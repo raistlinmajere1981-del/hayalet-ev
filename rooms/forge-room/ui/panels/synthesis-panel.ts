@@ -73,12 +73,25 @@ function createGuideCard(
   return card;
 }
 
+function toCountLabel(
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string,
+  pathPrefix: string[],
+  count: number,
+  oneFallback: string,
+  otherFallback: string
+): string {
+  return count === 1
+    ? text([...pathPrefix, "One"], oneFallback, { count })
+    : text([...pathPrefix, "Other"], otherFallback, { count });
+}
+
 function describeOutputState(
   flowState: ForgeWorkbenchUiFlowState,
   options: {
     exportBlockedReason: string | null;
     synthesisBlockedReason: string | null;
-  }
+  },
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string
 ): {
   summary: string;
   title: string;
@@ -92,63 +105,92 @@ function describeOutputState(
     case "APPROVED":
     case "DISPATCHED":
       return {
-        title: "OUTPUT GATE LOCKED",
-        summary: "REQUIRES: RESPONSES",
+        title: text(["workbench", "synthesisPanel", "guide", "locked", "title"], "OUTPUT GATE LOCKED"),
+        summary: text(["workbench", "synthesisPanel", "guide", "locked", "summary"], "REQUIRES: RESPONSES"),
         tone: "locked",
       };
     case "RESPONSES_READY":
       return {
-        title: "OUTPUT GATE READY",
-        summary: options.synthesisBlockedReason ?? "NEXT ACTION: GENERATE SYNTHESIS",
+        title: text(["workbench", "synthesisPanel", "guide", "ready", "title"], "OUTPUT GATE READY"),
+        summary:
+          options.synthesisBlockedReason ??
+          text(
+            ["workbench", "synthesisPanel", "guide", "ready", "summary"],
+            "NEXT ACTION: GENERATE SYNTHESIS"
+          ),
         tone: "active",
       };
     case "CONFLICT":
       return {
-        title: "OUTPUT GATE BLOCKED",
-        summary: "REQUIRES: CONFLICT RESOLUTION",
+        title: text(["workbench", "synthesisPanel", "guide", "blocked", "title"], "OUTPUT GATE BLOCKED"),
+        summary: text(
+          ["workbench", "synthesisPanel", "guide", "blocked", "summary"],
+          "REQUIRES: CONFLICT RESOLUTION"
+        ),
         tone: "blocked",
       };
     case "SYNTHESIS_READY":
       return {
-        title: "OUTPUT GATE OPEN",
-        summary: options.exportBlockedReason ?? "NEXT ACTION: SELECT SYNTHESIS",
+        title: text(["workbench", "synthesisPanel", "guide", "open", "title"], "OUTPUT GATE OPEN"),
+        summary:
+          options.exportBlockedReason ??
+          text(
+            ["workbench", "synthesisPanel", "guide", "open", "summary"],
+            "NEXT ACTION: SELECT SYNTHESIS"
+          ),
         tone: "active",
       };
     case "EXPORTED":
       return {
-        title: "OUTPUT GATE ARCHIVE",
-        summary: "STATE: EXPORT COMPLETE",
+        title: text(["workbench", "synthesisPanel", "guide", "archive", "title"], "OUTPUT GATE ARCHIVE"),
+        summary: text(
+          ["workbench", "synthesisPanel", "guide", "archive", "summary"],
+          "STATE: EXPORT COMPLETE"
+        ),
         tone: "monitor",
+      };
+    default:
+      return {
+        title: text(["workbench", "synthesisPanel", "guide", "locked", "title"], "OUTPUT GATE LOCKED"),
+        summary: text(["workbench", "synthesisPanel", "guide", "locked", "summary"], "REQUIRES: RESPONSES"),
+        tone: "locked",
       };
   }
 }
 
 function toOutputStatusLabel(
   exportSummary: ForgeUiState["snapshot"]["exportSummary"],
-  flowState: ForgeWorkbenchUiFlowState
+  flowState: ForgeWorkbenchUiFlowState,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string
 ): string {
   if (flowState === "EXPORTED") {
-    return "shipped";
+    return text(["workbench", "synthesisPanel", "outputStatus", "shipped"], "shipped");
   }
   if (exportSummary.exportReady) {
-    return "ready";
+    return text(["workbench", "synthesisPanel", "outputStatus", "ready"], "ready");
   }
   if (exportSummary.selectedSynthesisId === null) {
-    return "needs selection";
+    return text(
+      ["workbench", "synthesisPanel", "outputStatus", "needsSelection"],
+      "needs selection"
+    );
   }
   if (exportSummary.openConflictCount > 0) {
-    return "needs decision";
+    return text(["workbench", "synthesisPanel", "outputStatus", "needsDecision"], "needs decision");
   }
   if (exportSummary.acceptanceCriteriaCount === 0) {
-    return "needs criteria";
+    return text(
+      ["workbench", "synthesisPanel", "outputStatus", "needsCriteria"],
+      "needs criteria"
+    );
   }
-  return "blocked";
+  return text(["workbench", "synthesisPanel", "outputStatus", "blocked"], "blocked");
 }
 
 export function renderSynthesisPanel(
   documentRef: Document,
   state: ForgeUiState,
-  text: (path: string[], fallback: string) => string,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string,
   options: {
     expandedSynthesisIds: Set<string>;
     exportBlockedReason: string | null;
@@ -159,10 +201,9 @@ export function renderSynthesisPanel(
   const body = documentRef.createElement("div");
   body.className = "forge-panel__body";
   const exportSummary = state.snapshot.exportSummary;
-  const outputState = describeOutputState(options.flowState, options);
+  const outputState = describeOutputState(options.flowState, options, text);
   const selectedSynthesis =
-    state.snapshot.syntheses.find((entry) => entry.id === state.snapshot.selectedSynthesisId) ??
-    null;
+    state.snapshot.syntheses.find((entry) => entry.id === state.snapshot.selectedSynthesisId) ?? null;
 
   body.append(
     createGuideCard(
@@ -170,15 +211,37 @@ export function renderSynthesisPanel(
       outputState.title,
       outputState.summary,
       [
-        { label: `${String(state.snapshot.responses.length)} answers` },
         {
-          label: `${String(state.snapshot.conflicts.filter((conflict) => conflict.status === "open").length)} decisions left`,
+          label: toCountLabel(
+            text,
+            ["workbench", "synthesisPanel", "chips", "answers"],
+            state.snapshot.responses.length,
+            "{count} answer",
+            "{count} answers"
+          ),
+        },
+        {
+          label: toCountLabel(
+            text,
+            ["workbench", "synthesisPanel", "chips", "decisionsLeft"],
+            state.snapshot.conflicts.filter((conflict) => conflict.status === "open").length,
+            "{count} decision left",
+            "{count} decisions left"
+          ),
           tone:
             state.snapshot.conflicts.filter((conflict) => conflict.status === "open").length > 0
               ? "warning"
               : "soft",
         },
-        { label: `${String(state.snapshot.syntheses.length)} syntheses` },
+        {
+          label: toCountLabel(
+            text,
+            ["workbench", "synthesisPanel", "chips", "syntheses"],
+            state.snapshot.syntheses.length,
+            "{count} synthesis",
+            "{count} syntheses"
+          ),
+        },
       ],
       outputState.tone
     )
@@ -190,7 +253,7 @@ export function renderSynthesisPanel(
     readiness.append(
       createStatusBadge(
         documentRef,
-        toOutputStatusLabel(exportSummary, options.flowState),
+        toOutputStatusLabel(exportSummary, options.flowState, text),
         exportSummary.exportReady
           ? "accent"
           : exportSummary.status === "missing-criteria"
@@ -201,8 +264,9 @@ export function renderSynthesisPanel(
     const readinessText = documentRef.createElement("p");
     readinessText.className = "forge-panel__hint";
     readinessText.textContent = exportSummary.exportReady
-      ? "STATE: HANDOFF READY"
-      : (options.exportBlockedReason ?? "BLOCKER: HANDOFF CHECK");
+      ? text(["workbench", "synthesisPanel", "readiness", "ready"], "STATE: HANDOFF READY")
+      : (options.exportBlockedReason ??
+          text(["workbench", "synthesisPanel", "readiness", "blocked"], "BLOCKER: HANDOFF CHECK"));
     readiness.append(readinessText);
     body.append(readiness);
 
@@ -217,21 +281,37 @@ export function renderSynthesisPanel(
       const chips = documentRef.createElement("div");
       chips.className = "forge-flow-item__meta";
       chips.append(
-        createStatusBadge(documentRef, "selected", "accent"),
         createStatusBadge(
           documentRef,
-          `${String(selectedSynthesis.acceptanceCriteria.length)} criteria`,
+          text(["workbench", "synthesisPanel", "badges", "selected"], "selected"),
+          "accent"
+        ),
+        createStatusBadge(
+          documentRef,
+          toCountLabel(
+            text,
+            ["workbench", "synthesisPanel", "chips", "criteria"],
+            selectedSynthesis.acceptanceCriteria.length,
+            "{count} criterion",
+            "{count} criteria"
+          ),
           "soft"
         )
       );
       head.append(title, chips);
       selectedCard.append(head);
       selectedCard.append(
-        createButton(documentRef, selectedExpanded ? "Collapse" : "Expand", {
-          dataset: {
-            forgeToggleSynthesis: selectedSynthesis.id,
-          },
-        })
+        createButton(
+          documentRef,
+          selectedExpanded
+            ? text(["workbench", "actions", "collapse"], "Collapse")
+            : text(["workbench", "actions", "expand"], "Expand"),
+          {
+            dataset: {
+              forgeToggleSynthesis: selectedSynthesis.id,
+            },
+          }
+        )
       );
       if (selectedExpanded) {
         const bodyText = documentRef.createElement("p");
@@ -242,7 +322,10 @@ export function renderSynthesisPanel(
     } else {
       const empty = documentRef.createElement("p");
       empty.className = "forge-panel__hint";
-      empty.textContent = "REQUIRES: SELECTED SYNTHESIS";
+      empty.textContent = text(
+        ["workbench", "synthesisPanel", "readiness", "requiresSelected"],
+        "REQUIRES: SELECTED SYNTHESIS"
+      );
       selectedCard.append(empty);
     }
     body.append(selectedCard);
@@ -254,8 +337,7 @@ export function renderSynthesisPanel(
         const expanded = options.expandedSynthesisIds.has(synthesis.id);
         const card = documentRef.createElement("article");
         card.className = "forge-card forge-card--synthesis";
-        card.dataset["selected"] =
-          synthesis.id === state.snapshot.selectedSynthesisId ? "true" : "false";
+        card.dataset["selected"] = synthesis.id === state.snapshot.selectedSynthesisId ? "true" : "false";
 
         const header = documentRef.createElement("div");
         header.className = "forge-card__header";
@@ -264,15 +346,37 @@ export function renderSynthesisPanel(
         const meta = documentRef.createElement("div");
         meta.className = "forge-flow-item__meta";
         meta.append(
-          createStatusBadge(documentRef, `${String(synthesis.sourceTaskIds.length)} tasks`, "soft"),
           createStatusBadge(
             documentRef,
-            `${String(synthesis.selectedResponseIds.length)} answers`,
+            toCountLabel(
+              text,
+              ["workbench", "synthesisPanel", "chips", "tasks"],
+              synthesis.sourceTaskIds.length,
+              "{count} task",
+              "{count} tasks"
+            ),
             "soft"
           ),
           createStatusBadge(
             documentRef,
-            `${String(synthesis.unresolvedConflictIds.length)} decisions left`,
+            toCountLabel(
+              text,
+              ["workbench", "synthesisPanel", "chips", "answers"],
+              synthesis.selectedResponseIds.length,
+              "{count} answer",
+              "{count} answers"
+            ),
+            "soft"
+          ),
+          createStatusBadge(
+            documentRef,
+            toCountLabel(
+              text,
+              ["workbench", "synthesisPanel", "chips", "decisionsLeft"],
+              synthesis.unresolvedConflictIds.length,
+              "{count} decision left",
+              "{count} decisions left"
+            ),
             synthesis.unresolvedConflictIds.length > 0 ? "warning" : "soft"
           )
         );
@@ -282,17 +386,25 @@ export function renderSynthesisPanel(
         const actionRail = documentRef.createElement("div");
         actionRail.className = "forge-actions";
         actionRail.append(
-          createButton(documentRef, expanded ? "Collapse" : "Expand", {
-            dataset: {
-              forgeToggleSynthesis: synthesis.id,
-            },
-          })
+          createButton(
+            documentRef,
+            expanded
+              ? text(["workbench", "actions", "collapse"], "Collapse")
+              : text(["workbench", "actions", "expand"], "Expand"),
+            {
+              dataset: {
+                forgeToggleSynthesis: synthesis.id,
+              },
+            }
+          )
         );
         if (options.flowState === "SYNTHESIS_READY") {
           actionRail.append(
             createButton(
               documentRef,
-              synthesis.id === state.snapshot.selectedSynthesisId ? "Selected" : "Select",
+              synthesis.id === state.snapshot.selectedSynthesisId
+                ? text(["workbench", "actions", "selected"], "Selected")
+                : text(["workbench", "actions", "select"], "Select"),
               {
                 dataset: {
                   forgeSelectSynthesis: synthesis.id,

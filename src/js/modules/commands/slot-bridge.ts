@@ -752,13 +752,13 @@ function findStructuredReplyBoundary(text: string): number | null {
     if (inString) {
       if (char === "\\") {
         escapeNext = true;
-      } else if (char === "\"") {
+      } else if (char === '"') {
         inString = false;
       }
       continue;
     }
 
-    if (char === "\"") {
+    if (char === '"') {
       inString = true;
       continue;
     }
@@ -782,7 +782,7 @@ function findStructuredReplyBoundary(text: string): number | null {
       }
     }
 
-    if (braceDepth === 0 && bracketDepth === 0 && inString === false) {
+    if (braceDepth === 0 && bracketDepth === 0) {
       return index + 1;
     }
   }
@@ -831,8 +831,10 @@ function isSameReplySnapshot(left: SlotBridgeReply | null, right: SlotBridgeRepl
 
   return leftAttachments.every((attachment, index) => {
     const other = rightAttachments[index];
+    if (other === undefined) {
+      return false;
+    }
     return (
-      other !== undefined &&
       attachment.name === other.name &&
       attachment.path === other.path &&
       attachment.archivePath === other.archivePath
@@ -1148,12 +1150,13 @@ async function waitForReply(
     const nextStableSinceMs =
       replyChanged && hasReadableReply && pendingGeneratedImages === 0
         ? replyStable
-          ? stableSinceMs ?? Date.now()
+          ? (stableSinceMs ?? Date.now())
           : Date.now()
         : null;
     const replyTrafficBusy = hasBusyReplyTraffic(targetSlot);
-    const structuredReplyState =
-      hasReadableReply && reply !== null ? readStructuredReplyState(reply.text ?? "") : "none";
+    const structuredReplyState = hasReadableReply
+      ? readStructuredReplyState(reply.text ?? "")
+      : "none";
     const nextStablePollCount =
       replyChanged && hasReadableReply && pendingGeneratedImages === 0
         ? replyStable
@@ -1168,12 +1171,7 @@ async function waitForReply(
       nextStablePollCount >= 2 &&
       stableDurationMs >= requiredStableDurationMs;
 
-    if (
-      replyChanged &&
-      hasReadableReply &&
-      pendingGeneratedImages === 0 &&
-      replySettled
-    ) {
+    if (replyChanged && hasReadableReply && pendingGeneratedImages === 0 && replySettled) {
       return buildResult(envelope, {
         reply,
         session: {
@@ -1202,7 +1200,7 @@ async function waitForReply(
           ...(envelope.sessionRef ?? {}),
           ...(nextConversationId !== null ? { conversationId: nextConversationId } : {}),
         },
-        artifacts: reply?.attachments ?? [],
+        artifacts: reply.attachments ?? [],
         data: {
           partialReply: true,
         },

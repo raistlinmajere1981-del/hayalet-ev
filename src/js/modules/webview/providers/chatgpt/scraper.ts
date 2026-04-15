@@ -75,8 +75,8 @@ export function scrapeMessages(): ScrapedMessage[] {
       .replace(/^(üretilen görsel|uretilen gorsel|generated image)\s*:\s*/i, "")
       .replace(/^(görsel oluşturuldu|gorsel olusturuldu|image created)\s*[•:.-]?\s*/i, "")
       .replace(/\b(düzenle|paylaş|edit|share)\b/gi, "")
-        .replace(/\s*[•·]\s*/g, " ")
-        .trim();
+      .replace(/\s*[•·]\s*/g, " ")
+      .trim();
   }
 
   function readElementText(element: Element | null): string {
@@ -89,7 +89,7 @@ export function scrapeMessages(): ScrapedMessage[] {
       return innerText;
     }
 
-    return element.textContent?.trim() ?? "";
+    return element.textContent.trim();
   }
 
   function cleanAssistantChrome(value: string): string {
@@ -168,7 +168,7 @@ export function scrapeMessages(): ScrapedMessage[] {
     const assistantContentSelectors = [
       '[data-message-author-role="assistant"] .markdown',
       '[data-message-author-role="assistant"] [class*="prose"]',
-      '.agent-turn .markdown',
+      ".agent-turn .markdown",
       '.agent-turn [class*="prose"]',
       '[data-testid="conversation-turn"] .markdown',
       '[data-testid^="conversation-turn"] .markdown',
@@ -177,17 +177,18 @@ export function scrapeMessages(): ScrapedMessage[] {
       '[data-testid^="conversation-turn"] [class*="prose"]',
       '[data-testid*="conversation-turn"] [class*="prose"]',
       "article .markdown",
-      "article [class*=\"prose\"]",
-      "[dir=\"auto\"]",
+      'article [class*="prose"]',
+      '[dir="auto"]',
     ];
     const userContentSelectors = [
       '[data-message-author-role="user"] [dir="auto"]',
-      ".user-message-bubble-color [dir=\"auto\"]",
+      '.user-message-bubble-color [dir="auto"]',
       '[data-message-author-role="user"]',
       ".user-message-bubble-color",
-      "[dir=\"auto\"]",
+      '[dir="auto"]',
     ];
-    const contentSelectors = role === "assistant" ? assistantContentSelectors : userContentSelectors;
+    const contentSelectors =
+      role === "assistant" ? assistantContentSelectors : userContentSelectors;
     const roots = Array.from(new Set([wrapper, node]));
     const contentNodes = roots.flatMap((root) =>
       contentSelectors.flatMap((selector) => {
@@ -208,7 +209,10 @@ export function scrapeMessages(): ScrapedMessage[] {
       return focusedText;
     }
 
-    return selectBestTextCandidate(roots.map((root) => readElementText(root)), role);
+    return selectBestTextCandidate(
+      roots.map((root) => readElementText(root)),
+      role
+    );
   }
 
   const defaultGeneratedImageSelector =

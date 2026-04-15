@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-15T03:07:55.544Z",
+  "generatedAt": "2026-04-15T17:33:44.572Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -12,8 +12,8 @@
     "filesScanned": 500,
     "ids": 574,
     "testIds": 15,
-    "querySelectors": 141,
-    "totalSelectors": 730
+    "querySelectors": 149,
+    "totalSelectors": 738
   },
   "lookup": {
     "id": {
@@ -683,12 +683,18 @@
       "data_slot_session_turn_summary_section": "[data-slot=\"session-turn-summary-section\"]",
       "data_slot_session_turn_summary_section_data_component_markdown": "[data-slot=\"session-turn-summary-section\"] [data-component=\"markdown\"]",
       "data_testid_attachment": "[data-testid*=\"attachment\"]",
+      "data_testid_conversation_turn_markdown": "[data-testid*=\"conversation-turn\"] .markdown",
+      "data_testid_conversation_turn_class_prose": "[data-testid*=\"conversation-turn\"] [class*=\"prose\"]",
       "data_testid_drag": "[data-testid*=\"drag\"]",
       "data_testid_drop": "[data-testid*=\"drop\"]",
       "data_testid_file": "[data-testid*=\"file\"]",
+      "data_testid_conversation_turn_markdown_2": "[data-testid^=\"conversation-turn\"] .markdown",
+      "data_testid_conversation_turn_class_prose_2": "[data-testid^=\"conversation-turn\"] [class*=\"prose\"]",
       "testid_attachment_preview": "[data-testid=\"attachment-preview\"]",
       "testid_conversation_turn": "[data-testid=\"conversation-turn\"]",
-      "testid_conversation_turn_data_message_id_data_turn_id": "[data-testid=\"conversation-turn\"], [data-message-id], [data-turn-id]",
+      "testid_conversation_turn_markdown": "[data-testid=\"conversation-turn\"] .markdown",
+      "testid_conversation_turn_class_prose": "[data-testid=\"conversation-turn\"] [class*=\"prose\"]",
+      "testid_conversation_turn_data_testid_conversation_turn_data_testid_conversation": "[data-testid=\"conversation-turn\"], [data-testid^=\"conversation-turn\"], [data-testid*=\"conversation-turn\"], [data-message-id], [data-turn-id], main article",
       "testid_dmcomposertextinput": "[data-testid=\"dmComposerTextInput\"]",
       "testid_dmcomposertextinput_prosemirror_contenteditable_true": "[data-testid=\"dmComposerTextInput\"] .ProseMirror[contenteditable=\"true\"]",
       "testid_dmcomposertextinput_prosemirror_contenteditable_true_prosemirror_contente": "[data-testid=\"dmComposerTextInput\"] .ProseMirror[contenteditable=\"true\"], .ProseMirror[contenteditable=\"true\"], textarea[aria-label=\"Grok\\",
@@ -699,7 +705,9 @@
       "data_ui_mode_trigger": "[data-ui-mode-trigger]",
       "data_workspace_tool_scene_back": "[data-workspace-tool-scene-back=",
       "data_workspace_tool_scene_chrome": "[data-workspace-tool-scene-chrome=",
-      "data_testid": "], [data-testid=",
+      "data_testid": "], [data-testid*=",
+      "data_testid_2": "], [data-testid^=",
+      "data_testid_3": "], [data-testid=",
       "id_composer_submit_button_data_testid": "], #composer-submit-button[data-testid=",
       "button_data_testid": "], button[data-testid=",
       "disabled_button_data_testid": "][disabled], button[data-testid=",

@@ -71,53 +71,114 @@ function createGuideCard(
   return card;
 }
 
-function describeDraftState(
-  flowState: ForgeWorkbenchUiFlowState,
-  hasValidationIssues: boolean
-): { summary: string; title: string } {
-  switch (flowState) {
-    case "IDLE":
-      return {
-        title: "Save the goal to unlock the draft",
-        summary: "This lane stays locked until the goal above is saved.",
-      };
-    case "SESSION_CREATED":
-      return {
-        title: "Save the goal to open this lane",
-        summary: "The draft stays closed until the goal above becomes real.",
-      };
-    case "GOAL_DEFINED":
-      return {
-        title: "Use Next Step to unlock draft editing",
-        summary: "Generate the first draft from the top bar, then this lane will open for edits.",
-      };
-    case "DRAFT_READY":
-      return hasValidationIssues
-        ? {
-            title: "Fix the draft to unlock approval",
-            summary: "Tighten the task details below until the plan is ready to approve.",
-          }
-        : {
-            title: "Finish edits to unlock approval",
-            summary: "Refine the task lanes below, then use Next Step to approve the draft.",
-          };
-    case "APPROVED":
-    case "DISPATCHED":
-    case "RESPONSES_READY":
-    case "CONFLICT":
-    case "SYNTHESIS_READY":
-    case "EXPORTED":
-      return {
-        title: "This lane is locked after approval",
-        summary: "Restart the plan only if you intend to reopen earlier steps.",
-      };
+function toDispatchModeLabel(
+  mode: string,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string
+): string {
+  if (mode === "single-owner") {
+    return text(["workbench", "dispatchModes", "singleOwner"], "Single owner");
   }
+  if (mode === "compare") {
+    return text(["workbench", "dispatchModes", "compare"], "Compare");
+  }
+  return mode;
+}
+
+function toRoleLabel(
+  state: ForgeUiState,
+  roleId: string | null,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string
+): string {
+  if (!roleId) {
+    return text(["workbench", "draftPanel", "fields", "role"], "Role");
+  }
+  const entry = state.meta.roleCatalog[roleId] as { label?: string } | undefined;
+  return text(["workbench", "roles", roleId], entry?.label ?? roleId);
+}
+
+function translateValidationMessage(
+  message: string,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string
+): string {
+  const taskRangeMatch =
+    /^Draft breakdown must contain (\d+) to (\d+) top-level tasks\.$/.exec(message);
+  if (taskRangeMatch) {
+    return text(
+      ["workbench", "validation", "taskRange"],
+      "Draft breakdown must contain {min} to {max} top-level tasks.",
+      {
+        min: taskRangeMatch[1] ?? "",
+        max: taskRangeMatch[2] ?? "",
+      }
+    );
+  }
+
+  const missingTitleMatch = /^Task (\d+) is missing a title\.$/.exec(message);
+  if (missingTitleMatch) {
+    return text(
+      ["workbench", "validation", "taskMissingTitle"],
+      "Task {index} is missing a title.",
+      { index: missingTitleMatch[1] ?? "" }
+    );
+  }
+
+  const missingSummaryMatch = /^Task (\d+) is missing a summary\.$/.exec(message);
+  if (missingSummaryMatch) {
+    return text(
+      ["workbench", "validation", "taskMissingSummary"],
+      "Task {index} is missing a summary.",
+      { index: missingSummaryMatch[1] ?? "" }
+    );
+  }
+
+  const duplicateTitleMatch = /^Task title "(.+)" is duplicated\.$/.exec(message);
+  if (duplicateTitleMatch) {
+    return text(
+      ["workbench", "validation", "duplicateTitle"],
+      'Task title "{title}" is duplicated.',
+      { title: duplicateTitleMatch[1] ?? "" }
+    );
+  }
+
+  const compareSeatMatch =
+    /^Compare task "(.+)" must define at least one comparison seat\.$/.exec(message);
+  if (compareSeatMatch) {
+    return text(
+      ["workbench", "validation", "compareSeatRequired"],
+      'Compare task "{title}" must define at least one comparison seat.',
+      { title: compareSeatMatch[1] ?? "" }
+    );
+  }
+
+  const unknownDependencyMatch =
+    /^Task "(.+)" depends on unknown task "(.+)"\.$/.exec(message);
+  if (unknownDependencyMatch) {
+    return text(
+      ["workbench", "validation", "unknownDependency"],
+      'Task "{task}" depends on unknown task "{dependency}".',
+      {
+        dependency: unknownDependencyMatch[2] ?? "",
+        task: unknownDependencyMatch[1] ?? "",
+      }
+    );
+  }
+
+  const selfDependencyMatch = /^Task "(.+)" cannot depend on itself\.$/.exec(message);
+  if (selfDependencyMatch) {
+    return text(
+      ["workbench", "validation", "selfDependency"],
+      'Task "{task}" cannot depend on itself.',
+      { task: selfDependencyMatch[1] ?? "" }
+    );
+  }
+
+  return message;
 }
 
 export function renderDraftBreakdownPanel(
   documentRef: Document,
   state: ForgeUiState,
-  text: (path: string[], fallback: string) => string,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string,
   options: {
     approvalBlockedReason: string | null;
     flowState: ForgeWorkbenchUiFlowState;
@@ -127,10 +188,76 @@ export function renderDraftBreakdownPanel(
   const body = documentRef.createElement("div");
   body.className = "forge-panel__body";
   const topLevelTasks = state.snapshot.draftTasks.filter((task) => task.level === 1);
-  const draftState = describeDraftState(
-    options.flowState,
-    state.snapshot.validationMessages.length > 0
-  );
+  const draftState = (() => {
+    switch (options.flowState) {
+      case "IDLE":
+        return {
+          title: text(
+            ["workbench", "draftPanel", "guide", "idle", "title"],
+            "Save the goal to unlock the draft"
+          ),
+          summary: text(
+            ["workbench", "draftPanel", "guide", "idle", "summary"],
+            "This lane stays locked until the goal above is saved."
+          ),
+        };
+      case "SESSION_CREATED":
+        return {
+          title: text(
+            ["workbench", "draftPanel", "guide", "sessionCreated", "title"],
+            "Save the goal to open this lane"
+          ),
+          summary: text(
+            ["workbench", "draftPanel", "guide", "sessionCreated", "summary"],
+            "The draft stays closed until the goal above becomes real."
+          ),
+        };
+      case "GOAL_DEFINED":
+        return {
+          title: text(
+            ["workbench", "draftPanel", "guide", "goalDefined", "title"],
+            "Use Next Step to unlock draft editing"
+          ),
+          summary: text(
+            ["workbench", "draftPanel", "guide", "goalDefined", "summary"],
+            "Generate the first draft from the top bar, then this lane will open for edits."
+          ),
+        };
+      case "DRAFT_READY":
+        return state.snapshot.validationMessages.length > 0
+          ? {
+              title: text(
+                ["workbench", "draftPanel", "guide", "draftReadyBlocked", "title"],
+                "Fix the draft to unlock approval"
+              ),
+              summary: text(
+                ["workbench", "draftPanel", "guide", "draftReadyBlocked", "summary"],
+                "Tighten the task details below until the plan is ready to approve."
+              ),
+            }
+          : {
+              title: text(
+                ["workbench", "draftPanel", "guide", "draftReadyOpen", "title"],
+                "Finish edits to unlock approval"
+              ),
+              summary: text(
+                ["workbench", "draftPanel", "guide", "draftReadyOpen", "summary"],
+                "Refine the task lanes below, then use Next Step to approve the draft."
+              ),
+            };
+      default:
+        return {
+          title: text(
+            ["workbench", "draftPanel", "guide", "locked", "title"],
+            "This lane is locked after approval"
+          ),
+          summary: text(
+            ["workbench", "draftPanel", "guide", "locked", "summary"],
+            "Restart the plan only if you intend to reopen earlier steps."
+          ),
+        };
+    }
+  })();
   const checklistByParentId = new Map(
     topLevelTasks.map((task) => [
       task.id,
@@ -146,17 +273,32 @@ export function renderDraftBreakdownPanel(
   title.className = "forge-toolbar__title";
   title.textContent =
     topLevelTasks.length > 0
-      ? `${String(topLevelTasks.length)} task${topLevelTasks.length === 1 ? "" : "s"} in draft`
-      : "Draft is empty";
+      ? topLevelTasks.length === 1
+        ? text(["workbench", "draftPanel", "toolbar", "countOne"], "{count} task in draft", {
+            count: topLevelTasks.length,
+          })
+        : text(["workbench", "draftPanel", "toolbar", "countOther"], "{count} tasks in draft", {
+            count: topLevelTasks.length,
+          })
+      : text(["workbench", "draftPanel", "toolbar", "empty"], "Draft is empty");
   const actions = documentRef.createElement("div");
   actions.className = "forge-actions";
   if (options.flowState === "DRAFT_READY") {
     actions.append(
-      createButton(documentRef, "Add task", "add-draft-task"),
-      createButton(documentRef, "Advanced / raw", undefined, {
-        datasetKey: "forgeToggleAdvancedDraft",
-        datasetValue: "true",
-      })
+      createButton(
+        documentRef,
+        text(["workbench", "draftPanel", "actions", "addTask"], "Add task"),
+        "add-draft-task"
+      ),
+      createButton(
+        documentRef,
+        text(["workbench", "draftPanel", "actions", "toggleRaw"], "Advanced / raw"),
+        undefined,
+        {
+          datasetKey: "forgeToggleAdvancedDraft",
+          datasetValue: "true",
+        }
+      )
     );
   }
   toolbar.append(title, actions);
@@ -176,8 +318,14 @@ export function renderDraftBreakdownPanel(
     empty.textContent = text(
       ["workbench", "states", "emptyDraft"],
       options.flowState === "GOAL_DEFINED"
-        ? "Use Next Step to create the first task lanes here."
-        : "This lane will unlock when the flow reaches draft editing."
+        ? text(
+            ["workbench", "draftPanel", "empty", "goalDefined"],
+            "Use Next Step to create the first task lanes here."
+          )
+        : text(
+            ["workbench", "draftPanel", "empty", "locked"],
+            "This lane will unlock when the flow reaches draft editing."
+          )
     );
     body.append(empty);
   } else {
@@ -194,10 +342,17 @@ export function renderDraftBreakdownPanel(
       titleInput.id = `forge-draft-title-${taskKey}`;
       titleInput.className = "forge-input";
       titleInput.value = task.title;
-      titleInput.placeholder = "Task title";
+      titleInput.placeholder = text(
+        ["workbench", "draftPanel", "placeholders", "taskTitle"],
+        "Task title"
+      );
       const meta = documentRef.createElement("div");
       meta.className = "forge-flow-item__meta";
-      [task.dispatchMode, task.seatId ?? "ai1", task.roleId ?? "role"].forEach((value, index) => {
+      [
+        toDispatchModeLabel(task.dispatchMode, text),
+        task.seatId ?? "ai1",
+        toRoleLabel(state, task.roleId, text),
+      ].forEach((value, index) => {
         const chip = documentRef.createElement("span");
         chip.className = index === 0 ? "forge-chip forge-chip--soft" : "forge-chip";
         chip.textContent = value;
@@ -209,7 +364,10 @@ export function renderDraftBreakdownPanel(
       summaryInput.id = `forge-draft-summary-${taskKey}`;
       summaryInput.className = "forge-textarea forge-textarea--compact";
       summaryInput.value = task.summary;
-      summaryInput.placeholder = "Task summary";
+      summaryInput.placeholder = text(
+        ["workbench", "draftPanel", "placeholders", "taskSummary"],
+        "Task summary"
+      );
 
       const seatSelect = documentRef.createElement("select");
       seatSelect.id = `forge-draft-seat-${taskKey}`;
@@ -227,7 +385,12 @@ export function renderDraftBreakdownPanel(
           return;
         }
         roleSelect.append(
-          createOption(documentRef, record.id, record.label ?? record.id, task.roleId)
+          createOption(
+            documentRef,
+            record.id,
+            text(["workbench", "roles", record.id], record.label ?? record.id),
+            task.roleId
+          )
         );
       });
 
@@ -235,14 +398,26 @@ export function renderDraftBreakdownPanel(
       modeSelect.id = `forge-draft-mode-${taskKey}`;
       modeSelect.className = "forge-input";
       modeSelect.append(
-        createOption(documentRef, "single-owner", "single-owner", task.dispatchMode),
-        createOption(documentRef, "compare", "compare", task.dispatchMode)
+        createOption(
+          documentRef,
+          "single-owner",
+          text(["workbench", "dispatchModes", "singleOwner"], "Single owner"),
+          task.dispatchMode
+        ),
+        createOption(
+          documentRef,
+          "compare",
+          text(["workbench", "dispatchModes", "compare"], "Compare"),
+          task.dispatchMode
+        )
       );
 
       const compareSeatSelect = documentRef.createElement("select");
       compareSeatSelect.id = `forge-draft-compare-seat-${taskKey}`;
       compareSeatSelect.className = "forge-input";
-      compareSeatSelect.append(createOption(documentRef, "", "none", null));
+      compareSeatSelect.append(
+        createOption(documentRef, "", text(["workbench", "common", "none"], "none"), null)
+      );
       ["ai1", "ai2", "us1"].forEach((seatId) => {
         compareSeatSelect.append(
           createOption(documentRef, seatId, seatId, task.compareSeatIds[0] ?? null)
@@ -252,7 +427,14 @@ export function renderDraftBreakdownPanel(
       const personaSelect = documentRef.createElement("select");
       personaSelect.id = `forge-draft-persona-${taskKey}`;
       personaSelect.className = "forge-input";
-      personaSelect.append(createOption(documentRef, "", "none", task.personaPresetId));
+      personaSelect.append(
+        createOption(
+          documentRef,
+          "",
+          text(["workbench", "common", "none"], "none"),
+          task.personaPresetId
+        )
+      );
       Object.values(state.meta.personaPresets).forEach((entry) => {
         const record = entry as { id?: string; label?: string };
         if (!record.id) {
@@ -267,31 +449,72 @@ export function renderDraftBreakdownPanel(
       checklistInput.id = `forge-draft-checklist-${taskKey}`;
       checklistInput.className = "forge-textarea forge-textarea--compact";
       checklistInput.value = (checklistByParentId.get(task.id) ?? []).join("\n");
-      checklistInput.placeholder = "Checklist";
+      checklistInput.placeholder = text(
+        ["workbench", "draftPanel", "placeholders", "checklist"],
+        "Checklist"
+      );
 
       const fieldGrid = documentRef.createElement("div");
       fieldGrid.className = "forge-form-grid forge-form-grid--task";
       fieldGrid.append(
-        createField(documentRef, "Summary", summaryInput),
-        createField(documentRef, "Seat", seatSelect),
-        createField(documentRef, "Role", roleSelect),
-        createField(documentRef, "Mode", modeSelect),
-        createField(documentRef, "Compare seat", compareSeatSelect),
-        createField(documentRef, "Persona", personaSelect),
-        createField(documentRef, "Checklist", checklistInput)
+        createField(
+          documentRef,
+          text(["workbench", "draftPanel", "fields", "summary"], "Summary"),
+          summaryInput
+        ),
+        createField(
+          documentRef,
+          text(["workbench", "draftPanel", "fields", "seat"], "Seat"),
+          seatSelect
+        ),
+        createField(
+          documentRef,
+          text(["workbench", "draftPanel", "fields", "role"], "Role"),
+          roleSelect
+        ),
+        createField(
+          documentRef,
+          text(["workbench", "draftPanel", "fields", "mode"], "Mode"),
+          modeSelect
+        ),
+        createField(
+          documentRef,
+          text(["workbench", "draftPanel", "fields", "compareSeat"], "Compare seat"),
+          compareSeatSelect
+        ),
+        createField(
+          documentRef,
+          text(["workbench", "draftPanel", "fields", "persona"], "Persona"),
+          personaSelect
+        ),
+        createField(
+          documentRef,
+          text(["workbench", "draftPanel", "fields", "checklist"], "Checklist"),
+          checklistInput
+        )
       );
 
       const taskActions = documentRef.createElement("div");
       taskActions.className = "forge-actions";
       taskActions.append(
-        createButton(documentRef, "Save task", undefined, {
-          datasetKey: "forgeSaveDraftTask",
-          datasetValue: task.id,
-        }),
-        createButton(documentRef, "Remove", undefined, {
-          datasetKey: "forgeRemoveDraftTask",
-          datasetValue: task.id,
-        })
+        createButton(
+          documentRef,
+          text(["workbench", "draftPanel", "actions", "saveTask"], "Save task"),
+          undefined,
+          {
+            datasetKey: "forgeSaveDraftTask",
+            datasetValue: task.id,
+          }
+        ),
+        createButton(
+          documentRef,
+          text(["workbench", "draftPanel", "actions", "remove"], "Remove"),
+          undefined,
+          {
+            datasetKey: "forgeRemoveDraftTask",
+            datasetValue: task.id,
+          }
+        )
       );
 
       card.append(header, fieldGrid, taskActions);
@@ -306,7 +529,7 @@ export function renderDraftBreakdownPanel(
     state.snapshot.validationMessages.forEach((message) => {
       const item = documentRef.createElement("li");
       item.className = "forge-list__item";
-      item.textContent = message;
+      item.textContent = translateValidationMessage(message, text);
       errors.append(item);
     });
     body.append(errors);
@@ -317,14 +540,26 @@ export function renderDraftBreakdownPanel(
     rawCard.className = "forge-advanced-raw";
     const rawTitle = documentRef.createElement("p");
     rawTitle.className = "forge-advanced-raw__title";
-    rawTitle.textContent = "Advanced / raw draft edit";
+    rawTitle.textContent = text(
+      ["workbench", "draftPanel", "rawTitle"],
+      "Advanced / raw draft edit"
+    );
     const editor = documentRef.createElement("textarea");
     editor.id = "forge-draft-source";
     editor.className = "forge-textarea forge-textarea--draft";
-    editor.placeholder = '{"tasks":[{"title":"Task title"}]}';
+    editor.placeholder = text(
+      ["workbench", "draftPanel", "placeholders", "rawEditor"],
+      '{"tasks":[{"title":"Task title"}]}'
+    );
     editor.value = state.snapshot.draftSourceText ?? "";
     rawCard.append(rawTitle, editor);
-    rawCard.append(createButton(documentRef, "Apply raw draft", "apply-draft-text"));
+    rawCard.append(
+      createButton(
+        documentRef,
+        text(["workbench", "draftPanel", "actions", "applyRawDraft"], "Apply raw draft"),
+        "apply-draft-text"
+      )
+    );
     body.append(rawCard);
   }
 

@@ -57,82 +57,158 @@ function createGuideCard(
   return card;
 }
 
+function toCountLabel(
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string,
+  pathPrefix: string[],
+  count: number,
+  oneFallback: string,
+  otherFallback: string
+): string {
+  return count === 1
+    ? text([...pathPrefix, "One"], oneFallback, { count })
+    : text([...pathPrefix, "Other"], otherFallback, { count });
+}
+
 function describeResponseState(
   flowState: ForgeWorkbenchUiFlowState,
   counts: {
-    approvedTasks: number;
     openConflicts: number;
-    queuedAssignments: number;
     responses: number;
-    syntheses: number;
-  }
+  },
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string
 ): { summary: string; title: string; tone: "active" | "blocked" | "locked" | "monitor" } {
   switch (flowState) {
     case "IDLE":
     case "SESSION_CREATED":
       return {
-        title: "CENTER GATE LOCKED",
-        summary: "REQUIRES: SAVED GOAL",
+        title: text(
+          ["workbench", "responsesPanel", "guide", "savedGoalLocked", "title"],
+          "CENTER GATE LOCKED"
+        ),
+        summary: text(
+          ["workbench", "responsesPanel", "guide", "savedGoalLocked", "summary"],
+          "REQUIRES: SAVED GOAL"
+        ),
         tone: "locked",
       };
     case "GOAL_DEFINED":
     case "DRAFT_READY":
       return {
-        title: "CENTER GATE LOCKED",
-        summary: "REQUIRES: APPROVED DRAFT",
+        title: text(
+          ["workbench", "responsesPanel", "guide", "approvedDraftLocked", "title"],
+          "CENTER GATE LOCKED"
+        ),
+        summary: text(
+          ["workbench", "responsesPanel", "guide", "approvedDraftLocked", "summary"],
+          "REQUIRES: APPROVED DRAFT"
+        ),
         tone: "locked",
       };
     case "APPROVED":
       return {
-        title: "CENTER GATE LOCKED",
-        summary: "REQUIRES: DISPATCH",
+        title: text(
+          ["workbench", "responsesPanel", "guide", "dispatchLocked", "title"],
+          "CENTER GATE LOCKED"
+        ),
+        summary: text(
+          ["workbench", "responsesPanel", "guide", "dispatchLocked", "summary"],
+          "REQUIRES: DISPATCH"
+        ),
         tone: "locked",
       };
     case "DISPATCHED":
       return {
-        title: "CENTER GATE OPEN",
-        summary: counts.responses > 0 ? "STATE: RESPONSE INBOUND" : "STATE: AWAITING RESPONSES",
+        title: text(
+          ["workbench", "responsesPanel", "guide", "responseInbound", "title"],
+          "CENTER GATE OPEN"
+        ),
+        summary:
+          counts.responses > 0
+            ? text(
+                ["workbench", "responsesPanel", "guide", "responseInbound", "summary"],
+                "STATE: RESPONSE INBOUND"
+              )
+            : text(
+                ["workbench", "responsesPanel", "guide", "awaitingResponses", "summary"],
+                "STATE: AWAITING RESPONSES"
+              ),
         tone: "active",
       };
     case "RESPONSES_READY":
       return {
-        title: "CENTER GATE OPEN",
-        summary: "STATE: REVIEW RESPONSES",
+        title: text(
+          ["workbench", "responsesPanel", "guide", "responseInbound", "title"],
+          "CENTER GATE OPEN"
+        ),
+        summary: text(
+          ["workbench", "responsesPanel", "guide", "reviewResponses", "summary"],
+          "STATE: REVIEW RESPONSES"
+        ),
         tone: "active",
       };
     case "CONFLICT":
       return {
-        title: "CENTER GATE BLOCKED",
-        summary:
-          counts.openConflicts === 1
-            ? "REQUIRES: CONFLICT RESOLUTION"
-            : "REQUIRES: CONFLICT RESOLUTION",
+        title: text(
+          ["workbench", "responsesPanel", "guide", "conflictBlocked", "title"],
+          "CENTER GATE BLOCKED"
+        ),
+        summary: text(
+          ["workbench", "responsesPanel", "guide", "conflictBlocked", "summary"],
+          "REQUIRES: CONFLICT RESOLUTION"
+        ),
         tone: "blocked",
       };
     case "SYNTHESIS_READY":
       return {
-        title: "CENTER GATE MONITOR",
-        summary: "STATE: READ ONLY",
+        title: text(
+          ["workbench", "responsesPanel", "guide", "readOnly", "title"],
+          "CENTER GATE MONITOR"
+        ),
+        summary: text(
+          ["workbench", "responsesPanel", "guide", "readOnly", "summary"],
+          "STATE: READ ONLY"
+        ),
         tone: "monitor",
       };
     case "EXPORTED":
       return {
-        title: "CENTER GATE ARCHIVE",
-        summary: "STATE: EXPORT INPUTS",
+        title: text(
+          ["workbench", "responsesPanel", "guide", "exportInputs", "title"],
+          "CENTER GATE ARCHIVE"
+        ),
+        summary: text(
+          ["workbench", "responsesPanel", "guide", "exportInputs", "summary"],
+          "STATE: EXPORT INPUTS"
+        ),
         tone: "monitor",
+      };
+    default:
+      return {
+        title: text(
+          ["workbench", "responsesPanel", "guide", "savedGoalLocked", "title"],
+          "CENTER GATE LOCKED"
+        ),
+        summary: text(
+          ["workbench", "responsesPanel", "guide", "savedGoalLocked", "summary"],
+          "REQUIRES: SAVED GOAL"
+        ),
+        tone: "locked",
       };
   }
 }
 
-function toResponseStatusLabel(status: string): string {
+function toResponseStatusLabel(
+  status: string,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string
+): string {
   if (status === "selected") {
-    return "chosen";
+    return text(["workbench", "responsesPanel", "statuses", "selected"], "chosen");
   }
   if (status === "rejected") {
-    return "set aside";
+    return text(["workbench", "responsesPanel", "statuses", "rejected"], "set aside");
   }
   if (status === "captured") {
-    return "received";
+    return text(["workbench", "responsesPanel", "statuses", "captured"], "received");
   }
   return status;
 }
@@ -140,7 +216,7 @@ function toResponseStatusLabel(status: string): string {
 export function renderResponsesPanel(
   documentRef: Document,
   state: ForgeUiState,
-  text: (path: string[], fallback: string) => string,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string,
   options: {
     expandedResponseIds: Set<string>;
     flowState: ForgeWorkbenchUiFlowState;
@@ -149,22 +225,18 @@ export function renderResponsesPanel(
   const body = documentRef.createElement("div");
   body.className = "forge-panel__body";
   const approvedTasks = state.snapshot.approvedTasks.filter((task) => task.level === 1);
-  const queuedAssignments = state.snapshot.assignments.filter(
-    (assignment) => assignment.status === "queued"
-  ).length;
   const openConflictCount = state.snapshot.conflicts.filter(
     (conflict) => conflict.status === "open"
   ).length;
-  const responseState = describeResponseState(options.flowState, {
-    approvedTasks: approvedTasks.length,
-    openConflicts: openConflictCount,
-    queuedAssignments,
-    responses: state.snapshot.responses.length,
-    syntheses: state.snapshot.syntheses.length,
-  });
-  const conflictByTaskId = new Map(
-    state.snapshot.conflicts.map((conflict) => [conflict.taskId, conflict])
+  const responseState = describeResponseState(
+    options.flowState,
+    {
+      openConflicts: openConflictCount,
+      responses: state.snapshot.responses.length,
+    },
+    text
   );
+  const conflictByTaskId = new Map(state.snapshot.conflicts.map((conflict) => [conflict.taskId, conflict]));
   const responsesByTaskId = new Map<string, typeof state.snapshot.responses>();
   state.snapshot.responses.forEach((response) => {
     const bucket = responsesByTaskId.get(response.taskId) ?? [];
@@ -178,9 +250,27 @@ export function renderResponsesPanel(
       responseState.title,
       responseState.summary,
       [
-        `${String(approvedTasks.length)} tasks`,
-        `${String(state.snapshot.responses.length)} answers`,
-        `${String(openConflictCount)} decisions left`,
+        toCountLabel(
+          text,
+          ["workbench", "responsesPanel", "chips", "tasks"],
+          approvedTasks.length,
+          "{count} task",
+          "{count} tasks"
+        ),
+        toCountLabel(
+          text,
+          ["workbench", "responsesPanel", "chips", "answers"],
+          state.snapshot.responses.length,
+          "{count} answer",
+          "{count} answers"
+        ),
+        toCountLabel(
+          text,
+          ["workbench", "responsesPanel", "chips", "decisionsLeft"],
+          openConflictCount,
+          "{count} decision left",
+          "{count} decisions left"
+        ),
       ],
       responseState.tone
     )
@@ -198,9 +288,7 @@ export function renderResponsesPanel(
     list.className = "forge-card-list";
     approvedTasks.forEach((task) => {
       const taskResponses = responsesByTaskId.get(task.id) ?? [];
-      const taskAssignments = state.snapshot.assignments.filter(
-        (assignment) => assignment.taskId === task.id
-      );
+      const taskAssignments = state.snapshot.assignments.filter((assignment) => assignment.taskId === task.id);
       const conflict = conflictByTaskId.get(task.id) ?? null;
 
       const card = documentRef.createElement("article");
@@ -216,11 +304,33 @@ export function renderResponsesPanel(
       const meta = documentRef.createElement("div");
       meta.className = "forge-flow-item__meta";
       meta.append(
-        createMetaChip(documentRef, task.dispatchMode, true),
-        createMetaChip(documentRef, `${String(taskResponses.length)} responses`, true),
         createMetaChip(
           documentRef,
-          `${String(taskAssignments.filter((assignment) => assignment.status === "queued").length)} queued`,
+          task.dispatchMode === "compare"
+            ? text(["workbench", "dispatchModes", "compare"], "Compare")
+            : text(["workbench", "dispatchModes", "singleOwner"], "Single owner"),
+          true
+        ),
+        createMetaChip(
+          documentRef,
+          toCountLabel(
+            text,
+            ["workbench", "responsesPanel", "chips", "responses"],
+            taskResponses.length,
+            "{count} response",
+            "{count} responses"
+          ),
+          true
+        ),
+        createMetaChip(
+          documentRef,
+          toCountLabel(
+            text,
+            ["workbench", "responsesPanel", "chips", "queued"],
+            taskAssignments.filter((assignment) => assignment.status === "queued").length,
+            "{count} queued",
+            "{count} queued"
+          ),
           true
         )
       );
@@ -228,7 +338,12 @@ export function renderResponsesPanel(
         meta.append(
           createMetaChip(
             documentRef,
-            conflict.status === "resolved" ? "decision made" : "decision needed",
+            conflict.status === "resolved"
+              ? text(["workbench", "responsesPanel", "statuses", "decisionMade"], "decision made")
+              : text(
+                  ["workbench", "responsesPanel", "statuses", "decisionNeeded"],
+                  "decision needed"
+                ),
             conflict.status === "resolved"
           )
         );
@@ -241,12 +356,21 @@ export function renderResponsesPanel(
         empty.className = "forge-panel__hint";
         empty.textContent = (() => {
           if (options.flowState === "APPROVED") {
-            return "Send this task from Plan to start collecting answers.";
+            return text(
+              ["workbench", "responsesPanel", "empty", "approved"],
+              "Send this task from Plan to start collecting answers."
+            );
           }
           if (taskAssignments.length > 0) {
-            return "Waiting for the assigned seat to answer this task.";
+            return text(
+              ["workbench", "responsesPanel", "empty", "waiting"],
+              "Waiting for the assigned seat to answer this task."
+            );
           }
-          return "This task will start showing answers as soon as it is sent.";
+          return text(
+            ["workbench", "responsesPanel", "empty", "unsent"],
+            "This task will start showing answers as soon as it is sent."
+          );
         })();
         card.append(empty);
       } else {
@@ -262,30 +386,56 @@ export function renderResponsesPanel(
           optionHead.className = "forge-response-option__head";
           optionHead.append(
             createMetaChip(documentRef, response.seatId),
-            createMetaChip(documentRef, response.roleId, true),
             createMetaChip(
               documentRef,
-              toResponseStatusLabel(response.status),
+              text(["workbench", "roles", response.roleId], response.roleId),
+              true
+            ),
+            createMetaChip(
+              documentRef,
+              toResponseStatusLabel(response.status, text),
               response.status !== "selected"
             )
           );
           if (response.artifacts.length > 0) {
             optionHead.append(
-              createMetaChip(documentRef, `${String(response.artifacts.length)} artifacts`, true)
+              createMetaChip(
+                documentRef,
+                toCountLabel(
+                  text,
+                  ["workbench", "responsesPanel", "chips", "artifacts"],
+                  response.artifacts.length,
+                  "{count} artifact",
+                  "{count} artifacts"
+                ),
+                true
+              )
             );
           }
           if (response.archiveRef?.messageId) {
-            optionHead.append(createMetaChip(documentRef, "trace saved", true));
+            optionHead.append(
+              createMetaChip(
+                documentRef,
+                text(["workbench", "responsesPanel", "statuses", "traceSaved"], "trace saved"),
+                true
+              )
+            );
           }
 
           const responseSummary = documentRef.createElement("strong");
           responseSummary.textContent = response.summary;
 
-          const toggle = createButton(documentRef, expanded ? "Collapse" : "Expand", {
-            dataset: {
-              forgeToggleResponse: response.id,
-            },
-          });
+          const toggle = createButton(
+            documentRef,
+            expanded
+              ? text(["workbench", "actions", "collapse"], "Collapse")
+              : text(["workbench", "actions", "expand"], "Expand"),
+            {
+              dataset: {
+                forgeToggleResponse: response.id,
+              },
+            }
+          );
 
           option.append(optionHead, responseSummary, toggle);
           if (expanded) {
@@ -306,24 +456,34 @@ export function renderResponsesPanel(
         const conflictTitle = documentRef.createElement("strong");
         conflictTitle.textContent =
           conflict.status === "resolved"
-            ? "DECISION RECORDED"
+            ? text(["workbench", "responsesPanel", "conflict", "recordedTitle"], "DECISION RECORDED")
             : conflictInteractive
-              ? "SELECT ONE RESPONSE"
-              : "DECISION HOLDS RUN";
+              ? text(["workbench", "responsesPanel", "conflict", "selectTitle"], "SELECT ONE RESPONSE")
+              : text(["workbench", "responsesPanel", "conflict", "blockedTitle"], "DECISION HOLDS RUN");
         const conflictSummary = documentRef.createElement("p");
         conflictSummary.className = "forge-panel__hint";
         conflictSummary.textContent = conflictInteractive
           ? conflict.summary
           : conflict.status === "resolved"
-            ? "STATE: PREFERENCE SAVED"
-            : "USE NEXT STEP TO RETURN HERE.";
+            ? text(
+                ["workbench", "responsesPanel", "conflict", "recordedSummary"],
+                "STATE: PREFERENCE SAVED"
+              )
+            : text(
+                ["workbench", "responsesPanel", "conflict", "blockedSummary"],
+                "USE NEXT STEP TO RETURN HERE."
+              );
         conflictCard.append(conflictTitle, conflictSummary);
         if (conflict.preferredResponseId) {
           const preferredResponse =
             taskResponses.find((response) => response.id === conflict.preferredResponseId) ?? null;
           const preferredNote = documentRef.createElement("p");
           preferredNote.className = "forge-inline-status";
-          preferredNote.textContent = `Current pick: ${preferredResponse?.seatId ?? conflict.preferredResponseId}`;
+          preferredNote.textContent = text(
+            ["workbench", "responsesPanel", "conflict", "currentPick"],
+            "Current pick: {seatId}",
+            { seatId: preferredResponse?.seatId ?? conflict.preferredResponseId }
+          );
           conflictCard.append(preferredNote);
         }
         if (conflict.resolutionNote) {
@@ -337,27 +497,37 @@ export function renderResponsesPanel(
           preferenceRail.className = "forge-actions";
           taskResponses.forEach((response) => {
             preferenceRail.append(
-              createButton(documentRef, `Prefer ${response.seatId}`, {
-                dataset: {
-                  forgeResolveConflict: conflict.id,
-                  forgeConflictStatus: "open",
-                  forgePreferredResponseId: response.id,
-                },
-              })
+              createButton(
+                documentRef,
+                text(["workbench", "actions", "preferSeat"], "Prefer {seatId}", {
+                  seatId: response.seatId,
+                }),
+                {
+                  dataset: {
+                    forgeResolveConflict: conflict.id,
+                    forgeConflictStatus: "open",
+                    forgePreferredResponseId: response.id,
+                  },
+                }
+              )
             );
           });
 
           const actionRail = documentRef.createElement("div");
           actionRail.className = "forge-actions";
           actionRail.append(
-            createButton(documentRef, "Mark resolved", {
-              dataset: {
-                forgeResolveConflict: conflict.id,
-                forgeConflictStatus: "resolved",
-              },
-              disabled: conflict.preferredResponseId === null,
-            }),
-            createButton(documentRef, "Leave open", {
+            createButton(
+              documentRef,
+              text(["workbench", "actions", "markResolved"], "Mark resolved"),
+              {
+                dataset: {
+                  forgeResolveConflict: conflict.id,
+                  forgeConflictStatus: "resolved",
+                },
+                disabled: conflict.preferredResponseId === null,
+              }
+            ),
+            createButton(documentRef, text(["workbench", "actions", "leaveOpen"], "Leave open"), {
               dataset: {
                 forgeResolveConflict: conflict.id,
                 forgeConflictStatus: "open",

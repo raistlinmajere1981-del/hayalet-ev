@@ -1,13 +1,11 @@
 import type { ForgeUiState, ForgeWorkbenchUiFlowState } from "../../shared/ui/state.js";
 
-function toFlowLabel(flowState: ForgeWorkbenchUiFlowState): string {
-  return flowState.replaceAll("_", " ").toLowerCase();
-}
-
 export function renderCoordinatorPanel(
   documentRef: Document,
   state: ForgeUiState,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string,
   options: {
+    flowLabel: string;
     flowState: ForgeWorkbenchUiFlowState;
     handoffLabel: string;
     note: string;
@@ -21,16 +19,28 @@ export function renderCoordinatorPanel(
   const note = documentRef.createElement("p");
   note.className = "forge-coordinator-strip__note";
   note.textContent =
-    state.pendingCommand !== null ? "Forge is finishing the current step." : options.note;
+    state.pendingCommand !== null
+      ? text(["workbench", "coordinator", "pending"], "Forge is finishing the current step.")
+      : options.note;
 
   const stats = documentRef.createElement("div");
   stats.className = "forge-coordinator-strip__stats";
   [
-    `state ${toFlowLabel(options.flowState)}`,
-    `waiting ${String(state.snapshot.coordinatorState.assignmentQueueTotal)}`,
-    `answers ${String(state.snapshot.coordinatorState.completedResponseCount)}`,
-    `decisions ${String(state.snapshot.coordinatorState.pendingConflictCount)}`,
-    `handoff ${options.handoffLabel}`,
+    text(["workbench", "coordinator", "stats", "state"], "state {label}", {
+      label: options.flowLabel,
+    }),
+    text(["workbench", "coordinator", "stats", "waiting"], "waiting {count}", {
+      count: state.snapshot.coordinatorState.assignmentQueueTotal,
+    }),
+    text(["workbench", "coordinator", "stats", "answers"], "answers {count}", {
+      count: state.snapshot.coordinatorState.completedResponseCount,
+    }),
+    text(["workbench", "coordinator", "stats", "decisions"], "decisions {count}", {
+      count: state.snapshot.coordinatorState.pendingConflictCount,
+    }),
+    text(["workbench", "coordinator", "stats", "handoff"], "handoff {label}", {
+      label: options.handoffLabel,
+    }),
   ].forEach((value) => {
     const chip = documentRef.createElement("span");
     chip.className = "forge-chip forge-chip--soft";
@@ -41,7 +51,11 @@ export function renderCoordinatorPanel(
   if (state.snapshot.exportSummary.exportReady && state.snapshot.exports[0]?.filePath) {
     const exportHint = documentRef.createElement("span");
     exportHint.className = "forge-field__hint";
-    exportHint.textContent = `Latest package: ${state.snapshot.exports[0].filePath}`;
+    exportHint.textContent = text(
+      ["workbench", "coordinator", "latestPackage"],
+      "Latest package: {path}",
+      { path: state.snapshot.exports[0].filePath }
+    );
     strip.append(exportHint);
   }
 

@@ -71,44 +71,35 @@ function createGuideCard(
   return card;
 }
 
-function describeApprovedState(flowState: ForgeWorkbenchUiFlowState): {
-  summary: string;
-  title: string;
-} {
-  switch (flowState) {
-    case "APPROVED":
-      return {
-        title: "DISPATCH READY",
-        summary: "NEXT ACTION: DISPATCH ASSIGNMENTS",
-      };
-    case "DISPATCHED":
-      return {
-        title: "DISPATCH LOCKED",
-        summary: "STATE: WORK IN FLIGHT",
-      };
-    case "RESPONSES_READY":
-    case "CONFLICT":
-    case "SYNTHESIS_READY":
-    case "EXPORTED":
-      return {
-        title: "DISPATCH LOCKED",
-        summary: "STATE: REFERENCE ONLY",
-      };
-    case "IDLE":
-    case "SESSION_CREATED":
-    case "GOAL_DEFINED":
-    case "DRAFT_READY":
-      return {
-        title: "DISPATCH LOCKED",
-        summary: "REQUIRES: APPROVED DRAFT",
-      };
+function toDispatchModeLabel(
+  mode: string,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string
+): string {
+  if (mode === "single-owner") {
+    return text(["workbench", "dispatchModes", "singleOwner"], "Single owner");
   }
+  if (mode === "compare") {
+    return text(["workbench", "dispatchModes", "compare"], "Compare");
+  }
+  return mode;
+}
+
+function toRoleLabel(
+  state: ForgeUiState,
+  roleId: string | null,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string
+): string {
+  if (!roleId) {
+    return text(["workbench", "approvedPanel", "fields", "role"], "Role");
+  }
+  const entry = state.meta.roleCatalog[roleId] as { label?: string } | undefined;
+  return text(["workbench", "roles", roleId], entry?.label ?? roleId);
 }
 
 export function renderApprovedTasksPanel(
   documentRef: Document,
   state: ForgeUiState,
-  text: (path: string[], fallback: string) => string,
+  text: (path: string[], fallback: string, params?: Record<string, number | string>) => string,
   options: {
     dispatchBlockedReason: string | null;
     flowState: ForgeWorkbenchUiFlowState;
@@ -117,7 +108,51 @@ export function renderApprovedTasksPanel(
   const body = documentRef.createElement("div");
   body.className = "forge-panel__body";
   const topLevelTasks = state.snapshot.approvedTasks.filter((task) => task.level === 1);
-  const approvedState = describeApprovedState(options.flowState);
+  const approvedState = (() => {
+    switch (options.flowState) {
+      case "APPROVED":
+        return {
+          title: text(["workbench", "approvedPanel", "guide", "approved", "title"], "DISPATCH READY"),
+          summary: text(
+            ["workbench", "approvedPanel", "guide", "approved", "summary"],
+            "NEXT ACTION: DISPATCH ASSIGNMENTS"
+          ),
+        };
+      case "DISPATCHED":
+        return {
+          title: text(
+            ["workbench", "approvedPanel", "guide", "dispatched", "title"],
+            "DISPATCH LOCKED"
+          ),
+          summary: text(
+            ["workbench", "approvedPanel", "guide", "dispatched", "summary"],
+            "STATE: WORK IN FLIGHT"
+          ),
+        };
+      case "RESPONSES_READY":
+      case "CONFLICT":
+      case "SYNTHESIS_READY":
+      case "EXPORTED":
+        return {
+          title: text(
+            ["workbench", "approvedPanel", "guide", "referenceOnly", "title"],
+            "DISPATCH LOCKED"
+          ),
+          summary: text(
+            ["workbench", "approvedPanel", "guide", "referenceOnly", "summary"],
+            "STATE: REFERENCE ONLY"
+          ),
+        };
+      default:
+        return {
+          title: text(["workbench", "approvedPanel", "guide", "locked", "title"], "DISPATCH LOCKED"),
+          summary: text(
+            ["workbench", "approvedPanel", "guide", "locked", "summary"],
+            "REQUIRES: APPROVED DRAFT"
+          ),
+        };
+    }
+  })();
   const settingsLocked = options.flowState !== "APPROVED";
 
   const toolbar = documentRef.createElement("div");
@@ -126,8 +161,18 @@ export function renderApprovedTasksPanel(
   title.className = "forge-toolbar__title";
   title.textContent =
     topLevelTasks.length > 0
-      ? `${String(topLevelTasks.length)} approved task${topLevelTasks.length === 1 ? "" : "s"}`
-      : "No approved tasks";
+      ? topLevelTasks.length === 1
+        ? text(["workbench", "approvedPanel", "toolbar", "countOne"], "{count} approved task", {
+            count: topLevelTasks.length,
+          })
+        : text(
+            ["workbench", "approvedPanel", "toolbar", "countOther"],
+            "{count} approved tasks",
+            {
+              count: topLevelTasks.length,
+            }
+          )
+      : text(["workbench", "approvedPanel", "toolbar", "empty"], "No approved tasks");
   toolbar.append(title);
   body.append(toolbar);
   body.append(createGuideCard(documentRef, approvedState.title, approvedState.summary));
@@ -152,9 +197,7 @@ export function renderApprovedTasksPanel(
     cards.className = "forge-card-list";
     topLevelTasks.forEach((task) => {
       const taskKey = safeTaskKey(task.id);
-      const taskAssignments = state.snapshot.assignments.filter(
-        (entry) => entry.taskId === task.id
-      );
+      const taskAssignments = state.snapshot.assignments.filter((entry) => entry.taskId === task.id);
       const queuedCount = taskAssignments.filter((entry) => entry.status === "queued").length;
       const completedCount = taskAssignments.filter((entry) => entry.status === "completed").length;
 
@@ -174,10 +217,22 @@ export function renderApprovedTasksPanel(
       const meta = documentRef.createElement("div");
       meta.className = "forge-flow-item__meta";
       [
-        `${String(queuedCount)} queued`,
-        `${String(completedCount)} done`,
-        task.dispatchMode,
-        task.roleId ?? "role",
+        queuedCount === 1
+          ? text(["workbench", "approvedPanel", "meta", "queuedOne"], "{count} queued", {
+              count: queuedCount,
+            })
+          : text(["workbench", "approvedPanel", "meta", "queuedOther"], "{count} queued", {
+              count: queuedCount,
+            }),
+        completedCount === 1
+          ? text(["workbench", "approvedPanel", "meta", "doneOne"], "{count} done", {
+              count: completedCount,
+            })
+          : text(["workbench", "approvedPanel", "meta", "doneOther"], "{count} done", {
+              count: completedCount,
+            }),
+        toDispatchModeLabel(task.dispatchMode, text),
+        toRoleLabel(state, task.roleId, text),
       ].forEach((value, index) => {
         const chip = documentRef.createElement("span");
         chip.className = index < 2 ? "forge-chip forge-chip--soft" : "forge-chip";
@@ -191,8 +246,18 @@ export function renderApprovedTasksPanel(
       modeSelect.className = "forge-input";
       modeSelect.disabled = settingsLocked;
       modeSelect.append(
-        createOption(documentRef, "single-owner", "single-owner", task.dispatchMode),
-        createOption(documentRef, "compare", "compare", task.dispatchMode)
+        createOption(
+          documentRef,
+          "single-owner",
+          text(["workbench", "dispatchModes", "singleOwner"], "Single owner"),
+          task.dispatchMode
+        ),
+        createOption(
+          documentRef,
+          "compare",
+          text(["workbench", "dispatchModes", "compare"], "Compare"),
+          task.dispatchMode
+        )
       );
 
       const seatSelect = documentRef.createElement("select");
@@ -213,7 +278,12 @@ export function renderApprovedTasksPanel(
           return;
         }
         roleSelect.append(
-          createOption(documentRef, record.id, record.label ?? record.id, task.roleId)
+          createOption(
+            documentRef,
+            record.id,
+            text(["workbench", "roles", record.id], record.label ?? record.id),
+            task.roleId
+          )
         );
       });
 
@@ -221,7 +291,9 @@ export function renderApprovedTasksPanel(
       compareSeatSelect.id = `forge-approved-compare-seat-${taskKey}`;
       compareSeatSelect.className = "forge-input";
       compareSeatSelect.disabled = settingsLocked;
-      compareSeatSelect.append(createOption(documentRef, "", "none", null));
+      compareSeatSelect.append(
+        createOption(documentRef, "", text(["workbench", "common", "none"], "none"), null)
+      );
       (["ai1", "ai2", "us1"] as const).forEach((seatId) => {
         compareSeatSelect.append(
           createOption(documentRef, seatId, seatId, task.compareSeatIds[0] ?? null)
@@ -232,7 +304,14 @@ export function renderApprovedTasksPanel(
       personaSelect.id = `forge-approved-persona-${taskKey}`;
       personaSelect.className = "forge-input";
       personaSelect.disabled = settingsLocked;
-      personaSelect.append(createOption(documentRef, "", "none", task.personaPresetId));
+      personaSelect.append(
+        createOption(
+          documentRef,
+          "",
+          text(["workbench", "common", "none"], "none"),
+          task.personaPresetId
+        )
+      );
       Object.values(state.meta.personaPresets).forEach((entry) => {
         const record = entry as { id?: string; label?: string };
         if (!record.id) {
@@ -246,20 +325,47 @@ export function renderApprovedTasksPanel(
       const controls = documentRef.createElement("div");
       controls.className = "forge-form-grid forge-form-grid--approved";
       controls.append(
-        createField(documentRef, "Mode", modeSelect),
-        createField(documentRef, "Seat", seatSelect),
-        createField(documentRef, "Role", roleSelect),
-        createField(documentRef, "Compare seat", compareSeatSelect),
-        createField(documentRef, "Persona", personaSelect)
+        createField(
+          documentRef,
+          text(["workbench", "approvedPanel", "fields", "mode"], "Mode"),
+          modeSelect
+        ),
+        createField(
+          documentRef,
+          text(["workbench", "approvedPanel", "fields", "seat"], "Seat"),
+          seatSelect
+        ),
+        createField(
+          documentRef,
+          text(["workbench", "approvedPanel", "fields", "role"], "Role"),
+          roleSelect
+        ),
+        createField(
+          documentRef,
+          text(["workbench", "approvedPanel", "fields", "compareSeat"], "Compare seat"),
+          compareSeatSelect
+        ),
+        createField(
+          documentRef,
+          text(["workbench", "approvedPanel", "fields", "persona"], "Persona"),
+          personaSelect
+        )
       );
 
       card.append(header, controls);
       if (options.flowState === "APPROVED") {
-        const saveButton = createButton(documentRef, "Save dispatch settings", {
-          datasetKey: "forgeSaveApprovedTask",
-          datasetValue: task.id,
-          disabled: taskAssignments.some((assignment) => assignment.status !== "queued"),
-        });
+        const saveButton = createButton(
+          documentRef,
+          text(
+            ["workbench", "approvedPanel", "actions", "saveDispatchSettings"],
+            "Save dispatch settings"
+          ),
+          {
+            datasetKey: "forgeSaveApprovedTask",
+            datasetValue: task.id,
+            disabled: taskAssignments.some((assignment) => assignment.status !== "queued"),
+          }
+        );
         card.append(saveButton);
       }
       cards.append(card);
