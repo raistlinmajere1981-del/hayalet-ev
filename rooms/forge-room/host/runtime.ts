@@ -168,7 +168,10 @@ function readBridgeReplyText(result: ForgeBridgeResult): string | null {
   return replyText ?? null;
 }
 
-function buildTaskRetryFeedback(validationMessages: string[], previousRawText: string | null): string {
+function buildTaskRetryFeedback(
+  validationMessages: string[],
+  previousRawText: string | null
+): string {
   const excerpt =
     previousRawText !== null && previousRawText.trim() !== ""
       ? `Previous response excerpt:\n${previousRawText.trim().slice(0, 600)}`
@@ -213,8 +216,13 @@ export default function createForgeRoomHostRuntime() {
       };
 
       function pushState(): void {
+        const state = runtime.store.getState();
         api.notifyRoom("forge-state", {
-          snapshot: createForgeRuntimeSnapshot(runtime.store.getState(), runtime.sessionList),
+          snapshot: createForgeRuntimeSnapshot(
+            state,
+            runtime.sessionList,
+            buildExportReadiness(state)
+          ),
           meta: {
             roleCatalog: FORGE_ROLE_CATALOG,
             personaPresets: FORGE_PERSONA_PRESETS,
@@ -319,14 +327,14 @@ export default function createForgeRoomHostRuntime() {
         if (state.exports.length > 0) {
           return "exported";
         }
-        if (state.selectedSynthesisId !== null) {
-          return "synthesis-ready";
-        }
         if (
           state.responses.length > 0 &&
           state.conflicts.some((entry) => entry.status === "open")
         ) {
           return "reviewing-conflicts";
+        }
+        if (state.selectedSynthesisId !== null) {
+          return "synthesis-ready";
         }
         if (state.responses.length > 0) {
           return "synthesis-ready";
@@ -364,9 +372,12 @@ export default function createForgeRoomHostRuntime() {
               ? "selected"
               : state.syntheses.length > 0
                 ? "drafted"
-                : state.responses.length > 0
+                : state.responses.length > 0 &&
+                    state.conflicts.some((entry) => entry.status === "open")
                   ? "blocked"
-                  : "idle"),
+                  : state.responses.length > 0
+                    ? "ready"
+                    : "idle"),
           exportReady: overrides.exportReady ?? exportSummary.exportReady,
           lastExportPath: overrides.lastExportPath ?? state.exports[0]?.filePath ?? null,
           note: overrides.note ?? state.coordinatorState.note,
@@ -925,6 +936,111 @@ export default function createForgeRoomHostRuntime() {
         };
       }
 
+      async function resolveConflictDecision(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        conflictId?: string;
+        message?: string;
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const state = readCurrentState();
+        const conflictId = asNonEmptyString(payload["conflictId"]);
+        if (conflictId === null) {
+          return {
+            success: false,
+            message: "A conflict id is required.",
+          };
+        }
+        const currentConflict = state.conflicts.find((entry) => entry.id === conflictId) ?? null;
+        if (currentConflict === null) {
+          return {
+            success: false,
+            message: "The requested conflict does not exist.",
+          };
+        }
+
+        const requestedStatus = payload["status"] === "resolved" ? "resolved" : "open";
+        const preferredResponseId = asNonEmptyString(payload["preferredResponseId"]);
+        const resolutionNote = asNonEmptyString(payload["resolutionNote"]);
+        const nextPreferredResponseId = preferredResponseId ?? currentConflict.preferredResponseId;
+        if (
+          nextPreferredResponseId !== null &&
+          currentConflict.responseIds.includes(nextPreferredResponseId) !== true
+        ) {
+          return {
+            success: false,
+            message: "The preferred response does not belong to this conflict.",
+          };
+        }
+        if (requestedStatus === "resolved" && nextPreferredResponseId === null) {
+          return {
+            success: false,
+            message: "Select a preferred response before resolving the conflict.",
+          };
+        }
+
+        const nextConflicts = state.conflicts.map((conflict) =>
+          conflict.id === conflictId
+            ? {
+                ...conflict,
+                status: requestedStatus,
+                preferredResponseId: nextPreferredResponseId,
+                resolutionNote:
+                  resolutionNote ?? (requestedStatus === "open" ? null : conflict.resolutionNote),
+              }
+            : conflict
+        );
+        const nextResponses = state.responses.map((response) => {
+          if (currentConflict.responseIds.includes(response.id) !== true) {
+            return response;
+          }
+          if (requestedStatus === "resolved") {
+            return {
+              ...response,
+              status: response.id === nextPreferredResponseId ? "selected" : "rejected",
+            };
+          }
+          return {
+            ...response,
+            status: "captured",
+          };
+        });
+        const openConflictCount = nextConflicts.filter(
+          (conflict) => conflict.status === "open"
+        ).length;
+        dispatchResponses(nextResponses);
+        dispatchConflicts(nextConflicts);
+        dispatchSyntheses([], null);
+        dispatchGoal(
+          setGoalStatus(
+            state.currentGoal,
+            openConflictCount === 0 && state.responses.length > 0
+              ? "synthesis-ready"
+              : "in-progress"
+          )
+        );
+        syncCoordinatorState({
+          planStatus: openConflictCount === 0 ? "synthesis-ready" : "reviewing-conflicts",
+          synthesisStatus: openConflictCount === 0 ? "ready" : "blocked",
+          note:
+            requestedStatus === "resolved"
+              ? openConflictCount === 0
+                ? "Conflict resolved. Generate synthesis when ready."
+                : "Conflict resolved. Resolve the remaining open conflicts before synthesis."
+              : "Conflict left open. Synthesis remains blocked until a preferred response is chosen.",
+        });
+        await persistCurrentSession("conflict-updated", {
+          sessionId: state.activeSessionId,
+          conflictId,
+          preferredResponseId: nextPreferredResponseId,
+          status: requestedStatus,
+        });
+        return {
+          success: true,
+          conflictId,
+        };
+      }
+
       async function dispatchAssignmentsForSession(): Promise<{
         success: boolean;
         completedAssignments?: number;
@@ -1005,22 +1121,25 @@ export default function createForgeRoomHostRuntime() {
 
           for (let attempt = 0; attempt < 2; attempt += 1) {
             const extraFeedback =
-              attempt === 0
-                ? null
-                : buildTaskRetryFeedback(taskFailureMessages, lastTaskReplyText);
+              attempt === 0 ? null : buildTaskRetryFeedback(taskFailureMessages, lastTaskReplyText);
             const bridgePayload = {
               action: "message.sendWait",
               timeoutMs: 240000,
               toSlot: queuedAssignment.seatId,
               payload: {
                 page: `forge-room:task:${task.id}`,
-                text: [buildForgeTaskPrompt({
-                  approvedTasks,
-                  assignment: dispatchedAssignment,
-                  goal,
-                  task,
-                }), extraFeedback]
-                  .filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "")
+                text: [
+                  buildForgeTaskPrompt({
+                    approvedTasks,
+                    assignment: dispatchedAssignment,
+                    goal,
+                    task,
+                  }),
+                  extraFeedback,
+                ]
+                  .filter(
+                    (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+                  )
                   .join("\n\n"),
                 protocol: {
                   room: FORGE_ROOM_ID,
@@ -1164,11 +1283,22 @@ export default function createForgeRoomHostRuntime() {
               "At least one captured response is required before synthesis can be generated.",
           };
         }
+        if (state.conflicts.some((conflict) => conflict.status === "open")) {
+          syncCoordinatorState({
+            planStatus: "reviewing-conflicts",
+            synthesisStatus: "blocked",
+            note: "Resolve open conflicts before synthesis can be generated.",
+          });
+          return {
+            success: false,
+            message: "Resolve open conflicts before synthesis can be generated.",
+          };
+        }
         const currentGoal = state.currentGoal;
         const dispatchBridge = await requireDispatchBridge();
         syncCoordinatorState({
-          planStatus: state.conflicts.length > 0 ? "reviewing-conflicts" : "synthesis-ready",
-          synthesisStatus: "blocked",
+          planStatus: "synthesis-ready",
+          synthesisStatus: "ready",
           note: "Generating a synthesis candidate through the Architect lane.",
         });
         const promoteFallbackSynthesis = async (
@@ -1377,8 +1507,7 @@ export default function createForgeRoomHostRuntime() {
                   goalId: handoffPackage.goalId,
                 }
               : {
-                  message:
-                    "Selected synthesis, Repair Room target, and at least one acceptance criterion are required before export.",
+                  message: summary.reason,
                 }),
           };
         } catch (error) {
@@ -1481,6 +1610,8 @@ export default function createForgeRoomHostRuntime() {
             return await updateApprovedTaskSettings(commandPayload);
           case FORGE_UI_COMMANDS.dispatchAssignments:
             return await dispatchAssignmentsForSession();
+          case FORGE_UI_COMMANDS.resolveConflict:
+            return await resolveConflictDecision(commandPayload);
           case FORGE_UI_COMMANDS.generateSynthesis:
             return await generateSynthesis();
           case FORGE_UI_COMMANDS.selectSynthesis:

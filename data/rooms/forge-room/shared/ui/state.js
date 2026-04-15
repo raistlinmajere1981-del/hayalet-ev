@@ -8,6 +8,16 @@ export function createEmptyForgeRoomSnapshot() {
     approvedTasks: [],
     assignments: [],
     exports: [],
+    exportSummary: {
+      acceptanceCriteriaCount: 0,
+      exportReady: false,
+      missingRequirements: ["Select a synthesis"],
+      openConflictCount: 0,
+      reason: "Export blocked: no selected synthesis.",
+      selectedSynthesisId: null,
+      status: "blocked",
+      targetRoomId: null
+    },
     responses: [],
     conflicts: [],
     syntheses: [],

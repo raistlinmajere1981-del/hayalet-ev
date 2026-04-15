@@ -116,6 +116,27 @@ function matchesSelector(element: FakeElement, selector: string): boolean {
   return false;
 }
 
+function findElementsByClass(root: FakeElement, className: string): FakeElement[] {
+  const matches: FakeElement[] = [];
+  walk(root, (element) => {
+    const classNames = element.className.split(/\s+/).filter(Boolean);
+    if (classNames.includes(className)) {
+      matches.push(element);
+    }
+  });
+  return matches;
+}
+
+function readTreeText(root: FakeElement): string {
+  const parts: string[] = [];
+  walk(root, (element) => {
+    if (element.textContent.trim() !== "") {
+      parts.push(element.textContent.trim());
+    }
+  });
+  return parts.join(" ");
+}
+
 function createMinimalForgeUiEnvironment() {
   const document = new FakeDocument();
   const app = document.createElement("div");
@@ -301,6 +322,16 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
           },
         ],
         exports: [],
+        exportSummary: {
+          acceptanceCriteriaCount: 0,
+          exportReady: false,
+          missingRequirements: ["Select a synthesis"],
+          openConflictCount: 0,
+          reason: "Export blocked: Select a synthesis.",
+          selectedSynthesisId: null,
+          status: "blocked",
+          targetRoomId: "repair-room",
+        },
         responses: [],
         conflicts: [],
         syntheses: [],
@@ -351,15 +382,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       },
     });
 
-    const panelIds = [
-      "goal",
-      "draft",
-      "approved",
-      "responses",
-      "conflicts",
-      "synthesis",
-      "coordinator",
-    ];
+    const panelIds = ["goal", "approved", "responses", "synthesis", "coordinator"];
     panelIds.forEach((panelId) => {
       assert.ok(
         environment.app.querySelector(`[data-forge-panel="${panelId}"]`),
@@ -373,8 +396,203 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       stage: "ui-ready",
     });
     assert.ok(environment.sentCommands.includes("ForgeRoomUiReady"));
-    assert.ok(environment.app.querySelector("#forge-draft-title-forge-task-draft-1"));
+    assert.ok(environment.app.querySelector("#forge-goal-summary"));
     assert.ok(environment.app.querySelector("#forge-approved-mode-forge-task-approved-1"));
+
+    const primaryButtons = findElementsByClass(environment.app, "forge-button--primary");
+    assert.equal(primaryButtons.length, 1);
+    assert.equal(primaryButtons[0]?.textContent, "Dispatch assignments");
+
+    const uiText = readTreeText(environment.app);
+    assert.match(uiText, /State Approved/);
+    assert.match(uiText, /DISPATCH READY/);
+    assert.match(uiText, /CENTER GATE LOCKED/);
+    assert.match(uiText, /REQUIRES: DISPATCH/);
+    assert.match(uiText, /OUTPUT GATE LOCKED/);
+    assert.match(uiText, /REQUIRES: RESPONSES/);
+    assert.doesNotMatch(uiText, /Export blocked:/);
+    assert.doesNotMatch(uiText, /Check handoff/);
+    assert.doesNotMatch(uiText, /Export handoff/);
+
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        activeSessionId: "forge-session-smoke",
+        currentGoal: {
+          id: "forge-goal-smoke",
+          summary: "Repair Room integration",
+          brief: "Prepare the first Forge session.",
+          constraints: ["Keep the scope local."],
+          acceptanceCriteria: ["Repair Room can read the handoff package."],
+          status: "synthesis-ready",
+          targetRoomId: "repair-room",
+          createdAt: "2026-04-15T00:00:00.000Z",
+          updatedAt: "2026-04-15T00:10:00.000Z",
+        },
+        draftTasks: [],
+        draftSourceText: null,
+        validationMessages: [],
+        approvedTasks: [
+          {
+            id: "forge-task-approved-1",
+            parentTaskId: null,
+            level: 1,
+            title: "Prepare export",
+            summary: "Shape the final handoff.",
+            executionKind: "task",
+            dependsOnTaskIds: [],
+            assignable: true,
+            dispatchMode: "compare",
+            seatId: "ai1",
+            roleId: "architect",
+            compareSeatIds: ["ai2"],
+            personaPresetId: "gok",
+            status: "answered",
+          },
+        ],
+        assignments: [
+          {
+            id: "forge-assignment-1",
+            taskId: "forge-task-approved-1",
+            mode: "compare",
+            seatId: "ai1",
+            roleId: "architect",
+            personaPresetId: "gok",
+            requestId: "forge-request-1",
+            startedAt: "2026-04-15T00:02:00.000Z",
+            status: "completed",
+            queuedAt: "2026-04-15T00:00:00.000Z",
+            responseId: "forge-response-1",
+            errorMessage: null,
+            archiveRef: null,
+            completedAt: "2026-04-15T00:03:00.000Z",
+          },
+          {
+            id: "forge-assignment-2",
+            taskId: "forge-task-approved-1",
+            mode: "compare",
+            seatId: "ai2",
+            roleId: "challenger",
+            personaPresetId: "rovo",
+            requestId: "forge-request-2",
+            startedAt: "2026-04-15T00:02:00.000Z",
+            status: "completed",
+            queuedAt: "2026-04-15T00:00:00.000Z",
+            responseId: "forge-response-2",
+            errorMessage: null,
+            archiveRef: null,
+            completedAt: "2026-04-15T00:03:30.000Z",
+          },
+        ],
+        exports: [],
+        exportSummary: {
+          acceptanceCriteriaCount: 1,
+          exportReady: false,
+          missingRequirements: ["Resolve the open conflict"],
+          openConflictCount: 1,
+          reason: "Export blocked: Resolve the open conflict.",
+          selectedSynthesisId: null,
+          status: "blocked",
+          targetRoomId: "repair-room",
+        },
+        responses: [
+          {
+            id: "forge-response-1",
+            assignmentId: "forge-assignment-1",
+            taskId: "forge-task-approved-1",
+            seatId: "ai1",
+            roleId: "architect",
+            personaPresetId: "gok",
+            summary: "Lead with a compact export contract.",
+            body: "Create the export around a compact contract first.",
+            rawText: "Create the export around a compact contract first.",
+            archiveRef: null,
+            artifacts: [],
+            status: "captured",
+            createdAt: "2026-04-15T00:03:00.000Z",
+          },
+          {
+            id: "forge-response-2",
+            assignmentId: "forge-assignment-2",
+            taskId: "forge-task-approved-1",
+            seatId: "ai2",
+            roleId: "challenger",
+            personaPresetId: "rovo",
+            summary: "Favor a wider checklist before export.",
+            body: "Add a broader checklist before packaging the handoff.",
+            rawText: "Add a broader checklist before packaging the handoff.",
+            archiveRef: null,
+            artifacts: [],
+            status: "captured",
+            createdAt: "2026-04-15T00:03:30.000Z",
+          },
+        ],
+        conflicts: [
+          {
+            id: "forge-conflict-1",
+            taskId: "forge-task-approved-1",
+            kind: "approach",
+            status: "open",
+            summary: "The two answers disagree on how much contract detail should ship first.",
+            responseIds: ["forge-response-1", "forge-response-2"],
+            preferredResponseId: null,
+            resolutionNote: null,
+            createdAt: "2026-04-15T00:04:00.000Z",
+          },
+        ],
+        syntheses: [],
+        selectedSynthesisId: null,
+        coordinatorState: {
+          actorId: "coordinator",
+          planStatus: "reviewing-conflicts",
+          assignmentQueueTotal: 0,
+          pendingAssignmentCount: 0,
+          completedResponseCount: 2,
+          pendingConflictCount: 1,
+          synthesisStatus: "blocked",
+          exportReady: false,
+          lastExportPath: null,
+          note: "A decision is needed before synthesis.",
+          lastUpdatedAt: "2026-04-15T00:04:00.000Z",
+        },
+        sessionList: [],
+      },
+      meta: {
+        roleCatalog: {
+          architect: {
+            id: "architect",
+            label: "Architect",
+            localActor: false,
+          },
+          challenger: {
+            id: "challenger",
+            label: "Challenger",
+            localActor: false,
+          },
+        },
+        personaPresets: {
+          gok: {
+            id: "gok",
+            label: "Gok",
+          },
+          rovo: {
+            id: "rovo",
+            label: "Rovo",
+          },
+        },
+      },
+    });
+
+    const conflictButtons = findElementsByClass(environment.app, "forge-button--primary");
+    assert.equal(conflictButtons.length, 1);
+    assert.equal(conflictButtons[0]?.textContent, "Resolve decision");
+
+    const conflictText = readTreeText(environment.app);
+    assert.match(conflictText, /State Conflict/);
+    assert.match(conflictText, /CENTER GATE BLOCKED/);
+    assert.match(conflictText, /REQUIRES: CONFLICT RESOLUTION/);
+    assert.match(conflictText, /SELECT ONE RESPONSE/);
+    assert.match(conflictText, /OUTPUT GATE BLOCKED/);
   } finally {
     await installedCopy.cleanup();
     environment.restore();

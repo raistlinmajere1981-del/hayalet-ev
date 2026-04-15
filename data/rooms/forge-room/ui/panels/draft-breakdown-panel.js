@@ -9,7 +9,7 @@ function createOption(documentRef, value, label, selectedValue) {
 function safeTaskKey(taskId) {
   return taskId.replace(/[^a-z0-9_-]/gi, "-");
 }
-function createLabeledField(documentRef, labelText, control) {
+function createField(documentRef, labelText, control) {
   const wrapper = documentRef.createElement("label");
   wrapper.className = "forge-field";
   const label = documentRef.createElement("span");
@@ -18,74 +18,148 @@ function createLabeledField(documentRef, labelText, control) {
   wrapper.append(label, control);
   return wrapper;
 }
-export function renderDraftBreakdownPanel(documentRef, state, text) {
+function createButton(documentRef, label, action, options = {}) {
+  const button = documentRef.createElement("button");
+  button.type = "button";
+  button.className = options.primary ? "forge-button forge-button--primary" : "forge-button forge-button--secondary";
+  if (action) {
+    button.dataset["forgeAction"] = action;
+  }
+  if (options.datasetKey && options.datasetValue) {
+    button.dataset[options.datasetKey] = options.datasetValue;
+  }
+  button.disabled = options.disabled === true;
+  button.textContent = label;
+  return button;
+}
+function createGuideCard(documentRef, titleText, summaryText) {
+  const card = documentRef.createElement("article");
+  card.className = "forge-state-guide";
+  const title = documentRef.createElement("strong");
+  title.textContent = titleText;
+  const summary = documentRef.createElement("p");
+  summary.className = "forge-panel__hint";
+  summary.textContent = summaryText;
+  card.append(title, summary);
+  return card;
+}
+function describeDraftState(flowState, hasValidationIssues) {
+  switch (flowState) {
+    case "IDLE":
+      return {
+        title: "Save the goal to unlock the draft",
+        summary: "This lane stays locked until the goal above is saved."
+      };
+    case "SESSION_CREATED":
+      return {
+        title: "Save the goal to open this lane",
+        summary: "The draft stays closed until the goal above becomes real."
+      };
+    case "GOAL_DEFINED":
+      return {
+        title: "Use Next Step to unlock draft editing",
+        summary: "Generate the first draft from the top bar, then this lane will open for edits."
+      };
+    case "DRAFT_READY":
+      return hasValidationIssues ? {
+        title: "Fix the draft to unlock approval",
+        summary: "Tighten the task details below until the plan is ready to approve."
+      } : {
+        title: "Finish edits to unlock approval",
+        summary: "Refine the task lanes below, then use Next Step to approve the draft."
+      };
+    case "APPROVED":
+    case "DISPATCHED":
+    case "RESPONSES_READY":
+    case "CONFLICT":
+    case "SYNTHESIS_READY":
+    case "EXPORTED":
+      return {
+        title: "This lane is locked after approval",
+        summary: "Restart the plan only if you intend to reopen earlier steps."
+      };
+  }
+}
+export function renderDraftBreakdownPanel(documentRef, state, text, options) {
   const body = documentRef.createElement("div");
   body.className = "forge-panel__body";
   const topLevelTasks = state.snapshot.draftTasks.filter((task) => task.level === 1);
-  const flowLane = documentRef.createElement("div");
-  flowLane.className = "forge-flow-lane";
+  const draftState = describeDraftState(
+    options.flowState,
+    state.snapshot.validationMessages.length > 0
+  );
   const checklistByParentId = new Map(
     topLevelTasks.map((task) => [
       task.id,
       state.snapshot.draftTasks.filter((candidate) => candidate.parentTaskId === task.id && candidate.level === 2).map((candidate) => candidate.title)
     ])
   );
-  if (topLevelTasks.length === 0) {
+  const toolbar = documentRef.createElement("div");
+  toolbar.className = "forge-toolbar";
+  const title = documentRef.createElement("p");
+  title.className = "forge-toolbar__title";
+  title.textContent = topLevelTasks.length > 0 ? `${String(topLevelTasks.length)} task${topLevelTasks.length === 1 ? "" : "s"} in draft` : "Draft is empty";
+  const actions = documentRef.createElement("div");
+  actions.className = "forge-actions";
+  if (options.flowState === "DRAFT_READY") {
+    actions.append(
+      createButton(documentRef, "Add task", "add-draft-task"),
+      createButton(documentRef, "Advanced / raw", void 0, {
+        datasetKey: "forgeToggleAdvancedDraft",
+        datasetValue: "true"
+      })
+    );
+  }
+  toolbar.append(title, actions);
+  body.append(toolbar);
+  body.append(createGuideCard(documentRef, draftState.title, draftState.summary));
+  if (options.flowState === "DRAFT_READY" && options.approvalBlockedReason !== null) {
+    const blocked = documentRef.createElement("p");
+    blocked.className = "forge-inline-status forge-inline-status--warning";
+    blocked.textContent = options.approvalBlockedReason;
+    body.append(blocked);
+  }
+  if (topLevelTasks.length === 0 || options.flowState !== "DRAFT_READY") {
     const empty = documentRef.createElement("p");
     empty.className = "forge-panel__hint";
     empty.textContent = text(
       ["workbench", "states", "emptyDraft"],
-      "Draft tasks will appear here."
+      options.flowState === "GOAL_DEFINED" ? "Use Next Step to create the first task lanes here." : "This lane will unlock when the flow reaches draft editing."
     );
     body.append(empty);
   } else {
-    topLevelTasks.forEach((task) => {
-      const item = documentRef.createElement("article");
-      item.className = "forge-flow-item";
-      const content = documentRef.createElement("div");
-      content.className = "forge-flow-item__content";
-      const title = documentRef.createElement("strong");
-      title.textContent = task.title;
-      const summary = documentRef.createElement("p");
-      summary.className = "forge-flow-item__summary";
-      summary.textContent = task.summary;
-      const meta = documentRef.createElement("div");
-      meta.className = "forge-flow-item__meta";
-      const seat = documentRef.createElement("span");
-      seat.className = "forge-chip";
-      seat.textContent = task.seatId ?? "ai1";
-      const mode = documentRef.createElement("span");
-      mode.className = "forge-chip forge-chip--soft";
-      mode.textContent = task.dispatchMode;
-      meta.append(seat, mode);
-      content.append(title, summary, meta);
-      item.append(content);
-      flowLane.append(item);
-    });
-    body.append(flowLane);
     const cards = documentRef.createElement("div");
     cards.className = "forge-card-list";
     topLevelTasks.forEach((task) => {
-      const card = documentRef.createElement("article");
-      card.className = "forge-card forge-card--form";
       const taskKey = safeTaskKey(task.id);
+      const card = documentRef.createElement("article");
+      card.className = "forge-card forge-card--task-editor";
+      const header = documentRef.createElement("div");
+      header.className = "forge-task-card__header";
       const titleInput = documentRef.createElement("input");
       titleInput.id = `forge-draft-title-${taskKey}`;
       titleInput.className = "forge-input";
       titleInput.value = task.title;
+      titleInput.placeholder = "Task title";
+      const meta = documentRef.createElement("div");
+      meta.className = "forge-flow-item__meta";
+      [task.dispatchMode, task.seatId ?? "ai1", task.roleId ?? "role"].forEach((value, index) => {
+        const chip = documentRef.createElement("span");
+        chip.className = index === 0 ? "forge-chip forge-chip--soft" : "forge-chip";
+        chip.textContent = value;
+        meta.append(chip);
+      });
+      header.append(titleInput, meta);
       const summaryInput = documentRef.createElement("textarea");
       summaryInput.id = `forge-draft-summary-${taskKey}`;
       summaryInput.className = "forge-textarea forge-textarea--compact";
       summaryInput.value = task.summary;
+      summaryInput.placeholder = "Task summary";
       const seatSelect = documentRef.createElement("select");
       seatSelect.id = `forge-draft-seat-${taskKey}`;
       seatSelect.className = "forge-input";
-      [
-        ["ai1", "ai1"],
-        ["ai2", "ai2"],
-        ["us1", "us1"]
-      ].forEach(([value, label]) => {
-        seatSelect.append(createOption(documentRef, value, label, task.seatId));
+      ["ai1", "ai2", "us1"].forEach((seatId) => {
+        seatSelect.append(createOption(documentRef, seatId, seatId, task.seatId));
       });
       const roleSelect = documentRef.createElement("select");
       roleSelect.id = `forge-draft-role-${taskKey}`;
@@ -132,32 +206,31 @@ export function renderDraftBreakdownPanel(documentRef, state, text) {
       checklistInput.id = `forge-draft-checklist-${taskKey}`;
       checklistInput.className = "forge-textarea forge-textarea--compact";
       checklistInput.value = (checklistByParentId.get(task.id) ?? []).join("\n");
-      const controls = documentRef.createElement("div");
-      controls.className = "forge-form-grid";
-      controls.append(
-        createLabeledField(documentRef, "Title", titleInput),
-        createLabeledField(documentRef, "Seat", seatSelect),
-        createLabeledField(documentRef, "Role", roleSelect),
-        createLabeledField(documentRef, "Mode", modeSelect),
-        createLabeledField(documentRef, "Compare seat", compareSeatSelect),
-        createLabeledField(documentRef, "Persona", personaSelect),
-        createLabeledField(documentRef, "Summary", summaryInput),
-        createLabeledField(documentRef, "Checklist", checklistInput)
+      checklistInput.placeholder = "Checklist";
+      const fieldGrid = documentRef.createElement("div");
+      fieldGrid.className = "forge-form-grid forge-form-grid--task";
+      fieldGrid.append(
+        createField(documentRef, "Summary", summaryInput),
+        createField(documentRef, "Seat", seatSelect),
+        createField(documentRef, "Role", roleSelect),
+        createField(documentRef, "Mode", modeSelect),
+        createField(documentRef, "Compare seat", compareSeatSelect),
+        createField(documentRef, "Persona", personaSelect),
+        createField(documentRef, "Checklist", checklistInput)
       );
-      const actions = documentRef.createElement("div");
-      actions.className = "forge-actions";
-      const saveButton = documentRef.createElement("button");
-      saveButton.type = "button";
-      saveButton.className = "forge-button";
-      saveButton.dataset["forgeSaveDraftTask"] = task.id;
-      saveButton.textContent = "Save task";
-      const removeButton = documentRef.createElement("button");
-      removeButton.type = "button";
-      removeButton.className = "forge-button";
-      removeButton.dataset["forgeRemoveDraftTask"] = task.id;
-      removeButton.textContent = "Remove task";
-      actions.append(saveButton, removeButton);
-      card.append(controls, actions);
+      const taskActions = documentRef.createElement("div");
+      taskActions.className = "forge-actions";
+      taskActions.append(
+        createButton(documentRef, "Save task", void 0, {
+          datasetKey: "forgeSaveDraftTask",
+          datasetValue: task.id
+        }),
+        createButton(documentRef, "Remove", void 0, {
+          datasetKey: "forgeRemoveDraftTask",
+          datasetValue: task.id
+        })
+      );
+      card.append(header, fieldGrid, taskActions);
       cards.append(card);
     });
     body.append(cards);
@@ -173,34 +246,24 @@ export function renderDraftBreakdownPanel(documentRef, state, text) {
     });
     body.append(errors);
   }
-  const addTaskButton = documentRef.createElement("button");
-  addTaskButton.type = "button";
-  addTaskButton.className = "forge-button";
-  addTaskButton.dataset["forgeAction"] = "add-draft-task";
-  addTaskButton.textContent = "Add top-level task";
-  body.append(addTaskButton);
-  const editor = documentRef.createElement("textarea");
-  editor.id = "forge-draft-source";
-  editor.className = "forge-textarea forge-textarea--draft";
-  editor.placeholder = '{"tasks":[{"title":"Task title"}]}';
-  editor.value = state.snapshot.draftSourceText ?? "";
-  body.append(editor);
-  const apply = documentRef.createElement("button");
-  apply.type = "button";
-  apply.className = "forge-button";
-  apply.dataset["forgeAction"] = "apply-draft-text";
-  apply.textContent = "Apply edited draft";
-  body.append(apply);
-  const approve = documentRef.createElement("button");
-  approve.type = "button";
-  approve.className = "forge-button";
-  approve.dataset["forgeAction"] = "approve-draft";
-  approve.disabled = state.snapshot.draftTasks.length === 0 || state.snapshot.validationMessages.length > 0;
-  approve.textContent = text(["workbench", "actions", "approveDraft"], "Approve draft");
-  body.append(approve);
+  if (options.flowState === "DRAFT_READY" && options.rawEditorOpen) {
+    const rawCard = documentRef.createElement("div");
+    rawCard.className = "forge-advanced-raw";
+    const rawTitle = documentRef.createElement("p");
+    rawTitle.className = "forge-advanced-raw__title";
+    rawTitle.textContent = "Advanced / raw draft edit";
+    const editor = documentRef.createElement("textarea");
+    editor.id = "forge-draft-source";
+    editor.className = "forge-textarea forge-textarea--draft";
+    editor.placeholder = '{"tasks":[{"title":"Task title"}]}';
+    editor.value = state.snapshot.draftSourceText ?? "";
+    rawCard.append(rawTitle, editor);
+    rawCard.append(createButton(documentRef, "Apply raw draft", "apply-draft-text"));
+    body.append(rawCard);
+  }
   return createForgePanel(documentRef, {
     panelId: "draft",
-    title: text(["workbench", "panels", "draft"], "Draft Breakdown"),
+    title: text(["workbench", "panels", "draft"], "Draft"),
     body
   });
 }

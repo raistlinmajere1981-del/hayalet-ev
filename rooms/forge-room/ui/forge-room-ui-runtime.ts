@@ -4,9 +4,13 @@ import {
   type ForgeHostMessage,
 } from "../shared/ui/host-messages.js";
 import { createForgeUiRequestRuntime } from "../shared/ui/request-runtime.js";
-import { createInitialForgeUiState, type ForgeUiState } from "../shared/ui/state.js";
+import {
+  createInitialForgeUiState,
+  type ForgeUiState,
+  type ForgeWorkbenchUiFlowState,
+  type ForgeWorkbenchUiSurface,
+} from "../shared/ui/state.js";
 import { renderApprovedTasksPanel } from "./panels/approved-tasks-panel.js";
-import { renderConflictSummaryPanel } from "./panels/conflict-summary-panel.js";
 import { renderCoordinatorPanel } from "./panels/coordinator-panel.js";
 import { renderDraftBreakdownPanel } from "./panels/draft-breakdown-panel.js";
 import { renderGoalInputPanel } from "./panels/goal-input-panel.js";
@@ -17,12 +21,45 @@ type ForgeUiWindow = Window & {
   roomAPI?: Window["roomAPI"];
 };
 
+type ForgeLocalViewState = {
+  advancedDraftOpen: boolean;
+  expandedResponseIds: Set<string>;
+  expandedSynthesisIds: Set<string>;
+  guidedSurface: ForgeWorkbenchUiSurface | null;
+};
+
+type ForgePrimaryAction = {
+  label: string;
+  description: string;
+  mode: "command" | "guide";
+  commandAction?: string;
+  guidedSurface?: ForgeWorkbenchUiSurface;
+  disabled?: boolean;
+};
+
+type ForgeUiFlowModel = {
+  state: ForgeWorkbenchUiFlowState;
+  label: string;
+  surface: ForgeWorkbenchUiSurface;
+};
+
+type ForgePanelMode = "active" | "monitor" | "locked";
+
+type ForgePanelModeMap = Record<ForgeWorkbenchUiSurface, ForgePanelMode>;
+
 export function createForgeRoomUiRuntime() {
   const state: ForgeUiState = createInitialForgeUiState();
   const requestRuntime = createForgeUiRequestRuntime();
   const windowRef = window as ForgeUiWindow;
   const documentRef = document;
+  const viewState: ForgeLocalViewState = {
+    advancedDraftOpen: false,
+    expandedResponseIds: new Set<string>(),
+    expandedSynthesisIds: new Set<string>(),
+    guidedSurface: null,
+  };
   let lastRenderSignature: string | null = null;
+  let localUiVersion = 0;
 
   function createElement<K extends keyof HTMLElementTagNameMap>(
     tagName: K,
@@ -61,172 +98,393 @@ export function createForgeRoomUiRuntime() {
     return JSON.stringify({
       context: state.context,
       lastCommandResult: state.lastCommandResult,
+      localUiVersion,
       meta: state.meta,
       pendingCommand: state.pendingCommand,
       snapshot: state.snapshot,
     });
   }
 
-  function toHeadlineText(): string {
-    return state.snapshot.currentGoal?.summary || text(["workbench", "title"], "Forge Workbench");
+  function countQueuedAssignments(): number {
+    return state.snapshot.assignments.filter((assignment) => assignment.status === "queued").length;
   }
 
-  function toBriefText(): string {
+  function countTopLevelDraftTasks(): number {
+    return state.snapshot.draftTasks.filter((task) => task.level === 1).length;
+  }
+
+  function countTopLevelApprovedTasks(): number {
+    return state.snapshot.approvedTasks.filter((task) => task.level === 1).length;
+  }
+
+  function countOpenConflicts(): number {
+    return state.snapshot.conflicts.filter((conflict) => conflict.status === "open").length;
+  }
+
+  function hasGoalSummary(): boolean {
+    return Boolean(state.snapshot.currentGoal?.summary.trim());
+  }
+
+  function hasDraftTasks(): boolean {
+    return countTopLevelDraftTasks() > 0;
+  }
+
+  function hasApprovedTasks(): boolean {
+    return countTopLevelApprovedTasks() > 0;
+  }
+
+  function hasDispatchStarted(): boolean {
+    return state.snapshot.assignments.some((assignment) => assignment.status !== "queued");
+  }
+
+  function hasSynthesisArtifacts(): boolean {
+    return state.snapshot.syntheses.length > 0 || state.snapshot.selectedSynthesisId !== null;
+  }
+
+  function hasValidExport(): boolean {
     return (
-      state.snapshot.currentGoal?.brief ||
-      text(
-        ["workbench", "subtitle"],
-        "Shape a goal, review the task draft, and prepare a downstream handoff."
-      )
+      state.snapshot.exports.length > 0 &&
+      countOpenConflicts() === 0 &&
+      state.snapshot.selectedSynthesisId !== null
     );
   }
 
-  function toPlanLabel(planStatus: ForgeUiState["snapshot"]["coordinatorState"]["planStatus"]): string {
-    const labels: Record<ForgeUiState["snapshot"]["coordinatorState"]["planStatus"], string> = {
-      idle: "Idle",
-      drafting: "Drafting",
-      "generating-draft": "Generating draft",
-      "awaiting-approval": "Awaiting approval",
-      "ready-for-assignment": "Ready for assignment",
-      dispatching: "Dispatching",
-      "reviewing-conflicts": "Reviewing conflicts",
-      "synthesis-ready": "Synthesis ready",
-      blocked: "Blocked",
-      exported: "Exported",
+  function deriveUiFlowState(): ForgeWorkbenchUiFlowState {
+    if (hasValidExport()) {
+      return "EXPORTED";
+    }
+    if (countOpenConflicts() > 0) {
+      return "CONFLICT";
+    }
+    if (hasSynthesisArtifacts()) {
+      return "SYNTHESIS_READY";
+    }
+    if (state.snapshot.responses.length > 0) {
+      return "RESPONSES_READY";
+    }
+    if (hasDispatchStarted()) {
+      return "DISPATCHED";
+    }
+    if (hasApprovedTasks()) {
+      return "APPROVED";
+    }
+    if (hasDraftTasks()) {
+      return "DRAFT_READY";
+    }
+    if (hasGoalSummary()) {
+      return "GOAL_DEFINED";
+    }
+    if (state.snapshot.activeSessionId !== null) {
+      return "SESSION_CREATED";
+    }
+    return "IDLE";
+  }
+
+  function toUiFlowLabel(flowState: ForgeWorkbenchUiFlowState): string {
+    const labels: Record<ForgeWorkbenchUiFlowState, string> = {
+      IDLE: "Idle",
+      GOAL_DEFINED: "Goal Defined",
+      SESSION_CREATED: "Session Created",
+      DRAFT_READY: "Draft Ready",
+      APPROVED: "Approved",
+      DISPATCHED: "Dispatched",
+      RESPONSES_READY: "Responses Ready",
+      CONFLICT: "Conflict",
+      SYNTHESIS_READY: "Synthesis Ready",
+      EXPORTED: "Exported",
     };
-    return labels[planStatus] ?? planStatus;
+    return labels[flowState];
   }
 
-  function deriveActiveStage(): number {
-    if (
-      state.snapshot.selectedSynthesisId !== null ||
-      state.snapshot.syntheses.length > 0 ||
-      state.snapshot.exports.length > 0 ||
-      state.snapshot.coordinatorState.synthesisStatus !== "idle"
-    ) {
-      return 3;
+  function deriveDefaultSurface(flowState: ForgeWorkbenchUiFlowState): ForgeWorkbenchUiSurface {
+    switch (flowState) {
+      case "DISPATCHED":
+      case "RESPONSES_READY":
+      case "CONFLICT":
+        return "responses";
+      case "SYNTHESIS_READY":
+      case "EXPORTED":
+        return "synthesis";
+      case "IDLE":
+      case "GOAL_DEFINED":
+      case "SESSION_CREATED":
+      case "DRAFT_READY":
+      case "APPROVED":
+      default:
+        return "goal";
     }
-    if (
-      state.snapshot.draftTasks.length > 0 ||
-      state.snapshot.approvedTasks.length > 0 ||
-      state.snapshot.responses.length > 0 ||
-      state.snapshot.conflicts.length > 0
-    ) {
-      return 2;
-    }
-    return 1;
   }
 
-  function deriveNextStep(): string {
-    if (state.pendingCommand) {
-      return state.pendingCommand;
-    }
-    if (state.snapshot.activeSessionId === null) {
-      return "Create session";
-    }
-    if (!state.snapshot.currentGoal?.summary) {
-      return "Save goal";
-    }
-    if (state.snapshot.draftTasks.length === 0) {
-      return "Generate draft";
-    }
-    if (state.snapshot.approvedTasks.length === 0) {
-      return "Approve draft";
-    }
-    if (state.snapshot.responses.length < state.snapshot.coordinatorState.assignmentQueueTotal) {
-      return "Dispatch assignments";
-    }
-    if (state.snapshot.selectedSynthesisId === null) {
-      return "Generate synthesis";
-    }
-    if (state.snapshot.exports.length === 0) {
-      return "Export handoff";
-    }
-    return "Review latest export";
+  function deriveUiFlowModel(): ForgeUiFlowModel {
+    const flowState = deriveUiFlowState();
+    return {
+      label: toUiFlowLabel(flowState),
+      state: flowState,
+      surface: deriveDefaultSurface(flowState),
+    };
   }
 
-  function renderHero(): HTMLElement {
-    const hero = createElement("section", "forge-shell__hero");
+  function derivePanelModes(flowState: ForgeWorkbenchUiFlowState): ForgePanelModeMap {
+    switch (flowState) {
+      case "IDLE":
+      case "SESSION_CREATED":
+      case "GOAL_DEFINED":
+      case "DRAFT_READY":
+      case "APPROVED":
+        return {
+          goal: "active",
+          output: "locked",
+          responses: "locked",
+        };
+      case "DISPATCHED":
+      case "CONFLICT":
+        return {
+          goal: "locked",
+          output: "locked",
+          responses: "active",
+        };
+      case "RESPONSES_READY":
+      case "SYNTHESIS_READY":
+      case "EXPORTED":
+        return {
+          goal: "locked",
+          output: "active",
+          responses: "monitor",
+        };
+    }
+  }
 
-    const intro = createElement("div", "forge-shell__hero-copy");
-    intro.append(
-      createElement("p", "forge-shell__eyebrow", "Hayalet Ev / Forge Room"),
-      createElement("h1", "forge-shell__title", toHeadlineText()),
-      createElement("p", "forge-shell__subtitle", toBriefText())
+  function describeDraftStep(): string | null {
+    if (hasGoalSummary() !== true) {
+      return "REQUIRES: SAVED GOAL";
+    }
+    return null;
+  }
+
+  function describeApprovalStep(): string | null {
+    if (hasDraftTasks() !== true) {
+      return "REQUIRES: DRAFT TASKS";
+    }
+    if (state.snapshot.validationMessages.length > 0) {
+      return "BLOCKER: DRAFT ISSUES";
+    }
+    return null;
+  }
+
+  function describeDispatchStep(): string | null {
+    if (hasApprovedTasks() !== true) {
+      return "REQUIRES: APPROVED PLAN";
+    }
+    if (countQueuedAssignments() === 0) {
+      return "BLOCKER: NO QUEUED WORK";
+    }
+    return null;
+  }
+
+  function describeSynthesisStep(): string | null {
+    if (state.snapshot.responses.length === 0) {
+      return "REQUIRES: RESPONSES";
+    }
+    if (countOpenConflicts() > 0) {
+      return countOpenConflicts() === 1 ? "BLOCKER: OPEN DECISION" : "BLOCKER: OPEN DECISIONS";
+    }
+    return null;
+  }
+
+  function describeHandoffStep(): string {
+    if (state.snapshot.exportSummary.exportReady) {
+      return "STATE: EXPORT READY";
+    }
+    const firstRequirement = state.snapshot.exportSummary.missingRequirements[0] ?? "";
+    if (firstRequirement === "Define a goal") {
+      return "REQUIRES: SAVED GOAL";
+    }
+    if (firstRequirement === "Target room must be repair-room") {
+      return "REQUIRES: TARGET REPAIR ROOM";
+    }
+    if (firstRequirement === "Select a synthesis") {
+      return "REQUIRES: SELECTED SYNTHESIS";
+    }
+    if (firstRequirement.startsWith("Resolve ")) {
+      return "BLOCKER: OPEN DECISION";
+    }
+    if (firstRequirement === "Add at least one acceptance criterion") {
+      return "REQUIRES: ACCEPTANCE CRITERIA";
+    }
+    return "BLOCKER: HANDOFF CHECK";
+  }
+
+  function latestExportLabel(): string | null {
+    const latestExport = state.snapshot.exports[0]?.filePath;
+    return latestExport ? (latestExport.split("/").at(-1) ?? latestExport) : null;
+  }
+
+  function derivePrimaryAction(flow: ForgeUiFlowModel): ForgePrimaryAction {
+    const nextAction = (() => {
+      switch (flow.state) {
+        case "IDLE":
+          return {
+            label: "Save goal",
+            description: "CONTROL LOCKED UNTIL GOAL IS SAVED.",
+            mode: "command" as const,
+            commandAction: "save-goal",
+          };
+        case "SESSION_CREATED":
+          return {
+            label: "Save goal",
+            description: "NEXT ACTION REQUIRED: SAVE GOAL.",
+            mode: "command" as const,
+            commandAction: "save-goal",
+          };
+        case "GOAL_DEFINED":
+          return {
+            label: "Generate draft",
+            description: "NEXT ACTION REQUIRED: GENERATE DRAFT.",
+            mode: "command" as const,
+            commandAction: "generate-draft",
+          };
+        case "DRAFT_READY": {
+          const approvalStep = describeApprovalStep();
+          return approvalStep
+            ? {
+                label: "Finish draft",
+                description: approvalStep,
+                mode: "guide" as const,
+                guidedSurface: "goal",
+              }
+            : {
+                label: "Approve draft",
+                description: "NEXT ACTION REQUIRED: APPROVE DRAFT.",
+                mode: "command" as const,
+                commandAction: "approve-draft",
+              };
+        }
+        case "APPROVED":
+          return {
+            label: "Dispatch assignments",
+            description: "NEXT ACTION REQUIRED: DISPATCH ASSIGNMENTS.",
+            mode: "command" as const,
+            commandAction: "dispatch-assignments",
+          };
+        case "DISPATCHED":
+          return {
+            label: "Review response lane",
+            description: "STATE HOLD: WAIT FOR RESPONSES.",
+            mode: "guide" as const,
+            guidedSurface: "responses",
+          };
+        case "RESPONSES_READY":
+          return {
+            label: "Generate synthesis",
+            description: "NEXT ACTION REQUIRED: GENERATE SYNTHESIS.",
+            mode: "command" as const,
+            commandAction: "generate-synthesis",
+          };
+        case "CONFLICT":
+          return {
+            label: "Resolve decision",
+            description: "RUN BLOCKED: RESOLVE DECISION.",
+            mode: "guide" as const,
+            guidedSurface: "responses",
+          };
+        case "SYNTHESIS_READY":
+          if (state.snapshot.selectedSynthesisId === null) {
+            return {
+              label: "Choose synthesis",
+              description: "EXPORT LOCKED: SELECT SYNTHESIS.",
+              mode: "guide" as const,
+              guidedSurface: "synthesis",
+            };
+          }
+          return state.snapshot.exportSummary.exportReady
+            ? {
+                label: "Export handoff",
+                description: "FINAL STEP READY: EXPORT HANDOFF.",
+                mode: "command" as const,
+                commandAction: "export-handoff",
+              }
+            : {
+                label: "Check handoff",
+                description: describeHandoffStep(),
+                mode: "command" as const,
+                commandAction: "handoff-check",
+              };
+        case "EXPORTED":
+          return {
+            label: "Review export",
+            description: `EXPORT COMPLETE: ${latestExportLabel() ?? "HANDOFF PACKAGE"}.`,
+            mode: "guide" as const,
+            guidedSurface: "synthesis",
+          };
+      }
+    })();
+
+    if (state.pendingCommand !== null) {
+      return {
+        ...nextAction,
+        label: "Working on this step",
+        description: "SYSTEM LOCKED UNTIL STEP COMPLETES.",
+        disabled: true,
+      };
+    }
+    return nextAction;
+  }
+
+  function renderStatusBar(flow: ForgeUiFlowModel): HTMLElement {
+    const bar = createElement("header", "forge-statusbar");
+    const primaryAction = derivePrimaryAction(flow);
+    bar.dataset["forgeUiState"] = flow.state;
+
+    const identity = createElement("div", "forge-statusbar__identity");
+    identity.append(
+      createElement("p", "forge-statusbar__room", state.context.roomName),
+      createElement(
+        "strong",
+        "forge-statusbar__goal",
+        state.snapshot.currentGoal?.summary || "Define the goal to start this run."
+      ),
+      createElement("p", "forge-statusbar__stage", `State ${flow.label}`)
     );
 
-    const aside = createElement("div", "forge-shell__hero-aside");
-    aside.append(
-      createElement("p", "forge-shell__kicker", "Next step"),
-      createElement("p", "forge-shell__signal", deriveNextStep())
-    );
-
-    const meta = createElement("div", "forge-shell__hero-meta");
-    const metaItems = [
-      `Room ${state.context.roomName}`,
-      `Operator ${state.context.userNickname}`,
-      `Plan ${toPlanLabel(state.snapshot.coordinatorState.planStatus)}`,
-      `Target ${state.snapshot.currentGoal?.targetRoomId ?? "repair-room"}`,
-    ];
-    metaItems.forEach((value, index) => {
+    const stats = createElement("div", "forge-statusbar__stats");
+    [
+      `QUEUE ${String(countQueuedAssignments())}`,
+      `ANS ${String(state.snapshot.responses.length)}`,
+      `CF ${String(countOpenConflicts())}`,
+      `SYN ${hasSynthesisArtifacts() ? "OPEN" : "LOCKED"}`,
+      `EXP ${hasValidExport() ? "SENT" : state.snapshot.exportSummary.exportReady ? "READY" : "LOCKED"}`,
+    ].forEach((value, index) => {
       const chip = createElement(
         "span",
-        index === 2 ? "forge-chip forge-chip--accent" : "forge-chip",
+        index === 4 && (hasValidExport() || state.snapshot.exportSummary.exportReady)
+          ? "forge-chip forge-chip--accent"
+          : "forge-chip",
         value
       );
-      meta.append(chip);
+      stats.append(chip);
     });
 
-    aside.append(meta);
-    hero.append(intro, aside);
-    return hero;
-  }
+    const guidance = createElement("div", "forge-statusbar__guidance");
+    const actionButton = createElement(
+      "button",
+      "forge-button forge-button--primary forge-statusbar__action",
+      primaryAction.label
+    ) as HTMLButtonElement;
+    actionButton.disabled = primaryAction.disabled === true;
+    if (primaryAction.mode === "command" && primaryAction.commandAction) {
+      actionButton.dataset["forgeAction"] = primaryAction.commandAction;
+    }
+    if (primaryAction.mode === "guide" && primaryAction.guidedSurface) {
+      actionButton.dataset["forgeGuideSurface"] = primaryAction.guidedSurface;
+    }
+    guidance.append(
+      createElement("p", "forge-statusbar__label", "Required action"),
+      actionButton,
+      createElement("p", "forge-statusbar__note", primaryAction.description)
+    );
 
-  function renderStageRail(): HTMLElement {
-    const rail = createElement("section", "forge-stage-rail");
-    const activeStage = deriveActiveStage();
-    const stages = [
-      {
-        code: "01",
-        title: "Asama 1",
-        label: "Hedef",
-        detail: state.snapshot.currentGoal?.summary || "Goal capture and room target",
-      },
-      {
-        code: "02",
-        title: "Asama 2",
-        label: "Karar",
-        detail:
-          state.snapshot.responses.length > 0
-            ? `${String(state.snapshot.responses.length)} response collected`
-            : state.snapshot.draftTasks.length > 0
-              ? `${String(state.snapshot.draftTasks.filter((task) => task.level === 1).length)} task in flow`
-              : "Draft and review task flow",
-      },
-      {
-        code: "03",
-        title: "Asama 3",
-        label: "Cikti",
-        detail:
-          state.snapshot.selectedSynthesisId !== null
-            ? "Selected synthesis ready for export"
-            : "Synthesis and handoff package",
-      },
-    ];
-
-    stages.forEach((stage, index) => {
-      const card = createElement("article", "forge-stage-rail__card");
-      card.dataset["active"] = index + 1 === activeStage ? "true" : "false";
-      card.append(
-        createElement("span", "forge-stage-rail__code", stage.code),
-        createElement("strong", "forge-stage-rail__title", stage.title),
-        createElement("p", "forge-stage-rail__label", stage.label),
-        createElement("p", "forge-stage-rail__detail", stage.detail)
-      );
-      rail.append(card);
-    });
-
-    return rail;
+    bar.append(identity, stats, guidance);
+    return bar;
   }
 
   function renderColumnHeading(label: string, caption: string): HTMLElement {
@@ -250,47 +508,85 @@ export function createForgeRoomUiRuntime() {
 
     const shell = documentRef.createElement("div");
     shell.className = "forge-shell";
-
-    const hero = renderHero();
-    const stageRail = renderStageRail();
+    const flow = deriveUiFlowModel();
+    const panelModes = derivePanelModes(flow.state);
+    shell.dataset["forgeUiState"] = flow.state;
 
     const workbench = createElement("section", "forge-workbench");
+    const guidedSurface = viewState.guidedSurface ?? flow.surface;
 
-    const goalColumn = createElement("div", "forge-column forge-column--goal");
-    goalColumn.append(
-      renderColumnHeading("Asama 1", "Hedef"),
-      renderGoalInputPanel(documentRef, state, text)
+    const planColumn = createElement("section", "forge-column forge-column--plan");
+    planColumn.dataset["panelMode"] = panelModes.goal;
+    if (guidedSurface === "goal" && panelModes.goal !== "locked") {
+      planColumn.dataset["guided"] = "true";
+    }
+    planColumn.append(
+      renderColumnHeading("Left", "Plan"),
+      renderGoalInputPanel(documentRef, state, text, {
+        draftBlockedReason: describeDraftStep(),
+        flowState: flow.state,
+      }),
+      hasApprovedTasks()
+        ? renderApprovedTasksPanel(documentRef, state, text, {
+            dispatchBlockedReason: describeDispatchStep(),
+            flowState: flow.state,
+          })
+        : renderDraftBreakdownPanel(documentRef, state, text, {
+            approvalBlockedReason: describeApprovalStep(),
+            flowState: flow.state,
+            rawEditorOpen: viewState.advancedDraftOpen,
+          })
     );
 
-    const decisionColumn = createElement("div", "forge-column forge-column--decision");
-    decisionColumn.append(renderColumnHeading("Asama 2", "Karar"));
-    if (state.snapshot.approvedTasks.filter((task) => task.level === 1).length > 0) {
-      decisionColumn.append(renderApprovedTasksPanel(documentRef, state, text));
-    } else {
-      decisionColumn.append(renderDraftBreakdownPanel(documentRef, state, text));
+    const responseColumn = createElement("section", "forge-column forge-column--responses");
+    responseColumn.dataset["panelMode"] = panelModes.responses;
+    if (guidedSurface === "responses" && panelModes.responses !== "locked") {
+      responseColumn.dataset["guided"] = "true";
     }
-    decisionColumn.append(
-      renderResponsesPanel(documentRef, state, text),
-      renderConflictSummaryPanel(documentRef, state, text)
+    responseColumn.append(
+      renderColumnHeading("Center", "Responses / Decision"),
+      renderResponsesPanel(documentRef, state, text, {
+        expandedResponseIds: viewState.expandedResponseIds,
+        flowState: flow.state,
+      })
     );
-    if (state.snapshot.approvedTasks.filter((task) => task.level === 1).length > 0) {
-      decisionColumn.append(renderDraftBreakdownPanel(documentRef, state, text));
-    }
 
-    const outputColumn = createElement("div", "forge-column forge-column--output");
+    const outputColumn = createElement("section", "forge-column forge-column--output");
+    outputColumn.dataset["panelMode"] = panelModes.synthesis;
+    if (guidedSurface === "synthesis" && panelModes.synthesis !== "locked") {
+      outputColumn.dataset["guided"] = "true";
+    }
     outputColumn.append(
-      renderColumnHeading("Asama 3", "Cikti"),
-      renderSynthesisPanel(documentRef, state, text)
+      renderColumnHeading("Right", "Output"),
+      renderSynthesisPanel(documentRef, state, text, {
+        expandedSynthesisIds: viewState.expandedSynthesisIds,
+        exportBlockedReason: describeHandoffStep(),
+        flowState: flow.state,
+        synthesisBlockedReason: describeSynthesisStep(),
+      })
     );
 
-    const footer = renderCoordinatorPanel(documentRef, state, text);
-    footer.classList.add("forge-footer-panel");
-
-    workbench.append(goalColumn, decisionColumn, outputColumn);
-    shell.append(hero, stageRail, workbench, footer);
+    workbench.append(planColumn, responseColumn, outputColumn);
+    shell.append(
+      renderStatusBar(flow),
+      workbench,
+      renderCoordinatorPanel(documentRef, state, {
+        flowState: flow.state,
+        handoffLabel: hasValidExport()
+          ? "sent"
+          : state.snapshot.exportSummary.exportReady
+            ? "ready"
+            : "locked",
+        note: derivePrimaryAction(flow).description,
+      })
+    );
     mount.replaceChildren(shell);
     bindActions(shell);
     lastRenderSignature = renderSignature;
+  }
+
+  function bumpLocalUiVersion(): void {
+    localUiVersion += 1;
   }
 
   function parseConstraintLines(value: string): string[] {
@@ -321,6 +617,7 @@ export function createForgeRoomUiRuntime() {
 
   function bindActions(root: HTMLElement) {
     function issueCommand(commandLabel: string, send: () => boolean) {
+      viewState.guidedSurface = null;
       const sent = send();
       if (sent === true) {
         state.pendingCommand = commandLabel;
@@ -331,9 +628,25 @@ export function createForgeRoomUiRuntime() {
           message: "roomAPI.sendCommand returned false.",
         };
         state.pendingCommand = null;
-        render();
       }
+      render();
     }
+
+    root.querySelectorAll<HTMLElement>("[data-forge-guide-surface]").forEach((element) => {
+      element.addEventListener("click", () => {
+        const guidedSurface = element.dataset["forgeGuideSurface"];
+        if (
+          guidedSurface !== "goal" &&
+          guidedSurface !== "responses" &&
+          guidedSurface !== "synthesis"
+        ) {
+          return;
+        }
+        viewState.guidedSurface = guidedSurface;
+        bumpLocalUiVersion();
+        render();
+      });
+    });
 
     root
       .querySelector<HTMLElement>("[data-forge-action='create-session']")
@@ -353,63 +666,42 @@ export function createForgeRoomUiRuntime() {
     root
       .querySelector<HTMLElement>("[data-forge-action='save-goal']")
       ?.addEventListener("click", () => {
-        const summary =
-          (documentRef.getElementById("forge-goal-summary") as HTMLInputElement | null)?.value ??
-          "";
-        const brief =
-          (documentRef.getElementById("forge-goal-brief") as HTMLTextAreaElement | null)?.value ??
-          "";
-        const constraints =
-          (documentRef.getElementById("forge-goal-constraints") as HTMLTextAreaElement | null)
-            ?.value ?? "";
-        const targetRoomId =
-          (documentRef.getElementById("forge-goal-target-room") as HTMLInputElement | null)
-            ?.value ?? "";
         issueCommand("ForgeRoomUpdateGoal", () =>
           requestRuntime.updateGoal({
-            summary,
-            brief,
-            constraints: parseConstraintLines(constraints),
-            targetRoomId,
-          } as {
-            brief: string;
-            constraints: string[];
-            summary: string;
-            targetRoomId: string;
+            summary: readInputValue("forge-goal-summary"),
+            brief: readInputValue("forge-goal-brief"),
+            constraints: parseConstraintLines(readInputValue("forge-goal-constraints")),
+            targetRoomId: readInputValue("forge-goal-target-room"),
           })
         );
       });
     root
       .querySelector<HTMLElement>("[data-forge-action='generate-draft']")
       ?.addEventListener("click", () => {
-        const summary =
-          (documentRef.getElementById("forge-goal-summary") as HTMLInputElement | null)?.value ??
-          "";
-        const brief =
-          (documentRef.getElementById("forge-goal-brief") as HTMLTextAreaElement | null)?.value ??
-          "";
-        const constraints =
-          (documentRef.getElementById("forge-goal-constraints") as HTMLTextAreaElement | null)
-            ?.value ?? "";
-        const targetRoomId =
-          (documentRef.getElementById("forge-goal-target-room") as HTMLInputElement | null)
-            ?.value ?? "";
         issueCommand("ForgeRoomGenerateDraft", () =>
           requestRuntime.generateDraft({
-            summary,
-            brief,
-            constraints: parseConstraintLines(constraints),
-            targetRoomId,
+            summary: readInputValue("forge-goal-summary"),
+            brief: readInputValue("forge-goal-brief"),
+            constraints: parseConstraintLines(readInputValue("forge-goal-constraints")),
+            targetRoomId: readInputValue("forge-goal-target-room"),
           })
         );
       });
     root
+      .querySelector<HTMLElement>("[data-forge-toggle-advanced-draft='true']")
+      ?.addEventListener("click", () => {
+        viewState.advancedDraftOpen = !viewState.advancedDraftOpen;
+        bumpLocalUiVersion();
+        render();
+      });
+    root
       .querySelector<HTMLElement>("[data-forge-action='apply-draft-text']")
       ?.addEventListener("click", () => {
-        const draftText =
-          (documentRef.getElementById("forge-draft-source") as HTMLTextAreaElement | null)?.value ??
-          "";
-        issueCommand("ForgeRoomApplyDraftText", () => requestRuntime.applyDraftText({ draftText }));
+        issueCommand("ForgeRoomApplyDraftText", () =>
+          requestRuntime.applyDraftText({
+            draftText: readInputValue("forge-draft-source"),
+          })
+        );
       });
     root
       .querySelector<HTMLElement>("[data-forge-action='add-draft-task']")
@@ -491,6 +783,37 @@ export function createForgeRoomUiRuntime() {
       ?.addEventListener("click", () => {
         issueCommand("ForgeRoomDispatchAssignments", () => requestRuntime.dispatchAssignments());
       });
+    root.querySelectorAll<HTMLElement>("[data-forge-toggle-response]").forEach((element) => {
+      element.addEventListener("click", () => {
+        const responseId = element.dataset["forgeToggleResponse"];
+        if (!responseId) {
+          return;
+        }
+        if (viewState.expandedResponseIds.has(responseId)) {
+          viewState.expandedResponseIds.delete(responseId);
+        } else {
+          viewState.expandedResponseIds.add(responseId);
+        }
+        bumpLocalUiVersion();
+        render();
+      });
+    });
+    root.querySelectorAll<HTMLElement>("[data-forge-resolve-conflict]").forEach((element) => {
+      element.addEventListener("click", () => {
+        const conflictId = element.dataset["forgeResolveConflict"];
+        const status = element.dataset["forgeConflictStatus"];
+        if (!conflictId || !status) {
+          return;
+        }
+        issueCommand("ForgeRoomResolveConflict", () =>
+          requestRuntime.resolveConflict({
+            conflictId,
+            preferredResponseId: element.dataset["forgePreferredResponseId"] ?? null,
+            status: status === "resolved" ? "resolved" : "open",
+          })
+        );
+      });
+    });
     root
       .querySelector<HTMLElement>("[data-forge-action='handoff-check']")
       ?.addEventListener("click", () => {
@@ -519,6 +842,21 @@ export function createForgeRoomUiRuntime() {
         );
       });
     });
+    root.querySelectorAll<HTMLElement>("[data-forge-toggle-synthesis]").forEach((element) => {
+      element.addEventListener("click", () => {
+        const synthesisId = element.dataset["forgeToggleSynthesis"];
+        if (!synthesisId) {
+          return;
+        }
+        if (viewState.expandedSynthesisIds.has(synthesisId)) {
+          viewState.expandedSynthesisIds.delete(synthesisId);
+        } else {
+          viewState.expandedSynthesisIds.add(synthesisId);
+        }
+        bumpLocalUiVersion();
+        render();
+      });
+    });
   }
 
   function handleHostMessage(message: unknown) {
@@ -536,8 +874,14 @@ export function createForgeRoomUiRuntime() {
 
     if (type === "forge-state") {
       const forgeStatePayload = toRecord(payload["payload"]);
-      state.snapshot = sanitizeForgeRoomSnapshot(forgeStatePayload["snapshot"]);
-      const meta = toRecord(forgeStatePayload["meta"]);
+      const snapshotSource =
+        forgeStatePayload["snapshot"] !== undefined
+          ? forgeStatePayload["snapshot"]
+          : payload["snapshot"];
+      const metaSource =
+        forgeStatePayload["meta"] !== undefined ? forgeStatePayload["meta"] : payload["meta"];
+      state.snapshot = sanitizeForgeRoomSnapshot(snapshotSource);
+      const meta = toRecord(metaSource);
       state.meta = {
         roleCatalog: toRecord(meta["roleCatalog"]),
         personaPresets: toRecord(meta["personaPresets"]),

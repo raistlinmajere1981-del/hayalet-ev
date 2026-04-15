@@ -2,12 +2,27 @@ import type {
   ForgeAgentResponse,
   ForgeConflict,
   ForgeCoordinatorState,
+  ForgeExportReadinessSummary,
   ForgeGoal,
   ForgeHandoffExportRecord,
   ForgeSynthesis,
   ForgeTask,
   ForgeTaskAssignment,
 } from "../types/index.js";
+
+export type ForgeWorkbenchUiFlowState =
+  | "IDLE"
+  | "GOAL_DEFINED"
+  | "SESSION_CREATED"
+  | "DRAFT_READY"
+  | "APPROVED"
+  | "DISPATCHED"
+  | "RESPONSES_READY"
+  | "CONFLICT"
+  | "SYNTHESIS_READY"
+  | "EXPORTED";
+
+export type ForgeWorkbenchUiSurface = "goal" | "responses" | "synthesis";
 
 export interface ForgeRoomSnapshot {
   activeSessionId: string | null;
@@ -20,6 +35,7 @@ export interface ForgeRoomSnapshot {
   draftSourceText: string | null;
   validationMessages: string[];
   exports: ForgeHandoffExportRecord[];
+  exportSummary: ForgeExportReadinessSummary;
   responses: ForgeAgentResponse[];
   selectedSynthesisId: string | null;
   sessionList: Array<{
@@ -64,6 +80,16 @@ export function createEmptyForgeRoomSnapshot(): ForgeRoomSnapshot {
     approvedTasks: [],
     assignments: [],
     exports: [],
+    exportSummary: {
+      acceptanceCriteriaCount: 0,
+      exportReady: false,
+      missingRequirements: ["Select a synthesis"],
+      openConflictCount: 0,
+      reason: "Export blocked: no selected synthesis.",
+      selectedSynthesisId: null,
+      status: "blocked",
+      targetRoomId: null,
+    },
     responses: [],
     conflicts: [],
     syntheses: [],

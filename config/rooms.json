@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-15T14:54:55.609Z",
+  "updatedAt": "2026-04-15T17:05:47.026Z",
   "rooms": [
     {
       "id": "laboratory",
@@ -445,8 +445,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-04-15T14:54:55.609Z",
-      "updatedAt": "2026-04-15T14:54:55.609Z"
+      "installedAt": "2026-04-15T17:05:47.026Z",
+      "updatedAt": "2026-04-15T17:05:47.026Z"
     }
   ]
 }

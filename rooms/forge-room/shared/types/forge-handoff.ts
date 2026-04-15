@@ -25,6 +25,7 @@ export interface ForgeHandoffConflictRecord {
   status: "open" | "resolved";
   summary: string;
   responseIds: string[];
+  preferredResponseId?: string;
   resolutionNote?: string;
 }
 

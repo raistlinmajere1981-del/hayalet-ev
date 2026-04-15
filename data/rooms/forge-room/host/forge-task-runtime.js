@@ -198,7 +198,7 @@ export function groupForgeConflicts(params) {
     const uniqueBodies = new Set(
       taskResponses.map((response) => normalizeTextForComparison(response.body))
     );
-    if (task.dispatchMode !== "compare" && uniqueBodies.size < 2) {
+    if (uniqueBodies.size < 2) {
       return [];
     }
     return [
@@ -209,6 +209,7 @@ export function groupForgeConflicts(params) {
         status: "open",
         summary: `Responses for "${task.title}" diverged across ${String(taskAssignments.length)} assignment lane(s).`,
         responseIds: taskResponses.map((response) => response.id),
+        preferredResponseId: null,
         resolutionNote: null,
         createdAt: nowIso()
       }
@@ -238,6 +239,7 @@ export function createForgeSynthesisCandidate(params) {
   }
   const taskTitles = new Map(tasks.map((task) => [task.id, task.title]));
   const responsesByTask = /* @__PURE__ */ new Map();
+  const conflictsByTask = new Map(conflicts.map((conflict) => [conflict.taskId, conflict]));
   responses.forEach((response) => {
     const bucket = responsesByTask.get(response.taskId) ?? [];
     bucket.push(response);
@@ -247,6 +249,19 @@ export function createForgeSynthesisCandidate(params) {
     const taskResponses = responsesByTask.get(task.id) ?? [];
     if (taskResponses.length === 0) {
       return [];
+    }
+    const conflict = conflictsByTask.get(task.id) ?? null;
+    if (conflict?.preferredResponseId) {
+      const preferredByConflict = taskResponses.find(
+        (response) => response.id === conflict.preferredResponseId
+      );
+      if (preferredByConflict) {
+        return [preferredByConflict];
+      }
+    }
+    const selectedByStatus = taskResponses.find((response) => response.status === "selected");
+    if (selectedByStatus) {
+      return [selectedByStatus];
     }
     const preferred = taskResponses.find(
       (response) => response.seatId === (task.seatId ?? "ai1")

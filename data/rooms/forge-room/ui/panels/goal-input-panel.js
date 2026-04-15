@@ -14,84 +14,169 @@ function createField(documentRef, labelText, control, options) {
   }
   return wrapper;
 }
-export function renderGoalInputPanel(documentRef, state, text) {
+function createButton(documentRef, label, action, options = {}) {
+  const button = documentRef.createElement("button");
+  button.type = "button";
+  button.className = options.primary ? "forge-button forge-button--primary" : "forge-button forge-button--secondary";
+  button.dataset["forgeAction"] = action;
+  button.disabled = options.disabled === true;
+  button.textContent = label;
+  return button;
+}
+function createGuideCard(documentRef, titleText, summaryText) {
+  const card = documentRef.createElement("article");
+  card.className = "forge-state-guide";
+  const title = documentRef.createElement("strong");
+  title.textContent = titleText;
+  const summary = documentRef.createElement("p");
+  summary.className = "forge-panel__hint";
+  summary.textContent = summaryText;
+  card.append(title, summary);
+  return card;
+}
+function describeGoalState(flowState) {
+  switch (flowState) {
+    case "IDLE":
+      return {
+        title: "PLAN OPEN",
+        summary: "NEXT ACTION: SAVE GOAL"
+      };
+    case "SESSION_CREATED":
+      return {
+        title: "PLAN OPEN",
+        summary: "NEXT ACTION: SAVE GOAL"
+      };
+    case "GOAL_DEFINED":
+      return {
+        title: "PLAN READY",
+        summary: "NEXT ACTION: GENERATE DRAFT"
+      };
+    case "DRAFT_READY":
+      return {
+        title: "PLAN ACTIVE",
+        summary: "NEXT ACTION: APPROVE DRAFT"
+      };
+    case "APPROVED":
+    case "DISPATCHED":
+    case "RESPONSES_READY":
+    case "CONFLICT":
+    case "SYNTHESIS_READY":
+    case "EXPORTED":
+      return {
+        title: "PLAN LOCKED",
+        summary: "UPSTREAM EDITS DISABLED"
+      };
+  }
+}
+export function renderGoalInputPanel(documentRef, state, text, options) {
   const body = documentRef.createElement("div");
   body.className = "forge-panel__body forge-goal-panel";
   const currentGoal = state.snapshot.currentGoal;
+  const activeSessionId = state.snapshot.activeSessionId;
+  const goalState = describeGoalState(options.flowState);
+  const topLevelDraftCount = state.snapshot.draftTasks.filter((task) => task.level === 1).length;
+  const goalLocked = options.flowState === "APPROVED" || options.flowState === "DISPATCHED" || options.flowState === "RESPONSES_READY" || options.flowState === "CONFLICT" || options.flowState === "SYNTHESIS_READY" || options.flowState === "EXPORTED";
   const summaryInput = documentRef.createElement("input");
   summaryInput.id = "forge-goal-summary";
   summaryInput.className = "forge-input";
-  summaryInput.placeholder = "Repair Room entegrasyonunu uret";
+  summaryInput.placeholder = "Goal";
   summaryInput.value = currentGoal?.summary ?? "";
-  const briefInput = documentRef.createElement("textarea");
-  briefInput.id = "forge-goal-brief";
-  briefInput.className = "forge-textarea";
-  briefInput.placeholder = "Goal brief";
-  briefInput.value = currentGoal?.brief ?? "";
-  const constraintsInput = documentRef.createElement("textarea");
-  constraintsInput.id = "forge-goal-constraints";
-  constraintsInput.className = "forge-textarea forge-textarea--compact";
-  constraintsInput.placeholder = "One constraint per line";
-  constraintsInput.value = (currentGoal?.constraints ?? []).join("\n");
+  summaryInput.disabled = goalLocked;
   const targetRoomInput = documentRef.createElement("input");
   targetRoomInput.id = "forge-goal-target-room";
   targetRoomInput.className = "forge-input";
   targetRoomInput.placeholder = "repair-room";
   targetRoomInput.value = currentGoal?.targetRoomId ?? "repair-room";
-  const signal = documentRef.createElement("div");
-  signal.className = "forge-goal-signal";
-  const targetChip = documentRef.createElement("span");
-  targetChip.className = "forge-chip forge-chip--accent";
-  targetChip.textContent = `Target ${currentGoal?.targetRoomId ?? "repair-room"}`;
-  const sessionChip = documentRef.createElement("span");
-  sessionChip.className = "forge-chip";
-  sessionChip.textContent = state.snapshot.activeSessionId ? "Session ready" : "Session needed";
-  const draftChip = documentRef.createElement("span");
-  draftChip.className = "forge-chip";
-  draftChip.textContent = state.snapshot.draftTasks.length > 0 ? `${String(state.snapshot.draftTasks.filter((task) => task.level === 1).length)} draft task` : "No draft yet";
-  signal.append(targetChip, sessionChip, draftChip);
-  const overview = documentRef.createElement("div");
-  overview.className = "forge-goal-overview";
-  const overviewTitle = documentRef.createElement("p");
-  overviewTitle.className = "forge-goal-overview__title";
-  overviewTitle.textContent = currentGoal?.summary || "Forge a room handoff";
-  const overviewBrief = documentRef.createElement("p");
-  overviewBrief.className = "forge-goal-overview__brief";
-  overviewBrief.textContent = currentGoal?.brief || "Capture the target room, write the brief, and keep the brief compact enough for a fast planning pass.";
-  overview.append(overviewTitle, overviewBrief);
+  targetRoomInput.disabled = goalLocked;
+  const briefInput = documentRef.createElement("textarea");
+  briefInput.id = "forge-goal-brief";
+  briefInput.className = "forge-textarea forge-textarea--compact";
+  briefInput.placeholder = "Brief";
+  briefInput.value = currentGoal?.brief ?? "";
+  briefInput.disabled = goalLocked;
+  const constraintsInput = documentRef.createElement("textarea");
+  constraintsInput.id = "forge-goal-constraints";
+  constraintsInput.className = "forge-textarea forge-textarea--compact";
+  constraintsInput.placeholder = "One constraint per line";
+  constraintsInput.value = (currentGoal?.constraints ?? []).join("\n");
+  constraintsInput.disabled = goalLocked;
+  const summaryGrid = documentRef.createElement("div");
+  summaryGrid.className = "forge-summary-strip";
+  [
+    { label: "Target", value: currentGoal?.targetRoomId ?? "repair-room" },
+    { label: "State", value: options.flowState.replaceAll("_", " ").toLowerCase() },
+    {
+      label: "Session",
+      value: activeSessionId ? activeSessionId.slice(0, 18) : "not started"
+    },
+    {
+      label: "Draft",
+      value: topLevelDraftCount > 0 ? `${String(topLevelDraftCount)} tasks` : "waiting"
+    }
+  ].forEach((entry) => {
+    const card = documentRef.createElement("div");
+    card.className = "forge-summary-strip__item";
+    const label = documentRef.createElement("span");
+    label.className = "forge-summary-strip__label";
+    label.textContent = entry.label;
+    const value = documentRef.createElement("strong");
+    value.className = "forge-summary-strip__value";
+    value.textContent = entry.value;
+    card.append(label, value);
+    summaryGrid.append(card);
+  });
   const fieldGrid = documentRef.createElement("div");
-  fieldGrid.className = "forge-goal-grid";
+  fieldGrid.className = "forge-form-grid forge-form-grid--goal";
   fieldGrid.append(
-    createField(documentRef, "Goal", summaryInput, {
-      hint: "Short project headline for the workbench and export package."
-    }),
-    createField(documentRef, "Brief", briefInput, {
-      hint: "Keep the desired implementation flow practical and direct."
-    }),
+    createField(documentRef, "Goal", summaryInput),
+    createField(documentRef, "Target room", targetRoomInput),
+    createField(documentRef, "Brief", briefInput),
     createField(documentRef, "Constraints", constraintsInput, {
-      hint: "One line per rule or guardrail."
-    }),
-    createField(documentRef, "Target room", targetRoomInput, {
-      hint: "Used by downstream synthesis and handoff export."
+      hint: "One per line."
     })
   );
-  const actions = documentRef.createElement("div");
-  actions.className = "forge-actions";
-  actions.innerHTML = `
-    <button type="button" class="forge-button forge-button--primary" data-forge-action="create-session">${text(["workbench", "actions", "createSession"], "Create session")}</button>
-    <button type="button" class="forge-button" data-forge-action="save-session">${text(["workbench", "actions", "saveSession"], "Save session")}</button>
-    <button type="button" class="forge-button" data-forge-action="load-latest">${text(["workbench", "actions", "loadLatestSession"], "Load latest")}</button>
-    <button type="button" class="forge-button" data-forge-action="save-goal">Save goal</button>
-    <button type="button" class="forge-button forge-button--primary" data-forge-action="generate-draft">Generate draft</button>
-  `;
-  const activeSession = documentRef.createElement("p");
-  activeSession.className = "forge-panel__hint";
-  activeSession.textContent = state.snapshot.activeSessionId ? `Active session: ${state.snapshot.activeSessionId}` : text(["workbench", "states", "emptySessions"], "No saved sessions yet.");
-  body.append(signal, overview, fieldGrid, actions, activeSession);
+  const commandRail = documentRef.createElement("div");
+  commandRail.className = "forge-action-cluster forge-action-cluster--goal";
+  if (options.flowState === "IDLE" && state.snapshot.sessionList.length > 0) {
+    commandRail.append(
+      createButton(
+        documentRef,
+        text(["workbench", "actions", "loadLatestSession"], "Resume latest run"),
+        "load-latest"
+      )
+    );
+  }
+  if (options.flowState === "GOAL_DEFINED" && options.draftBlockedReason) {
+    const blocked = documentRef.createElement("p");
+    blocked.className = "forge-inline-status forge-inline-status--warning";
+    blocked.textContent = options.draftBlockedReason;
+    commandRail.append(blocked);
+  }
+  let sessionRail = null;
+  if (state.snapshot.sessionList.length > 0 && (options.flowState === "IDLE" || options.flowState === "SESSION_CREATED")) {
+    sessionRail = documentRef.createElement("div");
+    sessionRail.className = "forge-session-rail";
+    state.snapshot.sessionList.slice(0, 3).forEach((session) => {
+      const item = documentRef.createElement("div");
+      item.className = "forge-session-rail__item";
+      const title = documentRef.createElement("strong");
+      title.textContent = session.title;
+      const meta = documentRef.createElement("span");
+      meta.className = "forge-field__hint";
+      meta.textContent = session.updatedAt;
+      item.append(title, meta);
+      sessionRail.append(item);
+    });
+  }
+  body.append(createGuideCard(documentRef, goalState.title, goalState.summary));
+  body.append(summaryGrid, fieldGrid, commandRail);
+  if (sessionRail) {
+    body.append(sessionRail);
+  }
   return createForgePanel(documentRef, {
     panelId: "goal",
     eyebrow: state.context.roomName,
-    title: text(["workbench", "panels", "goal"], "Goal Input"),
+    title: text(["workbench", "panels", "goal"], "Goal"),
     body
   });
 }

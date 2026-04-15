@@ -17,6 +17,7 @@ export const FORGE_UI_COMMANDS = {
   generateSynthesis: "ForgeRoomGenerateSynthesis",
   loadLatestSession: "ForgeRoomLoadLatestSession",
   removeDraftTask: "ForgeRoomRemoveDraftTask",
+  resolveConflict: "ForgeRoomResolveConflict",
   saveSession: "ForgeRoomSaveSession",
   selectSynthesis: "ForgeRoomSelectSynthesis",
   uiReady: "ForgeRoomUiReady",

@@ -13,6 +13,7 @@ export type ForgeResponseStatus = "captured" | "selected" | "rejected";
 export type ForgeConflictKind = "approach" | "scope" | "risk" | "sequence";
 export type ForgeConflictStatus = "open" | "resolved";
 export type ForgeSynthesisStatus = "draft" | "selected" | "exported";
+export type ForgeExportReadinessStatus = "ready" | "blocked" | "missing-criteria";
 
 export interface ForgeArchiveMessageRef {
   conversationId: string | null;
@@ -85,6 +86,7 @@ export interface ForgeConflict {
   status: ForgeConflictStatus;
   summary: string;
   responseIds: string[];
+  preferredResponseId: string | null;
   resolutionNote: string | null;
   createdAt: string;
 }
@@ -128,11 +130,22 @@ export interface ForgeCoordinatorState {
   pendingAssignmentCount: number;
   completedResponseCount: number;
   pendingConflictCount: number;
-  synthesisStatus: "idle" | "blocked" | "drafted" | "selected";
+  synthesisStatus: "idle" | "blocked" | "ready" | "drafted" | "selected";
   exportReady: boolean;
   lastExportPath: string | null;
   note: string | null;
   lastUpdatedAt: string;
+}
+
+export interface ForgeExportReadinessSummary {
+  acceptanceCriteriaCount: number;
+  exportReady: boolean;
+  missingRequirements: string[];
+  openConflictCount: number;
+  reason: string;
+  selectedSynthesisId: string | null;
+  status: ForgeExportReadinessStatus;
+  targetRoomId: string | null;
 }
 
 export interface ForgeEventLog {

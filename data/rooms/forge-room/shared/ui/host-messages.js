@@ -35,6 +35,7 @@ export function sanitizeForgeRoomSnapshot(payload) {
     approvedTasks: Array.isArray(source["approvedTasks"]) ? source["approvedTasks"] : fallback.approvedTasks,
     assignments: Array.isArray(source["assignments"]) ? source["assignments"] : fallback.assignments,
     exports: Array.isArray(source["exports"]) ? source["exports"] : fallback.exports,
+    exportSummary: source["exportSummary"] !== null && typeof source["exportSummary"] === "object" && Array.isArray(source["exportSummary"]) === false ? source["exportSummary"] : fallback.exportSummary,
     responses: Array.isArray(source["responses"]) ? source["responses"] : fallback.responses,
     conflicts: Array.isArray(source["conflicts"]) ? source["conflicts"] : fallback.conflicts,
     syntheses: Array.isArray(source["syntheses"]) ? source["syntheses"] : fallback.syntheses,

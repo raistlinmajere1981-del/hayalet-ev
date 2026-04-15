@@ -6,6 +6,7 @@ import type {
   ForgeConflict,
   ForgeSynthesis,
   ForgeHandoffExportRecord,
+  ForgeExportReadinessSummary,
 } from "../../shared/types/index.js";
 import type { ForgeRuntimeState, ForgeSessionListItem } from "./forge-runtime-state.js";
 
@@ -20,6 +21,7 @@ export interface ForgeRuntimeSnapshot {
   draftSourceText: string | null;
   validationMessages: string[];
   exports: ForgeHandoffExportRecord[];
+  exportSummary: ForgeExportReadinessSummary;
   responses: ForgeAgentResponse[];
   selectedSynthesisId: string | null;
   sessionList: ForgeSessionListItem[];
@@ -28,7 +30,8 @@ export interface ForgeRuntimeSnapshot {
 
 export function createForgeRuntimeSnapshot(
   state: ForgeRuntimeState,
-  sessionList: ForgeSessionListItem[]
+  sessionList: ForgeSessionListItem[],
+  exportSummary: ForgeExportReadinessSummary
 ): ForgeRuntimeSnapshot {
   return {
     activeSessionId: state.activeSessionId,
@@ -39,6 +42,7 @@ export function createForgeRuntimeSnapshot(
     approvedTasks: state.approvedTasks,
     assignments: state.assignments,
     exports: state.exports,
+    exportSummary,
     responses: state.responses,
     conflicts: state.conflicts,
     syntheses: state.syntheses,

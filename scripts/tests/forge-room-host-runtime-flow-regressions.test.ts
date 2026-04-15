@@ -82,7 +82,8 @@ async function createElectronApi(storageDir: string) {
 function createDispatchBridge(dispatchCalls: Array<Record<string, unknown>>) {
   return async (payload: Record<string, unknown>) => {
     dispatchCalls.push(payload);
-    const protocol = (payload["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol;
+    const protocol = (payload["payload"] as { protocol?: { protocolKey?: string } } | undefined)
+      ?.protocol;
     const protocolKey = protocol?.protocolKey;
     if (protocolKey === "forge-room-breakdown-architect") {
       return {
@@ -191,8 +192,12 @@ function createDispatchBridge(dispatchCalls: Array<Record<string, unknown>>) {
     }
     if (protocolKey === "forge-room-synthesis") {
       const promptText = String((payload["payload"] as { text?: unknown } | undefined)?.text ?? "");
-      const responseIds = Array.from(promptText.matchAll(/responseId:\s+([a-z0-9-]+)/gi)).map((match) => match[1]);
-      const conflictIds = Array.from(promptText.matchAll(/conflictId:\s+([a-z0-9-]+)/gi)).map((match) => match[1]);
+      const responseIds = Array.from(promptText.matchAll(/responseId:\s+([a-z0-9-]+)/gi)).map(
+        (match) => match[1]
+      );
+      const conflictIds = Array.from(promptText.matchAll(/conflictId:\s+([a-z0-9-]+)/gi)).map(
+        (match) => match[1]
+      );
       return {
         success: true,
         reply: {
@@ -222,9 +227,9 @@ function createDispatchBridge(dispatchCalls: Array<Record<string, unknown>>) {
 }
 
 function latestForgeSnapshot(notifications: ForgeNotification[]) {
-  const snapshot = notifications
-    .filter((entry) => entry.type === "forge-state")
-    .at(-1)?.payload["snapshot"];
+  const snapshot = notifications.filter((entry) => entry.type === "forge-state").at(-1)?.payload[
+    "snapshot"
+  ];
   return snapshot as {
     activeSessionId: string | null;
     conflicts: Array<{ id: string }>;
@@ -286,9 +291,9 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     assert.equal(snapshotAfterDraft.responses.length, 0);
 
     const approvedTaskId = (
-      notifications
-        .filter((entry) => entry.type === "forge-state")
-        .at(-1)?.payload["snapshot"] as { draftTasks: Array<{ id: string; level: number }> }
+      notifications.filter((entry) => entry.type === "forge-state").at(-1)?.payload["snapshot"] as {
+        draftTasks: Array<{ id: string; level: number }>;
+      }
     ).draftTasks.find((task) => task.level === 1)?.id;
     assert.ok(approvedTaskId);
 
@@ -308,6 +313,25 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     const dispatchResult = await hostRuntime.commands.ForgeRoomDispatchAssignments();
     assert.equal(dispatchResult.success, true);
     assert.ok((dispatchResult.completedAssignments as number) >= 3);
+
+    const snapshotAfterDispatch = latestForgeSnapshot(notifications);
+    const conflictId = snapshotAfterDispatch.conflicts[0]?.id;
+    const preferredResponseId = snapshotAfterDispatch.responses[0]?.id;
+    assert.ok(conflictId);
+    assert.ok(preferredResponseId);
+
+    const preferResult = await hostRuntime.commands.ForgeRoomResolveConflict({
+      conflictId,
+      preferredResponseId,
+      status: "open",
+    });
+    assert.equal(preferResult.success, true);
+
+    const resolveResult = await hostRuntime.commands.ForgeRoomResolveConflict({
+      conflictId,
+      status: "resolved",
+    });
+    assert.equal(resolveResult.success, true);
 
     const synthesisResult = await hostRuntime.commands.ForgeRoomGenerateSynthesis();
     assert.equal(synthesisResult.success, true);
@@ -329,12 +353,15 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     const sessionId = String(createResult.sessionId);
     const sessionPath = join(storageDir, "sessions", sessionId, "session.json");
     const savedSession = JSON.parse(await readFile(sessionPath, "utf8")) as {
+      conflicts: Array<{ preferredResponseId: string | null; status: string }>;
       exports: Array<{ filePath: string }>;
       responses: Array<{ id: string }>;
       selectedSynthesisId: string | null;
     };
     assert.equal(savedSession.responses.length >= 3, true);
     assert.equal(savedSession.selectedSynthesisId, synthesisResult.synthesisId);
+    assert.equal(savedSession.conflicts[0]?.status, "resolved");
+    assert.equal(savedSession.conflicts[0]?.preferredResponseId, preferredResponseId);
     assert.equal(savedSession.exports.length, 1);
 
     const reopenNotifications: ForgeNotification[] = [];
@@ -365,10 +392,21 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     assert.equal(reopenedSnapshot.responses.length >= 3, true);
     assert.equal(reopenedSnapshot.conflicts.length >= 1, true);
 
+    const reopenedConflictId = reopenedSnapshot.conflicts[0]?.id;
+    assert.ok(reopenedConflictId);
+    const reopenConflictResult = await reopenedRuntime.commands.ForgeRoomResolveConflict({
+      conflictId: reopenedConflictId,
+      status: "open",
+    });
+    assert.equal(reopenConflictResult.success, true);
+    const snapshotAfterConflictReopen = latestForgeSnapshot(reopenNotifications);
+    assert.equal(snapshotAfterConflictReopen.exports.length, 1);
+    assert.equal(snapshotAfterConflictReopen.selectedSynthesisId, null);
+
     const protocolKeys = dispatchCalls.map(
       (call) =>
-        ((call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol?.protocolKey ??
-          null)
+        (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
+          ?.protocolKey ?? null
     );
     assert.ok(protocolKeys.includes("forge-room-breakdown-architect"));
     assert.ok(protocolKeys.includes("forge-room-task-response"));

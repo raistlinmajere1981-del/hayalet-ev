@@ -1,5 +1,10 @@
 import { FORGE_HANDOFF_SCHEMA_VERSION, FORGE_TARGET_ROOM_ID } from "../shared/forge-constants.js";
-import type { ForgeHandoffPackage, ForgeSession, ForgeSynthesis } from "../shared/types/index.js";
+import type {
+  ForgeExportReadinessSummary,
+  ForgeHandoffPackage,
+  ForgeSession,
+  ForgeSynthesis,
+} from "../shared/types/index.js";
 import { slugifyFilePart } from "./forge-runtime-support.js";
 
 export function createForgeHandoffExport() {
@@ -29,6 +34,10 @@ export function createForgeHandoffExport() {
   }
 
   function buildHandoffPackage(session: ForgeSession): ForgeHandoffPackage {
+    const exportSummary = buildExportReadySummary(session);
+    if (exportSummary.exportReady !== true) {
+      throw new Error(exportSummary.reason);
+    }
     const goal = session.goal;
     if (goal === null) {
       throw new Error("A goal is required before exporting a handoff package.");
@@ -76,6 +85,9 @@ export function createForgeHandoffExport() {
         status: conflict.status,
         summary: conflict.summary,
         responseIds: conflict.responseIds,
+        ...(conflict.preferredResponseId
+          ? { preferredResponseId: conflict.preferredResponseId }
+          : {}),
         ...(conflict.resolutionNote ? { resolutionNote: conflict.resolutionNote } : {}),
       })),
       openQuestions: selected.openQuestions.map((question, index) => ({
@@ -99,24 +111,53 @@ export function createForgeHandoffExport() {
     return `${slugifyFilePart(goalSummary) || "forge-handoff"}-${session.id}.json`;
   }
 
-  function buildExportReadySummary(session: ForgeSession): {
-    acceptanceCriteriaCount: number;
-    exportReady: boolean;
-    selectedSynthesisId: string | null;
-    targetRoomId: string | null;
-  } {
+  function buildExportReadySummary(session: ForgeSession): ForgeExportReadinessSummary {
     const selected =
       session.syntheses.find((entry) => entry.id === session.selectedSynthesisId) ?? null;
     const acceptanceCriteriaCount =
       selected?.acceptanceCriteria.length ?? session.goal?.acceptanceCriteria.length ?? 0;
+    const openConflictCount = session.conflicts.filter(
+      (conflict) => conflict.status === "open"
+    ).length;
+    const missingRequirements: string[] = [];
+    const targetRoomId = session.goal?.targetRoomId ?? null;
+    if (session.goal === null) {
+      missingRequirements.push("Define a goal");
+    }
+    if (session.goal !== null && targetRoomId !== FORGE_TARGET_ROOM_ID) {
+      missingRequirements.push("Target room must be repair-room");
+    }
+    if (selected === null) {
+      missingRequirements.push("Select a synthesis");
+    }
+    if (openConflictCount > 0) {
+      missingRequirements.push(
+        openConflictCount === 1
+          ? "Resolve the open conflict"
+          : `Resolve ${String(openConflictCount)} open conflicts`
+      );
+    }
+    if (acceptanceCriteriaCount === 0) {
+      missingRequirements.push("Add at least one acceptance criterion");
+    }
+    const exportReady = missingRequirements.length === 0;
+    const status =
+      exportReady === true
+        ? "ready"
+        : acceptanceCriteriaCount === 0
+          ? "missing-criteria"
+          : "blocked";
     return {
       acceptanceCriteriaCount,
-      exportReady:
-        session.goal?.targetRoomId === FORGE_TARGET_ROOM_ID &&
-        selected !== null &&
-        acceptanceCriteriaCount > 0,
+      exportReady,
+      missingRequirements,
+      openConflictCount,
+      reason: exportReady
+        ? "Export ready."
+        : `Export blocked: ${missingRequirements[0] ?? "requirements missing"}.`,
       selectedSynthesisId: selected?.id ?? null,
-      targetRoomId: session.goal?.targetRoomId ?? null,
+      status,
+      targetRoomId,
     };
   }
 

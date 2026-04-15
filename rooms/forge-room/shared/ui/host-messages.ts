@@ -80,6 +80,12 @@ export function sanitizeForgeRoomSnapshot(payload: unknown): ForgeRoomSnapshot {
     exports: Array.isArray(source["exports"])
       ? (source["exports"] as ForgeRoomSnapshot["exports"])
       : fallback.exports,
+    exportSummary:
+      source["exportSummary"] !== null &&
+      typeof source["exportSummary"] === "object" &&
+      Array.isArray(source["exportSummary"]) === false
+        ? (source["exportSummary"] as ForgeRoomSnapshot["exportSummary"])
+        : fallback.exportSummary,
     responses: Array.isArray(source["responses"])
       ? (source["responses"] as ForgeRoomSnapshot["responses"])
       : fallback.responses,

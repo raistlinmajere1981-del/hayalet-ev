@@ -38,6 +38,9 @@ export function createForgeUiRequestRuntime() {
     loadLatestSession() {
       return sendCommand(FORGE_UI_COMMANDS.loadLatestSession);
     },
+    resolveConflict(payload) {
+      return sendCommand(FORGE_UI_COMMANDS.resolveConflict, payload);
+    },
     removeDraftTask(payload) {
       return sendCommand(FORGE_UI_COMMANDS.removeDraftTask, payload);
     },

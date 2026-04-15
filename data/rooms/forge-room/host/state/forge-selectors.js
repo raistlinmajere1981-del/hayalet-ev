@@ -1,4 +1,4 @@
-export function createForgeRuntimeSnapshot(state, sessionList) {
+export function createForgeRuntimeSnapshot(state, sessionList, exportSummary) {
   return {
     activeSessionId: state.activeSessionId,
     currentGoal: state.currentGoal,
@@ -8,6 +8,7 @@ export function createForgeRuntimeSnapshot(state, sessionList) {
     approvedTasks: state.approvedTasks,
     assignments: state.assignments,
     exports: state.exports,
+    exportSummary,
     responses: state.responses,
     conflicts: state.conflicts,
     syntheses: state.syntheses,

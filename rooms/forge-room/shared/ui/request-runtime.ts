@@ -48,6 +48,14 @@ export function createForgeUiRequestRuntime() {
     loadLatestSession() {
       return sendCommand(FORGE_UI_COMMANDS.loadLatestSession);
     },
+    resolveConflict(payload: {
+      conflictId: string;
+      preferredResponseId?: string | null;
+      resolutionNote?: string | null;
+      status: "open" | "resolved";
+    }) {
+      return sendCommand(FORGE_UI_COMMANDS.resolveConflict, payload);
+    },
     removeDraftTask(payload: { taskId: string }) {
       return sendCommand(FORGE_UI_COMMANDS.removeDraftTask, payload);
     },

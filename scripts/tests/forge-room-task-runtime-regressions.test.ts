@@ -28,7 +28,10 @@ test("forge-room task runtime creates compare assignments from approved tasks", 
   ]);
 
   assert.equal(assignments.length, 2);
-  assert.deepEqual(assignments.map((entry) => entry.seatId), ["ai1", "ai2"]);
+  assert.deepEqual(
+    assignments.map((entry) => entry.seatId),
+    ["ai1", "ai2"]
+  );
 });
 
 test("forge-room task runtime groups compare responses into conflicts and produces synthesis", () => {
@@ -88,8 +91,13 @@ test("forge-room task runtime groups compare responses into conflicts and produc
     responses,
     tasks,
   });
+  const resolvedConflicts = conflicts.map((conflict) => ({
+    ...conflict,
+    status: "resolved" as const,
+    preferredResponseId: "forge-response-2",
+  }));
   const synthesis = createForgeSynthesisCandidate({
-    conflicts,
+    conflicts: resolvedConflicts,
     goal: {
       id: "forge-goal-1",
       summary: "Repair Room integration",
@@ -108,5 +116,6 @@ test("forge-room task runtime groups compare responses into conflicts and produc
   assert.equal(conflicts.length, 1);
   assert.equal(conflicts[0]?.kind, "risk");
   assert.equal(synthesis?.selectedResponseIds.length, 1);
+  assert.deepEqual(synthesis?.selectedResponseIds, ["forge-response-2"]);
   assert.deepEqual(synthesis?.acceptanceCriteria, ["Repair Room can import the package."]);
 });
