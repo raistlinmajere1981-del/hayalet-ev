@@ -42,7 +42,7 @@ export function createLaboratoryActionRouter(deps) {
           await mediaActionRuntime.refresh(runtime, requestId);
           break;
         case "tools-refresh":
-          await mediaActionRuntime.refresh(runtime, requestId);
+          await mediaActionRuntime.refreshTools(runtime);
           break;
         case "project-create":
           await mediaActionRuntime.createProject(runtime, featureId);

@@ -1,0 +1,1361 @@
+import {
+  FORGE_PROTOCOL_KEYS,
+  FORGE_PROTOCOL_SCENARIOS,
+  FORGE_ROOM_ID,
+  FORGE_TARGET_ROOM_ID,
+  FORGE_UI_COMMANDS,
+} from "../shared/forge-constants.js";
+import { FORGE_PERSONA_PRESETS } from "../shared/data/persona-presets.js";
+import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
+import type {
+  ForgeGoal,
+  ForgeTask,
+  ForgeTaskAssignment,
+  ForgeEventLog,
+  ForgeSession,
+  ForgeConflict,
+  ForgeSynthesis,
+  ForgeAgentResponse,
+} from "../shared/types/index.js";
+import { createForgeHostIoRuntime } from "../shared/host/io-runtime.js";
+import { createForgeStoragePaths } from "../shared/host/forge-paths.js";
+import {
+  buildForgeBreakdownPrompt,
+  normalizeForgeBreakdownDraft,
+  parseForgeBreakdownDraft,
+} from "./forge-breakdown-runtime.js";
+import { createForgeHandoffExport } from "./forge-handoff-export.js";
+import { createForgeSessionStorage } from "./forge-session-storage.js";
+import { buildForgeSynthesisPrompt, parseForgeSynthesisResponse } from "./forge-synthesis-runtime.js";
+import {
+  rebuildQueuedAssignments,
+  removeForgeDraftTask,
+  updateForgeApprovedTask,
+  upsertForgeDraftTask,
+} from "./forge-task-editor-runtime.js";
+import {
+  createAssignmentsForApprovedTasks,
+  createForgeArchiveRef,
+  createForgeExportRecord,
+  groupForgeConflicts,
+  markForgeSynthesisExported,
+  parseForgeTaskResponse,
+  selectForgeSynthesis,
+  syncApprovedTaskStatuses,
+  buildForgeTaskPrompt,
+} from "./forge-task-runtime.js";
+import { createForgeRuntimeSnapshot } from "./state/forge-selectors.js";
+import {
+  createEmptyForgeRuntimeState,
+  createForgeCoordinatorState,
+  createForgeRuntimeStateFromSession,
+  createForgeSessionFromRuntimeState,
+  type ForgeRuntimeState,
+  type ForgeSessionListItem,
+} from "./state/forge-runtime-state.js";
+import { createForgeRuntimeStore } from "./state/forge-runtime-store.js";
+import { asNonEmptyString, asStringArray, createForgeId, nowIso, toRecord } from "./forge-runtime-support.js";
+
+type ForgeRoomApi = {
+  dispatchBridge?: (payload: Record<string, unknown>) => Promise<unknown>;
+  getLocale?: () => string;
+  getState: (key: string) => unknown;
+  log: (level: string, message: string) => void;
+  notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
+  setState: (key: string, value: unknown) => unknown;
+};
+
+type ForgeBridgeReply = {
+  attachments?: unknown;
+  conversationId?: unknown;
+  messageId?: unknown;
+  provider?: unknown;
+  slot?: unknown;
+  text?: unknown;
+};
+
+type ForgeBridgeSession = {
+  conversationId?: unknown;
+  id?: unknown;
+};
+
+type ForgeBridgeResult = {
+  artifacts?: unknown;
+  code?: unknown;
+  message?: unknown;
+  reply?: unknown;
+  session?: unknown;
+  success?: unknown;
+};
+
+type ForgeRuntime = {
+  activeSession: ForgeSession | null;
+  hydrated: boolean;
+  hydrating: Promise<void> | null;
+  paths: unknown;
+  sessionList: ForgeSessionListItem[];
+  store: ReturnType<typeof createForgeRuntimeStore>;
+};
+
+function buildGoal(payload: Record<string, unknown>, existing: ForgeGoal | null): ForgeGoal {
+  const now = nowIso();
+  return {
+    id: existing?.id || createForgeId("forge-goal"),
+    summary: asNonEmptyString(payload["summary"]) ?? existing?.summary ?? "Untitled goal",
+    brief: asNonEmptyString(payload["brief"]) ?? existing?.brief ?? "",
+    constraints:
+      asStringArray(payload["constraints"]).length > 0
+        ? asStringArray(payload["constraints"])
+        : existing?.constraints ?? [],
+    acceptanceCriteria:
+      asStringArray(payload["acceptanceCriteria"]).length > 0
+        ? asStringArray(payload["acceptanceCriteria"])
+        : existing?.acceptanceCriteria ?? [],
+    status: existing?.status ?? "draft",
+    targetRoomId: asNonEmptyString(payload["targetRoomId"]) ?? existing?.targetRoomId ?? FORGE_TARGET_ROOM_ID,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+}
+
+function createEvent(type: string, detail: Record<string, unknown> = {}): ForgeEventLog {
+  return {
+    id: createForgeId("forge-event"),
+    sessionId: typeof detail["sessionId"] === "string" ? detail["sessionId"] : "",
+    type,
+    actorId: "coordinator",
+    detail,
+    createdAt: nowIso(),
+  };
+}
+
+function readBridgeResult(value: unknown): ForgeBridgeResult {
+  return toRecord(value) as ForgeBridgeResult;
+}
+
+function readBridgeReply(value: unknown): ForgeBridgeReply {
+  return toRecord(value) as ForgeBridgeReply;
+}
+
+function readBridgeSession(value: unknown): ForgeBridgeSession {
+  return toRecord(value) as ForgeBridgeSession;
+}
+
+function readBridgeReplyText(result: ForgeBridgeResult): string | null {
+  const replyText = asNonEmptyString(readBridgeReply(result.reply)["text"]);
+  return replyText ?? null;
+}
+
+function setGoalStatus(goal: ForgeGoal | null, status: ForgeGoal["status"]): ForgeGoal | null {
+  return goal === null ? null : { ...goal, status, updatedAt: nowIso() };
+}
+
+export default function createForgeRoomHostRuntime() {
+  return {
+    activate(api: ForgeRoomApi) {
+      const io = createForgeHostIoRuntime({
+        roomId: FORGE_ROOM_ID,
+      });
+      const storage = createForgeSessionStorage({
+        ensureRuntimeDirectory: io.ensureRuntimeDirectory,
+        listDirectory: io.listDirectory,
+        readJsonFile: io.readJsonFile,
+        readTextFile: io.readTextFile,
+        writeJsonFile: io.writeJsonFile,
+        writeTextFile: io.writeTextFile,
+      });
+      const handoffExport = createForgeHandoffExport();
+      const runtime: ForgeRuntime = {
+        activeSession: null,
+        hydrated: false,
+        hydrating: null,
+        paths: null,
+        sessionList: [],
+        store: createForgeRuntimeStore(createEmptyForgeRuntimeState()),
+      };
+
+      function pushState(): void {
+        api.notifyRoom("forge-state", {
+          snapshot: createForgeRuntimeSnapshot(runtime.store.getState(), runtime.sessionList),
+          meta: {
+            roleCatalog: FORGE_ROLE_CATALOG,
+            personaPresets: FORGE_PERSONA_PRESETS,
+          },
+        });
+      }
+
+      runtime.store.subscribe(() => {
+        pushState();
+      });
+
+      function readCurrentState(): ForgeRuntimeState {
+        return runtime.store.getState();
+      }
+
+      function dispatchGoal(goal: ForgeGoal | null): void {
+        runtime.store.dispatch({
+          type: "goal/set",
+          goal,
+        });
+      }
+
+      function dispatchDraftState(draftTasks: ForgeTask[], draftSourceText: string | null, validationMessages: string[]): void {
+        runtime.store.dispatch({
+          type: "draft/set",
+          draftTasks,
+          draftSourceText,
+          validationMessages,
+        });
+      }
+
+      function dispatchApprovedTasks(approvedTasks: ForgeTask[]): void {
+        runtime.store.dispatch({
+          type: "approved/set",
+          approvedTasks,
+        });
+      }
+
+      function dispatchAssignments(assignments: ForgeTaskAssignment[]): void {
+        runtime.store.dispatch({
+          type: "assignments/set",
+          assignments,
+        });
+      }
+
+      function dispatchResponses(responses: ForgeAgentResponse[]): void {
+        runtime.store.dispatch({
+          type: "responses/set",
+          responses,
+        });
+      }
+
+      function dispatchConflicts(conflicts: ForgeConflict[]): void {
+        runtime.store.dispatch({
+          type: "conflicts/set",
+          conflicts,
+        });
+      }
+
+      function dispatchSyntheses(syntheses: ForgeSynthesis[], selectedSynthesisId: string | null): void {
+        runtime.store.dispatch({
+          type: "syntheses/set",
+          syntheses,
+          selectedSynthesisId,
+        });
+      }
+
+      function dispatchExports(exportsList: ForgeRuntimeState["exports"]): void {
+        runtime.store.dispatch({
+          type: "exports/set",
+          exports: exportsList,
+        });
+      }
+
+      function clearExecutionState(): void {
+        dispatchApprovedTasks([]);
+        dispatchAssignments([]);
+        dispatchResponses([]);
+        dispatchConflicts([]);
+        dispatchSyntheses([], null);
+        dispatchExports([]);
+      }
+
+      function buildExportReadiness(state: ForgeRuntimeState): ReturnType<typeof handoffExport.buildExportReadySummary> {
+        return handoffExport.buildExportReadySummary(
+          createForgeSessionFromRuntimeState(state, runtime.activeSession)
+        );
+      }
+
+      function inferPlanStatus(state: ForgeRuntimeState): ForgeRuntimeState["coordinatorState"]["planStatus"] {
+        if (state.exports.length > 0) {
+          return "exported";
+        }
+        if (state.selectedSynthesisId !== null) {
+          return "synthesis-ready";
+        }
+        if (state.responses.length > 0 && state.conflicts.some((entry) => entry.status === "open")) {
+          return "reviewing-conflicts";
+        }
+        if (state.responses.length > 0) {
+          return "synthesis-ready";
+        }
+        if (state.approvedTasks.length > 0) {
+          return "ready-for-assignment";
+        }
+        if (state.draftTasks.length > 0) {
+          return "awaiting-approval";
+        }
+        if (state.currentGoal !== null) {
+          return "drafting";
+        }
+        return "idle";
+      }
+
+      function syncCoordinatorState(overrides: Partial<ForgeRuntimeState["coordinatorState"]> = {}): void {
+        const state = readCurrentState();
+        const exportSummary = buildExportReadiness(state);
+        const nextCoordinatorState = createForgeCoordinatorState({
+          planStatus: overrides.planStatus ?? inferPlanStatus(state),
+          assignmentQueueTotal: state.assignments.length,
+          pendingAssignmentCount:
+            overrides.pendingAssignmentCount ??
+            state.assignments.filter(
+              (entry) => entry.status === "queued" || entry.status === "dispatched"
+            ).length,
+          completedResponseCount: state.responses.length,
+          pendingConflictCount: state.conflicts.filter((entry) => entry.status === "open").length,
+          synthesisStatus:
+            overrides.synthesisStatus ??
+            (state.selectedSynthesisId !== null
+              ? "selected"
+              : state.syntheses.length > 0
+                ? "drafted"
+                : state.responses.length > 0
+                  ? "blocked"
+                  : "idle"),
+          exportReady: overrides.exportReady ?? exportSummary.exportReady,
+          lastExportPath: overrides.lastExportPath ?? state.exports[0]?.filePath ?? null,
+          note: overrides.note ?? state.coordinatorState.note,
+          lastUpdatedAt: nowIso(),
+        });
+        runtime.store.dispatch({
+          type: "coordinator/set",
+          coordinatorState: nextCoordinatorState,
+        });
+      }
+
+      function setGoalAndResetWorkflow(goal: ForgeGoal, note: string): void {
+        dispatchGoal(goal);
+        dispatchDraftState([], null, []);
+        clearExecutionState();
+        syncCoordinatorState({
+          planStatus: "drafting",
+          synthesisStatus: "idle",
+          note,
+        });
+      }
+
+      async function ensureHydrated(): Promise<void> {
+        if (runtime.hydrated === true) {
+          return;
+        }
+        if (runtime.hydrating !== null) {
+          await runtime.hydrating;
+          return;
+        }
+
+        runtime.hydrating = (async () => {
+          runtime.paths = await io.resolveRuntimePaths();
+          runtime.sessionList = await storage.listSessions(runtime.paths);
+          runtime.hydrated = true;
+          pushState();
+        })()
+          .catch((error) => {
+            api.log(
+              "warn",
+              `Forge Room bootstrap failed: ${error instanceof Error ? error.message : String(error)}`
+            );
+            throw error;
+          })
+          .finally(() => {
+            runtime.hydrating = null;
+          });
+
+        await runtime.hydrating;
+      }
+
+      async function persistCurrentSession(eventType?: string, detail: Record<string, unknown> = {}): Promise<void> {
+        if (runtime.paths === null) {
+          return;
+        }
+
+        const state = readCurrentState();
+        if (state.activeSessionId === null) {
+          return;
+        }
+
+        const eventRecord = eventType ? createEvent(eventType, detail) : null;
+        const nextSession = createForgeSessionFromRuntimeState(state, runtime.activeSession);
+        nextSession.eventLog = eventRecord
+          ? [...(runtime.activeSession?.eventLog ?? []), eventRecord]
+          : runtime.activeSession?.eventLog ?? [];
+        runtime.activeSession = nextSession;
+        await storage.saveSession(runtime.paths, nextSession);
+        if (eventRecord !== null) {
+          await storage.appendEvent(runtime.paths, nextSession.id, eventRecord);
+        }
+        runtime.sessionList = await storage.listSessions(runtime.paths);
+        pushState();
+      }
+
+      async function createSession(): Promise<{ success: boolean; sessionId: string }> {
+        await ensureHydrated();
+        if (runtime.paths === null) {
+          throw new Error("Forge Room paths are unavailable.");
+        }
+
+        const session = await storage.createSession(runtime.paths);
+        runtime.activeSession = session;
+        runtime.sessionList = await storage.listSessions(runtime.paths);
+        runtime.store.dispatch({
+          type: "runtime/hydrate",
+          state: createForgeRuntimeStateFromSession(session),
+        });
+        syncCoordinatorState({
+          planStatus: "drafting",
+          note: "Session created. Define a goal and generate the first draft breakdown.",
+        });
+        await persistCurrentSession("session-created", {
+          sessionId: session.id,
+        });
+        return {
+          success: true,
+          sessionId: session.id,
+        };
+      }
+
+      async function ensureActiveSession(): Promise<void> {
+        if (readCurrentState().activeSessionId !== null) {
+          return;
+        }
+        await createSession();
+      }
+
+      async function requireDispatchBridge(): Promise<NonNullable<ForgeRoomApi["dispatchBridge"]>> {
+        if (typeof api.dispatchBridge !== "function") {
+          throw new Error("Forge Room dispatch bridge is unavailable.");
+        }
+        return api.dispatchBridge;
+      }
+
+      async function runBreakdownAttempt(goal: ForgeGoal, extraFeedback: string | null): Promise<string> {
+        const dispatchBridge = await requireDispatchBridge();
+        const promptText = [buildForgeBreakdownPrompt(goal), extraFeedback ?? ""]
+          .filter((entry) => entry && entry.trim() !== "")
+          .join("\n\n");
+        const bridgeResult = readBridgeResult(
+          await dispatchBridge({
+            action: "message.sendWait",
+            timeoutMs: 180000,
+            toSlot: "ai1",
+            payload: {
+              page: "forge-room:breakdown",
+              text: promptText,
+              protocol: {
+                room: FORGE_ROOM_ID,
+                scenario: FORGE_PROTOCOL_SCENARIOS.breakdownArchitect,
+                protocolKey: FORGE_PROTOCOL_KEYS.breakdownArchitect,
+              },
+            },
+          })
+        );
+        if (bridgeResult.success !== true) {
+          throw new Error(asNonEmptyString(bridgeResult.message) ?? "Breakdown dispatch failed.");
+        }
+        const replyText = readBridgeReplyText(bridgeResult);
+        if (replyText === null) {
+          throw new Error("Breakdown dispatch did not return readable text.");
+        }
+        return replyText;
+      }
+
+      async function updateGoal(payload: Record<string, unknown>): Promise<{ success: boolean; goalId: string }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const nextGoal = buildGoal(payload, readCurrentState().currentGoal);
+        setGoalAndResetWorkflow(nextGoal, "Goal updated. Generate a draft breakdown when you are ready.");
+        await persistCurrentSession("goal-updated", {
+          sessionId: readCurrentState().activeSessionId,
+          goalId: nextGoal.id,
+        });
+        return {
+          success: true,
+          goalId: nextGoal.id,
+        };
+      }
+
+      async function generateDraft(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        draftTaskCount?: number;
+        goalId?: string;
+        message?: string;
+        validationMessages?: string[];
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const nextGoal = buildGoal(payload, readCurrentState().currentGoal);
+        dispatchGoal(setGoalStatus(nextGoal, "draft"));
+        dispatchDraftState([], null, []);
+        clearExecutionState();
+        syncCoordinatorState({
+          planStatus: "generating-draft",
+          synthesisStatus: "idle",
+          note: "Generating a draft breakdown through the Architect lane.",
+        });
+
+        let lastParsed = {
+          draftSourceText: "",
+          payload: null as ReturnType<typeof parseForgeBreakdownDraft>["payload"],
+          validationMessages: ["Draft breakdown did not start."],
+        };
+
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          const extraFeedback =
+            attempt === 0
+              ? null
+              : [
+                  "Previous draft failed validation.",
+                  ...lastParsed.validationMessages.map((message) => `- ${message}`),
+                  "Regenerate a corrected JSON response that satisfies the contract exactly.",
+                ].join("\n");
+          // eslint-disable-next-line no-await-in-loop -- NOTE: retries must stay ordered so validator feedback applies to the latest draft.
+          const rawText = await runBreakdownAttempt(nextGoal, extraFeedback);
+          lastParsed = parseForgeBreakdownDraft(rawText);
+          if (lastParsed.payload !== null && lastParsed.validationMessages.length === 0) {
+            const normalized = normalizeForgeBreakdownDraft(lastParsed.payload);
+            const updatedGoal = {
+              ...nextGoal,
+              acceptanceCriteria:
+                nextGoal.acceptanceCriteria.length > 0
+                  ? nextGoal.acceptanceCriteria
+                  : normalized.acceptanceCriteria,
+              status: "draft-ready" as const,
+              updatedAt: nowIso(),
+            };
+            dispatchGoal(updatedGoal);
+            dispatchDraftState(normalized.draftTasks, normalized.draftSourceText, []);
+            syncCoordinatorState({
+              planStatus: "awaiting-approval",
+              note: "Draft breakdown is ready for review and approval.",
+            });
+            // eslint-disable-next-line no-await-in-loop -- NOTE: successful draft generation should persist before leaving the retry loop.
+            await persistCurrentSession("draft-generated", {
+              sessionId: readCurrentState().activeSessionId,
+              goalId: updatedGoal.id,
+              draftTaskCount: normalized.draftTasks.filter((task) => task.level === 1).length,
+            });
+            return {
+              success: true,
+              goalId: updatedGoal.id,
+              draftTaskCount: normalized.draftTasks.filter((task) => task.level === 1).length,
+            };
+          }
+        }
+
+        const normalizedInvalid =
+          lastParsed.payload !== null ? normalizeForgeBreakdownDraft(lastParsed.payload) : null;
+        dispatchGoal(setGoalStatus(nextGoal, "draft"));
+        dispatchDraftState(
+          normalizedInvalid?.draftTasks ?? [],
+          lastParsed.draftSourceText || (normalizedInvalid?.draftSourceText ?? null),
+          lastParsed.validationMessages
+        );
+        syncCoordinatorState({
+          planStatus: "blocked",
+          synthesisStatus: "idle",
+          note: "Draft breakdown needs manual correction before approval can continue.",
+        });
+        await persistCurrentSession("draft-blocked", {
+          sessionId: readCurrentState().activeSessionId,
+          goalId: nextGoal.id,
+          validationMessages: lastParsed.validationMessages,
+        });
+        return {
+          success: false,
+          goalId: nextGoal.id,
+          message: "Draft breakdown needs manual correction before approval.",
+          validationMessages: lastParsed.validationMessages,
+        };
+      }
+
+      async function applyDraftText(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        draftTaskCount?: number;
+        message?: string;
+        validationMessages?: string[];
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const sourceText = asNonEmptyString(payload["draftText"]) ?? readCurrentState().draftSourceText ?? "";
+        const parsed = parseForgeBreakdownDraft(sourceText);
+        if (parsed.payload === null) {
+          dispatchDraftState([], sourceText, parsed.validationMessages);
+          syncCoordinatorState({
+            planStatus: "blocked",
+            note: "Manual draft text is not valid JSON yet.",
+          });
+          await persistCurrentSession("draft-edited-invalid", {
+            sessionId: readCurrentState().activeSessionId,
+            validationMessages: parsed.validationMessages,
+          });
+          return {
+            success: false,
+            message: "Manual draft text is not valid JSON yet.",
+            validationMessages: parsed.validationMessages,
+          };
+        }
+
+        const normalized = normalizeForgeBreakdownDraft(parsed.payload);
+        clearExecutionState();
+        const nextGoal = readCurrentState().currentGoal;
+        if (nextGoal !== null) {
+          dispatchGoal({
+            ...nextGoal,
+            acceptanceCriteria:
+              parsed.payload.acceptanceCriteria.length > 0
+                ? parsed.payload.acceptanceCriteria
+                : nextGoal.acceptanceCriteria,
+            status: parsed.validationMessages.length === 0 ? "draft-ready" : "draft",
+            updatedAt: nowIso(),
+          });
+        }
+        dispatchDraftState(
+          normalized.draftTasks,
+          normalized.draftSourceText,
+          parsed.validationMessages
+        );
+        syncCoordinatorState({
+          planStatus: parsed.validationMessages.length === 0 ? "awaiting-approval" : "blocked",
+          note:
+            parsed.validationMessages.length === 0
+              ? "Manual draft applied. Review and approve when ready."
+              : "Manual draft still has validation issues.",
+        });
+        await persistCurrentSession(
+          parsed.validationMessages.length === 0 ? "draft-edited" : "draft-edited-invalid",
+          {
+            sessionId: readCurrentState().activeSessionId,
+            validationMessages: parsed.validationMessages,
+          }
+        );
+        return {
+          success: parsed.validationMessages.length === 0,
+          draftTaskCount: normalized.draftTasks.filter((task) => task.level === 1).length,
+          ...(parsed.validationMessages.length > 0
+            ? {
+                message: "Manual draft still has validation issues.",
+                validationMessages: parsed.validationMessages,
+              }
+            : {}),
+        };
+      }
+
+      async function upsertDraftTask(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        draftTaskCount?: number;
+        message?: string;
+        validationMessages?: string[];
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const state = readCurrentState();
+        const result = upsertForgeDraftTask({
+          acceptanceCriteria: state.currentGoal?.acceptanceCriteria ?? [],
+          draftTasks: state.draftTasks,
+          payload,
+        });
+        clearExecutionState();
+        dispatchDraftState(result.draftTasks, result.draftSourceText, result.validationMessages);
+        if (state.currentGoal !== null) {
+          dispatchGoal({
+            ...state.currentGoal,
+            status: result.validationMessages.length === 0 ? "draft-ready" : "draft",
+            updatedAt: nowIso(),
+          });
+        }
+        syncCoordinatorState({
+          planStatus: result.validationMessages.length === 0 ? "awaiting-approval" : "blocked",
+          note:
+            result.validationMessages.length === 0
+              ? "Structured draft task changes were applied."
+              : "Structured draft edits still have validation issues.",
+        });
+        await persistCurrentSession(
+          result.validationMessages.length === 0 ? "draft-task-upserted" : "draft-task-upserted-invalid",
+          {
+            sessionId: state.activeSessionId,
+            validationMessages: result.validationMessages,
+          }
+        );
+        return {
+          success: result.validationMessages.length === 0,
+          draftTaskCount: result.draftTasks.filter((task) => task.level === 1).length,
+          ...(result.validationMessages.length > 0
+            ? {
+                message: "Structured draft edits still have validation issues.",
+                validationMessages: result.validationMessages,
+              }
+            : {}),
+        };
+      }
+
+      async function removeDraftTaskFromSession(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        draftTaskCount?: number;
+        message?: string;
+        validationMessages?: string[];
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const state = readCurrentState();
+        const taskId = asNonEmptyString(payload["taskId"]);
+        if (taskId === null) {
+          return {
+            success: false,
+            message: "A draft task id is required.",
+          };
+        }
+        const result = removeForgeDraftTask({
+          acceptanceCriteria: state.currentGoal?.acceptanceCriteria ?? [],
+          draftTasks: state.draftTasks,
+          taskId,
+        });
+        clearExecutionState();
+        dispatchDraftState(result.draftTasks, result.draftSourceText, result.validationMessages);
+        if (state.currentGoal !== null) {
+          dispatchGoal({
+            ...state.currentGoal,
+            status: result.validationMessages.length === 0 ? "draft-ready" : "draft",
+            updatedAt: nowIso(),
+          });
+        }
+        syncCoordinatorState({
+          planStatus: result.validationMessages.length === 0 ? "awaiting-approval" : "blocked",
+          note:
+            result.validationMessages.length === 0
+              ? "Draft task removed."
+              : "Draft task was removed, but the draft now needs manual correction.",
+        });
+        await persistCurrentSession(
+          result.validationMessages.length === 0 ? "draft-task-removed" : "draft-task-removed-invalid",
+          {
+            sessionId: state.activeSessionId,
+            validationMessages: result.validationMessages,
+          }
+        );
+        return {
+          success: result.validationMessages.length === 0,
+          draftTaskCount: result.draftTasks.filter((task) => task.level === 1).length,
+          ...(result.validationMessages.length > 0
+            ? {
+                message: "The remaining draft needs manual correction before approval.",
+                validationMessages: result.validationMessages,
+              }
+            : {}),
+        };
+      }
+
+      async function approveDraft(): Promise<{ success: boolean; approvedTaskCount?: number; message?: string }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const state = readCurrentState();
+        if (state.draftTasks.length === 0) {
+          return {
+            success: false,
+            message: "Generate or apply a draft before approval.",
+          };
+        }
+        if (state.validationMessages.length > 0) {
+          syncCoordinatorState({
+            planStatus: "blocked",
+            note: "Draft approval is blocked until validation issues are resolved.",
+          });
+          return {
+            success: false,
+            message: "Draft approval is blocked until validation issues are resolved.",
+          };
+        }
+
+        const approvedTasks = state.draftTasks.map((task) => ({
+          ...task,
+          status: "approved" as const,
+        }));
+        const assignments = createAssignmentsForApprovedTasks(approvedTasks);
+        dispatchApprovedTasks(approvedTasks);
+        dispatchAssignments(assignments);
+        dispatchResponses([]);
+        dispatchConflicts([]);
+        dispatchSyntheses([], null);
+        dispatchExports([]);
+        dispatchGoal(setGoalStatus(state.currentGoal, "approved"));
+        syncCoordinatorState({
+          planStatus: "ready-for-assignment",
+          synthesisStatus: "idle",
+          note: "Draft approved. Dispatch the queued assignments to start response capture.",
+        });
+        await persistCurrentSession("draft-approved", {
+          sessionId: state.activeSessionId,
+          approvedTaskCount: approvedTasks.filter((task) => task.level === 1).length,
+        });
+        return {
+          success: true,
+          approvedTaskCount: approvedTasks.filter((task) => task.level === 1).length,
+        };
+      }
+
+      async function updateApprovedTaskSettings(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        assignmentCount?: number;
+        message?: string;
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const state = readCurrentState();
+        const taskId = asNonEmptyString(payload["taskId"]);
+        if (taskId === null) {
+          return {
+            success: false,
+            message: "An approved task id is required.",
+          };
+        }
+        if (state.responses.some((response) => response.taskId === taskId)) {
+          return {
+            success: false,
+            message: "Approved task settings cannot change after responses have been captured.",
+          };
+        }
+        if (
+          state.assignments.some(
+            (assignment) => assignment.taskId === taskId && assignment.status !== "queued"
+          )
+        ) {
+          return {
+            success: false,
+            message: "Approved task settings cannot change after dispatch has started.",
+          };
+        }
+        const updated = updateForgeApprovedTask({
+          approvedTasks: state.approvedTasks,
+          payload,
+        });
+        if (updated.validationMessage) {
+          return {
+            success: false,
+            message: updated.validationMessage,
+          };
+        }
+        const assignments = rebuildQueuedAssignments(updated.approvedTasks);
+        dispatchApprovedTasks(updated.approvedTasks);
+        dispatchAssignments(assignments);
+        syncCoordinatorState({
+          planStatus: "ready-for-assignment",
+          note: "Approved task settings updated.",
+        });
+        await persistCurrentSession("approved-task-updated", {
+          sessionId: state.activeSessionId,
+          taskId,
+        });
+        return {
+          success: true,
+          assignmentCount: assignments.length,
+        };
+      }
+
+      async function dispatchAssignmentsForSession(): Promise<{
+        success: boolean;
+        completedAssignments?: number;
+        failedAssignments?: number;
+        message?: string;
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const dispatchBridge = await requireDispatchBridge();
+        const state = readCurrentState();
+        const queuedAssignments = state.assignments.filter((assignment) => assignment.status === "queued");
+        const goal = state.currentGoal;
+        if (goal === null) {
+          return {
+            success: false,
+            message: "A goal is required before dispatch can start.",
+          };
+        }
+        if (queuedAssignments.length === 0) {
+          return {
+            success: false,
+            message: "There are no queued assignments to dispatch.",
+          };
+        }
+
+        syncCoordinatorState({
+          planStatus: "dispatching",
+          note: "Dispatching queued assignments and waiting for live responses.",
+        });
+
+        const assignments = [...state.assignments];
+        let responses = [...state.responses];
+        let approvedTasks = [...state.approvedTasks];
+        let completedAssignments = 0;
+        let failedAssignments = 0;
+
+        if (state.syntheses.length > 0 || state.selectedSynthesisId !== null || state.exports.length > 0) {
+          dispatchSyntheses([], null);
+          dispatchExports([]);
+        }
+
+        for (const queuedAssignment of queuedAssignments) {
+          const assignmentIndex = assignments.findIndex((entry) => entry.id === queuedAssignment.id);
+          const task = approvedTasks.find((entry) => entry.id === queuedAssignment.taskId) ?? null;
+          if (assignmentIndex === -1 || task === null) {
+            continue;
+          }
+          const currentAssignment = assignments[assignmentIndex];
+          if (!currentAssignment) {
+            continue;
+          }
+
+          assignments[assignmentIndex] = {
+            ...currentAssignment,
+            status: "dispatched",
+            startedAt: nowIso(),
+            errorMessage: null,
+          };
+          const dispatchedAssignment = assignments[assignmentIndex];
+          dispatchAssignments(assignments);
+          syncCoordinatorState({
+            planStatus: "dispatching",
+            note: `Waiting for ${queuedAssignment.seatId} to answer "${task.title}".`,
+          });
+
+          const bridgePayload = {
+            action: "message.sendWait",
+            timeoutMs: 240000,
+            toSlot: queuedAssignment.seatId,
+            payload: {
+              page: `forge-room:task:${task.id}`,
+              text: buildForgeTaskPrompt({
+                approvedTasks,
+                assignment: dispatchedAssignment,
+                goal,
+                task,
+              }),
+              protocol: {
+                room: FORGE_ROOM_ID,
+                scenario: FORGE_PROTOCOL_SCENARIOS.taskResponse,
+                protocolKey: FORGE_PROTOCOL_KEYS.taskResponse,
+              },
+            },
+          };
+          // eslint-disable-next-line no-await-in-loop -- NOTE: compare mode relies on sequential waited dispatch per assignment.
+          const bridgeResult = readBridgeResult(await dispatchBridge(bridgePayload));
+
+          if (bridgeResult.success !== true) {
+            failedAssignments += 1;
+            const failedAssignment = assignments[assignmentIndex];
+            assignments[assignmentIndex] = {
+              ...failedAssignment,
+              status: "failed",
+              errorMessage: asNonEmptyString(bridgeResult.message) ?? "Assignment dispatch failed.",
+              completedAt: nowIso(),
+            };
+            dispatchAssignments(assignments);
+            continue;
+          }
+
+          const replyText = readBridgeReplyText(bridgeResult);
+          if (replyText === null) {
+            failedAssignments += 1;
+            const unreadableAssignment = assignments[assignmentIndex];
+            assignments[assignmentIndex] = {
+              ...unreadableAssignment,
+              status: "failed",
+              errorMessage: "Assignment dispatch did not return readable text.",
+              completedAt: nowIso(),
+            };
+            dispatchAssignments(assignments);
+            continue;
+          }
+
+          const bridgeReply = readBridgeReply(bridgeResult.reply);
+          const bridgeSession = readBridgeSession(bridgeResult.session);
+          const archiveRef = createForgeArchiveRef({
+            conversationId: bridgeSession["conversationId"] ?? bridgeReply["conversationId"],
+            localSessionId: bridgeSession["id"],
+            messageId: bridgeReply["messageId"],
+            provider: bridgeReply["provider"] ?? bridgeReply["slot"],
+          });
+          const completedAssignment = assignments[assignmentIndex];
+          const response = parseForgeTaskResponse({
+            archiveRef,
+            assignment: completedAssignment,
+            rawText: replyText,
+            task,
+          });
+          responses = [...responses, response];
+          completedAssignments += 1;
+          assignments[assignmentIndex] = {
+            ...completedAssignment,
+            status: "completed",
+            responseId: response.id,
+            archiveRef,
+            completedAt: nowIso(),
+          };
+          approvedTasks = syncApprovedTaskStatuses({
+            assignments,
+            responses,
+            tasks: approvedTasks,
+          });
+          dispatchAssignments(assignments);
+          dispatchResponses(responses);
+          dispatchApprovedTasks(approvedTasks);
+        }
+
+        const conflicts = groupForgeConflicts({
+          assignments,
+          responses,
+          tasks: approvedTasks,
+        });
+        dispatchConflicts(conflicts);
+        dispatchGoal(setGoalStatus(goal, responses.length > 0 ? "synthesis-ready" : "in-progress"));
+
+        syncCoordinatorState({
+          planStatus:
+            responses.length > 0
+              ? conflicts.length > 0
+                ? "reviewing-conflicts"
+                : "synthesis-ready"
+              : "ready-for-assignment",
+          synthesisStatus: responses.length > 0 ? "blocked" : "idle",
+          note:
+            failedAssignments > 0
+              ? `${String(completedAssignments)} assignment(s) completed, ${String(failedAssignments)} failed.`
+              : `${String(completedAssignments)} assignment(s) completed and responses were captured.`,
+        });
+        await persistCurrentSession("assignments-dispatched", {
+          sessionId: readCurrentState().activeSessionId,
+          completedAssignments,
+          failedAssignments,
+        });
+        return {
+          success: completedAssignments > 0,
+          completedAssignments,
+          failedAssignments,
+          ...(completedAssignments === 0
+            ? {
+                message: failedAssignments > 0 ? "All queued assignments failed." : "No assignments were processed.",
+              }
+            : {}),
+        };
+      }
+
+      async function generateSynthesis(): Promise<{ success: boolean; synthesisId?: string; message?: string }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const state = readCurrentState();
+        if (state.currentGoal === null || state.responses.length === 0) {
+          return {
+            success: false,
+            message: "At least one captured response is required before synthesis can be generated.",
+          };
+        }
+        const dispatchBridge = await requireDispatchBridge();
+        syncCoordinatorState({
+          planStatus: state.conflicts.length > 0 ? "reviewing-conflicts" : "synthesis-ready",
+          synthesisStatus: "blocked",
+          note: "Generating a synthesis candidate through the Architect lane.",
+        });
+        const bridgeResult = readBridgeResult(
+          await dispatchBridge({
+            action: "message.sendWait",
+            timeoutMs: 180000,
+            toSlot: "ai1",
+            payload: {
+              page: "forge-room:synthesis",
+              text: buildForgeSynthesisPrompt({
+                conflicts: state.conflicts,
+                goal: state.currentGoal,
+                responses: state.responses,
+                tasks: state.approvedTasks,
+              }),
+              protocol: {
+                room: FORGE_ROOM_ID,
+                scenario: FORGE_PROTOCOL_SCENARIOS.synthesis,
+                protocolKey: FORGE_PROTOCOL_KEYS.synthesis,
+              },
+            },
+          })
+        );
+        if (bridgeResult.success !== true) {
+          syncCoordinatorState({
+            note: asNonEmptyString(bridgeResult.message) ?? "Synthesis generation failed.",
+          });
+          return {
+            success: false,
+            message: asNonEmptyString(bridgeResult.message) ?? "Synthesis generation failed.",
+          };
+        }
+        const replyText = readBridgeReplyText(bridgeResult);
+        if (replyText === null) {
+          syncCoordinatorState({
+            note: "Synthesis generation did not return readable text.",
+          });
+          return {
+            success: false,
+            message: "Synthesis generation did not return readable text.",
+          };
+        }
+        const parsed = parseForgeSynthesisResponse({
+          conflicts: state.conflicts,
+          goal: state.currentGoal,
+          responses: state.responses,
+          tasks: state.approvedTasks,
+          rawText: replyText,
+        });
+        if (parsed.synthesis === null) {
+          syncCoordinatorState({
+            note: parsed.validationMessages.join(" "),
+          });
+          return {
+            success: false,
+            message: parsed.validationMessages.join(" "),
+          };
+        }
+        const selected = selectForgeSynthesis([...state.syntheses, parsed.synthesis], parsed.synthesis.id);
+        dispatchSyntheses(selected.syntheses, selected.selectedSynthesisId);
+        dispatchGoal(setGoalStatus(state.currentGoal, "synthesis-ready"));
+        syncCoordinatorState({
+          planStatus: "synthesis-ready",
+          synthesisStatus: "selected",
+          note: "A synthesis candidate was generated and selected for export review.",
+        });
+        await persistCurrentSession("synthesis-generated", {
+          sessionId: state.activeSessionId,
+          synthesisId: parsed.synthesis.id,
+        });
+        return {
+          success: true,
+          synthesisId: parsed.synthesis.id,
+        };
+      }
+
+      async function selectSynthesis(payload: Record<string, unknown>): Promise<{ success: boolean; synthesisId?: string; message?: string }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const synthesisId = asNonEmptyString(payload["synthesisId"]);
+        if (synthesisId === null) {
+          return {
+            success: false,
+            message: "A synthesis id is required.",
+          };
+        }
+        const state = readCurrentState();
+        if (state.syntheses.some((entry) => entry.id === synthesisId) !== true) {
+          return {
+            success: false,
+            message: "The requested synthesis does not exist.",
+          };
+        }
+        const selected = selectForgeSynthesis(state.syntheses, synthesisId);
+        dispatchSyntheses(selected.syntheses, selected.selectedSynthesisId);
+        syncCoordinatorState({
+          planStatus: "synthesis-ready",
+          synthesisStatus: "selected",
+          note: "Selected synthesis updated.",
+        });
+        await persistCurrentSession("synthesis-selected", {
+          sessionId: state.activeSessionId,
+          synthesisId,
+        });
+        return {
+          success: true,
+          synthesisId,
+        };
+      }
+
+      async function saveSession(): Promise<{ success: boolean; sessionId: string | null }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        await persistCurrentSession("session-saved", {
+          sessionId: readCurrentState().activeSessionId,
+        });
+        return {
+          success: true,
+          sessionId: readCurrentState().activeSessionId,
+        };
+      }
+
+      async function loadLatestSession(): Promise<{ success: boolean; message?: string; sessionId?: string }> {
+        await ensureHydrated();
+        if (runtime.paths === null) {
+          throw new Error("Forge Room paths are unavailable.");
+        }
+        const latest = await storage.loadLatestSession(runtime.paths);
+        if (latest === null) {
+          return {
+            success: false,
+            message: "No saved Forge session is available yet.",
+          };
+        }
+
+        runtime.activeSession = latest;
+        runtime.sessionList = await storage.listSessions(runtime.paths);
+        runtime.store.dispatch({
+          type: "runtime/hydrate",
+          state: createForgeRuntimeStateFromSession(latest),
+        });
+        syncCoordinatorState({
+          note: latest.coordinatorState.note || "Loaded the latest saved Forge session.",
+        });
+        return {
+          success: true,
+          sessionId: latest.id,
+        };
+      }
+
+      async function exportHandoffCheck(): Promise<Record<string, unknown>> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const session = createForgeSessionFromRuntimeState(readCurrentState(), runtime.activeSession);
+        runtime.activeSession = session;
+        try {
+          const summary = handoffExport.buildExportReadySummary(session);
+          const handoffPackage = summary.exportReady ? handoffExport.buildHandoffPackage(session) : null;
+          return {
+            success: summary.exportReady,
+            ...summary,
+            ...(handoffPackage
+              ? {
+                  goalId: handoffPackage.goalId,
+                }
+              : {
+                  message: "Selected synthesis, Repair Room target, and at least one acceptance criterion are required before export.",
+                }),
+          };
+        } catch (error) {
+          return {
+            success: false,
+            message: error instanceof Error ? error.message : String(error),
+          };
+        }
+      }
+
+      async function exportHandoff(): Promise<{ success: boolean; filePath?: string; message?: string }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        if (runtime.paths === null) {
+          throw new Error("Forge Room paths are unavailable.");
+        }
+        const state = readCurrentState();
+        const session = createForgeSessionFromRuntimeState(state, runtime.activeSession);
+        runtime.activeSession = session;
+        try {
+          const handoffPackage = handoffExport.buildHandoffPackage(session);
+          const selectedSynthesisId = session.selectedSynthesisId;
+          if (selectedSynthesisId === null) {
+            throw new Error("A selected synthesis is required before export.");
+          }
+          const storagePaths = createForgeStoragePaths(runtime.paths, session.id);
+          await io.ensureRuntimeDirectory(storagePaths.exportsDir);
+          const filePath = `${storagePaths.exportsDir}/${handoffExport.buildExportFileName(session)}`;
+          await io.writeJsonFile(filePath, handoffPackage);
+          const nextExports = [
+            createForgeExportRecord({
+              createdBy: "coordinator",
+              filePath,
+              synthesisId: selectedSynthesisId,
+            }),
+            ...state.exports,
+          ];
+          dispatchExports(nextExports);
+          dispatchSyntheses(markForgeSynthesisExported(state.syntheses, selectedSynthesisId), selectedSynthesisId);
+          dispatchGoal(setGoalStatus(state.currentGoal, "handoff-ready"));
+          syncCoordinatorState({
+            planStatus: "exported",
+            synthesisStatus: "selected",
+            exportReady: true,
+            lastExportPath: filePath,
+            note: "Repair Room handoff package exported successfully.",
+          });
+          await persistCurrentSession("handoff-exported", {
+            sessionId: session.id,
+            filePath,
+            synthesisId: selectedSynthesisId,
+          });
+          return {
+            success: true,
+            filePath,
+          };
+        } catch (error) {
+          syncCoordinatorState({
+            note: error instanceof Error ? error.message : String(error),
+          });
+          return {
+            success: false,
+            message: error instanceof Error ? error.message : String(error),
+          };
+        }
+      }
+
+      async function handleCommand(command: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+        switch (command) {
+          case FORGE_UI_COMMANDS.uiReady:
+            await ensureHydrated();
+            pushState();
+            return { success: true };
+          case FORGE_UI_COMMANDS.createSession:
+            return await createSession();
+          case FORGE_UI_COMMANDS.updateGoal:
+            return await updateGoal(payload);
+          case FORGE_UI_COMMANDS.generateDraft:
+            return await generateDraft(payload);
+          case FORGE_UI_COMMANDS.applyDraftText:
+            return await applyDraftText(payload);
+          case FORGE_UI_COMMANDS.upsertDraftTask:
+            return await upsertDraftTask(payload);
+          case FORGE_UI_COMMANDS.removeDraftTask:
+            return await removeDraftTaskFromSession(payload);
+          case FORGE_UI_COMMANDS.approveDraft:
+            return await approveDraft();
+          case FORGE_UI_COMMANDS.updateApprovedTask:
+            return await updateApprovedTaskSettings(payload);
+          case FORGE_UI_COMMANDS.dispatchAssignments:
+            return await dispatchAssignmentsForSession();
+          case FORGE_UI_COMMANDS.generateSynthesis:
+            return await generateSynthesis();
+          case FORGE_UI_COMMANDS.selectSynthesis:
+            return await selectSynthesis(payload);
+          case FORGE_UI_COMMANDS.saveSession:
+            return await saveSession();
+          case FORGE_UI_COMMANDS.loadLatestSession:
+            return await loadLatestSession();
+          case FORGE_UI_COMMANDS.exportHandoffCheck:
+            return await exportHandoffCheck();
+          case FORGE_UI_COMMANDS.exportHandoff:
+            return await exportHandoff();
+          default:
+            return {
+              success: false,
+              message: `Unknown Forge Room command: ${command}`,
+            };
+        }
+      }
+
+      const commandEntries = Object.values(FORGE_UI_COMMANDS).map((commandName) => [
+        commandName,
+        async (commandPayload: Record<string, unknown> = {}) => await handleCommand(commandName, commandPayload),
+      ]);
+
+      api.log("info", "Forge Room host activated.");
+      const commands = Object.fromEntries(commandEntries) as Record<
+        string,
+        (commandPayload?: Record<string, unknown>) => Promise<Record<string, unknown>>
+      >;
+
+      return {
+        async onRoomReady(payload: unknown) {
+          void payload;
+          await ensureHydrated();
+          pushState();
+        },
+        async onRoomEvent(payload: unknown) {
+          if (payload !== null && typeof payload === "object" && (payload as { type?: unknown }).type === "host-context") {
+            api.setState("context", payload);
+          }
+        },
+        commands,
+        dispose() {
+          api.log("info", "Forge Room host disposed.");
+        },
+      };
+    },
+  };
+}

@@ -18,6 +18,9 @@ export function createMediaProjectActionRuntime(deps) {
     await refreshToolStatus(runtime);
     return refreshActiveProjectMetadata(runtime, requestId);
   }
+  async function refreshTools(runtime) {
+    return refreshToolStatus(runtime);
+  }
   async function createProject(runtime, featureId) {
     return createProjectRecord(runtime, featureId);
   }
@@ -59,7 +62,7 @@ export function createMediaProjectActionRuntime(deps) {
       asNonEmptyString(actionPayload["toolId"]),
       featureStage || "source"
     );
-    return refreshActiveProjectMetadata(runtime, requestId);
+    return null;
   }
   async function checkTool(api, runtime, requestId, actionPayload, featureStage) {
     const toolId = asNonEmptyString(actionPayload["toolId"]);
@@ -67,11 +70,11 @@ export function createMediaProjectActionRuntime(deps) {
       throw new Error("Tool id is required.");
     }
     await checkToolUpdates(api, runtime, requestId, toolId, featureStage || "source");
-    return refreshActiveProjectMetadata(runtime, requestId);
+    return null;
   }
   async function updateTools(api, runtime, requestId, featureStage) {
     await updateAllTools(api, runtime, requestId, featureStage || "source");
-    return refreshActiveProjectMetadata(runtime, requestId);
+    return null;
   }
   return {
     cancelJob,
@@ -82,6 +85,7 @@ export function createMediaProjectActionRuntime(deps) {
     exportReport,
     mutateTool,
     refresh,
+    refreshTools,
     runProcess,
     selectProject,
     updateTools

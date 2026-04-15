@@ -76,6 +76,17 @@ export function createLaboratoryHostMessageRuntime(deps) {
       totalSteps
     };
   }
+  function shouldSyncBootstrapPresentation(snapshot) {
+    const bootstrap = toBootstrapRecord(snapshot.bootstrap);
+    const bootstrapStatus = toString(bootstrap.status) || (snapshot.ready === true ? "ready" : "running");
+    if (snapshot.ready !== true) {
+      return true;
+    }
+    if (bootstrapStatus === "running" || bootstrapStatus === "error") {
+      return true;
+    }
+    return state.ui.bootstrap.readyToDismiss !== true;
+  }
   function getBootstrapTargetVisibleCount(target) {
     const totalSteps = Math.max(target.totalSteps, target.steps.length);
     if (target.status === "ready") {
@@ -347,7 +358,9 @@ export function createLaboratoryHostMessageRuntime(deps) {
         workbench: toRecord(snapshotRecord["workbench"])
       });
       state.sourceSnapshot = snapshot;
-      syncBootstrapPresentation(snapshot);
+      if (shouldSyncBootstrapPresentation(snapshot)) {
+        syncBootstrapPresentation(snapshot);
+      }
       scheduleRender();
       return;
     }
