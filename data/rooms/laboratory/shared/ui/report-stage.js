@@ -5,6 +5,8 @@ export function createLaboratoryReportStageUi(deps) {
   const {
     escapeHtml,
     featureText,
+    formatDateTime,
+    formatStatusLabel,
     getCurrentFeatureReportRecord,
     getEffectiveMediaAsset,
     getProjectReport,
@@ -87,6 +89,94 @@ export function createLaboratoryReportStageUi(deps) {
     }
     return value.filter((entry) => typeof entry === "string");
   }
+  function toString(value, fallback = "") {
+    return typeof value === "string" ? value : fallback;
+  }
+  function getExportFileLabel(entry) {
+    const fileName = toString(entry.fileName).trim();
+    if (fileName !== "") {
+      return fileName;
+    }
+    const exportPath = toString(entry.path).trim();
+    if (exportPath === "") {
+      return "--";
+    }
+    const normalizedPath = exportPath.replace(/\\/g, "/");
+    const pathParts = normalizedPath.split("/");
+    return pathParts[pathParts.length - 1] || exportPath;
+  }
+  function getExportDirectoryPath(entry) {
+    const exportPath = toString(entry.path).trim();
+    if (exportPath === "") {
+      return "";
+    }
+    const normalizedPath = exportPath.replace(/\\/g, "/");
+    const lastSlashIndex = normalizedPath.lastIndexOf("/");
+    return lastSlashIndex > 0 ? normalizedPath.slice(0, lastSlashIndex) : exportPath;
+  }
+  function getExportTimestamp(entry) {
+    const createdAt = toString(entry.createdAt).trim();
+    if (createdAt === "") {
+      return Number.NEGATIVE_INFINITY;
+    }
+    const parsed = Date.parse(createdAt);
+    return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+  }
+  function getLatestExport(exportsList) {
+    return exportsList.reduce(function(latestEntry, entry) {
+      if (latestEntry === null) {
+        return entry;
+      }
+      return getExportTimestamp(entry) > getExportTimestamp(latestEntry) ? entry : latestEntry;
+    }, null);
+  }
+  function renderExportCard(entry, options) {
+    const showActions = options?.showActions === true;
+    const showPath = options?.showPath === true;
+    const featureId = typeof entry.featureId === "string" && entry.featureId.trim() !== "" ? entry.featureId : "media-analysis";
+    const exportPath = toString(entry.path).trim();
+    const directoryPath = getExportDirectoryPath(entry);
+    const fileLabel = getExportFileLabel(entry);
+    const formatLabel = toString(entry.format, "md").toUpperCase();
+    const statusLabel = formatStatusLabel(entry.status || "ready");
+    return `
+      <article class="lab-tool-card lab-report-export-card">
+        <div class="lab-tool-card__head">
+          <div>
+            <strong>${escapeHtml(fileLabel)}</strong>
+            <span>${escapeHtml(text(["features", featureId]))}</span>
+          </div>
+          <span class="lab-chip">${escapeHtml(formatLabel)}</span>
+        </div>
+        <ul class="lab-meta-list">
+          <li>
+            <span>${escapeHtml(featureText(["report", "exportMeta", "created"]))}</span>
+            <strong>${escapeHtml(formatDateTime(entry.createdAt))}</strong>
+          </li>
+          <li>
+            <span>${escapeHtml(featureText(["report", "exportMeta", "status"]))}</span>
+            <strong>${escapeHtml(statusLabel)}</strong>
+          </li>
+        </ul>
+        ${showPath && exportPath !== "" ? `
+              <div class="lab-report-export__path">
+                <span>${escapeHtml(featureText(["report", "exportMeta", "path"]))}</span>
+                <code>${escapeHtml(exportPath)}</code>
+              </div>
+            ` : ""}
+        ${showActions && exportPath !== "" ? `
+              <div class="lab-action-stack lab-report-export__actions">
+                <button class="lab-button lab-button--ghost" type="button" data-action="report-open-file" data-value="${escapeHtml(exportPath)}">
+                  ${escapeHtml(featureText(["report", "actions", "openFile"]))}
+                </button>
+                <button class="lab-button lab-button--ghost" type="button" data-action="report-open-folder" data-value="${escapeHtml(directoryPath || exportPath)}">
+                  ${escapeHtml(featureText(["report", "actions", "openFolder"]))}
+                </button>
+              </div>
+            ` : ""}
+      </article>
+    `;
+  }
   function getRunningReportJob() {
     const runningJob = laboratoryReportStageSupportRuntime.getRunningReportJob();
     return runningJob;
@@ -141,17 +231,34 @@ export function createLaboratoryReportStageUi(deps) {
       <section class="lab-panel">
         <div class="lab-panel__header">
           <div>
-            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["report", "actions", "export"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(featureText(["report", "sideTitle"]))}</h2>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["report", "exportHistoryEyebrow"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["report", "exportHistoryTitle"]))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(featureText(["report", "exportHistorySubtitle"]))}</p>
           </div>
         </div>
-        <ul class="lab-bullet-list">
+        <div class="lab-tool-grid">
           ${exportsList.slice(0, 6).map(function(entry) {
-      const label = typeof entry.fileName === "string" && entry.fileName.trim() !== "" ? entry.fileName : typeof entry.path === "string" && entry.path.trim() !== "" ? entry.path : "--";
-      const featureId = typeof entry.featureId === "string" && entry.featureId.trim() !== "" ? entry.featureId : "media-analysis";
-      return `<li>${escapeHtml(`${text(["features", featureId])}: ${label}`)}</li>`;
+      return renderExportCard(entry);
     }).join("")}
-        </ul>
+        </div>
+      </section>
+    `;
+  }
+  function renderLatestExportPanel(exportsList) {
+    const latestExport = getLatestExport(exportsList);
+    return `
+      <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(featureText(["report", "latestExportEyebrow"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(featureText(["report", "latestExportTitle"]))}</h2>
+            <p class="lab-panel__subtitle">${escapeHtml(featureText(["report", "latestExportSubtitle"]))}</p>
+          </div>
+        </div>
+        ${latestExport ? renderExportCard(latestExport, {
+      showActions: true,
+      showPath: true
+    }) : `<p class="lab-panel__hint">${escapeHtml(featureText(["report", "latestExportEmpty"]))}</p>`}
       </section>
     `;
   }
@@ -208,7 +315,8 @@ export function createLaboratoryReportStageUi(deps) {
     const reportRecord = toFeatureReportRecord(getCurrentFeatureReportRecord());
     const findings = getWorkbenchFindings();
     const exportsList = getWorkbenchExports();
-    const runningJob = toJobRecord(getRunningReportJob());
+    const runningReportJob = getRunningReportJob();
+    const runningJob = toJobRecord(runningReportJob);
     const reportWarnings = toStringArray(reportRecord.warnings);
     const reportCaveats = toStringArray(reportRecord.caveats);
     const summaryHint = reportCaveats[0] || reportWarnings[0] || (typeof runningJob.message === "string" && runningJob.message.trim() !== "" ? runningJob.message : "");
@@ -220,12 +328,13 @@ export function createLaboratoryReportStageUi(deps) {
               <button class="lab-button lab-button--ghost" type="button" data-action="reset-journey">
                 ${escapeHtml(featureText(["report", "actions", "restart"]))}
               </button>
-              <button class="lab-button lab-button--primary" type="button" data-action="export-report" ${reportRecord.status === "ready" && !getRunningReportJob() ? "" : "disabled"}>
+              <button class="lab-button lab-button--primary" type="button" data-action="export-report" ${reportRecord.status === "ready" && !runningReportJob ? "" : "disabled"}>
                 ${escapeHtml(featureText(["report", "actions", "export"]))}
               </button>
             </div>
             ${summaryHint !== "" ? `<p class="lab-panel__hint">${escapeHtml(summaryHint)}</p>` : ""}
         </section>
+        ${renderLatestExportPanel(exportsList)}
       </div>
     `;
   }

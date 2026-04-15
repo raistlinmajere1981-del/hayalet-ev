@@ -3,7 +3,6 @@ export function createLaboratoryShellFrameUi(deps) {
     bootstrapText,
     escapeHtml,
     featureText,
-    getActiveFeatureId,
     getActiveStage,
     getBootstrapState,
     getStageGuard,
@@ -28,15 +27,21 @@ export function createLaboratoryShellFrameUi(deps) {
   function toBootstrapStepRecord(value) {
     return toRecord(value);
   }
-  function getFeatureLabel(featureId) {
-    return text(["features", featureId]) || featureId;
-  }
   function renderRailSummaryRow(label, value, valueClassName = "") {
+    const summaryClassName = valueClassName.trim() !== "" ? ` class="${escapeHtml(valueClassName)}"` : "";
     return `
-      <div class="lab-stage-rail__summary-row">
-        <span>${escapeHtml(label)}</span>
-        <strong class="${escapeHtml(valueClassName)}">${escapeHtml(value)}</strong>
+      <div class="lab-stage-rail__summary-row lab-stage-rail__summary-row--progress">
+        <strong${summaryClassName}>${escapeHtml(`${label} ${value}`)}</strong>
       </div>
+    `;
+  }
+  function renderStageCopy(title, subtitle) {
+    const trimmedSubtitle = subtitle.trim();
+    return `
+      <section class="lab-stage-copy">
+        <h1 class="lab-stage-copy__title">${escapeHtml(title)}</h1>
+        ${trimmedSubtitle !== "" ? `<p class="lab-stage-copy__subtitle">${escapeHtml(trimmedSubtitle)}</p>` : ""}
+      </section>
     `;
   }
   function renderBootstrap() {
@@ -169,9 +174,7 @@ export function createLaboratoryShellFrameUi(deps) {
   }
   function renderStageRail() {
     const activeStage = getActiveStage();
-    const activeFeatureId = getActiveFeatureId();
     const currentIndex = getStageIndex(activeStage);
-    const activeModuleLabel = getFeatureLabel(activeFeatureId);
     const nextStageId = stageOrder.at(Math.min(stageOrder.length - 1, currentIndex + 1)) || null;
     const nextStageGuard = nextStageId && nextStageId !== activeStage ? getStageGuard(nextStageId) : null;
     const nextDisabled = currentIndex === stageOrder.length - 1 || nextStageGuard && nextStageGuard.allowed !== true;
@@ -180,17 +183,15 @@ export function createLaboratoryShellFrameUi(deps) {
       <section class="lab-topbar">
         <div class="lab-stage-rail">
           <div class="lab-stage-rail__brand">
-            <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "eyebrow"]))}</p>
-            <h1 class="lab-stage-rail__title">${escapeHtml(text(["workbench", "title"]))}</h1>
+            <h1 class="lab-stage-rail__title">${escapeHtml(text(["title"]))}</h1>
           </div>
-          <section class="lab-stage-rail__context" hidden>
+          <section class="lab-stage-rail__context">
             <div class="lab-stage-rail__summary">
               ${renderRailSummaryRow(
       text(["workbench", "railStepCount"]),
       `${String(currentIndex + 1)} / ${String(stageOrder.length)}`
     )}
             </div>
-            <span class="lab-stage-rail__focus-label" hidden>${escapeHtml(activeModuleLabel)}</span>
           </section>
           <div
             class="lab-stage-rail__track"
@@ -220,13 +221,6 @@ export function createLaboratoryShellFrameUi(deps) {
               <button
                 class="lab-stage-nav"
                 type="button"
-                data-action="open-settings"
-              >
-                ${escapeHtml(text(["workbench", "dependencyAction"]))}
-              </button>
-              <button
-                class="lab-stage-nav"
-                type="button"
                 data-action="nav-previous"
                 ${currentIndex === 0 ? "disabled" : ""}
               >
@@ -252,39 +246,21 @@ export function createLaboratoryShellFrameUi(deps) {
       readValue(getTranslations(), ["workbench", "stages", stageId])
     );
     if (Object.keys(workbenchStageCopy).length > 0) {
-      return `
-        <section class="lab-stage-copy">
-          <h1 class="lab-stage-copy__title">${escapeHtml(
-        readStageCopyText(workbenchStageCopy.title, featureText([stageId, "title"]))
-      )}</h1>
-          <p class="lab-stage-copy__subtitle">${escapeHtml(
+      return renderStageCopy(
+        readStageCopyText(workbenchStageCopy.title, featureText([stageId, "title"])),
         readStageCopyText(workbenchStageCopy.subtitle, featureText([stageId, "subtitle"]))
-      )}</p>
-        </section>
-      `;
+      );
     }
     if (isSubtitleAnalysisFeature()) {
       const copy = toStageCopyRecord(
         readValue(getTranslations(), ["subtitleAnalysis", "stages", stageId])
       );
-      return `
-        <section class="lab-stage-copy">
-          <h1 class="lab-stage-copy__title">${escapeHtml(
-        readStageCopyText(
-          copy.title,
-          subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle")
-        )
-      )}</h1>
-          <p class="lab-stage-copy__subtitle">${escapeHtml(readStageCopyText(copy.subtitle, ""))}</p>
-        </section>
-      `;
+      return renderStageCopy(
+        readStageCopyText(copy.title, subtitleText(["labels", "subtitle"], "Altyazi", "Subtitle")),
+        readStageCopyText(copy.subtitle, "")
+      );
     }
-    return `
-      <section class="lab-stage-copy">
-        <h1 class="lab-stage-copy__title">${escapeHtml(featureText([stageId, "title"]))}</h1>
-        <p class="lab-stage-copy__subtitle">${escapeHtml(featureText([stageId, "subtitle"]))}</p>
-      </section>
-    `;
+    return renderStageCopy(featureText([stageId, "title"]), featureText([stageId, "subtitle"]));
   }
   return {
     renderBootstrap,

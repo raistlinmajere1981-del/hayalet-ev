@@ -3,7 +3,7 @@ function toApiRecord(value) {
 }
 function isLaboratoryElectronApi(value) {
   const record = toApiRecord(value);
-  return record !== null && typeof record["readFile"] === "function" && typeof record["fmWriteFileAtomic"] === "function" && typeof record["readDirectoryFiles"] === "function" && typeof record["roomToolsCall"] === "function" && typeof record["roomToolsCancel"] === "function";
+  return record !== null && typeof record["readFile"] === "function" && typeof record["openPath"] === "function" && typeof record["fmWriteFileAtomic"] === "function" && typeof record["readDirectoryFiles"] === "function" && typeof record["roomToolsCall"] === "function" && typeof record["roomToolsCancel"] === "function";
 }
 export function getLaboratoryElectronApi() {
   if (typeof window === "undefined" || isLaboratoryElectronApi(window.electronAPI) !== true) {
@@ -87,6 +87,25 @@ export async function readLaboratoryBinaryFileBytes(filePath) {
   }
   const encoded = await electronApi.readFile(filePath);
   return decodeLaboratoryBase64Bytes(encoded ?? "");
+}
+function getOpenPathErrorMessage(result) {
+  if (typeof result.error === "string" && result.error.trim() !== "") {
+    return result.error;
+  }
+  if (typeof result.message === "string" && result.message.trim() !== "") {
+    return result.message;
+  }
+  return "Open path failed.";
+}
+export async function openLaboratoryPath(targetPath) {
+  const electronApi = getLaboratoryElectronApi();
+  if (electronApi === null) {
+    throw new Error("Electron API is unavailable.");
+  }
+  const result = await electronApi.openPath(targetPath);
+  if (result.success !== true) {
+    throw new Error(getOpenPathErrorMessage(result));
+  }
 }
 function getWriteErrorMessage(result) {
   if (typeof result.error === "string" && result.error.trim() !== "") {

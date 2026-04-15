@@ -106,6 +106,7 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
   function renderEditPresetChooser() {
     const presetOptions = getCurrentEditPresetOptions();
     const activePresetId = asNonEmptyString(getCurrentEditDraft().activePresetId);
+    const presetSubtitle = text(["mediaAnalysis", "edit", "presetSubtitle"]);
     if (presetOptions.length === 0) {
       return "";
     }
@@ -114,7 +115,7 @@ export function createMediaAnalysisEditWorkspacePanels(deps) {
         <div class="lab-panel__header">
           <div>
             <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "presetTitle"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "presetSubtitle"]))}</h2>
+            ${presetSubtitle ? `<h2 class="lab-panel__title">${escapeHtml(presetSubtitle)}</h2>` : ""}
           </div>
         </div>
         <div class="lab-chip-row">

@@ -85,6 +85,17 @@ export function createLaboratoryUiActionEventRuntime(deps: LaboratoryUiActionEve
       return;
     }
 
+    const editFocusRegionButton = target.closest('[data-action="edit-focus-region"]');
+    if (editFocusRegionButton instanceof HTMLElement) {
+      const focusRegionId = getDatasetValue(editFocusRegionButton, "value");
+      if (focusRegionId !== "") {
+        syncLocalEditField("recipe.common.focusRegionId", focusRegionId);
+        commitEditPatch(buildNestedPatch("common.focusRegionId", focusRegionId));
+        render();
+      }
+      return;
+    }
+
     const actionButton = target.closest("[data-action]");
     if (actionButton instanceof HTMLElement) {
       handleAction(getDatasetValue(actionButton, "action"), getDatasetValue(actionButton, "value"));

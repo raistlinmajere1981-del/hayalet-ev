@@ -35,6 +35,7 @@ export function createMediaAnalysisEditPanels(deps: MediaAnalysisEditPanelsDeps)
     renderEditRangeField,
   });
   const {
+    renderEditAdvancedPanel,
     renderEditAudioPanel,
     renderEditControlsPanel,
     renderEditModePanel,
@@ -52,6 +53,7 @@ export function createMediaAnalysisEditPanels(deps: MediaAnalysisEditPanelsDeps)
 
   return {
     renderEditActionsPanel,
+    renderEditAdvancedPanel,
     renderEditAudioPanel,
     renderEditCommonPanel,
     renderEditControlsPanel,

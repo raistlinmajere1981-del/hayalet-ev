@@ -1,3 +1,4 @@
+import { openLaboratoryPath } from "../host/electron-bridge.js";
 export function createLaboratoryUiActionHandlers(deps) {
   const {
     advanceStage,
@@ -98,6 +99,24 @@ export function createLaboratoryUiActionHandlers(deps) {
       return activeOutput.id;
     }
     return null;
+  }
+  function getReportOpenSuccessMessage(action) {
+    return action === "folder" ? text(["mediaAnalysis", "report", "openFolderSuccess"]) : text(["mediaAnalysis", "report", "openFileSuccess"]);
+  }
+  async function openReportPath(targetPath, action) {
+    if (targetPath.trim() === "") {
+      setBlockingStatus(text(["mediaAnalysis", "report", "openPathFailure"]));
+      render();
+      return;
+    }
+    try {
+      await openLaboratoryPath(targetPath);
+      setResultStatus(getReportOpenSuccessMessage(action), targetPath);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      setBlockingStatus(text(["mediaAnalysis", "report", "openPathFailure"]), detail);
+    }
+    render();
   }
   function handleAction(action, value) {
     switch (action) {
@@ -389,6 +408,12 @@ export function createLaboratoryUiActionHandlers(deps) {
         sendMediaAction(isAudioAnalysisFeature() ? "audio-report-export" : "report-export", {
           featureStage: "report"
         });
+        return;
+      case "report-open-file":
+        void openReportPath(String(value || ""), "file");
+        return;
+      case "report-open-folder":
+        void openReportPath(String(value || ""), "folder");
         return;
       default:
         break;

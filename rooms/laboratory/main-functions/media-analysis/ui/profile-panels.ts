@@ -198,11 +198,11 @@ export function createMediaAnalysisProfilePanels(deps: LaboratoryProfilePanelsDe
     const profile = toProfileStateRecord(getProjectProfile());
     const activePresetId = toString(profile.activePresetId);
     return `
-      <section class="lab-panel">
+      <section class="lab-panel lab-panel--primary-canvas">
         <div class="lab-panel__header">
           <div>
-            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "presetTitle"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "presetSubtitle"]))}</h2>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "presetTitle"]))}</h2>
+            <p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "profile", "presetSubtitle"]))}</p>
           </div>
         </div>
         <div class="lab-profile-grid">
@@ -241,194 +241,213 @@ export function createMediaAnalysisProfilePanels(deps: LaboratoryProfilePanelsDe
       profile.transcriptSampleSeconds,
       toNumber(transcriptConfig.defaultValue, 45)
     );
+    const modelMarkup =
+      getModelEntries().length > 0
+        ? `
+            <label class="lab-field">
+              <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "modelLabel"]))}</span>
+              <select class="lab-select" data-profile-field="modelId">
+                <option value="">${escapeHtml(text(["mediaAnalysis", "profile", "modelAuto"]))}</option>
+                ${getModelEntries()
+                  .map(function (entry) {
+                    const modelId = toString(entry.modelId);
+                    return `
+                      <option value="${escapeHtml(modelId)}" ${
+                        selectedModel !== null && toString(selectedModel.modelId) === modelId
+                          ? "selected"
+                          : ""
+                      }>
+                        ${escapeHtml(textFromKey(toString(entry.labelKey)) || modelId)}
+                      </option>
+                    `;
+                  })
+                  .join("")}
+              </select>
+            </label>
+          `
+        : "";
+    const artifactMarkup =
+      getArtifactEntries().length > 0
+        ? `
+            <div class="lab-toggle-grid lab-toggle-grid--profile-artifacts">
+              ${getArtifactEntries()
+                .map(function (entry) {
+                  const artifactId = toString(entry.artifactId);
+                  return `
+                    <button
+                      class="lab-toggle"
+                      type="button"
+                      data-profile-artifact-toggle="${artifactId}"
+                      data-active="${entry.enabled === true ? "true" : "false"}"
+                    >
+                      <span class="lab-toggle__track"><span class="lab-toggle__thumb"></span></span>
+                      <span class="lab-toggle__meta">
+                        <strong>${escapeHtml(textFromKey(toString(entry.labelKey)) || artifactId)}</strong>
+                      </span>
+                    </button>
+                  `;
+                })
+                .join("")}
+            </div>
+          `
+        : "";
+    const laneMarkup = laneIds
+      .map(function (laneId) {
+        const laneState = toLaneCardStateRecord(getProfileLaneCardState(laneId));
+        const lane = toLaneRecord(laneState.lane);
+        const requiredTools = toStringArray(laneState.requiredTools);
+        const mediaKinds = toStringArray(laneState.mediaKinds);
+        const optionalTools = toStringArray(laneState.optionalTools);
+        return `
+          <button
+            class="lab-toggle lab-profile-lane"
+            type="button"
+            data-profile-toggle="${laneId}"
+            data-active="${laneState.enabled === true ? "true" : "false"}"
+            ${laneState.compatible === true ? "" : "disabled"}
+          >
+            <span class="lab-toggle__track"><span class="lab-toggle__thumb"></span></span>
+            <span class="lab-toggle__meta">
+              <strong>${escapeHtml(textFromKey(toString(lane.labelKey)) || laneId)}</strong>
+              <span>${escapeHtml(textFromKey(toString(lane.summaryKey)))}</span>
+              <em>${escapeHtml(
+                text([
+                  "mediaAnalysis",
+                  "profile",
+                  "laneState",
+                  toString(laneState.supportLevel, "ready"),
+                ])
+              )}</em>
+              <span>${escapeHtml(
+                `${text(["mediaAnalysis", "profile", "laneMeta", "requiredTools"])}: ${
+                  requiredTools.join(", ") || "--"
+                }`
+              )}</span>
+              <span>${escapeHtml(
+                `${text(["mediaAnalysis", "profile", "laneMeta", "mediaKinds"])}: ${
+                  mediaKinds.join(", ") || "--"
+                }`
+              )}</span>
+              ${
+                optionalTools.length > 0
+                  ? `<span>${escapeHtml(
+                      `${text(["mediaAnalysis", "profile", "laneMeta", "optionalTools"])}: ${optionalTools.join(", ")}`
+                    )}</span>`
+                  : ""
+              }
+              ${toString(laneState.note) !== "" ? `<span>${escapeHtml(toString(laneState.note))}</span>` : ""}
+            </span>
+          </button>
+        `;
+      })
+      .join("");
     return `
-      <section class="lab-panel">
+      <section class="lab-panel lab-panel--primary-canvas">
         <div class="lab-panel__header">
           <div>
-            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "advancedTitle"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "advancedSubtitle"]))}</h2>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "advancedTitle"]))}</h2>
+            <p class="lab-panel__hint">${escapeHtml(text(["mediaAnalysis", "profile", "advancedSubtitle"]))}</p>
           </div>
         </div>
-        <div class="lab-subgrid lab-subgrid--profile-controls">
-          <label class="lab-field">
-            <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "depthLabel"]))}</span>
-            <select class="lab-select" data-profile-field="depth">
-              ${Object.keys(depthModes)
-                .map(function (depthId) {
-                  const depthMode = toDepthModeRecord(depthModes[depthId]);
-                  return `
-                    <option value="${escapeHtml(depthId)}" ${depthId === toString(profile.depth, "balanced") ? "selected" : ""}>
-                      ${escapeHtml(textFromKey(toString(depthMode.labelKey)))}
-                    </option>
-                  `;
-                })
-                .join("")}
-            </select>
-          </label>
-          <label class="lab-field">
-            <span class="lab-field__label">${escapeHtml(
-              `${text(["mediaAnalysis", "profile", "sensitivityLabel"])} ${Math.round(sensitivity * 100)}%`
-            )}</span>
-            <input
-              type="range"
-              min="0.1"
-              max="1"
-              step="0.02"
-              value="${escapeHtml(String(sensitivity))}"
-              data-profile-field="sensitivity"
-            />
-          </label>
-          <label class="lab-field">
-            <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "frameDensityLabel"]))}</span>
-            <select class="lab-select" data-profile-field="frameSampleDensity">
-              ${getFrameDensityOptions()
-                .map(function (entry) {
-                  const densityId = toString(entry.densityId);
-                  return `
-                    <option value="${escapeHtml(densityId)}" ${
-                      densityId === toString(profile.frameSampleDensity, "balanced")
-                        ? "selected"
-                        : ""
-                    }>
-                      ${escapeHtml(textFromKey(toString(entry.labelKey)) || densityId)}
-                    </option>
-                  `;
-                })
-                .join("")}
-            </select>
-          </label>
-          ${
-            sourceKind === "video" || sourceKind === "audio"
-              ? `
-                <label class="lab-field">
-                  <span class="lab-field__label">${escapeHtml(
-                    `${text(["mediaAnalysis", "profile", "transcriptSampleLabel"])} ${String(transcriptSampleSeconds)}s`
-                  )}</span>
-                  <input
-                    type="range"
-                    min="${escapeHtml(String(toNumber(transcriptConfig.min, 15)))}"
-                    max="${escapeHtml(String(toNumber(transcriptConfig.max, 90)))}"
-                    step="${escapeHtml(String(toNumber(transcriptConfig.step, 15)))}"
-                    value="${escapeHtml(String(transcriptSampleSeconds))}"
-                    data-profile-field="transcriptSampleSeconds"
-                  />
-                </label>
-              `
-              : ""
-          }
-        </div>
-        ${
-          getModelEntries().length > 0
-            ? `
+        <div class="lab-profile-config-grid">
+          <section class="lab-profile-group">
+            <div class="lab-profile-group__head">
+              <strong>${escapeHtml(text(["mediaAnalysis", "profile", "advancedGroups", "scanTitle"]))}</strong>
+              <p class="lab-panel__hint">${escapeHtml(
+                text(["mediaAnalysis", "profile", "advancedGroups", "scanSubtitle"])
+              )}</p>
+            </div>
+            <div class="lab-subgrid lab-subgrid--profile-controls">
               <label class="lab-field">
-                <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "modelLabel"]))}</span>
-                <select class="lab-select" data-profile-field="modelId">
-                  <option value="">${escapeHtml(text(["mediaAnalysis", "profile", "modelAuto"]))}</option>
-                  ${getModelEntries()
-                    .map(function (entry) {
-                      const modelId = toString(entry.modelId);
+                <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "depthLabel"]))}</span>
+                <select class="lab-select" data-profile-field="depth">
+                  ${Object.keys(depthModes)
+                    .map(function (depthId) {
+                      const depthMode = toDepthModeRecord(depthModes[depthId]);
                       return `
-                        <option value="${escapeHtml(modelId)}" ${
-                          selectedModel !== null && toString(selectedModel.modelId) === modelId
-                            ? "selected"
-                            : ""
-                        }>
-                          ${escapeHtml(textFromKey(toString(entry.labelKey)) || modelId)}
+                        <option value="${escapeHtml(depthId)}" ${depthId === toString(profile.depth, "balanced") ? "selected" : ""}>
+                          ${escapeHtml(textFromKey(toString(depthMode.labelKey)))}
                         </option>
                       `;
                     })
                     .join("")}
                 </select>
               </label>
-            `
-            : ""
-        }
-        ${
-          getArtifactEntries().length > 0
-            ? `
-              <section class="lab-panel lab-panel--dense">
-                <div class="lab-panel__header">
-                  <div>
-                    <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "profile", "artifactControlsTitle"]))}</p>
-                    <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "profile", "artifactControlsSubtitle"]))}</h2>
-                  </div>
-                </div>
-                <div class="lab-toggle-grid">
-                  ${getArtifactEntries()
+              <label class="lab-field">
+                <span class="lab-field__label">${escapeHtml(
+                  `${text(["mediaAnalysis", "profile", "sensitivityLabel"])} ${Math.round(sensitivity * 100)}%`
+                )}</span>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.02"
+                  value="${escapeHtml(String(sensitivity))}"
+                  data-profile-field="sensitivity"
+                />
+              </label>
+              <label class="lab-field">
+                <span class="lab-field__label">${escapeHtml(text(["mediaAnalysis", "profile", "frameDensityLabel"]))}</span>
+                <select class="lab-select" data-profile-field="frameSampleDensity">
+                  ${getFrameDensityOptions()
                     .map(function (entry) {
-                      const artifactId = toString(entry.artifactId);
+                      const densityId = toString(entry.densityId);
                       return `
-                        <button
-                          class="lab-toggle"
-                          type="button"
-                          data-profile-artifact-toggle="${artifactId}"
-                          data-active="${entry.enabled === true ? "true" : "false"}"
-                        >
-                          <span class="lab-toggle__track"><span class="lab-toggle__thumb"></span></span>
-                          <span class="lab-toggle__meta">
-                            <strong>${escapeHtml(textFromKey(toString(entry.labelKey)) || artifactId)}</strong>
-                          </span>
-                        </button>
+                        <option value="${escapeHtml(densityId)}" ${
+                          densityId === toString(profile.frameSampleDensity, "balanced")
+                            ? "selected"
+                            : ""
+                        }>
+                          ${escapeHtml(textFromKey(toString(entry.labelKey)) || densityId)}
+                        </option>
                       `;
                     })
                     .join("")}
-                </div>
-              </section>
-            `
-            : ""
-        }
-        <div class="lab-toggle-grid">
-          ${laneIds
-            .map(function (laneId) {
-              const laneState = toLaneCardStateRecord(getProfileLaneCardState(laneId));
-              const lane = toLaneRecord(laneState.lane);
-              const requiredTools = toStringArray(laneState.requiredTools);
-              const mediaKinds = toStringArray(laneState.mediaKinds);
-              const optionalTools = toStringArray(laneState.optionalTools);
-              return `
-                <button
-                  class="lab-toggle lab-profile-lane"
-                  type="button"
-                  data-profile-toggle="${laneId}"
-                  data-active="${laneState.enabled === true ? "true" : "false"}"
-                  ${laneState.compatible === true ? "" : "disabled"}
-                >
-                  <span class="lab-toggle__track"><span class="lab-toggle__thumb"></span></span>
-                  <span class="lab-toggle__meta">
-                    <strong>${escapeHtml(textFromKey(toString(lane.labelKey)) || laneId)}</strong>
-                    <span>${escapeHtml(textFromKey(toString(lane.summaryKey)))}</span>
-                    <em>${escapeHtml(
-                      text([
-                        "mediaAnalysis",
-                        "profile",
-                        "laneState",
-                        toString(laneState.supportLevel, "ready"),
-                      ])
-                    )}</em>
-                    <span>${escapeHtml(
-                      `${text(["mediaAnalysis", "profile", "laneMeta", "requiredTools"])}: ${
-                        requiredTools.join(", ") || "--"
-                      }`
-                    )}</span>
-                    <span>${escapeHtml(
-                      `${text(["mediaAnalysis", "profile", "laneMeta", "mediaKinds"])}: ${
-                        mediaKinds.join(", ") || "--"
-                      }`
-                    )}</span>
-                    ${
-                      optionalTools.length > 0
-                        ? `<span>${escapeHtml(
-                            `${text(["mediaAnalysis", "profile", "laneMeta", "optionalTools"])}: ${optionalTools.join(", ")}`
-                          )}</span>`
-                        : ""
-                    }
-                    ${toString(laneState.note) !== "" ? `<span>${escapeHtml(toString(laneState.note))}</span>` : ""}
-                  </span>
-                </button>
-              `;
-            })
-            .join("")}
+                </select>
+              </label>
+              ${
+                sourceKind === "video" || sourceKind === "audio"
+                  ? `
+                    <label class="lab-field">
+                      <span class="lab-field__label">${escapeHtml(
+                        `${text(["mediaAnalysis", "profile", "transcriptSampleLabel"])} ${String(transcriptSampleSeconds)}s`
+                      )}</span>
+                      <input
+                        type="range"
+                        min="${escapeHtml(String(toNumber(transcriptConfig.min, 15)))}"
+                        max="${escapeHtml(String(toNumber(transcriptConfig.max, 90)))}"
+                        step="${escapeHtml(String(toNumber(transcriptConfig.step, 15)))}"
+                        value="${escapeHtml(String(transcriptSampleSeconds))}"
+                        data-profile-field="transcriptSampleSeconds"
+                      />
+                    </label>
+                  `
+                  : ""
+              }
+            </div>
+          </section>
+          <section class="lab-profile-group">
+            <div class="lab-profile-group__head">
+              <strong>${escapeHtml(text(["mediaAnalysis", "profile", "advancedGroups", "artifactsTitle"]))}</strong>
+              <p class="lab-panel__hint">${escapeHtml(
+                text(["mediaAnalysis", "profile", "advancedGroups", "artifactsSubtitle"])
+              )}</p>
+            </div>
+            ${modelMarkup}
+            ${artifactMarkup}
+          </section>
         </div>
+        <section class="lab-profile-group lab-profile-group--full">
+          <div class="lab-profile-group__head">
+            <strong>${escapeHtml(text(["mediaAnalysis", "profile", "advancedGroups", "lanesTitle"]))}</strong>
+            <p class="lab-panel__hint">${escapeHtml(
+              text(["mediaAnalysis", "profile", "advancedGroups", "lanesSubtitle"])
+            )}</p>
+          </div>
+          <div class="lab-toggle-grid lab-toggle-grid--profile-lanes">
+            ${laneMarkup}
+          </div>
+        </section>
       </section>
     `;
   }

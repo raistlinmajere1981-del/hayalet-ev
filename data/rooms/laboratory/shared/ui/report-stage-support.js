@@ -150,7 +150,7 @@ export function createLaboratoryReportStageSupportRuntime(deps) {
       ]
     ];
   }
-  function getReportSideRows(reportRecord, _findings, _exportsList) {
+  function getReportSideRows(reportRecord, _findings, exportsList) {
     const report = toFeatureReportRecord(reportRecord);
     if (isSubtitleAnalysisFeature()) {
       return [
@@ -159,12 +159,14 @@ export function createLaboratoryReportStageSupportRuntime(deps) {
           formatStatusLabel(report.status || "idle")
         ],
         [featureText(["report", "overviewMeta", "target"]), getCurrentFeatureTargetLabel()],
+        [featureText(["report", "overviewMeta", "exports"]), String(exportsList.length)],
         [featureText(["report", "overviewMeta", "generated"]), formatDateTime(report.generatedAt)]
       ];
     }
     return [
       [text(["mediaAnalysis", "shared", "status"]), formatStatusLabel(report.status || "idle")],
       [text(["mediaAnalysis", "profile", "summary", "target"]), getCurrentFeatureTargetLabel()],
+      [featureText(["report", "exportHistoryEyebrow"]), String(exportsList.length)],
       [featureText(["report", "overviewMeta", "generated"]), formatDateTime(report.generatedAt)]
     ];
   }

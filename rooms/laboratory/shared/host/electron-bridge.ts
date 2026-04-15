@@ -11,6 +11,12 @@ type LaboratoryWriteResult = {
   success?: boolean;
 };
 
+type LaboratoryOpenPathResult = {
+  error?: string;
+  message?: string;
+  success?: boolean;
+};
+
 type LaboratoryDirectoryEntry = {
   isDirectory: boolean;
   name: string;
@@ -53,6 +59,7 @@ type LaboratoryMaybeApiRecord = {
 
 type LaboratoryElectronApi = {
   fmWriteFileAtomic: (payload: LaboratoryWritePayload) => Promise<LaboratoryWriteResult>;
+  openPath: (path: string) => Promise<LaboratoryOpenPathResult>;
   readDirectoryFiles: (dirPath: string) => Promise<LaboratoryDirectoryEntry[]>;
   readFile: (path: string) => Promise<string | null>;
   roomToolsCall: (request: LaboratoryRoomToolRequest) => Promise<LaboratoryRoomToolResult>;
@@ -70,6 +77,7 @@ function isLaboratoryElectronApi(value: unknown): value is LaboratoryElectronApi
   return (
     record !== null &&
     typeof record["readFile"] === "function" &&
+    typeof record["openPath"] === "function" &&
     typeof record["fmWriteFileAtomic"] === "function" &&
     typeof record["readDirectoryFiles"] === "function" &&
     typeof record["roomToolsCall"] === "function" &&
@@ -173,6 +181,28 @@ export async function readLaboratoryBinaryFileBytes(filePath: string): Promise<U
 
   const encoded = await electronApi.readFile(filePath);
   return decodeLaboratoryBase64Bytes(encoded ?? "");
+}
+
+function getOpenPathErrorMessage(result: LaboratoryOpenPathResult): string {
+  if (typeof result.error === "string" && result.error.trim() !== "") {
+    return result.error;
+  }
+  if (typeof result.message === "string" && result.message.trim() !== "") {
+    return result.message;
+  }
+  return "Open path failed.";
+}
+
+export async function openLaboratoryPath(targetPath: string): Promise<void> {
+  const electronApi = getLaboratoryElectronApi();
+  if (electronApi === null) {
+    throw new Error("Electron API is unavailable.");
+  }
+
+  const result = await electronApi.openPath(targetPath);
+  if (result.success !== true) {
+    throw new Error(getOpenPathErrorMessage(result));
+  }
 }
 
 function getWriteErrorMessage(result: LaboratoryWriteResult): string {

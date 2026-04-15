@@ -17,7 +17,9 @@ type LaboratoryUiActionRouterDeps = Parameters<typeof createLaboratoryUiActionRo
 type LaboratoryUiBootstrapRuntimeDeps = Parameters<typeof createLaboratoryUiBootstrapRuntime>[0];
 type LaboratoryMediaAnalysisEditStageDeps = {
   escapeHtml: (value: string) => string;
+  getCurrentEditMode: () => string;
   getProjectSource: () => unknown;
+  renderEditAdvancedPanel: () => string;
   renderEditActionsPanel: () => string;
   renderEditCommonPanel: () => string;
   renderEditControlsPanel: () => string;
@@ -70,6 +72,7 @@ type LaboratoryUiShellCompositionDeps = {
   getAvailableSourceFormats: () => unknown;
   getCurrentDrafts: () => unknown;
   getCurrentEditDraft: () => unknown;
+  getCurrentEditMode: () => string;
   getCurrentSourceKind: () => string;
   getCurrentSourceMode: () => unknown;
   getProfileTargetSummary: () => unknown;
@@ -96,6 +99,7 @@ type LaboratoryUiShellCompositionDeps = {
   renderAudioAnalysisNoticePanel: () => string;
   renderAudioAnalysisProviderPanel: () => string;
   renderBootstrap: () => string;
+  renderEditAdvancedPanel: () => string;
   renderEditActionsPanel: () => string;
   renderEditCommonPanel: () => string;
   renderEditControlsPanel: () => string;
@@ -184,7 +188,9 @@ export function createLaboratoryUiShellComposition(deps: LaboratoryUiShellCompos
     renderMediaAnalysisEditStage: deps.renderMediaAnalysisEditStage,
     mediaAnalysisEditStageDeps: {
       escapeHtml: deps.escapeHtml,
+      getCurrentEditMode: deps.getCurrentEditMode,
       getProjectSource: deps.getProjectSource,
+      renderEditAdvancedPanel: deps.renderEditAdvancedPanel,
       renderEditActionsPanel: deps.renderEditActionsPanel,
       renderEditCommonPanel: deps.renderEditCommonPanel,
       renderEditControlsPanel: deps.renderEditControlsPanel,

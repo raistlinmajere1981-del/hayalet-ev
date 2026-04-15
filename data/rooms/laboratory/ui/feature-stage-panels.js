@@ -228,6 +228,7 @@ export function createLaboratoryFeatureStagePanelsRuntime(deps) {
     bindPreviewMetrics,
     renderPreviewMetaRow,
     renderPreviewSurface,
+    renderEditAdvancedPanel: mediaAnalysisEditPanels.renderEditAdvancedPanel,
     renderEditActionsPanel: mediaAnalysisEditPanels.renderEditActionsPanel,
     renderEditCommonPanel: mediaAnalysisEditPanels.renderEditCommonPanel,
     renderEditControlsPanel: mediaAnalysisEditPanels.renderEditControlsPanel,

@@ -249,6 +249,14 @@
   align-content: start;
 }
 
+.lab-preview-card--source {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lab-preview-copy--details {
+  padding-top: 0.1rem;
+}
+
 .lab-report-hero--text-only {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -346,6 +354,10 @@
   min-width: 0;
   padding-bottom: 0.35rem;
   border-bottom: 1px solid rgb(255 255 255 / 0.04);
+}
+
+.lab-preview-card--source .lab-meta-list--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .lab-tool-card__actions {
@@ -658,4 +670,37 @@
 
 .lab-tool-grid--stacked {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.lab-report-export-card {
+  align-content: start;
+}
+
+.lab-report-export__path {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.72rem 0.8rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.06);
+  background: rgb(6 13 20 / 0.5);
+}
+
+.lab-report-export__path span {
+  color: var(--lab-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lab-report-export__path code {
+  color: var(--lab-ink);
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+  font-size: 0.81rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.lab-report-export__actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }

@@ -11,10 +11,49 @@
     "title": "Analysis Workbench",
     "subtitle": "One desktop-first flow for project intake, module focus, readiness, runs, and reports.",
     "moduleRailLabel": "Analysis modules",
-    "moduleTitle": "Module layout",
+    "moduleTitle": "Active module",
     "moduleSelectionHint": "Build the run set here, then focus one module for detailed setup.",
     "selectedModulesTitle": "Modules in this run",
     "selectedModulesEmpty": "No modules are queued yet.",
+    "sourceScope": {
+      "title": "Run Scope",
+      "subtitle": "This panel decides which modules join the active project run and which module starts first.",
+      "legend": {
+        "includeTitle": "Add to run",
+        "includeBody": "Includes the module in this project run.",
+        "activateTitle": "Set active module",
+        "activateBody": "Starts the run with this module and moves it to the first slot.",
+        "excludeTitle": "Remove from run",
+        "excludeBody": "Skips the module for this project run."
+      },
+      "metrics": {
+        "active": "Active module",
+        "included": "Modules in run",
+        "order": "Run order"
+      },
+      "countSuffix": "modules",
+      "orderTitle": "How will this run proceed?",
+      "orderEmpty": "No run order is ready yet.",
+      "orderActive": "Starting module",
+      "orderQueued": "Queued module",
+      "statusTags": {
+        "active": "Active module",
+        "included": "In run",
+        "excluded": "Inactive",
+        "order": "Slot"
+      },
+      "states": {
+        "active": "This module starts first. The process stage will run it before the others.",
+        "included": "This module stays in the run and follows the active module.",
+        "excluded": "This module is skipped for the current project run."
+      },
+      "actions": {
+        "include": "Add to run",
+        "exclude": "Remove from run",
+        "activate": "Set active module",
+        "active": "Active module"
+      }
+    },
     "railCurrentStage": "Current stage",
     "railFocusedModule": "Focused module",
     "railJourneyLabel": "Workbench stages",
@@ -24,9 +63,9 @@
     "focusAction": "Set Active",
     "activateAction": "Set Active",
     "activeTag": "Active",
-    "dependencyAction": "Module Management",
+    "dependencyAction": "Tool Room",
     "dependencyEyebrow": "Operations Center",
-    "dependencyTitle": "Module Management",
+    "dependencyTitle": "Tool Room",
     "dependencySubtitle": "",
     "dependencyOverview": "Workbench readiness overview",
     "dependencyFocus": "Current step focus:",
@@ -123,12 +162,12 @@
         "subtitle": "Pick or create a project, choose the active module, and prepare the source from one workspace."
       },
       "edit": {
-        "title": "Shape the active handoff",
+        "title": "Edit",
         "subtitle": "Refine the asset or subtitle output before deeper profiling and managed runs."
       },
       "profile": {
-        "title": "Check readiness before the run",
-        "subtitle": "Tune the profile, review blockers, and decide which artifacts the workbench should prepare."
+        "title": "Test Profile",
+        "subtitle": ""
       },
       "process": {
         "title": "Run the guided analysis",
@@ -473,13 +512,13 @@
       },
       "jobsTitle": "Active Edit Job",
       "modeTitle": "Operator Mode",
-      "modeSubtitle": "Switch between guardrailed presets and deeper direct controls.",
+      "modeSubtitle": "",
       "modes": {
         "beginner": "Beginner",
         "advanced": "Advanced"
       },
       "presetTitle": "Recipe Presets",
-      "presetSubtitle": "Starter recipes keep inexperienced operators on a safe path.",
+      "presetSubtitle": "",
       "commonTitle": "Shared Recipe",
       "commonSubtitle": "These fields persist across preview and derived renders.",
       "videoTitle": "Video Controls",
@@ -488,8 +527,38 @@
       "audioSubtitle": "Prepare speech or ambience with a safe normalization chain.",
       "imageTitle": "Image Controls",
       "imageSubtitle": "Crop, rotate, and tune still frames for OCR or evidence review.",
+      "advancedGroups": {
+        "focus": {
+          "title": "Framing and Focus",
+          "subtitle": "Adjust the active region and how the surrounding area behaves."
+        },
+        "timing": {
+          "title": "Cut and Flow",
+          "subtitle": "Choose which span of the source is carried into the output."
+        },
+        "sizing": {
+          "title": "Sizing and Performance",
+          "subtitle": "Tune output size, frame rate, and extra capture density."
+        },
+        "output": {
+          "title": "Output and Notes",
+          "subtitle": "Keep the file hint and operator context in one place."
+        },
+        "signal": {
+          "title": "Signal Chain",
+          "subtitle": "Group cleanup, filtering, and pre-analysis audio handling together."
+        },
+        "geometry": {
+          "title": "Framing and Geometry",
+          "subtitle": "Manage resize, rotation, and custom dimensions together."
+        },
+        "imageTone": {
+          "title": "Image Tuning",
+          "subtitle": "Balance brightness, contrast, blur, and sharpness together."
+        }
+      },
       "actionsTitle": "Preview and Apply",
-      "actionsSubtitle": "Generate a safe preview first, then publish a project-owned derived output.",
+      "actionsSubtitle": "",
       "outputsTitle": "Derived Outputs",
       "outputsSubtitle": "Each applied render is stored under the project and can be handed to later stages.",
       "outputsEmpty": "No derived outputs yet. Generate one after previewing the recipe.",
@@ -603,6 +672,14 @@
       "presetSubtitle": "Each preset mixes authenticity, continuity, and transcript-aware checks in a different way.",
       "advancedTitle": "Advanced Controls",
       "advancedSubtitle": "Tune the probe depth, sensitivity, lane mix, and optional transcript model.",
+      "advancedGroups": {
+        "scanTitle": "Scan Setup",
+        "scanSubtitle": "Tune depth, sensitivity, and sampling density together.",
+        "artifactsTitle": "Model and Artifacts",
+        "artifactsSubtitle": "Choose the transcript model and the preflight evidence files here.",
+        "lanesTitle": "Analysis Lanes",
+        "lanesSubtitle": "Select which control lanes stay active for this run."
+      },
       "depthLabel": "Probe Depth",
       "sensitivityLabel": "Suspicion Sensitivity",
       "modelLabel": "Transcript Model",
@@ -821,12 +898,32 @@
       "signalTitle": "Risk Signals",
       "findingsTitle": "Priority Findings",
       "sideTitle": "Analysis Detail",
+      "overviewMeta": {
+        "generated": "Generated"
+      },
+      "latestExportEyebrow": "Latest Export",
+      "latestExportTitle": "Latest report file",
+      "latestExportSubtitle": "Review the generated markdown file, its location, and the next follow-up actions here.",
+      "latestExportEmpty": "Once you export the report, the latest file will appear here.",
+      "exportHistoryEyebrow": "Export History",
+      "exportHistoryTitle": "Generated report files",
+      "exportHistorySubtitle": "Track the latest report exports written for this target.",
       "emptyFindings": "No managed report findings are ready yet.",
       "emptyBody": "Run the process stage first, then this final report surface will render its persisted findings and exports.",
+      "exportMeta": {
+        "created": "Created",
+        "status": "Status",
+        "path": "Location"
+      },
       "exportQueued": "Report export queued.",
+      "openFileSuccess": "The latest report file was opened.",
+      "openFolderSuccess": "The report folder was opened.",
+      "openPathFailure": "The report output could not be opened.",
       "actions": {
         "restart": "Start New Run",
-        "export": "Export Report"
+        "export": "Export Report",
+        "openFile": "Open File",
+        "openFolder": "Open Folder"
       }
     }
   },
@@ -874,7 +971,7 @@
     "source": {
       "formatLabel": "Audio Source Type",
       "title": "Prepare an audio target",
-      "subtitle": "Load an audio file or a video whose embedded audio track will be inspected by the shared laboratory toolchain.",
+      "subtitle": "",
       "formats": {
         "video": {
           "title": "Video",
@@ -910,11 +1007,29 @@
       "overviewTitle": "Audio Report Overview",
       "findingsTitle": "Audio Findings",
       "sideTitle": "Audio Detail",
+      "overviewMeta": {
+        "generated": "Generated"
+      },
+      "latestExportEyebrow": "Latest Export",
+      "latestExportTitle": "Latest audio report file",
+      "latestExportSubtitle": "Review the generated markdown file, its location, and the next follow-up actions here.",
+      "latestExportEmpty": "Once you export the audio report, the latest file will appear here.",
+      "exportHistoryEyebrow": "Export History",
+      "exportHistoryTitle": "Generated audio report files",
+      "exportHistorySubtitle": "Track the latest report exports written for this target.",
       "emptyFindings": "No audio summary cards are ready yet.",
       "emptyBody": "Run the audio process stage first, then this report will render persisted audio findings and module results.",
       "moduleRollupEyebrow": "Module Rollup",
       "moduleRollupTitle": "Catalog-driven module status",
       "moduleRollupSubtitle": "Implemented, gated, and planned audio families all stay visible in one ordered report surface.",
+      "exportMeta": {
+        "created": "Created",
+        "status": "Status",
+        "path": "Location"
+      },
+      "openFileSuccess": "The latest audio report file was opened.",
+      "openFolderSuccess": "The audio report folder was opened.",
+      "openPathFailure": "The audio report output could not be opened.",
       "moduleMeta": {
         "phase": "Phase",
         "confidence": "Confidence",
@@ -927,7 +1042,9 @@
       },
       "actions": {
         "restart": "Start New Audio Run",
-        "export": "Export Audio Report"
+        "export": "Export Audio Report",
+        "openFile": "Open File",
+        "openFolder": "Open Folder"
       }
     },
     "catalog": {
@@ -1319,6 +1436,10 @@
       "overviewTitle": "Subtitle Report Overview",
       "findingsTitle": "Subtitle Findings",
       "sideTitle": "Subtitle Detail",
+      "latestExportEyebrow": "Latest Export",
+      "latestExportTitle": "Latest subtitle report file",
+      "latestExportSubtitle": "Review the generated markdown file, its location, and the next follow-up actions here.",
+      "latestExportEmpty": "Once you export the subtitle report, the latest file will appear here.",
       "emptyFindings": "No subtitle summary cards are ready yet.",
       "emptyBody": "Run the subtitle process stage first, then this report will render persisted subtitle findings, module results, and exports.",
       "overviewMeta": {
@@ -1360,11 +1481,17 @@
       "exportMeta": {
         "format": "Format",
         "created": "Created",
-        "status": "Status"
+        "status": "Status",
+        "path": "Location"
       },
+      "openFileSuccess": "The latest subtitle report file was opened.",
+      "openFolderSuccess": "The subtitle report folder was opened.",
+      "openPathFailure": "The subtitle report output could not be opened.",
       "actions": {
         "restart": "Start New Subtitle Run",
-        "export": "Export Subtitle Report"
+        "export": "Export Subtitle Report",
+        "openFile": "Open File",
+        "openFolder": "Open Folder"
       }
     }
   }

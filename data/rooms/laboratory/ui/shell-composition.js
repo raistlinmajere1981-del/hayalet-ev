@@ -41,7 +41,9 @@ export function createLaboratoryUiShellComposition(deps) {
     renderMediaAnalysisEditStage: deps.renderMediaAnalysisEditStage,
     mediaAnalysisEditStageDeps: {
       escapeHtml: deps.escapeHtml,
+      getCurrentEditMode: deps.getCurrentEditMode,
       getProjectSource: deps.getProjectSource,
+      renderEditAdvancedPanel: deps.renderEditAdvancedPanel,
       renderEditActionsPanel: deps.renderEditActionsPanel,
       renderEditCommonPanel: deps.renderEditCommonPanel,
       renderEditControlsPanel: deps.renderEditControlsPanel,

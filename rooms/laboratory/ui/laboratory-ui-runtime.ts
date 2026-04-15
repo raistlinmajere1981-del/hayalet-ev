@@ -331,6 +331,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     getAvailableSourceFormats: coreRuntime.getAvailableSourceFormats,
     getCurrentDrafts: coreRuntime.getCurrentDrafts,
     getCurrentEditDraft: coreRuntime.getCurrentEditDraft,
+    getCurrentEditMode: coreRuntime.getCurrentEditMode,
     getCurrentSourceKind: coreRuntime.getCurrentSourceKind,
     getCurrentSourceMode: coreRuntime.getCurrentSourceMode,
     getProfileTargetSummary: coreRuntime.getProfileTargetSummary,
@@ -361,6 +362,7 @@ import { createAudioAnalysisUi } from "../main-functions/audio-analysis/ui/modul
     renderAudioAnalysisProviderPanel:
       laboratoryFeatureStageRuntime.renderAudioAnalysisProviderPanel,
     renderBootstrap: coreRuntime.renderBootstrap,
+    renderEditAdvancedPanel: laboratoryFeatureStageRuntime.renderEditAdvancedPanel,
     renderEditActionsPanel: laboratoryFeatureStageRuntime.renderEditActionsPanel,
     renderEditCommonPanel: laboratoryFeatureStageRuntime.renderEditCommonPanel,
     renderEditControlsPanel: laboratoryFeatureStageRuntime.renderEditControlsPanel,

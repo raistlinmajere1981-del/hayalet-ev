@@ -357,16 +357,16 @@ export function createMediaProfileProjectionRuntime(deps) {
         requestedMode: target.requestedMode,
         signature: nextSignature
       };
-      if (signatureChanged === true || target.usingFallback === true && asNonEmptyString(existingPreflight.ranAt) !== null) {
+      existingPreflight.warnings = Array.from(
+        new Set(
+          toStringArray(existingPreflight.warnings).concat(target.reason ? [target.reason] : [])
+        )
+      );
+      if (signatureChanged === true) {
         existingPreflight.status = asNonEmptyString(existingPreflight.ranAt) !== null ? "stale" : "idle";
         existingPreflight.jobId = null;
         existingPreflight.requestId = null;
         existingPreflight.error = null;
-        existingPreflight.warnings = Array.from(
-          new Set(
-            toStringArray(existingPreflight.warnings).concat(target.reason ? [target.reason] : [])
-          )
-        );
       }
     }
     resolvedProfile["targetAssetSignature"] = nextSignature;
@@ -383,7 +383,7 @@ export function createMediaProfileProjectionRuntime(deps) {
       },
       resolvedProfile["readiness"]
     );
-    resolvedProfile.dirty = resolvedProfile.dirty === true || signatureChanged === true || target.usingFallback === true || asNonEmptyString(toProfilePreflightRecord(resolvedProfile["preflight"]).status) !== "ready";
+    resolvedProfile.dirty = resolvedProfile.dirty === true || signatureChanged === true || asNonEmptyString(toProfilePreflightRecord(resolvedProfile["preflight"]).status) !== "ready";
     project.profile = resolvedProfile;
     return project;
   }

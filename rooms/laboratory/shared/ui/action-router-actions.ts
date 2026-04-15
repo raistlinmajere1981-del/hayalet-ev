@@ -1,4 +1,5 @@
 import type { createLaboratoryUiBootstrapStateRuntime } from "../../ui/bootstrap-state-runtime.js";
+import { openLaboratoryPath } from "../host/electron-bridge.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryUiState = ReturnType<typeof createLaboratoryUiBootstrapStateRuntime>["state"];
@@ -190,6 +191,29 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
       return activeOutput.id;
     }
     return null;
+  }
+
+  function getReportOpenSuccessMessage(action: "file" | "folder") {
+    return action === "folder"
+      ? text(["mediaAnalysis", "report", "openFolderSuccess"])
+      : text(["mediaAnalysis", "report", "openFileSuccess"]);
+  }
+
+  async function openReportPath(targetPath: string, action: "file" | "folder") {
+    if (targetPath.trim() === "") {
+      setBlockingStatus(text(["mediaAnalysis", "report", "openPathFailure"]));
+      render();
+      return;
+    }
+
+    try {
+      await openLaboratoryPath(targetPath);
+      setResultStatus(getReportOpenSuccessMessage(action), targetPath);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      setBlockingStatus(text(["mediaAnalysis", "report", "openPathFailure"]), detail);
+    }
+    render();
   }
 
   function handleAction(action: string, value: unknown) {
@@ -483,6 +507,12 @@ export function createLaboratoryUiActionHandlers(deps: LaboratoryUiActionHandler
         sendMediaAction(isAudioAnalysisFeature() ? "audio-report-export" : "report-export", {
           featureStage: "report",
         });
+        return;
+      case "report-open-file":
+        void openReportPath(String(value || ""), "file");
+        return;
+      case "report-open-folder":
+        void openReportPath(String(value || ""), "folder");
         return;
       default:
         break;

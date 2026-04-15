@@ -67,9 +67,7 @@ export function createLaboratoryMediaPreviewUi(deps: LaboratoryMediaPreviewDeps)
     escapeHtml,
     formatBitRate,
     formatDuration,
-    getActiveProject,
     getCurrentSourceKind,
-    getCurrentSourceLabel,
     getCurrentSourceMode,
     getPreferredSourceCodec,
     getPreferredSourceDuration,
@@ -108,7 +106,6 @@ export function createLaboratoryMediaPreviewUi(deps: LaboratoryMediaPreviewDeps)
   }
 
   function renderPreviewSurface() {
-    const project = getActiveProject();
     const source = getProjectSource();
     const previewUrl = toString(source.previewUrl);
     const fileName = toString(source.storedFileName) || "--";
@@ -169,17 +166,15 @@ export function createLaboratoryMediaPreviewUi(deps: LaboratoryMediaPreviewDeps)
     return `
       <section class="lab-panel lab-preview-panel">
         <div class="lab-preview-panel__header">
-          <div>
-            <p class="lab-panel__subtitle">${escapeHtml(project ? toString(project.name) || "--" : "--")}</p>
-            <h2 class="lab-panel__title">${escapeHtml(getCurrentSourceLabel())}</h2>
-          </div>
-          <span class="lab-chip">${escapeHtml(getProjectStatusLabel(source))}</span>
+          <h2 class="lab-panel__title">${escapeHtml(
+            text(["mediaAnalysis", "source", "previewPanelTitle"])
+          )}</h2>
         </div>
-        <div class="lab-preview-card">
+        <div class="lab-preview-card lab-preview-card--source">
           <div class="lab-preview-frame">
             ${mediaMarkup}
           </div>
-          <div class="lab-preview-copy">
+          <div class="lab-preview-copy lab-preview-copy--details">
             <ul class="lab-meta-list lab-meta-list--compact">${infoRows.join("")}</ul>
             ${
               activeJob

@@ -11,22 +11,61 @@
     "title": "Analiz Workbench'i",
     "subtitle": "Proje alimi, modül odagi, readiness, kosular ve rapor icin tek masaustu akis.",
     "moduleRailLabel": "Analiz modulleri",
-    "moduleTitle": "Modul yerlesimi",
+    "moduleTitle": "Aktif modul",
     "moduleSelectionHint": "Kosacak modul setini burada kur, sonra ayrintili ayar icin tek bir modulu odaga al.",
     "selectedModulesTitle": "Bu kosudaki moduller",
     "selectedModulesEmpty": "Henuz kosuya alinmis modul yok.",
+    "sourceScope": {
+      "title": "Calisma Kapsami",
+      "subtitle": "Bu panel aktif proje icin hangi modullerin kosuya girecegini ve hangi modulle baslanacagini belirler.",
+      "legend": {
+        "includeTitle": "Kosuya ekle",
+        "includeBody": "Modulu bu proje kosusuna dahil eder.",
+        "activateTitle": "Aktif modul yap",
+        "activateBody": "Kosuyu bu modulle baslatir ve ilk siraya alir.",
+        "excludeTitle": "Kosudan cikar",
+        "excludeBody": "Modulu bu proje kosusunda atlar."
+      },
+      "metrics": {
+        "active": "Aktif modul",
+        "included": "Kosudaki modul",
+        "order": "Kosu sirasi"
+      },
+      "countSuffix": "modul",
+      "orderTitle": "Bu kosu nasil akacak?",
+      "orderEmpty": "Henuz bir kosu sirasi hazir degil.",
+      "orderActive": "Ilk modul",
+      "orderQueued": "Sonraki modul",
+      "statusTags": {
+        "active": "Aktif modul",
+        "included": "Kosuda",
+        "excluded": "Pasif",
+        "order": "Sira"
+      },
+      "states": {
+        "active": "Bu modulle baslanir. Islem asamasinda once bu modul calisir.",
+        "included": "Bu modul kosuda yer alir ve aktif modulu takip eder.",
+        "excluded": "Bu modul secilmedigi icin bu proje kosusunda calismaz."
+      },
+      "actions": {
+        "include": "Kosuya ekle",
+        "exclude": "Kosudan cikar",
+        "activate": "Aktif modul yap",
+        "active": "Aktif modul"
+      }
+    },
     "railCurrentStage": "Aktif asama",
     "railFocusedModule": "Odaktaki modul",
     "railJourneyLabel": "Workbench asamalari",
-    "railStepCount": "Asama ilerlemesi",
+    "railStepCount": "Asama",
     "includeAction": "Kosuya ekle",
     "excludeAction": "Cikar",
     "focusAction": "Aktif Yap",
     "activateAction": "Aktif Yap",
     "activeTag": "Aktif",
-    "dependencyAction": "Modul Yonetimi",
+    "dependencyAction": "Arac Odasi",
     "dependencyEyebrow": "Operasyon Merkezi",
-    "dependencyTitle": "Modul Yonetimi",
+    "dependencyTitle": "Arac Odasi",
     "dependencySubtitle": "",
     "dependencyOverview": "Workbench readiness ozeti",
     "dependencyFocus": "Aktif adim odagi:",
@@ -119,16 +158,16 @@
     },
     "stages": {
       "source": {
-        "title": "Proje rotasini kur",
-        "subtitle": "Tek bir alandan proje sec veya olustur, aktif modulu belirle ve kaynagi hazirla."
+        "title": "Kaynak",
+        "subtitle": ""
       },
       "edit": {
-        "title": "Aktif handoff'u sekillendir",
+        "title": "Duzenle",
         "subtitle": "Derin profile ve yonetilen kosa gecmeden once asset ya da altyazi ciktisini duzenle."
       },
       "profile": {
-        "title": "Kosu oncesi readiness kontrolu yap",
-        "subtitle": "Profili ayarla, blokajlari gor ve hangi artifact'lerin hazirlanacagina karar ver."
+        "title": "Test Profili",
+        "subtitle": ""
       },
       "process": {
         "title": "Rehberli analizi calistir",
@@ -191,6 +230,7 @@
     },
     "projects": {
       "eyebrow": "Proje Masasi",
+      "detailsTitle": "Proje Detaylari",
       "title": "Proje Yonetimi",
       "newAction": "Yeni Proje",
       "selectLabel": "Kayitli Projeler",
@@ -326,6 +366,7 @@
       "formatLabel": "Kaynak Tipi",
       "modeLabel": "Rota",
       "intakeTitle": "Kaynak Alimi",
+      "previewPanelTitle": "Kaynak Onizleme / Detay",
       "previewTitle": "Kaynak Onizleme",
       "previewEmptyTitle": "Proje kaynagi henuz hazir degil",
       "previewEmptyBody": "Canli onizlemeyi acmak icin yerel bir dosya sec veya uzak bir kaynagi aktif projeye indir.",
@@ -473,13 +514,13 @@
       },
       "jobsTitle": "Aktif Duzenleme Isi",
       "modeTitle": "Operator Modu",
-      "modeSubtitle": "Guvenli presetlerle derin dogrudan kontroller arasinda gecis yap.",
+      "modeSubtitle": "",
       "modes": {
         "beginner": "Baslangic",
         "advanced": "Gelismis"
       },
       "presetTitle": "Tarif Presetleri",
-      "presetSubtitle": "Baslangic tarifleri deneyimsiz operatoru guvenli hatta tutar.",
+      "presetSubtitle": "",
       "commonTitle": "Ortak Tarif",
       "commonSubtitle": "Bu alanlar onizleme ve turetilmis render boyunca korunur.",
       "videoTitle": "Video Kontrolleri",
@@ -488,8 +529,38 @@
       "audioSubtitle": "Konusma ya da ortam kaydini guvenli normalizasyon zinciriyle hazirla.",
       "imageTitle": "Goruntu Kontrolleri",
       "imageSubtitle": "Sabit kareleri OCR veya delil incelemesi icin kirp, dondur ve ayarla.",
+      "advancedGroups": {
+        "focus": {
+          "title": "Kadro ve Odak",
+          "subtitle": "Secili bolgeyi ve dis alan davranisini birlikte yonet."
+        },
+        "timing": {
+          "title": "Kesit ve Akis",
+          "subtitle": "Kaynakta hangi araligin kullanilacagini burada belirle."
+        },
+        "sizing": {
+          "title": "Boyut ve Performans",
+          "subtitle": "Cikis boyutu, kare hizi ve ekstra yakalama yogunlugunu ayarla."
+        },
+        "output": {
+          "title": "Cikti ve Notlar",
+          "subtitle": "Dosya ipucu ve operator baglamini ayni blokta tut."
+        },
+        "signal": {
+          "title": "Sinyal Zinciri",
+          "subtitle": "Ses temizligi, filtreler ve analiz oncesi isleme ayarlarini grupla."
+        },
+        "geometry": {
+          "title": "Kadro ve Geometri",
+          "subtitle": "Yeniden boyut, donus ve ozel olculeri birlikte yonet."
+        },
+        "imageTone": {
+          "title": "Goruntu Ayari",
+          "subtitle": "Parlaklik, kontrast, bulaniklik ve keskinlik dengesini kur."
+        }
+      },
       "actionsTitle": "Onizleme ve Uygula",
-      "actionsSubtitle": "Once guvenli onizleme uret, sonra proje icinde saklanan turetilmis ciktayi yayinla.",
+      "actionsSubtitle": "",
       "outputsTitle": "Turetilmis Ciktilar",
       "outputsSubtitle": "Uygulanan her render proje icinde saklanir ve sonraki asamalara aktarilabilir.",
       "outputsEmpty": "Henuz turetilmis cikti yok. Tarifi onizledikten sonra bir cikti uret.",
@@ -603,6 +674,14 @@
       "presetSubtitle": "Her preset ozgunluk, sureklilik ve transkript destekli kontrolleri farkli karisir.",
       "advancedTitle": "Gelismis Kontroller",
       "advancedSubtitle": "Tarama derinligini, hassasiyeti, hat karisimini ve opsiyonel transkript modelini ayarla.",
+      "advancedGroups": {
+        "scanTitle": "Tarama Ayari",
+        "scanSubtitle": "Derinlik, hassasiyet ve ornekleme yogunlugunu birlikte ayarla.",
+        "artifactsTitle": "Model ve Artefaktlar",
+        "artifactsSubtitle": "Transkript modeli ve preflight kanit dosyalarini bu blokta belirle.",
+        "lanesTitle": "Analiz Hatlari",
+        "lanesSubtitle": "Bu kosuda hangi kontrol hatlarinin aktif kalacagini sec."
+      },
       "depthLabel": "Tarama Derinligi",
       "sensitivityLabel": "Suphe Hassasiyeti",
       "modelLabel": "Transkript Modeli",
@@ -821,12 +900,32 @@
       "signalTitle": "Risk Isaretleri",
       "findingsTitle": "Oncelikli Bulgular",
       "sideTitle": "Analiz Detayi",
+      "overviewMeta": {
+        "generated": "Uretildi"
+      },
+      "latestExportEyebrow": "Son Disa Aktarim",
+      "latestExportTitle": "Son rapor cikisi",
+      "latestExportSubtitle": "Olusan markdown dosyasini, konumunu ve takip aksiyonlarini buradan gor.",
+      "latestExportEmpty": "Raporu disa aktardiginda son dosya burada gorunur.",
+      "exportHistoryEyebrow": "Export Gecmisi",
+      "exportHistoryTitle": "Uretilen rapor dosyalari",
+      "exportHistorySubtitle": "Bu hedef icin yazilan son disa aktarimlari burada takip et.",
       "emptyFindings": "Henuz hazir rapor bulgusu yok.",
       "emptyBody": "Once islem asamasini calistir; sonra bu rapor gorunumu en guclu bulgulari ve artifact'leri gosterecek.",
+      "exportMeta": {
+        "created": "Olusturuldu",
+        "status": "Durum",
+        "path": "Konum"
+      },
       "exportQueued": "Rapor disa aktarma siraya alindi.",
+      "openFileSuccess": "Son rapor dosyasi acildi.",
+      "openFolderSuccess": "Rapor klasoru acildi.",
+      "openPathFailure": "Rapor cikisi acilamadi.",
       "actions": {
         "restart": "Yeni Calisma Baslat",
-        "export": "Raporu Disa Aktar"
+        "export": "Raporu Disa Aktar",
+        "openFile": "Dosyayi Ac",
+        "openFolder": "Klasoru Ac"
       }
     }
   },
@@ -874,7 +973,7 @@
     "source": {
       "formatLabel": "Ses Kaynak Tipi",
       "title": "Ses hedefini hazirla",
-      "subtitle": "Paylasilan laboratuvar arac zinciriyle incelenecek bir ses dosyasi ya da ses izi olan bir video yukle.",
+      "subtitle": "",
       "formats": {
         "video": {
           "title": "Video",
@@ -910,11 +1009,29 @@
       "overviewTitle": "Ses Raporu Ozeti",
       "findingsTitle": "Ses Bulgulari",
       "sideTitle": "Ses Detayi",
+      "overviewMeta": {
+        "generated": "Uretildi"
+      },
+      "latestExportEyebrow": "Son Disa Aktarim",
+      "latestExportTitle": "Son ses raporu cikisi",
+      "latestExportSubtitle": "Olusan markdown dosyasini, konumunu ve takip aksiyonlarini buradan gor.",
+      "latestExportEmpty": "Ses raporunu disa aktardiginda son dosya burada gorunur.",
+      "exportHistoryEyebrow": "Export Gecmisi",
+      "exportHistoryTitle": "Uretilen ses raporu dosyalari",
+      "exportHistorySubtitle": "Bu hedef icin yazilan son disa aktarimlari burada takip et.",
       "emptyFindings": "Henuz hazir ses ozet karti yok.",
       "emptyBody": "Once ses islem asamasini calistir; sonra bu rapor kayitli ses bulgularini ve modul sonucunu gosterecek.",
       "moduleRollupEyebrow": "Modul Dagilimi",
       "moduleRollupTitle": "Katalog sirali modul durumu",
       "moduleRollupSubtitle": "Uygulanan, kapasiteye bagli ve planli ses aileleri ayni sirali rapor yuzeyinde gorunur kalir.",
+      "exportMeta": {
+        "created": "Olusturuldu",
+        "status": "Durum",
+        "path": "Konum"
+      },
+      "openFileSuccess": "Son ses raporu dosyasi acildi.",
+      "openFolderSuccess": "Ses raporu klasoru acildi.",
+      "openPathFailure": "Ses raporu cikisi acilamadi.",
       "moduleMeta": {
         "phase": "Faz",
         "confidence": "Guven",
@@ -927,7 +1044,9 @@
       },
       "actions": {
         "restart": "Yeni Ses Kosusu Baslat",
-        "export": "Ses Raporunu Disa Aktar"
+        "export": "Ses Raporunu Disa Aktar",
+        "openFile": "Dosyayi Ac",
+        "openFolder": "Klasoru Ac"
       }
     },
     "catalog": {
@@ -1319,6 +1438,10 @@
       "overviewTitle": "Altyazi Raporu Ozeti",
       "findingsTitle": "Altyazi Bulgulari",
       "sideTitle": "Altyazi Detayi",
+      "latestExportEyebrow": "Son Disa Aktarim",
+      "latestExportTitle": "Son altyazi raporu cikisi",
+      "latestExportSubtitle": "Olusan markdown dosyasini, konumunu ve takip aksiyonlarini buradan gor.",
+      "latestExportEmpty": "Altyazi raporunu disa aktardiginda son dosya burada gorunur.",
       "emptyFindings": "Henuz hazir altyazi ozet karti yok.",
       "emptyBody": "Once altyazi process asamasini calistir; sonra bu rapor kalici altyazi bulgularini, modul sonucunu ve export'lari gosterecek.",
       "overviewMeta": {
@@ -1360,11 +1483,17 @@
       "exportMeta": {
         "format": "Format",
         "created": "Olusturuldu",
-        "status": "Durum"
+        "status": "Durum",
+        "path": "Konum"
       },
+      "openFileSuccess": "Son altyazi raporu dosyasi acildi.",
+      "openFolderSuccess": "Altyazi raporu klasoru acildi.",
+      "openPathFailure": "Altyazi raporu cikisi acilamadi.",
       "actions": {
         "restart": "Yeni Altyazi Kosusu Baslat",
-        "export": "Altyazi Raporunu Disa Aktar"
+        "export": "Altyazi Raporunu Disa Aktar",
+        "openFile": "Dosyayi Ac",
+        "openFolder": "Klasoru Ac"
       }
     }
   }

@@ -42,7 +42,6 @@ type LaboratorySettingsUiDeps = {
   formatBytes: (value: unknown) => string;
   formatCleanupPolicy: (value: unknown) => string;
   formatPlatformList: (value: unknown) => string;
-  getWorkbench: () => LaboratoryRecord;
   getProfileModelEntries: () => LaboratoryProfileModelRecord[];
   getProfileSelectedModel: () => LaboratoryProfileModelRecord | null;
   getStageToolIds: (stageId: string) => string[];
@@ -65,7 +64,6 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
     formatBytes,
     formatCleanupPolicy,
     formatPlatformList,
-    getWorkbench,
     getProfileModelEntries,
     getProfileSelectedModel,
     getToolEntry,
@@ -214,98 +212,6 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
     });
   }
 
-  function getWorkbenchRecord() {
-    return toRecord(getWorkbench());
-  }
-
-  function getSelectedModuleIds() {
-    return Array.isArray(getWorkbenchRecord()["selectedModuleIds"])
-      ? (getWorkbenchRecord()["selectedModuleIds"] as unknown[]).filter(
-          function (entry): entry is string {
-            return typeof entry === "string" && entry.trim() !== "";
-          }
-        )
-      : [];
-  }
-
-  function getAvailableModuleIds() {
-    return Array.isArray(getWorkbenchRecord()["availableModuleIds"])
-      ? (getWorkbenchRecord()["availableModuleIds"] as unknown[]).filter(
-          function (entry): entry is string {
-            return typeof entry === "string" && entry.trim() !== "";
-          }
-        )
-      : [];
-  }
-
-  function getActiveModuleId() {
-    const activeModuleId = toString(getWorkbenchRecord()["activeModuleId"]).trim();
-    return activeModuleId !== "" ? activeModuleId : "media-analysis";
-  }
-
-  function getModuleLabel(featureId: string) {
-    return text(["features", featureId]) || featureId;
-  }
-
-  function renderModuleControlSection() {
-    const activeModuleId = getActiveModuleId();
-    const selectedModuleIds = getSelectedModuleIds();
-    const availableModuleIds = getAvailableModuleIds();
-    if (availableModuleIds.length === 0) {
-      return "";
-    }
-
-    return `
-      <section class="lab-panel lab-center-sidebar__panel">
-        <div class="lab-panel__header">
-          <div>
-            <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "moduleRailLabel"]))}</p>
-          </div>
-        </div>
-        <div class="lab-module-list">
-          ${availableModuleIds
-            .map(function (featureId) {
-              const isSelected = selectedModuleIds.includes(featureId);
-              const isActive = featureId === activeModuleId;
-              return `
-                <article class="lab-module-row">
-                  <strong>${escapeHtml(getModuleLabel(featureId))}</strong>
-                  <div class="lab-module-row__actions">
-                    <button
-                      class="lab-button ${isSelected ? "lab-button--ghost" : "lab-button--primary"} lab-button--tight"
-                      type="button"
-                      data-action="workbench-toggle-module"
-                      data-value="${escapeHtml(featureId)}"
-                    >
-                      ${escapeHtml(
-                        isSelected
-                          ? text(["workbench", "excludeAction"])
-                          : text(["workbench", "includeAction"])
-                      )}
-                    </button>
-                    <button
-                      class="lab-button lab-button--ghost lab-button--tight"
-                      type="button"
-                      data-action="workbench-activate-module"
-                      data-value="${escapeHtml(featureId)}"
-                      ${isActive ? "disabled" : ""}
-                    >
-                      ${escapeHtml(
-                        isActive
-                          ? text(["workbench", "activeTag"])
-                          : text(["workbench", "activateAction"])
-                      )}
-                    </button>
-                  </div>
-                </article>
-              `;
-            })
-            .join("")}
-        </div>
-      </section>
-    `;
-  }
-
   function renderToolStream(toolIds: string[]) {
     if (toolIds.length === 0) {
       return "";
@@ -405,7 +311,6 @@ export function createLaboratorySettingsUi(deps: LaboratorySettingsUiDeps) {
           </header>
           <div class="lab-center-layout">
             <aside class="lab-center-sidebar lab-center-sidebar--management">
-              ${renderModuleControlSection()}
               <section class="lab-panel lab-center-sidebar__panel lab-center-sidebar__panel--fill">
                 <div class="lab-panel__header">
                   <div>

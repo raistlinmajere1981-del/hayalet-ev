@@ -117,6 +117,7 @@ export function createMediaAnalysisEditOutputPanels(deps) {
     const edit = getProjectEdit();
     const activeOutput = getActiveEditOutput();
     const ffmpegInstalled = getToolEntry("ffmpeg").installed === true;
+    const actionsSubtitle = text(["mediaAnalysis", "edit", "actionsSubtitle"]);
     const previewJob = getRelevantJobs().project.find(function(entry) {
       return entry.action === "edit-preview";
     }) || null;
@@ -128,7 +129,7 @@ export function createMediaAnalysisEditOutputPanels(deps) {
         <div class="lab-panel__header">
           <div>
             <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "edit", "actionsTitle"]))}</p>
-            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "edit", "actionsSubtitle"]))}</h2>
+            ${actionsSubtitle ? `<h2 class="lab-panel__title">${escapeHtml(actionsSubtitle)}</h2>` : ""}
           </div>
         </div>
         ${ffmpegInstalled !== true ? `<div class="lab-notice">${escapeHtml(text(["mediaAnalysis", "edit", "ffmpegMissing"]))}</div>` : ""}
