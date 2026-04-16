@@ -49,15 +49,27 @@ function createBootSurface(state: LabStoreState): LabStageSurface {
 
 function readPersistableState(state: LabStoreState) {
   return {
+    schemaVersion: 3,
     artifactRenderCount: state.ui.artifactRenderCount,
     artifactListExpanded: state.ui.artifactListExpanded,
+    activityFeed: state.activityFeed.slice(0, 40),
     currentStage: state.currentStage,
     editDrafts: state.ui.editDrafts,
     editConfig: state.editConfig,
     eventFeedExpanded: state.ui.eventFeedExpanded,
     eventFeedCursor: state.ui.eventFeedCursor,
     featureId: state.featureId,
-    lastRun: state.run,
+    lastRun: state.run
+      ? {
+          ...state.run,
+          state:
+            state.run.state === "running" || state.run.state === "queued"
+              ? "cancelled"
+              : state.run.state,
+          events: [],
+          rawLog: [],
+        }
+      : null,
     profileConfig: state.profileConfig,
     profileDrafts: state.ui.profileDrafts,
     profileModels: state.profileModels,

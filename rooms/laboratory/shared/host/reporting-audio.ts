@@ -6,6 +6,8 @@ type LaboratoryProjectRecord = LaboratoryRecord & {
 };
 
 type LaboratoryFeatureProcessRecord = LaboratoryRecord & {
+  emptyReason?: unknown;
+  error?: unknown;
   runId?: unknown;
   status?: unknown;
   targetSummary?: unknown;
@@ -150,6 +152,26 @@ export function createLaboratoryAudioReportRuntime(deps: LaboratoryAudioReportRu
       : [];
   }
 
+  function getAudioReportEmptyReason(
+    processRecord: LaboratoryFeatureProcessRecord,
+    processStatus: string
+  ) {
+    const explicitReason = asNonEmptyString(processRecord.emptyReason);
+    if (explicitReason !== null) {
+      return explicitReason;
+    }
+    if (processStatus === "running" || processStatus === "queued") {
+      return "Ses analizi hala suruyor; rapor tamamlaninca dolacak.";
+    }
+    if (processStatus === "failed") {
+      return asNonEmptyString(processRecord.error) || "Ses analizi hata ile tamamlandigi icin rapor bos kaldi.";
+    }
+    if (processStatus === "cancelled") {
+      return "Ses analizi iptal edildigi icin rapor bos kaldi.";
+    }
+    return "Once ses analizi tamamlanmali.";
+  }
+
   function buildAudioAnalysisReportProjection(
     runtime: LaboratoryRecord,
     project: LaboratoryProjectRecord
@@ -200,6 +222,7 @@ export function createLaboratoryAudioReportRuntime(deps: LaboratoryAudioReportRu
           ...createEmptyFeatureReportRecord(audioFeatureId),
           status: processStatus === "running" ? "staged" : "idle",
           warnings: normalizeStringArray(processRecord.warnings),
+          emptyReason: getAudioReportEmptyReason(processRecord, processStatus),
         },
         audioFeatureId
       );
@@ -302,6 +325,10 @@ export function createLaboratoryAudioReportRuntime(deps: LaboratoryAudioReportRu
         warnings,
         exports: reportRecord.exports,
         error: null,
+        emptyReason:
+          findings.length === 0 && artifactCount === 0
+            ? getAudioReportEmptyReason(processRecord, processStatus)
+            : null,
       },
       audioFeatureId
     );

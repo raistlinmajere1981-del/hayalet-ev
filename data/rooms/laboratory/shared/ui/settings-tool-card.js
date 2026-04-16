@@ -131,12 +131,19 @@ export function createLaboratorySettingsToolCardRuntime(deps) {
     const installerType = toString(descriptor?.installerType).trim();
     const managedInstaller = installStrategy === "automatic" || installerType !== "";
     const platformSupported = details.platformSupported !== false;
+    const stageSupport = platformSupported !== true ? "unsupported" : availability;
+    const stageUnsupported = stageSupport === "unsupported";
     const helperOpen = isHelperOpen(toolId);
     const helperAvailable = hasHelper(descriptor);
     const plannedReason = toString(descriptor?.plannedReason).trim();
     const statusLabel = availability === "planned" ? text(["mediaAnalysis", "settings", "status", "planned"]) : installed ? updateAvailable ? text(["mediaAnalysis", "settings", "status", "updateAvailable"]) : text(["mediaAnalysis", "settings", "status", "installed"]) : platformSupported !== true ? text(["mediaAnalysis", "settings", "support", "unsupported"]) : managedInstaller ? text(["mediaAnalysis", "settings", "status", "appInstall"]) : text(["mediaAnalysis", "settings", "status", "manualSetup"]);
     const primaryActions = [];
     const secondaryActions = [];
+    const unsupportedActionMarkup = `
+      <button class="lab-button lab-button--ghost lab-button--tight" type="button" disabled>
+        ${escapeHtml(text(["mediaAnalysis", "settings", "support", "unsupported"]))}
+      </button>
+    `;
     if (availability === "planned") {
       primaryActions.push(`
         <button class="lab-button lab-button--ghost lab-button--tight" type="button" disabled>
@@ -175,12 +182,8 @@ export function createLaboratorySettingsToolCardRuntime(deps) {
           </button>
         `);
       }
-    } else if (platformSupported !== true) {
-      primaryActions.push(`
-        <button class="lab-button lab-button--ghost lab-button--tight" type="button" disabled>
-          ${escapeHtml(text(["mediaAnalysis", "settings", "support", "unsupported"]))}
-        </button>
-      `);
+    } else if (stageUnsupported) {
+      primaryActions.push(unsupportedActionMarkup);
     } else {
       if (managedInstaller) {
         primaryActions.push(`

@@ -203,12 +203,7 @@ export function createMediaAnalysisEditModePanels(deps: MediaAnalysisEditModePan
     `;
   }
 
-  function renderAdvancedGroup(
-    title: string,
-    subtitle: string,
-    content: string,
-    extraClass = ""
-  ) {
+  function renderAdvancedGroup(title: string, subtitle: string, content: string, extraClass = "") {
     const className = ["lab-edit-group-card", extraClass].filter(Boolean).join(" ");
     return `
       <section class="${className}">

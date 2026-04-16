@@ -1,10 +1,12 @@
 import { escapeHtml, formatDateTime } from "../../models/lab-types.js";
 import type { LabStageSurface, LabStoreState } from "../../models/lab-types.js";
 import {
+  getGlobalActivityFeed,
   getCurrentRun,
   getVisibleArtifacts,
   getVisibleEventOffset,
   getVisibleEvents,
+  getVisibleRawLogs,
   hasMoreVisibleArtifacts,
   hasMoreVisibleEvents,
 } from "../../runtime/lab-selectors.js";
@@ -24,12 +26,32 @@ type ProcessStageRenderDeps = {
   state: LabStoreState;
 };
 
+function getProcessFindingHint(run: NonNullable<ReturnType<typeof getCurrentRun>>) {
+  if (run.emptyReason) {
+    return run.emptyReason;
+  }
+  return run.state === "running"
+    ? "Bulgu üretildiğinde burada görünür."
+    : "Raporlanabilir bulgu oluşmadı.";
+}
+
+function getProcessArtifactHint(run: NonNullable<ReturnType<typeof getCurrentRun>>) {
+  if (run.emptyReason) {
+    return run.emptyReason;
+  }
+  return run.state === "running"
+    ? "Artefakt üretildiğinde burada görünür."
+    : "Raporlanabilir artefakt oluşmadı.";
+}
+
 export function renderProcessStage(deps: ProcessStageRenderDeps): LabStageSurface {
   const run = getCurrentRun(deps.state);
   const events = getVisibleEvents(deps.state);
+  const rawLog = getVisibleRawLogs(deps.state);
   const artifacts = getVisibleArtifacts(deps.state);
   const hasMoreEvents = hasMoreVisibleEvents(deps.state);
   const hasMoreArtifacts = hasMoreVisibleArtifacts(deps.state);
+  const activityFeedCount = getGlobalActivityFeed(deps.state).length;
 
   const main = `
     ${renderStageHeader({
@@ -61,13 +83,30 @@ export function renderProcessStage(deps: ProcessStageRenderDeps): LabStageSurfac
             })}
             ${renderCompactCard({
               eyebrow: "Event Feed",
-              title: "Çalışma Günlüğü",
+              title: "Activity Feed",
               body: renderEventFeed({
                 canAdvance: hasMoreEvents,
                 events,
                 offset: getVisibleEventOffset(deps.state),
-                totalCount: deps.state.eventFeed.length,
+                totalCount: run.events.length,
               }),
+              footer:
+                rawLog.length > 0
+                  ? `
+                    <details class="labx-raw-log">
+                      <summary>Raw Log (${String(run.rawLog.length)})</summary>
+                      <div class="labx-raw-log__list">
+                        ${rawLog
+                          .map(function (entry) {
+                            return `<pre class="labx-raw-log__entry">${escapeHtml(
+                              entry.rawLine || entry.message
+                            )}</pre>`;
+                          })
+                          .join("")}
+                      </div>
+                    </details>
+                  `
+                  : `<p class="labx-panel-hint">Ham log yalnız araç çıktısı geldiğinde görünür.</p>`,
             })}
           </div>
         `
@@ -99,6 +138,7 @@ export function renderProcessStage(deps: ProcessStageRenderDeps): LabStageSurfac
               <div><span>Modules</span><strong>${escapeHtml(String(run.moduleOrder.length))}</strong></div>
               <div><span>Findings</span><strong>${escapeHtml(String(run.findings.length))}</strong></div>
               <div><span>Artifacts</span><strong>${escapeHtml(String(run.artifacts.length))}</strong></div>
+              <div><span>Room Activity</span><strong>${escapeHtml(String(activityFeedCount))}</strong></div>
             </div>
           `,
         }),
@@ -108,7 +148,7 @@ export function renderProcessStage(deps: ProcessStageRenderDeps): LabStageSurfac
           body:
             run.findings.length > 0
               ? run.findings.slice(0, 4).map(renderFindingCard).join("")
-              : `<p class="labx-panel-hint">Henüz işlenmiş bulgu yok.</p>`,
+              : `<p class="labx-panel-hint">${escapeHtml(getProcessFindingHint(run))}</p>`,
         }),
         renderCompactCard({
           eyebrow: "Artifacts",
@@ -116,7 +156,7 @@ export function renderProcessStage(deps: ProcessStageRenderDeps): LabStageSurfac
           body:
             artifacts.length > 0
               ? artifacts.map(renderArtifactItem).join("")
-              : `<p class="labx-panel-hint">Artefakt kaydı oluşmadı.</p>`,
+              : `<p class="labx-panel-hint">${escapeHtml(getProcessArtifactHint(run))}</p>`,
           footer: hasMoreArtifacts
             ? `<button class="labx-inline-action" type="button" data-lab-action="show-more-artifacts">Daha fazlasını göster</button>`
             : run.artifacts.length > 12
@@ -127,7 +167,9 @@ export function renderProcessStage(deps: ProcessStageRenderDeps): LabStageSurfac
     : renderCompactCard({
         eyebrow: "Runtime",
         title: "Beklenen Çıkış",
-        body: `<p class="labx-panel-hint">Run başladığında modüller, olay beslemesi ve gerçek progress burada belirir.</p>`,
+        body: `<p class="labx-panel-hint">${escapeHtml(
+          deps.primaryDetail || "Run hazır olduğunda gerçek runtime çıktısı burada görünür."
+        )}</p>`,
       });
 
   return { main, side };

@@ -3,6 +3,7 @@ export type LabRecord = Record<string, unknown>;
 export type LabStage = "source" | "edit" | "profile" | "process" | "report";
 export type LabFeatureId = "media-analysis" | "audio-analysis" | "subtitle-analysis";
 export type LabEventSeverity = "info" | "success" | "warning" | "error";
+export type LabEventScope = "global" | "run";
 export type LabModuleStatus =
   | "idle"
   | "queued"
@@ -14,7 +15,7 @@ export type LabModuleStatus =
   | "skipped"
   | "stale";
 export type LabSourceProbeStatus = "idle" | "running" | "completed" | "failed";
-export type LabPreflightStatus = "ready" | "warning" | "blocked";
+export type LabPreflightStatus = "idle" | "ready" | "warning" | "blocked";
 
 export const LAB_STAGES: LabStage[] = ["source", "edit", "profile", "process", "report"];
 export const LAB_FEATURES: Array<{
@@ -60,6 +61,9 @@ export interface LabEventFeedItem {
   source: "host" | "ui" | "system";
   action: string | null;
   stage: string | null;
+  scope: LabEventScope;
+  moduleId: string | null;
+  rawLine: string | null;
 }
 
 export interface LabSourceDrafts {
@@ -107,6 +111,7 @@ export interface LabModuleState {
   startedAt?: string | null;
   endedAt?: string | null;
   progress?: number | null;
+  progressMode?: "measured" | "none";
   message?: string | null;
   title?: string | null;
   summary?: string | null;
@@ -143,12 +148,14 @@ export interface LabRun {
   modules: Record<string, LabModuleState>;
   moduleOrder: string[];
   events: LabEventFeedItem[];
+  rawLog: LabEventFeedItem[];
   artifacts: LabArtifactProjection[];
   findings: LabFindingProjection[];
   warnings: string[];
   error: string | null;
   targetLabel: string | null;
   progress: number | null;
+  emptyReason: string | null;
 }
 
 export interface LabUserReportFinding {
@@ -177,6 +184,7 @@ export interface LabAiReport {
 export interface LabReportSet {
   user: LabUserReport | null;
   ai: LabAiReport | null;
+  emptyReason: string | null;
 }
 
 export interface LabPreflightResult {
@@ -187,6 +195,7 @@ export interface LabPreflightResult {
   enabledModules: string[];
   stageReady: boolean;
   rawStatus: string | null;
+  reason: string | null;
 }
 
 export interface LabStoreUiState {
@@ -205,6 +214,7 @@ export interface LabStoreUiState {
 }
 
 export interface LabPersistedState {
+  schemaVersion?: number;
   currentStage: LabStage;
   featureId: LabFeatureId;
   projectIndex: {
@@ -222,6 +232,7 @@ export interface LabPersistedState {
   reportExports: LabRecord[];
   profileModels: LabRecord[];
   toolState: LabRecord;
+  activityFeed: LabEventFeedItem[];
   sourceDrafts: LabSourceDrafts;
   editDrafts: LabEditDrafts;
   profileDrafts: LabProfileDrafts;
@@ -254,7 +265,7 @@ export interface LabStoreState {
   reportExports: LabRecord[];
   profileModels: LabRecord[];
   toolState: LabRecord;
-  eventFeed: LabEventFeedItem[];
+  activityFeed: LabEventFeedItem[];
   ui: LabStoreUiState;
   persisted: LabPersistedState | null;
 }
@@ -270,6 +281,7 @@ export type LabStoreEvent =
   | { type: "context-received"; payload: LabRecord }
   | { type: "snapshot-received"; payload: LabRecord }
   | { type: "source-snapshot-received"; payload: LabRecord }
+  | { type: "host-event-received"; event: LabEventFeedItem }
   | { type: "job-received"; payload: LabRecord; event: LabEventFeedItem | null }
   | { type: "request-result-received"; payload: LabRecord; event: LabEventFeedItem | null }
   | { type: "source-probe-started"; action: string; detail?: string | null }

@@ -98,6 +98,7 @@ export function createLaboratorySnapshotCompositionRuntime(
   const {
     buildMediaSnapshot,
     buildSourceSnapshot,
+    emitEvent,
     isSourceCompatibleAction,
     notifyRoom,
     pushActionResult,
@@ -115,6 +116,7 @@ export function createLaboratorySnapshotCompositionRuntime(
     buildReportManifest,
     buildSourceSnapshot,
     buildSourceTargetSignature,
+    emitEvent,
     findEditOutputById,
     isSourceCompatibleAction,
     laboratoryRoomSnapshotRuntime,

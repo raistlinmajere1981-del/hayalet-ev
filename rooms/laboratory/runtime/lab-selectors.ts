@@ -12,7 +12,6 @@ import type {
   LabStage,
   LabStoreState,
 } from "../models/lab-types.js";
-import { runPreflight } from "../services/preflight-service.js";
 
 export function getSnapshot(state: LabStoreState): LabRecord {
   return state.snapshot || {};
@@ -78,7 +77,47 @@ export function getCurrentFeatureReportRecord(state: LabStoreState): LabRecord {
 }
 
 export function getCurrentPreflight(state: LabStoreState): LabPreflightResult {
-  return state.preflight || runPreflight(getProjectProfile(state), getProjectSource(state));
+  if (state.preflight) {
+    return state.preflight;
+  }
+
+  const source = getProjectSource(state);
+  if (Object.keys(source).length === 0) {
+    return {
+      status: "idle",
+      missingDependencies: [],
+      warnings: [],
+      estimatedRuntime: null,
+      enabledModules: [],
+      stageReady: false,
+      rawStatus: null,
+      reason: "Önce kaynak seçilmelidir.",
+    };
+  }
+
+  if (state.sourceProbeStatus !== "completed") {
+    return {
+      status: "idle",
+      missingDependencies: [],
+      warnings: [],
+      estimatedRuntime: null,
+      enabledModules: [],
+      stageReady: false,
+      rawStatus: null,
+      reason: "Kaynak probe tamamlanmadan ön kontrol doğrulanamaz.",
+    };
+  }
+
+  return {
+    status: "idle",
+    missingDependencies: [],
+    warnings: [],
+    estimatedRuntime: null,
+    enabledModules: [],
+    stageReady: false,
+    rawStatus: null,
+    reason: "Ön kontrol henüz host tarafından çalıştırılmadı.",
+  };
 }
 
 export function getCurrentRun(state: LabStoreState): LabRun | null {
@@ -265,7 +304,7 @@ export function getPrimaryActionLabel(state: LabStoreState, stage: LabStage) {
 }
 
 export function getVisibleEvents(state: LabStoreState) {
-  const feed = state.eventFeed.slice().sort(function (left, right) {
+  const feed = (state.run?.events || []).slice().sort(function (left, right) {
     return right.timestamp - left.timestamp;
   });
   const windowSize = state.ui.eventFeedExpanded ? 40 : 18;
@@ -274,13 +313,23 @@ export function getVisibleEvents(state: LabStoreState) {
 }
 
 export function hasMoreVisibleEvents(state: LabStoreState) {
+  const totalCount = state.run?.events.length || 0;
   const windowSize = state.ui.eventFeedExpanded ? 40 : 18;
   const windowStart = state.ui.eventFeedExpanded ? state.ui.eventFeedCursor : 0;
-  return state.eventFeed.length > windowStart + windowSize;
+  return totalCount > windowStart + windowSize;
 }
 
 export function getVisibleEventOffset(state: LabStoreState) {
   return state.ui.eventFeedExpanded ? state.ui.eventFeedCursor : 0;
+}
+
+export function getVisibleRawLogs(state: LabStoreState) {
+  const rawLog = state.run?.rawLog || [];
+  return rawLog.slice(0, state.ui.eventFeedExpanded ? 40 : 12);
+}
+
+export function getGlobalActivityFeed(state: LabStoreState) {
+  return state.activityFeed.slice();
 }
 
 export function getVisibleArtifacts(state: LabStoreState) {

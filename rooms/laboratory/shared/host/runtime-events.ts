@@ -14,6 +14,54 @@ type LaboratoryRuntimeEventsDeps = {
   };
 };
 
+function getEventSeverity(stage: string | null) {
+  if (stage === "failed") {
+    return "error";
+  }
+  if (stage === "cancelled") {
+    return "warning";
+  }
+  if (stage === "completed") {
+    return "success";
+  }
+  return "info";
+}
+
+function getActionLabel(action: string | null) {
+  switch (action) {
+    case null:
+      return "İşlem";
+    case "source-download-url":
+      return "URL kaynağı indiriliyor";
+    case "source-download-youtube":
+      return "YouTube kaynağı hazırlanıyor";
+    case "source-pick-local":
+      return "Yerel kaynak içeri alınıyor";
+    case "edit-preview":
+    case "subtitle-edit-preview":
+      return "Önizleme hazırlanıyor";
+    case "profile-run-preflight":
+      return "Ön kontrol çalışıyor";
+    case "process-run":
+    case "audio-process-run":
+      return "Analiz çalışıyor";
+    case "process-cancel":
+    case "audio-process-cancel":
+      return "Analiz iptal ediliyor";
+    case "report-export":
+    case "audio-report-export":
+      return "Rapor dışa aktarılıyor";
+    case "tool-install":
+      return "Araç kurulumu çalışıyor";
+    case "tool-update":
+      return "Araç güncellemesi çalışıyor";
+    case "tool-check-updates":
+      return "Araç güncellemesi kontrol ediliyor";
+    default:
+      return action || "İşlem";
+  }
+}
+
 export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps) {
   const {
     asNonEmptyString,
@@ -43,6 +91,76 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     payload: LaboratoryRecord | null | undefined
   ) {
     api.notifyRoom(type, payload ?? {});
+  }
+
+  function emitEvent(api: LaboratoryRuntimeEventsApi, payload: LaboratoryRecord) {
+    notifyRoom(api, "lab-event", {
+      id:
+        typeof payload["id"] === "string"
+          ? payload["id"]
+          : `lab-event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: typeof payload["kind"] === "string" ? payload["kind"] : "activity",
+      severity:
+        typeof payload["severity"] === "string" ? payload["severity"] : getEventSeverity(asNonEmptyString(payload["stage"])),
+      message:
+        typeof payload["message"] === "string"
+          ? payload["message"]
+          : getActionLabel(asNonEmptyString(payload["action"])),
+      detail: typeof payload["detail"] === "string" ? payload["detail"] : null,
+      timestamp: typeof payload["timestamp"] === "number" ? payload["timestamp"] : Date.now(),
+      source: typeof payload["source"] === "string" ? payload["source"] : "host",
+      action: asNonEmptyString(payload["action"]),
+      stage: asNonEmptyString(payload["stage"]),
+      scope:
+        payload["scope"] === "run" || asNonEmptyString(payload["featureStage"]) === "process"
+          ? "run"
+          : "global",
+      moduleId: asNonEmptyString(payload["moduleId"]),
+      rawLine: typeof payload["rawLine"] === "string" ? payload["rawLine"] : null,
+    });
+  }
+
+  function buildJobEventPayload(payload: LaboratoryRecord) {
+    const action = asNonEmptyString(payload["action"]);
+    const stage = asNonEmptyString(payload["stage"]);
+    const detail = asNonEmptyString(payload["message"]);
+    const baseLabel = getActionLabel(action);
+    return {
+      kind: payload["kind"],
+      severity: getEventSeverity(stage),
+      message:
+        stage === "queued"
+          ? `${baseLabel} kuyruğa alındı`
+          : stage === "completed"
+            ? `${baseLabel} tamamlandı`
+            : stage === "failed"
+              ? `${baseLabel} hata verdi`
+              : stage === "cancelled"
+                ? `${baseLabel} iptal edildi`
+                : `${baseLabel} başladı`,
+      detail,
+      action,
+      stage,
+      moduleId: asNonEmptyString(payload["moduleId"]),
+      scope:
+        asNonEmptyString(payload["featureStage"]) === "process" || String(action || "").includes("process")
+          ? "run"
+          : "global",
+    };
+  }
+
+  function buildActionResultEventPayload(payload: LaboratoryRecord) {
+    const action = asNonEmptyString(payload["action"]);
+    const success = payload["success"] === true;
+    return {
+      kind: "request-result",
+      severity: success ? "success" : "error",
+      message: success ? `${getActionLabel(action)} tamamlandı` : `${getActionLabel(action)} hata verdi`,
+      detail: asNonEmptyString(payload["error"]) || asNonEmptyString(payload["message"]),
+      action,
+      stage: success ? "completed" : "failed",
+      scope: String(action || "").includes("process") ? "run" : "global",
+    };
   }
 
   function isSourceCompatibleAction(action: unknown) {
@@ -91,22 +209,19 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
   }
 
   function pushActionResult(api: LaboratoryRuntimeEventsApi, payload: LaboratoryRecord) {
-    notifyRoom(api, "media-action-result", payload);
-    if (isSourceCompatibleAction(payload["action"])) {
-      notifyRoom(api, "source-action-result", payload);
-    }
+    emitEvent(api, buildActionResultEventPayload(payload));
   }
 
   function pushJobState(api: LaboratoryRuntimeEventsApi, payload: LaboratoryRecord) {
-    notifyRoom(api, "media-job", payload);
-    if (isSourceCompatibleAction(payload["action"])) {
-      notifyRoom(api, "source-job", payload);
+    if (payload["suppressCanonicalEvent"] !== true) {
+      emitEvent(api, buildJobEventPayload(payload));
     }
   }
 
   return {
     buildMediaSnapshot,
     buildSourceSnapshot,
+    emitEvent,
     isSourceCompatibleAction,
     notifyRoom,
     pushActionResult,

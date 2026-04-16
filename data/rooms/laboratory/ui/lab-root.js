@@ -1,0 +1,181 @@
+import { createLabEventBus } from "../runtime/lab-event-bus.js";
+import { createLabHostBridge } from "../runtime/lab-host-bridge.js";
+import { loadLabPersistedState, saveLabPersistedState } from "../runtime/lab-persistence.js";
+import { createLabStore } from "../runtime/lab-store.js";
+import { renderLabCenterPanel } from "./lab-center-panel.js";
+import { renderLabLayout } from "./lab-layout.js";
+import { renderLabLeftRail } from "./lab-left-rail.js";
+import { renderLabRightPanel } from "./lab-right-panel.js";
+import { renderEditStage } from "./stages/edit-stage.js";
+import { renderProcessStage } from "./stages/process-stage.js";
+import { renderProfileStage } from "./stages/profile-stage.js";
+import { renderReportStage } from "./stages/report-stage.js";
+import { renderSourceStage } from "./stages/source-stage.js";
+import { createLabRunController } from "../runtime/lab-run-controller.js";
+function createBootSurface(state) {
+  return {
+    main: `
+      <section class="labx-boot">
+        <p class="labx-boot__eyebrow">Hayalet Ev Laboratory</p>
+        <h1 class="labx-boot__title">Loading Laboratory</h1>
+        <p class="labx-boot__body">Preparing the workbench shell, saved projects, and local analysis readiness.</p>
+      </section>
+    `,
+    side: `
+      <section class="labx-card">
+        <div class="labx-card__header">
+          <div>
+            <p class="labx-card__eyebrow">Boot</p>
+            <h2 class="labx-card__title">Room Contract</h2>
+          </div>
+        </div>
+        <div class="labx-card__body">
+          <p class="labx-panel-hint">roomAPI.ready payload remains stable while the new shell hydrates.</p>
+          <p class="labx-panel-hint">Current stage: ${state.currentStage}</p>
+        </div>
+      </section>
+    `
+  };
+}
+function readPersistableState(state) {
+  return {
+    artifactRenderCount: state.ui.artifactRenderCount,
+    artifactListExpanded: state.ui.artifactListExpanded,
+    currentStage: state.currentStage,
+    editDrafts: state.ui.editDrafts,
+    editConfig: state.editConfig,
+    eventFeedExpanded: state.ui.eventFeedExpanded,
+    eventFeedCursor: state.ui.eventFeedCursor,
+    featureId: state.featureId,
+    lastRun: state.run,
+    profileConfig: state.profileConfig,
+    profileDrafts: state.ui.profileDrafts,
+    profileModels: state.profileModels,
+    preflight: state.preflight,
+    projectIndex: state.projectIndex,
+    reportExports: state.reportExports,
+    reports: state.reports,
+    reportView: state.ui.reportView,
+    source: state.source,
+    sourceDrafts: state.ui.sourceDrafts,
+    sourceProbeStatus: state.sourceProbeStatus,
+    toolState: state.toolState,
+    workbench: state.workbench
+  };
+}
+export function startLaboratoryLabRoot() {
+  const documentRef = document;
+  const windowRef = window;
+  const root = documentRef.getElementById("app");
+  if (!root) {
+    return;
+  }
+  const runtimeRoot = root;
+  const eventBus = createLabEventBus();
+  const store = createLabStore();
+  eventBus.subscribe(store.dispatch);
+  const controller = createLabRunController({
+    documentRef,
+    eventBus,
+    store,
+    windowRef: window
+  });
+  const hostBridge = createLabHostBridge({
+    emit: eventBus.emit
+  });
+  let shellMounted = false;
+  function renderSurface(state) {
+    const primaryAction = controller.getPrimaryActionState();
+    switch (state.currentStage) {
+      case "source":
+        return renderSourceStage({
+          primaryDetail: primaryAction.detail,
+          primaryDisabled: primaryAction.disabled,
+          primaryLabel: primaryAction.label,
+          state
+        });
+      case "edit":
+        return renderEditStage({
+          primaryDetail: primaryAction.detail,
+          primaryDisabled: primaryAction.disabled,
+          primaryLabel: primaryAction.label,
+          state
+        });
+      case "profile":
+        return renderProfileStage({
+          primaryDetail: primaryAction.detail,
+          primaryDisabled: primaryAction.disabled,
+          primaryLabel: primaryAction.label,
+          state
+        });
+      case "process":
+        return renderProcessStage({
+          primaryDetail: primaryAction.detail,
+          primaryDisabled: primaryAction.disabled,
+          primaryLabel: primaryAction.label,
+          state
+        });
+      case "report":
+        return renderReportStage({
+          primaryDetail: primaryAction.detail,
+          primaryDisabled: primaryAction.disabled,
+          primaryLabel: primaryAction.label,
+          state
+        });
+      default:
+        return createBootSurface(state);
+    }
+  }
+  function render() {
+    const state = store.getState();
+    const hasCanonicalState = state.bootReady || state.source !== null || state.run !== null || state.reports.user !== null || state.reports.ai !== null || state.projectIndex.projects.length > 0;
+    const surface = hasCanonicalState ? renderSurface(state) : createBootSurface(state);
+    if (shellMounted !== true) {
+      runtimeRoot.innerHTML = renderLabLayout(state, surface);
+      shellMounted = true;
+      return;
+    }
+    const shell = runtimeRoot.querySelector(".labx-shell");
+    const leftRail = runtimeRoot.querySelector(".labx-left-rail");
+    const centerPanel = runtimeRoot.querySelector(".labx-center-panel");
+    const rightPanel = runtimeRoot.querySelector(".labx-right-panel");
+    if (!shell || !leftRail || !centerPanel || !rightPanel) {
+      runtimeRoot.innerHTML = renderLabLayout(state, surface);
+      return;
+    }
+    if (shell instanceof HTMLElement) {
+      shell.dataset["stage"] = state.currentStage;
+      shell.dataset["ready"] = state.bootReady ? "true" : "false";
+    }
+    leftRail.outerHTML = renderLabLeftRail(state);
+    centerPanel.outerHTML = renderLabCenterPanel(surface);
+    rightPanel.outerHTML = renderLabRightPanel(surface);
+  }
+  store.subscribe(function(state) {
+    saveLabPersistedState(window, readPersistableState(state));
+    render();
+  });
+  const persisted = loadLabPersistedState(window);
+  eventBus.emit({
+    type: "hydrate",
+    payload: persisted
+  });
+  controller.attach();
+  if (windowRef.roomAPI && typeof windowRef.roomAPI.onHostMessage === "function") {
+    windowRef.roomAPI.onHostMessage(function(message) {
+      hostBridge.handleHostMessage(message);
+    });
+  }
+  render();
+  if (windowRef.roomAPI && typeof windowRef.roomAPI.ready === "function") {
+    windowRef.roomAPI.ready({
+      feature: "media-analysis",
+      room: "laboratory",
+      stage: "ui-ready"
+    });
+    eventBus.emit({
+      type: "bootstrap-ready-sent"
+    });
+  }
+}
+startLaboratoryLabRoot();

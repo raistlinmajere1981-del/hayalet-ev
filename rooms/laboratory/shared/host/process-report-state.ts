@@ -19,7 +19,10 @@ interface ProcessReportRecord extends Record<string, unknown> {
   modules?: unknown;
   findings?: unknown;
   artifacts?: unknown;
+  events?: unknown;
+  rawLog?: unknown;
   error?: unknown;
+  emptyReason?: unknown;
   records?: unknown;
   lastError?: unknown;
   lastActionAt?: unknown;
@@ -68,8 +71,11 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
       modules: [] as unknown[],
       findings: [] as unknown[],
       artifacts: [] as unknown[],
+      events: [] as unknown[],
+      rawLog: [] as unknown[],
       warnings: [] as string[],
       error: null as string | null,
+      emptyReason: null as string | null,
     };
   }
 
@@ -108,8 +114,16 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
       labelKey: asNonEmptyString(source.labelKey),
       title: asNonEmptyString(source.title),
       status: asNonEmptyString(source.status) || "idle",
-      percent: Math.max(0, Math.min(100, Math.round(asNumber(source.percent) || 0))),
+      percent:
+        typeof asNumber(source.percent) === "number"
+          ? Math.max(0, Math.min(100, Math.round(asNumber(source.percent) || 0)))
+          : null,
+      progressMode:
+        typeof asNumber(source.percent) === "number" || asNonEmptyString(source["progressMode"]) === "measured"
+          ? "measured"
+          : "none",
       summary: asNonEmptyString(source.summary) || "",
+      message: asNonEmptyString(source["message"]),
       warnings: Array.isArray(source.warnings)
         ? source.warnings.map(function (entry: unknown) {
             return String(entry);
@@ -152,12 +166,23 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
             return entry.path !== null;
           })
         : [],
+      events: Array.isArray(source.events)
+        ? source.events.map(function (entry: unknown) {
+            return toRecord(entry);
+          })
+        : [],
+      rawLog: Array.isArray(source.rawLog)
+        ? source.rawLog.map(function (entry: unknown) {
+            return toRecord(entry);
+          })
+        : [],
       warnings: Array.isArray(source.warnings)
         ? source.warnings.map(function (entry: unknown) {
             return String(entry);
           })
         : [],
       error: asNonEmptyString(source.error),
+      emptyReason: asNonEmptyString(source.emptyReason),
     };
   }
 
@@ -191,6 +216,7 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
       warnings: [] as string[],
       exports: [] as unknown[],
       error: null as string | null,
+      emptyReason: "Rapor henüz üretilmedi." as string | null,
     };
   }
 
@@ -254,6 +280,7 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
         : [],
       exports: Array.isArray(source.exports) ? source.exports.map(normalizeReportExport) : [],
       error: asNonEmptyString(source.error),
+      emptyReason: asNonEmptyString(source.emptyReason),
     };
   }
 

@@ -111,7 +111,6 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
       projectId: project.id,
       featureStage: "report",
       stage: "queued",
-      percent: 0,
     });
 
     try {
@@ -158,7 +157,6 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
         projectId: project.id,
         featureStage: "report",
         stage: "completed",
-        percent: 100,
       });
     } catch (error) {
       await patchActiveProject(runtime, function (nextProject) {

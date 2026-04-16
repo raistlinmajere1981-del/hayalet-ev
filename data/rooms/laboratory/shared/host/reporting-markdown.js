@@ -85,6 +85,7 @@ export function createLaboratoryReportMarkdownRuntime(deps) {
   function buildReportMarkdown(runtime, project, featureId, reportRecord) {
     const projectRecord = toProjectRecord(project);
     const normalizedReportRecord = toFeatureReportRecord(reportRecord);
+    const userReport = toRecord(normalizedReportRecord.userReport);
     const lines = [
       `# ${getFeatureLabel(featureId)} Report`,
       "",
@@ -93,10 +94,16 @@ export function createLaboratoryReportMarkdownRuntime(deps) {
       "",
       "## Summary"
     ];
-    const summaryCards = Array.isArray(normalizedReportRecord.summaryCards) ? normalizedReportRecord.summaryCards.map(toReportCardRecord) : [];
-    summaryCards.forEach(function(card) {
-      lines.push(`- ${formatReportCardLabel(card)}: ${formatValue(card.value)}`);
-    });
+    if (asNonEmptyString(userReport["summary"]) !== null) {
+      lines.push(asNonEmptyString(userReport["summary"]) || "--");
+      lines.push("");
+      lines.push(`Confidence: ${formatValue(userReport["confidence"])}`);
+    } else {
+      const summaryCards = Array.isArray(normalizedReportRecord.summaryCards) ? normalizedReportRecord.summaryCards.map(toReportCardRecord) : [];
+      summaryCards.forEach(function(card) {
+        lines.push(`- ${formatReportCardLabel(card)}: ${formatValue(card.value)}`);
+      });
+    }
     if (featureId === audioFeatureId) {
       const projection = buildAudioAnalysisReportProjection(runtime, projectRecord);
       lines.push("", "## Modules");
@@ -134,14 +141,18 @@ export function createLaboratoryReportMarkdownRuntime(deps) {
       });
     }
     lines.push("", "## Findings");
-    const findings = Array.isArray(normalizedReportRecord.findings) ? normalizedReportRecord.findings.map(toFindingRecord) : [];
+    const findings = Array.isArray(userReport["topFindings"]) ? userReport["topFindings"].map(toFindingRecord) : Array.isArray(normalizedReportRecord.findings) ? normalizedReportRecord.findings.map(toFindingRecord) : [];
     if (findings.length > 0) {
       findings.forEach(function(finding) {
         lines.push(
           `- ${toString(finding.title) || toString(finding.moduleId) || "Finding"}: ${toString(
             finding.detail
-          )}`
+          )}${asNonEmptyString(finding.confidence) ? ` (${toString(finding.confidence)})` : ""}`
         );
+        const evidence = toStringArray(finding.evidence);
+        if (evidence.length > 0) {
+          lines.push(`  Evidence: ${evidence.join(" | ")}`);
+        }
       });
     } else {
       lines.push("- No findings were recorded for the active report.");

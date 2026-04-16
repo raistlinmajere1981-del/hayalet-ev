@@ -20,6 +20,38 @@ type ReportStageRenderDeps = {
   state: LabStoreState;
 };
 
+function getReportEmptyReason(
+  reports: ReturnType<typeof getCurrentReports>,
+  aiReport: LabAiReport | null
+) {
+  if (reports.emptyReason) {
+    return reports.emptyReason;
+  }
+  const manifestReason =
+    aiReport && typeof aiReport.manifest["emptyReason"] === "string"
+      ? aiReport.manifest["emptyReason"]
+      : null;
+  return manifestReason;
+}
+
+function getReportExportHint(hasReport: boolean, emptyReason: string | null) {
+  if (!hasReport && emptyReason) {
+    return emptyReason;
+  }
+  return hasReport
+    ? "Export alındığında burada görünür."
+    : "Rapor hazır olduğunda export geçmişi burada görünür.";
+}
+
+function getReportArtifactHint(hasReport: boolean, emptyReason: string | null) {
+  if (!hasReport && emptyReason) {
+    return emptyReason;
+  }
+  return hasReport
+    ? "Run artefaktı oluştuğunda burada görünür."
+    : "Rapor hazır olduğunda run artefaktları burada görünür.";
+}
+
 export function renderReportStage(deps: ReportStageRenderDeps): LabStageSurface {
   const reports = getCurrentReports(deps.state);
   const userReport: LabUserReport | null = reports.user;
@@ -29,13 +61,14 @@ export function renderReportStage(deps: ReportStageRenderDeps): LabStageSurface 
   const hasMoreArtifacts = hasMoreVisibleArtifacts(deps.state);
   const reportView = deps.state.ui.reportView;
   const hasReport = userReport !== null || aiReport !== null;
+  const emptyReason = getReportEmptyReason(reports, aiReport);
 
   const mainBody =
     hasReport !== true
       ? renderEmptyState({
           title: "Rapor yok",
           description: "Report stage yalnız yapılandırılmış run verisinden çıktı üretir.",
-          hint: "User report ile AI work report aynı nesne değildir.",
+          hint: emptyReason || "Process tamamlandığında rapor burada görünür.",
         })
       : `
         <div class="labx-chip-row">
@@ -95,7 +128,7 @@ export function renderReportStage(deps: ReportStageRenderDeps): LabStageSurface 
               : renderEmptyState({
                   title: "Rapor görünümü boş",
                   description: "Seçili görünüm için yapılandırılmış içerik oluşmadı.",
-                  hint: "Store önce user ve ai raporları ayrı üretir.",
+                  hint: emptyReason || "Seçili görünüm için henüz içerik oluşmadı.",
                 })
         }
       `;
@@ -144,7 +177,7 @@ export function renderReportStage(deps: ReportStageRenderDeps): LabStageSurface 
                 `;
               })
               .join("")
-          : `<p class="labx-panel-hint">Henüz export alınmadı.</p>`,
+          : `<p class="labx-panel-hint">${escapeHtml(getReportExportHint(hasReport, emptyReason))}</p>`,
     }),
     renderCompactCard({
       eyebrow: "Artifacts",
@@ -152,7 +185,7 @@ export function renderReportStage(deps: ReportStageRenderDeps): LabStageSurface 
       body:
         artifacts.length > 0
           ? artifacts.map(renderArtifactItem).join("")
-          : `<p class="labx-panel-hint">Rapor için artefakt hazır değil.</p>`,
+          : `<p class="labx-panel-hint">${escapeHtml(getReportArtifactHint(hasReport, emptyReason))}</p>`,
       footer: hasMoreArtifacts
         ? `<button class="labx-inline-action" type="button" data-lab-action="show-more-artifacts">Daha fazlasını göster</button>`
         : null,

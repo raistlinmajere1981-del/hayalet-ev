@@ -49,7 +49,7 @@ export function buildUserReport(run: LabRun | null, reportRecord: unknown): LabU
     asNonEmptyString(asLabRecord(normalizedReport["userReport"])["summary"]) ||
     (run.findings[0]
       ? `En yuksek oncelikli bulgu: ${run.findings[0].title}. Toplam ${String(run.findings.length)} bulgu ve ${String(run.artifacts.length)} artefakt kaydi mevcut.`
-      : "Calisma tamamlandi fakat on plana cikan bulgu kaydi uretilmedi.");
+      : run.emptyReason || "Calisma tamamlandi fakat on plana cikan bulgu kaydi uretilmedi.");
   const confidence =
     run.findings[0]?.confidence || asNonEmptyString(asLabRecord(normalizedReport["userReport"])["confidence"]) || "low";
 
@@ -87,6 +87,7 @@ export function buildAiReport(run: LabRun | null, reportRecord: unknown): LabAiR
       artifactCount: run.artifacts.length,
       findingCount: run.findings.length,
       status: normalizedReport["status"] || run.state,
+      emptyReason: normalizedReport["emptyReason"] || run.emptyReason || null,
     },
     findings: run.findings,
     artifacts: run.artifacts,

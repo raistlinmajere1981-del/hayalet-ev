@@ -179,7 +179,6 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(
 
       updateProcessModule(processRecord, moduleId, {
         status: "running",
-        percent: 30,
         startedAt: new Date().toISOString(),
       });
 
@@ -307,7 +306,6 @@ export function createLaboratoryManagedSubtitleRunnerRuntime(
       });
       updateProcessModule(processRecord, moduleId, {
         status: "ready",
-        percent: 100,
         completedAt: new Date().toISOString(),
         summary,
         artifactIds: moduleArtifactIds[moduleId] || [],

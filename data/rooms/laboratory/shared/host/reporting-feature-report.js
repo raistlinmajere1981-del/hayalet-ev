@@ -1,6 +1,7 @@
 import { createLaboratoryAudioReportRuntime } from "./reporting-audio.js";
 import { createLaboratoryReportMarkdownRuntime } from "./reporting-markdown.js";
 import { createLaboratorySubtitleReportRuntime } from "./reporting-subtitle.js";
+import { buildAiReport, buildUserReport } from "../../services/report-builder.js";
 export function createLaboratoryFeatureReportRuntime(deps) {
   const {
     asNonEmptyString,
@@ -21,17 +22,81 @@ export function createLaboratoryFeatureReportRuntime(deps) {
   const { buildAudioAnalysisReportProjection, composeAudioAnalysisReport } = laboratoryAudioReportRuntime;
   const { composeSubtitleAnalysisReport, getProcessArtifactByKind } = laboratorySubtitleReportRuntime;
   const { buildReportMarkdown, formatReportCardLabel } = laboratoryReportMarkdownRuntime;
+  function toRunProjection(processRecord) {
+    const runId = asNonEmptyString(processRecord["runId"]);
+    if (runId === null) {
+      return null;
+    }
+    const modules = Array.isArray(processRecord["modules"]) ? processRecord["modules"] : [];
+    const moduleMap = {};
+    const moduleOrder = [];
+    modules.forEach(function(entry) {
+      const normalizedEntry = deps.toRecord(entry);
+      const moduleId = asNonEmptyString(normalizedEntry["id"]);
+      if (moduleId === null) {
+        return;
+      }
+      moduleMap[moduleId] = normalizedEntry;
+      moduleOrder.push(moduleId);
+    });
+    return {
+      id: runId,
+      state: asNonEmptyString(processRecord["status"]) || "idle",
+      startedAt: Date.parse(asNonEmptyString(processRecord["startedAt"]) || (/* @__PURE__ */ new Date()).toISOString()),
+      ...asNonEmptyString(processRecord["completedAt"]) ? { endedAt: Date.parse(asNonEmptyString(processRecord["completedAt"]) || "") } : {},
+      modules: moduleMap,
+      moduleOrder,
+      events: [],
+      artifacts: Array.isArray(processRecord["artifacts"]) ? processRecord["artifacts"].map(function(entry) {
+        return deps.toRecord(entry);
+      }) : [],
+      findings: (Array.isArray(processRecord["findings"]) ? processRecord["findings"] : []).map(
+        function(entry) {
+          return deps.normalizeProcessFinding(entry);
+        }
+      ),
+      warnings: Array.isArray(processRecord["warnings"]) ? processRecord["warnings"].map(String) : [],
+      error: asNonEmptyString(processRecord["error"]),
+      targetLabel: asNonEmptyString(deps.toRecord(processRecord["targetSummary"])["label"]),
+      progress: typeof processRecord["percent"] === "number" ? processRecord["percent"] : null
+    };
+  }
+  function attachDualReports(featureId, processRecord, reportRecord) {
+    const run = toRunProjection(processRecord);
+    return {
+      ...reportRecord,
+      featureId,
+      userReport: buildUserReport(run, reportRecord),
+      aiReport: buildAiReport(run, reportRecord)
+    };
+  }
   function composeFeatureReport(runtime, project, featureId) {
     if (featureId === deps.audioFeatureId) {
-      return composeAudioAnalysisReport(
-        runtime,
-        project
+      const processRecord2 = getFeatureProcessRecord(project, featureId);
+      return normalizeFeatureReportRecord(
+        attachDualReports(
+          featureId,
+          processRecord2,
+          composeAudioAnalysisReport(
+            runtime,
+            project
+          )
+        ),
+        featureId
       );
     }
     if (featureId === deps.subtitleFeatureId) {
-      return composeSubtitleAnalysisReport(
-        runtime,
-        project
+      const processRecord2 = getFeatureProcessRecord(project, featureId);
+      return normalizeFeatureReportRecord(
+        attachDualReports(
+          featureId,
+          processRecord2,
+          composeSubtitleAnalysisReport(
+            runtime,
+            project
+          )
+        ),
+        featureId
       );
     }
     const processRecord = getFeatureProcessRecord(project, featureId);
@@ -57,11 +122,15 @@ export function createLaboratoryFeatureReportRuntime(deps) {
     } else {
       caveats.push("Planned audio modules remain visible but do not pretend to be implemented.");
     }
+    const currentReportExports = getFeatureReportRecord(
+      project,
+      featureId
+    )["exports"];
     return normalizeFeatureReportRecord(
-      {
+      attachDualReports(featureId, processRecord, {
         featureId,
         status: "ready",
-        sourceRunId: processRecord.runId,
+        sourceRunId: processRecord["runId"],
         generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
         summaryCards: [
           {
@@ -97,12 +166,9 @@ export function createLaboratoryFeatureReportRuntime(deps) {
         findings,
         caveats,
         warnings: Array.isArray(processRecord["warnings"]) ? processRecord["warnings"] : [],
-        exports: getFeatureReportRecord(
-          project,
-          featureId
-        )["exports"],
+        ...Array.isArray(currentReportExports) ? { exports: currentReportExports } : {},
         error: null
-      },
+      }),
       featureId
     );
   }

@@ -82,9 +82,7 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
 
   function renderRailSummaryRow(label: string, value: string, valueClassName = "") {
     const summaryClassName =
-      valueClassName.trim() !== ""
-        ? ` class="${escapeHtml(valueClassName)}"`
-        : "";
+      valueClassName.trim() !== "" ? ` class="${escapeHtml(valueClassName)}"` : "";
     return `
       <div class="lab-stage-rail__summary-row lab-stage-rail__summary-row--progress">
         <strong${summaryClassName}>${escapeHtml(`${label} ${value}`)}</strong>

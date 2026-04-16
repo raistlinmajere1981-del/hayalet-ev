@@ -78,7 +78,16 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         : {}),
       modules: moduleMap,
       moduleOrder,
-      events: [],
+      events: Array.isArray(processRecord["events"])
+        ? (processRecord["events"] as unknown[]).map(function (entry) {
+            return deps.toRecord(entry);
+          })
+        : [],
+      rawLog: Array.isArray(processRecord["rawLog"])
+        ? (processRecord["rawLog"] as unknown[]).map(function (entry) {
+            return deps.toRecord(entry);
+          })
+        : [],
       artifacts: Array.isArray(processRecord["artifacts"])
         ? (processRecord["artifacts"] as unknown[]).map(function (entry) {
             return deps.toRecord(entry);
@@ -95,6 +104,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
       error: asNonEmptyString(processRecord["error"]),
       targetLabel: asNonEmptyString(deps.toRecord(processRecord["targetSummary"])["label"]),
       progress: typeof processRecord["percent"] === "number" ? processRecord["percent"] : null,
+      emptyReason: asNonEmptyString(processRecord["emptyReason"]),
     };
   }
 
@@ -110,6 +120,24 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
       userReport: buildUserReport(run, reportRecord),
       aiReport: buildAiReport(run, reportRecord),
     };
+  }
+
+  function getProcessBackedEmptyReason(processRecord: LaboratoryRecord, fallback: string) {
+    const status = asNonEmptyString(processRecord["status"]) || "idle";
+    const explicitReason = asNonEmptyString(processRecord["emptyReason"]);
+    if (explicitReason !== null) {
+      return explicitReason;
+    }
+    if (status === "running" || status === "queued") {
+      return "Analiz hala suruyor; rapor tamamlaninca dolacak.";
+    }
+    if (status === "failed") {
+      return asNonEmptyString(processRecord["error"]) || "Analiz hata ile tamamlandigi icin rapor bos kaldi.";
+    }
+    if (status === "cancelled") {
+      return "Analiz iptal edildigi icin rapor bos kaldi.";
+    }
+    return fallback;
   }
 
   function composeFeatureReport(
@@ -153,6 +181,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
           ...createEmptyFeatureReportRecord(featureId),
           status: processRecord.status === "running" ? "staged" : "idle",
           warnings: processRecord["warnings"] || [],
+          emptyReason: getProcessBackedEmptyReason(processRecord, "Önce process aşaması tamamlanmalı."),
         },
         featureId
       ) as unknown as LaboratoryComposedFeatureReportRecord;
@@ -224,6 +253,13 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         warnings: Array.isArray(processRecord["warnings"]) ? processRecord["warnings"] : [],
         ...(Array.isArray(currentReportExports) ? { exports: currentReportExports } : {}),
         error: null,
+        emptyReason:
+          findings.length === 0 && Array.isArray(processRecord["artifacts"]) && processRecord["artifacts"].length === 0
+            ? getProcessBackedEmptyReason(
+                processRecord,
+                "Çalışma tamamlandı ancak raporlayacak belirgin bulgu oluşmadı."
+              )
+            : null,
       }),
       featureId
     ) as unknown as LaboratoryComposedFeatureReportRecord;

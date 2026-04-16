@@ -62,6 +62,7 @@ test("laboratory UI renders report findings and export history from room-managed
     "rooms/laboratory/ui/view-accessors-runtime.ts",
     "utf8"
   );
+  const localReportStageSource = readFileSync("rooms/laboratory/ui/stages/report-stage.ts", "utf8");
   const reportStageSource = readFileSync("rooms/laboratory/shared/ui/report-stage.ts", "utf8");
   const reportStageSupportSource = readFileSync(
     "rooms/laboratory/shared/ui/report-stage-support.ts",
@@ -94,6 +95,21 @@ test("laboratory UI renders report findings and export history from room-managed
   assert.match(reportStageSource, /data-action="export-report"/);
   assert.match(reportStageSource, /featureText\(\["report", "actions", "export"\]\)/);
   assert.match(reportStageSource, /featureText\(\["report", "stagedHint"\]\)/);
+  assert.match(reportStageSource, /function getReportEmptyReason/);
+  assert.match(reportStageSource, /reportRecord\["emptyReason"\]/);
+  assert.match(reportStageSource, /aiManifest\["emptyReason"\]/);
+  assert.doesNotMatch(reportStageSource, /User report ile AI work report aynı nesne değildir\./);
+  assert.match(
+    reportStageSource,
+    /const emptyReason = getReportEmptyReason\(reportRecord\) \|\| featureText\(\["report", "emptyBody"\]\)/
+  );
+  assert.match(localReportStageSource, /function getReportEmptyReason\(/);
+  assert.match(localReportStageSource, /getReportEmptyReason\(reports, aiReport\)/);
+  assert.match(localReportStageSource, /hint: emptyReason \|\| "Process tamamlandığında rapor burada görünür\."/);
+  assert.match(localReportStageSource, /function getReportExportHint\(/);
+  assert.match(localReportStageSource, /function getReportArtifactHint\(/);
+  assert.doesNotMatch(localReportStageSource, /Henüz export alınmadı\./);
+  assert.doesNotMatch(localReportStageSource, /Rapor için artefakt hazır değil\./);
   assert.match(reportStageSource, /style="background-image:url\('/);
   assert.match(
     reportStageSupportSource,

@@ -115,6 +115,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
   );
 
   const {
+    appendProcessEvent,
     buildAudioAnalysisModules,
     buildMediaProcessModules,
     buildProcessSpeechAvailability,
@@ -281,6 +282,7 @@ export function createLaboratoryHostProcessCompositionRuntime(
     createEmptyProcessRun,
     createProcessArtifact: deps["createProcessArtifact"],
     createProcessFinding: deps["createProcessFinding"],
+    appendProcessEvent,
     ensureEditToolReady: deps.ensureEditToolReady,
     ensureProcessJobSlotAvailable: deps.ensureProcessJobSlotAvailable,
     ensureProjectDirectories: deps.ensureProjectDirectories,

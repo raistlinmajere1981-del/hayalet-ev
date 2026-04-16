@@ -201,6 +201,7 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
     const projectRecord = toProjectRecord(project);
     const normalizedReportRecord = toFeatureReportRecord(reportRecord);
     const userReport = toRecord(normalizedReportRecord.userReport);
+    const emptyReason = asNonEmptyString(normalizedReportRecord["emptyReason"]);
     const lines = [
       `# ${getFeatureLabel(featureId)} Report`,
       "",
@@ -221,6 +222,9 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
       summaryCards.forEach(function (card) {
         lines.push(`- ${formatReportCardLabel(card)}: ${formatValue(card.value)}`);
       });
+      if (summaryCards.length === 0 && emptyReason !== null) {
+        lines.push(emptyReason);
+      }
     }
 
     if (featureId === audioFeatureId) {
@@ -284,7 +288,7 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
         }
       });
     } else {
-      lines.push("- No findings were recorded for the active report.");
+      lines.push(`- ${emptyReason || "No findings were recorded for the active report."}`);
     }
 
     const caveats = toStringArray(normalizedReportRecord.caveats);

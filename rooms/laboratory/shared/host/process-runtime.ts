@@ -1,6 +1,11 @@
 import { createLaboratoryManagedProcessRunnersRuntime } from "./process-managed-runners.js";
+import { extractFindings } from "../../services/finding-engine.js";
 
 interface LaboratoryProcessDeps {
+  appendProcessEvent: (
+    record: Record<string, unknown>,
+    event: Record<string, unknown>
+  ) => Record<string, unknown>;
   asNonEmptyString: (value: unknown) => string | null;
   buildAudioAnalysisModules: (
     runtime: Record<string, unknown>,
@@ -103,6 +108,7 @@ type LaboratoryManagedProcessRunnersRuntimeDeps = Parameters<
 
 export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
   const {
+    appendProcessEvent,
     asNonEmptyString,
     buildAudioAnalysisModules,
     buildMediaProcessModules,
@@ -111,7 +117,6 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     clearJob,
     clone,
     composeFeatureReport,
-    createEmptyFeatureProcessRecord,
     createEmptyProcessRun,
     ensureEditToolReady,
     ensureProcessJobSlotAvailable,
@@ -163,6 +168,66 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     managedProcessRunnersDeps as unknown as LaboratoryManagedProcessRunnersRuntimeDeps
   );
 
+  function appendRunLifecycleEvent(
+    record: Record<string, unknown>,
+    action: string,
+    stage: "running" | "completed" | "failed" | "cancelled",
+    detail: string | null,
+    options: {
+      kind?: "activity" | "request-result";
+      message?: string;
+      severity?: "info" | "success" | "warning" | "error";
+    } = {}
+  ) {
+    return appendProcessEvent(record, {
+      kind: options.kind || "activity",
+      severity:
+        options.severity ||
+        (stage === "completed"
+          ? "success"
+          : stage === "failed"
+            ? "error"
+            : stage === "cancelled"
+              ? "warning"
+              : "info"),
+      message:
+        options.message ||
+        (stage === "completed"
+          ? "Analiz tamamlandi"
+          : stage === "failed"
+            ? "Analiz hata verdi"
+            : stage === "cancelled"
+              ? "Analiz iptal edildi"
+              : "Analiz basladi"),
+      detail,
+      action,
+      stage,
+      scope: "run",
+    });
+  }
+
+  function deriveProcessEmptyReason(
+    featureId: string,
+    processRecord: Record<string, unknown>
+  ) {
+    const semanticEventCount = Array.isArray(processRecord["events"]) ? processRecord["events"].length : 0;
+    const rawLogCount = Array.isArray(processRecord["rawLog"]) ? processRecord["rawLog"].length : 0;
+
+    if (semanticEventCount === 0 && rawLogCount === 0) {
+      return featureId === subtitleFeatureId
+        ? "Altyazi analizi tamamlandi ancak islenebilir arac cikisi gelmedigi icin rapor bos kaldi."
+        : featureId === audioFeatureId
+          ? "Ses analizi tamamlandi ancak okunabilir is izi uretilmedigi icin rapor bos kaldi."
+          : "Analiz tamamlandi ancak araclardan anlamli cikti gelmedigi icin rapor bos kaldi.";
+    }
+
+    return featureId === subtitleFeatureId
+      ? "Secili altyazi girdilerinden raporlanabilir bulgu veya artefakt cikmadi."
+      : featureId === audioFeatureId
+        ? "Ses modulleri raporlanabilir bir sinyal veya artefakt uretmedi."
+        : "Analiz akisi tamamlandi ancak raporlanabilir bulgu veya artefakt cikmadi.";
+  }
+
   async function runManagedProcess(
     runtime: Record<string, unknown>,
     project: Record<string, unknown>,
@@ -172,6 +237,7 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     outputDir: string
   ) {
     const target = resolveProcessTarget(project, featureId);
+    const action = getFeatureProcessJobAction(featureId);
     if (featureId === subtitleFeatureId) {
       if (!Array.isArray(target["entries"]) || target["entries"].length === 0) {
         throw new Error("Import subtitle files before starting subtitle analysis.");
@@ -190,6 +256,9 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     processRecord["jobId"] = jobId;
     processRecord["runId"] = `${featureId}-run-${Date.now()}`;
     processRecord["startedAt"] = new Date().toISOString();
+    processRecord["events"] = [];
+    processRecord["rawLog"] = [];
+    processRecord["emptyReason"] = null;
     processRecord["targetSummary"] = {
       requestedMode: target["requestedMode"],
       mode: target["mode"],
@@ -207,6 +276,19 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         : featureId === subtitleFeatureId
           ? buildSubtitleProcessModules(runtime, target)
           : buildMediaProcessModules(runtime, project, target);
+    appendRunLifecycleEvent(
+      processRecord,
+      action,
+      "running",
+      typeof processRecord["targetSummary"] === "object" && processRecord["targetSummary"] !== null
+        ? asNonEmptyString(toRecord(processRecord["targetSummary"])["label"])
+        : null
+    );
+    const runtimeJobs = toRecord(runtime["jobs"]);
+    const jobRecord = toRecord(runtimeJobs[jobId]);
+    if (Object.keys(jobRecord).length > 0) {
+      jobRecord["processRecordRef"] = processRecord;
+    }
 
     const results =
       featureId === subtitleFeatureId
@@ -238,11 +320,52 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
               processRecord
             );
 
-    processRecord["findings"] = results["findings"];
+    const collectedFindings = Array.isArray(results["findings"]) ? results["findings"] : [];
+    const derivedFindings = extractFindings(
+      (Array.isArray(processRecord["events"]) ? processRecord["events"] : []).map(function (entry) {
+        return toRecord(entry) as unknown;
+      }) as never[]
+    );
+    const derivedFindingRecords = derivedFindings
+      .filter(function (candidate) {
+        return collectedFindings.some(function (finding) {
+          return toRecord(finding)["title"] === candidate.title;
+        }) === false;
+      })
+      .map(function (candidate) {
+        return {
+          id: candidate.id,
+          moduleId: candidate.moduleId,
+          title: candidate.title,
+          detail: candidate.detail,
+          level: candidate.level,
+          confidence: candidate.confidence,
+          kind: candidate.kind,
+          evidenceCount: candidate.evidenceCount,
+          artifactIds: candidate.artifactIds,
+        };
+      });
+    processRecord["findings"] = collectedFindings.concat(derivedFindingRecords);
     processRecord["artifacts"] = results["artifacts"];
     processRecord["warnings"] = results["warnings"];
     processRecord["status"] = "ready";
     processRecord["completedAt"] = new Date().toISOString();
+    processRecord["emptyReason"] =
+      Array.isArray(processRecord["findings"]) &&
+      processRecord["findings"].length === 0 &&
+      Array.isArray(processRecord["artifacts"]) &&
+      processRecord["artifacts"].length === 0
+        ? deriveProcessEmptyReason(featureId, processRecord)
+        : null;
+    appendRunLifecycleEvent(processRecord, action, "completed", processRecord["emptyReason"] as string | null, {
+      message: "Analiz tamamlandi",
+      severity: "success",
+    });
+    appendRunLifecycleEvent(processRecord, action, "completed", null, {
+      kind: "request-result",
+      message: "Analiz istegi tamamlandi",
+      severity: "success",
+    });
     updateProcessRecordPercent(processRecord);
     return processRecord;
   }
@@ -283,26 +406,24 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
       toolId: "ffmpeg",
       featureStage: "process",
     });
-    pushJobState(api, {
-      requestId: requestId,
-      jobId: jobId,
-      action: action,
-      projectId: project["id"],
-      toolId: "ffmpeg",
-      featureStage: "process",
-      stage: "queued",
-      percent: 0,
-    });
+      pushJobState(api, {
+        requestId: requestId,
+        jobId: jobId,
+        action: action,
+        projectId: project["id"],
+        featureStage: "process",
+        stage: "queued",
+      });
 
     await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
       nextProject["workbench"] = resolveProcessWorkbench(nextProject, featureId, workbenchSource);
       setFeatureProcessRecord(nextProject, featureId, {
-        ...createEmptyFeatureProcessRecord(featureId),
+        ...createEmptyProcessRun(featureId),
         featureId: featureId,
         status: "running",
         jobId: jobId,
         requestId: requestId,
-        percent: 0,
+        percent: null,
       });
       markFeatureReportStale(nextProject, featureId, "A new process run is now in progress.");
       return nextProject;
@@ -334,17 +455,38 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         toolId: "ffmpeg",
         featureStage: "process",
         stage: "completed",
-        percent: 100,
       });
     } catch (error) {
       await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
-        setFeatureProcessRecord(nextProject, featureId, {
+        const failedRecord = {
           ...getFeatureProcessRecord(nextProject, featureId),
-          status: "error",
+          status: "failed",
           jobId: null,
           requestId: null,
           error: error instanceof Error ? error.message : String(error),
-        });
+        };
+        appendRunLifecycleEvent(
+          failedRecord,
+          action,
+          "failed",
+          error instanceof Error ? error.message : String(error),
+          {
+            message: "Analiz hata verdi",
+            severity: "error",
+          }
+        );
+        appendRunLifecycleEvent(
+          failedRecord,
+          action,
+          "failed",
+          error instanceof Error ? error.message : String(error),
+          {
+            kind: "request-result",
+            message: "Analiz istegi hata verdi",
+            severity: "error",
+          }
+        );
+        setFeatureProcessRecord(nextProject, featureId, failedRecord);
         return nextProject;
       });
       pushJobState(api, {
@@ -352,7 +494,6 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         jobId: jobId,
         action: action,
         projectId: project["id"],
-        toolId: "ffmpeg",
         featureStage: "process",
         stage: "failed",
         message: error instanceof Error ? error.message : String(error),
@@ -385,11 +526,11 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
       nextProject["workbench"] = workbench;
       runFeatureIds.slice(1).forEach(function (queuedFeatureId) {
         setFeatureProcessRecord(nextProject, queuedFeatureId, {
-          ...createEmptyFeatureProcessRecord(queuedFeatureId),
+          ...createEmptyProcessRun(queuedFeatureId),
           featureId: queuedFeatureId,
           status: "queued",
           requestId: requestId,
-          percent: 0,
+          percent: null,
         });
         markFeatureReportStale(
           nextProject,
@@ -457,13 +598,35 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
         if (!["running", "queued"].includes(String(existingRecord["status"] || ""))) {
           return;
         }
-        setFeatureProcessRecord(nextProject, recordFeatureId, {
+        const cancelledRecord = {
           ...existingRecord,
           status: "cancelled",
           jobId: null,
           requestId: null,
           error: null,
-        });
+        };
+        appendRunLifecycleEvent(
+          cancelledRecord,
+          getFeatureProcessJobAction(recordFeatureId),
+          "cancelled",
+          "Calisma kullanici tarafindan iptal edildi.",
+          {
+            message: "Analiz iptal edildi",
+            severity: "warning",
+          }
+        );
+        appendRunLifecycleEvent(
+          cancelledRecord,
+          getFeatureProcessJobAction(recordFeatureId),
+          "cancelled",
+          "Calisma kullanici tarafindan iptal edildi.",
+          {
+            kind: "request-result",
+            message: "Analiz istegi iptal edildi",
+            severity: "warning",
+          }
+        );
+        setFeatureProcessRecord(nextProject, recordFeatureId, cancelledRecord);
       });
       return nextProject;
     });

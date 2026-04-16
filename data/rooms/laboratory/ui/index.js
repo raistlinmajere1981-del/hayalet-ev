@@ -1,1 +1,1 @@
-import "./laboratory-ui-runtime.js";
+import "./lab-root.js";

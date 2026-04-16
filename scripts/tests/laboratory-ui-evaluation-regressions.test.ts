@@ -145,7 +145,8 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
   assert.match(labRootSource, /roomAPI\.ready\(\{\s*feature:\s*"media-analysis",\s*room:\s*"laboratory",\s*stage:\s*"ui-ready"/);
   assert.match(hostBridgeSource, /type === "source-state"/);
   assert.match(hostBridgeSource, /type:\s*"source-snapshot-received"/);
-  assert.match(hostBridgeSource, /type:\s*"source-probe-completed"/);
+  assert.match(hostBridgeSource, /type === "lab-event"/);
+  assert.doesNotMatch(hostBridgeSource, /buildLifecycleEventsFromHostEvent/);
 });
 
 test("laboratory dense shell keeps event and artifact rendering windowed", () => {
@@ -158,6 +159,9 @@ test("laboratory dense shell keeps event and artifact rendering windowed", () =>
   assert.match(eventFeedSource, /data-lab-action="event-feed-next"/);
   assert.match(eventFeedSource, /data-lab-action="event-feed-reset"/);
   assert.match(processStageSource, /data-lab-action="show-more-artifacts"/);
+  assert.match(processStageSource, /function getProcessFindingHint/);
+  assert.match(processStageSource, /deps\.primaryDetail \|\| "Run hazır olduğunda gerçek runtime çıktısı burada görünür\."/);
+  assert.doesNotMatch(processStageSource, /Henüz işlenmiş bulgu yok\./);
 });
 
 test("laboratory runtime exposes typed lifecycle and explicit block reasons", () => {
@@ -171,7 +175,7 @@ test("laboratory runtime exposes typed lifecycle and explicit block reasons", ()
   assert.match(typesSource, /type:\s*"module-progress"/);
   assert.match(typesSource, /type:\s*"run-cancelled"/);
   assert.match(selectorsSource, /export function getStageBlockReason/);
-  assert.match(pipelineRunnerSource, /export function buildLifecycleEvents/);
+  assert.doesNotMatch(pipelineRunnerSource, /export function buildLifecycleEvents/);
   assert.match(preflightServiceSource, /export function runPreflight/);
 });
 
@@ -245,16 +249,9 @@ test("laboratory edit stage routes progress into the side rail and hides verbose
   assert.doesNotMatch(editWorkspaceSource, /lab-status-stack/);
   assert.match(editStylesSource, /\.lab-preview-card--edit\s*\{/);
   assert.match(editStylesSource, /\.lab-edit-frame\s*\{[\s\S]*min-height:\s*22rem;/);
-  assert.match(hostMessagesSource, /function formatJobProgressMessage/);
-  assert.match(hostMessagesSource, /function shouldHideInlineActionResult/);
-  assert.match(
-    hostMessagesSource,
-    /"profile-run-preflight",[\s\S]*"profile-cancel-preflight",[\s\S]*"process-run",[\s\S]*"audio-process-run",[\s\S]*"process-cancel",[\s\S]*"audio-process-cancel"/
-  );
-  assert.match(hostMessagesSource, /function shouldHideInlineJobProgress/);
-  assert.match(
-    hostMessagesSource,
-    /\["profile-run-preflight", "process-run", "audio-process-run"\]\.includes\(actionId \|\| ""\)/
-  );
+  assert.match(hostMessagesSource, /messageType === "lab-event"/);
+  assert.match(hostMessagesSource, /toString\(payload\["kind"\]\) === "raw-log"/);
+  assert.match(hostMessagesSource, /getSafeInlineMessage/);
+  assert.match(hostMessagesSource, /setActivityStatus\(canonicalMessage, canonicalDetail, "host"\)/);
   assert.doesNotMatch(hostMessagesSource, /setLastAction\(toString\(payload\.message\)\)/);
 });

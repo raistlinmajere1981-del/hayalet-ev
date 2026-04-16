@@ -241,7 +241,6 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
 
     updateProcessModule(processRecord, "intake", {
       status: "ready",
-      percent: 100,
       completedAt: new Date().toISOString(),
       summary: "The active target was pinned and its metadata snapshot was saved.",
       artifactIds: metadataArtifact ? [String(metadataArtifact.id || "")] : [],
@@ -249,7 +248,6 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
 
     updateProcessModule(processRecord, "cleanup", {
       status: "ready",
-      percent: 100,
       completedAt: new Date().toISOString(),
       summary:
         asNonEmptyString(toRecord(project.edit)["handoffMode"]) === "derived"
@@ -260,7 +258,6 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     if (getModuleStatus(processRecord, "motion") === "queued") {
       updateProcessModule(processRecord, "motion", {
         status: "running",
-        percent: 30,
         startedAt: new Date().toISOString(),
       });
 
@@ -302,7 +299,6 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
 
       updateProcessModule(processRecord, "motion", {
         status: "ready",
-        percent: 100,
         completedAt: new Date().toISOString(),
         summary: "Video structure checks finished for the active target.",
       });
@@ -311,7 +307,6 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
     if (getModuleStatus(processRecord, "audio") === "queued") {
       updateProcessModule(processRecord, "audio", {
         status: "running",
-        percent: 30,
         startedAt: new Date().toISOString(),
       });
 
@@ -388,7 +383,6 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
 
       updateProcessModule(processRecord, "audio", {
         status: "ready",
-        percent: 100,
         completedAt: new Date().toISOString(),
         summary: "Audio continuity checks finished for the active target.",
         artifactIds: collectArtifactIdsForModule(artifacts, "audio"),
@@ -397,7 +391,6 @@ export function createLaboratoryManagedMediaRunnerRuntime(deps: LaboratoryManage
 
     updateProcessModule(processRecord, "report", {
       status: "ready",
-      percent: 100,
       completedAt: new Date().toISOString(),
       summary: "A report-ready summary was synthesized from the managed run.",
     });

@@ -16,6 +16,7 @@ import type {
   LabEventFeedItem,
   LabFindingProjection,
   LabModuleState,
+  LabPreflightResult,
   LabPersistedState,
   LabRun,
   LabSourceDrafts,
@@ -31,6 +32,27 @@ function createDefaultSourceDrafts(): LabSourceDrafts {
     urlInput: "",
     youtubeUrl: "",
     youtubePreset: null,
+  };
+}
+
+function createEmptyReports(): LabStoreState["reports"] {
+  return {
+    user: null,
+    ai: null,
+    emptyReason: "Rapor henüz üretilmedi.",
+  };
+}
+
+function createIdlePreflight(reason: string | null = "Ön kontrol henüz çalıştırılmadı."): LabPreflightResult {
+  return {
+    status: "idle",
+    missingDependencies: [],
+    warnings: [],
+    estimatedRuntime: null,
+    enabledModules: [],
+    stageReady: false,
+    rawStatus: null,
+    reason,
   };
 }
 
@@ -53,14 +75,11 @@ function createInitialState(): LabStoreState {
     profileConfig: null,
     preflight: null,
     run: null,
-    reports: {
-      user: null,
-      ai: null,
-    },
+    reports: createEmptyReports(),
     reportExports: [],
     profileModels: [],
     toolState: {},
-    eventFeed: [],
+    activityFeed: [],
     persisted: null,
     ui: {
       sourceDrafts: createDefaultSourceDrafts(),
@@ -92,11 +111,12 @@ function createInitialState(): LabStoreState {
 function createSnapshotEvent(
   message: string,
   severity: LabEventFeedItem["severity"],
-  detail: string | null = null
+  detail: string | null = null,
+  scope: LabEventFeedItem["scope"] = "global"
 ): LabEventFeedItem {
   return {
     id: createLabEventId("ui"),
-    kind: "ui",
+    kind: "activity",
     severity,
     message,
     detail,
@@ -104,6 +124,45 @@ function createSnapshotEvent(
     source: "ui",
     action: null,
     stage: null,
+    scope,
+    moduleId: null,
+    rawLine: null,
+  };
+}
+
+function toEventFeedItem(
+  value: unknown,
+  fallbackScope: LabEventFeedItem["scope"]
+): LabEventFeedItem | null {
+  const record = asLabRecord(value);
+  const message = asNonEmptyString(record["message"]);
+  if (message === null) {
+    return null;
+  }
+
+  const source = asNonEmptyString(record["source"]);
+  const severity = asNonEmptyString(record["severity"]);
+  return {
+    id: asNonEmptyString(record["id"]) || createLabEventId("event"),
+    kind: asNonEmptyString(record["kind"]) || "activity",
+    severity:
+      severity === "success" || severity === "warning" || severity === "error"
+        ? severity
+        : "info",
+    message,
+    detail: asNonEmptyString(record["detail"]),
+    timestamp: toTimestamp(record["timestamp"]),
+    source: source === "ui" || source === "system" ? source : "host",
+    action: asNonEmptyString(record["action"]),
+    stage: asNonEmptyString(record["stage"]),
+    scope:
+      asNonEmptyString(record["scope"]) === "run"
+        ? "run"
+        : asNonEmptyString(record["scope"]) === "global"
+          ? "global"
+          : fallbackScope,
+    moduleId: asNonEmptyString(record["moduleId"]),
+    rawLine: asNonEmptyString(record["rawLine"]),
   };
 }
 
@@ -157,6 +216,10 @@ function toModuleState(value: unknown): LabModuleState | null {
     startedAt: asNonEmptyString(record["startedAt"]),
     endedAt: asNonEmptyString(record["completedAt"]),
     progress: clampPercent(record["percent"]),
+    progressMode:
+      clampPercent(record["percent"]) !== null || asNonEmptyString(record["progressMode"]) === "measured"
+        ? "measured"
+        : "none",
     message: asNonEmptyString(record["message"]),
     title: asNonEmptyString(record["title"]) || asNonEmptyString(record["label"]),
     summary: asNonEmptyString(record["summary"]),
@@ -165,10 +228,7 @@ function toModuleState(value: unknown): LabModuleState | null {
   };
 }
 
-function toRunFromProcessRecord(
-  processRecord: Record<string, unknown>,
-  eventFeed: LabEventFeedItem[]
-): LabRun | null {
+function toRunFromProcessRecord(processRecord: Record<string, unknown>): LabRun | null {
   const runId = asNonEmptyString(processRecord["runId"]);
   if (runId === null) {
     return null;
@@ -194,6 +254,16 @@ function toRunFromProcessRecord(
     .map(toArtifactProjection)
     .filter((entry): entry is LabArtifactProjection => entry !== null);
   const endedAt = asNonEmptyString(processRecord["completedAt"]);
+  const events = (Array.isArray(processRecord["events"]) ? processRecord["events"] : [])
+    .map(function (entry) {
+      return toEventFeedItem(entry, "run");
+    })
+    .filter((entry): entry is LabEventFeedItem => entry !== null && entry.kind !== "raw-log");
+  const rawLog = (Array.isArray(processRecord["rawLog"]) ? processRecord["rawLog"] : [])
+    .map(function (entry) {
+      return toEventFeedItem(entry, "run");
+    })
+    .filter((entry): entry is LabEventFeedItem => entry !== null);
 
   return {
     id: runId,
@@ -202,13 +272,19 @@ function toRunFromProcessRecord(
     ...(endedAt ? { endedAt: toTimestamp(endedAt) } : {}),
     modules: moduleMap,
     moduleOrder,
-    events: eventFeed.slice(),
+    events,
+    rawLog,
     artifacts,
     findings,
     warnings: asStringArray(processRecord["warnings"]),
     error: asNonEmptyString(processRecord["error"]),
     targetLabel: asNonEmptyString(asLabRecord(processRecord["targetSummary"])["label"]),
     progress: clampPercent(processRecord["percent"]),
+    emptyReason:
+      asNonEmptyString(processRecord["emptyReason"]) ||
+      (findings.length === 0 && artifacts.length === 0 && asNonEmptyString(processRecord["status"]) === "ready"
+        ? "Çalışma tamamlandı ancak raporlanabilir bulgu veya artefakt oluşmadı."
+        : null),
   };
 }
 
@@ -225,6 +301,11 @@ function toReportsFromRecord(reportRecord: Record<string, unknown>) {
       aiRecord["manifest"] !== undefined
         ? (aiRecord as unknown as LabAiReport)
         : null,
+    emptyReason:
+      asNonEmptyString(reportRecord["emptyReason"]) ||
+      (asNonEmptyString(reportRecord["status"]) === "ready"
+        ? "Rapor hazır ancak okunabilir içerik üretilemedi."
+        : "Rapor henüz üretilmedi."),
   };
 }
 
@@ -280,14 +361,204 @@ function syncDraftsFromSnapshot(state: LabStoreState, snapshot: Record<string, u
   return state;
 }
 
-function pushEvent(state: LabStoreState, event: LabEventFeedItem) {
-  state.eventFeed.unshift(event);
-  if (state.eventFeed.length > 260) {
-    state.eventFeed.length = 260;
+function pushActivityEvent(state: LabStoreState, event: LabEventFeedItem) {
+  state.activityFeed.unshift({
+    ...event,
+    scope: "global",
+  });
+  if (state.activityFeed.length > 260) {
+    state.activityFeed.length = 260;
   }
-  if (state.run) {
-    state.run.events = state.eventFeed.slice();
+}
+
+function pushRunEvent(
+  state: LabStoreState,
+  event: LabEventFeedItem,
+  options: { raw?: boolean } = {}
+) {
+  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const target = options.raw === true ? run.rawLog : run.events;
+  target.unshift({
+    ...event,
+    scope: "run",
+  });
+  if (target.length > 260) {
+    target.length = 260;
   }
+}
+
+function routeFeedEvent(state: LabStoreState, event: LabEventFeedItem) {
+  if (event.scope === "run") {
+    syncRunModuleFromFeedEvent(state, event);
+    pushRunEvent(state, event, { raw: event.kind === "raw-log" });
+    return;
+  }
+  pushActivityEvent(state, event);
+}
+
+function syncRunModuleFromFeedEvent(state: LabStoreState, event: LabEventFeedItem) {
+  if (event.scope !== "run" || event.moduleId === null) {
+    return;
+  }
+  const run = state.run || ensurePendingRun(state, event.action || "runtime");
+  const explicitLifecycleStage =
+    event.stage === "queued" ||
+    event.stage === "running" ||
+    event.stage === "completed" ||
+    event.stage === "failed" ||
+    event.stage === "cancelled" ||
+    event.stage === "skipped";
+  if (!run.modules[event.moduleId] && explicitLifecycleStage) {
+    run.modules[event.moduleId] = {
+      id: event.moduleId,
+      title: event.moduleId,
+      status: "queued",
+      message: null,
+      progress: null,
+      progressMode: "none",
+    };
+    run.moduleOrder.push(event.moduleId);
+  }
+  const module = run.modules[event.moduleId];
+  if (!module || event.kind === "raw-log") {
+    return;
+  }
+  module.message = event.detail || event.message;
+  if (event.severity === "error" || event.stage === "failed") {
+    module.status = "failed";
+    return;
+  }
+  if (event.stage === "completed") {
+    module.status = "completed";
+    return;
+  }
+  if (event.stage === "skipped") {
+    module.status = "skipped";
+    return;
+  }
+  if (event.stage === "cancelled") {
+    module.status = "cancelled";
+    return;
+  }
+  if (event.stage === "queued") {
+    module.status = "queued";
+    return;
+  }
+  if (event.stage === "running") {
+    module.status = "running";
+  }
+}
+
+function isSourceAction(action: string | null) {
+  return (action || "").startsWith("source-") || (action || "").startsWith("subtitle-source-");
+}
+
+function syncSourceProbeFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  if (isSourceAction(event.action) !== true) {
+    return;
+  }
+  if (event.stage === "completed") {
+    state.sourceProbeStatus = "completed";
+    return;
+  }
+  if (event.stage === "failed" || event.stage === "cancelled") {
+    state.sourceProbeStatus = "failed";
+    return;
+  }
+  if (event.stage === "queued" || event.stage === "running") {
+    state.sourceProbeStatus = "running";
+  }
+}
+
+function syncPreviewFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  if (
+    event.action !== "edit-preview" &&
+    event.action !== "subtitle-edit-preview" &&
+    event.action !== "edit-apply" &&
+    event.action !== "subtitle-edit-apply"
+  ) {
+    return;
+  }
+  if (!state.editConfig) {
+    return;
+  }
+  const preview = asLabRecord(state.editConfig["preview"]);
+  if (event.stage === "completed") {
+    preview["status"] = "ready";
+    preview["percent"] = 100;
+  } else if (event.stage === "failed" || event.stage === "cancelled") {
+    preview["status"] = "failed";
+  } else if (event.stage === "queued" || event.stage === "running") {
+    preview["status"] = "running";
+  } else {
+    return;
+  }
+  state.editConfig = {
+    ...state.editConfig,
+    preview,
+  };
+}
+
+function syncPreflightFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  if (event.action !== "profile-run-preflight") {
+    return;
+  }
+  if (event.stage === "completed") {
+    state.preflight = normalizeLabPreflight(state.profileConfig);
+    return;
+  }
+  if (event.stage === "failed" || event.stage === "cancelled") {
+    state.preflight = {
+      ...(state.preflight || createIdlePreflight()),
+      status: "blocked",
+      rawStatus: "failed",
+      stageReady: false,
+      reason: event.detail || "Ön kontrol tamamlanamadı.",
+    };
+    return;
+  }
+  if (event.stage === "queued" || event.stage === "running") {
+    state.preflight = {
+      ...(state.preflight || createIdlePreflight()),
+      status: "idle",
+      rawStatus: "running",
+      reason: event.detail || "Ön kontrol çalışıyor.",
+    };
+  }
+}
+
+function syncRunStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  if (event.action !== "process-run" && event.action !== "audio-process-run") {
+    return;
+  }
+  if (event.stage === "failed") {
+    const run = ensurePendingRun(state, event.action);
+    run.state = "failed";
+    run.error = event.detail || run.error;
+    return;
+  }
+  if (event.stage === "cancelled") {
+    const run = ensurePendingRun(state, event.action);
+    run.state = "cancelled";
+    run.endedAt = run.endedAt || Date.now();
+    return;
+  }
+  if (event.stage === "completed") {
+    const run = ensurePendingRun(state, event.action);
+    run.state = "completed";
+    run.endedAt = run.endedAt || Date.now();
+    return;
+  }
+  if (event.stage === "queued" || event.stage === "running") {
+    ensurePendingRun(state, event.action).state = "running";
+  }
+}
+
+function syncCanonicalStateFromHostEvent(state: LabStoreState, event: LabEventFeedItem) {
+  syncSourceProbeFromHostEvent(state, event);
+  syncPreviewFromHostEvent(state, event);
+  syncPreflightFromHostEvent(state, event);
+  syncRunStateFromHostEvent(state, event);
 }
 
 function deriveProbeStatus(
@@ -335,10 +606,7 @@ function syncCanonicalStateFromSnapshot(
     state.profileConfig = null;
     state.preflight = null;
     state.run = null;
-    state.reports = {
-      user: null,
-      ai: null,
-    };
+    state.reports = createEmptyReports();
     state.reportExports = [];
     state.sourceProbeStatus = state.sourceProbeStatus === "running" ? "running" : "idle";
     state.ui.lastHydratedProjectId = null;
@@ -348,11 +616,14 @@ function syncCanonicalStateFromSnapshot(
   state.source = asLabRecord(activeProject["source"]);
   state.editConfig = asLabRecord(activeProject["edit"]);
   state.profileConfig = asLabRecord(activeProject["profile"]);
-  state.preflight = normalizeLabPreflight(state.profileConfig);
+  state.preflight =
+    Object.keys(asLabRecord(asLabRecord(state.profileConfig)["preflight"])).length > 0
+      ? normalizeLabPreflight(state.profileConfig)
+      : createIdlePreflight();
   state.sourceProbeStatus = deriveProbeStatus(state.source, state.sourceProbeStatus);
 
   const processRecord = asLabRecord(asLabRecord(activeProject["process"])["records"])[state.featureId];
-  state.run = toRunFromProcessRecord(asLabRecord(processRecord), state.eventFeed);
+  state.run = toRunFromProcessRecord(asLabRecord(processRecord));
 
   const reportRecord = asLabRecord(
     asLabRecord(asLabRecord(activeProject["report"])["records"])[state.featureId]
@@ -387,7 +658,22 @@ function sanitizeHydratedRun(run: LabPersistedState["lastRun"] | undefined) {
       module.endedAt = module.endedAt || new Date(endedAt).toISOString();
     });
   }
-  nextRun.events = Array.isArray(nextRun.events) ? nextRun.events : [];
+  nextRun.events = Array.isArray(nextRun.events)
+    ? nextRun.events
+        .map(function (entry) {
+          return toEventFeedItem(entry, "run");
+        })
+        .filter((entry): entry is LabEventFeedItem => entry !== null && entry.kind !== "raw-log")
+    : [];
+  nextRun.rawLog = Array.isArray(nextRun.rawLog)
+    ? nextRun.rawLog
+        .map(function (entry) {
+          return toEventFeedItem(entry, "run");
+        })
+        .filter((entry): entry is LabEventFeedItem => entry !== null)
+    : [];
+  nextRun.emptyReason =
+    typeof nextRun.emptyReason === "string" ? nextRun.emptyReason : "Önceki çalışma özet olarak geri yüklendi.";
   return nextRun;
 }
 
@@ -402,13 +688,15 @@ function ensurePendingRun(state: LabStoreState, action: string) {
     startedAt: Date.now(),
     modules: {},
     moduleOrder: [],
-    events: state.eventFeed.slice(),
+    events: [],
+    rawLog: [],
     artifacts: [],
     findings: [],
     warnings: [],
     error: null,
     targetLabel: null,
     progress: null,
+    emptyReason: null,
   };
   state.run = nextRun;
   return nextRun;
@@ -430,7 +718,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         state.sourceProbeStatus = event.payload.sourceProbeStatus || state.sourceProbeStatus;
         state.editConfig = event.payload.editConfig || null;
         state.profileConfig = event.payload.profileConfig || null;
-        state.preflight = event.payload.preflight || null;
+        state.preflight = event.payload.preflight || createIdlePreflight();
         state.run = sanitizeHydratedRun(event.payload.lastRun);
         state.reports = event.payload.reports || state.reports;
         state.reportExports = Array.isArray(event.payload.reportExports) ? event.payload.reportExports : [];
@@ -438,6 +726,13 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           ? event.payload.profileModels
           : [];
         state.toolState = asLabRecord(event.payload.toolState);
+        state.activityFeed = Array.isArray(event.payload.activityFeed)
+          ? event.payload.activityFeed
+              .map(function (entry) {
+                return toEventFeedItem(entry, "global");
+              })
+              .filter((entry): entry is LabEventFeedItem => entry !== null)
+          : [];
         state.ui.sourceDrafts = {
           ...state.ui.sourceDrafts,
           ...(event.payload.sourceDrafts || {}),
@@ -466,6 +761,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           state.reports.ai !== null;
       }
       return state;
+    case "host-event-received":
+      syncCanonicalStateFromHostEvent(state, event.event);
+      routeFeedEvent(state, event.event);
+      return state;
     case "bootstrap-ready-sent":
       state.roomReadySent = true;
       return state;
@@ -481,12 +780,12 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "job-received":
       if (event.event) {
-        pushEvent(state, event.event);
+        routeFeedEvent(state, event.event);
       }
       return state;
     case "request-result-received":
       if (event.event) {
-        pushEvent(state, event.event);
+        routeFeedEvent(state, event.event);
       }
       state.ui.sourceDraftDirty = false;
       state.ui.editDraftDirty = false;
@@ -542,8 +841,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "preflight-started":
       state.preflight = {
-        ...(state.preflight || normalizeLabPreflight(state.profileConfig)),
+        ...(state.preflight || createIdlePreflight()),
+        status: "idle",
         rawStatus: "running",
+        reason: "Ön kontrol çalışıyor.",
       };
       return state;
     case "preflight-completed":
@@ -551,10 +852,11 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "preflight-failed":
       state.preflight = {
-        ...(state.preflight || normalizeLabPreflight(state.profileConfig)),
+        ...(state.preflight || createIdlePreflight()),
         status: "blocked",
         rawStatus: "failed",
         stageReady: false,
+        reason: event.detail || "Ön kontrol tamamlanamadı.",
       };
       return state;
     case "run-started":
@@ -594,6 +896,7 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
           status: "queued",
           message: null,
           progress: null,
+          progressMode: "none",
         };
         run.moduleOrder.push(event.moduleId);
       }
@@ -607,10 +910,13 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         module.status = "running";
         if (typeof event.progress === "number") {
           module.progress = event.progress;
+          module.progressMode = "measured";
         }
       } else if (event.type === "module-finished") {
         module.status = "completed";
-        module.progress = 100;
+        if (module.progressMode === "measured") {
+          module.progress = 100;
+        }
       } else if (event.type === "module-failed") {
         module.status = "failed";
       } else if (event.type === "module-skipped") {
@@ -685,13 +991,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       state.ui.reportView = event.view;
       return state;
     case "push-event":
-      pushEvent(state, event.event);
+      routeFeedEvent(state, event.event);
       return state;
     case "clear-events":
-      state.eventFeed = [createSnapshotEvent("Olay akisi temizlendi.", "info")];
-      if (state.run) {
-        state.run.events = state.eventFeed.slice();
-      }
+      state.activityFeed = [createSnapshotEvent("Olay akisi temizlendi.", "info")];
       state.ui.eventFeedCursor = 0;
       return state;
     default:

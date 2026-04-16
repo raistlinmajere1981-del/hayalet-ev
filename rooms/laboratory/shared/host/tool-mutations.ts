@@ -136,7 +136,6 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
       featureStage: featureStage || "source",
       operation: "tool-check-for-updates",
       stage: "running",
-      percent: 15,
     });
 
     try {
@@ -177,7 +176,6 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
         featureStage: featureStage || "source",
         operation: "tool-check-for-updates",
         stage: "completed",
-        percent: 100,
       });
       return update;
     } catch (error) {
@@ -277,7 +275,6 @@ export function createLaboratoryToolMutationRuntime(deps: LaboratoryToolMutation
         toolId: toolId,
         featureStage: featureStage || "source",
         stage: "completed",
-        percent: 100,
       });
       return result["tool"];
     } catch (error) {

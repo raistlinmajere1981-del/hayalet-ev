@@ -46,6 +46,14 @@ export function runPreflight(
     enabledModules,
     stageReady,
     rawStatus,
+    reason:
+      stageReady === true
+        ? warnings.length > 0
+          ? "Ön kontrolde uyarılar var ama işlem devam edebilir."
+          : null
+        : missingDependencies.length > 0
+          ? `Eksik bağımlılıklar: ${missingDependencies.join(", ")}`
+          : "Ön kontrol bu aşamayı henüz hazır işaretlemedi.",
   };
 }
 

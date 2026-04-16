@@ -4,10 +4,13 @@ import { createLaboratorySubtitleReportStageRuntime } from "./report-stage-subti
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryFeatureReportRecord = LaboratoryRecord & {
+  aiReport?: unknown;
   caveats?: unknown;
+  emptyReason?: unknown;
   exports?: unknown;
   findings?: unknown;
   status?: unknown;
+  userReport?: unknown;
   warnings?: unknown;
 };
 
@@ -184,6 +187,20 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
 
   function toString(value: unknown, fallback = ""): string {
     return typeof value === "string" ? value : fallback;
+  }
+
+  function getReportEmptyReason(reportRecord: LaboratoryFeatureReportRecord): string | null {
+    const explicitReason = toString(reportRecord["emptyReason"]).trim();
+    if (explicitReason !== "") {
+      return explicitReason;
+    }
+    const aiReport = toRecord(reportRecord["aiReport"]);
+    const aiManifest = toRecord(aiReport["manifest"]);
+    const manifestReason = toString(aiManifest["emptyReason"]).trim();
+    if (manifestReason !== "") {
+      return manifestReason;
+    }
+    return null;
   }
 
   function getExportFileLabel(entry: LaboratoryExportRecord) {
@@ -423,6 +440,7 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     const heroClass = previewUrl
       ? "lab-panel lab-report-hero"
       : "lab-panel lab-report-hero lab-report-hero--text-only";
+    const emptyReason = getReportEmptyReason(reportRecord) || featureText(["report", "emptyBody"]);
 
     return `
       <div class="lab-stage-stack">
@@ -446,9 +464,9 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
             </div>
           </section>
           <section class="lab-signal-grid">
-            ${
-              summaryCards.length > 0
-                ? summaryCards
+              ${
+                summaryCards.length > 0
+                  ? summaryCards
                     .map(function (card) {
                       const value =
                         typeof card.value === "string" || typeof card.value === "number"
@@ -460,9 +478,9 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
                       );
                     })
                     .join("")
-                : `<p class="lab-panel__hint">${escapeHtml(featureText(["report", "emptyFindings"]))}</p>`
-            }
-          </section>
+                  : `<p class="lab-panel__hint">${escapeHtml(emptyReason)}</p>`
+              }
+            </section>
           ${renderUnifiedModuleEvidencePanel()}
           <section class="lab-panel">
             <div class="lab-panel__header">
@@ -476,7 +494,7 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
                         return renderReportFinding(finding);
                       })
                       .join("")
-                  : `<p class="lab-panel__hint">${escapeHtml(featureText(["report", "emptyBody"]))}</p>`
+                  : `<p class="lab-panel__hint">${escapeHtml(emptyReason)}</p>`
               }
             </div>
           </section>
@@ -493,7 +511,9 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
     const runningJob = toJobRecord(runningReportJob);
     const reportWarnings = toStringArray(reportRecord.warnings);
     const reportCaveats = toStringArray(reportRecord.caveats);
+    const emptyReason = getReportEmptyReason(reportRecord);
     const summaryHint =
+      emptyReason ||
       reportCaveats[0] ||
       reportWarnings[0] ||
       (typeof runningJob.message === "string" && runningJob.message.trim() !== ""

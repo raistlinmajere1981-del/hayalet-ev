@@ -633,7 +633,9 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
     const blockers = toStringArray(readiness.blockers);
     const selectedModel = getSelectedModel();
     const selectedModelReady = selectedModel ? selectedModel.ready === true : false;
-    const safeJobMessage = runningJob ? getSafeJobMessage(asNonEmptyString(runningJob.message)) : null;
+    const safeJobMessage = runningJob
+      ? getSafeJobMessage(asNonEmptyString(runningJob.message))
+      : null;
     return `
       <section class="lab-panel lab-panel--orientation">
         <div class="lab-panel__header">

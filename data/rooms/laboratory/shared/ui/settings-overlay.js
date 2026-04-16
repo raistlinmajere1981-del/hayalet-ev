@@ -9,6 +9,7 @@ export function createLaboratorySettingsUi(deps) {
     formatPlatformList,
     getProfileModelEntries,
     getProfileSelectedModel,
+    getStageToolIds,
     getToolEntry,
     getToolRegistry,
     isAudioAnalysisFeature,
@@ -131,6 +132,11 @@ export function createLaboratorySettingsUi(deps) {
     }
     return `
       <section class="lab-panel">
+        <div class="lab-panel__header">
+          <div>
+            <h2 class="lab-panel__title">${escapeHtml(text(["workbench", "toolGridTitle"]))}</h2>
+          </div>
+        </div>
         <div class="lab-tool-stream">
           ${toolIds.map(function(toolId) {
       return renderToolCard(toolId);
@@ -165,12 +171,15 @@ export function createLaboratorySettingsUi(deps) {
     if (state.ui.settingsOpen !== true) {
       return "";
     }
-    const toolIds = getAllToolIds();
+    const stageId = toString(state.activeStage, "source");
+    const currentStageToolIds = getStageToolIds(stageId);
+    const toolIds = Array.from(new Set(currentStageToolIds.concat(getAllToolIds())));
     const installedToolIds = getInstalledToolIds();
     const runningJobs = getRunningJobs();
     const hasToolJobs = hasRunningToolJob(runningJobs);
     const profileModelEntries = getProfileModelEntries();
     const closeActionLabel = text(["mediaAnalysis", "settings", "closeAction"]);
+    const dependencyOverviewLabel = text(["workbench", "dependencyOverview"]);
     return `
       <section
         class="lab-overlay lab-overlay--center"
@@ -191,6 +200,7 @@ export function createLaboratorySettingsUi(deps) {
               <h2 class="lab-panel__title" id="lab-dependency-center-title">${escapeHtml(
       text(["workbench", "dependencyTitle"])
     )}</h2>
+              <p class="lab-panel__hint">${escapeHtml(dependencyOverviewLabel)}</p>
             </div>
             <div class="lab-overlay__actions">
               <button

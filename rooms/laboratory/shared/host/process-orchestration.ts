@@ -15,7 +15,10 @@ type LaboratoryProcessModuleRecord = LaboratoryRecord & {
 };
 
 type LaboratoryFeatureProcessRecord = LaboratoryRecord & {
+  events?: unknown;
+  rawLog?: unknown;
   modules?: unknown;
+  emptyReason?: unknown;
   percent?: unknown;
   status?: unknown;
 };
@@ -145,7 +148,74 @@ export function createLaboratoryProcessOrchestrationRuntime(
   }
 
   function createEmptyProcessRun(featureId: string | null) {
-    return createEmptyFeatureProcessRecord(featureId);
+    return {
+      ...createEmptyFeatureProcessRecord(featureId),
+      events: [],
+      rawLog: [],
+      emptyReason: null,
+    };
+  }
+
+  function trimFeed(entries: LaboratoryRecord[], limit: number) {
+    return entries.slice(Math.max(0, entries.length - limit));
+  }
+
+  function appendProcessEvent(record: LaboratoryFeatureProcessRecord, event: LaboratoryRecord) {
+    const processRecord = toProcessRecord(record);
+    const events = Array.isArray(processRecord.events)
+      ? (processRecord.events as unknown[]).map(toRecord)
+      : [];
+    events.push({
+      id:
+        typeof event["id"] === "string"
+          ? event["id"]
+          : `process-event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: typeof event["kind"] === "string" ? event["kind"] : "activity",
+      severity: typeof event["severity"] === "string" ? event["severity"] : "info",
+      message:
+        typeof event["message"] === "string" ? event["message"] : "İşlem güncellemesi",
+      detail: typeof event["detail"] === "string" ? event["detail"] : null,
+      timestamp: typeof event["timestamp"] === "number" ? event["timestamp"] : Date.now(),
+      source: typeof event["source"] === "string" ? event["source"] : "host",
+      action: typeof event["action"] === "string" ? event["action"] : null,
+      stage: typeof event["stage"] === "string" ? event["stage"] : null,
+      scope: "run",
+      moduleId: typeof event["moduleId"] === "string" ? event["moduleId"] : null,
+      rawLine: typeof event["rawLine"] === "string" ? event["rawLine"] : null,
+    });
+    processRecord.events = trimFeed(events, 260);
+    return processRecord;
+  }
+
+  function appendProcessRawLog(record: LaboratoryFeatureProcessRecord, event: LaboratoryRecord) {
+    const processRecord = toProcessRecord(record);
+    const rawLog = Array.isArray(processRecord.rawLog)
+      ? (processRecord.rawLog as unknown[]).map(toRecord)
+      : [];
+    rawLog.push({
+      id:
+        typeof event["id"] === "string"
+          ? event["id"]
+          : `process-raw-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: "raw-log",
+      severity: typeof event["severity"] === "string" ? event["severity"] : "info",
+      message:
+        typeof event["message"] === "string"
+          ? event["message"]
+          : typeof event["rawLine"] === "string"
+            ? event["rawLine"]
+            : "Ham çıktı",
+      detail: typeof event["detail"] === "string" ? event["detail"] : null,
+      timestamp: typeof event["timestamp"] === "number" ? event["timestamp"] : Date.now(),
+      source: typeof event["source"] === "string" ? event["source"] : "host",
+      action: typeof event["action"] === "string" ? event["action"] : null,
+      stage: typeof event["stage"] === "string" ? event["stage"] : null,
+      scope: "run",
+      moduleId: typeof event["moduleId"] === "string" ? event["moduleId"] : null,
+      rawLine: typeof event["rawLine"] === "string" ? event["rawLine"] : null,
+    });
+    processRecord.rawLog = trimFeed(rawLog, 260);
+    return processRecord;
   }
 
   function updateProcessRecordPercent(record: LaboratoryFeatureProcessRecord) {
@@ -154,7 +224,7 @@ export function createLaboratoryProcessOrchestrationRuntime(
       ? processRecord.modules.map(normalizeProcessModule)
       : [];
     if (modules.length === 0) {
-      processRecord.percent = processRecord.status === "ready" ? 100 : 0;
+      processRecord.percent = processRecord.status === "ready" ? 100 : null;
       return processRecord;
     }
 
@@ -162,11 +232,19 @@ export function createLaboratoryProcessOrchestrationRuntime(
       const moduleRecord = toProcessModuleRecord(moduleEntry);
       const status = asNonEmptyString(moduleRecord.status) || "idle";
       if (status === "running" || status === "queued" || status === "idle") {
-        return sum + Math.max(0, Math.min(100, Math.round(asNumber(moduleRecord.percent) || 0)));
+        const percent = asNumber(moduleRecord.percent);
+        return sum + Math.max(0, Math.min(100, Math.round(percent || 0)));
       }
       return sum + 100;
     }, 0);
-    processRecord.percent = Math.max(0, Math.min(100, Math.round(total / modules.length)));
+    const shouldExposePercent =
+      processRecord.status === "ready" ||
+      modules.some(function (moduleEntry) {
+        return asNumber(toProcessModuleRecord(moduleEntry).percent) !== null;
+      });
+    processRecord.percent = shouldExposePercent
+      ? Math.max(0, Math.min(100, Math.round(total / modules.length)))
+      : null;
     return processRecord;
   }
 
@@ -185,11 +263,45 @@ export function createLaboratoryProcessOrchestrationRuntime(
     if (moduleIndex === -1) {
       return processRecord;
     }
-    modules[moduleIndex] = normalizeProcessModule({
-      ...toProcessModuleRecord(modules[moduleIndex]),
+    const previousModule = toProcessModuleRecord(modules[moduleIndex]);
+    const nextModule = normalizeProcessModule({
+      ...previousModule,
       ...toRecord(patch),
     });
+    modules[moduleIndex] = nextModule;
     processRecord.modules = modules;
+    const previousStatus = asNonEmptyString(previousModule.status) || "idle";
+    const nextStatus = asNonEmptyString(nextModule.status) || previousStatus;
+    if (previousStatus !== nextStatus) {
+      const moduleLabel =
+        asNonEmptyString(nextModule["title"]) ||
+        asNonEmptyString(nextModule["label"]) ||
+        moduleId;
+      const detail =
+        asNonEmptyString(toRecord(patch)["message"]) ||
+        asNonEmptyString(toRecord(patch)["summary"]);
+      appendProcessEvent(processRecord, {
+        kind: "activity",
+        severity:
+          nextStatus === "failed"
+            ? "error"
+            : nextStatus === "skipped"
+              ? "warning"
+              : nextStatus === "ready" || nextStatus === "completed"
+                ? "success"
+                : "info",
+        message:
+          nextStatus === "running"
+            ? `${moduleLabel} başladı`
+            : nextStatus === "failed"
+              ? `${moduleLabel} hata verdi`
+              : nextStatus === "skipped"
+                ? `${moduleLabel} atlandı`
+                : `${moduleLabel} tamamlandı`,
+        detail,
+        moduleId,
+      });
+    }
     return updateProcessRecordPercent(processRecord);
   }
 
@@ -212,6 +324,8 @@ export function createLaboratoryProcessOrchestrationRuntime(
     resolveProcessRunFeatureIds,
     resolveProcessWorkbench,
     resolveProcessTarget,
+    appendProcessEvent,
+    appendProcessRawLog,
     updateProcessModule,
     updateProcessRecordPercent,
   };

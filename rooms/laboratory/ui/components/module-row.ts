@@ -3,7 +3,10 @@ import type { LabModuleState } from "../../models/lab-types.js";
 import { renderStatusChip } from "./status-chip.js";
 
 export function renderModuleRow(module: LabModuleState) {
-  const progress = typeof module.progress === "number" ? Math.max(0, Math.min(100, module.progress)) : null;
+  const progress =
+    module.progressMode === "measured" && typeof module.progress === "number"
+      ? Math.max(0, Math.min(100, module.progress))
+      : null;
   return `
     <article class="labx-module-row">
       <div class="labx-module-row__head">

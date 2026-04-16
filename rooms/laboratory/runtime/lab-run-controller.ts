@@ -51,7 +51,7 @@ function isTextControl(target: EventTarget | null): target is HTMLInputElement |
 function buildUiEvent(message: string, severity: "info" | "warning" | "error" | "success" = "info") {
   return {
     id: createLabEventId("ui"),
-    kind: "ui",
+    kind: "activity",
     severity,
     message,
     detail: null,
@@ -59,6 +59,9 @@ function buildUiEvent(message: string, severity: "info" | "warning" | "error" | 
     source: "ui" as const,
     action: null,
     stage: null,
+    scope: "global" as const,
+    moduleId: null,
+    rawLine: null,
   };
 }
 
@@ -173,19 +176,8 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const featureId = state.featureId;
     const sourceDrafts = state.ui.sourceDrafts;
 
-    function startProbe(action: string, detail: string, payload: Record<string, unknown>) {
-      dispatch({
-        type: "source-probe-started",
-        action,
-        detail,
-      });
-      if (sendMediaAction(action, payload) !== true) {
-        dispatch({
-          type: "source-probe-failed",
-          action,
-          detail: "Room API bridge is not connected.",
-        });
-      }
+    function startProbe(action: string, payload: Record<string, unknown>) {
+      sendMediaAction(action, payload);
     }
 
     if (featureId === "subtitle-analysis") {
@@ -198,18 +190,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         youtubeUrl: sourceDrafts.youtubeUrl,
       };
       if (subtitleMode === "local-folder") {
-        startProbe("subtitle-source-pick-folder", "Local subtitle probe started.", { fields });
+        startProbe("subtitle-source-pick-folder", { fields });
         return;
       }
       if (subtitleMode === "url") {
-        startProbe("subtitle-source-download-url", "Subtitle URL probe started.", { fields });
+        startProbe("subtitle-source-download-url", { fields });
         return;
       }
       if (subtitleMode.startsWith("youtube-")) {
-        startProbe("subtitle-source-download-youtube", "Subtitle YouTube probe started.", { fields });
+        startProbe("subtitle-source-download-youtube", { fields });
         return;
       }
-      startProbe("subtitle-source-pick-local", "Local subtitle probe started.", { fields });
+      startProbe("subtitle-source-pick-local", { fields });
       return;
     }
 
@@ -221,14 +213,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       youtubePreset: sourceDrafts.youtubePreset,
     };
     if (mode === "url") {
-      startProbe("source-download-url", "Direct URL probe started.", { fields });
+      startProbe("source-download-url", { fields });
       return;
     }
     if (mode === "youtube") {
-      startProbe("source-download-youtube", "YouTube probe started.", { fields });
+      startProbe("source-download-youtube", { fields });
       return;
     }
-    startProbe("source-pick-local", "Local source probe started.", { fields });
+    startProbe("source-pick-local", { fields });
   }
 
   function runPrimaryAction() {
@@ -238,37 +230,17 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         runSourcePrimaryAction();
         return;
       case "edit":
-        dispatch({
-          type: "preview-started",
-          action: state.featureId === "subtitle-analysis" ? "subtitle-edit-preview" : "edit-preview",
-          detail: "Preview job requested.",
-        });
         sendMediaAction(state.featureId === "subtitle-analysis" ? "subtitle-edit-preview" : "edit-preview");
         return;
       case "profile":
-        dispatch({
-          type: "preflight-started",
-          action: "profile-run-preflight",
-          detail: "Preflight requested.",
-        });
         sendMediaAction("profile-run-preflight");
         return;
       case "process": {
         const run = getCurrentRun(state);
         if (run && run.state === "running") {
-          dispatch({
-            type: "run-cancelled",
-            action: state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel",
-            detail: "Cancellation requested.",
-          });
           sendMediaAction(state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel");
           return;
         }
-        dispatch({
-          type: "run-started",
-          action: state.featureId === "audio-analysis" ? "audio-process-run" : "process-run",
-          detail: "Pipeline run requested.",
-        });
         sendMediaAction(state.featureId === "audio-analysis" ? "audio-process-run" : "process-run");
         return;
       }

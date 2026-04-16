@@ -150,8 +150,9 @@ export function createLaboratoryReportStageSupportRuntime(deps) {
       ]
     ];
   }
-  function getReportSideRows(reportRecord, _findings, exportsList) {
+  function getReportSideRows(reportRecord, _findings, _exportsList) {
     const report = toFeatureReportRecord(reportRecord);
+    const exportsList = _exportsList;
     if (isSubtitleAnalysisFeature()) {
       return [
         [

@@ -70,11 +70,7 @@ export function renderMediaAnalysisEditStage(deps: MediaAnalysisEditStageDeps): 
               .join("")}
           </div>
           <div class="lab-edit-mode-surface__body" data-mode="${editMode}">
-            ${
-              editMode === "advanced"
-                ? renderEditAdvancedPanel()
-                : renderEditPresetChooser()
-            }
+            ${editMode === "advanced" ? renderEditAdvancedPanel() : renderEditPresetChooser()}
           </div>
         </section>
         ${renderEditActionsPanel()}

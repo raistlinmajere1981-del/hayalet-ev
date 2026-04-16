@@ -89,12 +89,7 @@ export function createLaboratorySourceStageUi(deps) {
           text(["workbench", "sourceScope", "statusTags", "active"])
         )}</span>` : "",
         `<span class="lab-source-scope__tag" data-tone="${isSelected ? "included" : "excluded"}">${escapeHtml(
-          text([
-            "workbench",
-            "sourceScope",
-            "statusTags",
-            isSelected ? "included" : "excluded"
-          ])
+          text(["workbench", "sourceScope", "statusTags", isSelected ? "included" : "excluded"])
         )}</span>`,
         isSelected && runIndex >= 0 ? `<span class="lab-source-scope__tag" data-tone="order">${escapeHtml(
           `${text(["workbench", "sourceScope", "statusTags", "order"])} ${String(
@@ -122,12 +117,7 @@ export function createLaboratorySourceStageUi(deps) {
                 data-value="${escapeHtml(featureId)}"
               >
                 ${escapeHtml(
-        text([
-          "workbench",
-          "sourceScope",
-          "actions",
-          isSelected ? "exclude" : "include"
-        ])
+        text(["workbench", "sourceScope", "actions", isSelected ? "exclude" : "include"])
       )}
               </button>
               <button
@@ -138,12 +128,7 @@ export function createLaboratorySourceStageUi(deps) {
                 ${isActive ? "disabled" : ""}
               >
                 ${escapeHtml(
-        text([
-          "workbench",
-          "sourceScope",
-          "actions",
-          isActive ? "active" : "activate"
-        ])
+        text(["workbench", "sourceScope", "actions", isActive ? "active" : "activate"])
       )}
               </button>
             </div>
