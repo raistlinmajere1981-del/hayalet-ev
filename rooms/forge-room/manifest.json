@@ -85,6 +85,24 @@
           "exposure": "internal"
         },
         {
+          "name": "ForgeRoomUpdateOperatorProfile",
+          "description": "Persist the Forge operator profile for future runs.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "ForgeRoomUpdateRunOverride",
+          "description": "Store run-local override values without mutating the persistent operator profile.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "ForgeRoomRunPreflight",
+          "description": "Build or refresh the run-local preflight bundle.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "ForgeRoomGenerateDraft",
           "description": "Generate a real draft breakdown from the active goal through the Architect seat.",
           "scope": "room-ui",
@@ -117,6 +135,12 @@
         {
           "name": "ForgeRoomUpdateApprovedTask",
           "description": "Adjust dispatch settings for an approved task before queued assignments are sent.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "ForgeRoomUpdateContextCapsule",
+          "description": "Update an approved task's advanced context capsule before dispatch starts.",
           "scope": "room-ui",
           "exposure": "internal"
         },
@@ -171,6 +195,14 @@
           "title": "[FORGE][BREAKDOWN][ARCHITECT]",
           "editable": true,
           "path": "main-functions/forge-workbench/protocols/forge-room-breakdown-architect.md"
+        },
+        {
+          "key": "forge-room-preflight-pre-analysis",
+          "room": "forge-room",
+          "scenario": "forge-workbench-preflight-pre-analysis",
+          "title": "[FORGE][PREFLIGHT][PRE-ANALYSIS]",
+          "editable": true,
+          "path": "main-functions/forge-workbench/protocols/forge-room-preflight-pre-analysis.md"
         },
         {
           "key": "forge-room-task-response",

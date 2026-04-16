@@ -15,6 +15,7 @@ test("forge-room task runtime creates compare assignments from approved tasks", 
       level: 1,
       title: "Compare options",
       summary: "Collect competing answers.",
+      contextCapsule: null,
       executionKind: "task",
       dependsOnTaskIds: [],
       assignable: true,
@@ -42,6 +43,7 @@ test("forge-room task runtime groups compare responses into conflicts and produc
       level: 1 as const,
       title: "Compare options",
       summary: "Collect competing answers.",
+      contextCapsule: null,
       executionKind: "task" as const,
       dependsOnTaskIds: [],
       assignable: true,
@@ -118,4 +120,5 @@ test("forge-room task runtime groups compare responses into conflicts and produc
   assert.equal(synthesis?.selectedResponseIds.length, 1);
   assert.deepEqual(synthesis?.selectedResponseIds, ["forge-response-2"]);
   assert.deepEqual(synthesis?.acceptanceCriteria, ["Repair Room can import the package."]);
+  assert.equal(Array.isArray(synthesis?.decisionTrace), true);
 });

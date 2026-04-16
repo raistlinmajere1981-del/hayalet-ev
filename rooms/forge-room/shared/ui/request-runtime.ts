@@ -48,6 +48,12 @@ export function createForgeUiRequestRuntime() {
     loadLatestSession() {
       return sendCommand(FORGE_UI_COMMANDS.loadLatestSession);
     },
+    notifyUiReady() {
+      return sendCommand(FORGE_UI_COMMANDS.uiReady);
+    },
+    runPreflight() {
+      return sendCommand(FORGE_UI_COMMANDS.runPreflight);
+    },
     resolveConflict(payload: {
       conflictId: string;
       preferredResponseId?: string | null;
@@ -59,14 +65,19 @@ export function createForgeUiRequestRuntime() {
     removeDraftTask(payload: { taskId: string }) {
       return sendCommand(FORGE_UI_COMMANDS.removeDraftTask, payload);
     },
-    notifyUiReady() {
-      return sendCommand(FORGE_UI_COMMANDS.uiReady);
-    },
     saveSession() {
       return sendCommand(FORGE_UI_COMMANDS.saveSession);
     },
     selectSynthesis(payload: { synthesisId: string }) {
       return sendCommand(FORGE_UI_COMMANDS.selectSynthesis, payload);
+    },
+    updateContextCapsule(payload: {
+      constraints: string[];
+      relevantModules: string[];
+      summary: string;
+      taskId: string;
+    }) {
+      return sendCommand(FORGE_UI_COMMANDS.updateContextCapsule, payload);
     },
     updateApprovedTask(payload: {
       compareSeatIds: string[];
@@ -98,6 +109,36 @@ export function createForgeUiRequestRuntime() {
       targetRoomId: string;
     }) {
       return sendCommand(FORGE_UI_COMMANDS.updateGoal, payload);
+    },
+    updateOperatorProfile(payload: {
+      preferences: {
+        mode: string | null;
+        riskTolerance: string | null;
+      };
+      skill: {
+        level: string | null;
+        mechanical: string | null;
+        measurement: string | null;
+        soldering: string | null;
+      };
+      tools: {
+        benchPowerSupply: boolean | null;
+        hotAir: boolean | null;
+        magnification: boolean | null;
+        multimeter: boolean | null;
+        solderingIron: boolean | null;
+      };
+    }) {
+      return sendCommand(FORGE_UI_COMMANDS.updateOperatorProfile, payload);
+    },
+    updateRunOverride(payload: {
+      enableRovoPreAnalysis: boolean;
+      notes: string;
+      tools: {
+        hotAir?: boolean;
+      };
+    }) {
+      return sendCommand(FORGE_UI_COMMANDS.updateRunOverride, payload);
     },
   };
 }

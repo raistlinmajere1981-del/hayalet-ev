@@ -398,6 +398,10 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.ok(environment.sentCommands.includes("ForgeRoomUiReady"));
     assert.ok(environment.app.querySelector("#forge-goal-summary"));
     assert.ok(environment.app.querySelector("#forge-approved-mode-forge-task-approved-1"));
+    assert.equal(
+      environment.app.querySelector("#forge-approved-capsule-summary-forge-task-approved-1"),
+      null
+    );
 
     const primaryButtons = findElementsByClass(environment.app, "forge-button--primary");
     assert.equal(primaryButtons.length, 1);
@@ -410,6 +414,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.match(uiText, /REQUIRES: DISPATCH/);
     assert.match(uiText, /OUTPUT GATE LOCKED/);
     assert.match(uiText, /REQUIRES: RESPONSES/);
+    assert.match(uiText, /Advanced capsule/);
     assert.doesNotMatch(uiText, /Export blocked:/);
     assert.doesNotMatch(uiText, /Check handoff/);
     assert.doesNotMatch(uiText, /Export handoff/);

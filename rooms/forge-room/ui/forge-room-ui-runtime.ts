@@ -22,6 +22,7 @@ type ForgeUiWindow = Window & {
 };
 
 type ForgeLocalViewState = {
+  advancedCapsulesOpen: boolean;
   advancedDraftOpen: boolean;
   expandedResponseIds: Set<string>;
   expandedSynthesisIds: Set<string>;
@@ -54,6 +55,7 @@ export function createForgeRoomUiRuntime() {
   const windowRef = window as ForgeUiWindow;
   const documentRef = document;
   const viewState: ForgeLocalViewState = {
+    advancedCapsulesOpen: false,
     advancedDraftOpen: false,
     expandedResponseIds: new Set<string>(),
     expandedSynthesisIds: new Set<string>(),
@@ -101,8 +103,7 @@ export function createForgeRoomUiRuntime() {
       }
       current = next;
     }
-    const resolved =
-      typeof current === "string" && current.trim() !== "" ? current : fallback;
+    const resolved = typeof current === "string" && current.trim() !== "" ? current : fallback;
     return applyTextParams(resolved, params);
   }
 
@@ -462,10 +463,7 @@ export function createForgeRoomUiRuntime() {
           };
         case "RESPONSES_READY":
           return {
-            label: text(
-              ["workbench", "primaryAction", "generateSynthesis"],
-              "Generate synthesis"
-            ),
+            label: text(["workbench", "primaryAction", "generateSynthesis"], "Generate synthesis"),
             description: text(
               ["workbench", "primaryAction", "generateSynthesisRequired"],
               "NEXT ACTION REQUIRED: GENERATE SYNTHESIS."
@@ -561,10 +559,7 @@ export function createForgeRoomUiRuntime() {
         "strong",
         "forge-statusbar__goal",
         state.snapshot.currentGoal?.summary ||
-          text(
-            ["workbench", "statusBar", "startGoal"],
-            "Define the goal to start this run."
-          )
+          text(["workbench", "statusBar", "startGoal"], "Define the goal to start this run.")
       ),
       createElement(
         "p",
@@ -680,6 +675,7 @@ export function createForgeRoomUiRuntime() {
     setPanelBadge(goalPanel, panelModes.goal);
     const planSecondaryPanel = hasApprovedTasks()
       ? renderApprovedTasksPanel(documentRef, state, text, {
+          advancedCapsulesOpen: viewState.advancedCapsulesOpen,
           dispatchBlockedReason: describeDispatchStep(),
           flowState: flow.state,
         })
@@ -786,6 +782,27 @@ export function createForgeRoomUiRuntime() {
     return input?.value ?? "";
   }
 
+  function readNullableInputValue(elementId: string): string | null {
+    const value = readInputValue(elementId).trim();
+    return value === "" ? null : value;
+  }
+
+  function readCheckboxValue(elementId: string): boolean {
+    const input = documentRef.getElementById(elementId) as HTMLInputElement | null;
+    return input?.checked === true;
+  }
+
+  function readNullableBooleanSelect(elementId: string): boolean | null {
+    const value = readInputValue(elementId);
+    if (value === "true") {
+      return true;
+    }
+    if (value === "false") {
+      return false;
+    }
+    return null;
+  }
+
   function bindActions(root: HTMLElement) {
     function issueCommand(commandLabel: string, send: () => boolean) {
       viewState.guidedSurface = null;
@@ -847,6 +864,49 @@ export function createForgeRoomUiRuntime() {
         );
       });
     root
+      .querySelector<HTMLElement>("[data-forge-action='save-operator-profile']")
+      ?.addEventListener("click", () => {
+        issueCommand("ForgeRoomUpdateOperatorProfile", () =>
+          requestRuntime.updateOperatorProfile({
+            skill: {
+              level: readNullableInputValue("forge-profile-skill-level"),
+              soldering: readNullableInputValue("forge-profile-soldering"),
+              measurement: readNullableInputValue("forge-profile-measurement"),
+              mechanical: readNullableInputValue("forge-profile-mechanical"),
+            },
+            tools: {
+              multimeter: readNullableBooleanSelect("forge-profile-tool-multimeter"),
+              solderingIron: readNullableBooleanSelect("forge-profile-tool-soldering-iron"),
+              hotAir: readNullableBooleanSelect("forge-profile-tool-hot-air"),
+              benchPowerSupply: readNullableBooleanSelect("forge-profile-tool-bench-supply"),
+              magnification: readNullableBooleanSelect("forge-profile-tool-magnification"),
+            },
+            preferences: {
+              mode: readNullableInputValue("forge-profile-mode"),
+              riskTolerance: readNullableInputValue("forge-profile-risk"),
+            },
+          })
+        );
+      });
+    root
+      .querySelector<HTMLElement>("[data-forge-action='save-run-override']")
+      ?.addEventListener("click", () => {
+        issueCommand("ForgeRoomUpdateRunOverride", () =>
+          requestRuntime.updateRunOverride({
+            notes: readInputValue("forge-run-override-notes"),
+            enableRovoPreAnalysis: readCheckboxValue("forge-run-override-pre-analysis"),
+            tools: {
+              hotAir: readCheckboxValue("forge-run-override-hot-air"),
+            },
+          })
+        );
+      });
+    root
+      .querySelector<HTMLElement>("[data-forge-action='run-preflight']")
+      ?.addEventListener("click", () => {
+        issueCommand("ForgeRoomRunPreflight", () => requestRuntime.runPreflight());
+      });
+    root
       .querySelector<HTMLElement>("[data-forge-action='generate-draft']")
       ?.addEventListener("click", () => {
         issueCommand("ForgeRoomGenerateDraft", () =>
@@ -862,6 +922,13 @@ export function createForgeRoomUiRuntime() {
       .querySelector<HTMLElement>("[data-forge-toggle-advanced-draft='true']")
       ?.addEventListener("click", () => {
         viewState.advancedDraftOpen = !viewState.advancedDraftOpen;
+        bumpLocalUiVersion();
+        render();
+      });
+    root
+      .querySelector<HTMLElement>("[data-forge-toggle-advanced-capsules='true']")
+      ?.addEventListener("click", () => {
+        viewState.advancedCapsulesOpen = !viewState.advancedCapsulesOpen;
         bumpLocalUiVersion();
         render();
       });
@@ -948,6 +1015,23 @@ export function createForgeRoomUiRuntime() {
             dispatchMode: readInputValue(`forge-approved-mode-${taskKey}`),
             compareSeatIds: compareSeatId ? [compareSeatId] : [],
             personaPresetId: personaPresetId || null,
+          })
+        );
+      });
+    });
+    root.querySelectorAll<HTMLElement>("[data-forge-save-context-capsule]").forEach((element) => {
+      element.addEventListener("click", () => {
+        const taskId = element.dataset["forgeSaveContextCapsule"];
+        if (!taskId) {
+          return;
+        }
+        const taskKey = taskDomKey(taskId);
+        issueCommand("ForgeRoomUpdateContextCapsule", () =>
+          requestRuntime.updateContextCapsule({
+            taskId,
+            summary: readInputValue(`forge-approved-capsule-summary-${taskKey}`),
+            relevantModules: readLineList(`forge-approved-capsule-modules-${taskKey}`),
+            constraints: readLineList(`forge-approved-capsule-constraints-${taskKey}`),
           })
         );
       });

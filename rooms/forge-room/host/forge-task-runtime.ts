@@ -1,5 +1,8 @@
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
-import { FORGE_TARGET_ROOM_ID } from "../shared/forge-constants.js";
+import {
+  FORGE_MAX_DECISION_TRACE_LINES,
+  FORGE_TARGET_ROOM_ID,
+} from "../shared/forge-constants.js";
 import type {
   ForgeAgentResponse,
   ForgeArchiveMessageRef,
@@ -89,6 +92,7 @@ export function buildForgeTaskPrompt(params: {
   approvedTasks: ForgeTask[];
   assignment: ForgeTaskAssignment;
   goal: ForgeGoal;
+  promptContext?: string | null;
   task: ForgeTask;
 }): string {
   const { approvedTasks, assignment, goal, task } = params;
@@ -138,6 +142,7 @@ export function buildForgeTaskPrompt(params: {
     "Produce exactly one final JSON response for this task.",
     "Do not provide alternatives, variants, multiple drafts, or multiple candidate answers.",
     "Keep the answer practical and directly useful for downstream Repair Room handoff.",
+    params.promptContext?.trim() ? `Preflight context:\n${params.promptContext.trim()}` : "",
   ].join("\n");
 }
 
@@ -331,6 +336,30 @@ function buildOpenQuestions(conflicts: ForgeConflict[], taskTitles: Map<string, 
     });
 }
 
+function buildDecisionTrace(params: {
+  conflicts: ForgeConflict[];
+  preferredResponses: ForgeAgentResponse[];
+  tasks: ForgeTask[];
+}): string[] {
+  const taskTitles = new Map(params.tasks.map((task) => [task.id, task.title]));
+  const lines = uniqueStrings(
+    [
+      ...params.preferredResponses.map((response) => {
+        const taskTitle = taskTitles.get(response.taskId) ?? response.taskId;
+        return `${taskTitle} kept ${response.seatId} as the primary lane.`;
+      }),
+      ...params.conflicts
+        .filter((conflict) => conflict.status === "resolved" && conflict.preferredResponseId !== null)
+        .map((conflict) => {
+          const taskTitle = taskTitles.get(conflict.taskId) ?? conflict.taskId;
+          return `${taskTitle} resolved as ${conflict.kind} with an explicit preferred response.`;
+        }),
+    ]
+  );
+
+  return lines.slice(0, FORGE_MAX_DECISION_TRACE_LINES);
+}
+
 export function createForgeSynthesisCandidate(params: {
   conflicts: ForgeConflict[];
   goal: ForgeGoal;
@@ -395,6 +424,12 @@ export function createForgeSynthesisCandidate(params: {
     unresolvedConflictIds: conflicts
       .filter((conflict) => conflict.status === "open")
       .map((conflict) => conflict.id),
+    decisionTrace: buildDecisionTrace({
+      conflicts,
+      preferredResponses,
+      tasks,
+    }),
+    provenance: null,
     acceptanceCriteria,
     openQuestions,
     status: "draft",

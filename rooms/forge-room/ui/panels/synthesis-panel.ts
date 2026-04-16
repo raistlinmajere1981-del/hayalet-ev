@@ -105,13 +105,22 @@ function describeOutputState(
     case "APPROVED":
     case "DISPATCHED":
       return {
-        title: text(["workbench", "synthesisPanel", "guide", "locked", "title"], "OUTPUT GATE LOCKED"),
-        summary: text(["workbench", "synthesisPanel", "guide", "locked", "summary"], "REQUIRES: RESPONSES"),
+        title: text(
+          ["workbench", "synthesisPanel", "guide", "locked", "title"],
+          "OUTPUT GATE LOCKED"
+        ),
+        summary: text(
+          ["workbench", "synthesisPanel", "guide", "locked", "summary"],
+          "REQUIRES: RESPONSES"
+        ),
         tone: "locked",
       };
     case "RESPONSES_READY":
       return {
-        title: text(["workbench", "synthesisPanel", "guide", "ready", "title"], "OUTPUT GATE READY"),
+        title: text(
+          ["workbench", "synthesisPanel", "guide", "ready", "title"],
+          "OUTPUT GATE READY"
+        ),
         summary:
           options.synthesisBlockedReason ??
           text(
@@ -122,7 +131,10 @@ function describeOutputState(
       };
     case "CONFLICT":
       return {
-        title: text(["workbench", "synthesisPanel", "guide", "blocked", "title"], "OUTPUT GATE BLOCKED"),
+        title: text(
+          ["workbench", "synthesisPanel", "guide", "blocked", "title"],
+          "OUTPUT GATE BLOCKED"
+        ),
         summary: text(
           ["workbench", "synthesisPanel", "guide", "blocked", "summary"],
           "REQUIRES: CONFLICT RESOLUTION"
@@ -142,7 +154,10 @@ function describeOutputState(
       };
     case "EXPORTED":
       return {
-        title: text(["workbench", "synthesisPanel", "guide", "archive", "title"], "OUTPUT GATE ARCHIVE"),
+        title: text(
+          ["workbench", "synthesisPanel", "guide", "archive", "title"],
+          "OUTPUT GATE ARCHIVE"
+        ),
         summary: text(
           ["workbench", "synthesisPanel", "guide", "archive", "summary"],
           "STATE: EXPORT COMPLETE"
@@ -151,8 +166,14 @@ function describeOutputState(
       };
     default:
       return {
-        title: text(["workbench", "synthesisPanel", "guide", "locked", "title"], "OUTPUT GATE LOCKED"),
-        summary: text(["workbench", "synthesisPanel", "guide", "locked", "summary"], "REQUIRES: RESPONSES"),
+        title: text(
+          ["workbench", "synthesisPanel", "guide", "locked", "title"],
+          "OUTPUT GATE LOCKED"
+        ),
+        summary: text(
+          ["workbench", "synthesisPanel", "guide", "locked", "summary"],
+          "REQUIRES: RESPONSES"
+        ),
         tone: "locked",
       };
   }
@@ -179,10 +200,7 @@ function toOutputStatusLabel(
     return text(["workbench", "synthesisPanel", "outputStatus", "needsDecision"], "needs decision");
   }
   if (exportSummary.acceptanceCriteriaCount === 0) {
-    return text(
-      ["workbench", "synthesisPanel", "outputStatus", "needsCriteria"],
-      "needs criteria"
-    );
+    return text(["workbench", "synthesisPanel", "outputStatus", "needsCriteria"], "needs criteria");
   }
   return text(["workbench", "synthesisPanel", "outputStatus", "blocked"], "blocked");
 }
@@ -203,7 +221,13 @@ export function renderSynthesisPanel(
   const exportSummary = state.snapshot.exportSummary;
   const outputState = describeOutputState(options.flowState, options, text);
   const selectedSynthesis =
-    state.snapshot.syntheses.find((entry) => entry.id === state.snapshot.selectedSynthesisId) ?? null;
+    state.snapshot.syntheses.find((entry) => entry.id === state.snapshot.selectedSynthesisId) ??
+    null;
+  const selectedRunSignature =
+    selectedSynthesis?.provenance?.runSignature ?? state.snapshot.runSignature?.value ?? null;
+  const selectedDecisionTrace = selectedSynthesis?.decisionTrace ?? state.snapshot.decisionTrace;
+  const selectedPreflightWarnings =
+    selectedSynthesis?.provenance?.preflightWarnings ?? state.snapshot.preflight.warnings;
 
   body.append(
     createGuideCard(
@@ -266,7 +290,7 @@ export function renderSynthesisPanel(
     readinessText.textContent = exportSummary.exportReady
       ? text(["workbench", "synthesisPanel", "readiness", "ready"], "STATE: HANDOFF READY")
       : (options.exportBlockedReason ??
-          text(["workbench", "synthesisPanel", "readiness", "blocked"], "BLOCKER: HANDOFF CHECK"));
+        text(["workbench", "synthesisPanel", "readiness", "blocked"], "BLOCKER: HANDOFF CHECK"));
     readiness.append(readinessText);
     body.append(readiness);
 
@@ -330,6 +354,37 @@ export function renderSynthesisPanel(
     }
     body.append(selectedCard);
 
+    const contextCard = documentRef.createElement("article");
+    contextCard.className = "forge-state-guide";
+    const contextTitle = documentRef.createElement("strong");
+    contextTitle.textContent = "Run context";
+    const contextSummary = documentRef.createElement("p");
+    contextSummary.className = "forge-panel__hint";
+    contextSummary.textContent =
+      selectedRunSignature ??
+      text(["workbench", "synthesisPanel", "context", "pending"], "Run signature pending");
+    contextCard.append(contextTitle, contextSummary);
+    if (selectedDecisionTrace.length > 0) {
+      const traceList = documentRef.createElement("ul");
+      traceList.className = "forge-list";
+      selectedDecisionTrace.forEach((line) => {
+        const item = documentRef.createElement("li");
+        item.className = "forge-list__item";
+        item.textContent = line;
+        traceList.append(item);
+      });
+      contextCard.append(traceList);
+    }
+    if (selectedPreflightWarnings.length > 0) {
+      const warningRow = documentRef.createElement("div");
+      warningRow.className = "forge-flow-item__meta";
+      selectedPreflightWarnings.slice(0, 3).forEach((warning) => {
+        warningRow.append(createStatusBadge(documentRef, warning, "warning"));
+      });
+      contextCard.append(warningRow);
+    }
+    body.append(contextCard);
+
     if (state.snapshot.syntheses.length > 0) {
       const list = documentRef.createElement("div");
       list.className = "forge-card-list";
@@ -337,7 +392,8 @@ export function renderSynthesisPanel(
         const expanded = options.expandedSynthesisIds.has(synthesis.id);
         const card = documentRef.createElement("article");
         card.className = "forge-card forge-card--synthesis";
-        card.dataset["selected"] = synthesis.id === state.snapshot.selectedSynthesisId ? "true" : "false";
+        card.dataset["selected"] =
+          synthesis.id === state.snapshot.selectedSynthesisId ? "true" : "false";
 
         const header = documentRef.createElement("div");
         header.className = "forge-card__header";

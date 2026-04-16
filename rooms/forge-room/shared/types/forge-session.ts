@@ -1,5 +1,10 @@
 import type { ForgeGoal } from "./forge-goal.js";
 import type {
+  ForgePreflightState,
+  ForgeRunOverride,
+  ForgeRunSignature,
+} from "./forge-preflight.js";
+import type {
   ForgeEventLog,
   ForgeTask,
   ForgeTaskAssignment,
@@ -24,6 +29,10 @@ export interface ForgeSession {
   conflicts: ForgeConflict[];
   syntheses: ForgeSynthesis[];
   selectedSynthesisId: string | null;
+  decisionTrace: string[];
+  preflight: ForgePreflightState;
+  runOverride: ForgeRunOverride | null;
+  runSignature: ForgeRunSignature | null;
   exports: ForgeHandoffExportRecord[];
   coordinatorState: ForgeCoordinatorState;
   eventLog: ForgeEventLog[];

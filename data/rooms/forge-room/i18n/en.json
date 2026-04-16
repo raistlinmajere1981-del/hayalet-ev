@@ -1,0 +1,437 @@
+{
+  "title": "Forge Room",
+  "subtitle": "A guided production workbench where goals are shaped into tasks, compared across AI roles, and prepared for downstream handoff.",
+  "workbench": {
+    "title": "Forge Workbench",
+    "subtitle": "Shape a goal, review the task draft, and prepare a downstream handoff.",
+    "badges": {
+      "locked": "Locked",
+      "monitor": "Monitor"
+    },
+    "flow": {
+      "idle": "Idle",
+      "goalDefined": "Goal Defined",
+      "sessionCreated": "Session Created",
+      "draftReady": "Draft Ready",
+      "approved": "Approved",
+      "dispatched": "Dispatched",
+      "responsesReady": "Responses Ready",
+      "conflict": "Conflict",
+      "synthesisReady": "Synthesis Ready",
+      "exported": "Exported"
+    },
+    "columns": {
+      "planEyebrow": "Left",
+      "planTitle": "Plan",
+      "responsesEyebrow": "Center",
+      "responsesTitle": "Responses / Decision",
+      "outputEyebrow": "Right",
+      "outputTitle": "Output"
+    },
+    "statusBar": {
+      "requiredAction": "Required action",
+      "startGoal": "Define the goal to start this run.",
+      "stage": "State {label}",
+      "stats": {
+        "queue": "QUEUE {count}",
+        "answers": "ANS {count}",
+        "decisions": "CF {count}",
+        "synthesisOpen": "SYN OPEN",
+        "synthesisLocked": "SYN LOCKED",
+        "exportSent": "EXP SENT",
+        "exportReady": "EXP READY",
+        "exportLocked": "EXP LOCKED"
+      }
+    },
+    "guards": {
+      "requiresSavedGoal": "REQUIRES: SAVED GOAL",
+      "requiresDraftTasks": "REQUIRES: DRAFT TASKS",
+      "blockerDraftIssues": "BLOCKER: DRAFT ISSUES",
+      "requiresApprovedPlan": "REQUIRES: APPROVED PLAN",
+      "blockerNoQueuedWork": "BLOCKER: NO QUEUED WORK",
+      "requiresResponses": "REQUIRES: RESPONSES",
+      "blockerOpenDecision": "BLOCKER: OPEN DECISION",
+      "blockerOpenDecisions": "BLOCKER: OPEN DECISIONS",
+      "stateExportReady": "STATE: EXPORT READY",
+      "requiresTargetRepairRoom": "REQUIRES: TARGET REPAIR ROOM",
+      "requiresSelectedSynthesis": "REQUIRES: SELECTED SYNTHESIS",
+      "requiresAcceptanceCriteria": "REQUIRES: ACCEPTANCE CRITERIA",
+      "blockerHandoffCheck": "BLOCKER: HANDOFF CHECK"
+    },
+    "primaryAction": {
+      "saveGoal": "Save goal",
+      "saveGoalLocked": "CONTROL LOCKED UNTIL GOAL IS SAVED.",
+      "saveGoalRequired": "NEXT ACTION REQUIRED: SAVE GOAL.",
+      "generateDraft": "Generate draft",
+      "generateDraftRequired": "NEXT ACTION REQUIRED: GENERATE DRAFT.",
+      "finishDraft": "Finish draft",
+      "approveDraft": "Approve draft",
+      "approveDraftRequired": "NEXT ACTION REQUIRED: APPROVE DRAFT.",
+      "dispatchAssignments": "Dispatch assignments",
+      "dispatchAssignmentsRequired": "NEXT ACTION REQUIRED: DISPATCH ASSIGNMENTS.",
+      "reviewResponseLane": "Review response lane",
+      "waitForResponses": "STATE HOLD: WAIT FOR RESPONSES.",
+      "generateSynthesis": "Generate synthesis",
+      "generateSynthesisRequired": "NEXT ACTION REQUIRED: GENERATE SYNTHESIS.",
+      "resolveDecision": "Resolve decision",
+      "resolveDecisionBlocked": "RUN BLOCKED: RESOLVE DECISION.",
+      "chooseSynthesis": "Choose synthesis",
+      "chooseSynthesisRequired": "EXPORT LOCKED: SELECT SYNTHESIS.",
+      "exportHandoff": "Export handoff",
+      "exportHandoffReady": "FINAL STEP READY: EXPORT HANDOFF.",
+      "checkHandoff": "Check handoff",
+      "reviewExport": "Review export",
+      "exportComplete": "EXPORT COMPLETE: {label}.",
+      "working": "Working on this step",
+      "workingLocked": "SYSTEM LOCKED UNTIL STEP COMPLETES."
+    },
+    "panels": {
+      "goal": "Goal Input",
+      "draft": "Draft Breakdown",
+      "approved": "Dispatch Plan",
+      "responses": "Responses & Decisions",
+      "conflicts": "Conflict Summary",
+      "synthesis": "Synthesis & Export",
+      "coordinator": "Coordinator"
+    },
+    "actions": {
+      "createSession": "Create session",
+      "saveSession": "Save session",
+      "loadLatestSession": "Load latest",
+      "approveDraft": "Approve draft",
+      "checkHandoff": "Check handoff",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "markResolved": "Mark resolved",
+      "leaveOpen": "Leave open",
+      "select": "Select",
+      "selected": "Selected",
+      "preferSeat": "Prefer {seatId}"
+    },
+    "states": {
+      "emptyGoal": "No goal draft yet.",
+      "emptyDraft": "Draft tasks will appear here.",
+      "emptyApproved": "Approved tasks will appear here.",
+      "emptyResponses": "Responses will appear here.",
+      "emptyConflicts": "Conflict groups will appear here.",
+      "emptySynthesis": "Synthesis outputs will appear here.",
+      "emptySessions": "No saved sessions yet."
+    },
+    "common": {
+      "none": "none"
+    },
+    "defaults": {
+      "newTaskTitle": "New task",
+      "newTaskSummary": "Describe the next top-level Forge task."
+    },
+    "dispatchModes": {
+      "singleOwner": "Single owner",
+      "compare": "Compare"
+    },
+    "roles": {
+      "architect": "Architect",
+      "challenger": "Challenger",
+      "external-perspective": "External Perspective",
+      "coordinator": "Coordinator"
+    },
+    "goalPanel": {
+      "guide": {
+        "idle": {
+          "title": "PLAN OPEN",
+          "summary": "NEXT ACTION: SAVE GOAL"
+        },
+        "sessionCreated": {
+          "title": "PLAN OPEN",
+          "summary": "NEXT ACTION: SAVE GOAL"
+        },
+        "goalDefined": {
+          "title": "PLAN READY",
+          "summary": "NEXT ACTION: GENERATE DRAFT"
+        },
+        "draftReady": {
+          "title": "PLAN ACTIVE",
+          "summary": "NEXT ACTION: APPROVE DRAFT"
+        },
+        "locked": {
+          "title": "PLAN LOCKED",
+          "summary": "UPSTREAM EDITS DISABLED"
+        }
+      },
+      "placeholders": {
+        "goal": "Goal",
+        "brief": "Brief",
+        "constraints": "One constraint per line"
+      },
+      "summary": {
+        "targetLabel": "Target",
+        "stateLabel": "State",
+        "sessionLabel": "Session",
+        "draftLabel": "Draft",
+        "notStarted": "not started",
+        "waiting": "waiting",
+        "draftCountOne": "{count} task",
+        "draftCountOther": "{count} tasks"
+      },
+      "fields": {
+        "goal": "Goal",
+        "targetRoom": "Target room",
+        "brief": "Brief",
+        "constraints": "Constraints",
+        "constraintsHint": "One per line."
+      }
+    },
+    "draftPanel": {
+      "guide": {
+        "idle": {
+          "title": "Save the goal to unlock the draft",
+          "summary": "This lane stays locked until the goal above is saved."
+        },
+        "sessionCreated": {
+          "title": "Save the goal to open this lane",
+          "summary": "The draft stays closed until the goal above becomes real."
+        },
+        "goalDefined": {
+          "title": "Use Next Step to unlock draft editing",
+          "summary": "Generate the first draft from the top bar, then this lane will open for edits."
+        },
+        "draftReadyBlocked": {
+          "title": "Fix the draft to unlock approval",
+          "summary": "Tighten the task details below until the plan is ready to approve."
+        },
+        "draftReadyOpen": {
+          "title": "Finish edits to unlock approval",
+          "summary": "Refine the task lanes below, then use Next Step to approve the draft."
+        },
+        "locked": {
+          "title": "This lane is locked after approval",
+          "summary": "Restart the plan only if you intend to reopen earlier steps."
+        }
+      },
+      "toolbar": {
+        "countOne": "{count} task in draft",
+        "countOther": "{count} tasks in draft",
+        "empty": "Draft is empty"
+      },
+      "empty": {
+        "goalDefined": "Use Next Step to create the first task lanes here.",
+        "locked": "This lane will unlock when the flow reaches draft editing."
+      },
+      "fields": {
+        "summary": "Summary",
+        "seat": "Seat",
+        "role": "Role",
+        "mode": "Mode",
+        "compareSeat": "Compare seat",
+        "persona": "Persona",
+        "checklist": "Checklist"
+      },
+      "placeholders": {
+        "taskTitle": "Task title",
+        "taskSummary": "Task summary",
+        "checklist": "Checklist",
+        "rawEditor": "{\"tasks\":[{\"title\":\"Task title\"}]}"
+      },
+      "actions": {
+        "addTask": "Add task",
+        "toggleRaw": "Advanced / raw",
+        "saveTask": "Save task",
+        "remove": "Remove",
+        "applyRawDraft": "Apply raw draft"
+      },
+      "rawTitle": "Advanced / raw draft edit"
+    },
+    "approvedPanel": {
+      "guide": {
+        "approved": {
+          "title": "DISPATCH READY",
+          "summary": "NEXT ACTION: DISPATCH ASSIGNMENTS"
+        },
+        "dispatched": {
+          "title": "DISPATCH LOCKED",
+          "summary": "STATE: WORK IN FLIGHT"
+        },
+        "referenceOnly": {
+          "title": "DISPATCH LOCKED",
+          "summary": "STATE: REFERENCE ONLY"
+        },
+        "locked": {
+          "title": "DISPATCH LOCKED",
+          "summary": "REQUIRES: APPROVED DRAFT"
+        }
+      },
+      "toolbar": {
+        "countOne": "{count} approved task",
+        "countOther": "{count} approved tasks",
+        "empty": "No approved tasks"
+      },
+      "fields": {
+        "mode": "Mode",
+        "seat": "Seat",
+        "role": "Role",
+        "compareSeat": "Compare seat",
+        "persona": "Persona"
+      },
+      "meta": {
+        "queuedOne": "{count} queued",
+        "queuedOther": "{count} queued",
+        "doneOne": "{count} done",
+        "doneOther": "{count} done"
+      },
+      "actions": {
+        "saveDispatchSettings": "Save dispatch settings"
+      }
+    },
+    "responsesPanel": {
+      "guide": {
+        "savedGoalLocked": {
+          "title": "CENTER GATE LOCKED",
+          "summary": "REQUIRES: SAVED GOAL"
+        },
+        "approvedDraftLocked": {
+          "title": "CENTER GATE LOCKED",
+          "summary": "REQUIRES: APPROVED DRAFT"
+        },
+        "dispatchLocked": {
+          "title": "CENTER GATE LOCKED",
+          "summary": "REQUIRES: DISPATCH"
+        },
+        "responseInbound": {
+          "title": "CENTER GATE OPEN",
+          "summary": "STATE: RESPONSE INBOUND"
+        },
+        "awaitingResponses": {
+          "title": "CENTER GATE OPEN",
+          "summary": "STATE: AWAITING RESPONSES"
+        },
+        "reviewResponses": {
+          "title": "CENTER GATE OPEN",
+          "summary": "STATE: REVIEW RESPONSES"
+        },
+        "conflictBlocked": {
+          "title": "CENTER GATE BLOCKED",
+          "summary": "REQUIRES: CONFLICT RESOLUTION"
+        },
+        "readOnly": {
+          "title": "CENTER GATE MONITOR",
+          "summary": "STATE: READ ONLY"
+        },
+        "exportInputs": {
+          "title": "CENTER GATE ARCHIVE",
+          "summary": "STATE: EXPORT INPUTS"
+        }
+      },
+      "chips": {
+        "tasksOne": "{count} task",
+        "tasksOther": "{count} tasks",
+        "answersOne": "{count} answer",
+        "answersOther": "{count} answers",
+        "decisionsLeftOne": "{count} decision left",
+        "decisionsLeftOther": "{count} decisions left",
+        "responsesOne": "{count} response",
+        "responsesOther": "{count} responses",
+        "queuedOne": "{count} queued",
+        "queuedOther": "{count} queued",
+        "artifactsOne": "{count} artifact",
+        "artifactsOther": "{count} artifacts"
+      },
+      "statuses": {
+        "selected": "chosen",
+        "rejected": "set aside",
+        "captured": "received",
+        "decisionMade": "decision made",
+        "decisionNeeded": "decision needed",
+        "traceSaved": "trace saved"
+      },
+      "empty": {
+        "approved": "Send this task from Plan to start collecting answers.",
+        "waiting": "Waiting for the assigned seat to answer this task.",
+        "unsent": "This task will start showing answers as soon as it is sent."
+      },
+      "conflict": {
+        "recordedTitle": "DECISION RECORDED",
+        "selectTitle": "SELECT ONE RESPONSE",
+        "blockedTitle": "DECISION HOLDS RUN",
+        "recordedSummary": "STATE: PREFERENCE SAVED",
+        "blockedSummary": "USE NEXT STEP TO RETURN HERE.",
+        "currentPick": "Current pick: {seatId}"
+      }
+    },
+    "synthesisPanel": {
+      "guide": {
+        "locked": {
+          "title": "OUTPUT GATE LOCKED",
+          "summary": "REQUIRES: RESPONSES"
+        },
+        "ready": {
+          "title": "OUTPUT GATE READY",
+          "summary": "NEXT ACTION: GENERATE SYNTHESIS"
+        },
+        "blocked": {
+          "title": "OUTPUT GATE BLOCKED",
+          "summary": "REQUIRES: CONFLICT RESOLUTION"
+        },
+        "open": {
+          "title": "OUTPUT GATE OPEN",
+          "summary": "NEXT ACTION: SELECT SYNTHESIS"
+        },
+        "archive": {
+          "title": "OUTPUT GATE ARCHIVE",
+          "summary": "STATE: EXPORT COMPLETE"
+        }
+      },
+      "outputStatus": {
+        "shipped": "shipped",
+        "ready": "ready",
+        "needsSelection": "needs selection",
+        "needsDecision": "needs decision",
+        "needsCriteria": "needs criteria",
+        "blocked": "blocked"
+      },
+      "chips": {
+        "answersOne": "{count} answer",
+        "answersOther": "{count} answers",
+        "decisionsLeftOne": "{count} decision left",
+        "decisionsLeftOther": "{count} decisions left",
+        "synthesesOne": "{count} synthesis",
+        "synthesesOther": "{count} syntheses",
+        "criteriaOne": "{count} criterion",
+        "criteriaOther": "{count} criteria",
+        "tasksOne": "{count} task",
+        "tasksOther": "{count} tasks"
+      },
+      "readiness": {
+        "ready": "STATE: HANDOFF READY",
+        "blocked": "BLOCKER: HANDOFF CHECK",
+        "requiresSelected": "REQUIRES: SELECTED SYNTHESIS"
+      },
+      "badges": {
+        "selected": "selected"
+      }
+    },
+    "coordinator": {
+      "pending": "Forge is finishing the current step.",
+      "stats": {
+        "state": "state {label}",
+        "waiting": "waiting {count}",
+        "answers": "answers {count}",
+        "decisions": "decisions {count}",
+        "handoff": "handoff {label}"
+      },
+      "latestPackage": "Latest package: {path}",
+      "handoffStatuses": {
+        "sent": "sent",
+        "ready": "ready",
+        "locked": "locked"
+      }
+    },
+    "validation": {
+      "taskRange": "Draft breakdown must contain {min} to {max} top-level tasks.",
+      "taskMissingTitle": "Task {index} is missing a title.",
+      "taskMissingSummary": "Task {index} is missing a summary.",
+      "duplicateTitle": "Task title \"{title}\" is duplicated.",
+      "compareSeatRequired": "Compare task \"{title}\" must define at least one comparison seat.",
+      "unknownDependency": "Task \"{task}\" depends on unknown task \"{dependency}\".",
+      "selfDependency": "Task \"{task}\" cannot depend on itself."
+    }
+  }
+}

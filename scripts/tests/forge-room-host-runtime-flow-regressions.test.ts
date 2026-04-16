@@ -236,7 +236,15 @@ function latestForgeSnapshot(notifications: ForgeNotification[]) {
     exports: Array<{ filePath: string }>;
     responses: Array<{ id: string }>;
     selectedSynthesisId: string | null;
-    syntheses: Array<{ id: string; status: string }>;
+    syntheses: Array<{
+      id: string;
+      provenance?: {
+        operatorProfileSummary?: string[];
+        preflightWarnings?: string[];
+        runSignature?: string | null;
+      } | null;
+      status: string;
+    }>;
   };
 }
 
@@ -335,6 +343,12 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
 
     const synthesisResult = await hostRuntime.commands.ForgeRoomGenerateSynthesis();
     assert.equal(synthesisResult.success, true);
+    const snapshotAfterSynthesis = latestForgeSnapshot(notifications);
+    const selectedSynthesis = snapshotAfterSynthesis.syntheses.find(
+      (entry) => entry.id === synthesisResult.synthesisId
+    );
+    assert.ok(selectedSynthesis?.provenance);
+    assert.equal(typeof selectedSynthesis?.provenance?.runSignature, "string");
 
     const exportCheckResult = await hostRuntime.commands.ForgeRoomExportHandoffCheck();
     assert.equal(exportCheckResult.success, true);
@@ -344,11 +358,18 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     assert.ok(typeof exportResult.filePath === "string");
 
     const exportedJson = JSON.parse(await readFile(String(exportResult.filePath), "utf8")) as {
+      contextSummary?: {
+        operatorProfileSummary?: string[];
+        preflightWarnings?: string[];
+      };
+      runSignature?: string;
       selectedSynthesis: { id: string };
       targetRoomId: string;
     };
     assert.equal(exportedJson.targetRoomId, "repair-room");
     assert.equal(exportedJson.selectedSynthesis.id, synthesisResult.synthesisId);
+    assert.equal(exportedJson.runSignature, selectedSynthesis?.provenance?.runSignature);
+    assert.ok((exportedJson.contextSummary?.operatorProfileSummary?.length ?? 0) >= 1);
 
     const sessionId = String(createResult.sessionId);
     const sessionPath = join(storageDir, "sessions", sessionId, "session.json");

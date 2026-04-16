@@ -7,6 +7,10 @@ import type {
   ForgeSynthesis,
   ForgeHandoffExportRecord,
   ForgeExportReadinessSummary,
+  ForgeOperatorProfile,
+  ForgePreflightState,
+  ForgeRunOverride,
+  ForgeRunSignature,
 } from "../../shared/types/index.js";
 import type { ForgeRuntimeState, ForgeSessionListItem } from "./forge-runtime-state.js";
 
@@ -20,9 +24,14 @@ export interface ForgeRuntimeSnapshot {
   draftTasks: ForgeTask[];
   draftSourceText: string | null;
   validationMessages: string[];
+  decisionTrace: string[];
   exports: ForgeHandoffExportRecord[];
   exportSummary: ForgeExportReadinessSummary;
+  operatorProfile: ForgeOperatorProfile;
+  preflight: ForgePreflightState;
   responses: ForgeAgentResponse[];
+  runOverride: ForgeRunOverride | null;
+  runSignature: ForgeRunSignature | null;
   selectedSynthesisId: string | null;
   sessionList: ForgeSessionListItem[];
   syntheses: ForgeSynthesis[];
@@ -39,11 +48,16 @@ export function createForgeRuntimeSnapshot(
     draftTasks: state.draftTasks,
     draftSourceText: state.draftSourceText,
     validationMessages: state.validationMessages,
+    decisionTrace: state.decisionTrace,
     approvedTasks: state.approvedTasks,
     assignments: state.assignments,
     exports: state.exports,
     exportSummary,
+    operatorProfile: state.operatorProfile,
+    preflight: state.preflight,
     responses: state.responses,
+    runOverride: state.runOverride,
+    runSignature: state.runSignature,
     conflicts: state.conflicts,
     syntheses: state.syntheses,
     selectedSynthesisId: state.selectedSynthesisId,

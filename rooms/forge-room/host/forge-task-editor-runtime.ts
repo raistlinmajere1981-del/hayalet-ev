@@ -1,4 +1,5 @@
 import type {
+  ForgeContextCapsule,
   ForgePersonaPresetId,
   ForgeRoleId,
   ForgeSeatId,
@@ -111,6 +112,20 @@ function createTaskSpecFromPayload(payload: Record<string, unknown>): ForgeBreak
     compareSeatIds: normalizeCompareSeatIds(seatId, dispatchMode, payload["compareSeatIds"]),
     dependsOnTaskTitles: [],
     checklist: uniqueStrings(asStringArray(payload["checklist"])),
+  };
+}
+
+function normalizeContextCapsule(value: Record<string, unknown>): ForgeContextCapsule | null {
+  const summary = asNonEmptyString(value["summary"]) ?? "";
+  const relevantModules = uniqueStrings(asStringArray(value["relevantModules"]));
+  const constraints = uniqueStrings(asStringArray(value["constraints"]));
+  if (summary === "" && relevantModules.length === 0 && constraints.length === 0) {
+    return null;
+  }
+  return {
+    summary,
+    relevantModules,
+    constraints,
   };
 }
 
@@ -242,6 +257,7 @@ export function updateForgeApprovedTask(params: {
     personaPresetId: normalizePersonaPresetId(
       params.payload["personaPresetId"] ?? currentTask.personaPresetId
     ),
+    contextCapsule: currentTask.contextCapsule ?? null,
     status: "approved",
   };
 
@@ -255,4 +271,39 @@ export function updateForgeApprovedTask(params: {
 
 export function rebuildQueuedAssignments(approvedTasks: ForgeTask[]) {
   return createAssignmentsForApprovedTasks(approvedTasks);
+}
+
+export function updateForgeTaskContextCapsule(params: {
+  approvedTasks: ForgeTask[];
+  payload: Record<string, unknown>;
+}): { approvedTasks: ForgeTask[]; validationMessage: string | null } {
+  const taskId = asNonEmptyString(params.payload["taskId"]);
+  if (taskId === null) {
+    return {
+      approvedTasks: params.approvedTasks,
+      validationMessage: "Approved task id is required.",
+    };
+  }
+
+  const taskIndex = params.approvedTasks.findIndex(
+    (task) => task.id === taskId && task.level === 1
+  );
+  if (taskIndex < 0) {
+    return {
+      approvedTasks: params.approvedTasks,
+      validationMessage: "Approved task was not found.",
+    };
+  }
+
+  return {
+    approvedTasks: params.approvedTasks.map((task, index) =>
+      index === taskIndex
+        ? {
+            ...task,
+            contextCapsule: normalizeContextCapsule(params.payload),
+          }
+        : task
+    ),
+    validationMessage: null,
+  };
 }

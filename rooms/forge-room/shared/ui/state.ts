@@ -5,9 +5,17 @@ import type {
   ForgeExportReadinessSummary,
   ForgeGoal,
   ForgeHandoffExportRecord,
+  ForgeOperatorProfile,
+  ForgePreflightState,
+  ForgeRunOverride,
+  ForgeRunSignature,
   ForgeSynthesis,
   ForgeTask,
   ForgeTaskAssignment,
+} from "../types/index.js";
+import {
+  createDefaultForgeOperatorProfile,
+  createEmptyForgePreflightState,
 } from "../types/index.js";
 
 export type ForgeWorkbenchUiFlowState =
@@ -34,9 +42,14 @@ export interface ForgeRoomSnapshot {
   draftTasks: ForgeTask[];
   draftSourceText: string | null;
   validationMessages: string[];
+  decisionTrace: string[];
   exports: ForgeHandoffExportRecord[];
   exportSummary: ForgeExportReadinessSummary;
+  operatorProfile: ForgeOperatorProfile;
+  preflight: ForgePreflightState;
   responses: ForgeAgentResponse[];
+  runOverride: ForgeRunOverride | null;
+  runSignature: ForgeRunSignature | null;
   selectedSynthesisId: string | null;
   sessionList: Array<{
     id: string;
@@ -77,6 +90,7 @@ export function createEmptyForgeRoomSnapshot(): ForgeRoomSnapshot {
     draftTasks: [],
     draftSourceText: null,
     validationMessages: [],
+    decisionTrace: [],
     approvedTasks: [],
     assignments: [],
     exports: [],
@@ -91,6 +105,10 @@ export function createEmptyForgeRoomSnapshot(): ForgeRoomSnapshot {
       targetRoomId: null,
     },
     responses: [],
+    operatorProfile: createDefaultForgeOperatorProfile(),
+    preflight: createEmptyForgePreflightState(),
+    runOverride: null,
+    runSignature: null,
     conflicts: [],
     syntheses: [],
     selectedSynthesisId: null,

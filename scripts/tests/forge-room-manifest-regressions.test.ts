@@ -9,9 +9,15 @@ const requiredForgeFiles = [
   "rooms/forge-room/host/index.ts",
   "rooms/forge-room/host/runtime.ts",
   "rooms/forge-room/host/forge-breakdown-runtime.ts",
+  "rooms/forge-room/host/forge-capability-selector.ts",
   "rooms/forge-room/host/forge-session-storage.ts",
   "rooms/forge-room/host/forge-handoff-export.ts",
+  "rooms/forge-room/host/forge-operator-profile-storage.ts",
+  "rooms/forge-room/host/forge-preflight-invalidation.ts",
+  "rooms/forge-room/host/forge-preflight-metadata.ts",
+  "rooms/forge-room/host/forge-preflight-runtime.ts",
   "rooms/forge-room/host/forge-runtime-support.ts",
+  "rooms/forge-room/host/forge-run-signature.ts",
   "rooms/forge-room/host/forge-synthesis-runtime.ts",
   "rooms/forge-room/host/forge-task-editor-runtime.ts",
   "rooms/forge-room/host/forge-task-runtime.ts",
@@ -22,6 +28,7 @@ const requiredForgeFiles = [
   "rooms/forge-room/shared/data/role-catalog.ts",
   "rooms/forge-room/shared/types/forge-goal.ts",
   "rooms/forge-room/shared/types/forge-handoff.ts",
+  "rooms/forge-room/shared/types/forge-preflight.ts",
   "rooms/forge-room/shared/types/forge-session.ts",
   "rooms/forge-room/shared/types/forge-workflow.ts",
   "rooms/forge-room/shared/ui/host-messages.ts",
@@ -40,12 +47,15 @@ const requiredForgeFiles = [
   "rooms/forge-room/shared/assets/room-background.svg",
   "rooms/forge-room/main-functions/forge-workbench/assets/forge-workbench-view.svg",
   "rooms/forge-room/main-functions/forge-workbench/protocols/forge-room-breakdown-architect.md",
+  "rooms/forge-room/main-functions/forge-workbench/protocols/forge-room-preflight-pre-analysis.md",
   "rooms/forge-room/main-functions/forge-workbench/protocols/forge-room-synthesis.md",
   "rooms/forge-room/main-functions/forge-workbench/protocols/forge-room-task-response.md",
   "rooms/forge-room/main-functions/forge-workbench/protocols/en/forge-room-breakdown-architect.md",
+  "rooms/forge-room/main-functions/forge-workbench/protocols/en/forge-room-preflight-pre-analysis.md",
   "rooms/forge-room/main-functions/forge-workbench/protocols/en/forge-room-synthesis.md",
   "rooms/forge-room/main-functions/forge-workbench/protocols/en/forge-room-task-response.md",
   "rooms/forge-room/main-functions/forge-workbench/protocols/tr/forge-room-breakdown-architect.md",
+  "rooms/forge-room/main-functions/forge-workbench/protocols/tr/forge-room-preflight-pre-analysis.md",
   "rooms/forge-room/main-functions/forge-workbench/protocols/tr/forge-room-synthesis.md",
   "rooms/forge-room/main-functions/forge-workbench/protocols/tr/forge-room-task-response.md",
 ];
@@ -68,7 +78,12 @@ test("forge-room manifest satisfies workbench and visible feature scene validati
   assert.deepEqual(validation.manifest?.workbench?.availableFeatureIds, ["forge-workbench"]);
   assert.deepEqual(
     forgeFeature?.protocolSpecs?.map((spec) => spec.key),
-    ["forge-room-breakdown-architect", "forge-room-task-response", "forge-room-synthesis"]
+    [
+      "forge-room-breakdown-architect",
+      "forge-room-preflight-pre-analysis",
+      "forge-room-task-response",
+      "forge-room-synthesis",
+    ]
   );
   assert.equal(forgeFeature?.scene?.hotspot.id, "forge-room-workbench");
   assert.equal(forgeFeature?.scene?.view.id, "forge-room-console");

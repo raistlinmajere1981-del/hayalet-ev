@@ -4,6 +4,7 @@ import type {
   ForgeRoleId,
   ForgeSeatId,
 } from "./forge-identities.js";
+import type { ForgeContextCapsule, ForgeSynthesisProvenance } from "./forge-preflight.js";
 
 export type ForgeTaskStatus = "draft" | "approved" | "assigned" | "answered" | "complete";
 export type ForgeTaskExecutionKind = "task" | "checklist";
@@ -35,6 +36,7 @@ export interface ForgeTask {
   level: 1 | 2;
   title: string;
   summary: string;
+  contextCapsule: ForgeContextCapsule | null;
   executionKind: ForgeTaskExecutionKind;
   dependsOnTaskIds: string[];
   assignable: boolean;
@@ -95,6 +97,8 @@ export interface ForgeSynthesis {
   id: string;
   summary: string;
   body: string;
+  decisionTrace: string[];
+  provenance: ForgeSynthesisProvenance | null;
   sourceTaskIds: string[];
   selectedResponseIds: string[];
   unresolvedConflictIds: string[];

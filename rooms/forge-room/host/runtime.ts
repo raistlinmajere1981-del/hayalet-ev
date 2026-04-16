@@ -8,6 +8,7 @@ import {
 import { FORGE_PERSONA_PRESETS } from "../shared/data/persona-presets.js";
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
 import type {
+  ForgeContextCapsule,
   ForgeGoal,
   ForgeTask,
   ForgeTaskAssignment,
@@ -16,7 +17,12 @@ import type {
   ForgeConflict,
   ForgeSynthesis,
   ForgeAgentResponse,
+  ForgeOperatorProfile,
+  ForgePreflightState,
+  ForgeRunOverride,
+  ForgeRunSignature,
 } from "../shared/types/index.js";
+import { createEmptyForgeRunOverride } from "../shared/types/index.js";
 import { createForgeHostIoRuntime } from "../shared/host/io-runtime.js";
 import { createForgeStoragePaths } from "../shared/host/forge-paths.js";
 import {
@@ -25,6 +31,19 @@ import {
   parseForgeBreakdownDraft,
 } from "./forge-breakdown-runtime.js";
 import { createForgeHandoffExport } from "./forge-handoff-export.js";
+import { createForgeOperatorProfileStorage } from "./forge-operator-profile-storage.js";
+import {
+  describeForgePreflightStageImpact,
+  readForgePreflightInvalidationReason,
+  readForgePreflightStage,
+} from "./forge-preflight-invalidation.js";
+import {
+  buildForgeFallbackPreflightState,
+  buildForgePreflightState,
+  buildForgeSynthesisProvenance,
+  renderForgePromptContext,
+} from "./forge-preflight-runtime.js";
+import { buildForgeRunSignature } from "./forge-run-signature.js";
 import { createForgeSessionStorage } from "./forge-session-storage.js";
 import {
   buildForgeSynthesisPrompt,
@@ -34,6 +53,7 @@ import {
   rebuildQueuedAssignments,
   removeForgeDraftTask,
   updateForgeApprovedTask,
+  updateForgeTaskContextCapsule,
   upsertForgeDraftTask,
 } from "./forge-task-editor-runtime.js";
 import {
@@ -205,6 +225,11 @@ export default function createForgeRoomHostRuntime() {
         writeJsonFile: io.writeJsonFile,
         writeTextFile: io.writeTextFile,
       });
+      const profileStorage = createForgeOperatorProfileStorage({
+        ensureRuntimeDirectory: io.ensureRuntimeDirectory,
+        readJsonFile: io.readJsonFile,
+        writeJsonFile: io.writeJsonFile,
+      });
       const handoffExport = createForgeHandoffExport();
       const runtime: ForgeRuntime = {
         activeSession: null,
@@ -236,6 +261,109 @@ export default function createForgeRoomHostRuntime() {
 
       function readCurrentState(): ForgeRuntimeState {
         return runtime.store.getState();
+      }
+
+      function dispatchDecisionTrace(decisionTrace: string[]): void {
+        runtime.store.dispatch({
+          type: "decision-trace/set",
+          decisionTrace,
+        });
+      }
+
+      function dispatchOperatorProfile(operatorProfile: ForgeOperatorProfile): void {
+        runtime.store.dispatch({
+          type: "operator-profile/set",
+          operatorProfile,
+        });
+      }
+
+      function dispatchPreflight(preflight: ForgePreflightState): void {
+        runtime.store.dispatch({
+          type: "preflight/set",
+          preflight,
+        });
+      }
+
+      function dispatchRunContext(
+        runOverride: ForgeRunOverride | null,
+        runSignature: ForgeRunSignature | null
+      ): void {
+        runtime.store.dispatch({
+          type: "run-context/set",
+          runOverride,
+          runSignature,
+        });
+      }
+
+      function readPreflightStageMessage(reason: string): string {
+        const state = readCurrentState();
+        return describeForgePreflightStageImpact(
+          readForgePreflightStage({
+            hasDispatchStarted: state.assignments.some((assignment) => assignment.status !== "queued"),
+            hasSelectedSynthesis: state.selectedSynthesisId !== null,
+            hasTopLevelApprovedTasks: state.approvedTasks.some((task) => task.level === 1),
+            hasTopLevelDraftTasks: state.draftTasks.some((task) => task.level === 1),
+          }),
+          reason
+        );
+      }
+
+      function markPreflightStale(reason: string): void {
+        const state = readCurrentState();
+        dispatchPreflight({
+          ...state.preflight,
+          status: state.preflight.bundle === null ? "idle" : "stale",
+          staleReason: reason,
+        });
+      }
+
+      function syncRunSignature(goal: ForgeGoal | null): void {
+        const state = readCurrentState();
+        if (goal === null) {
+          dispatchRunContext(state.runOverride, null);
+          return;
+        }
+        dispatchRunContext(
+          state.runOverride,
+          buildForgeRunSignature({
+            goal,
+            operatorProfile: state.operatorProfile,
+            runOverride: state.runOverride,
+          })
+        );
+      }
+
+      function invalidatePreflight(reason: string): void {
+        markPreflightStale(reason);
+        syncCoordinatorState({
+          note: readPreflightStageMessage(reason),
+        });
+      }
+
+      function refreshPreflightValidity(goal: ForgeGoal | null): void {
+        if (goal === null) {
+          return;
+        }
+        const state = readCurrentState();
+        const reason = readForgePreflightInvalidationReason({
+          goal,
+          operatorProfile: state.operatorProfile,
+          preflight: state.preflight,
+          runOverride: state.runOverride,
+        });
+        if (reason === null) {
+          if (state.preflight.bundle !== null && state.preflight.status === "stale") {
+            dispatchPreflight({
+              ...state.preflight,
+              status: state.preflight.warnings.length > 0 ? "warning" : "fresh",
+              staleReason: null,
+            });
+          }
+          return;
+        }
+        if (state.preflight.bundle !== null || state.preflight.status === "stale") {
+          markPreflightStale(reason);
+        }
       }
 
       function dispatchGoal(goal: ForgeGoal | null): void {
@@ -305,6 +433,7 @@ export default function createForgeRoomHostRuntime() {
       }
 
       function clearExecutionState(): void {
+        dispatchDecisionTrace([]);
         dispatchApprovedTasks([]);
         dispatchAssignments([]);
         dispatchResponses([]);
@@ -393,6 +522,8 @@ export default function createForgeRoomHostRuntime() {
         dispatchGoal(goal);
         dispatchDraftState([], null, []);
         clearExecutionState();
+        syncRunSignature(goal);
+        markPreflightStale("Goal changed after the last preflight run.");
         syncCoordinatorState({
           planStatus: "drafting",
           synthesisStatus: "idle",
@@ -412,6 +543,7 @@ export default function createForgeRoomHostRuntime() {
         runtime.hydrating = (async () => {
           runtime.paths = await io.resolveRuntimePaths();
           runtime.sessionList = await storage.listSessions(runtime.paths);
+          dispatchOperatorProfile(await profileStorage.loadProfile(runtime.paths));
           runtime.hydrated = true;
           pushState();
         })()
@@ -467,7 +599,9 @@ export default function createForgeRoomHostRuntime() {
         runtime.sessionList = await storage.listSessions(runtime.paths);
         runtime.store.dispatch({
           type: "runtime/hydrate",
-          state: createForgeRuntimeStateFromSession(session),
+          state: createForgeRuntimeStateFromSession(session, {
+            operatorProfile: readCurrentState().operatorProfile,
+          }),
         });
         syncCoordinatorState({
           planStatus: "drafting",
@@ -496,12 +630,83 @@ export default function createForgeRoomHostRuntime() {
         return api.dispatchBridge;
       }
 
+      function buildPromptContext(taskContextCapsule: ForgeContextCapsule | null = null): string {
+        const state = readCurrentState();
+        return renderForgePromptContext({
+          bundle: state.preflight.bundle,
+          contextCapsule: taskContextCapsule,
+          decisionTrace: state.decisionTrace,
+          runSignature: state.runSignature,
+        });
+      }
+
+      function buildCurrentSynthesisProvenance(state: ForgeRuntimeState) {
+        return buildForgeSynthesisProvenance({
+          operatorProfile: state.operatorProfile,
+          preflight: state.preflight,
+          runOverride: state.runOverride,
+          runSignature: state.runSignature,
+        });
+      }
+
+      async function ensureFreshPreflight(goal: ForgeGoal): Promise<void> {
+        const state = readCurrentState();
+        const invalidationReason = readForgePreflightInvalidationReason({
+          goal,
+          operatorProfile: state.operatorProfile,
+          preflight: state.preflight,
+          runOverride: state.runOverride,
+        });
+        if (
+          invalidationReason === null &&
+          (state.preflight.status === "fresh" || state.preflight.status === "warning")
+        ) {
+          return;
+        }
+
+        const dispatchBridge =
+          typeof api.dispatchBridge === "function" ? await requireDispatchBridge() : null;
+        try {
+          const preflight = await buildForgePreflightState({
+            dispatchBridge,
+            goal,
+            operatorProfile: state.operatorProfile,
+            protocol: {
+              key: FORGE_PROTOCOL_KEYS.preflightPreAnalysis,
+              room: FORGE_ROOM_ID,
+              scenario: FORGE_PROTOCOL_SCENARIOS.preflightPreAnalysis,
+            },
+            runOverride: state.runOverride,
+            sessionId: state.activeSessionId,
+          });
+          dispatchPreflight(preflight.state);
+          dispatchRunContext(state.runOverride, preflight.runSignature);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          const fallback = buildForgeFallbackPreflightState({
+            errorMessage: message,
+            goal,
+            operatorProfile: state.operatorProfile,
+            runOverride: state.runOverride,
+            sessionId: state.activeSessionId,
+          });
+          dispatchPreflight(fallback.state);
+          dispatchRunContext(state.runOverride, fallback.runSignature);
+          api.log("warn", `Forge Room preflight fallback engaged: ${message}`);
+        }
+      }
+
       async function runBreakdownAttempt(
         goal: ForgeGoal,
         extraFeedback: string | null
       ): Promise<string> {
         const dispatchBridge = await requireDispatchBridge();
-        const promptText = [buildForgeBreakdownPrompt(goal), extraFeedback ?? ""]
+        const promptText = [
+          buildForgeBreakdownPrompt(goal, {
+            promptContext: buildPromptContext(),
+          }),
+          extraFeedback ?? "",
+        ]
           .filter((entry) => entry && entry.trim() !== "")
           .join("\n\n");
         const bridgeResult = readBridgeResult(
@@ -563,11 +768,14 @@ export default function createForgeRoomHostRuntime() {
         dispatchGoal(setGoalStatus(nextGoal, "draft"));
         dispatchDraftState([], null, []);
         clearExecutionState();
+        syncRunSignature(nextGoal);
+        markPreflightStale("Goal changed after the last preflight run.");
         syncCoordinatorState({
           planStatus: "generating-draft",
           synthesisStatus: "idle",
-          note: "Generating a draft breakdown through the Architect lane.",
+          note: "Running preflight and generating a draft breakdown through the Architect lane.",
         });
+        await ensureFreshPreflight(nextGoal);
 
         let lastParsed = {
           draftSourceText: "",
@@ -862,6 +1070,7 @@ export default function createForgeRoomHostRuntime() {
         dispatchConflicts([]);
         dispatchSyntheses([], null);
         dispatchExports([]);
+        dispatchDecisionTrace([]);
         dispatchGoal(setGoalStatus(state.currentGoal, "approved"));
         syncCoordinatorState({
           planStatus: "ready-for-assignment",
@@ -933,6 +1142,159 @@ export default function createForgeRoomHostRuntime() {
         return {
           success: true,
           assignmentCount: assignments.length,
+        };
+      }
+
+      async function updateTaskContextCapsule(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        message?: string;
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const state = readCurrentState();
+        const taskId = asNonEmptyString(payload["taskId"]);
+        if (taskId === null) {
+          return {
+            success: false,
+            message: "An approved task id is required.",
+          };
+        }
+        if (state.responses.some((response) => response.taskId === taskId)) {
+          return {
+            success: false,
+            message: "Context capsule cannot change after responses have been captured.",
+          };
+        }
+        if (
+          state.assignments.some(
+            (assignment) => assignment.taskId === taskId && assignment.status !== "queued"
+          )
+        ) {
+          return {
+            success: false,
+            message: "Context capsule cannot change after dispatch has started.",
+          };
+        }
+        const updated = updateForgeTaskContextCapsule({
+          approvedTasks: state.approvedTasks,
+          payload,
+        });
+        if (updated.validationMessage) {
+          return {
+            success: false,
+            message: updated.validationMessage,
+          };
+        }
+        dispatchApprovedTasks(updated.approvedTasks);
+        await persistCurrentSession("approved-task-context-updated", {
+          sessionId: state.activeSessionId,
+          taskId,
+        });
+        return {
+          success: true,
+        };
+      }
+
+      async function updateOperatorProfileCommand(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        message?: string;
+      }> {
+        await ensureHydrated();
+        if (runtime.paths === null) {
+          throw new Error("Forge Room paths are unavailable.");
+        }
+        const saved = await profileStorage.saveProfile(runtime.paths, payload);
+        dispatchOperatorProfile(saved);
+        const goal = readCurrentState().currentGoal;
+        if (goal !== null) {
+          dispatchRunContext(
+            readCurrentState().runOverride,
+            buildForgeRunSignature({
+              goal,
+              operatorProfile: saved,
+              runOverride: readCurrentState().runOverride,
+            })
+          );
+          invalidatePreflight("Operator profile changed after the last preflight run.");
+        }
+        if (readCurrentState().activeSessionId !== null) {
+          await persistCurrentSession("operator-profile-updated", {
+            sessionId: readCurrentState().activeSessionId,
+          });
+        }
+        return {
+          success: true,
+        };
+      }
+
+      async function updateRunOverrideCommand(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        message?: string;
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const state = readCurrentState();
+        const tools = toRecord(payload["tools"]);
+        const nextRunOverride: ForgeRunOverride = {
+          ...createEmptyForgeRunOverride(),
+          ...(state.runOverride ?? {}),
+          notes: asNonEmptyString(payload["notes"]) ?? "",
+          enableRovoPreAnalysis: payload["enableRovoPreAnalysis"] === true,
+          tools: {
+            ...(state.runOverride?.tools ?? {}),
+            ...Object.fromEntries(
+              Object.entries(tools).filter(([, value]) => typeof value === "boolean")
+            ),
+          },
+        };
+        dispatchRunContext(
+          nextRunOverride,
+          state.currentGoal
+            ? buildForgeRunSignature({
+                goal: state.currentGoal,
+                operatorProfile: state.operatorProfile,
+                runOverride: nextRunOverride,
+              })
+            : state.runSignature
+        );
+        if (state.currentGoal !== null) {
+          invalidatePreflight("Run override changed after the last preflight run.");
+        }
+        await persistCurrentSession("run-override-updated", {
+          sessionId: state.activeSessionId,
+        });
+        return {
+          success: true,
+        };
+      }
+
+      async function runPreflightCommand(): Promise<{
+        success: boolean;
+        message?: string;
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const state = readCurrentState();
+        if (state.currentGoal === null) {
+          return {
+            success: false,
+            message: "Save a goal before running preflight.",
+          };
+        }
+        await ensureFreshPreflight(state.currentGoal);
+        refreshPreflightValidity(state.currentGoal);
+        await persistCurrentSession("preflight-ran", {
+          sessionId: state.activeSessionId,
+          status: readCurrentState().preflight.status,
+        });
+        syncCoordinatorState({
+          note:
+            readCurrentState().preflight.status === "warning"
+              ? "Preflight ran with warnings; Forge kept a minimal safe context."
+              : "Preflight refreshed successfully.",
+        });
+        return {
+          success: true,
         };
       }
 
@@ -1014,6 +1376,7 @@ export default function createForgeRoomHostRuntime() {
         dispatchResponses(nextResponses);
         dispatchConflicts(nextConflicts);
         dispatchSyntheses([], null);
+        dispatchDecisionTrace([]);
         dispatchGoal(
           setGoalStatus(
             state.currentGoal,
@@ -1070,6 +1433,7 @@ export default function createForgeRoomHostRuntime() {
             message: "There are no queued assignments to dispatch.",
           };
         }
+        await ensureFreshPreflight(goal);
 
         syncCoordinatorState({
           planStatus: "dispatching",
@@ -1089,6 +1453,7 @@ export default function createForgeRoomHostRuntime() {
         ) {
           dispatchSyntheses([], null);
           dispatchExports([]);
+          dispatchDecisionTrace([]);
         }
 
         for (const queuedAssignment of queuedAssignments) {
@@ -1136,6 +1501,7 @@ export default function createForgeRoomHostRuntime() {
                     approvedTasks,
                     assignment: dispatchedAssignment,
                     goal,
+                    promptContext: buildPromptContext(task.contextCapsule ?? null),
                     task,
                   }),
                   extraFeedback,
@@ -1299,6 +1665,8 @@ export default function createForgeRoomHostRuntime() {
         }
         const currentGoal = state.currentGoal;
         const dispatchBridge = await requireDispatchBridge();
+        await ensureFreshPreflight(currentGoal);
+        const generationState = readCurrentState();
         syncCoordinatorState({
           planStatus: "synthesis-ready",
           synthesisStatus: "ready",
@@ -1307,13 +1675,13 @@ export default function createForgeRoomHostRuntime() {
         const promoteFallbackSynthesis = async (
           reason: string
         ): Promise<{ success: boolean; synthesisId?: string; message?: string }> => {
-          const fallback = createForgeSynthesisCandidate({
-            conflicts: state.conflicts,
+          const fallbackBase = createForgeSynthesisCandidate({
+            conflicts: generationState.conflicts,
             goal: currentGoal,
-            responses: state.responses,
-            tasks: state.approvedTasks,
+            responses: generationState.responses,
+            tasks: generationState.approvedTasks,
           });
-          if (fallback === null) {
+          if (fallbackBase === null) {
             syncCoordinatorState({
               note: reason,
             });
@@ -1322,8 +1690,13 @@ export default function createForgeRoomHostRuntime() {
               message: reason,
             };
           }
+          const fallback = {
+            ...fallbackBase,
+            provenance: buildCurrentSynthesisProvenance(readCurrentState()),
+          };
           const selected = selectForgeSynthesis([...state.syntheses, fallback], fallback.id);
           dispatchSyntheses(selected.syntheses, selected.selectedSynthesisId);
+          dispatchDecisionTrace(fallback.decisionTrace);
           dispatchGoal(setGoalStatus(currentGoal, "synthesis-ready"));
           syncCoordinatorState({
             planStatus: "synthesis-ready",
@@ -1350,10 +1723,11 @@ export default function createForgeRoomHostRuntime() {
             payload: {
               page: "forge-room:synthesis",
               text: buildForgeSynthesisPrompt({
-                conflicts: state.conflicts,
+                conflicts: generationState.conflicts,
                 goal: currentGoal,
-                responses: state.responses,
-                tasks: state.approvedTasks,
+                promptContext: buildPromptContext(),
+                responses: generationState.responses,
+                tasks: generationState.approvedTasks,
               }),
               protocol: {
                 room: FORGE_ROOM_ID,
@@ -1379,20 +1753,25 @@ export default function createForgeRoomHostRuntime() {
           );
         }
         const parsed = parseForgeSynthesisResponse({
-          conflicts: state.conflicts,
+          conflicts: generationState.conflicts,
           goal: currentGoal,
-          responses: state.responses,
-          tasks: state.approvedTasks,
+          responses: generationState.responses,
+          tasks: generationState.approvedTasks,
           rawText: replyText,
         });
         if (parsed.synthesis === null) {
           return await promoteFallbackSynthesis(parsed.validationMessages.join(" "));
         }
+        const nextSynthesis = {
+          ...parsed.synthesis,
+          provenance: buildCurrentSynthesisProvenance(readCurrentState()),
+        };
         const selected = selectForgeSynthesis(
-          [...state.syntheses, parsed.synthesis],
-          parsed.synthesis.id
+          [...state.syntheses, nextSynthesis],
+          nextSynthesis.id
         );
         dispatchSyntheses(selected.syntheses, selected.selectedSynthesisId);
+        dispatchDecisionTrace(nextSynthesis.decisionTrace);
         dispatchGoal(setGoalStatus(currentGoal, "synthesis-ready"));
         syncCoordinatorState({
           planStatus: "synthesis-ready",
@@ -1401,11 +1780,11 @@ export default function createForgeRoomHostRuntime() {
         });
         await persistCurrentSession("synthesis-generated", {
           sessionId: state.activeSessionId,
-          synthesisId: parsed.synthesis.id,
+          synthesisId: nextSynthesis.id,
         });
         return {
           success: true,
-          synthesisId: parsed.synthesis.id,
+          synthesisId: nextSynthesis.id,
         };
       }
 
@@ -1430,6 +1809,9 @@ export default function createForgeRoomHostRuntime() {
         }
         const selected = selectForgeSynthesis(state.syntheses, synthesisId);
         dispatchSyntheses(selected.syntheses, selected.selectedSynthesisId);
+        dispatchDecisionTrace(
+          selected.syntheses.find((entry) => entry.id === selected.selectedSynthesisId)?.decisionTrace ?? []
+        );
         syncCoordinatorState({
           planStatus: "synthesis-ready",
           synthesisStatus: "selected",
@@ -1478,8 +1860,14 @@ export default function createForgeRoomHostRuntime() {
         runtime.sessionList = await storage.listSessions(runtime.paths);
         runtime.store.dispatch({
           type: "runtime/hydrate",
-          state: createForgeRuntimeStateFromSession(latest),
+          state: createForgeRuntimeStateFromSession(latest, {
+            operatorProfile: readCurrentState().operatorProfile,
+          }),
         });
+        if (latest.goal !== null && readCurrentState().runSignature === null) {
+          syncRunSignature(latest.goal);
+        }
+        refreshPreflightValidity(latest.goal);
         syncCoordinatorState({
           note: latest.coordinatorState.note || "Loaded the latest saved Forge session.",
         });
@@ -1500,7 +1888,9 @@ export default function createForgeRoomHostRuntime() {
         try {
           const summary = handoffExport.buildExportReadySummary(session);
           const handoffPackage = summary.exportReady
-            ? handoffExport.buildHandoffPackage(session)
+            ? handoffExport.buildHandoffPackage(session, {
+                fallbackProvenance: buildCurrentSynthesisProvenance(readCurrentState()),
+              })
             : null;
           return {
             success: summary.exportReady,
@@ -1535,7 +1925,9 @@ export default function createForgeRoomHostRuntime() {
         const session = createForgeSessionFromRuntimeState(state, runtime.activeSession);
         runtime.activeSession = session;
         try {
-          const handoffPackage = handoffExport.buildHandoffPackage(session);
+          const handoffPackage = handoffExport.buildHandoffPackage(session, {
+            fallbackProvenance: buildCurrentSynthesisProvenance(state),
+          });
           const selectedSynthesisId = session.selectedSynthesisId;
           if (selectedSynthesisId === null) {
             throw new Error("A selected synthesis is required before export.");
@@ -1601,6 +1993,8 @@ export default function createForgeRoomHostRuntime() {
             return await updateGoal(commandPayload);
           case FORGE_UI_COMMANDS.generateDraft:
             return await generateDraft(commandPayload);
+          case FORGE_UI_COMMANDS.runPreflight:
+            return await runPreflightCommand();
           case FORGE_UI_COMMANDS.applyDraftText:
             return await applyDraftText(commandPayload);
           case FORGE_UI_COMMANDS.upsertDraftTask:
@@ -1611,6 +2005,12 @@ export default function createForgeRoomHostRuntime() {
             return await approveDraft();
           case FORGE_UI_COMMANDS.updateApprovedTask:
             return await updateApprovedTaskSettings(commandPayload);
+          case FORGE_UI_COMMANDS.updateContextCapsule:
+            return await updateTaskContextCapsule(commandPayload);
+          case FORGE_UI_COMMANDS.updateOperatorProfile:
+            return await updateOperatorProfileCommand(commandPayload);
+          case FORGE_UI_COMMANDS.updateRunOverride:
+            return await updateRunOverrideCommand(commandPayload);
           case FORGE_UI_COMMANDS.dispatchAssignments:
             return await dispatchAssignmentsForSession();
           case FORGE_UI_COMMANDS.resolveConflict:

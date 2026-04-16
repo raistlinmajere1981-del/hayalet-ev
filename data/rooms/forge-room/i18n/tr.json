@@ -1,0 +1,437 @@
+{
+  "title": "Forge Odasi",
+  "subtitle": "Hedeflerin gorevlere donustugu, AI rolleri arasinda karsilastirildigi ve sonraki odaya handoff icin hazirlandigi yonlendirmeli bir uretim tezgahi.",
+  "workbench": {
+    "title": "Forge Tezgahi",
+    "subtitle": "Bir hedef tanimla, gorev taslagini incele ve sonraki oda handoff'unu hazirla.",
+    "badges": {
+      "locked": "Kilitli",
+      "monitor": "Izle"
+    },
+    "flow": {
+      "idle": "Bos",
+      "goalDefined": "Hedef Tanimli",
+      "sessionCreated": "Oturum Acildi",
+      "draftReady": "Taslak Hazir",
+      "approved": "Onaylandi",
+      "dispatched": "Dagitildi",
+      "responsesReady": "Yanitlar Hazir",
+      "conflict": "Catisma",
+      "synthesisReady": "Sentez Hazir",
+      "exported": "Exportlandi"
+    },
+    "columns": {
+      "planEyebrow": "Sol",
+      "planTitle": "Plan",
+      "responsesEyebrow": "Orta",
+      "responsesTitle": "Yanit / Karar",
+      "outputEyebrow": "Sag",
+      "outputTitle": "Cikti"
+    },
+    "statusBar": {
+      "requiredAction": "Gerekli adim",
+      "startGoal": "Bu calismayi baslatmak icin hedefi tanimla.",
+      "stage": "Durum {label}",
+      "stats": {
+        "queue": "KUYRUK {count}",
+        "answers": "YANIT {count}",
+        "decisions": "KARAR {count}",
+        "synthesisOpen": "SENTEZ ACIK",
+        "synthesisLocked": "SENTEZ KILITLI",
+        "exportSent": "EXPORT GONDERILDI",
+        "exportReady": "EXPORT HAZIR",
+        "exportLocked": "EXPORT KILITLI"
+      }
+    },
+    "guards": {
+      "requiresSavedGoal": "GEREKLI: KAYITLI HEDEF",
+      "requiresDraftTasks": "GEREKLI: TASLAK GOREVLER",
+      "blockerDraftIssues": "BLOKAJ: TASLAK SORUNLARI",
+      "requiresApprovedPlan": "GEREKLI: ONAYLI PLAN",
+      "blockerNoQueuedWork": "BLOKAJ: KUYRUKTA IS YOK",
+      "requiresResponses": "GEREKLI: YANITLAR",
+      "blockerOpenDecision": "BLOKAJ: ACIK KARAR",
+      "blockerOpenDecisions": "BLOKAJ: ACIK KARARLAR",
+      "stateExportReady": "DURUM: EXPORT HAZIR",
+      "requiresTargetRepairRoom": "GEREKLI: HEDEF REPAIR ROOM",
+      "requiresSelectedSynthesis": "GEREKLI: SECILI SENTEZ",
+      "requiresAcceptanceCriteria": "GEREKLI: KABUL KRITERLERI",
+      "blockerHandoffCheck": "BLOKAJ: HANDOFF KONTROLU"
+    },
+    "primaryAction": {
+      "saveGoal": "Hedefi kaydet",
+      "saveGoalLocked": "KONTROL, HEDEF KAYDEDILENE KADAR KILITLI.",
+      "saveGoalRequired": "SONRAKI ADIM: HEDEFI KAYDET.",
+      "generateDraft": "Taslak uret",
+      "generateDraftRequired": "SONRAKI ADIM: TASLAK URET.",
+      "finishDraft": "Taslagi tamamla",
+      "approveDraft": "Taslagi onayla",
+      "approveDraftRequired": "SONRAKI ADIM: TASLAGI ONAYLA.",
+      "dispatchAssignments": "Dagitimi baslat",
+      "dispatchAssignmentsRequired": "SONRAKI ADIM: ATAMALARI DAGIT.",
+      "reviewResponseLane": "Yanit hattini incele",
+      "waitForResponses": "DURUM BEKLEMEDE: YANITLARI BEKLE.",
+      "generateSynthesis": "Sentez uret",
+      "generateSynthesisRequired": "SONRAKI ADIM: SENTEZ URET.",
+      "resolveDecision": "Karari cozul",
+      "resolveDecisionBlocked": "CALISMA BLOKLU: KARARI COZ.",
+      "chooseSynthesis": "Sentez sec",
+      "chooseSynthesisRequired": "EXPORT KILITLI: SENTEZ SEC.",
+      "exportHandoff": "Handoff export et",
+      "exportHandoffReady": "SON ADIM HAZIR: HANDOFF EXPORT ET.",
+      "checkHandoff": "Handoff'u kontrol et",
+      "reviewExport": "Export'u incele",
+      "exportComplete": "EXPORT TAMAMLANDI: {label}.",
+      "working": "Bu adim uzerinde calisiliyor",
+      "workingLocked": "SISTEM, ADIM TAMAMLANANA KADAR KILITLI."
+    },
+    "panels": {
+      "goal": "Hedef Girisi",
+      "draft": "Taslak Dagilimi",
+      "approved": "Dagitim Plani",
+      "responses": "Yanitlar ve Kararlar",
+      "conflicts": "Catisma Ozeti",
+      "synthesis": "Sentez ve Export",
+      "coordinator": "Koordinator"
+    },
+    "actions": {
+      "createSession": "Oturum olustur",
+      "saveSession": "Oturumu kaydet",
+      "loadLatestSession": "Son kaydi yukle",
+      "approveDraft": "Taslagi onayla",
+      "checkHandoff": "Handoff'u kontrol et",
+      "expand": "Ac",
+      "collapse": "Daralt",
+      "markResolved": "Cozuldu olarak isle",
+      "leaveOpen": "Acik birak",
+      "select": "Sec",
+      "selected": "Secili",
+      "preferSeat": "{seatId} tercih et"
+    },
+    "states": {
+      "emptyGoal": "Henuz bir hedef taslagi yok.",
+      "emptyDraft": "Taslak gorevler burada gorunecek.",
+      "emptyApproved": "Onayli gorevler burada gorunecek.",
+      "emptyResponses": "Yanitlar burada gorunecek.",
+      "emptyConflicts": "Catisma gruplari burada gorunecek.",
+      "emptySynthesis": "Sentez ciktilari burada gorunecek.",
+      "emptySessions": "Henuz kayitli oturum yok."
+    },
+    "common": {
+      "none": "yok"
+    },
+    "defaults": {
+      "newTaskTitle": "Yeni gorev",
+      "newTaskSummary": "Bir sonraki ust seviye Forge gorevini kisaca tarif et."
+    },
+    "dispatchModes": {
+      "singleOwner": "Tek sahip",
+      "compare": "Karsilastir"
+    },
+    "roles": {
+      "architect": "Mimar",
+      "challenger": "Meydan Okuyan",
+      "external-perspective": "Dis Perspektif",
+      "coordinator": "Koordinator"
+    },
+    "goalPanel": {
+      "guide": {
+        "idle": {
+          "title": "PLAN ACIK",
+          "summary": "SONRAKI ADIM: HEDEFI KAYDET"
+        },
+        "sessionCreated": {
+          "title": "PLAN ACIK",
+          "summary": "SONRAKI ADIM: HEDEFI KAYDET"
+        },
+        "goalDefined": {
+          "title": "PLAN HAZIR",
+          "summary": "SONRAKI ADIM: TASLAK URET"
+        },
+        "draftReady": {
+          "title": "PLAN AKTIF",
+          "summary": "SONRAKI ADIM: TASLAGI ONAYLA"
+        },
+        "locked": {
+          "title": "PLAN KILITLI",
+          "summary": "UST AKIS DUZENLEMELERI KAPALI"
+        }
+      },
+      "placeholders": {
+        "goal": "Hedef",
+        "brief": "Ozet",
+        "constraints": "Her satira bir kisit"
+      },
+      "summary": {
+        "targetLabel": "Hedef",
+        "stateLabel": "Durum",
+        "sessionLabel": "Oturum",
+        "draftLabel": "Taslak",
+        "notStarted": "baslamadi",
+        "waiting": "beklemede",
+        "draftCountOne": "{count} gorev",
+        "draftCountOther": "{count} gorev"
+      },
+      "fields": {
+        "goal": "Hedef",
+        "targetRoom": "Hedef oda",
+        "brief": "Ozet",
+        "constraints": "Kisitlar",
+        "constraintsHint": "Her satira bir tane."
+      }
+    },
+    "draftPanel": {
+      "guide": {
+        "idle": {
+          "title": "Taslagi acmak icin hedefi kaydet",
+          "summary": "Bu hat, yukaridaki hedef kaydedilene kadar kilitli kalir."
+        },
+        "sessionCreated": {
+          "title": "Bu hatti acmak icin hedefi kaydet",
+          "summary": "Yukaridaki hedef gerceklesmeden taslak acilmaz."
+        },
+        "goalDefined": {
+          "title": "Taslak duzenlemeyi acmak icin sonraki adimi kullan",
+          "summary": "Ust cubuktan ilk taslagi uret, sonra bu hat duzenlemeye acilir."
+        },
+        "draftReadyBlocked": {
+          "title": "Onayi acmak icin taslagi duzelt",
+          "summary": "Plani onaya hazir hale getirmek icin asagidaki gorev detaylarini sikilastir."
+        },
+        "draftReadyOpen": {
+          "title": "Onayi acmak icin duzenlemeleri tamamla",
+          "summary": "Asagidaki gorev hatlarini netlestir, sonra sonraki adimla taslagi onayla."
+        },
+        "locked": {
+          "title": "Bu hat onaydan sonra kilitlenir",
+          "summary": "Sadece erken adimlari yeniden acmak istiyorsan plani bastan baslat."
+        }
+      },
+      "toolbar": {
+        "countOne": "Taslakta {count} gorev var",
+        "countOther": "Taslakta {count} gorev var",
+        "empty": "Taslak bos"
+      },
+      "empty": {
+        "goalDefined": "Ilk gorev hatlarini burada olusturmak icin sonraki adimi kullan.",
+        "locked": "Akis taslak duzenleme asamasina gelince bu hat acilir."
+      },
+      "fields": {
+        "summary": "Ozet",
+        "seat": "Koltuk",
+        "role": "Rol",
+        "mode": "Mod",
+        "compareSeat": "Karsilastirma koltugu",
+        "persona": "Persona",
+        "checklist": "Kontrol listesi"
+      },
+      "placeholders": {
+        "taskTitle": "Gorev basligi",
+        "taskSummary": "Gorev ozeti",
+        "checklist": "Kontrol listesi",
+        "rawEditor": "{\"tasks\":[{\"title\":\"Gorev basligi\"}]}"
+      },
+      "actions": {
+        "addTask": "Gorev ekle",
+        "toggleRaw": "Gelistirmis / ham",
+        "saveTask": "Gorevi kaydet",
+        "remove": "Kaldir",
+        "applyRawDraft": "Ham taslagi uygula"
+      },
+      "rawTitle": "Gelistirmis / ham taslak duzenleme"
+    },
+    "approvedPanel": {
+      "guide": {
+        "approved": {
+          "title": "DAGITIM HAZIR",
+          "summary": "SONRAKI ADIM: ATAMALARI DAGIT"
+        },
+        "dispatched": {
+          "title": "DAGITIM KILITLI",
+          "summary": "DURUM: IS DEVAM EDIYOR"
+        },
+        "referenceOnly": {
+          "title": "DAGITIM KILITLI",
+          "summary": "DURUM: SADECE REFERANS"
+        },
+        "locked": {
+          "title": "DAGITIM KILITLI",
+          "summary": "GEREKLI: ONAYLI TASLAK"
+        }
+      },
+      "toolbar": {
+        "countOne": "{count} onayli gorev",
+        "countOther": "{count} onayli gorev",
+        "empty": "Onayli gorev yok"
+      },
+      "fields": {
+        "mode": "Mod",
+        "seat": "Koltuk",
+        "role": "Rol",
+        "compareSeat": "Karsilastirma koltugu",
+        "persona": "Persona"
+      },
+      "meta": {
+        "queuedOne": "kuyrukta {count}",
+        "queuedOther": "kuyrukta {count}",
+        "doneOne": "tamamlanan {count}",
+        "doneOther": "tamamlanan {count}"
+      },
+      "actions": {
+        "saveDispatchSettings": "Dagitim ayarlarini kaydet"
+      }
+    },
+    "responsesPanel": {
+      "guide": {
+        "savedGoalLocked": {
+          "title": "MERKEZ KAPI KILITLI",
+          "summary": "GEREKLI: KAYITLI HEDEF"
+        },
+        "approvedDraftLocked": {
+          "title": "MERKEZ KAPI KILITLI",
+          "summary": "GEREKLI: ONAYLI TASLAK"
+        },
+        "dispatchLocked": {
+          "title": "MERKEZ KAPI KILITLI",
+          "summary": "GEREKLI: DAGITIM"
+        },
+        "responseInbound": {
+          "title": "MERKEZ KAPI ACIK",
+          "summary": "DURUM: YANIT GELIYOR"
+        },
+        "awaitingResponses": {
+          "title": "MERKEZ KAPI ACIK",
+          "summary": "DURUM: YANITLAR BEKLENIYOR"
+        },
+        "reviewResponses": {
+          "title": "MERKEZ KAPI ACIK",
+          "summary": "DURUM: YANITLARI INCELE"
+        },
+        "conflictBlocked": {
+          "title": "MERKEZ KAPI BLOKLU",
+          "summary": "GEREKLI: CATISMA COZUMU"
+        },
+        "readOnly": {
+          "title": "MERKEZ KAPI IZLEMEDE",
+          "summary": "DURUM: SALT OKUNUR"
+        },
+        "exportInputs": {
+          "title": "MERKEZ KAPI ARSIV",
+          "summary": "DURUM: EXPORT GIRDISI"
+        }
+      },
+      "chips": {
+        "tasksOne": "{count} gorev",
+        "tasksOther": "{count} gorev",
+        "answersOne": "{count} yanit",
+        "answersOther": "{count} yanit",
+        "decisionsLeftOne": "{count} karar kaldi",
+        "decisionsLeftOther": "{count} karar kaldi",
+        "responsesOne": "{count} cevap",
+        "responsesOther": "{count} cevap",
+        "queuedOne": "kuyrukta {count}",
+        "queuedOther": "kuyrukta {count}",
+        "artifactsOne": "{count} artifact",
+        "artifactsOther": "{count} artifact"
+      },
+      "statuses": {
+        "selected": "secildi",
+        "rejected": "elenen",
+        "captured": "alindi",
+        "decisionMade": "karar verildi",
+        "decisionNeeded": "karar gerekli",
+        "traceSaved": "iz kaydi var"
+      },
+      "empty": {
+        "approved": "Yanit toplamaya baslamak icin bu gorevi Plan alanindan gonder.",
+        "waiting": "Atanan koltugun bu goreve cevap vermesi bekleniyor.",
+        "unsent": "Gorev gonderildigi anda burada yanitlar gorunmeye baslar."
+      },
+      "conflict": {
+        "recordedTitle": "KARAR KAYDEDILDI",
+        "selectTitle": "BIR YANIT SEC",
+        "blockedTitle": "KARAR AKISI TUTUYOR",
+        "recordedSummary": "DURUM: TERCIH KAYDEDILDI",
+        "blockedSummary": "BURAYA DONMEK ICIN SONRAKI ADIMI KULLAN.",
+        "currentPick": "Mevcut tercih: {seatId}"
+      }
+    },
+    "synthesisPanel": {
+      "guide": {
+        "locked": {
+          "title": "CIKTI KAPISI KILITLI",
+          "summary": "GEREKLI: YANITLAR"
+        },
+        "ready": {
+          "title": "CIKTI KAPISI HAZIR",
+          "summary": "SONRAKI ADIM: SENTEZ URET"
+        },
+        "blocked": {
+          "title": "CIKTI KAPISI BLOKLU",
+          "summary": "GEREKLI: CATISMA COZUMU"
+        },
+        "open": {
+          "title": "CIKTI KAPISI ACIK",
+          "summary": "SONRAKI ADIM: SENTEZ SEC"
+        },
+        "archive": {
+          "title": "CIKTI KAPISI ARSIV",
+          "summary": "DURUM: EXPORT TAMAM"
+        }
+      },
+      "outputStatus": {
+        "shipped": "gonderildi",
+        "ready": "hazir",
+        "needsSelection": "secim gerek",
+        "needsDecision": "karar gerek",
+        "needsCriteria": "kriter gerek",
+        "blocked": "bloklu"
+      },
+      "chips": {
+        "answersOne": "{count} yanit",
+        "answersOther": "{count} yanit",
+        "decisionsLeftOne": "{count} karar kaldi",
+        "decisionsLeftOther": "{count} karar kaldi",
+        "synthesesOne": "{count} sentez",
+        "synthesesOther": "{count} sentez",
+        "criteriaOne": "{count} kriter",
+        "criteriaOther": "{count} kriter",
+        "tasksOne": "{count} gorev",
+        "tasksOther": "{count} gorev"
+      },
+      "readiness": {
+        "ready": "DURUM: HANDOFF HAZIR",
+        "blocked": "BLOKAJ: HANDOFF KONTROLU",
+        "requiresSelected": "GEREKLI: SECILI SENTEZ"
+      },
+      "badges": {
+        "selected": "secili"
+      }
+    },
+    "coordinator": {
+      "pending": "Forge mevcut adimi tamamliyor.",
+      "stats": {
+        "state": "durum {label}",
+        "waiting": "bekleyen {count}",
+        "answers": "yanit {count}",
+        "decisions": "karar {count}",
+        "handoff": "handoff {label}"
+      },
+      "latestPackage": "Son paket: {path}",
+      "handoffStatuses": {
+        "sent": "gonderildi",
+        "ready": "hazir",
+        "locked": "kilitli"
+      }
+    },
+    "validation": {
+      "taskRange": "Taslak dagilimi {min} ile {max} arasinda ust seviye gorev icermeli.",
+      "taskMissingTitle": "Gorev {index} bir baslik icermeli.",
+      "taskMissingSummary": "Gorev {index} bir ozet icermeli.",
+      "duplicateTitle": "\"{title}\" gorev basligi tekrar ediyor.",
+      "compareSeatRequired": "\"{title}\" karsilastirma gorevi icin en az bir karsilastirma koltugu sec.",
+      "unknownDependency": "\"{task}\" gorevi bilinmeyen \"{dependency}\" gorevine bagli.",
+      "selfDependency": "\"{task}\" gorevi kendine bagli olamaz."
+    }
+  }
+}

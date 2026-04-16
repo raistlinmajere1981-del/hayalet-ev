@@ -179,6 +179,7 @@ export function normalizeForgeBreakdownDraft(payload: ForgeBreakdownDraftPayload
     level: 1 as const,
     title: task.title.trim(),
     summary: task.summary.trim(),
+    contextCapsule: null,
     executionKind: "task" as const,
     dependsOnTaskIds: [],
     assignable: true,
@@ -208,6 +209,7 @@ export function normalizeForgeBreakdownDraft(payload: ForgeBreakdownDraftPayload
         level: 2,
         title: entry,
         summary: `Checklist item for ${topLevelTask.title}.`,
+        contextCapsule: null,
         executionKind: "checklist",
         dependsOnTaskIds: [],
         assignable: false,
@@ -228,7 +230,12 @@ export function normalizeForgeBreakdownDraft(payload: ForgeBreakdownDraftPayload
   };
 }
 
-export function buildForgeBreakdownPrompt(goal: ForgeGoal): string {
+export function buildForgeBreakdownPrompt(
+  goal: ForgeGoal,
+  options: {
+    promptContext?: string | null;
+  } = {}
+): string {
   return [
     "Return JSON only using this exact schema:",
     toJsonText({
@@ -257,6 +264,7 @@ export function buildForgeBreakdownPrompt(goal: ForgeGoal): string {
     "- Use compare mode only when two seats should answer the same task.",
     "- Use checklist only for non-assignable child steps.",
     "- Keep the plan narrow enough for a Repair Room handoff.",
+    options.promptContext?.trim() ? `Preflight context:\n${options.promptContext.trim()}` : "",
   ].join("\n");
 }
 

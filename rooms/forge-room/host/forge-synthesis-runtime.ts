@@ -5,6 +5,7 @@ import type {
   ForgeSynthesis,
   ForgeTask,
 } from "../shared/types/index.js";
+import { FORGE_MAX_DECISION_TRACE_LINES } from "../shared/forge-constants.js";
 import {
   asNonEmptyString,
   asStringArray,
@@ -73,6 +74,7 @@ function formatConflictsForPrompt(conflicts: ForgeConflict[]): string {
 export function buildForgeSynthesisPrompt(params: {
   conflicts: ForgeConflict[];
   goal: ForgeGoal;
+  promptContext?: string | null;
   responses: ForgeAgentResponse[];
   tasks: ForgeTask[];
 }): string {
@@ -86,9 +88,10 @@ export function buildForgeSynthesisPrompt(params: {
       body: "Full downstream synthesis body",
       selectedResponseIds: ["forge-response-1"],
       unresolvedConflictIds: ["forge-conflict-1"],
-      acceptanceCriteria: ["At least one acceptance criterion"],
-      openQuestions: ["Optional open question"],
-    }),
+        acceptanceCriteria: ["At least one acceptance criterion"],
+        openQuestions: ["Optional open question"],
+        decisionTrace: ["One short decision note"],
+      }),
     `Target room: ${goal.targetRoomId}`,
     `Goal summary: ${goal.summary}`,
     `Goal brief: ${goal.brief || "No additional brief provided."}`,
@@ -114,6 +117,7 @@ export function buildForgeSynthesisPrompt(params: {
     "Keep the output to one final JSON object and synthesize from the response summaries/body excerpts above.",
     "Keep the JSON compact: summary short, body concise, and no prose outside the final JSON object.",
     "Pick the response ids that create the strongest Repair Room handoff and keep the synthesis practical.",
+    params.promptContext?.trim() ? `Preflight context:\n${params.promptContext.trim()}` : "",
   ].join("\n");
 }
 
@@ -176,6 +180,12 @@ export function parseForgeSynthesisResponse(params: {
   const openQuestions = uniqueStrings(asStringArray(record["openQuestions"]));
   const nextOpenQuestions =
     openQuestions.length > 0 ? openQuestions : (fallback?.openQuestions ?? []);
+  const decisionTrace = uniqueStrings(asStringArray(record["decisionTrace"])).slice(
+    0,
+    FORGE_MAX_DECISION_TRACE_LINES
+  );
+  const nextDecisionTrace =
+    decisionTrace.length > 0 ? decisionTrace : (fallback?.decisionTrace ?? []);
   const taskIds = new Set(tasks.map((task) => task.id));
   const sourceTaskIds = uniqueStrings(
     selectedResponseIds
@@ -198,6 +208,8 @@ export function parseForgeSynthesisResponse(params: {
       sourceTaskIds,
       selectedResponseIds,
       unresolvedConflictIds,
+      decisionTrace: nextDecisionTrace,
+      provenance: null,
       acceptanceCriteria: nextAcceptanceCriteria,
       openQuestions: nextOpenQuestions,
       status: "draft",

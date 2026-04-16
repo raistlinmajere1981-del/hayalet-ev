@@ -27,6 +27,11 @@ export function reduceForgeRuntimeState(
         draftSourceText: action.draftSourceText,
         validationMessages: action.validationMessages,
       };
+    case "decision-trace/set":
+      return {
+        ...state,
+        decisionTrace: action.decisionTrace,
+      };
     case "approved/set":
       return {
         ...state,
@@ -62,6 +67,22 @@ export function reduceForgeRuntimeState(
       return {
         ...state,
         coordinatorState: action.coordinatorState,
+      };
+    case "operator-profile/set":
+      return {
+        ...state,
+        operatorProfile: action.operatorProfile,
+      };
+    case "preflight/set":
+      return {
+        ...state,
+        preflight: action.preflight,
+      };
+    case "run-context/set":
+      return {
+        ...state,
+        runOverride: action.runOverride,
+        runSignature: action.runSignature,
       };
     default:
       return state;

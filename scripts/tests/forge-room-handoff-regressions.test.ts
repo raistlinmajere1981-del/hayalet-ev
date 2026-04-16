@@ -43,6 +43,7 @@ test("forge-room handoff export builds the Repair Room contract from the approve
       level: 1,
       title: "Define the persistence boundary",
       summary: "Keep session data room-local.",
+      contextCapsule: null,
       executionKind: "task",
       dependsOnTaskIds: [],
       assignable: true,
@@ -77,6 +78,14 @@ test("forge-room handoff export builds the Repair Room contract from the approve
       id: "forge-synthesis-1",
       summary: "Selected synthesis",
       body: "Keep the first Repair Room handoff narrow and file-backed.",
+      decisionTrace: ["Local export path selected for the first handoff."],
+      provenance: {
+        runSignature: "RepairRoom-v2-result-first-medium-risk-a1b2c3",
+        operatorProfileSummary: ["Working mode result-first.", "Risk tolerance medium."],
+        preflightWarnings: [
+          "Preflight fell back to minimal context because the full bundle could not be prepared.",
+        ],
+      },
       sourceTaskIds: ["forge-task-1"],
       selectedResponseIds: ["forge-response-1"],
       unresolvedConflictIds: [],
@@ -87,6 +96,24 @@ test("forge-room handoff export builds the Repair Room contract from the approve
     },
   ];
   session.selectedSynthesisId = "forge-synthesis-1";
+  session.runSignature = {
+    source: ["result-first", "medium-risk"],
+    updatedAt: "2026-04-15T00:00:00.000Z",
+    value: "RepairRoom-v2-result-first-medium-risk-z9y8x7",
+  };
+  session.decisionTrace = ["Local export path selected for the first handoff."];
+  session.preflight = {
+    bundle: null,
+    errorMessage: "socket timeout: 500",
+    promptCharCount: 0,
+    ranAt: "2026-04-15T00:00:00.000Z",
+    staleReason: null,
+    status: "warning",
+    warnings: [
+      "Preflight fell back to minimal context because the full bundle could not be prepared.",
+      "socket timeout: 500",
+    ],
+  };
   session.conflicts = [
     {
       id: "forge-conflict-1",
@@ -110,6 +137,17 @@ test("forge-room handoff export builds the Repair Room contract from the approve
   assert.equal(handoff.taskGraph.tasks[0]?.assignedRoleId, "architect");
   assert.equal(handoff.conflicts[0]?.preferredResponseId, "forge-response-1");
   assert.deepEqual(handoff.acceptanceCriteria, ["Repair Room can import the handoff package."]);
+  assert.equal(handoff.runSignature, "RepairRoom-v2-result-first-medium-risk-a1b2c3");
+  assert.deepEqual(handoff.contextSummary?.decisionTrace, [
+    "Local export path selected for the first handoff.",
+  ]);
+  assert.deepEqual(handoff.contextSummary?.operatorProfileSummary, [
+    "Working mode result-first.",
+    "Risk tolerance medium.",
+  ]);
+  assert.deepEqual(handoff.contextSummary?.preflightWarnings, [
+    "Preflight fell back to minimal context because the full bundle could not be prepared.",
+  ]);
 });
 
 test("forge-room handoff export readiness blocks exports while conflicts stay open", () => {
@@ -131,6 +169,8 @@ test("forge-room handoff export readiness blocks exports while conflicts stay op
       id: "forge-synthesis-2",
       summary: "Selected synthesis",
       body: "Keep the handoff narrow and file-backed.",
+      decisionTrace: ["Open risk conflict still blocks export."],
+      provenance: null,
       sourceTaskIds: ["forge-task-1"],
       selectedResponseIds: ["forge-response-1"],
       unresolvedConflictIds: ["forge-conflict-2"],

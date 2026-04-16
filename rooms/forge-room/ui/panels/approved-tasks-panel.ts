@@ -28,6 +28,20 @@ function createField(documentRef: Document, labelText: string, control: HTMLElem
   return wrapper;
 }
 
+function createTextarea(
+  documentRef: Document,
+  value: string,
+  placeholder: string,
+  disabled: boolean
+): HTMLTextAreaElement {
+  const textarea = documentRef.createElement("textarea");
+  textarea.className = "forge-textarea forge-textarea--compact";
+  textarea.value = value;
+  textarea.placeholder = placeholder;
+  textarea.disabled = disabled;
+  return textarea;
+}
+
 function createButton(
   documentRef: Document,
   label: string,
@@ -101,6 +115,7 @@ export function renderApprovedTasksPanel(
   state: ForgeUiState,
   text: (path: string[], fallback: string, params?: Record<string, number | string>) => string,
   options: {
+    advancedCapsulesOpen: boolean;
     dispatchBlockedReason: string | null;
     flowState: ForgeWorkbenchUiFlowState;
   }
@@ -112,7 +127,10 @@ export function renderApprovedTasksPanel(
     switch (options.flowState) {
       case "APPROVED":
         return {
-          title: text(["workbench", "approvedPanel", "guide", "approved", "title"], "DISPATCH READY"),
+          title: text(
+            ["workbench", "approvedPanel", "guide", "approved", "title"],
+            "DISPATCH READY"
+          ),
           summary: text(
             ["workbench", "approvedPanel", "guide", "approved", "summary"],
             "NEXT ACTION: DISPATCH ASSIGNMENTS"
@@ -129,6 +147,20 @@ export function renderApprovedTasksPanel(
             "STATE: WORK IN FLIGHT"
           ),
         };
+      case "IDLE":
+      case "GOAL_DEFINED":
+      case "SESSION_CREATED":
+      case "DRAFT_READY":
+        return {
+          title: text(
+            ["workbench", "approvedPanel", "guide", "locked", "title"],
+            "DISPATCH LOCKED"
+          ),
+          summary: text(
+            ["workbench", "approvedPanel", "guide", "locked", "summary"],
+            "REQUIRES: APPROVED DRAFT"
+          ),
+        };
       case "RESPONSES_READY":
       case "CONFLICT":
       case "SYNTHESIS_READY":
@@ -143,14 +175,10 @@ export function renderApprovedTasksPanel(
             "STATE: REFERENCE ONLY"
           ),
         };
-      default:
-        return {
-          title: text(["workbench", "approvedPanel", "guide", "locked", "title"], "DISPATCH LOCKED"),
-          summary: text(
-            ["workbench", "approvedPanel", "guide", "locked", "summary"],
-            "REQUIRES: APPROVED DRAFT"
-          ),
-        };
+      default: {
+        const _exhaustive: never = options.flowState;
+        return _exhaustive;
+      }
     }
   })();
   const settingsLocked = options.flowState !== "APPROVED";
@@ -165,15 +193,25 @@ export function renderApprovedTasksPanel(
         ? text(["workbench", "approvedPanel", "toolbar", "countOne"], "{count} approved task", {
             count: topLevelTasks.length,
           })
-        : text(
-            ["workbench", "approvedPanel", "toolbar", "countOther"],
-            "{count} approved tasks",
-            {
-              count: topLevelTasks.length,
-            }
-          )
+        : text(["workbench", "approvedPanel", "toolbar", "countOther"], "{count} approved tasks", {
+            count: topLevelTasks.length,
+          })
       : text(["workbench", "approvedPanel", "toolbar", "empty"], "No approved tasks");
   toolbar.append(title);
+  if (topLevelTasks.length > 0) {
+    toolbar.append(
+      createButton(
+        documentRef,
+        options.advancedCapsulesOpen
+          ? "Hide advanced capsule"
+          : "Advanced capsule",
+        {
+          datasetKey: "forgeToggleAdvancedCapsules",
+          datasetValue: "true",
+        }
+      )
+    );
+  }
   body.append(toolbar);
   body.append(createGuideCard(documentRef, approvedState.title, approvedState.summary));
 
@@ -197,7 +235,9 @@ export function renderApprovedTasksPanel(
     cards.className = "forge-card-list";
     topLevelTasks.forEach((task) => {
       const taskKey = safeTaskKey(task.id);
-      const taskAssignments = state.snapshot.assignments.filter((entry) => entry.taskId === task.id);
+      const taskAssignments = state.snapshot.assignments.filter(
+        (entry) => entry.taskId === task.id
+      );
       const queuedCount = taskAssignments.filter((entry) => entry.status === "queued").length;
       const completedCount = taskAssignments.filter((entry) => entry.status === "completed").length;
 
@@ -324,6 +364,27 @@ export function renderApprovedTasksPanel(
 
       const controls = documentRef.createElement("div");
       controls.className = "forge-form-grid forge-form-grid--approved";
+      const capsuleSummary = createTextarea(
+        documentRef,
+        task.contextCapsule?.summary ?? "",
+        "Optional task summary",
+        settingsLocked
+      );
+      capsuleSummary.id = `forge-approved-capsule-summary-${taskKey}`;
+      const capsuleModules = createTextarea(
+        documentRef,
+        (task.contextCapsule?.relevantModules ?? []).join("\n"),
+        "One relevant module per line",
+        settingsLocked
+      );
+      capsuleModules.id = `forge-approved-capsule-modules-${taskKey}`;
+      const capsuleConstraints = createTextarea(
+        documentRef,
+        (task.contextCapsule?.constraints ?? []).join("\n"),
+        "One task constraint per line",
+        settingsLocked
+      );
+      capsuleConstraints.id = `forge-approved-capsule-constraints-${taskKey}`;
       controls.append(
         createField(
           documentRef,
@@ -351,23 +412,52 @@ export function renderApprovedTasksPanel(
           personaSelect
         )
       );
-
-      card.append(header, controls);
-      if (options.flowState === "APPROVED") {
-        const saveButton = createButton(
-          documentRef,
-          text(
-            ["workbench", "approvedPanel", "actions", "saveDispatchSettings"],
-            "Save dispatch settings"
-          ),
-          {
-            datasetKey: "forgeSaveApprovedTask",
-            datasetValue: task.id,
-            disabled: taskAssignments.some((assignment) => assignment.status !== "queued"),
-          }
+      if (options.advancedCapsulesOpen) {
+        controls.append(
+          createField(documentRef, "Capsule summary", capsuleSummary),
+          createField(documentRef, "Capsule modules", capsuleModules),
+          createField(documentRef, "Capsule constraints", capsuleConstraints)
         );
-        card.append(saveButton);
       }
+
+      const capsuleHint = documentRef.createElement("p");
+      capsuleHint.className = "forge-panel__hint";
+      capsuleHint.textContent = text(
+        ["workbench", "approvedPanel", "capsuleHint"],
+        options.advancedCapsulesOpen
+          ? "Advanced capsule is session-local prompt context. It supplements preflight for this task only and is not exported."
+          : "Advanced capsule is hidden by default. Open it only when a task needs extra prompt context."
+      );
+
+      const actionRail = documentRef.createElement("div");
+      actionRail.className = "forge-actions";
+      if (options.flowState === "APPROVED") {
+        actionRail.append(
+          createButton(
+            documentRef,
+            text(
+              ["workbench", "approvedPanel", "actions", "saveDispatchSettings"],
+              "Save dispatch settings"
+            ),
+            {
+              datasetKey: "forgeSaveApprovedTask",
+              datasetValue: task.id,
+              disabled: taskAssignments.some((assignment) => assignment.status !== "queued"),
+            }
+          )
+        );
+        if (options.advancedCapsulesOpen) {
+          actionRail.append(
+            createButton(documentRef, "Save capsule", {
+              datasetKey: "forgeSaveContextCapsule",
+              datasetValue: task.id,
+              disabled: taskAssignments.some((assignment) => assignment.status !== "queued"),
+            })
+          );
+        }
+      }
+
+      card.append(header, controls, capsuleHint, actionRail);
       cards.append(card);
     });
     body.append(cards);

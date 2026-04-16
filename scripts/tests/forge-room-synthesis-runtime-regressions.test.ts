@@ -25,6 +25,7 @@ const synthesisTasks = [
     level: 1 as const,
     title: "Frame boundary",
     summary: "Define the seam.",
+    contextCapsule: null,
     executionKind: "task" as const,
     dependsOnTaskIds: [],
     assignable: true,
@@ -103,6 +104,7 @@ test("forge-room synthesis runtime builds a prompt with response ids and parses 
       body: "Blend the local export shape with explicit risk notes.",
       selectedResponseIds: ["forge-response-1", "forge-response-2"],
       unresolvedConflictIds: ["forge-conflict-1"],
+      decisionTrace: ["Compare lane kept explicit risk framing."],
       acceptanceCriteria: ["Repair Room can import the handoff JSON."],
       openQuestions: ["Should Repair Room keep manual import in v1?"],
     }),
@@ -111,6 +113,8 @@ test("forge-room synthesis runtime builds a prompt with response ids and parses 
   assert.deepEqual(parsed.validationMessages, []);
   assert.equal(parsed.synthesis?.selectedResponseIds.length, 2);
   assert.deepEqual(parsed.synthesis?.unresolvedConflictIds, ["forge-conflict-1"]);
+  assert.deepEqual(parsed.synthesis?.decisionTrace, ["Compare lane kept explicit risk framing."]);
+  assert.equal(parsed.synthesis?.provenance, null);
 });
 
 test("forge-room synthesis runtime falls back to captured responses when the AI omits ids", () => {
@@ -130,4 +134,5 @@ test("forge-room synthesis runtime falls back to captured responses when the AI 
   assert.deepEqual(parsed.validationMessages, []);
   assert.equal(parsed.synthesis?.selectedResponseIds.length, 1);
   assert.deepEqual(parsed.synthesis?.acceptanceCriteria, ["Repair Room can import the handoff JSON."]);
+  assert.equal(parsed.synthesis?.provenance, null);
 });

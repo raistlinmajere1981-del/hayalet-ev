@@ -9,6 +9,14 @@ import type {
   ForgeSynthesis,
   ForgeCoordinatorState,
   ForgeHandoffExportRecord,
+  ForgeOperatorProfile,
+  ForgePreflightState,
+  ForgeRunOverride,
+  ForgeRunSignature,
+} from "../../shared/types/index.js";
+import {
+  createDefaultForgeOperatorProfile,
+  createEmptyForgePreflightState,
 } from "../../shared/types/index.js";
 
 export interface ForgeRuntimeState {
@@ -21,8 +29,13 @@ export interface ForgeRuntimeState {
   draftTasks: ForgeTask[];
   draftSourceText: string | null;
   validationMessages: string[];
+  decisionTrace: string[];
   exports: ForgeHandoffExportRecord[];
+  operatorProfile: ForgeOperatorProfile;
+  preflight: ForgePreflightState;
   responses: ForgeAgentResponse[];
+  runOverride: ForgeRunOverride | null;
+  runSignature: ForgeRunSignature | null;
   selectedSynthesisId: string | null;
   syntheses: ForgeSynthesis[];
 }
@@ -31,6 +44,41 @@ export interface ForgeSessionListItem {
   id: string;
   updatedAt: string;
   title: string;
+}
+
+function normalizeForgeTask(task: ForgeTask): ForgeTask {
+  return {
+    ...task,
+    contextCapsule:
+      task.contextCapsule &&
+      typeof task.contextCapsule === "object" &&
+      Array.isArray(task.contextCapsule) === false
+        ? {
+            summary:
+              typeof task.contextCapsule.summary === "string" ? task.contextCapsule.summary : "",
+            relevantModules: Array.isArray(task.contextCapsule.relevantModules)
+              ? task.contextCapsule.relevantModules.filter(
+                  (entry): entry is string => typeof entry === "string"
+                )
+              : [],
+            constraints: Array.isArray(task.contextCapsule.constraints)
+              ? task.contextCapsule.constraints.filter(
+                  (entry): entry is string => typeof entry === "string"
+                )
+              : [],
+          }
+        : null,
+  };
+}
+
+function normalizeForgeTasks(tasks: ForgeTask[]): ForgeTask[] {
+  return tasks.map((task) => normalizeForgeTask(task));
+}
+
+function normalizeForgeDecisionTrace(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
 }
 
 export function createForgeCoordinatorState(
@@ -59,10 +107,15 @@ export function createEmptyForgeRuntimeState(): ForgeRuntimeState {
     draftTasks: [],
     draftSourceText: null,
     validationMessages: [],
+    decisionTrace: [],
     approvedTasks: [],
     assignments: [],
     exports: [],
+    operatorProfile: createDefaultForgeOperatorProfile(),
+    preflight: createEmptyForgePreflightState(),
     responses: [],
+    runOverride: null,
+    runSignature: null,
     conflicts: [],
     syntheses: [],
     selectedSynthesisId: null,
@@ -86,6 +139,10 @@ export function createEmptyForgeSession(sessionId: string): ForgeSession {
     conflicts: [],
     syntheses: [],
     selectedSynthesisId: null,
+    decisionTrace: [],
+    preflight: createEmptyForgePreflightState(),
+    runOverride: null,
+    runSignature: null,
     exports: [],
     coordinatorState: createForgeCoordinatorState({
       note: "Session created. Waiting for the first goal draft.",
@@ -96,21 +153,71 @@ export function createEmptyForgeSession(sessionId: string): ForgeSession {
   };
 }
 
-export function createForgeRuntimeStateFromSession(session: ForgeSession): ForgeRuntimeState {
+export function createForgeRuntimeStateFromSession(
+  session: ForgeSession,
+  overrides: {
+    operatorProfile?: ForgeOperatorProfile;
+  } = {}
+): ForgeRuntimeState {
   const sessionRecord = session as Partial<ForgeSession>;
   const coordinatorState = createForgeCoordinatorState(sessionRecord.coordinatorState);
   return {
     activeSessionId: session.id,
     currentGoal: session.goal,
-    draftTasks: Array.isArray(session.draftTasks) ? session.draftTasks : [],
+    draftTasks: Array.isArray(session.draftTasks) ? normalizeForgeTasks(session.draftTasks) : [],
     draftSourceText: typeof session.draftSourceText === "string" ? session.draftSourceText : null,
     validationMessages: Array.isArray(session.validationMessages) ? session.validationMessages : [],
-    approvedTasks: Array.isArray(session.approvedTasks) ? session.approvedTasks : [],
+    decisionTrace: normalizeForgeDecisionTrace(sessionRecord.decisionTrace),
+    approvedTasks: Array.isArray(session.approvedTasks)
+      ? normalizeForgeTasks(session.approvedTasks)
+      : [],
     assignments: Array.isArray(session.assignments) ? session.assignments : [],
     exports: Array.isArray(session.exports) ? session.exports : [],
+    operatorProfile: overrides.operatorProfile ?? createDefaultForgeOperatorProfile(),
+    preflight:
+      sessionRecord.preflight && typeof sessionRecord.preflight === "object"
+        ? (sessionRecord.preflight as ForgePreflightState)
+        : createEmptyForgePreflightState(),
     responses: Array.isArray(session.responses) ? session.responses : [],
+    runOverride:
+      sessionRecord.runOverride && typeof sessionRecord.runOverride === "object"
+        ? (sessionRecord.runOverride as ForgeRunOverride)
+        : null,
+    runSignature:
+      sessionRecord.runSignature && typeof sessionRecord.runSignature === "object"
+        ? (sessionRecord.runSignature as ForgeRunSignature)
+        : null,
     conflicts: Array.isArray(session.conflicts) ? session.conflicts : [],
-    syntheses: Array.isArray(session.syntheses) ? session.syntheses : [],
+    syntheses: Array.isArray(session.syntheses)
+      ? session.syntheses.map((synthesis) => ({
+          ...synthesis,
+          decisionTrace: normalizeForgeDecisionTrace(synthesis.decisionTrace),
+          provenance:
+            synthesis.provenance &&
+            typeof synthesis.provenance === "object" &&
+            Array.isArray(synthesis.provenance) === false
+              ? {
+                  runSignature:
+                    typeof synthesis.provenance.runSignature === "string" &&
+                    synthesis.provenance.runSignature.trim() !== ""
+                      ? synthesis.provenance.runSignature
+                      : null,
+                  operatorProfileSummary: Array.isArray(
+                    synthesis.provenance.operatorProfileSummary
+                  )
+                    ? synthesis.provenance.operatorProfileSummary.filter(
+                        (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+                      )
+                    : [],
+                  preflightWarnings: Array.isArray(synthesis.provenance.preflightWarnings)
+                    ? synthesis.provenance.preflightWarnings.filter(
+                        (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+                      )
+                    : [],
+                }
+              : null,
+        }))
+      : [],
     selectedSynthesisId: session.selectedSynthesisId,
     coordinatorState,
   };
@@ -129,12 +236,16 @@ export function createForgeSessionFromRuntimeState(
     draftTasks: state.draftTasks,
     draftSourceText: state.draftSourceText,
     validationMessages: state.validationMessages,
+    decisionTrace: state.decisionTrace,
     approvedTasks: state.approvedTasks,
     assignments: state.assignments,
     responses: state.responses,
     conflicts: state.conflicts,
     syntheses: state.syntheses,
     selectedSynthesisId: state.selectedSynthesisId,
+    preflight: state.preflight,
+    runOverride: state.runOverride,
+    runSignature: state.runSignature,
     exports: state.exports,
     coordinatorState: state.coordinatorState,
     eventLog: previous?.eventLog ?? [],

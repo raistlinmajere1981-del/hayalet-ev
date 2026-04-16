@@ -236,7 +236,9 @@ export function renderResponsesPanel(
     },
     text
   );
-  const conflictByTaskId = new Map(state.snapshot.conflicts.map((conflict) => [conflict.taskId, conflict]));
+  const conflictByTaskId = new Map(
+    state.snapshot.conflicts.map((conflict) => [conflict.taskId, conflict])
+  );
   const responsesByTaskId = new Map<string, typeof state.snapshot.responses>();
   state.snapshot.responses.forEach((response) => {
     const bucket = responsesByTaskId.get(response.taskId) ?? [];
@@ -288,7 +290,9 @@ export function renderResponsesPanel(
     list.className = "forge-card-list";
     approvedTasks.forEach((task) => {
       const taskResponses = responsesByTaskId.get(task.id) ?? [];
-      const taskAssignments = state.snapshot.assignments.filter((assignment) => assignment.taskId === task.id);
+      const taskAssignments = state.snapshot.assignments.filter(
+        (assignment) => assignment.taskId === task.id
+      );
       const conflict = conflictByTaskId.get(task.id) ?? null;
 
       const card = documentRef.createElement("article");
@@ -456,10 +460,19 @@ export function renderResponsesPanel(
         const conflictTitle = documentRef.createElement("strong");
         conflictTitle.textContent =
           conflict.status === "resolved"
-            ? text(["workbench", "responsesPanel", "conflict", "recordedTitle"], "DECISION RECORDED")
+            ? text(
+                ["workbench", "responsesPanel", "conflict", "recordedTitle"],
+                "DECISION RECORDED"
+              )
             : conflictInteractive
-              ? text(["workbench", "responsesPanel", "conflict", "selectTitle"], "SELECT ONE RESPONSE")
-              : text(["workbench", "responsesPanel", "conflict", "blockedTitle"], "DECISION HOLDS RUN");
+              ? text(
+                  ["workbench", "responsesPanel", "conflict", "selectTitle"],
+                  "SELECT ONE RESPONSE"
+                )
+              : text(
+                  ["workbench", "responsesPanel", "conflict", "blockedTitle"],
+                  "DECISION HOLDS RUN"
+                );
         const conflictSummary = documentRef.createElement("p");
         conflictSummary.className = "forge-panel__hint";
         conflictSummary.textContent = conflictInteractive

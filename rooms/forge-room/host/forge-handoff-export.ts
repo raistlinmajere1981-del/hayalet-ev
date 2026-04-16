@@ -3,6 +3,7 @@ import type {
   ForgeExportReadinessSummary,
   ForgeHandoffPackage,
   ForgeSession,
+  ForgeSynthesisProvenance,
   ForgeSynthesis,
 } from "../shared/types/index.js";
 import { slugifyFilePart } from "./forge-runtime-support.js";
@@ -33,7 +34,12 @@ export function createForgeHandoffExport() {
     return criteria;
   }
 
-  function buildHandoffPackage(session: ForgeSession): ForgeHandoffPackage {
+  function buildHandoffPackage(
+    session: ForgeSession,
+    options: {
+      fallbackProvenance?: ForgeSynthesisProvenance | null;
+    } = {}
+  ): ForgeHandoffPackage {
     const exportSummary = buildExportReadySummary(session);
     if (exportSummary.exportReady !== true) {
       throw new Error(exportSummary.reason);
@@ -48,9 +54,15 @@ export function createForgeHandoffExport() {
 
     const selected = requireSelectedSynthesis(session);
     const acceptanceCriteria = readAcceptanceCriteria(session, selected);
+    const provenance = selected.provenance ?? options.fallbackProvenance ?? null;
     return {
       schemaVersion: FORGE_HANDOFF_SCHEMA_VERSION,
       targetRoomId: "repair-room",
+      ...(provenance?.runSignature
+        ? { runSignature: provenance.runSignature }
+        : session.runSignature
+          ? { runSignature: session.runSignature.value }
+          : {}),
       goalId: goal.id,
       goalSummary: goal.summary,
       goalBrief: goal.brief,
@@ -97,6 +109,11 @@ export function createForgeHandoffExport() {
       })),
       acceptanceCriteria,
       repoRefs: [],
+      contextSummary: {
+        decisionTrace: selected.decisionTrace,
+        operatorProfileSummary: provenance?.operatorProfileSummary ?? [],
+        preflightWarnings: provenance?.preflightWarnings ?? [],
+      },
       createdAt: new Date().toISOString(),
       createdBy: {
         actorKind: "coordinator",

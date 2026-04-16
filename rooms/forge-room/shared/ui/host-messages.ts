@@ -71,6 +71,11 @@ export function sanitizeForgeRoomSnapshot(payload: unknown): ForgeRoomSnapshot {
           (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
         )
       : fallback.validationMessages,
+    decisionTrace: Array.isArray(source["decisionTrace"])
+      ? source["decisionTrace"].filter(
+          (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
+        )
+      : fallback.decisionTrace,
     approvedTasks: Array.isArray(source["approvedTasks"])
       ? (source["approvedTasks"] as ForgeRoomSnapshot["approvedTasks"])
       : fallback.approvedTasks,
@@ -86,9 +91,33 @@ export function sanitizeForgeRoomSnapshot(payload: unknown): ForgeRoomSnapshot {
       Array.isArray(source["exportSummary"]) === false
         ? (source["exportSummary"] as ForgeRoomSnapshot["exportSummary"])
         : fallback.exportSummary,
+    operatorProfile:
+      source["operatorProfile"] !== null &&
+      typeof source["operatorProfile"] === "object" &&
+      Array.isArray(source["operatorProfile"]) === false
+        ? (source["operatorProfile"] as ForgeRoomSnapshot["operatorProfile"])
+        : fallback.operatorProfile,
+    preflight:
+      source["preflight"] !== null &&
+      typeof source["preflight"] === "object" &&
+      Array.isArray(source["preflight"]) === false
+        ? (source["preflight"] as ForgeRoomSnapshot["preflight"])
+        : fallback.preflight,
     responses: Array.isArray(source["responses"])
       ? (source["responses"] as ForgeRoomSnapshot["responses"])
       : fallback.responses,
+    runOverride:
+      source["runOverride"] !== null &&
+      typeof source["runOverride"] === "object" &&
+      Array.isArray(source["runOverride"]) === false
+        ? (source["runOverride"] as ForgeRoomSnapshot["runOverride"])
+        : fallback.runOverride,
+    runSignature:
+      source["runSignature"] !== null &&
+      typeof source["runSignature"] === "object" &&
+      Array.isArray(source["runSignature"]) === false
+        ? (source["runSignature"] as ForgeRoomSnapshot["runSignature"])
+        : fallback.runSignature,
     conflicts: Array.isArray(source["conflicts"])
       ? (source["conflicts"] as ForgeRoomSnapshot["conflicts"])
       : fallback.conflicts,

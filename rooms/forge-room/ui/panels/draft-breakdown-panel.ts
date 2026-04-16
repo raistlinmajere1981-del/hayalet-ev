@@ -100,8 +100,9 @@ function translateValidationMessage(
   message: string,
   text: (path: string[], fallback: string, params?: Record<string, number | string>) => string
 ): string {
-  const taskRangeMatch =
-    /^Draft breakdown must contain (\d+) to (\d+) top-level tasks\.$/.exec(message);
+  const taskRangeMatch = /^Draft breakdown must contain (\d+) to (\d+) top-level tasks\.$/.exec(
+    message
+  );
   if (taskRangeMatch) {
     return text(
       ["workbench", "validation", "taskRange"],
@@ -140,8 +141,9 @@ function translateValidationMessage(
     );
   }
 
-  const compareSeatMatch =
-    /^Compare task "(.+)" must define at least one comparison seat\.$/.exec(message);
+  const compareSeatMatch = /^Compare task "(.+)" must define at least one comparison seat\.$/.exec(
+    message
+  );
   if (compareSeatMatch) {
     return text(
       ["workbench", "validation", "compareSeatRequired"],
@@ -150,8 +152,7 @@ function translateValidationMessage(
     );
   }
 
-  const unknownDependencyMatch =
-    /^Task "(.+)" depends on unknown task "(.+)"\.$/.exec(message);
+  const unknownDependencyMatch = /^Task "(.+)" depends on unknown task "(.+)"\.$/.exec(message);
   if (unknownDependencyMatch) {
     return text(
       ["workbench", "validation", "unknownDependency"],
@@ -245,7 +246,12 @@ export function renderDraftBreakdownPanel(
                 "Refine the task lanes below, then use Next Step to approve the draft."
               ),
             };
-      default:
+      case "APPROVED":
+      case "DISPATCHED":
+      case "RESPONSES_READY":
+      case "CONFLICT":
+      case "SYNTHESIS_READY":
+      case "EXPORTED":
         return {
           title: text(
             ["workbench", "draftPanel", "guide", "locked", "title"],
@@ -256,6 +262,10 @@ export function renderDraftBreakdownPanel(
             "Restart the plan only if you intend to reopen earlier steps."
           ),
         };
+      default: {
+        const _exhaustive: never = options.flowState;
+        return _exhaustive;
+      }
     }
   })();
   const checklistByParentId = new Map(

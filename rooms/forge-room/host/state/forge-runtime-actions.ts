@@ -4,6 +4,10 @@ import type {
   ForgeTaskAssignment,
   ForgeAgentResponse,
   ForgeConflict,
+  ForgeOperatorProfile,
+  ForgePreflightState,
+  ForgeRunOverride,
+  ForgeRunSignature,
   ForgeSynthesis,
 } from "../../shared/types/index.js";
 import type { ForgeRuntimeState } from "./forge-runtime-state.js";
@@ -26,6 +30,10 @@ export type ForgeRuntimeAction =
       draftTasks: ForgeTask[];
       draftSourceText: string | null;
       validationMessages: string[];
+    }
+  | {
+      type: "decision-trace/set";
+      decisionTrace: string[];
     }
   | {
       type: "approved/set";
@@ -55,4 +63,17 @@ export type ForgeRuntimeAction =
   | {
       type: "coordinator/set";
       coordinatorState: ForgeRuntimeState["coordinatorState"];
+    }
+  | {
+      type: "operator-profile/set";
+      operatorProfile: ForgeOperatorProfile;
+    }
+  | {
+      type: "preflight/set";
+      preflight: ForgePreflightState;
+    }
+  | {
+      type: "run-context/set";
+      runOverride: ForgeRunOverride | null;
+      runSignature: ForgeRunSignature | null;
     };

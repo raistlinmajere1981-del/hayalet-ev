@@ -53,6 +53,7 @@ export interface ForgeSelectedSynthesisRecord {
 export interface ForgeHandoffPackage {
   schemaVersion: number;
   targetRoomId: "repair-room";
+  runSignature?: string;
   goalId: string;
   goalSummary: string;
   goalBrief: string;
@@ -66,6 +67,11 @@ export interface ForgeHandoffPackage {
   acceptanceCriteria: string[];
   repoRefs: ForgeRepoRef[];
   artifacts?: ForgeArtifactRef[];
+  contextSummary?: {
+    decisionTrace: string[];
+    operatorProfileSummary: string[];
+    preflightWarnings: string[];
+  };
   createdAt: string;
   createdBy: {
     actorKind: "user" | "coordinator";
