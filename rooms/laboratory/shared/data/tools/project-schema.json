@@ -475,7 +475,8 @@
             "warnings",
             "exports",
             "error"
-          ]
+          ],
+          "optional": ["userReport", "aiReport"]
         },
         "audio-analysis": {
           "required": [
@@ -489,7 +490,8 @@
             "warnings",
             "exports",
             "error"
-          ]
+          ],
+          "optional": ["userReport", "aiReport"]
         },
         "subtitle-analysis": {
           "required": [
@@ -503,7 +505,8 @@
             "warnings",
             "exports",
             "error"
-          ]
+          ],
+          "optional": ["userReport", "aiReport"]
         }
       }
     }

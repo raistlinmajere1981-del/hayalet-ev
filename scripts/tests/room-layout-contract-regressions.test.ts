@@ -12,6 +12,7 @@ test("rooms expose the shared shell seams expected by the normalized layout cont
     "rooms/game-room/shared/types/room-shell-contracts.ts",
     "rooms/game-room/ui/game-room-ui-runtime.ts",
     "rooms/game-room/host/runtime.ts",
+    "rooms/laboratory/ui/lab-root.ts",
     "rooms/laboratory/shared/ui/shell-runtime.ts",
     "rooms/laboratory/shared/types/room-shell-contracts.ts",
   ].forEach((filePath) => {
@@ -95,11 +96,8 @@ test("room root entrypoints stay orchestration-only after layout normalization",
     laboratoryHostIndexSource,
     /import createLaboratoryHostRuntime from "\.\/runtime\.js";/
   );
-  assert.match(laboratoryUiIndexSource, /import "\.\/laboratory-ui-runtime\.js";/);
-  assert.match(laboratoryUiStyleSource, /shared\/styles\/layout\.css/);
-  assert.match(laboratoryUiStyleSource, /shared\/styles\/components\.css/);
-  assert.match(laboratoryUiStyleSource, /shared\/styles\/audio-signal\.css/);
-  assert.match(laboratoryUiStyleSource, /shared\/styles\/responsive\.css/);
+  assert.match(laboratoryUiIndexSource, /import "\.\/lab-root\.js";/);
+  assert.match(laboratoryUiStyleSource, /lab-theme\.css/);
   assert.match(laboratoryMediaAnalysisStyleSource, /@import "\.\/styles\/edit\.css";/);
   assert.match(laboratoryMediaAnalysisStyleSource, /@import "\.\/styles\/profile\.css";/);
   assert.match(laboratorySubtitleAnalysisStyleSource, /lab-discovery-table/);

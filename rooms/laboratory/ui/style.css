@@ -1,7 +1,1 @@
-@import "../shared/styles/shell.css";
-@import "../shared/styles/layout.css";
-@import "../shared/styles/components.css";
-@import "../shared/styles/audio-signal.css";
-@import "../main-functions/media-analysis/styles.css";
-@import "../main-functions/subtitle-analysis/styles.css";
-@import "../shared/styles/responsive.css";
+@import "./lab-theme.css";

@@ -1,12 +1,16 @@
 import { createLaboratoryAudioReportRuntime } from "./reporting-audio.js";
 import { createLaboratoryReportMarkdownRuntime } from "./reporting-markdown.js";
 import { createLaboratorySubtitleReportRuntime } from "./reporting-subtitle.js";
+import { buildAiReport, buildUserReport } from "../../services/report-builder.js";
+import type { LabRun } from "../../models/lab-types.js";
 
 type LaboratoryRecord = Record<string, unknown>;
 
 type LaboratoryComposedFeatureReportRecord = LaboratoryRecord & {
+  aiReport?: unknown;
   exports?: unknown[];
   status?: string | null;
+  userReport?: unknown;
 };
 
 type LaboratoryFeatureReportRuntimeDeps = Parameters<typeof createLaboratoryAudioReportRuntime>[0] &
@@ -44,21 +48,101 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
     laboratorySubtitleReportRuntime;
   const { buildReportMarkdown, formatReportCardLabel } = laboratoryReportMarkdownRuntime;
 
+  function toRunProjection(processRecord: LaboratoryRecord) {
+    const runId = asNonEmptyString(processRecord["runId"]);
+    if (runId === null) {
+      return null;
+    }
+
+    const modules = Array.isArray(processRecord["modules"])
+      ? (processRecord["modules"] as unknown[])
+      : [];
+    const moduleMap: Record<string, LaboratoryRecord> = {};
+    const moduleOrder: string[] = [];
+    modules.forEach(function (entry) {
+      const normalizedEntry = deps.toRecord(entry);
+      const moduleId = asNonEmptyString(normalizedEntry["id"]);
+      if (moduleId === null) {
+        return;
+      }
+      moduleMap[moduleId] = normalizedEntry;
+      moduleOrder.push(moduleId);
+    });
+
+    return {
+      id: runId,
+      state: ((asNonEmptyString(processRecord["status"]) || "idle") as LabRun["state"]),
+      startedAt: Date.parse(asNonEmptyString(processRecord["startedAt"]) || new Date().toISOString()),
+      ...(asNonEmptyString(processRecord["completedAt"])
+        ? { endedAt: Date.parse(asNonEmptyString(processRecord["completedAt"]) || "") }
+        : {}),
+      modules: moduleMap,
+      moduleOrder,
+      events: [],
+      artifacts: Array.isArray(processRecord["artifacts"])
+        ? (processRecord["artifacts"] as unknown[]).map(function (entry) {
+            return deps.toRecord(entry);
+          })
+        : [],
+      findings: (Array.isArray(processRecord["findings"]) ? processRecord["findings"] : []).map(
+        function (entry) {
+          return deps.normalizeProcessFinding(entry);
+        }
+      ),
+      warnings: Array.isArray(processRecord["warnings"])
+        ? (processRecord["warnings"] as unknown[]).map(String)
+        : [],
+      error: asNonEmptyString(processRecord["error"]),
+      targetLabel: asNonEmptyString(deps.toRecord(processRecord["targetSummary"])["label"]),
+      progress: typeof processRecord["percent"] === "number" ? processRecord["percent"] : null,
+    };
+  }
+
+  function attachDualReports(
+    featureId: string,
+    processRecord: LaboratoryRecord,
+    reportRecord: LaboratoryComposedFeatureReportRecord
+  ): LaboratoryComposedFeatureReportRecord {
+    const run = toRunProjection(processRecord) as LabRun | null;
+    return {
+      ...reportRecord,
+      featureId,
+      userReport: buildUserReport(run, reportRecord),
+      aiReport: buildAiReport(run, reportRecord),
+    };
+  }
+
   function composeFeatureReport(
     runtime: unknown,
     project: LaboratoryRecord,
     featureId: string
   ): LaboratoryComposedFeatureReportRecord {
     if (featureId === deps.audioFeatureId) {
-      return composeAudioAnalysisReport(
-        runtime as LaboratoryRecord,
-        project
+      const processRecord = getFeatureProcessRecord(project, featureId);
+      return normalizeFeatureReportRecord(
+        attachDualReports(
+          featureId,
+          processRecord,
+          composeAudioAnalysisReport(
+            runtime as LaboratoryRecord,
+            project
+          ) as unknown as LaboratoryComposedFeatureReportRecord
+        ),
+        featureId
       ) as unknown as LaboratoryComposedFeatureReportRecord;
     }
     if (featureId === deps.subtitleFeatureId) {
-      return composeSubtitleAnalysisReport(
-        runtime as LaboratoryRecord,
-        project
+      const processRecord = getFeatureProcessRecord(project, featureId);
+      return normalizeFeatureReportRecord(
+        attachDualReports(
+          featureId,
+          processRecord,
+          composeSubtitleAnalysisReport(
+            runtime as LaboratoryRecord,
+            project
+          ) as unknown as LaboratoryComposedFeatureReportRecord
+        ),
+        featureId
       ) as unknown as LaboratoryComposedFeatureReportRecord;
     }
 
@@ -89,11 +173,18 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
       caveats.push("Planned audio modules remain visible but do not pretend to be implemented.");
     }
 
+    const currentReportExports = (
+      getFeatureReportRecord(
+        project,
+        featureId
+      ) as unknown as LaboratoryComposedFeatureReportRecord
+    )["exports"];
+
     return normalizeFeatureReportRecord(
-      {
+      attachDualReports(featureId, processRecord, {
         featureId: featureId,
         status: "ready",
-        sourceRunId: processRecord.runId,
+        sourceRunId: processRecord["runId"],
         generatedAt: new Date().toISOString(),
         summaryCards: [
           {
@@ -131,14 +222,9 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         findings: findings,
         caveats: caveats,
         warnings: Array.isArray(processRecord["warnings"]) ? processRecord["warnings"] : [],
-        exports: (
-          getFeatureReportRecord(
-            project,
-            featureId
-          ) as unknown as LaboratoryComposedFeatureReportRecord
-        )["exports"],
+        ...(Array.isArray(currentReportExports) ? { exports: currentReportExports } : {}),
         error: null,
-      },
+      }),
       featureId
     ) as unknown as LaboratoryComposedFeatureReportRecord;
   }

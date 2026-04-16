@@ -135,22 +135,61 @@ test("laboratory subtitle UI runtime resolves the room-local subtitle panel runt
   assert.equal(typeof runtimeModule.createSubtitleAnalysisUiRuntime, "function");
 });
 
+test("laboratory shell routes host traffic through lab-root orchestration seams", () => {
+  const uiIndexSource = readFileSync("rooms/laboratory/ui/index.ts", "utf8");
+  const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
+  const hostBridgeSource = readFileSync("rooms/laboratory/runtime/lab-host-bridge.ts", "utf8");
+
+  assert.match(uiIndexSource, /import "\.\/lab-root\.js";/);
+  assert.match(labRootSource, /emit:\s*eventBus\.emit,/);
+  assert.match(labRootSource, /roomAPI\.ready\(\{\s*feature:\s*"media-analysis",\s*room:\s*"laboratory",\s*stage:\s*"ui-ready"/);
+  assert.match(hostBridgeSource, /type === "source-state"/);
+  assert.match(hostBridgeSource, /type:\s*"source-snapshot-received"/);
+  assert.match(hostBridgeSource, /type:\s*"source-probe-completed"/);
+});
+
+test("laboratory dense shell keeps event and artifact rendering windowed", () => {
+  const selectorsSource = readFileSync("rooms/laboratory/runtime/lab-selectors.ts", "utf8");
+  const eventFeedSource = readFileSync("rooms/laboratory/ui/components/event-feed.ts", "utf8");
+  const processStageSource = readFileSync("rooms/laboratory/ui/stages/process-stage.ts", "utf8");
+
+  assert.match(selectorsSource, /state\.ui\.eventFeedCursor/);
+  assert.match(selectorsSource, /state\.ui\.artifactRenderCount/);
+  assert.match(eventFeedSource, /data-lab-action="event-feed-next"/);
+  assert.match(eventFeedSource, /data-lab-action="event-feed-reset"/);
+  assert.match(processStageSource, /data-lab-action="show-more-artifacts"/);
+});
+
+test("laboratory runtime exposes typed lifecycle and explicit block reasons", () => {
+  const typesSource = readFileSync("rooms/laboratory/models/lab-types.ts", "utf8");
+  const selectorsSource = readFileSync("rooms/laboratory/runtime/lab-selectors.ts", "utf8");
+  const pipelineRunnerSource = readFileSync("rooms/laboratory/services/pipeline-runner.ts", "utf8");
+  const preflightServiceSource = readFileSync("rooms/laboratory/services/preflight-service.ts", "utf8");
+
+  assert.match(typesSource, /type:\s*"preview-started"/);
+  assert.match(typesSource, /type:\s*"preflight-started"/);
+  assert.match(typesSource, /type:\s*"module-progress"/);
+  assert.match(typesSource, /type:\s*"run-cancelled"/);
+  assert.match(selectorsSource, /export function getStageBlockReason/);
+  assert.match(pipelineRunnerSource, /export function buildLifecycleEvents/);
+  assert.match(preflightServiceSource, /export function runPreflight/);
+});
+
 test("laboratory edit stage wiring forwards room-local copy and edit summary accessors", () => {
   const coreBootstrapSource = readFileSync("rooms/laboratory/ui/core-bootstrap.ts", "utf8");
   const mediaAnalysisDepsMatch = coreBootstrapSource.match(
     /const mediaAnalysisUiRuntimeDeps = \{([\s\S]*?)\n  \};\n  const mediaAnalysisUiRuntime = deps\.createMediaAnalysisUiRuntime/
   );
-  const uiRuntimeSource = readFileSync("rooms/laboratory/ui/laboratory-ui-runtime.ts", "utf8");
-  const featureRuntimeDepsMatch = uiRuntimeSource.match(
-    /const laboratoryFeatureStageRuntimeDeps = \{([\s\S]*?)\n  \};\n  const laboratoryFeatureStageRuntime = createLaboratoryFeatureStageRuntime/
+  const corePublicApiSource = readFileSync("rooms/laboratory/ui/core-public-api.ts", "utf8");
+  const publicApiMatch = corePublicApiSource.match(
+    /getCurrentResizeLabel:\s*uiRuntimeComposition\.getCurrentResizeLabel,/
   );
 
   assert.ok(mediaAnalysisDepsMatch, "Expected mediaAnalysisUiRuntimeDeps to be defined");
   assert.match(mediaAnalysisDepsMatch[1], /(^|\s)subtitleText,/);
   assert.match(mediaAnalysisDepsMatch[1], /(^|\s)textFromKey,/);
 
-  assert.ok(featureRuntimeDepsMatch, "Expected laboratoryFeatureStageRuntimeDeps to be defined");
-  assert.match(featureRuntimeDepsMatch[1], /(^|\s)getCurrentResizeLabel:\s*coreRuntime\.getCurrentResizeLabel,/);
+  assert.ok(publicApiMatch, "Expected public core API to forward the resize label accessor");
 });
 
 test("laboratory edit stage uses edit presets and dark themed selects", () => {

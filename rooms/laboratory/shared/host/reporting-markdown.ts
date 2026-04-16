@@ -11,7 +11,9 @@ type LaboratoryReportCardRecord = LaboratoryRecord & {
 };
 
 type LaboratoryReportFindingRecord = LaboratoryRecord & {
+  confidence?: unknown;
   detail?: unknown;
+  evidence?: unknown;
   moduleId?: unknown;
   title?: unknown;
 };
@@ -24,11 +26,13 @@ type LaboratoryReportExportRecord = LaboratoryRecord & {
 };
 
 type LaboratoryFeatureReportRecord = LaboratoryRecord & {
+  aiReport?: unknown;
   caveats?: unknown;
   exports?: unknown;
   findings?: unknown;
   generatedAt?: unknown;
   summaryCards?: unknown;
+  userReport?: unknown;
   warnings?: unknown;
 };
 
@@ -196,6 +200,7 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
   ): string {
     const projectRecord = toProjectRecord(project);
     const normalizedReportRecord = toFeatureReportRecord(reportRecord);
+    const userReport = toRecord(normalizedReportRecord.userReport);
     const lines = [
       `# ${getFeatureLabel(featureId)} Report`,
       "",
@@ -205,12 +210,18 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
       "## Summary",
     ];
 
-    const summaryCards = Array.isArray(normalizedReportRecord.summaryCards)
-      ? normalizedReportRecord.summaryCards.map(toReportCardRecord)
-      : [];
-    summaryCards.forEach(function (card) {
-      lines.push(`- ${formatReportCardLabel(card)}: ${formatValue(card.value)}`);
-    });
+    if (asNonEmptyString(userReport["summary"]) !== null) {
+      lines.push(asNonEmptyString(userReport["summary"]) || "--");
+      lines.push("");
+      lines.push(`Confidence: ${formatValue(userReport["confidence"])}`);
+    } else {
+      const summaryCards = Array.isArray(normalizedReportRecord.summaryCards)
+        ? normalizedReportRecord.summaryCards.map(toReportCardRecord)
+        : [];
+      summaryCards.forEach(function (card) {
+        lines.push(`- ${formatReportCardLabel(card)}: ${formatValue(card.value)}`);
+      });
+    }
 
     if (featureId === audioFeatureId) {
       const projection = buildAudioAnalysisReportProjection(runtime, projectRecord);
@@ -255,16 +266,22 @@ export function createLaboratoryReportMarkdownRuntime(deps: LaboratoryReportMark
     }
 
     lines.push("", "## Findings");
-    const findings = Array.isArray(normalizedReportRecord.findings)
-      ? normalizedReportRecord.findings.map(toFindingRecord)
-      : [];
+    const findings = Array.isArray(userReport["topFindings"])
+      ? (userReport["topFindings"] as unknown[]).map(toFindingRecord)
+      : Array.isArray(normalizedReportRecord.findings)
+        ? normalizedReportRecord.findings.map(toFindingRecord)
+        : [];
     if (findings.length > 0) {
       findings.forEach(function (finding) {
         lines.push(
           `- ${toString(finding.title) || toString(finding.moduleId) || "Finding"}: ${toString(
             finding.detail
-          )}`
+          )}${asNonEmptyString(finding.confidence) ? ` (${toString(finding.confidence)})` : ""}`
         );
+        const evidence = toStringArray(finding.evidence);
+        if (evidence.length > 0) {
+          lines.push(`  Evidence: ${evidence.join(" | ")}`);
+        }
       });
     } else {
       lines.push("- No findings were recorded for the active report.");

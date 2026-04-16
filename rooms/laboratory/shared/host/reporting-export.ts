@@ -3,9 +3,11 @@ type LaboratoryRecord = Record<string, unknown>;
 type LaboratoryReportExportEntry = LaboratoryRecord;
 
 type LaboratoryFeatureReportRecord = LaboratoryRecord & {
+  aiReport?: LaboratoryRecord | null;
   error?: string | null;
   exports?: LaboratoryReportExportEntry[];
   status?: string | null;
+  userReport?: LaboratoryRecord | null;
 };
 
 type LaboratoryReportExportProject = LaboratoryRecord & {
@@ -114,16 +116,26 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
 
     try {
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const fileName = `${sanitizeFileSegment(project.slug, "project")}-${featureId}-${stamp}.md`;
+      const baseName = `${sanitizeFileSegment(project.slug, "project")}-${featureId}-${stamp}`;
+      const fileName = `${baseName}-user.md`;
       const outputPath = `${getFeatureReportDir(runtime, project, featureId)}/${fileName}`;
+      const aiFileName = `${baseName}-ai.json`;
+      const aiOutputPath = `${getFeatureReportDir(runtime, project, featureId)}/${aiFileName}`;
       await writeTextFile(
         outputPath,
         buildReportMarkdown(runtime, project, featureId, reportRecord)
       );
-      const exportEntry = normalizeReportExport({
+      await writeTextFile(aiOutputPath, JSON.stringify(reportRecord.aiReport || null, null, 2));
+      const userExportEntry = normalizeReportExport({
         format: "md",
         path: outputPath,
         fileName: fileName,
+        status: "ready",
+      });
+      const aiExportEntry = normalizeReportExport({
+        format: "json",
+        path: aiOutputPath,
+        fileName: aiFileName,
         status: "ready",
       });
 
@@ -133,7 +145,9 @@ export function createLaboratoryReportExportRuntime(deps: LaboratoryReportExport
         const currentExports = Array.isArray(currentReportRecord.exports)
           ? currentReportRecord.exports
           : [];
-        nextReportRecord.exports = [exportEntry].concat(currentExports.slice(0, 7));
+        nextReportRecord.exports = [userExportEntry, aiExportEntry].concat(
+          currentExports.slice(0, 6)
+        );
         setFeatureReportRecord(nextProject, featureId, nextReportRecord);
         return nextProject;
       });
