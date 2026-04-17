@@ -158,7 +158,7 @@ export class EntranceHallController {
         if (btn) {
           btn.addEventListener("click", () => {
             void (async (): Promise<void> => {
-              if (SlotController.isConnected(u) === true) await this.disconnectUser(u);
+              if (AppState.isConnected(u) === true) await this.disconnectUser(u);
               else await this.connectUser(u);
             })();
           });
@@ -360,7 +360,7 @@ export class EntranceHallController {
 
   async connectUser(userType: string): Promise<void> {
     const settings = await SettingsManager.load();
-    const currentlyConnected = SlotController.isConnected(userType) === true;
+    const currentlyConnected = AppState.isConnected(userType) === true;
 
     if (currentlyConnected) return;
     if (userType === "user") return;
@@ -461,7 +461,7 @@ export class EntranceHallController {
 
   async disconnectUser(userType: string): Promise<void> {
     if (userType === "user") return;
-    const currentlyConnected = SlotController.isConnected(userType) === true;
+    const currentlyConnected = AppState.isConnected(userType) === true;
     if (!currentlyConnected) return;
 
     const toggleBtn = document.getElementById(`${userType}-toggle-btn`) as HTMLButtonElement | null;
@@ -530,7 +530,7 @@ export class EntranceHallController {
     }
 
     const hasAccount = !!AppState.getAccountForSlot(userType);
-    const connected = SlotController.isConnected(userType) === true;
+    const connected = AppState.isConnected(userType) === true;
 
     avatarEl?.classList.toggle("is-dimmed", hasAccount && !connected);
 
@@ -616,7 +616,7 @@ export class EntranceHallController {
 
   shouldAutoConnectSlot(slotId: "ai1" | "ai2", settings: AppSettings): boolean {
     const slotSettings = settings.slots[slotId];
-    const hasAssignedAccount = slotSettings.accountId !== null && slotSettings.accountId !== "";
+    const hasAssignedAccount = AppState.isAssigned(slotId);
 
     return (
       hasAssignedAccount &&
@@ -633,7 +633,7 @@ export class EntranceHallController {
       if (!this.shouldAutoConnectSlot(slotId, settings)) {
         return;
       }
-      if (SlotController.isConnected(slotId) === true) {
+      if (AppState.isConnected(slotId) === true) {
         return;
       }
 

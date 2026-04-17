@@ -18,10 +18,6 @@ interface RawConversationEntry {
   createdAt?: number;
 }
 
-interface SlotSettings {
-  accountId?: string;
-  [key: string]: unknown;
-}
 interface ConversationEntry {
   conversationId: string;
   id: string;
@@ -350,16 +346,12 @@ class ConversationListManagerClass {
     const select = this.selects[provider];
     if (!select) return;
 
-    const settings = SettingsManager.getSnapshot();
-    const slot = (settings.slots[provider] ?? {}) as SlotSettings;
     const hasAccount =
-      provider === "us1"
-        ? AppState.hasUs1Identity() === true
-        : slot.accountId !== undefined && slot.accountId !== "";
+      provider === "us1" ? AppState.hasUs1Identity() === true : AppState.isAssigned(provider);
     const isConnected =
       provider === "us1"
         ? AppState.isUs1Connected() === true
-        : SlotController.isConnected(provider) === true;
+        : AppState.isConnected(provider) === true;
 
     select.disabled = !hasAccount || !isConnected;
     const refreshBtn = document.getElementById(

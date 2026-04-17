@@ -2,8 +2,6 @@ import { AppState } from "../modules/app-state.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { Logger, LogCategory } from "../modules/logger/index.js";
-import { SettingsManager } from "../modules/settings-manager.js";
-import { SlotController } from "../modules/slot-controller.js";
 import { WebviewManager } from "../modules/webview-manager.js";
 import { shellT } from "./shell-i18n.js";
 
@@ -11,10 +9,9 @@ export function updateIndicatorAvatars(): void {
   const getAvatar = (provider: string): string | undefined => AppState.getAvatar(provider);
 
   // NOTE: AI0 uses the provider logo only while connected.
-  const ai0Connected = SlotController.isConnected("ai0");
+  const ai0Connected = AppState.isConnected("ai0");
   const ai0AvatarPath = ai0Connected === true ? getAvatar("ai0") : undefined;
-  const settings = SettingsManager.getSnapshot();
-  const assistantAccountId = settings.assistantSlot?.accountId ?? "";
+  const ai0Assigned = AppState.isAssigned("ai0");
 
   const map: Array<{
     provider: "ai0" | "ai1" | "ai2" | "us1";
@@ -28,8 +25,7 @@ export function updateIndicatorAvatars(): void {
       provider: "ai0",
       el: document.getElementById("indicator-avatar-ai0"),
       path: ai0AvatarPath,
-      slotState:
-        assistantAccountId === "" ? "empty" : ai0Connected === true ? "connected" : "disconnected",
+      slotState: ai0Assigned !== true ? "empty" : ai0Connected === true ? "connected" : "disconnected",
       manageConversationSelect: false,
     },
     {
@@ -39,7 +35,7 @@ export function updateIndicatorAvatars(): void {
       slotState:
         AppState.getAccountForSlot("ai1") === null
           ? "empty"
-          : SlotController.isConnected("ai1") === true
+          : AppState.isConnected("ai1") === true
             ? "connected"
             : "disconnected",
       manageConversationSelect: true,
@@ -51,7 +47,7 @@ export function updateIndicatorAvatars(): void {
       slotState:
         AppState.getAccountForSlot("ai2") === null
           ? "empty"
-          : SlotController.isConnected("ai2") === true
+          : AppState.isConnected("ai2") === true
             ? "connected"
             : "disconnected",
       manageConversationSelect: true,

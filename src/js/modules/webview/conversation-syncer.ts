@@ -7,7 +7,6 @@ import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { TrafficManager } from "../traffic-manager.js";
 import { CatchManager } from "../catch-manager.js";
 import { AppState } from "../app-state.js";
-import { SlotController } from "../slot-controller.js";
 import { ConversationListManager } from "../conversation-list-manager.js";
 import { AppI18n } from "../i18n/index.js";
 import { getProvider } from "./provider-factory.js";
@@ -872,7 +871,7 @@ class ConversationSyncerClass {
         );
         this._syncRetryCounts[provider] = tried + 1;
         this._syncRetryTimers[provider] = setTimeout(() => {
-          if (SlotController.isConnected(provider) === true) {
+          if (AppState.isConnected(provider) === true) {
             void this.syncProvider(provider, { from: "retry" });
           }
         }, this.syncRetryDelayMs);

@@ -3,6 +3,7 @@ import { WHISPER_TIMEOUTS } from "@timeouts";
 import { LogCategory, LogLevel } from "@shared/logging-core";
 import { Logger } from "./logger/index.js";
 import { AppI18n } from "./i18n/index.js";
+import { AppState } from "./app-state.js";
 import { SettingsManager } from "./settings-manager.js";
 import { getAiProviderAccounts } from "@shared/settings.js";
 import type { Account } from "@shared/settings.js";
@@ -48,14 +49,8 @@ function resolveAccountId(name = ""): string {
 }
 
 function resolveDeliverySlot(accountId: string): "ai1" | "ai2" | null {
-  const settings = SettingsManager.getSnapshot();
-  if (settings.slots.ai1.accountId === accountId) {
-    return "ai1";
-  }
-  if (settings.slots.ai2.accountId === accountId) {
-    return "ai2";
-  }
-  return null;
+  const assignedSlot = AppState.getAssignedSlotForAccount(accountId);
+  return assignedSlot === "ai1" || assignedSlot === "ai2" ? assignedSlot : null;
 }
 
 class WhisperManagerClass {

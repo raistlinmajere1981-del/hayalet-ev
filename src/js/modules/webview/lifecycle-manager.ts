@@ -341,7 +341,7 @@ class LifecycleManagerClass {
       const inactive = now - lastActivity > this._inactivityThreshold;
 
       const isVisible = AppState.getState().activeProvider === provider;
-      const isConnected = SlotController.isConnected(provider) === true;
+      const isConnected = AppState.isConnected(provider) === true;
 
       if (inactive && !isVisible && !isConnected) {
         Logger.infoT(

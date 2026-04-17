@@ -121,11 +121,8 @@ export function sanitizeForgeUiContext(payload) {
   const room = toRecord(source["room"]);
   const presence = toRecord(source["presence"]);
   const presenceUser = toRecord(presence["user"]);
-  const assistant = toRecord(source["assistant"]);
-  const user = toRecord(source["user"]);
+  const assistant = toRecord(presence["assistant"]);
   const activeFeature = toRecord(source["activeFeature"]);
-  const nickname = typeof presenceUser["nickname"] === "string" && presenceUser["nickname"].trim() !== "" ? presenceUser["nickname"] : user["nickname"];
-  const avatar = typeof presenceUser["avatar"] === "string" && presenceUser["avatar"].trim() !== "" ? presenceUser["avatar"].trim() : typeof user["avatar"] === "string" && user["avatar"].trim() !== "" ? user["avatar"].trim() : null;
   const assistantNickname = typeof assistant["nickname"] === "string" && assistant["nickname"].trim() !== "" ? assistant["nickname"].trim() : "AI0";
   const assistantAvatar = typeof assistant["avatar"] === "string" && assistant["avatar"].trim() !== "" ? assistant["avatar"].trim() : null;
   const assistantConnected = assistant["connected"] === true;
@@ -138,8 +135,11 @@ export function sanitizeForgeUiContext(payload) {
     featureId: asNonEmptyString(activeFeature["id"], "forge-workbench"),
     locale: asNonEmptyString(source["locale"], "en"),
     translations: toRecord(source["translations"]),
-    userAvatar: avatar,
-    userNickname: asNonEmptyString(nickname, "Operator")
+    userAvatar: typeof presenceUser["avatar"] === "string" && presenceUser["avatar"].trim() !== "" ? presenceUser["avatar"].trim() : null,
+    userNickname: asNonEmptyString(
+      typeof presenceUser["nickname"] === "string" ? presenceUser["nickname"] : null,
+      "Operator"
+    )
   };
 }
 function normalizePreflightSnapshot(value) {

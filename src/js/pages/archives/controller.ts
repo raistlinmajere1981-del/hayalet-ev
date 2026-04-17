@@ -738,11 +738,9 @@ export class ArchivesPageController {
   }
 
   applyNames(): void {
-    const settings = SettingsManager.getSnapshot();
-    const slots = settings.slots as Record<string, { accountId?: string }>;
-    const ai1Assigned = slots["ai1"]?.accountId !== undefined && slots["ai1"].accountId !== "";
-    const ai2Assigned = slots["ai2"]?.accountId !== undefined && slots["ai2"].accountId !== "";
-    const us1Assigned = AppState.getArchiveAccountIdForProvider("us1") !== null;
+    const ai1Assigned = AppState.isAssigned("ai1");
+    const ai2Assigned = AppState.isAssigned("ai2");
+    const us1Assigned = AppState.isAssigned("us1");
 
     const ai1Name = ai1Assigned ? AppState.getNickname("ai1") : "AI1";
     const ai0Name = AppState.getNickname("ai0");

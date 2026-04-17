@@ -3,7 +3,6 @@ import { Logger, LogCategory } from "../modules/logger/index.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { AppState } from "../modules/app-state.js";
 import { SettingsManager } from "../modules/settings-manager.js";
-import { SlotController } from "../modules/slot-controller.js";
 import { RelayManager } from "../modules/relay-manager.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { CoreEngine } from "../modules/core-engine.js";
@@ -267,11 +266,11 @@ export function setupTopBarRelayButtons(): void {
               });
               relayInfo("relayStopped", { relay: getRelayLabel("ai1Assistant") });
             } else {
-              if (SlotController.isConnected("ai1") !== true) {
+              if (AppState.isConnected("ai1") !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("ai1") });
                 return;
               }
-              if (SlotController.isConnected("ai0") !== true) {
+              if (AppState.isConnected("ai0") !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("ai0") });
                 return;
               }
@@ -313,11 +312,11 @@ export function setupTopBarRelayButtons(): void {
               });
               relayInfo("relayStopped", { relay: getRelayLabel("assistantAi2") });
             } else {
-              if (SlotController.isConnected("ai2") !== true) {
+              if (AppState.isConnected("ai2") !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("ai2") });
                 return;
               }
-              if (SlotController.isConnected("ai0") !== true) {
+              if (AppState.isConnected("ai0") !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("ai0") });
                 return;
               }
@@ -360,7 +359,7 @@ export function setupTopBarRelayButtons(): void {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("us1") });
                 return;
               }
-              if (SlotController.isConnected("ai0") !== true) {
+              if (AppState.isConnected("ai0") !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("ai0") });
                 return;
               }
@@ -402,8 +401,8 @@ export function setupTopBarRelayButtons(): void {
               relayInfo("relayStopped", { relay: getRelayLabel("ai1Ai2") });
             } else {
               if (
-                SlotController.isConnected("ai1") !== true ||
-                SlotController.isConnected("ai2") !== true
+                AppState.isConnected("ai1") !== true ||
+                AppState.isConnected("ai2") !== true
               ) {
                 relayWarn("relayStartBlockedMultiple", {
                   slots: `${getSlotLabel("ai1")} / ${getSlotLabel("ai2")}`,
@@ -453,8 +452,8 @@ export function setupTopBarRelayButtons(): void {
               relayInfo("relayStopped", { relay: getRelayLabel("ai2Ai1") });
             } else {
               if (
-                SlotController.isConnected("ai1") !== true ||
-                SlotController.isConnected("ai2") !== true
+                AppState.isConnected("ai1") !== true ||
+                AppState.isConnected("ai2") !== true
               ) {
                 relayWarn("relayStartBlockedMultiple", {
                   slots: `${getSlotLabel("ai1")} / ${getSlotLabel("ai2")}`,
@@ -522,9 +521,9 @@ export function updateRelayButtonStates(): void {
       "relay-btn-ai1-ai2-right"
     ) as HTMLButtonElement | null;
 
-    const ai1Connected = SlotController.isConnected("ai1") === true;
-    const ai2Connected = SlotController.isConnected("ai2") === true;
-    const ai0Connected = SlotController.isConnected("ai0") === true;
+    const ai1Connected = AppState.isConnected("ai1") === true;
+    const ai2Connected = AppState.isConnected("ai2") === true;
+    const ai0Connected = AppState.isConnected("ai0") === true;
     const us1Connected = AppState.isUs1Connected() === true;
 
     relayDebug("relayButtonStates", {

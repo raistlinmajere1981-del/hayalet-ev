@@ -1,5 +1,4 @@
 import { AppState } from "../../modules/app-state.js";
-import { SlotController } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
 import type { SceneCharacterSlot } from "../schema.js";
 
@@ -25,7 +24,7 @@ export function getSceneCharacterState(slot: SceneCharacterSlot | null): SceneCh
     return AppState.isUs1Connected() ? "connected" : "inactive";
   }
 
-  return SlotController.isConnected(slot) ? "connected" : "inactive";
+  return AppState.isConnected(slot) ? "connected" : "inactive";
 }
 
 export function getSceneCharacterStateClass(slot: SceneCharacterSlot | null): string {

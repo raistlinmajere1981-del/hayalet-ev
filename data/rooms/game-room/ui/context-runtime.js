@@ -158,9 +158,9 @@
     function normalizeContext(payload) {
       const source = isRecord(payload) ? payload : {};
       const presenceSource = isRecord(source["presence"]) ? source["presence"] : {};
-      const slotsSource = isRecord(source["slots"]) ? source["slots"] : isRecord(presenceSource["slots"]) ? presenceSource["slots"] : {};
+      const slotsSource = isRecord(presenceSource["slots"]) ? presenceSource["slots"] : {};
       const roomSource = isRecord(source["room"]) ? source["room"] : {};
-      const userSource = isRecord(source["user"]) ? source["user"] : isRecord(presenceSource["user"]) ? presenceSource["user"] : {};
+      const userSource = isRecord(presenceSource["user"]) ? presenceSource["user"] : {};
       const features = Array.isArray(source["features"]) ? source["features"].map(function(feature) {
         const featureSource = isRecord(feature) ? feature : {};
         const id = normalizeFeatureId(featureSource["id"]);

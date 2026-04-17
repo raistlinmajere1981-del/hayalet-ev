@@ -317,7 +317,7 @@ export async function handleRelayDisconnectAutoStop(
     if (context.relay.isAIAIActive() === true && (slot === "ai1" || slot === "ai2")) {
       const remainingTarget = slot === "ai1" ? "ai2" : "ai1";
 
-      if (SlotController.isConnected(remainingTarget) === true) {
+      if (AppState.isConnected(remainingTarget) === true) {
         const stopResult = await context.sendProtocol({
           room: "analyze",
           scenario: "ai-ai-stop",
@@ -371,7 +371,7 @@ export async function handleRelayDisconnectAutoStop(
     }
 
     if (slot === "ai0") {
-      if (SlotController.isConnected(sourceSlot) === true) {
+      if (AppState.isConnected(sourceSlot) === true) {
         const stopResult = await context.sendProtocol({
           room: "analyze",
           scenario: "ai-assistant-stop",

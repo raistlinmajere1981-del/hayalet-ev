@@ -1,24 +1,7 @@
 import { SettingsManager } from "./settings-manager.js";
 import { Logger, LogCategory } from "./logger/index.js";
-import type {
-  Account,
-  AppSettings,
-  RemoteUserIdentity,
-  Us1SlotSettings,
-} from "@shared/settings.js";
-import {
-  getRemoteEmailAccounts,
-  getUs1SelectedIdentityId,
-  isAiProviderAccount,
-} from "@shared/settings.js";
-import { AppI18n } from "./i18n/index.js";
-import {
-  buildRemoteEmailAccountId,
-  extractUs1RemoteIdentityIdFromAccountId,
-  isUs1ProjectedAccountId,
-  isRemoteEmailAccountId,
-  type ArchiveProviderKey,
-} from "@shared/archive.js";
+import type { Account, AppSettings, RemoteUserIdentity, Us1SlotSettings } from "@shared/settings.js";
+import { SlotPresenceStore } from "./slot-presence-store.js";
 
 interface AppStateSnapshot {
   activeProvider: string | null;
@@ -39,21 +22,6 @@ interface AppStateSnapshot {
     active: boolean;
     sourceSlot: string | null;
   };
-}
-
-function getDefaultUserNickname(): string {
-  return AppI18n.t("entrance.user.defaultNickname");
-}
-
-function isLegacyDefaultNickname(value: string): boolean {
-  const normalized = value
-    .trim()
-    .toLocaleLowerCase("tr-TR")
-    .normalize("NFKD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/\u0131/g, "i");
-
-  return normalized === "user" || normalized === "user";
 }
 
 class AppStateClass {
@@ -90,6 +58,10 @@ class AppStateClass {
       active: false,
       sourceSlot: null,
     };
+
+    SlotPresenceStore.subscribe(() => {
+      this.notify();
+    });
   }
 
   init(defaultProvider = "ai1"): void {
@@ -206,20 +178,7 @@ class AppStateClass {
   }
 
   getAccountForSlot(slot: string): Account | null {
-    const settings = this.getSettings();
-
-    if (settings === null) return null;
-
-    if (slot === "ai0") {
-      const accountId = settings.assistantSlot?.accountId;
-      if (accountId === undefined || accountId === "") return null;
-      return settings.assistantAccounts?.find((acc) => acc.id === accountId) ?? null;
-    }
-
-    const accountId = settings.slots[slot]?.accountId;
-    if (accountId === undefined || accountId === "") return null;
-    const account = settings.accounts.find((acc) => acc.id === accountId) ?? null;
-    return isAiProviderAccount(account) ? account : null;
+    return SlotPresenceStore.getAccountForSlot(slot);
   }
 
   getRemoteUsers(): RemoteUserIdentity[] {
@@ -248,119 +207,20 @@ class AppStateClass {
     );
   }
 
-  private getUs1RemoteAccount(settings: AppSettings | null = null): Account | null {
-    const effectiveSettings = settings ?? this.getSettings();
-    if (effectiveSettings === null) {
-      return null;
-    }
-
-    const remoteAccounts = getRemoteEmailAccounts(effectiveSettings.accounts);
-    const selectedAccountId =
-      typeof effectiveSettings.us1Slot?.selectedAccountId === "string"
-        ? effectiveSettings.us1Slot.selectedAccountId.trim()
-        : "";
-    if (selectedAccountId !== "") {
-      const selectedAccount =
-        remoteAccounts.find((account) => account.id === selectedAccountId) ?? null;
-      if (selectedAccount?.remoteEmail?.handshakeState === "active") {
-        return selectedAccount;
-      }
-    }
-
-    const selectedRemoteUserId = getUs1SelectedIdentityId(effectiveSettings.us1Slot) ?? "";
-    if (selectedRemoteUserId === "") {
-      return null;
-    }
-
-    return (
-      remoteAccounts.find(
-        (account) =>
-          account.remoteEmail?.remoteUserId === selectedRemoteUserId &&
-          account.remoteEmail.handshakeState === "active"
-      ) ?? null
-    );
-  }
-
   getUs1Identity(): RemoteUserIdentity | null {
-    const settings = this.getSettings();
-    const remoteAccount = this.getUs1RemoteAccount(settings);
-    const remoteState = remoteAccount?.remoteEmail ?? null;
-    if (remoteAccount !== null && remoteState !== null) {
-      return {
-        remoteUserId: remoteState.remoteUserId,
-        email: remoteAccount.email,
-        ...(remoteAccount.nickname !== undefined ? { nickname: remoteAccount.nickname } : {}),
-        ...(remoteAccount.avatar !== undefined ? { avatar: remoteAccount.avatar } : {}),
-        ...(remoteAccount.avatarPath !== undefined ? { avatarPath: remoteAccount.avatarPath } : {}),
-        handshakeState: remoteState.handshakeState,
-        profileRevision: remoteState.profileRevision,
-        linkedMailAccountId: remoteState.linkedLocalMailAccountId,
-        linkedAccountId: remoteState.linkedLocalMailAccountId,
-        ...(remoteState.inviteMessageId !== undefined
-          ? { inviteMessageId: remoteState.inviteMessageId ?? null }
-          : {}),
-        ...(remoteState.acceptMessageId !== undefined
-          ? { acceptMessageId: remoteState.acceptMessageId ?? null }
-          : {}),
-        ...(remoteState.threadMessageId !== undefined
-          ? { threadMessageId: remoteState.threadMessageId ?? null }
-          : {}),
-        ...(remoteState.lastTransportMessageId !== undefined
-          ? { lastTransportMessageId: remoteState.lastTransportMessageId ?? null }
-          : {}),
-        ...(remoteState.lastSyncAt !== undefined ? { lastSyncAt: remoteState.lastSyncAt } : {}),
-        ...(remoteState.lastError !== undefined
-          ? { lastError: remoteState.lastError ?? null }
-          : {}),
-        ...(remoteState.sessionAlias !== undefined
-          ? { sessionAlias: remoteState.sessionAlias ?? null }
-          : {}),
-      };
-    }
-
-    const selectedRemoteUserId =
-      getUs1SelectedIdentityId(settings?.us1Slot) ??
-      (typeof settings?.us1Slot?.selectedAccountId === "string"
-        ? extractUs1RemoteIdentityIdFromAccountId(settings.us1Slot.selectedAccountId)
-        : null);
-    if (selectedRemoteUserId === null || selectedRemoteUserId === "") {
-      return null;
-    }
-
-    return (
-      this.getRemoteUsers().find(
-        (identity) =>
-          identity.remoteUserId === selectedRemoteUserId && identity.handshakeState === "active"
-      ) ?? null
-    );
+    return SlotPresenceStore.getUs1Identity();
   }
 
   hasUs1Identity(): boolean {
-    return this.getUs1Identity() !== null;
+    return SlotPresenceStore.hasUs1Identity();
   }
 
   isUs1Connected(): boolean {
-    return this.getUs1SlotSettings().connectionState === "connected" && this.hasUs1Identity();
+    return SlotPresenceStore.isUs1Connected();
   }
 
   getUs1ArchiveAccountId(): string | null {
-    const remoteAccount = this.getUs1RemoteAccount();
-    if (typeof remoteAccount?.id === "string" && remoteAccount.id !== "") {
-      return remoteAccount.id;
-    }
-
-    const identity = this.getUs1Identity();
-    if (identity?.remoteUserId === undefined || identity.remoteUserId === "") {
-      return null;
-    }
-
-    const selectedAccountId = this.getUs1SlotSettings().selectedAccountId;
-    const derivedAccountId = buildRemoteEmailAccountId(identity.remoteUserId);
-    const accountId =
-      (typeof selectedAccountId === "string" && selectedAccountId.trim() !== ""
-        ? selectedAccountId.trim()
-        : null) ?? derivedAccountId;
-    return accountId !== "" ? accountId : null;
+    return SlotPresenceStore.getUs1ArchiveAccountId();
   }
 
   getArchiveAccountIdForProvider(provider: string): string | null {
@@ -372,68 +232,56 @@ class AppStateClass {
     return account?.id ?? null;
   }
 
-  resolveArchiveProviderByAccountId(accountId: string): ArchiveProviderKey | null {
-    if (accountId === "") {
-      return null;
-    }
-
-    if (this.getAccountForSlot("ai1")?.id === accountId) {
-      return "ai1";
-    }
-
-    if (this.getAccountForSlot("ai2")?.id === accountId) {
-      return "ai2";
-    }
-
-    const us1AccountId = this.getUs1ArchiveAccountId();
-    if (
-      us1AccountId === accountId ||
-      isUs1ProjectedAccountId(accountId) ||
-      isRemoteEmailAccountId(accountId)
-    ) {
-      return "us1";
-    }
-
-    return null;
+  resolveArchiveProviderByAccountId(accountId: string) {
+    return SlotPresenceStore.resolveArchiveProviderByAccountId(accountId);
   }
 
   getProviderIdForSlot(slot: string): string | null {
-    const account = this.getAccountForSlot(slot);
-    return account?.provider ?? null;
+    return SlotPresenceStore.getProviderIdForSlot(slot);
   }
 
   getAvatar(provider: string): string {
-    const settings = this.getSettings();
-    if (settings === null) return "";
-    if (provider === "user") {
-      return settings.user?.avatarPath ?? "";
+    if (provider !== "user" && provider !== "ai0" && provider !== "ai1" && provider !== "ai2" && provider !== "us1") {
+      return "";
     }
-    if (provider === "us1") {
-      const identity = this.getUs1Identity();
-      return identity?.avatarPath ?? identity?.avatar ?? "";
-    }
-    const account = this.getAccountForSlot(provider);
-    return account?.avatarPath ?? "";
+
+    return SlotPresenceStore.getAvatar(provider);
   }
 
   getNickname(provider: string): string {
-    const settings = this.getSettings();
-    if (settings === null) {
-      return provider === "user" ? getDefaultUserNickname() : provider.toUpperCase();
+    if (provider !== "user" && provider !== "ai0" && provider !== "ai1" && provider !== "ai2" && provider !== "us1") {
+      return provider.toUpperCase();
     }
-    if (provider === "user") {
-      const nickname = settings.user?.nickname?.trim() ?? "";
-      if (nickname === "" || isLegacyDefaultNickname(nickname)) {
-        return getDefaultUserNickname();
-      }
-      return nickname;
+
+    return SlotPresenceStore.getNickname(provider);
+  }
+
+  getPresence(provider: "user" | "ai0" | "ai1" | "ai2" | "us1") {
+    return SlotPresenceStore.getParticipant(provider);
+  }
+
+  getEntityPresence(provider: "ai0" | "ai1" | "ai2" | "us1") {
+    return SlotPresenceStore.getEntity(provider);
+  }
+
+  isAssigned(provider: string): boolean {
+    if (provider !== "ai0" && provider !== "ai1" && provider !== "ai2" && provider !== "us1") {
+      return false;
     }
-    if (provider === "us1") {
-      const identity = this.getUs1Identity();
-      return String(identity?.nickname ?? identity?.email ?? "US1");
+
+    return SlotPresenceStore.isAssigned(provider);
+  }
+
+  isConnected(provider: string): boolean {
+    if (provider !== "ai0" && provider !== "ai1" && provider !== "ai2" && provider !== "us1") {
+      return false;
     }
-    const account = this.getAccountForSlot(provider);
-    return String(account?.nickname ?? account?.email ?? provider.toUpperCase());
+
+    return SlotPresenceStore.isConnected(provider);
+  }
+
+  getAssignedSlotForAccount(accountId: string): "ai0" | "ai1" | "ai2" | null {
+    return SlotPresenceStore.getAssignedSlotForAccount(accountId);
   }
 
   setChatTargets(targets: string[] = []): void {

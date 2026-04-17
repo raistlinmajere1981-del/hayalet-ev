@@ -908,8 +908,8 @@ export class AnalyzeController {
     if (uploadBtn) uploadBtn.disabled = false;
     if (sendBtn) sendBtn.disabled = false;
 
-    const ai1Connected = SlotController.isConnected("ai1");
-    const ai2Connected = SlotController.isConnected("ai2");
+    const ai1Connected = AppState.isConnected("ai1");
+    const ai2Connected = AppState.isConnected("ai2");
     const ai1HasAccount = !!AppState.getAccountForSlot("ai1");
     const ai2HasAccount = !!AppState.getAccountForSlot("ai2");
     const us1Connected = AppState.isUs1Connected();
@@ -999,8 +999,8 @@ export class AnalyzeController {
   _updateAIAIControls(): void {
     const ai1Assigned = !!AppState.getAccountForSlot("ai1");
     const ai2Assigned = !!AppState.getAccountForSlot("ai2");
-    const ai1Connected = SlotController.isConnected("ai1") === true;
-    const ai2Connected = SlotController.isConnected("ai2") === true;
+    const ai1Connected = AppState.isConnected("ai1") === true;
+    const ai2Connected = AppState.isConnected("ai2") === true;
     const bothAIsConnected = ai1Connected && ai2Connected;
     const aiChatEnabled = ai1Assigned && ai2Assigned && bothAIsConnected;
 
@@ -1704,9 +1704,9 @@ export class AnalyzeController {
     const cross = document.getElementById("send-cross") as HTMLInputElement | null;
 
     const ai1CanSend =
-      AppState.getAccountForSlot("ai1") !== null && SlotController.isConnected("ai1") === true;
+      AppState.getAccountForSlot("ai1") !== null && AppState.isConnected("ai1") === true;
     const ai2CanSend =
-      AppState.getAccountForSlot("ai2") !== null && SlotController.isConnected("ai2") === true;
+      AppState.getAccountForSlot("ai2") !== null && AppState.isConnected("ai2") === true;
     const us1CanSend = AppState.hasUs1Identity() && AppState.isUs1Connected();
 
     if (sendAi1) {
@@ -1739,8 +1739,8 @@ export class AnalyzeController {
 
   _getConnectedAIs(): string[] {
     const list: string[] = [];
-    if (SlotController.isConnected("ai1") === true) list.push("ai1");
-    if (SlotController.isConnected("ai2") === true) list.push("ai2");
+    if (AppState.isConnected("ai1") === true) list.push("ai1");
+    if (AppState.isConnected("ai2") === true) list.push("ai2");
     return list;
   }
 

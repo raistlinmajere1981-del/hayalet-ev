@@ -1,7 +1,7 @@
 import { BaseRelay } from "./base-relay.js";
 import type { SyncResult } from "./base-relay.js";
 import { LogCategory } from "@shared/logging-core";
-import { SlotController } from "../slot-controller.js";
+import { AppState } from "../app-state.js";
 import { getErrorMessage } from "@shared/index.js";
 import { AppI18n } from "../i18n/index.js";
 import type { CoreEngine as CoreEngineType } from "../core-engine.js";
@@ -329,7 +329,7 @@ export class AIAIRelay extends BaseRelay {
       return;
     }
 
-    if (SlotController.isConnected(target) === false) {
+    if (AppState.isConnected(target) === false) {
       this._logT("info", "app.logs.aiaiRelay.relaySkippedTargetNotConnected", {
         target,
       });

@@ -5,7 +5,6 @@ import { AppState } from "../app-state.js";
 import { CommandManager } from "../command-manager.js";
 import type { CommandResult } from "../command-manager.js";
 import { Logger, LogCategory, LogLevel } from "../logger/index.js";
-import { SettingsManager } from "../settings-manager.js";
 import { WhisperManager } from "../whisper-manager.js";
 import { resolveIntlLocale } from "../../../../shared/i18n/locale.js";
 
@@ -110,14 +109,8 @@ export function resumeWhispers(runCheck = false): void {
 }
 
 export function resolveSlotForAccount(accountId: string): "ai1" | "ai2" | null {
-  const settings = SettingsManager.getSnapshot();
-  if (settings.slots.ai1.accountId === accountId) {
-    return "ai1";
-  }
-  if (settings.slots.ai2.accountId === accountId) {
-    return "ai2";
-  }
-  return null;
+  const assignedSlot = AppState.getAssignedSlotForAccount(accountId);
+  return assignedSlot === "ai1" || assignedSlot === "ai2" ? assignedSlot : null;
 }
 
 export async function enqueueWhisperJobWithContext(

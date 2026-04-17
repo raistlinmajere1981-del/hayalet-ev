@@ -38,10 +38,11 @@ export function createLaboratoryRuntimeBootstrap(deps) {
   function sanitizeContext(payload, api) {
     const source = toContextRecord(payload);
     const room = toRoomRecord(source.room);
-    const user = toUserRecord(source.user);
+    const presence = toRecord(source.presence);
+    const user = toUserRecord(presence["user"]);
     const presentation = toPresentationRecord(source.presentation);
     const translations = toRecord(source.translations);
-    const slots = toRecord(source.slots);
+    const slots = toRecord(presence["slots"]);
     const activeFeature = toActiveFeatureRecord(source.activeFeature);
     const workbenchSource = toWorkbenchRecord(source.workbench);
     const normalizedFeatureId = normalizeLaboratoryFeatureId(
@@ -53,13 +54,18 @@ export function createLaboratoryRuntimeBootstrap(deps) {
       primaryFeatureId: defaultFeatureId,
       activeModuleId: normalizedFeatureId
     });
+    const normalizedUser = {
+      nickname: asNonEmptyString(user.nickname) || "Operator"
+    };
     return {
       room: {
         id: roomId,
         name: asNonEmptyString(room.name) || "Laboratory"
       },
-      user: {
-        nickname: asNonEmptyString(user.nickname) || "Operator"
+      user: normalizedUser,
+      presence: {
+        user: { ...normalizedUser },
+        slots: { ...slots }
       },
       presentation: {
         mode: presentation.mode === "scene-view" ? "scene-view" : "classic",

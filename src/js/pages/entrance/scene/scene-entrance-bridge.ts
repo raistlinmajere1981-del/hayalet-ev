@@ -1,10 +1,10 @@
 import { AppI18n } from "../../../modules/i18n/index.js";
+import { AppState } from "../../../modules/app-state.js";
 import { SlotController } from "../../../modules/slot-controller.js";
 import { WebviewManager } from "../../../modules/webview-manager.js";
 import { ConversationListManager } from "../../../modules/conversation-list-manager.js";
 import { SettingsManager } from "../../../modules/settings-manager.js";
 import { t as entranceT } from "../i18n.js";
-import type { AppSettings } from "@shared/settings.js";
 
 import type { SlotPanel } from "../slot-panel.js";
 import type { Us1Panel } from "../../settings/accounts/us1-panel.js";
@@ -110,11 +110,11 @@ function normalizeSlotValue(value: string | null | undefined): string {
 }
 
 function resolveUs1SlotAssignment(
-  settings: AppSettings,
   character: SceneCharacterDescriptor
 ): { assigned: boolean; matchesCharacter: boolean } {
-  const selectedAccountId = normalizeSlotValue(settings.us1Slot?.selectedAccountId);
-  const selectedRemoteUserId = normalizeSlotValue(settings.us1Slot?.selectedRemoteUserId);
+  const us1Presence = AppState.getEntityPresence("us1");
+  const selectedAccountId = normalizeSlotValue(us1Presence.accountId);
+  const selectedRemoteUserId = normalizeSlotValue(us1Presence.remoteUserId);
   const characterAccountId = normalizeSlotValue(character.accountId);
   const characterRemoteUserId = normalizeSlotValue(character.remoteUserId);
   const assigned = selectedAccountId !== "" || selectedRemoteUserId !== "";
@@ -350,8 +350,7 @@ export class SceneEntranceBridge {
 
     if (character.kind === "us1") {
       if (actionId === "connect") {
-        const settings = SettingsManager.getSnapshot();
-        const assignment = resolveUs1SlotAssignment(settings, character);
+        const assignment = resolveUs1SlotAssignment(character);
         const connected = this.us1Panel.getSceneState().connected;
 
         if (connected === false) {
@@ -459,19 +458,21 @@ export class SceneEntranceBridge {
     actionId: SceneMenuActionId
   ): Promise<void> {
     if (actionId === "connect") {
-      const settings = SettingsManager.getSnapshot();
-      const resolution = resolveSceneAiConnectSlot(character.accountId, settings);
+      const resolution = resolveSceneAiConnectSlot(character.accountId);
       const slot = resolution.slot;
       if (slot === null) {
         return;
       }
 
-      if (resolution.mode === "assigned" && SlotController.isConnected(slot) === true) {
+      if (resolution.mode === "assigned" && AppState.isConnected(slot) === true) {
         await this.disconnectUser(slot);
         return;
       }
 
-      if (character.accountId !== null && settings.slots[slot].accountId !== character.accountId) {
+      if (
+        character.accountId !== null &&
+        AppState.getEntityPresence(slot).accountId !== character.accountId
+      ) {
         await this.slotPanels[slot].updateSetting("accountId", character.accountId);
       }
 
@@ -516,11 +517,11 @@ export class SceneEntranceBridge {
 
   private getAiMenuState(character: SceneCharacterDescriptor): SceneCharacterMenuState {
     const settings = SettingsManager.getSnapshot();
-    const resolution = resolveSceneAiConnectSlot(character.accountId, settings);
+    const resolution = resolveSceneAiConnectSlot(character.accountId);
     const assignedSlot = resolution.mode === "assigned" ? resolution.slot : null;
     const slot = resolution.slot;
     const connected =
-      assignedSlot !== null ? SlotController.isConnected(assignedSlot) === true : false;
+      assignedSlot !== null ? AppState.isConnected(assignedSlot) === true : false;
     const controlsReason =
       assignedSlot !== null
         ? null
@@ -657,8 +658,7 @@ export class SceneEntranceBridge {
 
   private getUs1MenuState(character: SceneCharacterDescriptor): SceneCharacterMenuState {
     const sceneState = this.us1Panel.getSceneState();
-    const settings = SettingsManager.getSnapshot();
-    const assignment = resolveUs1SlotAssignment(settings, character);
+    const assignment = resolveUs1SlotAssignment(character);
     const slotOccupiedByOther = assignment.assigned && assignment.matchesCharacter === false;
     const canAutoAssign =
       assignment.assigned === false && normalizeSlotValue(character.accountId) !== "";
@@ -746,7 +746,7 @@ export class SceneEntranceBridge {
       "assistant-connect-btn",
       isTurkishLocale() ? "Bağlan" : "Connect"
     );
-    const assistantConnected = SlotController.isConnected("ai0") === true;
+    const assistantConnected = AppState.isConnected("ai0") === true;
     const testButtonDisabled = readButtonDisabled("ai0-test-btn");
     const devtoolsButtonDisabled = readButtonDisabled("assistant-devtools-btn");
 
@@ -824,8 +824,7 @@ export class SceneEntranceBridge {
       return null;
     }
 
-    const settings = SettingsManager.getSnapshot();
-    const resolution = resolveSceneAiConnectSlot(character.accountId, settings);
+    const resolution = resolveSceneAiConnectSlot(character.accountId);
     return resolution.mode === "assigned" ? resolution.slot : null;
   }
 }

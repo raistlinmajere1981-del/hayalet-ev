@@ -1,4 +1,4 @@
-import type { AppSettings } from "@shared/settings.js";
+import { AppState } from "../../../modules/app-state.js";
 
 export type SceneAiTargetSlot = "ai1" | "ai2";
 
@@ -18,8 +18,7 @@ function normalizeAccountId(value: string | null | undefined): string {
 }
 
 export function resolveSceneAiConnectSlot(
-  accountId: string | null | undefined,
-  settings: AppSettings
+  accountId: string | null | undefined
 ): SceneAiConnectResolution {
   const normalizedAccountId = normalizeAccountId(accountId);
   if (normalizedAccountId === "") {
@@ -29,7 +28,7 @@ export function resolveSceneAiConnectSlot(
     };
   }
 
-  const ai1AccountId = normalizeAccountId(settings.slots.ai1.accountId);
+  const ai1AccountId = normalizeAccountId(AppState.getEntityPresence("ai1").accountId);
   if (ai1AccountId === normalizedAccountId) {
     return {
       slot: "ai1",
@@ -37,7 +36,7 @@ export function resolveSceneAiConnectSlot(
     };
   }
 
-  const ai2AccountId = normalizeAccountId(settings.slots.ai2.accountId);
+  const ai2AccountId = normalizeAccountId(AppState.getEntityPresence("ai2").accountId);
   if (ai2AccountId === normalizedAccountId) {
     return {
       slot: "ai2",
@@ -65,9 +64,10 @@ export function resolveSceneAiConnectSlot(
   };
 }
 
-export function resolveSceneUs1ConnectTarget(settings: AppSettings): SceneUs1ConnectResolution {
-  const selectedAccountId = normalizeAccountId(settings.us1Slot?.selectedAccountId);
-  const selectedRemoteUserId = normalizeAccountId(settings.us1Slot?.selectedRemoteUserId);
+export function resolveSceneUs1ConnectTarget(): SceneUs1ConnectResolution {
+  const us1Presence = AppState.getEntityPresence("us1");
+  const selectedAccountId = normalizeAccountId(us1Presence.accountId);
+  const selectedRemoteUserId = normalizeAccountId(us1Presence.remoteUserId);
 
   return {
     slot: "us1",

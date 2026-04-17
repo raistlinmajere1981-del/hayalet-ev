@@ -825,16 +825,12 @@ export class AssistantController {
   }
 
   _getAssistantSceneAvatarSource(): string | null {
-    const assistantAccount = AppState.getAccountForSlot("ai0");
-    const preferredAvatarPath = AppState.getAvatar("ai0");
+    const assistantPresence = AppState.getEntityPresence("ai0");
     const customAvatarPath = getAssistantCustomAvatarPath();
 
     return getFirstNonEmpty(
-      assistantAccount?.avatarPath,
-      assistantAccount?.avatar,
-      preferredAvatarPath !== ASSISTANT_DEFAULT_AVATAR_PATH ? preferredAvatarPath : "",
+      assistantPresence.avatar,
       customAvatarPath,
-      preferredAvatarPath,
       ASSISTANT_DEFAULT_AVATAR_PATH
     );
   }
@@ -1863,13 +1859,14 @@ export class AssistantController {
 
   async _ensureReadyForDelivery(): Promise<void> {
     const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
-    const hasAccount = slotState?.accountId !== undefined && slotState.accountId !== "";
+    const hasAccount = AppState.isAssigned("ai0");
     if (!hasAccount) {
       throw new Error(assistantT("runtime.accountMissing"));
     }
 
-    if (slotState.state !== SlotState.CONNECTED) {
-      const isConnecting = slotState.state === SlotState.CONNECTING || this._connectFlowActive;
+    const currentState = slotState?.state ?? null;
+    if (currentState !== SlotState.CONNECTED) {
+      const isConnecting = currentState === SlotState.CONNECTING || this._connectFlowActive;
       if (!isConnecting) {
         await this._toggleConnection();
       }
@@ -2379,7 +2376,7 @@ export class AssistantController {
 
   _updateConnectionUI(skipSystemServerSync = false): void {
     const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
-    const hasAccount = slotState?.accountId !== undefined && slotState.accountId !== "";
+    const hasAccount = AppState.isAssigned("ai0");
     const isConnected = slotState?.state === SlotState.CONNECTED;
     const isConnecting = slotState?.state === SlotState.CONNECTING || this._connectFlowActive;
     const shouldDismissScenarioPanel = !hasAccount || (!isConnected && !isConnecting);

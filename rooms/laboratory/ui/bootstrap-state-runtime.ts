@@ -27,6 +27,12 @@ type LaboratoryUiRequestDomain =
 
 type LaboratoryUiBootstrapContext = {
   featureId: string;
+  presence: {
+    user: {
+      nickname: string;
+    };
+    slots: LaboratoryRecord;
+  };
   presentation: {
     mode: "classic";
     uiScale: number;
@@ -234,6 +240,12 @@ export function createLaboratoryUiBootstrapStateRuntime(
       featureId: workbench.activeModuleId,
       user: {
         nickname: "Operator",
+      },
+      presence: {
+        user: {
+          nickname: "Operator",
+        },
+        slots: {},
       },
       presentation: {
         mode: "classic",

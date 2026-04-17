@@ -1,28 +1,9 @@
 import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
 import { AppI18n } from "../../modules/i18n/index.js";
-import { AppState } from "../../modules/app-state.js";
-import { SlotController } from "../../modules/slot-controller.js";
-import {
-  buildRoomSlotPresenceSnapshot,
-  buildRoomUserPresenceSnapshot,
-  createRoomPresenceSnapshot,
-  type RoomPresenceSlotSnapshot,
-  type RoomPresenceSlotId,
-} from "../../modules/rooms/room-presence.js";
+import { buildRoomPresenceSnapshot } from "../../modules/rooms/room-presence.js";
 import { getAppUiScale, getSceneUiScale } from "../../ui/theme/ui-scale-state.js";
 
 export type RoomHostMessage = Record<string, unknown>;
-
-type RoomSlotId = RoomPresenceSlotId;
-
-function readAvatar(value: string): string | null {
-  const normalized = value.trim();
-  return normalized !== "" ? normalized : null;
-}
-
-export function buildRoomSlotContext(slotId: RoomSlotId): RoomPresenceSlotSnapshot {
-  return buildRoomSlotPresenceSnapshot(slotId);
-}
 
 export function buildRoomRuntimeContextPayload(options: {
   activeFeature: InstalledRoomFeatureRecord | null;
@@ -32,20 +13,7 @@ export function buildRoomRuntimeContextPayload(options: {
   sceneFeatureOpen: boolean;
 }): RoomHostMessage {
   const { activeFeature, reason, room, sceneFeature, sceneFeatureOpen } = options;
-  const user = buildRoomUserPresenceSnapshot();
-  const slots = {
-    ai1: buildRoomSlotContext("ai1"),
-    ai2: buildRoomSlotContext("ai2"),
-    us1: buildRoomSlotContext("us1"),
-  };
-  const presence = createRoomPresenceSnapshot(user, slots);
-  const assistant = {
-    slotId: "ai0",
-    label: "AI0",
-    nickname: AppState.getNickname("ai0"),
-    avatar: readAvatar(AppState.getAvatar("ai0")),
-    connected: SlotController.isConnected("ai0") === true,
-  };
+  const presence = buildRoomPresenceSnapshot();
 
   return {
     type: "host-context",
@@ -60,9 +28,6 @@ export function buildRoomRuntimeContextPayload(options: {
       hostEntryPath: room.hostEntryPath,
       defaultFeatureId: room.defaultFeatureId,
     },
-    user,
-    assistant,
-    slots,
     presence,
     features: room.features.map((feature) => ({
       id: feature.id,

@@ -1,5 +1,6 @@
 import type { ConnectButtonState, SlotStateInfo, WebviewElement } from "@shared/assistant.js";
 
+import { AppState } from "../../modules/app-state.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import type { InlineStatusOverlayState } from "../../ui/overlay-system.js";
@@ -41,7 +42,7 @@ export function updateAssistantConnectionUI(
   const isConnecting = slotState?.state === SlotState.CONNECTING;
   const isConnectingUi = isConnecting || controller._connectFlowActive;
   const isError = slotState?.state === SlotState.ERROR;
-  const hasAccount = slotState?.accountId !== undefined && slotState.accountId !== "";
+  const hasAccount = AppState.isAssigned("ai0");
   const providerId = controller.providerSelect?.value ?? controller._activeAdapter?.id;
   const shouldHoldToolsReadyOverlay = shouldKeepOverlayVisibleForToolsReady({
     ...(typeof providerId === "string" && providerId !== "" ? { providerId } : {}),

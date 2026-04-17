@@ -27,6 +27,12 @@ export function createLaboratoryUiBootstrapStateRuntime(deps) {
       user: {
         nickname: "Operator"
       },
+      presence: {
+        user: {
+          nickname: "Operator"
+        },
+        slots: {}
+      },
       presentation: {
         mode: "classic",
         uiScale: 100

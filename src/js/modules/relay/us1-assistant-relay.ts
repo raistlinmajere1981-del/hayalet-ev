@@ -5,7 +5,6 @@ import { START_STOP_PROTOCOL_HEADERS } from "../protocol-default-headers.js";
 import { slotBridgeHandler } from "../commands/slot-bridge.js";
 import { AppState } from "../app-state.js";
 import { AppI18n } from "../i18n/index.js";
-import { SlotController } from "../slot-controller.js";
 import { TrafficManager } from "../traffic-manager.js";
 import { BaseRelay } from "./base-relay.js";
 import type { CoreEngineInterface } from "./base-relay.js";
@@ -112,7 +111,7 @@ export class Us1AssistantRelay extends BaseRelay {
       throw new Error(relayT("sourceDisconnected", { source: this._sourceSlot }));
     }
 
-    if (SlotController.isConnected(this._targetSlot) === false) {
+    if (AppState.isConnected(this._targetSlot) === false) {
       throw new Error(relayT("assistantDisconnected", { target: this._targetSlot }));
     }
 
@@ -329,7 +328,7 @@ export class Us1AssistantRelay extends BaseRelay {
   }
 
   async _forwardMessage(from: string, to: string, text: string): Promise<boolean> {
-    if (SlotController.isConnected(to) === false) {
+    if (AppState.isConnected(to) === false) {
       this._logT("info", "app.logs.us1AssistantRelay.forwardSkippedTargetNotConnected", {
         target: to,
       });

@@ -75,16 +75,8 @@ export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
   const source = isRecord(payload) ? payload : {};
   const fallbackContext = createGameRoomContextState();
   const presenceSource = isRecord(source["presence"]) ? source["presence"] : {};
-  const slotsSource = isRecord(source["slots"])
-    ? source["slots"]
-    : isRecord(presenceSource["slots"])
-      ? presenceSource["slots"]
-      : {};
-  const userSource = isRecord(source["user"])
-    ? source["user"]
-    : isRecord(presenceSource["user"])
-      ? presenceSource["user"]
-      : {};
+  const slotsSource = isRecord(presenceSource["slots"]) ? presenceSource["slots"] : {};
+  const userSource = isRecord(presenceSource["user"]) ? presenceSource["user"] : {};
   const defaultFeatures = getDefaultFeatureRecords();
   const featureMap = new Map<string, GameRoomFeatureRecord>(
     defaultFeatures.map((feature): [string, GameRoomFeatureRecord] => [feature.id, feature])
@@ -105,28 +97,38 @@ export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
         : FEATURE_ID
     )
   );
+  const user = {
+    nickname:
+      typeof userSource["nickname"] === "string" && userSource["nickname"].trim() !== ""
+        ? userSource["nickname"].trim()
+        : fallbackContext.user.nickname,
+    avatar:
+      typeof userSource["avatar"] === "string" && userSource["avatar"].trim() !== ""
+        ? userSource["avatar"].trim()
+        : fallbackContext.user.avatar,
+  };
+  const slots = {
+    ai1: normalizeSlot(slotsSource["ai1"], "ai1"),
+    ai2: normalizeSlot(slotsSource["ai2"], "ai2"),
+    us1: normalizeSlot(slotsSource["us1"], "us1"),
+  };
 
   return {
     room: isRecord(source["room"])
       ? (source["room"] as { id: string; name: string })
       : fallbackContext.room,
     presentation: isRecord(source["presentation"]) ? source["presentation"] : { mode: "classic" },
-    user: {
-      nickname:
-        typeof userSource["nickname"] === "string" && userSource["nickname"].trim() !== ""
-          ? userSource["nickname"].trim()
-          : fallbackContext.user.nickname,
-      avatar:
-        typeof userSource["avatar"] === "string" && userSource["avatar"].trim() !== ""
-          ? userSource["avatar"].trim()
-          : fallbackContext.user.avatar,
-    },
+    user,
     features,
     activeFeature: features.find((feature) => feature.id === activeFeature.id) || activeFeature,
-    slots: {
-      ai1: normalizeSlot(slotsSource["ai1"], "ai1"),
-      ai2: normalizeSlot(slotsSource["ai2"], "ai2"),
-      us1: normalizeSlot(slotsSource["us1"], "us1"),
+    slots,
+    presence: {
+      user: { ...user },
+      slots: {
+        ai1: { ...slots.ai1 },
+        ai2: { ...slots.ai2 },
+        us1: { ...slots.us1 },
+      },
     },
   };
 }

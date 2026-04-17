@@ -387,11 +387,11 @@ export class WebviewPanel {
     }
   }
 
-  getSlotState(settings: AppSettings | null, provider: string): SlotState {
-    const slots = settings?.slots as Record<string, { accountId?: string }> | undefined;
-    const slot = slots?.[provider] ?? {};
-    const hasAccount = slot.accountId !== undefined && slot.accountId !== "";
-    const connected = SlotController.isConnected(provider) === true;
+  getSlotState(_settings: AppSettings | null, provider: string): SlotState {
+    const hasAccount = provider === "ai1" || provider === "ai2"
+      ? AppState.isAssigned(provider)
+      : false;
+    const connected = AppState.isConnected(provider) === true;
     const connecting = SlotController.isTransitioning(provider) === true;
     return {
       hasAccount,
@@ -1452,7 +1452,7 @@ export class WebviewPanel {
 
   async persistLastSessionUrl(slot: SlotType, url: string): Promise<void> {
     const settings = SettingsManager.getSnapshot();
-    const accountId = settings.slots[slot].accountId;
+    const accountId = AppState.getEntityPresence(slot).accountId;
     if (accountId === null || accountId === "") {
       return;
     }

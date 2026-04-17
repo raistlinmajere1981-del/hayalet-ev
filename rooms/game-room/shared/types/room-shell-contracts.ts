@@ -26,16 +26,27 @@ export interface GameRoomFeatureRecord {
   description: string;
 }
 
-export interface GameRoomContextState {
-  room: { id: string; name: string };
-  features: GameRoomFeatureRecord[];
-  activeFeature: GameRoomFeatureRecord;
-  user: { nickname: string; avatar: string | null };
+export interface GameRoomUserState {
+  nickname: string;
+  avatar: string | null;
+}
+
+export interface GameRoomPresenceState {
+  user: GameRoomUserState;
   slots: {
     ai1: GameRoomSlotState;
     ai2: GameRoomSlotState;
     us1: GameRoomSlotState;
   };
+}
+
+export interface GameRoomContextState {
+  room: { id: string; name: string };
+  features: GameRoomFeatureRecord[];
+  activeFeature: GameRoomFeatureRecord;
+  user: GameRoomUserState;
+  slots: GameRoomPresenceState["slots"];
+  presence: GameRoomPresenceState;
 }
 
 export function createGameRoomSlotState(slotId: string): GameRoomSlotState {
@@ -85,6 +96,16 @@ export function createGameRoomContextState(): GameRoomContextState {
     description: "",
   };
 
+  const user: GameRoomUserState = {
+    nickname: "User",
+    avatar: null,
+  };
+  const slots: GameRoomPresenceState["slots"] = {
+    ai1: createGameRoomSlotState("ai1"),
+    ai2: createGameRoomSlotState("ai2"),
+    us1: createGameRoomSlotState("us1"),
+  };
+
   return {
     room: {
       id: ROOM_ID,
@@ -92,14 +113,15 @@ export function createGameRoomContextState(): GameRoomContextState {
     },
     features: featureRecords,
     activeFeature,
-    user: {
-      nickname: "User",
-      avatar: null,
-    },
-    slots: {
-      ai1: createGameRoomSlotState("ai1"),
-      ai2: createGameRoomSlotState("ai2"),
-      us1: createGameRoomSlotState("us1"),
+    user,
+    slots,
+    presence: {
+      user,
+      slots: {
+        ai1: { ...slots.ai1 },
+        ai2: { ...slots.ai2 },
+        us1: { ...slots.us1 },
+      },
     },
   };
 }

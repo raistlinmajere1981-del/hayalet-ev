@@ -3,7 +3,7 @@ import { LogCategory, LogLevel } from "@shared/logging-core";
 import { Logger } from "../logger/index.js";
 
 import { AppI18n } from "../i18n/index.js";
-import { SlotController } from "../slot-controller.js";
+import { AppState } from "../app-state.js";
 import { RelayManager } from "../relay-manager.js";
 import { SettingsManager } from "../settings-manager.js";
 import type { CommandPayload } from "./utils.js";
@@ -85,8 +85,8 @@ export async function aiaiChatStartHandler(
   const argsLabel = payload.args ?? "";
 
   try {
-    const ai1Conn = SlotController.isConnected("ai1");
-    const ai2Conn = SlotController.isConnected("ai2");
+    const ai1Conn = AppState.isConnected("ai1");
+    const ai2Conn = AppState.isConnected("ai2");
 
     if (ai1Conn !== true || ai2Conn !== true) {
       throw new Error(aiChatT("aiaiStartRequiresConnections"));
@@ -219,8 +219,8 @@ export async function aiAssistantChatStartHandler(
   const provider = providerRaw === "ai1" || providerRaw === "ai2" ? providerRaw : "ai1";
 
   try {
-    const sourceConn = SlotController.isConnected(provider);
-    const assistantConn = SlotController.isConnected("ai0");
+    const sourceConn = AppState.isConnected(provider);
+    const assistantConn = AppState.isConnected("ai0");
 
     if (sourceConn !== true) {
       throw new Error(aiChatT("aiAssistantSourceDisconnected", { provider }));

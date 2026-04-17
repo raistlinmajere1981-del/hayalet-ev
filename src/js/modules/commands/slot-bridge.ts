@@ -864,7 +864,7 @@ async function ensureConnected(
   slot: "ai0" | "ai1" | "ai2",
   envelope: SlotBridgeEnvelope
 ): Promise<{ success: boolean; message?: string }> {
-  if (SlotController.isConnected(slot) === true) {
+  if (AppState.isConnected(slot) === true) {
     return { success: true };
   }
 

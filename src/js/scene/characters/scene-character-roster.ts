@@ -95,15 +95,9 @@ function getVisibleAiAccounts(): Account[] {
   }
 
   const allAccounts = settings.accounts.filter((account) => isAiProviderAccount(account));
-  const assignedAccountIds = new Set([
-    settings.slots.ai1.accountId ?? "",
-    settings.slots.ai2.accountId ?? "",
-  ]);
-
-  const ai1Account =
-    allAccounts.find((account) => account.id === settings.slots.ai1.accountId) ?? null;
-  const ai2Account =
-    allAccounts.find((account) => account.id === settings.slots.ai2.accountId) ?? null;
+  const ai1Account = AppState.getAccountForSlot("ai1");
+  const ai2Account = AppState.getAccountForSlot("ai2");
+  const assignedAccountIds = new Set([ai1Account?.id ?? "", ai2Account?.id ?? ""]);
 
   const remaining = allAccounts
     .filter((account) => !assignedAccountIds.has(account.id))
@@ -302,28 +296,25 @@ function createAiCharacterDescriptor(
 }
 
 function createAssistantCharacterDescriptor(
-  anchor: SceneCharacterAnchor
+  anchor: SceneCharacterAnchor,
+  presenceSnapshot: ReturnType<typeof buildRoomPresenceSnapshot>
 ): SceneCharacterDescriptor {
-  const settings = AppState.getSettings();
-  const assistantAccount = AppState.getAccountForSlot("ai0");
-  const assistantAccountId = settings?.assistantSlot?.accountId ?? assistantAccount?.id ?? null;
-  const label = AppState.getNickname("ai0");
+  const assistantPresence = presenceSnapshot.assistant;
+  const label = assistantPresence.nickname;
 
   return {
     id: "scene-assistant-ai0",
     kind: "assistant",
-    accountId: assistantAccountId,
+    accountId: assistantPresence.accountId,
     remoteUserId: null,
-    providerId: assistantAccount?.provider ?? null,
+    providerId: assistantPresence.providerId,
     slot: "ai0",
     label,
     headLabel: toHeadLabel(label),
     variant: "assistant",
     avatarSource: getFirstNonEmpty(
-      assistantAccount?.avatarPath,
-      assistantAccount?.avatar,
+      assistantPresence.avatar,
       getAssistantCustomAvatarPath(),
-      AppState.getAvatar("ai0"),
       "src/assets/default.png"
     ),
     ...createDescriptorBase("assistant", anchor, getSceneCharacterState("ai0")),
@@ -461,7 +452,7 @@ export function buildSceneCharacterRoster(
 
   const assistantAnchor = anchors.find((anchor) => anchor.characterKind === "assistant");
   if (assistantAnchor !== undefined) {
-    roster.push(createAssistantCharacterDescriptor(assistantAnchor));
+    roster.push(createAssistantCharacterDescriptor(assistantAnchor, presenceSnapshot));
   }
 
   const us1Anchor = anchors.find((anchor) => anchor.characterKind === "us1");

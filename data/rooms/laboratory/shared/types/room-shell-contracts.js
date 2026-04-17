@@ -39,6 +39,12 @@ export function createLaboratoryRoomShellContext(overrides = {}) {
     user: {
       nickname: typeof user["nickname"] === "string" && user["nickname"].trim() !== "" ? user["nickname"].trim() : "Operator"
     },
+    presence: {
+      user: {
+        nickname: typeof user["nickname"] === "string" && user["nickname"].trim() !== "" ? user["nickname"].trim() : "Operator"
+      },
+      slots
+    },
     locale: normalizeLaboratoryLocale(overrides["locale"]),
     featureId: workbench.activeModuleId,
     workbench,

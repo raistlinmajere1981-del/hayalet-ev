@@ -47,9 +47,19 @@ export interface LaboratoryWorkbenchContext {
   selectedModuleIds: string[];
 }
 
+export interface LaboratoryRoomUserState {
+  nickname: string;
+}
+
+export interface LaboratoryRoomPresenceState {
+  user: LaboratoryRoomUserState;
+  slots: Record<string, unknown>;
+}
+
 export interface LaboratoryRoomShellContext {
   room: { id: string; name: string };
-  user: { nickname: string };
+  user: LaboratoryRoomUserState;
+  presence: LaboratoryRoomPresenceState;
   locale: string;
   featureId: string;
   workbench: LaboratoryWorkbenchContext;
@@ -138,6 +148,15 @@ export function createLaboratoryRoomShellContext(
         typeof user["nickname"] === "string" && user["nickname"].trim() !== ""
           ? user["nickname"].trim()
           : "Operator",
+    },
+    presence: {
+      user: {
+        nickname:
+          typeof user["nickname"] === "string" && user["nickname"].trim() !== ""
+            ? user["nickname"].trim()
+            : "Operator",
+      },
+      slots,
     },
     locale: normalizeLaboratoryLocale(overrides["locale"]),
     featureId: workbench.activeModuleId,

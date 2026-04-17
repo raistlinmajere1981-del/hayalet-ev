@@ -33,6 +33,15 @@ export function createGameRoomContextState() {
     name: "XOX",
     description: ""
   };
+  const user = {
+    nickname: "User",
+    avatar: null
+  };
+  const slots = {
+    ai1: createGameRoomSlotState("ai1"),
+    ai2: createGameRoomSlotState("ai2"),
+    us1: createGameRoomSlotState("us1")
+  };
   return {
     room: {
       id: ROOM_ID,
@@ -40,14 +49,15 @@ export function createGameRoomContextState() {
     },
     features: featureRecords,
     activeFeature,
-    user: {
-      nickname: "User",
-      avatar: null
-    },
-    slots: {
-      ai1: createGameRoomSlotState("ai1"),
-      ai2: createGameRoomSlotState("ai2"),
-      us1: createGameRoomSlotState("us1")
+    user,
+    slots,
+    presence: {
+      user,
+      slots: {
+        ai1: { ...slots.ai1 },
+        ai2: { ...slots.ai2 },
+        us1: { ...slots.us1 }
+      }
     }
   };
 }

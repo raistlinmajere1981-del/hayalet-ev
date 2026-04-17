@@ -132,7 +132,7 @@ class CoreEngineClass {
       return { success: false, message: coreEngineT("invalidProvider") };
     }
 
-    const prev = SlotController.isConnected(provider);
+    const prev = AppState.isConnected(provider);
     const now = connected === true;
     const force = opts.force === true;
     const url = opts.url;

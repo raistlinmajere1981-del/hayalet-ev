@@ -129,8 +129,10 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
 
   function normalizeContext(message: unknown) {
     const source = toContextRecord(message);
+    const presence = toRecord(source["presence"]);
     const room = toRecord(source.room);
-    const user = toRecord(source.user);
+    const user = toRecord(presence["user"]);
+    const slots = toRecord(presence["slots"]);
     const presentation = toRecord(source.presentation);
     const activeFeature = toRecord(source.activeFeature);
     const requestedFeatureId = normalizeLaboratoryFeatureId(
@@ -148,6 +150,12 @@ export function createLaboratoryUiNavigationRuntime(deps: LaboratoryNavigationDe
 
     return {
       featureId: workbench.activeModuleId,
+      presence: {
+        user: {
+          nickname: toString(user["nickname"]) || "Operator",
+        },
+        slots: { ...slots },
+      },
       presentation: {
         mode: presentation["mode"] === "scene-view" ? "scene-view" : "classic",
         uiScale: normalizeUiScale(presentation["uiScale"]),
