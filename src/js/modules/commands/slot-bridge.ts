@@ -1034,6 +1034,90 @@ async function listConversationAttachments(
   });
 }
 
+function normalizeLiveReplyAttachment(
+  value: unknown,
+  messageId: string
+): SlotBridgeAttachmentDescriptor | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const mimeType = typeof value["mimeType"] === "string" ? value["mimeType"].trim() : "";
+  const originalName =
+    typeof value["originalName"] === "string"
+      ? value["originalName"].trim()
+      : typeof value["name"] === "string"
+        ? value["name"].trim()
+        : "";
+  const archivePath =
+    typeof value["archivePath"] === "string"
+      ? value["archivePath"].trim()
+      : typeof value["path"] === "string"
+        ? value["path"].trim()
+        : "";
+  const size =
+    typeof value["size"] === "number" && Number.isFinite(value["size"]) ? value["size"] : undefined;
+  const name = originalName !== "" ? originalName : `generated-image-${messageId || "reply"}.png`;
+
+  return {
+    name,
+    kind: "generated-image",
+    messageId,
+    ...(archivePath !== "" ? { archivePath, path: archivePath } : {}),
+    ...(mimeType !== "" ? { mimeType } : {}),
+    ...(size !== undefined ? { size } : {}),
+  };
+}
+
+function readLatestSyncedReply(
+  slot: UnifiedMessageTarget,
+  syncResult: Record<string, unknown> | null,
+  conversationId: string | null
+): SlotBridgeReply | null {
+  const messages = Array.isArray(syncResult?.["messages"]) ? syncResult["messages"] : [];
+  const latestAssistant = [...messages].reverse().find((message) => {
+    if (!isRecord(message)) {
+      return false;
+    }
+
+    const role = typeof message["role"] === "string" ? message["role"].trim() : "";
+    const text =
+      [message["text"], message["content"]]
+        .find((candidate): candidate is string => typeof candidate === "string")
+        ?.trim() ?? "";
+    const generatedImages = Array.isArray(message["generatedImages"]) ? message["generatedImages"] : [];
+    return role === "assistant" && (text !== "" || generatedImages.length > 0);
+  });
+
+  if (!isRecord(latestAssistant)) {
+    return null;
+  }
+
+  const text =
+    [latestAssistant["text"], latestAssistant["content"]]
+      .find((candidate): candidate is string => typeof candidate === "string")
+      ?.trim() ?? "";
+  const messageId =
+    [latestAssistant["id"], latestAssistant["messageId"], latestAssistant["domId"]]
+      .find((candidate): candidate is string => typeof candidate === "string")
+      ?.trim() ?? "";
+  const attachments = (
+    Array.isArray(latestAssistant["generatedImages"]) ? latestAssistant["generatedImages"] : []
+  ).flatMap((asset) => {
+    const normalized = normalizeLiveReplyAttachment(asset, messageId);
+    return normalized !== null ? [normalized] : [];
+  });
+
+  return {
+    text,
+    slot,
+    provider: AppState.getProviderIdForSlot(slot) ?? slot,
+    conversationId,
+    ...(messageId !== "" ? { messageId } : {}),
+    ...(attachments.length > 0 ? { attachments } : {}),
+  };
+}
+
 async function readLatestArchivedReply(
   slot: UnifiedMessageTarget,
   conversationId: string | null,
@@ -1080,7 +1164,11 @@ async function syncReplyTarget(
   target: UnifiedMessageTarget,
   envelope: SlotBridgeEnvelope,
   conversationId: string | null
-): Promise<{ conversationId: string | null; generatedImagePendingCount: number }> {
+): Promise<{
+  conversationId: string | null;
+  generatedImagePendingCount: number;
+  latestReply: SlotBridgeReply | null;
+}> {
   if (target === "us1") {
     const electronApi = getElectronApi();
     const localSessionId =
@@ -1098,23 +1186,26 @@ async function syncReplyTarget(
           ? record["conversationId"]
           : conversationId,
       generatedImagePendingCount: 0,
+      latestReply: null,
     };
   }
 
   const webviewManager = await getWebviewManager();
   const syncResultRaw = await webviewManager.syncProvider(target, { from: "manual" });
   const syncResult = isRecord(syncResultRaw) ? syncResultRaw : null;
+  const nextConversationId =
+    syncResult !== null &&
+    typeof syncResult["conversationId"] === "string" &&
+    syncResult["conversationId"] !== ""
+      ? syncResult["conversationId"]
+      : conversationId;
   return {
-    conversationId:
-      syncResult !== null &&
-      typeof syncResult["conversationId"] === "string" &&
-      syncResult["conversationId"] !== ""
-        ? syncResult["conversationId"]
-        : conversationId,
+    conversationId: nextConversationId,
     generatedImagePendingCount:
       syncResult !== null && typeof syncResult["generatedImagePendingCount"] === "number"
         ? Math.max(0, Math.trunc(syncResult["generatedImagePendingCount"]))
         : 0,
+    latestReply: readLatestSyncedReply(target, syncResult, nextConversationId),
   };
 }
 
@@ -1138,8 +1229,9 @@ async function waitForReply(
 
     const syncResult = await syncReplyTarget(targetSlot, envelope, conversationId);
     const nextConversationId = syncResult.conversationId;
-
-    const reply = await readLatestArchivedReply(targetSlot, nextConversationId, envelope.reqId);
+    const reply =
+      syncResult.latestReply ??
+      (await readLatestArchivedReply(targetSlot, nextConversationId, envelope.reqId));
     const replyChanged =
       reply !== null &&
       (previousReply?.messageId === undefined || previousReply.messageId !== reply.messageId);
@@ -1513,11 +1605,9 @@ async function runMessageAction(
         envelope,
         envelope.sessionRef?.conversationId ?? envelope.sessionRef?.id ?? null
       );
-      previousReply = await readLatestArchivedReply(
-        primaryTarget,
-        baselineSync.conversationId,
-        envelope.reqId
-      );
+      previousReply =
+        baselineSync.latestReply ??
+        (await readLatestArchivedReply(primaryTarget, baselineSync.conversationId, envelope.reqId));
     }
   }
 

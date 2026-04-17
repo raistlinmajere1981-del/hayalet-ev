@@ -883,7 +883,7 @@ class ConversationSyncerClass {
         this._syncRetryCounts[provider] = 0;
       }
 
-      if (res.success) {
+      if (res.success && provider !== "ai0") {
         const refreshOpts: {
           silent: boolean;
           provider: string;

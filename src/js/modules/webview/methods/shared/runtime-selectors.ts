@@ -25,9 +25,34 @@ function getCurrentSelectorLanguage(): SelectorLanguage {
 export async function getRuntimeProviderConfig(
   webview: RuntimeWebviewLike
 ): Promise<RuntimeProviderConfig | null> {
-  const config = await webview.executeJavaScript?.(
-    "(function() { return window.__app_provider_config ?? null; })();"
-  );
+  const configJson = await webview.executeJavaScript?.(`(function() {
+    const config = window.__app_provider_config;
+    if (config === null || config === undefined || typeof config !== "object") {
+      return null;
+    }
+
+    try {
+      return JSON.stringify({
+        selectors: config.selectors,
+        selectorMatrix: config.selectorMatrix,
+        fileInputSelectors: config.fileInputSelectors,
+        uploadTargetSelectors: config.uploadTargetSelectors,
+      });
+    } catch {
+      return null;
+    }
+  })();`);
+
+  if (typeof configJson !== "string" || configJson.trim() === "") {
+    return null;
+  }
+
+  let config: unknown = null;
+  try {
+    config = JSON.parse(configJson);
+  } catch {
+    return null;
+  }
 
   return config !== null && config !== undefined && typeof config === "object"
     ? (config as RuntimeProviderConfig)

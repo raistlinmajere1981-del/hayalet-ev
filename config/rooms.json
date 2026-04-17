@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-17T20:49:45.322Z",
+  "updatedAt": "2026-04-17T22:32:45.471Z",
   "rooms": [
     {
       "id": "game-room",
@@ -1220,8 +1220,8 @@
           "path": "main-functions/forge-workbench/protocols/forge-room-synthesis.md"
         }
       ],
-      "installedAt": "2026-04-17T20:49:45.322Z",
-      "updatedAt": "2026-04-17T20:49:45.322Z"
+      "installedAt": "2026-04-17T22:32:45.471Z",
+      "updatedAt": "2026-04-17T22:32:45.471Z"
     }
   ]
 }

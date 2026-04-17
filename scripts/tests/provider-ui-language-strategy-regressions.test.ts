@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { getRuntimeProviderConfig } from "../../src/js/modules/webview/methods/shared/runtime-selectors.ts";
+
 async function loadProviderConfig(providerId: string): Promise<Record<string, unknown>> {
   const moduleUrl = new URL(
     `../../src/js/modules/webview/providers/${providerId}/config.ts`,
@@ -45,6 +47,51 @@ test("selector locale consumers use shared resolveSelectorLanguage helper", () =
     const source = readFileSync(filePath, "utf8");
     assert.match(source, /resolveSelectorLanguage/);
   }
+});
+
+test("runtime provider config reader requests a serializable subset from the webview", async () => {
+  let executedScript = "";
+  const config = await getRuntimeProviderConfig({
+    executeJavaScript: async (script: string) => {
+      executedScript = script;
+      return JSON.stringify({
+        selectors: {
+          inputField: "#chat-input",
+          filePreview: [".ds-file-chips"],
+        },
+        selectorMatrix: {
+          selectors: {
+            sendButton: {
+              tr: "#send-btn",
+              en: "#send-btn",
+              fallbacks: ["#send-btn"],
+            },
+          },
+        },
+        fileInputSelectors: ['input[type="file"]'],
+        uploadTargetSelectors: [".drop-zone"],
+      });
+    },
+  });
+
+  assert.match(executedScript, /JSON\.stringify/);
+  assert.deepEqual(config, {
+    selectors: {
+      inputField: "#chat-input",
+      filePreview: [".ds-file-chips"],
+    },
+    selectorMatrix: {
+      selectors: {
+        sendButton: {
+          tr: "#send-btn",
+          en: "#send-btn",
+          fallbacks: ["#send-btn"],
+        },
+      },
+    },
+    fileInputSelectors: ['input[type="file"]'],
+    uploadTargetSelectors: [".drop-zone"],
+  });
 });
 
 test("app bootstrap initializes renderer i18n from settings", () => {

@@ -1,5 +1,5 @@
 export { config } from "./config.js";
-export * from "../opencode/scraper.js";
+export * from "./scraper.js";
 
 export { sendMessage } from "../../methods/message/injection.js";
 export { sendMessage as sendMessage_xdotools } from "../../methods/message/xdotools.js";

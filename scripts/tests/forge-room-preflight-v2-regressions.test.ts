@@ -18,6 +18,7 @@ import {
   listForgeCapabilityDescriptors,
 } from "../../rooms/forge-room/host/forge-preflight-metadata.ts";
 import {
+  buildForgePreflightState,
   buildForgeSynthesisProvenance,
   renderForgePromptContext,
 } from "../../rooms/forge-room/host/forge-preflight-runtime.ts";
@@ -226,6 +227,50 @@ test("forge-room prompt context rendering stays inside the downstream budget", (
 
   assert.equal(rendered.length <= 260, true);
   assert.match(rendered, /Run signature:/);
+});
+
+test("forge-room preflight accepts wrapped AI0 observation JSON replies", async () => {
+  const result = await buildForgePreflightState({
+    dispatchBridge: async () => ({
+      success: true,
+      reply: {
+        text: [
+          "Here are the observations.",
+          "```json",
+          JSON.stringify({
+            summary: "Forge should keep the handoff narrow and avoid implicit room reuse.",
+            warnings: ["ADB transport details are still unspecified."],
+            missingInfo: ["Exact adb wireless pairing workflow."],
+            status: "completed",
+          }),
+          "```",
+          "Kept concise.",
+        ].join("\n"),
+      },
+    }),
+    goal: createGoal(),
+    operatorProfile: createDefaultForgeOperatorProfile("2026-04-16T00:00:00.000Z"),
+    protocol: {
+      key: "forge-room-preflight-pre-analysis-test",
+      room: "forge-room",
+      scenario: "forge-room-preflight-pre-analysis-test",
+    },
+    runOverride: null,
+    sessionContextSelection: createEmptyForgeSessionContextSelection(),
+    sessionId: "forge-session-preflight-json",
+  });
+
+  assert.equal(
+    result.state.bundle.rovoPreAnalysis?.summary,
+    "Forge should keep the handoff narrow and avoid implicit room reuse."
+  );
+  assert.deepEqual(result.state.bundle.rovoPreAnalysis?.warnings, [
+    "ADB transport details are still unspecified.",
+  ]);
+  assert.deepEqual(result.state.bundle.rovoPreAnalysis?.missingInfo, [
+    "Exact adb wireless pairing workflow.",
+  ]);
+  assert.equal(result.state.warnings.includes("AI0 pre-analysis response could not be parsed."), false);
 });
 
 test("forge-room selected synthesis provenance wins during export and strips raw fallback errors", () => {

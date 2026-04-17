@@ -204,6 +204,36 @@ test("ai0 sync returns latest assistant message without DB persistence", async (
   }
 });
 
+test("ai0 syncProvider skips conversation refresh after latest-message sync", async () => {
+  const windowMock = installWindowMock();
+  const originalSyncConversation = ConversationSyncer.syncConversation;
+  const originalRefresh = ConversationListManager.refresh;
+  let refreshCallCount = 0;
+
+  resetSyncerState();
+
+  ConversationSyncer.syncConversation = async () => ({
+    success: true,
+    count: 1,
+    messages: [{ role: "assistant", text: "latest assistant reply" }],
+    commands: [],
+    webUrl: "https://opencode.local/chat",
+    conversationId: "conv-ai0",
+  });
+  ConversationListManager.refresh = async () => {
+    refreshCallCount += 1;
+  };
+
+  try {
+    await ConversationSyncer.syncProvider("ai0", { from: "manual" });
+    assert.equal(refreshCallCount, 0);
+  } finally {
+    ConversationSyncer.syncConversation = originalSyncConversation;
+    ConversationListManager.refresh = originalRefresh;
+    windowMock.restore();
+  }
+});
+
 test("syncConversation saves generated images as assistant attachments", async () => {
   const globalScope = globalThis as unknown as {
     window?: {

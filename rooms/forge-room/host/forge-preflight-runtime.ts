@@ -77,6 +77,101 @@ function normalizeRovoPreAnalysis(value: unknown): ForgeRovoPreAnalysis | null {
   };
 }
 
+function findStructuredReplyBoundary(text: string): number | null {
+  const startChar = text.charAt(0);
+  if (startChar !== "{" && startChar !== "[") {
+    return null;
+  }
+
+  let braceDepth = startChar === "{" ? 1 : 0;
+  let bracketDepth = startChar === "[" ? 1 : 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let index = 1; index < text.length; index += 1) {
+    const char = text.charAt(index);
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (inString) {
+      if (char === "\\") {
+        escapeNext = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      braceDepth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      braceDepth -= 1;
+      if (braceDepth < 0) {
+        return null;
+      }
+    } else if (char === "[") {
+      bracketDepth += 1;
+    } else if (char === "]") {
+      bracketDepth -= 1;
+      if (bracketDepth < 0) {
+        return null;
+      }
+    }
+
+    if (braceDepth === 0 && bracketDepth === 0) {
+      return index + 1;
+    }
+  }
+
+  return null;
+}
+
+function extractStructuredJsonText(text: string): string | null {
+  const trimmed = text.trim();
+  if (trimmed === "") {
+    return null;
+  }
+
+  const withoutJsonPrefix = trimmed.replace(/^json\b\s*/i, "").trimStart();
+  const fencedMatch = /```(?:json)?\s*([\s\S]*?)\s*```/i.exec(withoutJsonPrefix);
+  const searchSpace = (fencedMatch?.[1] ?? withoutJsonPrefix).trim();
+  const jsonStart = searchSpace.search(/[{\[]/);
+  if (jsonStart < 0) {
+    return null;
+  }
+
+  const candidate = searchSpace.slice(jsonStart).trimStart();
+  const boundary = findStructuredReplyBoundary(candidate);
+  if (boundary === null) {
+    return null;
+  }
+
+  return candidate.slice(0, boundary).trim();
+}
+
+function parseRovoPreAnalysisReply(text: string): ForgeRovoPreAnalysis | null {
+  const structuredJsonText = extractStructuredJsonText(text);
+  if (structuredJsonText === null) {
+    return null;
+  }
+
+  try {
+    return normalizeRovoPreAnalysis(JSON.parse(structuredJsonText));
+  } catch {
+    return null;
+  }
+}
+
 function buildPreAnalysisPrompt(params: {
   appArchitectureSummary: string;
   capabilitySummary: string | null;
@@ -184,23 +279,14 @@ async function maybeRunForgeRovoPreAnalysis(params: {
     };
   }
 
-  try {
-    return (
-      normalizeRovoPreAnalysis(JSON.parse(replyText)) ?? {
-        status: "warning",
-        summary: "AI0 software pre-analysis reply was not valid observation JSON.",
-        warnings: ["AI0 pre-analysis response could not be parsed."],
-        missingInfo: [],
-      }
-    );
-  } catch {
-    return {
+  return (
+    parseRovoPreAnalysisReply(replyText) ?? {
       status: "warning",
       summary: "AI0 software pre-analysis reply was not valid observation JSON.",
       warnings: ["AI0 pre-analysis response could not be parsed."],
       missingInfo: [],
-    };
-  }
+    }
+  );
 }
 
 export async function buildForgePreflightState(params: {

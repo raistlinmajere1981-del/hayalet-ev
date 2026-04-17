@@ -190,6 +190,56 @@ test(
 );
 
 test(
+  "SlotBridge sendWait reads ai0 replies directly from sync results when archive DB is empty",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness({ immediateTimers: true });
+    let targetSent = false;
+    let sentText = "";
+
+    try {
+      harness.coreEngine.sendBatch = async () => {
+        throw new Error("sendBatch should not run for text-only sendWait");
+      };
+      harness.coreEngine.sendMessage = async (payload) => {
+        if (payload?.provider === "ai0") {
+          targetSent = true;
+          sentText = payload.text ?? "";
+        }
+        return { success: true };
+      };
+      harness.webviewManager.syncProvider = async () => ({
+        conversationId: "conv-ai0",
+        generatedImagePendingCount: 0,
+        messages: targetSent
+          ? [{ id: "assistant-new", role: "assistant", text: "fresh ai0 reply" }]
+          : [{ id: "assistant-old", role: "assistant", text: "previous ai0 reply" }],
+      });
+      harness.windowRef.electronAPI = {
+        dbGetAttachments: async () => ({ data: [] }),
+        dbGetMessages: async () => ({ data: [] }),
+      };
+
+      const result = await slotBridgeHandler({
+        action: "message.sendWait",
+        fromSlot: "ai1",
+        payload: { text: "Ping ai0" },
+        reqId: "req-sendwait-ai0-live-reply",
+        timeoutMs: 10000,
+        toSlot: "ai0",
+      });
+
+      assert.equal(result.success, true);
+      assert.equal(sentText.includes("<!-- hev-req:req-sendwait-ai0-live-reply -->"), true);
+      assert.equal(result.reply?.text, "fresh ai0 reply");
+      assert.equal(result.reply?.conversationId, "conv-ai0");
+    } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
   "SlotBridge sendWait forwards replies back to replyToSlot for cross-slot AI routing",
   { concurrency: false },
   async () => {
