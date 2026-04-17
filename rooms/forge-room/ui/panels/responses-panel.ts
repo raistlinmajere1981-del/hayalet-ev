@@ -83,7 +83,7 @@ function describeResponseState(
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "savedGoalLocked", "title"],
-          "CENTER GATE LOCKED"
+          "RESPONSE LANE LOCKED"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "savedGoalLocked", "summary"],
@@ -96,7 +96,7 @@ function describeResponseState(
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "approvedDraftLocked", "title"],
-          "CENTER GATE LOCKED"
+          "RESPONSE LANE LOCKED"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "approvedDraftLocked", "summary"],
@@ -108,7 +108,7 @@ function describeResponseState(
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "dispatchLocked", "title"],
-          "CENTER GATE LOCKED"
+          "RESPONSE LANE LOCKED"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "dispatchLocked", "summary"],
@@ -120,7 +120,7 @@ function describeResponseState(
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "responseInbound", "title"],
-          "CENTER GATE OPEN"
+          "RESPONSE LANE ACTIVE"
         ),
         summary:
           counts.responses > 0
@@ -138,7 +138,7 @@ function describeResponseState(
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "responseInbound", "title"],
-          "CENTER GATE OPEN"
+          "RESPONSE LANE ACTIVE"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "reviewResponses", "summary"],
@@ -150,7 +150,7 @@ function describeResponseState(
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "conflictBlocked", "title"],
-          "CENTER GATE BLOCKED"
+          "RESPONSE LANE BLOCKED"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "conflictBlocked", "summary"],
@@ -162,7 +162,7 @@ function describeResponseState(
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "readOnly", "title"],
-          "CENTER GATE MONITOR"
+          "RESPONSE LANE MONITOR"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "readOnly", "summary"],
@@ -174,7 +174,7 @@ function describeResponseState(
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "exportInputs", "title"],
-          "CENTER GATE ARCHIVE"
+          "RESPONSE LANE ARCHIVE"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "exportInputs", "summary"],
@@ -186,7 +186,7 @@ function describeResponseState(
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "savedGoalLocked", "title"],
-          "CENTER GATE LOCKED"
+          "RESPONSE LANE LOCKED"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "savedGoalLocked", "summary"],

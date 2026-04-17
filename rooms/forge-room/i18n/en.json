@@ -164,7 +164,38 @@
       },
       "goalBlock": {
         "eyebrow": "Goal",
-        "title": "Set the run target"
+        "title": "Set the run target",
+        "savedHint": "Saved target will drive the first draft generation and downstream handoff.",
+        "draftHint": "This target is still local. Save it before preflight or draft generation.",
+        "emptyHint": "Set the problem, target room, and constraints before the room starts producing work."
+      },
+      "launchChecklist": {
+        "eyebrow": "START LANE",
+        "title": "Prepare this Forge run",
+        "summary": "Before the first draft, lock the target, choose a session, reconcile operator truths, and run preflight.",
+        "goalTitle": "Goal details",
+        "goalReady": "Saved target is ready for draft generation.",
+        "goalActive": "Draft is in progress. Save the target before preflight.",
+        "goalIdle": "Define the target room, brief, and constraints for this run.",
+        "sessionTitle": "Session selection",
+        "sessionReady": "Active session is attached to this run.",
+        "sessionActive": "Saved sessions are available. Open one or create a new run shell.",
+        "sessionIdle": "Create a session to keep run-local decisions together.",
+        "operatorTitle": "Operator details",
+        "operatorReady": "{selected} run truths selected from {total} saved records.",
+        "operatorActive": "{total} saved records are available. Pick the truths that should affect this run.",
+        "operatorIdle": "Operator profile is blank. AI will assume no saved tools or skills.",
+        "preflightTitle": "Preflight gate",
+        "preflightReady": "Run context is validated and ready for draft generation.",
+        "preflightWarning": "Preflight found warnings. Review them before you continue.",
+        "preflightStale": "Goal, context, or run settings changed. Refresh preflight before launch.",
+        "preflightIdle": "Preflight unlocks after an active session and a saved goal exist.",
+        "statuses": {
+          "ready": "Ready",
+          "active": "In progress",
+          "idle": "Pending",
+          "warning": "Needs review"
+        }
       },
       "actions": {
         "showDetails": "Goal details",
@@ -177,8 +208,13 @@
         "draftLabel": "Draft",
         "preflightLabel": "PRE-FLIGHT",
         "signatureLabel": "Signature",
+        "briefLabel": "Brief",
+        "constraintsLabel": "Constraints",
+        "filled": "filled",
         "notStarted": "not started",
         "waiting": "waiting",
+        "constraintCountOne": "{count} item",
+        "constraintCountOther": "{count} items",
         "draftCountOne": "{count} task",
         "draftCountOther": "{count} tasks"
       },
@@ -191,22 +227,54 @@
       "operatorProfile": {
         "eyebrow": "Operator profile",
         "label": "Operator",
-        "manage": "Edit",
+        "manage": "Manage",
         "drawerEyebrow": "PROFILE",
         "drawerTitle": "Manage operator profile",
         "empty": "No operator profile defined. AI will assume no prior capability.",
         "emptyShort": "Profile blank",
+        "prepTitle": "Operator details",
+        "readyHint": "{count} selected truths will shape this run.",
+        "selectHint": "Saved records exist, but this run still uses zero assumptions until you select context.",
+        "noSessionHint": "Saved operator records are ready. Open a session to choose which truths affect this run.",
+        "selectedLabel": "Selected",
         "selectedTruthHint": "Only selected items can influence this run.",
+        "topbarAction": "Operator Profile",
+        "managerHint": "Persistent operator records live here. Session selection stays on the main run screen.",
         "addSkill": "Add skill",
         "addEquipment": "Add equipment",
-        "editInline": "Edit inline",
+        "editInline": "Edit",
         "remove": "Remove",
-        "save": "Save profile",
         "close": "Close",
-        "values": {
-          "notSet": "not set",
+        "saved": "Saved",
+        "autosavePending": "Autosave on close",
+        "unsaved": "Unsaved",
+        "commit": "Apply",
+        "cancel": "Cancel",
+        "notesPlaceholder": "Optional notes",
+        "skillLabelPlaceholder": "Skill label",
+        "equipmentLabelPlaceholder": "Equipment label",
+        "brandModelPlaceholder": "Brand / model",
+        "emptySkills": "No saved skill records yet.",
+        "emptyEquipment": "No saved equipment records yet.",
+        "skillLevels": {
+          "none": "none",
+          "basic": "basic",
+          "intermediate": "intermediate",
+          "advanced": "advanced"
+        },
+        "equipmentStatus": {
+          "unavailable": "unavailable",
           "available": "available",
-          "unavailable": "unavailable"
+          "planned": "planned"
+        },
+        "modeValues": {
+          "learn_first": "learn first",
+          "result_first": "result first"
+        },
+        "riskValues": {
+          "low": "low",
+          "medium": "medium",
+          "high": "high"
         }
       },
       "catalog": {
@@ -234,30 +302,61 @@
           "risk": "Risk"
         }
       },
+      "sessionManager": {
+        "eyebrow": "SESSION MANAGEMENT",
+        "title": "Manage session",
+        "newSession": "New session",
+        "saveSession": "Save session",
+        "deleteSession": "Delete session",
+        "openSavedSession": "Open",
+        "loadLatest": "Load latest",
+        "savedCount": "Saved",
+        "active": "active",
+        "inactive": "not open",
+        "activeHint": "This active session stores the goal, run context, and preflight output for the current pass.",
+        "savedHint": "Open a saved session or start a fresh shell before selecting run-local context.",
+        "emptyHint": "Create the first session so Forge can persist your preparation state."
+      },
       "sessionContext": {
         "eyebrow": "CONTEXT FOR THIS RUN",
-        "title": "Activate context",
+        "title": "Select context",
         "selectedCount": "{count} active",
         "noneSelected": "0 active",
-        "zeroAssumptions": "0 active"
+        "zeroAssumptions": "0 active",
+        "requiresSession": "Create or open a session to edit this run context.",
+        "emptySkills": "No saved skills yet. Use Operator Profile from the top bar.",
+        "emptyEquipment": "No saved equipment yet. Use Operator Profile from the top bar."
       },
       "preflight": {
+        "eyebrow": "PRE-FLIGHT",
+        "title": "Validate run context",
         "label": "Preflight",
         "action": "Run Preflight",
         "idle": "idle",
         "ready": "ready",
+        "warning": "needs review",
         "stale": "stale",
+        "requiresSession": "REQUIRES: ACTIVE SESSION",
+        "requiresSessionHint": "Create or open a session before running preflight.",
+        "requiresGoalHint": "Save the target before preflight can validate this run.",
+        "warningHint": "Preflight completed with warnings. Review the notes before you move forward.",
+        "staleHint": "Context changed after the last preflight run. Refresh before launch.",
+        "readyHint": "Run-local settings are aligned. Use preflight as the last gate before draft generation.",
         "stepReady": "Context ready",
-        "stepComplete": "Preflight complete"
+        "stepComplete": "Preflight complete",
+        "stepWarning": "Preflight flagged warnings"
       },
       "runOverrides": {
-        "eyebrow": "Temporary conditions",
-        "title": "Temporary conditions",
+        "eyebrow": "SESSION-SPECIFIC",
+        "title": "Run settings",
         "meta": "Run-local only",
-        "tempHotAir": "Hot air",
+        "requiresSession": "Create or open a session to edit run-local settings.",
+        "mode": "Mode",
+        "risk": "Risk tolerance",
         "preAnalysis": "Pre-analysis",
         "notes": "Run notes",
         "notesPlaceholder": "Temporary condition for this run",
+        "notesPlaceholderLong": "Optional run note for this session",
         "save": "Save run overrides",
         "active": "active",
         "inactive": "inactive",
@@ -370,39 +469,39 @@
     "responsesPanel": {
       "guide": {
         "savedGoalLocked": {
-          "title": "CENTER GATE LOCKED",
+          "title": "RESPONSE LANE LOCKED",
           "summary": "REQUIRES: SAVED GOAL"
         },
         "approvedDraftLocked": {
-          "title": "CENTER GATE LOCKED",
+          "title": "RESPONSE LANE LOCKED",
           "summary": "REQUIRES: APPROVED DRAFT"
         },
         "dispatchLocked": {
-          "title": "CENTER GATE LOCKED",
+          "title": "RESPONSE LANE LOCKED",
           "summary": "REQUIRES: DISPATCH"
         },
         "responseInbound": {
-          "title": "CENTER GATE OPEN",
+          "title": "RESPONSE LANE ACTIVE",
           "summary": "STATE: RESPONSE INBOUND"
         },
         "awaitingResponses": {
-          "title": "CENTER GATE OPEN",
+          "title": "RESPONSE LANE ACTIVE",
           "summary": "STATE: AWAITING RESPONSES"
         },
         "reviewResponses": {
-          "title": "CENTER GATE OPEN",
+          "title": "RESPONSE LANE ACTIVE",
           "summary": "STATE: REVIEW RESPONSES"
         },
         "conflictBlocked": {
-          "title": "CENTER GATE BLOCKED",
+          "title": "RESPONSE LANE BLOCKED",
           "summary": "REQUIRES: CONFLICT RESOLUTION"
         },
         "readOnly": {
-          "title": "CENTER GATE MONITOR",
+          "title": "RESPONSE LANE MONITOR",
           "summary": "STATE: READ ONLY"
         },
         "exportInputs": {
-          "title": "CENTER GATE ARCHIVE",
+          "title": "RESPONSE LANE ARCHIVE",
           "summary": "STATE: EXPORT INPUTS"
         }
       },

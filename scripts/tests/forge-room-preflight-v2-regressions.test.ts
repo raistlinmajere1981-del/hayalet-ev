@@ -78,42 +78,40 @@ test("forge-room operator profile storage allows a truly blank profile and prese
 
   try {
     const loaded = await storage.loadProfile(runtimePaths);
-    assert.equal(loaded.skill.level, null);
-    assert.equal(loaded.tools.multimeter, null);
-    assert.equal(loaded.preferences.mode, null);
+    assert.deepEqual(loaded.skills, []);
+    assert.deepEqual(loaded.equipment, []);
+    assert.deepEqual(loaded.preferences, {});
 
     const saved = await storage.saveProfile(runtimePaths, {
-      skill: {
-        level: "beginner",
-        soldering: null,
-        measurement: "basic",
-        mechanical: null,
-      },
-      tools: {
-        multimeter: false,
-        hotAir: true,
-      },
+      skills: [{ skillKey: "measurement", level: "basic" }],
+      equipment: [
+        { equipmentKey: "multimeter", status: "unavailable" },
+        { equipmentKey: "hot_air", status: "available" },
+      ],
       preferences: {
-        mode: "learn-first",
-        riskTolerance: null,
+        mode: "learn_first",
       },
     });
 
-    assert.equal(saved.skill.level, "beginner");
-    assert.equal(saved.skill.soldering, null);
-    assert.equal(saved.tools.multimeter, false);
-    assert.equal(saved.tools.hotAir, true);
-    assert.equal(saved.preferences.mode, "learn-first");
-    assert.equal(saved.preferences.riskTolerance, null);
+    assert.deepEqual(saved.skills, [{ skillKey: "measurement", level: "basic" }]);
+    assert.deepEqual(saved.equipment, [
+      { equipmentKey: "hot_air", status: "available" },
+      { equipmentKey: "multimeter", status: "unavailable" },
+    ]);
+    assert.equal(saved.preferences.mode, "learn_first");
+    assert.equal(saved.preferences.riskTolerance, undefined);
 
     const persisted = JSON.parse(
       await readFile(join(rootDir, "operator-profile.json"), "utf8")
     ) as {
       schemaVersion: number;
-      tools: { multimeter: boolean | null };
+      equipment: Array<{ equipmentKey: string; status: string }>;
     };
-    assert.equal(persisted.schemaVersion, 1);
-    assert.equal(persisted.tools.multimeter, false);
+    assert.equal(persisted.schemaVersion, 2);
+    assert.deepEqual(persisted.equipment, [
+      { equipmentKey: "hot_air", status: "available" },
+      { equipmentKey: "multimeter", status: "unavailable" },
+    ]);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
@@ -142,13 +140,13 @@ test("forge-room capability selector keeps repair-relevant metadata and enforces
 
 test("forge-room prompt context rendering stays inside the downstream budget", () => {
   const operatorProfile = createDefaultForgeOperatorProfile("2026-04-16T00:00:00.000Z");
-  operatorProfile.skill.level = "beginner";
-  operatorProfile.tools.multimeter = false;
-  operatorProfile.preferences.mode = "learn-first";
+  operatorProfile.skills = [{ skillKey: "measurement", level: "basic" }];
+  operatorProfile.equipment = [{ equipmentKey: "multimeter", status: "unavailable" }];
+  operatorProfile.preferences.mode = "learn_first";
   const sessionContextSelection = createEmptyForgeSessionContextSelection();
-  sessionContextSelection.skill.level = true;
-  sessionContextSelection.tools.multimeter = true;
-  sessionContextSelection.preferences.mode = true;
+  sessionContextSelection.skillKeys = ["measurement"];
+  sessionContextSelection.equipmentKeys = ["multimeter"];
+  sessionContextSelection.preferenceKeys = ["mode"];
   const selectedOperatorProfile = buildForgeSelectedOperatorProfile({
     operatorProfile,
     sessionContextSelection,
@@ -156,9 +154,9 @@ test("forge-room prompt context rendering stays inside the downstream budget", (
 
   const rendered = renderForgePromptContext({
     bundle: {
-      schemaVersion: "v2",
+      schemaVersion: "v3",
       createdAt: "2026-04-16T00:00:00.000Z",
-      coreSystemMetadata: buildForgeCoreSystemMetadata("forge-session-v2"),
+      coreSystemMetadata: buildForgeCoreSystemMetadata("forge-session-v3"),
       appArchitectureSummary: buildForgeAppArchitectureSummary(),
       targetRoomContext: buildForgeTargetRoomContext("repair-room"),
       capabilityContext: selectForgeCapabilityContext({
@@ -171,9 +169,7 @@ test("forge-room prompt context rendering stays inside the downstream budget", (
       runOverride: {
         enableRovoPreAnalysis: false,
         notes: "Bench is temporarily shared with another repair.",
-        tools: {
-          hotAir: true,
-        },
+        temporaryConditions: ["temporary hot air available"],
       },
       rovoPreAnalysis: null,
       sessionContextSelection,
@@ -191,7 +187,7 @@ test("forge-room prompt context rendering stays inside the downstream budget", (
     runSignature: {
       source: ["keep-storage-local"],
       updatedAt: "2026-04-16T00:00:00.000Z",
-      value: "RepairRoom-v2-keep-storage-local-a1b2c3",
+      value: "RepairRoom-v3-keep-storage-local-a1b2c3",
     },
     budget: 260,
   });
@@ -219,7 +215,7 @@ test("forge-room selected synthesis provenance wins during export and strips raw
   session.runSignature = {
     source: ["keep-storage-local"],
     updatedAt: "2026-04-16T00:10:00.000Z",
-    value: "RepairRoom-v2-keep-storage-local-new999",
+    value: "RepairRoom-v3-keep-storage-local-new999",
   };
   session.syntheses = [
     {
@@ -228,7 +224,7 @@ test("forge-room selected synthesis provenance wins during export and strips raw
       body: "Keep the Repair Room handoff narrow and explicit.",
       decisionTrace: ["Selected the narrow JSON handoff."],
       provenance: {
-        runSignature: "RepairRoom-v2-keep-storage-local-old111",
+        runSignature: "RepairRoom-v3-keep-storage-local-old111",
         operatorProfileSummary: ["Profile remained blank, so no tools were assumed."],
         preflightWarnings: [
           "Preflight fell back to minimal context because the full bundle could not be prepared.",
@@ -258,7 +254,7 @@ test("forge-room selected synthesis provenance wins during export and strips raw
     }),
   });
 
-  assert.equal(handoff.runSignature, "RepairRoom-v2-keep-storage-local-old111");
+  assert.equal(handoff.runSignature, "RepairRoom-v3-keep-storage-local-old111");
   assert.deepEqual(handoff.contextSummary?.decisionTrace, ["Selected the narrow JSON handoff."]);
   assert.deepEqual(handoff.contextSummary?.operatorProfileSummary, [
     "Profile remained blank, so no tools were assumed.",
@@ -292,16 +288,16 @@ test("forge-room run signatures remain human-readable but differ when normalized
     runOverride: null,
   });
 
-  assert.match(left.value, /^RepairRoom-v2-ts-first-[a-f0-9]{6}$/);
-  assert.match(right.value, /^RepairRoom-v2-ts-first-[a-f0-9]{6}$/);
+  assert.match(left.value, /^RepairRoom-v3-ts-first-[a-f0-9]{6}$/);
+  assert.match(right.value, /^RepairRoom-v3-ts-first-[a-f0-9]{6}$/);
   assert.notEqual(left.value, right.value);
 });
 
 test("forge-room synthesis provenance stays assumption-free when no session context is selected", () => {
   const operatorProfile = createDefaultForgeOperatorProfile();
-  operatorProfile.skill.level = "advanced";
-  operatorProfile.tools.hotAir = true;
-  operatorProfile.preferences.mode = "result-first";
+  operatorProfile.skills = [{ skillKey: "measurement", level: "advanced" }];
+  operatorProfile.equipment = [{ equipmentKey: "hot_air", status: "available" }];
+  operatorProfile.preferences.mode = "result_first";
   const sessionContextSelection = createEmptyForgeSessionContextSelection();
 
   const provenance = buildForgeSynthesisProvenance({
@@ -316,7 +312,7 @@ test("forge-room synthesis provenance stays assumption-free when no session cont
   });
 
   assert.deepEqual(provenance.operatorProfileSummary, [
-    "No operator context was selected for this run; do not assume tools, skill level, or risk preference beyond the goal itself.",
+    "No operator context was selected for this run; do not assume skills, equipment, or preferences beyond the goal itself.",
   ]);
 });
 

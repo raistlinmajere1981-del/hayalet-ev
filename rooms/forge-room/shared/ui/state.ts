@@ -68,6 +68,7 @@ export interface ForgeUiContextState {
   roomId: string;
   roomName: string;
   translations: Record<string, unknown>;
+  userAvatar: string | null;
   userNickname: string;
 }
 
@@ -140,6 +141,7 @@ export function createEmptyForgeUiContext(): ForgeUiContextState {
     featureId: "forge-workbench",
     locale: "en",
     translations: {},
+    userAvatar: null,
     userNickname: "Operator",
   };
 }

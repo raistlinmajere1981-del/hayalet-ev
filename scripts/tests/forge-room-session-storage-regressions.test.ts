@@ -5,6 +5,11 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { createForgeSessionStorage } from "../../rooms/forge-room/host/forge-session-storage.ts";
+import {
+  createEmptyForgeSession,
+  createForgeRuntimeStateFromSession,
+} from "../../rooms/forge-room/host/state/forge-runtime-state.ts";
+import { createDefaultForgeOperatorProfile } from "../../rooms/forge-room/shared/types/index.ts";
 
 function createStorageDeps() {
   return {
@@ -77,8 +82,8 @@ test("forge-room session storage keeps sessions under the reserved room-local se
       createdAt: "2026-04-15T00:00:00.000Z",
       updatedAt: "2026-04-15T00:00:00.000Z",
     };
-    session.sessionContextSelection.skill.measurement = true;
-    session.sessionContextSelection.tools.multimeter = true;
+    session.sessionContextSelection.skillKeys = ["measurement"];
+    session.sessionContextSelection.equipmentKeys = ["multimeter"];
     await storage.saveSession(runtimePaths, session);
     await storage.appendEvent(runtimePaths, session.id, {
       id: "forge-event-1",
@@ -96,8 +101,8 @@ test("forge-room session storage keeps sessions under the reserved room-local se
     const sessionPath = join(rootDir, "sessions", session.id, "session.json");
 
     assert.equal(loaded?.goal?.summary, "Repair Room integration");
-    assert.equal(loaded?.sessionContextSelection.skill.measurement, true);
-    assert.equal(loaded?.sessionContextSelection.tools.multimeter, true);
+    assert.deepEqual(loaded?.sessionContextSelection.skillKeys, ["measurement"]);
+    assert.deepEqual(loaded?.sessionContextSelection.equipmentKeys, ["multimeter"]);
     assert.equal(latest?.id, session.id);
     assert.equal(listed.length, 1);
     await access(sessionPath);
@@ -126,4 +131,34 @@ test("forge-room session storage ignores non-session residue outside the reserve
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
+});
+
+test("forge-room runtime state prunes session selections that drift out of the active catalog", () => {
+  const session = createEmptyForgeSession("forge-session-catalog-drift");
+  session.sessionContextSelection = {
+    skillKeys: ["measurement", "custom_skill"],
+    equipmentKeys: ["multimeter", "bench_laser"],
+    preferenceKeys: ["mode"],
+  };
+
+  const operatorProfile = createDefaultForgeOperatorProfile();
+  operatorProfile.skills = [
+    { skillKey: "measurement", level: "basic" },
+    { skillKey: "custom_skill", level: "advanced" },
+  ];
+  operatorProfile.equipment = [
+    { equipmentKey: "multimeter", status: "available" },
+    { equipmentKey: "bench_laser", status: "planned" },
+  ];
+  operatorProfile.preferences = {
+    mode: "learn_first",
+  };
+
+  const runtimeState = createForgeRuntimeStateFromSession(session, {
+    operatorProfile,
+  });
+
+  assert.deepEqual(runtimeState.sessionContextSelection.skillKeys, ["measurement"]);
+  assert.deepEqual(runtimeState.sessionContextSelection.equipmentKeys, ["multimeter"]);
+  assert.deepEqual(runtimeState.sessionContextSelection.preferenceKeys, ["mode"]);
 });

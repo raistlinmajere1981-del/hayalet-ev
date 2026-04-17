@@ -12,6 +12,8 @@ import {
 } from "../shared/ui/state.js";
 import {
   createDefaultForgeOperatorProfile,
+  isForgeOperatorEquipmentStatus,
+  isForgeOperatorSkillLevel,
   type ForgeOperatorProfile,
   type ForgeSessionContextSelection,
 } from "../shared/types/index.js";
@@ -19,6 +21,10 @@ import { renderApprovedTasksPanel } from "./panels/approved-tasks-panel.js";
 import { renderCoordinatorPanel } from "./panels/coordinator-panel.js";
 import { renderDraftBreakdownPanel } from "./panels/draft-breakdown-panel.js";
 import { renderGoalInputPanel } from "./panels/goal-input-panel.js";
+import {
+  renderOperatorProfileManager,
+  type ForgeProfileEditorDraftView,
+} from "./panels/operator-profile-manager-panel.js";
 import { renderResponsesPanel } from "./panels/responses-panel.js";
 import { renderSynthesisPanel } from "./panels/synthesis-panel.js";
 
@@ -29,7 +35,6 @@ type ForgeUiWindow = Window & {
 type ForgeLocalViewState = {
   advancedCapsulesOpen: boolean;
   advancedDraftOpen: boolean;
-  activeProfileEntryId: string | null;
   expandedResponseIds: Set<string>;
   expandedSynthesisIds: Set<string>;
   goalDetailsOpen: boolean;
@@ -39,6 +44,7 @@ type ForgeLocalViewState = {
   operatorProfileDraft: ForgeOperatorProfile | null;
   operatorProfileDraftDirty: boolean;
   operatorProfileDraftSourceFingerprint: string | null;
+  profileEditorDraft: ForgeProfileEditorDraftView;
   profileEditorOpen: boolean;
   runConditionComposerOpen: boolean;
   runConditionComposerValue: string;
@@ -79,12 +85,12 @@ type ForgeGoalDraftState = {
 
 type ForgeRunOverrideDraftState = {
   enableRovoPreAnalysis: boolean;
+  mode: "learn_first" | "result_first" | "";
   notes: string;
+  riskTolerance: "high" | "low" | "medium" | "";
   sourceFingerprint: string;
   sourceSessionId: string | null;
-  tools: {
-    hotAir: boolean;
-  };
+  temporaryConditions: string[];
 };
 
 export function createForgeRoomUiRuntime() {
@@ -95,7 +101,6 @@ export function createForgeRoomUiRuntime() {
   const viewState: ForgeLocalViewState = {
     advancedCapsulesOpen: false,
     advancedDraftOpen: false,
-    activeProfileEntryId: null,
     expandedResponseIds: new Set<string>(),
     expandedSynthesisIds: new Set<string>(),
     goalDetailsOpen: false,
@@ -105,6 +110,7 @@ export function createForgeRoomUiRuntime() {
     operatorProfileDraft: null,
     operatorProfileDraftDirty: false,
     operatorProfileDraftSourceFingerprint: null,
+    profileEditorDraft: null,
     profileEditorOpen: false,
     runConditionComposerOpen: false,
     runConditionComposerValue: "",
@@ -251,23 +257,8 @@ export function createForgeRoomUiRuntime() {
     selection: ForgeSessionContextSelection
   ): ForgeSessionContextSelection {
     return {
-      skill: {
-        level: selection.skill.level,
-        soldering: selection.skill.soldering,
-        measurement: selection.skill.measurement,
-        mechanical: selection.skill.mechanical,
-      },
-      tools: {
-        multimeter: selection.tools.multimeter,
-        solderingIron: selection.tools.solderingIron,
-        hotAir: selection.tools.hotAir,
-        benchPowerSupply: selection.tools.benchPowerSupply,
-        magnification: selection.tools.magnification,
-      },
-      preferences: {
-        mode: selection.preferences.mode,
-        riskTolerance: selection.preferences.riskTolerance,
-      },
+      skillKeys: [...selection.skillKeys],
+      equipmentKeys: [...selection.equipmentKeys],
     };
   }
 
@@ -282,23 +273,19 @@ export function createForgeRoomUiRuntime() {
     return {
       schemaVersion: profile.schemaVersion,
       updatedAt: profile.updatedAt,
-      skill: {
-        level: profile.skill.level,
-        soldering: profile.skill.soldering,
-        measurement: profile.skill.measurement,
-        mechanical: profile.skill.mechanical,
-      },
-      tools: {
-        multimeter: profile.tools.multimeter,
-        solderingIron: profile.tools.solderingIron,
-        hotAir: profile.tools.hotAir,
-        benchPowerSupply: profile.tools.benchPowerSupply,
-        magnification: profile.tools.magnification,
-      },
-      preferences: {
-        mode: profile.preferences.mode,
-        riskTolerance: profile.preferences.riskTolerance,
-      },
+      skills: profile.skills.map((record) => ({
+        skillKey: record.skillKey,
+        label: record.label,
+        level: record.level,
+        ...(record.notes ? { notes: record.notes } : {}),
+      })),
+      equipment: profile.equipment.map((record) => ({
+        equipmentKey: record.equipmentKey,
+        label: record.label,
+        status: record.status,
+        ...(record.brandModel ? { brandModel: record.brandModel } : {}),
+        ...(record.notes ? { notes: record.notes } : {}),
+      })),
     };
   }
 
@@ -330,10 +317,10 @@ export function createForgeRoomUiRuntime() {
     return JSON.stringify({
       sessionId: state.snapshot.activeSessionId,
       enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
+      mode: runOverride?.mode ?? null,
       notes: runOverride?.notes ?? "",
-      tools: {
-        hotAir: runOverride?.tools.hotAir === true,
-      },
+      riskTolerance: runOverride?.riskTolerance ?? null,
+      temporaryConditions: runOverride?.temporaryConditions ?? [],
     });
   }
 
@@ -421,12 +408,12 @@ export function createForgeRoomUiRuntime() {
     const runOverride = state.snapshot.runOverride;
     return {
       enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
+      mode: runOverride?.mode ?? "",
       notes: runOverride?.notes ?? "",
+      riskTolerance: runOverride?.riskTolerance ?? "",
       sourceFingerprint: runOverrideSnapshotFingerprint(),
       sourceSessionId: state.snapshot.activeSessionId,
-      tools: {
-        hotAir: runOverride?.tools.hotAir === true,
-      },
+      temporaryConditions: [...(runOverride?.temporaryConditions ?? [])],
     };
   }
 
@@ -460,26 +447,19 @@ export function createForgeRoomUiRuntime() {
     return nextDraft;
   }
 
-  function notesToConditions(notes: string): string[] {
-    return notes
-      .split(/\r?\n/)
-      .map((entry) => entry.trim())
-      .filter((entry) => entry !== "");
-  }
-
   function draftToRunOverridePayload(draft: ForgeRunOverrideDraftState): {
     enableRovoPreAnalysis: boolean;
+    mode?: "learn_first" | "result_first";
     notes: string;
-    tools: {
-      hotAir: boolean;
-    };
+    riskTolerance?: "high" | "low" | "medium";
+    temporaryConditions: string[];
   } {
     return {
       enableRovoPreAnalysis: draft.enableRovoPreAnalysis,
+      ...(draft.mode ? { mode: draft.mode } : {}),
       notes: draft.notes,
-      tools: {
-        hotAir: draft.tools.hotAir,
-      },
+      ...(draft.riskTolerance ? { riskTolerance: draft.riskTolerance } : {}),
+      temporaryConditions: [...draft.temporaryConditions],
     };
   }
 
@@ -495,79 +475,260 @@ export function createForgeRoomUiRuntime() {
     render();
   }
 
-  function profileEntryInputId(entryId: string): string | null {
-    const inputIds: Record<string, string> = {
-      "skill-level": "forge-profile-skill-level",
-      "skill-soldering": "forge-profile-soldering",
-      "skill-measurement": "forge-profile-measurement",
-      "skill-mechanical": "forge-profile-mechanical",
-      "tool-multimeter": "forge-profile-tool-multimeter",
-      "tool-soldering-iron": "forge-profile-tool-soldering-iron",
-      "tool-hot-air": "forge-profile-tool-hot-air",
-      "tool-bench-supply": "forge-profile-tool-bench-supply",
-      "tool-magnification": "forge-profile-tool-magnification",
-      "preference-mode": "forge-profile-mode",
-      "preference-risk": "forge-profile-risk",
+  function sortUniqueKeys(values: string[]): string[] {
+    return Array.from(new Set(values)).sort((left, right) => left.localeCompare(right));
+  }
+
+  function sortSessionContextSelection(
+    selection: ForgeSessionContextSelection
+  ): ForgeSessionContextSelection {
+    return {
+      skillKeys: sortUniqueKeys(selection.skillKeys),
+      equipmentKeys: sortUniqueKeys(selection.equipmentKeys),
     };
-    return inputIds[entryId] ?? null;
   }
 
-  function readProfileEntryValue(entryId: string): string | boolean | null {
-    switch (entryId) {
-      case "skill-level":
-        return state.snapshot.operatorProfile.skill.level;
-      case "skill-soldering":
-        return state.snapshot.operatorProfile.skill.soldering;
-      case "skill-measurement":
-        return state.snapshot.operatorProfile.skill.measurement;
-      case "skill-mechanical":
-        return state.snapshot.operatorProfile.skill.mechanical;
-      case "tool-multimeter":
-        return state.snapshot.operatorProfile.tools.multimeter;
-      case "tool-soldering-iron":
-        return state.snapshot.operatorProfile.tools.solderingIron;
-      case "tool-hot-air":
-        return state.snapshot.operatorProfile.tools.hotAir;
-      case "tool-bench-supply":
-        return state.snapshot.operatorProfile.tools.benchPowerSupply;
-      case "tool-magnification":
-        return state.snapshot.operatorProfile.tools.magnification;
-      case "preference-mode":
-        return state.snapshot.operatorProfile.preferences.mode;
-      case "preference-risk":
-        return state.snapshot.operatorProfile.preferences.riskTolerance;
-      default:
-        return null;
+  function sortOperatorProfileDraft(profile: ForgeOperatorProfile): ForgeOperatorProfile {
+    return {
+      ...profile,
+      skills: profile.skills
+        .map((record) => ({
+          skillKey: record.skillKey,
+          label: record.label,
+          level: record.level,
+          ...(record.notes ? { notes: record.notes } : {}),
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label)),
+      equipment: profile.equipment
+        .map((record) => ({
+          equipmentKey: record.equipmentKey,
+          label: record.label,
+          status: record.status,
+          ...(record.brandModel ? { brandModel: record.brandModel } : {}),
+          ...(record.notes ? { notes: record.notes } : {}),
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label)),
+    };
+  }
+
+  function createProfileEntryKey(prefix: "equipment" | "skill"): string {
+    const globalCrypto = globalThis.crypto;
+    if (globalCrypto && typeof globalCrypto.randomUUID === "function") {
+      return `${prefix}-${globalCrypto.randomUUID()}`;
     }
+    return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   }
 
-  function firstProfileEntry(section: "skill" | "equipment" | "general"): string {
-    const entries =
-      section === "skill"
-        ? ["skill-level", "skill-soldering", "skill-measurement", "skill-mechanical"]
-        : section === "equipment"
-          ? [
-              "tool-multimeter",
-              "tool-soldering-iron",
-              "tool-hot-air",
-              "tool-bench-supply",
-              "tool-magnification",
-            ]
-          : ["preference-mode", "preference-risk"];
-    const firstEmpty = entries.find((entryId) => readProfileEntryValue(entryId) === null);
-    return firstEmpty ?? entries[0] ?? "skill-level";
+  function buildSkillEditorDraft(
+    profile: ForgeOperatorProfile,
+    options: {
+      mode: "create" | "edit";
+      skillKey?: string | null;
+    }
+  ): Extract<ForgeProfileEditorDraftView, { kind: "skill" }> | null {
+    if (options.mode === "edit") {
+      const record = profile.skills.find((entry) => entry.skillKey === options.skillKey) ?? null;
+      if (!record) {
+        return null;
+      }
+      return {
+        kind: "skill",
+        mode: "edit",
+        label: record.label,
+        level: record.level,
+        notes: record.notes ?? "",
+        sourceKey: record.skillKey,
+      };
+    }
+    return {
+      kind: "skill",
+      mode: "create",
+      label: "",
+      level: "none",
+      notes: "",
+      sourceKey: null,
+    };
   }
 
-  function openProfileEditor(entryId: string | null = null): void {
+  function buildEquipmentEditorDraft(
+    profile: ForgeOperatorProfile,
+    options: {
+      equipmentKey?: string | null;
+      mode: "create" | "edit";
+    }
+  ): Extract<ForgeProfileEditorDraftView, { kind: "equipment" }> | null {
+    if (options.mode === "edit") {
+      const record =
+        profile.equipment.find((entry) => entry.equipmentKey === options.equipmentKey) ?? null;
+      if (!record) {
+        return null;
+      }
+      return {
+        kind: "equipment",
+        mode: "edit",
+        brandModel: record.brandModel ?? "",
+        label: record.label,
+        notes: record.notes ?? "",
+        sourceKey: record.equipmentKey,
+        status: record.status,
+      };
+    }
+    return {
+      kind: "equipment",
+      mode: "create",
+      brandModel: "",
+      label: "",
+      notes: "",
+      sourceKey: null,
+      status: "unavailable",
+    };
+  }
+
+  function openProfileEditor(): void {
     viewState.profileEditorOpen = true;
-    viewState.activeProfileEntryId =
-      entryId ?? viewState.activeProfileEntryId ?? firstProfileEntry("skill");
     bumpLocalUiVersion();
     render();
   }
 
+  function openProfileEntryEditor(
+    kind: "equipment" | "skill",
+    mode: "create" | "edit",
+    entryKey: string | null = null
+  ): void {
+    const draft = currentOperatorProfileDraft();
+    viewState.profileEditorDraft =
+      kind === "skill"
+        ? buildSkillEditorDraft(draft, { mode, skillKey: entryKey })
+        : buildEquipmentEditorDraft(draft, { mode, equipmentKey: entryKey });
+    viewState.profileEditorOpen = true;
+    bumpLocalUiVersion();
+    render();
+  }
+
+  function removeProfileEntry(kind: "equipment" | "skill", entryKey: string): void {
+    updateOperatorProfileDraft((draft) => {
+      if (kind === "skill") {
+        return sortOperatorProfileDraft({
+          ...draft,
+          skills: draft.skills.filter((entry) => entry.skillKey !== entryKey),
+        });
+      }
+      if (kind === "equipment") {
+        return sortOperatorProfileDraft({
+          ...draft,
+          equipment: draft.equipment.filter((entry) => entry.equipmentKey !== entryKey),
+        });
+      }
+      return draft;
+    });
+    if (
+      viewState.profileEditorDraft &&
+      ((viewState.profileEditorDraft.kind === "skill" &&
+        kind === "skill" &&
+        viewState.profileEditorDraft.sourceKey === entryKey) ||
+        (viewState.profileEditorDraft.kind === "equipment" &&
+          kind === "equipment" &&
+          viewState.profileEditorDraft.sourceKey === entryKey))
+    ) {
+      viewState.profileEditorDraft = null;
+    }
+    bumpLocalUiVersion();
+    render();
+  }
+
+  function commitProfileEntryDraft(): void {
+    const editorDraft = viewState.profileEditorDraft;
+    if (editorDraft === null) {
+      return;
+    }
+    if (editorDraft.kind === "skill") {
+      const label = readInputValue("forge-profile-editor-skill-label").trim();
+      const levelValue = readInputValue("forge-profile-editor-skill-level").trim();
+      const notes = toNullableTrimmedValue(readInputValue("forge-profile-editor-skill-notes"));
+      if (label === "" || isForgeOperatorSkillLevel(levelValue) === false) {
+        return;
+      }
+      updateOperatorProfileDraft((draft) =>
+        sortOperatorProfileDraft({
+          ...draft,
+          skills: [
+            ...draft.skills.filter((entry) => entry.skillKey !== editorDraft.sourceKey),
+            {
+              skillKey: editorDraft.sourceKey ?? createProfileEntryKey("skill"),
+              label,
+              level: levelValue,
+              ...(notes ? { notes } : {}),
+            },
+          ],
+        })
+      );
+    } else if (editorDraft.kind === "equipment") {
+      const label = readInputValue("forge-profile-editor-equipment-label").trim();
+      const statusValue = readInputValue("forge-profile-editor-equipment-status").trim();
+      const brandModel = toNullableTrimmedValue(
+        readInputValue("forge-profile-editor-equipment-brand-model")
+      );
+      const notes = toNullableTrimmedValue(readInputValue("forge-profile-editor-equipment-notes"));
+      if (label === "" || isForgeOperatorEquipmentStatus(statusValue) === false) {
+        return;
+      }
+      updateOperatorProfileDraft((draft) =>
+        sortOperatorProfileDraft({
+          ...draft,
+          equipment: [
+            ...draft.equipment.filter((entry) => entry.equipmentKey !== editorDraft.sourceKey),
+            {
+              equipmentKey: editorDraft.sourceKey ?? createProfileEntryKey("equipment"),
+              label,
+              status: statusValue,
+              ...(brandModel ? { brandModel } : {}),
+              ...(notes ? { notes } : {}),
+            },
+          ],
+        })
+      );
+    }
+    viewState.profileEditorDraft = null;
+    bumpLocalUiVersion();
+    render();
+  }
+
+  function persistOperatorProfileDraftIfDirty(): void {
+    if (viewState.operatorProfileDraftDirty !== true) {
+      return;
+    }
+    const operatorProfileDraft = currentOperatorProfileDraft();
+    const sent = requestRuntime.updateOperatorProfile({
+      skills: operatorProfileDraft.skills.map((record) => ({
+        skillKey: record.skillKey,
+        label: record.label,
+        level: record.level,
+        ...(record.notes ? { notes: record.notes } : {}),
+      })),
+      equipment: operatorProfileDraft.equipment.map((record) => ({
+        equipmentKey: record.equipmentKey,
+        label: record.label,
+        status: record.status,
+        ...(record.brandModel ? { brandModel: record.brandModel } : {}),
+        ...(record.notes ? { notes: record.notes } : {}),
+      })),
+    });
+    if (sent === true) {
+      state.pendingCommand = "ForgeRoomUpdateOperatorProfile";
+    } else {
+      state.lastCommandResult = {
+        command: "ForgeRoomUpdateOperatorProfile",
+        success: false,
+        message: "roomAPI.sendCommand returned false.",
+      };
+      state.pendingCommand = null;
+    }
+  }
+
   function closeProfileEditor(): void {
+    persistOperatorProfileDraftIfDirty();
     viewState.profileEditorOpen = false;
+    viewState.profileEditorDraft = null;
     bumpLocalUiVersion();
     render();
   }
@@ -920,20 +1081,22 @@ export function createForgeRoomUiRuntime() {
     bar.dataset["forgeUiState"] = flow.state;
 
     const identity = createElement("div", "forge-statusbar__identity");
-    identity.append(
-      createElement("p", "forge-statusbar__room", localizedRoomName()),
-      createElement(
-        "strong",
-        "forge-statusbar__goal",
-        state.snapshot.currentGoal?.summary ||
-          text(["workbench", "statusBar", "startGoal"], "Define the goal to start this run.")
-      ),
-      createElement(
-        "p",
-        "forge-statusbar__stage",
-        text(["workbench", "statusBar", "stage"], "State {label}", { label: flow.label })
-      )
+    const goalSummary = state.snapshot.currentGoal?.summary.trim() ?? "";
+    if (goalSummary !== "") {
+      identity.append(createElement("strong", "forge-statusbar__goal", goalSummary));
+    }
+    const operatorActions = createElement("div", "forge-statusbar__subactions");
+    const operatorButton = createElement(
+      "button",
+      "forge-button forge-button--secondary forge-statusbar__subaction",
+      text(["workbench", "goalPanel", "operatorProfile", "topbarAction"], "Operator Profile")
     );
+    operatorButton.dataset["forgeAction"] = "toggle-profile-editor";
+    operatorActions.append(
+      createElement("span", "forge-statusbar__microcopy", state.context.userNickname),
+      operatorButton
+    );
+    identity.append(operatorActions);
 
     const stats = createElement("div", "forge-statusbar__stats");
     [
@@ -992,15 +1155,6 @@ export function createForgeRoomUiRuntime() {
     return bar;
   }
 
-  function renderColumnHeading(label: string, caption: string): HTMLElement {
-    const block = createElement("div", "forge-column__heading");
-    block.append(
-      createElement("p", "forge-column__eyebrow", label),
-      createElement("h2", "forge-column__title", caption)
-    );
-    return block;
-  }
-
   function render() {
     const mount = documentRef.getElementById("app");
     if (mount === null) {
@@ -1038,14 +1192,11 @@ export function createForgeRoomUiRuntime() {
       planColumn.dataset["guided"] = "true";
     }
     const goalPanel = renderGoalInputPanel(documentRef, state, text, {
-      activeProfileEntryId: viewState.activeProfileEntryId,
       draftBlockedReason: describeDraftStep(),
       flowLabel,
       flowState: flow.state,
       goalDetailsOpen: viewState.goalDetailsOpen,
       goalDraft,
-      operatorProfileDraft,
-      profileEditorOpen: viewState.profileEditorOpen,
       runConditionComposerOpen: viewState.runConditionComposerOpen,
       runConditionComposerValue: viewState.runConditionComposerValue,
       runOverrideDraft,
@@ -1070,14 +1221,7 @@ export function createForgeRoomUiRuntime() {
           rawEditorOpen: viewState.advancedDraftOpen,
         });
     setPanelBadge(planSecondaryPanel, panelModes.goal);
-    planColumn.append(
-      renderColumnHeading(
-        text(["workbench", "columns", "planEyebrow"], "Left"),
-        text(["workbench", "columns", "planTitle"], "Control Surface")
-      ),
-      goalPanel,
-      planSecondaryPanel
-    );
+    planColumn.append(goalPanel, planSecondaryPanel);
 
     const responseColumn = createElement("section", "forge-column forge-column--responses");
     responseColumn.dataset["panelMode"] = panelModes.responses;
@@ -1089,13 +1233,7 @@ export function createForgeRoomUiRuntime() {
       flowState: flow.state,
     });
     setPanelBadge(responsesPanel, panelModes.responses);
-    responseColumn.append(
-      renderColumnHeading(
-        text(["workbench", "columns", "responsesEyebrow"], "Center"),
-        text(["workbench", "columns", "responsesTitle"], "Responses / Decision")
-      ),
-      responsesPanel
-    );
+    responseColumn.append(responsesPanel);
 
     const outputColumn = createElement("section", "forge-column forge-column--output");
     outputColumn.dataset["panelMode"] = panelModes.synthesis;
@@ -1109,18 +1247,22 @@ export function createForgeRoomUiRuntime() {
       synthesisBlockedReason: describeSynthesisStep(),
     });
     setPanelBadge(synthesisPanel, panelModes.synthesis);
-    outputColumn.append(
-      renderColumnHeading(
-        text(["workbench", "columns", "outputEyebrow"], "Right"),
-        text(["workbench", "columns", "outputTitle"], "Output")
-      ),
-      synthesisPanel
-    );
+    outputColumn.append(synthesisPanel);
 
     workbench.append(planColumn, responseColumn, outputColumn);
+    shell.append(renderStatusBar(flow), workbench);
+    if (viewState.profileEditorOpen) {
+      shell.append(
+        renderOperatorProfileManager(documentRef, text, {
+          dirty: viewState.operatorProfileDraftDirty,
+          draft: operatorProfileDraft,
+          editorDraft: viewState.profileEditorDraft,
+          userAvatar: state.context.userAvatar,
+          userNickname: state.context.userNickname,
+        })
+      );
+    }
     shell.append(
-      renderStatusBar(flow),
-      workbench,
       renderCoordinatorPanel(documentRef, state, text, {
         flowLabel,
         flowState: flow.state,
@@ -1172,16 +1314,6 @@ export function createForgeRoomUiRuntime() {
     return trimmed === "" ? null : trimmed;
   }
 
-  function toNullableBooleanValue(value: string): boolean | null {
-    if (value === "true") {
-      return true;
-    }
-    if (value === "false") {
-      return false;
-    }
-    return null;
-  }
-
   function bindActions(root: HTMLElement) {
     function issueCommand(commandLabel: string, send: () => boolean) {
       viewState.guidedSurface = null;
@@ -1218,31 +1350,22 @@ export function createForgeRoomUiRuntime() {
       render();
     }
 
-    function toggleSessionContextSelection(
-      section: "skill" | "tools" | "preferences",
-      key: string
-    ): void {
-      const current = currentSessionContextSelection();
-      const nextSelection = cloneSessionContextSelection(current);
-      if (section === "skill") {
-        const record = nextSelection.skill as unknown as Record<string, boolean>;
-        if (!(key in record)) {
-          return;
-        }
-        record[key] = record[key] !== true;
-      } else if (section === "tools") {
-        const record = nextSelection.tools as unknown as Record<string, boolean>;
-        if (!(key in record)) {
-          return;
-        }
-        record[key] = record[key] !== true;
-      } else {
-        const record = nextSelection.preferences as unknown as Record<string, boolean>;
-        if (!(key in record)) {
-          return;
-        }
-        record[key] = record[key] !== true;
-      }
+    function toggleSessionContextSelection(section: "equipment" | "skill", key: string): void {
+      const current = cloneSessionContextSelection(currentSessionContextSelection());
+      const nextSelection =
+        section === "skill"
+          ? sortSessionContextSelection({
+              ...current,
+              skillKeys: current.skillKeys.includes(key)
+                ? current.skillKeys.filter((entry) => entry !== key)
+                : [...current.skillKeys, key],
+            })
+          : sortSessionContextSelection({
+              ...current,
+              equipmentKeys: current.equipmentKeys.includes(key)
+                ? current.equipmentKeys.filter((entry) => entry !== key)
+                : [...current.equipmentKeys, key],
+            });
       viewState.sessionContextDraft = nextSelection;
       viewState.guidedSurface = null;
       bumpLocalUiVersion();
@@ -1333,165 +1456,53 @@ export function createForgeRoomUiRuntime() {
       element.addEventListener("change", syncGoalField);
     });
 
-    root.querySelectorAll<HTMLElement>("[data-forge-profile-entry]").forEach((element) => {
-      element.addEventListener("click", () => {
-        const entryId = element.dataset["forgeProfileEntry"];
-        if (!entryId) {
-          return;
-        }
-        viewState.profileEditorOpen = true;
-        viewState.activeProfileEntryId = entryId;
-        bumpLocalUiVersion();
-        render();
-      });
-    });
-
-    root.querySelectorAll<HTMLElement>("[data-forge-profile-field]").forEach((element) => {
-      const syncProfileField = () => {
-        const entryId = element.dataset["forgeProfileField"];
-        const control = element as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-        if (!entryId || typeof control.value !== "string") {
-          return;
-        }
-        if (entryId === "skill-level") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            skill: {
-              ...draft.skill,
-              level: toNullableTrimmedValue(
-                control.value
-              ) as ForgeOperatorProfile["skill"]["level"],
-            },
-          }));
-        } else if (entryId === "skill-soldering") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            skill: {
-              ...draft.skill,
-              soldering: toNullableTrimmedValue(
-                control.value
-              ) as ForgeOperatorProfile["skill"]["soldering"],
-            },
-          }));
-        } else if (entryId === "skill-measurement") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            skill: {
-              ...draft.skill,
-              measurement: toNullableTrimmedValue(
-                control.value
-              ) as ForgeOperatorProfile["skill"]["measurement"],
-            },
-          }));
-        } else if (entryId === "skill-mechanical") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            skill: {
-              ...draft.skill,
-              mechanical: toNullableTrimmedValue(
-                control.value
-              ) as ForgeOperatorProfile["skill"]["mechanical"],
-            },
-          }));
-        } else if (entryId === "tool-multimeter") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              multimeter: toNullableBooleanValue(control.value),
-            },
-          }));
-        } else if (entryId === "tool-soldering-iron") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              solderingIron: toNullableBooleanValue(control.value),
-            },
-          }));
-        } else if (entryId === "tool-hot-air") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              hotAir: toNullableBooleanValue(control.value),
-            },
-          }));
-        } else if (entryId === "tool-bench-supply") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              benchPowerSupply: toNullableBooleanValue(control.value),
-            },
-          }));
-        } else if (entryId === "tool-magnification") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              magnification: toNullableBooleanValue(control.value),
-            },
-          }));
-        } else if (entryId === "preference-mode") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            preferences: {
-              ...draft.preferences,
-              mode: toNullableTrimmedValue(
-                control.value
-              ) as ForgeOperatorProfile["preferences"]["mode"],
-            },
-          }));
-        } else if (entryId === "preference-risk") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            preferences: {
-              ...draft.preferences,
-              riskTolerance: toNullableTrimmedValue(
-                control.value
-              ) as ForgeOperatorProfile["preferences"]["riskTolerance"],
-            },
-          }));
-        } else {
-          return;
-        }
-        bumpLocalUiVersion();
-        render();
-      };
-      element.addEventListener("input", syncProfileField);
-      element.addEventListener("change", syncProfileField);
-    });
-
     root
-      .querySelectorAll<HTMLElement>("[data-forge-action='profile-quick-action']")
+      .querySelectorAll<HTMLElement>("[data-forge-action='start-profile-create']")
       .forEach((element) => {
         element.addEventListener("click", () => {
-          const actionValue = element.dataset["forgeActionValue"];
-          if (actionValue === "skill") {
-            openProfileEditor(firstProfileEntry("skill"));
-            return;
-          }
-          if (actionValue === "equipment") {
-            openProfileEditor(firstProfileEntry("equipment"));
-            return;
-          }
-          if (actionValue === "edit") {
-            openProfileEditor(viewState.activeProfileEntryId ?? firstProfileEntry("skill"));
-            return;
-          }
-          if (actionValue === "clear") {
-            if (viewState.activeProfileEntryId === null) {
-              openProfileEditor(firstProfileEntry("skill"));
-              return;
-            }
-            const inputId = profileEntryInputId(viewState.activeProfileEntryId);
-            const input = inputId ? documentRef.getElementById(inputId) : null;
-            if (input !== null && "value" in input && typeof input.value === "string") {
-              input.value = "";
-            }
+          const kind = element.dataset["forgeProfileKind"];
+          const entryKey = element.dataset["forgeProfileKey"] ?? null;
+          if (kind === "skill" || kind === "equipment") {
+            openProfileEntryEditor(kind, "create", entryKey);
           }
         });
+      });
+
+    root
+      .querySelectorAll<HTMLElement>("[data-forge-action='start-profile-edit']")
+      .forEach((element) => {
+        element.addEventListener("click", () => {
+          const kind = element.dataset["forgeProfileKind"];
+          const entryKey = element.dataset["forgeProfileKey"] ?? null;
+          if ((kind === "skill" || kind === "equipment") && typeof entryKey === "string") {
+            openProfileEntryEditor(kind, "edit", entryKey);
+          }
+        });
+      });
+
+    root
+      .querySelectorAll<HTMLElement>("[data-forge-action='remove-profile-entry']")
+      .forEach((element) => {
+        element.addEventListener("click", () => {
+          const kind = element.dataset["forgeProfileKind"];
+          const entryKey = element.dataset["forgeProfileKey"] ?? null;
+          if ((kind === "skill" || kind === "equipment") && typeof entryKey === "string") {
+            removeProfileEntry(kind, entryKey);
+          }
+        });
+      });
+
+    root
+      .querySelector<HTMLElement>("[data-forge-action='commit-profile-entry']")
+      ?.addEventListener("click", () => {
+        commitProfileEntryDraft();
+      });
+    root
+      .querySelector<HTMLElement>("[data-forge-action='cancel-profile-entry']")
+      ?.addEventListener("click", () => {
+        viewState.profileEditorDraft = null;
+        bumpLocalUiVersion();
+        render();
       });
 
     root
@@ -1509,6 +1520,28 @@ export function createForgeRoomUiRuntime() {
       ?.addEventListener("click", () => {
         issueCommand("ForgeRoomLoadLatestSession", () => requestRuntime.loadLatestSession());
       });
+    root.querySelectorAll<HTMLElement>("[data-forge-action='load-session']").forEach((element) => {
+      element.addEventListener("click", () => {
+        const sessionId = element.dataset["forgeSessionId"];
+        if (!sessionId) {
+          return;
+        }
+        issueCommand("ForgeRoomLoadSession", () => requestRuntime.loadSession({ sessionId }));
+      });
+    });
+    root
+      .querySelector<HTMLElement>("[data-forge-action='delete-session']")
+      ?.addEventListener("click", () => {
+        const sessionId =
+          root.querySelector<HTMLElement>("[data-forge-action='delete-session']")?.dataset[
+            "forgeSessionId"
+          ] ??
+          state.snapshot.activeSessionId ??
+          null;
+        issueCommand("ForgeRoomDeleteSession", () =>
+          sessionId ? requestRuntime.deleteSession({ sessionId }) : requestRuntime.deleteSession({})
+        );
+      });
     root
       .querySelector<HTMLElement>("[data-forge-action='save-goal']")
       ?.addEventListener("click", () => {
@@ -1522,46 +1555,11 @@ export function createForgeRoomUiRuntime() {
           });
         });
       });
-    root
-      .querySelector<HTMLElement>("[data-forge-action='save-operator-profile']")
-      ?.addEventListener("click", () => {
-        const operatorProfileDraft = currentOperatorProfileDraft();
-        issueCommand("ForgeRoomUpdateOperatorProfile", () => {
-          return requestRuntime.updateOperatorProfile({
-            skill: {
-              level: operatorProfileDraft.skill.level,
-              soldering: operatorProfileDraft.skill.soldering,
-              measurement: operatorProfileDraft.skill.measurement,
-              mechanical: operatorProfileDraft.skill.mechanical,
-            },
-            tools: {
-              multimeter: operatorProfileDraft.tools.multimeter,
-              solderingIron: operatorProfileDraft.tools.solderingIron,
-              hotAir: operatorProfileDraft.tools.hotAir,
-              benchPowerSupply: operatorProfileDraft.tools.benchPowerSupply,
-              magnification: operatorProfileDraft.tools.magnification,
-            },
-            preferences: {
-              mode: operatorProfileDraft.preferences.mode,
-              riskTolerance: operatorProfileDraft.preferences.riskTolerance,
-            },
-          });
-        });
-      });
     root.querySelectorAll<HTMLElement>("[data-forge-context-chip]").forEach((element) => {
       element.addEventListener("click", () => {
-        const unset = element.dataset["forgeContextUnset"] === "true";
-        const entryId = element.dataset["forgeProfileEntry"];
-        if (unset && entryId) {
-          openProfileEditor(entryId);
-          return;
-        }
         const section = element.dataset["forgeContextSection"];
         const key = element.dataset["forgeContextKey"];
-        if (
-          (section === "skill" || section === "tools" || section === "preferences") &&
-          typeof key === "string"
-        ) {
+        if ((section === "skill" || section === "equipment") && typeof key === "string") {
           toggleSessionContextSelection(section, key);
         }
       });
@@ -1569,17 +1567,6 @@ export function createForgeRoomUiRuntime() {
     root.querySelectorAll<HTMLElement>("[data-forge-run-override-toggle]").forEach((element) => {
       element.addEventListener("click", () => {
         const toggle = element.dataset["forgeRunOverrideToggle"];
-        if (toggle === "hotAir") {
-          const nextDraft = updateRunOverrideDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              hotAir: draft.tools.hotAir !== true,
-            },
-          }));
-          sendRunOverrideUpdate(nextDraft);
-          return;
-        }
         if (toggle === "preAnalysis") {
           const nextDraft = updateRunOverrideDraft((draft) => ({
             ...draft,
@@ -1614,12 +1601,12 @@ export function createForgeRoomUiRuntime() {
         if (!nextCondition) {
           return;
         }
-        const currentConditions = notesToConditions(currentRunOverrideDraft().notes).filter(
-          (entry) => entry !== nextCondition
-        );
         const nextDraft = updateRunOverrideDraft((draft) => ({
           ...draft,
-          notes: [...currentConditions, nextCondition].join("\n"),
+          temporaryConditions: sortUniqueKeys([
+            ...draft.temporaryConditions.filter((entry) => entry !== nextCondition),
+            nextCondition,
+          ]),
         }));
         viewState.runConditionComposerOpen = false;
         viewState.runConditionComposerValue = "";
@@ -1633,9 +1620,7 @@ export function createForgeRoomUiRuntime() {
         }
         const nextDraft = updateRunOverrideDraft((draft) => ({
           ...draft,
-          notes: notesToConditions(draft.notes)
-            .filter((entry) => entry !== condition)
-            .join("\n"),
+          temporaryConditions: draft.temporaryConditions.filter((entry) => entry !== condition),
         }));
         sendRunOverrideUpdate(nextDraft);
       });
@@ -1650,6 +1635,29 @@ export function createForgeRoomUiRuntime() {
             ) as HTMLInputElement | null
           )?.value ?? "";
       });
+    root.querySelector<HTMLElement>("#forge-run-override-notes")?.addEventListener("change", () => {
+      const nextDraft = updateRunOverrideDraft((draft) => ({
+        ...draft,
+        notes: readInputValue("forge-run-override-notes"),
+      }));
+      sendRunOverrideUpdate(nextDraft);
+    });
+    root.querySelector<HTMLElement>("#forge-run-override-mode")?.addEventListener("change", () => {
+      const nextDraft = updateRunOverrideDraft((draft) => ({
+        ...draft,
+        mode: readInputValue("forge-run-override-mode") as ForgeRunOverrideDraftState["mode"],
+      }));
+      sendRunOverrideUpdate(nextDraft);
+    });
+    root.querySelector<HTMLElement>("#forge-run-override-risk")?.addEventListener("change", () => {
+      const nextDraft = updateRunOverrideDraft((draft) => ({
+        ...draft,
+        riskTolerance: readInputValue(
+          "forge-run-override-risk"
+        ) as ForgeRunOverrideDraftState["riskTolerance"],
+      }));
+      sendRunOverrideUpdate(nextDraft);
+    });
     root
       .querySelector<HTMLElement>("[data-forge-action='run-preflight']")
       ?.addEventListener("click", () => {
@@ -1905,6 +1913,9 @@ export function createForgeRoomUiRuntime() {
     const result = toRecord(payload.result);
     if (payload.command === "ForgeRoomUpdateSessionContext" && result["success"] !== true) {
       viewState.sessionContextDraft = null;
+    }
+    if (payload.command === "ForgeRoomUpdateRunOverride" && result["success"] !== true) {
+      syncRunOverrideDraftFromSnapshot(true);
     }
     if (payload.command === "ForgeRoomUpdateGoal" && result["success"] === true) {
       viewState.goalDraftDirty = false;

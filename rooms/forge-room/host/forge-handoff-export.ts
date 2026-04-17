@@ -34,6 +34,42 @@ export function createForgeHandoffExport() {
     return criteria;
   }
 
+  function provenanceMatches(
+    left: ForgeSynthesisProvenance | null,
+    right: ForgeSynthesisProvenance | null
+  ): boolean {
+    if (left === right) {
+      return true;
+    }
+    if (left === null || right === null) {
+      return false;
+    }
+    return (
+      left.runSignature === right.runSignature &&
+      JSON.stringify(left.operatorProfileSummary) === JSON.stringify(right.operatorProfileSummary) &&
+      JSON.stringify(left.preflightWarnings) === JSON.stringify(right.preflightWarnings)
+    );
+  }
+
+  function resolveExportProvenance(params: {
+    fallbackProvenance?: ForgeSynthesisProvenance | null | undefined;
+    selected: ForgeSynthesis;
+    session: ForgeSession;
+  }): ForgeSynthesisProvenance | null {
+    const current = params.fallbackProvenance ?? null;
+    const stored = params.selected.provenance ?? null;
+    if (current === null) {
+      return stored;
+    }
+    if (params.session.preflight.status === "stale") {
+      return current;
+    }
+    if (stored === null) {
+      return current;
+    }
+    return provenanceMatches(stored, current) ? stored : current;
+  }
+
   function buildHandoffPackage(
     session: ForgeSession,
     options: {
@@ -54,7 +90,11 @@ export function createForgeHandoffExport() {
 
     const selected = requireSelectedSynthesis(session);
     const acceptanceCriteria = readAcceptanceCriteria(session, selected);
-    const provenance = selected.provenance ?? options.fallbackProvenance ?? null;
+    const provenance = resolveExportProvenance({
+      fallbackProvenance: options.fallbackProvenance,
+      selected,
+      session,
+    });
     return {
       schemaVersion: FORGE_HANDOFF_SCHEMA_VERSION,
       targetRoomId: "repair-room",
@@ -153,6 +193,9 @@ export function createForgeHandoffExport() {
           ? "Resolve the open conflict"
           : `Resolve ${String(openConflictCount)} open conflicts`
       );
+    }
+    if (session.preflight.status === "stale") {
+      missingRequirements.push("Rerun preflight to refresh export provenance");
     }
     if (acceptanceCriteriaCount === 0) {
       missingRequirements.push("Add at least one acceptance criterion");

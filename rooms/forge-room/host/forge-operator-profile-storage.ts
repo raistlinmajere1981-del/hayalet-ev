@@ -1,8 +1,10 @@
 import {
   createDefaultForgeOperatorProfile,
+  isForgeOperatorSkillLevel,
+  normalizeForgeOperatorEquipmentRecords,
+  normalizeForgeOperatorSkillRecords,
   type ForgeOperatorProfile,
-  type ForgeOperatorProfilePreferences,
-  type ForgeOperatorProfileSkill,
+  type ForgeOperatorSkillLevel,
 } from "../shared/types/index.js";
 import { createForgeRoomPaths } from "../shared/host/forge-paths.js";
 import { FORGE_OPERATOR_PROFILE_SCHEMA_VERSION } from "../shared/forge-constants.js";
@@ -14,24 +16,36 @@ type ForgeOperatorProfileStorageDeps = {
   writeJsonFile: (filePath: string, value: unknown) => Promise<void>;
 };
 
-function readSkillLevel(value: unknown): ForgeOperatorProfileSkill["level"] {
+type LegacyForgeOperatorSkillLevel = "beginner" | "intermediate" | "advanced";
+type LegacyForgeOperatorCapabilityLevel = "none" | "basic" | "good";
+
+function readLegacySkillLevel(value: unknown): LegacyForgeOperatorSkillLevel | null {
   return value === "beginner" || value === "intermediate" || value === "advanced" ? value : null;
 }
 
-function readCapabilityLevel(value: unknown): ForgeOperatorProfileSkill["soldering"] {
+function readLegacyCapabilityLevel(value: unknown): LegacyForgeOperatorCapabilityLevel | null {
   return value === "none" || value === "basic" || value === "good" ? value : null;
 }
 
-function readToolFlag(value: unknown): boolean | null {
+function readLegacyToolFlag(value: unknown): boolean | null {
   return typeof value === "boolean" ? value : null;
 }
 
-function readMode(value: unknown): ForgeOperatorProfilePreferences["mode"] {
-  return value === "learn-first" || value === "result-first" ? value : null;
-}
-
-function readRiskTolerance(value: unknown): ForgeOperatorProfilePreferences["riskTolerance"] {
-  return value === "low" || value === "medium" || value === "high" ? value : null;
+function mapLegacyCapabilityLevel(params: {
+  legacyCapability: LegacyForgeOperatorCapabilityLevel | null;
+  legacyGlobalSkillLevel: LegacyForgeOperatorSkillLevel | null;
+}): ForgeOperatorSkillLevel | null {
+  const { legacyCapability, legacyGlobalSkillLevel } = params;
+  if (legacyCapability === null) {
+    return null;
+  }
+  if (legacyCapability === "none") {
+    return "none";
+  }
+  if (legacyCapability === "basic") {
+    return "basic";
+  }
+  return legacyGlobalSkillLevel === "advanced" ? "advanced" : "intermediate";
 }
 
 export function normalizeForgeOperatorProfile(
@@ -39,30 +53,98 @@ export function normalizeForgeOperatorProfile(
   updatedAtFallback = nowIso()
 ): ForgeOperatorProfile {
   const record = toRecord(value);
+
+  if (Array.isArray(record["skills"]) || Array.isArray(record["equipment"])) {
+    return {
+      schemaVersion: FORGE_OPERATOR_PROFILE_SCHEMA_VERSION,
+      updatedAt: asNonEmptyString(record["updatedAt"]) ?? updatedAtFallback,
+      skills: normalizeForgeOperatorSkillRecords(record["skills"]),
+      equipment: normalizeForgeOperatorEquipmentRecords(record["equipment"]),
+    };
+  }
+
   const skill = toRecord(record["skill"]);
   const tools = toRecord(record["tools"]);
-  const preferences = toRecord(record["preferences"]);
+  const legacyGlobalSkillLevel = readLegacySkillLevel(skill["level"]);
+  const migratedSkills = normalizeForgeOperatorSkillRecords(
+    [
+      {
+        skillKey: "soldering",
+        label: "Soldering",
+        level: mapLegacyCapabilityLevel({
+          legacyCapability: readLegacyCapabilityLevel(skill["soldering"]),
+          legacyGlobalSkillLevel,
+        }),
+      },
+      {
+        skillKey: "measurement",
+        label: "Measurement",
+        level: mapLegacyCapabilityLevel({
+          legacyCapability: readLegacyCapabilityLevel(skill["measurement"]),
+          legacyGlobalSkillLevel,
+        }),
+      },
+      {
+        skillKey: "mechanical",
+        label: "Mechanical",
+        level: mapLegacyCapabilityLevel({
+          legacyCapability: readLegacyCapabilityLevel(skill["mechanical"]),
+          legacyGlobalSkillLevel,
+        }),
+      },
+    ].filter((entry) => isForgeOperatorSkillLevel(entry.level))
+  );
+  const migratedEquipment = normalizeForgeOperatorEquipmentRecords(
+    [
+      {
+        equipmentKey: "multimeter",
+        label: "Multimeter",
+        status: readLegacyToolFlag(tools["multimeter"]) === true ? "available" : "unavailable",
+      },
+      {
+        equipmentKey: "soldering_iron",
+        label: "Soldering Iron",
+        status:
+          readLegacyToolFlag(tools["solderingIron"]) === true ? "available" : "unavailable",
+      },
+      {
+        equipmentKey: "hot_air",
+        label: "Hot Air",
+        status: readLegacyToolFlag(tools["hotAir"]) === true ? "available" : "unavailable",
+      },
+      {
+        equipmentKey: "bench_supply",
+        label: "Bench Supply",
+        status:
+          readLegacyToolFlag(tools["benchPowerSupply"]) === true ? "available" : "unavailable",
+      },
+      {
+        equipmentKey: "magnification",
+        label: "Magnification",
+        status: readLegacyToolFlag(tools["magnification"]) === true ? "available" : "unavailable",
+      },
+    ].filter((entry) => readLegacyToolFlag(tools[legacyEquipmentToolField(entry.equipmentKey)]) !== null)
+  );
+
   return {
     schemaVersion: FORGE_OPERATOR_PROFILE_SCHEMA_VERSION,
     updatedAt: asNonEmptyString(record["updatedAt"]) ?? updatedAtFallback,
-    skill: {
-      level: readSkillLevel(skill["level"]),
-      soldering: readCapabilityLevel(skill["soldering"]),
-      measurement: readCapabilityLevel(skill["measurement"]),
-      mechanical: readCapabilityLevel(skill["mechanical"]),
-    },
-    tools: {
-      multimeter: readToolFlag(tools["multimeter"]),
-      solderingIron: readToolFlag(tools["solderingIron"]),
-      hotAir: readToolFlag(tools["hotAir"]),
-      benchPowerSupply: readToolFlag(tools["benchPowerSupply"]),
-      magnification: readToolFlag(tools["magnification"]),
-    },
-    preferences: {
-      mode: readMode(preferences["mode"]),
-      riskTolerance: readRiskTolerance(preferences["riskTolerance"]),
-    },
+    skills: migratedSkills,
+    equipment: migratedEquipment,
   };
+}
+
+function legacyEquipmentToolField(equipmentKey: string): string {
+  switch (equipmentKey) {
+    case "soldering_iron":
+      return "solderingIron";
+    case "hot_air":
+      return "hotAir";
+    case "bench_supply":
+      return "benchPowerSupply";
+    default:
+      return equipmentKey;
+  }
 }
 
 export function createForgeOperatorProfileStorage(deps: ForgeOperatorProfileStorageDeps) {

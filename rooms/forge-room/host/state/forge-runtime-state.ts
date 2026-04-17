@@ -1,4 +1,8 @@
-import { FORGE_ROOM_ID, FORGE_SESSION_SCHEMA_VERSION } from "../../shared/forge-constants.js";
+import {
+  FORGE_PREFLIGHT_SCHEMA_VERSION,
+  FORGE_ROOM_ID,
+  FORGE_SESSION_SCHEMA_VERSION,
+} from "../../shared/forge-constants.js";
 import type {
   ForgeGoal,
   ForgeSession,
@@ -19,6 +23,8 @@ import {
   createDefaultForgeOperatorProfile,
   createEmptyForgePreflightState,
   createEmptyForgeSessionContextSelection,
+  normalizeForgeSessionContextSelectionKeys,
+  reconcileForgeSessionContextSelection,
 } from "../../shared/types/index.js";
 
 export interface ForgeRuntimeState {
@@ -84,48 +90,114 @@ function normalizeForgeDecisionTrace(value: unknown): string[] {
     : [];
 }
 
+function toRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && Array.isArray(value) === false
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
 function normalizeForgeSessionContextSelection(value: unknown): ForgeSessionContextSelection {
-  const record =
-    value !== null && typeof value === "object" && Array.isArray(value) === false
-      ? (value as Record<string, unknown>)
-      : {};
-  const skill =
-    record["skill"] !== null &&
-    typeof record["skill"] === "object" &&
-    Array.isArray(record["skill"]) === false
-      ? (record["skill"] as Record<string, unknown>)
-      : {};
-  const tools =
-    record["tools"] !== null &&
-    typeof record["tools"] === "object" &&
-    Array.isArray(record["tools"]) === false
-      ? (record["tools"] as Record<string, unknown>)
-      : {};
-  const preferences =
-    record["preferences"] !== null &&
-    typeof record["preferences"] === "object" &&
-    Array.isArray(record["preferences"]) === false
-      ? (record["preferences"] as Record<string, unknown>)
-      : {};
+  const record = toRecord(value);
+  if (
+    Array.isArray(record["skillKeys"]) ||
+    Array.isArray(record["equipmentKeys"])
+  ) {
+    return normalizeForgeSessionContextSelectionKeys(record);
+  }
+
+  const skill = toRecord(record["skill"]);
+  const tools = toRecord(record["tools"]);
+  return normalizeForgeSessionContextSelectionKeys({
+    skillKeys: [
+      skill["soldering"] === true ? "soldering" : null,
+      skill["measurement"] === true ? "measurement" : null,
+      skill["mechanical"] === true ? "mechanical" : null,
+    ].filter((entry): entry is string => typeof entry === "string"),
+    equipmentKeys: [
+      tools["multimeter"] === true ? "multimeter" : null,
+      tools["solderingIron"] === true ? "soldering_iron" : null,
+      tools["hotAir"] === true ? "hot_air" : null,
+      tools["benchPowerSupply"] === true ? "bench_supply" : null,
+      tools["magnification"] === true ? "magnification" : null,
+    ].filter((entry): entry is string => typeof entry === "string"),
+  });
+}
+
+function normalizeForgeRunOverride(value: unknown): ForgeRunOverride | null {
+  const record = toRecord(value);
+  const notes = typeof record["notes"] === "string" ? record["notes"].trim() : "";
+  const temporaryConditions = Array.isArray(record["temporaryConditions"])
+    ? Array.from(
+        new Set(
+          record["temporaryConditions"]
+            .filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "")
+            .map((entry) => entry.trim())
+        )
+      )
+    : [];
+
+  if (
+    temporaryConditions.length > 0 ||
+    notes !== "" ||
+    record["enableRovoPreAnalysis"] === true ||
+    record["mode"] === "learn_first" ||
+    record["mode"] === "result_first" ||
+    record["riskTolerance"] === "low" ||
+    record["riskTolerance"] === "medium" ||
+    record["riskTolerance"] === "high"
+  ) {
+    const mode =
+      record["mode"] === "learn_first" || record["mode"] === "result_first"
+        ? record["mode"]
+        : null;
+    const riskTolerance =
+      record["riskTolerance"] === "low" ||
+      record["riskTolerance"] === "medium" ||
+      record["riskTolerance"] === "high"
+        ? record["riskTolerance"]
+        : null;
+    return {
+      enableRovoPreAnalysis: record["enableRovoPreAnalysis"] === true,
+      notes,
+      temporaryConditions: temporaryConditions.sort((left, right) => left.localeCompare(right)),
+      ...(mode ? { mode } : {}),
+      ...(riskTolerance ? { riskTolerance } : {}),
+    };
+  }
+
+  const legacyTools = toRecord(record["tools"]);
+  const legacyConditions = [
+    legacyTools["hotAir"] === true ? "temporary hot air available" : null,
+  ].filter((entry): entry is string => typeof entry === "string");
+
+  if (legacyConditions.length === 0 && record["enableRovoPreAnalysis"] !== true) {
+    return null;
+  }
+
   return {
-    skill: {
-      level: skill["level"] === true,
-      soldering: skill["soldering"] === true,
-      measurement: skill["measurement"] === true,
-      mechanical: skill["mechanical"] === true,
-    },
-    tools: {
-      multimeter: tools["multimeter"] === true,
-      solderingIron: tools["solderingIron"] === true,
-      hotAir: tools["hotAir"] === true,
-      benchPowerSupply: tools["benchPowerSupply"] === true,
-      magnification: tools["magnification"] === true,
-    },
-    preferences: {
-      mode: preferences["mode"] === true,
-      riskTolerance: preferences["riskTolerance"] === true,
-    },
+    enableRovoPreAnalysis: record["enableRovoPreAnalysis"] === true,
+    notes,
+    temporaryConditions: legacyConditions,
   };
+}
+
+function normalizeForgePreflightState(value: unknown): ForgePreflightState {
+  const record = toRecord(value);
+  const bundle = toRecord(record["bundle"]);
+  if (bundle["schemaVersion"] === FORGE_PREFLIGHT_SCHEMA_VERSION) {
+    return record as unknown as ForgePreflightState;
+  }
+
+  if (record["bundle"] !== undefined && record["bundle"] !== null) {
+    return {
+      ...createEmptyForgePreflightState(),
+      status: "stale",
+      staleReason: "Legacy preflight bundle requires a rerun with the new operator context model.",
+      warnings: ["Legacy preflight bundle was invalidated during session hydration."],
+    };
+  }
+
+  return createEmptyForgePreflightState();
 }
 
 export function createForgeCoordinatorState(
@@ -210,6 +282,12 @@ export function createForgeRuntimeStateFromSession(
 ): ForgeRuntimeState {
   const sessionRecord = session as Partial<ForgeSession>;
   const coordinatorState = createForgeCoordinatorState(sessionRecord.coordinatorState);
+  const operatorProfile = overrides.operatorProfile ?? createDefaultForgeOperatorProfile();
+  const sessionContextSelection = reconcileForgeSessionContextSelection({
+    selection: normalizeForgeSessionContextSelection(sessionRecord.sessionContextSelection),
+    allowedSkillKeys: operatorProfile.skills.map((entry) => entry.skillKey),
+    allowedEquipmentKeys: operatorProfile.equipment.map((entry) => entry.equipmentKey),
+  });
   return {
     activeSessionId: session.id,
     currentGoal: session.goal,
@@ -222,19 +300,11 @@ export function createForgeRuntimeStateFromSession(
       : [],
     assignments: Array.isArray(session.assignments) ? session.assignments : [],
     exports: Array.isArray(session.exports) ? session.exports : [],
-    operatorProfile: overrides.operatorProfile ?? createDefaultForgeOperatorProfile(),
-    preflight:
-      sessionRecord.preflight && typeof sessionRecord.preflight === "object"
-        ? sessionRecord.preflight
-        : createEmptyForgePreflightState(),
+    operatorProfile,
+    preflight: normalizeForgePreflightState(sessionRecord.preflight),
     responses: Array.isArray(session.responses) ? session.responses : [],
-    sessionContextSelection: normalizeForgeSessionContextSelection(
-      sessionRecord.sessionContextSelection
-    ),
-    runOverride:
-      sessionRecord.runOverride && typeof sessionRecord.runOverride === "object"
-        ? sessionRecord.runOverride
-        : null,
+    sessionContextSelection,
+    runOverride: normalizeForgeRunOverride(sessionRecord.runOverride),
     runSignature:
       sessionRecord.runSignature && typeof sessionRecord.runSignature === "object"
         ? sessionRecord.runSignature

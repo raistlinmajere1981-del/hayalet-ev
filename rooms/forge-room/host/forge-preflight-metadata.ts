@@ -9,7 +9,9 @@ import type {
   ForgeCapabilityDescriptor,
   ForgeCoreSystemMetadata,
   ForgeGoal,
+  ForgeOperatorEquipmentRecord,
   ForgeOperatorProfile,
+  ForgeOperatorSkillRecord,
   ForgeRunOverride,
   ForgeSelectedOperatorProfile,
   ForgeSessionContextSelection,
@@ -111,6 +113,28 @@ function titleCaseRoomId(roomId: string): string {
     .join("");
 }
 
+function humanizeValue(value: string): string {
+  return value.replace(/_/g, " ");
+}
+
+function labelSkill(record: ForgeOperatorSkillRecord): string {
+  return record.label.trim() || titleCaseRoomId(record.skillKey);
+}
+
+function labelEquipment(record: ForgeOperatorEquipmentRecord): string {
+  const base = record.label.trim() || titleCaseRoomId(record.equipmentKey);
+  return record.brandModel ? `${base} (${record.brandModel})` : base;
+}
+
+function listEquipmentByStatus(
+  records: ForgeOperatorEquipmentRecord[],
+  status: ForgeOperatorEquipmentRecord["status"]
+): string[] {
+  return records
+    .filter((record) => record.status === status)
+    .map((record) => labelEquipment(record));
+}
+
 export function listForgeCapabilityDescriptors(): ForgeCapabilityDescriptor[] {
   return FORGE_CAPABILITY_DESCRIPTORS.map((entry) => ({
     ...entry,
@@ -125,7 +149,7 @@ export function buildForgeCoreSystemMetadata(sessionId: string | null): ForgeCor
     featureId: FORGE_WORKBENCH_FEATURE_ID,
     mode: "guided",
     roomId: FORGE_ROOM_ID,
-    schemaVersion: Number.parseInt(FORGE_PREFLIGHT_SCHEMA_VERSION.slice(1), 10) || 2,
+    schemaVersion: Number.parseInt(FORGE_PREFLIGHT_SCHEMA_VERSION.slice(1), 10) || 3,
     sessionId,
   };
 }
@@ -186,54 +210,14 @@ export function buildForgeSelectedOperatorProfile(params: {
   sessionContextSelection: ForgeSessionContextSelection;
 }): ForgeSelectedOperatorProfile {
   const { operatorProfile, sessionContextSelection } = params;
+  const selectedSkillKeys = new Set(sessionContextSelection.skillKeys);
+  const selectedEquipmentKeys = new Set(sessionContextSelection.equipmentKeys);
 
   return {
-    skill: {
-      level: sessionContextSelection.skill.level === true ? operatorProfile.skill.level : null,
-      soldering:
-        sessionContextSelection.skill.soldering === true ? operatorProfile.skill.soldering : null,
-      measurement:
-        sessionContextSelection.skill.measurement === true
-          ? operatorProfile.skill.measurement
-          : null,
-      mechanical:
-        sessionContextSelection.skill.mechanical === true ? operatorProfile.skill.mechanical : null,
-    },
-    tools: {
-      multimeter:
-        sessionContextSelection.tools.multimeter === true ? operatorProfile.tools.multimeter : null,
-      solderingIron:
-        sessionContextSelection.tools.solderingIron === true
-          ? operatorProfile.tools.solderingIron
-          : null,
-      hotAir: sessionContextSelection.tools.hotAir === true ? operatorProfile.tools.hotAir : null,
-      benchPowerSupply:
-        sessionContextSelection.tools.benchPowerSupply === true
-          ? operatorProfile.tools.benchPowerSupply
-          : null,
-      magnification:
-        sessionContextSelection.tools.magnification === true
-          ? operatorProfile.tools.magnification
-          : null,
-    },
-    preferences: {
-      mode:
-        sessionContextSelection.preferences.mode === true ? operatorProfile.preferences.mode : null,
-      riskTolerance:
-        sessionContextSelection.preferences.riskTolerance === true
-          ? operatorProfile.preferences.riskTolerance
-          : null,
-    },
-  };
-}
-
-export function mergeForgeSelectedOperatorTools(
-  profile: ForgeSelectedOperatorProfile,
-  runOverride: ForgeRunOverride | null
-): ForgeSelectedOperatorProfile["tools"] {
-  return {
-    ...profile.tools,
-    ...(runOverride?.tools ?? {}),
+    skills: operatorProfile.skills.filter((entry) => selectedSkillKeys.has(entry.skillKey)),
+    equipment: operatorProfile.equipment.filter((entry) =>
+      selectedEquipmentKeys.has(entry.equipmentKey)
+    ),
   };
 }
 
@@ -243,68 +227,63 @@ export function summarizeForgeSelectedOperatorContext(params: {
   sessionContextSelection: ForgeSessionContextSelection;
 }): string[] {
   const { runOverride, selectedOperatorProfile, sessionContextSelection } = params;
-  const effectiveTools = mergeForgeSelectedOperatorTools(selectedOperatorProfile, runOverride);
-  const availableTools = Object.entries(effectiveTools)
-    .filter(([, enabled]) => enabled === true)
-    .map(([toolId]) => toolId);
-  const unavailableTools = Object.entries(effectiveTools)
-    .filter(([, enabled]) => enabled === false)
-    .map(([toolId]) => toolId);
-  const overrideTools = Object.entries(runOverride?.tools ?? {})
-    .filter(([, enabled]) => enabled === true)
-    .map(([toolId]) => toolId);
-  const skillSummary = [
-    selectedOperatorProfile.skill.level ? `level ${selectedOperatorProfile.skill.level}` : null,
-    selectedOperatorProfile.skill.soldering
-      ? `soldering ${selectedOperatorProfile.skill.soldering}`
+  const availableEquipment = listEquipmentByStatus(selectedOperatorProfile.equipment, "available");
+  const plannedEquipment = listEquipmentByStatus(selectedOperatorProfile.equipment, "planned");
+  const unavailableEquipment = listEquipmentByStatus(
+    selectedOperatorProfile.equipment,
+    "unavailable"
+  );
+  const skillSummary = selectedOperatorProfile.skills
+    .map((record) => `${labelSkill(record)} (${humanizeValue(record.level)})`)
+    .sort((left, right) => left.localeCompare(right));
+  const sessionSpecificSummary = [
+    runOverride?.mode ? `Mode ${humanizeValue(runOverride.mode)}` : null,
+    runOverride?.riskTolerance
+      ? `Risk tolerance ${humanizeValue(runOverride.riskTolerance)}`
       : null,
-    selectedOperatorProfile.skill.measurement
-      ? `measurement ${selectedOperatorProfile.skill.measurement}`
-      : null,
-    selectedOperatorProfile.skill.mechanical
-      ? `mechanical ${selectedOperatorProfile.skill.mechanical}`
-      : null,
-  ].filter((entry): entry is string => typeof entry === "string");
-  const preferenceSummary = [
-    selectedOperatorProfile.preferences.mode
-      ? `working mode ${selectedOperatorProfile.preferences.mode}`
-      : null,
-    selectedOperatorProfile.preferences.riskTolerance
-      ? `risk tolerance ${selectedOperatorProfile.preferences.riskTolerance}`
-      : null,
+    runOverride?.enableRovoPreAnalysis === true ? "Pre-analysis enabled" : null,
   ].filter((entry): entry is string => typeof entry === "string");
 
   if (
     isForgeSessionContextSelectionEmpty(sessionContextSelection) &&
-    overrideTools.length === 0 &&
-    (runOverride?.notes.trim() ?? "") === ""
+    (runOverride?.temporaryConditions.length ?? 0) === 0 &&
+    (runOverride?.notes.trim() ?? "") === "" &&
+    sessionSpecificSummary.length === 0
   ) {
     return [
-      "No operator context was selected for this run; do not assume tools, skill level, or risk preference beyond the goal itself.",
+      "No operator context was selected for this run; do not assume skills or equipment beyond the goal itself.",
     ];
   }
 
   if (
     isForgeSelectedOperatorProfileEmpty(selectedOperatorProfile) &&
-    overrideTools.length === 0 &&
-    (runOverride?.notes.trim() ?? "") === ""
+    (runOverride?.temporaryConditions.length ?? 0) === 0 &&
+    (runOverride?.notes.trim() ?? "") === "" &&
+    sessionSpecificSummary.length === 0
   ) {
     return [
-      "Selected operator context has no defined values yet; do not assume tools, skill level, or risk preference beyond the goal itself.",
+      "Selected operator context has no persisted records yet; do not assume skills or equipment beyond the goal itself.",
     ];
   }
 
   return uniqueStrings(
     [
-      skillSummary.length > 0 ? `Operator skill: ${skillSummary.join("; ")}.` : null,
-      availableTools.length > 0 ? `Available tools: ${availableTools.join(", ")}.` : null,
-      unavailableTools.length > 0 ? `Unavailable tools: ${unavailableTools.join(", ")}.` : null,
-      preferenceSummary.length > 0 ? `${preferenceSummary.join("; ")}.` : null,
-      overrideTools.length > 0
-        ? `Run override adds temporary tools: ${overrideTools.join(", ")}.`
+      skillSummary.length > 0 ? `Selected skills: ${skillSummary.join(", ")}.` : null,
+      availableEquipment.length > 0
+        ? `Available equipment: ${availableEquipment.join(", ")}.`
+        : null,
+      plannedEquipment.length > 0 ? `Planned equipment: ${plannedEquipment.join(", ")}.` : null,
+      unavailableEquipment.length > 0
+        ? `Unavailable equipment: ${unavailableEquipment.join(", ")}.`
+        : null,
+      sessionSpecificSummary.length > 0
+        ? `Session-specific: ${sessionSpecificSummary.join("; ")}.`
+        : null,
+      (runOverride?.temporaryConditions.length ?? 0) > 0
+        ? `Temporary conditions: ${runOverride?.temporaryConditions.join("; ")}.`
         : null,
       runOverride?.notes.trim()
-        ? `Run override note: ${runOverride.notes.trim().slice(0, 180)}`
+        ? `Run override note: ${runOverride.notes.trim().slice(0, 180)}.`
         : null,
     ].filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "")
   );
@@ -316,26 +295,43 @@ export function buildForgeDerivedConstraints(params: {
   selectedOperatorProfile: ForgeSelectedOperatorProfile;
 }): string[] {
   const { goal, runOverride, selectedOperatorProfile } = params;
-  const effectiveTools = mergeForgeSelectedOperatorTools(selectedOperatorProfile, runOverride);
   const derived: string[] = [...goal.constraints];
+  const hotAir = selectedOperatorProfile.equipment.find((entry) => {
+    const equipmentLabel = `${entry.equipmentKey} ${entry.label}`.toLowerCase();
+    return equipmentLabel.includes("hot_air") || equipmentLabel.includes("hot air");
+  });
+  const multimeter = selectedOperatorProfile.equipment.find(
+    (entry) => `${entry.equipmentKey} ${entry.label}`.toLowerCase().includes("multimeter")
+  );
 
-  if (effectiveTools.hotAir === false) {
-    derived.push("Do not assume hot air rework is available.");
+  if (hotAir && hotAir.status !== "available") {
+    derived.push("Do not assume hot air rework is available for this run.");
   }
-  if (effectiveTools.multimeter === false) {
+  if (multimeter && multimeter.status !== "available") {
     derived.push("Avoid diagnostic flows that require a multimeter as the primary path.");
   }
-  if (selectedOperatorProfile.skill.level === "beginner") {
-    derived.push("Keep steps low-risk and explicit for a beginner operator.");
+  if (
+    selectedOperatorProfile.skills.length > 0 &&
+    selectedOperatorProfile.skills.every(
+      (entry) => entry.level === "none" || entry.level === "basic"
+    )
+  ) {
+    derived.push("Keep steps low-risk, explicit, and approachable for the current operator profile.");
   }
-  if (selectedOperatorProfile.preferences.mode === "learn-first") {
+  if (runOverride?.mode === "learn_first") {
     derived.push("Leave enough rationale for the operator to learn from the run.");
   }
-  if (selectedOperatorProfile.preferences.riskTolerance === "low") {
+  if (runOverride?.riskTolerance === "low") {
     derived.push("Prefer reversible and lower-risk paths over speed.");
   }
+  if (runOverride?.enableRovoPreAnalysis === true) {
+    derived.push("Run pre-analysis before downstream AI work when the context is ambiguous.");
+  }
+  for (const condition of runOverride?.temporaryConditions ?? []) {
+    derived.push(`Temporary run condition: ${condition}`);
+  }
   if (runOverride?.notes.trim()) {
-    derived.push(`Temporary run condition: ${runOverride.notes.trim()}`);
+    derived.push(`Run note: ${runOverride.notes.trim()}`);
   }
 
   return uniqueStrings(derived);

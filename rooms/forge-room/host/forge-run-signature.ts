@@ -61,13 +61,15 @@ function collectConstraintTokens(params: {
   const tokens = uniqueStrings(
     [
       params.goal.constraints[0] ?? null,
-      params.selectedOperatorProfile.preferences.mode,
-      params.selectedOperatorProfile.preferences.riskTolerance
-        ? `${params.selectedOperatorProfile.preferences.riskTolerance}-risk`
+      params.runOverride?.mode,
+      params.runOverride?.riskTolerance ? `${params.runOverride.riskTolerance}-risk` : null,
+      params.selectedOperatorProfile.skills[0]
+        ? `${params.selectedOperatorProfile.skills[0].label}-${params.selectedOperatorProfile.skills[0].level}`
         : null,
-      ...Object.entries(params.runOverride?.tools ?? {})
-        .filter(([, enabled]) => enabled === true)
-        .map(([toolId]) => toolId),
+      params.selectedOperatorProfile.equipment
+        .filter((entry) => entry.status === "available")
+        .map((entry) => entry.label)[0] ?? null,
+      ...(params.runOverride?.temporaryConditions ?? []).slice(0, 2),
       params.runOverride?.notes.trim() || null,
     ]
       .filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "")

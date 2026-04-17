@@ -175,8 +175,20 @@
           "exposure": "internal"
         },
         {
+          "name": "ForgeRoomLoadSession",
+          "description": "Load a selected Forge session from room-local storage.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "ForgeRoomLoadLatestSession",
           "description": "Load the most recently updated Forge session from room-local storage.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
+          "name": "ForgeRoomDeleteSession",
+          "description": "Delete a saved Forge session from room-local storage.",
           "scope": "room-ui",
           "exposure": "internal"
         },

@@ -238,6 +238,11 @@ function latestForgeSnapshot(notifications: ForgeNotification[]) {
       status: string;
     };
     responses: Array<{ id: string }>;
+    runOverride: {
+      enableRovoPreAnalysis: boolean;
+      notes: string;
+      temporaryConditions: string[];
+    } | null;
     runSignature: {
       value: string;
     } | null;
@@ -298,15 +303,31 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     const createResult = await hostRuntime.commands.ForgeRoomCreateSession();
     assert.equal(createResult.success, true);
 
+    const addRunOverrideResult = await hostRuntime.commands.ForgeRoomUpdateRunOverride({
+      notes: "Bench is borrowed for this run.",
+      temporaryConditions: ["borrowed microscope"],
+    });
+    assert.equal(addRunOverrideResult.success, true);
+    const snapshotAfterRunOverride = latestForgeSnapshot(notifications);
+    assert.deepEqual(snapshotAfterRunOverride.runOverride, {
+      enableRovoPreAnalysis: false,
+      notes: "Bench is borrowed for this run.",
+      temporaryConditions: ["borrowed microscope"],
+    });
+
+    const clearRunOverrideResult = await hostRuntime.commands.ForgeRoomUpdateRunOverride({
+      notes: "",
+      temporaryConditions: [],
+    });
+    assert.equal(clearRunOverrideResult.success, true);
+    const snapshotAfterRunOverrideClear = latestForgeSnapshot(notifications);
+    assert.equal(snapshotAfterRunOverrideClear.runOverride, null);
+
     const updateOperatorProfileResult = await hostRuntime.commands.ForgeRoomUpdateOperatorProfile({
-      skill: {
-        measurement: "basic",
-      },
-      tools: {
-        multimeter: false,
-      },
+      skills: [{ skillKey: "measurement", level: "basic" }],
+      equipment: [{ equipmentKey: "multimeter", status: "unavailable" }],
       preferences: {
-        mode: "learn-first",
+        mode: "learn_first",
       },
     });
     assert.equal(updateOperatorProfileResult.success, true);
@@ -320,24 +341,18 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     assert.equal(draftResult.success, true);
 
     const updateSessionContextResult = await hostRuntime.commands.ForgeRoomUpdateSessionContext({
-      skill: {
-        measurement: true,
-      },
-      tools: {
-        multimeter: true,
-      },
-      preferences: {
-        mode: true,
-      },
+      skillKeys: ["measurement"],
+      equipmentKeys: ["multimeter"],
+      preferenceKeys: ["mode"],
     });
     assert.equal(updateSessionContextResult.success, true);
 
     const snapshotAfterSessionContext = latestForgeSnapshot(notifications);
-    assert.equal(snapshotAfterSessionContext.sessionContextSelection.skill.measurement, true);
-    assert.equal(snapshotAfterSessionContext.sessionContextSelection.tools.multimeter, true);
-    assert.equal(snapshotAfterSessionContext.sessionContextSelection.preferences.mode, true);
+    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.skillKeys, ["measurement"]);
+    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.equipmentKeys, ["multimeter"]);
+    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.preferenceKeys, ["mode"]);
     assert.equal(snapshotAfterSessionContext.preflight.status, "stale");
-    assert.match(snapshotAfterSessionContext.runSignature?.value ?? "", /learn-first/);
+    assert.match(snapshotAfterSessionContext.runSignature?.value ?? "", /learn[_-]first/);
 
     const runPreflightResult = await hostRuntime.commands.ForgeRoomRunPreflight();
     assert.equal(runPreflightResult.success, true);
@@ -350,15 +365,9 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       (entry) => entry.type === "forge-state"
     ).length;
     const noOpSessionContextResult = await hostRuntime.commands.ForgeRoomUpdateSessionContext({
-      skill: {
-        measurement: true,
-      },
-      tools: {
-        multimeter: true,
-      },
-      preferences: {
-        mode: true,
-      },
+      skillKeys: ["measurement"],
+      equipmentKeys: ["multimeter"],
+      preferenceKeys: ["mode"],
     });
     assert.equal(noOpSessionContextResult.success, true);
     assert.equal(
@@ -438,9 +447,9 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     assert.equal(exportedJson.selectedSynthesis.id, synthesisResult.synthesisId);
     assert.equal(exportedJson.runSignature, selectedSynthesis?.provenance?.runSignature);
     assert.deepEqual(exportedJson.contextSummary?.operatorProfileSummary, [
-      "Operator skill: measurement basic.",
-      "Unavailable tools: multimeter.",
-      "working mode learn-first.",
+      "Selected skills: Measurement (basic).",
+      "Unavailable equipment: Multimeter.",
+      "Preferences: Mode learn first.",
     ]);
 
     const sessionId = String(createResult.sessionId);
@@ -449,10 +458,15 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       conflicts: Array<{ preferredResponseId: string | null; status: string }>;
       exports: Array<{ filePath: string }>;
       responses: Array<{ id: string }>;
+      runOverride: {
+        enableRovoPreAnalysis: boolean;
+        notes: string;
+        temporaryConditions: string[];
+      } | null;
       sessionContextSelection: {
-        preferences: { mode: boolean };
-        skill: { measurement: boolean };
-        tools: { multimeter: boolean };
+        equipmentKeys: string[];
+        preferenceKeys: string[];
+        skillKeys: string[];
       };
       selectedSynthesisId: string | null;
     };
@@ -461,9 +475,10 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     assert.equal(savedSession.conflicts[0]?.status, "resolved");
     assert.equal(savedSession.conflicts[0]?.preferredResponseId, preferredResponseId);
     assert.equal(savedSession.exports.length, 1);
-    assert.equal(savedSession.sessionContextSelection.skill.measurement, true);
-    assert.equal(savedSession.sessionContextSelection.tools.multimeter, true);
-    assert.equal(savedSession.sessionContextSelection.preferences.mode, true);
+    assert.equal(savedSession.runOverride, null);
+    assert.deepEqual(savedSession.sessionContextSelection.skillKeys, ["measurement"]);
+    assert.deepEqual(savedSession.sessionContextSelection.equipmentKeys, ["multimeter"]);
+    assert.deepEqual(savedSession.sessionContextSelection.preferenceKeys, ["mode"]);
 
     const reopenNotifications: ForgeNotification[] = [];
     const reopenedRuntime = createForgeRoomHostRuntime().activate({
@@ -492,9 +507,9 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     assert.equal(reopenedSnapshot.exports.length, 1);
     assert.equal(reopenedSnapshot.responses.length >= 3, true);
     assert.equal(reopenedSnapshot.conflicts.length >= 1, true);
-    assert.equal(reopenedSnapshot.sessionContextSelection.skill.measurement, true);
-    assert.equal(reopenedSnapshot.sessionContextSelection.tools.multimeter, true);
-    assert.equal(reopenedSnapshot.sessionContextSelection.preferences.mode, true);
+    assert.deepEqual(reopenedSnapshot.sessionContextSelection.skillKeys, ["measurement"]);
+    assert.deepEqual(reopenedSnapshot.sessionContextSelection.equipmentKeys, ["multimeter"]);
+    assert.deepEqual(reopenedSnapshot.sessionContextSelection.preferenceKeys, ["mode"]);
 
     const reopenedConflictId = reopenedSnapshot.conflicts[0]?.id;
     assert.ok(reopenedConflictId);

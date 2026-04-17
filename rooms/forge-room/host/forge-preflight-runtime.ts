@@ -97,6 +97,9 @@ function buildPreAnalysisPrompt(params: {
     `Target room: ${params.goal.targetRoomId}`,
     "Selected operator context:",
     ...summaryLines.map((line) => `- ${line}`),
+    ...(params.runOverride?.temporaryConditions ?? []).map(
+      (condition) => `- Temporary condition: ${condition}`
+    ),
     params.runOverride?.notes.trim() ? `Run override note: ${params.runOverride.notes.trim()}` : "",
     "Rules:",
     "- Observations only. Do not make decisions or produce task breakdowns.",
@@ -210,7 +213,7 @@ export async function buildForgePreflightState(params: {
       : []),
   ];
   const bundle: ForgePreflightBundle = {
-    schemaVersion: "v2",
+    schemaVersion: "v3",
     createdAt: createForgePreflightCreatedAt(),
     coreSystemMetadata: buildForgeCoreSystemMetadata(params.sessionId),
     appArchitectureSummary: buildForgeAppArchitectureSummary(),
@@ -265,7 +268,7 @@ export function buildForgeFallbackPreflightState(params: {
     sessionContextSelection: params.sessionContextSelection,
   });
   const bundle: ForgePreflightBundle = {
-    schemaVersion: "v2",
+    schemaVersion: "v3",
     createdAt: createForgePreflightCreatedAt(),
     coreSystemMetadata: buildForgeCoreSystemMetadata(params.sessionId),
     appArchitectureSummary: buildForgeAppArchitectureSummary(),

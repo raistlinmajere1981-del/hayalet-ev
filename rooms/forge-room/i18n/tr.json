@@ -164,7 +164,38 @@
       },
       "goalBlock": {
         "eyebrow": "Hedef",
-        "title": "Run hedefini ayarla"
+        "title": "Run hedefini ayarla",
+        "savedHint": "Kaydedilen hedef ilk taslak uretimini ve sonraki handoff akisini surukler.",
+        "draftHint": "Bu hedef halen yerel taslak halinde. Preflight veya taslak uretiminden once kaydedin.",
+        "emptyHint": "Oda is uretmeye baslamadan once problemi, hedef odayi ve kisitlari netlestirin."
+      },
+      "launchChecklist": {
+        "eyebrow": "BASLANGIC HATTI",
+        "title": "Bu Forge run'ini hazirla",
+        "summary": "Ilk taslaktan once hedefi kilitleyin, bir session secin, operator gerceklerini netlestirin ve preflight calistirin.",
+        "goalTitle": "Hedef detaylari",
+        "goalReady": "Kayitli hedef taslak uretimi icin hazir.",
+        "goalActive": "Taslak hedef uzerinde calisiliyor. Preflight oncesi hedefi kaydedin.",
+        "goalIdle": "Bu run icin hedef oda, ozet ve kisitlari tanimlayin.",
+        "sessionTitle": "Session secimi",
+        "sessionReady": "Aktif session bu run'e baglandi.",
+        "sessionActive": "Kayitli session'lar var. Birini acin veya yeni bir run kabugu olusturun.",
+        "sessionIdle": "Run'a ozel kararlarin birlikte saklanmasi icin bir session olusturun.",
+        "operatorTitle": "Operator detaylari",
+        "operatorReady": "{selected} run gercegi, {total} kayitli kayittan secildi.",
+        "operatorActive": "{total} kayitli operator kaydi var. Bu run'i etkileyecek gercekleri secin.",
+        "operatorIdle": "Operator profili bos. AI kayitli arac veya yetenek varsaymayacak.",
+        "preflightTitle": "Preflight kapisi",
+        "preflightReady": "Run baglami dogrulandi ve taslak uretimi icin hazir.",
+        "preflightWarning": "Preflight uyari uretmis durumda. Devam etmeden once gozden gecirin.",
+        "preflightStale": "Hedef, baglam veya run ayarlari degisti. Baslatmadan once preflight'i yenileyin.",
+        "preflightIdle": "Preflight ancak aktif session ve kayitli hedef oldugunda acilir.",
+        "statuses": {
+          "ready": "Hazir",
+          "active": "Suruyor",
+          "idle": "Bekliyor",
+          "warning": "Gozden gecir"
+        }
       },
       "actions": {
         "showDetails": "Hedef detaylari",
@@ -177,8 +208,13 @@
         "draftLabel": "Taslak",
         "preflightLabel": "PRE-FLIGHT",
         "signatureLabel": "Imza",
+        "briefLabel": "Ozet",
+        "constraintsLabel": "Kisitlar",
+        "filled": "dolu",
         "notStarted": "baslamadi",
         "waiting": "beklemede",
+        "constraintCountOne": "{count} madde",
+        "constraintCountOther": "{count} madde",
         "draftCountOne": "{count} gorev",
         "draftCountOther": "{count} gorev"
       },
@@ -191,22 +227,54 @@
       "operatorProfile": {
         "eyebrow": "Operator profili",
         "label": "Operator",
-        "manage": "Duzenle",
+        "manage": "Yonet",
         "drawerEyebrow": "PROFIL",
         "drawerTitle": "Operator profilini yonet",
         "empty": "Tanimli operator profili yok. AI onceki bir kapasite varsaymaz.",
         "emptyShort": "Profil bos",
+        "prepTitle": "Operator detaylari",
+        "readyHint": "{count} secili gercek bu run'i sekillendirecek.",
+        "selectHint": "Kayitli operator verisi var ama baglam secilmedigi icin bu run halen sifir varsayimla calisiyor.",
+        "noSessionHint": "Kayitli operator verileri hazir. Bu run'i etkileyecek gercekleri secmek icin bir session acin.",
+        "selectedLabel": "Secili",
         "selectedTruthHint": "Bu run'i sadece secili alanlar etkiler.",
+        "topbarAction": "Operator Profili",
+        "managerHint": "Kalici operator kayitlari burada tutulur. Session secimi ana run ekraninda kalir.",
         "addSkill": "Yetenek ekle",
         "addEquipment": "Ekipman ekle",
-        "editInline": "Satir ici duzenle",
+        "editInline": "Duzenle",
         "remove": "Kaldir",
-        "save": "Profili kaydet",
         "close": "Kapat",
-        "values": {
-          "notSet": "ayarlanmadi",
+        "saved": "Kayitli",
+        "autosavePending": "Kapatinca otomatik kaydedilir",
+        "unsaved": "Kaydedilmedi",
+        "commit": "Uygula",
+        "cancel": "Iptal",
+        "notesPlaceholder": "Opsiyonel not",
+        "skillLabelPlaceholder": "Yetenek etiketi",
+        "equipmentLabelPlaceholder": "Ekipman etiketi",
+        "brandModelPlaceholder": "Marka / model",
+        "emptySkills": "Henuz kayitli yetenek yok.",
+        "emptyEquipment": "Henuz kayitli ekipman yok.",
+        "skillLevels": {
+          "none": "yok",
+          "basic": "temel",
+          "intermediate": "orta",
+          "advanced": "ileri"
+        },
+        "equipmentStatus": {
+          "unavailable": "yok",
           "available": "var",
-          "unavailable": "yok"
+          "planned": "temin edilecek"
+        },
+        "modeValues": {
+          "learn_first": "once ogren",
+          "result_first": "once sonuc"
+        },
+        "riskValues": {
+          "low": "dusuk",
+          "medium": "orta",
+          "high": "yuksek"
         }
       },
       "catalog": {
@@ -234,31 +302,61 @@
           "risk": "Risk"
         }
       },
+      "sessionManager": {
+        "eyebrow": "SESSION YONETIMI",
+        "title": "Session yonetimi",
+        "newSession": "Yeni session",
+        "saveSession": "Session kaydet",
+        "deleteSession": "Session sil",
+        "openSavedSession": "Ac",
+        "loadLatest": "Son kaydi yukle",
+        "savedCount": "Kayitli",
+        "active": "aktif",
+        "inactive": "acik degil",
+        "activeHint": "Bu aktif session, mevcut gecis icin hedefi, run baglamini ve preflight ciktisini saklar.",
+        "savedHint": "Run'a ozel baglami secmeden once kayitli bir session acin ya da yeni bir kabuk baslatin.",
+        "emptyHint": "Forge hazirlik durumunu saklayabilsin diye ilk session'i olusturun."
+      },
       "sessionContext": {
         "eyebrow": "BU RUN ICIN BAGLAM",
-        "title": "Baglam aktiflestir",
+        "title": "Baglam sec",
         "selectedCount": "{count} aktif",
         "noneSelected": "0 aktif",
-        "zeroAssumptions": "0 aktif"
+        "zeroAssumptions": "0 aktif",
+        "requiresSession": "Bu run baglamini duzenlemek icin bir session acin veya yukleyin.",
+        "emptySkills": "Kayitli yetenek yok. Ust bardaki Operator Profili'ni kullanin.",
+        "emptyEquipment": "Kayitli ekipman yok. Ust bardaki Operator Profili'ni kullanin."
       },
       "preflight": {
+        "eyebrow": "PRE-FLIGHT",
+        "title": "Run baglamini dogrula",
         "label": "Preflight",
         "action": "Preflight calistir",
         "idle": "bekliyor",
         "ready": "hazir",
+        "warning": "gozden gecir",
         "stale": "eskidi",
+        "requiresSession": "GEREKLI: AKTIF SESSION",
+        "requiresSessionHint": "Preflight calistirmadan once bir session acin veya yukleyin.",
+        "requiresGoalHint": "Preflight'in bu run'i dogrulayabilmesi icin once hedefi kaydedin.",
+        "warningHint": "Preflight uyariyla tamamlandi. Ilerlemeden once notlari gozden gecirin.",
+        "staleHint": "Son preflight calismasindan sonra baglam degisti. Baslatmadan once yenileyin.",
+        "readyHint": "Run'a ozel ayarlar hizali. Taslak uretiminden once son kapi olarak preflight'i kullanin.",
         "stepReady": "Baglam hazir",
-        "stepComplete": "Preflight tamam"
+        "stepComplete": "Preflight tamam",
+        "stepWarning": "Preflight uyari verdi"
       },
       "runOverrides": {
-        "eyebrow": "Gecici kosullar",
-        "title": "Gecici kosullar",
-        "meta": "Sadece bu run",
-        "tempHotAir": "Sicak hava",
+        "eyebrow": "SESSION-SPECIFIC",
+        "title": "Run ayarlari",
+        "meta": "Sadece bu run icin",
+        "requiresSession": "Run ayarlarini duzenlemek icin bir session acin veya yukleyin.",
+        "mode": "Mod",
+        "risk": "Risk toleransi",
         "preAnalysis": "On analiz",
         "notes": "Run notlari",
         "notesPlaceholder": "Bu run icin gecici kosul",
-        "save": "Run override'lari kaydet",
+        "notesPlaceholderLong": "Bu session icin opsiyonel run notu",
         "active": "aktif",
         "inactive": "pasif",
         "addCondition": "+ Kosul ekle",
@@ -370,39 +468,39 @@
     "responsesPanel": {
       "guide": {
         "savedGoalLocked": {
-          "title": "MERKEZ KAPI KILITLI",
+          "title": "YANIT ALANI KILITLI",
           "summary": "GEREKLI: KAYITLI HEDEF"
         },
         "approvedDraftLocked": {
-          "title": "MERKEZ KAPI KILITLI",
+          "title": "YANIT ALANI KILITLI",
           "summary": "GEREKLI: ONAYLI TASLAK"
         },
         "dispatchLocked": {
-          "title": "MERKEZ KAPI KILITLI",
+          "title": "YANIT ALANI KILITLI",
           "summary": "GEREKLI: DAGITIM"
         },
         "responseInbound": {
-          "title": "MERKEZ KAPI ACIK",
+          "title": "YANIT ALANI AKTIF",
           "summary": "DURUM: YANIT GELIYOR"
         },
         "awaitingResponses": {
-          "title": "MERKEZ KAPI ACIK",
+          "title": "YANIT ALANI AKTIF",
           "summary": "DURUM: YANITLAR BEKLENIYOR"
         },
         "reviewResponses": {
-          "title": "MERKEZ KAPI ACIK",
+          "title": "YANIT ALANI AKTIF",
           "summary": "DURUM: YANITLARI INCELE"
         },
         "conflictBlocked": {
-          "title": "MERKEZ KAPI BLOKLU",
+          "title": "YANIT ALANI BLOKLU",
           "summary": "GEREKLI: CATISMA COZUMU"
         },
         "readOnly": {
-          "title": "MERKEZ KAPI IZLEMEDE",
+          "title": "YANIT ALANI IZLEMEDE",
           "summary": "DURUM: SALT OKUNUR"
         },
         "exportInputs": {
-          "title": "MERKEZ KAPI ARSIV",
+          "title": "YANIT ALANI ARSIV",
           "summary": "DURUM: EXPORT GIRDISI"
         }
       },

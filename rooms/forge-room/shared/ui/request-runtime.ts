@@ -28,6 +28,9 @@ export function createForgeUiRequestRuntime() {
     dispatchAssignments() {
       return sendCommand(FORGE_UI_COMMANDS.dispatchAssignments);
     },
+    deleteSession(payload: { sessionId?: string }) {
+      return sendCommand(FORGE_UI_COMMANDS.deleteSession, payload);
+    },
     exportHandoff() {
       return sendCommand(FORGE_UI_COMMANDS.exportHandoff);
     },
@@ -44,6 +47,9 @@ export function createForgeUiRequestRuntime() {
     },
     generateSynthesis() {
       return sendCommand(FORGE_UI_COMMANDS.generateSynthesis);
+    },
+    loadSession(payload: { sessionId: string }) {
+      return sendCommand(FORGE_UI_COMMANDS.loadSession, payload);
     },
     loadLatestSession() {
       return sendCommand(FORGE_UI_COMMANDS.loadLatestSession);
@@ -111,53 +117,34 @@ export function createForgeUiRequestRuntime() {
       return sendCommand(FORGE_UI_COMMANDS.updateGoal, payload);
     },
     updateOperatorProfile(payload: {
-      preferences: {
-        mode: string | null;
-        riskTolerance: string | null;
-      };
-      skill: {
-        level: string | null;
-        mechanical: string | null;
-        measurement: string | null;
-        soldering: string | null;
-      };
-      tools: {
-        benchPowerSupply: boolean | null;
-        hotAir: boolean | null;
-        magnification: boolean | null;
-        multimeter: boolean | null;
-        solderingIron: boolean | null;
-      };
+      equipment: Array<{
+        brandModel?: string;
+        equipmentKey: string;
+        label: string;
+        notes?: string;
+        status: string;
+      }>;
+      skills: Array<{
+        label: string;
+        level: string;
+        notes?: string;
+        skillKey: string;
+      }>;
     }) {
       return sendCommand(FORGE_UI_COMMANDS.updateOperatorProfile, payload);
     },
     updateSessionContext(payload: {
-      preferences?: {
-        mode?: boolean;
-        riskTolerance?: boolean;
-      };
-      skill?: {
-        level?: boolean;
-        mechanical?: boolean;
-        measurement?: boolean;
-        soldering?: boolean;
-      };
-      tools?: {
-        benchPowerSupply?: boolean;
-        hotAir?: boolean;
-        magnification?: boolean;
-        multimeter?: boolean;
-        solderingIron?: boolean;
-      };
+      equipmentKeys?: string[];
+      skillKeys?: string[];
     }) {
       return sendCommand(FORGE_UI_COMMANDS.updateSessionContext, payload);
     },
     updateRunOverride(payload: {
       enableRovoPreAnalysis: boolean;
+      mode?: string;
       notes: string;
-      tools: {
-        hotAir?: boolean;
-      };
+      riskTolerance?: string;
+      temporaryConditions: string[];
     }) {
       return sendCommand(FORGE_UI_COMMANDS.updateRunOverride, payload);
     },

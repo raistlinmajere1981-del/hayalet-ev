@@ -1,6 +1,7 @@
 import type {
+  ForgeOperatorEquipmentRecord,
   ForgeOperatorProfile,
-  ForgeRunOverride,
+  ForgeOperatorSkillRecord,
   ForgeSessionContextSelection,
 } from "../../shared/types/index.js";
 import type { ForgeUiState, ForgeWorkbenchUiFlowState } from "../../shared/ui/state.js";
@@ -18,8 +19,6 @@ type ForgeGoalDraftView = {
   summary: string;
   targetRoomId: string;
 };
-
-type ContextSectionKey = "skill" | "tools" | "preferences";
 
 function createField(
   documentRef: Document,
@@ -50,11 +49,9 @@ function createField(
 function createButton(
   documentRef: Document,
   label: string,
-  action?: string,
+  action: string,
   options: {
     actionValue?: string;
-    datasetKey?: string;
-    datasetValue?: string;
     disabled?: boolean;
     primary?: boolean;
   } = {}
@@ -64,14 +61,9 @@ function createButton(
   button.className = options.primary
     ? "forge-button forge-button--primary"
     : "forge-button forge-button--secondary";
-  if (action) {
-    button.dataset["forgeAction"] = action;
-  }
+  button.dataset["forgeAction"] = action;
   if (options.actionValue) {
     button.dataset["forgeActionValue"] = options.actionValue;
-  }
-  if (options.datasetKey && options.datasetValue) {
-    button.dataset[options.datasetKey] = options.datasetValue;
   }
   button.disabled = options.disabled === true;
   button.textContent = label;
@@ -82,7 +74,7 @@ function createOption(
   documentRef: Document,
   value: string,
   label: string,
-  selectedValue: string | null
+  selectedValue: string
 ): HTMLOptionElement {
   const option = documentRef.createElement("option");
   option.value = value;
@@ -91,48 +83,12 @@ function createOption(
   return option;
 }
 
-function toNullableSelectValue(value: string | null): string | null {
-  return value ?? "";
-}
-
-function createAvailabilitySelect(
-  documentRef: Document,
-  inputId: string,
-  selectedValue: boolean | null,
-  text: ForgeTextFn
-): HTMLSelectElement {
-  const select = documentRef.createElement("select");
-  select.id = inputId;
-  select.className = "forge-input";
-  const normalizedValue = selectedValue === null ? "" : selectedValue === true ? "true" : "false";
-  select.append(
-    createOption(
-      documentRef,
-      "",
-      text(["workbench", "goalPanel", "operatorProfile", "values", "notSet"], "unset"),
-      normalizedValue
-    ),
-    createOption(
-      documentRef,
-      "true",
-      text(["workbench", "goalPanel", "operatorProfile", "values", "available"], "available"),
-      normalizedValue
-    ),
-    createOption(
-      documentRef,
-      "false",
-      text(["workbench", "goalPanel", "operatorProfile", "values", "unavailable"], "unavailable"),
-      normalizedValue
-    )
-  );
-  return select;
-}
-
 function createSectionHeading(
   documentRef: Document,
   eyebrowText: string,
   titleText: string,
   options: {
+    actions?: HTMLElement[];
     meta?: string | null;
   } = {}
 ): HTMLElement {
@@ -141,20 +97,34 @@ function createSectionHeading(
 
   const copy = documentRef.createElement("div");
   copy.className = "forge-section-heading__copy";
-  const eyebrow = documentRef.createElement("p");
-  eyebrow.className = "forge-panel__eyebrow";
-  eyebrow.textContent = eyebrowText;
+  if (eyebrowText.trim() !== "") {
+    const eyebrow = documentRef.createElement("p");
+    eyebrow.className = "forge-panel__eyebrow";
+    eyebrow.textContent = eyebrowText;
+    copy.append(eyebrow);
+  }
   const title = documentRef.createElement("h3");
   title.className = "forge-section-heading__title";
   title.textContent = titleText;
-  copy.append(eyebrow, title);
+  copy.append(title);
   header.append(copy);
 
-  if (options.meta) {
-    const meta = documentRef.createElement("span");
-    meta.className = "forge-chip forge-chip--soft";
-    meta.textContent = options.meta;
-    header.append(meta);
+  if (options.meta || (options.actions?.length ?? 0) > 0) {
+    const aside = documentRef.createElement("div");
+    aside.className = "forge-section-heading__aside";
+    if (options.meta) {
+      const meta = documentRef.createElement("span");
+      meta.className = "forge-chip forge-chip--soft";
+      meta.textContent = options.meta;
+      aside.append(meta);
+    }
+    if (options.actions && options.actions.length > 0) {
+      const rail = documentRef.createElement("div");
+      rail.className = "forge-actions";
+      rail.append(...options.actions);
+      aside.append(rail);
+    }
+    header.append(aside);
   }
 
   return header;
@@ -173,100 +143,116 @@ function createMetaPill(documentRef: Document, label: string, value: string): HT
   return pill;
 }
 
-function isOperatorProfileEmpty(profile: ForgeOperatorProfile): boolean {
-  return [
-    profile.skill.level,
-    profile.skill.soldering,
-    profile.skill.measurement,
-    profile.skill.mechanical,
-    profile.tools.multimeter,
-    profile.tools.solderingIron,
-    profile.tools.hotAir,
-    profile.tools.benchPowerSupply,
-    profile.tools.magnification,
-    profile.preferences.mode,
-    profile.preferences.riskTolerance,
-  ].every((value) => value === null);
+function createPreparationStep(
+  documentRef: Document,
+  params: {
+    detail: string;
+    index: string;
+    status: "active" | "idle" | "ready" | "warning";
+    statusLabel: string;
+    title: string;
+  }
+): HTMLElement {
+  const step = documentRef.createElement("article");
+  step.className = "forge-prep-step";
+  step.dataset["status"] = params.status;
+
+  const index = documentRef.createElement("span");
+  index.className = "forge-prep-step__index";
+  index.textContent = params.index;
+
+  const copy = documentRef.createElement("div");
+  copy.className = "forge-prep-step__copy";
+  const title = documentRef.createElement("strong");
+  title.className = "forge-prep-step__title";
+  title.textContent = params.title;
+  const detail = documentRef.createElement("p");
+  detail.className = "forge-prep-step__detail";
+  detail.textContent = params.detail;
+  copy.append(title, detail);
+
+  const status = documentRef.createElement("span");
+  status.className = "forge-prep-step__status";
+  status.textContent = params.statusLabel;
+
+  step.append(index, copy, status);
+  return step;
 }
 
 function countSelectedSessionContext(selection: ForgeSessionContextSelection): number {
-  return [
-    selection.skill.level,
-    selection.skill.soldering,
-    selection.skill.measurement,
-    selection.skill.mechanical,
-    selection.tools.multimeter,
-    selection.tools.solderingIron,
-    selection.tools.hotAir,
-    selection.tools.benchPowerSupply,
-    selection.tools.magnification,
-    selection.preferences.mode,
-    selection.preferences.riskTolerance,
-  ].filter((value) => value === true).length;
+  return selection.skillKeys.length + selection.equipmentKeys.length;
+}
+
+function countOperatorRecords(profile: ForgeOperatorProfile): number {
+  return profile.skills.length + profile.equipment.length;
 }
 
 function toPreflightStatusLabel(
   status: ForgeUiState["snapshot"]["preflight"]["status"],
   text: ForgeTextFn
 ): string {
-  const alias = status === "fresh" || status === "warning" ? "ready" : status;
-  if (alias === "ready") {
+  if (status === "fresh") {
     return text(["workbench", "goalPanel", "preflight", "ready"], "ready");
   }
-  if (alias === "stale") {
+  if (status === "warning") {
+    return text(["workbench", "goalPanel", "preflight", "warning"], "needs review");
+  }
+  if (status === "stale") {
     return text(["workbench", "goalPanel", "preflight", "stale"], "stale");
   }
   return text(["workbench", "goalPanel", "preflight", "idle"], "idle");
 }
 
-function toProfileValueLabel(value: string | null, text: ForgeTextFn): string {
-  return value ?? text(["workbench", "goalPanel", "operatorProfile", "values", "notSet"], "unset");
+function renderSkillValue(text: ForgeTextFn, value: ForgeOperatorSkillRecord["level"]): string {
+  return text(
+    ["workbench", "goalPanel", "operatorProfile", "skillLevels", value],
+    value.replace(/_/g, " ")
+  );
 }
 
-function toToolValueLabel(value: boolean | null, text: ForgeTextFn): string {
-  if (value === true) {
-    return text(["workbench", "goalPanel", "operatorProfile", "values", "available"], "available");
-  }
-  if (value === false) {
-    return text(
-      ["workbench", "goalPanel", "operatorProfile", "values", "unavailable"],
-      "unavailable"
-    );
-  }
-  return text(["workbench", "goalPanel", "operatorProfile", "values", "notSet"], "unset");
+function renderEquipmentValue(
+  text: ForgeTextFn,
+  value: ForgeOperatorEquipmentRecord["status"]
+): string {
+  return text(
+    ["workbench", "goalPanel", "operatorProfile", "equipmentStatus", value],
+    value.replace(/_/g, " ")
+  );
 }
 
-function notesToConditions(notes: string): string[] {
-  return notes
-    .split(/\r?\n/)
-    .map((entry) => entry.trim())
-    .filter((entry) => entry !== "");
+function renderModeValue(text: ForgeTextFn, value: string): string {
+  return text(
+    ["workbench", "goalPanel", "operatorProfile", "modeValues", value],
+    value.replace(/_/g, " ")
+  );
+}
+
+function renderRiskValue(text: ForgeTextFn, value: string): string {
+  return text(
+    ["workbench", "goalPanel", "operatorProfile", "riskValues", value],
+    value.replace(/_/g, " ")
+  );
 }
 
 function createContextChip(
   documentRef: Document,
   params: {
     detail: string;
-    entryId: string;
-    id: string;
+    disabled?: boolean;
     key: string;
     label: string;
-    section: ContextSectionKey;
+    section: "equipment" | "skill";
     selected: boolean;
-    unset: boolean;
   }
 ): HTMLElement {
   const button = documentRef.createElement("button");
   button.type = "button";
-  button.id = params.id;
   button.className = "forge-context-chip";
   button.dataset["forgeContextChip"] = "true";
   button.dataset["forgeContextKey"] = params.key;
   button.dataset["forgeContextSection"] = params.section;
-  button.dataset["forgeContextUnset"] = params.unset ? "true" : "false";
-  button.dataset["forgeProfileEntry"] = params.entryId;
-  button.dataset["selected"] = params.selected && !params.unset ? "true" : "false";
-  button.dataset["unset"] = params.unset ? "true" : "false";
+  button.dataset["selected"] = params.selected ? "true" : "false";
+  button.disabled = params.disabled === true;
 
   const label = documentRef.createElement("span");
   label.className = "forge-context-chip__label";
@@ -281,7 +267,8 @@ function createContextChip(
 function createContextGroup(
   documentRef: Document,
   title: string,
-  chips: HTMLElement[]
+  chips: HTMLElement[],
+  emptyText: string
 ): HTMLElement {
   const group = documentRef.createElement("section");
   group.className = "forge-context-group";
@@ -290,67 +277,44 @@ function createContextGroup(
   heading.textContent = title;
   const list = documentRef.createElement("div");
   list.className = "forge-context-group__list forge-context-group__list--chips";
-  list.append(...chips);
+  if (chips.length > 0) {
+    list.append(...chips);
+  } else {
+    const emptyWrap = documentRef.createElement("div");
+    emptyWrap.className = "forge-context-group__empty";
+    const empty = documentRef.createElement("p");
+    empty.className = "forge-field__hint";
+    empty.textContent = emptyText;
+    emptyWrap.append(empty);
+    list.append(emptyWrap);
+  }
   group.append(heading, list);
   return group;
 }
 
-function createProfileEditorItem(
+function renderNotesBlock(
   documentRef: Document,
-  params: {
-    active: boolean;
-    control: HTMLElement;
-    entryId: string;
-    inputId: string;
-    label: string;
-    valueLabel: string;
-  }
+  text: ForgeTextFn,
+  notes: string,
+  options: {
+    disabled?: boolean;
+  } = {}
 ): HTMLElement {
-  const item = documentRef.createElement("article");
-  item.className = "forge-profile-item";
-  item.dataset["active"] = params.active ? "true" : "false";
-  params.control.dataset["forgeProfileField"] = params.entryId;
-
-  const button = documentRef.createElement("button");
-  button.type = "button";
-  button.className = "forge-profile-item__toggle";
-  button.dataset["forgeProfileEntry"] = params.entryId;
-  const label = documentRef.createElement("span");
-  label.className = "forge-profile-item__label";
-  label.textContent = params.label;
-  const value = documentRef.createElement("span");
-  value.className = "forge-profile-item__value";
-  value.textContent = params.valueLabel;
-  button.append(label, value);
-  item.append(button);
-
-  if (params.active) {
-    const editor = documentRef.createElement("div");
-    editor.className = "forge-profile-item__editor";
-    const field = createField(documentRef, params.label, params.control);
-    field.dataset["forgeProfileInput"] = params.inputId;
-    editor.append(field);
-    item.append(editor);
-  }
-
-  return item;
-}
-
-function createProfileEditorSection(
-  documentRef: Document,
-  title: string,
-  items: HTMLElement[]
-): HTMLElement {
-  const section = documentRef.createElement("section");
-  section.className = "forge-profile-section";
-  const heading = documentRef.createElement("h4");
-  heading.className = "forge-context-group__title";
-  heading.textContent = title;
-  const list = documentRef.createElement("div");
-  list.className = "forge-profile-list";
-  list.append(...items);
-  section.append(heading, list);
-  return section;
+  const notesInput = documentRef.createElement("textarea");
+  notesInput.id = "forge-run-override-notes";
+  notesInput.className = "forge-textarea forge-textarea--compact";
+  notesInput.value = notes;
+  notesInput.dataset["forgeRunOverrideField"] = "notes";
+  notesInput.disabled = options.disabled === true;
+  notesInput.placeholder = text(
+    ["workbench", "goalPanel", "runOverrides", "notesPlaceholderLong"],
+    "Optional run note for this session"
+  );
+  return createField(
+    documentRef,
+    text(["workbench", "goalPanel", "runOverrides", "notes"], "Run notes"),
+    notesInput
+  );
 }
 
 export function renderGoalInputPanel(
@@ -358,25 +322,20 @@ export function renderGoalInputPanel(
   state: ForgeUiState,
   text: ForgeTextFn,
   options: {
-    activeProfileEntryId: string | null;
     draftBlockedReason: string | null;
     flowLabel: string;
     flowState: ForgeWorkbenchUiFlowState;
     goalDetailsOpen: boolean;
     goalDraft: ForgeGoalDraftView;
-    operatorProfileDraft: ForgeOperatorProfile;
-    profileEditorOpen: boolean;
     runConditionComposerOpen: boolean;
     runConditionComposerValue: string;
-    runOverrideDraft:
-      | ForgeRunOverride
-      | {
-          enableRovoPreAnalysis: boolean;
-          notes: string;
-          tools: {
-            hotAir: boolean;
-          };
-        };
+    runOverrideDraft: {
+      enableRovoPreAnalysis: boolean;
+      mode?: string;
+      notes: string;
+      riskTolerance?: string;
+      temporaryConditions: string[];
+    };
     sessionContextDirty: boolean;
     sessionContextSelection: ForgeSessionContextSelection;
   }
@@ -385,13 +344,22 @@ export function renderGoalInputPanel(
   body.className = "forge-panel__body forge-goal-panel";
 
   const currentGoal = state.snapshot.currentGoal;
-  const operatorProfile = state.snapshot.operatorProfile;
-  const operatorProfileDraft = options.operatorProfileDraft;
+  const operatorProfile: ForgeOperatorProfile = state.snapshot.operatorProfile;
   const sessionContextSelection = options.sessionContextSelection;
   const selectedContextCount = countSelectedSessionContext(sessionContextSelection);
+  const operatorRecordCount = countOperatorRecords(operatorProfile);
   const savedGoalExists = Boolean(currentGoal?.summary.trim());
-  const profileEmpty = isOperatorProfileEmpty(operatorProfile);
-  const conditions = notesToConditions(options.runOverrideDraft.notes);
+  const goalHasDraftInput =
+    options.goalDraft.summary.trim() !== "" ||
+    options.goalDraft.brief.trim() !== "" ||
+    options.goalDraft.targetRoomId.trim() !== "" ||
+    options.goalDraft.constraints.some((constraint) => constraint.trim() !== "");
+  const goalConstraintCount = options.goalDraft.constraints.filter(
+    (constraint) => constraint.trim() !== ""
+  ).length;
+  const goalTargetValue = options.goalDraft.targetRoomId.trim();
+  const goalBriefValue = options.goalDraft.brief.trim();
+  const sessionActive = state.snapshot.activeSessionId !== null;
   const goalLocked =
     options.flowState === "APPROVED" ||
     options.flowState === "DISPATCHED" ||
@@ -403,37 +371,118 @@ export function renderGoalInputPanel(
     options.sessionContextDirty && currentGoal !== null
       ? text(["workbench", "goalPanel", "preflight", "stale"], "stale")
       : toPreflightStatusLabel(state.snapshot.preflight.status, text);
-
-  const catalog = {
-    equipmentGroup: text(["workbench", "goalPanel", "catalog", "groups", "equipment"], "Equipment"),
-    generalGroup: text(["workbench", "goalPanel", "catalog", "groups", "general"], "General"),
-    skillsGroup: text(["workbench", "goalPanel", "catalog", "groups", "skills"], "Skills"),
-    labels: {
-      benchSupply: text(
-        ["workbench", "goalPanel", "catalog", "items", "benchSupply"],
-        "Bench supply"
-      ),
-      hotAir: text(["workbench", "goalPanel", "catalog", "items", "hotAir"], "Hot air"),
-      magnification: text(
-        ["workbench", "goalPanel", "catalog", "items", "magnification"],
-        "Magnification"
-      ),
-      measurement: text(
-        ["workbench", "goalPanel", "catalog", "items", "measurement"],
-        "Measurement"
-      ),
-      mechanical: text(["workbench", "goalPanel", "catalog", "items", "mechanical"], "Mechanical"),
-      mode: text(["workbench", "goalPanel", "catalog", "items", "mode"], "Mode"),
-      multimeter: text(["workbench", "goalPanel", "catalog", "items", "multimeter"], "Multimeter"),
-      risk: text(["workbench", "goalPanel", "catalog", "items", "risk"], "Risk"),
-      skillLevel: text(["workbench", "goalPanel", "catalog", "items", "skillLevel"], "Skill level"),
-      soldering: text(["workbench", "goalPanel", "catalog", "items", "soldering"], "Soldering"),
-      solderingIron: text(
-        ["workbench", "goalPanel", "catalog", "items", "solderingIron"],
-        "Soldering iron"
-      ),
-    },
-  };
+  const preflightWarningCount = state.snapshot.preflight.warnings.length;
+  const goalStepStatus: "active" | "idle" | "ready" | "warning" = savedGoalExists
+    ? "ready"
+    : goalHasDraftInput
+      ? "active"
+      : "idle";
+  const sessionStepStatus: "active" | "idle" | "ready" | "warning" = sessionActive
+    ? "ready"
+    : state.snapshot.sessionList.length > 0
+      ? "active"
+      : "idle";
+  const operatorStepStatus: "active" | "idle" | "ready" | "warning" =
+    operatorRecordCount === 0
+      ? "warning"
+      : sessionActive && selectedContextCount > 0
+        ? "ready"
+        : "active";
+  const preflightStepStatus: "active" | "idle" | "ready" | "warning" = !sessionActive ||
+    !savedGoalExists
+    ? "idle"
+    : preflightWarningCount > 0 || state.snapshot.preflight.status === "warning"
+      ? "warning"
+      : options.sessionContextDirty || state.snapshot.preflight.status === "stale"
+        ? "active"
+        : state.snapshot.preflight.status === "fresh"
+          ? "ready"
+          : "active";
+  const goalStepDetail = savedGoalExists
+    ? text(
+        ["workbench", "goalPanel", "launchChecklist", "goalReady"],
+        "Saved target is ready for draft generation."
+      )
+    : goalHasDraftInput
+      ? text(
+          ["workbench", "goalPanel", "launchChecklist", "goalActive"],
+          "Draft is in progress. Save the target before preflight."
+        )
+      : text(
+          ["workbench", "goalPanel", "launchChecklist", "goalIdle"],
+          "Define the target room, brief, and constraints for this run."
+        );
+  const sessionStepDetail = sessionActive
+    ? text(
+        ["workbench", "goalPanel", "launchChecklist", "sessionReady"],
+        "Active session is attached to this run."
+      )
+    : state.snapshot.sessionList.length > 0
+      ? text(
+          ["workbench", "goalPanel", "launchChecklist", "sessionActive"],
+          "Saved sessions are available. Open one or create a new run shell."
+        )
+      : text(
+          ["workbench", "goalPanel", "launchChecklist", "sessionIdle"],
+          "Create a session to keep run-local decisions together."
+        );
+  const operatorStepDetail =
+    operatorRecordCount === 0
+      ? text(
+          ["workbench", "goalPanel", "launchChecklist", "operatorIdle"],
+          "Operator profile is blank. AI will assume no saved tools or skills."
+        )
+      : sessionActive && selectedContextCount > 0
+        ? text(
+            ["workbench", "goalPanel", "launchChecklist", "operatorReady"],
+            "{selected} run truths selected from {total} saved records.",
+            {
+              selected: selectedContextCount,
+              total: operatorRecordCount,
+            }
+          )
+        : text(
+            ["workbench", "goalPanel", "launchChecklist", "operatorActive"],
+            "{total} saved records are available. Pick the truths that should affect this run.",
+            {
+              total: operatorRecordCount,
+            }
+          );
+  const preflightStepDetail = !sessionActive || !savedGoalExists
+    ? text(
+        ["workbench", "goalPanel", "launchChecklist", "preflightIdle"],
+        "Preflight unlocks after an active session and a saved goal exist."
+      )
+    : preflightWarningCount > 0 || state.snapshot.preflight.status === "warning"
+      ? text(
+          ["workbench", "goalPanel", "launchChecklist", "preflightWarning"],
+          "Preflight found warnings. Review them before you continue."
+        )
+      : options.sessionContextDirty || state.snapshot.preflight.status === "stale"
+        ? text(
+            ["workbench", "goalPanel", "launchChecklist", "preflightStale"],
+            "Goal, context, or run settings changed. Refresh preflight before launch."
+          )
+        : text(
+            ["workbench", "goalPanel", "launchChecklist", "preflightReady"],
+            "Run context is validated and ready for draft generation."
+          );
+  const goalStatusLabel = text(
+    ["workbench", "goalPanel", "launchChecklist", "statuses", goalStepStatus],
+    goalStepStatus
+  );
+  const sessionStatusLabel = text(
+    ["workbench", "goalPanel", "launchChecklist", "statuses", sessionStepStatus],
+    sessionStepStatus
+  );
+  const operatorStatusLabel = text(
+    ["workbench", "goalPanel", "launchChecklist", "statuses", operatorStepStatus],
+    operatorStepStatus
+  );
+  const preflightStatusStepLabel = text(
+    ["workbench", "goalPanel", "launchChecklist", "statuses", preflightStepStatus],
+    preflightStepStatus
+  );
 
   const goalInput = documentRef.createElement("input");
   goalInput.id = "forge-goal-summary";
@@ -470,168 +519,67 @@ export function renderGoalInputPanel(
   targetRoomInput.dataset["forgeGoalField"] = "targetRoomId";
   targetRoomInput.disabled = goalLocked;
 
-  const skillLevelSelect = documentRef.createElement("select");
-  skillLevelSelect.id = "forge-profile-skill-level";
-  skillLevelSelect.className = "forge-input";
-  skillLevelSelect.append(
-    createOption(
+  const preparationBlock = documentRef.createElement("section");
+  preparationBlock.className = "forge-goal-block forge-goal-block--prep";
+  preparationBlock.dataset["forgeZone"] = "launch-checklist";
+  preparationBlock.append(
+    createSectionHeading(
       documentRef,
-      "",
-      text(["workbench", "goalPanel", "operatorProfile", "values", "notSet"], "unset"),
-      toNullableSelectValue(operatorProfileDraft.skill.level)
+      text(["workbench", "goalPanel", "launchChecklist", "eyebrow"], "START LANE"),
+      text(["workbench", "goalPanel", "launchChecklist", "title"], "Prepare this Forge run")
     )
   );
-  (["beginner", "intermediate", "advanced"] as const).forEach((value) => {
-    skillLevelSelect.append(
-      createOption(
-        documentRef,
-        value,
-        value,
-        toNullableSelectValue(operatorProfileDraft.skill.level)
-      )
-    );
-  });
 
-  const solderingSelect = documentRef.createElement("select");
-  solderingSelect.id = "forge-profile-soldering";
-  solderingSelect.className = "forge-input";
-  solderingSelect.append(
-    createOption(
-      documentRef,
-      "",
-      text(["workbench", "goalPanel", "operatorProfile", "values", "notSet"], "unset"),
-      toNullableSelectValue(operatorProfileDraft.skill.soldering)
-    )
+  const preparationIntro = documentRef.createElement("p");
+  preparationIntro.className = "forge-block-note";
+  preparationIntro.textContent = text(
+    ["workbench", "goalPanel", "launchChecklist", "summary"],
+    "Before the first draft, lock the target, choose a session, reconcile operator truths, and run preflight."
   );
-  (["none", "basic", "good"] as const).forEach((value) => {
-    solderingSelect.append(
-      createOption(
-        documentRef,
-        value,
-        value,
-        toNullableSelectValue(operatorProfileDraft.skill.soldering)
-      )
-    );
-  });
+  preparationBlock.append(preparationIntro);
 
-  const measurementSelect = documentRef.createElement("select");
-  measurementSelect.id = "forge-profile-measurement";
-  measurementSelect.className = "forge-input";
-  measurementSelect.append(
-    createOption(
-      documentRef,
-      "",
-      text(["workbench", "goalPanel", "operatorProfile", "values", "notSet"], "unset"),
-      toNullableSelectValue(operatorProfileDraft.skill.measurement)
-    )
+  const preparationList = documentRef.createElement("div");
+  preparationList.className = "forge-prep-list";
+  preparationList.append(
+    createPreparationStep(documentRef, {
+      index: "01",
+      status: goalStepStatus,
+      statusLabel: goalStatusLabel,
+      title: text(["workbench", "goalPanel", "launchChecklist", "goalTitle"], "Goal details"),
+      detail: goalStepDetail,
+    }),
+    createPreparationStep(documentRef, {
+      index: "02",
+      status: sessionStepStatus,
+      statusLabel: sessionStatusLabel,
+      title: text(
+        ["workbench", "goalPanel", "launchChecklist", "sessionTitle"],
+        "Session selection"
+      ),
+      detail: sessionStepDetail,
+    }),
+    createPreparationStep(documentRef, {
+      index: "03",
+      status: operatorStepStatus,
+      statusLabel: operatorStatusLabel,
+      title: text(
+        ["workbench", "goalPanel", "launchChecklist", "operatorTitle"],
+        "Operator details"
+      ),
+      detail: operatorStepDetail,
+    }),
+    createPreparationStep(documentRef, {
+      index: "04",
+      status: preflightStepStatus,
+      statusLabel: preflightStatusStepLabel,
+      title: text(
+        ["workbench", "goalPanel", "launchChecklist", "preflightTitle"],
+        "Preflight gate"
+      ),
+      detail: preflightStepDetail,
+    })
   );
-  (["none", "basic", "good"] as const).forEach((value) => {
-    measurementSelect.append(
-      createOption(
-        documentRef,
-        value,
-        value,
-        toNullableSelectValue(operatorProfileDraft.skill.measurement)
-      )
-    );
-  });
-
-  const mechanicalSelect = documentRef.createElement("select");
-  mechanicalSelect.id = "forge-profile-mechanical";
-  mechanicalSelect.className = "forge-input";
-  mechanicalSelect.append(
-    createOption(
-      documentRef,
-      "",
-      text(["workbench", "goalPanel", "operatorProfile", "values", "notSet"], "unset"),
-      toNullableSelectValue(operatorProfileDraft.skill.mechanical)
-    )
-  );
-  (["none", "basic", "good"] as const).forEach((value) => {
-    mechanicalSelect.append(
-      createOption(
-        documentRef,
-        value,
-        value,
-        toNullableSelectValue(operatorProfileDraft.skill.mechanical)
-      )
-    );
-  });
-
-  const modeSelect = documentRef.createElement("select");
-  modeSelect.id = "forge-profile-mode";
-  modeSelect.className = "forge-input";
-  modeSelect.append(
-    createOption(
-      documentRef,
-      "",
-      text(["workbench", "goalPanel", "operatorProfile", "values", "notSet"], "unset"),
-      toNullableSelectValue(operatorProfileDraft.preferences.mode)
-    )
-  );
-  (["learn-first", "result-first"] as const).forEach((value) => {
-    modeSelect.append(
-      createOption(
-        documentRef,
-        value,
-        value,
-        toNullableSelectValue(operatorProfileDraft.preferences.mode)
-      )
-    );
-  });
-
-  const riskSelect = documentRef.createElement("select");
-  riskSelect.id = "forge-profile-risk";
-  riskSelect.className = "forge-input";
-  riskSelect.append(
-    createOption(
-      documentRef,
-      "",
-      text(["workbench", "goalPanel", "operatorProfile", "values", "notSet"], "unset"),
-      toNullableSelectValue(operatorProfileDraft.preferences.riskTolerance)
-    )
-  );
-  (["low", "medium", "high"] as const).forEach((value) => {
-    riskSelect.append(
-      createOption(
-        documentRef,
-        value,
-        value,
-        toNullableSelectValue(operatorProfileDraft.preferences.riskTolerance)
-      )
-    );
-  });
-
-  const multimeterSelect = createAvailabilitySelect(
-    documentRef,
-    "forge-profile-tool-multimeter",
-    operatorProfileDraft.tools.multimeter,
-    text
-  );
-  const solderingIronSelect = createAvailabilitySelect(
-    documentRef,
-    "forge-profile-tool-soldering-iron",
-    operatorProfileDraft.tools.solderingIron,
-    text
-  );
-  const hotAirSelect = createAvailabilitySelect(
-    documentRef,
-    "forge-profile-tool-hot-air",
-    operatorProfileDraft.tools.hotAir,
-    text
-  );
-  const benchSupplySelect = createAvailabilitySelect(
-    documentRef,
-    "forge-profile-tool-bench-supply",
-    operatorProfileDraft.tools.benchPowerSupply,
-    text
-  );
-  const magnificationSelect = createAvailabilitySelect(
-    documentRef,
-    "forge-profile-tool-magnification",
-    operatorProfileDraft.tools.magnification,
-    text
-  );
+  preparationBlock.append(preparationList);
 
   const goalBlock = documentRef.createElement("section");
   goalBlock.className = "forge-goal-block forge-goal-block--compact";
@@ -664,25 +612,58 @@ export function renderGoalInputPanel(
     createMetaPill(
       documentRef,
       text(["workbench", "goalPanel", "summary", "targetLabel"], "Target"),
-      options.goalDraft.targetRoomId || "repair-room"
+      goalTargetValue !== ""
+        ? goalTargetValue
+        : text(["workbench", "goalPanel", "summary", "waiting"], "waiting")
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "summary", "briefLabel"], "Brief"),
+      goalBriefValue !== ""
+        ? text(["workbench", "goalPanel", "summary", "filled"], "filled")
+        : text(["workbench", "goalPanel", "summary", "waiting"], "waiting")
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "summary", "constraintsLabel"], "Constraints"),
+      goalConstraintCount === 1
+        ? text(
+            ["workbench", "goalPanel", "summary", "constraintCountOne"],
+            "{count} item",
+            { count: goalConstraintCount }
+          )
+        : text(
+            ["workbench", "goalPanel", "summary", "constraintCountOther"],
+            "{count} items",
+            { count: goalConstraintCount }
+          )
     )
   );
-  if (options.flowState === "IDLE" && state.snapshot.sessionList.length > 0) {
-    goalMeta.append(
-      createButton(
-        documentRef,
-        text(["workbench", "actions", "loadLatestSession"], "Resume latest run"),
-        "load-latest"
-      )
-    );
-  }
   goalBlock.append(goalMeta);
 
-  if (options.draftBlockedReason) {
-    const blocked = documentRef.createElement("p");
-    blocked.className = "forge-inline-status";
-    blocked.textContent = options.draftBlockedReason;
-    goalBlock.append(blocked);
+  const goalLead = documentRef.createElement("p");
+  goalLead.className = "forge-block-note";
+  goalLead.textContent = savedGoalExists
+    ? text(
+        ["workbench", "goalPanel", "goalBlock", "savedHint"],
+        "Saved target will drive the first draft generation and downstream handoff."
+      )
+    : goalHasDraftInput
+      ? text(
+          ["workbench", "goalPanel", "goalBlock", "draftHint"],
+          "This target is still local. Save it before preflight or draft generation."
+        )
+      : text(
+          ["workbench", "goalPanel", "goalBlock", "emptyHint"],
+          "Set the problem, target room, and constraints before the room starts producing work."
+        );
+  goalBlock.append(goalLead);
+
+  if (goalBriefValue !== "") {
+    const goalPreview = documentRef.createElement("p");
+    goalPreview.className = "forge-goal-preview";
+    goalPreview.textContent = goalBriefValue;
+    goalBlock.append(goalPreview);
   }
 
   if (options.goalDetailsOpen) {
@@ -708,14 +689,140 @@ export function renderGoalInputPanel(
     goalBlock.append(goalDetails);
   }
 
+  const sessionBlock = documentRef.createElement("section");
+  sessionBlock.className = "forge-goal-block forge-goal-block--session";
+  sessionBlock.dataset["forgeZone"] = "session-management";
+  sessionBlock.append(
+    createSectionHeading(
+      documentRef,
+      text(["workbench", "goalPanel", "sessionManager", "eyebrow"], "SESSION MANAGEMENT"),
+      text(["workbench", "goalPanel", "sessionManager", "title"], "Manage session"),
+      {
+        meta:
+          state.snapshot.activeSessionId !== null
+            ? text(["workbench", "goalPanel", "sessionManager", "active"], "active")
+            : text(["workbench", "goalPanel", "sessionManager", "inactive"], "not open"),
+      }
+    )
+  );
+
+  const sessionLead = documentRef.createElement("p");
+  sessionLead.className = "forge-block-note";
+  sessionLead.textContent = sessionActive
+    ? text(
+        ["workbench", "goalPanel", "sessionManager", "activeHint"],
+        "This active session stores the goal, run context, and preflight output for the current pass."
+      )
+    : state.snapshot.sessionList.length > 0
+      ? text(
+          ["workbench", "goalPanel", "sessionManager", "savedHint"],
+          "Open a saved session or start a fresh shell before selecting run-local context."
+        )
+      : text(
+          ["workbench", "goalPanel", "sessionManager", "emptyHint"],
+          "Create the first session so Forge can persist your preparation state."
+        );
+  sessionBlock.append(sessionLead);
+
+  const activeSessionSummary = documentRef.createElement("div");
+  activeSessionSummary.className = "forge-session-summary";
+  activeSessionSummary.append(
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "summary", "sessionLabel"], "Session"),
+      state.snapshot.activeSessionId ??
+        text(["workbench", "goalPanel", "summary", "notStarted"], "not started")
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "sessionManager", "savedCount"], "Saved"),
+      String(state.snapshot.sessionList.length)
+    )
+  );
+  sessionBlock.append(activeSessionSummary);
+
+  const sessionActions = documentRef.createElement("div");
+  sessionActions.className = "forge-actions";
+  sessionActions.append(
+    createButton(
+      documentRef,
+      text(["workbench", "goalPanel", "sessionManager", "newSession"], "New session"),
+      "create-session"
+    ),
+    createButton(
+      documentRef,
+      text(["workbench", "goalPanel", "sessionManager", "saveSession"], "Save session"),
+      "save-session",
+      { disabled: state.snapshot.activeSessionId === null }
+    ),
+    createButton(
+      documentRef,
+      text(["workbench", "goalPanel", "sessionManager", "loadLatest"], "Load latest"),
+      "load-latest"
+    ),
+    createButton(
+      documentRef,
+      text(["workbench", "goalPanel", "sessionManager", "deleteSession"], "Delete session"),
+      "delete-session",
+      { disabled: state.snapshot.activeSessionId === null }
+    )
+  );
+  const deleteButton = sessionActions.querySelector<HTMLElement>(
+    "[data-forge-action='delete-session']"
+  );
+  if (deleteButton && state.snapshot.activeSessionId) {
+    deleteButton.dataset["forgeSessionId"] = state.snapshot.activeSessionId;
+  }
+  sessionBlock.append(sessionActions);
+
+  const sessionList = documentRef.createElement("div");
+  sessionList.className = "forge-session-list";
+  if (state.snapshot.sessionList.length === 0) {
+    sessionList.append(
+      Object.assign(documentRef.createElement("p"), {
+        className: "forge-field__hint",
+        textContent: text(["workbench", "states", "emptySessions"], "No saved sessions yet."),
+      })
+    );
+  } else {
+    state.snapshot.sessionList.slice(0, 5).forEach((session) => {
+      const item = documentRef.createElement("article");
+      item.className = "forge-session-list__item";
+      item.dataset["active"] = session.id === state.snapshot.activeSessionId ? "true" : "false";
+      const copy = documentRef.createElement("div");
+      copy.className = "forge-session-list__copy";
+      copy.append(
+        Object.assign(documentRef.createElement("strong"), {
+          textContent: session.title,
+        }),
+        Object.assign(documentRef.createElement("span"), {
+          className: "forge-field__hint",
+          textContent: session.updatedAt,
+        })
+      );
+      const actions = documentRef.createElement("div");
+      actions.className = "forge-actions";
+      const openButton = createButton(
+        documentRef,
+        text(["workbench", "goalPanel", "sessionManager", "openSavedSession"], "Open"),
+        "load-session"
+      );
+      openButton.dataset["forgeSessionId"] = session.id;
+      actions.append(openButton);
+      item.append(copy, actions);
+      sessionList.append(item);
+    });
+  }
+  sessionBlock.append(sessionList);
+
   const sessionContextBlock = documentRef.createElement("section");
   sessionContextBlock.className = "forge-goal-block forge-goal-block--context";
   sessionContextBlock.dataset["forgeZone"] = "context";
   sessionContextBlock.append(
     createSectionHeading(
       documentRef,
-      text(["workbench", "goalPanel", "sessionContext", "eyebrow"], "Context for this run"),
-      text(["workbench", "goalPanel", "sessionContext", "title"], "Activate context"),
+      text(["workbench", "goalPanel", "operatorProfile", "eyebrow"], "Operator profile"),
+      text(["workbench", "goalPanel", "operatorProfile", "prepTitle"], "Operator details"),
       {
         meta:
           selectedContextCount > 0
@@ -725,195 +832,213 @@ export function renderGoalInputPanel(
                 { count: selectedContextCount }
               )
             : text(["workbench", "goalPanel", "sessionContext", "noneSelected"], "0 active"),
+        actions: [
+          createButton(
+            documentRef,
+            text(["workbench", "goalPanel", "operatorProfile", "manage"], "Manage"),
+            "toggle-profile-editor"
+          ),
+        ],
       }
     )
   );
 
-  const operatorRow = documentRef.createElement("div");
-  operatorRow.className = "forge-operator-inline";
-  const operatorCopy = documentRef.createElement("div");
-  operatorCopy.className = "forge-operator-inline__copy";
-  const operatorLabel = documentRef.createElement("strong");
-  operatorLabel.className = "forge-operator-inline__title";
-  operatorLabel.textContent = `${text(
-    ["workbench", "goalPanel", "operatorProfile", "label"],
-    "Operator"
-  )}: ${state.context.userNickname}`;
-  operatorCopy.append(operatorLabel);
-  if (profileEmpty) {
-    const operatorHint = documentRef.createElement("span");
-    operatorHint.className = "forge-field__hint";
-    operatorHint.textContent = text(
-      ["workbench", "goalPanel", "operatorProfile", "emptyShort"],
-      "Profile blank"
-    );
-    operatorCopy.append(operatorHint);
-  }
-  operatorRow.append(
-    operatorCopy,
-    createButton(
+  const operatorLead = documentRef.createElement("p");
+  operatorLead.className = "forge-block-note";
+  operatorLead.textContent =
+    operatorRecordCount === 0
+      ? text(
+          ["workbench", "goalPanel", "operatorProfile", "empty"],
+          "No operator profile defined. AI will assume no prior capability."
+        )
+      : !sessionActive
+        ? text(
+            ["workbench", "goalPanel", "operatorProfile", "noSessionHint"],
+            "Saved operator records are ready. Open a session to choose which truths affect this run."
+          )
+        : selectedContextCount > 0
+          ? text(
+              ["workbench", "goalPanel", "operatorProfile", "readyHint"],
+              "{count} selected truths will shape this run.",
+              { count: selectedContextCount }
+            )
+          : text(
+              ["workbench", "goalPanel", "operatorProfile", "selectHint"],
+              "Saved records exist, but this run still uses zero assumptions until you select context."
+            );
+  sessionContextBlock.append(operatorLead);
+
+  const operatorSummary = documentRef.createElement("div");
+  operatorSummary.className = "forge-goal-meta";
+  operatorSummary.append(
+    createMetaPill(
       documentRef,
-      text(["workbench", "goalPanel", "operatorProfile", "manage"], "Edit"),
-      "toggle-profile-editor"
+      text(["workbench", "goalPanel", "catalog", "groups", "skills"], "Skills"),
+      String(operatorProfile.skills.length)
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "catalog", "groups", "equipment"], "Equipment"),
+      String(operatorProfile.equipment.length)
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "operatorProfile", "selectedLabel"], "Selected"),
+      String(selectedContextCount)
     )
   );
-  sessionContextBlock.append(operatorRow);
+  sessionContextBlock.append(operatorSummary);
+
+  if (sessionActive) {
+    const operatorHint = documentRef.createElement("p");
+    operatorHint.className = "forge-field__hint";
+    operatorHint.textContent = text(
+      ["workbench", "goalPanel", "operatorProfile", "selectedTruthHint"],
+      "Only selected items can influence this run."
+    );
+    sessionContextBlock.append(operatorHint);
+  } else {
+    const requiresSession = documentRef.createElement("p");
+    requiresSession.className = "forge-field__hint";
+    requiresSession.textContent = text(
+      ["workbench", "goalPanel", "sessionContext", "requiresSession"],
+      "Create or open a session to edit this run context."
+    );
+    sessionContextBlock.append(requiresSession);
+  }
 
   const contextGroups = documentRef.createElement("div");
-  contextGroups.className = "forge-context-groups";
+  contextGroups.className = "forge-context-groups forge-context-groups--scroll";
   contextGroups.append(
-    createContextGroup(documentRef, catalog.skillsGroup, [
-      createContextChip(documentRef, {
-        detail: toProfileValueLabel(operatorProfile.skill.level, text),
-        entryId: "skill-level",
-        id: "forge-session-context-skill-level",
-        key: "level",
-        label: catalog.labels.skillLevel,
-        section: "skill",
-        selected:
-          sessionContextSelection.skill.level === true && operatorProfile.skill.level !== null,
-        unset: operatorProfile.skill.level === null,
-      }),
-      createContextChip(documentRef, {
-        detail: toProfileValueLabel(operatorProfile.skill.soldering, text),
-        entryId: "skill-soldering",
-        id: "forge-session-context-skill-soldering",
-        key: "soldering",
-        label: catalog.labels.soldering,
-        section: "skill",
-        selected:
-          sessionContextSelection.skill.soldering === true &&
-          operatorProfile.skill.soldering !== null,
-        unset: operatorProfile.skill.soldering === null,
-      }),
-      createContextChip(documentRef, {
-        detail: toProfileValueLabel(operatorProfile.skill.measurement, text),
-        entryId: "skill-measurement",
-        id: "forge-session-context-skill-measurement",
-        key: "measurement",
-        label: catalog.labels.measurement,
-        section: "skill",
-        selected:
-          sessionContextSelection.skill.measurement === true &&
-          operatorProfile.skill.measurement !== null,
-        unset: operatorProfile.skill.measurement === null,
-      }),
-      createContextChip(documentRef, {
-        detail: toProfileValueLabel(operatorProfile.skill.mechanical, text),
-        entryId: "skill-mechanical",
-        id: "forge-session-context-skill-mechanical",
-        key: "mechanical",
-        label: catalog.labels.mechanical,
-        section: "skill",
-        selected:
-          sessionContextSelection.skill.mechanical === true &&
-          operatorProfile.skill.mechanical !== null,
-        unset: operatorProfile.skill.mechanical === null,
-      }),
-    ]),
-    createContextGroup(documentRef, catalog.equipmentGroup, [
-      createContextChip(documentRef, {
-        detail: toToolValueLabel(operatorProfile.tools.multimeter, text),
-        entryId: "tool-multimeter",
-        id: "forge-session-context-tool-multimeter",
-        key: "multimeter",
-        label: catalog.labels.multimeter,
-        section: "tools",
-        selected:
-          sessionContextSelection.tools.multimeter === true &&
-          operatorProfile.tools.multimeter !== null,
-        unset: operatorProfile.tools.multimeter === null,
-      }),
-      createContextChip(documentRef, {
-        detail: toToolValueLabel(operatorProfile.tools.solderingIron, text),
-        entryId: "tool-soldering-iron",
-        id: "forge-session-context-tool-soldering-iron",
-        key: "solderingIron",
-        label: catalog.labels.solderingIron,
-        section: "tools",
-        selected:
-          sessionContextSelection.tools.solderingIron === true &&
-          operatorProfile.tools.solderingIron !== null,
-        unset: operatorProfile.tools.solderingIron === null,
-      }),
-      createContextChip(documentRef, {
-        detail: toToolValueLabel(operatorProfile.tools.hotAir, text),
-        entryId: "tool-hot-air",
-        id: "forge-session-context-tool-hot-air",
-        key: "hotAir",
-        label: catalog.labels.hotAir,
-        section: "tools",
-        selected:
-          sessionContextSelection.tools.hotAir === true && operatorProfile.tools.hotAir !== null,
-        unset: operatorProfile.tools.hotAir === null,
-      }),
-      createContextChip(documentRef, {
-        detail: toToolValueLabel(operatorProfile.tools.benchPowerSupply, text),
-        entryId: "tool-bench-supply",
-        id: "forge-session-context-tool-bench-supply",
-        key: "benchPowerSupply",
-        label: catalog.labels.benchSupply,
-        section: "tools",
-        selected:
-          sessionContextSelection.tools.benchPowerSupply === true &&
-          operatorProfile.tools.benchPowerSupply !== null,
-        unset: operatorProfile.tools.benchPowerSupply === null,
-      }),
-      createContextChip(documentRef, {
-        detail: toToolValueLabel(operatorProfile.tools.magnification, text),
-        entryId: "tool-magnification",
-        id: "forge-session-context-tool-magnification",
-        key: "magnification",
-        label: catalog.labels.magnification,
-        section: "tools",
-        selected:
-          sessionContextSelection.tools.magnification === true &&
-          operatorProfile.tools.magnification !== null,
-        unset: operatorProfile.tools.magnification === null,
-      }),
-    ]),
-    createContextGroup(documentRef, catalog.generalGroup, [
-      createContextChip(documentRef, {
-        detail: toProfileValueLabel(operatorProfile.preferences.mode, text),
-        entryId: "preference-mode",
-        id: "forge-session-context-preference-mode",
-        key: "mode",
-        label: catalog.labels.mode,
-        section: "preferences",
-        selected:
-          sessionContextSelection.preferences.mode === true &&
-          operatorProfile.preferences.mode !== null,
-        unset: operatorProfile.preferences.mode === null,
-      }),
-      createContextChip(documentRef, {
-        detail: toProfileValueLabel(operatorProfile.preferences.riskTolerance, text),
-        entryId: "preference-risk",
-        id: "forge-session-context-preference-risk",
-        key: "riskTolerance",
-        label: catalog.labels.risk,
-        section: "preferences",
-        selected:
-          sessionContextSelection.preferences.riskTolerance === true &&
-          operatorProfile.preferences.riskTolerance !== null,
-        unset: operatorProfile.preferences.riskTolerance === null,
-      }),
-    ])
+    createContextGroup(
+      documentRef,
+      text(["workbench", "goalPanel", "catalog", "groups", "skills"], "Skills"),
+      operatorProfile.skills.map((record) =>
+        createContextChip(documentRef, {
+          disabled: !sessionActive,
+          section: "skill",
+          key: record.skillKey,
+          label: record.label,
+          detail: renderSkillValue(text, record.level),
+          selected: sessionContextSelection.skillKeys.includes(record.skillKey),
+        })
+      ),
+      text(
+        ["workbench", "goalPanel", "sessionContext", "emptySkills"],
+        "No saved skills yet. Use Operator Profile from the top bar."
+      )
+    ),
+    createContextGroup(
+      documentRef,
+      text(["workbench", "goalPanel", "catalog", "groups", "equipment"], "Equipment"),
+      operatorProfile.equipment.map((record) =>
+        createContextChip(documentRef, {
+          disabled: !sessionActive,
+          section: "equipment",
+          key: record.equipmentKey,
+          label: record.label,
+          detail: record.brandModel
+            ? `${renderEquipmentValue(text, record.status)} • ${record.brandModel}`
+            : renderEquipmentValue(text, record.status),
+          selected: sessionContextSelection.equipmentKeys.includes(record.equipmentKey),
+        })
+      ),
+      text(
+        ["workbench", "goalPanel", "sessionContext", "emptyEquipment"],
+        "No saved equipment yet. Use Operator Profile from the top bar."
+      )
+    )
   );
   sessionContextBlock.append(contextGroups);
 
+  const launchBlock = documentRef.createElement("section");
+  launchBlock.className = "forge-goal-block forge-goal-block--launch";
+  launchBlock.dataset["forgeZone"] = "preflight";
+  launchBlock.append(
+    createSectionHeading(
+      documentRef,
+      text(["workbench", "goalPanel", "preflight", "eyebrow"], "PRE-FLIGHT"),
+      text(["workbench", "goalPanel", "preflight", "title"], "Validate run context"),
+      {
+        meta: preflightStatusLabel,
+      }
+    )
+  );
+
+  const launchLead = documentRef.createElement("p");
+  launchLead.className = "forge-block-note";
+  launchLead.textContent = !sessionActive
+    ? text(
+        ["workbench", "goalPanel", "preflight", "requiresSessionHint"],
+        "Create or open a session before running preflight."
+      )
+    : !savedGoalExists
+      ? text(
+          ["workbench", "goalPanel", "preflight", "requiresGoalHint"],
+          "Save the target before preflight can validate this run."
+        )
+      : state.snapshot.preflight.status === "warning" || preflightWarningCount > 0
+        ? text(
+            ["workbench", "goalPanel", "preflight", "warningHint"],
+            "Preflight completed with warnings. Review the notes before you move forward."
+          )
+        : options.sessionContextDirty || state.snapshot.preflight.status === "stale"
+          ? state.snapshot.preflight.staleReason?.trim() ||
+            text(
+              ["workbench", "goalPanel", "preflight", "staleHint"],
+              "Context changed after the last preflight run. Refresh before launch."
+            )
+          : text(
+              ["workbench", "goalPanel", "preflight", "readyHint"],
+              "Run-local settings are aligned. Use preflight as the last gate before draft generation."
+            );
+  launchBlock.append(launchLead);
+
+  const launchSummary = documentRef.createElement("div");
+  launchSummary.className = "forge-goal-meta";
+  launchSummary.append(
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "summary", "sessionLabel"], "Session"),
+      sessionActive
+        ? text(["workbench", "goalPanel", "sessionManager", "active"], "active")
+        : text(["workbench", "goalPanel", "summary", "notStarted"], "not started")
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "summary", "targetLabel"], "Target"),
+      goalTargetValue !== ""
+        ? goalTargetValue
+        : text(["workbench", "goalPanel", "summary", "waiting"], "waiting")
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "summary", "preflightLabel"], "PRE-FLIGHT"),
+      preflightStatusLabel
+    )
+  );
+  launchBlock.append(launchSummary);
+
   const preflightBlock = documentRef.createElement("article");
-  preflightBlock.className = "forge-preflight-step";
-  preflightBlock.dataset["forgeZone"] = "preflight";
+  preflightBlock.className = "forge-preflight-step forge-goal-subsection forge-goal-subsection--accent";
+  preflightBlock.dataset["forgeZone"] = "preflight-step";
   preflightBlock.dataset["status"] = preflightStatusLabel;
   const preflightCopy = documentRef.createElement("div");
   preflightCopy.className = "forge-preflight-step__copy";
   const preflightTitle = documentRef.createElement("strong");
   preflightTitle.className = "forge-preflight-step__title";
-  preflightTitle.textContent = !savedGoalExists
-    ? text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: GOAL")
-    : preflightStatusLabel === text(["workbench", "goalPanel", "preflight", "ready"], "ready")
-      ? text(["workbench", "goalPanel", "preflight", "stepComplete"], "Preflight complete")
-      : text(["workbench", "goalPanel", "preflight", "stepReady"], "Context ready");
+  preflightTitle.textContent = !sessionActive
+    ? text(["workbench", "goalPanel", "preflight", "requiresSession"], "REQUIRES: ACTIVE SESSION")
+    : !savedGoalExists
+      ? text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: GOAL")
+      : state.snapshot.preflight.status === "warning" || preflightWarningCount > 0
+        ? text(
+            ["workbench", "goalPanel", "preflight", "stepWarning"],
+            "Preflight flagged warnings"
+          )
+        : state.snapshot.preflight.status === "fresh"
+        ? text(["workbench", "goalPanel", "preflight", "stepComplete"], "Preflight complete")
+        : text(["workbench", "goalPanel", "preflight", "stepReady"], "Context ready");
   const preflightMeta = documentRef.createElement("span");
   preflightMeta.className = "forge-preflight-step__meta";
   preflightMeta.textContent = `${text(
@@ -928,7 +1053,7 @@ export function renderGoalInputPanel(
       text(["workbench", "goalPanel", "preflight", "action"], "Run Preflight"),
       "run-preflight",
       {
-        disabled: !savedGoalExists,
+        disabled: !savedGoalExists || !sessionActive,
       }
     )
   );
@@ -943,46 +1068,103 @@ export function renderGoalInputPanel(
     });
     preflightBlock.append(warningRail);
   }
-  sessionContextBlock.append(preflightBlock);
 
   const runOverridesBlock = documentRef.createElement("section");
-  runOverridesBlock.className = "forge-goal-block forge-goal-block--muted";
+  runOverridesBlock.className = "forge-goal-subsection forge-goal-subsection--muted";
   runOverridesBlock.dataset["forgeZone"] = "overrides";
   runOverridesBlock.append(
     createSectionHeading(
       documentRef,
-      text(["workbench", "goalPanel", "runOverrides", "eyebrow"], "Temporary conditions"),
-      text(["workbench", "goalPanel", "runOverrides", "title"], "Temporary conditions")
+      text(["workbench", "goalPanel", "runOverrides", "eyebrow"], "SESSION-SPECIFIC"),
+      text(["workbench", "goalPanel", "runOverrides", "title"], "Run settings"),
+      {
+        meta: text(["workbench", "goalPanel", "runOverrides", "meta"], "Run-local only"),
+      }
     )
   );
 
+  const sessionSpecificGrid = documentRef.createElement("div");
+  sessionSpecificGrid.className = "forge-form-grid forge-form-grid--compact";
+
+  const modeSelect = documentRef.createElement("select");
+  modeSelect.id = "forge-run-override-mode";
+  modeSelect.className = "forge-input";
+  modeSelect.disabled = !sessionActive;
+  modeSelect.append(
+    createOption(
+      documentRef,
+      "",
+      text(["workbench", "common", "none"], "none"),
+      options.runOverrideDraft.mode || ""
+    ),
+    createOption(
+      documentRef,
+      "learn_first",
+      renderModeValue(text, "learn_first"),
+      options.runOverrideDraft.mode || ""
+    ),
+    createOption(
+      documentRef,
+      "result_first",
+      renderModeValue(text, "result_first"),
+      options.runOverrideDraft.mode || ""
+    )
+  );
+
+  const riskSelect = documentRef.createElement("select");
+  riskSelect.id = "forge-run-override-risk";
+  riskSelect.className = "forge-input";
+  riskSelect.disabled = !sessionActive;
+  riskSelect.append(
+    createOption(
+      documentRef,
+      "",
+      text(["workbench", "common", "none"], "none"),
+      options.runOverrideDraft.riskTolerance || ""
+    ),
+    createOption(
+      documentRef,
+      "low",
+      renderRiskValue(text, "low"),
+      options.runOverrideDraft.riskTolerance || ""
+    ),
+    createOption(
+      documentRef,
+      "medium",
+      renderRiskValue(text, "medium"),
+      options.runOverrideDraft.riskTolerance || ""
+    ),
+    createOption(
+      documentRef,
+      "high",
+      renderRiskValue(text, "high"),
+      options.runOverrideDraft.riskTolerance || ""
+    )
+  );
+
+  sessionSpecificGrid.append(
+    createField(
+      documentRef,
+      text(["workbench", "goalPanel", "runOverrides", "mode"], "Mode"),
+      modeSelect
+    ),
+    createField(
+      documentRef,
+      text(["workbench", "goalPanel", "runOverrides", "risk"], "Risk tolerance"),
+      riskSelect
+    )
+  );
+  runOverridesBlock.append(sessionSpecificGrid);
+
   const overrideToggles = documentRef.createElement("div");
   overrideToggles.className = "forge-chip-row";
-  const hotAirToggle = documentRef.createElement("button");
-  hotAirToggle.type = "button";
-  hotAirToggle.className = "forge-context-chip forge-context-chip--small";
-  hotAirToggle.dataset["forgeRunOverrideToggle"] = "hotAir";
-  hotAirToggle.dataset["selected"] =
-    options.runOverrideDraft.tools.hotAir === true ? "true" : "false";
-  hotAirToggle.append(
-    Object.assign(documentRef.createElement("span"), {
-      className: "forge-context-chip__label",
-      textContent: text(["workbench", "goalPanel", "runOverrides", "tempHotAir"], "Hot air"),
-    }),
-    Object.assign(documentRef.createElement("span"), {
-      className: "forge-context-chip__detail",
-      textContent:
-        options.runOverrideDraft.tools.hotAir === true
-          ? text(["workbench", "goalPanel", "runOverrides", "active"], "active")
-          : text(["workbench", "goalPanel", "runOverrides", "inactive"], "inactive"),
-    })
-  );
   const preAnalysisToggle = documentRef.createElement("button");
   preAnalysisToggle.type = "button";
   preAnalysisToggle.className = "forge-context-chip forge-context-chip--small";
   preAnalysisToggle.dataset["forgeRunOverrideToggle"] = "preAnalysis";
   preAnalysisToggle.dataset["selected"] =
     options.runOverrideDraft.enableRovoPreAnalysis === true ? "true" : "false";
+  preAnalysisToggle.disabled = !sessionActive;
   preAnalysisToggle.append(
     Object.assign(documentRef.createElement("span"), {
       className: "forge-context-chip__label",
@@ -996,25 +1178,35 @@ export function renderGoalInputPanel(
           : text(["workbench", "goalPanel", "runOverrides", "inactive"], "inactive"),
     })
   );
-  overrideToggles.append(hotAirToggle, preAnalysisToggle);
+  overrideToggles.append(preAnalysisToggle);
   runOverridesBlock.append(overrideToggles);
 
   const conditionsRail = documentRef.createElement("div");
   conditionsRail.className = "forge-chip-row";
-  conditions.forEach((condition) => {
+  options.runOverrideDraft.temporaryConditions.forEach((condition) => {
     const chip = documentRef.createElement("button");
     chip.type = "button";
     chip.className = "forge-condition-chip";
     chip.dataset["forgeRemoveRunCondition"] = condition;
-    const label = documentRef.createElement("span");
-    label.textContent = condition;
-    const remove = documentRef.createElement("span");
-    remove.className = "forge-condition-chip__remove";
-    remove.textContent = "x";
-    chip.append(label, remove);
+    chip.disabled = !sessionActive;
+    chip.append(
+      Object.assign(documentRef.createElement("span"), {
+        textContent: condition,
+      }),
+      Object.assign(documentRef.createElement("span"), {
+        className: "forge-condition-chip__remove",
+        textContent: "x",
+      })
+    );
     conditionsRail.append(chip);
   });
   runOverridesBlock.append(conditionsRail);
+
+  runOverridesBlock.append(
+    renderNotesBlock(documentRef, text, options.runOverrideDraft.notes, {
+      disabled: !sessionActive,
+    })
+  );
 
   const conditionActions = documentRef.createElement("div");
   conditionActions.className = "forge-actions";
@@ -1022,7 +1214,10 @@ export function renderGoalInputPanel(
     createButton(
       documentRef,
       text(["workbench", "goalPanel", "runOverrides", "addCondition"], "+ Add condition"),
-      "toggle-run-condition-composer"
+      "toggle-run-condition-composer",
+      {
+        disabled: !sessionActive,
+      }
     )
   );
   runOverridesBlock.append(conditionActions);
@@ -1034,6 +1229,7 @@ export function renderGoalInputPanel(
     input.id = "forge-run-override-condition-input";
     input.className = "forge-input";
     input.value = options.runConditionComposerValue;
+    input.disabled = !sessionActive;
     input.placeholder = text(
       ["workbench", "goalPanel", "runOverrides", "notesPlaceholder"],
       "Temporary condition for this run"
@@ -1043,159 +1239,45 @@ export function renderGoalInputPanel(
       createButton(
         documentRef,
         text(["workbench", "goalPanel", "runOverrides", "commitCondition"], "Add"),
-        "commit-run-condition"
+        "commit-run-condition",
+        {
+          disabled: !sessionActive,
+        }
       ),
       createButton(
         documentRef,
         text(["workbench", "goalPanel", "runOverrides", "cancelCondition"], "Cancel"),
-        "cancel-run-condition"
+        "cancel-run-condition",
+        {
+          disabled: !sessionActive,
+        }
       )
     );
     runOverridesBlock.append(composer);
   }
 
+  const launchStack = documentRef.createElement("div");
+  launchStack.className = "forge-goal-substack";
+  launchStack.append(runOverridesBlock, preflightBlock);
+  launchBlock.append(launchStack);
+
   const mainStack = documentRef.createElement("div");
   mainStack.className = "forge-goal-stack";
-  mainStack.append(goalBlock, sessionContextBlock, runOverridesBlock);
+  mainStack.append(
+    preparationBlock,
+    goalBlock,
+    sessionBlock,
+    sessionContextBlock,
+    launchBlock
+  );
 
   const layout = documentRef.createElement("div");
-  layout.className = "forge-goal-layout";
+  layout.className = "forge-goal-layout forge-goal-layout--single";
   layout.append(mainStack);
-
-  if (options.profileEditorOpen) {
-    const drawer = documentRef.createElement("aside");
-    drawer.className = "forge-profile-drawer";
-    drawer.append(
-      createSectionHeading(
-        documentRef,
-        text(["workbench", "goalPanel", "operatorProfile", "drawerEyebrow"], "PROFILE"),
-        text(
-          ["workbench", "goalPanel", "operatorProfile", "drawerTitle"],
-          "Manage operator profile"
-        )
-      )
-    );
-
-    drawer.append(
-      createProfileEditorSection(documentRef, catalog.skillsGroup, [
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "skill-level",
-          control: skillLevelSelect,
-          entryId: "skill-level",
-          inputId: "forge-profile-skill-level",
-          label: catalog.labels.skillLevel,
-          valueLabel: toProfileValueLabel(operatorProfileDraft.skill.level, text),
-        }),
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "skill-soldering",
-          control: solderingSelect,
-          entryId: "skill-soldering",
-          inputId: "forge-profile-soldering",
-          label: catalog.labels.soldering,
-          valueLabel: toProfileValueLabel(operatorProfileDraft.skill.soldering, text),
-        }),
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "skill-measurement",
-          control: measurementSelect,
-          entryId: "skill-measurement",
-          inputId: "forge-profile-measurement",
-          label: catalog.labels.measurement,
-          valueLabel: toProfileValueLabel(operatorProfileDraft.skill.measurement, text),
-        }),
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "skill-mechanical",
-          control: mechanicalSelect,
-          entryId: "skill-mechanical",
-          inputId: "forge-profile-mechanical",
-          label: catalog.labels.mechanical,
-          valueLabel: toProfileValueLabel(operatorProfileDraft.skill.mechanical, text),
-        }),
-      ]),
-      createProfileEditorSection(documentRef, catalog.equipmentGroup, [
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "tool-multimeter",
-          control: multimeterSelect,
-          entryId: "tool-multimeter",
-          inputId: "forge-profile-tool-multimeter",
-          label: catalog.labels.multimeter,
-          valueLabel: toToolValueLabel(operatorProfileDraft.tools.multimeter, text),
-        }),
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "tool-soldering-iron",
-          control: solderingIronSelect,
-          entryId: "tool-soldering-iron",
-          inputId: "forge-profile-tool-soldering-iron",
-          label: catalog.labels.solderingIron,
-          valueLabel: toToolValueLabel(operatorProfileDraft.tools.solderingIron, text),
-        }),
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "tool-hot-air",
-          control: hotAirSelect,
-          entryId: "tool-hot-air",
-          inputId: "forge-profile-tool-hot-air",
-          label: catalog.labels.hotAir,
-          valueLabel: toToolValueLabel(operatorProfileDraft.tools.hotAir, text),
-        }),
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "tool-bench-supply",
-          control: benchSupplySelect,
-          entryId: "tool-bench-supply",
-          inputId: "forge-profile-tool-bench-supply",
-          label: catalog.labels.benchSupply,
-          valueLabel: toToolValueLabel(operatorProfileDraft.tools.benchPowerSupply, text),
-        }),
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "tool-magnification",
-          control: magnificationSelect,
-          entryId: "tool-magnification",
-          inputId: "forge-profile-tool-magnification",
-          label: catalog.labels.magnification,
-          valueLabel: toToolValueLabel(operatorProfileDraft.tools.magnification, text),
-        }),
-      ]),
-      createProfileEditorSection(documentRef, catalog.generalGroup, [
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "preference-mode",
-          control: modeSelect,
-          entryId: "preference-mode",
-          inputId: "forge-profile-mode",
-          label: catalog.labels.mode,
-          valueLabel: toProfileValueLabel(operatorProfileDraft.preferences.mode, text),
-        }),
-        createProfileEditorItem(documentRef, {
-          active: options.activeProfileEntryId === "preference-risk",
-          control: riskSelect,
-          entryId: "preference-risk",
-          inputId: "forge-profile-risk",
-          label: catalog.labels.risk,
-          valueLabel: toProfileValueLabel(operatorProfileDraft.preferences.riskTolerance, text),
-        }),
-      ])
-    );
-
-    const drawerActions = documentRef.createElement("div");
-    drawerActions.className = "forge-actions";
-    drawerActions.append(
-      createButton(
-        documentRef,
-        text(["workbench", "goalPanel", "operatorProfile", "save"], "Save profile"),
-        "save-operator-profile"
-      ),
-      createButton(
-        documentRef,
-        text(["workbench", "goalPanel", "operatorProfile", "close"], "Close"),
-        "toggle-profile-editor"
-      )
-    );
-    drawer.append(drawerActions);
-    layout.append(drawer);
-  }
-
   body.append(layout);
 
   const panel = createForgePanel(documentRef, {
     panelId: "goal",
-    eyebrow: text(["title"], state.context.roomName),
     title: text(["workbench", "panels", "goal"], "Control Surface"),
     body,
   });

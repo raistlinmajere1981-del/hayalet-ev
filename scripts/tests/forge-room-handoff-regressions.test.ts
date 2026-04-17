@@ -201,3 +201,131 @@ test("forge-room handoff export readiness blocks exports while conflicts stay op
   assert.equal(summary.openConflictCount, 1);
   assert.match(summary.reason, /resolve/i);
 });
+
+test("forge-room handoff export blocks while preflight provenance is stale", () => {
+  const handoffExport = createForgeHandoffExport();
+  const session = createEmptyForgeSession("forge-session-4");
+  session.goal = {
+    id: "forge-goal-4",
+    summary: "Repair Room integration",
+    brief: "Prepare the first handoff package.",
+    constraints: ["Keep the export boundary local."],
+    acceptanceCriteria: ["Repair Room can import the handoff package."],
+    status: "draft-ready",
+    targetRoomId: "repair-room",
+    createdAt: "2026-04-15T00:00:00.000Z",
+    updatedAt: "2026-04-15T00:00:00.000Z",
+  };
+  session.syntheses = [
+    {
+      id: "forge-synthesis-4",
+      summary: "Selected synthesis",
+      body: "Keep the handoff narrow and file-backed.",
+      decisionTrace: ["Export should wait for a fresh provenance snapshot."],
+      provenance: {
+        runSignature: "RepairRoom-v3-old-context-a1b2c3",
+        operatorProfileSummary: ["Selected skills: Measurement (basic)."],
+        preflightWarnings: [],
+      },
+      sourceTaskIds: ["forge-task-1"],
+      selectedResponseIds: ["forge-response-1"],
+      unresolvedConflictIds: [],
+      acceptanceCriteria: ["Repair Room can import the handoff package."],
+      openQuestions: [],
+      status: "selected",
+      createdAt: "2026-04-15T00:00:00.000Z",
+    },
+  ];
+  session.selectedSynthesisId = "forge-synthesis-4";
+  session.preflight = {
+    bundle: null,
+    errorMessage: null,
+    promptCharCount: 0,
+    ranAt: "2026-04-15T00:00:00.000Z",
+    staleReason: "Session context changed after the last preflight run.",
+    status: "stale",
+    warnings: [],
+  };
+
+  const summary = handoffExport.buildExportReadySummary(session);
+
+  assert.equal(summary.exportReady, false);
+  assert.match(summary.reason, /preflight/i);
+  assert.throws(
+    () =>
+      handoffExport.buildHandoffPackage(session, {
+        fallbackProvenance: {
+          runSignature: "RepairRoom-v3-new-context-z9y8x7",
+          operatorProfileSummary: ["Selected skills: Measurement (advanced)."],
+          preflightWarnings: [],
+        },
+      }),
+    /preflight/i
+  );
+});
+
+test("forge-room handoff export prefers current provenance when the selected synthesis snapshot is stale", () => {
+  const handoffExport = createForgeHandoffExport();
+  const session = createEmptyForgeSession("forge-session-5");
+  session.goal = {
+    id: "forge-goal-5",
+    summary: "Repair Room integration",
+    brief: "Prepare the first handoff package.",
+    constraints: ["Keep the export boundary local."],
+    acceptanceCriteria: ["Repair Room can import the handoff package."],
+    status: "draft-ready",
+    targetRoomId: "repair-room",
+    createdAt: "2026-04-15T00:00:00.000Z",
+    updatedAt: "2026-04-15T00:00:00.000Z",
+  };
+  session.syntheses = [
+    {
+      id: "forge-synthesis-5",
+      summary: "Selected synthesis",
+      body: "Keep the handoff narrow and file-backed.",
+      decisionTrace: ["Prefer the fresh runtime provenance when snapshots drift."],
+      provenance: {
+        runSignature: "RepairRoom-v3-old-context-a1b2c3",
+        operatorProfileSummary: ["Selected skills: Measurement (basic)."],
+        preflightWarnings: ["Old warning"],
+      },
+      sourceTaskIds: ["forge-task-1"],
+      selectedResponseIds: ["forge-response-1"],
+      unresolvedConflictIds: [],
+      acceptanceCriteria: ["Repair Room can import the handoff package."],
+      openQuestions: [],
+      status: "selected",
+      createdAt: "2026-04-15T00:00:00.000Z",
+    },
+  ];
+  session.selectedSynthesisId = "forge-synthesis-5";
+  session.preflight = {
+    bundle: null,
+    errorMessage: null,
+    promptCharCount: 0,
+    ranAt: "2026-04-15T00:00:00.000Z",
+    staleReason: null,
+    status: "warning",
+    warnings: ["Fallback context used during export prep."],
+  };
+
+  const handoff = handoffExport.buildHandoffPackage(session, {
+    fallbackProvenance: {
+      runSignature: "RepairRoom-v3-new-context-z9y8x7",
+      operatorProfileSummary: [
+        "Selected skills: Measurement (advanced).",
+        "Preferences: Mode learn first.",
+      ],
+      preflightWarnings: ["Fallback context used during export prep."],
+    },
+  });
+
+  assert.equal(handoff.runSignature, "RepairRoom-v3-new-context-z9y8x7");
+  assert.deepEqual(handoff.contextSummary?.operatorProfileSummary, [
+    "Selected skills: Measurement (advanced).",
+    "Preferences: Mode learn first.",
+  ]);
+  assert.deepEqual(handoff.contextSummary?.preflightWarnings, [
+    "Fallback context used during export prep.",
+  ]);
+});

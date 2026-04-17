@@ -475,10 +475,10 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.ok(environment.app.querySelector("[data-forge-zone='context']"));
     assert.ok(environment.app.querySelector("[data-forge-zone='overrides']"));
     assert.ok(environment.app.querySelector("[data-forge-zone='preflight']"));
-    assert.ok(environment.app.querySelector("#forge-session-context-skill-level"));
-    assert.ok(environment.app.querySelector("#forge-session-context-skill-measurement"));
-    assert.ok(environment.app.querySelector("#forge-session-context-tool-magnification"));
-    assert.ok(environment.app.querySelector("#forge-session-context-tool-multimeter"));
+    const contextChips = environment.app.querySelectorAll("[data-forge-context-chip]");
+    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "measurement"));
+    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "multimeter"));
+    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "mode"));
     assert.ok(environment.app.querySelector("#forge-approved-mode-forge-task-approved-1"));
     assert.equal(
       environment.app.querySelector("#forge-approved-capsule-summary-forge-task-approved-1"),
@@ -496,7 +496,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.match(uiText, /REQUIRES: DISPATCH/);
     assert.match(uiText, /OUTPUT GATE LOCKED/);
     assert.match(uiText, /REQUIRES: RESPONSES/);
-    assert.match(uiText, /Edit/);
+    assert.match(uiText, /Open Operator Profile/);
     assert.match(uiText, /CONTEXT FOR THIS RUN/);
     assert.match(uiText, /Context ready/);
     assert.match(uiText, /Preflight: stale/);
@@ -533,35 +533,29 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     const toggleProfileButtonsBeforeOpen = environment.app.querySelectorAll(
       "[data-forge-action='toggle-profile-editor']"
     );
-    assert.equal(toggleProfileButtonsBeforeOpen.length, 1);
+    assert.equal(toggleProfileButtonsBeforeOpen.length >= 2, true);
     fireEvent(toggleProfileButtonsBeforeOpen[0]!, "click");
     assert.match(readTreeText(environment.app), /Manage operator profile/);
+    const addSkillButton = environment.app
+      .querySelectorAll("[data-forge-action='start-profile-create']")
+      .find((element) => element.dataset["forgeProfileKind"] === "skill");
+    assert.ok(addSkillButton);
+    fireEvent(addSkillButton, "click");
+    const skillKeySelect = environment.app.querySelector(
+      "#forge-profile-editor-skill-key"
+    ) as FakeElement | null;
     const skillLevelSelect = environment.app.querySelector(
-      "#forge-profile-skill-level"
+      "#forge-profile-editor-skill-level"
     ) as FakeElement | null;
+    assert.ok(skillKeySelect);
     assert.ok(skillLevelSelect);
+    skillKeySelect.value = "soldering";
     skillLevelSelect.value = "advanced";
-    fireEvent(skillLevelSelect, "change");
-    const solderingEntry = environment.app
-      .querySelectorAll("[data-forge-profile-entry='skill-soldering']")
-      .find((element) => element.className.includes("forge-profile-item__toggle"));
-    assert.ok(solderingEntry);
-    fireEvent(solderingEntry, "click");
-    const solderingSelect = environment.app.querySelector(
-      "#forge-profile-soldering"
+    const commitProfileEntryButton = environment.app.querySelector(
+      "[data-forge-action='commit-profile-entry']"
     ) as FakeElement | null;
-    assert.ok(solderingSelect);
-    solderingSelect.value = "good";
-    fireEvent(solderingSelect, "change");
-    const skillLevelEntry = environment.app
-      .querySelectorAll("[data-forge-profile-entry='skill-level']")
-      .find((element) => element.className.includes("forge-profile-item__toggle"));
-    assert.ok(skillLevelEntry);
-    fireEvent(skillLevelEntry, "click");
-    const reopenedSkillLevelSelect = environment.app.querySelector(
-      "#forge-profile-skill-level"
-    ) as FakeElement | null;
-    assert.ok(reopenedSkillLevelSelect);
+    assert.ok(commitProfileEntryButton);
+    fireEvent(commitProfileEntryButton, "click");
     const saveProfileButton = environment.app.querySelector(
       "[data-forge-action='save-operator-profile']"
     ) as FakeElement | null;
@@ -570,33 +564,35 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.deepEqual(environment.sentEvents.at(-1), {
       command: "ForgeRoomUpdateOperatorProfile",
       payload: {
-        skill: {
-          level: "advanced",
-          soldering: "good",
-          measurement: "basic",
-          mechanical: null,
-        },
-        tools: {
-          multimeter: false,
-          solderingIron: null,
-          hotAir: null,
-          benchPowerSupply: null,
-          magnification: null,
-        },
+        skills: [
+          {
+            skillKey: "soldering",
+            level: "advanced",
+          },
+          {
+            skillKey: "measurement",
+            level: "basic",
+          },
+        ],
+        equipment: [
+          {
+            equipmentKey: "multimeter",
+            status: "unavailable",
+          },
+        ],
         preferences: {
-          mode: "learn-first",
-          riskTolerance: null,
+          mode: "learn_first",
         },
       },
     });
     const toggleProfileButtonsAfterOpen = environment.app.querySelectorAll(
       "[data-forge-action='toggle-profile-editor']"
     );
-    assert.equal(toggleProfileButtonsAfterOpen.length, 2);
+    assert.equal(toggleProfileButtonsAfterOpen.length >= 3, true);
     fireEvent(toggleProfileButtonsAfterOpen[1]!, "click");
     assert.equal(
-      environment.app.querySelectorAll("[data-forge-action='toggle-profile-editor']").length,
-      1
+      environment.app.querySelectorAll("[data-forge-action='toggle-profile-editor']").length >= 2,
+      true
     );
 
     const addConditionButton = environment.app.querySelector(
@@ -619,10 +615,8 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       command: "ForgeRoomUpdateRunOverride",
       payload: {
         enableRovoPreAnalysis: false,
-        notes: "Protect nearby plastic",
-        tools: {
-          hotAir: false,
-        },
+        notes: "",
+        temporaryConditions: ["Protect nearby plastic"],
       },
     });
     const removeConditionButton = environment.app.querySelector(
@@ -635,48 +629,32 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       payload: {
         enableRovoPreAnalysis: false,
         notes: "",
-        tools: {
-          hotAir: false,
-        },
+        temporaryConditions: [],
       },
     });
 
-    const multimeterSelection = environment.app.querySelector(
-      "#forge-session-context-tool-multimeter"
-    ) as FakeElement | null;
+    const multimeterSelection = environment.app
+      .querySelectorAll("[data-forge-context-chip]")
+      .find((element) => element.dataset["forgeContextKey"] === "multimeter");
     assert.ok(multimeterSelection);
     fireEvent(multimeterSelection, "click");
     assert.ok(environment.sentCommands.includes("ForgeRoomUpdateSessionContext"));
-    const measurementSelection = environment.app.querySelector(
-      "#forge-session-context-skill-measurement"
-    ) as FakeElement | null;
+    const measurementSelection = environment.app
+      .querySelectorAll("[data-forge-context-chip]")
+      .find((element) => element.dataset["forgeContextKey"] === "measurement");
     assert.ok(measurementSelection);
     fireEvent(measurementSelection, "click");
-    const modeSelection = environment.app.querySelector(
-      "#forge-session-context-preference-mode"
-    ) as FakeElement | null;
+    const modeSelection = environment.app
+      .querySelectorAll("[data-forge-context-chip]")
+      .find((element) => element.dataset["forgeContextKey"] === "mode");
     assert.ok(modeSelection);
     fireEvent(modeSelection, "click");
     assert.deepEqual(environment.sentEvents.at(-1), {
       command: "ForgeRoomUpdateSessionContext",
       payload: {
-        skill: {
-          level: false,
-          soldering: false,
-          measurement: false,
-          mechanical: false,
-        },
-        tools: {
-          multimeter: false,
-          solderingIron: false,
-          hotAir: false,
-          benchPowerSupply: false,
-          magnification: false,
-        },
-        preferences: {
-          mode: false,
-          riskTolerance: false,
-        },
+        skillKeys: [],
+        equipmentKeys: [],
+        preferenceKeys: [],
       },
     });
     assert.match(readTreeText(environment.app), /Preflight/);
@@ -877,6 +855,104 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
   }
 });
 
+test("forge-room session context empty states expose direct operator profile actions", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("forge-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?smoke=${Date.now()}-empty-context`
+    );
+
+    environment.emitHostMessage({
+      type: "host-context",
+      room: {
+        id: "forge-room",
+        name: "Forge Room",
+      },
+      activeFeature: {
+        id: "forge-workbench",
+      },
+      locale: "en",
+      translations: loadTranslations("en"),
+      user: {
+        nickname: "Operator",
+      },
+    });
+
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        activeSessionId: "forge-session-empty",
+        currentGoal: null,
+        draftTasks: [],
+        draftSourceText: null,
+        validationMessages: [],
+        decisionTrace: [],
+        approvedTasks: [],
+        assignments: [],
+        responses: [],
+        conflicts: [],
+        syntheses: [],
+        selectedSynthesisId: null,
+        operatorProfile: {
+          schemaVersion: 2,
+          updatedAt: "2026-04-17T00:00:00.000Z",
+          skills: [],
+          equipment: [],
+          preferences: {},
+        },
+        preflight: {
+          bundle: null,
+          errorMessage: null,
+          promptCharCount: 0,
+          ranAt: null,
+          staleReason: null,
+          status: "idle",
+          warnings: [],
+        },
+        sessionContextSelection: {
+          skillKeys: [],
+          equipmentKeys: [],
+          preferenceKeys: [],
+        },
+        runOverride: null,
+        runSignature: null,
+        exports: [],
+        coordinatorState: {
+          actorId: "coordinator",
+          planStatus: "idle",
+          assignmentQueueTotal: 0,
+          pendingAssignmentCount: 0,
+          completedResponseCount: 0,
+          pendingConflictCount: 0,
+          synthesisStatus: "idle",
+          exportReady: false,
+          lastExportPath: null,
+          note: "Waiting for the first goal draft.",
+          lastUpdatedAt: "2026-04-17T00:00:00.000Z",
+        },
+        sessionList: [],
+      },
+      meta: {
+        roleCatalog: {},
+        personaPresets: {},
+      },
+    });
+
+    const profileActions = environment.app.querySelectorAll(
+      "[data-forge-action='toggle-profile-editor']"
+    );
+    assert.equal(profileActions.length >= 5, true);
+    assert.match(readTreeText(environment.app), /No saved skills/);
+    assert.match(readTreeText(environment.app), /No saved equipment/);
+    assert.match(readTreeText(environment.app), /No saved general preferences/);
+  } finally {
+    await installedCopy.cleanup();
+    environment.restore();
+  }
+});
+
 test("forge-room control surface renders the Turkish control copy from room translations", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
@@ -1014,8 +1090,8 @@ test("forge-room control surface renders the Turkish control copy from room tran
     assert.match(uiText, /BU RUN ICIN BAGLAM/);
     assert.match(uiText, /Baglam hazir/);
     assert.match(uiText, /Preflight: eskidi/);
-    assert.match(uiText, /Sicak hava/);
-    assert.match(uiText, /Tezgah kaynagi/);
+    assert.match(uiText, /Kayitli ekipman yok/);
+    assert.match(uiText, /Kayitli genel tercih yok/);
     assert.match(uiText, /On analiz/);
   } finally {
     await installedCopy.cleanup();

@@ -13,39 +13,30 @@ type ForgePreflightStage =
   | "dispatch-started"
   | "synthesis-selected";
 
-function normalizeTools(value: Record<string, boolean | null | undefined>): string {
-  return JSON.stringify(
-    Object.keys(value)
-      .sort()
-      .map((key) => [key, value[key] === true])
-  );
-}
-
 function normalizeProfileFingerprint(profile: {
-  preferences: ForgeOperatorProfile["preferences"];
-  skill: ForgeOperatorProfile["skill"];
-  tools: ForgeOperatorProfile["tools"];
+  skills: ForgeOperatorProfile["skills"];
+  equipment: ForgeOperatorProfile["equipment"];
 }): string {
   return JSON.stringify({
-    preferences: profile.preferences,
-    skill: profile.skill,
-    tools: profile.tools,
+    skills: profile.skills,
+    equipment: profile.equipment,
   });
 }
 
 function normalizeSelectionFingerprint(selection: ForgeSessionContextSelection): string {
   return JSON.stringify({
-    preferences: selection.preferences,
-    skill: selection.skill,
-    tools: selection.tools,
+    skillKeys: selection.skillKeys,
+    equipmentKeys: selection.equipmentKeys,
   });
 }
 
 function normalizeRunOverrideFingerprint(runOverride: ForgeRunOverride | null): string {
   return JSON.stringify({
     enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
+    mode: runOverride?.mode ?? null,
     notes: runOverride?.notes.trim() ?? "",
-    tools: normalizeTools(runOverride?.tools ?? {}),
+    riskTolerance: runOverride?.riskTolerance ?? null,
+    temporaryConditions: [...(runOverride?.temporaryConditions ?? [])].sort(),
   });
 }
 
