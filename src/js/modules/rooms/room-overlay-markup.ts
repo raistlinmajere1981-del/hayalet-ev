@@ -1,5 +1,6 @@
 import type { InstalledRoomRecord, RoomWorkspaceEntry } from "@shared/index.js";
 import { AppI18n } from "../i18n/index.js";
+import { resolveRoomShellName } from "./room-shell-presentation.js";
 
 function escapeHtml(value: string): string {
   return value
@@ -66,7 +67,7 @@ export function buildWorkspaceRoomListMarkup(
   return workspaceRooms
     .map((room) => {
       const roomId = room.manifest?.id ?? room.dirName;
-      const roomName = room.manifest?.name ?? room.dirName;
+      const roomName = resolveRoomShellName(roomId, room.manifest?.name ?? room.dirName);
       const roomVersion = room.manifest?.version ?? "-";
       const stateLabel = buildWorkspaceStateLabel(room, installedIds);
       const isLinked = installedIds.has(roomId);
@@ -131,6 +132,7 @@ export function buildInstalledRoomListMarkup(
 
   return visibleInstalledRooms
     .map((room) => {
+      const roomName = resolveRoomShellName(room.id, room.name);
       const stateLabel = buildInstalledStateLabel(room.id, workspaceIds);
       const hasWorkspace = workspaceIds.has(room.id);
 
@@ -138,7 +140,7 @@ export function buildInstalledRoomListMarkup(
         '<article class="room-manager-card">',
         '  <div class="room-manager-card-head">',
         `    <div class="room-manager-title-wrap"><div class="room-manager-title">${escapeHtml(
-          room.name
+          roomName
         )}</div><div class="room-manager-subtitle">${escapeHtml(room.id)} • ${escapeHtml(
           room.version
         )}</div></div>`,

@@ -1,7 +1,6 @@
 import {
   FORGE_PREFLIGHT_SCHEMA_VERSION,
   FORGE_ROOM_ID,
-  FORGE_TARGET_ROOM_ID,
   FORGE_WORKBENCH_FEATURE_ID,
 } from "../shared/forge-constants.js";
 import type {
@@ -66,17 +65,17 @@ const FORGE_CAPABILITY_DESCRIPTORS: ForgeCapabilityDescriptor[] = [
     roomIds: [FORGE_ROOM_ID],
   },
   {
-    id: "forge-repair-handoff",
-    title: "Repair Room handoff contract",
+    id: "forge-target-handoff",
+    title: "Target room handoff contract",
     summary:
-      "Forge ends in a compact JSON handoff that stays oriented around Repair Room intake instead of broad implementation detail.",
-    tags: ["archive", "protocol", "repair-room"],
+      "Forge ends in a compact JSON handoff that stays explicit about the downstream target instead of assuming one canonical room.",
+    tags: ["archive", "protocol", "target-room"],
     relevantModules: [
       "rooms/forge-room/host/forge-handoff-export.ts",
       "rooms/forge-room/shared/types/forge-handoff.ts",
       "rooms/forge-room/host/forge-task-runtime.ts",
     ],
-    roomIds: [FORGE_ROOM_ID, FORGE_TARGET_ROOM_ID],
+    roomIds: [FORGE_ROOM_ID],
   },
   {
     id: "forge-response-synthesis",
@@ -118,11 +117,13 @@ function humanizeValue(value: string): string {
 }
 
 function labelSkill(record: ForgeOperatorSkillRecord): string {
-  return record.label.trim() || titleCaseRoomId(record.skillKey);
+  return (typeof record.label === "string" ? record.label.trim() : "") || titleCaseRoomId(record.skillKey);
 }
 
 function labelEquipment(record: ForgeOperatorEquipmentRecord): string {
-  const base = record.label.trim() || titleCaseRoomId(record.equipmentKey);
+  const base =
+    (typeof record.label === "string" ? record.label.trim() : "") ||
+    titleCaseRoomId(record.equipmentKey);
   return record.brandModel ? `${base} (${record.brandModel})` : base;
 }
 
@@ -157,7 +158,7 @@ export function buildForgeCoreSystemMetadata(sessionId: string | null): ForgeCor
 export function buildForgeAppArchitectureSummary(): ForgeAppArchitectureSummary {
   return {
     exportBoundary:
-      "Forge ends in a Repair Room-oriented JSON handoff and does not dispatch implementation work itself.",
+      "Forge ends in a target-room JSON handoff and does not dispatch implementation work itself.",
     relevantModules: [
       "rooms/forge-room/host/runtime.ts",
       "rooms/forge-room/host/forge-task-runtime.ts",
@@ -172,36 +173,27 @@ export function buildForgeAppArchitectureSummary(): ForgeAppArchitectureSummary 
 }
 
 export function buildForgeTargetRoomContext(targetRoomId: string): ForgeTargetRoomContext | null {
-  if (targetRoomId !== FORGE_TARGET_ROOM_ID) {
-    return {
-      targetRoomId,
-      constraints: [
-        "Forge only guarantees a guided planning handoff.",
-        "Downstream target-specific contracts should stay explicit and compact.",
-      ],
-      relevantModules: [
-        "rooms/forge-room/host/runtime.ts",
-        "rooms/forge-room/host/forge-handoff-export.ts",
-      ],
-      summary: `Target room ${titleCaseRoomId(
-        targetRoomId
-      )} is not a first-class Forge export target, so the bundle should stay generic and conservative.`,
-    };
+  if (targetRoomId.trim() === "") {
+    return null;
   }
 
   return {
     targetRoomId,
     constraints: [
+      "Forge only guarantees a guided planning handoff.",
       "Export should stay handoff-oriented and JSON-based.",
-      "Scope should stay narrow enough for downstream repair execution.",
+      "Downstream target-specific contracts should stay explicit and compact.",
       "Open questions belong in the handoff instead of hidden assumptions.",
     ],
     relevantModules: [
+      "rooms/forge-room/host/runtime.ts",
       "rooms/forge-room/host/forge-handoff-export.ts",
       "rooms/forge-room/shared/types/forge-handoff.ts",
     ],
     summary:
-      "Repair Room is the canonical Forge target, so the preflight should favor narrow exports, explicit constraints, and practical downstream intake.",
+      `Target room ${titleCaseRoomId(
+        targetRoomId
+      )} should receive a narrow, explicit handoff with no hidden room-specific assumptions.`,
   };
 }
 
@@ -212,12 +204,22 @@ export function buildForgeSelectedOperatorProfile(params: {
   const { operatorProfile, sessionContextSelection } = params;
   const selectedSkillKeys = new Set(sessionContextSelection.skillKeys);
   const selectedEquipmentKeys = new Set(sessionContextSelection.equipmentKeys);
+  const selectedPreferenceKeys = new Set(sessionContextSelection.preferenceKeys);
 
   return {
     skills: operatorProfile.skills.filter((entry) => selectedSkillKeys.has(entry.skillKey)),
     equipment: operatorProfile.equipment.filter((entry) =>
       selectedEquipmentKeys.has(entry.equipmentKey)
     ),
+    preferences: {
+      ...(selectedPreferenceKeys.has("mode") && operatorProfile.preferences.mode
+        ? { mode: operatorProfile.preferences.mode }
+        : {}),
+      ...(selectedPreferenceKeys.has("riskTolerance") &&
+      operatorProfile.preferences.riskTolerance
+        ? { riskTolerance: operatorProfile.preferences.riskTolerance }
+        : {}),
+    },
   };
 }
 
@@ -236,12 +238,19 @@ export function summarizeForgeSelectedOperatorContext(params: {
   const skillSummary = selectedOperatorProfile.skills
     .map((record) => `${labelSkill(record)} (${humanizeValue(record.level)})`)
     .sort((left, right) => left.localeCompare(right));
+  const preferenceSummary = [
+    selectedOperatorProfile.preferences.mode
+      ? `Mode ${humanizeValue(selectedOperatorProfile.preferences.mode)}`
+      : null,
+    selectedOperatorProfile.preferences.riskTolerance
+      ? `Risk tolerance ${humanizeValue(selectedOperatorProfile.preferences.riskTolerance)}`
+      : null,
+  ].filter((entry): entry is string => typeof entry === "string");
   const sessionSpecificSummary = [
     runOverride?.mode ? `Mode ${humanizeValue(runOverride.mode)}` : null,
     runOverride?.riskTolerance
       ? `Risk tolerance ${humanizeValue(runOverride.riskTolerance)}`
       : null,
-    runOverride?.enableRovoPreAnalysis === true ? "Pre-analysis enabled" : null,
   ].filter((entry): entry is string => typeof entry === "string");
 
   if (
@@ -251,7 +260,7 @@ export function summarizeForgeSelectedOperatorContext(params: {
     sessionSpecificSummary.length === 0
   ) {
     return [
-      "No operator context was selected for this run; do not assume skills or equipment beyond the goal itself.",
+      "No operator context was selected for this run; do not assume skills, equipment, or preferences beyond the goal itself.",
     ];
   }
 
@@ -262,7 +271,7 @@ export function summarizeForgeSelectedOperatorContext(params: {
     sessionSpecificSummary.length === 0
   ) {
     return [
-      "Selected operator context has no persisted records yet; do not assume skills or equipment beyond the goal itself.",
+      "Selected operator context has no persisted records yet; do not assume skills, equipment, or preferences beyond the goal itself.",
     ];
   }
 
@@ -276,6 +285,7 @@ export function summarizeForgeSelectedOperatorContext(params: {
       unavailableEquipment.length > 0
         ? `Unavailable equipment: ${unavailableEquipment.join(", ")}.`
         : null,
+      preferenceSummary.length > 0 ? `Preferences: ${preferenceSummary.join("; ")}.` : null,
       sessionSpecificSummary.length > 0
         ? `Session-specific: ${sessionSpecificSummary.join("; ")}.`
         : null,
@@ -296,19 +306,14 @@ export function buildForgeDerivedConstraints(params: {
 }): string[] {
   const { goal, runOverride, selectedOperatorProfile } = params;
   const derived: string[] = [...goal.constraints];
-  const hotAir = selectedOperatorProfile.equipment.find((entry) => {
-    const equipmentLabel = `${entry.equipmentKey} ${entry.label}`.toLowerCase();
-    return equipmentLabel.includes("hot_air") || equipmentLabel.includes("hot air");
-  });
-  const multimeter = selectedOperatorProfile.equipment.find(
-    (entry) => `${entry.equipmentKey} ${entry.label}`.toLowerCase().includes("multimeter")
+  const effectiveMode = runOverride?.mode ?? selectedOperatorProfile.preferences.mode;
+  const effectiveRiskTolerance =
+    runOverride?.riskTolerance ?? selectedOperatorProfile.preferences.riskTolerance;
+  const unavailableEquipment = selectedOperatorProfile.equipment.filter(
+    (entry) => entry.status === "unavailable"
   );
-
-  if (hotAir && hotAir.status !== "available") {
-    derived.push("Do not assume hot air rework is available for this run.");
-  }
-  if (multimeter && multimeter.status !== "available") {
-    derived.push("Avoid diagnostic flows that require a multimeter as the primary path.");
+  if (unavailableEquipment.length > 0) {
+    derived.push("Do not assume unavailable equipment is usable for this run.");
   }
   if (
     selectedOperatorProfile.skills.length > 0 &&
@@ -318,14 +323,11 @@ export function buildForgeDerivedConstraints(params: {
   ) {
     derived.push("Keep steps low-risk, explicit, and approachable for the current operator profile.");
   }
-  if (runOverride?.mode === "learn_first") {
+  if (effectiveMode === "learn_first") {
     derived.push("Leave enough rationale for the operator to learn from the run.");
   }
-  if (runOverride?.riskTolerance === "low") {
+  if (effectiveRiskTolerance === "low") {
     derived.push("Prefer reversible and lower-risk paths over speed.");
-  }
-  if (runOverride?.enableRovoPreAnalysis === true) {
-    derived.push("Run pre-analysis before downstream AI work when the context is ambiguous.");
   }
   for (const condition of runOverride?.temporaryConditions ?? []) {
     derived.push(`Temporary run condition: ${condition}`);

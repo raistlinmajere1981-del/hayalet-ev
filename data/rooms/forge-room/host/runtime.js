@@ -2,12 +2,16 @@ import {
   FORGE_PROTOCOL_KEYS,
   FORGE_PROTOCOL_SCENARIOS,
   FORGE_ROOM_ID,
-  FORGE_TARGET_ROOM_ID,
   FORGE_UI_COMMANDS
 } from "../shared/forge-constants.js";
 import { FORGE_PERSONA_PRESETS } from "../shared/data/persona-presets.js";
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
-import { createEmptyForgeRunOverride } from "../shared/types/index.js";
+import {
+  createEmptyForgeRunOverride,
+  normalizeForgeLegacyIdentifier,
+  normalizeForgeSessionContextSelectionKeys,
+  reconcileForgeSessionContextSelection
+} from "../shared/types/index.js";
 import { createForgeHostIoRuntime } from "../shared/host/io-runtime.js";
 import { createForgeStoragePaths } from "../shared/host/forge-paths.js";
 import {
@@ -79,7 +83,7 @@ function buildGoal(payload, existing) {
     constraints: asStringArray(payload["constraints"]).length > 0 ? asStringArray(payload["constraints"]) : existing?.constraints ?? [],
     acceptanceCriteria: asStringArray(payload["acceptanceCriteria"]).length > 0 ? asStringArray(payload["acceptanceCriteria"]) : existing?.acceptanceCriteria ?? [],
     status: existing?.status ?? "draft",
-    targetRoomId: asNonEmptyString(payload["targetRoomId"]) ?? existing?.targetRoomId ?? FORGE_TARGET_ROOM_ID,
+    targetRoomId: asNonEmptyString(payload["targetRoomId"]) ?? existing?.targetRoomId ?? "",
     createdAt: existing?.createdAt ?? now,
     updatedAt: now
   };
@@ -111,28 +115,87 @@ function readCommandPayload(payload) {
   };
 }
 function normalizeSessionContextSelectionPayload(payload, existing) {
+  if (Array.isArray(payload["skillKeys"]) || Array.isArray(payload["equipmentKeys"]) || Array.isArray(payload["preferenceKeys"])) {
+    return normalizeForgeSessionContextSelectionKeys(payload);
+  }
   const skill = toRecord(payload["skill"]);
   const tools = toRecord(payload["tools"]);
   const preferences = toRecord(payload["preferences"]);
-  return {
-    skill: {
-      level: typeof skill["level"] === "boolean" ? skill["level"] : existing.skill.level,
-      soldering: typeof skill["soldering"] === "boolean" ? skill["soldering"] : existing.skill.soldering,
-      measurement: typeof skill["measurement"] === "boolean" ? skill["measurement"] : existing.skill.measurement,
-      mechanical: typeof skill["mechanical"] === "boolean" ? skill["mechanical"] : existing.skill.mechanical
-    },
-    tools: {
-      multimeter: typeof tools["multimeter"] === "boolean" ? tools["multimeter"] : existing.tools.multimeter,
-      solderingIron: typeof tools["solderingIron"] === "boolean" ? tools["solderingIron"] : existing.tools.solderingIron,
-      hotAir: typeof tools["hotAir"] === "boolean" ? tools["hotAir"] : existing.tools.hotAir,
-      benchPowerSupply: typeof tools["benchPowerSupply"] === "boolean" ? tools["benchPowerSupply"] : existing.tools.benchPowerSupply,
-      magnification: typeof tools["magnification"] === "boolean" ? tools["magnification"] : existing.tools.magnification
-    },
-    preferences: {
-      mode: typeof preferences["mode"] === "boolean" ? preferences["mode"] : existing.preferences.mode,
-      riskTolerance: typeof preferences["riskTolerance"] === "boolean" ? preferences["riskTolerance"] : existing.preferences.riskTolerance
+  const nextSkillKeys = new Set(existing.skillKeys);
+  const nextEquipmentKeys = new Set(existing.equipmentKeys);
+  const nextPreferenceKeys = new Set(existing.preferenceKeys);
+  Object.entries(skill).forEach(([rawKey, value]) => {
+    if (typeof value !== "boolean") {
+      return;
     }
+    const key = normalizeForgeLegacyIdentifier(rawKey);
+    if (key === "") {
+      return;
+    }
+    if (value === true) {
+      nextSkillKeys.add(key);
+    } else {
+      nextSkillKeys.delete(key);
+    }
+  });
+  Object.entries(tools).forEach(([rawKey, value]) => {
+    if (typeof value !== "boolean") {
+      return;
+    }
+    const key = normalizeForgeLegacyIdentifier(rawKey);
+    if (key === "") {
+      return;
+    }
+    if (value === true) {
+      nextEquipmentKeys.add(key);
+    } else {
+      nextEquipmentKeys.delete(key);
+    }
+  });
+  Object.entries(preferences).forEach(([rawKey, value]) => {
+    if (typeof value !== "boolean") {
+      return;
+    }
+    const key = normalizeForgeLegacyIdentifier(rawKey);
+    if (key !== "mode" && key !== "risk_tolerance" && key !== "risktolerance") {
+      return;
+    }
+    const preferenceKey = key === "mode" ? "mode" : "riskTolerance";
+    if (value === true) {
+      nextPreferenceKeys.add(preferenceKey);
+    } else {
+      nextPreferenceKeys.delete(preferenceKey);
+    }
+  });
+  return normalizeForgeSessionContextSelectionKeys({
+    skillKeys: [...nextSkillKeys],
+    equipmentKeys: [...nextEquipmentKeys],
+    preferenceKeys: [...nextPreferenceKeys]
+  });
+}
+function normalizeRunOverridePayload(payload, existing) {
+  const nextTemporaryConditions = Array.isArray(payload["temporaryConditions"]) ? payload["temporaryConditions"].filter(
+    (entry) => typeof entry === "string" && entry.trim() !== ""
+  ) : [...existing?.temporaryConditions ?? []];
+  const hasNotesField = Object.prototype.hasOwnProperty.call(payload, "notes");
+  const nextNotes = hasNotesField && typeof payload["notes"] === "string" ? payload["notes"].trim() : asNonEmptyString(payload["notes"]) ?? existing?.notes ?? "";
+  const nextMode = payload["mode"] === "learn_first" || payload["mode"] === "result_first" ? payload["mode"] : existing?.mode;
+  const nextRiskTolerance = payload["riskTolerance"] === "low" || payload["riskTolerance"] === "medium" || payload["riskTolerance"] === "high" ? payload["riskTolerance"] : existing?.riskTolerance;
+  const nextRunOverride = {
+    ...createEmptyForgeRunOverride(),
+    ...existing ?? {},
+    notes: nextNotes,
+    enableRovoPreAnalysis: payload["enableRovoPreAnalysis"] === true || payload["enableRovoPreAnalysis"] !== false && existing?.enableRovoPreAnalysis === true,
+    temporaryConditions: Array.from(
+      new Set(nextTemporaryConditions.map((entry) => entry.trim()).filter((entry) => entry !== ""))
+    ).sort((left, right) => left.localeCompare(right)),
+    ...nextMode ? { mode: nextMode } : {},
+    ...nextRiskTolerance ? { riskTolerance: nextRiskTolerance } : {}
   };
+  if (nextRunOverride.enableRovoPreAnalysis !== true && nextRunOverride.mode === void 0 && nextRunOverride.notes.trim() === "" && nextRunOverride.riskTolerance === void 0 && nextRunOverride.temporaryConditions.length === 0) {
+    return null;
+  }
+  return nextRunOverride;
 }
 function readBridgeReplyText(result) {
   const replyText = asNonEmptyString(readBridgeReply(result.reply)["text"]);
@@ -235,6 +298,16 @@ export default function createForgeRoomHostRuntime() {
         return buildForgeSelectedOperatorProfile({
           operatorProfile,
           sessionContextSelection
+        });
+      }
+      function reconcileSelectionForProfile(operatorProfile, sessionContextSelection) {
+        return reconcileForgeSessionContextSelection({
+          selection: sessionContextSelection,
+          allowedSkillKeys: operatorProfile.skills.map((entry) => entry.skillKey),
+          allowedEquipmentKeys: operatorProfile.equipment.map((entry) => entry.equipmentKey),
+          allowedPreferenceKeys: Object.keys(operatorProfile.preferences).filter(
+            (entry) => entry === "mode" || entry === "riskTolerance"
+          )
         });
       }
       function readPreflightStageMessage(reason) {
@@ -474,14 +547,16 @@ export default function createForgeRoomHostRuntime() {
         runtime.sessionList = await storage.listSessions(runtime.paths);
         pushState();
       }
-      async function createSession() {
+      async function createSession(payload = {}) {
         await ensureHydrated();
         if (runtime.paths === null) {
           throw new Error("Forge Room paths are unavailable.");
         }
-        const session = await storage.createSession(runtime.paths);
+        const persistSession = payload["persist"] !== false;
+        const session = await storage.createSession(runtime.paths, {
+          persist: persistSession
+        });
         runtime.activeSession = session;
-        runtime.sessionList = await storage.listSessions(runtime.paths);
         runtime.store.dispatch({
           type: "runtime/hydrate",
           state: createForgeRuntimeStateFromSession(session, {
@@ -492,9 +567,15 @@ export default function createForgeRoomHostRuntime() {
           planStatus: "drafting",
           note: "Session created. Define a goal and generate the first draft breakdown."
         });
-        await persistCurrentSession("session-created", {
-          sessionId: session.id
-        });
+        if (persistSession) {
+          runtime.sessionList = await storage.listSessions(runtime.paths);
+          await persistCurrentSession("session-created", {
+            sessionId: session.id
+          });
+        } else {
+          runtime.sessionList = await storage.listSessions(runtime.paths);
+          pushState();
+        }
         return {
           success: true,
           sessionId: session.id
@@ -533,7 +614,7 @@ export default function createForgeRoomHostRuntime() {
           sessionContextSelection: state.sessionContextSelection
         });
       }
-      async function ensureFreshPreflight(goal) {
+      async function ensureFreshPreflight(goal, options = {}) {
         const state = readCurrentState();
         const invalidationReason = readForgePreflightInvalidationReason({
           goal,
@@ -542,14 +623,26 @@ export default function createForgeRoomHostRuntime() {
           runOverride: state.runOverride,
           sessionContextSelection: state.sessionContextSelection
         });
-        if (invalidationReason === null && (state.preflight.status === "fresh" || state.preflight.status === "warning")) {
-          return;
+        if (options.force !== true && invalidationReason === null && (state.preflight.status === "fresh" || state.preflight.status === "warning")) {
+          return {
+            preflight: state.preflight,
+            runSignature: state.runSignature
+          };
         }
         const dispatchBridge = typeof api.dispatchBridge === "function" ? await requireDispatchBridge() : null;
         try {
           const preflight = await buildForgePreflightState({
             dispatchBridge,
             goal,
+            onStepStart(stepId) {
+              const currentPreflight = readCurrentState().preflight;
+              dispatchPreflight({
+                ...currentPreflight,
+                activeStepId: stepId,
+                status: "running",
+                staleReason: invalidationReason
+              });
+            },
             operatorProfile: state.operatorProfile,
             protocol: {
               key: FORGE_PROTOCOL_KEYS.preflightPreAnalysis,
@@ -562,6 +655,10 @@ export default function createForgeRoomHostRuntime() {
           });
           dispatchPreflight(preflight.state);
           dispatchRunContext(state.runOverride, preflight.runSignature);
+          return {
+            preflight: preflight.state,
+            runSignature: preflight.runSignature
+          };
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           const fallback = buildForgeFallbackPreflightState({
@@ -575,6 +672,10 @@ export default function createForgeRoomHostRuntime() {
           dispatchPreflight(fallback.state);
           dispatchRunContext(state.runOverride, fallback.runSignature);
           api.log("warn", `Forge Room preflight fallback engaged: ${message}`);
+          return {
+            preflight: fallback.state,
+            runSignature: fallback.runSignature
+          };
         }
       }
       async function runBreakdownAttempt(goal, extraFeedback) {
@@ -993,25 +1094,35 @@ export default function createForgeRoomHostRuntime() {
           throw new Error("Forge Room paths are unavailable.");
         }
         const saved = await profileStorage.saveProfile(runtime.paths, payload);
+        const currentState = readCurrentState();
+        const reconciledSelection = reconcileSelectionForProfile(
+          saved,
+          currentState.sessionContextSelection
+        );
+        const selectionChanged = JSON.stringify(reconciledSelection) !== JSON.stringify(currentState.sessionContextSelection);
         dispatchOperatorProfile(saved);
+        if (selectionChanged) {
+          dispatchSessionContext(reconciledSelection);
+        }
         const goal = readCurrentState().currentGoal;
         if (goal !== null) {
           dispatchRunContext(
             readCurrentState().runOverride,
             buildForgeRunSignature({
               goal,
-              selectedOperatorProfile: buildSelectedOperatorContext(
-                saved,
-                readCurrentState().sessionContextSelection
-              ),
+              selectedOperatorProfile: buildSelectedOperatorContext(saved, reconciledSelection),
               runOverride: readCurrentState().runOverride
             })
           );
-          const reason = refreshPreflightValidity(goal);
+          const reason = selectionChanged ? "Session context changed after the operator profile was reconciled." : refreshPreflightValidity(goal);
           if (reason !== null) {
-            syncCoordinatorState({
-              note: readPreflightStageMessage(reason)
-            });
+            if (selectionChanged) {
+              invalidatePreflight(reason);
+            } else {
+              syncCoordinatorState({
+                note: readPreflightStageMessage(reason)
+              });
+            }
           }
         }
         if (readCurrentState().activeSessionId !== null) {
@@ -1025,11 +1136,16 @@ export default function createForgeRoomHostRuntime() {
       }
       async function updateSessionContextCommand(payload) {
         await ensureHydrated();
-        await ensureActiveSession();
         const state = readCurrentState();
-        const nextSessionContextSelection = normalizeSessionContextSelectionPayload(
-          payload,
-          state.sessionContextSelection
+        if (state.activeSessionId === null) {
+          return {
+            success: false,
+            message: "Create or open a session before selecting run context."
+          };
+        }
+        const nextSessionContextSelection = reconcileSelectionForProfile(
+          state.operatorProfile,
+          normalizeSessionContextSelectionPayload(payload, state.sessionContextSelection)
         );
         const changed = JSON.stringify(nextSessionContextSelection) !== JSON.stringify(state.sessionContextSelection);
         if (!changed) {
@@ -1061,21 +1177,14 @@ export default function createForgeRoomHostRuntime() {
       }
       async function updateRunOverrideCommand(payload) {
         await ensureHydrated();
-        await ensureActiveSession();
         const state = readCurrentState();
-        const tools = toRecord(payload["tools"]);
-        const nextRunOverride = {
-          ...createEmptyForgeRunOverride(),
-          ...state.runOverride ?? {},
-          notes: asNonEmptyString(payload["notes"]) ?? "",
-          enableRovoPreAnalysis: payload["enableRovoPreAnalysis"] === true,
-          tools: {
-            ...state.runOverride?.tools ?? {},
-            ...Object.fromEntries(
-              Object.entries(tools).filter(([, value]) => typeof value === "boolean")
-            )
-          }
-        };
+        if (state.activeSessionId === null) {
+          return {
+            success: false,
+            message: "Create or open a session before editing run settings."
+          };
+        }
+        const nextRunOverride = normalizeRunOverridePayload(payload, state.runOverride);
         dispatchRunContext(
           nextRunOverride,
           state.currentGoal ? buildForgeRunSignature({
@@ -1099,15 +1208,22 @@ export default function createForgeRoomHostRuntime() {
       }
       async function runPreflightCommand() {
         await ensureHydrated();
-        await ensureActiveSession();
         const state = readCurrentState();
+        if (state.activeSessionId === null) {
+          return {
+            success: false,
+            message: "Create or open a session before running preflight."
+          };
+        }
         if (state.currentGoal === null) {
           return {
             success: false,
             message: "Save a goal before running preflight."
           };
         }
-        await ensureFreshPreflight(state.currentGoal);
+        await ensureFreshPreflight(state.currentGoal, {
+          force: true
+        });
         refreshPreflightValidity(state.currentGoal);
         await persistCurrentSession("preflight-ran", {
           sessionId: state.activeSessionId,
@@ -1611,6 +1727,82 @@ export default function createForgeRoomHostRuntime() {
           sessionId: latest.id
         };
       }
+      async function loadSessionById(payload) {
+        await ensureHydrated();
+        if (runtime.paths === null) {
+          throw new Error("Forge Room paths are unavailable.");
+        }
+        const sessionId = asNonEmptyString(payload["sessionId"]);
+        if (sessionId === null) {
+          return {
+            success: false,
+            message: "A session id is required."
+          };
+        }
+        const loaded = await storage.loadSession(runtime.paths, sessionId);
+        if (loaded === null) {
+          return {
+            success: false,
+            message: "The requested Forge session could not be found."
+          };
+        }
+        runtime.activeSession = loaded;
+        runtime.sessionList = await storage.listSessions(runtime.paths);
+        runtime.store.dispatch({
+          type: "runtime/hydrate",
+          state: createForgeRuntimeStateFromSession(loaded, {
+            operatorProfile: readCurrentState().operatorProfile
+          })
+        });
+        if (loaded.goal !== null && readCurrentState().runSignature === null) {
+          syncRunSignature(loaded.goal);
+        }
+        refreshPreflightValidity(loaded.goal);
+        syncCoordinatorState({
+          note: loaded.coordinatorState.note || "Loaded a saved Forge session."
+        });
+        return {
+          success: true,
+          sessionId: loaded.id
+        };
+      }
+      async function deleteSessionById(payload) {
+        await ensureHydrated();
+        if (runtime.paths === null) {
+          throw new Error("Forge Room paths are unavailable.");
+        }
+        const sessionId = asNonEmptyString(payload["sessionId"]) ?? readCurrentState().activeSessionId;
+        if (sessionId === null) {
+          return {
+            success: false,
+            message: "A session must be selected before it can be deleted."
+          };
+        }
+        const storagePaths = createForgeStoragePaths(runtime.paths, sessionId);
+        await io.callRoomTools({
+          operation: "delete-path",
+          roomId: FORGE_ROOM_ID,
+          targetPath: storagePaths.sessionDir,
+          recursive: true
+        });
+        if (readCurrentState().activeSessionId === sessionId) {
+          const operatorProfile = readCurrentState().operatorProfile;
+          runtime.activeSession = null;
+          runtime.store.dispatch({
+            type: "runtime/hydrate",
+            state: {
+              ...createEmptyForgeRuntimeState(),
+              operatorProfile
+            }
+          });
+        }
+        runtime.sessionList = await storage.listSessions(runtime.paths);
+        pushState();
+        return {
+          success: true,
+          sessionId
+        };
+      }
       async function exportHandoffCheck() {
         await ensureHydrated();
         await ensureActiveSession();
@@ -1665,7 +1857,8 @@ export default function createForgeRoomHostRuntime() {
             createForgeExportRecord({
               createdBy: "coordinator",
               filePath,
-              synthesisId: selectedSynthesisId
+              synthesisId: selectedSynthesisId,
+              targetRoomId: session.goal?.targetRoomId ?? ""
             }),
             ...state.exports
           ];
@@ -1680,7 +1873,7 @@ export default function createForgeRoomHostRuntime() {
             synthesisStatus: "selected",
             exportReady: true,
             lastExportPath: filePath,
-            note: "Repair Room handoff package exported successfully."
+            note: "Handoff package exported successfully."
           });
           await persistCurrentSession("handoff-exported", {
             sessionId: session.id,
@@ -1709,7 +1902,7 @@ export default function createForgeRoomHostRuntime() {
             pushState();
             return { success: true };
           case FORGE_UI_COMMANDS.createSession:
-            return await createSession();
+            return await createSession(commandPayload);
           case FORGE_UI_COMMANDS.updateGoal:
             return await updateGoal(commandPayload);
           case FORGE_UI_COMMANDS.generateDraft:
@@ -1744,8 +1937,12 @@ export default function createForgeRoomHostRuntime() {
             return await selectSynthesis(commandPayload);
           case FORGE_UI_COMMANDS.saveSession:
             return await saveSession();
+          case FORGE_UI_COMMANDS.loadSession:
+            return await loadSessionById(commandPayload);
           case FORGE_UI_COMMANDS.loadLatestSession:
             return await loadLatestSession();
+          case FORGE_UI_COMMANDS.deleteSession:
+            return await deleteSessionById(commandPayload);
           case FORGE_UI_COMMANDS.exportHandoffCheck:
             return await exportHandoffCheck();
           case FORGE_UI_COMMANDS.exportHandoff:

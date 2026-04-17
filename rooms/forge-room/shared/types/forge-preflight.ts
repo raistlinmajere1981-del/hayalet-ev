@@ -3,15 +3,24 @@ export type ForgeOperatorEquipmentStatus = "unavailable" | "available" | "planne
 export type ForgeOperatorMode = "learn_first" | "result_first";
 export type ForgeOperatorRiskTolerance = "low" | "medium" | "high";
 export type ForgeOperatorPreferenceKey = "mode" | "riskTolerance";
-export type ForgePreflightStatus = "idle" | "fresh" | "stale" | "warning";
+export const FORGE_PREFLIGHT_STEP_IDS = [
+  "operatorContext",
+  "constraints",
+  "ai0Analysis",
+  "runSignature",
+  "sessionSave",
+] as const;
+
+export type ForgePreflightStepId = (typeof FORGE_PREFLIGHT_STEP_IDS)[number];
+export type ForgePreflightStatus = "idle" | "running" | "fresh" | "stale" | "warning";
 export type ForgeCapabilityTag =
   | "archive"
   | "camera"
   | "image"
   | "protocol"
   | "relay"
-  | "repair-room"
   | "storage"
+  | "target-room"
   | "ui";
 
 export const FORGE_OPERATOR_PREFERENCE_KEYS = ["mode", "riskTolerance"] as const;
@@ -49,8 +58,14 @@ export interface ForgeOperatorEquipmentRecord {
   status: ForgeOperatorEquipmentStatus;
 }
 
+export interface ForgeOperatorPreferences {
+  mode?: ForgeOperatorMode;
+  riskTolerance?: ForgeOperatorRiskTolerance;
+}
+
 export interface ForgeOperatorProfile {
   equipment: ForgeOperatorEquipmentRecord[];
+  preferences: ForgeOperatorPreferences;
   schemaVersion: number;
   skills: ForgeOperatorSkillRecord[];
   updatedAt: string;
@@ -58,11 +73,13 @@ export interface ForgeOperatorProfile {
 
 export interface ForgeSessionContextSelection {
   equipmentKeys: string[];
+  preferenceKeys: ForgeOperatorPreferenceKey[];
   skillKeys: string[];
 }
 
 export interface ForgeSelectedOperatorProfile {
   equipment: ForgeOperatorEquipmentRecord[];
+  preferences: ForgeOperatorPreferences;
   skills: ForgeOperatorSkillRecord[];
 }
 
@@ -141,6 +158,7 @@ export interface ForgePreflightBundle {
 }
 
 export interface ForgePreflightState {
+  activeStepId: ForgePreflightStepId | null;
   bundle: ForgePreflightBundle | null;
   errorMessage: string | null;
   promptCharCount: number;
@@ -184,6 +202,20 @@ function sortUniqueStrings(values: string[]): string[] {
   ).sort((left, right) => left.localeCompare(right));
 }
 
+function toRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && Array.isArray(value) === false
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+export function normalizeForgeLegacyIdentifier(value: string): string {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[^a-z0-9]+/gi, "_")
+    .toLowerCase()
+    .replace(/^_+|_+$/g, "");
+}
+
 export function isForgeOperatorSkillLevel(value: unknown): value is ForgeOperatorSkillLevel {
   return (
     value === "none" ||
@@ -213,6 +245,97 @@ export function isForgeOperatorPreferenceKey(
   value: unknown
 ): value is ForgeOperatorPreferenceKey {
   return value === "mode" || value === "riskTolerance";
+}
+
+export function isForgePreflightStepId(value: unknown): value is ForgePreflightStepId {
+  return (
+    typeof value === "string" &&
+    (FORGE_PREFLIGHT_STEP_IDS as readonly string[]).includes(value)
+  );
+}
+
+function normalizeForgeLegacySkillLevel(
+  value: unknown,
+  globalLevel: unknown
+): ForgeOperatorSkillLevel | null {
+  if (
+    value === "none" ||
+    value === "basic" ||
+    value === "intermediate" ||
+    value === "advanced"
+  ) {
+    return value;
+  }
+  if (value === "beginner") {
+    return "basic";
+  }
+  if (value === "good") {
+    return globalLevel === "advanced" ? "advanced" : "intermediate";
+  }
+  return null;
+}
+
+export function normalizeForgeLegacyOperatorSkillRecords(
+  value: unknown
+): ForgeOperatorSkillRecord[] {
+  const source = toRecord(value);
+  const globalLevel = source["level"];
+  return normalizeForgeOperatorSkillRecords(
+    Object.entries(source).flatMap(([rawKey, level]) => {
+      if (rawKey === "level") {
+        return [];
+      }
+      const normalizedLevel = normalizeForgeLegacySkillLevel(level, globalLevel);
+      const skillKey = normalizeForgeLegacyIdentifier(rawKey);
+      if (normalizedLevel === null || skillKey === "") {
+        return [];
+      }
+      return [
+        {
+          skillKey,
+          label: humanizeIdentifier(skillKey),
+          level: normalizedLevel,
+        } satisfies ForgeOperatorSkillRecord,
+      ];
+    })
+  );
+}
+
+export function normalizeForgeLegacyOperatorEquipmentRecords(
+  value: unknown
+): ForgeOperatorEquipmentRecord[] {
+  const source = toRecord(value);
+  return normalizeForgeOperatorEquipmentRecords(
+    Object.entries(source).flatMap(([rawKey, available]) => {
+      if (typeof available !== "boolean") {
+        return [];
+      }
+      const equipmentKey = normalizeForgeLegacyIdentifier(rawKey);
+      if (equipmentKey === "") {
+        return [];
+      }
+      return [
+        {
+          equipmentKey,
+          label: humanizeIdentifier(equipmentKey),
+          status: available ? "available" : "unavailable",
+        } satisfies ForgeOperatorEquipmentRecord,
+      ];
+    })
+  );
+}
+
+export function normalizeForgeLegacySelectionKeys(value: unknown): string[] {
+  const source = toRecord(value);
+  return sortUniqueStrings(
+    Object.entries(source).flatMap(([rawKey, selected]) => {
+      if (selected !== true) {
+        return [];
+      }
+      const normalizedKey = normalizeForgeLegacyIdentifier(rawKey);
+      return normalizedKey !== "" ? [normalizedKey] : [];
+    })
+  );
 }
 
 export function normalizeForgeOperatorSkillRecords(value: unknown): ForgeOperatorSkillRecord[] {
@@ -283,13 +406,20 @@ export function normalizeForgeOperatorEquipmentRecords(
   });
 }
 
+export function normalizeForgeOperatorPreferences(value: unknown): ForgeOperatorPreferences {
+  const source = toRecord(value);
+  return {
+    ...(isForgeOperatorMode(source["mode"]) ? { mode: source["mode"] } : {}),
+    ...(isForgeOperatorRiskTolerance(source["riskTolerance"])
+      ? { riskTolerance: source["riskTolerance"] }
+      : {}),
+  };
+}
+
 export function normalizeForgeSessionContextSelectionKeys(
   value: unknown
 ): ForgeSessionContextSelection {
-  const source =
-    value !== null && typeof value === "object" && Array.isArray(value) === false
-      ? (value as Record<string, unknown>)
-      : {};
+  const source = toRecord(value);
 
   return {
     skillKeys: sortUniqueStrings(
@@ -302,29 +432,42 @@ export function normalizeForgeSessionContextSelectionKeys(
         ? source["equipmentKeys"].filter((entry): entry is string => typeof entry === "string")
         : []
     ),
+    preferenceKeys: sortUniqueStrings(
+      Array.isArray(source["preferenceKeys"])
+        ? source["preferenceKeys"].filter((entry): entry is ForgeOperatorPreferenceKey =>
+            isForgeOperatorPreferenceKey(entry)
+          )
+        : []
+    ) as ForgeOperatorPreferenceKey[],
   };
 }
 
 export function reconcileForgeSessionContextSelection(params: {
   allowedEquipmentKeys?: string[];
+  allowedPreferenceKeys?: ForgeOperatorPreferenceKey[];
   allowedSkillKeys?: string[];
   selection: ForgeSessionContextSelection;
 }): ForgeSessionContextSelection {
   const allowedSkillKeys = new Set(params.allowedSkillKeys ?? []);
   const allowedEquipmentKeys = new Set(params.allowedEquipmentKeys ?? []);
+  const allowedPreferenceKeys = new Set(params.allowedPreferenceKeys ?? []);
 
   return {
     skillKeys: params.selection.skillKeys.filter((key) => allowedSkillKeys.has(key)),
     equipmentKeys: params.selection.equipmentKeys.filter((key) => allowedEquipmentKeys.has(key)),
+    preferenceKeys: params.selection.preferenceKeys.filter((key) =>
+      allowedPreferenceKeys.has(key)
+    ),
   };
 }
 
 export function createDefaultForgeOperatorProfile(updatedAt = ""): ForgeOperatorProfile {
   return {
-    schemaVersion: 3,
+    schemaVersion: 2,
     updatedAt,
     skills: [],
     equipment: [],
+    preferences: {},
   };
 }
 
@@ -332,6 +475,7 @@ export function createEmptyForgeSessionContextSelection(): ForgeSessionContextSe
   return {
     skillKeys: [],
     equipmentKeys: [],
+    preferenceKeys: [],
   };
 }
 
@@ -339,23 +483,36 @@ export function createEmptyForgeSelectedOperatorProfile(): ForgeSelectedOperator
   return {
     skills: [],
     equipment: [],
+    preferences: {},
   };
 }
 
 export function isForgeOperatorProfileEmpty(profile: ForgeOperatorProfile): boolean {
-  return profile.skills.length === 0 && profile.equipment.length === 0;
+  return (
+    profile.skills.length === 0 &&
+    profile.equipment.length === 0 &&
+    Object.keys(profile.preferences).length === 0
+  );
 }
 
 export function isForgeSessionContextSelectionEmpty(
   selection: ForgeSessionContextSelection
 ): boolean {
-  return selection.skillKeys.length === 0 && selection.equipmentKeys.length === 0;
+  return (
+    selection.skillKeys.length === 0 &&
+    selection.equipmentKeys.length === 0 &&
+    selection.preferenceKeys.length === 0
+  );
 }
 
 export function isForgeSelectedOperatorProfileEmpty(
   profile: ForgeSelectedOperatorProfile
 ): boolean {
-  return profile.skills.length === 0 && profile.equipment.length === 0;
+  return (
+    profile.skills.length === 0 &&
+    profile.equipment.length === 0 &&
+    Object.keys(profile.preferences).length === 0
+  );
 }
 
 export function createEmptyForgeRunOverride(): ForgeRunOverride {
@@ -376,6 +533,7 @@ export function createEmptyForgeContextCapsule(): ForgeContextCapsule {
 
 export function createEmptyForgePreflightState(): ForgePreflightState {
   return {
+    activeStepId: null,
     bundle: null,
     errorMessage: null,
     promptCharCount: 0,

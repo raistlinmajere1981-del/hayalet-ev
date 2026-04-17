@@ -412,16 +412,36 @@ export function renderApprovedTasksPanel(
       );
       if (options.advancedCapsulesOpen) {
         controls.append(
-          createField(documentRef, "Capsule summary", capsuleSummary),
-          createField(documentRef, "Capsule modules", capsuleModules),
-          createField(documentRef, "Capsule constraints", capsuleConstraints)
+          createField(
+            documentRef,
+            text(["workbench", "approvedPanel", "fields", "capsuleSummary"], "Capsule summary"),
+            capsuleSummary
+          ),
+          createField(
+            documentRef,
+            text(["workbench", "approvedPanel", "fields", "capsuleModules"], "Capsule modules"),
+            capsuleModules
+          ),
+          createField(
+            documentRef,
+            text(
+              ["workbench", "approvedPanel", "fields", "capsuleConstraints"],
+              "Capsule constraints"
+            ),
+            capsuleConstraints
+          )
         );
       }
 
       const capsuleHint = documentRef.createElement("p");
       capsuleHint.className = "forge-panel__hint";
       capsuleHint.textContent = text(
-        ["workbench", "approvedPanel", "capsuleHint"],
+        [
+          "workbench",
+          "approvedPanel",
+          "capsuleHint",
+          options.advancedCapsulesOpen ? "open" : "closed",
+        ],
         options.advancedCapsulesOpen
           ? "Advanced capsule is session-local prompt context. It supplements preflight for this task only and is not exported."
           : "Advanced capsule is hidden by default. Open it only when a task needs extra prompt context."
@@ -446,11 +466,15 @@ export function renderApprovedTasksPanel(
         );
         if (options.advancedCapsulesOpen) {
           actionRail.append(
-            createButton(documentRef, "Save capsule", {
+            createButton(
+              documentRef,
+              text(["workbench", "approvedPanel", "actions", "saveCapsule"], "Save capsule"),
+              {
               datasetKey: "forgeSaveContextCapsule",
               datasetValue: task.id,
               disabled: taskAssignments.some((assignment) => assignment.status !== "queued"),
-            })
+              }
+            )
           );
         }
       }

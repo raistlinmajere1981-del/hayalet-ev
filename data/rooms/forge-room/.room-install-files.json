@@ -38,6 +38,7 @@
     "main-functions/forge-workbench/protocols/tr/forge-room-task-response.md",
     "manifest.json",
     "shared/assets/room-background.svg",
+    "shared/data/index.js",
     "shared/data/persona-presets.js",
     "shared/data/role-catalog.js",
     "shared/forge-constants.js",
@@ -64,9 +65,11 @@
     "ui/panels/coordinator-panel.js",
     "ui/panels/draft-breakdown-panel.js",
     "ui/panels/goal-input-panel.js",
+    "ui/panels/operator-profile-manager-panel.js",
     "ui/panels/panel-shell.js",
     "ui/panels/responses-panel.js",
     "ui/panels/synthesis-panel.js",
+    "ui/panels/workbench-stage-panel.js",
     "ui/style.css"
   ]
 }

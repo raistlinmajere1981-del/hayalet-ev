@@ -6,7 +6,10 @@ import { dirname, join } from "node:path";
 
 import { selectForgeCapabilityContext } from "../../rooms/forge-room/host/forge-capability-selector.ts";
 import { createForgeHandoffExport } from "../../rooms/forge-room/host/forge-handoff-export.ts";
-import { createForgeOperatorProfileStorage } from "../../rooms/forge-room/host/forge-operator-profile-storage.ts";
+import {
+  createForgeOperatorProfileStorage,
+  normalizeForgeOperatorProfile,
+} from "../../rooms/forge-room/host/forge-operator-profile-storage.ts";
 import {
   buildForgeAppArchitectureSummary,
   buildForgeSelectedOperatorProfile,
@@ -93,10 +96,12 @@ test("forge-room operator profile storage allows a truly blank profile and prese
       },
     });
 
-    assert.deepEqual(saved.skills, [{ skillKey: "measurement", level: "basic" }]);
+    assert.deepEqual(saved.skills, [
+      { skillKey: "measurement", label: "Measurement", level: "basic" },
+    ]);
     assert.deepEqual(saved.equipment, [
-      { equipmentKey: "hot_air", status: "available" },
-      { equipmentKey: "multimeter", status: "unavailable" },
+      { equipmentKey: "hot_air", label: "Hot Air", status: "available" },
+      { equipmentKey: "multimeter", label: "Multimeter", status: "unavailable" },
     ]);
     assert.equal(saved.preferences.mode, "learn_first");
     assert.equal(saved.preferences.riskTolerance, undefined);
@@ -105,16 +110,43 @@ test("forge-room operator profile storage allows a truly blank profile and prese
       await readFile(join(rootDir, "operator-profile.json"), "utf8")
     ) as {
       schemaVersion: number;
-      equipment: Array<{ equipmentKey: string; status: string }>;
+      equipment: Array<{ equipmentKey: string; label: string; status: string }>;
     };
     assert.equal(persisted.schemaVersion, 2);
     assert.deepEqual(persisted.equipment, [
-      { equipmentKey: "hot_air", status: "available" },
-      { equipmentKey: "multimeter", status: "unavailable" },
+      { equipmentKey: "hot_air", label: "Hot Air", status: "available" },
+      { equipmentKey: "multimeter", label: "Multimeter", status: "unavailable" },
     ]);
   } finally {
     await rm(rootDir, { recursive: true, force: true });
   }
+});
+
+test("forge-room legacy operator profile migration keeps arbitrary keys room-local and generic", () => {
+  const profile = normalizeForgeOperatorProfile({
+    skill: {
+      level: "advanced",
+      boardInspection: "good",
+      cablePrep: "basic",
+    },
+    tools: {
+      boardCamera: true,
+      spareBenchLight: false,
+    },
+  });
+
+  assert.deepEqual(profile.skills, [
+    { skillKey: "board_inspection", label: "Board Inspection", level: "advanced" },
+    { skillKey: "cable_prep", label: "Cable Prep", level: "basic" },
+  ]);
+  assert.deepEqual(profile.equipment, [
+    { equipmentKey: "board_camera", label: "Board Camera", status: "available" },
+    {
+      equipmentKey: "spare_bench_light",
+      label: "Spare Bench Light",
+      status: "unavailable",
+    },
+  ]);
 });
 
 test("forge-room capability selector keeps repair-relevant metadata and enforces the summary budget", () => {
@@ -130,7 +162,7 @@ test("forge-room capability selector keeps repair-relevant metadata and enforces
 
   assert.ok(context);
   assert.equal(context?.summary.length <= 240, true);
-  assert.ok(context?.items.some((item) => item.id === "forge-repair-handoff"));
+  assert.ok(context?.items.some((item) => item.id === "forge-target-handoff"));
   assert.ok(context?.items.some((item) => item.id === "forge-guided-ui"));
   assert.equal(
     context?.items.some((item) => item.id === "laboratory-image-analysis"),

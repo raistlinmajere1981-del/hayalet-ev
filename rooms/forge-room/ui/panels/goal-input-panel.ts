@@ -180,7 +180,12 @@ function createPreparationStep(
 }
 
 function countSelectedSessionContext(selection: ForgeSessionContextSelection): number {
-  return selection.skillKeys.length + selection.equipmentKeys.length;
+  const preferenceKeys = (
+    selection as ForgeSessionContextSelection & {
+      preferenceKeys?: string[];
+    }
+  ).preferenceKeys ?? [];
+  return selection.skillKeys.length + selection.equipmentKeys.length + preferenceKeys.length;
 }
 
 function countOperatorRecords(profile: ForgeOperatorProfile): number {
@@ -191,6 +196,9 @@ function toPreflightStatusLabel(
   status: ForgeUiState["snapshot"]["preflight"]["status"],
   text: ForgeTextFn
 ): string {
+  if (status === "running") {
+    return text(["workbench", "goalPanel", "preflight", "running"], "running");
+  }
   if (status === "fresh") {
     return text(["workbench", "goalPanel", "preflight", "ready"], "ready");
   }
@@ -234,6 +242,18 @@ function renderRiskValue(text: ForgeTextFn, value: string): string {
   );
 }
 
+function renderCatalogLabel(text: ForgeTextFn, value: string, fallback: string): string {
+  const translationKey = value
+    .split(/[^a-z0-9]+/i)
+    .filter((segment) => segment !== "")
+    .map((segment) => segment.toLowerCase())
+    .map((segment, index) =>
+      index === 0 ? segment : `${segment.slice(0, 1).toUpperCase()}${segment.slice(1)}`
+    )
+    .join("");
+  return text(["workbench", "goalPanel", "catalog", "items", translationKey], fallback);
+}
+
 function createContextChip(
   documentRef: Document,
   params: {
@@ -241,7 +261,7 @@ function createContextChip(
     disabled?: boolean;
     key: string;
     label: string;
-    section: "equipment" | "skill";
+    section: "equipment" | "general" | "skill";
     selected: boolean;
   }
 ): HTMLElement {
@@ -268,7 +288,10 @@ function createContextGroup(
   documentRef: Document,
   title: string,
   chips: HTMLElement[],
-  emptyText: string
+  emptyText: string,
+  options: {
+    emptyAction?: HTMLElement;
+  } = {}
 ): HTMLElement {
   const group = documentRef.createElement("section");
   group.className = "forge-context-group";
@@ -286,6 +309,9 @@ function createContextGroup(
     empty.className = "forge-field__hint";
     empty.textContent = emptyText;
     emptyWrap.append(empty);
+    if (options.emptyAction) {
+      emptyWrap.append(options.emptyAction);
+    }
     list.append(emptyWrap);
   }
   group.append(heading, list);
@@ -346,8 +372,19 @@ export function renderGoalInputPanel(
   const currentGoal = state.snapshot.currentGoal;
   const operatorProfile: ForgeOperatorProfile = state.snapshot.operatorProfile;
   const sessionContextSelection = options.sessionContextSelection;
+  const operatorPreferences = (
+    state.snapshot.operatorProfile as ForgeOperatorProfile & {
+      preferences?: Partial<Record<"mode" | "riskTolerance", string>>;
+    }
+  ).preferences ?? {};
+  const preferenceKeys = (
+    sessionContextSelection as ForgeSessionContextSelection & {
+      preferenceKeys?: string[];
+    }
+  ).preferenceKeys ?? [];
   const selectedContextCount = countSelectedSessionContext(sessionContextSelection);
   const operatorRecordCount = countOperatorRecords(operatorProfile);
+  const operatorPreferenceCount = Object.keys(operatorPreferences).length;
   const savedGoalExists = Boolean(currentGoal?.summary.trim());
   const goalHasDraftInput =
     options.goalDraft.summary.trim() !== "" ||
@@ -383,7 +420,7 @@ export function renderGoalInputPanel(
       ? "active"
       : "idle";
   const operatorStepStatus: "active" | "idle" | "ready" | "warning" =
-    operatorRecordCount === 0
+    operatorRecordCount === 0 && operatorPreferenceCount === 0
       ? "warning"
       : sessionActive && selectedContextCount > 0
         ? "ready"
@@ -427,7 +464,7 @@ export function renderGoalInputPanel(
           "Create a session to keep run-local decisions together."
         );
   const operatorStepDetail =
-    operatorRecordCount === 0
+    operatorRecordCount === 0 && operatorPreferenceCount === 0
       ? text(
           ["workbench", "goalPanel", "launchChecklist", "operatorIdle"],
           "Operator profile is blank. AI will assume no saved tools or skills."
@@ -515,7 +552,10 @@ export function renderGoalInputPanel(
   targetRoomInput.id = "forge-goal-target-room";
   targetRoomInput.className = "forge-input";
   targetRoomInput.value = options.goalDraft.targetRoomId;
-  targetRoomInput.placeholder = "repair-room";
+  targetRoomInput.placeholder = text(
+    ["workbench", "goalPanel", "placeholders", "targetRoom"],
+    "target-room-id"
+  );
   targetRoomInput.dataset["forgeGoalField"] = "targetRoomId";
   targetRoomInput.disabled = goalLocked;
 
@@ -821,7 +861,7 @@ export function renderGoalInputPanel(
   sessionContextBlock.append(
     createSectionHeading(
       documentRef,
-      text(["workbench", "goalPanel", "operatorProfile", "eyebrow"], "Operator profile"),
+      text(["workbench", "goalPanel", "sessionContext", "eyebrow"], "CONTEXT FOR THIS RUN"),
       text(["workbench", "goalPanel", "operatorProfile", "prepTitle"], "Operator details"),
       {
         meta:
@@ -846,7 +886,7 @@ export function renderGoalInputPanel(
   const operatorLead = documentRef.createElement("p");
   operatorLead.className = "forge-block-note";
   operatorLead.textContent =
-    operatorRecordCount === 0
+    operatorRecordCount === 0 && operatorPreferenceCount === 0
       ? text(
           ["workbench", "goalPanel", "operatorProfile", "empty"],
           "No operator profile defined. AI will assume no prior capability."
@@ -885,7 +925,7 @@ export function renderGoalInputPanel(
       documentRef,
       text(["workbench", "goalPanel", "operatorProfile", "selectedLabel"], "Selected"),
       String(selectedContextCount)
-    )
+      )
   );
   sessionContextBlock.append(operatorSummary);
 
@@ -909,6 +949,10 @@ export function renderGoalInputPanel(
 
   const contextGroups = documentRef.createElement("div");
   contextGroups.className = "forge-context-groups forge-context-groups--scroll";
+  const openProfileLabel = text(
+    ["workbench", "goalPanel", "operatorProfile", "manage"],
+    "Open Operator Profile"
+  );
   contextGroups.append(
     createContextGroup(
       documentRef,
@@ -918,7 +962,7 @@ export function renderGoalInputPanel(
           disabled: !sessionActive,
           section: "skill",
           key: record.skillKey,
-          label: record.label,
+          label: renderCatalogLabel(text, record.skillKey, record.label),
           detail: renderSkillValue(text, record.level),
           selected: sessionContextSelection.skillKeys.includes(record.skillKey),
         })
@@ -926,7 +970,10 @@ export function renderGoalInputPanel(
       text(
         ["workbench", "goalPanel", "sessionContext", "emptySkills"],
         "No saved skills yet. Use Operator Profile from the top bar."
-      )
+      ),
+      {
+        emptyAction: createButton(documentRef, openProfileLabel, "toggle-profile-editor"),
+      }
     ),
     createContextGroup(
       documentRef,
@@ -936,7 +983,7 @@ export function renderGoalInputPanel(
           disabled: !sessionActive,
           section: "equipment",
           key: record.equipmentKey,
-          label: record.label,
+          label: renderCatalogLabel(text, record.equipmentKey, record.label),
           detail: record.brandModel
             ? `${renderEquipmentValue(text, record.status)} • ${record.brandModel}`
             : renderEquipmentValue(text, record.status),
@@ -946,7 +993,43 @@ export function renderGoalInputPanel(
       text(
         ["workbench", "goalPanel", "sessionContext", "emptyEquipment"],
         "No saved equipment yet. Use Operator Profile from the top bar."
-      )
+      ),
+      {
+        emptyAction: createButton(documentRef, openProfileLabel, "toggle-profile-editor"),
+      }
+    ),
+    createContextGroup(
+      documentRef,
+      text(["workbench", "goalPanel", "catalog", "groups", "general"], "General"),
+      [
+        operatorPreferences.mode
+          ? createContextChip(documentRef, {
+              disabled: !sessionActive,
+              section: "general",
+              key: "mode",
+              label: text(["workbench", "goalPanel", "catalog", "items", "mode"], "Mode"),
+              detail: renderModeValue(text, operatorPreferences.mode),
+              selected: preferenceKeys.includes("mode"),
+            })
+          : null,
+        operatorPreferences.riskTolerance
+          ? createContextChip(documentRef, {
+              disabled: !sessionActive,
+              section: "general",
+              key: "riskTolerance",
+              label: text(["workbench", "goalPanel", "catalog", "items", "risk"], "Risk"),
+              detail: renderRiskValue(text, operatorPreferences.riskTolerance),
+              selected: preferenceKeys.includes("riskTolerance"),
+            })
+          : null,
+      ].filter((chip): chip is HTMLElement => chip !== null),
+      text(
+        ["workbench", "goalPanel", "sessionContext", "emptyPreferences"],
+        "No saved general preferences. Use Operator Profile from the top bar."
+      ),
+      {
+        emptyAction: createButton(documentRef, openProfileLabel, "toggle-profile-editor"),
+      }
     )
   );
   sessionContextBlock.append(contextGroups);

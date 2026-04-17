@@ -32,7 +32,6 @@ function normalizeSelectionFingerprint(selection: ForgeSessionContextSelection):
 
 function normalizeRunOverrideFingerprint(runOverride: ForgeRunOverride | null): string {
   return JSON.stringify({
-    enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
     mode: runOverride?.mode ?? null,
     notes: runOverride?.notes.trim() ?? "",
     riskTolerance: runOverride?.riskTolerance ?? null,

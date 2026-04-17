@@ -110,7 +110,7 @@ export interface ForgeSynthesis {
 
 export interface ForgeHandoffExportRecord {
   id: string;
-  targetRoomId: "repair-room";
+  targetRoomId: string;
   synthesisId: string;
   filePath: string;
   createdAt: string;

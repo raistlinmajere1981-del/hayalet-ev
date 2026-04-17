@@ -1015,6 +1015,10 @@
       "title": "Canlı Log Görünümü"
     },
     "rooms": {
+      "catalog": {
+        "forgeRoom": "Demirhane",
+        "laboratory": "Laboratuvar"
+      },
       "openTitle": "Oda yönetimi",
       "title": "Oda Yönetimi",
       "importButton": "Paket Seç",

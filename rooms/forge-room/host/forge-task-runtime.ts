@@ -1,5 +1,5 @@
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
-import { FORGE_MAX_DECISION_TRACE_LINES, FORGE_TARGET_ROOM_ID } from "../shared/forge-constants.js";
+import { FORGE_MAX_DECISION_TRACE_LINES } from "../shared/forge-constants.js";
 import type {
   ForgeAgentResponse,
   ForgeArchiveMessageRef,
@@ -117,7 +117,7 @@ export function buildForgeTaskPrompt(params: {
       null,
       2
     ),
-    `Target room: ${goal.targetRoomId || FORGE_TARGET_ROOM_ID}`,
+    `Target room: ${goal.targetRoomId.trim() || "not specified yet"}`,
     `Goal summary: ${goal.summary}`,
     `Goal brief: ${goal.brief || "No additional brief provided."}`,
     `Role: ${assignment.roleId}`,
@@ -138,7 +138,7 @@ export function buildForgeTaskPrompt(params: {
     "Keep body under 900 characters and prefer 3 to 6 short bullet-style lines inside the JSON string when helpful.",
     "Produce exactly one final JSON response for this task.",
     "Do not provide alternatives, variants, multiple drafts, or multiple candidate answers.",
-    "Keep the answer practical and directly useful for downstream Repair Room handoff.",
+    "Keep the answer practical and directly useful for the downstream handoff.",
     params.promptContext?.trim() ? `Preflight context:\n${params.promptContext.trim()}` : "",
   ].join("\n");
 }
@@ -321,7 +321,7 @@ function buildAcceptanceCriteria(
   return tasks
     .filter((task) => task.level === 1)
     .slice(0, 3)
-    .map((task) => `${task.title} is reflected in the Repair Room handoff.`);
+    .map((task) => `${task.title} is reflected in the handoff package.`);
 }
 
 function buildOpenQuestions(conflicts: ForgeConflict[], taskTitles: Map<string, string>): string[] {
@@ -491,10 +491,11 @@ export function createForgeExportRecord(params: {
   createdBy: ForgeSeatId | "coordinator" | "user";
   filePath: string;
   synthesisId: string;
+  targetRoomId: string;
 }): ForgeHandoffExportRecord {
   return {
     id: createForgeId("forge-export"),
-    targetRoomId: "repair-room",
+    targetRoomId: params.targetRoomId,
     synthesisId: params.synthesisId,
     filePath: params.filePath,
     createdAt: nowIso(),

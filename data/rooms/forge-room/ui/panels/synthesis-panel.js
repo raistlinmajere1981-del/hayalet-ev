@@ -40,7 +40,12 @@ function createGuideCard(documentRef, titleText, summaryText, chips = [], gateTo
   return card;
 }
 function toCountLabel(text, pathPrefix, count, oneFallback, otherFallback) {
-  return count === 1 ? text([...pathPrefix, "One"], oneFallback, { count }) : text([...pathPrefix, "Other"], otherFallback, { count });
+  const pathRoot = [...pathPrefix];
+  const leaf = pathRoot.pop();
+  if (!leaf) {
+    return count === 1 ? oneFallback.replace("{count}", String(count)) : otherFallback.replace("{count}", String(count));
+  }
+  return count === 1 ? text([...pathRoot, `${leaf}One`], oneFallback, { count }) : text([...pathRoot, `${leaf}Other`], otherFallback, { count });
 }
 function describeOutputState(flowState, options, text) {
   switch (flowState) {
@@ -263,7 +268,10 @@ export function renderSynthesisPanel(documentRef, state, text, options) {
     const contextCard = documentRef.createElement("article");
     contextCard.className = "forge-state-guide";
     const contextTitle = documentRef.createElement("strong");
-    contextTitle.textContent = "Run context";
+    contextTitle.textContent = text(
+      ["workbench", "synthesisPanel", "context", "title"],
+      "Run context"
+    );
     const contextSummary = documentRef.createElement("p");
     contextSummary.className = "forge-panel__hint";
     contextSummary.textContent = selectedRunSignature ?? text(["workbench", "synthesisPanel", "context", "pending"], "Run signature pending");

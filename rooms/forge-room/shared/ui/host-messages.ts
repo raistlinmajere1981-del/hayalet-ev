@@ -1,5 +1,10 @@
 import {
   createDefaultForgeOperatorProfile,
+  createEmptyForgePreflightState,
+  isForgePreflightStepId,
+  normalizeForgeLegacyOperatorEquipmentRecords,
+  normalizeForgeLegacyOperatorSkillRecords,
+  normalizeForgeLegacySelectionKeys,
   normalizeForgeOperatorEquipmentRecords,
   normalizeForgeOperatorSkillRecords,
   normalizeForgeSessionContextSelectionKeys,
@@ -22,25 +27,49 @@ function asNonEmptyString(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
 }
 
-function normalizeLegacySkillLevel(
-  value: unknown,
-  globalLevel: unknown
-): "advanced" | "basic" | "intermediate" | "none" | null {
-  if (value === "none" || value === "basic" || value === "intermediate" || value === "advanced") {
-    return value;
+function normalizePreferenceValue(
+  key: "mode" | "riskTolerance",
+  value: unknown
+): string | null {
+  if (key === "mode") {
+    if (value === "learn_first" || value === "learn-first") {
+      return "learn_first";
+    }
+    if (value === "result_first" || value === "result-first") {
+      return "result_first";
+    }
+    return null;
   }
-  if (value === "beginner") {
-    return "basic";
+  return value === "low" || value === "medium" || value === "high" ? value : null;
+}
+
+function normalizePreferenceSnapshot(value: unknown): Record<string, string> {
+  const source = toRecord(value);
+  const preferences: Record<string, string> = {};
+  const mode = normalizePreferenceValue("mode", source["mode"]);
+  const riskTolerance = normalizePreferenceValue("riskTolerance", source["riskTolerance"]);
+  if (mode) {
+    preferences["mode"] = mode;
   }
-  if (value === "good") {
-    return globalLevel === "advanced" ? "advanced" : "intermediate";
+  if (riskTolerance) {
+    preferences["riskTolerance"] = riskTolerance;
   }
-  return null;
+  return preferences;
+}
+
+function normalizePreferenceSelectionKeys(value: unknown): string[] {
+  if (Array.isArray(value) === false) {
+    return [];
+  }
+  return value.filter(
+    (entry): entry is string => entry === "mode" || entry === "riskTolerance"
+  );
 }
 
 function normalizeOperatorProfileSnapshot(value: unknown): ForgeRoomSnapshot["operatorProfile"] {
   const fallback = createDefaultForgeOperatorProfile();
   const source = toRecord(value);
+  const normalizedPreferences = normalizePreferenceSnapshot(source["preferences"]);
   if (Array.isArray(source["skills"]) || Array.isArray(source["equipment"])) {
     return {
       schemaVersion:
@@ -48,50 +77,18 @@ function normalizeOperatorProfileSnapshot(value: unknown): ForgeRoomSnapshot["op
       updatedAt: asNonEmptyString(source["updatedAt"], fallback.updatedAt),
       skills: normalizeForgeOperatorSkillRecords(source["skills"]),
       equipment: normalizeForgeOperatorEquipmentRecords(source["equipment"]),
-    };
+       preferences: normalizedPreferences,
+    } as ForgeRoomSnapshot["operatorProfile"];
   }
 
   const legacySkill = toRecord(source["skill"]);
   const legacyTools = toRecord(source["tools"]);
-  const globalSkillLevel = legacySkill["level"];
   return {
     ...fallback,
-    skills: normalizeForgeOperatorSkillRecords(
-      [
-        ["soldering", legacySkill["soldering"]] as const,
-        ["measurement", legacySkill["measurement"]] as const,
-        ["mechanical", legacySkill["mechanical"]] as const,
-      ].flatMap(([skillKey, level]) => {
-        const normalizedLevel = normalizeLegacySkillLevel(level, globalSkillLevel);
-        return normalizedLevel
-          ? [
-              {
-                skillKey,
-                label: skillKey.replace(/_/g, " "),
-                level: normalizedLevel,
-              },
-            ]
-          : [];
-      })
-    ),
-    equipment: normalizeForgeOperatorEquipmentRecords(
-      [
-        ["multimeter", legacyTools["multimeter"]] as const,
-        ["soldering_iron", legacyTools["solderingIron"]] as const,
-        ["hot_air", legacyTools["hotAir"]] as const,
-        ["bench_supply", legacyTools["benchPowerSupply"]] as const,
-        ["magnification", legacyTools["magnification"]] as const,
-      ].flatMap(([equipmentKey, available]) => {
-        if (available === true) {
-          return [{ equipmentKey, label: equipmentKey.replace(/_/g, " "), status: "available" }];
-        }
-        if (available === false) {
-          return [{ equipmentKey, label: equipmentKey.replace(/_/g, " "), status: "unavailable" }];
-        }
-        return [];
-      })
-    ),
-  };
+    skills: normalizeForgeLegacyOperatorSkillRecords(legacySkill),
+    equipment: normalizeForgeLegacyOperatorEquipmentRecords(legacyTools),
+    preferences: normalizedPreferences,
+  } as ForgeRoomSnapshot["operatorProfile"];
 }
 
 function normalizeSessionContextSelectionSnapshot(
@@ -100,27 +97,28 @@ function normalizeSessionContextSelectionSnapshot(
   const source = toRecord(value);
   if (
     Array.isArray(source["skillKeys"]) ||
-    Array.isArray(source["equipmentKeys"])
+    Array.isArray(source["equipmentKeys"]) ||
+    Array.isArray(source["preferenceKeys"])
   ) {
-    return normalizeForgeSessionContextSelectionKeys(source);
+    return {
+      ...normalizeForgeSessionContextSelectionKeys(source),
+      preferenceKeys: normalizePreferenceSelectionKeys(source["preferenceKeys"]),
+    } as ForgeRoomSnapshot["sessionContextSelection"];
   }
 
   const skill = toRecord(source["skill"]);
   const tools = toRecord(source["tools"]);
-  return normalizeForgeSessionContextSelectionKeys({
-    skillKeys: [
-      skill["soldering"] === true ? "soldering" : null,
-      skill["measurement"] === true ? "measurement" : null,
-      skill["mechanical"] === true ? "mechanical" : null,
+  const preferences = toRecord(source["preferences"]);
+  return {
+    ...normalizeForgeSessionContextSelectionKeys({
+      skillKeys: normalizeForgeLegacySelectionKeys(skill),
+      equipmentKeys: normalizeForgeLegacySelectionKeys(tools),
+    }),
+    preferenceKeys: [
+      preferences["mode"] === true ? "mode" : null,
+      preferences["riskTolerance"] === true ? "riskTolerance" : null,
     ].filter((entry): entry is string => typeof entry === "string"),
-    equipmentKeys: [
-      tools["multimeter"] === true ? "multimeter" : null,
-      tools["solderingIron"] === true ? "soldering_iron" : null,
-      tools["hotAir"] === true ? "hot_air" : null,
-      tools["benchPowerSupply"] === true ? "bench_supply" : null,
-      tools["magnification"] === true ? "magnification" : null,
-    ].filter((entry): entry is string => typeof entry === "string"),
-  });
+  } as ForgeRoomSnapshot["sessionContextSelection"];
 }
 
 function normalizeRunOverrideSnapshot(value: unknown): ForgeRoomSnapshot["runOverride"] {
@@ -186,6 +184,7 @@ export function sanitizeForgeUiContext(payload: unknown): ForgeUiContextState {
   const room = toRecord(source["room"]);
   const presence = toRecord(source["presence"]);
   const presenceUser = toRecord(presence["user"]);
+  const assistant = toRecord(source["assistant"]);
   const user = toRecord(source["user"]);
   const activeFeature = toRecord(source["activeFeature"]);
   const nickname =
@@ -198,7 +197,19 @@ export function sanitizeForgeUiContext(payload: unknown): ForgeUiContextState {
       : typeof user["avatar"] === "string" && user["avatar"].trim() !== ""
         ? user["avatar"].trim()
         : null;
+  const assistantNickname =
+    typeof assistant["nickname"] === "string" && assistant["nickname"].trim() !== ""
+      ? assistant["nickname"].trim()
+      : "AI0";
+  const assistantAvatar =
+    typeof assistant["avatar"] === "string" && assistant["avatar"].trim() !== ""
+      ? assistant["avatar"].trim()
+      : null;
+  const assistantConnected = assistant["connected"] === true;
   return {
+    assistantAvatar,
+    assistantConnected,
+    assistantNickname,
     roomId: asNonEmptyString(room["id"], "forge-room"),
     roomName: asNonEmptyString(room["name"], "Forge Room"),
     featureId: asNonEmptyString(activeFeature["id"], "forge-workbench"),
@@ -206,6 +217,45 @@ export function sanitizeForgeUiContext(payload: unknown): ForgeUiContextState {
     translations: toRecord(source["translations"]),
     userAvatar: avatar,
     userNickname: asNonEmptyString(nickname, "Operator"),
+  };
+}
+
+function normalizePreflightSnapshot(value: unknown): ForgeRoomSnapshot["preflight"] {
+  const source = toRecord(value);
+  const fallback = createEmptyForgePreflightState();
+  const status =
+    source["status"] === "idle" ||
+    source["status"] === "running" ||
+    source["status"] === "fresh" ||
+    source["status"] === "stale" ||
+    source["status"] === "warning"
+      ? source["status"]
+      : fallback.status;
+  return {
+    activeStepId: isForgePreflightStepId(source["activeStepId"]) ? source["activeStepId"] : null,
+    bundle:
+      source["bundle"] !== null &&
+      typeof source["bundle"] === "object" &&
+      Array.isArray(source["bundle"]) === false
+        ? (source["bundle"] as ForgeRoomSnapshot["preflight"]["bundle"])
+        : fallback.bundle,
+    errorMessage:
+      typeof source["errorMessage"] === "string" && source["errorMessage"].trim() !== ""
+        ? source["errorMessage"]
+        : null,
+    promptCharCount:
+      typeof source["promptCharCount"] === "number" && Number.isFinite(source["promptCharCount"])
+        ? source["promptCharCount"]
+        : fallback.promptCharCount,
+    ranAt: typeof source["ranAt"] === "string" && source["ranAt"].trim() !== "" ? source["ranAt"] : null,
+    staleReason:
+      typeof source["staleReason"] === "string" && source["staleReason"].trim() !== ""
+        ? source["staleReason"]
+        : null,
+    status,
+    warnings: Array.isArray(source["warnings"])
+      ? source["warnings"].filter((entry): entry is string => typeof entry === "string")
+      : fallback.warnings,
   };
 }
 
@@ -254,12 +304,7 @@ export function sanitizeForgeRoomSnapshot(payload: unknown): ForgeRoomSnapshot {
         ? (source["exportSummary"] as ForgeRoomSnapshot["exportSummary"])
         : fallback.exportSummary,
     operatorProfile: normalizeOperatorProfileSnapshot(source["operatorProfile"]),
-    preflight:
-      source["preflight"] !== null &&
-      typeof source["preflight"] === "object" &&
-      Array.isArray(source["preflight"]) === false
-        ? (source["preflight"] as ForgeRoomSnapshot["preflight"])
-        : fallback.preflight,
+    preflight: normalizePreflightSnapshot(source["preflight"]),
     responses: Array.isArray(source["responses"])
       ? (source["responses"] as ForgeRoomSnapshot["responses"])
       : fallback.responses,

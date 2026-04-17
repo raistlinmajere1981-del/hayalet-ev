@@ -8,6 +8,7 @@ import {
   buildRoomOverlaySummary,
   buildWorkspaceRoomListMarkup,
 } from "../../../modules/rooms/room-overlay-markup.js";
+import { resolveRoomShellName } from "../../../modules/rooms/room-shell-presentation.js";
 import { shellT } from "../../../app/shell-i18n.js";
 import { Modal } from "../../../ui/modal-manager.js";
 import { registerSettingsPanelLifecycle } from "../controller.js";
@@ -48,12 +49,15 @@ function getWorkspaceRoomLabel(state: RoomOverlayState, roomId: string): string 
   const room = state.workspaceRooms.find(
     (entry) => (entry.manifest?.id ?? entry.dirName) === roomId
   );
-  return buildRoomLabel(room?.manifest?.name ?? room?.dirName ?? roomId, roomId);
+  return buildRoomLabel(
+    resolveRoomShellName(roomId, room?.manifest?.name ?? room?.dirName ?? roomId),
+    roomId
+  );
 }
 
 function getInstalledRoomLabel(state: RoomOverlayState, roomId: string): string {
   const room = state.installedRooms.find((entry) => entry.id === roomId);
-  return buildRoomLabel(room?.name ?? roomId, roomId);
+  return buildRoomLabel(resolveRoomShellName(roomId, room?.name ?? roomId), roomId);
 }
 
 function buildRoomPackageOutputPath(directoryPath: string, roomId: string): string {

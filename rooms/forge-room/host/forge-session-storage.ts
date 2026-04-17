@@ -34,6 +34,24 @@ function asSession(value: unknown): ForgeSession | null {
     : null;
 }
 
+function formatSessionTimestamp(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const hours = String(parsed.getHours()).padStart(2, "0");
+  const minutes = String(parsed.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+function formatSessionListTitle(session: ForgeSession): string {
+  const goalSummary = session.goal?.summary.trim() || session.id;
+  return `${formatSessionTimestamp(session.updatedAt)} - ${goalSummary}`;
+}
+
 export function createForgeSessionStorage(deps: ForgeSessionStorageDeps) {
   const {
     ensureRuntimeDirectory,
@@ -55,10 +73,17 @@ export function createForgeSessionStorage(deps: ForgeSessionStorageDeps) {
     return sessionsDir;
   }
 
-  async function createSession(runtimePaths: unknown): Promise<ForgeSession> {
+  async function createSession(
+    runtimePaths: unknown,
+    options: {
+      persist?: boolean;
+    } = {}
+  ): Promise<ForgeSession> {
     const sessionId = createId("forge-session");
     const session = createEmptyForgeSession(sessionId);
-    await saveSession(runtimePaths, session);
+    if (options.persist !== false) {
+      await saveSession(runtimePaths, session);
+    }
     return session;
   }
 
@@ -103,7 +128,7 @@ export function createForgeSessionStorage(deps: ForgeSessionStorageDeps) {
             return {
               id: loaded.id,
               updatedAt: loaded.updatedAt,
-              title: loaded.goal?.summary || loaded.id,
+              title: formatSessionListTitle(loaded),
             } satisfies ForgeSessionListItem;
           })
       )

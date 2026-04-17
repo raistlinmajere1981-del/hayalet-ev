@@ -22,6 +22,45 @@ test("forge-room handoff export blocks exports until a selected synthesis exists
   assert.throws(() => handoffExport.buildHandoffPackage(session), /select a synthesis/i);
 });
 
+test("forge-room handoff export requires a target room before export", () => {
+  const handoffExport = createForgeHandoffExport();
+  const session = createEmptyForgeSession("forge-session-target-missing");
+  session.goal = {
+    id: "forge-goal-target-missing",
+    summary: "Generic handoff integration",
+    brief: "Prepare the first handoff package.",
+    constraints: ["Keep the export boundary local."],
+    acceptanceCriteria: ["Downstream room can load the exported handoff package."],
+    status: "draft-ready",
+    targetRoomId: "",
+    createdAt: "2026-04-15T00:00:00.000Z",
+    updatedAt: "2026-04-15T00:00:00.000Z",
+  };
+  session.syntheses = [
+    {
+      id: "forge-synthesis-target-missing",
+      summary: "Selected synthesis",
+      body: "Keep the first handoff narrow and file-backed.",
+      decisionTrace: ["Local export path selected for the first handoff."],
+      provenance: null,
+      sourceTaskIds: [],
+      selectedResponseIds: [],
+      unresolvedConflictIds: [],
+      acceptanceCriteria: ["Downstream room can load the exported handoff package."],
+      openQuestions: [],
+      status: "selected",
+      createdAt: "2026-04-15T00:00:00.000Z",
+    },
+  ];
+  session.selectedSynthesisId = "forge-synthesis-target-missing";
+
+  const summary = handoffExport.buildExportReadySummary(session);
+
+  assert.equal(summary.exportReady, false);
+  assert.equal(summary.missingRequirements[0], "Select a target room");
+  assert.throws(() => handoffExport.buildHandoffPackage(session), /target room/i);
+});
+
 test("forge-room handoff export builds the Repair Room contract from the approved session state", () => {
   const handoffExport = createForgeHandoffExport();
   const session = createEmptyForgeSession("forge-session-2");

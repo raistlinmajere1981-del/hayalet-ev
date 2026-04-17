@@ -7,49 +7,58 @@ import { createForgeUiRequestRuntime } from "../shared/ui/request-runtime.js";
 import {
   createInitialForgeUiState,
   type ForgeUiState,
+  type ForgeWorkbenchStageId,
   type ForgeWorkbenchUiFlowState,
   type ForgeWorkbenchUiSurface,
 } from "../shared/ui/state.js";
 import {
   createDefaultForgeOperatorProfile,
+  isForgeOperatorPreferenceKey,
   isForgeOperatorEquipmentStatus,
   isForgeOperatorSkillLevel,
+  normalizeForgeLegacySelectionKeys,
+  normalizeForgeSessionContextSelectionKeys,
   type ForgeOperatorProfile,
   type ForgeSessionContextSelection,
 } from "../shared/types/index.js";
 import { renderApprovedTasksPanel } from "./panels/approved-tasks-panel.js";
 import { renderCoordinatorPanel } from "./panels/coordinator-panel.js";
 import { renderDraftBreakdownPanel } from "./panels/draft-breakdown-panel.js";
-import { renderGoalInputPanel } from "./panels/goal-input-panel.js";
 import {
   renderOperatorProfileManager,
   type ForgeProfileEditorDraftView,
 } from "./panels/operator-profile-manager-panel.js";
 import { renderResponsesPanel } from "./panels/responses-panel.js";
 import { renderSynthesisPanel } from "./panels/synthesis-panel.js";
+import {
+  FORGE_NEW_SESSION_PICKER_VALUE,
+  renderWorkbenchStagePanel,
+} from "./panels/workbench-stage-panel.js";
 
 type ForgeUiWindow = Window & {
   roomAPI?: Window["roomAPI"];
 };
 
 type ForgeLocalViewState = {
+  activeStageId: ForgeWorkbenchStageId;
   advancedCapsulesOpen: boolean;
   advancedDraftOpen: boolean;
   expandedResponseIds: Set<string>;
   expandedSynthesisIds: Set<string>;
-  goalDetailsOpen: boolean;
   goalDraft: ForgeGoalDraftState | null;
   goalDraftDirty: boolean;
   guidedSurface: ForgeWorkbenchUiSurface | null;
   operatorProfileDraft: ForgeOperatorProfile | null;
   operatorProfileDraftDirty: boolean;
   operatorProfileDraftSourceFingerprint: string | null;
+  pendingStageId: ForgeWorkbenchStageId | null;
   profileEditorDraft: ForgeProfileEditorDraftView;
   profileEditorOpen: boolean;
   runConditionComposerOpen: boolean;
   runConditionComposerValue: string;
   runOverrideDraft: ForgeRunOverrideDraftState | null;
   runOverrideDraftDirty: boolean;
+  selectedSavedSessionId: string | null;
   sessionContextDraft: ForgeSessionContextSelection | null;
 };
 
@@ -69,6 +78,7 @@ type ForgeUiFlowModel = {
 };
 
 type ForgePanelMode = "active" | "monitor" | "locked";
+type ForgeStageVisualState = "active" | "available" | "complete" | "locked";
 
 type ForgePanelModeMap = Record<ForgeWorkbenchUiSurface, ForgePanelMode>;
 type ForgeTextParams = Record<string, number | string>;
@@ -93,33 +103,54 @@ type ForgeRunOverrideDraftState = {
   temporaryConditions: string[];
 };
 
+type ForgeFocusSnapshot = {
+  id: string;
+  selectionDirection: "backward" | "forward" | "none" | null;
+  selectionEnd: number | null;
+  selectionStart: number | null;
+};
+
+type ForgePersistentShell = {
+  coordinator: HTMLElement;
+  overlay: HTMLElement | null;
+  outputColumn: HTMLElement;
+  planColumn: HTMLElement;
+  responseColumn: HTMLElement;
+  shell: HTMLDivElement;
+  statusBar: HTMLElement;
+  workbench: HTMLElement;
+};
+
 export function createForgeRoomUiRuntime() {
   const state: ForgeUiState = createInitialForgeUiState();
   const requestRuntime = createForgeUiRequestRuntime();
   const windowRef = window as ForgeUiWindow;
   const documentRef = document;
   const viewState: ForgeLocalViewState = {
+    activeStageId: "session",
     advancedCapsulesOpen: false,
     advancedDraftOpen: false,
     expandedResponseIds: new Set<string>(),
     expandedSynthesisIds: new Set<string>(),
-    goalDetailsOpen: false,
     goalDraft: null,
     goalDraftDirty: false,
     guidedSurface: null,
     operatorProfileDraft: null,
     operatorProfileDraftDirty: false,
     operatorProfileDraftSourceFingerprint: null,
+    pendingStageId: null,
     profileEditorDraft: null,
     profileEditorOpen: false,
     runConditionComposerOpen: false,
     runConditionComposerValue: "",
     runOverrideDraft: null,
     runOverrideDraftDirty: false,
+    selectedSavedSessionId: null,
     sessionContextDraft: null,
   };
   let lastRenderSignature: string | null = null;
   let localUiVersion = 0;
+  let persistentShell: ForgePersistentShell | null = null;
 
   function createElement<K extends keyof HTMLElementTagNameMap>(
     tagName: K,
@@ -140,6 +171,157 @@ export function createForgeRoomUiRuntime() {
     return value !== null && typeof value === "object" && Array.isArray(value) === false
       ? (value as Record<string, unknown>)
       : {};
+  }
+
+  function syncElement(target: HTMLElement, source: HTMLElement): void {
+    if (
+      typeof (source as HTMLElement & { attributes?: unknown }).attributes === "undefined" ||
+      typeof (target as HTMLElement & { attributes?: unknown }).attributes === "undefined"
+    ) {
+      Object.keys(target.dataset).forEach((key) => {
+        delete target.dataset[key];
+      });
+      Object.entries(source.dataset).forEach(([key, value]) => {
+        target.dataset[key] = value;
+      });
+      target.className = source.className;
+      target.id = source.id;
+      target.textContent = source.textContent;
+      const sourceChildren = (
+        source as HTMLElement & {
+          children?: HTMLElement[];
+        }
+      ).children;
+      target.replaceChildren(...(Array.isArray(sourceChildren) ? sourceChildren : []));
+      return;
+    }
+
+    const sourceAttributes = new Map<string, string>();
+    Array.from(source.attributes).forEach((attribute) => {
+      sourceAttributes.set(attribute.name, attribute.value);
+    });
+    Array.from(target.attributes).forEach((attribute) => {
+      if (!sourceAttributes.has(attribute.name)) {
+        target.removeAttribute(attribute.name);
+      }
+    });
+    sourceAttributes.forEach((value, name) => {
+      target.setAttribute(name, value);
+    });
+    target.replaceChildren(...Array.from(source.childNodes));
+  }
+
+  function ensurePersistentShell(mount: HTMLElement): ForgePersistentShell {
+    if (
+      persistentShell !== null &&
+      persistentShell.shell.isConnected &&
+      persistentShell.shell.parentElement === mount
+    ) {
+      return persistentShell;
+    }
+
+    const shell = createElement("div", "forge-shell");
+    const statusBar = createElement("header", "forge-statusbar");
+    const workbench = createElement("section", "forge-workbench");
+    const planColumn = createElement("section", "forge-column forge-column--plan");
+    const responseColumn = createElement("section", "forge-column forge-column--responses");
+    const outputColumn = createElement("section", "forge-column forge-column--output");
+    const coordinator = createElement("section", "forge-coordinator-strip");
+
+    workbench.append(planColumn, responseColumn, outputColumn);
+    shell.append(statusBar, workbench, coordinator);
+    mount.replaceChildren(shell);
+
+    persistentShell = {
+      coordinator,
+      overlay: null,
+      outputColumn,
+      planColumn,
+      responseColumn,
+      shell,
+      statusBar,
+      workbench,
+    };
+    return persistentShell;
+  }
+
+  function setOptionalDataAttribute(
+    element: HTMLElement,
+    key: string,
+    value: string | null | undefined
+  ): void {
+    if (value === null || value === undefined || value === "") {
+      delete element.dataset[key];
+      return;
+    }
+    element.dataset[key] = value;
+  }
+
+  function isFocusableElement(value: unknown): value is HTMLElement {
+    if (typeof HTMLElement !== "undefined") {
+      return value instanceof HTMLElement;
+    }
+    return value !== null && typeof value === "object" && "id" in (value as Record<string, unknown>);
+  }
+
+  function isTextRangeElement(value: unknown): value is HTMLInputElement | HTMLTextAreaElement {
+    if (typeof HTMLInputElement !== "undefined" && value instanceof HTMLInputElement) {
+      return true;
+    }
+    if (typeof HTMLTextAreaElement !== "undefined" && value instanceof HTMLTextAreaElement) {
+      return true;
+    }
+    return false;
+  }
+
+  function captureFocusSnapshot(): ForgeFocusSnapshot | null {
+    const activeElement = documentRef.activeElement;
+    if (!isFocusableElement(activeElement) || activeElement.id.trim() === "") {
+      return null;
+    }
+
+    if (isTextRangeElement(activeElement)) {
+      return {
+        id: activeElement.id,
+        selectionDirection: activeElement.selectionDirection,
+        selectionEnd: activeElement.selectionEnd,
+        selectionStart: activeElement.selectionStart,
+      };
+    }
+
+    return {
+      id: activeElement.id,
+      selectionDirection: null,
+      selectionEnd: null,
+      selectionStart: null,
+    };
+  }
+
+  function restoreFocusSnapshot(snapshot: ForgeFocusSnapshot | null): void {
+    if (snapshot === null) {
+      return;
+    }
+    const nextElement = documentRef.getElementById(snapshot.id);
+    if (!isFocusableElement(nextElement)) {
+      return;
+    }
+
+    nextElement.focus({ preventScroll: true });
+    if (
+      isTextRangeElement(nextElement) &&
+      snapshot.selectionStart !== null &&
+      snapshot.selectionEnd !== null
+    ) {
+      try {
+        nextElement.setSelectionRange(
+          snapshot.selectionStart,
+          snapshot.selectionEnd,
+          snapshot.selectionDirection ?? undefined
+        );
+      } catch {
+        // Ignore selection restore failures for controls that do not support ranges.
+      }
+    }
   }
 
   function applyTextParams(template: string, params?: ForgeTextParams): string {
@@ -256,9 +438,11 @@ export function createForgeRoomUiRuntime() {
   function cloneSessionContextSelection(
     selection: ForgeSessionContextSelection
   ): ForgeSessionContextSelection {
+    const normalizedSelection = normalizeSessionContextSelection(selection);
     return {
-      skillKeys: [...selection.skillKeys],
-      equipmentKeys: [...selection.equipmentKeys],
+      skillKeys: [...normalizedSelection.skillKeys],
+      equipmentKeys: [...normalizedSelection.equipmentKeys],
+      preferenceKeys: [...normalizedSelection.preferenceKeys],
     };
   }
 
@@ -270,9 +454,20 @@ export function createForgeRoomUiRuntime() {
   }
 
   function cloneOperatorProfile(profile: ForgeOperatorProfile): ForgeOperatorProfile {
+    const preferences = (
+      profile as ForgeOperatorProfile & {
+        preferences?: Partial<Record<"mode" | "riskTolerance", string>>;
+      }
+    ).preferences ?? {};
     return {
       schemaVersion: profile.schemaVersion,
       updatedAt: profile.updatedAt,
+      preferences: {
+        ...(preferences.mode ? { mode: preferences.mode } : {}),
+        ...(preferences.riskTolerance
+          ? { riskTolerance: preferences.riskTolerance }
+          : {}),
+      },
       skills: profile.skills.map((record) => ({
         skillKey: record.skillKey,
         label: record.label,
@@ -297,6 +492,122 @@ export function createForgeRoomUiRuntime() {
     return viewState.sessionContextDraft ?? state.snapshot.sessionContextSelection;
   }
 
+  function currentSessionPickerValue(): string {
+    const savedSessionIds = state.snapshot.sessionList.map((session) => session.id);
+    if (
+      viewState.selectedSavedSessionId === FORGE_NEW_SESSION_PICKER_VALUE
+    ) {
+      return FORGE_NEW_SESSION_PICKER_VALUE;
+    }
+    if (
+      viewState.selectedSavedSessionId !== null &&
+      savedSessionIds.includes(viewState.selectedSavedSessionId)
+    ) {
+      return viewState.selectedSavedSessionId;
+    }
+    return FORGE_NEW_SESSION_PICKER_VALUE;
+  }
+
+  function currentSelectedSavedSessionId(): string | null {
+    const selectedValue = currentSessionPickerValue();
+    return selectedValue === FORGE_NEW_SESSION_PICKER_VALUE ? null : selectedValue;
+  }
+
+  function isGoalDraftReadyForAdvance(draft: ForgeGoalDraftState): boolean {
+    return (
+      draft.summary.trim() !== "" &&
+      draft.brief.trim() !== "" &&
+      draft.constraints.length > 0 &&
+      draft.targetRoomId.trim() !== ""
+    );
+  }
+
+  function findElementByDatasetValue(
+    root: ParentNode,
+    selector: string,
+    datasetKey: string,
+    value: string
+  ): HTMLElement | null {
+    return (
+      Array.from(root.querySelectorAll<HTMLElement>(selector)).find(
+        (element) => element.dataset[datasetKey] === value
+      ) ?? null
+    );
+  }
+
+  function renderStageStatusText(stageState: ForgeStageVisualState): string {
+    switch (stageState) {
+      case "active":
+        return text(["workbench", "stageTower", "status", "active"], "Active");
+      case "complete":
+        return text(["workbench", "stageTower", "status", "complete"], "Complete");
+      case "available":
+        return text(["workbench", "stageTower", "status", "available"], "Ready");
+      case "locked":
+      default:
+        return text(["workbench", "stageTower", "status", "locked"], "Locked");
+    }
+  }
+
+  function syncGoalDraftControls(root: HTMLElement): void {
+    const goalDraftReadyForAdvance = isGoalDraftReadyForAdvance(currentGoalDraft());
+    const sessionStageState: ForgeStageVisualState =
+      viewState.activeStageId === "session"
+        ? "active"
+        : goalDraftReadyForAdvance
+          ? "complete"
+          : "available";
+    const operatorStageState: ForgeStageVisualState =
+      viewState.activeStageId === "operator"
+        ? "active"
+        : goalDraftReadyForAdvance
+          ? "complete"
+          : "locked";
+    const preflightStageState: ForgeStageVisualState =
+      viewState.activeStageId === "preflight"
+        ? "active"
+        : goalDraftReadyForAdvance
+          ? "complete"
+          : "locked";
+
+    const stageStates: Array<{
+      stageId: "operator" | "preflight" | "session";
+      stageState: ForgeStageVisualState;
+    }> = [
+      { stageId: "session", stageState: sessionStageState },
+      { stageId: "operator", stageState: operatorStageState },
+      { stageId: "preflight", stageState: preflightStageState },
+    ];
+
+    stageStates.forEach(({ stageId, stageState }) => {
+      const stage = findElementByDatasetValue(root, "[data-stage-id]", "stageId", stageId);
+      if (stage !== null) {
+        stage.dataset["state"] = stageState;
+      }
+      const badge = findElementByDatasetValue(
+        root,
+        "[data-forge-stage-badge]",
+        "forgeStageBadge",
+        stageId
+      );
+      if (badge !== null) {
+        badge.textContent = renderStageStatusText(stageState);
+      }
+    });
+
+    const nextStageButton = Array.from(
+      root.querySelectorAll<HTMLButtonElement>("[data-forge-action='open-stage']")
+    ).find((element) => element.dataset["forgeActionValue"] === "operator");
+    if (nextStageButton) {
+      nextStageButton.disabled = !goalDraftReadyForAdvance;
+    }
+
+    const saveGoalButton = root.querySelector<HTMLButtonElement>("[data-forge-action='save-goal']");
+    if (saveGoalButton !== null) {
+      saveGoalButton.disabled = !goalDraftReadyForAdvance;
+    }
+  }
+
   function goalSnapshotFingerprint(): string {
     return JSON.stringify({
       goalId: state.snapshot.currentGoal?.id ?? null,
@@ -304,7 +615,7 @@ export function createForgeRoomUiRuntime() {
       summary: state.snapshot.currentGoal?.summary ?? "",
       brief: state.snapshot.currentGoal?.brief ?? "",
       constraints: state.snapshot.currentGoal?.constraints ?? [],
-      targetRoomId: state.snapshot.currentGoal?.targetRoomId ?? "repair-room",
+      targetRoomId: state.snapshot.currentGoal?.targetRoomId ?? "",
     });
   }
 
@@ -316,7 +627,6 @@ export function createForgeRoomUiRuntime() {
     const runOverride = state.snapshot.runOverride;
     return JSON.stringify({
       sessionId: state.snapshot.activeSessionId,
-      enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
       mode: runOverride?.mode ?? null,
       notes: runOverride?.notes ?? "",
       riskTolerance: runOverride?.riskTolerance ?? null,
@@ -332,7 +642,7 @@ export function createForgeRoomUiRuntime() {
       sourceGoalId: state.snapshot.currentGoal?.id ?? null,
       sourceSessionId: state.snapshot.activeSessionId,
       summary: state.snapshot.currentGoal?.summary ?? "",
-      targetRoomId: state.snapshot.currentGoal?.targetRoomId ?? "repair-room",
+      targetRoomId: state.snapshot.currentGoal?.targetRoomId ?? "",
     };
   }
 
@@ -463,34 +773,57 @@ export function createForgeRoomUiRuntime() {
     };
   }
 
-  function openGoalDetails(): void {
-    viewState.goalDetailsOpen = true;
-    bumpLocalUiVersion();
-    render();
-  }
-
-  function closeGoalDetails(): void {
-    viewState.goalDetailsOpen = false;
-    bumpLocalUiVersion();
-    render();
-  }
-
   function sortUniqueKeys(values: string[]): string[] {
     return Array.from(new Set(values)).sort((left, right) => left.localeCompare(right));
+  }
+
+  function normalizeSessionContextSelection(
+    selection: ForgeSessionContextSelection
+  ): ForgeSessionContextSelection {
+    const legacySelection = selection as ForgeSessionContextSelection & {
+      preferences?: unknown;
+      skill?: unknown;
+      tools?: unknown;
+    };
+    const normalized = normalizeForgeSessionContextSelectionKeys(selection);
+    return {
+      skillKeys: sortUniqueKeys([
+        ...normalized.skillKeys,
+        ...normalizeForgeLegacySelectionKeys(legacySelection.skill),
+      ]),
+      equipmentKeys: sortUniqueKeys([
+        ...normalized.equipmentKeys,
+        ...normalizeForgeLegacySelectionKeys(legacySelection.tools),
+      ]),
+      preferenceKeys: sortUniqueKeys([
+        ...normalized.preferenceKeys,
+        ...normalizeForgeLegacySelectionKeys(legacySelection.preferences),
+      ]).filter((key): key is ForgeSessionContextSelection["preferenceKeys"][number] =>
+        isForgeOperatorPreferenceKey(key)
+      ),
+    };
   }
 
   function sortSessionContextSelection(
     selection: ForgeSessionContextSelection
   ): ForgeSessionContextSelection {
-    return {
-      skillKeys: sortUniqueKeys(selection.skillKeys),
-      equipmentKeys: sortUniqueKeys(selection.equipmentKeys),
-    };
+    return normalizeSessionContextSelection(selection);
   }
 
   function sortOperatorProfileDraft(profile: ForgeOperatorProfile): ForgeOperatorProfile {
+    const preferences = (
+      profile as ForgeOperatorProfile & {
+        preferences?: Partial<Record<"mode" | "riskTolerance", string>>;
+      }
+    ).preferences ?? {};
     return {
       ...profile,
+      preferences: {
+        ...(preferences.mode ? { mode: preferences.mode } : {}),
+        ...(preferences.riskTolerance
+          ? { riskTolerance: preferences.riskTolerance }
+          : {}),
+      },
       skills: profile.skills
         .map((record) => ({
           skillKey: record.skillKey,
@@ -698,6 +1031,11 @@ export function createForgeRoomUiRuntime() {
       return;
     }
     const operatorProfileDraft = currentOperatorProfileDraft();
+    const draftPreferences = (
+      operatorProfileDraft as ForgeOperatorProfile & {
+        preferences?: Partial<Record<"mode" | "riskTolerance", string>>;
+      }
+    ).preferences ?? {};
     const sent = requestRuntime.updateOperatorProfile({
       skills: operatorProfileDraft.skills.map((record) => ({
         skillKey: record.skillKey,
@@ -712,6 +1050,10 @@ export function createForgeRoomUiRuntime() {
         ...(record.brandModel ? { brandModel: record.brandModel } : {}),
         ...(record.notes ? { notes: record.notes } : {}),
       })),
+      preferences: {
+        ...(draftPreferences.mode ? { mode: draftPreferences.mode } : {}),
+        ...(draftPreferences.riskTolerance ? { riskTolerance: draftPreferences.riskTolerance } : {}),
+      },
     });
     if (sent === true) {
       state.pendingCommand = "ForgeRoomUpdateOperatorProfile";
@@ -762,6 +1104,52 @@ export function createForgeRoomUiRuntime() {
       return "SESSION_CREATED";
     }
     return "IDLE";
+  }
+
+  function isPreflightReadyForDraft(): boolean {
+    if (state.snapshot.activeSessionId === null) {
+      return false;
+    }
+    if (!hasGoalSummary() || viewState.goalDraftDirty) {
+      return false;
+    }
+    if (
+      viewState.sessionContextDraft !== null &&
+      sessionContextSelectionEquals(
+        viewState.sessionContextDraft,
+        state.snapshot.sessionContextSelection
+      ) === false
+    ) {
+      return false;
+    }
+    return state.snapshot.preflight.status === "fresh" || state.snapshot.preflight.status === "warning";
+  }
+
+  function issueCommand(commandLabel: string, send: () => boolean): boolean {
+    viewState.guidedSurface = null;
+    const sent = send();
+    if (sent === true) {
+      state.pendingCommand = commandLabel;
+    } else {
+      state.lastCommandResult = {
+        command: commandLabel,
+        success: false,
+        message: "roomAPI.sendCommand returned false.",
+      };
+      state.pendingCommand = null;
+    }
+    render();
+    return sent;
+  }
+
+  function isWorkbenchStageId(value: string | undefined): value is ForgeWorkbenchStageId {
+    return (
+      value === "session" ||
+      value === "operator" ||
+      value === "preflight" ||
+      value === "tracking" ||
+      value === "draft"
+    );
   }
 
   function toUiFlowLabel(flowState: ForgeWorkbenchUiFlowState): string {
@@ -844,13 +1232,6 @@ export function createForgeRoomUiRuntime() {
     }
   }
 
-  function describeDraftStep(): string | null {
-    if (hasGoalSummary() !== true) {
-      return text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: GOAL");
-    }
-    return null;
-  }
-
   function describeApprovalStep(): string | null {
     if (hasDraftTasks() !== true) {
       return text(["workbench", "guards", "requiresDraftTasks"], "REQUIRES: DRAFT TASKS");
@@ -891,10 +1272,10 @@ export function createForgeRoomUiRuntime() {
     if (firstRequirement === "Define a goal") {
       return text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: SAVED GOAL");
     }
-    if (firstRequirement === "Target room must be repair-room") {
+    if (firstRequirement === "Select a target room") {
       return text(
-        ["workbench", "guards", "requiresTargetRepairRoom"],
-        "REQUIRES: TARGET REPAIR ROOM"
+        ["workbench", "guards", "requiresTargetRoom"],
+        "REQUIRES: TARGET ROOM"
       );
     }
     if (firstRequirement === "Select a synthesis") {
@@ -921,14 +1302,18 @@ export function createForgeRoomUiRuntime() {
   }
 
   function derivePrimaryAction(flow: ForgeUiFlowModel): ForgePrimaryAction {
+    const goalDraftReadyForAdvance = isGoalDraftReadyForAdvance(currentGoalDraft());
     const nextAction: ForgePrimaryAction = (() => {
       switch (flow.state) {
         case "IDLE":
           return {
-            label: text(["workbench", "primaryAction", "saveGoal"], "SAVE GOAL -> START"),
-            description: text(["workbench", "primaryAction", "saveGoalLocked"], "REQUIRES: GOAL"),
+            label: text(["workbench", "goalPanel", "sessionManager", "newSession"], "New session"),
+            description: text(
+              ["workbench", "stageTower", "primaryAction", "session"],
+              "STEP 1: CREATE OR LOAD A SESSION"
+            ),
             mode: "command" as const,
-            commandAction: "save-goal",
+            commandAction: "create-session",
           };
         case "SESSION_CREATED":
           return {
@@ -938,11 +1323,33 @@ export function createForgeRoomUiRuntime() {
             commandAction: "save-goal",
           };
         case "GOAL_DEFINED":
+          if (state.snapshot.activeSessionId === null) {
+            return {
+              label: text(["workbench", "goalPanel", "sessionManager", "newSession"], "New session"),
+              description: text(
+                ["workbench", "stageTower", "primaryAction", "session"],
+                "STEP 1: CREATE OR LOAD A SESSION"
+              ),
+              mode: "command" as const,
+              commandAction: "create-session",
+            };
+          }
+          if (!isPreflightReadyForDraft()) {
+            return {
+              label: text(["workbench", "goalPanel", "preflight", "action"], "Run Preflight"),
+              description: text(
+                ["workbench", "stageTower", "primaryAction", "preflight"],
+                "STEP 4: VALIDATE RUN SETTINGS"
+              ),
+              mode: "command" as const,
+              commandAction: "run-preflight",
+            };
+          }
           return {
             label: text(["workbench", "primaryAction", "generateDraft"], "Generate draft"),
             description: text(
-              ["workbench", "primaryAction", "generateDraftRequired"],
-              "NEXT: GENERATE DRAFT"
+              ["workbench", "stageTower", "primaryAction", "draft"],
+              "STEP 5: GENERATE THE FIRST DRAFT"
             ),
             mode: "command" as const,
             commandAction: "generate-draft",
@@ -1072,12 +1479,17 @@ export function createForgeRoomUiRuntime() {
         disabled: true,
       };
     }
+    if (nextAction.commandAction === "save-goal" && goalDraftReadyForAdvance === false) {
+      return {
+        ...nextAction,
+        disabled: true,
+      };
+    }
     return nextAction;
   }
 
   function renderStatusBar(flow: ForgeUiFlowModel): HTMLElement {
     const bar = createElement("header", "forge-statusbar");
-    const primaryAction = derivePrimaryAction(flow);
     bar.dataset["forgeUiState"] = flow.state;
 
     const identity = createElement("div", "forge-statusbar__identity");
@@ -1128,30 +1540,7 @@ export function createForgeRoomUiRuntime() {
       stats.append(chip);
     });
 
-    const guidance = createElement("div", "forge-statusbar__guidance");
-    const actionButton = createElement(
-      "button",
-      "forge-button forge-button--primary forge-statusbar__action",
-      primaryAction.label
-    );
-    actionButton.disabled = primaryAction.disabled === true;
-    if (primaryAction.mode === "command" && primaryAction.commandAction) {
-      actionButton.dataset["forgeAction"] = primaryAction.commandAction;
-    }
-    if (primaryAction.mode === "guide" && primaryAction.guidedSurface) {
-      actionButton.dataset["forgeGuideSurface"] = primaryAction.guidedSurface;
-    }
-    guidance.append(
-      createElement(
-        "p",
-        "forge-statusbar__label",
-        text(["workbench", "statusBar", "requiredAction"], "Required action")
-      ),
-      actionButton,
-      createElement("p", "forge-statusbar__note", primaryAction.description)
-    );
-
-    bar.append(identity, stats, guidance);
+    bar.append(identity, stats);
     return bar;
   }
 
@@ -1160,6 +1549,7 @@ export function createForgeRoomUiRuntime() {
     if (mount === null) {
       return;
     }
+    const shell = ensurePersistentShell(mount);
     documentRef.documentElement.lang =
       typeof state.context.locale === "string" && state.context.locale.trim() !== ""
         ? state.context.locale
@@ -1169,77 +1559,77 @@ export function createForgeRoomUiRuntime() {
       "Forge Workbench"
     )}`;
     const renderSignature = buildRenderSignature();
-    if (renderSignature === lastRenderSignature && mount.childElementCount > 0) {
+    if (renderSignature === lastRenderSignature && shell.statusBar.childElementCount > 0) {
       return;
     }
+    const focusSnapshot = captureFocusSnapshot();
 
-    const shell = documentRef.createElement("div");
-    shell.className = "forge-shell";
     const flow = deriveUiFlowModel();
     const panelModes = derivePanelModes(flow.state);
     const goalDraft = currentGoalDraft();
     const operatorProfileDraft = currentOperatorProfileDraft();
     const runOverrideDraft = currentRunOverrideDraft();
-    shell.dataset["forgeUiState"] = flow.state;
-
-    const workbench = createElement("section", "forge-workbench");
+    shell.shell.dataset["forgeUiState"] = flow.state;
     const guidedSurface = viewState.guidedSurface ?? flow.surface;
     const flowLabel = toUiFlowLabel(flow.state);
 
-    const planColumn = createElement("section", "forge-column forge-column--plan");
-    planColumn.dataset["panelMode"] = panelModes.goal;
-    if (guidedSurface === "goal" && panelModes.goal !== "locked") {
-      planColumn.dataset["guided"] = "true";
-    }
-    const goalPanel = renderGoalInputPanel(documentRef, state, text, {
-      draftBlockedReason: describeDraftStep(),
-      flowLabel,
-      flowState: flow.state,
-      goalDetailsOpen: viewState.goalDetailsOpen,
-      goalDraft,
-      runConditionComposerOpen: viewState.runConditionComposerOpen,
-      runConditionComposerValue: viewState.runConditionComposerValue,
-      runOverrideDraft,
-      sessionContextDirty:
-        viewState.sessionContextDraft !== null &&
-        sessionContextSelectionEquals(
-          viewState.sessionContextDraft,
-          state.snapshot.sessionContextSelection
-        ) === false,
-      sessionContextSelection: currentSessionContextSelection(),
-    });
-    setPanelBadge(goalPanel, panelModes.goal);
-    const planSecondaryPanel = hasApprovedTasks()
+    const sessionContextDirty =
+      viewState.sessionContextDraft !== null &&
+      sessionContextSelectionEquals(
+        viewState.sessionContextDraft,
+        state.snapshot.sessionContextSelection
+      ) === false;
+    const draftSurfacePanel = hasApprovedTasks()
       ? renderApprovedTasksPanel(documentRef, state, text, {
           advancedCapsulesOpen: viewState.advancedCapsulesOpen,
           dispatchBlockedReason: describeDispatchStep(),
           flowState: flow.state,
         })
-      : renderDraftBreakdownPanel(documentRef, state, text, {
+      : hasDraftTasks()
+        ? renderDraftBreakdownPanel(documentRef, state, text, {
           approvalBlockedReason: describeApprovalStep(),
           flowState: flow.state,
           rawEditorOpen: viewState.advancedDraftOpen,
-        });
-    setPanelBadge(planSecondaryPanel, panelModes.goal);
-    planColumn.append(goalPanel, planSecondaryPanel);
+        })
+        : null;
+    const goalPanel = renderWorkbenchStagePanel(documentRef, state, text, {
+      activeStageId: viewState.activeStageId,
+      draftSurfacePanel,
+      flowLabel,
+      flowState: flow.state,
+      goalDraft,
+      goalDraftDirty: viewState.goalDraftDirty,
+      runConditionComposerOpen: viewState.runConditionComposerOpen,
+      runConditionComposerValue: viewState.runConditionComposerValue,
+      runOverrideDraft,
+      selectedSessionId: currentSessionPickerValue(),
+      sessionContextDirty,
+      sessionContextSelection: currentSessionContextSelection(),
+    });
+    setPanelBadge(goalPanel, panelModes.goal);
+    shell.planColumn.className = "forge-column forge-column--plan";
+    setOptionalDataAttribute(shell.planColumn, "panelMode", panelModes.goal);
+    setOptionalDataAttribute(
+      shell.planColumn,
+      "guided",
+      guidedSurface === "goal" && panelModes.goal !== "locked" ? "true" : null
+    );
+    shell.planColumn.replaceChildren(goalPanel);
 
-    const responseColumn = createElement("section", "forge-column forge-column--responses");
-    responseColumn.dataset["panelMode"] = panelModes.responses;
-    if (guidedSurface === "responses" && panelModes.responses !== "locked") {
-      responseColumn.dataset["guided"] = "true";
-    }
     const responsesPanel = renderResponsesPanel(documentRef, state, text, {
       expandedResponseIds: viewState.expandedResponseIds,
       flowState: flow.state,
     });
     setPanelBadge(responsesPanel, panelModes.responses);
-    responseColumn.append(responsesPanel);
+    shell.responseColumn.className = "forge-column forge-column--responses";
+    setOptionalDataAttribute(shell.responseColumn, "panelMode", panelModes.responses);
+    setOptionalDataAttribute(
+      shell.responseColumn,
+      "guided",
+      guidedSurface === "responses" && panelModes.responses !== "locked" ? "true" : null
+    );
+    shell.responseColumn.replaceChildren(responsesPanel);
 
-    const outputColumn = createElement("section", "forge-column forge-column--output");
-    outputColumn.dataset["panelMode"] = panelModes.synthesis;
-    if (guidedSurface === "synthesis" && panelModes.synthesis !== "locked") {
-      outputColumn.dataset["guided"] = "true";
-    }
     const synthesisPanel = renderSynthesisPanel(documentRef, state, text, {
       expandedSynthesisIds: viewState.expandedSynthesisIds,
       exportBlockedReason: describeHandoffStep(),
@@ -1247,22 +1637,36 @@ export function createForgeRoomUiRuntime() {
       synthesisBlockedReason: describeSynthesisStep(),
     });
     setPanelBadge(synthesisPanel, panelModes.synthesis);
-    outputColumn.append(synthesisPanel);
+    shell.outputColumn.className = "forge-column forge-column--output";
+    setOptionalDataAttribute(shell.outputColumn, "panelMode", panelModes.synthesis);
+    setOptionalDataAttribute(
+      shell.outputColumn,
+      "guided",
+      guidedSurface === "synthesis" && panelModes.synthesis !== "locked" ? "true" : null
+    );
+    shell.outputColumn.replaceChildren(synthesisPanel);
 
-    workbench.append(planColumn, responseColumn, outputColumn);
-    shell.append(renderStatusBar(flow), workbench);
+    syncElement(shell.statusBar, renderStatusBar(flow));
     if (viewState.profileEditorOpen) {
-      shell.append(
-        renderOperatorProfileManager(documentRef, text, {
-          dirty: viewState.operatorProfileDraftDirty,
-          draft: operatorProfileDraft,
-          editorDraft: viewState.profileEditorDraft,
-          userAvatar: state.context.userAvatar,
-          userNickname: state.context.userNickname,
-        })
-      );
+      const nextOverlay = renderOperatorProfileManager(documentRef, text, {
+        dirty: viewState.operatorProfileDraftDirty,
+        draft: operatorProfileDraft,
+        editorDraft: viewState.profileEditorDraft,
+        userAvatar: state.context.userAvatar,
+        userNickname: state.context.userNickname,
+      });
+      if (shell.overlay === null) {
+        shell.shell.insertBefore(nextOverlay, shell.coordinator);
+      } else {
+        shell.shell.replaceChild(nextOverlay, shell.overlay);
+      }
+      shell.overlay = nextOverlay;
+    } else if (shell.overlay !== null) {
+      shell.overlay.remove();
+      shell.overlay = null;
     }
-    shell.append(
+    syncElement(
+      shell.coordinator,
       renderCoordinatorPanel(documentRef, state, text, {
         flowLabel,
         flowState: flow.state,
@@ -1274,8 +1678,8 @@ export function createForgeRoomUiRuntime() {
         note: derivePrimaryAction(flow).description,
       })
     );
-    mount.replaceChildren(shell);
-    bindActions(shell);
+    bindActions(shell.shell);
+    restoreFocusSnapshot(focusSnapshot);
     lastRenderSignature = renderSignature;
   }
 
@@ -1315,22 +1719,6 @@ export function createForgeRoomUiRuntime() {
   }
 
   function bindActions(root: HTMLElement) {
-    function issueCommand(commandLabel: string, send: () => boolean) {
-      viewState.guidedSurface = null;
-      const sent = send();
-      if (sent === true) {
-        state.pendingCommand = commandLabel;
-      } else {
-        state.lastCommandResult = {
-          command: commandLabel,
-          success: false,
-          message: "roomAPI.sendCommand returned false.",
-        };
-        state.pendingCommand = null;
-      }
-      render();
-    }
-
     function sendRunOverrideUpdate(nextDraft: ForgeRunOverrideDraftState): void {
       viewState.runOverrideDraft = nextDraft;
       viewState.runOverrideDraftDirty = true;
@@ -1350,7 +1738,10 @@ export function createForgeRoomUiRuntime() {
       render();
     }
 
-    function toggleSessionContextSelection(section: "equipment" | "skill", key: string): void {
+    function toggleSessionContextSelection(
+      section: "equipment" | "general" | "skill",
+      key: string
+    ): void {
       const current = cloneSessionContextSelection(currentSessionContextSelection());
       const nextSelection =
         section === "skill"
@@ -1360,12 +1751,21 @@ export function createForgeRoomUiRuntime() {
                 ? current.skillKeys.filter((entry) => entry !== key)
                 : [...current.skillKeys, key],
             })
-          : sortSessionContextSelection({
-              ...current,
-              equipmentKeys: current.equipmentKeys.includes(key)
-                ? current.equipmentKeys.filter((entry) => entry !== key)
-                : [...current.equipmentKeys, key],
-            });
+          : section === "equipment"
+            ? sortSessionContextSelection({
+                ...current,
+                equipmentKeys: current.equipmentKeys.includes(key)
+                  ? current.equipmentKeys.filter((entry) => entry !== key)
+                  : [...current.equipmentKeys, key],
+              })
+            : isForgeOperatorPreferenceKey(key)
+              ? sortSessionContextSelection({
+                  ...current,
+                  preferenceKeys: current.preferenceKeys.includes(key)
+                    ? current.preferenceKeys.filter((entry) => entry !== key)
+                    : [...current.preferenceKeys, key],
+                })
+              : current;
       viewState.sessionContextDraft = nextSelection;
       viewState.guidedSurface = null;
       bumpLocalUiVersion();
@@ -1397,6 +1797,48 @@ export function createForgeRoomUiRuntime() {
       });
     });
 
+    root.querySelectorAll<HTMLElement>("[data-forge-action='open-stage']").forEach((element) => {
+      element.addEventListener("click", () => {
+        const stageId = element.dataset["forgeActionValue"];
+        if (!isWorkbenchStageId(stageId) || stageId === viewState.activeStageId) {
+          return;
+        }
+        if (state.pendingCommand !== null) {
+          return;
+        }
+        if (viewState.activeStageId === "session") {
+          const goalDraft = currentGoalDraft();
+          if (!isGoalDraftReadyForAdvance(goalDraft)) {
+            return;
+          }
+          viewState.pendingStageId = stageId;
+          const sent = issueCommand("ForgeRoomUpdateGoal", () => {
+            return requestRuntime.updateGoal({
+              summary: goalDraft.summary,
+              brief: goalDraft.brief,
+              constraints: [...goalDraft.constraints],
+              targetRoomId: goalDraft.targetRoomId,
+            });
+          });
+          if (sent !== true) {
+            viewState.pendingStageId = null;
+          }
+          return;
+        }
+        if (state.snapshot.activeSessionId !== null) {
+          viewState.pendingStageId = stageId;
+          const sent = issueCommand("ForgeRoomSaveSession", () => requestRuntime.saveSession());
+          if (sent !== true) {
+            viewState.pendingStageId = null;
+          }
+          return;
+        }
+        viewState.activeStageId = stageId;
+        bumpLocalUiVersion();
+        render();
+      });
+    });
+
     root
       .querySelectorAll<HTMLElement>("[data-forge-action='toggle-profile-editor']")
       .forEach((element) => {
@@ -1406,18 +1848,6 @@ export function createForgeRoomUiRuntime() {
             return;
           }
           openProfileEditor();
-        });
-      });
-
-    root
-      .querySelectorAll<HTMLElement>("[data-forge-action='toggle-goal-details']")
-      .forEach((element) => {
-        element.addEventListener("click", () => {
-          if (viewState.goalDetailsOpen) {
-            closeGoalDetails();
-            return;
-          }
-          openGoalDetails();
         });
       });
 
@@ -1450,10 +1880,14 @@ export function createForgeRoomUiRuntime() {
           }));
         }
         bumpLocalUiVersion();
-        render();
+        syncGoalDraftControls(root);
       };
-      element.addEventListener("input", syncGoalField);
-      element.addEventListener("change", syncGoalField);
+      element.addEventListener("input", () => {
+        syncGoalField();
+      });
+      element.addEventListener("change", () => {
+        syncGoalField();
+      });
     });
 
     root
@@ -1505,20 +1939,33 @@ export function createForgeRoomUiRuntime() {
         render();
       });
 
+    root.querySelector<HTMLElement>("#forge-session-picker")?.addEventListener("change", () => {
+      const nextSessionId = readInputValue("forge-session-picker").trim();
+      if (nextSessionId === "") {
+        return;
+      }
+      viewState.selectedSavedSessionId = nextSessionId;
+      if (nextSessionId === FORGE_NEW_SESSION_PICKER_VALUE) {
+        issueCommand("ForgeRoomCreateSession", () =>
+          requestRuntime.createSession({ persist: false })
+        );
+        return;
+      }
+      issueCommand("ForgeRoomLoadSession", () =>
+        requestRuntime.loadSession({ sessionId: nextSessionId })
+      );
+    });
     root
-      .querySelector<HTMLElement>("[data-forge-action='create-session']")
+      .querySelector<HTMLElement>("[data-forge-action='delete-selected-session']")
       ?.addEventListener("click", () => {
-        issueCommand("ForgeRoomCreateSession", () => requestRuntime.createSession());
-      });
-    root
-      .querySelector<HTMLElement>("[data-forge-action='save-session']")
-      ?.addEventListener("click", () => {
-        issueCommand("ForgeRoomSaveSession", () => requestRuntime.saveSession());
-      });
-    root
-      .querySelector<HTMLElement>("[data-forge-action='load-latest']")
-      ?.addEventListener("click", () => {
-        issueCommand("ForgeRoomLoadLatestSession", () => requestRuntime.loadLatestSession());
+        const sessionId = currentSelectedSavedSessionId();
+        if (sessionId === null) {
+          return;
+        }
+        viewState.selectedSavedSessionId = FORGE_NEW_SESSION_PICKER_VALUE;
+        issueCommand("ForgeRoomDeleteSession", () =>
+          requestRuntime.deleteSession({ sessionId })
+        );
       });
     root.querySelectorAll<HTMLElement>("[data-forge-action='load-session']").forEach((element) => {
       element.addEventListener("click", () => {
@@ -1546,6 +1993,9 @@ export function createForgeRoomUiRuntime() {
       .querySelector<HTMLElement>("[data-forge-action='save-goal']")
       ?.addEventListener("click", () => {
         const goalDraft = currentGoalDraft();
+        if (!isGoalDraftReadyForAdvance(goalDraft)) {
+          return;
+        }
         issueCommand("ForgeRoomUpdateGoal", () => {
           return requestRuntime.updateGoal({
             summary: goalDraft.summary,
@@ -1559,20 +2009,11 @@ export function createForgeRoomUiRuntime() {
       element.addEventListener("click", () => {
         const section = element.dataset["forgeContextSection"];
         const key = element.dataset["forgeContextKey"];
-        if ((section === "skill" || section === "equipment") && typeof key === "string") {
+        if (
+          (section === "skill" || section === "equipment" || section === "general") &&
+          typeof key === "string"
+        ) {
           toggleSessionContextSelection(section, key);
-        }
-      });
-    });
-    root.querySelectorAll<HTMLElement>("[data-forge-run-override-toggle]").forEach((element) => {
-      element.addEventListener("click", () => {
-        const toggle = element.dataset["forgeRunOverrideToggle"];
-        if (toggle === "preAnalysis") {
-          const nextDraft = updateRunOverrideDraft((draft) => ({
-            ...draft,
-            enableRovoPreAnalysis: draft.enableRovoPreAnalysis !== true,
-          }));
-          sendRunOverrideUpdate(nextDraft);
         }
       });
     });
@@ -1901,16 +2342,48 @@ export function createForgeRoomUiRuntime() {
       syncOperatorProfileDraftFromSnapshot();
       syncRunOverrideDraftFromSnapshot();
       viewState.sessionContextDraft = null;
+      if (
+        currentSessionPickerValue() === FORGE_NEW_SESSION_PICKER_VALUE &&
+        state.snapshot.activeSessionId !== null &&
+        state.snapshot.sessionList.some((session) => session.id === state.snapshot.activeSessionId)
+      ) {
+        viewState.selectedSavedSessionId = state.snapshot.activeSessionId;
+      }
       const meta = toRecord(metaSource);
       state.meta = {
         roleCatalog: toRecord(meta["roleCatalog"]),
         personaPresets: toRecord(meta["personaPresets"]),
       };
+      if (
+        currentSessionPickerValue() === FORGE_NEW_SESSION_PICKER_VALUE &&
+        state.snapshot.activeSessionId === null &&
+        state.pendingCommand === null
+      ) {
+        issueCommand("ForgeRoomCreateSession", () =>
+          requestRuntime.createSession({ persist: false })
+        );
+        return;
+      }
       render();
       return;
     }
 
     const result = toRecord(payload.result);
+    const command =
+      typeof payload.command === "string" && payload.command.trim() !== ""
+        ? payload.command
+        : "command";
+    const commandSucceeded = result["success"] === true;
+    if (
+      viewState.pendingStageId !== null &&
+      (command === "ForgeRoomUpdateGoal" || command === "ForgeRoomSaveSession")
+    ) {
+      if (commandSucceeded) {
+        viewState.activeStageId = viewState.pendingStageId;
+        bumpLocalUiVersion();
+      }
+      viewState.pendingStageId = null;
+    }
     if (payload.command === "ForgeRoomUpdateSessionContext" && result["success"] !== true) {
       viewState.sessionContextDraft = null;
     }
@@ -1926,13 +2399,13 @@ export function createForgeRoomUiRuntime() {
     if (payload.command === "ForgeRoomUpdateRunOverride" && result["success"] === true) {
       viewState.runOverrideDraftDirty = false;
     }
+    if (payload.command === "ForgeRoomDeleteSession" && result["success"] === true) {
+      viewState.selectedSavedSessionId = FORGE_NEW_SESSION_PICKER_VALUE;
+    }
     state.pendingCommand = null;
     state.lastCommandResult = {
-      command:
-        typeof payload.command === "string" && payload.command.trim() !== ""
-          ? payload.command
-          : "command",
-      success: result["success"] === true,
+      command,
+      success: commandSucceeded,
       message:
         typeof result["message"] === "string" && result["message"].trim() !== ""
           ? result["message"]

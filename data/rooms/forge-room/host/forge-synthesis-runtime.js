@@ -86,7 +86,7 @@ ${toJsonText({
     "This run is a smoke test. Keep the final JSON short and compact while still usable for export review.",
     "Keep the output to one final JSON object and synthesize from the response summaries/body excerpts above.",
     "Keep the JSON compact: summary short, body concise, and no prose outside the final JSON object.",
-    "Pick the response ids that create the strongest Repair Room handoff and keep the synthesis practical.",
+    "Pick the response ids that create the strongest downstream handoff and keep the synthesis practical.",
     params.promptContext?.trim() ? `Preflight context:
 ${params.promptContext.trim()}` : ""
   ].join("\n");

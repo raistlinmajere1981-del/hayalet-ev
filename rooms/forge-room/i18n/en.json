@@ -53,7 +53,7 @@
       "blockerOpenDecision": "BLOCKER: OPEN DECISION",
       "blockerOpenDecisions": "BLOCKER: OPEN DECISIONS",
       "stateExportReady": "STATE: EXPORT READY",
-      "requiresTargetRepairRoom": "REQUIRES: TARGET REPAIR ROOM",
+      "requiresTargetRoom": "REQUIRES: TARGET ROOM",
       "requiresSelectedSynthesis": "REQUIRES: SELECTED SYNTHESIS",
       "requiresAcceptanceCriteria": "REQUIRES: ACCEPTANCE CRITERIA",
       "blockerHandoffCheck": "BLOCKER: HANDOFF CHECK"
@@ -84,6 +84,73 @@
       "exportComplete": "EXPORT COMPLETE: {label}.",
       "working": "Working on this step",
       "workingLocked": "SYSTEM LOCKED UNTIL STEP COMPLETES."
+    },
+    "stageTower": {
+      "panelTitle": "Forge stage flow",
+      "previous": "Previous",
+      "next": "Next",
+      "savedSessions": "Saved sessions",
+      "loadSelected": "Load selected",
+      "deleteSelected": "Delete selected",
+      "saveGoal": "Save goal",
+      "sessionLeadSaved": "Create a new shell or load one of the saved sessions below.",
+      "sessionLeadEmpty": "Forge starts here. Create the first session to unlock the rest of the flow.",
+      "operatorLead": "Choose which saved truths should shape this run. Profile editing stays in the top bar.",
+      "trackingLeadDraft": "Preflight is done. Generate the first draft from this stage.",
+      "trackingLeadReady": "Draft artifacts are active. Continue to the next stage.",
+      "trackingLeadMonitor": "This stage keeps the live workflow visible without turning Forge into a dashboard.",
+      "draftLeadLocked": "Draft tools open after the previous stage generates the first draft.",
+    "primaryAction": {
+      "session": "STEP 1: CREATE OR LOAD A SESSION",
+      "preflight": "STEP 4: RUN PREFLIGHT",
+      "draft": "STEP 5: GENERATE THE FIRST DRAFT"
+    },
+      "status": {
+        "active": "Active",
+        "available": "Ready",
+        "complete": "Complete",
+        "locked": "Locked"
+      },
+      "stages": {
+        "session": {
+          "eyebrow": "SESSION",
+          "title": "Session + goal",
+          "complete": "Active session attached",
+          "available": "Saved sessions are available",
+          "locked": "Create a session to begin"
+        },
+        "goal": {
+          "eyebrow": "GOAL",
+          "title": "Run target",
+          "complete": "Goal saved for this run",
+          "locked": "Save the target after session setup"
+        },
+        "operator": {
+          "eyebrow": "OPERATOR",
+          "title": "Operator",
+          "selected": "{count} context items selected",
+          "preferences": "Mode or risk is tuned",
+          "optional": "Optional run context and mode/risk"
+        },
+    "preflight": {
+      "eyebrow": "RUN SETTINGS",
+      "title": "Preflight",
+      "complete": "Preflight is ready for progression",
+      "locked": "Run preflight before draft work"
+    },
+        "tracking": {
+          "eyebrow": "TRACKING",
+          "title": "Process tracking",
+          "complete": "Draft artifacts are active",
+          "locked": "Generate the draft from here"
+        },
+        "draft": {
+          "eyebrow": "DRAFT",
+          "title": "Draft",
+          "complete": "Draft tools are unlocked",
+          "locked": "Draft opens after generation"
+        }
+      }
     },
     "panels": {
       "goal": "Control Surface",
@@ -160,7 +227,8 @@
       "placeholders": {
         "goal": "Goal",
         "brief": "Brief",
-        "constraints": "One constraint per line"
+        "constraints": "One constraint per line",
+        "targetRoom": "target-room-id"
       },
       "goalBlock": {
         "eyebrow": "Goal",
@@ -227,9 +295,9 @@
       "operatorProfile": {
         "eyebrow": "Operator profile",
         "label": "Operator",
-        "manage": "Manage",
+        "manage": "Open Operator Profile",
         "drawerEyebrow": "PROFILE",
-        "drawerTitle": "Manage operator profile",
+        "drawerTitle": "OPERATOR PROFILE",
         "empty": "No operator profile defined. AI will assume no prior capability.",
         "emptyShort": "Profile blank",
         "prepTitle": "Operator details",
@@ -290,14 +358,6 @@
         },
         "items": {
           "skillLevel": "Skill level",
-          "soldering": "Soldering",
-          "measurement": "Measurement",
-          "mechanical": "Mechanical",
-          "multimeter": "Multimeter",
-          "solderingIron": "Soldering iron",
-          "hotAir": "Hot air",
-          "benchSupply": "Bench supply",
-          "magnification": "Magnification",
           "mode": "Mode",
           "risk": "Risk"
         }
@@ -325,20 +385,45 @@
         "zeroAssumptions": "0 active",
         "requiresSession": "Create or open a session to edit this run context.",
         "emptySkills": "No saved skills yet. Use Operator Profile from the top bar.",
-        "emptyEquipment": "No saved equipment yet. Use Operator Profile from the top bar."
+        "emptyEquipment": "No saved equipment yet. Use Operator Profile from the top bar.",
+        "emptyPreferences": "No saved general preferences. Use Operator Profile from the top bar."
       },
-      "preflight": {
-        "eyebrow": "PRE-FLIGHT",
-        "title": "Validate run context",
-        "label": "Preflight",
-        "action": "Run Preflight",
-        "idle": "idle",
-        "ready": "ready",
-        "warning": "needs review",
-        "stale": "stale",
-        "requiresSession": "REQUIRES: ACTIVE SESSION",
-        "requiresSessionHint": "Create or open a session before running preflight.",
-        "requiresGoalHint": "Save the target before preflight can validate this run.",
+    "preflight": {
+      "eyebrow": "PRE-FLIGHT",
+      "title": "Validate run context",
+      "label": "Preflight",
+      "action": "Run Preflight",
+      "idle": "idle",
+      "running": "running",
+      "ready": "ready",
+      "warning": "needs review",
+      "stale": "stale",
+      "aiOffline": "AI0 is offline",
+      "agentTitle": "AI0",
+      "agentSlot": "AI0",
+      "todoTitle": "Process flow",
+      "resultTitle": "Result preview",
+      "resultIdle": "No preflight result yet.",
+      "resultRunning": "Preflight is running.",
+      "resultReady": "Preflight context is ready.",
+      "signatureLabel": "Run signature",
+      "promptSizeLabel": "Prompt",
+      "todoStatus": {
+        "pending": "pending",
+        "active": "running",
+        "complete": "complete",
+        "warning": "warning"
+      },
+      "steps": {
+        "operatorContext": "Package operator context",
+        "constraints": "Derive run constraints",
+        "ai0Analysis": "Collect AI0 software pre-analysis",
+        "runSignature": "Generate run signature",
+        "sessionSave": "Persist session"
+      },
+      "requiresSession": "REQUIRES: ACTIVE SESSION",
+      "requiresSessionHint": "Create or open a session before running preflight.",
+      "requiresGoalHint": "Save the target before preflight can validate this run.",
         "warningHint": "Preflight completed with warnings. Review the notes before you move forward.",
         "staleHint": "Context changed after the last preflight run. Refresh before launch.",
         "readyHint": "Run-local settings are aligned. Use preflight as the last gate before draft generation.",
@@ -454,7 +539,10 @@
         "seat": "Seat",
         "role": "Role",
         "compareSeat": "Compare seat",
-        "persona": "Persona"
+        "persona": "Persona",
+        "capsuleSummary": "Capsule summary",
+        "capsuleModules": "Capsule modules",
+        "capsuleConstraints": "Capsule constraints"
       },
       "meta": {
         "queuedOne": "{count} queued",
@@ -462,8 +550,13 @@
         "doneOne": "{count} done",
         "doneOther": "{count} done"
       },
+      "capsuleHint": {
+        "open": "Advanced capsule is session-local prompt context. It supplements preflight for this task only and is not exported.",
+        "closed": "Advanced capsule is hidden by default. Open it only when a task needs extra prompt context."
+      },
       "actions": {
-        "saveDispatchSettings": "Save dispatch settings"
+        "saveDispatchSettings": "Save dispatch settings",
+        "saveCapsule": "Save capsule"
       }
     },
     "responsesPanel": {
@@ -477,7 +570,7 @@
           "summary": "REQUIRES: APPROVED DRAFT"
         },
         "dispatchLocked": {
-          "title": "RESPONSE LANE LOCKED",
+          "title": "CENTER GATE LOCKED",
           "summary": "REQUIRES: DISPATCH"
         },
         "responseInbound": {
@@ -589,6 +682,10 @@
         "blocked": "BLOCKER: HANDOFF CHECK",
         "requiresSelected": "REQUIRES: SELECTED SYNTHESIS"
       },
+      "context": {
+        "title": "Run context",
+        "pending": "Run signature pending"
+      },
       "badges": {
         "selected": "selected"
       }
@@ -596,7 +693,7 @@
     "coordinator": {
       "pending": "Forge is finishing the current step.",
       "stats": {
-        "state": "state {label}",
+        "state": "State {label}",
         "waiting": "waiting {count}",
         "answers": "answers {count}",
         "decisions": "decisions {count}",

@@ -4,6 +4,7 @@ import { shellT } from "../app/shell-i18n.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { getRoomPageName } from "../modules/rooms/room-markup.js";
 import { RoomRegistry } from "../modules/rooms/room-registry.js";
+import { resolveRoomShellName } from "../modules/rooms/room-shell-presentation.js";
 import { createRoomsCorridorSceneDebugStore } from "../modules/rooms/room-scene-debug.js";
 import { dispatchSceneAction } from "../scene/action-dispatcher.js";
 import {
@@ -417,6 +418,7 @@ export class RoomsController implements PageController {
 
     host.innerHTML = this.installedRooms
       .map((room) => {
+        const roomName = resolveRoomShellName(room.id, room.name);
         const trimmedDescription = room.description?.trim();
         const summary =
           trimmedDescription !== undefined && trimmedDescription !== ""
@@ -435,7 +437,7 @@ export class RoomsController implements PageController {
         return [
           '<article class="rooms-classic-card">',
           '  <div class="rooms-classic-card__head">',
-          `    <div><div class="rooms-classic-card__title">${escapeHtml(room.name)}</div><div class="rooms-classic-card__subtitle">${escapeHtml(summary)}</div></div>`,
+          `    <div><div class="rooms-classic-card__title">${escapeHtml(roomName)}</div><div class="rooms-classic-card__subtitle">${escapeHtml(summary)}</div></div>`,
           `    <button class="btn btn-primary btn-sm" type="button" data-room-open="${escapeHtml(
             room.id
           )}">${escapeHtml(shellT("rooms.actions.open"))}</button>`,

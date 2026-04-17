@@ -1,4 +1,4 @@
-import { FORGE_HANDOFF_SCHEMA_VERSION, FORGE_TARGET_ROOM_ID } from "../shared/forge-constants.js";
+import { FORGE_HANDOFF_SCHEMA_VERSION } from "../shared/forge-constants.js";
 import type {
   ForgeExportReadinessSummary,
   ForgeHandoffPackage,
@@ -34,23 +34,6 @@ export function createForgeHandoffExport() {
     return criteria;
   }
 
-  function provenanceMatches(
-    left: ForgeSynthesisProvenance | null,
-    right: ForgeSynthesisProvenance | null
-  ): boolean {
-    if (left === right) {
-      return true;
-    }
-    if (left === null || right === null) {
-      return false;
-    }
-    return (
-      left.runSignature === right.runSignature &&
-      JSON.stringify(left.operatorProfileSummary) === JSON.stringify(right.operatorProfileSummary) &&
-      JSON.stringify(left.preflightWarnings) === JSON.stringify(right.preflightWarnings)
-    );
-  }
-
   function resolveExportProvenance(params: {
     fallbackProvenance?: ForgeSynthesisProvenance | null | undefined;
     selected: ForgeSynthesis;
@@ -64,10 +47,10 @@ export function createForgeHandoffExport() {
     if (params.session.preflight.status === "stale") {
       return current;
     }
-    if (stored === null) {
-      return current;
+    if (stored !== null) {
+      return stored;
     }
-    return provenanceMatches(stored, current) ? stored : current;
+    return current;
   }
 
   function buildHandoffPackage(
@@ -84,8 +67,8 @@ export function createForgeHandoffExport() {
     if (goal === null) {
       throw new Error("A goal is required before exporting a handoff package.");
     }
-    if (goal.targetRoomId !== FORGE_TARGET_ROOM_ID) {
-      throw new Error("Forge Room exports are restricted to the Repair Room target in v1.");
+    if (goal.targetRoomId.trim() === "") {
+      throw new Error("A target room is required before exporting a handoff package.");
     }
 
     const selected = requireSelectedSynthesis(session);
@@ -97,7 +80,7 @@ export function createForgeHandoffExport() {
     });
     return {
       schemaVersion: FORGE_HANDOFF_SCHEMA_VERSION,
-      targetRoomId: "repair-room",
+      targetRoomId: goal.targetRoomId,
       ...(provenance?.runSignature
         ? { runSignature: provenance.runSignature }
         : session.runSignature
@@ -181,8 +164,8 @@ export function createForgeHandoffExport() {
     if (session.goal === null) {
       missingRequirements.push("Define a goal");
     }
-    if (session.goal !== null && targetRoomId !== FORGE_TARGET_ROOM_ID) {
-      missingRequirements.push("Target room must be repair-room");
+    if (session.goal !== null && (targetRoomId === null || targetRoomId.trim() === "")) {
+      missingRequirements.push("Select a target room");
     }
     if (selected === null) {
       missingRequirements.push("Select a synthesis");

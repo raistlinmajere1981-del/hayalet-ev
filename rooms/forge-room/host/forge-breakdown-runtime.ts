@@ -1,7 +1,6 @@
 import {
   FORGE_BREAKDOWN_MAX_TASKS,
   FORGE_BREAKDOWN_MIN_TASKS,
-  FORGE_TARGET_ROOM_ID,
 } from "../shared/forge-constants.js";
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
 import type {
@@ -254,7 +253,7 @@ export function buildForgeBreakdownPrompt(
         },
       ],
     }),
-    `Target room: ${goal.targetRoomId || FORGE_TARGET_ROOM_ID}`,
+    `Target room: ${goal.targetRoomId.trim() || "not specified yet"}`,
     `Goal summary: ${goal.summary}`,
     `Goal brief: ${goal.brief || "No additional brief provided."}`,
     `Constraints: ${goal.constraints.length > 0 ? goal.constraints.join(" | ") : "None"}`,
@@ -263,7 +262,7 @@ export function buildForgeBreakdownPrompt(
     "- Produce 3 to 7 top-level tasks.",
     "- Use compare mode only when two seats should answer the same task.",
     "- Use checklist only for non-assignable child steps.",
-    "- Keep the plan narrow enough for a Repair Room handoff.",
+    "- Keep the plan narrow enough for a downstream handoff package.",
     options.promptContext?.trim() ? `Preflight context:\n${options.promptContext.trim()}` : "",
   ].join("\n");
 }

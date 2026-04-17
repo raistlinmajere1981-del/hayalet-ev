@@ -1,13 +1,12 @@
 export const FORGE_ROOM_ID = "forge-room";
 export const FORGE_WORKBENCH_FEATURE_ID = "forge-workbench";
-export const FORGE_TARGET_ROOM_ID = "repair-room";
 export const FORGE_SESSION_SCHEMA_VERSION = 7;
 export const FORGE_HANDOFF_SCHEMA_VERSION = 1;
 export const FORGE_BREAKDOWN_MIN_TASKS = 3;
 export const FORGE_BREAKDOWN_MAX_TASKS = 7;
 export const FORGE_BREAKDOWN_MAX_REGENERATIONS = 1;
 export const FORGE_PREFLIGHT_SCHEMA_VERSION = "v3";
-export const FORGE_OPERATOR_PROFILE_SCHEMA_VERSION = 3;
+export const FORGE_OPERATOR_PROFILE_SCHEMA_VERSION = 2;
 export const FORGE_MAX_DECISION_TRACE_LINES = 3;
 export const FORGE_MAX_CAPABILITY_ITEMS = 4;
 export const FORGE_CAPABILITY_SUMMARY_BUDGET = 720;

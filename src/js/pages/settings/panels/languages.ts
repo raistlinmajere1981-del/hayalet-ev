@@ -18,6 +18,7 @@ import {
 import { decodeBase64 } from "../../../constants/index.js";
 import { AppI18n, formatLanguageLabel } from "../../../modules/i18n/index.js";
 import { RoomRegistry } from "../../../modules/rooms/room-registry.js";
+import { resolveRoomShellName } from "../../../modules/rooms/room-shell-presentation.js";
 import { Toast } from "../../../ui/toast-manager.js";
 import { shellT } from "../../../app/shell-i18n.js";
 import { registerSettingsPanelLifecycle } from "../controller.js";
@@ -726,7 +727,7 @@ function createToolbar(refs: LanguageEditorRefs, state: LanguageEditorState): vo
       createSelect(
         "room",
         state.rooms.map((room) => ({
-          label: room.name,
+          label: resolveRoomShellName(room.id, room.name),
           value: room.id,
         })),
         state.selectedRoomId ?? "",
@@ -995,7 +996,11 @@ function createMainHead(refs: LanguageEditorRefs, state: LanguageEditorState): v
       ? languageEditorT("main.scope.app")
       : languageEditorT("main.scope.room", {
           room:
-            state.rooms.find((room) => room.id === state.selectedRoomId)?.name ??
+            resolveRoomShellName(
+              state.selectedRoomId ?? "",
+              state.rooms.find((room) => room.id === state.selectedRoomId)?.name ??
+                languageEditorT("toolbar.roomPlaceholder")
+            ) ??
             languageEditorT("toolbar.roomPlaceholder"),
         });
   const titleText =
@@ -1173,7 +1178,10 @@ function createMeta(refs: LanguageEditorRefs, state: LanguageEditorState): void 
       createMetaLabel(languageEditorT("meta.savePathLabel"), state.savePath)
     );
   } else {
-    const roomName = state.rooms.find((room) => room.id === state.selectedRoomId)?.name ?? "—";
+    const roomName = resolveRoomShellName(
+      state.selectedRoomId ?? "",
+      state.rooms.find((room) => room.id === state.selectedRoomId)?.name ?? "—"
+    );
     infoBody.append(
       createMetaLabel(languageEditorT("meta.roomLabel"), roomName),
       createMetaLabel(languageEditorT("meta.sourcePathLabel"), state.sourcePath)

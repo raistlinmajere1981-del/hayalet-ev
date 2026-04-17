@@ -7,41 +7,55 @@ import {
   createInitialForgeUiState
 } from "../shared/ui/state.js";
 import {
-  createDefaultForgeOperatorProfile
+  createDefaultForgeOperatorProfile,
+  isForgeOperatorPreferenceKey,
+  isForgeOperatorEquipmentStatus,
+  isForgeOperatorSkillLevel,
+  normalizeForgeLegacySelectionKeys,
+  normalizeForgeSessionContextSelectionKeys
 } from "../shared/types/index.js";
 import { renderApprovedTasksPanel } from "./panels/approved-tasks-panel.js";
 import { renderCoordinatorPanel } from "./panels/coordinator-panel.js";
 import { renderDraftBreakdownPanel } from "./panels/draft-breakdown-panel.js";
-import { renderGoalInputPanel } from "./panels/goal-input-panel.js";
+import {
+  renderOperatorProfileManager
+} from "./panels/operator-profile-manager-panel.js";
 import { renderResponsesPanel } from "./panels/responses-panel.js";
 import { renderSynthesisPanel } from "./panels/synthesis-panel.js";
+import {
+  FORGE_NEW_SESSION_PICKER_VALUE,
+  renderWorkbenchStagePanel
+} from "./panels/workbench-stage-panel.js";
 export function createForgeRoomUiRuntime() {
   const state = createInitialForgeUiState();
   const requestRuntime = createForgeUiRequestRuntime();
   const windowRef = window;
   const documentRef = document;
   const viewState = {
+    activeStageId: "session",
     advancedCapsulesOpen: false,
     advancedDraftOpen: false,
-    activeProfileEntryId: null,
     expandedResponseIds: /* @__PURE__ */ new Set(),
     expandedSynthesisIds: /* @__PURE__ */ new Set(),
-    goalDetailsOpen: false,
     goalDraft: null,
     goalDraftDirty: false,
     guidedSurface: null,
     operatorProfileDraft: null,
     operatorProfileDraftDirty: false,
     operatorProfileDraftSourceFingerprint: null,
+    pendingStageId: null,
+    profileEditorDraft: null,
     profileEditorOpen: false,
     runConditionComposerOpen: false,
     runConditionComposerValue: "",
     runOverrideDraft: null,
     runOverrideDraftDirty: false,
+    selectedSavedSessionId: null,
     sessionContextDraft: null
   };
   let lastRenderSignature = null;
   let localUiVersion = 0;
+  let persistentShell = null;
   function createElement(tagName, className, textContent) {
     const element = documentRef.createElement(tagName);
     if (className) {
@@ -54,6 +68,123 @@ export function createForgeRoomUiRuntime() {
   }
   function toRecord(value) {
     return value !== null && typeof value === "object" && Array.isArray(value) === false ? value : {};
+  }
+  function syncElement(target, source) {
+    if (typeof source.attributes === "undefined" || typeof target.attributes === "undefined") {
+      Object.keys(target.dataset).forEach((key) => {
+        delete target.dataset[key];
+      });
+      Object.entries(source.dataset).forEach(([key, value]) => {
+        target.dataset[key] = value;
+      });
+      target.className = source.className;
+      target.id = source.id;
+      target.textContent = source.textContent;
+      const sourceChildren = source.children;
+      target.replaceChildren(...Array.isArray(sourceChildren) ? sourceChildren : []);
+      return;
+    }
+    const sourceAttributes = /* @__PURE__ */ new Map();
+    Array.from(source.attributes).forEach((attribute) => {
+      sourceAttributes.set(attribute.name, attribute.value);
+    });
+    Array.from(target.attributes).forEach((attribute) => {
+      if (!sourceAttributes.has(attribute.name)) {
+        target.removeAttribute(attribute.name);
+      }
+    });
+    sourceAttributes.forEach((value, name) => {
+      target.setAttribute(name, value);
+    });
+    target.replaceChildren(...Array.from(source.childNodes));
+  }
+  function ensurePersistentShell(mount) {
+    if (persistentShell !== null && persistentShell.shell.isConnected && persistentShell.shell.parentElement === mount) {
+      return persistentShell;
+    }
+    const shell = createElement("div", "forge-shell");
+    const statusBar = createElement("header", "forge-statusbar");
+    const workbench = createElement("section", "forge-workbench");
+    const planColumn = createElement("section", "forge-column forge-column--plan");
+    const responseColumn = createElement("section", "forge-column forge-column--responses");
+    const outputColumn = createElement("section", "forge-column forge-column--output");
+    const coordinator = createElement("section", "forge-coordinator-strip");
+    workbench.append(planColumn, responseColumn, outputColumn);
+    shell.append(statusBar, workbench, coordinator);
+    mount.replaceChildren(shell);
+    persistentShell = {
+      coordinator,
+      overlay: null,
+      outputColumn,
+      planColumn,
+      responseColumn,
+      shell,
+      statusBar,
+      workbench
+    };
+    return persistentShell;
+  }
+  function setOptionalDataAttribute(element, key, value) {
+    if (value === null || value === void 0 || value === "") {
+      delete element.dataset[key];
+      return;
+    }
+    element.dataset[key] = value;
+  }
+  function isFocusableElement(value) {
+    if (typeof HTMLElement !== "undefined") {
+      return value instanceof HTMLElement;
+    }
+    return value !== null && typeof value === "object" && "id" in value;
+  }
+  function isTextRangeElement(value) {
+    if (typeof HTMLInputElement !== "undefined" && value instanceof HTMLInputElement) {
+      return true;
+    }
+    if (typeof HTMLTextAreaElement !== "undefined" && value instanceof HTMLTextAreaElement) {
+      return true;
+    }
+    return false;
+  }
+  function captureFocusSnapshot() {
+    const activeElement = documentRef.activeElement;
+    if (!isFocusableElement(activeElement) || activeElement.id.trim() === "") {
+      return null;
+    }
+    if (isTextRangeElement(activeElement)) {
+      return {
+        id: activeElement.id,
+        selectionDirection: activeElement.selectionDirection,
+        selectionEnd: activeElement.selectionEnd,
+        selectionStart: activeElement.selectionStart
+      };
+    }
+    return {
+      id: activeElement.id,
+      selectionDirection: null,
+      selectionEnd: null,
+      selectionStart: null
+    };
+  }
+  function restoreFocusSnapshot(snapshot) {
+    if (snapshot === null) {
+      return;
+    }
+    const nextElement = documentRef.getElementById(snapshot.id);
+    if (!isFocusableElement(nextElement)) {
+      return;
+    }
+    nextElement.focus({ preventScroll: true });
+    if (isTextRangeElement(nextElement) && snapshot.selectionStart !== null && snapshot.selectionEnd !== null) {
+      try {
+        nextElement.setSelectionRange(
+          snapshot.selectionStart,
+          snapshot.selectionEnd,
+          snapshot.selectionDirection ?? void 0
+        );
+      } catch {
+      }
+    }
   }
   function applyTextParams(template, params) {
     if (!params) {
@@ -142,50 +273,38 @@ export function createForgeRoomUiRuntime() {
     return state.snapshot.exports.length > 0 && countOpenConflicts() === 0 && state.snapshot.selectedSynthesisId !== null;
   }
   function cloneSessionContextSelection(selection) {
+    const normalizedSelection = normalizeSessionContextSelection(selection);
     return {
-      skill: {
-        level: selection.skill.level,
-        soldering: selection.skill.soldering,
-        measurement: selection.skill.measurement,
-        mechanical: selection.skill.mechanical
-      },
-      tools: {
-        multimeter: selection.tools.multimeter,
-        solderingIron: selection.tools.solderingIron,
-        hotAir: selection.tools.hotAir,
-        benchPowerSupply: selection.tools.benchPowerSupply,
-        magnification: selection.tools.magnification
-      },
-      preferences: {
-        mode: selection.preferences.mode,
-        riskTolerance: selection.preferences.riskTolerance
-      }
+      skillKeys: [...normalizedSelection.skillKeys],
+      equipmentKeys: [...normalizedSelection.equipmentKeys],
+      preferenceKeys: [...normalizedSelection.preferenceKeys]
     };
   }
   function sessionContextSelectionEquals(left, right) {
     return JSON.stringify(left) === JSON.stringify(right);
   }
   function cloneOperatorProfile(profile) {
+    const preferences = profile.preferences ?? {};
     return {
       schemaVersion: profile.schemaVersion,
       updatedAt: profile.updatedAt,
-      skill: {
-        level: profile.skill.level,
-        soldering: profile.skill.soldering,
-        measurement: profile.skill.measurement,
-        mechanical: profile.skill.mechanical
-      },
-      tools: {
-        multimeter: profile.tools.multimeter,
-        solderingIron: profile.tools.solderingIron,
-        hotAir: profile.tools.hotAir,
-        benchPowerSupply: profile.tools.benchPowerSupply,
-        magnification: profile.tools.magnification
-      },
       preferences: {
-        mode: profile.preferences.mode,
-        riskTolerance: profile.preferences.riskTolerance
-      }
+        ...preferences.mode ? { mode: preferences.mode } : {},
+        ...preferences.riskTolerance ? { riskTolerance: preferences.riskTolerance } : {}
+      },
+      skills: profile.skills.map((record) => ({
+        skillKey: record.skillKey,
+        label: record.label,
+        level: record.level,
+        ...record.notes ? { notes: record.notes } : {}
+      })),
+      equipment: profile.equipment.map((record) => ({
+        equipmentKey: record.equipmentKey,
+        label: record.label,
+        status: record.status,
+        ...record.brandModel ? { brandModel: record.brandModel } : {},
+        ...record.notes ? { notes: record.notes } : {}
+      }))
     };
   }
   function operatorProfilesEqual(left, right) {
@@ -194,6 +313,77 @@ export function createForgeRoomUiRuntime() {
   function currentSessionContextSelection() {
     return viewState.sessionContextDraft ?? state.snapshot.sessionContextSelection;
   }
+  function currentSessionPickerValue() {
+    const savedSessionIds = state.snapshot.sessionList.map((session) => session.id);
+    if (viewState.selectedSavedSessionId === FORGE_NEW_SESSION_PICKER_VALUE) {
+      return FORGE_NEW_SESSION_PICKER_VALUE;
+    }
+    if (viewState.selectedSavedSessionId !== null && savedSessionIds.includes(viewState.selectedSavedSessionId)) {
+      return viewState.selectedSavedSessionId;
+    }
+    return FORGE_NEW_SESSION_PICKER_VALUE;
+  }
+  function currentSelectedSavedSessionId() {
+    const selectedValue = currentSessionPickerValue();
+    return selectedValue === FORGE_NEW_SESSION_PICKER_VALUE ? null : selectedValue;
+  }
+  function isGoalDraftReadyForAdvance(draft) {
+    return draft.summary.trim() !== "" && draft.brief.trim() !== "" && draft.constraints.length > 0 && draft.targetRoomId.trim() !== "";
+  }
+  function findElementByDatasetValue(root, selector, datasetKey, value) {
+    return Array.from(root.querySelectorAll(selector)).find(
+      (element) => element.dataset[datasetKey] === value
+    ) ?? null;
+  }
+  function renderStageStatusText(stageState) {
+    switch (stageState) {
+      case "active":
+        return text(["workbench", "stageTower", "status", "active"], "Active");
+      case "complete":
+        return text(["workbench", "stageTower", "status", "complete"], "Complete");
+      case "available":
+        return text(["workbench", "stageTower", "status", "available"], "Ready");
+      case "locked":
+      default:
+        return text(["workbench", "stageTower", "status", "locked"], "Locked");
+    }
+  }
+  function syncGoalDraftControls(root) {
+    const goalDraftReadyForAdvance = isGoalDraftReadyForAdvance(currentGoalDraft());
+    const sessionStageState = viewState.activeStageId === "session" ? "active" : goalDraftReadyForAdvance ? "complete" : "available";
+    const operatorStageState = viewState.activeStageId === "operator" ? "active" : goalDraftReadyForAdvance ? "complete" : "locked";
+    const preflightStageState = viewState.activeStageId === "preflight" ? "active" : goalDraftReadyForAdvance ? "complete" : "locked";
+    const stageStates = [
+      { stageId: "session", stageState: sessionStageState },
+      { stageId: "operator", stageState: operatorStageState },
+      { stageId: "preflight", stageState: preflightStageState }
+    ];
+    stageStates.forEach(({ stageId, stageState }) => {
+      const stage = findElementByDatasetValue(root, "[data-stage-id]", "stageId", stageId);
+      if (stage !== null) {
+        stage.dataset["state"] = stageState;
+      }
+      const badge = findElementByDatasetValue(
+        root,
+        "[data-forge-stage-badge]",
+        "forgeStageBadge",
+        stageId
+      );
+      if (badge !== null) {
+        badge.textContent = renderStageStatusText(stageState);
+      }
+    });
+    const nextStageButton = Array.from(
+      root.querySelectorAll("[data-forge-action='open-stage']")
+    ).find((element) => element.dataset["forgeActionValue"] === "operator");
+    if (nextStageButton) {
+      nextStageButton.disabled = !goalDraftReadyForAdvance;
+    }
+    const saveGoalButton = root.querySelector("[data-forge-action='save-goal']");
+    if (saveGoalButton !== null) {
+      saveGoalButton.disabled = !goalDraftReadyForAdvance;
+    }
+  }
   function goalSnapshotFingerprint() {
     return JSON.stringify({
       goalId: state.snapshot.currentGoal?.id ?? null,
@@ -201,7 +391,7 @@ export function createForgeRoomUiRuntime() {
       summary: state.snapshot.currentGoal?.summary ?? "",
       brief: state.snapshot.currentGoal?.brief ?? "",
       constraints: state.snapshot.currentGoal?.constraints ?? [],
-      targetRoomId: state.snapshot.currentGoal?.targetRoomId ?? "repair-room"
+      targetRoomId: state.snapshot.currentGoal?.targetRoomId ?? ""
     });
   }
   function operatorProfileSnapshotFingerprint() {
@@ -211,11 +401,10 @@ export function createForgeRoomUiRuntime() {
     const runOverride = state.snapshot.runOverride;
     return JSON.stringify({
       sessionId: state.snapshot.activeSessionId,
-      enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
+      mode: runOverride?.mode ?? null,
       notes: runOverride?.notes ?? "",
-      tools: {
-        hotAir: runOverride?.tools.hotAir === true
-      }
+      riskTolerance: runOverride?.riskTolerance ?? null,
+      temporaryConditions: runOverride?.temporaryConditions ?? []
     });
   }
   function createGoalDraftFromSnapshot() {
@@ -226,7 +415,7 @@ export function createForgeRoomUiRuntime() {
       sourceGoalId: state.snapshot.currentGoal?.id ?? null,
       sourceSessionId: state.snapshot.activeSessionId,
       summary: state.snapshot.currentGoal?.summary ?? "",
-      targetRoomId: state.snapshot.currentGoal?.targetRoomId ?? "repair-room"
+      targetRoomId: state.snapshot.currentGoal?.targetRoomId ?? ""
     };
   }
   function syncGoalDraftFromSnapshot(force = false) {
@@ -277,12 +466,12 @@ export function createForgeRoomUiRuntime() {
     const runOverride = state.snapshot.runOverride;
     return {
       enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
+      mode: runOverride?.mode ?? "",
       notes: runOverride?.notes ?? "",
+      riskTolerance: runOverride?.riskTolerance ?? "",
       sourceFingerprint: runOverrideSnapshotFingerprint(),
       sourceSessionId: state.snapshot.activeSessionId,
-      tools: {
-        hotAir: runOverride?.tools.hotAir === true
-      }
+      temporaryConditions: [...runOverride?.temporaryConditions ?? []]
     };
   }
   function syncRunOverrideDraftFromSnapshot(force = false) {
@@ -305,91 +494,251 @@ export function createForgeRoomUiRuntime() {
     viewState.runOverrideDraftDirty = true;
     return nextDraft;
   }
-  function notesToConditions(notes) {
-    return notes.split(/\r?\n/).map((entry) => entry.trim()).filter((entry) => entry !== "");
-  }
   function draftToRunOverridePayload(draft) {
     return {
       enableRovoPreAnalysis: draft.enableRovoPreAnalysis,
+      ...draft.mode ? { mode: draft.mode } : {},
       notes: draft.notes,
-      tools: {
-        hotAir: draft.tools.hotAir
-      }
+      ...draft.riskTolerance ? { riskTolerance: draft.riskTolerance } : {},
+      temporaryConditions: [...draft.temporaryConditions]
     };
   }
-  function openGoalDetails() {
-    viewState.goalDetailsOpen = true;
-    bumpLocalUiVersion();
-    render();
+  function sortUniqueKeys(values) {
+    return Array.from(new Set(values)).sort((left, right) => left.localeCompare(right));
   }
-  function closeGoalDetails() {
-    viewState.goalDetailsOpen = false;
-    bumpLocalUiVersion();
-    render();
-  }
-  function profileEntryInputId(entryId) {
-    const inputIds = {
-      "skill-level": "forge-profile-skill-level",
-      "skill-soldering": "forge-profile-soldering",
-      "skill-measurement": "forge-profile-measurement",
-      "skill-mechanical": "forge-profile-mechanical",
-      "tool-multimeter": "forge-profile-tool-multimeter",
-      "tool-soldering-iron": "forge-profile-tool-soldering-iron",
-      "tool-hot-air": "forge-profile-tool-hot-air",
-      "tool-bench-supply": "forge-profile-tool-bench-supply",
-      "tool-magnification": "forge-profile-tool-magnification",
-      "preference-mode": "forge-profile-mode",
-      "preference-risk": "forge-profile-risk"
+  function normalizeSessionContextSelection(selection) {
+    const legacySelection = selection;
+    const normalized = normalizeForgeSessionContextSelectionKeys(selection);
+    return {
+      skillKeys: sortUniqueKeys([
+        ...normalized.skillKeys,
+        ...normalizeForgeLegacySelectionKeys(legacySelection.skill)
+      ]),
+      equipmentKeys: sortUniqueKeys([
+        ...normalized.equipmentKeys,
+        ...normalizeForgeLegacySelectionKeys(legacySelection.tools)
+      ]),
+      preferenceKeys: sortUniqueKeys([
+        ...normalized.preferenceKeys,
+        ...normalizeForgeLegacySelectionKeys(legacySelection.preferences)
+      ]).filter(
+        (key) => isForgeOperatorPreferenceKey(key)
+      )
     };
-    return inputIds[entryId] ?? null;
   }
-  function readProfileEntryValue(entryId) {
-    switch (entryId) {
-      case "skill-level":
-        return state.snapshot.operatorProfile.skill.level;
-      case "skill-soldering":
-        return state.snapshot.operatorProfile.skill.soldering;
-      case "skill-measurement":
-        return state.snapshot.operatorProfile.skill.measurement;
-      case "skill-mechanical":
-        return state.snapshot.operatorProfile.skill.mechanical;
-      case "tool-multimeter":
-        return state.snapshot.operatorProfile.tools.multimeter;
-      case "tool-soldering-iron":
-        return state.snapshot.operatorProfile.tools.solderingIron;
-      case "tool-hot-air":
-        return state.snapshot.operatorProfile.tools.hotAir;
-      case "tool-bench-supply":
-        return state.snapshot.operatorProfile.tools.benchPowerSupply;
-      case "tool-magnification":
-        return state.snapshot.operatorProfile.tools.magnification;
-      case "preference-mode":
-        return state.snapshot.operatorProfile.preferences.mode;
-      case "preference-risk":
-        return state.snapshot.operatorProfile.preferences.riskTolerance;
-      default:
+  function sortSessionContextSelection(selection) {
+    return normalizeSessionContextSelection(selection);
+  }
+  function sortOperatorProfileDraft(profile) {
+    const preferences = profile.preferences ?? {};
+    return {
+      ...profile,
+      preferences: {
+        ...preferences.mode ? { mode: preferences.mode } : {},
+        ...preferences.riskTolerance ? { riskTolerance: preferences.riskTolerance } : {}
+      },
+      skills: profile.skills.map((record) => ({
+        skillKey: record.skillKey,
+        label: record.label,
+        level: record.level,
+        ...record.notes ? { notes: record.notes } : {}
+      })).sort((left, right) => left.label.localeCompare(right.label)),
+      equipment: profile.equipment.map((record) => ({
+        equipmentKey: record.equipmentKey,
+        label: record.label,
+        status: record.status,
+        ...record.brandModel ? { brandModel: record.brandModel } : {},
+        ...record.notes ? { notes: record.notes } : {}
+      })).sort((left, right) => left.label.localeCompare(right.label))
+    };
+  }
+  function createProfileEntryKey(prefix) {
+    const globalCrypto = globalThis.crypto;
+    if (globalCrypto && typeof globalCrypto.randomUUID === "function") {
+      return `${prefix}-${globalCrypto.randomUUID()}`;
+    }
+    return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  }
+  function buildSkillEditorDraft(profile, options) {
+    if (options.mode === "edit") {
+      const record = profile.skills.find((entry) => entry.skillKey === options.skillKey) ?? null;
+      if (!record) {
         return null;
+      }
+      return {
+        kind: "skill",
+        mode: "edit",
+        label: record.label,
+        level: record.level,
+        notes: record.notes ?? "",
+        sourceKey: record.skillKey
+      };
+    }
+    return {
+      kind: "skill",
+      mode: "create",
+      label: "",
+      level: "none",
+      notes: "",
+      sourceKey: null
+    };
+  }
+  function buildEquipmentEditorDraft(profile, options) {
+    if (options.mode === "edit") {
+      const record = profile.equipment.find((entry) => entry.equipmentKey === options.equipmentKey) ?? null;
+      if (!record) {
+        return null;
+      }
+      return {
+        kind: "equipment",
+        mode: "edit",
+        brandModel: record.brandModel ?? "",
+        label: record.label,
+        notes: record.notes ?? "",
+        sourceKey: record.equipmentKey,
+        status: record.status
+      };
+    }
+    return {
+      kind: "equipment",
+      mode: "create",
+      brandModel: "",
+      label: "",
+      notes: "",
+      sourceKey: null,
+      status: "unavailable"
+    };
+  }
+  function openProfileEditor() {
+    viewState.profileEditorOpen = true;
+    bumpLocalUiVersion();
+    render();
+  }
+  function openProfileEntryEditor(kind, mode, entryKey = null) {
+    const draft = currentOperatorProfileDraft();
+    viewState.profileEditorDraft = kind === "skill" ? buildSkillEditorDraft(draft, { mode, skillKey: entryKey }) : buildEquipmentEditorDraft(draft, { mode, equipmentKey: entryKey });
+    viewState.profileEditorOpen = true;
+    bumpLocalUiVersion();
+    render();
+  }
+  function removeProfileEntry(kind, entryKey) {
+    updateOperatorProfileDraft((draft) => {
+      if (kind === "skill") {
+        return sortOperatorProfileDraft({
+          ...draft,
+          skills: draft.skills.filter((entry) => entry.skillKey !== entryKey)
+        });
+      }
+      if (kind === "equipment") {
+        return sortOperatorProfileDraft({
+          ...draft,
+          equipment: draft.equipment.filter((entry) => entry.equipmentKey !== entryKey)
+        });
+      }
+      return draft;
+    });
+    if (viewState.profileEditorDraft && (viewState.profileEditorDraft.kind === "skill" && kind === "skill" && viewState.profileEditorDraft.sourceKey === entryKey || viewState.profileEditorDraft.kind === "equipment" && kind === "equipment" && viewState.profileEditorDraft.sourceKey === entryKey)) {
+      viewState.profileEditorDraft = null;
+    }
+    bumpLocalUiVersion();
+    render();
+  }
+  function commitProfileEntryDraft() {
+    const editorDraft = viewState.profileEditorDraft;
+    if (editorDraft === null) {
+      return;
+    }
+    if (editorDraft.kind === "skill") {
+      const label = readInputValue("forge-profile-editor-skill-label").trim();
+      const levelValue = readInputValue("forge-profile-editor-skill-level").trim();
+      const notes = toNullableTrimmedValue(readInputValue("forge-profile-editor-skill-notes"));
+      if (label === "" || isForgeOperatorSkillLevel(levelValue) === false) {
+        return;
+      }
+      updateOperatorProfileDraft(
+        (draft) => sortOperatorProfileDraft({
+          ...draft,
+          skills: [
+            ...draft.skills.filter((entry) => entry.skillKey !== editorDraft.sourceKey),
+            {
+              skillKey: editorDraft.sourceKey ?? createProfileEntryKey("skill"),
+              label,
+              level: levelValue,
+              ...notes ? { notes } : {}
+            }
+          ]
+        })
+      );
+    } else if (editorDraft.kind === "equipment") {
+      const label = readInputValue("forge-profile-editor-equipment-label").trim();
+      const statusValue = readInputValue("forge-profile-editor-equipment-status").trim();
+      const brandModel = toNullableTrimmedValue(
+        readInputValue("forge-profile-editor-equipment-brand-model")
+      );
+      const notes = toNullableTrimmedValue(readInputValue("forge-profile-editor-equipment-notes"));
+      if (label === "" || isForgeOperatorEquipmentStatus(statusValue) === false) {
+        return;
+      }
+      updateOperatorProfileDraft(
+        (draft) => sortOperatorProfileDraft({
+          ...draft,
+          equipment: [
+            ...draft.equipment.filter((entry) => entry.equipmentKey !== editorDraft.sourceKey),
+            {
+              equipmentKey: editorDraft.sourceKey ?? createProfileEntryKey("equipment"),
+              label,
+              status: statusValue,
+              ...brandModel ? { brandModel } : {},
+              ...notes ? { notes } : {}
+            }
+          ]
+        })
+      );
+    }
+    viewState.profileEditorDraft = null;
+    bumpLocalUiVersion();
+    render();
+  }
+  function persistOperatorProfileDraftIfDirty() {
+    if (viewState.operatorProfileDraftDirty !== true) {
+      return;
+    }
+    const operatorProfileDraft = currentOperatorProfileDraft();
+    const draftPreferences = operatorProfileDraft.preferences ?? {};
+    const sent = requestRuntime.updateOperatorProfile({
+      skills: operatorProfileDraft.skills.map((record) => ({
+        skillKey: record.skillKey,
+        label: record.label,
+        level: record.level,
+        ...record.notes ? { notes: record.notes } : {}
+      })),
+      equipment: operatorProfileDraft.equipment.map((record) => ({
+        equipmentKey: record.equipmentKey,
+        label: record.label,
+        status: record.status,
+        ...record.brandModel ? { brandModel: record.brandModel } : {},
+        ...record.notes ? { notes: record.notes } : {}
+      })),
+      preferences: {
+        ...draftPreferences.mode ? { mode: draftPreferences.mode } : {},
+        ...draftPreferences.riskTolerance ? { riskTolerance: draftPreferences.riskTolerance } : {}
+      }
+    });
+    if (sent === true) {
+      state.pendingCommand = "ForgeRoomUpdateOperatorProfile";
+    } else {
+      state.lastCommandResult = {
+        command: "ForgeRoomUpdateOperatorProfile",
+        success: false,
+        message: "roomAPI.sendCommand returned false."
+      };
+      state.pendingCommand = null;
     }
   }
-  function firstProfileEntry(section) {
-    const entries = section === "skill" ? ["skill-level", "skill-soldering", "skill-measurement", "skill-mechanical"] : section === "equipment" ? [
-      "tool-multimeter",
-      "tool-soldering-iron",
-      "tool-hot-air",
-      "tool-bench-supply",
-      "tool-magnification"
-    ] : ["preference-mode", "preference-risk"];
-    const firstEmpty = entries.find((entryId) => readProfileEntryValue(entryId) === null);
-    return firstEmpty ?? entries[0] ?? "skill-level";
-  }
-  function openProfileEditor(entryId = null) {
-    viewState.profileEditorOpen = true;
-    viewState.activeProfileEntryId = entryId ?? viewState.activeProfileEntryId ?? firstProfileEntry("skill");
-    bumpLocalUiVersion();
-    render();
-  }
   function closeProfileEditor() {
+    persistOperatorProfileDraftIfDirty();
     viewState.profileEditorOpen = false;
+    viewState.profileEditorDraft = null;
     bumpLocalUiVersion();
     render();
   }
@@ -422,6 +771,40 @@ export function createForgeRoomUiRuntime() {
       return "SESSION_CREATED";
     }
     return "IDLE";
+  }
+  function isPreflightReadyForDraft() {
+    if (state.snapshot.activeSessionId === null) {
+      return false;
+    }
+    if (!hasGoalSummary() || viewState.goalDraftDirty) {
+      return false;
+    }
+    if (viewState.sessionContextDraft !== null && sessionContextSelectionEquals(
+      viewState.sessionContextDraft,
+      state.snapshot.sessionContextSelection
+    ) === false) {
+      return false;
+    }
+    return state.snapshot.preflight.status === "fresh" || state.snapshot.preflight.status === "warning";
+  }
+  function issueCommand(commandLabel, send) {
+    viewState.guidedSurface = null;
+    const sent = send();
+    if (sent === true) {
+      state.pendingCommand = commandLabel;
+    } else {
+      state.lastCommandResult = {
+        command: commandLabel,
+        success: false,
+        message: "roomAPI.sendCommand returned false."
+      };
+      state.pendingCommand = null;
+    }
+    render();
+    return sent;
+  }
+  function isWorkbenchStageId(value) {
+    return value === "session" || value === "operator" || value === "preflight" || value === "tracking" || value === "draft";
   }
   function toUiFlowLabel(flowState) {
     const fallbacks = {
@@ -499,12 +882,6 @@ export function createForgeRoomUiRuntime() {
         };
     }
   }
-  function describeDraftStep() {
-    if (hasGoalSummary() !== true) {
-      return text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: GOAL");
-    }
-    return null;
-  }
   function describeApprovalStep() {
     if (hasDraftTasks() !== true) {
       return text(["workbench", "guards", "requiresDraftTasks"], "REQUIRES: DRAFT TASKS");
@@ -540,10 +917,10 @@ export function createForgeRoomUiRuntime() {
     if (firstRequirement === "Define a goal") {
       return text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: SAVED GOAL");
     }
-    if (firstRequirement === "Target room must be repair-room") {
+    if (firstRequirement === "Select a target room") {
       return text(
-        ["workbench", "guards", "requiresTargetRepairRoom"],
-        "REQUIRES: TARGET REPAIR ROOM"
+        ["workbench", "guards", "requiresTargetRoom"],
+        "REQUIRES: TARGET ROOM"
       );
     }
     if (firstRequirement === "Select a synthesis") {
@@ -568,14 +945,18 @@ export function createForgeRoomUiRuntime() {
     return latestExport ? latestExport.split("/").at(-1) ?? latestExport : null;
   }
   function derivePrimaryAction(flow) {
+    const goalDraftReadyForAdvance = isGoalDraftReadyForAdvance(currentGoalDraft());
     const nextAction = (() => {
       switch (flow.state) {
         case "IDLE":
           return {
-            label: text(["workbench", "primaryAction", "saveGoal"], "SAVE GOAL -> START"),
-            description: text(["workbench", "primaryAction", "saveGoalLocked"], "REQUIRES: GOAL"),
+            label: text(["workbench", "goalPanel", "sessionManager", "newSession"], "New session"),
+            description: text(
+              ["workbench", "stageTower", "primaryAction", "session"],
+              "STEP 1: CREATE OR LOAD A SESSION"
+            ),
             mode: "command",
-            commandAction: "save-goal"
+            commandAction: "create-session"
           };
         case "SESSION_CREATED":
           return {
@@ -585,11 +966,33 @@ export function createForgeRoomUiRuntime() {
             commandAction: "save-goal"
           };
         case "GOAL_DEFINED":
+          if (state.snapshot.activeSessionId === null) {
+            return {
+              label: text(["workbench", "goalPanel", "sessionManager", "newSession"], "New session"),
+              description: text(
+                ["workbench", "stageTower", "primaryAction", "session"],
+                "STEP 1: CREATE OR LOAD A SESSION"
+              ),
+              mode: "command",
+              commandAction: "create-session"
+            };
+          }
+          if (!isPreflightReadyForDraft()) {
+            return {
+              label: text(["workbench", "goalPanel", "preflight", "action"], "Run Preflight"),
+              description: text(
+                ["workbench", "stageTower", "primaryAction", "preflight"],
+                "STEP 4: VALIDATE RUN SETTINGS"
+              ),
+              mode: "command",
+              commandAction: "run-preflight"
+            };
+          }
           return {
             label: text(["workbench", "primaryAction", "generateDraft"], "Generate draft"),
             description: text(
-              ["workbench", "primaryAction", "generateDraftRequired"],
-              "NEXT: GENERATE DRAFT"
+              ["workbench", "stageTower", "primaryAction", "draft"],
+              "STEP 5: GENERATE THE FIRST DRAFT"
             ),
             mode: "command",
             commandAction: "generate-draft"
@@ -714,26 +1117,34 @@ export function createForgeRoomUiRuntime() {
         disabled: true
       };
     }
+    if (nextAction.commandAction === "save-goal" && goalDraftReadyForAdvance === false) {
+      return {
+        ...nextAction,
+        disabled: true
+      };
+    }
     return nextAction;
   }
   function renderStatusBar(flow) {
     const bar = createElement("header", "forge-statusbar");
-    const primaryAction = derivePrimaryAction(flow);
     bar.dataset["forgeUiState"] = flow.state;
     const identity = createElement("div", "forge-statusbar__identity");
-    identity.append(
-      createElement("p", "forge-statusbar__room", localizedRoomName()),
-      createElement(
-        "strong",
-        "forge-statusbar__goal",
-        state.snapshot.currentGoal?.summary || text(["workbench", "statusBar", "startGoal"], "Define the goal to start this run.")
-      ),
-      createElement(
-        "p",
-        "forge-statusbar__stage",
-        text(["workbench", "statusBar", "stage"], "State {label}", { label: flow.label })
-      )
+    const goalSummary = state.snapshot.currentGoal?.summary.trim() ?? "";
+    if (goalSummary !== "") {
+      identity.append(createElement("strong", "forge-statusbar__goal", goalSummary));
+    }
+    const operatorActions = createElement("div", "forge-statusbar__subactions");
+    const operatorButton = createElement(
+      "button",
+      "forge-button forge-button--secondary forge-statusbar__subaction",
+      text(["workbench", "goalPanel", "operatorProfile", "topbarAction"], "Operator Profile")
     );
+    operatorButton.dataset["forgeAction"] = "toggle-profile-editor";
+    operatorActions.append(
+      createElement("span", "forge-statusbar__microcopy", state.context.userNickname),
+      operatorButton
+    );
+    identity.append(operatorActions);
     const stats = createElement("div", "forge-statusbar__stats");
     [
       text(["workbench", "statusBar", "stats", "queue"], "QUEUE {count}", {
@@ -755,128 +1166,82 @@ export function createForgeRoomUiRuntime() {
       );
       stats.append(chip);
     });
-    const guidance = createElement("div", "forge-statusbar__guidance");
-    const actionButton = createElement(
-      "button",
-      "forge-button forge-button--primary forge-statusbar__action",
-      primaryAction.label
-    );
-    actionButton.disabled = primaryAction.disabled === true;
-    if (primaryAction.mode === "command" && primaryAction.commandAction) {
-      actionButton.dataset["forgeAction"] = primaryAction.commandAction;
-    }
-    if (primaryAction.mode === "guide" && primaryAction.guidedSurface) {
-      actionButton.dataset["forgeGuideSurface"] = primaryAction.guidedSurface;
-    }
-    guidance.append(
-      createElement(
-        "p",
-        "forge-statusbar__label",
-        text(["workbench", "statusBar", "requiredAction"], "Required action")
-      ),
-      actionButton,
-      createElement("p", "forge-statusbar__note", primaryAction.description)
-    );
-    bar.append(identity, stats, guidance);
+    bar.append(identity, stats);
     return bar;
-  }
-  function renderColumnHeading(label, caption) {
-    const block = createElement("div", "forge-column__heading");
-    block.append(
-      createElement("p", "forge-column__eyebrow", label),
-      createElement("h2", "forge-column__title", caption)
-    );
-    return block;
   }
   function render() {
     const mount = documentRef.getElementById("app");
     if (mount === null) {
       return;
     }
+    const shell = ensurePersistentShell(mount);
     documentRef.documentElement.lang = typeof state.context.locale === "string" && state.context.locale.trim() !== "" ? state.context.locale : "en";
     documentRef.title = `${localizedRoomName()} - ${text(
       ["workbench", "title"],
       "Forge Workbench"
     )}`;
     const renderSignature = buildRenderSignature();
-    if (renderSignature === lastRenderSignature && mount.childElementCount > 0) {
+    if (renderSignature === lastRenderSignature && shell.statusBar.childElementCount > 0) {
       return;
     }
-    const shell = documentRef.createElement("div");
-    shell.className = "forge-shell";
+    const focusSnapshot = captureFocusSnapshot();
     const flow = deriveUiFlowModel();
     const panelModes = derivePanelModes(flow.state);
     const goalDraft = currentGoalDraft();
     const operatorProfileDraft = currentOperatorProfileDraft();
     const runOverrideDraft = currentRunOverrideDraft();
-    shell.dataset["forgeUiState"] = flow.state;
-    const workbench = createElement("section", "forge-workbench");
+    shell.shell.dataset["forgeUiState"] = flow.state;
     const guidedSurface = viewState.guidedSurface ?? flow.surface;
     const flowLabel = toUiFlowLabel(flow.state);
-    const planColumn = createElement("section", "forge-column forge-column--plan");
-    planColumn.dataset["panelMode"] = panelModes.goal;
-    if (guidedSurface === "goal" && panelModes.goal !== "locked") {
-      planColumn.dataset["guided"] = "true";
-    }
-    const goalPanel = renderGoalInputPanel(documentRef, state, text, {
-      activeProfileEntryId: viewState.activeProfileEntryId,
-      draftBlockedReason: describeDraftStep(),
-      flowLabel,
-      flowState: flow.state,
-      goalDetailsOpen: viewState.goalDetailsOpen,
-      goalDraft,
-      operatorProfileDraft,
-      profileEditorOpen: viewState.profileEditorOpen,
-      runConditionComposerOpen: viewState.runConditionComposerOpen,
-      runConditionComposerValue: viewState.runConditionComposerValue,
-      runOverrideDraft,
-      sessionContextDirty: viewState.sessionContextDraft !== null && sessionContextSelectionEquals(
-        viewState.sessionContextDraft,
-        state.snapshot.sessionContextSelection
-      ) === false,
-      sessionContextSelection: currentSessionContextSelection()
-    });
-    setPanelBadge(goalPanel, panelModes.goal);
-    const planSecondaryPanel = hasApprovedTasks() ? renderApprovedTasksPanel(documentRef, state, text, {
+    const sessionContextDirty = viewState.sessionContextDraft !== null && sessionContextSelectionEquals(
+      viewState.sessionContextDraft,
+      state.snapshot.sessionContextSelection
+    ) === false;
+    const draftSurfacePanel = hasApprovedTasks() ? renderApprovedTasksPanel(documentRef, state, text, {
       advancedCapsulesOpen: viewState.advancedCapsulesOpen,
       dispatchBlockedReason: describeDispatchStep(),
       flowState: flow.state
-    }) : renderDraftBreakdownPanel(documentRef, state, text, {
+    }) : hasDraftTasks() ? renderDraftBreakdownPanel(documentRef, state, text, {
       approvalBlockedReason: describeApprovalStep(),
       flowState: flow.state,
       rawEditorOpen: viewState.advancedDraftOpen
+    }) : null;
+    const goalPanel = renderWorkbenchStagePanel(documentRef, state, text, {
+      activeStageId: viewState.activeStageId,
+      draftSurfacePanel,
+      flowLabel,
+      flowState: flow.state,
+      goalDraft,
+      goalDraftDirty: viewState.goalDraftDirty,
+      runConditionComposerOpen: viewState.runConditionComposerOpen,
+      runConditionComposerValue: viewState.runConditionComposerValue,
+      runOverrideDraft,
+      selectedSessionId: currentSessionPickerValue(),
+      sessionContextDirty,
+      sessionContextSelection: currentSessionContextSelection()
     });
-    setPanelBadge(planSecondaryPanel, panelModes.goal);
-    planColumn.append(
-      renderColumnHeading(
-        text(["workbench", "columns", "planEyebrow"], "Left"),
-        text(["workbench", "columns", "planTitle"], "Control Surface")
-      ),
-      goalPanel,
-      planSecondaryPanel
+    setPanelBadge(goalPanel, panelModes.goal);
+    shell.planColumn.className = "forge-column forge-column--plan";
+    setOptionalDataAttribute(shell.planColumn, "panelMode", panelModes.goal);
+    setOptionalDataAttribute(
+      shell.planColumn,
+      "guided",
+      guidedSurface === "goal" && panelModes.goal !== "locked" ? "true" : null
     );
-    const responseColumn = createElement("section", "forge-column forge-column--responses");
-    responseColumn.dataset["panelMode"] = panelModes.responses;
-    if (guidedSurface === "responses" && panelModes.responses !== "locked") {
-      responseColumn.dataset["guided"] = "true";
-    }
+    shell.planColumn.replaceChildren(goalPanel);
     const responsesPanel = renderResponsesPanel(documentRef, state, text, {
       expandedResponseIds: viewState.expandedResponseIds,
       flowState: flow.state
     });
     setPanelBadge(responsesPanel, panelModes.responses);
-    responseColumn.append(
-      renderColumnHeading(
-        text(["workbench", "columns", "responsesEyebrow"], "Center"),
-        text(["workbench", "columns", "responsesTitle"], "Responses / Decision")
-      ),
-      responsesPanel
+    shell.responseColumn.className = "forge-column forge-column--responses";
+    setOptionalDataAttribute(shell.responseColumn, "panelMode", panelModes.responses);
+    setOptionalDataAttribute(
+      shell.responseColumn,
+      "guided",
+      guidedSurface === "responses" && panelModes.responses !== "locked" ? "true" : null
     );
-    const outputColumn = createElement("section", "forge-column forge-column--output");
-    outputColumn.dataset["panelMode"] = panelModes.synthesis;
-    if (guidedSurface === "synthesis" && panelModes.synthesis !== "locked") {
-      outputColumn.dataset["guided"] = "true";
-    }
+    shell.responseColumn.replaceChildren(responsesPanel);
     const synthesisPanel = renderSynthesisPanel(documentRef, state, text, {
       expandedSynthesisIds: viewState.expandedSynthesisIds,
       exportBlockedReason: describeHandoffStep(),
@@ -884,17 +1249,35 @@ export function createForgeRoomUiRuntime() {
       synthesisBlockedReason: describeSynthesisStep()
     });
     setPanelBadge(synthesisPanel, panelModes.synthesis);
-    outputColumn.append(
-      renderColumnHeading(
-        text(["workbench", "columns", "outputEyebrow"], "Right"),
-        text(["workbench", "columns", "outputTitle"], "Output")
-      ),
-      synthesisPanel
+    shell.outputColumn.className = "forge-column forge-column--output";
+    setOptionalDataAttribute(shell.outputColumn, "panelMode", panelModes.synthesis);
+    setOptionalDataAttribute(
+      shell.outputColumn,
+      "guided",
+      guidedSurface === "synthesis" && panelModes.synthesis !== "locked" ? "true" : null
     );
-    workbench.append(planColumn, responseColumn, outputColumn);
-    shell.append(
-      renderStatusBar(flow),
-      workbench,
+    shell.outputColumn.replaceChildren(synthesisPanel);
+    syncElement(shell.statusBar, renderStatusBar(flow));
+    if (viewState.profileEditorOpen) {
+      const nextOverlay = renderOperatorProfileManager(documentRef, text, {
+        dirty: viewState.operatorProfileDraftDirty,
+        draft: operatorProfileDraft,
+        editorDraft: viewState.profileEditorDraft,
+        userAvatar: state.context.userAvatar,
+        userNickname: state.context.userNickname
+      });
+      if (shell.overlay === null) {
+        shell.shell.insertBefore(nextOverlay, shell.coordinator);
+      } else {
+        shell.shell.replaceChild(nextOverlay, shell.overlay);
+      }
+      shell.overlay = nextOverlay;
+    } else if (shell.overlay !== null) {
+      shell.overlay.remove();
+      shell.overlay = null;
+    }
+    syncElement(
+      shell.coordinator,
       renderCoordinatorPanel(documentRef, state, text, {
         flowLabel,
         flowState: flow.state,
@@ -902,8 +1285,8 @@ export function createForgeRoomUiRuntime() {
         note: derivePrimaryAction(flow).description
       })
     );
-    mount.replaceChildren(shell);
-    bindActions(shell);
+    bindActions(shell.shell);
+    restoreFocusSnapshot(focusSnapshot);
     lastRenderSignature = renderSignature;
   }
   function bumpLocalUiVersion() {
@@ -927,31 +1310,7 @@ export function createForgeRoomUiRuntime() {
     const trimmed = value.trim();
     return trimmed === "" ? null : trimmed;
   }
-  function toNullableBooleanValue(value) {
-    if (value === "true") {
-      return true;
-    }
-    if (value === "false") {
-      return false;
-    }
-    return null;
-  }
   function bindActions(root) {
-    function issueCommand(commandLabel, send) {
-      viewState.guidedSurface = null;
-      const sent = send();
-      if (sent === true) {
-        state.pendingCommand = commandLabel;
-      } else {
-        state.lastCommandResult = {
-          command: commandLabel,
-          success: false,
-          message: "roomAPI.sendCommand returned false."
-        };
-        state.pendingCommand = null;
-      }
-      render();
-    }
     function sendRunOverrideUpdate(nextDraft) {
       viewState.runOverrideDraft = nextDraft;
       viewState.runOverrideDraftDirty = true;
@@ -971,27 +1330,17 @@ export function createForgeRoomUiRuntime() {
       render();
     }
     function toggleSessionContextSelection(section, key) {
-      const current = currentSessionContextSelection();
-      const nextSelection = cloneSessionContextSelection(current);
-      if (section === "skill") {
-        const record = nextSelection.skill;
-        if (!(key in record)) {
-          return;
-        }
-        record[key] = record[key] !== true;
-      } else if (section === "tools") {
-        const record = nextSelection.tools;
-        if (!(key in record)) {
-          return;
-        }
-        record[key] = record[key] !== true;
-      } else {
-        const record = nextSelection.preferences;
-        if (!(key in record)) {
-          return;
-        }
-        record[key] = record[key] !== true;
-      }
+      const current = cloneSessionContextSelection(currentSessionContextSelection());
+      const nextSelection = section === "skill" ? sortSessionContextSelection({
+        ...current,
+        skillKeys: current.skillKeys.includes(key) ? current.skillKeys.filter((entry) => entry !== key) : [...current.skillKeys, key]
+      }) : section === "equipment" ? sortSessionContextSelection({
+        ...current,
+        equipmentKeys: current.equipmentKeys.includes(key) ? current.equipmentKeys.filter((entry) => entry !== key) : [...current.equipmentKeys, key]
+      }) : isForgeOperatorPreferenceKey(key) ? sortSessionContextSelection({
+        ...current,
+        preferenceKeys: current.preferenceKeys.includes(key) ? current.preferenceKeys.filter((entry) => entry !== key) : [...current.preferenceKeys, key]
+      }) : current;
       viewState.sessionContextDraft = nextSelection;
       viewState.guidedSurface = null;
       bumpLocalUiVersion();
@@ -1017,6 +1366,47 @@ export function createForgeRoomUiRuntime() {
         render();
       });
     });
+    root.querySelectorAll("[data-forge-action='open-stage']").forEach((element) => {
+      element.addEventListener("click", () => {
+        const stageId = element.dataset["forgeActionValue"];
+        if (!isWorkbenchStageId(stageId) || stageId === viewState.activeStageId) {
+          return;
+        }
+        if (state.pendingCommand !== null) {
+          return;
+        }
+        if (viewState.activeStageId === "session") {
+          const goalDraft = currentGoalDraft();
+          if (!isGoalDraftReadyForAdvance(goalDraft)) {
+            return;
+          }
+          viewState.pendingStageId = stageId;
+          const sent = issueCommand("ForgeRoomUpdateGoal", () => {
+            return requestRuntime.updateGoal({
+              summary: goalDraft.summary,
+              brief: goalDraft.brief,
+              constraints: [...goalDraft.constraints],
+              targetRoomId: goalDraft.targetRoomId
+            });
+          });
+          if (sent !== true) {
+            viewState.pendingStageId = null;
+          }
+          return;
+        }
+        if (state.snapshot.activeSessionId !== null) {
+          viewState.pendingStageId = stageId;
+          const sent = issueCommand("ForgeRoomSaveSession", () => requestRuntime.saveSession());
+          if (sent !== true) {
+            viewState.pendingStageId = null;
+          }
+          return;
+        }
+        viewState.activeStageId = stageId;
+        bumpLocalUiVersion();
+        render();
+      });
+    });
     root.querySelectorAll("[data-forge-action='toggle-profile-editor']").forEach((element) => {
       element.addEventListener("click", () => {
         if (viewState.profileEditorOpen) {
@@ -1024,15 +1414,6 @@ export function createForgeRoomUiRuntime() {
           return;
         }
         openProfileEditor();
-      });
-    });
-    root.querySelectorAll("[data-forge-action='toggle-goal-details']").forEach((element) => {
-      element.addEventListener("click", () => {
-        if (viewState.goalDetailsOpen) {
-          closeGoalDetails();
-          return;
-        }
-        openGoalDetails();
       });
     });
     root.querySelectorAll("[data-forge-goal-field]").forEach((element) => {
@@ -1064,178 +1445,100 @@ export function createForgeRoomUiRuntime() {
           }));
         }
         bumpLocalUiVersion();
-        render();
+        syncGoalDraftControls(root);
       };
-      element.addEventListener("input", syncGoalField);
-      element.addEventListener("change", syncGoalField);
-    });
-    root.querySelectorAll("[data-forge-profile-entry]").forEach((element) => {
-      element.addEventListener("click", () => {
-        const entryId = element.dataset["forgeProfileEntry"];
-        if (!entryId) {
-          return;
-        }
-        viewState.profileEditorOpen = true;
-        viewState.activeProfileEntryId = entryId;
-        bumpLocalUiVersion();
-        render();
+      element.addEventListener("input", () => {
+        syncGoalField();
+      });
+      element.addEventListener("change", () => {
+        syncGoalField();
       });
     });
-    root.querySelectorAll("[data-forge-profile-field]").forEach((element) => {
-      const syncProfileField = () => {
-        const entryId = element.dataset["forgeProfileField"];
-        const control = element;
-        if (!entryId || typeof control.value !== "string") {
-          return;
-        }
-        if (entryId === "skill-level") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            skill: {
-              ...draft.skill,
-              level: toNullableTrimmedValue(
-                control.value
-              )
-            }
-          }));
-        } else if (entryId === "skill-soldering") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            skill: {
-              ...draft.skill,
-              soldering: toNullableTrimmedValue(
-                control.value
-              )
-            }
-          }));
-        } else if (entryId === "skill-measurement") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            skill: {
-              ...draft.skill,
-              measurement: toNullableTrimmedValue(
-                control.value
-              )
-            }
-          }));
-        } else if (entryId === "skill-mechanical") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            skill: {
-              ...draft.skill,
-              mechanical: toNullableTrimmedValue(
-                control.value
-              )
-            }
-          }));
-        } else if (entryId === "tool-multimeter") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              multimeter: toNullableBooleanValue(control.value)
-            }
-          }));
-        } else if (entryId === "tool-soldering-iron") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              solderingIron: toNullableBooleanValue(control.value)
-            }
-          }));
-        } else if (entryId === "tool-hot-air") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              hotAir: toNullableBooleanValue(control.value)
-            }
-          }));
-        } else if (entryId === "tool-bench-supply") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              benchPowerSupply: toNullableBooleanValue(control.value)
-            }
-          }));
-        } else if (entryId === "tool-magnification") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              magnification: toNullableBooleanValue(control.value)
-            }
-          }));
-        } else if (entryId === "preference-mode") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            preferences: {
-              ...draft.preferences,
-              mode: toNullableTrimmedValue(
-                control.value
-              )
-            }
-          }));
-        } else if (entryId === "preference-risk") {
-          updateOperatorProfileDraft((draft) => ({
-            ...draft,
-            preferences: {
-              ...draft.preferences,
-              riskTolerance: toNullableTrimmedValue(
-                control.value
-              )
-            }
-          }));
-        } else {
-          return;
-        }
-        bumpLocalUiVersion();
-        render();
-      };
-      element.addEventListener("input", syncProfileField);
-      element.addEventListener("change", syncProfileField);
-    });
-    root.querySelectorAll("[data-forge-action='profile-quick-action']").forEach((element) => {
+    root.querySelectorAll("[data-forge-action='start-profile-create']").forEach((element) => {
       element.addEventListener("click", () => {
-        const actionValue = element.dataset["forgeActionValue"];
-        if (actionValue === "skill") {
-          openProfileEditor(firstProfileEntry("skill"));
-          return;
-        }
-        if (actionValue === "equipment") {
-          openProfileEditor(firstProfileEntry("equipment"));
-          return;
-        }
-        if (actionValue === "edit") {
-          openProfileEditor(viewState.activeProfileEntryId ?? firstProfileEntry("skill"));
-          return;
-        }
-        if (actionValue === "clear") {
-          if (viewState.activeProfileEntryId === null) {
-            openProfileEditor(firstProfileEntry("skill"));
-            return;
-          }
-          const inputId = profileEntryInputId(viewState.activeProfileEntryId);
-          const input = inputId ? documentRef.getElementById(inputId) : null;
-          if (input !== null && "value" in input && typeof input.value === "string") {
-            input.value = "";
-          }
+        const kind = element.dataset["forgeProfileKind"];
+        const entryKey = element.dataset["forgeProfileKey"] ?? null;
+        if (kind === "skill" || kind === "equipment") {
+          openProfileEntryEditor(kind, "create", entryKey);
         }
       });
     });
-    root.querySelector("[data-forge-action='create-session']")?.addEventListener("click", () => {
-      issueCommand("ForgeRoomCreateSession", () => requestRuntime.createSession());
+    root.querySelectorAll("[data-forge-action='start-profile-edit']").forEach((element) => {
+      element.addEventListener("click", () => {
+        const kind = element.dataset["forgeProfileKind"];
+        const entryKey = element.dataset["forgeProfileKey"] ?? null;
+        if ((kind === "skill" || kind === "equipment") && typeof entryKey === "string") {
+          openProfileEntryEditor(kind, "edit", entryKey);
+        }
+      });
     });
-    root.querySelector("[data-forge-action='save-session']")?.addEventListener("click", () => {
-      issueCommand("ForgeRoomSaveSession", () => requestRuntime.saveSession());
+    root.querySelectorAll("[data-forge-action='remove-profile-entry']").forEach((element) => {
+      element.addEventListener("click", () => {
+        const kind = element.dataset["forgeProfileKind"];
+        const entryKey = element.dataset["forgeProfileKey"] ?? null;
+        if ((kind === "skill" || kind === "equipment") && typeof entryKey === "string") {
+          removeProfileEntry(kind, entryKey);
+        }
+      });
     });
-    root.querySelector("[data-forge-action='load-latest']")?.addEventListener("click", () => {
-      issueCommand("ForgeRoomLoadLatestSession", () => requestRuntime.loadLatestSession());
+    root.querySelector("[data-forge-action='commit-profile-entry']")?.addEventListener("click", () => {
+      commitProfileEntryDraft();
+    });
+    root.querySelector("[data-forge-action='cancel-profile-entry']")?.addEventListener("click", () => {
+      viewState.profileEditorDraft = null;
+      bumpLocalUiVersion();
+      render();
+    });
+    root.querySelector("#forge-session-picker")?.addEventListener("change", () => {
+      const nextSessionId = readInputValue("forge-session-picker").trim();
+      if (nextSessionId === "") {
+        return;
+      }
+      viewState.selectedSavedSessionId = nextSessionId;
+      if (nextSessionId === FORGE_NEW_SESSION_PICKER_VALUE) {
+        issueCommand(
+          "ForgeRoomCreateSession",
+          () => requestRuntime.createSession({ persist: false })
+        );
+        return;
+      }
+      issueCommand(
+        "ForgeRoomLoadSession",
+        () => requestRuntime.loadSession({ sessionId: nextSessionId })
+      );
+    });
+    root.querySelector("[data-forge-action='delete-selected-session']")?.addEventListener("click", () => {
+      const sessionId = currentSelectedSavedSessionId();
+      if (sessionId === null) {
+        return;
+      }
+      viewState.selectedSavedSessionId = FORGE_NEW_SESSION_PICKER_VALUE;
+      issueCommand(
+        "ForgeRoomDeleteSession",
+        () => requestRuntime.deleteSession({ sessionId })
+      );
+    });
+    root.querySelectorAll("[data-forge-action='load-session']").forEach((element) => {
+      element.addEventListener("click", () => {
+        const sessionId = element.dataset["forgeSessionId"];
+        if (!sessionId) {
+          return;
+        }
+        issueCommand("ForgeRoomLoadSession", () => requestRuntime.loadSession({ sessionId }));
+      });
+    });
+    root.querySelector("[data-forge-action='delete-session']")?.addEventListener("click", () => {
+      const sessionId = root.querySelector("[data-forge-action='delete-session']")?.dataset["forgeSessionId"] ?? state.snapshot.activeSessionId ?? null;
+      issueCommand(
+        "ForgeRoomDeleteSession",
+        () => sessionId ? requestRuntime.deleteSession({ sessionId }) : requestRuntime.deleteSession({})
+      );
     });
     root.querySelector("[data-forge-action='save-goal']")?.addEventListener("click", () => {
       const goalDraft = currentGoalDraft();
+      if (!isGoalDraftReadyForAdvance(goalDraft)) {
+        return;
+      }
       issueCommand("ForgeRoomUpdateGoal", () => {
         return requestRuntime.updateGoal({
           summary: goalDraft.summary,
@@ -1245,65 +1548,12 @@ export function createForgeRoomUiRuntime() {
         });
       });
     });
-    root.querySelector("[data-forge-action='save-operator-profile']")?.addEventListener("click", () => {
-      const operatorProfileDraft = currentOperatorProfileDraft();
-      issueCommand("ForgeRoomUpdateOperatorProfile", () => {
-        return requestRuntime.updateOperatorProfile({
-          skill: {
-            level: operatorProfileDraft.skill.level,
-            soldering: operatorProfileDraft.skill.soldering,
-            measurement: operatorProfileDraft.skill.measurement,
-            mechanical: operatorProfileDraft.skill.mechanical
-          },
-          tools: {
-            multimeter: operatorProfileDraft.tools.multimeter,
-            solderingIron: operatorProfileDraft.tools.solderingIron,
-            hotAir: operatorProfileDraft.tools.hotAir,
-            benchPowerSupply: operatorProfileDraft.tools.benchPowerSupply,
-            magnification: operatorProfileDraft.tools.magnification
-          },
-          preferences: {
-            mode: operatorProfileDraft.preferences.mode,
-            riskTolerance: operatorProfileDraft.preferences.riskTolerance
-          }
-        });
-      });
-    });
     root.querySelectorAll("[data-forge-context-chip]").forEach((element) => {
       element.addEventListener("click", () => {
-        const unset = element.dataset["forgeContextUnset"] === "true";
-        const entryId = element.dataset["forgeProfileEntry"];
-        if (unset && entryId) {
-          openProfileEditor(entryId);
-          return;
-        }
         const section = element.dataset["forgeContextSection"];
         const key = element.dataset["forgeContextKey"];
-        if ((section === "skill" || section === "tools" || section === "preferences") && typeof key === "string") {
+        if ((section === "skill" || section === "equipment" || section === "general") && typeof key === "string") {
           toggleSessionContextSelection(section, key);
-        }
-      });
-    });
-    root.querySelectorAll("[data-forge-run-override-toggle]").forEach((element) => {
-      element.addEventListener("click", () => {
-        const toggle = element.dataset["forgeRunOverrideToggle"];
-        if (toggle === "hotAir") {
-          const nextDraft = updateRunOverrideDraft((draft) => ({
-            ...draft,
-            tools: {
-              ...draft.tools,
-              hotAir: draft.tools.hotAir !== true
-            }
-          }));
-          sendRunOverrideUpdate(nextDraft);
-          return;
-        }
-        if (toggle === "preAnalysis") {
-          const nextDraft = updateRunOverrideDraft((draft) => ({
-            ...draft,
-            enableRovoPreAnalysis: draft.enableRovoPreAnalysis !== true
-          }));
-          sendRunOverrideUpdate(nextDraft);
         }
       });
     });
@@ -1326,12 +1576,12 @@ export function createForgeRoomUiRuntime() {
       if (!nextCondition) {
         return;
       }
-      const currentConditions = notesToConditions(currentRunOverrideDraft().notes).filter(
-        (entry) => entry !== nextCondition
-      );
       const nextDraft = updateRunOverrideDraft((draft) => ({
         ...draft,
-        notes: [...currentConditions, nextCondition].join("\n")
+        temporaryConditions: sortUniqueKeys([
+          ...draft.temporaryConditions.filter((entry) => entry !== nextCondition),
+          nextCondition
+        ])
       }));
       viewState.runConditionComposerOpen = false;
       viewState.runConditionComposerValue = "";
@@ -1345,7 +1595,7 @@ export function createForgeRoomUiRuntime() {
         }
         const nextDraft = updateRunOverrideDraft((draft) => ({
           ...draft,
-          notes: notesToConditions(draft.notes).filter((entry) => entry !== condition).join("\n")
+          temporaryConditions: draft.temporaryConditions.filter((entry) => entry !== condition)
         }));
         sendRunOverrideUpdate(nextDraft);
       });
@@ -1354,6 +1604,29 @@ export function createForgeRoomUiRuntime() {
       viewState.runConditionComposerValue = documentRef.getElementById(
         "forge-run-override-condition-input"
       )?.value ?? "";
+    });
+    root.querySelector("#forge-run-override-notes")?.addEventListener("change", () => {
+      const nextDraft = updateRunOverrideDraft((draft) => ({
+        ...draft,
+        notes: readInputValue("forge-run-override-notes")
+      }));
+      sendRunOverrideUpdate(nextDraft);
+    });
+    root.querySelector("#forge-run-override-mode")?.addEventListener("change", () => {
+      const nextDraft = updateRunOverrideDraft((draft) => ({
+        ...draft,
+        mode: readInputValue("forge-run-override-mode")
+      }));
+      sendRunOverrideUpdate(nextDraft);
+    });
+    root.querySelector("#forge-run-override-risk")?.addEventListener("change", () => {
+      const nextDraft = updateRunOverrideDraft((draft) => ({
+        ...draft,
+        riskTolerance: readInputValue(
+          "forge-run-override-risk"
+        )
+      }));
+      sendRunOverrideUpdate(nextDraft);
     });
     root.querySelector("[data-forge-action='run-preflight']")?.addEventListener("click", () => {
       issueCommand("ForgeRoomRunPreflight", () => requestRuntime.runPreflight());
@@ -1577,17 +1850,39 @@ export function createForgeRoomUiRuntime() {
       syncOperatorProfileDraftFromSnapshot();
       syncRunOverrideDraftFromSnapshot();
       viewState.sessionContextDraft = null;
+      if (currentSessionPickerValue() === FORGE_NEW_SESSION_PICKER_VALUE && state.snapshot.activeSessionId !== null && state.snapshot.sessionList.some((session) => session.id === state.snapshot.activeSessionId)) {
+        viewState.selectedSavedSessionId = state.snapshot.activeSessionId;
+      }
       const meta = toRecord(metaSource);
       state.meta = {
         roleCatalog: toRecord(meta["roleCatalog"]),
         personaPresets: toRecord(meta["personaPresets"])
       };
+      if (currentSessionPickerValue() === FORGE_NEW_SESSION_PICKER_VALUE && state.snapshot.activeSessionId === null && state.pendingCommand === null) {
+        issueCommand(
+          "ForgeRoomCreateSession",
+          () => requestRuntime.createSession({ persist: false })
+        );
+        return;
+      }
       render();
       return;
     }
     const result = toRecord(payload.result);
+    const command = typeof payload.command === "string" && payload.command.trim() !== "" ? payload.command : "command";
+    const commandSucceeded = result["success"] === true;
+    if (viewState.pendingStageId !== null && (command === "ForgeRoomUpdateGoal" || command === "ForgeRoomSaveSession")) {
+      if (commandSucceeded) {
+        viewState.activeStageId = viewState.pendingStageId;
+        bumpLocalUiVersion();
+      }
+      viewState.pendingStageId = null;
+    }
     if (payload.command === "ForgeRoomUpdateSessionContext" && result["success"] !== true) {
       viewState.sessionContextDraft = null;
+    }
+    if (payload.command === "ForgeRoomUpdateRunOverride" && result["success"] !== true) {
+      syncRunOverrideDraftFromSnapshot(true);
     }
     if (payload.command === "ForgeRoomUpdateGoal" && result["success"] === true) {
       viewState.goalDraftDirty = false;
@@ -1598,10 +1893,13 @@ export function createForgeRoomUiRuntime() {
     if (payload.command === "ForgeRoomUpdateRunOverride" && result["success"] === true) {
       viewState.runOverrideDraftDirty = false;
     }
+    if (payload.command === "ForgeRoomDeleteSession" && result["success"] === true) {
+      viewState.selectedSavedSessionId = FORGE_NEW_SESSION_PICKER_VALUE;
+    }
     state.pendingCommand = null;
     state.lastCommandResult = {
-      command: typeof payload.command === "string" && payload.command.trim() !== "" ? payload.command : "command",
-      success: result["success"] === true,
+      command,
+      success: commandSucceeded,
       message: typeof result["message"] === "string" && result["message"].trim() !== "" ? result["message"] : null
     };
     render();

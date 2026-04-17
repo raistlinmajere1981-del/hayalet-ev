@@ -1,4 +1,4 @@
-import { FORGE_PREFLIGHT_SCHEMA_VERSION, FORGE_TARGET_ROOM_ID } from "../shared/forge-constants.js";
+import { FORGE_PREFLIGHT_SCHEMA_VERSION } from "../shared/forge-constants.js";
 import type {
   ForgeGoal,
   ForgeRunOverride,
@@ -58,11 +58,14 @@ function collectConstraintTokens(params: {
   runOverride: ForgeRunOverride | null;
   selectedOperatorProfile: ForgeSelectedOperatorProfile;
 }): string[] {
+  const effectiveMode = params.runOverride?.mode ?? params.selectedOperatorProfile.preferences.mode;
+  const effectiveRiskTolerance =
+    params.runOverride?.riskTolerance ?? params.selectedOperatorProfile.preferences.riskTolerance;
   const tokens = uniqueStrings(
     [
       params.goal.constraints[0] ?? null,
-      params.runOverride?.mode,
-      params.runOverride?.riskTolerance ? `${params.runOverride.riskTolerance}-risk` : null,
+      effectiveMode,
+      effectiveRiskTolerance ? `${effectiveRiskTolerance}-risk` : null,
       params.selectedOperatorProfile.skills[0]
         ? `${params.selectedOperatorProfile.skills[0].label}-${params.selectedOperatorProfile.skills[0].level}`
         : null,
@@ -85,7 +88,7 @@ export function buildForgeRunSignature(params: {
   runOverride: ForgeRunOverride | null;
   selectedOperatorProfile: ForgeSelectedOperatorProfile;
 }): ForgeRunSignature {
-  const roomPart = titleCaseRoomId(params.goal.targetRoomId || FORGE_TARGET_ROOM_ID);
+  const roomPart = titleCaseRoomId(params.goal.targetRoomId.trim() || "unspecified-target");
   const versionPart = FORGE_PREFLIGHT_SCHEMA_VERSION;
   const source = collectConstraintTokens(params);
   const tokenPart = source.length > 0 ? source.join("-") : "baseline";

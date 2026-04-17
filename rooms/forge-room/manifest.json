@@ -200,7 +200,7 @@
         },
         {
           "name": "ForgeRoomExportHandoff",
-          "description": "Export the selected synthesis into a Repair Room handoff package.",
+          "description": "Export the selected synthesis into a target-room handoff package.",
           "scope": "room-ui",
           "exposure": "internal"
         }

@@ -37,7 +37,12 @@ function createGuideCard(documentRef, titleText, summaryText, chips = [], tone =
   return card;
 }
 function toCountLabel(text, pathPrefix, count, oneFallback, otherFallback) {
-  return count === 1 ? text([...pathPrefix, "One"], oneFallback, { count }) : text([...pathPrefix, "Other"], otherFallback, { count });
+  const pathRoot = [...pathPrefix];
+  const leaf = pathRoot.pop();
+  if (!leaf) {
+    return count === 1 ? oneFallback.replace("{count}", String(count)) : otherFallback.replace("{count}", String(count));
+  }
+  return count === 1 ? text([...pathRoot, `${leaf}One`], oneFallback, { count }) : text([...pathRoot, `${leaf}Other`], otherFallback, { count });
 }
 function describeResponseState(flowState, counts, text) {
   switch (flowState) {
@@ -46,7 +51,7 @@ function describeResponseState(flowState, counts, text) {
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "savedGoalLocked", "title"],
-          "CENTER GATE LOCKED"
+          "RESPONSE LANE LOCKED"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "savedGoalLocked", "summary"],
@@ -59,7 +64,7 @@ function describeResponseState(flowState, counts, text) {
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "approvedDraftLocked", "title"],
-          "CENTER GATE LOCKED"
+          "RESPONSE LANE LOCKED"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "approvedDraftLocked", "summary"],
@@ -71,7 +76,7 @@ function describeResponseState(flowState, counts, text) {
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "dispatchLocked", "title"],
-          "CENTER GATE LOCKED"
+          "RESPONSE LANE LOCKED"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "dispatchLocked", "summary"],
@@ -83,7 +88,7 @@ function describeResponseState(flowState, counts, text) {
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "responseInbound", "title"],
-          "CENTER GATE OPEN"
+          "RESPONSE LANE ACTIVE"
         ),
         summary: counts.responses > 0 ? text(
           ["workbench", "responsesPanel", "guide", "responseInbound", "summary"],
@@ -98,7 +103,7 @@ function describeResponseState(flowState, counts, text) {
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "responseInbound", "title"],
-          "CENTER GATE OPEN"
+          "RESPONSE LANE ACTIVE"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "reviewResponses", "summary"],
@@ -110,7 +115,7 @@ function describeResponseState(flowState, counts, text) {
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "conflictBlocked", "title"],
-          "CENTER GATE BLOCKED"
+          "RESPONSE LANE BLOCKED"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "conflictBlocked", "summary"],
@@ -122,7 +127,7 @@ function describeResponseState(flowState, counts, text) {
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "readOnly", "title"],
-          "CENTER GATE MONITOR"
+          "RESPONSE LANE MONITOR"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "readOnly", "summary"],
@@ -134,7 +139,7 @@ function describeResponseState(flowState, counts, text) {
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "exportInputs", "title"],
-          "CENTER GATE ARCHIVE"
+          "RESPONSE LANE ARCHIVE"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "exportInputs", "summary"],
@@ -146,7 +151,7 @@ function describeResponseState(flowState, counts, text) {
       return {
         title: text(
           ["workbench", "responsesPanel", "guide", "savedGoalLocked", "title"],
-          "CENTER GATE LOCKED"
+          "RESPONSE LANE LOCKED"
         ),
         summary: text(
           ["workbench", "responsesPanel", "guide", "savedGoalLocked", "summary"],

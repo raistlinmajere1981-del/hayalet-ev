@@ -1,28 +1,22 @@
 import { buildForgeSelectedOperatorProfile } from "./forge-preflight-metadata.js";
-function normalizeTools(value) {
-  return JSON.stringify(
-    Object.keys(value).sort().map((key) => [key, value[key] === true])
-  );
-}
 function normalizeProfileFingerprint(profile) {
   return JSON.stringify({
-    preferences: profile.preferences,
-    skill: profile.skill,
-    tools: profile.tools
+    skills: profile.skills,
+    equipment: profile.equipment
   });
 }
 function normalizeSelectionFingerprint(selection) {
   return JSON.stringify({
-    preferences: selection.preferences,
-    skill: selection.skill,
-    tools: selection.tools
+    skillKeys: selection.skillKeys,
+    equipmentKeys: selection.equipmentKeys
   });
 }
 function normalizeRunOverrideFingerprint(runOverride) {
   return JSON.stringify({
-    enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
+    mode: runOverride?.mode ?? null,
     notes: runOverride?.notes.trim() ?? "",
-    tools: normalizeTools(runOverride?.tools ?? {})
+    riskTolerance: runOverride?.riskTolerance ?? null,
+    temporaryConditions: [...runOverride?.temporaryConditions ?? []].sort()
   });
 }
 export function readForgePreflightInvalidationReason(params) {

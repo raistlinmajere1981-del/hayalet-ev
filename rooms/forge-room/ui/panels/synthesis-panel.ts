@@ -80,9 +80,16 @@ function toCountLabel(
   oneFallback: string,
   otherFallback: string
 ): string {
+  const pathRoot = [...pathPrefix];
+  const leaf = pathRoot.pop();
+  if (!leaf) {
+    return count === 1
+      ? oneFallback.replace("{count}", String(count))
+      : otherFallback.replace("{count}", String(count));
+  }
   return count === 1
-    ? text([...pathPrefix, "One"], oneFallback, { count })
-    : text([...pathPrefix, "Other"], otherFallback, { count });
+    ? text([...pathRoot, `${leaf}One`], oneFallback, { count })
+    : text([...pathRoot, `${leaf}Other`], otherFallback, { count });
 }
 
 function describeOutputState(
@@ -357,7 +364,10 @@ export function renderSynthesisPanel(
     const contextCard = documentRef.createElement("article");
     contextCard.className = "forge-state-guide";
     const contextTitle = documentRef.createElement("strong");
-    contextTitle.textContent = "Run context";
+    contextTitle.textContent = text(
+      ["workbench", "synthesisPanel", "context", "title"],
+      "Run context"
+    );
     const contextSummary = documentRef.createElement("p");
     contextSummary.className = "forge-panel__hint";
     contextSummary.textContent =

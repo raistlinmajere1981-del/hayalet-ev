@@ -9,6 +9,11 @@ import { createRoomInstalledCopy } from "./helpers/room-installed-copy.ts";
 class FakeElement {
   readonly tagName: string;
   readonly ownerDocument: FakeDocument;
+  readonly classList: {
+    add: (...tokens: string[]) => void;
+    remove: (...tokens: string[]) => void;
+    contains: (token: string) => boolean;
+  };
   children: FakeElement[] = [];
   parentElement: FakeElement | null = null;
   dataset: Record<string, string> = {};
@@ -26,6 +31,25 @@ class FakeElement {
   constructor(tagName: string, ownerDocument: FakeDocument) {
     this.tagName = tagName.toLowerCase();
     this.ownerDocument = ownerDocument;
+    this.classList = {
+      add: (...tokens: string[]) => {
+        const next = new Set(this.className.split(/\s+/).filter(Boolean));
+        tokens.forEach((token) => {
+          if (token.trim() !== "") {
+            next.add(token);
+          }
+        });
+        this.className = Array.from(next).join(" ");
+      },
+      remove: (...tokens: string[]) => {
+        const blocked = new Set(tokens);
+        this.className = this.className
+          .split(/\s+/)
+          .filter((token) => token !== "" && !blocked.has(token))
+          .join(" ");
+      },
+      contains: (token: string) => this.className.split(/\s+/).filter(Boolean).includes(token),
+    };
   }
 
   append(...children: FakeElement[]): void {
@@ -33,6 +57,43 @@ class FakeElement {
       child.parentElement = this;
       this.children.push(child);
     }
+  }
+
+  insertBefore(child: FakeElement, referenceChild: FakeElement | null): void {
+    child.parentElement = this;
+    if (referenceChild === null) {
+      this.children.push(child);
+      return;
+    }
+    const index = this.children.indexOf(referenceChild);
+    if (index === -1) {
+      this.children.push(child);
+      return;
+    }
+    this.children.splice(index, 0, child);
+  }
+
+  replaceChild(nextChild: FakeElement, previousChild: FakeElement): void {
+    const index = this.children.indexOf(previousChild);
+    if (index === -1) {
+      nextChild.parentElement = this;
+      this.children.push(nextChild);
+      return;
+    }
+    nextChild.parentElement = this;
+    previousChild.parentElement = null;
+    this.children.splice(index, 1, nextChild);
+  }
+
+  remove(): void {
+    if (this.parentElement === null) {
+      return;
+    }
+    const index = this.parentElement.children.indexOf(this);
+    if (index !== -1) {
+      this.parentElement.children.splice(index, 1);
+    }
+    this.parentElement = null;
   }
 
   replaceChildren(...children: FakeElement[]): void {
@@ -253,6 +314,11 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       },
       locale: "en",
       translations: loadTranslations("en"),
+      assistant: {
+        nickname: "Hayalet",
+        avatar: "/avatars/ai0.png",
+        connected: true,
+      },
       user: {
         nickname: "Operator",
       },
@@ -455,7 +521,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       },
     });
 
-    const panelIds = ["goal", "approved", "responses", "synthesis", "coordinator"];
+    const panelIds = ["goal", "responses", "synthesis", "coordinator"];
     panelIds.forEach((panelId) => {
       assert.ok(
         environment.app.querySelector(`[data-forge-panel="${panelId}"]`),
@@ -469,50 +535,40 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       stage: "ui-ready",
     });
     assert.ok(environment.sentCommands.includes("ForgeRoomUiReady"));
+    assert.ok(environment.app.querySelector("[data-forge-stage-panel='true']"));
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='session']"));
     assert.ok(environment.app.querySelector("#forge-goal-summary"));
-    assert.equal(environment.app.querySelector("#forge-goal-brief"), null);
-    assert.ok(environment.app.querySelector("[data-forge-zone='goal']"));
-    assert.ok(environment.app.querySelector("[data-forge-zone='context']"));
-    assert.ok(environment.app.querySelector("[data-forge-zone='overrides']"));
-    assert.ok(environment.app.querySelector("[data-forge-zone='preflight']"));
-    const contextChips = environment.app.querySelectorAll("[data-forge-context-chip]");
-    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "measurement"));
-    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "multimeter"));
-    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "mode"));
-    assert.ok(environment.app.querySelector("#forge-approved-mode-forge-task-approved-1"));
-    assert.equal(
-      environment.app.querySelector("#forge-approved-capsule-summary-forge-task-approved-1"),
-      null
-    );
-
-    const primaryButtons = findElementsByClass(environment.app, "forge-button--primary");
-    assert.equal(primaryButtons.length, 1);
-    assert.equal(primaryButtons[0]?.textContent, "Dispatch assignments");
+    assert.ok(environment.app.querySelector("#forge-goal-brief"));
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomCreateSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    const statusBarActions = findElementsByClass(environment.app, "forge-statusbar__action");
+    assert.equal(statusBarActions.length, 0);
 
     const uiText = readTreeText(environment.app);
     assert.match(uiText, /State Approved/);
-    assert.match(uiText, /DISPATCH READY/);
+    assert.match(uiText, /NEXT: DISPATCH/);
     assert.match(uiText, /CENTER GATE LOCKED/);
     assert.match(uiText, /REQUIRES: DISPATCH/);
     assert.match(uiText, /OUTPUT GATE LOCKED/);
     assert.match(uiText, /REQUIRES: RESPONSES/);
-    assert.match(uiText, /Open Operator Profile/);
-    assert.match(uiText, /CONTEXT FOR THIS RUN/);
-    assert.match(uiText, /Context ready/);
-    assert.match(uiText, /Preflight: stale/);
-    assert.match(uiText, /Measurement/);
-    assert.match(uiText, /unavailable/);
-    assert.match(uiText, /Advanced capsule/);
+    assert.match(uiText, /Operator Profile/);
+    assert.match(uiText, /Preflight/);
+    assert.match(uiText, /Session \+ goal/);
+    assert.match(uiText, /Previous/);
+    assert.match(uiText, /Next/);
+    assert.doesNotMatch(uiText, /Required action/);
+    assert.doesNotMatch(uiText, /Active session attached/);
+    assert.doesNotMatch(uiText, /Goal saved for this run/);
     assert.doesNotMatch(uiText, /Export blocked:/);
     assert.doesNotMatch(uiText, /Check handoff/);
     assert.doesNotMatch(uiText, /Export handoff/);
 
-    const goalDetailsButton = environment.app.querySelector(
-      "[data-forge-action='toggle-goal-details']"
-    ) as FakeElement | null;
-    assert.ok(goalDetailsButton);
-    fireEvent(goalDetailsButton, "click");
-    assert.ok(environment.app.querySelector("#forge-goal-brief"));
     const briefInput = environment.app.querySelector("#forge-goal-brief") as FakeElement | null;
     assert.ok(briefInput);
     briefInput.value = "Document the repair boundary.";
@@ -523,83 +579,388 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.ok(constraintsInput);
     constraintsInput.value = "Keep the scope local.\nPreserve host logic.";
     fireEvent(constraintsInput, "input");
-    const goalDetailsCloseButton = environment.app.querySelector(
-      "[data-forge-action='toggle-goal-details']"
-    ) as FakeElement | null;
-    assert.ok(goalDetailsCloseButton);
-    fireEvent(goalDetailsCloseButton, "click");
-    assert.equal(environment.app.querySelector("#forge-goal-brief"), null);
 
     const toggleProfileButtonsBeforeOpen = environment.app.querySelectorAll(
       "[data-forge-action='toggle-profile-editor']"
     );
-    assert.equal(toggleProfileButtonsBeforeOpen.length >= 2, true);
+    assert.equal(toggleProfileButtonsBeforeOpen.length, 1);
     fireEvent(toggleProfileButtonsBeforeOpen[0]!, "click");
-    assert.match(readTreeText(environment.app), /Manage operator profile/);
+    const profileOverlayText = readTreeText(environment.app);
+    assert.match(profileOverlayText, /OPERATOR PROFILE/);
+    assert.doesNotMatch(profileOverlayText, /Persistent operator records live here/);
+    assert.doesNotMatch(profileOverlayText, /Autosave on close/);
+    const profileGrid = findElementsByClass(environment.app, "forge-profile-grid");
+    assert.equal(profileGrid.length, 1);
+    const profileSectionBodies = findElementsByClass(environment.app, "forge-profile-section__body");
+    assert.equal(profileSectionBodies.length, 2);
+
+    const editEquipmentButton = environment.app
+      .querySelectorAll("[data-forge-action='start-profile-edit']")
+      .find(
+        (element) =>
+          element.dataset["forgeProfileKind"] === "equipment" &&
+          element.dataset["forgeProfileKey"] === "multimeter"
+      );
+    assert.ok(editEquipmentButton);
+    fireEvent(editEquipmentButton, "click");
+    const equipmentLabelInput = environment.app.querySelector(
+      "#forge-profile-editor-equipment-label"
+    ) as FakeElement | null;
+    assert.ok(equipmentLabelInput);
+    assert.equal(equipmentLabelInput.value, "Multimeter");
+    const inlineEditor = equipmentLabelInput.parentElement;
+    assert.ok(inlineEditor);
+    assert.equal(inlineEditor.className.includes("forge-inline-editor"), true);
+    const equipmentEditorWrap = inlineEditor.parentElement;
+    assert.ok(equipmentEditorWrap);
+    assert.equal(equipmentEditorWrap.className.includes("forge-profile-record__editor"), true);
+    const equipmentRecord = equipmentEditorWrap.parentElement;
+    assert.ok(equipmentRecord);
+    assert.equal(equipmentRecord.className.includes("forge-profile-record"), true);
+    assert.match(readTreeText(equipmentRecord), /Multimeter/);
+    const cancelProfileEntryButton = environment.app.querySelector(
+      "[data-forge-action='cancel-profile-entry']"
+    ) as FakeElement | null;
+    assert.ok(cancelProfileEntryButton);
+    fireEvent(cancelProfileEntryButton, "click");
+
     const addSkillButton = environment.app
       .querySelectorAll("[data-forge-action='start-profile-create']")
       .find((element) => element.dataset["forgeProfileKind"] === "skill");
     assert.ok(addSkillButton);
     fireEvent(addSkillButton, "click");
-    const skillKeySelect = environment.app.querySelector(
-      "#forge-profile-editor-skill-key"
+    const skillLabelInput = environment.app.querySelector(
+      "#forge-profile-editor-skill-label"
     ) as FakeElement | null;
     const skillLevelSelect = environment.app.querySelector(
       "#forge-profile-editor-skill-level"
     ) as FakeElement | null;
-    assert.ok(skillKeySelect);
+    assert.ok(skillLabelInput);
     assert.ok(skillLevelSelect);
-    skillKeySelect.value = "soldering";
+    skillLabelInput.value = "Soldering";
     skillLevelSelect.value = "advanced";
     const commitProfileEntryButton = environment.app.querySelector(
       "[data-forge-action='commit-profile-entry']"
     ) as FakeElement | null;
     assert.ok(commitProfileEntryButton);
     fireEvent(commitProfileEntryButton, "click");
-    const saveProfileButton = environment.app.querySelector(
-      "[data-forge-action='save-operator-profile']"
-    ) as FakeElement | null;
-    assert.ok(saveProfileButton);
-    fireEvent(saveProfileButton, "click");
-    assert.deepEqual(environment.sentEvents.at(-1), {
-      command: "ForgeRoomUpdateOperatorProfile",
-      payload: {
-        skills: [
-          {
-            skillKey: "soldering",
-            level: "advanced",
-          },
-          {
-            skillKey: "measurement",
-            level: "basic",
-          },
-        ],
-        equipment: [
-          {
-            equipmentKey: "multimeter",
-            status: "unavailable",
-          },
-        ],
-        preferences: {
-          mode: "learn_first",
-        },
-      },
-    });
     const toggleProfileButtonsAfterOpen = environment.app.querySelectorAll(
       "[data-forge-action='toggle-profile-editor']"
     );
-    assert.equal(toggleProfileButtonsAfterOpen.length >= 3, true);
-    fireEvent(toggleProfileButtonsAfterOpen[1]!, "click");
+    assert.equal(toggleProfileButtonsAfterOpen.length, 3);
+    fireEvent(toggleProfileButtonsAfterOpen.at(-1)!, "click");
+    assert.equal(environment.sentEvents.at(-1)?.command, "ForgeRoomUpdateOperatorProfile");
+    const profilePayload = environment.sentEvents.at(-1)?.payload as {
+      equipment?: Array<{ equipmentKey: string; label?: string; status: string }>;
+      preferences?: { mode?: string };
+      skills?: Array<{ label?: string; level: string; skillKey: string }>;
+    };
+    assert.equal(profilePayload.preferences?.mode, "learn_first");
+    assert.ok(
+      profilePayload.skills?.some(
+        (entry) =>
+          entry.label === "Soldering" &&
+          entry.level === "advanced" &&
+          entry.skillKey.startsWith("skill-")
+      )
+    );
+    assert.ok(
+      profilePayload.skills?.some(
+        (entry) => entry.skillKey === "measurement" && entry.level === "basic"
+      )
+    );
+    assert.deepEqual(profilePayload.equipment, [
+      {
+        equipmentKey: "multimeter",
+        label: "Multimeter",
+        status: "unavailable",
+      },
+    ]);
+    assert.equal(toggleProfileButtonsAfterOpen.length >= 2, true);
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomUpdateOperatorProfile",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    const closeProfileButton = environment.app.querySelector(
+      "[data-forge-action='toggle-profile-editor']"
+    ) as FakeElement | null;
+    assert.ok(closeProfileButton);
+    fireEvent(closeProfileButton, "click");
+
+    const sessionStageNavButtons = environment.app.querySelectorAll("[data-forge-action='open-stage']");
+    let sessionNextButton = sessionStageNavButtons.find(
+      (element) => element.dataset["forgeActionValue"] === "operator"
+    );
+    assert.ok(sessionNextButton);
+    assert.equal(sessionNextButton.disabled, false);
+    fireEvent(sessionNextButton, "click");
+    assert.deepEqual(environment.sentEvents.at(-1), {
+      command: "ForgeRoomUpdateGoal",
+      payload: {
+        summary: "Repair Room integration",
+        brief: "Document the repair boundary.",
+        constraints: ["Keep the scope local.", "Preserve host logic."],
+        targetRoomId: "repair-room",
+      },
+    });
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomUpdateGoal",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
+
+    const stageHeaders = findElementsByClass(environment.app, "forge-stage__header");
+    const sessionHeader = stageHeaders.find((element) => element.dataset["forgeActionValue"] === "session");
+    assert.ok(sessionHeader);
+    fireEvent(sessionHeader, "click");
+    assert.equal(environment.sentEvents.at(-1)?.command, "ForgeRoomSaveSession");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomSaveSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='session']"));
+
+    const operatorHeader = findElementsByClass(environment.app, "forge-stage__header").find(
+      (element) => element.dataset["forgeActionValue"] === "operator"
+    );
+    assert.ok(operatorHeader);
+    fireEvent(operatorHeader, "click");
+    assert.equal(environment.sentEvents.at(-1)?.command, "ForgeRoomUpdateGoal");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomUpdateGoal",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
+
+    const contextChips = environment.app.querySelectorAll("[data-forge-context-chip]");
+    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "measurement"));
+    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "multimeter"));
+    assert.ok(environment.app.querySelector("#forge-run-override-mode"));
+    assert.ok(environment.app.querySelector("#forge-run-override-risk"));
+
+    const operatorStageButtons = environment.app.querySelectorAll("[data-forge-action='open-stage']");
+    const preflightNextButton = operatorStageButtons.find(
+      (element) => element.dataset["forgeActionValue"] === "preflight"
+    );
+    assert.ok(preflightNextButton);
+    fireEvent(preflightNextButton, "click");
+    assert.equal(environment.sentEvents.at(-1)?.command, "ForgeRoomSaveSession");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomSaveSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='preflight']"));
+    assert.ok(environment.app.querySelector("[data-forge-action='run-preflight']"));
+    assert.match(readTreeText(environment.app), /Hayalet/);
+    assert.match(readTreeText(environment.app), /Collect AI0 software pre-analysis/);
+    assert.match(readTreeText(environment.app), /Result preview/);
+
+    environment.emitHostMessage({
+      type: "host-context",
+      room: {
+        id: "forge-room",
+        name: "Forge Room",
+      },
+      activeFeature: {
+        id: "forge-workbench",
+      },
+      locale: "en",
+      translations: loadTranslations("en"),
+      assistant: {
+        nickname: "Hayalet",
+        avatar: "/avatars/ai0.png",
+        connected: false,
+      },
+      user: {
+        nickname: "Operator",
+      },
+    });
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        ...({
+          activeSessionId: "forge-session-smoke",
+          currentGoal: {
+            id: "forge-goal-smoke",
+            summary: "Repair Room integration",
+            brief: "Prepare the first Forge session.",
+            constraints: ["Keep the scope local."],
+            acceptanceCriteria: ["Repair Room can read the handoff package."],
+            status: "draft",
+            targetRoomId: "repair-room",
+            createdAt: "2026-04-15T00:00:00.000Z",
+            updatedAt: "2026-04-15T00:10:00.000Z",
+          },
+          draftTasks: [],
+          draftSourceText: null,
+          validationMessages: [],
+          operatorProfile: {
+            schemaVersion: 1,
+            updatedAt: "2026-04-15T00:00:00.000Z",
+            skill: {
+              level: null,
+              soldering: null,
+              measurement: "basic",
+              mechanical: null,
+            },
+            tools: {
+              multimeter: false,
+              solderingIron: null,
+              hotAir: null,
+              benchPowerSupply: null,
+              magnification: null,
+            },
+            preferences: {
+              mode: "learn-first",
+              riskTolerance: null,
+            },
+          },
+          approvedTasks: [
+            {
+              id: "forge-task-approved-1",
+              parentTaskId: null,
+              level: 1,
+              title: "Prepare export",
+              summary: "Shape the final handoff.",
+              executionKind: "task",
+              dependsOnTaskIds: [],
+              assignable: true,
+              dispatchMode: "single-owner",
+              seatId: "ai1",
+              roleId: "architect",
+              compareSeatIds: [],
+              personaPresetId: "gok",
+              status: "approved",
+            },
+          ],
+          assignments: [],
+          exports: [],
+          exportSummary: {
+            acceptanceCriteriaCount: 1,
+            exportReady: false,
+            missingRequirements: ["Select a synthesis"],
+            openConflictCount: 0,
+            reason: "Export blocked: no selected synthesis.",
+            selectedSynthesisId: null,
+            status: "blocked",
+            targetRoomId: "repair-room",
+          },
+          responses: [],
+          conflicts: [],
+          syntheses: [],
+          selectedSynthesisId: null,
+          sessionContextSelection: {
+            skill: {
+              level: false,
+              soldering: false,
+              measurement: false,
+              mechanical: false,
+            },
+            tools: {
+              multimeter: false,
+              solderingIron: false,
+              hotAir: false,
+              benchPowerSupply: false,
+              magnification: false,
+            },
+            preferences: {
+              mode: false,
+              riskTolerance: false,
+            },
+          },
+          coordinatorState: {
+            actorId: "coordinator",
+            planStatus: "idle",
+            assignmentQueueTotal: 0,
+            pendingAssignmentCount: 0,
+            completedResponseCount: 0,
+            pendingConflictCount: 0,
+            synthesisStatus: "idle",
+            exportReady: false,
+            lastExportPath: null,
+            note: "Coordinator is idle.",
+            lastUpdatedAt: "2026-04-15T00:00:00.000Z",
+          },
+          sessionList: [],
+          runOverride: null,
+          runSignature: {
+            value: "repair-room-signature",
+            updatedAt: "2026-04-15T00:00:00.000Z",
+            source: ["goal", "operator"],
+          },
+          decisionTrace: [],
+        } as Record<string, unknown>),
+        preflight: {
+          activeStepId: null,
+          bundle: {
+            rovoPreAnalysis: {
+              summary: "AI0 is offline",
+            },
+          },
+          errorMessage: "AI0 is offline",
+          promptCharCount: 1791,
+          ranAt: "2026-04-15T00:00:00.000Z",
+          staleReason: null,
+          status: "warning",
+          warnings: ["AI0 is offline", "AI0 is offline"],
+        },
+      },
+      meta: {
+        roleCatalog: {},
+        personaPresets: {},
+      },
+    });
+    const disabledPreflightButton = environment.app.querySelector(
+      "[data-forge-action='run-preflight']"
+    ) as FakeElement | null;
+    assert.ok(disabledPreflightButton);
+    assert.equal(disabledPreflightButton.disabled, true);
+    const offlineText = readTreeText(environment.app);
+    assert.equal((offlineText.match(/AI0 is offline/g) ?? []).length, 1);
+    const preflightAgent = findElementsByClass(environment.app, "forge-preflight-agent")[0] ?? null;
+    assert.ok(preflightAgent);
     assert.equal(
-      environment.app.querySelectorAll("[data-forge-action='toggle-profile-editor']").length >= 2,
-      true
+      findElementsByClass(preflightAgent, "forge-profile-identity__avatar--fallback").length,
+      0
+    );
+    assert.ok(
+      findElementsByClass(preflightAgent, "forge-profile-identity__avatar").some(
+        (element) => element.tagName === "img"
+      )
     );
 
-    const addConditionButton = environment.app.querySelector(
+    const preflightStageButtons = environment.app.querySelectorAll("[data-forge-action='open-stage']");
+    const preflightPreviousButton = preflightStageButtons.find(
+      (element) => element.dataset["forgeActionValue"] === "operator"
+    );
+    assert.ok(preflightPreviousButton);
+    assert.equal(preflightPreviousButton.disabled, false);
+
+    const runConditionComposerButton = environment.app.querySelector(
       "[data-forge-action='toggle-run-condition-composer']"
     ) as FakeElement | null;
-    assert.ok(addConditionButton);
-    fireEvent(addConditionButton, "click");
+    assert.ok(runConditionComposerButton);
+    fireEvent(runConditionComposerButton, "click");
     const runConditionInput = environment.app.querySelector(
       "#forge-run-override-condition-input"
     ) as FakeElement | null;
@@ -632,6 +993,25 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
         temporaryConditions: [],
       },
     });
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomUpdateRunOverride",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+
+    fireEvent(preflightPreviousButton, "click");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomSaveSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
 
     const multimeterSelection = environment.app
       .querySelectorAll("[data-forge-context-chip]")
@@ -644,31 +1024,74 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       .find((element) => element.dataset["forgeContextKey"] === "measurement");
     assert.ok(measurementSelection);
     fireEvent(measurementSelection, "click");
-    const modeSelection = environment.app
-      .querySelectorAll("[data-forge-context-chip]")
-      .find((element) => element.dataset["forgeContextKey"] === "mode");
-    assert.ok(modeSelection);
-    fireEvent(modeSelection, "click");
     assert.deepEqual(environment.sentEvents.at(-1), {
       command: "ForgeRoomUpdateSessionContext",
       payload: {
-        skillKeys: [],
-        equipmentKeys: [],
+        skillKeys: ["measurement"],
+        equipmentKeys: ["multimeter"],
         preferenceKeys: [],
       },
     });
-    assert.match(readTreeText(environment.app), /Preflight/);
-    assert.match(readTreeText(environment.app), /stale/);
     assert.match(readTreeText(environment.app), /Multimeter/);
 
+    const operatorToPreflightButtons = environment.app.querySelectorAll(
+      "[data-forge-action='open-stage']"
+    );
+    const operatorToPreflightButton = operatorToPreflightButtons.find(
+      (element) => element.dataset["forgeActionValue"] === "preflight"
+    );
+    assert.ok(operatorToPreflightButton);
+    fireEvent(operatorToPreflightButton, "click");
     environment.emitHostMessage({
       type: "command-result",
-      command: "ForgeRoomUpdateRunOverride",
+      command: "ForgeRoomSaveSession",
       result: {
         success: true,
         message: null,
       },
     });
+
+    const preflightToTrackingButtons = environment.app.querySelectorAll(
+      "[data-forge-action='open-stage']"
+    );
+    const trackingNextButton = preflightToTrackingButtons.find(
+      (element) => element.dataset["forgeActionValue"] === "tracking"
+    );
+    assert.ok(trackingNextButton);
+    fireEvent(trackingNextButton, "click");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomSaveSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+
+    const trackingToDraftButtons = environment.app.querySelectorAll(
+      "[data-forge-action='open-stage']"
+    );
+    const draftNextButton = trackingToDraftButtons.find(
+      (element) => element.dataset["forgeActionValue"] === "draft"
+    );
+    assert.ok(draftNextButton);
+    fireEvent(draftNextButton, "click");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomSaveSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='draft']"));
+    assert.ok(environment.app.querySelector("[data-forge-panel='approved']"));
+    assert.ok(environment.app.querySelector("#forge-approved-mode-forge-task-approved-1"));
+    assert.equal(
+      environment.app.querySelector("#forge-approved-capsule-summary-forge-task-approved-1"),
+      null
+    );
+    assert.match(readTreeText(environment.app), /Advanced capsule/);
 
     environment.emitHostMessage({
       type: "forge-state",
@@ -839,23 +1262,23 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       },
     });
 
-    const conflictButtons = findElementsByClass(environment.app, "forge-button--primary");
-    assert.equal(conflictButtons.length, 1);
-    assert.equal(conflictButtons[0]?.textContent, "Resolve decision");
+    const conflictButtons = findElementsByClass(environment.app, "forge-statusbar__action");
+    assert.equal(conflictButtons.length, 0);
 
     const conflictText = readTreeText(environment.app);
     assert.match(conflictText, /State Conflict/);
-    assert.match(conflictText, /CENTER GATE BLOCKED/);
+    assert.match(conflictText, /RESPONSE LANE BLOCKED/);
     assert.match(conflictText, /REQUIRES: CONFLICT RESOLUTION/);
     assert.match(conflictText, /SELECT ONE RESPONSE/);
     assert.match(conflictText, /OUTPUT GATE BLOCKED/);
+    assert.doesNotMatch(conflictText, /Required action/);
   } finally {
     await installedCopy.cleanup();
     environment.restore();
   }
 });
 
-test("forge-room session context empty states expose direct operator profile actions", async () => {
+test("forge-room session context empty states route operator profile entry through the top bar", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -875,6 +1298,11 @@ test("forge-room session context empty states expose direct operator profile act
       },
       locale: "en",
       translations: loadTranslations("en"),
+      assistant: {
+        nickname: "Hayalet",
+        avatar: "/avatars/ai0.png",
+        connected: true,
+      },
       user: {
         nickname: "Operator",
       },
@@ -884,7 +1312,17 @@ test("forge-room session context empty states expose direct operator profile act
       type: "forge-state",
       snapshot: {
         activeSessionId: "forge-session-empty",
-        currentGoal: null,
+        currentGoal: {
+          id: "forge-goal-empty",
+          summary: "Prepare the empty operator state",
+          brief: "Route the operator setup through the top bar only.",
+          constraints: ["Keep the session context empty."],
+          acceptanceCriteria: [],
+          status: "draft",
+          targetRoomId: "repair-room",
+          createdAt: "2026-04-17T00:00:00.000Z",
+          updatedAt: "2026-04-17T00:00:00.000Z",
+        },
         draftTasks: [],
         draftSourceText: null,
         validationMessages: [],
@@ -939,14 +1377,40 @@ test("forge-room session context empty states expose direct operator profile act
         personaPresets: {},
       },
     });
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomCreateSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
 
     const profileActions = environment.app.querySelectorAll(
       "[data-forge-action='toggle-profile-editor']"
     );
-    assert.equal(profileActions.length >= 5, true);
+    assert.equal(profileActions.length, 1);
+    const sessionNextButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "operator");
+    assert.ok(sessionNextButton);
+    fireEvent(sessionNextButton, "click");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomUpdateGoal",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
+    assert.equal(
+      environment.app.querySelectorAll("[data-forge-action='toggle-profile-editor']").length,
+      1
+    );
     assert.match(readTreeText(environment.app), /No saved skills/);
     assert.match(readTreeText(environment.app), /No saved equipment/);
-    assert.match(readTreeText(environment.app), /No saved general preferences/);
+    assert.match(readTreeText(environment.app), /Operator Profile from the top bar/);
   } finally {
     await installedCopy.cleanup();
     environment.restore();
@@ -973,6 +1437,11 @@ test("forge-room control surface renders the Turkish control copy from room tran
       },
       locale: "tr",
       translations: loadTranslations("tr"),
+      assistant: {
+        nickname: "Hayalet",
+        avatar: "/avatars/ai0.png",
+        connected: true,
+      },
       user: {
         nickname: "Operator",
       },
@@ -985,8 +1454,8 @@ test("forge-room control surface renders the Turkish control copy from room tran
         currentGoal: {
           id: "forge-goal-tr",
           summary: "Kontrol yuzeyi duzenle",
-          brief: "",
-          constraints: [],
+          brief: "Operator baglamini topbar odakli birak.",
+          constraints: ["Session alani sade kalsin."],
           acceptanceCriteria: [],
           status: "draft",
           targetRoomId: "repair-room",
@@ -1085,21 +1554,52 @@ test("forge-room control surface renders the Turkish control copy from room tran
         personaPresets: {},
       },
     });
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomCreateSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
 
     const uiText = readTreeText(environment.app);
-    assert.match(uiText, /BU RUN ICIN BAGLAM/);
-    assert.match(uiText, /Baglam hazir/);
-    assert.match(uiText, /Preflight: eskidi/);
-    assert.match(uiText, /Kayitli ekipman yok/);
-    assert.match(uiText, /Kayitli genel tercih yok/);
-    assert.match(uiText, /On analiz/);
+    assert.match(uiText, /Operatör Profili/);
+    assert.match(uiText, /Oturum \+ Hedef/);
+    assert.match(uiText, /Kayıtlı oturumlar/);
+    assert.match(uiText, /Ön kontrol/);
+    assert.match(uiText, /Önceki/);
+    assert.match(uiText, /Sonraki/);
+    assert.doesNotMatch(uiText, /Gerekli adım/);
+    assert.doesNotMatch(uiText, /Aktif oturum bağlandı/);
+    assert.doesNotMatch(uiText, /Taslak öncesi ön kontrol çalıştır/);
+
+    const sessionNextButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "operator");
+    assert.ok(sessionNextButton);
+    fireEvent(sessionNextButton, "click");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomUpdateGoal",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    const operatorText = readTreeText(environment.app);
+    assert.doesNotMatch(operatorText, /BU RUN ICIN BAGLAM/);
+    assert.match(operatorText, /Kayıtlı yetenek yok/);
+    assert.match(operatorText, /Kayıtlı ekipman yok/);
+    assert.match(operatorText, /Mod/);
+    assert.match(operatorText, /Risk toleransı/);
   } finally {
     await installedCopy.cleanup();
     environment.restore();
   }
 });
 
-test("forge-room preserves hidden goal details when saving from the session-created control surface", async () => {
+test("forge-room enables session advance only after all combined goal fields are filled", async () => {
   const environment = createMinimalForgeUiEnvironment();
   const installedCopy = await createRoomInstalledCopy("forge-room");
 
@@ -1119,6 +1619,11 @@ test("forge-room preserves hidden goal details when saving from the session-crea
       },
       locale: "en",
       translations: loadTranslations("en"),
+      assistant: {
+        nickname: "Hayalet",
+        avatar: "/avatars/ai0.png",
+        connected: true,
+      },
       user: {
         nickname: "Operator",
       },
@@ -1127,7 +1632,7 @@ test("forge-room preserves hidden goal details when saving from the session-crea
     environment.emitHostMessage({
       type: "forge-state",
       snapshot: {
-        activeSessionId: "forge-session-save-goal",
+        activeSessionId: null,
         currentGoal: null,
         draftTasks: [],
         draftSourceText: null,
@@ -1222,21 +1727,145 @@ test("forge-room preserves hidden goal details when saving from the session-crea
       },
     });
 
+    assert.deepEqual(environment.sentEvents.at(-1), {
+      command: "ForgeRoomCreateSession",
+      payload: {
+        persist: false,
+      },
+    });
+
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        activeSessionId: "forge-session-draft",
+        currentGoal: null,
+        draftTasks: [],
+        draftSourceText: null,
+        validationMessages: [],
+        operatorProfile: {
+          schemaVersion: 1,
+          updatedAt: "2026-04-15T00:00:00.000Z",
+          skill: {
+            level: null,
+            soldering: null,
+            measurement: null,
+            mechanical: null,
+          },
+          tools: {
+            multimeter: null,
+            solderingIron: null,
+            hotAir: null,
+            benchPowerSupply: null,
+            magnification: null,
+          },
+          preferences: {
+            mode: null,
+            riskTolerance: null,
+          },
+        },
+        preflight: {
+          bundle: null,
+          errorMessage: null,
+          promptCharCount: 0,
+          ranAt: null,
+          staleReason: null,
+          status: "idle",
+          warnings: [],
+        },
+        approvedTasks: [],
+        assignments: [],
+        exports: [],
+        exportSummary: {
+          acceptanceCriteriaCount: 0,
+          exportReady: false,
+          missingRequirements: ["Select a synthesis"],
+          openConflictCount: 0,
+          reason: "Export blocked: no selected synthesis.",
+          selectedSynthesisId: null,
+          status: "blocked",
+          targetRoomId: "repair-room",
+        },
+        responses: [],
+        conflicts: [],
+        syntheses: [],
+        selectedSynthesisId: null,
+        sessionContextSelection: {
+          skill: {
+            level: false,
+            soldering: false,
+            measurement: false,
+            mechanical: false,
+          },
+          tools: {
+            multimeter: false,
+            solderingIron: false,
+            hotAir: false,
+            benchPowerSupply: false,
+            magnification: false,
+          },
+          preferences: {
+            mode: false,
+            riskTolerance: false,
+          },
+        },
+        coordinatorState: {
+          actorId: "coordinator",
+          planStatus: "idle",
+          assignmentQueueTotal: 0,
+          pendingAssignmentCount: 0,
+          completedResponseCount: 0,
+          pendingConflictCount: 0,
+          synthesisStatus: "idle",
+          exportReady: false,
+          lastExportPath: null,
+          note: "Waiting for a goal.",
+          lastUpdatedAt: "2026-04-15T00:00:00.000Z",
+        },
+        sessionList: [],
+        runOverride: null,
+        runSignature: null,
+        decisionTrace: [],
+      },
+      meta: {
+        roleCatalog: {},
+        personaPresets: {},
+      },
+    });
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomCreateSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+
+    let nextButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "operator");
+    assert.ok(nextButton);
+    assert.equal(nextButton.disabled, true);
+
     const goalSummaryInput = environment.app.querySelector("#forge-goal-summary") as FakeElement | null;
     assert.ok(goalSummaryInput);
     goalSummaryInput.value = "Repair Room integration";
     fireEvent(goalSummaryInput, "input");
-
-    const goalDetailsButton = environment.app.querySelector(
-      "[data-forge-action='toggle-goal-details']"
-    ) as FakeElement | null;
-    assert.ok(goalDetailsButton);
-    fireEvent(goalDetailsButton, "click");
+    assert.equal(environment.app.querySelector("#forge-goal-summary"), goalSummaryInput);
+    nextButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "operator");
+    assert.ok(nextButton);
+    assert.equal(nextButton.disabled, true);
 
     const briefInput = environment.app.querySelector("#forge-goal-brief") as FakeElement | null;
     assert.ok(briefInput);
     briefInput.value = "Document the repair boundary.";
     fireEvent(briefInput, "input");
+    nextButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "operator");
+    assert.ok(nextButton);
+    assert.equal(nextButton.disabled, true);
 
     const constraintsInput = environment.app.querySelector(
       "#forge-goal-constraints"
@@ -1244,19 +1873,26 @@ test("forge-room preserves hidden goal details when saving from the session-crea
     assert.ok(constraintsInput);
     constraintsInput.value = "Keep the scope local.\nPreserve host logic.";
     fireEvent(constraintsInput, "input");
+    assert.equal(environment.app.querySelector("#forge-goal-constraints"), constraintsInput);
+    nextButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "operator");
+    assert.ok(nextButton);
+    assert.equal(nextButton.disabled, true);
 
-    const closeDetailsButton = environment.app.querySelector(
-      "[data-forge-action='toggle-goal-details']"
+    const targetRoomInput = environment.app.querySelector(
+      "#forge-goal-target-room"
     ) as FakeElement | null;
-    assert.ok(closeDetailsButton);
-    fireEvent(closeDetailsButton, "click");
-    assert.equal(environment.app.querySelector("#forge-goal-brief"), null);
+    assert.ok(targetRoomInput);
+    targetRoomInput.value = "repair-room";
+    fireEvent(targetRoomInput, "input");
+    nextButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "operator");
+    assert.ok(nextButton);
+    assert.equal(nextButton.disabled, false);
 
-    const saveGoalButton = environment.app.querySelector(
-      "[data-forge-action='save-goal']"
-    ) as FakeElement | null;
-    assert.ok(saveGoalButton);
-    fireEvent(saveGoalButton, "click");
+    fireEvent(nextButton, "click");
 
     assert.deepEqual(environment.sentEvents.at(-1), {
       command: "ForgeRoomUpdateGoal",

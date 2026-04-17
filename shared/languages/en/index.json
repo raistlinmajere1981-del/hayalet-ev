@@ -1015,6 +1015,10 @@
       "title": "Live Log View"
     },
     "rooms": {
+      "catalog": {
+        "forgeRoom": "Forge Room",
+        "laboratory": "Laboratory"
+      },
       "openTitle": "Room management",
       "title": "Room Management",
       "importButton": "Select Bundle",

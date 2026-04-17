@@ -51,11 +51,15 @@ export function createEmptyForgeRoomSnapshot() {
 }
 export function createEmptyForgeUiContext() {
   return {
+    assistantAvatar: null,
+    assistantConnected: false,
+    assistantNickname: "AI0",
     roomId: "forge-room",
     roomName: "Forge Room",
     featureId: "forge-workbench",
     locale: "en",
     translations: {},
+    userAvatar: null,
     userNickname: "Operator"
   };
 }

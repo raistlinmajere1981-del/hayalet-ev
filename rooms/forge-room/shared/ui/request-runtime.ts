@@ -22,8 +22,8 @@ export function createForgeUiRequestRuntime() {
     approveDraft() {
       return sendCommand(FORGE_UI_COMMANDS.approveDraft);
     },
-    createSession() {
-      return sendCommand(FORGE_UI_COMMANDS.createSession);
+    createSession(payload: { persist?: boolean } = {}) {
+      return sendCommand(FORGE_UI_COMMANDS.createSession, payload);
     },
     dispatchAssignments() {
       return sendCommand(FORGE_UI_COMMANDS.dispatchAssignments);
@@ -124,6 +124,10 @@ export function createForgeUiRequestRuntime() {
         notes?: string;
         status: string;
       }>;
+      preferences?: {
+        mode?: string;
+        riskTolerance?: string;
+      };
       skills: Array<{
         label: string;
         level: string;
@@ -135,6 +139,7 @@ export function createForgeUiRequestRuntime() {
     },
     updateSessionContext(payload: {
       equipmentKeys?: string[];
+      preferenceKeys?: string[];
       skillKeys?: string[];
     }) {
       return sendCommand(FORGE_UI_COMMANDS.updateSessionContext, payload);

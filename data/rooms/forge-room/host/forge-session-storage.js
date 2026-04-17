@@ -10,6 +10,22 @@ function createId(prefix) {
 function asSession(value) {
   return value !== null && typeof value === "object" && Array.isArray(value) === false && typeof value.id === "string" ? value : null;
 }
+function formatSessionTimestamp(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const hours = String(parsed.getHours()).padStart(2, "0");
+  const minutes = String(parsed.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+function formatSessionListTitle(session) {
+  const goalSummary = session.goal?.summary.trim() || session.id;
+  return `${formatSessionTimestamp(session.updatedAt)} - ${goalSummary}`;
+}
 export function createForgeSessionStorage(deps) {
   const {
     ensureRuntimeDirectory,
@@ -28,10 +44,12 @@ export function createForgeSessionStorage(deps) {
     await ensureRuntimeDirectory(sessionsDir);
     return sessionsDir;
   }
-  async function createSession(runtimePaths) {
+  async function createSession(runtimePaths, options = {}) {
     const sessionId = createId("forge-session");
     const session = createEmptyForgeSession(sessionId);
-    await saveSession(runtimePaths, session);
+    if (options.persist !== false) {
+      await saveSession(runtimePaths, session);
+    }
     return session;
   }
   async function saveSession(runtimePaths, session) {
@@ -64,7 +82,7 @@ export function createForgeSessionStorage(deps) {
         return {
           id: loaded.id,
           updatedAt: loaded.updatedAt,
-          title: loaded.goal?.summary || loaded.id
+          title: formatSessionListTitle(loaded)
         };
       })
     )).filter((entry) => entry !== null);

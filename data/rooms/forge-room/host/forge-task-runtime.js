@@ -1,5 +1,5 @@
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
-import { FORGE_MAX_DECISION_TRACE_LINES, FORGE_TARGET_ROOM_ID } from "../shared/forge-constants.js";
+import { FORGE_MAX_DECISION_TRACE_LINES } from "../shared/forge-constants.js";
 import { FORGE_PERSONA_PRESETS } from "../shared/data/persona-presets.js";
 import { isForgeSeatId } from "../shared/types/index.js";
 import {
@@ -79,7 +79,7 @@ export function buildForgeTaskPrompt(params) {
       null,
       2
     ),
-    `Target room: ${goal.targetRoomId || FORGE_TARGET_ROOM_ID}`,
+    `Target room: ${goal.targetRoomId.trim() || "not specified yet"}`,
     `Goal summary: ${goal.summary}`,
     `Goal brief: ${goal.brief || "No additional brief provided."}`,
     `Role: ${assignment.roleId}`,
@@ -96,7 +96,7 @@ export function buildForgeTaskPrompt(params) {
     "Keep body under 900 characters and prefer 3 to 6 short bullet-style lines inside the JSON string when helpful.",
     "Produce exactly one final JSON response for this task.",
     "Do not provide alternatives, variants, multiple drafts, or multiple candidate answers.",
-    "Keep the answer practical and directly useful for downstream Repair Room handoff.",
+    "Keep the answer practical and directly useful for the downstream handoff.",
     params.promptContext?.trim() ? `Preflight context:
 ${params.promptContext.trim()}` : ""
   ].join("\n");
@@ -226,7 +226,7 @@ function buildAcceptanceCriteria(goal, tasks, responses) {
   if (fromResponses.length > 0) {
     return uniqueStrings(fromResponses).slice(0, 3);
   }
-  return tasks.filter((task) => task.level === 1).slice(0, 3).map((task) => `${task.title} is reflected in the Repair Room handoff.`);
+  return tasks.filter((task) => task.level === 1).slice(0, 3).map((task) => `${task.title} is reflected in the handoff package.`);
 }
 function buildOpenQuestions(conflicts, taskTitles) {
   return conflicts.filter((conflict) => conflict.status === "open").map((conflict) => {
@@ -357,7 +357,7 @@ export function syncApprovedTaskStatuses(params) {
 export function createForgeExportRecord(params) {
   return {
     id: createForgeId("forge-export"),
-    targetRoomId: "repair-room",
+    targetRoomId: params.targetRoomId,
     synthesisId: params.synthesisId,
     filePath: params.filePath,
     createdAt: nowIso(),

@@ -60,33 +60,47 @@ function buildPreAnalysisPrompt(params) {
   return [
     "Return JSON only using this exact schema:",
     toJsonText({
-      summary: "Short observation-only summary",
+      summary: "Short software pre-analysis summary",
       warnings: ["Optional warning"],
       missingInfo: ["Optional missing information item"],
       status: "completed"
     }),
+    "Goal: Provide a short Hayalet Ev software infrastructure pre-analysis for this Forge run.",
+    `Architecture summary: ${params.appArchitectureSummary}`,
+    params.targetRoomSummary ? `Target room context: ${params.targetRoomSummary}` : "",
+    params.capabilitySummary ? `Capability context: ${params.capabilitySummary}` : "",
     `Goal summary: ${params.goal.summary}`,
     `Goal brief: ${params.goal.brief || "No additional brief provided."}`,
     `Constraints: ${params.goal.constraints.join(" | ") || "None"}`,
+    `Derived run constraints: ${params.constraints.join(" | ") || "None"}`,
     `Target room: ${params.goal.targetRoomId}`,
     "Selected operator context:",
     ...summaryLines.map((line) => `- ${line}`),
+    ...(params.runOverride?.temporaryConditions ?? []).map(
+      (condition) => `- Temporary condition: ${condition}`
+    ),
     params.runOverride?.notes.trim() ? `Run override note: ${params.runOverride.notes.trim()}` : "",
     "Rules:",
     "- Observations only. Do not make decisions or produce task breakdowns.",
+    "- Focus on software boundaries, integration risks, missing system context, and implementation guardrails.",
     "- Mention blockers or missing information only if they are explicit from the context.",
     "- Keep warnings factual and concise."
   ].filter((entry) => entry.trim() !== "").join("\n");
 }
 async function maybeRunForgeRovoPreAnalysis(params) {
-  if (params.dispatchBridge === null || params.runOverride?.enableRovoPreAnalysis !== true) {
-    return null;
+  if (params.dispatchBridge === null) {
+    return {
+      status: "warning",
+      summary: "AI0 software pre-analysis is unavailable because the assistant bridge is disconnected.",
+      warnings: ["AI0 bridge is unavailable for preflight analysis."],
+      missingInfo: []
+    };
   }
   const result = toRecord(
     await params.dispatchBridge({
       action: "message.sendWait",
       timeoutMs: 18e4,
-      toSlot: "ai1",
+      toSlot: "ai0",
       payload: {
         page: "forge-room:preflight",
         text: buildPreAnalysisPrompt(params),
@@ -101,8 +115,8 @@ async function maybeRunForgeRovoPreAnalysis(params) {
   if (result["success"] !== true) {
     return {
       status: "warning",
-      summary: asNonEmptyString(result["message"]) ?? "Rovo pre-analysis did not complete cleanly.",
-      warnings: [asNonEmptyString(result["message"]) ?? "Pre-analysis request failed."],
+      summary: asNonEmptyString(result["message"]) ?? "AI0 software pre-analysis did not complete cleanly.",
+      warnings: [asNonEmptyString(result["message"]) ?? "AI0 pre-analysis request failed."],
       missingInfo: []
     };
   }
@@ -111,61 +125,72 @@ async function maybeRunForgeRovoPreAnalysis(params) {
   if (replyText === null) {
     return {
       status: "warning",
-      summary: "Rovo pre-analysis returned without readable text.",
-      warnings: ["Pre-analysis reply text was empty."],
+      summary: "AI0 software pre-analysis returned without readable text.",
+      warnings: ["AI0 pre-analysis reply text was empty."],
       missingInfo: []
     };
   }
   try {
     return normalizeRovoPreAnalysis(JSON.parse(replyText)) ?? {
       status: "warning",
-      summary: "Rovo pre-analysis reply was not valid observation JSON.",
-      warnings: ["Pre-analysis response could not be parsed."],
+      summary: "AI0 software pre-analysis reply was not valid observation JSON.",
+      warnings: ["AI0 pre-analysis response could not be parsed."],
       missingInfo: []
     };
   } catch {
     return {
       status: "warning",
-      summary: "Rovo pre-analysis reply was not valid observation JSON.",
-      warnings: ["Pre-analysis response could not be parsed."],
+      summary: "AI0 software pre-analysis reply was not valid observation JSON.",
+      warnings: ["AI0 pre-analysis response could not be parsed."],
       missingInfo: []
     };
   }
 }
 export async function buildForgePreflightState(params) {
+  params.onStepStart?.("operatorContext");
   const selectedOperatorProfile = buildForgeSelectedOperatorProfile({
     operatorProfile: params.operatorProfile,
     sessionContextSelection: params.sessionContextSelection
   });
+  params.onStepStart?.("constraints");
   const capabilityContext = selectForgeCapabilityContext({
     descriptors: listForgeCapabilityDescriptors(),
     goal: params.goal
   });
+  const appArchitectureSummary = buildForgeAppArchitectureSummary();
+  const targetRoomContext = buildForgeTargetRoomContext(params.goal.targetRoomId);
+  const constraints = buildForgeDerivedConstraints({
+    goal: params.goal,
+    runOverride: params.runOverride,
+    selectedOperatorProfile
+  });
+  params.onStepStart?.("ai0Analysis");
   const rovoPreAnalysis = await maybeRunForgeRovoPreAnalysis({
     ...params,
-    selectedOperatorProfile
+    appArchitectureSummary: appArchitectureSummary.summary,
+    capabilitySummary: capabilityContext?.summary ?? null,
+    constraints,
+    selectedOperatorProfile,
+    targetRoomSummary: targetRoomContext?.summary ?? null
   });
   const warnings = [
     ...rovoPreAnalysis?.warnings ?? [],
     ...rovoPreAnalysis?.status === "warning" && rovoPreAnalysis.summary.trim() !== "" ? [rovoPreAnalysis.summary] : []
   ];
   const bundle = {
-    schemaVersion: "v2",
+    schemaVersion: "v3",
     createdAt: createForgePreflightCreatedAt(),
     coreSystemMetadata: buildForgeCoreSystemMetadata(params.sessionId),
-    appArchitectureSummary: buildForgeAppArchitectureSummary(),
-    targetRoomContext: buildForgeTargetRoomContext(params.goal.targetRoomId),
+    appArchitectureSummary,
+    targetRoomContext,
     capabilityContext,
     selectedOperatorProfile,
     runOverride: params.runOverride,
     rovoPreAnalysis,
     sessionContextSelection: params.sessionContextSelection,
-    constraints: buildForgeDerivedConstraints({
-      goal: params.goal,
-      runOverride: params.runOverride,
-      selectedOperatorProfile
-    })
+    constraints
   };
+  params.onStepStart?.("runSignature");
   const runSignature = buildForgeRunSignature({
     goal: params.goal,
     selectedOperatorProfile,
@@ -180,6 +205,7 @@ export async function buildForgePreflightState(params) {
   return {
     runSignature,
     state: {
+      activeStepId: null,
       bundle,
       errorMessage: null,
       promptCharCount,
@@ -196,7 +222,7 @@ export function buildForgeFallbackPreflightState(params) {
     sessionContextSelection: params.sessionContextSelection
   });
   const bundle = {
-    schemaVersion: "v2",
+    schemaVersion: "v3",
     createdAt: createForgePreflightCreatedAt(),
     coreSystemMetadata: buildForgeCoreSystemMetadata(params.sessionId),
     appArchitectureSummary: buildForgeAppArchitectureSummary(),
@@ -224,6 +250,7 @@ export function buildForgeFallbackPreflightState(params) {
   return {
     runSignature,
     state: {
+      activeStepId: null,
       bundle,
       errorMessage: params.errorMessage,
       promptCharCount: renderForgePromptContext({
@@ -297,7 +324,7 @@ export function renderForgePromptContext(params) {
     }
     if (params.bundle.rovoPreAnalysis?.summary) {
       segments.push(
-        `Pre-analysis observations: ${compactWhitespace(params.bundle.rovoPreAnalysis.summary)}`
+        `AI0 preflight observations: ${compactWhitespace(params.bundle.rovoPreAnalysis.summary)}`
       );
     }
   }

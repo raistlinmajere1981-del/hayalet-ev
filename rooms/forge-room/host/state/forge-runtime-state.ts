@@ -23,6 +23,8 @@ import {
   createDefaultForgeOperatorProfile,
   createEmptyForgePreflightState,
   createEmptyForgeSessionContextSelection,
+  isForgePreflightStepId,
+  normalizeForgeLegacySelectionKeys,
   normalizeForgeSessionContextSelectionKeys,
   reconcileForgeSessionContextSelection,
 } from "../../shared/types/index.js";
@@ -100,26 +102,21 @@ function normalizeForgeSessionContextSelection(value: unknown): ForgeSessionCont
   const record = toRecord(value);
   if (
     Array.isArray(record["skillKeys"]) ||
-    Array.isArray(record["equipmentKeys"])
+    Array.isArray(record["equipmentKeys"]) ||
+    Array.isArray(record["preferenceKeys"])
   ) {
     return normalizeForgeSessionContextSelectionKeys(record);
   }
 
   const skill = toRecord(record["skill"]);
   const tools = toRecord(record["tools"]);
+  const preferences = toRecord(record["preferences"]);
   return normalizeForgeSessionContextSelectionKeys({
-    skillKeys: [
-      skill["soldering"] === true ? "soldering" : null,
-      skill["measurement"] === true ? "measurement" : null,
-      skill["mechanical"] === true ? "mechanical" : null,
-    ].filter((entry): entry is string => typeof entry === "string"),
-    equipmentKeys: [
-      tools["multimeter"] === true ? "multimeter" : null,
-      tools["solderingIron"] === true ? "soldering_iron" : null,
-      tools["hotAir"] === true ? "hot_air" : null,
-      tools["benchPowerSupply"] === true ? "bench_supply" : null,
-      tools["magnification"] === true ? "magnification" : null,
-    ].filter((entry): entry is string => typeof entry === "string"),
+    skillKeys: normalizeForgeLegacySelectionKeys(skill),
+    equipmentKeys: normalizeForgeLegacySelectionKeys(tools),
+    preferenceKeys: normalizeForgeLegacySelectionKeys(preferences).filter(
+      (entry): entry is "mode" | "riskTolerance" => entry === "mode" || entry === "riskTolerance"
+    ),
   });
 }
 
@@ -165,39 +162,71 @@ function normalizeForgeRunOverride(value: unknown): ForgeRunOverride | null {
     };
   }
 
-  const legacyTools = toRecord(record["tools"]);
-  const legacyConditions = [
-    legacyTools["hotAir"] === true ? "temporary hot air available" : null,
-  ].filter((entry): entry is string => typeof entry === "string");
-
-  if (legacyConditions.length === 0 && record["enableRovoPreAnalysis"] !== true) {
+  if (record["enableRovoPreAnalysis"] !== true) {
     return null;
   }
 
   return {
-    enableRovoPreAnalysis: record["enableRovoPreAnalysis"] === true,
+    enableRovoPreAnalysis: true,
     notes,
-    temporaryConditions: legacyConditions,
+    temporaryConditions: [],
   };
 }
 
 function normalizeForgePreflightState(value: unknown): ForgePreflightState {
   const record = toRecord(value);
   const bundle = toRecord(record["bundle"]);
+  const fallback = createEmptyForgePreflightState();
+  const status =
+    record["status"] === "idle" ||
+    record["status"] === "running" ||
+    record["status"] === "fresh" ||
+    record["status"] === "stale" ||
+    record["status"] === "warning"
+      ? record["status"]
+      : fallback.status;
+  const warnings = Array.isArray(record["warnings"])
+    ? record["warnings"].filter((entry): entry is string => typeof entry === "string")
+    : fallback.warnings;
+  const normalized = {
+    activeStepId: isForgePreflightStepId(record["activeStepId"]) ? record["activeStepId"] : null,
+    bundle:
+      record["bundle"] !== null &&
+      typeof record["bundle"] === "object" &&
+      Array.isArray(record["bundle"]) === false
+        ? (record["bundle"] as ForgePreflightState["bundle"])
+        : fallback.bundle,
+    errorMessage:
+      typeof record["errorMessage"] === "string" && record["errorMessage"].trim() !== ""
+        ? record["errorMessage"]
+        : null,
+    promptCharCount:
+      typeof record["promptCharCount"] === "number" && Number.isFinite(record["promptCharCount"])
+        ? record["promptCharCount"]
+        : fallback.promptCharCount,
+    ranAt: typeof record["ranAt"] === "string" && record["ranAt"].trim() !== "" ? record["ranAt"] : null,
+    staleReason:
+      typeof record["staleReason"] === "string" && record["staleReason"].trim() !== ""
+        ? record["staleReason"]
+        : null,
+    status,
+    warnings,
+  } satisfies ForgePreflightState;
+
   if (bundle["schemaVersion"] === FORGE_PREFLIGHT_SCHEMA_VERSION) {
-    return record as unknown as ForgePreflightState;
+    return normalized;
   }
 
   if (record["bundle"] !== undefined && record["bundle"] !== null) {
     return {
-      ...createEmptyForgePreflightState(),
+      ...fallback,
       status: "stale",
       staleReason: "Legacy preflight bundle requires a rerun with the new operator context model.",
       warnings: ["Legacy preflight bundle was invalidated during session hydration."],
     };
   }
 
-  return createEmptyForgePreflightState();
+  return normalized;
 }
 
 export function createForgeCoordinatorState(
@@ -287,6 +316,9 @@ export function createForgeRuntimeStateFromSession(
     selection: normalizeForgeSessionContextSelection(sessionRecord.sessionContextSelection),
     allowedSkillKeys: operatorProfile.skills.map((entry) => entry.skillKey),
     allowedEquipmentKeys: operatorProfile.equipment.map((entry) => entry.equipmentKey),
+    allowedPreferenceKeys: Object.keys(operatorProfile.preferences).filter(
+      (entry): entry is "mode" | "riskTolerance" => entry === "mode" || entry === "riskTolerance"
+    ),
   });
   return {
     activeSessionId: session.id,

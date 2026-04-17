@@ -52,7 +52,7 @@ export interface ForgeSelectedSynthesisRecord {
 
 export interface ForgeHandoffPackage {
   schemaVersion: number;
-  targetRoomId: "repair-room";
+  targetRoomId: string;
   runSignature?: string;
   goalId: string;
   goalSummary: string;

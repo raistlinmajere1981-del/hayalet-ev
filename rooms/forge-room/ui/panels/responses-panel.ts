@@ -64,9 +64,16 @@ function toCountLabel(
   oneFallback: string,
   otherFallback: string
 ): string {
+  const pathRoot = [...pathPrefix];
+  const leaf = pathRoot.pop();
+  if (!leaf) {
+    return count === 1
+      ? oneFallback.replace("{count}", String(count))
+      : otherFallback.replace("{count}", String(count));
+  }
   return count === 1
-    ? text([...pathPrefix, "One"], oneFallback, { count })
-    : text([...pathPrefix, "Other"], otherFallback, { count });
+    ? text([...pathRoot, `${leaf}One`], oneFallback, { count })
+    : text([...pathRoot, `${leaf}Other`], otherFallback, { count });
 }
 
 function describeResponseState(

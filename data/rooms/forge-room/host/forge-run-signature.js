@@ -1,4 +1,4 @@
-import { FORGE_PREFLIGHT_SCHEMA_VERSION, FORGE_TARGET_ROOM_ID } from "../shared/forge-constants.js";
+import { FORGE_PREFLIGHT_SCHEMA_VERSION } from "../shared/forge-constants.js";
 import { nowIso, uniqueStrings } from "./forge-runtime-support.js";
 function hashFingerprint(value) {
   let hash = 2166136261;
@@ -29,19 +29,23 @@ function buildCollisionSuffix(params) {
   return hashFingerprint(fingerprint);
 }
 function collectConstraintTokens(params) {
+  const effectiveMode = params.runOverride?.mode ?? params.selectedOperatorProfile.preferences.mode;
+  const effectiveRiskTolerance = params.runOverride?.riskTolerance ?? params.selectedOperatorProfile.preferences.riskTolerance;
   const tokens = uniqueStrings(
     [
       params.goal.constraints[0] ?? null,
-      params.selectedOperatorProfile.preferences.mode,
-      params.selectedOperatorProfile.preferences.riskTolerance ? `${params.selectedOperatorProfile.preferences.riskTolerance}-risk` : null,
-      ...Object.entries(params.runOverride?.tools ?? {}).filter(([, enabled]) => enabled === true).map(([toolId]) => toolId),
+      effectiveMode,
+      effectiveRiskTolerance ? `${effectiveRiskTolerance}-risk` : null,
+      params.selectedOperatorProfile.skills[0] ? `${params.selectedOperatorProfile.skills[0].label}-${params.selectedOperatorProfile.skills[0].level}` : null,
+      params.selectedOperatorProfile.equipment.filter((entry) => entry.status === "available").map((entry) => entry.label)[0] ?? null,
+      ...(params.runOverride?.temporaryConditions ?? []).slice(0, 2),
       params.runOverride?.notes.trim() || null
     ].filter((entry) => typeof entry === "string" && entry.trim() !== "").map((entry) => slugifySegment(entry)).filter((entry) => entry !== "")
   );
   return tokens.slice(0, 3);
 }
 export function buildForgeRunSignature(params) {
-  const roomPart = titleCaseRoomId(params.goal.targetRoomId || FORGE_TARGET_ROOM_ID);
+  const roomPart = titleCaseRoomId(params.goal.targetRoomId.trim() || "unspecified-target");
   const versionPart = FORGE_PREFLIGHT_SCHEMA_VERSION;
   const source = collectConstraintTokens(params);
   const tokenPart = source.length > 0 ? source.join("-") : "baseline";

@@ -28,8 +28,8 @@ function inferTags(goal) {
   if (/(storage|session|persist|local file|file-backed)/.test(haystack)) {
     tags.push("storage");
   }
-  if (goal.targetRoomId === "repair-room" || /(repair|repair-room|fix|diagnostic|board|solder)/.test(haystack)) {
-    tags.push("repair-room");
+  if (goal.targetRoomId.trim() !== "" || /(target room|downstream|implementation|handoff target)/.test(haystack)) {
+    tags.push("target-room");
   }
   return uniqueStrings(tags);
 }

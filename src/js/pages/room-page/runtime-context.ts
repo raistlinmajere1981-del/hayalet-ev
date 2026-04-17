@@ -1,5 +1,7 @@
 import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
 import { AppI18n } from "../../modules/i18n/index.js";
+import { AppState } from "../../modules/app-state.js";
+import { SlotController } from "../../modules/slot-controller.js";
 import {
   buildRoomSlotPresenceSnapshot,
   buildRoomUserPresenceSnapshot,
@@ -12,6 +14,11 @@ import { getAppUiScale, getSceneUiScale } from "../../ui/theme/ui-scale-state.js
 export type RoomHostMessage = Record<string, unknown>;
 
 type RoomSlotId = RoomPresenceSlotId;
+
+function readAvatar(value: string): string | null {
+  const normalized = value.trim();
+  return normalized !== "" ? normalized : null;
+}
 
 export function buildRoomSlotContext(slotId: RoomSlotId): RoomPresenceSlotSnapshot {
   return buildRoomSlotPresenceSnapshot(slotId);
@@ -32,6 +39,13 @@ export function buildRoomRuntimeContextPayload(options: {
     us1: buildRoomSlotContext("us1"),
   };
   const presence = createRoomPresenceSnapshot(user, slots);
+  const assistant = {
+    slotId: "ai0",
+    label: "AI0",
+    nickname: AppState.getNickname("ai0"),
+    avatar: readAvatar(AppState.getAvatar("ai0")),
+    connected: SlotController.isConnected("ai0") === true,
+  };
 
   return {
     type: "host-context",
@@ -47,6 +61,7 @@ export function buildRoomRuntimeContextPayload(options: {
       defaultFeatureId: room.defaultFeatureId,
     },
     user,
+    assistant,
     slots,
     presence,
     features: room.features.map((feature) => ({

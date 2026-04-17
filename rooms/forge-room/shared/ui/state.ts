@@ -33,6 +33,12 @@ export type ForgeWorkbenchUiFlowState =
   | "EXPORTED";
 
 export type ForgeWorkbenchUiSurface = "goal" | "responses" | "synthesis";
+export type ForgeWorkbenchStageId =
+  | "session"
+  | "operator"
+  | "preflight"
+  | "tracking"
+  | "draft";
 
 export interface ForgeRoomSnapshot {
   activeSessionId: string | null;
@@ -63,6 +69,9 @@ export interface ForgeRoomSnapshot {
 }
 
 export interface ForgeUiContextState {
+  assistantAvatar: string | null;
+  assistantConnected: boolean;
+  assistantNickname: string;
   featureId: string;
   locale: string;
   roomId: string;
@@ -136,6 +145,9 @@ export function createEmptyForgeRoomSnapshot(): ForgeRoomSnapshot {
 
 export function createEmptyForgeUiContext(): ForgeUiContextState {
   return {
+    assistantAvatar: null,
+    assistantConnected: false,
+    assistantNickname: "AI0",
     roomId: "forge-room",
     roomName: "Forge Room",
     featureId: "forge-workbench",

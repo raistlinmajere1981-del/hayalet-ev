@@ -1,0 +1,840 @@
+import { createForgePanel } from "./panel-shell.js";
+export const FORGE_NEW_SESSION_PICKER_VALUE = "__forge-new-session__";
+const FORGE_STAGE_ORDER = [
+  "session",
+  "operator",
+  "preflight",
+  "tracking",
+  "draft"
+];
+const FORGE_PREFLIGHT_TODO_ORDER = [
+  "operatorContext",
+  "constraints",
+  "ai0Analysis",
+  "runSignature",
+  "sessionSave"
+];
+function createField(documentRef, labelText, control, options) {
+  const wrapper = documentRef.createElement("label");
+  wrapper.className = "forge-field";
+  const label = documentRef.createElement("span");
+  label.className = "forge-field__label";
+  label.textContent = labelText;
+  wrapper.append(label, control);
+  if (options?.hint) {
+    const hint = documentRef.createElement("span");
+    hint.className = "forge-field__hint";
+    hint.textContent = options.hint;
+    wrapper.append(hint);
+  }
+  return wrapper;
+}
+function createButton(documentRef, label, action, options = {}) {
+  const button = documentRef.createElement("button");
+  button.type = "button";
+  button.className = options.primary ? "forge-button forge-button--primary" : "forge-button forge-button--secondary";
+  button.dataset["forgeAction"] = action;
+  if (options.actionValue) {
+    button.dataset["forgeActionValue"] = options.actionValue;
+  }
+  button.disabled = options.disabled === true;
+  button.textContent = label;
+  return button;
+}
+function createOption(documentRef, value, label, selectedValue) {
+  const option = documentRef.createElement("option");
+  option.value = value;
+  option.textContent = label;
+  option.selected = selectedValue === value;
+  return option;
+}
+function createMetaPill(documentRef, label, value) {
+  const pill = documentRef.createElement("div");
+  pill.className = "forge-meta-pill";
+  const copy = documentRef.createElement("span");
+  copy.className = "forge-meta-pill__label";
+  copy.textContent = label;
+  const strong = documentRef.createElement("strong");
+  strong.className = "forge-meta-pill__value";
+  strong.textContent = value;
+  pill.append(copy, strong);
+  return pill;
+}
+function createContextChip(documentRef, params) {
+  const button = documentRef.createElement("button");
+  button.type = "button";
+  button.className = "forge-context-chip";
+  button.dataset["forgeContextChip"] = "true";
+  button.dataset["forgeContextKey"] = params.key;
+  button.dataset["forgeContextSection"] = params.section;
+  button.dataset["selected"] = params.selected ? "true" : "false";
+  button.disabled = params.disabled === true;
+  const label = documentRef.createElement("span");
+  label.className = "forge-context-chip__label";
+  label.textContent = params.label;
+  const detail = documentRef.createElement("span");
+  detail.className = "forge-context-chip__detail";
+  detail.textContent = params.detail;
+  button.append(label, detail);
+  return button;
+}
+function createContextGroup(documentRef, title, chips, emptyText) {
+  const group = documentRef.createElement("section");
+  group.className = "forge-context-group";
+  const heading = documentRef.createElement("h4");
+  heading.className = "forge-context-group__title";
+  heading.textContent = title;
+  const list = documentRef.createElement("div");
+  list.className = "forge-context-group__list forge-context-group__list--chips";
+  if (chips.length > 0) {
+    list.append(...chips);
+  } else {
+    const emptyWrap = documentRef.createElement("div");
+    emptyWrap.className = "forge-context-group__empty";
+    const empty = documentRef.createElement("p");
+    empty.className = "forge-field__hint";
+    empty.textContent = emptyText;
+    emptyWrap.append(empty);
+    list.append(emptyWrap);
+  }
+  group.append(heading, list);
+  return group;
+}
+function renderNotesBlock(documentRef, text, notes, options = {}) {
+  const notesInput = documentRef.createElement("textarea");
+  notesInput.id = "forge-run-override-notes";
+  notesInput.className = "forge-textarea forge-textarea--compact";
+  notesInput.value = notes;
+  notesInput.dataset["forgeRunOverrideField"] = "notes";
+  notesInput.disabled = options.disabled === true;
+  notesInput.placeholder = text(
+    ["workbench", "goalPanel", "runOverrides", "notesPlaceholderLong"],
+    "Optional run note for this session"
+  );
+  return createField(
+    documentRef,
+    text(["workbench", "goalPanel", "runOverrides", "notes"], "Run notes"),
+    notesInput
+  );
+}
+function countSelectedSessionContext(selection) {
+  const preferenceKeys = selection.preferenceKeys ?? [];
+  return selection.skillKeys.length + selection.equipmentKeys.length + preferenceKeys.length;
+}
+function renderSkillValue(text, value) {
+  return text(
+    ["workbench", "goalPanel", "operatorProfile", "skillLevels", value],
+    value.replace(/_/g, " ")
+  );
+}
+function renderEquipmentValue(text, value) {
+  return text(
+    ["workbench", "goalPanel", "operatorProfile", "equipmentStatus", value],
+    value.replace(/_/g, " ")
+  );
+}
+function renderModeValue(text, value) {
+  return text(
+    ["workbench", "goalPanel", "operatorProfile", "modeValues", value],
+    value.replace(/_/g, " ")
+  );
+}
+function renderRiskValue(text, value) {
+  return text(
+    ["workbench", "goalPanel", "operatorProfile", "riskValues", value],
+    value.replace(/_/g, " ")
+  );
+}
+function createBlockHeading(documentRef, title) {
+  const heading = documentRef.createElement("h4");
+  heading.className = "forge-context-group__title";
+  heading.textContent = title;
+  return heading;
+}
+function createIdentityAvatar(documentRef, nickname, avatar) {
+  const createEmptyAvatar = () => {
+    const placeholder = documentRef.createElement("div");
+    placeholder.className = "forge-profile-identity__avatar forge-profile-identity__avatar--empty";
+    placeholder.setAttribute("aria-label", nickname);
+    return placeholder;
+  };
+  if (!avatar || avatar.trim() === "") {
+    return createEmptyAvatar();
+  }
+  const image = documentRef.createElement("img");
+  image.className = "forge-profile-identity__avatar";
+  image.alt = nickname;
+  image.src = avatar;
+  image.addEventListener("error", () => {
+    const parent = image.parentElement;
+    if (parent) {
+      parent.replaceChild(createEmptyAvatar(), image);
+    }
+  });
+  return image;
+}
+function renderCatalogLabel(text, value, fallback) {
+  const translationKey = value.split(/[^a-z0-9]+/i).filter((segment) => segment !== "").map((segment) => segment.toLowerCase()).map(
+    (segment, index) => index === 0 ? segment : `${segment.slice(0, 1).toUpperCase()}${segment.slice(1)}`
+  ).join("");
+  return text(["workbench", "goalPanel", "catalog", "items", translationKey], fallback);
+}
+function createStageDescriptorMap(text, state, options) {
+  const goalComplete = options.goalDraft.summary.trim() !== "" && options.goalDraft.brief.trim() !== "" && options.goalDraft.constraints.length > 0 && options.goalDraft.targetRoomId.trim() !== "";
+  const operatorComplete = goalComplete;
+  const preflightComplete = goalComplete;
+  const draftArtifactsAvailable = state.snapshot.draftTasks.length > 0 || state.snapshot.approvedTasks.length > 0 || state.snapshot.assignments.length > 0 || state.snapshot.responses.length > 0 || state.snapshot.syntheses.length > 0 || state.snapshot.exports.length > 0;
+  const trackingComplete = draftArtifactsAvailable;
+  return {
+    session: {
+      canOpen: true,
+      complete: goalComplete,
+      id: "session",
+      title: text(["workbench", "stageTower", "stages", "session", "title"], "Session + goal")
+    },
+    operator: {
+      canOpen: goalComplete,
+      complete: operatorComplete,
+      id: "operator",
+      title: text(["workbench", "stageTower", "stages", "operator", "title"], "Operator")
+    },
+    preflight: {
+      canOpen: goalComplete,
+      complete: preflightComplete,
+      id: "preflight",
+      title: text(["workbench", "stageTower", "stages", "preflight", "title"], "Preflight")
+    },
+    tracking: {
+      canOpen: preflightComplete,
+      complete: trackingComplete,
+      id: "tracking",
+      title: text(["workbench", "stageTower", "stages", "tracking", "title"], "Process tracking")
+    },
+    draft: {
+      canOpen: trackingComplete,
+      complete: state.snapshot.approvedTasks.length > 0,
+      id: "draft",
+      title: text(["workbench", "stageTower", "stages", "draft", "title"], "Draft stage")
+    }
+  };
+}
+function resolveActiveStageId(requestedStageId, _stageMap) {
+  return requestedStageId;
+}
+function createStageHeader(documentRef, text, stage, active) {
+  const header = documentRef.createElement("button");
+  header.type = "button";
+  header.className = "forge-stage__header";
+  header.disabled = !stage.canOpen;
+  if (stage.canOpen) {
+    header.dataset["forgeAction"] = "open-stage";
+    header.dataset["forgeActionValue"] = stage.id;
+  }
+  const copy = documentRef.createElement("div");
+  copy.className = "forge-stage__header-copy";
+  const title = documentRef.createElement("strong");
+  title.className = "forge-stage__title";
+  title.textContent = stage.title;
+  copy.append(title);
+  const badge = documentRef.createElement("span");
+  badge.className = "forge-stage__badge";
+  badge.dataset["forgeStageBadge"] = stage.id;
+  badge.textContent = active ? text(["workbench", "stageTower", "status", "active"], "Active") : stage.complete ? text(["workbench", "stageTower", "status", "complete"], "Complete") : stage.canOpen ? text(["workbench", "stageTower", "status", "available"], "Ready") : text(["workbench", "stageTower", "status", "locked"], "Locked");
+  header.append(copy, badge);
+  return header;
+}
+function createStageFooter(documentRef, text, options) {
+  const footer = documentRef.createElement("footer");
+  footer.className = "forge-stage__footer";
+  const left = documentRef.createElement("div");
+  left.className = "forge-actions";
+  left.append(
+    createButton(
+      documentRef,
+      text(["workbench", "stageTower", "previous"], "Previous"),
+      "open-stage",
+      {
+        actionValue: options.previousStageId ?? "",
+        disabled: options.previousStageId === null
+      }
+    )
+  );
+  const right = documentRef.createElement("div");
+  right.className = "forge-actions";
+  if (options.nextStageId) {
+    right.append(
+      createButton(
+        documentRef,
+        text(["workbench", "stageTower", "next"], "Next"),
+        "open-stage",
+        {
+          actionValue: options.nextStageId,
+          disabled: options.allowNext === true ? false : !options.complete,
+          primary: true
+        }
+      )
+    );
+  }
+  footer.append(left, right);
+  return footer;
+}
+function buildSessionStageBody(documentRef, state, text, options) {
+  const body = documentRef.createElement("div");
+  body.className = "forge-stage__body-scroll";
+  const picker = documentRef.createElement("select");
+  picker.id = "forge-session-picker";
+  picker.className = "forge-input";
+  picker.append(
+    createOption(
+      documentRef,
+      FORGE_NEW_SESSION_PICKER_VALUE,
+      text(["workbench", "goalPanel", "sessionManager", "newSession"], "New session"),
+      options.selectedSessionId ?? FORGE_NEW_SESSION_PICKER_VALUE
+    ),
+    ...state.snapshot.sessionList.map(
+      (session) => createOption(documentRef, session.id, session.title, options.selectedSessionId ?? "")
+    )
+  );
+  const pickerRow = documentRef.createElement("div");
+  pickerRow.className = "forge-inline-editor forge-inline-editor--row";
+  pickerRow.append(
+    picker,
+    createButton(
+      documentRef,
+      text(["workbench", "goalPanel", "sessionManager", "deleteSession"], "Delete"),
+      "delete-selected-session",
+      {
+        disabled: options.selectedSessionId === null || options.selectedSessionId === FORGE_NEW_SESSION_PICKER_VALUE
+      }
+    )
+  );
+  body.append(
+    createField(
+      documentRef,
+      text(["workbench", "stageTower", "savedSessions"], "Saved sessions"),
+      pickerRow
+    )
+  );
+  const goalInput = documentRef.createElement("input");
+  goalInput.id = "forge-goal-summary";
+  goalInput.className = "forge-input forge-input--goal";
+  goalInput.value = options.goalDraft.summary;
+  goalInput.placeholder = text(["workbench", "goalPanel", "placeholders", "goal"], "Goal");
+  goalInput.dataset["forgeGoalField"] = "summary";
+  const briefInput = documentRef.createElement("textarea");
+  briefInput.id = "forge-goal-brief";
+  briefInput.className = "forge-textarea forge-textarea--compact";
+  briefInput.value = options.goalDraft.brief;
+  briefInput.placeholder = text(["workbench", "goalPanel", "placeholders", "brief"], "Brief");
+  briefInput.dataset["forgeGoalField"] = "brief";
+  const constraintsInput = documentRef.createElement("textarea");
+  constraintsInput.id = "forge-goal-constraints";
+  constraintsInput.className = briefInput.className;
+  constraintsInput.value = options.goalDraft.constraints.join("\n");
+  constraintsInput.placeholder = text(
+    ["workbench", "goalPanel", "placeholders", "constraints"],
+    "One constraint per line"
+  );
+  constraintsInput.dataset["forgeGoalField"] = "constraints";
+  const targetRoomInput = documentRef.createElement("input");
+  targetRoomInput.id = "forge-goal-target-room";
+  targetRoomInput.className = "forge-input";
+  targetRoomInput.value = options.goalDraft.targetRoomId;
+  targetRoomInput.placeholder = text(
+    ["workbench", "goalPanel", "placeholders", "targetRoom"],
+    "target-room-id"
+  );
+  targetRoomInput.dataset["forgeGoalField"] = "targetRoomId";
+  const goalDetails = documentRef.createElement("div");
+  goalDetails.className = "forge-inline-editor";
+  goalDetails.append(
+    createField(
+      documentRef,
+      text(["workbench", "goalPanel", "fields", "goal"], "Goal"),
+      goalInput
+    ),
+    createField(
+      documentRef,
+      text(["workbench", "goalPanel", "fields", "brief"], "Brief"),
+      briefInput
+    ),
+    createField(
+      documentRef,
+      text(["workbench", "goalPanel", "fields", "constraints"], "Constraints"),
+      constraintsInput
+    ),
+    createField(
+      documentRef,
+      text(["workbench", "goalPanel", "fields", "targetRoom"], "Target room"),
+      targetRoomInput
+    )
+  );
+  body.append(goalDetails);
+  return body;
+}
+function buildOperatorStageBody(documentRef, state, text, options) {
+  const body = documentRef.createElement("div");
+  body.className = "forge-stage__body-scroll";
+  const operatorProfile = state.snapshot.operatorProfile;
+  const selectedContextCount = countSelectedSessionContext(options.sessionContextSelection);
+  const operatorSummary = documentRef.createElement("div");
+  operatorSummary.className = "forge-goal-meta";
+  operatorSummary.append(
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "catalog", "groups", "skills"], "Skills"),
+      String(operatorProfile.skills.length)
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "catalog", "groups", "equipment"], "Equipment"),
+      String(operatorProfile.equipment.length)
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "goalPanel", "operatorProfile", "selectedLabel"], "Selected"),
+      String(selectedContextCount)
+    )
+  );
+  body.append(operatorSummary);
+  const contextGroups = documentRef.createElement("div");
+  contextGroups.className = "forge-context-groups forge-context-groups--scroll";
+  contextGroups.append(
+    createContextGroup(
+      documentRef,
+      text(["workbench", "goalPanel", "catalog", "groups", "skills"], "Skills"),
+      operatorProfile.skills.map(
+        (record) => createContextChip(documentRef, {
+          disabled: false,
+          section: "skill",
+          key: record.skillKey,
+          label: renderCatalogLabel(text, record.skillKey, record.label),
+          detail: renderSkillValue(text, record.level),
+          selected: options.sessionContextSelection.skillKeys.includes(record.skillKey)
+        })
+      ),
+      text(
+        ["workbench", "goalPanel", "sessionContext", "emptySkills"],
+        "No saved skills yet. Use Operator Profile from the top bar."
+      )
+    ),
+    createContextGroup(
+      documentRef,
+      text(["workbench", "goalPanel", "catalog", "groups", "equipment"], "Equipment"),
+      operatorProfile.equipment.map(
+        (record) => createContextChip(documentRef, {
+          disabled: false,
+          section: "equipment",
+          key: record.equipmentKey,
+          label: renderCatalogLabel(text, record.equipmentKey, record.label),
+          detail: record.brandModel ? `${renderEquipmentValue(text, record.status)} • ${record.brandModel}` : renderEquipmentValue(text, record.status),
+          selected: options.sessionContextSelection.equipmentKeys.includes(record.equipmentKey)
+        })
+      ),
+      text(
+        ["workbench", "goalPanel", "sessionContext", "emptyEquipment"],
+        "No saved equipment yet. Use Operator Profile from the top bar."
+      )
+    )
+  );
+  body.append(contextGroups);
+  const modeSelect = documentRef.createElement("select");
+  modeSelect.id = "forge-run-override-mode";
+  modeSelect.className = "forge-input";
+  modeSelect.append(
+    createOption(
+      documentRef,
+      "",
+      text(["workbench", "common", "none"], "none"),
+      options.runOverrideDraft.mode || ""
+    ),
+    createOption(
+      documentRef,
+      "learn_first",
+      renderModeValue(text, "learn_first"),
+      options.runOverrideDraft.mode || ""
+    ),
+    createOption(
+      documentRef,
+      "result_first",
+      renderModeValue(text, "result_first"),
+      options.runOverrideDraft.mode || ""
+    )
+  );
+  const riskSelect = documentRef.createElement("select");
+  riskSelect.id = "forge-run-override-risk";
+  riskSelect.className = "forge-input";
+  riskSelect.append(
+    createOption(
+      documentRef,
+      "",
+      text(["workbench", "common", "none"], "none"),
+      options.runOverrideDraft.riskTolerance || ""
+    ),
+    createOption(
+      documentRef,
+      "low",
+      renderRiskValue(text, "low"),
+      options.runOverrideDraft.riskTolerance || ""
+    ),
+    createOption(
+      documentRef,
+      "medium",
+      renderRiskValue(text, "medium"),
+      options.runOverrideDraft.riskTolerance || ""
+    ),
+    createOption(
+      documentRef,
+      "high",
+      renderRiskValue(text, "high"),
+      options.runOverrideDraft.riskTolerance || ""
+    )
+  );
+  const modeRiskGrid = documentRef.createElement("div");
+  modeRiskGrid.className = "forge-form-grid forge-form-grid--compact";
+  modeRiskGrid.append(
+    createField(
+      documentRef,
+      text(["workbench", "goalPanel", "runOverrides", "mode"], "Mode"),
+      modeSelect
+    ),
+    createField(
+      documentRef,
+      text(["workbench", "goalPanel", "runOverrides", "risk"], "Risk tolerance"),
+      riskSelect
+    )
+  );
+  body.append(modeRiskGrid);
+  return body;
+}
+function buildPreflightStageBody(documentRef, state, text, options) {
+  const body = documentRef.createElement("div");
+  body.className = "forge-stage__body-scroll";
+  const preflight = state.snapshot.preflight;
+  const assistantOffline = state.context.assistantConnected !== true;
+  const localizedOfflineMessage = text(
+    ["workbench", "goalPanel", "preflight", "aiOffline"],
+    "AI0 is offline"
+  );
+  const agentBlock = documentRef.createElement("section");
+  agentBlock.className = "forge-goal-block forge-goal-block--compact forge-preflight-agent";
+  agentBlock.append(createBlockHeading(documentRef, text(["workbench", "goalPanel", "preflight", "agentTitle"], "AI0")));
+  const identity = documentRef.createElement("div");
+  identity.className = "forge-profile-identity";
+  const identityCopy = documentRef.createElement("div");
+  identityCopy.className = "forge-profile-identity__copy";
+  const identityName = documentRef.createElement("strong");
+  identityName.className = "forge-profile-identity__name";
+  identityName.textContent = state.context.assistantNickname;
+  identityCopy.append(identityName);
+  identity.append(
+    createIdentityAvatar(
+      documentRef,
+      state.context.assistantNickname,
+      state.context.assistantAvatar
+    ),
+    identityCopy
+  );
+  agentBlock.append(identity);
+  body.append(agentBlock);
+  const conditionsRail = documentRef.createElement("div");
+  conditionsRail.className = "forge-chip-row";
+  options.runOverrideDraft.temporaryConditions.forEach((condition) => {
+    const chip = documentRef.createElement("button");
+    chip.type = "button";
+    chip.className = "forge-condition-chip";
+    chip.dataset["forgeRemoveRunCondition"] = condition;
+    chip.append(
+      Object.assign(documentRef.createElement("span"), {
+        textContent: condition
+      }),
+      Object.assign(documentRef.createElement("span"), {
+        className: "forge-condition-chip__remove",
+        textContent: "x"
+      })
+    );
+    conditionsRail.append(chip);
+  });
+  if (options.runOverrideDraft.temporaryConditions.length > 0) {
+    body.append(conditionsRail);
+  }
+  const todoBlock = documentRef.createElement("section");
+  todoBlock.className = "forge-goal-block forge-goal-block--compact";
+  todoBlock.append(
+    createBlockHeading(
+      documentRef,
+      text(["workbench", "goalPanel", "preflight", "todoTitle"], "Process flow")
+    )
+  );
+  const todoList = documentRef.createElement("div");
+  todoList.className = "forge-preflight-todo";
+  const activeStepIndex = preflight.activeStepId === null ? -1 : FORGE_PREFLIGHT_TODO_ORDER.indexOf(preflight.activeStepId);
+  const hasCompletedRun = preflight.ranAt !== null || preflight.bundle !== null;
+  const aiAnalysisNeedsReview = (preflight.status === "warning" || preflight.status === "stale") && (preflight.bundle?.rovoPreAnalysis !== null || preflight.warnings.length > 0);
+  FORGE_PREFLIGHT_TODO_ORDER.forEach((stepId, index) => {
+    const item = documentRef.createElement("div");
+    item.className = "forge-preflight-todo__item";
+    let visualState = "pending";
+    if (preflight.status === "running") {
+      if (activeStepIndex > index) {
+        visualState = "complete";
+      } else if (activeStepIndex === index) {
+        visualState = "active";
+      }
+    } else if (hasCompletedRun) {
+      visualState = "complete";
+    }
+    if (stepId === "ai0Analysis" && aiAnalysisNeedsReview) {
+      visualState = "warning";
+    }
+    item.dataset["status"] = visualState;
+    const itemTitle = documentRef.createElement("strong");
+    itemTitle.className = "forge-preflight-todo__title";
+    itemTitle.textContent = text(
+      ["workbench", "goalPanel", "preflight", "steps", stepId],
+      stepId
+    );
+    const itemStatus = documentRef.createElement("span");
+    itemStatus.className = visualState === "warning" ? "forge-chip forge-chip--warning" : visualState === "active" ? "forge-chip forge-chip--accent" : "forge-chip forge-chip--soft";
+    itemStatus.textContent = text(
+      ["workbench", "goalPanel", "preflight", "todoStatus", visualState],
+      visualState
+    );
+    item.append(itemTitle, itemStatus);
+    todoList.append(item);
+  });
+  todoBlock.append(todoList);
+  body.append(todoBlock);
+  const resultBlock = documentRef.createElement("section");
+  resultBlock.className = "forge-goal-block forge-goal-block--compact";
+  resultBlock.append(
+    createBlockHeading(
+      documentRef,
+      text(["workbench", "goalPanel", "preflight", "resultTitle"], "Preview")
+    )
+  );
+  const resultBody = documentRef.createElement("div");
+  resultBody.className = "forge-preflight-result";
+  const resultStatus = documentRef.createElement("span");
+  resultStatus.className = preflight.status === "warning" ? "forge-chip forge-chip--warning" : preflight.status === "running" ? "forge-chip forge-chip--accent" : "forge-chip forge-chip--soft";
+  resultStatus.textContent = text(
+    ["workbench", "goalPanel", "preflight", preflight.status === "fresh" ? "ready" : preflight.status],
+    preflight.status
+  );
+  const resultSummary = documentRef.createElement("p");
+  resultSummary.className = "forge-panel__hint";
+  const computedResultSummary = assistantOffline && ((preflight.bundle?.rovoPreAnalysis?.summary ?? "").trim() !== "" || preflight.warnings.length > 0 || (preflight.errorMessage ?? "").trim() !== "") ? localizedOfflineMessage : preflight.bundle?.rovoPreAnalysis?.summary?.trim() || preflight.staleReason?.trim() || preflight.errorMessage?.trim() || (preflight.ranAt !== null ? text(
+    ["workbench", "goalPanel", "preflight", "resultReady"],
+    "Preflight context is ready."
+  ) : text(
+    ["workbench", "goalPanel", "preflight", "resultIdle"],
+    "No preflight result yet."
+  ));
+  resultSummary.textContent = preflight.status === "running" ? text(["workbench", "goalPanel", "preflight", "resultRunning"], "Preflight is running.") : computedResultSummary;
+  resultBody.append(resultStatus, resultSummary);
+  const visibleWarnings = Array.from(
+    new Set(
+      preflight.warnings.map(
+        (warning) => assistantOffline && warning.toLowerCase().includes("ai0") ? localizedOfflineMessage : warning.trim()
+      ).filter((warning) => warning !== "" && warning !== computedResultSummary)
+    )
+  ).slice(0, 3);
+  if (visibleWarnings.length > 0) {
+    const warningRail = documentRef.createElement("div");
+    warningRail.className = "forge-chip-row";
+    visibleWarnings.forEach((warning) => {
+      const chip = documentRef.createElement("span");
+      chip.className = "forge-chip forge-chip--warning";
+      chip.textContent = warning;
+      warningRail.append(chip);
+    });
+    resultBody.append(warningRail);
+  }
+  const resultMeta = documentRef.createElement("div");
+  resultMeta.className = "forge-goal-meta";
+  if (state.snapshot.runSignature?.value) {
+    resultMeta.append(
+      createMetaPill(
+        documentRef,
+        text(["workbench", "goalPanel", "preflight", "signatureLabel"], "Run signature"),
+        state.snapshot.runSignature.value
+      )
+    );
+  }
+  if (preflight.promptCharCount > 0) {
+    resultMeta.append(
+      createMetaPill(
+        documentRef,
+        text(["workbench", "goalPanel", "preflight", "promptSizeLabel"], "Prompt"),
+        `${preflight.promptCharCount}`
+      )
+    );
+  }
+  if (resultMeta.childElementCount > 0) {
+    resultBody.append(resultMeta);
+  }
+  resultBlock.append(resultBody);
+  body.append(resultBlock);
+  body.append(renderNotesBlock(documentRef, text, options.runOverrideDraft.notes));
+  const conditionActions = documentRef.createElement("div");
+  conditionActions.className = "forge-actions";
+  conditionActions.append(
+    createButton(
+      documentRef,
+      text(["workbench", "goalPanel", "runOverrides", "addCondition"], "+ Add condition"),
+      "toggle-run-condition-composer"
+    )
+  );
+  body.append(conditionActions);
+  if (options.runConditionComposerOpen) {
+    const composer = documentRef.createElement("div");
+    composer.className = "forge-inline-editor forge-inline-editor--row";
+    const input = documentRef.createElement("input");
+    input.id = "forge-run-override-condition-input";
+    input.className = "forge-input";
+    input.value = options.runConditionComposerValue;
+    input.placeholder = text(
+      ["workbench", "goalPanel", "runOverrides", "notesPlaceholder"],
+      "Temporary condition for this run"
+    );
+    composer.append(
+      input,
+      createButton(
+        documentRef,
+        text(["workbench", "goalPanel", "runOverrides", "commitCondition"], "Add"),
+        "commit-run-condition"
+      ),
+      createButton(
+        documentRef,
+        text(["workbench", "goalPanel", "runOverrides", "cancelCondition"], "Cancel"),
+        "cancel-run-condition"
+      )
+    );
+    body.append(composer);
+  }
+  const preflightActions = documentRef.createElement("div");
+  preflightActions.className = "forge-actions";
+  preflightActions.append(
+    createButton(
+      documentRef,
+      text(["workbench", "goalPanel", "preflight", "action"], "Run Preflight"),
+      "run-preflight",
+      {
+        disabled: assistantOffline,
+        primary: true
+      }
+    )
+  );
+  body.append(preflightActions);
+  return body;
+}
+function buildTrackingStageBody(documentRef, state, text, options) {
+  const body = documentRef.createElement("div");
+  body.className = "forge-stage__body-scroll";
+  const summary = documentRef.createElement("div");
+  summary.className = "forge-goal-meta";
+  summary.append(
+    createMetaPill(documentRef, text(["workbench", "statusBar", "requiredAction"], "Action"), options.flowLabel),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "statusBar", "stats", "queue"], "QUEUE"),
+      String(state.snapshot.coordinatorState.assignmentQueueTotal)
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "statusBar", "stats", "answers"], "ANS"),
+      String(state.snapshot.responses.length)
+    ),
+    createMetaPill(
+      documentRef,
+      text(["workbench", "statusBar", "stats", "decisions"], "CF"),
+      String(state.snapshot.conflicts.filter((conflict) => conflict.status === "open").length)
+    )
+  );
+  body.append(summary);
+  if (options.flowState === "GOAL_DEFINED") {
+    const actions = documentRef.createElement("div");
+    actions.className = "forge-actions";
+    actions.append(
+      createButton(
+        documentRef,
+        text(["workbench", "primaryAction", "generateDraft"], "Generate draft"),
+        "generate-draft",
+        { primary: true }
+      )
+    );
+    body.append(actions);
+  }
+  return body;
+}
+function buildDraftStageBody(documentRef, draftSurfacePanel) {
+  const body = documentRef.createElement("div");
+  body.className = "forge-stage__body-scroll";
+  if (draftSurfacePanel === null) {
+    return body;
+  }
+  draftSurfacePanel.classList.add("forge-stage-embedded-panel");
+  body.append(draftSurfacePanel);
+  return body;
+}
+export function renderWorkbenchStagePanel(documentRef, state, text, options) {
+  const body = documentRef.createElement("div");
+  body.className = "forge-panel__body forge-stage-tower-panel";
+  const stageMap = createStageDescriptorMap(text, state, {
+    goalDraft: options.goalDraft
+  });
+  const activeStageId = resolveActiveStageId(options.activeStageId, stageMap);
+  const activeStageIndex = FORGE_STAGE_ORDER.indexOf(activeStageId);
+  const stageStack = documentRef.createElement("div");
+  stageStack.className = "forge-stage-stack";
+  FORGE_STAGE_ORDER.forEach((stageId) => {
+    const descriptor = stageMap[stageId];
+    const stage = documentRef.createElement("section");
+    const stageState = stageId === activeStageId ? "active" : descriptor.complete ? "complete" : descriptor.canOpen ? "available" : "locked";
+    stage.className = "forge-stage";
+    stage.dataset["stageId"] = stageId;
+    stage.dataset["state"] = stageState;
+    stage.append(createStageHeader(documentRef, text, descriptor, stageId === activeStageId));
+    if (stageId === activeStageId) {
+      const frame = documentRef.createElement("div");
+      frame.className = "forge-stage__frame";
+      const stageBody = stageId === "session" ? buildSessionStageBody(documentRef, state, text, {
+        goalDraft: options.goalDraft,
+        selectedSessionId: options.selectedSessionId
+      }) : stageId === "operator" ? buildOperatorStageBody(documentRef, state, text, {
+        runOverrideDraft: options.runOverrideDraft,
+        sessionContextSelection: options.sessionContextSelection
+      }) : stageId === "preflight" ? buildPreflightStageBody(documentRef, state, text, {
+        runConditionComposerOpen: options.runConditionComposerOpen,
+        runConditionComposerValue: options.runConditionComposerValue,
+        runOverrideDraft: options.runOverrideDraft
+      }) : stageId === "tracking" ? buildTrackingStageBody(documentRef, state, text, {
+        flowLabel: options.flowLabel,
+        flowState: options.flowState
+      }) : buildDraftStageBody(documentRef, options.draftSurfacePanel);
+      frame.append(stageBody);
+      const previousStageId = activeStageIndex > 0 ? FORGE_STAGE_ORDER[activeStageIndex - 1] ?? null : null;
+      const nextStageId = activeStageIndex < FORGE_STAGE_ORDER.length - 1 ? FORGE_STAGE_ORDER[activeStageIndex + 1] ?? null : null;
+      frame.append(
+        createStageFooter(documentRef, text, {
+          allowNext: stageId === "preflight",
+          complete: descriptor.complete,
+          nextStageId,
+          previousStageId
+        })
+      );
+      stage.append(frame);
+    }
+    stageStack.append(stage);
+  });
+  body.append(stageStack);
+  const panel = createForgePanel(documentRef, {
+    panelId: "goal",
+    title: text(["workbench", "stageTower", "panelTitle"], "Forge stage flow"),
+    body
+  });
+  panel.dataset["forgeGoalEditable"] = "true";
+  panel.dataset["forgeStagePanel"] = "true";
+  panel.dataset["forgeActiveStage"] = activeStageId;
+  return panel;
+}

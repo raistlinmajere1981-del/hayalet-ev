@@ -1,4 +1,5 @@
 import type { InstalledRoomRecord } from "@shared/index.js";
+import { resolveRoomShellIcon, resolveRoomShellName } from "./room-shell-presentation.js";
 
 export function getRoomPageName(roomId: string): string {
   return `room-${roomId}`;
@@ -13,28 +14,19 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function buildRoomIcon(room: InstalledRoomRecord): string {
-  const configuredIcon = room.icon?.trim();
-  if (configuredIcon !== undefined && configuredIcon !== "") {
-    return configuredIcon;
-  }
-
-  const trimmed = room.name.trim();
-  return trimmed.length > 0 ? trimmed.slice(0, 2).toUpperCase() : "OD";
-}
-
 function getRoomIconDisplayMode(icon: string): "compact" | "full" {
   return /^[\p{L}\p{N}]{1,3}$/u.test(icon) ? "compact" : "full";
 }
 
 export function buildRoomNavMarkup(room: InstalledRoomRecord): string {
   const pageName = getRoomPageName(room.id);
-  const icon = buildRoomIcon(room);
+  const roomName = resolveRoomShellName(room.id, room.name);
+  const icon = resolveRoomShellIcon(room.id, room.icon, roomName);
   const iconDisplayMode = getRoomIconDisplayMode(icon);
   return `
-    <button class="side-nav-btn" data-page="${escapeHtml(pageName)}" data-room-nav="true" data-room-id="${escapeHtml(room.id)}" title="${escapeHtml(room.name)}">
+    <button class="side-nav-btn" data-page="${escapeHtml(pageName)}" data-room-nav="true" data-room-id="${escapeHtml(room.id)}" title="${escapeHtml(roomName)}">
       <span class="side-nav-icon room-nav-icon" data-room-icon-display="${escapeHtml(iconDisplayMode)}">${escapeHtml(icon)}</span>
-      <span class="side-nav-label">${escapeHtml(room.name)}</span>
+      <span class="side-nav-label">${escapeHtml(roomName)}</span>
     </button>
   `;
 }

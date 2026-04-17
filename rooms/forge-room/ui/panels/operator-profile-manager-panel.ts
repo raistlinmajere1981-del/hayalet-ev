@@ -103,6 +103,7 @@ function createProfileRecordRow(
   options: {
     actions: HTMLElement[];
     detail: string;
+    editor?: HTMLElement | null;
     notes?: string;
     title: string;
   }
@@ -132,6 +133,12 @@ function createProfileRecordRow(
   actions.append(...options.actions);
   footer.append(actions);
   row.append(header, footer);
+  if (options.editor) {
+    const editorWrap = documentRef.createElement("div");
+    editorWrap.className = "forge-profile-record__editor";
+    editorWrap.append(options.editor);
+    row.append(editorWrap);
+  }
   return row;
 }
 
@@ -303,7 +310,7 @@ export function renderOperatorProfileManager(
       documentRef,
       text(
         ["workbench", "goalPanel", "operatorProfile", "drawerTitle"],
-        "Manage operator profile"
+        "OPERATOR PROFILE"
       ),
       [
         createButton(
@@ -324,29 +331,17 @@ export function renderOperatorProfileManager(
     Object.assign(documentRef.createElement("strong"), {
       className: "forge-profile-identity__name",
       textContent: options.userNickname,
-    }),
-    Object.assign(documentRef.createElement("span"), {
-      className: "forge-field__hint",
-      textContent: text(
-        ["workbench", "goalPanel", "operatorProfile", "managerHint"],
-        "Persistent operator records live here. Session selection stays on the main run screen."
-      ),
     })
   );
   panel.append(identity);
 
-  const dirtyChip = documentRef.createElement("span");
-  dirtyChip.className = "forge-chip forge-chip--accent";
-  dirtyChip.textContent = options.dirty
-    ? text(
-        ["workbench", "goalPanel", "operatorProfile", "autosavePending"],
-        "Autosave on close"
-      )
-    : text(["workbench", "goalPanel", "operatorProfile", "saved"], "Saved");
-  panel.append(dirtyChip);
+  const contentGrid = documentRef.createElement("div");
+  contentGrid.className = "forge-profile-grid";
 
   const skillsSection = documentRef.createElement("section");
   skillsSection.className = "forge-profile-section";
+  const skillsBody = documentRef.createElement("div");
+  skillsBody.className = "forge-profile-section__body";
   skillsSection.append(
     createSectionHeading(documentRef, text(["workbench", "goalPanel", "catalog", "groups", "skills"], "Skills"), [
       createButton(
@@ -358,7 +353,7 @@ export function renderOperatorProfileManager(
     ])
   );
   if (options.draft.skills.length === 0) {
-    skillsSection.append(
+    skillsBody.append(
       Object.assign(documentRef.createElement("p"), {
         className: "forge-field__hint",
         textContent: text(
@@ -369,10 +364,17 @@ export function renderOperatorProfileManager(
     );
   } else {
     options.draft.skills.forEach((record) => {
-      skillsSection.append(
+      const activeEditor =
+        options.editorDraft?.kind === "skill" &&
+        options.editorDraft.mode === "edit" &&
+        options.editorDraft.sourceKey === record.skillKey
+          ? renderSkillEditor(documentRef, text, options.editorDraft)
+          : null;
+      skillsBody.append(
         createProfileRecordRow(documentRef, {
           title: record.label,
           detail: renderValueLabel(text, record.level, "skill"),
+          ...(activeEditor ? { editor: activeEditor } : {}),
           ...(record.notes ? { notes: record.notes } : {}),
           actions: [
             createButton(
@@ -392,13 +394,16 @@ export function renderOperatorProfileManager(
       );
     });
   }
-  if (options.editorDraft?.kind === "skill") {
-    skillsSection.append(renderSkillEditor(documentRef, text, options.editorDraft));
+  if (options.editorDraft?.kind === "skill" && options.editorDraft.mode === "create") {
+    skillsBody.append(renderSkillEditor(documentRef, text, options.editorDraft));
   }
-  panel.append(skillsSection);
+  skillsSection.append(skillsBody);
+  contentGrid.append(skillsSection);
 
   const equipmentSection = documentRef.createElement("section");
   equipmentSection.className = "forge-profile-section";
+  const equipmentBody = documentRef.createElement("div");
+  equipmentBody.className = "forge-profile-section__body";
   equipmentSection.append(
     createSectionHeading(
       documentRef,
@@ -417,7 +422,7 @@ export function renderOperatorProfileManager(
     )
   );
   if (options.draft.equipment.length === 0) {
-    equipmentSection.append(
+    equipmentBody.append(
       Object.assign(documentRef.createElement("p"), {
         className: "forge-field__hint",
         textContent: text(
@@ -431,10 +436,17 @@ export function renderOperatorProfileManager(
       const notes = [record.brandModel, record.notes].filter(
         (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
       );
-      equipmentSection.append(
+      const activeEditor =
+        options.editorDraft?.kind === "equipment" &&
+        options.editorDraft.mode === "edit" &&
+        options.editorDraft.sourceKey === record.equipmentKey
+          ? renderEquipmentEditor(documentRef, text, options.editorDraft)
+          : null;
+      equipmentBody.append(
         createProfileRecordRow(documentRef, {
           title: record.label,
           detail: renderValueLabel(text, record.status, "equipment"),
+          ...(activeEditor ? { editor: activeEditor } : {}),
           ...(notes.length > 0 ? { notes: notes.join(" • ") } : {}),
           actions: [
             createButton(
@@ -454,21 +466,12 @@ export function renderOperatorProfileManager(
       );
     });
   }
-  if (options.editorDraft?.kind === "equipment") {
-    equipmentSection.append(renderEquipmentEditor(documentRef, text, options.editorDraft));
+  if (options.editorDraft?.kind === "equipment" && options.editorDraft.mode === "create") {
+    equipmentBody.append(renderEquipmentEditor(documentRef, text, options.editorDraft));
   }
-  panel.append(equipmentSection);
-
-  const footer = documentRef.createElement("div");
-  footer.className = "forge-actions";
-  footer.append(
-    createButton(
-      documentRef,
-      text(["workbench", "goalPanel", "operatorProfile", "close"], "Close"),
-      "toggle-profile-editor"
-    )
-  );
-  panel.append(footer);
+  equipmentSection.append(equipmentBody);
+  contentGrid.append(equipmentSection);
+  panel.append(contentGrid);
 
   overlay.append(backdrop, panel);
   return overlay;

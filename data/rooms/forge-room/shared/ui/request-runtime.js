@@ -17,11 +17,14 @@ export function createForgeUiRequestRuntime() {
     approveDraft() {
       return sendCommand(FORGE_UI_COMMANDS.approveDraft);
     },
-    createSession() {
-      return sendCommand(FORGE_UI_COMMANDS.createSession);
+    createSession(payload = {}) {
+      return sendCommand(FORGE_UI_COMMANDS.createSession, payload);
     },
     dispatchAssignments() {
       return sendCommand(FORGE_UI_COMMANDS.dispatchAssignments);
+    },
+    deleteSession(payload) {
+      return sendCommand(FORGE_UI_COMMANDS.deleteSession, payload);
     },
     exportHandoff() {
       return sendCommand(FORGE_UI_COMMANDS.exportHandoff);
@@ -34,6 +37,9 @@ export function createForgeUiRequestRuntime() {
     },
     generateSynthesis() {
       return sendCommand(FORGE_UI_COMMANDS.generateSynthesis);
+    },
+    loadSession(payload) {
+      return sendCommand(FORGE_UI_COMMANDS.loadSession, payload);
     },
     loadLatestSession() {
       return sendCommand(FORGE_UI_COMMANDS.loadLatestSession);
