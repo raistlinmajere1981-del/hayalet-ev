@@ -467,17 +467,17 @@ export function createLaboratoryReportStageUi(deps: LaboratoryReportStageUiDeps)
               ${
                 summaryCards.length > 0
                   ? summaryCards
-                    .map(function (card) {
-                      const value =
-                        typeof card.value === "string" || typeof card.value === "number"
-                          ? String(card.value)
-                          : "--";
-                      return laboratoryReportStageSupportRuntime.renderSignalCard(
-                        value,
-                        laboratoryReportStageSupportRuntime.getReportSignalCardLabel(card)
-                      );
-                    })
-                    .join("")
+                      .map(function (card) {
+                        const value =
+                          typeof card.value === "string" || typeof card.value === "number"
+                            ? String(card.value)
+                            : "--";
+                        return laboratoryReportStageSupportRuntime.renderSignalCard(
+                          value,
+                          laboratoryReportStageSupportRuntime.getReportSignalCardLabel(card)
+                        );
+                      })
+                      .join("")
                   : `<p class="lab-panel__hint">${escapeHtml(emptyReason)}</p>`
               }
             </section>

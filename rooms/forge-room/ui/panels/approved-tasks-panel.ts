@@ -202,9 +202,7 @@ export function renderApprovedTasksPanel(
     toolbar.append(
       createButton(
         documentRef,
-        options.advancedCapsulesOpen
-          ? "Hide advanced capsule"
-          : "Advanced capsule",
+        options.advancedCapsulesOpen ? "Hide advanced capsule" : "Advanced capsule",
         {
           datasetKey: "forgeToggleAdvancedCapsules",
           datasetValue: "true",

@@ -6,12 +6,16 @@
   type FeatureRecord = GameRoomFeatureRecord;
   type SlotState = {
     slotId: string;
+    label: string;
     nickname: string;
+    avatar: string | null;
     assigned: boolean;
     connected: boolean;
     ready: boolean;
     state: string;
     urlExcluded: boolean;
+    providerId: string | null;
+    accountId: string | null;
     remoteUserId: string | null;
   };
   type InviteEntry = {
@@ -36,6 +40,7 @@
     activeFeature: FeatureRecord;
     user: {
       nickname: string;
+      avatar: string | null;
     };
     slots: {
       ai1: SlotState;
@@ -132,12 +137,16 @@
     function createSlot(slotId: string): SlotState {
       return {
         slotId: slotId,
+        label: slotId.toUpperCase(),
         nickname: slotId.toUpperCase(),
+        avatar: null,
         assigned: false,
         connected: false,
         ready: false,
         state: "empty",
         urlExcluded: false,
+        providerId: null,
+        accountId: null,
         remoteUserId: null,
       };
     }
@@ -176,6 +185,7 @@
             "userLabel",
             readBootstrapText("tr", "userLabel", "User")
           ),
+          avatar: null,
         },
         slots: {
           ai1: createSlot("ai1"),
@@ -219,7 +229,9 @@
       const source = isRecord(candidate) ? candidate : {};
       return {
         slotId: slotId,
+        label: readString(source["label"], slotId.toUpperCase()),
         nickname: readString(source["nickname"], slotId.toUpperCase()),
+        avatar: readString(source["avatar"], "") || null,
         assigned: source["assigned"] === true,
         connected: source["connected"] === true,
         ready:
@@ -229,15 +241,26 @@
             source["urlExcluded"] !== true),
         state: readString(source["state"], "empty"),
         urlExcluded: source["urlExcluded"] === true,
+        providerId: readString(source["providerId"], "") || null,
+        accountId: readString(source["accountId"], "") || null,
         remoteUserId: readString(source["remoteUserId"], "") || null,
       };
     }
 
     function normalizeContext(payload: unknown): ContextState {
       const source = isRecord(payload) ? payload : {};
-      const slotsSource = isRecord(source["slots"]) ? source["slots"] : {};
+      const presenceSource = isRecord(source["presence"]) ? source["presence"] : {};
+      const slotsSource = isRecord(source["slots"])
+        ? source["slots"]
+        : isRecord(presenceSource["slots"])
+          ? presenceSource["slots"]
+          : {};
       const roomSource = isRecord(source["room"]) ? source["room"] : {};
-      const userSource = isRecord(source["user"]) ? source["user"] : {};
+      const userSource = isRecord(source["user"])
+        ? source["user"]
+        : isRecord(presenceSource["user"])
+          ? presenceSource["user"]
+          : {};
       const features: FeatureRecord[] = Array.isArray(source["features"])
         ? source["features"].map(function (feature) {
             const featureSource = isRecord(feature) ? feature : {};
@@ -276,6 +299,7 @@
             userSource["nickname"],
             readBootstrapText("en", "userLabel", readBootstrapText("tr", "userLabel", "User"))
           ),
+          avatar: readString(userSource["avatar"], "") || null,
         },
         slots: {
           ai1: normalizeSlot(slotsSource["ai1"], "ai1"),

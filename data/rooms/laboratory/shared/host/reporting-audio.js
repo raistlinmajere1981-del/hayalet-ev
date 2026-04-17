@@ -48,6 +48,22 @@ export function createLaboratoryAudioReportRuntime(deps) {
       return entry;
     }) : [];
   }
+  function getAudioReportEmptyReason(processRecord, processStatus) {
+    const explicitReason = asNonEmptyString(processRecord.emptyReason);
+    if (explicitReason !== null) {
+      return explicitReason;
+    }
+    if (processStatus === "running" || processStatus === "queued") {
+      return "Ses analizi hala suruyor; rapor tamamlaninca dolacak.";
+    }
+    if (processStatus === "failed") {
+      return asNonEmptyString(processRecord.error) || "Ses analizi hata ile tamamlandigi icin rapor bos kaldi.";
+    }
+    if (processStatus === "cancelled") {
+      return "Ses analizi iptal edildigi icin rapor bos kaldi.";
+    }
+    return "Once ses analizi tamamlanmali.";
+  }
   function buildAudioAnalysisReportProjection(runtime, project) {
     const projectedProject = clone(project);
     syncProjectAudioAnalysisProjection(runtime, projectedProject);
@@ -89,7 +105,8 @@ export function createLaboratoryAudioReportRuntime(deps) {
         {
           ...createEmptyFeatureReportRecord(audioFeatureId),
           status: processStatus === "running" ? "staged" : "idle",
-          warnings: normalizeStringArray(processRecord.warnings)
+          warnings: normalizeStringArray(processRecord.warnings),
+          emptyReason: getAudioReportEmptyReason(processRecord, processStatus)
         },
         audioFeatureId
       );
@@ -180,7 +197,8 @@ export function createLaboratoryAudioReportRuntime(deps) {
         caveats,
         warnings,
         exports: reportRecord.exports,
-        error: null
+        error: null,
+        emptyReason: findings.length === 0 && artifactCount === 0 ? getAudioReportEmptyReason(processRecord, processStatus) : null
       },
       audioFeatureId
     );

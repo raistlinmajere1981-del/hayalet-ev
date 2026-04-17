@@ -11,6 +11,25 @@ import { renderEmptyState } from "../components/empty-state.js";
 import { renderFindingCard } from "../components/finding-card.js";
 import { renderPrimaryCTA } from "../components/primary-cta.js";
 import { renderStageHeader } from "../components/stage-header.js";
+function getReportEmptyReason(reports, aiReport) {
+  if (reports.emptyReason) {
+    return reports.emptyReason;
+  }
+  const manifestReason = aiReport && typeof aiReport.manifest["emptyReason"] === "string" ? aiReport.manifest["emptyReason"] : null;
+  return manifestReason;
+}
+function getReportExportHint(hasReport, emptyReason) {
+  if (!hasReport && emptyReason) {
+    return emptyReason;
+  }
+  return hasReport ? "Export alındığında burada görünür." : "Rapor hazır olduğunda export geçmişi burada görünür.";
+}
+function getReportArtifactHint(hasReport, emptyReason) {
+  if (!hasReport && emptyReason) {
+    return emptyReason;
+  }
+  return hasReport ? "Run artefaktı oluştuğunda burada görünür." : "Rapor hazır olduğunda run artefaktları burada görünür.";
+}
 export function renderReportStage(deps) {
   const reports = getCurrentReports(deps.state);
   const userReport = reports.user;
@@ -20,10 +39,11 @@ export function renderReportStage(deps) {
   const hasMoreArtifacts = hasMoreVisibleArtifacts(deps.state);
   const reportView = deps.state.ui.reportView;
   const hasReport = userReport !== null || aiReport !== null;
+  const emptyReason = getReportEmptyReason(reports, aiReport);
   const mainBody = hasReport !== true ? renderEmptyState({
     title: "Rapor yok",
     description: "Report stage yalnız yapılandırılmış run verisinden çıktı üretir.",
-    hint: "User report ile AI work report aynı nesne değildir."
+    hint: emptyReason || "Process tamamlandığında rapor burada görünür."
   }) : `
         <div class="labx-chip-row">
           ${["user", "ai"].map(function(entry) {
@@ -73,7 +93,7 @@ export function renderReportStage(deps) {
               ` : renderEmptyState({
     title: "Rapor görünümü boş",
     description: "Seçili görünüm için yapılandırılmış içerik oluşmadı.",
-    hint: "Store önce user ve ai raporları ayrı üretir."
+    hint: emptyReason || "Seçili görünüm için henüz içerik oluşmadı."
   })}
       `;
   const main = `
@@ -113,12 +133,12 @@ export function renderReportStage(deps) {
                     </div>
                   </article>
                 `;
-      }).join("") : `<p class="labx-panel-hint">Henüz export alınmadı.</p>`
+      }).join("") : `<p class="labx-panel-hint">${escapeHtml(getReportExportHint(hasReport, emptyReason))}</p>`
     }),
     renderCompactCard({
       eyebrow: "Artifacts",
       title: "Run Artefaktları",
-      body: artifacts.length > 0 ? artifacts.map(renderArtifactItem).join("") : `<p class="labx-panel-hint">Rapor için artefakt hazır değil.</p>`,
+      body: artifacts.length > 0 ? artifacts.map(renderArtifactItem).join("") : `<p class="labx-panel-hint">${escapeHtml(getReportArtifactHint(hasReport, emptyReason))}</p>`,
       footer: hasMoreArtifacts ? `<button class="labx-inline-action" type="button" data-lab-action="show-more-artifacts">Daha fazlasını göster</button>` : null
     })
   ].join("");

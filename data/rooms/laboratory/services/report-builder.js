@@ -1,8 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  asStringArray
-} from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asStringArray } from "../models/lab-types.js";
 function buildEvidenceLabels(findings, artifacts, finding) {
   const artifactLookup = /* @__PURE__ */ new Map();
   artifacts.forEach(function(artifact) {
@@ -28,7 +24,7 @@ export function buildUserReport(run, reportRecord) {
     return null;
   }
   const normalizedReport = asLabRecord(reportRecord);
-  const generatedSummary = asNonEmptyString(asLabRecord(normalizedReport["userReport"])["summary"]) || (run.findings[0] ? `En yuksek oncelikli bulgu: ${run.findings[0].title}. Toplam ${String(run.findings.length)} bulgu ve ${String(run.artifacts.length)} artefakt kaydi mevcut.` : "Calisma tamamlandi fakat on plana cikan bulgu kaydi uretilmedi.");
+  const generatedSummary = asNonEmptyString(asLabRecord(normalizedReport["userReport"])["summary"]) || (run.findings[0] ? `En yuksek oncelikli bulgu: ${run.findings[0].title}. Toplam ${String(run.findings.length)} bulgu ve ${String(run.artifacts.length)} artefakt kaydi mevcut.` : run.emptyReason || "Calisma tamamlandi fakat on plana cikan bulgu kaydi uretilmedi.");
   const confidence = run.findings[0]?.confidence || asNonEmptyString(asLabRecord(normalizedReport["userReport"])["confidence"]) || "low";
   return {
     summary: generatedSummary,
@@ -50,7 +46,9 @@ export function buildAiReport(run, reportRecord) {
   }
   const normalizedReport = asLabRecord(reportRecord);
   const degradedConditions = asStringArray(normalizedReport["caveats"]).concat(run.warnings);
-  const errors = [run.error, asNonEmptyString(normalizedReport["error"])].filter((entry) => entry !== null);
+  const errors = [run.error, asNonEmptyString(normalizedReport["error"])].filter(
+    (entry) => entry !== null
+  );
   return {
     manifest: {
       featureId: normalizedReport["featureId"] || null,
@@ -59,7 +57,8 @@ export function buildAiReport(run, reportRecord) {
       moduleCount: run.moduleOrder.length,
       artifactCount: run.artifacts.length,
       findingCount: run.findings.length,
-      status: normalizedReport["status"] || run.state
+      status: normalizedReport["status"] || run.state,
+      emptyReason: normalizedReport["emptyReason"] || run.emptyReason || null
     },
     findings: run.findings,
     artifacts: run.artifacts,

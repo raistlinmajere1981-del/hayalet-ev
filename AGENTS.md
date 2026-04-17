@@ -211,7 +211,7 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
   7. Room manifest ve oda paket yapısı hazırlanır, scene/debug, classic görünüm, room-page ve install lifecycle entegrasyonu birlikte planlanır
   8. Room dışında shared seam gerekiyorsa gerekçe açık yazılır; seam küçük tutulur ve ayrı regresyonlarla doğrulanır
   9. Room paketi uygulanır, ilgili manifest/scene/page/debug regresyonları + `npm run typecheck` zorunlu çalıştırılır
-  10. Gerekirse oda workspace'ten install edilerek `config/rooms.json` ve installed copy güncellenir
+  10. Workspace'e bağlı oda güncellemelerinde yalnızca `rooms/<room-id>` source copy düzenlenir; açılış sync/reload akışı `data/rooms/<room-id>` installed copy'yi ve gerekirse `config/rooms.json` tarafını otomatik yeniler. İki kopya peer source gibi birlikte elle güncellenmez; installed copy gerekiyorsa source'dan refresh edilir
 
 - `workflow:room-feature-addition`:
   1. Özellik `oda altyapısı`ndan ayrı ele alınır: feature id, oyuncular, state akışı, UI kontrolleri, AI command/protocol kontratı
@@ -232,6 +232,8 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
 - Oda işi istenirken asistan önce bu ayrımı yazarak netleştirir; oda boş kalabilir ama ana fonksiyon odasız tanımlanmaz
 - Kullanıcı gerekli görselleri henüz vermediyse asistan eksik asset listesini açıkça çıkarır ve implementasyona başlamadan önce doğrular
 - Room/feature işlerinde payload ve type zinciri tek parça düşünülür: manifest -> installed record -> runtime payload -> UI state -> tests
+- Workspace'e bağlı odalarda source of truth her zaman `rooms/<room-id>` altındaki workspace copy'dir; `data/rooms/<room-id>` yalnızca startup/install sync ile yenilenen installed/runtime kopyasıdır
+- Aynı room fix'i hem workspace hem installed copy üzerinde elle uygulama; installed copy drift gösteriyorsa peer edit yerine sync/reload/install akışıyla yeniden üret
 - Room-local i18n varken görünür copy'nin ana kaynağı UI içi hardcoded bloklar olamaz; sadece bootstrap fallback kabul edilir
 - Scene/debug veya room-page yüzeyi değişiyorsa ilgili regresyonlar aynı turda güncellenir; sadece feature host testi yeterli sayılmaz
 - Turn-based veya AI slotlu ana fonksiyonlarda en az bir smoke matrisi bırakılır: slot seçimi, başlangıç sırası, kopma ve malformed command senaryoları

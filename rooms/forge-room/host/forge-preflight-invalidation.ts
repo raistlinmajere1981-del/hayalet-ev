@@ -3,7 +3,9 @@ import type {
   ForgeOperatorProfile,
   ForgePreflightState,
   ForgeRunOverride,
+  ForgeSessionContextSelection,
 } from "../shared/types/index.js";
+import { buildForgeSelectedOperatorProfile } from "./forge-preflight-metadata.js";
 type ForgePreflightStage =
   | "before-draft"
   | "draft-review"
@@ -19,11 +21,23 @@ function normalizeTools(value: Record<string, boolean | null | undefined>): stri
   );
 }
 
-function normalizeProfileFingerprint(profile: ForgeOperatorProfile): string {
+function normalizeProfileFingerprint(profile: {
+  preferences: ForgeOperatorProfile["preferences"];
+  skill: ForgeOperatorProfile["skill"];
+  tools: ForgeOperatorProfile["tools"];
+}): string {
   return JSON.stringify({
     preferences: profile.preferences,
     skill: profile.skill,
     tools: profile.tools,
+  });
+}
+
+function normalizeSelectionFingerprint(selection: ForgeSessionContextSelection): string {
+  return JSON.stringify({
+    preferences: selection.preferences,
+    skill: selection.skill,
+    tools: selection.tools,
   });
 }
 
@@ -40,16 +54,31 @@ export function readForgePreflightInvalidationReason(params: {
   operatorProfile: ForgeOperatorProfile;
   preflight: ForgePreflightState;
   runOverride: ForgeRunOverride | null;
+  sessionContextSelection: ForgeSessionContextSelection;
 }): string | null {
-  const { goal, operatorProfile, preflight, runOverride } = params;
+  const { goal, operatorProfile, preflight, runOverride, sessionContextSelection } = params;
   if (preflight.bundle === null) {
     return preflight.status === "idle"
       ? "Preflight has not been run for this session yet."
-      : preflight.staleReason ?? "Preflight data is unavailable.";
+      : (preflight.staleReason ?? "Preflight data is unavailable.");
   }
 
-  if (preflight.bundle.operatorProfile && normalizeProfileFingerprint(preflight.bundle.operatorProfile) !== normalizeProfileFingerprint(operatorProfile)) {
-    return "Operator profile changed after the last preflight run.";
+  if (
+    normalizeSelectionFingerprint(preflight.bundle.sessionContextSelection) !==
+    normalizeSelectionFingerprint(sessionContextSelection)
+  ) {
+    return "Session context changed after the last preflight run.";
+  }
+
+  const selectedOperatorProfile = buildForgeSelectedOperatorProfile({
+    operatorProfile,
+    sessionContextSelection,
+  });
+  if (
+    normalizeProfileFingerprint(preflight.bundle.selectedOperatorProfile) !==
+    normalizeProfileFingerprint(selectedOperatorProfile)
+  ) {
+    return "Selected operator context changed after the last preflight run.";
   }
 
   if (

@@ -106,6 +106,12 @@ export function sanitizeForgeRoomSnapshot(payload: unknown): ForgeRoomSnapshot {
     responses: Array.isArray(source["responses"])
       ? (source["responses"] as ForgeRoomSnapshot["responses"])
       : fallback.responses,
+    sessionContextSelection:
+      source["sessionContextSelection"] !== null &&
+      typeof source["sessionContextSelection"] === "object" &&
+      Array.isArray(source["sessionContextSelection"]) === false
+        ? (source["sessionContextSelection"] as ForgeRoomSnapshot["sessionContextSelection"])
+        : fallback.sessionContextSelection,
     runOverride:
       source["runOverride"] !== null &&
       typeof source["runOverride"] === "object" &&

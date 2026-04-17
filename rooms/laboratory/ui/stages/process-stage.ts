@@ -59,8 +59,10 @@ export function renderProcessStage(deps: ProcessStageRenderDeps): LabStageSurfac
       stageIndex: 4,
       stageTotal: 5,
       statusLabel: run ? run.state : "idle",
-      statusTone: run?.state === "failed" ? "error" : run?.state === "completed" ? "success" : "running",
-      subtitle: "Tüm görünür runtime satırları host kayıtlarından gelir. Sahte progress ve sessiz hata yok.",
+      statusTone:
+        run?.state === "failed" ? "error" : run?.state === "completed" ? "success" : "running",
+      subtitle:
+        "Tüm görünür runtime satırları host kayıtlarından gelir. Sahte progress ve sessiz hata yok.",
       title: "İşlem",
     })}
     ${
@@ -70,10 +72,12 @@ export function renderProcessStage(deps: ProcessStageRenderDeps): LabStageSurfac
             ${renderCompactCard({
               eyebrow: "Run Matrix",
               title: "Modül Akışı",
-              body: run.moduleOrder.map(function (moduleId) {
-                const module = run.modules[moduleId];
-                return module ? renderModuleRow(module) : "";
-              }).join(""),
+              body: run.moduleOrder
+                .map(function (moduleId) {
+                  const module = run.modules[moduleId];
+                  return module ? renderModuleRow(module) : "";
+                })
+                .join(""),
               footer: renderPrimaryCTA({
                 action: "primary-action",
                 detail: deps.primaryDetail || null,

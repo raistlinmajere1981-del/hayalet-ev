@@ -172,8 +172,7 @@ export function createLaboratoryProcessOrchestrationRuntime(
           : `process-event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       kind: typeof event["kind"] === "string" ? event["kind"] : "activity",
       severity: typeof event["severity"] === "string" ? event["severity"] : "info",
-      message:
-        typeof event["message"] === "string" ? event["message"] : "İşlem güncellemesi",
+      message: typeof event["message"] === "string" ? event["message"] : "İşlem güncellemesi",
       detail: typeof event["detail"] === "string" ? event["detail"] : null,
       timestamp: typeof event["timestamp"] === "number" ? event["timestamp"] : Date.now(),
       source: typeof event["source"] === "string" ? event["source"] : "host",
@@ -274,9 +273,7 @@ export function createLaboratoryProcessOrchestrationRuntime(
     const nextStatus = asNonEmptyString(nextModule.status) || previousStatus;
     if (previousStatus !== nextStatus) {
       const moduleLabel =
-        asNonEmptyString(nextModule["title"]) ||
-        asNonEmptyString(nextModule["label"]) ||
-        moduleId;
+        asNonEmptyString(nextModule["title"]) || asNonEmptyString(nextModule["label"]) || moduleId;
       const detail =
         asNonEmptyString(toRecord(patch)["message"]) ||
         asNonEmptyString(toRecord(patch)["summary"]);

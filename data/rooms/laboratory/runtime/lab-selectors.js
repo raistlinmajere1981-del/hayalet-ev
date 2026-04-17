@@ -1,9 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  createLabFeatureMeta
-} from "../models/lab-types.js";
-import { runPreflight } from "../services/preflight-service.js";
+import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/lab-types.js";
 export function getSnapshot(state) {
   return state.snapshot || {};
 }
@@ -58,7 +53,44 @@ export function getCurrentFeatureReportRecord(state) {
   return asLabRecord(asLabRecord(report["records"])[getCurrentFeatureId(state)]);
 }
 export function getCurrentPreflight(state) {
-  return state.preflight || runPreflight(getProjectProfile(state), getProjectSource(state));
+  if (state.preflight) {
+    return state.preflight;
+  }
+  const source = getProjectSource(state);
+  if (Object.keys(source).length === 0) {
+    return {
+      status: "idle",
+      missingDependencies: [],
+      warnings: [],
+      estimatedRuntime: null,
+      enabledModules: [],
+      stageReady: false,
+      rawStatus: null,
+      reason: "Önce kaynak seçilmelidir."
+    };
+  }
+  if (state.sourceProbeStatus !== "completed") {
+    return {
+      status: "idle",
+      missingDependencies: [],
+      warnings: [],
+      estimatedRuntime: null,
+      enabledModules: [],
+      stageReady: false,
+      rawStatus: null,
+      reason: "Kaynak probe tamamlanmadan ön kontrol doğrulanamaz."
+    };
+  }
+  return {
+    status: "idle",
+    missingDependencies: [],
+    warnings: [],
+    estimatedRuntime: null,
+    enabledModules: [],
+    stageReady: false,
+    rawStatus: null,
+    reason: "Ön kontrol henüz host tarafından çalıştırılmadı."
+  };
 }
 export function getCurrentRun(state) {
   return state.run;
@@ -122,7 +154,11 @@ export function getToolState(state) {
 export function getFeatureCompatibility(state) {
   const featureId = getCurrentFeatureId(state);
   const sourceReady = state.source !== null && state.sourceProbeStatus === "completed";
-  const availableModules = Array.isArray(state.workbench["availableModuleIds"]) ? state.workbench["availableModuleIds"].filter((entry) => typeof entry === "string") : Array.isArray(state.workbench["selectedModuleIds"]) ? state.workbench["selectedModuleIds"].filter((entry) => typeof entry === "string") : [featureId];
+  const availableModules = Array.isArray(state.workbench["availableModuleIds"]) ? state.workbench["availableModuleIds"].filter(
+    (entry) => typeof entry === "string"
+  ) : Array.isArray(state.workbench["selectedModuleIds"]) ? state.workbench["selectedModuleIds"].filter(
+    (entry) => typeof entry === "string"
+  ) : [featureId];
   const sourceKind = getSourceKind(state);
   const sourceMode = getSourceMode(state);
   return {
@@ -202,7 +238,7 @@ export function getPrimaryActionLabel(state, stage) {
   }
 }
 export function getVisibleEvents(state) {
-  const feed = state.eventFeed.slice().sort(function(left, right) {
+  const feed = (state.run?.events || []).slice().sort(function(left, right) {
     return right.timestamp - left.timestamp;
   });
   const windowSize = state.ui.eventFeedExpanded ? 40 : 18;
@@ -210,12 +246,20 @@ export function getVisibleEvents(state) {
   return feed.slice(windowStart, windowStart + windowSize);
 }
 export function hasMoreVisibleEvents(state) {
+  const totalCount = state.run?.events.length || 0;
   const windowSize = state.ui.eventFeedExpanded ? 40 : 18;
   const windowStart = state.ui.eventFeedExpanded ? state.ui.eventFeedCursor : 0;
-  return state.eventFeed.length > windowStart + windowSize;
+  return totalCount > windowStart + windowSize;
 }
 export function getVisibleEventOffset(state) {
   return state.ui.eventFeedExpanded ? state.ui.eventFeedCursor : 0;
+}
+export function getVisibleRawLogs(state) {
+  const rawLog = state.run?.rawLog || [];
+  return rawLog.slice(0, state.ui.eventFeedExpanded ? 40 : 12);
+}
+export function getGlobalActivityFeed(state) {
+  return state.activityFeed.slice();
 }
 export function getVisibleArtifacts(state) {
   const run = getCurrentRun(state);

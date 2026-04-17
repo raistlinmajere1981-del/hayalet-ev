@@ -189,6 +189,7 @@ export function createLaboratoryHostFeatureRuntimes(deps) {
     roomId: deps.roomId,
     asNonEmptyString: deps.asNonEmptyString,
     toRecord: deps.toRecord,
+    emitEvent: projectRuntimes.snapshot.emitEvent,
     getElectronApi: io.getElectronApi,
     pushJobState: projectRuntimes.snapshot.pushJobState,
     pushSourceState: projectRuntimes.snapshot.pushSourceState

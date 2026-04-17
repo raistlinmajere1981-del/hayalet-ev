@@ -57,6 +57,7 @@ export function createLaboratorySnapshotCompositionRuntime(deps) {
   const {
     buildMediaSnapshot,
     buildSourceSnapshot,
+    emitEvent,
     isSourceCompatibleAction,
     notifyRoom,
     pushActionResult,
@@ -73,6 +74,7 @@ export function createLaboratorySnapshotCompositionRuntime(deps) {
     buildReportManifest,
     buildSourceSnapshot,
     buildSourceTargetSignature,
+    emitEvent,
     findEditOutputById,
     isSourceCompatibleAction,
     laboratoryRoomSnapshotRuntime,

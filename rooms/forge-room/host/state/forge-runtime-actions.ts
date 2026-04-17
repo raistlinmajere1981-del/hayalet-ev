@@ -8,6 +8,7 @@ import type {
   ForgePreflightState,
   ForgeRunOverride,
   ForgeRunSignature,
+  ForgeSessionContextSelection,
   ForgeSynthesis,
 } from "../../shared/types/index.js";
 import type { ForgeRuntimeState } from "./forge-runtime-state.js";
@@ -71,6 +72,10 @@ export type ForgeRuntimeAction =
   | {
       type: "preflight/set";
       preflight: ForgePreflightState;
+    }
+  | {
+      type: "session-context/set";
+      sessionContextSelection: ForgeSessionContextSelection;
     }
   | {
       type: "run-context/set";

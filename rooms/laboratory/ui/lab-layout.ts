@@ -1,6 +1,7 @@
 import type { LabStageSurface, LabStoreState } from "../models/lab-types.js";
 import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabLeftRail } from "./lab-left-rail.js";
+import { renderModuleManagementOverlay } from "./module-management-overlay.js";
 import { renderLabRightPanel } from "./lab-right-panel.js";
 
 export function renderLabLayout(state: LabStoreState, surface: LabStageSurface) {
@@ -10,5 +11,6 @@ export function renderLabLayout(state: LabStoreState, surface: LabStageSurface) 
       ${renderLabCenterPanel(surface)}
       ${renderLabRightPanel(surface)}
     </div>
+    ${renderModuleManagementOverlay(state)}
   `;
 }

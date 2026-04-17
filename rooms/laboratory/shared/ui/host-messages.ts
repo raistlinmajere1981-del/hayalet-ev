@@ -512,7 +512,6 @@ export function createLaboratoryHostMessageRuntime(deps: LaboratoryHostMessageRu
       scheduleRender();
       return;
     }
-
   }
 
   return {

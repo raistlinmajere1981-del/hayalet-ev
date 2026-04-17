@@ -16,8 +16,8 @@
     "selectedModulesTitle": "Modules in this run",
     "selectedModulesEmpty": "No modules are queued yet.",
     "sourceScope": {
-      "title": "Run Scope",
-      "subtitle": "This panel decides which modules join the active project run and which module starts first.",
+      "title": "Analysis Modules",
+      "subtitle": "Choose which analysis modules join this project, lock the run order, and set the active module.",
       "legend": {
         "includeTitle": "Add to run",
         "includeBody": "Includes the module in this project run.",
@@ -63,11 +63,17 @@
     "focusAction": "Set Active",
     "activateAction": "Set Active",
     "activeTag": "Active",
-    "dependencyAction": "Tool Room",
+    "railState": {
+      "active": "Current stage",
+      "complete": "Completed",
+      "idle": "Ready",
+      "blocked": "Blocked"
+    },
+    "dependencyAction": "Module Manager",
     "dependencyEyebrow": "Operations Center",
-    "dependencyTitle": "Tool Room",
+    "dependencyTitle": "Module Manager",
     "dependencySubtitle": "",
-    "dependencyOverview": "Workbench readiness overview",
+    "dependencyOverview": "Manage tool installs, updates, and room support from one shared panel.",
     "dependencyFocus": "Current step focus:",
     "readinessTitle": "Readiness",
     "readinessSubtitle": "Coverage snapshot",
@@ -365,7 +371,8 @@
       "formatLabel": "Source Type",
       "modeLabel": "Route",
       "intakeTitle": "Source Intake",
-      "previewTitle": "Source Preview",
+      "previewPanelTitle": "Live Source Preview",
+      "previewTitle": "Preview",
       "previewEmptyTitle": "Project source not prepared yet",
       "previewEmptyBody": "Pick a local file or pull a remote source into the active project to unlock the live preview.",
       "previewInfo": {

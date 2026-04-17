@@ -7,12 +7,15 @@ export type GameRoomPresentationMode = (typeof GAME_ROOM_PRESENTATION_MODES)[num
 
 export interface GameRoomSlotState {
   slotId: string;
+  label: string;
   nickname: string;
+  avatar: string | null;
   assigned: boolean;
   connected: boolean;
   ready: boolean;
   state: string;
   urlExcluded: boolean;
+  providerId: string | null;
   accountId: string | null;
   remoteUserId: string | null;
 }
@@ -27,7 +30,7 @@ export interface GameRoomContextState {
   room: { id: string; name: string };
   features: GameRoomFeatureRecord[];
   activeFeature: GameRoomFeatureRecord;
-  user: { nickname: string };
+  user: { nickname: string; avatar: string | null };
   slots: {
     ai1: GameRoomSlotState;
     ai2: GameRoomSlotState;
@@ -38,12 +41,15 @@ export interface GameRoomContextState {
 export function createGameRoomSlotState(slotId: string): GameRoomSlotState {
   return {
     slotId,
+    label: slotId.toUpperCase(),
     nickname: slotId.toUpperCase(),
+    avatar: null,
     assigned: false,
     connected: false,
     ready: false,
     state: "empty",
     urlExcluded: false,
+    providerId: null,
     accountId: null,
     remoteUserId: null,
   };
@@ -88,6 +94,7 @@ export function createGameRoomContextState(): GameRoomContextState {
     activeFeature,
     user: {
       nickname: "User",
+      avatar: null,
     },
     slots: {
       ai1: createGameRoomSlotState("ai1"),

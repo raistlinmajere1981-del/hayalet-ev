@@ -105,12 +105,15 @@ export function clearPendingInvite(api: XoxStateApi): void {
 export function createUs1OpponentFallback(state: XoxGameState): GameRoomSlotState {
   return {
     slotId: "us1",
+    label: "US1",
     nickname: state.opponentNickname || "US1",
+    avatar: null,
     assigned: state.remoteUserId !== null,
     connected: false,
     ready: false,
     state: "assigned",
     urlExcluded: false,
+    providerId: "us1",
     accountId: null as string | null,
     remoteUserId: state.remoteUserId,
   };

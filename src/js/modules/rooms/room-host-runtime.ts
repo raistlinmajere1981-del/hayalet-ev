@@ -18,6 +18,7 @@ import { SLOT_BRIDGE_COMMAND_NAME } from "../commands/slot-bridge.js";
 import { RoomCommandRegistry, type RoomCommandHandler } from "./room-command-registry.js";
 import { RoomProtocolRegistry } from "./room-protocol-registry.js";
 import { EXPECTED_COMMAND_CAPTURE_FAILURE_EVENT } from "./expected-command-capture-events.js";
+import { buildRoomPresenceSnapshot, type RoomPresenceSnapshot } from "./room-presence.js";
 import {
   buildRoomHostModuleBlobUrl,
   buildRoomHostModuleDataUrl,
@@ -65,6 +66,7 @@ interface RoomHostApi {
   sendUs1Message: (params: Us1SendMessageParams) => Promise<Us1SendMessageResult>;
   syncUs1Messages: (params?: Us1SyncMessagesParams) => Promise<Us1SyncMessagesResult>;
   dispatchRoomCommand: (commandName: string, payload?: Record<string, unknown>) => Promise<unknown>;
+  getRoomPresence: () => RoomPresenceSnapshot;
   getUs1Identity: () => RemoteUserIdentity | null;
   isUs1Connected: () => boolean;
   selectUs1RemoteUser: (remoteUserId: string | null) => Promise<boolean>;
@@ -674,6 +676,7 @@ class RoomHostRuntimeClass {
           message: `++cmd:${SLOT_BRIDGE_COMMAND_NAME}`,
         });
       },
+      getRoomPresence: (): RoomPresenceSnapshot => buildRoomPresenceSnapshot(),
       getUs1Identity: (): RemoteUserIdentity | null => AppState.getUs1Identity(),
       isUs1Connected: (): boolean => AppState.isUs1Connected(),
       selectUs1RemoteUser: async (remoteUserId): Promise<boolean> => {

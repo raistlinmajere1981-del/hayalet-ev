@@ -4,6 +4,7 @@ export function createLaboratoryMediaPreviewUi(deps) {
     formatBitRate,
     formatDuration,
     getCurrentSourceKind,
+    getCurrentSourceLabel,
     getCurrentSourceMode,
     getPreferredSourceCodec,
     getPreferredSourceDuration,
@@ -39,6 +40,7 @@ export function createLaboratoryMediaPreviewUi(deps) {
     const previewUrl = toString(source.previewUrl);
     const fileName = toString(source.storedFileName) || "--";
     const sourceMode = getCurrentSourceMode();
+    const currentSourceLabel = getCurrentSourceLabel();
     const routeLabel = toString(source.routeLabel) || text(["mediaAnalysis", "source", "modes", sourceMode]);
     const projectJobs = toJobList(getRelevantJobs().project);
     const activeJob = projectJobs.find(function(entry) {
@@ -88,9 +90,13 @@ export function createLaboratoryMediaPreviewUi(deps) {
     return `
       <section class="lab-panel lab-preview-panel">
         <div class="lab-preview-panel__header">
-          <h2 class="lab-panel__title">${escapeHtml(
+          <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["mediaAnalysis", "source", "previewTitle"]))}</p>
+            <h2 class="lab-panel__title">${escapeHtml(
       text(["mediaAnalysis", "source", "previewPanelTitle"])
     )}</h2>
+            <p class="lab-panel__hint">${escapeHtml(`${currentSourceLabel} / ${routeLabel}`)}</p>
+          </div>
         </div>
         <div class="lab-preview-card lab-preview-card--source">
           <div class="lab-preview-frame">

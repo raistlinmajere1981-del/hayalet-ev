@@ -1,7 +1,8 @@
 import { FORGE_ROOM_ID, FORGE_SESSION_SCHEMA_VERSION } from "../../shared/forge-constants.js";
 import {
   createDefaultForgeOperatorProfile,
-  createEmptyForgePreflightState
+  createEmptyForgePreflightState,
+  createEmptyForgeSessionContextSelection
 } from "../../shared/types/index.js";
 function normalizeForgeTask(task) {
   return {
@@ -22,6 +23,31 @@ function normalizeForgeTasks(tasks) {
 }
 function normalizeForgeDecisionTrace(value) {
   return Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
+}
+function normalizeForgeSessionContextSelection(value) {
+  const record = value !== null && typeof value === "object" && Array.isArray(value) === false ? value : {};
+  const skill = record["skill"] !== null && typeof record["skill"] === "object" && Array.isArray(record["skill"]) === false ? record["skill"] : {};
+  const tools = record["tools"] !== null && typeof record["tools"] === "object" && Array.isArray(record["tools"]) === false ? record["tools"] : {};
+  const preferences = record["preferences"] !== null && typeof record["preferences"] === "object" && Array.isArray(record["preferences"]) === false ? record["preferences"] : {};
+  return {
+    skill: {
+      level: skill["level"] === true,
+      soldering: skill["soldering"] === true,
+      measurement: skill["measurement"] === true,
+      mechanical: skill["mechanical"] === true
+    },
+    tools: {
+      multimeter: tools["multimeter"] === true,
+      solderingIron: tools["solderingIron"] === true,
+      hotAir: tools["hotAir"] === true,
+      benchPowerSupply: tools["benchPowerSupply"] === true,
+      magnification: tools["magnification"] === true
+    },
+    preferences: {
+      mode: preferences["mode"] === true,
+      riskTolerance: preferences["riskTolerance"] === true
+    }
+  };
 }
 export function createForgeCoordinatorState(overrides = {}) {
   return {
@@ -53,6 +79,7 @@ export function createEmptyForgeRuntimeState() {
     operatorProfile: createDefaultForgeOperatorProfile(),
     preflight: createEmptyForgePreflightState(),
     responses: [],
+    sessionContextSelection: createEmptyForgeSessionContextSelection(),
     runOverride: null,
     runSignature: null,
     conflicts: [],
@@ -79,6 +106,7 @@ export function createEmptyForgeSession(sessionId) {
     selectedSynthesisId: null,
     decisionTrace: [],
     preflight: createEmptyForgePreflightState(),
+    sessionContextSelection: createEmptyForgeSessionContextSelection(),
     runOverride: null,
     runSignature: null,
     exports: [],
@@ -106,6 +134,9 @@ export function createForgeRuntimeStateFromSession(session, overrides = {}) {
     operatorProfile: overrides.operatorProfile ?? createDefaultForgeOperatorProfile(),
     preflight: sessionRecord.preflight && typeof sessionRecord.preflight === "object" ? sessionRecord.preflight : createEmptyForgePreflightState(),
     responses: Array.isArray(session.responses) ? session.responses : [],
+    sessionContextSelection: normalizeForgeSessionContextSelection(
+      sessionRecord.sessionContextSelection
+    ),
     runOverride: sessionRecord.runOverride && typeof sessionRecord.runOverride === "object" ? sessionRecord.runOverride : null,
     runSignature: sessionRecord.runSignature && typeof sessionRecord.runSignature === "object" ? sessionRecord.runSignature : null,
     conflicts: Array.isArray(session.conflicts) ? session.conflicts : [],
@@ -114,9 +145,7 @@ export function createForgeRuntimeStateFromSession(session, overrides = {}) {
       decisionTrace: normalizeForgeDecisionTrace(synthesis.decisionTrace),
       provenance: synthesis.provenance && typeof synthesis.provenance === "object" && Array.isArray(synthesis.provenance) === false ? {
         runSignature: typeof synthesis.provenance.runSignature === "string" && synthesis.provenance.runSignature.trim() !== "" ? synthesis.provenance.runSignature : null,
-        operatorProfileSummary: Array.isArray(
-          synthesis.provenance.operatorProfileSummary
-        ) ? synthesis.provenance.operatorProfileSummary.filter(
+        operatorProfileSummary: Array.isArray(synthesis.provenance.operatorProfileSummary) ? synthesis.provenance.operatorProfileSummary.filter(
           (entry) => typeof entry === "string" && entry.trim() !== ""
         ) : [],
         preflightWarnings: Array.isArray(synthesis.provenance.preflightWarnings) ? synthesis.provenance.preflightWarnings.filter(
@@ -146,6 +175,7 @@ export function createForgeSessionFromRuntimeState(state, previous) {
     syntheses: state.syntheses,
     selectedSynthesisId: state.selectedSynthesisId,
     preflight: state.preflight,
+    sessionContextSelection: state.sessionContextSelection,
     runOverride: state.runOverride,
     runSignature: state.runSignature,
     exports: state.exports,

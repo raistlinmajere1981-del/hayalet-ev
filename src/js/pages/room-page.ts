@@ -228,7 +228,7 @@ export class RoomPageController implements PageController {
     this.render();
   }
 
-  async init(): Promise<void> {
+  init(): void {
     this.sceneDebugEnabled = applySceneDebugFlag();
     this.sceneDebugSession.load(this.sceneDebugEnabled);
     this.unsubscribeI18n ??= AppI18n.subscribe(() => {
@@ -243,7 +243,6 @@ export class RoomPageController implements PageController {
     });
     this.bindRoomContextSubscriptions();
     this.render();
-    await this.runtimeHostRuntime.ensure();
   }
 
   onShow(): void {
@@ -261,7 +260,9 @@ export class RoomPageController implements PageController {
     syncRoomPageSceneChrome(page, this.room);
     this.sceneRuntime.setupSceneDebug(page);
     this.sceneRuntime.syncPageView(page);
-    void this.runtimeHostRuntime.ensure(page);
+    if (this.shouldEnsureRuntimeHost(page)) {
+      void this.runtimeHostRuntime.ensure(page);
+    }
   }
 
   dispose(): void {
@@ -307,6 +308,10 @@ export class RoomPageController implements PageController {
 
   private getPage(): HTMLElement | null {
     return getRoomPageElement(this.pageName);
+  }
+
+  private shouldEnsureRuntimeHost(page: HTMLElement): boolean {
+    return page.classList.contains("is-hidden") === false;
   }
 
   private bindRoomContextSubscriptions(): void {

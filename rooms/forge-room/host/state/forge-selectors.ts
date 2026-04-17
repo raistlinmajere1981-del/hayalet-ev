@@ -11,6 +11,7 @@ import type {
   ForgePreflightState,
   ForgeRunOverride,
   ForgeRunSignature,
+  ForgeSessionContextSelection,
 } from "../../shared/types/index.js";
 import type { ForgeRuntimeState, ForgeSessionListItem } from "./forge-runtime-state.js";
 
@@ -30,6 +31,7 @@ export interface ForgeRuntimeSnapshot {
   operatorProfile: ForgeOperatorProfile;
   preflight: ForgePreflightState;
   responses: ForgeAgentResponse[];
+  sessionContextSelection: ForgeSessionContextSelection;
   runOverride: ForgeRunOverride | null;
   runSignature: ForgeRunSignature | null;
   selectedSynthesisId: string | null;
@@ -56,6 +58,7 @@ export function createForgeRuntimeSnapshot(
     operatorProfile: state.operatorProfile,
     preflight: state.preflight,
     responses: state.responses,
+    sessionContextSelection: state.sessionContextSelection,
     runOverride: state.runOverride,
     runSignature: state.runSignature,
     conflicts: state.conflicts,

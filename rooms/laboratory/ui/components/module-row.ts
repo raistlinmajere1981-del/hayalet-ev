@@ -12,11 +12,7 @@ export function renderModuleRow(module: LabModuleState) {
       <div class="labx-module-row__head">
         <div>
           <strong>${escapeHtml(module.title || module.id)}</strong>
-          ${
-            module.summary
-              ? `<p class="labx-panel-hint">${escapeHtml(module.summary)}</p>`
-              : ""
-          }
+          ${module.summary ? `<p class="labx-panel-hint">${escapeHtml(module.summary)}</p>` : ""}
         </div>
         ${renderStatusChip(formatStatusLabel(module.status), module.status === "failed" ? "error" : module.status === "completed" ? "success" : module.status === "running" ? "running" : "neutral")}
       </div>
@@ -29,11 +25,7 @@ export function renderModuleRow(module: LabModuleState) {
           `
           : ""
       }
-      ${
-        module.message
-          ? `<p class="labx-panel-hint">${escapeHtml(module.message)}</p>`
-          : ""
-      }
+      ${module.message ? `<p class="labx-panel-hint">${escapeHtml(module.message)}</p>` : ""}
     </article>
   `;
 }

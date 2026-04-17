@@ -21,6 +21,7 @@ import type {
   ForgePreflightState,
   ForgeRunOverride,
   ForgeRunSignature,
+  ForgeSessionContextSelection,
 } from "../shared/types/index.js";
 import { createEmptyForgeRunOverride } from "../shared/types/index.js";
 import { createForgeHostIoRuntime } from "../shared/host/io-runtime.js";
@@ -37,6 +38,7 @@ import {
   readForgePreflightInvalidationReason,
   readForgePreflightStage,
 } from "./forge-preflight-invalidation.js";
+import { buildForgeSelectedOperatorProfile } from "./forge-preflight-metadata.js";
 import {
   buildForgeFallbackPreflightState,
   buildForgePreflightState,
@@ -183,6 +185,53 @@ function readCommandPayload(payload: Record<string, unknown>): Record<string, un
   };
 }
 
+function normalizeSessionContextSelectionPayload(
+  payload: Record<string, unknown>,
+  existing: ForgeSessionContextSelection
+): ForgeSessionContextSelection {
+  const skill = toRecord(payload["skill"]);
+  const tools = toRecord(payload["tools"]);
+  const preferences = toRecord(payload["preferences"]);
+  return {
+    skill: {
+      level: typeof skill["level"] === "boolean" ? skill["level"] : existing.skill.level,
+      soldering:
+        typeof skill["soldering"] === "boolean" ? skill["soldering"] : existing.skill.soldering,
+      measurement:
+        typeof skill["measurement"] === "boolean"
+          ? skill["measurement"]
+          : existing.skill.measurement,
+      mechanical:
+        typeof skill["mechanical"] === "boolean" ? skill["mechanical"] : existing.skill.mechanical,
+    },
+    tools: {
+      multimeter:
+        typeof tools["multimeter"] === "boolean" ? tools["multimeter"] : existing.tools.multimeter,
+      solderingIron:
+        typeof tools["solderingIron"] === "boolean"
+          ? tools["solderingIron"]
+          : existing.tools.solderingIron,
+      hotAir: typeof tools["hotAir"] === "boolean" ? tools["hotAir"] : existing.tools.hotAir,
+      benchPowerSupply:
+        typeof tools["benchPowerSupply"] === "boolean"
+          ? tools["benchPowerSupply"]
+          : existing.tools.benchPowerSupply,
+      magnification:
+        typeof tools["magnification"] === "boolean"
+          ? tools["magnification"]
+          : existing.tools.magnification,
+    },
+    preferences: {
+      mode:
+        typeof preferences["mode"] === "boolean" ? preferences["mode"] : existing.preferences.mode,
+      riskTolerance:
+        typeof preferences["riskTolerance"] === "boolean"
+          ? preferences["riskTolerance"]
+          : existing.preferences.riskTolerance,
+    },
+  };
+}
+
 function readBridgeReplyText(result: ForgeBridgeResult): string | null {
   const replyText = asNonEmptyString(readBridgeReply(result.reply)["text"]);
   return replyText ?? null;
@@ -284,6 +333,13 @@ export default function createForgeRoomHostRuntime() {
         });
       }
 
+      function dispatchSessionContext(sessionContextSelection: ForgeSessionContextSelection): void {
+        runtime.store.dispatch({
+          type: "session-context/set",
+          sessionContextSelection,
+        });
+      }
+
       function dispatchRunContext(
         runOverride: ForgeRunOverride | null,
         runSignature: ForgeRunSignature | null
@@ -295,11 +351,23 @@ export default function createForgeRoomHostRuntime() {
         });
       }
 
+      function buildSelectedOperatorContext(
+        operatorProfile = readCurrentState().operatorProfile,
+        sessionContextSelection = readCurrentState().sessionContextSelection
+      ) {
+        return buildForgeSelectedOperatorProfile({
+          operatorProfile,
+          sessionContextSelection,
+        });
+      }
+
       function readPreflightStageMessage(reason: string): string {
         const state = readCurrentState();
         return describeForgePreflightStageImpact(
           readForgePreflightStage({
-            hasDispatchStarted: state.assignments.some((assignment) => assignment.status !== "queued"),
+            hasDispatchStarted: state.assignments.some(
+              (assignment) => assignment.status !== "queued"
+            ),
             hasSelectedSynthesis: state.selectedSynthesisId !== null,
             hasTopLevelApprovedTasks: state.approvedTasks.some((task) => task.level === 1),
             hasTopLevelDraftTasks: state.draftTasks.some((task) => task.level === 1),
@@ -327,7 +395,7 @@ export default function createForgeRoomHostRuntime() {
           state.runOverride,
           buildForgeRunSignature({
             goal,
-            operatorProfile: state.operatorProfile,
+            selectedOperatorProfile: buildSelectedOperatorContext(),
             runOverride: state.runOverride,
           })
         );
@@ -340,9 +408,9 @@ export default function createForgeRoomHostRuntime() {
         });
       }
 
-      function refreshPreflightValidity(goal: ForgeGoal | null): void {
+      function refreshPreflightValidity(goal: ForgeGoal | null): string | null {
         if (goal === null) {
-          return;
+          return null;
         }
         const state = readCurrentState();
         const reason = readForgePreflightInvalidationReason({
@@ -350,6 +418,7 @@ export default function createForgeRoomHostRuntime() {
           operatorProfile: state.operatorProfile,
           preflight: state.preflight,
           runOverride: state.runOverride,
+          sessionContextSelection: state.sessionContextSelection,
         });
         if (reason === null) {
           if (state.preflight.bundle !== null && state.preflight.status === "stale") {
@@ -359,11 +428,12 @@ export default function createForgeRoomHostRuntime() {
               staleReason: null,
             });
           }
-          return;
+          return null;
         }
         if (state.preflight.bundle !== null || state.preflight.status === "stale") {
           markPreflightStale(reason);
         }
+        return reason;
       }
 
       function dispatchGoal(goal: ForgeGoal | null): void {
@@ -642,10 +712,14 @@ export default function createForgeRoomHostRuntime() {
 
       function buildCurrentSynthesisProvenance(state: ForgeRuntimeState) {
         return buildForgeSynthesisProvenance({
-          operatorProfile: state.operatorProfile,
           preflight: state.preflight,
           runOverride: state.runOverride,
           runSignature: state.runSignature,
+          selectedOperatorProfile: buildSelectedOperatorContext(
+            state.operatorProfile,
+            state.sessionContextSelection
+          ),
+          sessionContextSelection: state.sessionContextSelection,
         });
       }
 
@@ -656,6 +730,7 @@ export default function createForgeRoomHostRuntime() {
           operatorProfile: state.operatorProfile,
           preflight: state.preflight,
           runOverride: state.runOverride,
+          sessionContextSelection: state.sessionContextSelection,
         });
         if (
           invalidationReason === null &&
@@ -677,6 +752,7 @@ export default function createForgeRoomHostRuntime() {
               scenario: FORGE_PROTOCOL_SCENARIOS.preflightPreAnalysis,
             },
             runOverride: state.runOverride,
+            sessionContextSelection: state.sessionContextSelection,
             sessionId: state.activeSessionId,
           });
           dispatchPreflight(preflight.state);
@@ -688,6 +764,7 @@ export default function createForgeRoomHostRuntime() {
             goal,
             operatorProfile: state.operatorProfile,
             runOverride: state.runOverride,
+            sessionContextSelection: state.sessionContextSelection,
             sessionId: state.activeSessionId,
           });
           dispatchPreflight(fallback.state);
@@ -1211,17 +1288,67 @@ export default function createForgeRoomHostRuntime() {
             readCurrentState().runOverride,
             buildForgeRunSignature({
               goal,
-              operatorProfile: saved,
+              selectedOperatorProfile: buildSelectedOperatorContext(
+                saved,
+                readCurrentState().sessionContextSelection
+              ),
               runOverride: readCurrentState().runOverride,
             })
           );
-          invalidatePreflight("Operator profile changed after the last preflight run.");
+          const reason = refreshPreflightValidity(goal);
+          if (reason !== null) {
+            syncCoordinatorState({
+              note: readPreflightStageMessage(reason),
+            });
+          }
         }
         if (readCurrentState().activeSessionId !== null) {
           await persistCurrentSession("operator-profile-updated", {
             sessionId: readCurrentState().activeSessionId,
           });
         }
+        return {
+          success: true,
+        };
+      }
+
+      async function updateSessionContextCommand(payload: Record<string, unknown>): Promise<{
+        success: boolean;
+        message?: string;
+      }> {
+        await ensureHydrated();
+        await ensureActiveSession();
+        const state = readCurrentState();
+        const nextSessionContextSelection = normalizeSessionContextSelectionPayload(
+          payload,
+          state.sessionContextSelection
+        );
+        const changed =
+          JSON.stringify(nextSessionContextSelection) !==
+          JSON.stringify(state.sessionContextSelection);
+        if (!changed) {
+          return {
+            success: true,
+          };
+        }
+        dispatchSessionContext(nextSessionContextSelection);
+        if (state.currentGoal !== null) {
+          dispatchRunContext(
+            state.runOverride,
+            buildForgeRunSignature({
+              goal: state.currentGoal,
+              selectedOperatorProfile: buildSelectedOperatorContext(
+                state.operatorProfile,
+                nextSessionContextSelection
+              ),
+              runOverride: state.runOverride,
+            })
+          );
+          invalidatePreflight("Session context changed after the last preflight run.");
+        }
+        await persistCurrentSession("session-context-updated", {
+          sessionId: state.activeSessionId,
+        });
         return {
           success: true,
         };
@@ -1252,7 +1379,10 @@ export default function createForgeRoomHostRuntime() {
           state.currentGoal
             ? buildForgeRunSignature({
                 goal: state.currentGoal,
-                operatorProfile: state.operatorProfile,
+                selectedOperatorProfile: buildSelectedOperatorContext(
+                  state.operatorProfile,
+                  state.sessionContextSelection
+                ),
                 runOverride: nextRunOverride,
               })
             : state.runSignature
@@ -1810,7 +1940,8 @@ export default function createForgeRoomHostRuntime() {
         const selected = selectForgeSynthesis(state.syntheses, synthesisId);
         dispatchSyntheses(selected.syntheses, selected.selectedSynthesisId);
         dispatchDecisionTrace(
-          selected.syntheses.find((entry) => entry.id === selected.selectedSynthesisId)?.decisionTrace ?? []
+          selected.syntheses.find((entry) => entry.id === selected.selectedSynthesisId)
+            ?.decisionTrace ?? []
         );
         syncCoordinatorState({
           planStatus: "synthesis-ready",
@@ -2009,6 +2140,8 @@ export default function createForgeRoomHostRuntime() {
             return await updateTaskContextCapsule(commandPayload);
           case FORGE_UI_COMMANDS.updateOperatorProfile:
             return await updateOperatorProfileCommand(commandPayload);
+          case FORGE_UI_COMMANDS.updateSessionContext:
+            return await updateSessionContextCommand(commandPayload);
           case FORGE_UI_COMMANDS.updateRunOverride:
             return await updateRunOverrideCommand(commandPayload);
           case FORGE_UI_COMMANDS.dispatchAssignments:

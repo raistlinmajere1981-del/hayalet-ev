@@ -22,7 +22,7 @@
     },
     "columns": {
       "planEyebrow": "Left",
-      "planTitle": "Plan",
+      "planTitle": "Control Surface",
       "responsesEyebrow": "Center",
       "responsesTitle": "Responses / Decision",
       "outputEyebrow": "Right",
@@ -44,7 +44,7 @@
       }
     },
     "guards": {
-      "requiresSavedGoal": "REQUIRES: SAVED GOAL",
+      "requiresSavedGoal": "REQUIRES: GOAL",
       "requiresDraftTasks": "REQUIRES: DRAFT TASKS",
       "blockerDraftIssues": "BLOCKER: DRAFT ISSUES",
       "requiresApprovedPlan": "REQUIRES: APPROVED PLAN",
@@ -59,26 +59,26 @@
       "blockerHandoffCheck": "BLOCKER: HANDOFF CHECK"
     },
     "primaryAction": {
-      "saveGoal": "Save goal",
-      "saveGoalLocked": "CONTROL LOCKED UNTIL GOAL IS SAVED.",
-      "saveGoalRequired": "NEXT ACTION REQUIRED: SAVE GOAL.",
+      "saveGoal": "SAVE GOAL -> START",
+      "saveGoalLocked": "REQUIRES: GOAL",
+      "saveGoalRequired": "REQUIRES: GOAL",
       "generateDraft": "Generate draft",
-      "generateDraftRequired": "NEXT ACTION REQUIRED: GENERATE DRAFT.",
+      "generateDraftRequired": "NEXT: GENERATE DRAFT",
       "finishDraft": "Finish draft",
       "approveDraft": "Approve draft",
-      "approveDraftRequired": "NEXT ACTION REQUIRED: APPROVE DRAFT.",
+      "approveDraftRequired": "NEXT: APPROVE DRAFT",
       "dispatchAssignments": "Dispatch assignments",
-      "dispatchAssignmentsRequired": "NEXT ACTION REQUIRED: DISPATCH ASSIGNMENTS.",
+      "dispatchAssignmentsRequired": "NEXT: DISPATCH",
       "reviewResponseLane": "Review response lane",
-      "waitForResponses": "STATE HOLD: WAIT FOR RESPONSES.",
+      "waitForResponses": "REQUIRES: RESPONSES",
       "generateSynthesis": "Generate synthesis",
-      "generateSynthesisRequired": "NEXT ACTION REQUIRED: GENERATE SYNTHESIS.",
+      "generateSynthesisRequired": "NEXT: GENERATE SYNTHESIS",
       "resolveDecision": "Resolve decision",
-      "resolveDecisionBlocked": "RUN BLOCKED: RESOLVE DECISION.",
+      "resolveDecisionBlocked": "BLOCKER: OPEN DECISION",
       "chooseSynthesis": "Choose synthesis",
-      "chooseSynthesisRequired": "EXPORT LOCKED: SELECT SYNTHESIS.",
+      "chooseSynthesisRequired": "REQUIRES: SELECTED SYNTHESIS",
       "exportHandoff": "Export handoff",
-      "exportHandoffReady": "FINAL STEP READY: EXPORT HANDOFF.",
+      "exportHandoffReady": "NEXT: EXPORT HANDOFF",
       "checkHandoff": "Check handoff",
       "reviewExport": "Review export",
       "exportComplete": "EXPORT COMPLETE: {label}.",
@@ -86,7 +86,7 @@
       "workingLocked": "SYSTEM LOCKED UNTIL STEP COMPLETES."
     },
     "panels": {
-      "goal": "Goal Input",
+      "goal": "Control Surface",
       "draft": "Draft Breakdown",
       "approved": "Dispatch Plan",
       "responses": "Responses & Decisions",
@@ -162,11 +162,21 @@
         "brief": "Brief",
         "constraints": "One constraint per line"
       },
+      "goalBlock": {
+        "eyebrow": "Goal",
+        "title": "Set the run target"
+      },
+      "actions": {
+        "showDetails": "Goal details",
+        "hideDetails": "Hide details"
+      },
       "summary": {
         "targetLabel": "Target",
         "stateLabel": "State",
         "sessionLabel": "Session",
         "draftLabel": "Draft",
+        "preflightLabel": "PRE-FLIGHT",
+        "signatureLabel": "Signature",
         "notStarted": "not started",
         "waiting": "waiting",
         "draftCountOne": "{count} task",
@@ -176,45 +186,121 @@
         "goal": "Goal",
         "targetRoom": "Target room",
         "brief": "Brief",
-        "constraints": "Constraints",
-        "constraintsHint": "One per line."
+        "constraints": "Constraints"
+      },
+      "operatorProfile": {
+        "eyebrow": "Operator profile",
+        "label": "Operator",
+        "manage": "Edit",
+        "drawerEyebrow": "PROFILE",
+        "drawerTitle": "Manage operator profile",
+        "empty": "No operator profile defined. AI will assume no prior capability.",
+        "emptyShort": "Profile blank",
+        "selectedTruthHint": "Only selected items can influence this run.",
+        "addSkill": "Add skill",
+        "addEquipment": "Add equipment",
+        "editInline": "Edit inline",
+        "remove": "Remove",
+        "save": "Save profile",
+        "close": "Close",
+        "values": {
+          "notSet": "not set",
+          "available": "available",
+          "unavailable": "unavailable"
+        }
+      },
+      "catalog": {
+        "groups": {
+          "skills": "Skills",
+          "equipment": "Equipment",
+          "general": "General"
+        },
+        "details": {
+          "level": "Level",
+          "status": "Status",
+          "value": "Value"
+        },
+        "items": {
+          "skillLevel": "Skill level",
+          "soldering": "Soldering",
+          "measurement": "Measurement",
+          "mechanical": "Mechanical",
+          "multimeter": "Multimeter",
+          "solderingIron": "Soldering iron",
+          "hotAir": "Hot air",
+          "benchSupply": "Bench supply",
+          "magnification": "Magnification",
+          "mode": "Mode",
+          "risk": "Risk"
+        }
+      },
+      "sessionContext": {
+        "eyebrow": "CONTEXT FOR THIS RUN",
+        "title": "Activate context",
+        "selectedCount": "{count} active",
+        "noneSelected": "0 active",
+        "zeroAssumptions": "0 active"
+      },
+      "preflight": {
+        "label": "Preflight",
+        "action": "Run Preflight",
+        "idle": "idle",
+        "ready": "ready",
+        "stale": "stale",
+        "stepReady": "Context ready",
+        "stepComplete": "Preflight complete"
+      },
+      "runOverrides": {
+        "eyebrow": "Temporary conditions",
+        "title": "Temporary conditions",
+        "meta": "Run-local only",
+        "tempHotAir": "Hot air",
+        "preAnalysis": "Pre-analysis",
+        "notes": "Run notes",
+        "notesPlaceholder": "Temporary condition for this run",
+        "save": "Save run overrides",
+        "active": "active",
+        "inactive": "inactive",
+        "addCondition": "+ Add condition",
+        "commitCondition": "Add",
+        "cancelCondition": "Cancel"
       }
     },
     "draftPanel": {
       "guide": {
         "idle": {
-          "title": "Save the goal to unlock the draft",
-          "summary": "This lane stays locked until the goal above is saved."
+          "title": "REQUIRES: GOAL",
+          "summary": "SAVE GOAL -> START"
         },
         "sessionCreated": {
-          "title": "Save the goal to open this lane",
-          "summary": "The draft stays closed until the goal above becomes real."
+          "title": "REQUIRES: GOAL",
+          "summary": "SAVE GOAL -> START"
         },
         "goalDefined": {
-          "title": "Use Next Step to unlock draft editing",
-          "summary": "Generate the first draft from the top bar, then this lane will open for edits."
+          "title": "NEXT: GENERATE DRAFT",
+          "summary": "DRAFT OPENS AFTER GENERATION"
         },
         "draftReadyBlocked": {
-          "title": "Fix the draft to unlock approval",
-          "summary": "Tighten the task details below until the plan is ready to approve."
+          "title": "BLOCKER: DRAFT ISSUES",
+          "summary": "FIX THE TASKS BELOW"
         },
         "draftReadyOpen": {
-          "title": "Finish edits to unlock approval",
-          "summary": "Refine the task lanes below, then use Next Step to approve the draft."
+          "title": "NEXT: APPROVE DRAFT",
+          "summary": "REFINE, THEN APPROVE"
         },
         "locked": {
-          "title": "This lane is locked after approval",
-          "summary": "Restart the plan only if you intend to reopen earlier steps."
+          "title": "STATE: REFERENCE ONLY",
+          "summary": "DRAFT IS LOCKED"
         }
       },
       "toolbar": {
         "countOne": "{count} task in draft",
         "countOther": "{count} tasks in draft",
-        "empty": "Draft is empty"
+        "empty": "No draft yet"
       },
       "empty": {
-        "goalDefined": "Use Next Step to create the first task lanes here.",
-        "locked": "This lane will unlock when the flow reaches draft editing."
+        "goalDefined": "No draft yet. Save goal to generate the first structure.",
+        "locked": "No draft yet. Save goal to generate the first structure."
       },
       "fields": {
         "summary": "Summary",

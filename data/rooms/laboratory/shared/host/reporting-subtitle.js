@@ -48,6 +48,22 @@ export function createLaboratorySubtitleReportRuntime(deps) {
       return asNonEmptyString(entry.kind) === kind;
     }) || null;
   }
+  function getSubtitleReportEmptyReason(processRecord, processStatus) {
+    const explicitReason = asNonEmptyString(processRecord.emptyReason);
+    if (explicitReason !== null) {
+      return explicitReason;
+    }
+    if (processStatus === "running" || processStatus === "queued") {
+      return "Altyazi analizi hala suruyor; rapor tamamlaninca dolacak.";
+    }
+    if (processStatus === "failed") {
+      return asNonEmptyString(processRecord.error) || "Altyazi analizi hata ile tamamlandigi icin rapor bos kaldi.";
+    }
+    if (processStatus === "cancelled") {
+      return "Altyazi analizi iptal edildigi icin rapor bos kaldi.";
+    }
+    return "Once altyazi analizi tamamlanmali.";
+  }
   function extractTopWordFromLexicalSummary(moduleRecord) {
     const summary = asNonEmptyString(moduleRecord.summary);
     if (summary === null || summary.toLowerCase().includes("top lexical term is") === false) {
@@ -65,7 +81,8 @@ export function createLaboratorySubtitleReportRuntime(deps) {
         {
           ...createEmptyFeatureReportRecord(subtitleFeatureId),
           status: processStatus === "running" ? "staged" : "idle",
-          warnings: normalizeStringArray(processRecord.warnings)
+          warnings: normalizeStringArray(processRecord.warnings),
+          emptyReason: getSubtitleReportEmptyReason(processRecord, processStatus)
         },
         subtitleFeatureId
       );
@@ -170,7 +187,8 @@ export function createLaboratorySubtitleReportRuntime(deps) {
         caveats,
         warnings,
         exports: featureReportRecord.exports,
-        error: null
+        error: null,
+        emptyReason: findings.length === 0 && (Array.isArray(processRecord.artifacts) ? processRecord.artifacts.length : 0) === 0 ? getSubtitleReportEmptyReason(processRecord, processStatus) : null
       },
       subtitleFeatureId
     );

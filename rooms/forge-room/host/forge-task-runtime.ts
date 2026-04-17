@@ -1,8 +1,5 @@
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
-import {
-  FORGE_MAX_DECISION_TRACE_LINES,
-  FORGE_TARGET_ROOM_ID,
-} from "../shared/forge-constants.js";
+import { FORGE_MAX_DECISION_TRACE_LINES, FORGE_TARGET_ROOM_ID } from "../shared/forge-constants.js";
 import type {
   ForgeAgentResponse,
   ForgeArchiveMessageRef,
@@ -342,20 +339,18 @@ function buildDecisionTrace(params: {
   tasks: ForgeTask[];
 }): string[] {
   const taskTitles = new Map(params.tasks.map((task) => [task.id, task.title]));
-  const lines = uniqueStrings(
-    [
-      ...params.preferredResponses.map((response) => {
-        const taskTitle = taskTitles.get(response.taskId) ?? response.taskId;
-        return `${taskTitle} kept ${response.seatId} as the primary lane.`;
+  const lines = uniqueStrings([
+    ...params.preferredResponses.map((response) => {
+      const taskTitle = taskTitles.get(response.taskId) ?? response.taskId;
+      return `${taskTitle} kept ${response.seatId} as the primary lane.`;
+    }),
+    ...params.conflicts
+      .filter((conflict) => conflict.status === "resolved" && conflict.preferredResponseId !== null)
+      .map((conflict) => {
+        const taskTitle = taskTitles.get(conflict.taskId) ?? conflict.taskId;
+        return `${taskTitle} resolved as ${conflict.kind} with an explicit preferred response.`;
       }),
-      ...params.conflicts
-        .filter((conflict) => conflict.status === "resolved" && conflict.preferredResponseId !== null)
-        .map((conflict) => {
-          const taskTitle = taskTitles.get(conflict.taskId) ?? conflict.taskId;
-          return `${taskTitle} resolved as ${conflict.kind} with an explicit preferred response.`;
-        }),
-    ]
-  );
+  ]);
 
   return lines.slice(0, FORGE_MAX_DECISION_TRACE_LINES);
 }

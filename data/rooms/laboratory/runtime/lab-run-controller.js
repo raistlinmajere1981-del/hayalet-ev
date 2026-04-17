@@ -1,8 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  createLabEventId
-} from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, createLabEventId } from "../models/lab-types.js";
 import {
   canAdvanceToStage,
   getActiveEditOutput,
@@ -24,14 +20,17 @@ function isTextControl(target) {
 function buildUiEvent(message, severity = "info") {
   return {
     id: createLabEventId("ui"),
-    kind: "ui",
+    kind: "activity",
     severity,
     message,
     detail: null,
     timestamp: Date.now(),
     source: "ui",
     action: null,
-    stage: null
+    stage: null,
+    scope: "global",
+    moduleId: null,
+    rawLine: null
   };
 }
 export function createLabRunController(deps) {
@@ -74,9 +73,14 @@ export function createLabRunController(deps) {
     const currentWorkbench = {
       ...getWorkbench(state)
     };
+    const nextWorkbench = update(currentWorkbench);
+    dispatch({
+      type: "workbench-updated",
+      workbench: nextWorkbench
+    });
     sendHostContext({
       ...state.context,
-      workbench: update(currentWorkbench)
+      workbench: nextWorkbench
     });
   }
   function setStage(stage) {
@@ -97,7 +101,9 @@ export function createLabRunController(deps) {
       featureId
     });
     updateWorkbench(function(workbench) {
-      const selectedModuleIds = Array.isArray(workbench["selectedModuleIds"]) ? workbench["selectedModuleIds"].filter((entry) => typeof entry === "string") : [];
+      const selectedModuleIds = Array.isArray(workbench["selectedModuleIds"]) ? workbench["selectedModuleIds"].filter(
+        (entry) => typeof entry === "string"
+      ) : [];
       return {
         ...workbench,
         activeModuleId: featureId,
@@ -107,7 +113,9 @@ export function createLabRunController(deps) {
   }
   function toggleFeature(featureId) {
     updateWorkbench(function(workbench) {
-      const selectedModuleIds = Array.isArray(workbench["selectedModuleIds"]) ? workbench["selectedModuleIds"].filter((entry) => typeof entry === "string") : [];
+      const selectedModuleIds = Array.isArray(workbench["selectedModuleIds"]) ? workbench["selectedModuleIds"].filter(
+        (entry) => typeof entry === "string"
+      ) : [];
       const activeModuleId = asNonEmptyString(workbench["activeModuleId"]) || featureId;
       const nextSelected = selectedModuleIds.includes(featureId) ? selectedModuleIds.filter(function(entry) {
         return entry !== featureId;
@@ -124,23 +132,14 @@ export function createLabRunController(deps) {
     const state = deps.store.getState();
     const featureId = state.featureId;
     const sourceDrafts = state.ui.sourceDrafts;
-    function startProbe(action, detail, payload) {
-      dispatch({
-        type: "source-probe-started",
-        action,
-        detail
-      });
-      if (sendMediaAction(action, payload) !== true) {
-        dispatch({
-          type: "source-probe-failed",
-          action,
-          detail: "Room API bridge is not connected."
-        });
-      }
+    function startProbe(action, payload) {
+      sendMediaAction(action, payload);
     }
     if (featureId === "subtitle-analysis") {
       const activeProject = asLabRecord(getSnapshot(state)["activeProject"]);
-      const subtitleWorkspace = asLabRecord(asLabRecord(activeProject["subtitleAnalysis"])["workspace"]);
+      const subtitleWorkspace = asLabRecord(
+        asLabRecord(activeProject["subtitleAnalysis"])["workspace"]
+      );
       const subtitleMode = asNonEmptyString(subtitleWorkspace["mode"]) || "local-file";
       const fields2 = {
         fileNameHint: sourceDrafts.fileNameHint,
@@ -148,18 +147,18 @@ export function createLabRunController(deps) {
         youtubeUrl: sourceDrafts.youtubeUrl
       };
       if (subtitleMode === "local-folder") {
-        startProbe("subtitle-source-pick-folder", "Local subtitle probe started.", { fields: fields2 });
+        startProbe("subtitle-source-pick-folder", { fields: fields2 });
         return;
       }
       if (subtitleMode === "url") {
-        startProbe("subtitle-source-download-url", "Subtitle URL probe started.", { fields: fields2 });
+        startProbe("subtitle-source-download-url", { fields: fields2 });
         return;
       }
       if (subtitleMode.startsWith("youtube-")) {
-        startProbe("subtitle-source-download-youtube", "Subtitle YouTube probe started.", { fields: fields2 });
+        startProbe("subtitle-source-download-youtube", { fields: fields2 });
         return;
       }
-      startProbe("subtitle-source-pick-local", "Local subtitle probe started.", { fields: fields2 });
+      startProbe("subtitle-source-pick-local", { fields: fields2 });
       return;
     }
     const mode = getSourceMode(state);
@@ -170,14 +169,14 @@ export function createLabRunController(deps) {
       youtubePreset: sourceDrafts.youtubePreset
     };
     if (mode === "url") {
-      startProbe("source-download-url", "Direct URL probe started.", { fields });
+      startProbe("source-download-url", { fields });
       return;
     }
     if (mode === "youtube") {
-      startProbe("source-download-youtube", "YouTube probe started.", { fields });
+      startProbe("source-download-youtube", { fields });
       return;
     }
-    startProbe("source-pick-local", "Local source probe started.", { fields });
+    startProbe("source-pick-local", { fields });
   }
   function runPrimaryAction() {
     const state = deps.store.getState();
@@ -186,42 +185,28 @@ export function createLabRunController(deps) {
         runSourcePrimaryAction();
         return;
       case "edit":
-        dispatch({
-          type: "preview-started",
-          action: state.featureId === "subtitle-analysis" ? "subtitle-edit-preview" : "edit-preview",
-          detail: "Preview job requested."
-        });
-        sendMediaAction(state.featureId === "subtitle-analysis" ? "subtitle-edit-preview" : "edit-preview");
+        sendMediaAction(
+          state.featureId === "subtitle-analysis" ? "subtitle-edit-preview" : "edit-preview"
+        );
         return;
       case "profile":
-        dispatch({
-          type: "preflight-started",
-          action: "profile-run-preflight",
-          detail: "Preflight requested."
-        });
         sendMediaAction("profile-run-preflight");
         return;
       case "process": {
         const run = getCurrentRun(state);
         if (run && run.state === "running") {
-          dispatch({
-            type: "run-cancelled",
-            action: state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel",
-            detail: "Cancellation requested."
-          });
-          sendMediaAction(state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel");
+          sendMediaAction(
+            state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel"
+          );
           return;
         }
-        dispatch({
-          type: "run-started",
-          action: state.featureId === "audio-analysis" ? "audio-process-run" : "process-run",
-          detail: "Pipeline run requested."
-        });
         sendMediaAction(state.featureId === "audio-analysis" ? "audio-process-run" : "process-run");
         return;
       }
       case "report":
-        sendMediaAction(state.featureId === "audio-analysis" ? "audio-report-export" : "report-export");
+        sendMediaAction(
+          state.featureId === "audio-analysis" ? "audio-report-export" : "report-export"
+        );
         return;
       default:
         return;
@@ -246,6 +231,13 @@ export function createLabRunController(deps) {
     switch (action) {
       case "primary-action":
         runPrimaryAction();
+        return;
+      case "toggle-module-manager":
+        dispatch({ type: "module-manager-toggled" });
+        return;
+      case "close-module-manager":
+      case "dismiss-module-manager":
+        dispatch({ type: "module-manager-toggled", open: false });
         return;
       case "feature-activate":
         activateFeature(value);
@@ -338,9 +330,21 @@ export function createLabRunController(deps) {
         sendMediaAction("project-select", { projectId: targetValue });
         return;
       case "source.kind":
+        dispatch({
+          type: "source-config-patched",
+          patch: {
+            kind: targetValue
+          }
+        });
         sendMediaAction("source-set-kind", { kind: targetValue });
         return;
       case "source.mode":
+        dispatch({
+          type: "source-config-patched",
+          patch: {
+            mode: targetValue
+          }
+        });
         sendMediaAction(
           state.featureId === "subtitle-analysis" ? "subtitle-source-set-mode" : "source-set-mode",
           { mode: targetValue }

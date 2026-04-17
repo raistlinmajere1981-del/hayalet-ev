@@ -10,6 +10,11 @@ import {
   type ForgeWorkbenchUiFlowState,
   type ForgeWorkbenchUiSurface,
 } from "../shared/ui/state.js";
+import {
+  createDefaultForgeOperatorProfile,
+  type ForgeOperatorProfile,
+  type ForgeSessionContextSelection,
+} from "../shared/types/index.js";
 import { renderApprovedTasksPanel } from "./panels/approved-tasks-panel.js";
 import { renderCoordinatorPanel } from "./panels/coordinator-panel.js";
 import { renderDraftBreakdownPanel } from "./panels/draft-breakdown-panel.js";
@@ -24,9 +29,22 @@ type ForgeUiWindow = Window & {
 type ForgeLocalViewState = {
   advancedCapsulesOpen: boolean;
   advancedDraftOpen: boolean;
+  activeProfileEntryId: string | null;
   expandedResponseIds: Set<string>;
   expandedSynthesisIds: Set<string>;
+  goalDetailsOpen: boolean;
+  goalDraft: ForgeGoalDraftState | null;
+  goalDraftDirty: boolean;
   guidedSurface: ForgeWorkbenchUiSurface | null;
+  operatorProfileDraft: ForgeOperatorProfile | null;
+  operatorProfileDraftDirty: boolean;
+  operatorProfileDraftSourceFingerprint: string | null;
+  profileEditorOpen: boolean;
+  runConditionComposerOpen: boolean;
+  runConditionComposerValue: string;
+  runOverrideDraft: ForgeRunOverrideDraftState | null;
+  runOverrideDraftDirty: boolean;
+  sessionContextDraft: ForgeSessionContextSelection | null;
 };
 
 type ForgePrimaryAction = {
@@ -49,6 +67,26 @@ type ForgePanelMode = "active" | "monitor" | "locked";
 type ForgePanelModeMap = Record<ForgeWorkbenchUiSurface, ForgePanelMode>;
 type ForgeTextParams = Record<string, number | string>;
 
+type ForgeGoalDraftState = {
+  brief: string;
+  constraints: string[];
+  sourceFingerprint: string;
+  sourceGoalId: string | null;
+  sourceSessionId: string | null;
+  summary: string;
+  targetRoomId: string;
+};
+
+type ForgeRunOverrideDraftState = {
+  enableRovoPreAnalysis: boolean;
+  notes: string;
+  sourceFingerprint: string;
+  sourceSessionId: string | null;
+  tools: {
+    hotAir: boolean;
+  };
+};
+
 export function createForgeRoomUiRuntime() {
   const state: ForgeUiState = createInitialForgeUiState();
   const requestRuntime = createForgeUiRequestRuntime();
@@ -57,9 +95,22 @@ export function createForgeRoomUiRuntime() {
   const viewState: ForgeLocalViewState = {
     advancedCapsulesOpen: false,
     advancedDraftOpen: false,
+    activeProfileEntryId: null,
     expandedResponseIds: new Set<string>(),
     expandedSynthesisIds: new Set<string>(),
+    goalDetailsOpen: false,
+    goalDraft: null,
+    goalDraftDirty: false,
     guidedSurface: null,
+    operatorProfileDraft: null,
+    operatorProfileDraftDirty: false,
+    operatorProfileDraftSourceFingerprint: null,
+    profileEditorOpen: false,
+    runConditionComposerOpen: false,
+    runConditionComposerValue: "",
+    runOverrideDraft: null,
+    runOverrideDraftDirty: false,
+    sessionContextDraft: null,
   };
   let lastRenderSignature: string | null = null;
   let localUiVersion = 0;
@@ -196,6 +247,331 @@ export function createForgeRoomUiRuntime() {
     );
   }
 
+  function cloneSessionContextSelection(
+    selection: ForgeSessionContextSelection
+  ): ForgeSessionContextSelection {
+    return {
+      skill: {
+        level: selection.skill.level,
+        soldering: selection.skill.soldering,
+        measurement: selection.skill.measurement,
+        mechanical: selection.skill.mechanical,
+      },
+      tools: {
+        multimeter: selection.tools.multimeter,
+        solderingIron: selection.tools.solderingIron,
+        hotAir: selection.tools.hotAir,
+        benchPowerSupply: selection.tools.benchPowerSupply,
+        magnification: selection.tools.magnification,
+      },
+      preferences: {
+        mode: selection.preferences.mode,
+        riskTolerance: selection.preferences.riskTolerance,
+      },
+    };
+  }
+
+  function sessionContextSelectionEquals(
+    left: ForgeSessionContextSelection,
+    right: ForgeSessionContextSelection
+  ): boolean {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  function cloneOperatorProfile(profile: ForgeOperatorProfile): ForgeOperatorProfile {
+    return {
+      schemaVersion: profile.schemaVersion,
+      updatedAt: profile.updatedAt,
+      skill: {
+        level: profile.skill.level,
+        soldering: profile.skill.soldering,
+        measurement: profile.skill.measurement,
+        mechanical: profile.skill.mechanical,
+      },
+      tools: {
+        multimeter: profile.tools.multimeter,
+        solderingIron: profile.tools.solderingIron,
+        hotAir: profile.tools.hotAir,
+        benchPowerSupply: profile.tools.benchPowerSupply,
+        magnification: profile.tools.magnification,
+      },
+      preferences: {
+        mode: profile.preferences.mode,
+        riskTolerance: profile.preferences.riskTolerance,
+      },
+    };
+  }
+
+  function operatorProfilesEqual(left: ForgeOperatorProfile, right: ForgeOperatorProfile): boolean {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  function currentSessionContextSelection(): ForgeSessionContextSelection {
+    return viewState.sessionContextDraft ?? state.snapshot.sessionContextSelection;
+  }
+
+  function goalSnapshotFingerprint(): string {
+    return JSON.stringify({
+      goalId: state.snapshot.currentGoal?.id ?? null,
+      sessionId: state.snapshot.activeSessionId,
+      summary: state.snapshot.currentGoal?.summary ?? "",
+      brief: state.snapshot.currentGoal?.brief ?? "",
+      constraints: state.snapshot.currentGoal?.constraints ?? [],
+      targetRoomId: state.snapshot.currentGoal?.targetRoomId ?? "repair-room",
+    });
+  }
+
+  function operatorProfileSnapshotFingerprint(): string {
+    return JSON.stringify(state.snapshot.operatorProfile);
+  }
+
+  function runOverrideSnapshotFingerprint(): string {
+    const runOverride = state.snapshot.runOverride;
+    return JSON.stringify({
+      sessionId: state.snapshot.activeSessionId,
+      enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
+      notes: runOverride?.notes ?? "",
+      tools: {
+        hotAir: runOverride?.tools.hotAir === true,
+      },
+    });
+  }
+
+  function createGoalDraftFromSnapshot(): ForgeGoalDraftState {
+    return {
+      brief: state.snapshot.currentGoal?.brief ?? "",
+      constraints: [...(state.snapshot.currentGoal?.constraints ?? [])],
+      sourceFingerprint: goalSnapshotFingerprint(),
+      sourceGoalId: state.snapshot.currentGoal?.id ?? null,
+      sourceSessionId: state.snapshot.activeSessionId,
+      summary: state.snapshot.currentGoal?.summary ?? "",
+      targetRoomId: state.snapshot.currentGoal?.targetRoomId ?? "repair-room",
+    };
+  }
+
+  function syncGoalDraftFromSnapshot(force = false): void {
+    const nextDraft = createGoalDraftFromSnapshot();
+    const draft = viewState.goalDraft;
+    const allowPendingRefresh = state.pendingCommand === "ForgeRoomUpdateGoal";
+    const snapshotChanged = draft?.sourceFingerprint !== nextDraft.sourceFingerprint;
+    if (
+      force ||
+      draft === null ||
+      draft.sourceGoalId !== nextDraft.sourceGoalId ||
+      draft.sourceSessionId !== nextDraft.sourceSessionId ||
+      (snapshotChanged && (viewState.goalDraftDirty === false || allowPendingRefresh))
+    ) {
+      viewState.goalDraft = nextDraft;
+      viewState.goalDraftDirty = false;
+    }
+  }
+
+  function currentGoalDraft(): ForgeGoalDraftState {
+    syncGoalDraftFromSnapshot();
+    return viewState.goalDraft ?? createGoalDraftFromSnapshot();
+  }
+
+  function updateGoalDraft(
+    updater: (draft: ForgeGoalDraftState) => ForgeGoalDraftState
+  ): ForgeGoalDraftState {
+    const nextDraft = updater(currentGoalDraft());
+    viewState.goalDraft = nextDraft;
+    viewState.goalDraftDirty = true;
+    return nextDraft;
+  }
+
+  function createOperatorProfileDraftFromSnapshot(): ForgeOperatorProfile {
+    return cloneOperatorProfile(state.snapshot.operatorProfile);
+  }
+
+  function syncOperatorProfileDraftFromSnapshot(force = false): void {
+    const nextDraft = createOperatorProfileDraftFromSnapshot();
+    const draft = viewState.operatorProfileDraft;
+    const nextFingerprint = operatorProfileSnapshotFingerprint();
+    const allowPendingRefresh = state.pendingCommand === "ForgeRoomUpdateOperatorProfile";
+    if (
+      force ||
+      draft === null ||
+      (viewState.operatorProfileDraftSourceFingerprint !== nextFingerprint &&
+        (viewState.operatorProfileDraftDirty === false || allowPendingRefresh)) ||
+      (viewState.operatorProfileDraftSourceFingerprint === null &&
+        operatorProfilesEqual(draft, nextDraft) === false)
+    ) {
+      viewState.operatorProfileDraft = nextDraft;
+      viewState.operatorProfileDraftDirty = false;
+      viewState.operatorProfileDraftSourceFingerprint = nextFingerprint;
+    }
+  }
+
+  function currentOperatorProfileDraft(): ForgeOperatorProfile {
+    syncOperatorProfileDraftFromSnapshot();
+    return viewState.operatorProfileDraft ?? createDefaultForgeOperatorProfile();
+  }
+
+  function updateOperatorProfileDraft(
+    updater: (draft: ForgeOperatorProfile) => ForgeOperatorProfile
+  ): ForgeOperatorProfile {
+    const nextDraft = updater(currentOperatorProfileDraft());
+    viewState.operatorProfileDraft = nextDraft;
+    viewState.operatorProfileDraftDirty = true;
+    return nextDraft;
+  }
+
+  function createRunOverrideDraftFromSnapshot(): ForgeRunOverrideDraftState {
+    const runOverride = state.snapshot.runOverride;
+    return {
+      enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
+      notes: runOverride?.notes ?? "",
+      sourceFingerprint: runOverrideSnapshotFingerprint(),
+      sourceSessionId: state.snapshot.activeSessionId,
+      tools: {
+        hotAir: runOverride?.tools.hotAir === true,
+      },
+    };
+  }
+
+  function syncRunOverrideDraftFromSnapshot(force = false): void {
+    const nextDraft = createRunOverrideDraftFromSnapshot();
+    const draft = viewState.runOverrideDraft;
+    const allowPendingRefresh = state.pendingCommand === "ForgeRoomUpdateRunOverride";
+    const snapshotChanged = draft?.sourceFingerprint !== nextDraft.sourceFingerprint;
+    if (
+      force ||
+      draft === null ||
+      draft.sourceSessionId !== nextDraft.sourceSessionId ||
+      (snapshotChanged && (viewState.runOverrideDraftDirty === false || allowPendingRefresh))
+    ) {
+      viewState.runOverrideDraft = nextDraft;
+      viewState.runOverrideDraftDirty = false;
+    }
+  }
+
+  function currentRunOverrideDraft(): ForgeRunOverrideDraftState {
+    syncRunOverrideDraftFromSnapshot();
+    return viewState.runOverrideDraft ?? createRunOverrideDraftFromSnapshot();
+  }
+
+  function updateRunOverrideDraft(
+    updater: (draft: ForgeRunOverrideDraftState) => ForgeRunOverrideDraftState
+  ): ForgeRunOverrideDraftState {
+    const nextDraft = updater(currentRunOverrideDraft());
+    viewState.runOverrideDraft = nextDraft;
+    viewState.runOverrideDraftDirty = true;
+    return nextDraft;
+  }
+
+  function notesToConditions(notes: string): string[] {
+    return notes
+      .split(/\r?\n/)
+      .map((entry) => entry.trim())
+      .filter((entry) => entry !== "");
+  }
+
+  function draftToRunOverridePayload(draft: ForgeRunOverrideDraftState): {
+    enableRovoPreAnalysis: boolean;
+    notes: string;
+    tools: {
+      hotAir: boolean;
+    };
+  } {
+    return {
+      enableRovoPreAnalysis: draft.enableRovoPreAnalysis,
+      notes: draft.notes,
+      tools: {
+        hotAir: draft.tools.hotAir,
+      },
+    };
+  }
+
+  function openGoalDetails(): void {
+    viewState.goalDetailsOpen = true;
+    bumpLocalUiVersion();
+    render();
+  }
+
+  function closeGoalDetails(): void {
+    viewState.goalDetailsOpen = false;
+    bumpLocalUiVersion();
+    render();
+  }
+
+  function profileEntryInputId(entryId: string): string | null {
+    const inputIds: Record<string, string> = {
+      "skill-level": "forge-profile-skill-level",
+      "skill-soldering": "forge-profile-soldering",
+      "skill-measurement": "forge-profile-measurement",
+      "skill-mechanical": "forge-profile-mechanical",
+      "tool-multimeter": "forge-profile-tool-multimeter",
+      "tool-soldering-iron": "forge-profile-tool-soldering-iron",
+      "tool-hot-air": "forge-profile-tool-hot-air",
+      "tool-bench-supply": "forge-profile-tool-bench-supply",
+      "tool-magnification": "forge-profile-tool-magnification",
+      "preference-mode": "forge-profile-mode",
+      "preference-risk": "forge-profile-risk",
+    };
+    return inputIds[entryId] ?? null;
+  }
+
+  function readProfileEntryValue(entryId: string): string | boolean | null {
+    switch (entryId) {
+      case "skill-level":
+        return state.snapshot.operatorProfile.skill.level;
+      case "skill-soldering":
+        return state.snapshot.operatorProfile.skill.soldering;
+      case "skill-measurement":
+        return state.snapshot.operatorProfile.skill.measurement;
+      case "skill-mechanical":
+        return state.snapshot.operatorProfile.skill.mechanical;
+      case "tool-multimeter":
+        return state.snapshot.operatorProfile.tools.multimeter;
+      case "tool-soldering-iron":
+        return state.snapshot.operatorProfile.tools.solderingIron;
+      case "tool-hot-air":
+        return state.snapshot.operatorProfile.tools.hotAir;
+      case "tool-bench-supply":
+        return state.snapshot.operatorProfile.tools.benchPowerSupply;
+      case "tool-magnification":
+        return state.snapshot.operatorProfile.tools.magnification;
+      case "preference-mode":
+        return state.snapshot.operatorProfile.preferences.mode;
+      case "preference-risk":
+        return state.snapshot.operatorProfile.preferences.riskTolerance;
+      default:
+        return null;
+    }
+  }
+
+  function firstProfileEntry(section: "skill" | "equipment" | "general"): string {
+    const entries =
+      section === "skill"
+        ? ["skill-level", "skill-soldering", "skill-measurement", "skill-mechanical"]
+        : section === "equipment"
+          ? [
+              "tool-multimeter",
+              "tool-soldering-iron",
+              "tool-hot-air",
+              "tool-bench-supply",
+              "tool-magnification",
+            ]
+          : ["preference-mode", "preference-risk"];
+    const firstEmpty = entries.find((entryId) => readProfileEntryValue(entryId) === null);
+    return firstEmpty ?? entries[0] ?? "skill-level";
+  }
+
+  function openProfileEditor(entryId: string | null = null): void {
+    viewState.profileEditorOpen = true;
+    viewState.activeProfileEntryId =
+      entryId ?? viewState.activeProfileEntryId ?? firstProfileEntry("skill");
+    bumpLocalUiVersion();
+    render();
+  }
+
+  function closeProfileEditor(): void {
+    viewState.profileEditorOpen = false;
+    bumpLocalUiVersion();
+    render();
+  }
+
   function deriveUiFlowState(): ForgeWorkbenchUiFlowState {
     if (hasValidExport()) {
       return "EXPORTED";
@@ -309,7 +685,7 @@ export function createForgeRoomUiRuntime() {
 
   function describeDraftStep(): string | null {
     if (hasGoalSummary() !== true) {
-      return text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: SAVED GOAL");
+      return text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: GOAL");
     }
     return null;
   }
@@ -388,21 +764,15 @@ export function createForgeRoomUiRuntime() {
       switch (flow.state) {
         case "IDLE":
           return {
-            label: text(["workbench", "primaryAction", "saveGoal"], "Save goal"),
-            description: text(
-              ["workbench", "primaryAction", "saveGoalLocked"],
-              "CONTROL LOCKED UNTIL GOAL IS SAVED."
-            ),
+            label: text(["workbench", "primaryAction", "saveGoal"], "SAVE GOAL -> START"),
+            description: text(["workbench", "primaryAction", "saveGoalLocked"], "REQUIRES: GOAL"),
             mode: "command" as const,
             commandAction: "save-goal",
           };
         case "SESSION_CREATED":
           return {
-            label: text(["workbench", "primaryAction", "saveGoal"], "Save goal"),
-            description: text(
-              ["workbench", "primaryAction", "saveGoalRequired"],
-              "NEXT ACTION REQUIRED: SAVE GOAL."
-            ),
+            label: text(["workbench", "primaryAction", "saveGoal"], "SAVE GOAL -> START"),
+            description: text(["workbench", "primaryAction", "saveGoalRequired"], "REQUIRES: GOAL"),
             mode: "command" as const,
             commandAction: "save-goal",
           };
@@ -411,7 +781,7 @@ export function createForgeRoomUiRuntime() {
             label: text(["workbench", "primaryAction", "generateDraft"], "Generate draft"),
             description: text(
               ["workbench", "primaryAction", "generateDraftRequired"],
-              "NEXT ACTION REQUIRED: GENERATE DRAFT."
+              "NEXT: GENERATE DRAFT"
             ),
             mode: "command" as const,
             commandAction: "generate-draft",
@@ -429,7 +799,7 @@ export function createForgeRoomUiRuntime() {
                 label: text(["workbench", "primaryAction", "approveDraft"], "Approve draft"),
                 description: text(
                   ["workbench", "primaryAction", "approveDraftRequired"],
-                  "NEXT ACTION REQUIRED: APPROVE DRAFT."
+                  "NEXT: APPROVE DRAFT"
                 ),
                 mode: "command" as const,
                 commandAction: "approve-draft",
@@ -443,7 +813,7 @@ export function createForgeRoomUiRuntime() {
             ),
             description: text(
               ["workbench", "primaryAction", "dispatchAssignmentsRequired"],
-              "NEXT ACTION REQUIRED: DISPATCH ASSIGNMENTS."
+              "NEXT: DISPATCH"
             ),
             mode: "command" as const,
             commandAction: "dispatch-assignments",
@@ -456,7 +826,7 @@ export function createForgeRoomUiRuntime() {
             ),
             description: text(
               ["workbench", "primaryAction", "waitForResponses"],
-              "STATE HOLD: WAIT FOR RESPONSES."
+              "REQUIRES: RESPONSES"
             ),
             mode: "guide" as const,
             guidedSurface: "responses",
@@ -466,7 +836,7 @@ export function createForgeRoomUiRuntime() {
             label: text(["workbench", "primaryAction", "generateSynthesis"], "Generate synthesis"),
             description: text(
               ["workbench", "primaryAction", "generateSynthesisRequired"],
-              "NEXT ACTION REQUIRED: GENERATE SYNTHESIS."
+              "NEXT: GENERATE SYNTHESIS"
             ),
             mode: "command" as const,
             commandAction: "generate-synthesis",
@@ -476,7 +846,7 @@ export function createForgeRoomUiRuntime() {
             label: text(["workbench", "primaryAction", "resolveDecision"], "Resolve decision"),
             description: text(
               ["workbench", "primaryAction", "resolveDecisionBlocked"],
-              "RUN BLOCKED: RESOLVE DECISION."
+              "BLOCKER: OPEN DECISION"
             ),
             mode: "guide" as const,
             guidedSurface: "responses",
@@ -522,11 +892,8 @@ export function createForgeRoomUiRuntime() {
           };
         default:
           return {
-            label: text(["workbench", "primaryAction", "saveGoal"], "Save goal"),
-            description: text(
-              ["workbench", "primaryAction", "saveGoalLocked"],
-              "CONTROL LOCKED UNTIL GOAL IS SAVED."
-            ),
+            label: text(["workbench", "primaryAction", "saveGoal"], "SAVE GOAL -> START"),
+            description: text(["workbench", "primaryAction", "saveGoalLocked"], "REQUIRES: GOAL"),
             mode: "command" as const,
             commandAction: "save-goal",
           };
@@ -656,6 +1023,9 @@ export function createForgeRoomUiRuntime() {
     shell.className = "forge-shell";
     const flow = deriveUiFlowModel();
     const panelModes = derivePanelModes(flow.state);
+    const goalDraft = currentGoalDraft();
+    const operatorProfileDraft = currentOperatorProfileDraft();
+    const runOverrideDraft = currentRunOverrideDraft();
     shell.dataset["forgeUiState"] = flow.state;
 
     const workbench = createElement("section", "forge-workbench");
@@ -668,9 +1038,24 @@ export function createForgeRoomUiRuntime() {
       planColumn.dataset["guided"] = "true";
     }
     const goalPanel = renderGoalInputPanel(documentRef, state, text, {
+      activeProfileEntryId: viewState.activeProfileEntryId,
       draftBlockedReason: describeDraftStep(),
       flowLabel,
       flowState: flow.state,
+      goalDetailsOpen: viewState.goalDetailsOpen,
+      goalDraft,
+      operatorProfileDraft,
+      profileEditorOpen: viewState.profileEditorOpen,
+      runConditionComposerOpen: viewState.runConditionComposerOpen,
+      runConditionComposerValue: viewState.runConditionComposerValue,
+      runOverrideDraft,
+      sessionContextDirty:
+        viewState.sessionContextDraft !== null &&
+        sessionContextSelectionEquals(
+          viewState.sessionContextDraft,
+          state.snapshot.sessionContextSelection
+        ) === false,
+      sessionContextSelection: currentSessionContextSelection(),
     });
     setPanelBadge(goalPanel, panelModes.goal);
     const planSecondaryPanel = hasApprovedTasks()
@@ -688,7 +1073,7 @@ export function createForgeRoomUiRuntime() {
     planColumn.append(
       renderColumnHeading(
         text(["workbench", "columns", "planEyebrow"], "Left"),
-        text(["workbench", "columns", "planTitle"], "Plan")
+        text(["workbench", "columns", "planTitle"], "Control Surface")
       ),
       goalPanel,
       planSecondaryPanel
@@ -782,18 +1167,12 @@ export function createForgeRoomUiRuntime() {
     return input?.value ?? "";
   }
 
-  function readNullableInputValue(elementId: string): string | null {
-    const value = readInputValue(elementId).trim();
-    return value === "" ? null : value;
+  function toNullableTrimmedValue(value: string): string | null {
+    const trimmed = value.trim();
+    return trimmed === "" ? null : trimmed;
   }
 
-  function readCheckboxValue(elementId: string): boolean {
-    const input = documentRef.getElementById(elementId) as HTMLInputElement | null;
-    return input?.checked === true;
-  }
-
-  function readNullableBooleanSelect(elementId: string): boolean | null {
-    const value = readInputValue(elementId);
+  function toNullableBooleanValue(value: string): boolean | null {
     if (value === "true") {
       return true;
     }
@@ -820,6 +1199,65 @@ export function createForgeRoomUiRuntime() {
       render();
     }
 
+    function sendRunOverrideUpdate(nextDraft: ForgeRunOverrideDraftState): void {
+      viewState.runOverrideDraft = nextDraft;
+      viewState.runOverrideDraftDirty = true;
+      viewState.guidedSurface = null;
+      bumpLocalUiVersion();
+      const sent = requestRuntime.updateRunOverride(draftToRunOverridePayload(nextDraft));
+      if (sent === true) {
+        state.pendingCommand = "ForgeRoomUpdateRunOverride";
+      } else {
+        state.lastCommandResult = {
+          command: "ForgeRoomUpdateRunOverride",
+          success: false,
+          message: "roomAPI.sendCommand returned false.",
+        };
+        state.pendingCommand = null;
+      }
+      render();
+    }
+
+    function toggleSessionContextSelection(
+      section: "skill" | "tools" | "preferences",
+      key: string
+    ): void {
+      const current = currentSessionContextSelection();
+      const nextSelection = cloneSessionContextSelection(current);
+      if (section === "skill") {
+        const record = nextSelection.skill as unknown as Record<string, boolean>;
+        if (!(key in record)) {
+          return;
+        }
+        record[key] = record[key] !== true;
+      } else if (section === "tools") {
+        const record = nextSelection.tools as unknown as Record<string, boolean>;
+        if (!(key in record)) {
+          return;
+        }
+        record[key] = record[key] !== true;
+      } else {
+        const record = nextSelection.preferences as unknown as Record<string, boolean>;
+        if (!(key in record)) {
+          return;
+        }
+        record[key] = record[key] !== true;
+      }
+      viewState.sessionContextDraft = nextSelection;
+      viewState.guidedSurface = null;
+      bumpLocalUiVersion();
+      const sent = requestRuntime.updateSessionContext(nextSelection);
+      if (sent !== true) {
+        viewState.sessionContextDraft = null;
+        state.lastCommandResult = {
+          command: "ForgeRoomUpdateSessionContext",
+          success: false,
+          message: "roomAPI.sendCommand returned false.",
+        };
+      }
+      render();
+    }
+
     root.querySelectorAll<HTMLElement>("[data-forge-guide-surface]").forEach((element) => {
       element.addEventListener("click", () => {
         const guidedSurface = element.dataset["forgeGuideSurface"];
@@ -835,6 +1273,226 @@ export function createForgeRoomUiRuntime() {
         render();
       });
     });
+
+    root
+      .querySelectorAll<HTMLElement>("[data-forge-action='toggle-profile-editor']")
+      .forEach((element) => {
+        element.addEventListener("click", () => {
+          if (viewState.profileEditorOpen) {
+            closeProfileEditor();
+            return;
+          }
+          openProfileEditor();
+        });
+      });
+
+    root
+      .querySelectorAll<HTMLElement>("[data-forge-action='toggle-goal-details']")
+      .forEach((element) => {
+        element.addEventListener("click", () => {
+          if (viewState.goalDetailsOpen) {
+            closeGoalDetails();
+            return;
+          }
+          openGoalDetails();
+        });
+      });
+
+    root.querySelectorAll<HTMLElement>("[data-forge-goal-field]").forEach((element) => {
+      const syncGoalField = () => {
+        const field = element.dataset["forgeGoalField"];
+        const control = element as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+        if (!field || typeof control.value !== "string") {
+          return;
+        }
+        if (field === "summary") {
+          updateGoalDraft((draft) => ({
+            ...draft,
+            summary: control.value,
+          }));
+        } else if (field === "brief") {
+          updateGoalDraft((draft) => ({
+            ...draft,
+            brief: control.value,
+          }));
+        } else if (field === "targetRoomId") {
+          updateGoalDraft((draft) => ({
+            ...draft,
+            targetRoomId: control.value,
+          }));
+        } else if (field === "constraints") {
+          updateGoalDraft((draft) => ({
+            ...draft,
+            constraints: parseConstraintLines(control.value),
+          }));
+        }
+        bumpLocalUiVersion();
+        render();
+      };
+      element.addEventListener("input", syncGoalField);
+      element.addEventListener("change", syncGoalField);
+    });
+
+    root.querySelectorAll<HTMLElement>("[data-forge-profile-entry]").forEach((element) => {
+      element.addEventListener("click", () => {
+        const entryId = element.dataset["forgeProfileEntry"];
+        if (!entryId) {
+          return;
+        }
+        viewState.profileEditorOpen = true;
+        viewState.activeProfileEntryId = entryId;
+        bumpLocalUiVersion();
+        render();
+      });
+    });
+
+    root.querySelectorAll<HTMLElement>("[data-forge-profile-field]").forEach((element) => {
+      const syncProfileField = () => {
+        const entryId = element.dataset["forgeProfileField"];
+        const control = element as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+        if (!entryId || typeof control.value !== "string") {
+          return;
+        }
+        if (entryId === "skill-level") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            skill: {
+              ...draft.skill,
+              level: toNullableTrimmedValue(
+                control.value
+              ) as ForgeOperatorProfile["skill"]["level"],
+            },
+          }));
+        } else if (entryId === "skill-soldering") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            skill: {
+              ...draft.skill,
+              soldering: toNullableTrimmedValue(
+                control.value
+              ) as ForgeOperatorProfile["skill"]["soldering"],
+            },
+          }));
+        } else if (entryId === "skill-measurement") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            skill: {
+              ...draft.skill,
+              measurement: toNullableTrimmedValue(
+                control.value
+              ) as ForgeOperatorProfile["skill"]["measurement"],
+            },
+          }));
+        } else if (entryId === "skill-mechanical") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            skill: {
+              ...draft.skill,
+              mechanical: toNullableTrimmedValue(
+                control.value
+              ) as ForgeOperatorProfile["skill"]["mechanical"],
+            },
+          }));
+        } else if (entryId === "tool-multimeter") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            tools: {
+              ...draft.tools,
+              multimeter: toNullableBooleanValue(control.value),
+            },
+          }));
+        } else if (entryId === "tool-soldering-iron") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            tools: {
+              ...draft.tools,
+              solderingIron: toNullableBooleanValue(control.value),
+            },
+          }));
+        } else if (entryId === "tool-hot-air") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            tools: {
+              ...draft.tools,
+              hotAir: toNullableBooleanValue(control.value),
+            },
+          }));
+        } else if (entryId === "tool-bench-supply") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            tools: {
+              ...draft.tools,
+              benchPowerSupply: toNullableBooleanValue(control.value),
+            },
+          }));
+        } else if (entryId === "tool-magnification") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            tools: {
+              ...draft.tools,
+              magnification: toNullableBooleanValue(control.value),
+            },
+          }));
+        } else if (entryId === "preference-mode") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            preferences: {
+              ...draft.preferences,
+              mode: toNullableTrimmedValue(
+                control.value
+              ) as ForgeOperatorProfile["preferences"]["mode"],
+            },
+          }));
+        } else if (entryId === "preference-risk") {
+          updateOperatorProfileDraft((draft) => ({
+            ...draft,
+            preferences: {
+              ...draft.preferences,
+              riskTolerance: toNullableTrimmedValue(
+                control.value
+              ) as ForgeOperatorProfile["preferences"]["riskTolerance"],
+            },
+          }));
+        } else {
+          return;
+        }
+        bumpLocalUiVersion();
+        render();
+      };
+      element.addEventListener("input", syncProfileField);
+      element.addEventListener("change", syncProfileField);
+    });
+
+    root
+      .querySelectorAll<HTMLElement>("[data-forge-action='profile-quick-action']")
+      .forEach((element) => {
+        element.addEventListener("click", () => {
+          const actionValue = element.dataset["forgeActionValue"];
+          if (actionValue === "skill") {
+            openProfileEditor(firstProfileEntry("skill"));
+            return;
+          }
+          if (actionValue === "equipment") {
+            openProfileEditor(firstProfileEntry("equipment"));
+            return;
+          }
+          if (actionValue === "edit") {
+            openProfileEditor(viewState.activeProfileEntryId ?? firstProfileEntry("skill"));
+            return;
+          }
+          if (actionValue === "clear") {
+            if (viewState.activeProfileEntryId === null) {
+              openProfileEditor(firstProfileEntry("skill"));
+              return;
+            }
+            const inputId = profileEntryInputId(viewState.activeProfileEntryId);
+            const input = inputId ? documentRef.getElementById(inputId) : null;
+            if (input !== null && "value" in input && typeof input.value === "string") {
+              input.value = "";
+            }
+          }
+        });
+      });
 
     root
       .querySelector<HTMLElement>("[data-forge-action='create-session']")
@@ -854,52 +1512,143 @@ export function createForgeRoomUiRuntime() {
     root
       .querySelector<HTMLElement>("[data-forge-action='save-goal']")
       ?.addEventListener("click", () => {
-        issueCommand("ForgeRoomUpdateGoal", () =>
-          requestRuntime.updateGoal({
-            summary: readInputValue("forge-goal-summary"),
-            brief: readInputValue("forge-goal-brief"),
-            constraints: parseConstraintLines(readInputValue("forge-goal-constraints")),
-            targetRoomId: readInputValue("forge-goal-target-room"),
-          })
-        );
+        const goalDraft = currentGoalDraft();
+        issueCommand("ForgeRoomUpdateGoal", () => {
+          return requestRuntime.updateGoal({
+            summary: goalDraft.summary,
+            brief: goalDraft.brief,
+            constraints: [...goalDraft.constraints],
+            targetRoomId: goalDraft.targetRoomId,
+          });
+        });
       });
     root
       .querySelector<HTMLElement>("[data-forge-action='save-operator-profile']")
       ?.addEventListener("click", () => {
-        issueCommand("ForgeRoomUpdateOperatorProfile", () =>
-          requestRuntime.updateOperatorProfile({
+        const operatorProfileDraft = currentOperatorProfileDraft();
+        issueCommand("ForgeRoomUpdateOperatorProfile", () => {
+          return requestRuntime.updateOperatorProfile({
             skill: {
-              level: readNullableInputValue("forge-profile-skill-level"),
-              soldering: readNullableInputValue("forge-profile-soldering"),
-              measurement: readNullableInputValue("forge-profile-measurement"),
-              mechanical: readNullableInputValue("forge-profile-mechanical"),
+              level: operatorProfileDraft.skill.level,
+              soldering: operatorProfileDraft.skill.soldering,
+              measurement: operatorProfileDraft.skill.measurement,
+              mechanical: operatorProfileDraft.skill.mechanical,
             },
             tools: {
-              multimeter: readNullableBooleanSelect("forge-profile-tool-multimeter"),
-              solderingIron: readNullableBooleanSelect("forge-profile-tool-soldering-iron"),
-              hotAir: readNullableBooleanSelect("forge-profile-tool-hot-air"),
-              benchPowerSupply: readNullableBooleanSelect("forge-profile-tool-bench-supply"),
-              magnification: readNullableBooleanSelect("forge-profile-tool-magnification"),
+              multimeter: operatorProfileDraft.tools.multimeter,
+              solderingIron: operatorProfileDraft.tools.solderingIron,
+              hotAir: operatorProfileDraft.tools.hotAir,
+              benchPowerSupply: operatorProfileDraft.tools.benchPowerSupply,
+              magnification: operatorProfileDraft.tools.magnification,
             },
             preferences: {
-              mode: readNullableInputValue("forge-profile-mode"),
-              riskTolerance: readNullableInputValue("forge-profile-risk"),
+              mode: operatorProfileDraft.preferences.mode,
+              riskTolerance: operatorProfileDraft.preferences.riskTolerance,
             },
-          })
-        );
+          });
+        });
+      });
+    root.querySelectorAll<HTMLElement>("[data-forge-context-chip]").forEach((element) => {
+      element.addEventListener("click", () => {
+        const unset = element.dataset["forgeContextUnset"] === "true";
+        const entryId = element.dataset["forgeProfileEntry"];
+        if (unset && entryId) {
+          openProfileEditor(entryId);
+          return;
+        }
+        const section = element.dataset["forgeContextSection"];
+        const key = element.dataset["forgeContextKey"];
+        if (
+          (section === "skill" || section === "tools" || section === "preferences") &&
+          typeof key === "string"
+        ) {
+          toggleSessionContextSelection(section, key);
+        }
+      });
+    });
+    root.querySelectorAll<HTMLElement>("[data-forge-run-override-toggle]").forEach((element) => {
+      element.addEventListener("click", () => {
+        const toggle = element.dataset["forgeRunOverrideToggle"];
+        if (toggle === "hotAir") {
+          const nextDraft = updateRunOverrideDraft((draft) => ({
+            ...draft,
+            tools: {
+              ...draft.tools,
+              hotAir: draft.tools.hotAir !== true,
+            },
+          }));
+          sendRunOverrideUpdate(nextDraft);
+          return;
+        }
+        if (toggle === "preAnalysis") {
+          const nextDraft = updateRunOverrideDraft((draft) => ({
+            ...draft,
+            enableRovoPreAnalysis: draft.enableRovoPreAnalysis !== true,
+          }));
+          sendRunOverrideUpdate(nextDraft);
+        }
+      });
+    });
+    root
+      .querySelector<HTMLElement>("[data-forge-action='toggle-run-condition-composer']")
+      ?.addEventListener("click", () => {
+        viewState.runConditionComposerOpen = !viewState.runConditionComposerOpen;
+        if (!viewState.runConditionComposerOpen) {
+          viewState.runConditionComposerValue = "";
+        }
+        bumpLocalUiVersion();
+        render();
       });
     root
-      .querySelector<HTMLElement>("[data-forge-action='save-run-override']")
+      .querySelector<HTMLElement>("[data-forge-action='cancel-run-condition']")
       ?.addEventListener("click", () => {
-        issueCommand("ForgeRoomUpdateRunOverride", () =>
-          requestRuntime.updateRunOverride({
-            notes: readInputValue("forge-run-override-notes"),
-            enableRovoPreAnalysis: readCheckboxValue("forge-run-override-pre-analysis"),
-            tools: {
-              hotAir: readCheckboxValue("forge-run-override-hot-air"),
-            },
-          })
+        viewState.runConditionComposerOpen = false;
+        viewState.runConditionComposerValue = "";
+        bumpLocalUiVersion();
+        render();
+      });
+    root
+      .querySelector<HTMLElement>("[data-forge-action='commit-run-condition']")
+      ?.addEventListener("click", () => {
+        const nextCondition = viewState.runConditionComposerValue.trim();
+        if (!nextCondition) {
+          return;
+        }
+        const currentConditions = notesToConditions(currentRunOverrideDraft().notes).filter(
+          (entry) => entry !== nextCondition
         );
+        const nextDraft = updateRunOverrideDraft((draft) => ({
+          ...draft,
+          notes: [...currentConditions, nextCondition].join("\n"),
+        }));
+        viewState.runConditionComposerOpen = false;
+        viewState.runConditionComposerValue = "";
+        sendRunOverrideUpdate(nextDraft);
+      });
+    root.querySelectorAll<HTMLElement>("[data-forge-remove-run-condition]").forEach((element) => {
+      element.addEventListener("click", () => {
+        const condition = element.dataset["forgeRemoveRunCondition"];
+        if (!condition) {
+          return;
+        }
+        const nextDraft = updateRunOverrideDraft((draft) => ({
+          ...draft,
+          notes: notesToConditions(draft.notes)
+            .filter((entry) => entry !== condition)
+            .join("\n"),
+        }));
+        sendRunOverrideUpdate(nextDraft);
+      });
+    });
+    root
+      .querySelector<HTMLElement>("#forge-run-override-condition-input")
+      ?.addEventListener("input", () => {
+        viewState.runConditionComposerValue =
+          (
+            documentRef.getElementById(
+              "forge-run-override-condition-input"
+            ) as HTMLInputElement | null
+          )?.value ?? "";
       });
     root
       .querySelector<HTMLElement>("[data-forge-action='run-preflight']")
@@ -909,12 +1658,13 @@ export function createForgeRoomUiRuntime() {
     root
       .querySelector<HTMLElement>("[data-forge-action='generate-draft']")
       ?.addEventListener("click", () => {
+        const goalDraft = currentGoalDraft();
         issueCommand("ForgeRoomGenerateDraft", () =>
           requestRuntime.generateDraft({
-            summary: readInputValue("forge-goal-summary"),
-            brief: readInputValue("forge-goal-brief"),
-            constraints: parseConstraintLines(readInputValue("forge-goal-constraints")),
-            targetRoomId: readInputValue("forge-goal-target-room"),
+            summary: goalDraft.summary,
+            brief: goalDraft.brief,
+            constraints: [...goalDraft.constraints],
+            targetRoomId: goalDraft.targetRoomId,
           })
         );
       });
@@ -1139,6 +1889,10 @@ export function createForgeRoomUiRuntime() {
       const metaSource =
         forgeStatePayload["meta"] !== undefined ? forgeStatePayload["meta"] : payload["meta"];
       state.snapshot = sanitizeForgeRoomSnapshot(snapshotSource);
+      syncGoalDraftFromSnapshot();
+      syncOperatorProfileDraftFromSnapshot();
+      syncRunOverrideDraftFromSnapshot();
+      viewState.sessionContextDraft = null;
       const meta = toRecord(metaSource);
       state.meta = {
         roleCatalog: toRecord(meta["roleCatalog"]),
@@ -1149,6 +1903,18 @@ export function createForgeRoomUiRuntime() {
     }
 
     const result = toRecord(payload.result);
+    if (payload.command === "ForgeRoomUpdateSessionContext" && result["success"] !== true) {
+      viewState.sessionContextDraft = null;
+    }
+    if (payload.command === "ForgeRoomUpdateGoal" && result["success"] === true) {
+      viewState.goalDraftDirty = false;
+    }
+    if (payload.command === "ForgeRoomUpdateOperatorProfile" && result["success"] === true) {
+      viewState.operatorProfileDraftDirty = false;
+    }
+    if (payload.command === "ForgeRoomUpdateRunOverride" && result["success"] === true) {
+      viewState.runOverrideDraftDirty = false;
+    }
     state.pendingCommand = null;
     state.lastCommandResult = {
       command:

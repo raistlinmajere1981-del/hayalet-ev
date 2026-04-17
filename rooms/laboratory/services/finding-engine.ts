@@ -23,7 +23,11 @@ function createDerivedFinding(
 
 function countMatchingEvents(events: LabEventFeedItem[], matcher: RegExp) {
   return events.filter(function (event) {
-    return matcher.test(event.message) || matcher.test(event.detail || "") || matcher.test(event.rawLine || "");
+    return (
+      matcher.test(event.message) ||
+      matcher.test(event.detail || "") ||
+      matcher.test(event.rawLine || "")
+    );
   }).length;
 }
 

@@ -1,6 +1,7 @@
 import {
   createDefaultForgeOperatorProfile,
-  createEmptyForgePreflightState
+  createEmptyForgePreflightState,
+  createEmptyForgeSessionContextSelection
 } from "../types/index.js";
 export function createEmptyForgeRoomSnapshot() {
   return {
@@ -26,6 +27,7 @@ export function createEmptyForgeRoomSnapshot() {
     responses: [],
     operatorProfile: createDefaultForgeOperatorProfile(),
     preflight: createEmptyForgePreflightState(),
+    sessionContextSelection: createEmptyForgeSessionContextSelection(),
     runOverride: null,
     runSignature: null,
     conflicts: [],

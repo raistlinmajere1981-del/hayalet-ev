@@ -115,7 +115,10 @@ test("laboratory UI shell evaluates under minimal runtime stubs", async () => {
       `${pathToFileURL(resolve(buildArtifact.rootDir, "ui/index.js")).href}?smoke=${Date.now()}`
     );
 
-    assert.match(environment.runtimeRoot.innerHTML, /Loading Laboratory|Laboratuvar Yukleniyor/);
+    assert.match(
+      environment.runtimeRoot.innerHTML,
+      /Loading Laboratory|Laboratuvar Yukleniyor|Laboratuvar Yükleniyor/
+    );
     assert.deepEqual(environment.readyPayload(), {
       feature: "media-analysis",
       room: "laboratory",
@@ -153,6 +156,8 @@ test("laboratory dense shell keeps event and artifact rendering windowed", () =>
   const selectorsSource = readFileSync("rooms/laboratory/runtime/lab-selectors.ts", "utf8");
   const eventFeedSource = readFileSync("rooms/laboratory/ui/components/event-feed.ts", "utf8");
   const processStageSource = readFileSync("rooms/laboratory/ui/stages/process-stage.ts", "utf8");
+  const editStageSource = readFileSync("rooms/laboratory/ui/stages/edit-stage.ts", "utf8");
+  const profileStageSource = readFileSync("rooms/laboratory/ui/stages/profile-stage.ts", "utf8");
 
   assert.match(selectorsSource, /state\.ui\.eventFeedCursor/);
   assert.match(selectorsSource, /state\.ui\.artifactRenderCount/);
@@ -162,6 +167,13 @@ test("laboratory dense shell keeps event and artifact rendering windowed", () =>
   assert.match(processStageSource, /function getProcessFindingHint/);
   assert.match(processStageSource, /deps\.primaryDetail \|\| "Run hazır olduğunda gerçek runtime çıktısı burada görünür\."/);
   assert.doesNotMatch(processStageSource, /Henüz işlenmiş bulgu yok\./);
+  assert.match(
+    editStageSource,
+    /const advancedControlsVisible = getEditAdvancedControlsVisible\(editMode, drafts\.advancedOpen\)/
+  );
+  assert.match(editStageSource, /Gelişmiş görünümü açarak handoff ve output seçimlerini düzenleyin\./);
+  assert.match(profileStageSource, /const advancedControlsVisible = getProfileAdvancedControlsVisible\(mode\)/);
+  assert.match(profileStageSource, /Beginner görünümünde preset özeti görünür\./);
 });
 
 test("laboratory runtime exposes typed lifecycle and explicit block reasons", () => {

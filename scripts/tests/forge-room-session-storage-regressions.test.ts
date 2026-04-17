@@ -1,14 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  access,
-  mkdtemp,
-  mkdir,
-  readFile,
-  readdir,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -85,6 +77,8 @@ test("forge-room session storage keeps sessions under the reserved room-local se
       createdAt: "2026-04-15T00:00:00.000Z",
       updatedAt: "2026-04-15T00:00:00.000Z",
     };
+    session.sessionContextSelection.skill.measurement = true;
+    session.sessionContextSelection.tools.multimeter = true;
     await storage.saveSession(runtimePaths, session);
     await storage.appendEvent(runtimePaths, session.id, {
       id: "forge-event-1",
@@ -102,6 +96,8 @@ test("forge-room session storage keeps sessions under the reserved room-local se
     const sessionPath = join(rootDir, "sessions", session.id, "session.json");
 
     assert.equal(loaded?.goal?.summary, "Repair Room integration");
+    assert.equal(loaded?.sessionContextSelection.skill.measurement, true);
+    assert.equal(loaded?.sessionContextSelection.tools.multimeter, true);
     assert.equal(latest?.id, session.id);
     assert.equal(listed.length, 1);
     await access(sessionPath);

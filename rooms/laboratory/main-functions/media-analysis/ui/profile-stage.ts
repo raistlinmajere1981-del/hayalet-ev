@@ -685,13 +685,6 @@ export function createMediaAnalysisProfileStage(deps: MediaAnalysisProfileStageD
           <button
             class="lab-button lab-button--ghost"
             type="button"
-            data-action="open-settings"
-          >
-            ${escapeHtml(text(["workbench", "dependencyAction"]))}
-          </button>
-          <button
-            class="lab-button lab-button--ghost"
-            type="button"
             data-action="profile-cancel"
             ${runningJob ? "" : "disabled"}
           >

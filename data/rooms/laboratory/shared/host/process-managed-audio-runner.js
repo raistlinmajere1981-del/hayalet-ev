@@ -35,14 +35,12 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps) {
       }
       updateProcessModule(processRecord, moduleId, {
         status: "running",
-        percent: 30,
         startedAt: (/* @__PURE__ */ new Date()).toISOString()
       });
       const moduleRunner = getAudioAnalysisModuleRunner(moduleId);
       if (typeof moduleRunner !== "function") {
         updateProcessModule(processRecord, moduleId, {
           status: "skipped",
-          percent: 100,
           completedAt: (/* @__PURE__ */ new Date()).toISOString(),
           summary: "A generic audio runner is not registered for this module yet."
         });
@@ -74,7 +72,6 @@ export function createLaboratoryManagedAudioRunnerRuntime(deps) {
       });
       updateProcessModule(processRecord, moduleId, {
         status: asNonEmptyString(moduleResult.status) || "ready",
-        percent: 100,
         completedAt: (/* @__PURE__ */ new Date()).toISOString(),
         summary: asNonEmptyString(moduleResult.summary) || "",
         artifactIds: moduleArtifacts.map(function(artifact) {

@@ -1,3 +1,4 @@
+import { buildForgeSelectedOperatorProfile } from "./forge-preflight-metadata.js";
 function normalizeTools(value) {
   return JSON.stringify(
     Object.keys(value).sort().map((key) => [key, value[key] === true])
@@ -10,6 +11,13 @@ function normalizeProfileFingerprint(profile) {
     tools: profile.tools
   });
 }
+function normalizeSelectionFingerprint(selection) {
+  return JSON.stringify({
+    preferences: selection.preferences,
+    skill: selection.skill,
+    tools: selection.tools
+  });
+}
 function normalizeRunOverrideFingerprint(runOverride) {
   return JSON.stringify({
     enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
@@ -18,12 +26,19 @@ function normalizeRunOverrideFingerprint(runOverride) {
   });
 }
 export function readForgePreflightInvalidationReason(params) {
-  const { goal, operatorProfile, preflight, runOverride } = params;
+  const { goal, operatorProfile, preflight, runOverride, sessionContextSelection } = params;
   if (preflight.bundle === null) {
     return preflight.status === "idle" ? "Preflight has not been run for this session yet." : preflight.staleReason ?? "Preflight data is unavailable.";
   }
-  if (preflight.bundle.operatorProfile && normalizeProfileFingerprint(preflight.bundle.operatorProfile) !== normalizeProfileFingerprint(operatorProfile)) {
-    return "Operator profile changed after the last preflight run.";
+  if (normalizeSelectionFingerprint(preflight.bundle.sessionContextSelection) !== normalizeSelectionFingerprint(sessionContextSelection)) {
+    return "Session context changed after the last preflight run.";
+  }
+  const selectedOperatorProfile = buildForgeSelectedOperatorProfile({
+    operatorProfile,
+    sessionContextSelection
+  });
+  if (normalizeProfileFingerprint(preflight.bundle.selectedOperatorProfile) !== normalizeProfileFingerprint(selectedOperatorProfile)) {
+    return "Selected operator context changed after the last preflight run.";
   }
   if (normalizeRunOverrideFingerprint(preflight.bundle.runOverride) !== normalizeRunOverrideFingerprint(runOverride)) {
     return "Run override changed after the last preflight run.";

@@ -1,8 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  createLabFeatureMeta,
-} from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, createLabFeatureMeta } from "../models/lab-types.js";
 import type {
   LabFeatureId,
   LabPreflightResult,
@@ -204,9 +200,13 @@ export function getFeatureCompatibility(state: LabStoreState) {
   const featureId = getCurrentFeatureId(state);
   const sourceReady = state.source !== null && state.sourceProbeStatus === "completed";
   const availableModules = Array.isArray(state.workbench["availableModuleIds"])
-    ? (state.workbench["availableModuleIds"] as unknown[]).filter((entry): entry is string => typeof entry === "string")
+    ? (state.workbench["availableModuleIds"] as unknown[]).filter(
+        (entry): entry is string => typeof entry === "string"
+      )
     : Array.isArray(state.workbench["selectedModuleIds"])
-      ? (state.workbench["selectedModuleIds"] as unknown[]).filter((entry): entry is string => typeof entry === "string")
+      ? (state.workbench["selectedModuleIds"] as unknown[]).filter(
+          (entry): entry is string => typeof entry === "string"
+        )
       : [featureId];
   const sourceKind = getSourceKind(state);
   const sourceMode = getSourceMode(state);

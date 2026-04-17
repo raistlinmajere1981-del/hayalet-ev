@@ -71,8 +71,10 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
 
     return {
       id: runId,
-      state: ((asNonEmptyString(processRecord["status"]) || "idle") as LabRun["state"]),
-      startedAt: Date.parse(asNonEmptyString(processRecord["startedAt"]) || new Date().toISOString()),
+      state: (asNonEmptyString(processRecord["status"]) || "idle") as LabRun["state"],
+      startedAt: Date.parse(
+        asNonEmptyString(processRecord["startedAt"]) || new Date().toISOString()
+      ),
       ...(asNonEmptyString(processRecord["completedAt"])
         ? { endedAt: Date.parse(asNonEmptyString(processRecord["completedAt"]) || "") }
         : {}),
@@ -132,7 +134,10 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
       return "Analiz hala suruyor; rapor tamamlaninca dolacak.";
     }
     if (status === "failed") {
-      return asNonEmptyString(processRecord["error"]) || "Analiz hata ile tamamlandigi icin rapor bos kaldi.";
+      return (
+        asNonEmptyString(processRecord["error"]) ||
+        "Analiz hata ile tamamlandigi icin rapor bos kaldi."
+      );
     }
     if (status === "cancelled") {
       return "Analiz iptal edildigi icin rapor bos kaldi.";
@@ -181,7 +186,10 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
           ...createEmptyFeatureReportRecord(featureId),
           status: processRecord.status === "running" ? "staged" : "idle",
           warnings: processRecord["warnings"] || [],
-          emptyReason: getProcessBackedEmptyReason(processRecord, "Önce process aşaması tamamlanmalı."),
+          emptyReason: getProcessBackedEmptyReason(
+            processRecord,
+            "Önce process aşaması tamamlanmalı."
+          ),
         },
         featureId
       ) as unknown as LaboratoryComposedFeatureReportRecord;
@@ -203,10 +211,7 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
     }
 
     const currentReportExports = (
-      getFeatureReportRecord(
-        project,
-        featureId
-      ) as unknown as LaboratoryComposedFeatureReportRecord
+      getFeatureReportRecord(project, featureId) as unknown as LaboratoryComposedFeatureReportRecord
     )["exports"];
 
     return normalizeFeatureReportRecord(
@@ -254,7 +259,9 @@ export function createLaboratoryFeatureReportRuntime(deps: LaboratoryFeatureRepo
         ...(Array.isArray(currentReportExports) ? { exports: currentReportExports } : {}),
         error: null,
         emptyReason:
-          findings.length === 0 && Array.isArray(processRecord["artifacts"]) && processRecord["artifacts"].length === 0
+          findings.length === 0 &&
+          Array.isArray(processRecord["artifacts"]) &&
+          processRecord["artifacts"].length === 0
             ? getProcessBackedEmptyReason(
                 processRecord,
                 "Çalışma tamamlandı ancak raporlayacak belirgin bulgu oluşmadı."

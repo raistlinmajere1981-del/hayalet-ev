@@ -13,6 +13,7 @@ export function createForgeRuntimeSnapshot(state, sessionList, exportSummary) {
     operatorProfile: state.operatorProfile,
     preflight: state.preflight,
     responses: state.responses,
+    sessionContextSelection: state.sessionContextSelection,
     runOverride: state.runOverride,
     runSignature: state.runSignature,
     conflicts: state.conflicts,

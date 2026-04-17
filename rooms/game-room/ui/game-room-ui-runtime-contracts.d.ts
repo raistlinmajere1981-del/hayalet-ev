@@ -93,6 +93,10 @@ interface GameRoomUiContextState extends GameRoomUnknownRecord {
   room: {
     name: string;
   };
+  user?: {
+    nickname?: unknown;
+    avatar?: unknown;
+  };
   slots?: Record<string, GameRoomFateKnotsSlotRecord | GameRoomUnknownRecord>;
 }
 
@@ -803,7 +807,11 @@ interface GameRoomFateKnotsSelectionBundle {
 }
 
 interface GameRoomFateKnotsSlotRecord extends GameRoomUnknownRecord {
+  label?: string;
   nickname?: string;
+  avatar?: string | null;
+  providerId?: string | null;
+  accountId?: string | null;
   remoteUserId?: string;
   connected?: boolean;
 }

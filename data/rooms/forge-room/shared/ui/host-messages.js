@@ -42,6 +42,7 @@ export function sanitizeForgeRoomSnapshot(payload) {
     operatorProfile: source["operatorProfile"] !== null && typeof source["operatorProfile"] === "object" && Array.isArray(source["operatorProfile"]) === false ? source["operatorProfile"] : fallback.operatorProfile,
     preflight: source["preflight"] !== null && typeof source["preflight"] === "object" && Array.isArray(source["preflight"]) === false ? source["preflight"] : fallback.preflight,
     responses: Array.isArray(source["responses"]) ? source["responses"] : fallback.responses,
+    sessionContextSelection: source["sessionContextSelection"] !== null && typeof source["sessionContextSelection"] === "object" && Array.isArray(source["sessionContextSelection"]) === false ? source["sessionContextSelection"] : fallback.sessionContextSelection,
     runOverride: source["runOverride"] !== null && typeof source["runOverride"] === "object" && Array.isArray(source["runOverride"]) === false ? source["runOverride"] : fallback.runOverride,
     runSignature: source["runSignature"] !== null && typeof source["runSignature"] === "object" && Array.isArray(source["runSignature"]) === false ? source["runSignature"] : fallback.runSignature,
     conflicts: Array.isArray(source["conflicts"]) ? source["conflicts"] : fallback.conflicts,

@@ -76,8 +76,7 @@ export function buildJobFeedEvent(payload: unknown): LabEventFeedItem | null {
 
   const detail = asNonEmptyString(record["message"]);
   const progress = clampPercent(record["percent"]);
-  const progressLabel =
-    progress !== null && stage !== "completed" ? ` • ${String(progress)}%` : "";
+  const progressLabel = progress !== null && stage !== "completed" ? ` • ${String(progress)}%` : "";
   const baseMessage = `${getActionLabel(action)} • ${stage || "queued"}${progressLabel}`;
 
   return {
@@ -109,7 +108,9 @@ export function buildRequestResultFeedEvent(payload: unknown): LabEventFeedItem 
     id: createLabEventId("request"),
     kind: "request-result",
     severity: success ? "success" : "error",
-    message: success ? `${getActionLabel(action)} tamamlandi` : `${getActionLabel(action)} hata verdi`,
+    message: success
+      ? `${getActionLabel(action)} tamamlandi`
+      : `${getActionLabel(action)} hata verdi`,
     detail: error,
     timestamp: Date.now(),
     source: "host",

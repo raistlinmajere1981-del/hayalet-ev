@@ -42,11 +42,18 @@ export function createLaboratoryFeatureReportRuntime(deps) {
     return {
       id: runId,
       state: asNonEmptyString(processRecord["status"]) || "idle",
-      startedAt: Date.parse(asNonEmptyString(processRecord["startedAt"]) || (/* @__PURE__ */ new Date()).toISOString()),
+      startedAt: Date.parse(
+        asNonEmptyString(processRecord["startedAt"]) || (/* @__PURE__ */ new Date()).toISOString()
+      ),
       ...asNonEmptyString(processRecord["completedAt"]) ? { endedAt: Date.parse(asNonEmptyString(processRecord["completedAt"]) || "") } : {},
       modules: moduleMap,
       moduleOrder,
-      events: [],
+      events: Array.isArray(processRecord["events"]) ? processRecord["events"].map(function(entry) {
+        return deps.toRecord(entry);
+      }) : [],
+      rawLog: Array.isArray(processRecord["rawLog"]) ? processRecord["rawLog"].map(function(entry) {
+        return deps.toRecord(entry);
+      }) : [],
       artifacts: Array.isArray(processRecord["artifacts"]) ? processRecord["artifacts"].map(function(entry) {
         return deps.toRecord(entry);
       }) : [],
@@ -58,7 +65,8 @@ export function createLaboratoryFeatureReportRuntime(deps) {
       warnings: Array.isArray(processRecord["warnings"]) ? processRecord["warnings"].map(String) : [],
       error: asNonEmptyString(processRecord["error"]),
       targetLabel: asNonEmptyString(deps.toRecord(processRecord["targetSummary"])["label"]),
-      progress: typeof processRecord["percent"] === "number" ? processRecord["percent"] : null
+      progress: typeof processRecord["percent"] === "number" ? processRecord["percent"] : null,
+      emptyReason: asNonEmptyString(processRecord["emptyReason"])
     };
   }
   function attachDualReports(featureId, processRecord, reportRecord) {
@@ -69,6 +77,23 @@ export function createLaboratoryFeatureReportRuntime(deps) {
       userReport: buildUserReport(run, reportRecord),
       aiReport: buildAiReport(run, reportRecord)
     };
+  }
+  function getProcessBackedEmptyReason(processRecord, fallback) {
+    const status = asNonEmptyString(processRecord["status"]) || "idle";
+    const explicitReason = asNonEmptyString(processRecord["emptyReason"]);
+    if (explicitReason !== null) {
+      return explicitReason;
+    }
+    if (status === "running" || status === "queued") {
+      return "Analiz hala suruyor; rapor tamamlaninca dolacak.";
+    }
+    if (status === "failed") {
+      return asNonEmptyString(processRecord["error"]) || "Analiz hata ile tamamlandigi icin rapor bos kaldi.";
+    }
+    if (status === "cancelled") {
+      return "Analiz iptal edildigi icin rapor bos kaldi.";
+    }
+    return fallback;
   }
   function composeFeatureReport(runtime, project, featureId) {
     if (featureId === deps.audioFeatureId) {
@@ -105,7 +130,11 @@ export function createLaboratoryFeatureReportRuntime(deps) {
         {
           ...createEmptyFeatureReportRecord(featureId),
           status: processRecord.status === "running" ? "staged" : "idle",
-          warnings: processRecord["warnings"] || []
+          warnings: processRecord["warnings"] || [],
+          emptyReason: getProcessBackedEmptyReason(
+            processRecord,
+            "Önce process aşaması tamamlanmalı."
+          )
         },
         featureId
       );
@@ -122,10 +151,7 @@ export function createLaboratoryFeatureReportRuntime(deps) {
     } else {
       caveats.push("Planned audio modules remain visible but do not pretend to be implemented.");
     }
-    const currentReportExports = getFeatureReportRecord(
-      project,
-      featureId
-    )["exports"];
+    const currentReportExports = getFeatureReportRecord(project, featureId)["exports"];
     return normalizeFeatureReportRecord(
       attachDualReports(featureId, processRecord, {
         featureId,
@@ -167,7 +193,11 @@ export function createLaboratoryFeatureReportRuntime(deps) {
         caveats,
         warnings: Array.isArray(processRecord["warnings"]) ? processRecord["warnings"] : [],
         ...Array.isArray(currentReportExports) ? { exports: currentReportExports } : {},
-        error: null
+        error: null,
+        emptyReason: findings.length === 0 && Array.isArray(processRecord["artifacts"]) && processRecord["artifacts"].length === 0 ? getProcessBackedEmptyReason(
+          processRecord,
+          "Çalışma tamamlandı ancak raporlayacak belirgin bulgu oluşmadı."
+        ) : null
       }),
       featureId
     );

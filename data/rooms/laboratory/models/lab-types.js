@@ -4,19 +4,19 @@ export const LAB_FEATURES = [
     id: "media-analysis",
     label: "Medya Analizi",
     shortLabel: "Medya",
-    description: "Kaynak hazirlama, preview, profil ve final is akisi."
+    description: "Kaynak hazırlama, önizleme, profil ve final iş akışı."
   },
   {
     id: "audio-analysis",
     label: "Ses Analizi",
     shortLabel: "Ses",
-    description: "Ses odakli analiz modulleri ve cikti takibi."
+    description: "Ses odaklı analiz modülleri ve çıktı takibi."
   },
   {
     id: "subtitle-analysis",
     label: "Altyazi Analizi",
     shortLabel: "Altyazi",
-    description: "Altyazi girisi, secim, analiz ve rapor akisi."
+    description: "Altyazı girişi, seçim, analiz ve rapor akışı."
   }
 ];
 export function createLabFeatureMeta(featureId) {
@@ -137,21 +137,21 @@ export function formatStatusLabel(value) {
   const status = asNonEmptyString(value) || "idle";
   switch (status) {
     case "idle":
-      return "Hazir";
+      return "Hazır";
     case "queued":
-      return "Sirada";
+      return "Sırada";
     case "running":
-      return "Calisiyor";
+      return "Çalışıyor";
     case "ready":
-      return "Hazir";
+      return "Hazır";
     case "completed":
-      return "Tamamlandi";
+      return "Tamamlandı";
     case "failed":
       return "Hata";
     case "cancelled":
-      return "Iptal";
+      return "İptal";
     case "skipped":
-      return "Atlandi";
+      return "Atlandı";
     case "stale":
       return "Yenile";
     default:

@@ -1,4 +1,5 @@
-const LAB_PERSISTENCE_KEY = "hayalet-ev:laboratory-refactor:v2";
+const LAB_PERSISTENCE_KEY = "hayalet-ev:laboratory-refactor:v3";
+const LAB_LEGACY_PERSISTENCE_KEYS = ["hayalet-ev:laboratory-refactor:v2"];
 function getStorage(windowRef) {
   try {
     return windowRef?.localStorage ?? null;
@@ -12,11 +13,20 @@ export function loadLabPersistedState(windowRef) {
     return null;
   }
   try {
-    const rawValue = storage.getItem(LAB_PERSISTENCE_KEY);
-    if (!rawValue) {
-      return null;
+    const candidateKeys = [LAB_PERSISTENCE_KEY].concat(LAB_LEGACY_PERSISTENCE_KEYS);
+    for (const key of candidateKeys) {
+      const rawValue = storage.getItem(key);
+      if (!rawValue) {
+        continue;
+      }
+      const parsed = JSON.parse(rawValue);
+      const migrated = migratePersistedState(parsed);
+      if (key !== LAB_PERSISTENCE_KEY) {
+        storage.setItem(LAB_PERSISTENCE_KEY, JSON.stringify(migrated));
+      }
+      return migrated;
     }
-    return JSON.parse(rawValue);
+    return null;
   } catch {
     return null;
   }
@@ -30,4 +40,11 @@ export function saveLabPersistedState(windowRef, state) {
     storage.setItem(LAB_PERSISTENCE_KEY, JSON.stringify(state));
   } catch {
   }
+}
+function migratePersistedState(persisted) {
+  return {
+    ...persisted,
+    schemaVersion: 3,
+    activityFeed: Array.isArray(persisted.activityFeed) ? persisted.activityFeed : []
+  };
 }

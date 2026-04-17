@@ -1,55 +1,20 @@
 import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
-import type { SlotStateInfo } from "../../../types/assistant.js";
-import { AppState } from "../../modules/app-state.js";
 import { AppI18n } from "../../modules/i18n/index.js";
-import { SlotController } from "../../modules/slot-controller.js";
+import {
+  buildRoomSlotPresenceSnapshot,
+  buildRoomUserPresenceSnapshot,
+  createRoomPresenceSnapshot,
+  type RoomPresenceSlotSnapshot,
+  type RoomPresenceSlotId,
+} from "../../modules/rooms/room-presence.js";
 import { getAppUiScale, getSceneUiScale } from "../../ui/theme/ui-scale-state.js";
 
 export type RoomHostMessage = Record<string, unknown>;
 
-type RoomSlotId = "ai1" | "ai2" | "us1";
+type RoomSlotId = RoomPresenceSlotId;
 
-export function buildRoomSlotContext(slotId: RoomSlotId): Record<string, unknown> {
-  if (slotId === "us1") {
-    const identity = AppState.getUs1Identity();
-    const connected = AppState.isUs1Connected();
-
-    return {
-      slotId,
-      label: slotId.toUpperCase(),
-      nickname: AppState.getNickname(slotId),
-      assigned: identity !== null,
-      connected,
-      ready: identity !== null && connected,
-      state: connected ? "connected" : identity !== null ? "assigned" : "empty",
-      urlExcluded: false,
-      providerId: "us1",
-      accountId: AppState.getUs1ArchiveAccountId(),
-      remoteUserId: identity?.remoteUserId ?? null,
-    };
-  }
-
-  const slotState = SlotController.getState(slotId) as SlotStateInfo | null;
-  const account = AppState.getAccountForSlot(slotId);
-  const connected = slotState?.state === "connected";
-  const ready =
-    slotState !== null &&
-    slotState.state === "connected" &&
-    slotState.urlExcluded !== true &&
-    account !== null;
-
-  return {
-    slotId,
-    label: slotId.toUpperCase(),
-    nickname: AppState.getNickname(slotId),
-    assigned: account !== null,
-    connected,
-    ready,
-    state: slotState?.state ?? "empty",
-    urlExcluded: slotState?.urlExcluded === true,
-    providerId: slotState?.providerId ?? null,
-    accountId: account?.id ?? slotState?.accountId ?? null,
-  };
+export function buildRoomSlotContext(slotId: RoomSlotId): RoomPresenceSlotSnapshot {
+  return buildRoomSlotPresenceSnapshot(slotId);
 }
 
 export function buildRoomRuntimeContextPayload(options: {
@@ -60,6 +25,13 @@ export function buildRoomRuntimeContextPayload(options: {
   sceneFeatureOpen: boolean;
 }): RoomHostMessage {
   const { activeFeature, reason, room, sceneFeature, sceneFeatureOpen } = options;
+  const user = buildRoomUserPresenceSnapshot();
+  const slots = {
+    ai1: buildRoomSlotContext("ai1"),
+    ai2: buildRoomSlotContext("ai2"),
+    us1: buildRoomSlotContext("us1"),
+  };
+  const presence = createRoomPresenceSnapshot(user, slots);
 
   return {
     type: "host-context",
@@ -74,14 +46,9 @@ export function buildRoomRuntimeContextPayload(options: {
       hostEntryPath: room.hostEntryPath,
       defaultFeatureId: room.defaultFeatureId,
     },
-    user: {
-      nickname: AppState.getNickname("user"),
-    },
-    slots: {
-      ai1: buildRoomSlotContext("ai1"),
-      ai2: buildRoomSlotContext("ai2"),
-      us1: buildRoomSlotContext("us1"),
-    },
+    user,
+    slots,
+    presence,
     features: room.features.map((feature) => ({
       id: feature.id,
       name: feature.name,

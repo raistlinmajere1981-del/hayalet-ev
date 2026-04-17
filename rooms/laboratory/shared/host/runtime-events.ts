@@ -101,7 +101,9 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
           : `lab-event-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       kind: typeof payload["kind"] === "string" ? payload["kind"] : "activity",
       severity:
-        typeof payload["severity"] === "string" ? payload["severity"] : getEventSeverity(asNonEmptyString(payload["stage"])),
+        typeof payload["severity"] === "string"
+          ? payload["severity"]
+          : getEventSeverity(asNonEmptyString(payload["stage"])),
       message:
         typeof payload["message"] === "string"
           ? payload["message"]
@@ -143,7 +145,8 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
       stage,
       moduleId: asNonEmptyString(payload["moduleId"]),
       scope:
-        asNonEmptyString(payload["featureStage"]) === "process" || String(action || "").includes("process")
+        asNonEmptyString(payload["featureStage"]) === "process" ||
+        String(action || "").includes("process")
           ? "run"
           : "global",
     };
@@ -155,7 +158,9 @@ export function createLaboratoryRuntimeEvents(deps: LaboratoryRuntimeEventsDeps)
     return {
       kind: "request-result",
       severity: success ? "success" : "error",
-      message: success ? `${getActionLabel(action)} tamamlandı` : `${getActionLabel(action)} hata verdi`,
+      message: success
+        ? `${getActionLabel(action)} tamamlandı`
+        : `${getActionLabel(action)} hata verdi`,
       detail: asNonEmptyString(payload["error"]) || asNonEmptyString(payload["message"]),
       action,
       stage: success ? "completed" : "failed",

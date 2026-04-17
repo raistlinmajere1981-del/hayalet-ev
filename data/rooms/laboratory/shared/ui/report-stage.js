@@ -92,6 +92,19 @@ export function createLaboratoryReportStageUi(deps) {
   function toString(value, fallback = "") {
     return typeof value === "string" ? value : fallback;
   }
+  function getReportEmptyReason(reportRecord) {
+    const explicitReason = toString(reportRecord["emptyReason"]).trim();
+    if (explicitReason !== "") {
+      return explicitReason;
+    }
+    const aiReport = toRecord(reportRecord["aiReport"]);
+    const aiManifest = toRecord(aiReport["manifest"]);
+    const manifestReason = toString(aiManifest["emptyReason"]).trim();
+    if (manifestReason !== "") {
+      return manifestReason;
+    }
+    return null;
+  }
   function getExportFileLabel(entry) {
     const fileName = toString(entry.fileName).trim();
     if (fileName !== "") {
@@ -270,6 +283,7 @@ export function createLaboratoryReportStageUi(deps) {
     const exportsList = getWorkbenchExports();
     const previewUrl = typeof asset.previewUrl === "string" && asset.previewUrl.trim() !== "" ? asset.previewUrl.trim() : null;
     const heroClass = previewUrl ? "lab-panel lab-report-hero" : "lab-panel lab-report-hero lab-report-hero--text-only";
+    const emptyReason = getReportEmptyReason(reportRecord) || featureText(["report", "emptyBody"]);
     return `
       <div class="lab-stage-stack">
           ${renderStageIntro("report")}
@@ -288,14 +302,14 @@ export function createLaboratoryReportStageUi(deps) {
             </div>
           </section>
           <section class="lab-signal-grid">
-            ${summaryCards.length > 0 ? summaryCards.map(function(card) {
+              ${summaryCards.length > 0 ? summaryCards.map(function(card) {
       const value = typeof card.value === "string" || typeof card.value === "number" ? String(card.value) : "--";
       return laboratoryReportStageSupportRuntime.renderSignalCard(
         value,
         laboratoryReportStageSupportRuntime.getReportSignalCardLabel(card)
       );
-    }).join("") : `<p class="lab-panel__hint">${escapeHtml(featureText(["report", "emptyFindings"]))}</p>`}
-          </section>
+    }).join("") : `<p class="lab-panel__hint">${escapeHtml(emptyReason)}</p>`}
+            </section>
           ${renderUnifiedModuleEvidencePanel()}
           <section class="lab-panel">
             <div class="lab-panel__header">
@@ -304,7 +318,7 @@ export function createLaboratoryReportStageUi(deps) {
             <div class="lab-findings">
               ${findings.length > 0 ? findings.map(function(finding) {
       return renderReportFinding(finding);
-    }).join("") : `<p class="lab-panel__hint">${escapeHtml(featureText(["report", "emptyBody"]))}</p>`}
+    }).join("") : `<p class="lab-panel__hint">${escapeHtml(emptyReason)}</p>`}
             </div>
           </section>
           ${renderUnifiedExportHistoryPanel(exportsList)}
@@ -319,7 +333,8 @@ export function createLaboratoryReportStageUi(deps) {
     const runningJob = toJobRecord(runningReportJob);
     const reportWarnings = toStringArray(reportRecord.warnings);
     const reportCaveats = toStringArray(reportRecord.caveats);
-    const summaryHint = reportCaveats[0] || reportWarnings[0] || (typeof runningJob.message === "string" && runningJob.message.trim() !== "" ? runningJob.message : "");
+    const emptyReason = getReportEmptyReason(reportRecord);
+    const summaryHint = emptyReason || reportCaveats[0] || reportWarnings[0] || (typeof runningJob.message === "string" && runningJob.message.trim() !== "" ? runningJob.message : "");
     return `
       <div class="lab-stage-stack lab-stage-stack--inspector">
         <section class="lab-panel">

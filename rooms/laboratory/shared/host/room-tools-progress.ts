@@ -106,7 +106,9 @@ export function createLaboratoryRoomToolsProgressRuntime(
     if (Object.keys(processRecord).length === 0) {
       return;
     }
-    const entries = Array.isArray(processRecord[key]) ? (processRecord[key] as unknown[]).map(toRecord) : [];
+    const entries = Array.isArray(processRecord[key])
+      ? (processRecord[key] as unknown[]).map(toRecord)
+      : [];
     entries.push(entry);
     processRecord[key] = trimFeed(entries, 260);
   }
@@ -248,12 +250,7 @@ export function createLaboratoryRoomToolsProgressRuntime(
         const job = runtime.jobs[nextJobPayload.jobId];
         const chunk = asNonEmptyString(payload.chunk);
         if (job && chunk) {
-          flushBufferedToolLines(
-            api,
-            job,
-            streamStage,
-            chunk
-          );
+          flushBufferedToolLines(api, job, streamStage, chunk);
         }
       }
 

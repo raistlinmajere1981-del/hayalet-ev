@@ -96,6 +96,7 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
     "src/js/pages/room-page/runtime-context-runtime.ts",
     "utf8"
   );
+  const roomPresenceSource = readFileSync("src/js/modules/rooms/room-presence.ts", "utf8");
   const runtimeEventsSource = readFileSync("src/js/pages/room-page/runtime-events.ts", "utf8");
   const runtimeSubscriptionsSource = readFileSync(
     "src/js/pages/room-page/runtime-subscriptions.ts",
@@ -126,6 +127,7 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   );
   assert.match(source, /private getSceneFeature\(\): InstalledRoomFeatureRecord \| null/);
   assert.match(source, /private bindRoomContextSubscriptions\(\): void/);
+  assert.match(source, /private shouldEnsureRuntimeHost\(page: HTMLElement\): boolean/);
   assert.match(source, /void this\.runtimeContextRuntime\.sync\("slot-state"\)/);
   assert.match(source, /ThemeManager\.onChange\(\(\) => \{/);
   assert.match(source, /SceneUiScaleManager\.onChange\(\(\) => \{/);
@@ -136,18 +138,39 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(source, /this\.runtimeContextRuntime\.sync\("scene-close"\)/);
   assert.match(source, /this\.runtimeContextRuntime\.sync\(reason\)/);
   assert.match(runtimeContextSource, /translations:\s*AppI18n\.getNamespaceCatalog\(\["rooms", room\.id\]\)/);
+  assert.match(runtimeContextSource, /buildRoomSlotPresenceSnapshot/);
+  assert.match(runtimeContextSource, /buildRoomUserPresenceSnapshot/);
+  assert.match(runtimeContextSource, /createRoomPresenceSnapshot/);
+  assert.match(
+    runtimeContextSource,
+    /export function buildRoomSlotContext\(slotId: RoomSlotId\): RoomPresenceSlotSnapshot/
+  );
+  assert.match(runtimeContextSource, /return buildRoomSlotPresenceSnapshot\(slotId\);/);
+  assert.match(runtimeContextSource, /const user = buildRoomUserPresenceSnapshot\(\);/);
   assert.match(runtimeContextSource, /ai1:\s*buildRoomSlotContext\("ai1"\)/);
   assert.match(runtimeContextSource, /ai2:\s*buildRoomSlotContext\("ai2"\)/);
   assert.match(runtimeContextSource, /us1:\s*buildRoomSlotContext\("us1"\)/);
-  assert.match(runtimeContextSource, /if \(slotId === "us1"\)/);
-  assert.match(runtimeContextSource, /accountId:\s*AppState\.getUs1ArchiveAccountId\(\)/);
-  assert.match(runtimeContextSource, /remoteUserId:\s*identity\?\.remoteUserId \?\? null/);
+  assert.match(runtimeContextSource, /const presence = createRoomPresenceSnapshot\(user, slots\);/);
+  assert.match(runtimeContextSource, /presence,/);
   assert.match(runtimeContextSource, /mode:\s*sceneFeatureOpen \? "scene-view" : "classic"/);
   assert.match(
     runtimeContextSource,
     /uiScale:\s*sceneFeatureOpen \? getSceneUiScale\(\) : getAppUiScale\(\)/
   );
   assert.match(runtimeContextSource, /sceneViewId:\s*sceneFeature\?\.scene\?\.view\.id \?\? null/);
+  assert.match(roomPresenceSource, /export const ROOM_PRESENCE_SLOT_IDS = \["ai1", "ai2", "us1"\] as const;/);
+  assert.match(
+    roomPresenceSource,
+    /export function buildRoomSlotPresenceSnapshot\(\s*slotId: RoomPresenceSlotId\s*\): RoomPresenceSlotSnapshot/
+  );
+  assert.match(roomPresenceSource, /if \(slotId === "us1"\)/);
+  assert.match(roomPresenceSource, /avatar:\s*readAvatar\(AppState\.getAvatar\(slotId\)\)/);
+  assert.match(roomPresenceSource, /accountId:\s*AppState\.getUs1ArchiveAccountId\(\)/);
+  assert.match(roomPresenceSource, /remoteUserId:\s*identity\?\.remoteUserId \?\? null/);
+  assert.match(roomPresenceSource, /export function buildRoomPresenceSnapshot\(\): RoomPresenceSnapshot/);
+  assert.match(roomPresenceSource, /schemaVersion:\s*1,/);
+  assert.match(roomPresenceSource, /SlotEvent\.DISCONNECT_COMPLETE/);
+  assert.match(roomPresenceSource, /subscriptions\.push\(AppState\.subscribe\(onPresenceChange\)\);/);
   assert.match(source, /\.\/room-page\/page-shell-runtime\.js/);
   assert.match(source, /\.\/room-page\/page-dom\.js/);
   assert.match(source, /\.\/room-page\/page-state\.js/);
@@ -260,8 +283,15 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(runtimeBootstrapSource, /sendHostContext\(webview, "render-sync"\)/);
   assert.match(runtimeSubscriptionsSource, /export function bindRoomContextSubscriptions\(/);
   assert.match(runtimeSubscriptionsSource, /export function clearRoomContextSubscriptions\(/);
-  assert.match(runtimeSubscriptionsSource, /SlotEvent\.STATE_CHANGED/);
-  assert.match(runtimeSubscriptionsSource, /SlotEvent\.DISCONNECT_COMPLETE/);
+  assert.match(runtimeSubscriptionsSource, /bindRoomPresenceSubscriptions/);
+  assert.match(
+    runtimeSubscriptionsSource,
+    /const existingSubscriptionCount = slotSubscriptions\.length;/
+  );
+  assert.match(runtimeSubscriptionsSource, /onPresenceChange: \(\) => \{/);
+  assert.match(runtimeSubscriptionsSource, /syncContext\(\);/);
+  assert.match(runtimeSubscriptionsSource, /syncSceneCharacters\(\);/);
+  assert.match(runtimeSubscriptionsSource, /if \(existingSubscriptionCount > 0\) \{\s*return;\s*\}/);
   assert.match(runtimeSubscriptionsSource, /TrafficManager\.onUpdate/);
   assert.match(runtimeSyncSource, /export function sendRoomHostContext\(/);
   assert.match(runtimeSyncSource, /export async function syncRoomRuntimeContext\(/);
@@ -283,6 +313,19 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(runtimeMessagingSource, /export function flushPendingRoomHostMessages\(/);
   assert.match(runtimeMessagingSource, /export function describeRoomCommand\(/);
   assert.match(runtimeMessagingSource, /return `\+\+cmd:\$\{command\.trim\(\)\}`;/);
+  const initMethodMatch = source.match(
+    /(?:async\s+)?init\(\)(?:: [^{]+)? \{([\s\S]*?)\n  }\n\n  onShow\(\): void \{/
+  );
+  assert.ok(initMethodMatch);
+  assert.doesNotMatch(initMethodMatch[1], /runtimeHostRuntime\.ensure/);
+  const renderMethodMatch = source.match(
+    /render\(\): void \{([\s\S]*?)\n  }\n\n  dispose\(\): void \{/
+  );
+  assert.ok(renderMethodMatch);
+  assert.match(
+    renderMethodMatch[1],
+    /if \(this\.shouldEnsureRuntimeHost\(page\)\) \{\s*void this\.runtimeHostRuntime\.ensure\(page\);\s*\}/
+  );
   assert.doesNotMatch(source, /roomPageT\("page\.badge"\)/);
   assert.doesNotMatch(source, /data-room-role="title"/);
   assert.doesNotMatch(source, /data-room-role="subtitle"/);

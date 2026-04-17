@@ -206,11 +206,10 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     });
   }
 
-  function deriveProcessEmptyReason(
-    featureId: string,
-    processRecord: Record<string, unknown>
-  ) {
-    const semanticEventCount = Array.isArray(processRecord["events"]) ? processRecord["events"].length : 0;
+  function deriveProcessEmptyReason(featureId: string, processRecord: Record<string, unknown>) {
+    const semanticEventCount = Array.isArray(processRecord["events"])
+      ? processRecord["events"].length
+      : 0;
     const rawLogCount = Array.isArray(processRecord["rawLog"]) ? processRecord["rawLog"].length : 0;
 
     if (semanticEventCount === 0 && rawLogCount === 0) {
@@ -328,9 +327,11 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
     );
     const derivedFindingRecords = derivedFindings
       .filter(function (candidate) {
-        return collectedFindings.some(function (finding) {
-          return toRecord(finding)["title"] === candidate.title;
-        }) === false;
+        return (
+          collectedFindings.some(function (finding) {
+            return toRecord(finding)["title"] === candidate.title;
+          }) === false
+        );
       })
       .map(function (candidate) {
         return {
@@ -357,10 +358,16 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
       processRecord["artifacts"].length === 0
         ? deriveProcessEmptyReason(featureId, processRecord)
         : null;
-    appendRunLifecycleEvent(processRecord, action, "completed", processRecord["emptyReason"] as string | null, {
-      message: "Analiz tamamlandi",
-      severity: "success",
-    });
+    appendRunLifecycleEvent(
+      processRecord,
+      action,
+      "completed",
+      processRecord["emptyReason"] as string | null,
+      {
+        message: "Analiz tamamlandi",
+        severity: "success",
+      }
+    );
     appendRunLifecycleEvent(processRecord, action, "completed", null, {
       kind: "request-result",
       message: "Analiz istegi tamamlandi",
@@ -406,14 +413,14 @@ export function createLaboratoryProcessRuntime(deps: LaboratoryProcessDeps) {
       toolId: "ffmpeg",
       featureStage: "process",
     });
-      pushJobState(api, {
-        requestId: requestId,
-        jobId: jobId,
-        action: action,
-        projectId: project["id"],
-        featureStage: "process",
-        stage: "queued",
-      });
+    pushJobState(api, {
+      requestId: requestId,
+      jobId: jobId,
+      action: action,
+      projectId: project["id"],
+      featureStage: "process",
+      stage: "queued",
+    });
 
     await patchActiveProject(runtime, function (nextProject: Record<string, unknown>) {
       nextProject["workbench"] = resolveProcessWorkbench(nextProject, featureId, workbenchSource);

@@ -39,6 +39,7 @@ type LaboratoryTextFieldOptions = {
 
 type LaboratorySourceStageIntakeDeps = {
   escapeHtml: (value: string) => string;
+  featureText: (path: string[]) => string;
   getCurrentDrafts: () => LaboratorySourceDraftRecord;
   getCurrentSourceKind: () => string;
   getCurrentSourceMode: () => string;
@@ -60,6 +61,7 @@ type LaboratorySourceStageIntakeDeps = {
 export function createLaboratorySourceStageIntakeRuntime(deps: LaboratorySourceStageIntakeDeps) {
   const {
     escapeHtml,
+    featureText,
     getCurrentDrafts,
     getCurrentSourceKind,
     getCurrentSourceMode,
@@ -105,9 +107,11 @@ export function createLaboratorySourceStageIntakeRuntime(deps: LaboratorySourceS
     const currentMode = getCurrentSourceMode();
     const modes = getSourceModeOptions(currentKind);
     const ytDlpInstalled = getToolEntry("yt-dlp").installed === true;
+    const segmentedClassName =
+      modes.length === 2 ? "lab-segmented lab-segmented--dual" : "lab-segmented";
 
     return `
-      <div class="lab-segmented">
+      <div class="${segmentedClassName}">
         ${modes
           .map(function (modeId) {
             const disabled = modeId === "youtube" && ytDlpInstalled !== true;
@@ -125,6 +129,32 @@ export function createLaboratorySourceStageIntakeRuntime(deps: LaboratorySourceS
             `;
           })
           .join("")}
+      </div>
+    `;
+  }
+
+  function renderCurrentSelectionSummary() {
+    const currentKind = getCurrentSourceKind();
+    const currentMode = getCurrentSourceMode();
+
+    return `
+      <div class="lab-chip-row lab-chip-row--tight">
+        <span class="lab-chip">${escapeHtml(
+          `${featureText(["source", "formatLabel"])}: ${featureText([
+            "source",
+            "formats",
+            currentKind,
+            "title",
+          ])}`
+        )}</span>
+        <span class="lab-chip">${escapeHtml(
+          `${text(["mediaAnalysis", "source", "modeLabel"])}: ${text([
+            "mediaAnalysis",
+            "source",
+            "modes",
+            currentMode,
+          ])}`
+        )}</span>
       </div>
     `;
   }
@@ -302,6 +332,7 @@ export function createLaboratorySourceStageIntakeRuntime(deps: LaboratorySourceS
       `;
 
     return `
+      ${renderCurrentSelectionSummary()}
       ${renderSourceModes()}
       <div class="lab-form-stack">${body}</div>
     `;

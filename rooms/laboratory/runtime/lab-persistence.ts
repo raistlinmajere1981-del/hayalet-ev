@@ -1,9 +1,7 @@
 import type { LabPersistedState } from "../models/lab-types.js";
 
 const LAB_PERSISTENCE_KEY = "hayalet-ev:laboratory-refactor:v3";
-const LAB_LEGACY_PERSISTENCE_KEYS = [
-  "hayalet-ev:laboratory-refactor:v2",
-];
+const LAB_LEGACY_PERSISTENCE_KEYS = ["hayalet-ev:laboratory-refactor:v2"];
 
 type PersistenceWindow = Window & typeof globalThis;
 
@@ -28,7 +26,9 @@ export function loadLabPersistedState(windowRef: PersistenceWindow | undefined) 
       if (!rawValue) {
         continue;
       }
-      const parsed = JSON.parse(rawValue) as Partial<LabPersistedState> & { schemaVersion?: unknown };
+      const parsed = JSON.parse(rawValue) as Partial<LabPersistedState> & {
+        schemaVersion?: unknown;
+      };
       const migrated = migratePersistedState(parsed);
       if (key !== LAB_PERSISTENCE_KEY) {
         storage.setItem(LAB_PERSISTENCE_KEY, JSON.stringify(migrated));
@@ -63,8 +63,6 @@ function migratePersistedState(
   return {
     ...persisted,
     schemaVersion: 3,
-    activityFeed: Array.isArray(persisted.activityFeed)
-      ? persisted.activityFeed
-      : [],
+    activityFeed: Array.isArray(persisted.activityFeed) ? persisted.activityFeed : [],
   };
 }

@@ -4,7 +4,10 @@ import {
   FORGE_TARGET_ROOM_ID,
   FORGE_WORKBENCH_FEATURE_ID
 } from "../shared/forge-constants.js";
-import { isForgeOperatorProfileEmpty } from "../shared/types/index.js";
+import {
+  isForgeSelectedOperatorProfileEmpty,
+  isForgeSessionContextSelectionEmpty
+} from "../shared/types/index.js";
 import { nowIso, uniqueStrings } from "./forge-runtime-support.js";
 const FORGE_CAPABILITY_DESCRIPTORS = [
   {
@@ -145,31 +148,58 @@ export function buildForgeTargetRoomContext(targetRoomId) {
     summary: "Repair Room is the canonical Forge target, so the preflight should favor narrow exports, explicit constraints, and practical downstream intake."
   };
 }
-export function mergeForgeOperatorTools(profile, runOverride) {
+export function buildForgeSelectedOperatorProfile(params) {
+  const { operatorProfile, sessionContextSelection } = params;
+  return {
+    skill: {
+      level: sessionContextSelection.skill.level === true ? operatorProfile.skill.level : null,
+      soldering: sessionContextSelection.skill.soldering === true ? operatorProfile.skill.soldering : null,
+      measurement: sessionContextSelection.skill.measurement === true ? operatorProfile.skill.measurement : null,
+      mechanical: sessionContextSelection.skill.mechanical === true ? operatorProfile.skill.mechanical : null
+    },
+    tools: {
+      multimeter: sessionContextSelection.tools.multimeter === true ? operatorProfile.tools.multimeter : null,
+      solderingIron: sessionContextSelection.tools.solderingIron === true ? operatorProfile.tools.solderingIron : null,
+      hotAir: sessionContextSelection.tools.hotAir === true ? operatorProfile.tools.hotAir : null,
+      benchPowerSupply: sessionContextSelection.tools.benchPowerSupply === true ? operatorProfile.tools.benchPowerSupply : null,
+      magnification: sessionContextSelection.tools.magnification === true ? operatorProfile.tools.magnification : null
+    },
+    preferences: {
+      mode: sessionContextSelection.preferences.mode === true ? operatorProfile.preferences.mode : null,
+      riskTolerance: sessionContextSelection.preferences.riskTolerance === true ? operatorProfile.preferences.riskTolerance : null
+    }
+  };
+}
+export function mergeForgeSelectedOperatorTools(profile, runOverride) {
   return {
     ...profile.tools,
     ...runOverride?.tools ?? {}
   };
 }
-export function summarizeForgeOperatorProfile(params) {
-  const { operatorProfile, runOverride } = params;
-  const effectiveTools = mergeForgeOperatorTools(operatorProfile, runOverride);
+export function summarizeForgeSelectedOperatorContext(params) {
+  const { runOverride, selectedOperatorProfile, sessionContextSelection } = params;
+  const effectiveTools = mergeForgeSelectedOperatorTools(selectedOperatorProfile, runOverride);
   const availableTools = Object.entries(effectiveTools).filter(([, enabled]) => enabled === true).map(([toolId]) => toolId);
   const unavailableTools = Object.entries(effectiveTools).filter(([, enabled]) => enabled === false).map(([toolId]) => toolId);
   const overrideTools = Object.entries(runOverride?.tools ?? {}).filter(([, enabled]) => enabled === true).map(([toolId]) => toolId);
   const skillSummary = [
-    operatorProfile.skill.level ? `level ${operatorProfile.skill.level}` : null,
-    operatorProfile.skill.soldering ? `soldering ${operatorProfile.skill.soldering}` : null,
-    operatorProfile.skill.measurement ? `measurement ${operatorProfile.skill.measurement}` : null,
-    operatorProfile.skill.mechanical ? `mechanical ${operatorProfile.skill.mechanical}` : null
+    selectedOperatorProfile.skill.level ? `level ${selectedOperatorProfile.skill.level}` : null,
+    selectedOperatorProfile.skill.soldering ? `soldering ${selectedOperatorProfile.skill.soldering}` : null,
+    selectedOperatorProfile.skill.measurement ? `measurement ${selectedOperatorProfile.skill.measurement}` : null,
+    selectedOperatorProfile.skill.mechanical ? `mechanical ${selectedOperatorProfile.skill.mechanical}` : null
   ].filter((entry) => typeof entry === "string");
   const preferenceSummary = [
-    operatorProfile.preferences.mode ? `working mode ${operatorProfile.preferences.mode}` : null,
-    operatorProfile.preferences.riskTolerance ? `risk tolerance ${operatorProfile.preferences.riskTolerance}` : null
+    selectedOperatorProfile.preferences.mode ? `working mode ${selectedOperatorProfile.preferences.mode}` : null,
+    selectedOperatorProfile.preferences.riskTolerance ? `risk tolerance ${selectedOperatorProfile.preferences.riskTolerance}` : null
   ].filter((entry) => typeof entry === "string");
-  if (isForgeOperatorProfileEmpty(operatorProfile) && overrideTools.length === 0 && (runOverride?.notes.trim() ?? "") === "") {
+  if (isForgeSessionContextSelectionEmpty(sessionContextSelection) && overrideTools.length === 0 && (runOverride?.notes.trim() ?? "") === "") {
     return [
-      "Operator profile is still blank; do not assume tools, skill level, or risk preference beyond the goal itself."
+      "No operator context was selected for this run; do not assume tools, skill level, or risk preference beyond the goal itself."
+    ];
+  }
+  if (isForgeSelectedOperatorProfileEmpty(selectedOperatorProfile) && overrideTools.length === 0 && (runOverride?.notes.trim() ?? "") === "") {
+    return [
+      "Selected operator context has no defined values yet; do not assume tools, skill level, or risk preference beyond the goal itself."
     ];
   }
   return uniqueStrings(
@@ -184,8 +214,8 @@ export function summarizeForgeOperatorProfile(params) {
   );
 }
 export function buildForgeDerivedConstraints(params) {
-  const { goal, operatorProfile, runOverride } = params;
-  const effectiveTools = mergeForgeOperatorTools(operatorProfile, runOverride);
+  const { goal, runOverride, selectedOperatorProfile } = params;
+  const effectiveTools = mergeForgeSelectedOperatorTools(selectedOperatorProfile, runOverride);
   const derived = [...goal.constraints];
   if (effectiveTools.hotAir === false) {
     derived.push("Do not assume hot air rework is available.");
@@ -193,13 +223,13 @@ export function buildForgeDerivedConstraints(params) {
   if (effectiveTools.multimeter === false) {
     derived.push("Avoid diagnostic flows that require a multimeter as the primary path.");
   }
-  if (operatorProfile.skill.level === "beginner") {
+  if (selectedOperatorProfile.skill.level === "beginner") {
     derived.push("Keep steps low-risk and explicit for a beginner operator.");
   }
-  if (operatorProfile.preferences.mode === "learn-first") {
+  if (selectedOperatorProfile.preferences.mode === "learn-first") {
     derived.push("Leave enough rationale for the operator to learn from the run.");
   }
-  if (operatorProfile.preferences.riskTolerance === "low") {
+  if (selectedOperatorProfile.preferences.riskTolerance === "low") {
     derived.push("Prefer reversible and lower-risk paths over speed.");
   }
   if (runOverride?.notes.trim()) {

@@ -6,6 +6,7 @@ import { createLabStore } from "../runtime/lab-store.js";
 import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabLayout } from "./lab-layout.js";
 import { renderLabLeftRail } from "./lab-left-rail.js";
+import { renderModuleManagementOverlay } from "./module-management-overlay.js";
 import { renderLabRightPanel } from "./lab-right-panel.js";
 import { renderEditStage } from "./stages/edit-stage.js";
 import { renderProcessStage } from "./stages/process-stage.js";
@@ -25,22 +26,22 @@ function createBootSurface(state: LabStoreState): LabStageSurface {
   return {
     main: `
       <section class="labx-boot">
-        <p class="labx-boot__eyebrow">Hayalet Ev Laboratory</p>
-        <h1 class="labx-boot__title">Loading Laboratory</h1>
-        <p class="labx-boot__body">Preparing the workbench shell, saved projects, and local analysis readiness.</p>
+        <p class="labx-boot__eyebrow">Hayalet Ev Laboratuvar</p>
+        <h1 class="labx-boot__title">Laboratuvar Yükleniyor</h1>
+        <p class="labx-boot__body">Çalışma tezgahı, kayıtlı projeler ve yerel analiz hazırlığı yükleniyor.</p>
       </section>
     `,
     side: `
       <section class="labx-card">
         <div class="labx-card__header">
           <div>
-            <p class="labx-card__eyebrow">Boot</p>
-            <h2 class="labx-card__title">Room Contract</h2>
+            <p class="labx-card__eyebrow">Başlangıç</p>
+            <h2 class="labx-card__title">Oda Kontratı</h2>
           </div>
         </div>
         <div class="labx-card__body">
-          <p class="labx-panel-hint">roomAPI.ready payload remains stable while the new shell hydrates.</p>
-          <p class="labx-panel-hint">Current stage: ${state.currentStage}</p>
+          <p class="labx-panel-hint">Yeni shell hazırlanırken roomAPI.ready payload yapısı korunur.</p>
+          <p class="labx-panel-hint">Geçerli aşama: ${state.currentStage}</p>
         </div>
       </section>
     `,
@@ -173,7 +174,8 @@ export function startLaboratoryLabRoot() {
     const leftRail = runtimeRoot.querySelector(".labx-left-rail");
     const centerPanel = runtimeRoot.querySelector(".labx-center-panel");
     const rightPanel = runtimeRoot.querySelector(".labx-right-panel");
-    if (!shell || !leftRail || !centerPanel || !rightPanel) {
+    const overlayRoot = runtimeRoot.querySelector(".labx-overlay-root");
+    if (!shell || !leftRail || !centerPanel || !rightPanel || !overlayRoot) {
       runtimeRoot.innerHTML = renderLabLayout(state, surface);
       return;
     }
@@ -185,10 +187,14 @@ export function startLaboratoryLabRoot() {
     (leftRail as HTMLElement).outerHTML = renderLabLeftRail(state);
     (centerPanel as HTMLElement).outerHTML = renderLabCenterPanel(surface);
     (rightPanel as HTMLElement).outerHTML = renderLabRightPanel(surface);
+    (overlayRoot as HTMLElement).outerHTML = renderModuleManagementOverlay(state);
   }
 
   store.subscribe(function (state) {
-    saveLabPersistedState(window as unknown as Window & typeof globalThis, readPersistableState(state));
+    saveLabPersistedState(
+      window as unknown as Window & typeof globalThis,
+      readPersistableState(state)
+    );
     render();
   });
 

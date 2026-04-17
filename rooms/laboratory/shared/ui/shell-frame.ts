@@ -51,11 +51,13 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
     bootstrapText,
     escapeHtml,
     featureText,
+    getActiveFeatureId,
     getActiveStage,
     getBootstrapState,
     getStageGuard,
     getStageIndex,
     getTranslations,
+    getWorkbench,
     isSubtitleAnalysisFeature,
     readValue,
     stageOrder,
@@ -279,6 +281,13 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
   function renderStageRail() {
     const activeStage = getActiveStage();
     const currentIndex = getStageIndex(activeStage);
+    const activeFeatureId = getActiveFeatureId();
+    const workbench = toRecord(getWorkbench());
+    const activeModuleId =
+      typeof workbench["activeModuleId"] === "string" && workbench["activeModuleId"].trim() !== ""
+        ? workbench["activeModuleId"].trim()
+        : activeFeatureId;
+    const activeModuleLabel = text(["features", activeModuleId]) || activeModuleId;
     const nextStageId = stageOrder.at(Math.min(stageOrder.length - 1, currentIndex + 1)) || null;
     const nextStageGuard =
       nextStageId && nextStageId !== activeStage ? getStageGuard(nextStageId) : null;
@@ -292,11 +301,30 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
           <div class="lab-stage-rail__brand">
             <h1 class="lab-stage-rail__title">${escapeHtml(text(["title"]))}</h1>
           </div>
+          <div class="lab-stage-rail__toolbar">
+            <button
+              class="lab-rail-action lab-rail-action--primary"
+              type="button"
+              data-action="open-settings"
+            >
+              ${escapeHtml(text(["workbench", "dependencyAction"]))}
+            </button>
+          </div>
           <section class="lab-stage-rail__context">
             <div class="lab-stage-rail__summary">
               ${renderRailSummaryRow(
                 text(["workbench", "railStepCount"]),
                 `${String(currentIndex + 1)} / ${String(stageOrder.length)}`
+              )}
+              ${renderRailSummaryRow(
+                text(["workbench", "railCurrentStage"]),
+                featureText(["stages", activeStage]),
+                "lab-stage-rail__focus-label"
+              )}
+              ${renderRailSummaryRow(
+                text(["workbench", "railFocusedModule"]),
+                activeModuleLabel,
+                "lab-stage-rail__focus-label"
               )}
             </div>
           </section>
@@ -321,17 +349,25 @@ export function createLaboratoryShellFrameUi(deps: LaboratoryShellFrameUiDeps) {
                   typeof stageGuard.reason === "string" && stageGuard.reason.trim() !== ""
                     ? `title="${escapeHtml(stageGuard.reason)}"`
                     : "";
+                const stageStateLabel = text(["workbench", "railState", stateName]);
                 return `
-                  <article
+                  <button
                     class="lab-stage-pill"
+                    type="button"
+                    data-stage-target="${stageId}"
                     data-state="${stateName}"
+                    aria-current="${stageId === activeStage ? "step" : "false"}"
+                    aria-disabled="${futureStageBlocked ? "true" : "false"}"
                     ${stageReason}
                   >
                     <span class="lab-stage-pill__index">${String(index + 1)}</span>
-                    <span class="lab-stage-pill__label">${escapeHtml(
-                      featureText(["stages", stageId])
-                    )}</span>
-                  </article>
+                    <span class="lab-stage-pill__copy">
+                      <span class="lab-stage-pill__label">${escapeHtml(
+                        featureText(["stages", stageId])
+                      )}</span>
+                      <span class="lab-stage-pill__meta">${escapeHtml(stageStateLabel)}</span>
+                    </span>
+                  </button>
                 `;
               })
               .join("")}

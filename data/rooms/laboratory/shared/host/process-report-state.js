@@ -19,8 +19,11 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
       modules: [],
       findings: [],
       artifacts: [],
+      events: [],
+      rawLog: [],
       warnings: [],
-      error: null
+      error: null,
+      emptyReason: null
     };
   }
   function createEmptyProcessState() {
@@ -55,8 +58,10 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
       labelKey: asNonEmptyString(source.labelKey),
       title: asNonEmptyString(source.title),
       status: asNonEmptyString(source.status) || "idle",
-      percent: Math.max(0, Math.min(100, Math.round(asNumber(source.percent) || 0))),
+      percent: typeof asNumber(source.percent) === "number" ? Math.max(0, Math.min(100, Math.round(asNumber(source.percent) || 0))) : null,
+      progressMode: typeof asNumber(source.percent) === "number" || asNonEmptyString(source["progressMode"]) === "measured" ? "measured" : "none",
       summary: asNonEmptyString(source.summary) || "",
+      message: asNonEmptyString(source["message"]),
       warnings: Array.isArray(source.warnings) ? source.warnings.map(function(entry) {
         return String(entry);
       }) : [],
@@ -85,10 +90,17 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
       artifacts: Array.isArray(source.artifacts) ? source.artifacts.map(normalizeProcessArtifact).filter(function(entry) {
         return entry.path !== null;
       }) : [],
+      events: Array.isArray(source.events) ? source.events.map(function(entry) {
+        return toRecord(entry);
+      }) : [],
+      rawLog: Array.isArray(source.rawLog) ? source.rawLog.map(function(entry) {
+        return toRecord(entry);
+      }) : [],
       warnings: Array.isArray(source.warnings) ? source.warnings.map(function(entry) {
         return String(entry);
       }) : [],
-      error: asNonEmptyString(source.error)
+      error: asNonEmptyString(source.error),
+      emptyReason: asNonEmptyString(source.emptyReason)
     };
   }
   function normalizeProcessState(rawValue) {
@@ -117,7 +129,8 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
       caveats: [],
       warnings: [],
       exports: [],
-      error: null
+      error: null,
+      emptyReason: "Rapor henüz üretilmedi."
     };
   }
   function createEmptyReportState() {
@@ -170,7 +183,8 @@ export function createLaboratoryProcessReportStateRuntime(deps) {
         return String(entry);
       }) : [],
       exports: Array.isArray(source.exports) ? source.exports.map(normalizeReportExport) : [],
-      error: asNonEmptyString(source.error)
+      error: asNonEmptyString(source.error),
+      emptyReason: asNonEmptyString(source.emptyReason)
     };
   }
   function normalizeReportState(rawValue) {

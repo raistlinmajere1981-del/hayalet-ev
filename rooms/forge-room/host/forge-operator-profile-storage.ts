@@ -77,10 +77,7 @@ export function createForgeOperatorProfileStorage(deps: ForgeOperatorProfileStor
     return normalizeForgeOperatorProfile(loaded, nowIso());
   }
 
-  async function saveProfile(
-    runtimePaths: unknown,
-    value: unknown
-  ): Promise<ForgeOperatorProfile> {
+  async function saveProfile(runtimePaths: unknown, value: unknown): Promise<ForgeOperatorProfile> {
     const roomPaths = createForgeRoomPaths(runtimePaths);
     await ensureRuntimeDirectory(roomPaths.roomStorageDir);
     const profile = normalizeForgeOperatorProfile(value, nowIso());

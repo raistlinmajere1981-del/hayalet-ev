@@ -91,6 +91,12 @@
           "exposure": "internal"
         },
         {
+          "name": "ForgeRoomUpdateSessionContext",
+          "description": "Store the run-local selection of operator truths that should influence this Forge run.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "ForgeRoomUpdateRunOverride",
           "description": "Store run-local override values without mutating the persistent operator profile.",
           "scope": "room-ui",

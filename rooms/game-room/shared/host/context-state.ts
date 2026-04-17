@@ -39,7 +39,15 @@ export function normalizeSlot(candidate: unknown, slotId: string): GameRoomSlotS
 
   return {
     slotId,
+    label:
+      typeof source["label"] === "string" && source["label"].trim() !== ""
+        ? source["label"].trim()
+        : slotId.toUpperCase(),
     nickname,
+    avatar:
+      typeof source["avatar"] === "string" && source["avatar"].trim() !== ""
+        ? source["avatar"].trim()
+        : null,
     assigned,
     connected,
     ready,
@@ -48,6 +56,10 @@ export function normalizeSlot(candidate: unknown, slotId: string): GameRoomSlotS
         ? source["state"].trim()
         : "empty",
     urlExcluded,
+    providerId:
+      typeof source["providerId"] === "string" && source["providerId"].trim() !== ""
+        ? source["providerId"].trim()
+        : null,
     accountId:
       typeof source["accountId"] === "string" && source["accountId"].trim() !== ""
         ? source["accountId"].trim()
@@ -62,8 +74,17 @@ export function normalizeSlot(candidate: unknown, slotId: string): GameRoomSlotS
 export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
   const source = isRecord(payload) ? payload : {};
   const fallbackContext = createGameRoomContextState();
-  const slotsSource = isRecord(source["slots"]) ? source["slots"] : {};
-  const userSource = isRecord(source["user"]) ? source["user"] : {};
+  const presenceSource = isRecord(source["presence"]) ? source["presence"] : {};
+  const slotsSource = isRecord(source["slots"])
+    ? source["slots"]
+    : isRecord(presenceSource["slots"])
+      ? presenceSource["slots"]
+      : {};
+  const userSource = isRecord(source["user"])
+    ? source["user"]
+    : isRecord(presenceSource["user"])
+      ? presenceSource["user"]
+      : {};
   const defaultFeatures = getDefaultFeatureRecords();
   const featureMap = new Map<string, GameRoomFeatureRecord>(
     defaultFeatures.map((feature): [string, GameRoomFeatureRecord] => [feature.id, feature])
@@ -95,6 +116,10 @@ export function sanitizeContext(payload: unknown): GameRoomContextSnapshot {
         typeof userSource["nickname"] === "string" && userSource["nickname"].trim() !== ""
           ? userSource["nickname"].trim()
           : fallbackContext.user.nickname,
+      avatar:
+        typeof userSource["avatar"] === "string" && userSource["avatar"].trim() !== ""
+          ? userSource["avatar"].trim()
+          : fallbackContext.user.avatar,
     },
     features,
     activeFeature: features.find((feature) => feature.id === activeFeature.id) || activeFeature,

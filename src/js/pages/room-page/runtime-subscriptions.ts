@@ -1,5 +1,4 @@
-import { AppState } from "../../modules/app-state.js";
-import { SlotController, SlotEvent } from "../../modules/slot-controller.js";
+import { bindRoomPresenceSubscriptions } from "../../modules/rooms/room-presence.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
 
 interface BindRoomContextSubscriptionsParams {
@@ -13,34 +12,18 @@ export function bindRoomContextSubscriptions({
   syncContext,
   syncSceneCharacters,
 }: BindRoomContextSubscriptionsParams): void {
-  if (slotSubscriptions.length > 0) {
-    return;
-  }
-
-  [
-    SlotEvent.STATE_CHANGED,
-    SlotEvent.ACCOUNT_ASSIGNED,
-    SlotEvent.ACCOUNT_REMOVED,
-    SlotEvent.URL_EXCLUDED,
-    SlotEvent.URL_INCLUDED,
-    SlotEvent.CONNECT_COMPLETE,
-    SlotEvent.CONNECT_FAILED,
-    SlotEvent.DISCONNECT_COMPLETE,
-  ].forEach((eventName) => {
-    slotSubscriptions.push(
-      SlotController.on(eventName, () => {
-        syncContext();
-        syncSceneCharacters();
-      })
-    );
-  });
-
-  slotSubscriptions.push(
-    AppState.subscribe(() => {
+  const existingSubscriptionCount = slotSubscriptions.length;
+  bindRoomPresenceSubscriptions({
+    subscriptions: slotSubscriptions,
+    onPresenceChange: () => {
       syncContext();
       syncSceneCharacters();
-    })
-  );
+    },
+  });
+
+  if (existingSubscriptionCount > 0) {
+    return;
+  }
 
   slotSubscriptions.push(
     TrafficManager.onUpdate(() => {

@@ -9,6 +9,7 @@ import type {
   ForgePreflightState,
   ForgeRunOverride,
   ForgeRunSignature,
+  ForgeSessionContextSelection,
   ForgeSynthesis,
   ForgeTask,
   ForgeTaskAssignment,
@@ -16,6 +17,7 @@ import type {
 import {
   createDefaultForgeOperatorProfile,
   createEmptyForgePreflightState,
+  createEmptyForgeSessionContextSelection,
 } from "../types/index.js";
 
 export type ForgeWorkbenchUiFlowState =
@@ -48,6 +50,7 @@ export interface ForgeRoomSnapshot {
   operatorProfile: ForgeOperatorProfile;
   preflight: ForgePreflightState;
   responses: ForgeAgentResponse[];
+  sessionContextSelection: ForgeSessionContextSelection;
   runOverride: ForgeRunOverride | null;
   runSignature: ForgeRunSignature | null;
   selectedSynthesisId: string | null;
@@ -107,6 +110,7 @@ export function createEmptyForgeRoomSnapshot(): ForgeRoomSnapshot {
     responses: [],
     operatorProfile: createDefaultForgeOperatorProfile(),
     preflight: createEmptyForgePreflightState(),
+    sessionContextSelection: createEmptyForgeSessionContextSelection(),
     runOverride: null,
     runSignature: null,
     conflicts: [],

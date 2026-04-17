@@ -3,6 +3,7 @@ import type {
   ForgePreflightState,
   ForgeRunOverride,
   ForgeRunSignature,
+  ForgeSessionContextSelection,
 } from "./forge-preflight.js";
 import type {
   ForgeEventLog,
@@ -31,6 +32,7 @@ export interface ForgeSession {
   selectedSynthesisId: string | null;
   decisionTrace: string[];
   preflight: ForgePreflightState;
+  sessionContextSelection: ForgeSessionContextSelection;
   runOverride: ForgeRunOverride | null;
   runSignature: ForgeRunSignature | null;
   exports: ForgeHandoffExportRecord[];

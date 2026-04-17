@@ -71,6 +71,9 @@ export function createForgeUiRequestRuntime() {
     updateOperatorProfile(payload) {
       return sendCommand(FORGE_UI_COMMANDS.updateOperatorProfile, payload);
     },
+    updateSessionContext(payload) {
+      return sendCommand(FORGE_UI_COMMANDS.updateSessionContext, payload);
+    },
     updateRunOverride(payload) {
       return sendCommand(FORGE_UI_COMMANDS.updateRunOverride, payload);
     }

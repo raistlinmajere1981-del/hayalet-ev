@@ -61,7 +61,9 @@ function scoreCapability(
 function buildSummary(items: ForgeCapabilityDescriptor[], omittedCount: number): string {
   const lines = items.map((item) => `${item.title}: ${item.summary}`);
   if (omittedCount > 0) {
-    lines.push(`${String(omittedCount)} additional capability item(s) were omitted to keep prompts compact.`);
+    lines.push(
+      `${String(omittedCount)} additional capability item(s) were omitted to keep prompts compact.`
+    );
   }
   return truncateText(lines.join(" "), FORGE_CAPABILITY_SUMMARY_BUDGET);
 }
@@ -94,6 +96,9 @@ export function selectForgeCapabilityContext(params: {
     omittedCount: Math.max(0, ranked.length - items.length),
     selectedTags,
     sizeBudget,
-    summary: truncateText(buildSummary(items, Math.max(0, ranked.length - items.length)), sizeBudget),
+    summary: truncateText(
+      buildSummary(items, Math.max(0, ranked.length - items.length)),
+      sizeBudget
+    ),
   };
 }

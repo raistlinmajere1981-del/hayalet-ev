@@ -1,5 +1,10 @@
 import { escapeHtml } from "../../models/lab-types.js";
-import type { LabAiReport, LabStageSurface, LabStoreState, LabUserReport } from "../../models/lab-types.js";
+import type {
+  LabAiReport,
+  LabStageSurface,
+  LabStoreState,
+  LabUserReport,
+} from "../../models/lab-types.js";
 import {
   getCurrentReports,
   getReportExports,
@@ -140,7 +145,8 @@ export function renderReportStage(deps: ReportStageRenderDeps): LabStageSurface 
       stageTotal: 5,
       statusLabel: hasReport ? "ready" : "idle",
       statusTone: hasReport ? "success" : "neutral",
-      subtitle: "Dual output: kullanıcı özeti ve AI çalışma raporu aynı structured run verisinden türetilir.",
+      subtitle:
+        "Dual output: kullanıcı özeti ve AI çalışma raporu aynı structured run verisinden türetilir.",
       title: "Rapor",
     })}
     ${renderCompactCard({

@@ -78,6 +78,11 @@ export function reduceForgeRuntimeState(
         ...state,
         preflight: action.preflight,
       };
+    case "session-context/set":
+      return {
+        ...state,
+        sessionContextSelection: action.sessionContextSelection,
+      };
     case "run-context/set":
       return {
         ...state,

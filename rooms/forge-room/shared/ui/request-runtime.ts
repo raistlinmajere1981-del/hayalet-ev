@@ -131,6 +131,27 @@ export function createForgeUiRequestRuntime() {
     }) {
       return sendCommand(FORGE_UI_COMMANDS.updateOperatorProfile, payload);
     },
+    updateSessionContext(payload: {
+      preferences?: {
+        mode?: boolean;
+        riskTolerance?: boolean;
+      };
+      skill?: {
+        level?: boolean;
+        mechanical?: boolean;
+        measurement?: boolean;
+        soldering?: boolean;
+      };
+      tools?: {
+        benchPowerSupply?: boolean;
+        hotAir?: boolean;
+        magnification?: boolean;
+        multimeter?: boolean;
+        solderingIron?: boolean;
+      };
+    }) {
+      return sendCommand(FORGE_UI_COMMANDS.updateSessionContext, payload);
+    },
     updateRunOverride(payload: {
       enableRovoPreAnalysis: boolean;
       notes: string;

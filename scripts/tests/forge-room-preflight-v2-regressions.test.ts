@@ -9,6 +9,7 @@ import { createForgeHandoffExport } from "../../rooms/forge-room/host/forge-hand
 import { createForgeOperatorProfileStorage } from "../../rooms/forge-room/host/forge-operator-profile-storage.ts";
 import {
   buildForgeAppArchitectureSummary,
+  buildForgeSelectedOperatorProfile,
   buildForgeCoreSystemMetadata,
   buildForgeTargetRoomContext,
   listForgeCapabilityDescriptors,
@@ -25,6 +26,8 @@ import {
 } from "../../rooms/forge-room/host/state/forge-runtime-state.ts";
 import {
   createDefaultForgeOperatorProfile,
+  createEmptyForgePreflightState,
+  createEmptyForgeSessionContextSelection,
   type ForgeGoal,
   type ForgeSession,
 } from "../../rooms/forge-room/shared/types/index.ts";
@@ -131,7 +134,10 @@ test("forge-room capability selector keeps repair-relevant metadata and enforces
   assert.equal(context?.summary.length <= 240, true);
   assert.ok(context?.items.some((item) => item.id === "forge-repair-handoff"));
   assert.ok(context?.items.some((item) => item.id === "forge-guided-ui"));
-  assert.equal(context?.items.some((item) => item.id === "laboratory-image-analysis"), false);
+  assert.equal(
+    context?.items.some((item) => item.id === "laboratory-image-analysis"),
+    false
+  );
 });
 
 test("forge-room prompt context rendering stays inside the downstream budget", () => {
@@ -139,6 +145,14 @@ test("forge-room prompt context rendering stays inside the downstream budget", (
   operatorProfile.skill.level = "beginner";
   operatorProfile.tools.multimeter = false;
   operatorProfile.preferences.mode = "learn-first";
+  const sessionContextSelection = createEmptyForgeSessionContextSelection();
+  sessionContextSelection.skill.level = true;
+  sessionContextSelection.tools.multimeter = true;
+  sessionContextSelection.preferences.mode = true;
+  const selectedOperatorProfile = buildForgeSelectedOperatorProfile({
+    operatorProfile,
+    sessionContextSelection,
+  });
 
   const rendered = renderForgePromptContext({
     bundle: {
@@ -153,7 +167,7 @@ test("forge-room prompt context rendering stays inside the downstream budget", (
         maxItems: 2,
         sizeBudget: 120,
       }),
-      operatorProfile,
+      selectedOperatorProfile,
       runOverride: {
         enableRovoPreAnalysis: false,
         notes: "Bench is temporarily shared with another repair.",
@@ -162,11 +176,15 @@ test("forge-room prompt context rendering stays inside the downstream budget", (
         },
       },
       rovoPreAnalysis: null,
+      sessionContextSelection,
       constraints: ["Keep steps reversible."],
     },
     contextCapsule: {
       summary: "Only discuss the export seam, not full implementation.",
-      relevantModules: ["rooms/forge-room/host/runtime.ts", "rooms/forge-room/host/forge-handoff-export.ts"],
+      relevantModules: [
+        "rooms/forge-room/host/runtime.ts",
+        "rooms/forge-room/host/forge-handoff-export.ts",
+      ],
       constraints: ["Avoid suggesting hot air even if the room supports it."],
     },
     decisionTrace: ["Local JSON handoff kept for v1."],
@@ -229,10 +247,14 @@ test("forge-room selected synthesis provenance wins during export and strips raw
 
   const handoff = handoffExport.buildHandoffPackage(session, {
     fallbackProvenance: buildForgeSynthesisProvenance({
-      operatorProfile: createDefaultForgeOperatorProfile(),
       preflight: session.preflight,
       runOverride: null,
       runSignature: session.runSignature,
+      selectedOperatorProfile: buildForgeSelectedOperatorProfile({
+        operatorProfile: createDefaultForgeOperatorProfile(),
+        sessionContextSelection: createEmptyForgeSessionContextSelection(),
+      }),
+      sessionContextSelection: createEmptyForgeSessionContextSelection(),
     }),
   });
 
@@ -248,24 +270,54 @@ test("forge-room selected synthesis provenance wins during export and strips raw
 
 test("forge-room run signatures remain human-readable but differ when normalized tokens collide", () => {
   const operatorProfile = createDefaultForgeOperatorProfile();
+  const sessionContextSelection = createEmptyForgeSessionContextSelection();
   const left = buildForgeRunSignature({
     goal: createGoal({
       constraints: ["TS first"],
     }),
-    operatorProfile,
+    selectedOperatorProfile: buildForgeSelectedOperatorProfile({
+      operatorProfile,
+      sessionContextSelection,
+    }),
     runOverride: null,
   });
   const right = buildForgeRunSignature({
     goal: createGoal({
       constraints: ["ts-first"],
     }),
-    operatorProfile,
+    selectedOperatorProfile: buildForgeSelectedOperatorProfile({
+      operatorProfile,
+      sessionContextSelection,
+    }),
     runOverride: null,
   });
 
   assert.match(left.value, /^RepairRoom-v2-ts-first-[a-f0-9]{6}$/);
   assert.match(right.value, /^RepairRoom-v2-ts-first-[a-f0-9]{6}$/);
   assert.notEqual(left.value, right.value);
+});
+
+test("forge-room synthesis provenance stays assumption-free when no session context is selected", () => {
+  const operatorProfile = createDefaultForgeOperatorProfile();
+  operatorProfile.skill.level = "advanced";
+  operatorProfile.tools.hotAir = true;
+  operatorProfile.preferences.mode = "result-first";
+  const sessionContextSelection = createEmptyForgeSessionContextSelection();
+
+  const provenance = buildForgeSynthesisProvenance({
+    preflight: createEmptyForgePreflightState(),
+    runOverride: null,
+    runSignature: null,
+    selectedOperatorProfile: buildForgeSelectedOperatorProfile({
+      operatorProfile,
+      sessionContextSelection,
+    }),
+    sessionContextSelection,
+  });
+
+  assert.deepEqual(provenance.operatorProfileSummary, [
+    "No operator context was selected for this run; do not assume tools, skill level, or risk preference beyond the goal itself.",
+  ]);
 });
 
 test("forge-room runtime hydration keeps V2 defaults safe when legacy session fields are missing", () => {
@@ -328,6 +380,7 @@ test("forge-room runtime hydration keeps V2 defaults safe when legacy session fi
   assert.equal(hydrated.preflight.status, "idle");
   assert.equal(hydrated.runSignature, null);
   assert.equal(hydrated.runOverride, null);
+  assert.deepEqual(hydrated.sessionContextSelection, createEmptyForgeSessionContextSelection());
   assert.equal(hydrated.approvedTasks[0]?.contextCapsule, null);
   assert.equal(hydrated.syntheses[0]?.provenance, null);
 });

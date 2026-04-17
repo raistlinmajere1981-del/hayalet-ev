@@ -1,7 +1,7 @@
 export const FORGE_ROOM_ID = "forge-room";
 export const FORGE_WORKBENCH_FEATURE_ID = "forge-workbench";
 export const FORGE_TARGET_ROOM_ID = "repair-room";
-export const FORGE_SESSION_SCHEMA_VERSION = 4;
+export const FORGE_SESSION_SCHEMA_VERSION = 5;
 export const FORGE_HANDOFF_SCHEMA_VERSION = 1;
 export const FORGE_BREAKDOWN_MIN_TASKS = 3;
 export const FORGE_BREAKDOWN_MAX_TASKS = 7;
@@ -34,6 +34,7 @@ export const FORGE_UI_COMMANDS = {
   upsertDraftTask: "ForgeRoomUpsertDraftTask",
   updateGoal: "ForgeRoomUpdateGoal",
   updateOperatorProfile: "ForgeRoomUpdateOperatorProfile",
+  updateSessionContext: "ForgeRoomUpdateSessionContext",
   updateRunOverride: "ForgeRoomUpdateRunOverride",
 } as const;
 

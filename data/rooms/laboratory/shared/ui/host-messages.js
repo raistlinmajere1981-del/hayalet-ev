@@ -6,7 +6,6 @@ export function createLaboratoryHostMessageRuntime(deps) {
     render,
     setActivityStatus,
     setBlockingStatus,
-    setLastAction,
     setResultStatus,
     shouldIgnoreCorrelatedPayload,
     state,
@@ -280,49 +279,6 @@ export function createLaboratoryHostMessageRuntime(deps) {
     }
     return message;
   }
-  const quietInlineResultActionIds = [
-    "profile-run-preflight",
-    "profile-cancel-preflight",
-    "process-run",
-    "audio-process-run",
-    "process-cancel",
-    "audio-process-cancel"
-  ];
-  function shouldHideInlinePreflightActionResult(actionId) {
-    return actionId === "profile-run-preflight" || actionId === "profile-cancel-preflight";
-  }
-  function shouldHideInlineActionResult(actionId, succeeded) {
-    if (succeeded !== true) {
-      return false;
-    }
-    if (shouldHideInlinePreflightActionResult(actionId)) {
-      return true;
-    }
-    return quietInlineResultActionIds.includes(actionId || "");
-  }
-  function shouldHideInlineJobProgress(actionId, stageId) {
-    return ["profile-run-preflight", "process-run", "audio-process-run"].includes(actionId || "") && stageId !== "failed";
-  }
-  function formatActionResultMessage(payload) {
-    const actionId = toString(payload.action);
-    if (shouldHideInlineActionResult(actionId, payload.success === true)) {
-      return "";
-    }
-    if (payload.success === true) {
-      return text(["mediaAnalysis", "messages", actionId || ""]) || actionId;
-    }
-    const fallback = `${getEditActionLabel(actionId)} · ${text(["mediaAnalysis", "settings", "stages", "failed"])}`;
-    return getSafeInlineMessage(toString(payload.error), fallback);
-  }
-  function formatJobProgressMessage(payload) {
-    const actionId = toString(payload.action);
-    const stageId = toString(payload["stage"]);
-    if (shouldHideInlineJobProgress(actionId, stageId)) {
-      return "";
-    }
-    const baseLabel = `${getEditActionLabel(actionId)} · ${getJobStageLabel(stageId)}`;
-    return getSafeInlineMessage(toString(payload.message), baseLabel);
-  }
   function getPayload(message) {
     const payload = toPayloadRecord(message.payload);
     return Object.keys(payload).length > 0 ? payload : toPayloadRecord(message);
@@ -364,40 +320,29 @@ export function createLaboratoryHostMessageRuntime(deps) {
       scheduleRender();
       return;
     }
-    if (messageType === "media-action-result" || messageType === "source-action-result") {
+    if (messageType === "lab-event") {
       if (shouldIgnoreCorrelatedPayload(payload.requestId, payload.action)) {
         return;
       }
-      const actionMessage = formatActionResultMessage(payload);
-      if (actionMessage !== null) {
-        if (payload.success === true) {
-          setResultStatus(actionMessage, null, "host");
-        } else if (actionMessage !== "") {
-          setBlockingStatus(actionMessage, toString(payload.error), "host");
-        } else {
-          setLastAction(actionMessage);
-        }
+      if (toString(payload["kind"]) === "raw-log") {
+        return;
+      }
+      const canonicalMessage = getSafeInlineMessage(
+        toString(payload.message),
+        `${getEditActionLabel(toString(payload.action))} · ${getJobStageLabel(toString(payload["stage"]))}`
+      );
+      const canonicalDetail = toString(payload["detail"]);
+      const severity = toString(payload["severity"]);
+      const stageId = toString(payload["stage"]);
+      if (severity === "error" || stageId === "failed") {
+        setBlockingStatus(canonicalMessage, canonicalDetail, "host");
+      } else if (toString(payload["kind"]) === "request-result" || stageId === "completed" || stageId === "cancelled") {
+        setResultStatus(canonicalMessage, canonicalDetail, "host");
+      } else if (canonicalMessage !== "") {
+        setActivityStatus(canonicalMessage, canonicalDetail, "host");
       }
       scheduleRender();
       return;
-    }
-    if (messageType === "media-job" || messageType === "source-job") {
-      if (shouldIgnoreCorrelatedPayload(payload.requestId, payload.action)) {
-        return;
-      }
-      const jobMessage = formatJobProgressMessage(payload);
-      if (jobMessage !== null) {
-        const stageId = toString(payload["stage"]);
-        const jobDetail = toString(payload.message);
-        if (stageId === "failed") {
-          setBlockingStatus(jobMessage, jobDetail, "host");
-        } else if (stageId === "completed" || stageId === "cancelled") {
-          setResultStatus(jobMessage, jobDetail, "host");
-        } else if (jobMessage !== "") {
-          setActivityStatus(jobMessage, jobDetail, "host");
-        }
-      }
-      scheduleRender();
     }
   }
   return {

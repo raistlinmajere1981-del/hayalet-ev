@@ -211,12 +211,15 @@ function createUs1OpponentFallback(
 ): GameRoomSlotState {
   return {
     slotId: "us1",
+    label: "US1",
     nickname: opponentNickname || "US1",
+    avatar: null,
     assigned: remoteUserId !== null,
     connected: false,
     ready: false,
     state: remoteUserId === null ? "empty" : "assigned",
     urlExcluded: false,
+    providerId: "us1",
     accountId: null,
     remoteUserId,
   };

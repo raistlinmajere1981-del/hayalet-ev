@@ -164,7 +164,10 @@ export function createLaboratoryAudioReportRuntime(deps: LaboratoryAudioReportRu
       return "Ses analizi hala suruyor; rapor tamamlaninca dolacak.";
     }
     if (processStatus === "failed") {
-      return asNonEmptyString(processRecord.error) || "Ses analizi hata ile tamamlandigi icin rapor bos kaldi.";
+      return (
+        asNonEmptyString(processRecord.error) ||
+        "Ses analizi hata ile tamamlandigi icin rapor bos kaldi."
+      );
     }
     if (processStatus === "cancelled") {
       return "Ses analizi iptal edildigi icin rapor bos kaldi.";

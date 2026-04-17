@@ -28,19 +28,19 @@ export const LAB_FEATURES: Array<{
     id: "media-analysis",
     label: "Medya Analizi",
     shortLabel: "Medya",
-    description: "Kaynak hazirlama, preview, profil ve final is akisi.",
+    description: "Kaynak hazırlama, önizleme, profil ve final iş akışı.",
   },
   {
     id: "audio-analysis",
     label: "Ses Analizi",
     shortLabel: "Ses",
-    description: "Ses odakli analiz modulleri ve cikti takibi.",
+    description: "Ses odaklı analiz modülleri ve çıktı takibi.",
   },
   {
     id: "subtitle-analysis",
     label: "Altyazi Analizi",
     shortLabel: "Altyazi",
-    description: "Altyazi girisi, secim, analiz ve rapor akisi.",
+    description: "Altyazı girişi, seçim, analiz ve rapor akışı.",
   },
 ];
 
@@ -205,6 +205,7 @@ export interface LabStoreUiState {
   sourceDraftDirty: boolean;
   editDraftDirty: boolean;
   profileDraftDirty: boolean;
+  moduleManagerOpen: boolean;
   eventFeedExpanded: boolean;
   eventFeedCursor: number;
   artifactListExpanded: boolean;
@@ -285,7 +286,12 @@ export type LabStoreEvent =
   | { type: "job-received"; payload: LabRecord; event: LabEventFeedItem | null }
   | { type: "request-result-received"; payload: LabRecord; event: LabEventFeedItem | null }
   | { type: "source-probe-started"; action: string; detail?: string | null }
-  | { type: "source-probe-progress"; action: string; detail?: string | null; progress?: number | null }
+  | {
+      type: "source-probe-progress";
+      action: string;
+      detail?: string | null;
+      progress?: number | null;
+    }
   | { type: "source-probe-completed"; action: string; detail?: string | null }
   | { type: "source-probe-failed"; action: string; detail?: string | null }
   | { type: "preview-started"; action: string; detail?: string | null }
@@ -299,18 +305,27 @@ export type LabStoreEvent =
   | { type: "run-cancelled"; action: string; detail?: string | null }
   | { type: "run-failed"; action: string; detail?: string | null }
   | { type: "module-started"; action: string; moduleId: string; detail?: string | null }
-  | { type: "module-progress"; action: string; moduleId: string; detail?: string | null; progress?: number | null }
+  | {
+      type: "module-progress";
+      action: string;
+      moduleId: string;
+      detail?: string | null;
+      progress?: number | null;
+    }
   | { type: "module-finished"; action: string; moduleId: string; detail?: string | null }
   | { type: "module-failed"; action: string; moduleId: string; detail?: string | null }
   | { type: "module-skipped"; action: string; moduleId: string; detail?: string | null }
   | { type: "stage-changed"; stage: LabStage }
   | { type: "feature-changed"; featureId: LabFeatureId }
+  | { type: "workbench-updated"; workbench: LabRecord }
+  | { type: "source-config-patched"; patch: LabRecord }
   | { type: "source-drafts-updated"; patch: Partial<LabSourceDrafts> }
   | { type: "source-drafts-committed" }
   | { type: "edit-drafts-updated"; patch: Partial<LabEditDrafts> }
   | { type: "edit-drafts-committed" }
   | { type: "profile-drafts-updated"; patch: Partial<LabProfileDrafts> }
   | { type: "profile-drafts-committed" }
+  | { type: "module-manager-toggled"; open?: boolean }
   | { type: "toggle-event-feed"; force?: boolean }
   | { type: "advance-event-feed" }
   | { type: "reset-event-feed" }
@@ -321,9 +336,11 @@ export type LabStoreEvent =
   | { type: "clear-events" };
 
 export function createLabFeatureMeta(featureId: LabFeatureId): LabFeatureMeta {
-  return LAB_FEATURES.find(function (entry) {
-    return entry.id === featureId;
-  }) || LAB_FEATURES[0]!;
+  return (
+    LAB_FEATURES.find(function (entry) {
+      return entry.id === featureId;
+    }) || LAB_FEATURES[0]!
+  );
 }
 
 export function asLabRecord(value: unknown): LabRecord {
@@ -461,21 +478,21 @@ export function formatStatusLabel(value: unknown): string {
   const status = asNonEmptyString(value) || "idle";
   switch (status) {
     case "idle":
-      return "Hazir";
+      return "Hazır";
     case "queued":
-      return "Sirada";
+      return "Sırada";
     case "running":
-      return "Calisiyor";
+      return "Çalışıyor";
     case "ready":
-      return "Hazir";
+      return "Hazır";
     case "completed":
-      return "Tamamlandi";
+      return "Tamamlandı";
     case "failed":
       return "Hata";
     case "cancelled":
-      return "Iptal";
+      return "İptal";
     case "skipped":
-      return "Atlandi";
+      return "Atlandı";
     case "stale":
       return "Yenile";
     default:

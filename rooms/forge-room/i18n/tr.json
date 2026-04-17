@@ -22,7 +22,7 @@
     },
     "columns": {
       "planEyebrow": "Sol",
-      "planTitle": "Plan",
+      "planTitle": "Kontrol Yuzeyi",
       "responsesEyebrow": "Orta",
       "responsesTitle": "Yanit / Karar",
       "outputEyebrow": "Sag",
@@ -44,7 +44,7 @@
       }
     },
     "guards": {
-      "requiresSavedGoal": "GEREKLI: KAYITLI HEDEF",
+      "requiresSavedGoal": "GEREKLI: HEDEF",
       "requiresDraftTasks": "GEREKLI: TASLAK GOREVLER",
       "blockerDraftIssues": "BLOKAJ: TASLAK SORUNLARI",
       "requiresApprovedPlan": "GEREKLI: ONAYLI PLAN",
@@ -59,26 +59,26 @@
       "blockerHandoffCheck": "BLOKAJ: HANDOFF KONTROLU"
     },
     "primaryAction": {
-      "saveGoal": "Hedefi kaydet",
-      "saveGoalLocked": "KONTROL, HEDEF KAYDEDILENE KADAR KILITLI.",
-      "saveGoalRequired": "SONRAKI ADIM: HEDEFI KAYDET.",
+      "saveGoal": "HEDEFI KAYDET -> BASLAT",
+      "saveGoalLocked": "GEREKLI: HEDEF",
+      "saveGoalRequired": "GEREKLI: HEDEF",
       "generateDraft": "Taslak uret",
-      "generateDraftRequired": "SONRAKI ADIM: TASLAK URET.",
+      "generateDraftRequired": "SONRAKI: TASLAK URET",
       "finishDraft": "Taslagi tamamla",
       "approveDraft": "Taslagi onayla",
-      "approveDraftRequired": "SONRAKI ADIM: TASLAGI ONAYLA.",
+      "approveDraftRequired": "SONRAKI: TASLAGI ONAYLA",
       "dispatchAssignments": "Dagitimi baslat",
-      "dispatchAssignmentsRequired": "SONRAKI ADIM: ATAMALARI DAGIT.",
+      "dispatchAssignmentsRequired": "SONRAKI: DAGITIM",
       "reviewResponseLane": "Yanit hattini incele",
-      "waitForResponses": "DURUM BEKLEMEDE: YANITLARI BEKLE.",
+      "waitForResponses": "GEREKLI: YANITLAR",
       "generateSynthesis": "Sentez uret",
-      "generateSynthesisRequired": "SONRAKI ADIM: SENTEZ URET.",
+      "generateSynthesisRequired": "SONRAKI: SENTEZ URET",
       "resolveDecision": "Karari cozul",
-      "resolveDecisionBlocked": "CALISMA BLOKLU: KARARI COZ.",
+      "resolveDecisionBlocked": "BLOKAJ: ACIK KARAR",
       "chooseSynthesis": "Sentez sec",
-      "chooseSynthesisRequired": "EXPORT KILITLI: SENTEZ SEC.",
+      "chooseSynthesisRequired": "GEREKLI: SECILI SENTEZ",
       "exportHandoff": "Handoff export et",
-      "exportHandoffReady": "SON ADIM HAZIR: HANDOFF EXPORT ET.",
+      "exportHandoffReady": "SONRAKI: HANDOFF EXPORT",
       "checkHandoff": "Handoff'u kontrol et",
       "reviewExport": "Export'u incele",
       "exportComplete": "EXPORT TAMAMLANDI: {label}.",
@@ -86,7 +86,7 @@
       "workingLocked": "SISTEM, ADIM TAMAMLANANA KADAR KILITLI."
     },
     "panels": {
-      "goal": "Hedef Girisi",
+      "goal": "Kontrol Yuzeyi",
       "draft": "Taslak Dagilimi",
       "approved": "Dagitim Plani",
       "responses": "Yanitlar ve Kararlar",
@@ -162,11 +162,21 @@
         "brief": "Ozet",
         "constraints": "Her satira bir kisit"
       },
+      "goalBlock": {
+        "eyebrow": "Hedef",
+        "title": "Run hedefini ayarla"
+      },
+      "actions": {
+        "showDetails": "Hedef detaylari",
+        "hideDetails": "Detaylari gizle"
+      },
       "summary": {
         "targetLabel": "Hedef",
         "stateLabel": "Durum",
         "sessionLabel": "Oturum",
         "draftLabel": "Taslak",
+        "preflightLabel": "PRE-FLIGHT",
+        "signatureLabel": "Imza",
         "notStarted": "baslamadi",
         "waiting": "beklemede",
         "draftCountOne": "{count} gorev",
@@ -176,45 +186,121 @@
         "goal": "Hedef",
         "targetRoom": "Hedef oda",
         "brief": "Ozet",
-        "constraints": "Kisitlar",
-        "constraintsHint": "Her satira bir tane."
+        "constraints": "Kisitlar"
+      },
+      "operatorProfile": {
+        "eyebrow": "Operator profili",
+        "label": "Operator",
+        "manage": "Duzenle",
+        "drawerEyebrow": "PROFIL",
+        "drawerTitle": "Operator profilini yonet",
+        "empty": "Tanimli operator profili yok. AI onceki bir kapasite varsaymaz.",
+        "emptyShort": "Profil bos",
+        "selectedTruthHint": "Bu run'i sadece secili alanlar etkiler.",
+        "addSkill": "Yetenek ekle",
+        "addEquipment": "Ekipman ekle",
+        "editInline": "Satir ici duzenle",
+        "remove": "Kaldir",
+        "save": "Profili kaydet",
+        "close": "Kapat",
+        "values": {
+          "notSet": "ayarlanmadi",
+          "available": "var",
+          "unavailable": "yok"
+        }
+      },
+      "catalog": {
+        "groups": {
+          "skills": "Yetenekler",
+          "equipment": "Ekipman",
+          "general": "Genel"
+        },
+        "details": {
+          "level": "Seviye",
+          "status": "Durum",
+          "value": "Deger"
+        },
+        "items": {
+          "skillLevel": "Genel seviye",
+          "soldering": "Lehim",
+          "measurement": "Olcum",
+          "mechanical": "Mekanik",
+          "multimeter": "Multimetre",
+          "solderingIron": "Lehim havya",
+          "hotAir": "Sicak hava",
+          "benchSupply": "Tezgah kaynagi",
+          "magnification": "Buyutme",
+          "mode": "Mod",
+          "risk": "Risk"
+        }
+      },
+      "sessionContext": {
+        "eyebrow": "BU RUN ICIN BAGLAM",
+        "title": "Baglam aktiflestir",
+        "selectedCount": "{count} aktif",
+        "noneSelected": "0 aktif",
+        "zeroAssumptions": "0 aktif"
+      },
+      "preflight": {
+        "label": "Preflight",
+        "action": "Preflight calistir",
+        "idle": "bekliyor",
+        "ready": "hazir",
+        "stale": "eskidi",
+        "stepReady": "Baglam hazir",
+        "stepComplete": "Preflight tamam"
+      },
+      "runOverrides": {
+        "eyebrow": "Gecici kosullar",
+        "title": "Gecici kosullar",
+        "meta": "Sadece bu run",
+        "tempHotAir": "Sicak hava",
+        "preAnalysis": "On analiz",
+        "notes": "Run notlari",
+        "notesPlaceholder": "Bu run icin gecici kosul",
+        "save": "Run override'lari kaydet",
+        "active": "aktif",
+        "inactive": "pasif",
+        "addCondition": "+ Kosul ekle",
+        "commitCondition": "Ekle",
+        "cancelCondition": "Iptal"
       }
     },
     "draftPanel": {
       "guide": {
         "idle": {
-          "title": "Taslagi acmak icin hedefi kaydet",
-          "summary": "Bu hat, yukaridaki hedef kaydedilene kadar kilitli kalir."
+          "title": "GEREKLI: HEDEF",
+          "summary": "HEDEFI KAYDET -> BASLAT"
         },
         "sessionCreated": {
-          "title": "Bu hatti acmak icin hedefi kaydet",
-          "summary": "Yukaridaki hedef gerceklesmeden taslak acilmaz."
+          "title": "GEREKLI: HEDEF",
+          "summary": "HEDEFI KAYDET -> BASLAT"
         },
         "goalDefined": {
-          "title": "Taslak duzenlemeyi acmak icin sonraki adimi kullan",
-          "summary": "Ust cubuktan ilk taslagi uret, sonra bu hat duzenlemeye acilir."
+          "title": "SONRAKI: TASLAK URET",
+          "summary": "URETIMDEN SONRA TASLAK ACILIR"
         },
         "draftReadyBlocked": {
-          "title": "Onayi acmak icin taslagi duzelt",
-          "summary": "Plani onaya hazir hale getirmek icin asagidaki gorev detaylarini sikilastir."
+          "title": "BLOKAJ: TASLAK SORUNLARI",
+          "summary": "ASAGIDAKI GOREVLERI DUZELT"
         },
         "draftReadyOpen": {
-          "title": "Onayi acmak icin duzenlemeleri tamamla",
-          "summary": "Asagidaki gorev hatlarini netlestir, sonra sonraki adimla taslagi onayla."
+          "title": "SONRAKI: TASLAGI ONAYLA",
+          "summary": "NETLESTIR, SONRA ONAYLA"
         },
         "locked": {
-          "title": "Bu hat onaydan sonra kilitlenir",
-          "summary": "Sadece erken adimlari yeniden acmak istiyorsan plani bastan baslat."
+          "title": "DURUM: REFERANS",
+          "summary": "TASLAK KILITLI"
         }
       },
       "toolbar": {
         "countOne": "Taslakta {count} gorev var",
         "countOther": "Taslakta {count} gorev var",
-        "empty": "Taslak bos"
+        "empty": "Henuz taslak yok"
       },
       "empty": {
-        "goalDefined": "Ilk gorev hatlarini burada olusturmak icin sonraki adimi kullan.",
-        "locked": "Akis taslak duzenleme asamasina gelince bu hat acilir."
+        "goalDefined": "Henuz taslak yok. Ilk yapinin uretimi icin hedefi kaydet.",
+        "locked": "Henuz taslak yok. Ilk yapinin uretimi icin hedefi kaydet."
       },
       "fields": {
         "summary": "Ozet",

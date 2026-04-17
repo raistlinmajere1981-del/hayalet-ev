@@ -16,8 +16,8 @@
     "selectedModulesTitle": "Bu kosudaki moduller",
     "selectedModulesEmpty": "Henuz kosuya alinmis modul yok.",
     "sourceScope": {
-      "title": "Calisma Kapsami",
-      "subtitle": "Bu panel aktif proje icin hangi modullerin kosuya girecegini ve hangi modulle baslanacagini belirler.",
+      "title": "Analiz Modulleri",
+      "subtitle": "Bu projeye eklenecek analiz modullerini sec, kosu sirasini netlestir ve aktif modulu belirle.",
       "legend": {
         "includeTitle": "Kosuya ekle",
         "includeBody": "Modulu bu proje kosusuna dahil eder.",
@@ -63,11 +63,17 @@
     "focusAction": "Aktif Yap",
     "activateAction": "Aktif Yap",
     "activeTag": "Aktif",
-    "dependencyAction": "Arac Odasi",
+    "railState": {
+      "active": "Aktif asama",
+      "complete": "Tamamlandi",
+      "idle": "Hazir",
+      "blocked": "Bloklu"
+    },
+    "dependencyAction": "Modul Yonetimi",
     "dependencyEyebrow": "Operasyon Merkezi",
-    "dependencyTitle": "Arac Odasi",
+    "dependencyTitle": "Modul Yonetimi",
     "dependencySubtitle": "",
-    "dependencyOverview": "Workbench readiness ozeti",
+    "dependencyOverview": "Arac kurulumlarini, guncellemeleri ve oda desteklerini tek panelden yonet.",
     "dependencyFocus": "Aktif adim odagi:",
     "readinessTitle": "Readiness",
     "readinessSubtitle": "Kapsam gorunumu",
@@ -365,9 +371,9 @@
       "subtitle": "Kaynak tipini sec, oda projesi icine al ve gercek onizleme alaninda incele.",
       "formatLabel": "Kaynak Tipi",
       "modeLabel": "Rota",
-      "intakeTitle": "Kaynak Alimi",
-      "previewPanelTitle": "Kaynak Onizleme / Detay",
-      "previewTitle": "Kaynak Onizleme",
+      "intakeTitle": "Kaynak Girisi",
+      "previewPanelTitle": "Canli Kaynak Onizleme",
+      "previewTitle": "Onizleme",
       "previewEmptyTitle": "Proje kaynagi henuz hazir degil",
       "previewEmptyBody": "Canli onizlemeyi acmak icin yerel bir dosya sec veya uzak bir kaynagi aktif projeye indir.",
       "previewInfo": {
@@ -414,7 +420,7 @@
         "low": "En Dusuk",
         "medium": "Dengeli",
         "best": "En Iyi",
-        "custom": "Custom"
+        "custom": "Ozel"
       },
       "youtubeForm": {
         "fields": {

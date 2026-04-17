@@ -159,7 +159,10 @@ export function createLaboratorySubtitleReportRuntime(deps: LaboratorySubtitleRe
       return "Altyazi analizi hala suruyor; rapor tamamlaninca dolacak.";
     }
     if (processStatus === "failed") {
-      return asNonEmptyString(processRecord.error) || "Altyazi analizi hata ile tamamlandigi icin rapor bos kaldi.";
+      return (
+        asNonEmptyString(processRecord.error) ||
+        "Altyazi analizi hata ile tamamlandigi icin rapor bos kaldi."
+      );
     }
     if (processStatus === "cancelled") {
       return "Altyazi analizi iptal edildigi icin rapor bos kaldi.";

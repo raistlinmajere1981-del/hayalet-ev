@@ -59,8 +59,7 @@ export function createLaboratoryToolMutationRuntime(deps) {
       toolId,
       featureStage: featureStage || "source",
       operation: "tool-check-for-updates",
-      stage: "running",
-      percent: 15
+      stage: "running"
     });
     try {
       const result = await callRoomTools({
@@ -93,8 +92,7 @@ export function createLaboratoryToolMutationRuntime(deps) {
         toolId,
         featureStage: featureStage || "source",
         operation: "tool-check-for-updates",
-        stage: "completed",
-        percent: 100
+        stage: "completed"
       });
       return update;
     } catch (error) {
@@ -179,8 +177,7 @@ export function createLaboratoryToolMutationRuntime(deps) {
         action,
         toolId,
         featureStage: featureStage || "source",
-        stage: "completed",
-        percent: 100
+        stage: "completed"
       });
       return result["tool"];
     } catch (error) {

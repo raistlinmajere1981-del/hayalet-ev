@@ -43,7 +43,9 @@ function createEmptyReports(): LabStoreState["reports"] {
   };
 }
 
-function createIdlePreflight(reason: string | null = "Ön kontrol henüz çalıştırılmadı."): LabPreflightResult {
+function createIdlePreflight(
+  reason: string | null = "Ön kontrol henüz çalıştırılmadı."
+): LabPreflightResult {
   return {
     status: "idle",
     missingDependencies: [],
@@ -98,6 +100,7 @@ function createInitialState(): LabStoreState {
       sourceDraftDirty: false,
       editDraftDirty: false,
       profileDraftDirty: false,
+      moduleManagerOpen: false,
       eventFeedExpanded: false,
       eventFeedCursor: 0,
       artifactListExpanded: false,
@@ -146,9 +149,7 @@ function toEventFeedItem(
     id: asNonEmptyString(record["id"]) || createLabEventId("event"),
     kind: asNonEmptyString(record["kind"]) || "activity",
     severity:
-      severity === "success" || severity === "warning" || severity === "error"
-        ? severity
-        : "info",
+      severity === "success" || severity === "warning" || severity === "error" ? severity : "info",
     message,
     detail: asNonEmptyString(record["detail"]),
     timestamp: toTimestamp(record["timestamp"]),
@@ -217,7 +218,8 @@ function toModuleState(value: unknown): LabModuleState | null {
     endedAt: asNonEmptyString(record["completedAt"]),
     progress: clampPercent(record["percent"]),
     progressMode:
-      clampPercent(record["percent"]) !== null || asNonEmptyString(record["progressMode"]) === "measured"
+      clampPercent(record["percent"]) !== null ||
+      asNonEmptyString(record["progressMode"]) === "measured"
         ? "measured"
         : "none",
     message: asNonEmptyString(record["message"]),
@@ -234,7 +236,9 @@ function toRunFromProcessRecord(processRecord: Record<string, unknown>): LabRun 
     return null;
   }
 
-  const modules = Array.isArray(processRecord["modules"]) ? (processRecord["modules"] as unknown[]) : [];
+  const modules = Array.isArray(processRecord["modules"])
+    ? (processRecord["modules"] as unknown[])
+    : [];
   const moduleMap: Record<string, LabModuleState> = {};
   const moduleOrder: string[] = [];
 
@@ -282,7 +286,9 @@ function toRunFromProcessRecord(processRecord: Record<string, unknown>): LabRun 
     progress: clampPercent(processRecord["percent"]),
     emptyReason:
       asNonEmptyString(processRecord["emptyReason"]) ||
-      (findings.length === 0 && artifacts.length === 0 && asNonEmptyString(processRecord["status"]) === "ready"
+      (findings.length === 0 &&
+      artifacts.length === 0 &&
+      asNonEmptyString(processRecord["status"]) === "ready"
         ? "Çalışma tamamlandı ancak raporlanabilir bulgu veya artefakt oluşmadı."
         : null),
   };
@@ -297,10 +303,7 @@ function toReportsFromRecord(reportRecord: Record<string, unknown>) {
       asNonEmptyString(userRecord["summary"]) !== null
         ? (userRecord as unknown as LabUserReport)
         : null,
-    ai:
-      aiRecord["manifest"] !== undefined
-        ? (aiRecord as unknown as LabAiReport)
-        : null,
+    ai: aiRecord["manifest"] !== undefined ? (aiRecord as unknown as LabAiReport) : null,
     emptyReason:
       asNonEmptyString(reportRecord["emptyReason"]) ||
       (asNonEmptyString(reportRecord["status"]) === "ready"
@@ -591,7 +594,9 @@ function syncCanonicalStateFromSnapshot(
 
   state.projectIndex = {
     activeProjectId: asNonEmptyString(snapshot["activeProjectId"]),
-    projects: Array.isArray(snapshot["projects"]) ? (snapshot["projects"] as unknown[]).map(asLabRecord) : [],
+    projects: Array.isArray(snapshot["projects"])
+      ? (snapshot["projects"] as unknown[]).map(asLabRecord)
+      : [],
   };
   state.workbench = asLabRecord(snapshot["workbench"]);
   state.profileModels = Array.isArray(snapshot["profileModels"])
@@ -622,7 +627,9 @@ function syncCanonicalStateFromSnapshot(
       : createIdlePreflight();
   state.sourceProbeStatus = deriveProbeStatus(state.source, state.sourceProbeStatus);
 
-  const processRecord = asLabRecord(asLabRecord(activeProject["process"])["records"])[state.featureId];
+  const processRecord = asLabRecord(asLabRecord(activeProject["process"])["records"])[
+    state.featureId
+  ];
   state.run = toRunFromProcessRecord(asLabRecord(processRecord));
 
   const reportRecord = asLabRecord(
@@ -673,7 +680,9 @@ function sanitizeHydratedRun(run: LabPersistedState["lastRun"] | undefined) {
         .filter((entry): entry is LabEventFeedItem => entry !== null)
     : [];
   nextRun.emptyReason =
-    typeof nextRun.emptyReason === "string" ? nextRun.emptyReason : "Önceki çalışma özet olarak geri yüklendi.";
+    typeof nextRun.emptyReason === "string"
+      ? nextRun.emptyReason
+      : "Önceki çalışma özet olarak geri yüklendi.";
   return nextRun;
 }
 
@@ -721,7 +730,9 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         state.preflight = event.payload.preflight || createIdlePreflight();
         state.run = sanitizeHydratedRun(event.payload.lastRun);
         state.reports = event.payload.reports || state.reports;
-        state.reportExports = Array.isArray(event.payload.reportExports) ? event.payload.reportExports : [];
+        state.reportExports = Array.isArray(event.payload.reportExports)
+          ? event.payload.reportExports
+          : [];
         state.profileModels = Array.isArray(event.payload.profileModels)
           ? event.payload.profileModels
           : [];
@@ -934,6 +945,15 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
         syncCanonicalStateFromSnapshot(state, state.snapshot, { preserveFeatureId: true });
       }
       return state;
+    case "workbench-updated":
+      state.workbench = asLabRecord(event.workbench);
+      return state;
+    case "source-config-patched":
+      state.source = {
+        ...(state.source || {}),
+        ...asLabRecord(event.patch),
+      };
+      return state;
     case "source-drafts-updated":
       state.ui.sourceDrafts = {
         ...state.ui.sourceDrafts,
@@ -963,6 +983,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
       return state;
     case "profile-drafts-committed":
       state.ui.profileDraftDirty = false;
+      return state;
+    case "module-manager-toggled":
+      state.ui.moduleManagerOpen =
+        typeof event.open === "boolean" ? event.open : !state.ui.moduleManagerOpen;
       return state;
     case "toggle-event-feed":
       state.ui.eventFeedExpanded =

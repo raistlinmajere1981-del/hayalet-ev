@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-15T22:52:20.730Z",
+  "generatedAt": "2026-04-17T08:29:37.940Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,7 +16,7 @@
     ]
   },
   "stats": {
-    "filesScanned": 480,
+    "filesScanned": 481,
     "filesWithComments": 83,
     "commentsIndexed": 208,
     "fileLevelComments": 154,

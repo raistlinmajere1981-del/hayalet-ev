@@ -8,6 +8,9 @@ export function createLaboratorySourceStageUi(deps) {
   const renderSubtitleSourceIntakePanel = deps.renderSubtitleSourceIntakePanel;
   const renderSubtitleSourceWorkspacePanel = deps.renderSubtitleSourceWorkspacePanel;
   const getActiveProject = deps.getActiveProject;
+  const getCurrentSourceKind = deps.getCurrentSourceKind;
+  const getCurrentSourceMode = deps.getCurrentSourceMode;
+  const featureText = deps.featureText;
   const text = deps.text;
   const state = deps.state;
   const escapeHtml = deps.escapeHtml;
@@ -139,7 +142,11 @@ export function createLaboratorySourceStageUi(deps) {
       <section class="lab-panel lab-source-scope">
         <div class="lab-panel__header">
           <div>
+            <p class="lab-panel__eyebrow">${escapeHtml(text(["workbench", "moduleRailLabel"]))}</p>
             <h2 class="lab-panel__title">${escapeHtml(text(["workbench", "sourceScope", "title"]))}</h2>
+            <p class="lab-panel__hint">${escapeHtml(
+      text(["workbench", "sourceScope", "subtitle"])
+    )}</p>
           </div>
         </div>
         <div class="lab-source-scope__metrics">
@@ -163,6 +170,8 @@ export function createLaboratorySourceStageUi(deps) {
   function renderSourceContextPanel() {
     const activeProject = getActiveProject();
     const activeFeatureId = getActiveFeatureId();
+    const currentSourceKind = getCurrentSourceKind();
+    const currentSourceMode = getCurrentSourceMode();
     const selectedModuleIds = getSelectedModuleIds();
     const activeProjectName = activeProject && typeof activeProject["name"] === "string" && activeProject["name"].trim() !== "" ? activeProject["name"].trim() : text(["mediaAnalysis", "projects", "empty"]);
     const selectedSummary = selectedModuleIds.length > 0 ? selectedModuleIds.map(getFeatureLabel).join(", ") : text(["workbench", "selectedModulesEmpty"]);
@@ -171,17 +180,8 @@ export function createLaboratorySourceStageUi(deps) {
       <section class="lab-panel lab-panel--dense lab-module-panel lab-module-panel--context">
         <div class="lab-panel__header">
           <div>
-            <h2 class="lab-panel__title">${escapeHtml(
-      text(["mediaAnalysis", "projects", "detailsTitle"])
-    )}</h2>
+            <h2 class="lab-panel__title">${escapeHtml(text(["mediaAnalysis", "source", "summaryTitle"]))}</h2>
           </div>
-          <button
-            class="lab-button lab-button--ghost lab-button--tight"
-            type="button"
-            data-action="open-settings"
-          >
-            ${escapeHtml(text(["workbench", "dependencyAction"]))}
-          </button>
         </div>
         <div class="lab-summary-list">
           <div class="lab-summary-list__row">
@@ -195,6 +195,14 @@ export function createLaboratorySourceStageUi(deps) {
           <div class="lab-summary-list__row">
             <span>${escapeHtml(text(["workbench", "selectedModulesTitle"]))}</span>
             <strong>${escapeHtml(selectedSummary)}</strong>
+          </div>
+          <div class="lab-summary-list__row">
+            <span>${escapeHtml(featureText(["source", "formatLabel"]))}</span>
+            <strong>${escapeHtml(featureText(["source", "formats", currentSourceKind, "title"]))}</strong>
+          </div>
+          <div class="lab-summary-list__row">
+            <span>${escapeHtml(text(["mediaAnalysis", "source", "modeLabel"]))}</span>
+            <strong>${escapeHtml(text(["mediaAnalysis", "source", "modes", currentSourceMode]))}</strong>
           </div>
         </div>
         ${contextHint.trim() !== "" ? `<p class="lab-panel__hint">${escapeHtml(contextHint)}</p>` : ""}
@@ -260,10 +268,18 @@ export function createLaboratorySourceStageUi(deps) {
     `;
   }
   function renderSourceInspector() {
+    if (isSubtitleAnalysisFeature()) {
+      return `
+        <div class="lab-stage-stack lab-stage-stack--inspector">
+          ${renderSourceContextPanel()}
+          ${renderSubtitleSourceWorkspacePanel()}
+        </div>
+      `;
+    }
     return `
       <div class="lab-stage-stack lab-stage-stack--inspector">
+        ${renderPreviewSurface()}
         ${renderSourceContextPanel()}
-        ${isSubtitleAnalysisFeature() ? renderSubtitleSourceWorkspacePanel() : renderPreviewSurface()}
       </div>
     `;
   }

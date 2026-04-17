@@ -1,8 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  asStringArray
-} from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asStringArray } from "../models/lab-types.js";
 export function runPreflight(profileConfig, _source = null) {
   const profile = asLabRecord(profileConfig);
   const readiness = asLabRecord(profile["readiness"]);
@@ -28,7 +24,8 @@ export function runPreflight(profileConfig, _source = null) {
     estimatedRuntime: typeof asLabRecord(profile["estimate"])["runtimeSeconds"] === "number" ? asLabRecord(profile["estimate"])["runtimeSeconds"] : null,
     enabledModules,
     stageReady,
-    rawStatus
+    rawStatus,
+    reason: stageReady === true ? warnings.length > 0 ? "Ön kontrolde uyarılar var ama işlem devam edebilir." : null : missingDependencies.length > 0 ? `Eksik bağımlılıklar: ${missingDependencies.join(", ")}` : "Ön kontrol bu aşamayı henüz hazır işaretlemedi."
   };
 }
 export function normalizeLabPreflight(projectProfile) {

@@ -1,8 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  asStringArray,
-} from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, asStringArray } from "../models/lab-types.js";
 import type {
   LabAiReport,
   LabArtifactProjection,
@@ -51,7 +47,9 @@ export function buildUserReport(run: LabRun | null, reportRecord: unknown): LabU
       ? `En yuksek oncelikli bulgu: ${run.findings[0].title}. Toplam ${String(run.findings.length)} bulgu ve ${String(run.artifacts.length)} artefakt kaydi mevcut.`
       : run.emptyReason || "Calisma tamamlandi fakat on plana cikan bulgu kaydi uretilmedi.");
   const confidence =
-    run.findings[0]?.confidence || asNonEmptyString(asLabRecord(normalizedReport["userReport"])["confidence"]) || "low";
+    run.findings[0]?.confidence ||
+    asNonEmptyString(asLabRecord(normalizedReport["userReport"])["confidence"]) ||
+    "low";
 
   return {
     summary: generatedSummary,
@@ -75,8 +73,9 @@ export function buildAiReport(run: LabRun | null, reportRecord: unknown): LabAiR
 
   const normalizedReport = asLabRecord(reportRecord);
   const degradedConditions = asStringArray(normalizedReport["caveats"]).concat(run.warnings);
-  const errors = [run.error, asNonEmptyString(normalizedReport["error"])]
-    .filter((entry): entry is string => entry !== null);
+  const errors = [run.error, asNonEmptyString(normalizedReport["error"])].filter(
+    (entry): entry is string => entry !== null
+  );
 
   return {
     manifest: {

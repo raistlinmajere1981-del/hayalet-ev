@@ -20,6 +20,19 @@ type EditStageRenderDeps = {
   state: LabStoreState;
 };
 
+function getEditAdvancedControlsVisible(editMode: string, advancedOpen: boolean) {
+  return editMode === "advanced" || advancedOpen;
+}
+
+function getActiveOutputLabel(activeOutput: ReturnType<typeof getActiveEditOutput>) {
+  if (!activeOutput) {
+    return "source";
+  }
+  const fileName = typeof activeOutput["fileName"] === "string" ? activeOutput["fileName"] : null;
+  const outputId = typeof activeOutput["id"] === "string" ? activeOutput["id"] : null;
+  return fileName || outputId || "derived";
+}
+
 export function renderEditStage(deps: EditStageRenderDeps): LabStageSurface {
   const editConfig = getProjectEdit(deps.state);
   const preview = getEditPreview(deps.state);
@@ -28,8 +41,11 @@ export function renderEditStage(deps: EditStageRenderDeps): LabStageSurface {
   const sourceReady = getSourceProbeStatus(deps.state) === "completed";
   const drafts = deps.state.ui.editDrafts;
   const editMode = typeof editConfig["mode"] === "string" ? editConfig["mode"] : "beginner";
-  const handoffMode = typeof editConfig["handoffMode"] === "string" ? editConfig["handoffMode"] : "source";
+  const handoffMode =
+    typeof editConfig["handoffMode"] === "string" ? editConfig["handoffMode"] : "source";
   const previewStatus = typeof preview["status"] === "string" ? preview["status"] : "idle";
+  const advancedControlsVisible = getEditAdvancedControlsVisible(editMode, drafts.advancedOpen);
+  const activeOutputLabel = getActiveOutputLabel(activeOutput);
 
   const main = `
     ${renderStageHeader({
@@ -37,8 +53,10 @@ export function renderEditStage(deps: EditStageRenderDeps): LabStageSurface {
       stageIndex: 2,
       stageTotal: 5,
       statusLabel: previewStatus,
-      statusTone: previewStatus === "ready" ? "success" : previewStatus === "failed" ? "error" : "neutral",
-      subtitle: "Çekirdek kontrolleri öne al. Preview gerçeği dışında hiçbir şeyi tamamlandı gibi gösterme.",
+      statusTone:
+        previewStatus === "ready" ? "success" : previewStatus === "failed" ? "error" : "neutral",
+      subtitle:
+        "Çekirdek kontrolleri öne al. Preview gerçeği dışında hiçbir şeyi tamamlandı gibi gösterme.",
       title: "Düzene",
     })}
     ${
@@ -85,47 +103,61 @@ export function renderEditStage(deps: EditStageRenderDeps): LabStageSurface {
               eyebrow: "Source Ref",
               title: "Aktif Handoff",
               body: `
-                <div class="labx-inline-grid">
-                  <label class="labx-field">
-                    <span>Handoff</span>
-                    <select class="labx-select" data-lab-field="edit.handoffMode">
-                      ${["source", "derived"]
-                        .map(function (entry) {
-                          return `<option value="${entry}" ${entry === handoffMode ? "selected" : ""}>${escapeHtml(entry)}</option>`;
-                        })
-                        .join("")}
-                    </select>
-                  </label>
-                  <label class="labx-field">
-                    <span>Preview Referansı</span>
-                    <select class="labx-select" data-lab-field="edit.activeSourceRef">
-                      ${["original", "preview"]
-                        .map(function (entry) {
-                          return `<option value="${entry}" ${entry === drafts.activeSourceRef ? "selected" : ""}>${escapeHtml(entry)}</option>`;
-                        })
-                        .join("")}
-                    </select>
-                  </label>
+                <div class="labx-summary-list">
+                  <div><span>Handoff</span><strong>${escapeHtml(handoffMode)}</strong></div>
+                  <div><span>Preview Ref</span><strong>${escapeHtml(drafts.activeSourceRef)}</strong></div>
+                  <div><span>Aktif Output</span><strong>${escapeHtml(activeOutputLabel)}</strong></div>
                 </div>
-                <div class="labx-list-stack">
-                  ${
-                    outputs.length > 0
-                      ? outputs
-                          .map(function (output) {
-                            const outputId = typeof output["id"] === "string" ? output["id"] : "";
-                            return `
-                              <label class="labx-choice-row">
-                                <input type="radio" name="edit-output" data-lab-field="edit.activeOutputId" value="${escapeHtml(outputId)}" ${activeOutput === output ? "checked" : ""} />
-                                <span>${escapeHtml(
-                                  typeof output["fileName"] === "string" ? output["fileName"] : outputId
-                                )}</span>
-                              </label>
-                            `;
-                          })
-                          .join("")
-                      : `<p class="labx-panel-hint">Henüz derived output üretilmedi.</p>`
-                  }
-                </div>
+                ${
+                  advancedControlsVisible
+                    ? `
+                      <div class="labx-inline-grid">
+                        <label class="labx-field">
+                          <span>Handoff</span>
+                          <select class="labx-select" data-lab-field="edit.handoffMode">
+                            ${["source", "derived"]
+                              .map(function (entry) {
+                                return `<option value="${entry}" ${entry === handoffMode ? "selected" : ""}>${escapeHtml(entry)}</option>`;
+                              })
+                              .join("")}
+                          </select>
+                        </label>
+                        <label class="labx-field">
+                          <span>Preview Referansı</span>
+                          <select class="labx-select" data-lab-field="edit.activeSourceRef">
+                            ${["original", "preview"]
+                              .map(function (entry) {
+                                return `<option value="${entry}" ${entry === drafts.activeSourceRef ? "selected" : ""}>${escapeHtml(entry)}</option>`;
+                              })
+                              .join("")}
+                          </select>
+                        </label>
+                      </div>
+                      <div class="labx-list-stack">
+                        ${
+                          outputs.length > 0
+                            ? outputs
+                                .map(function (output) {
+                                  const outputId =
+                                    typeof output["id"] === "string" ? output["id"] : "";
+                                  return `
+                                    <label class="labx-choice-row">
+                                      <input type="radio" name="edit-output" data-lab-field="edit.activeOutputId" value="${escapeHtml(outputId)}" ${activeOutput === output ? "checked" : ""} />
+                                      <span>${escapeHtml(
+                                        typeof output["fileName"] === "string"
+                                          ? output["fileName"]
+                                          : outputId
+                                      )}</span>
+                                    </label>
+                                  `;
+                                })
+                                .join("")
+                            : `<p class="labx-panel-hint">Henüz derived output üretilmedi.</p>`
+                        }
+                      </div>
+                    `
+                    : `<p class="labx-panel-hint">Gelişmiş görünümü açarak handoff ve output seçimlerini düzenleyin.</p>`
+                }
               `,
               footer: renderPrimaryCTA({
                 action: "primary-action",
@@ -170,7 +202,16 @@ export function renderEditStage(deps: EditStageRenderDeps): LabStageSurface {
           <input type="checkbox" data-lab-field="edit.advancedOpen" ${drafts.advancedOpen ? "checked" : ""} />
           <span>Advanced section açık</span>
         </label>
-        <p class="labx-panel-hint">İleri kontroller varsayılan olarak kapalı başlar; ilk ekranda yalnız çekirdek kontroller görünür.</p>
+        <p class="labx-panel-hint">${
+          advancedControlsVisible
+            ? "Handoff, preview referansı ve output seçimleri görünür durumda."
+            : "İleri kontroller kapalı. İlk ekranda yalnız çekirdek kontroller görünür."
+        }</p>
+        ${
+          editMode === "advanced"
+            ? `<p class="labx-panel-hint">Operatör modu advanced seçildiği için gelişmiş bölüm açık tutulur.</p>`
+            : ""
+        }
       `,
     }),
   ].join("");

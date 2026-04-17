@@ -119,7 +119,8 @@ export function createLaboratoryProcessReportStateRuntime(deps: Record<string, u
           ? Math.max(0, Math.min(100, Math.round(asNumber(source.percent) || 0)))
           : null,
       progressMode:
-        typeof asNumber(source.percent) === "number" || asNonEmptyString(source["progressMode"]) === "measured"
+        typeof asNumber(source.percent) === "number" ||
+        asNonEmptyString(source["progressMode"]) === "measured"
           ? "measured"
           : "none",
       summary: asNonEmptyString(source.summary) || "",

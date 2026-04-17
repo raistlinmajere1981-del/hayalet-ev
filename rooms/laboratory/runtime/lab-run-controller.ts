@@ -1,8 +1,4 @@
-import {
-  asLabRecord,
-  asNonEmptyString,
-  createLabEventId,
-} from "../models/lab-types.js";
+import { asLabRecord, asNonEmptyString, createLabEventId } from "../models/lab-types.js";
 import type { LabFeatureId, LabStage } from "../models/lab-types.js";
 import {
   canAdvanceToStage,
@@ -40,7 +36,9 @@ function toStringValue(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-function isTextControl(target: EventTarget | null): target is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement {
+function isTextControl(
+  target: EventTarget | null
+): target is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement {
   return (
     target instanceof HTMLInputElement ||
     target instanceof HTMLSelectElement ||
@@ -48,7 +46,10 @@ function isTextControl(target: EventTarget | null): target is HTMLInputElement |
   );
 }
 
-function buildUiEvent(message: string, severity: "info" | "warning" | "error" | "success" = "info") {
+function buildUiEvent(
+  message: string,
+  severity: "info" | "warning" | "error" | "success" = "info"
+) {
   return {
     id: createLabEventId("ui"),
     kind: "activity",
@@ -113,9 +114,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     const currentWorkbench = {
       ...getWorkbench(state),
     };
+    const nextWorkbench = update(currentWorkbench);
+    dispatch({
+      type: "workbench-updated",
+      workbench: nextWorkbench,
+    });
     sendHostContext({
       ...state.context,
-      workbench: update(currentWorkbench),
+      workbench: nextWorkbench,
     });
   }
 
@@ -140,23 +146,28 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     });
     updateWorkbench(function (workbench) {
       const selectedModuleIds = Array.isArray(workbench["selectedModuleIds"])
-        ? (workbench["selectedModuleIds"] as unknown[]).filter((entry): entry is string => typeof entry === "string")
+        ? (workbench["selectedModuleIds"] as unknown[]).filter(
+            (entry): entry is string => typeof entry === "string"
+          )
         : [];
       return {
         ...workbench,
         activeModuleId: featureId,
-        selectedModuleIds:
-          selectedModuleIds.includes(featureId) ? selectedModuleIds : [featureId].concat(selectedModuleIds),
+        selectedModuleIds: selectedModuleIds.includes(featureId)
+          ? selectedModuleIds
+          : [featureId].concat(selectedModuleIds),
       };
     });
   }
 
   function toggleFeature(featureId: string) {
     updateWorkbench(function (workbench) {
-    const selectedModuleIds = Array.isArray(workbench["selectedModuleIds"])
-      ? (workbench["selectedModuleIds"] as unknown[]).filter((entry): entry is string => typeof entry === "string")
-      : [];
-    const activeModuleId = asNonEmptyString(workbench["activeModuleId"]) || featureId;
+      const selectedModuleIds = Array.isArray(workbench["selectedModuleIds"])
+        ? (workbench["selectedModuleIds"] as unknown[]).filter(
+            (entry): entry is string => typeof entry === "string"
+          )
+        : [];
+      const activeModuleId = asNonEmptyString(workbench["activeModuleId"]) || featureId;
       const nextSelected = selectedModuleIds.includes(featureId)
         ? selectedModuleIds.filter(function (entry) {
             return entry !== featureId;
@@ -182,7 +193,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
     if (featureId === "subtitle-analysis") {
       const activeProject = asLabRecord(getSnapshot(state)["activeProject"]);
-      const subtitleWorkspace = asLabRecord(asLabRecord(activeProject["subtitleAnalysis"])["workspace"]);
+      const subtitleWorkspace = asLabRecord(
+        asLabRecord(activeProject["subtitleAnalysis"])["workspace"]
+      );
       const subtitleMode = asNonEmptyString(subtitleWorkspace["mode"]) || "local-file";
       const fields = {
         fileNameHint: sourceDrafts.fileNameHint,
@@ -230,7 +243,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         runSourcePrimaryAction();
         return;
       case "edit":
-        sendMediaAction(state.featureId === "subtitle-analysis" ? "subtitle-edit-preview" : "edit-preview");
+        sendMediaAction(
+          state.featureId === "subtitle-analysis" ? "subtitle-edit-preview" : "edit-preview"
+        );
         return;
       case "profile":
         sendMediaAction("profile-run-preflight");
@@ -238,14 +253,18 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "process": {
         const run = getCurrentRun(state);
         if (run && run.state === "running") {
-          sendMediaAction(state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel");
+          sendMediaAction(
+            state.featureId === "audio-analysis" ? "audio-process-cancel" : "process-cancel"
+          );
           return;
         }
         sendMediaAction(state.featureId === "audio-analysis" ? "audio-process-run" : "process-run");
         return;
       }
       case "report":
-        sendMediaAction(state.featureId === "audio-analysis" ? "audio-report-export" : "report-export");
+        sendMediaAction(
+          state.featureId === "audio-analysis" ? "audio-report-export" : "report-export"
+        );
         return;
       default:
         return;
@@ -274,6 +293,13 @@ export function createLabRunController(deps: LabRunControllerDeps) {
     switch (action) {
       case "primary-action":
         runPrimaryAction();
+        return;
+      case "toggle-module-manager":
+        dispatch({ type: "module-manager-toggled" });
+        return;
+      case "close-module-manager":
+      case "dismiss-module-manager":
+        dispatch({ type: "module-manager-toggled", open: false });
         return;
       case "feature-activate":
         activateFeature(value);
@@ -349,9 +375,12 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
     if (field.startsWith("profile.")) {
       const rawValue = target.value;
-      const value = target instanceof HTMLInputElement && target.type === "number"
-        ? rawValue === "" ? null : Number(rawValue)
-        : rawValue;
+      const value =
+        target instanceof HTMLInputElement && target.type === "number"
+          ? rawValue === ""
+            ? null
+            : Number(rawValue)
+          : rawValue;
       dispatch({
         type: "profile-drafts-updated",
         patch: {
@@ -387,9 +416,21 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         sendMediaAction("project-select", { projectId: targetValue });
         return;
       case "source.kind":
+        dispatch({
+          type: "source-config-patched",
+          patch: {
+            kind: targetValue,
+          },
+        });
         sendMediaAction("source-set-kind", { kind: targetValue });
         return;
       case "source.mode":
+        dispatch({
+          type: "source-config-patched",
+          patch: {
+            mode: targetValue,
+          },
+        });
         sendMediaAction(
           state.featureId === "subtitle-analysis" ? "subtitle-source-set-mode" : "source-set-mode",
           { mode: targetValue }
@@ -399,7 +440,9 @@ export function createLabRunController(deps: LabRunControllerDeps) {
       case "source.urlInput":
       case "source.youtubeUrl":
         sendMediaAction(
-          state.featureId === "subtitle-analysis" ? "subtitle-source-update-drafts" : "source-update-draft",
+          state.featureId === "subtitle-analysis"
+            ? "subtitle-source-update-drafts"
+            : "source-update-draft",
           {
             fields: {
               ...state.ui.sourceDrafts,
@@ -456,9 +499,7 @@ export function createLabRunController(deps: LabRunControllerDeps) {
         sendMediaAction("profile-set-target", {
           mode: targetValue,
           outputId:
-            targetValue === "derived"
-              ? asNonEmptyString(getActiveEditOutput(state)?.["id"])
-              : null,
+            targetValue === "derived" ? asNonEmptyString(getActiveEditOutput(state)?.["id"]) : null,
         });
         return;
       case "profile.targetOutputId":
@@ -527,18 +568,20 @@ export function createLabRunController(deps: LabRunControllerDeps) {
               : sourceProbeStatus === "completed" || sourceStatus === "ready"
                 ? "Probe tamamlandı"
                 : "Source probe başlatılır",
-          label: sourceProbeStatus === "completed" || sourceStatus === "ready" ? "Kaynağı Yenile" : "Kaynağı Hazırla",
+          label:
+            sourceProbeStatus === "completed" || sourceStatus === "ready"
+              ? "Kaynağı Yenile"
+              : "Kaynağı Hazırla",
         };
       }
-      case "edit":
-        {
-          const blockReason = getStageBlockReason(state, "edit");
-          return {
-            disabled: blockReason !== null,
-            detail: blockReason || "Preview completion fake edilemez",
-            label: "Önizleme Üret",
-          };
-        }
+      case "edit": {
+        const blockReason = getStageBlockReason(state, "edit");
+        return {
+          disabled: blockReason !== null,
+          detail: blockReason || "Preview completion fake edilemez",
+          label: "Önizleme Üret",
+        };
+      }
       case "profile": {
         const preflight = getCurrentPreflight(state);
         const blockReason = getStageBlockReason(state, "profile");
@@ -565,15 +608,14 @@ export function createLabRunController(deps: LabRunControllerDeps) {
           label: run && run.state === "running" ? "Çalışmayı İptal Et" : "Analizi Başlat",
         };
       }
-      case "report":
-        {
-          const blockReason = getStageBlockReason(state, "report");
-          return {
-            disabled: blockReason !== null,
-            detail: blockReason || "Structured rapor dışa aktarılır",
-            label: "Raporları Dışa Aktar",
-          };
-        }
+      case "report": {
+        const blockReason = getStageBlockReason(state, "report");
+        return {
+          disabled: blockReason !== null,
+          detail: blockReason || "Structured rapor dışa aktarılır",
+          label: "Raporları Dışa Aktar",
+        };
+      }
       default:
         return {
           disabled: false,

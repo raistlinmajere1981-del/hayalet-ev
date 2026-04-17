@@ -1,12 +1,22 @@
-import { createHash } from "node:crypto";
 import { FORGE_PREFLIGHT_SCHEMA_VERSION, FORGE_TARGET_ROOM_ID } from "../shared/forge-constants.js";
 import type {
   ForgeGoal,
-  ForgeOperatorProfile,
   ForgeRunOverride,
   ForgeRunSignature,
+  ForgeSelectedOperatorProfile,
 } from "../shared/types/index.js";
 import { nowIso, uniqueStrings } from "./forge-runtime-support.js";
+
+function hashFingerprint(value: string): string {
+  let hash = 2166136261;
+
+  for (const character of value) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+
+  return hash.toString(16).padStart(8, "0").slice(0, 6);
+}
 
 function slugifySegment(value: string): string {
   return value
@@ -25,8 +35,8 @@ function titleCaseRoomId(roomId: string): string {
 
 function buildCollisionSuffix(params: {
   goal: ForgeGoal;
-  operatorProfile: ForgeOperatorProfile;
   runOverride: ForgeRunOverride | null;
+  selectedOperatorProfile: ForgeSelectedOperatorProfile;
   source: string[];
 }): string {
   const fingerprint = JSON.stringify({
@@ -36,24 +46,24 @@ function buildCollisionSuffix(params: {
       constraints: params.goal.constraints,
       targetRoomId: params.goal.targetRoomId,
     },
-    operatorProfile: params.operatorProfile,
+    selectedOperatorProfile: params.selectedOperatorProfile,
     runOverride: params.runOverride,
     source: params.source,
   });
-  return createHash("sha1").update(fingerprint).digest("hex").slice(0, 6);
+  return hashFingerprint(fingerprint);
 }
 
 function collectConstraintTokens(params: {
   goal: ForgeGoal;
-  operatorProfile: ForgeOperatorProfile;
   runOverride: ForgeRunOverride | null;
+  selectedOperatorProfile: ForgeSelectedOperatorProfile;
 }): string[] {
   const tokens = uniqueStrings(
     [
       params.goal.constraints[0] ?? null,
-      params.operatorProfile.preferences.mode,
-      params.operatorProfile.preferences.riskTolerance
-        ? `${params.operatorProfile.preferences.riskTolerance}-risk`
+      params.selectedOperatorProfile.preferences.mode,
+      params.selectedOperatorProfile.preferences.riskTolerance
+        ? `${params.selectedOperatorProfile.preferences.riskTolerance}-risk`
         : null,
       ...Object.entries(params.runOverride?.tools ?? {})
         .filter(([, enabled]) => enabled === true)
@@ -70,8 +80,8 @@ function collectConstraintTokens(params: {
 
 export function buildForgeRunSignature(params: {
   goal: ForgeGoal;
-  operatorProfile: ForgeOperatorProfile;
   runOverride: ForgeRunOverride | null;
+  selectedOperatorProfile: ForgeSelectedOperatorProfile;
 }): ForgeRunSignature {
   const roomPart = titleCaseRoomId(params.goal.targetRoomId || FORGE_TARGET_ROOM_ID);
   const versionPart = FORGE_PREFLIGHT_SCHEMA_VERSION;

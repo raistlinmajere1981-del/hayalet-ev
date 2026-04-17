@@ -208,6 +208,10 @@ test("room package manager keeps installed room record building in a dedicated b
     scripts["rooms:build"],
     "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx scripts/rooms/build-workspace-rooms.ts"
   );
+  assert.equal(
+    scripts["rooms:test:file"],
+    "TSX_TSCONFIG_PATH=src/tsconfig.json node --import tsx --test"
+  );
   assert.ok(scripts["rooms:lint"]?.startsWith("NODE_OPTIONS="));
   assert.ok(scripts["rooms:lint"]?.includes('"rooms/**/*.{js,ts}"'));
   assert.match(rendererRegistrySource, /async prepareStartupSnapshot\(/);

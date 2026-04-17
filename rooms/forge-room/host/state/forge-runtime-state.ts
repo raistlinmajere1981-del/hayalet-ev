@@ -13,10 +13,12 @@ import type {
   ForgePreflightState,
   ForgeRunOverride,
   ForgeRunSignature,
+  ForgeSessionContextSelection,
 } from "../../shared/types/index.js";
 import {
   createDefaultForgeOperatorProfile,
   createEmptyForgePreflightState,
+  createEmptyForgeSessionContextSelection,
 } from "../../shared/types/index.js";
 
 export interface ForgeRuntimeState {
@@ -34,6 +36,7 @@ export interface ForgeRuntimeState {
   operatorProfile: ForgeOperatorProfile;
   preflight: ForgePreflightState;
   responses: ForgeAgentResponse[];
+  sessionContextSelection: ForgeSessionContextSelection;
   runOverride: ForgeRunOverride | null;
   runSignature: ForgeRunSignature | null;
   selectedSynthesisId: string | null;
@@ -81,6 +84,50 @@ function normalizeForgeDecisionTrace(value: unknown): string[] {
     : [];
 }
 
+function normalizeForgeSessionContextSelection(value: unknown): ForgeSessionContextSelection {
+  const record =
+    value !== null && typeof value === "object" && Array.isArray(value) === false
+      ? (value as Record<string, unknown>)
+      : {};
+  const skill =
+    record["skill"] !== null &&
+    typeof record["skill"] === "object" &&
+    Array.isArray(record["skill"]) === false
+      ? (record["skill"] as Record<string, unknown>)
+      : {};
+  const tools =
+    record["tools"] !== null &&
+    typeof record["tools"] === "object" &&
+    Array.isArray(record["tools"]) === false
+      ? (record["tools"] as Record<string, unknown>)
+      : {};
+  const preferences =
+    record["preferences"] !== null &&
+    typeof record["preferences"] === "object" &&
+    Array.isArray(record["preferences"]) === false
+      ? (record["preferences"] as Record<string, unknown>)
+      : {};
+  return {
+    skill: {
+      level: skill["level"] === true,
+      soldering: skill["soldering"] === true,
+      measurement: skill["measurement"] === true,
+      mechanical: skill["mechanical"] === true,
+    },
+    tools: {
+      multimeter: tools["multimeter"] === true,
+      solderingIron: tools["solderingIron"] === true,
+      hotAir: tools["hotAir"] === true,
+      benchPowerSupply: tools["benchPowerSupply"] === true,
+      magnification: tools["magnification"] === true,
+    },
+    preferences: {
+      mode: preferences["mode"] === true,
+      riskTolerance: preferences["riskTolerance"] === true,
+    },
+  };
+}
+
 export function createForgeCoordinatorState(
   overrides: Partial<ForgeCoordinatorState> = {}
 ): ForgeCoordinatorState {
@@ -114,6 +161,7 @@ export function createEmptyForgeRuntimeState(): ForgeRuntimeState {
     operatorProfile: createDefaultForgeOperatorProfile(),
     preflight: createEmptyForgePreflightState(),
     responses: [],
+    sessionContextSelection: createEmptyForgeSessionContextSelection(),
     runOverride: null,
     runSignature: null,
     conflicts: [],
@@ -141,6 +189,7 @@ export function createEmptyForgeSession(sessionId: string): ForgeSession {
     selectedSynthesisId: null,
     decisionTrace: [],
     preflight: createEmptyForgePreflightState(),
+    sessionContextSelection: createEmptyForgeSessionContextSelection(),
     runOverride: null,
     runSignature: null,
     exports: [],
@@ -176,16 +225,19 @@ export function createForgeRuntimeStateFromSession(
     operatorProfile: overrides.operatorProfile ?? createDefaultForgeOperatorProfile(),
     preflight:
       sessionRecord.preflight && typeof sessionRecord.preflight === "object"
-        ? (sessionRecord.preflight as ForgePreflightState)
+        ? sessionRecord.preflight
         : createEmptyForgePreflightState(),
     responses: Array.isArray(session.responses) ? session.responses : [],
+    sessionContextSelection: normalizeForgeSessionContextSelection(
+      sessionRecord.sessionContextSelection
+    ),
     runOverride:
       sessionRecord.runOverride && typeof sessionRecord.runOverride === "object"
-        ? (sessionRecord.runOverride as ForgeRunOverride)
+        ? sessionRecord.runOverride
         : null,
     runSignature:
       sessionRecord.runSignature && typeof sessionRecord.runSignature === "object"
-        ? (sessionRecord.runSignature as ForgeRunSignature)
+        ? sessionRecord.runSignature
         : null,
     conflicts: Array.isArray(session.conflicts) ? session.conflicts : [],
     syntheses: Array.isArray(session.syntheses)
@@ -202,9 +254,7 @@ export function createForgeRuntimeStateFromSession(
                     synthesis.provenance.runSignature.trim() !== ""
                       ? synthesis.provenance.runSignature
                       : null,
-                  operatorProfileSummary: Array.isArray(
-                    synthesis.provenance.operatorProfileSummary
-                  )
+                  operatorProfileSummary: Array.isArray(synthesis.provenance.operatorProfileSummary)
                     ? synthesis.provenance.operatorProfileSummary.filter(
                         (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
                       )
@@ -244,6 +294,7 @@ export function createForgeSessionFromRuntimeState(
     syntheses: state.syntheses,
     selectedSynthesisId: state.selectedSynthesisId,
     preflight: state.preflight,
+    sessionContextSelection: state.sessionContextSelection,
     runOverride: state.runOverride,
     runSignature: state.runSignature,
     exports: state.exports,

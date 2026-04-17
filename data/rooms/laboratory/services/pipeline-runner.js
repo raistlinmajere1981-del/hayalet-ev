@@ -45,71 +45,25 @@ function getActionLabel(action) {
   }
 }
 function getModuleId(record) {
-  return asNonEmptyString(record["moduleId"]) || asNonEmptyString(record["toolId"]) || asNonEmptyString(record["featureStage"]);
+  return asNonEmptyString(record["moduleId"]);
 }
-export function buildLifecycleEvents(payload) {
-  const record = asLabRecord(payload);
-  const action = asNonEmptyString(record["action"]);
-  const stage = asNonEmptyString(record["stage"]);
-  const success = typeof record["success"] === "boolean" ? record["success"] : null;
-  const detail = asNonEmptyString(record["message"]) || asNonEmptyString(record["error"]);
-  const progress = clampPercent(record["percent"]);
-  const moduleId = getModuleId(record);
-  if (action === null) {
-    return [];
+function resolveEventScope(record) {
+  const explicitScope = asNonEmptyString(record["scope"]);
+  if (explicitScope === "run" || explicitScope === "global") {
+    return explicitScope;
   }
-  if (action === "edit-preview" || action === "subtitle-edit-preview") {
-    if (stage === "completed" || success === true) {
-      return [{ type: "preview-completed", action, detail }];
-    }
-    if (stage === "failed" || stage === "cancelled" || success === false) {
-      return [{ type: "preview-failed", action, detail }];
-    }
-    return [
-      progress !== null ? { type: "preview-progress", action, detail, progress } : { type: "preview-started", action, detail }
-    ];
+  const action = asNonEmptyString(record["action"]) || "";
+  const featureStage = asNonEmptyString(record["featureStage"]) || "";
+  if (featureStage === "process" || action.includes("process")) {
+    return "run";
   }
-  if (action === "profile-run-preflight") {
-    if (stage === "completed" || success === true) {
-      return [{ type: "preflight-completed", action, detail }];
-    }
-    if (stage === "failed" || stage === "cancelled" || success === false) {
-      return [{ type: "preflight-failed", action, detail }];
-    }
-    return [{ type: "preflight-started", action, detail }];
-  }
-  if (action === "process-run" || action === "audio-process-run") {
-    if (stage === "cancelled") {
-      return [{ type: "run-cancelled", action, detail }];
-    }
-    if (success === false) {
-      return moduleId ? [{ type: "module-failed", action, moduleId, detail }] : [{ type: "run-failed", action, detail }];
-    }
-    if (moduleId) {
-      if (stage === "skipped") {
-        return [{ type: "module-skipped", action, moduleId, detail }];
-      }
-      if (stage === "completed" || success === true) {
-        return [{ type: "module-finished", action, moduleId, detail }];
-      }
-      if (stage === "failed") {
-        return [{ type: "module-failed", action, moduleId, detail }];
-      }
-      return [
-        progress !== null ? { type: "module-progress", action, moduleId, detail, progress } : { type: "module-started", action, moduleId, detail }
-      ];
-    }
-    return [{ type: "run-started", action, detail }];
-  }
-  if (action === "process-cancel" || action === "audio-process-cancel") {
-    return [{ type: "run-cancelled", action, detail }];
-  }
-  return [];
+  return "global";
 }
 export function buildJobFeedEvent(payload) {
   const record = asLabRecord(payload);
   const action = asNonEmptyString(record["action"]);
   const stage = asNonEmptyString(record["stage"]);
+  const moduleId = getModuleId(record);
   if (action === null) {
     return null;
   }
@@ -119,14 +73,17 @@ export function buildJobFeedEvent(payload) {
   const baseMessage = `${getActionLabel(action)} • ${stage || "queued"}${progressLabel}`;
   return {
     id: createLabEventId("job"),
-    kind: "job",
+    kind: "activity",
     severity: getEventSeverityFromStage(stage),
     message: baseMessage,
     detail,
     timestamp: Date.now(),
     source: "host",
     action,
-    stage
+    stage,
+    scope: resolveEventScope(record),
+    moduleId,
+    rawLine: null
   };
 }
 export function buildRequestResultFeedEvent(payload) {
@@ -146,6 +103,9 @@ export function buildRequestResultFeedEvent(payload) {
     timestamp: Date.now(),
     source: "host",
     action,
-    stage: success ? "completed" : "failed"
+    stage: success ? "completed" : "failed",
+    scope: resolveEventScope(record),
+    moduleId: getModuleId(record),
+    rawLine: null
   };
 }

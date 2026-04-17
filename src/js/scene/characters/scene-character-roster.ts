@@ -3,6 +3,7 @@ import { getRemoteEmailAccounts, isAiProviderAccount } from "@shared/settings.js
 import type { Account } from "@shared/settings.js";
 import { FileManager } from "../../modules/file-manager.js";
 import { AppState } from "../../modules/app-state.js";
+import { buildRoomPresenceSnapshot } from "../../modules/rooms/room-presence.js";
 import type {
   SceneCharacterKind,
   SceneCharacterRole,
@@ -269,11 +270,15 @@ function createDescriptorBase(
 function createAiCharacterDescriptor(
   account: Account,
   anchor: SceneCharacterAnchor,
-  index: number
+  index: number,
+  presenceSnapshot: ReturnType<typeof buildRoomPresenceSnapshot>
 ): SceneCharacterDescriptor {
   const slot = getSlotForAccount(account.id);
+  const slotPresence = slot === "ai1" || slot === "ai2" ? presenceSnapshot.slots[slot] : null;
   const fallbackLabel = `AI ${index + 1}`;
-  const label = getFirstNonEmpty(account.nickname, account.email, fallbackLabel) ?? fallbackLabel;
+  const label =
+    getFirstNonEmpty(slotPresence?.nickname, account.nickname, account.email, fallbackLabel) ??
+    fallbackLabel;
 
   return {
     id: `scene-account-${account.id}`,
@@ -286,6 +291,7 @@ function createAiCharacterDescriptor(
     headLabel: toHeadLabel(label),
     variant: "account",
     avatarSource: getFirstNonEmpty(
+      slotPresence?.avatar,
       account.avatarPath,
       account.avatar,
       `src/assets/${account.provider}.png`,
@@ -324,9 +330,11 @@ function createAssistantCharacterDescriptor(
   };
 }
 
-function createUserCharacterDescriptor(anchor: SceneCharacterAnchor): SceneCharacterDescriptor {
-  const settings = AppState.getSettings();
-  const label = AppState.getNickname("user");
+function createUserCharacterDescriptor(
+  anchor: SceneCharacterAnchor,
+  presenceSnapshot: ReturnType<typeof buildRoomPresenceSnapshot>
+): SceneCharacterDescriptor {
+  const label = presenceSnapshot.user.nickname;
 
   return {
     id: "scene-user",
@@ -339,7 +347,7 @@ function createUserCharacterDescriptor(anchor: SceneCharacterAnchor): SceneChara
     headLabel: toHeadLabel(label),
     variant: "user",
     avatarSource: getFirstNonEmpty(
-      settings?.user?.avatarPath,
+      presenceSnapshot.user.avatar,
       "src/assets/user.png",
       "src/assets/default.png"
     ),
@@ -348,14 +356,17 @@ function createUserCharacterDescriptor(anchor: SceneCharacterAnchor): SceneChara
 }
 
 function createUs1CharacterDescriptor(
-  anchor: SceneCharacterAnchor
+  anchor: SceneCharacterAnchor,
+  presenceSnapshot: ReturnType<typeof buildRoomPresenceSnapshot>
 ): SceneCharacterDescriptor | null {
   const us1Binding = getUs1SceneBinding();
   if (us1Binding === null) {
     return null;
   }
 
-  const label = getFirstNonEmpty(us1Binding.nickname, us1Binding.email, "US1") ?? "US1";
+  const us1Presence = presenceSnapshot.slots.us1;
+  const label =
+    getFirstNonEmpty(us1Presence.nickname, us1Binding.nickname, us1Binding.email, "US1") ?? "US1";
 
   return {
     id: `scene-remote-${us1Binding.remoteUserId}`,
@@ -368,6 +379,7 @@ function createUs1CharacterDescriptor(
     headLabel: toHeadLabel(label),
     variant: "remote",
     avatarSource: getFirstNonEmpty(
+      us1Presence.avatar,
       us1Binding.avatarPath,
       us1Binding.avatar,
       "src/assets/default.png"
@@ -403,11 +415,12 @@ export function buildSceneCharacterRoster(
   anchors: readonly SceneCharacterAnchor[],
   preset: SceneCharacterRosterPreset
 ): SceneCharacterDescriptor[] {
+  const presenceSnapshot = buildRoomPresenceSnapshot();
   const roster: SceneCharacterDescriptor[] = [];
 
   const userAnchor = anchors.find((anchor) => anchor.characterKind === "user");
   if (userAnchor !== undefined) {
-    roster.push(createUserCharacterDescriptor(userAnchor));
+    roster.push(createUserCharacterDescriptor(userAnchor, presenceSnapshot));
   }
 
   const aiAnchorQueue = getAiAnchorQueue(anchors);
@@ -417,7 +430,7 @@ export function buildSceneCharacterRoster(
   let aiIndex = 0;
 
   const pushAiCharacter = (account: Account, anchor: SceneCharacterAnchor): void => {
-    roster.push(createAiCharacterDescriptor(account, anchor, aiIndex));
+    roster.push(createAiCharacterDescriptor(account, anchor, aiIndex, presenceSnapshot));
     usedAiAnchorIds.add(anchor.id);
     usedAiAccountIds.add(account.id);
     aiIndex += 1;
@@ -453,7 +466,7 @@ export function buildSceneCharacterRoster(
 
   const us1Anchor = anchors.find((anchor) => anchor.characterKind === "us1");
   if (us1Anchor !== undefined) {
-    const us1Descriptor = createUs1CharacterDescriptor(us1Anchor);
+    const us1Descriptor = createUs1CharacterDescriptor(us1Anchor, presenceSnapshot);
     if (us1Descriptor !== null) {
       roster.push(us1Descriptor);
     }

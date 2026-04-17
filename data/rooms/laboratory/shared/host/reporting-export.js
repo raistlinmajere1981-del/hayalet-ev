@@ -43,8 +43,7 @@ export function createLaboratoryReportExportRuntime(deps) {
       action,
       projectId: project.id,
       featureStage: "report",
-      stage: "queued",
-      percent: 0
+      stage: "queued"
     });
     try {
       const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
@@ -86,8 +85,7 @@ export function createLaboratoryReportExportRuntime(deps) {
         action,
         projectId: project.id,
         featureStage: "report",
-        stage: "completed",
-        percent: 100
+        stage: "completed"
       });
     } catch (error) {
       await patchActiveProject(runtime, function(nextProject) {

@@ -42,21 +42,16 @@ export function parseProcessOutput(
 
   const frameMatch = normalizedLine.match(/\bframe=\s*(\d+)/i);
   if (frameMatch) {
-    return createSemanticEvent(
-      "Kare analizi aktif",
-      `${frameMatch[1]} kare incelendi`,
-      {
-        ...context,
-        moduleId: context.moduleId || "motion",
-      }
-    );
+    return createSemanticEvent("Kare analizi aktif", `${frameMatch[1]} kare incelendi`, {
+      ...context,
+      moduleId: context.moduleId || "motion",
+    });
   }
 
   if (/blackdetect/i.test(normalizedLine)) {
-    const message =
-      /black_start|black_end|black_duration/i.test(normalizedLine)
-        ? "Siyah sahne segmenti bulundu"
-        : "Siyah sahne tespiti calisiyor";
+    const message = /black_start|black_end|black_duration/i.test(normalizedLine)
+      ? "Siyah sahne segmenti bulundu"
+      : "Siyah sahne tespiti calisiyor";
     return createSemanticEvent(message, normalizedLine, {
       ...context,
       moduleId: context.moduleId || "motion",
@@ -64,10 +59,9 @@ export function parseProcessOutput(
   }
 
   if (/freeze/i.test(normalizedLine)) {
-    const message =
-      /freeze_start|freeze_end|freeze_duration/i.test(normalizedLine)
-        ? "Freeze segmenti bulundu"
-        : "Freeze analizi calisiyor";
+    const message = /freeze_start|freeze_end|freeze_duration/i.test(normalizedLine)
+      ? "Freeze segmenti bulundu"
+      : "Freeze analizi calisiyor";
     return createSemanticEvent(message, normalizedLine, {
       ...context,
       moduleId: context.moduleId || "motion",
@@ -103,7 +97,10 @@ export function parseProcessOutput(
     });
   }
 
-  if (/subtitle/i.test(normalizedLine) && /(track|stream|entry|entries|cue)/i.test(normalizedLine)) {
+  if (
+    /subtitle/i.test(normalizedLine) &&
+    /(track|stream|entry|entries|cue)/i.test(normalizedLine)
+  ) {
     return createSemanticEvent("Altyazi girdisi taraniyor", normalizedLine, {
       ...context,
       moduleId: context.moduleId || "subtitle",

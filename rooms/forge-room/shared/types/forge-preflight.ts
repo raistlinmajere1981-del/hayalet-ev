@@ -41,6 +41,38 @@ export interface ForgeOperatorProfile {
   preferences: ForgeOperatorProfilePreferences;
 }
 
+export interface ForgeSessionContextSelectionSkill {
+  level: boolean;
+  soldering: boolean;
+  measurement: boolean;
+  mechanical: boolean;
+}
+
+export interface ForgeSessionContextSelectionTools {
+  multimeter: boolean;
+  solderingIron: boolean;
+  hotAir: boolean;
+  benchPowerSupply: boolean;
+  magnification: boolean;
+}
+
+export interface ForgeSessionContextSelectionPreferences {
+  mode: boolean;
+  riskTolerance: boolean;
+}
+
+export interface ForgeSessionContextSelection {
+  skill: ForgeSessionContextSelectionSkill;
+  tools: ForgeSessionContextSelectionTools;
+  preferences: ForgeSessionContextSelectionPreferences;
+}
+
+export interface ForgeSelectedOperatorProfile {
+  skill: ForgeOperatorProfileSkill;
+  tools: ForgeOperatorProfileTools;
+  preferences: ForgeOperatorProfilePreferences;
+}
+
 export interface ForgeRunOverride {
   tools: Partial<ForgeOperatorProfileTools>;
   notes: string;
@@ -105,10 +137,11 @@ export interface ForgePreflightBundle {
   constraints: string[];
   coreSystemMetadata: ForgeCoreSystemMetadata;
   createdAt: string;
-  operatorProfile: ForgeOperatorProfile;
+  selectedOperatorProfile: ForgeSelectedOperatorProfile;
   rovoPreAnalysis: ForgeRovoPreAnalysis | null;
   runOverride: ForgeRunOverride | null;
   schemaVersion: "v2";
+  sessionContextSelection: ForgeSessionContextSelection;
   targetRoomContext: ForgeTargetRoomContext | null;
 }
 
@@ -158,7 +191,87 @@ export function createDefaultForgeOperatorProfile(updatedAt = ""): ForgeOperator
   };
 }
 
+export function createEmptyForgeSessionContextSelection(): ForgeSessionContextSelection {
+  return {
+    skill: {
+      level: false,
+      soldering: false,
+      measurement: false,
+      mechanical: false,
+    },
+    tools: {
+      multimeter: false,
+      solderingIron: false,
+      hotAir: false,
+      benchPowerSupply: false,
+      magnification: false,
+    },
+    preferences: {
+      mode: false,
+      riskTolerance: false,
+    },
+  };
+}
+
+export function createEmptyForgeSelectedOperatorProfile(): ForgeSelectedOperatorProfile {
+  return {
+    skill: {
+      level: null,
+      soldering: null,
+      measurement: null,
+      mechanical: null,
+    },
+    tools: {
+      multimeter: null,
+      solderingIron: null,
+      hotAir: null,
+      benchPowerSupply: null,
+      magnification: null,
+    },
+    preferences: {
+      mode: null,
+      riskTolerance: null,
+    },
+  };
+}
+
 export function isForgeOperatorProfileEmpty(profile: ForgeOperatorProfile): boolean {
+  return (
+    profile.skill.level === null &&
+    profile.skill.soldering === null &&
+    profile.skill.measurement === null &&
+    profile.skill.mechanical === null &&
+    profile.tools.multimeter === null &&
+    profile.tools.solderingIron === null &&
+    profile.tools.hotAir === null &&
+    profile.tools.benchPowerSupply === null &&
+    profile.tools.magnification === null &&
+    profile.preferences.mode === null &&
+    profile.preferences.riskTolerance === null
+  );
+}
+
+export function isForgeSessionContextSelectionEmpty(
+  selection: ForgeSessionContextSelection
+): boolean {
+  return (
+    selection.skill.level !== true &&
+    selection.skill.soldering !== true &&
+    selection.skill.measurement !== true &&
+    selection.skill.mechanical !== true &&
+    selection.tools.multimeter !== true &&
+    selection.tools.solderingIron !== true &&
+    selection.tools.hotAir !== true &&
+    selection.tools.benchPowerSupply !== true &&
+    selection.tools.magnification !== true &&
+    selection.preferences.mode !== true &&
+    selection.preferences.riskTolerance !== true
+  );
+}
+
+export function isForgeSelectedOperatorProfileEmpty(
+  profile: ForgeSelectedOperatorProfile
+): boolean {
   return (
     profile.skill.level === null &&
     profile.skill.soldering === null &&

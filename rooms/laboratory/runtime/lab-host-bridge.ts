@@ -15,9 +15,10 @@ export function createLabHostBridge(deps: LabBridgeDeps) {
     if (type === "source-state") {
       deps.emit({
         type: "source-snapshot-received",
-        payload: resolvedPayload["snapshot"] && typeof resolvedPayload["snapshot"] === "object"
-          ? asLabRecord(resolvedPayload["snapshot"])
-          : resolvedPayload,
+        payload:
+          resolvedPayload["snapshot"] && typeof resolvedPayload["snapshot"] === "object"
+            ? asLabRecord(resolvedPayload["snapshot"])
+            : resolvedPayload,
       });
       return;
     }
@@ -33,9 +34,10 @@ export function createLabHostBridge(deps: LabBridgeDeps) {
     if (type === "media-state") {
       deps.emit({
         type: "snapshot-received",
-        payload: resolvedPayload["snapshot"] && typeof resolvedPayload["snapshot"] === "object"
-          ? asLabRecord(resolvedPayload["snapshot"])
-          : resolvedPayload,
+        payload:
+          resolvedPayload["snapshot"] && typeof resolvedPayload["snapshot"] === "object"
+            ? asLabRecord(resolvedPayload["snapshot"])
+            : resolvedPayload,
       });
       return;
     }

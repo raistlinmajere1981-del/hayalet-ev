@@ -136,55 +136,52 @@ export function renderDraftBreakdownPanel(documentRef, state, text, options) {
     switch (options.flowState) {
       case "IDLE":
         return {
-          title: text(
-            ["workbench", "draftPanel", "guide", "idle", "title"],
-            "Save the goal to unlock the draft"
-          ),
+          title: text(["workbench", "draftPanel", "guide", "idle", "title"], "REQUIRES: GOAL"),
           summary: text(
             ["workbench", "draftPanel", "guide", "idle", "summary"],
-            "This lane stays locked until the goal above is saved."
+            "SAVE GOAL -> START"
           )
         };
       case "SESSION_CREATED":
         return {
           title: text(
             ["workbench", "draftPanel", "guide", "sessionCreated", "title"],
-            "Save the goal to open this lane"
+            "REQUIRES: GOAL"
           ),
           summary: text(
             ["workbench", "draftPanel", "guide", "sessionCreated", "summary"],
-            "The draft stays closed until the goal above becomes real."
+            "SAVE GOAL -> START"
           )
         };
       case "GOAL_DEFINED":
         return {
           title: text(
             ["workbench", "draftPanel", "guide", "goalDefined", "title"],
-            "Use Next Step to unlock draft editing"
+            "NEXT: GENERATE DRAFT"
           ),
           summary: text(
             ["workbench", "draftPanel", "guide", "goalDefined", "summary"],
-            "Generate the first draft from the top bar, then this lane will open for edits."
+            "DRAFT OPENS AFTER GENERATION"
           )
         };
       case "DRAFT_READY":
         return state.snapshot.validationMessages.length > 0 ? {
           title: text(
             ["workbench", "draftPanel", "guide", "draftReadyBlocked", "title"],
-            "Fix the draft to unlock approval"
+            "BLOCKER: DRAFT ISSUES"
           ),
           summary: text(
             ["workbench", "draftPanel", "guide", "draftReadyBlocked", "summary"],
-            "Tighten the task details below until the plan is ready to approve."
+            "FIX THE TASKS BELOW"
           )
         } : {
           title: text(
             ["workbench", "draftPanel", "guide", "draftReadyOpen", "title"],
-            "Finish edits to unlock approval"
+            "NEXT: APPROVE DRAFT"
           ),
           summary: text(
             ["workbench", "draftPanel", "guide", "draftReadyOpen", "summary"],
-            "Refine the task lanes below, then use Next Step to approve the draft."
+            "REFINE, THEN APPROVE"
           )
         };
       case "APPROVED":
@@ -196,11 +193,11 @@ export function renderDraftBreakdownPanel(documentRef, state, text, options) {
         return {
           title: text(
             ["workbench", "draftPanel", "guide", "locked", "title"],
-            "This lane is locked after approval"
+            "STATE: REFERENCE ONLY"
           ),
           summary: text(
             ["workbench", "draftPanel", "guide", "locked", "summary"],
-            "Restart the plan only if you intend to reopen earlier steps."
+            "DRAFT IS LOCKED"
           )
         };
       default: {
@@ -223,7 +220,7 @@ export function renderDraftBreakdownPanel(documentRef, state, text, options) {
     count: topLevelTasks.length
   }) : text(["workbench", "draftPanel", "toolbar", "countOther"], "{count} tasks in draft", {
     count: topLevelTasks.length
-  }) : text(["workbench", "draftPanel", "toolbar", "empty"], "Draft is empty");
+  }) : text(["workbench", "draftPanel", "toolbar", "empty"], "No draft yet");
   const actions = documentRef.createElement("div");
   actions.className = "forge-actions";
   if (options.flowState === "DRAFT_READY") {
@@ -257,14 +254,13 @@ export function renderDraftBreakdownPanel(documentRef, state, text, options) {
     const empty = documentRef.createElement("p");
     empty.className = "forge-panel__hint";
     empty.textContent = text(
-      ["workbench", "states", "emptyDraft"],
-      options.flowState === "GOAL_DEFINED" ? text(
-        ["workbench", "draftPanel", "empty", "goalDefined"],
-        "Use Next Step to create the first task lanes here."
-      ) : text(
-        ["workbench", "draftPanel", "empty", "locked"],
-        "This lane will unlock when the flow reaches draft editing."
-      )
+      [
+        "workbench",
+        "draftPanel",
+        "empty",
+        options.flowState === "GOAL_DEFINED" ? "goalDefined" : "locked"
+      ],
+      "No draft yet. Save goal to generate the first structure."
     );
     body.append(empty);
   } else {
