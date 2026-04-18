@@ -64,8 +64,9 @@ function createInstalledHostRuntime(installedGameRoomHostModule: InstalledGameRo
       }
 
       if (
-        (typeof bridgePayload.text === "string" && bridgePayload.text.trim() !== "") ||
-        typeof bridgePayload.page === "string"
+        target !== "us1" &&
+        ((typeof bridgePayload.text === "string" && bridgePayload.text.trim() !== "") ||
+          typeof bridgePayload.page === "string")
       ) {
         messageCalls.push({
           provider: target,
@@ -74,35 +75,23 @@ function createInstalledHostRuntime(installedGameRoomHostModule: InstalledGameRo
         });
       }
 
+      if (payload.action === "message.send" && target === "us1") {
+        return {
+          success: true,
+          session: {
+            id: "fk-installed-session-1",
+          },
+          data: {
+            remoteUserId:
+              typeof bridgePayload.remoteUserId === "string"
+                ? bridgePayload.remoteUserId
+                : "remote@example.com",
+          },
+        };
+      }
+
       return { success: true };
     },
-    sendProtocol: async (payload: Record<string, unknown>) => {
-      protocolCalls.push(payload);
-      return { success: true };
-    },
-    sendMessage: async (payload: Record<string, unknown>) => {
-      messageCalls.push(payload);
-      return { success: true };
-    },
-    sendToTargets: async () => ({ success: true }),
-    sendUs1Message: async () => ({
-      success: true,
-      remoteUserId: "remote@example.com",
-      localSessionId: "fk-installed-session-1",
-    }),
-    syncUs1Messages: async () => ({
-      success: true,
-      fetchedCount: 0,
-      processedCount: 0,
-      duplicateCount: 0,
-      projectedCount: 0,
-      skippedCount: 0,
-      unresolvedSessionCount: 0,
-      roomPackages: [],
-      roomEvents: [],
-      roomCommands: [],
-      roomInviteInbox: [],
-    }),
     dispatchRoomCommand: async () => ({ success: false }),
     getUs1Identity: () => ({
       remoteUserId: "remote@example.com",
@@ -110,7 +99,6 @@ function createInstalledHostRuntime(installedGameRoomHostModule: InstalledGameRo
       email: "remote@example.com",
     }),
     isUs1Connected: () => true,
-    selectUs1RemoteUser: async () => true,
     showToast: () => undefined,
     getLocale: () => "en",
     getState: (key: string) => state.get(key),
@@ -161,6 +149,36 @@ async function loadInstalledGameRoomHostModule() {
 }
 
 function buildHostContext() {
+  const user = {
+    nickname: "Raistlin",
+  };
+  const slots = {
+    ai1: {
+      slotId: "ai1",
+      nickname: "Atlas",
+      assigned: true,
+      connected: true,
+      ready: true,
+      state: "connected",
+    },
+    ai2: {
+      slotId: "ai2",
+      nickname: "Nova",
+      assigned: true,
+      connected: false,
+      ready: false,
+      state: "assigned",
+    },
+    us1: {
+      slotId: "us1",
+      nickname: "Remote Ghost",
+      assigned: true,
+      connected: false,
+      ready: false,
+      state: "assigned",
+      remoteUserId: "remote@example.com",
+    },
+  };
   return {
     type: "host-context",
     locale: "en",
@@ -177,34 +195,14 @@ function buildHostContext() {
       id: "fate-knots",
       name: "Fate Knots",
     },
-    user: {
-      nickname: "Raistlin",
-    },
-    slots: {
-      ai1: {
-        slotId: "ai1",
-        nickname: "Atlas",
-        assigned: true,
-        connected: true,
-        ready: true,
-        state: "connected",
-      },
-      ai2: {
-        slotId: "ai2",
-        nickname: "Nova",
-        assigned: true,
-        connected: false,
-        ready: false,
-        state: "assigned",
-      },
-      us1: {
-        slotId: "us1",
-        nickname: "Remote Ghost",
-        assigned: true,
-        connected: false,
-        ready: false,
-        state: "assigned",
-        remoteUserId: "remote@example.com",
+    user,
+    slots,
+    presence: {
+      user: { ...user },
+      slots: {
+        ai1: { ...slots.ai1 },
+        ai2: { ...slots.ai2 },
+        us1: { ...slots.us1 },
       },
     },
   };

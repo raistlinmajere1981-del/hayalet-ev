@@ -1,27 +1,15 @@
-import { AppI18n } from "../i18n/index.js";
+function readRoomShellLabel(roomId: string, fallbackName: string): string {
+  const trimmedFallbackName = fallbackName.trim();
+  if (trimmedFallbackName !== "") {
+    return trimmedFallbackName;
+  }
 
-const ROOM_SHELL_OVERRIDES = {
-  "forge-room": {
-    icon: "⚒️",
-    nameKey: "shell.rooms.catalog.forgeRoom",
-  },
-  laboratory: {
-    icon: "🧪",
-    nameKey: "shell.rooms.catalog.laboratory",
-  },
-} as const;
-
-function getRoomShellOverride(roomId: string) {
-  return ROOM_SHELL_OVERRIDES[roomId as keyof typeof ROOM_SHELL_OVERRIDES];
+  return roomId.trim();
 }
 
 export function resolveRoomShellName(roomId: string, fallbackName: string): string {
-  const override = getRoomShellOverride(roomId);
-  if (override === undefined) {
-    return fallbackName;
-  }
-
-  return AppI18n.t(override.nameKey);
+  const label = readRoomShellLabel(roomId, fallbackName);
+  return label !== "" ? label : roomId;
 }
 
 export function resolveRoomShellIcon(
@@ -29,16 +17,11 @@ export function resolveRoomShellIcon(
   configuredIcon: string | null | undefined,
   fallbackName: string
 ): string {
-  const override = getRoomShellOverride(roomId);
-  if (override !== undefined) {
-    return override.icon;
-  }
-
   const trimmedConfiguredIcon = configuredIcon?.trim();
   if (trimmedConfiguredIcon !== undefined && trimmedConfiguredIcon !== "") {
     return trimmedConfiguredIcon;
   }
 
-  const trimmedFallbackName = fallbackName.trim();
-  return trimmedFallbackName.length > 0 ? trimmedFallbackName.slice(0, 2).toUpperCase() : "OD";
+  const label = readRoomShellLabel(roomId, fallbackName);
+  return label.length > 0 ? label.slice(0, 2).toUpperCase() : "OD";
 }

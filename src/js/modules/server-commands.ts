@@ -45,8 +45,6 @@ const BUILTIN_COMMANDS: CommandDefinition[] = [
   { name: "AIAIChatStop", category: "ai1-ai2" },
   { name: "AIAssistantChatStart", category: "ai1-ai2" },
   { name: "AIAssistantChatStop", category: "ai1-ai2" },
-  { name: "AIAssistantSend", category: "ai1-ai2", supportsTestMode: true },
-  { name: "AssistantAISend", category: "ai0", supportsTestMode: true },
   {
     name: SLOT_BRIDGE_COMMAND_NAME,
     category: "ai1-ai2",
@@ -313,14 +311,6 @@ handlers["aiassistantchatstart"] = async (payload): Promise<unknown> => {
 handlers["aiassistantchatstop"] = async (payload): Promise<unknown> => {
   const { aiAssistantChatStopHandler } = await getAiChatHandlers();
   return await aiAssistantChatStopHandler(payload);
-};
-handlers["aiassistantsend"] = async (payload): Promise<unknown> => {
-  const { aiAssistantSendHandler } = await getAiChatHandlers();
-  return await aiAssistantSendHandler(payload);
-};
-handlers["assistantaisend"] = async (payload): Promise<unknown> => {
-  const { assistantAISendHandler } = await getAiChatHandlers();
-  return await assistantAISendHandler(payload);
 };
 handlers["slotbridge"] = async (payload): Promise<unknown> => {
   return await slotBridgeHandler(payload);

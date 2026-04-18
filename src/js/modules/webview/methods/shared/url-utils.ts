@@ -1,8 +1,53 @@
 import { ProviderRegistry } from "../../provider-registry.js";
-import { AppState } from "../../../app-state.js";
+import { isAiProviderAccount } from "@shared/settings.js";
+import type { AppSettings } from "@shared/settings.js";
+import { SettingsManager } from "../../../settings-manager.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function readTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized !== "" ? normalized : null;
+}
+
+function resolveProviderIdForSlot(providerSlot: string): string | null {
+  const settings = SettingsManager.getSnapshot() as AppSettings | null;
+  if (settings === null) {
+    return null;
+  }
+
+  if (providerSlot === "us1") {
+    return "us1";
+  }
+
+  if (providerSlot === "ai0") {
+    const accountId = readTrimmedString(settings.assistantSlot?.accountId);
+    if (accountId === null || Array.isArray(settings.assistantAccounts) === false) {
+      return null;
+    }
+
+    const account =
+      settings.assistantAccounts.find((candidate) => candidate.id === accountId) ?? null;
+    return typeof account?.provider === "string" ? account.provider : null;
+  }
+
+  if (providerSlot !== "ai1" && providerSlot !== "ai2") {
+    return null;
+  }
+
+  const accountId = readTrimmedString(settings.slots[providerSlot].accountId);
+  if (accountId === null) {
+    return null;
+  }
+
+  const account = settings.accounts.find((candidate) => candidate.id === accountId) ?? null;
+  return account !== null && isAiProviderAccount(account) ? account.provider : null;
 }
 
 export function normalizeUrl(url: string): string {
@@ -63,7 +108,7 @@ export function isUrlExcluded(url: string, excludedUrls: string[]): boolean {
 export function isSlotUrlExcluded(providerSlot: string, url: string): boolean {
   if (providerSlot === "" || url === "") return false;
 
-  const providerId = AppState.getProviderIdForSlot(providerSlot);
+  const providerId = resolveProviderIdForSlot(providerSlot);
   if (providerId === null || providerId === "") return false;
 
   const cfg = ProviderRegistry.get(providerId);

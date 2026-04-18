@@ -5,11 +5,10 @@ export type CommandProvider = SlotId | "room-ui" | "us1" | "user" | "system";
 export type SlotBridgeAction =
   | "message.send"
   | "message.sendWait"
-  | "message.sendWithAttachments"
-  | "file.send"
   | "connection.ensure"
   | "session.open"
   | "session.switch"
+  | "session.sync"
   | "room.command";
 export type SlotBridgeMessageTarget = SlotId | "us1";
 export type SlotBridgeConnectPolicy = "never" | "ensure" | "require-ready";

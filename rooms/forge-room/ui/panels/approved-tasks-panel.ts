@@ -470,9 +470,9 @@ export function renderApprovedTasksPanel(
               documentRef,
               text(["workbench", "approvedPanel", "actions", "saveCapsule"], "Save capsule"),
               {
-              datasetKey: "forgeSaveContextCapsule",
-              datasetValue: task.id,
-              disabled: taskAssignments.some((assignment) => assignment.status !== "queued"),
+                datasetKey: "forgeSaveContextCapsule",
+                datasetValue: task.id,
+                disabled: taskAssignments.some((assignment) => assignment.status !== "queued"),
               }
             )
           );

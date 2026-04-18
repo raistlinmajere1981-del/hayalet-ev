@@ -622,26 +622,14 @@
         },
         "AIAssistantChatStop": {
           "description": "Stops the active AI-assistant relay session.",
-          "detail": "Ends the running assistant relay flow. The app sends the `[STOP][ANALYZE][AI-ASSISTANT]` control protocol to the related source slot. If you only need a single handoff, use `AIAssistantSend` or `AssistantAISend` instead.",
+          "detail": "Ends the running assistant relay flow. The app sends the `[STOP][ANALYZE][AI-ASSISTANT]` control protocol to the related source slot.",
           "usage": "++cmd:AIAssistantChatStop()",
           "example": "++cmd:AIAssistantChatStop()"
         },
-        "AIAssistantSend": {
-          "description": "Forwards a one-off message from an AI slot to the assistant.",
-          "detail": "The provider must be `ai1` or `ai2`. Inline command wrappers are stripped from the message body, the source AI identity is preserved, and the content is delivered to ai0 through the SlotBridge `message.send` action. It does not start a continuous relay session.",
-          "usage": "++cmd:AIAssistantSend(<provider>) <message>\nProvider: ai1 or ai2",
-          "example": "++cmd:AIAssistantSend(ai1) One message to forward to the assistant"
-        },
-        "AssistantAISend": {
-          "description": "Forwards the assistant's latest reply to a target slot once.",
-          "detail": "This command only works in the assistant slot. The target can be `ai1`, `ai2`, or `us1`; when omitted, it is resolved from `assistants.lastActiveRelay`. Delivery runs through the SlotBridge `message.send` action. If an assistant relay is active, the related stop flow is also triggered after the handoff.",
-          "usage": "++cmd:AssistantAISend(<target>) <message>\nTarget: ai1, ai2, or us1 (optional)",
-          "example": "++cmd:AssistantAISend() Forward the latest reply to the last active relay target"
-        },
         "SlotBridge": {
           "description": "Runs the canonical slot command bus.",
-          "detail": "Collects cross-slot messaging, waited replies, attachment/file delivery, `connection.ensure`, `session.open`, `session.switch`, and `room.command` dispatch inside one JSON envelope. This is the preferred primary command for new slot and room integrations; the shorter commands are convenience wrappers.",
-          "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"fromSlot\":\"ai1\",\"toSlot\":\"ai0\",\"payload\":{\"text\":\"Hello\"}})\nActions: message.send, message.sendWait, message.sendWithAttachments, file.send, connection.ensure, session.open, session.switch, room.command",
+          "detail": "Collects cross-slot messaging, waited replies, attachment delivery, `connection.ensure`, `session.open`, `session.switch`, `session.sync`, and `room.command` dispatch inside one JSON envelope. This is the only supported command surface for new slot and room integrations.",
+          "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"fromSlot\":\"ai1\",\"toSlot\":\"ai0\",\"payload\":{\"text\":\"Hello\"}})\nActions: message.send, message.sendWait, connection.ensure, session.open, session.switch, session.sync, room.command",
           "example": "++cmd:SlotBridge({\"action\":\"message.sendWait\",\"fromSlot\":\"ai0\",\"toSlot\":\"ai1\",\"replyToSlot\":\"ai0\",\"payload\":{\"text\":\"Are you ready?\"}})"
         }
       }

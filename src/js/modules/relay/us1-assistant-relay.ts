@@ -2,12 +2,11 @@ import { getErrorMessage } from "@shared/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { PROTOCOL_KEY } from "@slots";
 import { START_STOP_PROTOCOL_HEADERS } from "../protocol-default-headers.js";
-import { slotBridgeHandler } from "../commands/slot-bridge.js";
+import { dispatchInternalSlotBridge } from "../commands/slot-bridge-runtime.js";
 import { AppState } from "../app-state.js";
 import { AppI18n } from "../i18n/index.js";
 import { TrafficManager } from "../traffic-manager.js";
 import { BaseRelay } from "./base-relay.js";
-import type { CoreEngineInterface } from "./base-relay.js";
 
 const US1_ASSISTANT_PROTOCOL_FALLBACK_TITLE =
   START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_ASSISTANT_START;
@@ -56,18 +55,32 @@ function readSessionRef(value: unknown): RelaySessionRef | null {
   };
 }
 
-function getElectronApi():
-  | {
-      us1SyncMessages?: (params?: Record<string, unknown>) => Promise<unknown>;
-      dbGetMessages?: (params: Record<string, unknown>) => Promise<unknown>;
+function readArchivedMessages(value: unknown): ArchivedMessage[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((row) => {
+    if (!isRecord(row)) {
+      return [];
     }
-  | undefined {
-  return window.electronAPI as
-    | {
-        us1SyncMessages?: (params?: Record<string, unknown>) => Promise<unknown>;
-        dbGetMessages?: (params: Record<string, unknown>) => Promise<unknown>;
-      }
-    | undefined;
+
+    const id = typeof row["id"] === "string" ? row["id"].trim() : "";
+    const role = typeof row["role"] === "string" ? row["role"].trim() : "";
+    const textCandidate =
+      typeof row["text"] === "string"
+        ? row["text"]
+        : typeof row["content"] === "string"
+          ? row["content"]
+          : "";
+    const text = textCandidate.trim();
+
+    if (id === "" || role === "") {
+      return [];
+    }
+
+    return [{ id, role, text }];
+  });
 }
 
 export class Us1AssistantRelay extends BaseRelay {
@@ -83,7 +96,7 @@ export class Us1AssistantRelay extends BaseRelay {
   _lastForwardedAi0Text: string;
   _lastForwardedAi0At: number;
 
-  constructor(coreEngine: CoreEngineInterface) {
+  constructor(coreEngine: unknown) {
     super(coreEngine);
     this._sourceSlot = "us1";
     this._targetSlot = "ai0";
@@ -250,20 +263,24 @@ export class Us1AssistantRelay extends BaseRelay {
       provider: this._sourceSlot,
     });
 
-    const sendResult = await slotBridgeHandler({
-      action: "message.send",
-      fromSlot: "system",
-      toSlot: this._sourceSlot,
-      payload: {
-        protocol: {
-          protocolKey: PROTOCOL_KEY,
-          fallbackTitle: US1_ASSISTANT_PROTOCOL_FALLBACK_TITLE,
+    const sendResult = await dispatchInternalSlotBridge(
+      {
+        action: "message.send",
+        fromSlot: "system",
+        toSlot: this._sourceSlot,
+        payload: {
+          protocol: {
+            protocolKey: PROTOCOL_KEY,
+            fallbackTitle: US1_ASSISTANT_PROTOCOL_FALLBACK_TITLE,
+          },
         },
       },
-      provider: "system",
-      source: "system",
-      message: "++cmd:SlotBridge",
-    });
+      {
+        provider: "system",
+        source: "system",
+        fromSlot: "system",
+      }
+    );
 
     if (sendResult.success !== true) {
       this._logT("warning", "app.logs.us1AssistantRelay.protocolSendFailed", {
@@ -301,18 +318,22 @@ export class Us1AssistantRelay extends BaseRelay {
       }
     );
 
-    const sendResult = await slotBridgeHandler({
-      action: "message.send",
-      fromSlot: this._targetSlot,
-      toSlot: this._sourceSlot,
-      ...(this._sessionRef !== null ? { sessionRef: this._sessionRef } : {}),
-      payload: {
-        text,
+    const sendResult = await dispatchInternalSlotBridge(
+      {
+        action: "message.send",
+        fromSlot: this._targetSlot,
+        toSlot: this._sourceSlot,
+        ...(this._sessionRef !== null ? { sessionRef: this._sessionRef } : {}),
+        payload: {
+          text,
+        },
       },
-      provider: this._targetSlot,
-      source: this._targetSlot,
-      message: "++cmd:SlotBridge",
-    });
+      {
+        provider: this._targetSlot,
+        source: this._targetSlot,
+        fromSlot: this._targetSlot,
+      }
+    );
 
     if (sendResult.success !== true) {
       this._awaitingUs1Reply = false;
@@ -336,16 +357,25 @@ export class Us1AssistantRelay extends BaseRelay {
     }
 
     try {
-      if (this.coreEngine.sendMessage === undefined) {
-        throw new Error(relayT("sendMessageUnavailable"));
-      }
-
       const taggedText = `${text}\n<!-- hev-sender:${from} -->`;
-      await this.coreEngine.sendMessage({
-        provider: to,
-        text: taggedText,
-        page: "us1-assistant-relay",
-      });
+      const sendResult = await dispatchInternalSlotBridge(
+        {
+          action: "message.send",
+          toSlot: to,
+          payload: {
+            text: taggedText,
+            page: "us1-assistant-relay",
+          },
+        },
+        {
+          provider: "system",
+          source: "system",
+          fromSlot: "system",
+        }
+      );
+      if (sendResult.success !== true) {
+        throw new Error(sendResult.message ?? relayT("sendMessageUnavailable"));
+      }
 
       this._logT(
         "info",
@@ -390,26 +420,31 @@ export class Us1AssistantRelay extends BaseRelay {
       return;
     }
 
-    const electronApi = getElectronApi();
-    if (
-      electronApi === undefined ||
-      typeof electronApi.us1SyncMessages !== "function" ||
-      typeof electronApi.dbGetMessages !== "function"
-    ) {
-      this._logT("warning", "app.logs.us1AssistantRelay.syncFailed", {
-        message: relayT("transportUnavailable"),
-      });
-      this._schedulePoll();
-      return;
-    }
-
     this._syncInFlight = true;
 
     try {
-      const syncResultRaw = await electronApi.us1SyncMessages({
-        localSessionId: this._sessionRef?.id ?? null,
-      });
-      const syncResult = isRecord(syncResultRaw) ? syncResultRaw : {};
+      const syncResultRaw = await dispatchInternalSlotBridge(
+        {
+          action: "session.sync",
+          toSlot: "us1",
+          ...(typeof this._sessionRef?.id === "string" && this._sessionRef.id.trim() !== ""
+            ? {
+                sessionRef: {
+                  id: this._sessionRef.id.trim(),
+                },
+              }
+            : {}),
+          payload: {
+            includeMessages: true,
+          },
+        },
+        {
+          provider: "system",
+          source: "system",
+          fromSlot: "system",
+        }
+      );
+      const syncResult: Record<string, unknown> = isRecord(syncResultRaw) ? syncResultRaw : {};
 
       if (syncResult["success"] !== true) {
         throw new Error(
@@ -420,9 +455,8 @@ export class Us1AssistantRelay extends BaseRelay {
       }
 
       this._rememberSessionRef(syncResult);
-      const messages = await this._listConversationMessages(
-        this._sessionRef?.conversationId ?? null
-      );
+      const syncData = isRecord(syncResult["data"]) ? syncResult["data"] : {};
+      const messages = readArchivedMessages(syncData["messages"]);
       const newMessages = this._collectNewUs1Messages(messages);
 
       await newMessages.reduce<Promise<void>>(async (previous, message) => {
@@ -453,52 +487,47 @@ export class Us1AssistantRelay extends BaseRelay {
   }
 
   async _readLatestUs1AssistantMessageId(): Promise<string | null> {
-    const messages = await this._listConversationMessages(this._sessionRef?.conversationId ?? null);
+    const messages = await this._listConversationMessages(this._sessionRef);
     const latest = [...messages].reverse().find((message) => message.role === "assistant");
     return latest?.id ?? null;
   }
 
-  async _listConversationMessages(conversationId: string | null): Promise<ArchivedMessage[]> {
-    const accountId = AppState.getArchiveAccountIdForProvider(this._sourceSlot);
-    const electronApi = getElectronApi();
-
-    if (
-      accountId === null ||
-      conversationId === null ||
-      conversationId === "" ||
-      electronApi === undefined ||
-      typeof electronApi.dbGetMessages !== "function"
-    ) {
+  async _listConversationMessages(sessionRef: RelaySessionRef | null): Promise<ArchivedMessage[]> {
+    if (sessionRef === null) {
       return [];
     }
 
-    const raw = await electronApi.dbGetMessages({
-      accountId,
-      conversationId,
-    });
-    const rows = isRecord(raw) && Array.isArray(raw["data"]) ? raw["data"] : [];
-
-    return rows.flatMap((row) => {
-      if (!isRecord(row)) {
-        return [];
+    const syncResult = await dispatchInternalSlotBridge(
+      {
+        action: "session.sync",
+        toSlot: "us1",
+        sessionRef: {
+          ...(typeof sessionRef.id === "string" && sessionRef.id.trim() !== ""
+            ? { id: sessionRef.id }
+            : {}),
+          ...(typeof sessionRef.conversationId === "string" &&
+          sessionRef.conversationId.trim() !== ""
+            ? { conversationId: sessionRef.conversationId }
+            : {}),
+        },
+        payload: {
+          includeMessages: true,
+          skipTransportSync: true,
+        },
+      },
+      {
+        provider: "system",
+        source: "system",
+        fromSlot: "system",
       }
+    );
+    if (syncResult.success !== true) {
+      return [];
+    }
 
-      const id = typeof row["id"] === "string" ? row["id"].trim() : "";
-      const role = typeof row["role"] === "string" ? row["role"].trim() : "";
-      const textCandidate =
-        typeof row["text"] === "string"
-          ? row["text"]
-          : typeof row["content"] === "string"
-            ? row["content"]
-            : "";
-      const text = textCandidate.trim();
-
-      if (id === "" || role === "") {
-        return [];
-      }
-
-      return [{ id, role, text }];
-    });
+    this._rememberSessionRef(syncResult);
+    const syncData = isRecord(syncResult.data) ? syncResult.data : {};
+    return readArchivedMessages(syncData["messages"]);
   }
 
   _collectNewUs1Messages(messages: ArchivedMessage[]): ArchivedMessage[] {

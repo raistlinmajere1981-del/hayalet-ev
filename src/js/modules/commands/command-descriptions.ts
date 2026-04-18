@@ -25,8 +25,6 @@ const COMMAND_DESCRIPTION_NAMES = [
   "AIAIChatStop",
   "AIAssistantChatStart",
   "AIAssistantChatStop",
-  "AIAssistantSend",
-  "AssistantAISend",
   "SlotBridge",
 ] as const;
 
@@ -37,8 +35,6 @@ const COMMAND_DESCRIPTION_NAME_SET = new Set<string>(COMMAND_DESCRIPTION_NAMES);
 const COMMAND_DESCRIPTION_ALIASES = new Map<string, CommandDescriptionName>([
   ["aiasistanchatstart", "AIAssistantChatStart"],
   ["aiasistanchatstop", "AIAssistantChatStop"],
-  ["aiasistansend", "AIAssistantSend"],
-  ["asistanaisend", "AssistantAISend"],
   ["slotbridge", "SlotBridge"],
 ]);
 

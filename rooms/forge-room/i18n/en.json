@@ -100,11 +100,11 @@
       "trackingLeadReady": "Draft artifacts are active. Continue to the next stage.",
       "trackingLeadMonitor": "This stage keeps the live workflow visible without turning Forge into a dashboard.",
       "draftLeadLocked": "Draft tools open after the previous stage generates the first draft.",
-    "primaryAction": {
-      "session": "STEP 1: CREATE OR LOAD A SESSION",
-      "preflight": "STEP 4: RUN PREFLIGHT",
-      "draft": "STEP 5: GENERATE THE FIRST DRAFT"
-    },
+      "primaryAction": {
+        "session": "STEP 1: CREATE OR LOAD A SESSION",
+        "preflight": "STEP 4: RUN PREFLIGHT",
+        "draft": "STEP 5: GENERATE THE FIRST DRAFT"
+      },
       "status": {
         "active": "Active",
         "available": "Ready",
@@ -132,12 +132,12 @@
           "preferences": "Mode or risk is tuned",
           "optional": "Optional run context and mode/risk"
         },
-    "preflight": {
-      "eyebrow": "RUN SETTINGS",
-      "title": "Preflight",
-      "complete": "Preflight is ready for progression",
-      "locked": "Run preflight before draft work"
-    },
+        "preflight": {
+          "eyebrow": "RUN SETTINGS",
+          "title": "Preflight",
+          "complete": "Preflight is ready for progression",
+          "locked": "Run preflight before draft work"
+        },
         "tracking": {
           "eyebrow": "TRACKING",
           "title": "Process tracking",
@@ -388,42 +388,42 @@
         "emptyEquipment": "No saved equipment yet. Use Operator Profile from the top bar.",
         "emptyPreferences": "No saved general preferences. Use Operator Profile from the top bar."
       },
-    "preflight": {
-      "eyebrow": "PRE-FLIGHT",
-      "title": "Validate run context",
-      "label": "Preflight",
-      "action": "Run Preflight",
-      "idle": "idle",
-      "running": "running",
-      "ready": "ready",
-      "warning": "needs review",
-      "stale": "stale",
-      "aiOffline": "AI0 is offline",
-      "agentTitle": "AI0",
-      "agentSlot": "AI0",
-      "todoTitle": "Process flow",
-      "resultTitle": "Result preview",
-      "resultIdle": "No preflight result yet.",
-      "resultRunning": "Preflight is running.",
-      "resultReady": "Preflight context is ready.",
-      "signatureLabel": "Run signature",
-      "promptSizeLabel": "Prompt",
-      "todoStatus": {
-        "pending": "pending",
-        "active": "running",
-        "complete": "complete",
-        "warning": "warning"
-      },
-      "steps": {
-        "operatorContext": "Package operator context",
-        "constraints": "Derive run constraints",
-        "ai0Analysis": "Collect AI0 software pre-analysis",
-        "runSignature": "Generate run signature",
-        "sessionSave": "Persist session"
-      },
-      "requiresSession": "REQUIRES: ACTIVE SESSION",
-      "requiresSessionHint": "Create or open a session before running preflight.",
-      "requiresGoalHint": "Save the target before preflight can validate this run.",
+      "preflight": {
+        "eyebrow": "PRE-FLIGHT",
+        "title": "Validate run context",
+        "label": "Preflight",
+        "action": "Run Preflight",
+        "idle": "idle",
+        "running": "running",
+        "ready": "ready",
+        "warning": "needs review",
+        "stale": "stale",
+        "aiOffline": "AI0 is offline",
+        "agentTitle": "AI0",
+        "agentSlot": "AI0",
+        "todoTitle": "Process flow",
+        "resultTitle": "Result preview",
+        "resultIdle": "No preflight result yet.",
+        "resultRunning": "Preflight is running.",
+        "resultReady": "Preflight context is ready.",
+        "signatureLabel": "Run signature",
+        "promptSizeLabel": "Prompt",
+        "todoStatus": {
+          "pending": "pending",
+          "active": "running",
+          "complete": "complete",
+          "warning": "warning"
+        },
+        "steps": {
+          "operatorContext": "Package operator context",
+          "constraints": "Derive run constraints",
+          "ai0Analysis": "Collect AI0 software pre-analysis",
+          "runSignature": "Generate run signature",
+          "sessionSave": "Persist session"
+        },
+        "requiresSession": "REQUIRES: ACTIVE SESSION",
+        "requiresSessionHint": "Create or open a session before running preflight.",
+        "requiresGoalHint": "Save the target before preflight can validate this run.",
         "warningHint": "Preflight completed with warnings. Review the notes before you move forward.",
         "staleHint": "Context changed after the last preflight run. Refresh before launch.",
         "readyHint": "Run-local settings are aligned. Use preflight as the last gate before draft generation.",

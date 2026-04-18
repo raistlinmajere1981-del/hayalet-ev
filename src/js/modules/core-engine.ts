@@ -1,15 +1,20 @@
+import { getFilename } from "../constants/index.js";
 import { Logger, LogCategory, LogLevel } from "./logger/index.js";
 import { AppState } from "./app-state.js";
 import { CommandManager } from "./command-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
 import { WebviewManager } from "./webview-manager.js";
 import { AppI18n } from "./i18n/index.js";
-import { registerSlotBridgeCoreEngine } from "./commands/slot-bridge-runtime.js";
+import {
+  dispatchInternalSlotBridge,
+  registerSlotBridgeCoreEngine,
+  sendProtocolThroughSlotBridge,
+  type SlotBridgeProtocolRequest,
+} from "./commands/slot-bridge-runtime.js";
 import {
   replaceProtocolTags,
   sendBatchWithContext,
   sendMessageWithContext,
-  sendToTargetsWithContext,
   type SendBatchParams,
 } from "./core/send-actions.js";
 import {
@@ -42,6 +47,7 @@ function getServerCommands(): ServerCommandsRef {
 import { SlotController } from "./slot-controller.js";
 import { ConversationSyncer } from "./webview/conversation-syncer.js";
 import type { AppSettings } from "@shared/settings.js";
+import type { Attachment } from "@shared/index.js";
 
 function coreEngineT(key: string): string {
   return AppI18n.t(`app.logs.coreEngine.${key}`);
@@ -53,14 +59,7 @@ interface ConnectionResult {
   correlationId?: string;
 }
 
-interface SendProtocolParams {
-  room?: string;
-  scenario?: string;
-  targets?: string[];
-  context?: Record<string, unknown>;
-  mode?: string | null;
-  preface?: string | null;
-}
+type SendProtocolParams = SlotBridgeProtocolRequest;
 
 class CoreEngineClass {
   settings: AppSettings | null;
@@ -182,7 +181,7 @@ class CoreEngineClass {
     return this.settings;
   }
 
-  async sendBatch({
+  async sendBatchInternal({
     targets = [],
     text = "",
     page = "generic",
@@ -206,7 +205,7 @@ class CoreEngineClass {
     );
   }
 
-  async sendMessage(
+  async sendMessageInternal(
     p: { provider?: string; text?: string; page?: string } | null
   ): Promise<{ success: boolean; message?: string }> {
     return await sendMessageWithContext(p, {
@@ -215,16 +214,7 @@ class CoreEngineClass {
     });
   }
 
-  async sendToTargets(
-    p: { targets?: string[]; text?: string; page?: string } | null
-  ): Promise<{ success: boolean; message?: string }> {
-    return await sendToTargetsWithContext(p, {
-      ensureReady: this.ensureReady.bind(this),
-      setActiveTargets: this.setActiveTargets.bind(this),
-    });
-  }
-
-  async sendProtocol({
+  private async dispatchProtocolThroughSlotBridge({
     room = "",
     scenario = "",
     targets = [],
@@ -232,97 +222,21 @@ class CoreEngineClass {
     mode = null,
     preface = null,
   }: SendProtocolParams = {}): Promise<{ success: boolean; message?: string }> {
-    await this.ensureReady();
-
-    if (room === "analyze" && scenario === "ai-ai" && mode === "aiRelaySequential") {
-      const [{ ProtocolHandler: protocolHandler }, { resolveComposedProtocolMessage }] =
-        await Promise.all([
-          import("./protocol-handler.js"),
-          import("./protocol-message-composer.js"),
-        ]);
-      const protocolPayload = protocolHandler.buildPayload({
-        room,
-        scenario,
-        targets,
-        context,
-      });
-      if (protocolPayload === null) {
-        return { success: false, message: AppI18n.t("app.commands.executor.unknownProtocol") };
-      }
-
-      const orderedTargets = [...protocolPayload.targets];
-      const starter = typeof context["starter"] === "string" ? context["starter"] : null;
-      if (starter !== null && orderedTargets.includes(starter) === true) {
-        orderedTargets.splice(orderedTargets.indexOf(starter), 1);
-        orderedTargets.unshift(starter);
-      }
-
-      if (orderedTargets.length === 0) {
-        return { success: false, message: AppI18n.t("app.commands.executor.noConnectedTarget") };
-      }
-
-      const resolvedMessage = await resolveComposedProtocolMessage({
-        fallbackTitle: protocolPayload.message,
-        ...(typeof protocolPayload.protocolKey === "string" && protocolPayload.protocolKey !== ""
-          ? { protocolKey: protocolPayload.protocolKey }
-          : {}),
-        ...(preface !== null ? { preface } : {}),
-      });
-
-      if (this.relay !== null) {
-        await this.relay.startProtocolSession({
-          providers: orderedTargets,
-          protocolPayload: {
-            room,
-            scenario,
-            targets: orderedTargets,
-            context,
-            message: replaceProtocolTags(resolvedMessage.message),
-          },
-          attachments: [],
-        });
-      }
-
-      return { success: true, message: "sequential-session-started" };
-    }
-
-    const { slotBridgeHandler } = await import("./commands/slot-bridge.js");
-    const bridgeResult = await slotBridgeHandler({
-      action: "message.send",
-      fromSlot: "system",
-      ...(targets.length === 1 ? { toSlot: targets[0] } : { toSlots: targets }),
-      payload: {
-        protocol: {
+    try {
+      return await sendProtocolThroughSlotBridge(
+        {
           room,
           scenario,
-          ...(preface !== null ? { preface } : {}),
-          ...(Object.keys(context).length > 0 ? { context } : {}),
+          targets,
+          context,
+          mode,
+          preface,
         },
-      },
-      provider: "system",
-      source: "system",
-      message: "++cmd:SlotBridge",
-    });
-
-    try {
-      if (bridgeResult.success === true && room === "analyze") {
-        if (scenario === "ai-ai") {
-          if (this.relay !== null) {
-            void this.relay.startSession({ providers: targets });
-          }
+        {
+          ensureReady: this.ensureReady.bind(this),
+          relay: this.relay,
         }
-        if (scenario === "ai-ai-stop") {
-          if (this.relay !== null) {
-            void this.relay.stopProtocolSession();
-            void this.relay.stopSession();
-          }
-        }
-        if (scenario === "ai-assistant-stop") {
-          if (this.relay !== null) {
-            void this.relay.stopAssistantRelaySession();
-          }
-        }
-      }
+      );
     } catch (error) {
       Logger.warn(
         LogCategory.RELAY,
@@ -334,18 +248,93 @@ class CoreEngineClass {
           context: { room, scenario },
         }
       );
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  private async sendViaSlotBridge({
+    targets = [],
+    text = "",
+    page = "generic",
+    attachments = [],
+  }: SendBatchParams = {}): Promise<{ success: boolean; message?: string }> {
+    const normalizedTargets = (Array.isArray(targets) ? targets : [targets]).filter(
+      (target): target is string => typeof target === "string" && target.trim() !== ""
+    );
+    if (normalizedTargets.length === 0) {
+      return { success: false, message: AppI18n.t("app.commands.executor.targetRequired") };
+    }
+
+    const bridgeAttachments: Attachment[] = (Array.isArray(attachments) ? attachments : []).flatMap(
+      (attachment) => {
+        if (typeof attachment === "string") {
+          const path = attachment.trim();
+          if (path === "") {
+            return [];
+          }
+          return [{ name: getFilename(path), path }];
+        }
+
+        const pathCandidate =
+          typeof attachment.path === "string"
+            ? attachment.path.trim()
+            : typeof attachment.commandPath === "string"
+              ? attachment.commandPath.trim()
+              : "";
+        const nameCandidate =
+          typeof attachment.name === "string" && attachment.name.trim() !== ""
+            ? attachment.name.trim()
+            : pathCandidate !== ""
+              ? getFilename(pathCandidate)
+              : "";
+        if (nameCandidate === "" && pathCandidate === "") {
+          return [];
+        }
+        return [
+          {
+            name: nameCandidate !== "" ? nameCandidate : getFilename(pathCandidate),
+            ...(pathCandidate !== "" ? { path: pathCandidate } : {}),
+          },
+        ];
+      }
+    );
+
+    const result = await dispatchInternalSlotBridge(
+      {
+        action: "message.send",
+        ...(normalizedTargets.length === 1
+          ? { toSlot: normalizedTargets[0] }
+          : { toSlots: normalizedTargets }),
+        payload: {
+          ...(text !== "" ? { text } : {}),
+          ...(page !== "" ? { page } : {}),
+        },
+        ...(bridgeAttachments.length > 0 ? { attachments: bridgeAttachments } : {}),
+      },
+      {
+        provider: "user",
+        source: "user",
+        fromSlot: "user",
+      }
+    );
+
+    if (result.success === true) {
+      this.setActiveTargets(normalizedTargets);
     }
 
     return {
-      success: bridgeResult.success,
-      ...(bridgeResult.message !== undefined ? { message: bridgeResult.message } : {}),
+      success: result.success,
+      ...(result.message !== undefined ? { message: result.message } : {}),
     };
   }
 
   async _handleRelayDisconnectAutoStop(slot: string): Promise<void> {
     await handleCoreRelayDisconnectAutoStop(slot, {
       relay: this.relay,
-      sendProtocol: async (payload) => await this.sendProtocol(payload),
+      dispatchProtocol: async (payload) => await this.dispatchProtocolThroughSlotBridge(payload),
     });
   }
 
@@ -381,7 +370,15 @@ class CoreEngineClass {
   ): Promise<{ success: boolean; jobId?: string; message?: string }> {
     return await enqueueWhisperJobWithContext(accountId, record, messageOverride, {
       ensureReady: this.ensureReady.bind(this),
-      sendMessage: this.sendMessage.bind(this),
+      dispatchMessage: async (payload) =>
+        await this.sendViaSlotBridge({
+          targets:
+            typeof payload.provider === "string" && payload.provider.trim() !== ""
+              ? [payload.provider]
+              : [],
+          text: typeof payload.text === "string" ? payload.text : "",
+          page: typeof payload.page === "string" ? payload.page : "generic",
+        }),
       getServerCommands,
     });
   }
@@ -392,7 +389,15 @@ class CoreEngineClass {
   ): Promise<{ success: boolean; message?: string; jobId?: string; priority?: string }> {
     return await handleCaughtCommandWithContext(commandName, payload, {
       ensureReady: this.ensureReady.bind(this),
-      sendMessage: this.sendMessage.bind(this),
+      dispatchMessage: async (messagePayload) =>
+        await this.sendViaSlotBridge({
+          targets:
+            typeof messagePayload.provider === "string" && messagePayload.provider.trim() !== ""
+              ? [messagePayload.provider]
+              : [],
+          text: typeof messagePayload.text === "string" ? messagePayload.text : "",
+          page: typeof messagePayload.page === "string" ? messagePayload.page : "generic",
+        }),
       getServerCommands,
     });
   }

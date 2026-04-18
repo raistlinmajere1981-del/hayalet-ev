@@ -22,8 +22,11 @@ interface TeamTetrisUs1MessageRequest {
 }
 
 interface TeamTetrisTransportApi extends TeamTetrisStateApi {
-  selectUs1RemoteUser?(remoteUserId: string): Promise<boolean>;
-  sendUs1Message?(options: TeamTetrisUs1MessageRequest): Promise<TeamTetrisRemoteSendResult | null>;
+  dispatchBridge?(options: Record<string, unknown>): Promise<unknown>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
 }
 
 function readNonEmptyString(value: unknown): string | null {
@@ -36,24 +39,46 @@ function isSuccessfulSendResult(
   return !!result && result.success === true;
 }
 
-async function selectUs1RemoteUserSafe(
-  api: TeamTetrisTransportApi,
-  remoteUserId: string
-): Promise<boolean> {
-  if (typeof api.selectUs1RemoteUser !== "function") {
-    return false;
+function normalizeTeamTetrisRemoteSendResult(value: unknown): TeamTetrisRemoteSendResult | null {
+  if (isRecord(value) === false) {
+    return null;
   }
-  return await api.selectUs1RemoteUser(remoteUserId);
+
+  const data = isRecord(value["data"]) ? value["data"] : {};
+  const session = isRecord(value["session"]) ? value["session"] : {};
+  return {
+    success: value["success"] === true,
+    ...(typeof session["id"] === "string" ? { localSessionId: session["id"] } : {}),
+    ...(typeof data["remoteUserId"] === "string" ? { remoteUserId: data["remoteUserId"] } : {}),
+  };
 }
 
 async function sendUs1MessageSafe(
   api: TeamTetrisTransportApi,
-  options: TeamTetrisUs1MessageRequest
+  options: TeamTetrisUs1MessageRequest & { remoteUserId: string }
 ): Promise<TeamTetrisRemoteSendResult | null> {
-  if (typeof api.sendUs1Message !== "function") {
+  if (typeof api.dispatchBridge !== "function") {
     return null;
   }
-  return await api.sendUs1Message(options);
+  return normalizeTeamTetrisRemoteSendResult(
+    await api.dispatchBridge({
+      action: "message.send",
+      toSlot: "us1",
+      ...(typeof options.localSessionId === "string" && options.localSessionId.trim() !== ""
+        ? {
+            sessionRef: {
+              id: options.localSessionId.trim(),
+            },
+          }
+        : {}),
+      payload: {
+        text: options.text,
+        remoteUserId: options.remoteUserId,
+        ...(options.roomEvent !== undefined ? { roomEvent: options.roomEvent } : {}),
+        ...(options.roomCommand !== undefined ? { roomCommand: options.roomCommand } : {}),
+      },
+    })
+  );
 }
 
 async function sendTeamTetrisRemoteStart(
@@ -69,13 +94,9 @@ async function sendTeamTetrisRemoteStart(
     return { success: false };
   }
 
-  const selected = await selectUs1RemoteUserSafe(api, remoteUserId);
-  if (selected !== true) {
-    return { success: false };
-  }
-
   const sendResult = await sendUs1MessageSafe(api, {
     localSessionId: state.localSessionId,
+    remoteUserId,
     text: buildTeamTetrisRemoteStartText(state.match, {
       hiddenPairs: state.match.hiddenPairs,
       selectedPartnerSeatId: options.selectedPartnerSeatId || null,
@@ -116,13 +137,9 @@ async function sendTeamTetrisRemoteReset(
     return { success: true };
   }
 
-  const selected = await selectUs1RemoteUserSafe(api, state.remoteUserId);
-  if (selected !== true) {
-    return { success: false };
-  }
-
   const sendResult = await sendUs1MessageSafe(api, {
     localSessionId: state.localSessionId,
+    remoteUserId: state.remoteUserId,
     text: "Team Tetris match reset.",
     roomEvent: {
       roomId: ROOM_ID,
@@ -146,13 +163,9 @@ async function sendTeamTetrisRemoteMove(
     return { success: true };
   }
 
-  const selected = await selectUs1RemoteUserSafe(api, state.remoteUserId);
-  if (selected !== true) {
-    return { success: false };
-  }
-
   const sendResult = await sendUs1MessageSafe(api, {
     localSessionId: state.localSessionId,
+    remoteUserId: state.remoteUserId,
     text: buildTeamTetrisRemoteMoveText(movePayload as unknown as Record<string, unknown>),
     roomCommand: buildUs1RoomBridgeCommand({
       roomId: ROOM_ID,

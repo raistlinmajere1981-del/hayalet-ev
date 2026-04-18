@@ -84,13 +84,10 @@ export interface XoxUs1SyncApi {
   getState(key: string): unknown;
   setState(key: string, value: unknown): void;
   deleteState?(key: string): void;
+  dispatchBridge?(options: Record<string, unknown>): Promise<unknown>;
   dispatchRoomCommand(commandName: string, payload: XoxDispatchRoomCommandPayload): unknown;
   showToast(payload: XoxToastPayload): void;
   isUs1Connected(): boolean;
-  syncUs1Messages(options: {
-    localSessionId: string | null;
-    consumeRoomCommands?: boolean;
-  }): Promise<XoxUs1MailboxResult | null | undefined>;
   log(level: string, message: string): void;
   getLocale?(): unknown;
   notifyRoom?(event: string, payload: Record<string, unknown>): void;
@@ -137,6 +134,20 @@ function readString(value: unknown): string {
 
 function readOptionalString(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
+}
+
+function normalizeMailboxResult(value: unknown): XoxUs1MailboxResult | null {
+  if (isRecord(value) === false) {
+    return null;
+  }
+
+  const data = isRecord(value["data"]) ? value["data"] : {};
+  return {
+    success: value["success"] === true,
+    roomInviteInbox: data["roomInviteInbox"],
+    roomEvents: data["roomEvents"],
+    roomCommands: data["roomCommands"],
+  };
 }
 
 function normalizeRoomCommand(candidate: unknown): XoxRoomCommand | null {
@@ -577,10 +588,25 @@ export function createGameRoomXoxUs1SyncRuntime(deps: XoxUs1SyncRuntimeDeps) {
     api.setState("xox-us1-syncing", true);
     try {
       const state = loadState(api);
-      const result = await api.syncUs1Messages({
-        localSessionId: state.localSessionId,
-        consumeRoomCommands: true,
-      });
+      const result =
+        typeof api.dispatchBridge === "function"
+          ? normalizeMailboxResult(
+              await api.dispatchBridge({
+                action: "session.sync",
+                toSlot: "us1",
+                ...(typeof state.localSessionId === "string" && state.localSessionId !== ""
+                  ? {
+                      sessionRef: {
+                        id: state.localSessionId,
+                      },
+                    }
+                  : {}),
+                payload: {
+                  consumeRoomCommands: true,
+                },
+              })
+            )
+          : null;
       if (!result || result.success !== true) {
         api.log("warn", `US1 XOX sync failed (${reason}).`);
         return;

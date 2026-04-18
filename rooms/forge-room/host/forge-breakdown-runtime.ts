@@ -1,7 +1,4 @@
-import {
-  FORGE_BREAKDOWN_MAX_TASKS,
-  FORGE_BREAKDOWN_MIN_TASKS,
-} from "../shared/forge-constants.js";
+import { FORGE_BREAKDOWN_MAX_TASKS, FORGE_BREAKDOWN_MIN_TASKS } from "../shared/forge-constants.js";
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
 import type {
   ForgeGoal,

@@ -47,16 +47,14 @@ export async function getRuntimeProviderConfig(
     return null;
   }
 
-  let config: unknown = null;
   try {
-    config = JSON.parse(configJson);
+    const config: unknown = JSON.parse(configJson);
+    return config !== null && config !== undefined && typeof config === "object"
+      ? (config as RuntimeProviderConfig)
+      : null;
   } catch {
     return null;
   }
-
-  return config !== null && config !== undefined && typeof config === "object"
-    ? (config as RuntimeProviderConfig)
-    : null;
 }
 
 export function getRuntimeSelectorCandidates(

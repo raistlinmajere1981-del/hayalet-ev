@@ -6,6 +6,7 @@ import { SettingsManager } from "../modules/settings-manager.js";
 import { RelayManager } from "../modules/relay-manager.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { CoreEngine } from "../modules/core-engine.js";
+import { sendProtocolThroughSlotBridge } from "../modules/commands/slot-bridge-runtime.js";
 import { shellT } from "./shell-i18n.js";
 
 type RelayRoute = "ai1Assistant" | "assistantAi2" | "assistantUs1" | "ai1Ai2" | "ai2Ai1";
@@ -49,6 +50,19 @@ function relayError(
   context?: Record<string, unknown>
 ): void {
   Logger.errorT(LogCategory.RELAY, relayLogKey(key), params, context);
+}
+
+async function sendRelayProtocol(options: {
+  room: string;
+  scenario: string;
+  targets: string[];
+  context?: Record<string, unknown>;
+  mode?: string | null;
+}): Promise<{ success: boolean; message?: string }> {
+  return await sendProtocolThroughSlotBridge(options, {
+    ensureReady: CoreEngine.ensureReady.bind(CoreEngine),
+    relay: RelayManager,
+  });
 }
 
 function getRelayLabel(route: RelayRoute): string {
@@ -259,7 +273,7 @@ export function setupTopBarRelayButtons(): void {
               RelayManager.isAIAssistantActive() &&
               RelayManager.getAIAssistantSourceSlot() === "ai1"
             ) {
-              await CoreEngine.sendProtocol({
+              await sendRelayProtocol({
                 room: "analyze",
                 scenario: "ai-assistant-stop",
                 targets: ["ai1"],
@@ -305,7 +319,7 @@ export function setupTopBarRelayButtons(): void {
               RelayManager.isAIAssistantActive() &&
               RelayManager.getAIAssistantSourceSlot() === "ai2"
             ) {
-              await CoreEngine.sendProtocol({
+              await sendRelayProtocol({
                 room: "analyze",
                 scenario: "ai-assistant-stop",
                 targets: ["ai2"],
@@ -348,7 +362,7 @@ export function setupTopBarRelayButtons(): void {
           relayInfo("relayButtonClicked", { relay: getRelayLabel("assistantUs1") });
           try {
             if (RelayManager.isUs1AssistantActive()) {
-              await CoreEngine.sendProtocol({
+              await sendRelayProtocol({
                 room: "analyze",
                 scenario: "ai-assistant-stop",
                 targets: ["us1"],
@@ -393,23 +407,20 @@ export function setupTopBarRelayButtons(): void {
           relayInfo("relayButtonClicked", { relay: getRelayLabel("ai1Ai2") });
           try {
             if (RelayManager.isAIAIActive()) {
-              await CoreEngine.sendProtocol({
+              await sendRelayProtocol({
                 room: "analyze",
                 scenario: "ai-ai-stop",
                 targets: ["ai1", "ai2"],
               });
               relayInfo("relayStopped", { relay: getRelayLabel("ai1Ai2") });
             } else {
-              if (
-                AppState.isConnected("ai1") !== true ||
-                AppState.isConnected("ai2") !== true
-              ) {
+              if (AppState.isConnected("ai1") !== true || AppState.isConnected("ai2") !== true) {
                 relayWarn("relayStartBlockedMultiple", {
                   slots: `${getSlotLabel("ai1")} / ${getSlotLabel("ai2")}`,
                 });
                 return;
               }
-              await CoreEngine.sendProtocol({
+              await sendRelayProtocol({
                 room: "analyze",
                 scenario: "ai-ai",
                 targets: ["ai1", "ai2"],
@@ -444,23 +455,20 @@ export function setupTopBarRelayButtons(): void {
           relayInfo("relayButtonClicked", { relay: getRelayLabel("ai2Ai1") });
           try {
             if (RelayManager.isAIAIActive()) {
-              await CoreEngine.sendProtocol({
+              await sendRelayProtocol({
                 room: "analyze",
                 scenario: "ai-ai-stop",
                 targets: ["ai1", "ai2"],
               });
               relayInfo("relayStopped", { relay: getRelayLabel("ai2Ai1") });
             } else {
-              if (
-                AppState.isConnected("ai1") !== true ||
-                AppState.isConnected("ai2") !== true
-              ) {
+              if (AppState.isConnected("ai1") !== true || AppState.isConnected("ai2") !== true) {
                 relayWarn("relayStartBlockedMultiple", {
                   slots: `${getSlotLabel("ai1")} / ${getSlotLabel("ai2")}`,
                 });
                 return;
               }
-              await CoreEngine.sendProtocol({
+              await sendRelayProtocol({
                 room: "analyze",
                 scenario: "ai-ai",
                 targets: ["ai1", "ai2"],

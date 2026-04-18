@@ -9,6 +9,40 @@ import type {
 import { slugifyFilePart } from "./forge-runtime-support.js";
 
 export function createForgeHandoffExport() {
+  function isGenericFallbackOperatorSummary(summary: readonly string[]): boolean {
+    return (
+      summary.length === 1 &&
+      (summary[0] ===
+        "No operator context was selected for this run; do not assume skills, equipment, or preferences beyond the goal itself." ||
+        summary[0] ===
+          "Selected operator context has no persisted records yet; do not assume skills, equipment, or preferences beyond the goal itself.")
+    );
+  }
+
+  function areStringListsEqual(left: readonly string[], right: readonly string[]): boolean {
+    if (left.length !== right.length) {
+      return false;
+    }
+
+    return left.every((entry, index) => entry === right[index]);
+  }
+
+  function shouldPreferCurrentProvenance(
+    current: ForgeSynthesisProvenance,
+    stored: ForgeSynthesisProvenance
+  ): boolean {
+    const operatorSummaryChanged =
+      areStringListsEqual(current.operatorProfileSummary, stored.operatorProfileSummary) === false;
+    const warningsChanged =
+      areStringListsEqual(current.preflightWarnings, stored.preflightWarnings) === false;
+
+    return (
+      warningsChanged ||
+      (operatorSummaryChanged &&
+        isGenericFallbackOperatorSummary(current.operatorProfileSummary) === false)
+    );
+  }
+
   function requireSelectedSynthesis(session: ForgeSession): ForgeSynthesis {
     const selected = session.syntheses.find(
       (entry) =>
@@ -47,10 +81,13 @@ export function createForgeHandoffExport() {
     if (params.session.preflight.status === "stale") {
       return current;
     }
-    if (stored !== null) {
-      return stored;
+    if (stored === null) {
+      return current;
     }
-    return current;
+    if (shouldPreferCurrentProvenance(current, stored)) {
+      return current;
+    }
+    return stored;
   }
 
   function buildHandoffPackage(

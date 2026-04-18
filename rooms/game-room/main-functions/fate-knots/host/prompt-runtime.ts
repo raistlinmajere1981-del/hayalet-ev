@@ -58,6 +58,7 @@ interface FateKnotsUs1MessageRequest {
   localSessionId: string | null;
   text: string;
   roomEvent: Record<string, unknown>;
+  remoteUserId?: string | null;
 }
 
 interface FateKnotsSendResult extends Record<string, unknown> {
@@ -72,8 +73,6 @@ interface RoomApi {
   getLocale?(): unknown;
   notifyRoom?(eventType: string, data: unknown): void;
   dispatchBridge?(options: Record<string, unknown>): Promise<FateKnotsSendResult | null>;
-  sendUs1Message?(options: FateKnotsUs1MessageRequest): Promise<FateKnotsSendResult | null>;
-  selectUs1RemoteUser?(remoteUserId: string): Promise<boolean>;
 }
 
 interface FateKnotsPromptRuntimeDeps {
@@ -94,6 +93,10 @@ interface FateKnotsPromptRuntimeDeps {
 interface FateKnotsPromptDispatchResult {
   success: boolean;
   seatId?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
 }
 
 function readCombatState(state: FateKnotsHostState): FateKnotsCombatState | null {
@@ -312,10 +315,40 @@ export function createFateKnotsPromptRuntime(deps: FateKnotsPromptRuntimeDeps) {
     api: RoomApi,
     options: FateKnotsUs1MessageRequest
   ): Promise<FateKnotsSendResult | null> {
-    if (typeof api.sendUs1Message !== "function") {
+    if (typeof api.dispatchBridge !== "function") {
       return null;
     }
-    return await api.sendUs1Message(options);
+    const bridgeResult = await api.dispatchBridge({
+      action: "message.send",
+      toSlot: "us1",
+      ...(typeof options.localSessionId === "string" && options.localSessionId.trim() !== ""
+        ? {
+            sessionRef: {
+              id: options.localSessionId.trim(),
+            },
+          }
+        : {}),
+      payload: {
+        text: options.text,
+        ...(typeof options.remoteUserId === "string" && options.remoteUserId.trim() !== ""
+          ? { remoteUserId: options.remoteUserId.trim() }
+          : {}),
+        roomEvent: options.roomEvent,
+      },
+    });
+
+    if (!bridgeResult || bridgeResult.success !== true) {
+      return bridgeResult;
+    }
+
+    const session = isRecord(bridgeResult["session"]) ? bridgeResult["session"] : {};
+    const data = isRecord(bridgeResult["data"]) ? bridgeResult["data"] : {};
+
+    return {
+      success: true,
+      ...(typeof session["id"] === "string" ? { localSessionId: session["id"] } : {}),
+      ...(typeof data["remoteUserId"] === "string" ? { remoteUserId: data["remoteUserId"] } : {}),
+    };
   }
 
   async function dispatchDecisionPrompts(
@@ -351,16 +384,11 @@ export function createFateKnotsPromptRuntime(deps: FateKnotsPromptRuntimeDeps) {
 
       if (seatId === "us1") {
         const remoteUserId = getUs1RemoteUserId(api, state, context);
-        if (remoteUserId && typeof api.selectUs1RemoteUser === "function") {
-          const selected = await api.selectUs1RemoteUser(remoteUserId);
-          if (selected !== true) {
-            return { success: false, seatId };
-          }
-        }
 
         const sendResult = await sendUs1MessageSafe(api, {
           localSessionId: state.transport.localSessionId,
           text: buildDecisionPrompt(state, step, context, FATE_KNOTS_COMMAND_NAMES.remoteChoice),
+          remoteUserId,
           roomEvent: buildRoomEvent({
             roomId: ROOM_ID,
             featureId: FATE_KNOTS_FEATURE_ID,
@@ -432,12 +460,6 @@ export function createFateKnotsPromptRuntime(deps: FateKnotsPromptRuntimeDeps) {
     if (turn.seatId === "us1") {
       const context = loadContext(api);
       const remoteUserId = getUs1RemoteUserId(api, state, context);
-      if (remoteUserId && typeof api.selectUs1RemoteUser === "function") {
-        const selected = await api.selectUs1RemoteUser(remoteUserId);
-        if (selected !== true) {
-          return { success: false, seatId: turn.seatId };
-        }
-      }
 
       const sendResult = await sendUs1MessageSafe(api, {
         localSessionId: state.transport.localSessionId,
@@ -446,6 +468,7 @@ export function createFateKnotsPromptRuntime(deps: FateKnotsPromptRuntimeDeps) {
           contentRegistry,
           FATE_KNOTS_COMMAND_NAMES.remoteCombatAction
         ),
+        remoteUserId,
         roomEvent: buildRoomEvent({
           roomId: ROOM_ID,
           featureId: FATE_KNOTS_FEATURE_ID,

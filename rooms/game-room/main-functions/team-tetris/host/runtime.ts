@@ -70,17 +70,10 @@ interface TeamTetrisDispatchResult {
 
 interface TeamTetrisRuntimeApi extends TeamTetrisStateApi {
   notifyRoom?(eventType: string, data: unknown): void;
-  dispatchBridge?(options: Record<string, unknown>): Promise<TeamTetrisDispatchResult | null>;
-  selectUs1RemoteUser?(remoteUserId: string): Promise<boolean>;
+  dispatchBridge?(options: Record<string, unknown>): Promise<unknown>;
   deleteState?(key: string): void;
   showToast?(payload: { type?: "success" | "error" | "info" | "warning"; message: string }): void;
   log?(level: "debug" | "info" | "warn" | "error", message: string): void;
-  sendUs1Message?(options: {
-    localSessionId: string | null;
-    text: string;
-    roomEvent?: Record<string, unknown>;
-    roomCommand?: Record<string, unknown>;
-  }): Promise<TeamTetrisDispatchResult | null>;
 }
 
 interface TeamTetrisCommandResult {
@@ -272,6 +265,10 @@ function buildTeamTetrisSuccessDebug(
   };
 }
 
+function normalizeTeamTetrisDispatchResult(value: unknown): TeamTetrisDispatchResult | null {
+  return isRecord(value) ? (value as TeamTetrisDispatchResult) : null;
+}
+
 async function sendBridgeMessageSafe(
   api: TeamTetrisRuntimeApi,
   options: TeamTetrisMessageRequest & { protocol?: TeamTetrisProtocolRequest }
@@ -279,7 +276,7 @@ async function sendBridgeMessageSafe(
   if (typeof api.dispatchBridge !== "function") {
     return null;
   }
-  return await api.dispatchBridge({
+  const bridgeResult = await api.dispatchBridge({
     action: "message.send",
     toSlot: options.provider,
     payload: {
@@ -296,6 +293,7 @@ async function sendBridgeMessageSafe(
         : {}),
     },
   });
+  return normalizeTeamTetrisDispatchResult(bridgeResult);
 }
 
 async function sendTeamTetrisStartAnnouncements(

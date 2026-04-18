@@ -42,7 +42,7 @@ export interface XoxRuntimeMatchApi {
   deleteState?(key: string): void;
   getLocale?(): unknown;
   notifyRoom?(event: string, payload: Record<string, unknown>): void;
-  dispatchBridge?(options: Record<string, unknown>): Promise<XoxDispatchResult>;
+  dispatchBridge?(options: Record<string, unknown>): Promise<unknown>;
 }
 
 function readProviderValue(payload: unknown): string {
@@ -74,7 +74,7 @@ async function sendBridgeMessageSafe(
   if (typeof api.dispatchBridge !== "function") {
     return null;
   }
-  return await api.dispatchBridge({
+  const result = await api.dispatchBridge({
     action: "message.send",
     toSlot: options.provider,
     payload: {
@@ -83,6 +83,9 @@ async function sendBridgeMessageSafe(
       ...(options.protocol !== undefined ? { protocol: options.protocol } : {}),
     },
   });
+  return result !== null && typeof result === "object" && Array.isArray(result) === false
+    ? (result as XoxDispatchResult)
+    : null;
 }
 
 export function resolveStateMatchId(state: XoxGameState): string | null {

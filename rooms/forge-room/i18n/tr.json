@@ -100,11 +100,11 @@
       "trackingLeadReady": "Taslak çıktıları aktif. Sonraki aşamaya geç.",
       "trackingLeadMonitor": "Bu aşama, Forge’u dashboard’a çevirmeden canlı akışı görünür tutar.",
       "draftLeadLocked": "Taslak araçları, önceki aşama ilk taslağı ürettikten sonra açılır.",
-    "primaryAction": {
-      "session": "ADIM 1: OTURUM OLUŞTUR VEYA YÜKLE",
-      "preflight": "ADIM 4: ÖN KONTROLÜ ÇALIŞTIR",
-      "draft": "ADIM 5: İLK TASLAĞI ÜRET"
-    },
+      "primaryAction": {
+        "session": "ADIM 1: OTURUM OLUŞTUR VEYA YÜKLE",
+        "preflight": "ADIM 4: ÖN KONTROLÜ ÇALIŞTIR",
+        "draft": "ADIM 5: İLK TASLAĞI ÜRET"
+      },
       "status": {
         "active": "Aktif",
         "available": "Hazır",
@@ -132,12 +132,12 @@
           "preferences": "Mod veya risk ayarlandı",
           "optional": "Opsiyonel çalışma bağlamı ve mod/risk"
         },
-    "preflight": {
-      "eyebrow": "ÇALIŞMA AYARLARI",
-      "title": "Ön kontrol",
-      "complete": "Ön kontrol ilerleme için hazır",
-      "locked": "Taslak öncesi ön kontrol çalıştır"
-    },
+        "preflight": {
+          "eyebrow": "ÇALIŞMA AYARLARI",
+          "title": "Ön kontrol",
+          "complete": "Ön kontrol ilerleme için hazır",
+          "locked": "Taslak öncesi ön kontrol çalıştır"
+        },
         "tracking": {
           "eyebrow": "TAKİP",
           "title": "Süreç takibi",
@@ -388,42 +388,42 @@
         "emptyEquipment": "Kayıtlı ekipman yok. Üst bardaki Operatör Profili’ni kullanın.",
         "emptyPreferences": "Kayıtlı genel tercih yok. Üst bardaki Operatör Profili’ni kullanın."
       },
-    "preflight": {
-      "eyebrow": "ÖN KONTROL",
-      "title": "Çalışma bağlamını doğrula",
-      "label": "Ön kontrol",
-      "action": "Ön kontrol çalıştır",
-      "idle": "bekliyor",
-      "running": "çalışıyor",
-      "ready": "hazır",
-      "warning": "gözden geçir",
-      "stale": "eskidi",
-      "aiOffline": "AI0 çevrimdışı",
-      "agentTitle": "AI0",
-      "agentSlot": "AI0",
-      "todoTitle": "İşlem akışı",
-      "resultTitle": "Sonuç önizlemesi",
-      "resultIdle": "Henüz ön kontrol sonucu yok.",
-      "resultRunning": "Ön kontrol çalışıyor.",
-      "resultReady": "Ön kontrol bağlamı hazır.",
-      "signatureLabel": "Run imzası",
-      "promptSizeLabel": "Prompt",
-      "todoStatus": {
-        "pending": "bekliyor",
-        "active": "çalışıyor",
-        "complete": "tamam",
-        "warning": "uyarı"
-      },
-      "steps": {
-        "operatorContext": "Operatör bağlamını paketle",
-        "constraints": "Run kısıtlarını türet",
-        "ai0Analysis": "AI0 yazılım ön analizini al",
-        "runSignature": "Run imzasını üret",
-        "sessionSave": "Oturuma kaydet"
-      },
-      "requiresSession": "GEREKLİ: AKTİF OTURUM",
-      "requiresSessionHint": "Ön kontrol çalıştırmadan önce bir oturum açın veya yükleyin.",
-      "requiresGoalHint": "Ön kontrolün bu çalışmayı doğrulayabilmesi için önce hedefi kaydedin.",
+      "preflight": {
+        "eyebrow": "ÖN KONTROL",
+        "title": "Çalışma bağlamını doğrula",
+        "label": "Ön kontrol",
+        "action": "Ön kontrol çalıştır",
+        "idle": "bekliyor",
+        "running": "çalışıyor",
+        "ready": "hazır",
+        "warning": "gözden geçir",
+        "stale": "eskidi",
+        "aiOffline": "AI0 çevrimdışı",
+        "agentTitle": "AI0",
+        "agentSlot": "AI0",
+        "todoTitle": "İşlem akışı",
+        "resultTitle": "Sonuç önizlemesi",
+        "resultIdle": "Henüz ön kontrol sonucu yok.",
+        "resultRunning": "Ön kontrol çalışıyor.",
+        "resultReady": "Ön kontrol bağlamı hazır.",
+        "signatureLabel": "Run imzası",
+        "promptSizeLabel": "Prompt",
+        "todoStatus": {
+          "pending": "bekliyor",
+          "active": "çalışıyor",
+          "complete": "tamam",
+          "warning": "uyarı"
+        },
+        "steps": {
+          "operatorContext": "Operatör bağlamını paketle",
+          "constraints": "Run kısıtlarını türet",
+          "ai0Analysis": "AI0 yazılım ön analizini al",
+          "runSignature": "Run imzasını üret",
+          "sessionSave": "Oturuma kaydet"
+        },
+        "requiresSession": "GEREKLİ: AKTİF OTURUM",
+        "requiresSessionHint": "Ön kontrol çalıştırmadan önce bir oturum açın veya yükleyin.",
+        "requiresGoalHint": "Ön kontrolün bu çalışmayı doğrulayabilmesi için önce hedefi kaydedin.",
         "warningHint": "Ön kontrol uyarıyla tamamlandı. İlerlemeden önce notları gözden geçirin.",
         "staleHint": "Son ön kontrol çalışmasından sonra bağlam değişti. Başlatmadan önce yenileyin.",
         "readyHint": "Çalışmaya özel ayarlar hizalı. Taslak üretiminden önce son kapı olarak ön kontrolü kullanın.",

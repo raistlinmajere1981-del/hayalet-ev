@@ -25,7 +25,8 @@ export function updateIndicatorAvatars(): void {
       provider: "ai0",
       el: document.getElementById("indicator-avatar-ai0"),
       path: ai0AvatarPath,
-      slotState: ai0Assigned !== true ? "empty" : ai0Connected === true ? "connected" : "disconnected",
+      slotState:
+        ai0Assigned !== true ? "empty" : ai0Connected === true ? "connected" : "disconnected",
       manageConversationSelect: false,
     },
     {

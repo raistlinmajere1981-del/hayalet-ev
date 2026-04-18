@@ -4,7 +4,7 @@ import { LogCategory } from "@shared/logging-core";
 import { AppState } from "../app-state.js";
 import { getErrorMessage } from "@shared/index.js";
 import { AppI18n } from "../i18n/index.js";
-import type { CoreEngine as CoreEngineType } from "../core-engine.js";
+import { dispatchInternalSlotBridge } from "../commands/slot-bridge-runtime.js";
 
 interface ProtocolPayload {
   room?: string;
@@ -25,8 +25,16 @@ interface ProtocolSessionOpts {
   attachments?: ProtocolAttachment[];
 }
 
+type RelayBridgeSource = "ai0" | "ai1" | "ai2" | "us1" | "system";
+
 function relayT(key: string): string {
   return AppI18n.t(`app.logs.aiaiRelay.${key}`);
+}
+
+function normalizeRelayBridgeSource(value: string): RelayBridgeSource {
+  return value === "ai0" || value === "ai1" || value === "ai2" || value === "us1"
+    ? value
+    : "system";
 }
 
 export class AIAIRelay extends BaseRelay {
@@ -34,7 +42,7 @@ export class AIAIRelay extends BaseRelay {
   _prevThinking: Record<string, string>;
   _lastMessageTimes: Record<string, number>;
 
-  constructor(coreEngine: CoreEngineType) {
+  constructor(coreEngine: unknown) {
     super(coreEngine);
     this._providers = ["ai1", "ai2"];
     this._prevThinking = { ai1: "idle", ai2: "idle" };
@@ -62,6 +70,47 @@ export class AIAIRelay extends BaseRelay {
     });
     this._dispatchEvent("relay-changed", { active: true, type: "ai-ai" });
     await Promise.resolve();
+  }
+
+  async _dispatchRelayMessage(options: {
+    from: string;
+    targets: string[];
+    text: string;
+    page: string;
+    attachments?: ProtocolAttachment[];
+  }): Promise<void> {
+    const attachments = Array.isArray(options.attachments) ? options.attachments : [];
+    const bridgeSource: RelayBridgeSource =
+      attachments.length > 0 ? "system" : normalizeRelayBridgeSource(options.from);
+    const sendResult = await dispatchInternalSlotBridge(
+      {
+        action: "message.send",
+        ...(options.targets.length === 1
+          ? { toSlot: options.targets[0] }
+          : { toSlots: options.targets }),
+        payload: {
+          text: options.text,
+          page: options.page,
+        },
+        ...(attachments.length > 0
+          ? {
+              attachments: attachments.map((attachment) => ({
+                name: attachment.name,
+                path: attachment.path,
+                ...(attachment.mimeType !== undefined ? { mimeType: attachment.mimeType } : {}),
+              })),
+            }
+          : {}),
+      },
+      {
+        provider: bridgeSource,
+        source: bridgeSource,
+        fromSlot: bridgeSource,
+      }
+    );
+    if (sendResult.success !== true) {
+      throw new Error(sendResult.message ?? relayT("sendMessageUnavailable"));
+    }
   }
 
   async startProtocolSession(opts: ProtocolSessionOpts = {}): Promise<void> {
@@ -106,14 +155,13 @@ export class AIAIRelay extends BaseRelay {
         provider: first,
       });
 
-      if (this.coreEngine.sendToTargets !== undefined) {
-        await this.coreEngine.sendToTargets({
-          targets: [first],
-          text: message,
-          page: "protocol-relay",
-          attachments: attachments,
-        });
-      }
+      await this._dispatchRelayMessage({
+        from: "system",
+        targets: [first],
+        text: message,
+        page: "protocol-relay",
+        attachments,
+      });
 
       this._logT("info", "app.logs.aiaiRelay.protocolSent", {
         sessionId: id,
@@ -216,14 +264,13 @@ export class AIAIRelay extends BaseRelay {
       s.state = "sent-to-ai2";
 
       try {
-        if (this.coreEngine.sendToTargets !== undefined) {
-          await this.coreEngine.sendToTargets({
-            targets: [ai2],
-            text: forwardText,
-            page: "protocol-relay",
-            attachments: s.attachments ?? [],
-          });
-        }
+        await this._dispatchRelayMessage({
+          from: ai1,
+          targets: [ai2],
+          text: forwardText,
+          page: "protocol-relay",
+          attachments: s.attachments ?? [],
+        });
         this._logT("info", "app.logs.aiaiRelay.protocolForwarded", {
           sessionId: s.id,
           from: ai1,
@@ -261,13 +308,12 @@ export class AIAIRelay extends BaseRelay {
       );
 
       try {
-        if (this.coreEngine.sendMessage !== undefined) {
-          await this.coreEngine.sendMessage({
-            provider: ai1,
-            text,
-            page: "relay",
-          });
-        }
+        await this._dispatchRelayMessage({
+          from: ai2,
+          targets: [ai1],
+          text,
+          page: "relay",
+        });
       } catch (e) {
         this._logT("warning", "app.logs.aiaiRelay.protocolForwardFailed", {
           sessionId: s.id,
@@ -300,13 +346,12 @@ export class AIAIRelay extends BaseRelay {
       );
 
       try {
-        if (this.coreEngine.sendMessage !== undefined) {
-          await this.coreEngine.sendMessage({
-            provider: ai2,
-            text,
-            page: "relay",
-          });
-        }
+        await this._dispatchRelayMessage({
+          from: ai1,
+          targets: [ai2],
+          text,
+          page: "relay",
+        });
       } catch (e) {
         this._logT("warning", "app.logs.aiaiRelay.protocolForwardFailed", {
           sessionId: s.id,
@@ -352,13 +397,12 @@ export class AIAIRelay extends BaseRelay {
     );
 
     try {
-      if (this.coreEngine.sendMessage !== undefined) {
-        await this.coreEngine.sendMessage({
-          provider: target,
-          text,
-          page: "relay",
-        });
-      }
+      await this._dispatchRelayMessage({
+        from: provider,
+        targets: [target],
+        text,
+        page: "relay",
+      });
     } catch (err) {
       this._logT(
         "warning",

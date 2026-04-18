@@ -127,7 +127,7 @@ function getAiAccountFromSettings(
     return settings.assistantAccounts.find((account) => account.id === accountId) ?? null;
   }
 
-  const accountId = readTrimmedString(settings.slots[slotId]?.accountId);
+  const accountId = readTrimmedString(settings.slots[slotId].accountId);
   if (accountId === null) {
     return null;
   }
@@ -266,6 +266,7 @@ function buildAiEntitySnapshot(
   const slotState = getSlotState(slotId);
   const assigned = account !== null;
   const connected = slotState?.state === "connected";
+  const urlExcluded = slotState === null ? false : slotState.urlExcluded === true;
 
   return {
     participantId: slotId,
@@ -275,11 +276,11 @@ function buildAiEntitySnapshot(
     avatar: readAvatar(account?.avatarPath) ?? readAvatar(account?.avatar),
     assigned,
     connected,
-    ready: assigned && connected && slotState?.urlExcluded !== true,
+    ready: assigned && connected && urlExcluded !== true,
     state:
       readTrimmedString(slotState?.state) ??
       (assigned ? (connected ? "connected" : "assigned") : "empty"),
-    urlExcluded: slotState?.urlExcluded === true,
+    urlExcluded,
     providerId: account?.provider ?? null,
     accountId: account?.id ?? null,
     remoteUserId: null,
@@ -443,9 +444,7 @@ class SlotPresenceStoreClass {
     return this.getSlot(participantId);
   }
 
-  getEntity(
-    participantId: Exclude<SlotPresenceParticipantId, "user">
-  ): SlotPresenceEntitySnapshot {
+  getEntity(participantId: Exclude<SlotPresenceParticipantId, "user">): SlotPresenceEntitySnapshot {
     if (participantId === "ai0") {
       return this.getAssistant();
     }

@@ -86,11 +86,7 @@ function createOption(
   return option;
 }
 
-function renderValueLabel(
-  text: ForgeTextFn,
-  value: string,
-  type: "equipment" | "skill"
-): string {
+function renderValueLabel(text: ForgeTextFn, value: string, type: "equipment" | "skill"): string {
   const key =
     type === "equipment"
       ? ["workbench", "goalPanel", "operatorProfile", "equipmentStatus", value]
@@ -235,12 +231,7 @@ function renderEquipmentEditor(
   statusSelect.className = "forge-input";
   (["unavailable", "available", "planned"] as const).forEach((value) => {
     statusSelect.append(
-      createOption(
-        documentRef,
-        value,
-        renderValueLabel(text, value, "equipment"),
-        draft.status
-      )
+      createOption(documentRef, value, renderValueLabel(text, value, "equipment"), draft.status)
     );
   });
 
@@ -308,10 +299,7 @@ export function renderOperatorProfileManager(
   panel.append(
     createSectionHeading(
       documentRef,
-      text(
-        ["workbench", "goalPanel", "operatorProfile", "drawerTitle"],
-        "OPERATOR PROFILE"
-      ),
+      text(["workbench", "goalPanel", "operatorProfile", "drawerTitle"], "OPERATOR PROFILE"),
       [
         createButton(
           documentRef,
@@ -343,14 +331,18 @@ export function renderOperatorProfileManager(
   const skillsBody = documentRef.createElement("div");
   skillsBody.className = "forge-profile-section__body";
   skillsSection.append(
-    createSectionHeading(documentRef, text(["workbench", "goalPanel", "catalog", "groups", "skills"], "Skills"), [
-      createButton(
-        documentRef,
-        text(["workbench", "goalPanel", "operatorProfile", "addSkill"], "Add skill"),
-        "start-profile-create",
-        { forgeProfileKind: "skill" }
-      ),
-    ])
+    createSectionHeading(
+      documentRef,
+      text(["workbench", "goalPanel", "catalog", "groups", "skills"], "Skills"),
+      [
+        createButton(
+          documentRef,
+          text(["workbench", "goalPanel", "operatorProfile", "addSkill"], "Add skill"),
+          "start-profile-create",
+          { forgeProfileKind: "skill" }
+        ),
+      ]
+    )
   );
   if (options.draft.skills.length === 0) {
     skillsBody.append(
@@ -411,10 +403,7 @@ export function renderOperatorProfileManager(
       [
         createButton(
           documentRef,
-          text(
-            ["workbench", "goalPanel", "operatorProfile", "addEquipment"],
-            "Add equipment"
-          ),
+          text(["workbench", "goalPanel", "operatorProfile", "addEquipment"], "Add equipment"),
           "start-profile-create",
           { forgeProfileKind: "equipment" }
         ),

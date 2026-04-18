@@ -194,11 +194,7 @@ function humanizeIdentifier(value: string): string {
 
 function sortUniqueStrings(values: string[]): string[] {
   return Array.from(
-    new Set(
-      values
-        .map((value) => value.trim())
-        .filter((value) => value !== "")
-    )
+    new Set(values.map((value) => value.trim()).filter((value) => value !== ""))
   ).sort((left, right) => left.localeCompare(right));
 }
 
@@ -217,12 +213,7 @@ export function normalizeForgeLegacyIdentifier(value: string): string {
 }
 
 export function isForgeOperatorSkillLevel(value: unknown): value is ForgeOperatorSkillLevel {
-  return (
-    value === "none" ||
-    value === "basic" ||
-    value === "intermediate" ||
-    value === "advanced"
-  );
+  return value === "none" || value === "basic" || value === "intermediate" || value === "advanced";
 }
 
 export function isForgeOperatorEquipmentStatus(
@@ -235,22 +226,17 @@ export function isForgeOperatorMode(value: unknown): value is ForgeOperatorMode 
   return value === "learn_first" || value === "result_first";
 }
 
-export function isForgeOperatorRiskTolerance(
-  value: unknown
-): value is ForgeOperatorRiskTolerance {
+export function isForgeOperatorRiskTolerance(value: unknown): value is ForgeOperatorRiskTolerance {
   return value === "low" || value === "medium" || value === "high";
 }
 
-export function isForgeOperatorPreferenceKey(
-  value: unknown
-): value is ForgeOperatorPreferenceKey {
+export function isForgeOperatorPreferenceKey(value: unknown): value is ForgeOperatorPreferenceKey {
   return value === "mode" || value === "riskTolerance";
 }
 
 export function isForgePreflightStepId(value: unknown): value is ForgePreflightStepId {
   return (
-    typeof value === "string" &&
-    (FORGE_PREFLIGHT_STEP_IDS as readonly string[]).includes(value)
+    typeof value === "string" && (FORGE_PREFLIGHT_STEP_IDS as readonly string[]).includes(value)
   );
 }
 
@@ -258,12 +244,7 @@ function normalizeForgeLegacySkillLevel(
   value: unknown,
   globalLevel: unknown
 ): ForgeOperatorSkillLevel | null {
-  if (
-    value === "none" ||
-    value === "basic" ||
-    value === "intermediate" ||
-    value === "advanced"
-  ) {
+  if (value === "none" || value === "basic" || value === "intermediate" || value === "advanced") {
     return value;
   }
   if (value === "beginner") {
@@ -356,10 +337,7 @@ export function normalizeForgeOperatorSkillRecords(value: unknown): ForgeOperato
     }
     const label = trimString(record["label"]) ?? humanizeIdentifier(skillKey);
     const notes = trimString(record["notes"]);
-    records.set(
-      skillKey,
-      notes ? { skillKey, label, level, notes } : { skillKey, label, level }
-    );
+    records.set(skillKey, notes ? { skillKey, label, level, notes } : { skillKey, label, level });
   }
 
   return Array.from(records.values()).sort((left, right) => {
@@ -400,9 +378,7 @@ export function normalizeForgeOperatorEquipmentRecords(
 
   return Array.from(records.values()).sort((left, right) => {
     const labelCompare = left.label.localeCompare(right.label);
-    return labelCompare !== 0
-      ? labelCompare
-      : left.equipmentKey.localeCompare(right.equipmentKey);
+    return labelCompare !== 0 ? labelCompare : left.equipmentKey.localeCompare(right.equipmentKey);
   });
 }
 
@@ -455,9 +431,7 @@ export function reconcileForgeSessionContextSelection(params: {
   return {
     skillKeys: params.selection.skillKeys.filter((key) => allowedSkillKeys.has(key)),
     equipmentKeys: params.selection.equipmentKeys.filter((key) => allowedEquipmentKeys.has(key)),
-    preferenceKeys: params.selection.preferenceKeys.filter((key) =>
-      allowedPreferenceKeys.has(key)
-    ),
+    preferenceKeys: params.selection.preferenceKeys.filter((key) => allowedPreferenceKeys.has(key)),
   };
 }
 

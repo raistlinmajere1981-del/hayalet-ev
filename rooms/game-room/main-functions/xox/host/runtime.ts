@@ -108,6 +108,7 @@ const xoxUs1Runtime = createGameRoomXoxUs1Runtime({
   saveInviteInbox: saveInviteInbox,
   savePendingInvite: savePendingInvite,
   saveTeamTetrisState: saveTeamTetrisState,
+  toInviteApi: toUs1InviteApi,
 });
 const {
   applyInviteAcceptedState,
@@ -129,6 +130,7 @@ type XoxTarget = ReturnType<typeof sanitizeTarget>;
 type XoxResetContext = {
   matchId: string;
   localSessionId: string | null;
+  remoteUserId?: string | null;
 };
 type XoxUs1Runtime = ReturnType<typeof createGameRoomXoxUs1Runtime>;
 type XoxUs1Api = Parameters<XoxUs1Runtime["sendUs1Invite"]>[0];
@@ -140,14 +142,12 @@ type Us1MessageSendResult =
       success?: boolean;
       localSessionId?: unknown;
       conversationId?: unknown;
+      remoteUserId?: unknown;
     }
   | null
   | undefined;
 
-interface XoxRuntimeApi extends XoxUs1Api, XoxRuntimeMatchApi {
-  sendUs1Message(msg: Record<string, unknown>): Promise<Us1MessageSendResult>;
-  selectUs1RemoteUser?(remoteUserId: string): Promise<boolean>;
-}
+interface XoxRuntimeApi extends XoxUs1Api, XoxRuntimeMatchApi {}
 
 function isSuccessfulDispatch(result: CommandDispatchResult): result is { success: true } {
   return !!result && result.success === true;
@@ -163,13 +163,79 @@ function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
+async function dispatchUs1BridgeMessage(
+  api: XoxRuntimeApi,
+  msg: Record<string, unknown>
+): Promise<Us1MessageSendResult> {
+  if (typeof api.dispatchBridge !== "function") {
+    return null;
+  }
+
+  const localSessionId =
+    typeof msg["localSessionId"] === "string" && msg["localSessionId"].trim() !== ""
+      ? msg["localSessionId"].trim()
+      : null;
+  const remoteUserId =
+    typeof msg["remoteUserId"] === "string" && msg["remoteUserId"].trim() !== ""
+      ? msg["remoteUserId"].trim()
+      : null;
+  const bridgeResultRaw = await api.dispatchBridge({
+    action: "message.send",
+    toSlot: "us1",
+    ...(localSessionId !== null
+      ? {
+          sessionRef: {
+            id: localSessionId,
+          },
+        }
+      : {}),
+    payload: {
+      ...(typeof msg["text"] === "string" ? { text: msg["text"] } : {}),
+      ...(remoteUserId !== null ? { remoteUserId } : {}),
+      ...(msg["roomEvent"] !== undefined ? { roomEvent: msg["roomEvent"] } : {}),
+      ...(msg["roomCommand"] !== undefined ? { roomCommand: msg["roomCommand"] } : {}),
+    },
+  });
+
+  const bridgeResult =
+    bridgeResultRaw !== null &&
+    typeof bridgeResultRaw === "object" &&
+    Array.isArray(bridgeResultRaw) === false
+      ? (bridgeResultRaw as Record<string, unknown>)
+      : null;
+  if (bridgeResult === null || bridgeResult["success"] !== true) {
+    return bridgeResult as Us1MessageSendResult;
+  }
+
+  const data =
+    bridgeResult["data"] !== null &&
+    typeof bridgeResult["data"] === "object" &&
+    Array.isArray(bridgeResult["data"]) === false
+      ? (bridgeResult["data"] as Record<string, unknown>)
+      : {};
+  const session =
+    bridgeResult["session"] !== null &&
+    typeof bridgeResult["session"] === "object" &&
+    Array.isArray(bridgeResult["session"]) === false
+      ? (bridgeResult["session"] as Record<string, unknown>)
+      : {};
+  return {
+    success: true,
+    ...(typeof session["id"] === "string" ? { localSessionId: session["id"] } : {}),
+    ...(typeof session["conversationId"] === "string"
+      ? { conversationId: session["conversationId"] }
+      : {}),
+    ...(typeof data["remoteUserId"] === "string" ? { remoteUserId: data["remoteUserId"] } : {}),
+  };
+}
+
 function toUs1InviteApi(api: XoxRuntimeApi): XoxUs1InviteApi {
   const inviteApi: XoxUs1InviteApi = {
     getState(key: string) {
       return api.getState(key);
     },
-    sendUs1Message: async function (msg: Record<string, unknown>) {
-      const result = await api.sendUs1Message(msg);
+    dispatchUs1BridgeMessage: async function (msg: Record<string, unknown>) {
+      const result = await dispatchUs1BridgeMessage(api, msg);
       const response: { success: boolean; localSessionId?: string; conversationId?: string } = {
         success: result?.success === true,
       };
@@ -243,13 +309,6 @@ function readOpponentSlot(
   return context.slots[target];
 }
 
-async function selectUs1RemoteUserSafe(api: XoxRuntimeApi, remoteUserId: string): Promise<boolean> {
-  if (typeof api.selectUs1RemoteUser !== "function") {
-    return false;
-  }
-  return await api.selectUs1RemoteUser(remoteUserId);
-}
-
 async function handleStart(api: XoxRuntimeApi, payload: unknown): Promise<XoxCommandResult> {
   const locale = readLocale(api);
   const args = readArgs(payload);
@@ -275,11 +334,6 @@ async function handleStart(api: XoxRuntimeApi, payload: unknown): Promise<XoxCom
   if (target === "us1") {
     if (state.remoteUserId === null) {
       return { success: false, message: commandMessage(locale, "needReadyOpponent") };
-    }
-
-    const selected = await selectUs1RemoteUserSafe(api, state.remoteUserId);
-    if (selected !== true) {
-      return { success: false, message: commandMessage(locale, "dispatchFailed") };
     }
 
     return await sendUs1Invite(api, state, inviteNote);
@@ -317,6 +371,7 @@ async function handleReset(api: XoxRuntimeApi): Promise<XoxCommandResult> {
       ? {
           matchId: pendingInvite.matchId,
           localSessionId: pendingInvite.localSessionId,
+          remoteUserId: pendingInvite.remoteUserId,
         }
       : currentState.target === "us1" &&
           currentState.remoteUserId !== null &&
@@ -324,6 +379,7 @@ async function handleReset(api: XoxRuntimeApi): Promise<XoxCommandResult> {
         ? {
             matchId: currentMatchId,
             localSessionId: currentState.localSessionId,
+            remoteUserId: currentState.remoteUserId,
           }
         : null;
 
@@ -332,13 +388,8 @@ async function handleReset(api: XoxRuntimeApi): Promise<XoxCommandResult> {
     if (resetRemoteUserId === null) {
       remoteResetSent = false;
     } else {
-      const selected = await selectUs1RemoteUserSafe(api, resetRemoteUserId);
-      if (selected !== true) {
-        remoteResetSent = false;
-      } else {
-        const sendResult = await sendUs1Reset(toUs1InviteApi(api), resetContext);
-        remoteResetSent = isSuccessfulDispatch(sendResult);
-      }
+      const sendResult = await sendUs1Reset(toUs1InviteApi(api), resetContext);
+      remoteResetSent = isSuccessfulDispatch(sendResult);
     }
   }
 
@@ -375,11 +426,6 @@ async function handleUserMove(api: XoxRuntimeApi, payload: unknown): Promise<Xox
   if (state.target === "us1") {
     if (state.remoteUserId === null) {
       return { success: false, message: commandMessage(locale, "needReadyOpponent") };
-    }
-
-    const selected = await selectUs1RemoteUserSafe(api, state.remoteUserId);
-    if (selected !== true) {
-      return { success: false, message: commandMessage(locale, "dispatchFailed") };
     }
   }
 
@@ -460,13 +506,9 @@ async function handleAcceptInvite(api: XoxRuntimeApi, payload: unknown): Promise
     return { success: false, message: commandMessage(readLocale(api), "pendingInviteExists") };
   }
 
-  const selected = await selectUs1RemoteUserSafe(api, inviteEntry.remoteUserId);
-  if (selected !== true) {
-    return { success: false, message: commandMessage(readLocale(api), "inviteAcceptFailed") };
-  }
-
-  const sendResult = await api.sendUs1Message({
+  const sendResult = await dispatchUs1BridgeMessage(api, {
     localSessionId: inviteEntry.localSessionId || null,
+    remoteUserId: inviteEntry.remoteUserId,
     text: buildUs1InviteResponseText("accept", inviteEntry),
     roomEvent: {
       roomId: ROOM_ID,
@@ -501,13 +543,9 @@ async function handleRejectInvite(api: XoxRuntimeApi, payload: unknown): Promise
     return { success: false, message: commandMessage(readLocale(api), "inviteNotFound") };
   }
 
-  const selected = await selectUs1RemoteUserSafe(api, inviteEntry.remoteUserId);
-  if (selected !== true) {
-    return { success: false, message: commandMessage(readLocale(api), "inviteRejectFailed") };
-  }
-
-  const sendResult = await api.sendUs1Message({
+  const sendResult = await dispatchUs1BridgeMessage(api, {
     localSessionId: inviteEntry.localSessionId || null,
+    remoteUserId: inviteEntry.remoteUserId,
     text: buildUs1InviteResponseText("reject", inviteEntry),
     roomEvent: {
       roomId: ROOM_ID,

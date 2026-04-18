@@ -15,17 +15,18 @@ import {
   parseCommandExecutionInput,
 } from "../../src/js/pages/server-command-utils.ts";
 
-test("extractExampleArgsFromDescription picks matching command args from detail text", () => {
+test("extractExampleArgsFromDescription picks SlotBridge JSON args from detail text", () => {
   const detail = [
-    "📌 Asistanin son cevabini hedef AI slotuna tek sefer gonderir.",
+    "📌 Canonical bridge command.",
     "",
     "Ornek:",
-    "++cmd:AssistantAISend(ai1) Mesaji AI1'e ilet",
+    '++cmd:SlotBridge({"action":"message.send","fromSlot":"ai0","toSlot":"ai1","payload":{"text":"Merhaba"}})',
   ].join("\n");
 
-  const args = extractExampleArgsFromDescription("AssistantAISend", detail);
+  const args = extractExampleArgsFromDescription("SlotBridge", detail);
 
-  assert.equal(args, "ai1");
+  assert.match(args, /"action":"message\.send"/);
+  assert.match(args, /"toSlot":"ai1"/);
 });
 
 test("extractExampleArgsFromDescription returns empty for no-arg command", () => {
@@ -37,9 +38,9 @@ test("extractExampleArgsFromDescription returns empty for no-arg command", () =>
 });
 
 test("extractExampleArgsFromDescription ignores other command examples", () => {
-  const detail = "++cmd:AssistantAISend(ai2) hedefe gonder";
+  const detail = '++cmd:SlotBridge({"action":"message.send","toSlot":"ai2"})';
 
-  const args = extractExampleArgsFromDescription("AIAssistantSend", detail);
+  const args = extractExampleArgsFromDescription("WhisperManager", detail);
 
   assert.equal(args, "");
 });
@@ -56,11 +57,14 @@ test("buildInlineCommandSnippet formats command without args", () => {
   assert.equal(snippet, "++cmd:AIAIChatStop()");
 });
 
-test("parseCommandExecutionInput parses inline command input", () => {
-  const parsed = parseCommandExecutionInput("++cmd:AssistantAISend(ai2)", "WhisperManager");
+test("parseCommandExecutionInput parses SlotBridge inline command input", () => {
+  const inline =
+    '++cmd:SlotBridge({"action":"message.send","fromSlot":"ai0","toSlot":"ai2","payload":{"text":"Selam"}})';
 
-  assert.equal(parsed.commandName, "AssistantAISend");
-  assert.equal(parsed.args, "ai2");
+  const parsed = parseCommandExecutionInput(inline, "WhisperManager");
+
+  assert.equal(parsed.commandName, "SlotBridge");
+  assert.match(parsed.args, /"toSlot":"ai2"/);
   assert.equal(parsed.inputWasInlineCommand, true);
 });
 

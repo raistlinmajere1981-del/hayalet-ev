@@ -57,8 +57,9 @@ function createRoomHostRuntime() {
       }
 
       if (
-        (typeof bridgePayload.text === "string" && bridgePayload.text.trim() !== "") ||
-        typeof bridgePayload.page === "string"
+        target !== "us1" &&
+        ((typeof bridgePayload.text === "string" && bridgePayload.text.trim() !== "") ||
+          typeof bridgePayload.page === "string")
       ) {
         messageCalls.push({
           provider: target,
@@ -67,47 +68,81 @@ function createRoomHostRuntime() {
         });
       }
 
+      if (payload.action === "message.send" && target === "us1") {
+        const remoteUserId =
+          typeof bridgePayload.remoteUserId === "string" && bridgePayload.remoteUserId.trim() !== ""
+            ? bridgePayload.remoteUserId
+            : (selectedRemoteUsers.at(-1) ?? "remote@example.com");
+        selectedRemoteUsers.push(remoteUserId);
+        us1MessageCalls.push({
+          localSessionId:
+            payload.sessionRef !== null &&
+            typeof payload.sessionRef === "object" &&
+            typeof (payload.sessionRef as Record<string, unknown>).id === "string"
+              ? (payload.sessionRef as Record<string, unknown>).id
+              : null,
+          text: bridgePayload.text,
+          roomEvent: bridgePayload.roomEvent,
+          roomCommand: bridgePayload.roomCommand,
+          remoteUserId,
+        });
+        return {
+          success: true,
+          session: {
+            id:
+              typeof us1MessageCalls.at(-1)?.localSessionId === "string" &&
+              us1MessageCalls.at(-1)?.localSessionId.trim() !== ""
+                ? us1MessageCalls.at(-1)?.localSessionId
+                : `us1-session-${us1MessageCalls.length}`,
+            conversationId: `us1-conversation-${us1MessageCalls.length}`,
+          },
+          data: {
+            remoteUserId,
+            transportMessageId: `<us1-${us1MessageCalls.length}@example.test>`,
+          },
+        };
+      }
+
+      if (payload.action === "session.sync" && target === "us1") {
+        us1SyncCalls.push({
+          localSessionId:
+            payload.sessionRef !== null &&
+            typeof payload.sessionRef === "object" &&
+            typeof (payload.sessionRef as Record<string, unknown>).id === "string"
+              ? (payload.sessionRef as Record<string, unknown>).id
+              : null,
+          consumeRoomCommands: bridgePayload.consumeRoomCommands,
+        });
+        const queued = us1SyncQueue.shift() ?? {};
+        return {
+          success: true,
+          session: {
+            id:
+              typeof queued.localSessionId === "string" && queued.localSessionId.trim() !== ""
+                ? queued.localSessionId
+                : null,
+            conversationId:
+              typeof queued.conversationId === "string" && queued.conversationId.trim() !== ""
+                ? queued.conversationId
+                : null,
+          },
+          data: {
+            fetchedCount: 0,
+            processedCount: 0,
+            duplicateCount: 0,
+            projectedCount: 0,
+            skippedCount: 0,
+            unresolvedSessionCount: 0,
+            roomPackages: [],
+            roomEvents: [],
+            roomCommands: [],
+            roomInviteInbox: [],
+            ...queued,
+          },
+        };
+      }
+
       return { success: true };
-    },
-    sendProtocol: async (payload: Record<string, unknown>) => {
-      protocolCalls.push(payload);
-      return { success: true };
-    },
-    sendMessage: async (payload: Record<string, unknown>) => {
-      messageCalls.push(payload);
-      return { success: true };
-    },
-    sendToTargets: async () => ({ success: true }),
-    sendUs1Message: async (payload: Record<string, unknown>) => {
-      us1MessageCalls.push(payload);
-      const localSessionId =
-        typeof payload.localSessionId === "string" && payload.localSessionId.trim() !== ""
-          ? payload.localSessionId
-          : `us1-session-${us1MessageCalls.length}`;
-      return {
-        success: true,
-        remoteUserId: selectedRemoteUsers.at(-1) ?? "remote@example.com",
-        localSessionId,
-        conversationId: `us1-conversation-${us1MessageCalls.length}`,
-        transportMessageId: `<us1-${us1MessageCalls.length}@example.test>`,
-      };
-    },
-    syncUs1Messages: async (payload: Record<string, unknown> = {}) => {
-      us1SyncCalls.push(payload);
-      return {
-        success: true,
-        fetchedCount: 0,
-        processedCount: 0,
-        duplicateCount: 0,
-        projectedCount: 0,
-        skippedCount: 0,
-        unresolvedSessionCount: 0,
-        roomPackages: [],
-        roomEvents: [],
-        roomCommands: [],
-        roomInviteInbox: [],
-        ...(us1SyncQueue.shift() ?? {}),
-      };
     },
     dispatchRoomCommand: async (commandName: string, payload: Record<string, unknown> = {}) => {
       dispatchCalls.push({ commandName, ...payload });
@@ -130,10 +165,6 @@ function createRoomHostRuntime() {
       email: "remote@example.com",
     }),
     isUs1Connected: () => true,
-    selectUs1RemoteUser: async (remoteUserId: string | null) => {
-      selectedRemoteUsers.push(remoteUserId);
-      return true;
-    },
     showToast: (payload: { type?: string; message?: string }) => {
       toastCalls.push(payload);
     },
@@ -208,37 +239,47 @@ function buildReadyHostContext(
     us1Ready?: boolean;
   } = {}
 ) {
+  const user = {
+    nickname: "Raistlin",
+  };
+  const slots = {
+    ai1: {
+      slotId: "ai1",
+      nickname: target === "ai1" ? "Alpha" : "Beta",
+      assigned: true,
+      connected: true,
+      ready: true,
+      state: "connected",
+    },
+    ai2: {
+      slotId: "ai2",
+      nickname: target === "ai2" ? "Beta" : "Alpha",
+      assigned: true,
+      connected: true,
+      ready: true,
+      state: "connected",
+    },
+    us1: {
+      slotId: "us1",
+      nickname: options.us1Nickname ?? "Remote Ghost",
+      assigned: true,
+      connected: options.us1Ready !== false,
+      ready: options.us1Ready !== false,
+      state: options.us1Ready === false ? "assigned" : "connected",
+      remoteUserId: options.us1RemoteUserId ?? "remote@example.com",
+    },
+  };
   return {
     type: "host-context",
     locale: "en",
-    user: {
-      nickname: "Raistlin",
-    },
-    slots: {
-      ai1: {
-        slotId: "ai1",
-        nickname: target === "ai1" ? "Alpha" : "Beta",
-        assigned: true,
-        connected: true,
-        ready: true,
-        state: "connected",
-      },
-      ai2: {
-        slotId: "ai2",
-        nickname: target === "ai2" ? "Beta" : "Alpha",
-        assigned: true,
-        connected: true,
-        ready: true,
-        state: "connected",
-      },
-      us1: {
-        slotId: "us1",
-        nickname: options.us1Nickname ?? "Remote Ghost",
-        assigned: true,
-        connected: options.us1Ready !== false,
-        ready: options.us1Ready !== false,
-        state: options.us1Ready === false ? "assigned" : "connected",
-        remoteUserId: options.us1RemoteUserId ?? "remote@example.com",
+    user,
+    slots,
+    presence: {
+      user: { ...user },
+      slots: {
+        ai1: { ...slots.ai1 },
+        ai2: { ...slots.ai2 },
+        us1: { ...slots.us1 },
       },
     },
   };
@@ -495,7 +536,10 @@ test("game-room host accepts incoming US1 invites and applies synced remote move
   );
 
   assert.equal(runtime.us1SyncCalls.at(-1)?.consumeRoomCommands, true);
-  assert.equal(runtime.dispatchCalls.length, 1);
+  assert.equal(
+    runtime.dispatchCalls.filter((entry) => entry.commandName === "GameRoomXoxRemoteMove").length,
+    1
+  );
   assert.equal((runtime.latestGameState()?.board as string[])[4], "X");
   assert.equal(runtime.latestGameState()?.awaitingMoveFrom, "user");
   assert.equal(runtime.latestGameState()?.turnIndex, 1);

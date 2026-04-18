@@ -27,10 +27,7 @@ function asNonEmptyString(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : fallback;
 }
 
-function normalizePreferenceValue(
-  key: "mode" | "riskTolerance",
-  value: unknown
-): string | null {
+function normalizePreferenceValue(key: "mode" | "riskTolerance", value: unknown): string | null {
   if (key === "mode") {
     if (value === "learn_first" || value === "learn-first") {
       return "learn_first";
@@ -61,9 +58,7 @@ function normalizePreferenceSelectionKeys(value: unknown): string[] {
   if (Array.isArray(value) === false) {
     return [];
   }
-  return value.filter(
-    (entry): entry is string => entry === "mode" || entry === "riskTolerance"
-  );
+  return value.filter((entry): entry is string => entry === "mode" || entry === "riskTolerance");
 }
 
 function normalizeOperatorProfileSnapshot(value: unknown): ForgeRoomSnapshot["operatorProfile"] {
@@ -73,11 +68,13 @@ function normalizeOperatorProfileSnapshot(value: unknown): ForgeRoomSnapshot["op
   if (Array.isArray(source["skills"]) || Array.isArray(source["equipment"])) {
     return {
       schemaVersion:
-        typeof source["schemaVersion"] === "number" ? source["schemaVersion"] : fallback.schemaVersion,
+        typeof source["schemaVersion"] === "number"
+          ? source["schemaVersion"]
+          : fallback.schemaVersion,
       updatedAt: asNonEmptyString(source["updatedAt"], fallback.updatedAt),
       skills: normalizeForgeOperatorSkillRecords(source["skills"]),
       equipment: normalizeForgeOperatorEquipmentRecords(source["equipment"]),
-       preferences: normalizedPreferences,
+      preferences: normalizedPreferences,
     } as ForgeRoomSnapshot["operatorProfile"];
   }
 
@@ -135,17 +132,15 @@ function normalizeRunOverrideSnapshot(value: unknown): ForgeRoomSnapshot["runOve
     source["mode"] !== "learn_first" &&
     source["mode"] !== "result_first" &&
     notes === "" &&
-    (source["riskTolerance"] !== "low" &&
-      source["riskTolerance"] !== "medium" &&
-      source["riskTolerance"] !== "high") &&
+    source["riskTolerance"] !== "low" &&
+    source["riskTolerance"] !== "medium" &&
+    source["riskTolerance"] !== "high" &&
     source["enableRovoPreAnalysis"] !== true
   ) {
     return null;
   }
   const mode =
-    source["mode"] === "learn_first" || source["mode"] === "result_first"
-      ? source["mode"]
-      : null;
+    source["mode"] === "learn_first" || source["mode"] === "result_first" ? source["mode"] : null;
   const riskTolerance =
     source["riskTolerance"] === "low" ||
     source["riskTolerance"] === "medium" ||
@@ -183,8 +178,8 @@ export function sanitizeForgeUiContext(payload: unknown): ForgeUiContextState {
   const source = toRecord(payload);
   const room = toRecord(source["room"]);
   const presence = toRecord(source["presence"]);
-  const presenceUser = toRecord(presence["user"]);
-  const assistant = toRecord(presence["assistant"]);
+  const presenceUser = toRecord(presence["user"] ?? source["user"]);
+  const assistant = toRecord(presence["assistant"] ?? source["assistant"]);
   const activeFeature = toRecord(source["activeFeature"]);
   const assistantNickname =
     typeof assistant["nickname"] === "string" && assistant["nickname"].trim() !== ""
@@ -242,7 +237,8 @@ function normalizePreflightSnapshot(value: unknown): ForgeRoomSnapshot["prefligh
       typeof source["promptCharCount"] === "number" && Number.isFinite(source["promptCharCount"])
         ? source["promptCharCount"]
         : fallback.promptCharCount,
-    ranAt: typeof source["ranAt"] === "string" && source["ranAt"].trim() !== "" ? source["ranAt"] : null,
+    ranAt:
+      typeof source["ranAt"] === "string" && source["ranAt"].trim() !== "" ? source["ranAt"] : null,
     staleReason:
       typeof source["staleReason"] === "string" && source["staleReason"].trim() !== ""
         ? source["staleReason"]

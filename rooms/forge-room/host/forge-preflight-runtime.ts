@@ -145,7 +145,7 @@ function extractStructuredJsonText(text: string): string | null {
   const withoutJsonPrefix = trimmed.replace(/^json\b\s*/i, "").trimStart();
   const fencedMatch = /```(?:json)?\s*([\s\S]*?)\s*```/i.exec(withoutJsonPrefix);
   const searchSpace = (fencedMatch?.[1] ?? withoutJsonPrefix).trim();
-  const jsonStart = searchSpace.search(/[{\[]/);
+  const jsonStart = searchSpace.search(/[{[]/);
   if (jsonStart < 0) {
     return null;
   }
@@ -235,7 +235,8 @@ async function maybeRunForgeRovoPreAnalysis(params: {
   if (params.dispatchBridge === null) {
     return {
       status: "warning",
-      summary: "AI0 software pre-analysis is unavailable because the assistant bridge is disconnected.",
+      summary:
+        "AI0 software pre-analysis is unavailable because the assistant bridge is disconnected.",
       warnings: ["AI0 bridge is unavailable for preflight analysis."],
       missingInfo: [],
     };

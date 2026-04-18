@@ -1,14 +1,10 @@
-import {
-  SLOT_PRESENCE_SLOT_IDS,
-  SlotPresenceStore,
-  type SlotPresenceSlotId,
-  type SlotPresenceSnapshot,
-  type SlotPresenceUserSnapshot,
-} from "../slot-presence-store.js";
+import { AppState } from "../app-state.js";
+import { SlotController, SlotEvent } from "../slot-controller.js";
+import type { SlotPresenceSnapshot, SlotPresenceUserSnapshot } from "../slot-presence-store.js";
 
-export const ROOM_PRESENCE_SLOT_IDS = SLOT_PRESENCE_SLOT_IDS;
+export const ROOM_PRESENCE_SLOT_IDS = ["ai1", "ai2", "us1"] as const;
 
-export type RoomPresenceSlotId = SlotPresenceSlotId;
+export type RoomPresenceSlotId = (typeof ROOM_PRESENCE_SLOT_IDS)[number];
 export type RoomPresenceUserSnapshot = SlotPresenceUserSnapshot;
 export type RoomPresenceSnapshot = SlotPresenceSnapshot;
 export type RoomPresenceSlotSnapshot = RoomPresenceSnapshot["slots"][RoomPresenceSlotId];
@@ -22,18 +18,52 @@ function cloneValue<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function readAvatar(value: string | null | undefined): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
 export function buildRoomUserPresenceSnapshot(): RoomPresenceUserSnapshot {
-  return SlotPresenceStore.getUser();
+  return {
+    participantId: "user",
+    label: "USER",
+    nickname: AppState.getNickname("user"),
+    avatar: readAvatar(AppState.getAvatar("user")),
+  };
 }
 
 export function buildRoomAssistantPresenceSnapshot(): RoomPresenceSnapshot["assistant"] {
-  return SlotPresenceStore.getAssistant();
+  const assistant = AppState.getEntityPresence("ai0");
+  return {
+    ...assistant,
+    participantId: "ai0",
+    slotId: "ai0",
+    avatar: readAvatar(AppState.getAvatar("ai0")),
+  };
 }
 
 export function buildRoomSlotPresenceSnapshot(
   slotId: RoomPresenceSlotId
 ): RoomPresenceSlotSnapshot {
-  return SlotPresenceStore.getSlot(slotId);
+  const presence = AppState.getEntityPresence(slotId);
+
+  if (slotId === "us1") {
+    const identity = AppState.getUs1Identity();
+    return {
+      ...presence,
+      participantId: "us1",
+      slotId: "us1",
+      avatar: readAvatar(AppState.getAvatar(slotId)),
+      accountId: AppState.getUs1ArchiveAccountId(),
+      remoteUserId: identity?.remoteUserId ?? null,
+    };
+  }
+
+  return {
+    ...presence,
+    participantId: slotId,
+    slotId,
+    avatar: readAvatar(AppState.getAvatar(slotId)),
+  };
 }
 
 export function createRoomPresenceSnapshot(
@@ -52,7 +82,15 @@ export function createRoomPresenceSnapshot(
 }
 
 export function buildRoomPresenceSnapshot(): RoomPresenceSnapshot {
-  return SlotPresenceStore.getSnapshot();
+  const user = buildRoomUserPresenceSnapshot();
+  const assistant = buildRoomAssistantPresenceSnapshot();
+  const slots = {
+    ai1: buildRoomSlotPresenceSnapshot("ai1"),
+    ai2: buildRoomSlotPresenceSnapshot("ai2"),
+    us1: buildRoomSlotPresenceSnapshot("us1"),
+  };
+
+  return createRoomPresenceSnapshot(user, slots, assistant);
 }
 
 export function bindRoomPresenceSubscriptions({
@@ -63,9 +101,6 @@ export function bindRoomPresenceSubscriptions({
     return;
   }
 
-  subscriptions.push(
-    SlotPresenceStore.subscribe(() => {
-      onPresenceChange();
-    })
-  );
+  subscriptions.push(AppState.subscribe(onPresenceChange));
+  subscriptions.push(SlotController.on(SlotEvent.DISCONNECT_COMPLETE, onPresenceChange));
 }

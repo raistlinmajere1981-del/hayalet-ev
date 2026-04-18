@@ -33,12 +33,7 @@ export type ForgeWorkbenchUiFlowState =
   | "EXPORTED";
 
 export type ForgeWorkbenchUiSurface = "goal" | "responses" | "synthesis";
-export type ForgeWorkbenchStageId =
-  | "session"
-  | "operator"
-  | "preflight"
-  | "tracking"
-  | "draft";
+export type ForgeWorkbenchStageId = "session" | "operator" | "preflight" | "tracking" | "draft";
 
 export interface ForgeRoomSnapshot {
   activeSessionId: string | null;

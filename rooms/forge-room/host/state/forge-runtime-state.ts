@@ -3,6 +3,11 @@ import {
   FORGE_ROOM_ID,
   FORGE_SESSION_SCHEMA_VERSION,
 } from "../../shared/forge-constants.js";
+import {
+  filterForgeActiveEquipmentKeys,
+  filterForgeActivePreferenceKeys,
+  filterForgeActiveSkillKeys,
+} from "../../shared/data/operator-context-catalog.js";
 import type {
   ForgeGoal,
   ForgeSession,
@@ -144,9 +149,7 @@ function normalizeForgeRunOverride(value: unknown): ForgeRunOverride | null {
     record["riskTolerance"] === "high"
   ) {
     const mode =
-      record["mode"] === "learn_first" || record["mode"] === "result_first"
-        ? record["mode"]
-        : null;
+      record["mode"] === "learn_first" || record["mode"] === "result_first" ? record["mode"] : null;
     const riskTolerance =
       record["riskTolerance"] === "low" ||
       record["riskTolerance"] === "medium" ||
@@ -204,7 +207,8 @@ function normalizeForgePreflightState(value: unknown): ForgePreflightState {
       typeof record["promptCharCount"] === "number" && Number.isFinite(record["promptCharCount"])
         ? record["promptCharCount"]
         : fallback.promptCharCount,
-    ranAt: typeof record["ranAt"] === "string" && record["ranAt"].trim() !== "" ? record["ranAt"] : null,
+    ranAt:
+      typeof record["ranAt"] === "string" && record["ranAt"].trim() !== "" ? record["ranAt"] : null,
     staleReason:
       typeof record["staleReason"] === "string" && record["staleReason"].trim() !== ""
         ? record["staleReason"]
@@ -314,10 +318,14 @@ export function createForgeRuntimeStateFromSession(
   const operatorProfile = overrides.operatorProfile ?? createDefaultForgeOperatorProfile();
   const sessionContextSelection = reconcileForgeSessionContextSelection({
     selection: normalizeForgeSessionContextSelection(sessionRecord.sessionContextSelection),
-    allowedSkillKeys: operatorProfile.skills.map((entry) => entry.skillKey),
-    allowedEquipmentKeys: operatorProfile.equipment.map((entry) => entry.equipmentKey),
-    allowedPreferenceKeys: Object.keys(operatorProfile.preferences).filter(
-      (entry): entry is "mode" | "riskTolerance" => entry === "mode" || entry === "riskTolerance"
+    allowedSkillKeys: filterForgeActiveSkillKeys(
+      operatorProfile.skills.map((entry) => entry.skillKey)
+    ),
+    allowedEquipmentKeys: filterForgeActiveEquipmentKeys(
+      operatorProfile.equipment.map((entry) => entry.equipmentKey)
+    ),
+    allowedPreferenceKeys: filterForgeActivePreferenceKeys(
+      Object.keys(operatorProfile.preferences)
     ),
   });
   return {

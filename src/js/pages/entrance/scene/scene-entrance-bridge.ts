@@ -109,9 +109,10 @@ function normalizeSlotValue(value: string | null | undefined): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function resolveUs1SlotAssignment(
-  character: SceneCharacterDescriptor
-): { assigned: boolean; matchesCharacter: boolean } {
+function resolveUs1SlotAssignment(character: SceneCharacterDescriptor): {
+  assigned: boolean;
+  matchesCharacter: boolean;
+} {
   const us1Presence = AppState.getEntityPresence("us1");
   const selectedAccountId = normalizeSlotValue(us1Presence.accountId);
   const selectedRemoteUserId = normalizeSlotValue(us1Presence.remoteUserId);
@@ -520,8 +521,7 @@ export class SceneEntranceBridge {
     const resolution = resolveSceneAiConnectSlot(character.accountId);
     const assignedSlot = resolution.mode === "assigned" ? resolution.slot : null;
     const slot = resolution.slot;
-    const connected =
-      assignedSlot !== null ? AppState.isConnected(assignedSlot) === true : false;
+    const connected = assignedSlot !== null ? AppState.isConnected(assignedSlot) === true : false;
     const controlsReason =
       assignedSlot !== null
         ? null

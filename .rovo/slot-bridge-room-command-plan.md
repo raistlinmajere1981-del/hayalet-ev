@@ -1,5 +1,10 @@
 # Plan: Slot Bridge Command Family And Room Command Migration
 
+> Historical transition note:
+> This document is superseded by [`.rovo/slot-bridge-single-authority-plan.md`](./slot-bridge-single-authority-plan.md) and [`.rovo/slot-bridge-contract.md`](./slot-bridge-contract.md).
+> Any statements below about keeping `AIAssistantSend` / `AssistantAISend` wrappers, legacy-adapter telemetry, or temporary acceptance of retired actions are obsolete.
+> Current state: wrappers are removed, `message.sendWithAttachments` and `file.send` hard-fail at the bridge boundary, and SlotBridge is the only supported public entrypoint.
+
 **Generated**: 2026-03-31
 **Last Verified**: 2026-03-31
 **Estimated Complexity**: High
@@ -7,8 +12,8 @@
 
 ## Verification Update
 Verification on 2026-03-31 confirmed that the unexpected review-agent additions are real, repo-aligned artifacts rather than hallucinated output:
-- Contract doc: `docs/slot-bridge-contract.md`
-- Manual smoke checklist: `docs/slot-bridge-smoke-checklist.md`
+- Contract doc: `.rovo/slot-bridge-contract.md`
+- Manual smoke checklist: `.rovo/slot-bridge-smoke-checklist.md`
 - Direct bridge regression suite: `scripts/tests/slot-bridge-regressions.test.ts`
 
 The verification pass also confirmed these implementation points in source:
@@ -17,7 +22,7 @@ The verification pass also confirmed these implementation points in source:
 - Room UI and US1 room-command flows dispatch through `action: "room.command"`.
 - `message.sendWait` uses the full-sync/archive-backed reply path and returns normalized attachments, including images.
 - Public file-bearing actions support `attachment-ref` archive references and reject raw AI-authored filesystem paths.
-- Legacy `AIAssistantSend` and `AssistantAISend` wrappers route through `SlotBridge` and emit legacy-adapter telemetry.
+- Retired assistant wrappers no longer exist as callable surfaces.
 
 ## Sprint Status Snapshot
 - Sprint 1: Completed
@@ -35,9 +40,9 @@ The verification pass also confirmed these implementation points in source:
 - Residual lint warnings: `5` intentional `no-await-in-loop` warnings in `src/js/modules/commands/slot-bridge.ts` polling loops
 
 ## Remaining Follow-Ups
-- Execute `docs/slot-bridge-smoke-checklist.md` against a live app session.
+- Execute `.rovo/slot-bridge-smoke-checklist.md` against a live app session.
 - Verify Game Room behavior against built or installed room artifacts, not only workspace source and targeted tests.
-- Keep `AIAssistantSend` and `AssistantAISend` wrappers in place until telemetry shows no remaining legacy callers.
+- Treat wrapper-removal notes below as historical migration context only.
 
 ## Overview
 Unify the current `++cmd` surface behind a single public command family so rooms, AI slots, assistant slot, and US1 transport all use the same envelope and routing model. The working public surface in this plan is `++cmd:SlotBridge({...})`; if the final public name changes later, the envelope, action names, and migration steps in this plan should stay the same.

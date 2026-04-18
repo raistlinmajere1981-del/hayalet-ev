@@ -4,10 +4,11 @@ import type {
   Us1CommunicationSystem,
 } from "@shared/settings.js";
 import { getRemoteEmailAccounts } from "@shared/settings.js";
-import type { Us1MailAccountDraft } from "@shared/us1-mail.js";
+import type { Us1MailAccountDraft, Us1SessionEvent } from "@shared/us1-mail.js";
 import { buildRemoteEmailAccountId } from "@shared/archive.js";
 
 import { AppState } from "../../../modules/app-state.js";
+import { dispatchInternalSlotBridge } from "../../../modules/commands/slot-bridge-runtime.js";
 import { ConversationListManager } from "../../../modules/conversation-list-manager.js";
 import { TrafficManager } from "../../../modules/traffic-manager.js";
 import { resolveUs1ForceSelectConversationId } from "../../../modules/us1-session-selection.js";
@@ -37,6 +38,61 @@ interface ReportEntry {
   at: number;
   kind: FeedbackKind;
   message: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+function isUs1SessionEvent(value: unknown): value is Us1SessionEvent {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value["remoteUserId"] === "string" &&
+    typeof value["localSessionId"] === "string" &&
+    typeof value["conversationId"] === "string" &&
+    typeof value["isNewSession"] === "boolean"
+  );
+}
+
+function normalizeUs1SessionSyncResult(
+  result: Awaited<ReturnType<typeof dispatchInternalSlotBridge>>
+): {
+  success: boolean;
+  error?: string;
+  fetchedCount: number;
+  processedCount: number;
+  conversationId: string | null;
+  remoteUserId: string | null;
+  sessionEvents: Us1SessionEvent[];
+} {
+  const data = isRecord(result.data) ? result.data : {};
+  const fetchedCount = typeof data["fetchedCount"] === "number" ? data["fetchedCount"] : 0;
+  const processedCount =
+    typeof data["processedCount"] === "number" ? data["processedCount"] : fetchedCount;
+
+  return {
+    success: result.success === true,
+    ...(typeof result.error === "string"
+      ? { error: result.error }
+      : typeof result.message === "string"
+        ? { error: result.message }
+        : {}),
+    fetchedCount,
+    processedCount,
+    conversationId:
+      typeof result.session?.conversationId === "string"
+        ? result.session.conversationId
+        : typeof data["conversationId"] === "string"
+          ? data["conversationId"]
+          : null,
+    remoteUserId: typeof data["remoteUserId"] === "string" ? data["remoteUserId"] : null,
+    sessionEvents: Array.isArray(data["sessionEvents"])
+      ? data["sessionEvents"].filter(isUs1SessionEvent)
+      : [],
+  };
 }
 
 export interface Us1SceneState {
@@ -522,14 +578,13 @@ export class Us1Panel {
   }
 
   private async handleConnect(): Promise<void> {
-    const electronApi = window.electronAPI;
     const settings = this.settingsManager.getSnapshot();
     const verifiedLocalMailAccount = this.getVerifiedLocalMailAccount(settings);
     const activeBindings = this.getActiveRemoteBindings(settings);
     const selectedBinding = this.resolveSelectedBinding(settings, activeBindings);
     const communicationSystem = this.getCommunicationSystem(settings);
 
-    if (electronApi === undefined || typeof electronApi.us1SyncMessages !== "function") {
+    if (window.electronAPI === undefined) {
       this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
       return;
     }
@@ -565,7 +620,19 @@ export class Us1Panel {
         ...this.buildUs1ConnectionStatePatch("connected", settings),
       });
 
-      const result = await electronApi.us1SyncMessages();
+      const result = normalizeUs1SessionSyncResult(
+        await dispatchInternalSlotBridge(
+          {
+            action: "session.sync",
+            toSlot: "us1",
+          },
+          {
+            provider: "user",
+            source: "user",
+            fromSlot: "user",
+          }
+        )
+      );
       await this.reloadSettings();
       this.render();
 
@@ -573,7 +640,7 @@ export class Us1Panel {
         throw new Error(result.error ?? entranceT("us1.feedback.operationFailed"));
       }
 
-      const processedCount = result.processedCount ?? result.fetchedCount ?? 0;
+      const processedCount = result.processedCount;
       const forceSelectId = resolveUs1ForceSelectConversationId({
         selectedConversationId: this.getSelectedConversationId(),
         resultConversationId:
@@ -615,8 +682,7 @@ export class Us1Panel {
   }
 
   private async handleManualMailCheck(): Promise<void> {
-    const electronApi = window.electronAPI;
-    if (electronApi === undefined || typeof electronApi.us1SyncMessages !== "function") {
+    if (window.electronAPI === undefined) {
       this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
       return;
     }
@@ -629,7 +695,19 @@ export class Us1Panel {
     this.syncIndicators(true);
 
     try {
-      const result = await electronApi.us1SyncMessages();
+      const result = normalizeUs1SessionSyncResult(
+        await dispatchInternalSlotBridge(
+          {
+            action: "session.sync",
+            toSlot: "us1",
+          },
+          {
+            provider: "user",
+            source: "user",
+            fromSlot: "user",
+          }
+        )
+      );
       await this.reloadSettings();
       this.render();
 
@@ -637,7 +715,7 @@ export class Us1Panel {
         throw new Error(result.error ?? entranceT("us1.feedback.operationFailed"));
       }
 
-      const processedCount = result.processedCount ?? result.fetchedCount ?? 0;
+      const processedCount = result.processedCount;
       const forceSelectId = resolveUs1ForceSelectConversationId({
         selectedConversationId: this.getSelectedConversationId(),
         resultConversationId:

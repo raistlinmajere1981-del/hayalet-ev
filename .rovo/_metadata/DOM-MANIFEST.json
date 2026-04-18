@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-17T08:29:38.322Z",
+  "generatedAt": "2026-04-18T09:02:41.503Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 501,
+    "filesScanned": 504,
     "ids": 574,
     "testIds": 15,
-    "querySelectors": 149,
-    "totalSelectors": 738
+    "querySelectors": 150,
+    "totalSelectors": 739
   },
   "lookup": {
     "id": {
@@ -631,6 +631,7 @@
       "ds_custom_select_trigger": ".ds-custom-select__trigger",
       "ds_custom_select_is_expanded": ".ds-custom-select.is-expanded",
       "ds_message": ".ds-message",
+      "ds_message_bubble": ".ds-message__bubble",
       "ds_msg_copy_ds_message_role": ".ds-msg-copy, .ds-message__role",
       "ds_panel_header_data_toggle": ".ds-panel__header[data-toggle]",
       "ds_toast": ".ds-toast",

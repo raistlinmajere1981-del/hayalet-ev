@@ -261,7 +261,9 @@ export function createForgeRoomUiRuntime() {
     if (typeof HTMLElement !== "undefined") {
       return value instanceof HTMLElement;
     }
-    return value !== null && typeof value === "object" && "id" in (value as Record<string, unknown>);
+    return (
+      value !== null && typeof value === "object" && "id" in (value as Record<string, unknown>)
+    );
   }
 
   function isTextRangeElement(value: unknown): value is HTMLInputElement | HTMLTextAreaElement {
@@ -454,19 +456,13 @@ export function createForgeRoomUiRuntime() {
   }
 
   function cloneOperatorProfile(profile: ForgeOperatorProfile): ForgeOperatorProfile {
-    const preferences = (
-      profile as ForgeOperatorProfile & {
-        preferences?: Partial<Record<"mode" | "riskTolerance", string>>;
-      }
-    ).preferences ?? {};
+    const preferences = profile.preferences;
     return {
       schemaVersion: profile.schemaVersion,
       updatedAt: profile.updatedAt,
       preferences: {
         ...(preferences.mode ? { mode: preferences.mode } : {}),
-        ...(preferences.riskTolerance
-          ? { riskTolerance: preferences.riskTolerance }
-          : {}),
+        ...(preferences.riskTolerance ? { riskTolerance: preferences.riskTolerance } : {}),
       },
       skills: profile.skills.map((record) => ({
         skillKey: record.skillKey,
@@ -494,9 +490,7 @@ export function createForgeRoomUiRuntime() {
 
   function currentSessionPickerValue(): string {
     const savedSessionIds = state.snapshot.sessionList.map((session) => session.id);
-    if (
-      viewState.selectedSavedSessionId === FORGE_NEW_SESSION_PICKER_VALUE
-    ) {
+    if (viewState.selectedSavedSessionId === FORGE_NEW_SESSION_PICKER_VALUE) {
       return FORGE_NEW_SESSION_PICKER_VALUE;
     }
     if (
@@ -811,18 +805,12 @@ export function createForgeRoomUiRuntime() {
   }
 
   function sortOperatorProfileDraft(profile: ForgeOperatorProfile): ForgeOperatorProfile {
-    const preferences = (
-      profile as ForgeOperatorProfile & {
-        preferences?: Partial<Record<"mode" | "riskTolerance", string>>;
-      }
-    ).preferences ?? {};
+    const preferences = profile.preferences;
     return {
       ...profile,
       preferences: {
         ...(preferences.mode ? { mode: preferences.mode } : {}),
-        ...(preferences.riskTolerance
-          ? { riskTolerance: preferences.riskTolerance }
-          : {}),
+        ...(preferences.riskTolerance ? { riskTolerance: preferences.riskTolerance } : {}),
       },
       skills: profile.skills
         .map((record) => ({
@@ -845,9 +833,8 @@ export function createForgeRoomUiRuntime() {
   }
 
   function createProfileEntryKey(prefix: "equipment" | "skill"): string {
-    const globalCrypto = globalThis.crypto;
-    if (globalCrypto && typeof globalCrypto.randomUUID === "function") {
-      return `${prefix}-${globalCrypto.randomUUID()}`;
+    if (typeof globalThis.crypto.randomUUID === "function") {
+      return `${prefix}-${globalThis.crypto.randomUUID()}`;
     }
     return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   }
@@ -946,13 +933,10 @@ export function createForgeRoomUiRuntime() {
           skills: draft.skills.filter((entry) => entry.skillKey !== entryKey),
         });
       }
-      if (kind === "equipment") {
-        return sortOperatorProfileDraft({
-          ...draft,
-          equipment: draft.equipment.filter((entry) => entry.equipmentKey !== entryKey),
-        });
-      }
-      return draft;
+      return sortOperatorProfileDraft({
+        ...draft,
+        equipment: draft.equipment.filter((entry) => entry.equipmentKey !== entryKey),
+      });
     });
     if (
       viewState.profileEditorDraft &&
@@ -995,7 +979,7 @@ export function createForgeRoomUiRuntime() {
           ],
         })
       );
-    } else if (editorDraft.kind === "equipment") {
+    } else {
       const label = readInputValue("forge-profile-editor-equipment-label").trim();
       const statusValue = readInputValue("forge-profile-editor-equipment-status").trim();
       const brandModel = toNullableTrimmedValue(
@@ -1031,11 +1015,7 @@ export function createForgeRoomUiRuntime() {
       return;
     }
     const operatorProfileDraft = currentOperatorProfileDraft();
-    const draftPreferences = (
-      operatorProfileDraft as ForgeOperatorProfile & {
-        preferences?: Partial<Record<"mode" | "riskTolerance", string>>;
-      }
-    ).preferences ?? {};
+    const draftPreferences = operatorProfileDraft.preferences;
     const sent = requestRuntime.updateOperatorProfile({
       skills: operatorProfileDraft.skills.map((record) => ({
         skillKey: record.skillKey,
@@ -1052,7 +1032,9 @@ export function createForgeRoomUiRuntime() {
       })),
       preferences: {
         ...(draftPreferences.mode ? { mode: draftPreferences.mode } : {}),
-        ...(draftPreferences.riskTolerance ? { riskTolerance: draftPreferences.riskTolerance } : {}),
+        ...(draftPreferences.riskTolerance
+          ? { riskTolerance: draftPreferences.riskTolerance }
+          : {}),
       },
     });
     if (sent === true) {
@@ -1122,7 +1104,9 @@ export function createForgeRoomUiRuntime() {
     ) {
       return false;
     }
-    return state.snapshot.preflight.status === "fresh" || state.snapshot.preflight.status === "warning";
+    return (
+      state.snapshot.preflight.status === "fresh" || state.snapshot.preflight.status === "warning"
+    );
   }
 
   function issueCommand(commandLabel: string, send: () => boolean): boolean {
@@ -1273,10 +1257,7 @@ export function createForgeRoomUiRuntime() {
       return text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: SAVED GOAL");
     }
     if (firstRequirement === "Select a target room") {
-      return text(
-        ["workbench", "guards", "requiresTargetRoom"],
-        "REQUIRES: TARGET ROOM"
-      );
+      return text(["workbench", "guards", "requiresTargetRoom"], "REQUIRES: TARGET ROOM");
     }
     if (firstRequirement === "Select a synthesis") {
       return text(
@@ -1325,7 +1306,10 @@ export function createForgeRoomUiRuntime() {
         case "GOAL_DEFINED":
           if (state.snapshot.activeSessionId === null) {
             return {
-              label: text(["workbench", "goalPanel", "sessionManager", "newSession"], "New session"),
+              label: text(
+                ["workbench", "goalPanel", "sessionManager", "newSession"],
+                "New session"
+              ),
               description: text(
                 ["workbench", "stageTower", "primaryAction", "session"],
                 "STEP 1: CREATE OR LOAD A SESSION"
@@ -1587,10 +1571,10 @@ export function createForgeRoomUiRuntime() {
         })
       : hasDraftTasks()
         ? renderDraftBreakdownPanel(documentRef, state, text, {
-          approvalBlockedReason: describeApprovalStep(),
-          flowState: flow.state,
-          rawEditorOpen: viewState.advancedDraftOpen,
-        })
+            approvalBlockedReason: describeApprovalStep(),
+            flowState: flow.state,
+            rawEditorOpen: viewState.advancedDraftOpen,
+          })
         : null;
     const goalPanel = renderWorkbenchStagePanel(documentRef, state, text, {
       activeStageId: viewState.activeStageId,
@@ -1963,9 +1947,7 @@ export function createForgeRoomUiRuntime() {
           return;
         }
         viewState.selectedSavedSessionId = FORGE_NEW_SESSION_PICKER_VALUE;
-        issueCommand("ForgeRoomDeleteSession", () =>
-          requestRuntime.deleteSession({ sessionId })
-        );
+        issueCommand("ForgeRoomDeleteSession", () => requestRuntime.deleteSession({ sessionId }));
       });
     root.querySelectorAll<HTMLElement>("[data-forge-action='load-session']").forEach((element) => {
       element.addEventListener("click", () => {

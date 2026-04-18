@@ -180,11 +180,7 @@ function createPreparationStep(
 }
 
 function countSelectedSessionContext(selection: ForgeSessionContextSelection): number {
-  const preferenceKeys = (
-    selection as ForgeSessionContextSelection & {
-      preferenceKeys?: string[];
-    }
-  ).preferenceKeys ?? [];
+  const preferenceKeys = selection.preferenceKeys;
   return selection.skillKeys.length + selection.equipmentKeys.length + preferenceKeys.length;
 }
 
@@ -372,16 +368,8 @@ export function renderGoalInputPanel(
   const currentGoal = state.snapshot.currentGoal;
   const operatorProfile: ForgeOperatorProfile = state.snapshot.operatorProfile;
   const sessionContextSelection = options.sessionContextSelection;
-  const operatorPreferences = (
-    state.snapshot.operatorProfile as ForgeOperatorProfile & {
-      preferences?: Partial<Record<"mode" | "riskTolerance", string>>;
-    }
-  ).preferences ?? {};
-  const preferenceKeys = (
-    sessionContextSelection as ForgeSessionContextSelection & {
-      preferenceKeys?: string[];
-    }
-  ).preferenceKeys ?? [];
+  const operatorPreferences = state.snapshot.operatorProfile.preferences;
+  const preferenceKeys = sessionContextSelection.preferenceKeys;
   const selectedContextCount = countSelectedSessionContext(sessionContextSelection);
   const operatorRecordCount = countOperatorRecords(operatorProfile);
   const operatorPreferenceCount = Object.keys(operatorPreferences).length;
@@ -425,16 +413,16 @@ export function renderGoalInputPanel(
       : sessionActive && selectedContextCount > 0
         ? "ready"
         : "active";
-  const preflightStepStatus: "active" | "idle" | "ready" | "warning" = !sessionActive ||
-    !savedGoalExists
-    ? "idle"
-    : preflightWarningCount > 0 || state.snapshot.preflight.status === "warning"
-      ? "warning"
-      : options.sessionContextDirty || state.snapshot.preflight.status === "stale"
-        ? "active"
-        : state.snapshot.preflight.status === "fresh"
-          ? "ready"
-          : "active";
+  const preflightStepStatus: "active" | "idle" | "ready" | "warning" =
+    !sessionActive || !savedGoalExists
+      ? "idle"
+      : preflightWarningCount > 0 || state.snapshot.preflight.status === "warning"
+        ? "warning"
+        : options.sessionContextDirty || state.snapshot.preflight.status === "stale"
+          ? "active"
+          : state.snapshot.preflight.status === "fresh"
+            ? "ready"
+            : "active";
   const goalStepDetail = savedGoalExists
     ? text(
         ["workbench", "goalPanel", "launchChecklist", "goalReady"],
@@ -485,25 +473,26 @@ export function renderGoalInputPanel(
               total: operatorRecordCount,
             }
           );
-  const preflightStepDetail = !sessionActive || !savedGoalExists
-    ? text(
-        ["workbench", "goalPanel", "launchChecklist", "preflightIdle"],
-        "Preflight unlocks after an active session and a saved goal exist."
-      )
-    : preflightWarningCount > 0 || state.snapshot.preflight.status === "warning"
+  const preflightStepDetail =
+    !sessionActive || !savedGoalExists
       ? text(
-          ["workbench", "goalPanel", "launchChecklist", "preflightWarning"],
-          "Preflight found warnings. Review them before you continue."
+          ["workbench", "goalPanel", "launchChecklist", "preflightIdle"],
+          "Preflight unlocks after an active session and a saved goal exist."
         )
-      : options.sessionContextDirty || state.snapshot.preflight.status === "stale"
+      : preflightWarningCount > 0 || state.snapshot.preflight.status === "warning"
         ? text(
-            ["workbench", "goalPanel", "launchChecklist", "preflightStale"],
-            "Goal, context, or run settings changed. Refresh preflight before launch."
+            ["workbench", "goalPanel", "launchChecklist", "preflightWarning"],
+            "Preflight found warnings. Review them before you continue."
           )
-        : text(
-            ["workbench", "goalPanel", "launchChecklist", "preflightReady"],
-            "Run context is validated and ready for draft generation."
-          );
+        : options.sessionContextDirty || state.snapshot.preflight.status === "stale"
+          ? text(
+              ["workbench", "goalPanel", "launchChecklist", "preflightStale"],
+              "Goal, context, or run settings changed. Refresh preflight before launch."
+            )
+          : text(
+              ["workbench", "goalPanel", "launchChecklist", "preflightReady"],
+              "Run context is validated and ready for draft generation."
+            );
   const goalStatusLabel = text(
     ["workbench", "goalPanel", "launchChecklist", "statuses", goalStepStatus],
     goalStepStatus
@@ -667,16 +656,12 @@ export function renderGoalInputPanel(
       documentRef,
       text(["workbench", "goalPanel", "summary", "constraintsLabel"], "Constraints"),
       goalConstraintCount === 1
-        ? text(
-            ["workbench", "goalPanel", "summary", "constraintCountOne"],
-            "{count} item",
-            { count: goalConstraintCount }
-          )
-        : text(
-            ["workbench", "goalPanel", "summary", "constraintCountOther"],
-            "{count} items",
-            { count: goalConstraintCount }
-          )
+        ? text(["workbench", "goalPanel", "summary", "constraintCountOne"], "{count} item", {
+            count: goalConstraintCount,
+          })
+        : text(["workbench", "goalPanel", "summary", "constraintCountOther"], "{count} items", {
+            count: goalConstraintCount,
+          })
     )
   );
   goalBlock.append(goalMeta);
@@ -925,7 +910,7 @@ export function renderGoalInputPanel(
       documentRef,
       text(["workbench", "goalPanel", "operatorProfile", "selectedLabel"], "Selected"),
       String(selectedContextCount)
-      )
+    )
   );
   sessionContextBlock.append(operatorSummary);
 
@@ -1103,7 +1088,8 @@ export function renderGoalInputPanel(
   launchBlock.append(launchSummary);
 
   const preflightBlock = documentRef.createElement("article");
-  preflightBlock.className = "forge-preflight-step forge-goal-subsection forge-goal-subsection--accent";
+  preflightBlock.className =
+    "forge-preflight-step forge-goal-subsection forge-goal-subsection--accent";
   preflightBlock.dataset["forgeZone"] = "preflight-step";
   preflightBlock.dataset["status"] = preflightStatusLabel;
   const preflightCopy = documentRef.createElement("div");
@@ -1115,13 +1101,10 @@ export function renderGoalInputPanel(
     : !savedGoalExists
       ? text(["workbench", "guards", "requiresSavedGoal"], "REQUIRES: GOAL")
       : state.snapshot.preflight.status === "warning" || preflightWarningCount > 0
-        ? text(
-            ["workbench", "goalPanel", "preflight", "stepWarning"],
-            "Preflight flagged warnings"
-          )
+        ? text(["workbench", "goalPanel", "preflight", "stepWarning"], "Preflight flagged warnings")
         : state.snapshot.preflight.status === "fresh"
-        ? text(["workbench", "goalPanel", "preflight", "stepComplete"], "Preflight complete")
-        : text(["workbench", "goalPanel", "preflight", "stepReady"], "Context ready");
+          ? text(["workbench", "goalPanel", "preflight", "stepComplete"], "Preflight complete")
+          : text(["workbench", "goalPanel", "preflight", "stepReady"], "Context ready");
   const preflightMeta = documentRef.createElement("span");
   preflightMeta.className = "forge-preflight-step__meta";
   preflightMeta.textContent = `${text(
@@ -1346,13 +1329,7 @@ export function renderGoalInputPanel(
 
   const mainStack = documentRef.createElement("div");
   mainStack.className = "forge-goal-stack";
-  mainStack.append(
-    preparationBlock,
-    goalBlock,
-    sessionBlock,
-    sessionContextBlock,
-    launchBlock
-  );
+  mainStack.append(preparationBlock, goalBlock, sessionBlock, sessionContextBlock, launchBlock);
 
   const layout = documentRef.createElement("div");
   layout.className = "forge-goal-layout forge-goal-layout--single";

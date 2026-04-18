@@ -10,13 +10,12 @@ export function scrapeMessages(): ScrapedMessage[] {
       return "";
     }
 
-    const text = (node as HTMLElement).innerText?.trim();
-    if (typeof text === "string" && text !== "") {
+    const text = (node as HTMLElement).innerText.trim();
+    if (text !== "") {
       return text;
     }
 
-    const fallbackText = node.textContent?.trim();
-    return typeof fallbackText === "string" ? fallbackText : "";
+    return node.textContent.trim();
   }
 
   function scrapeLegacyMessages(): ScrapedMessage[] {
@@ -35,9 +34,7 @@ export function scrapeMessages(): ScrapedMessage[] {
       });
 
       document.querySelectorAll('[data-slot="session-turn-summary-section"]').forEach((summary) => {
-        const assistantText = readMessageText(
-          summary.querySelector('[data-component="markdown"]')
-        );
+        const assistantText = readMessageText(summary.querySelector('[data-component="markdown"]'));
         if (assistantText !== "") {
           result.push({ index: index++, role: "assistant", text: assistantText });
         }

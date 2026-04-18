@@ -10,18 +10,15 @@ const { aiaiChatStopHandler, aiAssistantChatStopHandler, aiChatRuntime } = await
 
 test("AI-AI stop command does not send stop protocol when relay inactive", async () => {
   const originalIsAIAIActive = RelayManager.isAIAIActive;
-  const originalGetCoreEngine = aiChatRuntime.getCoreEngine;
+  const originalSendProtocol = aiChatRuntime.sendProtocol;
   let sendProtocolCalled = false;
 
   try {
     RelayManager.isAIAIActive = () => false;
-    aiChatRuntime.getCoreEngine = async () =>
-      ({
-        sendProtocol: async () => {
-          sendProtocolCalled = true;
-          return { success: true };
-        },
-      }) as never;
+    aiChatRuntime.sendProtocol = async () => {
+      sendProtocolCalled = true;
+      return { success: true };
+    };
 
     const result = await aiaiChatStopHandler({ provider: "ai1" });
 
@@ -29,7 +26,7 @@ test("AI-AI stop command does not send stop protocol when relay inactive", async
     assert.equal(sendProtocolCalled, false);
   } finally {
     RelayManager.isAIAIActive = originalIsAIAIActive;
-    aiChatRuntime.getCoreEngine = originalGetCoreEngine;
+    aiChatRuntime.sendProtocol = originalSendProtocol;
   }
 });
 
@@ -58,7 +55,7 @@ test("AI-Assistant stop command sends the standardized stop protocol to the acti
   const originalIsAIAssistantActive = RelayManager.isAIAssistantActive;
   const originalGetAIAssistantSourceSlot = RelayManager.getAIAssistantSourceSlot;
   const originalStopAIAssistantSession = RelayManager.stopAIAssistantSession;
-  const originalGetCoreEngine = aiChatRuntime.getCoreEngine;
+  const originalSendProtocol = aiChatRuntime.sendProtocol;
 
   let stopCalled = false;
   let sendArgs: Record<string, unknown> | null = null;
@@ -69,13 +66,10 @@ test("AI-Assistant stop command sends the standardized stop protocol to the acti
     RelayManager.stopAIAssistantSession = async () => {
       stopCalled = true;
     };
-    aiChatRuntime.getCoreEngine = async () =>
-      ({
-        sendProtocol: async (args: Record<string, unknown>) => {
-          sendArgs = args;
-          return { success: true };
-        },
-      }) as never;
+    aiChatRuntime.sendProtocol = async (args: Record<string, unknown>) => {
+      sendArgs = args;
+      return { success: true };
+    };
 
     const result = await aiAssistantChatStopHandler({ provider: "ai1" });
 
@@ -90,6 +84,6 @@ test("AI-Assistant stop command sends the standardized stop protocol to the acti
     RelayManager.isAIAssistantActive = originalIsAIAssistantActive;
     RelayManager.getAIAssistantSourceSlot = originalGetAIAssistantSourceSlot;
     RelayManager.stopAIAssistantSession = originalStopAIAssistantSession;
-    aiChatRuntime.getCoreEngine = originalGetCoreEngine;
+    aiChatRuntime.sendProtocol = originalSendProtocol;
   }
 });

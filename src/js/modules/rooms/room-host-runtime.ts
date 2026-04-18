@@ -1,18 +1,9 @@
 import type { InstalledRoomRecord, RoomCommandScope } from "@shared/index.js";
-import { buildRemoteEmailAccountId } from "@shared/archive.js";
 import { getErrorMessage } from "@shared/index.js";
 import type { RemoteUserIdentity } from "@shared/settings.js";
-import type {
-  Us1SendMessageParams,
-  Us1SendMessageResult,
-  Us1SyncMessagesParams,
-  Us1SyncMessagesResult,
-} from "@shared/us1-mail.js";
 import { AppState } from "../app-state.js";
-import type { CoreEngine } from "../core-engine.js";
 import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory, LogLevel } from "../logger/index.js";
-import { SettingsManager } from "../settings-manager.js";
 import { ServerCommands } from "../server-commands.js";
 import { SLOT_BRIDGE_COMMAND_NAME } from "../commands/slot-bridge.js";
 import { RoomCommandRegistry, type RoomCommandHandler } from "./room-command-registry.js";
@@ -60,16 +51,10 @@ interface RoomHostApi {
   ) => void;
   registerProtocols: (protocols: Record<string, string>) => void;
   notifyRoom: (type: string, payload?: Record<string, unknown>) => void;
-  sendProtocol: typeof CoreEngine.sendProtocol;
-  sendMessage: typeof CoreEngine.sendMessage;
-  sendToTargets: typeof CoreEngine.sendToTargets;
-  sendUs1Message: (params: Us1SendMessageParams) => Promise<Us1SendMessageResult>;
-  syncUs1Messages: (params?: Us1SyncMessagesParams) => Promise<Us1SyncMessagesResult>;
   dispatchRoomCommand: (commandName: string, payload?: Record<string, unknown>) => Promise<unknown>;
   getRoomPresence: () => RoomPresenceSnapshot;
   getUs1Identity: () => RemoteUserIdentity | null;
   isUs1Connected: () => boolean;
-  selectUs1RemoteUser: (remoteUserId: string | null) => Promise<boolean>;
   showToast: (payload: {
     type?: "success" | "error" | "info" | "warning";
     message: string;
@@ -543,107 +528,6 @@ class RoomHostRuntimeClass {
           payload,
         });
       },
-      sendProtocol: async (
-        options
-      ): Promise<Awaited<ReturnType<typeof CoreEngine.sendProtocol>>> => {
-        const sendOptions = options ?? {};
-        return (await dispatchBridge({
-          action: "message.send",
-          ...(Array.isArray(sendOptions.targets) && sendOptions.targets.length === 1
-            ? { toSlot: sendOptions.targets[0] }
-            : { toSlots: sendOptions.targets ?? [] }),
-          payload: {
-            protocol: {
-              room: sendOptions.room,
-              scenario: sendOptions.scenario,
-              ...(sendOptions.preface !== undefined ? { preface: sendOptions.preface } : {}),
-              ...(sendOptions.context !== undefined ? { context: sendOptions.context } : {}),
-            },
-          },
-        })) as Awaited<ReturnType<typeof CoreEngine.sendProtocol>>;
-      },
-      sendMessage: async (options): Promise<Awaited<ReturnType<typeof CoreEngine.sendMessage>>> => {
-        const sendOptions = options ?? {};
-        return (await dispatchBridge({
-          action: "message.send",
-          ...(sendOptions.provider !== undefined ? { toSlot: sendOptions.provider } : {}),
-          payload: {
-            text: sendOptions.text,
-            page: sendOptions.page,
-          },
-        })) as Awaited<ReturnType<typeof CoreEngine.sendMessage>>;
-      },
-      sendToTargets: async (
-        options
-      ): Promise<Awaited<ReturnType<typeof CoreEngine.sendToTargets>>> => {
-        return (await dispatchBridge({
-          action: "message.send",
-          toSlots: options?.targets ?? [],
-          payload: {
-            text: options?.text ?? "",
-            page: options?.page ?? "generic",
-          },
-        })) as Awaited<ReturnType<typeof CoreEngine.sendToTargets>>;
-      },
-      sendUs1Message: async (params): Promise<Us1SendMessageResult> => {
-        const result = await dispatchBridge({
-          action: "message.send",
-          toSlot: "us1",
-          ...(typeof params.localSessionId === "string" && params.localSessionId.trim() !== ""
-            ? {
-                sessionRef: {
-                  id: params.localSessionId.trim(),
-                },
-              }
-            : {}),
-          payload: {
-            ...(typeof params.text === "string" ? { text: params.text } : {}),
-            ...(params.roomEvent !== undefined ? { roomEvent: params.roomEvent } : {}),
-            ...(params.roomCommand !== undefined ? { roomCommand: params.roomCommand } : {}),
-          },
-        });
-
-        const record =
-          result !== null && typeof result === "object" && Array.isArray(result) === false
-            ? (result as Record<string, unknown>)
-            : {};
-        const data =
-          record["data"] !== null &&
-          typeof record["data"] === "object" &&
-          Array.isArray(record["data"]) === false
-            ? (record["data"] as Record<string, unknown>)
-            : {};
-        return {
-          success: record["success"] === true,
-          ...(typeof record["message"] === "string" ? { error: record["message"] } : {}),
-          ...(typeof data["remoteUserId"] === "string"
-            ? { remoteUserId: data["remoteUserId"] }
-            : {}),
-          ...(typeof data["transportMessageId"] === "string"
-            ? { transportMessageId: data["transportMessageId"] }
-            : {}),
-          ...(typeof data["archiveMessageId"] === "string"
-            ? { archiveMessageId: data["archiveMessageId"] }
-            : {}),
-          ...(typeof record["session"] === "object" &&
-          record["session"] !== null &&
-          Array.isArray(record["session"]) === false
-            ? ((): { localSessionId?: string } => {
-                const session = record["session"] as Record<string, unknown>;
-                return {
-                  ...(typeof session["id"] === "string" ? { localSessionId: session["id"] } : {}),
-                };
-              })()
-            : {}),
-        };
-      },
-      syncUs1Messages: async (params): Promise<Us1SyncMessagesResult> => {
-        const electronApi = window.electronAPI;
-        if (electronApi === undefined || typeof electronApi.us1SyncMessages !== "function") {
-          return { success: false, error: "Electron API is unavailable." };
-        }
-        return await electronApi.us1SyncMessages(params);
-      },
       dispatchRoomCommand: async (commandName, payload = {}): Promise<unknown> => {
         const bridgePayload = { ...payload };
         delete bridgePayload["roomPayload"];
@@ -679,29 +563,6 @@ class RoomHostRuntimeClass {
       getRoomPresence: (): RoomPresenceSnapshot => buildRoomPresenceSnapshot(),
       getUs1Identity: (): RemoteUserIdentity | null => AppState.getUs1Identity(),
       isUs1Connected: (): boolean => AppState.isUs1Connected(),
-      selectUs1RemoteUser: async (remoteUserId): Promise<boolean> => {
-        const normalizedRemoteUserId =
-          typeof remoteUserId === "string" && remoteUserId.trim() !== ""
-            ? remoteUserId.trim()
-            : null;
-        const selectedAccountId =
-          normalizedRemoteUserId !== null
-            ? buildRemoteEmailAccountId(normalizedRemoteUserId)
-            : null;
-        return await SettingsManager.patch((settings) => {
-          const nextUs1Slot =
-            settings["us1Slot"] !== null &&
-            typeof settings["us1Slot"] === "object" &&
-            Array.isArray(settings["us1Slot"]) === false
-              ? (settings["us1Slot"] as Record<string, unknown>)
-              : {};
-          settings["us1Slot"] = {
-            ...nextUs1Slot,
-            selectedRemoteUserId: normalizedRemoteUserId,
-            selectedAccountId,
-          };
-        });
-      },
       showToast: ({ type = "info", message }): void => {
         const normalizedMessage = message.trim();
         if (normalizedMessage === "") {

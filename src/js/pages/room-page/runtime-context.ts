@@ -1,9 +1,20 @@
 import type { InstalledRoomFeatureRecord, InstalledRoomRecord } from "@shared/index.js";
 import { AppI18n } from "../../modules/i18n/index.js";
-import { buildRoomPresenceSnapshot } from "../../modules/rooms/room-presence.js";
+import {
+  buildRoomSlotPresenceSnapshot,
+  buildRoomUserPresenceSnapshot,
+  createRoomPresenceSnapshot,
+  type RoomPresenceSlotId,
+  type RoomPresenceSlotSnapshot,
+} from "../../modules/rooms/room-presence.js";
 import { getAppUiScale, getSceneUiScale } from "../../ui/theme/ui-scale-state.js";
 
 export type RoomHostMessage = Record<string, unknown>;
+type RoomSlotId = RoomPresenceSlotId;
+
+export function buildRoomSlotContext(slotId: RoomSlotId): RoomPresenceSlotSnapshot {
+  return buildRoomSlotPresenceSnapshot(slotId);
+}
 
 export function buildRoomRuntimeContextPayload(options: {
   activeFeature: InstalledRoomFeatureRecord | null;
@@ -13,7 +24,13 @@ export function buildRoomRuntimeContextPayload(options: {
   sceneFeatureOpen: boolean;
 }): RoomHostMessage {
   const { activeFeature, reason, room, sceneFeature, sceneFeatureOpen } = options;
-  const presence = buildRoomPresenceSnapshot();
+  const user = buildRoomUserPresenceSnapshot();
+  const slots = {
+    ai1: buildRoomSlotContext("ai1"),
+    ai2: buildRoomSlotContext("ai2"),
+    us1: buildRoomSlotContext("us1"),
+  };
+  const presence = createRoomPresenceSnapshot(user, slots);
 
   return {
     type: "host-context",

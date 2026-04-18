@@ -3,11 +3,13 @@ import { ASSISTANT_TIMEOUTS } from "@timeouts";
 import { LogCategory } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
 import type { SlotId } from "@shared/index.js";
+import type { Us1SessionEvent } from "@shared/us1-mail.js";
 import { AppI18n } from "./i18n/index.js";
 import { SettingsManager } from "./settings-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
 import { AppState } from "./app-state.js";
 import { parseUs1SyntheticSessionUri } from "@shared/archive.js";
+import { dispatchInternalSlotBridge } from "./commands/slot-bridge-runtime.js";
 import { resolveUs1ForceSelectConversationId } from "./us1-session-selection.js";
 
 interface RawConversationEntry {
@@ -33,6 +35,23 @@ interface ConversationEntry {
 
 function conversationListT(key: string, params?: Record<string, string | number>): string {
   return AppI18n.t(`app.analyze.conversationList.${key}`, params);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+function isUs1SessionEvent(value: unknown): value is Us1SessionEvent {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value["remoteUserId"] === "string" &&
+    typeof value["localSessionId"] === "string" &&
+    typeof value["conversationId"] === "string" &&
+    typeof value["isNewSession"] === "boolean"
+  );
 }
 
 class ConversationListManagerClass {
@@ -459,14 +478,33 @@ class ConversationListManagerClass {
         : null;
 
     try {
-      const result = await electronApi.us1SyncMessages({
-        localSessionId: selectedEntry?.localSessionId ?? null,
-      });
+      const result = await dispatchInternalSlotBridge(
+        {
+          action: "session.sync",
+          toSlot: "us1",
+          ...(typeof selectedEntry?.localSessionId === "string" &&
+          selectedEntry.localSessionId.trim() !== ""
+            ? {
+                sessionRef: {
+                  id: selectedEntry.localSessionId.trim(),
+                },
+              }
+            : {}),
+        },
+        {
+          provider: "user",
+          source: "user",
+          fromSlot: "user",
+        }
+      );
       if (result.success !== true) {
         throw new Error(result.error ?? "US1 conversation refresh failed.");
       }
 
-      const sessionEvents = Array.isArray(result.sessionEvents) ? result.sessionEvents : [];
+      const data = isRecord(result.data) ? result.data : {};
+      const sessionEvents: Us1SessionEvent[] = Array.isArray(data["sessionEvents"])
+        ? data["sessionEvents"].filter(isUs1SessionEvent)
+        : [];
       for (const sessionEvent of sessionEvents) {
         if (
           sessionEvent.localSessionId === (selectedEntry?.localSessionId ?? null) ||
@@ -490,11 +528,15 @@ class ConversationListManagerClass {
       const forceSelectId = resolveUs1ForceSelectConversationId({
         selectedConversationId,
         resultConversationId:
-          typeof result.conversationId === "string" ? result.conversationId : null,
+          typeof result.session?.conversationId === "string"
+            ? result.session.conversationId
+            : typeof data["conversationId"] === "string"
+              ? data["conversationId"]
+              : null,
         sessionEvents,
         targetRemoteUserId:
-          typeof result.remoteUserId === "string"
-            ? result.remoteUserId
+          typeof data["remoteUserId"] === "string"
+            ? data["remoteUserId"]
             : (AppState.getUs1Identity()?.remoteUserId ?? null),
         preserveExplicitNewSelection: true,
       });

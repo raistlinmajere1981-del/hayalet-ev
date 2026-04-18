@@ -1,9 +1,8 @@
 import { BaseRelay } from "./base-relay.js";
-import type { CoreEngineInterface } from "./base-relay.js";
 import { LogCategory } from "@shared/logging-core";
 import { AppI18n } from "../i18n/index.js";
 import { AppState } from "../app-state.js";
-import { slotBridgeHandler } from "../commands/slot-bridge.js";
+import { dispatchInternalSlotBridge } from "../commands/slot-bridge-runtime.js";
 import { START_STOP_PROTOCOL_HEADERS } from "../protocol-default-headers.js";
 import { PROTOCOL_KEY } from "@slots";
 
@@ -24,7 +23,7 @@ export class AIAssistantRelay extends BaseRelay {
   _lastMessageTimes: Record<string, number>;
   _sessionState: string;
 
-  constructor(coreEngine: CoreEngineInterface) {
+  constructor(coreEngine: unknown) {
     super(coreEngine);
     this._sourceSlot = null;
     this._targetSlot = "ai0";
@@ -106,20 +105,24 @@ export class AIAssistantRelay extends BaseRelay {
         }
       );
 
-      const sendResult = await slotBridgeHandler({
-        action: "message.send",
-        fromSlot: "system",
-        toSlot: aiSlot,
-        payload: {
-          protocol: {
-            protocolKey: PROTOCOL_KEY,
-            fallbackTitle: AI_ASSISTANT_PROTOCOL_FALLBACK_TITLE,
+      const sendResult = await dispatchInternalSlotBridge(
+        {
+          action: "message.send",
+          fromSlot: "system",
+          toSlot: aiSlot,
+          payload: {
+            protocol: {
+              protocolKey: PROTOCOL_KEY,
+              fallbackTitle: AI_ASSISTANT_PROTOCOL_FALLBACK_TITLE,
+            },
           },
         },
-        provider: "system",
-        source: "system",
-        message: "++cmd:SlotBridge",
-      });
+        {
+          provider: "system",
+          source: "system",
+          fromSlot: "system",
+        }
+      );
       if (sendResult.success !== true) {
         throw new Error(sendResult.message ?? relayT("sendMessageUnavailable"));
       }
@@ -264,14 +267,24 @@ export class AIAssistantRelay extends BaseRelay {
     );
 
     try {
-      if (this.coreEngine.sendMessage === undefined) {
-        throw new Error(relayT("sendMessageUnavailable"));
+      const sendResult = await dispatchInternalSlotBridge(
+        {
+          action: "message.send",
+          toSlot: to,
+          payload: {
+            text,
+            page: "ai-assistant-relay",
+          },
+        },
+        {
+          provider: from === "ai1" || from === "ai2" || from === "ai0" ? from : "system",
+          source: from === "ai1" || from === "ai2" || from === "ai0" ? from : "system",
+          fromSlot: from === "ai1" || from === "ai2" || from === "ai0" ? from : "system",
+        }
+      );
+      if (sendResult.success !== true) {
+        throw new Error(sendResult.message ?? relayT("sendMessageUnavailable"));
       }
-      await this.coreEngine.sendMessage({
-        provider: to,
-        text,
-        page: "ai-assistant-relay",
-      });
       return true;
     } catch (e) {
       const err = e as Error;

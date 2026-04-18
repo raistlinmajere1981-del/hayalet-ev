@@ -3,11 +3,14 @@ import { getErrorMessage } from "@shared/index.js";
 import type { TranslationParams } from "@shared/i18n.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
-import { CoreEngine } from "../modules/core-engine.js";
 import { Logger } from "../modules/logger/index.js";
 import { AppState } from "../modules/app-state.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { ConversationListManager } from "../modules/conversation-list-manager.js";
+import {
+  dispatchInternalSlotBridge,
+  sendProtocolThroughSlotBridge,
+} from "../modules/commands/slot-bridge-runtime.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { ButtonStates } from "../ui/button-states.js";
@@ -118,6 +121,52 @@ function isDraftState(value: unknown): value is DraftState {
 
   const maybe = value as Record<string, unknown>;
   return typeof maybe["message"] === "string" && Array.isArray(maybe["files"]);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && Array.isArray(value) === false;
+}
+
+function isUs1SessionEvent(value: unknown): value is Us1SessionEvent {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value["remoteUserId"] === "string" &&
+    typeof value["localSessionId"] === "string" &&
+    typeof value["conversationId"] === "string" &&
+    typeof value["isNewSession"] === "boolean" &&
+    (value["sessionTitle"] === undefined ||
+      value["sessionTitle"] === null ||
+      typeof value["sessionTitle"] === "string") &&
+    (value["mode"] === undefined || value["mode"] === "new" || value["mode"] === "reply") &&
+    (value["openHint"] === undefined ||
+      value["openHint"] === "auto_if_idle" ||
+      value["openHint"] === "list_only") &&
+    (value["createdAt"] === undefined || typeof value["createdAt"] === "number") &&
+    (value["sentAt"] === undefined || typeof value["sentAt"] === "number")
+  );
+}
+
+function isUs1RoomPackageCandidate(value: unknown): value is Us1RoomPackageCandidate {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value["remoteUserId"] === "string" &&
+    typeof value["localSessionId"] === "string" &&
+    typeof value["conversationId"] === "string" &&
+    typeof value["messageId"] === "string" &&
+    typeof value["originalName"] === "string" &&
+    typeof value["storedPath"] === "string" &&
+    (value["attachmentId"] === undefined || typeof value["attachmentId"] === "string") &&
+    (value["mimeType"] === undefined ||
+      value["mimeType"] === null ||
+      typeof value["mimeType"] === "string") &&
+    (value["size"] === undefined || typeof value["size"] === "number")
+  );
 }
 
 export class AnalyzeController {
@@ -1278,11 +1327,6 @@ export class AnalyzeController {
   }
 
   async _sendUs1Message(message: string, attachments: StagedFile[]): Promise<void> {
-    const electronApi = window.electronAPI;
-    if (electronApi === undefined || typeof electronApi.us1SendMessage !== "function") {
-      throw new Error("US1 mail transport is unavailable.");
-    }
-
     this._syncUs1IdentityContext();
     const localSessionId = this._ensureUs1LocalSessionId();
     if (localSessionId === null) {
@@ -1294,28 +1338,49 @@ export class AnalyzeController {
     this._applyUs1Indicators(AppState.isUs1Connected());
 
     try {
-      const result = await electronApi.us1SendMessage({
-        text: message,
-        localSessionId,
-        attachments: attachments.map((file) => ({
-          path: file.path,
-          name: file.originalName ?? file.name,
-          mimeType: getMimeTypeFromPath(file.path),
-        })),
-      });
+      const result = await dispatchInternalSlotBridge(
+        {
+          action: "message.send",
+          toSlot: "us1",
+          sessionRef: {
+            id: localSessionId,
+          },
+          payload: {
+            text: message,
+            page: "analyze",
+          },
+          attachments: attachments.map((file) => ({
+            path: file.path,
+            name: file.originalName ?? file.name,
+            mimeType: getMimeTypeFromPath(file.path),
+          })),
+        },
+        {
+          provider: "user",
+          source: "user",
+          fromSlot: "user",
+        }
+      );
 
       if (result.success !== true) {
-        throw new Error(result.error ?? "US1 outbound send failed.");
+        throw new Error(result.message ?? "US1 outbound send failed.");
       }
 
-      this.us1SessionId = result.localSessionId ?? localSessionId;
-      AppState.setActiveConversation("us1", result.conversationId ?? null);
+      const sessionId =
+        typeof result.session?.id === "string" && result.session.id !== ""
+          ? result.session.id
+          : localSessionId;
+      const conversationId =
+        typeof result.session?.conversationId === "string" && result.session.conversationId !== ""
+          ? result.session.conversationId
+          : null;
+
+      this.us1SessionId = sessionId;
+      AppState.setActiveConversation("us1", conversationId);
       await ConversationListManager.refresh({
         silent: true,
         provider: "us1",
-        ...(typeof result.conversationId === "string" && result.conversationId !== ""
-          ? { forceSelectId: result.conversationId }
-          : {}),
+        ...(conversationId !== null ? { forceSelectId: conversationId } : {}),
         skipNotify: true,
       });
       await SettingsManager.reload();
@@ -1337,12 +1402,7 @@ export class AnalyzeController {
       return;
     }
 
-    const electronApi = window.electronAPI;
-    if (
-      electronApi === undefined ||
-      typeof electronApi.us1SyncMessages !== "function" ||
-      AppState.isUs1Connected() !== true
-    ) {
+    if (AppState.isUs1Connected() !== true) {
       return;
     }
 
@@ -1362,20 +1422,46 @@ export class AnalyzeController {
       ).trim() !== "" || this.stagedFiles.length > 0;
 
     try {
-      const result = await electronApi.us1SyncMessages({
-        localSessionId: this.us1SessionId,
-      });
+      const result = await dispatchInternalSlotBridge(
+        {
+          action: "session.sync",
+          toSlot: "us1",
+          ...(typeof this.us1SessionId === "string" && this.us1SessionId !== ""
+            ? {
+                sessionRef: {
+                  id: this.us1SessionId,
+                },
+              }
+            : {}),
+        },
+        {
+          provider: "user",
+          source: "user",
+          fromSlot: "user",
+        }
+      );
       if (result.success !== true) {
-        throw new Error(result.error ?? "US1 inbound sync failed.");
+        throw new Error(result.message ?? result.error ?? "US1 inbound sync failed.");
       }
+      const syncData =
+        result.data !== null &&
+        typeof result.data === "object" &&
+        Array.isArray(result.data) === false
+          ? (result.data as Record<string, unknown>)
+          : {};
 
-      if ((result.fetchedCount ?? 0) > 0 || (result.processedCount ?? 0) > 0) {
+      if (
+        (typeof syncData["fetchedCount"] === "number" ? syncData["fetchedCount"] : 0) > 0 ||
+        (typeof syncData["processedCount"] === "number" ? syncData["processedCount"] : 0) > 0
+      ) {
         await SettingsManager.reload();
         this.applyAvatars();
         this.applyNames();
       }
 
-      const sessionEvents = Array.isArray(result.sessionEvents) ? result.sessionEvents : [];
+      const sessionEvents: Us1SessionEvent[] = Array.isArray(syncData["sessionEvents"])
+        ? syncData["sessionEvents"].filter(isUs1SessionEvent)
+        : [];
       const autoOpenSession = this._chooseUs1AutoOpenSession(sessionEvents, {
         currentSessionId,
         currentConversationId,
@@ -1389,14 +1475,28 @@ export class AnalyzeController {
           : (autoOpenSession?.conversationId ??
             (sessionEvents.length > 0 && currentConversationId !== null
               ? currentConversationId
-              : (result.conversationId ?? currentConversationId)));
+              : ((typeof result.session?.conversationId === "string"
+                  ? result.session.conversationId
+                  : null) ??
+                (typeof syncData["conversationId"] === "string"
+                  ? syncData["conversationId"]
+                  : null) ??
+                currentConversationId)));
       const nextSessionId =
         preserveExplicitNewSelection === true
           ? currentSessionId
           : (autoOpenSession?.localSessionId ??
             (nextConversationId === currentConversationId
-              ? (currentSessionId ?? result.localSessionId ?? null)
-              : (result.localSessionId ?? currentSessionId)));
+              ? (currentSessionId ??
+                (typeof result.session?.id === "string" ? result.session.id : null) ??
+                (typeof syncData["localSessionId"] === "string"
+                  ? syncData["localSessionId"]
+                  : null))
+              : ((typeof result.session?.id === "string" ? result.session.id : null) ??
+                (typeof syncData["localSessionId"] === "string"
+                  ? syncData["localSessionId"]
+                  : null) ??
+                currentSessionId)));
 
       this._applyUs1PendingSessions(sessionEvents, nextSessionId, nextConversationId);
       this.us1SessionId = nextSessionId;
@@ -1414,7 +1514,11 @@ export class AnalyzeController {
       await this._renderUs1Messages();
 
       if (options.showRoomPackages === true) {
-        await this._handleIncomingUs1RoomPackages(result.roomPackages ?? []);
+        await this._handleIncomingUs1RoomPackages(
+          Array.isArray(syncData["roomPackages"])
+            ? syncData["roomPackages"].filter(isUs1RoomPackageCandidate)
+            : []
+        );
       }
     } catch (error) {
       Logger.warn(LogCategory.ANALYZE, "US1 inbound sync failed", {
@@ -1602,23 +1706,51 @@ export class AnalyzeController {
     const sendFlow = async (): Promise<void> => {
       try {
         if (targets.length > 0 && allSame) {
-          await CoreEngine.sendBatch({
-            targets,
-            text: texts[0] ?? "",
-            attachments: attachList,
-            page: "analyze",
-            archiveFolders,
-          });
+          await dispatchInternalSlotBridge(
+            {
+              action: "message.send",
+              toSlots: targets,
+              payload: {
+                text: texts[0] ?? "",
+                page: "analyze",
+                archiveFolders,
+              },
+              attachments: attachList.map((file) => ({
+                path: file.path,
+                name: file.originalName ?? file.name,
+                mimeType: getMimeTypeFromPath(file.path),
+              })),
+            },
+            {
+              provider: "user",
+              source: "user",
+              fromSlot: "user",
+            }
+          );
         } else if (targets.length > 0) {
           await targets.reduce(async (prev, provider) => {
             await prev;
-            await CoreEngine.sendBatch({
-              targets: [provider],
-              text: textByProvider[provider] ?? "",
-              attachments: attachList,
-              page: "analyze",
-              archiveFolders,
-            });
+            await dispatchInternalSlotBridge(
+              {
+                action: "message.send",
+                toSlot: provider,
+                payload: {
+                  text: textByProvider[provider] ?? "",
+                  page: "analyze",
+                  archiveFolders,
+                },
+                attachments: attachList.map((file) => ({
+                  path: file.path,
+                  name: file.originalName ?? file.name,
+                  mimeType: getMimeTypeFromPath(file.path),
+                })),
+              },
+              {
+                provider: "user",
+                source: "user",
+                fromSlot: "user",
+              }
+            );
           }, Promise.resolve());
         }
         if (shouldSendUs1) {
@@ -1657,7 +1789,7 @@ export class AnalyzeController {
       Logger.warn(LogCategory.ANALYZE, analyzeT("logs.protocolSendSkippedNoConnectedAi"));
       return;
     }
-    await CoreEngine.sendProtocol({
+    await sendProtocolThroughSlotBridge({
       room: "analyze",
       scenario: "user-ai-ai",
       targets,
@@ -1672,7 +1804,7 @@ export class AnalyzeController {
       return;
     }
 
-    await CoreEngine.sendProtocol({
+    await sendProtocolThroughSlotBridge({
       room: "analyze",
       scenario: "user-ai-ai-stop",
       targets,

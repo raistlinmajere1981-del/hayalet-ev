@@ -299,7 +299,7 @@ export async function handleRelayDisconnectAutoStop(
   slot: string,
   context: {
     relay: RelayRef | null;
-    sendProtocol: (payload: {
+    dispatchProtocol: (payload: {
       room: string;
       scenario: string;
       targets: string[];
@@ -318,7 +318,7 @@ export async function handleRelayDisconnectAutoStop(
       const remainingTarget = slot === "ai1" ? "ai2" : "ai1";
 
       if (AppState.isConnected(remainingTarget) === true) {
-        const stopResult = await context.sendProtocol({
+        const stopResult = await context.dispatchProtocol({
           room: "analyze",
           scenario: "ai-ai-stop",
           targets: [remainingTarget],
@@ -344,7 +344,7 @@ export async function handleRelayDisconnectAutoStop(
       }
 
       if (AppState.isUs1Connected() === true) {
-        const stopResult = await context.sendProtocol({
+        const stopResult = await context.dispatchProtocol({
           room: "analyze",
           scenario: "ai-assistant-stop",
           targets: ["us1"],
@@ -372,7 +372,7 @@ export async function handleRelayDisconnectAutoStop(
 
     if (slot === "ai0") {
       if (AppState.isConnected(sourceSlot) === true) {
-        const stopResult = await context.sendProtocol({
+        const stopResult = await context.dispatchProtocol({
           room: "analyze",
           scenario: "ai-assistant-stop",
           targets: [sourceSlot],

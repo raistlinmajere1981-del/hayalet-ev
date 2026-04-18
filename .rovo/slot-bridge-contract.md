@@ -8,11 +8,12 @@
   - `connection.ensure`
   - `session.open`
   - `session.switch`
+  - `session.sync`
   - `room.command`
 - Canonical outbound send actions:
   - `message.send`
   - `message.sendWait`
-- Legacy adapters that still normalize into `message.send`:
+- Retired actions rejected at the bridge boundary:
   - `message.sendWithAttachments`
   - `file.send`
 
@@ -83,8 +84,14 @@
 ## US1 parity
 - `message.send` supports `toSlot: "us1"` under the same public envelope as AI slots.
 - `message.sendWait` also supports `us1`, but remains single-target only.
+- `session.sync` is the canonical US1 mailbox/session refresh action.
 - `us1` attachments use the same public attachment descriptors; transport-specific conversion happens behind the bridge.
 - `us1` room events and room commands remain transport metadata inside `payload`, not a second public send action family.
+
+## Room-owned derived state
+- Rooms may persist bridge-derived continuity data such as `sessionRef`, `remoteUserId`, or dedupe cursors in room state when a feature needs to continue an existing US1 thread or reject duplicate transport events.
+- Those fields are derived state only. They do not authorize direct transport calls and do not replace `SlotBridge`.
+- Every outbound send, waited reply, and mailbox refresh still enters through `message.send`, `message.sendWait`, or `session.sync`.
 
 ## Room command model
 - Room actions stay internal and dispatch through `action: "room.command"`.
@@ -92,6 +99,5 @@
 - Room UI still uses `roomAPI.sendCommand(...)`; the host converts that request into a `SlotBridge` room action.
 
 ## Legacy adapters
-- `AIAssistantSend` and `AssistantAISend` remain available as compatibility wrappers.
-- Both wrappers route through `SlotBridge` and emit adapter telemetry so remaining legacy callers can be identified in logs.
-- `CoreEngine.sendProtocol`, room-host `sendProtocol`, and other older helpers are compatibility adapters over SlotBridge, not separate delivery pipelines.
+- `AIAssistantSend` and `AssistantAISend` are removed and must not be emitted by prompts or docs.
+- `CoreEngine.sendBatch`, `CoreEngine.sendMessage`, `CoreEngine.sendToTargets`, and room-host helper seams are no longer alternate delivery paths; public callers must enter through `SlotBridge`.

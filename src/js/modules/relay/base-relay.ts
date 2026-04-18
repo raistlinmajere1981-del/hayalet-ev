@@ -2,32 +2,6 @@ import { LogCategory, LogLevel } from "@shared/logging-core";
 import type { TranslationParams } from "@shared/i18n.js";
 import { Logger } from "../logger/index.js";
 
-export interface CoreEngineInterface {
-  sendToTargets?: (payload: {
-    targets?: string[];
-    message?: string;
-    [key: string]: unknown;
-  }) => Promise<unknown>;
-  sendMessage?: (payload: {
-    provider?: string;
-    text?: string;
-    attachments?: unknown[];
-    [key: string]: unknown;
-  }) => Promise<unknown>;
-  handleCaughtCommand?: (
-    commandName: string,
-    payload?: {
-      provider?: string;
-      args?: string;
-      source?: string;
-      text?: string;
-      [key: string]: unknown;
-    }
-  ) => Promise<unknown>;
-}
-
-type CoreEngineRef = CoreEngineInterface;
-
 interface RelaySession {
   id: string;
   startedAt?: number;
@@ -60,13 +34,11 @@ export interface SyncResult {
 }
 
 export class BaseRelay {
-  coreEngine: CoreEngineRef;
   _active: boolean;
   _session: RelaySession | null;
   _forwardCount: number;
 
-  constructor(coreEngine: CoreEngineRef) {
-    this.coreEngine = coreEngine;
+  constructor(_coreEngine: unknown) {
     this._active = false;
     this._session = null;
     this._forwardCount = 0;

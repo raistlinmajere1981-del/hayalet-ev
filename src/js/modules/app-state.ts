@@ -1,6 +1,11 @@
 import { SettingsManager } from "./settings-manager.js";
 import { Logger, LogCategory } from "./logger/index.js";
-import type { Account, AppSettings, RemoteUserIdentity, Us1SlotSettings } from "@shared/settings.js";
+import type {
+  Account,
+  AppSettings,
+  RemoteUserIdentity,
+  Us1SlotSettings,
+} from "@shared/settings.js";
 import { SlotPresenceStore } from "./slot-presence-store.js";
 
 interface AppStateSnapshot {
@@ -232,7 +237,9 @@ class AppStateClass {
     return account?.id ?? null;
   }
 
-  resolveArchiveProviderByAccountId(accountId: string) {
+  resolveArchiveProviderByAccountId(
+    accountId: string
+  ): ReturnType<typeof SlotPresenceStore.resolveArchiveProviderByAccountId> {
     return SlotPresenceStore.resolveArchiveProviderByAccountId(accountId);
   }
 
@@ -241,7 +248,13 @@ class AppStateClass {
   }
 
   getAvatar(provider: string): string {
-    if (provider !== "user" && provider !== "ai0" && provider !== "ai1" && provider !== "ai2" && provider !== "us1") {
+    if (
+      provider !== "user" &&
+      provider !== "ai0" &&
+      provider !== "ai1" &&
+      provider !== "ai2" &&
+      provider !== "us1"
+    ) {
       return "";
     }
 
@@ -249,18 +262,28 @@ class AppStateClass {
   }
 
   getNickname(provider: string): string {
-    if (provider !== "user" && provider !== "ai0" && provider !== "ai1" && provider !== "ai2" && provider !== "us1") {
+    if (
+      provider !== "user" &&
+      provider !== "ai0" &&
+      provider !== "ai1" &&
+      provider !== "ai2" &&
+      provider !== "us1"
+    ) {
       return provider.toUpperCase();
     }
 
     return SlotPresenceStore.getNickname(provider);
   }
 
-  getPresence(provider: "user" | "ai0" | "ai1" | "ai2" | "us1") {
+  getPresence(
+    provider: "user" | "ai0" | "ai1" | "ai2" | "us1"
+  ): ReturnType<typeof SlotPresenceStore.getParticipant> {
     return SlotPresenceStore.getParticipant(provider);
   }
 
-  getEntityPresence(provider: "ai0" | "ai1" | "ai2" | "us1") {
+  getEntityPresence(
+    provider: "ai0" | "ai1" | "ai2" | "us1"
+  ): ReturnType<typeof SlotPresenceStore.getEntity> {
     return SlotPresenceStore.getEntity(provider);
   }
 

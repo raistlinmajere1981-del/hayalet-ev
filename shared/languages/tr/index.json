@@ -622,26 +622,14 @@
         },
         "AIAssistantChatStop": {
           "description": "Aktif AI-Asistan relay oturumunu durdurur.",
-          "detail": "Çalışan asistan relay akışını sonlandırır. Uygulama ilgili kaynak slota `[STOP][ANALYZE][AI-ASSISTANT]` kontrol protokolünü gönderir; tek seferlik mesaj aktarımı gerekiyorsa bunun yerine `AIAssistantSend` veya `AssistantAISend` kullanılmalıdır.",
+          "detail": "Çalışan asistan relay akışını sonlandırır. Uygulama ilgili kaynak slota `[STOP][ANALYZE][AI-ASSISTANT]` kontrol protokolünü gönderir.",
           "usage": "++cmd:AIAssistantChatStop()",
           "example": "++cmd:AIAssistantChatStop()"
         },
-        "AIAssistantSend": {
-          "description": "AI slotundan asistana tek seferlik mesaj iletir.",
-          "detail": "Provider `ai1` veya `ai2` olmalıdır. Mesaj gövdesindeki inline komut sarmalayıcıları temizlenir, kaynak AI etiketi korunur ve içerik SlotBridge `message.send` aksiyonu üzerinden ai0 slotuna iletilir. Sürekli relay başlatmaz.",
-          "usage": "++cmd:AIAssistantSend(<provider>) <mesaj>\nProvider: ai1 veya ai2",
-          "example": "++cmd:AIAssistantSend(ai1) Asistana iletilecek tek mesaj"
-        },
-        "AssistantAISend": {
-          "description": "Asistanın son cevabını hedef slota tek sefer iletir.",
-          "detail": "Bu komut yalnızca asistan slotunda çalışır. Hedef `ai1`, `ai2` veya `us1` olabilir; boş bırakılırsa `assistants.lastActiveRelay` alanından çözülür. Gönderim SlotBridge `message.send` aksiyonu üzerinden yapılır. Aktif asistan relay varsa uygun stop akışı da tetiklenir.",
-          "usage": "++cmd:AssistantAISend(<hedef>) <mesaj>\nHedef: ai1, ai2 veya us1 (opsiyonel)",
-          "example": "++cmd:AssistantAISend() Son cevabı son aktif relay hedefine ilet"
-        },
         "SlotBridge": {
           "description": "Canonical slot komut otobüsünü çalıştırır.",
-          "detail": "Cross-slot mesaj gönderimi, waited reply, attachment/file delivery, `connection.ensure`, `session.open`, `session.switch` ve `room.command` dispatch aksiyonlarını tek JSON zarfında toplar. Yeni slot veya oda entegrasyonlarında tercih edilen ana komut budur; diğer kısa komutlar ergonomi katmanıdır.",
-          "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"fromSlot\":\"ai1\",\"toSlot\":\"ai0\",\"payload\":{\"text\":\"Merhaba\"}})\nAksiyonlar: message.send, message.sendWait, message.sendWithAttachments, file.send, connection.ensure, session.open, session.switch, room.command",
+          "detail": "Cross-slot mesaj gönderimi, waited reply, attachment delivery, `connection.ensure`, `session.open`, `session.switch`, `session.sync` ve `room.command` dispatch aksiyonlarını tek JSON zarfında toplar. Yeni slot ve oda entegrasyonlarında desteklenen tek komut yüzeyi budur.",
+          "usage": "++cmd:SlotBridge({\"action\":\"message.send\",\"fromSlot\":\"ai1\",\"toSlot\":\"ai0\",\"payload\":{\"text\":\"Merhaba\"}})\nAksiyonlar: message.send, message.sendWait, connection.ensure, session.open, session.switch, session.sync, room.command",
           "example": "++cmd:SlotBridge({\"action\":\"message.sendWait\",\"fromSlot\":\"ai0\",\"toSlot\":\"ai1\",\"replyToSlot\":\"ai0\",\"payload\":{\"text\":\"Hazır mısın?\"}})"
         }
       }

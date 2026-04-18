@@ -117,7 +117,10 @@ function humanizeValue(value: string): string {
 }
 
 function labelSkill(record: ForgeOperatorSkillRecord): string {
-  return (typeof record.label === "string" ? record.label.trim() : "") || titleCaseRoomId(record.skillKey);
+  return (
+    (typeof record.label === "string" ? record.label.trim() : "") ||
+    titleCaseRoomId(record.skillKey)
+  );
 }
 
 function labelEquipment(record: ForgeOperatorEquipmentRecord): string {
@@ -190,10 +193,9 @@ export function buildForgeTargetRoomContext(targetRoomId: string): ForgeTargetRo
       "rooms/forge-room/host/forge-handoff-export.ts",
       "rooms/forge-room/shared/types/forge-handoff.ts",
     ],
-    summary:
-      `Target room ${titleCaseRoomId(
-        targetRoomId
-      )} should receive a narrow, explicit handoff with no hidden room-specific assumptions.`,
+    summary: `Target room ${titleCaseRoomId(
+      targetRoomId
+    )} should receive a narrow, explicit handoff with no hidden room-specific assumptions.`,
   };
 }
 
@@ -215,8 +217,7 @@ export function buildForgeSelectedOperatorProfile(params: {
       ...(selectedPreferenceKeys.has("mode") && operatorProfile.preferences.mode
         ? { mode: operatorProfile.preferences.mode }
         : {}),
-      ...(selectedPreferenceKeys.has("riskTolerance") &&
-      operatorProfile.preferences.riskTolerance
+      ...(selectedPreferenceKeys.has("riskTolerance") && operatorProfile.preferences.riskTolerance
         ? { riskTolerance: operatorProfile.preferences.riskTolerance }
         : {}),
     },
@@ -321,7 +322,9 @@ export function buildForgeDerivedConstraints(params: {
       (entry) => entry.level === "none" || entry.level === "basic"
     )
   ) {
-    derived.push("Keep steps low-risk, explicit, and approachable for the current operator profile.");
+    derived.push(
+      "Keep steps low-risk, explicit, and approachable for the current operator profile."
+    );
   }
   if (effectiveMode === "learn_first") {
     derived.push("Leave enough rationale for the operator to learn from the run.");

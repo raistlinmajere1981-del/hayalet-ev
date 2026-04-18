@@ -5,6 +5,11 @@ import {
   FORGE_UI_COMMANDS,
 } from "../shared/forge-constants.js";
 import { FORGE_PERSONA_PRESETS } from "../shared/data/persona-presets.js";
+import {
+  filterForgeActiveEquipmentKeys,
+  filterForgeActivePreferenceKeys,
+  filterForgeActiveSkillKeys,
+} from "../shared/data/operator-context-catalog.js";
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
 import type {
   ForgeContextCapsule,
@@ -448,11 +453,14 @@ export default function createForgeRoomHostRuntime() {
       ): ForgeSessionContextSelection {
         return reconcileForgeSessionContextSelection({
           selection: sessionContextSelection,
-          allowedSkillKeys: operatorProfile.skills.map((entry) => entry.skillKey),
-          allowedEquipmentKeys: operatorProfile.equipment.map((entry) => entry.equipmentKey),
-          allowedPreferenceKeys: Object.keys(operatorProfile.preferences).filter(
-            (entry): entry is "mode" | "riskTolerance" =>
-              entry === "mode" || entry === "riskTolerance"
+          allowedSkillKeys: filterForgeActiveSkillKeys(
+            operatorProfile.skills.map((entry) => entry.skillKey)
+          ),
+          allowedEquipmentKeys: filterForgeActiveEquipmentKeys(
+            operatorProfile.equipment.map((entry) => entry.equipmentKey)
+          ),
+          allowedPreferenceKeys: filterForgeActivePreferenceKeys(
+            Object.keys(operatorProfile.preferences)
           ),
         });
       }

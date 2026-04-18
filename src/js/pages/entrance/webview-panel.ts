@@ -388,9 +388,8 @@ export class WebviewPanel {
   }
 
   getSlotState(_settings: AppSettings | null, provider: string): SlotState {
-    const hasAccount = provider === "ai1" || provider === "ai2"
-      ? AppState.isAssigned(provider)
-      : false;
+    const hasAccount =
+      provider === "ai1" || provider === "ai2" ? AppState.isAssigned(provider) : false;
     const connected = AppState.isConnected(provider) === true;
     const connecting = SlotController.isTransitioning(provider) === true;
     return {

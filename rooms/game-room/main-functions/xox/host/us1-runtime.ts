@@ -12,22 +12,32 @@ type XoxInviteApi = Parameters<XoxUs1InviteRuntime["sendUs1Invite"]>[0];
 type XoxUs1Api = Parameters<XoxUs1SyncRuntime["syncUs1Mailbox"]>[0];
 type XoxUs1State = Parameters<XoxUs1InviteRuntime["sendUs1Invite"]>[1];
 type XoxSyncReason = Parameters<XoxUs1SyncRuntime["syncUs1Mailbox"]>[1];
+type XoxUs1InviteApiAdapter = (api: XoxUs1Api) => XoxInviteApi;
 
-export function createGameRoomXoxUs1Runtime(deps: XoxUs1InviteRuntimeDeps & XoxUs1SyncRuntimeDeps) {
-  const inviteRuntime = createGameRoomXoxUs1InviteRuntime(deps);
+export function createGameRoomXoxUs1Runtime(
+  deps: XoxUs1InviteRuntimeDeps &
+    XoxUs1SyncRuntimeDeps & {
+      toInviteApi: XoxUs1InviteApiAdapter;
+    }
+) {
+  const { toInviteApi, ...sharedDeps } = deps;
+  const inviteRuntime = createGameRoomXoxUs1InviteRuntime(sharedDeps);
   const syncRuntime = createGameRoomXoxUs1SyncRuntime({
-    ...deps,
+    ...sharedDeps,
     inviteRuntime: inviteRuntime as unknown as Parameters<
       typeof createGameRoomXoxUs1SyncRuntime
     >[0]["inviteRuntime"],
   });
+  const asInviteApi = (api: XoxUs1Api) => toInviteApi(api);
 
   const sendUs1Invite = async (api: XoxUs1Api, state: XoxUs1State, inviteNote: string) =>
     inviteRuntime.sendUs1Invite(
-      api as unknown as XoxInviteApi,
+      asInviteApi(api),
       state,
       inviteNote,
-      syncRuntime.syncUs1Mailbox as unknown as (api: XoxInviteApi, reason: string) => Promise<void>
+      async (_inviteApi: XoxInviteApi, reason: string) => {
+        await syncRuntime.syncUs1Mailbox(api, reason);
+      }
     );
   const ensureUs1SyncLoop = (api: XoxUs1Api) =>
     syncRuntime.ensureUs1SyncLoop(api, syncRuntime.syncUs1Mailbox);
@@ -39,27 +49,22 @@ export function createGameRoomXoxUs1Runtime(deps: XoxUs1InviteRuntimeDeps & XoxU
       api: XoxUs1Api,
       inviteEntry: Parameters<XoxUs1InviteRuntime["applyInviteAcceptedState"]>[1],
       starter: Parameters<XoxUs1InviteRuntime["applyInviteAcceptedState"]>[2]
-    ) =>
-      inviteRuntime.applyInviteAcceptedState(api as unknown as XoxInviteApi, inviteEntry, starter),
+    ) => inviteRuntime.applyInviteAcceptedState(asInviteApi(api), inviteEntry, starter),
     clearUs1SyncLoop: syncRuntime.clearUs1SyncLoop,
     ensureUs1SyncLoop,
     findInviteById: (api: XoxUs1Api, inviteId: string, remoteUserId: string) =>
-      inviteRuntime.findInviteById(api as unknown as XoxInviteApi, inviteId, remoteUserId),
+      inviteRuntime.findInviteById(asInviteApi(api), inviteId, remoteUserId),
     processRoomCommands: syncRuntime.processRoomCommands,
     processRoomEvents: syncRuntime.processRoomEvents,
     readIncomingInviteStarter: inviteRuntime.readIncomingInviteStarter,
     readOutgoingInviteStarter: inviteRuntime.readOutgoingInviteStarter,
     removeInviteFromInbox: (api: XoxUs1Api, inviteId: string, remoteUserId: string | null) =>
-      inviteRuntime.removeInviteFromInbox(
-        api as unknown as XoxInviteApi,
-        inviteId,
-        remoteUserId || ""
-      ),
+      inviteRuntime.removeInviteFromInbox(asInviteApi(api), inviteId, remoteUserId || ""),
     sendUs1Invite,
     sendUs1Move: inviteRuntime.sendUs1Move,
     sendUs1Reset: inviteRuntime.sendUs1Reset,
     syncFromSnapshot: (api: XoxUs1Api, roomInviteInbox: unknown) =>
-      inviteRuntime.syncFromSnapshot(api as unknown as XoxInviteApi, roomInviteInbox),
+      inviteRuntime.syncFromSnapshot(asInviteApi(api), roomInviteInbox),
     syncUs1Mailbox,
   };
 }

@@ -158,8 +158,9 @@ function createRoomHostRuntime() {
       }
 
       if (
-        (typeof bridgePayload.text === "string" && bridgePayload.text.trim() !== "") ||
-        typeof bridgePayload.page === "string"
+        target !== "us1" &&
+        ((typeof bridgePayload.text === "string" && bridgePayload.text.trim() !== "") ||
+          typeof bridgePayload.page === "string")
       ) {
         messageCalls.push({
           provider: target,
@@ -168,38 +169,35 @@ function createRoomHostRuntime() {
         });
       }
 
+      if (payload.action === "message.send" && target === "us1") {
+        us1MessageCalls.push({
+          localSessionId:
+            payload.sessionRef !== null &&
+            typeof payload.sessionRef === "object" &&
+            typeof (payload.sessionRef as Record<string, unknown>).id === "string"
+              ? (payload.sessionRef as Record<string, unknown>).id
+              : null,
+          text: bridgePayload.text,
+          roomEvent: bridgePayload.roomEvent,
+          roomCommand: bridgePayload.roomCommand,
+          remoteUserId: bridgePayload.remoteUserId,
+        });
+        return {
+          success: true,
+          session: {
+            id: "tt-session-1",
+          },
+          data: {
+            remoteUserId:
+              typeof bridgePayload.remoteUserId === "string"
+                ? bridgePayload.remoteUserId
+                : "remote@example.com",
+          },
+        };
+      }
+
       return { success: true };
     },
-    sendProtocol: async (payload: Record<string, unknown>) => {
-      protocolCalls.push(payload);
-      return { success: true };
-    },
-    sendMessage: async (payload: Record<string, unknown>) => {
-      messageCalls.push(payload);
-      return { success: true };
-    },
-    sendToTargets: async () => ({ success: true }),
-    sendUs1Message: async (payload: Record<string, unknown>) => {
-      us1MessageCalls.push(payload);
-      return {
-        success: true,
-        remoteUserId: "remote@example.com",
-        localSessionId: "tt-session-1",
-      };
-    },
-    syncUs1Messages: async () => ({
-      success: true,
-      fetchedCount: 0,
-      processedCount: 0,
-      duplicateCount: 0,
-      projectedCount: 0,
-      skippedCount: 0,
-      unresolvedSessionCount: 0,
-      roomPackages: [],
-      roomEvents: [],
-      roomCommands: [],
-      roomInviteInbox: [],
-    }),
     dispatchRoomCommand: async () => ({ success: false }),
     getUs1Identity: () => ({
       remoteUserId: "remote@example.com",
@@ -207,7 +205,6 @@ function createRoomHostRuntime() {
       email: "remote@example.com",
     }),
     isUs1Connected: () => true,
-    selectUs1RemoteUser: async () => true,
     showToast: () => undefined,
     getLocale: () => "en",
     getState: (key: string) => state.get(key),
@@ -260,6 +257,36 @@ function buildHostContext(
     us1Ready?: boolean;
   } = {}
 ) {
+  const user = {
+    nickname: "Raistlin",
+  };
+  const slots = {
+    ai1: {
+      slotId: "ai1",
+      nickname: "Atlas",
+      assigned: true,
+      connected: true,
+      ready: true,
+      state: "connected",
+    },
+    ai2: {
+      slotId: "ai2",
+      nickname: "Nova",
+      assigned: true,
+      connected: true,
+      ready: true,
+      state: "connected",
+    },
+    us1: {
+      slotId: "us1",
+      nickname: "Remote Ghost",
+      assigned: true,
+      connected: options.us1Ready !== false,
+      ready: options.us1Ready !== false,
+      state: options.us1Ready === false ? "assigned" : "connected",
+      remoteUserId: "remote@example.com",
+    },
+  };
   return {
     type: "host-context",
     locale: "en",
@@ -281,34 +308,14 @@ function buildHostContext(
       id: options.activeFeatureId ?? "team-tetris",
       name: options.activeFeatureId === "xox" ? "XOX" : "Team Tetris",
     },
-    user: {
-      nickname: "Raistlin",
-    },
-    slots: {
-      ai1: {
-        slotId: "ai1",
-        nickname: "Atlas",
-        assigned: true,
-        connected: true,
-        ready: true,
-        state: "connected",
-      },
-      ai2: {
-        slotId: "ai2",
-        nickname: "Nova",
-        assigned: true,
-        connected: true,
-        ready: true,
-        state: "connected",
-      },
-      us1: {
-        slotId: "us1",
-        nickname: "Remote Ghost",
-        assigned: true,
-        connected: options.us1Ready !== false,
-        ready: options.us1Ready !== false,
-        state: options.us1Ready === false ? "assigned" : "connected",
-        remoteUserId: "remote@example.com",
+    user,
+    slots,
+    presence: {
+      user: { ...user },
+      slots: {
+        ai1: { ...slots.ai1 },
+        ai2: { ...slots.ai2 },
+        us1: { ...slots.us1 },
       },
     },
   };

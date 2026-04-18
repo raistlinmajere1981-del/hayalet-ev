@@ -1,5 +1,10 @@
 # Plan: SlotBridge Unified Send And Protocol Retirement
 
+> Historical transition note:
+> This document is superseded by [`.rovo/slot-bridge-single-authority-plan.md`](./slot-bridge-single-authority-plan.md) and [`.rovo/slot-bridge-contract.md`](./slot-bridge-contract.md).
+> Any statements below about temporary wrapper compatibility, short-lived adapters for retired actions, or live parallel protocol-send surfaces should be read as historical migration context only.
+> Current state: protocol delivery is bridge-backed, legacy wrappers are removed, and retired attachment actions are rejected at runtime.
+
 **Generated**: 2026-03-31
 **Estimated Complexity**: High
 

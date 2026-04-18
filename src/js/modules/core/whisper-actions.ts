@@ -30,7 +30,7 @@ export interface ServerCommandsRef {
 
 interface WhisperCommandContext {
   ensureReady: () => Promise<void>;
-  sendMessage: (payload: {
+  dispatchMessage: (payload: {
     provider?: string;
     text?: string;
     page?: string;
@@ -142,7 +142,7 @@ export async function enqueueWhisperJobWithContext(
   });
 
   const exec = async (): Promise<CommandResult> => {
-    const result = await context.sendMessage({ provider: slot, text });
+    const result = await context.dispatchMessage({ provider: slot, text });
     if (!result.success) {
       if (whisperId !== "") {
         WhisperManager.markReady(accountId, whisperId);

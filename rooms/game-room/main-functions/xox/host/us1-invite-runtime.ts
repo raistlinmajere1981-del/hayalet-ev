@@ -4,8 +4,8 @@ import type { GameRoomContextState } from "../../../shared/types/room-shell-cont
 import { buildUs1RoomBridgeCommand } from "../../../shared/host/slot-bridge-command.js";
 
 interface Us1Api {
-  sendUs1Message: (
-    msg: Record<string, unknown>
+  dispatchUs1BridgeMessage: (
+    msg: Record<string, unknown> & { remoteUserId?: string | null }
   ) => Promise<{ success: boolean; localSessionId?: string; conversationId?: string }>;
   getState: (key: string) => unknown;
   setState: (key: string, value: unknown) => void;
@@ -184,7 +184,8 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
     const context = loadContext(api);
     const matchId = buildInviteId();
     const opponent = getOpponentInfo(context, state);
-    const sendResult = await api.sendUs1Message({
+    const sendResult = await api.dispatchUs1BridgeMessage({
+      remoteUserId: opponent.remoteUserId || state.remoteUserId || null,
       text: buildUs1InviteText(state, context, inviteNote),
       roomEvent: {
         roomId: ROOM_ID,
@@ -254,8 +255,9 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
       boardHashBeforeMove: moveContext.boardHashBeforeMove,
       cell: moveContext.cell,
     };
-    const sendResult = await api.sendUs1Message({
+    const sendResult = await api.dispatchUs1BridgeMessage({
       localSessionId: state.localSessionId,
+      remoteUserId: state.remoteUserId,
       text: buildUs1MoveText(
         matchId,
         moveContext.turnIndex,
@@ -287,14 +289,19 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
 
   async function sendUs1Reset(
     api: Us1Api,
-    resetContext: { matchId: string; localSessionId?: string | null } | null
+    resetContext: {
+      matchId: string;
+      localSessionId?: string | null;
+      remoteUserId?: string | null;
+    } | null
   ) {
     if (resetContext === null) {
       return { success: true };
     }
 
-    return await api.sendUs1Message({
+    return await api.dispatchUs1BridgeMessage({
       localSessionId: resetContext.localSessionId || null,
+      remoteUserId: resetContext.remoteUserId || null,
       text: buildUs1ResetText(resetContext.matchId),
       roomEvent: {
         roomId: ROOM_ID,

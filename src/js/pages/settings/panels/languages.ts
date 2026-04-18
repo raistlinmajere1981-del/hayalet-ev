@@ -995,13 +995,11 @@ function createMainHead(refs: LanguageEditorRefs, state: LanguageEditorState): v
     state.scope === "app"
       ? languageEditorT("main.scope.app")
       : languageEditorT("main.scope.room", {
-          room:
-            resolveRoomShellName(
-              state.selectedRoomId ?? "",
-              state.rooms.find((room) => room.id === state.selectedRoomId)?.name ??
-                languageEditorT("toolbar.roomPlaceholder")
-            ) ??
-            languageEditorT("toolbar.roomPlaceholder"),
+          room: resolveRoomShellName(
+            state.selectedRoomId ?? "",
+            state.rooms.find((room) => room.id === state.selectedRoomId)?.name ??
+              languageEditorT("toolbar.roomPlaceholder")
+          ),
         });
   const titleText =
     hasActivePackageSelection(state) === false
