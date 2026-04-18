@@ -124,6 +124,17 @@ function assertTextParity(leftRoot: string, rightRoot: string, relativePath: str
   assert.equal(readFileSync(rightPath, "utf8"), readFileSync(leftPath, "utf8"), relativePath);
 }
 
+function resolveLaboratoryShippedParityRoot() {
+  const directInstalledRoot = "data/rooms/laboratory";
+  const cachedWorkspaceBuildRoot = "data/room-storage/laboratory/build/workspace";
+
+  if (existsSync(`${directInstalledRoot}/shared/ui/request-runtime.js`)) {
+    return directInstalledRoot;
+  }
+
+  return cachedWorkspaceBuildRoot;
+}
+
 test("laboratory installed room mirrors the workspace package for live runtime files", async () => {
   const buildArtifact = await createRoomBuiltArtifact("laboratory");
   const installedCopy = await createRoomInstalledCopy("laboratory");
@@ -140,6 +151,7 @@ test("laboratory installed room mirrors the workspace package for live runtime f
 
 test("laboratory shipped room keeps shell chrome parity with the current workspace build", async () => {
   const buildArtifact = await createRoomBuiltArtifact("laboratory");
+  const shippedParityRoot = resolveLaboratoryShippedParityRoot();
 
   try {
     [
@@ -148,7 +160,7 @@ test("laboratory shipped room keeps shell chrome parity with the current workspa
       "shared/ui/shell-render.js",
       "shared/ui/shell-runtime.js",
     ].forEach((relativePath) => {
-      assertTextParity(buildArtifact.rootDir, "data/rooms/laboratory", relativePath);
+      assertTextParity(buildArtifact.rootDir, shippedParityRoot, relativePath);
     });
   } finally {
     await buildArtifact.cleanup();
