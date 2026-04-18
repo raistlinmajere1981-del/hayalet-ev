@@ -189,8 +189,10 @@ export function sanitizeForgeUiContext(payload: unknown): ForgeUiContextState {
     typeof assistant["avatar"] === "string" && assistant["avatar"].trim() !== ""
       ? assistant["avatar"].trim()
       : null;
+  const assistantAssigned = assistant["assigned"] === true;
   const assistantConnected = assistant["connected"] === true;
   return {
+    assistantAssigned,
     assistantAvatar,
     assistantConnected,
     assistantNickname,

@@ -138,9 +138,9 @@ export function updateAssistantConnectionUI(
   }
 
   if (controller.testBtn != null) {
-    controller.testBtn.disabled = !isConnected;
-    controller.testBtn.title = !isConnected
-      ? assistantConnectionT("testButtonDisconnected")
+    controller.testBtn.disabled = !hasAccount;
+    controller.testBtn.title = !hasAccount
+      ? assistantConnectionT("noAccountTitle")
       : assistantConnectionT("testButtonReady");
   }
 

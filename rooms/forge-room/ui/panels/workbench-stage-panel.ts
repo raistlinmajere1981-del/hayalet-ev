@@ -723,11 +723,31 @@ function buildPreflightStageBody(
   const body = documentRef.createElement("div");
   body.className = "forge-stage__body-scroll";
   const preflight = state.snapshot.preflight;
-  const assistantOffline = state.context.assistantConnected !== true;
+  const assistantUnavailable = state.context.assistantAssigned !== true;
+  const assistantRecovering =
+    state.context.assistantAssigned === true && state.context.assistantConnected !== true;
   const localizedOfflineMessage = text(
     ["workbench", "goalPanel", "preflight", "aiOffline"],
     "AI0 is offline"
   );
+  const localizedReconnectMessage = text(
+    ["workbench", "goalPanel", "preflight", "aiReconnect"],
+    "AI0 will reconnect during preflight."
+  );
+
+  const normalizeAssistantStatusMessage = (value: string): string => {
+    const trimmed = value.trim();
+    if (trimmed === "" || trimmed.toLowerCase().includes("ai0") !== true) {
+      return trimmed;
+    }
+    if (assistantUnavailable) {
+      return localizedOfflineMessage;
+    }
+    if (assistantRecovering) {
+      return localizedReconnectMessage;
+    }
+    return trimmed;
+  };
 
   const agentBlock = documentRef.createElement("section");
   agentBlock.className = "forge-goal-block forge-goal-block--compact forge-preflight-agent";
@@ -861,16 +881,28 @@ function buildPreflightStageBody(
   );
   const resultSummary = documentRef.createElement("p");
   resultSummary.className = "forge-panel__hint";
-  const preAnalysisSummary = preflight.bundle?.rovoPreAnalysis?.summary.trim() ?? "";
+  const preAnalysisSummary = normalizeAssistantStatusMessage(
+    preflight.bundle?.rovoPreAnalysis?.summary.trim() ?? ""
+  );
+  const staleReason = normalizeAssistantStatusMessage(preflight.staleReason?.trim() ?? "");
+  const errorMessage = normalizeAssistantStatusMessage(preflight.errorMessage?.trim() ?? "");
+  const normalizedWarnings = preflight.warnings.map((warning) =>
+    normalizeAssistantStatusMessage(warning)
+  );
+  const hasAssistantStatusWarning = normalizedWarnings.some(
+    (warning, index) => warning !== preflight.warnings[index]?.trim()
+  );
   const computedResultSummary =
-    assistantOffline &&
+    (assistantUnavailable || assistantRecovering) &&
     (preAnalysisSummary !== "" ||
-      preflight.warnings.length > 0 ||
-      (preflight.errorMessage ?? "").trim() !== "")
-      ? localizedOfflineMessage
+      hasAssistantStatusWarning ||
+      errorMessage !== "")
+      ? preAnalysisSummary ||
+        errorMessage ||
+        (assistantUnavailable ? localizedOfflineMessage : localizedReconnectMessage)
       : preAnalysisSummary ||
-        preflight.staleReason?.trim() ||
-        preflight.errorMessage?.trim() ||
+        staleReason ||
+        errorMessage ||
         (preflight.ranAt !== null
           ? text(
               ["workbench", "goalPanel", "preflight", "resultReady"],
@@ -886,15 +918,7 @@ function buildPreflightStageBody(
       : computedResultSummary;
   resultBody.append(resultStatus, resultSummary);
   const visibleWarnings = Array.from(
-    new Set(
-      preflight.warnings
-        .map((warning) =>
-          assistantOffline && warning.toLowerCase().includes("ai0")
-            ? localizedOfflineMessage
-            : warning.trim()
-        )
-        .filter((warning) => warning !== "" && warning !== computedResultSummary)
-    )
+    new Set(normalizedWarnings.filter((warning) => warning !== "" && warning !== computedResultSummary))
   ).slice(0, 3);
   if (visibleWarnings.length > 0) {
     const warningRail = documentRef.createElement("div");
@@ -981,7 +1005,7 @@ function buildPreflightStageBody(
       text(["workbench", "goalPanel", "preflight", "action"], "Run Preflight"),
       "run-preflight",
       {
-        disabled: assistantOffline,
+        disabled: assistantUnavailable,
         primary: true,
       }
     )

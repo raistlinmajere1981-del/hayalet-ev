@@ -29,9 +29,9 @@ interface XoxRuntimeSyncApi extends TeamTetrisStateApi {
 
 function readTeamTetrisSeatReadiness(context: GameRoomContextState): TeamTetrisSeatReadiness {
   return {
-    ai1: context.slots.ai1.ready === true,
-    ai2: context.slots.ai2.ready === true,
-    us1: context.slots.us1.ready === true,
+    ai1: context.slots.ai1.dispatchable === true,
+    ai2: context.slots.ai2.dispatchable === true,
+    us1: context.slots.us1.dispatchable === true,
   };
 }
 
@@ -59,7 +59,7 @@ export function syncFromContext(api: XoxRuntimeSyncApi, payload: unknown) {
   if (state.active === true && isBlocked(state) !== true) {
     const opponent = getOpponentInfo(context, state);
     const readyForActiveMatch =
-      opponent.ready === true &&
+      opponent.dispatchable === true &&
       (state.target !== "us1" ||
         state.remoteUserId === null ||
         opponent.remoteUserId === state.remoteUserId);

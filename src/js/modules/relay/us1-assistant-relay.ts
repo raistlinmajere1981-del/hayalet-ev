@@ -120,11 +120,11 @@ export class Us1AssistantRelay extends BaseRelay {
   }
 
   override async start(): Promise<void> {
-    if (AppState.isUs1Connected() !== true) {
+    if (AppState.hasUs1Identity() !== true) {
       throw new Error(relayT("sourceDisconnected", { source: this._sourceSlot }));
     }
 
-    if (AppState.isConnected(this._targetSlot) === false) {
+    if (AppState.isAssigned(this._targetSlot) === false) {
       throw new Error(relayT("assistantDisconnected", { target: this._targetSlot }));
     }
 
@@ -349,7 +349,7 @@ export class Us1AssistantRelay extends BaseRelay {
   }
 
   async _forwardMessage(from: string, to: string, text: string): Promise<boolean> {
-    if (AppState.isConnected(to) === false) {
+    if (AppState.isAssigned(to) === false) {
       this._logT("info", "app.logs.us1AssistantRelay.forwardSkippedTargetNotConnected", {
         target: to,
       });

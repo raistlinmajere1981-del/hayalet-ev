@@ -283,6 +283,7 @@ function createUs1OpponentFallback(
     assigned: remoteUserId !== null,
     connected: false,
     ready: false,
+    dispatchable: remoteUserId !== null,
     state: remoteUserId === null ? "empty" : "assigned",
     urlExcluded: false,
     providerId: "us1",
@@ -322,7 +323,7 @@ async function handleStart(api: XoxRuntimeApi, payload: unknown): Promise<XoxCom
     return { success: false, message: commandMessage(locale, "pendingInviteExists") };
   }
 
-  if (opponent.ready !== true) {
+  if (opponent.dispatchable !== true) {
     return { success: false, message: commandMessage(locale, "needReadyOpponent") };
   }
 

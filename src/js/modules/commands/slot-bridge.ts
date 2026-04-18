@@ -13,14 +13,18 @@ import {
   type SlotBridgeResult,
   type SlotBridgeSessionRef,
 } from "@shared/index.js";
+import type { AppSettings } from "@shared/settings.js";
 import { AppState } from "../app-state.js";
 import { resolveComposedProtocolMessage } from "../protocol-message-composer.js";
 import { ProtocolHandler } from "../protocol-handler.js";
 import { RoomCommandRegistry } from "../rooms/room-command-registry.js";
-import { SlotController } from "../slot-controller.js";
+import { SlotController, SlotState } from "../slot-controller.js";
 import { SettingsManager } from "../settings-manager.js";
 import { TrafficManager } from "../traffic-manager.js";
+import { ThemeManager } from "../../ui/theme/index.js";
 import { replaceProtocolTagsWithResolver } from "../../../../shared/protocol-tags.js";
+import { resolveOpencodeUiDbPath } from "../../pages/assistant/opencode-preferences.js";
+import { AssistantProviderRegistry } from "../../pages/assistant/provider-registry.js";
 import {
   getSlotBridgeCoreEngine,
   registerSlotBridgeHandler,
@@ -67,16 +71,25 @@ interface SlotBridgeWebviewManagerRef {
 
 const SLOT_BRIDGE_ACTION_SET = new Set<string>(SLOT_BRIDGE_ACTIONS);
 const SLOT_BRIDGE_TIMEOUT_MS = 45_000;
+const SLOT_BRIDGE_READY_WAIT_TIMEOUT_MS = 60_000;
+const SLOT_BRIDGE_READY_POLL_INTERVAL_MS = 250;
 
 const SLOT_BRIDGE_ACTION_CATEGORIES: Record<SlotBridgeActionKey, SlotBridgeActionCategory[]> = {
   "message.send": ["ai0", "ai1-ai2", "us1"],
   "message.sendWait": ["ai0", "ai1-ai2", "us1"],
-  "connection.ensure": ["ai0", "ai1-ai2"],
+  "connection.ensure": ["ai0", "ai1-ai2", "us1"],
   "session.open": ["ai0", "ai1-ai2"],
   "session.switch": ["ai0", "ai1-ai2", "us1"],
   "session.sync": ["ai0", "ai1-ai2", "us1"],
   "room.command": ["ai0", "ai1-ai2", "us1"],
 };
+
+const SLOT_BRIDGE_AUTO_CONNECT_ACTIONS = new Set<SlotBridgeActionKey>([
+  "message.send",
+  "message.sendWait",
+  "session.open",
+  "session.switch",
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && Array.isArray(value) === false;
@@ -134,6 +147,13 @@ function normalizeMessageTarget(value: unknown): "ai0" | "ai1" | "ai2" | "us1" |
   return value === "us1" ? "us1" : normalizeSlotId(value);
 }
 
+function normalizeSessionTarget(
+  action: "session.open" | "session.switch",
+  value: unknown
+): "ai0" | "ai1" | "ai2" | "us1" | null {
+  return action === "session.switch" ? normalizeMessageTarget(value) : normalizeSlotId(value);
+}
+
 function readCommandProviderArray(value: unknown): CommandProvider[] {
   if (!Array.isArray(value)) {
     return [];
@@ -149,11 +169,15 @@ function readCommandProviderArray(value: unknown): CommandProvider[] {
   return next;
 }
 
-function normalizeConnectPolicy(value: unknown, force: boolean): SlotBridgeConnectPolicy {
+function normalizeConnectPolicy(
+  action: SlotBridgeActionKey,
+  value: unknown,
+  force: boolean
+): SlotBridgeConnectPolicy {
   if (value === "never" || value === "ensure" || value === "require-ready") {
     return value;
   }
-  return force ? "ensure" : "never";
+  return force === true || SLOT_BRIDGE_AUTO_CONNECT_ACTIONS.has(action) ? "ensure" : "never";
 }
 
 function readTimeoutMs(value: unknown, fallback = SLOT_BRIDGE_TIMEOUT_MS): number {
@@ -488,7 +512,11 @@ function normalizeEnvelope(payload: CommandPayload = {}): NormalizedSlotBridgeEn
     wait: parsedArgs["wait"] === true || action === "message.sendWait",
     timeoutMs: readTimeoutMs(parsedArgs["timeoutMs"] ?? payload["timeoutMs"]),
     force,
-    connectPolicy: normalizeConnectPolicy(parsedArgs["connectPolicy"], force),
+    connectPolicy: normalizeConnectPolicy(
+      action,
+      parsedArgs["connectPolicy"] ?? payload["connectPolicy"],
+      force
+    ),
     sessionRef: readSessionRef(rawSessionRef),
     payload: buildActionPayload(
       parsedArgs,
@@ -744,6 +772,16 @@ type ResolvedSendAttachment = {
   mimeType?: string;
 };
 
+type SlotBridgeTargetReadyResult =
+  | {
+      success: true;
+    }
+  | {
+      success: false;
+      code: string;
+      message: string;
+    };
+
 function readMessageTargets(envelope: SlotBridgeEnvelope): UnifiedMessageTarget[] {
   const direct = normalizeMessageTarget(envelope.toSlot);
   const list = (envelope.toSlots ?? [])
@@ -934,35 +972,323 @@ function getElectronApi():
 
 async function ensureConnected(
   slot: "ai0" | "ai1" | "ai2",
-  envelope: SlotBridgeEnvelope
-): Promise<{ success: boolean; message?: string }> {
+  envelope: SlotBridgeEnvelope,
+  options: { waitForReady?: boolean } = {}
+): Promise<SlotBridgeTargetReadyResult> {
+  if (AppState.isAssigned(slot) !== true) {
+    return {
+      success: false,
+      code: "TARGET_UNASSIGNED",
+      message: `${slot.toUpperCase()} has no assigned account`,
+    };
+  }
+
+  const slotState = SlotController.getState(slot);
+  if (slotState?.state === SlotState.CONNECTING) {
+    if (options.waitForReady === true) {
+      return await waitForAiSlotReady(slot);
+    }
+    return { success: true };
+  }
+
   if (AppState.isConnected(slot) === true) {
+    if (options.waitForReady === true) {
+      return await waitForAiSlotReady(slot);
+    }
     return { success: true };
   }
 
   if (envelope.connectPolicy === "ensure") {
+    if (slot === "ai0") {
+      const assistantResult = await ensureAssistantConnected(envelope);
+      if (assistantResult.success !== true) {
+        return assistantResult;
+      }
+      if (options.waitForReady === true) {
+        return await waitForAiSlotReady(slot);
+      }
+      return { success: true };
+    }
+
     const coreEngine = await getCoreEngine();
-    return await coreEngine.setConnection(slot, true, { force: envelope.force === true });
+    const result = await coreEngine.setConnection(slot, true, { force: envelope.force === true });
+    if (result.success !== true) {
+      return {
+        success: false,
+        code: "CONNECT_FAILED",
+        message: result.message ?? `${slot.toUpperCase()} could not connect`,
+      };
+    }
+    if (options.waitForReady === true) {
+      return await waitForAiSlotReady(slot);
+    }
+    return { success: true };
   }
 
   if (envelope.connectPolicy === "require-ready") {
-    return { success: false, message: `${slot.toUpperCase()} is not ready` };
+    return {
+      success: false,
+      code: "TARGET_NOT_READY",
+      message: `${slot.toUpperCase()} is not ready`,
+    };
   }
 
-  return { success: false, message: `${slot.toUpperCase()} is offline` };
+  return {
+    success: false,
+    code: "TARGET_UNREACHABLE",
+    message: `${slot.toUpperCase()} is offline`,
+  };
+}
+
+function isAssistantToolsReadyForSlot(slot: "ai0" | "ai1" | "ai2"): boolean {
+  if (slot !== "ai0") {
+    return true;
+  }
+
+  return (
+    AppState.getProviderIdForSlot("ai0") !== "opencode-ui" || AppState.isAssistantToolsReady() === true
+  );
+}
+
+function isAiSlotReady(slot: "ai0" | "ai1" | "ai2"): boolean {
+  const state = SlotController.getState(slot);
+  if (state === null) {
+    return AppState.isConnected(slot) === true && isAssistantToolsReadyForSlot(slot);
+  }
+
+  if (
+    state.state !== SlotState.CONNECTED ||
+    state.urlExcluded === true ||
+    state.domReady !== true
+  ) {
+    return false;
+  }
+
+  const trafficState = TrafficManager.getState(slot);
+  return (
+    isAssistantToolsReadyForSlot(slot) &&
+    (trafficState === null ||
+      trafficState.readyState === "ready" ||
+      trafficState.status.loading !== "busy")
+  );
+}
+
+function resolveAssistantResumeEnabled(settings: AppSettings | null): boolean {
+  return settings?.assistants?.resumeLastSession !== false;
+}
+
+function resolveAssistantResumeSessionId(providerId: string, settings: AppSettings | null): string {
+  if (!resolveAssistantResumeEnabled(settings)) {
+    return "";
+  }
+
+  if (providerId === "opencode-ui") {
+    return typeof settings?.assistants?.lastOpencodeUiSessionId === "string"
+      ? settings.assistants.lastOpencodeUiSessionId
+      : "";
+  }
+
+  return "";
+}
+
+function resolveAssistantConnectUrl(baseUrl: string, providerId: string): string {
+  const settings = SettingsManager.getSnapshot() as AppSettings | null;
+
+  if (providerId === "opencode-ui" && baseUrl !== "") {
+    try {
+      const isPackagedFileRoute = window.location.protocol === "file:" && baseUrl.startsWith("/");
+      const parsed = new URL(
+        isPackagedFileRoute ? `.${baseUrl}` : baseUrl,
+        isPackagedFileRoute ? new URL(".", window.location.href) : window.location.origin
+      );
+      const resumeSessionId = resolveAssistantResumeSessionId(providerId, settings);
+      if (resumeSessionId !== "") {
+        parsed.searchParams.set("resumeSessionId", resumeSessionId);
+      }
+
+      const dbPath = resolveOpencodeUiDbPath(settings);
+      if (dbPath !== "") {
+        parsed.searchParams.set("dbPath", dbPath);
+      }
+
+      parsed.searchParams.set("theme", ThemeManager.current);
+
+      if (isPackagedFileRoute) {
+        return parsed.toString();
+      }
+
+      return baseUrl.startsWith("/")
+        ? `${parsed.pathname}${parsed.search}${parsed.hash}`
+        : parsed.toString();
+    } catch {
+      return baseUrl;
+    }
+  }
+
+  return baseUrl;
+}
+
+async function ensureAssistantConnected(
+  envelope: SlotBridgeEnvelope
+): Promise<SlotBridgeTargetReadyResult> {
+  const providerId = AppState.getProviderIdForSlot("ai0");
+  if (typeof providerId !== "string" || providerId.trim() === "") {
+    return {
+      success: false,
+      code: "TARGET_UNASSIGNED",
+      message: "AI0 has no assigned provider",
+    };
+  }
+
+  const adapter = AssistantProviderRegistry.getAdapter(providerId);
+  if (adapter === null) {
+    return {
+      success: false,
+      code: "CONNECT_FAILED",
+      message: `AI0 adapter is unavailable for ${providerId}`,
+    };
+  }
+
+  AppState.setAssistantToolsReady(providerId !== "opencode-ui");
+
+  const serverResult = await adapter.startServer("auto");
+  if (serverResult.success !== true || typeof serverResult.url !== "string" || serverResult.url === "") {
+    AppState.setAssistantToolsReady(true);
+    return {
+      success: false,
+      code: "CONNECT_FAILED",
+      message: serverResult.error ?? `AI0 could not start the ${adapter.name} server`,
+    };
+  }
+
+  const serverReady =
+    serverResult.alreadyRunning === true ? true : await adapter.waitForReady(serverResult.url, 90_000);
+  if (serverReady !== true) {
+    AppState.setAssistantToolsReady(true);
+    try {
+      await adapter.stopServer();
+    } catch {}
+    return {
+      success: false,
+      code: "CONNECT_FAILED",
+      message: `AI0 did not finish starting ${adapter.name}`,
+    };
+  }
+
+  const connectResult = await SlotController.connect("ai0", {
+    force: envelope.force === true,
+    url: resolveAssistantConnectUrl(serverResult.url, providerId),
+  });
+  if (connectResult.success !== true) {
+    AppState.setAssistantToolsReady(true);
+    return {
+      success: false,
+      code: "CONNECT_FAILED",
+      message: connectResult.message,
+    };
+  }
+
+  try {
+    await SettingsManager.set("assistants.lastConnected", providerId);
+  } catch {}
+
+  return { success: true };
+}
+
+async function waitForAiSlotReady(
+  slot: "ai0" | "ai1" | "ai2",
+  timeoutMs = SLOT_BRIDGE_READY_WAIT_TIMEOUT_MS
+): Promise<SlotBridgeTargetReadyResult> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() <= deadline) {
+    if (isAiSlotReady(slot)) {
+      return { success: true };
+    }
+    // NOTE: readiness polling must stay sequential to preserve timeout semantics.
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(SLOT_BRIDGE_READY_POLL_INTERVAL_MS);
+  }
+
+  return {
+    success: false,
+    code: "TARGET_NOT_READY",
+    message: `${slot.toUpperCase()} did not finish loading`,
+  };
+}
+
+async function setUs1ConnectionState(connected: boolean): Promise<boolean> {
+  return await SettingsManager.patch((settings) => {
+    const currentUs1Slot =
+      settings["us1Slot"] !== null &&
+      typeof settings["us1Slot"] === "object" &&
+      Array.isArray(settings["us1Slot"]) === false
+        ? (settings["us1Slot"] as Record<string, unknown>)
+        : {};
+    const communicationSystem =
+      currentUs1Slot["communicationSystem"] === "relay-e2ee" ? "relay-e2ee" : "mail";
+    const nextState = connected ? "connected" : "disconnected";
+    settings["us1Slot"] = {
+      ...currentUs1Slot,
+      connectionState: nextState,
+      relayConnectionState: communicationSystem === "relay-e2ee" ? nextState : "disconnected",
+      ...(currentUs1Slot["rememberConnectionStatus"] === true
+        ? { lastConnectionState: nextState }
+        : {}),
+    };
+  });
+}
+
+async function ensureUs1Target(
+  envelope: SlotBridgeEnvelope
+): Promise<SlotBridgeTargetReadyResult> {
+  if (AppState.hasUs1Identity() !== true) {
+    return {
+      success: false,
+      code: "TARGET_UNASSIGNED",
+      message: "US1 has no assigned identity",
+    };
+  }
+
+  if (AppState.isUs1Connected() === true) {
+    return { success: true };
+  }
+
+  if (envelope.connectPolicy === "ensure") {
+    const patched = await setUs1ConnectionState(true);
+    if (patched !== true) {
+      return {
+        success: false,
+        code: "CONNECT_FAILED",
+        message: "US1 could not connect",
+      };
+    }
+    return { success: true };
+  }
+
+  if (envelope.connectPolicy === "require-ready") {
+    return {
+      success: false,
+      code: "TARGET_NOT_READY",
+      message: "US1 is not ready",
+    };
+  }
+
+  return {
+    success: false,
+    code: "TARGET_UNREACHABLE",
+    message: "US1 is offline",
+  };
 }
 
 async function ensureMessageTarget(
   target: UnifiedMessageTarget,
   envelope: SlotBridgeEnvelope
-): Promise<{ success: boolean; message?: string }> {
+): Promise<SlotBridgeTargetReadyResult> {
   if (target === "us1") {
-    return AppState.isUs1Connected() === true
-      ? { success: true }
-      : { success: false, message: "US1 is offline" };
+    return await ensureUs1Target(envelope);
   }
 
-  return await ensureConnected(target, envelope);
+  return await ensureConnected(target, envelope, { waitForReady: true });
 }
 
 interface NormalizedReplyMessage {
@@ -1430,12 +1756,12 @@ async function maybeForwardReplyToOrigin(
     return { success: true, forwarded: false };
   }
 
-  const ready = await ensureConnected(replyToSlot, envelope);
+  const ready = await ensureConnected(replyToSlot, envelope, { waitForReady: true });
   if (ready.success !== true) {
     return {
       success: false,
       forwarded: false,
-      message: ready.message ?? `Reply target ${replyToSlot.toUpperCase()} is not reachable`,
+      message: ready.message,
     };
   }
 
@@ -1681,8 +2007,8 @@ async function runMessageAction(
     if (ready.success !== true) {
       return buildErrorResult(
         envelope,
-        ready.message?.includes("offline") === true ? "TARGET_UNREACHABLE" : "CONNECT_FAILED",
-        ready.message ?? "Target is not reachable"
+        ready.code,
+        ready.message
       );
     }
   }
@@ -1787,22 +2113,54 @@ async function runMessageAction(
 }
 
 async function runConnectionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridgeResult> {
-  const targetSlot = normalizeSlotId(envelope.toSlot);
+  const targetSlot = normalizeMessageTarget(envelope.toSlot);
   if (targetSlot === null) {
     return buildErrorResult(envelope, "TARGET_REQUIRED", "Target slot is required");
   }
 
-  const coreEngine = await getCoreEngine();
-  const result = await coreEngine.setConnection(targetSlot, true, {
-    force: envelope.force === true,
-  });
-  return result.success === true
+  const readyEnvelope = { ...envelope, connectPolicy: "ensure" as const };
+  const ready =
+    targetSlot === "us1"
+      ? await ensureUs1Target(readyEnvelope)
+      : await ensureConnected(targetSlot, readyEnvelope, { waitForReady: true });
+  return ready.success === true
     ? buildResult(envelope)
-    : buildErrorResult(
-        envelope,
-        "CONNECT_FAILED",
-        result.message ?? "Connection could not be established"
-      );
+    : buildErrorResult(envelope, ready.code, ready.message);
+}
+
+function readSessionSwitchConversationId(
+  targetSlot: "ai0" | "ai1" | "ai2" | "us1",
+  conversationListManager: SlotBridgeConversationListManagerRef,
+  sessionRef: SlotBridgeSessionRef | null | undefined
+): string {
+  const directConversationId = sessionRef?.conversationId?.trim() ?? "";
+  if (directConversationId !== "") {
+    return directConversationId;
+  }
+
+  const fallbackId = sessionRef?.id?.trim() ?? "";
+  if (fallbackId === "") {
+    return "";
+  }
+
+  if (targetSlot !== "us1") {
+    return fallbackId;
+  }
+
+  const conversationListState = conversationListManager as unknown as {
+    entries?: Array<Record<string, unknown>>;
+  };
+  const candidateEntries = Array.isArray(conversationListState.entries)
+    ? conversationListState.entries
+    : [];
+  const matchedEntry = candidateEntries.find(
+    (entry) =>
+      entry["provider"] === "us1" &&
+      entry["localSessionId"] === fallbackId &&
+      typeof entry["id"] === "string" &&
+      entry["id"].trim() !== ""
+  );
+  return typeof matchedEntry?.["id"] === "string" ? matchedEntry["id"].trim() : "";
 }
 
 async function runRoomCommandAction(envelope: SlotBridgeEnvelope): Promise<SlotBridgeResult> {
@@ -2092,21 +2450,21 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
     return await runSessionSyncAction(envelope);
   }
 
-  const targetSlot = normalizeSlotId(envelope.toSlot);
+  const sessionAction = envelope.action === "session.open" ? "session.open" : "session.switch";
+  const targetSlot = normalizeSessionTarget(sessionAction, envelope.toSlot);
   if (targetSlot === null) {
     return buildErrorResult(envelope, "TARGET_REQUIRED", "Target slot is required");
   }
 
-  const readyEnvelope =
-    envelope.connectPolicy === "never"
-      ? { ...envelope, connectPolicy: "ensure" as const }
-      : envelope;
-  const ready = await ensureConnected(targetSlot, readyEnvelope);
+  const ready =
+    targetSlot === "us1"
+      ? await ensureUs1Target(envelope)
+      : await ensureConnected(targetSlot, envelope, { waitForReady: true });
   if (ready.success !== true) {
     return buildErrorResult(
       envelope,
-      "TARGET_UNREACHABLE",
-      ready.message ?? "Target is not reachable"
+      ready.code,
+      ready.message
     );
   }
 
@@ -2116,7 +2474,10 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
       : await runAi0SessionSwitch(envelope);
   }
 
-  if (envelope.action === "session.open") {
+  if (sessionAction === "session.open") {
+    if (targetSlot === "us1") {
+      return buildErrorResult(envelope, "TARGET_REQUIRED", "Target slot is required");
+    }
     SlotController.navigate(targetSlot, null);
     return buildResult(envelope, {
       session: {
@@ -2126,18 +2487,19 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
     });
   }
 
-  const conversationId =
-    envelope.sessionRef?.conversationId?.trim() ?? envelope.sessionRef?.id?.trim() ?? "";
-  if (conversationId === "") {
-    return buildErrorResult(envelope, "CONVERSATION_ID_REQUIRED", "Conversation id is required");
-  }
-
   const conversationListManager = await getConversationListManager();
   await conversationListManager.refresh({
     silent: true,
-    forceSelectId: conversationId,
     provider: targetSlot,
   });
+  const conversationId = readSessionSwitchConversationId(
+    targetSlot,
+    conversationListManager,
+    envelope.sessionRef
+  );
+  if (conversationId === "") {
+    return buildErrorResult(envelope, "CONVERSATION_ID_REQUIRED", "Conversation id is required");
+  }
   const updated = conversationListManager.updateSelection(conversationId, {
     provider: targetSlot,
     silent: false,

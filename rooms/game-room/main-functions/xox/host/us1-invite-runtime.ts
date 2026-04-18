@@ -35,7 +35,7 @@ interface Us1InviteRuntimeDeps {
   getOpponentInfo: (
     context: GameRoomContextState,
     state: XoxGameState
-  ) => { remoteUserId?: string | null; nickname: string; ready?: boolean };
+  ) => { remoteUserId?: string | null; nickname: string; ready?: boolean; dispatchable?: boolean };
   loadContext: (api: Us1Api) => GameRoomContextState;
   loadInviteInbox: (api: Us1Api) => InviteEntry[];
   normalizeInviteInbox: (value: unknown) => InviteEntry[];
@@ -240,7 +240,7 @@ export function createGameRoomXoxUs1InviteRuntime(deps: Us1InviteRuntimeDeps) {
     const opponent = getOpponentInfo(context, state);
 
     if (
-      opponent.ready !== true ||
+      opponent.dispatchable !== true ||
       state.remoteUserId === null ||
       (opponent.remoteUserId !== null && opponent.remoteUserId !== state.remoteUserId)
     ) {

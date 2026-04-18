@@ -111,6 +111,7 @@ export function createUs1OpponentFallback(state: XoxGameState): GameRoomSlotStat
     assigned: state.remoteUserId !== null,
     connected: false,
     ready: false,
+    dispatchable: state.remoteUserId !== null,
     state: "assigned",
     urlExcluded: false,
     providerId: "us1",
@@ -180,7 +181,7 @@ export function serializeState(
     pendingInvite: loadPendingInvite(api),
     inviteInbox: loadInviteInbox(api),
     opponent: opponent,
-    opponentReady: opponent.ready === true,
+    opponentReady: opponent.dispatchable === true,
     user: {
       nickname: context.user.nickname,
     },

@@ -2,6 +2,8 @@ import { AppState } from "../modules/app-state.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { Logger, LogCategory } from "../modules/logger/index.js";
+import { dispatchInternalSlotBridge } from "../modules/commands/slot-bridge-runtime.js";
+import { ConversationListManager } from "../modules/conversation-list-manager.js";
 import { WebviewManager } from "../modules/webview-manager.js";
 import { shellT } from "./shell-i18n.js";
 
@@ -166,21 +168,65 @@ export function updateIndicatorAvatars(): void {
     if (!manageConversationSelect) return;
 
     try {
+      const hasAccount =
+        provider === "us1" ? AppState.hasUs1Identity() === true : AppState.isAssigned(provider);
       const conv = document.getElementById(`conversation-${provider}`) as HTMLSelectElement | null;
       if (conv) {
-        conv.disabled = slotState !== "connected";
+        conv.disabled = !hasAccount;
         try {
           const btn = document.getElementById(`conversation-refresh-${provider}`) as
             | (HTMLButtonElement & { __convRefreshHandler?: EventListener })
             | null;
           if (btn) {
-            btn.disabled = slotState !== "connected";
+            btn.disabled = !hasAccount;
             if (btn.__convRefreshHandler) {
               btn.removeEventListener("click", btn.__convRefreshHandler);
             }
             const handler: EventListener = (ev: Event) => {
               ev.preventDefault();
-              void WebviewManager.syncProvider(provider, { from: "manual" }).catch((err) => {
+              void (async (): Promise<void> => {
+                const connectResult = await dispatchInternalSlotBridge(
+                  {
+                    action: "connection.ensure",
+                    toSlot: provider,
+                  },
+                  {
+                    provider: "user",
+                    source: "user",
+                    fromSlot: "user",
+                  }
+                );
+                if (connectResult.success !== true) {
+                  throw new Error(
+                    connectResult.message ??
+                      connectResult.error ??
+                      `${provider.toUpperCase()} could not connect`
+                  );
+                }
+
+                const syncResult = await WebviewManager.syncProvider(provider, { from: "manual" });
+                const syncState =
+                  typeof syncResult === "object" && syncResult !== null
+                    ? (syncResult as { success?: unknown; message?: unknown })
+                    : null;
+                if (
+                  syncState !== null &&
+                  "success" in syncState &&
+                  syncState.success === false
+                ) {
+                  throw new Error(
+                    typeof syncState.message === "string" && syncState.message.trim() !== ""
+                      ? syncState.message
+                      : `${provider.toUpperCase()} sync failed`
+                  );
+                }
+
+                await ConversationListManager.refresh({
+                  provider,
+                  silent: true,
+                  skipNotify: true,
+                });
+              })().catch((err) => {
                 Logger.debug(
                   LogCategory.DATABASE,
                   shellT("logs.manualSyncFailed", { message: getErrorMessage(err) }),

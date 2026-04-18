@@ -119,7 +119,7 @@ export async function sendAiTurnUpdate(
   const context = loadContext(api) as GameRoomContextState;
   const opponent = readOpponentInfo(context, state);
 
-  if (opponent.ready !== true) {
+  if (opponent.dispatchable !== true) {
     blockMatch(api, state, "blockedOpponent", "opponent-unavailable");
     return { success: false, message: commandMessage(state.locale, "needReadyOpponent") };
   }

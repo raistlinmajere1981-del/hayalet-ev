@@ -13,6 +13,7 @@ export interface GameRoomSlotState {
   assigned: boolean;
   connected: boolean;
   ready: boolean;
+  dispatchable: boolean;
   state: string;
   urlExcluded: boolean;
   providerId: string | null;
@@ -58,6 +59,7 @@ export function createGameRoomSlotState(slotId: string): GameRoomSlotState {
     assigned: false,
     connected: false,
     ready: false,
+    dispatchable: false,
     state: "empty",
     urlExcluded: false,
     providerId: null,

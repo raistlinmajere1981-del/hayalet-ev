@@ -280,11 +280,11 @@ export function setupTopBarRelayButtons(): void {
               });
               relayInfo("relayStopped", { relay: getRelayLabel("ai1Assistant") });
             } else {
-              if (AppState.isConnected("ai1") !== true) {
+              if (AppState.isAssigned("ai1") !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("ai1") });
                 return;
               }
-              if (AppState.isConnected("ai0") !== true) {
+              if (AppState.isAssigned("ai0") !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("ai0") });
                 return;
               }
@@ -326,11 +326,11 @@ export function setupTopBarRelayButtons(): void {
               });
               relayInfo("relayStopped", { relay: getRelayLabel("assistantAi2") });
             } else {
-              if (AppState.isConnected("ai2") !== true) {
+              if (AppState.isAssigned("ai2") !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("ai2") });
                 return;
               }
-              if (AppState.isConnected("ai0") !== true) {
+              if (AppState.isAssigned("ai0") !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("ai0") });
                 return;
               }
@@ -369,11 +369,11 @@ export function setupTopBarRelayButtons(): void {
               });
               relayInfo("relayStopped", { relay: getRelayLabel("assistantUs1") });
             } else {
-              if (AppState.isUs1Connected() !== true) {
+              if (AppState.hasUs1Identity() !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("us1") });
                 return;
               }
-              if (AppState.isConnected("ai0") !== true) {
+              if (AppState.isAssigned("ai0") !== true) {
                 relayWarn("relayStartBlocked", { slot: getSlotLabel("ai0") });
                 return;
               }
@@ -414,7 +414,7 @@ export function setupTopBarRelayButtons(): void {
               });
               relayInfo("relayStopped", { relay: getRelayLabel("ai1Ai2") });
             } else {
-              if (AppState.isConnected("ai1") !== true || AppState.isConnected("ai2") !== true) {
+              if (AppState.isAssigned("ai1") !== true || AppState.isAssigned("ai2") !== true) {
                 relayWarn("relayStartBlockedMultiple", {
                   slots: `${getSlotLabel("ai1")} / ${getSlotLabel("ai2")}`,
                 });
@@ -462,7 +462,7 @@ export function setupTopBarRelayButtons(): void {
               });
               relayInfo("relayStopped", { relay: getRelayLabel("ai2Ai1") });
             } else {
-              if (AppState.isConnected("ai1") !== true || AppState.isConnected("ai2") !== true) {
+              if (AppState.isAssigned("ai1") !== true || AppState.isAssigned("ai2") !== true) {
                 relayWarn("relayStartBlockedMultiple", {
                   slots: `${getSlotLabel("ai1")} / ${getSlotLabel("ai2")}`,
                 });
@@ -529,16 +529,16 @@ export function updateRelayButtonStates(): void {
       "relay-btn-ai1-ai2-right"
     ) as HTMLButtonElement | null;
 
-    const ai1Connected = AppState.isConnected("ai1") === true;
-    const ai2Connected = AppState.isConnected("ai2") === true;
-    const ai0Connected = AppState.isConnected("ai0") === true;
-    const us1Connected = AppState.isUs1Connected() === true;
+    const ai1Assigned = AppState.isAssigned("ai1") === true;
+    const ai2Assigned = AppState.isAssigned("ai2") === true;
+    const ai0Assigned = AppState.isAssigned("ai0") === true;
+    const us1Assigned = AppState.hasUs1Identity() === true;
 
     relayDebug("relayButtonStates", {
-      ai1: String(ai1Connected),
-      ai2: String(ai2Connected),
-      ai0: String(ai0Connected),
-      us1: String(us1Connected),
+      ai1: String(ai1Assigned),
+      ai2: String(ai2Assigned),
+      ai0: String(ai0Assigned),
+      us1: String(us1Assigned),
     });
 
     const isAIAIActive = RelayManager.isAIAIActive() === true;
@@ -548,35 +548,35 @@ export function updateRelayButtonStates(): void {
 
     if (btnAi1Ai0) {
       const isThisActive = isAssistantRelayActive && assistantSourceSlot === "ai1";
-      const canEnable = ai1Connected && ai0Connected && (!anyRelayActive || isThisActive);
+      const canEnable = ai1Assigned && ai0Assigned && (!anyRelayActive || isThisActive);
       btnAi1Ai0.disabled = !canEnable;
       btnAi1Ai0.classList.toggle("is-active", isThisActive);
     }
 
     if (btnAi0Ai2) {
       const isThisActive = isAssistantRelayActive && assistantSourceSlot === "ai2";
-      const canEnable = ai2Connected && ai0Connected && (!anyRelayActive || isThisActive);
+      const canEnable = ai2Assigned && ai0Assigned && (!anyRelayActive || isThisActive);
       btnAi0Ai2.disabled = !canEnable;
       btnAi0Ai2.classList.toggle("is-active", isThisActive);
     }
 
     if (btnAi0Us1) {
       const isThisActive = isAssistantRelayActive && assistantSourceSlot === "us1";
-      const canEnable = us1Connected && ai0Connected && (!anyRelayActive || isThisActive);
+      const canEnable = us1Assigned && ai0Assigned && (!anyRelayActive || isThisActive);
       btnAi0Us1.disabled = !canEnable;
       btnAi0Us1.classList.toggle("is-active", isThisActive);
     }
 
     if (btnAi1Ai2Left) {
       const isThisActive = isAIAIActive;
-      const canEnable = ai1Connected && ai2Connected && (!anyRelayActive || isThisActive);
+      const canEnable = ai1Assigned && ai2Assigned && (!anyRelayActive || isThisActive);
       btnAi1Ai2Left.disabled = !canEnable;
       btnAi1Ai2Left.classList.toggle("is-active", isThisActive);
     }
 
     if (btnAi1Ai2Right) {
       const isThisActive = isAIAIActive;
-      const canEnable = ai1Connected && ai2Connected && (!anyRelayActive || isThisActive);
+      const canEnable = ai1Assigned && ai2Assigned && (!anyRelayActive || isThisActive);
       btnAi1Ai2Right.disabled = !canEnable;
       btnAi1Ai2Right.classList.toggle("is-active", isThisActive);
     }

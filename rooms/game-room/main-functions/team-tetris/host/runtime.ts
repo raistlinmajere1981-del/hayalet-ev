@@ -314,7 +314,7 @@ async function sendTeamTetrisStartAnnouncements(
     return currentTurnSeatId !== seatId;
   });
   const readyTargets = targets.filter(function (seatId) {
-    return context.slots[seatId].ready === true;
+    return context.slots[seatId].dispatchable === true;
   });
   const message = buildTeamTetrisAiStartMessage(state.match, options);
   const results = await Promise.all(
@@ -357,7 +357,7 @@ async function dispatchNextTeamTetrisTurn(
     return { success: true };
   }
   if (currentTurn.seatId === "us1") {
-    if (context.slots.us1.ready !== true) {
+    if (context.slots.us1.dispatchable !== true) {
       blockTeamTetrisMatch(api, state, "blockedOpponent", "us1-unavailable");
       return {
         success: false,
@@ -369,7 +369,7 @@ async function dispatchNextTeamTetrisTurn(
   }
 
   const slot = currentTurn.seatId === "ai1" ? context.slots.ai1 : context.slots.ai2;
-  if (slot.ready !== true) {
+  if (slot.dispatchable !== true) {
     blockTeamTetrisMatch(api, state, "blockedOpponent", "ai-unavailable");
     return { success: false, message: teamTetrisCommandMessage(readLocale(api), "dispatchFailed") };
   }

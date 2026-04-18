@@ -236,7 +236,7 @@ function syncParticipantSeatStatus(state: FateKnotsState, context: GameRoomConte
       return;
     }
     const slot = readContextSlot(context, participant.seatId);
-    participant.ready = slot?.ready === true;
+    participant.ready = slot?.dispatchable === true;
     participant.connected = slot?.connected !== false;
     participant.nickname = slot?.nickname || participant.nickname;
   });

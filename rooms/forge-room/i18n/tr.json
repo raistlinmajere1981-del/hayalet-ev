@@ -399,6 +399,7 @@
         "warning": "gözden geçir",
         "stale": "eskidi",
         "aiOffline": "AI0 çevrimdışı",
+        "aiReconnect": "AI0 ön kontrolde yeniden bağlanacak.",
         "agentTitle": "AI0",
         "agentSlot": "AI0",
         "todoTitle": "İşlem akışı",

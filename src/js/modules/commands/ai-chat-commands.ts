@@ -45,10 +45,10 @@ export async function aiaiChatStartHandler(
   const argsLabel = payload.args ?? "";
 
   try {
-    const ai1Conn = AppState.isConnected("ai1");
-    const ai2Conn = AppState.isConnected("ai2");
+    const ai1Assigned = AppState.isAssigned("ai1");
+    const ai2Assigned = AppState.isAssigned("ai2");
 
-    if (ai1Conn !== true || ai2Conn !== true) {
+    if (ai1Assigned !== true || ai2Assigned !== true) {
       throw new Error(aiChatT("aiaiStartRequiresConnections"));
     }
 
@@ -178,14 +178,14 @@ export async function aiAssistantChatStartHandler(
   const provider = providerRaw === "ai1" || providerRaw === "ai2" ? providerRaw : "ai1";
 
   try {
-    const sourceConn = AppState.isConnected(provider);
-    const assistantConn = AppState.isConnected("ai0");
+    const sourceAssigned = AppState.isAssigned(provider);
+    const assistantAssigned = AppState.isAssigned("ai0");
 
-    if (sourceConn !== true) {
+    if (sourceAssigned !== true) {
       throw new Error(aiChatT("aiAssistantSourceDisconnected", { provider }));
     }
 
-    if (assistantConn !== true) {
+    if (assistantAssigned !== true) {
       throw new Error(aiChatT("aiAssistantDisconnected"));
     }
 

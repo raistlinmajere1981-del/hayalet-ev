@@ -49,11 +49,11 @@ export class AIAssistantRelay extends BaseRelay {
       throw new Error(relayT("invalidSourceSlot"));
     }
 
-    if (AppState.isConnected(source) === false) {
+    if (AppState.isAssigned(source) === false) {
       throw new Error(relayT("sourceDisconnected", { source }));
     }
 
-    if (AppState.isConnected(this._targetSlot) === false) {
+    if (AppState.isAssigned(this._targetSlot) === false) {
       throw new Error(relayT("assistantDisconnected", { target: this._targetSlot }));
     }
 
@@ -244,7 +244,7 @@ export class AIAssistantRelay extends BaseRelay {
   }
 
   async _forwardMessage(from: string, to: string | null, text: string): Promise<boolean> {
-    if (to === null || AppState.isConnected(to) === false) {
+    if (to === null || AppState.isAssigned(to) === false) {
       this._logT("info", "app.logs.aiAssistantRelay.forwardSkippedTargetNotConnected", {
         target: to ?? "-",
       });

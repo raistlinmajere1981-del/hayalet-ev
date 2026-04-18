@@ -11,6 +11,7 @@ import { AppI18n } from "../../modules/i18n/index.js";
 import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
+import { dispatchInternalSlotBridge } from "../../modules/commands/slot-bridge-runtime.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
 import { ThemeManager, type ThemeId } from "../../ui/theme/index.js";
@@ -29,7 +30,6 @@ import {
   createSharedWebviewStatusOverlayController,
 } from "../../ui/overlay-presets.js";
 import { isSceneUiMode } from "../../ui/ui-mode.js";
-import { WebviewManager } from "../../modules/webview-manager.js";
 import { shellT } from "../../app/shell-i18n.js";
 import {
   registerAssistantDeliveryHandler,
@@ -325,6 +325,7 @@ export class AssistantController {
     this._connectFlowActive = false;
     this._connectOverlayStage = null;
     this._providerToolsReady = true;
+    AppState.setAssistantToolsReady(true);
     this.providerSelect = null;
     this.connectBtn = null;
     this.resumeLastSessionCheckbox = null;
@@ -1582,6 +1583,7 @@ export class AssistantController {
       getProviderToolsReady: () => this._providerToolsReady,
       setProviderToolsReady: (ready: boolean) => {
         this._providerToolsReady = ready;
+        AppState.setAssistantToolsReady(ready);
       },
       setConnectOverlayStage: (stage: OverlayStage | null) => {
         this._setConnectOverlayStage(stage);
@@ -1823,16 +1825,26 @@ export class AssistantController {
     }
 
     try {
-      await this._ensureReadyForDelivery();
-      const sendResult = (await WebviewManager.send({
-        provider: "ai0",
-        text: message,
-      })) as { success?: boolean; message?: string };
+      const sendResult = await dispatchInternalSlotBridge(
+        {
+          action: "message.send",
+          toSlot: "ai0",
+          payload: {
+            page: request.page ?? "assistant:delivery",
+            text: message,
+          },
+        },
+        {
+          provider: "user",
+          source: "user",
+          fromSlot: "user",
+        }
+      );
 
       if (sendResult.success !== true) {
         return {
           success: false,
-          message: sendResult.message ?? assistantT("runtime.deliveryFailed"),
+          message: sendResult.message ?? sendResult.error ?? assistantT("runtime.deliveryFailed"),
         };
       }
 
@@ -1857,81 +1869,6 @@ export class AssistantController {
     }
   }
 
-  async _ensureReadyForDelivery(): Promise<void> {
-    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
-    const hasAccount = AppState.isAssigned("ai0");
-    if (!hasAccount) {
-      throw new Error(assistantT("runtime.accountMissing"));
-    }
-
-    const currentState = slotState?.state ?? null;
-    if (currentState !== SlotState.CONNECTED) {
-      const isConnecting = currentState === SlotState.CONNECTING || this._connectFlowActive;
-      if (!isConnecting) {
-        await this._toggleConnection();
-      }
-    }
-
-    const connected = await this._waitForDeliveryCondition(() => {
-      const nextState = SlotController.getState("ai0") as SlotStateInfo | null;
-      return nextState?.state === SlotState.CONNECTED;
-    });
-
-    if (!connected) {
-      throw new Error(assistantT("errors.connectionWaitTimeout"));
-    }
-
-    const ready = await this._waitForDeliveryCondition(() => {
-      const nextState = SlotController.getState("ai0") as
-        | (SlotStateInfo & {
-            domReady?: boolean;
-          })
-        | null;
-      const trafficState = TrafficManager.getState("ai0");
-      const loadingReady =
-        trafficState === null ||
-        trafficState.readyState === "ready" ||
-        trafficState.status.loading !== "busy";
-
-      return (
-        nextState?.state === SlotState.CONNECTED &&
-        nextState.domReady === true &&
-        this._providerToolsReady &&
-        loadingReady
-      );
-    }, 60000);
-
-    if (!ready) {
-      throw new Error(assistantT("errors.webviewNotReady"));
-    }
-  }
-
-  async _waitForDeliveryCondition(
-    predicate: () => boolean,
-    timeoutMs = 90000,
-    intervalMs = 250
-  ): Promise<boolean> {
-    const startedAt = Date.now();
-
-    const poll = async (): Promise<boolean> => {
-      if (predicate()) {
-        return true;
-      }
-
-      if (Date.now() - startedAt >= timeoutMs) {
-        return false;
-      }
-
-      await new Promise<void>((resolve) => {
-        window.setTimeout(resolve, intervalMs);
-      });
-
-      return await poll();
-    };
-
-    return await poll();
-  }
-
   _updateServerStatus(status: { running: boolean; port?: number }): void {
     updateServerStatusView(status, {
       statusText: document.querySelector("#assistant-status-text"),
@@ -1950,24 +1887,7 @@ export class AssistantController {
     if (!this._isProviderOption(provider)) return;
 
     this._providerToolsReady = providerId !== "opencode-ui";
-
-    const settings = SettingsManager.getSnapshot() as AppSettings | null;
-    const assistantAccounts = settings?.assistantAccounts as
-      | { id: string; provider?: string }[]
-      | undefined;
-    const account = assistantAccounts?.find((acc) => acc.provider === providerId);
-
-    if (account && settings) {
-      const assistantSlot = settings.assistantSlot as { accountId?: string } | undefined;
-      await SettingsManager.save({
-        ...(settings as Record<string, unknown>),
-        assistantSlot: {
-          ...(assistantSlot as Record<string, unknown>),
-          accountId: account.id,
-        },
-      });
-    }
-
+    AppState.setAssistantToolsReady(this._providerToolsReady);
     await SettingsManager.set("assistants.preferred", providerId);
 
     Logger.info(LogCategory.ASSISTANT_CORE, assistantT("logs.providerChanged"), {
@@ -2375,11 +2295,8 @@ export class AssistantController {
   }
 
   _updateConnectionUI(skipSystemServerSync = false): void {
-    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
     const hasAccount = AppState.isAssigned("ai0");
-    const isConnected = slotState?.state === SlotState.CONNECTED;
-    const isConnecting = slotState?.state === SlotState.CONNECTING || this._connectFlowActive;
-    const shouldDismissScenarioPanel = !hasAccount || (!isConnected && !isConnecting);
+    const shouldDismissScenarioPanel = !hasAccount;
 
     if (shouldDismissScenarioPanel) {
       this._dismissScenarioPanelForUnavailableSlot();
@@ -2425,6 +2342,12 @@ export class AssistantController {
 
     if (shouldRefreshProviderSelect) {
       this._populateProviderSelect();
+      this._initActiveAdapter();
+      const activeProviderId = this.providerSelect?.value ?? this._activeAdapter?.id ?? null;
+      if (activeProviderId !== null) {
+        this._providerToolsReady = activeProviderId !== "opencode-ui";
+        AppState.setAssistantToolsReady(this._providerToolsReady);
+      }
     }
 
     const shouldRefreshIdentity =

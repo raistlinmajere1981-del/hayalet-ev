@@ -972,7 +972,7 @@ export class AnalyzeController {
         slot === "ai1" ? ai1HasAccount : slot === "ai2" ? ai2HasAccount : us1HasIdentity;
       const connected =
         slot === "ai1" ? ai1Connected : slot === "ai2" ? ai2Connected : us1Connected;
-      const isActive = hasAccount && connected;
+      const isActive = hasAccount;
       const wasActive = this._slotActiveStates[slot];
 
       this._updateSlotUI(slot, hasAccount, connected);
@@ -1014,8 +1014,8 @@ export class AnalyzeController {
     }
 
     if (sendToggle) {
-      (sendToggle as HTMLInputElement).disabled = !hasAccount || !connected;
-      if (!hasAccount || !connected) (sendToggle as HTMLInputElement).checked = false;
+      (sendToggle as HTMLInputElement).disabled = !hasAccount;
+      if (!hasAccount) (sendToggle as HTMLInputElement).checked = false;
     }
   }
 
@@ -1048,10 +1048,7 @@ export class AnalyzeController {
   _updateAIAIControls(): void {
     const ai1Assigned = !!AppState.getAccountForSlot("ai1");
     const ai2Assigned = !!AppState.getAccountForSlot("ai2");
-    const ai1Connected = AppState.isConnected("ai1") === true;
-    const ai2Connected = AppState.isConnected("ai2") === true;
-    const bothAIsConnected = ai1Connected && ai2Connected;
-    const aiChatEnabled = ai1Assigned && ai2Assigned && bothAIsConnected;
+    const aiChatEnabled = ai1Assigned && ai2Assigned;
 
     const analyzeBtn = document.getElementById("compose-start-btn") as HTMLButtonElement | null;
     if (analyzeBtn) analyzeBtn.disabled = !aiChatEnabled;
@@ -1784,7 +1781,7 @@ export class AnalyzeController {
   }
 
   async handleAnalyzeStart(): Promise<void> {
-    const targets = this._getConnectedAIs();
+    const targets = this._getAssignedAIs();
     if (targets.length === 0) {
       Logger.warn(LogCategory.ANALYZE, analyzeT("logs.protocolSendSkippedNoConnectedAi"));
       return;
@@ -1798,7 +1795,7 @@ export class AnalyzeController {
   }
 
   async handleAnalyzeStop(): Promise<void> {
-    const targets = this._getConnectedAIs();
+    const targets = this._getAssignedAIs();
     if (targets.length === 0) {
       Logger.warn(LogCategory.ANALYZE, analyzeT("logs.protocolStopSkippedNoConnectedAi"));
       return;
@@ -1835,11 +1832,9 @@ export class AnalyzeController {
     const sendUs1 = document.getElementById("send-us1") as HTMLInputElement | null;
     const cross = document.getElementById("send-cross") as HTMLInputElement | null;
 
-    const ai1CanSend =
-      AppState.getAccountForSlot("ai1") !== null && AppState.isConnected("ai1") === true;
-    const ai2CanSend =
-      AppState.getAccountForSlot("ai2") !== null && AppState.isConnected("ai2") === true;
-    const us1CanSend = AppState.hasUs1Identity() && AppState.isUs1Connected();
+    const ai1CanSend = AppState.getAccountForSlot("ai1") !== null;
+    const ai2CanSend = AppState.getAccountForSlot("ai2") !== null;
+    const us1CanSend = AppState.hasUs1Identity();
 
     if (sendAi1) {
       sendAi1.checked = ai1CanSend;
@@ -1869,10 +1864,10 @@ export class AnalyzeController {
     }
   }
 
-  _getConnectedAIs(): string[] {
+  _getAssignedAIs(): string[] {
     const list: string[] = [];
-    if (AppState.isConnected("ai1") === true) list.push("ai1");
-    if (AppState.isConnected("ai2") === true) list.push("ai2");
+    if (AppState.getAccountForSlot("ai1") !== null) list.push("ai1");
+    if (AppState.getAccountForSlot("ai2") !== null) list.push("ai2");
     return list;
   }
 

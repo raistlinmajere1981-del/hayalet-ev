@@ -38,6 +38,14 @@ export function populateAssistantProviderSelect({
   const assistantAccounts = settings?.assistantAccounts as
     | { id: string; provider?: string }[]
     | undefined;
+  const preferredProviderId = settings?.assistants?.preferred;
+  if (
+    typeof preferredProviderId === "string" &&
+    providerSelect.querySelector(`option[value="${preferredProviderId}"]`) !== null
+  ) {
+    providerSelect.value = preferredProviderId;
+    return;
+  }
   const assistantSlot = settings?.assistantSlot as { accountId?: string } | undefined;
   const account = assistantAccounts?.find((entry) => entry.id === assistantSlot?.accountId);
   if (

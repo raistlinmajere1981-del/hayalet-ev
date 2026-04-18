@@ -247,7 +247,7 @@ export async function handleStart(api: RoomApi) {
   const saveSlot = loadFateKnotsSaveSlot(api);
   const readyAiSeats = FATE_KNOTS_SUPPORTED_AI_SEATS.filter(function (seatId: string) {
     const slot = context.slots[seatId as keyof typeof context.slots];
-    return slot.ready === true;
+    return slot.dispatchable === true;
   });
   if (readyAiSeats.length === 0) {
     refreshFateKnotsState(api, contentRegistry);

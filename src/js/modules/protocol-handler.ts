@@ -1,15 +1,18 @@
-import { SlotController, SlotState } from "./slot-controller.js";
+import { SlotController } from "./slot-controller.js";
 import { LogCategory } from "@shared/logging-core";
 import { Logger } from "./logger/index.js";
 import { START_STOP_PROTOCOL_HEADERS } from "./protocol-default-headers.js";
 import { RoomProtocolRegistry } from "./rooms/room-protocol-registry.js";
+import { AppState } from "./app-state.js";
 
-function isSlotReady(slot: string): boolean {
-  const state = SlotController.getState(slot);
-  if (state === null) return false;
-
-  if (state.state !== SlotState.CONNECTED) {
+function isSlotEligible(slot: string): boolean {
+  if (AppState.isAssigned(slot) !== true) {
     return false;
+  }
+
+  const state = SlotController.getState(slot);
+  if (state === null) {
+    return true;
   }
 
   if (state.urlExcluded === true) {
@@ -143,7 +146,7 @@ function buildProtocolPayload({
     return null;
   }
 
-  const connected = targets.filter((t) => isSlotReady(t));
+  const connected = targets.filter((t) => isSlotEligible(t));
   return {
     message: descriptor.fallbackTitle,
     ...(descriptor.protocolKey !== undefined ? { protocolKey: descriptor.protocolKey } : {}),

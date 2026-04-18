@@ -36,6 +36,7 @@ export function normalizeSlot(candidate: unknown, slotId: string): GameRoomSlotS
   const connected = source["connected"] === true;
   const urlExcluded = source["urlExcluded"] === true;
   const ready = source["ready"] === true || (assigned && connected && urlExcluded !== true);
+  const dispatchable = source["dispatchable"] === true || (assigned && urlExcluded !== true);
 
   return {
     slotId,
@@ -51,6 +52,7 @@ export function normalizeSlot(candidate: unknown, slotId: string): GameRoomSlotS
     assigned,
     connected,
     ready,
+    dispatchable,
     state:
       typeof source["state"] === "string" && source["state"].trim() !== ""
         ? source["state"].trim()

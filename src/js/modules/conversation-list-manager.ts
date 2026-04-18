@@ -367,17 +367,12 @@ class ConversationListManagerClass {
 
     const hasAccount =
       provider === "us1" ? AppState.hasUs1Identity() === true : AppState.isAssigned(provider);
-    const isConnected =
-      provider === "us1"
-        ? AppState.isUs1Connected() === true
-        : AppState.isConnected(provider) === true;
-
-    select.disabled = !hasAccount || !isConnected;
+    select.disabled = !hasAccount;
     const refreshBtn = document.getElementById(
       `conversation-refresh-${provider}`
     ) as HTMLButtonElement | null;
     if (refreshBtn) {
-      refreshBtn.disabled = !hasAccount || !isConnected;
+      refreshBtn.disabled = !hasAccount;
     }
 
     const currentVal =
@@ -461,11 +456,7 @@ class ConversationListManagerClass {
 
   async handleUs1Refresh(): Promise<void> {
     const electronApi = window.electronAPI;
-    if (
-      electronApi === undefined ||
-      typeof electronApi.us1SyncMessages !== "function" ||
-      AppState.isUs1Connected() !== true
-    ) {
+    if (electronApi === undefined || typeof electronApi.us1SyncMessages !== "function") {
       return;
     }
 
@@ -478,6 +469,21 @@ class ConversationListManagerClass {
         : null;
 
     try {
+      const ensureResult = await dispatchInternalSlotBridge(
+        {
+          action: "connection.ensure",
+          toSlot: "us1",
+        },
+        {
+          provider: "user",
+          source: "user",
+          fromSlot: "user",
+        }
+      );
+      if (ensureResult.success !== true) {
+        throw new Error(ensureResult.message ?? ensureResult.error ?? "US1 connection failed.");
+      }
+
       const result = await dispatchInternalSlotBridge(
         {
           action: "session.sync",

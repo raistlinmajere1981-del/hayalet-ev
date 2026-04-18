@@ -46,6 +46,21 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && v !== undefined && typeof v === "object" && !Array.isArray(v);
 }
 
+function resolvePreferredAssistantAccountId(
+  settings: Pick<AppSettings, "assistantAccounts" | "assistants">
+): string {
+  const assistantAccounts = Array.isArray(settings.assistantAccounts) ? settings.assistantAccounts : [];
+  const preferredProviderId = settings.assistants?.preferred;
+  const preferredAccount =
+    typeof preferredProviderId === "string"
+      ? assistantAccounts.find((account) => account.provider === preferredProviderId)
+      : null;
+  const defaultAccount =
+    assistantAccounts.find((account) => account.id === DEFAULT_ASSISTANT_ACCOUNT_ID) ?? null;
+  const fallbackAccount = preferredAccount ?? defaultAccount ?? assistantAccounts[0] ?? null;
+  return fallbackAccount?.id ?? DEFAULT_ASSISTANT_ACCOUNT_ID;
+}
+
 function normalizeThemeAppearanceSettings(
   raw: unknown,
   legacyTheme?: unknown
@@ -1268,6 +1283,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
   if (!isAssistantProviderId(merged.assistants.preferred)) {
     merged.assistants.preferred = "opencode";
   }
+  merged.assistantSlot.accountId = resolvePreferredAssistantAccountId(merged);
   if (typeof merged.assistants.resumeLastSession !== "boolean") {
     merged.assistants.resumeLastSession = true;
   }

@@ -11,6 +11,7 @@ import { SlotPresenceStore } from "./slot-presence-store.js";
 interface AppStateSnapshot {
   activeProvider: string | null;
   activeConversations: Record<string, string | null>;
+  assistantToolsReady: boolean;
   us1PendingSessions: Record<
     string,
     {
@@ -45,6 +46,7 @@ class AppStateClass {
     activeTargets: string[];
     titleByProvider: Record<string, string>;
   };
+  assistantToolsReady: boolean;
   assistantRelay: {
     active: boolean;
     sourceSlot: string | null;
@@ -59,6 +61,7 @@ class AppStateClass {
       activeTargets: ["ai1"],
       titleByProvider: { ai0: "", ai1: "", ai2: "", us1: "" },
     };
+    this.assistantToolsReady = true;
     this.assistantRelay = {
       active: false,
       sourceSlot: null,
@@ -77,6 +80,7 @@ class AppStateClass {
       activeTargets: ["ai1"],
       titleByProvider: { ai0: "", ai1: "", ai2: "", us1: "" },
     };
+    this.assistantToolsReady = true;
     this.assistantRelay = {
       active: false,
       sourceSlot: null,
@@ -321,6 +325,19 @@ class AppStateClass {
     this.notify();
   }
 
+  setAssistantToolsReady(ready: boolean): void {
+    const nextReady = ready === true;
+    if (this.assistantToolsReady === nextReady) {
+      return;
+    }
+    this.assistantToolsReady = nextReady;
+    this.notify();
+  }
+
+  isAssistantToolsReady(): boolean {
+    return this.assistantToolsReady === true;
+  }
+
   setAssistantRelay(active: boolean, sourceSlot: string | null = null): void {
     this.assistantRelay = {
       active: !!active,
@@ -337,6 +354,7 @@ class AppStateClass {
     return {
       activeProvider: this.activeProvider,
       activeConversations: { ...this.activeConversations },
+      assistantToolsReady: this.assistantToolsReady,
       us1PendingSessions: this.getUs1PendingSessions(),
       chat: { ...this.chat, titleByProvider: { ...this.chat.titleByProvider } },
       assistantRelay: { ...this.assistantRelay },

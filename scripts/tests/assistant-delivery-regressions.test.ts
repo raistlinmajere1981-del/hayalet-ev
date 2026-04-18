@@ -13,15 +13,18 @@ test("shared delivery module navigates to assistant before delegating the send f
   assert.match(content, /activeAssistantDeliveryHandler/);
 });
 
-test("assistant controller registers a delivery handler and reuses the real connect plus send flow", () => {
+test("assistant controller registers a delivery handler and routes delivery through slot bridge", () => {
   const content = readFileSync(assistantIndexPath, "utf8");
 
   assert.match(
     content,
     /registerAssistantDeliveryHandler\(this\._handleDeliveryRequest\.bind\(this\)\)/
   );
-  assert.match(content, /await this\._ensureReadyForDelivery\(\)/);
-  assert.match(content, /await this\._toggleConnection\(\)/);
-  assert.match(content, /WebviewManager\.send\(\{\s*provider: "ai0"/s);
-  assert.match(content, /nextState\.domReady === true/);
+  assert.match(content, /dispatchInternalSlotBridge\(/);
+  assert.match(content, /action: "message\.send"/);
+  assert.match(content, /toSlot: "ai0"/);
+  assert.match(content, /provider: "user"/);
+  assert.match(content, /fromSlot: "user"/);
+  assert.doesNotMatch(content, /_ensureReadyForDelivery/);
+  assert.doesNotMatch(content, /WebviewManager\.send\(/);
 });

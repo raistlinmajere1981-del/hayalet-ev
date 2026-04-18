@@ -11,6 +11,7 @@
     avatar: string | null;
     assigned: boolean;
     connected: boolean;
+    dispatchable: boolean;
     ready: boolean;
     state: string;
     urlExcluded: boolean;
@@ -142,6 +143,7 @@
         avatar: null,
         assigned: false,
         connected: false,
+        dispatchable: false,
         ready: false,
         state: "empty",
         urlExcluded: false,
@@ -227,20 +229,21 @@
 
     function normalizeSlot(candidate: unknown, slotId: string): SlotState {
       const source = isRecord(candidate) ? candidate : {};
+      const assigned = source["assigned"] === true;
+      const connected = source["connected"] === true;
+      const urlExcluded = source["urlExcluded"] === true;
+      const dispatchable = source["dispatchable"] === true || (assigned && urlExcluded !== true);
       return {
         slotId: slotId,
         label: readString(source["label"], slotId.toUpperCase()),
         nickname: readString(source["nickname"], slotId.toUpperCase()),
         avatar: readString(source["avatar"], "") || null,
-        assigned: source["assigned"] === true,
-        connected: source["connected"] === true,
-        ready:
-          source["ready"] === true ||
-          (source["assigned"] === true &&
-            source["connected"] === true &&
-            source["urlExcluded"] !== true),
+        assigned,
+        connected,
+        dispatchable,
+        ready: source["ready"] === true || (assigned && connected && urlExcluded !== true),
         state: readString(source["state"], "empty"),
-        urlExcluded: source["urlExcluded"] === true,
+        urlExcluded,
         providerId: readString(source["providerId"], "") || null,
         accountId: readString(source["accountId"], "") || null,
         remoteUserId: readString(source["remoteUserId"], "") || null,

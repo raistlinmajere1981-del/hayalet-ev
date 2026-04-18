@@ -374,7 +374,7 @@ export class AIAIRelay extends BaseRelay {
       return;
     }
 
-    if (AppState.isConnected(target) === false) {
+    if (AppState.isAssigned(target) === false) {
       this._logT("info", "app.logs.aiaiRelay.relaySkippedTargetNotConnected", {
         target,
       });

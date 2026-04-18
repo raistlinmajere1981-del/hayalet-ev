@@ -515,7 +515,7 @@ export function createFateKnotsPromptRuntime(deps: FateKnotsPromptRuntimeDeps) {
   async function dispatchAmbientPrompts(api: RoomApi, state: FateKnotsHostState): Promise<void> {
     const context = loadContext(api);
     const readyAiSeats = FATE_KNOTS_SUPPORTED_AI_SEATS.filter(function (seatId: string) {
-      return context.slots[seatId as keyof typeof context.slots].ready === true;
+      return context.slots[seatId as keyof typeof context.slots].dispatchable === true;
     });
 
     if (readyAiSeats.length === 0) {

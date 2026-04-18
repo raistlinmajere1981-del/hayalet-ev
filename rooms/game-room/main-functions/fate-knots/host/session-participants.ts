@@ -191,7 +191,7 @@ export function buildRunParticipants(
     index: number
   ) {
     const slot = readContextSlot(context, seatId);
-    if (!slot || slot.ready !== true) {
+    if (!slot || slot.dispatchable !== true) {
       return null;
     }
     return createParticipant({
@@ -210,7 +210,7 @@ export function buildRunParticipants(
     index: number
   ) {
     const slot = readContextSlot(context, seatId);
-    if (!slot || slot.ready !== true) {
+    if (!slot || slot.dispatchable !== true) {
       return null;
     }
     return createParticipant({

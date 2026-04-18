@@ -19,6 +19,7 @@
   };
   type XoxSlotState = {
     slotId: XoxTarget;
+    dispatchable?: boolean;
     nickname: string;
     ready?: boolean;
   };
@@ -257,7 +258,9 @@
       const hasPendingOutgoingInvite =
         !!state.game.pendingInvite && state.game.pendingInvite.direction === "outgoing";
       const canStart =
-        selectedSlot["ready"] === true && state.game.active !== true && !hasPendingOutgoingInvite;
+        selectedSlot["dispatchable"] === true &&
+        state.game.active !== true &&
+        !hasPendingOutgoingInvite;
       const canReset = isRoomApiAvailable();
       const canUserMove =
         state.game.active === true &&

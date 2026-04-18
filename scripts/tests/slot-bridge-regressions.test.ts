@@ -7,6 +7,9 @@ const { slotBridgeHandler, slotBridgeRuntime } = await import(
 const { RoomCommandRegistry } = await import("../../src/js/modules/rooms/room-command-registry.ts");
 const { SlotController } = await import("../../src/js/modules/slot-controller.ts");
 const { AppState } = await import("../../src/js/modules/app-state.ts");
+const { AssistantProviderRegistry } = await import(
+  "../../src/js/pages/assistant/provider-registry.ts"
+);
 
 type ElectronApiMock = {
   us1SendMessage?: (params: Record<string, unknown>) => Promise<unknown>;
@@ -17,6 +20,11 @@ type ElectronApiMock = {
 
 type TestWindow = {
   electronAPI?: ElectronApiMock;
+  location?: {
+    href: string;
+    origin: string;
+    protocol: string;
+  };
   setTimeout?: typeof setTimeout;
 };
 
@@ -24,8 +32,20 @@ type SlotBridgeHarness = {
   appState: {
     getArchiveAccountIdForProvider: (provider: string) => string | null;
     getProviderIdForSlot: (slot: string) => string | null;
+    hasUs1Identity: () => boolean;
+    isAssistantToolsReady: () => boolean;
+    isAssigned: (slot: string) => boolean;
     isConnected: (slot: string) => boolean;
     isUs1Connected: () => boolean;
+    setAssistantToolsReady: (ready: boolean) => void;
+  };
+  conversationListManager: {
+    entries: Array<Record<string, unknown>>;
+    refresh: (options?: Record<string, unknown>) => Promise<void>;
+    updateSelection: (
+      conversationId: string,
+      options?: { provider?: string; silent?: boolean }
+    ) => boolean;
   };
   coreEngine: {
     ensureReady: () => Promise<void>;
@@ -49,10 +69,16 @@ type SlotBridgeHarness = {
   };
   restore: () => void;
   runtime: {
+    getConversationListManager: () => Promise<SlotBridgeHarness["conversationListManager"]>;
     getCoreEngine: () => Promise<SlotBridgeHarness["coreEngine"]>;
     getWebviewManager: () => Promise<SlotBridgeHarness["webviewManager"]>;
   };
   slotController: {
+    connect: (
+      slot: string,
+      options?: { force?: boolean; url?: string }
+    ) => Promise<{ success: boolean; message?: string }>;
+    getState: (slot: string) => unknown;
     isConnected: (slot: string) => boolean;
   };
   webviewManager: {
@@ -78,17 +104,29 @@ function createHarness(
   const webviewManager: SlotBridgeHarness["webviewManager"] = {
     syncProvider: async () => null,
   };
+  const conversationListManager: SlotBridgeHarness["conversationListManager"] = {
+    entries: [],
+    refresh: async () => {},
+    updateSelection: () => true,
+  };
   const slotController = SlotController as unknown as SlotBridgeHarness["slotController"];
   const appState = AppState as unknown as SlotBridgeHarness["appState"];
   const runtime = slotBridgeRuntime as unknown as SlotBridgeHarness["runtime"];
 
+  const originalGetConversationListManager = runtime.getConversationListManager;
   const originalGetCoreEngine = runtime.getCoreEngine;
   const originalGetWebviewManager = runtime.getWebviewManager;
+  const originalGetState = slotController.getState;
   const originalIsConnected = slotController.isConnected;
+  const originalConnect = slotController.connect;
   const originalGetArchiveAccountIdForProvider = appState.getArchiveAccountIdForProvider;
   const originalGetProviderIdForSlot = appState.getProviderIdForSlot;
+  const originalHasUs1Identity = appState.hasUs1Identity;
+  const originalIsAssistantToolsReady = appState.isAssistantToolsReady;
+  const originalIsAssigned = appState.isAssigned;
   const originalAppStateIsConnected = appState.isConnected;
   const originalAppStateIsUs1Connected = appState.isUs1Connected;
+  const originalSetAssistantToolsReady = appState.setAssistantToolsReady;
 
   let now = 0;
   const immediateSetTimeout = ((callback: TimerHandler, _delay?: number, ...args: unknown[]) => {
@@ -100,6 +138,11 @@ function createHarness(
 
   globalWithWindow.window = {
     electronAPI: {},
+    location: {
+      href: "http://localhost:5174/",
+      origin: "http://localhost:5174",
+      protocol: "http:",
+    },
     setTimeout: options.immediateTimers === true ? immediateSetTimeout : setTimeout,
   };
 
@@ -110,25 +153,44 @@ function createHarness(
     };
   }
 
+  runtime.getConversationListManager = async () => conversationListManager;
   runtime.getCoreEngine = async () => coreEngine;
   runtime.getWebviewManager = async () => webviewManager;
+  slotController.getState = () => ({
+    state: "connected",
+    domReady: true,
+    urlExcluded: false,
+  });
   slotController.isConnected = () => true;
+  slotController.connect = async () => ({ success: true });
   appState.getArchiveAccountIdForProvider = () => "acct-1";
   appState.getProviderIdForSlot = (slot: string) => slot;
+  appState.hasUs1Identity = () => true;
+  appState.isAssistantToolsReady = () => true;
+  appState.isAssigned = () => true;
   appState.isConnected = () => true;
   appState.isUs1Connected = () => true;
+  appState.setAssistantToolsReady = () => {};
 
   return {
     appState,
+    conversationListManager,
     coreEngine,
     restore: () => {
+      runtime.getConversationListManager = originalGetConversationListManager;
       runtime.getCoreEngine = originalGetCoreEngine;
       runtime.getWebviewManager = originalGetWebviewManager;
+      slotController.getState = originalGetState;
       slotController.isConnected = originalIsConnected;
+      slotController.connect = originalConnect;
       appState.getArchiveAccountIdForProvider = originalGetArchiveAccountIdForProvider;
       appState.getProviderIdForSlot = originalGetProviderIdForSlot;
+      appState.hasUs1Identity = originalHasUs1Identity;
+      appState.isAssistantToolsReady = originalIsAssistantToolsReady;
+      appState.isAssigned = originalIsAssigned;
       appState.isConnected = originalAppStateIsConnected;
       appState.isUs1Connected = originalAppStateIsUs1Connected;
+      appState.setAssistantToolsReady = originalSetAssistantToolsReady;
       Date.now = originalDateNow;
 
       if (originalWindow === undefined) {
@@ -206,6 +268,125 @@ test(
       assert.equal(result.reply?.attachments?.[0]?.path, "/tmp/reply-image.png");
       assert.equal(result.artifacts?.[0]?.mimeType, "image/png");
     } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge message.send auto-connects assigned AI targets before dispatch",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness();
+    let connected = false;
+    const connectionCalls: string[] = [];
+    let sentProvider = "";
+    let sentText = "";
+
+    try {
+      harness.slotController.getState = () => ({
+        state: connected ? "connected" : "assigned",
+        domReady: connected,
+        urlExcluded: false,
+      });
+      harness.slotController.isConnected = () => connected;
+      harness.appState.isAssigned = () => true;
+      harness.appState.isConnected = () => connected;
+      harness.coreEngine.setConnection = async (provider, nextConnected) => {
+        connectionCalls.push(`${provider}:${String(nextConnected)}`);
+        connected = nextConnected === true;
+        return { success: true };
+      };
+      harness.coreEngine.sendBatchInternal = async () => {
+        throw new Error("sendBatch should not run for single-target text sends");
+      };
+      harness.coreEngine.sendMessageInternal = async (payload) => {
+        sentProvider = payload?.provider ?? "";
+        sentText = payload?.text ?? "";
+        return { success: true };
+      };
+
+      const result = await slotBridgeHandler({
+        action: "message.send",
+        fromSlot: "user",
+        payload: { text: "Auto-connect now" },
+        toSlot: "ai1",
+      });
+
+      assert.equal(result.success, true);
+      assert.deepEqual(connectionCalls, ["ai1:true"]);
+      assert.equal(sentProvider, "ai1");
+      assert.equal(sentText.startsWith("Auto-connect now"), true);
+    } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge message.send auto-connects AI0 through assistant readiness before dispatch",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness({ immediateTimers: true });
+    const originalGetAdapter = AssistantProviderRegistry.getAdapter;
+    let connected = false;
+    let readyChecks = 0;
+    let sentProvider = "";
+    let sentText = "";
+
+    try {
+      harness.slotController.getState = () => ({
+        state: connected ? "connected" : "assigned",
+        domReady: connected,
+        urlExcluded: false,
+      });
+      harness.slotController.isConnected = () => connected;
+      harness.slotController.connect = async () => {
+        connected = true;
+        return { success: true };
+      };
+      harness.appState.getProviderIdForSlot = () => "opencode-ui";
+      harness.appState.isAssigned = () => true;
+      harness.appState.isConnected = () => connected;
+      harness.appState.isAssistantToolsReady = () => {
+        readyChecks += 1;
+        return connected && readyChecks > 2;
+      };
+      AssistantProviderRegistry.getAdapter = () =>
+        ({
+          id: "opencode-ui",
+          name: "OpenCode UI",
+          getServerStatus: () => ({ running: true }),
+          startServer: async () => ({
+            success: true,
+            url: "/pages/opencode-ui.html?port=4096",
+          }),
+          stopServer: async () => ({ success: true }),
+          waitForReady: async () => true,
+        }) as ReturnType<typeof AssistantProviderRegistry.getAdapter>;
+      harness.coreEngine.sendBatchInternal = async () => {
+        throw new Error("sendBatch should not run for single-target text sends");
+      };
+      harness.coreEngine.sendMessageInternal = async (payload) => {
+        sentProvider = payload?.provider ?? "";
+        sentText = payload?.text ?? "";
+        return { success: true };
+      };
+
+      const result = await slotBridgeHandler({
+        action: "message.send",
+        fromSlot: "user",
+        payload: { text: "Wake AI0" },
+        toSlot: "ai0",
+      });
+
+      assert.equal(result.success, true);
+      assert.equal(sentProvider, "ai0");
+      assert.equal(sentText.startsWith("Wake AI0"), true);
+      assert.equal(connected, true);
+      assert.equal(readyChecks > 2, true);
+    } finally {
+      AssistantProviderRegistry.getAdapter = originalGetAdapter;
       harness.restore();
     }
   }
@@ -656,6 +837,138 @@ test(
         ],
         "mail reply"
       );
+    } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge session.open honors connectPolicy never without forcing auto-connect",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness();
+    const connectionCalls: string[] = [];
+
+    try {
+      harness.slotController.getState = () => ({
+        state: "assigned",
+        domReady: false,
+        urlExcluded: false,
+      });
+      harness.slotController.isConnected = () => false;
+      harness.appState.isAssigned = () => true;
+      harness.appState.isConnected = () => false;
+      harness.coreEngine.setConnection = async (provider, nextConnected) => {
+        connectionCalls.push(`${provider}:${String(nextConnected)}`);
+        return { success: true };
+      };
+
+      const result = await slotBridgeHandler({
+        action: "session.open",
+        connectPolicy: "never",
+        payload: { title: "Strict session" },
+        toSlot: "ai1",
+      });
+
+      assert.equal(result.success, false);
+      assert.equal(result.code, "TARGET_UNREACHABLE");
+      assert.deepEqual(connectionCalls, []);
+    } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge session.switch honors connectPolicy require-ready without forcing auto-connect",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness();
+    const connectionCalls: string[] = [];
+
+    try {
+      harness.slotController.getState = () => ({
+        state: "assigned",
+        domReady: false,
+        urlExcluded: false,
+      });
+      harness.slotController.isConnected = () => false;
+      harness.appState.isAssigned = () => true;
+      harness.appState.isConnected = () => false;
+      harness.coreEngine.setConnection = async (provider, nextConnected) => {
+        connectionCalls.push(`${provider}:${String(nextConnected)}`);
+        return { success: true };
+      };
+      harness.conversationListManager.refresh = async () => {
+        throw new Error("refresh should not run when require-ready fails");
+      };
+
+      const result = await slotBridgeHandler({
+        action: "session.switch",
+        connectPolicy: "require-ready",
+        sessionRef: { conversationId: "conv-ai1-strict" },
+        toSlot: "ai1",
+      });
+
+      assert.equal(result.success, false);
+      assert.equal(result.code, "TARGET_NOT_READY");
+      assert.deepEqual(connectionCalls, []);
+    } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge session.switch supports US1 targets and resolves local session ids after refresh",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness();
+    const refreshCalls: Array<Record<string, unknown>> = [];
+    const selectionCalls: Array<{ conversationId: string; provider?: string; silent?: boolean }> = [];
+
+    try {
+      harness.appState.hasUs1Identity = () => true;
+      harness.appState.isUs1Connected = () => true;
+      harness.conversationListManager.refresh = async (options = {}) => {
+        refreshCalls.push(options);
+        harness.conversationListManager.entries = [
+          {
+            id: "conv-us1-1",
+            localSessionId: "us1-local-1",
+            provider: "us1",
+          },
+        ];
+      };
+      harness.conversationListManager.updateSelection = (conversationId, options = {}) => {
+        selectionCalls.push({
+          conversationId,
+          provider: options.provider,
+          silent: options.silent,
+        });
+        return conversationId === "conv-us1-1";
+      };
+
+      const result = await slotBridgeHandler({
+        action: "session.switch",
+        sessionRef: {
+          id: "us1-local-1",
+        },
+        toSlot: "us1",
+      });
+
+      assert.equal(result.success, true);
+      assert.deepEqual(refreshCalls, [{ provider: "us1", silent: true }]);
+      assert.deepEqual(selectionCalls, [
+        {
+          conversationId: "conv-us1-1",
+          provider: "us1",
+          silent: false,
+        },
+      ]);
+      assert.equal(result.session?.id, "us1-local-1");
+      assert.equal(result.session?.conversationId, "conv-us1-1");
     } finally {
       harness.restore();
     }

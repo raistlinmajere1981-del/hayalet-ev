@@ -64,6 +64,7 @@ export interface ForgeRoomSnapshot {
 }
 
 export interface ForgeUiContextState {
+  assistantAssigned: boolean;
   assistantAvatar: string | null;
   assistantConnected: boolean;
   assistantNickname: string;
@@ -140,6 +141,7 @@ export function createEmptyForgeRoomSnapshot(): ForgeRoomSnapshot {
 
 export function createEmptyForgeUiContext(): ForgeUiContextState {
   return {
+    assistantAssigned: false,
     assistantAvatar: null,
     assistantConnected: false,
     assistantNickname: "AI0",

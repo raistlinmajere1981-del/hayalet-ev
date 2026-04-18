@@ -92,9 +92,9 @@ function isTeamTetrisBlocked(state: TeamTetrisHostState): boolean {
 
 function getTeamTetrisReadiness(context: TeamTetrisContext): TeamTetrisSeatReadiness {
   return {
-    ai1: context.slots.ai1.ready === true,
-    ai2: context.slots.ai2.ready === true,
-    us1: context.slots.us1.ready === true,
+    ai1: context.slots.ai1.dispatchable === true,
+    ai2: context.slots.ai2.dispatchable === true,
+    us1: context.slots.us1.dispatchable === true,
   };
 }
 

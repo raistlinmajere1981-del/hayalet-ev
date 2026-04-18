@@ -399,6 +399,7 @@
         "warning": "needs review",
         "stale": "stale",
         "aiOffline": "AI0 is offline",
+        "aiReconnect": "AI0 will reconnect during preflight.",
         "agentTitle": "AI0",
         "agentSlot": "AI0",
         "todoTitle": "Process flow",

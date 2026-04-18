@@ -4,6 +4,7 @@ import { ASSISTANT_TIMEOUTS } from "@timeouts";
 import { ConnectButtonState } from "@shared/assistant.js";
 import type { AssistantProviderAdapter, SlotStateInfo } from "@shared/assistant.js";
 
+import { AppState } from "../../modules/app-state.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { Logger } from "../../modules/logger/index.js";
 import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
@@ -11,6 +12,7 @@ import { SettingsManager } from "../../modules/settings-manager.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import { notifyUser } from "../../ui/user-notification.js";
 import type { OverlayStage } from "./overlay-stage.js";
+import { AssistantProviderRegistry } from "./provider-registry.js";
 
 function assistantT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`shell.assistant.${key}`, params);
@@ -100,6 +102,7 @@ export async function toggleAssistantConnection(
       await controller._stopSystemActiveServers();
 
       controller._providerToolsReady = true;
+      AppState.setAssistantToolsReady(true);
 
       controller._setButtonState(ConnectButtonState.SUCCESS_STOP);
       Logger.panel(LogCategory.ASSISTANT_CORE, LogLevel.INFO, assistantT("logs.disconnected"));
@@ -125,6 +128,7 @@ export async function toggleAssistantConnection(
 
       controller._isServerRunning = false;
       controller._providerToolsReady = true;
+      AppState.setAssistantToolsReady(true);
       controller._updateServerStatus({ running: false });
 
       controller._setButtonState(ConnectButtonState.ERROR, error.message);
@@ -134,17 +138,33 @@ export async function toggleAssistantConnection(
     return;
   }
 
-  if (slotState?.state === SlotState.ASSIGNED || slotState?.state === SlotState.EMPTY) {
+  if (slotState?.state === SlotState.EMPTY || slotState == null) {
+    const noAccountMessage = AppI18n.t("app.logs.slotLifecycle.connectBlockedNoAccount");
+    Logger.warn(LogCategory.ASSISTANT_CORE, noAccountMessage);
+    notifyUser({
+      kind: "warning",
+      title: noAccountMessage,
+      dedupeKey: "assistant:connection",
+    });
+    controller._setButtonState(ConnectButtonState.ERROR, noAccountMessage);
+    controller._updateConnectionUI();
+    return;
+  }
+
+  if (slotState.state === SlotState.ASSIGNED) {
     const connectSignal = controller._beginConnectFlow();
-    const providerId = controller.providerSelect?.value ?? adapter.id;
+    const providerId = slotState.providerId ?? controller.providerSelect?.value ?? adapter.id;
+    const activeAdapter = AssistantProviderRegistry.getAdapter(providerId) ?? adapter;
+    controller._activeAdapter = activeAdapter;
     controller._providerToolsReady = providerId === "opencode-ui" ? false : true;
+    AppState.setAssistantToolsReady(controller._providerToolsReady);
 
     controller._setConnectOverlayStage(null);
     controller._setButtonState(ConnectButtonState.CANCEL_CONNECTING);
     controller._updateConnectionUI();
 
     try {
-      const result = await adapter.startServer("auto");
+      const result = await activeAdapter.startServer("auto");
 
       if (controller._isConnectFlowCancelled(connectSignal)) {
         return;
@@ -158,7 +178,7 @@ export async function toggleAssistantConnection(
         const serverReady =
           result.alreadyRunning === true
             ? true
-            : await adapter.waitForReady(result.url, 90000, connectSignal);
+            : await activeAdapter.waitForReady(result.url, 90000, connectSignal);
 
         if (controller._isConnectFlowCancelled(connectSignal)) {
           return;
@@ -170,21 +190,21 @@ export async function toggleAssistantConnection(
           Logger.panel(
             LogCategory.ASSISTANT_CORE,
             LogLevel.ERROR,
-            assistantT("logs.providerServerTimeout", { name: adapter.name }),
+            assistantT("logs.providerServerTimeout", { name: activeAdapter.name }),
             {
               url: result.url,
             }
           );
           notifyUser({
             kind: "error",
-            title: assistantT("logs.providerServerTimeout", { name: adapter.name }),
+            title: assistantT("logs.providerServerTimeout", { name: activeAdapter.name }),
             dedupeKey: "assistant:connection",
           });
 
           return;
         }
 
-        const serverStatus = adapter.getServerStatus();
+        const serverStatus = activeAdapter.getServerStatus();
         controller._updateServerStatus({
           running: true,
           ...(typeof serverStatus.port === "number" ? { port: serverStatus.port } : {}),
@@ -214,21 +234,21 @@ export async function toggleAssistantConnection(
         });
       } else {
         const resolvedErrorMessage = resolveIpcErrorMessage(result) ?? result.error;
-        const errorMessage =
-          typeof resolvedErrorMessage === "string" && resolvedErrorMessage !== ""
-            ? resolvedErrorMessage
-            : assistantT("errors.providerServeStartFailed", { name: adapter.name });
+          const errorMessage =
+            typeof resolvedErrorMessage === "string" && resolvedErrorMessage !== ""
+              ? resolvedErrorMessage
+              : assistantT("errors.providerServeStartFailed", { name: activeAdapter.name });
         Logger.panel(
           LogCategory.ASSISTANT_CORE,
           LogLevel.ERROR,
-          assistantT("logs.providerServerStartFailed", { name: adapter.name }),
+          assistantT("logs.providerServerStartFailed", { name: activeAdapter.name }),
           {
             error: errorMessage,
           }
         );
         notifyUser({
           kind: "error",
-          title: assistantT("logs.providerServerStartFailed", { name: adapter.name }),
+          title: assistantT("logs.providerServerStartFailed", { name: activeAdapter.name }),
           message: errorMessage,
           dedupeKey: "assistant:connection",
         });
