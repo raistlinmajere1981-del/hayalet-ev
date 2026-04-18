@@ -6,6 +6,7 @@ Kurallar:
 
 - Yalnizca JSON dondur.
 - Son mesajdaki semayi birebir kullan.
+- Tum insan-okur JSON string alanlarini aktif uygulama dilinde yaz.
 - Bu task icin yalnizca tek bir final cevap uret.
 - Alternatif, varyant, birden fazla taslak veya birden fazla aday JSON uretme.
 - `summary` alanini hizli bir durum ozeti icin kullan.

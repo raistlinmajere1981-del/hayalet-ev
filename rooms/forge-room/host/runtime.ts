@@ -12,6 +12,7 @@ import {
 } from "../shared/data/operator-context-catalog.js";
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
 import type {
+  ForgeArchitectSeatId,
   ForgeContextCapsule,
   ForgeGoal,
   ForgeTask,
@@ -29,8 +30,10 @@ import type {
 } from "../shared/types/index.js";
 import {
   createEmptyForgeRunOverride,
+  isForgeArchitectSeatId,
   normalizeForgeLegacyIdentifier,
   normalizeForgeSessionContextSelectionKeys,
+  resolveForgeArchitectSeatId,
   reconcileForgeSessionContextSelection,
 } from "../shared/types/index.js";
 import { createForgeHostIoRuntime } from "../shared/host/io-runtime.js";
@@ -95,6 +98,7 @@ import {
   asStringArray,
   createForgeId,
   nowIso,
+  resolveForgePromptLocale,
   toRecord,
 } from "./forge-runtime-support.js";
 
@@ -291,6 +295,9 @@ function normalizeRunOverridePayload(
     payload["riskTolerance"] === "high"
       ? payload["riskTolerance"]
       : existing?.riskTolerance;
+  const nextArchitectSeatId = isForgeArchitectSeatId(payload["architectSeatId"])
+    ? payload["architectSeatId"]
+    : existing?.architectSeatId;
   const nextRunOverride: ForgeRunOverride = {
     ...createEmptyForgeRunOverride(),
     ...(existing ?? {}),
@@ -301,11 +308,13 @@ function normalizeRunOverridePayload(
     temporaryConditions: Array.from(
       new Set(nextTemporaryConditions.map((entry) => entry.trim()).filter((entry) => entry !== ""))
     ).sort((left, right) => left.localeCompare(right)),
+    ...(nextArchitectSeatId === "ai2" ? { architectSeatId: nextArchitectSeatId } : {}),
     ...(nextMode ? { mode: nextMode } : {}),
     ...(nextRiskTolerance ? { riskTolerance: nextRiskTolerance } : {}),
   };
 
   if (
+    nextRunOverride.architectSeatId !== "ai2" &&
     nextRunOverride.enableRovoPreAnalysis !== true &&
     nextRunOverride.mode === undefined &&
     nextRunOverride.notes.trim() === "" &&
@@ -817,11 +826,33 @@ export default function createForgeRoomHostRuntime() {
       function buildPromptContext(taskContextCapsule: ForgeContextCapsule | null = null): string {
         const state = readCurrentState();
         return renderForgePromptContext({
-          bundle: state.preflight.bundle,
+          bundle:
+            state.preflight.status === "fresh" || state.preflight.status === "warning"
+              ? state.preflight.bundle
+              : null,
           contextCapsule: taskContextCapsule,
           decisionTrace: state.decisionTrace,
           runSignature: state.runSignature,
         });
+      }
+
+      function readActiveLocale(): string {
+        return resolveForgePromptLocale(
+          typeof api.getLocale === "function" ? api.getLocale() : "tr"
+        );
+      }
+
+      function describeOptionalPreflightUsage(action: string, preflight: ForgePreflightState): string {
+        if (preflight.status === "fresh") {
+          return `${action} using the latest preflight report.`;
+        }
+        if (preflight.status === "warning") {
+          return `${action} using preflight context with warnings.`;
+        }
+        if (preflight.status === "stale") {
+          return `${action} without refreshing preflight because the existing report is stale.`;
+        }
+        return `${action} without a preflight report.`;
       }
 
       function buildCurrentSynthesisProvenance(state: ForgeRuntimeState) {
@@ -871,6 +902,7 @@ export default function createForgeRoomHostRuntime() {
           const preflight = await buildForgePreflightState({
             dispatchBridge,
             goal,
+            locale: readActiveLocale(),
             onStepStart(stepId) {
               const currentPreflight = readCurrentState().preflight;
               dispatchPreflight({
@@ -918,11 +950,13 @@ export default function createForgeRoomHostRuntime() {
 
       async function runBreakdownAttempt(
         goal: ForgeGoal,
-        extraFeedback: string | null
+        extraFeedback: string | null,
+        architectSeatId: ForgeArchitectSeatId
       ): Promise<string> {
         const dispatchBridge = await requireDispatchBridge();
         const promptText = [
           buildForgeBreakdownPrompt(goal, {
+            locale: readActiveLocale(),
             promptContext: buildPromptContext(),
           }),
           extraFeedback ?? "",
@@ -933,7 +967,7 @@ export default function createForgeRoomHostRuntime() {
           await dispatchBridge({
             action: "message.sendWait",
             timeoutMs: 180000,
-            toSlot: "ai1",
+            toSlot: architectSeatId,
             payload: {
               page: "forge-room:breakdown",
               text: promptText,
@@ -984,18 +1018,40 @@ export default function createForgeRoomHostRuntime() {
       }> {
         await ensureHydrated();
         await ensureActiveSession();
-        const nextGoal = buildGoal(payload, readCurrentState().currentGoal);
+        const stateBeforeGoal = readCurrentState();
+        const nextGoal = buildGoal(payload, stateBeforeGoal.currentGoal);
+        const nextRunOverride = normalizeRunOverridePayload(payload, stateBeforeGoal.runOverride);
+        const effectiveArchitectSeatId = resolveForgeArchitectSeatId(nextRunOverride);
+        if (JSON.stringify(nextRunOverride) !== JSON.stringify(stateBeforeGoal.runOverride)) {
+          dispatchRunContext(
+            nextRunOverride,
+            buildForgeRunSignature({
+              goal: nextGoal,
+              selectedOperatorProfile: buildSelectedOperatorContext(
+                stateBeforeGoal.operatorProfile,
+                stateBeforeGoal.sessionContextSelection
+              ),
+              runOverride: nextRunOverride,
+            })
+          );
+          await persistCurrentSession("run-override-updated", {
+            sessionId: readCurrentState().activeSessionId,
+            source: "generate-draft",
+          });
+        }
         dispatchGoal(setGoalStatus(nextGoal, "draft"));
         dispatchDraftState([], null, []);
         clearExecutionState();
         syncRunSignature(nextGoal);
-        markPreflightStale("Goal changed after the last preflight run.");
+        refreshPreflightValidity(nextGoal);
         syncCoordinatorState({
           planStatus: "generating-draft",
           synthesisStatus: "idle",
-          note: "Running preflight and generating a draft breakdown through the Architect lane.",
+          note: describeOptionalPreflightUsage(
+            `Generating a draft breakdown through ${effectiveArchitectSeatId.toUpperCase()}`,
+            readCurrentState().preflight
+          ),
         });
-        await ensureFreshPreflight(nextGoal);
 
         let lastParsed = {
           draftSourceText: "",
@@ -1013,7 +1069,11 @@ export default function createForgeRoomHostRuntime() {
                   "Regenerate a corrected JSON response that satisfies the contract exactly.",
                 ].join("\n");
           // eslint-disable-next-line no-await-in-loop -- NOTE: retries must stay ordered so validator feedback applies to the latest draft.
-          const rawText = await runBreakdownAttempt(nextGoal, extraFeedback);
+          const rawText = await runBreakdownAttempt(
+            nextGoal,
+            extraFeedback,
+            effectiveArchitectSeatId
+          );
           lastParsed = parseForgeBreakdownDraft(rawText);
           if (lastParsed.payload !== null && lastParsed.validationMessages.length === 0) {
             const normalized = normalizeForgeBreakdownDraft(lastParsed.payload);
@@ -1725,11 +1785,13 @@ export default function createForgeRoomHostRuntime() {
             message: "There are no queued assignments to dispatch.",
           };
         }
-        await ensureFreshPreflight(goal);
 
         syncCoordinatorState({
           planStatus: "dispatching",
-          note: "Dispatching queued assignments and waiting for live responses.",
+          note: describeOptionalPreflightUsage(
+            "Dispatching queued assignments and waiting for live responses",
+            readCurrentState().preflight
+          ),
         });
 
         const assignments = [...state.assignments];
@@ -1793,6 +1855,7 @@ export default function createForgeRoomHostRuntime() {
                     approvedTasks,
                     assignment: dispatchedAssignment,
                     goal,
+                    locale: readActiveLocale(),
                     promptContext: buildPromptContext(task.contextCapsule ?? null),
                     task,
                   }),
@@ -1957,12 +2020,14 @@ export default function createForgeRoomHostRuntime() {
         }
         const currentGoal = state.currentGoal;
         const dispatchBridge = await requireDispatchBridge();
-        await ensureFreshPreflight(currentGoal);
         const generationState = readCurrentState();
         syncCoordinatorState({
           planStatus: "synthesis-ready",
           synthesisStatus: "ready",
-          note: "Generating a synthesis candidate through the Architect lane.",
+          note: describeOptionalPreflightUsage(
+            "Generating a synthesis candidate through the active Forge context",
+            generationState.preflight
+          ),
         });
         const promoteFallbackSynthesis = async (
           reason: string
@@ -2017,6 +2082,7 @@ export default function createForgeRoomHostRuntime() {
               text: buildForgeSynthesisPrompt({
                 conflicts: generationState.conflicts,
                 goal: currentGoal,
+                locale: readActiveLocale(),
                 promptContext: buildPromptContext(),
                 responses: generationState.responses,
                 tasks: generationState.approvedTasks,

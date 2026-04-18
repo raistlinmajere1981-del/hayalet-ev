@@ -88,11 +88,13 @@ test("forge-room synthesis runtime builds a prompt with response ids and parses 
   const prompt = buildForgeSynthesisPrompt({
     conflicts: synthesisConflicts,
     goal: synthesisGoal,
+    locale: "tr",
     responses: synthesisResponses,
     tasks: synthesisTasks,
   });
   assert.match(prompt, /forge-response-1/);
   assert.match(prompt, /forge-conflict-1/);
+  assert.match(prompt, /Use Turkish for every human-readable JSON string value\./);
 
   const parsed = parseForgeSynthesisResponse({
     conflicts: synthesisConflicts,

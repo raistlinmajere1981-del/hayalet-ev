@@ -11,6 +11,7 @@ import {
 } from "../types/index.js";
 import {
   createEmptyForgeRoomSnapshot,
+  type ForgeUiArchitectSeatState,
   type ForgeRoomSnapshot,
   type ForgeUiContextState,
 } from "./state.js";
@@ -128,6 +129,7 @@ function normalizeRunOverrideSnapshot(value: unknown): ForgeRoomSnapshot["runOve
   const notes =
     typeof source["notes"] === "string" && source["notes"].trim() !== "" ? source["notes"] : "";
   if (
+    source["architectSeatId"] !== "ai2" &&
     temporaryConditions.length === 0 &&
     source["mode"] !== "learn_first" &&
     source["mode"] !== "result_first" &&
@@ -147,12 +149,17 @@ function normalizeRunOverrideSnapshot(value: unknown): ForgeRoomSnapshot["runOve
     source["riskTolerance"] === "high"
       ? source["riskTolerance"]
       : null;
+  const architectSeatId =
+    source["architectSeatId"] === "ai1" || source["architectSeatId"] === "ai2"
+      ? source["architectSeatId"]
+      : null;
   return {
     enableRovoPreAnalysis: source["enableRovoPreAnalysis"] === true,
     notes,
     temporaryConditions: [...new Set(temporaryConditions)].sort((left, right) =>
       left.localeCompare(right)
     ),
+    ...(architectSeatId === "ai2" ? { architectSeatId } : {}),
     ...(mode ? { mode } : {}),
     ...(riskTolerance ? { riskTolerance } : {}),
   };
@@ -174,12 +181,30 @@ export type ForgeHostMessage =
       result?: unknown;
     };
 
+function normalizeDraftArchitectSeatSnapshot(
+  value: unknown,
+  seatId: "ai1" | "ai2"
+): ForgeUiArchitectSeatState {
+  const source = toRecord(value);
+  return {
+    assigned: source["assigned"] === true,
+    avatar:
+      typeof source["avatar"] === "string" && source["avatar"].trim() !== ""
+        ? source["avatar"].trim()
+        : null,
+    connected: source["connected"] === true,
+    nickname: asNonEmptyString(source["nickname"], seatId.toUpperCase()),
+    seatId,
+  };
+}
+
 export function sanitizeForgeUiContext(payload: unknown): ForgeUiContextState {
   const source = toRecord(payload);
   const room = toRecord(source["room"]);
   const presence = toRecord(source["presence"]);
   const presenceUser = toRecord(presence["user"] ?? source["user"]);
   const assistant = toRecord(presence["assistant"] ?? source["assistant"]);
+  const slots = toRecord(presence["slots"] ?? source["slots"]);
   const activeFeature = toRecord(source["activeFeature"]);
   const assistantNickname =
     typeof assistant["nickname"] === "string" && assistant["nickname"].trim() !== ""
@@ -196,6 +221,10 @@ export function sanitizeForgeUiContext(payload: unknown): ForgeUiContextState {
     assistantAvatar,
     assistantConnected,
     assistantNickname,
+    draftArchitectSeats: {
+      ai1: normalizeDraftArchitectSeatSnapshot(slots["ai1"], "ai1"),
+      ai2: normalizeDraftArchitectSeatSnapshot(slots["ai2"], "ai2"),
+    },
     roomId: asNonEmptyString(room["id"], "forge-room"),
     roomName: asNonEmptyString(room["name"], "Forge Room"),
     featureId: asNonEmptyString(activeFeature["id"], "forge-workbench"),

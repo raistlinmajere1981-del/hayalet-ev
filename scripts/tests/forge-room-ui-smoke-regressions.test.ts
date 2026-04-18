@@ -522,13 +522,32 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       },
     });
 
-    const panelIds = ["goal", "responses", "synthesis", "coordinator"];
+    const panelIds = ["goal", "coordinator"];
     panelIds.forEach((panelId) => {
       assert.ok(
         environment.app.querySelector(`[data-forge-panel="${panelId}"]`),
         `Expected panel ${panelId} to render`
       );
     });
+    const surfaceTabs = environment.app.querySelectorAll("[data-forge-action='open-surface']");
+    assert.equal(surfaceTabs.length, 3);
+    const goalSurfaceTab = surfaceTabs.find((element) => element.dataset["forgeSurface"] === "goal");
+    const responsesSurfaceTab = surfaceTabs.find(
+      (element) => element.dataset["forgeSurface"] === "responses"
+    );
+    const synthesisSurfaceTab = surfaceTabs.find(
+      (element) => element.dataset["forgeSurface"] === "synthesis"
+    );
+    assert.ok(goalSurfaceTab);
+    assert.ok(responsesSurfaceTab);
+    assert.ok(synthesisSurfaceTab);
+    assert.equal(goalSurfaceTab.disabled, false);
+    assert.equal(responsesSurfaceTab.disabled, true);
+    assert.equal(synthesisSurfaceTab.disabled, true);
+    fireEvent(responsesSurfaceTab, "click");
+    assert.equal(environment.app.querySelector("[data-forge-panel='responses']"), null);
+    assert.equal(environment.app.querySelector("[data-forge-panel='synthesis']"), null);
+    assert.ok(environment.app.querySelector("[data-forge-panel='goal']"));
 
     assert.deepEqual(environment.readyPayload(), {
       room: "forge-room",
@@ -554,10 +573,10 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     const uiText = readTreeText(environment.app);
     assert.match(uiText, /State Approved/);
     assert.match(uiText, /NEXT: DISPATCH/);
-    assert.match(uiText, /CENTER GATE LOCKED/);
-    assert.match(uiText, /REQUIRES: DISPATCH/);
-    assert.match(uiText, /OUTPUT GATE LOCKED/);
-    assert.match(uiText, /REQUIRES: RESPONSES/);
+    assert.match(uiText, /Flow/);
+    assert.match(uiText, /Responses/);
+    assert.match(uiText, /Output/);
+    assert.match(uiText, /Locked/);
     assert.match(uiText, /Operator Profile/);
     assert.match(uiText, /Preflight/);
     assert.match(uiText, /Session \+ goal/);
@@ -787,6 +806,31 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       },
       locale: "en",
       translations: loadTranslations("en"),
+      presence: {
+        assistant: {
+          assigned: false,
+          nickname: "Hayalet",
+          avatar: "/avatars/ai0.png",
+          connected: false,
+        },
+        user: {
+          nickname: "Operator",
+        },
+        slots: {
+          ai1: {
+            assigned: true,
+            nickname: "Architect One",
+            avatar: "/avatars/ai1.png",
+            connected: true,
+          },
+          ai2: {
+            assigned: true,
+            nickname: "Architect Two",
+            avatar: "/avatars/ai2.png",
+            connected: false,
+          },
+        },
+      },
       assistant: {
         assigned: false,
         nickname: "Hayalet",
@@ -977,6 +1021,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.deepEqual(environment.sentEvents.at(-1), {
       command: "ForgeRoomUpdateRunOverride",
       payload: {
+        architectSeatId: "ai1",
         enableRovoPreAnalysis: false,
         notes: "",
         temporaryConditions: ["Protect nearby plastic"],
@@ -990,6 +1035,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.deepEqual(environment.sentEvents.at(-1), {
       command: "ForgeRoomUpdateRunOverride",
       payload: {
+        architectSeatId: "ai1",
         enableRovoPreAnalysis: false,
         notes: "",
         temporaryConditions: [],
@@ -1004,7 +1050,14 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       },
     });
 
-    fireEvent(preflightPreviousButton, "click");
+    const refreshedPreflightStageButtons = environment.app.querySelectorAll(
+      "[data-forge-action='open-stage']"
+    );
+    const refreshedPreflightPreviousButton = refreshedPreflightStageButtons.find(
+      (element) => element.dataset["forgeActionValue"] === "operator"
+    );
+    assert.ok(refreshedPreflightPreviousButton);
+    fireEvent(refreshedPreflightPreviousButton, "click");
     environment.emitHostMessage({
       type: "command-result",
       command: "ForgeRoomSaveSession",
@@ -1069,7 +1122,32 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
         message: null,
       },
     });
-
+    const trackingText = readTreeText(environment.app);
+    assert.match(trackingText, /Architect One/);
+    assert.match(trackingText, /Architect Two/);
+    const architectSeatSelect = environment.app.querySelector(
+      "#forge-run-override-architect-seat"
+    ) as FakeElement | null;
+    assert.ok(architectSeatSelect);
+    architectSeatSelect.value = "ai2";
+    fireEvent(architectSeatSelect, "change");
+    assert.deepEqual(environment.sentEvents.at(-1), {
+      command: "ForgeRoomUpdateRunOverride",
+      payload: {
+        architectSeatId: "ai2",
+        enableRovoPreAnalysis: false,
+        notes: "",
+        temporaryConditions: [],
+      },
+    });
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomUpdateRunOverride",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
     const trackingToDraftButtons = environment.app.querySelectorAll(
       "[data-forge-action='open-stage']"
     );
@@ -1271,9 +1349,697 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.match(conflictText, /State Conflict/);
     assert.match(conflictText, /RESPONSE LANE BLOCKED/);
     assert.match(conflictText, /REQUIRES: CONFLICT RESOLUTION/);
+    assert.match(conflictText, /Lead with a compact export contract\./);
+    assert.match(conflictText, /Favor a wider checklist before export\./);
     assert.match(conflictText, /SELECT ONE RESPONSE/);
-    assert.match(conflictText, /OUTPUT GATE BLOCKED/);
+    assert.match(conflictText, /BLOCKER: OPEN DECISION/);
+    assert.ok(environment.app.querySelector("[data-forge-panel='responses']"));
+    const conflictFlowSurfaceTab = environment.app
+      .querySelectorAll("[data-forge-action='open-surface']")
+      .find((element) => element.dataset["forgeSurface"] === "goal");
+    const conflictOutputSurfaceTab = environment.app
+      .querySelectorAll("[data-forge-action='open-surface']")
+      .find((element) => element.dataset["forgeSurface"] === "synthesis");
+    assert.ok(conflictFlowSurfaceTab);
+    assert.ok(conflictOutputSurfaceTab);
+    assert.equal(conflictFlowSurfaceTab.disabled, true);
+    assert.equal(conflictOutputSurfaceTab.disabled, true);
+    fireEvent(conflictFlowSurfaceTab, "click");
+    assert.ok(environment.app.querySelector("[data-forge-panel='responses']"));
     assert.doesNotMatch(conflictText, /Required action/);
+  } finally {
+    await installedCopy.cleanup();
+    environment.restore();
+  }
+});
+
+test("forge-room resets the guided surface when a previously selected panel becomes locked", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("forge-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?surface-reset=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      type: "host-context",
+      room: { id: "forge-room", name: "Forge Room" },
+      activeFeature: { id: "forge-workbench" },
+      locale: "en",
+      translations: loadTranslations("en"),
+      assistant: {
+        assigned: true,
+        nickname: "Hayalet",
+        avatar: "/avatars/ai0.png",
+        connected: true,
+      },
+      user: {
+        nickname: "Operator",
+      },
+    });
+
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        activeSessionId: "forge-session-surface-reset",
+        currentGoal: {
+          id: "forge-goal-surface-reset",
+          summary: "Repair Room integration",
+          brief: "Guide the synthesis surface.",
+          constraints: ["Keep the scope local."],
+          acceptanceCriteria: ["Repair Room can read the handoff package."],
+          status: "synthesis-ready",
+          targetRoomId: "repair-room",
+          createdAt: "2026-04-18T00:00:00.000Z",
+          updatedAt: "2026-04-18T00:00:00.000Z",
+        },
+        responses: [
+          {
+            id: "forge-response-surface-reset",
+            assignmentId: "forge-assignment-surface-reset",
+            taskId: "forge-task-surface-reset",
+            seatId: "ai1",
+            roleId: "architect",
+            personaPresetId: null,
+            summary: "Keep the export local.",
+            body: "Use a narrow export contract.",
+            rawText: "Use a narrow export contract.",
+            archiveRef: null,
+            artifacts: [],
+            status: "captured",
+            createdAt: "2026-04-18T00:02:00.000Z",
+          },
+        ],
+        syntheses: [
+          {
+            id: "forge-synthesis-surface-reset",
+            summary: "Ready synthesis",
+            body: "A selected export seam is ready.",
+            decisionTrace: [],
+            provenance: null,
+            sourceTaskIds: ["forge-task-surface-reset"],
+            selectedResponseIds: ["forge-response-surface-reset"],
+            unresolvedConflictIds: [],
+            acceptanceCriteria: ["Repair Room can read the handoff package."],
+            openQuestions: [],
+            status: "draft",
+            createdAt: "2026-04-18T00:03:00.000Z",
+          },
+        ],
+      },
+      meta: {
+        roleCatalog: {},
+        personaPresets: {},
+      },
+    });
+
+    assert.ok(environment.app.querySelector("[data-forge-panel='synthesis']"));
+    const responsesSurfaceTab = environment.app
+      .querySelectorAll("[data-forge-action='open-surface']")
+      .find((element) => element.dataset["forgeSurface"] === "responses");
+    assert.ok(responsesSurfaceTab);
+    assert.equal(responsesSurfaceTab.disabled, false);
+    fireEvent(responsesSurfaceTab, "click");
+    assert.ok(environment.app.querySelector("[data-forge-panel='responses']"));
+
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        activeSessionId: "forge-session-surface-reset",
+        currentGoal: {
+          id: "forge-goal-surface-reset",
+          summary: "Repair Room integration",
+          brief: "Return to the flow surface.",
+          constraints: ["Keep the scope local."],
+          acceptanceCriteria: ["Repair Room can read the handoff package."],
+          status: "approved",
+          targetRoomId: "repair-room",
+          createdAt: "2026-04-18T00:00:00.000Z",
+          updatedAt: "2026-04-18T00:04:00.000Z",
+        },
+        approvedTasks: [
+          {
+            id: "forge-task-surface-reset",
+            parentTaskId: null,
+            level: 1,
+            title: "Prepare export",
+            summary: "Shape the handoff.",
+            executionKind: "task",
+            dependsOnTaskIds: [],
+            assignable: true,
+            dispatchMode: "single-owner",
+            seatId: "ai1",
+            roleId: "architect",
+            compareSeatIds: [],
+            personaPresetId: null,
+            status: "approved",
+          },
+        ],
+        responses: [],
+        syntheses: [],
+      },
+      meta: {
+        roleCatalog: {},
+        personaPresets: {},
+      },
+    });
+
+    assert.ok(environment.app.querySelector("[data-forge-panel='goal']"));
+    assert.equal(environment.app.querySelector("[data-forge-panel='responses']"), null);
+    const lockedResponsesSurfaceTab = environment.app
+      .querySelectorAll("[data-forge-action='open-surface']")
+      .find((element) => element.dataset["forgeSurface"] === "responses");
+    assert.ok(lockedResponsesSurfaceTab);
+    assert.equal(lockedResponsesSurfaceTab.disabled, true);
+  } finally {
+    await installedCopy.cleanup();
+    environment.restore();
+  }
+});
+
+test("forge-room resets the active stage when the selected stage is no longer reachable", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("forge-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?stage-reset=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      type: "host-context",
+      room: { id: "forge-room", name: "Forge Room" },
+      activeFeature: { id: "forge-workbench" },
+      locale: "en",
+      translations: loadTranslations("en"),
+      assistant: {
+        assigned: true,
+        nickname: "Hayalet",
+        avatar: "/avatars/ai0.png",
+        connected: true,
+      },
+      user: {
+        nickname: "Operator",
+      },
+    });
+
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        activeSessionId: "forge-session-stage-reset",
+        currentGoal: {
+          id: "forge-goal-stage-reset",
+          summary: "Repair Room integration",
+          brief: "Open the preflight stage.",
+          constraints: ["Keep the scope local."],
+          acceptanceCriteria: ["Repair Room can read the handoff package."],
+          status: "draft",
+          targetRoomId: "repair-room",
+          createdAt: "2026-04-18T00:00:00.000Z",
+          updatedAt: "2026-04-18T00:00:00.000Z",
+        },
+        sessionList: [],
+      },
+      meta: {
+        roleCatalog: {},
+        personaPresets: {},
+      },
+    });
+
+    const operatorStageButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "operator");
+    assert.ok(operatorStageButton);
+    fireEvent(operatorStageButton, "click");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomUpdateGoal",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
+
+    const preflightStageButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "preflight");
+    assert.ok(preflightStageButton);
+    fireEvent(preflightStageButton, "click");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomSaveSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='preflight']"));
+
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        activeSessionId: null,
+        currentGoal: null,
+        sessionList: [],
+      },
+      meta: {
+        roleCatalog: {},
+        personaPresets: {},
+      },
+    });
+
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='session']"));
+  } finally {
+    await installedCopy.cleanup();
+    environment.restore();
+  }
+});
+
+test("forge-room waits for the first forge-state snapshot before rendering empty session and operator panels", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("forge-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?bootstrap=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      type: "host-context",
+      room: {
+        id: "forge-room",
+        name: "Forge Room",
+      },
+      activeFeature: {
+        id: "forge-workbench",
+      },
+      locale: "en",
+      translations: loadTranslations("en"),
+      assistant: {
+        assigned: true,
+        nickname: "Hayalet",
+        avatar: "/avatars/ai0.png",
+        connected: true,
+      },
+      user: {
+        nickname: "Operator",
+      },
+    });
+
+    const bootstrapText = readTreeText(environment.app);
+    assert.match(bootstrapText, /Connecting to Forge host/i);
+    assert.match(bootstrapText, /waiting for host state/i);
+    assert.match(
+      bootstrapText,
+      /waiting for the room host to attach the first state snapshot/i
+    );
+    assert.equal(environment.app.querySelector("#forge-goal-summary"), null);
+
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        activeSessionId: "forge-session-bootstrap",
+        currentGoal: {
+          id: "forge-goal-bootstrap",
+          summary: "Repair Room integration",
+          brief: "Wait for the first host snapshot.",
+          constraints: ["Keep the scope local."],
+          acceptanceCriteria: ["Render the hydrated goal panel."],
+          status: "draft",
+          targetRoomId: "repair-room",
+          createdAt: "2026-04-18T00:00:00.000Z",
+          updatedAt: "2026-04-18T00:00:00.000Z",
+        },
+        draftTasks: [],
+        draftSourceText: null,
+        validationMessages: [],
+        operatorProfile: {
+          schemaVersion: 2,
+          updatedAt: "2026-04-18T00:00:00.000Z",
+          skills: [],
+          equipment: [],
+          preferences: {},
+        },
+        preflight: {
+          bundle: null,
+          errorMessage: null,
+          promptCharCount: 0,
+          ranAt: null,
+          staleReason: null,
+          status: "idle",
+          warnings: [],
+        },
+        approvedTasks: [],
+        assignments: [],
+        responses: [],
+        conflicts: [],
+        syntheses: [],
+        selectedSynthesisId: null,
+        sessionContextSelection: {
+          skillKeys: [],
+          equipmentKeys: [],
+          preferenceKeys: [],
+        },
+        coordinatorState: {
+          actorId: "coordinator",
+          planStatus: "idle",
+          assignmentQueueTotal: 0,
+          pendingAssignmentCount: 0,
+          completedResponseCount: 0,
+          pendingConflictCount: 0,
+          synthesisStatus: "idle",
+          exportReady: false,
+          lastExportPath: null,
+          note: "Coordinator is idle.",
+          lastUpdatedAt: "2026-04-18T00:00:00.000Z",
+        },
+        sessionList: [],
+        runOverride: null,
+      },
+      meta: {
+        roleCatalog: {},
+        personaPresets: {},
+      },
+    });
+
+    assert.ok(environment.app.querySelector("#forge-goal-summary"));
+    assert.doesNotMatch(readTreeText(environment.app), /Connecting to Forge host/i);
+  } finally {
+    await installedCopy.cleanup();
+    environment.restore();
+  }
+});
+
+test("forge-room routes draft generation through the selected architect seat from the tracking stage", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("forge-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?architect-seat=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      type: "host-context",
+      room: {
+        id: "forge-room",
+        name: "Forge Room",
+      },
+      activeFeature: {
+        id: "forge-workbench",
+      },
+      locale: "en",
+      translations: loadTranslations("en"),
+      assistant: {
+        assigned: true,
+        nickname: "Hayalet",
+        avatar: "/avatars/ai0.png",
+        connected: true,
+      },
+      user: {
+        nickname: "Operator",
+      },
+    });
+
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        activeSessionId: "forge-session-architect-seat",
+        currentGoal: {
+          id: "forge-goal-architect-seat",
+          summary: "Repair Room integration",
+          brief: "Route the first draft to the selected architect seat.",
+          constraints: ["Keep the scope local."],
+          acceptanceCriteria: ["AI2 can own the draft request."],
+          status: "draft",
+          targetRoomId: "repair-room",
+          createdAt: "2026-04-18T00:00:00.000Z",
+          updatedAt: "2026-04-18T00:00:00.000Z",
+        },
+        draftTasks: [],
+        draftSourceText: null,
+        validationMessages: [],
+        operatorProfile: {
+          schemaVersion: 2,
+          updatedAt: "2026-04-18T00:00:00.000Z",
+          skills: [],
+          equipment: [],
+          preferences: {},
+        },
+        preflight: {
+          bundle: null,
+          errorMessage: null,
+          promptCharCount: 0,
+          ranAt: null,
+          staleReason: null,
+          status: "idle",
+          warnings: [],
+        },
+        approvedTasks: [],
+        assignments: [],
+        responses: [],
+        conflicts: [],
+        syntheses: [],
+        selectedSynthesisId: null,
+        sessionContextSelection: {
+          skillKeys: [],
+          equipmentKeys: [],
+          preferenceKeys: [],
+        },
+        coordinatorState: {
+          actorId: "coordinator",
+          planStatus: "idle",
+          assignmentQueueTotal: 0,
+          pendingAssignmentCount: 0,
+          completedResponseCount: 0,
+          pendingConflictCount: 0,
+          synthesisStatus: "idle",
+          exportReady: false,
+          lastExportPath: null,
+          note: "Coordinator is idle.",
+          lastUpdatedAt: "2026-04-18T00:00:00.000Z",
+        },
+        sessionList: [],
+        runOverride: null,
+      },
+      meta: {
+        roleCatalog: {
+          architect: {
+            id: "architect",
+            label: "Architect",
+            localActor: false,
+          },
+        },
+        personaPresets: {},
+      },
+    });
+
+    const trackingStageButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "tracking");
+    assert.ok(trackingStageButton);
+    fireEvent(trackingStageButton, "click");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomSaveSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+
+    const architectSeatSelect = environment.app.querySelector(
+      "#forge-run-override-architect-seat"
+    ) as FakeElement | null;
+    assert.ok(architectSeatSelect);
+    architectSeatSelect.value = "ai2";
+    fireEvent(architectSeatSelect, "change");
+    assert.deepEqual(environment.sentEvents.at(-1), {
+      command: "ForgeRoomUpdateRunOverride",
+      payload: {
+        architectSeatId: "ai2",
+        enableRovoPreAnalysis: false,
+        notes: "",
+        temporaryConditions: [],
+      },
+    });
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomUpdateRunOverride",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+
+    const generateDraftButton = environment.app.querySelector(
+      "[data-forge-action='generate-draft']"
+    ) as FakeElement | null;
+    assert.ok(generateDraftButton);
+    fireEvent(generateDraftButton, "click");
+    assert.deepEqual(environment.sentEvents.at(-1), {
+      command: "ForgeRoomGenerateDraft",
+      payload: {
+        architectSeatId: "ai2",
+        brief: "Route the first draft to the selected architect seat.",
+        constraints: ["Keep the scope local."],
+        summary: "Repair Room integration",
+        targetRoomId: "repair-room",
+      },
+    });
+  } finally {
+    await installedCopy.cleanup();
+    environment.restore();
+  }
+});
+
+test("forge-room generate-draft uses the live architect select value before host echo arrives", async () => {
+  const environment = createMinimalForgeUiEnvironment();
+  const installedCopy = await createRoomInstalledCopy("forge-room");
+
+  try {
+    await import(
+      `${pathToFileURL(resolve(installedCopy.rootDir, "ui/index.js")).href}?architect-live-value=${Date.now()}`
+    );
+
+    environment.emitHostMessage({
+      type: "host-context",
+      room: {
+        id: "forge-room",
+        name: "Forge Room",
+      },
+      activeFeature: {
+        id: "forge-workbench",
+      },
+      locale: "en",
+      translations: loadTranslations("en"),
+      assistant: {
+        assigned: true,
+        nickname: "Hayalet",
+        avatar: "/avatars/ai0.png",
+        connected: true,
+      },
+      user: {
+        nickname: "Operator",
+      },
+    });
+
+    environment.emitHostMessage({
+      type: "forge-state",
+      snapshot: {
+        activeSessionId: "forge-session-architect-live",
+        currentGoal: {
+          id: "forge-goal-architect-live",
+          summary: "Repair Room integration",
+          brief: "Respect the visible architect lane.",
+          constraints: ["Keep the scope local."],
+          acceptanceCriteria: ["Visible lane drives the outbound draft request."],
+          status: "draft",
+          targetRoomId: "repair-room",
+          createdAt: "2026-04-18T00:00:00.000Z",
+          updatedAt: "2026-04-18T00:00:00.000Z",
+        },
+        draftTasks: [],
+        draftSourceText: null,
+        validationMessages: [],
+        operatorProfile: {
+          schemaVersion: 2,
+          updatedAt: "2026-04-18T00:00:00.000Z",
+          skills: [],
+          equipment: [],
+          preferences: {},
+        },
+        preflight: {
+          bundle: null,
+          errorMessage: null,
+          promptCharCount: 0,
+          ranAt: null,
+          staleReason: null,
+          status: "idle",
+          warnings: [],
+        },
+        approvedTasks: [],
+        assignments: [],
+        responses: [],
+        conflicts: [],
+        syntheses: [],
+        selectedSynthesisId: null,
+        sessionContextSelection: {
+          skillKeys: [],
+          equipmentKeys: [],
+          preferenceKeys: [],
+        },
+        coordinatorState: {
+          actorId: "coordinator",
+          planStatus: "idle",
+          assignmentQueueTotal: 0,
+          pendingAssignmentCount: 0,
+          completedResponseCount: 0,
+          pendingConflictCount: 0,
+          synthesisStatus: "idle",
+          exportReady: false,
+          lastExportPath: null,
+          note: "Coordinator is idle.",
+          lastUpdatedAt: "2026-04-18T00:00:00.000Z",
+        },
+        sessionList: [],
+        runOverride: {
+          architectSeatId: "ai2",
+          enableRovoPreAnalysis: false,
+          notes: "",
+          temporaryConditions: [],
+        },
+      },
+      meta: {
+        roleCatalog: {
+          architect: {
+            id: "architect",
+            label: "Architect",
+            localActor: false,
+          },
+        },
+        personaPresets: {},
+      },
+    });
+
+    const trackingStageButton = environment.app
+      .querySelectorAll("[data-forge-action='open-stage']")
+      .find((element) => element.dataset["forgeActionValue"] === "tracking");
+    assert.ok(trackingStageButton);
+    fireEvent(trackingStageButton, "click");
+    environment.emitHostMessage({
+      type: "command-result",
+      command: "ForgeRoomSaveSession",
+      result: {
+        success: true,
+        message: null,
+      },
+    });
+
+    const architectSeatSelect = environment.app.querySelector(
+      "#forge-run-override-architect-seat"
+    ) as FakeElement | null;
+    assert.ok(architectSeatSelect);
+    assert.equal(architectSeatSelect.value, "ai2");
+    architectSeatSelect.value = "ai1";
+
+    const generateDraftButton = environment.app.querySelector(
+      "[data-forge-action='generate-draft']"
+    ) as FakeElement | null;
+    assert.ok(generateDraftButton);
+    fireEvent(generateDraftButton, "click");
+    assert.deepEqual(environment.sentEvents.at(-1), {
+      command: "ForgeRoomGenerateDraft",
+      payload: {
+        architectSeatId: "ai1",
+        brief: "Respect the visible architect lane.",
+        constraints: ["Keep the scope local."],
+        summary: "Repair Room integration",
+        targetRoomId: "repair-room",
+      },
+    });
   } finally {
     await installedCopy.cleanup();
     environment.restore();

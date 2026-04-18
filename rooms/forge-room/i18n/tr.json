@@ -8,6 +8,16 @@
       "locked": "Kilitli",
       "monitor": "İzle"
     },
+    "tabs": {
+      "flow": "Akış",
+      "responses": "Yanıtlar",
+      "output": "Çıktı",
+      "states": {
+        "active": "Şimdi",
+        "monitor": "İzle",
+        "locked": "Kilitli"
+      }
+    },
     "flow": {
       "idle": "Boş",
       "goalDefined": "Hedef Tanımlı",
@@ -404,9 +414,12 @@
         "agentSlot": "AI0",
         "todoTitle": "İşlem akışı",
         "resultTitle": "Sonuç önizlemesi",
-        "resultIdle": "Henüz ön kontrol sonucu yok.",
+        "resultIdle": "Henüz ön kontrol sonucu yok. Taslak, ön kontrol raporu olmadan da başlatılabilir.",
         "resultRunning": "Ön kontrol çalışıyor.",
         "resultReady": "Ön kontrol bağlamı hazır.",
+        "summaryTitle": "Uyumluluk özeti",
+        "warningsTitle": "Uyarılar",
+        "missingInfoTitle": "Eksik bilgi",
         "signatureLabel": "Run imzası",
         "promptSizeLabel": "Prompt",
         "todoStatus": {
@@ -437,6 +450,9 @@
         "title": "Çalışma ayarları",
         "meta": "Sadece bu çalışma için",
         "requiresSession": "Çalışma ayarlarını düzenlemek için bir oturum açın veya yükleyin.",
+        "architectTitle": "Taslak mimarı",
+        "architectField": "Taslak hattı",
+        "architectHint": "Ön kontrolden sonra ilk taslak dağılımını hangi AI'nin alacağını seçin.",
         "mode": "Mod",
         "risk": "Risk toleransı",
         "preAnalysis": "Ön analiz",
@@ -445,6 +461,10 @@
         "notesPlaceholderLong": "Bu oturum için opsiyonel çalışma notu",
         "active": "aktif",
         "inactive": "pasif",
+        "selected": "seçili",
+        "connected": "bağlı",
+        "disconnected": "bağlantı yok",
+        "unassigned": "hesap yok",
         "addCondition": "+ Koşul ekle",
         "commitCondition": "Ekle",
         "cancelCondition": "İptal"
@@ -699,6 +719,7 @@
         "decisions": "karar {count}",
         "handoff": "devir {label}"
       },
+      "activityTitle": "Akış",
       "latestPackage": "Son paket: {path}",
       "handoffStatuses": {
         "sent": "gönderildi",

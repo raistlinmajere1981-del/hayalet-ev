@@ -18,6 +18,7 @@ import {
   isForgeOperatorSkillLevel,
   normalizeForgeLegacySelectionKeys,
   normalizeForgeSessionContextSelectionKeys,
+  resolveForgeArchitectSeatId,
   type ForgeOperatorProfile,
   type ForgeSessionContextSelection,
 } from "../shared/types/index.js";
@@ -48,6 +49,7 @@ type ForgeLocalViewState = {
   goalDraft: ForgeGoalDraftState | null;
   goalDraftDirty: boolean;
   guidedSurface: ForgeWorkbenchUiSurface | null;
+  hasForgeStateSnapshot: boolean;
   operatorProfileDraft: ForgeOperatorProfile | null;
   operatorProfileDraftDirty: boolean;
   operatorProfileDraftSourceFingerprint: string | null;
@@ -94,6 +96,7 @@ type ForgeGoalDraftState = {
 };
 
 type ForgeRunOverrideDraftState = {
+  architectSeatId: "ai1" | "ai2";
   enableRovoPreAnalysis: boolean;
   mode: "learn_first" | "result_first" | "";
   notes: string;
@@ -113,11 +116,10 @@ type ForgeFocusSnapshot = {
 type ForgePersistentShell = {
   coordinator: HTMLElement;
   overlay: HTMLElement | null;
-  outputColumn: HTMLElement;
-  planColumn: HTMLElement;
-  responseColumn: HTMLElement;
   shell: HTMLDivElement;
   statusBar: HTMLElement;
+  surface: HTMLElement;
+  tabRail: HTMLElement;
   workbench: HTMLElement;
 };
 
@@ -135,6 +137,7 @@ export function createForgeRoomUiRuntime() {
     goalDraft: null,
     goalDraftDirty: false,
     guidedSurface: null,
+    hasForgeStateSnapshot: false,
     operatorProfileDraft: null,
     operatorProfileDraftDirty: false,
     operatorProfileDraftSourceFingerprint: null,
@@ -223,23 +226,21 @@ export function createForgeRoomUiRuntime() {
     const shell = createElement("div", "forge-shell");
     const statusBar = createElement("header", "forge-statusbar");
     const workbench = createElement("section", "forge-workbench");
-    const planColumn = createElement("section", "forge-column forge-column--plan");
-    const responseColumn = createElement("section", "forge-column forge-column--responses");
-    const outputColumn = createElement("section", "forge-column forge-column--output");
+    const tabRail = createElement("nav", "forge-workbench-tabs");
+    const surface = createElement("section", "forge-workbench-surface");
     const coordinator = createElement("section", "forge-coordinator-strip");
 
-    workbench.append(planColumn, responseColumn, outputColumn);
+    workbench.append(tabRail, surface);
     shell.append(statusBar, workbench, coordinator);
     mount.replaceChildren(shell);
 
     persistentShell = {
       coordinator,
       overlay: null,
-      outputColumn,
-      planColumn,
-      responseColumn,
       shell,
       statusBar,
+      surface,
+      tabRail,
       workbench,
     };
     return persistentShell;
@@ -621,6 +622,7 @@ export function createForgeRoomUiRuntime() {
     const runOverride = state.snapshot.runOverride;
     return JSON.stringify({
       sessionId: state.snapshot.activeSessionId,
+      architectSeatId: resolveForgeArchitectSeatId(runOverride),
       mode: runOverride?.mode ?? null,
       notes: runOverride?.notes ?? "",
       riskTolerance: runOverride?.riskTolerance ?? null,
@@ -711,6 +713,7 @@ export function createForgeRoomUiRuntime() {
   function createRunOverrideDraftFromSnapshot(): ForgeRunOverrideDraftState {
     const runOverride = state.snapshot.runOverride;
     return {
+      architectSeatId: resolveForgeArchitectSeatId(runOverride),
       enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
       mode: runOverride?.mode ?? "",
       notes: runOverride?.notes ?? "",
@@ -752,6 +755,7 @@ export function createForgeRoomUiRuntime() {
   }
 
   function draftToRunOverridePayload(draft: ForgeRunOverrideDraftState): {
+    architectSeatId: "ai1" | "ai2";
     enableRovoPreAnalysis: boolean;
     mode?: "learn_first" | "result_first";
     notes: string;
@@ -759,6 +763,7 @@ export function createForgeRoomUiRuntime() {
     temporaryConditions: string[];
   } {
     return {
+      architectSeatId: draft.architectSeatId,
       enableRovoPreAnalysis: draft.enableRovoPreAnalysis,
       ...(draft.mode ? { mode: draft.mode } : {}),
       notes: draft.notes,
@@ -1216,6 +1221,17 @@ export function createForgeRoomUiRuntime() {
     }
   }
 
+  function resolveActiveSurface(
+    guidedSurface: ForgeWorkbenchUiSurface | null,
+    flowSurface: ForgeWorkbenchUiSurface,
+    panelModes: ForgePanelModeMap
+  ): ForgeWorkbenchUiSurface {
+    if (guidedSurface === null) {
+      return flowSurface;
+    }
+    return panelModes[guidedSurface] === "locked" ? flowSurface : guidedSurface;
+  }
+
   function describeApprovalStep(): string | null {
     if (hasDraftTasks() !== true) {
       return text(["workbench", "guards", "requiresDraftTasks"], "REQUIRES: DRAFT TASKS");
@@ -1528,6 +1544,80 @@ export function createForgeRoomUiRuntime() {
     return bar;
   }
 
+  function renderWorkbenchTabs(
+    activeSurface: ForgeWorkbenchUiSurface,
+    panelModes: ForgePanelModeMap
+  ): HTMLElement {
+    const tabRail = createElement("nav", "forge-workbench-tabs");
+    const surfaceOrder: ForgeWorkbenchUiSurface[] = ["goal", "responses", "synthesis"];
+    surfaceOrder.forEach((surface) => {
+      const tab = createElement("button", "forge-workbench-tab");
+      tab.type = "button";
+      tab.dataset["forgeAction"] = "open-surface";
+      tab.dataset["forgeSurface"] = surface;
+      tab.dataset["state"] = panelModes[surface];
+      tab.dataset["selected"] = activeSurface === surface ? "true" : "false";
+      tab.disabled = panelModes[surface] === "locked";
+      const copy = createElement("span", "forge-workbench-tab__copy");
+      const title = createElement(
+        "strong",
+        "forge-workbench-tab__title",
+        surface === "goal"
+          ? text(["workbench", "tabs", "flow"], "Flow")
+          : surface === "responses"
+            ? text(["workbench", "tabs", "responses"], "Responses")
+            : text(["workbench", "tabs", "output"], "Output")
+      );
+      const badge = createElement(
+        "span",
+        "forge-workbench-tab__badge",
+        panelModes[surface] === "active"
+          ? text(["workbench", "tabs", "states", "active"], "Now")
+          : panelModes[surface] === "monitor"
+            ? text(["workbench", "tabs", "states", "monitor"], "Watch")
+            : text(["workbench", "tabs", "states", "locked"], "Locked")
+      );
+      copy.append(title, badge);
+      tab.append(copy);
+      tabRail.append(tab);
+    });
+    return tabRail;
+  }
+
+  function renderHostBootstrapPanel(): HTMLElement {
+    const panel = createElement("section", "forge-panel forge-panel--goal");
+    panel.dataset["forgePanel"] = "goal";
+    const header = createElement("div", "forge-panel__header");
+    header.append(
+      createElement(
+        "h2",
+        "forge-panel__title",
+        text(["workbench", "bootstrap", "title"], "Connecting to Forge host")
+      )
+    );
+    const body = createElement("div", "forge-panel__body");
+    const guide = createElement("section", "forge-state-guide forge-state-guide--gate");
+    guide.dataset["forgeGateState"] = "monitor";
+    guide.append(
+      createElement(
+        "strong",
+        "",
+        text(["workbench", "bootstrap", "status"], "WAITING FOR HOST STATE")
+      ),
+      createElement(
+        "p",
+        "forge-panel__hint",
+        text(
+          ["workbench", "bootstrap", "summary"],
+          "Forge is waiting for the room host to hydrate sessions, operator details, and workbench state."
+        )
+      )
+    );
+    body.append(guide);
+    panel.append(header, body);
+    return panel;
+  }
+
   function render() {
     const mount = documentRef.getElementById("app");
     if (mount === null) {
@@ -1550,11 +1640,15 @@ export function createForgeRoomUiRuntime() {
 
     const flow = deriveUiFlowModel();
     const panelModes = derivePanelModes(flow.state);
+    const hostBootstrapPending = viewState.hasForgeStateSnapshot !== true;
     const goalDraft = currentGoalDraft();
     const operatorProfileDraft = currentOperatorProfileDraft();
     const runOverrideDraft = currentRunOverrideDraft();
     shell.shell.dataset["forgeUiState"] = flow.state;
-    const guidedSurface = viewState.guidedSurface ?? flow.surface;
+    const guidedSurface = resolveActiveSurface(viewState.guidedSurface, flow.surface, panelModes);
+    if (viewState.guidedSurface !== null && guidedSurface === flow.surface) {
+      viewState.guidedSurface = null;
+    }
     const flowLabel = toUiFlowLabel(flow.state);
 
     const sessionContextDirty =
@@ -1590,29 +1684,17 @@ export function createForgeRoomUiRuntime() {
       sessionContextDirty,
       sessionContextSelection: currentSessionContextSelection(),
     });
+    const renderedActiveStageId = goalPanel.dataset["forgeActiveStage"];
+    if (isWorkbenchStageId(renderedActiveStageId) && renderedActiveStageId !== viewState.activeStageId) {
+      viewState.activeStageId = renderedActiveStageId;
+    }
     setPanelBadge(goalPanel, panelModes.goal);
-    shell.planColumn.className = "forge-column forge-column--plan";
-    setOptionalDataAttribute(shell.planColumn, "panelMode", panelModes.goal);
-    setOptionalDataAttribute(
-      shell.planColumn,
-      "guided",
-      guidedSurface === "goal" && panelModes.goal !== "locked" ? "true" : null
-    );
-    shell.planColumn.replaceChildren(goalPanel);
 
     const responsesPanel = renderResponsesPanel(documentRef, state, text, {
       expandedResponseIds: viewState.expandedResponseIds,
       flowState: flow.state,
     });
     setPanelBadge(responsesPanel, panelModes.responses);
-    shell.responseColumn.className = "forge-column forge-column--responses";
-    setOptionalDataAttribute(shell.responseColumn, "panelMode", panelModes.responses);
-    setOptionalDataAttribute(
-      shell.responseColumn,
-      "guided",
-      guidedSurface === "responses" && panelModes.responses !== "locked" ? "true" : null
-    );
-    shell.responseColumn.replaceChildren(responsesPanel);
 
     const synthesisPanel = renderSynthesisPanel(documentRef, state, text, {
       expandedSynthesisIds: viewState.expandedSynthesisIds,
@@ -1621,16 +1703,29 @@ export function createForgeRoomUiRuntime() {
       synthesisBlockedReason: describeSynthesisStep(),
     });
     setPanelBadge(synthesisPanel, panelModes.synthesis);
-    shell.outputColumn.className = "forge-column forge-column--output";
-    setOptionalDataAttribute(shell.outputColumn, "panelMode", panelModes.synthesis);
-    setOptionalDataAttribute(
-      shell.outputColumn,
-      "guided",
-      guidedSurface === "synthesis" && panelModes.synthesis !== "locked" ? "true" : null
-    );
-    shell.outputColumn.replaceChildren(synthesisPanel);
 
     syncElement(shell.statusBar, renderStatusBar(flow));
+    syncElement(shell.tabRail, renderWorkbenchTabs(guidedSurface, panelModes));
+    shell.workbench.dataset["activeSurface"] = guidedSurface;
+    if (hostBootstrapPending) {
+      setOptionalDataAttribute(shell.surface, "panelMode", null);
+      setOptionalDataAttribute(shell.surface, "guided", null);
+      shell.surface.replaceChildren(renderHostBootstrapPanel());
+    } else {
+      const activeSurfacePanel =
+        guidedSurface === "responses"
+          ? responsesPanel
+          : guidedSurface === "synthesis"
+            ? synthesisPanel
+            : goalPanel;
+      setOptionalDataAttribute(shell.surface, "panelMode", panelModes[guidedSurface]);
+      setOptionalDataAttribute(
+        shell.surface,
+        "guided",
+        panelModes[guidedSurface] !== "locked" ? "true" : null
+      );
+      shell.surface.replaceChildren(activeSurfacePanel);
+    }
     if (viewState.profileEditorOpen) {
       const nextOverlay = renderOperatorProfileManager(documentRef, text, {
         dirty: viewState.operatorProfileDraftDirty,
@@ -1659,7 +1754,12 @@ export function createForgeRoomUiRuntime() {
           : state.snapshot.exportSummary.exportReady
             ? text(["workbench", "coordinator", "handoffStatuses", "ready"], "ready")
             : text(["workbench", "coordinator", "handoffStatuses", "locked"], "locked"),
-        note: derivePrimaryAction(flow).description,
+        note: hostBootstrapPending
+          ? text(
+              ["workbench", "bootstrap", "coordinatorNote"],
+              "Forge is waiting for the room host to attach the first state snapshot."
+            )
+          : derivePrimaryAction(flow).description,
       })
     );
     bindActions(shell.shell);
@@ -1776,6 +1876,24 @@ export function createForgeRoomUiRuntime() {
           return;
         }
         viewState.guidedSurface = guidedSurface;
+        bumpLocalUiVersion();
+        render();
+      });
+    });
+
+    root.querySelectorAll<HTMLElement>("[data-forge-action='open-surface']").forEach((element) => {
+      element.addEventListener("click", () => {
+        const surface = element.dataset["forgeSurface"];
+        if (surface !== "goal" && surface !== "responses" && surface !== "synthesis") {
+          return;
+        }
+        if (element.dataset["state"] === "locked") {
+          return;
+        }
+        if (viewState.guidedSurface === surface) {
+          return;
+        }
+        viewState.guidedSurface = surface;
         bumpLocalUiVersion();
         render();
       });
@@ -2087,11 +2205,28 @@ export function createForgeRoomUiRuntime() {
         issueCommand("ForgeRoomRunPreflight", () => requestRuntime.runPreflight());
       });
     root
+      .querySelector<HTMLElement>("#forge-run-override-architect-seat")
+      ?.addEventListener("change", () => {
+        const nextDraft = updateRunOverrideDraft((draft) => ({
+          ...draft,
+          architectSeatId:
+            readInputValue("forge-run-override-architect-seat") === "ai2" ? "ai2" : "ai1",
+        }));
+        sendRunOverrideUpdate(nextDraft);
+      });
+    root
       .querySelector<HTMLElement>("[data-forge-action='generate-draft']")
       ?.addEventListener("click", () => {
         const goalDraft = currentGoalDraft();
+        const selectedArchitectSeatId =
+          readInputValue("forge-run-override-architect-seat") === "ai2" ? "ai2" : "ai1";
+        const runOverrideDraft = updateRunOverrideDraft((draft) => ({
+          ...draft,
+          architectSeatId: selectedArchitectSeatId,
+        }));
         issueCommand("ForgeRoomGenerateDraft", () =>
           requestRuntime.generateDraft({
+            architectSeatId: runOverrideDraft.architectSeatId,
             summary: goalDraft.summary,
             brief: goalDraft.brief,
             constraints: [...goalDraft.constraints],
@@ -2312,6 +2447,7 @@ export function createForgeRoomUiRuntime() {
     }
 
     if (type === "forge-state") {
+      viewState.hasForgeStateSnapshot = true;
       const forgeStatePayload = toRecord(payload["payload"]);
       const snapshotSource =
         forgeStatePayload["snapshot"] !== undefined

@@ -11,6 +11,7 @@ import type {
 import { isForgePersonaPresetId, isForgeRoleId, isForgeSeatId } from "../shared/types/index.js";
 import {
   asNonEmptyString,
+  buildForgeOutputLanguageRule,
   asStringArray,
   createForgeId,
   extractJsonValue,
@@ -229,6 +230,7 @@ export function normalizeForgeBreakdownDraft(payload: ForgeBreakdownDraftPayload
 export function buildForgeBreakdownPrompt(
   goal: ForgeGoal,
   options: {
+    locale?: string | null;
     promptContext?: string | null;
   } = {}
 ): string {
@@ -255,6 +257,7 @@ export function buildForgeBreakdownPrompt(
     `Goal brief: ${goal.brief || "No additional brief provided."}`,
     `Constraints: ${goal.constraints.length > 0 ? goal.constraints.join(" | ") : "None"}`,
     "Requirements:",
+    `- ${buildForgeOutputLanguageRule(options.locale)}`,
     "- This run is a smoke test; keep acceptance criteria, summaries, and checklist items as short as possible.",
     "- Produce 3 to 7 top-level tasks.",
     "- Use compare mode only when two seats should answer the same task.",

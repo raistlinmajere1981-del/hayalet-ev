@@ -6,6 +6,7 @@ Rules:
 
 - Return JSON only.
 - Use the exact schema requested in the latest message.
+- Use the active application language for all human-readable JSON string values.
 - Produce exactly one final response for the task.
 - Do not offer alternatives, variants, multiple drafts, or multiple candidate JSON objects.
 - Use `summary` as a quick status snapshot.

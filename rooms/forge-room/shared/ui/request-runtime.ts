@@ -38,6 +38,7 @@ export function createForgeUiRequestRuntime() {
       return sendCommand(FORGE_UI_COMMANDS.exportHandoffCheck);
     },
     generateDraft(payload: {
+      architectSeatId: "ai1" | "ai2";
       brief: string;
       constraints: string[];
       summary: string;
@@ -145,6 +146,7 @@ export function createForgeUiRequestRuntime() {
       return sendCommand(FORGE_UI_COMMANDS.updateSessionContext, payload);
     },
     updateRunOverride(payload: {
+      architectSeatId: "ai1" | "ai2";
       enableRovoPreAnalysis: boolean;
       mode?: string;
       notes: string;

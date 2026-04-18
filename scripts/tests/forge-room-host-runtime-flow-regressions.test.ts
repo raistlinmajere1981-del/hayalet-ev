@@ -239,6 +239,7 @@ function latestForgeSnapshot(notifications: ForgeNotification[]) {
     };
     responses: Array<{ id: string }>;
     runOverride: {
+      architectSeatId?: "ai2";
       enableRovoPreAnalysis: boolean;
       notes: string;
       temporaryConditions: string[];
@@ -282,6 +283,9 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
   try {
     const hostRuntime = createForgeRoomHostRuntime().activate({
       dispatchBridge: createDispatchBridge(dispatchCalls),
+      getLocale() {
+        return "tr";
+      },
       getState(key: string) {
         return hostState.get(key);
       },
@@ -332,13 +336,36 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     });
     assert.equal(updateOperatorProfileResult.success, true);
 
+    const architectSeatResult = await hostRuntime.commands.ForgeRoomUpdateRunOverride({
+      architectSeatId: "ai2",
+    });
+    assert.equal(architectSeatResult.success, true);
+    const snapshotAfterArchitectSeat = latestForgeSnapshot(notifications);
+    assert.deepEqual(snapshotAfterArchitectSeat.runOverride, {
+      architectSeatId: "ai2",
+      enableRovoPreAnalysis: false,
+      notes: "",
+      temporaryConditions: [],
+    });
+
     const draftResult = await hostRuntime.commands.ForgeRoomGenerateDraft({
+      architectSeatId: "ai2",
       summary: "Repair Room integration",
       brief: "Drive the first Forge Room handoff into Repair Room.",
       constraints: ["Keep orchestration room-local."],
       targetRoomId: "repair-room",
     });
     assert.equal(draftResult.success, true);
+    const breakdownDispatch = dispatchCalls.find(
+      (call) =>
+        (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
+          ?.protocolKey === "forge-room-breakdown-architect"
+    );
+    assert.equal(breakdownDispatch?.["toSlot"], "ai2");
+    assert.match(
+      String((breakdownDispatch?.["payload"] as { text?: unknown } | undefined)?.text ?? ""),
+      /Use Turkish for every human-readable JSON string value\./
+    );
 
     const updateSessionContextResult = await hostRuntime.commands.ForgeRoomUpdateSessionContext({
       skillKeys: ["measurement"],
@@ -351,11 +378,17 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.skillKeys, ["measurement"]);
     assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.equipmentKeys, ["multimeter"]);
     assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.preferenceKeys, ["mode"]);
-    assert.equal(snapshotAfterSessionContext.preflight.status, "stale");
+    assert.equal(snapshotAfterSessionContext.preflight.status, "idle");
     assert.match(snapshotAfterSessionContext.runSignature?.value ?? "", /learn[_-]first/);
 
     const runPreflightResult = await hostRuntime.commands.ForgeRoomRunPreflight();
     assert.equal(runPreflightResult.success, true);
+    const preflightDispatchCalls = dispatchCalls.filter(
+      (call) =>
+        (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
+          ?.protocolKey === "forge-room-preflight-pre-analysis"
+    );
+    assert.equal(preflightDispatchCalls.length, 1);
 
     const snapshotAfterDraft = latestForgeSnapshot(notifications);
     assert.notEqual(snapshotAfterDraft.preflight.status, "idle");
@@ -398,6 +431,26 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     const dispatchResult = await hostRuntime.commands.ForgeRoomDispatchAssignments();
     assert.equal(dispatchResult.success, true);
     assert.ok((dispatchResult.completedAssignments as number) >= 3);
+    const taskDispatches = dispatchCalls.filter(
+      (call) =>
+        (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
+          ?.protocolKey === "forge-room-task-response"
+    );
+    assert.ok(taskDispatches.length >= 3);
+    taskDispatches.forEach((call) => {
+      assert.match(
+        String((call["payload"] as { text?: unknown } | undefined)?.text ?? ""),
+        /Use Turkish for every human-readable JSON string value\./
+      );
+    });
+    assert.equal(
+      dispatchCalls.filter(
+        (call) =>
+          (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
+            ?.protocolKey === "forge-room-preflight-pre-analysis"
+      ).length,
+      1
+    );
 
     const snapshotAfterDispatch = latestForgeSnapshot(notifications);
     const conflictId = snapshotAfterDispatch.conflicts[0]?.id;
@@ -420,6 +473,23 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
 
     const synthesisResult = await hostRuntime.commands.ForgeRoomGenerateSynthesis();
     assert.equal(synthesisResult.success, true);
+    const synthesisDispatch = dispatchCalls.findLast(
+      (call) =>
+        (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
+          ?.protocolKey === "forge-room-synthesis"
+    );
+    assert.match(
+      String((synthesisDispatch?.["payload"] as { text?: unknown } | undefined)?.text ?? ""),
+      /Use Turkish for every human-readable JSON string value\./
+    );
+    assert.equal(
+      dispatchCalls.filter(
+        (call) =>
+          (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
+            ?.protocolKey === "forge-room-preflight-pre-analysis"
+      ).length,
+      1
+    );
     const snapshotAfterSynthesis = latestForgeSnapshot(notifications);
     const selectedSynthesis = snapshotAfterSynthesis.syntheses.find(
       (entry) => entry.id === synthesisResult.synthesisId
@@ -450,6 +520,7 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       "Selected skills: Measurement (basic).",
       "Unavailable equipment: Multimeter.",
       "Preferences: Mode learn first.",
+      "Session-specific: Draft architect AI2.",
     ]);
 
     const sessionId = String(createResult.sessionId);
@@ -459,6 +530,7 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       exports: Array<{ filePath: string }>;
       responses: Array<{ id: string }>;
       runOverride: {
+        architectSeatId?: "ai2";
         enableRovoPreAnalysis: boolean;
         notes: string;
         temporaryConditions: string[];
@@ -475,7 +547,12 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     assert.equal(savedSession.conflicts[0]?.status, "resolved");
     assert.equal(savedSession.conflicts[0]?.preferredResponseId, preferredResponseId);
     assert.equal(savedSession.exports.length, 1);
-    assert.equal(savedSession.runOverride, null);
+    assert.deepEqual(savedSession.runOverride, {
+      architectSeatId: "ai2",
+      enableRovoPreAnalysis: false,
+      notes: "",
+      temporaryConditions: [],
+    });
     assert.deepEqual(savedSession.sessionContextSelection.skillKeys, ["measurement"]);
     assert.deepEqual(savedSession.sessionContextSelection.equipmentKeys, ["multimeter"]);
     assert.deepEqual(savedSession.sessionContextSelection.preferenceKeys, ["mode"]);
@@ -483,6 +560,9 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
     const reopenNotifications: ForgeNotification[] = [];
     const reopenedRuntime = createForgeRoomHostRuntime().activate({
       dispatchBridge: createDispatchBridge(dispatchCalls),
+      getLocale() {
+        return "tr";
+      },
       getState(key: string) {
         return hostState.get(key);
       },

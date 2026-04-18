@@ -9,6 +9,7 @@ import { FORGE_MAX_DECISION_TRACE_LINES } from "../shared/forge-constants.js";
 import {
   asNonEmptyString,
   asStringArray,
+  buildForgeOutputLanguageRule,
   createForgeId,
   extractJsonValue,
   nowIso,
@@ -74,6 +75,7 @@ function formatConflictsForPrompt(conflicts: ForgeConflict[]): string {
 export function buildForgeSynthesisPrompt(params: {
   conflicts: ForgeConflict[];
   goal: ForgeGoal;
+  locale?: string | null;
   promptContext?: string | null;
   responses: ForgeAgentResponse[];
   tasks: ForgeTask[];
@@ -113,6 +115,7 @@ export function buildForgeSynthesisPrompt(params: {
           openQuestions: baseline.openQuestions,
         })}`
       : "Baseline candidate: none",
+    buildForgeOutputLanguageRule(params.locale),
     "This run is a smoke test. Keep the final JSON short and compact while still usable for export review.",
     "Keep the output to one final JSON object and synthesize from the response summaries/body excerpts above.",
     "Keep the JSON compact: summary short, body concise, and no prose outside the final JSON object.",

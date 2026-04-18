@@ -28,6 +28,7 @@ import {
   createDefaultForgeOperatorProfile,
   createEmptyForgePreflightState,
   createEmptyForgeSessionContextSelection,
+  isForgeArchitectSeatId,
   isForgePreflightStepId,
   normalizeForgeLegacySelectionKeys,
   normalizeForgeSessionContextSelectionKeys,
@@ -137,8 +138,12 @@ function normalizeForgeRunOverride(value: unknown): ForgeRunOverride | null {
         )
       )
     : [];
+  const architectSeatId = isForgeArchitectSeatId(record["architectSeatId"])
+    ? record["architectSeatId"]
+    : null;
 
   if (
+    architectSeatId === "ai2" ||
     temporaryConditions.length > 0 ||
     notes !== "" ||
     record["enableRovoPreAnalysis"] === true ||
@@ -160,6 +165,7 @@ function normalizeForgeRunOverride(value: unknown): ForgeRunOverride | null {
       enableRovoPreAnalysis: record["enableRovoPreAnalysis"] === true,
       notes,
       temporaryConditions: temporaryConditions.sort((left, right) => left.localeCompare(right)),
+      ...(architectSeatId === "ai2" ? { architectSeatId } : {}),
       ...(mode ? { mode } : {}),
       ...(riskTolerance ? { riskTolerance } : {}),
     };

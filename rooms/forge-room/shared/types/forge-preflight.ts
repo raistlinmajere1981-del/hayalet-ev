@@ -1,3 +1,4 @@
+import type { ForgeArchitectSeatId } from "./forge-identities.js";
 export type ForgeOperatorSkillLevel = "none" | "basic" | "intermediate" | "advanced";
 export type ForgeOperatorEquipmentStatus = "unavailable" | "available" | "planned";
 export type ForgeOperatorMode = "learn_first" | "result_first";
@@ -84,6 +85,7 @@ export interface ForgeSelectedOperatorProfile {
 }
 
 export interface ForgeRunOverride {
+  architectSeatId?: ForgeArchitectSeatId;
   enableRovoPreAnalysis: boolean;
   mode?: ForgeOperatorMode;
   notes: string;
@@ -495,6 +497,12 @@ export function createEmptyForgeRunOverride(): ForgeRunOverride {
     notes: "",
     temporaryConditions: [],
   };
+}
+
+export function resolveForgeArchitectSeatId(
+  runOverride: ForgeRunOverride | null
+): ForgeArchitectSeatId {
+  return runOverride?.architectSeatId === "ai2" ? "ai2" : "ai1";
 }
 
 export function createEmptyForgeContextCapsule(): ForgeContextCapsule {

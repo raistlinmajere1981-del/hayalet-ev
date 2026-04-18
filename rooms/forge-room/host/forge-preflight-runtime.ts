@@ -18,6 +18,7 @@ import {
   toRecord,
   asNonEmptyString,
   asStringArray,
+  buildForgeOutputLanguageRule,
   uniqueStrings,
 } from "./forge-runtime-support.js";
 import {
@@ -177,6 +178,7 @@ function buildPreAnalysisPrompt(params: {
   capabilitySummary: string | null;
   constraints: string[];
   goal: ForgeGoal;
+  locale?: string | null;
   runOverride: ForgeRunOverride | null;
   selectedOperatorProfile: ForgeSelectedOperatorProfile;
   sessionContextSelection: ForgeSessionContextSelection;
@@ -207,6 +209,7 @@ function buildPreAnalysisPrompt(params: {
     ),
     params.runOverride?.notes.trim() ? `Run override note: ${params.runOverride.notes.trim()}` : "",
     "Rules:",
+    `- ${buildForgeOutputLanguageRule(params.locale)}`,
     "- Observations only. Do not make decisions or produce task breakdowns.",
     "- Focus on software boundaries, integration risks, missing system context, and implementation guardrails.",
     "- Mention blockers or missing information only if they are explicit from the context.",
@@ -293,6 +296,7 @@ async function maybeRunForgeRovoPreAnalysis(params: {
 export async function buildForgePreflightState(params: {
   dispatchBridge: ForgeDispatchBridge | null;
   goal: ForgeGoal;
+  locale?: string | null;
   onStepStart?: (stepId: ForgePreflightStepId) => void;
   operatorProfile: ForgeOperatorProfile;
   protocol: {

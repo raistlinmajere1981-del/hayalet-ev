@@ -19,6 +19,7 @@ import type {
 import {
   isForgeSelectedOperatorProfileEmpty,
   isForgeSessionContextSelectionEmpty,
+  resolveForgeArchitectSeatId,
 } from "../shared/types/index.js";
 import { nowIso, uniqueStrings } from "./forge-runtime-support.js";
 
@@ -248,6 +249,9 @@ export function summarizeForgeSelectedOperatorContext(params: {
       : null,
   ].filter((entry): entry is string => typeof entry === "string");
   const sessionSpecificSummary = [
+    runOverride?.architectSeatId === "ai2"
+      ? `Draft architect ${resolveForgeArchitectSeatId(runOverride).toUpperCase()}`
+      : null,
     runOverride?.mode ? `Mode ${humanizeValue(runOverride.mode)}` : null,
     runOverride?.riskTolerance
       ? `Risk tolerance ${humanizeValue(runOverride.riskTolerance)}`
@@ -310,9 +314,13 @@ export function buildForgeDerivedConstraints(params: {
   const effectiveMode = runOverride?.mode ?? selectedOperatorProfile.preferences.mode;
   const effectiveRiskTolerance =
     runOverride?.riskTolerance ?? selectedOperatorProfile.preferences.riskTolerance;
+  const architectSeatId = resolveForgeArchitectSeatId(runOverride);
   const unavailableEquipment = selectedOperatorProfile.equipment.filter(
     (entry) => entry.status === "unavailable"
   );
+  if (architectSeatId === "ai2") {
+    derived.push("Route the first draft breakdown through AI2 instead of the default architect lane.");
+  }
   if (unavailableEquipment.length > 0) {
     derived.push("Do not assume unavailable equipment is usable for this run.");
   }

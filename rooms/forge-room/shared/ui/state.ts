@@ -1,5 +1,6 @@
 import type {
   ForgeAgentResponse,
+  ForgeArchitectSeatId,
   ForgeConflict,
   ForgeCoordinatorState,
   ForgeExportReadinessSummary,
@@ -35,6 +36,14 @@ export type ForgeWorkbenchUiFlowState =
 export type ForgeWorkbenchUiSurface = "goal" | "responses" | "synthesis";
 export type ForgeWorkbenchStageId = "session" | "operator" | "preflight" | "tracking" | "draft";
 
+export interface ForgeUiArchitectSeatState {
+  assigned: boolean;
+  avatar: string | null;
+  connected: boolean;
+  nickname: string;
+  seatId: ForgeArchitectSeatId;
+}
+
 export interface ForgeRoomSnapshot {
   activeSessionId: string | null;
   approvedTasks: ForgeTask[];
@@ -68,6 +77,7 @@ export interface ForgeUiContextState {
   assistantAvatar: string | null;
   assistantConnected: boolean;
   assistantNickname: string;
+  draftArchitectSeats: Record<ForgeArchitectSeatId, ForgeUiArchitectSeatState>;
   featureId: string;
   locale: string;
   roomId: string;
@@ -145,6 +155,22 @@ export function createEmptyForgeUiContext(): ForgeUiContextState {
     assistantAvatar: null,
     assistantConnected: false,
     assistantNickname: "AI0",
+    draftArchitectSeats: {
+      ai1: {
+        assigned: false,
+        avatar: null,
+        connected: false,
+        nickname: "AI1",
+        seatId: "ai1",
+      },
+      ai2: {
+        assigned: false,
+        avatar: null,
+        connected: false,
+        nickname: "AI2",
+        seatId: "ai2",
+      },
+    },
     roomId: "forge-room",
     roomName: "Forge Room",
     featureId: "forge-workbench",

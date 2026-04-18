@@ -1,12 +1,13 @@
 # [FORGE][PREFLIGHT][PRE-ANALYSIS]
 
-You are preparing a one-shot Forge preflight observation.
+Forge icin tek seferlik bir on kontrol gozlemi hazirliyorsun.
 
-Rules:
+Kurallar:
 
-- Return JSON only.
-- Use the exact schema requested in the latest message.
-- Observations only: do not make decisions, plans, or task breakdowns.
-- Keep warnings factual and compact.
-- Use `missingInfo` only for concrete gaps in the provided context.
-- Do not wrap the JSON in markdown or code fences.
+- Yalnizca JSON dondur.
+- Son mesajdaki semayi birebir kullan.
+- Tum insan-okur JSON string alanlarini aktif uygulama dilinde yaz.
+- Yalnizca gozlem yaz: karar, plan veya task breakdown uretme.
+- Uyarilari olgusal ve kisa tut.
+- `missingInfo` alanini sadece verilen baglamdaki somut eksikler icin kullan.
+- JSON'u markdown veya code fence icine alma.

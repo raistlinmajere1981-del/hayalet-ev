@@ -5,6 +5,7 @@ import type {
   ForgeRunSignature,
   ForgeSelectedOperatorProfile,
 } from "../shared/types/index.js";
+import { resolveForgeArchitectSeatId } from "../shared/types/index.js";
 import { nowIso, uniqueStrings } from "./forge-runtime-support.js";
 
 function hashFingerprint(value: string): string {
@@ -61,8 +62,10 @@ function collectConstraintTokens(params: {
   const effectiveMode = params.runOverride?.mode ?? params.selectedOperatorProfile.preferences.mode;
   const effectiveRiskTolerance =
     params.runOverride?.riskTolerance ?? params.selectedOperatorProfile.preferences.riskTolerance;
+  const architectSeatId = resolveForgeArchitectSeatId(params.runOverride);
   const tokens = uniqueStrings(
     [
+      architectSeatId === "ai2" ? "architect-ai2" : null,
       params.goal.constraints[0] ?? null,
       effectiveMode,
       effectiveRiskTolerance ? `${effectiveRiskTolerance}-risk` : null,

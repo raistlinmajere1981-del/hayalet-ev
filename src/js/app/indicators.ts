@@ -10,10 +10,10 @@ import { shellT } from "./shell-i18n.js";
 export function updateIndicatorAvatars(): void {
   const getAvatar = (provider: string): string | undefined => AppState.getAvatar(provider);
 
-  // NOTE: AI0 uses the provider logo only while connected.
-  const ai0Connected = AppState.isConnected("ai0");
-  const ai0AvatarPath = ai0Connected === true ? getAvatar("ai0") : undefined;
   const ai0Assigned = AppState.isAssigned("ai0");
+  const ai0Connected = AppState.isConnected("ai0");
+  // NOTE: Keep AI0 identity visible while disconnected so the topbar mirrors other assigned slots.
+  const ai0AvatarPath = ai0Assigned === true ? getAvatar("ai0") : undefined;
 
   const map: Array<{
     provider: "ai0" | "ai1" | "ai2" | "us1";

@@ -5,6 +5,7 @@ import type {
   ForgeRunOverride,
   ForgeSessionContextSelection,
 } from "../shared/types/index.js";
+import { resolveForgeArchitectSeatId } from "../shared/types/index.js";
 import { buildForgeSelectedOperatorProfile } from "./forge-preflight-metadata.js";
 type ForgePreflightStage =
   | "before-draft"
@@ -32,6 +33,7 @@ function normalizeSelectionFingerprint(selection: ForgeSessionContextSelection):
 
 function normalizeRunOverrideFingerprint(runOverride: ForgeRunOverride | null): string {
   return JSON.stringify({
+    architectSeatId: resolveForgeArchitectSeatId(runOverride),
     mode: runOverride?.mode ?? null,
     notes: runOverride?.notes.trim() ?? "",
     riskTolerance: runOverride?.riskTolerance ?? null,

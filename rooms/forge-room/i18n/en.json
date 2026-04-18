@@ -8,6 +8,16 @@
       "locked": "Locked",
       "monitor": "Monitor"
     },
+    "tabs": {
+      "flow": "Flow",
+      "responses": "Responses",
+      "output": "Output",
+      "states": {
+        "active": "Now",
+        "monitor": "Watch",
+        "locked": "Locked"
+      }
+    },
     "flow": {
       "idle": "Idle",
       "goalDefined": "Goal Defined",
@@ -404,9 +414,12 @@
         "agentSlot": "AI0",
         "todoTitle": "Process flow",
         "resultTitle": "Result preview",
-        "resultIdle": "No preflight result yet.",
+        "resultIdle": "No preflight result yet. Draft can still start without a preflight report.",
         "resultRunning": "Preflight is running.",
         "resultReady": "Preflight context is ready.",
+        "summaryTitle": "Compatibility summary",
+        "warningsTitle": "Warnings",
+        "missingInfoTitle": "Missing info",
         "signatureLabel": "Run signature",
         "promptSizeLabel": "Prompt",
         "todoStatus": {
@@ -437,6 +450,9 @@
         "title": "Run settings",
         "meta": "Run-local only",
         "requiresSession": "Create or open a session to edit run-local settings.",
+        "architectTitle": "Draft architect",
+        "architectField": "Draft lane",
+        "architectHint": "Choose which AI receives the first draft breakdown after preflight.",
         "mode": "Mode",
         "risk": "Risk tolerance",
         "preAnalysis": "Pre-analysis",
@@ -446,6 +462,10 @@
         "save": "Save run overrides",
         "active": "active",
         "inactive": "inactive",
+        "selected": "selected",
+        "connected": "connected",
+        "disconnected": "disconnected",
+        "unassigned": "no account",
         "addCondition": "+ Add condition",
         "commitCondition": "Add",
         "cancelCondition": "Cancel"
@@ -700,6 +720,7 @@
         "decisions": "decisions {count}",
         "handoff": "handoff {label}"
       },
+      "activityTitle": "Activity",
       "latestPackage": "Latest package: {path}",
       "handoffStatuses": {
         "sent": "sent",

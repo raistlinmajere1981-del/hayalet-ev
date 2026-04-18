@@ -19,6 +19,7 @@ import { FORGE_PERSONA_PRESETS } from "../shared/data/persona-presets.js";
 import { isForgeSeatId } from "../shared/types/index.js";
 import {
   asNonEmptyString,
+  buildForgeOutputLanguageRule,
   createForgeId,
   extractJsonValue,
   normalizeTextForComparison,
@@ -89,6 +90,7 @@ export function buildForgeTaskPrompt(params: {
   approvedTasks: ForgeTask[];
   assignment: ForgeTaskAssignment;
   goal: ForgeGoal;
+  locale?: string | null;
   promptContext?: string | null;
   task: ForgeTask;
 }): string {
@@ -133,6 +135,7 @@ export function buildForgeTaskPrompt(params: {
         : "Derive practical acceptance criteria."
     }`,
     persona ? `Persona focus: ${formatPersonaPrompt(persona)}` : "Persona focus: none",
+    buildForgeOutputLanguageRule(params.locale),
     "This run is a smoke test. Keep the JSON compact and avoid unnecessary detail.",
     "Keep summary under 140 characters.",
     "Keep body under 900 characters and prefer 3 to 6 short bullet-style lines inside the JSON string when helpful.",

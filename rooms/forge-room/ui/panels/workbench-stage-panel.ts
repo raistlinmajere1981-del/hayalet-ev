@@ -25,6 +25,7 @@ type ForgeGoalDraftView = {
 };
 
 type ForgeRunOverrideDraftView = {
+  architectSeatId: "ai1" | "ai2";
   enableRovoPreAnalysis: boolean;
   mode?: string;
   notes: string;
@@ -56,6 +57,74 @@ const FORGE_PREFLIGHT_TODO_ORDER: ForgePreflightStepId[] = [
   "runSignature",
   "sessionSave",
 ];
+
+function getAvatarMimeType(filePath: string): string {
+  const normalizedPath = filePath.trim().toLowerCase();
+  if (normalizedPath.endsWith(".jpg") || normalizedPath.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+  if (normalizedPath.endsWith(".gif")) {
+    return "image/gif";
+  }
+  if (normalizedPath.endsWith(".svg")) {
+    return "image/svg+xml";
+  }
+  if (normalizedPath.endsWith(".webp")) {
+    return "image/webp";
+  }
+  return "image/png";
+}
+
+function isBrowserLoadableAvatarSource(value: string): boolean {
+  return (
+    value.startsWith("blob:") ||
+    value.startsWith("data:") ||
+    value.startsWith("file://") ||
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.startsWith("/")
+  );
+}
+
+function applyIdentityAvatarSource(
+  image: HTMLImageElement,
+  avatar: string,
+  onFailure: () => void
+): void {
+  const normalizedAvatar = avatar.trim();
+  if (normalizedAvatar === "") {
+    onFailure();
+    return;
+  }
+
+  if (isBrowserLoadableAvatarSource(normalizedAvatar)) {
+    image.src = normalizedAvatar;
+    return;
+  }
+
+  const readFile = window.electronAPI?.["readFile"] as
+    | ((filePath: string) => Promise<string | null>)
+    | undefined;
+  if (typeof readFile !== "function") {
+    image.src = normalizedAvatar;
+    return;
+  }
+
+  // NOTE: Forge runs inside a file:// room webview, so app-relative avatar paths
+  // need the Electron bridge before the browser can render them.
+  void readFile(normalizedAvatar)
+    .then((encoded: string | null) => {
+      if (typeof encoded !== "string" || encoded.trim() === "") {
+        onFailure();
+        return;
+      }
+
+      image.src = `data:${getAvatarMimeType(normalizedAvatar)};base64,${encoded}`;
+    })
+    .catch(() => {
+      onFailure();
+    });
+}
 
 function createField(
   documentRef: Document,
@@ -282,14 +351,105 @@ function createIdentityAvatar(
   const image = documentRef.createElement("img");
   image.className = "forge-profile-identity__avatar";
   image.alt = nickname;
-  image.src = avatar;
-  image.addEventListener("error", () => {
+  const replaceWithEmptyAvatar = () => {
     const parent = image.parentElement;
     if (parent) {
       parent.replaceChild(createEmptyAvatar(), image);
     }
-  });
+  };
+  image.addEventListener("error", replaceWithEmptyAvatar);
+  applyIdentityAvatarSource(image, avatar, replaceWithEmptyAvatar);
   return image;
+}
+
+function readDraftArchitectStatusLabel(
+  text: ForgeTextFn,
+  options: {
+    assigned: boolean;
+    connected: boolean;
+    selected: boolean;
+  }
+): string {
+  const parts = [
+    options.selected
+      ? text(["workbench", "goalPanel", "runOverrides", "selected"], "selected")
+      : null,
+    options.assigned
+      ? options.connected
+        ? text(["workbench", "goalPanel", "runOverrides", "connected"], "connected")
+        : text(["workbench", "goalPanel", "runOverrides", "disconnected"], "disconnected")
+      : text(["workbench", "goalPanel", "runOverrides", "unassigned"], "no account"),
+  ].filter((entry): entry is string => typeof entry === "string");
+  return parts.join(" / ");
+}
+
+function buildDraftArchitectBlock(
+  documentRef: Document,
+  state: ForgeUiState,
+  text: ForgeTextFn,
+  runOverrideDraft: ForgeRunOverrideDraftView
+): HTMLElement {
+  const draftArchitectBlock = documentRef.createElement("section");
+  draftArchitectBlock.className = "forge-goal-block forge-goal-block--compact";
+  draftArchitectBlock.append(
+    createBlockHeading(
+      documentRef,
+      text(["workbench", "goalPanel", "runOverrides", "architectTitle"], "Draft architect")
+    )
+  );
+  const draftArchitectSelect = documentRef.createElement("select");
+  draftArchitectSelect.id = "forge-run-override-architect-seat";
+  draftArchitectSelect.className = "forge-select";
+  (["ai1", "ai2"] as const).forEach((seatId) => {
+    const seat = state.context.draftArchitectSeats[seatId];
+    draftArchitectSelect.append(
+      createOption(
+        documentRef,
+        seatId,
+        `${seatId.toUpperCase()} - ${seat.nickname}`,
+        runOverrideDraft.architectSeatId
+      )
+    );
+  });
+  draftArchitectSelect.value = runOverrideDraft.architectSeatId;
+  draftArchitectBlock.append(
+    createField(
+      documentRef,
+      text(["workbench", "goalPanel", "runOverrides", "architectField"], "Draft lane"),
+      draftArchitectSelect,
+      {
+        hint: text(
+          ["workbench", "goalPanel", "runOverrides", "architectHint"],
+          "Choose which AI receives the first draft breakdown after preflight."
+        ),
+      }
+    )
+  );
+  const draftArchitectList = documentRef.createElement("div");
+  draftArchitectList.className = "forge-context-group__list";
+  (["ai1", "ai2"] as const).forEach((seatId) => {
+    const seat = state.context.draftArchitectSeats[seatId];
+    const selected = runOverrideDraft.architectSeatId === seatId;
+    const row = documentRef.createElement("div");
+    row.className = "forge-profile-identity";
+    const copy = documentRef.createElement("div");
+    copy.className = "forge-profile-identity__copy";
+    const name = documentRef.createElement("strong");
+    name.className = "forge-profile-identity__name";
+    name.textContent = `${seatId.toUpperCase()} - ${seat.nickname}`;
+    const detail = documentRef.createElement("span");
+    detail.className = "forge-field__hint";
+    detail.textContent = readDraftArchitectStatusLabel(text, {
+      assigned: seat.assigned,
+      connected: seat.connected,
+      selected,
+    });
+    copy.append(name, detail);
+    row.append(createIdentityAvatar(documentRef, seat.nickname, seat.avatar), copy);
+    draftArchitectList.append(row);
+  });
+  draftArchitectBlock.append(draftArchitectList);
+  return draftArchitectBlock;
 }
 
 function renderCatalogLabel(text: ForgeTextFn, value: string, fallback: string): string {
@@ -363,9 +523,20 @@ function createStageDescriptorMap(
 
 function resolveActiveStageId(
   requestedStageId: ForgeWorkbenchStageId,
-  _stageMap: Record<ForgeWorkbenchStageId, ForgeStageDescriptor>
+  stageMap: Record<ForgeWorkbenchStageId, ForgeStageDescriptor>
 ): ForgeWorkbenchStageId {
-  return requestedStageId;
+  if (stageMap[requestedStageId].canOpen === true) {
+    return requestedStageId;
+  }
+
+  for (let index = FORGE_STAGE_ORDER.length - 1; index >= 0; index -= 1) {
+    const stageId = FORGE_STAGE_ORDER[index];
+    if (stageId && stageMap[stageId].canOpen === true) {
+      return stageId;
+    }
+  }
+
+  return "session";
 }
 
 function createStageHeader(
@@ -886,6 +1057,12 @@ function buildPreflightStageBody(
   );
   const staleReason = normalizeAssistantStatusMessage(preflight.staleReason?.trim() ?? "");
   const errorMessage = normalizeAssistantStatusMessage(preflight.errorMessage?.trim() ?? "");
+  const preAnalysisWarnings = (preflight.bundle?.rovoPreAnalysis?.warnings ?? []).map((warning) =>
+    normalizeAssistantStatusMessage(warning)
+  );
+  const preAnalysisMissingInfo = (preflight.bundle?.rovoPreAnalysis?.missingInfo ?? []).map((item) =>
+    item.trim()
+  );
   const normalizedWarnings = preflight.warnings.map((warning) =>
     normalizeAssistantStatusMessage(warning)
   );
@@ -910,26 +1087,81 @@ function buildPreflightStageBody(
             )
           : text(
               ["workbench", "goalPanel", "preflight", "resultIdle"],
-              "No preflight result yet."
+              "No preflight result yet. Draft can still start without a preflight report."
             ));
   resultSummary.textContent =
     preflight.status === "running"
       ? text(["workbench", "goalPanel", "preflight", "resultRunning"], "Preflight is running.")
       : computedResultSummary;
   resultBody.append(resultStatus, resultSummary);
+  const preflightReport = documentRef.createElement("div");
+  preflightReport.className = "forge-preflight-report";
+  if (preAnalysisSummary !== "" && preAnalysisSummary !== resultSummary.textContent) {
+    const summarySection = documentRef.createElement("section");
+    summarySection.className = "forge-preflight-report__section";
+    const summaryTitle = documentRef.createElement("strong");
+    summaryTitle.className = "forge-preflight-report__title";
+    summaryTitle.textContent = text(
+      ["workbench", "goalPanel", "preflight", "summaryTitle"],
+      "Compatibility summary"
+    );
+    const summaryCopy = documentRef.createElement("p");
+    summaryCopy.className = "forge-panel__hint";
+    summaryCopy.textContent = preAnalysisSummary;
+    summarySection.append(summaryTitle, summaryCopy);
+    preflightReport.append(summarySection);
+  }
   const visibleWarnings = Array.from(
-    new Set(normalizedWarnings.filter((warning) => warning !== "" && warning !== computedResultSummary))
+    new Set(
+      [...normalizedWarnings, ...preAnalysisWarnings].filter(
+        (warning) => warning !== "" && warning !== computedResultSummary
+      )
+    )
   ).slice(0, 3);
   if (visibleWarnings.length > 0) {
+    const warningSection = documentRef.createElement("section");
+    warningSection.className = "forge-preflight-report__section";
+    const warningTitle = documentRef.createElement("strong");
+    warningTitle.className = "forge-preflight-report__title";
+    warningTitle.textContent = text(
+      ["workbench", "goalPanel", "preflight", "warningsTitle"],
+      "Warnings"
+    );
     const warningRail = documentRef.createElement("div");
-    warningRail.className = "forge-chip-row";
+    warningRail.className = "forge-chip-row forge-chip-row--report";
     visibleWarnings.forEach((warning) => {
       const chip = documentRef.createElement("span");
       chip.className = "forge-chip forge-chip--warning";
       chip.textContent = warning;
       warningRail.append(chip);
     });
-    resultBody.append(warningRail);
+    warningSection.append(warningTitle, warningRail);
+    preflightReport.append(warningSection);
+  }
+  const visibleMissingInfo = Array.from(
+    new Set(preAnalysisMissingInfo.filter((item) => item !== ""))
+  ).slice(0, 4);
+  if (visibleMissingInfo.length > 0) {
+    const missingSection = documentRef.createElement("section");
+    missingSection.className = "forge-preflight-report__section";
+    const missingTitle = documentRef.createElement("strong");
+    missingTitle.className = "forge-preflight-report__title";
+    missingTitle.textContent = text(
+      ["workbench", "goalPanel", "preflight", "missingInfoTitle"],
+      "Missing info"
+    );
+    const missingList = documentRef.createElement("ul");
+    missingList.className = "forge-preflight-report__list";
+    visibleMissingInfo.forEach((item) => {
+      const entry = documentRef.createElement("li");
+      entry.textContent = item;
+      missingList.append(entry);
+    });
+    missingSection.append(missingTitle, missingList);
+    preflightReport.append(missingSection);
+  }
+  if (preflightReport.childElementCount > 0) {
+    resultBody.append(preflightReport);
   }
   const resultMeta = documentRef.createElement("div");
   resultMeta.className = "forge-goal-meta";
@@ -1022,6 +1254,7 @@ function buildTrackingStageBody(
   options: {
     flowLabel: string;
     flowState: ForgeWorkbenchUiFlowState;
+    runOverrideDraft: ForgeRunOverrideDraftView;
   }
 ): HTMLElement {
   const body = documentRef.createElement("div");
@@ -1052,6 +1285,8 @@ function buildTrackingStageBody(
     )
   );
   body.append(summary);
+
+  body.append(buildDraftArchitectBlock(documentRef, state, text, options.runOverrideDraft));
 
   if (options.flowState === "GOAL_DEFINED") {
     const actions = documentRef.createElement("div");
@@ -1158,6 +1393,7 @@ export function renderWorkbenchStagePanel(
                 ? buildTrackingStageBody(documentRef, state, text, {
                     flowLabel: options.flowLabel,
                     flowState: options.flowState,
+                    runOverrideDraft: options.runOverrideDraft,
                   })
                 : buildDraftStageBody(documentRef, options.draftSurfacePanel);
       frame.append(stageBody);

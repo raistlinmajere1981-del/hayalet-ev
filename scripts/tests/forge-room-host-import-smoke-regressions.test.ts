@@ -39,3 +39,10 @@ test("forge-room installed host imports cleanly through the portable room host l
     await installedCopy.cleanup();
   }
 });
+
+test("forge-room live installed host artifact imports cleanly from the repo data copy", async () => {
+  const moduleNamespace = (await importRoomHostModule("data/rooms/forge-room/host/index.js")) as {
+    default?: { activate?: unknown };
+  };
+  assert.equal(typeof moduleNamespace.default?.activate, "function");
+});

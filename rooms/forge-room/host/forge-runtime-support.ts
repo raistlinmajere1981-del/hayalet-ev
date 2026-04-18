@@ -1,4 +1,5 @@
 type ForgeUnknownRecord = Record<string, unknown>;
+const FORGE_DEFAULT_PROMPT_LOCALE = "tr";
 
 export function createForgeId(prefix: string): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -94,4 +95,40 @@ export function slugifyFilePart(value: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 48);
+}
+
+function canonicalizeForgeLocaleTag(value: string): string {
+  const trimmed = value.trim().replace(/_/g, "-");
+  if (trimmed === "") {
+    return FORGE_DEFAULT_PROMPT_LOCALE;
+  }
+
+  try {
+    return new Intl.Locale(trimmed).toString();
+  } catch {
+    return trimmed;
+  }
+}
+
+export function resolveForgePromptLocale(value: unknown): string {
+  if (typeof value !== "string") {
+    return FORGE_DEFAULT_PROMPT_LOCALE;
+  }
+  const normalized = canonicalizeForgeLocaleTag(value);
+  return normalized === "" ? FORGE_DEFAULT_PROMPT_LOCALE : normalized;
+}
+
+export function buildForgeOutputLanguageRule(locale: unknown): string {
+  const normalizedLocale = resolveForgePromptLocale(locale);
+  const languageLabel =
+    normalizedLocale === "tr"
+      ? "Turkish"
+      : normalizedLocale === "en"
+        ? "English"
+        : `the application language for locale "${normalizedLocale}"`;
+  return [
+    `Use ${languageLabel} for every human-readable JSON string value.`,
+    `Match the active application locale (${normalizedLocale}).`,
+    "Keep JSON keys, enum values, ids, and file paths unchanged.",
+  ].join(" ");
 }
