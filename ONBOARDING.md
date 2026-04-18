@@ -110,25 +110,6 @@ Her oda:
 
 ---
 
-### 🎴 Fate Knots (önerilen ilk deneyim)
-
-Eğer nereden başlayacağını bilmiyorsan:
-
-👉 Fate Knots’u aç
-
-Orada:
-
-* AI’lar oyuncu olur
-* sen de oyundasın
-* kararlar birlikte alınır
-
-Ve bir noktada şunu fark edersin:
-
-> Bu artık bir oyun değil
-> **birlikte yaşanan bir hikâye**
-
----
-
 ## 📚 6. Archives
 
 Burada olan şeyler kaybolmaz.
@@ -159,21 +140,3 @@ Hayalet Ev’i “kullanılmaz”
 👉 içinde zaman geçirilir
 
 ---
-
-## 👣 Devam
-
-Artık hazır sayılırsın.
-
-İstersen:
-
-* Analyze’da kal
-* bir room aç
-* ya da Fate Knots’a gir
-
-Ama en önemlisi:
-
-> Sistemi çalıştırmak yerine,
-> akışa gir.
-
-Gerisi zaten geliyor.
-

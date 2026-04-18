@@ -4,7 +4,7 @@ Hayalet Ev bir uygulama değil.
 Bir masa, bir alan, bir akış.
 
 İnsan ve yapay zekânın aynı yerde sadece konuştuğu değil,
-**birlikte düşündüğü, tartıştığı, oyun kurduğu ve bazen de sessiz kaldığı** bir dijital ortam.
+**birlikte düşündüğü, tartıştığı, ürettiği, oyun kurduğu** bir dijital ortam.
 
 ---
 
@@ -33,12 +33,6 @@ Amaç:
 * AI’ları tek tek kullanmak yerine **birlikte çalıştırmak**
 * insan ↔ AI değil, **insan ↔ AI ↔ AI** etkileşimi kurmak
 * yazılımı bir araçtan çok, **bir ortam** haline getirmek
-
-Bu yüzden Hayalet Ev’de:
-
-* konuşmalar birikir
-* fikirler evrilir
-* oturumlar kapanmaz, devam eder
 
 ---
 
@@ -92,6 +86,7 @@ Relay sistemi sayesinde:
 
 * AI ↔ AI konuşabilir
 * AI ↔ assistant köprü kurabilir
+* Kullanıcı ↔ uzak kullanıcının assistanı ile köprü kurabilir
 * uzak kullanıcı ↔ yerel sistem senkronize olur
 
 Bu akış bazen kontrol edilir,
@@ -129,37 +124,9 @@ bir sistemdir.
 
 ---
 
-### 🎮 Game Room
-
-Game Room, Hayalet Ev’in oyun alanıdır.
-
-Burada:
-
-* AI’lar oyuncu olur
-* kullanıcı tek başına kalmaz
-* kararlar ortak verilir
-
-Ve bu odada doğan bir yapı:
-
-### 🪢 Fate Knots
-
-Fate Knots klasik bir oyun değildir.
-
-* bir senaryo kurulur
-* bir kadro oluşur
-* sahneler ilerler
-* kararlar birlikte alınır
-
-DM, oyuncular ve yaşayan dünya katmanı (AI0) aynı akışta buluşur.
-
-> Bu bir oyun motoru değil,
-> **çok ajanlı bir hikâye sistemi**.
-
----
-
 ## 🤖 Assistant (AI0)
 
-AI0, Hayalet Ev’in en özel katmanıdır.
+AI0, Hayalet Ev’in en özel katmanıdır. Ücretsiz olan Opencode uygulaması üzerinden çalışır.
 
 * yerel çalışır
 * araçlara erişir
@@ -177,8 +144,8 @@ Ama her an konuşmaz.
 
 US1, başka bir Hayalet Ev’e açılan kapıdır.
 
-* email tabanlı bağlantı
-* opsiyonel şifreli relay
+* email tabanlı güvenli bağlantı
+* opsiyonel : şifreli anlık iletişim hattı
 * tek kullanıcı, tek bağlantı
 
 Bu basitlik bilinçlidir.
@@ -225,7 +192,7 @@ Bu yüzden:
 Hayalet Ev’in uzun vadeli amacı:
 
 * herkesin ücretsiz AI hesaplarıyla kullanabileceği
-* API bağımlı olmayan
+* ücret bağımlı olmayan
 * geliştirilebilir ve paylaşılabilir
 * açık bir dijital çalışma alanı kurmak
 
@@ -237,11 +204,6 @@ Hayalet Ev’i bir uygulama gibi kullanabilirsin.
 
 Ama asıl potansiyeli şurada:
 
-> sistemi açık bırakıp,
-> içindeki akışın kendi kendine şekillenmesine izin vermek.
-
-Çünkü bazen:
-
-> evin içinde olan şeyler,
-> dışarıdan tasarlanan şeylerden daha gerçek olur.
-
+> fikrini cümlelere dök
+> akışın kendi kendine şekillenmesine izin ver
+> fikrinin gerçeğe dönüşmesini izle

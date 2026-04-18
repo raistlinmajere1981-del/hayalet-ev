@@ -13,7 +13,6 @@ Eksik bilgiyle düşünmek
 Team Tetris’te hiçbir oyuncu tahtanın tamamını bilmez.
 
 Bazı parçalar görünür.
-Bazıları sadece ima edilir.
 Bazıları ise tamamen senin çıkarımına kalır.
 
 Bu yüzden her hamle, yalnızca bir yerleştirme değil, aynı zamanda bir sorudur:

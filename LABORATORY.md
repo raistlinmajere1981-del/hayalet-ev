@@ -4,7 +4,7 @@ Laboratory bir araç ekranı değil.
 Bir çalışma tezgâhı.
 
 Burada amaç
-bir dosyaya bakmak değil,
+bir medya dosyasına bakmak değil,
 onu hazırlamak,
 anlamak,
 işlemek
@@ -18,6 +18,7 @@ Laboratory:
 
 * medya ile çalışır
 * ses ile çalışır
+* resim ile çalışır
 * altyazı ile çalışır
 
 Ama bunları üç ayrı dünya gibi kurmaz.
@@ -74,53 +75,6 @@ Bir proje olarak kalır.
 
 ---
 
-## 📥 Intake
-
-Her şey içeri almakla başlar.
-
-Bir medya dosyası,
-bir ses kaydı,
-bir altyazı,
-ve bazen dışarıdan gelen bir kaynak.
-
-Ama Laboratory için kaynak,
-sadece input değildir.
-
-Bir çalışma nesnesidir.
-
-Üzerinde durulur,
-kontrol edilir,
-gerekirse hazırlanır.
-
----
-
-## ✅ Readiness
-
-Laboratory’nin en önemli farklarından biri budur:
-
-Eksikleri saklamaz.
-
-Eğer bir araç yoksa
-“sonra bakarız” demez.
-
-Eğer bir model eksikse
-bunu koşunun ortasında sürpriz yapmaz.
-
-Onun yerine:
-
-* ne hazır
-* ne eksik
-* ne otomatik halledilir
-* neyi senin tamamlaman gerekir
-
-açıkça görünür kılar.
-
-Bu yüzden readiness,
-bir kontrol listesi değil,
-bir güven katmanıdır.
-
----
-
 ## ⚙️ Process
 
 İşlem başladıktan sonra Laboratory
@@ -142,27 +96,6 @@ Burada önemli olan şey hız değil.
 Çünkü analiz süreci,
 sonucu kadar
 nasıl ilerlediğiyle de anlam kazanır.
-
----
-
-## 🧩 Tek Tezgâh
-
-Laboratory’nin kalbi,
-her şeyi aynı masada toplamasıdır.
-
-* media analysis
-* audio analysis
-* subtitle analysis
-
-ayrı odalar gibi davranmaz.
-
-Aynı projenin
-farklı yüzleri gibi davranır.
-
-Bu sayede bir noktada şunu hissedersin:
-
-> Burada modül değiştirmiyorum.
-> Aynı işi başka bir açıdan sürdürüyorum.
 
 ---
 
@@ -190,13 +123,14 @@ bir operasyon merkezi haline gelir.
 Laboratory’de rapor,
 iş bittikten sonra oluşan bir ek değildir.
 
-Akışın doğal sonudur.
-
 Burada rapor:
 
 * ne bulunduğunu söyler
 * neyin eksik kaldığını söyler
 * hangi koşullarda üretildiğini taşır
+* bu verileri hem kullanıcının anlayacağı düzeyde bir rapor ve
+bir AI'nin yorumlayacağı şekilde teknik rapor olarak sunulur
+* Rapor istendiğinde AI'ye otomatik iletilebilir, 
 
 Yani sadece “çıktı” vermez.
 
@@ -207,31 +141,6 @@ ham sonuçtan daha değerlidir.
 
 ---
 
-## 🔑 En Kritik Kural
-
-```text
-Analiz,
-sadece işlemek değildir.
-Önce hazırlığı görmek,
-sonra sonucu anlamlandırmaktır.
-```
-
----
-
-## 🧠 Deneyim
-
-Laboratory’yi kullanırken bir noktada şunu fark edersin:
-
-* dosya açmıyorsun
-* bir süreç kuruyorsun
-* eksikleri yönetiyorsun
-* çıktıyı topluyorsun
-
-Ve oda yavaş yavaş
-bir araç panelinden çıkıp
-bir düşünme yüzeyine dönüşüyor.
-
----
 
 ## 🎯 Amaç
 
