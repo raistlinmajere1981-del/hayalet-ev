@@ -562,6 +562,75 @@ test("readOpencodeUiSession reads structured assistant parts and latest todos", 
   }
 });
 
+test("readOpencodeUiSession prefers tokenized interaction text over merged reasoning fallback", async () => {
+  const fixture = setupFixture();
+  const { db, dbPath } = fixture;
+
+  db.prepare(
+    `INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    "ses_interaction",
+    "proj_main",
+    "interaction-session",
+    "/workspace/project",
+    "Interaction Session",
+    "1.2.17",
+    1700000000000,
+    1700000003000
+  );
+
+  db.prepare(
+    `INSERT INTO message (id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    "msg_interaction",
+    "ses_interaction",
+    1700000000400,
+    1700000000400,
+    JSON.stringify({ role: "assistant" })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_interaction_reasoning",
+    "msg_interaction",
+    "ses_interaction",
+    1700000000410,
+    1700000000410,
+    JSON.stringify({ type: "reasoning", text: "Need three clarifications" })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_interaction_text",
+    "msg_interaction",
+    "ses_interaction",
+    1700000000420,
+    1700000000420,
+    JSON.stringify({
+      type: "text",
+      text: "Visible fallback\n[rovo-ui:v1:abc123]",
+    })
+  );
+
+  try {
+    const result = await readOpencodeUiSession("ses_interaction", { dbPath });
+    const assistant = result.session?.messages[0];
+
+    assert.equal(result.success, true);
+    assert.equal(assistant?.role, "assistant");
+    assert.equal(assistant?.text, "Visible fallback\n[rovo-ui:v1:abc123]");
+    assert.doesNotMatch(assistant?.text ?? "", /Need three clarifications/u);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test("readOpencodeUiSession aggregates usage from assistant message tokens", async () => {
   const fixture = setupFixture();
   const { db, dbPath } = fixture;

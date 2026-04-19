@@ -7,10 +7,11 @@ import {
   appRestart,
 } from "../window-manager.ts";
 import { registerHandler } from "./ipc-helpers.ts";
-import { spawn } from "child_process";
+import { spawn, execFile } from "child_process";
 import { platform } from "os";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { join, dirname } from "path";
+import { promisify } from "util";
 import { getLoggerCore } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { Paths } from "../paths.ts";
@@ -23,9 +24,278 @@ import { getBuiltInLanguagePack } from "../../shared/i18n/bundled-languages.js";
 import { normalizeAppLanguage } from "../../shared/i18n/locale.js";
 
 const logger = getLoggerCore();
+const execFileAsync = promisify(execFile);
 const OPENCODE_INSTALL_URL = "https://opencode.ai/install";
 const OPENCODE_RELEASES_API_URL = "https://api.github.com/repos/anomalyco/opencode/releases/latest";
 const OPENCODE_RELEASES_PAGE_URL = "https://github.com/anomalyco/opencode/releases/latest";
+const INTERACTION_CLI_PROVIDERS = Object.freeze([
+  {
+    id: "opencode",
+    patterns: [/(^|[/\s])opencode([/\s]|$)/i],
+  },
+  {
+    id: "codex",
+    patterns: [/@openai\/codex/i, /(^|[/\s])codex([/\s]|$)/i],
+  },
+  {
+    id: "claude",
+    patterns: [/(^|[/\s])claude(?:-code)?([/\s]|$)/i],
+  },
+  {
+    id: "gemini",
+    patterns: [/(^|[/\s])gemini(?:-cli)?([/\s]|$)/i],
+  },
+  {
+    id: "aider",
+    patterns: [/(^|[/\s])aider([/\s]|$)/i],
+  },
+  {
+    id: "cursor",
+    patterns: [/(^|[/\s])cursor([/\s]|$)/i],
+  },
+  {
+    id: "qwen",
+    patterns: [/(^|[/\s])qwen([/\s]|$)/i],
+  },
+  {
+    id: "roo",
+    patterns: [/(^|[/\s])roo([/\s]|$)/i],
+  },
+]);
+
+interface InteractionProcessEntry {
+  pid: number;
+  ppid: number;
+  args: string;
+}
+
+function parseInteractionProcessLine(line: string): InteractionProcessEntry | null {
+  const match = line.trim().match(/^(\d+)\s+(\d+)\s+(.+)$/u);
+  if (match === null) {
+    return null;
+  }
+
+  const pid = Number.parseInt(match[1] ?? "", 10);
+  const ppid = Number.parseInt(match[2] ?? "", 10);
+  const args = (match[3] ?? "").trim();
+  if (!Number.isFinite(pid) || !Number.isFinite(ppid) || args === "") {
+    return null;
+  }
+
+  return { pid, ppid, args };
+}
+
+function isInteractionMainAppProcess(args: string): boolean {
+  return (
+    args.includes("dist/electron/main.js") && !args.includes("dist/ghost-agent/electron/main.js")
+  );
+}
+
+function isInteractionGhostProcess(args: string): boolean {
+  return args.includes("dist/ghost-agent/electron/main.js");
+}
+
+function isInteractionWrapperProcess(args: string): boolean {
+  return args.includes("scripts/ghost-agent-wrapper.mjs");
+}
+
+function isInteractionOpencodeServeProcess(args: string): boolean {
+  return /\bopencode\b.*\bserve\b/iu.test(args);
+}
+
+async function readInteractionProcessEntries(): Promise<InteractionProcessEntry[]> {
+  try {
+    const { stdout } = await execFileAsync("ps", ["-eo", "pid=,ppid=,args="]);
+    return stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "")
+      .map((line) => parseInteractionProcessLine(line))
+      .filter((entry): entry is InteractionProcessEntry => entry !== null);
+  } catch {
+    return [];
+  }
+}
+
+function buildInteractionProbes(entries: InteractionProcessEntry[]): {
+  mainProcess: boolean;
+  ghostProcess: boolean;
+  wrapperProcess: boolean;
+  opencodeServerRunning: boolean;
+} {
+  return {
+    mainProcess: entries.some((entry) => isInteractionMainAppProcess(entry.args)),
+    ghostProcess: entries.some((entry) => isInteractionGhostProcess(entry.args)),
+    wrapperProcess: entries.some((entry) => isInteractionWrapperProcess(entry.args)),
+    opencodeServerRunning: entries.some((entry) => isInteractionOpencodeServeProcess(entry.args)),
+  };
+}
+
+function toInteractionTimestampMs(value: string): number | null {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveInteractionAppMode(
+  runtime: {
+    desiredMode: "terminal" | "soft" | "ghost-agent";
+    phase: "idle" | "preparing-handoff" | "in-ghost" | "returning";
+    updatedAt: string;
+  },
+  probes: {
+    mainProcess: boolean;
+    ghostProcess: boolean;
+    wrapperProcess: boolean;
+    opencodeServerRunning: boolean;
+  }
+): "terminal" | "app" | "ghost-agent" | "transitioning" | "conflict" {
+  const nowMs = Date.now();
+  const updatedMs = toInteractionTimestampMs(runtime.updatedAt);
+  const runtimeAgeMs = updatedMs === null ? null : Math.max(0, nowMs - updatedMs);
+  const staleRuntime = runtimeAgeMs === null ? true : runtimeAgeMs > 60000;
+  const appOpenWithoutServe = probes.mainProcess && probes.opencodeServerRunning !== true;
+
+  const inferred =
+    probes.mainProcess && probes.ghostProcess
+      ? "conflict"
+      : probes.ghostProcess
+        ? "ghost-agent"
+        : probes.mainProcess && probes.opencodeServerRunning
+          ? "app"
+          : "terminal";
+
+  const expected =
+    runtime.phase === "preparing-handoff" || runtime.phase === "returning"
+      ? "transitioning"
+      : runtime.phase === "in-ghost"
+        ? "ghost-agent"
+        : runtime.desiredMode === "terminal"
+          ? "terminal"
+          : "app";
+
+  if (inferred === "conflict") {
+    return "conflict";
+  }
+
+  if (expected === "transitioning") {
+    if (!probes.mainProcess && !probes.ghostProcess && !probes.wrapperProcess && staleRuntime) {
+      return "terminal";
+    }
+
+    return "transitioning";
+  }
+
+  if (expected === inferred) {
+    return appOpenWithoutServe ? "terminal" : inferred;
+  }
+
+  if (expected === "app" && inferred === "terminal") {
+    if (appOpenWithoutServe) {
+      return "terminal";
+    }
+
+    return probes.wrapperProcess && !staleRuntime ? "transitioning" : "terminal";
+  }
+
+  if (expected === "terminal" && (inferred === "app" || inferred === "ghost-agent")) {
+    return "conflict";
+  }
+
+  return "conflict";
+}
+
+function collectInteractionAncestorChain(
+  entries: InteractionProcessEntry[],
+  startPid: number
+): InteractionProcessEntry[] {
+  const entryMap = new Map<number, InteractionProcessEntry>();
+  entries.forEach((entry) => {
+    entryMap.set(entry.pid, entry);
+  });
+
+  const chain: InteractionProcessEntry[] = [];
+  const visited = new Set<number>();
+  let currentPid = startPid;
+
+  while (currentPid > 0 && visited.has(currentPid) === false) {
+    visited.add(currentPid);
+    const entry = entryMap.get(currentPid);
+    if (entry === undefined) {
+      break;
+    }
+    chain.push(entry);
+    currentPid = entry.ppid;
+  }
+
+  return chain;
+}
+
+function detectInteractionCliProvider(args: string): string | null {
+  for (const provider of INTERACTION_CLI_PROVIDERS) {
+    if (provider.patterns.some((pattern) => pattern.test(args))) {
+      return provider.id;
+    }
+  }
+
+  return null;
+}
+
+function resolveInteractionEffectiveMode(options: {
+  entries: InteractionProcessEntry[];
+  currentPid: number;
+  appMode: "terminal" | "app" | "ghost-agent" | "transitioning" | "conflict";
+  probes: {
+    opencodeServerRunning: boolean;
+  };
+}): {
+  effectiveMode:
+    | "terminal"
+    | "app"
+    | "ghost-agent"
+    | "transitioning"
+    | "conflict"
+    | "opencode-terminal-mode"
+    | "other-provider-cli";
+  terminalOwner: "none" | "opencode" | "other-provider" | "opencode-server";
+  cliProvider: string | null;
+} {
+  const chain = collectInteractionAncestorChain(options.entries, options.currentPid).slice(1);
+  const matchedProvider =
+    chain
+      .map((entry) => detectInteractionCliProvider(entry.args))
+      .find((provider) => provider !== null) ?? null;
+  const canOverrideMode = options.appMode === "terminal" || options.appMode === "app";
+
+  if (canOverrideMode && options.probes.opencodeServerRunning) {
+    return {
+      effectiveMode: options.appMode,
+      terminalOwner: "opencode-server",
+      cliProvider: matchedProvider,
+    };
+  }
+
+  if (canOverrideMode && matchedProvider === "opencode") {
+    return {
+      effectiveMode: "opencode-terminal-mode",
+      terminalOwner: "opencode",
+      cliProvider: matchedProvider,
+    };
+  }
+
+  if (canOverrideMode && matchedProvider !== null) {
+    return {
+      effectiveMode: "other-provider-cli",
+      terminalOwner: "other-provider",
+      cliProvider: matchedProvider,
+    };
+  }
+
+  return {
+    effectiveMode: options.appMode,
+    terminalOwner: "none",
+    cliProvider: matchedProvider,
+  };
+}
 
 async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
   let settings: { general?: { language?: unknown } };
@@ -517,6 +787,30 @@ export function setupWindowHandlers(): void {
   registerHandler("assistant-runtime-read", async () => {
     const state = await readAssistantRuntime();
     return { success: true, state };
+  });
+
+  registerHandler("rovo-interaction-context-read", async () => {
+    const [runtime, entries] = await Promise.all([
+      readAssistantRuntime(),
+      readInteractionProcessEntries(),
+    ]);
+    const probes = buildInteractionProbes(entries);
+    const appMode = resolveInteractionAppMode(runtime, probes);
+    const providerContext = resolveInteractionEffectiveMode({
+      entries,
+      currentPid: process.pid,
+      appMode,
+      probes,
+    });
+
+    return {
+      success: true,
+      appMode,
+      effectiveMode: providerContext.effectiveMode,
+      opencodeServerRunning: probes.opencodeServerRunning,
+      terminalOwner: providerContext.terminalOwner,
+      cliProvider: providerContext.cliProvider,
+    };
   });
 
   registerHandler("assistant-runtime-write", async (_event, payload: unknown) => {

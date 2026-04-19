@@ -124,7 +124,7 @@
       "stages": {
         "session": {
           "eyebrow": "SESSION",
-          "title": "Session + goal",
+          "title": "Registration",
           "complete": "Active session attached",
           "available": "Saved sessions are available",
           "locked": "Create a session to begin"
@@ -160,6 +160,10 @@
           "complete": "Draft tools are unlocked",
           "locked": "Draft opens after generation"
         }
+      },
+      "registrationPanels": {
+        "session": "Session + goal",
+        "operator": "Operator"
       }
     },
     "panels": {
@@ -403,6 +407,8 @@
         "title": "Validate run context",
         "label": "Preflight",
         "action": "Run Preflight",
+        "updateAction": "Refresh",
+        "clearAction": "Clear",
         "idle": "idle",
         "running": "running",
         "ready": "ready",

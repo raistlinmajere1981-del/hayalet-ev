@@ -5348,7 +5348,8 @@
       "toggleRightTitle": "Toggle right panel",
       "modeLabel": "Mode ▾",
       "modelLabel": "Model ▾",
-      "effortLabel": "Effort ▾"
+      "effortLabel": "Effort ▾",
+      "interactionLabel": "Interaction ▾"
     },
     "session": {
       "sidebarTitle": "Sessions",
@@ -5424,6 +5425,36 @@
         "insertedMessage": "The transcript was inserted into the text field.",
         "captureError": "Could not start the microphone: {{message}}",
         "transcriptionError": "Could not transcribe the audio: {{message}}"
+      }
+    },
+    "interaction": {
+      "mode": {
+        "off": "Interaction Off",
+        "offHelp": "Send messages without injecting a local interaction pack.",
+        "planHarderLocal": "Plan Harder Local",
+        "planHarderLocalHelp": "Force the next reply to emit the planning intake card.",
+        "changeApproval": "Change Approval",
+        "changeApprovalHelp": "Force the next reply to emit the standard approval card.",
+        "inactive": "{{mode}} is not available in the current app context.",
+        "loadFailed": "Could not load the {{mode}} prompt: {{message}}",
+        "tokenMissing": "{{mode}} was selected but the reply did not produce a valid rovo card."
+      },
+      "approval": {
+        "modeLabel": "Mode",
+        "counterpartyLabel": "Counterparty",
+        "issueLabel": "Issue",
+        "solutionLabel": "Solution",
+        "filesLabel": "Files"
+      },
+      "plan": {
+        "storageHint": "Draft answers for this card are kept in the local memory store.",
+        "clear": "Clear",
+        "submit": "Send",
+        "recommendedSuffix": "Recommended",
+        "previewTitle": "Plan reply preview",
+        "previewEmpty": "Answers will be previewed here.",
+        "missingRequired": "Fill in the required fields.",
+        "emptyReply": "Enter at least one answer before sending."
       }
     },
     "message": {

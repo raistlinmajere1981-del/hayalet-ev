@@ -28,6 +28,7 @@ export interface CustomSelectAPI {
 }
 
 export type CustomSelectCallback = (value: string, text: string) => void | Promise<void>;
+export type RovoInteractionMode = "off" | "plan-harder-local" | "change-approval";
 
 export type SessionTab = "active" | "archived";
 
@@ -162,6 +163,7 @@ export interface RuntimeState {
   activeModelKey: string | null;
   activeReasoningEffort: string | null;
   activeAgentId: string | null;
+  activeInteractionMode: RovoInteractionMode;
   modelMetaByKey: Record<string, ModelMeta>;
   modelItems: SelectItem[];
   providerItems: ProviderItem[];

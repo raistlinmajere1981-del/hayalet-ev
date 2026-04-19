@@ -22,6 +22,9 @@ export function createForgeUiRequestRuntime() {
     approveDraft() {
       return sendCommand(FORGE_UI_COMMANDS.approveDraft);
     },
+    clearPreflight() {
+      return sendCommand(FORGE_UI_COMMANDS.clearPreflight);
+    },
     createSession(payload: { persist?: boolean } = {}) {
       return sendCommand(FORGE_UI_COMMANDS.createSession, payload);
     },

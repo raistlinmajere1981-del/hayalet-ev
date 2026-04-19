@@ -34,6 +34,10 @@ function mergeText(current: string, next: string): string {
   return current === "" ? next : `${current}\n${next}`;
 }
 
+function includesRovoInteractionToken(text: string): boolean {
+  return text.includes("[rovo-ui:v1:");
+}
+
 function readTextPartContent(partData: JsonRecord | null): string {
   if (partData === null) {
     return "";
@@ -50,6 +54,24 @@ function readTextPartContent(partData: JsonRecord | null): string {
   }
 
   return asString(partData["content_delta"]).trim();
+}
+
+function extractLatestInteractionText(partRows: PartRow[]): string {
+  for (let index = partRows.length - 1; index >= 0; index -= 1) {
+    const partData = parseRecord(partRows[index]?.data ?? "");
+    const partType = asString(partData?.["type"]).trim();
+    const partKind = asString(partData?.["part_kind"]).trim();
+    if (partType !== "text" && partKind !== "text") {
+      continue;
+    }
+
+    const content = readTextPartContent(partData);
+    if (content !== "" && includesRovoInteractionToken(content)) {
+      return content;
+    }
+  }
+
+  return "";
 }
 
 function toCompactLabel(value: unknown): string {
@@ -303,6 +325,7 @@ export function parseMessages(
     }
 
     const parts = partsByMessage.get(row.id) ?? [];
+    const interactionText = role === "assistant" ? extractLatestInteractionText(parts) : "";
     let text = "";
     const files: Array<{ name: string; media_type: string }> = [];
     const toolCalls: OpencodeUiToolCall[] = [];
@@ -359,6 +382,10 @@ export function parseMessages(
       }
       messages.push({ role: "user", text: text.trim(), files, toolCalls: [] });
       continue;
+    }
+
+    if (interactionText !== "") {
+      text = interactionText;
     }
 
     if (text.trim() === "" && toolCalls.length === 0) {

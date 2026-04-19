@@ -736,6 +736,34 @@ declare global {
         updatedAt: string;
       };
     }>;
+    rovoInteractionContextRead: () => Promise<{
+      success: boolean;
+      appMode?: "terminal" | "app" | "ghost-agent" | "transitioning" | "conflict";
+      effectiveMode?:
+        | "terminal"
+        | "app"
+        | "ghost-agent"
+        | "transitioning"
+        | "conflict"
+        | "opencode-terminal-mode"
+        | "other-provider-cli";
+      opencodeServerRunning?: boolean;
+      terminalOwner?: "none" | "opencode" | "other-provider" | "opencode-server";
+      cliProvider?: string | null;
+    }>;
+    memorySearch: (params: Record<string, unknown>) => Promise<
+      IPCResult & {
+        data?: {
+          items?: Array<Record<string, unknown>>;
+        };
+      }
+    >;
+    memoryStats: (params?: Record<string, unknown>) => Promise<IPCResult>;
+    memoryDelete: (params: Record<string, unknown>) => Promise<IPCResult>;
+    memoryUpdate: (params: Record<string, unknown>) => Promise<IPCResult>;
+    memoryWrite: (params: Record<string, unknown>) => Promise<IPCResult>;
+    memoryPrune: (params?: Record<string, unknown>) => Promise<IPCResult>;
+    memoryDeleteAll: (params?: Record<string, unknown>) => Promise<IPCResult>;
     shellOpenPath: (path: string) => Promise<string>;
     showMessageBox: (
       options: Record<string, unknown>

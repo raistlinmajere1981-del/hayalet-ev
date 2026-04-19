@@ -10,8 +10,18 @@ import {
   renderAttachmentTrayHtml,
 } from "./attachments.js";
 import { t } from "./i18n.js";
-import { extractAssistantText } from "./message-content.js";
-import type { ComposerAttachment, RuntimeState } from "./types.js";
+import { extractAssistantText, extractLatestAssistantTextPart } from "./message-content.js";
+import {
+  getRovoInteractionActivationSnapshot,
+  refreshRovoInteractionRuntime,
+} from "./interaction-runtime.js";
+import {
+  clearConsumedInteractionMode,
+  getInteractionModeLabel,
+  loadInteractionSystemPrompt,
+} from "./interaction-mode.js";
+import { parseRovoInteraction } from "../../modules/rovo-interactions/parser.js";
+import type { ComposerAttachment, RuntimeState, RovoInteractionMode } from "./types.js";
 
 type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
 
@@ -23,12 +33,14 @@ interface BuildMessageRequestInput {
   reasoningEffort?: string | null;
   modelOptions?: Record<string, unknown> | null;
   attachments?: ComposerAttachment[];
+  system?: string | null;
 }
 
 interface ComposerUiContext {
   runtime: RuntimeState;
   byId: ByIdFn;
   showToast: (message: string) => void;
+  syncInteractionModeUi?: () => void;
   ensureActiveSession: () => Promise<string>;
   loadSessionListAndRender: (options?: {
     preserveActive?: boolean;
@@ -95,7 +107,27 @@ export function buildMessageRequestBody(input: BuildMessageRequestInput): Record
     body["agent"] = input.agentId;
   }
 
+  if (input.system != null && input.system.trim() !== "") {
+    body["system"] = input.system.trim();
+  }
+
   return body;
+}
+
+async function resolveInteractionSystemPrompt(mode: RovoInteractionMode): Promise<string | null> {
+  if (mode === "off") {
+    return null;
+  }
+
+  const snapshot = getRovoInteractionActivationSnapshot();
+  if (snapshot.active !== true) {
+    const refreshed = await refreshRovoInteractionRuntime();
+    if (refreshed.active !== true) {
+      return null;
+    }
+  }
+
+  return await loadInteractionSystemPrompt(mode);
 }
 
 export function setComposerSendButtonState(runtime: RuntimeState, byId: ByIdFn): void {
@@ -287,6 +319,7 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
   context.scrollChatToBottom(true);
 
   try {
+    const activeInteractionMode = context.runtime.activeInteractionMode;
     const modelMeta =
       context.runtime.activeModelKey != null
         ? context.runtime.modelMetaByKey[context.runtime.activeModelKey]
@@ -295,6 +328,27 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
       modelMeta?.variantOptions.find(
         (variant) => variant.key === context.runtime.activeReasoningEffort
       ) ?? null;
+    let interactionSystemPrompt: string | null = null;
+    if (activeInteractionMode !== "off") {
+      try {
+        interactionSystemPrompt = await resolveInteractionSystemPrompt(activeInteractionMode);
+        if (interactionSystemPrompt === null) {
+          context.showToast(
+            t("interaction.mode.inactive", {
+              mode: getInteractionModeLabel(activeInteractionMode),
+            })
+          );
+        }
+      } catch (error) {
+        context.showToast(
+          t("interaction.mode.loadFailed", {
+            mode: getInteractionModeLabel(activeInteractionMode),
+            message: error instanceof Error && error.message !== "" ? error.message : String(error),
+          })
+        );
+      }
+    }
+
     const body = buildMessageRequestBody({
       text,
       modelId: modelMeta?.modelId ?? null,
@@ -303,6 +357,7 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
       reasoningEffort: context.runtime.activeReasoningEffort,
       modelOptions: selectedVariant?.options ?? null,
       attachments: stagedAttachments,
+      system: interactionSystemPrompt,
     });
 
     const response = await apiCall<unknown>(
@@ -311,8 +366,28 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
       body
     );
     const fallbackText = extractAssistantText(response);
+    const interactionCandidateText = extractLatestAssistantTextPart(response);
+    const parsedInteractionCandidate =
+      interactionCandidateText !== "" ? parseRovoInteraction(interactionCandidateText) : null;
+    const renderableFallbackText =
+      parsedInteractionCandidate !== null ? interactionCandidateText : fallbackText;
+    if (clearConsumedInteractionMode(context.runtime, activeInteractionMode)) {
+      context.syncInteractionModeUi?.();
+    }
+    if (
+      activeInteractionMode !== "off" &&
+      interactionSystemPrompt !== null &&
+      interactionCandidateText !== "" &&
+      parsedInteractionCandidate === null
+    ) {
+      context.showToast(
+        t("interaction.mode.tokenMissing", {
+          mode: getInteractionModeLabel(activeInteractionMode),
+        })
+      );
+    }
 
-    await context.withHistorySyncFallback(fallbackText);
+    await context.withHistorySyncFallback(renderableFallbackText);
     setComposerAttachments(context.runtime, [], context.byId);
   } catch (error) {
     chatInput.value = previousText;

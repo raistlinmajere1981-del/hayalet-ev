@@ -109,6 +109,12 @@
           "exposure": "internal"
         },
         {
+          "name": "ForgeRoomClearPreflight",
+          "description": "Remove the current run-local preflight result without changing run settings.",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "ForgeRoomGenerateDraft",
           "description": "Generate a real draft breakdown from the active goal through the Architect seat.",
           "scope": "room-ui",

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildMessageRequestBody } from "../../src/js/pages/opencode-ui/app.ts";
+import { buildMessageRequestBody } from "../../src/js/pages/opencode-ui/composer-actions.ts";
+import {
+  buildInteractionSystemPrompt,
+  clearConsumedInteractionMode,
+} from "../../src/js/pages/opencode-ui/interaction-mode.ts";
+import { extractLatestAssistantTextPart } from "../../src/js/pages/opencode-ui/message-content.ts";
 
 test("buildMessageRequestBody sends model as provider+model object", () => {
   const body = buildMessageRequestBody({
@@ -100,4 +105,55 @@ test("buildMessageRequestBody appends staged attachments as file parts", () => {
       },
     ],
   });
+});
+
+test("buildMessageRequestBody includes invisible system prompt when provided", () => {
+  const body = buildMessageRequestBody({
+    text: "plani derinlestir",
+    modelId: null,
+    providerId: null,
+    system: "local interaction prompt",
+  });
+
+  assert.deepEqual(body, {
+    parts: [{ type: "text", text: "plani derinlestir" }],
+    system: "local interaction prompt",
+  });
+});
+
+test("buildInteractionSystemPrompt includes selected pack metadata and question bank", () => {
+  const prompt = buildInteractionSystemPrompt({
+    mode: "plan-harder-local",
+    protocolText: "# protocol",
+    manifestText: '{"id":"plan-harder-local"}',
+    promptText: "# prompt",
+    questionsText: '{"questions":[{"id":"scope"}]}',
+  });
+
+  assert.match(prompt, /The user manually selected the interaction mode `plan-harder-local`/);
+  assert.match(prompt, /payload `packId` to `plan-harder-local`/);
+  assert.match(prompt, /=== Pack Questions ===/);
+  assert.match(prompt, /"id": "scope"/);
+});
+
+test("extractLatestAssistantTextPart ignores reasoning and step parts", () => {
+  const text = extractLatestAssistantTextPart({
+    parts: [
+      { type: "step-start", snapshot: "abc123" },
+      { type: "reasoning", text: "hidden" },
+      { type: "text", text: "visible [rovo-ui:v1:token]" },
+      { type: "step-finish", reason: "stop" },
+    ],
+  });
+
+  assert.equal(text, "visible [rovo-ui:v1:token]");
+});
+
+test("clearConsumedInteractionMode resets only the mode that was used", () => {
+  const runtime = { activeInteractionMode: "plan-harder-local" as const };
+
+  assert.equal(clearConsumedInteractionMode(runtime, "change-approval"), false);
+  assert.equal(runtime.activeInteractionMode, "plan-harder-local");
+  assert.equal(clearConsumedInteractionMode(runtime, "plan-harder-local"), true);
+  assert.equal(runtime.activeInteractionMode, "off");
 });

@@ -219,3 +219,64 @@ export function extractAssistantText(payload: unknown): string {
 
   return "";
 }
+
+export function extractLatestAssistantTextPart(payload: unknown): string {
+  if (payload == null) {
+    return "";
+  }
+
+  if (Array.isArray(payload)) {
+    for (let index = payload.length - 1; index >= 0; index -= 1) {
+      const candidate = extractLatestAssistantTextPart(payload[index]);
+      if (candidate !== "") {
+        return candidate;
+      }
+    }
+    return "";
+  }
+
+  if (typeof payload !== "object") {
+    return "";
+  }
+
+  const record = payload as Record<string, unknown>;
+  const directParts: unknown[] = Array.isArray(record["parts"]) ? record["parts"] : [];
+  for (let index = directParts.length - 1; index >= 0; index -= 1) {
+    const part = directParts[index];
+    if (part == null || typeof part !== "object" || Array.isArray(part)) {
+      continue;
+    }
+
+    const partRecord = part as Record<string, unknown>;
+    const type = normalizeString(partRecord["type"]);
+    const partKind = normalizeString(partRecord["part_kind"]);
+    if (type !== "text" && partKind !== "text") {
+      continue;
+    }
+
+    const content = normalizeString(partRecord["text"]).trim();
+    if (content !== "") {
+      return content;
+    }
+
+    const fallbackContent = normalizeString(partRecord["content"]).trim();
+    if (fallbackContent !== "") {
+      return fallbackContent;
+    }
+
+    const deltaContent = normalizeString(partRecord["content_delta"]).trim();
+    if (deltaContent !== "") {
+      return deltaContent;
+    }
+  }
+
+  const nestedInfo = record["info"];
+  if (nestedInfo != null && typeof nestedInfo === "object" && !Array.isArray(nestedInfo)) {
+    const nestedContent = normalizeString((nestedInfo as Record<string, unknown>)["content"]).trim();
+    if (nestedContent !== "") {
+      return nestedContent;
+    }
+  }
+
+  return "";
+}

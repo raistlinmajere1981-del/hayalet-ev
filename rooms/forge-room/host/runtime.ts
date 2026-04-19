@@ -29,6 +29,7 @@ import type {
   ForgeSessionContextSelection,
 } from "../shared/types/index.js";
 import {
+  createEmptyForgePreflightState,
   createEmptyForgeRunOverride,
   isForgeArchitectSeatId,
   normalizeForgeLegacyIdentifier,
@@ -1650,6 +1651,30 @@ export default function createForgeRoomHostRuntime() {
         };
       }
 
+      async function clearPreflightCommand(): Promise<{
+        success: boolean;
+        message?: string;
+      }> {
+        await ensureHydrated();
+        const state = readCurrentState();
+        if (state.activeSessionId === null) {
+          return {
+            success: false,
+            message: "Create or open a session before clearing preflight.",
+          };
+        }
+        dispatchPreflight(createEmptyForgePreflightState());
+        syncCoordinatorState({
+          note: "No preflight result yet. Draft can still start without a preflight report.",
+        });
+        await persistCurrentSession("preflight-cleared", {
+          sessionId: state.activeSessionId,
+        });
+        return {
+          success: true,
+        };
+      }
+
       async function resolveConflictDecision(payload: Record<string, unknown>): Promise<{
         success: boolean;
         conflictId?: string;
@@ -2442,6 +2467,8 @@ export default function createForgeRoomHostRuntime() {
             return await generateDraft(commandPayload);
           case FORGE_UI_COMMANDS.runPreflight:
             return await runPreflightCommand();
+          case FORGE_UI_COMMANDS.clearPreflight:
+            return await clearPreflightCommand();
           case FORGE_UI_COMMANDS.applyDraftText:
             return await applyDraftText(commandPayload);
           case FORGE_UI_COMMANDS.upsertDraftTask:

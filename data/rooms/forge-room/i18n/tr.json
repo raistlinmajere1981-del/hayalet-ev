@@ -124,7 +124,7 @@
       "stages": {
         "session": {
           "eyebrow": "OTURUM",
-          "title": "Oturum + Hedef",
+          "title": "Kayıt",
           "complete": "Aktif oturum bağlandı",
           "available": "Kayıtlı oturumlar hazır",
           "locked": "Başlamak için bir oturum oluştur"
@@ -160,6 +160,10 @@
           "complete": "Taslak araçları açıldı",
           "locked": "Taslak üretimden sonra açılır"
         }
+      },
+      "registrationPanels": {
+        "session": "Oturum + Hedef",
+        "operator": "Operatör"
       }
     },
     "panels": {
@@ -403,6 +407,8 @@
         "title": "Çalışma bağlamını doğrula",
         "label": "Ön kontrol",
         "action": "Ön kontrol çalıştır",
+        "updateAction": "Güncelle",
+        "clearAction": "Temizle",
         "idle": "bekliyor",
         "running": "çalışıyor",
         "ready": "hazır",

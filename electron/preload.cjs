@@ -398,6 +398,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openTerminal: (path) => ipcRenderer.invoke("open-terminal", path),
   assistantRuntimeRead: () => ipcRenderer.invoke("assistant-runtime-read"),
   assistantRuntimeWrite: (payload) => ipcRenderer.invoke("assistant-runtime-write", payload),
+  rovoInteractionContextRead: () => ipcRenderer.invoke("rovo-interaction-context-read"),
   shellOpenPath: (path) => ipcRenderer.invoke("shell-open-path", path),
   deviceAction: (action, payload) => ipcRenderer.invoke("device-action", action, payload),
   generateTree: (basePath, options) => ipcRenderer.invoke("generate-tree", basePath, options),

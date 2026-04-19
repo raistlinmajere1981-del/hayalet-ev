@@ -6,17 +6,17 @@
 
 ### Built-in Öncelik Kuralı — Primary → Fallback
 
-| ✅ Built-in — ÖNCELİK  | 🟡 Hayalet-ev MCP — YEDEK/FALLBACK               |
-| ---------------------- | ------------------------------------------------ |
-| `open_files`           | `hev_fs_read`                                    |
-| `create_file`          | `hev_fs_write`                                   |
+| ✅ Built-in — ÖNCELİK   | 🟡 Hayalet-ev MCP — YEDEK/FALLBACK               |
+| ----------------------- | ------------------------------------------------ |
+| `open_files`            | `hev_fs_read`                                    |
+| `create_file`           | `hev_fs_write`                                   |
 | `find_and_replace_code` | `hev_fs_edit` veya `hev_dev_edit_lines`          |
-| `expand_code_chunks`   | `hev_fs_expand_code_chunks`                      |
-| `delete_file`          | `hev_fs_delete`                                  |
-| `move_file`            | `hev_fs_move`                                    |
-| `expand_folder`        | `hev_fs_list`                                    |
-| `grep`                 | `hev_dev_search_symbol` — TS/sembol odaklı arama |
-| `bash`                 | `hev_fs_bash` — MCP context gerektiren durumlar  |
+| `expand_code_chunks`    | `hev_fs_expand_code_chunks`                      |
+| `delete_file`           | `hev_fs_delete`                                  |
+| `move_file`             | `hev_fs_move`                                    |
+| `expand_folder`         | `hev_fs_list`                                    |
+| `grep`                  | `hev_dev_search_symbol` — TS/sembol odaklı arama |
+| `bash`                  | `hev_fs_bash` — MCP context gerektiren durumlar  |
 
 > **Kural:** Aynı iş için built-in karşılık varsa **önce built-in** kullan.
 > **MCP Kullanımı:** Sadece built-in karşılık yoksa veya `hev_*` tool açıkça ek yetenek sağlıyorsa tercih et.
@@ -45,7 +45,6 @@ MCP tool yüzeyi değiştiğinde varsayılan akış:
 
 - `npm run mcp:build` → tool listesi ve metadata yeniden üretilir.
 - Gerekirse MCP panel toggle otomasyonu için `hev_toggle_mcp_panel_servers` kullanılabilir — OpenCode.
-
 
 ---
 
@@ -87,30 +86,71 @@ Devam etmem için "evet" yaz.
 > **Kural:** Onay sonrası süreç bitmeden kullanıcı tekrar bekletilmez — sonuç bildirimi ile çember kapanır.
 > **Kural:** Mod alanı her seferinde `npm run mode:status` çıktısına göre dinamik doldurulur; `npm run whereami` ile cross-check edilir — hardcode yazılmaz.
 > **Kural:** Mod `app` iken aşağıdaki gören mesajında aşağıdaki ibarelerden biri varsa muhatap `AI` seçilir:
+>
 > - Görev öncesi session içinde relay'in aktif olduğuna dair mesaj/işaret görüldüyse
 > - Karşı taraf mesajında kendini açıkça AI olarak tanıttıysa
-> **Kural:** Bu iki durumun dışındaki tüm senaryolarda varsayılan muhatap `Kullanıcı` seçilir.
-> **Kural:** Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend` eklenir.
-> **Kural:** `++cmd:AsistanAISend` args vermeden çalışır; hedef, settings'teki son aktif relay AI kaydından çözülür.
-> **Kural:** Muhatap sınıflandırması ve AI'ye özel davranışlar için canonical akış: `workflow:ai-counterparty`.
+>   **Kural:** Bu iki durumun dışındaki tüm senaryolarda varsayılan muhatap `Kullanıcı` seçilir.
+>   **Kural:** Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend` eklenir.
+>   **Kural:** `++cmd:AsistanAISend` args vermeden çalışır; hedef, settings'teki son aktif relay AI kaydından çözülür.
+>   **Kural:** Muhatap sınıflandırması ve AI'ye özel davranışlar için canonical akış: `workflow:ai-counterparty`.
+
+### Rovo Interaction Layer — Canonical
+
+Bu repo, `.codex` skill sistemi yerine yerel `Rovo Interaction Layer` kullanır.
+
+Kaynak dosyalar:
+
+- `.rovo/interactions/protocol.md`
+- `.rovo/interactions/change-approval/*`
+- `.rovo/interactions/plan-harder-local/*`
+
+Aktivasyon kuralı:
+
+- Bu katman yalnızca Hayalet Ev `opencode-ui` assistant yüzeyi aktifken ve OpenCode serve çalışırken kullanılabilir.
+- `npm run whereami` çıktısı `other-provider-cli`, `opencode-terminal-mode`, `terminal`, `ghost-agent`, `transitioning` veya `conflict` ise özel interaction payload üretme; plain text ile devam et.
+- Assistant slot hesabı `opencode_ui_opencode_at_opencode_com` değilse özel interaction payload üretme.
+
+V1 interaction tipleri:
+
+- `change-approval`
+- `plan-harder-local`
+
+V1 taşıma kuralı:
+
+- Görünür mesaj plain text olarak anlamlı kalır.
+- Structured payload mesajın sonunda tek satır `rovo-ui:v1` token ile taşınır.
+- Token formatı ve payload alanları için `.rovo/interactions/protocol.md` source of truth kabul edilir.
+
+V1 cevap kuralı:
+
+- `change-approval` için canonical cevap yalnızca `evet`
+- `plan-harder-local` için oluşturulan plan cevabı hiçbir durumda tek başına `evet` olamaz
+
+V1 pack kullanım kuralı:
+
+- Kod değişikliği onayı gerektiğinde `.rovo/interactions/change-approval/prompt.md` mantığı izlenir.
+- Kullanıcı planı derinleştirmemi istediğinde ve interaction layer aktifse `.rovo/interactions/plan-harder-local/*` kullanılır.
+- `plan-harder-local` taslakları gerekiyorsa mevcut local memory DB üzerinde best-effort saklanabilir; bu kalıcılık aktivasyon şartı değildir.
+- Interaction layer aktif değilse aynı akış plain text ile sürdürülür; interaction token eklenmez.
 
 ---
 
 ## 🔄 Session Bootstrap: Adaptive — Varsayılan, Düşük Context
 
 Base — her session, düşük maliyet:
+
 1. `hev_mcp_health` → MCP çalışıyor mu? Versiyon ve tool sayısı
 2. `hev_memory_bootstrap_policy{ namespace: "policy" }` → Sadece session başında 1 kez
 3. Gerektiğinde — `hev_list_tools` → MCP tool kullanacaksan
 4. Gerektiğinde — `hev_suggest_tool{ intent }` → Intent belirsizse
 
 Koşullu adımlar:
+
 1. Değişiklik veya mod kararı gerekiyorsa → `npm run mode:status`, `npm run whereami`
 2. Mod `app` ise ve muhatap sınıflandırması gerekiyorsa → whoareyou kontrolü
 3. Electron/CDP işi varsa → `hev_fs_read{ file_path: ".rovo/_metadata/DOM-MANIFEST.json" }`
 4. Performans/uzun job/yerel bağımlılık kararı varsa → `hev_fs_read{ file_path: ".rovo/_metadata/SYSTEM-INFO.md" }`
 5. Karakter profili gerekiyorsa → `hev_fs_read{ file_path: ".rovo/_metadata/CHARACTER.md" }`
-
 
 > **SYSTEM-INFO Kullanım Kuralı:** `.rovo/_metadata/SYSTEM-INFO.md` build sırasında otomatik üretilen bir ortam snapshot'ıdır. CPU/RAM/OS/runtime kapasitesi hakkında planlama, performans beklentisi ve yerel araç uyumluluğu kararlarında kullanılabilir; anlık `free RAM` gibi değerler runtime gerçeği değil, build-time referans kabul edilir.
 
@@ -332,13 +372,13 @@ Memory akışı tamamen MCP üzerinden yürür.
 
 ### Metadata — Otomatik Güncellenen
 
-| Dosya                             | İçerik                         |
-| --------------------------------- | ------------------------------ |
-| `.rovo/_metadata/VERSION-INFO.md` | Versiyon, dependency'ler       |
-| `.rovo/_metadata/TOOL-LIST.md`    | Güncel tool listesi — referans |
-| `.rovo/_metadata/SYSTEM-INFO.md`  | Donanım, OS, runtime ve ortam profili |
-| `.rovo/_metadata/DOM-MANIFEST.json` | Statik DOM selector lookup indeksi |
-| `.rovo/_metadata/COMMENT-INDEX.md` | Yüksek sinyalli comment özeti ve hızlı gezinme |
+| Dosya                                | İçerik                                          |
+| ------------------------------------ | ----------------------------------------------- |
+| `.rovo/_metadata/VERSION-INFO.md`    | Versiyon, dependency'ler                        |
+| `.rovo/_metadata/TOOL-LIST.md`       | Güncel tool listesi — referans                  |
+| `.rovo/_metadata/SYSTEM-INFO.md`     | Donanım, OS, runtime ve ortam profili           |
+| `.rovo/_metadata/DOM-MANIFEST.json`  | Statik DOM selector lookup indeksi              |
+| `.rovo/_metadata/COMMENT-INDEX.md`   | Yüksek sinyalli comment özeti ve hızlı gezinme  |
 | `.rovo/_metadata/COMMENT-INDEX.json` | Comment index'in makine tüketimine uygun sürümü |
 
 > **Not:** Birincil keşif yöntemi runtime discovery'dir — `hev_list_tools`, `hev_suggest_tool`. `SYSTEM-INFO.md`, `DOM-MANIFEST.json` ve `COMMENT-INDEX` çıktıları build sırasında otomatik güncellenir; `SYSTEM-INFO.md` planlama için referans snapshot sağlar, runtime telemetry yerine geçmez.

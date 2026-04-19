@@ -14,6 +14,7 @@ export const FORGE_TASK_PROMPT_CONTEXT_BUDGET = 1800;
 export const FORGE_UI_COMMANDS = {
   applyDraftText: "ForgeRoomApplyDraftText",
   approveDraft: "ForgeRoomApproveDraft",
+  clearPreflight: "ForgeRoomClearPreflight",
   createSession: "ForgeRoomCreateSession",
   dispatchAssignments: "ForgeRoomDispatchAssignments",
   deleteSession: "ForgeRoomDeleteSession",

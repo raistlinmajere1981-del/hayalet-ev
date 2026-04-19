@@ -73,6 +73,11 @@ import { createSessionStorage } from "./session-storage.js";
 import { initOpencodeUiChatEvents } from "./chat-events.js";
 import { bootstrapOpencodeUiApp as bootstrapOpencodeUiAppFromModule } from "./app-bootstrap.js";
 import {
+  initializeRovoInteractionRuntime,
+  refreshRovoInteractionRuntime,
+} from "./interaction-runtime.js";
+import { buildInteractionModeItems } from "./interaction-mode.js";
+import {
   bindDictationTrigger,
   type DictationBinding,
 } from "../../modules/transcript/dictation-ui.js";
@@ -84,6 +89,7 @@ import type {
   OpencodeUiSessionSummary,
   OpencodeUiTodoItem,
   OpencodeUiToolCall,
+  RovoInteractionMode,
   RuntimeState,
   SessionTab,
 } from "./types.js";
@@ -105,6 +111,7 @@ const runtime: RuntimeState = {
   activeModelKey: null,
   activeReasoningEffort: null,
   activeAgentId: null,
+  activeInteractionMode: "off",
   modelMetaByKey: {},
   modelItems: [],
   providerItems: [],
@@ -120,6 +127,7 @@ const sessionStorage = createSessionStorage(runtime);
 let modeDropdown: CustomSelectAPI | null = null;
 let modelDropdown: CustomSelectAPI | null = null;
 let effortDropdown: CustomSelectAPI | null = null;
+let interactionDropdown: CustomSelectAPI | null = null;
 let modelSettingsOverlayController: ReturnType<typeof createModelSettingsOverlayController> | null =
   null;
 let dictationBinding: DictationBinding | null = null;
@@ -299,11 +307,29 @@ function scrollChatToBottom(force = false): void {
   });
 }
 
+function draftInteractionText(text: string): void {
+  const chatInput = byId<HTMLTextAreaElement>("chat-input");
+  if (chatInput == null) {
+    return;
+  }
+
+  chatInput.value = text;
+  chatInput.dispatchEvent(new Event("input", { bubbles: true }));
+  chatInput.focus();
+  chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
+}
+
+async function submitInteractionText(text: string): Promise<void> {
+  draftInteractionText(text);
+  await sendMessage();
+}
+
 function composerContext(): Parameters<typeof sendComposerMessage>[0] {
   return {
     runtime,
     byId,
     showToast,
+    syncInteractionModeUi: refreshInteractionDropdown,
     ensureActiveSession,
     loadSessionListAndRender,
     withHistorySyncFallback,
@@ -534,6 +560,11 @@ async function loadProviderContextAndModels(
   );
 }
 
+function refreshInteractionDropdown(): void {
+  const activeMode: RovoInteractionMode = runtime.activeInteractionMode;
+  interactionDropdown?.setItems(buildInteractionModeItems(), activeMode);
+}
+
 function initSelects(): void {
   modeDropdown = setupCustomSelect("mode-dropdown", (value: string) => {
     runtime.activeAgentId = value !== "" ? value : null;
@@ -546,6 +577,12 @@ function initSelects(): void {
   effortDropdown = setupCustomSelect("effort-dropdown", (value: string) => {
     runtime.activeReasoningEffort = value !== "" ? value : null;
   });
+
+  interactionDropdown = setupCustomSelect("interaction-dropdown", (value: string) => {
+    runtime.activeInteractionMode =
+      value === "plan-harder-local" || value === "change-approval" ? value : "off";
+  });
+  refreshInteractionDropdown();
 }
 
 function initUtilityActions(): void {
@@ -582,6 +619,7 @@ async function refreshLocalizedDynamicPanels(): Promise<void> {
     ];
 
     await Promise.allSettled(refreshJobs);
+    refreshInteractionDropdown();
     await applyAssistantIdentityToChatEmpty(byId);
     modelSettingsOverlayController?.refresh();
   })().finally(() => {
@@ -678,6 +716,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
       try {
         await waitForMcpServersSettled({ timeoutMs: 20000, intervalMs: 1000 });
         await loadToolsFinalSnapshot();
+        await refreshRovoInteractionRuntime();
       } catch (_error) {}
     })();
   });
@@ -686,6 +725,11 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     ThemeManager.init();
     syncThemeFromQuery();
     await bootstrapOpencodeUiI18n();
+    await initializeRovoInteractionRuntime({
+      draftText: draftInteractionText,
+      submitText: submitInteractionText,
+      showToast,
+    });
     await applyAssistantIdentityToChatEmpty(byId);
     await bootstrapOpencodeUiApp();
     bindLocaleRefresh();

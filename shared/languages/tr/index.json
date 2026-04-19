@@ -5348,7 +5348,8 @@
       "toggleRightTitle": "Sağ paneli aç/kapat",
       "modeLabel": "Mod ▾",
       "modelLabel": "Model ▾",
-      "effortLabel": "Efor ▾"
+      "effortLabel": "Efor ▾",
+      "interactionLabel": "Interaction ▾"
     },
     "session": {
       "sidebarTitle": "Oturumlar",
@@ -5424,6 +5425,36 @@
         "insertedMessage": "Transcript metin alanına eklendi.",
         "captureError": "Mikrofon başlatılamadı: {{message}}",
         "transcriptionError": "Ses çözümlenemedi: {{message}}"
+      }
+    },
+    "interaction": {
+      "mode": {
+        "off": "Interaction Kapalı",
+        "offHelp": "Mesajlar ekstra pack enjeksiyonu olmadan gönderilir.",
+        "planHarderLocal": "Plan Harder Local",
+        "planHarderLocalHelp": "Bir sonraki cevapta plan intake kartı üretimini zorlar.",
+        "changeApproval": "Change Approval",
+        "changeApprovalHelp": "Bir sonraki cevapta standart evet onay kartını zorlar.",
+        "inactive": "{{mode}} modu şu an aktif bağlamda kullanılamıyor.",
+        "loadFailed": "{{mode}} prompt'u yüklenemedi: {{message}}",
+        "tokenMissing": "{{mode}} seçiliydi ama cevap geçerli bir rovo kartı üretmedi."
+      },
+      "approval": {
+        "modeLabel": "Mod",
+        "counterpartyLabel": "Muhatap",
+        "issueLabel": "Hata",
+        "solutionLabel": "Çözüm",
+        "filesLabel": "Dosyalar"
+      },
+      "plan": {
+        "storageHint": "Taslak cevaplar bu kart için yerel memory kaydında tutulur.",
+        "clear": "Temizle",
+        "submit": "Gönder",
+        "recommendedSuffix": "Önerilen",
+        "previewTitle": "Gönderilecek plan cevabı",
+        "previewEmpty": "Cevaplar burada önizlenecek.",
+        "missingRequired": "Zorunlu alanları doldur.",
+        "emptyReply": "Göndermek için en az bir cevap gir."
       }
     },
     "message": {

@@ -12,6 +12,7 @@ import {
 } from "../shared/data/operator-context-catalog.js";
 import { FORGE_ROLE_CATALOG } from "../shared/data/role-catalog.js";
 import {
+  createEmptyForgePreflightState,
   createEmptyForgeRunOverride,
   isForgeArchitectSeatId,
   normalizeForgeLegacyIdentifier,
@@ -1295,6 +1296,26 @@ export default function createForgeRoomHostRuntime() {
           success: true
         };
       }
+      async function clearPreflightCommand() {
+        await ensureHydrated();
+        const state = readCurrentState();
+        if (state.activeSessionId === null) {
+          return {
+            success: false,
+            message: "Create or open a session before clearing preflight."
+          };
+        }
+        dispatchPreflight(createEmptyForgePreflightState());
+        syncCoordinatorState({
+          note: "No preflight result yet. Draft can still start without a preflight report."
+        });
+        await persistCurrentSession("preflight-cleared", {
+          sessionId: state.activeSessionId
+        });
+        return {
+          success: true
+        };
+      }
       async function resolveConflictDecision(payload) {
         await ensureHydrated();
         await ensureActiveSession();
@@ -1974,6 +1995,8 @@ export default function createForgeRoomHostRuntime() {
             return await generateDraft(commandPayload);
           case FORGE_UI_COMMANDS.runPreflight:
             return await runPreflightCommand();
+          case FORGE_UI_COMMANDS.clearPreflight:
+            return await clearPreflightCommand();
           case FORGE_UI_COMMANDS.applyDraftText:
             return await applyDraftText(commandPayload);
           case FORGE_UI_COMMANDS.upsertDraftTask:

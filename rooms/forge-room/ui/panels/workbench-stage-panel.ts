@@ -1,7 +1,6 @@
 import type {
   ForgeOperatorEquipmentRecord,
   ForgeOperatorSkillRecord,
-  ForgePreflightStepId,
   ForgeSessionContextSelection,
 } from "../../shared/types/index.js";
 import type {
@@ -40,22 +39,18 @@ type ForgeStageDescriptor = {
   title: string;
 };
 
+type ForgeStageSplitPanelDescriptor = {
+  body: HTMLElement;
+  title: string;
+};
+
 export const FORGE_NEW_SESSION_PICKER_VALUE = "__forge-new-session__";
 
 const FORGE_STAGE_ORDER: ForgeWorkbenchStageId[] = [
   "session",
-  "operator",
   "preflight",
   "tracking",
   "draft",
-];
-
-const FORGE_PREFLIGHT_TODO_ORDER: ForgePreflightStepId[] = [
-  "operatorContext",
-  "constraints",
-  "ai0Analysis",
-  "runSignature",
-  "sessionSave",
 ];
 
 function getAvatarMimeType(filePath: string): string {
@@ -266,6 +261,7 @@ function renderNotesBlock(
   notes: string,
   options: {
     disabled?: boolean;
+    hideLabel?: boolean;
   } = {}
 ): HTMLElement {
   const notesInput = documentRef.createElement("textarea");
@@ -278,6 +274,12 @@ function renderNotesBlock(
     ["workbench", "goalPanel", "runOverrides", "notesPlaceholderLong"],
     "Optional run note for this session"
   );
+  if (options.hideLabel === true) {
+    const wrapper = documentRef.createElement("div");
+    wrapper.className = "forge-preflight-agent__control";
+    wrapper.append(notesInput);
+    return wrapper;
+  }
   return createField(
     documentRef,
     text(["workbench", "goalPanel", "runOverrides", "notes"], "Run notes"),
@@ -476,7 +478,6 @@ function createStageDescriptorMap(
     options.goalDraft.brief.trim() !== "" &&
     options.goalDraft.constraints.length > 0 &&
     options.goalDraft.targetRoomId.trim() !== "";
-  const operatorComplete = goalComplete;
   const preflightComplete = goalComplete;
   const draftArtifactsAvailable =
     state.snapshot.draftTasks.length > 0 ||
@@ -492,13 +493,7 @@ function createStageDescriptorMap(
       canOpen: true,
       complete: goalComplete,
       id: "session",
-      title: text(["workbench", "stageTower", "stages", "session", "title"], "Session + goal"),
-    },
-    operator: {
-      canOpen: goalComplete,
-      complete: operatorComplete,
-      id: "operator",
-      title: text(["workbench", "stageTower", "stages", "operator", "title"], "Operator"),
+      title: text(["workbench", "stageTower", "stages", "session", "title"], "Registration"),
     },
     preflight: {
       canOpen: goalComplete,
@@ -880,17 +875,72 @@ function buildOperatorStageBody(
   return body;
 }
 
+function createStageSplitPanel(
+  documentRef: Document,
+  descriptor: ForgeStageSplitPanelDescriptor
+): HTMLElement {
+  const panel = documentRef.createElement("section");
+  panel.className = "forge-stage-split-panel";
+  const header = documentRef.createElement("div");
+  header.className = "forge-stage-split-panel__header";
+  const title = documentRef.createElement("strong");
+  title.className = "forge-stage-split-panel__title";
+  title.textContent = descriptor.title;
+  header.append(title);
+  descriptor.body.classList.add("forge-stage-split-panel__body");
+  panel.append(header, descriptor.body);
+  return panel;
+}
+
+function buildRegistrationStageBody(
+  documentRef: Document,
+  state: ForgeUiState,
+  text: ForgeTextFn,
+  options: {
+    goalDraft: ForgeGoalDraftView;
+    runOverrideDraft: ForgeRunOverrideDraftView;
+    selectedSessionId: string | null;
+    sessionContextSelection: ForgeSessionContextSelection;
+  }
+): HTMLElement {
+  const body = documentRef.createElement("div");
+  body.className = "forge-stage__body-scroll forge-stage__body-scroll--registration";
+
+  const splitGrid = documentRef.createElement("div");
+  splitGrid.className = "forge-stage-registration-grid";
+  splitGrid.append(
+    createStageSplitPanel(documentRef, {
+      title: text(
+        ["workbench", "stageTower", "registrationPanels", "session"],
+        "Session + goal"
+      ),
+      body: buildSessionStageBody(documentRef, state, text, {
+        goalDraft: options.goalDraft,
+        selectedSessionId: options.selectedSessionId,
+      }),
+    }),
+    createStageSplitPanel(documentRef, {
+      title: text(["workbench", "stageTower", "registrationPanels", "operator"], "Operator"),
+      body: buildOperatorStageBody(documentRef, state, text, {
+        runOverrideDraft: options.runOverrideDraft,
+        sessionContextSelection: options.sessionContextSelection,
+      }),
+    })
+  );
+
+  body.append(splitGrid);
+  return body;
+}
+
 function buildPreflightStageBody(
   documentRef: Document,
   state: ForgeUiState,
   text: ForgeTextFn,
   options: {
-    runConditionComposerOpen: boolean;
     runConditionComposerValue: string;
     runOverrideDraft: ForgeRunOverrideDraftView;
   }
 ): HTMLElement {
-  type ForgePreflightTodoVisualState = "pending" | "active" | "complete" | "warning";
   const body = documentRef.createElement("div");
   body.className = "forge-stage__body-scroll";
   const preflight = state.snapshot.preflight;
@@ -905,6 +955,8 @@ function buildPreflightStageBody(
     ["workbench", "goalPanel", "preflight", "aiReconnect"],
     "AI0 will reconnect during preflight."
   );
+  const hasCompletedRun = preflight.ranAt !== null || preflight.bundle !== null;
+  const canClearPreflight = hasCompletedRun && preflight.status !== "running";
 
   const normalizeAssistantStatusMessage = (value: string): string => {
     const trimmed = value.trim();
@@ -922,12 +974,8 @@ function buildPreflightStageBody(
 
   const agentBlock = documentRef.createElement("section");
   agentBlock.className = "forge-goal-block forge-goal-block--compact forge-preflight-agent";
-  agentBlock.append(
-    createBlockHeading(
-      documentRef,
-      text(["workbench", "goalPanel", "preflight", "agentTitle"], "AI0")
-    )
-  );
+  const agentBar = documentRef.createElement("div");
+  agentBar.className = "forge-preflight-agent__bar";
   const identity = documentRef.createElement("div");
   identity.className = "forge-profile-identity";
   const identityCopy = documentRef.createElement("div");
@@ -936,6 +984,7 @@ function buildPreflightStageBody(
   identityName.className = "forge-profile-identity__name";
   identityName.textContent = state.context.assistantNickname;
   identityCopy.append(identityName);
+  identity.classList.add("forge-preflight-agent__slot");
   identity.append(
     createIdentityAvatar(
       documentRef,
@@ -944,11 +993,38 @@ function buildPreflightStageBody(
     ),
     identityCopy
   );
-  agentBlock.append(identity);
-  body.append(agentBlock);
-
+  const notesField = renderNotesBlock(documentRef, text, options.runOverrideDraft.notes, {
+    hideLabel: true,
+  });
+  notesField.classList.add("forge-preflight-agent__notes", "forge-preflight-agent__slot");
+  const conditionField = documentRef.createElement("div");
+  conditionField.className = "forge-preflight-agent__condition forge-preflight-agent__slot";
+  const preflightActions = documentRef.createElement("div");
+  preflightActions.className =
+    "forge-actions forge-preflight-agent__actions forge-preflight-agent__slot";
+  preflightActions.append(
+    createButton(
+      documentRef,
+      hasCompletedRun
+        ? text(["workbench", "goalPanel", "preflight", "updateAction"], "Refresh")
+        : text(["workbench", "goalPanel", "preflight", "action"], "Run Preflight"),
+      "run-preflight",
+      {
+        disabled: assistantUnavailable,
+        primary: true,
+      }
+    ),
+    createButton(
+      documentRef,
+      text(["workbench", "goalPanel", "preflight", "clearAction"], "Clear"),
+      "clear-preflight",
+      {
+        disabled: !canClearPreflight,
+        }
+      )
+    );
   const conditionsRail = documentRef.createElement("div");
-  conditionsRail.className = "forge-chip-row";
+  conditionsRail.className = "forge-chip-row forge-preflight-agent__conditions";
   options.runOverrideDraft.temporaryConditions.forEach((condition) => {
     const chip = documentRef.createElement("button");
     chip.type = "button";
@@ -965,64 +1041,31 @@ function buildPreflightStageBody(
     );
     conditionsRail.append(chip);
   });
-  if (options.runOverrideDraft.temporaryConditions.length > 0) {
-    body.append(conditionsRail);
-  }
-
-  const todoBlock = documentRef.createElement("section");
-  todoBlock.className = "forge-goal-block forge-goal-block--compact";
-  todoBlock.append(
-    createBlockHeading(
+  const composer = documentRef.createElement("div");
+  composer.className = "forge-inline-editor forge-inline-editor--row forge-preflight-agent__condition-editor";
+  const input = documentRef.createElement("input");
+  input.id = "forge-run-override-condition-input";
+  input.className = "forge-input";
+  input.value = options.runConditionComposerValue;
+  input.placeholder = text(
+    ["workbench", "goalPanel", "runOverrides", "notesPlaceholder"],
+    "Temporary condition for this run"
+  );
+  composer.append(
+    input,
+    createButton(
       documentRef,
-      text(["workbench", "goalPanel", "preflight", "todoTitle"], "Process flow")
+      text(["workbench", "goalPanel", "runOverrides", "commitCondition"], "Add"),
+      "commit-run-condition"
     )
   );
-  const todoList = documentRef.createElement("div");
-  todoList.className = "forge-preflight-todo";
-  const activeStepIndex =
-    preflight.activeStepId === null
-      ? -1
-      : FORGE_PREFLIGHT_TODO_ORDER.indexOf(preflight.activeStepId);
-  const hasCompletedRun = preflight.ranAt !== null || preflight.bundle !== null;
-  const aiAnalysisNeedsReview =
-    (preflight.status === "warning" || preflight.status === "stale") &&
-    (preflight.bundle?.rovoPreAnalysis !== null || preflight.warnings.length > 0);
-  FORGE_PREFLIGHT_TODO_ORDER.forEach((stepId, index) => {
-    const item = documentRef.createElement("div");
-    item.className = "forge-preflight-todo__item";
-    let visualState: ForgePreflightTodoVisualState = "pending";
-    if (preflight.status === "running") {
-      if (activeStepIndex > index) {
-        visualState = "complete";
-      } else if (activeStepIndex === index) {
-        visualState = "active";
-      }
-    } else if (hasCompletedRun) {
-      visualState = "complete";
-    }
-    if (stepId === "ai0Analysis" && aiAnalysisNeedsReview) {
-      visualState = "warning";
-    }
-    item.dataset["status"] = visualState;
-    const itemTitle = documentRef.createElement("strong");
-    itemTitle.className = "forge-preflight-todo__title";
-    itemTitle.textContent = text(["workbench", "goalPanel", "preflight", "steps", stepId], stepId);
-    const itemStatus = documentRef.createElement("span");
-    itemStatus.className =
-      visualState === "warning"
-        ? "forge-chip forge-chip--warning"
-        : visualState === "active"
-          ? "forge-chip forge-chip--accent"
-          : "forge-chip forge-chip--soft";
-    itemStatus.textContent = text(
-      ["workbench", "goalPanel", "preflight", "todoStatus", visualState],
-      visualState
-    );
-    item.append(itemTitle, itemStatus);
-    todoList.append(item);
-  });
-  todoBlock.append(todoList);
-  body.append(todoBlock);
+  conditionField.append(composer);
+  if (options.runOverrideDraft.temporaryConditions.length > 0) {
+    conditionField.append(conditionsRail);
+  }
+  agentBar.append(identity, notesField, conditionField, preflightActions);
+  agentBlock.append(agentBar);
+  body.append(agentBlock);
 
   const resultBlock = documentRef.createElement("section");
   resultBlock.className = "forge-goal-block forge-goal-block--compact";
@@ -1165,7 +1208,7 @@ function buildPreflightStageBody(
   }
   const resultMeta = documentRef.createElement("div");
   resultMeta.className = "forge-goal-meta";
-  if (state.snapshot.runSignature?.value) {
+  if (hasCompletedRun && state.snapshot.runSignature?.value) {
     resultMeta.append(
       createMetaPill(
         documentRef,
@@ -1188,61 +1231,6 @@ function buildPreflightStageBody(
   }
   resultBlock.append(resultBody);
   body.append(resultBlock);
-
-  body.append(renderNotesBlock(documentRef, text, options.runOverrideDraft.notes));
-
-  const conditionActions = documentRef.createElement("div");
-  conditionActions.className = "forge-actions";
-  conditionActions.append(
-    createButton(
-      documentRef,
-      text(["workbench", "goalPanel", "runOverrides", "addCondition"], "+ Add condition"),
-      "toggle-run-condition-composer"
-    )
-  );
-  body.append(conditionActions);
-
-  if (options.runConditionComposerOpen) {
-    const composer = documentRef.createElement("div");
-    composer.className = "forge-inline-editor forge-inline-editor--row";
-    const input = documentRef.createElement("input");
-    input.id = "forge-run-override-condition-input";
-    input.className = "forge-input";
-    input.value = options.runConditionComposerValue;
-    input.placeholder = text(
-      ["workbench", "goalPanel", "runOverrides", "notesPlaceholder"],
-      "Temporary condition for this run"
-    );
-    composer.append(
-      input,
-      createButton(
-        documentRef,
-        text(["workbench", "goalPanel", "runOverrides", "commitCondition"], "Add"),
-        "commit-run-condition"
-      ),
-      createButton(
-        documentRef,
-        text(["workbench", "goalPanel", "runOverrides", "cancelCondition"], "Cancel"),
-        "cancel-run-condition"
-      )
-    );
-    body.append(composer);
-  }
-
-  const preflightActions = documentRef.createElement("div");
-  preflightActions.className = "forge-actions";
-  preflightActions.append(
-    createButton(
-      documentRef,
-      text(["workbench", "goalPanel", "preflight", "action"], "Run Preflight"),
-      "run-preflight",
-      {
-        disabled: assistantUnavailable,
-        primary: true,
-      }
-    )
-  );
-  body.append(preflightActions);
 
   return body;
 }
@@ -1332,7 +1320,6 @@ export function renderWorkbenchStagePanel(
     flowState: ForgeWorkbenchUiFlowState;
     goalDraft: ForgeGoalDraftView;
     goalDraftDirty: boolean;
-    runConditionComposerOpen: boolean;
     runConditionComposerValue: string;
     runOverrideDraft: ForgeRunOverrideDraftView;
     selectedSessionId: string | null;
@@ -1374,21 +1361,17 @@ export function renderWorkbenchStagePanel(
 
       const stageBody =
         stageId === "session"
-          ? buildSessionStageBody(documentRef, state, text, {
+          ? buildRegistrationStageBody(documentRef, state, text, {
               goalDraft: options.goalDraft,
+              runOverrideDraft: options.runOverrideDraft,
               selectedSessionId: options.selectedSessionId,
+              sessionContextSelection: options.sessionContextSelection,
             })
-          : stageId === "operator"
-            ? buildOperatorStageBody(documentRef, state, text, {
+          : stageId === "preflight"
+            ? buildPreflightStageBody(documentRef, state, text, {
+                runConditionComposerValue: options.runConditionComposerValue,
                 runOverrideDraft: options.runOverrideDraft,
-                sessionContextSelection: options.sessionContextSelection,
               })
-            : stageId === "preflight"
-              ? buildPreflightStageBody(documentRef, state, text, {
-                  runConditionComposerOpen: options.runConditionComposerOpen,
-                  runConditionComposerValue: options.runConditionComposerValue,
-                  runOverrideDraft: options.runOverrideDraft,
-                })
               : stageId === "tracking"
                 ? buildTrackingStageBody(documentRef, state, text, {
                     flowLabel: options.flowLabel,

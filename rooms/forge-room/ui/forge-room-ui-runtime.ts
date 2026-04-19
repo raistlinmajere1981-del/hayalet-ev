@@ -23,7 +23,6 @@ import {
   type ForgeSessionContextSelection,
 } from "../shared/types/index.js";
 import { renderApprovedTasksPanel } from "./panels/approved-tasks-panel.js";
-import { renderCoordinatorPanel } from "./panels/coordinator-panel.js";
 import { renderDraftBreakdownPanel } from "./panels/draft-breakdown-panel.js";
 import {
   renderOperatorProfileManager,
@@ -56,21 +55,11 @@ type ForgeLocalViewState = {
   pendingStageId: ForgeWorkbenchStageId | null;
   profileEditorDraft: ForgeProfileEditorDraftView;
   profileEditorOpen: boolean;
-  runConditionComposerOpen: boolean;
   runConditionComposerValue: string;
   runOverrideDraft: ForgeRunOverrideDraftState | null;
   runOverrideDraftDirty: boolean;
   selectedSavedSessionId: string | null;
   sessionContextDraft: ForgeSessionContextSelection | null;
-};
-
-type ForgePrimaryAction = {
-  label: string;
-  description: string;
-  mode: "command" | "guide";
-  commandAction?: string;
-  guidedSurface?: ForgeWorkbenchUiSurface;
-  disabled?: boolean;
 };
 
 type ForgeUiFlowModel = {
@@ -114,12 +103,10 @@ type ForgeFocusSnapshot = {
 };
 
 type ForgePersistentShell = {
-  coordinator: HTMLElement;
   overlay: HTMLElement | null;
   shell: HTMLDivElement;
   statusBar: HTMLElement;
   surface: HTMLElement;
-  tabRail: HTMLElement;
   workbench: HTMLElement;
 };
 
@@ -144,7 +131,6 @@ export function createForgeRoomUiRuntime() {
     pendingStageId: null,
     profileEditorDraft: null,
     profileEditorOpen: false,
-    runConditionComposerOpen: false,
     runConditionComposerValue: "",
     runOverrideDraft: null,
     runOverrideDraftDirty: false,
@@ -226,21 +212,17 @@ export function createForgeRoomUiRuntime() {
     const shell = createElement("div", "forge-shell");
     const statusBar = createElement("header", "forge-statusbar");
     const workbench = createElement("section", "forge-workbench");
-    const tabRail = createElement("nav", "forge-workbench-tabs");
     const surface = createElement("section", "forge-workbench-surface");
-    const coordinator = createElement("section", "forge-coordinator-strip");
 
-    workbench.append(tabRail, surface);
-    shell.append(statusBar, workbench, coordinator);
+    workbench.append(surface);
+    shell.append(statusBar, workbench);
     mount.replaceChildren(shell);
 
     persistentShell = {
-      coordinator,
       overlay: null,
       shell,
       statusBar,
       surface,
-      tabRail,
       workbench,
     };
     return persistentShell;
@@ -552,12 +534,6 @@ export function createForgeRoomUiRuntime() {
         : goalDraftReadyForAdvance
           ? "complete"
           : "available";
-    const operatorStageState: ForgeStageVisualState =
-      viewState.activeStageId === "operator"
-        ? "active"
-        : goalDraftReadyForAdvance
-          ? "complete"
-          : "locked";
     const preflightStageState: ForgeStageVisualState =
       viewState.activeStageId === "preflight"
         ? "active"
@@ -566,11 +542,10 @@ export function createForgeRoomUiRuntime() {
           : "locked";
 
     const stageStates: Array<{
-      stageId: "operator" | "preflight" | "session";
+      stageId: "preflight" | "session";
       stageState: ForgeStageVisualState;
     }> = [
       { stageId: "session", stageState: sessionStageState },
-      { stageId: "operator", stageState: operatorStageState },
       { stageId: "preflight", stageState: preflightStageState },
     ];
 
@@ -592,7 +567,7 @@ export function createForgeRoomUiRuntime() {
 
     const nextStageButton = Array.from(
       root.querySelectorAll<HTMLButtonElement>("[data-forge-action='open-stage']")
-    ).find((element) => element.dataset["forgeActionValue"] === "operator");
+    ).find((element) => element.dataset["forgeActionValue"] === "preflight");
     if (nextStageButton) {
       nextStageButton.disabled = !goalDraftReadyForAdvance;
     }
@@ -1093,27 +1068,6 @@ export function createForgeRoomUiRuntime() {
     return "IDLE";
   }
 
-  function isPreflightReadyForDraft(): boolean {
-    if (state.snapshot.activeSessionId === null) {
-      return false;
-    }
-    if (!hasGoalSummary() || viewState.goalDraftDirty) {
-      return false;
-    }
-    if (
-      viewState.sessionContextDraft !== null &&
-      sessionContextSelectionEquals(
-        viewState.sessionContextDraft,
-        state.snapshot.sessionContextSelection
-      ) === false
-    ) {
-      return false;
-    }
-    return (
-      state.snapshot.preflight.status === "fresh" || state.snapshot.preflight.status === "warning"
-    );
-  }
-
   function issueCommand(commandLabel: string, send: () => boolean): boolean {
     viewState.guidedSurface = null;
     const sent = send();
@@ -1134,7 +1088,6 @@ export function createForgeRoomUiRuntime() {
   function isWorkbenchStageId(value: string | undefined): value is ForgeWorkbenchStageId {
     return (
       value === "session" ||
-      value === "operator" ||
       value === "preflight" ||
       value === "tracking" ||
       value === "draft"
@@ -1293,204 +1246,10 @@ export function createForgeRoomUiRuntime() {
     return text(["workbench", "guards", "blockerHandoffCheck"], "BLOCKER: HANDOFF CHECK");
   }
 
-  function latestExportLabel(): string | null {
-    const latestExport = state.snapshot.exports[0]?.filePath;
-    return latestExport ? (latestExport.split("/").at(-1) ?? latestExport) : null;
-  }
-
-  function derivePrimaryAction(flow: ForgeUiFlowModel): ForgePrimaryAction {
-    const goalDraftReadyForAdvance = isGoalDraftReadyForAdvance(currentGoalDraft());
-    const nextAction: ForgePrimaryAction = (() => {
-      switch (flow.state) {
-        case "IDLE":
-          return {
-            label: text(["workbench", "goalPanel", "sessionManager", "newSession"], "New session"),
-            description: text(
-              ["workbench", "stageTower", "primaryAction", "session"],
-              "STEP 1: CREATE OR LOAD A SESSION"
-            ),
-            mode: "command" as const,
-            commandAction: "create-session",
-          };
-        case "SESSION_CREATED":
-          return {
-            label: text(["workbench", "primaryAction", "saveGoal"], "SAVE GOAL -> START"),
-            description: text(["workbench", "primaryAction", "saveGoalRequired"], "REQUIRES: GOAL"),
-            mode: "command" as const,
-            commandAction: "save-goal",
-          };
-        case "GOAL_DEFINED":
-          if (state.snapshot.activeSessionId === null) {
-            return {
-              label: text(
-                ["workbench", "goalPanel", "sessionManager", "newSession"],
-                "New session"
-              ),
-              description: text(
-                ["workbench", "stageTower", "primaryAction", "session"],
-                "STEP 1: CREATE OR LOAD A SESSION"
-              ),
-              mode: "command" as const,
-              commandAction: "create-session",
-            };
-          }
-          if (!isPreflightReadyForDraft()) {
-            return {
-              label: text(["workbench", "goalPanel", "preflight", "action"], "Run Preflight"),
-              description: text(
-                ["workbench", "stageTower", "primaryAction", "preflight"],
-                "STEP 4: VALIDATE RUN SETTINGS"
-              ),
-              mode: "command" as const,
-              commandAction: "run-preflight",
-            };
-          }
-          return {
-            label: text(["workbench", "primaryAction", "generateDraft"], "Generate draft"),
-            description: text(
-              ["workbench", "stageTower", "primaryAction", "draft"],
-              "STEP 5: GENERATE THE FIRST DRAFT"
-            ),
-            mode: "command" as const,
-            commandAction: "generate-draft",
-          };
-        case "DRAFT_READY": {
-          const approvalStep = describeApprovalStep();
-          return approvalStep
-            ? {
-                label: text(["workbench", "primaryAction", "finishDraft"], "Finish draft"),
-                description: approvalStep,
-                mode: "guide" as const,
-                guidedSurface: "goal",
-              }
-            : {
-                label: text(["workbench", "primaryAction", "approveDraft"], "Approve draft"),
-                description: text(
-                  ["workbench", "primaryAction", "approveDraftRequired"],
-                  "NEXT: APPROVE DRAFT"
-                ),
-                mode: "command" as const,
-                commandAction: "approve-draft",
-              };
-        }
-        case "APPROVED":
-          return {
-            label: text(
-              ["workbench", "primaryAction", "dispatchAssignments"],
-              "Dispatch assignments"
-            ),
-            description: text(
-              ["workbench", "primaryAction", "dispatchAssignmentsRequired"],
-              "NEXT: DISPATCH"
-            ),
-            mode: "command" as const,
-            commandAction: "dispatch-assignments",
-          };
-        case "DISPATCHED":
-          return {
-            label: text(
-              ["workbench", "primaryAction", "reviewResponseLane"],
-              "Review response lane"
-            ),
-            description: text(
-              ["workbench", "primaryAction", "waitForResponses"],
-              "REQUIRES: RESPONSES"
-            ),
-            mode: "guide" as const,
-            guidedSurface: "responses",
-          };
-        case "RESPONSES_READY":
-          return {
-            label: text(["workbench", "primaryAction", "generateSynthesis"], "Generate synthesis"),
-            description: text(
-              ["workbench", "primaryAction", "generateSynthesisRequired"],
-              "NEXT: GENERATE SYNTHESIS"
-            ),
-            mode: "command" as const,
-            commandAction: "generate-synthesis",
-          };
-        case "CONFLICT":
-          return {
-            label: text(["workbench", "primaryAction", "resolveDecision"], "Resolve decision"),
-            description: text(
-              ["workbench", "primaryAction", "resolveDecisionBlocked"],
-              "BLOCKER: OPEN DECISION"
-            ),
-            mode: "guide" as const,
-            guidedSurface: "responses",
-          };
-        case "SYNTHESIS_READY":
-          if (state.snapshot.selectedSynthesisId === null) {
-            return {
-              label: text(["workbench", "primaryAction", "chooseSynthesis"], "Choose synthesis"),
-              description: text(
-                ["workbench", "primaryAction", "chooseSynthesisRequired"],
-                "EXPORT LOCKED: SELECT SYNTHESIS."
-              ),
-              mode: "guide" as const,
-              guidedSurface: "synthesis",
-            };
-          }
-          return state.snapshot.exportSummary.exportReady
-            ? {
-                label: text(["workbench", "primaryAction", "exportHandoff"], "Export handoff"),
-                description: text(
-                  ["workbench", "primaryAction", "exportHandoffReady"],
-                  "FINAL STEP READY: EXPORT HANDOFF."
-                ),
-                mode: "command" as const,
-                commandAction: "export-handoff",
-              }
-            : {
-                label: text(["workbench", "primaryAction", "checkHandoff"], "Check handoff"),
-                description: describeHandoffStep(),
-                mode: "command" as const,
-                commandAction: "handoff-check",
-              };
-        case "EXPORTED":
-          return {
-            label: text(["workbench", "primaryAction", "reviewExport"], "Review export"),
-            description: text(
-              ["workbench", "primaryAction", "exportComplete"],
-              "EXPORT COMPLETE: {label}.",
-              { label: latestExportLabel() ?? "HANDOFF PACKAGE" }
-            ),
-            mode: "guide" as const,
-            guidedSurface: "synthesis",
-          };
-        default:
-          return {
-            label: text(["workbench", "primaryAction", "saveGoal"], "SAVE GOAL -> START"),
-            description: text(["workbench", "primaryAction", "saveGoalLocked"], "REQUIRES: GOAL"),
-            mode: "command" as const,
-            commandAction: "save-goal",
-          };
-      }
-    })();
-
-    if (state.pendingCommand !== null) {
-      return {
-        ...nextAction,
-        label: text(["workbench", "primaryAction", "working"], "Working on this step"),
-        description: text(
-          ["workbench", "primaryAction", "workingLocked"],
-          "SYSTEM LOCKED UNTIL STEP COMPLETES."
-        ),
-        disabled: true,
-      };
-    }
-    if (nextAction.commandAction === "save-goal" && goalDraftReadyForAdvance === false) {
-      return {
-        ...nextAction,
-        disabled: true,
-      };
-    }
-    return nextAction;
-  }
-
-  function renderStatusBar(flow: ForgeUiFlowModel): HTMLElement {
+  function renderStatusBar(flow: ForgeUiFlowModel, tabRail: HTMLElement): HTMLElement {
     const bar = createElement("header", "forge-statusbar");
     bar.dataset["forgeUiState"] = flow.state;
+    const topRow = createElement("div", "forge-statusbar__top");
 
     const identity = createElement("div", "forge-statusbar__identity");
     const goalSummary = state.snapshot.currentGoal?.summary.trim() ?? "";
@@ -1540,7 +1299,9 @@ export function createForgeRoomUiRuntime() {
       stats.append(chip);
     });
 
-    bar.append(identity, stats);
+    tabRail.classList.add("forge-workbench-tabs--statusbar");
+    topRow.append(identity, stats);
+    bar.append(topRow, tabRail);
     return bar;
   }
 
@@ -1677,7 +1438,6 @@ export function createForgeRoomUiRuntime() {
       flowState: flow.state,
       goalDraft,
       goalDraftDirty: viewState.goalDraftDirty,
-      runConditionComposerOpen: viewState.runConditionComposerOpen,
       runConditionComposerValue: viewState.runConditionComposerValue,
       runOverrideDraft,
       selectedSessionId: currentSessionPickerValue(),
@@ -1704,8 +1464,7 @@ export function createForgeRoomUiRuntime() {
     });
     setPanelBadge(synthesisPanel, panelModes.synthesis);
 
-    syncElement(shell.statusBar, renderStatusBar(flow));
-    syncElement(shell.tabRail, renderWorkbenchTabs(guidedSurface, panelModes));
+    syncElement(shell.statusBar, renderStatusBar(flow, renderWorkbenchTabs(guidedSurface, panelModes)));
     shell.workbench.dataset["activeSurface"] = guidedSurface;
     if (hostBootstrapPending) {
       setOptionalDataAttribute(shell.surface, "panelMode", null);
@@ -1735,7 +1494,7 @@ export function createForgeRoomUiRuntime() {
         userNickname: state.context.userNickname,
       });
       if (shell.overlay === null) {
-        shell.shell.insertBefore(nextOverlay, shell.coordinator);
+        shell.shell.insertBefore(nextOverlay, shell.workbench);
       } else {
         shell.shell.replaceChild(nextOverlay, shell.overlay);
       }
@@ -1744,24 +1503,6 @@ export function createForgeRoomUiRuntime() {
       shell.overlay.remove();
       shell.overlay = null;
     }
-    syncElement(
-      shell.coordinator,
-      renderCoordinatorPanel(documentRef, state, text, {
-        flowLabel,
-        flowState: flow.state,
-        handoffLabel: hasValidExport()
-          ? text(["workbench", "coordinator", "handoffStatuses", "sent"], "sent")
-          : state.snapshot.exportSummary.exportReady
-            ? text(["workbench", "coordinator", "handoffStatuses", "ready"], "ready")
-            : text(["workbench", "coordinator", "handoffStatuses", "locked"], "locked"),
-        note: hostBootstrapPending
-          ? text(
-              ["workbench", "bootstrap", "coordinatorNote"],
-              "Forge is waiting for the room host to attach the first state snapshot."
-            )
-          : derivePrimaryAction(flow).description,
-      })
-    );
     bindActions(shell.shell);
     restoreFocusSnapshot(focusSnapshot);
     lastRenderSignature = renderSignature;
@@ -2118,24 +1859,6 @@ export function createForgeRoomUiRuntime() {
       });
     });
     root
-      .querySelector<HTMLElement>("[data-forge-action='toggle-run-condition-composer']")
-      ?.addEventListener("click", () => {
-        viewState.runConditionComposerOpen = !viewState.runConditionComposerOpen;
-        if (!viewState.runConditionComposerOpen) {
-          viewState.runConditionComposerValue = "";
-        }
-        bumpLocalUiVersion();
-        render();
-      });
-    root
-      .querySelector<HTMLElement>("[data-forge-action='cancel-run-condition']")
-      ?.addEventListener("click", () => {
-        viewState.runConditionComposerOpen = false;
-        viewState.runConditionComposerValue = "";
-        bumpLocalUiVersion();
-        render();
-      });
-    root
       .querySelector<HTMLElement>("[data-forge-action='commit-run-condition']")
       ?.addEventListener("click", () => {
         const nextCondition = viewState.runConditionComposerValue.trim();
@@ -2149,7 +1872,6 @@ export function createForgeRoomUiRuntime() {
             nextCondition,
           ]),
         }));
-        viewState.runConditionComposerOpen = false;
         viewState.runConditionComposerValue = "";
         sendRunOverrideUpdate(nextDraft);
       });
@@ -2203,6 +1925,11 @@ export function createForgeRoomUiRuntime() {
       .querySelector<HTMLElement>("[data-forge-action='run-preflight']")
       ?.addEventListener("click", () => {
         issueCommand("ForgeRoomRunPreflight", () => requestRuntime.runPreflight());
+      });
+    root
+      .querySelector<HTMLElement>("[data-forge-action='clear-preflight']")
+      ?.addEventListener("click", () => {
+        issueCommand("ForgeRoomClearPreflight", () => requestRuntime.clearPreflight());
       });
     root
       .querySelector<HTMLElement>("#forge-run-override-architect-seat")

@@ -1,4 +1,5 @@
 import { formatTime, t } from "./i18n.js";
+import { buildAssistantInteractionRenderPlan } from "./interaction-renderer.js";
 
 export function escapeHtml(str: string): string {
   const div = document.createElement("div");
@@ -16,7 +17,15 @@ export function addMessage(
   const chatMessages = document.getElementById("chat-messages") as HTMLElement;
   const chatEmpty = document.getElementById("chat-empty");
   const hasFiles = Array.isArray(files) && files.length > 0;
-  if (role === "assistant" && text.trim() === "" && hasFiles !== true) {
+  const interactionPlan = role === "assistant" ? buildAssistantInteractionRenderPlan(text) : null;
+  const visibleText = interactionPlan?.displayText ?? text;
+
+  if (
+    role === "assistant" &&
+    visibleText.trim() === "" &&
+    hasFiles !== true &&
+    interactionPlan?.renderInto === undefined
+  ) {
     return null;
   }
   if (chatEmpty) chatEmpty.classList.add("is-hidden");
@@ -26,18 +35,26 @@ export function addMessage(
 
   const bubbleDiv = document.createElement("div");
   bubbleDiv.className = "ds-message__bubble";
-  if (role === "assistant" && text !== "") {
+  const contentDiv = document.createElement("div");
+  contentDiv.className = "ds-message__content";
+
+  if (role === "assistant" && interactionPlan?.renderInto !== undefined) {
+    bubbleDiv.classList.add("ds-message__bubble--interactive");
+    interactionPlan.renderInto(contentDiv);
+  } else if (role === "assistant" && visibleText !== "") {
     bubbleDiv.classList.add("ds-markdown");
-    bubbleDiv.innerHTML = renderFn ? renderFn(text) : escapeHtml(text).replace(/\n/g, "<br>");
+    contentDiv.innerHTML = renderFn
+      ? renderFn(visibleText)
+      : escapeHtml(visibleText).replace(/\n/g, "<br>");
   } else {
     bubbleDiv.classList.add("ds-message__bubble--plain");
-    bubbleDiv.textContent = text;
+    contentDiv.textContent = visibleText;
   }
 
   const roleBadge = document.createElement("span");
   roleBadge.className = "ds-message__role";
   roleBadge.textContent = role === "assistant" ? "🤖" : "👤";
-  bubbleDiv.prepend(roleBadge);
+  bubbleDiv.append(roleBadge, contentDiv);
 
   if (files && files.length > 0) {
     const chipContainer = document.createElement("div");
