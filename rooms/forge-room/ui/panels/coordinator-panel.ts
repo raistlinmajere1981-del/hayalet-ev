@@ -93,7 +93,8 @@ function buildCoordinatorActivity(
     });
 
   const selectedSynthesis =
-    state.snapshot.syntheses.find((entry) => entry.id === state.snapshot.selectedSynthesisId) ?? null;
+    state.snapshot.syntheses.find((entry) => entry.id === state.snapshot.selectedSynthesisId) ??
+    null;
   if (selectedSynthesis !== null) {
     items.push({
       actor: "Coordinator",
@@ -169,10 +170,7 @@ export function renderCoordinatorPanel(
   activityWrap.className = "forge-activity-feed";
   const activityTitle = documentRef.createElement("strong");
   activityTitle.className = "forge-activity-feed__title";
-  activityTitle.textContent = text(
-    ["workbench", "coordinator", "activityTitle"],
-    "Activity"
-  );
+  activityTitle.textContent = text(["workbench", "coordinator", "activityTitle"], "Activity");
   activityWrap.append(activityTitle);
 
   const activityItems = buildCoordinatorActivity(state, text);

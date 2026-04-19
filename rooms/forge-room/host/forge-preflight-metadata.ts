@@ -319,7 +319,9 @@ export function buildForgeDerivedConstraints(params: {
     (entry) => entry.status === "unavailable"
   );
   if (architectSeatId === "ai2") {
-    derived.push("Route the first draft breakdown through AI2 instead of the default architect lane.");
+    derived.push(
+      "Route the first draft breakdown through AI2 instead of the default architect lane."
+    );
   }
   if (unavailableEquipment.length > 0) {
     derived.push("Do not assume unavailable equipment is usable for this run.");

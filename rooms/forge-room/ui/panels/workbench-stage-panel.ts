@@ -46,12 +46,7 @@ type ForgeStageSplitPanelDescriptor = {
 
 export const FORGE_NEW_SESSION_PICKER_VALUE = "__forge-new-session__";
 
-const FORGE_STAGE_ORDER: ForgeWorkbenchStageId[] = [
-  "session",
-  "preflight",
-  "tracking",
-  "draft",
-];
+const FORGE_STAGE_ORDER: ForgeWorkbenchStageId[] = ["session", "preflight", "tracking", "draft"];
 
 function getAvatarMimeType(filePath: string): string {
   const normalizedPath = filePath.trim().toLowerCase();
@@ -910,10 +905,7 @@ function buildRegistrationStageBody(
   splitGrid.className = "forge-stage-registration-grid";
   splitGrid.append(
     createStageSplitPanel(documentRef, {
-      title: text(
-        ["workbench", "stageTower", "registrationPanels", "session"],
-        "Session + goal"
-      ),
+      title: text(["workbench", "stageTower", "registrationPanels", "session"], "Session + goal"),
       body: buildSessionStageBody(documentRef, state, text, {
         goalDraft: options.goalDraft,
         selectedSessionId: options.selectedSessionId,
@@ -1020,9 +1012,9 @@ function buildPreflightStageBody(
       "clear-preflight",
       {
         disabled: !canClearPreflight,
-        }
-      )
-    );
+      }
+    )
+  );
   const conditionsRail = documentRef.createElement("div");
   conditionsRail.className = "forge-chip-row forge-preflight-agent__conditions";
   options.runOverrideDraft.temporaryConditions.forEach((condition) => {
@@ -1042,7 +1034,8 @@ function buildPreflightStageBody(
     conditionsRail.append(chip);
   });
   const composer = documentRef.createElement("div");
-  composer.className = "forge-inline-editor forge-inline-editor--row forge-preflight-agent__condition-editor";
+  composer.className =
+    "forge-inline-editor forge-inline-editor--row forge-preflight-agent__condition-editor";
   const input = documentRef.createElement("input");
   input.id = "forge-run-override-condition-input";
   input.className = "forge-input";
@@ -1103,8 +1096,8 @@ function buildPreflightStageBody(
   const preAnalysisWarnings = (preflight.bundle?.rovoPreAnalysis?.warnings ?? []).map((warning) =>
     normalizeAssistantStatusMessage(warning)
   );
-  const preAnalysisMissingInfo = (preflight.bundle?.rovoPreAnalysis?.missingInfo ?? []).map((item) =>
-    item.trim()
+  const preAnalysisMissingInfo = (preflight.bundle?.rovoPreAnalysis?.missingInfo ?? []).map(
+    (item) => item.trim()
   );
   const normalizedWarnings = preflight.warnings.map((warning) =>
     normalizeAssistantStatusMessage(warning)
@@ -1114,9 +1107,7 @@ function buildPreflightStageBody(
   );
   const computedResultSummary =
     (assistantUnavailable || assistantRecovering) &&
-    (preAnalysisSummary !== "" ||
-      hasAssistantStatusWarning ||
-      errorMessage !== "")
+    (preAnalysisSummary !== "" || hasAssistantStatusWarning || errorMessage !== "")
       ? preAnalysisSummary ||
         errorMessage ||
         (assistantUnavailable ? localizedOfflineMessage : localizedReconnectMessage)
@@ -1372,13 +1363,13 @@ export function renderWorkbenchStagePanel(
                 runConditionComposerValue: options.runConditionComposerValue,
                 runOverrideDraft: options.runOverrideDraft,
               })
-              : stageId === "tracking"
-                ? buildTrackingStageBody(documentRef, state, text, {
-                    flowLabel: options.flowLabel,
-                    flowState: options.flowState,
-                    runOverrideDraft: options.runOverrideDraft,
-                  })
-                : buildDraftStageBody(documentRef, options.draftSurfacePanel);
+            : stageId === "tracking"
+              ? buildTrackingStageBody(documentRef, state, text, {
+                  flowLabel: options.flowLabel,
+                  flowState: options.flowState,
+                  runOverrideDraft: options.runOverrideDraft,
+                })
+              : buildDraftStageBody(documentRef, options.draftSurfacePanel);
       frame.append(stageBody);
 
       const previousStageId =

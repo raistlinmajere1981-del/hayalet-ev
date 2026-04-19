@@ -1087,10 +1087,7 @@ export function createForgeRoomUiRuntime() {
 
   function isWorkbenchStageId(value: string | undefined): value is ForgeWorkbenchStageId {
     return (
-      value === "session" ||
-      value === "preflight" ||
-      value === "tracking" ||
-      value === "draft"
+      value === "session" || value === "preflight" || value === "tracking" || value === "draft"
     );
   }
 
@@ -1445,7 +1442,10 @@ export function createForgeRoomUiRuntime() {
       sessionContextSelection: currentSessionContextSelection(),
     });
     const renderedActiveStageId = goalPanel.dataset["forgeActiveStage"];
-    if (isWorkbenchStageId(renderedActiveStageId) && renderedActiveStageId !== viewState.activeStageId) {
+    if (
+      isWorkbenchStageId(renderedActiveStageId) &&
+      renderedActiveStageId !== viewState.activeStageId
+    ) {
       viewState.activeStageId = renderedActiveStageId;
     }
     setPanelBadge(goalPanel, panelModes.goal);
@@ -1464,7 +1464,10 @@ export function createForgeRoomUiRuntime() {
     });
     setPanelBadge(synthesisPanel, panelModes.synthesis);
 
-    syncElement(shell.statusBar, renderStatusBar(flow, renderWorkbenchTabs(guidedSurface, panelModes)));
+    syncElement(
+      shell.statusBar,
+      renderStatusBar(flow, renderWorkbenchTabs(guidedSurface, panelModes))
+    );
     shell.workbench.dataset["activeSurface"] = guidedSurface;
     if (hostBootstrapPending) {
       setOptionalDataAttribute(shell.surface, "panelMode", null);

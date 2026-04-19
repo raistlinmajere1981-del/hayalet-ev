@@ -843,7 +843,10 @@ export default function createForgeRoomHostRuntime() {
         );
       }
 
-      function describeOptionalPreflightUsage(action: string, preflight: ForgePreflightState): string {
+      function describeOptionalPreflightUsage(
+        action: string,
+        preflight: ForgePreflightState
+      ): string {
         if (preflight.status === "fresh") {
           return `${action} using the latest preflight report.`;
         }
