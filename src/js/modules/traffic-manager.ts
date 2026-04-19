@@ -6,7 +6,6 @@ import { LoadingTracker } from "./traffic/loading-tracker.js";
 import { ThinkingTracker } from "./traffic/thinking-tracker.js";
 import { SendTracker } from "./traffic/send-tracker.js";
 import { buildProbeScript } from "./traffic/probe-script-builder.js";
-import { isProviderScenarioActive } from "./webview/provider-scenario-lock.js";
 import {
   attachWebviewEvents,
   detachWebviewEvents,
@@ -423,7 +422,6 @@ class TrafficManagerClass {
 
   async probe(provider: string): Promise<boolean> {
     if (provider === "") return false;
-    if (isProviderScenarioActive(provider)) return false;
     const webview = this.webviews[provider];
     if (!webview || webview.isDestroyed?.() === true) return false;
 

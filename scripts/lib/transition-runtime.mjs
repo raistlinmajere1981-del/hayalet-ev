@@ -159,6 +159,10 @@ export function isWrapperProcess(args) {
   return args.includes("scripts/ghost-agent-wrapper.mjs");
 }
 
+export function isOpencodeServeProcess(args) {
+  return /\bopencode\b.*\bserve\b/i.test(args);
+}
+
 export async function readProcessEntries() {
   try {
     const { stdout } = await execFileAsync("ps", ["-eo", "pid=,args="]);
@@ -179,6 +183,7 @@ export function buildProcessSnapshot(entries) {
   const mainPids = [];
   const ghostPids = [];
   const wrapperPids = [];
+  let opencodeServerRunning = false;
 
   for (const entry of entries) {
     if (isMainAppProcess(entry.args)) {
@@ -189,6 +194,9 @@ export function buildProcessSnapshot(entries) {
     }
     if (isWrapperProcess(entry.args)) {
       wrapperPids.push(entry.pid);
+    }
+    if (isOpencodeServeProcess(entry.args)) {
+      opencodeServerRunning = true;
     }
   }
 
@@ -205,6 +213,7 @@ export function buildProcessSnapshot(entries) {
       alive: wrapperPids.length > 0,
       pids: wrapperPids,
     },
+    opencodeServerRunning,
   };
 }
 
@@ -213,6 +222,7 @@ export function buildWhereamiProbes(snapshot) {
     mainProcess: snapshot.main.alive,
     ghostProcess: snapshot.ghost.alive,
     wrapperProcess: snapshot.wrapper.alive,
+    opencodeServerRunning: snapshot.opencodeServerRunning === true,
   };
 }
 

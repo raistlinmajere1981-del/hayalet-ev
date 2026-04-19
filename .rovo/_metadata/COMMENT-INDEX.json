@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-19T09:15:27.414Z",
+  "generatedAt": "2026-04-19T10:08:11.549Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -960,8 +960,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 1852,
-          "endLine": 1852,
+          "startLine": 1847,
+          "endLine": 1847,
           "text": "NOTE: Extraction and fallback capture depend on the current DOM state of each image slot.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -969,8 +969,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1860,
-          "endLine": 1860,
+          "startLine": 1855,
+          "endLine": 1855,
           "text": "NOTE: Fallback capture must run after extraction for the same slot to avoid stale crops.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -978,8 +978,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1888,
-          "endLine": 1888,
+          "startLine": 1883,
+          "endLine": 1883,
           "text": "NOTE: Saves stay ordered so replacement writes update the in-memory dedupe map deterministically.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1918,8 +1918,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 38,
-          "endLine": 38,
+          "startLine": 37,
+          "endLine": 37,
           "text": "NOTE: Poll interval tuned to reduce LatencyInfo buildup during relay mode.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1927,8 +1927,8 @@
         },
         {
           "kind": "note",
-          "startLine": 155,
-          "endLine": 155,
+          "startLine": 154,
+          "endLine": 154,
           "text": "NOTE: Skip the next loading trigger after leaving the default page.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1936,8 +1936,8 @@
         },
         {
           "kind": "note",
-          "startLine": 165,
-          "endLine": 165,
+          "startLine": 164,
+          "endLine": 164,
           "text": "NOTE: Deprecated; use isSlotUrlExcluded from url-utils.ts directly.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1945,8 +1945,8 @@
         },
         {
           "kind": "note",
-          "startLine": 184,
-          "endLine": 184,
+          "startLine": 183,
+          "endLine": 183,
           "text": "NOTE: Ignore listener errors to keep iteration running.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1954,8 +1954,8 @@
         },
         {
           "kind": "note",
-          "startLine": 290,
-          "endLine": 290,
+          "startLine": 289,
+          "endLine": 289,
           "text": "NOTE: Probe lock flag to avoid concurrent probing.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1963,8 +1963,8 @@
         },
         {
           "kind": "note",
-          "startLine": 363,
-          "endLine": 363,
+          "startLine": 362,
+          "endLine": 362,
           "text": "NOTE: Skip if already probing this provider.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1972,8 +1972,8 @@
         },
         {
           "kind": "note",
-          "startLine": 416,
-          "endLine": 416,
+          "startLine": 415,
+          "endLine": 415,
           "text": "NOTE: Use a shorter delay to keep polling responsive.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1981,8 +1981,8 @@
         },
         {
           "kind": "note",
-          "startLine": 765,
-          "endLine": 765,
+          "startLine": 763,
+          "endLine": 763,
           "text": "NOTE: Ignore listener errors to keep iteration running.",
           "prefix": "NOTE",
           "scopeType": "file",

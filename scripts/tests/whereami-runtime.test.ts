@@ -27,7 +27,7 @@ test("returns app when main process is alive in soft idle and OpenCode serve is 
   assert.equal(result.observedSignals.opencodeServerRunning, true);
 });
 
-test("returns terminal with app-open signal when main process is alive without OpenCode serve", () => {
+test("returns app when main process is alive without OpenCode serve", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-1b",
@@ -44,11 +44,12 @@ test("returns terminal with app-open signal when main process is alive without O
     nowIso: "2026-03-02T10:00:10.000Z",
   });
 
-  assert.equal(result.mode, "terminal");
+  assert.equal(result.mode, "app");
   assert.equal(result.shouldStop, false);
   assert.equal(result.appOpen, true);
   assert.equal(result.electronConnectionAvailable, true);
-  assert.match(result.reason, /OpenCode serve is not active/i);
+  assert.equal(result.observedSignals.opencodeServerRunning, false);
+  assert.equal(result.reason, "Runtime and process probes agree.");
 });
 
 test("returns ghost-agent when ghost process is alive in in-ghost phase", () => {

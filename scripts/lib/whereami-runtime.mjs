@@ -16,10 +16,6 @@ function isElectronConnectionAvailable(probes) {
   return isAppOpen(probes);
 }
 
-function canReportAppMode(probes) {
-  return isAppOpen(probes) && probes.opencodeServerRunning === true;
-}
-
 function toTimestampMs(value) {
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
@@ -59,7 +55,7 @@ function processInferredMode(probes) {
   if (probes.ghostProcess) {
     return "ghost-agent";
   }
-  if (canReportAppMode(probes)) {
+  if (isAppOpen(probes)) {
     return "app";
   }
   return "terminal";
@@ -94,7 +90,6 @@ export function resolveWhereAmI({
 
   const expected = runtimeExpectedMode(normalizedControl);
   const inferred = processInferredMode(probes);
-  const appOpenWithoutServe = observedSignals.appOpen === true && observedSignals.opencodeServerRunning !== true;
 
   if (inferred === "conflict") {
     return result(
@@ -130,25 +125,13 @@ export function resolveWhereAmI({
     return result(
       inferred,
       false,
-      appOpenWithoutServe
-        ? "Main app is open, but OpenCode serve is not active; reporting terminal mode."
-        : "Runtime and process probes agree.",
+      "Runtime and process probes agree.",
       staleRuntime ? 0.8 : 0.97,
       observedSignals
     );
   }
 
   if (expected === "app" && inferred === "terminal") {
-    if (appOpenWithoutServe) {
-      return result(
-        "terminal",
-        false,
-        "Main app is open, but OpenCode serve is not active; reporting terminal mode.",
-        staleRuntime ? 0.9 : 0.72,
-        observedSignals
-      );
-    }
-
     if (probes.wrapperProcess && !staleRuntime) {
       return result(
         "transitioning",

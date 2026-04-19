@@ -50,3 +50,12 @@ test("opencode-ui connect url resolver converts packaged file routes into absolu
   assert.match(content, /new URL\("\.", window\.location\.href\)/);
   assert.match(content, /if \(isPackagedFileRoute\) \{\s*return parsed\.toString\(\);/s);
 });
+
+test("opencode connect url resolver ignores stale root resume urls when adapter returns a workspace route", () => {
+  const content = readAssistantIndex();
+
+  assert.match(content, /providerId === "opencode"/);
+  assert.match(content, /const savedPath = savedParsed\.pathname\.replace\(\/\\\/\+\$\/u, ""\) \|\| "\/";/);
+  assert.match(content, /const basePath = baseParsed\.pathname\.replace\(\/\\\/\+\$\/u, ""\) \|\| "\/";/);
+  assert.match(content, /savedParsed\.origin === baseParsed\.origin && savedPath === "\/" && basePath !== "\/"/);
+});

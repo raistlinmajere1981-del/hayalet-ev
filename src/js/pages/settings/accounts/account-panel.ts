@@ -28,12 +28,14 @@ type FeedbackKind = "success" | "error" | "info" | "warning";
 export class AccountPanel {
   _newAccountAvatarPath: string | null;
   _editingAccountId: string | null;
+  _newAccountAvatarPreviewRequestId: number;
   settingsManager: SettingsManager;
 
   constructor(settingsManager: SettingsManager) {
     this.settingsManager = settingsManager;
     this._newAccountAvatarPath = null;
     this._editingAccountId = null;
+    this._newAccountAvatarPreviewRequestId = 0;
   }
 
   init(): void {
@@ -330,6 +332,7 @@ export class AccountPanel {
     const electronApi = window.electronAPI;
     const canRead = typeof electronApi?.readFile === "function";
     const avatarPath = this._newAccountAvatarPath;
+    const requestId = ++this._newAccountAvatarPreviewRequestId;
     const altText = this.escapeHtml(entranceT("accounts.avatarPreviewAlt"));
 
     const tryLoadFile = async (filePath: string): Promise<boolean> => {
@@ -338,6 +341,12 @@ export class AccountPanel {
         const data = await electronApi.readFile(filePath);
         const base64 = String(data ?? "");
         if (base64 === "") return false;
+        if (
+          requestId !== this._newAccountAvatarPreviewRequestId ||
+          avatarPath !== this._newAccountAvatarPath
+        ) {
+          return false;
+        }
         const mimeType = getMimeTypeFromPath(filePath);
         previewEl.innerHTML = `<img src="data:${mimeType};base64,${base64}" alt="${altText}" class="img-cover">`;
         return true;
@@ -405,6 +414,7 @@ export class AccountPanel {
   }
 
   private clearNewAccountAvatarPreview(): void {
+    this._newAccountAvatarPreviewRequestId += 1;
     this._newAccountAvatarPath = null;
     const previewEl = document.getElementById("new-account-avatar-preview");
     if (previewEl) {

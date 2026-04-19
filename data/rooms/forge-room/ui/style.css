@@ -342,12 +342,14 @@ body::before {
   .forge-panel--goal[data-forge-goal-editable="true"]
   .forge-textarea,
 .forge-workbench-surface[data-panel-mode="locked"]
-  .forge-panel--goal[data-forge-goal-editable="true"] select,
+  .forge-panel--goal[data-forge-goal-editable="true"]
+  select,
 .forge-workbench-surface[data-panel-mode="locked"]
   .forge-panel--goal[data-forge-goal-editable="true"]
   .forge-button,
 .forge-workbench-surface[data-panel-mode="locked"]
-  .forge-panel--goal[data-forge-goal-editable="true"] button {
+  .forge-panel--goal[data-forge-goal-editable="true"]
+  button {
   pointer-events: auto;
 }
 

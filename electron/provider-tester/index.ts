@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "fs";
-import { join } from "path";
-import { pathToFileURL } from "url";
+import { dirname, join } from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 import {
   PROVIDER_SCENARIO_DELAYS,
   PROVIDER_SCENARIO_TIMEOUTS,
@@ -366,19 +366,13 @@ async function importModuleByPath(modulePath: string): Promise<unknown> {
   return await import(pathToFileURL(modulePath).href);
 }
 
-async function resolveProjectRoot(): Promise<string> {
-  const { Paths: projectPaths } = (await import("../paths.ts")) as {
-    Paths: {
-      getProjectRoot(): string;
-    };
-  };
-
-  return projectPaths.getProjectRoot();
+function resolveProjectRoot(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 }
 
 async function loadProviderModule(providerId: string): Promise<Record<string, unknown> | null> {
   const providerModuleTs = join(
-    await resolveProjectRoot(),
+    resolveProjectRoot(),
     "src",
     "js",
     "modules",
@@ -475,6 +469,7 @@ export class ProviderTester {
   private navigationObservationDelayMs: number;
   private databaseManager: ProviderTesterDatabaseManager | null;
   private defaultUrlOverride: string | undefined;
+  private lastAssistantCountBeforeFinalBubbles = 0;
 
   constructor(
     webview: WebviewTag,
@@ -2550,6 +2545,7 @@ export class ProviderTester {
       this.config.scrapeSelectors.assistantWrapper ?? this.config.scrapeSelectors.preferred;
     const generatedImageSelector = this.config.selectors.generatedImage ?? "";
     const assistantCountBeforeSend = await this.getSelectorCount(assistantSelector);
+    this.lastAssistantCountBeforeFinalBubbles = assistantCountBeforeSend;
     const generatedImageCountBeforeSend =
       isImagePrompt && generatedImageSelector !== ""
         ? await this.getSelectorCount(generatedImageSelector)
@@ -2598,6 +2594,18 @@ export class ProviderTester {
   ): Promise<AggregatedCommandStepResult> {
     const expectedMessage = this.resolveScenarioPrompt(params);
     const isImagePrompt = params?.["promptKind"] === "image";
+    const assistantSelector =
+      this.config.scrapeSelectors.assistantWrapper ?? this.config.scrapeSelectors.preferred;
+    if (!isImagePrompt && assistantSelector !== "") {
+      await this.ctx.waitForCondition(
+        async () =>
+          (await this.getSelectorCount(assistantSelector)) >
+          this.lastAssistantCountBeforeFinalBubbles,
+        PROVIDER_TEST_TIMEOUTS.RESPONSE_WAIT,
+        this.abortSignal
+      );
+      await this.waitForDelay(PROVIDER_TEST_INTERVALS.POLL);
+    }
     const results = this.pushResults(
       isImagePrompt
         ? [

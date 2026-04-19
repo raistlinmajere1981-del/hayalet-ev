@@ -999,6 +999,7 @@ declare global {
       success: boolean;
       port?: number;
       url?: string;
+      workspacePath?: string;
       pid?: number;
       startTime?: number;
       alreadyRunning?: boolean;
@@ -1029,6 +1030,7 @@ declare global {
       running: boolean;
       port?: number;
       url?: string;
+      workspacePath?: string;
       error?: string;
     }>;
     opencodeServeDoctor: () => Promise<{

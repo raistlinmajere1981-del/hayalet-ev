@@ -118,10 +118,7 @@ export function renderCoordinatorPanel(documentRef, state, text, options) {
   activityWrap.className = "forge-activity-feed";
   const activityTitle = documentRef.createElement("strong");
   activityTitle.className = "forge-activity-feed__title";
-  activityTitle.textContent = text(
-    ["workbench", "coordinator", "activityTitle"],
-    "Activity"
-  );
+  activityTitle.textContent = text(["workbench", "coordinator", "activityTitle"], "Activity");
   activityWrap.append(activityTitle);
   const activityItems = buildCoordinatorActivity(state, text);
   const activityList = documentRef.createElement("div");

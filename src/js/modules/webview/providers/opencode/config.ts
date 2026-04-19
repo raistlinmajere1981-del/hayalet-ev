@@ -8,6 +8,21 @@ export const OPENCODE_DEFAULTS = {
   portRange: { start: 4096, end: 4110 },
 };
 
+function encodeWorkspaceSegment(workspace: string): string {
+  const normalizedWorkspace = workspace.trim();
+  if (normalizedWorkspace === "") {
+    return "";
+  }
+
+  const bytes = new TextEncoder().encode(normalizedWorkspace);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/u, "");
+}
+
 export const config = {
   id: "opencode",
   name: "OpenCode",
@@ -29,8 +44,10 @@ export const config = {
     return `http://${OPENCODE_DEFAULTS.hostname}:${port}`;
   },
 
-  getWorkspaceUrl(_workspace: string, port = OPENCODE_DEFAULTS.port): string {
-    return `http://${OPENCODE_DEFAULTS.hostname}:${port}`;
+  getWorkspaceUrl(workspace: string, port = OPENCODE_DEFAULTS.port): string {
+    const encodedWorkspace = encodeWorkspaceSegment(workspace);
+    const serverUrl = config.getServerUrl(port);
+    return encodedWorkspace === "" ? serverUrl : `${serverUrl}/${encodedWorkspace}`;
   },
 
   getServerCommand(

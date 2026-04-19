@@ -1827,6 +1827,7 @@ body.is-scroll-locked {
 .indicators-group--topbar .indicator-cluster-assistant {
   padding: var(--space-2) var(--space-4);
   gap: var(--space-4);
+  align-items: center;
 }
 
 .indicators-group--topbar .indicator-avatar-md {

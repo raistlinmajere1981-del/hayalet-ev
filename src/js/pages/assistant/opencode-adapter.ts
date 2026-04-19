@@ -7,6 +7,7 @@ import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import type { AppSettings } from "@shared/settings.js";
 import type { AssistantProviderAdapter, ServerResult, ServerStatus } from "@shared/assistant.js";
+import { config as opencodeConfig } from "../../modules/webview/providers/opencode/config.js";
 
 function assistantT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`shell.assistant.${key}`, params);
@@ -36,6 +37,18 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
     return { start, end: Math.min(start + 14, 65535) };
   }
 
+  private _resolveWorkspaceUrl(
+    serverUrl: string,
+    workspacePath: string | null | undefined,
+    port: number
+  ): string {
+    if (typeof workspacePath !== "string" || workspacePath.trim() === "") {
+      return serverUrl;
+    }
+
+    return opencodeConfig.getWorkspaceUrl(workspacePath.trim(), port);
+  }
+
   async startServer(portSelection?: string): Promise<ServerResult> {
     try {
       Logger.infoT(LogCategory.ASSISTANT_CORE, "shell.assistant.logs.providerServeStarting", {
@@ -52,7 +65,12 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       if (running.running === true && running.port !== undefined && running.port !== 0) {
         this._isRunning = true;
         this._currentPort = running.port;
-        const url = running.url ?? `http://127.0.0.1:${this._currentPort}/`;
+        const serverUrl = running.url ?? `http://127.0.0.1:${this._currentPort}/`;
+        const url = this._resolveWorkspaceUrl(
+          serverUrl,
+          running.workspacePath,
+          this._currentPort
+        );
 
         Logger.infoT(
           LogCategory.ASSISTANT_CORE,
@@ -97,7 +115,12 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       if (result.success === true) {
         this._isRunning = true;
         this._currentPort = result.port ?? port ?? 4096;
-        const url = result.url ?? `http://127.0.0.1:${this._currentPort}/`;
+        const serverUrl = result.url ?? `http://127.0.0.1:${this._currentPort}/`;
+        const url = this._resolveWorkspaceUrl(
+          serverUrl,
+          result.workspacePath,
+          this._currentPort
+        );
 
         Logger.infoT(
           LogCategory.ASSISTANT_CORE,

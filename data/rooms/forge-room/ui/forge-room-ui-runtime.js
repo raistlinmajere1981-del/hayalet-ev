@@ -1098,7 +1098,10 @@ export function createForgeRoomUiRuntime() {
       synthesisBlockedReason: describeSynthesisStep()
     });
     setPanelBadge(synthesisPanel, panelModes.synthesis);
-    syncElement(shell.statusBar, renderStatusBar(flow, renderWorkbenchTabs(guidedSurface, panelModes)));
+    syncElement(
+      shell.statusBar,
+      renderStatusBar(flow, renderWorkbenchTabs(guidedSurface, panelModes))
+    );
     shell.workbench.dataset["activeSurface"] = guidedSurface;
     if (hostBootstrapPending) {
       setOptionalDataAttribute(shell.surface, "panelMode", null);

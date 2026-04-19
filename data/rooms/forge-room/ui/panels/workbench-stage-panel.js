@@ -1,11 +1,6 @@
 import { createForgePanel } from "./panel-shell.js";
 export const FORGE_NEW_SESSION_PICKER_VALUE = "__forge-new-session__";
-const FORGE_STAGE_ORDER = [
-  "session",
-  "preflight",
-  "tracking",
-  "draft"
-];
+const FORGE_STAGE_ORDER = ["session", "preflight", "tracking", "draft"];
 function getAvatarMimeType(filePath) {
   const normalizedPath = filePath.trim().toLowerCase();
   if (normalizedPath.endsWith(".jpg") || normalizedPath.endsWith(".jpeg")) {
@@ -637,10 +632,7 @@ function buildRegistrationStageBody(documentRef, state, text, options) {
   splitGrid.className = "forge-stage-registration-grid";
   splitGrid.append(
     createStageSplitPanel(documentRef, {
-      title: text(
-        ["workbench", "stageTower", "registrationPanels", "session"],
-        "Session + goal"
-      ),
+      title: text(["workbench", "stageTower", "registrationPanels", "session"], "Session + goal"),
       body: buildSessionStageBody(documentRef, state, text, {
         goalDraft: options.goalDraft,
         selectedSessionId: options.selectedSessionId

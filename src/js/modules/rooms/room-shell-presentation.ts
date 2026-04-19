@@ -7,6 +7,11 @@ function readRoomShellLabel(roomId: string, fallbackName: string): string {
   return roomId.trim();
 }
 
+const ROOM_SHELL_ICON_OVERRIDES: Record<string, string> = {
+  "forge-room": "\u2692\uFE0F",
+  laboratory: "\uD83E\uDDEA"
+};
+
 export function resolveRoomShellName(roomId: string, fallbackName: string): string {
   const label = readRoomShellLabel(roomId, fallbackName);
   return label !== "" ? label : roomId;
@@ -17,6 +22,11 @@ export function resolveRoomShellIcon(
   configuredIcon: string | null | undefined,
   fallbackName: string
 ): string {
+  const overriddenIcon = ROOM_SHELL_ICON_OVERRIDES[roomId];
+  if (overriddenIcon !== undefined) {
+    return overriddenIcon;
+  }
+
   const trimmedConfiguredIcon = configuredIcon?.trim();
   if (trimmedConfiguredIcon !== undefined && trimmedConfiguredIcon !== "") {
     return trimmedConfiguredIcon;

@@ -1734,6 +1734,16 @@ export class AssistantController {
     if (providerId === "opencode") {
       const savedUrl = settings?.assistants?.lastOpencodeUrl;
       if (typeof savedUrl === "string" && savedUrl !== "") {
+        try {
+          const savedParsed = new URL(savedUrl);
+          const baseParsed = new URL(baseUrl);
+          const savedPath = savedParsed.pathname.replace(/\/+$/u, "") || "/";
+          const basePath = baseParsed.pathname.replace(/\/+$/u, "") || "/";
+
+          if (savedParsed.origin === baseParsed.origin && savedPath === "/" && basePath !== "/") {
+            return baseUrl;
+          }
+        } catch {}
         return savedUrl;
       }
       return baseUrl;

@@ -7,6 +7,7 @@ export interface ServerInfo {
   running: boolean;
   port?: number;
   url?: string;
+  workspacePath?: string;
   pid?: number;
   startTime?: number;
   alreadyRunning?: boolean;

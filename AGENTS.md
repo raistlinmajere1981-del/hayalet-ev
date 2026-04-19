@@ -70,6 +70,8 @@ Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde a�
 🤖 Muhatap: <mod `app` ise `whoareyou`, değilse varsayılan `Kullanıcı`>
          `kullanici`    → "Kullanıcı"
          `ai`           → "AI"
+🎯 Hedef Workflow: <`workflow:terminal-mode` | `workflow:app-mode` | `workflow:ghost-agent-mode`>
+🔁 Geçiş Planı: <hedef workflow'a göre geçiş/geri dönüş adımı; geçiş yoksa `Yok` yaz>
 🔍 Hata: [tek cümle — ne yanlış]
 🔧 Çözüm: [ne yapılacak, hangi dosya, başladığın noktaya dönüş sürecinde ki aşamalar]
 📁 Etkilenen dosyalar: [liste]
@@ -85,6 +87,8 @@ Devam etmem için "evet" yaz.
 > **Kural:** Hiçbir plugin/skill bu onay adımını atlayamaz.
 > **Kural:** Onay sonrası süreç bitmeden kullanıcı tekrar bekletilmez — sonuç bildirimi ile çember kapanır.
 > **Kural:** Mod alanı her seferinde `npm run mode:status` çıktısına göre dinamik doldurulur; `npm run whereami` ile cross-check edilir — hardcode yazılmaz.
+> **Kural:** `Hedef Workflow` alanı zorunludur; mevcut mod ile yapılacak workflow aynı şey değildir.
+> **Kural:** `Geçiş Planı` alanı zorunludur; `ghost-agent` gereken işlerde `npm run mode:switch -- ghost-agent` ve işlem sonu `npm run mode:switch -- app` açıkça yazılır.
 > **Kural:** Mod `app` iken aşağıdaki gören mesajında aşağıdaki ibarelerden biri varsa muhatap `AI` seçilir:
 >
 > - Görev öncesi session içinde relay'in aktif olduğuna dair mesaj/işaret görüldüyse
@@ -225,8 +229,9 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
 
 - `workflow:ghost-agent-mode`:
   1. Uygulama kaynak kodu / mantık değişikliği gerekiyorsa `npm run mode:switch -- ghost-agent` ile geçiş yapılır
-  2. İşlem tamamlanınca `npm run mode:switch -- app` ile geri dönüş yapılır
-  3. Agent başladığı noktaya döner ve rapor verir
+  2. Bu grupta restart gerektirecek uygulama işi ghost-agent içinde yapılır; app içinde doğrudan düzenleme ile tamamlanmaz
+  3. İşlem tamamlanınca `npm run mode:switch -- app` ile geri dönüş yapılır
+  4. Final raporunda geçişin tamamlandığı ve başlangıç noktasına dönüldüğü açıkça belirtilir
 
 - `workflow:transition-control`:
   1. Agent geçişlerde Electron click/xdotool kullanmaz; yalnızca `mode:*` komutlarını kullanır
@@ -293,6 +298,8 @@ Agent mod kararını `workflow:terminal-mode`, `workflow:app-mode` ve `workflow:
 **Kural:** `npm run whereami` çıktısı `mode:status` için cross-check olarak kullanılır.
 **Kural:** `mode:status` sonucu `conflict` ise işlem durdurulur; `transitioning` ise `mode:wait` ile geçiş tamamlanması beklenir.
 **Kural:** Mod kararı agent tarafından planlama aşamasında verilir, onay formatında gösterilir.
+**Kural:** `app` sonucu mevcut çalışma durumudur; `src/`, `electron/`, `shared/` ve restart gerektiren uygulama kaynak/mantık değişiklikleri için hedef workflow `workflow:ghost-agent-mode` seçilir.
+**Kural:** `AGENTS.md`, CSS, `ghost-agent/` ve `mcp-server/` değişiklikleri gibi istisnalar dışında app kaynak kodu düzenlemeleri app modunda tamamlanmaz.
 **Kural:** Kod değişiklikleri doğrudan kaynak dosyalara uygulanır.
 
 **MCP çalışmazsa:** Mod tespiti için `npm run mode:status` + `npm run whereami` kullanılmaya devam edilir. Sadece MCP tool işlemlerinin riskini kullanıcıya bildir.

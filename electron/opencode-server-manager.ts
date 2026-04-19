@@ -24,6 +24,11 @@ export class OpenCodeServerManager {
   private startTime: number | null = null;
   private usingExternalServer = false;
 
+  private getWorkspacePath(): string | undefined {
+    const workspacePath = Paths.getProjectRoot().trim();
+    return workspacePath !== "" ? workspacePath : undefined;
+  }
+
   private parseVersion(raw: string): string | undefined {
     const output = raw.trim();
     if (output === "") return undefined;
@@ -250,6 +255,7 @@ export class OpenCodeServerManager {
       try {
         const healthResult = await this.checkHealth(`http://127.0.0.1:${port}/global/health`);
         if (healthResult.success) {
+          const workspacePath = this.getWorkspacePath();
           await logger.logInternalT(
             LogCategory.MAIN,
             LogLevel.INFO,
@@ -261,6 +267,7 @@ export class OpenCodeServerManager {
             running: true,
             port,
             url: `http://127.0.0.1:${port}`,
+            ...(workspacePath !== undefined ? { workspacePath } : {}),
             source: "existing",
           };
         }
@@ -339,8 +346,8 @@ export class OpenCodeServerManager {
       args.push("--cors", origin);
     });
 
-    const workspacePath = Paths.getProjectRoot().trim();
-    if (workspacePath !== "") {
+    const workspacePath = this.getWorkspacePath();
+    if (workspacePath !== undefined) {
       args.push(workspacePath);
     }
 
@@ -353,7 +360,7 @@ export class OpenCodeServerManager {
         port,
         binaryCommand,
         binaryExecutable,
-        workspacePath: workspacePath !== "" ? workspacePath : null,
+        workspacePath: workspacePath ?? null,
         args,
       }
     );
@@ -367,7 +374,7 @@ export class OpenCodeServerManager {
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
       env: childEnv,
-      ...(workspacePath !== "" ? { cwd: workspacePath } : {}),
+      ...(workspacePath !== undefined ? { cwd: workspacePath } : {}),
     });
 
     this.currentPort = port;
@@ -430,6 +437,7 @@ export class OpenCodeServerManager {
       running: true,
       port,
       url: `http://127.0.0.1:${port}`,
+      ...(workspacePath !== undefined ? { workspacePath } : {}),
       ...(typeof pid === "number" ? { pid } : {}),
       ...(typeof this.startTime === "number" ? { startTime: this.startTime } : {}),
       source: "started",

@@ -153,14 +153,13 @@ function resolveInteractionAppMode(
   const updatedMs = toInteractionTimestampMs(runtime.updatedAt);
   const runtimeAgeMs = updatedMs === null ? null : Math.max(0, nowMs - updatedMs);
   const staleRuntime = runtimeAgeMs === null ? true : runtimeAgeMs > 60000;
-  const appOpenWithoutServe = probes.mainProcess && probes.opencodeServerRunning !== true;
 
   const inferred =
     probes.mainProcess && probes.ghostProcess
       ? "conflict"
       : probes.ghostProcess
         ? "ghost-agent"
-        : probes.mainProcess && probes.opencodeServerRunning
+        : probes.mainProcess
           ? "app"
           : "terminal";
 
@@ -186,14 +185,10 @@ function resolveInteractionAppMode(
   }
 
   if (expected === inferred) {
-    return appOpenWithoutServe ? "terminal" : inferred;
+    return inferred;
   }
 
   if (expected === "app" && inferred === "terminal") {
-    if (appOpenWithoutServe) {
-      return "terminal";
-    }
-
     return probes.wrapperProcess && !staleRuntime ? "transitioning" : "terminal";
   }
 
