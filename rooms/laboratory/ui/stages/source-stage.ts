@@ -255,7 +255,10 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
                         <strong>${escapeHtml(moduleMeta.label)}</strong>
                         <span>${escapeHtml(moduleMeta.shortLabel)}</span>
                       </div>
-                      ${active ? renderStatusChip("Aktif", "running") : ""}
+                      <div class="labx-chip-row">
+                        ${selected ? renderStatusChip("Seçili", "success") : ""}
+                        ${active ? renderStatusChip("Aktif", "running") : ""}
+                      </div>
                     </div>
                     <p class="labx-panel-hint">${escapeHtml(moduleMeta.description)}</p>
                     <div class="labx-module-card__actions">
@@ -282,7 +285,7 @@ export function renderSourceStage(deps: SourceStageRenderDeps): LabStageSurface 
               })
               .join("")}
           </div>
-          <p class="labx-panel-hint">Hızlı modül seçimi burada yapılır. Ayrıntılı yönetim için sol üstteki Modül Yönetimi düğmesini kullan.</p>
+          <p class="labx-panel-hint">Bu panel, koşuya girecek modülleri ve ilk odak modülünü doğrudan belirler.</p>
         `,
       })}
     </div>

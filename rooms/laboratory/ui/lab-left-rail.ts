@@ -42,11 +42,11 @@ export function renderLabLeftRail(state: LabStoreState) {
       <button
         class="labx-manager-link"
         type="button"
-        data-lab-action="toggle-module-manager"
-        data-active="${state.ui.moduleManagerOpen ? "true" : "false"}"
+        data-lab-action="toggle-tool-manager"
+        data-active="${state.ui.toolManagerOpen ? "true" : "false"}"
       >
-        <strong>Modül Yönetimi</strong>
-        <small>Araçları ve çalışma kapsamını her aşamadan düzenle</small>
+        <strong>Araç Yönetimi</strong>
+        <small>yt-dlp, FFmpeg ve oda araçlarını kur, güncelle ve yenile</small>
       </button>
       <nav class="labx-stage-rail">
         ${LAB_STAGES.map(function (stageId, index) {

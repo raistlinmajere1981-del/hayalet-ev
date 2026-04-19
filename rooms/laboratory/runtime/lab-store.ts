@@ -101,6 +101,7 @@ function createInitialState(): LabStoreState {
       editDraftDirty: false,
       profileDraftDirty: false,
       moduleManagerOpen: false,
+      toolManagerOpen: false,
       eventFeedExpanded: false,
       eventFeedCursor: 0,
       artifactListExpanded: false,
@@ -987,6 +988,10 @@ function reduceEvent(state: LabStoreState, event: LabStoreEvent): LabStoreState 
     case "module-manager-toggled":
       state.ui.moduleManagerOpen =
         typeof event.open === "boolean" ? event.open : !state.ui.moduleManagerOpen;
+      return state;
+    case "tool-manager-toggled":
+      state.ui.toolManagerOpen =
+        typeof event.open === "boolean" ? event.open : !state.ui.toolManagerOpen;
       return state;
     case "toggle-event-feed":
       state.ui.eventFeedExpanded =

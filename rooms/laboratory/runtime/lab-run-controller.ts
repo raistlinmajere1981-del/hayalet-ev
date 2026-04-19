@@ -290,16 +290,37 @@ export function createLabRunController(deps: LabRunControllerDeps) {
 
     const action = toStringValue(actionButton.dataset["labAction"]);
     const value = toStringValue(actionButton.dataset["labValue"]);
+    const state = deps.store.getState();
     switch (action) {
       case "primary-action":
         runPrimaryAction();
         return;
+      case "toggle-tool-manager":
       case "toggle-module-manager":
-        dispatch({ type: "module-manager-toggled" });
+        dispatch({ type: "tool-manager-toggled" });
         return;
+      case "close-tool-manager":
+      case "dismiss-tool-manager":
       case "close-module-manager":
       case "dismiss-module-manager":
-        dispatch({ type: "module-manager-toggled", open: false });
+        dispatch({ type: "tool-manager-toggled", open: false });
+        return;
+      case "tools-refresh":
+        sendMediaAction("tools-refresh");
+        return;
+      case "tool-update-all":
+        sendMediaAction("tool-update-all", { featureStage: state.currentStage });
+        return;
+      case "tool-install":
+      case "tool-update":
+      case "tool-check-updates":
+        if (value.trim() === "") {
+          return;
+        }
+        sendMediaAction(action, {
+          toolId: value,
+          featureStage: state.currentStage,
+        });
         return;
       case "feature-activate":
         activateFeature(value);

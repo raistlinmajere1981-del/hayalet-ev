@@ -6,7 +6,6 @@ import { createLabStore } from "../runtime/lab-store.js";
 import { renderLabCenterPanel } from "./lab-center-panel.js";
 import { renderLabLayout } from "./lab-layout.js";
 import { renderLabLeftRail } from "./lab-left-rail.js";
-import { renderModuleManagementOverlay } from "./module-management-overlay.js";
 import { renderLabRightPanel } from "./lab-right-panel.js";
 import { renderEditStage } from "./stages/edit-stage.js";
 import { renderProcessStage } from "./stages/process-stage.js";
@@ -14,6 +13,7 @@ import { renderProfileStage } from "./stages/profile-stage.js";
 import { renderReportStage } from "./stages/report-stage.js";
 import { renderSourceStage } from "./stages/source-stage.js";
 import { createLabRunController } from "../runtime/lab-run-controller.js";
+import { renderToolManagementOverlay } from "./tool-management-overlay.js";
 
 type RootWindow = Window & {
   roomAPI?: {
@@ -187,7 +187,7 @@ export function startLaboratoryLabRoot() {
     (leftRail as HTMLElement).outerHTML = renderLabLeftRail(state);
     (centerPanel as HTMLElement).outerHTML = renderLabCenterPanel(surface);
     (rightPanel as HTMLElement).outerHTML = renderLabRightPanel(surface);
-    (overlayRoot as HTMLElement).outerHTML = renderModuleManagementOverlay(state);
+    (overlayRoot as HTMLElement).outerHTML = renderToolManagementOverlay(state);
   }
 
   store.subscribe(function (state) {
