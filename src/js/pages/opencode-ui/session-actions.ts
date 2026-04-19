@@ -20,7 +20,7 @@ interface SessionListContext {
   setActiveSession: (sessionId: string | null) => void;
   createServerSession: (title?: string) => Promise<string>;
   ensureSessionInDisk: (sessionId: string, title?: string) => Promise<void>;
-  reportError: (message: string) => void;
+  reportError: (error: unknown, options?: { defaultTitleKey: string }) => void;
 }
 
 export function isSessionArchived(session: OpencodeUiSessionSummary): boolean {
@@ -385,10 +385,7 @@ export function initSessionEvents(context: SessionListContext): void {
           await context.loadSessionListAndRender({ preserveActive: true });
           await context.loadActiveSessionHistory();
         } catch (error) {
-          context.reportError(
-            "Session acilamadi: " +
-              (error instanceof Error && error.message !== "" ? error.message : String(error))
-          );
+          context.reportError(error, { defaultTitleKey: "session.createFailedTitle" });
         }
       })();
     });
@@ -440,10 +437,7 @@ export function initSessionEvents(context: SessionListContext): void {
           try {
             await handleSessionAction(context, sessionId, action);
           } catch (error) {
-            context.reportError(
-              "Session islemi basarisiz: " +
-                (error instanceof Error && error.message !== "" ? error.message : String(error))
-            );
+            context.reportError(error, { defaultTitleKey: "session.actionFailedTitle" });
           }
           return;
         }

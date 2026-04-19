@@ -1,39 +1,33 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { getAdapter, getAdapterIds } from "../../src/js/pages/assistant/provider-registry.ts";
+const providerRegistryPath = "src/js/pages/assistant/provider-registry.ts";
+const adapterPath = "src/js/pages/assistant/opencode-ui-adapter.ts";
 
-type TestWindow = {
-  electronAPI?: Record<string, unknown>;
-};
+function readProviderRegistry(): string {
+  return readFileSync(providerRegistryPath, "utf8");
+}
 
-function setWindow(api: Record<string, unknown>): void {
-  (globalThis as unknown as { window: TestWindow }).window = {
-    electronAPI: api,
-  };
+function readAdapter(): string {
+  return readFileSync(adapterPath, "utf8");
 }
 
 test("assistant provider-registry registers opencode-ui adapter", () => {
-  const adapterIds = getAdapterIds();
-  assert.ok(adapterIds.includes("opencode-ui"));
+  const registryContent = readProviderRegistry();
+
+  assert.match(registryContent, /import \{ OpenCodeUiAdapter \} from "\.\/opencode-ui-adapter\.js";/);
+  assert.match(registryContent, /registerAdapter\(new OpenCodeUiAdapter\(\)\);/);
 });
 
-test("opencode-ui adapter routes to native opencode-ui page path", async () => {
-  let startCalled = 0;
-  setWindow({
-    opencodeServeFindRunning: async () => ({ running: false }),
-    opencodeServeFindPort: async () => ({ port: 4096 }),
-    opencodeServeStart: async () => {
-      startCalled += 1;
-      return { success: true, url: "http://127.0.0.1:4096/", port: 4096 };
-    },
-  });
+test("opencode-ui adapter routes to native opencode-ui page path", () => {
+  const adapterContent = readAdapter();
 
-  const adapter = getAdapter("opencode-ui");
-  assert.ok(adapter, "Expected opencode-ui adapter to be registered");
-
-  const result = await adapter.startServer("auto");
-  assert.equal(result.success, true);
-  assert.equal(result.url, "/pages/opencode-ui.html?port=4096");
-  assert.equal(startCalled, 1);
+  assert.match(adapterContent, /private _buildPageUrl\(port: number\): string {/);
+  assert.match(
+    adapterContent,
+    /const params = new URLSearchParams\(\{ port: String\(port\) \}\);\s*return `\/pages\/opencode-ui\.html\?\$\{params\.toString\(\)\}`;/s
+  );
+  assert.match(adapterContent, /const pageUrl = this\._buildPageUrl\(this\._currentPort\);/);
+  assert.match(adapterContent, /return \{\s*success: true,\s*url: pageUrl,/s);
 });

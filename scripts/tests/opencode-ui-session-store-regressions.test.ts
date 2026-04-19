@@ -542,6 +542,10 @@ test("readOpencodeUiSession reads structured assistant parts and latest todos", 
     assert.equal(result.session?.messages[1]?.text, "assistant delta text");
     assert.equal(result.session?.messages[2]?.text, "");
     assert.equal(result.session?.messages[2]?.toolCalls?.[0]?.name, "bash");
+    assert.equal(result.session?.messages[3]?.blocks?.[0]?.kind, "step");
+    assert.equal(result.session?.messages[3]?.blocks?.[1]?.kind, "reasoning");
+    assert.equal(result.session?.messages[3]?.blocks?.[2]?.kind, "patch");
+    assert.equal(result.session?.messages[3]?.blocks?.[2]?.items?.[0], "app.ts");
     assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.stepStartTitle")));
     assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.reasoningTitle")));
     assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.patchTitle")));
@@ -557,6 +561,129 @@ test("readOpencodeUiSession reads structured assistant parts and latest todos", 
       "/workspace/project/src/js/pages/opencode-ui/app.ts"
     );
     assert.equal(result.session?.changed_files?.[1], "/workspace/project/README.md");
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("readOpencodeUiSession preserves historic image urls for preview-capable attachments", async () => {
+  const fixture = setupFixture();
+  const { db, dbPath } = fixture;
+
+  db.prepare(
+    `INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    "ses_history_image",
+    "proj_main",
+    "history-image-session",
+    "/workspace/project",
+    "History Image Session",
+    "1.2.17",
+    1700000000000,
+    1700000003200
+  );
+
+  db.prepare(
+    `INSERT INTO message (id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    "msg_history_image_user",
+    "ses_history_image",
+    1700000000210,
+    1700000000210,
+    JSON.stringify({ role: "user" })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_history_image_file",
+    "msg_history_image_user",
+    "ses_history_image",
+    1700000000220,
+    1700000000220,
+    JSON.stringify({
+      type: "file",
+      filename: "screen.png",
+      mime: "image/png",
+      url: "https://example.test/assets/screen.png",
+    })
+  );
+
+  try {
+    const result = await readOpencodeUiSession("ses_history_image", { dbPath });
+    const file = result.session?.messages[0]?.files?.[0];
+
+    assert.equal(result.success, true);
+    assert.equal(file?.fileName, "screen.png");
+    assert.equal(file?.media_type, "image/png");
+    assert.equal(file?.url, "https://example.test/assets/screen.png");
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("readOpencodeUiSession surfaces retrying tool state as a warning notice", async () => {
+  const fixture = setupFixture();
+  const { db, dbPath } = fixture;
+
+  db.prepare(
+    `INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    "ses_notice",
+    "proj_main",
+    "notice-session",
+    "/workspace/project",
+    "Notice Session",
+    "1.2.17",
+    1700000000000,
+    1700000003000
+  );
+
+  db.prepare(
+    `INSERT INTO message (id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    "msg_notice_assistant",
+    "ses_notice",
+    1700000000200,
+    1700000000200,
+    JSON.stringify({ role: "assistant" })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_notice_tool",
+    "msg_notice_assistant",
+    "ses_notice",
+    1700000000220,
+    1700000000220,
+    JSON.stringify({
+      type: "tool",
+      tool: "bash",
+      state: {
+        status: "retrying",
+        message: "The usage limit has been reached",
+        input: { command: "pwd" },
+      },
+    })
+  );
+
+  try {
+    const result = await readOpencodeUiSession("ses_notice", { dbPath });
+    const assistant = result.session?.messages[0];
+
+    assert.equal(result.success, true);
+    assert.equal(assistant?.role, "assistant");
+    assert.equal(assistant?.toolCalls?.[0]?.name, "bash");
+    assert.equal(assistant?.notices?.[0]?.tone, "warning");
+    assert.equal(assistant?.notices?.[0]?.title, "The usage limit has been reached");
+    assert.equal(assistant?.notices?.[0]?.meta, t("message.toolStateRetryMeta"));
   } finally {
     fixture.cleanup();
   }

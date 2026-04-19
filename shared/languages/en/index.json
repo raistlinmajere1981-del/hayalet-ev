@@ -5380,6 +5380,8 @@
       "listReadError": "Failed to read the session list: {{message}}",
       "createDefaultTitle": "New Chat",
       "clearConfirm": "The current chat will be cleared and a new session will be created. Continue?",
+      "createFailedTitle": "Session could not be created",
+      "actionFailedTitle": "Session action failed",
       "createFailed": "Failed to create a new session: {{message}}",
       "sessionIdUnavailable": "Could not read the session id"
     },
@@ -5402,11 +5404,14 @@
       "attachFileLabel": "📎 File",
       "attachClipboardTitle": "Paste an image from the clipboard (Ctrl+V)",
       "attachClipboardLabel": "📋 Paste",
+      "copyAction": "Copy",
       "copyMessageTitle": "Copy message",
+      "copyStateCopied": "Copied",
       "copyUrlMissing": "There is no URL to copy",
       "copyUrlSuccess": "URL copied",
       "copyUrlError": "Failed to copy the URL",
       "sendFailedPrefix": "Message could not be sent:",
+      "sendFailedTitle": "Message could not be sent",
       "clipboardEmpty": "No attachable clipboard content was found.",
       "clipboardReadError": "Could not read the clipboard: {{message}}",
       "attachmentReadyCount": "{{count}} attachments ready",
@@ -5415,6 +5420,25 @@
       "removeAttachmentAria": "Remove {{name}}",
       "attachmentSourceClipboard": "Added from clipboard",
       "attachmentSourceFile": "Added from file",
+      "attachmentSourceHistory": "Loaded from session history",
+      "roleAssistant": "Assistant",
+      "roleUser": "You",
+      "attachmentKind": {
+        "image": "Image",
+        "text": "Text",
+        "pdf": "PDF",
+        "code": "Code",
+        "archive": "Archive",
+        "file": "File"
+      },
+      "attachmentKindBadge": {
+        "image": "IMG",
+        "text": "TXT",
+        "pdf": "PDF",
+        "code": "CODE",
+        "archive": "ARC",
+        "file": "FILE"
+      },
       "dictation": {
         "idleTitle": "Add voice transcript",
         "listeningTitle": "Stop listening and insert the transcript",
@@ -5466,7 +5490,23 @@
       "stepReasonLabel": "Reason: {{reason}}",
       "stepTokensLabel": "Tokens: {{count}}",
       "patchTitle": "Patch",
-      "patchFilesLabel": "Files:"
+      "patchFilesLabel": "Files:",
+      "toolStateTitle": "Tool state: {{state}}",
+      "toolStateLabel": {
+        "retrying": "retrying",
+        "interrupted": "interrupted",
+        "failed": "failed",
+        "error": "error"
+      },
+      "toolStateRetryMeta": "Retrying automatically",
+      "runtimeNotice": {
+        "limitTitle": "Usage limit reached",
+        "retryingTitle": "Request is retrying",
+        "interruptedTitle": "Request was interrupted"
+      },
+      "toolCallDone": "done",
+      "toolCallArgsLabel": "args",
+      "toolCallResultLabel": "result"
     },
     "panel": {
       "rightTabsAria": "OpenCode UI right panel tabs",
@@ -5477,6 +5517,19 @@
       "todoTitle": "Todo",
       "todoEyebrow": "Session Summary",
       "todoEmpty": "No todo items yet",
+      "todoStatus": {
+        "pending": "Pending",
+        "inProgress": "In progress",
+        "completed": "Completed",
+        "blocked": "Blocked",
+        "cancelled": "Cancelled"
+      },
+      "todoPriority": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "urgent": "Urgent"
+      },
       "filesTitle": "Files",
       "filesEyebrow": "Workspace",
       "filesEmpty": "No changed files",
@@ -5558,7 +5611,9 @@
       "startedTitle": "OpenCode UI started",
       "startedSubtitle": "Preparing page modules",
       "connectionPhaseTitle": "Connection phase",
+      "bootstrapErrorTitle": "Connection bootstrap failed",
       "bootstrapError": "Bootstrap error: {{message}}",
+      "sessionLoadErrorTitle": "Session loading failed",
       "sessionLoadError": "Session load error: {{message}}",
       "errorPrefix": "Error: {{message}}",
       "healthCheckTitle": "Checking server health",

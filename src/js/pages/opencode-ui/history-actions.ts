@@ -1,5 +1,8 @@
 import { VISIBLE_MESSAGE_COUNT } from "@limits";
 import type {
+  OpencodeUiMessageAttachment,
+  OpencodeUiMessageBlock,
+  OpencodeUiMessageNotice,
   OpencodeUiSessionDetail,
   OpencodeUiSessionMessage,
   OpencodeUiTodoItem,
@@ -23,7 +26,11 @@ interface HistoryContext {
     role: "user" | "assistant",
     text: string,
     meta?: string,
-    files?: Array<string | { name?: string; media_type?: string; fileName?: string; path?: string }>
+    files?: Array<string | OpencodeUiMessageAttachment>,
+    options?: {
+      blocks?: OpencodeUiMessageBlock[];
+      notices?: OpencodeUiMessageNotice[];
+    }
   ) => HTMLElement | null;
   createHistoricAssistantToolHost: () => HTMLElement | null;
   renderHistoricToolCall: (targetContainer: HTMLElement, toolCall: OpencodeUiToolCall) => void;
@@ -43,7 +50,18 @@ function renderHistoryMessage(context: HistoryContext, message: OpencodeUiSessio
   }
 
   const toolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : [];
-  const bubble = context.addMessage("assistant", message.text);
+  const bubble = context.addMessage(
+    "assistant",
+    message.text,
+    undefined,
+    message.files,
+    message.notices != null || message.blocks != null
+      ? {
+          ...(message.blocks != null ? { blocks: message.blocks } : {}),
+          ...(message.notices != null ? { notices: message.notices } : {}),
+        }
+      : undefined
+  );
   const toolTarget =
     bubble?.parentElement instanceof HTMLElement
       ? bubble.parentElement
@@ -209,12 +227,27 @@ export async function syncActiveSessionHistoryIfUpdated(context: HistoryContext)
 
 export async function withHistorySyncFallback(
   context: HistoryContext,
-  fallbackText: string
+  fallbackMessage: {
+    text: string;
+    blocks?: OpencodeUiMessageBlock[];
+    notices?: OpencodeUiMessageNotice[];
+  }
 ): Promise<void> {
   const sessionId = context.runtime.activeSessionId;
   if (sessionId == null || sessionId === "") {
-    if (fallbackText !== "") {
-      context.addMessage("assistant", fallbackText);
+    if (
+      fallbackMessage.text !== "" ||
+      (Array.isArray(fallbackMessage.blocks) && fallbackMessage.blocks.length > 0) ||
+      (Array.isArray(fallbackMessage.notices) && fallbackMessage.notices.length > 0)
+    ) {
+      context.addMessage("assistant", fallbackMessage.text, undefined, undefined, {
+        ...(Array.isArray(fallbackMessage.blocks) && fallbackMessage.blocks.length > 0
+          ? { blocks: fallbackMessage.blocks }
+          : {}),
+        ...(Array.isArray(fallbackMessage.notices) && fallbackMessage.notices.length > 0
+          ? { notices: fallbackMessage.notices }
+          : {}),
+      });
       context.scrollChatToBottom(true);
     }
     return;
@@ -240,8 +273,20 @@ export async function withHistorySyncFallback(
   };
 
   const synced = await trySync(0);
-  if (!synced && fallbackText !== "") {
-    context.addMessage("assistant", fallbackText);
+  if (
+    !synced &&
+    (fallbackMessage.text !== "" ||
+      (Array.isArray(fallbackMessage.blocks) && fallbackMessage.blocks.length > 0) ||
+      (Array.isArray(fallbackMessage.notices) && fallbackMessage.notices.length > 0))
+  ) {
+    context.addMessage("assistant", fallbackMessage.text, undefined, undefined, {
+      ...(Array.isArray(fallbackMessage.blocks) && fallbackMessage.blocks.length > 0
+        ? { blocks: fallbackMessage.blocks }
+        : {}),
+      ...(Array.isArray(fallbackMessage.notices) && fallbackMessage.notices.length > 0
+        ? { notices: fallbackMessage.notices }
+        : {}),
+    });
     context.scrollChatToBottom(true);
   }
 }

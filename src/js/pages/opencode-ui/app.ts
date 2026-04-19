@@ -77,6 +77,7 @@ import {
   refreshRovoInteractionRuntime,
 } from "./interaction-runtime.js";
 import { buildInteractionModeItems } from "./interaction-mode.js";
+import { buildRuntimeErrorNotice } from "./notice-utils.js";
 import {
   bindDictationTrigger,
   type DictationBinding,
@@ -85,6 +86,8 @@ import { onAssistantTranscriptIngress } from "../../modules/transcript/electron-
 import type {
   ComposerAttachment,
   CustomSelectAPI,
+  OpencodeUiMessageBlock,
+  OpencodeUiMessageNotice,
   OpencodeUiSessionDetail,
   OpencodeUiSessionSummary,
   OpencodeUiTodoItem,
@@ -208,6 +211,22 @@ function getSessionsForTab(
   return getSessionsForTabFromModule(sessions, tab);
 }
 
+function appendAssistantNotice(
+  error: unknown,
+  options: {
+    defaultTitleKey: string;
+    scroll?: boolean;
+  }
+): void {
+  addMessage("assistant", "", undefined, undefined, {
+    notices: [buildRuntimeErrorNotice(error, { defaultTitleKey: options.defaultTitleKey })],
+  });
+
+  if (options.scroll !== false) {
+    scrollChatToBottom(true);
+  }
+}
+
 function sessionListContext(): SessionListContext {
   return {
     runtime,
@@ -220,8 +239,10 @@ function sessionListContext(): SessionListContext {
     setActiveSession,
     createServerSession,
     ensureSessionInDisk,
-    reportError: (message: string): void => {
-      addMessage("assistant", message);
+    reportError: (error: unknown, options?: { defaultTitleKey: string }): void => {
+      appendAssistantNotice(error, {
+        defaultTitleKey: options?.defaultTitleKey ?? "session.actionFailedTitle",
+      });
     },
   };
 }
@@ -376,8 +397,12 @@ async function readClipboardAttachmentsFromSystem(): Promise<ComposerAttachment[
   return await readComposerClipboardAttachmentsFromSystem();
 }
 
-async function withHistorySyncFallback(fallbackText: string): Promise<void> {
-  await withHistorySyncFallbackFromModule(historyContext(), fallbackText);
+async function withHistorySyncFallback(fallbackMessage: {
+  text: string;
+  blocks?: OpencodeUiMessageBlock[];
+  notices?: OpencodeUiMessageNotice[];
+}): Promise<void> {
+  await withHistorySyncFallbackFromModule(historyContext(), fallbackMessage);
 }
 
 async function createServerSession(title = t("session.createDefaultTitle")): Promise<string> {
@@ -457,12 +482,7 @@ async function clearChat(): Promise<void> {
     await loadSessionListAndRender({ preserveActive: true });
     await loadActiveSessionHistory();
   } catch (error) {
-    addMessage(
-      "assistant",
-      t("session.createFailed", {
-        message: error instanceof Error && error.message !== "" ? error.message : String(error),
-      })
-    );
+    appendAssistantNotice(error, { defaultTitleKey: "session.createFailedTitle" });
   }
 }
 
@@ -682,6 +702,9 @@ async function bootstrapOpencodeUiApp(): Promise<void> {
     sendStageToHost,
     sendToolsReadyToHost,
     runOpencodeUiBootstrapPipeline,
+    reportBootstrapNotice: (error: unknown, defaultTitleKey: string) => {
+      appendAssistantNotice(error, { defaultTitleKey });
+    },
     deps: {
       checkHealth,
       loadStatusContext,

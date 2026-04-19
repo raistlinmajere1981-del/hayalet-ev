@@ -8,7 +8,9 @@ type ReadyEvent = {
 };
 
 test("opencode-ui emits stage progression and ready=true only after settled mcp and final tool snapshot", async () => {
-  const { runOpencodeUiBootstrapPipeline } = await import("../../src/js/pages/opencode-ui/app.ts");
+  const { runOpencodeUiBootstrapPipeline } = await import(
+    "../../src/js/pages/opencode-ui/bootstrap-actions.ts"
+  );
 
   const stageEvents: StageEvent[] = [];
   const readyEvents: ReadyEvent[] = [];
@@ -52,7 +54,9 @@ test("opencode-ui emits stage progression and ready=true only after settled mcp 
 });
 
 test("opencode-ui keeps UI unlocked when mcp settle times out", async () => {
-  const { runOpencodeUiBootstrapPipeline } = await import("../../src/js/pages/opencode-ui/app.ts");
+  const { runOpencodeUiBootstrapPipeline } = await import(
+    "../../src/js/pages/opencode-ui/bootstrap-actions.ts"
+  );
 
   const readyEvents: Array<{
     ready: boolean;

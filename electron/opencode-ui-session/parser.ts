@@ -6,6 +6,7 @@ import { DEFAULT_APP_LANGUAGE } from "../../src/types/i18n.ts";
 import type {
   JsonRecord,
   MessageRow,
+  OpencodeUiMessageBlock,
   OpencodeUiSessionMessage,
   OpencodeUiTodoItem,
   OpencodeUiToolCall,
@@ -32,6 +33,39 @@ function mergeText(current: string, next: string): string {
     return current;
   }
   return current === "" ? next : `${current}\n${next}`;
+}
+
+function flattenAssistantBlock(block: OpencodeUiMessageBlock): string {
+  const lines = [asString(block.title).trim(), asString(block.text).trim(), asString(block.meta).trim()];
+  if (Array.isArray(block.items) && block.items.length > 0) {
+    lines.push(...block.items.map((item) => `- ${item}`));
+  }
+
+  return lines.filter((line) => line !== "").join("\n").trim();
+}
+
+function appendAssistantBlock(
+  blocks: OpencodeUiMessageBlock[],
+  block: OpencodeUiMessageBlock | null
+): void {
+  if (block === null) {
+    return;
+  }
+
+  if (block.kind === "markdown") {
+    const text = asString(block.text).trim();
+    if (text === "") {
+      return;
+    }
+
+    const previous = blocks[blocks.length - 1];
+    if (previous?.kind === "markdown") {
+      previous.text = mergeText(asString(previous.text), text);
+      return;
+    }
+  }
+
+  blocks.push(block);
 }
 
 function includesRovoInteractionToken(text: string): boolean {
@@ -86,94 +120,96 @@ function toCompactLabel(value: unknown): string {
   return (backslashParts[backslashParts.length - 1] ?? lastSlash).trim();
 }
 
-function formatReasoningPart(partData: JsonRecord | null): string {
-  if (partData === null) {
-    return "";
-  }
-
-  const text = asString(partData["text"]).trim();
-  if (text !== "") {
-    return `${opencodeUiParserT("message.reasoningTitle")}\n${text}`;
-  }
-
-  const metadata = asRecord(partData["metadata"]);
-  const openai = asRecord(metadata?.["openai"]);
-  if (asString(openai?.["reasoningEncryptedContent"]).trim() !== "") {
-    return `${opencodeUiParserT("message.reasoningTitle")}\n${opencodeUiParserT("message.reasoningUnavailable")}`;
-  }
-
-  return opencodeUiParserT("message.reasoningTitle");
-}
-
-function formatStepStartPart(partData: JsonRecord | null): string {
-  if (partData === null) {
-    return "";
-  }
-
-  const snapshot = asString(partData["snapshot"]).trim();
-  if (snapshot === "") {
-    return opencodeUiParserT("message.stepStartTitle");
-  }
-
-  return `${opencodeUiParserT("message.stepStartTitle")}\n${opencodeUiParserT(
-    "message.stepSnapshotLabel",
-    {
-      snapshot: snapshot.slice(0, 12),
-    }
-  )}`;
-}
-
-function formatStepFinishPart(partData: JsonRecord | null): string {
-  if (partData === null) {
-    return "";
-  }
-
-  const lines = [opencodeUiParserT("message.stepFinishTitle")];
-  const reason = asString(partData["reason"]).trim();
-  if (reason !== "") {
-    lines.push(opencodeUiParserT("message.stepReasonLabel", { reason }));
-  }
-
-  const tokens = asRecord(partData["tokens"]);
-  const totalTokens = asNumber(tokens?.["total"]);
-  if (totalTokens > 0) {
-    lines.push(opencodeUiParserT("message.stepTokensLabel", { count: String(totalTokens) }));
-  }
-
-  return lines.join("\n");
-}
-
-function formatPatchPart(partData: JsonRecord | null): string {
-  if (partData === null) {
-    return "";
-  }
-
-  const filesRaw = partData["files"];
-  if (!Array.isArray(filesRaw) || filesRaw.length === 0) {
-    return opencodeUiParserT("message.patchTitle");
-  }
-
-  const files = filesRaw.map((item) => toCompactLabel(item)).filter((item) => item !== "");
-  if (files.length === 0) {
-    return opencodeUiParserT("message.patchTitle");
-  }
-
-  return `${opencodeUiParserT("message.patchTitle")}\n${opencodeUiParserT("message.patchFilesLabel")}\n- ${files.join("\n- ")}`;
-}
-
-function formatStructuredAssistantPart(partData: JsonRecord | null): string {
+function buildStructuredAssistantBlock(partData: JsonRecord | null): OpencodeUiMessageBlock | null {
   const partType = asString(partData?.["type"]).trim();
   switch (partType) {
-    case "reasoning":
-      return formatReasoningPart(partData);
-    case "step-start":
-      return formatStepStartPart(partData);
-    case "step-finish":
-      return formatStepFinishPart(partData);
+    case "reasoning": {
+      const text = asString(partData?.["text"]).trim();
+      const metadata = asRecord(partData?.["metadata"]);
+      const openai = asRecord(metadata?.["openai"]);
+      return {
+        kind: "reasoning",
+        title: opencodeUiParserT("message.reasoningTitle"),
+        ...(text !== ""
+          ? { text }
+          : asString(openai?.["reasoningEncryptedContent"]).trim() !== ""
+            ? { text: opencodeUiParserT("message.reasoningUnavailable") }
+            : {}),
+      };
+    }
+    case "step-start": {
+      const snapshot = asString(partData?.["snapshot"]).trim();
+      return {
+        kind: "step",
+        title: opencodeUiParserT("message.stepStartTitle"),
+        ...(snapshot !== ""
+          ? {
+              meta: opencodeUiParserT("message.stepSnapshotLabel", {
+                snapshot: snapshot.slice(0, 12),
+              }),
+            }
+          : {}),
+      };
+    }
+    case "step-finish": {
+      const reason = asString(partData?.["reason"]).trim();
+      const tokens = asRecord(partData?.["tokens"]);
+      const totalTokens = asNumber(tokens?.["total"]);
+      const lines: string[] = [];
+      if (reason !== "") {
+        lines.push(opencodeUiParserT("message.stepReasonLabel", { reason }));
+      }
+      return {
+        kind: "step",
+        title: opencodeUiParserT("message.stepFinishTitle"),
+        ...(lines.length > 0 ? { text: lines.join("\n") } : {}),
+        ...(totalTokens > 0
+          ? {
+              meta: opencodeUiParserT("message.stepTokensLabel", {
+                count: String(totalTokens),
+              }),
+            }
+          : {}),
+      };
+    }
     case "patch":
-      return formatPatchPart(partData);
+      return {
+        kind: "patch",
+        title: opencodeUiParserT("message.patchTitle"),
+        meta: opencodeUiParserT("message.patchFilesLabel"),
+        items: Array.isArray(partData?.["files"])
+          ? partData["files"].map((item) => toCompactLabel(item)).filter((item) => item !== "")
+          : [],
+      };
     default:
-      return "";
+      return null;
+  }
+}
+
+function createMarkdownBlock(text: string): OpencodeUiMessageBlock | null {
+  const normalized = text.trim();
+  if (normalized === "") {
+    return null;
+  }
+
+  return {
+    kind: "markdown",
+    text: normalized,
+  };
+}
+
+function localizeToolState(status: string): string {
+  switch (status) {
+    case "retrying":
+      return opencodeUiParserT("message.toolStateLabel.retrying");
+    case "interrupted":
+      return opencodeUiParserT("message.toolStateLabel.interrupted");
+    case "failed":
+      return opencodeUiParserT("message.toolStateLabel.failed");
+    case "error":
+      return opencodeUiParserT("message.toolStateLabel.error");
+    default:
+      return status;
   }
 }
 
@@ -327,7 +363,9 @@ export function parseMessages(
     const parts = partsByMessage.get(row.id) ?? [];
     const interactionText = role === "assistant" ? extractLatestInteractionText(parts) : "";
     let text = "";
-    const files: Array<{ name: string; media_type: string }> = [];
+    const files: OpencodeUiSessionMessage["files"] = [];
+    const notices: OpencodeUiSessionMessage["notices"] = [];
+    const blocks: OpencodeUiSessionMessage["blocks"] = [];
     const toolCalls: OpencodeUiToolCall[] = [];
 
     for (const part of parts) {
@@ -336,14 +374,19 @@ export function parseMessages(
       const partKind = asString(partData?.["part_kind"]).trim();
 
       if (partType === "text" || partKind === "text") {
-        text = mergeText(text, readTextPartContent(partData));
+        const content = readTextPartContent(partData);
+        text = mergeText(text, content);
+        if (role === "assistant") {
+          appendAssistantBlock(blocks, createMarkdownBlock(content));
+        }
         continue;
       }
 
       if (role === "assistant") {
-        const structuredText = formatStructuredAssistantPart(partData);
-        if (structuredText !== "") {
-          text = mergeText(text, structuredText);
+        const structuredBlock = buildStructuredAssistantBlock(partData);
+        if (structuredBlock !== null) {
+          text = mergeText(text, flattenAssistantBlock(structuredBlock));
+          appendAssistantBlock(blocks, structuredBlock);
           continue;
         }
       }
@@ -357,7 +400,20 @@ export function parseMessages(
           partData?.["mime"],
           asString(partData?.["media_type"], "application/octet-stream")
         );
-        files.push({ name: fileName, media_type: mediaType });
+        const data = asString(partData?.["data"], asString(partData?.["base64"])).trim();
+        const url = asString(partData?.["url"]).trim();
+        const base64 = asString(partData?.["base64"]).trim();
+        const size = asNumber(partData?.["size"]);
+        files.push({
+          name: fileName,
+          fileName,
+          media_type: mediaType,
+          ...(url !== "" ? { url } : {}),
+          ...(data !== "" ? { data } : {}),
+          ...(base64 !== "" ? { base64 } : {}),
+          source: "history",
+          ...(size > 0 ? { size } : {}),
+        });
         continue;
       }
 
@@ -367,6 +423,26 @@ export function parseMessages(
         const args = stringifyValue(state?.["input"]);
         const outputValue = state?.["output"] ?? metadata?.["output"];
         const result = stringifyValue(outputValue);
+        const status = asString(state?.["status"]).trim().toLowerCase();
+        const statusMessage = asString(
+          state?.["message"],
+          asString(metadata?.["message"], asString(metadata?.["error"]))
+        ).trim();
+
+        if (status === "failed" || status === "error" || status === "interrupted" || status === "retrying") {
+          notices.push({
+            tone: status === "retrying" ? "warning" : "error",
+            title:
+              statusMessage !== ""
+                ? statusMessage
+                : opencodeUiParserT("message.toolStateTitle", {
+                    state: localizeToolState(status),
+                  }),
+            ...(status === "retrying"
+              ? { meta: opencodeUiParserT("message.toolStateRetryMeta") }
+              : {}),
+          });
+        }
 
         toolCalls.push({
           name: asString(partData?.["tool"], asString(partData?.["name"], "unknown")),
@@ -380,19 +456,28 @@ export function parseMessages(
       if (text.trim() === "" && files.length === 0) {
         continue;
       }
-      messages.push({ role: "user", text: text.trim(), files, toolCalls: [] });
+      messages.push({
+        role: "user",
+        text: text.trim(),
+        files,
+        notices: [],
+        blocks: [],
+        toolCalls: [],
+      });
       continue;
     }
 
     if (interactionText !== "") {
       text = interactionText;
+      blocks.length = 0;
+      appendAssistantBlock(blocks, createMarkdownBlock(interactionText));
     }
 
-    if (text.trim() === "" && toolCalls.length === 0) {
+    if (text.trim() === "" && blocks.length === 0 && toolCalls.length === 0 && notices.length === 0) {
       continue;
     }
 
-    messages.push({ role: "assistant", text: text.trim(), files: [], toolCalls });
+    messages.push({ role: "assistant", text: text.trim(), files: [], notices, blocks, toolCalls });
   }
 
   return messages;

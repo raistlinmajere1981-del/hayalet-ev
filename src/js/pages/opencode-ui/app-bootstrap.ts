@@ -19,6 +19,7 @@ interface BootstrapOpencodeUiAppOptions {
   initChatEvents: () => void;
   sendStageToHost: (title: string, subtitle: string) => void;
   sendToolsReadyToHost: (payload: OpencodeUiToolsReadyPayload) => void;
+  reportBootstrapNotice: (error: unknown, defaultTitleKey: string) => void;
   runOpencodeUiBootstrapPipeline: (options: {
     deps: OpencodeUiBootstrapDeps;
     emitStage: (title: string, subtitle: string) => void;
@@ -71,6 +72,7 @@ export async function bootstrapOpencodeUiApp(
       t("bootstrap.connectionPhaseTitle"),
       t("bootstrap.bootstrapError", { message })
     );
+    options.reportBootstrapNotice(error, "bootstrap.bootstrapErrorTitle");
     options.sendToolsReadyToHost({
       ready: true,
       unresolvedServers: [],
@@ -88,6 +90,7 @@ export async function bootstrapOpencodeUiApp(
     if (errorArea != null) {
       errorArea.textContent = t("bootstrap.errorPrefix", { message });
     }
+    options.reportBootstrapNotice(error, "bootstrap.sessionLoadErrorTitle");
     options.sendStageToHost(
       t("bootstrap.connectionPhaseTitle"),
       t("bootstrap.sessionLoadError", { message })

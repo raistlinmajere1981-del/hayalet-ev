@@ -20,10 +20,40 @@ export interface OpencodeUiToolCall {
   result: string;
 }
 
+export interface OpencodeUiMessageAttachment {
+  name: string;
+  fileName?: string;
+  media_type?: string;
+  size?: number;
+  source?: "file-picker" | "clipboard" | "history";
+  url?: string;
+  data?: string;
+  base64?: string;
+}
+
+export interface OpencodeUiMessageNotice {
+  tone: "info" | "warning" | "error" | "success";
+  title: string;
+  detail?: string;
+  meta?: string;
+}
+
+export type OpencodeUiMessageBlockKind = "markdown" | "reasoning" | "step" | "patch";
+
+export interface OpencodeUiMessageBlock {
+  kind: OpencodeUiMessageBlockKind;
+  title?: string;
+  text?: string;
+  meta?: string;
+  items?: string[];
+}
+
 export interface OpencodeUiSessionMessage {
   role: "user" | "assistant";
   text: string;
-  files: Array<{ name: string; media_type: string }>;
+  files: OpencodeUiMessageAttachment[];
+  notices: OpencodeUiMessageNotice[];
+  blocks: OpencodeUiMessageBlock[];
   toolCalls: OpencodeUiToolCall[];
 }
 

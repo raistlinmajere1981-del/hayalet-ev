@@ -47,10 +47,54 @@ export interface OpencodeUiToolCall {
   result?: string;
 }
 
+export type OpencodeUiMessageAttachmentKind =
+  | "image"
+  | "text"
+  | "pdf"
+  | "code"
+  | "archive"
+  | "file";
+
+export interface OpencodeUiMessageAttachment {
+  id?: string;
+  name: string;
+  fileName?: string;
+  path?: string;
+  media_type?: string;
+  size?: number;
+  source?: "file-picker" | "clipboard" | "history";
+  url?: string;
+  data?: string;
+  base64?: string;
+  previewUrl?: string;
+  kind?: OpencodeUiMessageAttachmentKind;
+}
+
+export type OpencodeUiMessageNoticeTone = "info" | "warning" | "error" | "success";
+
+export interface OpencodeUiMessageNotice {
+  tone: OpencodeUiMessageNoticeTone;
+  title: string;
+  detail?: string;
+  meta?: string;
+}
+
+export type OpencodeUiMessageBlockKind = "markdown" | "reasoning" | "step" | "patch";
+
+export interface OpencodeUiMessageBlock {
+  kind: OpencodeUiMessageBlockKind;
+  title?: string;
+  text?: string;
+  meta?: string;
+  items?: string[];
+}
+
 export interface OpencodeUiSessionMessage {
   role: "user" | "assistant";
   text: string;
-  files?: Array<{ name?: string; media_type?: string }>;
+  files?: OpencodeUiMessageAttachment[];
+  notices?: OpencodeUiMessageNotice[];
+  blocks?: OpencodeUiMessageBlock[];
   toolCalls?: OpencodeUiToolCall[];
 }
 

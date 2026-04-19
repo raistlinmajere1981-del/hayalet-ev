@@ -5380,6 +5380,8 @@
       "listReadError": "Oturum listesi okunamadı: {{message}}",
       "createDefaultTitle": "Yeni Sohbet",
       "clearConfirm": "Tüm sohbet temizlenecek ve yeni oturum açılacak. Devam?",
+      "createFailedTitle": "Oturum oluşturulamadı",
+      "actionFailedTitle": "Oturum işlemi başarısız oldu",
       "createFailed": "Yeni oturum oluşturulamadı: {{message}}",
       "sessionIdUnavailable": "Oturum kimliği alınamadı"
     },
@@ -5402,11 +5404,14 @@
       "attachFileLabel": "📎 Dosya",
       "attachClipboardTitle": "Panodaki görseli yapıştır (Ctrl+V)",
       "attachClipboardLabel": "📋 Yapıştır",
+      "copyAction": "Kopyala",
       "copyMessageTitle": "Mesajı kopyala",
+      "copyStateCopied": "Kopyalandı",
       "copyUrlMissing": "Kopyalanacak URL yok",
       "copyUrlSuccess": "URL kopyalandı",
       "copyUrlError": "URL kopyalanamadı",
       "sendFailedPrefix": "Mesaj gönderilemedi:",
+      "sendFailedTitle": "Mesaj gönderilemedi",
       "clipboardEmpty": "Panoda eklenebilir içerik bulunamadı.",
       "clipboardReadError": "Pano okunamadı: {{message}}",
       "attachmentReadyCount": "{{count}} ek hazır",
@@ -5415,6 +5420,25 @@
       "removeAttachmentAria": "{{name}} kaldır",
       "attachmentSourceClipboard": "Panodan eklendi",
       "attachmentSourceFile": "Dosyadan eklendi",
+      "attachmentSourceHistory": "Oturum geçmişinden yüklendi",
+      "roleAssistant": "Asistan",
+      "roleUser": "Sen",
+      "attachmentKind": {
+        "image": "Görsel",
+        "text": "Metin",
+        "pdf": "PDF",
+        "code": "Kod",
+        "archive": "Arşiv",
+        "file": "Dosya"
+      },
+      "attachmentKindBadge": {
+        "image": "GRS",
+        "text": "TXT",
+        "pdf": "PDF",
+        "code": "KOD",
+        "archive": "ARŞ",
+        "file": "DOS"
+      },
       "dictation": {
         "idleTitle": "Sesle metin ekle",
         "listeningTitle": "Dinlemeyi durdur ve metni ekle",
@@ -5466,7 +5490,23 @@
       "stepReasonLabel": "Neden: {{reason}}",
       "stepTokensLabel": "Token: {{count}}",
       "patchTitle": "Yama",
-      "patchFilesLabel": "Dosyalar:"
+      "patchFilesLabel": "Dosyalar:",
+      "toolStateTitle": "Tool durumu: {{state}}",
+      "toolStateLabel": {
+        "retrying": "yeniden deneniyor",
+        "interrupted": "kesildi",
+        "failed": "başarısız",
+        "error": "hata"
+      },
+      "toolStateRetryMeta": "Otomatik olarak yeniden deneniyor",
+      "runtimeNotice": {
+        "limitTitle": "Kullanım sınırına ulaşıldı",
+        "retryingTitle": "İstek yeniden deneniyor",
+        "interruptedTitle": "İstek kesildi"
+      },
+      "toolCallDone": "bitti",
+      "toolCallArgsLabel": "argümanlar",
+      "toolCallResultLabel": "sonuç"
     },
     "panel": {
       "rightTabsAria": "OpenCode UI sağ panel sekmeleri",
@@ -5477,6 +5517,19 @@
       "todoTitle": "Todo",
       "todoEyebrow": "Oturum Özeti",
       "todoEmpty": "Henüz todo yok",
+      "todoStatus": {
+        "pending": "Bekliyor",
+        "inProgress": "Sürüyor",
+        "completed": "Tamamlandı",
+        "blocked": "Bloklandı",
+        "cancelled": "İptal"
+      },
+      "todoPriority": {
+        "low": "Düşük",
+        "medium": "Orta",
+        "high": "Yüksek",
+        "urgent": "Acil"
+      },
       "filesTitle": "Dosyalar",
       "filesEyebrow": "Workspace",
       "filesEmpty": "Değişen dosya yok",
@@ -5484,12 +5537,12 @@
       "serverEyebrow": "Sunucu Durumu",
       "serverTitle": "OpenCode Sunucusu",
       "serverWaiting": "Bekleniyor",
-      "providersTitle": "Providers",
-      "providersEyebrow": "Runtime",
+      "providersTitle": "Sağlayıcılar",
+      "providersEyebrow": "Çalışma Durumu",
       "promptsTitle": "HIZLI PROMPTLAR",
       "addPrompt": "+ Yeni Prompt Ekle",
       "mcpTitle": "MCP SUNUCULARI",
-      "toolsTitle": "TOOLS",
+      "toolsTitle": "ARAÇLAR",
       "toolsSearchPlaceholder": "🔍 Tool ara...",
       "toolsEmpty": "Tool bulunamadı",
       "toolsBuiltInGroup": "OpenCode Built-in ({{count}})",
@@ -5558,7 +5611,9 @@
       "startedTitle": "OpenCode UI başladı",
       "startedSubtitle": "Sayfa modülleri hazırlanıyor",
       "connectionPhaseTitle": "Bağlantı kısmı",
+      "bootstrapErrorTitle": "Bağlantı başlangıcı başarısız oldu",
       "bootstrapError": "Bootstrap hatası: {{message}}",
+      "sessionLoadErrorTitle": "Oturum yüklenemedi",
       "sessionLoadError": "Oturum yükleme hatası: {{message}}",
       "errorPrefix": "Hata: {{message}}",
       "healthCheckTitle": "Sunucu sağlık kontrolü",

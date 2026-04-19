@@ -10,7 +10,10 @@ import {
   renderAttachmentTrayHtml,
 } from "./attachments.js";
 import { t } from "./i18n.js";
-import { extractAssistantText, extractLatestAssistantTextPart } from "./message-content.js";
+import {
+  extractAssistantMessageContent,
+  extractLatestAssistantTextPart,
+} from "./message-content.js";
 import {
   getRovoInteractionActivationSnapshot,
   refreshRovoInteractionRuntime,
@@ -20,8 +23,15 @@ import {
   getInteractionModeLabel,
   loadInteractionSystemPrompt,
 } from "./interaction-mode.js";
+import { buildRuntimeErrorNotice } from "./notice-utils.js";
 import { parseRovoInteraction } from "../../modules/rovo-interactions/parser.js";
-import type { ComposerAttachment, RuntimeState, RovoInteractionMode } from "./types.js";
+import type {
+  ComposerAttachment,
+  OpencodeUiMessageBlock,
+  OpencodeUiMessageNotice,
+  RuntimeState,
+  RovoInteractionMode,
+} from "./types.js";
 
 type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
 
@@ -46,7 +56,11 @@ interface ComposerUiContext {
     preserveActive?: boolean;
     syncSelectionToTab?: boolean;
   }) => Promise<void>;
-  withHistorySyncFallback: (fallbackText: string) => Promise<void>;
+  withHistorySyncFallback: (fallbackMessage: {
+    text: string;
+    blocks?: OpencodeUiMessageBlock[];
+    notices?: OpencodeUiMessageNotice[];
+  }) => Promise<void>;
   scrollChatToBottom: (force?: boolean) => void;
 }
 
@@ -365,12 +379,16 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
       `/session/${encodeURIComponent(sessionId)}/message`,
       body
     );
-    const fallbackText = extractAssistantText(response);
+    const fallbackMessage = extractAssistantMessageContent(response);
     const interactionCandidateText = extractLatestAssistantTextPart(response);
     const parsedInteractionCandidate =
       interactionCandidateText !== "" ? parseRovoInteraction(interactionCandidateText) : null;
-    const renderableFallbackText =
-      parsedInteractionCandidate !== null ? interactionCandidateText : fallbackText;
+    const renderableFallbackMessage =
+      parsedInteractionCandidate !== null
+        ? {
+            text: interactionCandidateText,
+          }
+        : fallbackMessage;
     if (clearConsumedInteractionMode(context.runtime, activeInteractionMode)) {
       context.syncInteractionModeUi?.();
     }
@@ -387,16 +405,21 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
       );
     }
 
-    await context.withHistorySyncFallback(renderableFallbackText);
+    await context.withHistorySyncFallback(renderableFallbackMessage);
     setComposerAttachments(context.runtime, [], context.byId);
   } catch (error) {
     chatInput.value = previousText;
     setComposerAttachments(context.runtime, stagedAttachments, context.byId);
+    const detail =
+      error instanceof Error && error.message !== "" ? error.message : String(error);
     addMessage(
       "assistant",
-      t("chat.sendFailedPrefix") +
-        " " +
-        (error instanceof Error && error.message !== "" ? error.message : String(error))
+      "",
+      undefined,
+      undefined,
+      {
+        notices: [buildRuntimeErrorNotice(detail, { defaultTitleKey: "chat.sendFailedTitle" })],
+      }
     );
     context.scrollChatToBottom(true);
   } finally {

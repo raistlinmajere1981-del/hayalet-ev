@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { shouldSkipAssistantMessage } from "../../src/js/pages/opencode-ui/chat-utils.ts";
+import { buildMessageSnapshotToken } from "../../src/js/pages/opencode-ui/message-content.ts";
+
 test("opencode-ui history renderer uses a tool host when assistant text is empty", () => {
   const historyContent = readFileSync("src/js/pages/opencode-ui/history-actions.ts", "utf8");
   const appContent = readFileSync("src/js/pages/opencode-ui/app.ts", "utf8");
@@ -36,17 +39,100 @@ test("opencode-ui history renderer binds files panel to session detail", () => {
 });
 
 test("opencode-ui live snapshot key tracks tool call changes", () => {
-  const content = readFileSync("src/js/pages/opencode-ui/message-content.ts", "utf8");
+  const baseToken = buildMessageSnapshotToken({
+    role: "assistant",
+    text: "done",
+    blocks: [],
+    files: [],
+    notices: [],
+    toolCalls: [{ name: "bash", args: "pwd", result: "/workspace/project" }],
+  });
+  const withPreviewToken = buildMessageSnapshotToken({
+    role: "assistant",
+    text: "done",
+    blocks: [],
+    files: [
+      {
+        name: "error.png",
+        fileName: "error.png",
+        media_type: "image/png",
+        previewUrl: "data:image/png;base64,abc",
+      },
+    ],
+    notices: [],
+    toolCalls: [{ name: "bash", args: "pwd", result: "/workspace/project" }],
+  });
+  const withNoticeToken = buildMessageSnapshotToken({
+    role: "assistant",
+    text: "done",
+    blocks: [],
+    files: [],
+    notices: [{ tone: "warning", title: "retrying in 25s" }],
+    toolCalls: [{ name: "bash", args: "pwd", result: "/workspace/project" }],
+  });
+  const withBlocksToken = buildMessageSnapshotToken({
+    role: "assistant",
+    text: "done",
+    blocks: [{ kind: "reasoning", title: "Reasoning", text: "Check renderer contract" }],
+    files: [],
+    notices: [],
+    toolCalls: [{ name: "bash", args: "pwd", result: "/workspace/project" }],
+  });
 
-  assert.match(content, /const toolCalls = Array\.isArray\(message\.toolCalls\) \? message\.toolCalls : \[\];/);
-  assert.match(content, /toolCalls\s*\.\s*slice\(-2\)/);
+  assert.notEqual(baseToken, withPreviewToken);
+  assert.notEqual(baseToken, withNoticeToken);
+  assert.notEqual(baseToken, withBlocksToken);
 });
 
-test("chat utils skip rendering empty assistant bubbles", () => {
-  const content = readFileSync("src/js/pages/opencode-ui/chat-utils.ts", "utf8");
-
-  assert.match(
-    content,
-    /if \(role === "assistant" && text\.trim\(\) === "" && hasFiles !== true\) {\s*return null;\s*}/
+test("chat utils skip rendering empty assistant bubbles only when no visual block remains", () => {
+  assert.equal(
+    shouldSkipAssistantMessage({
+      text: "",
+      blocks: [],
+      files: [],
+      notices: [],
+      hasInteractiveRenderer: false,
+    }),
+    true
+  );
+  assert.equal(
+    shouldSkipAssistantMessage({
+      text: "",
+      blocks: [],
+      files: [{ name: "screenshot.png", media_type: "image/png" }],
+      notices: [],
+      hasInteractiveRenderer: false,
+    }),
+    false
+  );
+  assert.equal(
+    shouldSkipAssistantMessage({
+      text: "",
+      blocks: [],
+      files: [],
+      notices: [{ tone: "error", title: "The usage limit has been reached" }],
+      hasInteractiveRenderer: false,
+    }),
+    false
+  );
+  assert.equal(
+    shouldSkipAssistantMessage({
+      text: "",
+      blocks: [{ kind: "reasoning", title: "Reasoning", text: "Inspect payload" }],
+      files: [],
+      notices: [],
+      hasInteractiveRenderer: false,
+    }),
+    false
+  );
+  assert.equal(
+    shouldSkipAssistantMessage({
+      text: "",
+      blocks: [],
+      files: [],
+      notices: [],
+      hasInteractiveRenderer: true,
+    }),
+    false
   );
 });

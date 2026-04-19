@@ -6,7 +6,10 @@ import {
   buildInteractionSystemPrompt,
   clearConsumedInteractionMode,
 } from "../../src/js/pages/opencode-ui/interaction-mode.ts";
-import { extractLatestAssistantTextPart } from "../../src/js/pages/opencode-ui/message-content.ts";
+import {
+  extractAssistantMessageContent,
+  extractLatestAssistantTextPart,
+} from "../../src/js/pages/opencode-ui/message-content.ts";
 
 test("buildMessageRequestBody sends model as provider+model object", () => {
   const body = buildMessageRequestBody({
@@ -147,6 +150,21 @@ test("extractLatestAssistantTextPart ignores reasoning and step parts", () => {
   });
 
   assert.equal(text, "visible [rovo-ui:v1:token]");
+});
+
+test("extractAssistantMessageContent keeps structured assistant parts as semantic blocks", () => {
+  const content = extractAssistantMessageContent({
+    parts: [
+      { type: "reasoning", text: "Inspect the message timeline." },
+      { type: "patch", files: ["/workspace/project/src/js/pages/opencode-ui/chat-utils.ts"] },
+    ],
+  });
+
+  assert.equal(content.blocks.length, 2);
+  assert.equal(content.blocks[0]?.kind, "reasoning");
+  assert.equal(content.blocks[1]?.kind, "patch");
+  assert.equal(content.blocks[1]?.items?.[0], "chat-utils.ts");
+  assert.match(content.text, /Inspect the message timeline/u);
 });
 
 test("clearConsumedInteractionMode resets only the mode that was used", () => {

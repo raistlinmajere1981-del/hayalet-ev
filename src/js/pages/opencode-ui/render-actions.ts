@@ -114,6 +114,37 @@ function buildRightTabPanelCard(
   );
 }
 
+function getTodoStatusLabel(status: string): string {
+  switch (status) {
+    case "completed":
+      return t("panel.todoStatus.completed");
+    case "in_progress":
+      return t("panel.todoStatus.inProgress");
+    case "blocked":
+      return t("panel.todoStatus.blocked");
+    case "cancelled":
+    case "canceled":
+      return t("panel.todoStatus.cancelled");
+    case "pending":
+    default:
+      return t("panel.todoStatus.pending");
+  }
+}
+
+function getTodoPriorityLabel(priority: string): string {
+  switch (priority) {
+    case "low":
+      return t("panel.todoPriority.low");
+    case "high":
+      return t("panel.todoPriority.high");
+    case "urgent":
+      return t("panel.todoPriority.urgent");
+    case "medium":
+    default:
+      return t("panel.todoPriority.medium");
+  }
+}
+
 export function renderTodoPanel(context: RenderContext, todos: OpencodeUiTodoItem[]): void {
   const panel = context.byId<HTMLElement>("rtab-todo");
   if (panel == null) {
@@ -147,10 +178,10 @@ export function renderTodoPanel(context: RenderContext, todos: OpencodeUiTodoIte
         '">' +
         '<div class="ds-todo-item__badges">' +
         '<span class="ds-todo-item__badge ds-todo-item__badge--status">' +
-        escapeHtml(status) +
+        escapeHtml(getTodoStatusLabel(status)) +
         "</span>" +
         '<span class="ds-todo-item__badge ds-todo-item__badge--priority">' +
-        escapeHtml(priority) +
+        escapeHtml(getTodoPriorityLabel(priority)) +
         "</span>" +
         "</div>" +
         '<div class="ds-todo-item__content">' +
@@ -265,14 +296,22 @@ export function renderHistoricToolCall(
     '<span class="ds-tool-call__name">' +
     escapeHtml(toolCall.name) +
     "</span>" +
-    '<span class="ds-tool-call__status ds-tool-call__status--done">done</span>' +
+    '<span class="ds-tool-call__status ds-tool-call__status--done">' +
+    escapeHtml(t("message.toolCallDone")) +
+    "</span>" +
     "</div>" +
     '<div class="ds-tool-call__body">' +
     (args !== ""
-      ? '<div class="ds-tool-call__result"><strong>args</strong><br>' + escapeHtml(args) + "</div>"
+      ? '<div class="ds-tool-call__result"><strong>' +
+        escapeHtml(t("message.toolCallArgsLabel")) +
+        "</strong><br>" +
+        escapeHtml(args) +
+        "</div>"
       : "") +
     (result !== ""
-      ? '<div class="ds-tool-call__result"><strong>result</strong><br>' +
+      ? '<div class="ds-tool-call__result"><strong>' +
+        escapeHtml(t("message.toolCallResultLabel")) +
+        "</strong><br>" +
         escapeHtml(result) +
         "</div>"
       : "") +

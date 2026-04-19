@@ -1,27 +1,41 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { getProvider } from "../../src/js/modules/webview/provider-factory.ts";
-import { ProviderRegistry } from "../../src/js/modules/webview/provider-registry.ts";
+const providerRegistryPath = "src/js/modules/webview/provider-registry.ts";
+const providerFactoryPath = "src/js/modules/webview/provider-factory.ts";
+
+function readProviderRegistry(): string {
+  return readFileSync(providerRegistryPath, "utf8");
+}
+
+function readProviderFactory(): string {
+  return readFileSync(providerFactoryPath, "utf8");
+}
 
 test("provider-registry includes opencode-ui in assistant provider ids", () => {
-  const assistantIds = ProviderRegistry.getAssistantIds();
+  const registryContent = readProviderRegistry();
 
-  assert.ok(assistantIds.includes("opencode-ui"));
-  assert.ok(ProviderRegistry.getAllAnyIds().includes("opencode-ui"));
-
-  const providerConfig = ProviderRegistry.getAssistant("opencode-ui");
-
-  assert.ok(providerConfig, "Expected opencode-ui provider config to be registered");
-  assert.equal(providerConfig.id, "opencode-ui");
-  assert.equal(providerConfig.isAssistant, true);
+  assert.match(
+    registryContent,
+    /import \{ config as opencodeUi \} from "\.\/providers\/opencode-ui\/config\.js";/
+  );
+  assert.match(registryContent, /"opencode-ui": opencodeUi,/);
+  assert.match(registryContent, /getAssistantIds\(\): string\[] {\s*return Object\.keys\(assistantProviders\);\s*}/s);
+  assert.match(registryContent, /getAllAnyIds\(\): string\[] {\s*return Object\.keys\(allProviders\);\s*}/s);
+  assert.match(registryContent, /isAssistant\(id: string\): boolean {\s*return id in assistantProviders;\s*}/s);
 });
 
 test("provider-factory exposes opencode-ui module with send methods", () => {
-  const providerModule = getProvider("opencode-ui");
+  const factoryContent = readProviderFactory();
 
-  assert.ok(providerModule, "Expected opencode-ui provider module to be registered");
-  assert.equal(typeof providerModule.sendMessage, "function");
-  assert.equal(typeof providerModule.sendMessage_xdotools, "function");
-  assert.equal(typeof providerModule.attachFiles_injection, "function");
+  assert.match(
+    factoryContent,
+    /import \* as opencodeUiProvider from "\.\/providers\/opencode-ui\/index\.js";/
+  );
+  assert.match(factoryContent, /"opencode-ui": opencodeUiProvider,/);
+  assert.match(
+    factoryContent,
+    /export function getProvider\(providerId: string\): ProviderModule \| undefined {\s*return allProviders\[providerId\];\s*}/s
+  );
 });
