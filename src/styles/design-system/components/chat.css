@@ -1,5 +1,9 @@
 .ds-chat {
   --ds-chat-meta-min-h: 1.1em;
+  --ds-chat-rovo-detail-label-min-w: var(--space-20);
+  --ds-chat-rovo-choice-min-w: calc(var(--layout-action-flex-min) + var(--space-16));
+  --ds-chat-rovo-panel-min-w: calc(var(--space-4) * 34);
+  --ds-chat-interaction-select-min-w: calc(var(--layout-action-flex-min) + var(--space-6));
 
   display: flex;
   flex-direction: column;
@@ -173,7 +177,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  min-width: min(34rem, 100%);
+  min-width: min(var(--ds-chat-rovo-panel-min-w), 100%);
   color: var(--text-primary);
 }
 
@@ -202,7 +206,7 @@
 
 .rovo-interaction__detail-row {
   display: grid;
-  grid-template-columns: minmax(5rem, auto) 1fr;
+  grid-template-columns: minmax(var(--ds-chat-rovo-detail-label-min-w), auto) 1fr;
   gap: var(--space-2);
   padding: var(--space-2-5) var(--space-3);
   border-radius: calc(var(--radius-lg) - var(--space-0-5));
@@ -286,7 +290,7 @@
 }
 
 .rovo-interaction__choice {
-  min-width: min(14rem, 100%);
+  min-width: min(var(--ds-chat-rovo-choice-min-w), 100%);
 }
 
 .rovo-interaction__choice-label {
@@ -357,7 +361,7 @@
   margin-left: auto;
 }
 
-@media (max-width: 640px) {
+@media (--breakpoint-max-640) {
   .ds-message {
     max-width: 100%;
   }
@@ -521,7 +525,7 @@
 }
 
 .ds-chat__interaction-select {
-  min-width: 11.5rem;
+  min-width: var(--ds-chat-interaction-select-min-w);
 }
 
 .ds-chat__select {
