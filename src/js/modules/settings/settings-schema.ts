@@ -49,7 +49,9 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 function resolvePreferredAssistantAccountId(
   settings: Pick<AppSettings, "assistantAccounts" | "assistants">
 ): string {
-  const assistantAccounts = Array.isArray(settings.assistantAccounts) ? settings.assistantAccounts : [];
+  const assistantAccounts = Array.isArray(settings.assistantAccounts)
+    ? settings.assistantAccounts
+    : [];
   const preferredProviderId = settings.assistants?.preferred;
   const preferredAccount =
     typeof preferredProviderId === "string"

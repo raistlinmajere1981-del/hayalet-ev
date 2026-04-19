@@ -209,11 +209,7 @@ export function updateIndicatorAvatars(): void {
                   typeof syncResult === "object" && syncResult !== null
                     ? (syncResult as { success?: unknown; message?: unknown })
                     : null;
-                if (
-                  syncState !== null &&
-                  "success" in syncState &&
-                  syncState.success === false
-                ) {
+                if (syncState !== null && "success" in syncState && syncState.success === false) {
                   throw new Error(
                     typeof syncState.message === "string" && syncState.message.trim() !== ""
                       ? syncState.message

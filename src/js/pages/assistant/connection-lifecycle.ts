@@ -234,10 +234,10 @@ export async function toggleAssistantConnection(
         });
       } else {
         const resolvedErrorMessage = resolveIpcErrorMessage(result) ?? result.error;
-          const errorMessage =
-            typeof resolvedErrorMessage === "string" && resolvedErrorMessage !== ""
-              ? resolvedErrorMessage
-              : assistantT("errors.providerServeStartFailed", { name: activeAdapter.name });
+        const errorMessage =
+          typeof resolvedErrorMessage === "string" && resolvedErrorMessage !== ""
+            ? resolvedErrorMessage
+            : assistantT("errors.providerServeStartFailed", { name: activeAdapter.name });
         Logger.panel(
           LogCategory.ASSISTANT_CORE,
           LogLevel.ERROR,

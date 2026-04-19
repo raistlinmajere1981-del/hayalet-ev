@@ -1046,7 +1046,8 @@ function isAssistantToolsReadyForSlot(slot: "ai0" | "ai1" | "ai2"): boolean {
   }
 
   return (
-    AppState.getProviderIdForSlot("ai0") !== "opencode-ui" || AppState.isAssistantToolsReady() === true
+    AppState.getProviderIdForSlot("ai0") !== "opencode-ui" ||
+    AppState.isAssistantToolsReady() === true
   );
 }
 
@@ -1152,7 +1153,11 @@ async function ensureAssistantConnected(
   AppState.setAssistantToolsReady(providerId !== "opencode-ui");
 
   const serverResult = await adapter.startServer("auto");
-  if (serverResult.success !== true || typeof serverResult.url !== "string" || serverResult.url === "") {
+  if (
+    serverResult.success !== true ||
+    typeof serverResult.url !== "string" ||
+    serverResult.url === ""
+  ) {
     AppState.setAssistantToolsReady(true);
     return {
       success: false,
@@ -1162,7 +1167,9 @@ async function ensureAssistantConnected(
   }
 
   const serverReady =
-    serverResult.alreadyRunning === true ? true : await adapter.waitForReady(serverResult.url, 90_000);
+    serverResult.alreadyRunning === true
+      ? true
+      : await adapter.waitForReady(serverResult.url, 90_000);
   if (serverReady !== true) {
     AppState.setAssistantToolsReady(true);
     try {
@@ -1238,9 +1245,7 @@ async function setUs1ConnectionState(connected: boolean): Promise<boolean> {
   });
 }
 
-async function ensureUs1Target(
-  envelope: SlotBridgeEnvelope
-): Promise<SlotBridgeTargetReadyResult> {
+async function ensureUs1Target(envelope: SlotBridgeEnvelope): Promise<SlotBridgeTargetReadyResult> {
   if (AppState.hasUs1Identity() !== true) {
     return {
       success: false,
@@ -2005,11 +2010,7 @@ async function runMessageAction(
   );
   for (const { ready } of readyResults) {
     if (ready.success !== true) {
-      return buildErrorResult(
-        envelope,
-        ready.code,
-        ready.message
-      );
+      return buildErrorResult(envelope, ready.code, ready.message);
     }
   }
 
@@ -2461,11 +2462,7 @@ async function runSessionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridg
       ? await ensureUs1Target(envelope)
       : await ensureConnected(targetSlot, envelope, { waitForReady: true });
   if (ready.success !== true) {
-    return buildErrorResult(
-      envelope,
-      ready.code,
-      ready.message
-    );
+    return buildErrorResult(envelope, ready.code, ready.message);
   }
 
   if (targetSlot === "ai0") {
