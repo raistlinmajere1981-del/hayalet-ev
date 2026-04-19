@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-04-18T09:20:32.093Z",
+  "generatedAt": "2026-04-19T09:15:27.953Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 504,
-    "ids": 574,
+    "filesScanned": 512,
+    "ids": 575,
     "testIds": 15,
     "querySelectors": 150,
-    "totalSelectors": 739
+    "totalSelectors": 740
   },
   "lookup": {
     "id": {
@@ -247,6 +247,7 @@
       "indicator-avatar-ai1": "#indicator-avatar-ai1",
       "indicator-avatar-ai2": "#indicator-avatar-ai2",
       "indicator-avatar-us1": "#indicator-avatar-us1",
+      "interaction-dropdown": "#interaction-dropdown",
       "language-editor-categories": "#language-editor-categories",
       "language-editor-entry-list": "#language-editor-entry-list",
       "language-editor-filters": "#language-editor-filters",
