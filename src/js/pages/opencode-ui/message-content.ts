@@ -272,7 +272,9 @@ export function extractLatestAssistantTextPart(payload: unknown): string {
 
   const nestedInfo = record["info"];
   if (nestedInfo != null && typeof nestedInfo === "object" && !Array.isArray(nestedInfo)) {
-    const nestedContent = normalizeString((nestedInfo as Record<string, unknown>)["content"]).trim();
+    const nestedContent = normalizeString(
+      (nestedInfo as Record<string, unknown>)["content"]
+    ).trim();
     if (nestedContent !== "") {
       return nestedContent;
     }
