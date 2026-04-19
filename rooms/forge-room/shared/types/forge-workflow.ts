@@ -4,7 +4,15 @@ import type {
   ForgeRoleId,
   ForgeSeatId,
 } from "./forge-identities.js";
-import type { ForgeContextCapsule, ForgeSynthesisProvenance } from "./forge-preflight.js";
+import type {
+  ForgeContextCapsule,
+  ForgePreflightState,
+  ForgeRovoPreAnalysis,
+  ForgeRunSignature,
+  ForgeSynthesisProvenance,
+} from "./forge-preflight.js";
+import type { ForgeGoal } from "./forge-goal.js";
+import type { ForgeHandoffPackage } from "./forge-handoff.js";
 
 export type ForgeTaskStatus = "draft" | "approved" | "assigned" | "answered" | "complete";
 export type ForgeTaskExecutionKind = "task" | "checklist";
@@ -49,6 +57,7 @@ export interface ForgeTask {
 }
 
 export interface ForgeTaskAssignment {
+  contextDigest: string | null;
   id: string;
   taskId: string;
   mode: ForgeTaskDispatchMode;
@@ -56,6 +65,8 @@ export interface ForgeTaskAssignment {
   roleId: ForgeRoleId;
   personaPresetId: ForgePersonaPresetId | null;
   requestId: string;
+  runId: string | null;
+  sessionRevision: number | null;
   startedAt: string | null;
   status: ForgeAssignmentStatus;
   queuedAt: string;
@@ -68,10 +79,13 @@ export interface ForgeTaskAssignment {
 export interface ForgeAgentResponse {
   id: string;
   assignmentId: string;
+  contextDigest: string | null;
   taskId: string;
   seatId: ForgeSeatId;
   roleId: ForgeRoleId;
   personaPresetId: ForgePersonaPresetId | null;
+  runId: string | null;
+  sessionRevision: number | null;
   summary: string;
   body: string;
   rawText: string;
@@ -94,7 +108,12 @@ export interface ForgeConflict {
 }
 
 export interface ForgeSynthesis {
+  contextDigest: string | null;
   id: string;
+  preflightId: string | null;
+  runId: string | null;
+  sessionRevision: number | null;
+  snapshotHash: string | null;
   summary: string;
   body: string;
   decisionTrace: string[];
@@ -109,12 +128,82 @@ export interface ForgeSynthesis {
 }
 
 export interface ForgeHandoffExportRecord {
+  contextDigest: string | null;
   id: string;
+  ownerScopeId: string;
+  runId: string | null;
+  sessionRevision: number | null;
+  snapshotHash: string | null;
   targetRoomId: string;
   synthesisId: string;
   filePath: string;
   createdAt: string;
   createdBy: ForgeActorId;
+}
+
+export interface ForgeDraftArtifacts {
+  draftSourceText: string | null;
+  taskIds: string[];
+  validationMessages: string[];
+}
+
+export interface ForgeReviewArtifacts {
+  conflictIds: string[];
+  responseIds: string[];
+}
+
+export interface ForgeSynthesisSnapshot {
+  approvedTasks: ForgeTask[];
+  assignments: ForgeTaskAssignment[];
+  conflicts: ForgeConflict[];
+  createdAt: string;
+  contextDigest: string;
+  decisionTrace: string[];
+  goal: ForgeGoal;
+  ownerScopeId: string;
+  preflightId: string | null;
+  runId: string;
+  sessionRevision: number;
+  snapshotHash: string;
+  snapshotId: string;
+  synthesis: ForgeSynthesis;
+  synthesisId: string;
+}
+
+export interface ForgeExportSourceSnapshot {
+  createdAt: string;
+  exportId: string;
+  handoffPackage: ForgeHandoffPackage;
+  ownerScopeId: string;
+  runId: string;
+  sessionRevision: number;
+  snapshotHash: string;
+  synthesisId: string;
+}
+
+export interface ForgeRunArtifacts {
+  ai0PreAnalysis: ForgeRovoPreAnalysis | null;
+  contextDigest: string;
+  createdAt: string;
+  decisionTrace: string[];
+  draftArtifacts: ForgeDraftArtifacts | null;
+  exportSnapshots: ForgeExportSourceSnapshot[];
+  ownerScopeId: string;
+  preflight: ForgePreflightState | null;
+  preflightId: string | null;
+  reviewArtifacts: ForgeReviewArtifacts | null;
+  runId: string;
+  runSignature: ForgeRunSignature | null;
+  selectedContextCapsules: Record<string, ForgeContextCapsule | null>;
+  sessionRevision: number;
+  synthesisId: string | null;
+  synthesisSnapshots: ForgeSynthesisSnapshot[];
+  updatedAt: string;
+}
+
+export interface ForgeRunArtifactStore {
+  activeRunId: string | null;
+  entries: ForgeRunArtifacts[];
 }
 
 export interface ForgeCoordinatorState {

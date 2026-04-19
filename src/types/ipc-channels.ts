@@ -47,10 +47,14 @@ export interface DbGetConversationsResult {
 export interface DbGetMessagesParams {
   accountId: string;
   conversationId: string;
+  afterSeq?: number;
 }
 
 export interface DbMessage {
   id: string;
+  brokerMessageId?: string | null;
+  clientRequestId?: string | null;
+  eventSeq?: number | null;
   index: number;
   role: string;
   author: string;
@@ -58,6 +62,7 @@ export interface DbMessage {
   contentHash: string;
   domIndex: number | null;
   domId: string | null;
+  providerMessageId?: string | null;
   createdAt: number;
 }
 
@@ -69,20 +74,26 @@ export interface DbGetMessagesResult {
 
 export interface DbSyncMessagesParams {
   accountId: string;
+  clientRequestId?: string;
   provider?: string;
   webUrl: string;
   messages: Array<{
     role: string;
     author?: string;
+    brokerMessageId?: string;
     content: string;
+    eventSeq?: number;
     domIndex?: number;
     domId?: string;
+    providerMessageId?: string;
   }>;
 }
 
 export interface DbSyncMessagesResult {
   success: boolean;
   conversationId?: string;
+  droppedDuplicates?: number;
+  lastEventSeq?: number;
   syncedCount?: number;
   error?: string;
 }
@@ -228,6 +239,9 @@ export interface DbSearchAllAccountsResult {
 
 export interface Us1SendMessageParams {
   text?: string;
+  clientRequestId?: string | null;
+  brokerMessageId?: string | null;
+  remoteUserId?: string | null;
   localSessionId?: string | null;
   attachments?: Array<{
     path: string;
@@ -250,6 +264,7 @@ export interface Us1RoomPackageCandidate {
 
 export interface Us1SendMessageResult {
   success: boolean;
+  brokerMessageId?: string;
   remoteUserId?: string;
   localSessionId?: string;
   conversationId?: string;

@@ -74,6 +74,9 @@ interface DbSyncResult {
   success: boolean;
   error?: string | undefined;
   added?: number | undefined;
+  droppedDuplicates?: number | undefined;
+  lastEventSeq?: number | undefined;
+  syncedCount?: number | undefined;
   total?: number | undefined;
   conversationId?: string | undefined;
 }
@@ -150,6 +153,38 @@ function readNumberField(value: unknown, ...keys: string[]): number | undefined 
   }
 
   return undefined;
+}
+
+function buildSyncClientRequestId(
+  provider: string,
+  webUrl: string,
+  messages: ScrapedMessage[]
+): string {
+  const signature = messages
+    .map((message, index) => {
+      const role = typeof message.role === "string" ? message.role.trim() : "";
+      const text =
+        typeof message.text === "string"
+          ? message.text
+          : typeof message.content === "string"
+            ? message.content
+            : "";
+      const domId = typeof message.domId === "string" ? message.domId.trim() : "";
+      const domIndex =
+        typeof message.domIndex === "number" && Number.isFinite(message.domIndex)
+          ? Math.trunc(message.domIndex)
+          : typeof message.index === "number" && Number.isFinite(message.index)
+            ? Math.trunc(message.index)
+            : index;
+      const contentHash =
+        typeof message.contentHash === "string" && message.contentHash.trim() !== ""
+          ? message.contentHash.trim()
+          : hashString(text.trim());
+      return `${role}:${domId}:${String(domIndex)}:${contentHash}`;
+    })
+    .join("|");
+
+  return `sync:${hashString(`${provider}|${webUrl}|${signature}`)}`;
 }
 
 function normalizeGeneratedImageAssets(value: unknown): GeneratedImageAsset[] {
@@ -587,6 +622,7 @@ class ConversationSyncerClass {
 
       const syncResult = (await window.electronAPI?.dbSyncMessages({
         accountId: accountInfo.id,
+        clientRequestId: buildSyncClientRequestId(provider, webUrl, normalized),
         webUrl,
         messages: normalized,
         authors,

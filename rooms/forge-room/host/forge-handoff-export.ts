@@ -3,6 +3,7 @@ import type {
   ForgeExportReadinessSummary,
   ForgeHandoffPackage,
   ForgeSession,
+  ForgeSynthesisSnapshot,
   ForgeSynthesisProvenance,
   ForgeSynthesis,
 } from "../shared/types/index.js";
@@ -118,11 +119,17 @@ export function createForgeHandoffExport() {
     return {
       schemaVersion: FORGE_HANDOFF_SCHEMA_VERSION,
       targetRoomId: goal.targetRoomId,
+      ...(provenance?.contextDigest ? { contextDigest: provenance.contextDigest } : {}),
+      ...(provenance?.preflightId ? { preflightId: provenance.preflightId } : {}),
+      ...(provenance?.runId ? { runId: provenance.runId } : {}),
       ...(provenance?.runSignature
         ? { runSignature: provenance.runSignature }
         : session.runSignature
           ? { runSignature: session.runSignature.value }
           : {}),
+      ...(provenance?.sessionRevision !== null && provenance?.sessionRevision !== undefined
+        ? { sessionRevision: provenance.sessionRevision }
+        : {}),
       goalId: goal.id,
       goalSummary: goal.summary,
       goalBrief: goal.brief,
@@ -183,6 +190,87 @@ export function createForgeHandoffExport() {
     };
   }
 
+  function buildHandoffPackageFromSnapshot(snapshot: ForgeSynthesisSnapshot): ForgeHandoffPackage {
+    const acceptanceCriteria =
+      snapshot.synthesis.acceptanceCriteria.length > 0
+        ? snapshot.synthesis.acceptanceCriteria
+        : snapshot.goal.acceptanceCriteria;
+    if (acceptanceCriteria.length === 0) {
+      throw new Error(
+        "At least one acceptance criterion is required before exporting a handoff package."
+      );
+    }
+    return {
+      schemaVersion: FORGE_HANDOFF_SCHEMA_VERSION,
+      targetRoomId: snapshot.goal.targetRoomId,
+      contextDigest: snapshot.contextDigest,
+      ...(snapshot.preflightId ? { preflightId: snapshot.preflightId } : {}),
+      runId: snapshot.runId,
+      ...(snapshot.synthesis.provenance?.runSignature
+        ? { runSignature: snapshot.synthesis.provenance.runSignature }
+        : {}),
+      sessionRevision: snapshot.sessionRevision,
+      snapshotHash: snapshot.snapshotHash,
+      goalId: snapshot.goal.id,
+      goalSummary: snapshot.goal.summary,
+      goalBrief: snapshot.goal.brief,
+      constraints: snapshot.goal.constraints,
+      taskGraph: {
+        tasks: snapshot.approvedTasks.map((task) => ({
+          id: task.id,
+          parentTaskId: task.parentTaskId,
+          level: task.level,
+          title: task.title,
+          summary: task.summary,
+          executionKind: task.executionKind,
+          dependsOnTaskIds: task.dependsOnTaskIds,
+          assignedSeatId:
+            snapshot.assignments.find((entry) => entry.taskId === task.id)?.seatId ?? null,
+          assignedRoleId:
+            snapshot.assignments.find((entry) => entry.taskId === task.id)?.roleId ?? null,
+        })),
+      },
+      selectedSynthesis: {
+        id: snapshot.synthesis.id,
+        summary: snapshot.synthesis.summary,
+        body: snapshot.synthesis.body,
+        sourceTaskIds: snapshot.synthesis.sourceTaskIds,
+        selectedResponseIds: snapshot.synthesis.selectedResponseIds,
+        unresolvedConflictIds: snapshot.synthesis.unresolvedConflictIds,
+      },
+      conflicts: snapshot.conflicts.map((conflict) => ({
+        id: conflict.id,
+        taskId: conflict.taskId,
+        kind: conflict.kind,
+        status: conflict.status,
+        summary: conflict.summary,
+        responseIds: conflict.responseIds,
+        ...(conflict.preferredResponseId
+          ? { preferredResponseId: conflict.preferredResponseId }
+          : {}),
+        ...(conflict.resolutionNote ? { resolutionNote: conflict.resolutionNote } : {}),
+      })),
+      openQuestions: snapshot.synthesis.openQuestions.map((question, index) => ({
+        id: `forge-open-question-${String(index + 1)}`,
+        text: question,
+        blocking: true,
+      })),
+      acceptanceCriteria,
+      repoRefs: [],
+      contextSummary: {
+        decisionTrace: snapshot.decisionTrace,
+        operatorProfileSummary: snapshot.synthesis.provenance?.operatorProfileSummary ?? [],
+        preflightWarnings: snapshot.synthesis.provenance?.preflightWarnings ?? [],
+      },
+      createdAt: snapshot.createdAt,
+      createdBy: {
+        actorKind: "coordinator",
+        actorId: "coordinator",
+        label: "Coordinator",
+      },
+    };
+  }
+
   function buildExportFileName(session: ForgeSession): string {
     const goalSummary = session.goal?.summary ?? "forge-handoff";
     return `${slugifyFilePart(goalSummary) || "forge-handoff"}-${session.id}.json`;
@@ -214,9 +302,6 @@ export function createForgeHandoffExport() {
           : `Resolve ${String(openConflictCount)} open conflicts`
       );
     }
-    if (session.preflight.status === "stale") {
-      missingRequirements.push("Rerun preflight to refresh export provenance");
-    }
     if (acceptanceCriteriaCount === 0) {
       missingRequirements.push("Add at least one acceptance criterion");
     }
@@ -244,6 +329,7 @@ export function createForgeHandoffExport() {
   return {
     buildExportFileName,
     buildHandoffPackage,
+    buildHandoffPackageFromSnapshot,
     buildExportReadySummary,
   };
 }

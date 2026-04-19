@@ -47,6 +47,7 @@ import { parseInlineCommands } from "../src/js/modules/commands/inline-command-p
 import { normalizeSettings } from "../src/js/modules/settings/settings-schema.ts";
 import { MailSidecarStoreManager } from "./database/mail-sidecar-manager.ts";
 import { hashString, normalizeText } from "./database/hash-utils.ts";
+import { getLoggerCore } from "./logger/index.js";
 import { MailTransportService } from "./mail-transport/index.js";
 import type {
   FetchInboxResult,
@@ -69,6 +70,7 @@ import {
   type Us1RelayResponseMeta,
 } from "./us1-relay/client.ts";
 import { Paths } from "./paths.ts";
+import { LogCategory, LogLevel } from "@shared/index.js";
 
 const HANDSHAKE_PROTOCOL = "hayalet-ev-us1-handshake";
 const HANDSHAKE_VERSION = 1;
@@ -86,6 +88,7 @@ const INBOUND_ATTACHMENT_ONLY_TEXT = "Attachment-only mail message.";
 const SUBJECT_PREFIX = "[Hayalet Ev] US1";
 const RELAY_INLINE_ATTACHMENT_LIMIT_BYTES = 256 * 1024;
 const RELAY_ATTACHMENT_CHUNK_SIZE_BYTES = 256 * 1024;
+const logger = getLoggerCore();
 
 type HandshakeMessageType = "invite" | "accept" | "reject" | "profile";
 
@@ -196,16 +199,19 @@ interface ArchiveManagerLike {
   }>;
   syncMessages(params: {
     accountId: string;
+    clientRequestId?: string;
     provider?: string;
     webUrl: string;
     messages: Array<{
       role: "user" | "assistant";
       text: string;
       author?: string;
+      brokerMessageId?: string;
       index?: number;
       domIndex?: number;
       domId?: string;
       contentHash?: string;
+      providerMessageId?: string;
     }>;
   }): Promise<{
     success: boolean;
@@ -237,6 +243,12 @@ interface ArchiveManagerLike {
     error?: string;
   }>;
 }
+
+type OutboundSendCacheEntry = {
+  createdAt: number;
+  promise: Promise<Us1SendMessageResult>;
+  result?: Us1SendMessageResult;
+};
 
 type ArchiveManagerFactory = (accountId: string) => Promise<ArchiveManagerLike>;
 
@@ -370,6 +382,77 @@ function buildRemoteUserFromRemoteAccount(
 
 function getUs1CommunicationSystem(settings: AppSettings): "mail" | "relay-e2ee" {
   return settings.us1Slot?.communicationSystem === "relay-e2ee" ? "relay-e2ee" : "mail";
+}
+
+function resolveUs1LocalUserId(
+  settings: AppSettings,
+  binding?: ResolvedBinding | null
+): string | null {
+  const bindingEmail = normalizeOptionalText(binding?.account.email);
+  if (bindingEmail !== null) {
+    return normalizeEmail(bindingEmail);
+  }
+
+  const firstEnabledAccount = (settings.integrations?.mailTransport?.accounts ?? []).find(
+    (account) => account.enabled !== false && normalizeOptionalText(account.email) !== null
+  );
+  return firstEnabledAccount ? normalizeEmail(firstEnabledAccount.email) : null;
+}
+
+function buildImplicitUs1ClientRequestId(params: {
+  attachments: Array<{ mimeType: string | null; name: string | null; path: string }>;
+  localSessionId: string | null;
+  remoteUserId: string;
+  roomCommand: Us1SendMessageParams["roomCommand"];
+  roomEvent: Us1SendMessageParams["roomEvent"];
+  text: string;
+}): string {
+  return `us1-implicit:${hashString(
+    JSON.stringify({
+      attachments: params.attachments,
+      localSessionId: params.localSessionId,
+      remoteUserId: params.remoteUserId,
+      roomCommand: params.roomCommand ?? null,
+      roomEvent: params.roomEvent ?? null,
+      text: params.text,
+    })
+  )}`;
+}
+
+function resolveOwnedOutboundSession(params: {
+  now: number;
+  remoteUserId: string;
+  requestedSessionId: string | null;
+  sidecar: MailSidecarStoreManager;
+  threadSeed: string | null;
+}): {
+  ignoredRequestedSessionId: boolean;
+  isNewSession: boolean;
+  latestMapping: ReturnType<MailSidecarStoreManager["getLatestSessionMapping"]>;
+  localSessionId: string;
+} {
+  const ownedRequestedSession =
+    params.requestedSessionId !== null
+      ? params.sidecar.getSessionMapping(params.remoteUserId, params.requestedSessionId)
+      : null;
+  const latestMapping =
+    params.requestedSessionId === null
+      ? params.sidecar.getLatestSessionMapping(params.remoteUserId)
+      : ownedRequestedSession;
+
+  return {
+    ignoredRequestedSessionId:
+      params.requestedSessionId !== null && ownedRequestedSession === null,
+    isNewSession: latestMapping === null,
+    latestMapping,
+    localSessionId:
+      latestMapping?.localSessionId ??
+      buildSessionId(
+        params.remoteUserId,
+        latestMapping?.threadMessageId ?? params.threadSeed,
+        params.now
+      ),
+  };
 }
 
 function getRelayReceiveBaseUrl(settings: AppSettings): string | null {
@@ -1030,6 +1113,7 @@ export class Us1ConversationService {
   private roomInviteInbox = new Map<string, Us1RoomEventRecord>();
   private pendingRoomCommands = new Map<string, Us1RoomCommandRecord>();
   private roomCommandIdentityIndex: Map<string, RoomCommandIdentity> | null = null;
+  private outboundSendCache = new Map<string, OutboundSendCacheEntry>();
 
   constructor(
     options: {
@@ -1054,193 +1138,360 @@ export class Us1ConversationService {
       });
   }
 
+  private pruneOutboundSendCache(now = this.now()): void {
+    const ttlMs = 5 * 60_000;
+    for (const [key, entry] of this.outboundSendCache.entries()) {
+      if (now - entry.createdAt > ttlMs) {
+        this.outboundSendCache.delete(key);
+      }
+    }
+  }
+
+  private buildOutboundSendCacheKey(remoteUserId: string, clientRequestId: string): string {
+    return `${remoteUserId}|${clientRequestId}`;
+  }
+
+  private findBindingByRemoteUserId(
+    bindings: ResolvedBinding[],
+    remoteUserId: string | null
+  ): ResolvedBinding | null {
+    if (remoteUserId === null) {
+      return null;
+    }
+
+    return (
+      bindings.find(
+        (binding) => normalizeEmail(binding.remoteUser.remoteUserId) === normalizeEmail(remoteUserId)
+      ) ?? null
+    );
+  }
+
+  private resolveSendBinding(
+    settings: AppSettings,
+    communicationSystem: "mail" | "relay-e2ee",
+    requestedRemoteUserId: string | null,
+    requireConnected: boolean
+  ): ResolvedBinding | null {
+    if (requestedRemoteUserId !== null) {
+      const availableBindings =
+        communicationSystem === "relay-e2ee"
+          ? this.resolveRelaySyncBindings(settings, requireConnected)
+          : this.resolveSyncBindings(settings, requireConnected);
+      return this.findBindingByRemoteUserId(availableBindings, requestedRemoteUserId);
+    }
+
+    return communicationSystem === "relay-e2ee"
+      ? this.resolveActiveRelayBinding(settings, requireConnected)
+      : this.resolveActiveBinding(settings, requireConnected);
+  }
+
   async sendMessage(params: Us1SendMessageParams): Promise<Us1SendMessageResult> {
     const settings = await this.loadNormalizedSettings();
     const communicationSystem = getUs1CommunicationSystem(settings);
-    const binding =
-      communicationSystem === "relay-e2ee"
-        ? this.resolveActiveRelayBinding(settings, true)
-        : this.resolveActiveBinding(settings, true);
-    if (binding === null) {
-      return { success: false, error: "Active US1 binding is not available." };
-    }
-
-    if (communicationSystem === "relay-e2ee") {
-      return await this.sendRelayMessage(settings, binding, params);
-    }
-
-    const { remoteUser, account } = binding;
-    const sidecar = new MailSidecarStoreManager(account.id);
-    const text = normalizeText(params.text ?? "");
-    const attachments = (params.attachments ?? []).filter(
-      (attachment) => normalizeOptionalText(attachment.path) !== null
+    const requestedRemoteUserId = normalizeOptionalText(params.remoteUserId);
+    const binding = this.resolveSendBinding(
+      settings,
+      communicationSystem,
+      requestedRemoteUserId,
+      true
     );
-
-    if (text === "" && attachments.length === 0) {
-      return { success: false, error: "US1 message content is empty." };
+    if (binding === null) {
+      const error =
+        requestedRemoteUserId !== null
+          ? `Requested US1 remote user ${normalizeEmail(requestedRemoteUserId)} is unavailable.`
+          : "Active US1 binding is not available.";
+      await logger.logInternal(
+        LogCategory.COMMAND,
+        LogLevel.WARNING,
+        requestedRemoteUserId !== null
+          ? "US1 send rejected because the requested remote user is outside the active owner scope."
+          : "US1 send rejected because the active binding is unavailable.",
+        {
+          provider: "us1",
+          slotId: "us1",
+          userId: resolveUs1LocalUserId(settings),
+          remoteUserId: requestedRemoteUserId !== null ? normalizeEmail(requestedRemoteUserId) : null,
+          connectionState: settings.us1Slot?.connectionState ?? null,
+          operationName: "us1.sendMessage",
+        }
+      );
+      return { success: false, error };
     }
+    const implicitClientRequestId = buildImplicitUs1ClientRequestId({
+      attachments: (params.attachments ?? [])
+        .map((attachment) => ({
+          mimeType: normalizeOptionalText(attachment.mimeType),
+          name: normalizeOptionalText(attachment.name),
+          path: normalizeOptionalText(attachment.path),
+        }))
+        .filter(
+          (
+            attachment
+          ): attachment is {
+            mimeType: string | null;
+            name: string | null;
+            path: string;
+          } => attachment.path !== null
+        ),
+      localSessionId: normalizeOptionalText(params.localSessionId),
+      remoteUserId: binding.remoteUser.remoteUserId,
+      roomCommand: params.roomCommand ?? null,
+      roomEvent: params.roomEvent ?? null,
+      text: normalizeText(params.text ?? ""),
+    });
+    const clientRequestId = normalizeOptionalText(params.clientRequestId) ?? implicitClientRequestId;
+    const brokerMessageId =
+      normalizeOptionalText(params.brokerMessageId) ??
+      (clientRequestId !== null
+        ? `us1-broker:${hashString(`${binding.remoteUser.remoteUserId}|${clientRequestId}`)}`
+        : null);
+    const normalizedParams: Us1SendMessageParams = {
+      ...params,
+      clientRequestId,
+      ...(brokerMessageId !== null ? { brokerMessageId } : {}),
+    };
 
-    const requestedSessionId = normalizeOptionalText(params.localSessionId);
-    const latestMapping =
-      requestedSessionId !== null
-        ? sidecar.getSessionMapping(remoteUser.remoteUserId, requestedSessionId)
-        : sidecar.getLatestSessionMapping(remoteUser.remoteUserId);
-    const isNewSession = latestMapping === null;
-    const localSessionId =
-      requestedSessionId ??
-      latestMapping?.localSessionId ??
-      buildSessionId(remoteUser.remoteUserId, latestMapping?.threadMessageId ?? null, this.now());
-    const sessionTitle = null;
-    const sessionMode: Us1SessionMode = isNewSession ? "new" : "reply";
-    const sessionOpenHint: Us1SessionOpenHint = isNewSession ? "auto_if_idle" : "list_only";
-    const localProfile = this.buildLocalProfile(settings, account);
-    const localMessageId = buildLocalMessageId("us1-out", remoteUser.remoteUserId, this.now());
-    const threadMessageId =
-      isNewSession === true
-        ? null
-        : (latestMapping.threadMessageId ?? normalizeOptionalText(remoteUser.threadMessageId));
-    const inReplyTo =
-      isNewSession === true
-        ? null
-        : (latestMapping.lastMessageId ?? normalizeOptionalText(remoteUser.lastTransportMessageId));
-
-    try {
-      const transportResult = await this.transport.sendMail(account, {
-        localMessageId,
-        remoteUserId: remoteUser.remoteUserId,
-        localSessionId,
-        threadMessageId,
-        to: remoteUser.email,
-        subject: buildConversationSubject(text, attachments.length),
-        text: buildConversationPayload(text, {
-          protocol: MESSAGE_PROTOCOL,
-          version: MESSAGE_VERSION,
-          messageType: MESSAGE_TYPE_CONVERSATION,
-          sentAt: this.now(),
-          localSessionId,
-          session: {
-            id: localSessionId,
-            mode: sessionMode,
-            title: sessionTitle,
-            createdAt: this.now(),
-            openHint: sessionOpenHint,
-          },
-          thread: {
-            threadRootMessageId: threadMessageId,
-            replyToMessageId: inReplyTo,
-          },
-          profile: localProfile,
-          ...(params.roomEvent !== undefined && params.roomEvent !== null
-            ? { roomEvent: params.roomEvent }
-            : {}),
-          ...(params.roomCommand !== undefined && params.roomCommand !== null
-            ? { roomCommand: params.roomCommand }
-            : {}),
-        }),
-        inReplyTo,
-        ...(threadMessageId !== null || inReplyTo !== null
+    const executeSend = async (): Promise<Us1SendMessageResult> => {
+      if (communicationSystem === "relay-e2ee") {
+        const relayResult = await this.sendRelayMessage(settings, binding, normalizedParams);
+        return relayResult.success === true && brokerMessageId !== null
           ? {
-              references: [threadMessageId, inReplyTo].filter(
-                (value): value is string => normalizeOptionalText(value) !== null
-              ),
+              ...relayResult,
+              brokerMessageId,
             }
-          : {}),
-        headers: {
-          "X-Hayalet-Ev-Protocol": MESSAGE_PROTOCOL,
-          "X-Hayalet-Ev-Message-Type": MESSAGE_TYPE_CONVERSATION,
-          "X-Hayalet-Ev-Remote-User-Id": remoteUser.remoteUserId,
-          "X-Hayalet-Ev-Session-Id": localSessionId,
-          "X-Hayalet-Ev-Session-Mode": sessionMode,
-          "X-Hayalet-Ev-Local-Session-Id": localSessionId,
-          "X-Hayalet-Ev-Profile-Revision": String(localProfile.profileRevision),
-        },
-        attachments: attachments.map((attachment) => ({
-          path: attachment.path,
-          filename: normalizeOptionalText(attachment.name) ?? basename(attachment.path),
-          ...(normalizeOptionalText(attachment.mimeType) !== null
-            ? { contentType: attachment.mimeType }
-            : {}),
-        })),
-      });
+          : relayResult;
+      }
 
-      const archiveContext = await this.prepareArchiveContext(
-        remoteUser,
-        localSessionId,
-        isNewSession ? null : undefined
-      );
-      const projectedMessage = await this.appendArchiveMessage(archiveContext, {
-        role: "user",
-        author: buildConversationAuthor(localProfile),
-        text: text !== "" ? text : OUTBOUND_ATTACHMENT_ONLY_TEXT,
-        domId: localMessageId,
-      });
-      const attachmentRefs = await this.saveOutboundAttachments(
-        archiveContext.manager,
-        projectedMessage.conversationId,
-        projectedMessage.messageId,
-        attachments
+      const { remoteUser, account } = binding;
+      const sidecar = new MailSidecarStoreManager(account.id);
+      const text = normalizeText(normalizedParams.text ?? "");
+      const attachments = (normalizedParams.attachments ?? []).filter(
+        (attachment) => normalizeOptionalText(attachment.path) !== null
       );
 
-      sidecar.upsertSessionMapping({
+      if (text === "" && attachments.length === 0) {
+        return { success: false, error: "US1 message content is empty." };
+      }
+
+      const requestedSessionId = normalizeOptionalText(normalizedParams.localSessionId);
+      const outboundSession = resolveOwnedOutboundSession({
+        now: this.now(),
         remoteUserId: remoteUser.remoteUserId,
-        localSessionId,
-        threadMessageId:
-          transportResult.threadMessageId ?? threadMessageId ?? transportResult.transportMessageId,
-        lastMessageId: transportResult.transportMessageId,
+        requestedSessionId,
+        sidecar,
+        threadSeed: null,
       });
-      sidecar.upsertMessageMeta({
-        transportMessageId: transportResult.transportMessageId,
-        localMessageId,
-        deliveryState: transportResult.deliveryState,
-        headersHash: transportResult.headersHash,
-        metadata: {
-          direction: "outbound",
+      const { isNewSession, latestMapping, localSessionId } = outboundSession;
+      if (outboundSession.ignoredRequestedSessionId) {
+        await logger.logInternal(
+          LogCategory.COMMAND,
+          LogLevel.WARNING,
+          "US1 send ignored an unowned client session identifier.",
+          {
+            provider: "us1",
+            slotId: "us1",
+            userId: resolveUs1LocalUserId(settings, binding),
+            remoteUserId: remoteUser.remoteUserId,
+            requestedLocalSessionId: requestedSessionId,
+            resolvedLocalSessionId: localSessionId,
+            clientRequestId,
+            brokerMessageId,
+            operationName: "us1.sendMessage",
+          }
+        );
+      }
+      const sessionTitle = null;
+      const sessionMode: Us1SessionMode = isNewSession ? "new" : "reply";
+      const sessionOpenHint: Us1SessionOpenHint = isNewSession ? "auto_if_idle" : "list_only";
+      const localProfile = this.buildLocalProfile(settings, account);
+      const localMessageId = buildLocalMessageId("us1-out", remoteUser.remoteUserId, this.now());
+      const latestThreadMessageId =
+        latestMapping?.threadMessageId ?? normalizeOptionalText(remoteUser.threadMessageId);
+      const latestLastMessageId =
+        latestMapping?.lastMessageId ?? normalizeOptionalText(remoteUser.lastTransportMessageId);
+      const threadMessageId =
+        isNewSession === true ? null : latestThreadMessageId;
+      const inReplyTo =
+        isNewSession === true ? null : latestLastMessageId;
+
+      try {
+        const transportResult = await this.transport.sendMail(account, {
+          localMessageId,
+          remoteUserId: remoteUser.remoteUserId,
+          localSessionId,
+          threadMessageId,
+          to: remoteUser.email,
+          subject: buildConversationSubject(text, attachments.length),
+          text: buildConversationPayload(text, {
+            protocol: MESSAGE_PROTOCOL,
+            version: MESSAGE_VERSION,
+            messageType: MESSAGE_TYPE_CONVERSATION,
+            sentAt: this.now(),
+            localSessionId,
+            session: {
+              id: localSessionId,
+              mode: sessionMode,
+              title: sessionTitle,
+              createdAt: this.now(),
+              openHint: sessionOpenHint,
+            },
+            thread: {
+              threadRootMessageId: threadMessageId,
+              replyToMessageId: inReplyTo,
+            },
+            profile: localProfile,
+            ...(normalizedParams.roomEvent !== undefined && normalizedParams.roomEvent !== null
+              ? { roomEvent: normalizedParams.roomEvent }
+              : {}),
+            ...(normalizedParams.roomCommand !== undefined && normalizedParams.roomCommand !== null
+              ? { roomCommand: normalizedParams.roomCommand }
+              : {}),
+          }),
+          inReplyTo,
+          ...(threadMessageId !== null || inReplyTo !== null
+            ? {
+                references: [threadMessageId, inReplyTo].filter(
+                  (value): value is string => normalizeOptionalText(value) !== null
+                ),
+              }
+            : {}),
+          headers: {
+            "X-Hayalet-Ev-Protocol": MESSAGE_PROTOCOL,
+            "X-Hayalet-Ev-Message-Type": MESSAGE_TYPE_CONVERSATION,
+            "X-Hayalet-Ev-Remote-User-Id": remoteUser.remoteUserId,
+            "X-Hayalet-Ev-Session-Id": localSessionId,
+            "X-Hayalet-Ev-Session-Mode": sessionMode,
+            "X-Hayalet-Ev-Local-Session-Id": localSessionId,
+            "X-Hayalet-Ev-Profile-Revision": String(localProfile.profileRevision),
+            ...(clientRequestId !== null
+              ? { "X-Hayalet-Ev-Client-Request-Id": clientRequestId }
+              : {}),
+            ...(brokerMessageId !== null
+              ? { "X-Hayalet-Ev-Broker-Message-Id": brokerMessageId }
+              : {}),
+          },
+          attachments: attachments.map((attachment) => ({
+            path: attachment.path,
+            filename: normalizeOptionalText(attachment.name) ?? basename(attachment.path),
+            ...(normalizeOptionalText(attachment.mimeType) !== null
+              ? { contentType: attachment.mimeType }
+              : {}),
+          })),
+        });
+
+        const archiveContext = await this.prepareArchiveContext(
+          remoteUser,
+          localSessionId,
+          isNewSession ? null : undefined
+        );
+        const projectedMessage = await this.appendArchiveMessage(archiveContext, {
+          role: "user",
+          author: buildConversationAuthor(localProfile),
+          text: text !== "" ? text : OUTBOUND_ATTACHMENT_ONLY_TEXT,
+          brokerMessageId,
+          clientRequestId,
+          domId: localMessageId,
+        });
+        const attachmentRefs = await this.saveOutboundAttachments(
+          archiveContext.manager,
+          projectedMessage.conversationId,
+          projectedMessage.messageId,
+          attachments
+        );
+
+        sidecar.upsertSessionMapping({
+          remoteUserId: remoteUser.remoteUserId,
+          localSessionId,
+          threadMessageId:
+            transportResult.threadMessageId ?? threadMessageId ?? transportResult.transportMessageId,
+          lastMessageId: transportResult.transportMessageId,
+        });
+        sidecar.upsertMessageMeta({
+          transportMessageId: transportResult.transportMessageId,
+          localMessageId,
+          deliveryState: transportResult.deliveryState,
+          headersHash: transportResult.headersHash,
+          metadata: {
+            direction: "outbound",
+            remoteUserId: remoteUser.remoteUserId,
+            localSessionId,
+            conversationId: projectedMessage.conversationId,
+            webUrl: archiveContext.webUrl,
+            archiveMessageId: projectedMessage.messageId,
+            ...(clientRequestId !== null ? { clientRequestId } : {}),
+            ...(brokerMessageId !== null ? { brokerMessageId } : {}),
+            attachments: attachmentRefs,
+          },
+        });
+
+        this.patchRemoteUserTransportState(settings, remoteUser.remoteUserId, {
+          threadMessageId:
+            transportResult.threadMessageId ?? threadMessageId ?? transportResult.transportMessageId,
+          lastTransportMessageId: transportResult.transportMessageId,
+          lastSyncAt: this.now(),
+          lastError: null,
+        });
+        await this.persistSettings(settings);
+
+        if (
+          normalizedParams.roomEvent?.eventType === "accept" ||
+          normalizedParams.roomEvent?.eventType === "reject" ||
+          normalizedParams.roomEvent?.eventType === "reset"
+        ) {
+          this.roomInviteInbox.delete(
+            this.buildRoomInviteInboxKey(
+              remoteUser.remoteUserId,
+              normalizedParams.roomEvent.inviteId
+            )
+          );
+        }
+
+        return {
+          success: true,
+          ...(brokerMessageId !== null ? { brokerMessageId } : {}),
           remoteUserId: remoteUser.remoteUserId,
           localSessionId,
           conversationId: projectedMessage.conversationId,
-          webUrl: archiveContext.webUrl,
+          transportMessageId: transportResult.transportMessageId,
           archiveMessageId: projectedMessage.messageId,
-          attachments: attachmentRefs,
-        },
-      });
-
-      this.patchRemoteUserTransportState(settings, remoteUser.remoteUserId, {
-        threadMessageId:
-          transportResult.threadMessageId ?? threadMessageId ?? transportResult.transportMessageId,
-        lastTransportMessageId: transportResult.transportMessageId,
-        lastSyncAt: this.now(),
-        lastError: null,
-      });
-      await this.persistSettings(settings);
-
-      if (
-        params.roomEvent?.eventType === "accept" ||
-        params.roomEvent?.eventType === "reject" ||
-        params.roomEvent?.eventType === "reset"
-      ) {
-        this.roomInviteInbox.delete(
-          this.buildRoomInviteInboxKey(remoteUser.remoteUserId, params.roomEvent.inviteId)
-        );
+          deliveryState: transportResult.deliveryState,
+          attachmentCount: attachmentRefs.length,
+        };
+      } catch (error) {
+        this.patchRemoteUserTransportState(settings, remoteUser.remoteUserId, {
+          lastSyncAt: this.now(),
+          lastError: getErrorMessage(error),
+        });
+        await this.persistSettings(settings);
+        return { success: false, error: getErrorMessage(error) };
       }
+    };
 
-      return {
-        success: true,
-        remoteUserId: remoteUser.remoteUserId,
-        localSessionId,
-        conversationId: projectedMessage.conversationId,
-        transportMessageId: transportResult.transportMessageId,
-        archiveMessageId: projectedMessage.messageId,
-        deliveryState: transportResult.deliveryState,
-        attachmentCount: attachmentRefs.length,
-      };
-    } catch (error) {
-      this.patchRemoteUserTransportState(settings, remoteUser.remoteUserId, {
-        lastSyncAt: this.now(),
-        lastError: getErrorMessage(error),
-      });
-      await this.persistSettings(settings);
-      return { success: false, error: getErrorMessage(error) };
+    this.pruneOutboundSendCache();
+    const cacheKey = this.buildOutboundSendCacheKey(binding.remoteUser.remoteUserId, clientRequestId);
+    const cached = this.outboundSendCache.get(cacheKey);
+    if (cached?.result !== undefined) {
+      return cached.result;
     }
+    if (cached !== undefined) {
+      return await cached.promise;
+    }
+
+    const entry: OutboundSendCacheEntry = {
+      createdAt: this.now(),
+      promise: Promise.resolve({ success: false, error: "Uninitialized US1 send cache entry." }),
+    };
+    entry.promise = executeSend()
+      .then((result) => {
+        entry.result = result;
+        return result;
+      })
+      .catch((error) => {
+        this.outboundSendCache.delete(cacheKey);
+        throw error;
+      });
+    this.outboundSendCache.set(cacheKey, entry);
+    return await entry.promise;
   }
 
   async syncMessages(params: Us1SyncMessagesParams = {}): Promise<Us1SyncMessagesResult> {
@@ -1821,15 +2072,32 @@ export class Us1ConversationService {
     }
 
     const requestedSessionId = normalizeOptionalText(params.localSessionId);
-    const latestMapping =
-      requestedSessionId !== null
-        ? sidecar.getSessionMapping(remoteUser.remoteUserId, requestedSessionId)
-        : sidecar.getLatestSessionMapping(remoteUser.remoteUserId);
-    const isNewSession = latestMapping === null;
-    const localSessionId =
-      requestedSessionId ??
-      latestMapping?.localSessionId ??
-      buildSessionId(remoteUser.remoteUserId, latestMapping?.threadMessageId ?? null, this.now());
+    const outboundSession = resolveOwnedOutboundSession({
+      now: this.now(),
+      remoteUserId: remoteUser.remoteUserId,
+      requestedSessionId,
+      sidecar,
+      threadSeed: null,
+    });
+    const { isNewSession, latestMapping, localSessionId } = outboundSession;
+    if (outboundSession.ignoredRequestedSessionId) {
+      await logger.logInternal(
+        LogCategory.COMMAND,
+        LogLevel.WARNING,
+        "US1 relay send ignored an unowned client session identifier.",
+        {
+          provider: "us1",
+          slotId: "us1",
+          userId: resolveUs1LocalUserId(settings, binding),
+          remoteUserId: remoteUser.remoteUserId,
+          requestedLocalSessionId: requestedSessionId,
+          resolvedLocalSessionId: localSessionId,
+          clientRequestId: normalizeOptionalText(params.clientRequestId),
+          brokerMessageId: normalizeOptionalText(params.brokerMessageId),
+          operationName: "us1.sendRelayMessage",
+        }
+      );
+    }
     const sessionTitle = null;
     const sessionMode: Us1SessionMode = isNewSession ? "new" : "reply";
     const sessionOpenHint: Us1SessionOpenHint = isNewSession ? "auto_if_idle" : "list_only";
@@ -3120,15 +3388,20 @@ export class Us1ConversationService {
       role: "user" | "assistant";
       author: string;
       text: string;
+      brokerMessageId?: string | null;
+      clientRequestId?: string | null;
       domId: string;
     }
   ): Promise<{ conversationId: string; messageId: string }> {
     const currentMessages = await archiveContext.manager.getMessages(archiveContext.conversationId);
     const nextIndex = Array.isArray(currentMessages.data) ? currentMessages.data.length : 0;
     const messageId = buildArchiveMessageId(archiveContext.conversationId, message.domId);
+    const clientRequestId = normalizeOptionalText(message.clientRequestId);
+    const brokerMessageId = normalizeOptionalText(message.brokerMessageId);
 
     const syncResult = await archiveContext.manager.syncMessages({
       accountId: archiveContext.archiveAccountId,
+      ...(clientRequestId !== null ? { clientRequestId } : {}),
       provider: "us1",
       webUrl: archiveContext.webUrl,
       messages: [
@@ -3136,9 +3409,11 @@ export class Us1ConversationService {
           role: message.role,
           text: message.text,
           author: message.author,
+          ...(brokerMessageId !== null ? { brokerMessageId } : {}),
           index: nextIndex,
           domIndex: nextIndex,
           domId: message.domId,
+          providerMessageId: message.domId,
         },
       ],
     });

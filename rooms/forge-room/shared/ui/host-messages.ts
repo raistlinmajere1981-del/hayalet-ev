@@ -260,16 +260,37 @@ function normalizePreflightSnapshot(value: unknown): ForgeRoomSnapshot["prefligh
       Array.isArray(source["bundle"]) === false
         ? (source["bundle"] as ForgeRoomSnapshot["preflight"]["bundle"])
         : fallback.bundle,
+    contextDigest:
+      typeof source["contextDigest"] === "string" && source["contextDigest"].trim() !== ""
+        ? source["contextDigest"]
+        : fallback.contextDigest,
     errorMessage:
       typeof source["errorMessage"] === "string" && source["errorMessage"].trim() !== ""
         ? source["errorMessage"]
         : null,
+    expectedContextDigest:
+      typeof source["expectedContextDigest"] === "string" &&
+      source["expectedContextDigest"].trim() !== ""
+        ? source["expectedContextDigest"]
+        : fallback.expectedContextDigest,
+    preflightId:
+      typeof source["preflightId"] === "string" && source["preflightId"].trim() !== ""
+        ? source["preflightId"]
+        : fallback.preflightId,
     promptCharCount:
       typeof source["promptCharCount"] === "number" && Number.isFinite(source["promptCharCount"])
         ? source["promptCharCount"]
         : fallback.promptCharCount,
     ranAt:
       typeof source["ranAt"] === "string" && source["ranAt"].trim() !== "" ? source["ranAt"] : null,
+    runId:
+      typeof source["runId"] === "string" && source["runId"].trim() !== ""
+        ? source["runId"]
+        : fallback.runId,
+    sessionRevision:
+      typeof source["sessionRevision"] === "number" && Number.isFinite(source["sessionRevision"])
+        ? Math.max(0, Math.trunc(source["sessionRevision"]))
+        : fallback.sessionRevision,
     staleReason:
       typeof source["staleReason"] === "string" && source["staleReason"].trim() !== ""
         ? source["staleReason"]
@@ -289,6 +310,10 @@ export function sanitizeForgeRoomSnapshot(payload: unknown): ForgeRoomSnapshot {
       typeof source["activeSessionId"] === "string" && source["activeSessionId"].trim() !== ""
         ? source["activeSessionId"]
         : null,
+    contextDigest:
+      typeof source["contextDigest"] === "string" && source["contextDigest"].trim() !== ""
+        ? source["contextDigest"]
+        : fallback.contextDigest,
     currentGoal:
       source["currentGoal"] !== null &&
       typeof source["currentGoal"] === "object" &&
@@ -330,6 +355,14 @@ export function sanitizeForgeRoomSnapshot(payload: unknown): ForgeRoomSnapshot {
     responses: Array.isArray(source["responses"])
       ? (source["responses"] as ForgeRoomSnapshot["responses"])
       : fallback.responses,
+    runId:
+      typeof source["runId"] === "string" && source["runId"].trim() !== ""
+        ? source["runId"]
+        : fallback.runId,
+    sessionRevision:
+      typeof source["sessionRevision"] === "number" && Number.isFinite(source["sessionRevision"])
+        ? Math.max(0, Math.trunc(source["sessionRevision"]))
+        : fallback.sessionRevision,
     sessionContextSelection: normalizeSessionContextSelectionSnapshot(
       source["sessionContextSelection"]
     ),

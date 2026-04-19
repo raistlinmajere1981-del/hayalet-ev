@@ -150,15 +150,18 @@ function createMultiRemoteSettings(
 
 function createTransportStub() {
   const sentMessages: SendMailRequest[] = [];
+  const sentAccountIds: string[] = [];
   const fetchQueue: FetchInboxResult[] = [];
 
   return {
     sentMessages,
+    sentAccountIds,
     enqueueFetch(result: FetchInboxResult): void {
       fetchQueue.push(result);
     },
     transport: {
       async sendMail(account: { id: string }, message: SendMailRequest) {
+        sentAccountIds.push(account.id);
         sentMessages.push(clone(message));
         const transportMessageId = message.messageId ?? `<${message.localMessageId}@example.test>`;
         return {
@@ -700,6 +703,117 @@ test("US1 conversation service sends outbound mail and projects archive metadata
   }
 });
 
+test("US1 conversation service resolves provider credentials server-side for explicit remote users", async () => {
+  const accountIdA = `us1_mail_${Date.now().toString(36)}_alpha_send`;
+  const accountIdB = `us1_mail_${Date.now().toString(36)}_beta_send`;
+  const store = createSettingsStore(
+    createMultiRemoteSettings("alpha@example.com", [
+      {
+        accountId: accountIdA,
+        remoteUserId: "alpha@example.com",
+        nickname: "Alpha Remote",
+      },
+      {
+        accountId: accountIdB,
+        remoteUserId: "beta@example.com",
+        nickname: "Beta Remote",
+      },
+    ])
+  );
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountIdA = buildRemoteEmailAccountId("alpha@example.com");
+  const remoteAccountIdB = buildRemoteEmailAccountId("beta@example.com");
+
+  try {
+    const result = await service.sendMessage({
+      text: "Server resolved beta",
+      remoteUserId: "beta@example.com",
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.remoteUserId, "beta@example.com");
+    assert.equal(transportStub.sentMessages.length, 1);
+    assert.equal(transportStub.sentMessages[0]?.to, "beta@example.com");
+    assert.equal(transportStub.sentAccountIds[0], accountIdB);
+    assert.equal(store.snapshot().us1Slot?.selectedRemoteUserId, "alpha@example.com");
+  } finally {
+    cleanupAccount(accountIdA);
+    cleanupAccount(accountIdB);
+    cleanupAccount(remoteAccountIdA);
+    cleanupAccount(remoteAccountIdB);
+  }
+});
+
+test("US1 conversation service rejects foreign remote users outside the owner-scoped bindings", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_foreign_send`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    const result = await service.sendMessage({
+      text: "Should be rejected",
+      remoteUserId: "foreign@example.com",
+    });
+
+    assert.equal(result.success, false);
+    assert.match(result.error ?? "", /foreign@example\.com/);
+    assert.equal(transportStub.sentMessages.length, 0);
+    assert.equal(store.snapshot().us1Slot?.selectedRemoteUserId, "remote@example.com");
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
+test("US1 conversation service ignores forged client session ids and mints owner-scoped ones", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_forged_session`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    const result = await service.sendMessage({
+      text: "Forged session attempt",
+      localSessionId: "forged-session-id",
+    });
+
+    assert.equal(result.success, true);
+    assert.notEqual(result.localSessionId, "forged-session-id");
+    assert.equal(transportStub.sentMessages[0]?.localSessionId, result.localSessionId);
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
 test("US1 conversation service starts explicit new sessions as fresh mail threads", async () => {
   const accountId = `us1_mail_${Date.now().toString(36)}_fresh_thread`;
   const initialSettings = createSettings(accountId);
@@ -727,7 +841,8 @@ test("US1 conversation service starts explicit new sessions as fresh mail thread
     });
 
     assert.equal(firstResult.success, true);
-    assert.equal(firstResult.localSessionId, "fresh-session-1");
+    assert.notEqual(firstResult.localSessionId, "fresh-session-1");
+    assert.equal(typeof firstResult.localSessionId, "string");
     assert.equal(transportStub.sentMessages.length, 1);
     assert.equal(transportStub.sentMessages[0]?.threadMessageId, null);
     assert.equal(transportStub.sentMessages[0]?.inReplyTo, null);
@@ -737,7 +852,7 @@ test("US1 conversation service starts explicit new sessions as fresh mail thread
 
     const secondResult = await service.sendMessage({
       text: "Fresh follow up",
-      localSessionId: "fresh-session-1",
+      localSessionId: firstResult.localSessionId,
     });
 
     assert.equal(secondResult.success, true);
@@ -752,9 +867,45 @@ test("US1 conversation service starts explicit new sessions as fresh mail thread
     assert.equal((secondEnvelope["session"] as Record<string, unknown>)?.["mode"], "reply");
 
     const sidecar = new MailSidecarStoreManager(accountId);
-    const mapping = sidecar.getSessionMapping("remote@example.com", "fresh-session-1");
+    const mapping = sidecar.getSessionMapping("remote@example.com", firstResult.localSessionId ?? "");
     assert.equal(mapping?.threadMessageId, firstResult.transportMessageId);
     assert.equal(mapping?.lastMessageId, secondResult.transportMessageId);
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
+test("US1 conversation service retries are idempotent with the same clientRequestId", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_retry_send`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    const first = await service.sendMessage({
+      clientRequestId: "us1-client-req-1",
+      text: "Retry once",
+    });
+    const second = await service.sendMessage({
+      clientRequestId: "us1-client-req-1",
+      text: "Retry once",
+    });
+
+    assert.equal(first.success, true);
+    assert.equal(second.success, true);
+    assert.equal(transportStub.sentMessages.length, 1);
+    assert.equal(first.transportMessageId, second.transportMessageId);
+    assert.equal(first.brokerMessageId, second.brokerMessageId);
   } finally {
     cleanupAccount(accountId);
     cleanupAccount(remoteAccountId);

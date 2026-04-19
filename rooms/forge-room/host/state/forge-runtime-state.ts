@@ -1,4 +1,5 @@
 import {
+  FORGE_LOCAL_OWNER_SCOPE_ID,
   FORGE_PREFLIGHT_SCHEMA_VERSION,
   FORGE_ROOM_ID,
   FORGE_SESSION_SCHEMA_VERSION,
@@ -9,6 +10,7 @@ import {
   filterForgeActiveSkillKeys,
 } from "../../shared/data/operator-context-catalog.js";
 import type {
+  ForgeRunArtifactStore,
   ForgeGoal,
   ForgeSession,
   ForgeTask,
@@ -34,23 +36,29 @@ import {
   normalizeForgeSessionContextSelectionKeys,
   reconcileForgeSessionContextSelection,
 } from "../../shared/types/index.js";
+import { createEmptyForgeRunArtifactStore } from "../forge-run-artifact-store.js";
 
 export interface ForgeRuntimeState {
   activeSessionId: string | null;
   approvedTasks: ForgeTask[];
   assignments: ForgeTaskAssignment[];
+  artifactStore: ForgeRunArtifactStore;
   conflicts: ForgeConflict[];
   coordinatorState: ForgeCoordinatorState;
+  contextDigest: string | null;
   currentGoal: ForgeGoal | null;
   draftTasks: ForgeTask[];
   draftSourceText: string | null;
   validationMessages: string[];
   decisionTrace: string[];
   exports: ForgeHandoffExportRecord[];
+  ownerScopeId: string;
   operatorProfile: ForgeOperatorProfile;
   preflight: ForgePreflightState;
   responses: ForgeAgentResponse[];
+  runId: string | null;
   sessionContextSelection: ForgeSessionContextSelection;
+  sessionRevision: number;
   runOverride: ForgeRunOverride | null;
   runSignature: ForgeRunSignature | null;
   selectedSynthesisId: string | null;
@@ -205,16 +213,37 @@ function normalizeForgePreflightState(value: unknown): ForgePreflightState {
       Array.isArray(record["bundle"]) === false
         ? (record["bundle"] as ForgePreflightState["bundle"])
         : fallback.bundle,
+    contextDigest:
+      typeof record["contextDigest"] === "string" && record["contextDigest"].trim() !== ""
+        ? record["contextDigest"]
+        : fallback.contextDigest,
     errorMessage:
       typeof record["errorMessage"] === "string" && record["errorMessage"].trim() !== ""
         ? record["errorMessage"]
         : null,
+    expectedContextDigest:
+      typeof record["expectedContextDigest"] === "string" &&
+      record["expectedContextDigest"].trim() !== ""
+        ? record["expectedContextDigest"]
+        : fallback.expectedContextDigest,
+    preflightId:
+      typeof record["preflightId"] === "string" && record["preflightId"].trim() !== ""
+        ? record["preflightId"]
+        : fallback.preflightId,
     promptCharCount:
       typeof record["promptCharCount"] === "number" && Number.isFinite(record["promptCharCount"])
         ? record["promptCharCount"]
         : fallback.promptCharCount,
     ranAt:
       typeof record["ranAt"] === "string" && record["ranAt"].trim() !== "" ? record["ranAt"] : null,
+    runId:
+      typeof record["runId"] === "string" && record["runId"].trim() !== ""
+        ? record["runId"]
+        : fallback.runId,
+    sessionRevision:
+      typeof record["sessionRevision"] === "number" && Number.isFinite(record["sessionRevision"])
+        ? Math.max(0, Math.trunc(record["sessionRevision"]))
+        : fallback.sessionRevision,
     staleReason:
       typeof record["staleReason"] === "string" && record["staleReason"].trim() !== ""
         ? record["staleReason"]
@@ -268,11 +297,16 @@ export function createEmptyForgeRuntimeState(): ForgeRuntimeState {
     decisionTrace: [],
     approvedTasks: [],
     assignments: [],
+    artifactStore: createEmptyForgeRunArtifactStore(),
     exports: [],
+    ownerScopeId: FORGE_LOCAL_OWNER_SCOPE_ID,
     operatorProfile: createDefaultForgeOperatorProfile(),
     preflight: createEmptyForgePreflightState(),
     responses: [],
+    contextDigest: null,
+    runId: null,
     sessionContextSelection: createEmptyForgeSessionContextSelection(),
+    sessionRevision: 0,
     runOverride: null,
     runSignature: null,
     conflicts: [],
@@ -288,6 +322,9 @@ export function createEmptyForgeSession(sessionId: string): ForgeSession {
     schemaVersion: FORGE_SESSION_SCHEMA_VERSION,
     id: sessionId,
     roomId: FORGE_ROOM_ID,
+    artifactStore: createEmptyForgeRunArtifactStore(),
+    contextDigest: null,
+    ownerScopeId: FORGE_LOCAL_OWNER_SCOPE_ID,
     goal: null,
     draftTasks: [],
     draftSourceText: null,
@@ -301,7 +338,9 @@ export function createEmptyForgeSession(sessionId: string): ForgeSession {
     decisionTrace: [],
     preflight: createEmptyForgePreflightState(),
     sessionContextSelection: createEmptyForgeSessionContextSelection(),
+    sessionRevision: 0,
     runOverride: null,
+    runId: null,
     runSignature: null,
     exports: [],
     coordinatorState: createForgeCoordinatorState({
@@ -322,6 +361,23 @@ export function createForgeRuntimeStateFromSession(
   const sessionRecord = session as Partial<ForgeSession>;
   const coordinatorState = createForgeCoordinatorState(sessionRecord.coordinatorState);
   const operatorProfile = overrides.operatorProfile ?? createDefaultForgeOperatorProfile();
+  const preflight = normalizeForgePreflightState(sessionRecord.preflight);
+  const sessionRevision =
+    typeof sessionRecord.sessionRevision === "number" && Number.isFinite(sessionRecord.sessionRevision)
+      ? Math.max(0, Math.trunc(sessionRecord.sessionRevision))
+      : 0;
+  const runId =
+    typeof sessionRecord.runId === "string" && sessionRecord.runId.trim() !== ""
+      ? sessionRecord.runId
+      : preflight.runId;
+  const contextDigest =
+    typeof sessionRecord.contextDigest === "string" && sessionRecord.contextDigest.trim() !== ""
+      ? sessionRecord.contextDigest
+      : preflight.contextDigest;
+  const ownerScopeId =
+    typeof sessionRecord.ownerScopeId === "string" && sessionRecord.ownerScopeId.trim() !== ""
+      ? sessionRecord.ownerScopeId
+      : FORGE_LOCAL_OWNER_SCOPE_ID;
   const sessionContextSelection = reconcileForgeSessionContextSelection({
     selection: normalizeForgeSessionContextSelection(sessionRecord.sessionContextSelection),
     allowedSkillKeys: filterForgeActiveSkillKeys(
@@ -344,12 +400,107 @@ export function createForgeRuntimeStateFromSession(
     approvedTasks: Array.isArray(session.approvedTasks)
       ? normalizeForgeTasks(session.approvedTasks)
       : [],
-    assignments: Array.isArray(session.assignments) ? session.assignments : [],
-    exports: Array.isArray(session.exports) ? session.exports : [],
+    assignments: Array.isArray(session.assignments)
+      ? session.assignments.map((assignment) => ({
+          ...assignment,
+          contextDigest:
+            typeof assignment.contextDigest === "string" && assignment.contextDigest.trim() !== ""
+              ? assignment.contextDigest
+              : contextDigest,
+          runId:
+            typeof assignment.runId === "string" && assignment.runId.trim() !== ""
+              ? assignment.runId
+              : runId,
+          sessionRevision:
+            typeof assignment.sessionRevision === "number" &&
+            Number.isFinite(assignment.sessionRevision)
+              ? Math.max(0, Math.trunc(assignment.sessionRevision))
+              : sessionRevision,
+        }))
+      : [],
+    artifactStore:
+      sessionRecord.artifactStore &&
+      typeof sessionRecord.artifactStore === "object" &&
+      Array.isArray((sessionRecord.artifactStore as { entries?: unknown }).entries)
+        ? {
+            activeRunId:
+              typeof (sessionRecord.artifactStore as ForgeRunArtifactStore).activeRunId === "string"
+                ? (sessionRecord.artifactStore as ForgeRunArtifactStore).activeRunId
+                : null,
+            entries: (sessionRecord.artifactStore as ForgeRunArtifactStore).entries.map((entry) => ({
+              ...entry,
+              ownerScopeId:
+                typeof entry.ownerScopeId === "string" && entry.ownerScopeId.trim() !== ""
+                  ? entry.ownerScopeId
+                  : ownerScopeId,
+              exportSnapshots: Array.isArray(entry.exportSnapshots)
+                ? entry.exportSnapshots.map((snapshot) => ({
+                    ...snapshot,
+                    ownerScopeId:
+                      typeof snapshot.ownerScopeId === "string" && snapshot.ownerScopeId.trim() !== ""
+                        ? snapshot.ownerScopeId
+                        : ownerScopeId,
+                  }))
+                : [],
+              synthesisSnapshots: Array.isArray(entry.synthesisSnapshots)
+                ? entry.synthesisSnapshots.map((snapshot) => ({
+                    ...snapshot,
+                    ownerScopeId:
+                      typeof snapshot.ownerScopeId === "string" && snapshot.ownerScopeId.trim() !== ""
+                        ? snapshot.ownerScopeId
+                        : ownerScopeId,
+                  }))
+                : [],
+            })),
+          }
+        : createEmptyForgeRunArtifactStore(),
+    exports: Array.isArray(session.exports)
+      ? session.exports.map((entry) => ({
+          ...entry,
+          contextDigest:
+            typeof entry.contextDigest === "string" && entry.contextDigest.trim() !== ""
+              ? entry.contextDigest
+              : contextDigest,
+          ownerScopeId:
+            typeof entry.ownerScopeId === "string" && entry.ownerScopeId.trim() !== ""
+              ? entry.ownerScopeId
+              : ownerScopeId,
+          runId:
+            typeof entry.runId === "string" && entry.runId.trim() !== "" ? entry.runId : runId,
+          sessionRevision:
+            typeof entry.sessionRevision === "number" && Number.isFinite(entry.sessionRevision)
+              ? Math.max(0, Math.trunc(entry.sessionRevision))
+              : sessionRevision,
+          snapshotHash:
+            typeof entry.snapshotHash === "string" && entry.snapshotHash.trim() !== ""
+              ? entry.snapshotHash
+              : null,
+        }))
+      : [],
     operatorProfile,
-    preflight: normalizeForgePreflightState(sessionRecord.preflight),
-    responses: Array.isArray(session.responses) ? session.responses : [],
+    preflight,
+    responses: Array.isArray(session.responses)
+      ? session.responses.map((response) => ({
+          ...response,
+          contextDigest:
+            typeof response.contextDigest === "string" && response.contextDigest.trim() !== ""
+              ? response.contextDigest
+              : contextDigest,
+          runId:
+            typeof response.runId === "string" && response.runId.trim() !== ""
+              ? response.runId
+              : runId,
+          sessionRevision:
+            typeof response.sessionRevision === "number" && Number.isFinite(response.sessionRevision)
+              ? Math.max(0, Math.trunc(response.sessionRevision))
+              : sessionRevision,
+        }))
+      : [],
+    contextDigest,
+    runId,
+    ownerScopeId,
     sessionContextSelection,
+    sessionRevision,
     runOverride: normalizeForgeRunOverride(sessionRecord.runOverride),
     runSignature:
       sessionRecord.runSignature && typeof sessionRecord.runSignature === "object"
@@ -359,12 +510,25 @@ export function createForgeRuntimeStateFromSession(
     syntheses: Array.isArray(session.syntheses)
       ? session.syntheses.map((synthesis) => ({
           ...synthesis,
+          contextDigest:
+            typeof synthesis.contextDigest === "string" && synthesis.contextDigest.trim() !== ""
+              ? synthesis.contextDigest
+              : contextDigest,
           decisionTrace: normalizeForgeDecisionTrace(synthesis.decisionTrace),
+          preflightId:
+            typeof synthesis.preflightId === "string" && synthesis.preflightId.trim() !== ""
+              ? synthesis.preflightId
+              : preflight.preflightId,
           provenance:
             synthesis.provenance &&
             typeof synthesis.provenance === "object" &&
             Array.isArray(synthesis.provenance) === false
               ? {
+                  contextDigest:
+                    typeof synthesis.provenance.contextDigest === "string" &&
+                    synthesis.provenance.contextDigest.trim() !== ""
+                      ? synthesis.provenance.contextDigest
+                      : null,
                   runSignature:
                     typeof synthesis.provenance.runSignature === "string" &&
                     synthesis.provenance.runSignature.trim() !== ""
@@ -375,12 +539,40 @@ export function createForgeRuntimeStateFromSession(
                         (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
                       )
                     : [],
+                  preflightId:
+                    typeof synthesis.provenance.preflightId === "string" &&
+                    synthesis.provenance.preflightId.trim() !== ""
+                      ? synthesis.provenance.preflightId
+                      : null,
                   preflightWarnings: Array.isArray(synthesis.provenance.preflightWarnings)
                     ? synthesis.provenance.preflightWarnings.filter(
                         (entry): entry is string => typeof entry === "string" && entry.trim() !== ""
                       )
                     : [],
+                  runId:
+                    typeof synthesis.provenance.runId === "string" &&
+                    synthesis.provenance.runId.trim() !== ""
+                      ? synthesis.provenance.runId
+                      : null,
+                  sessionRevision:
+                    typeof synthesis.provenance.sessionRevision === "number" &&
+                    Number.isFinite(synthesis.provenance.sessionRevision)
+                      ? Math.max(0, Math.trunc(synthesis.provenance.sessionRevision))
+                      : null,
                 }
+              : null,
+          runId:
+            typeof synthesis.runId === "string" && synthesis.runId.trim() !== ""
+              ? synthesis.runId
+              : runId,
+          sessionRevision:
+            typeof synthesis.sessionRevision === "number" &&
+            Number.isFinite(synthesis.sessionRevision)
+              ? Math.max(0, Math.trunc(synthesis.sessionRevision))
+              : sessionRevision,
+          snapshotHash:
+            typeof synthesis.snapshotHash === "string" && synthesis.snapshotHash.trim() !== ""
+              ? synthesis.snapshotHash
               : null,
         }))
       : [],
@@ -398,6 +590,9 @@ export function createForgeSessionFromRuntimeState(
     schemaVersion: FORGE_SESSION_SCHEMA_VERSION,
     id: state.activeSessionId ?? previous?.id ?? "",
     roomId: FORGE_ROOM_ID,
+    artifactStore: state.artifactStore,
+    contextDigest: state.contextDigest,
+    ownerScopeId: state.ownerScopeId,
     goal: state.currentGoal,
     draftTasks: state.draftTasks,
     draftSourceText: state.draftSourceText,
@@ -411,7 +606,9 @@ export function createForgeSessionFromRuntimeState(
     selectedSynthesisId: state.selectedSynthesisId,
     preflight: state.preflight,
     sessionContextSelection: state.sessionContextSelection,
+    sessionRevision: state.sessionRevision,
     runOverride: state.runOverride,
+    runId: state.runId,
     runSignature: state.runSignature,
     exports: state.exports,
     coordinatorState: state.coordinatorState,

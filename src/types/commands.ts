@@ -58,12 +58,17 @@ export interface SlotBridgeReply {
   provider?: string | null;
   conversationId?: string | null;
   messageId?: string | null;
+  brokerMessageId?: string | null;
+  clientRequestId?: string | null;
+  eventSeq?: number | null;
   attachments?: SlotBridgeAttachmentDescriptor[];
 }
 
 export interface SlotBridgeEnvelope {
   version?: number;
   reqId?: string;
+  clientRequestId?: string;
+  brokerMessageId?: string;
   action: SlotBridgeAction;
   fromSlot?: CommandProvider;
   toSlot?: CommandProvider | null;
@@ -117,6 +122,8 @@ export interface CommandResult {
 export interface SlotBridgeResult extends CommandResult {
   ok?: boolean;
   reqId?: string;
+  clientRequestId?: string;
+  brokerMessageId?: string;
   code?: string;
   reply?: SlotBridgeReply | null;
   session?: SlotBridgeSessionRef | null;

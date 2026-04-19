@@ -5,7 +5,7 @@ import type {
   ForgeRunOverride,
   ForgeSessionContextSelection,
 } from "../shared/types/index.js";
-import { resolveForgeArchitectSeatId } from "../shared/types/index.js";
+import { buildContextDigest } from "./forge-context-digest.js";
 import { buildForgeSelectedOperatorProfile } from "./forge-preflight-metadata.js";
 type ForgePreflightStage =
   | "before-draft"
@@ -13,33 +13,6 @@ type ForgePreflightStage =
   | "approved-pending-dispatch"
   | "dispatch-started"
   | "synthesis-selected";
-
-function normalizeProfileFingerprint(profile: {
-  skills: ForgeOperatorProfile["skills"];
-  equipment: ForgeOperatorProfile["equipment"];
-}): string {
-  return JSON.stringify({
-    skills: profile.skills,
-    equipment: profile.equipment,
-  });
-}
-
-function normalizeSelectionFingerprint(selection: ForgeSessionContextSelection): string {
-  return JSON.stringify({
-    skillKeys: selection.skillKeys,
-    equipmentKeys: selection.equipmentKeys,
-  });
-}
-
-function normalizeRunOverrideFingerprint(runOverride: ForgeRunOverride | null): string {
-  return JSON.stringify({
-    architectSeatId: resolveForgeArchitectSeatId(runOverride),
-    mode: runOverride?.mode ?? null,
-    notes: runOverride?.notes.trim() ?? "",
-    riskTolerance: runOverride?.riskTolerance ?? null,
-    temporaryConditions: [...(runOverride?.temporaryConditions ?? [])].sort(),
-  });
-}
 
 export function readForgePreflightInvalidationReason(params: {
   goal: ForgeGoal;
@@ -55,36 +28,23 @@ export function readForgePreflightInvalidationReason(params: {
       : (preflight.staleReason ?? "Preflight data is unavailable.");
   }
 
-  if (
-    normalizeSelectionFingerprint(preflight.bundle.sessionContextSelection) !==
-    normalizeSelectionFingerprint(sessionContextSelection)
-  ) {
-    return "Session context changed after the last preflight run.";
-  }
-
   const selectedOperatorProfile = buildForgeSelectedOperatorProfile({
     operatorProfile,
     sessionContextSelection,
   });
-  if (
-    normalizeProfileFingerprint(preflight.bundle.selectedOperatorProfile) !==
-    normalizeProfileFingerprint(selectedOperatorProfile)
-  ) {
-    return "Selected operator context changed after the last preflight run.";
-  }
-
-  if (
-    normalizeRunOverrideFingerprint(preflight.bundle.runOverride) !==
-    normalizeRunOverrideFingerprint(runOverride)
-  ) {
-    return "Run override changed after the last preflight run.";
-  }
-
-  if (
-    preflight.bundle.targetRoomContext?.targetRoomId &&
-    preflight.bundle.targetRoomContext.targetRoomId !== goal.targetRoomId
-  ) {
-    return "Target room changed after the last preflight run.";
+  const expectedContextDigest = buildContextDigest({
+    goal,
+    preflightInputFields: {
+      enableRovoPreAnalysis: runOverride?.enableRovoPreAnalysis === true,
+    },
+    runOverride,
+    selectedOperatorProfile,
+    sessionContextSelection,
+  });
+  const activeDigest =
+    preflight.expectedContextDigest ?? preflight.contextDigest ?? preflight.bundle.contextDigest;
+  if (activeDigest !== expectedContextDigest) {
+    return "Forge run context changed after the last preflight run.";
   }
 
   if (preflight.status === "stale" && preflight.staleReason) {

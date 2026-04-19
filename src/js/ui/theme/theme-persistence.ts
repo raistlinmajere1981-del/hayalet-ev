@@ -48,7 +48,12 @@ export function createThemeChannel(channelName: string): BroadcastChannel | null
   }
 
   try {
-    return new BroadcastChannel(channelName);
+    const channel = new BroadcastChannel(channelName);
+    const unref = (channel as BroadcastChannel & { unref?: (() => void) | undefined }).unref;
+    if (typeof unref === "function") {
+      unref.call(channel);
+    }
+    return channel;
   } catch {
     return null;
   }

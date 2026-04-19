@@ -10,6 +10,7 @@ const { AppState } = await import("../../src/js/modules/app-state.ts");
 const { AssistantProviderRegistry } = await import(
   "../../src/js/pages/assistant/provider-registry.ts"
 );
+const { SettingsManager } = await import("../../src/js/modules/settings-manager.ts");
 
 type ElectronApiMock = {
   us1SendMessage?: (params: Record<string, unknown>) => Promise<unknown>;
@@ -318,6 +319,97 @@ test(
       assert.equal(sentProvider, "ai1");
       assert.equal(sentText.startsWith("Auto-connect now"), true);
     } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge retry send is idempotent with the same clientRequestId",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness();
+    let sendCount = 0;
+    let seenBrokerMessageId = "";
+
+    try {
+      harness.coreEngine.sendBatchInternal = async () => {
+        throw new Error("sendBatch should not run for single-target text sends");
+      };
+      harness.coreEngine.sendMessageInternal = async (payload) => {
+        sendCount += 1;
+        seenBrokerMessageId =
+          typeof payload?.brokerMessageId === "string" ? payload.brokerMessageId : "";
+        return { success: true };
+      };
+
+      const first = await slotBridgeHandler({
+        action: "message.send",
+        clientRequestId: "client-req-1",
+        fromSlot: "user",
+        payload: { text: "Only once" },
+        toSlot: "ai1",
+      });
+      const second = await slotBridgeHandler({
+        action: "message.send",
+        clientRequestId: "client-req-1",
+        fromSlot: "user",
+        payload: { text: "Only once" },
+        toSlot: "ai1",
+      });
+
+      assert.equal(first.success, true);
+      assert.equal(second.success, true);
+      assert.equal(sendCount, 1);
+      assert.equal(first.clientRequestId, "client-req-1");
+      assert.equal(second.clientRequestId, "client-req-1");
+      assert.equal(typeof first.brokerMessageId, "string");
+      assert.equal(first.brokerMessageId, second.brokerMessageId);
+      assert.equal(first.brokerMessageId, seenBrokerMessageId);
+    } finally {
+      harness.restore();
+    }
+  }
+);
+
+test(
+  "SlotBridge forwards explicit US1 remote routing to the server without mutating settings",
+  { concurrency: false },
+  async () => {
+    const harness = createHarness();
+    const originalPatch = SettingsManager.patch;
+    const sendCalls: Array<Record<string, unknown>> = [];
+
+    try {
+      SettingsManager.patch = async () => {
+        throw new Error("Settings patch should not run for US1 remote selection");
+      };
+      harness.windowRef.electronAPI = {
+        us1SendMessage: async (params = {}) => {
+          sendCalls.push({ ...params });
+          return {
+            success: true,
+            remoteUserId: "beta@example.com",
+            localSessionId: "beta-session",
+            conversationId: "conv-beta",
+          };
+        },
+      };
+
+      const result = await slotBridgeHandler({
+        action: "message.send",
+        fromSlot: "user",
+        toSlot: "us1",
+        remoteUserId: "beta@example.com",
+        payload: { text: "Ping beta" },
+      });
+
+      assert.equal(result.success, true);
+      assert.equal(sendCalls.length, 1);
+      assert.equal(sendCalls[0]?.remoteUserId, "beta@example.com");
+      assert.match(String(sendCalls[0]?.text ?? ""), /Ping beta/);
+    } finally {
+      SettingsManager.patch = originalPatch;
       harness.restore();
     }
   }

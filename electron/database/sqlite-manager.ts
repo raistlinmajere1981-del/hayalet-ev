@@ -54,6 +54,66 @@ function ensureConversationSchema(db: BetterSqlite3Database): void {
   `);
 }
 
+function ensureMessageSchema(db: BetterSqlite3Database): void {
+  if (!hasColumn(db, "messages", "broker_message_id")) {
+    db.exec("ALTER TABLE messages ADD COLUMN broker_message_id TEXT");
+  }
+  if (!hasColumn(db, "messages", "provider_message_id")) {
+    db.exec("ALTER TABLE messages ADD COLUMN provider_message_id TEXT");
+  }
+  if (!hasColumn(db, "messages", "client_request_id")) {
+    db.exec("ALTER TABLE messages ADD COLUMN client_request_id TEXT");
+  }
+  if (!hasColumn(db, "messages", "event_seq")) {
+    db.exec("ALTER TABLE messages ADD COLUMN event_seq INTEGER");
+  }
+  if (!hasColumn(db, "messages", "projection_event_seq")) {
+    db.exec("ALTER TABLE messages ADD COLUMN projection_event_seq INTEGER");
+  }
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_msg_event_seq ON messages(conversation_id, event_seq);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_msg_broker_identity
+    ON messages(conversation_id, broker_message_id)
+    WHERE broker_message_id IS NOT NULL AND broker_message_id != '';
+    CREATE INDEX IF NOT EXISTS idx_msg_provider_identity
+    ON messages(conversation_id, provider_message_id);
+  `);
+}
+
+function ensureMessageEventSchema(db: BetterSqlite3Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS message_events (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      message_id TEXT NOT NULL,
+      broker_message_id TEXT,
+      provider_message_id TEXT,
+      client_request_id TEXT,
+      event_seq INTEGER NOT NULL,
+      role TEXT,
+      author TEXT,
+      content TEXT,
+      dom_index INTEGER,
+      dom_id TEXT,
+      content_hash TEXT,
+      projection_event_seq INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+      FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_msg_events_conversation_seq
+    ON message_events(conversation_id, event_seq ASC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_msg_events_broker_identity
+    ON message_events(conversation_id, broker_message_id)
+    WHERE broker_message_id IS NOT NULL AND broker_message_id != '';
+    CREATE INDEX IF NOT EXISTS idx_msg_events_provider_identity
+    ON message_events(conversation_id, provider_message_id);
+  `);
+}
+
 function initializeSchema(db: BetterSqlite3Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS conversations (
@@ -96,6 +156,9 @@ function initializeSchema(db: BetterSqlite3Database): void {
     CREATE INDEX IF NOT EXISTS idx_msg_content ON messages(content);
     CREATE INDEX IF NOT EXISTS idx_msg_dom ON messages(conversation_id, dom_index);
   `);
+
+  ensureMessageSchema(db);
+  ensureMessageEventSchema(db);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS attachments (

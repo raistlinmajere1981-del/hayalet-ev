@@ -30,12 +30,16 @@ export interface Conversation {
 export interface Message {
   id: string;
   conversation_id: string;
+  broker_message_id?: string | null;
+  client_request_id?: string | null;
+  event_seq?: number | null;
   role: "user" | "assistant";
   author: string | null;
   content: string;
   dom_index: number | null;
   dom_id: string | null;
   content_hash: string | null;
+  provider_message_id?: string | null;
   created_at: number;
 }
 
@@ -53,6 +57,7 @@ export interface Attachment {
 
 export interface SyncMessagesParams {
   accountId: string;
+  clientRequestId?: string;
   provider?: string;
   webUrl: string;
   messages: Array<{
@@ -60,10 +65,13 @@ export interface SyncMessagesParams {
     text: string;
     // NOTE: Sender nickname preserves the real sender in relay/++cmd scenarios.
     author?: string;
+    brokerMessageId?: string;
+    eventSeq?: number;
     index?: number;
     domIndex?: number;
     domId?: string;
     contentHash?: string;
+    providerMessageId?: string;
   }>;
   authors?: {
     user?: string;
@@ -75,6 +83,9 @@ export interface SyncMessagesResult {
   success: boolean;
   conversationId?: string;
   added?: number;
+  droppedDuplicates?: number;
+  lastEventSeq?: number;
+  syncedCount?: number;
   total?: number;
   error?: string;
 }

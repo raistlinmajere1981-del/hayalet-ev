@@ -21,6 +21,7 @@ export interface ForgeRuntimeSnapshot {
   assignments: ForgeTaskAssignment[];
   conflicts: ForgeConflict[];
   coordinatorState: ForgeRuntimeState["coordinatorState"];
+  contextDigest: string | null;
   currentGoal: ForgeGoal | null;
   draftTasks: ForgeTask[];
   draftSourceText: string | null;
@@ -31,7 +32,9 @@ export interface ForgeRuntimeSnapshot {
   operatorProfile: ForgeOperatorProfile;
   preflight: ForgePreflightState;
   responses: ForgeAgentResponse[];
+  runId: string | null;
   sessionContextSelection: ForgeSessionContextSelection;
+  sessionRevision: number;
   runOverride: ForgeRunOverride | null;
   runSignature: ForgeRunSignature | null;
   selectedSynthesisId: string | null;
@@ -53,12 +56,15 @@ export function createForgeRuntimeSnapshot(
     decisionTrace: state.decisionTrace,
     approvedTasks: state.approvedTasks,
     assignments: state.assignments,
+    contextDigest: state.contextDigest,
     exports: state.exports,
     exportSummary,
     operatorProfile: state.operatorProfile,
     preflight: state.preflight,
     responses: state.responses,
+    runId: state.runId,
     sessionContextSelection: state.sessionContextSelection,
+    sessionRevision: state.sessionRevision,
     runOverride: state.runOverride,
     runSignature: state.runSignature,
     conflicts: state.conflicts,

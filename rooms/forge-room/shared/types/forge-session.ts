@@ -6,6 +6,7 @@ import type {
   ForgeSessionContextSelection,
 } from "./forge-preflight.js";
 import type {
+  ForgeRunArtifactStore,
   ForgeEventLog,
   ForgeTask,
   ForgeTaskAssignment,
@@ -20,6 +21,9 @@ export interface ForgeSession {
   schemaVersion: number;
   id: string;
   roomId: string;
+  artifactStore: ForgeRunArtifactStore;
+  contextDigest: string | null;
+  ownerScopeId: string;
   goal: ForgeGoal | null;
   draftTasks: ForgeTask[];
   draftSourceText: string | null;
@@ -33,7 +37,9 @@ export interface ForgeSession {
   decisionTrace: string[];
   preflight: ForgePreflightState;
   sessionContextSelection: ForgeSessionContextSelection;
+  sessionRevision: number;
   runOverride: ForgeRunOverride | null;
+  runId: string | null;
   runSignature: ForgeRunSignature | null;
   exports: ForgeHandoffExportRecord[];
   coordinatorState: ForgeCoordinatorState;

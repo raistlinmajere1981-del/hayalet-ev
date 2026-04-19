@@ -50,6 +50,7 @@ export interface ForgeRoomSnapshot {
   assignments: ForgeTaskAssignment[];
   conflicts: ForgeConflict[];
   coordinatorState: ForgeCoordinatorState;
+  contextDigest: string | null;
   currentGoal: ForgeGoal | null;
   draftTasks: ForgeTask[];
   draftSourceText: string | null;
@@ -60,7 +61,9 @@ export interface ForgeRoomSnapshot {
   operatorProfile: ForgeOperatorProfile;
   preflight: ForgePreflightState;
   responses: ForgeAgentResponse[];
+  runId: string | null;
   sessionContextSelection: ForgeSessionContextSelection;
+  sessionRevision: number;
   runOverride: ForgeRunOverride | null;
   runSignature: ForgeRunSignature | null;
   selectedSynthesisId: string | null;
@@ -105,6 +108,7 @@ export interface ForgeUiState {
 export function createEmptyForgeRoomSnapshot(): ForgeRoomSnapshot {
   return {
     activeSessionId: null,
+    contextDigest: null,
     currentGoal: null,
     draftTasks: [],
     draftSourceText: null,
@@ -127,6 +131,8 @@ export function createEmptyForgeRoomSnapshot(): ForgeRoomSnapshot {
     operatorProfile: createDefaultForgeOperatorProfile(),
     preflight: createEmptyForgePreflightState(),
     sessionContextSelection: createEmptyForgeSessionContextSelection(),
+    runId: null,
+    sessionRevision: 0,
     runOverride: null,
     runSignature: null,
     conflicts: [],

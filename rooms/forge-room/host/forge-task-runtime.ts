@@ -27,6 +27,7 @@ import {
   toRecord,
   uniqueStrings,
 } from "./forge-runtime-support.js";
+import { serializeForAI2 } from "./forge-stage-serializers.js";
 
 function readRoleForSeat(seatId: ForgeSeatId): ForgeRoleId {
   const role = Object.values(FORGE_ROLE_CATALOG).find(
@@ -38,7 +39,14 @@ function readRoleForSeat(seatId: ForgeSeatId): ForgeRoleId {
   );
 }
 
-export function createAssignmentsForApprovedTasks(tasks: ForgeTask[]): ForgeTaskAssignment[] {
+export function createAssignmentsForApprovedTasks(
+  tasks: ForgeTask[],
+  runContext: {
+    contextDigest: string | null;
+    runId: string | null;
+    sessionRevision: number | null;
+  }
+): ForgeTaskAssignment[] {
   const timestamp = nowIso();
   return tasks
     .filter((task) => task.assignable === true && task.level === 1)
@@ -46,6 +54,7 @@ export function createAssignmentsForApprovedTasks(tasks: ForgeTask[]): ForgeTask
       const primarySeatId = task.seatId ?? "ai1";
       const primaryRoleId = task.roleId ?? readRoleForSeat(primarySeatId);
       const primaryAssignment: ForgeTaskAssignment = {
+        contextDigest: runContext.contextDigest,
         id: createForgeId("forge-assignment"),
         taskId: task.id,
         mode: task.dispatchMode,
@@ -53,6 +62,8 @@ export function createAssignmentsForApprovedTasks(tasks: ForgeTask[]): ForgeTask
         roleId: primaryRoleId,
         personaPresetId: task.personaPresetId,
         requestId: createForgeId("forge-request"),
+        runId: runContext.runId,
+        sessionRevision: runContext.sessionRevision,
         startedAt: null,
         status: "queued",
         queuedAt: timestamp,
@@ -66,6 +77,7 @@ export function createAssignmentsForApprovedTasks(tasks: ForgeTask[]): ForgeTask
           ? task.compareSeatIds
               .filter((seatId) => seatId !== primarySeatId)
               .map((seatId) => ({
+                contextDigest: runContext.contextDigest,
                 id: createForgeId("forge-assignment"),
                 taskId: task.id,
                 mode: task.dispatchMode,
@@ -73,6 +85,8 @@ export function createAssignmentsForApprovedTasks(tasks: ForgeTask[]): ForgeTask
                 roleId: readRoleForSeat(seatId),
                 personaPresetId: task.personaPresetId,
                 requestId: createForgeId("forge-request"),
+                runId: runContext.runId,
+                sessionRevision: runContext.sessionRevision,
                 startedAt: null,
                 status: "queued" as const,
                 queuedAt: timestamp,
@@ -100,6 +114,13 @@ export function buildForgeTaskPrompt(params: {
   const dependencies = approvedTasks
     .filter((candidate) => task.dependsOnTaskIds.includes(candidate.id))
     .map((candidate) => candidate.title);
+  const allowedPayload = serializeForAI2({
+    bundle: null,
+    decisionTrace: [],
+    goal,
+    task,
+    taskContextCapsule: task.contextCapsule ?? null,
+  });
 
   return [
     "Return JSON only using this exact schema:",
@@ -119,13 +140,9 @@ export function buildForgeTaskPrompt(params: {
       null,
       2
     ),
-    `Target room: ${goal.targetRoomId.trim() || "not specified yet"}`,
-    `Goal summary: ${goal.summary}`,
-    `Goal brief: ${goal.brief || "No additional brief provided."}`,
+    `Allowed payload:\n${JSON.stringify(allowedPayload, null, 2)}`,
     `Role: ${assignment.roleId}`,
     `Seat: ${assignment.seatId}`,
-    `Task title: ${task.title}`,
-    `Task summary: ${task.summary}`,
     `Task mode: ${task.dispatchMode}`,
     `Dependencies: ${dependencies.length > 0 ? dependencies.join(" | ") : "None"}`,
     `Constraints: ${goal.constraints.length > 0 ? goal.constraints.join(" | ") : "None"}`,
@@ -245,10 +262,13 @@ export function createForgeTaskResponse(params: {
   return {
     id: createForgeId("forge-response"),
     assignmentId: assignment.id,
+    contextDigest: assignment.contextDigest,
     taskId: task.id,
     seatId: assignment.seatId,
     roleId: assignment.roleId,
     personaPresetId: assignment.personaPresetId,
+    runId: assignment.runId,
+    sessionRevision: assignment.sessionRevision,
     summary: payload.summary,
     body: payload.body,
     rawText: rawText.trim(),
@@ -360,8 +380,12 @@ function buildDecisionTrace(params: {
 
 export function createForgeSynthesisCandidate(params: {
   conflicts: ForgeConflict[];
+  contextDigest?: string | null;
   goal: ForgeGoal;
+  preflightId?: string | null;
   responses: ForgeAgentResponse[];
+  runId?: string | null;
+  sessionRevision?: number | null;
   tasks: ForgeTask[];
 }): ForgeSynthesis | null {
   const { conflicts, goal, responses, tasks } = params;
@@ -409,7 +433,12 @@ export function createForgeSynthesisCandidate(params: {
   const acceptanceCriteria = buildAcceptanceCriteria(goal, tasks, preferredResponses);
   const openQuestions = buildOpenQuestions(conflicts, taskTitles);
   return {
+    contextDigest: params.contextDigest ?? null,
     id: createForgeId("forge-synthesis"),
+    preflightId: params.preflightId ?? null,
+    runId: params.runId ?? null,
+    sessionRevision: params.sessionRevision ?? null,
+    snapshotHash: null,
     summary: `${goal.summary} synthesis`,
     body: preferredResponses
       .map((response) => {
@@ -491,13 +520,23 @@ export function syncApprovedTaskStatuses(params: {
 }
 
 export function createForgeExportRecord(params: {
+  contextDigest: string | null;
   createdBy: ForgeSeatId | "coordinator" | "user";
   filePath: string;
+  ownerScopeId: string;
+  runId: string | null;
+  sessionRevision: number | null;
+  snapshotHash: string | null;
   synthesisId: string;
   targetRoomId: string;
 }): ForgeHandoffExportRecord {
   return {
+    contextDigest: params.contextDigest,
     id: createForgeId("forge-export"),
+    ownerScopeId: params.ownerScopeId,
+    runId: params.runId,
+    sessionRevision: params.sessionRevision,
+    snapshotHash: params.snapshotHash,
     targetRoomId: params.targetRoomId,
     synthesisId: params.synthesisId,
     filePath: params.filePath,

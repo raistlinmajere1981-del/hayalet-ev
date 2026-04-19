@@ -192,6 +192,11 @@ body.is-scroll-locked {
   z-index: 15;
 }
 
+.app-overlay-host__layer[data-overlay-layer="status"].is-active {
+  box-shadow: none;
+  border-color: transparent;
+}
+
 .app-overlay-host__layer[data-overlay-layer="scenario"] {
   inset: var(--overlay-status-top-inset) 0 0;
   z-index: 25;

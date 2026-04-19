@@ -124,6 +124,12 @@ export interface ForgeCoreSystemMetadata {
   sessionId: string | null;
 }
 
+export interface ForgeRunRevision {
+  contextDigest: string;
+  runId: string;
+  sessionRevision: number;
+}
+
 export interface ForgeAppArchitectureSummary {
   exportBoundary: string;
   relevantModules: string[];
@@ -148,9 +154,13 @@ export interface ForgeRovoPreAnalysis {
 export interface ForgePreflightBundle {
   appArchitectureSummary: ForgeAppArchitectureSummary;
   capabilityContext: ForgeCapabilityContext | null;
+  contextDigest: string;
   constraints: string[];
   coreSystemMetadata: ForgeCoreSystemMetadata;
   createdAt: string;
+  preflightId: string;
+  runId: string;
+  sessionRevision: number;
   selectedOperatorProfile: ForgeSelectedOperatorProfile;
   rovoPreAnalysis: ForgeRovoPreAnalysis | null;
   runOverride: ForgeRunOverride | null;
@@ -162,9 +172,14 @@ export interface ForgePreflightBundle {
 export interface ForgePreflightState {
   activeStepId: ForgePreflightStepId | null;
   bundle: ForgePreflightBundle | null;
+  contextDigest: string | null;
   errorMessage: string | null;
+  expectedContextDigest: string | null;
+  preflightId: string | null;
   promptCharCount: number;
   ranAt: string | null;
+  runId: string | null;
+  sessionRevision: number | null;
   staleReason: string | null;
   status: ForgePreflightStatus;
   warnings: string[];
@@ -177,9 +192,13 @@ export interface ForgeRunSignature {
 }
 
 export interface ForgeSynthesisProvenance {
+  contextDigest: string | null;
   operatorProfileSummary: string[];
+  preflightId: string | null;
   preflightWarnings: string[];
+  runId: string | null;
   runSignature: string | null;
+  sessionRevision: number | null;
 }
 
 function trimString(value: unknown): string | null {
@@ -517,9 +536,14 @@ export function createEmptyForgePreflightState(): ForgePreflightState {
   return {
     activeStepId: null,
     bundle: null,
+    contextDigest: null,
     errorMessage: null,
+    expectedContextDigest: null,
+    preflightId: null,
     promptCharCount: 0,
     ranAt: null,
+    runId: null,
+    sessionRevision: null,
     staleReason: null,
     status: "idle",
     warnings: [],

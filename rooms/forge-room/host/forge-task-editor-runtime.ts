@@ -269,8 +269,15 @@ export function updateForgeApprovedTask(params: {
   };
 }
 
-export function rebuildQueuedAssignments(approvedTasks: ForgeTask[]) {
-  return createAssignmentsForApprovedTasks(approvedTasks);
+export function rebuildQueuedAssignments(
+  approvedTasks: ForgeTask[],
+  runContext: {
+    contextDigest: string | null;
+    runId: string | null;
+    sessionRevision: number | null;
+  }
+) {
+  return createAssignmentsForApprovedTasks(approvedTasks, runContext);
 }
 
 export function updateForgeTaskContextCapsule(params: {

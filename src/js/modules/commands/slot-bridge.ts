@@ -1,5 +1,4 @@
 import { generateUniqueId } from "../../constants/index.js";
-import { buildRemoteEmailAccountId } from "@shared/archive.js";
 import {
   getErrorMessage,
   type CommandPayload,
@@ -21,10 +20,10 @@ import { RoomCommandRegistry } from "../rooms/room-command-registry.js";
 import { SlotController, SlotState } from "../slot-controller.js";
 import { SettingsManager } from "../settings-manager.js";
 import { TrafficManager } from "../traffic-manager.js";
-import { ThemeManager } from "../../ui/theme/index.js";
 import { replaceProtocolTagsWithResolver } from "../../../../shared/protocol-tags.js";
 import { resolveOpencodeUiDbPath } from "../../pages/assistant/opencode-preferences.js";
 import { AssistantProviderRegistry } from "../../pages/assistant/provider-registry.js";
+import { hashString } from "../webview/providers/shared/scraper-helpers.js";
 import {
   getSlotBridgeCoreEngine,
   registerSlotBridgeHandler,
@@ -73,6 +72,7 @@ const SLOT_BRIDGE_ACTION_SET = new Set<string>(SLOT_BRIDGE_ACTIONS);
 const SLOT_BRIDGE_TIMEOUT_MS = 45_000;
 const SLOT_BRIDGE_READY_WAIT_TIMEOUT_MS = 60_000;
 const SLOT_BRIDGE_READY_POLL_INTERVAL_MS = 250;
+const SLOT_BRIDGE_IDEMPOTENCY_TTL_MS = 5 * 60_000;
 
 const SLOT_BRIDGE_ACTION_CATEGORIES: Record<SlotBridgeActionKey, SlotBridgeActionCategory[]> = {
   "message.send": ["ai0", "ai1-ai2", "us1"],
@@ -90,6 +90,15 @@ const SLOT_BRIDGE_AUTO_CONNECT_ACTIONS = new Set<SlotBridgeActionKey>([
   "session.open",
   "session.switch",
 ]);
+
+type SlotBridgeMessageRequestCacheEntry = {
+  brokerMessageId: string;
+  createdAt: number;
+  promise: Promise<SlotBridgeResult>;
+  result?: SlotBridgeResult;
+};
+
+const slotBridgeMessageRequestCache = new Map<string, SlotBridgeMessageRequestCacheEntry>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && Array.isArray(value) === false;
@@ -337,6 +346,8 @@ function readProtocolDescriptor(envelope: SlotBridgeEnvelope): SlotBridgeProtoco
 function hasEnvelopeKeys(source: Record<string, unknown>): boolean {
   const envelopeKeys = [
     "action",
+    "brokerMessageId",
+    "clientRequestId",
     "payload",
     "toSlot",
     "toSlots",
@@ -383,6 +394,8 @@ function buildActionPayload(
   const knownKeys = new Set([
     "version",
     "reqId",
+    "clientRequestId",
+    "brokerMessageId",
     "action",
     "fromSlot",
     "toSlot",
@@ -412,6 +425,8 @@ function buildTopLevelActionPayload(payload: CommandPayload = {}): Record<string
   const knownKeys = new Set([
     "version",
     "reqId",
+    "clientRequestId",
+    "brokerMessageId",
     "action",
     "fromSlot",
     "toSlot",
@@ -442,6 +457,28 @@ function buildTopLevelActionPayload(payload: CommandPayload = {}): Record<string
   }, {});
 }
 
+function buildImplicitSlotBridgeClientRequestId(params: {
+  action: SlotBridgeActionKey;
+  fromSlot: CommandProvider;
+  payloadFingerprint: Record<string, unknown>;
+  replyToSlot: CommandProvider;
+  sessionRef: SlotBridgeSessionRef | null;
+  toSlot: CommandProvider | null;
+  toSlots: CommandProvider[];
+}): string {
+  return `slotbridge-implicit:${hashString(
+    JSON.stringify({
+      action: params.action,
+      fromSlot: params.fromSlot,
+      payloadFingerprint: params.payloadFingerprint,
+      replyToSlot: params.replyToSlot,
+      sessionRef: params.sessionRef,
+      toSlot: params.toSlot,
+      toSlots: params.toSlots,
+    })
+  )}`;
+}
+
 function normalizeEnvelope(payload: CommandPayload = {}): NormalizedSlotBridgeEnvelope {
   const parsedArgs = parseJsonRecord(typeof payload.args === "string" ? payload.args : "") ?? {};
   const directPayload = isRecord(payload["payload"]) ? payload["payload"] : {};
@@ -455,6 +492,7 @@ function normalizeEnvelope(payload: CommandPayload = {}): NormalizedSlotBridgeEn
     payload["sessionRef"] ??
     payload["session"] ??
     null;
+  const sessionRef = readSessionRef(rawSessionRef);
   const fromSlot =
     normalizeCommandProvider(parsedArgs["fromSlot"]) ??
     normalizeCommandProvider(payload["fromSlot"]) ??
@@ -483,6 +521,25 @@ function normalizeEnvelope(payload: CommandPayload = {}): NormalizedSlotBridgeEn
   const requestedAction = parsedArgs["action"] ?? payload["action"];
   const retiredAction = normalizeRetiredSlotBridgeAction(requestedAction);
   const action = normalizeSlotBridgeAction(requestedAction) ?? "message.send";
+  const explicitClientRequestId =
+    typeof parsedArgs["clientRequestId"] === "string" &&
+    parsedArgs["clientRequestId"].trim() !== ""
+      ? parsedArgs["clientRequestId"].trim()
+      : typeof payload["clientRequestId"] === "string" && payload["clientRequestId"].trim() !== ""
+        ? payload["clientRequestId"].trim()
+        : "";
+  const reqId =
+    typeof parsedArgs["reqId"] === "string" && parsedArgs["reqId"].trim() !== ""
+      ? parsedArgs["reqId"].trim()
+      : typeof payload["reqId"] === "string" && payload["reqId"].trim() !== ""
+        ? payload["reqId"].trim()
+        : generateUniqueId("slotbridge");
+  const explicitBrokerMessageId =
+    typeof parsedArgs["brokerMessageId"] === "string" && parsedArgs["brokerMessageId"].trim() !== ""
+      ? parsedArgs["brokerMessageId"].trim()
+      : typeof payload["brokerMessageId"] === "string" && payload["brokerMessageId"].trim() !== ""
+        ? payload["brokerMessageId"].trim()
+        : "";
 
   return {
     version:
@@ -491,12 +548,32 @@ function normalizeEnvelope(payload: CommandPayload = {}): NormalizedSlotBridgeEn
         : typeof payload["version"] === "number" && Number.isFinite(payload["version"])
           ? Math.trunc(payload["version"])
           : 1,
-    reqId:
-      typeof parsedArgs["reqId"] === "string" && parsedArgs["reqId"].trim() !== ""
-        ? parsedArgs["reqId"].trim()
-        : typeof payload["reqId"] === "string" && payload["reqId"].trim() !== ""
-          ? payload["reqId"].trim()
-          : generateUniqueId("slotbridge"),
+    reqId,
+    clientRequestId:
+      explicitClientRequestId !== ""
+        ? explicitClientRequestId
+        : buildImplicitSlotBridgeClientRequestId({
+            action,
+            fromSlot,
+            payloadFingerprint: {
+              args: parsedArgs,
+              attachments: payload["attachments"] ?? directPayload["attachments"] ?? null,
+              fallbackPayload,
+              message:
+                typeof payload["message"] === "string" && payload["message"].trim() !== ""
+                  ? payload["message"].trim()
+                  : null,
+            },
+            replyToSlot,
+            sessionRef,
+            toSlot,
+            toSlots,
+          }),
+    ...(explicitBrokerMessageId !== ""
+      ? {
+          brokerMessageId: explicitBrokerMessageId,
+        }
+      : {}),
     action,
     ...(retiredAction !== null ? { retiredAction } : {}),
     fromSlot,
@@ -517,7 +594,7 @@ function normalizeEnvelope(payload: CommandPayload = {}): NormalizedSlotBridgeEn
       parsedArgs["connectPolicy"] ?? payload["connectPolicy"],
       force
     ),
-    sessionRef: readSessionRef(rawSessionRef),
+    sessionRef,
     payload: buildActionPayload(
       parsedArgs,
       fallbackPayload,
@@ -541,6 +618,12 @@ function buildResult(
   };
   if (typeof envelope.reqId === "string" && envelope.reqId !== "") {
     result.reqId = envelope.reqId;
+  }
+  if (typeof envelope.clientRequestId === "string" && envelope.clientRequestId !== "") {
+    result.clientRequestId = envelope.clientRequestId;
+  }
+  if (typeof envelope.brokerMessageId === "string" && envelope.brokerMessageId !== "") {
+    result.brokerMessageId = envelope.brokerMessageId;
   }
   if (partial.code !== undefined) {
     result.code = partial.code;
@@ -687,28 +770,6 @@ function readActionRemoteUserId(envelope: SlotBridgeEnvelope): string | null {
   return typeof candidate === "string" && candidate.trim() !== "" ? candidate.trim() : null;
 }
 
-async function selectUs1RemoteUser(remoteUserId: string): Promise<boolean> {
-  const normalizedRemoteUserId = remoteUserId.trim();
-  if (normalizedRemoteUserId === "") {
-    return false;
-  }
-
-  const selectedAccountId = buildRemoteEmailAccountId(normalizedRemoteUserId);
-  return await SettingsManager.patch((settings) => {
-    const nextUs1Slot =
-      settings["us1Slot"] !== null &&
-      typeof settings["us1Slot"] === "object" &&
-      Array.isArray(settings["us1Slot"]) === false
-        ? (settings["us1Slot"] as Record<string, unknown>)
-        : {};
-    settings["us1Slot"] = {
-      ...nextUs1Slot,
-      selectedRemoteUserId: normalizedRemoteUserId,
-      selectedAccountId,
-    };
-  });
-}
-
 function buildRequestMarker(reqId: string | undefined): string {
   const normalizedReqId = typeof reqId === "string" ? reqId.trim() : "";
   return normalizedReqId !== "" ? `<!-- hev-req:${normalizedReqId} -->` : "";
@@ -723,6 +784,111 @@ function appendRequestMarker(text: string, envelope: SlotBridgeEnvelope): string
     return text;
   }
   return text !== "" ? `${text}\n${marker}` : marker;
+}
+
+function pruneMessageRequestCache(now = Date.now()): void {
+  for (const [key, entry] of slotBridgeMessageRequestCache.entries()) {
+    if (now - entry.createdAt > SLOT_BRIDGE_IDEMPOTENCY_TTL_MS) {
+      slotBridgeMessageRequestCache.delete(key);
+    }
+  }
+}
+
+function readClientRequestId(envelope: SlotBridgeEnvelope): string {
+  if (typeof envelope.clientRequestId === "string" && envelope.clientRequestId.trim() !== "") {
+    return envelope.clientRequestId.trim();
+  }
+  if (typeof envelope.reqId === "string" && envelope.reqId.trim() !== "") {
+    return envelope.reqId.trim();
+  }
+  return "";
+}
+
+function buildMessageRequestCacheKey(
+  envelope: SlotBridgeEnvelope,
+  targets: UnifiedMessageTarget[],
+  clientRequestId: string
+): string {
+  const sessionId =
+    envelope.sessionRef?.conversationId?.trim() ?? envelope.sessionRef?.id?.trim() ?? "";
+  return [
+    envelope.action,
+    envelope.fromSlot ?? "system",
+    [...targets].sort().join(","),
+    envelope.replyToSlot ?? "",
+    sessionId,
+    clientRequestId,
+  ].join("|");
+}
+
+function buildMessageBrokerMessageId(
+  envelope: SlotBridgeEnvelope,
+  targets: UnifiedMessageTarget[],
+  clientRequestId: string
+): string {
+  const explicitBrokerMessageId =
+    typeof envelope.brokerMessageId === "string" ? envelope.brokerMessageId.trim() : "";
+  if (explicitBrokerMessageId !== "") {
+    return explicitBrokerMessageId;
+  }
+
+  const sessionId =
+    envelope.sessionRef?.conversationId?.trim() ?? envelope.sessionRef?.id?.trim() ?? "";
+  return `broker:${hashString(
+    [
+      envelope.action,
+      envelope.fromSlot ?? "system",
+      [...targets].sort().join(","),
+      envelope.replyToSlot ?? "",
+      sessionId,
+      clientRequestId,
+    ].join("|")
+  )}`;
+}
+
+async function runMessageActionIdempotent(
+  envelope: SlotBridgeEnvelope,
+  targets: UnifiedMessageTarget[],
+  execute: (nextEnvelope: SlotBridgeEnvelope) => Promise<SlotBridgeResult>
+): Promise<SlotBridgeResult> {
+  const clientRequestId = readClientRequestId(envelope);
+  if (clientRequestId === "") {
+    return await execute(envelope);
+  }
+
+  pruneMessageRequestCache();
+  const cacheKey = buildMessageRequestCacheKey(envelope, targets, clientRequestId);
+  const cached = slotBridgeMessageRequestCache.get(cacheKey);
+  if (cached?.result !== undefined) {
+    return cached.result;
+  }
+  if (cached !== undefined) {
+    return await cached.promise;
+  }
+
+  const idempotentEnvelope: SlotBridgeEnvelope = {
+    ...envelope,
+    clientRequestId,
+    brokerMessageId: buildMessageBrokerMessageId(envelope, targets, clientRequestId),
+  };
+
+  const entry: SlotBridgeMessageRequestCacheEntry = {
+    brokerMessageId: idempotentEnvelope.brokerMessageId ?? "",
+    createdAt: Date.now(),
+    promise: Promise.resolve(buildErrorResult(envelope, "SLOT_BRIDGE_FAILED", "Uninitialized")),
+  };
+
+  entry.promise = (async (): Promise<SlotBridgeResult> => {
+    const result = await execute(idempotentEnvelope);
+    entry.result = result;
+    return result;
+  })().catch((error) => {
+    slotBridgeMessageRequestCache.delete(cacheKey);
+    throw error;
+  });
+
+  slotBridgeMessageRequestCache.set(cacheKey, entry);
+  return await entry.promise;
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -1112,7 +1278,17 @@ function resolveAssistantConnectUrl(baseUrl: string, providerId: string): string
         parsed.searchParams.set("dbPath", dbPath);
       }
 
-      parsed.searchParams.set("theme", ThemeManager.current);
+      const themeManager =
+        window.__ThemeManager !== null && typeof window.__ThemeManager === "object"
+          ? (window.__ThemeManager as { current?: unknown })
+          : null;
+      const currentTheme =
+        typeof themeManager?.current === "string" && themeManager.current.trim() !== ""
+          ? themeManager.current.trim()
+          : "";
+      if (currentTheme !== "") {
+        parsed.searchParams.set("theme", currentTheme);
+      }
 
       if (isPackagedFileRoute) {
         return parsed.toString();
@@ -1301,6 +1477,9 @@ interface NormalizedReplyMessage {
   role: string;
   text: string;
   author?: string;
+  brokerMessageId?: string;
+  clientRequestId?: string;
+  eventSeq?: number | null;
 }
 
 function normalizeReplyMessage(value: unknown): NormalizedReplyMessage | null {
@@ -1319,18 +1498,42 @@ function normalizeReplyMessage(value: unknown): NormalizedReplyMessage | null {
     .find((candidate): candidate is string => typeof candidate === "string")
     ?.trim();
   const author = typeof value["author"] === "string" ? value["author"].trim() : "";
+  const brokerMessageId =
+    typeof value["brokerMessageId"] === "string"
+      ? value["brokerMessageId"].trim()
+      : typeof value["broker_message_id"] === "string"
+        ? value["broker_message_id"].trim()
+        : "";
+  const clientRequestId =
+    typeof value["clientRequestId"] === "string"
+      ? value["clientRequestId"].trim()
+      : typeof value["client_request_id"] === "string"
+        ? value["client_request_id"].trim()
+        : "";
+  const eventSeq =
+    typeof value["eventSeq"] === "number" && Number.isFinite(value["eventSeq"])
+      ? Math.trunc(value["eventSeq"])
+      : typeof value["event_seq"] === "number" && Number.isFinite(value["event_seq"])
+        ? Math.trunc(value["event_seq"])
+        : null;
 
   return {
     id,
     role,
     text: text ?? "",
     ...(author !== "" ? { author } : {}),
+    ...(brokerMessageId !== "" ? { brokerMessageId } : {}),
+    ...(clientRequestId !== "" ? { clientRequestId } : {}),
+    ...(eventSeq !== null ? { eventSeq } : {}),
   };
 }
 
 async function listConversationMessages(
   slot: UnifiedMessageTarget,
-  conversationId: string | null
+  conversationId: string | null,
+  options: {
+    afterSeq?: number | null;
+  } = {}
 ): Promise<NormalizedReplyMessage[]> {
   const accountId = AppState.getArchiveAccountIdForProvider(slot);
   if (accountId === null || conversationId === null || conversationId === "") {
@@ -1347,10 +1550,22 @@ async function listConversationMessages(
     return [];
   }
 
-  const raw = await dbGetMessages({
-    accountId,
-    conversationId,
-  });
+  const afterSeq =
+    typeof options.afterSeq === "number" && Number.isFinite(options.afterSeq)
+      ? Math.trunc(options.afterSeq)
+      : undefined;
+  const raw = await dbGetMessages(
+    afterSeq !== undefined
+      ? {
+          accountId,
+          conversationId,
+          afterSeq,
+        }
+      : {
+          accountId,
+          conversationId,
+        }
+  );
   const rows = isRecord(raw) && Array.isArray(raw["data"]) ? raw["data"] : [];
   return rows.flatMap((row) => {
     const normalized = normalizeReplyMessage(row);
@@ -1528,9 +1743,14 @@ function readLatestSyncedReply(
 async function readLatestArchivedReply(
   slot: UnifiedMessageTarget,
   conversationId: string | null,
-  reqId?: string
+  reqId?: string,
+  afterSeq?: number | null
 ): Promise<SlotBridgeReply | null> {
-  const messages = await listConversationMessages(slot, conversationId);
+  const messages = await listConversationMessages(
+    slot,
+    conversationId,
+    afterSeq !== undefined ? { afterSeq } : {}
+  );
   const marker = buildRequestMarker(reqId);
   const requestIndex =
     marker !== ""
@@ -1563,6 +1783,13 @@ async function readLatestArchivedReply(
     provider: AppState.getProviderIdForSlot(slot) ?? slot,
     conversationId,
     messageId: latestAssistant.id,
+    ...(latestAssistant.brokerMessageId !== undefined
+      ? { brokerMessageId: latestAssistant.brokerMessageId }
+      : {}),
+    ...(latestAssistant.clientRequestId !== undefined
+      ? { clientRequestId: latestAssistant.clientRequestId }
+      : {}),
+    ...(latestAssistant.eventSeq !== undefined ? { eventSeq: latestAssistant.eventSeq } : {}),
     attachments,
   };
 }
@@ -1638,7 +1865,12 @@ async function waitForReply(
     const nextConversationId = syncResult.conversationId;
     const reply =
       syncResult.latestReply ??
-      (await readLatestArchivedReply(targetSlot, nextConversationId, envelope.reqId));
+      (await readLatestArchivedReply(
+        targetSlot,
+        nextConversationId,
+        envelope.reqId,
+        previousReply?.eventSeq ?? null
+      ));
     const replyChanged =
       reply !== null &&
       (previousReply?.messageId === undefined || previousReply.messageId !== reply.messageId);
@@ -1890,21 +2122,17 @@ async function sendUs1Message(
 
   const actionPayload = isRecord(envelope.payload) ? envelope.payload : {};
   const remoteUserId = readActionRemoteUserId(envelope);
-  if (remoteUserId !== null) {
-    const selected = await selectUs1RemoteUser(remoteUserId);
-    if (selected !== true) {
-      return buildErrorResult(
-        envelope,
-        "TARGET_SELECTION_FAILED",
-        `US1 remote user ${remoteUserId} could not be selected`
-      );
-    }
-  }
 
   const resultRaw = await send({
+    ...(typeof envelope.clientRequestId === "string" && envelope.clientRequestId !== ""
+      ? { clientRequestId: envelope.clientRequestId }
+      : {}),
+    ...(typeof envelope.brokerMessageId === "string" && envelope.brokerMessageId !== ""
+      ? { brokerMessageId: envelope.brokerMessageId }
+      : {}),
     text,
-    localSessionId:
-      envelope.sessionRef?.id?.trim() ?? envelope.sessionRef?.conversationId?.trim() ?? null,
+    ...(remoteUserId !== null ? { remoteUserId } : {}),
+    localSessionId: envelope.sessionRef?.id?.trim() ?? null,
     attachments: attachments.map((attachment) => ({
       path: attachment.path,
       name: attachment.name,
@@ -1917,10 +2145,15 @@ async function sendUs1Message(
   });
   const result = isRecord(resultRaw) ? resultRaw : {};
   if (result["success"] !== true) {
+    const errorMessage =
+      typeof result["error"] === "string" ? result["error"] : "US1 message could not be sent";
+    if (remoteUserId !== null && /requested us1 remote user/i.test(errorMessage)) {
+      return buildErrorResult(envelope, "TARGET_SELECTION_FAILED", errorMessage);
+    }
     return buildErrorResult(
       envelope,
       "SEND_FAILED",
-      typeof result["error"] === "string" ? result["error"] : "US1 message could not be sent"
+      errorMessage
     );
   }
 
@@ -1947,6 +2180,9 @@ async function sendUs1Message(
       ...(typeof result["archiveMessageId"] === "string" && result["archiveMessageId"] !== ""
         ? { archiveMessageId: result["archiveMessageId"] }
         : {}),
+      ...(typeof result["brokerMessageId"] === "string" && result["brokerMessageId"] !== ""
+        ? { brokerMessageId: result["brokerMessageId"] }
+        : {}),
     },
   });
 }
@@ -1963,6 +2199,12 @@ async function sendAiTargets(
   const sendResult =
     attachments.length > 0 || targets.length > 1 || archiveFolders !== undefined
       ? await coreEngine.sendBatchInternal({
+          ...(typeof envelope.clientRequestId === "string" && envelope.clientRequestId !== ""
+            ? { clientRequestId: envelope.clientRequestId }
+            : {}),
+          ...(typeof envelope.brokerMessageId === "string" && envelope.brokerMessageId !== ""
+            ? { brokerMessageId: envelope.brokerMessageId }
+            : {}),
           targets,
           text,
           page,
@@ -1973,6 +2215,12 @@ async function sendAiTargets(
           })),
         })
       : await coreEngine.sendMessageInternal({
+          ...(typeof envelope.clientRequestId === "string" && envelope.clientRequestId !== ""
+            ? { clientRequestId: envelope.clientRequestId }
+            : {}),
+          ...(typeof envelope.brokerMessageId === "string" && envelope.brokerMessageId !== ""
+            ? { brokerMessageId: envelope.brokerMessageId }
+            : {}),
           text,
           page,
           ...(targets[0] !== undefined ? { provider: targets[0] } : {}),
@@ -2002,115 +2250,125 @@ async function runMessageAction(
     );
   }
 
-  const readyResults = await Promise.all(
-    targets.map(async (target) => ({
-      target,
-      ready: await ensureMessageTarget(target, envelope),
-    }))
+  return await runMessageActionIdempotent(
+    envelope,
+    targets,
+    async (activeEnvelope): Promise<SlotBridgeResult> => {
+      const readyResults = await Promise.all(
+        targets.map(async (target) => ({
+          target,
+          ready: await ensureMessageTarget(target, activeEnvelope),
+        }))
+      );
+      for (const { ready } of readyResults) {
+        if (ready.success !== true) {
+          return buildErrorResult(activeEnvelope, ready.code, ready.message);
+        }
+      }
+
+      let previousReply: SlotBridgeReply | null = null;
+      const primaryTarget = targets[0] ?? null;
+      if (activeEnvelope.wait === true || activeEnvelope.action === "message.sendWait") {
+        if (primaryTarget !== null) {
+          const baselineSync = await syncReplyTarget(
+            primaryTarget,
+            activeEnvelope,
+            activeEnvelope.sessionRef?.conversationId ?? activeEnvelope.sessionRef?.id ?? null
+          );
+          previousReply =
+            baselineSync.latestReply ??
+            (await readLatestArchivedReply(
+              primaryTarget,
+              baselineSync.conversationId,
+              activeEnvelope.reqId
+            ));
+        }
+      }
+
+      const text = appendRequestMarker(await composeActionText(activeEnvelope, payload), activeEnvelope);
+      const page = readActionPage(activeEnvelope, payload);
+      let attachments: ResolvedSendAttachment[] = [];
+      if (Array.isArray(activeEnvelope.attachments) && activeEnvelope.attachments.length > 0) {
+        try {
+          attachments = await resolveSendAttachmentPaths(activeEnvelope);
+        } catch (error) {
+          return buildErrorResult(
+            activeEnvelope,
+            "ATTACHMENT_REFERENCE_REQUIRED",
+            getErrorMessage(error),
+            error
+          );
+        }
+      }
+
+      if (text === "" && attachments.length === 0) {
+        return buildErrorResult(activeEnvelope, "MESSAGE_REQUIRED", "Text is required for this action");
+      }
+
+      const aiTargets = targets.filter((target): target is "ai0" | "ai1" | "ai2" => target !== "us1");
+      const us1Targets = targets.filter((target): target is "us1" => target === "us1");
+
+      if (aiTargets.length > 0) {
+        const aiResult = await sendAiTargets(activeEnvelope, aiTargets, text, attachments, page);
+        if (aiResult.success !== true) {
+          return aiResult;
+        }
+      }
+
+      let us1Result: SlotBridgeResult | null = null;
+      if (us1Targets.length > 0) {
+        if (us1Targets.length > 1 || targets.length > aiTargets.length + 1) {
+          return buildErrorResult(
+            activeEnvelope,
+            "TARGET_UNSUPPORTED",
+            "US1 may only be addressed once per unified send action"
+          );
+        }
+        us1Result = await sendUs1Message(activeEnvelope, text, attachments);
+        if (us1Result.success !== true) {
+          return us1Result;
+        }
+      }
+
+      if (activeEnvelope.wait === true || activeEnvelope.action === "message.sendWait") {
+        if (primaryTarget === null) {
+          return buildErrorResult(activeEnvelope, "TARGET_REQUIRED", "Target slot is required");
+        }
+
+        const waitResult = await waitForReply(activeEnvelope, primaryTarget, previousReply);
+        if (waitResult.success !== true) {
+          return waitResult;
+        }
+
+        const forwardResult = await maybeForwardReplyToOrigin(
+          activeEnvelope,
+          primaryTarget,
+          waitResult.reply ?? null
+        );
+        if (forwardResult.success !== true) {
+          return buildErrorResult(
+            activeEnvelope,
+            "REPLY_FORWARD_FAILED",
+            forwardResult.message ?? "Reply could not be forwarded"
+          );
+        }
+
+        const baseData = isRecord(waitResult.data) ? waitResult.data : {};
+        return buildResult(activeEnvelope, {
+          reply: waitResult.reply ?? null,
+          session: waitResult.session ?? activeEnvelope.sessionRef ?? null,
+          artifacts: waitResult.artifacts ?? [],
+          data: {
+            ...baseData,
+            replyForwarded: forwardResult.forwarded,
+            replyForwardSlot: forwardResult.forwarded ? (activeEnvelope.replyToSlot ?? null) : null,
+          },
+        });
+      }
+
+      return us1Result ?? buildResult(activeEnvelope, { session: activeEnvelope.sessionRef ?? null });
+    }
   );
-  for (const { ready } of readyResults) {
-    if (ready.success !== true) {
-      return buildErrorResult(envelope, ready.code, ready.message);
-    }
-  }
-
-  let previousReply: SlotBridgeReply | null = null;
-  const primaryTarget = targets[0] ?? null;
-  if (envelope.wait === true || envelope.action === "message.sendWait") {
-    if (primaryTarget !== null) {
-      const baselineSync = await syncReplyTarget(
-        primaryTarget,
-        envelope,
-        envelope.sessionRef?.conversationId ?? envelope.sessionRef?.id ?? null
-      );
-      previousReply =
-        baselineSync.latestReply ??
-        (await readLatestArchivedReply(primaryTarget, baselineSync.conversationId, envelope.reqId));
-    }
-  }
-
-  const text = appendRequestMarker(await composeActionText(envelope, payload), envelope);
-  const page = readActionPage(envelope, payload);
-  let attachments: ResolvedSendAttachment[] = [];
-  if (Array.isArray(envelope.attachments) && envelope.attachments.length > 0) {
-    try {
-      attachments = await resolveSendAttachmentPaths(envelope);
-    } catch (error) {
-      return buildErrorResult(
-        envelope,
-        "ATTACHMENT_REFERENCE_REQUIRED",
-        getErrorMessage(error),
-        error
-      );
-    }
-  }
-
-  if (text === "" && attachments.length === 0) {
-    return buildErrorResult(envelope, "MESSAGE_REQUIRED", "Text is required for this action");
-  }
-
-  const aiTargets = targets.filter((target): target is "ai0" | "ai1" | "ai2" => target !== "us1");
-  const us1Targets = targets.filter((target): target is "us1" => target === "us1");
-
-  if (aiTargets.length > 0) {
-    const aiResult = await sendAiTargets(envelope, aiTargets, text, attachments, page);
-    if (aiResult.success !== true) {
-      return aiResult;
-    }
-  }
-
-  let us1Result: SlotBridgeResult | null = null;
-  if (us1Targets.length > 0) {
-    if (us1Targets.length > 1 || targets.length > aiTargets.length + 1) {
-      return buildErrorResult(
-        envelope,
-        "TARGET_UNSUPPORTED",
-        "US1 may only be addressed once per unified send action"
-      );
-    }
-    us1Result = await sendUs1Message(envelope, text, attachments);
-    if (us1Result.success !== true) {
-      return us1Result;
-    }
-  }
-
-  if (envelope.wait === true || envelope.action === "message.sendWait") {
-    if (primaryTarget === null) {
-      return buildErrorResult(envelope, "TARGET_REQUIRED", "Target slot is required");
-    }
-
-    const waitResult = await waitForReply(envelope, primaryTarget, previousReply);
-    if (waitResult.success !== true) {
-      return waitResult;
-    }
-
-    const forwardResult = await maybeForwardReplyToOrigin(
-      envelope,
-      primaryTarget,
-      waitResult.reply ?? null
-    );
-    if (forwardResult.success !== true) {
-      return buildErrorResult(
-        envelope,
-        "REPLY_FORWARD_FAILED",
-        forwardResult.message ?? "Reply could not be forwarded"
-      );
-    }
-
-    const baseData = isRecord(waitResult.data) ? waitResult.data : {};
-    return buildResult(envelope, {
-      reply: waitResult.reply ?? null,
-      session: waitResult.session ?? envelope.sessionRef ?? null,
-      artifacts: waitResult.artifacts ?? [],
-      data: {
-        ...baseData,
-        replyForwarded: forwardResult.forwarded,
-        replyForwardSlot: forwardResult.forwarded ? (envelope.replyToSlot ?? null) : null,
-      },
-    });
-  }
-
-  return us1Result ?? buildResult(envelope, { session: envelope.sessionRef ?? null });
 }
 
 async function runConnectionAction(envelope: SlotBridgeEnvelope): Promise<SlotBridgeResult> {

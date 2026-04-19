@@ -18,6 +18,7 @@ import {
   uniqueStrings,
 } from "./forge-runtime-support.js";
 import { createForgeSynthesisCandidate } from "./forge-task-runtime.js";
+import { serializeForAI1 } from "./forge-stage-serializers.js";
 
 const RESPONSE_SUMMARY_PROMPT_LIMIT = 180;
 const RESPONSE_BODY_PROMPT_LIMIT = 480;
@@ -83,6 +84,11 @@ export function buildForgeSynthesisPrompt(params: {
   const { conflicts, goal, responses, tasks } = params;
   const taskTitles = new Map(tasks.map((task) => [task.id, task.title]));
   const baseline = createForgeSynthesisCandidate(params);
+  const allowedPayload = serializeForAI1({
+    bundle: null,
+    decisionTrace: [],
+    goal,
+  });
   return [
     "Return JSON only using this exact schema:",
     toJsonText({
@@ -94,13 +100,7 @@ export function buildForgeSynthesisPrompt(params: {
       openQuestions: ["Optional open question"],
       decisionTrace: ["One short decision note"],
     }),
-    `Target room: ${goal.targetRoomId}`,
-    `Goal summary: ${goal.summary}`,
-    `Goal brief: ${goal.brief || "No additional brief provided."}`,
-    `Constraints: ${goal.constraints.length > 0 ? goal.constraints.join(" | ") : "None"}`,
-    `Goal acceptance criteria: ${
-      goal.acceptanceCriteria.length > 0 ? goal.acceptanceCriteria.join(" | ") : "None"
-    }`,
+    `Allowed payload:\n${toJsonText(allowedPayload)}`,
     "Responses:",
     formatResponsesForPrompt(responses, taskTitles),
     "Conflicts:",
@@ -205,7 +205,12 @@ export function parseForgeSynthesisResponse(params: {
 
   return {
     synthesis: {
+      contextDigest: null,
       id: createForgeId("forge-synthesis"),
+      preflightId: null,
+      runId: null,
+      sessionRevision: null,
+      snapshotHash: null,
       summary,
       body,
       sourceTaskIds,

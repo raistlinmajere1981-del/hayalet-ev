@@ -40,6 +40,66 @@ export function uniqueStrings(values: string[]): string[] {
   });
 }
 
+function canonicalizeValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => canonicalizeValue(entry));
+  }
+
+  if (value !== null && typeof value === "object") {
+    return Object.keys(value as Record<string, unknown>)
+      .sort((left, right) => left.localeCompare(right))
+      .reduce<Record<string, unknown>>((acc, key) => {
+        const nextValue = canonicalizeValue((value as Record<string, unknown>)[key]);
+        if (nextValue !== undefined) {
+          acc[key] = nextValue;
+        }
+        return acc;
+      }, {});
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value;
+}
+
+export function stableSerialize(value: unknown): string {
+  return JSON.stringify(canonicalizeValue(value));
+}
+
+export function hashStableValue(value: unknown): string {
+  const text = stableSerialize(value);
+  let hash = 2166136261;
+
+  for (const character of text) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+
+  return hash.toString(16).padStart(8, "0");
+}
+
+export function deepClone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export function deepFreeze<T>(value: T): T {
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+
+  Object.freeze(value);
+  for (const nested of Object.values(value as Record<string, unknown>)) {
+    deepFreeze(nested);
+  }
+  return value;
+}
+
+export function createImmutableSnapshot<T>(value: T): T {
+  return deepFreeze(deepClone(value));
+}
+
 export function extractJsonValue(rawText: string): unknown | null {
   const trimmed = rawText.trim();
   if (trimmed === "") {

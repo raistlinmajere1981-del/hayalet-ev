@@ -124,20 +124,24 @@ function labelSkill(record: ForgeOperatorSkillRecord): string {
   );
 }
 
-function labelEquipment(record: ForgeOperatorEquipmentRecord): string {
+function labelEquipment(
+  record: ForgeOperatorEquipmentRecord,
+  options: { includeBrandModel?: boolean } = {}
+): string {
   const base =
     (typeof record.label === "string" ? record.label.trim() : "") ||
     titleCaseRoomId(record.equipmentKey);
-  return record.brandModel ? `${base} (${record.brandModel})` : base;
+  return options.includeBrandModel === true && record.brandModel ? `${base} (${record.brandModel})` : base;
 }
 
 function listEquipmentByStatus(
   records: ForgeOperatorEquipmentRecord[],
-  status: ForgeOperatorEquipmentRecord["status"]
+  status: ForgeOperatorEquipmentRecord["status"],
+  options: { includeBrandModel?: boolean } = {}
 ): string[] {
   return records
     .filter((record) => record.status === status)
-    .map((record) => labelEquipment(record));
+    .map((record) => labelEquipment(record, options));
 }
 
 export function listForgeCapabilityDescriptors(): ForgeCapabilityDescriptor[] {
@@ -226,6 +230,7 @@ export function buildForgeSelectedOperatorProfile(params: {
 }
 
 export function summarizeForgeSelectedOperatorContext(params: {
+  includeSensitiveFields?: boolean;
   runOverride: ForgeRunOverride | null;
   selectedOperatorProfile: ForgeSelectedOperatorProfile;
   sessionContextSelection: ForgeSessionContextSelection;
@@ -297,7 +302,7 @@ export function summarizeForgeSelectedOperatorContext(params: {
       (runOverride?.temporaryConditions.length ?? 0) > 0
         ? `Temporary conditions: ${runOverride?.temporaryConditions.join("; ")}.`
         : null,
-      runOverride?.notes.trim()
+      params.includeSensitiveFields === true && runOverride?.notes.trim()
         ? `Run override note: ${runOverride.notes.trim().slice(0, 180)}.`
         : null,
     ].filter((entry): entry is string => typeof entry === "string" && entry.trim() !== "")
@@ -306,6 +311,7 @@ export function summarizeForgeSelectedOperatorContext(params: {
 
 export function buildForgeDerivedConstraints(params: {
   goal: ForgeGoal;
+  includeSensitiveFields?: boolean;
   runOverride: ForgeRunOverride | null;
   selectedOperatorProfile: ForgeSelectedOperatorProfile;
 }): string[] {
@@ -345,7 +351,7 @@ export function buildForgeDerivedConstraints(params: {
   for (const condition of runOverride?.temporaryConditions ?? []) {
     derived.push(`Temporary run condition: ${condition}`);
   }
-  if (runOverride?.notes.trim()) {
+  if (params.includeSensitiveFields === true && runOverride?.notes.trim()) {
     derived.push(`Run note: ${runOverride.notes.trim()}`);
   }
 

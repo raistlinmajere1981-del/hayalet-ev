@@ -53,7 +53,12 @@ export interface ForgeSelectedSynthesisRecord {
 export interface ForgeHandoffPackage {
   schemaVersion: number;
   targetRoomId: string;
+  contextDigest?: string;
+  preflightId?: string;
+  runId?: string;
   runSignature?: string;
+  sessionRevision?: number;
+  snapshotHash?: string;
   goalId: string;
   goalSummary: string;
   goalBrief: string;

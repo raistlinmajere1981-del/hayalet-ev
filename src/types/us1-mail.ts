@@ -180,6 +180,9 @@ export interface Us1SessionEvent {
 
 export interface Us1SendMessageParams {
   text?: string;
+  clientRequestId?: string | null;
+  brokerMessageId?: string | null;
+  remoteUserId?: string | null;
   localSessionId?: string | null;
   attachments?: Us1MessageAttachmentInput[];
   roomEvent?: Us1RoomEventInput | null;
@@ -188,6 +191,7 @@ export interface Us1SendMessageParams {
 
 export interface Us1SendMessageResult {
   success: boolean;
+  brokerMessageId?: string;
   remoteUserId?: string;
   localSessionId?: string;
   conversationId?: string;

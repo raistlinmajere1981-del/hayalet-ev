@@ -9,7 +9,6 @@ import { translateCatalog } from "../../shared/i18n/catalog.js";
 import { getBuiltInLanguagePack } from "../../shared/i18n/bundled-languages.js";
 import { normalizeAppLanguage } from "../../shared/i18n/locale.js";
 import { hashString } from "./hash-utils.js";
-import { createMessageDedupeKey } from "./message-dedupe.js";
 import { getDatabaseForAccount, getAttachmentPath, ensureAttachmentDir } from "./sqlite-manager.js";
 import { copyFileSync, statSync, existsSync, writeFileSync } from "fs";
 import type { SyncMessagesParams, SyncMessagesResult } from "@electron/types";
@@ -126,18 +125,69 @@ export class SQLiteArchiveManager {
     return hashString(webUrl);
   }
 
-  private generateMessageId(
-    conversationId: string,
-    domIndex: number,
-    contentHash: string,
-    domId?: string | null
-  ): string {
-    const normalizedDomId = (domId ?? "").trim();
+  private normalizeProviderMessageId(message: {
+    role?: string | null;
+    domId?: string | null;
+    domIndex?: number | null;
+    contentHash?: string | null;
+  }): string {
+    const normalizedDomId = (message.domId ?? "").trim();
     if (normalizedDomId !== "") {
-      return hashString(`${conversationId}-${normalizedDomId}`);
+      return normalizedDomId;
     }
 
-    return hashString(`${conversationId}-${domIndex}-${contentHash}`);
+    const normalizedDomIndex =
+      typeof message.domIndex === "number" && Number.isFinite(message.domIndex)
+        ? `dom-index:${String(Math.trunc(message.domIndex))}`
+        : "";
+    const contentHash = (message.contentHash ?? "").trim();
+    if (normalizedDomIndex !== "" && contentHash !== "") {
+      return `${normalizedDomIndex}:content:${contentHash}`;
+    }
+    if (normalizedDomIndex !== "") {
+      return normalizedDomIndex;
+    }
+
+    const normalizedRole =
+      typeof message.role === "string" && message.role.trim() !== ""
+        ? message.role.trim()
+        : "unknown";
+    return contentHash !== "" ? `content:${normalizedRole}:${contentHash}` : "";
+  }
+
+  private generateBrokerMessageId(params: {
+    contentHash: string;
+    conversationId: string;
+    providerMessageId: string;
+    role: string;
+  }): string {
+    return hashString(
+      `${params.conversationId}-${params.providerMessageId}-${params.contentHash}-${params.role}`
+    );
+  }
+
+  private generateProjectionMessageId(
+    conversationId: string,
+    providerMessageId: string,
+    brokerMessageId: string
+  ): string {
+    if (providerMessageId.trim() !== "") {
+      return hashString(`${conversationId}-${providerMessageId}`);
+    }
+    return hashString(`${conversationId}-${brokerMessageId}`);
+  }
+
+  private normalizeClientRequestId(clientRequestId?: string | null): string {
+    return typeof clientRequestId === "string" ? clientRequestId.trim() : "";
+  }
+
+  private buildProviderEventKey(providerMessageId: string, contentHash: string): string {
+    const normalizedProviderMessageId = providerMessageId.trim();
+    const normalizedContentHash = contentHash.trim();
+    if (normalizedProviderMessageId === "" || normalizedContentHash === "") {
+      return "";
+    }
+    return `${normalizedProviderMessageId}::${normalizedContentHash}`;
   }
 
   private async buildAutoTitle(db: BetterSqlite3Database): Promise<string> {
@@ -214,35 +264,53 @@ export class SQLiteArchiveManager {
     }
   }
 
-  async getMessages(conversationId: string): Promise<IpcResult<Message[]>> {
+  async getMessages(
+    conversationId: string,
+    options: {
+      afterSeq?: number;
+    } = {}
+  ): Promise<IpcResult<Message[]>> {
     try {
       const db = this.getDb();
       const stmt = db.prepare(`
         SELECT * FROM messages 
         WHERE conversation_id = ? AND account_id = ?
-        ORDER BY dom_index ASC, created_at ASC
+          AND (? IS NULL OR event_seq > ?)
+        ORDER BY event_seq ASC, dom_index ASC, created_at ASC
       `);
-      const rows = stmt.all(conversationId, this.accountId) as Array<{
+      const afterSeq =
+        typeof options.afterSeq === "number" && Number.isFinite(options.afterSeq)
+          ? Math.trunc(options.afterSeq)
+          : null;
+      const rows = stmt.all(conversationId, this.accountId, afterSeq, afterSeq) as Array<{
         id: string;
         conversation_id: string;
+        broker_message_id: string | null;
+        client_request_id: string | null;
+        event_seq: number | null;
         role: string;
         author: string | null;
         content: string;
         dom_index: number | null;
         dom_id: string | null;
         content_hash: string | null;
+        provider_message_id: string | null;
         created_at: string;
       }>;
 
       const messages: Message[] = rows.map((row) => ({
         id: row.id,
         conversation_id: row.conversation_id,
+        broker_message_id: row.broker_message_id,
+        client_request_id: row.client_request_id,
+        event_seq: row.event_seq,
         role: row.role as "user" | "assistant",
         author: row.author,
         content: row.content,
         dom_index: row.dom_index,
         dom_id: row.dom_id,
         content_hash: row.content_hash,
+        provider_message_id: row.provider_message_id,
         created_at: new Date(row.created_at).getTime(),
       }));
 
@@ -263,6 +331,7 @@ export class SQLiteArchiveManager {
 
     try {
       const { conversationId, provider } = this.getConversationIdentity(webUrl, params.provider);
+      const clientRequestId = this.normalizeClientRequestId(params.clientRequestId);
       const now = new Date().toISOString();
       const autoTitle = await this.buildAutoTitle(db);
 
@@ -284,112 +353,331 @@ export class SQLiteArchiveManager {
         now
       );
 
-      const hashStmt = db.prepare(
-        `SELECT id, content, content_hash, dom_index, dom_id FROM messages WHERE conversation_id = ?`
-      );
-      const existingRows = hashStmt.all(conversationId) as Array<{
+      const existingMessagesStmt = db.prepare(`
+        SELECT
+          id,
+          broker_message_id,
+          provider_message_id,
+          client_request_id,
+          event_seq,
+          projection_event_seq,
+          content,
+          content_hash,
+          dom_index,
+          dom_id
+        FROM messages
+        WHERE conversation_id = ? AND account_id = ?
+      `);
+      const existingRows = existingMessagesStmt.all(conversationId, this.accountId) as Array<{
         id: string;
+        broker_message_id: string | null;
+        provider_message_id: string | null;
+        client_request_id: string | null;
+        event_seq: number | null;
+        projection_event_seq: number | null;
         content: string | null;
         content_hash: string | null;
         dom_index: number | null;
         dom_id: string | null;
       }>;
-      const existingMessageKeys = new Set(
-        existingRows.map((row) =>
-          createMessageDedupeKey(row.dom_index, row.content_hash, row.dom_id)
+      const existingMessageIdsByProviderIdentity = new Map(
+        existingRows.flatMap((row) => {
+          const providerMessageId = (row.provider_message_id ?? "").trim();
+          return providerMessageId !== "" ? [[providerMessageId, row.id] as const] : [];
+        })
+      );
+      const existingMessageProjectionSeqById = new Map(
+        existingRows.map(
+          (row) =>
+            [
+              row.id,
+              typeof row.projection_event_seq === "number" &&
+              Number.isFinite(row.projection_event_seq)
+                ? row.projection_event_seq
+                : row.event_seq,
+            ] as const
         )
       );
-      const existingMessagesByDomId = new Map(
+      const existingMessageIdsByBrokerIdentity = new Map(
         existingRows.flatMap((row) => {
-          const normalizedDomId = (row.dom_id ?? "").trim();
-          return normalizedDomId !== "" ? [[normalizedDomId, row] as const] : [];
+          const brokerMessageId = (row.broker_message_id ?? "").trim();
+          return brokerMessageId !== "" ? [[brokerMessageId, row.id] as const] : [];
         })
+      );
+      const existingEventIdentityRows = db.prepare(
+        `
+          SELECT broker_message_id, provider_message_id, content_hash
+          FROM message_events
+          WHERE conversation_id = ? AND account_id = ?
+        `
+      ).all(conversationId, this.accountId) as Array<{
+        broker_message_id: string | null;
+        provider_message_id: string | null;
+        content_hash: string | null;
+      }>;
+      const existingBrokerEventIds = new Set(
+        existingEventIdentityRows
+          .map((row) => (row.broker_message_id ?? "").trim())
+          .filter((value) => value !== "")
+      );
+      const existingProviderEventKeys = new Set(
+        existingEventIdentityRows
+          .map((row) =>
+            this.buildProviderEventKey(
+              (row.provider_message_id ?? "").trim(),
+              (row.content_hash ?? "").trim()
+            )
+          )
+          .filter((value) => value !== "")
       );
 
       const insertStmt = db.prepare(`
-        INSERT INTO messages (id, conversation_id, account_id, role, author, content, dom_index, dom_id, content_hash, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO messages (
+          id,
+          conversation_id,
+          account_id,
+          broker_message_id,
+          provider_message_id,
+          client_request_id,
+          event_seq,
+          projection_event_seq,
+          role,
+          author,
+          content,
+          dom_index,
+          dom_id,
+          content_hash,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const refreshStmt = db.prepare(`
         UPDATE messages
-        SET role = ?, author = ?, content = ?, dom_index = ?, content_hash = ?
+        SET
+          broker_message_id = ?,
+          provider_message_id = ?,
+          client_request_id = ?,
+          event_seq = ?,
+          projection_event_seq = ?,
+          role = ?,
+          author = ?,
+          content = ?,
+          dom_index = ?,
+          dom_id = ?,
+          content_hash = ?
         WHERE id = ?
       `);
+      const insertEventStmt = db.prepare(`
+        INSERT INTO message_events (
+          id,
+          conversation_id,
+          account_id,
+          message_id,
+          broker_message_id,
+          provider_message_id,
+          client_request_id,
+          event_seq,
+          role,
+          author,
+          content,
+          dom_index,
+          dom_id,
+          content_hash,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const maxEventSeqStmt = db.prepare(
+        `SELECT COALESCE(MAX(event_seq), 0) as max_event_seq FROM message_events WHERE conversation_id = ? AND account_id = ?`
+      );
       const [fallbackUserAuthor, fallbackAssistantAuthor] = await Promise.all([
         archiveT("fallbackUserAuthor"),
         archiveT("fallbackAssistantAuthor"),
       ]);
 
       let addedCount = 0;
+      let droppedDuplicates = 0;
+      let outOfOrderCount = 0;
+      let syncedCount = 0;
       let updatedCount = 0;
+      let firstDroppedDuplicateContext: Record<string, unknown> | null = null;
+      let firstOutOfOrderContext: Record<string, unknown> | null = null;
+      let lastAppliedMessageId: string | null = null;
+      let nextAutoEventSeq = (
+        maxEventSeqStmt.get(conversationId, this.accountId) as { max_event_seq: number }
+      ).max_event_seq;
       db.exec("BEGIN");
       try {
         for (const msg of messages) {
-          const contentHash = msg.contentHash ?? hashString(msg.text);
-          const domIndex = msg.index ?? 0;
+          const text = typeof msg.text === "string" ? msg.text : "";
+          const explicitContentHash = (msg.contentHash ?? "").trim();
+          const contentHash = explicitContentHash !== "" ? explicitContentHash : hashString(text);
+          const domIndex =
+            typeof msg.domIndex === "number" && Number.isFinite(msg.domIndex)
+              ? Math.trunc(msg.domIndex)
+              : typeof msg.index === "number" && Number.isFinite(msg.index)
+                ? Math.trunc(msg.index)
+                : null;
           const normalizedDomId = (msg.domId ?? "").trim();
-          const dedupeKey = createMessageDedupeKey(domIndex, contentHash, msg.domId);
+          const explicitProviderMessageId = (msg.providerMessageId ?? "").trim();
+          const providerMessageId =
+            explicitProviderMessageId !== ""
+              ? explicitProviderMessageId
+              : this.normalizeProviderMessageId({
+                  role: msg.role,
+                  domId: normalizedDomId,
+                  domIndex,
+                  contentHash,
+                });
+          const explicitBrokerMessageId = (msg.brokerMessageId ?? "").trim();
+          const brokerMessageId =
+            explicitBrokerMessageId !== ""
+              ? explicitBrokerMessageId
+              : this.generateBrokerMessageId({
+                  contentHash,
+                  conversationId,
+                  providerMessageId:
+                    providerMessageId !== ""
+                      ? providerMessageId
+                      : `generated:${msg.role}:${normalizedDomId !== "" ? normalizedDomId : String(domIndex ?? -1)}`,
+                  role: msg.role,
+                });
+          const providerEventKey = this.buildProviderEventKey(providerMessageId, contentHash);
           const author =
             msg.author ?? (msg.role === "user" ? fallbackUserAuthor : fallbackAssistantAuthor);
 
-          const existingMessage =
-            normalizedDomId !== "" ? (existingMessagesByDomId.get(normalizedDomId) ?? null) : null;
-          const existingContentHash = (existingMessage?.content_hash ?? "").trim();
-          const existingContent = existingMessage?.content ?? "";
-          const existingDomIndex = existingMessage?.dom_index ?? null;
-          if (existingMessage !== null) {
-            const shouldRefreshExistingMessage =
-              existingContentHash !== contentHash ||
-              existingContent !== msg.text ||
-              existingDomIndex !== domIndex;
-            if (shouldRefreshExistingMessage) {
-              refreshStmt.run(
-                msg.role,
-                author,
-                msg.text,
-                domIndex,
-                contentHash,
-                existingMessage.id
-              );
-              existingMessage.content_hash = contentHash;
-              existingMessage.content = msg.text;
-              existingMessage.dom_index = domIndex;
-              updatedCount += 1;
-            }
+          if (
+            existingBrokerEventIds.has(brokerMessageId) ||
+            (providerEventKey !== "" && existingProviderEventKeys.has(providerEventKey))
+          ) {
+            droppedDuplicates += 1;
+            firstDroppedDuplicateContext ??= {
+                userId: this.accountId,
+                provider,
+                slotId: provider === "us1" ? "us1" : provider,
+                conversationId,
+                clientRequestId: clientRequestId !== "" ? clientRequestId : null,
+                brokerMessageId,
+                providerMessageId: providerMessageId !== "" ? providerMessageId : null,
+              };
             continue;
           }
 
-          if (existingMessageKeys.has(dedupeKey)) continue;
-          existingMessageKeys.add(dedupeKey);
+          const requestedEventSeq =
+            typeof msg.eventSeq === "number" && Number.isFinite(msg.eventSeq)
+              ? Math.max(1, Math.trunc(msg.eventSeq))
+              : null;
+          if (requestedEventSeq !== null && requestedEventSeq <= nextAutoEventSeq) {
+            outOfOrderCount += 1;
+            firstOutOfOrderContext ??= {
+                userId: this.accountId,
+                provider,
+                slotId: provider === "us1" ? "us1" : provider,
+                conversationId,
+                clientRequestId: clientRequestId !== "" ? clientRequestId : null,
+                brokerMessageId,
+                providerMessageId: providerMessageId !== "" ? providerMessageId : null,
+                requestedEventSeq,
+                previousEventSeq: nextAutoEventSeq,
+              };
+          }
+          const eventSeq =
+            requestedEventSeq !== null && requestedEventSeq > nextAutoEventSeq
+              ? requestedEventSeq
+              : nextAutoEventSeq + 1;
+          const projectionEventSeq = requestedEventSeq ?? eventSeq;
+          nextAutoEventSeq = eventSeq;
 
-          const messageId = this.generateMessageId(
-            conversationId,
-            domIndex,
-            contentHash,
-            msg.domId
-          );
-          insertStmt.run(
-            messageId,
+          const existingMessageId =
+            (providerMessageId !== ""
+              ? existingMessageIdsByProviderIdentity.get(providerMessageId)
+              : null) ??
+            existingMessageIdsByBrokerIdentity.get(brokerMessageId) ??
+            null;
+          const messageId =
+            existingMessageId ??
+            this.generateProjectionMessageId(conversationId, providerMessageId, brokerMessageId);
+          let appliedProjectionEventSeq =
+            existingMessageId === null
+              ? projectionEventSeq
+              : existingMessageProjectionSeqById.get(existingMessageId) ?? null;
+
+          if (existingMessageId === null) {
+            insertStmt.run(
+              messageId,
+              conversationId,
+              this.accountId,
+              brokerMessageId,
+              providerMessageId !== "" ? providerMessageId : null,
+              clientRequestId !== "" ? clientRequestId : null,
+              eventSeq,
+              projectionEventSeq,
+              msg.role,
+              author,
+              text,
+              domIndex,
+              normalizedDomId !== "" ? normalizedDomId : null,
+              contentHash,
+              now
+            );
+            addedCount += 1;
+          } else {
+            const currentProjectionEventSeq = existingMessageProjectionSeqById.get(existingMessageId);
+            if (
+              typeof currentProjectionEventSeq !== "number" ||
+              Number.isFinite(currentProjectionEventSeq) !== true ||
+              currentProjectionEventSeq <= projectionEventSeq
+            ) {
+              appliedProjectionEventSeq = projectionEventSeq;
+              refreshStmt.run(
+                brokerMessageId,
+                providerMessageId !== "" ? providerMessageId : null,
+                clientRequestId !== "" ? clientRequestId : null,
+                eventSeq,
+                projectionEventSeq,
+                msg.role,
+                author,
+                text,
+                domIndex,
+                normalizedDomId !== "" ? normalizedDomId : null,
+                contentHash,
+                existingMessageId
+              );
+              updatedCount += 1;
+            }
+          }
+
+          insertEventStmt.run(
+            hashString(`${conversationId}-${brokerMessageId}-${eventSeq}`),
             conversationId,
             this.accountId,
+            messageId,
+            brokerMessageId,
+            providerMessageId !== "" ? providerMessageId : null,
+            clientRequestId !== "" ? clientRequestId : null,
+            eventSeq,
             msg.role,
             author,
-            msg.text,
+            text,
             domIndex,
-            msg.domId ?? null,
+            normalizedDomId !== "" ? normalizedDomId : null,
             contentHash,
             now
           );
-          if (normalizedDomId !== "") {
-            existingMessagesByDomId.set(normalizedDomId, {
-              id: messageId,
-              content: msg.text,
-              content_hash: contentHash,
-              dom_index: domIndex,
-              dom_id: normalizedDomId,
-            });
+          if (providerMessageId !== "") {
+            existingMessageIdsByProviderIdentity.set(providerMessageId, messageId);
           }
-          addedCount++;
+          if (providerEventKey !== "") {
+            existingProviderEventKeys.add(providerEventKey);
+          }
+          if (
+            typeof appliedProjectionEventSeq === "number" &&
+            Number.isFinite(appliedProjectionEventSeq)
+          ) {
+            existingMessageProjectionSeqById.set(messageId, appliedProjectionEventSeq);
+          }
+          existingMessageIdsByBrokerIdentity.set(brokerMessageId, messageId);
+          existingBrokerEventIds.add(brokerMessageId);
+          syncedCount += 1;
+          lastAppliedMessageId = messageId;
         }
         db.exec("COMMIT");
       } catch (err) {
@@ -398,24 +686,55 @@ export class SQLiteArchiveManager {
       }
 
       const totalStmt = db.prepare(
-        `SELECT COUNT(*) as count FROM messages WHERE conversation_id = ?`
+        `SELECT COUNT(*) as count FROM messages WHERE conversation_id = ? AND account_id = ?`
       );
-      const totalCount = (totalStmt.get(conversationId) as { count: number }).count;
+      const totalCount = (totalStmt.get(conversationId, this.accountId) as { count: number }).count;
 
       const updateStmt = db.prepare(`
         UPDATE conversations 
-        SET message_count = ?, updated_at = ?
-        WHERE id = ?
+        SET message_count = ?, last_message_id = COALESCE(?, last_message_id), updated_at = ?
+        WHERE id = ? AND account_id = ?
       `);
-      updateStmt.run(totalCount, now, conversationId);
+      updateStmt.run(totalCount, lastAppliedMessageId, now, conversationId, this.accountId);
+
+      if (droppedDuplicates > 0) {
+        await logger.logInternal(
+          LogCategory.DATABASE,
+          LogLevel.INFO,
+          "Messaging broker dropped duplicate provider events.",
+          {
+            ...firstDroppedDuplicateContext,
+            droppedDuplicates,
+            eventSeq: nextAutoEventSeq,
+          }
+        );
+      }
+
+      if (outOfOrderCount > 0) {
+        await logger.logInternal(
+          LogCategory.DATABASE,
+          LogLevel.INFO,
+          "Messaging broker reordered out-of-order events.",
+          {
+            ...firstOutOfOrderContext,
+            outOfOrderCount,
+            eventSeq: nextAutoEventSeq,
+          }
+        );
+      }
 
       await logDatabaseInfo(
         "syncMessagesComplete",
         { added: addedCount, total: totalCount },
         {
           accountId: this.accountId,
+          clientRequestId: clientRequestId !== "" ? clientRequestId : null,
           conversationId,
           added: addedCount,
+          droppedDuplicates,
+          lastEventSeq: nextAutoEventSeq,
+          outOfOrderCount,
+          syncedCount,
           updated: updatedCount,
           total: totalCount,
         }
@@ -425,6 +744,9 @@ export class SQLiteArchiveManager {
         success: true,
         conversationId,
         added: addedCount,
+        droppedDuplicates,
+        lastEventSeq: nextAutoEventSeq,
+        syncedCount,
         total: totalCount,
       };
     } catch (err) {

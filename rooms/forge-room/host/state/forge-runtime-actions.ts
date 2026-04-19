@@ -1,5 +1,6 @@
 import type {
   ForgeGoal,
+  ForgeRunArtifactStore,
   ForgeTask,
   ForgeTaskAssignment,
   ForgeAgentResponse,
@@ -45,6 +46,10 @@ export type ForgeRuntimeAction =
       assignments: ForgeTaskAssignment[];
     }
   | {
+      type: "artifact-store/set";
+      artifactStore: ForgeRunArtifactStore;
+    }
+  | {
       type: "responses/set";
       responses: ForgeAgentResponse[];
     }
@@ -79,6 +84,9 @@ export type ForgeRuntimeAction =
     }
   | {
       type: "run-context/set";
+      contextDigest: string | null;
+      runId: string | null;
       runOverride: ForgeRunOverride | null;
       runSignature: ForgeRunSignature | null;
+      sessionRevision: number;
     };

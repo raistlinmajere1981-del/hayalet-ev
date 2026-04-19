@@ -148,11 +148,18 @@ export const databaseManager = {
 
   async getMessages(
     _event: IpcMainInvokeEvent | null,
-    { accountId, conversationId }: { accountId: string; conversationId: string }
+    {
+      accountId,
+      conversationId,
+      afterSeq,
+    }: { accountId: string; conversationId: string; afterSeq?: number }
   ): Promise<IpcResult<unknown[]>> {
     try {
       const manager = getManager(accountId);
-      return await manager.getMessages(conversationId);
+      return await manager.getMessages(
+        conversationId,
+        afterSeq !== undefined ? { afterSeq } : undefined
+      );
     } catch (err) {
       await logDatabaseError("getMessages", {
         accountId,
@@ -170,6 +177,9 @@ export const databaseManager = {
     success: boolean;
     conversationId?: string;
     added?: number;
+    droppedDuplicates?: number;
+    lastEventSeq?: number;
+    syncedCount?: number;
     total?: number;
     error?: string;
   }> {

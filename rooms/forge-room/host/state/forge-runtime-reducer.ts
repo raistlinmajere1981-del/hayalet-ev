@@ -42,6 +42,11 @@ export function reduceForgeRuntimeState(
         ...state,
         assignments: action.assignments,
       };
+    case "artifact-store/set":
+      return {
+        ...state,
+        artifactStore: action.artifactStore,
+      };
     case "responses/set":
       return {
         ...state,
@@ -86,8 +91,11 @@ export function reduceForgeRuntimeState(
     case "run-context/set":
       return {
         ...state,
+        contextDigest: action.contextDigest,
+        runId: action.runId,
         runOverride: action.runOverride,
         runSignature: action.runSignature,
+        sessionRevision: action.sessionRevision,
       };
     default:
       return state;

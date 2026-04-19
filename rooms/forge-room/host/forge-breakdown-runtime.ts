@@ -19,6 +19,7 @@ import {
   toRecord,
   uniqueStrings,
 } from "./forge-runtime-support.js";
+import { serializeForAI1 } from "./forge-stage-serializers.js";
 
 export interface ForgeBreakdownTaskSpec {
   title: string;
@@ -234,6 +235,11 @@ export function buildForgeBreakdownPrompt(
     promptContext?: string | null;
   } = {}
 ): string {
+  const allowedPayload = serializeForAI1({
+    bundle: null,
+    decisionTrace: [],
+    goal,
+  });
   return [
     "Return JSON only using this exact schema:",
     toJsonText({
@@ -252,10 +258,7 @@ export function buildForgeBreakdownPrompt(
         },
       ],
     }),
-    `Target room: ${goal.targetRoomId.trim() || "not specified yet"}`,
-    `Goal summary: ${goal.summary}`,
-    `Goal brief: ${goal.brief || "No additional brief provided."}`,
-    `Constraints: ${goal.constraints.length > 0 ? goal.constraints.join(" | ") : "None"}`,
+    `Allowed payload:\n${toJsonText(allowedPayload)}`,
     "Requirements:",
     `- ${buildForgeOutputLanguageRule(options.locale)}`,
     "- This run is a smoke test; keep acceptance criteria, summaries, and checklist items as short as possible.",

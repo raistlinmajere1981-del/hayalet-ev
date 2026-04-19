@@ -47,6 +47,10 @@ export function createSettingsBroadcast(channelName = "app-settings"): {
 } {
   try {
     const bc = new BroadcastChannel(channelName);
+    const unref = (bc as BroadcastChannel & { unref?: (() => void) | undefined }).unref;
+    if (typeof unref === "function") {
+      unref.call(bc);
+    }
     return {
       post: (msg: unknown): void => {
         bc.postMessage(msg);

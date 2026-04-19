@@ -19,6 +19,7 @@ import {
   asNonEmptyString,
   asStringArray,
   buildForgeOutputLanguageRule,
+  createForgeId,
   uniqueStrings,
 } from "./forge-runtime-support.js";
 import {
@@ -32,7 +33,9 @@ import {
   summarizeForgeSelectedOperatorContext,
 } from "./forge-preflight-metadata.js";
 import { selectForgeCapabilityContext } from "./forge-capability-selector.js";
+import { buildContextDigest } from "./forge-context-digest.js";
 import { buildForgeRunSignature } from "./forge-run-signature.js";
+import { serializeForAI0, serializeForAI1 } from "./forge-stage-serializers.js";
 
 type ForgeDispatchBridge = (payload: Record<string, unknown>) => Promise<unknown>;
 
@@ -176,15 +179,18 @@ function parseRovoPreAnalysisReply(text: string): ForgeRovoPreAnalysis | null {
 function buildPreAnalysisPrompt(params: {
   appArchitectureSummary: string;
   capabilitySummary: string | null;
+  contextDigest: string;
   constraints: string[];
+  contextPayload: Record<string, unknown>;
   goal: ForgeGoal;
   locale?: string | null;
+  runId: string;
   runOverride: ForgeRunOverride | null;
   selectedOperatorProfile: ForgeSelectedOperatorProfile;
+  sessionRevision: number;
   sessionContextSelection: ForgeSessionContextSelection;
   targetRoomSummary: string | null;
 }): string {
-  const summaryLines = summarizeForgeSelectedOperatorContext(params);
   return [
     "Return JSON only using this exact schema:",
     toJsonText({
@@ -194,20 +200,13 @@ function buildPreAnalysisPrompt(params: {
       status: "completed",
     }),
     "Goal: Provide a short Hayalet Ev software infrastructure pre-analysis for this Forge run.",
+    `Run id: ${params.runId}`,
+    `Context digest: ${params.contextDigest}`,
+    `Session revision: ${String(params.sessionRevision)}`,
     `Architecture summary: ${params.appArchitectureSummary}`,
     params.targetRoomSummary ? `Target room context: ${params.targetRoomSummary}` : "",
     params.capabilitySummary ? `Capability context: ${params.capabilitySummary}` : "",
-    `Goal summary: ${params.goal.summary}`,
-    `Goal brief: ${params.goal.brief || "No additional brief provided."}`,
-    `Constraints: ${params.goal.constraints.join(" | ") || "None"}`,
-    `Derived run constraints: ${params.constraints.join(" | ") || "None"}`,
-    `Target room: ${params.goal.targetRoomId}`,
-    "Selected operator context:",
-    ...summaryLines.map((line) => `- ${line}`),
-    ...(params.runOverride?.temporaryConditions ?? []).map(
-      (condition) => `- Temporary condition: ${condition}`
-    ),
-    params.runOverride?.notes.trim() ? `Run override note: ${params.runOverride.notes.trim()}` : "",
+    `Allowed context payload:\n${toJsonText(params.contextPayload)}`,
     "Rules:",
     `- ${buildForgeOutputLanguageRule(params.locale)}`,
     "- Observations only. Do not make decisions or produce task breakdowns.",
@@ -223,15 +222,19 @@ async function maybeRunForgeRovoPreAnalysis(params: {
   dispatchBridge: ForgeDispatchBridge | null;
   appArchitectureSummary: string;
   capabilitySummary: string | null;
+  contextDigest: string;
   constraints: string[];
+  contextPayload: Record<string, unknown>;
   goal: ForgeGoal;
   protocol: {
     key: string;
     scenario: string;
     room: string;
   };
+  runId: string;
   runOverride: ForgeRunOverride | null;
   selectedOperatorProfile: ForgeSelectedOperatorProfile;
+  sessionRevision: number;
   sessionContextSelection: ForgeSessionContextSelection;
   targetRoomSummary: string | null;
 }): Promise<ForgeRovoPreAnalysis | null> {
@@ -294,6 +297,7 @@ async function maybeRunForgeRovoPreAnalysis(params: {
 }
 
 export async function buildForgePreflightState(params: {
+  contextDigest?: string;
   dispatchBridge: ForgeDispatchBridge | null;
   goal: ForgeGoal;
   locale?: string | null;
@@ -304,7 +308,9 @@ export async function buildForgePreflightState(params: {
     room: string;
     scenario: string;
   };
+  runId?: string | null;
   runOverride: ForgeRunOverride | null;
+  sessionRevision?: number;
   sessionContextSelection: ForgeSessionContextSelection;
   sessionId: string | null;
 }): Promise<{ runSignature: ForgeRunSignature; state: ForgePreflightState }> {
@@ -313,6 +319,19 @@ export async function buildForgePreflightState(params: {
     operatorProfile: params.operatorProfile,
     sessionContextSelection: params.sessionContextSelection,
   });
+  const contextDigest =
+    params.contextDigest ??
+    buildContextDigest({
+      goal: params.goal,
+      preflightInputFields: {
+        enableRovoPreAnalysis: params.runOverride?.enableRovoPreAnalysis === true,
+      },
+      runOverride: params.runOverride,
+      selectedOperatorProfile,
+      sessionContextSelection: params.sessionContextSelection,
+    });
+  const runId = asNonEmptyString(params.runId) ?? createForgeId("forge-run");
+  const sessionRevision = Math.max(0, params.sessionRevision ?? 0);
   params.onStepStart?.("constraints");
   const capabilityContext = selectForgeCapabilityContext({
     descriptors: listForgeCapabilityDescriptors(),
@@ -325,13 +344,29 @@ export async function buildForgePreflightState(params: {
     runOverride: params.runOverride,
     selectedOperatorProfile,
   });
+  const contextPayload = serializeForAI0({
+    appArchitectureSummary,
+    capabilityContext,
+    constraints,
+    contextDigest,
+    goal: params.goal,
+    runId,
+    runOverride: params.runOverride,
+    selectedOperatorProfile,
+    sessionRevision,
+    targetRoomContext,
+  });
   params.onStepStart?.("ai0Analysis");
   const rovoPreAnalysis = await maybeRunForgeRovoPreAnalysis({
     ...params,
     appArchitectureSummary: appArchitectureSummary.summary,
     capabilitySummary: capabilityContext?.summary ?? null,
+    contextDigest,
+    contextPayload,
     constraints,
     selectedOperatorProfile,
+    runId,
+    sessionRevision,
     targetRoomSummary: targetRoomContext?.summary ?? null,
   });
   const warnings = [
@@ -343,10 +378,14 @@ export async function buildForgePreflightState(params: {
   const bundle: ForgePreflightBundle = {
     schemaVersion: "v3",
     createdAt: createForgePreflightCreatedAt(),
+    contextDigest,
     coreSystemMetadata: buildForgeCoreSystemMetadata(params.sessionId),
     appArchitectureSummary,
     targetRoomContext,
     capabilityContext,
+    preflightId: createForgeId("forge-preflight"),
+    runId,
+    sessionRevision,
     selectedOperatorProfile,
     runOverride: params.runOverride,
     rovoPreAnalysis,
@@ -371,9 +410,14 @@ export async function buildForgePreflightState(params: {
     state: {
       activeStepId: null,
       bundle,
+      contextDigest,
       errorMessage: null,
+      expectedContextDigest: contextDigest,
+      preflightId: bundle.preflightId,
       promptCharCount,
       ranAt: bundle.createdAt,
+      runId,
+      sessionRevision,
       staleReason: null,
       status: warnings.length > 0 ? "warning" : "fresh",
       warnings,
@@ -382,10 +426,13 @@ export async function buildForgePreflightState(params: {
 }
 
 export function buildForgeFallbackPreflightState(params: {
+  contextDigest?: string;
   errorMessage: string;
   goal: ForgeGoal;
   operatorProfile: ForgeOperatorProfile;
+  runId?: string | null;
   runOverride: ForgeRunOverride | null;
+  sessionRevision?: number;
   sessionContextSelection: ForgeSessionContextSelection;
   sessionId: string | null;
 }): { runSignature: ForgeRunSignature; state: ForgePreflightState } {
@@ -393,13 +440,30 @@ export function buildForgeFallbackPreflightState(params: {
     operatorProfile: params.operatorProfile,
     sessionContextSelection: params.sessionContextSelection,
   });
+  const contextDigest =
+    params.contextDigest ??
+    buildContextDigest({
+      goal: params.goal,
+      preflightInputFields: {
+        enableRovoPreAnalysis: params.runOverride?.enableRovoPreAnalysis === true,
+      },
+      runOverride: params.runOverride,
+      selectedOperatorProfile,
+      sessionContextSelection: params.sessionContextSelection,
+    });
+  const runId = asNonEmptyString(params.runId) ?? createForgeId("forge-run");
+  const sessionRevision = Math.max(0, params.sessionRevision ?? 0);
   const bundle: ForgePreflightBundle = {
     schemaVersion: "v3",
     createdAt: createForgePreflightCreatedAt(),
+    contextDigest,
     coreSystemMetadata: buildForgeCoreSystemMetadata(params.sessionId),
     appArchitectureSummary: buildForgeAppArchitectureSummary(),
     targetRoomContext: buildForgeTargetRoomContext(params.goal.targetRoomId),
     capabilityContext: null,
+    preflightId: createForgeId("forge-preflight"),
+    runId,
+    sessionRevision,
     selectedOperatorProfile,
     runOverride: params.runOverride,
     rovoPreAnalysis: null,
@@ -425,7 +489,10 @@ export function buildForgeFallbackPreflightState(params: {
     state: {
       activeStepId: null,
       bundle,
+      contextDigest,
       errorMessage: params.errorMessage,
+      expectedContextDigest: contextDigest,
+      preflightId: bundle.preflightId,
       promptCharCount: renderForgePromptContext({
         bundle,
         contextCapsule: null,
@@ -433,6 +500,8 @@ export function buildForgeFallbackPreflightState(params: {
         runSignature,
       }).length,
       ranAt: bundle.createdAt,
+      runId,
+      sessionRevision,
       staleReason: null,
       status: "warning",
       warnings,
@@ -464,14 +533,55 @@ export function buildForgeSynthesisProvenance(params: {
   sessionContextSelection: ForgeSessionContextSelection;
 }): ForgeSynthesisProvenance {
   return {
+    contextDigest:
+      params.preflight.contextDigest ?? params.preflight.bundle?.contextDigest ?? null,
     runSignature: params.runSignature?.value ?? null,
     operatorProfileSummary: summarizeForgeSelectedOperatorContext({
       runOverride: params.runOverride,
       selectedOperatorProfile: params.selectedOperatorProfile,
       sessionContextSelection: params.sessionContextSelection,
     }),
+    preflightId: params.preflight.preflightId ?? params.preflight.bundle?.preflightId ?? null,
     preflightWarnings: summarizeForgePreflightWarningsForExport(params.preflight),
+    runId: params.preflight.runId ?? params.preflight.bundle?.runId ?? null,
+    sessionRevision:
+      params.preflight.sessionRevision ?? params.preflight.bundle?.sessionRevision ?? null,
   };
+}
+
+export function getPreflightForRun(
+  runId: string | null,
+  contextDigest: string | null,
+  preflight: ForgePreflightState
+): ForgePreflightState | null {
+  if (runId === null || contextDigest === null) {
+    return null;
+  }
+  const preflightRunId = preflight.runId ?? preflight.bundle?.runId ?? null;
+  const preflightDigest = preflight.contextDigest ?? preflight.bundle?.contextDigest ?? null;
+  if (preflightRunId !== runId || preflightDigest !== contextDigest) {
+    return null;
+  }
+  return preflight;
+}
+
+export function assertFreshPreflight(params: {
+  contextDigest: string;
+  preflight: ForgePreflightState;
+  runId: string;
+}): ForgePreflightState {
+  const matched = getPreflightForRun(params.runId, params.contextDigest, params.preflight);
+  if (matched === null) {
+    throw new Error("Preflight does not match the active Forge run context.");
+  }
+  if (matched.status !== "fresh" && matched.status !== "warning") {
+    throw new Error(matched.staleReason ?? "Preflight must be refreshed before continuing.");
+  }
+  const expectedDigest = matched.expectedContextDigest ?? matched.contextDigest;
+  if (expectedDigest !== params.contextDigest) {
+    throw new Error("Preflight context digest is stale for the active Forge run.");
+  }
+  return matched;
 }
 
 export function renderForgePromptContext(params: {
@@ -490,6 +600,11 @@ export function renderForgePromptContext(params: {
 
   if (params.bundle !== null) {
     segments.push(
+      `Run revision: ${params.bundle.runId}/${params.bundle.contextDigest}/${String(
+        params.bundle.sessionRevision
+      )}`
+    );
+    segments.push(
       `Architecture summary: ${compactWhitespace(params.bundle.appArchitectureSummary.summary)}`
     );
     if (params.bundle.targetRoomContext?.summary) {
@@ -502,13 +617,13 @@ export function renderForgePromptContext(params: {
         `Capability context: ${compactWhitespace(params.bundle.capabilityContext.summary)}`
       );
     }
-    segments.push(
-      `Operator context: ${summarizeForgeSelectedOperatorContext({
-        runOverride: params.bundle.runOverride,
-        selectedOperatorProfile: params.bundle.selectedOperatorProfile,
-        sessionContextSelection: params.bundle.sessionContextSelection,
-      }).join(" ")}`
-    );
+    const promptPayload = serializeForAI1({
+      bundle: params.bundle,
+      decisionTrace: params.decisionTrace,
+      goal: null,
+      taskContextCapsule: params.contextCapsule,
+    });
+    segments.push(`Operator context: ${toJsonText(promptPayload)}`);
     if (params.bundle.constraints.length > 0) {
       segments.push(`Context constraints: ${params.bundle.constraints.join(" | ")}`);
     }
@@ -527,12 +642,6 @@ export function renderForgePromptContext(params: {
     const capsuleSegments = [
       params.contextCapsule.summary.trim()
         ? `Summary: ${params.contextCapsule.summary.trim()}`
-        : "",
-      params.contextCapsule.relevantModules.length > 0
-        ? `Relevant modules: ${params.contextCapsule.relevantModules.join(", ")}`
-        : "",
-      params.contextCapsule.constraints.length > 0
-        ? `Capsule constraints: ${params.contextCapsule.constraints.join(" | ")}`
         : "",
     ].filter((entry) => entry !== "");
     if (capsuleSegments.length > 0) {
