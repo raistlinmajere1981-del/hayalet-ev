@@ -138,19 +138,23 @@ test("room page syncs slot-aware host context and scene runtime routing", () => 
   assert.match(source, /this\.runtimeContextRuntime\.sync\("scene-close"\)/);
   assert.match(source, /this\.runtimeContextRuntime\.sync\(reason\)/);
   assert.match(runtimeContextSource, /translations:\s*AppI18n\.getNamespaceCatalog\(\["rooms", room\.id\]\)/);
+  assert.match(runtimeContextSource, /buildRoomAssistantPresenceSnapshot/);
   assert.match(runtimeContextSource, /buildRoomSlotPresenceSnapshot/);
   assert.match(runtimeContextSource, /buildRoomUserPresenceSnapshot/);
   assert.match(runtimeContextSource, /createRoomPresenceSnapshot/);
+  assert.match(runtimeContextSource, /function normalizeRoomAvatarSource/);
   assert.match(
     runtimeContextSource,
     /export function buildRoomSlotContext\(slotId: RoomSlotId\): RoomPresenceSlotSnapshot/
   );
   assert.match(runtimeContextSource, /return buildRoomSlotPresenceSnapshot\(slotId\);/);
   assert.match(runtimeContextSource, /const user = buildRoomUserPresenceSnapshot\(\);/);
+  assert.match(runtimeContextSource, /const assistant = buildRoomAssistantPresenceSnapshot\(\);/);
   assert.match(runtimeContextSource, /ai1:\s*buildRoomSlotContext\("ai1"\)/);
   assert.match(runtimeContextSource, /ai2:\s*buildRoomSlotContext\("ai2"\)/);
   assert.match(runtimeContextSource, /us1:\s*buildRoomSlotContext\("us1"\)/);
-  assert.match(runtimeContextSource, /const presence = createRoomPresenceSnapshot\(user, slots\);/);
+  assert.match(runtimeContextSource, /const presence = createRoomPresenceSnapshot\(user, slots, \{/);
+  assert.match(runtimeContextSource, /avatar:\s*normalizeRoomAvatarSource\(assistant\.avatar\),/);
   assert.match(runtimeContextSource, /presence,/);
   assert.match(runtimeContextSource, /mode:\s*sceneFeatureOpen \? "scene-view" : "classic"/);
   assert.match(

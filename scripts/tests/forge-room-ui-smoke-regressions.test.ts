@@ -522,13 +522,8 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       },
     });
 
-    const panelIds = ["goal", "coordinator"];
-    panelIds.forEach((panelId) => {
-      assert.ok(
-        environment.app.querySelector(`[data-forge-panel="${panelId}"]`),
-        `Expected panel ${panelId} to render`
-      );
-    });
+    assert.ok(environment.app.querySelector("[data-forge-panel='goal']"));
+    assert.equal(findElementsByClass(environment.app, "forge-statusbar").length, 1);
     const surfaceTabs = environment.app.querySelectorAll("[data-forge-action='open-surface']");
     assert.equal(surfaceTabs.length, 3);
     const goalSurfaceTab = surfaceTabs.find((element) => element.dataset["forgeSurface"] === "goal");
@@ -571,8 +566,8 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.equal(statusBarActions.length, 0);
 
     const uiText = readTreeText(environment.app);
-    assert.match(uiText, /State Approved/);
-    assert.match(uiText, /NEXT: DISPATCH/);
+    assert.match(uiText, /QUEUE 1/);
+    assert.match(uiText, /Draft Complete/);
     assert.match(uiText, /Flow/);
     assert.match(uiText, /Responses/);
     assert.match(uiText, /Output/);
@@ -713,7 +708,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
 
     const sessionStageNavButtons = environment.app.querySelectorAll("[data-forge-action='open-stage']");
     let sessionNextButton = sessionStageNavButtons.find(
-      (element) => element.dataset["forgeActionValue"] === "operator"
+      (element) => element.dataset["forgeActionValue"] === "preflight"
     );
     assert.ok(sessionNextButton);
     assert.equal(sessionNextButton.disabled, false);
@@ -735,7 +730,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
         message: null,
       },
     });
-    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='preflight']"));
 
     const stageHeaders = findElementsByClass(environment.app, "forge-stage__header");
     const sessionHeader = stageHeaders.find((element) => element.dataset["forgeActionValue"] === "session");
@@ -752,11 +747,18 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     });
     assert.ok(environment.app.querySelector("[data-forge-active-stage='session']"));
 
-    const operatorHeader = findElementsByClass(environment.app, "forge-stage__header").find(
-      (element) => element.dataset["forgeActionValue"] === "operator"
+    const contextChips = environment.app.querySelectorAll("[data-forge-context-chip]");
+    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "measurement"));
+    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "multimeter"));
+    assert.ok(environment.app.querySelector("#forge-run-override-mode"));
+    assert.ok(environment.app.querySelector("#forge-run-override-risk"));
+
+    const sessionStageButtons = environment.app.querySelectorAll("[data-forge-action='open-stage']");
+    const preflightNextButton = sessionStageButtons.find(
+      (element) => element.dataset["forgeActionValue"] === "preflight"
     );
-    assert.ok(operatorHeader);
-    fireEvent(operatorHeader, "click");
+    assert.ok(preflightNextButton);
+    fireEvent(preflightNextButton, "click");
     assert.equal(environment.sentEvents.at(-1)?.command, "ForgeRoomUpdateGoal");
     environment.emitHostMessage({
       type: "command-result",
@@ -766,33 +768,10 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
         message: null,
       },
     });
-    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
-
-    const contextChips = environment.app.querySelectorAll("[data-forge-context-chip]");
-    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "measurement"));
-    assert.ok(contextChips.some((element) => element.dataset["forgeContextKey"] === "multimeter"));
-    assert.ok(environment.app.querySelector("#forge-run-override-mode"));
-    assert.ok(environment.app.querySelector("#forge-run-override-risk"));
-
-    const operatorStageButtons = environment.app.querySelectorAll("[data-forge-action='open-stage']");
-    const preflightNextButton = operatorStageButtons.find(
-      (element) => element.dataset["forgeActionValue"] === "preflight"
-    );
-    assert.ok(preflightNextButton);
-    fireEvent(preflightNextButton, "click");
-    assert.equal(environment.sentEvents.at(-1)?.command, "ForgeRoomSaveSession");
-    environment.emitHostMessage({
-      type: "command-result",
-      command: "ForgeRoomSaveSession",
-      result: {
-        success: true,
-        message: null,
-      },
-    });
     assert.ok(environment.app.querySelector("[data-forge-active-stage='preflight']"));
     assert.ok(environment.app.querySelector("[data-forge-action='run-preflight']"));
     assert.match(readTreeText(environment.app), /Hayalet/);
-    assert.match(readTreeText(environment.app), /Collect AI0 software pre-analysis/);
+    assert.match(readTreeText(environment.app), /Run Preflight/);
     assert.match(readTreeText(environment.app), /Result preview/);
 
     environment.emitHostMessage({
@@ -997,16 +976,11 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
 
     const preflightStageButtons = environment.app.querySelectorAll("[data-forge-action='open-stage']");
     const preflightPreviousButton = preflightStageButtons.find(
-      (element) => element.dataset["forgeActionValue"] === "operator"
+      (element) => element.dataset["forgeActionValue"] === "session"
     );
     assert.ok(preflightPreviousButton);
     assert.equal(preflightPreviousButton.disabled, false);
 
-    const runConditionComposerButton = environment.app.querySelector(
-      "[data-forge-action='toggle-run-condition-composer']"
-    ) as FakeElement | null;
-    assert.ok(runConditionComposerButton);
-    fireEvent(runConditionComposerButton, "click");
     const runConditionInput = environment.app.querySelector(
       "#forge-run-override-condition-input"
     ) as FakeElement | null;
@@ -1054,7 +1028,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
       "[data-forge-action='open-stage']"
     );
     const refreshedPreflightPreviousButton = refreshedPreflightStageButtons.find(
-      (element) => element.dataset["forgeActionValue"] === "operator"
+      (element) => element.dataset["forgeActionValue"] === "session"
     );
     assert.ok(refreshedPreflightPreviousButton);
     fireEvent(refreshedPreflightPreviousButton, "click");
@@ -1066,7 +1040,7 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
         message: null,
       },
     });
-    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='session']"));
 
     const multimeterSelection = environment.app
       .querySelectorAll("[data-forge-context-chip]")
@@ -1346,13 +1320,13 @@ test("forge-room installed UI shell renders the Phase 2 panel controls under a m
     assert.equal(conflictButtons.length, 0);
 
     const conflictText = readTreeText(environment.app);
-    assert.match(conflictText, /State Conflict/);
+    assert.match(conflictText, /Responses & Decisions/);
     assert.match(conflictText, /RESPONSE LANE BLOCKED/);
     assert.match(conflictText, /REQUIRES: CONFLICT RESOLUTION/);
     assert.match(conflictText, /Lead with a compact export contract\./);
     assert.match(conflictText, /Favor a wider checklist before export\./);
     assert.match(conflictText, /SELECT ONE RESPONSE/);
-    assert.match(conflictText, /BLOCKER: OPEN DECISION/);
+    assert.match(conflictText, /1 decision left/);
     assert.ok(environment.app.querySelector("[data-forge-panel='responses']"));
     const conflictFlowSurfaceTab = environment.app
       .querySelectorAll("[data-forge-action='open-surface']")
@@ -1567,11 +1541,11 @@ test("forge-room resets the active stage when the selected stage is no longer re
       },
     });
 
-    const operatorStageButton = environment.app
+    const preflightStageButton = environment.app
       .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "operator");
-    assert.ok(operatorStageButton);
-    fireEvent(operatorStageButton, "click");
+      .find((element) => element.dataset["forgeActionValue"] === "preflight");
+    assert.ok(preflightStageButton);
+    fireEvent(preflightStageButton, "click");
     environment.emitHostMessage({
       type: "command-result",
       command: "ForgeRoomUpdateGoal",
@@ -1580,13 +1554,13 @@ test("forge-room resets the active stage when the selected stage is no longer re
         message: null,
       },
     });
-    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='preflight']"));
 
-    const preflightStageButton = environment.app
+    const trackingStageButton = environment.app
       .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "preflight");
-    assert.ok(preflightStageButton);
-    fireEvent(preflightStageButton, "click");
+      .find((element) => element.dataset["forgeActionValue"] === "tracking");
+    assert.ok(trackingStageButton);
+    fireEvent(trackingStageButton, "click");
     environment.emitHostMessage({
       type: "command-result",
       command: "ForgeRoomSaveSession",
@@ -1595,7 +1569,7 @@ test("forge-room resets the active stage when the selected stage is no longer re
         message: null,
       },
     });
-    assert.ok(environment.app.querySelector("[data-forge-active-stage='preflight']"));
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='tracking']"));
 
     environment.emitHostMessage({
       type: "forge-state",
@@ -1653,7 +1627,7 @@ test("forge-room waits for the first forge-state snapshot before rendering empty
     assert.match(bootstrapText, /waiting for host state/i);
     assert.match(
       bootstrapText,
-      /waiting for the room host to attach the first state snapshot/i
+      /hydrate sessions, operator details, and workbench state/i
     );
     assert.equal(environment.app.querySelector("#forge-goal-summary"), null);
 
@@ -2204,7 +2178,7 @@ test("forge-room keeps preflight dispatch enabled when AI0 is assigned but disco
 
     const sessionNextButton = environment.app
       .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "operator");
+      .find((element) => element.dataset["forgeActionValue"] === "preflight");
     assert.ok(sessionNextButton);
     assert.equal(sessionNextButton.disabled, false);
     fireEvent(sessionNextButton, "click");
@@ -2212,23 +2186,6 @@ test("forge-room keeps preflight dispatch enabled when AI0 is assigned but disco
     environment.emitHostMessage({
       type: "command-result",
       command: "ForgeRoomUpdateGoal",
-      result: {
-        success: true,
-        message: null,
-      },
-    });
-    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
-
-    const preflightNextButton = environment.app
-      .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "preflight");
-    assert.ok(preflightNextButton);
-    assert.equal(preflightNextButton.disabled, false);
-    fireEvent(preflightNextButton, "click");
-    assert.equal(environment.sentEvents.at(-1)?.command, "ForgeRoomSaveSession");
-    environment.emitHostMessage({
-      type: "command-result",
-      command: "ForgeRoomSaveSession",
       result: {
         success: true,
         message: null,
@@ -2366,20 +2323,7 @@ test("forge-room session context empty states route operator profile entry throu
       "[data-forge-action='toggle-profile-editor']"
     );
     assert.equal(profileActions.length, 1);
-    const sessionNextButton = environment.app
-      .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "operator");
-    assert.ok(sessionNextButton);
-    fireEvent(sessionNextButton, "click");
-    environment.emitHostMessage({
-      type: "command-result",
-      command: "ForgeRoomUpdateGoal",
-      result: {
-        success: true,
-        message: null,
-      },
-    });
-    assert.ok(environment.app.querySelector("[data-forge-active-stage='operator']"));
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='session']"));
     assert.equal(
       environment.app.querySelectorAll("[data-forge-action='toggle-profile-editor']").length,
       1
@@ -2551,19 +2495,7 @@ test("forge-room control surface renders the Turkish control copy from room tran
     assert.doesNotMatch(uiText, /Aktif oturum bağlandı/);
     assert.doesNotMatch(uiText, /Taslak öncesi ön kontrol çalıştır/);
 
-    const sessionNextButton = environment.app
-      .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "operator");
-    assert.ok(sessionNextButton);
-    fireEvent(sessionNextButton, "click");
-    environment.emitHostMessage({
-      type: "command-result",
-      command: "ForgeRoomUpdateGoal",
-      result: {
-        success: true,
-        message: null,
-      },
-    });
+    assert.ok(environment.app.querySelector("[data-forge-active-stage='session']"));
     const operatorText = readTreeText(environment.app);
     assert.doesNotMatch(operatorText, /BU RUN ICIN BAGLAM/);
     assert.match(operatorText, /Kayıtlı yetenek yok/);
@@ -2820,7 +2752,7 @@ test("forge-room enables session advance only after all combined goal fields are
 
     let nextButton = environment.app
       .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "operator");
+      .find((element) => element.dataset["forgeActionValue"] === "preflight");
     assert.ok(nextButton);
     assert.equal(nextButton.disabled, true);
 
@@ -2831,7 +2763,7 @@ test("forge-room enables session advance only after all combined goal fields are
     assert.equal(environment.app.querySelector("#forge-goal-summary"), goalSummaryInput);
     nextButton = environment.app
       .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "operator");
+      .find((element) => element.dataset["forgeActionValue"] === "preflight");
     assert.ok(nextButton);
     assert.equal(nextButton.disabled, true);
 
@@ -2841,7 +2773,7 @@ test("forge-room enables session advance only after all combined goal fields are
     fireEvent(briefInput, "input");
     nextButton = environment.app
       .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "operator");
+      .find((element) => element.dataset["forgeActionValue"] === "preflight");
     assert.ok(nextButton);
     assert.equal(nextButton.disabled, true);
 
@@ -2854,7 +2786,7 @@ test("forge-room enables session advance only after all combined goal fields are
     assert.equal(environment.app.querySelector("#forge-goal-constraints"), constraintsInput);
     nextButton = environment.app
       .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "operator");
+      .find((element) => element.dataset["forgeActionValue"] === "preflight");
     assert.ok(nextButton);
     assert.equal(nextButton.disabled, true);
 
@@ -2866,7 +2798,7 @@ test("forge-room enables session advance only after all combined goal fields are
     fireEvent(targetRoomInput, "input");
     nextButton = environment.app
       .querySelectorAll("[data-forge-action='open-stage']")
-      .find((element) => element.dataset["forgeActionValue"] === "operator");
+      .find((element) => element.dataset["forgeActionValue"] === "preflight");
     assert.ok(nextButton);
     assert.equal(nextButton.disabled, false);
 
