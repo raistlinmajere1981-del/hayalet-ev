@@ -50,15 +50,16 @@ function renderActivePreview(artifact: LabPreviewArtifactProjection | null) {
 
   const previewUrl = readPreviewUrl(artifact);
   const previewKind = getPreviewKind(artifact);
+  const preserveKey = `process-preview-${escapeHtml(artifact.id)}`;
 
   if (previewUrl && previewKind === "image") {
-    return `<img class="labx-preview-media labx-preview-media--image" src="${escapeHtml(previewUrl)}" alt="${escapeHtml(artifact.label || artifact.fileName || artifact.id)}" />`;
+    return `<img class="labx-preview-media labx-preview-media--image" data-lab-preserve-media="${preserveKey}" src="${escapeHtml(previewUrl)}" alt="${escapeHtml(artifact.label || artifact.fileName || artifact.id)}" />`;
   }
   if (previewUrl && previewKind === "audio") {
-    return `<audio class="labx-preview-media labx-preview-media--audio" src="${escapeHtml(previewUrl)}" controls preload="metadata"></audio>`;
+    return `<audio class="labx-preview-media labx-preview-media--audio" data-lab-preserve-media="${preserveKey}" src="${escapeHtml(previewUrl)}" controls preload="metadata"></audio>`;
   }
   if (previewUrl && previewKind === "video") {
-    return `<video class="labx-preview-media labx-preview-media--video" src="${escapeHtml(previewUrl)}" controls preload="metadata" playsinline></video>`;
+    return `<video class="labx-preview-media labx-preview-media--video" data-lab-preserve-media="${preserveKey}" src="${escapeHtml(previewUrl)}" controls preload="metadata" playsinline></video>`;
   }
 
   return `

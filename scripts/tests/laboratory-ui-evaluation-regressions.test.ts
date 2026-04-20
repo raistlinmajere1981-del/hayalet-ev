@@ -152,6 +152,31 @@ test("laboratory shell routes host traffic through lab-root orchestration seams"
   assert.doesNotMatch(hostBridgeSource, /buildLifecycleEventsFromHostEvent/);
 });
 
+test("laboratory shell preserves live panel nodes instead of replacing the center and side rails", () => {
+  const labRootSource = readFileSync("rooms/laboratory/ui/lab-root.ts", "utf8");
+  const sourceStageSource = readFileSync("rooms/laboratory/ui/stages/source-stage.ts", "utf8");
+  const editStageSource = readFileSync("rooms/laboratory/ui/stages/edit-stage.ts", "utf8");
+  const previewSurfaceSource = readFileSync("rooms/laboratory/ui/components/preview-surface.ts", "utf8");
+
+  assert.match(labRootSource, /function updateRenderedElement\(/);
+  assert.match(labRootSource, /function syncChildNodes\(/);
+  assert.match(labRootSource, /function canReuseElement\(/);
+  assert.match(labRootSource, /currentElement\.scrollTop = scrollTop;/);
+  assert.match(
+    labRootSource,
+    /updateRenderedElement\(documentRef, centerPanel as HTMLElement, renderLabCenterPanel\(surface\), true\);/
+  );
+  assert.match(
+    labRootSource,
+    /updateRenderedElement\(documentRef, rightPanel as HTMLElement, renderLabRightPanel\(surface\), true\);/
+  );
+  assert.doesNotMatch(labRootSource, /\(centerPanel as HTMLElement\)\.outerHTML\s*=/);
+  assert.doesNotMatch(labRootSource, /\(rightPanel as HTMLElement\)\.outerHTML\s*=/);
+  assert.match(sourceStageSource, /data-lab-preserve-media="source-preview"/);
+  assert.match(editStageSource, /data-lab-preserve-media="edit-preview"/);
+  assert.match(previewSurfaceSource, /data-lab-preserve-media="\$\{preserveKey\}"/);
+});
+
 test("laboratory dense shell keeps event and artifact rendering windowed", () => {
   const selectorsSource = readFileSync("rooms/laboratory/runtime/lab-selectors.ts", "utf8");
   const eventFeedSource = readFileSync("rooms/laboratory/ui/components/event-feed.ts", "utf8");

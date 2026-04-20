@@ -80,12 +80,12 @@ function renderPreviewMedia(sourceKind: string, previewUrl: string | null) {
   }
 
   if (sourceKind === "image") {
-    return `<img class="labx-preview-media labx-preview-media--image" src="${escapeHtml(previewUrl)}" alt="Kaynak önizleme" />`;
+    return `<img class="labx-preview-media labx-preview-media--image" data-lab-preserve-media="source-preview" src="${escapeHtml(previewUrl)}" alt="Kaynak önizleme" />`;
   }
   if (sourceKind === "audio") {
-    return `<audio class="labx-preview-media labx-preview-media--audio" src="${escapeHtml(previewUrl)}" controls preload="metadata"></audio>`;
+    return `<audio class="labx-preview-media labx-preview-media--audio" data-lab-preserve-media="source-preview" src="${escapeHtml(previewUrl)}" controls preload="metadata"></audio>`;
   }
-  return `<video class="labx-preview-media labx-preview-media--video" src="${escapeHtml(previewUrl)}" controls preload="metadata" playsinline></video>`;
+  return `<video class="labx-preview-media labx-preview-media--video" data-lab-preserve-media="source-preview" src="${escapeHtml(previewUrl)}" controls preload="metadata" playsinline></video>`;
 }
 
 function renderPreviewRow(label: string, value: string) {

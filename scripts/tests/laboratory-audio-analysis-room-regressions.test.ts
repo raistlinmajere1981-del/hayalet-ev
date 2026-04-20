@@ -929,6 +929,17 @@ test("laboratory host and UI consume the normalized audioAnalysis result envelop
   assert.match(audioHostModuleSource, /"sound-events": runSoundEventsAudioAnalyzer/);
   assert.match(audioHostModuleSource, /"source-separation": runSourceSeparationAudioAnalyzer/);
   assert.match(audioHostModuleSource, /"music-rhythm-tonal": runMusicRhythmAudioAnalyzer/);
+  const afftdnNoiseFloorMatches = [...audioProcessLocalSource.matchAll(/afftdn=nf=(-?\d+(?:\.\d+)?)/g)];
+  assert.equal(afftdnNoiseFloorMatches.length >= 1, true);
+  for (const [, rawNoiseFloor] of afftdnNoiseFloorMatches) {
+    const noiseFloor = Number(rawNoiseFloor);
+    assert.equal(Number.isFinite(noiseFloor), true);
+    assert.equal(
+      noiseFloor >= -80 && noiseFloor <= -20,
+      true,
+      `Expected afftdn nf to stay within FFmpeg's supported range, received ${rawNoiseFloor}.`
+    );
+  }
   assert.match(
     audioStateSource,
     /providerType:\s*asNonEmptyString\(source\.providerType\) \|\| asNonEmptyString\(provider\.providerType\)/

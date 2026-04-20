@@ -95,11 +95,15 @@ test("room tool service resolves toolchain manifests from installed and workspac
 
   assert.match(
     serviceSource,
+    /function getInstalledSharedToolsDir\(paths: RoomToolRuntimePaths\): string/
+  );
+  assert.match(
+    serviceSource,
     /function getToolchainManifestCandidates\(paths: RoomToolRuntimePaths\): string\[\]/
   );
   assert.match(
     serviceSource,
-    /join\(paths\.installedDir, "shared", "data", "tools", "toolchain\.manifest\.json"\)/
+    /join\(getInstalledSharedToolsDir\(paths\), "toolchain\.manifest\.json"\)/
   );
   assert.match(
     serviceSource,
@@ -110,6 +114,10 @@ test("room tool service resolves toolchain manifests from installed and workspac
     /join\(\s*Paths\.getRoomsWorkspaceDir\(\),\s*paths\.roomId,\s*"shared",\s*"data",\s*"tools",\s*"toolchain\.manifest\.json"\s*\)/
   );
   assert.match(serviceSource, /const manifestPath = candidatePaths\.find\(\(candidate\) => existsSync\(candidate\)\);/);
+  assert.match(
+    serviceSource,
+    /const allowedRoots = \[\s*paths\.storageDir,\s*paths\.toolRuntimeDir,\s*paths\.packageToolsDir,\s*getInstalledSharedToolsDir\(paths\),\s*\];/
+  );
 });
 
 test("room tool preload and global typings expose the generic room-tools seam", () => {

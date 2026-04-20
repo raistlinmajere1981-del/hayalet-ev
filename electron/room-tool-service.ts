@@ -231,11 +231,15 @@ function resolveRuntimePaths(roomId: string): RoomToolRuntimePaths {
   };
 }
 
+function getInstalledSharedToolsDir(paths: RoomToolRuntimePaths): string {
+  return join(paths.installedDir, "shared", "data", "tools");
+}
+
 function getToolchainManifestCandidates(paths: RoomToolRuntimePaths): string[] {
   return Array.from(
     new Set([
       join(paths.packageToolsDir, "toolchain.manifest.json"),
-      join(paths.installedDir, "shared", "data", "tools", "toolchain.manifest.json"),
+      join(getInstalledSharedToolsDir(paths), "toolchain.manifest.json"),
       join(
         paths.storageDir,
         "build",
@@ -282,7 +286,12 @@ function isPathInside(parentPath: string, childPath: string): boolean {
 function ensureRoomManagedPath(roomId: string, targetPath: string): void {
   const paths = resolveRuntimePaths(roomId);
   const absolutePath = ensureAbsolutePath(targetPath);
-  const allowedRoots = [paths.storageDir, paths.toolRuntimeDir, paths.packageToolsDir];
+  const allowedRoots = [
+    paths.storageDir,
+    paths.toolRuntimeDir,
+    paths.packageToolsDir,
+    getInstalledSharedToolsDir(paths),
+  ];
   if (allowedRoots.some((root) => isPathInside(root, absolutePath))) {
     return;
   }

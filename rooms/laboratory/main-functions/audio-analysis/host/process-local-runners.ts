@@ -860,7 +860,7 @@ export function createAudioAnalysisLocalProcessRunners(deps: AudioAnalysisLocalP
       moduleOutputDir,
       moduleId,
       {
-        filterGraph: "highpass=f=120,lowpass=f=4200,afftdn=nf=-18,volume=2.6",
+        filterGraph: "highpass=f=120,lowpass=f=4200,afftdn=nf=-20,volume=2.6",
         label: "Spectrogram-guided Recovery",
         manifestLabel: "Spectrogram-guided Recovery Manifest",
         title: "Spectrogram-guided recovery variant generated",

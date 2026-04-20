@@ -21,6 +21,167 @@ type RootWindow = Window & {
   };
 };
 
+function createRenderedElement(documentRef: Document, markup: string) {
+  const template = documentRef.createElement("template");
+  template.innerHTML = markup.trim();
+  return template.content.firstElementChild;
+}
+
+function readPreservedMediaKey(element: Element) {
+  const key = element.getAttribute("data-lab-preserve-media");
+  return typeof key === "string" && key.trim() !== "" ? key : null;
+}
+
+function readElementSource(element: Element) {
+  const source = element.getAttribute("src");
+  return typeof source === "string" && source.trim() !== "" ? source : null;
+}
+
+function canReuseElement(currentElement: Element, nextElement: Element) {
+  if (currentElement.tagName !== nextElement.tagName) {
+    return false;
+  }
+
+  const preserveKey = readPreservedMediaKey(currentElement) || readPreservedMediaKey(nextElement);
+  if (!preserveKey) {
+    return true;
+  }
+
+  return (
+    readPreservedMediaKey(currentElement) === readPreservedMediaKey(nextElement) &&
+    readElementSource(currentElement) === readElementSource(nextElement)
+  );
+}
+
+function syncFormState(currentElement: Element, nextElement: Element) {
+  if (
+    typeof HTMLInputElement !== "undefined" &&
+    currentElement instanceof HTMLInputElement &&
+    nextElement instanceof HTMLInputElement
+  ) {
+    if (currentElement.type === "checkbox" || currentElement.type === "radio") {
+      currentElement.checked = nextElement.checked;
+      return;
+    }
+    if (currentElement.value !== nextElement.value) {
+      currentElement.value = nextElement.value;
+    }
+    return;
+  }
+
+  if (
+    typeof HTMLTextAreaElement !== "undefined" &&
+    currentElement instanceof HTMLTextAreaElement &&
+    nextElement instanceof HTMLTextAreaElement
+  ) {
+    if (currentElement.value !== nextElement.value) {
+      currentElement.value = nextElement.value;
+    }
+    return;
+  }
+
+  if (
+    typeof HTMLSelectElement !== "undefined" &&
+    currentElement instanceof HTMLSelectElement &&
+    nextElement instanceof HTMLSelectElement &&
+    currentElement.value !== nextElement.value
+  ) {
+    currentElement.value = nextElement.value;
+  }
+}
+
+function syncAttributes(currentElement: Element, nextElement: Element) {
+  const currentAttributeNames = currentElement.getAttributeNames();
+  currentAttributeNames.forEach(function (attributeName) {
+    if (nextElement.hasAttribute(attributeName) !== true) {
+      currentElement.removeAttribute(attributeName);
+    }
+  });
+
+  nextElement.getAttributeNames().forEach(function (attributeName) {
+    const nextValue = nextElement.getAttribute(attributeName);
+    if (currentElement.getAttribute(attributeName) !== nextValue) {
+      if (nextValue === null) {
+        currentElement.removeAttribute(attributeName);
+        return;
+      }
+      currentElement.setAttribute(attributeName, nextValue);
+    }
+  });
+
+  syncFormState(currentElement, nextElement);
+}
+
+function syncChildNodes(currentElement: Element, nextElement: Element) {
+  const currentChildren = Array.from(currentElement.childNodes);
+  const nextChildren = Array.from(nextElement.childNodes);
+  const childCount = Math.max(currentChildren.length, nextChildren.length);
+
+  for (let index = 0; index < childCount; index += 1) {
+    const currentChild = currentChildren[index];
+    const nextChild = nextChildren[index];
+
+    if (!currentChild && nextChild) {
+      currentElement.appendChild(nextChild.cloneNode(true));
+      continue;
+    }
+
+    if (currentChild && !nextChild) {
+      currentChild.remove();
+      continue;
+    }
+
+    if (!currentChild || !nextChild) {
+      continue;
+    }
+
+    if (currentChild.nodeType !== nextChild.nodeType) {
+      currentChild.replaceWith(nextChild.cloneNode(true));
+      continue;
+    }
+
+    if (currentChild.nodeType === 3 || currentChild.nodeType === 8) {
+      if (currentChild.textContent !== nextChild.textContent) {
+        currentChild.textContent = nextChild.textContent;
+      }
+      continue;
+    }
+
+    const currentChildElement = currentChild as Element;
+    const nextChildElement = nextChild as Element;
+    if (canReuseElement(currentChildElement, nextChildElement) !== true) {
+      currentChildElement.replaceWith(nextChildElement.cloneNode(true));
+      continue;
+    }
+
+    syncElement(currentChildElement, nextChildElement);
+  }
+}
+
+function syncElement(currentElement: Element, nextElement: Element) {
+  syncAttributes(currentElement, nextElement);
+  syncChildNodes(currentElement, nextElement);
+}
+
+function updateRenderedElement(
+  documentRef: Document,
+  currentElement: HTMLElement,
+  markup: string,
+  preserveScroll = false
+) {
+  const nextElement = createRenderedElement(documentRef, markup);
+  if (!nextElement || canReuseElement(currentElement, nextElement) !== true) {
+    currentElement.outerHTML = markup;
+    return;
+  }
+
+  const scrollTop = preserveScroll ? currentElement.scrollTop : 0;
+  syncElement(currentElement, nextElement);
+  if (preserveScroll) {
+    currentElement.scrollTop = scrollTop;
+  }
+}
+
 function createBootSurface(state: LabStoreState): LabStageSurface {
   return {
     main: `
@@ -182,10 +343,10 @@ export function startLaboratoryLabRoot() {
       shell.dataset["stage"] = state.currentStage;
       shell.dataset["ready"] = state.bootReady ? "true" : "false";
     }
-    (leftRail as HTMLElement).outerHTML = renderLabLeftRail(state);
-    (centerPanel as HTMLElement).outerHTML = renderLabCenterPanel(surface);
-    (rightPanel as HTMLElement).outerHTML = renderLabRightPanel(surface);
-    (overlayRoot as HTMLElement).outerHTML = renderToolManagementOverlay(state);
+    updateRenderedElement(documentRef, leftRail as HTMLElement, renderLabLeftRail(state));
+    updateRenderedElement(documentRef, centerPanel as HTMLElement, renderLabCenterPanel(surface), true);
+    updateRenderedElement(documentRef, rightPanel as HTMLElement, renderLabRightPanel(surface), true);
+    updateRenderedElement(documentRef, overlayRoot as HTMLElement, renderToolManagementOverlay(state));
   }
 
   store.subscribe(function (state) {
