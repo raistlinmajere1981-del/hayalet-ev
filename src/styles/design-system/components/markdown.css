@@ -16,6 +16,9 @@
   --ds-markdown-code-grid-line: 2.2rem;
   --ds-markdown-chevron-size: 0.7em;
   --ds-markdown-tool-icon-size: 1.1em;
+  --ds-markdown-file-card-min-w: 14rem;
+  --ds-markdown-attachment-preview-min-w: 4.75rem;
+  --ds-markdown-attachment-preview-max-w: 5.5rem;
 
   line-height: var(--leading-relaxed);
   word-break: break-word;
@@ -306,7 +309,7 @@
 
 .ds-file-chips--cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--ds-markdown-file-card-min-w), 1fr));
   gap: var(--space-2);
   width: 100%;
 }
@@ -329,24 +332,28 @@
 
 .ds-attachment-card {
   display: grid;
-  grid-template-columns: minmax(4.75rem, 5.5rem) minmax(0, 1fr) auto;
+  grid-template-columns:
+    minmax(var(--ds-markdown-attachment-preview-min-w), var(--ds-markdown-attachment-preview-max-w))
+    minmax(0, 1fr)
+    auto;
   gap: var(--space-2);
   align-items: center;
   min-width: 0;
   padding: var(--space-2);
   border-radius: calc(var(--radius-xl) - var(--space-0-5));
   border: var(--border-1) solid color-mix(in srgb, var(--border-default) 78%, transparent);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-surface-3) 92%, transparent),
-      color-mix(in srgb, var(--bg-surface-2) 92%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-surface-3) 92%, transparent),
+    color-mix(in srgb, var(--bg-surface-2) 92%, transparent)
+  );
   box-shadow: var(--effect-inset-highlight);
 }
 
 .ds-attachment-card--message {
-  grid-template-columns: minmax(4.75rem, 5.5rem) minmax(0, 1fr);
+  grid-template-columns:
+    minmax(var(--ds-markdown-attachment-preview-min-w), var(--ds-markdown-attachment-preview-max-w))
+    minmax(0, 1fr);
 }
 
 .ds-attachment-card__preview {

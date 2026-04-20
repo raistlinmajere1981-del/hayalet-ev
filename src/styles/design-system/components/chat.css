@@ -4,6 +4,11 @@
   --ds-chat-rovo-choice-min-w: calc(var(--layout-action-flex-min) + var(--space-16));
   --ds-chat-rovo-panel-min-w: calc(var(--space-4) * 34);
   --ds-chat-interaction-select-min-w: calc(var(--layout-action-flex-min) + var(--space-6));
+  --ds-chat-message-max-w: 58rem;
+  --ds-chat-message-user-max-w: 40rem;
+  --ds-chat-bubble-shadow-y: 10px;
+  --ds-chat-bubble-shadow-blur: var(--size-icon-sm);
+  --ds-chat-bubble-blur: var(--text-lg);
 
   display: flex;
   flex-direction: column;
@@ -123,14 +128,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  width: min(100%, 58rem);
+  width: min(100%, var(--ds-chat-message-max-w));
   max-width: 100%;
   animation: slide-up var(--duration-normal) var(--ease-out);
 }
 
 .ds-message--user {
   align-self: flex-end;
-  width: min(82%, 40rem);
+  width: min(82%, var(--ds-chat-message-user-max-w));
 }
 
 .ds-message--assistant {
@@ -150,9 +155,10 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
   box-shadow:
-    0 10px 24px color-mix(in srgb, var(--bg-app) 18%, transparent),
+    0 var(--ds-chat-bubble-shadow-y) var(--ds-chat-bubble-shadow-blur)
+      color-mix(in srgb, var(--bg-app) 18%, transparent),
     var(--surface-outline);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(var(--ds-chat-bubble-blur));
 }
 
 .ds-message__bubble--plain {
@@ -185,22 +191,20 @@
   padding: var(--space-2-5) var(--space-3);
   border-radius: calc(var(--radius-lg) - var(--space-0-5));
   border: var(--border-1) solid color-mix(in srgb, var(--border-default) 74%, transparent);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-surface-3) 92%, transparent),
-      color-mix(in srgb, var(--bg-surface-2) 94%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-surface-3) 92%, transparent),
+    color-mix(in srgb, var(--bg-surface-2) 94%, transparent)
+  );
 }
 
 .ds-message-section--reasoning {
   border-color: color-mix(in srgb, var(--color-info) 28%, var(--border-default));
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-info) 8%, transparent),
-      color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-info) 8%, transparent),
+    color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
+  );
 }
 
 .ds-message-section--patch {
@@ -279,52 +283,47 @@
   padding: var(--space-2-5) var(--space-3);
   border-radius: calc(var(--radius-lg) - var(--space-0-5));
   border: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-surface-3) 92%, transparent),
-      color-mix(in srgb, var(--bg-surface-2) 94%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-surface-3) 92%, transparent),
+    color-mix(in srgb, var(--bg-surface-2) 94%, transparent)
+  );
 }
 
 .ds-message-notice--info {
   border-color: color-mix(in srgb, var(--color-info) 34%, var(--border-default));
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-info) 10%, transparent),
-      color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-info) 10%, transparent),
+    color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
+  );
 }
 
 .ds-message-notice--warning {
   border-color: color-mix(in srgb, var(--color-warning) 38%, var(--border-default));
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-warning) 12%, transparent),
-      color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-warning) 12%, transparent),
+    color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
+  );
 }
 
 .ds-message-notice--error {
-  border-color: color-mix(in srgb, var(--color-danger) 42%, var(--border-default));
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-danger) 13%, transparent),
-      color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
-    );
+  border-color: color-mix(in srgb, var(--color-error) 42%, var(--border-default));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-error) 13%, transparent),
+    color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
+  );
 }
 
 .ds-message-notice--success {
   border-color: color-mix(in srgb, var(--color-success) 36%, var(--border-default));
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-success) 10%, transparent),
-      color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-success) 10%, transparent),
+    color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
+  );
 }
 
 .ds-message-notice__title {

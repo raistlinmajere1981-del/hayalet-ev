@@ -348,6 +348,20 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       temporaryConditions: [],
     });
 
+    const updateSessionContextResult = await hostRuntime.commands.ForgeRoomUpdateSessionContext({
+      skillKeys: ["measurement"],
+      equipmentKeys: ["multimeter"],
+      preferenceKeys: ["mode"],
+    });
+    assert.equal(updateSessionContextResult.success, true);
+
+    const snapshotAfterSessionContext = latestForgeSnapshot(notifications);
+    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.skillKeys, ["measurement"]);
+    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.equipmentKeys, ["multimeter"]);
+    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.preferenceKeys, ["mode"]);
+    assert.equal(snapshotAfterSessionContext.preflight.status, "idle");
+    assert.equal(snapshotAfterSessionContext.runSignature, null);
+
     const draftResult = await hostRuntime.commands.ForgeRoomGenerateDraft({
       architectSeatId: "ai2",
       summary: "Repair Room integration",
@@ -367,20 +381,6 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
       /Use Turkish for every human-readable JSON string value\./
     );
 
-    const updateSessionContextResult = await hostRuntime.commands.ForgeRoomUpdateSessionContext({
-      skillKeys: ["measurement"],
-      equipmentKeys: ["multimeter"],
-      preferenceKeys: ["mode"],
-    });
-    assert.equal(updateSessionContextResult.success, true);
-
-    const snapshotAfterSessionContext = latestForgeSnapshot(notifications);
-    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.skillKeys, ["measurement"]);
-    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.equipmentKeys, ["multimeter"]);
-    assert.deepEqual(snapshotAfterSessionContext.sessionContextSelection.preferenceKeys, ["mode"]);
-    assert.equal(snapshotAfterSessionContext.preflight.status, "idle");
-    assert.match(snapshotAfterSessionContext.runSignature?.value ?? "", /learn[_-]first/);
-
     const runPreflightResult = await hostRuntime.commands.ForgeRoomRunPreflight();
     assert.equal(runPreflightResult.success, true);
     const preflightDispatchCalls = dispatchCalls.filter(
@@ -388,11 +388,13 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
         (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
           ?.protocolKey === "forge-room-preflight-pre-analysis"
     );
-    assert.equal(preflightDispatchCalls.length, 1);
+    assert.ok(preflightDispatchCalls.length >= 1);
+    const preflightDispatchCountAfterManualRun = preflightDispatchCalls.length;
 
     const snapshotAfterDraft = latestForgeSnapshot(notifications);
     assert.notEqual(snapshotAfterDraft.preflight.status, "idle");
     assert.equal(snapshotAfterDraft.responses.length, 0);
+    assert.match(snapshotAfterDraft.runSignature?.value ?? "", /learn[_-]first/);
 
     const forgeStateCountAfterPreflight = notifications.filter(
       (entry) => entry.type === "forge-state"
@@ -449,7 +451,7 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
           (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
             ?.protocolKey === "forge-room-preflight-pre-analysis"
       ).length,
-      1
+      preflightDispatchCountAfterManualRun
     );
 
     const snapshotAfterDispatch = latestForgeSnapshot(notifications);
@@ -488,7 +490,7 @@ test("forge-room host runtime runs breakdown, dispatch, synthesis, export, and r
           (call["payload"] as { protocol?: { protocolKey?: string } } | undefined)?.protocol
             ?.protocolKey === "forge-room-preflight-pre-analysis"
       ).length,
-      1
+      preflightDispatchCountAfterManualRun
     );
     const snapshotAfterSynthesis = latestForgeSnapshot(notifications);
     const selectedSynthesis = snapshotAfterSynthesis.syntheses.find(

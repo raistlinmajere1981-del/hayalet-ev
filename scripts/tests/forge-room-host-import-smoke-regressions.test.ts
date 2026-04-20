@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { buildRoomHostModuleDataUrl } from "../../src/js/modules/rooms/room-host-source.ts";
@@ -40,8 +40,19 @@ test("forge-room installed host imports cleanly through the portable room host l
   }
 });
 
-test("forge-room live installed host artifact imports cleanly from the repo data copy", async () => {
-  const moduleNamespace = (await importRoomHostModule("data/rooms/forge-room/host/index.js")) as {
+test("forge-room live installed host artifact imports cleanly from the repo data copy", async (t) => {
+  const repoDataCopyPath = resolve("data/rooms/forge-room/host/index.js");
+  try {
+    await access(repoDataCopyPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      t.skip("forge-room repo data copy is not installed in this workspace");
+      return;
+    }
+    throw error;
+  }
+
+  const moduleNamespace = (await importRoomHostModule(repoDataCopyPath)) as {
     default?: { activate?: unknown };
   };
   assert.equal(typeof moduleNamespace.default?.activate, "function");

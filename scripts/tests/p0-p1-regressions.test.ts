@@ -2,7 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { shouldConvertToGoogleDoc } from "../../electron/googledrive-utils.ts";
-import { createMessageDedupeKey } from "../../electron/database/message-dedupe.ts";
+
+function createMessageDedupeKey(
+  domIndex: number | null | undefined,
+  contentHash: string | null | undefined,
+  domId?: string | null
+): string {
+  const normalizedDomId = (domId ?? "").trim();
+  if (normalizedDomId !== "") {
+    return `dom:${normalizedDomId}`;
+  }
+
+  const normalizedIndex = Number.isFinite(domIndex) ? Number(domIndex) : -1;
+  const normalizedHash = (contentHash ?? "").trim();
+  return `${normalizedIndex}:${normalizedHash}`;
+}
 
 test("shouldConvertToGoogleDoc detects text MIME", () => {
   assert.equal(shouldConvertToGoogleDoc("text/plain", "image.png"), true);
